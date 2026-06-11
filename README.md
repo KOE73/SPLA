@@ -4,9 +4,26 @@
   <img src="Images/MainLogo.png" alt="SPLA Logo" width="300" />
 </p>
 
-SPLA is a local AI assistant for working with files, projects, operating-system tools, and domain plugins through local LLM runtimes. The main workflow is to open a project file in a working directory, connect a local model through LM Studio or a compatible OpenAI API endpoint, and run tasks within explicitly configured permissions.
+Portable local AI assistant.
 
-SPLA can be used from the CLI or through the Avalonia desktop UI.
+**Connect** a local LLM, **open** a project, and start **working**.
+
+## Typical Tasks
+
+- Analyze a codebase.
+- Explain project architecture.
+- Search and modify files.
+- Run builds and tests.
+- Diagnose network problems.
+- Work with domain-specific plugins such as 1C.
+
+## Why SPLA
+
+- Local-first.
+- OpenAI-compatible.
+- Project-oriented.
+- Extensible through plugins.
+- Explicit permission model.
 
 ## Core Capabilities
 
@@ -20,7 +37,7 @@ SPLA can be used from the CLI or through the Avalonia desktop UI.
 - Basic system tools: read, write, create, delete, patch, find files, search text, run commands, current date/time, context, `dotnet build`, `dotnet test`, web fetch, web search.
 - Network tools: host info, LAN scan, port scan, ping, nslookup, HTTP GET, HTTP HEAD, port check, traceroute.
 
-## Quick Start and Publishing
+## Quick Start and Building from Source
 
 Requirements:
 - build: .NET 10.
@@ -45,7 +62,15 @@ One window means one project. If you need to work with several projects, open se
 
 ## Security
 
-SPLA uses 5 agent modes: `Chat`, `Research`, `Inspect`, `Edit`, and `Agent`. They restrict access to files, shell commands, network operations, and write operations. See [security.md](agents/security.md) for details.
+SPLA uses 5 agent modes:
+
+| Mode | Purpose |
+|--------|--------|
+| Chat | Discussion only |
+| Research | Read and analyze |
+| Inspect | Diagnostics and inspection |
+| Edit | Modify project files |
+| Agent | Autonomous multi-step execution |
 
 ## Plugins
 
