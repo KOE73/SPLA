@@ -1,0 +1,37 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:SPLA.UI.Avalonia.ViewModels.Settings"
+             x:Class="SPLA.UI.Avalonia.Views.Settings.SettingsAgentView"
+             x:DataType="vm:SettingsViewModel">
+    <StackPanel Spacing="{DynamicResource StandardSpacing}">
+        <TextBlock Text="Agent Behavior" FontSize="{DynamicResource BaseFontSize}" FontWeight="Bold" Foreground="{DynamicResource TextForegroundBrush}"/>
+        <Border Background="{DynamicResource PanelBackgroundBrush}" BorderBrush="{DynamicResource PanelBorderBrush}" BorderThickness="1" CornerRadius="{DynamicResource StandardCornerRadius}" Padding="{DynamicResource StandardPadding}">
+            <StackPanel Spacing="{DynamicResource StandardSpacing}">
+                <TextBlock Text="Security Preset Mode" Foreground="{DynamicResource TextForegroundBrush}" FontSize="{DynamicResource BaseFontSize}" FontWeight="Bold"/>
+                
+                <RadioButton GroupName="Mode" IsChecked="{Binding IsModeChat}" Content="Chat" Foreground="{DynamicResource TextForegroundBrush}" FontWeight="Bold" FontSize="{DynamicResource BaseFontSize}"/>
+                <TextBlock Text="Basic conversation without tool access. Safest mode." Foreground="{DynamicResource SubTextForegroundBrush}" FontSize="{DynamicResource BaseFontSize}" Margin="25,-5,0,10" TextWrapping="Wrap"/>
+                
+                <RadioButton GroupName="Mode" IsChecked="{Binding IsModeResearch}" Content="Research" Foreground="{DynamicResource TextForegroundBrush}" FontWeight="Bold" FontSize="{DynamicResource BaseFontSize}"/>
+                <TextBlock Text="Can read files and search the web, but cannot modify anything." Foreground="{DynamicResource SubTextForegroundBrush}" FontSize="{DynamicResource BaseFontSize}" Margin="25,-5,0,10" TextWrapping="Wrap"/>
+
+                <RadioButton GroupName="Mode" IsChecked="{Binding IsModeInspect}" Content="Inspect" Foreground="{DynamicResource TextForegroundBrush}" FontWeight="Bold" FontSize="{DynamicResource BaseFontSize}"/>
+                <TextBlock Text="Can inspect code and run read-only terminal commands." Foreground="{DynamicResource SubTextForegroundBrush}" FontSize="{DynamicResource BaseFontSize}" Margin="25,-5,0,10" TextWrapping="Wrap"/>
+
+                <RadioButton GroupName="Mode" IsChecked="{Binding IsModeEdit}" Content="Edit" Foreground="{DynamicResource TextForegroundBrush}" FontWeight="Bold" FontSize="{DynamicResource BaseFontSize}"/>
+                <TextBlock Text="Can modify files but requires permission for terminal commands." Foreground="{DynamicResource SubTextForegroundBrush}" FontSize="{DynamicResource BaseFontSize}" Margin="25,-5,0,10" TextWrapping="Wrap"/>
+
+                <RadioButton GroupName="Mode" IsChecked="{Binding IsModeAgent}" Content="Agent" Foreground="{DynamicResource TextForegroundBrush}" FontWeight="Bold" FontSize="{DynamicResource BaseFontSize}"/>
+                <TextBlock Text="Full autonomy. Can read/write files and execute terminal commands without prompting." Foreground="{DynamicResource SubTextForegroundBrush}" FontSize="{DynamicResource BaseFontSize}" Margin="25,-5,0,10" TextWrapping="Wrap"/>
+            </StackPanel>
+        </Border>
+        
+        <Border Background="{DynamicResource PanelBackgroundBrush}" BorderBrush="{DynamicResource PanelBorderBrush}" BorderThickness="1" CornerRadius="{DynamicResource StandardCornerRadius}" Padding="{DynamicResource StandardPadding}">
+            <StackPanel Spacing="{DynamicResource StandardSpacing}">
+                <TextBlock Text="Custom Prompt" Foreground="{DynamicResource TextForegroundBrush}" FontSize="{DynamicResource BaseFontSize}" FontWeight="Bold"/>
+                <TextBlock Text="Additional instructions added to the end of the system prompt." Foreground="{DynamicResource SubTextForegroundBrush}" FontSize="{DynamicResource BaseFontSize}" TextWrapping="Wrap"/>
+                <TextBox Text="{Binding CustomPrompt}" AcceptsReturn="True" TextWrapping="Wrap" MinHeight="100" Background="{DynamicResource SurfaceBackgroundBrush}" Foreground="{DynamicResource TextForegroundBrush}" BorderBrush="{DynamicResource PanelBorderBrush}"/>
+            </StackPanel>
+        </Border>
+    </StackPanel>
+</UserControl>

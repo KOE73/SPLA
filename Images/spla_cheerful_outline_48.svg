@@ -1,0 +1,64 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" width="48" height="48">
+  <title>SPLA cheerful outline mascot</title>
+  <desc>Bright contour-first transparent SVG icon for a 48x48 desktop application icon.</desc>
+
+  <!-- transparent background intentionally omitted -->
+
+  <!-- propeller -->
+  <g stroke="#173B67" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M23.8 6.3 18.8 3.7"/>
+    <path d="M24.2 6.3 29.2 3.7"/>
+    <path d="M18.8 3.7h-5.4"/>
+    <path d="M29.2 3.7h5.4"/>
+    <circle cx="24" cy="6.4" r="1.7" fill="#2F80ED"/>
+  </g>
+
+  <!-- cap, visibly worn on the head -->
+  <g stroke="#173B67" stroke-width="1.8" stroke-linejoin="round">
+    <path d="M15.4 13.7c.7-4.6 3.5-7.2 8.6-7.2s7.9 2.6 8.6 7.2Z" fill="#FFD84D"/>
+    <path d="M15.4 13.7c.5-3.6 2.2-5.9 5.1-6.8v6.8Z" fill="#FF6847" stroke="none"/>
+    <path d="M27.5 6.9c2.9.9 4.6 3.2 5.1 6.8h-5.1Z" fill="#4E9CFF" stroke="none"/>
+    <path d="M14.4 13.7h19.2" stroke="#2F80ED" stroke-width="3"/>
+  </g>
+
+  <!-- rounded terminal head -->
+  <g stroke="#173B67" stroke-width="1.9" stroke-linejoin="round">
+    <rect x="9.4" y="13.3" width="29.2" height="18.8" rx="5.2" fill="#FFF3D8"/>
+    <rect x="12.2" y="16.1" width="23.6" height="13.2" rx="3.1" fill="#BDF4FF"/>
+  </g>
+
+  <!-- cheerful terminal face -->
+  <g fill="none" stroke="#173B67" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+    <path d="m16 20.1 2.3 2-2.3 2"/>
+    <path d="M19.7 24.8h2.6"/>
+    <path d="M25.7 22.9c.35-1 1.05-1.55 2-1.55s1.65.55 2 1.55"/>
+    <path d="M31.5 22.9c.35-1 1.05-1.55 2-1.55s1.65.55 2 1.55"/>
+  </g>
+
+  <!-- neck -->
+  <path d="M20.4 32h7.2v2.3h-7.2Z" fill="#173B67"/>
+
+  <!-- hoodie body -->
+  <g stroke="#173B67" stroke-width="1.9" stroke-linejoin="round" stroke-linecap="round">
+    <path d="M15.3 34c1.4-1.2 3.3-1.8 5.7-1.8h6c2.4 0 4.3.6 5.7 1.8l1.4 7.6H13.9Z" fill="#4E9CFF"/>
+    <path d="M18.2 35.1 24 37.4l5.8-2.3" fill="none"/>
+    <path d="M20.1 38.8h7.8" fill="none"/>
+    <path d="M20.8 33.6v3.1M27.2 33.6v3.1" stroke="#FFF3D8" stroke-width="1.45"/>
+  </g>
+
+  <!-- arms -->
+  <g stroke="#173B67" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M14.8 35.7 10.6 38" stroke="#4E9CFF" stroke-width="4"/>
+    <path d="M33.2 35.7 37 38" stroke="#4E9CFF" stroke-width="4"/>
+    <!-- simple thumbs-up -->
+    <path d="M10.7 38 8.6 36.9 7.2 38.7l1.2 1.3 1.8-.1.5-1.9Z" fill="#FFD7A8"/>
+    <path d="M37 38c.2 1.1-.1 2-.9 2.8" stroke="#FFD7A8" stroke-width="2.5"/>
+  </g>
+
+  <!-- legs and sneakers -->
+  <g stroke="#173B67" stroke-width="1.9" stroke-linejoin="round" stroke-linecap="round">
+    <path d="M18.1 41.6v2.2M29.9 41.6v2.2" stroke="#4E9CFF" stroke-width="4"/>
+    <path d="M15.2 44.2h5.8" stroke="#FFD84D" stroke-width="3.2"/>
+    <path d="M27 44.2h5.8" stroke="#FFD84D" stroke-width="3.2"/>
+  </g>
+</svg>

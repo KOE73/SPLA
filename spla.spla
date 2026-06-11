@@ -1,0 +1,39 @@
+version: 1
+name: SPLA
+workspace: .
+agent:
+  mode: Inspect
+  instructions:
+  - AGENTS.md
+  custom_prompt: ''
+llm:
+  provider: lmstudio
+  endpoint: http://127.0.0.1:1234/v1
+  api_key: lm-studio
+  model: ''
+  temperature: 1.1
+ui:
+  theme: Cream
+  density: mini
+  bubble_chat: false
+  selected_chat_view_id: web
+permissions:
+  read: allow
+  write: ask
+  shell: ask
+  internet: allow
+plugins:
+  network:
+    enabled: true
+  onec:
+    enabled: true
+  onec_avalonia:
+    enabled: true
+  test:
+    enabled: true
+docs:
+- docs/
+ignore:
+- bin/
+- obj/
+- .git/

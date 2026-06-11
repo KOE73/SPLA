@@ -1,0 +1,101 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:SPLA.UI.Avalonia.ViewModels"
+             x:Class="SPLA.UI.Avalonia.Views.Chat.ChatInputView"
+             x:DataType="vm:MainWindowViewModel">
+    
+    <StackPanel Margin="{DynamicResource StandardMargin}" Spacing="5">
+        <!-- Input Area -->
+        <Grid ColumnDefinitions="*,Auto">
+            <TextBox x:Name="InputTextBox" Grid.Column="0" Text="{Binding InputText, UpdateSourceTrigger=PropertyChanged}" PlaceholderText="Enter message... (/compact)" 
+                     AcceptsReturn="True" MaxHeight="100" TextWrapping="Wrap" FontSize="{DynamicResource BaseFontSize}"
+                     Background="{DynamicResource InputBackgroundBrush}" Foreground="{DynamicResource TextForegroundBrush}" BorderBrush="{DynamicResource InputBorderBrush}" CornerRadius="{DynamicResource StandardCornerRadius}"
+                     VerticalAlignment="Bottom" />
+            <Button Grid.Column="1" Content="Send" Command="{Binding SendCommand}" FontSize="{DynamicResource BaseFontSize}"
+                    Background="{DynamicResource AccentBrush}" Foreground="White" CornerRadius="{DynamicResource StandardCornerRadius}"
+                    Padding="{DynamicResource StandardPadding}" VerticalAlignment="Bottom" Margin="5,0,0,0"
+                    IsVisible="{Binding IsNotBusy}" />
+            <Button Grid.Column="1" Content="Stop" Command="{Binding StopCommand}" FontSize="{DynamicResource BaseFontSize}"
+                    Background="#C62828" Foreground="White" CornerRadius="{DynamicResource StandardCornerRadius}"
+                    Padding="{DynamicResource StandardPadding}" VerticalAlignment="Bottom" Margin="5,0,0,0"
+                    IsVisible="{Binding IsBusy}" />
+        </Grid>
+
+        <!-- Bottom Bar: Mode Selection & Chat Actions -->
+        <Grid ColumnDefinitions="*,Auto" Margin="0,5,0,0">
+            <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="15" VerticalAlignment="Center">
+                <ComboBox ItemsSource="{Binding Status.AvailableModeDescriptions}" SelectedItem="{Binding Status.SelectedModeDescription}"
+                          Background="Transparent" BorderThickness="0" Foreground="{DynamicResource SubTextForegroundBrush}"
+                          FontSize="{DynamicResource SmallFontSize}" VerticalAlignment="Center" />
+                
+                <StackPanel Orientation="Horizontal" Spacing="10" VerticalAlignment="Center">
+                    <TextBlock Text="Temp" Foreground="{DynamicResource SubTextForegroundBrush}"
+                               FontSize="{DynamicResource SmallFontSize}" VerticalAlignment="Center" />
+                    <TextBlock Text="{Binding Settings.Temperature, StringFormat='{}{0:0.0}'}"
+                               Foreground="{DynamicResource SubTextForegroundBrush}"
+                               FontSize="{DynamicResource SmallFontSize}" Width="28"
+                               TextAlignment="Right" VerticalAlignment="Center" />
+                    <Grid RowDefinitions="18,10" Width="260" Height="28" VerticalAlignment="Center">
+                        <Slider Grid.Row="0" Minimum="0" Maximum="2" TickFrequency="0.1" IsSnapToTickEnabled="True"
+                                Value="{Binding Settings.Temperature}"
+                                Height="18" VerticalAlignment="Center"
+                                Margin="4,0" />
+                        <Grid Grid.Row="1" ColumnDefinitions="*,*,*,*,*" Margin="4,0">
+                            <TextBlock Grid.Column="0" Text="Precise Code" Foreground="{DynamicResource SubTextForegroundBrush}"
+                                       FontSize="8" VerticalAlignment="Top" />
+                            <TextBlock Grid.Column="1" Text="Agent" Foreground="{DynamicResource SubTextForegroundBrush}"
+                                       FontSize="8" TextAlignment="Center" VerticalAlignment="Top" />
+                            <TextBlock Grid.Column="2" Text="Explore" Foreground="{DynamicResource SubTextForegroundBrush}"
+                                       FontSize="8" TextAlignment="Center" VerticalAlignment="Top" />
+                            <TextBlock Grid.Column="3" Text="Brainstorm" Foreground="{DynamicResource SubTextForegroundBrush}"
+                                       FontSize="8" TextAlignment="Center" VerticalAlignment="Top" />
+                            <TextBlock Grid.Column="4" Text="Experimental" Foreground="{DynamicResource SubTextForegroundBrush}"
+                                       FontSize="8" TextAlignment="Right" VerticalAlignment="Top" />
+                        </Grid>
+                    </Grid>
+                    
+                    <!-- Horizontal group selector for Chat Stream Views -->
+                    <ItemsControl ItemsSource="{Binding AvailableChatViews}" VerticalAlignment="Center">
+                        <ItemsControl.ItemsPanel>
+                            <ItemsPanelTemplate>
+                                <StackPanel Orientation="Horizontal" Spacing="5" />
+                            </ItemsPanelTemplate>
+                        </ItemsControl.ItemsPanel>
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate>
+                                <Button Classes="ChatViewSelector"
+                                        Classes.selected="{Binding IsSelected}"
+                                        Content="{Binding DisplayName}"
+                                        Command="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).SelectChatViewCommand}"
+                                        CommandParameter="{Binding}" />
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                        <ItemsControl.Styles>
+                            <Style Selector="Button.ChatViewSelector">
+                                <Setter Property="Padding" Value="10,4"/>
+                                <Setter Property="Background" Value="Transparent"/>
+                                <Setter Property="BorderThickness" Value="1"/>
+                                <Setter Property="BorderBrush" Value="{DynamicResource PanelBorderBrush}"/>
+                                <Setter Property="CornerRadius" Value="4"/>
+                                <Setter Property="Cursor" Value="Hand"/>
+                                <Setter Property="MinHeight" Value="24"/>
+                                <Setter Property="Foreground" Value="{DynamicResource SubTextForegroundBrush}"/>
+                                <Setter Property="FontSize" Value="{DynamicResource SmallFontSize}"/>
+                            </Style>
+                            <Style Selector="Button.ChatViewSelector.selected">
+                                <Setter Property="Background" Value="{DynamicResource AccentBrush}"/>
+                                <Setter Property="Foreground" Value="White"/>
+                                <Setter Property="BorderBrush" Value="{DynamicResource AccentBrush}"/>
+                            </Style>
+                        </ItemsControl.Styles>
+                    </ItemsControl>
+                </StackPanel>
+            </StackPanel>
+            
+            <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="10" HorizontalAlignment="Right" VerticalAlignment="Center">
+                <Button Content="Compact" Command="{Binding CompactContextCommand}" Background="Transparent" Foreground="{DynamicResource SubTextForegroundBrush}" Cursor="Hand" ToolTip.Tip="Create summary and compact context" FontSize="{DynamicResource SmallFontSize}" Padding="{DynamicResource CompactMargin}" />
+                <Button Content="⎇ Fork" Command="{Binding ForkChatCommand}" Background="Transparent" Foreground="{DynamicResource SubTextForegroundBrush}" Cursor="Hand" ToolTip.Tip="Duplicate Chat" FontSize="{DynamicResource SmallFontSize}" Padding="{DynamicResource CompactMargin}" />
+            </StackPanel>
+        </Grid>
+    </StackPanel>
+</UserControl>

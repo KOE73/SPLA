@@ -1,0 +1,9 @@
+id: onec
+type: dll
+entry_point: SPLA.Plugins.OneC.dll
+default_prompt: |
+  1C Analysis Plugin active. You can now use onec.* tools to interact with the 1C index.
+  Important: First use 'onec.index.build' if the index is missing or out of date.
+  Then use 'onec.object.find' to locate an object, and 'onec.object.explain' to understand it.
+  If the user asks to show, draw, or open a graph of dependencies, references, or data flow, prefer 'onec.graph.open'.
+  Use 'onec.dependency.get' and related text tools for textual analysis only, not as the primary path for opening a graph window.

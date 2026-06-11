@@ -1,0 +1,45 @@
+/.publish/
+/.spla/
+/.vs/
+**/bin/
+**/obj/
+*.user
+
+# Local environment and secrets
+.env
+.env.*
+*.local
+appsettings.*.json
+secret.*
+secrets.*
+credentials.*
+*.secret
+*.secrets
+*.credential
+*.credentials
+
+# Logs, crash dumps, and local runtime state
+*.log
+crash.txt
+*.dmp
+*.dump
+*.tmp
+*.temp
+*.cache
+
+# Local databases and indexes
+*.db
+*.db-shm
+*.db-wal
+*.sqlite
+*.sqlite3
+*.sqlite-shm
+*.sqlite-wal
+
+# Private keys and certificates
+*.key
+*.pem
+*.pfx
+*.p12
+*.crt
+*.cer

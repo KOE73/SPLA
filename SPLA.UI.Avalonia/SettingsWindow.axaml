@@ -1,0 +1,90 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="using:SPLA.UI.Avalonia.ViewModels.Settings"
+        xmlns:settings="clr-namespace:SPLA.UI.Avalonia.Views.Settings"
+        x:Class="SPLA.UI.Avalonia.SettingsWindow"
+        x:DataType="vm:SettingsViewModel"
+        Title="Settings - SPLA" Width="900" Height="700"
+        Icon="avares://SPLA.UI.Avalonia/Assets/spla_icon.png"
+        ExtendClientAreaToDecorationsHint="True"
+        WindowStartupLocation="CenterOwner"
+        Background="{DynamicResource AppBackgroundBrush}">
+    
+    <Grid ColumnDefinitions="250,*" RowDefinitions="30,*,Auto">
+        <!-- Title Bar Area for dragging -->
+        <Border Grid.Row="0" Grid.ColumnSpan="2" Background="Transparent" IsHitTestVisible="False"/>
+
+        <!-- Left Pane: Menu -->
+        <Border Grid.Column="0" Grid.Row="1" Background="{DynamicResource PanelBackgroundBrush}" BorderBrush="{DynamicResource PanelBorderBrush}" BorderThickness="0,0,1,0">
+            <ListBox ItemsSource="{Binding Categories}" SelectedItem="{Binding SelectedCategory}"
+                     Background="Transparent" BorderThickness="0" Margin="{DynamicResource StandardMargin}">
+                <ListBox.Styles>
+                    <Style Selector="ListBoxItem">
+                        <Setter Property="Padding" Value="{DynamicResource StandardPadding}"/>
+                        <Setter Property="Margin" Value="{DynamicResource CompactMargin}"/>
+                        <Setter Property="CornerRadius" Value="{DynamicResource StandardCornerRadius}"/>
+                        <Setter Property="Foreground" Value="{DynamicResource TextForegroundBrush}"/>
+                        <Setter Property="IsEnabled" Value="{Binding Converter={x:Static StringConverters.IsNotNullOrEmpty}}"/>
+                    </Style>
+                    <Style Selector="ListBoxItem:disabled">
+                        <Setter Property="Opacity" Value="1.0"/>
+                    </Style>
+                </ListBox.Styles>
+                <ListBox.ItemTemplate>
+                    <DataTemplate x:DataType="x:String">
+                        <Panel>
+                            <Border IsVisible="{Binding Converter={x:Static StringConverters.IsNullOrEmpty}}"
+                                    Height="1" Background="{DynamicResource PanelBorderBrush}" Margin="-8,5" HorizontalAlignment="Stretch"/>
+                            <TextBlock IsVisible="{Binding Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
+                                       Text="{Binding}"/>
+                        </Panel>
+                    </DataTemplate>
+                </ListBox.ItemTemplate>
+            </ListBox>
+        </Border>
+
+        <!-- Right Pane: Content -->
+        <ScrollViewer Grid.Column="1" Grid.Row="1" Margin="{DynamicResource StandardMargin}">
+            <StackPanel Spacing="{DynamicResource StandardSpacing}">
+                <StackPanel Orientation="Horizontal" Spacing="10" Margin="0,0,0,20">
+                    <TextBlock Text="SPLA ✎" FontSize="{DynamicResource HeaderFontSize}" FontWeight="Bold" Foreground="{DynamicResource TextForegroundBrush}" VerticalAlignment="Center"/>
+                    <TextBlock Text="Manage project settings and appearance." Foreground="{DynamicResource SubTextForegroundBrush}" FontSize="{DynamicResource BaseFontSize}" VerticalAlignment="Center"/>
+                </StackPanel>
+                
+                <!-- SECTION: App Appearance -->
+                <settings:SettingsAppearanceView IsVisible="{Binding IsAppAppearance}" />
+
+                <!-- SECTION: LLM Provider -->
+                <settings:SettingsLlmView IsVisible="{Binding IsLlmProvider}" />
+
+                <!-- SECTION: Models -->
+                <settings:SettingsModelsView IsVisible="{Binding IsModels}" />
+
+                <!-- SECTION: Agent Settings -->
+                <settings:SettingsAgentView IsVisible="{Binding IsAgentSettings}" />
+
+                <!-- SECTION: Permissions -->
+                <settings:SettingsPermissionsView IsVisible="{Binding IsLocalPermissions}" />
+
+                <!-- SECTION: System Integration -->
+                <settings:SettingsSystemView IsVisible="{Binding IsSystemIntegration}" />
+
+                <!-- SECTION: Plugins -->
+                <settings:SettingsPluginsView IsVisible="{Binding IsPlugins}" />
+
+                <!-- SECTION: About SPLA -->
+                <settings:SettingsAboutView IsVisible="{Binding IsAbout}" />
+
+            </StackPanel>
+        </ScrollViewer>
+        
+        <!-- Bottom Bar: Actions -->
+        <Border Grid.Column="0" Grid.ColumnSpan="2" Grid.Row="2" Background="{DynamicResource PanelBackgroundBrush}" BorderBrush="{DynamicResource PanelBorderBrush}" BorderThickness="0,1,0,0" Padding="{DynamicResource StandardPadding}">
+            <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Spacing="10">
+                <TextBlock Text="{Binding StatusMessage}" Foreground="{DynamicResource SubTextForegroundBrush}" VerticalAlignment="Center" Margin="0,0,20,0"/>
+                <Button Content="Close" Click="CloseButton_Click" Background="Transparent" Foreground="{DynamicResource TextForegroundBrush}" BorderThickness="0"/>
+                <Button Content="Save Settings" Command="{Binding SaveSettingsCommand}" Background="{DynamicResource AccentBrush}" Foreground="White" CornerRadius="{DynamicResource StandardCornerRadius}"/>
+            </StackPanel>
+        </Border>
+    </Grid>
+</Window>

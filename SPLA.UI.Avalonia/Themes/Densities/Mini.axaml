@@ -1,0 +1,30 @@
+<ResourceDictionary xmlns="https://github.com/avaloniaui"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                    xmlns:sys="clr-namespace:System;assembly=mscorlib">
+    <!-- ========================================== -->
+    <!-- Layout Spacing                             -->
+    <!-- ========================================== -->
+    <Thickness x:Key="StandardMargin">5</Thickness>
+    <Thickness x:Key="StandardPadding">8</Thickness>
+    <Thickness x:Key="CompactMargin">2</Thickness>
+    <sys:Double x:Key="StandardSpacing">5</sys:Double>
+
+    <!-- ========================================== -->
+    <!-- Chat Bubble Layout                         -->
+    <!-- ========================================== -->
+    <Thickness x:Key="ChatBubbleMargin">5,2</Thickness>
+    <Thickness x:Key="UserChatBubbleMargin">18,2,5,2</Thickness>
+    <Thickness x:Key="AiChatBubbleMargin">5,2,18,2</Thickness>
+
+    <!-- ========================================== -->
+    <!-- Typography                                -->
+    <!-- ========================================== -->
+    <sys:Double x:Key="HeaderFontSize">18</sys:Double>
+    <sys:Double x:Key="BaseFontSize">14</sys:Double>
+    <sys:Double x:Key="SmallFontSize">12</sys:Double>
+
+    <!-- ========================================== -->
+    <!-- Shape                                      -->
+    <!-- ========================================== -->
+    <CornerRadius x:Key="StandardCornerRadius">4</CornerRadius>
+</ResourceDictionary>

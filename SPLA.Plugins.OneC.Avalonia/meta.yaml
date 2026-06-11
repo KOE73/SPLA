@@ -1,0 +1,18 @@
+id: onec_avalonia
+type: avalonia-ui
+entry_point: SPLA.Plugins.OneC.Avalonia.dll
+depends_on:
+  - onec
+metadata:
+  icon: database
+  group: 1C
+  order: "100"
+commands:
+  - id: onec.view.open
+    kind: OpenPanel
+    target: onec.overview
+    display_name: "1C"
+    description: "Open 1C index browser"
+    metadata:
+      icon: database
+      group: analysis

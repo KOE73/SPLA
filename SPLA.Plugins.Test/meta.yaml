@@ -1,0 +1,7 @@
+id: test
+version: 1.0.0
+type: dll
+entry_point: SPLA.Plugins.Test.dll
+default_prompt: |
+  You have access to the 'test' plugin. 
+  Use the test.sys.ping tool whenever the user asks if you are alive.

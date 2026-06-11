@@ -1,0 +1,12 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        x:Class="SPLA.UI.Avalonia.PluginPanelHostWindow"
+        Width="1280"
+        Height="860"
+        MinWidth="640"
+        MinHeight="420"
+        Background="{DynamicResource AppBackgroundBrush}">
+    <Border Padding="{DynamicResource StandardMargin}">
+        <ContentControl x:Name="PanelContent" />
+    </Border>
+</Window>

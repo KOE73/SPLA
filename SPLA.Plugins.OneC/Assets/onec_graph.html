@@ -1,0 +1,395 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>1C Graph</title>
+<style>
+  :root {
+    --bg:        #1e1e2e;
+    --panel:     #2a2a3d;
+    --border:    #3a3a5c;
+    --text:      #cdd6f4;
+    --subtext:   #6c7086;
+    --accent:    #89b4fa;
+    --green:     #a6e3a1;
+    --red:       #f38ba8;
+    --yellow:    #f9e2af;
+    --orange:    #fab387;
+    --mauve:     #cba6f7;
+    --teal:      #94e2d5;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Segoe UI', system-ui, sans-serif;
+    font-size: 13px;
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+    overflow: hidden;
+  }
+
+  /* ── Toolbar ─────────────────────────────────────────────────────── */
+  #toolbar {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 12px;
+    background: var(--panel);
+    border-bottom: 1px solid var(--border);
+    flex-shrink: 0;
+    flex-wrap: wrap;
+  }
+
+  #toolbar label { color: var(--subtext); font-size: 11px; }
+
+  select, button {
+    background: var(--bg);
+    color: var(--text);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 4px 10px;
+    font-size: 12px;
+    cursor: pointer;
+    transition: border-color 0.15s;
+  }
+  select:hover, button:hover { border-color: var(--accent); }
+  button.active { border-color: var(--accent); color: var(--accent); }
+
+  #filter-group { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+
+  .filter-btn {
+    padding: 3px 8px;
+    font-size: 11px;
+    border-radius: 12px;
+    user-select: none;
+  }
+  .filter-btn[data-type="writes"]  { border-color: var(--red);    color: var(--red);    }
+  .filter-btn[data-type="reads"]   { border-color: var(--accent);  color: var(--accent); }
+  .filter-btn[data-type="queries"] { border-color: var(--orange);  color: var(--orange); }
+  .filter-btn[data-type="calls"]   { border-color: var(--green);   color: var(--green);  }
+  .filter-btn[data-type="owns"]    { border-color: var(--subtext); color: var(--subtext);}
+  .filter-btn[data-type="uses"]    { border-color: var(--mauve);   color: var(--mauve);  }
+  .filter-btn.active { opacity: 0.4; }
+
+  #spacer { flex: 1; }
+
+  #object-name {
+    font-weight: 600;
+    color: var(--accent);
+    max-width: 320px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  /* ── Graph container ─────────────────────────────────────────────── */
+  #cy {
+    flex: 1;
+    width: 100%;
+  }
+
+  /* ── Tooltip ─────────────────────────────────────────────────────── */
+  #tooltip {
+    position: fixed;
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 8px 12px;
+    font-size: 12px;
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 0.12s;
+    max-width: 300px;
+    z-index: 999;
+    line-height: 1.6;
+  }
+  #tooltip.visible { opacity: 1; }
+  #tooltip strong { color: var(--accent); }
+  #tooltip .tt-kind { color: var(--subtext); font-size: 11px; }
+
+  /* ── Legend ──────────────────────────────────────────────────────── */
+  #legend {
+    position: fixed;
+    bottom: 10px;
+    right: 12px;
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 8px 12px;
+    font-size: 11px;
+    line-height: 2;
+    opacity: 0.85;
+  }
+  .legend-row { display: flex; align-items: center; gap: 6px; }
+  .legend-dot {
+    width: 10px; height: 10px; border-radius: 50%;
+    display: inline-block; flex-shrink: 0;
+  }
+</style>
+</head>
+<body>
+
+<div id="toolbar">
+  <span id="object-name">— выберите объект —</span>
+
+  <div style="display:flex;align-items:center;gap:6px;">
+    <label>Режим</label>
+    <select id="mode-sel" onchange="onModeChange()">
+      <option value="Dependencies">Dependencies</option>
+      <option value="References">References</option>
+      <option value="DataFlow">Data Flow</option>
+    </select>
+  </div>
+
+  <div style="display:flex;align-items:center;gap:6px;">
+    <label>Глубина</label>
+    <select id="depth-sel" onchange="onDepthChange()">
+      <option value="1">1</option>
+      <option value="2">2</option>
+    </select>
+  </div>
+
+  <div id="filter-group">
+    <label>Связи:</label>
+    <button class="filter-btn" data-type="writes"  onclick="toggleFilter(this)">writes</button>
+    <button class="filter-btn" data-type="reads"   onclick="toggleFilter(this)">reads</button>
+    <button class="filter-btn" data-type="queries" onclick="toggleFilter(this)">queries</button>
+    <button class="filter-btn" data-type="calls"   onclick="toggleFilter(this)">calls</button>
+    <button class="filter-btn" data-type="owns"    onclick="toggleFilter(this)">owns</button>
+    <button class="filter-btn" data-type="uses"    onclick="toggleFilter(this)">uses</button>
+  </div>
+
+  <span id="spacer"></span>
+
+  <button onclick="cy.fit()" title="Fit to screen">⊡ Fit</button>
+  <button onclick="cy.reset()" title="Reset zoom">↺ Reset</button>
+</div>
+
+<div id="cy"></div>
+
+<div id="tooltip"></div>
+
+<div id="legend">
+  <div class="legend-row"><span class="legend-dot" style="background:#89b4fa"></span> Document</div>
+  <div class="legend-row"><span class="legend-dot" style="background:#a6e3a1"></span> Catalog</div>
+  <div class="legend-row"><span class="legend-dot" style="background:#f38ba8"></span> AccumulationRegister</div>
+  <div class="legend-row"><span class="legend-dot" style="background:#fab387"></span> InformationRegister</div>
+  <div class="legend-row"><span class="legend-dot" style="background:#cba6f7"></span> CommonModule</div>
+  <div class="legend-row"><span class="legend-dot" style="background:#f9e2af"></span> Report / Processing</div>
+  <div class="legend-row"><span class="legend-dot" style="background:#94e2d5"></span> Form / Other</div>
+</div>
+
+<!-- Cytoscape.js from CDN — can be replaced with local copy -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/cytoscape/3.30.2/cytoscape.min.js"></script>
+<script>
+// ── Colour maps ────────────────────────────────────────────────────────────
+
+const KIND_COLOR = {
+  'Document':              '#89b4fa',
+  'Catalog':               '#a6e3a1',
+  'AccumulationRegister':  '#f38ba8',
+  'InformationRegister':   '#fab387',
+  'AccountingRegister':    '#f38ba8',
+  'CalculationRegister':   '#f38ba8',
+  'CommonModule':          '#cba6f7',
+  'Report':                '#f9e2af',
+  'Processing':            '#f9e2af',
+  'Form':                  '#94e2d5',
+  'TabularSection':        '#94e2d5',
+  'Enum':                  '#94e2d5',
+  'Constant':              '#94e2d5',
+  '_default':              '#6c7086',
+};
+
+const EDGE_COLOR = {
+  'writes':  '#f38ba8',
+  'reads':   '#89b4fa',
+  'queries': '#fab387',
+  'calls':   '#a6e3a1',
+  'owns':    '#45475a',
+  'uses':    '#cba6f7',
+  '_default':'#6c7086',
+};
+
+function kindColor(k) { return KIND_COLOR[k] ?? KIND_COLOR['_default']; }
+function edgeColor(t) { return EDGE_COLOR[t] ?? EDGE_COLOR['_default']; }
+
+// ── Cytoscape init ─────────────────────────────────────────────────────────
+
+const cy = cytoscape({
+  container: document.getElementById('cy'),
+  style: [
+    {
+      selector: 'node',
+      style: {
+        'background-color':   (n) => kindColor(n.data('kind')),
+        'label':              'data(label)',
+        'color':              '#cdd6f4',
+        'font-size':          '11px',
+        'text-valign':        'bottom',
+        'text-margin-y':      4,
+        'text-outline-width': 2,
+        'text-outline-color': '#1e1e2e',
+        'width':              36,
+        'height':             36,
+        'border-width':       0,
+        'transition-property':'border-width border-color',
+        'transition-duration':'0.15s',
+      }
+    },
+    {
+      selector: 'node[?isCenter]',
+      style: {
+        'width':        52,
+        'height':       52,
+        'border-width': 3,
+        'border-color': '#cdd6f4',
+        'font-size':    '13px',
+        'font-weight':  'bold',
+      }
+    },
+    {
+      selector: 'node:selected',
+      style: {
+        'border-width': 3,
+        'border-color': '#cdd6f4',
+      }
+    },
+    {
+      selector: 'edge',
+      style: {
+        'line-color':          (e) => edgeColor(e.data('type')),
+        'target-arrow-color':  (e) => edgeColor(e.data('type')),
+        'target-arrow-shape':  'triangle',
+        'curve-style':         'bezier',
+        'width':               1.8,
+        'opacity':             0.85,
+        'label':               'data(type)',
+        'font-size':           9,
+        'color':               '#6c7086',
+        'text-rotation':       'autorotate',
+        'text-background-color': '#1e1e2e',
+        'text-background-opacity': 0.7,
+        'text-background-padding': '2px',
+      }
+    },
+    {
+      selector: 'edge.hidden',
+      style: { 'display': 'none' }
+    },
+  ],
+  layout: { name: 'cose', animate: false },
+  wheelSensitivity: 0.3,
+});
+
+// ── Filter state ───────────────────────────────────────────────────────────
+
+const hiddenTypes = new Set();
+
+function toggleFilter(btn) {
+  const t = btn.dataset.type;
+  if (hiddenTypes.has(t)) {
+    hiddenTypes.delete(t);
+    btn.classList.remove('active');
+  } else {
+    hiddenTypes.add(t);
+    btn.classList.add('active');
+  }
+  applyFilter();
+}
+
+function applyFilter() {
+  cy.edges().forEach(e => {
+    if (hiddenTypes.has(e.data('type'))) e.addClass('hidden');
+    else e.removeClass('hidden');
+  });
+}
+
+// ── Mode / Depth controls ──────────────────────────────────────────────────
+
+function onModeChange()  { notifyHost('modeChanged',  document.getElementById('mode-sel').value); }
+function onDepthChange() { notifyHost('depthChanged', document.getElementById('depth-sel').value); }
+
+// ── Graph loading (called by C# host) ─────────────────────────────────────
+
+window.loadGraph = function(json) {
+  const data = (typeof json === 'string') ? JSON.parse(json) : json;
+
+  cy.elements().remove();
+
+  const elements = [];
+
+  (data.nodes || []).forEach(n => {
+    elements.push({ data: { id: n.id, label: n.label, kind: n.kind, isCenter: !!n.isCenter } });
+  });
+
+  (data.edges || []).forEach(e => {
+    elements.push({ data: { id: e.id || (e.source + '_' + e.target + '_' + e.type),
+                            source: e.source, target: e.target, type: e.type } });
+  });
+
+  cy.add(elements);
+
+  // Pick layout based on node count
+  const nodeCount = data.nodes ? data.nodes.length : 0;
+  const layout = nodeCount <= 30
+    ? cy.layout({ name: 'cose', animate: true, animationDuration: 400,
+                  padding: 40, nodeRepulsion: 6000, idealEdgeLength: 120 })
+    : cy.layout({ name: 'cose', animate: false, padding: 40 });
+  layout.run();
+
+  applyFilter();
+
+  // Update header
+  const center = (data.nodes || []).find(n => n.isCenter);
+  if (center) document.getElementById('object-name').textContent = center.id;
+};
+
+// ── Events: node click & dblclick ─────────────────────────────────────────
+
+cy.on('tap', 'node', (evt) => {
+  notifyHost('objectSelected', evt.target.id());
+});
+
+cy.on('dbltap', 'node', (evt) => {
+  notifyHost('objectDoubleClicked', evt.target.id());
+});
+
+// ── Tooltip ───────────────────────────────────────────────────────────────
+
+const tooltip = document.getElementById('tooltip');
+
+cy.on('mouseover', 'node', (evt) => {
+  const n = evt.target;
+  tooltip.innerHTML =
+    `<strong>${n.id()}</strong><br>` +
+    `<span class="tt-kind">${n.data('kind')}</span>`;
+  tooltip.classList.add('visible');
+});
+
+cy.on('mousemove', (evt) => {
+  tooltip.style.left = (evt.originalEvent.clientX + 14) + 'px';
+  tooltip.style.top  = (evt.originalEvent.clientY + 10) + 'px';
+});
+
+cy.on('mouseout', 'node', () => tooltip.classList.remove('visible'));
+
+// ── Host communication (WebView2 / WebKit bridge) ─────────────────────────
+
+function notifyHost(event, payload) {
+  const msg = JSON.stringify({ event, payload });
+  // WebView2 (Windows)
+  if (window.chrome && window.chrome.webview)
+    window.chrome.webview.postMessage(msg);
+  // WebKit (macOS / Linux)
+  else if (window.webkit && window.webkit.messageHandlers && window.webkit.messageHandlers.spla)
+    window.webkit.messageHandlers.spla.postMessage(msg);
+}
+</script>
+</body>
+</html>

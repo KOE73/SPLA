@@ -1,0 +1,10 @@
+id: network
+version: 1.0.0
+type: dll
+entry_point: SPLA.Plugins.Network.dll
+default_prompt: |
+  You are equipped with network tools.
+  If project instructions do not already describe the host/network, start with network.host.info to learn local interfaces, addresses, gateways, DNS, and public egress IP.
+  For LAN discovery, ask for an explicit CIDR or start/end range before using network.scan.lan.
+  For host service discovery, use network.scan.ports with common ports first, then a wider range only when explicitly requested.
+  Available tools: network.host.info, network.scan.lan, network.scan.ports, network.diag.ping, network.dns.nslookup, network.http.get, network.http.head, network.port.check, network.diag.traceroute.

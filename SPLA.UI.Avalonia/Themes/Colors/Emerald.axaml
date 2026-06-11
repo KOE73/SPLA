@@ -1,0 +1,54 @@
+<ResourceDictionary xmlns="https://github.com/avaloniaui"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <!-- ========================================== -->
+    <!-- Core Application Colors                    -->
+    <!-- ========================================== -->
+    <SolidColorBrush x:Key="AppBackgroundBrush" Color="#0F1714" />
+    <SolidColorBrush x:Key="PanelBackgroundBrush" Color="#16221D" />
+    <SolidColorBrush x:Key="PanelBorderBrush" Color="#1F332A" />
+    <SolidColorBrush x:Key="TextForegroundBrush" Color="#E0F2E9" />
+    <SolidColorBrush x:Key="SubTextForegroundBrush" Color="#8FAFA1" />
+    <SolidColorBrush x:Key="AccentBrush" Color="#10B981" />
+
+    <!-- ========================================== -->
+    <!-- Chat & Bubble Colors                       -->
+    <!-- ========================================== -->
+    <SolidColorBrush x:Key="MessageBackgroundBrush" Color="#1A2B24" />
+    <SolidColorBrush x:Key="UserBubbleBackgroundBrush" Color="#1F332A" />
+    <SolidColorBrush x:Key="AiBubbleBackgroundBrush" Color="#16221D" />
+    <SolidColorBrush x:Key="SystemBubbleBackgroundBrush" Color="#0F2C24" />
+    <SolidColorBrush x:Key="ToolBubbleBackgroundBrush" Color="#261C2C" />
+    <SolidColorBrush x:Key="ErrorBubbleBackgroundBrush" Color="#301616" />
+
+    <!-- ========================================== -->
+    <!-- Input & Controls Colors                    -->
+    <!-- ========================================== -->
+    <SolidColorBrush x:Key="InputBackgroundBrush" Color="#16221D" />
+    <SolidColorBrush x:Key="InputBorderBrush" Color="#2A453A" />
+
+    <!-- ========================================== -->
+    <!-- ComboBox Override Colors                   -->
+    <!-- ========================================== -->
+
+    <!-- ComboBox styling overrides -->
+    <SolidColorBrush x:Key="ComboBoxBackground" Color="#16221D" />
+    <SolidColorBrush x:Key="ComboBoxBackgroundPointerOver" Color="#1A2B24" />
+    <SolidColorBrush x:Key="ComboBoxBackgroundFocused" Color="#1A2B24" />
+    <SolidColorBrush x:Key="ComboBoxBorderBrush" Color="#2A453A" />
+    <SolidColorBrush x:Key="ComboBoxBorderBrushPointerOver" Color="#10B981" />
+    <SolidColorBrush x:Key="ComboBoxBorderBrushFocused" Color="#10B981" />
+    <SolidColorBrush x:Key="ComboBoxForeground" Color="#E0F2E9" />
+    <SolidColorBrush x:Key="ComboBoxForegroundPointerOver" Color="#E0F2E9" />
+    <SolidColorBrush x:Key="ComboBoxForegroundFocused" Color="#E0F2E9" />
+    <SolidColorBrush x:Key="ComboBoxDropDownBackground" Color="#16221D" />
+    <SolidColorBrush x:Key="ComboBoxDropdownBackground" Color="#16221D" />
+    <SolidColorBrush x:Key="ComboBoxDropDownBorderBrush" Color="#1F332A" />
+    <SolidColorBrush x:Key="ComboBoxDropdownBorderBrush" Color="#1F332A" />
+    <SolidColorBrush x:Key="ComboBoxItemBackgroundPointerOver" Color="#10B981" />
+    <SolidColorBrush x:Key="ComboBoxItemBackgroundSelected" Color="#10B981" />
+    <SolidColorBrush x:Key="ComboBoxItemBackgroundSelectedPointerOver" Color="#10B981" />
+    <SolidColorBrush x:Key="ComboBoxItemForeground" Color="#E0F2E9" />
+    <SolidColorBrush x:Key="ComboBoxItemForegroundPointerOver" Color="#FFFFFF" />
+    <SolidColorBrush x:Key="ComboBoxItemForegroundSelected" Color="#FFFFFF" />
+    <SolidColorBrush x:Key="ComboBoxItemForegroundSelectedPointerOver" Color="#FFFFFF" />
+</ResourceDictionary>

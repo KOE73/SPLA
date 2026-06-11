@@ -1,0 +1,46 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:vm="using:SPLA.UI.Avalonia.ViewModels"
+        xmlns:views="clr-namespace:SPLA.UI.Avalonia.Views"
+        xmlns:chat="clr-namespace:SPLA.UI.Avalonia.Views.Chat"
+        xmlns:plugins="clr-namespace:SPLA.UI.Avalonia.Views.Plugins"
+        xmlns:status="clr-namespace:SPLA.UI.Avalonia.Views.Status"
+        mc:Ignorable="d" d:DesignWidth="1000" d:DesignHeight="600"
+        x:Class="SPLA.UI.Avalonia.MainWindow"
+        x:Name="RootWindow"
+        x:DataType="vm:MainWindowViewModel"
+        Title="SPLA - Local AI Assistant"
+        Icon="avares://SPLA.UI.Avalonia/Assets/spla_icon.png"
+        ExtendClientAreaToDecorationsHint="True"
+        Background="{DynamicResource AppBackgroundBrush}">
+    
+    <Grid RowDefinitions="30,*" ColumnDefinitions="300,*">
+        <!-- Title Bar Area for dragging -->
+        <Border Grid.Row="0" Grid.ColumnSpan="2" Background="Transparent" IsHitTestVisible="False"/>
+
+        <!-- Navigation Panel -->
+        <Grid Grid.Row="1" Grid.Column="0" RowDefinitions="*,Auto,Auto">
+            <chat:ChatListView Grid.Row="0" DataContext="{Binding}" />
+            <plugins:PluginCommandsView Grid.Row="1" DataContext="{Binding}" />
+            <status:StatusView Grid.Row="2" DataContext="{Binding Status}" SettingsRequested="StatusControl_SettingsRequested" />
+        </Grid>
+
+        <!-- Chat Area -->
+        <Grid Grid.Row="1" Grid.Column="1" RowDefinitions="*,Auto">
+            
+            <!-- Chat stream views stay alive; switching only changes visibility. -->
+            <Grid Grid.Row="0">
+                <chat:ChatBubbleStreamView DataContext="{Binding}" IsVisible="{Binding IsBubbleChatViewSelected}" />
+                <chat:ChatClassicStreamView DataContext="{Binding}" IsVisible="{Binding IsClassicChatViewSelected}" />
+                <chat:ChatDiagnosticView DataContext="{Binding}" IsVisible="{Binding IsDiagnosticChatViewSelected}" />
+                <chat:ChatWebView DataContext="{Binding}" IsVisible="{Binding IsWebChatViewSelected}" />
+            </Grid>
+
+            <!-- Input and Chat Settings View -->
+            <chat:ChatInputView Grid.Row="1" DataContext="{Binding}" />
+            
+        </Grid>
+    </Grid>
+</Window>
