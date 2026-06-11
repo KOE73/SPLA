@@ -50,3 +50,7 @@ SPLA uses 5 agent modes: `Chat`, `Research`, `Inspect`, `Edit`, and `Agent`. The
 ## Plugins
 
 Plugins are located next to the published application in the `plugins/` directory. Each plugin has its own `meta.yaml` and can add tools, prompt instructions, and, when needed, Avalonia UI panels. Tool naming rules and plugin metadata are described in [plugins.md](agents/plugins.md).
+
+## License
+
+This project is licensed under the [MIT License](LICENSE).
