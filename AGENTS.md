@@ -115,3 +115,5 @@ Use modern language features aggressively.
 Use abbreviated syntax.
 
 Never abbreviate business meaning.
+
+## Imported Claude Cowork project instructions

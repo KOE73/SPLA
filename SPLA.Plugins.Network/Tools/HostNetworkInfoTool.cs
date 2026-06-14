@@ -15,7 +15,18 @@ namespace SPLA.Plugins.Network;
 
 public class HostNetworkInfoTool : IMcpTool
 {
-    private static readonly HttpClient HttpClient = new() { Timeout = TimeSpan.FromSeconds(5) };
+    private static readonly HttpClient HttpClient = new() { Timeout = TimeSpan.FromSeconds(10) };
+
+    // Sources from different jurisdictions so split-tunnel / geo-routing differences are visible.
+    // All endpoints must return plain-text IP (trimmed). Add new ones here as needed.
+    private static readonly (string Label, string Url)[] DefaultPublicIpSources =
+    {
+        ("ipify.org (US)",             "https://api.ipify.org"),
+        ("checkip.amazonaws.com (US)", "https://checkip.amazonaws.com"),
+        ("ifconfig.me (EU)",           "https://ifconfig.me/ip"),
+        ("2ip.ru (RU)",                "https://internet-lab.ru/ip"),
+        ("ip.sb (CN)",                 "https://api.ip.sb/ip"),
+    };
 
     public string Name => "network.host.info";
 
@@ -34,7 +45,13 @@ public class HostNetworkInfoTool : IMcpTool
                 type = "object",
                 properties = new
                 {
-                    includePublicIp = new { type = "boolean", description = "Query an external endpoint to detect public egress IP. Default: true." }
+                    includePublicIp = new { type = "boolean", description = "Query external endpoints to detect public egress IP. Default: true." },
+                    customPublicIpEndpoints = new
+                    {
+                        type = "array",
+                        items = new { type = "string" },
+                        description = "Optional extra plain-text IP endpoints to query in addition to built-in sources (e.g. ['https://myproxy.internal/ip'])."
+                    }
                 }
             }
         }
@@ -43,6 +60,8 @@ public class HostNetworkInfoTool : IMcpTool
     public async Task<string> ExecuteAsync(string argumentsJson, CancellationToken cancellationToken = default)
     {
         var includePublicIp = true;
+        var customEndpoints = Array.Empty<string>();
+
         if (!string.IsNullOrWhiteSpace(argumentsJson))
         {
             using var doc = JsonDocument.Parse(argumentsJson);
@@ -50,6 +69,16 @@ public class HostNetworkInfoTool : IMcpTool
                 includePublicIpElement.ValueKind is JsonValueKind.True or JsonValueKind.False)
             {
                 includePublicIp = includePublicIpElement.GetBoolean();
+            }
+
+            if (doc.RootElement.TryGetProperty("customPublicIpEndpoints", out var customEl) &&
+                customEl.ValueKind == JsonValueKind.Array)
+            {
+                customEndpoints = customEl.EnumerateArray()
+                    .Select(x => x.GetString())
+                    .Where(x => !string.IsNullOrWhiteSpace(x))
+                    .Select(x => x!)
+                    .ToArray();
             }
         }
 
@@ -69,7 +98,20 @@ public class HostNetworkInfoTool : IMcpTool
 
         if (includePublicIp)
         {
-            sb.AppendLine($"Public egress IP: {await GetPublicIpAsync(cancellationToken)}");
+            // Build full source list: built-in jurisdictions + any user-supplied custom endpoints.
+            var sources = DefaultPublicIpSources
+                .Concat(customEndpoints.Select(url => (Label: $"custom: {url}", Url: url)))
+                .ToArray();
+
+            // Query all sources in parallel so we don't wait sequentially.
+            var tasks = sources.Select(s => QueryPublicIpAsync(s.Label, s.Url, cancellationToken)).ToArray();
+            var results = await Task.WhenAll(tasks);
+
+            sb.AppendLine("Public egress IPs (queried in parallel):");
+            foreach (var (label, ip) in results)
+            {
+                sb.AppendLine($"  {label}: {ip}");
+            }
         }
 
         sb.AppendLine("Interfaces:");
@@ -97,15 +139,16 @@ public class HostNetworkInfoTool : IMcpTool
         return sb.ToString();
     }
 
-    private static async Task<string> GetPublicIpAsync(CancellationToken cancellationToken)
+    private static async Task<(string Label, string Ip)> QueryPublicIpAsync(string label, string url, CancellationToken cancellationToken)
     {
         try
         {
-            return (await HttpClient.GetStringAsync("https://api.ipify.org", cancellationToken)).Trim();
+            var ip = (await HttpClient.GetStringAsync(url, cancellationToken)).Trim();
+            return (label, ip);
         }
         catch (Exception ex)
         {
-            return $"unavailable ({ex.Message})";
+            return (label, $"unavailable ({ex.Message})");
         }
     }
 

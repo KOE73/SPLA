@@ -10,15 +10,38 @@ public class NetworkPlugin : ISplaPlugin
     {
         return new IMcpTool[]
         {
+            // Diagnostics
             new HostNetworkInfoTool(),
-            new LanScanTool(),
-            new PortScanTool(),
             new PingTool(),
+            new PingStatsTool(),
+            new TraceRouteTool(),
+            new RouteTool(),
+            // DNS
             new NsLookupTool(),
+            new DnsQueryTool(),
+            new ReverseDnsTool(),
+            new DnsPropagationTool(),
+            // HTTP
             new HttpGetTool(),
             new HttpHeadTool(),
+            new HttpPostTool(),
+            new HttpRedirectsTool(),
+            // TLS
+            new SslCheckTool(),
+            // SMTP
+            new SmtpProbeTool(),
+            // WHOIS
+            new WhoisTool(),
+            // Scanning
+            new LanScanTool(),
+            new PortScanTool(),
             new PortCheckTool(),
-            new TraceRouteTool()
+            new ArpTool(),
+            // Probes
+            new TcpProbeTool(),
+            new UdpProbeTool(),
+            // Wake-on-LAN
+            new WakeTool(),
         };
     }
 }

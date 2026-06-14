@@ -132,7 +132,8 @@ public partial class MainWindowViewModel : ViewModelBase
         var workspacePath = Path.GetFullPath(folder);
         Directory.CreateDirectory(workspacePath);
 
-        var projectFilePath = Path.Combine(workspacePath, "spla.spla");
+        var folderName = Path.GetFileName(workspacePath.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar));
+        var projectFilePath = Path.Combine(workspacePath, $"{folderName}.spla");
         if (!File.Exists(projectFilePath))
         {
             var project = new SplaProject

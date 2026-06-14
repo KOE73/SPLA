@@ -67,14 +67,16 @@ public class PortCheckTool : IMcpTool
 
             using var tcpClient = new TcpClient();
             var connectTask = tcpClient.ConnectAsync(host, port, cancellationToken).AsTask();
-            var delayTask = Task.Delay(timeout, cancellationToken);
+            // Separate CTS so the delay timer is released as soon as connect finishes.
+            using var delayCts = new CancellationTokenSource();
+            var delayTask = Task.Delay(timeout, delayCts.Token);
 
             var completedTask = await Task.WhenAny(connectTask, delayTask);
 
             if (completedTask == connectTask)
             {
-                // Verify no exception occurred during connection
-                await connectTask;
+                delayCts.Cancel(); // release delay immediately
+                await connectTask; // propagate any connect exception
                 if (tcpClient.Connected)
                 {
                     return $"Host: {host}\n" +

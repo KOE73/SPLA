@@ -11,7 +11,8 @@ namespace SPLA.Plugins.Network;
 
 public class HttpHeadTool : IMcpTool
 {
-    private static readonly HttpClient HttpClient = new();
+    // Timeout.InfiniteTimeSpan — per-request timeout is controlled via CancellationTokenSource below.
+    private static readonly HttpClient HttpClient = new() { Timeout = System.Threading.Timeout.InfiniteTimeSpan };
 
     public string Name => "network.http.head";
 
@@ -30,7 +31,8 @@ public class HttpHeadTool : IMcpTool
                 type = "object",
                 properties = new
                 {
-                    url = new { type = "string", description = "Target HTTP/HTTPS URL (e.g. 'https://example.com/index.html')." }
+                    url = new { type = "string", description = "Target HTTP/HTTPS URL (e.g. 'https://example.com/index.html')." },
+                    timeout = new { type = "integer", description = "Request timeout in milliseconds (default: 30000)." }
                 },
                 required = new[] { "url" }
             }
@@ -53,10 +55,17 @@ public class HttpHeadTool : IMcpTool
                 return "Error: URL is empty.";
             }
 
+            var timeoutMs = doc.RootElement.TryGetProperty("timeout", out var timeoutElement) && timeoutElement.TryGetInt32(out var t)
+                ? Math.Clamp(t, 1000, 300_000)
+                : 30_000;
+
+            using var cts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+            cts.CancelAfter(timeoutMs);
+
             using var request = new HttpRequestMessage(HttpMethod.Head, url);
             request.Headers.UserAgent.ParseAdd("Mozilla/5.0 (Windows NT 10.0; Win64; x64) SPLA/1.0");
 
-            using var response = await HttpClient.SendAsync(request, cancellationToken);
+            using var response = await HttpClient.SendAsync(request, cts.Token);
             
             var sb = new StringBuilder();
             sb.AppendLine($"Status: {(int)response.StatusCode} {response.StatusCode}");

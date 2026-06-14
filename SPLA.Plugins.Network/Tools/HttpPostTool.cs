@@ -1,7 +1,6 @@
 using SPLA.Domain.Models;
 using SPLA.MCP.Core.Interfaces;
 using System;
-using System.Collections.Generic;
 using System.Net.Http;
 using System.Text;
 using System.Text.Json;
@@ -10,12 +9,12 @@ using System.Threading.Tasks;
 
 namespace SPLA.Plugins.Network;
 
-public class HttpGetTool : IMcpTool
+public class HttpPostTool : IMcpTool
 {
-    // Timeout.InfiniteTimeSpan — per-request timeout is controlled via CancellationTokenSource below.
+    // Timeout.InfiniteTimeSpan — per-request timeout is controlled via CancellationTokenSource.
     private static readonly HttpClient HttpClient = new() { Timeout = System.Threading.Timeout.InfiniteTimeSpan };
 
-    public string Name => "network.http.get";
+    public string Name => "network.http.post";
 
     public ToolDefinition GetDefinition() => new ToolDefinition
     {
@@ -23,22 +22,24 @@ public class HttpGetTool : IMcpTool
         Function = new ToolFunctionDefinition
         {
             Name = Name,
-            Description = "Sends an HTTP GET request to a URL and returns status, headers, and truncated body (to avoid context overflow).",
+            Description = "Sends an HTTP POST request with an optional body and returns status, headers, and truncated response body.",
             Scope = ToolScope.Internet,
-            Effect = ToolEffect.Read,
-            Risk = ToolRisk.Low,
+            Effect = ToolEffect.Write,
+            Risk = ToolRisk.Medium,
             Parameters = new
             {
                 type = "object",
                 properties = new
                 {
-                    url = new { type = "string", description = "Target HTTP/HTTPS URL (e.g. 'https://api.github.com/status')." },
-                    maxResponseLength = new { type = "integer", description = "Max characters of the body to return (default: 2000, max: 10000)." },
+                    url = new { type = "string", description = "Target HTTP/HTTPS URL." },
+                    body = new { type = "string", description = "Request body (e.g. JSON string or form data). Optional." },
+                    contentType = new { type = "string", description = "Content-Type header (default: 'application/json')." },
                     timeout = new { type = "integer", description = "Request timeout in milliseconds (default: 30000)." },
+                    maxResponseLength = new { type = "integer", description = "Max characters of the response body to return (default: 2000, max: 10000)." },
                     headers = new
                     {
                         type = "object",
-                        description = "Optional HTTP request headers (key-value pairs)."
+                        description = "Optional extra HTTP request headers (key-value pairs)."
                     }
                 },
                 required = new[] { "url" }
@@ -52,66 +53,55 @@ public class HttpGetTool : IMcpTool
         {
             using var doc = JsonDocument.Parse(argumentsJson);
             if (!doc.RootElement.TryGetProperty("url", out var urlElement))
-            {
                 return "Error: Missing 'url' parameter.";
-            }
 
             var url = urlElement.GetString();
             if (string.IsNullOrWhiteSpace(url))
-            {
                 return "Error: URL is empty.";
-            }
 
-            var maxLen = doc.RootElement.TryGetProperty("maxResponseLength", out var maxLenElement) && maxLenElement.TryGetInt32(out var m)
-                ? Math.Clamp(m, 1, 10000)
-                : 2000;
-
-            var timeoutMs = doc.RootElement.TryGetProperty("timeout", out var timeoutElement) && timeoutElement.TryGetInt32(out var t)
-                ? Math.Clamp(t, 1000, 300_000)
-                : 30_000;
+            var body = doc.RootElement.TryGetProperty("body", out var bodyEl) ? bodyEl.GetString() ?? "" : "";
+            var contentType = doc.RootElement.TryGetProperty("contentType", out var ctEl) ? ctEl.GetString() ?? "application/json" : "application/json";
+            var maxLen = doc.RootElement.TryGetProperty("maxResponseLength", out var maxLenEl) && maxLenEl.TryGetInt32(out var ml)
+                ? Math.Clamp(ml, 1, 10000) : 2000;
+            var timeoutMs = doc.RootElement.TryGetProperty("timeout", out var timeoutEl) && timeoutEl.TryGetInt32(out var t)
+                ? Math.Clamp(t, 1000, 300_000) : 30_000;
 
             using var cts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
             cts.CancelAfter(timeoutMs);
 
-            using var request = new HttpRequestMessage(HttpMethod.Get, url);
+            using var request = new HttpRequestMessage(HttpMethod.Post, url);
             request.Headers.UserAgent.ParseAdd("Mozilla/5.0 (Windows NT 10.0; Win64; x64) SPLA/1.0");
+            request.Content = new StringContent(body, Encoding.UTF8, contentType);
 
-            if (doc.RootElement.TryGetProperty("headers", out var headersElement) && headersElement.ValueKind == JsonValueKind.Object)
+            if (doc.RootElement.TryGetProperty("headers", out var headersEl) && headersEl.ValueKind == JsonValueKind.Object)
             {
-                foreach (var prop in headersElement.EnumerateObject())
+                foreach (var prop in headersEl.EnumerateObject())
                 {
                     var val = prop.Value.GetString();
-                    if (val != null)
-                    {
-                        request.Headers.TryAddWithoutValidation(prop.Name, val);
-                    }
+                    if (val != null) request.Headers.TryAddWithoutValidation(prop.Name, val);
                 }
             }
 
             using var response = await HttpClient.SendAsync(request, cts.Token);
-            
+
             var sb = new StringBuilder();
             sb.AppendLine($"Status: {(int)response.StatusCode} {response.StatusCode}");
             sb.AppendLine("Headers:");
             foreach (var header in response.Headers)
-            {
                 sb.AppendLine($"  {header.Key}: {string.Join(", ", header.Value)}");
-            }
             foreach (var header in response.Content.Headers)
-            {
                 sb.AppendLine($"  {header.Key}: {string.Join(", ", header.Value)}");
-            }
 
-            var body = await response.Content.ReadAsStringAsync(cts.Token);
+            var responseBody = await response.Content.ReadAsStringAsync(cts.Token);
             sb.AppendLine("Body:");
-            if (body.Length > maxLen)
+            if (responseBody.Length > maxLen)
             {
-                sb.AppendLine(body.Substring(0, maxLen));
-                sb.AppendLine($"\n[Output truncated. Body length is {body.Length} characters, maxResponseLength was {maxLen}.]");
+                sb.AppendLine(responseBody.Substring(0, maxLen));
+                sb.AppendLine($"\n[Output truncated. Body length is {responseBody.Length} characters, maxResponseLength was {maxLen}.]");
             }
             else
             {
-                sb.AppendLine(body);
+                sb.AppendLine(responseBody);
             }
 
             return sb.ToString();
@@ -122,7 +112,7 @@ public class HttpGetTool : IMcpTool
         }
         catch (Exception ex)
         {
-            return $"Error executing HTTP GET: {ex.Message}";
+            return $"Error executing HTTP POST: {ex.Message}";
         }
     }
 }

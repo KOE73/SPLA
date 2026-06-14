@@ -11,6 +11,11 @@
   </ItemGroup>
 
   <ItemGroup>
+    <!-- Full DNS record-type resolution (MX, TXT, CNAME, NS, SOA, SRV, PTR, etc.) -->
+    <PackageReference Include="DnsClient" Version="1.8.0" />
+  </ItemGroup>
+
+  <ItemGroup>
     <None Include="meta.yaml" CopyToOutputDirectory="PreserveNewest" Link="plugins\network\meta.yaml" />
   </ItemGroup>
 

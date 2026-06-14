@@ -95,11 +95,13 @@ internal static class NetworkScanHelpers
         {
             using var client = new TcpClient();
             var connectTask = client.ConnectAsync(host, port, cancellationToken).AsTask();
-            var delayTask = Task.Delay(timeout, cancellationToken);
+            // Use a separate CTS for the delay so it can be cancelled once connect finishes.
+            using var delayCts = new CancellationTokenSource();
+            var delayTask = Task.Delay(timeout, delayCts.Token);
             var completed = await Task.WhenAny(connectTask, delayTask);
             if (completed != connectTask) return false;
-
-            await connectTask;
+            delayCts.Cancel(); // release the delay timer immediately
+            await connectTask; // propagate any connect exception
             return client.Connected;
         }
         catch

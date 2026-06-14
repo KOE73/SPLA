@@ -52,7 +52,7 @@ public class NsLookupTool : IMcpTool
             }
 
             var addresses = await Dns.GetHostAddressesAsync(host, cancellationToken);
-            if (addresses == null || addresses.Length == 0)
+            if (addresses.Length == 0)
             {
                 return $"Error: No IP addresses resolved for '{host}'.";
             }
