@@ -46,7 +46,7 @@ public partial class MainWindowViewModel : ViewModelBase
             return;
         }
 
-        Messages.Add(new MessageViewModel(ChatRole.User, userText));
+        Messages.Add(new UserMessageViewModel(userText));
         SaveCurrentChat();
 
         _currentRequestCts?.Dispose();
@@ -91,7 +91,7 @@ public partial class MainWindowViewModel : ViewModelBase
                 await Dispatcher.UIThread.InvokeAsync(() => StartTokenEstimate(coreMessages.Select(m => m.Content ?? "")));
 
                 // Create the streaming bubble up front so the user sees it appear immediately
-                streamingVm = new StreamingMessageViewModel(ChatRole.Assistant);
+                streamingVm = new StreamingMessageViewModel();
                 await Dispatcher.UIThread.InvokeAsync(() => Messages.Add(streamingVm));
 
                 // --- Throttle: batch deltas, flush to UI every 80 ms ---
@@ -194,14 +194,14 @@ public partial class MainWindowViewModel : ViewModelBase
                     if (ToolCallLoopGuard.HasToolCallLoop(recentToolCalls, ToolLoopWindow))
                     {
                         await Dispatcher.UIThread.InvokeAsync(() =>
-                            Messages.Add(new MessageViewModel(ChatRole.System,
+                            Messages.Add(new SystemMessageViewModel(
                                 "⚠️ Generation stopped: The model is repeating the same tool calls.")));
                         needToCallLLM = false;
                     }
                     else if (ToolCallLoopGuard.HasErrorLoop(recentToolErrors, ToolLoopWindow))
                     {
                         await Dispatcher.UIThread.InvokeAsync(() =>
-                            Messages.Add(new MessageViewModel(ChatRole.System,
+                            Messages.Add(new SystemMessageViewModel(
                                 "⚠️ Generation stopped: The same tool has returned an error too many times in a row.")));
                         needToCallLLM = false;
                     }
@@ -253,7 +253,7 @@ public partial class MainWindowViewModel : ViewModelBase
                 if (streamingVm != null && !streamingVm.HasContent)
                     Messages.Remove(streamingVm);
 
-                Messages.Add(new MessageViewModel(ChatRole.System, "Stopped."));
+                Messages.Add(new SystemMessageViewModel("Stopped."));
                 SaveCurrentChat();
             });
         }
@@ -264,7 +264,7 @@ public partial class MainWindowViewModel : ViewModelBase
                 if (streamingVm != null && !streamingVm.HasContent)
                     Messages.Remove(streamingVm);
 
-                Messages.Add(new MessageViewModel(ChatRole.System, $"Error: {ex.Message}"));
+                Messages.Add(new SystemMessageViewModel($"Error: {ex.Message}"));
             });
         }
         finally

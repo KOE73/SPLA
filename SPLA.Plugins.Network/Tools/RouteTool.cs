@@ -11,7 +11,7 @@ namespace SPLA.Plugins.Network;
 
 public class RouteTool : IMcpTool
 {
-    public string Name => "network.route";
+    public string Name => "network.host.route";
 
     public ToolDefinition GetDefinition() => new ToolDefinition
     {

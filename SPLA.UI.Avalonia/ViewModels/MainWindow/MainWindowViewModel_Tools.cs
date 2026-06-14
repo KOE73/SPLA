@@ -38,6 +38,9 @@ public partial class MainWindowViewModel : ViewModelBase
 
         return _tools.Where(t =>
         {
+            // Runtime sidebar toggle
+            if (!Sidebar.IsToolEnabled(t.Function.Name)) return false;
+
             // Web/Internet tools are for Research, Edit, and Agent
             if (t.Function.Scope == ToolScope.Internet)
             {

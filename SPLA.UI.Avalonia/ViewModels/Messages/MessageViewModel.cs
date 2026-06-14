@@ -10,6 +10,9 @@ namespace SPLA.UI.Avalonia.ViewModels.Messages;
 
 public partial class MessageViewModel : ViewModelBase
 {
+    public Guid Id { get; } = Guid.NewGuid();
+    public DateTimeOffset Timestamp { get; } = DateTimeOffset.Now;
+
     public ChatRole Role { get; }
     private string _content;
     public virtual string Content
@@ -79,10 +82,10 @@ public partial class MessageViewModel : ViewModelBase
     public bool IsVisibleMessage => HasContent;
     public bool IsSystemOrTool => Role == ChatRole.System || Role == ChatRole.Tool;
     public bool IsTool => Role == ChatRole.Tool;
-    public bool IsError => Content != null && Content.StartsWith("Error:", StringComparison.OrdinalIgnoreCase);
-    public bool IsToolCallNotice => Role == ChatRole.Assistant && Content != null && Content.StartsWith("[Tool call:", StringComparison.Ordinal);
-    public bool IsPlainText => IsSystemOrTool || IsError || IsToolCallNotice;
-    public bool IsMarkdown => !IsPlainText;
+    public virtual bool IsError => Content != null && Content.StartsWith("Error:", StringComparison.OrdinalIgnoreCase);
+    public virtual bool IsToolCallNotice => Role == ChatRole.Assistant && Content != null && Content.StartsWith("[Tool call:", StringComparison.Ordinal);
+    public virtual bool IsPlainText => IsSystemOrTool || IsError || IsToolCallNotice;
+    public virtual bool IsMarkdown => !IsPlainText;
 
     public MessageViewModel(ChatRole role, string content)
     {

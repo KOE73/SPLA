@@ -22,8 +22,27 @@ public class ResolvedSettings
     // UI
     public string Theme { get; set; } = "Dark";
     public string Density { get; set; } = "norm";
-    public bool BubbleChat { get; set; } = false;
-    public string SelectedChatViewId { get; set; } = "bubbles";
+
+    // Chat engine: "native" | "web"
+    public string ChatRenderMode { get; set; } = "native";
+
+    // Active display profile id
+    public string ActiveProfileId { get; set; } = "bubbles";
+
+    // User-defined profiles added on top of built-ins (override by id)
+    public List<ChatDisplayProfile> CustomProfiles { get; set; } = [];
+
+    /// <summary>Built-in profiles merged with any user-defined overrides/additions.</summary>
+    public IReadOnlyList<ChatDisplayProfile> EffectiveProfiles
+    {
+        get
+        {
+            if (CustomProfiles.Count == 0) return ChatDisplayProfile.BuiltInProfiles;
+            var dict = ChatDisplayProfile.BuiltInProfiles.ToDictionary(p => p.Id);
+            foreach (var cp in CustomProfiles) dict[cp.Id] = cp;
+            return [.. dict.Values];
+        }
+    }
 
     // Project
     public string? ProjectName { get; set; }
@@ -88,9 +107,9 @@ public static class SettingsResolver
             {
                 r.Theme = defaults.Ui.Theme ?? r.Theme;
                 r.Density = defaults.Ui.Density ?? r.Density;
-                r.BubbleChat = defaults.Ui.BubbleChat ?? r.BubbleChat;
-                r.SelectedChatViewId = defaults.Ui.SelectedChatViewId ?? 
-                                      (defaults.Ui.BubbleChat == true ? "bubbles" : (defaults.Ui.BubbleChat == false ? "classic" : r.SelectedChatViewId));
+                r.ChatRenderMode = defaults.Ui.ChatRenderMode ?? r.ChatRenderMode;
+                r.ActiveProfileId = ResolveActiveProfileId(defaults.Ui) ?? r.ActiveProfileId;
+                if (defaults.Ui.ChatProfiles?.Count > 0) r.CustomProfiles = defaults.Ui.ChatProfiles;
             }
         }
 
@@ -123,9 +142,9 @@ public static class SettingsResolver
             {
                 r.Theme = project.Ui.Theme ?? r.Theme;
                 r.Density = project.Ui.Density ?? r.Density;
-                r.BubbleChat = project.Ui.BubbleChat ?? r.BubbleChat;
-                r.SelectedChatViewId = project.Ui.SelectedChatViewId ?? 
-                                      (project.Ui.BubbleChat == true ? "bubbles" : (project.Ui.BubbleChat == false ? "classic" : r.SelectedChatViewId));
+                r.ChatRenderMode = project.Ui.ChatRenderMode ?? r.ChatRenderMode;
+                r.ActiveProfileId = ResolveActiveProfileId(project.Ui) ?? r.ActiveProfileId;
+                if (project.Ui.ChatProfiles?.Count > 0) r.CustomProfiles = project.Ui.ChatProfiles;
             }
             if (project.Permissions != null)
             {
@@ -146,5 +165,25 @@ public static class SettingsResolver
         }
 
         return r;
+    }
+
+    /// <summary>
+    /// Resolves the active profile id from a UI section, migrating legacy fields.
+    /// Returns null if nothing is configured (caller keeps current default).
+    /// </summary>
+    private static string? ResolveActiveProfileId(SplaUiSection ui)
+    {
+        // New field wins
+        if (!string.IsNullOrEmpty(ui.ActiveProfileId)) return ui.ActiveProfileId;
+
+        // Migrate from old selected_chat_view_id (skip "web" — that's a render mode now)
+        if (!string.IsNullOrEmpty(ui.SelectedChatViewId) && ui.SelectedChatViewId != "web")
+            return ui.SelectedChatViewId;
+
+        // Migrate from bubble_chat bool
+        if (ui.BubbleChat == true) return "bubbles";
+        if (ui.BubbleChat == false) return "classic";
+
+        return null;
     }
 }

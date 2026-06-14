@@ -13,7 +13,7 @@ namespace SPLA.Plugins.Network;
 
 public class WakeTool : IMcpTool
 {
-    public string Name => "network.wake";
+    public string Name => "network.host.wake";
 
     public ToolDefinition GetDefinition() => new ToolDefinition
     {

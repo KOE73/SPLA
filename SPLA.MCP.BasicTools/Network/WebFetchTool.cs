@@ -14,7 +14,7 @@ public class WebFetchTool : IMcpTool
 {
     private static readonly HttpClient _httpClient = new();
 
-    public string Name => "web_fetch";
+    public string Name => "web.fetch";
 
     public ToolDefinition GetDefinition() => new ToolDefinition
     {
@@ -22,7 +22,7 @@ public class WebFetchTool : IMcpTool
         Function = new ToolFunctionDefinition
         {
             Name = Name,
-            Description = "Fetches the text content of a concrete URL (HTML is stripped to plain text). Use web_search first for search queries, news lookup, or finding pages; do not pass search-engine result URLs here.",
+            Description = "Fetches the text content of a concrete URL (HTML is stripped to plain text). Use web.search first for search queries, news lookup, or finding pages; do not pass search-engine result URLs here.",
             Scope = ToolScope.Internet,
             Effect = ToolEffect.Read,
             Risk = ToolRisk.Low,

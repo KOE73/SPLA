@@ -10,7 +10,7 @@ namespace SPLA.Plugins.Network;
 
 public class PortCheckTool : IMcpTool
 {
-    public string Name => "network.port.check";
+    public string Name => "network.tcp.check";
 
     public ToolDefinition GetDefinition() => new ToolDefinition
     {

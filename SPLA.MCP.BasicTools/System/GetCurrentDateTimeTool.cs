@@ -6,7 +6,7 @@ namespace SPLA.MCP.BasicTools.SystemTools;
 
 public class GetCurrentDateTimeTool : IMcpTool
 {
-    public string Name => "get_current_datetime";
+    public string Name => "sys.datetime";
 
     public ToolDefinition GetDefinition() => new ToolDefinition
     {

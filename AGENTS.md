@@ -10,6 +10,7 @@ For comprehensive details on agent permission models, tool matrices, autonomy co
 - **[Project Structure](agents/structure.md)**: Overview of the solution layout and module responsibilities.
 - **[Plugin System & Tool Naming](agents/plugins.md)**: Rules for creating plugins, extending the system prompt, and standardizing tool names (`[plugin].[domain].[action]`).
 - **[Documentation Layout](agents/documentation.md)**: Defines the separation between `agents/` and `docs/`, including README translation rules.
+- **[Chat Message Architecture](agents/chat-messages.md)**: Canonical design for chat message types, display profiles, tool progress streaming, scroll fix, and Web view incremental update. Read before touching `Views/Chat/` or `ViewModels/Messages/`.
 
 
 ## Modern C# Language Usage

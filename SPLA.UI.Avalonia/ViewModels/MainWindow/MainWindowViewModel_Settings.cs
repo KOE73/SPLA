@@ -39,13 +39,16 @@ public partial class MainWindowViewModel : ViewModelBase
         {
             App.ChangeDensity(Settings.Density);
         }
-        else if (e.PropertyName == nameof(SettingsViewModel.SelectedChatViewId))
+        else if (e.PropertyName == nameof(SettingsViewModel.ActiveProfileId))
         {
-            var matched = AvailableChatViews.FirstOrDefault(x => x.Id == Settings.SelectedChatViewId);
-            if (matched != null && SelectedChatView != matched)
-            {
-                SelectedChatView = matched;
-            }
+            var matched = AvailableProfiles.FirstOrDefault(p => p.Id == Settings.ActiveProfileId);
+            if (matched != null && matched != SelectedProfile)
+                SelectProfileCommand.Execute(matched);
+        }
+        else if (e.PropertyName == nameof(SettingsViewModel.ChatRenderMode))
+        {
+            if (Settings.ChatRenderMode != ActiveRenderMode)
+                SelectRenderModeCommand.Execute(Settings.ChatRenderMode);
         }
     }
 }

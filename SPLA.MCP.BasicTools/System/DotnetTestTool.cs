@@ -12,7 +12,7 @@ namespace SPLA.MCP.BasicTools.SystemTools;
 
 public class DotnetTestTool : IMcpTool
 {
-    public string Name => "dotnet_test";
+    public string Name => "dotnet.test";
 
     public ToolDefinition GetDefinition() => new ToolDefinition
     {

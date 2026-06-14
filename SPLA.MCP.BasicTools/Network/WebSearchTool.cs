@@ -16,7 +16,7 @@ public class WebSearchTool : IMcpTool
 {
     private static readonly HttpClient HttpClient = new();
 
-    public string Name => "web_search";
+    public string Name => "web.search";
 
     public ToolDefinition GetDefinition() => new ToolDefinition
     {

@@ -1,0 +1,381 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:SPLA.UI.Avalonia.ViewModels"
+             xmlns:msg="using:SPLA.UI.Avalonia.ViewModels.Messages"
+             xmlns:md="clr-namespace:Markdown.Avalonia;assembly=Markdown.Avalonia"
+             x:Class="SPLA.UI.Avalonia.Views.Chat.ChatNativeView"
+             x:DataType="vm:MainWindowViewModel">
+
+    <ScrollViewer x:Name="ChatScrollViewer"
+                  Margin="{DynamicResource StandardMargin}"
+                  Padding="{DynamicResource StandardMargin}"
+                  HorizontalScrollBarVisibility="Disabled">
+
+        <ItemsControl ItemsSource="{Binding Messages}">
+            <ItemsControl.DataTemplates>
+
+                <!-- ══════════════════════════════════════════════════════════
+                     PERMISSION — same in all profiles
+                     ══════════════════════════════════════════════════════════ -->
+                <DataTemplate DataType="msg:PermissionMessageViewModel">
+                    <Border Margin="{DynamicResource CompactMargin}"
+                            Padding="{DynamicResource StandardPadding}"
+                            CornerRadius="{DynamicResource StandardCornerRadius}"
+                            Background="{DynamicResource PanelBackgroundBrush}"
+                            BorderBrush="{DynamicResource AccentBrush}" BorderThickness="1">
+                        <StackPanel Spacing="{DynamicResource StandardSpacing}">
+                            <TextBlock Text="⚠️ Permission Required" FontSize="{DynamicResource BaseFontSize}"
+                                       FontWeight="Bold" Foreground="{DynamicResource AccentBrush}" />
+                            <SelectableTextBlock Text="{Binding Content}" TextWrapping="Wrap"
+                                                 Foreground="{DynamicResource TextForegroundBrush}"
+                                                 FontSize="{DynamicResource BaseFontSize}" />
+                            <SelectableTextBlock Text="{Binding Arguments}" TextWrapping="Wrap"
+                                                 Foreground="{DynamicResource SubTextForegroundBrush}"
+                                                 FontSize="{DynamicResource SmallFontSize}" FontFamily="Consolas" />
+                            <StackPanel Orientation="Horizontal" Spacing="{DynamicResource StandardSpacing}"
+                                        Margin="0,5,0,0" IsVisible="{Binding !IsAnswered}">
+                                <Button Content="Allow &amp; remember" Command="{Binding AllowRememberCommand}"
+                                        Background="#2E7D32" Foreground="White" Cursor="Hand"
+                                        FontSize="{DynamicResource BaseFontSize}" Padding="{DynamicResource CompactMargin}" />
+                                <Button Content="Allow once" Command="{Binding AllowOnceCommand}"
+                                        Background="{DynamicResource AccentBrush}" Foreground="White" Cursor="Hand"
+                                        FontSize="{DynamicResource BaseFontSize}" Padding="{DynamicResource CompactMargin}" />
+                                <Button Content="Deny" Command="{Binding DenyCommand}"
+                                        Background="#C62828" Foreground="White" Cursor="Hand"
+                                        FontSize="{DynamicResource BaseFontSize}" Padding="{DynamicResource CompactMargin}" />
+                            </StackPanel>
+                            <TextBlock Text="Decision made." IsVisible="{Binding IsAnswered}"
+                                       Foreground="{DynamicResource SubTextForegroundBrush}"
+                                       FontStyle="Italic" FontSize="{DynamicResource SmallFontSize}" />
+                        </StackPanel>
+                    </Border>
+                </DataTemplate>
+
+                <!-- ══════════════════════════════════════════════════════════
+                     USER MESSAGE
+                     ══════════════════════════════════════════════════════════ -->
+                <DataTemplate DataType="msg:UserMessageViewModel">
+                    <Panel IsVisible="{Binding IsVisibleMessage}">
+
+                        <!-- Bubble layout: left margin offsets content, width stretches to right edge -->
+                        <Border Background="{DynamicResource UserBubbleBackgroundBrush}"
+                                CornerRadius="12" Padding="{DynamicResource StandardPadding}"
+                                Margin="{DynamicResource UserChatBubbleMargin}"
+                                IsVisible="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).ActiveProfileUsesBubbles}">
+                            <StackPanel>
+                                <md:MarkdownScrollViewer Markdown="{Binding Content}"
+                                                         SelectionEnabled="True" Margin="0,0,0,4" />
+                                <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Spacing="8" Margin="0,2,0,0">
+                                    <Button Content="Delete"
+                                            Command="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).DeleteMessageCommand}"
+                                            CommandParameter="{Binding}"
+                                            Background="Transparent" Foreground="{DynamicResource SubTextForegroundBrush}"
+                                            FontSize="{DynamicResource SmallFontSize}" Padding="2" Cursor="Hand" />
+                                    <Button Content="📋 Copy" Command="{Binding CopyCommand}"
+                                            Background="Transparent" Foreground="{DynamicResource SubTextForegroundBrush}"
+                                            FontSize="{DynamicResource SmallFontSize}" Padding="2" Cursor="Hand" />
+                                </StackPanel>
+                            </StackPanel>
+                        </Border>
+
+                        <!-- Linear layout -->
+                        <StackPanel Margin="0,10,0,15"
+                                    IsVisible="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).ActiveProfileUsesLinear}">
+                            <Grid ColumnDefinitions="*,Auto" Margin="0,0,0,6">
+                                <TextBlock Grid.Column="0" Text="You"
+                                           FontSize="{DynamicResource SmallFontSize}" FontWeight="Bold"
+                                           Foreground="{DynamicResource AccentBrush}" />
+                                <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8">
+                                    <Button Content="Delete"
+                                            Command="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).DeleteMessageCommand}"
+                                            CommandParameter="{Binding}"
+                                            Background="Transparent" Foreground="{DynamicResource SubTextForegroundBrush}"
+                                            FontSize="{DynamicResource SmallFontSize}" Padding="2" Cursor="Hand" />
+                                    <Button Content="📋 Copy" Command="{Binding CopyCommand}"
+                                            Background="Transparent" Foreground="{DynamicResource SubTextForegroundBrush}"
+                                            FontSize="{DynamicResource SmallFontSize}" Padding="2" Cursor="Hand" />
+                                </StackPanel>
+                            </Grid>
+                            <Border BorderBrush="{DynamicResource PanelBorderBrush}"
+                                    BorderThickness="0,0,0,1" Padding="0,0,0,10">
+                                <md:MarkdownScrollViewer Markdown="{Binding Content}" SelectionEnabled="True" />
+                            </Border>
+                        </StackPanel>
+
+                    </Panel>
+                </DataTemplate>
+
+                <!-- ══════════════════════════════════════════════════════════
+                     STREAMING (must come before AssistantMessageViewModel)
+                     ══════════════════════════════════════════════════════════ -->
+                <DataTemplate DataType="msg:StreamingMessageViewModel">
+                    <Panel IsVisible="{Binding IsVisibleMessage}">
+
+                        <!-- Bubble layout: right margin offsets content -->
+                        <Border Background="{DynamicResource AiBubbleBackgroundBrush}"
+                                CornerRadius="12" Padding="{DynamicResource StandardPadding}"
+                                Margin="{DynamicResource AiChatBubbleMargin}"
+                                IsVisible="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).ActiveProfileUsesBubbles}">
+                            <md:MarkdownScrollViewer Markdown="{Binding Content}"
+                                                     SelectionEnabled="True" Margin="0,0,0,4" />
+                        </Border>
+
+                        <!-- Linear layout -->
+                        <StackPanel Margin="0,10,0,15"
+                                    IsVisible="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).ActiveProfileUsesLinear}">
+                            <TextBlock Text="Assistant ●"
+                                       FontSize="{DynamicResource SmallFontSize}" FontWeight="Bold"
+                                       Foreground="{DynamicResource AccentBrush}" Margin="0,0,0,6" />
+                            <Border BorderBrush="{DynamicResource PanelBorderBrush}"
+                                    BorderThickness="0,0,0,1" Padding="0,0,0,10">
+                                <md:MarkdownScrollViewer Markdown="{Binding Content}" SelectionEnabled="True" />
+                            </Border>
+                        </StackPanel>
+
+                    </Panel>
+                </DataTemplate>
+
+                <!-- ══════════════════════════════════════════════════════════
+                     ASSISTANT MESSAGE
+                     ══════════════════════════════════════════════════════════ -->
+                <DataTemplate DataType="msg:AssistantMessageViewModel">
+                    <Panel IsVisible="{Binding IsVisibleMessage}">
+
+                        <!-- Bubble layout: right margin offsets content -->
+                        <Border Background="{DynamicResource AiBubbleBackgroundBrush}"
+                                CornerRadius="12" Padding="{DynamicResource StandardPadding}"
+                                Margin="{DynamicResource AiChatBubbleMargin}"
+                                IsVisible="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).ActiveProfileUsesBubbles}">
+                            <StackPanel>
+                                <md:MarkdownScrollViewer Markdown="{Binding Content}"
+                                                         SelectionEnabled="True" Margin="0,0,0,4" />
+                                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Spacing="8" Margin="0,2,0,0">
+                                        <Button Classes="RetentionBtn" Width="18" Height="18" CornerRadius="9"
+                                                Background="{DynamicResource PanelBorderBrush}"
+                                                ToolTip.Tip="{Binding RetentionDescription}" VerticalAlignment="Center">
+                                            <Button.Styles>
+                                                <Style Selector="Button.RetentionBtn">
+                                                    <Setter Property="BorderThickness" Value="0"/>
+                                                    <Setter Property="Padding" Value="0"/>
+                                                    <Setter Property="HorizontalContentAlignment" Value="Center"/>
+                                                    <Setter Property="VerticalContentAlignment" Value="Center"/>
+                                                    <Setter Property="Cursor" Value="Hand"/>
+                                                </Style>
+                                            </Button.Styles>
+                                            <TextBlock Text="{Binding RetentionIcon}" FontSize="10" FontWeight="Bold"
+                                                       Foreground="{DynamicResource TextForegroundBrush}" />
+                                            <Button.Flyout>
+                                                <MenuFlyout Placement="Bottom">
+                                                    <MenuItem Header="Always send (📌)" Command="{Binding SetRetentionCommand}" CommandParameter="Persistent"/>
+                                                    <MenuItem Header="Until superseded (🔄)" Command="{Binding SetRetentionCommand}" CommandParameter="UntilSuperseded"/>
+                                                    <MenuItem Header="Next step only (➡️)" Command="{Binding SetRetentionCommand}" CommandParameter="NextStepOnly"/>
+                                                    <MenuItem Header="Do not send (❌)" Command="{Binding SetRetentionCommand}" CommandParameter="Never"/>
+                                                    <MenuItem Header="Until resolved (🛑)" Command="{Binding SetRetentionCommand}" CommandParameter="UntilResolved"/>
+                                                </MenuFlyout>
+                                            </Button.Flyout>
+                                        </Button>
+                                        <Button Content="Delete"
+                                                Command="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).DeleteMessageCommand}"
+                                                CommandParameter="{Binding}"
+                                                Background="Transparent" Foreground="{DynamicResource SubTextForegroundBrush}"
+                                                FontSize="{DynamicResource SmallFontSize}" Padding="2" Cursor="Hand" />
+                                        <Button Content="📋 Copy" Command="{Binding CopyCommand}"
+                                                Background="Transparent" Foreground="{DynamicResource SubTextForegroundBrush}"
+                                                FontSize="{DynamicResource SmallFontSize}" Padding="2" Cursor="Hand" />
+                                    </StackPanel>
+                                </StackPanel>
+                            </Border>
+
+                        <!-- Linear layout -->
+                        <StackPanel Margin="0,10,0,15"
+                                    IsVisible="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).ActiveProfileUsesLinear}">
+                            <Grid ColumnDefinitions="*,Auto" Margin="0,0,0,6">
+                                <TextBlock Grid.Column="0" Text="Assistant"
+                                           FontSize="{DynamicResource SmallFontSize}" FontWeight="Bold"
+                                           Foreground="{DynamicResource AccentBrush}" />
+                                <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8">
+                                    <Button Classes="RetentionBtn" Width="18" Height="18" CornerRadius="9"
+                                            Background="{DynamicResource PanelBorderBrush}"
+                                            ToolTip.Tip="{Binding RetentionDescription}" VerticalAlignment="Center">
+                                        <Button.Styles>
+                                            <Style Selector="Button.RetentionBtn">
+                                                <Setter Property="BorderThickness" Value="0"/>
+                                                <Setter Property="Padding" Value="0"/>
+                                                <Setter Property="HorizontalContentAlignment" Value="Center"/>
+                                                <Setter Property="VerticalContentAlignment" Value="Center"/>
+                                                <Setter Property="Cursor" Value="Hand"/>
+                                            </Style>
+                                        </Button.Styles>
+                                        <TextBlock Text="{Binding RetentionIcon}" FontSize="10" FontWeight="Bold"
+                                                   Foreground="{DynamicResource TextForegroundBrush}" />
+                                        <Button.Flyout>
+                                            <MenuFlyout Placement="Bottom">
+                                                <MenuItem Header="Always send (📌)" Command="{Binding SetRetentionCommand}" CommandParameter="Persistent"/>
+                                                <MenuItem Header="Until superseded (🔄)" Command="{Binding SetRetentionCommand}" CommandParameter="UntilSuperseded"/>
+                                                <MenuItem Header="Next step only (➡️)" Command="{Binding SetRetentionCommand}" CommandParameter="NextStepOnly"/>
+                                                <MenuItem Header="Do not send (❌)" Command="{Binding SetRetentionCommand}" CommandParameter="Never"/>
+                                                <MenuItem Header="Until resolved (🛑)" Command="{Binding SetRetentionCommand}" CommandParameter="UntilResolved"/>
+                                            </MenuFlyout>
+                                        </Button.Flyout>
+                                    </Button>
+                                    <Button Content="Delete"
+                                            Command="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).DeleteMessageCommand}"
+                                            CommandParameter="{Binding}"
+                                            Background="Transparent" Foreground="{DynamicResource SubTextForegroundBrush}"
+                                            FontSize="{DynamicResource SmallFontSize}" Padding="2" Cursor="Hand" />
+                                    <Button Content="📋 Copy" Command="{Binding CopyCommand}"
+                                            Background="Transparent" Foreground="{DynamicResource SubTextForegroundBrush}"
+                                            FontSize="{DynamicResource SmallFontSize}" Padding="2" Cursor="Hand" />
+                                </StackPanel>
+                            </Grid>
+                            <Border BorderBrush="{DynamicResource PanelBorderBrush}"
+                                    BorderThickness="0,0,0,1" Padding="0,0,0,10">
+                                <md:MarkdownScrollViewer Markdown="{Binding Content}" SelectionEnabled="True" />
+                            </Border>
+                        </StackPanel>
+
+                    </Panel>
+                </DataTemplate>
+
+                <!-- ══════════════════════════════════════════════════════════
+                     SYSTEM MESSAGE — visibility gated by profile
+                     ══════════════════════════════════════════════════════════ -->
+                <DataTemplate DataType="msg:SystemMessageViewModel">
+                    <Border IsVisible="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).ActiveProfile.ShowSystemMessages}"
+                            Margin="40,4" Padding="8,4" CornerRadius="8"
+                            Background="{DynamicResource PanelBackgroundBrush}"
+                            HorizontalAlignment="Center">
+                        <SelectableTextBlock Text="{Binding Content}" TextWrapping="Wrap"
+                                             Foreground="{DynamicResource SubTextForegroundBrush}"
+                                             FontStyle="Italic" FontSize="{DynamicResource SmallFontSize}"
+                                             HorizontalAlignment="Center" />
+                    </Border>
+                </DataTemplate>
+
+                <!-- ══════════════════════════════════════════════════════════
+                     FALLBACK — tool calls, unknown messages.
+                     Shows metadata (ToolCallId, ToolCalls) only when ShowMetadata=true.
+                     ══════════════════════════════════════════════════════════ -->
+                <DataTemplate DataType="msg:MessageViewModel">
+                    <Border Classes="diag-msg"
+                            Classes.user="{Binding IsUser}"
+                            Classes.ai="{Binding IsAssistant}"
+                            Classes.system="{Binding IsSystem}"
+                            Classes.tool="{Binding IsTool}"
+                            Classes.error="{Binding IsError}"
+                            BorderBrush="{DynamicResource PanelBorderBrush}"
+                            BorderThickness="0,0,0,1" Padding="4,2" Margin="0,1"
+                            IsVisible="{Binding IsVisibleMessage}">
+                        <Border.Styles>
+                            <Style Selector="Border.diag-msg">
+                                <Setter Property="Background" Value="{DynamicResource MessageBackgroundBrush}"/>
+                            </Style>
+                            <Style Selector="Border.diag-msg.user">
+                                <Setter Property="Background" Value="{DynamicResource UserBubbleBackgroundBrush}"/>
+                            </Style>
+                            <Style Selector="Border.diag-msg.ai">
+                                <Setter Property="Background" Value="{DynamicResource AiBubbleBackgroundBrush}"/>
+                            </Style>
+                            <Style Selector="Border.diag-msg.system">
+                                <Setter Property="Background" Value="{DynamicResource SystemBubbleBackgroundBrush}"/>
+                            </Style>
+                            <Style Selector="Border.diag-msg.tool">
+                                <Setter Property="Background" Value="{DynamicResource ToolBubbleBackgroundBrush}"/>
+                            </Style>
+                            <Style Selector="Border.diag-msg.error">
+                                <Setter Property="Background" Value="{DynamicResource ErrorBubbleBackgroundBrush}"/>
+                            </Style>
+                        </Border.Styles>
+                        <Grid RowDefinitions="Auto,*" ColumnDefinitions="*,Auto">
+                            <StackPanel Grid.Row="0" Grid.Column="0" Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
+                                <Border Padding="4,1" CornerRadius="2" Background="{DynamicResource PanelBackgroundBrush}">
+                                    <TextBlock Text="{Binding Role}" FontSize="9" FontWeight="Bold"
+                                               Foreground="{DynamicResource AccentBrush}" />
+                                </Border>
+                                <!-- Metadata: only when ShowMetadata=true -->
+                                <StackPanel Orientation="Horizontal" Spacing="4"
+                                            IsVisible="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).ActiveProfile.ShowMetadata}">
+                                    <Button Classes="RetentionBtn" Width="14" Height="14" CornerRadius="7"
+                                            Background="{DynamicResource PanelBorderBrush}"
+                                            ToolTip.Tip="{Binding RetentionDescription}" VerticalAlignment="Center">
+                                        <Button.Styles>
+                                            <Style Selector="Button.RetentionBtn">
+                                                <Setter Property="BorderThickness" Value="0"/>
+                                                <Setter Property="Padding" Value="0"/>
+                                                <Setter Property="HorizontalContentAlignment" Value="Center"/>
+                                                <Setter Property="VerticalContentAlignment" Value="Center"/>
+                                                <Setter Property="Cursor" Value="Hand"/>
+                                            </Style>
+                                        </Button.Styles>
+                                        <TextBlock Text="{Binding RetentionIcon}" FontSize="8" FontWeight="Bold"
+                                                   Foreground="{DynamicResource TextForegroundBrush}" />
+                                        <Button.Flyout>
+                                            <MenuFlyout Placement="Bottom">
+                                                <MenuItem Header="Always send (📌)" Command="{Binding SetRetentionCommand}" CommandParameter="Persistent"/>
+                                                <MenuItem Header="Until superseded (🔄)" Command="{Binding SetRetentionCommand}" CommandParameter="UntilSuperseded"/>
+                                                <MenuItem Header="Next step only (➡️)" Command="{Binding SetRetentionCommand}" CommandParameter="NextStepOnly"/>
+                                                <MenuItem Header="Do not send (❌)" Command="{Binding SetRetentionCommand}" CommandParameter="Never"/>
+                                                <MenuItem Header="Until resolved (🛑)" Command="{Binding SetRetentionCommand}" CommandParameter="UntilResolved"/>
+                                            </MenuFlyout>
+                                        </Button.Flyout>
+                                    </Button>
+                                    <TextBlock Text="{Binding ToolCallId, StringFormat='[Id: {0}]'}"
+                                               IsVisible="{Binding ToolCallId, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
+                                               FontSize="9" Foreground="{DynamicResource SubTextForegroundBrush}"
+                                               VerticalAlignment="Center" FontFamily="Consolas" />
+                                    <TextBlock Text="{Binding ReplacementKey, StringFormat='[Key: {0}]'}"
+                                               IsVisible="{Binding ReplacementKey, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
+                                               FontSize="9" Foreground="{DynamicResource SubTextForegroundBrush}"
+                                               VerticalAlignment="Center" FontFamily="Consolas" />
+                                </StackPanel>
+                            </StackPanel>
+                            <StackPanel Grid.Row="0" Grid.Column="1" Orientation="Horizontal" Spacing="6">
+                                <Button Content="Del"
+                                        Command="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).DeleteMessageCommand}"
+                                        CommandParameter="{Binding}"
+                                        Background="Transparent" BorderThickness="0"
+                                        Foreground="{DynamicResource SubTextForegroundBrush}"
+                                        FontSize="9" Padding="2,1" Cursor="Hand" />
+                                <Button Content="Copy" Command="{Binding CopyCommand}"
+                                        Background="Transparent" BorderThickness="0"
+                                        Foreground="{DynamicResource SubTextForegroundBrush}"
+                                        FontSize="9" Padding="2,1" Cursor="Hand" />
+                            </StackPanel>
+                            <StackPanel Grid.Row="1" Grid.ColumnSpan="2" Margin="4,3,0,1">
+                                <SelectableTextBlock Text="{Binding Content}" TextWrapping="Wrap"
+                                                     FontFamily="Consolas, Cascadia Code, monospace"
+                                                     FontSize="10.5" LineHeight="13"
+                                                     Foreground="{DynamicResource TextForegroundBrush}" />
+                                <!-- ToolCalls block: only when ShowMetadata=true -->
+                                <ItemsControl ItemsSource="{Binding ToolCalls}" Margin="12,2,0,0"
+                                              IsVisible="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).ActiveProfile.ShowMetadata}">
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate>
+                                            <Border BorderBrush="{DynamicResource AccentBrush}" BorderThickness="1,0,0,0"
+                                                    Padding="6,1" Margin="0,2"
+                                                    Background="{DynamicResource PanelBackgroundBrush}">
+                                                <StackPanel Spacing="2" Margin="2,0,0,0">
+                                                    <StackPanel Orientation="Horizontal" Spacing="4">
+                                                        <TextBlock Text="🔧" FontSize="9" FontFamily="Consolas" />
+                                                        <TextBlock Text="{Binding Function.Name}" FontSize="9"
+                                                                   Foreground="{DynamicResource TextForegroundBrush}"
+                                                                   FontWeight="Bold" FontFamily="Consolas" />
+                                                    </StackPanel>
+                                                    <TextBlock Text="{Binding Function.Arguments}" FontSize="9"
+                                                               Foreground="{DynamicResource SubTextForegroundBrush}"
+                                                               FontFamily="Consolas" TextWrapping="Wrap" />
+                                                </StackPanel>
+                                            </Border>
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
+                            </StackPanel>
+                        </Grid>
+                    </Border>
+                </DataTemplate>
+
+            </ItemsControl.DataTemplates>
+        </ItemsControl>
+
+    </ScrollViewer>
+</UserControl>

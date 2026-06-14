@@ -12,7 +12,7 @@ namespace SPLA.MCP.BasicTools.SystemTools;
 
 public class RunCommandTool : IMcpTool
 {
-    public string Name => "run_command";
+    public string Name => "sys.shell";
 
     public ToolDefinition GetDefinition() => new ToolDefinition
     {

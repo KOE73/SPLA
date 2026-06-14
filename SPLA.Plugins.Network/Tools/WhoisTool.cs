@@ -13,7 +13,7 @@ namespace SPLA.Plugins.Network;
 
 public class WhoisTool : IMcpTool
 {
-    public string Name => "network.whois";
+    public string Name => "network.dns.whois";
 
     public ToolDefinition GetDefinition() => new ToolDefinition
     {

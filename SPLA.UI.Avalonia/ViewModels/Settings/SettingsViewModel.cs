@@ -59,7 +59,10 @@ public partial class SettingsViewModel : ViewModelBase
     public string[] AvailableDensities { get; } = new[] { "nano", "mini", "norm", "max" };
 
     [ObservableProperty]
-    private string _selectedChatViewId = "bubbles";
+    private string _activeProfileId = "bubbles";
+
+    [ObservableProperty]
+    private string _chatRenderMode = "native";
 
     [ObservableProperty]
     private ObservableCollection<string> _availableModels = new();
@@ -129,7 +132,8 @@ public partial class SettingsViewModel : ViewModelBase
         Temperature = resolved.Temperature;
         Theme = resolved.Theme;
         Density = resolved.Density;
-        SelectedChatViewId = resolved.SelectedChatViewId;
+        ActiveProfileId = resolved.ActiveProfileId;
+        ChatRenderMode = resolved.ChatRenderMode;
         CustomPrompt = resolved.CustomPrompt ?? "";
 
         if (resolved.Model != "auto" && !string.IsNullOrEmpty(resolved.Model))
@@ -160,12 +164,12 @@ public partial class SettingsViewModel : ViewModelBase
                 project.Agent ??= new SplaAgentSection();
                 project.Agent.Mode = Mode.ToString();
                 project.Agent.CustomPrompt = CustomPrompt;
-                project.Ui = new SplaUiSection 
-                { 
-                    Theme = Theme, 
-                    Density = Density, 
-                    BubbleChat = SelectedChatViewId == "bubbles",
-                    SelectedChatViewId = SelectedChatViewId 
+                project.Ui = new SplaUiSection
+                {
+                    Theme = Theme,
+                    Density = Density,
+                    ChatRenderMode = ChatRenderMode,
+                    ActiveProfileId = ActiveProfileId
                 };
 
                 if (PluginsSettings.Count > 0)
@@ -200,12 +204,12 @@ public partial class SettingsViewModel : ViewModelBase
                     Temperature = Temperature
                 },
                 Agent = new SplaAgentSection { Mode = Mode.ToString(), CustomPrompt = CustomPrompt },
-                Ui = new SplaUiSection 
-                { 
-                    Theme = Theme, 
-                    Density = Density, 
-                    BubbleChat = SelectedChatViewId == "bubbles",
-                    SelectedChatViewId = SelectedChatViewId 
+                Ui = new SplaUiSection
+                {
+                    Theme = Theme,
+                    Density = Density,
+                    ChatRenderMode = ChatRenderMode,
+                    ActiveProfileId = ActiveProfileId
                 }
             };
 

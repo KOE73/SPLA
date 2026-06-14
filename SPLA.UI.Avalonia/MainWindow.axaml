@@ -3,44 +3,127 @@
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:vm="using:SPLA.UI.Avalonia.ViewModels"
-        xmlns:views="clr-namespace:SPLA.UI.Avalonia.Views"
         xmlns:chat="clr-namespace:SPLA.UI.Avalonia.Views.Chat"
         xmlns:plugins="clr-namespace:SPLA.UI.Avalonia.Views.Plugins"
         xmlns:status="clr-namespace:SPLA.UI.Avalonia.Views.Status"
+        xmlns:sidebar="clr-namespace:SPLA.UI.Avalonia.Views.Sidebar"
         mc:Ignorable="d" d:DesignWidth="1000" d:DesignHeight="600"
         x:Class="SPLA.UI.Avalonia.MainWindow"
         x:Name="RootWindow"
         x:DataType="vm:MainWindowViewModel"
         Title="SPLA - Local AI Assistant"
         Icon="avares://SPLA.UI.Avalonia/Assets/spla_icon.png"
+        WindowDecorations="BorderOnly"
         ExtendClientAreaToDecorationsHint="True"
         Background="{DynamicResource AppBackgroundBrush}">
-    
-    <Grid RowDefinitions="30,*" ColumnDefinitions="300,*">
-        <!-- Title Bar Area for dragging -->
-        <Border Grid.Row="0" Grid.ColumnSpan="2" Background="Transparent" IsHitTestVisible="False"/>
 
-        <!-- Navigation Panel -->
+    <Window.Styles>
+        <!-- Caption buttons: transparent by default, subtle hover -->
+        <Style Selector="Button.caption">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="Foreground" Value="{DynamicResource SubTextForegroundBrush}"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Padding" Value="0"/>
+            <Setter Property="Width" Value="42"/>
+            <Setter Property="Height" Value="30"/>
+            <Setter Property="VerticalContentAlignment" Value="Center"/>
+            <Setter Property="HorizontalContentAlignment" Value="Center"/>
+            <Setter Property="FontSize" Value="14"/>
+            <Setter Property="CornerRadius" Value="0"/>
+        </Style>
+        <Style Selector="Button.caption:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="Background" Value="#20FFFFFF"/>
+        </Style>
+        <!-- Close button gets red on hover -->
+        <Style Selector="Button.caption.close:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="Background" Value="#C42B1C"/>
+        </Style>
+        <Style Selector="Button.caption.close:pointerover">
+            <Setter Property="Foreground" Value="White"/>
+        </Style>
+        <!-- Sidebar toggle: slightly more visible accent on hover -->
+        <Style Selector="Button.caption.sidebar:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="Background" Value="#30007ACC"/>
+        </Style>
+        <Style Selector="Button.caption.sidebar:pointerover">
+            <Setter Property="Foreground" Value="{DynamicResource AccentBrush}"/>
+        </Style>
+    </Window.Styles>
+
+    <Grid RowDefinitions="30,*" ColumnDefinitions="300,*,5,240" x:Name="RootGrid">
+
+        <!-- ── Custom Title Bar ── -->
+        <DockPanel Grid.Row="0" Grid.ColumnSpan="4"
+                   Background="{DynamicResource PanelBackgroundBrush}">
+
+            <!-- App name (left, non-interactive so drag works through it) -->
+            <StackPanel DockPanel.Dock="Left"
+                        Orientation="Horizontal"
+                        VerticalAlignment="Center"
+                        Margin="12,0,0,0"
+                        IsHitTestVisible="False">
+                <TextBlock Text="SPLA"
+                           FontSize="12" FontWeight="SemiBold"
+                           Foreground="{DynamicResource SubTextForegroundBrush}"
+                           VerticalAlignment="Center"/>
+            </StackPanel>
+
+            <!-- Window controls (right) -->
+            <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
+                <!-- Sidebar toggle -->
+                <Button Classes="caption sidebar"
+                        Content="◧"
+                        Command="{Binding ToggleSidebarCommand}"
+                        ToolTip.Tip="Plugins &amp; Skills"/>
+                <!-- Minimize -->
+                <Button Classes="caption"
+                        Content="─"
+                        Click="MinimizeButton_Click"
+                        ToolTip.Tip="Minimize"/>
+                <!-- Maximize / Restore -->
+                <Button Classes="caption"
+                        Content="□"
+                        Click="MaximizeButton_Click"
+                        x:Name="MaximizeButton"
+                        ToolTip.Tip="Maximize"/>
+                <!-- Close -->
+                <Button Classes="caption close"
+                        Content="✕"
+                        Click="CloseButton_Click"
+                        ToolTip.Tip="Close"/>
+            </StackPanel>
+
+            <!-- Drag area (fills center, passes through to window drag) -->
+            <Border Background="Transparent"
+                    PointerPressed="TitleBar_PointerPressed"/>
+        </DockPanel>
+
+        <!-- ── Navigation Panel (left) ── -->
         <Grid Grid.Row="1" Grid.Column="0" RowDefinitions="*,Auto,Auto">
             <chat:ChatListView Grid.Row="0" DataContext="{Binding}" />
             <plugins:PluginCommandsView Grid.Row="1" DataContext="{Binding}" />
             <status:StatusView Grid.Row="2" DataContext="{Binding Status}" SettingsRequested="StatusControl_SettingsRequested" />
         </Grid>
 
-        <!-- Chat Area -->
+        <!-- ── Chat Area ── -->
         <Grid Grid.Row="1" Grid.Column="1" RowDefinitions="*,Auto">
-            
-            <!-- Chat stream views stay alive; switching only changes visibility. -->
             <Grid Grid.Row="0">
-                <chat:ChatBubbleStreamView DataContext="{Binding}" IsVisible="{Binding IsBubbleChatViewSelected}" />
-                <chat:ChatClassicStreamView DataContext="{Binding}" IsVisible="{Binding IsClassicChatViewSelected}" />
-                <chat:ChatDiagnosticView DataContext="{Binding}" IsVisible="{Binding IsDiagnosticChatViewSelected}" />
+                <chat:ChatNativeView DataContext="{Binding}" IsVisible="{Binding IsNativeChatViewSelected}" />
                 <chat:ChatWebView DataContext="{Binding}" IsVisible="{Binding IsWebChatViewSelected}" />
             </Grid>
-
-            <!-- Input and Chat Settings View -->
             <chat:ChatInputView Grid.Row="1" DataContext="{Binding}" />
-            
         </Grid>
+
+        <!-- ── Sidebar splitter (col 2) ── -->
+        <GridSplitter Grid.Row="1" Grid.Column="2"
+                      HorizontalAlignment="Stretch"
+                      VerticalAlignment="Stretch"
+                      Background="{DynamicResource PanelBorderBrush}"
+                      ResizeBehavior="PreviousAndNext"/>
+
+        <!-- ── Right Sidebar (col 3) ── -->
+        <sidebar:SidebarPanelView Grid.Row="1" Grid.Column="3"
+                                   DataContext="{Binding Sidebar}"/>
+
     </Grid>
 </Window>

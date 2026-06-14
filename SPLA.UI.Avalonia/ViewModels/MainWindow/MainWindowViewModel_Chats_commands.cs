@@ -89,7 +89,7 @@ public partial class MainWindowViewModel : ViewModelBase
         var resolved = App.ResolvedSettings;
         if (resolved.ProjectName != null)
         {
-            Messages.Add(new MessageViewModel(ChatRole.System, $"Project: {resolved.ProjectName} | Mode: {resolved.Mode}"));
+            Messages.Add(new SystemMessageViewModel($"Project: {resolved.ProjectName} | Mode: {resolved.Mode}"));
         }
 
         // Build system prompt
@@ -130,6 +130,12 @@ public partial class MainWindowViewModel : ViewModelBase
             }
         }
 
+        // Inject enabled skill prompts (sidebar toggles control which skills are active)
+        foreach (var (skillId, skillContent) in Sidebar.GetEnabledSkillContents())
+        {
+            systemPrompt += $"\n\n--- Skill: {skillId} ---\n{skillContent}";
+        }
+
         var pluginCommands = _pluginManager.GetUiCommands();
         if (pluginCommands.Count > 0)
         {
@@ -140,19 +146,19 @@ public partial class MainWindowViewModel : ViewModelBase
             }
         }
         
-        Messages.Add(new MessageViewModel(ChatRole.System, systemPrompt));
+        Messages.Add(new SystemMessageViewModel(systemPrompt));
 
-        // Load existing messages
+        // Load existing messages — use typed VMs so DataTemplates match correctly
         foreach (var m in value.Messages)
         {
-            var role = m.Role.ToLower() switch
+            MessageViewModel vm = m.Role.ToLower() switch
             {
-                "user" => ChatRole.User,
-                "assistant" => ChatRole.Assistant,
-                "tool" => ChatRole.Tool,
-                _ => ChatRole.System
+                "user"      => new UserMessageViewModel(m.Content),
+                "assistant" => new AssistantMessageViewModel(m.Content),
+                "tool"      => new MessageViewModel(ChatRole.Tool, m.Content),
+                _           => new SystemMessageViewModel(m.Content)
             };
-            Messages.Add(new MessageViewModel(role, m.Content));
+            Messages.Add(vm);
         }
     }
 

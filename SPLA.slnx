@@ -27,6 +27,13 @@
   <Project Path="SPLA.MCP.Core/SPLA.MCP.Core.csproj" />
   <Project Path="SPLA.Observability/SPLA.Observability.csproj" />
   <Project Path="SPLA.Plugins.Network/SPLA.Plugins.Network.csproj" />
+  <Folder Name="/plugins/network/skills/">
+    <File Path="SPLA.Plugins.Network.Skills\host-audit.md" />
+    <File Path="SPLA.Plugins.Network.Skills\lan-discovery.md" />
+    <File Path="SPLA.Plugins.Network.Skills\dns-diagnostics.md" />
+    <File Path="SPLA.Plugins.Network.Skills\ssl-audit.md" />
+    <File Path="SPLA.Plugins.Network.Skills\smtp-probe.md" />
+  </Folder>
   <Project Path="SPLA.Plugins.Host.Avalonia/SPLA.Plugins.Host.Avalonia.csproj" />
   <Project Path="SPLA.Plugins.OneC/SPLA.Plugins.OneC.csproj" />
   <Project Path="SPLA.Plugins.OneC.Avalonia/SPLA.Plugins.OneC.Avalonia.csproj" />

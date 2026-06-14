@@ -52,6 +52,19 @@ public class SplaUiSection
     [YamlMember(Alias = "density")]
     public string? Density { get; set; }
 
+    // ── Chat render engine: "native" | "web" ─────────────────────────────
+    [YamlMember(Alias = "chat_render_mode")]
+    public string? ChatRenderMode { get; set; }
+
+    // ── Active display profile id ─────────────────────────────────────────
+    [YamlMember(Alias = "active_profile_id")]
+    public string? ActiveProfileId { get; set; }
+
+    // ── User-defined profiles (merged on top of built-ins by id) ─────────
+    [YamlMember(Alias = "chat_profiles")]
+    public List<ChatDisplayProfile>? ChatProfiles { get; set; }
+
+    // ── Legacy fields — kept for reading old configs, not written anymore ─
     [YamlMember(Alias = "bubble_chat")]
     public bool? BubbleChat { get; set; }
 

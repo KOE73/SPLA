@@ -12,7 +12,7 @@ namespace SPLA.MCP.BasicTools.SystemTools;
 
 public class DotnetBuildTool : IMcpTool
 {
-    public string Name => "dotnet_build";
+    public string Name => "dotnet.build";
 
     public ToolDefinition GetDefinition() => new ToolDefinition
     {

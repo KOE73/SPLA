@@ -34,13 +34,9 @@ public partial class MainWindowViewModel : ViewModelBase
         foreach (var m in Messages)
         {
             if (m is StreamingMessageViewModel sm)
-            {
-                sm.StreamingContent = "";
-            }
+                sm.SetFinal(string.Empty);
             else
-            {
-                m.Content = "";
-            }
+                m.Content = string.Empty;
         }
         Messages.Clear();
     }
@@ -91,6 +87,7 @@ public partial class MainWindowViewModel : ViewModelBase
     {
         if (!message.HasContent) return false;
         if (message is PermissionMessageViewModel) return false;
+        if (message is SystemMessageViewModel) return false;
         if (message.Content.StartsWith("You are a helpful local AI assistant")) return false;
         if (message.Content.StartsWith("Project: ")) return false;
         if (message.Role == ChatRole.Tool) return false;
@@ -102,6 +99,8 @@ public partial class MainWindowViewModel : ViewModelBase
     private static bool ShouldSendToModel(MessageViewModel message)
     {
         if (!message.HasContent) return false;
+        if (message is SystemMessageViewModel) return false;
+        if (message is PermissionMessageViewModel) return false;
         if (message.Role == ChatRole.Tool && string.IsNullOrWhiteSpace(message.ToolCallId)) return false;
         if (message.IsToolCallNotice && message.ToolCalls == null) return false;
         if (message.IsError) return false;

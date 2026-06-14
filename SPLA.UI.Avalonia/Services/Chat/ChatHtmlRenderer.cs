@@ -40,19 +40,38 @@ public static class ChatHtmlRenderer
     private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web);
     private static long _renderSequence;
 
-    public static RenderedWebChat RenderToFile(IEnumerable<MessageViewModel> messages, WebChatTheme theme)
+    public static RenderedWebChat RenderToFile(IEnumerable<MessageViewModel> messages, WebChatTheme theme, string? profileId = null)
     {
         EnsureAssetFiles();
         CleanupOldRuntimeFiles();
 
-        var html = Render(messages, theme);
+        var html = Render(messages, theme, profileId ?? "classic");
         var documentPath = Path.Combine(GetRuntimeDirectory(), $"chat-{Environment.ProcessId}-{Interlocked.Increment(ref _renderSequence)}.html");
         File.WriteAllText(documentPath, html, Encoding.UTF8);
 
         return new RenderedWebChat(documentPath, new Uri(documentPath));
     }
 
-    private static string Render(IEnumerable<MessageViewModel> messages, WebChatTheme theme)
+    public static string SerializeMessage(MessageViewModel message, int index)
+    {
+        var msg = new ChatHtmlMessage(
+            index,
+            message.Role.ToString(),
+            message.Content,
+            message.RetentionIcon,
+            message.RetentionDescription,
+            message.IsUser,
+            message.IsAssistant,
+            message.IsSystem,
+            message.IsTool,
+            message.IsError,
+            message.IsToolCallNotice,
+            message.IsPlainText,
+            message.IsMarkdown);
+        return JsonSerializer.Serialize(msg, JsonOptions);
+    }
+
+    private static string Render(IEnumerable<MessageViewModel> messages, WebChatTheme theme, string profileId)
     {
         ArgumentNullException.ThrowIfNull(messages);
         ArgumentNullException.ThrowIfNull(theme);
@@ -356,9 +375,29 @@ body {
 .diagram-error pre {
   margin-top: var(--compact-margin);
 }
+
+/* ── Profile overrides ── */
+
+/* Bubbles: margin-based offset, full width within those margins */
+body.profile-bubbles .message.system { display: none; }
+body.profile-bubbles .message.user {
+  margin-left: 80px;
+  margin-right: var(--compact-margin);
+  border-radius: 18px 18px 4px 18px;
+}
+body.profile-bubbles .message.assistant,
+body.profile-bubbles .message.tool-call {
+  margin-left: var(--compact-margin);
+  margin-right: 80px;
+  border-radius: 18px 18px 18px 4px;
+}
+
+/* Diagnostic: show retention + metadata */
+body.profile-diagnostic .retention { display: inline-flex; }
+body.profile-diagnostic .meta { display: inline-flex; }
 </style>
 </head>
-<body>
+<body class="profile-{{profileId}}">
 <main id="chat"></main>
 <script src="../assets/marked.min.js"></script>
 <script src="../assets/mermaid.min.js"></script>
@@ -564,6 +603,56 @@ document.addEventListener("click", event => {
 });
 
 renderMessages();
+
+// ── Incremental update API (called from C# via InvokeScript) ──────────────
+
+window.__splaAppendMessage = async function(json) {
+  const message = JSON.parse(json);
+  const chat = document.getElementById("chat");
+  const existing = chat.querySelector(`[data-index="${message.index}"]`);
+  if (existing) { existing.remove(); }
+  chat.insertAdjacentHTML("beforeend", buildShell(message));
+  const container = chat.querySelector(`[data-content="${message.index}"]`);
+  if (!container) return;
+  if (message.isMarkdown) {
+    await renderMarkdownInto(container, message.content, message.index);
+  } else {
+    container.innerHTML = `<pre class="plain">${escapeHtml(message.content)}</pre>`;
+  }
+  window.scrollTo(0, document.body.scrollHeight);
+};
+
+window.__splaAppendDelta = function(index, delta) {
+  const chat = document.getElementById("chat");
+  const container = chat.querySelector(`[data-content="${index}"]`);
+  if (!container) return;
+  const raw = (container.dataset.raw ?? "") + delta;
+  container.dataset.raw = raw;
+
+  // Debounce markdown re-parse at ~80ms
+  clearTimeout(container._debounce);
+  container._debounce = setTimeout(async () => {
+    container.dataset.raw = container.dataset.raw; // keep raw across closure
+    await renderMarkdownInto(container, container.dataset.raw, index);
+    window.scrollTo(0, document.body.scrollHeight);
+  }, 80);
+};
+
+window.__splaFinalizeMessage = async function(index, content) {
+  const chat = document.getElementById("chat");
+  const container = chat.querySelector(`[data-content="${index}"]`);
+  if (!container) return;
+  clearTimeout(container._debounce);
+  container.dataset.raw = content;
+  await renderMarkdownInto(container, content, index);
+  window.scrollTo(0, document.body.scrollHeight);
+};
+
+window.__splaRemoveMessage = function(index) {
+  const chat = document.getElementById("chat");
+  const article = chat.querySelector(`[data-index="${index}"]`);
+  if (article) article.remove();
+};
 </script>
 </body>
 </html>

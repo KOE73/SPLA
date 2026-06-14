@@ -96,20 +96,20 @@ public partial class MainWindowViewModel : ViewModelBase
     }
 
     [RelayCommand]
-    private void SelectChatView(SPLA.UI.Avalonia.Views.Chat.ChatViewInfo? view)
+    private void SelectProfile(SPLA.UI.Avalonia.ViewModels.Chat.ChatProfileViewModel? profile)
     {
-        if (view != null && SelectedChatView != view)
-        {
-            SelectedChatView = view;
-        }
+        if (profile == null || profile == SelectedProfile) return;
+        if (SelectedProfile != null) SelectedProfile.IsSelected = false;
+        profile.IsSelected = true;
+        SelectedProfile = profile;
+        OnPropertyChanged(nameof(ActiveProfile));
     }
 
-    private void UpdateChatViewSelectionFlags()
+    [RelayCommand]
+    private void SelectRenderMode(string? mode)
     {
-        foreach (var view in AvailableChatViews)
-        {
-            view.IsSelected = view == SelectedChatView;
-        }
+        if (string.IsNullOrEmpty(mode) || mode == ActiveRenderMode) return;
+        ActiveRenderMode = mode;
     }
 
     [RelayCommand]

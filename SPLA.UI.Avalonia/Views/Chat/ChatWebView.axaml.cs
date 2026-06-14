@@ -13,7 +13,6 @@ using System;
 using System.Collections.Generic;
 using System.Collections.Specialized;
 using System.ComponentModel;
-using System.Linq;
 using System.Text.Json;
 using System.Threading.Tasks;
 
@@ -22,10 +21,21 @@ namespace SPLA.UI.Avalonia.Views.Chat;
 public partial class ChatWebView : UserControl
 {
     private readonly NativeWebView _browser;
-    private readonly DispatcherTimer _renderTimer;
-    private readonly Dictionary<MessageViewModel, PropertyChangedEventHandler> _messageHandlers = [];
     private readonly ILogger<ChatWebView>? _logger;
+
+    // Full-render debounce (theme changes, resets)
+    private readonly DispatcherTimer _fullRenderTimer;
+
+    // Track which messages we're subscribed to, and their list index
+    private readonly Dictionary<MessageViewModel, (PropertyChangedEventHandler Handler, int Index)> _messageHandlers = [];
+
     private MainWindowViewModel? _viewModel;
+
+    // True once the page is fully loaded and JS API is available
+    private bool _pageReady;
+
+    // Queued incremental ops waiting for page ready
+    private readonly List<Func<Task>> _pendingOps = [];
 
     public ChatWebView()
     {
@@ -33,12 +43,9 @@ public partial class ChatWebView : UserControl
 
         _browser = this.FindControl<NativeWebView>("ChatBrowser")!;
         _logger = App.Services.GetService<ILogger<ChatWebView>>();
-        _renderTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(120) };
-        _renderTimer.Tick += (_, _) =>
-        {
-            _renderTimer.Stop();
-            RenderNow();
-        };
+
+        _fullRenderTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(150) };
+        _fullRenderTimer.Tick += (_, _) => { _fullRenderTimer.Stop(); DoFullRender(); };
 
         DataContextChanged += (_, _) => AttachViewModel(DataContext as MainWindowViewModel);
         Loaded += OnLoaded;
@@ -47,16 +54,18 @@ public partial class ChatWebView : UserControl
         App.VisualResourcesChanged += OnVisualResourcesChanged;
     }
 
+    // ── Lifecycle ──────────────────────────────────────────────────────────
+
     private void OnLoaded(object? sender, RoutedEventArgs e)
     {
         AttachViewModel(DataContext as MainWindowViewModel);
-        QueueRender();
+        QueueFullRender();
     }
 
     private void OnUnloaded(object? sender, RoutedEventArgs e)
     {
         AttachViewModel(null);
-        _renderTimer.Stop();
+        _fullRenderTimer.Stop();
     }
 
     protected override void OnDetachedFromVisualTree(global::Avalonia.VisualTreeAttachmentEventArgs e)
@@ -65,7 +74,15 @@ public partial class ChatWebView : UserControl
         base.OnDetachedFromVisualTree(e);
     }
 
-    private void OnVisualResourcesChanged(object? sender, EventArgs e) => QueueRender();
+    private void OnVisualResourcesChanged(object? sender, EventArgs e) => QueueFullRender();
+
+    private void OnViewModelPropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName is nameof(MainWindowViewModel.SelectedProfile))
+            QueueFullRender();
+    }
+
+    // ── ViewModel attachment ───────────────────────────────────────────────
 
     private void AttachViewModel(MainWindowViewModel? viewModel)
     {
@@ -73,116 +90,198 @@ public partial class ChatWebView : UserControl
 
         if (_viewModel != null)
         {
-            _viewModel.Messages.CollectionChanged -= MessagesCollectionChanged;
-            ClearMessageSubscriptions();
+            _viewModel.Messages.CollectionChanged -= OnMessagesCollectionChanged;
+            _viewModel.PropertyChanged -= OnViewModelPropertyChanged;
+            ClearAllMessageSubscriptions();
         }
 
         _viewModel = viewModel;
 
         if (_viewModel != null)
         {
-            _viewModel.Messages.CollectionChanged += MessagesCollectionChanged;
-            RefreshMessageSubscriptions();
+            _viewModel.Messages.CollectionChanged += OnMessagesCollectionChanged;
+            _viewModel.PropertyChanged += OnViewModelPropertyChanged;
+            ResubscribeAllMessages();
         }
 
-        QueueRender();
+        // Chat session changed → full re-render
+        QueueFullRender();
     }
 
-    private void MessagesCollectionChanged(object? sender, NotifyCollectionChangedEventArgs e)
+    // ── Collection change handling ─────────────────────────────────────────
+
+    private void OnMessagesCollectionChanged(object? sender, NotifyCollectionChangedEventArgs e)
     {
-        if (e.OldItems != null)
+        switch (e.Action)
         {
-            foreach (var message in e.OldItems.OfType<MessageViewModel>())
-            {
-                RemoveMessageSubscription(message);
-            }
-        }
+            case NotifyCollectionChangedAction.Add when e.NewItems != null:
+                foreach (MessageViewModel msg in e.NewItems)
+                {
+                    var index = _viewModel!.Messages.IndexOf(msg);
+                    SubscribeMessage(msg, index);
+                    EnqueueOp(() => AppendMessageAsync(msg, index));
+                }
+                break;
 
-        if (e.NewItems != null)
-        {
-            foreach (var message in e.NewItems.OfType<MessageViewModel>())
-            {
-                AddMessageSubscription(message);
-            }
-        }
+            case NotifyCollectionChangedAction.Remove when e.OldItems != null:
+                foreach (MessageViewModel msg in e.OldItems)
+                {
+                    if (_messageHandlers.Remove(msg, out var entry))
+                    {
+                        msg.PropertyChanged -= entry.Handler;
+                        EnqueueOp(() => RemoveMessageAsync(entry.Index));
+                    }
+                }
+                break;
 
-        if (e.Action is NotifyCollectionChangedAction.Reset)
-        {
-            RefreshMessageSubscriptions();
+            default:
+                // Reset, Replace, Move → full re-render
+                ResubscribeAllMessages();
+                QueueFullRender();
+                break;
         }
-
-        QueueRender();
     }
 
-    private void RefreshMessageSubscriptions()
+    // ── Message property subscriptions ────────────────────────────────────
+
+    private void SubscribeMessage(MessageViewModel msg, int index)
     {
-        ClearMessageSubscriptions();
+        if (_messageHandlers.ContainsKey(msg)) return;
+
+        PropertyChangedEventHandler handler = (_, e) => OnMessagePropertyChanged(msg, e);
+        _messageHandlers[msg] = (handler, index);
+        msg.PropertyChanged += handler;
+    }
+
+    private void OnMessagePropertyChanged(MessageViewModel msg, PropertyChangedEventArgs e)
+    {
+        if (!_messageHandlers.TryGetValue(msg, out var entry)) return;
+
+        if (msg is StreamingMessageViewModel streaming)
+        {
+            if (e.PropertyName == nameof(StreamingMessageViewModel.StreamingContent))
+                EnqueueOp(() => AppendDeltaAsync(entry.Index, streaming));
+        }
+        else if (e.PropertyName is nameof(MessageViewModel.Content)
+                                 or nameof(MessageViewModel.RetentionIcon)
+                                 or nameof(MessageViewModel.RetentionDescription))
+        {
+            EnqueueOp(() => AppendMessageAsync(msg, entry.Index));
+        }
+    }
+
+    private void ResubscribeAllMessages()
+    {
+        ClearAllMessageSubscriptions();
         if (_viewModel == null) return;
-
-        foreach (var message in _viewModel.Messages)
-        {
-            AddMessageSubscription(message);
-        }
+        for (var i = 0; i < _viewModel.Messages.Count; i++)
+            SubscribeMessage(_viewModel.Messages[i], i);
     }
 
-    private void AddMessageSubscription(MessageViewModel message)
+    private void ClearAllMessageSubscriptions()
     {
-        if (_messageHandlers.ContainsKey(message)) return;
-
-        PropertyChangedEventHandler handler = (_, e) =>
-        {
-            if (e.PropertyName is nameof(MessageViewModel.Content)
-                or nameof(MessageViewModel.RetentionIcon)
-                or nameof(MessageViewModel.RetentionDescription)
-                or nameof(MessageViewModel.IsMarkdown)
-                or nameof(MessageViewModel.IsPlainText))
-            {
-                QueueRender();
-            }
-        };
-
-        _messageHandlers[message] = handler;
-        message.PropertyChanged += handler;
-    }
-
-    private void RemoveMessageSubscription(MessageViewModel message)
-    {
-        if (!_messageHandlers.Remove(message, out var handler)) return;
-        message.PropertyChanged -= handler;
-    }
-
-    private void ClearMessageSubscriptions()
-    {
-        foreach (var (message, handler) in _messageHandlers)
-        {
-            message.PropertyChanged -= handler;
-        }
-
+        foreach (var (msg, entry) in _messageHandlers)
+            msg.PropertyChanged -= entry.Handler;
         _messageHandlers.Clear();
     }
 
-    private void QueueRender()
-    {
-        if (!IsLoaded) return;
+    // ── Incremental JS ops ─────────────────────────────────────────────────
 
-        _renderTimer.Stop();
-        _renderTimer.Start();
+    // Track last-seen content to avoid redundant delta calls during rapid streaming
+    private readonly Dictionary<int, string> _lastStreamedContent = [];
+
+    private async Task AppendMessageAsync(MessageViewModel msg, int index)
+    {
+        if (!msg.HasContent) return;
+        var json = ChatHtmlRenderer.SerializeMessage(msg, index);
+        var escaped = JsonSerializer.Serialize(json); // JSON-encodes the string for JS
+        await InvokeJsAsync($"window.__splaAppendMessage({escaped})");
     }
 
-    private void RenderNow()
+    private async Task AppendDeltaAsync(int index, StreamingMessageViewModel streaming)
+    {
+        var current = streaming.StreamingContent;
+        _lastStreamedContent.TryGetValue(index, out var prev);
+
+        if (current == prev) return;
+
+        if (string.IsNullOrEmpty(prev))
+        {
+            // First chunk — create the message shell first
+            await AppendMessageAsync(streaming, index);
+            _lastStreamedContent[index] = current;
+            return;
+        }
+
+        var delta = current.Length > prev.Length ? current[prev.Length..] : string.Empty;
+        _lastStreamedContent[index] = current;
+
+        if (string.IsNullOrEmpty(delta)) return;
+
+        var escapedIndex = index.ToString();
+        var escapedDelta = JsonSerializer.Serialize(delta);
+        await InvokeJsAsync($"window.__splaAppendDelta({escapedIndex}, {escapedDelta})");
+    }
+
+    private async Task RemoveMessageAsync(int index)
+    {
+        _lastStreamedContent.Remove(index);
+        await InvokeJsAsync($"window.__splaRemoveMessage({index})");
+    }
+
+    // ── Full render (theme / session change) ──────────────────────────────
+
+    private void QueueFullRender()
+    {
+        if (!IsLoaded) return;
+        _fullRenderTimer.Stop();
+        _fullRenderTimer.Start();
+    }
+
+    private void DoFullRender()
     {
         if (_viewModel == null) return;
-
         try
         {
-            var renderedChat = ChatHtmlRenderer.RenderToFile(_viewModel.Messages, CreateTheme());
-            _browser.Navigate(renderedChat.DocumentUri);
+            _pageReady = false;
+            _pendingOps.Clear();
+            _lastStreamedContent.Clear();
+            var rendered = ChatHtmlRenderer.RenderToFile(_viewModel.Messages, CreateTheme(), _viewModel.ActiveProfile?.Id);
+            _browser.Navigate(rendered.DocumentUri);
+            // Page is considered ready immediately after navigation in NativeWebView
+            _pageReady = true;
         }
         catch (Exception ex)
         {
             _logger?.LogError(ex, "Failed to render web chat view.");
         }
     }
+
+    // ── JS invocation ──────────────────────────────────────────────────────
+
+    private void EnqueueOp(Func<Task> op)
+    {
+        if (!_pageReady)
+        {
+            _pendingOps.Add(op);
+            return;
+        }
+        _ = op();
+    }
+
+    private async Task InvokeJsAsync(string script)
+    {
+        try
+        {
+            await Dispatcher.UIThread.InvokeAsync(() => _browser.InvokeScript(script));
+        }
+        catch (Exception ex)
+        {
+            _logger?.LogDebug(ex, "JS invocation failed: {Script}", script[..Math.Min(80, script.Length)]);
+        }
+    }
+
+    // ── Web → host messages ────────────────────────────────────────────────
 
     private async Task HandleWebMessageAsync(object args)
     {
@@ -193,21 +292,17 @@ public partial class ChatWebView : UserControl
 
             using var document = JsonDocument.Parse(messageJson);
             var root = document.RootElement;
-            var action = root.TryGetProperty("action", out var actionProperty) ? actionProperty.GetString() : null;
-            var index = root.TryGetProperty("index", out var indexProperty) ? indexProperty.GetInt32() : -1;
+            var action = root.TryGetProperty("action", out var actionProp) ? actionProp.GetString() : null;
+            var index = root.TryGetProperty("index", out var indexProp) ? indexProp.GetInt32() : -1;
 
             await Dispatcher.UIThread.InvokeAsync(async () =>
             {
                 switch (action)
                 {
-                    case "copy":
-                        await CopyMessageAsync(index);
-                        break;
-                    case "delete":
-                        DeleteMessage(index);
-                        break;
+                    case "copy": await CopyMessageAsync(index); break;
+                    case "delete": DeleteMessage(index); break;
                     case "copyText":
-                        var text = root.TryGetProperty("text", out var textProperty) ? textProperty.GetString() : null;
+                        var text = root.TryGetProperty("text", out var textProp) ? textProp.GetString() : null;
                         await CopyTextAsync(text);
                         break;
                 }
@@ -221,53 +316,37 @@ public partial class ChatWebView : UserControl
 
     private async Task CopyMessageAsync(int index)
     {
-        var message = GetMessageByIndex(index);
-        if (message == null) return;
-
-        await CopyTextAsync(message.Content);
+        if (_viewModel == null || index < 0 || index >= _viewModel.Messages.Count) return;
+        await CopyTextAsync(_viewModel.Messages[index].Content);
     }
 
     private void DeleteMessage(int index)
     {
-        var message = GetMessageByIndex(index);
-        if (message == null || _viewModel == null) return;
-
-        if (_viewModel.DeleteMessageCommand.CanExecute(message))
-        {
-            _viewModel.DeleteMessageCommand.Execute(message);
-        }
-    }
-
-    private MessageViewModel? GetMessageByIndex(int index)
-    {
-        if (_viewModel == null || index < 0 || index >= _viewModel.Messages.Count) return null;
-        return _viewModel.Messages[index];
+        if (_viewModel == null || index < 0 || index >= _viewModel.Messages.Count) return;
+        var msg = _viewModel.Messages[index];
+        if (_viewModel.DeleteMessageCommand.CanExecute(msg))
+            _viewModel.DeleteMessageCommand.Execute(msg);
     }
 
     private async Task CopyTextAsync(string? text)
     {
         if (string.IsNullOrEmpty(text)) return;
-
         var clipboard = TopLevel.GetTopLevel(this)?.Clipboard;
-        if (clipboard != null)
-        {
-            await clipboard.SetTextAsync(text);
-        }
+        if (clipboard != null) await clipboard.SetTextAsync(text);
     }
 
     private static string? ExtractWebMessage(object args)
     {
         if (args is string text) return text;
-
-        foreach (var propertyName in new[] { "Body", "Message", "Data", "WebMessageAsJson", "WebMessageAsString", "Source" })
+        foreach (var prop in new[] { "Body", "Message", "Data", "WebMessageAsJson", "WebMessageAsString", "Source" })
         {
-            var property = args.GetType().GetProperty(propertyName);
-            var value = property?.GetValue(args)?.ToString();
+            var value = args.GetType().GetProperty(prop)?.GetValue(args)?.ToString();
             if (!string.IsNullOrWhiteSpace(value)) return value;
         }
-
         return args.ToString();
     }
+
+    // ── Theme reading ──────────────────────────────────────────────────────
 
     private static WebChatTheme CreateTheme() => new(
         ReadBrush("AppBackgroundBrush", "#FDFBF7"),
@@ -297,27 +376,25 @@ public partial class ChatWebView : UserControl
     private static string ReadBrush(string key, string fallback)
     {
         if (Application.Current?.TryGetResource(key, null, out var value) != true) return fallback;
-
         return value switch
         {
-            ISolidColorBrush solidColorBrush => ToCss(solidColorBrush.Color),
-            Color color => ToCss(color),
+            ISolidColorBrush b => ToCss(b.Color),
+            Color c => ToCss(c),
             _ => fallback
         };
     }
 
-    private static string ToCss(Color color) => color.A == byte.MaxValue
-        ? $"#{color.R:X2}{color.G:X2}{color.B:X2}"
-        : $"rgba({color.R}, {color.G}, {color.B}, {color.A / 255d:0.###})";
+    private static string ToCss(Color c) => c.A == byte.MaxValue
+        ? $"#{c.R:X2}{c.G:X2}{c.B:X2}"
+        : $"rgba({c.R}, {c.G}, {c.B}, {c.A / 255d:0.###})";
 
     private static string ReadThickness(string key, string fallback)
     {
         if (Application.Current?.TryGetResource(key, null, out var value) != true) return fallback;
-
         return value switch
         {
-            Thickness thickness => ToCss(thickness),
-            double number => $"{number:0.###}px",
+            Thickness t => $"{t.Top:0.###}px {t.Right:0.###}px {t.Bottom:0.###}px {t.Left:0.###}px",
+            double d => $"{d:0.###}px",
             _ => fallback
         };
     }
@@ -325,11 +402,10 @@ public partial class ChatWebView : UserControl
     private static string ReadCornerRadius(string key, string fallback)
     {
         if (Application.Current?.TryGetResource(key, null, out var value) != true) return fallback;
-
         return value switch
         {
-            CornerRadius radius => $"{radius.TopLeft:0.###}px",
-            double number => $"{number:0.###}px",
+            CornerRadius r => $"{r.TopLeft:0.###}px",
+            double d => $"{d:0.###}px",
             _ => fallback
         };
     }
@@ -337,9 +413,6 @@ public partial class ChatWebView : UserControl
     private static string ReadDouble(string key, string fallback)
     {
         if (Application.Current?.TryGetResource(key, null, out var value) != true) return fallback;
-        return value is double number ? $"{number:0.###}px" : fallback;
+        return value is double d ? $"{d:0.###}px" : fallback;
     }
-
-    private static string ToCss(Thickness thickness) =>
-        $"{thickness.Top:0.###}px {thickness.Right:0.###}px {thickness.Bottom:0.###}px {thickness.Left:0.###}px";
 }

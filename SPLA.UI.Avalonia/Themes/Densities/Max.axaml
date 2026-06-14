@@ -22,6 +22,9 @@
     <sys:Double x:Key="HeaderFontSize">22</sys:Double>
     <sys:Double x:Key="BaseFontSize">16</sys:Double>
     <sys:Double x:Key="SmallFontSize">14</sys:Double>
+    <sys:Double x:Key="SidebarNodeFontSize">13</sys:Double>
+    <sys:Double x:Key="SidebarIconFontSize">16</sys:Double>
+    <sys:Double x:Key="SidebarToggleScale">1.0</sys:Double>
 
     <!-- ========================================== -->
     <!-- Shape                                      -->

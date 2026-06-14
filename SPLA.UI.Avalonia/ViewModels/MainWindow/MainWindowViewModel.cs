@@ -15,6 +15,8 @@ using SPLA.UI.Avalonia.ViewModels.Messages;
 using SPLA.UI.Avalonia.ViewModels.Projects;
 using SPLA.UI.Avalonia.ViewModels.Settings;
 using SPLA.UI.Avalonia.ViewModels.Status;
+using SPLA.UI.Avalonia.ViewModels.Chat;
+using SPLA.UI.Avalonia.ViewModels.Sidebar;
 using SPLA.UI.Avalonia.Views.Chat;
 using SPLA.UI.Avalonia.Services;
 using SPLA.UI.Avalonia.Services.Guards;
@@ -35,34 +37,61 @@ public partial class MainWindowViewModel : ViewModelBase
 {
         public SettingsViewModel Settings { get; } = new();
         public StatusViewModel Status { get; } = new();
+        public SidebarPanelViewModel Sidebar { get; } = new();
+
+        [ObservableProperty]
+        private bool _isSidebarOpen = false;
+
+        [RelayCommand]
+        private void ToggleSidebar() => IsSidebarOpen = !IsSidebarOpen;
         public Func<ChatSession, Task<bool>>? ConfirmDeleteChatAsync { get; set; }
         public Func<Task<string?>>? SelectProjectFolderAsync { get; set; }
     
+        // ── Display profiles ───────────────────────────────────────────────────
+
         [ObservableProperty]
-        private ObservableCollection<SPLA.UI.Avalonia.Views.Chat.ChatViewInfo> _availableChatViews = new();
-    
+        private ObservableCollection<ChatProfileViewModel> _availableProfiles = new();
+
         [ObservableProperty]
-        [NotifyPropertyChangedFor(nameof(IsBubbleChatViewSelected))]
-        [NotifyPropertyChangedFor(nameof(IsClassicChatViewSelected))]
-        [NotifyPropertyChangedFor(nameof(IsDiagnosticChatViewSelected))]
-        [NotifyPropertyChangedFor(nameof(IsWebChatViewSelected))]
-        private SPLA.UI.Avalonia.Views.Chat.ChatViewInfo? _selectedChatView;
-    
-        partial void OnSelectedChatViewChanged(SPLA.UI.Avalonia.Views.Chat.ChatViewInfo? value)
+        private ChatProfileViewModel? _selectedProfile;
+
+        partial void OnSelectedProfileChanged(ChatProfileViewModel? value)
         {
-            UpdateChatViewSelectionFlags();
-    
-            if (value != null && Settings.SelectedChatViewId != value.Id)
+            OnPropertyChanged(nameof(ActiveProfile));
+            OnPropertyChanged(nameof(ActiveProfileUsesBubbles));
+            OnPropertyChanged(nameof(ActiveProfileUsesLinear));
+
+            if (value != null && Settings.ActiveProfileId != value.Id)
             {
-                Settings.SelectedChatViewId = value.Id;
+                Settings.ActiveProfileId = value.Id;
                 _ = Settings.SaveSettingsAsync();
             }
         }
-    
-        public bool IsBubbleChatViewSelected => SelectedChatView?.Id == "bubbles";
-        public bool IsClassicChatViewSelected => SelectedChatView?.Id == "classic";
-        public bool IsDiagnosticChatViewSelected => SelectedChatView?.Id == "diagnostic";
-        public bool IsWebChatViewSelected => SelectedChatView?.Id == "web";
+
+        public bool ActiveProfileUsesBubbles => SelectedProfile?.Profile.UseBubbleLayout == true;
+        public bool ActiveProfileUsesLinear  => SelectedProfile?.Profile.UseBubbleLayout != true;
+
+        // ── Render mode: "native" | "web" ─────────────────────────────────────
+
+        [ObservableProperty]
+        [NotifyPropertyChangedFor(nameof(IsNativeChatViewSelected))]
+        [NotifyPropertyChangedFor(nameof(IsWebChatViewSelected))]
+        private string _activeRenderMode = "native";
+
+        partial void OnActiveRenderModeChanged(string value)
+        {
+            if (Settings.ChatRenderMode != value)
+            {
+                Settings.ChatRenderMode = value;
+                _ = Settings.SaveSettingsAsync();
+            }
+        }
+
+        public bool IsNativeChatViewSelected => ActiveRenderMode == "native";
+        public bool IsWebChatViewSelected => ActiveRenderMode == "web";
+
+        /// <summary>The active display profile domain object (null only before initialization).</summary>
+        public ChatDisplayProfile? ActiveProfile => SelectedProfile?.Profile;
     
         [ObservableProperty]
         private ObservableCollection<MessageViewModel> _messages = new();
@@ -152,6 +181,7 @@ public partial class MainWindowViewModel : ViewModelBase
             
             _tools = _mcpHost.GetToolDefinitions().ToList();
             logger.LogInformation("MCP host initialized. ToolCount={ToolCount}", _tools.Count);
+            Sidebar.Build(_pluginManager.GetPlugins(), _tools, pluginsDir);
             LoadPluginUiCommands();
     
             _ = InitializeAsync();

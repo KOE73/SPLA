@@ -1,0 +1,123 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:SPLA.UI.Avalonia.ViewModels.Sidebar"
+             x:Class="SPLA.UI.Avalonia.Views.Sidebar.SidebarPanelView"
+             x:DataType="vm:SidebarPanelViewModel">
+
+    <UserControl.Styles>
+
+        <!-- TreeViewItem: compact, stretch -->
+        <Style Selector="TreeViewItem">
+            <Setter Property="Padding" Value="2,2,6,2"/>
+            <Setter Property="MinHeight" Value="0"/>
+            <Setter Property="HorizontalAlignment" Value="Stretch"/>
+        </Style>
+
+        <!-- Kill selection highlight — toggle panel, not a list -->
+        <Style Selector="TreeViewItem:selected /template/ Border#PART_LayoutRoot">
+            <Setter Property="Background" Value="Transparent"/>
+        </Style>
+        <Style Selector="TreeViewItem:selected:focus /template/ Border#PART_LayoutRoot">
+            <Setter Property="Background" Value="Transparent"/>
+        </Style>
+        <Style Selector="TreeViewItem:pointerover /template/ Border#PART_LayoutRoot">
+            <Setter Property="Background" Value="{DynamicResource PanelBorderBrush}"/>
+        </Style>
+
+        <!-- Compact ToggleSwitch: no text labels -->
+        <Style Selector="ToggleSwitch.sidebar">
+            <Setter Property="OnContent" Value=""/>
+            <Setter Property="OffContent" Value=""/>
+            <Setter Property="Padding" Value="0"/>
+            <Setter Property="Margin" Value="0"/>
+            <Setter Property="MinWidth" Value="0"/>
+            <Setter Property="VerticalAlignment" Value="Center"/>
+        </Style>
+
+    </UserControl.Styles>
+
+    <Border Background="{DynamicResource PanelBackgroundBrush}"
+            BorderBrush="{DynamicResource PanelBorderBrush}"
+            BorderThickness="1,0,0,0">
+        <DockPanel>
+
+            <!-- Header -->
+            <Border DockPanel.Dock="Top"
+                    Padding="8,5"
+                    Background="{DynamicResource PanelBackgroundBrush}"
+                    BorderBrush="{DynamicResource PanelBorderBrush}"
+                    BorderThickness="0,0,0,1">
+                <TextBlock Text="PLUGINS &amp; SKILLS"
+                           FontSize="{DynamicResource SidebarNodeFontSize}"
+                           FontWeight="SemiBold"
+                           Foreground="{DynamicResource SubTextForegroundBrush}"/>
+            </Border>
+
+            <!-- Tree -->
+            <ScrollViewer HorizontalScrollBarVisibility="Disabled">
+                <TreeView ItemsSource="{Binding Nodes}"
+                          Background="Transparent"
+                          BorderThickness="0"
+                          Padding="2,2,2,2">
+                    <TreeView.DataTemplates>
+                        <TreeDataTemplate x:DataType="vm:SidebarNodeViewModel"
+                                          ItemsSource="{Binding Children}">
+
+                            <!-- Row: [icon + label  ···] [scaled toggle] -->
+                            <Grid ColumnDefinitions="*,Auto"
+                                  HorizontalAlignment="Stretch"
+                                  VerticalAlignment="Center">
+
+                                <!-- Left: icon + label -->
+                                <StackPanel Grid.Column="0"
+                                            Orientation="Horizontal"
+                                            Spacing="4"
+                                            VerticalAlignment="Center">
+
+                                    <!-- Tool/Skill kind icon, +3 relative to node font -->
+                                    <TextBlock Text="{Binding KindIcon}"
+                                               IsVisible="{Binding IsLeaf}"
+                                               FontSize="{DynamicResource SidebarIconFontSize}"
+                                               Foreground="{DynamicResource SubTextForegroundBrush}"
+                                               VerticalAlignment="Center"/>
+
+                                    <!-- Plugin header — bold -->
+                                    <TextBlock Text="{Binding Label}"
+                                               IsVisible="{Binding IsPlugin}"
+                                               FontSize="{DynamicResource SidebarNodeFontSize}"
+                                               FontWeight="SemiBold"
+                                               Foreground="{DynamicResource TextForegroundBrush}"
+                                               VerticalAlignment="Center"/>
+
+                                    <!-- Tool / Skill leaf -->
+                                    <TextBlock Text="{Binding Label}"
+                                               IsVisible="{Binding IsLeaf}"
+                                               FontSize="{DynamicResource SidebarNodeFontSize}"
+                                               Foreground="{DynamicResource SubTextForegroundBrush}"
+                                               VerticalAlignment="Center"
+                                               TextTrimming="CharacterEllipsis"
+                                               ToolTip.Tip="{Binding Description}"/>
+                                </StackPanel>
+
+                                <!-- Right: toggle scaled by density -->
+                                <LayoutTransformControl Grid.Column="1"
+                                                        Margin="8,0,0,0"
+                                                        VerticalAlignment="Center">
+                                    <LayoutTransformControl.LayoutTransform>
+                                        <ScaleTransform ScaleX="{DynamicResource SidebarToggleScale}"
+                                                        ScaleY="{DynamicResource SidebarToggleScale}"/>
+                                    </LayoutTransformControl.LayoutTransform>
+                                    <ToggleSwitch IsChecked="{Binding IsEnabled}"
+                                                  Classes="sidebar"/>
+                                </LayoutTransformControl>
+
+                            </Grid>
+
+                        </TreeDataTemplate>
+                    </TreeView.DataTemplates>
+                </TreeView>
+            </ScrollViewer>
+
+        </DockPanel>
+    </Border>
+</UserControl>

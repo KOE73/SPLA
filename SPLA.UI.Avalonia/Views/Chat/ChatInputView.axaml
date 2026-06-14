@@ -53,36 +53,68 @@
                                        FontSize="8" TextAlignment="Right" VerticalAlignment="Top" />
                         </Grid>
                     </Grid>
-                    
-                    <!-- Horizontal group selector for Chat Stream Views -->
-                    <ItemsControl ItemsSource="{Binding AvailableChatViews}" VerticalAlignment="Center">
-                        <ItemsControl.ItemsPanel>
-                            <ItemsPanelTemplate>
-                                <StackPanel Orientation="Horizontal" Spacing="5" />
-                            </ItemsPanelTemplate>
-                        </ItemsControl.ItemsPanel>
-                        <ItemsControl.ItemTemplate>
-                            <DataTemplate>
-                                <Button Classes="ChatViewSelector"
-                                        Classes.selected="{Binding IsSelected}"
-                                        Content="{Binding DisplayName}"
-                                        Command="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).SelectChatViewCommand}"
-                                        CommandParameter="{Binding}" />
-                            </DataTemplate>
-                        </ItemsControl.ItemTemplate>
-                        <ItemsControl.Styles>
-                            <Style Selector="Button.ChatViewSelector">
-                                <Setter Property="Padding" Value="10,4"/>
+
+                    <!-- Render mode selector: Native | Web -->
+                    <StackPanel Orientation="Horizontal" Spacing="2" VerticalAlignment="Center">
+                        <StackPanel.Styles>
+                            <Style Selector="Button.RenderModeBtn">
+                                <Setter Property="Padding" Value="8,3"/>
                                 <Setter Property="Background" Value="Transparent"/>
                                 <Setter Property="BorderThickness" Value="1"/>
                                 <Setter Property="BorderBrush" Value="{DynamicResource PanelBorderBrush}"/>
                                 <Setter Property="CornerRadius" Value="4"/>
                                 <Setter Property="Cursor" Value="Hand"/>
-                                <Setter Property="MinHeight" Value="24"/>
+                                <Setter Property="MinHeight" Value="22"/>
                                 <Setter Property="Foreground" Value="{DynamicResource SubTextForegroundBrush}"/>
                                 <Setter Property="FontSize" Value="{DynamicResource SmallFontSize}"/>
                             </Style>
-                            <Style Selector="Button.ChatViewSelector.selected">
+                            <Style Selector="Button.RenderModeBtn.selected">
+                                <Setter Property="Background" Value="{DynamicResource AccentBrush}"/>
+                                <Setter Property="Foreground" Value="White"/>
+                                <Setter Property="BorderBrush" Value="{DynamicResource AccentBrush}"/>
+                            </Style>
+                        </StackPanel.Styles>
+                        <Button Classes="RenderModeBtn"
+                                Classes.selected="{Binding IsNativeChatViewSelected}"
+                                Content="Native"
+                                Command="{Binding SelectRenderModeCommand}"
+                                CommandParameter="native" />
+                        <Button Classes="RenderModeBtn"
+                                Classes.selected="{Binding IsWebChatViewSelected}"
+                                Content="Web"
+                                Command="{Binding SelectRenderModeCommand}"
+                                CommandParameter="web" />
+                    </StackPanel>
+
+                    <!-- Display profile selector: data-driven from AvailableProfiles -->
+                    <ItemsControl ItemsSource="{Binding AvailableProfiles}" VerticalAlignment="Center">
+                        <ItemsControl.ItemsPanel>
+                            <ItemsPanelTemplate>
+                                <StackPanel Orientation="Horizontal" Spacing="2" />
+                            </ItemsPanelTemplate>
+                        </ItemsControl.ItemsPanel>
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate>
+                                <Button Classes="ProfileBtn"
+                                        Classes.selected="{Binding IsSelected}"
+                                        Content="{Binding DisplayName}"
+                                        Command="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).SelectProfileCommand}"
+                                        CommandParameter="{Binding}" />
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                        <ItemsControl.Styles>
+                            <Style Selector="Button.ProfileBtn">
+                                <Setter Property="Padding" Value="8,3"/>
+                                <Setter Property="Background" Value="Transparent"/>
+                                <Setter Property="BorderThickness" Value="1"/>
+                                <Setter Property="BorderBrush" Value="{DynamicResource PanelBorderBrush}"/>
+                                <Setter Property="CornerRadius" Value="4"/>
+                                <Setter Property="Cursor" Value="Hand"/>
+                                <Setter Property="MinHeight" Value="22"/>
+                                <Setter Property="Foreground" Value="{DynamicResource SubTextForegroundBrush}"/>
+                                <Setter Property="FontSize" Value="{DynamicResource SmallFontSize}"/>
+                            </Style>
+                            <Style Selector="Button.ProfileBtn.selected">
                                 <Setter Property="Background" Value="{DynamicResource AccentBrush}"/>
                                 <Setter Property="Foreground" Value="White"/>
                                 <Setter Property="BorderBrush" Value="{DynamicResource AccentBrush}"/>

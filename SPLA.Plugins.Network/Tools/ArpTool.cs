@@ -15,7 +15,7 @@ namespace SPLA.Plugins.Network;
 
 public class ArpTool : IMcpTool
 {
-    public string Name => "network.arp";
+    public string Name => "network.host.arp";
 
     public ToolDefinition GetDefinition() => new ToolDefinition
     {

@@ -13,7 +13,7 @@ namespace SPLA.Plugins.Network;
 
 public class PingStatsTool : IMcpTool
 {
-    public string Name => "network.ping.stats";
+    public string Name => "network.diag.ping_stats";
 
     public ToolDefinition GetDefinition() => new ToolDefinition
     {

@@ -35,13 +35,27 @@ public partial class MainWindowViewModel : ViewModelBase
         var resolved = App.ResolvedSettings;
         Settings.LoadFromResolved(resolved);
 
-        AvailableChatViews.Clear();
-        AvailableChatViews.Add(new SPLA.UI.Avalonia.Views.Chat.ChatViewInfo("bubbles", "Bubbles"));
-        AvailableChatViews.Add(new SPLA.UI.Avalonia.Views.Chat.ChatViewInfo("classic", "Document"));
-        AvailableChatViews.Add(new SPLA.UI.Avalonia.Views.Chat.ChatViewInfo("diagnostic", "Diagnostic"));
-        AvailableChatViews.Add(new SPLA.UI.Avalonia.Views.Chat.ChatViewInfo("web", "Web"));
-        SelectedChatView = AvailableChatViews.FirstOrDefault(x => x.Id == Settings.SelectedChatViewId) ?? AvailableChatViews.First();
-        UpdateChatViewSelectionFlags();
+        // Load profiles: built-ins + any user-defined overrides from config
+        AvailableProfiles.Clear();
+        foreach (var profile in resolved.EffectiveProfiles)
+            AvailableProfiles.Add(new SPLA.UI.Avalonia.ViewModels.Chat.ChatProfileViewModel(profile));
+
+        // Resolve render mode, migrating old "web" view selection
+        var legacyId = Settings.ActiveProfileId;
+        if (legacyId == "web")
+        {
+            ActiveRenderMode = "web";
+            Settings.ActiveProfileId = "bubbles";
+        }
+        else
+        {
+            ActiveRenderMode = Settings.ChatRenderMode;
+        }
+
+        var targetProfile = AvailableProfiles.FirstOrDefault(p => p.Id == Settings.ActiveProfileId)
+                         ?? AvailableProfiles.First();
+        targetProfile.IsSelected = true;
+        SelectedProfile = targetProfile;
 
         Status.Endpoint = resolved.Endpoint;
         Status.Mode = resolved.Mode;
