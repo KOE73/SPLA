@@ -8,7 +8,7 @@ namespace SPLA.MCP.BasicTools.SystemTools;
 
 public class GetContextTool : IMcpTool
 {
-    public string Name => "sys.context";
+    public string Name => "agent.context";
 
     public ToolDefinition GetDefinition() => new ToolDefinition
     {

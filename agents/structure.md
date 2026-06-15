@@ -15,6 +15,7 @@ Projects included in the solution:
 - `SPLA.Observability`: Shared logging, tracing, metrics, correlation, and log destination infrastructure.
 - `SPLA.Plugins.Host.Avalonia`: Avalonia UI plugin host contracts shared between the main UI and UI plugins.
 - `SPLA.Plugins.Network`: Network plugin with host info, LAN scan, port scan, ping, nslookup, HTTP GET/HEAD, port check, and traceroute tools.
+- `SPLA.Skills.Network`: Network skill definitions (`.md` files). Independent of the plugin — skills are instructions, not code. Built via `Microsoft.Build.NoTargets`; `CopySkills` target copies files to `plugins/network/skills/` in UI and CLI output directories.
 - `SPLA.Plugins.OneC`: 1C analysis plugin with indexing, object lookup/explanation, references, dependency analysis, readers/writers, and graph data support.
 - `SPLA.Plugins.OneC.Avalonia`: Avalonia UI plugin for the 1C analysis experience. Its manifest type is `avalonia-ui` and it depends on `onec`.
 - `SPLA.UI.Avalonia`: Main desktop application. Hosts chat, settings, plugin commands, plugin panels, webchat assets, themes, and project interaction services.
@@ -53,6 +54,42 @@ Current agent docs:
 - `agents/structure.md`: This repository structure map.
 - `agents/tool-help.md`: Tool help system flow.
 - `agents/ui-theming.md`: UI theming and density rules.
+- `agents/data-ownership.md`: Data ownership rules — UI must not own domain data. Read before adding any registry, flag, or discovery logic.
+
+## Skills
+
+Skills are named instruction sets stored as `.md` files in `SPLA.Skills.<PluginId>/`.
+They are independent of plugin code — a skill describes a procedure, not a capability declaration.
+
+- `SPLA.Skills.Network/`: Network skills. Built by `SPLA.Skills.Network.csproj` (Microsoft.Build.NoTargets).
+  - `CopySkills` target copies `*.md` to `plugins/network/skills/` in UI and CLI debug output on every build.
+  - Published by `PublishAll.cmd` via `xcopy /s /y SPLA.Skills.Network .publish\work\plugins\network\skills\`.
+
+**Skill file format:**
+```markdown
+---
+id: plugin.skill-name
+description: One-line description used as the skill index entry in the system prompt.
+---
+
+# Skill Title
+
+## Tool availability
+[standard preamble — check tool.help, prefer network.* tools, fall back to cmd]
+
+[skill instructions...]
+```
+
+**Runtime behavior:**
+- `SkillManager` (in `SPLA.MCP.Core`) scans `plugins/*/skills/*.md` on startup and builds a registry.
+- `CapabilityRegistry` includes skills alongside tools and plugins in a unified list.
+- `SidebarPanelViewModel` displays skills from `CapabilityRegistry` — it does NOT scan files or own skill data.
+- System prompt receives only the skill index (`id — description`, one line per skill).
+- Model calls `skill.load` tool to get full instructions when a request matches.
+- `IsPreloaded=true` (per-skill setting in `.spla`) injects the full body into the system prompt immediately.
+- Flags `IsEnabled`/`IsPreloaded` persist via the `skills:` section in `.spla` / `defaults.yaml`.
+
+**Slash commands:** `/skills` lists all skills; `/skills load <id>` injects skill body into the current chat context.
 
 ## Plugins
 

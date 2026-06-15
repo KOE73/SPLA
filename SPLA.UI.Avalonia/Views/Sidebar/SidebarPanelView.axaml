@@ -13,6 +13,11 @@
             <Setter Property="HorizontalAlignment" Value="Stretch"/>
         </Style>
 
+        <!-- IsExpanded bound to node VM -->
+        <Style Selector="TreeViewItem" x:DataType="vm:SidebarNodeViewModel">
+            <Setter Property="IsExpanded" Value="{Binding IsExpanded, Mode=TwoWay}"/>
+        </Style>
+
         <!-- Kill selection highlight — toggle panel, not a list -->
         <Style Selector="TreeViewItem:selected /template/ Border#PART_LayoutRoot">
             <Setter Property="Background" Value="Transparent"/>
@@ -34,6 +39,30 @@
             <Setter Property="VerticalAlignment" Value="Center"/>
         </Style>
 
+        <!-- Filter TextBox -->
+        <Style Selector="TextBox.sidebar-filter">
+            <Setter Property="FontSize" Value="{DynamicResource SidebarNodeFontSize}"/>
+            <Setter Property="Padding" Value="6,3"/>
+            <Setter Property="CornerRadius" Value="4"/>
+            <Setter Property="BorderThickness" Value="1"/>
+        </Style>
+
+        <!-- Expand/Collapse toolbar button -->
+        <Style Selector="Button.sidebar-toolbar">
+            <Setter Property="FontSize" Value="{DynamicResource SidebarNodeFontSize}"/>
+            <Setter Property="Padding" Value="4,2"/>
+            <Setter Property="Margin" Value="0"/>
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="CornerRadius" Value="3"/>
+            <Setter Property="Foreground" Value="{DynamicResource SubTextForegroundBrush}"/>
+            <Setter Property="VerticalAlignment" Value="Center"/>
+            <Setter Property="Cursor" Value="Hand"/>
+        </Style>
+        <Style Selector="Button.sidebar-toolbar:pointerover /template/ ContentPresenter">
+            <Setter Property="Background" Value="{DynamicResource PanelBorderBrush}"/>
+        </Style>
+
     </UserControl.Styles>
 
     <Border Background="{DynamicResource PanelBackgroundBrush}"
@@ -53,9 +82,39 @@
                            Foreground="{DynamicResource SubTextForegroundBrush}"/>
             </Border>
 
+            <!-- Toolbar: filter + expand/collapse -->
+            <Border DockPanel.Dock="Top"
+                    Padding="6,4"
+                    BorderBrush="{DynamicResource PanelBorderBrush}"
+                    BorderThickness="0,0,0,1">
+                <DockPanel LastChildFill="True">
+
+                    <!-- Expand / Collapse buttons -->
+                    <StackPanel DockPanel.Dock="Right"
+                                Orientation="Horizontal"
+                                Spacing="2"
+                                Margin="4,0,0,0">
+                        <Button Classes="sidebar-toolbar"
+                                Command="{Binding ExpandAllCommand}"
+                                ToolTip.Tip="Expand all"
+                                Content="⊞"/>
+                        <Button Classes="sidebar-toolbar"
+                                Command="{Binding CollapseAllCommand}"
+                                ToolTip.Tip="Collapse all"
+                                Content="⊟"/>
+                    </StackPanel>
+
+                    <!-- Filter box -->
+                    <TextBox Classes="sidebar-filter"
+                             Text="{Binding FilterText}"
+                             PlaceholderText="Filter…"/>
+
+                </DockPanel>
+            </Border>
+
             <!-- Tree -->
             <ScrollViewer HorizontalScrollBarVisibility="Disabled">
-                <TreeView ItemsSource="{Binding Nodes}"
+                <TreeView ItemsSource="{Binding FilteredNodes}"
                           Background="Transparent"
                           BorderThickness="0"
                           Padding="2,2,2,2">
@@ -63,8 +122,8 @@
                         <TreeDataTemplate x:DataType="vm:SidebarNodeViewModel"
                                           ItemsSource="{Binding Children}">
 
-                            <!-- Row: [icon + label  ···] [scaled toggle] -->
-                            <Grid ColumnDefinitions="*,Auto"
+                            <!-- Row: [icon + label  ···] [preload toggle] [enable toggle] -->
+                            <Grid ColumnDefinitions="*,Auto,Auto"
                                   HorizontalAlignment="Stretch"
                                   VerticalAlignment="Center">
 
@@ -74,7 +133,7 @@
                                             Spacing="4"
                                             VerticalAlignment="Center">
 
-                                    <!-- Tool/Skill kind icon, +3 relative to node font -->
+                                    <!-- Tool/Skill kind icon -->
                                     <TextBlock Text="{Binding KindIcon}"
                                                IsVisible="{Binding IsLeaf}"
                                                FontSize="{DynamicResource SidebarIconFontSize}"
@@ -99,10 +158,25 @@
                                                ToolTip.Tip="{Binding Description}"/>
                                 </StackPanel>
 
-                                <!-- Right: toggle scaled by density -->
+                                <!-- Preload toggle (skills only) -->
                                 <LayoutTransformControl Grid.Column="1"
+                                                        IsVisible="{Binding IsSkill}"
                                                         Margin="8,0,0,0"
-                                                        VerticalAlignment="Center">
+                                                        VerticalAlignment="Center"
+                                                        ToolTip.Tip="Preload into context">
+                                    <LayoutTransformControl.LayoutTransform>
+                                        <ScaleTransform ScaleX="{DynamicResource SidebarToggleScale}"
+                                                        ScaleY="{DynamicResource SidebarToggleScale}"/>
+                                    </LayoutTransformControl.LayoutTransform>
+                                    <ToggleSwitch IsChecked="{Binding IsPreloaded}"
+                                                  Classes="sidebar"/>
+                                </LayoutTransformControl>
+
+                                <!-- Enabled toggle -->
+                                <LayoutTransformControl Grid.Column="2"
+                                                        Margin="4,0,0,0"
+                                                        VerticalAlignment="Center"
+                                                        ToolTip.Tip="Enable">
                                     <LayoutTransformControl.LayoutTransform>
                                         <ScaleTransform ScaleX="{DynamicResource SidebarToggleScale}"
                                                         ScaleY="{DynamicResource SidebarToggleScale}"/>

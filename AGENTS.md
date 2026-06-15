@@ -10,8 +10,29 @@ For comprehensive details on agent permission models, tool matrices, autonomy co
 - **[Project Structure](agents/structure.md)**: Overview of the solution layout and module responsibilities.
 - **[Plugin System & Tool Naming](agents/plugins.md)**: Rules for creating plugins, extending the system prompt, and standardizing tool names (`[plugin].[domain].[action]`).
 - **[Documentation Layout](agents/documentation.md)**: Defines the separation between `agents/` and `docs/`, including README translation rules.
+- **[Capability Lookup (agent.info)](agents/tool-help.md)**: How `agent.info` works — unified tool help + skill loading. `[H]` flag, routing logic, help text format.
 - **[Chat Message Architecture](agents/chat-messages.md)**: Canonical design for chat message types, display profiles, tool progress streaming, scroll fix, and Web view incremental update. Read before touching `Views/Chat/` or `ViewModels/Messages/`.
+- **[Data Ownership Rules](agents/data-ownership.md)**: STOP — read this before adding any registry, flag, or discovery logic. UI ViewModels must not own domain data. Violations cause data loss on restart, CLI blindness, and untestable state.
 
+
+## Skill & Plugin Authoring Language
+
+**STOP: skill descriptions, trigger hints, and plugin prompts MUST be written in English only.**
+
+Skills and plugin prompts are injected into the system prompt of a multilingual AI agent.
+The model's vocabulary and semantic matching operate on English.
+Adding text in any other language (Russian, German, French, etc.) pollutes the index,
+wastes tokens, and breaks semantic search for other language users.
+
+Rules:
+- `description:` frontmatter in all `.md` skill files — English only.
+- `default_prompt` / `custom_prompt` in `meta.yaml` plugin manifests — English only.
+- `GetHelpText()` tool help bodies — English only.
+- Trigger examples in skill bodies (`Run when the user asks...`) — English only.
+- Do NOT add locale-specific keywords, phrases, or examples to any of the above.
+
+The model handles multilingual input natively.
+The system prompt is the contract layer — keep it language-neutral (English).
 
 ## Modern C# Language Usage
 

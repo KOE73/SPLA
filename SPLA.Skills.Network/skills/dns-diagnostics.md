@@ -1,9 +1,16 @@
 ---
 id: network.dns-diagnostics
-description: DNS troubleshooting — resolution, record types, propagation check across public resolvers.
+description: DNS troubleshooting — resolution, record types, propagation check across public resolvers. Trigger on: DNS not resolving, check DNS records, propagation check, domain lookup issue.
 ---
 
 # DNS Diagnostics
+
+## Tool availability
+
+Before starting, call `agent.info` with each tool name you intend to use to confirm it is registered.
+Prefer `network.*` plugin tools when available — they return structured data and handle errors cleanly.
+If a specific `network.*` tool is absent, fall back to `RunCommandTool` (cmd/shell: nslookup, dig) to accomplish the same step.
+Adapt the execution sequence below based on what is actually available.
 
 Run when the user asks to:
 - "check DNS", "get DNS records", "where does the domain point", "проверь DNS", "какой IP у домена"

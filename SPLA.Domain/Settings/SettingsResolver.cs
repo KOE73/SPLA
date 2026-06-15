@@ -60,6 +60,9 @@ public class ResolvedSettings
     // Plugins
     public Dictionary<string, SplaPluginSection> Plugins { get; set; } = new();
 
+    // Skills
+    public Dictionary<string, SplaSkillSection> Skills { get; set; } = new();
+
     /// <summary>
     /// Converts to LLMSettings for backward compatibility with LLM client.
     /// </summary>
@@ -156,11 +159,13 @@ public static class SettingsResolver
             }
             if (project.Plugins != null)
             {
-                // Simple override for now (no deep merge required at this layer unless defaults start having plugins)
                 foreach (var kvp in project.Plugins)
-                {
                     r.Plugins[kvp.Key] = kvp.Value;
-                }
+            }
+            if (project.Skills != null)
+            {
+                foreach (var kvp in project.Skills)
+                    r.Skills[kvp.Key] = kvp.Value;
             }
         }
 

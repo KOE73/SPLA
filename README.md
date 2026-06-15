@@ -76,6 +76,12 @@ SPLA uses 5 agent modes:
 
 Plugins are located next to the published application in the `plugins/` directory. Each plugin has its own `meta.yaml` and can add tools, prompt instructions, and, when needed, Avalonia UI panels. Tool naming rules and plugin metadata are described in [plugins.md](agents/plugins.md).
 
+## Responsible Use
+
+SPLA network tools are intended for research, diagnostics, inventory, and the normal work of network administrators on systems and networks they own, operate, or are explicitly authorized to assess.
+
+Do not use SPLA for unauthorized scanning, probing, access attempts, disruption, or any activity against third-party networks without permission.
+
 ## License
 
 This project is licensed under the [MIT License](LICENSE).

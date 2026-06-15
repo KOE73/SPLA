@@ -20,23 +20,27 @@
     <File Path="agents/tool-help.md" />
     <File Path="agents/ui-theming.md" />
   </Folder>
+  <Folder Name="/plugins/" />
+  <Folder Name="/plugins/network/" />
+  <Folder Name="/skills/network/">
+    <File Path="SPLA.Skills.Network\host-audit.md" />
+    <File Path="SPLA.Skills.Network\lan-discovery.md" />
+    <File Path="SPLA.Skills.Network\network-range-audit.md" />
+    <File Path="SPLA.Skills.Network\dns-diagnostics.md" />
+    <File Path="SPLA.Skills.Network\ssl-audit.md" />
+    <File Path="SPLA.Skills.Network\smtp-probe.md" />
+  </Folder>
   <Project Path="SPLA.CLI/SPLA.CLI.csproj" />
   <Project Path="SPLA.Domain/SPLA.Domain.csproj" />
   <Project Path="SPLA.LLM.LMStudio/SPLA.LLM.LMStudio.csproj" />
   <Project Path="SPLA.MCP.BasicTools/SPLA.MCP.BasicTools.csproj" />
   <Project Path="SPLA.MCP.Core/SPLA.MCP.Core.csproj" />
   <Project Path="SPLA.Observability/SPLA.Observability.csproj" />
-  <Project Path="SPLA.Plugins.Network/SPLA.Plugins.Network.csproj" />
-  <Folder Name="/plugins/network/skills/">
-    <File Path="SPLA.Plugins.Network.Skills\host-audit.md" />
-    <File Path="SPLA.Plugins.Network.Skills\lan-discovery.md" />
-    <File Path="SPLA.Plugins.Network.Skills\dns-diagnostics.md" />
-    <File Path="SPLA.Plugins.Network.Skills\ssl-audit.md" />
-    <File Path="SPLA.Plugins.Network.Skills\smtp-probe.md" />
-  </Folder>
   <Project Path="SPLA.Plugins.Host.Avalonia/SPLA.Plugins.Host.Avalonia.csproj" />
-  <Project Path="SPLA.Plugins.OneC/SPLA.Plugins.OneC.csproj" />
+  <Project Path="SPLA.Plugins.Network/SPLA.Plugins.Network.csproj" />
+  <Project Path="SPLA.Skills.Network/SPLA.Skills.Network.csproj" />
   <Project Path="SPLA.Plugins.OneC.Avalonia/SPLA.Plugins.OneC.Avalonia.csproj" />
-  <Project Path="SPLA.UI.Avalonia/SPLA.UI.Avalonia.csproj" />
+  <Project Path="SPLA.Plugins.OneC/SPLA.Plugins.OneC.csproj" />
   <Project Path="SPLA.Tests/SPLA.Tests.csproj" />
+  <Project Path="SPLA.UI.Avalonia/SPLA.UI.Avalonia.csproj" />
 </Solution>

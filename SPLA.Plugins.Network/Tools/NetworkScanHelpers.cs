@@ -134,9 +134,7 @@ internal static class NetworkScanHelpers
         var network = baseValue & mask;
         var broadcast = network | ~mask;
 
-        var first = prefix >= 31 ? network : network + 1;
-        var last = prefix >= 31 ? broadcast : broadcast - 1;
-        return BuildRange(first, last, maxHosts);
+        return BuildRange(network, broadcast, maxHosts);
     }
 
     private static IReadOnlyList<IPAddress> BuildRange(uint first, uint last, int maxHosts)

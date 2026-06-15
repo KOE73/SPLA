@@ -41,7 +41,7 @@ public class McpHost
             }
         }
 
-        RegisterTool(new ToolHelpTool(this));
+        // agent.info is registered externally (requires SkillManager which McpHost doesn't own)
     }
 
     public void RegisterTool(IMcpTool tool)
@@ -171,9 +171,9 @@ public class McpHost
 
             try
             {
-                if (tool is ToolHelpTool helpTool)
+                if (tool is AgentInfoTool agentInfoTool)
                 {
-                    var helpResult = await helpTool.ExecuteAsync(mode, argumentsJson, cancellationToken);
+                    var helpResult = await agentInfoTool.ExecuteAsync(mode, argumentsJson, cancellationToken);
                     RecordToolSuccess(name, started, helpResult.Length);
                     return helpResult;
                 }

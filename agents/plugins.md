@@ -58,7 +58,7 @@ public sealed class MyTool : IMcpTool, IToolHelpProvider
 }
 ```
 
-SPLA registers one system meta-tool, `tool.help`, which routes by active tool name through `McpHost`.
+SPLA registers one system meta-tool, `agent.info`, which routes by active tool name through `McpHost`.
 
 When a tool implements `IToolHelpProvider`, `McpHost` automatically prefixes its model-facing description with `[H]`. Do not write this flag manually in tool descriptions.
 
@@ -66,10 +66,10 @@ See [Tool Help System](tool-help.md) for the full flow and examples.
 
 Rules:
 
-- `tool.help` only returns help for tools currently registered in the host.
-- Disabled plugins or disabled plugin tools are not visible through `tool.help`.
-- Tools unavailable in the current agent mode are not exposed through `tool.help`.
-- If the name is partial or inexact, `tool.help` returns suggestions from visible tools.
+- `agent.info` only returns help for tools currently registered in the host.
+- Disabled plugins or disabled plugin tools are not visible through `agent.info`.
+- Tools unavailable in the current agent mode are not exposed through `agent.info`.
+- If the name is partial or inexact, `agent.info` returns suggestions from visible tools.
 - Do not move detailed usage formats into `description`; keep them in `GetHelpText()`.
 
 ## Project Settings Integration (`.spla`)
@@ -83,3 +83,52 @@ plugins:
     tools:
       test.sys.ping: false # Disables just this specific tool
 ```
+
+## Skills
+
+Skills are instruction documents (`.md` files), not compiled code. They live in `SPLA.Skills.<PluginId>/`, separate from the plugin project.
+
+### Naming convention
+
+`[plugin-id].[skill-name]` — set in the frontmatter `id:` field, not derived from the filename.
+
+Examples: `network.range-audit`, `network.host-audit`, `onec.object-explain`.
+
+### File structure
+
+```
+SPLA.Skills.Network/
+  SPLA.Skills.Network.csproj   ← Microsoft.Build.NoTargets, CopySkills target
+  network-range-audit.md
+  host-audit.md
+  ...
+```
+
+### Skill `.md` frontmatter
+
+```markdown
+---
+id: network.range-audit
+description: One-line description shown in the system prompt index.
+---
+```
+
+### Runtime
+
+- `SkillManager` scans `plugins/*/skills/*.md` at startup — no plugin dependency.
+- `skill.load` MCP tool returns the skill body on demand; model calls it when the request matches.
+- `IsEnabled` / `IsPreloaded` flags are persisted in `.spla` under `skills:`.
+
+```yaml
+skills:
+  network.range-audit:
+    enabled: true
+    preloaded: false   # true = inject full body into system prompt immediately
+```
+
+### Adding a new skill project
+
+1. Create `SPLA.Skills.<Name>/` directory.
+2. Add `SPLA.Skills.<Name>.csproj` using `Microsoft.Build.NoTargets` SDK with a `CopySkills` target that copies `*.md` to the correct `plugins/<id>/skills/` subfolder in UI and CLI output.
+3. Add the project to `SPLA.slnx`.
+4. Add an `xcopy` line for it in `PublishAll.cmd`.

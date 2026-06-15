@@ -1,147 +1,158 @@
 using CommunityToolkit.Mvvm.ComponentModel;
-using SPLA.Domain.Models;
+using CommunityToolkit.Mvvm.Input;
 using SPLA.MCP.Core.Plugins;
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
-using System.IO;
 using System.Linq;
 
 namespace SPLA.UI.Avalonia.ViewModels.Sidebar;
 
 public partial class SidebarPanelViewModel : ObservableObject
 {
-    public ObservableCollection<SidebarNodeViewModel> Nodes { get; } = [];
+    // Full unfiltered tree — source of truth
+    private readonly ObservableCollection<SidebarNodeViewModel> _nodes = [];
 
-    private readonly Dictionary<string, SidebarNodeViewModel> _toolNodes = new(StringComparer.OrdinalIgnoreCase);
-    private readonly List<SidebarNodeViewModel> _skillNodes = [];
+    // Filtered tree — bound by the TreeView
+    public ObservableCollection<SidebarNodeViewModel> FilteredNodes { get; } = [];
 
-    public void Build(IReadOnlyList<PluginDescriptor> plugins, IEnumerable<ToolDefinition> allTools, string pluginsDir)
+    private readonly Dictionary<string, SidebarNodeViewModel> _toolNodes   = new(StringComparer.OrdinalIgnoreCase);
+    private readonly Dictionary<string, SidebarNodeViewModel> _skillNodes  = new(StringComparer.OrdinalIgnoreCase);
+
+    [ObservableProperty]
+    private string _filterText = "";
+
+    partial void OnFilterTextChanged(string value) => ApplyFilter();
+
+    // ── Build ────────────────────────────────────────────────────────────────
+
+    public void Build(IReadOnlyList<CapabilityItem> items)
     {
-        Nodes.Clear();
+        _nodes.Clear();
         _toolNodes.Clear();
         _skillNodes.Clear();
 
-        var toolList = allTools.ToList();
-        var pluginIds = new HashSet<string>(plugins.Select(p => p.Meta.Id), StringComparer.OrdinalIgnoreCase);
+        var pluginIds = new HashSet<string>(
+            items.Where(i => i.Kind == CapabilityKind.Plugin).Select(i => i.Id),
+            StringComparer.OrdinalIgnoreCase);
 
-        var toolGroups = toolList
-            .GroupBy(t => t.Function.Name.Split('.')[0], StringComparer.OrdinalIgnoreCase)
-            .ToDictionary(g => g.Key, g => g.ToList(), StringComparer.OrdinalIgnoreCase);
+        // Plugin nodes (items that belong to a known plugin)
+        var byPlugin = items
+            .Where(i => i.Kind != CapabilityKind.Plugin && i.PluginId != null && pluginIds.Contains(i.PluginId))
+            .GroupBy(i => i.PluginId!, StringComparer.OrdinalIgnoreCase);
 
-        // Built-in groups (not managed by any loaded plugin)
-        foreach (var groupKey in toolGroups.Keys.Where(k => !pluginIds.Contains(k)).OrderBy(k => k))
-        {
-            var groupNode = new SidebarNodeViewModel
-            {
-                Kind = SidebarNodeKind.Plugin,
-                Id = groupKey,
-                Label = groupKey,
-            };
-            AddToolChildren(groupNode, toolGroups[groupKey], groupKey);
-            Nodes.Add(groupNode);
-        }
-
-        // Plugin nodes with their tools and skills
-        foreach (var plugin in plugins)
+        foreach (var plugin in items.Where(i => i.Kind == CapabilityKind.Plugin).OrderBy(i => i.Id))
         {
             var pluginNode = new SidebarNodeViewModel
             {
                 Kind = SidebarNodeKind.Plugin,
-                Id = plugin.Meta.Id,
-                Label = plugin.Meta.Id,
-                IsEnabled = plugin.IsEffectivelyEnabled
+                Id = plugin.Id,
+                Label = plugin.Id,
+                IsEnabled = plugin.IsEnabled
             };
 
-            if (toolGroups.TryGetValue(plugin.Meta.Id, out var pluginTools))
-            {
-                AddToolChildren(pluginNode, pluginTools, plugin.Meta.Id);
-            }
+            var children = byPlugin.FirstOrDefault(g => g.Key.Equals(plugin.Id, StringComparison.OrdinalIgnoreCase));
+            if (children != null)
+                PopulateChildren(pluginNode, children.ToList(), plugin.Id);
 
-            var skillsDir = Path.Combine(pluginsDir, plugin.Meta.Id, "skills");
-            if (Directory.Exists(skillsDir))
-            {
-                foreach (var skillFile in Directory.GetFiles(skillsDir, "*.md").OrderBy(f => f))
-                {
-                    var (id, description) = ParseSkillFrontmatter(skillFile);
-                    var label = id.StartsWith(plugin.Meta.Id + ".", StringComparison.OrdinalIgnoreCase)
-                        ? id[(plugin.Meta.Id.Length + 1)..]
-                        : id;
-                    var skillNode = new SidebarNodeViewModel
-                    {
-                        Kind = SidebarNodeKind.Skill,
-                        Id = id,
-                        Label = label,
-                        Description = description,
-                        FilePath = skillFile
-                    };
-                    _skillNodes.Add(skillNode);
-                    pluginNode.Children.Add(skillNode);
-                }
-            }
-
-            Nodes.Add(pluginNode);
+            _nodes.Add(pluginNode);
         }
-    }
 
-    // Groups tool children under sub-nodes when their labels contain a dot (second-level namespace).
-    private void AddToolChildren(SidebarNodeViewModel parent, List<ToolDefinition> tools, string prefix)
-    {
-        var labeledTools = tools
-            .Select(t => (tool: t, label: GetLabel(t.Function.Name, prefix)))
-            .OrderBy(x => x.label)
+        // Built-in node — all tools/skills without a plugin parent
+        var builtins = items
+            .Where(i => i.Kind != CapabilityKind.Plugin && (i.PluginId == null || !pluginIds.Contains(i.PluginId)))
             .ToList();
 
-        // Check if any label has a sub-prefix (contains a dot)
-        var grouped = labeledTools
-            .GroupBy(x =>
+        if (builtins.Count > 0)
+        {
+            var builtinNode = new SidebarNodeViewModel
             {
-                var dot = x.label.IndexOf('.');
-                return dot > 0 ? x.label[..dot] : "";
-            })
+                Kind = SidebarNodeKind.Plugin,
+                Id = "__builtin__",
+                Label = "built-in",
+                IsExpanded = false
+            };
+            PopulateChildren(builtinNode, builtins, prefix: null);
+            _nodes.Add(builtinNode);
+        }
+
+        ApplyFilter();
+    }
+
+    private void PopulateChildren(SidebarNodeViewModel parent, List<CapabilityItem> items, string? prefix)
+    {
+        // Skills go directly under plugin node (no sub-grouping)
+        foreach (var skill in items.Where(i => i.Kind == CapabilityKind.Skill).OrderBy(i => i.Label))
+        {
+            var label = prefix != null && skill.Id.StartsWith(prefix + ".", StringComparison.OrdinalIgnoreCase)
+                ? skill.Id[(prefix.Length + 1)..]
+                : skill.Id;
+
+            var node = new SidebarNodeViewModel
+            {
+                Kind = SidebarNodeKind.Skill,
+                Id = skill.Id,
+                Label = label,
+                Description = skill.Description,
+                IsEnabled = skill.IsEnabled,
+                IsPreloaded = skill.IsPreloaded,
+                Source = skill
+            };
+            _skillNodes[skill.Id] = node;
+            parent.Children.Add(node);
+        }
+
+        // Tools: group by second-level prefix
+        var tools = items.Where(i => i.Kind == CapabilityKind.Tool).OrderBy(i => i.Id).ToList();
+        if (tools.Count == 0) return;
+
+        // Determine the effective prefix for label stripping
+        var labelPrefix = prefix ?? string.Empty;
+
+        var groups = tools
+            .Select(t => (item: t, label: StripPrefix(t.Id, labelPrefix)))
+            .GroupBy(x => { var dot = x.label.IndexOf('.'); return dot > 0 ? x.label[..dot] : ""; })
             .OrderBy(g => g.Key)
             .ToList();
 
-        bool hasSubGroups = grouped.Any(g => !string.IsNullOrEmpty(g.Key));
+        bool hasSubGroups = groups.Any(g => !string.IsNullOrEmpty(g.Key));
 
         if (!hasSubGroups)
         {
-            // Flat list — no sub-prefixes
-            foreach (var (tool, label) in labeledTools)
+            foreach (var (item, label) in groups.SelectMany(g => g))
             {
-                var node = MakeToolNode(tool, label);
-                _toolNodes[tool.Function.Name] = node;
+                var node = MakeToolNode(item, label);
+                _toolNodes[item.Id] = node;
                 parent.Children.Add(node);
             }
             return;
         }
 
-        foreach (var group in grouped)
+        foreach (var group in groups)
         {
             if (string.IsNullOrEmpty(group.Key))
             {
-                // Tools without a sub-prefix land directly on the parent
-                foreach (var (tool, label) in group)
+                foreach (var (item, label) in group)
                 {
-                    var node = MakeToolNode(tool, label);
-                    _toolNodes[tool.Function.Name] = node;
+                    var node = MakeToolNode(item, label);
+                    _toolNodes[item.Id] = node;
                     parent.Children.Add(node);
                 }
             }
             else
             {
-                // Create a sub-node for this prefix group
+                var subId = string.IsNullOrEmpty(labelPrefix) ? group.Key : $"{labelPrefix}.{group.Key}";
                 var subNode = new SidebarNodeViewModel
                 {
                     Kind = SidebarNodeKind.Plugin,
-                    Id = $"{prefix}.{group.Key}",
-                    Label = group.Key,
+                    Id = subId,
+                    Label = group.Key
                 };
-                foreach (var (tool, fullLabel) in group)
+                foreach (var (item, fullLabel) in group)
                 {
-                    var leafLabel = GetLabel(tool.Function.Name, $"{prefix}.{group.Key}");
-                    var node = MakeToolNode(tool, leafLabel);
-                    _toolNodes[tool.Function.Name] = node;
+                    var leafLabel = StripPrefix(item.Id, subId);
+                    var node = MakeToolNode(item, leafLabel);
+                    _toolNodes[item.Id] = node;
                     subNode.Children.Add(node);
                 }
                 parent.Children.Add(subNode);
@@ -149,65 +160,114 @@ public partial class SidebarPanelViewModel : ObservableObject
         }
     }
 
-    private static string GetLabel(string toolName, string prefix)
+    private static string StripPrefix(string id, string prefix)
     {
+        if (string.IsNullOrEmpty(prefix)) return id;
         var stripped = prefix + ".";
-        return toolName.StartsWith(stripped, StringComparison.OrdinalIgnoreCase) && toolName.Length > stripped.Length
-            ? toolName[stripped.Length..]
-            : toolName;
+        return id.StartsWith(stripped, StringComparison.OrdinalIgnoreCase) && id.Length > stripped.Length
+            ? id[stripped.Length..]
+            : id;
     }
 
-    private static SidebarNodeViewModel MakeToolNode(ToolDefinition tool, string label) =>
-        new()
+    private static SidebarNodeViewModel MakeToolNode(CapabilityItem item, string label) => new()
+    {
+        Kind = SidebarNodeKind.Tool,
+        Id = item.Id,
+        Label = label,
+        Description = item.Description
+    };
+
+    // ── Filter ───────────────────────────────────────────────────────────────
+
+    private void ApplyFilter()
+    {
+        FilteredNodes.Clear();
+
+        if (string.IsNullOrWhiteSpace(FilterText))
         {
-            Kind = SidebarNodeKind.Tool,
-            Id = tool.Function.Name,
-            Label = label,
-            Description = tool.Function.Description
+            foreach (var n in _nodes) FilteredNodes.Add(n);
+            return;
+        }
+
+        foreach (var node in _nodes)
+        {
+            var filtered = FilterNode(node, FilterText);
+            if (filtered != null) FilteredNodes.Add(filtered);
+        }
+    }
+
+    private static SidebarNodeViewModel? FilterNode(SidebarNodeViewModel node, string filter)
+    {
+        bool selfMatch = node.Label.Contains(filter, StringComparison.OrdinalIgnoreCase);
+
+        if (!node.HasChildren)
+            return selfMatch ? node : null;
+
+        var matchingChildren = node.Children
+            .Select(c => FilterNode(c, filter))
+            .OfType<SidebarNodeViewModel>()
+            .ToList();
+
+        if (!selfMatch && matchingChildren.Count == 0)
+            return null;
+
+        // Build a view node with filtered children
+        var viewNode = new SidebarNodeViewModel
+        {
+            Kind = node.Kind,
+            Id = node.Id,
+            Label = node.Label,
+            Description = node.Description,
+            IsEnabled = node.IsEnabled,
+            IsPreloaded = node.IsPreloaded,
+            IsExpanded = true, // auto-expand matched parents
+            Source = node.Source
         };
+
+        var childSource = selfMatch ? node.Children.AsEnumerable() : matchingChildren;
+        foreach (var child in childSource)
+            viewNode.Children.Add(child);
+
+        return viewNode;
+    }
+
+    // ── Expand / Collapse ────────────────────────────────────────────────────
+
+    [RelayCommand]
+    private void ExpandAll() => SetExpanded(_nodes, true);
+
+    [RelayCommand]
+    private void CollapseAll() => SetExpanded(_nodes, false);
+
+    private static void SetExpanded(IEnumerable<SidebarNodeViewModel> nodes, bool expanded)
+    {
+        foreach (var node in nodes)
+        {
+            node.IsExpanded = expanded;
+            SetExpanded(node.Children, expanded);
+        }
+    }
+
+    // ── State accessors ──────────────────────────────────────────────────────
 
     public bool IsToolEnabled(string toolName)
         => !_toolNodes.TryGetValue(toolName, out var node) || node.IsEnabled;
 
-    public IEnumerable<(string id, string content)> GetEnabledSkillContents()
+    public void SetSkillEnabled(string id, bool enabled)
     {
-        foreach (var skill in _skillNodes.Where(s => s.IsEnabled && s.FilePath != null))
+        if (_skillNodes.TryGetValue(id, out var node))
         {
-            string raw;
-            try { raw = File.ReadAllText(skill.FilePath!); }
-            catch { continue; }
-            yield return (skill.Id, StripFrontmatter(raw));
+            node.IsEnabled = enabled;
+            if (node.Source != null) node.Source.IsEnabled = enabled;
         }
     }
 
-    private static (string id, string description) ParseSkillFrontmatter(string filePath)
+    public void SetSkillPreloaded(string id, bool preloaded)
     {
-        var id = Path.GetFileNameWithoutExtension(filePath);
-        var description = "";
-        try
+        if (_skillNodes.TryGetValue(id, out var node))
         {
-            var text = File.ReadAllText(filePath);
-            if (!text.StartsWith("---", StringComparison.Ordinal)) return (id, description);
-            var end = text.IndexOf("---", 3, StringComparison.Ordinal);
-            if (end < 0) return (id, description);
-
-            foreach (var line in text[3..end].Split('\n'))
-            {
-                var t = line.Trim();
-                if (t.StartsWith("id:", StringComparison.OrdinalIgnoreCase))
-                    id = t[3..].Trim();
-                else if (t.StartsWith("description:", StringComparison.OrdinalIgnoreCase))
-                    description = t[12..].Trim();
-            }
+            node.IsPreloaded = preloaded;
+            if (node.Source != null) node.Source.IsPreloaded = preloaded;
         }
-        catch { }
-        return (id, description);
-    }
-
-    private static string StripFrontmatter(string content)
-    {
-        if (!content.StartsWith("---", StringComparison.Ordinal)) return content;
-        var end = content.IndexOf("---", 3, StringComparison.Ordinal);
-        return end < 0 ? content : content[(end + 3)..].TrimStart('\n', '\r');
     }
 }

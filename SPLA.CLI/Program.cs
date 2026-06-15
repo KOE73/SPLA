@@ -66,6 +66,12 @@ var pluginManager = new SPLA.MCP.Core.Plugins.PluginManager(settings, loggerFact
 var pluginsDir = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "plugins");
 pluginManager.LoadPlugins(pluginsDir);
 
+var skillManager = new SPLA.MCP.Core.Plugins.SkillManager(loggerFactory.CreateLogger<SPLA.MCP.Core.Plugins.SkillManager>());
+skillManager.LoadSkills(pluginsDir);
+skillManager.ApplySettings(settings.Skills.ToDictionary(
+    kvp => kvp.Key,
+    kvp => (kvp.Value.Enabled ?? true, kvp.Value.Preloaded ?? false)));
+
 var mcpHost = new McpHost(
     new SPLA.MCP.Core.Permissions.PermissionManager(),
     pluginManager,
@@ -91,6 +97,7 @@ mcpHost.RegisterTool(new FsDeleteTool());
 mcpHost.RegisterTool(new RunCommandTool());
 mcpHost.RegisterTool(new GetContextTool());
 mcpHost.RegisterTool(new SPLA.MCP.BasicTools.Network.WebFetchTool());
+mcpHost.RegisterTool(new SPLA.MCP.Core.Tools.AgentInfoTool(mcpHost, skillManager));
 
 var tools = mcpHost.GetToolDefinitions().ToList();
 Console.WriteLine($"Tools registered: {tools.Count}");
@@ -146,7 +153,7 @@ else
 
 // --- Build system prompt ---
 var currentDir = Directory.GetCurrentDirectory();
-var systemPrompt = $"You are a helpful local AI assistant named SPLA. You have access to tools to interact with the file system and run commands. Your current working directory is: {currentDir}\n\nTool descriptions are intentionally short. Tool flag: [H] = extended help available. If a [H] tool's details are unclear, call tool.help before using it. Do not guess complex argument formats.";
+var systemPrompt = $"You are a helpful local AI assistant named SPLA. You have access to tools to interact with the file system and run commands. Your current working directory is: {currentDir}\n\nTool descriptions are intentionally short. Tool flag: [H] = extended help available. If a [H] tool's details are unclear, call agent.info with the tool name before using it. Do not guess complex argument formats.";
 
 // Inject instruction files
 foreach (var instrPath in settings.Instructions)
@@ -156,6 +163,31 @@ foreach (var instrPath in settings.Instructions)
     {
         var content = File.ReadAllText(fullPath);
         systemPrompt += $"\n\n--- Instructions from {instrPath} ---\n{content}";
+    }
+}
+
+// Inject skill index BEFORE plugin prompts so the rule takes precedence
+var enabledSkills = skillManager.GetEnabled().ToList();
+if (enabledSkills.Count > 0)
+{
+    systemPrompt += "\n\n--- Skills ---";
+    systemPrompt += "\nRULE: When the user's request matches a skill listed below, you MUST call agent.info FIRST — before calling any other tool or executing any step.";
+    systemPrompt += "\nThis rule overrides any plugin instruction that says to 'start immediately'.";
+    systemPrompt += "\nSkill descriptions are in English. The user may write in any language — translate the intent to English and match semantically.";
+    systemPrompt += "\n";
+    systemPrompt += "\nHow to load a skill — call agent.info with {\"id\": \"<skill-id>\"}";
+    systemPrompt += "\nExample: call agent.info with {\"id\": \"network.range-audit\"}";
+    systemPrompt += "\nagent.info works for both tool help AND skill instructions — use it for any capability lookup.";
+    systemPrompt += "\n\nAvailable skills:";
+    foreach (var skill in enabledSkills)
+    {
+        systemPrompt += $"\n  {skill.Id} — {skill.Description}";
+        if (skill.IsPreloaded)
+        {
+            var body = skillManager.LoadBody(skill.Id);
+            if (!string.IsNullOrEmpty(body))
+                systemPrompt += $"\n\n--- Skill: {skill.Id} (preloaded) ---\n{body}";
+        }
     }
 }
 
@@ -197,6 +229,26 @@ while (true)
     if (input.StartsWith("/compact"))
     {
         Console.WriteLine("Use UI to trigger /compact compression for now.");
+        continue;
+    }
+
+    if (input.Equals("/skills", StringComparison.OrdinalIgnoreCase))
+    {
+        var all = skillManager.GetAll();
+        if (all.Count == 0) { Console.WriteLine("No skills available."); }
+        else foreach (var s in all)
+            Console.WriteLine($"  [{(s.IsEnabled ? "on " : "off")}] {s.Id} — {s.Description}");
+        continue;
+    }
+
+    if (input.StartsWith("/skills load ", StringComparison.OrdinalIgnoreCase))
+    {
+        var id = input["/skills load ".Length..].Trim();
+        var body = skillManager.LoadBody(id);
+        if (body == null) { Console.WriteLine($"Skill '{id}' not found."); continue; }
+        messages.Add(new ChatMessage { Role = ChatRole.User, Content = $"[Skill loaded: {id}]\n\n{body}" });
+        Console.WriteLine($"Skill '{id}' loaded into context.");
+        SaveCliChat(chatManager, currentChat, messages);
         continue;
     }
 

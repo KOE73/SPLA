@@ -1,9 +1,16 @@
 ---
 id: network.smtp-probe
-description: Mail server diagnostic — SMTP EHLO handshake, STARTTLS, AUTH methods, relay check.
+description: Mail server diagnostic — SMTP EHLO handshake, STARTTLS, AUTH methods, relay check. Trigger on: check mail server, SMTP probe, email not working, test relay, MX check.
 ---
 
 # SMTP Probe
+
+## Tool availability
+
+Before starting, call `agent.info` with each tool name you intend to use to confirm it is registered.
+Prefer `network.*` plugin tools when available — they return structured data and handle errors cleanly.
+If a specific `network.*` tool is absent, fall back to `RunCommandTool` (cmd/shell: telnet, openssl s_client) to accomplish the same step.
+Adapt the execution sequence below based on what is actually available.
 
 Run when the user asks to "check mail", "check SMTP", "test email delivery", "проверь почту", "SMTP не работает".
 

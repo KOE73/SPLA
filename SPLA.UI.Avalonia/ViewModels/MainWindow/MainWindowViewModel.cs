@@ -124,6 +124,8 @@ public partial class MainWindowViewModel : ViewModelBase
         private readonly McpHost _mcpHost;
         private readonly PermissionManager _permissionManager;
         private readonly SPLA.MCP.Core.Plugins.PluginManager _pluginManager;
+        private readonly SPLA.MCP.Core.Plugins.SkillManager _skillManager;
+        private readonly SPLA.MCP.Core.Plugins.CapabilityRegistry _capabilityRegistry;
         private readonly HttpClient _httpClient;
         private readonly List<ToolDefinition> _tools;
         private ChatManager? _chatManager;
@@ -146,6 +148,14 @@ public partial class MainWindowViewModel : ViewModelBase
                 App.Services.GetRequiredService<ILogger<SPLA.MCP.Core.Plugins.PluginManager>>());
             var pluginsDir = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "plugins");
             _pluginManager.LoadPlugins(pluginsDir);
+
+            _skillManager = new SPLA.MCP.Core.Plugins.SkillManager(
+                App.Services.GetRequiredService<ILogger<SPLA.MCP.Core.Plugins.SkillManager>>());
+            _skillManager.LoadSkills(pluginsDir);
+            _skillManager.ApplySettings(App.ResolvedSettings.Skills.ToDictionary(
+                kvp => kvp.Key,
+                kvp => (kvp.Value.Enabled ?? true, kvp.Value.Preloaded ?? false)));
+
             var avaloniaPluginLoader = App.Services.GetRequiredService<IAvaloniaPluginLoader>();
             avaloniaPluginLoader.LoadPanels(_pluginManager.GetPlugins());
     
@@ -170,6 +180,7 @@ public partial class MainWindowViewModel : ViewModelBase
             _mcpHost.RegisterTool(new GetCurrentDateTimeTool());
             _mcpHost.RegisterTool(new SPLA.MCP.BasicTools.Network.WebFetchTool());
             _mcpHost.RegisterTool(new SPLA.MCP.BasicTools.Network.WebSearchTool());
+            _mcpHost.RegisterTool(new SPLA.MCP.Core.Tools.AgentInfoTool(_mcpHost, _skillManager));
             _mcpHost.RegisterTool(new PluginCommandRunTool(
                 _pluginManager.GetUiCommands(),
                 App.Services.GetRequiredService<IPluginPanelHostService>(),
@@ -181,7 +192,11 @@ public partial class MainWindowViewModel : ViewModelBase
             
             _tools = _mcpHost.GetToolDefinitions().ToList();
             logger.LogInformation("MCP host initialized. ToolCount={ToolCount}", _tools.Count);
-            Sidebar.Build(_pluginManager.GetPlugins(), _tools, pluginsDir);
+
+            _capabilityRegistry = new SPLA.MCP.Core.Plugins.CapabilityRegistry();
+            _capabilityRegistry.Build(_pluginManager.GetPlugins(), _tools, _skillManager.GetAll());
+
+            Sidebar.Build(_capabilityRegistry.Items);
             LoadPluginUiCommands();
     
             _ = InitializeAsync();

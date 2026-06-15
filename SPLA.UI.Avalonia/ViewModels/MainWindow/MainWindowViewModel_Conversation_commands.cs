@@ -46,6 +46,35 @@ public partial class MainWindowViewModel : ViewModelBase
             return;
         }
 
+        if (userText.Trim().Equals("/skills", StringComparison.OrdinalIgnoreCase))
+        {
+            var all = _skillManager.GetAll();
+            var lines = all.Count == 0
+                ? "No skills available."
+                : string.Join("\n", all.Select(s => $"  [{(s.IsEnabled ? "on " : "off")}] {s.Id} — {s.Description}"));
+            Messages.Add(new SystemMessageViewModel($"**Skills:**\n{lines}"));
+            IsBusy = false;
+            return;
+        }
+
+        if (userText.TrimStart().StartsWith("/skills load ", StringComparison.OrdinalIgnoreCase))
+        {
+            var id = userText.TrimStart()["/skills load ".Length..].Trim();
+            var body = _skillManager.LoadBody(id);
+            if (body == null)
+            {
+                Messages.Add(new SystemMessageViewModel($"Skill '{id}' not found."));
+            }
+            else
+            {
+                Messages.Add(new UserMessageViewModel($"[Skill loaded: {id}]\n\n{body}"));
+                SaveCurrentChat();
+                Messages.Add(new SystemMessageViewModel($"Skill '{id}' loaded into context."));
+            }
+            IsBusy = false;
+            return;
+        }
+
         Messages.Add(new UserMessageViewModel(userText));
         SaveCurrentChat();
 

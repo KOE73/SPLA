@@ -1,49 +1,52 @@
-# Tool Help System
+# agent.info — Capability Lookup
 
-SPLA keeps tool descriptions short and moves detailed usage documentation into an on-demand help channel.
+`agent.info` is the single meta-tool for looking up any agent capability: tools, skills, or a full index.
+It replaces the former `tool.help` + `skill.load` pair.
 
-## Goal
-
-The model should see enough information to choose a tool, but not every rare argument format, limit, and edge case upfront.
-
-```text
-tool schema = short model-facing selection metadata
-tool help   = detailed usage documentation requested only when needed
-```
-
-## Core Rule
-
-Tools with extended documentation are marked with the `[H]` flag in their description.
+## Concept
 
 ```text
-[H] = extended help available
+agent.info {"id": "network.scan.ports"}   → tool schema + help text
+agent.info {"id": "network.range-audit"}  → full skill instruction body
+agent.info {}                             → full index: all tools + all skills
+agent.info {"id": "scan"}                 → partial match: suggestions from tools + skills
 ```
 
-If a `[H]` tool's argument formats, limits, ranges, or advanced behavior are unclear, the model should call `tool.help` before invoking the tool.
+The tool resolves by kind automatically. No need to know in advance whether the id is a tool or a skill.
 
-The model must not guess complex argument formats.
+## When to use
+
+- Tool flag `[H]` in a description means extended help is available. Call `agent.info {"id": "<tool-name>"}` before using it if the argument formats are unclear.
+- When the user's request matches a skill in the `--- Skills ---` index, call `agent.info {"id": "<skill-id>"}` to load the full instructions.
+- Call `agent.info {}` to get the full capability index when orientation is needed.
+
+## `[H]` Flag
+
+Tools with extended documentation are marked with `[H]` in their model-facing description.
+
+```text
+[H] = extended help available via agent.info
+```
+
+`McpHost` adds this prefix automatically when a tool implements `IToolHelpProvider` and returns non-empty help text.
+Do NOT write `[H]` manually in tool descriptions.
 
 ## Runtime Flow
 
-1. A tool implements `IMcpTool`.
-2. If the tool has extended documentation, it also implements `IToolHelpProvider`.
-3. The plugin or system code registers the tool in `McpHost`.
-4. `McpHost` stores only active, enabled tools.
-5. When model-facing tool definitions are requested, `McpHost.GetToolDefinitions()` checks each registered tool.
-6. If a tool implements `IToolHelpProvider` and returns non-empty help text, `McpHost` prefixes its description with `[H]`.
-7. The model sees the short description plus `[H]`.
-8. If details are needed, the model calls `tool.help` with the target tool name.
-9. `tool.help` asks `McpHost` for help by name.
-10. `McpHost` returns help only for tools that are registered, enabled, and available in the current agent mode.
-11. If the tool name is partial or inexact, `McpHost` returns suggestions from visible tools.
-12. Disabled plugins, disabled tools, and tools denied by the current mode are not exposed through `tool.help`.
+1. Tool implements `IMcpTool`.
+2. For extended docs: also implements `IToolHelpProvider`.
+3. Registered in `McpHost`.
+4. Model sees short description + optional `[H]`.
+5. If needed, model calls `agent.info {"id": "tool-name"}`.
+6. `agent.info` checks skills first (exact id match), then falls through to tool registry.
+7. Returns full body (skill) or schema + help (tool).
+8. Partial id returns suggestions from both tools and skills.
+9. Empty id returns full index.
 
 ## Tool Contract
 
-Use `IToolHelpProvider` for tools with non-trivial formats, limits, or risk rules.
-
 ```csharp
-public sealed class PortScanTool : IMcpTool, IToolHelpProvider
+public sealed class MyTool : IMcpTool, IToolHelpProvider
 {
     public string Name => "network.scan.ports";
 
@@ -53,36 +56,22 @@ public sealed class PortScanTool : IMcpTool, IToolHelpProvider
         {
             Name = Name,
             Description = "Scans TCP ports on one host.",
-            Parameters = ...
+            // McpHost adds [H] automatically
         }
     };
 
     public string? GetHelpText() => """
         tool: network.scan.ports
 
-        summary: Scan TCP ports on one host. Use for a single host or IP, not for subnet scanning.
+        summary: Scan TCP ports on one host.
 
         arguments:
           host:
             required: true
-            formats:
-              - hostname
-              - ipv4_address
           ports:
             required: false
             default: common
-            formats:
-              - common
-              - single_port
-              - comma_list
-              - range
-            examples:
-              - 80
-              - 22,80,443
-              - 1-1024
-
-        risk:
-          all_ports: use only when explicitly requested by the user.
+            formats: [common, single_port, comma_list, range]
 
         examples:
           - request:
@@ -92,34 +81,19 @@ public sealed class PortScanTool : IMcpTool, IToolHelpProvider
 }
 ```
 
-Do not manually write `[H]` in the tool description. `McpHost` adds it automatically.
+## Responses
 
-## Model-Facing Example
-
-Registered tool:
-
-```text
-name: network.scan.ports
-description: Scans TCP ports on one host.
+**Skill match:**
+```yaml
+found: true
+kind: skill
+skill: network.range-audit
+---
+# Range Audit
+... full skill body ...
 ```
 
-Tool implements `IToolHelpProvider`, so the model receives:
-
-```text
-name: network.scan.ports
-description: [H] Scans TCP ports on one host.
-```
-
-When unsure, the model calls:
-
-```json
-{
-  "name": "network.scan.ports"
-}
-```
-
-`tool.help` returns:
-
+**Tool match:**
 ```yaml
 found: true
 tool: network.scan.ports
@@ -130,47 +104,35 @@ parameters:
 help: |
   tool: network.scan.ports
   summary: ...
-  arguments:
-    ...
 ```
 
-## Missing Or Disabled Tools
-
-If a tool is disabled, its plugin is disabled, or it is not registered:
-
-```yaml
-found: false
-reason: tool_not_registered_or_plugin_disabled
-```
-
-If a tool exists but is unavailable in the current agent mode:
-
-```yaml
-found: false
-reason: tool_not_available_in_current_mode
-```
-
-If the name is inexact:
-
+**Partial match:**
 ```yaml
 found: false
 reason: exact_tool_not_found
 suggestions:
   - network.scan.ports
   - network.scan.lan
+skill_suggestions:
+  - network.range-audit
+```
+
+**Not found / disabled:**
+```yaml
+found: false
+reason: tool_not_registered_or_plugin_disabled
 ```
 
 ## Recommended Help Format
 
-Help text should be optimized for LLM use, not human prose.
+Help text is optimized for LLM use, not human prose.
 
-Recommended sections:
-
-- `tool`: exact tool name.
-- `summary`: one or two lines.
-- `arguments`: formats, defaults, requirements, and examples.
-- `limits`: caps, ranges, and safety boundaries.
-- `risk`: actions that require extra care.
-- `examples`: valid request objects.
+Sections:
+- `tool`: exact tool name
+- `summary`: one or two lines
+- `arguments`: formats, defaults, requirements, examples
+- `limits`: caps, ranges, safety boundaries
+- `risk`: actions requiring extra care
+- `examples`: valid request objects
 
 Keep descriptions short. Put formats, edge cases, and advanced behavior in `GetHelpText()`.

@@ -18,6 +18,7 @@
   <ItemGroup>
     <ProjectReference Include="..\SPLA.MCP.BasicTools\SPLA.MCP.BasicTools.csproj" />
     <ProjectReference Include="..\SPLA.Domain\SPLA.Domain.csproj" />
+    <ProjectReference Include="..\SPLA.Plugins.Network\SPLA.Plugins.Network.csproj" />
   </ItemGroup>
 
 </Project>

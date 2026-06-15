@@ -104,7 +104,7 @@ public partial class MainWindowViewModel : ViewModelBase
         };
 
         var currentDir = Directory.GetCurrentDirectory();
-        var systemPrompt = $"{modePrompt}\nYou have access to tools to interact with the file system and run commands. Your current working directory is: {currentDir}\n\nTool descriptions are intentionally short. Tool flag: [H] = extended help available. If a [H] tool's details are unclear, call tool.help before using it. Do not guess complex argument formats.\n\nMermaid note: when writing Mermaid, use valid quoted labels: `NodeId[\"label\"]`, `subgraph Id[\"title\"]`, and `A -->|\"label\"| B` for text with spaces, punctuation, or non-ASCII characters.\n\nIMPORTANT RULE: You may attempt a specific tool a maximum of 3 times. If it fails 3 times, you MUST stop trying and ask the user for help.";
+        var systemPrompt = $"{modePrompt}\nYou have access to tools to interact with the file system and run commands. Your current working directory is: {currentDir}\n\nTool descriptions are intentionally short. Tool flag: [H] = extended help available. If a [H] tool's details are unclear, call agent.info with the tool name before using it. Do not guess complex argument formats.\n\nMermaid note: when writing Mermaid, use valid quoted labels: `NodeId[\"label\"]`, `subgraph Id[\"title\"]`, and `A -->|\"label\"| B` for text with spaces, punctuation, or non-ASCII characters.\n\nIMPORTANT RULE: You may attempt a specific tool a maximum of 3 times. If it fails 3 times, you MUST stop trying and ask the user for help.";
 
         foreach (var instrPath in resolved.Instructions)
         {
@@ -121,6 +121,31 @@ public partial class MainWindowViewModel : ViewModelBase
             systemPrompt += $"\n\n--- Custom Prompt ---\n{resolved.CustomPrompt}";
         }
 
+        // Inject skill index BEFORE plugin prompts so the rule takes precedence
+        var enabledSkills = _skillManager.GetEnabled().ToList();
+        if (enabledSkills.Count > 0)
+        {
+            systemPrompt += "\n\n--- Skills ---";
+            systemPrompt += "\nRULE: When the user's request matches a skill listed below, you MUST call agent.info FIRST — before calling any other tool or executing any step.";
+            systemPrompt += "\nThis rule overrides any plugin instruction that says to 'start immediately'.";
+            systemPrompt += "\nSkill descriptions are in English. The user may write in any language — translate the intent to English and match semantically.";
+            systemPrompt += "\n";
+            systemPrompt += "\nHow to load a skill — call agent.info with {\"id\": \"<skill-id>\"}";
+            systemPrompt += "\nExample: call agent.info with {\"id\": \"network.range-audit\"}";
+            systemPrompt += "\nagent.info works for both tool help AND skill instructions — use it for any capability lookup.";
+            systemPrompt += "\n\nAvailable skills:";
+            foreach (var skill in enabledSkills)
+            {
+                systemPrompt += $"\n  {skill.Id} — {skill.Description}";
+                if (skill.IsPreloaded)
+                {
+                    var body = _skillManager.LoadBody(skill.Id);
+                    if (!string.IsNullOrEmpty(body))
+                        systemPrompt += $"\n\n--- Skill: {skill.Id} (preloaded) ---\n{body}";
+                }
+            }
+        }
+
         // Inject Plugin Prompts
         foreach (var plugin in _pluginManager.GetActivePlugins())
         {
@@ -128,12 +153,6 @@ public partial class MainWindowViewModel : ViewModelBase
             {
                 systemPrompt += $"\n\n--- Plugin: {plugin.Meta.Id} ---\n{plugin.EffectivePrompt}";
             }
-        }
-
-        // Inject enabled skill prompts (sidebar toggles control which skills are active)
-        foreach (var (skillId, skillContent) in Sidebar.GetEnabledSkillContents())
-        {
-            systemPrompt += $"\n\n--- Skill: {skillId} ---\n{skillContent}";
         }
 
         var pluginCommands = _pluginManager.GetUiCommands();

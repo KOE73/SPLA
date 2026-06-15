@@ -1,9 +1,16 @@
 ---
 id: network.host-audit
-description: Deep autonomous investigation of a single host — DNS, ping, port scan, banner grab, TLS, HTTP.
+description: Deep autonomous investigation of a single host — DNS, ping, port scan, banner grab, TLS, HTTP. Trigger on: investigate host, audit server, check open ports, what is running on, scan host.
 ---
 
 # Network Host Audit
+
+## Tool availability
+
+Before starting, call `agent.info` with each tool name you intend to use to confirm it is registered.
+Prefer `network.*` plugin tools when available — they return structured data and handle errors cleanly.
+If a specific `network.*` tool is absent, fall back to `RunCommandTool` (cmd/shell) to accomplish the same step.
+Adapt the execution sequence below based on what is actually available.
 
 When the user says "investigate", "audit", "check", "scan", "probe", "analyze", "изучи", "проверь", "что там" — start immediately without asking for permission.
 
