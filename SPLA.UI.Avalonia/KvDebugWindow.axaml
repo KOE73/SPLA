@@ -1,0 +1,179 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="using:SPLA.UI.Avalonia.ViewModels.Debug"
+        x:Class="SPLA.UI.Avalonia.KvDebugWindow"
+        x:DataType="vm:KvDebugWindowViewModel"
+        Title="Agent Memory — KV Debug"
+        Width="640" Height="500" MinWidth="400" MinHeight="300"
+        WindowStartupLocation="CenterOwner"
+        Background="{DynamicResource AppBackgroundBrush}">
+
+    <Window.Styles>
+        <Style Selector="TextBlock.section-header">
+            <Setter Property="FontSize" Value="11"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+            <Setter Property="Foreground" Value="{DynamicResource SubTextForegroundBrush}"/>
+            <Setter Property="Margin" Value="0,0,0,4"/>
+        </Style>
+        <Style Selector="TextBlock.key">
+            <Setter Property="FontFamily" Value="Consolas,Cascadia Code,Courier New,monospace"/>
+            <Setter Property="FontSize" Value="11"/>
+            <Setter Property="Foreground" Value="{DynamicResource AccentBrush}"/>
+            <Setter Property="VerticalAlignment" Value="Top"/>
+            <Setter Property="TextTrimming" Value="CharacterEllipsis"/>
+            <Setter Property="MinWidth" Value="160"/>
+            <Setter Property="MaxWidth" Value="200"/>
+        </Style>
+        <Style Selector="TextBlock.value">
+            <Setter Property="FontFamily" Value="Consolas,Cascadia Code,Courier New,monospace"/>
+            <Setter Property="FontSize" Value="11"/>
+            <Setter Property="Foreground" Value="{DynamicResource TextForegroundBrush}"/>
+            <Setter Property="VerticalAlignment" Value="Top"/>
+            <Setter Property="TextWrapping" Value="Wrap"/>
+        </Style>
+        <Style Selector="Button.del">
+            <Setter Property="Content" Value="✕"/>
+            <Setter Property="FontSize" Value="9"/>
+            <Setter Property="Padding" Value="4,1"/>
+            <Setter Property="Margin" Value="4,0,0,0"/>
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Foreground" Value="{DynamicResource SubTextForegroundBrush}"/>
+            <Setter Property="VerticalAlignment" Value="Top"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="CornerRadius" Value="3"/>
+        </Style>
+        <Style Selector="Button.del:pointerover /template/ ContentPresenter">
+            <Setter Property="Background" Value="#40E05555"/>
+            <Setter Property="Foreground" Value="#FFE05555"/>
+        </Style>
+        <Style Selector="Button.clear-btn">
+            <Setter Property="FontSize" Value="10"/>
+            <Setter Property="Padding" Value="6,2"/>
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="BorderBrush" Value="{DynamicResource PanelBorderBrush}"/>
+            <Setter Property="Foreground" Value="{DynamicResource SubTextForegroundBrush}"/>
+            <Setter Property="CornerRadius" Value="3"/>
+            <Setter Property="Cursor" Value="Hand"/>
+        </Style>
+    </Window.Styles>
+
+    <Grid RowDefinitions="Auto,8,*,8,*" Margin="12">
+
+        <!-- ── Filter bar ── -->
+        <Grid Grid.Row="0" ColumnDefinitions="*,Auto" Margin="0,0,0,4">
+            <TextBox Grid.Column="0"
+                     Text="{Binding FilterText}"
+                     PlaceholderText="Filter by key or value…"
+                     FontSize="11"
+                     Padding="6,3"
+                     CornerRadius="4"
+                     BorderThickness="1"
+                     BorderBrush="{DynamicResource PanelBorderBrush}"/>
+            <Button Grid.Column="1"
+                    Classes="clear-btn"
+                    Command="{Binding ClearFilterCommand}"
+                    Content="✕"
+                    Margin="4,0,0,0"
+                    IsVisible="{Binding FilterText, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
+                    ToolTip.Tip="Clear filter"/>
+        </Grid>
+
+        <!-- ── Session store ── -->
+        <Grid Grid.Row="2" RowDefinitions="Auto,*">
+            <DockPanel Grid.Row="0" Margin="0,0,0,6">
+                <Button Classes="clear-btn"
+                        DockPanel.Dock="Right"
+                        Command="{Binding ClearSessionCommand}"
+                        ToolTip.Tip="Clear all session entries"
+                        Content="Clear"/>
+                <TextBlock Classes="section-header"
+                           VerticalAlignment="Center">
+                    <Run Text="SESSION  "/>
+                    <Run Text="{Binding SessionCount, StringFormat='({0} entries)'}"
+                         Foreground="{DynamicResource SubTextForegroundBrush}"/>
+                </TextBlock>
+            </DockPanel>
+
+            <Border Grid.Row="1"
+                    BorderBrush="{DynamicResource PanelBorderBrush}"
+                    BorderThickness="1"
+                    CornerRadius="4"
+                    Background="{DynamicResource PanelBackgroundBrush}">
+                <ScrollViewer HorizontalScrollBarVisibility="Disabled">
+                    <ItemsControl ItemsSource="{Binding SessionEntries}" Margin="6,4">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate x:DataType="vm:KvEntryViewModel">
+                                <Grid ColumnDefinitions="Auto,8,*,Auto" Margin="0,2">
+                                    <TextBlock Grid.Column="0" Classes="key" Text="{Binding Key}"
+                                               ToolTip.Tip="{Binding Key}"/>
+                                    <TextBlock Grid.Column="1" Text="=" FontSize="11"
+                                               Foreground="{DynamicResource SubTextForegroundBrush}"
+                                               VerticalAlignment="Top"/>
+                                    <TextBlock Grid.Column="2" Classes="value" Text="{Binding Value}"
+                                               ToolTip.Tip="{Binding Value}"/>
+                                    <Button Grid.Column="3" Classes="del"
+                                            Command="{Binding DeleteCommand}"
+                                            ToolTip.Tip="Delete entry"/>
+                                </Grid>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </ScrollViewer>
+            </Border>
+        </Grid>
+
+        <!-- ── Splitter ── -->
+        <GridSplitter Grid.Row="3"
+                      HorizontalAlignment="Stretch"
+                      VerticalAlignment="Stretch"
+                      Background="{DynamicResource PanelBorderBrush}"
+                      ResizeBehavior="PreviousAndNext"/>
+
+        <!-- ── Project store ── -->
+        <Grid Grid.Row="4" RowDefinitions="Auto,*">
+            <DockPanel Grid.Row="0" Margin="0,0,0,6">
+                <Button Classes="clear-btn"
+                        DockPanel.Dock="Right"
+                        Command="{Binding ClearProjectCommand}"
+                        ToolTip.Tip="Clear all project entries"
+                        Content="Clear"/>
+                <TextBlock Classes="section-header"
+                           VerticalAlignment="Center">
+                    <Run Text="PROJECT  "/>
+                    <Run Text="{Binding ProjectCount, StringFormat='({0} entries)'}"
+                         Foreground="{DynamicResource SubTextForegroundBrush}"/>
+                </TextBlock>
+            </DockPanel>
+
+            <Border Grid.Row="1"
+                    BorderBrush="{DynamicResource PanelBorderBrush}"
+                    BorderThickness="1"
+                    CornerRadius="4"
+                    Background="{DynamicResource PanelBackgroundBrush}">
+                <ScrollViewer HorizontalScrollBarVisibility="Disabled">
+                    <ItemsControl ItemsSource="{Binding ProjectEntries}" Margin="6,4">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate x:DataType="vm:KvEntryViewModel">
+                                <Grid ColumnDefinitions="Auto,8,*,Auto" Margin="0,2">
+                                    <TextBlock Grid.Column="0" Classes="key" Text="{Binding Key}"
+                                               ToolTip.Tip="{Binding Key}"/>
+                                    <TextBlock Grid.Column="1" Text="=" FontSize="11"
+                                               Foreground="{DynamicResource SubTextForegroundBrush}"
+                                               VerticalAlignment="Top"/>
+                                    <TextBlock Grid.Column="2" Classes="value" Text="{Binding Value}"
+                                               ToolTip.Tip="{Binding Value}"/>
+                                    <Button Grid.Column="3" Classes="del"
+                                            Command="{Binding DeleteCommand}"
+                                            ToolTip.Tip="Delete entry"/>
+                                </Grid>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </ScrollViewer>
+            </Border>
+        </Grid>
+
+    </Grid>
+</Window>

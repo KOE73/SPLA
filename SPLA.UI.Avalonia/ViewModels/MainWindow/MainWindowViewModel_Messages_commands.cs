@@ -16,7 +16,6 @@ using SPLA.UI.Avalonia.ViewModels.Settings;
 using SPLA.UI.Avalonia.ViewModels.Status;
 using SPLA.UI.Avalonia.Views.Chat;
 using SPLA.UI.Avalonia.Services;
-using SPLA.UI.Avalonia.Services.Guards;
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
@@ -67,7 +66,10 @@ public partial class MainWindowViewModel : ViewModelBase
     private void SaveCurrentChat()
     {
         if (_chatManager == null || CurrentChat == null) return;
-        
+
+        // Persist session working memory alongside the chat so it survives restart.
+        CurrentChat.Kv = _sessionKv.Snapshot();
+
         CurrentChat.Messages.Clear();
         // Skip the system prompt(s) at the start
         foreach (var m in Messages.Where(ShouldPersistMessage))

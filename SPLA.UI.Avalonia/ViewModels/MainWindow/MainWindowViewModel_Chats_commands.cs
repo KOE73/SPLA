@@ -15,7 +15,6 @@ using SPLA.UI.Avalonia.ViewModels.Settings;
 using SPLA.UI.Avalonia.ViewModels.Status;
 using SPLA.UI.Avalonia.Views.Chat;
 using SPLA.UI.Avalonia.Services;
-using SPLA.UI.Avalonia.Services.Guards;
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
@@ -85,6 +84,9 @@ public partial class MainWindowViewModel : ViewModelBase
             value.Title = loaded.Title;
             value.UpdatedAt = loaded.UpdatedAt;
         }
+
+        // Restore this chat's session working memory (replaces the previous chat's).
+        _sessionKv.LoadFrom(loaded?.Kv ?? new Dictionary<string, string>());
 
         var resolved = App.ResolvedSettings;
         if (resolved.ProjectName != null)

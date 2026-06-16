@@ -14,7 +14,9 @@ public enum ToolScope
     Local,      // Files and local resources
     Project,    // Project-specific files
     Shell,      // Command line execution
-    Internet    // Web search, APIs
+    Internet,   // Web search, APIs
+    Agent       // Capabilities scoped to the agent itself (memory, info, datetime, context).
+                // Fundamental: always available in every mode, bypasses mode/permission gating.
 }
 
 public enum ToolEffect

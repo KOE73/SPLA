@@ -7,6 +7,7 @@ using SPLA.Domain.Models;
 using SPLA.UI.Avalonia.Helpers;
 using SPLA.UI.Avalonia.Services;
 using SPLA.UI.Avalonia.ViewModels;
+using SPLA.UI.Avalonia.ViewModels.Debug;
 using System.Linq;
 using System.Threading.Tasks;
 
@@ -23,6 +24,8 @@ public partial class MainWindow : Window
         var vm = new MainWindowViewModel();
         vm.ConfirmDeleteChatAsync = ConfirmDeleteChatAsync;
         vm.SelectProjectFolderAsync = SelectProjectFolderAsync;
+        vm.KvDebugRequested += VmOnKvDebugRequested;
+        vm.ContextDebugRequested += VmOnContextDebugRequested;
         DataContext = vm;
         App.Services.GetRequiredService<IActiveConversationAccessor>().CurrentInput = new MainWindowConversationInput(vm);
 
@@ -90,6 +93,39 @@ public partial class MainWindow : Window
         {
             Icon = icon;
         }
+    }
+
+    private KvDebugWindow? _kvDebugWindow;
+
+    private void VmOnKvDebugRequested(object? sender, System.EventArgs e)
+    {
+        // Reuse an already-open window instead of stacking them.
+        if (_kvDebugWindow != null)
+        {
+            _kvDebugWindow.Activate();
+            return;
+        }
+        var vm = (MainWindowViewModel)DataContext!;
+        var debugVm = new KvDebugWindowViewModel(vm.SessionKv, vm.ProjectKv);
+        _kvDebugWindow = new KvDebugWindow(debugVm);
+        _kvDebugWindow.Closed += (_, _) => _kvDebugWindow = null;
+        _kvDebugWindow.Show(this);
+    }
+
+    private ContextDebugWindow? _contextDebugWindow;
+
+    private void VmOnContextDebugRequested(object? sender, System.EventArgs e)
+    {
+        // Reuse an already-open window instead of stacking them.
+        if (_contextDebugWindow != null)
+        {
+            _contextDebugWindow.Activate();
+            return;
+        }
+        var vm = (MainWindowViewModel)DataContext!;
+        _contextDebugWindow = new ContextDebugWindow(vm.ContextSnapshot);
+        _contextDebugWindow.Closed += (_, _) => _contextDebugWindow = null;
+        _contextDebugWindow.Show(this);
     }
 
     private async void StatusControl_SettingsRequested(object? sender, System.EventArgs e)

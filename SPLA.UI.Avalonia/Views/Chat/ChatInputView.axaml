@@ -5,30 +5,40 @@
              x:DataType="vm:MainWindowViewModel">
     
     <StackPanel Margin="{DynamicResource StandardMargin}" Spacing="5">
-        <!-- Input Area -->
+        <!-- Input Area. Send/Stop are pinned to the editor's single-line height (InputBaseHeight)
+             so they match the empty editor and don't grow as the editor expands. -->
         <Grid ColumnDefinitions="*,Auto">
-            <TextBox x:Name="InputTextBox" Grid.Column="0" Text="{Binding InputText, UpdateSourceTrigger=PropertyChanged}" PlaceholderText="Enter message... (/compact)" 
-                     AcceptsReturn="True" MaxHeight="100" TextWrapping="Wrap" FontSize="{DynamicResource BaseFontSize}"
+            <TextBox x:Name="InputTextBox" Grid.Column="0" Text="{Binding InputText, UpdateSourceTrigger=PropertyChanged}" PlaceholderText="Enter message... (/compact)"
+                     AcceptsReturn="True" MinHeight="{DynamicResource InputBaseHeight}" MaxHeight="100" TextWrapping="Wrap" FontSize="{DynamicResource BaseFontSize}"
                      Background="{DynamicResource InputBackgroundBrush}" Foreground="{DynamicResource TextForegroundBrush}" BorderBrush="{DynamicResource InputBorderBrush}" CornerRadius="{DynamicResource StandardCornerRadius}"
                      VerticalAlignment="Bottom" />
             <Button Grid.Column="1" Content="Send" Command="{Binding SendCommand}" FontSize="{DynamicResource BaseFontSize}"
                     Background="{DynamicResource AccentBrush}" Foreground="White" CornerRadius="{DynamicResource StandardCornerRadius}"
-                    Padding="{DynamicResource StandardPadding}" VerticalAlignment="Bottom" Margin="5,0,0,0"
+                    Height="{DynamicResource InputBaseHeight}" Padding="16,0" VerticalContentAlignment="Center" HorizontalContentAlignment="Center"
+                    VerticalAlignment="Bottom" Margin="5,0,0,0"
                     IsVisible="{Binding IsNotBusy}" />
             <Button Grid.Column="1" Content="Stop" Command="{Binding StopCommand}" FontSize="{DynamicResource BaseFontSize}"
                     Background="#C62828" Foreground="White" CornerRadius="{DynamicResource StandardCornerRadius}"
-                    Padding="{DynamicResource StandardPadding}" VerticalAlignment="Bottom" Margin="5,0,0,0"
+                    Height="{DynamicResource InputBaseHeight}" Padding="16,0" VerticalContentAlignment="Center" HorizontalContentAlignment="Center"
+                    VerticalAlignment="Bottom" Margin="5,0,0,0"
                     IsVisible="{Binding IsBusy}" />
         </Grid>
 
-        <!-- Bottom Bar: Mode Selection & Chat Actions -->
-        <Grid ColumnDefinitions="*,Auto" Margin="0,5,0,0">
-            <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="15" VerticalAlignment="Center">
+        <!-- Bottom Bar: Mode Selection & Chat Actions.
+             A WrapPanel so groups reflow onto new lines when the window narrows instead of overlapping. -->
+        <WrapPanel Orientation="Horizontal" Margin="0,5,0,0">
+            <WrapPanel.Styles>
+                <!-- Uniform gap between groups; bottom gap shows when rows wrap. -->
+                <Style Selector="WrapPanel > :is(Control)">
+                    <Setter Property="Margin" Value="0,3,16,3"/>
+                    <Setter Property="VerticalAlignment" Value="Center"/>
+                </Style>
+            </WrapPanel.Styles>
+
                 <ComboBox ItemsSource="{Binding Status.AvailableModeDescriptions}" SelectedItem="{Binding Status.SelectedModeDescription}"
                           Background="Transparent" BorderThickness="0" Foreground="{DynamicResource SubTextForegroundBrush}"
                           FontSize="{DynamicResource SmallFontSize}" VerticalAlignment="Center" />
-                
-                <StackPanel Orientation="Horizontal" Spacing="10" VerticalAlignment="Center">
+
                     <!-- Reasoning depth: toggle (off/on) or effort (low/medium/high), per the selected model -->
                     <StackPanel Orientation="Horizontal" Spacing="4" VerticalAlignment="Center"
                                 IsVisible="{Binding Settings.SelectedModelSupportsReasoning}">
@@ -43,30 +53,33 @@
                                   ToolTip.Tip="off/on or reasoning effort (low/medium/high)" />
                     </StackPanel>
 
-                    <TextBlock Text="Temp" Foreground="{DynamicResource SubTextForegroundBrush}"
-                               FontSize="{DynamicResource SmallFontSize}" VerticalAlignment="Center" />
-                    <TextBlock Text="{Binding Settings.Temperature, StringFormat='{}{0:0.0}'}"
-                               Foreground="{DynamicResource SubTextForegroundBrush}"
-                               FontSize="{DynamicResource SmallFontSize}" Width="28"
-                               TextAlignment="Right" VerticalAlignment="Center" />
-                    <Grid RowDefinitions="18,10" Width="260" Height="28" VerticalAlignment="Center">
-                        <Slider Grid.Row="0" Minimum="0" Maximum="2" TickFrequency="0.1" IsSnapToTickEnabled="True"
-                                Value="{Binding Settings.Temperature}"
-                                Height="18" VerticalAlignment="Center"
-                                Margin="4,0" />
-                        <Grid Grid.Row="1" ColumnDefinitions="*,*,*,*,*" Margin="4,0">
-                            <TextBlock Grid.Column="0" Text="Precise Code" Foreground="{DynamicResource SubTextForegroundBrush}"
-                                       FontSize="8" VerticalAlignment="Top" />
-                            <TextBlock Grid.Column="1" Text="Agent" Foreground="{DynamicResource SubTextForegroundBrush}"
-                                       FontSize="8" TextAlignment="Center" VerticalAlignment="Top" />
-                            <TextBlock Grid.Column="2" Text="Explore" Foreground="{DynamicResource SubTextForegroundBrush}"
-                                       FontSize="8" TextAlignment="Center" VerticalAlignment="Top" />
-                            <TextBlock Grid.Column="3" Text="Brainstorm" Foreground="{DynamicResource SubTextForegroundBrush}"
-                                       FontSize="8" TextAlignment="Center" VerticalAlignment="Top" />
-                            <TextBlock Grid.Column="4" Text="Experimental" Foreground="{DynamicResource SubTextForegroundBrush}"
-                                       FontSize="8" TextAlignment="Right" VerticalAlignment="Top" />
+                    <!-- Temperature group -->
+                    <StackPanel Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
+                        <TextBlock Text="Temp" Foreground="{DynamicResource SubTextForegroundBrush}"
+                                   FontSize="{DynamicResource SmallFontSize}" VerticalAlignment="Center" />
+                        <TextBlock Text="{Binding Settings.Temperature, StringFormat='{}{0:0.0}'}"
+                                   Foreground="{DynamicResource SubTextForegroundBrush}"
+                                   FontSize="{DynamicResource SmallFontSize}" Width="28"
+                                   TextAlignment="Right" VerticalAlignment="Center" />
+                        <Grid RowDefinitions="18,10" Width="260" Height="28" VerticalAlignment="Center">
+                            <Slider Grid.Row="0" Minimum="0" Maximum="2" TickFrequency="0.1" IsSnapToTickEnabled="True"
+                                    Value="{Binding Settings.Temperature}"
+                                    Height="18" VerticalAlignment="Center"
+                                    Margin="4,0" />
+                            <Grid Grid.Row="1" ColumnDefinitions="*,*,*,*,*" Margin="4,0">
+                                <TextBlock Grid.Column="0" Text="Precise Code" Foreground="{DynamicResource SubTextForegroundBrush}"
+                                           FontSize="8" VerticalAlignment="Top" />
+                                <TextBlock Grid.Column="1" Text="Agent" Foreground="{DynamicResource SubTextForegroundBrush}"
+                                           FontSize="8" TextAlignment="Center" VerticalAlignment="Top" />
+                                <TextBlock Grid.Column="2" Text="Explore" Foreground="{DynamicResource SubTextForegroundBrush}"
+                                           FontSize="8" TextAlignment="Center" VerticalAlignment="Top" />
+                                <TextBlock Grid.Column="3" Text="Brainstorm" Foreground="{DynamicResource SubTextForegroundBrush}"
+                                           FontSize="8" TextAlignment="Center" VerticalAlignment="Top" />
+                                <TextBlock Grid.Column="4" Text="Experimental" Foreground="{DynamicResource SubTextForegroundBrush}"
+                                           FontSize="8" TextAlignment="Right" VerticalAlignment="Top" />
+                            </Grid>
                         </Grid>
-                    </Grid>
+                    </StackPanel>
 
                     <!-- Render mode selector: Native | Web -->
                     <StackPanel Orientation="Horizontal" Spacing="2" VerticalAlignment="Center">
@@ -135,13 +148,12 @@
                             </Style>
                         </ItemsControl.Styles>
                     </ItemsControl>
-                </StackPanel>
-            </StackPanel>
-            
-            <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="10" HorizontalAlignment="Right" VerticalAlignment="Center">
-                <Button Content="Compact" Command="{Binding CompactContextCommand}" Background="Transparent" Foreground="{DynamicResource SubTextForegroundBrush}" Cursor="Hand" ToolTip.Tip="Create summary and compact context" FontSize="{DynamicResource SmallFontSize}" Padding="{DynamicResource CompactMargin}" />
-                <Button Content="⎇ Fork" Command="{Binding ForkChatCommand}" Background="Transparent" Foreground="{DynamicResource SubTextForegroundBrush}" Cursor="Hand" ToolTip.Tip="Duplicate Chat" FontSize="{DynamicResource SmallFontSize}" Padding="{DynamicResource CompactMargin}" />
-            </StackPanel>
-        </Grid>
+
+                    <!-- Chat actions -->
+                    <StackPanel Orientation="Horizontal" Spacing="10" VerticalAlignment="Center">
+                        <Button Content="Compact" Command="{Binding CompactContextCommand}" Background="Transparent" Foreground="{DynamicResource SubTextForegroundBrush}" Cursor="Hand" ToolTip.Tip="Create summary and compact context" FontSize="{DynamicResource SmallFontSize}" Padding="{DynamicResource CompactMargin}" />
+                        <Button Content="⎇ Fork" Command="{Binding ForkChatCommand}" Background="Transparent" Foreground="{DynamicResource SubTextForegroundBrush}" Cursor="Hand" ToolTip.Tip="Duplicate Chat" FontSize="{DynamicResource SmallFontSize}" Padding="{DynamicResource CompactMargin}" />
+                    </StackPanel>
+        </WrapPanel>
     </StackPanel>
 </UserControl>

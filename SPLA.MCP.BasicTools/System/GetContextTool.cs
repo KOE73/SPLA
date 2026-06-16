@@ -17,7 +17,7 @@ public class GetContextTool : IMcpTool
         {
             Name = Name,
             Description = "Gets local runtime context such as current working directory, OS, machine name, and username. This does not search the internet and should not be used for web lookup.",
-            Scope = ToolScope.Local,
+            Scope = ToolScope.Agent,
             Effect = ToolEffect.Read,
             Risk = ToolRisk.Low,
             Parameters = new

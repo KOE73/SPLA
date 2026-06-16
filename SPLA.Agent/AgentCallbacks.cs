@@ -1,5 +1,6 @@
 using SPLA.Domain.Models;
 using System;
+using System.Collections.Generic;
 using System.Threading.Tasks;
 
 namespace SPLA.Agent;
@@ -11,6 +12,12 @@ namespace SPLA.Agent;
 /// </summary>
 public sealed class AgentCallbacks
 {
+    /// <summary>
+    /// Fires before each LLM call, carrying the exact context that will be sent. Entry points use
+    /// it to spin up a streaming sink (UI bubble) and prime token estimation before deltas arrive.
+    /// </summary>
+    public Func<IReadOnlyList<ChatMessage>, Task>? OnLlmTurnStart { get; init; }
+
     /// <summary>A chunk of assistant answer text as it streams.</summary>
     public Func<string, Task>? OnDelta { get; init; }
 

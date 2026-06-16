@@ -34,7 +34,7 @@ public sealed class AgentInfoTool : IMcpTool, IToolHelpProvider
         {
             Name = Name,
             Description = "Universal capability lookup. Returns tool schema+help, skill instructions, or full index. id = tool name OR skill id. Omit id for full index.",
-            Scope = ToolScope.Local,
+            Scope = ToolScope.Agent,
             Effect = ToolEffect.Read,
             Risk = ToolRisk.Low,
             Parameters = new

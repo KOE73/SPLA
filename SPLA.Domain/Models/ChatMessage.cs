@@ -29,8 +29,13 @@ public class ChatMessage
     // For when we send tool results back to the assistant (Role = Tool)
     public string? ToolCallId { get; set; }
 
-    public int PromptTokens { get; set; }
-    public int CompletionTokens { get; set; }
+    /// <summary>
+    /// Tokens the provider reported for the request (prompt) and the answer (completion).
+    /// <c>null</c> means the provider does not expose usage — UI must treat absence as "unknown"
+    /// and render nothing rather than a misleading 0. See <see cref="ITokenUsageReporter"/>.
+    /// </summary>
+    public int? PromptTokens { get; set; }
+    public int? CompletionTokens { get; set; }
 
     public ContextRetention RetentionPolicy { get; set; } = ContextRetention.Persistent;
     public string? ReplacementKey { get; set; }

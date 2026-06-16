@@ -10,8 +10,12 @@ using System.Text.Json.Serialization;
 
 namespace SPLA.LLM.LMStudio;
 
-public class LMStudioClient : ILLMService
+public class LMStudioClient : ILLMService, ITokenUsageReporter
 {
+    /// <summary>LM Studio's OpenAI-compatible endpoint returns a <c>usage</c> block, so real
+    /// prompt/completion counts are available (see <see cref="ITokenUsageReporter"/>).</summary>
+    public bool SupportsUsage => true;
+
     private readonly HttpClient _httpClient;
     private readonly JsonSerializerOptions _jsonOptions;
 
@@ -78,8 +82,8 @@ public class LMStudioClient : ILLMService
                     Arguments = t.Function.Arguments
                 }
             }).ToList(),
-            PromptTokens = responseData?.Usage?.PromptTokens ?? 0,
-            CompletionTokens = responseData?.Usage?.CompletionTokens ?? 0
+            PromptTokens = responseData?.Usage?.PromptTokens,
+            CompletionTokens = responseData?.Usage?.CompletionTokens
         };
     }
 
@@ -103,7 +107,8 @@ public class LMStudioClient : ILLMService
         var reasoningBuilder = new StringBuilder();
         // tool_calls accumulator: index → (id, type, name, arguments)
         var toolCallsById = new Dictionary<int, ToolCallAccumulator>();
-        int completionTokens = 0;
+        int? promptTokens = null;
+        int? completionTokens = null;
 
         string? line;
         while ((line = await reader.ReadLineAsync(cancellationToken)) != null)
@@ -128,9 +133,13 @@ public class LMStudioClient : ILLMService
             var choice = chunk?.Choices?.FirstOrDefault();
             if (choice == null) continue;
 
-            // Usage may appear in the last chunk (some servers send it)
+            // Usage may appear in the last chunk (some servers send it). Capture the real
+            // prompt-token count too — that is the actual size of the request we just sent.
             if (chunk?.Usage != null)
+            {
+                promptTokens = chunk.Usage.PromptTokens;
                 completionTokens = chunk.Usage.CompletionTokens;
+            }
 
             var delta = choice.Delta;
             if (delta == null) continue;
@@ -205,6 +214,7 @@ public class LMStudioClient : ILLMService
             Content          = finalContent,
             Reasoning        = inlineReasoning,
             ToolCalls        = toolCalls,
+            PromptTokens     = promptTokens,
             CompletionTokens = completionTokens
         };
     }

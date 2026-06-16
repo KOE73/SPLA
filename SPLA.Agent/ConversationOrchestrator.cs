@@ -33,6 +33,13 @@ public sealed class ConversationOrchestrator
     /// </summary>
     public Func<IEnumerable<ToolDefinition>, AgentMode, IEnumerable<ToolDefinition>>? ToolFilter { get; init; }
 
+    /// <summary>
+    /// Optional provider of agent working-memory entries (scope, key, value). When set, entries whose
+    /// key starts with <see cref="WorkingMemoryInjector.KeyPrefix"/> are rendered fresh and injected
+    /// into the prompt on every turn (live, never persisted). See <see cref="WorkingMemoryInjector"/>.
+    /// </summary>
+    public Func<IReadOnlyList<(string scope, string key, string value)>>? WorkingMemory { get; init; }
+
     public ConversationOrchestrator(ILLMService llm, IToolHost tools)
     {
         _llm = llm;
@@ -59,8 +66,13 @@ public sealed class ConversationOrchestrator
             cancellationToken.ThrowIfCancellationRequested();
 
             var coreMessages = ContextAssembler.Assemble(conversation);
+            InjectWorkingMemory(coreMessages);
+
             var tools = (ToolFilter ?? ((t, m) => ToolModeFilter.Filter(t, m)))
                 (_tools.GetToolDefinitions(), mode);
+
+            if (callbacks.OnLlmTurnStart != null)
+                await callbacks.OnLlmTurnStart(coreMessages);
 
             // Text-repeat guard: accumulate streamed text and cancel via a linked token if it loops.
             using var textLoopCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
@@ -146,6 +158,21 @@ public sealed class ConversationOrchestrator
 
             needToCallLLM = true;
         }
+    }
+
+    /// <summary>
+    /// Inserts the live working-memory block (if any) right after the leading system prompt. Operates
+    /// on the per-turn assembled list, so it is recomputed every turn and never stored in history.
+    /// </summary>
+    private void InjectWorkingMemory(List<ChatMessage> coreMessages)
+    {
+        if (WorkingMemory == null) return;
+        var block = WorkingMemoryInjector.Render(WorkingMemory());
+        if (block == null) return;
+
+        var msg = new ChatMessage { Role = ChatRole.System, Content = block };
+        var firstSystem = coreMessages.FindIndex(m => m.Role == ChatRole.System);
+        coreMessages.Insert(firstSystem >= 0 ? firstSystem + 1 : 0, msg);
     }
 
     private static Task Notify(AgentCallbacks callbacks, string message)

@@ -15,7 +15,6 @@ using SPLA.UI.Avalonia.ViewModels.Settings;
 using SPLA.UI.Avalonia.ViewModels.Status;
 using SPLA.UI.Avalonia.Views.Chat;
 using SPLA.UI.Avalonia.Services;
-using SPLA.UI.Avalonia.Services.Guards;
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;

@@ -34,6 +34,10 @@ public class ChatSession
 
     [YamlMember(Alias = "context")]
     public ChatSessionContext? Context { get; set; }
+
+    /// <summary>Session-scoped agent working memory (key/value). Persisted with the chat.</summary>
+    [YamlMember(Alias = "kv")]
+    public Dictionary<string, string> Kv { get; set; } = new();
 }
 
 public class ChatSessionMessage

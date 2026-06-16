@@ -3,6 +3,7 @@ using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using SPLA.Domain.Agent;
 using SPLA.Domain.Models;
 using SPLA.Domain.Settings;
 using SPLA.LLM.LMStudio;
@@ -19,7 +20,6 @@ using SPLA.UI.Avalonia.ViewModels.Chat;
 using SPLA.UI.Avalonia.ViewModels.Sidebar;
 using SPLA.UI.Avalonia.Views.Chat;
 using SPLA.UI.Avalonia.Services;
-using SPLA.UI.Avalonia.Services.Guards;
 using SPLA.UI.Avalonia.Services.Plugins;
 using System;
 using System.Collections.Generic;
@@ -128,6 +128,10 @@ public partial class MainWindowViewModel : ViewModelBase
         private readonly SPLA.MCP.Core.Plugins.CapabilityRegistry _capabilityRegistry;
         private readonly HttpClient _httpClient;
         private readonly List<ToolDefinition> _tools;
+        // Fundamental agent working memory. session = current chat (persisted with the chat);
+        // project = shared across chats (persisted to project-kv.yaml). Both exposed to the debug view.
+        private readonly KeyValueStore _sessionKv = new("session");
+        private readonly ProjectKvStore _projectKv;
         private ChatManager? _chatManager;
         private bool _isReloadingChats;
         private string? _loadedChatId;
@@ -164,7 +168,9 @@ public partial class MainWindowViewModel : ViewModelBase
                 _pluginManager,
                 App.Services.GetRequiredService<ILogger<McpHost>>());
             _mcpHost.OnPermissionRequested = HandlePermissionRequestAsync;
-            
+
+            _projectKv = new ProjectKvStore(App.ResolvedSettings);
+
             _mcpHost.RegisterTool(new FsListTool());
             _mcpHost.RegisterTool(new FsReadTool());
             _mcpHost.RegisterTool(new FsSearchTextTool());
@@ -181,6 +187,7 @@ public partial class MainWindowViewModel : ViewModelBase
             _mcpHost.RegisterTool(new SPLA.MCP.BasicTools.Network.WebFetchTool());
             _mcpHost.RegisterTool(new SPLA.MCP.BasicTools.Network.WebSearchTool());
             _mcpHost.RegisterTool(new SPLA.MCP.Core.Tools.AgentInfoTool(_mcpHost, _skillManager));
+            _mcpHost.RegisterTool(new SPLA.MCP.Core.Tools.AgentMemoryTool(_sessionKv, _projectKv.Store));
             _mcpHost.RegisterTool(new PluginCommandRunTool(
                 _pluginManager.GetUiCommands(),
                 App.Services.GetRequiredService<IPluginPanelHostService>(),

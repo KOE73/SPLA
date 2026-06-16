@@ -3,11 +3,6 @@
              xmlns:web="clr-namespace:Avalonia.Controls;assembly=Avalonia.Controls.WebView"
              x:Class="SPLA.UI.Avalonia.Views.Chat.ChatWebView">
 
-    <Border Margin="{DynamicResource StandardMargin}"
-            Background="{DynamicResource AppBackgroundBrush}"
-            BorderBrush="{DynamicResource PanelBorderBrush}"
-            BorderThickness="1"
-            CornerRadius="{DynamicResource StandardCornerRadius}">
-        <web:NativeWebView x:Name="ChatBrowser" />
-    </Border>
+    <!-- Frame/margin are provided by the chat card in MainWindow. -->
+    <web:NativeWebView x:Name="ChatBrowser" />
 </UserControl>

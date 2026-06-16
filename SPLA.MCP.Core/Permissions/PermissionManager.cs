@@ -26,6 +26,11 @@ public class PermissionManager : IPermissionManager
 
     public PermissionResult CheckPermission(AgentMode mode, ToolFunctionDefinition toolMetadata, string argumentsJson)
     {
+        // Agent-scoped capabilities (memory, info, datetime, context) are fundamental: always
+        // allowed, in every mode, regardless of remembered rules. They never touch project/system.
+        if (toolMetadata.Scope == ToolScope.Agent)
+            return PermissionResult.Allow;
+
         var remembered = _rememberedPermissions.FirstOrDefault(x =>
             string.Equals(x.Tool, toolMetadata.Name, StringComparison.OrdinalIgnoreCase) &&
             (x.Arguments == "*" || string.Equals(x.Arguments, argumentsJson, StringComparison.Ordinal)));

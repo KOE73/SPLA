@@ -1,0 +1,63 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="using:SPLA.UI.Avalonia.ViewModels.Debug"
+        x:Class="SPLA.UI.Avalonia.ContextDebugWindow"
+        x:DataType="vm:ContextSnapshotViewModel"
+        Title="Real Context — last request"
+        Width="720" Height="520" MinWidth="420" MinHeight="300"
+        WindowStartupLocation="CenterOwner"
+        Background="{DynamicResource AppBackgroundBrush}">
+
+    <Window.Styles>
+        <Style Selector="TextBlock.section-header">
+            <Setter Property="FontSize" Value="11"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+            <Setter Property="Foreground" Value="{DynamicResource SubTextForegroundBrush}"/>
+            <Setter Property="Margin" Value="0,0,0,4"/>
+        </Style>
+        <Style Selector="TextBlock.source">
+            <Setter Property="FontFamily" Value="Consolas,Cascadia Code,Courier New,monospace"/>
+            <Setter Property="FontSize" Value="11"/>
+            <Setter Property="Foreground" Value="{DynamicResource AccentBrush}"/>
+            <Setter Property="VerticalAlignment" Value="Top"/>
+            <Setter Property="TextTrimming" Value="CharacterEllipsis"/>
+            <Setter Property="MinWidth" Value="110"/>
+            <Setter Property="MaxWidth" Value="130"/>
+        </Style>
+        <Style Selector="TextBlock.preview">
+            <Setter Property="FontFamily" Value="Consolas,Cascadia Code,Courier New,monospace"/>
+            <Setter Property="FontSize" Value="11"/>
+            <Setter Property="Foreground" Value="{DynamicResource TextForegroundBrush}"/>
+            <Setter Property="VerticalAlignment" Value="Top"/>
+            <Setter Property="TextTrimming" Value="CharacterEllipsis"/>
+        </Style>
+    </Window.Styles>
+
+    <Grid RowDefinitions="Auto,*" Margin="12">
+
+        <TextBlock Grid.Row="0" Classes="section-header" Margin="0,0,0,6"
+                   Text="{Binding Header, Mode=OneWay}"/>
+
+        <Border Grid.Row="1"
+                BorderBrush="{DynamicResource PanelBorderBrush}"
+                BorderThickness="1"
+                CornerRadius="4"
+                Background="{DynamicResource PanelBackgroundBrush}">
+            <ScrollViewer HorizontalScrollBarVisibility="Disabled">
+                <ItemsControl ItemsSource="{Binding Lines}" Margin="6,4">
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate x:DataType="vm:ContextLineViewModel">
+                            <Grid ColumnDefinitions="Auto,8,*" Margin="0,2">
+                                <TextBlock Grid.Column="0" Classes="source" Text="{Binding Source}"
+                                           ToolTip.Tip="{Binding Source}"/>
+                                <TextBlock Grid.Column="2" Classes="preview" Text="{Binding Preview}"
+                                           ToolTip.Tip="{Binding Full}"/>
+                            </Grid>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+            </ScrollViewer>
+        </Border>
+
+    </Grid>
+</Window>

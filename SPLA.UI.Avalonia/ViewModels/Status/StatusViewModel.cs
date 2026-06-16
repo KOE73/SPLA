@@ -73,12 +73,23 @@ public partial class StatusViewModel : ViewModelBase
     public int CurrentPromptTokens => ActivePromptTokens > 0 ? ActivePromptTokens : LastPromptTokens;
     public int CurrentCompletionTokens => ActiveCompletionTokens > 0 ? ActiveCompletionTokens : LastCompletionTokens;
 
-    public void AddTokens(int prompt, int completion)
+    /// <summary>
+    /// Records the real usage reported by the provider for the last turn. Null arguments mean the
+    /// provider did not report that figure, so we leave the running totals / "last" values untouched
+    /// rather than counting a misleading 0.
+    /// </summary>
+    public void AddTokens(int? prompt, int? completion)
     {
-        PromptTokens += prompt;
-        CompletionTokens += completion;
-        LastPromptTokens = prompt;
-        LastCompletionTokens = completion;
+        if (prompt is int p)
+        {
+            PromptTokens += p;
+            LastPromptTokens = p;
+        }
+        if (completion is int c)
+        {
+            CompletionTokens += c;
+            LastCompletionTokens = c;
+        }
     }
 
     partial void OnPromptTokensChanged(int value)

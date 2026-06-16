@@ -1,3 +1,4 @@
+using SPLA.Domain.Agent;
 using SPLA.Domain.Models;
 using SPLA.Domain.Settings;
 using SPLA.LLM.LMStudio;
@@ -96,8 +97,14 @@ mcpHost.RegisterTool(new FsWriteTool());
 mcpHost.RegisterTool(new FsDeleteTool());
 mcpHost.RegisterTool(new RunCommandTool());
 mcpHost.RegisterTool(new GetContextTool());
+mcpHost.RegisterTool(new GetCurrentDateTimeTool());
 mcpHost.RegisterTool(new SPLA.MCP.BasicTools.Network.WebFetchTool());
 mcpHost.RegisterTool(new SPLA.MCP.Core.Tools.AgentInfoTool(mcpHost, skillManager));
+
+// Fundamental agent working memory: session (this chat) + project (shared, persistent).
+var projectKv = new ProjectKvStore(settings);
+var sessionKv = new KeyValueStore("session");
+mcpHost.RegisterTool(new SPLA.MCP.Core.Tools.AgentMemoryTool(sessionKv, projectKv.Store));
 
 var tools = mcpHost.GetToolDefinitions().ToList();
 Console.WriteLine($"Tools registered: {tools.Count}");
@@ -156,7 +163,13 @@ var currentDir = Directory.GetCurrentDirectory();
 var promptBuilder = new SPLA.Agent.SystemPromptBuilder(skillManager, pluginManager);
 var systemPrompt = promptBuilder.Build(settings, currentDir);
 
-var orchestrator = new SPLA.Agent.ConversationOrchestrator(llmClient, mcpHost);
+// Restore this chat's session memory (survives restart) and feed live context:* into each turn.
+sessionKv.LoadFrom(currentChat.Kv);
+
+var orchestrator = new SPLA.Agent.ConversationOrchestrator(llmClient, mcpHost)
+{
+    WorkingMemory = () => CollectWorkingMemory(sessionKv, projectKv.Store)
+};
 
 var messages = new List<ChatMessage>
 {
@@ -206,13 +219,13 @@ while (true)
         if (body == null) { Console.WriteLine($"Skill '{id}' not found."); continue; }
         messages.Add(new ChatMessage { Role = ChatRole.User, Content = $"[Skill loaded: {id}]\n\n{body}" });
         Console.WriteLine($"Skill '{id}' loaded into context.");
-        SaveCliChat(chatManager, currentChat, messages);
+        SaveCliChat(chatManager, currentChat, messages, sessionKv);
         continue;
     }
 
     var requestId = Guid.NewGuid().ToString("N");
     messages.Add(new ChatMessage { Role = ChatRole.User, Content = input });
-    SaveCliChat(chatManager, currentChat, messages);
+    SaveCliChat(chatManager, currentChat, messages, sessionKv);
 
     using var requestTelemetryContext = SplaTelemetry.PushContext(new(
         ConversationId: currentChat.Id,
@@ -227,7 +240,7 @@ while (true)
         OnAssistantMessage = msg =>
         {
             Console.WriteLine();
-            SaveCliChat(chatManager, currentChat, messages);
+            SaveCliChat(chatManager, currentChat, messages, sessionKv);
             return Task.CompletedTask;
         },
         OnToolCallStarted = tc =>
@@ -238,7 +251,7 @@ while (true)
         OnToolResult = (tc, result) =>
         {
             Console.WriteLine($" -> Result received ({result.Length} chars).");
-            SaveCliChat(chatManager, currentChat, messages);
+            SaveCliChat(chatManager, currentChat, messages, sessionKv);
             return Task.CompletedTask;
         },
         OnNotice = note => { Console.WriteLine($"\n{note}"); return Task.CompletedTask; }
@@ -254,7 +267,7 @@ while (true)
     }
 }
 
-static void SaveCliChat(ChatManager manager, ChatSession chat, List<ChatMessage> msgs)
+static void SaveCliChat(ChatManager manager, ChatSession chat, List<ChatMessage> msgs, IKeyValueStore sessionKv)
 {
     chat.Messages.Clear();
     foreach (var m in msgs.Where(x => x.Role != ChatRole.System))
@@ -265,5 +278,11 @@ static void SaveCliChat(ChatManager manager, ChatSession chat, List<ChatMessage>
             Content = m.Content ?? ""
         });
     }
+    chat.Kv = ((KeyValueStore)sessionKv).Snapshot();
     manager.SaveChat(chat);
 }
+
+static IReadOnlyList<(string scope, string key, string value)> CollectWorkingMemory(IKeyValueStore session, IKeyValueStore project)
+    => session.List().Select(kv => (session.Scope, kv.Key, kv.Value))
+        .Concat(project.List().Select(kv => (project.Scope, kv.Key, kv.Value)))
+        .ToList();

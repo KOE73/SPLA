@@ -70,6 +70,16 @@
 
             <!-- Window controls (right) -->
             <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
+                <!-- Agent memory debug -->
+                <Button Classes="caption"
+                        Content="🧠"
+                        Command="{Binding OpenKvDebugCommand}"
+                        ToolTip.Tip="Agent Memory (KV Debug)"/>
+                <!-- Real context debug -->
+                <Button Classes="caption"
+                        Content="📋"
+                        Command="{Binding OpenContextDebugCommand}"
+                        ToolTip.Tip="Real Context (last request)"/>
                 <!-- Sidebar toggle -->
                 <Button Classes="caption sidebar"
                         Content="◧"
@@ -105,14 +115,26 @@
             <status:StatusView Grid.Row="2" DataContext="{Binding Status}" SettingsRequested="StatusControl_SettingsRequested" />
         </Grid>
 
-        <!-- ── Chat Area ── -->
-        <Grid Grid.Row="1" Grid.Column="1" RowDefinitions="*,Auto">
-            <Grid Grid.Row="0">
-                <chat:ChatNativeView DataContext="{Binding}" IsVisible="{Binding IsNativeChatViewSelected}" />
-                <chat:ChatWebView DataContext="{Binding}" IsVisible="{Binding IsWebChatViewSelected}" />
+        <!-- ── Chat Area (messages + composer live in one card) ── -->
+        <Border Grid.Row="1" Grid.Column="1"
+                Margin="{DynamicResource StandardMargin}"
+                Background="{DynamicResource AppBackgroundBrush}"
+                BorderBrush="{DynamicResource PanelBorderBrush}"
+                BorderThickness="1"
+                CornerRadius="{DynamicResource StandardCornerRadius}"
+                ClipToBounds="True">
+            <Grid RowDefinitions="*,Auto,Auto">
+                <Grid Grid.Row="0">
+                    <chat:ChatNativeView DataContext="{Binding}" IsVisible="{Binding IsNativeChatViewSelected}" />
+                    <chat:ChatWebView DataContext="{Binding}" IsVisible="{Binding IsWebChatViewSelected}" />
+                </Grid>
+                <!-- Divider between conversation and composer -->
+                <Border Grid.Row="1" Height="1"
+                        Background="{DynamicResource PanelBorderBrush}"
+                        Margin="{DynamicResource StandardMargin}" />
+                <chat:ChatInputView Grid.Row="2" DataContext="{Binding}" />
             </Grid>
-            <chat:ChatInputView Grid.Row="1" DataContext="{Binding}" />
-        </Grid>
+        </Border>
 
         <!-- ── Sidebar splitter (col 2) ── -->
         <GridSplitter Grid.Row="1" Grid.Column="2"

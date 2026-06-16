@@ -15,7 +15,7 @@ public class GetCurrentDateTimeTool : IMcpTool
         {
             Name = Name,
             Description = "Gets the current local date and time, UTC date and time, timezone, and ISO timestamps. Use this whenever the user asks about today, now, current date, current time, or relative dates.",
-            Scope = ToolScope.Local,
+            Scope = ToolScope.Agent,
             Effect = ToolEffect.Read,
             Risk = ToolRisk.Low,
             Parameters = new

@@ -30,4 +30,7 @@
     <!-- Shape                                      -->
     <!-- ========================================== -->
     <CornerRadius x:Key="StandardCornerRadius">4</CornerRadius>
+
+    <!-- Single-line height of the message editor; Send button matches it. -->
+    <sys:Double x:Key="InputBaseHeight">30</sys:Double>
 </ResourceDictionary>

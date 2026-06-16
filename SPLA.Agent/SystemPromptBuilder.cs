@@ -34,6 +34,7 @@ public sealed class SystemPromptBuilder
         sb.Append("\n\nTool descriptions are intentionally short. Tool flag: [H] = extended help available. If a [H] tool's details are unclear, call agent.info with the tool name before using it. Do not guess complex argument formats.");
         sb.Append("\n\nMermaid note: when writing Mermaid, use valid quoted labels: `NodeId[\"label\"]`, `subgraph Id[\"title\"]`, and `A -->|\"label\"| B` for text with spaces, punctuation, or non-ASCII characters.");
         sb.Append("\n\nIMPORTANT RULE: You may attempt a specific tool a maximum of 3 times. If it fails 3 times, you MUST stop trying and ask the user for help.");
+        sb.Append("\n\nAgent memory (agent.memory): your persistent key/value scratchpad across this conversation. Key convention: namespace:name — context:* keys are auto-injected into this prompt every turn. Actions: get|set|delete|list|count|clear. Use clear (with optional filter=) to bulk-delete instead of many individual deletes. For large stores use count first, then list with filter/top/skip (SQL-style pagination) — never call list without filter on an unknown-size store.");
 
         AppendInstructions(sb, settings, workingDirectory);
 

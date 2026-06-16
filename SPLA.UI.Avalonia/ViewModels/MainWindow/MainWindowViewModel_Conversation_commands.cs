@@ -16,7 +16,7 @@ using SPLA.UI.Avalonia.ViewModels.Settings;
 using SPLA.UI.Avalonia.ViewModels.Status;
 using SPLA.UI.Avalonia.Views.Chat;
 using SPLA.UI.Avalonia.Services;
-using SPLA.UI.Avalonia.Services.Guards;
+using SPLA.Agent;
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
@@ -99,40 +99,51 @@ public partial class MainWindowViewModel : ViewModelBase
 
     private async Task ProcessConversationAsync(CancellationToken cancellationToken)
     {
-        // Circular buffer tracking the last N tool calls for loop detection
-        const int ToolLoopWindow = 3;
-        var recentToolCalls = new Queue<(string name, string args)>();
-        var recentToolErrors = new Queue<(string name, string args, bool isError)>();
-
         StreamingMessageViewModel? streamingVm = null;
+
+        // Throttle state — batch stream chunks and flush to the UI every 80 ms. Recreated each
+        // turn in OnLlmTurnStart. The agent loop itself (context, guards, tools) lives in the
+        // shared SPLA.Agent.ConversationOrchestrator; this method is now only the UI projection.
+        const int FlushIntervalMs = 80;
+        var pendingDelta = new System.Text.StringBuilder();
+        var pendingReasoning = new System.Text.StringBuilder();
+        var lastFlush = DateTime.UtcNow;
+        var lastReasoningFlush = DateTime.UtcNow;
 
         try
         {
             var llmClient = new LMStudioClient(_httpClient);
-            bool needToCallLLM = true;
-
-            while (needToCallLLM)
+            var orchestrator = new ConversationOrchestrator(llmClient, _mcpHost)
             {
-                cancellationToken.ThrowIfCancellationRequested();
+                // Mode gating + the runtime sidebar toggle stay a UI concern, layered on the core.
+                ToolFilter = (_, mode) => GetFilteredToolsForMode(mode),
+                // Live working memory: context:* keys are re-injected into the prompt every turn.
+                WorkingMemory = CollectWorkingMemory
+            };
 
-                var coreMessages = GetRuntimeContext(Messages);
+            // Seed the canonical message list from the current conversation (system prompt +
+            // history + the user message just added), already filtered by the domain assembler.
+            var conversation = GetRuntimeContext(Messages);
 
-                await Dispatcher.UIThread.InvokeAsync(() => StartTokenEstimate(coreMessages.Select(m => m.Content ?? "")));
+            var callbacks = new AgentCallbacks
+            {
+                OnLlmTurnStart = async ctx =>
+                {
+                    // Snapshot the exact context being sent so the debug window can show it.
+                    ContextSnapshot.Capture(ctx);
+                    pendingDelta = new System.Text.StringBuilder();
+                    pendingReasoning = new System.Text.StringBuilder();
+                    lastFlush = DateTime.UtcNow;
+                    lastReasoningFlush = DateTime.UtcNow;
+                    await Dispatcher.UIThread.InvokeAsync(() =>
+                    {
+                        StartTokenEstimate(ctx.Select(m => m.Content ?? ""));
+                        streamingVm = new StreamingMessageViewModel();
+                        Messages.Add(streamingVm);
+                    });
+                },
 
-                // Create the streaming bubble up front so the user sees it appear immediately
-                streamingVm = new StreamingMessageViewModel();
-                await Dispatcher.UIThread.InvokeAsync(() => Messages.Add(streamingVm));
-
-                // --- Throttle: batch deltas, flush to UI every 80 ms ---
-                var pendingDelta = new System.Text.StringBuilder();
-                var lastFlush   = DateTime.UtcNow;
-                const int FlushIntervalMs = 80;
-
-                // --- Separate reasoning channel (same throttle strategy) ---
-                var pendingReasoning = new System.Text.StringBuilder();
-                var lastReasoningFlush = DateTime.UtcNow;
-
-                async Task OnReasoning(string chunk)
+                OnReasoning = async chunk =>
                 {
                     pendingReasoning.Append(chunk);
                     if ((DateTime.UtcNow - lastReasoningFlush).TotalMilliseconds >= FlushIntervalMs)
@@ -140,11 +151,13 @@ public partial class MainWindowViewModel : ViewModelBase
                         var toFlush = pendingReasoning.ToString();
                         pendingReasoning.Clear();
                         lastReasoningFlush = DateTime.UtcNow;
-                        await Dispatcher.UIThread.InvokeAsync(() => streamingVm.AppendReasoning(toFlush));
+                        var vm = streamingVm;
+                        if (vm != null)
+                            await Dispatcher.UIThread.InvokeAsync(() => vm.AppendReasoning(toFlush));
                     }
-                }
+                },
 
-                async Task OnDelta(string chunk)
+                OnDelta = async chunk =>
                 {
                     pendingDelta.Append(chunk);
                     if ((DateTime.UtcNow - lastFlush).TotalMilliseconds >= FlushIntervalMs)
@@ -152,154 +165,74 @@ public partial class MainWindowViewModel : ViewModelBase
                         var toFlush = pendingDelta.ToString();
                         pendingDelta.Clear();
                         lastFlush = DateTime.UtcNow;
-                        
-                        await Dispatcher.UIThread.InvokeAsync(() => 
-                        {
-                            streamingVm.Append(toFlush);
-                            var tokenEstimate = EstimateTokens(new[] { streamingVm.StreamingContent });
-                            Status.UpdateActiveCompletionTokens(tokenEstimate);
-                        });
-
-                        // --- Text repeat guard ---
-                        var currentText = streamingVm.StreamingContent;
-                        if (StreamingRepeatGuard.HasTextLoop(currentText))
-                        {
-                            _currentRequestCts?.Cancel();
+                        var vm = streamingVm;
+                        if (vm != null)
                             await Dispatcher.UIThread.InvokeAsync(() =>
-                                Messages.Add(new MessageViewModel(ChatRole.System, "⚠️ Generation stopped: Text repetition detected."))
-                            );
-                        }
+                            {
+                                vm.Append(toFlush);
+                                Status.UpdateActiveCompletionTokens(EstimateTokens(new[] { vm.StreamingContent }));
+                            });
                     }
-                }
+                },
 
-                ChatMessage responseMsg;
-                try
+                OnAssistantMessage = async msg =>
                 {
-                    var filteredTools = GetFilteredToolsForMode(App.ResolvedSettings.Mode);
-                    responseMsg = await llmClient.SendMessageStreamFullAsync(
-                        coreMessages, Settings.GetSettings(), filteredTools, OnDelta, cancellationToken, OnReasoning);
-                }
-                catch (OperationCanceledException)
-                {
-                    // Flush any leftover pending delta before re-throwing
-                    if (pendingDelta.Length > 0)
-                    {
-                        var leftover = pendingDelta.ToString();
-                        await Dispatcher.UIThread.InvokeAsync(() => 
-                        {
-                            streamingVm.Append(leftover);
-                            var tokenEstimate = EstimateTokens(new[] { streamingVm.StreamingContent });
-                            Status.UpdateActiveCompletionTokens(tokenEstimate);
-                        });
-                    }
-                    throw;
-                }
-
-                // Flush remaining delta after stream ends
-                if (pendingDelta.Length > 0)
-                {
-                    var leftover = pendingDelta.ToString();
+                    var vm = streamingVm;
                     await Dispatcher.UIThread.InvokeAsync(() =>
                     {
-                        streamingVm.Append(leftover);
-                        var tokenEstimate = EstimateTokens(new[] { streamingVm.StreamingContent });
-                        Status.UpdateActiveCompletionTokens(tokenEstimate);
-                    });
-                }
-
-                // Flush remaining reasoning after stream ends
-                if (pendingReasoning.Length > 0)
-                {
-                    var leftoverReasoning = pendingReasoning.ToString();
-                    await Dispatcher.UIThread.InvokeAsync(() => streamingVm.AppendReasoning(leftoverReasoning));
-                }
-
-                await Dispatcher.UIThread.InvokeAsync(() =>
-                {
-                    StopTokenEstimate();
-                    Status.AddTokens(responseMsg.PromptTokens, responseMsg.CompletionTokens);
-
-                    // Sync final text (streaming may have slightly different whitespace)
-                    if (!string.IsNullOrEmpty(responseMsg.Content))
-                        streamingVm.SetFinal(responseMsg.Content);
-
-                    // Canonical reasoning (reconciles channel + inline <think>)
-                    if (!string.IsNullOrEmpty(responseMsg.Reasoning))
-                        streamingVm.SetFinalReasoning(responseMsg.Reasoning);
-
-                    // Remove empty streaming bubble if model returned only tool calls (and no reasoning)
-                    if (!streamingVm.HasContent && !streamingVm.HasReasoning)
-                        Messages.Remove(streamingVm);
-                    else
-                        SaveCurrentChat();
-
-                    streamingVm = null;
-                });
-
-                if (responseMsg.ToolCalls != null && responseMsg.ToolCalls.Any())
-                {
-                    // --- Tool-call loop guard ---
-                    foreach (var tc in responseMsg.ToolCalls)
-                    {
-                        var key = (tc.Function.Name, tc.Function.Arguments);
-                        recentToolCalls.Enqueue(key);
-                        if (recentToolCalls.Count > ToolLoopWindow)
-                            recentToolCalls.Dequeue();
-                    }
-
-                    if (ToolCallLoopGuard.HasToolCallLoop(recentToolCalls, ToolLoopWindow))
-                    {
-                        await Dispatcher.UIThread.InvokeAsync(() =>
-                            Messages.Add(new SystemMessageViewModel(
-                                "⚠️ Generation stopped: The model is repeating the same tool calls.")));
-                        needToCallLLM = false;
-                    }
-                    else if (ToolCallLoopGuard.HasErrorLoop(recentToolErrors, ToolLoopWindow))
-                    {
-                        await Dispatcher.UIThread.InvokeAsync(() =>
-                            Messages.Add(new SystemMessageViewModel(
-                                "⚠️ Generation stopped: The same tool has returned an error too many times in a row.")));
-                        needToCallLLM = false;
-                    }
-                    else
-                    {
-                        foreach (var tc in responseMsg.ToolCalls)
+                        // Flush any throttled leftovers into the bubble before finalizing.
+                        if (vm != null)
                         {
-                            cancellationToken.ThrowIfCancellationRequested();
-                            
-                            await Dispatcher.UIThread.InvokeAsync(() =>
-                            {
-                                Status.SetActiveOperation($"Tool: {tc.Function.Name}");
-                                Messages.Add(new MessageViewModel(ChatRole.Assistant, $"[Tool call: {tc.Function.Name}]")
-                                {
-                                    ToolCalls = responseMsg.ToolCalls
-                                });
-                            });
-
-                            using var toolTelemetryContext = SplaTelemetry.PushContext((SplaTelemetry.CurrentContext ?? new SplaTelemetryContext()).WithToolCall(tc.Id));
-                            var result = await _mcpHost.ExecuteToolAsync(Settings.Mode, tc.Function.Name, tc.Function.Arguments, cancellationToken);
-                            cancellationToken.ThrowIfCancellationRequested();
-                            
-                            var isError = result.StartsWith("Error:", StringComparison.OrdinalIgnoreCase) || 
-                                          result.Contains("exception", StringComparison.OrdinalIgnoreCase);
-                            recentToolErrors.Enqueue((tc.Function.Name, tc.Function.Arguments, isError));
-                            if (recentToolErrors.Count > ToolLoopWindow) recentToolErrors.Dequeue();
-                            
-                            await Dispatcher.UIThread.InvokeAsync(() =>
-                            {
-                                Status.SetActiveOperation($"Tool done: {tc.Function.Name}");
-                                Messages.Add(new MessageViewModel(ChatRole.Tool, result) { ToolCallId = tc.Id });
-                                SaveCurrentChat();
-                            });
+                            if (pendingDelta.Length > 0) { vm.Append(pendingDelta.ToString()); pendingDelta.Clear(); }
+                            if (pendingReasoning.Length > 0) { vm.AppendReasoning(pendingReasoning.ToString()); pendingReasoning.Clear(); }
                         }
-                        needToCallLLM = true;
-                    }
-                }
-                else
+
+                        StopTokenEstimate();
+                        Status.AddTokens(msg.PromptTokens, msg.CompletionTokens);
+
+                        if (vm != null)
+                        {
+                            // Sync canonical text/reasoning (streaming may differ in whitespace).
+                            if (!string.IsNullOrEmpty(msg.Content)) vm.SetFinal(msg.Content);
+                            if (!string.IsNullOrEmpty(msg.Reasoning)) vm.SetFinalReasoning(msg.Reasoning);
+
+                            // Drop the empty bubble when the model returned only tool calls.
+                            if (!vm.HasContent && !vm.HasReasoning) Messages.Remove(vm);
+                            else SaveCurrentChat();
+                        }
+                        streamingVm = null;
+                    });
+                },
+
+                OnToolCallStarted = async tc =>
                 {
-                    needToCallLLM = false;
+                    await Dispatcher.UIThread.InvokeAsync(() =>
+                    {
+                        Status.SetActiveOperation($"Tool: {tc.Function.Name}");
+                        Messages.Add(new MessageViewModel(ChatRole.Assistant, $"[Tool call: {tc.Function.Name}]")
+                        {
+                            ToolCalls = new List<ToolCall> { tc }
+                        });
+                    });
+                },
+
+                OnToolResult = async (tc, result) =>
+                {
+                    await Dispatcher.UIThread.InvokeAsync(() =>
+                    {
+                        Status.SetActiveOperation($"Tool done: {tc.Function.Name}");
+                        Messages.Add(new MessageViewModel(ChatRole.Tool, result) { ToolCallId = tc.Id });
+                        SaveCurrentChat();
+                    });
+                },
+
+                OnNotice = async note =>
+                {
+                    await Dispatcher.UIThread.InvokeAsync(() => Messages.Add(new SystemMessageViewModel(note)));
                 }
-            }
+            };
+
+            await orchestrator.RunAsync(conversation, Settings.GetSettings(), Settings.Mode, callbacks, cancellationToken);
         }
         catch (OperationCanceledException)
         {

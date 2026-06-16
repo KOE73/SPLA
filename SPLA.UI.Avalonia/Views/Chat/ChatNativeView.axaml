@@ -6,12 +6,13 @@
              x:Class="SPLA.UI.Avalonia.Views.Chat.ChatNativeView"
              x:DataType="vm:MainWindowViewModel">
 
+    <!-- Padding lives on the ItemsControl (scrollable content) rather than the ScrollViewer,
+         so the last line is never clipped by the bottom padding and stays reachable by scroll. -->
     <ScrollViewer x:Name="ChatScrollViewer"
-                  Margin="{DynamicResource StandardMargin}"
-                  Padding="{DynamicResource StandardMargin}"
                   HorizontalScrollBarVisibility="Disabled">
 
-        <ItemsControl ItemsSource="{Binding Messages}">
+        <ItemsControl ItemsSource="{Binding Messages}"
+                      Margin="{DynamicResource StandardMargin}">
             <ItemsControl.DataTemplates>
 
                 <!-- ══════════════════════════════════════════════════════════

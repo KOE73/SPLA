@@ -14,15 +14,16 @@ public static class ToolModeFilter
     /// <summary>Returns the subset of <paramref name="tools"/> allowed in <paramref name="mode"/>.</summary>
     public static List<ToolDefinition> Filter(IEnumerable<ToolDefinition> tools, AgentMode mode)
     {
-        if (mode == AgentMode.Chat)
-            return new List<ToolDefinition>();
-
         return tools.Where(t => IsAllowed(t, mode)).ToList();
     }
 
     /// <summary>Whether a single tool is allowed in <paramref name="mode"/>.</summary>
     public static bool IsAllowed(ToolDefinition tool, AgentMode mode)
     {
+        // Agent-scoped capabilities (memory, info, datetime, context) are fundamental: they only
+        // read/maintain the agent's own state and are available in every mode, including Chat.
+        if (tool.Function.Scope == ToolScope.Agent) return true;
+
         if (mode == AgentMode.Chat) return false;
 
         // Web/Internet tools: Research, Edit, Agent
