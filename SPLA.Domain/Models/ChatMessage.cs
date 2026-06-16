@@ -34,4 +34,12 @@ public class ChatMessage
 
     public ContextRetention RetentionPolicy { get; set; } = ContextRetention.Persistent;
     public string? ReplacementKey { get; set; }
+
+    /// <summary>
+    /// True for messages that are shown to the user but must never be sent to the model
+    /// (status notices, guard warnings, command echoes, error bubbles). This is the domain
+    /// replacement for the old UI-level <c>is SystemMessageViewModel</c> check: whether a
+    /// message reaches the model is decided here, on the message itself, not by its render type.
+    /// </summary>
+    public bool IsEphemeral { get; set; }
 }

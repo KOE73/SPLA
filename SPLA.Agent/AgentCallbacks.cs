@@ -1,0 +1,31 @@
+using SPLA.Domain.Models;
+using System;
+using System.Threading.Tasks;
+
+namespace SPLA.Agent;
+
+/// <summary>
+/// Output hooks the orchestrator calls as a turn progresses. Every entry point (CLI console,
+/// Avalonia UI, a future server) implements only these — the loop itself stays I/O-agnostic.
+/// All hooks are optional; null means "ignore this event".
+/// </summary>
+public sealed class AgentCallbacks
+{
+    /// <summary>A chunk of assistant answer text as it streams.</summary>
+    public Func<string, Task>? OnDelta { get; init; }
+
+    /// <summary>A chunk of reasoning/chain-of-thought text as it streams.</summary>
+    public Func<string, Task>? OnReasoning { get; init; }
+
+    /// <summary>The fully assembled assistant message (text + reasoning + tool calls), once per LLM call.</summary>
+    public Func<ChatMessage, Task>? OnAssistantMessage { get; init; }
+
+    /// <summary>A tool is about to execute.</summary>
+    public Func<ToolCall, Task>? OnToolCallStarted { get; init; }
+
+    /// <summary>A tool finished; carries the raw result string.</summary>
+    public Func<ToolCall, string, Task>? OnToolResult { get; init; }
+
+    /// <summary>An ephemeral notice for the user (guard tripped, loop stopped). Never sent to the model.</summary>
+    public Func<string, Task>? OnNotice { get; init; }
+}

@@ -30,6 +30,7 @@
     <File Path="SPLA.Skills.Network\ssl-audit.md" />
     <File Path="SPLA.Skills.Network\smtp-probe.md" />
   </Folder>
+  <Project Path="SPLA.Agent/SPLA.Agent.csproj" />
   <Project Path="SPLA.CLI/SPLA.CLI.csproj" />
   <Project Path="SPLA.Domain/SPLA.Domain.csproj" />
   <Project Path="SPLA.LLM.LMStudio/SPLA.LLM.LMStudio.csproj" />

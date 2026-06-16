@@ -1,4 +1,5 @@
 using SPLA.Domain.Models;
+using SPLA.Domain.Interfaces;
 using SPLA.MCP.Core.Interfaces;
 using SPLA.MCP.Core.Permissions;
 using SPLA.MCP.Core.Tools;
@@ -15,7 +16,7 @@ using System.Threading.Tasks;
 
 namespace SPLA.MCP.Core;
 
-public class McpHost
+public class McpHost : IToolHost
 {
     private readonly Dictionary<string, IMcpTool> _tools = new(StringComparer.OrdinalIgnoreCase);
     private readonly IPermissionManager _permissionManager;

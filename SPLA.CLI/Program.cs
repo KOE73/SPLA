@@ -151,54 +151,12 @@ else
     currentChat = chatManager.CreateNewChat();
 }
 
-// --- Build system prompt ---
+// --- Build system prompt (shared core: same builder the UI uses) ---
 var currentDir = Directory.GetCurrentDirectory();
-var systemPrompt = $"You are a helpful local AI assistant named SPLA. You have access to tools to interact with the file system and run commands. Your current working directory is: {currentDir}\n\nTool descriptions are intentionally short. Tool flag: [H] = extended help available. If a [H] tool's details are unclear, call agent.info with the tool name before using it. Do not guess complex argument formats.";
+var promptBuilder = new SPLA.Agent.SystemPromptBuilder(skillManager, pluginManager);
+var systemPrompt = promptBuilder.Build(settings, currentDir);
 
-// Inject instruction files
-foreach (var instrPath in settings.Instructions)
-{
-    var fullPath = Path.GetFullPath(Path.Combine(currentDir, instrPath));
-    if (File.Exists(fullPath))
-    {
-        var content = File.ReadAllText(fullPath);
-        systemPrompt += $"\n\n--- Instructions from {instrPath} ---\n{content}";
-    }
-}
-
-// Inject skill index BEFORE plugin prompts so the rule takes precedence
-var enabledSkills = skillManager.GetEnabled().ToList();
-if (enabledSkills.Count > 0)
-{
-    systemPrompt += "\n\n--- Skills ---";
-    systemPrompt += "\nRULE: When the user's request matches a skill listed below, you MUST call agent.info FIRST — before calling any other tool or executing any step.";
-    systemPrompt += "\nThis rule overrides any plugin instruction that says to 'start immediately'.";
-    systemPrompt += "\nSkill descriptions are in English. The user may write in any language — translate the intent to English and match semantically.";
-    systemPrompt += "\n";
-    systemPrompt += "\nHow to load a skill — call agent.info with {\"id\": \"<skill-id>\"}";
-    systemPrompt += "\nExample: call agent.info with {\"id\": \"network.range-audit\"}";
-    systemPrompt += "\nagent.info works for both tool help AND skill instructions — use it for any capability lookup.";
-    systemPrompt += "\n\nAvailable skills:";
-    foreach (var skill in enabledSkills)
-    {
-        systemPrompt += $"\n  {skill.Id} — {skill.Description}";
-        if (skill.IsPreloaded)
-        {
-            var body = skillManager.LoadBody(skill.Id);
-            if (!string.IsNullOrEmpty(body))
-                systemPrompt += $"\n\n--- Skill: {skill.Id} (preloaded) ---\n{body}";
-        }
-    }
-}
-
-// Inject Plugin Prompts
-foreach (var plugin in pluginManager.GetActivePlugins())
-{
-    if (!string.IsNullOrWhiteSpace(plugin.EffectivePrompt))
-    {
-        systemPrompt += $"\n\n--- Plugin: {plugin.Meta.Id} ---\n{plugin.EffectivePrompt}";
-    }
-}
+var orchestrator = new SPLA.Agent.ConversationOrchestrator(llmClient, mcpHost);
 
 var messages = new List<ChatMessage>
 {
@@ -262,52 +220,37 @@ while (true)
         ProjectId: settings.ProjectName,
         WorkspacePath: settings.WorkspacePath));
 
-    bool needToCallLLM = true;
-    while (needToCallLLM)
+    Console.Write("SPLA: ");
+    var callbacks = new SPLA.Agent.AgentCallbacks
     {
-        Console.Write("SPLA: ");
-        
-        try
+        OnDelta = chunk => { Console.Write(chunk); return Task.CompletedTask; },
+        OnAssistantMessage = msg =>
         {
-            var responseMsg = await llmClient.SendMessageAsync(messages, llmSettings, tools);
-            messages.Add(responseMsg);
-            
-            if (!string.IsNullOrEmpty(responseMsg.Content))
-            {
-                Console.WriteLine(responseMsg.Content);
-                SaveCliChat(chatManager, currentChat, messages);
-            }
-            
-            if (responseMsg.ToolCalls != null && responseMsg.ToolCalls.Any())
-            {
-                Console.WriteLine("\n[Agent using tools...]");
-                foreach (var tc in responseMsg.ToolCalls)
-                {
-                    Console.WriteLine($" -> Call: {tc.Function.Name}");
-                    using var toolTelemetryContext = SplaTelemetry.PushContext((SplaTelemetry.CurrentContext ?? new SplaTelemetryContext()).WithToolCall(tc.Id));
-                    var result = await mcpHost.ExecuteToolAsync(settings.Mode, tc.Function.Name, tc.Function.Arguments);
-                    Console.WriteLine($" -> Result received ({result.Length} chars).");
-                    
-                    messages.Add(new ChatMessage 
-                    { 
-                        Role = ChatRole.Tool, 
-                        Content = result,
-                        ToolCallId = tc.Id
-                    });
-                    SaveCliChat(chatManager, currentChat, messages);
-                }
-                needToCallLLM = true;
-            }
-            else
-            {
-                needToCallLLM = false;
-            }
-        }
-        catch (Exception ex)
+            Console.WriteLine();
+            SaveCliChat(chatManager, currentChat, messages);
+            return Task.CompletedTask;
+        },
+        OnToolCallStarted = tc =>
         {
-            Console.WriteLine($"\n[Error]: {ex.Message}");
-            needToCallLLM = false;
-        }
+            Console.WriteLine($" -> Call: {tc.Function.Name}");
+            return Task.CompletedTask;
+        },
+        OnToolResult = (tc, result) =>
+        {
+            Console.WriteLine($" -> Result received ({result.Length} chars).");
+            SaveCliChat(chatManager, currentChat, messages);
+            return Task.CompletedTask;
+        },
+        OnNotice = note => { Console.WriteLine($"\n{note}"); return Task.CompletedTask; }
+    };
+
+    try
+    {
+        await orchestrator.RunAsync(messages, llmSettings, settings.Mode, callbacks);
+    }
+    catch (Exception ex)
+    {
+        Console.WriteLine($"\n[Error]: {ex.Message}");
     }
 }
 

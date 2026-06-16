@@ -1,6 +1,7 @@
 using Avalonia.Threading;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using SPLA.Domain.Context;
 using SPLA.Domain.Models;
 using SPLA.Domain.Settings;
 using SPLA.LLM.LMStudio;
@@ -97,51 +98,38 @@ public partial class MainWindowViewModel : ViewModelBase
         return true;
     }
 
-    private static bool ShouldSendToModel(MessageViewModel message)
+    /// <summary>
+    /// UI-only reasons a bubble must never reach the model. These are the bits that genuinely
+    /// depend on the render type (a status notice, a permission card, an error bubble); the rest
+    /// of the decision — empty content, orphan tool results, retention — lives in the domain
+    /// <see cref="ContextAssembler"/>.
+    /// </summary>
+    private static bool IsEphemeral(MessageViewModel m)
     {
-        if (!message.HasContent) return false;
-        if (message is SystemMessageViewModel sm && !sm.IsSystemPrompt) return false;
-        if (message is PermissionMessageViewModel) return false;
-        if (message.Role == ChatRole.Tool && string.IsNullOrWhiteSpace(message.ToolCallId)) return false;
-        if (message.IsToolCallNotice && message.ToolCalls == null) return false;
-        if (message.IsError) return false;
-        if (message.Content.StartsWith("Сжатие контекста")) return false;
-        if (message.Content.StartsWith("Ошибка сжатия:")) return false;
-
-        return true;
+        if (m is SystemMessageViewModel sm && !sm.IsSystemPrompt) return true;
+        if (m is PermissionMessageViewModel) return true;
+        if (m.IsError) return true;
+        if (m.Content.StartsWith("Сжатие контекста")) return true;
+        if (m.Content.StartsWith("Ошибка сжатия:")) return true;
+        return false;
     }
 
     private List<ChatMessage> GetRuntimeContext(IEnumerable<MessageViewModel> source)
     {
-        var result = new List<MessageViewModel>();
-        var supersededKeys = new HashSet<string>();
-
-        // Iterate backwards to enforce UntilSuperseded
-        foreach (var m in source.Reverse())
+        // Project view-models to domain messages, then let the shared ContextAssembler decide
+        // what the model sees (send-filter + retention). No render-type checks beyond IsEphemeral.
+        var domain = source.Select(m => new ChatMessage
         {
-            if (!ShouldSendToModel(m)) continue;
-            if (m.RetentionPolicy == ContextRetention.Never) continue;
-
-            if (m.RetentionPolicy == ContextRetention.UntilSuperseded && !string.IsNullOrEmpty(m.ReplacementKey))
-            {
-                if (supersededKeys.Contains(m.ReplacementKey))
-                    continue;
-                supersededKeys.Add(m.ReplacementKey);
-            }
-
-            // We can add simple handling for NextStepOnly. For now, just include it if we encounter it.
-            // A more complex implementation would track if it has been sent before.
-
-            result.Insert(0, m);
-        }
-
-        return result.Select(m => new ChatMessage 
-        { 
-            Role = m.Role, 
+            Role = m.Role,
             Content = m.IsToolCallNotice ? "" : m.Content,
             ToolCallId = m.ToolCallId,
-            ToolCalls = m.ToolCalls
-        }).ToList();
+            ToolCalls = m.ToolCalls,
+            RetentionPolicy = m.RetentionPolicy,
+            ReplacementKey = m.ReplacementKey,
+            IsEphemeral = IsEphemeral(m)
+        });
+
+        return ContextAssembler.Assemble(domain);
     }
 }
 

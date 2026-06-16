@@ -1,6 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <ItemGroup>
+    <ProjectReference Include="..\SPLA.Agent\SPLA.Agent.csproj" />
     <ProjectReference Include="..\SPLA.Domain\SPLA.Domain.csproj" />
     <ProjectReference Include="..\SPLA.LLM.LMStudio\SPLA.LLM.LMStudio.csproj" />
     <ProjectReference Include="..\SPLA.MCP.BasicTools\SPLA.MCP.BasicTools.csproj" />
