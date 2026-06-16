@@ -14,13 +14,14 @@ public interface ILLMService
 
     /// <summary>
     /// Sends a chat request in streaming mode, invoking <paramref name="onDelta"/> for each text chunk
-    /// as it arrives, and returns the fully assembled <see cref="ChatMessage"/> (including tool_calls)
-    /// when the stream is finished.
+    /// and <paramref name="onReasoning"/> for each reasoning chunk as they arrive, and returns the fully
+    /// assembled <see cref="ChatMessage"/> (including tool_calls and reasoning) when the stream is finished.
     /// </summary>
     Task<ChatMessage> SendMessageStreamFullAsync(
         IEnumerable<ChatMessage> messages,
         LLMSettings settings,
         IEnumerable<ToolDefinition>? tools,
         Func<string, Task>? onDelta,
-        CancellationToken cancellationToken = default);
+        CancellationToken cancellationToken = default,
+        Func<string, Task>? onReasoning = null);
 }

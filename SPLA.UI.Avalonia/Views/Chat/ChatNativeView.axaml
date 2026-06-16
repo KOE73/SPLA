@@ -109,15 +109,23 @@
                      STREAMING (must come before AssistantMessageViewModel)
                      ══════════════════════════════════════════════════════════ -->
                 <DataTemplate DataType="msg:StreamingMessageViewModel">
-                    <Panel IsVisible="{Binding IsVisibleMessage}">
+                    <Panel>
 
                         <!-- Bubble layout: right margin offsets content -->
                         <Border Background="{DynamicResource AiBubbleBackgroundBrush}"
                                 CornerRadius="12" Padding="{DynamicResource StandardPadding}"
                                 Margin="{DynamicResource AiChatBubbleMargin}"
                                 IsVisible="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).ActiveProfileUsesBubbles}">
-                            <md:MarkdownScrollViewer Markdown="{Binding Content}"
-                                                     SelectionEnabled="True" Margin="0,0,0,4" />
+                            <StackPanel>
+                                <Expander Classes="reasoning" Header="💭 Reasoning" IsExpanded="True"
+                                          IsVisible="{Binding HasReasoning}" Margin="0,0,0,6">
+                                    <SelectableTextBlock Text="{Binding Reasoning}" TextWrapping="Wrap"
+                                                         FontSize="{DynamicResource SmallFontSize}" FontStyle="Italic"
+                                                         Foreground="{DynamicResource SubTextForegroundBrush}" />
+                                </Expander>
+                                <md:MarkdownScrollViewer Markdown="{Binding Content}"
+                                                         SelectionEnabled="True" Margin="0,0,0,4" />
+                            </StackPanel>
                         </Border>
 
                         <!-- Linear layout -->
@@ -126,6 +134,12 @@
                             <TextBlock Text="Assistant ●"
                                        FontSize="{DynamicResource SmallFontSize}" FontWeight="Bold"
                                        Foreground="{DynamicResource AccentBrush}" Margin="0,0,0,6" />
+                            <Expander Classes="reasoning" Header="💭 Reasoning" IsExpanded="True"
+                                      IsVisible="{Binding HasReasoning}" Margin="0,0,0,6">
+                                <SelectableTextBlock Text="{Binding Reasoning}" TextWrapping="Wrap"
+                                                     FontSize="{DynamicResource SmallFontSize}" FontStyle="Italic"
+                                                     Foreground="{DynamicResource SubTextForegroundBrush}" />
+                            </Expander>
                             <Border BorderBrush="{DynamicResource PanelBorderBrush}"
                                     BorderThickness="0,0,0,1" Padding="0,0,0,10">
                                 <md:MarkdownScrollViewer Markdown="{Binding Content}" SelectionEnabled="True" />
@@ -147,6 +161,12 @@
                                 Margin="{DynamicResource AiChatBubbleMargin}"
                                 IsVisible="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).ActiveProfileUsesBubbles}">
                             <StackPanel>
+                                <Expander Classes="reasoning" Header="💭 Reasoning" IsExpanded="False"
+                                          IsVisible="{Binding HasReasoning}" Margin="0,0,0,6">
+                                    <SelectableTextBlock Text="{Binding Reasoning}" TextWrapping="Wrap"
+                                                         FontSize="{DynamicResource SmallFontSize}" FontStyle="Italic"
+                                                         Foreground="{DynamicResource SubTextForegroundBrush}" />
+                                </Expander>
                                 <md:MarkdownScrollViewer Markdown="{Binding Content}"
                                                          SelectionEnabled="True" Margin="0,0,0,4" />
                                     <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Spacing="8" Margin="0,2,0,0">
@@ -228,6 +248,12 @@
                                             FontSize="{DynamicResource SmallFontSize}" Padding="2" Cursor="Hand" />
                                 </StackPanel>
                             </Grid>
+                            <Expander Classes="reasoning" Header="💭 Reasoning" IsExpanded="False"
+                                      IsVisible="{Binding HasReasoning}" Margin="0,0,0,6">
+                                <SelectableTextBlock Text="{Binding Reasoning}" TextWrapping="Wrap"
+                                                     FontSize="{DynamicResource SmallFontSize}" FontStyle="Italic"
+                                                     Foreground="{DynamicResource SubTextForegroundBrush}" />
+                            </Expander>
                             <Border BorderBrush="{DynamicResource PanelBorderBrush}"
                                     BorderThickness="0,0,0,1" Padding="0,0,0,10">
                                 <md:MarkdownScrollViewer Markdown="{Binding Content}" SelectionEnabled="True" />

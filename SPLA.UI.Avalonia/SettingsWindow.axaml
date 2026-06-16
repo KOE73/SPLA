@@ -57,8 +57,8 @@
                 <!-- SECTION: LLM Provider -->
                 <settings:SettingsLlmView IsVisible="{Binding IsLlmProvider}" />
 
-                <!-- SECTION: Models -->
-                <settings:SettingsModelsView IsVisible="{Binding IsModels}" />
+                <!-- SECTION: Server (LM Studio management) -->
+                <settings:SettingsModelsView IsVisible="{Binding IsServer}" />
 
                 <!-- SECTION: Agent Settings -->
                 <settings:SettingsAgentView IsVisible="{Binding IsAgentSettings}" />

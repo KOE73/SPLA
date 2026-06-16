@@ -161,6 +161,8 @@ public partial class ChatWebView : UserControl
         {
             if (e.PropertyName == nameof(StreamingMessageViewModel.StreamingContent))
                 EnqueueOp(() => AppendDeltaAsync(entry.Index, streaming));
+            else if (e.PropertyName == nameof(StreamingMessageViewModel.StreamingReasoning))
+                EnqueueOp(() => AppendReasoningAsync(entry.Index, streaming));
         }
         else if (e.PropertyName is nameof(MessageViewModel.Content)
                                  or nameof(MessageViewModel.RetentionIcon)
@@ -190,12 +192,29 @@ public partial class ChatWebView : UserControl
     // Track last-seen content to avoid redundant delta calls during rapid streaming
     private readonly Dictionary<int, string> _lastStreamedContent = [];
 
+    // Indices whose shell has been created (so reasoning can attach before any content arrives)
+    private readonly HashSet<int> _shellEnsured = [];
+
     private async Task AppendMessageAsync(MessageViewModel msg, int index)
     {
-        if (!msg.HasContent) return;
+        if (!msg.HasContent && !msg.HasReasoning) return;
         var json = ChatHtmlRenderer.SerializeMessage(msg, index);
         var escaped = JsonSerializer.Serialize(json); // JSON-encodes the string for JS
         await InvokeJsAsync($"window.__splaAppendMessage({escaped})");
+        _shellEnsured.Add(index);
+    }
+
+    private async Task AppendReasoningAsync(int index, StreamingMessageViewModel streaming)
+    {
+        var current = streaming.StreamingReasoning;
+        if (string.IsNullOrEmpty(current)) return;
+
+        // Reasoning may stream before any content — make sure the message shell exists.
+        if (!_shellEnsured.Contains(index) && !_lastStreamedContent.ContainsKey(index))
+            await AppendMessageAsync(streaming, index);
+
+        var escapedReasoning = JsonSerializer.Serialize(current);
+        await InvokeJsAsync($"window.__splaSetReasoning({index}, {escapedReasoning})");
     }
 
     private async Task AppendDeltaAsync(int index, StreamingMessageViewModel streaming)
@@ -226,6 +245,7 @@ public partial class ChatWebView : UserControl
     private async Task RemoveMessageAsync(int index)
     {
         _lastStreamedContent.Remove(index);
+        _shellEnsured.Remove(index);
         await InvokeJsAsync($"window.__splaRemoveMessage({index})");
     }
 
@@ -246,6 +266,7 @@ public partial class ChatWebView : UserControl
             _pageReady = false;
             _pendingOps.Clear();
             _lastStreamedContent.Clear();
+            _shellEnsured.Clear();
             var rendered = ChatHtmlRenderer.RenderToFile(_viewModel.Messages, CreateTheme(), _viewModel.ActiveProfile?.Id);
             _browser.Navigate(rendered.DocumentUri);
             // Page is considered ready immediately after navigation in NativeWebView

@@ -12,6 +12,7 @@ public class ResolvedSettings
     public string ApiKey { get; set; } = "lm-studio";
     public string Model { get; set; } = "auto";
     public double Temperature { get; set; } = 0.7;
+    public string? ReasoningLevel { get; set; }
 
     // Agent
     public AgentMode Mode { get; set; } = AgentMode.Edit;
@@ -73,7 +74,8 @@ public class ResolvedSettings
         ModelName = Model == "auto" ? "local-model" : Model,
         Temperature = Temperature,
         Mode = Mode,
-        Theme = Theme
+        Theme = Theme,
+        ReasoningLevel = ReasoningLevel
     };
 }
 
@@ -96,6 +98,7 @@ public static class SettingsResolver
                 r.ApiKey = defaults.Llm.ApiKey ?? r.ApiKey;
                 r.Model = defaults.Llm.Model ?? r.Model;
                 r.Temperature = defaults.Llm.Temperature ?? r.Temperature;
+                r.ReasoningLevel = defaults.Llm.ReasoningLevel ?? r.ReasoningLevel;
             }
             if (defaults.Agent != null)
             {
@@ -130,6 +133,7 @@ public static class SettingsResolver
                 r.ApiKey = project.Llm.ApiKey ?? r.ApiKey;
                 r.Model = project.Llm.Model ?? r.Model;
                 r.Temperature = project.Llm.Temperature ?? r.Temperature;
+                r.ReasoningLevel = project.Llm.ReasoningLevel ?? r.ReasoningLevel;
             }
             if (project.Agent != null)
             {

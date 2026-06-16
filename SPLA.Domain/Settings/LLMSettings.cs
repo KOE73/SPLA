@@ -10,4 +10,11 @@ public class LLMSettings
     public double Temperature { get; set; } = 0.7;
     public AgentMode Mode { get; set; } = AgentMode.Edit;
     public string Theme { get; set; } = "Dark";
+
+    /// <summary>
+    /// Selected reasoning option for the active model. Interpreted per the model's advertised
+    /// options: "off"/"on" map to <c>chat_template_kwargs.enable_thinking</c>; graded values
+    /// (e.g. "low"/"medium"/"high") map to <c>reasoning_effort</c>. Empty/null = model default.
+    /// </summary>
+    public string? ReasoningLevel { get; set; }
 }

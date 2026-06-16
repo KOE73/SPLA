@@ -39,6 +39,9 @@ public class SplaLlmSection
 
     [YamlMember(Alias = "temperature")]
     public double? Temperature { get; set; }
+
+    [YamlMember(Alias = "reasoning_level")]
+    public string? ReasoningLevel { get; set; }
 }
 
 /// <summary>

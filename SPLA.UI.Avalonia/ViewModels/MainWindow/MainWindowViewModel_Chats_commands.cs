@@ -165,7 +165,7 @@ public partial class MainWindowViewModel : ViewModelBase
             }
         }
         
-        Messages.Add(new SystemMessageViewModel(systemPrompt));
+        Messages.Add(new SystemMessageViewModel(systemPrompt, isSystemPrompt: true));
 
         // Load existing messages — use typed VMs so DataTemplates match correctly
         foreach (var m in value.Messages)
@@ -177,6 +177,8 @@ public partial class MainWindowViewModel : ViewModelBase
                 "tool"      => new MessageViewModel(ChatRole.Tool, m.Content),
                 _           => new SystemMessageViewModel(m.Content)
             };
+            if (!string.IsNullOrEmpty(m.Reasoning))
+                vm.Reasoning = m.Reasoning;
             Messages.Add(vm);
         }
     }

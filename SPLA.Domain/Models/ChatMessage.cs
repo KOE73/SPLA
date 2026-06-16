@@ -15,7 +15,14 @@ public class ChatMessage
 {
     public ChatRole Role { get; set; }
     public string? Content { get; set; } = string.Empty;
-    
+
+    /// <summary>
+    /// Separate chain-of-thought / reasoning text emitted by reasoning models
+    /// (OpenAI <c>reasoning_content</c> field, or stripped from inline &lt;think&gt; tags).
+    /// Null/empty when the model did not reason or reasoning was not exposed.
+    /// </summary>
+    public string? Reasoning { get; set; }
+
     // For when the assistant wants to call tools
     public List<ToolCall>? ToolCalls { get; set; }
     

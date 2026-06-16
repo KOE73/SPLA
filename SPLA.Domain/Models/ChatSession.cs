@@ -49,6 +49,9 @@ public class ChatSessionMessage
 
     [YamlMember(Alias = "content")]
     public string Content { get; set; } = string.Empty;
+
+    [YamlMember(Alias = "reasoning")]
+    public string? Reasoning { get; set; }
 }
 
 public class ChatSessionContext

@@ -5,16 +5,66 @@ description: IPv4 subnet/range audit — full host inventory, scan every IP, rev
 
 # Network Range Audit
 
+## Execution protocol — mandatory checkpointing
+
+**Before doing anything else**, create a plan file and follow it step by step.
+Re-read the plan file before every step. This is not optional — it is the mechanism that keeps you on track across a long task.
+
+### Step 0 — Create the plan file
+
+Write `network-range-plan.md` with the following structure, filled in for this specific task:
+
+```markdown
+# Range Audit Plan
+Target: <CIDR>
+Mode: <presence|basic|full>
+Created: <timestamp>
+
+## Blocks
+- [ ] Block 1: <start>–<end>
+- [ ] Block 2: <start>–<end>
+...
+
+## Per-block steps (repeat for each block)
+- [ ] 1. network.dns.reverse — bulk PTR for all IPs in block
+- [ ] 2. network.scan.lan (ping) — ICMP discovery
+- [ ] 3. network.scan.lan (ports) — TCP presence [basic/full only]
+- [ ] 4. network.host.arp — MAC enrichment
+- [ ] 5. Build host set (union of DNS+ping+tcp+arp)
+- [ ] 6. Per-host port scan + banner grab [full only]
+- [ ] 7. Write block report: network-range-<start>-<end>.md — ALL hosts including empty
+
+## Final step
+- [ ] Write network-range-summary.md
+```
+
+After writing the plan: read it back, confirm it looks correct, then start Block 1.
+
+### Between every step
+
+Before executing each step:
+1. Read `network-range-plan.md`
+2. Identify the next unchecked `- [ ]` item
+3. Execute that step
+4. Mark it `- [x]` in the file
+5. Write any partial results immediately — do not accumulate in memory
+
+**If you ever feel uncertain about what to do next — read the plan file first.**
+
+### Writing reports — non-negotiable rules
+
+- Block report must contain a row for **every IP address in the block** — including silent/empty ones.
+- Do not truncate. Do not summarize. Do not write "and X more hosts".
+- Write the file incrementally: open, append rows, save — do not wait until the block is fully processed.
+
+---
+
 ## Tool availability
 
 Before starting, call `agent.info` with each tool name you intend to use to confirm it is registered.
 Prefer `network.*` plugin tools when available — they return structured data and handle errors cleanly.
 If a specific `network.*` tool is absent, fall back to `RunCommandTool` (cmd/shell) to accomplish the same step.
 Adapt the execution sequence below based on what is actually available.
-
-Run this skill whenever the user asks to investigate, scan, inventory, map, audit, discover, enumerate, or document an IPv4 subnet, IP range, LAN, network segment, or hosts in a network. This skill applies even if the user does not say "audit" or "inventory".
-
-Treat requests about finding live devices, identifying what exists in a network, checking an address range, documenting subnet contents, or producing a host inventory as network range audit requests.
 
 ## Clarification
 

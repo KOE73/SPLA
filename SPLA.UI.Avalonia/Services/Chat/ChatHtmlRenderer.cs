@@ -58,6 +58,7 @@ public static class ChatHtmlRenderer
             index,
             message.Role.ToString(),
             message.Content,
+            message.Reasoning ?? "",
             message.RetentionIcon,
             message.RetentionDescription,
             message.IsUser,
@@ -81,6 +82,7 @@ public static class ChatHtmlRenderer
                 index,
                 message.Role.ToString(),
                 message.Content,
+                message.Reasoning ?? "",
                 message.RetentionIcon,
                 message.RetentionDescription,
                 message.IsUser,
@@ -91,7 +93,7 @@ public static class ChatHtmlRenderer
                 message.IsToolCallNotice,
                 message.IsPlainText,
                 message.IsMarkdown))
-            .Where(message => !string.IsNullOrWhiteSpace(message.Content))
+            .Where(message => !string.IsNullOrWhiteSpace(message.Content) || !string.IsNullOrWhiteSpace(message.Reasoning))
             .ToArray();
 
         var json = JsonSerializer.Serialize(payload, JsonOptions);
@@ -240,6 +242,33 @@ body {
   padding: var(--standard-padding);
   padding-right: max(96px, var(--standard-padding));
   overflow-wrap: anywhere;
+}
+
+/* ── Reasoning block ── */
+.reasoning {
+  margin: var(--compact-margin) var(--standard-padding) 0 var(--standard-padding);
+  border: 1px dashed var(--panel-border);
+  border-radius: var(--radius);
+  background: rgba(127, 127, 127, .06);
+}
+.reasoning[hidden] { display: none; }
+.reasoning > summary {
+  cursor: pointer;
+  user-select: none;
+  padding: 6px 10px;
+  font-size: var(--small-font-size);
+  font-weight: 600;
+  color: var(--muted);
+  letter-spacing: .03em;
+}
+.reasoning > summary::marker { color: var(--muted); }
+.reasoning .reasoning-body {
+  padding: 0 12px 10px 12px;
+  margin: 0;
+  white-space: pre-wrap;
+  font-size: var(--small-font-size);
+  font-style: italic;
+  color: var(--muted);
 }
 
 .plain {
@@ -475,6 +504,7 @@ function messageClasses(message) {
 }
 
 function buildShell(message) {
+  const hasReasoning = message.reasoning && message.reasoning.trim().length > 0;
   return `
     <article class="${messageClasses(message)}" data-index="${message.index}">
       <header class="message-header">
@@ -485,8 +515,22 @@ function buildShell(message) {
           <button class="action" title="Copy message" aria-label="Copy message" data-action="copy" data-index="${message.index}">⧉</button>
         </div>
       </header>
+      <details class="reasoning" data-reasoning="${message.index}" ${hasReasoning ? "open" : "hidden"}>
+        <summary>💭 Reasoning</summary>
+        <pre class="reasoning-body">${escapeHtml(message.reasoning ?? "")}</pre>
+      </details>
       <section class="content" data-content="${message.index}"></section>
     </article>`;
+}
+
+function setReasoning(index, text) {
+  const chat = document.getElementById("chat");
+  const details = chat.querySelector(`[data-reasoning="${index}"]`);
+  if (!details) return;
+  const body = details.querySelector(".reasoning-body");
+  const hasText = text && text.trim().length > 0;
+  if (body) body.textContent = text ?? "";
+  details.hidden = !hasText;
 }
 
 async function renderMarkdownInto(container, markdown, messageIndex) {
@@ -653,6 +697,10 @@ window.__splaRemoveMessage = function(index) {
   const article = chat.querySelector(`[data-index="${index}"]`);
   if (article) article.remove();
 };
+
+window.__splaSetReasoning = function(index, text) {
+  setReasoning(index, text);
+};
 </script>
 </body>
 </html>
@@ -737,6 +785,7 @@ window.__splaRemoveMessage = function(index) {
         int Index,
         string Role,
         string Content,
+        string Reasoning,
         string RetentionIcon,
         string RetentionDescription,
         bool IsUser,

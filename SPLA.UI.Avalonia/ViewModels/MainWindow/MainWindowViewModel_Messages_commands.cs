@@ -75,7 +75,8 @@ public partial class MainWindowViewModel : ViewModelBase
             CurrentChat.Messages.Add(new ChatSessionMessage
             {
                 Role = m.Role.ToString().ToLower(),
-                Content = m.Content
+                Content = m.Content,
+                Reasoning = m.HasReasoning ? m.Reasoning : null
             });
         }
         
@@ -99,7 +100,7 @@ public partial class MainWindowViewModel : ViewModelBase
     private static bool ShouldSendToModel(MessageViewModel message)
     {
         if (!message.HasContent) return false;
-        if (message is SystemMessageViewModel) return false;
+        if (message is SystemMessageViewModel sm && !sm.IsSystemPrompt) return false;
         if (message is PermissionMessageViewModel) return false;
         if (message.Role == ChatRole.Tool && string.IsNullOrWhiteSpace(message.ToolCallId)) return false;
         if (message.IsToolCallNotice && message.ToolCalls == null) return false;

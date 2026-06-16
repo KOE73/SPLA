@@ -61,10 +61,13 @@ public class LMStudioClient : ILLMService
         var responseData = await response.Content.ReadFromJsonAsync<OpenAIResponse>(_jsonOptions, cancellationToken);
         var msg = responseData?.Choices?.FirstOrDefault()?.Message;
 
+        var (content, reasoning) = SplitReasoning(msg?.Content ?? "", msg?.ReasoningText);
+
         return new ChatMessage
         {
             Role = ChatRole.Assistant,
-            Content = msg?.Content ?? "",
+            Content = content,
+            Reasoning = reasoning,
             ToolCalls = msg?.ToolCalls?.Select(t => new ToolCall
             {
                 Id = t.Id,
@@ -86,7 +89,8 @@ public class LMStudioClient : ILLMService
         LLMSettings settings,
         IEnumerable<ToolDefinition>? tools,
         Func<string, Task>? onDelta,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken = default,
+        Func<string, Task>? onReasoning = null)
     {
         var request = CreateRequestMessage(messages, settings, tools, stream: true);
         using var response = await _httpClient.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, cancellationToken);
@@ -96,6 +100,7 @@ public class LMStudioClient : ILLMService
         using var reader = new StreamReader(stream);
 
         var contentBuilder = new StringBuilder();
+        var reasoningBuilder = new StringBuilder();
         // tool_calls accumulator: index → (id, type, name, arguments)
         var toolCallsById = new Dictionary<int, ToolCallAccumulator>();
         int completionTokens = 0;
@@ -129,6 +134,15 @@ public class LMStudioClient : ILLMService
 
             var delta = choice.Delta;
             if (delta == null) continue;
+
+            // --- Reasoning delta (OpenAI reasoning_content / reasoning) ---
+            var reasoningChunk = delta.ReasoningText;
+            if (!string.IsNullOrEmpty(reasoningChunk))
+            {
+                reasoningBuilder.Append(reasoningChunk);
+                if (onReasoning != null)
+                    await onReasoning(reasoningChunk);
+            }
 
             // --- Text delta ---
             if (!string.IsNullOrEmpty(delta.Content))
@@ -181,13 +195,60 @@ public class LMStudioClient : ILLMService
                 }).ToList();
         }
 
+        // Reasoning may arrive either as a dedicated channel (reasoning_content) or inline
+        // as <think>...</think> in the content; reconcile both into a single field.
+        var (finalContent, inlineReasoning) = SplitReasoning(contentBuilder.ToString(), reasoningBuilder.ToString());
+
         return new ChatMessage
         {
             Role             = ChatRole.Assistant,
-            Content          = contentBuilder.ToString(),
+            Content          = finalContent,
+            Reasoning        = inlineReasoning,
             ToolCalls        = toolCalls,
             CompletionTokens = completionTokens
         };
+    }
+
+    /// <summary>
+    /// Reconciles reasoning that may come from a dedicated channel and/or inline
+    /// <c>&lt;think&gt;...&lt;/think&gt;</c> tags embedded in the content. Returns the cleaned
+    /// content (tags removed) and the combined reasoning text (null when empty).
+    /// </summary>
+    private static (string Content, string? Reasoning) SplitReasoning(string content, string? channelReasoning)
+    {
+        content ??= string.Empty;
+        var reasoningParts = new List<string>();
+        if (!string.IsNullOrWhiteSpace(channelReasoning))
+            reasoningParts.Add(channelReasoning.Trim());
+
+        if (content.Contains("<think>", StringComparison.OrdinalIgnoreCase))
+        {
+            var matches = System.Text.RegularExpressions.Regex.Matches(
+                content, "<think>(.*?)</think>",
+                System.Text.RegularExpressions.RegexOptions.Singleline |
+                System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+            foreach (System.Text.RegularExpressions.Match m in matches)
+            {
+                var inner = m.Groups[1].Value.Trim();
+                if (!string.IsNullOrEmpty(inner)) reasoningParts.Add(inner);
+            }
+
+            // Strip the think blocks (and any unterminated trailing one) from the visible content.
+            content = System.Text.RegularExpressions.Regex.Replace(
+                content, "<think>.*?</think>",
+                string.Empty,
+                System.Text.RegularExpressions.RegexOptions.Singleline |
+                System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+            content = System.Text.RegularExpressions.Regex.Replace(
+                content, "<think>.*$",
+                string.Empty,
+                System.Text.RegularExpressions.RegexOptions.Singleline |
+                System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+            content = content.Trim();
+        }
+
+        var reasoning = reasoningParts.Count > 0 ? string.Join("\n\n", reasoningParts) : null;
+        return (content, reasoning);
     }
 
     public async IAsyncEnumerable<string> SendMessageStreamAsync(IEnumerable<ChatMessage> messages, LLMSettings settings, IEnumerable<ToolDefinition>? tools = null, [EnumeratorCancellation] CancellationToken cancellationToken = default)
@@ -259,6 +320,18 @@ public class LMStudioClient : ILLMService
                 return msgDict;
             }).ToArray()
         };
+
+        // Reasoning lever for the OpenAI-compatible endpoint. on/off maps to the chat-template
+        // kwarg (Qwen3/Gemma-style); graded values map to reasoning_effort (gpt-oss-style).
+        // Empty = leave the model's own default. Unknown fields are ignored by LM Studio.
+        var level = settings.ReasoningLevel?.Trim().ToLowerInvariant();
+        if (!string.IsNullOrEmpty(level))
+        {
+            if (level is "off" or "on")
+                payload["chat_template_kwargs"] = new Dictionary<string, object?> { ["enable_thinking"] = level == "on" };
+            else
+                payload["reasoning_effort"] = level;
+        }
 
         if (tools?.Any() == true)
         {
@@ -349,9 +422,19 @@ public class LMStudioClient : ILLMService
     {
         [JsonPropertyName("content")]
         public string? Content { get; set; }
-        
+
+        [JsonPropertyName("reasoning_content")]
+        public string? ReasoningContent { get; set; }
+
+        [JsonPropertyName("reasoning")]
+        public string? Reasoning { get; set; }
+
         [JsonPropertyName("tool_calls")]
         public List<OpenAIToolCall>? ToolCalls { get; set; }
+
+        /// <summary>First non-empty of the two reasoning aliases used across servers.</summary>
+        public string? ReasoningText =>
+            !string.IsNullOrEmpty(ReasoningContent) ? ReasoningContent : Reasoning;
     }
 
     private class OpenAIToolCall
@@ -400,8 +483,18 @@ public class LMStudioClient : ILLMService
         [JsonPropertyName("content")]
         public string? Content { get; set; }
 
+        [JsonPropertyName("reasoning_content")]
+        public string? ReasoningContent { get; set; }
+
+        [JsonPropertyName("reasoning")]
+        public string? Reasoning { get; set; }
+
         [JsonPropertyName("tool_calls")]
         public List<OpenAIStreamToolCallDelta>? ToolCalls { get; set; }
+
+        /// <summary>First non-empty of the two reasoning aliases used across servers.</summary>
+        public string? ReasoningText =>
+            !string.IsNullOrEmpty(ReasoningContent) ? ReasoningContent : Reasoning;
     }
 
     private class OpenAIStreamToolCallDelta

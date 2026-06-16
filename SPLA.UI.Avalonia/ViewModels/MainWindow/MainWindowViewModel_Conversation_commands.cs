@@ -128,6 +128,22 @@ public partial class MainWindowViewModel : ViewModelBase
                 var lastFlush   = DateTime.UtcNow;
                 const int FlushIntervalMs = 80;
 
+                // --- Separate reasoning channel (same throttle strategy) ---
+                var pendingReasoning = new System.Text.StringBuilder();
+                var lastReasoningFlush = DateTime.UtcNow;
+
+                async Task OnReasoning(string chunk)
+                {
+                    pendingReasoning.Append(chunk);
+                    if ((DateTime.UtcNow - lastReasoningFlush).TotalMilliseconds >= FlushIntervalMs)
+                    {
+                        var toFlush = pendingReasoning.ToString();
+                        pendingReasoning.Clear();
+                        lastReasoningFlush = DateTime.UtcNow;
+                        await Dispatcher.UIThread.InvokeAsync(() => streamingVm.AppendReasoning(toFlush));
+                    }
+                }
+
                 async Task OnDelta(string chunk)
                 {
                     pendingDelta.Append(chunk);
@@ -161,7 +177,7 @@ public partial class MainWindowViewModel : ViewModelBase
                 {
                     var filteredTools = GetFilteredToolsForMode(App.ResolvedSettings.Mode);
                     responseMsg = await llmClient.SendMessageStreamFullAsync(
-                        coreMessages, Settings.GetSettings(), filteredTools, OnDelta, cancellationToken);
+                        coreMessages, Settings.GetSettings(), filteredTools, OnDelta, cancellationToken, OnReasoning);
                 }
                 catch (OperationCanceledException)
                 {
@@ -183,12 +199,19 @@ public partial class MainWindowViewModel : ViewModelBase
                 if (pendingDelta.Length > 0)
                 {
                     var leftover = pendingDelta.ToString();
-                    await Dispatcher.UIThread.InvokeAsync(() => 
+                    await Dispatcher.UIThread.InvokeAsync(() =>
                     {
                         streamingVm.Append(leftover);
                         var tokenEstimate = EstimateTokens(new[] { streamingVm.StreamingContent });
                         Status.UpdateActiveCompletionTokens(tokenEstimate);
                     });
+                }
+
+                // Flush remaining reasoning after stream ends
+                if (pendingReasoning.Length > 0)
+                {
+                    var leftoverReasoning = pendingReasoning.ToString();
+                    await Dispatcher.UIThread.InvokeAsync(() => streamingVm.AppendReasoning(leftoverReasoning));
                 }
 
                 await Dispatcher.UIThread.InvokeAsync(() =>
@@ -200,8 +223,12 @@ public partial class MainWindowViewModel : ViewModelBase
                     if (!string.IsNullOrEmpty(responseMsg.Content))
                         streamingVm.SetFinal(responseMsg.Content);
 
-                    // Remove empty streaming bubble if model returned only tool calls
-                    if (!streamingVm.HasContent)
+                    // Canonical reasoning (reconciles channel + inline <think>)
+                    if (!string.IsNullOrEmpty(responseMsg.Reasoning))
+                        streamingVm.SetFinalReasoning(responseMsg.Reasoning);
+
+                    // Remove empty streaming bubble if model returned only tool calls (and no reasoning)
+                    if (!streamingVm.HasContent && !streamingVm.HasReasoning)
                         Messages.Remove(streamingVm);
                     else
                         SaveCurrentChat();

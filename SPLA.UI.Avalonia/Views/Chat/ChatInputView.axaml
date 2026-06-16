@@ -29,6 +29,20 @@
                           FontSize="{DynamicResource SmallFontSize}" VerticalAlignment="Center" />
                 
                 <StackPanel Orientation="Horizontal" Spacing="10" VerticalAlignment="Center">
+                    <!-- Reasoning depth: toggle (off/on) or effort (low/medium/high), per the selected model -->
+                    <StackPanel Orientation="Horizontal" Spacing="4" VerticalAlignment="Center"
+                                IsVisible="{Binding Settings.SelectedModelSupportsReasoning}">
+                        <TextBlock Text="🧠" FontSize="{DynamicResource SmallFontSize}" VerticalAlignment="Center"
+                                   ToolTip.Tip="Model reasoning depth" />
+                        <ComboBox ItemsSource="{Binding Settings.SelectedModelReasoningOptions}"
+                                  SelectedItem="{Binding Settings.ReasoningLevel}"
+                                  MinWidth="80" Background="Transparent" BorderThickness="1"
+                                  BorderBrush="{DynamicResource PanelBorderBrush}"
+                                  Foreground="{DynamicResource SubTextForegroundBrush}"
+                                  FontSize="{DynamicResource SmallFontSize}" VerticalAlignment="Center"
+                                  ToolTip.Tip="off/on or reasoning effort (low/medium/high)" />
+                    </StackPanel>
+
                     <TextBlock Text="Temp" Foreground="{DynamicResource SubTextForegroundBrush}"
                                FontSize="{DynamicResource SmallFontSize}" VerticalAlignment="Center" />
                     <TextBlock Text="{Binding Settings.Temperature, StringFormat='{}{0:0.0}'}"

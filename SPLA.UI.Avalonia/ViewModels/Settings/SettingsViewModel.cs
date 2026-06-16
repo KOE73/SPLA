@@ -68,15 +68,50 @@ public partial class SettingsViewModel : ViewModelBase
     private ObservableCollection<string> _availableModels = new();
 
     [ObservableProperty]
+    private ObservableCollection<ModelInfo> _modelDetails = new();
+
+    [ObservableProperty]
+    private bool _hasModelDetails;
+
     private string _selectedModel = "";
+    public string SelectedModel
+    {
+        get => _selectedModel;
+        set
+        {
+            if (SetProperty(ref _selectedModel, value))
+            {
+                OnPropertyChanged(nameof(SelectedModelSupportsReasoning));
+                OnPropertyChanged(nameof(SelectedModelReasoningOptions));
+                // Snap the level to the new model's default (or clear when unsupported).
+                var info = ModelDetails.FirstOrDefault(m => m.Id == value);
+                ReasoningLevel = info != null && info.SupportsReasoning
+                    ? (string.IsNullOrEmpty(info.ReasoningDefault) ? info.ReasoningOptions[0] : info.ReasoningDefault)
+                    : "";
+            }
+        }
+    }
 
     [ObservableProperty]
     private string _statusMessage = "";
 
+    /// <summary>Currently selected reasoning option (persisted). Empty = model default / unsupported.</summary>
+    [ObservableProperty]
+    private string _reasoningLevel = "";
+
+    private ModelInfo? SelectedModelInfo => ModelDetails.FirstOrDefault(m => m.Id == SelectedModel);
+
+    /// <summary>True when the currently selected model advertises a reasoning channel.</summary>
+    public bool SelectedModelSupportsReasoning => SelectedModelInfo?.SupportsReasoning ?? false;
+
+    /// <summary>Reasoning options for the selected model (e.g. ["off","on"] or ["low","medium","high"]).</summary>
+    public ObservableCollection<string> SelectedModelReasoningOptions =>
+        new(SelectedModelInfo?.ReasoningOptions ?? new());
+
     public ObservableCollection<PluginSettingViewModel> PluginsSettings { get; } = new();
 
     // Categories for Left Menu
-    public string[] Categories { get; } = new[] { "App Appearance", "LLM Provider", "Models", "Agent Settings", "Local Permissions", "System Integration", "Plugins", "", "About SPLA" };
+    public string[] Categories { get; } = new[] { "App Appearance", "LLM Provider", "Server", "Agent Settings", "Local Permissions", "System Integration", "Plugins", "", "About SPLA" };
 
     [ObservableProperty]
     private string _selectedCategory = "App Appearance";
@@ -94,7 +129,7 @@ public partial class SettingsViewModel : ViewModelBase
 
         OnPropertyChanged(nameof(IsAppAppearance));
         OnPropertyChanged(nameof(IsLlmProvider));
-        OnPropertyChanged(nameof(IsModels));
+        OnPropertyChanged(nameof(IsServer));
         OnPropertyChanged(nameof(IsAgentSettings));
         OnPropertyChanged(nameof(IsLocalPermissions));
         OnPropertyChanged(nameof(IsSystemIntegration));
@@ -104,7 +139,7 @@ public partial class SettingsViewModel : ViewModelBase
 
     public bool IsAppAppearance => SelectedCategory == "App Appearance";
     public bool IsLlmProvider => SelectedCategory == "LLM Provider";
-    public bool IsModels => SelectedCategory == "Models";
+    public bool IsServer => SelectedCategory == "Server";
     public bool IsAgentSettings => SelectedCategory == "Agent Settings";
     public bool IsLocalPermissions => SelectedCategory == "Local Permissions";
     public bool IsSystemIntegration => SelectedCategory == "System Integration";
@@ -118,7 +153,8 @@ public partial class SettingsViewModel : ViewModelBase
         ModelName = SelectedModel ?? "local-model",
         Temperature = Temperature,
         Mode = Mode,
-        Theme = Theme
+        Theme = Theme,
+        ReasoningLevel = string.IsNullOrEmpty(ReasoningLevel) ? null : ReasoningLevel
     };
 
     /// <summary>
@@ -130,6 +166,7 @@ public partial class SettingsViewModel : ViewModelBase
         ApiKey = resolved.ApiKey;
         Mode = resolved.Mode;
         Temperature = resolved.Temperature;
+        ReasoningLevel = resolved.ReasoningLevel ?? "";
         Theme = resolved.Theme;
         Density = resolved.Density;
         ActiveProfileId = resolved.ActiveProfileId;
@@ -159,7 +196,8 @@ public partial class SettingsViewModel : ViewModelBase
                     Endpoint = BaseUrl,
                     ApiKey = ApiKey,
                     Model = SelectedModel ?? "auto",
-                    Temperature = Temperature
+                    Temperature = Temperature,
+                    ReasoningLevel = string.IsNullOrEmpty(ReasoningLevel) ? null : ReasoningLevel
                 };
                 project.Agent ??= new SplaAgentSection();
                 project.Agent.Mode = Mode.ToString();
@@ -201,7 +239,8 @@ public partial class SettingsViewModel : ViewModelBase
                     Endpoint = BaseUrl,
                     ApiKey = ApiKey,
                     Model = SelectedModel ?? "auto",
-                    Temperature = Temperature
+                    Temperature = Temperature,
+                    ReasoningLevel = string.IsNullOrEmpty(ReasoningLevel) ? null : ReasoningLevel
                 },
                 Agent = new SplaAgentSection { Mode = Mode.ToString(), CustomPrompt = CustomPrompt },
                 Ui = new SplaUiSection
@@ -286,22 +325,76 @@ public partial class SettingsViewModel : ViewModelBase
     {
         try
         {
-            StatusMessage = "Fetching models...";
+            StatusMessage = "Scanning provider...";
             using var http = new HttpClient();
-            var client = new LMStudioClient(http);
-            var models = await client.GetModelsAsync(BaseUrl, ApiKey);
-            
+            var mgmt = new LMStudioManagementClient(http);
+            var details = await mgmt.GetModelDetailsAsync(BaseUrl, ApiKey);
+
+            var previouslySelected = SelectedModel;
+
+            ModelDetails.Clear();
+            foreach (var d in details) ModelDetails.Add(d);
+            HasModelDetails = ModelDetails.Count > 0;
+
             AvailableModels.Clear();
-            foreach (var m in models) AvailableModels.Add(m);
-            
-            if (AvailableModels.Count > 0)
+            foreach (var d in details) AvailableModels.Add(d.Id);
+
+            if (AvailableModels.Contains(previouslySelected))
+                SelectedModel = previouslySelected;
+            else if (AvailableModels.Count > 0)
                 SelectedModel = AvailableModels[0];
-                
-            StatusMessage = $"Found {models.Count} models.";
+
+            OnPropertyChanged(nameof(SelectedModelSupportsReasoning));
+            OnPropertyChanged(nameof(SelectedModelReasoningOptions));
+            if (SelectedModelInfo is { SupportsReasoning: true } info && !info.ReasoningOptions.Contains(ReasoningLevel))
+                ReasoningLevel = string.IsNullOrEmpty(info.ReasoningDefault) ? info.ReasoningOptions[0] : info.ReasoningDefault;
+            else if (SelectedModelInfo is null or { SupportsReasoning: false })
+                ReasoningLevel = "";
+
+            var rich = details.Count(d => d.HasDetails);
+            StatusMessage = rich > 0
+                ? $"Found {details.Count} models ({rich} with capabilities)."
+                : $"Found {details.Count} models (basic list — capabilities unavailable for this provider).";
         }
         catch (Exception ex)
         {
             StatusMessage = $"Error fetching models: {ex.Message}";
+        }
+    }
+
+    [RelayCommand]
+    private async Task LoadModelAsync(ModelInfo? model)
+    {
+        if (model == null) return;
+        try
+        {
+            StatusMessage = $"Loading {model.Id}…";
+            using var http = new HttpClient { Timeout = TimeSpan.FromMinutes(10) };
+            await new LMStudioManagementClient(http).LoadModelAsync(BaseUrl, ApiKey, model.Id);
+            StatusMessage = $"Loaded {model.Id}.";
+            await FetchModelsAsync();
+        }
+        catch (Exception ex)
+        {
+            StatusMessage = $"Load failed: {ex.Message}";
+        }
+    }
+
+    [RelayCommand]
+    private async Task UnloadModelAsync(ModelInfo? model)
+    {
+        if (model == null) return;
+        try
+        {
+            StatusMessage = $"Unloading {model.Id}…";
+            using var http = new HttpClient { Timeout = TimeSpan.FromMinutes(2) };
+            await new LMStudioManagementClient(http).UnloadModelAsync(BaseUrl, ApiKey, model.UnloadId);
+            StatusMessage = $"Unloaded {model.Id}.";
+            await FetchModelsAsync();
+        }
+        catch (Exception ex)
+        {
+            StatusMessage = $"Unload failed: {ex.Message}";
         }
     }
 

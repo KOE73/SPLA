@@ -3,6 +3,18 @@ version: 1.1.0
 type: dll
 entry_point: SPLA.Plugins.Network.dll
 default_prompt: |
+  ## PRIORITY RULE — read before anything else
+
+  A "skill" in this system = a named multi-step workflow loaded via agent.info.
+  Skills are listed in the "--- Skills ---" block of this system prompt.
+
+  When the user asks "what skills", "list skills", "какие скилы", "что умеешь", "что за скилы":
+  → List ONLY the skills from the "--- Skills ---" block. Do NOT describe tools or generic capabilities.
+
+  When user input matches a skill trigger → call agent.info with {"id": "<skill-id>"} BEFORE doing anything else.
+
+  ---
+
   You are equipped with network diagnostic and utility tools.
 
   Host & interfaces:

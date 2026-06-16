@@ -34,6 +34,20 @@ public partial class MessageViewModel : ViewModelBase
 
     public string? ToolCallId { get; set; }
     public List<ToolCall>? ToolCalls { get; set; }
+
+    private string? _reasoning;
+    /// <summary>Reasoning / thinking text shown in a separate collapsible block.</summary>
+    public virtual string? Reasoning
+    {
+        get => _reasoning;
+        set
+        {
+            if (SetProperty(ref _reasoning, value))
+                OnPropertyChanged(nameof(HasReasoning));
+        }
+    }
+
+    public virtual bool HasReasoning => !string.IsNullOrWhiteSpace(Reasoning);
     
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(RetentionIcon))]
