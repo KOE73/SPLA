@@ -71,14 +71,14 @@ public partial class MainWindowViewModel : ViewModelBase
                 var opened = await App.Services.GetRequiredService<IPluginPanelHostService>().OpenPanelAsync(command.Target);
                 if (!opened)
                 {
-                    Session.Messages.Add(new MessageViewModel(ChatRole.System, $"Plugin command failed: panel not found: {command.Target}"));
+                    ActiveChat?.Messages.Add(new MessageViewModel(ChatRole.System, $"Plugin command failed: panel not found: {command.Target}"));
                 }
                 return;
             }
 
             if (command.Kind == SplaPluginUiCommandKind.OpenFile && !File.Exists(command.Target))
             {
-                Session.Messages.Add(new MessageViewModel(ChatRole.System, $"Plugin command failed: file not found: {command.Target}"));
+                ActiveChat?.Messages.Add(new MessageViewModel(ChatRole.System, $"Plugin command failed: file not found: {command.Target}"));
                 return;
             }
 
@@ -90,7 +90,7 @@ public partial class MainWindowViewModel : ViewModelBase
         }
         catch (Exception ex)
         {
-            Session.Messages.Add(new MessageViewModel(ChatRole.System, $"Plugin command failed: {ex.Message}"));
+            ActiveChat?.Messages.Add(new MessageViewModel(ChatRole.System, $"Plugin command failed: {ex.Message}"));
         }
     }
 
@@ -99,14 +99,15 @@ public partial class MainWindowViewModel : ViewModelBase
     {
         if (_chatManager == null) return;
         var chat = _chatManager.CreateNewChat();
-        Chats.Insert(0, chat);
-        SelectChat(chat);
+        SyncChatsFromDisk();
+        if (_chatVms.TryGetValue(chat.Id, out var vm))
+            ActiveChat = vm;
     }
 
     [RelayCommand]
     private async Task CreateProjectAsync()
     {
-        if (SelectProjectFolderAsync == null || Session.IsBusy) return;
+        if (SelectProjectFolderAsync == null || ActiveChat?.IsBusy == true) return;
 
         var folder = await SelectProjectFolderAsync();
         if (string.IsNullOrWhiteSpace(folder)) return;

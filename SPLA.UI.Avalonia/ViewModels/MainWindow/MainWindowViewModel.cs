@@ -36,7 +36,6 @@ namespace SPLA.UI.Avalonia.ViewModels;
 public partial class MainWindowViewModel : ViewModelBase
 {
         public SettingsViewModel Settings { get; } = new();
-        public StatusViewModel Status { get; } = new();
         public SidebarPanelViewModel Sidebar { get; } = new();
 
         [ObservableProperty]
@@ -44,32 +43,34 @@ public partial class MainWindowViewModel : ViewModelBase
 
         [RelayCommand]
         private void ToggleSidebar() => IsSidebarOpen = !IsSidebarOpen;
-        public Func<ChatSession, Task<bool>>? ConfirmDeleteChatAsync { get; set; }
+        public Func<ChatSessionViewModel, Task<bool>>? ConfirmDeleteChatAsync { get; set; }
         public Func<Task<string?>>? SelectProjectFolderAsync { get; set; }
-    
-        // ── Display profiles (global list; selection lives in ChatSessionViewModel) ──
+
+        // ── Display profiles (global list; selection lives in each ChatSessionViewModel) ──
         [ObservableProperty]
         private ObservableCollection<ChatProfileViewModel> _availableProfiles = new();
 
-        /// <summary>Owns all conversation state for the currently active chat session.</summary>
-        public ChatSessionViewModel Session { get; private set; } = null!;
+        /// <summary>All chats, each a fully-autonomous view-model. The sidebar binds to this; the
+        /// chat area binds to <see cref="ActiveChat"/>. Background chats keep running while not active.</summary>
+        [ObservableProperty]
+        private ObservableCollection<ChatSessionViewModel> _chats = new();
+
+        /// <summary>The chat currently shown in the main area. Setting it lazily loads that chat.</summary>
+        [ObservableProperty]
+        private ChatSessionViewModel? _activeChat;
+
+        private readonly Dictionary<string, ChatSessionViewModel> _chatVms = new();
 
         [ObservableProperty]
-        private ObservableCollection<ChatSession> _chats = new();
-    
-        [ObservableProperty]
         private ObservableCollection<RecentProjectViewModel> _recentProjects = new();
-    
+
         public bool HasRecentProjects => RecentProjects.Count > 0;
-    
+
         [ObservableProperty]
         private ObservableCollection<SplaPluginUiCommand> _pluginUiCommands = new();
-    
+
         public bool HasPluginUiCommands => PluginUiCommands.Count > 0;
-    
-        [ObservableProperty]
-        private ChatSession? _currentChat;
-    
+
         private readonly McpHost _mcpHost;
         private readonly PermissionManager _permissionManager;
         private readonly SPLA.MCP.Core.Plugins.PluginManager _pluginManager;
@@ -78,19 +79,19 @@ public partial class MainWindowViewModel : ViewModelBase
         private readonly HttpClient _httpClient;
         private readonly SPLA.LLM.LMStudio.LMStudioClient _llmClient;
         private readonly List<ToolDefinition> _tools;
-        // Fundamental agent working memory. session = current chat (persisted with the chat);
-        // project = shared across chats (persisted to project-kv.yaml). Both exposed to the debug view.
+        // Shared, always-persistent project working memory (project-kv.yaml). Session-scoped memory,
+        // checkpoints and skill sessions are owned per-chat by each ChatSessionViewModel.
         private readonly ProjectKvStore _projectKv;
-        private readonly SPLA.Agent.CheckpointManager _checkpointManager = new();
-        private readonly SPLA.Domain.Agent.SkillSession _skillSession = new();
         private SPLA.MCP.Core.Plugins.SkillFileWatcher? _skillFileWatcher;
+        private ChatServices? _services;
         private ChatManager? _chatManager;
         private bool _isReloadingChats;
-    
+
         public MainWindowViewModel()
         {
             _httpClient = new HttpClient { Timeout = TimeSpan.FromMinutes(10) };
-            _llmClient = new SPLA.LLM.LMStudio.LMStudioClient(_httpClient);
+            _llmClient = new SPLA.LLM.LMStudio.LMStudioClient(_httpClient,
+                App.Services.GetRequiredService<ILogger<SPLA.LLM.LMStudio.LMStudioClient>>());
             _permissionManager = CreatePermissionManager();
             
             var logger = App.Services.GetRequiredService<ILogger<MainWindowViewModel>>();
@@ -105,7 +106,9 @@ public partial class MainWindowViewModel : ViewModelBase
             _skillManager = new SPLA.MCP.Core.Plugins.SkillManager(
                 App.Services.GetRequiredService<ILogger<SPLA.MCP.Core.Plugins.SkillManager>>());
             _skillManager.LoadSkills(pluginsDir);
-            _skillFileWatcher = new SPLA.MCP.Core.Plugins.SkillFileWatcher(_skillManager, _skillSession, pluginsDir);
+            // Defer reloads while any chat has a skill active (per-chat skill sessions).
+            _skillFileWatcher = new SPLA.MCP.Core.Plugins.SkillFileWatcher(
+                _skillManager, () => Chats.Any(c => c.Status.HasActiveSkill), pluginsDir);
             _skillManager.ApplySettings(App.ResolvedSettings.Skills.ToDictionary(
                 kvp => kvp.Key,
                 kvp => (kvp.Value.Enabled ?? true, kvp.Value.Preloaded ?? false)));
@@ -117,22 +120,8 @@ public partial class MainWindowViewModel : ViewModelBase
                 _permissionManager,
                 _pluginManager,
                 App.Services.GetRequiredService<ILogger<McpHost>>());
-            _mcpHost.OnPermissionRequested = HandlePermissionRequestAsync;
 
             _projectKv = new ProjectKvStore(App.ResolvedSettings);
-
-            Session = new SPLA.UI.Avalonia.ViewModels.Chat.ChatSessionViewModel(
-                this,
-                _llmClient,
-                _mcpHost,
-                _skillManager,
-                _pluginManager,
-                _skillSession,
-                Settings,
-                Status,
-                GetFilteredToolsForMode,
-                _checkpointManager);
-            Session.OnChatSaved = LoadChatsList;
 
             _mcpHost.RegisterTool(new FsListTool());
             _mcpHost.RegisterTool(new FsReadTool());
@@ -150,21 +139,23 @@ public partial class MainWindowViewModel : ViewModelBase
             _mcpHost.RegisterTool(new SPLA.MCP.BasicTools.Network.WebFetchTool());
             _mcpHost.RegisterTool(new SPLA.MCP.BasicTools.Network.WebSearchTool());
             _mcpHost.RegisterTool(new SPLA.MCP.Core.Tools.AgentInfoTool(_mcpHost, _skillManager));
-            _mcpHost.RegisterTool(new SPLA.MCP.Core.Tools.AgentMemorySetTool(Session.SessionKv, _projectKv.Store));
-            _mcpHost.RegisterTool(new SPLA.MCP.Core.Tools.AgentMemoryGetTool(Session.SessionKv, _projectKv.Store));
-            _mcpHost.RegisterTool(new SPLA.MCP.Core.Tools.AgentMemoryDeleteTool(Session.SessionKv, _projectKv.Store));
-            _mcpHost.RegisterTool(new SPLA.MCP.Core.Tools.AgentMemoryListTool(Session.SessionKv, _projectKv.Store));
-            _mcpHost.RegisterTool(new SPLA.MCP.Core.Tools.AgentMemoryClearTool(Session.SessionKv, _projectKv.Store));
-            _mcpHost.RegisterTool(new SPLA.MCP.Core.Tools.SkillActivateTool(_skillSession, _skillManager));
-            _mcpHost.RegisterTool(new SPLA.MCP.Core.Tools.SkillDeactivateTool(_skillSession));
+            // Session-scoped tools resolve the running chat's own state via AgentSessionScope; only
+            // the shared project store is injected here.
+            _mcpHost.RegisterTool(new SPLA.MCP.Core.Tools.AgentMemorySetTool(_projectKv.Store));
+            _mcpHost.RegisterTool(new SPLA.MCP.Core.Tools.AgentMemoryGetTool(_projectKv.Store));
+            _mcpHost.RegisterTool(new SPLA.MCP.Core.Tools.AgentMemoryDeleteTool(_projectKv.Store));
+            _mcpHost.RegisterTool(new SPLA.MCP.Core.Tools.AgentMemoryListTool(_projectKv.Store));
+            _mcpHost.RegisterTool(new SPLA.MCP.Core.Tools.AgentMemoryClearTool(_projectKv.Store));
+            _mcpHost.RegisterTool(new SPLA.MCP.Core.Tools.SkillActivateTool(_skillManager));
+            _mcpHost.RegisterTool(new SPLA.MCP.Core.Tools.SkillDeactivateTool());
             _mcpHost.RegisterTool(new SPLA.MCP.Core.Tools.AgentClarifyTool());
             var spawnedRunner = new SPLA.Agent.SpawnedAgentRunner(_llmClient, _mcpHost, _skillManager, _pluginManager, App.ResolvedSettings);
             _mcpHost.RegisterTool(new SPLA.MCP.Core.Tools.AgentSpawnTool(spawnedRunner));
             _mcpHost.RegisterTool(new SPLA.MCP.Core.Tools.AgentSpawnBatchTool(spawnedRunner));
-            _mcpHost.RegisterTool(new SPLA.MCP.Core.Tools.ContextCheckpointSetTool(_checkpointManager));
-            _mcpHost.RegisterTool(new SPLA.MCP.Core.Tools.ContextCheckpointRestoreTool(_checkpointManager));
-            _mcpHost.RegisterTool(new SPLA.MCP.Core.Tools.MarkSetTool(_checkpointManager));
-            _mcpHost.RegisterTool(new SPLA.MCP.Core.Tools.MarkRollbackTool(_checkpointManager));
+            _mcpHost.RegisterTool(new SPLA.MCP.Core.Tools.ContextCheckpointSetTool());
+            _mcpHost.RegisterTool(new SPLA.MCP.Core.Tools.ContextCheckpointRestoreTool());
+            _mcpHost.RegisterTool(new SPLA.MCP.Core.Tools.MarkSetTool());
+            _mcpHost.RegisterTool(new SPLA.MCP.Core.Tools.MarkRollbackTool());
             _mcpHost.RegisterTool(new PluginCommandRunTool(
                 _pluginManager.GetUiCommands(),
                 App.Services.GetRequiredService<IPluginPanelHostService>(),
@@ -182,10 +173,8 @@ public partial class MainWindowViewModel : ViewModelBase
 
             Sidebar.Build(_capabilityRegistry.Items);
             LoadPluginUiCommands();
-    
-            Status.AttachSkillSession(_skillSession);
+
             _ = InitializeAsync();
-            Status.PropertyChanged += Status_PropertyChanged;
         }
 }
 

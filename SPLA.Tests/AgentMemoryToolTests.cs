@@ -5,6 +5,10 @@ namespace SPLA.Tests;
 
 public sealed class AgentMemoryToolTests
 {
+    /// <summary>Opens an ambient agent session so the session-scoped tools resolve <paramref name="session"/>.</summary>
+    private static IDisposable Scope(KeyValueStore session)
+        => AgentSessionScope.Begin(new AgentSession(session, new MarkManager(), new SkillSession()));
+
     [Fact]
     public async Task Clear_without_scope_clears_session_only()
     {
@@ -13,7 +17,8 @@ public sealed class AgentMemoryToolTests
         session.Set("context:plan", "session");
         project.Set("context:plan", "project");
 
-        var tool   = new AgentMemoryClearTool(session, project);
+        using var _ = Scope(session);
+        var tool   = new AgentMemoryClearTool(project);
         var result = await tool.ExecuteAsync("""{"filter":"context:","scope":null}""");
 
         Assert.Contains("ok: cleared [session]", result);
@@ -30,7 +35,8 @@ public sealed class AgentMemoryToolTests
         session.Set("task:state", "session");
         project.Set("task:state", "project");
 
-        var tool   = new AgentMemoryListTool(session, project);
+        using var _ = Scope(session);
+        var tool   = new AgentMemoryListTool(project);
         var result = await tool.ExecuteAsync("""{"filter":"task:","top":null,"skip":null,"scope":null}""");
 
         Assert.Contains("task:state = session", result);
@@ -43,8 +49,9 @@ public sealed class AgentMemoryToolTests
         var session = new KeyValueStore("session");
         var project = new KeyValueStore("project");
 
-        var setter = new AgentMemorySetTool(session, project);
-        var getter = new AgentMemoryGetTool(session, project);
+        using var _ = Scope(session);
+        var setter = new AgentMemorySetTool(project);
+        var getter = new AgentMemoryGetTool(project);
 
         await setter.ExecuteAsync("""{"key":"context:plan","value":"step 1","scope":null}""");
         var value = await getter.ExecuteAsync("""{"key":"context:plan","scope":null}""");
@@ -59,7 +66,8 @@ public sealed class AgentMemoryToolTests
         var project = new KeyValueStore("project");
         session.Set("note:x", "hello");
 
-        var tool   = new AgentMemoryDeleteTool(session, project);
+        using var _ = Scope(session);
+        var tool   = new AgentMemoryDeleteTool(project);
         var result = await tool.ExecuteAsync("""{"key":"note:x","scope":null}""");
 
         Assert.Contains("ok: deleted [session]", result);
@@ -72,7 +80,8 @@ public sealed class AgentMemoryToolTests
         var session = new KeyValueStore("session");
         var project = new KeyValueStore("project");
 
-        var tool   = new AgentMemoryGetTool(session, project);
+        using var _ = Scope(session);
+        var tool   = new AgentMemoryGetTool(project);
         var result = await tool.ExecuteAsync("""{"key":"missing:key","scope":null}""");
 
         Assert.Contains("not_found", result);
@@ -84,8 +93,9 @@ public sealed class AgentMemoryToolTests
         var session = new KeyValueStore("session");
         var project = new KeyValueStore("project");
 
-        var setter = new AgentMemorySetTool(session, project);
-        var getter = new AgentMemoryGetTool(session, project);
+        using var _ = Scope(session);
+        var setter = new AgentMemorySetTool(project);
+        var getter = new AgentMemoryGetTool(project);
 
         await setter.ExecuteAsync("""{"key":"project:build-cmd","value":"dotnet build","scope":"project"}""");
 

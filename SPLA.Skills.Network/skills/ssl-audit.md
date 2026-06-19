@@ -12,12 +12,12 @@ description: TLS/SSL certificate and protocol audit — chain, expiry, cipher su
 - `context:step` — (number) Currently executing step index
 
 ### project scope
-- `host:{ip}:tls` — TLS/SSL audit findings (port, cert chain, protocol, cipher, HSTS)
+- `host:{ip}:tls:{port}` — TLS/SSL audit findings (cert chain, protocol, cipher, HSTS) — one key per audited port
 
 ### State handling
 - session: execution state and plan only
 - project: written at finalize step if target resolves to an IP. Schema defined in plugin default_prompt.
-- If the target is a domain name only (no resolved IP), skip host:{ip}:tls and report inline.
+- If the target is a domain name only (no resolved IP), skip `host:{ip}:tls:{port}` and report inline.
 
 ## Step 0 — Confirm tools and initialize plan
 
@@ -33,9 +33,9 @@ Write the full plan to `context:plan` in session KV:
   "total_steps": 4,
   "current_step": 0,
   "steps": [
-    "Step 1: network_check_tls on target host:port → host:{ip}:tls",
+    "Step 1: network_check_tls on target host:port → host:{ip}:tls:{port}",
     "Step 2: network_check_http_redirects — verify HTTPS redirect chain",
-    "Step 3: network_http_head — check HSTS header → update host:{ip}:tls",
+    "Step 3: network_http_head — check HSTS header → update host:{ip}:tls:{port} with hsts field",
     "Step 4: finalize — write project KV, clear context:, deactivate"
   ]
 }
@@ -45,9 +45,9 @@ Write the full plan to `context:plan` in session KV:
 
 After each numbered step, update both `context:plan.current_step` and `context:step` in session KV.
 
-1. `network_check_tls` on the target host:port (default 443 if not specified). Write `host:{ip}:tls` in project KV.
+1. `network_check_tls` on the target host:port (default 443 if not specified). Write `host:{ip}:tls:{port}` in project KV (e.g. `host:10.0.0.1:tls:443`).
 2. If HTTP redirects are relevant: `network_check_http_redirects` — verify the HTTPS redirect chain is clean.
-3. `network_http_head` — check HSTS header (`Strict-Transport-Security`). Update `host:{ip}:tls` with hsts field.
+3. `network_http_head` — check HSTS header (`Strict-Transport-Security`). Update `host:{ip}:tls:{port}` with hsts field.
 
 If a step fails or is not applicable, note it in one line and continue.
 

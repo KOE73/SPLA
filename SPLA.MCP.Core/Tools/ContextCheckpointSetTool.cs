@@ -13,10 +13,6 @@ namespace SPLA.MCP.Core.Tools;
 /// </summary>
 public sealed class ContextCheckpointSetTool : IMcpTool
 {
-    private readonly MarkManager _marks;
-
-    public ContextCheckpointSetTool(MarkManager marks) => _marks = marks;
-
     public string Name => "checkpoint_save";
 
     public ToolDefinition GetDefinition() => new()
@@ -44,6 +40,9 @@ public sealed class ContextCheckpointSetTool : IMcpTool
 
     public Task<string> ExecuteAsync(string argumentsJson, CancellationToken cancellationToken = default)
     {
+        var marks = AgentSessionScope.Current?.Checkpoint;
+        if (marks is null) return Task.FromResult("error: no active chat session");
+
         string? resume = null;
         if (!string.IsNullOrWhiteSpace(argumentsJson) && argumentsJson != "{}")
         {
@@ -51,6 +50,6 @@ public sealed class ContextCheckpointSetTool : IMcpTool
             if (doc.RootElement.TryGetProperty("resume", out var r))
                 resume = r.GetString();
         }
-        return Task.FromResult(_marks.CheckpointSave(resume));
+        return Task.FromResult(marks.CheckpointSave(resume));
     }
 }

@@ -16,6 +16,11 @@ public class SkillToolTests
         return new SkillManager();
     }
 
+    /// <summary>Opens an ambient agent session carrying <paramref name="skills"/> so the
+    /// scope-based skill tools resolve it.</summary>
+    private static IDisposable Scope(SkillSession skills)
+        => AgentSessionScope.Begin(new AgentSession(new KeyValueStore("session"), new MarkManager(), skills));
+
     // ── skill_activate ───────────────────────────────────────────────────────
 
     [Fact]
@@ -23,8 +28,9 @@ public class SkillToolTests
     {
         var session = new SkillSession();
         var skills = BuildSkillManager();
-        var tool = new SkillActivateTool(session, skills);
+        var tool = new SkillActivateTool(skills);
 
+        using var _ = Scope(session);
         var result = await tool.ExecuteAsync("""{"id":"nonexistent.skill"}""");
 
         Assert.StartsWith("error: unknown skill", result);
@@ -35,8 +41,9 @@ public class SkillToolTests
     {
         var session = new SkillSession();
         var skills = BuildSkillManager();
-        var tool = new SkillActivateTool(session, skills);
+        var tool = new SkillActivateTool(skills);
 
+        using var _ = Scope(session);
         var result = await tool.ExecuteAsync("{}");
 
         Assert.StartsWith("error: 'id'", result);
@@ -49,8 +56,9 @@ public class SkillToolTests
         session.Activate("first.skill");   // manually put into active state
 
         var skills = BuildSkillManager();
-        var tool = new SkillActivateTool(session, skills);
+        var tool = new SkillActivateTool(skills);
 
+        using var _ = Scope(session);
         var result = await tool.ExecuteAsync("""{"id":"second.skill"}""");
 
         Assert.StartsWith("error: skill 'first.skill' is already active", result);
@@ -60,8 +68,9 @@ public class SkillToolTests
     public async Task Activate_invalid_json_returns_error()
     {
         var session = new SkillSession();
-        var tool = new SkillActivateTool(session, BuildSkillManager());
+        var tool = new SkillActivateTool(BuildSkillManager());
 
+        using var _ = Scope(session);
         var result = await tool.ExecuteAsync("not-json");
 
         Assert.StartsWith("error: invalid_json", result);
@@ -74,8 +83,9 @@ public class SkillToolTests
     {
         var session = new SkillSession();
         session.Activate("network.range-audit");
-        var tool = new SkillDeactivateTool(session);
+        var tool = new SkillDeactivateTool();
 
+        using var _ = Scope(session);
         var result = await tool.ExecuteAsync("{}");
 
         Assert.Equal("ok: deactivated 'network.range-audit'", result);
@@ -86,8 +96,9 @@ public class SkillToolTests
     public async Task Deactivate_when_idle_returns_noop_message()
     {
         var session = new SkillSession();
-        var tool = new SkillDeactivateTool(session);
+        var tool = new SkillDeactivateTool();
 
+        using var _ = Scope(session);
         var result = await tool.ExecuteAsync("{}");
 
         Assert.Equal("ok: no active skill", result);

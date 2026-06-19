@@ -10,14 +10,9 @@ namespace SPLA.MCP.Core.Tools;
 
 public sealed class AgentMemoryDeleteTool : IMcpTool
 {
-    private readonly IKeyValueStore _session;
     private readonly IKeyValueStore _project;
 
-    public AgentMemoryDeleteTool(IKeyValueStore session, IKeyValueStore project)
-    {
-        _session = session;
-        _project = project;
-    }
+    public AgentMemoryDeleteTool(IKeyValueStore project) => _project = project;
 
     public string Name => "agent_memory_delete";
 
@@ -56,7 +51,8 @@ public sealed class AgentMemoryDeleteTool : IMcpTool
 
             if (string.IsNullOrWhiteSpace(key)) return Task.FromResult("error: key is required");
 
-            var store = AgentMemoryHelpers.SelectStore(_session, _project, scope);
+            var store = AgentMemoryHelpers.SelectStore(_project, scope);
+            if (store is null) return Task.FromResult("error: no active chat session");
             return Task.FromResult(store.Delete(key)
                 ? $"ok: deleted [{store.Scope}] {key}"
                 : $"not_found: [{store.Scope}] {key}");

@@ -58,12 +58,13 @@ public class ChatManager
             Id = GenerateChatId(),
             Title = title ?? "New Chat",
             Workspace = _settings.WorkspacePath,
+            // Live reference into the project's connection list (seeded with the default connection).
+            ConnectionId = _settings.Connections.FirstOrDefault()?.Id,
+            // Per-chat behaviour knobs only — endpoint/model come from the connection.
             Model = new SplaLlmSection
             {
-                Provider = "lmstudio",
-                Endpoint = _settings.Endpoint,
-                Model = _settings.Model,
-                Temperature = _settings.Temperature
+                Temperature = _settings.Temperature,
+                ReasoningLevel = _settings.ReasoningLevel
             },
             Agent = new SplaAgentSection
             {

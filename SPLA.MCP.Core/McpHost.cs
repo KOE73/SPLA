@@ -23,8 +23,6 @@ public class McpHost : IToolHost
     private readonly SPLA.MCP.Core.Plugins.PluginManager? _pluginManager;
     private readonly ILogger<McpHost>? _logger;
 
-    public Func<ToolFunctionDefinition, string, Task<PermissionDecision>>? OnPermissionRequested { get; set; }
-
     public McpHost(
         IPermissionManager permissionManager,
         SPLA.MCP.Core.Plugins.PluginManager? pluginManager = null,
@@ -155,9 +153,10 @@ public class McpHost : IToolHost
 
             if (permission == PermissionResult.Ask)
             {
-                if (OnPermissionRequested != null)
+                var pending = PermissionScope.RequestAsync(def.Function, argumentsJson);
+                if (pending != null)
                 {
-                    var decision = await OnPermissionRequested(def.Function, argumentsJson);
+                    var decision = await pending;
                     if (decision == PermissionDecision.Deny)
                     {
                         _logger?.LogWarning("Tool execution denied by user. Tool={ToolName} Mode={Mode}", name, mode);

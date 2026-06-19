@@ -52,11 +52,15 @@ public sealed class SpawnedAgentRunner : Domain.Interfaces.IAgentSpawner
         if (_skills.Find(skillId) is null)
             throw new System.ArgumentException($"Skill '{skillId}' not found.", nameof(skillId));
 
-        // Fresh isolated skill session — does not affect the parent session.
-        var session = new SkillSession();
-        session.Activate(skillId);
+        // Fresh isolated agent state — own skill session, working memory, and checkpoint manager.
+        // Opening an AgentSessionScope keeps the sub-agent's tool calls (memory, marks, skills) off
+        // the parent chat's state, even though the spawn happens inside the parent's async flow.
+        var skillSession = new SkillSession();
+        skillSession.Activate(skillId);
+        var checkpoint = new CheckpointManager();
+        var agentSession = new AgentSession(new KeyValueStore("session"), checkpoint, skillSession);
 
-        var promptBuilder = new SystemPromptBuilder(_skills, _plugins, session);
+        var promptBuilder = new SystemPromptBuilder(_skills, _plugins, skillSession);
         var systemPrompt = promptBuilder.Build(_settings, System.IO.Directory.GetCurrentDirectory());
 
         var conversation = new Conversation();
@@ -65,7 +69,7 @@ public sealed class SpawnedAgentRunner : Domain.Interfaces.IAgentSpawner
 
         string lastAssistantMessage = string.Empty;
 
-        var orchestrator = new ConversationOrchestrator(_llm, _tools);
+        var orchestrator = new ConversationOrchestrator(_llm, _tools) { Checkpoint = checkpoint };
         var callbacks = new AgentCallbacks
         {
             OnAssistantMessage = msg =>
@@ -78,7 +82,8 @@ public sealed class SpawnedAgentRunner : Domain.Interfaces.IAgentSpawner
         var llmSettings = _settings.ToLLMSettings();
         llmSettings.Mode = mode;
 
-        await orchestrator.RunAsync(conversation, llmSettings, mode, callbacks, cancellationToken);
+        using (AgentSessionScope.Begin(agentSession))
+            await orchestrator.RunAsync(conversation, llmSettings, mode, callbacks, cancellationToken);
 
         return lastAssistantMessage;
     }

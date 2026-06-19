@@ -10,14 +10,9 @@ namespace SPLA.MCP.Core.Tools;
 
 public sealed class AgentMemorySetTool : IMcpTool
 {
-    private readonly IKeyValueStore _session;
     private readonly IKeyValueStore _project;
 
-    public AgentMemorySetTool(IKeyValueStore session, IKeyValueStore project)
-    {
-        _session = session;
-        _project = project;
-    }
+    public AgentMemorySetTool(IKeyValueStore project) => _project = project;
 
     public string Name => "agent_memory_set";
 
@@ -61,7 +56,8 @@ public sealed class AgentMemorySetTool : IMcpTool
             if (string.IsNullOrWhiteSpace(key)) return Task.FromResult("error: key is required");
             if (value is null)                  return Task.FromResult("error: value is required");
 
-            var store = AgentMemoryHelpers.SelectStore(_session, _project, scope);
+            var store = AgentMemoryHelpers.SelectStore(_project, scope);
+            if (store is null) return Task.FromResult("error: no active chat session");
             store.Set(key, value);
             return Task.FromResult($"ok: set [{store.Scope}] {key}");
         }

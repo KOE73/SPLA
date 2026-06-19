@@ -60,7 +60,7 @@ Console.WriteLine($"Mode:      {settings.Mode}");
 
 // --- Init LLM + MCP ---
 using var httpClient = new HttpClient { Timeout = TimeSpan.FromMinutes(10) };
-var llmClient = new LMStudioClient(httpClient);
+var llmClient = new LMStudioClient(httpClient, loggerFactory.CreateLogger<LMStudioClient>());
 var llmSettings = settings.ToLLMSettings();
 
 var pluginManager = new SPLA.MCP.Core.Plugins.PluginManager(settings, loggerFactory.CreateLogger<SPLA.MCP.Core.Plugins.PluginManager>());
@@ -77,7 +77,7 @@ var mcpHost = new McpHost(
     new SPLA.MCP.Core.Permissions.PermissionManager(),
     pluginManager,
     loggerFactory.CreateLogger<McpHost>());
-mcpHost.OnPermissionRequested = async (def, args) =>
+Func<ToolFunctionDefinition, string, Task<PermissionDecision>> permissionHandler = async (def, args) =>
 {
     Console.ForegroundColor = ConsoleColor.Yellow;
     Console.WriteLine($"\n[PERMISSION] Agent requests: {def.Name}");
@@ -104,24 +104,28 @@ mcpHost.RegisterTool(new SPLA.MCP.Core.Tools.AgentInfoTool(mcpHost, skillManager
 // Fundamental agent working memory: session (this chat) + project (shared, persistent).
 var projectKv = new ProjectKvStore(settings);
 var sessionKv = new KeyValueStore("session");
-mcpHost.RegisterTool(new SPLA.MCP.Core.Tools.AgentMemorySetTool(sessionKv, projectKv.Store));
-mcpHost.RegisterTool(new SPLA.MCP.Core.Tools.AgentMemoryGetTool(sessionKv, projectKv.Store));
-mcpHost.RegisterTool(new SPLA.MCP.Core.Tools.AgentMemoryDeleteTool(sessionKv, projectKv.Store));
-mcpHost.RegisterTool(new SPLA.MCP.Core.Tools.AgentMemoryListTool(sessionKv, projectKv.Store));
-mcpHost.RegisterTool(new SPLA.MCP.Core.Tools.AgentMemoryClearTool(sessionKv, projectKv.Store));
+// Session-scoped tools resolve the active session via AgentSessionScope (opened around the run loop).
+mcpHost.RegisterTool(new SPLA.MCP.Core.Tools.AgentMemorySetTool(projectKv.Store));
+mcpHost.RegisterTool(new SPLA.MCP.Core.Tools.AgentMemoryGetTool(projectKv.Store));
+mcpHost.RegisterTool(new SPLA.MCP.Core.Tools.AgentMemoryDeleteTool(projectKv.Store));
+mcpHost.RegisterTool(new SPLA.MCP.Core.Tools.AgentMemoryListTool(projectKv.Store));
+mcpHost.RegisterTool(new SPLA.MCP.Core.Tools.AgentMemoryClearTool(projectKv.Store));
 
 var skillSession = new SPLA.Domain.Agent.SkillSession();
-mcpHost.RegisterTool(new SPLA.MCP.Core.Tools.SkillActivateTool(skillSession, skillManager));
-mcpHost.RegisterTool(new SPLA.MCP.Core.Tools.SkillDeactivateTool(skillSession));
+mcpHost.RegisterTool(new SPLA.MCP.Core.Tools.SkillActivateTool(skillManager));
+mcpHost.RegisterTool(new SPLA.MCP.Core.Tools.SkillDeactivateTool());
 mcpHost.RegisterTool(new SPLA.MCP.Core.Tools.AgentClarifyTool());
 var spawnedRunner = new SPLA.Agent.SpawnedAgentRunner(llmClient, mcpHost, skillManager, pluginManager, settings);
 mcpHost.RegisterTool(new SPLA.MCP.Core.Tools.AgentSpawnTool(spawnedRunner));
 mcpHost.RegisterTool(new SPLA.MCP.Core.Tools.AgentSpawnBatchTool(spawnedRunner));
 var checkpointManager = new SPLA.Agent.CheckpointManager();
-mcpHost.RegisterTool(new SPLA.MCP.Core.Tools.ContextCheckpointSetTool(checkpointManager));
-mcpHost.RegisterTool(new SPLA.MCP.Core.Tools.ContextCheckpointRestoreTool(checkpointManager));
-mcpHost.RegisterTool(new SPLA.MCP.Core.Tools.MarkSetTool(checkpointManager));
-mcpHost.RegisterTool(new SPLA.MCP.Core.Tools.MarkRollbackTool(checkpointManager));
+mcpHost.RegisterTool(new SPLA.MCP.Core.Tools.ContextCheckpointSetTool());
+mcpHost.RegisterTool(new SPLA.MCP.Core.Tools.ContextCheckpointRestoreTool());
+mcpHost.RegisterTool(new SPLA.MCP.Core.Tools.MarkSetTool());
+mcpHost.RegisterTool(new SPLA.MCP.Core.Tools.MarkRollbackTool());
+
+// This CLI session's agent state, made ambient around each run so the tools above resolve it.
+var cliAgentSession = new SPLA.Domain.Agent.AgentSession(sessionKv, checkpointManager, skillSession);
 
 var tools = mcpHost.GetToolDefinitions().ToList();
 Console.WriteLine($"Tools registered: {tools.Count}");
@@ -305,6 +309,8 @@ while (true)
             return null;
         });
 
+        using var agentScope = SPLA.Domain.Agent.AgentSessionScope.Begin(cliAgentSession);
+        using var permScope  = SPLA.MCP.Core.Permissions.PermissionScope.Begin(permissionHandler);
         await orchestrator.RunAsync(conversation, llmSettings, settings.Mode, callbacks);
     }
     catch (Exception ex)

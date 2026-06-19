@@ -13,6 +13,11 @@ public class SplaDefaults
     [YamlMember(Alias = "llm")]
     public SplaLlmSection? Llm { get; set; }
 
+    /// <summary>Named connections available to all chats. Optional — a default is synthesized from
+    /// <see cref="Llm"/> when empty.</summary>
+    [YamlMember(Alias = "connections")]
+    public List<SplaConnectionSection>? Connections { get; set; }
+
     [YamlMember(Alias = "agent")]
     public SplaAgentSection? Agent { get; set; }
 

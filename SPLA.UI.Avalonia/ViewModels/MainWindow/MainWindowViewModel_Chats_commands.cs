@@ -1,33 +1,47 @@
 using CommunityToolkit.Mvvm.Input;
-using SPLA.Domain.Models;
+using SPLA.UI.Avalonia.ViewModels.Chat;
 using System.Linq;
 using System.Threading.Tasks;
 
 namespace SPLA.UI.Avalonia.ViewModels;
 public partial class MainWindowViewModel : ViewModelBase
 {
-    private void LoadChatsList()
+    /// <summary>
+    /// Reconciles the sidebar list with the chats on disk: keeps existing (possibly running)
+    /// view-models, creates shells for new chats, drops deleted ones, and orders by recency.
+    /// Never recreates a live view-model, so background runs survive a refresh.
+    /// </summary>
+    private void SyncChatsFromDisk()
     {
-        if (_chatManager == null) return;
-        
-        var activeId = CurrentChat?.Id;
+        if (_chatManager == null || _services == null) return;
+
+        var metas = _chatManager.ListChats();
+        var ids = metas.Select(m => m.Id).ToHashSet();
+
+        foreach (var staleId in _chatVms.Keys.Where(k => !ids.Contains(k)).ToList())
+            _chatVms.Remove(staleId);
+
+        var activeId = ActiveChat?.Id;
         _isReloadingChats = true;
         try
         {
             Chats.Clear();
-            foreach (var c in _chatManager.ListChats())
+            foreach (var meta in metas)
             {
-                Chats.Add(c);
-            }
-            
-            if (activeId != null)
-            {
-                var matched = Chats.FirstOrDefault(c => c.Id == activeId);
-                if (matched != null)
+                if (!_chatVms.TryGetValue(meta.Id, out var vm))
                 {
-                    CurrentChat = matched;
+                    vm = new ChatSessionViewModel(this, _services, meta) { OnChatSaved = OnChildChatSaved };
+                    _chatVms[meta.Id] = vm;
                 }
+                else
+                {
+                    vm.Title = meta.Title;
+                }
+                Chats.Add(vm);
             }
+
+            if (activeId != null && _chatVms.TryGetValue(activeId, out var stillActive))
+                ActiveChat = stillActive;
         }
         finally
         {
@@ -35,23 +49,20 @@ public partial class MainWindowViewModel : ViewModelBase
         }
     }
 
-    partial void OnCurrentChatChanged(ChatSession? value)
+    /// <summary>After any chat saves, re-order the sidebar without disturbing running view-models.</summary>
+    private void OnChildChatSaved()
+        => global::Avalonia.Threading.Dispatcher.UIThread.Post(SyncChatsFromDisk);
+
+    partial void OnActiveChatChanged(ChatSessionViewModel? value)
     {
         if (_isReloadingChats) return;
-
-        if (value == null)
-        {
-            Session.ClearSession();
-            return;
-        }
-
-        Session.LoadSession(value);
+        value?.Load();
     }
 
     [RelayCommand]
-    private async Task DeleteChatAsync(ChatSession? chat)
+    private async Task DeleteChatAsync(ChatSessionViewModel? chat)
     {
-        if (_chatManager == null || chat == null || Session.IsBusy) return;
+        if (_chatManager == null || chat == null) return;
 
         if (ConfirmDeleteChatAsync != null)
         {
@@ -59,52 +70,34 @@ public partial class MainWindowViewModel : ViewModelBase
             if (!confirmed) return;
         }
 
-        var deletingCurrent = CurrentChat?.Id == chat.Id;
+        var deletingActive = ActiveChat?.Id == chat.Id;
+        chat.Shutdown();
         _chatManager.DeleteChat(chat.Id);
+        _chatVms.Remove(chat.Id);
         Chats.Remove(chat);
 
-        if (!deletingCurrent) return;
+        if (!deletingActive) return;
 
-        CurrentChat = null;
-        Session.ClearSession();
-
-        LoadChatsList();
         if (Chats.Count > 0)
-        {
-            SelectChat(Chats.First());
-        }
+            ActiveChat = Chats.First();
         else
-        {
             NewChat();
-        }
     }
 
     [RelayCommand]
-    private void SelectChat(ChatSession session)
+    private void SelectChat(ChatSessionViewModel? chat)
     {
-        if (_chatManager == null) return;
-        if (_isReloadingChats) return;
-        
-        if (CurrentChat != session)
-        {
-            CurrentChat = session;
-        }
-        else
-        {
-            // Force reload even though CurrentChat didn't change reference.
-            Session.ClearSession();
-            Session.LoadSession(session);
-        }
+        if (chat == null) return;
+        ActiveChat = chat;
     }
-
 
     [RelayCommand]
     private void ForkChat()
     {
-        if (_chatManager == null || CurrentChat == null) return;
-        var newChat = _chatManager.DuplicateChat(CurrentChat.Id);
-        LoadChatsList();
-        SelectChat(newChat);
+        if (_chatManager == null || ActiveChat == null) return;
+        var newChat = _chatManager.DuplicateChat(ActiveChat.Id);
+        SyncChatsFromDisk();
+        if (_chatVms.TryGetValue(newChat.Id, out var vm))
+            ActiveChat = vm;
     }
 }
-

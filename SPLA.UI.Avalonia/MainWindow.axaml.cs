@@ -106,6 +106,7 @@ public partial class MainWindow : Window
             return;
         }
         var vm = (MainWindowViewModel)DataContext!;
+        if (vm.SessionKv == null) return;
         var debugVm = new KvDebugWindowViewModel(vm.SessionKv, vm.ProjectKv);
         _kvDebugWindow = new KvDebugWindow(debugVm);
         _kvDebugWindow.Closed += (_, _) => _kvDebugWindow = null;
@@ -123,6 +124,7 @@ public partial class MainWindow : Window
             return;
         }
         var vm = (MainWindowViewModel)DataContext!;
+        if (vm.ContextSnapshot == null) return;
         _contextDebugWindow = new ContextDebugWindow(vm.ContextSnapshot);
         _contextDebugWindow.Closed += (_, _) => _contextDebugWindow = null;
         _contextDebugWindow.Show(this);
@@ -136,13 +138,9 @@ public partial class MainWindow : Window
             DataContext = vm.Settings
         };
         await settingsWindow.ShowDialog(this);
-        
-        // Update status UI values after closing settings
-        vm.Status.Endpoint = vm.Settings.BaseUrl;
-        vm.Status.ModelName = vm.Settings.SelectedModel ?? "local-model";
     }
 
-    private async Task<bool> ConfirmDeleteChatAsync(ChatSession chat)
+    private async Task<bool> ConfirmDeleteChatAsync(SPLA.UI.Avalonia.ViewModels.Chat.ChatSessionViewModel chat)
     {
         var dialog = new ConfirmDeleteChatWindow(chat.Title);
         return await dialog.ShowDialog<bool>(this);

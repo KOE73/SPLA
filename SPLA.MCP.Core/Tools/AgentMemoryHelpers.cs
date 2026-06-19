@@ -12,15 +12,20 @@ internal static class AgentMemoryHelpers
     internal const int AutoThreshold = 25;
     internal const int AutoSample    = 10;
 
-    internal static IKeyValueStore SelectStore(IKeyValueStore session, IKeyValueStore project, string? scope)
-        => scope == "project" ? project : session;
+    /// <summary>
+    /// Resolves the target store: the shared project store for scope "project", otherwise the
+    /// running chat's session store from <see cref="AgentSessionScope"/>. Returns null when scope
+    /// resolves to session but no chat run is active (no ambient session).
+    /// </summary>
+    internal static IKeyValueStore? SelectStore(IKeyValueStore project, string? scope)
+        => scope == "project" ? project : AgentSessionScope.Current?.SessionKv;
 
     internal static IReadOnlyList<KeyValuePair<string, string>> ApplyFilter(
-        IReadOnlyList<KeyValuePair<string, string>> items, string? filter, string? where = null)
+        IReadOnlyList<KeyValuePair<string, string>> items, string? filter, string? where = null, bool regexMode = false)
     {
         var result = string.IsNullOrEmpty(filter)
             ? items
-            : items.Where(kv => KvGlob.KeyMatch(kv.Key, filter)).ToList();
+            : items.Where(kv => KvGlob.KeyMatch(kv.Key, filter, regexMode)).ToList();
 
         if (!string.IsNullOrEmpty(where))
             result = result.Where(kv => KvGlob.WhereMatch(kv.Value, where)).ToList();
@@ -31,10 +36,10 @@ internal static class AgentMemoryHelpers
     internal static string Truncate(string value, int max = 200)
         => value.Length <= max ? value : value[..max] + $"… (+{value.Length - max} chars)";
 
-    internal static void AppendList(StringBuilder sb, IKeyValueStore store, string? filter, int? top, int skip, string? where = null)
+    internal static void AppendList(StringBuilder sb, IKeyValueStore store, string? filter, int? top, int skip, string? where = null, bool regexMode = false)
     {
         var all     = store.List();
-        var matched = ApplyFilter(all, filter, where);
+        var matched = ApplyFilter(all, filter, where, regexMode);
 
         int effectiveSkip = System.Math.Max(0, skip);
         var page = matched.Skip(effectiveSkip).ToList();

@@ -23,6 +23,14 @@ public class ChatSession
     [YamlMember(Alias = "workspace")]
     public string Workspace { get; set; } = string.Empty;
 
+    /// <summary>Id of the project connection this chat uses (live reference into the project's
+    /// connection list). When the referenced connection is missing, the chat falls back to the
+    /// first available one.</summary>
+    [YamlMember(Alias = "connection_id")]
+    public string? ConnectionId { get; set; }
+
+    /// <summary>Per-chat LLM behaviour knobs layered on the chosen connection: temperature and
+    /// reasoning level. Endpoint/model come from the connection, not from here.</summary>
     [YamlMember(Alias = "model")]
     public SplaLlmSection? Model { get; set; }
 

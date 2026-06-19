@@ -11,14 +11,9 @@ namespace SPLA.MCP.Core.Tools;
 
 public sealed class AgentMemoryClearTool : IMcpTool
 {
-    private readonly IKeyValueStore _session;
     private readonly IKeyValueStore _project;
 
-    public AgentMemoryClearTool(IKeyValueStore session, IKeyValueStore project)
-    {
-        _session = session;
-        _project = project;
-    }
+    public AgentMemoryClearTool(IKeyValueStore project) => _project = project;
 
     public string Name => "agent_memory_clear";
 
@@ -59,7 +54,8 @@ public sealed class AgentMemoryClearTool : IMcpTool
             var filter = ToolJson.GetString(root,"filter");
             var scope  = ToolJson.GetString(root,"scope");
 
-            var store = AgentMemoryHelpers.SelectStore(_session, _project, scope);
+            var store = AgentMemoryHelpers.SelectStore(_project, scope);
+            if (store is null) return Task.FromResult("error: no active chat session");
             var sb    = new StringBuilder();
             AgentMemoryHelpers.AppendClear(sb, store, filter);
             return Task.FromResult(sb.ToString().TrimEnd());

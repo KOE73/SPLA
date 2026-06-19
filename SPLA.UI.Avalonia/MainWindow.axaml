@@ -112,11 +112,11 @@
         <Grid Grid.Row="1" Grid.Column="0" RowDefinitions="*,Auto,Auto">
             <chat:ChatListView Grid.Row="0" DataContext="{Binding}" />
             <plugins:PluginCommandsView Grid.Row="1" DataContext="{Binding}" />
-            <status:StatusView Grid.Row="2" DataContext="{Binding Status}" SettingsRequested="StatusControl_SettingsRequested" />
+            <status:StatusView Grid.Row="2" DataContext="{Binding ActiveChat.Status}" SettingsRequested="StatusControl_SettingsRequested" />
         </Grid>
 
-        <!-- ── Chat Area ── -->
-        <chat:ChatView Grid.Row="1" Grid.Column="1" DataContext="{Binding Session}" />
+        <!-- ── Chat Area (active chat; background chats keep running unseen) ── -->
+        <chat:ChatView Grid.Row="1" Grid.Column="1" DataContext="{Binding ActiveChat}" />
 
         <!-- ── Sidebar splitter (col 2) ── -->
         <GridSplitter Grid.Row="1" Grid.Column="2"

@@ -40,13 +40,14 @@ public partial class MainWindowViewModel : ViewModelBase
         }
         else if (e.PropertyName == nameof(SettingsViewModel.ActiveProfileId))
         {
+            // Display profile is per-chat; apply the settings-window change to the active chat.
             var matched = AvailableProfiles.FirstOrDefault(p => p.Id == Settings.ActiveProfileId);
             if (matched != null)
-                Session.SelectProfileCommand.Execute(matched);
+                ActiveChat?.SelectProfileCommand.Execute(matched);
         }
         else if (e.PropertyName == nameof(SettingsViewModel.ChatRenderMode))
         {
-            Session.SelectRenderModeCommand.Execute(Settings.ChatRenderMode);
+            ActiveChat?.SelectRenderModeCommand.Execute(Settings.ChatRenderMode);
         }
     }
 }

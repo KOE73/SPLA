@@ -46,57 +46,34 @@ public partial class MainWindowViewModel : ViewModelBase
             Settings.ActiveProfileId = "bubbles";
         }
 
-        Session.InitializeSessionDefaults();
-
-        Status.Endpoint = resolved.Endpoint;
-        Status.Mode = resolved.Mode;
-        
-        if (resolved.Model == "auto" || string.IsNullOrEmpty(resolved.Model))
-        {
-            Status.ModelName = "auto (fetching...)";
-            _ = Task.Run(async () =>
-            {
-                try
-                {
-                    var client = new LMStudioClient(new HttpClient());
-                    var models = await client.GetModelsAsync(resolved.Endpoint, resolved.ApiKey);
-                    global::Avalonia.Threading.Dispatcher.UIThread.Post(() =>
-                    {
-                        if (models.Count > 0)
-                            Status.ModelName = $"auto ({models[0]})";
-                        else
-                            Status.ModelName = "auto (no models)";
-                    });
-                }
-                catch
-                {
-                    global::Avalonia.Threading.Dispatcher.UIThread.Post(() => Status.ModelName = "auto (error)");
-                }
-            });
-        }
-        else
-        {
-            Status.ModelName = resolved.Model;
-        }
-
         App.ChangeTheme(resolved.Theme);
-        
+
         Settings.PropertyChanged += Settings_PropertyChanged;
 
         _chatManager = new ChatManager(resolved);
-        Session.SetChatManager(_chatManager);
-        LoadChatsList();
+        _services = new SPLA.UI.Avalonia.ViewModels.Chat.ChatServices
+        {
+            Llm           = _llmClient,
+            McpHost       = _mcpHost,
+            SkillManager  = _skillManager,
+            PluginManager = _pluginManager,
+            ChatManager   = _chatManager,
+            ProjectKv     = _projectKv.Store,
+            ToolFilter    = GetFilteredToolsForMode,
+            ModelCatalog  = () => Settings.ModelDetails,
+            PersistPermission = SaveToolPermissionDecision
+        };
+
+        SyncChatsFromDisk();
         LoadRecentProjectsList();
-        
-        // Build system prompt based on active chat later, but for now just load the latest chat or create a new one
+
+        // Activate the most recent chat (loads it), or create a new one.
         if (Chats.Count > 0)
-        {
-            SelectChat(Chats.First());
-        }
+            ActiveChat = Chats.First();
         else
-        {
             NewChat();
-        }
+
+        await Task.CompletedTask;
     }
 }
 

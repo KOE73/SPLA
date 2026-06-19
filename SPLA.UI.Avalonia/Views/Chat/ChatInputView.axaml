@@ -59,13 +59,32 @@
                           Background="Transparent" BorderThickness="0" Foreground="{DynamicResource SubTextForegroundBrush}"
                           FontSize="{DynamicResource SmallFontSize}" VerticalAlignment="Center" />
 
+                    <!-- Connection picker: project connections (endpoint + model); switchable live -->
+                    <StackPanel Orientation="Horizontal" Spacing="4" VerticalAlignment="Center">
+                        <TextBlock Text="🔌" FontSize="{DynamicResource SmallFontSize}" VerticalAlignment="Center"
+                                   ToolTip.Tip="Connection (endpoint + model)" />
+                        <ComboBox ItemsSource="{Binding Connections}"
+                                  SelectedItem="{Binding SelectedConnection}"
+                                  MinWidth="120" Background="Transparent" BorderThickness="1"
+                                  BorderBrush="{DynamicResource PanelBorderBrush}"
+                                  Foreground="{DynamicResource SubTextForegroundBrush}"
+                                  FontSize="{DynamicResource SmallFontSize}" VerticalAlignment="Center"
+                                  ToolTip.Tip="Pick the connection this chat talks to">
+                            <ComboBox.ItemTemplate>
+                                <DataTemplate>
+                                    <TextBlock Text="{Binding DisplayName}" />
+                                </DataTemplate>
+                            </ComboBox.ItemTemplate>
+                        </ComboBox>
+                    </StackPanel>
+
                     <!-- Reasoning depth: toggle (off/on) or effort (low/medium/high), per the selected model -->
                     <StackPanel Orientation="Horizontal" Spacing="4" VerticalAlignment="Center"
-                                IsVisible="{Binding Settings.SelectedModelSupportsReasoning}">
+                                IsVisible="{Binding SelectedModelSupportsReasoning}">
                         <TextBlock Text="🧠" FontSize="{DynamicResource SmallFontSize}" VerticalAlignment="Center"
                                    ToolTip.Tip="Model reasoning depth" />
-                        <ComboBox ItemsSource="{Binding Settings.SelectedModelReasoningOptions}"
-                                  SelectedItem="{Binding Settings.ReasoningLevel}"
+                        <ComboBox ItemsSource="{Binding SelectedModelReasoningOptions}"
+                                  SelectedItem="{Binding ReasoningLevel}"
                                   MinWidth="80" Background="Transparent" BorderThickness="1"
                                   BorderBrush="{DynamicResource PanelBorderBrush}"
                                   Foreground="{DynamicResource SubTextForegroundBrush}"
@@ -77,13 +96,13 @@
                     <StackPanel Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
                         <TextBlock Text="Temp" Foreground="{DynamicResource SubTextForegroundBrush}"
                                    FontSize="{DynamicResource SmallFontSize}" VerticalAlignment="Center" />
-                        <TextBlock Text="{Binding Settings.Temperature, StringFormat='{}{0:0.0}'}"
+                        <TextBlock Text="{Binding Temperature, StringFormat='{}{0:0.0}'}"
                                    Foreground="{DynamicResource SubTextForegroundBrush}"
                                    FontSize="{DynamicResource SmallFontSize}" Width="28"
                                    TextAlignment="Right" VerticalAlignment="Center" />
                         <Grid RowDefinitions="18,10" Width="260" Height="28" VerticalAlignment="Center">
                             <Slider Grid.Row="0" Minimum="0" Maximum="2" TickFrequency="0.1" IsSnapToTickEnabled="True"
-                                    Value="{Binding Settings.Temperature}"
+                                    Value="{Binding Temperature}"
                                     Height="18" VerticalAlignment="Center"
                                     Margin="4,0" />
                             <Grid Grid.Row="1" ColumnDefinitions="*,*,*,*,*" Margin="4,0">

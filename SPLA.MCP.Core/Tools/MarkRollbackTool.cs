@@ -13,10 +13,6 @@ namespace SPLA.MCP.Core.Tools;
 /// </summary>
 public sealed class MarkRollbackTool : IMcpTool
 {
-    private readonly MarkManager _marks;
-
-    public MarkRollbackTool(MarkManager marks) => _marks = marks;
-
     public string Name => "mark_rollback";
 
     public ToolDefinition GetDefinition() => new()
@@ -44,11 +40,14 @@ public sealed class MarkRollbackTool : IMcpTool
 
     public Task<string> ExecuteAsync(string argumentsJson, CancellationToken cancellationToken = default)
     {
+        var marks = AgentSessionScope.Current?.Checkpoint;
+        if (marks is null) return Task.FromResult("error: no active chat session");
+
         using var doc = JsonDocument.Parse(argumentsJson);
         var root = doc.RootElement;
         if (!root.TryGetProperty("name", out var nameProp) || string.IsNullOrWhiteSpace(nameProp.GetString()))
             return Task.FromResult("error: 'name' is required");
 
-        return Task.FromResult(_marks.MarkRollback(nameProp.GetString()!));
+        return Task.FromResult(marks.MarkRollback(nameProp.GetString()!));
     }
 }

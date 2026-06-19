@@ -18,14 +18,9 @@ namespace SPLA.MCP.Core.Tools;
 /// </summary>
 public sealed class SkillActivateTool : IMcpTool
 {
-    private readonly ISkillSession _session;
     private readonly SkillManager _skills;
 
-    public SkillActivateTool(ISkillSession session, SkillManager skills)
-    {
-        _session = session;
-        _skills = skills;
-    }
+    public SkillActivateTool(SkillManager skills) => _skills = skills;
 
     public string Name => "skill_activate";
 
@@ -58,6 +53,9 @@ public sealed class SkillActivateTool : IMcpTool
 
     public Task<string> ExecuteAsync(string argumentsJson, CancellationToken cancellationToken = default)
     {
+        var session = AgentSessionScope.Current?.Skills;
+        if (session is null) return Task.FromResult("error: no active chat session");
+
         try
         {
             using var doc = JsonDocument.Parse(argumentsJson);
@@ -66,9 +64,9 @@ public sealed class SkillActivateTool : IMcpTool
             if (string.IsNullOrEmpty(id))
                 return Task.FromResult("error: 'id' parameter is required");
 
-            if (_session.ActiveSkillId is not null)
+            if (session.ActiveSkillId is not null)
                 return Task.FromResult(
-                    $"error: skill '{_session.ActiveSkillId}' is already active — call skill_deactivate first");
+                    $"error: skill '{session.ActiveSkillId}' is already active — call skill_deactivate first");
 
             var skill = _skills.Find(id);
             if (skill is null)
@@ -85,7 +83,7 @@ public sealed class SkillActivateTool : IMcpTool
                 return Task.FromResult(msg);
             }
 
-            _session.Activate(id);
+            session.Activate(id);
             return Task.FromResult($"ok: activated '{id}' — skill procedure is now injected into the prompt. Follow the steps and call skill_deactivate when done.");
         }
         catch (JsonException)

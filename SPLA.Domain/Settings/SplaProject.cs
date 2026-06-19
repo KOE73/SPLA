@@ -23,6 +23,10 @@ public class SplaProject
     [YamlMember(Alias = "llm")]
     public SplaLlmSection? Llm { get; set; }
 
+    /// <summary>Named connections for this project's chats (merged over defaults by id).</summary>
+    [YamlMember(Alias = "connections")]
+    public List<SplaConnectionSection>? Connections { get; set; }
+
     [YamlMember(Alias = "ui")]
     public SplaUiSection? Ui { get; set; }
 

@@ -3,9 +3,11 @@ using SPLA.MCP.Core.Interfaces;
 using SPLA.MCP.Core.Json;
 using System;
 using System.Collections.Generic;
-using System.Diagnostics;
 using System.IO;
+using System.Linq;
 using System.Net;
+using System.Net.NetworkInformation;
+using System.Runtime.InteropServices;
 using System.Text;
 using System.Text.Json;
 using System.Text.RegularExpressions;
@@ -54,9 +56,13 @@ public class ArpTool : IMcpTool
                 filter = ToolJson.GetStringTrimmed(doc.RootElement, "filter");
             }
 
-            var entries = OperatingSystem.IsLinux()
-                ? ReadProcNetArp(filter)
-                : await RunArpCommandAsync(filter, cancellationToken);
+            List<ArpEntry> entries;
+            if (OperatingSystem.IsLinux())
+                entries = ReadProcNetArp(filter);
+            else if (OperatingSystem.IsWindows())
+                entries = GetWindowsArpEntries(filter);
+            else
+                entries = await RunMacArpAsync(filter, cancellationToken);
 
             var sb = new StringBuilder();
             var suffix = filter != null ? $" (filter: '{filter}')" : "";
@@ -80,7 +86,7 @@ public class ArpTool : IMcpTool
         }
     }
 
-    // Linux: parse /proc/net/arp directly — no process required.
+    // Linux: /proc/net/arp — no process, no encoding issues.
     private static List<ArpEntry> ReadProcNetArp(string? filter)
     {
         var entries = new List<ArpEntry>();
@@ -92,10 +98,11 @@ public class ArpTool : IMcpTool
             var parts = lines[i].Split(' ', StringSplitOptions.RemoveEmptyEntries);
             if (parts.Length < 6) continue;
 
-            var ip  = parts[0];
-            var mac = parts[3].Replace(':', '-').ToUpperInvariant();
+            var ip    = parts[0];
+            var mac   = parts[3].Replace(':', '-').ToUpperInvariant();
             var iface = parts[5];
-            if (mac == "00-00-00-00-00-00") continue; // incomplete / no reply
+
+            if (mac == "00-00-00-00-00-00") continue; // incomplete entry
 
             if (Matches(ip, mac, filter))
                 entries.Add(new ArpEntry(ip, mac, "dynamic", iface));
@@ -103,70 +110,94 @@ public class ArpTool : IMcpTool
         return entries;
     }
 
-    // Windows / macOS: run `arp -a` and parse platform-specific output.
-    private static async Task<List<ArpEntry>> RunArpCommandAsync(string? filter, CancellationToken cancellationToken)
+    // Windows: GetIpNetTable P/Invoke — structured data, no text parsing, no locale issues.
+    [DllImport("iphlpapi.dll", SetLastError = true)]
+    private static extern uint GetIpNetTable(IntPtr pIpNetTable, ref uint pdwSize, [MarshalAs(UnmanagedType.Bool)] bool bOrder);
+
+    private static List<ArpEntry> GetWindowsArpEntries(string? filter)
     {
-        var psi = new ProcessStartInfo("arp", "-a")
+        uint size = 0;
+        GetIpNetTable(IntPtr.Zero, ref size, false);
+
+        var buffer = Marshal.AllocHGlobal((int)size);
+        try
+        {
+            uint result = GetIpNetTable(buffer, ref size, false);
+            if (result != 0)
+                throw new InvalidOperationException($"GetIpNetTable failed with error {result}.");
+
+            // Build interface index → name map from .NET NetworkInterface.
+            // GetIPv4Properties() throws NetworkInformationException on loopback/VPN/tunnel adapters — skip those.
+            var ifaceNames = new Dictionary<int, string>();
+            foreach (var ni in NetworkInterface.GetAllNetworkInterfaces())
+            {
+                try { ifaceNames.TryAdd(ni.GetIPProperties().GetIPv4Properties().Index, ni.Name); }
+                catch { /* adapter does not support IPv4 — index unavailable, skip */ }
+            }
+
+            int numEntries = Marshal.ReadInt32(buffer);
+            var entries = new List<ArpEntry>();
+
+            // MIB_IPNETROW layout (24 bytes):
+            //   0:  DWORD dwIndex         — interface index
+            //   4:  DWORD dwPhysAddrLen   — MAC length (0 if incomplete)
+            //   8:  BYTE[8] bPhysAddr     — MAC bytes (MAXLEN_PHYSADDR = 8)
+            //  16:  DWORD dwAddr          — IPv4 address as little-endian DWORD
+            //  20:  DWORD dwType          — 1=other, 2=invalid, 3=dynamic, 4=static
+            int offset = 4; // skip NumEntries DWORD
+            for (int i = 0; i < numEntries; i++)
+            {
+                int ifIndex  = Marshal.ReadInt32(buffer, offset);
+                int physLen  = Marshal.ReadInt32(buffer, offset + 4);
+                uint ipDword = (uint)Marshal.ReadInt32(buffer, offset + 16);
+                int dwType   = Marshal.ReadInt32(buffer, offset + 20);
+                offset += 24;
+
+                if (physLen == 0 || dwType == 2) continue; // incomplete or invalid
+
+                var macBytes = new byte[physLen];
+                for (int b = 0; b < physLen; b++)
+                    macBytes[b] = Marshal.ReadByte(buffer, offset - 24 + 8 + b);
+
+                var ip    = new IPAddress(BitConverter.GetBytes(ipDword)).ToString();
+                var mac   = string.Join("-", macBytes.Take(6).Select(b => b.ToString("X2")));
+                var type  = dwType == 4 ? "static" : "dynamic";
+                var iface = ifaceNames.TryGetValue(ifIndex, out var name) ? name : ifIndex.ToString();
+
+                if (Matches(ip, mac, filter))
+                    entries.Add(new ArpEntry(ip, mac, type, iface));
+            }
+
+            return entries;
+        }
+        finally
+        {
+            Marshal.FreeHGlobal(buffer);
+        }
+    }
+
+    // macOS: arp -an — ASCII output, -n suppresses hostname resolution.
+    private static readonly Regex BsdArpRegex = new(
+        @"\((\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})\)\s+at\s+([0-9a-f:]+).*\s+on\s+(\S+)",
+        RegexOptions.IgnoreCase | RegexOptions.Compiled);
+
+    private static async Task<List<ArpEntry>> RunMacArpAsync(string? filter, CancellationToken cancellationToken)
+    {
+        var psi = new System.Diagnostics.ProcessStartInfo("arp", "-an")
         {
             RedirectStandardOutput = true,
+            StandardOutputEncoding = Encoding.ASCII,
             UseShellExecute = false,
             CreateNoWindow = true
         };
 
-        using var process = Process.Start(psi)
+        using var process = System.Diagnostics.Process.Start(psi)
             ?? throw new InvalidOperationException("Failed to start 'arp' process.");
 
         var output = await process.StandardOutput.ReadToEndAsync(cancellationToken);
         await process.WaitForExitAsync(cancellationToken);
 
-        return OperatingSystem.IsWindows()
-            ? ParseWindowsArp(output, filter)
-            : ParseBsdArp(output, filter);
-    }
-
-    // Windows arp -a:
-    //   Interface: 192.168.1.5 --- 0x5
-    //     Internet Address      Physical Address      Type
-    //     192.168.1.1           00-50-56-c0-00-08     dynamic
-    private static List<ArpEntry> ParseWindowsArp(string output, string? filter)
-    {
         var entries = new List<ArpEntry>();
-        var currentIface = "";
-
-        foreach (var line in output.Split('\n'))
-        {
-            var trimmed = line.Trim();
-
-            if (trimmed.StartsWith("Interface:", StringComparison.OrdinalIgnoreCase))
-            {
-                var parts2 = trimmed.Split(' ', StringSplitOptions.RemoveEmptyEntries);
-                currentIface = parts2.Length > 1 ? parts2[1] : "";
-                continue;
-            }
-
-            var parts = trimmed.Split(' ', StringSplitOptions.RemoveEmptyEntries);
-            if (parts.Length < 3 || !IPAddress.TryParse(parts[0], out _)) continue;
-
-            var ip   = parts[0];
-            var mac  = parts[1].ToUpperInvariant();
-            var type = parts[2];
-
-            if (Matches(ip, mac, filter))
-                entries.Add(new ArpEntry(ip, mac, type, currentIface));
-        }
-        return entries;
-    }
-
-    // BSD / macOS arp -a:
-    //   ? (192.168.1.1) at 00:50:56:c0:00:08 [ether] on eth0
-    private static readonly Regex BsdArpRegex = new(
-        @"\((\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})\)\s+at\s+([0-9a-f:]+).*\s+on\s+(\S+)",
-        RegexOptions.IgnoreCase | RegexOptions.Compiled);
-
-    private static List<ArpEntry> ParseBsdArp(string output, string? filter)
-    {
-        var entries = new List<ArpEntry>();
-
         foreach (var line in output.Split('\n'))
         {
             var m = BsdArpRegex.Match(line);

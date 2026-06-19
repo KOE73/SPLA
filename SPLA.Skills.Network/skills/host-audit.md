@@ -8,100 +8,146 @@ description: Deep autonomous investigation of a single host — DNS, ping, port 
 ## Memory Keys Used by This Skill
 
 ### session scope
-- `context:plan` — (object) Step list and current progress
-- `context:step` — (number) Currently executing step index
+- `context:current_ip` — IP address currently being investigated (write at the start, clear at finalize)
+- `context:plan` — `{ prior_record_existed: bool, done: bool }`
 
 ### project scope
-- `host:{ip}` — base record: ping, mac, vendor, class, tags, scanned_at
-- `host:{ip}:dns` — DNS resolution results (step 1 + 8)
-- `host:{ip}:tcp` — open ports and banners (steps 3–4)
-- `host:{ip}:tls` — TLS/SSL details (step 5)
-- `host:{ip}:http` — HTTP response metadata (step 6)
+- `host:{ip}` — base record: ping, mac, vendor, class, tags, scanned_at. Always read before writing to merge.
+- `host:{ip}:dns` — DNS resolution results
+- `host:{ip}:tcp` — open ports and banners
+- `host:{ip}:tls:{port}` — TLS/SSL certificate and handshake details (one key per port)
+- `host:{ip}:http:{port}` — HTTP response metadata (one key per port)
 
-### State handling
-- session: execution state and plan only
-- project: all host findings written incrementally as each step completes
-- Schema for each key is defined in the plugin default_prompt
+Schema for each key is defined in the plugin `default_prompt`.
 
-## Context snapshots
+---
 
-Steps 3–4 (port scan + banner grab) can produce large output that fills the context before TLS/HTTP analysis begins. Use a snapshot between the scan phase and the analysis phase:
+## Transaction model
+
+One host = one mark transaction. All probing steps run inside a single `mark_set` / `mark_rollback` window so the agent retains full conversational context across all findings. KV writes happen **after** all probing is complete.
 
 ```
-checkpoint_save                         ← after step 2 (ping confirmed), before port scan
-→ step 3: network_scan_tcp_ports
-→ step 4: network_probe_tcp on every port
-→ agent_memory_set {key:"host:{ip}:tcp", scope:"project"} ← write banners before restore
-→ agent_memory_set {key:"context:plan", scope:"session"}  ← mark steps 3-4 done
-context_rollback                     ← clean context; KV has tcp data
-→ step 5: network_check_tls     (reads host:{ip}:tcp from KV)
-→ step 6: network_http_get/head (reads host:{ip}:tcp from KV)
-→ step 7: network_get_arp_cache
-→ step 8: network_reverse_dns
-→ step 9: finalize
+mark_set "host-audit-start"
+→ [all probe steps — agent keeps full context throughout]
+→ [all KV writes — after reasoning is complete]
+→ agent_memory_set context:plan  ← mark done
+mark_rollback "host-audit-start"
 ```
 
-**Rules:**
-- Write `host:{ip}:tcp` to project KV and update `context:plan` to session KV **before** calling `context_rollback`.
-- Steps 5–8 derive their port list from `host:{ip}:tcp` in KV — not from conversational context.
-- If the port scan finds no open ports: skip the restore and continue directly to step 7.
-- If called from a parent loop (e.g. `agent_spawn_batch`): the parent manages cross-host snapshots. Still use the intra-host snapshot above.
+**FORBIDDEN:** writing host KV keys before all probing steps are complete.
+**FORBIDDEN:** calling `mark_rollback` before all host KV writes are confirmed with `ok:` and `context:plan` is updated.
+**REQUIRED:** every write to `host:{ip}` must be preceded by `agent_memory_get {key:"host:{ip}", scope:"project"}`. Merge new fields into the existing object — do not replace the whole record. Start from `{}` if no record exists yet.
 
-## Step 0 — Confirm tools and initialize plan
+---
 
-Call `agent_info` with each tool name you intend to use to confirm it is registered.
-Prefer lower_snake_case network tools when available — they return structured data and handle errors cleanly.
-If a specific lower_snake_case network tool is absent, fall back to `system_run_shell` (cmd/shell) to accomplish the same step.
-Adapt the plan below based on what is actually available.
+## Step 0 — Confirm tools and initialize
 
-Write the full plan to `context:plan` in session KV:
+Call `agent_info` for each tool you intend to use. Fall back to `system_run_shell` only when a specific tool is absent.
+
+**Write `context:current_ip`** — `agent_memory_set {key:"context:current_ip", scope:"session", value:"{ip}"}`.
+
+Check for a prior host record — `agent_memory_get {key:"host:{ip}", scope:"project"}` — and note whether one existed.
+
+Write plan — `agent_memory_set {key:"context:plan", scope:"session"}`:
 
 ```json
-{
-  "total_steps": 9,
-  "current_step": 0,
-  "checkpoint_after": 4,
-  "steps": [
-    "Step 1: network_resolve_host — resolve A/AAAA/PTR → host:{ip}:dns",
-    "Step 2: network_ping_host — reachability, RTT, TTL → host:{ip}",
-    "Step 3: network_scan_tcp_ports — common service preset → host:{ip}:tcp",
-    "Step 4: network_probe_tcp on every open port — banners → host:{ip}:tcp  [checkpoint_set before step 3, restore after step 4]",
-    "Step 5: network_check_tls on TLS ports → host:{ip}:tls",
-    "Step 6: network_http_get + network_http_head on HTTP ports → host:{ip}:http",
-    "Step 7: network_get_arp_cache — resolve MAC and OUI → host:{ip}",
-    "Step 8: network_reverse_dns — PTR record → host:{ip}:dns",
-    "Step 9: finalize — clear context:, deactivate"
-  ]
-}
+{ "prior_record_existed": false, "done": false }
 ```
 
-## Execution sequence
+---
 
-After each numbered step, update both `context:plan.current_step` and `context:step` in session KV to that step number. Write findings to project KV immediately after each step — do not batch.
+## Probe sequence
 
-1. `network_resolve_host` — resolve target; check A/AAAA/PTR. Write `host:{ip}:dns`.
-2. `network_ping_host` — reachability, RTT, TTL (64=Linux, 128=Windows, 255=network gear). Write/update `host:{ip}` with ping result and class.
-3. Call `checkpoint_save`. Then `network_scan_tcp_ports` — omit `ports` parameter (built-in 49-port preset). Write initial `host:{ip}:tcp` with port list.
-4. `network_probe_tcp` on **every open port** — grab banner, identify service and version; do not skip a port. Update `host:{ip}:tcp` with banners and service guesses. Update `context:plan` to mark steps 3-4 done. Call `context_rollback`.
-5. `network_check_tls` — on every port from `host:{ip}:tcp` in KV that returned a TLS banner or is 443/8443. Write `host:{ip}:tls`.
-6. `network_http_get` + `network_http_head` — on every HTTP port from `host:{ip}:tcp` in KV; extract Server, X-Powered-By, cookies, redirects. Write `host:{ip}:http`.
-7. `network_get_arp_cache` — resolve MAC of target; note OUI vendor. Update `host:{ip}` with mac and vendor.
-8. `network_reverse_dns` — PTR record. Update `host:{ip}:dns` with ptr.
+**Set the mark** — substitute the actual target IP into the resume string:
+```
+mark_set "host-audit-start" resume:"Resumed after rollback for host 1.2.3.4. Check context:plan — if done:true, read agent_memory_list {filter:\"host:1.2.3.4*\", scope:\"project\"} and produce the final report, then move to next host. If done:false, KV writes did NOT complete — do NOT produce a report, restart probing from Step 1."
+```
+Replace `1.2.3.4` with the actual target IP. **FORBIDDEN:** using `{ip}` literally in the resume string.
 
-If a step fails (host unreachable, port closed), note it in one line and continue.
+Then run all steps without rollback until the KV write phase.
 
-## Step 9 — Finalize
+**Step 1 — DNS**
+`network_resolve_host` — resolve A/AAAA/PTR.
 
-Ensure all project KV writes are confirmed. Clear session context keys with `agent_memory_clear {scope:"session", filter:"context:"}`. Then call `skill_deactivate`.
+**Step 2 — Ping**
+`network_ping_host` — reachability, RTT, TTL. TTL hint: 64=Linux, 128=Windows, 255=network gear.
+Set preliminary `class:"icmp-only"` — will be recalculated in the KV write phase.
 
-## Output format
+**Step 3 — Port scan**
+`network_scan_tcp_ports` (omit `ports` — uses built-in 49-port preset).
 
-Final report: one compact markdown table per service.
+**Step 4 — Banner grab**
+`network_probe_tcp` on every open port — banner, service, version. Skip if zero open ports.
 
-Columns: `Port | Service | Version/Banner | Security Notes | Action Items`
+**Step 5 — TLS**
+`network_check_tls` on every port that returned a TLS banner or is 443/8443. One call per port.
+**FORBIDDEN:** calling without a filter port match. If no TLS candidates, skip entirely.
 
-Rules:
-- Skip obvious facts; every sentence must carry information density an admin cannot already infer.
-- Action items = concrete admin tasks: "patch OpenSSH", "enforce MQTT auth", "disable SMBv1".
+**Step 6 — HTTP**
+`network_http_get` + `network_http_head` on every HTTP port. Extract Server, X-Powered-By, cookies, redirects.
+One call per port.
+
+**Step 7 — ARP**
+`network_get_arp_cache` with `filter:{ip}`.
+**FORBIDDEN:** retrying without a filter or with a broader filter on a miss. If not in cache — record `mac:null, vendor:null` and continue.
+
+**Step 8 — Reverse DNS**
+`network_reverse_dns` — PTR record.
+
+If a step fails: note it in one line and continue.
+
+---
+
+## KV write phase
+
+After all probing is complete, reason over all findings together, then write.
+
+**Compute final `class`:**
+
+| ping  | ports        | dns/ptr | prior record | class       |
+|-------|--------------|---------|--------------|-------------|
+| true  | non-empty    | any     | any          | `active`    |
+| true  | empty        | any     | any          | `icmp-only` |
+| false | non-empty    | any     | any          | `tcp-only`  |
+| false | empty        | true    | any          | `dns-only`  |
+| false | empty        | false   | existed      | `gone`      |
+| false | empty        | false   | none         | `empty`     |
+
+**FORBIDDEN:** setting `class:"gone"` if `context:plan.prior_record_existed` is false.
+
+**Write order** — confirm each write returns `ok:` before the next:
+
+1. `agent_memory_get host:{ip}` → merge → `agent_memory_set host:{ip}` — `ip, hostname, ping, ttl, mac, vendor, class, tags, scanned_at`
+2. `agent_memory_set host:{ip}:dns` — `hostname, ptr, a, aaaa, resolver, ttl, scanned_at`
+3. `agent_memory_set host:{ip}:tcp` — `ports:[{port, protocol, banner, service, version}], scanned_at`
+4. For each TLS port: `agent_memory_set host:{ip}:tls:{port}`
+5. For each HTTP port: `agent_memory_set host:{ip}:http:{port}`
+6. `agent_memory_set {key:"context:plan", scope:"session", value:{..., done:true}}`
+
+**FORBIDDEN:** calling `mark_rollback` before step 6 above returns `ok:` and `context:plan.done` is `true`.
+
+**Roll back to mark:**
+```
+mark_rollback "host-audit-start"
+```
+
+---
+
+## Output
+
+After rollback: `agent_memory_list {filter:"host:{ip}*", scope:"project"}` — read all records and synthesize the report.
+
+Final report: one compact markdown table per service group.
+
+`Port | Service | Version/Banner | Security Notes | Action Items`
+
+- Skip obvious facts — every row must carry information an admin cannot already infer.
+- Action items = concrete tasks: "patch OpenSSH to 9.x", "enforce MQTT auth", "disable SMBv1".
 - The user is a sysadmin/network engineer — do NOT explain what SSH, MQTT, SMB are.
-- Write exact software versions, build strings, OS from TTL/banner, config flags, anomalies, attack surface.
+- Write exact versions, build strings, OS from TTL/banner, config flags, anomalies, attack surface.
+
+---
+
+## Finalize
+
+`agent_memory_clear {scope:"session", filter:"context:"}`. Call `skill_deactivate`.

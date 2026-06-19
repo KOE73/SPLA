@@ -1,3 +1,4 @@
+using Microsoft.Extensions.Logging;
 using SPLA.Domain.Interfaces;
 using SPLA.Domain.Models;
 using SPLA.Domain.Settings;
@@ -18,12 +19,14 @@ public class LMStudioClient : ILLMService, ITokenUsageReporter
 
     private readonly HttpClient _httpClient;
     private readonly JsonSerializerOptions _jsonOptions;
+    private readonly ILogger<LMStudioClient> _logger;
 
-    public LMStudioClient(HttpClient httpClient)
+    public LMStudioClient(HttpClient httpClient, ILogger<LMStudioClient> logger)
     {
         _httpClient = httpClient;
-        _jsonOptions = new JsonSerializerOptions 
-        { 
+        _logger = logger;
+        _jsonOptions = new JsonSerializerOptions
+        {
             DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull,
             PropertyNamingPolicy = JsonNamingPolicy.CamelCase
         };
@@ -109,6 +112,7 @@ public class LMStudioClient : ILLMService, ITokenUsageReporter
         var toolCallsById = new Dictionary<int, ToolCallAccumulator>();
         int? promptTokens = null;
         int? completionTokens = null;
+        string? finishReason = null;
 
         string? line;
         while ((line = await reader.ReadLineAsync(cancellationToken)) != null)
@@ -132,6 +136,9 @@ public class LMStudioClient : ILLMService, ITokenUsageReporter
 
             var choice = chunk?.Choices?.FirstOrDefault();
             if (choice == null) continue;
+
+            if (!string.IsNullOrEmpty(choice.FinishReason))
+                finishReason = choice.FinishReason;
 
             // Usage may appear in the last chunk (some servers send it). Capture the real
             // prompt-token count too — that is the actual size of the request we just sent.
@@ -183,6 +190,29 @@ public class LMStudioClient : ILLMService, ITokenUsageReporter
                             acc.Arguments.Append(tc.Function.Arguments);
                     }
                 }
+            }
+        }
+
+        // Log raw turn summary for diagnosing finish_reason / tool_call anomalies.
+        _logger.LogDebug(
+            "LLM turn complete — finish_reason={FinishReason} tool_calls={ToolCallCount} content_len={ContentLen} reasoning_len={ReasoningLen}",
+            finishReason ?? "null",
+            toolCallsById.Count,
+            contentBuilder.Length,
+            reasoningBuilder.Length);
+
+        if (finishReason == "stop" && toolCallsById.Count == 0 && contentBuilder.Length > 0)
+        {
+            // Model stopped with text only — check if it contains XML-style tool call syntax
+            // that should have been a real tool call (known issue with some local models).
+            var rawContent = contentBuilder.ToString();
+            if (rawContent.Contains("<tool_call>", StringComparison.OrdinalIgnoreCase) ||
+                rawContent.Contains("<function=", StringComparison.OrdinalIgnoreCase))
+            {
+                _logger.LogWarning(
+                    "Model returned finish_reason=stop with tool-call-like syntax in content instead of tool_calls field. " +
+                    "This is a model behaviour issue — the tool was NOT executed. Content snippet: {Snippet}",
+                    rawContent.Length > 300 ? rawContent[..300] + "…" : rawContent);
             }
         }
 

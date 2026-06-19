@@ -28,15 +28,6 @@ using System.Threading.Tasks;
 namespace SPLA.UI.Avalonia.ViewModels;
 public partial class MainWindowViewModel : ViewModelBase
 {
-    private void Status_PropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
-    {
-        if (e.PropertyName == nameof(StatusViewModel.Mode))
-        {
-            Settings.Mode = Status.Mode;
-            _ = Settings.SaveSettingsAsync();
-        }
-    }
-
     private static PermissionManager CreatePermissionManager()
     {
         var remembered = App.ResolvedSettings.ToolPermissionRules
@@ -50,24 +41,6 @@ public partial class MainWindowViewModel : ViewModelBase
             });
 
         return new PermissionManager(remembered);
-    }
-
-    private async Task<PermissionDecision> HandlePermissionRequestAsync(ToolFunctionDefinition def, string args)
-    {
-        var tcs = new TaskCompletionSource<PermissionDecision>();
-        
-        await Dispatcher.UIThread.InvokeAsync(() =>
-        {
-            Session.Messages.Add(new PermissionMessageViewModel(def, args, tcs));
-        });
-
-        var decision = await tcs.Task;
-        if (decision is PermissionDecision.AllowRemember or PermissionDecision.Deny)
-        {
-            SaveToolPermissionDecision(def, args, decision);
-        }
-
-        return decision;
     }
 
     private void SaveToolPermissionDecision(ToolFunctionDefinition def, string args, PermissionDecision decision)

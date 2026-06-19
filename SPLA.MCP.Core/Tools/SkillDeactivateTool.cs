@@ -13,10 +13,6 @@ namespace SPLA.MCP.Core.Tools;
 /// </summary>
 public sealed class SkillDeactivateTool : IMcpTool
 {
-    private readonly ISkillSession _session;
-
-    public SkillDeactivateTool(ISkillSession session) => _session = session;
-
     public string Name => "skill_deactivate";
 
     public ToolDefinition GetDefinition() => new()
@@ -41,8 +37,11 @@ public sealed class SkillDeactivateTool : IMcpTool
 
     public Task<string> ExecuteAsync(string argumentsJson, CancellationToken cancellationToken = default)
     {
-        var previous = _session.ActiveSkillId;
-        _session.Deactivate();
+        var session = AgentSessionScope.Current?.Skills;
+        if (session is null) return Task.FromResult("error: no active chat session");
+
+        var previous = session.ActiveSkillId;
+        session.Deactivate();
         return Task.FromResult(previous is not null
             ? $"ok: deactivated '{previous}'"
             : "ok: no active skill");

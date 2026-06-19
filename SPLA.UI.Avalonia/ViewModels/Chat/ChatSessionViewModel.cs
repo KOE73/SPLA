@@ -7,13 +7,10 @@ using SPLA.Domain.Context;
 using SPLA.Domain.Models;
 using SPLA.Domain.Settings;
 using SPLA.Domain.Tools;
-using SPLA.LLM.LMStudio;
-using SPLA.MCP.Core;
-using SPLA.MCP.Core.Plugins;
+using SPLA.MCP.Core.Permissions;
 using SPLA.Observability;
 using SPLA.UI.Avalonia.ViewModels.Debug;
 using SPLA.UI.Avalonia.ViewModels.Messages;
-using SPLA.UI.Avalonia.ViewModels.Settings;
 using SPLA.UI.Avalonia.ViewModels.Status;
 using System;
 using System.Collections.Generic;
@@ -25,34 +22,45 @@ using System.Threading.Tasks;
 
 namespace SPLA.UI.Avalonia.ViewModels.Chat;
 
-public partial class ChatSessionViewModel : ViewModelBase
+/// <summary>
+/// One fully-autonomous chat. Owns everything about itself: its messages, input, run-state and
+/// cancellation, its working memory / checkpoint / skill session (exposed via <see cref="IAgentSession"/>),
+/// its connection choice and behaviour knobs, its live status line, and its own modal prompts
+/// (permission + clarify). Multiple instances run concurrently in the background — each opens its own
+/// ambient scopes around its conversation loop so tool calls never cross between chats.
+/// </summary>
+public partial class ChatSessionViewModel : ViewModelBase, IAgentSession
 {
-    // ── Dependencies ─────────────────────────────────────────────────────────
+    // ── Shared infrastructure + owner ────────────────────────────────────────
     private readonly MainWindowViewModel _owner;
-    private readonly LMStudioClient _llmClient;
-    private readonly McpHost _mcpHost;
-    private readonly SkillManager _skillManager;
-    private readonly PluginManager _pluginManager;
-    private readonly SkillSession _skillSession;
-    private readonly Func<AgentMode, List<ToolDefinition>> _toolFilter;
-    private readonly CheckpointManager _checkpointManager;
+    private readonly ChatServices _services;
 
-    private ChatManager? _chatManager;
-    private ChatSession? _currentChat;
-    private string? _loadedChatId;
+    // ── This chat's own agent state (IAgentSession) ──────────────────────────
+    private readonly ChatSession _chat;
+    private readonly Conversation _conversation = new();
+    private readonly KeyValueStore _sessionKv = new("session");
+    private readonly CheckpointManager _checkpointManager = new();
+    private readonly SkillSession _skillSession = new();
+
+    public IKeyValueStore SessionKv => _sessionKv;
+    MarkManager IAgentSession.Checkpoint => _checkpointManager;
+    ISkillSession IAgentSession.Skills => _skillSession;
+
     private CancellationTokenSource? _currentRequestCts;
     private DispatcherTimer? _tokenEstimateTimer;
     private DateTime _tokenEstimateStartedAt;
-    private readonly Conversation _conversation = new();
-    private readonly KeyValueStore _sessionKv = new("session");
+    private bool _loadStarted;
+    private bool _loaded;
+    private int _pendingPermissions;
 
-    // ── Forwarded singletons ─────────────────────────────────────────────────
-    public SettingsViewModel Settings { get; }
-    public StatusViewModel Status { get; }
+    public string Id => _chat.Id;
+    public ChatSession Chat => _chat;
+
+    // ── Per-chat singletons ──────────────────────────────────────────────────
+    public StatusViewModel Status { get; } = new();
     public ContextSnapshotViewModel ContextSnapshot { get; } = new();
-    public IKeyValueStore SessionKv => _sessionKv;
 
-    /// <summary>Invoked after every save so the chat list in the sidebar refreshes.</summary>
+    /// <summary>Invoked after every save so the sidebar can refresh ordering/titles.</summary>
     public Action? OnChatSaved { get; set; }
 
     // ── Observable session state ─────────────────────────────────────────────
@@ -60,22 +68,70 @@ public partial class ChatSessionViewModel : ViewModelBase
     private ObservableCollection<MessageViewModel> _messages = new();
 
     [ObservableProperty]
+    private string _title = "New Chat";
+
+    [ObservableProperty]
     private string _inputText = "";
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(IsNotBusy))]
+    [NotifyPropertyChangedFor(nameof(IsRunning))]
+    [NotifyPropertyChangedFor(nameof(StateGlyph))]
     private bool _isBusy;
 
     public bool IsNotBusy => !IsBusy;
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(HasActiveClarify))]
+    [NotifyPropertyChangedFor(nameof(IsAwaitingUser))]
+    [NotifyPropertyChangedFor(nameof(StateGlyph))]
     private ClarifyViewModel? _activeClarify;
 
     public bool HasActiveClarify => ActiveClarify is not null;
 
-    // ── Render mode and display profile (per-session) ─────────────────────────
+    // ── Sidebar state indicator ──────────────────────────────────────────────
+    public bool IsRunning => IsBusy;
+    public bool IsAwaitingUser => HasActiveClarify || _pendingPermissions > 0;
 
+    /// <summary>Glyph the chat list shows next to this chat: "❓" waiting on the user, "●" working.</summary>
+    public string StateGlyph => IsAwaitingUser ? "❓" : IsBusy ? "●" : "";
+
+    // ── Connection + behaviour knobs (per chat) ──────────────────────────────
+    public ObservableCollection<SplaConnectionSection> Connections { get; } = new();
+
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(SelectedModelSupportsReasoning))]
+    [NotifyPropertyChangedFor(nameof(SelectedModelReasoningOptions))]
+    private SplaConnectionSection? _selectedConnection;
+
+    [ObservableProperty]
+    private double _temperature = 0.7;
+
+    [ObservableProperty]
+    private string _reasoningLevel = "";
+
+    private ModelInfo? CurrentModelInfo =>
+        _services.ModelCatalog().FirstOrDefault(m => m.Id == SelectedConnection?.Model);
+
+    public bool SelectedModelSupportsReasoning => CurrentModelInfo?.SupportsReasoning ?? false;
+    public ObservableCollection<string> SelectedModelReasoningOptions =>
+        new(CurrentModelInfo?.ReasoningOptions ?? new());
+
+    partial void OnSelectedConnectionChanged(SplaConnectionSection? value)
+    {
+        if (value != null) _chat.ConnectionId = value.Id;
+        // Snap reasoning to the new model's default (or clear when unsupported).
+        var info = CurrentModelInfo;
+        ReasoningLevel = info is { SupportsReasoning: true }
+            ? (string.IsNullOrEmpty(info.ReasoningDefault) ? info.ReasoningOptions[0] : info.ReasoningDefault)
+            : "";
+        if (_loaded) SaveChat();
+    }
+
+    partial void OnTemperatureChanged(double value) { if (_loaded) SaveChat(); }
+    partial void OnReasoningLevelChanged(string value) { if (_loaded) SaveChat(); }
+
+    // ── Render mode + display profile (per chat) ─────────────────────────────
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(IsNativeChatViewSelected))]
     [NotifyPropertyChangedFor(nameof(IsWebChatViewSelected))]
@@ -84,32 +140,18 @@ public partial class ChatSessionViewModel : ViewModelBase
     public bool IsNativeChatViewSelected => ActiveRenderMode == "native";
     public bool IsWebChatViewSelected    => ActiveRenderMode == "web";
 
-    partial void OnActiveRenderModeChanged(string value)
-    {
-        if (Settings.ChatRenderMode != value)
-        {
-            Settings.ChatRenderMode = value;
-            _ = Settings.SaveSettingsAsync();
-        }
-    }
-
     [ObservableProperty]
     private ChatProfileViewModel? _selectedProfile;
 
-    public ChatDisplayProfile? ActiveProfile         => SelectedProfile?.Profile;
-    public bool ActiveProfileUsesBubbles             => SelectedProfile?.Profile.UseBubbleLayout == true;
-    public bool ActiveProfileUsesLinear              => SelectedProfile?.Profile.UseBubbleLayout != true;
+    public ChatDisplayProfile? ActiveProfile  => SelectedProfile?.Profile;
+    public bool ActiveProfileUsesBubbles      => SelectedProfile?.Profile.UseBubbleLayout == true;
+    public bool ActiveProfileUsesLinear       => SelectedProfile?.Profile.UseBubbleLayout != true;
 
     partial void OnSelectedProfileChanged(ChatProfileViewModel? value)
     {
         OnPropertyChanged(nameof(ActiveProfile));
         OnPropertyChanged(nameof(ActiveProfileUsesBubbles));
         OnPropertyChanged(nameof(ActiveProfileUsesLinear));
-        if (value != null && Settings.ActiveProfileId != value.Id)
-        {
-            Settings.ActiveProfileId = value.Id;
-            _ = Settings.SaveSettingsAsync();
-        }
     }
 
     public ObservableCollection<ChatProfileViewModel> AvailableProfiles => _owner.AvailableProfiles;
@@ -131,87 +173,108 @@ public partial class ChatSessionViewModel : ViewModelBase
         ActiveRenderMode = mode;
     }
 
-    public void InitializeSessionDefaults()
-    {
-        ActiveRenderMode = Settings.ChatRenderMode;
+    // ────────────────────────────────────────────────────────────────────────
 
-        var targetProfile = AvailableProfiles.FirstOrDefault(p => p.Id == Settings.ActiveProfileId)
+    public ChatSessionViewModel(MainWindowViewModel owner, ChatServices services, ChatSession chat)
+    {
+        _owner    = owner;
+        _services = services;
+        _chat     = chat;
+        _title    = chat.Title;
+
+        Status.AttachSkillSession(_skillSession);
+
+        // Persist per-chat mode when the user changes it via the bottom-bar combo.
+        Status.PropertyChanged += (_, e) =>
+        {
+            if (_loaded && e.PropertyName == nameof(StatusViewModel.Mode)) SaveChat();
+        };
+
+        owner.PropertyChanged += (_, e) =>
+        {
+            if (e.PropertyName is nameof(MainWindowViewModel.AvailableProfiles))
+                OnPropertyChanged(nameof(AvailableProfiles));
+        };
+    }
+
+    /// <summary>Builds the LLM request settings from this chat's selected connection + knobs.</summary>
+    private LLMSettings BuildLlmSettings()
+    {
+        var conn  = SelectedConnection;
+        var model = conn?.Model;
+        return new LLMSettings
+        {
+            BaseUrl        = string.IsNullOrWhiteSpace(conn?.Endpoint) ? "http://127.0.0.1:1234/v1/" : conn!.Endpoint!,
+            ApiKey         = string.IsNullOrWhiteSpace(conn?.ApiKey) ? "lm-studio" : conn!.ApiKey!,
+            ModelName      = string.IsNullOrWhiteSpace(model) || model == "auto" ? "local-model" : model!,
+            Temperature    = Temperature,
+            Mode           = Status.Mode,
+            Theme          = App.ResolvedSettings.Theme,
+            ReasoningLevel = string.IsNullOrEmpty(ReasoningLevel) ? null : ReasoningLevel
+        };
+    }
+
+    // ── Loading ──────────────────────────────────────────────────────────────
+
+    /// <summary>Loads this chat's persisted state into the view-model. Idempotent.</summary>
+    public void Load()
+    {
+        // _loadStarted guards re-entry; _loaded stays false through the body so the property setters
+        // below (connection/temp/mode) do NOT trigger SaveChat before messages are restored.
+        if (_loadStarted) return;
+        _loadStarted = true;
+
+        var resolved = App.ResolvedSettings;
+
+        // Connection list + this chat's selection (live reference; fall back to the first).
+        Connections.Clear();
+        foreach (var c in resolved.Connections) Connections.Add(c);
+        SelectedConnection = Connections.FirstOrDefault(c => c.Id == _chat.ConnectionId)
+                          ?? Connections.FirstOrDefault();
+
+        // Behaviour knobs.
+        Temperature   = _chat.Model?.Temperature ?? resolved.Temperature;
+        ReasoningLevel = _chat.Model?.ReasoningLevel ?? resolved.ReasoningLevel ?? "";
+        Status.Mode = _chat.Agent?.Mode != null && Enum.TryParse<AgentMode>(_chat.Agent.Mode, true, out var m)
+            ? m : resolved.Mode;
+
+        // Render mode + profile default from resolved settings (per-chat, in-memory).
+        ActiveRenderMode = resolved.ChatRenderMode;
+        var targetProfile = AvailableProfiles.FirstOrDefault(p => p.Id == resolved.ActiveProfileId)
                          ?? AvailableProfiles.FirstOrDefault();
         if (targetProfile != null)
         {
             targetProfile.IsSelected = true;
             SelectedProfile = targetProfile;
         }
-    }
 
-    // ────────────────────────────────────────────────────────────────────────
+        Title = _chat.Title;
 
-    public ChatSessionViewModel(
-        MainWindowViewModel owner,
-        LMStudioClient llmClient,
-        McpHost mcpHost,
-        SkillManager skillManager,
-        PluginManager pluginManager,
-        SkillSession skillSession,
-        SettingsViewModel settings,
-        StatusViewModel status,
-        Func<AgentMode, List<ToolDefinition>> toolFilter,
-        CheckpointManager checkpointManager)
-    {
-        _owner        = owner;
-        _llmClient    = llmClient;
-        _mcpHost      = mcpHost;
-        _skillManager = skillManager;
-        _pluginManager = pluginManager;
-        _skillSession = skillSession;
-        Settings      = settings;
-        Status        = status;
-        _toolFilter   = toolFilter;
-        _checkpointManager = checkpointManager;
-
-        owner.PropertyChanged += (_, e) =>
-        {
-            if (e.PropertyName is nameof(MainWindowViewModel.AvailableProfiles))
-                OnPropertyChanged(e.PropertyName);
-        };
-    }
-
-    public void SetChatManager(ChatManager chatManager) => _chatManager = chatManager;
-
-    // ── Session loading ──────────────────────────────────────────────────────
-
-    public void LoadSession(ChatSession session)
-    {
-        if (_loadedChatId == session.Id && Messages.Count > 0) return;
-
-        _loadedChatId = session.Id;
-        _currentChat  = session;
-        ClearInternal();
-
-        var loaded = _chatManager?.LoadChat(session.Id);
+        // Restore the chat from disk.
+        var loaded = _services.ChatManager.LoadChat(_chat.Id);
         if (loaded != null)
         {
-            session.Messages  = loaded.Messages;
-            session.Title     = loaded.Title;
-            session.UpdatedAt = loaded.UpdatedAt;
+            _chat.Messages  = loaded.Messages;
+            _chat.Title     = loaded.Title;
+            _chat.UpdatedAt = loaded.UpdatedAt;
+            Title = loaded.Title;
         }
 
-        _sessionKv.LoadFrom(loaded?.Kv ?? new Dictionary<string, string>());
+        _sessionKv.LoadFrom(loaded?.Kv ?? _chat.Kv);
 
-        var resolved = App.ResolvedSettings;
         if (resolved.ProjectName != null)
-            Messages.Add(new SystemMessageViewModel($"Project: {resolved.ProjectName} | Mode: {resolved.Mode}"));
+            Messages.Add(new SystemMessageViewModel($"Project: {resolved.ProjectName} | Mode: {Status.Mode}"));
 
-        var promptBuilder = new SystemPromptBuilder(_skillManager, _pluginManager, _skillSession);
+        var promptBuilder = new SystemPromptBuilder(_services.SkillManager, _services.PluginManager, _skillSession);
         var systemPrompt  = promptBuilder.Build(resolved, Directory.GetCurrentDirectory());
 
         var sysMsg = new ChatMessage { Role = ChatRole.System, Content = systemPrompt };
         _conversation.Add(sysMsg);
         Messages.Add(new SystemMessageViewModel(systemPrompt, isSystemPrompt: true) { Domain = sysMsg });
 
-        foreach (var m in session.Messages)
+        foreach (var msg in _chat.Messages)
         {
-            var role = m.Role.ToLower() switch
+            var role = msg.Role.ToLower() switch
             {
                 "user"      => ChatRole.User,
                 "assistant" => ChatRole.Assistant,
@@ -221,29 +284,25 @@ public partial class ChatSessionViewModel : ViewModelBase
             var domainMsg = new ChatMessage
             {
                 Role      = role,
-                Content   = m.Content,
-                Reasoning = string.IsNullOrEmpty(m.Reasoning) ? null : m.Reasoning
+                Content   = msg.Content,
+                Reasoning = string.IsNullOrEmpty(msg.Reasoning) ? null : msg.Reasoning
             };
             _conversation.Add(domainMsg);
 
-            MessageViewModel vm = m.Role.ToLower() switch
+            MessageViewModel vm = msg.Role.ToLower() switch
             {
-                "user"      => new UserMessageViewModel(m.Content),
-                "assistant" => new AssistantMessageViewModel(m.Content),
-                "tool"      => new MessageViewModel(ChatRole.Tool, m.Content),
-                _           => new SystemMessageViewModel(m.Content)
+                "user"      => new UserMessageViewModel(msg.Content),
+                "assistant" => new AssistantMessageViewModel(msg.Content),
+                "tool"      => new MessageViewModel(ChatRole.Tool, msg.Content),
+                _           => new SystemMessageViewModel(msg.Content)
             };
-            if (!string.IsNullOrEmpty(m.Reasoning)) vm.Reasoning = m.Reasoning;
+            if (!string.IsNullOrEmpty(msg.Reasoning)) vm.Reasoning = msg.Reasoning;
             vm.Domain = domainMsg;
             Messages.Add(vm);
         }
-    }
 
-    public void ClearSession()
-    {
-        _currentChat  = null;
-        _loadedChatId = null;
-        ClearInternal();
+        // From here on, user-driven knob changes persist.
+        _loaded = true;
     }
 
     private void ClearInternal()
@@ -277,7 +336,7 @@ public partial class ChatSessionViewModel : ViewModelBase
 
         if (userText.Trim().Equals("/skills", StringComparison.OrdinalIgnoreCase))
         {
-            var all   = _skillManager.GetAll();
+            var all   = _services.SkillManager.GetAll();
             var lines = all.Count == 0
                 ? "No skills available."
                 : string.Join("\n", all.Select(s => $"  [{(s.IsEnabled ? "on " : "off")}] {s.Id} — {s.Description}"));
@@ -289,7 +348,7 @@ public partial class ChatSessionViewModel : ViewModelBase
         if (userText.TrimStart().StartsWith("/skills load ", StringComparison.OrdinalIgnoreCase))
         {
             var id   = userText.TrimStart()["/skills load ".Length..].Trim();
-            var body = _skillManager.LoadBody(id);
+            var body = _services.SkillManager.LoadBody(id);
             if (body == null)
             {
                 Messages.Add(new SystemMessageViewModel($"Skill '{id}' not found."));
@@ -316,7 +375,7 @@ public partial class ChatSessionViewModel : ViewModelBase
         _currentRequestCts = new CancellationTokenSource();
 
         using var telemetryContext = SplaTelemetry.PushContext(new(
-            ConversationId: _currentChat?.Id,
+            ConversationId: _chat.Id,
             RequestId:      Guid.NewGuid().ToString("N"),
             ProjectId:      App.ResolvedSettings.ProjectName,
             WorkspacePath:  App.ResolvedSettings.WorkspacePath));
@@ -329,6 +388,13 @@ public partial class ChatSessionViewModel : ViewModelBase
     {
         if (!IsBusy) return;
         _currentRequestCts?.Cancel();
+    }
+
+    /// <summary>Cancels any in-flight run and stops timers. Called when the chat is deleted.</summary>
+    internal void Shutdown()
+    {
+        _currentRequestCts?.Cancel();
+        StopTokenEstimate();
     }
 
     [RelayCommand]
@@ -344,9 +410,8 @@ public partial class ChatSessionViewModel : ViewModelBase
         if (!Messages.Remove(message)) return;
         if (message.Domain != null)
         {
-            // If the deleted message was a checkpoint anchor, clear it so stale rollbacks don't fire.
             if (message.Domain.MsgId == _checkpointManager.RestoreAnchorId)
-                _checkpointManager.Confirm(); // clears RestoreRequested; AnchorId remains but stack pop already happened
+                _checkpointManager.Confirm();
             _conversation.Remove(message.Domain);
         }
 
@@ -356,13 +421,11 @@ public partial class ChatSessionViewModel : ViewModelBase
     [RelayCommand]
     private async Task CompactContextAsync()
     {
-        if (_chatManager == null || _currentChat == null) return;
-
         Messages.Add(new MessageViewModel(ChatRole.System, "Compacting context..."));
 
         try
         {
-            _chatManager.SaveBackup(BuildVisibleChatSnapshot(), "before_compact");
+            _services.ChatManager.SaveBackup(BuildVisibleChatSnapshot(), "before_compact");
 
             var compressionPrompt = new ChatMessage
             {
@@ -376,9 +439,9 @@ public partial class ChatSessionViewModel : ViewModelBase
                 .ToList();
             coreMessages.Insert(0, compressionPrompt);
 
-            var responseMsg = await _llmClient.SendMessageAsync(coreMessages, Settings.GetSettings(), new List<ToolDefinition>());
+            var responseMsg = await _services.Llm.SendMessageAsync(coreMessages, BuildLlmSettings(), new List<ToolDefinition>());
             var summary     = responseMsg.Content ?? "Compression failed.";
-            _chatManager.SaveSummary(_currentChat.Id, summary);
+            _services.ChatManager.SaveSummary(_chat.Id, summary);
 
             var resolved     = App.ResolvedSettings;
             var tailMessages = Messages.Where(m => m.IsUser || m.IsAssistant).TakeLast(resolved.CompactTailMessages).ToList();
@@ -386,7 +449,7 @@ public partial class ChatSessionViewModel : ViewModelBase
             ClearInternal();
 
             if (resolved.ProjectName != null)
-                Messages.Add(new SystemMessageViewModel($"Project: {resolved.ProjectName} | Mode: {resolved.Mode}"));
+                Messages.Add(new SystemMessageViewModel($"Project: {resolved.ProjectName} | Mode: {Status.Mode}"));
 
             var summaryContent = "--- Compressed Context (Summary) ---\n" + summary;
             var summaryDomain  = new ChatMessage { Role = ChatRole.System, Content = summaryContent };
@@ -408,17 +471,24 @@ public partial class ChatSessionViewModel : ViewModelBase
         }
     }
 
-    // ── Private helpers ──────────────────────────────────────────────────────
+    // ── Persistence ──────────────────────────────────────────────────────────
 
     internal void SaveChat()
     {
-        if (_chatManager == null || _currentChat == null) return;
+        _chat.ConnectionId = SelectedConnection?.Id ?? _chat.ConnectionId;
+        _chat.Model = new SplaLlmSection
+        {
+            Temperature    = Temperature,
+            ReasoningLevel = string.IsNullOrEmpty(ReasoningLevel) ? null : ReasoningLevel
+        };
+        _chat.Agent = new SplaAgentSection { Mode = Status.Mode.ToString() };
+        _chat.Title = Title;
+        _chat.Kv = _sessionKv.Snapshot();
 
-        _currentChat.Kv = _sessionKv.Snapshot();
-        _currentChat.Messages.Clear();
+        _chat.Messages.Clear();
         foreach (var msg in _conversation.Persistable)
         {
-            _currentChat.Messages.Add(new ChatSessionMessage
+            _chat.Messages.Add(new ChatSessionMessage
             {
                 Role      = msg.Role.ToString().ToLower(),
                 Content   = msg.Content ?? "",
@@ -426,7 +496,7 @@ public partial class ChatSessionViewModel : ViewModelBase
             });
         }
 
-        _chatManager.SaveChat(_currentChat);
+        _services.ChatManager.SaveChat(_chat);
         OnChatSaved?.Invoke();
     }
 
@@ -434,14 +504,14 @@ public partial class ChatSessionViewModel : ViewModelBase
     {
         var snapshot = new ChatSession
         {
-            Id        = _currentChat?.Id ?? "",
-            Title     = _currentChat?.Title ?? "Chat",
-            CreatedAt = _currentChat?.CreatedAt ?? DateTime.UtcNow,
+            Id        = _chat.Id,
+            Title     = _chat.Title,
+            CreatedAt = _chat.CreatedAt,
             UpdatedAt = DateTime.UtcNow,
-            Workspace = _currentChat?.Workspace ?? App.ResolvedSettings.WorkspacePath,
-            Model     = _currentChat?.Model,
-            Agent     = _currentChat?.Agent,
-            Context   = _currentChat?.Context
+            Workspace = _chat.Workspace,
+            Model     = _chat.Model,
+            Agent     = _chat.Agent,
+            Context   = _chat.Context
         };
 
         foreach (var message in Messages.Where(m => m.HasContent && m is not PermissionMessageViewModel))
@@ -458,8 +528,39 @@ public partial class ChatSessionViewModel : ViewModelBase
 
     private IReadOnlyList<(string scope, string key, string value)> CollectWorkingMemory()
         => _sessionKv.List().Select(kv => (_sessionKv.Scope, kv.Key, kv.Value))
-            .Concat(_owner.ProjectKv.List().Select(kv => (_owner.ProjectKv.Scope, kv.Key, kv.Value)))
+            .Concat(_services.ProjectKv.List().Select(kv => (_services.ProjectKv.Scope, kv.Key, kv.Value)))
             .ToList();
+
+    // ── Modal prompts (per chat) ─────────────────────────────────────────────
+
+    private async Task<PermissionDecision> HandlePermissionRequestAsync(ToolFunctionDefinition def, string args)
+    {
+        var tcs = new TaskCompletionSource<PermissionDecision>();
+        await Dispatcher.UIThread.InvokeAsync(() =>
+        {
+            _pendingPermissions++;
+            OnPropertyChanged(nameof(IsAwaitingUser));
+            OnPropertyChanged(nameof(StateGlyph));
+            Messages.Add(new PermissionMessageViewModel(def, args, tcs));
+        });
+
+        try
+        {
+            var decision = await tcs.Task;
+            if (decision is PermissionDecision.AllowRemember or PermissionDecision.Deny)
+                _services.PersistPermission(def, args, decision);
+            return decision;
+        }
+        finally
+        {
+            await Dispatcher.UIThread.InvokeAsync(() =>
+            {
+                if (_pendingPermissions > 0) _pendingPermissions--;
+                OnPropertyChanged(nameof(IsAwaitingUser));
+                OnPropertyChanged(nameof(StateGlyph));
+            });
+        }
+    }
 
     // ── Conversation loop ────────────────────────────────────────────────────
 
@@ -481,9 +582,9 @@ public partial class ChatSessionViewModel : ViewModelBase
 
         try
         {
-            var orchestrator = new ConversationOrchestrator(_llmClient, _mcpHost)
+            var orchestrator = new ConversationOrchestrator(_services.Llm, _services.McpHost)
             {
-                ToolFilter    = (_, mode) => _toolFilter(mode),
+                ToolFilter    = (_, mode) => _services.ToolFilter(mode),
                 WorkingMemory = CollectWorkingMemory,
                 Checkpoint    = _checkpointManager
             };
@@ -623,7 +724,12 @@ public partial class ChatSessionViewModel : ViewModelBase
                 finally { await Dispatcher.UIThread.InvokeAsync(() => ActiveClarify = null); }
             });
 
-            await orchestrator.RunAsync(_conversation, Settings.GetSettings(), Settings.Mode, callbacks, cancellationToken);
+            // Route this chat's tool state and permission prompts to itself, even when several
+            // chats run concurrently in the background (AsyncLocal flows on this run's async chain).
+            using var agentScope      = AgentSessionScope.Begin(this);
+            using var permissionScope = PermissionScope.Begin(HandlePermissionRequestAsync);
+
+            await orchestrator.RunAsync(_conversation, BuildLlmSettings(), Status.Mode, callbacks, cancellationToken);
         }
         catch (OperationCanceledException)
         {

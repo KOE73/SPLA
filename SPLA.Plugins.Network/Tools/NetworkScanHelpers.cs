@@ -99,7 +99,13 @@ internal static class NetworkScanHelpers
             using var delayCts = new CancellationTokenSource();
             var delayTask = Task.Delay(timeout, delayCts.Token);
             var completed = await Task.WhenAny(connectTask, delayTask);
-            if (completed != connectTask) return false;
+            if (completed != connectTask)
+            {
+                // Timed out. connectTask is still running; observe its exception before Dispose()
+                // cancels the socket (SocketException 995), otherwise GC raises UnobservedTaskException.
+                _ = connectTask.ContinueWith(static t => { _ = t.Exception; }, TaskContinuationOptions.OnlyOnFaulted);
+                return false;
+            }
             delayCts.Cancel(); // release the delay timer immediately
             await connectTask; // propagate any connect exception
             return client.Connected;

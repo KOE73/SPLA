@@ -7,8 +7,8 @@ public sealed class MainWindowConversationInput(MainWindowViewModel viewModel) :
 {
     public string Text
     {
-        get => viewModel.Session.InputText;
-        set => viewModel.Session.InputText = value;
+        get => viewModel.ActiveChat?.InputText ?? "";
+        set { if (viewModel.ActiveChat != null) viewModel.ActiveChat.InputText = value; }
     }
 
     public void InsertText(string text)

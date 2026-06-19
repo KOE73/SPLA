@@ -13,10 +13,6 @@ namespace SPLA.MCP.Core.Tools;
 /// </summary>
 public sealed class MarkSetTool : IMcpTool
 {
-    private readonly MarkManager _marks;
-
-    public MarkSetTool(MarkManager marks) => _marks = marks;
-
     public string Name => "mark_set";
 
     public ToolDefinition GetDefinition() => new()
@@ -45,6 +41,9 @@ public sealed class MarkSetTool : IMcpTool
 
     public Task<string> ExecuteAsync(string argumentsJson, CancellationToken cancellationToken = default)
     {
+        var marks = AgentSessionScope.Current?.Checkpoint;
+        if (marks is null) return Task.FromResult("error: no active chat session");
+
         using var doc = JsonDocument.Parse(argumentsJson);
         var root = doc.RootElement;
         if (!root.TryGetProperty("name", out var nameProp) || string.IsNullOrWhiteSpace(nameProp.GetString()))
@@ -55,6 +54,6 @@ public sealed class MarkSetTool : IMcpTool
         if (root.TryGetProperty("resume", out var r))
             resume = r.GetString();
 
-        return Task.FromResult(_marks.MarkSet(name, resume));
+        return Task.FromResult(marks.MarkSet(name, resume));
     }
 }

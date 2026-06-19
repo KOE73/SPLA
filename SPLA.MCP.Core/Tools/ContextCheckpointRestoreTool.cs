@@ -12,10 +12,6 @@ namespace SPLA.MCP.Core.Tools;
 /// </summary>
 public sealed class ContextCheckpointRestoreTool : IMcpTool
 {
-    private readonly MarkManager _marks;
-
-    public ContextCheckpointRestoreTool(MarkManager marks) => _marks = marks;
-
     public string Name => "context_rollback";
 
     public ToolDefinition GetDefinition() => new()
@@ -39,5 +35,8 @@ public sealed class ContextCheckpointRestoreTool : IMcpTool
     };
 
     public Task<string> ExecuteAsync(string argumentsJson, CancellationToken cancellationToken = default)
-        => Task.FromResult(_marks.ContextRollback());
+    {
+        var marks = AgentSessionScope.Current?.Checkpoint;
+        return Task.FromResult(marks is null ? "error: no active chat session" : marks.ContextRollback());
+    }
 }

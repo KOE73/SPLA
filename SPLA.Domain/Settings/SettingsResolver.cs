@@ -14,6 +14,10 @@ public class ResolvedSettings
     public double Temperature { get; set; } = 0.7;
     public string? ReasoningLevel { get; set; }
 
+    /// <summary>Named connections available to chats. Never empty after resolution — a default is
+    /// synthesized from the single <c>llm</c> section when none are configured.</summary>
+    public List<SplaConnectionSection> Connections { get; set; } = new();
+
     // Agent
     public AgentMode Mode { get; set; } = AgentMode.Edit;
     public List<string> Instructions { get; set; } = new();
@@ -89,9 +93,13 @@ public static class SettingsResolver
     {
         var r = new ResolvedSettings();
 
+        // Connections merge across layers by id (project overrides/extends defaults).
+        var connections = new Dictionary<string, SplaConnectionSection>(StringComparer.OrdinalIgnoreCase);
+
         // Layer 1: defaults
         if (defaults != null)
         {
+            MergeConnections(connections, defaults.Connections);
             if (defaults.Llm != null)
             {
                 r.Endpoint = defaults.Llm.Endpoint ?? r.Endpoint;
@@ -127,6 +135,7 @@ public static class SettingsResolver
             r.Docs = project.Docs ?? new();
             r.Ignore = project.Ignore ?? new();
 
+            MergeConnections(connections, project.Connections);
             if (project.Llm != null)
             {
                 r.Endpoint = project.Llm.Endpoint ?? r.Endpoint;
@@ -173,7 +182,33 @@ public static class SettingsResolver
             }
         }
 
+        // Finalize connections: keep configured ones; synthesize a default from the resolved single
+        // llm section when none were declared, so chats always have at least one connection to use.
+        r.Connections = connections.Values.ToList();
+        if (r.Connections.Count == 0)
+        {
+            r.Connections.Add(new SplaConnectionSection
+            {
+                Id = "default",
+                Name = "Default",
+                Provider = "lmstudio",
+                Endpoint = r.Endpoint,
+                ApiKey = r.ApiKey,
+                Model = r.Model
+            });
+        }
+
         return r;
+    }
+
+    /// <summary>Adds/overrides connections by id, skipping entries without an id.</summary>
+    private static void MergeConnections(
+        Dictionary<string, SplaConnectionSection> into, List<SplaConnectionSection>? from)
+    {
+        if (from == null) return;
+        foreach (var c in from)
+            if (!string.IsNullOrWhiteSpace(c.Id))
+                into[c.Id] = c;
     }
 
     /// <summary>

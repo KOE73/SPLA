@@ -1,5 +1,7 @@
 using System;
+using System.Text;
 using System.Text.Json;
+using System.Text.RegularExpressions;
 
 namespace SPLA.MCP.Core.Tools;
 
@@ -10,41 +12,32 @@ internal static class KvGlob
 {
     /// <summary>
     /// Matches <paramref name="text"/> against <paramref name="pattern"/>.
-    /// If pattern contains no '*', falls back to case-insensitive Contains (backward compat).
-    /// '*' matches any sequence of characters including none.
+    /// glob mode (default): '*' matches any sequence; no '*' falls back to Contains.
+    /// regex mode: full .NET regex; '.' is NOT auto-escaped — caller writes literal patterns.
     /// </summary>
-    internal static bool KeyMatch(string text, string pattern)
+    internal static bool KeyMatch(string text, string pattern, bool regexMode = false)
     {
+        if (regexMode)
+            return Regex.IsMatch(text, pattern, RegexOptions.IgnoreCase);
+
         if (!pattern.Contains('*'))
             return text.Contains(pattern, StringComparison.OrdinalIgnoreCase);
 
-        var parts = pattern.Split('*');
-        int pos = 0;
+        return Regex.IsMatch(text, GlobToRegex(pattern), RegexOptions.IgnoreCase);
+    }
 
-        for (int i = 0; i < parts.Length; i++)
+    private static string GlobToRegex(string glob)
+    {
+        var sb = new StringBuilder("^");
+        foreach (char c in glob)
         {
-            var seg = parts[i];
-            if (seg.Length == 0) continue;
-
-            if (i == 0)
-            {
-                if (!text.StartsWith(seg, StringComparison.OrdinalIgnoreCase)) return false;
-                pos = seg.Length;
-            }
-            else if (i == parts.Length - 1)
-            {
-                if (parts[^1].Length == 0) break; // trailing * — anything goes
-                if (!text.EndsWith(seg, StringComparison.OrdinalIgnoreCase)) return false;
-                if (text.Length - seg.Length < pos) return false;
-            }
-            else
-            {
-                int idx = text.IndexOf(seg, pos, StringComparison.OrdinalIgnoreCase);
-                if (idx < 0) return false;
-                pos = idx + seg.Length;
-            }
+            if (c == '*') sb.Append(".*");
+            else if (c is '.' or '+' or '?' or '(' or ')' or '[' or ']' or '{' or '}' or '^' or '$' or '|' or '\\')
+                sb.Append('\\').Append(c);
+            else sb.Append(c);
         }
-        return true;
+        sb.Append('$');
+        return sb.ToString();
     }
 
     /// <summary>

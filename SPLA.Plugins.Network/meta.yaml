@@ -60,13 +60,13 @@ default_prompt: |
   Per-host KV memory (shared convention across all network skills):
   ► Host inventory scope: PROJECT. not session!
 
-  Key layout — one key per host per concern:
-    host:{ip}        — base record (always written first)
-    host:{ip}:tcp    — any TCP scan or port probe results
-    host:{ip}:tls    — any TLS/SSL inspection results
-    host:{ip}:http   — any HTTP tool results
-    host:{ip}:smtp   — any SMTP probe results
-    host:{ip}:dns    — any DNS tool results
+  Key layout — one key per host per concern, per port where multiple ports are possible:
+    host:{ip}             — base record (always written first)
+    host:{ip}:tcp         — any TCP scan or port probe results (all ports in one record)
+    host:{ip}:tls:{port}  — TLS/SSL inspection results for a specific port (e.g. host:10.0.0.1:tls:443)
+    host:{ip}:http:{port} — HTTP tool results for a specific port (e.g. host:10.0.0.1:http:80)
+    host:{ip}:smtp:{port} — SMTP probe results for a specific port (e.g. host:10.0.0.1:smtp:25)
+    host:{ip}:dns         — any DNS tool results
 
   Schemas:
 
@@ -84,8 +84,7 @@ default_prompt: |
       ports       — [{port, protocol, banner, service, version}]
       scanned_at  — ISO-8601 timestamp
 
-  host:{ip}:tls
-      port        — int
+  host:{ip}:tls:{port}    (port is the integer port number, e.g. host:10.0.0.1:tls:443)
       subject     — string (CN)
       issuer      — string
       san         — string[] (Subject Alternative Names)
@@ -94,10 +93,10 @@ default_prompt: |
       protocol    — string (e.g. "TLS 1.3")
       cipher      — string
       chain_ok    — bool
+      hsts        — string or null (Strict-Transport-Security value if checked via HTTP)
       scanned_at  — ISO-8601 timestamp
 
-  host:{ip}:http
-      port        — int
+  host:{ip}:http:{port}   (port is the integer port number, e.g. host:10.0.0.1:http:80)
       status      — int (HTTP status code)
       server      — string or null (Server header)
       title       — string or null (page <title>)
@@ -106,8 +105,7 @@ default_prompt: |
       headers     — object {name: value} (selected notable headers)
       scanned_at  — ISO-8601 timestamp
 
-  host:{ip}:smtp
-      port        — int
+  host:{ip}:smtp:{port}   (port is the integer port number, e.g. host:10.0.0.1:smtp:25)
       banner      — string
       ehlo        — string (server EHLO name)
       starttls    — bool
@@ -129,8 +127,9 @@ default_prompt: |
   - Write: agent_memory_set {key:"host:172.16.21.1", value:{...}, scope:<host-inventory-scope>}
   - Read:  agent_memory_get {key:"host:172.16.21.1",  scope:<host-inventory-scope>}
   - List all hosts:       agent_memory_list {filter:"host:*", where:"class=active", scope:<host-inventory-scope>}
-  - List by sub-key:      agent_memory_list {filter:"host:*:tls", scope:<host-inventory-scope>}
-  - Filter by value:      agent_memory_list {filter:"host:*:http", where:"status=200", scope:<host-inventory-scope>}
+  - List all TLS records:  agent_memory_list {filter:"host:*:tls:*", scope:<host-inventory-scope>}
+  - TLS for one host:     agent_memory_list {filter:"host:172.16.21.1:tls:*", scope:<host-inventory-scope>}
+  - Filter by value:      agent_memory_list {filter:"host:*:http:*", where:"status=200", scope:<host-inventory-scope>}
   - All records one host: agent_memory_list {filter:"host:172.16.21.1*", scope:<host-inventory-scope>}
 
   Rules:

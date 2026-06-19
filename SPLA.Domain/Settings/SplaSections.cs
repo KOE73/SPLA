@@ -45,6 +45,37 @@ public class SplaLlmSection
 }
 
 /// <summary>
+/// A named LLM connection in the project's connection list. A connection bundles a provider with a
+/// concrete endpoint and model; a chat references one by <see cref="Id"/> and can switch live.
+/// Behaviour knobs (mode/temperature/reasoning) live on the chat, not here.
+/// </summary>
+public class SplaConnectionSection
+{
+    [YamlMember(Alias = "id")]
+    public string Id { get; set; } = string.Empty;
+
+    [YamlMember(Alias = "name")]
+    public string? Name { get; set; }
+
+    [YamlMember(Alias = "provider")]
+    public string? Provider { get; set; }
+
+    [YamlMember(Alias = "endpoint")]
+    public string? Endpoint { get; set; }
+
+    [YamlMember(Alias = "api_key")]
+    public string? ApiKey { get; set; }
+
+    [YamlMember(Alias = "model")]
+    public string? Model { get; set; }
+
+    /// <summary>Display label for the picker — falls back to the model or id.</summary>
+    public string DisplayName => !string.IsNullOrWhiteSpace(Name) ? Name!
+        : !string.IsNullOrWhiteSpace(Model) ? Model!
+        : Id;
+}
+
+/// <summary>
 /// UI preferences section.
 /// </summary>
 public class SplaUiSection
