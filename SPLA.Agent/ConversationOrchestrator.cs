@@ -2,6 +2,7 @@ using SPLA.Domain.Context;
 using SPLA.Domain.Interfaces;
 using SPLA.Domain.Models;
 using SPLA.Domain.Settings;
+using SPLA.Domain.Tools;
 using SPLA.Agent.Guards;
 using System;
 using System.Collections.Generic;
@@ -27,6 +28,9 @@ public sealed class ConversationOrchestrator
     /// <summary>Window for the "same tool call / same error N times" guards.</summary>
     public int ToolLoopWindow { get; init; } = 3;
 
+    /// <summary>When false (default) the loop guards are disabled entirely.</summary>
+    public bool EnableLoopGuard { get; init; } = false;
+
     /// <summary>
     /// Optional override for tool gating (e.g. the UI sidebar toggle layered on top of mode rules).
     /// When null, <see cref="ToolModeFilter.Filter"/> is used.
@@ -40,6 +44,12 @@ public sealed class ConversationOrchestrator
     /// </summary>
     public Func<IReadOnlyList<(string scope, string key, string value)>>? WorkingMemory { get; init; }
 
+    /// <summary>
+    /// Optional mark/checkpoint manager. When set, the orchestrator truncates the conversation
+    /// whenever a tool signals <see cref="Domain.Agent.MarkManager.RestoreRequested"/>.
+    /// </summary>
+    public Domain.Agent.MarkManager? Checkpoint { get; init; }
+
     public ConversationOrchestrator(ILLMService llm, IToolHost tools)
     {
         _llm = llm;
@@ -51,7 +61,7 @@ public sealed class ConversationOrchestrator
     /// messages to it in place. Caller is expected to have already appended the user message.
     /// </summary>
     public async Task RunAsync(
-        List<ChatMessage> conversation,
+        Conversation conversation,
         LLMSettings llmSettings,
         AgentMode mode,
         AgentCallbacks callbacks,
@@ -60,12 +70,15 @@ public sealed class ConversationOrchestrator
         var recentToolCalls = new Queue<(string name, string args)>();
         var recentToolErrors = new Queue<(string name, string args, bool isError)>();
 
+        if (Checkpoint != null) Checkpoint.Target = conversation;
+        bool didRollback = false;
+
         bool needToCallLLM = true;
         while (needToCallLLM)
         {
             cancellationToken.ThrowIfCancellationRequested();
 
-            var coreMessages = ContextAssembler.Assemble(conversation);
+            var coreMessages = ContextAssembler.Assemble(conversation.Messages);
             InjectWorkingMemory(coreMessages);
 
             var tools = (ToolFilter ?? ((t, m) => ToolModeFilter.Filter(t, m)))
@@ -119,16 +132,24 @@ public sealed class ConversationOrchestrator
                 if (recentToolCalls.Count > ToolLoopWindow) recentToolCalls.Dequeue();
             }
 
-            if (LoopGuards.HasToolCallLoop(recentToolCalls, ToolLoopWindow))
+            if (EnableLoopGuard)
             {
-                await Notify(callbacks, "⚠️ Generation stopped: The model is repeating the same tool calls.");
-                return;
+                if (LoopGuards.HasToolCallLoop(recentToolCalls, ToolLoopWindow))
+                {
+                    await Notify(callbacks, "⚠️ Generation stopped: The model is repeating the same tool calls.");
+                    return;
+                }
+                if (LoopGuards.HasErrorLoop(recentToolErrors, ToolLoopWindow))
+                {
+                    await Notify(callbacks, "⚠️ Generation stopped: The same tool has returned an error too many times in a row.");
+                    return;
+                }
             }
-            if (LoopGuards.HasErrorLoop(recentToolErrors, ToolLoopWindow))
-            {
-                await Notify(callbacks, "⚠️ Generation stopped: The same tool has returned an error too many times in a row.");
-                return;
-            }
+
+            // Tell MarkManager which assistant message is being executed so that
+            // checkpoint_save / mark_set know where to insert the label.
+            if (Checkpoint != null)
+                Checkpoint.CurrentAssistantMsg = response;
 
             foreach (var tc in response.ToolCalls)
             {
@@ -137,7 +158,15 @@ public sealed class ConversationOrchestrator
                 if (callbacks.OnToolCallStarted != null)
                     await callbacks.OnToolCallStarted(tc);
 
-                var result = await _tools.ExecuteToolAsync(mode, tc.Function.Name, tc.Function.Arguments, cancellationToken);
+                // Open an ambient progress channel for this tool call. The tool reports into it via
+                // ToolProgressScope.Report; the sink flows transparently through the host and any
+                // parallel work. A captured local copy of tc keeps the right call attached per tick.
+                var current = tc;
+                string result;
+                using (ToolProgressScope.Begin(p => callbacks.OnToolProgress?.Invoke(current, p)))
+                {
+                    result = await _tools.ExecuteToolAsync(mode, tc.Function.Name, tc.Function.Arguments, cancellationToken);
+                }
                 cancellationToken.ThrowIfCancellationRequested();
 
                 var isError = result.StartsWith("Error:", StringComparison.OrdinalIgnoreCase)
@@ -154,9 +183,45 @@ public sealed class ConversationOrchestrator
 
                 if (callbacks.OnToolResult != null)
                     await callbacks.OnToolResult(tc, result);
+
+                if (Checkpoint?.RestoreRequested == true && Checkpoint.RestoreAnchorId != null)
+                {
+                    var anchorId = Checkpoint.RestoreAnchorId;
+                    var resume   = Checkpoint.RestoreResume;
+                    var label    = Checkpoint.RestoreLabel != null
+                        ? $"mark '{Checkpoint.RestoreLabel}'"
+                        : "checkpoint";
+                    Checkpoint.Confirm();
+
+                    if (!conversation.TruncateTo(anchorId))
+                    {
+                        await Notify(callbacks, $"⚠️ Rollback anchor '{anchorId}' not found — it may have been deleted.");
+                        needToCallLLM = false;
+                        break;
+                    }
+
+                    // Anchor is always a label (L-*), invisible to LLM.
+                    // Always inject a synthetic user message as the explicit call-to-action.
+                    var content = string.IsNullOrWhiteSpace(resume)
+                        ? $"[Rolled back to {label}]"
+                        : $"[Rolled back to {label}]\n{resume}";
+
+                    conversation.Add(new ChatMessage
+                    {
+                        Role = ChatRole.User,
+                        Content = content,
+                        IsEphemeral = true
+                    });
+
+                    needToCallLLM = true;
+                    didRollback = true;
+                    break;
+                }
             }
 
-            needToCallLLM = true;
+            if (!didRollback)
+                needToCallLLM = true; // normal tool loop: always continue until model stops calling tools
+            didRollback = false;
         }
     }
 

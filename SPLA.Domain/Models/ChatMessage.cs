@@ -13,6 +13,26 @@ public enum ContextRetention
 
 public class ChatMessage
 {
+    /// <summary>
+    /// Stable human-readable identity for this message. Assigned by <see cref="Conversation.Add"/>;
+    /// format: role-prefix + sequential number, e.g. U-1, A-2, T-3, S-4.
+    /// Stable across message deletions — used as checkpoint/mark anchors.
+    /// </summary>
+    public string MsgId { get; set; } = string.Empty;
+
+    /// <summary>
+    /// Optional named rollback mark attached to this message. Set by the mark_set tool.
+    /// At most one mark per message; searching for a mark name walks <see cref="Conversation.Messages"/>.
+    /// </summary>
+    public string? Mark { get; set; }
+
+    /// <summary>
+    /// True for invisible position-anchor messages inserted by checkpoint_save / mark_set.
+    /// Labels are never sent to the LLM (filtered by ContextAssembler) and never persisted.
+    /// They carry MsgId like L-1, L-2 and optionally a Mark name and resume text in Content.
+    /// </summary>
+    public bool IsLabel { get; set; }
+
     public ChatRole Role { get; set; }
     public string? Content { get; set; } = string.Empty;
 

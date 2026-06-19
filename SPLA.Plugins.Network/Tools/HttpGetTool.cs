@@ -1,5 +1,6 @@
 using SPLA.Domain.Models;
 using SPLA.MCP.Core.Interfaces;
+using SPLA.MCP.Core.Json;
 using System;
 using System.Collections.Generic;
 using System.Net.Http;
@@ -15,7 +16,7 @@ public class HttpGetTool : IMcpTool
     // Timeout.InfiniteTimeSpan — per-request timeout is controlled via CancellationTokenSource below.
     private static readonly HttpClient HttpClient = new() { Timeout = System.Threading.Timeout.InfiniteTimeSpan };
 
-    public string Name => "network.http.get";
+    public string Name => "network_http_get";
 
     public ToolDefinition GetDefinition() => new ToolDefinition
     {
@@ -33,7 +34,7 @@ public class HttpGetTool : IMcpTool
                 properties = new
                 {
                     url = new { type = "string", description = "Target HTTP/HTTPS URL (e.g. 'https://api.github.com/status')." },
-                    maxResponseLength = new { type = "integer", description = "Max characters of the body to return (default: 2000, max: 10000)." },
+                    max_response_length = new { type = "integer", description = "Max characters of the body to return (default: 2000, max: 10000)." },
                     timeout = new { type = "integer", description = "Request timeout in milliseconds (default: 30000)." },
                     headers = new
                     {
@@ -51,24 +52,12 @@ public class HttpGetTool : IMcpTool
         try
         {
             using var doc = JsonDocument.Parse(argumentsJson);
-            if (!doc.RootElement.TryGetProperty("url", out var urlElement))
-            {
-                return "Error: Missing 'url' parameter.";
-            }
+            var root = doc.RootElement;
+            var url = ToolJson.GetStringTrimmed(root, "url");
+            if (url is null) return "Error: Missing 'url' parameter.";
 
-            var url = urlElement.GetString();
-            if (string.IsNullOrWhiteSpace(url))
-            {
-                return "Error: URL is empty.";
-            }
-
-            var maxLen = doc.RootElement.TryGetProperty("maxResponseLength", out var maxLenElement) && maxLenElement.TryGetInt32(out var m)
-                ? Math.Clamp(m, 1, 10000)
-                : 2000;
-
-            var timeoutMs = doc.RootElement.TryGetProperty("timeout", out var timeoutElement) && timeoutElement.TryGetInt32(out var t)
-                ? Math.Clamp(t, 1000, 300_000)
-                : 30_000;
+            var maxLen    = ToolJson.GetInt32Clamped(root, "max_response_length", 2000,  1,       10000);
+            var timeoutMs = ToolJson.GetInt32Clamped(root, "timeout",             30_000, 1000,   300_000);
 
             using var cts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
             cts.CancelAfter(timeoutMs);
@@ -76,16 +65,11 @@ public class HttpGetTool : IMcpTool
             using var request = new HttpRequestMessage(HttpMethod.Get, url);
             request.Headers.UserAgent.ParseAdd("Mozilla/5.0 (Windows NT 10.0; Win64; x64) SPLA/1.0");
 
-            if (doc.RootElement.TryGetProperty("headers", out var headersElement) && headersElement.ValueKind == JsonValueKind.Object)
+            var headers = ToolJson.GetStringDictionary(root, "headers");
+            if (headers != null)
             {
-                foreach (var prop in headersElement.EnumerateObject())
-                {
-                    var val = prop.Value.GetString();
-                    if (val != null)
-                    {
-                        request.Headers.TryAddWithoutValidation(prop.Name, val);
-                    }
-                }
+                foreach (var (key, val) in headers)
+                    request.Headers.TryAddWithoutValidation(key, val);
             }
 
             using var response = await HttpClient.SendAsync(request, cts.Token);
@@ -107,7 +91,7 @@ public class HttpGetTool : IMcpTool
             if (body.Length > maxLen)
             {
                 sb.AppendLine(body.Substring(0, maxLen));
-                sb.AppendLine($"\n[Output truncated. Body length is {body.Length} characters, maxResponseLength was {maxLen}.]");
+                sb.AppendLine($"\n[Output truncated. Body length is {body.Length} characters, max_response_length was {maxLen}.]");
             }
             else
             {

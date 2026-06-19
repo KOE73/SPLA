@@ -7,12 +7,14 @@ using Avalonia.Threading;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using SPLA.UI.Avalonia.Services.Chat;
-using SPLA.UI.Avalonia.ViewModels;
+using SPLA.UI.Avalonia.ViewModels.Chat;
+using SPLA.MCP.Core.Permissions;
 using SPLA.UI.Avalonia.ViewModels.Messages;
 using System;
 using System.Collections.Generic;
 using System.Collections.Specialized;
 using System.ComponentModel;
+using System.Linq;
 using System.Text.Json;
 using System.Threading.Tasks;
 
@@ -29,7 +31,7 @@ public partial class ChatWebView : UserControl
     // Track which messages we're subscribed to, and their list index
     private readonly Dictionary<MessageViewModel, (PropertyChangedEventHandler Handler, int Index)> _messageHandlers = [];
 
-    private MainWindowViewModel? _viewModel;
+    private ChatSessionViewModel? _viewModel;
 
     // True once the page is fully loaded and JS API is available
     private bool _pageReady;
@@ -47,7 +49,7 @@ public partial class ChatWebView : UserControl
         _fullRenderTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(150) };
         _fullRenderTimer.Tick += (_, _) => { _fullRenderTimer.Stop(); DoFullRender(); };
 
-        DataContextChanged += (_, _) => AttachViewModel(DataContext as MainWindowViewModel);
+        DataContextChanged += (_, _) => AttachViewModel(DataContext as ChatSessionViewModel);
         Loaded += OnLoaded;
         Unloaded += OnUnloaded;
         _browser.WebMessageReceived += (_, args) => _ = HandleWebMessageAsync(args);
@@ -58,7 +60,7 @@ public partial class ChatWebView : UserControl
 
     private void OnLoaded(object? sender, RoutedEventArgs e)
     {
-        AttachViewModel(DataContext as MainWindowViewModel);
+        AttachViewModel(DataContext as ChatSessionViewModel);
         QueueFullRender();
     }
 
@@ -78,13 +80,34 @@ public partial class ChatWebView : UserControl
 
     private void OnViewModelPropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
     {
-        if (e.PropertyName is nameof(MainWindowViewModel.SelectedProfile))
+        if (e.PropertyName is nameof(ChatSessionViewModel.ActiveProfile))
             QueueFullRender();
+        else if (e.PropertyName is nameof(ChatSessionViewModel.ActiveClarify))
+            EnqueueOp(SyncClarifyAsync);
+    }
+
+    private async Task SyncClarifyAsync()
+    {
+        var clarify = _viewModel?.ActiveClarify;
+        if (clarify == null)
+        {
+            await InvokeJsAsync("window.__splaClearClarify()");
+            return;
+        }
+
+        var data = new
+        {
+            question = clarify.Question,
+            options = clarify.Options.Select(o => new { label = o.Label, description = o.Description }).ToArray()
+        };
+        var json = JsonSerializer.Serialize(data, JsonSerializerOptions.Web);
+        var escaped = JsonSerializer.Serialize(json);
+        await InvokeJsAsync($"window.__splaClarify({escaped})");
     }
 
     // ── ViewModel attachment ───────────────────────────────────────────────
 
-    private void AttachViewModel(MainWindowViewModel? viewModel)
+    private void AttachViewModel(ChatSessionViewModel? viewModel)
     {
         if (ReferenceEquals(_viewModel, viewModel)) return;
 
@@ -166,7 +189,8 @@ public partial class ChatWebView : UserControl
         }
         else if (e.PropertyName is nameof(MessageViewModel.Content)
                                  or nameof(MessageViewModel.RetentionIcon)
-                                 or nameof(MessageViewModel.RetentionDescription))
+                                 or nameof(MessageViewModel.RetentionDescription)
+                                 or nameof(PermissionMessageViewModel.IsAnswered))
         {
             EnqueueOp(() => AppendMessageAsync(msg, entry.Index));
         }
@@ -326,6 +350,16 @@ public partial class ChatWebView : UserControl
                         var text = root.TryGetProperty("text", out var textProp) ? textProp.GetString() : null;
                         await CopyTextAsync(text);
                         break;
+                    case "permission":
+                        var decision = root.TryGetProperty("decision", out var decisionProp) ? decisionProp.GetString() : null;
+                        HandlePermissionDecision(index, decision);
+                        break;
+                    case "clarify":
+                        string? choice = null;
+                        if (root.TryGetProperty("choice", out var choiceProp) && choiceProp.ValueKind != JsonValueKind.Null)
+                            choice = choiceProp.GetString();
+                        HandleClarifyChoice(choice);
+                        break;
                 }
             });
         }
@@ -347,6 +381,31 @@ public partial class ChatWebView : UserControl
         var msg = _viewModel.Messages[index];
         if (_viewModel.DeleteMessageCommand.CanExecute(msg))
             _viewModel.DeleteMessageCommand.Execute(msg);
+    }
+
+    private void HandlePermissionDecision(int index, string? decision)
+    {
+        if (_viewModel == null || index < 0 || index >= _viewModel.Messages.Count) return;
+        if (_viewModel.Messages[index] is not PermissionMessageViewModel perm) return;
+        switch (decision)
+        {
+            case "allowRemember": perm.AllowRememberCommand.Execute(null); break;
+            case "allowOnce":     perm.AllowOnceCommand.Execute(null);     break;
+            case "deny":          perm.DenyCommand.Execute(null);          break;
+        }
+    }
+
+    private void HandleClarifyChoice(string? choice)
+    {
+        var clarify = _viewModel?.ActiveClarify;
+        if (clarify == null) return;
+        if (choice == null)
+        {
+            clarify.DismissCommand.Execute(null);
+            return;
+        }
+        var option = clarify.Options.FirstOrDefault(o => o.Label == choice);
+        option?.ChooseCommand.Execute(null);
     }
 
     private async Task CopyTextAsync(string? text)

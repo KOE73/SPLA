@@ -8,16 +8,23 @@
     <File Path="docs/TODO.md" />
     <File Path="docs/readme_security.md" />
     <File Path="docs/readme_security_ru.md" />
+    <File Path="docs/sys_prompt_rules_ru.md" />
+    <File Path="docs/skills_lifecycle_plan.md" />
   </Folder>
   <Folder Name="/agents/">
     <File Path="agents/avalonia.md" />
+    <File Path="agents/chat-messages.md" />
+    <File Path="agents/data-ownership.md" />
     <File Path="agents/documentation.md" />
     <File Path="agents/observability.md" />
     <File Path="agents/plugins.md" />
     <File Path="agents/security.md" />
     <File Path="agents/spla-file.md" />
     <File Path="agents/structure.md" />
+    <File Path="agents/skills.md" />
+    <File Path="agents/sys_prompt_rules.md" />
     <File Path="agents/tool-help.md" />
+    <File Path="agents/tool-args.md" />
     <File Path="agents/ui-theming.md" />
   </Folder>
   <Folder Name="/plugins/" />

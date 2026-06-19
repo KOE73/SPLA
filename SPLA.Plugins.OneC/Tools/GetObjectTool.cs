@@ -1,6 +1,7 @@
 using System.Text.Json;
 using SPLA.Domain.Models;
 using SPLA.MCP.Core.Interfaces;
+using SPLA.MCP.Core.Json;
 using SPLA.Plugins.OneC.Models;
 using SPLA.Plugins.OneC.Storage;
 
@@ -10,7 +11,7 @@ namespace SPLA.Plugins.OneC.Tools;
 public class GetObjectTool : IMcpTool
 {
     private readonly OneCIndexDatabase _db;
-    public string Name => "onec.object.get";
+    public string Name => "onec_get_object";
     public string Description => "Gets detailed information about a specific 1C object by its full name.";
 
     public GetObjectTool(OneCIndexDatabase db) => _db = db;
@@ -29,10 +30,10 @@ public class GetObjectTool : IMcpTool
                 type       = "object",
                 properties = new
                 {
-                    fullName       = new { type = "string",  description = "Fully-qualified object name, e.g. Document.РеализацияТоваров." },
-                    includeSnippets = new { type = "boolean", description = "Include source path and line (default false)." },
+                    full_name = new { type = "string",  description = "Fully-qualified object name, e.g. Document.РеализацияТоваров." },
+                    include_snippets = new { type = "boolean", description = "Include source path and line (default false)." },
                 },
-                required = new[] { "fullName" }
+                required = new[] { "full_name" }
             }
         }
     };
@@ -40,8 +41,8 @@ public class GetObjectTool : IMcpTool
     public Task<string> ExecuteAsync(string argumentsJson, CancellationToken cancellationToken = default)
     {
         var doc      = JsonDocument.Parse(argumentsJson);
-        var fullName = doc.RootElement.TryGetProperty("fullName",       out var fn) ? fn.GetString() ?? "" : "";
-        var snippets = doc.RootElement.TryGetProperty("includeSnippets", out var sn) && sn.GetBoolean();
+        var fullName = ToolJson.GetString(doc.RootElement, "full_name") ?? "";
+        var snippets = ToolJson.GetBoolean(doc.RootElement, "include_snippets", false);
 
         var obj = _db.GetObjectByFullName(fullName);
         if (obj is null)
@@ -57,7 +58,7 @@ public class GetObjectTool : IMcpTool
         {
             b.Section("object", o =>
             {
-                o.Field("fullName", obj.FullName);
+                o.Field("full_name", obj.FullName);
                 o.Field("kind",     obj.Kind);
                 if (obj.Path    is not null) o.Field("path",    obj.Path);
                 if (obj.Summary is not null) o.Field("summary", obj.Summary);

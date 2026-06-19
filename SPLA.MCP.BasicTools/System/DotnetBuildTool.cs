@@ -1,5 +1,6 @@
 using SPLA.Domain.Models;
 using SPLA.MCP.Core.Interfaces;
+using SPLA.MCP.Core.Json;
 using System;
 using System.Diagnostics;
 using System.IO;
@@ -12,7 +13,7 @@ namespace SPLA.MCP.BasicTools.SystemTools;
 
 public class DotnetBuildTool : IMcpTool
 {
-    public string Name => "dotnet.build";
+    public string Name => "dotnet_build_project";
 
     public ToolDefinition GetDefinition() => new ToolDefinition
     {
@@ -24,32 +25,34 @@ public class DotnetBuildTool : IMcpTool
             Scope = ToolScope.Shell,
             Effect = ToolEffect.Execute,
             Risk = ToolRisk.Medium,
+            StrictSchema = true,
             Parameters = new
             {
                 type = "object",
                 properties = new
                 {
-                    projectPath = new
+                    project_path = new
                     {
-                        type = "string",
-                        description = "The path to the project or solution file to build. If omitted, builds the project in the current directory."
+                        type = new[] { "string", "null" },
+                        description = "Path to the project or solution file. Null = build in current directory."
                     },
                     configuration = new
                     {
-                        type = "string",
-                        description = "The configuration to use for building (e.g., 'Debug' or 'Release'). Defaults to 'Debug'."
+                        type = new[] { "string", "null" },
+                        description = "Build configuration: 'Debug' or 'Release'. Null = Debug."
                     },
-                    noRestore = new
+                    no_restore = new
                     {
-                        type = "boolean",
-                        description = "If true, does not execute an implicit restore during build."
+                        type = new[] { "boolean", "null" },
+                        description = "True = skip implicit restore. Null = false."
                     },
                     cwd = new
                     {
-                        type = "string",
-                        description = "Current working directory for the command (optional)"
+                        type = new[] { "string", "null" },
+                        description = "Working directory for the command. Null = current directory."
                     }
-                }
+                },
+                required = new[] { "project_path", "configuration", "no_restore", "cwd" }
             }
         }
     };
@@ -60,10 +63,10 @@ public class DotnetBuildTool : IMcpTool
         {
             var doc = JsonDocument.Parse(argumentsJson);
             
-            var projectPath = doc.RootElement.TryGetProperty("projectPath", out var ppElement) ? ppElement.GetString() : null;
-            var configuration = doc.RootElement.TryGetProperty("configuration", out var confElement) ? confElement.GetString() : "Debug";
-            var noRestore = doc.RootElement.TryGetProperty("noRestore", out var nrElement) && nrElement.GetBoolean();
-            var cwd = doc.RootElement.TryGetProperty("cwd", out var cwdElement) ? cwdElement.GetString() : null;
+            var projectPath = ToolJson.GetString(doc.RootElement, "project_path");
+            var configuration = ToolJson.GetString(doc.RootElement, "configuration") ?? "Debug";
+            var noRestore     = ToolJson.GetBoolean(doc.RootElement, "no_restore", false);
+            var cwd           = ToolJson.GetString(doc.RootElement, "cwd");
 
             var arguments = new StringBuilder("build");
             

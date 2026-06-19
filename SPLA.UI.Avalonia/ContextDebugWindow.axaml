@@ -15,7 +15,21 @@
             <Setter Property="Foreground" Value="{DynamicResource SubTextForegroundBrush}"/>
             <Setter Property="Margin" Value="0,0,0,4"/>
         </Style>
-        <Style Selector="TextBlock.source">
+        <Style Selector="Button.toggle">
+            <Setter Property="FontSize" Value="11"/>
+            <Setter Property="Padding" Value="8,2"/>
+            <Setter Property="CornerRadius" Value="4"/>
+            <Setter Property="Background" Value="{DynamicResource PanelBackgroundBrush}"/>
+            <Setter Property="BorderBrush" Value="{DynamicResource PanelBorderBrush}"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="Foreground" Value="{DynamicResource SubTextForegroundBrush}"/>
+            <Setter Property="VerticalAlignment" Value="Center"/>
+        </Style>
+        <Style Selector="Button.toggle:pointerover /template/ ContentPresenter">
+            <Setter Property="Background" Value="{DynamicResource HoverBrush}"/>
+        </Style>
+        <!-- Normal row (in-context) -->
+        <Style Selector="SelectableTextBlock.source">
             <Setter Property="FontFamily" Value="Consolas,Cascadia Code,Courier New,monospace"/>
             <Setter Property="FontSize" Value="11"/>
             <Setter Property="Foreground" Value="{DynamicResource AccentBrush}"/>
@@ -24,19 +38,69 @@
             <Setter Property="MinWidth" Value="110"/>
             <Setter Property="MaxWidth" Value="130"/>
         </Style>
-        <Style Selector="TextBlock.preview">
+        <Style Selector="SelectableTextBlock.preview">
             <Setter Property="FontFamily" Value="Consolas,Cascadia Code,Courier New,monospace"/>
             <Setter Property="FontSize" Value="11"/>
             <Setter Property="Foreground" Value="{DynamicResource TextForegroundBrush}"/>
             <Setter Property="VerticalAlignment" Value="Top"/>
             <Setter Property="TextTrimming" Value="CharacterEllipsis"/>
         </Style>
+        <Style Selector="TextBlock.idx">
+            <Setter Property="FontFamily" Value="Consolas,Cascadia Code,Courier New,monospace"/>
+            <Setter Property="FontSize" Value="10"/>
+            <Setter Property="Foreground" Value="{DynamicResource SubTextForegroundBrush}"/>
+            <Setter Property="VerticalAlignment" Value="Top"/>
+            <Setter Property="MinWidth" Value="28"/>
+            <Setter Property="TextAlignment" Value="Right"/>
+        </Style>
+        <Style Selector="SelectableTextBlock.source-label">
+            <Setter Property="FontFamily" Value="Consolas,Cascadia Code,Courier New,monospace"/>
+            <Setter Property="FontSize" Value="11"/>
+            <Setter Property="Foreground" Value="{DynamicResource WarningBrush}"/>
+            <Setter Property="VerticalAlignment" Value="Top"/>
+            <Setter Property="FontStyle" Value="Italic"/>
+            <Setter Property="MinWidth" Value="110"/>
+            <Setter Property="MaxWidth" Value="130"/>
+        </Style>
+        <Style Selector="SelectableTextBlock.msgid">
+            <Setter Property="FontFamily" Value="Consolas,Cascadia Code,Courier New,monospace"/>
+            <Setter Property="FontSize" Value="10"/>
+            <Setter Property="Foreground" Value="{DynamicResource SubTextForegroundBrush}"/>
+            <Setter Property="VerticalAlignment" Value="Top"/>
+            <Setter Property="MinWidth" Value="60"/>
+        </Style>
+        <Style Selector="TextBlock.tok">
+            <Setter Property="FontFamily" Value="Consolas,Cascadia Code,Courier New,monospace"/>
+            <Setter Property="FontSize" Value="10"/>
+            <Setter Property="Foreground" Value="{DynamicResource SubTextForegroundBrush}"/>
+            <Setter Property="VerticalAlignment" Value="Top"/>
+            <Setter Property="MinWidth" Value="60"/>
+            <Setter Property="TextAlignment" Value="Right"/>
+        </Style>
+        <!-- In-context rows get bold preview text -->
+        <Style Selector="Grid.inContext SelectableTextBlock.preview">
+            <Setter Property="FontWeight" Value="Bold"/>
+        </Style>
     </Window.Styles>
 
     <Grid RowDefinitions="Auto,*" Margin="12">
 
-        <TextBlock Grid.Row="0" Classes="section-header" Margin="0,0,0,6"
-                   Text="{Binding Header, Mode=OneWay}"/>
+        <Grid Grid.Row="0" ColumnDefinitions="*,Auto,8,Auto,8,Auto,6,Auto" Margin="0,0,0,6">
+            <TextBlock Grid.Column="0" Classes="section-header" VerticalAlignment="Center"
+                       Text="{Binding Header, Mode=OneWay}"/>
+            <Button Grid.Column="1" Classes="toggle"
+                    Command="{Binding CopyAllCommand}"
+                    Content="Copy all" ToolTip.Tip="Copy all visible lines to clipboard"/>
+            <Button Grid.Column="3" Classes="toggle"
+                    Command="{Binding CopyNoSystemCommand}"
+                    Content="Copy w/o system" ToolTip.Tip="Copy visible lines excluding system messages"/>
+            <TextBlock Grid.Column="5" Classes="section-header" VerticalAlignment="Center"
+                       Text="All Messages"/>
+            <ToggleSwitch Grid.Column="7" VerticalAlignment="Center"
+                          IsChecked="{Binding ShowAll}"
+                          OffContent="" OnContent=""
+                          Margin="0"/>
+        </Grid>
 
         <Border Grid.Row="1"
                 BorderBrush="{DynamicResource PanelBorderBrush}"
@@ -47,11 +111,17 @@
                 <ItemsControl ItemsSource="{Binding Lines}" Margin="6,4">
                     <ItemsControl.ItemTemplate>
                         <DataTemplate x:DataType="vm:ContextLineViewModel">
-                            <Grid ColumnDefinitions="Auto,8,*" Margin="0,2">
-                                <TextBlock Grid.Column="0" Classes="source" Text="{Binding Source}"
-                                           ToolTip.Tip="{Binding Source}"/>
-                                <TextBlock Grid.Column="2" Classes="preview" Text="{Binding Preview}"
-                                           ToolTip.Tip="{Binding Full}"/>
+                            <Grid ColumnDefinitions="Auto,6,Auto,6,Auto,6,Auto,8,*" Margin="0,2"
+                                  Classes.dimmed="{Binding IsDimmed}"
+                                  Classes.inContext="{Binding InContext}">
+                                <TextBlock Grid.Column="0" Classes="idx" Text="{Binding Index}"/>
+                                <SelectableTextBlock Grid.Column="2" Classes="msgid" Text="{Binding MsgIdLabel}"
+                                                     ToolTip.Tip="{Binding MsgIdLabel}"/>
+                                <TextBlock Grid.Column="4" Classes="tok" Text="{Binding TokenLabel}"/>
+                                <SelectableTextBlock Grid.Column="6" Classes="source" Text="{Binding Source}"
+                                                     ToolTip.Tip="{Binding Source}"/>
+                                <SelectableTextBlock Grid.Column="8" Classes="preview" Text="{Binding Preview}"
+                                                     ToolTip.Tip="{Binding Full}"/>
                             </Grid>
                         </DataTemplate>
                     </ItemsControl.ItemTemplate>

@@ -1,23 +1,43 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-             xmlns:vm="using:SPLA.UI.Avalonia.ViewModels"
+             xmlns:chatvm="using:SPLA.UI.Avalonia.ViewModels.Chat"
              x:Class="SPLA.UI.Avalonia.Views.Chat.ChatInputView"
-             x:DataType="vm:MainWindowViewModel">
+             x:DataType="chatvm:ChatSessionViewModel">
     
     <StackPanel Margin="{DynamicResource StandardMargin}" Spacing="5">
         <!-- Input Area. Send/Stop are pinned to the editor's single-line height (InputBaseHeight)
              so they match the empty editor and don't grow as the editor expands. -->
-        <Grid ColumnDefinitions="*,Auto">
+        <Grid ColumnDefinitions="*,Auto,Auto">
             <TextBox x:Name="InputTextBox" Grid.Column="0" Text="{Binding InputText, UpdateSourceTrigger=PropertyChanged}" PlaceholderText="Enter message... (/compact)"
                      AcceptsReturn="True" MinHeight="{DynamicResource InputBaseHeight}" MaxHeight="100" TextWrapping="Wrap" FontSize="{DynamicResource BaseFontSize}"
                      Background="{DynamicResource InputBackgroundBrush}" Foreground="{DynamicResource TextForegroundBrush}" BorderBrush="{DynamicResource InputBorderBrush}" CornerRadius="{DynamicResource StandardCornerRadius}"
                      VerticalAlignment="Bottom" />
-            <Button Grid.Column="1" Content="Send" Command="{Binding SendCommand}" FontSize="{DynamicResource BaseFontSize}"
+            <Button Grid.Column="1" Command="{Binding Status.UnloadSkillCommand}"
+                    IsVisible="{Binding Status.HasActiveSkill}"
+                    Background="{DynamicResource InputBackgroundBrush}"
+                    BorderBrush="{DynamicResource AccentBrush}"
+                    Foreground="{DynamicResource TextForegroundBrush}"
+                    CornerRadius="{DynamicResource StandardCornerRadius}"
+                    Height="{DynamicResource InputBaseHeight}" Padding="10,0"
+                    VerticalContentAlignment="Center" HorizontalContentAlignment="Center"
+                    VerticalAlignment="Bottom" Margin="5,0,0,0"
+                    ToolTip.Tip="{Binding Status.ActiveSkillId}">
+                <StackPanel Orientation="Horizontal" Spacing="6">
+                    <TextBlock Text="Unload" FontSize="{DynamicResource BaseFontSize}" VerticalAlignment="Center" />
+                    <TextBlock Text="{Binding Status.ActiveSkillId}"
+                               FontSize="{DynamicResource BaseFontSize}"
+                               FontWeight="SemiBold"
+                               MaxWidth="220"
+                               TextTrimming="CharacterEllipsis"
+                               VerticalAlignment="Center" />
+                </StackPanel>
+            </Button>
+            <Button Grid.Column="2" Content="Send" Command="{Binding SendCommand}" FontSize="{DynamicResource BaseFontSize}"
                     Background="{DynamicResource AccentBrush}" Foreground="White" CornerRadius="{DynamicResource StandardCornerRadius}"
                     Height="{DynamicResource InputBaseHeight}" Padding="16,0" VerticalContentAlignment="Center" HorizontalContentAlignment="Center"
                     VerticalAlignment="Bottom" Margin="5,0,0,0"
                     IsVisible="{Binding IsNotBusy}" />
-            <Button Grid.Column="1" Content="Stop" Command="{Binding StopCommand}" FontSize="{DynamicResource BaseFontSize}"
+            <Button Grid.Column="2" Content="Stop" Command="{Binding StopCommand}" FontSize="{DynamicResource BaseFontSize}"
                     Background="#C62828" Foreground="White" CornerRadius="{DynamicResource StandardCornerRadius}"
                     Height="{DynamicResource InputBaseHeight}" Padding="16,0" VerticalContentAlignment="Center" HorizontalContentAlignment="Center"
                     VerticalAlignment="Bottom" Margin="5,0,0,0"
@@ -125,7 +145,7 @@
                                 <Button Classes="ProfileBtn"
                                         Classes.selected="{Binding IsSelected}"
                                         Content="{Binding DisplayName}"
-                                        Command="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).SelectProfileCommand}"
+                                        Command="{Binding $parent[UserControl].((chatvm:ChatSessionViewModel)DataContext).SelectProfileCommand}"
                                         CommandParameter="{Binding}" />
                             </DataTemplate>
                         </ItemsControl.ItemTemplate>

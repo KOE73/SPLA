@@ -19,6 +19,7 @@ public static class ContextAssembler
     /// </summary>
     public static bool ShouldSend(ChatMessage message)
     {
+        if (message.IsLabel) return false;    // position anchors — never sent to LLM
         if (message.IsEphemeral) return false;
 
         // An assistant turn that only carries tool calls has empty content but must be sent.

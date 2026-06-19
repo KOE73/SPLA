@@ -18,7 +18,7 @@ SPLA is designed to operate safely in your local environment. To balance power a
 
 ### 2. Inspect (`Inspect`)
 **"Read-only local access"**
-- **Allowed**: Read files/search (`system.fs.read`, `system.fs.search`), List directories (`system.fs.list`), Context (`GetContextTool`).
+- **Allowed**: Read files/search (`system_read_file`, `system_search_text`), List directories (`system_list_files`), Context (`agent_get_context`).
 - **Ask**: Internet access.
 - **Denied**: File writing/patching/deleting, Shell commands.
 - **Use case**: "Analyze my current project directory and find where the database connection is established."
@@ -26,7 +26,7 @@ SPLA is designed to operate safely in your local environment. To balance power a
 ### 3. Edit (`Edit`)
 **"Standard pair programming"**
 - **Allowed**: Read/search files, List directories, Internet access.
-- **Ask**: Write/create/patch/delete files (`system.fs.create`, `system.fs.patch`, `system.fs.write`, `system.fs.delete`), Execute safe shell commands.
+- **Ask**: Write/create/patch/delete files (`system_create_file`, `system_patch_file`, `system_write_file`, `system_delete_file`), Execute safe shell commands.
 - **Denied**: High-risk system commands.
 - **Use case**: "Refactor this class", "Add a new feature". The agent will prepare the code and ask for your permission before saving.
 
@@ -40,15 +40,15 @@ SPLA is designed to operate safely in your local environment. To balance power a
 
 | Tool | Scope | Effect | Risk |
 |------|-------|--------|------|
-| `system.fs.list` | Project | Read | Low |
-| `system.fs.read` | Project | Read | Low |
-| `system.fs.search`| Project | Read | Low |
-| `GetContextTool` | Local | Read | Low |
-| `WebFetchTool` | Internet| Read | Low |
-| `system.fs.create`| Project | Write | Medium |
-| `system.fs.patch` | Project | Write | Medium |
-| `system.fs.write` | Project | Write | Medium |
-| `system.fs.delete`| Project | Write | Medium |
-| `RunCommandTool`| Shell | Execute| High |
+| `system_list_files` | Project | Read | Low |
+| `system_read_file` | Project | Read | Low |
+| `system_search_text`| Project | Read | Low |
+| `agent_get_context` | Local | Read | Low |
+| `web_fetch` | Internet| Read | Low |
+| `system_create_file`| Project | Write | Medium |
+| `system_patch_file` | Project | Write | Medium |
+| `system_write_file` | Project | Write | Medium |
+| `system_delete_file`| Project | Write | Medium |
+| `system_run_shell`| Shell | Execute| High |
 
 *The `PermissionManager` dynamically evaluates the current `AgentMode` against the tool's `Scope`, `Effect`, and `Risk` to return `Allow`, `Deny`, or `Ask`.*

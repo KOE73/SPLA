@@ -1,6 +1,7 @@
 using System.Text.Json;
 using SPLA.Domain.Models;
 using SPLA.MCP.Core.Interfaces;
+using SPLA.MCP.Core.Json;
 using SPLA.Plugins.OneC.Storage;
 
 namespace SPLA.Plugins.OneC.Tools;
@@ -13,7 +14,7 @@ public class GetReverseDependenciesTool : IMcpTool
 {
     private readonly OneCIndexDatabase _db;
 
-    public string Name => "onec.dependency.reverse";
+    public string Name => "onec_get_reverse_dependencies";
     public string Description => "Gets all incoming dependencies to a 1C object (who uses this object). Returns a graph-like structure.";
 
     public GetReverseDependenciesTool(OneCIndexDatabase db) => _db = db;
@@ -33,12 +34,12 @@ public class GetReverseDependenciesTool : IMcpTool
                 type       = "object",
                 properties = new
                 {
-                    fullName      = new { type = "string",  description = "Root object full name." },
+                    full_name = new { type = "string",  description = "Root object full name." },
                     depth         = new { type = "integer", description = "Traversal depth 1 or 2 (default 1)." },
-                    relationTypes = new { type = "array",   items = new { type = "string" }, description = "Relation types to follow (default all)." },
+                    relation_types = new { type = "array",   items = new { type = "string" }, description = "Relation types to follow (default all)." },
                     limit         = new { type = "integer", description = "Max edges to return (default 100)." },
                 },
-                required = new[] { "fullName" }
+                required = new[] { "full_name" }
             }
         }
     };
@@ -46,12 +47,12 @@ public class GetReverseDependenciesTool : IMcpTool
     public Task<string> ExecuteAsync(string argumentsJson, CancellationToken cancellationToken = default)
     {
         var doc      = JsonDocument.Parse(argumentsJson);
-        var fullName = doc.RootElement.TryGetProperty("fullName", out var fn) ? fn.GetString() ?? "" : "";
+        var fullName = ToolJson.GetString(doc.RootElement, "full_name") ?? "";
         var depth    = doc.RootElement.TryGetProperty("depth",    out var d)  ? Math.Clamp(d.GetInt32(), 1, 2) : 1;
         var limit    = doc.RootElement.TryGetProperty("limit",    out var lm) ? lm.GetInt32() : 100;
 
         string[]? types = null;
-        if (doc.RootElement.TryGetProperty("relationTypes", out var rt) && rt.ValueKind == System.Text.Json.JsonValueKind.Array)
+        if (ToolJson.TryGetProperty(doc.RootElement, "relation_types", out var rt) && rt.ValueKind == System.Text.Json.JsonValueKind.Array)
             types = rt.EnumerateArray().Select(e => e.GetString()!).ToArray();
 
         var root = _db.GetObjectByFullName(fullName);
@@ -68,15 +69,15 @@ public class GetReverseDependenciesTool : IMcpTool
         {
             b.Field("root",      fullName);
             b.Field("depth",     depth);
-            b.Field("nodeCount", nodes.Count);
-            b.Field("edgeCount", edges.Count);
+            b.Field("node_count", nodes.Count);
+            b.Field("edge_count", edges.Count);
             b.Field("truncated", edges.Count >= limit);
 
             b.Section("nodes", nb =>
             {
                 foreach (var kv in nodes)
                 {
-                    nb.Field("- fullName", kv.Key);
+                    nb.Field("- full_name", kv.Key);
                     nb.Field("  kind",     kv.Value);
                 }
             });

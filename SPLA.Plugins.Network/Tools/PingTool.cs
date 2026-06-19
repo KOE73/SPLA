@@ -1,5 +1,6 @@
 using SPLA.Domain.Models;
 using SPLA.MCP.Core.Interfaces;
+using SPLA.MCP.Core.Json;
 using System;
 using System.Net.NetworkInformation;
 using System.Text.Json;
@@ -10,7 +11,7 @@ namespace SPLA.Plugins.Network;
 
 public class PingTool : IMcpTool
 {
-    public string Name => "network.diag.ping";
+    public string Name => "network_ping_host";
 
     public ToolDefinition GetDefinition() => new ToolDefinition
     {
@@ -40,20 +41,11 @@ public class PingTool : IMcpTool
         try
         {
             using var doc = JsonDocument.Parse(argumentsJson);
-            if (!doc.RootElement.TryGetProperty("host", out var hostElement))
-            {
-                return "Error: Missing 'host' parameter.";
-            }
+            var root = doc.RootElement;
+            var host = ToolJson.GetStringTrimmed(root, "host");
+            if (host is null) return "Error: Missing 'host' parameter.";
 
-            var host = hostElement.GetString();
-            if (string.IsNullOrWhiteSpace(host))
-            {
-                return "Error: Host is empty.";
-            }
-
-            var timeout = doc.RootElement.TryGetProperty("timeout", out var timeoutElement) && timeoutElement.TryGetInt32(out var t)
-                ? t
-                : 5000;
+            var timeout = ToolJson.GetInt32(root, "timeout", 5000);
 
             using var ping = new Ping();
             var reply = await ping.SendPingAsync(host, timeout);

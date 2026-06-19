@@ -1,5 +1,6 @@
 using SPLA.Domain.Models;
 using SPLA.MCP.Core.Interfaces;
+using SPLA.MCP.Core.Json;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
@@ -16,7 +17,7 @@ public sealed class PluginCommandRunTool(
     IPluginPanelHostService panelHost,
     SPLA.Plugins.Host.Avalonia.IPluginInteractionService interaction) : IMcpTool, IToolHelpProvider
 {
-    public string Name => "plugin.command.run";
+    public string Name => "plugin_run_command";
 
     public ToolDefinition GetDefinition() => new()
     {
@@ -32,9 +33,9 @@ public sealed class PluginCommandRunTool(
                 type = "object",
                 properties = new
                 {
-                    commandId = new { type = "string", description = "Plugin command id, for example onec.view.open." }
+                    command_id = new { type = "string", description = "Plugin command id, for example onec.view.open." }
                 },
-                required = new[] { "commandId" }
+                required = new[] { "command_id" }
             }
         }
     };
@@ -42,13 +43,11 @@ public sealed class PluginCommandRunTool(
     public async Task<string> ExecuteAsync(string argumentsJson, CancellationToken cancellationToken = default)
     {
         using var doc = JsonDocument.Parse(argumentsJson);
-        var commandId = doc.RootElement.TryGetProperty("commandId", out var idElement)
-            ? idElement.GetString()
-            : null;
+        var commandId = ToolJson.GetString(doc.RootElement, "command_id");
 
         if (string.IsNullOrWhiteSpace(commandId))
         {
-            return AvailableCommands("error: missing commandId");
+            return AvailableCommands("error: missing command_id");
         }
 
         var command = commands.FirstOrDefault(c => string.Equals(c.Id, commandId, StringComparison.OrdinalIgnoreCase));
@@ -69,19 +68,19 @@ public sealed class PluginCommandRunTool(
 
     public string? GetHelpText() =>
         $"""
-        tool: plugin.command.run
+        tool: plugin_run_command
 
         summary: Runs a registered plugin command by id. Use this for UI commands exposed by plugins, for example opening an Avalonia plugin panel.
 
         arguments:
-          commandId: exact plugin command id.
+          command_id: exact plugin command id.
 
         available_commands:
         {string.Join(Environment.NewLine, commands.Select(c => $"  - {c.Id}: {c.DisplayName} ({c.Kind})"))}
 
         examples:
           - request:
-              commandId: onec.view.open
+              command_id: onec.view.open
         """;
 
     private async Task<string> OpenPanelAsync(SplaPluginUiCommand command)

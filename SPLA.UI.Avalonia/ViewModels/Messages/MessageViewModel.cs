@@ -13,6 +13,13 @@ public partial class MessageViewModel : ViewModelBase
     public Guid Id { get; } = Guid.NewGuid();
     public DateTimeOffset Timestamp { get; } = DateTimeOffset.Now;
 
+    /// <summary>
+    /// The backing domain message owned by <see cref="Conversation"/>. Null for purely UI messages
+    /// (ephemeral notices, streaming placeholder). When non-null, deleting this VM also removes the
+    /// domain message from the conversation list.
+    /// </summary>
+    public ChatMessage? Domain { get; set; }
+
     public ChatRole Role { get; }
     private string _content;
     public virtual string Content

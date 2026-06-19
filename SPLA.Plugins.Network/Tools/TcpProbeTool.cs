@@ -1,5 +1,6 @@
 using SPLA.Domain.Models;
 using SPLA.MCP.Core.Interfaces;
+using SPLA.MCP.Core.Json;
 using System;
 using System.Diagnostics;
 using System.Net.Sockets;
@@ -12,7 +13,7 @@ namespace SPLA.Plugins.Network;
 
 public class TcpProbeTool : IMcpTool
 {
-    public string Name => "network.tcp.probe";
+    public string Name => "network_probe_tcp";
 
     public ToolDefinition GetDefinition() => new ToolDefinition
     {
@@ -32,7 +33,7 @@ public class TcpProbeTool : IMcpTool
                     host = new { type = "string", description = "Target IP or hostname." },
                     port = new { type = "integer", description = "TCP port (1-65535)." },
                     payload = new { type = "string", description = "Optional data to send after connecting." },
-                    payloadIsHex = new { type = "boolean", description = "If true, 'payload' is parsed as a hex string (e.g. '0A 0D'). Default: false." },
+                    payload_is_hex = new { type = "boolean", description = "If true, 'payload' is parsed as a hex string (e.g. '0A 0D'). Default: false." },
                     timeout = new { type = "integer", description = "Timeout in milliseconds (default: 3000)." }
                 },
                 required = new[] { "host", "port" }
@@ -49,15 +50,17 @@ public class TcpProbeTool : IMcpTool
             using var doc = JsonDocument.Parse(argumentsJson);
             var root = doc.RootElement;
 
-            if (!root.TryGetProperty("host", out var hostElement) || !root.TryGetProperty("port", out var portElement))
-                return "Error: Missing 'host' or 'port' parameters.";
+            var hostVal = ToolJson.GetStringTrimmed(root, "host");
+            if (hostVal is null) return "Error: Missing 'host' or 'port' parameters.";
+            host = hostVal;
 
-            host = hostElement.GetString() ?? string.Empty;
-            if (!portElement.TryGetInt32(out port)) return "Error: Invalid port.";
+            var portVal = ToolJson.GetInt32(root, "port");
+            if (portVal is null || portVal < 1 || portVal > 65535) return "Error: Port must be an integer between 1 and 65535.";
+            port = portVal.Value;
 
-            var payload = root.TryGetProperty("payload", out var pe) ? pe.GetString() : null;
-            var payloadIsHex = root.TryGetProperty("payloadIsHex", out var ph) && ph.GetBoolean();
-            var timeout = root.TryGetProperty("timeout", out var to) && to.TryGetInt32(out var t) ? t : 3000;
+            var payload      = ToolJson.GetString(root, "payload");
+            var payloadIsHex = ToolJson.GetBoolean(root, "payload_is_hex", false);
+            var timeout      = ToolJson.GetInt32(root, "timeout", 3000);
 
             byte[]? sendData = null;
             if (!string.IsNullOrEmpty(payload))

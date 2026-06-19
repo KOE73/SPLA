@@ -9,7 +9,7 @@ namespace SPLA.Plugins.Test;
 
 public class PingTool : IMcpTool
 {
-    public string Name => "test.sys.ping";
+    public string Name => "test_ping_host";
 
     public ToolDefinition GetDefinition()
     {

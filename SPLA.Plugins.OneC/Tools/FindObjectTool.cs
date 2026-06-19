@@ -1,6 +1,7 @@
 using System.Text.Json;
 using SPLA.Domain.Models;
 using SPLA.MCP.Core.Interfaces;
+using SPLA.MCP.Core.Json;
 using SPLA.Plugins.OneC.Storage;
 
 namespace SPLA.Plugins.OneC.Tools;
@@ -10,7 +11,7 @@ public class FindObjectTool : IMcpTool
 {
     private readonly OneCIndexDatabase _db;
 
-    public string Name => "onec.object.find";
+    public string Name => "onec_find_object";
     public string Description => "Finds 1C objects in the index by partial name or full name.";
 
     public FindObjectTool(OneCIndexDatabase db) => _db = db;

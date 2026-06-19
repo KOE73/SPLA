@@ -1,6 +1,8 @@
+using SPLA.Domain.Agent;
 using SPLA.Domain.Models;
 using SPLA.Domain.Settings;
 using SPLA.MCP.Core.Plugins;
+using System;
 using System.IO;
 using System.Linq;
 using System.Text;
@@ -8,20 +10,25 @@ using System.Text;
 namespace SPLA.Agent;
 
 /// <summary>
-/// Single, layered builder for the agent system prompt. Replaces the two divergent copies that
-/// lived in <c>MainWindowViewModel</c> (UI) and <c>Program.cs</c> (CLI). Both entry points now
-/// produce the same prompt: mode preamble → instruction files → custom prompt → skills index →
-/// plugin prompts → plugin commands.
+/// Single, layered builder for the agent system prompt. Assembly order (top = highest authority):
+/// mode preamble → global rules → instruction files → custom prompt → active skill body →
+/// plugin prompts → plugin commands → skills index (on-demand list).
 /// </summary>
 public sealed class SystemPromptBuilder
 {
+    private const string MainPromptResourceName = "SPLA.Agent.main_sys_prompt.md";
+    private const string WorkingDirectoryPlaceholder = "{{workingDirectory}}";
+    private static readonly Lazy<string> MainPromptTemplate = new(LoadMainPromptTemplate);
+
     private readonly SkillManager _skills;
     private readonly PluginManager _plugins;
+    private readonly ISkillSession? _skillSession;
 
-    public SystemPromptBuilder(SkillManager skills, PluginManager plugins)
+    public SystemPromptBuilder(SkillManager skills, PluginManager plugins, ISkillSession? skillSession = null)
     {
         _skills = skills;
         _plugins = plugins;
+        _skillSession = skillSession;
     }
 
     public string Build(ResolvedSettings settings, string workingDirectory)
@@ -29,18 +36,14 @@ public sealed class SystemPromptBuilder
         var sb = new StringBuilder();
 
         sb.Append(ModePreamble(settings.Mode));
-        sb.Append("\nYou have access to tools to interact with the file system and run commands. Your current working directory is: ");
-        sb.Append(workingDirectory);
-        sb.Append("\n\nTool descriptions are intentionally short. Tool flag: [H] = extended help available. If a [H] tool's details are unclear, call agent.info with the tool name before using it. Do not guess complex argument formats.");
-        sb.Append("\n\nMermaid note: when writing Mermaid, use valid quoted labels: `NodeId[\"label\"]`, `subgraph Id[\"title\"]`, and `A -->|\"label\"| B` for text with spaces, punctuation, or non-ASCII characters.");
-        sb.Append("\n\nIMPORTANT RULE: You may attempt a specific tool a maximum of 3 times. If it fails 3 times, you MUST stop trying and ask the user for help.");
-        sb.Append("\n\nAgent memory (agent.memory): your persistent key/value scratchpad across this conversation. Key convention: namespace:name — context:* keys are auto-injected into this prompt every turn. Actions: get|set|delete|list|count|clear. Use clear (with optional filter=) to bulk-delete instead of many individual deletes. For large stores use count first, then list with filter/top/skip (SQL-style pagination) — never call list without filter on an unknown-size store.");
+        sb.Append('\n').Append(BuildMainPrompt(workingDirectory));
 
         AppendInstructions(sb, settings, workingDirectory);
 
         if (!string.IsNullOrWhiteSpace(settings.CustomPrompt))
             sb.Append("\n\n--- Custom Prompt ---\n").Append(settings.CustomPrompt);
 
+        AppendActiveSkill(sb);
         AppendSkills(sb);
         AppendPluginPrompts(sb);
         AppendPluginCommands(sb);
@@ -58,6 +61,18 @@ public sealed class SystemPromptBuilder
         _ => "You are a helpful local AI assistant named SPLA."
     };
 
+    private static string BuildMainPrompt(string workingDirectory)
+        => MainPromptTemplate.Value.Replace(WorkingDirectoryPlaceholder, workingDirectory);
+
+    private static string LoadMainPromptTemplate()
+    {
+        var assembly = typeof(SystemPromptBuilder).Assembly;
+        using var stream = assembly.GetManifestResourceStream(MainPromptResourceName)
+            ?? throw new InvalidOperationException($"Embedded resource '{MainPromptResourceName}' was not found.");
+        using var reader = new StreamReader(stream, Encoding.UTF8);
+        return reader.ReadToEnd().Trim();
+    }
+
     private static void AppendInstructions(StringBuilder sb, ResolvedSettings settings, string workingDirectory)
     {
         foreach (var instrPath in settings.Instructions)
@@ -71,30 +86,52 @@ public sealed class SystemPromptBuilder
         }
     }
 
+    private void AppendActiveSkill(StringBuilder sb)
+    {
+        var activeId = _skillSession?.ActiveSkillId;
+        if (string.IsNullOrEmpty(activeId)) return;
+
+        var body = _skills.LoadBody(activeId);
+        if (string.IsNullOrEmpty(body)) return;
+
+        sb.Append($"\n\n=== ACTIVE SKILL: {activeId} ===\n");
+        sb.Append(body);
+        sb.Append($"\n=== END ACTIVE SKILL: {activeId} ===");
+    }
+
     private void AppendSkills(StringBuilder sb)
     {
         var enabledSkills = _skills.GetEnabled().ToList();
         if (enabledSkills.Count == 0) return;
 
+        var preloaded    = enabledSkills.Where(s => s.IsPreloaded).ToList();
+        var onDemand     = enabledSkills.Where(s => !s.IsPreloaded).ToList();
+
+        // ── Preloaded skills: inject body directly, no agent_info needed ──
+        foreach (var skill in preloaded)
+        {
+            var body = _skills.LoadBody(skill.Id);
+            if (!string.IsNullOrEmpty(body))
+                sb.Append($"\n\n--- Skill: {skill.Id} ---\n").Append(body);
+        }
+
+        // ── On-demand skills: list + agent_info load rule ──
+        // Suppressed while a skill is active — the active skill body is already injected above.
+        if (onDemand.Count == 0 || _skillSession?.ActiveSkillId is not null) return;
+
         sb.Append("\n\n--- Skills ---");
-        sb.Append("\nRULE: When the user's request matches a skill listed below, you MUST call agent.info FIRST — before calling any other tool or executing any step.");
+        sb.Append("\nRULE: When the user's request matches a skill listed below, you MUST call agent_info FIRST — before calling any other tool or executing any step.");
+        sb.Append("\nRULE: After agent_info, you MUST call skill_activate with the skill id BEFORE any task tool call. This is MANDATORY — do NOT skip it, do NOT proceed to task tools without it. agent_info alone only previews/loads instructions and does not make the skill active.");
+        sb.Append("\nIf the user asks what you will use, first check whether a listed skill applies, then mention that skill and the relevant tools from its procedure without activating unless execution is requested.");
         sb.Append("\nThis rule overrides any plugin instruction that says to 'start immediately'.");
         sb.Append("\nSkill descriptions are in English. The user may write in any language — translate the intent to English and match semantically.");
         sb.Append("\n");
-        sb.Append("\nHow to load a skill — call agent.info with {\"id\": \"<skill-id>\"}");
-        sb.Append("\nExample: call agent.info with {\"id\": \"network.range-audit\"}");
-        sb.Append("\nagent.info works for both tool help AND skill instructions — use it for any capability lookup.");
+        sb.Append("\nHow to load a skill — call agent_info with {\"id\": \"<skill-id>\"}");
+        sb.Append("\nExample: call agent_info with {\"id\": \"network.range-audit\"}");
+        sb.Append("\nagent_info works for both tool help AND skill instructions — use it for any capability lookup.");
         sb.Append("\n\nAvailable skills:");
-        foreach (var skill in enabledSkills)
-        {
+        foreach (var skill in onDemand)
             sb.Append($"\n  {skill.Id} — {skill.Description}");
-            if (skill.IsPreloaded)
-            {
-                var body = _skills.LoadBody(skill.Id);
-                if (!string.IsNullOrEmpty(body))
-                    sb.Append($"\n\n--- Skill: {skill.Id} (preloaded) ---\n").Append(body);
-            }
-        }
     }
 
     private void AppendPluginPrompts(StringBuilder sb)
@@ -111,7 +148,7 @@ public sealed class SystemPromptBuilder
         var pluginCommands = _plugins.GetUiCommands();
         if (pluginCommands.Count == 0) return;
 
-        sb.Append("\n\n--- Plugin Commands ---\nUse tool `plugin.command.run` with `commandId` to run these commands. These are commands, not direct tool names.");
+        sb.Append("\n\n--- Plugin Commands ---\nUse tool `plugin_run_command` with `commandId` to run these commands. These are commands, not direct tool names.");
         foreach (var command in pluginCommands)
             sb.Append($"\n- {command.Id}: {command.DisplayName} ({command.Kind})");
     }

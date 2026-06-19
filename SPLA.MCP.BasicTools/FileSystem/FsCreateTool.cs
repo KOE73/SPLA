@@ -1,5 +1,6 @@
 using SPLA.Domain.Models;
 using SPLA.MCP.Core.Interfaces;
+using SPLA.MCP.Core.Json;
 using System;
 using System.IO;
 using System.Text.Json;
@@ -10,7 +11,7 @@ namespace SPLA.MCP.BasicTools.FileSystem;
 
 public class FsCreateTool : IMcpTool
 {
-    public string Name => "system.fs.create";
+    public string Name => "system_create_file";
 
     public ToolDefinition GetDefinition() => new ToolDefinition
     {
@@ -22,6 +23,7 @@ public class FsCreateTool : IMcpTool
             Scope = ToolScope.Project,
             Effect = ToolEffect.Write,
             Risk = ToolRisk.Medium,
+            StrictSchema = true,
             Parameters = new
             {
                 type = "object",
@@ -40,20 +42,15 @@ public class FsCreateTool : IMcpTool
         try
         {
             using var doc = JsonDocument.Parse(argumentsJson);
-            if (!doc.RootElement.TryGetProperty("path", out var pathElement) ||
-                !doc.RootElement.TryGetProperty("content", out var contentElement))
-            {
+            var path    = ToolJson.GetStringTrimmed(doc.RootElement, "path");
+            var content = ToolJson.GetString(doc.RootElement, "content");
+
+            if (path is null || content is null)
                 return "Error: Missing 'path' or 'content' parameter.";
-            }
-
-            var path = pathElement.GetString();
-            var content = contentElement.GetString();
-
-            if (string.IsNullOrEmpty(path)) return "Error: path is empty.";
 
             if (File.Exists(path))
             {
-                return $"Error: File already exists at {path}. Use system.fs.patch or system.fs.write to modify existing files.";
+                return $"Error: File already exists at {path}. Use system_patch_file or system_write_file to modify existing files.";
             }
 
             // Create directories if they don't exist

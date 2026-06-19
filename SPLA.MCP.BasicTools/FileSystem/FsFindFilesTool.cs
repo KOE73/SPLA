@@ -1,5 +1,6 @@
 using SPLA.Domain.Models;
 using SPLA.MCP.Core.Interfaces;
+using SPLA.MCP.Core.Json;
 using System;
 using System.IO;
 using System.Text.Json;
@@ -13,7 +14,7 @@ namespace SPLA.MCP.BasicTools.FileSystem;
 
 public class FsFindFilesTool : IMcpTool
 {
-    public string Name => "system.fs.find_files";
+    public string Name => "system_find_files";
 
     public ToolDefinition GetDefinition() => new ToolDefinition
     {
@@ -25,16 +26,18 @@ public class FsFindFilesTool : IMcpTool
             Scope = ToolScope.Project,
             Effect = ToolEffect.Read,
             Risk = ToolRisk.Low,
+            StrictSchema = true,
             Parameters = new
             {
                 type = "object",
                 properties = new
                 {
-                    Path = new { type = "string", description = "Optional directory path to start search. Defaults to current workspace." },
-                    Pattern = new { type = "string", description = "Optional search pattern / glob (e.g. '*.cs'). Defaults to '*'" },
-                    MaxResults = new { type = "integer", description = "Maximum number of file paths to return. Defaults to 1000." },
-                    ExcludePatterns = new { type = "array", items = new { type = "string" }, description = "Optional glob patterns to exclude (e.g. ['bin/*', 'obj/*'])." }
-                }
+                    path             = new { type = new[] { "string",  "null" }, description = "Directory to start search. Null = current workspace." },
+                    pattern          = new { type = new[] { "string",  "null" }, description = "Glob pattern, e.g. '*.cs'. Null = '*'." },
+                    max_results      = new { type = new[] { "integer", "null" }, description = "Max file paths to return. Null = 1000." },
+                    exclude_patterns = new { type = new[] { "array",   "null" }, items = new { type = "string" }, description = "Glob patterns to exclude, e.g. ['bin/*', 'obj/*']. Null = none." }
+                },
+                required = new[] { "path", "pattern", "max_results", "exclude_patterns" }
             }
         }
     };
@@ -43,20 +46,19 @@ public class FsFindFilesTool : IMcpTool
     {
         try
         {
-            var options = new JsonSerializerOptions { PropertyNameCaseInsensitive = true };
-            var request = JsonSerializer.Deserialize<FindFilesRequest>(argumentsJson, options) ?? new FindFilesRequest();
+            using var doc = JsonDocument.Parse(argumentsJson);
+            var root = doc.RootElement;
 
-            var rootPath = string.IsNullOrEmpty(request.Path) ? Directory.GetCurrentDirectory() : request.Path;
+            var rootPath       = ToolJson.GetStringTrimmed(root, "path") ?? Directory.GetCurrentDirectory();
+            var pattern        = ToolJson.GetStringTrimmed(root, "pattern") ?? "*";
+            var maxResults     = ToolJson.GetInt32Clamped(root, "max_results", 1000, 1, 10000);
+            var excludePatterns= ToolJson.GetStringArray(root, "exclude_patterns");
+
             if (!Directory.Exists(rootPath))
-            {
                 return Task.FromResult($"Error: Directory not found at {rootPath}");
-            }
-
-            var pattern = string.IsNullOrEmpty(request.Pattern) ? "*" : request.Pattern;
-            var maxResults = request.MaxResults <= 0 ? 1000 : request.MaxResults;
 
             var includeRegex = GlobToRegex(pattern);
-            var excludeRegexes = request.ExcludePatterns?.Select(GlobToRegex).ToList();
+            var excludeRegexes = excludePatterns?.Select(GlobToRegex).ToList();
 
             var ignoreFolders = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
             {
@@ -145,14 +147,6 @@ public class FsFindFilesTool : IMcpTool
 
         return new Regex("^" + escaped + "$", RegexOptions.IgnoreCase | RegexOptions.Compiled);
     }
-}
-
-public class FindFilesRequest
-{
-    public string? Path { get; set; }
-    public string? Pattern { get; set; }
-    public int MaxResults { get; set; } = 1000;
-    public string[]? ExcludePatterns { get; set; }
 }
 
 public class FindFilesResult

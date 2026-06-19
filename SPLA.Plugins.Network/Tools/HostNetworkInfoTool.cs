@@ -1,5 +1,6 @@
 using SPLA.Domain.Models;
 using SPLA.MCP.Core.Interfaces;
+using SPLA.MCP.Core.Json;
 using System;
 using System.Linq;
 using System.Net;
@@ -28,7 +29,7 @@ public class HostNetworkInfoTool : IMcpTool
         ("ip.sb (CN)",                 "https://api.ip.sb/ip"),
     };
 
-    public string Name => "network.host.info";
+    public string Name => "network_get_host_info";
 
     public ToolDefinition GetDefinition() => new ToolDefinition
     {
@@ -45,12 +46,12 @@ public class HostNetworkInfoTool : IMcpTool
                 type = "object",
                 properties = new
                 {
-                    includePublicIp = new { type = "boolean", description = "Query external endpoints to detect public egress IP. Default: true." },
-                    customPublicIpEndpoints = new
+                    include_public_ip = new { type = "boolean", description = "Query external endpoints to detect public egress IP. Default: true." },
+                    custom_public_ip_endpoints = new
                     {
                         type = "array",
                         items = new { type = "string" },
-                        description = "Optional extra plain-text IP endpoints to query in addition to built-in sources (e.g. ['https://myproxy.internal/ip'])."
+                        description = "Optional JSON array of extra plain-text IP endpoint URLs to query in addition to built-in sources, e.g. {\"custom_public_ip_endpoints\":[\"https://myproxy.internal/ip\"]}."
                     }
                 }
             }
@@ -60,26 +61,14 @@ public class HostNetworkInfoTool : IMcpTool
     public async Task<string> ExecuteAsync(string argumentsJson, CancellationToken cancellationToken = default)
     {
         var includePublicIp = true;
-        var customEndpoints = Array.Empty<string>();
+        string[] customEndpoints = Array.Empty<string>();
 
         if (!string.IsNullOrWhiteSpace(argumentsJson))
         {
             using var doc = JsonDocument.Parse(argumentsJson);
-            if (doc.RootElement.TryGetProperty("includePublicIp", out var includePublicIpElement) &&
-                includePublicIpElement.ValueKind is JsonValueKind.True or JsonValueKind.False)
-            {
-                includePublicIp = includePublicIpElement.GetBoolean();
-            }
-
-            if (doc.RootElement.TryGetProperty("customPublicIpEndpoints", out var customEl) &&
-                customEl.ValueKind == JsonValueKind.Array)
-            {
-                customEndpoints = customEl.EnumerateArray()
-                    .Select(x => x.GetString())
-                    .Where(x => !string.IsNullOrWhiteSpace(x))
-                    .Select(x => x!)
-                    .ToArray();
-            }
+            var root = doc.RootElement;
+            includePublicIp = ToolJson.GetBoolean(root, "include_public_ip", true);
+            customEndpoints = ToolJson.GetStringArray(root, "custom_public_ip_endpoints") ?? Array.Empty<string>();
         }
 
         var properties = IPGlobalProperties.GetIPGlobalProperties();

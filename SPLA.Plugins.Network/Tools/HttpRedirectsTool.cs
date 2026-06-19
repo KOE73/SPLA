@@ -1,5 +1,6 @@
 using SPLA.Domain.Models;
 using SPLA.MCP.Core.Interfaces;
+using SPLA.MCP.Core.Json;
 using System;
 using System.Collections.Generic;
 using System.Net.Http;
@@ -18,7 +19,7 @@ public class HttpRedirectsTool : IMcpTool
         Timeout = System.Threading.Timeout.InfiniteTimeSpan
     };
 
-    public string Name => "network.http.redirects";
+    public string Name => "network_check_http_redirects";
 
     public ToolDefinition GetDefinition() => new ToolDefinition
     {
@@ -36,7 +37,7 @@ public class HttpRedirectsTool : IMcpTool
                 properties = new
                 {
                     url          = new { type = "string",  description = "Starting URL to follow." },
-                    maxRedirects = new { type = "integer", description = "Maximum hops to follow (default: 20)." },
+                    max_redirects = new { type = "integer", description = "Maximum hops to follow (default: 20)." },
                     timeout      = new { type = "integer", description = "Per-request timeout in milliseconds (default: 10000)." }
                 },
                 required = new[] { "url" }
@@ -49,17 +50,12 @@ public class HttpRedirectsTool : IMcpTool
         try
         {
             using var doc = JsonDocument.Parse(argumentsJson);
-            if (!doc.RootElement.TryGetProperty("url", out var urlEl))
-                return "Error: Missing 'url' parameter.";
+            var root = doc.RootElement;
+            var url = ToolJson.GetStringTrimmed(root, "url");
+            if (url is null) return "Error: Missing 'url' parameter.";
 
-            var url = urlEl.GetString();
-            if (string.IsNullOrWhiteSpace(url))
-                return "Error: URL is empty.";
-
-            var maxRedirects = doc.RootElement.TryGetProperty("maxRedirects", out var mrEl) && mrEl.TryGetInt32(out var mr)
-                ? Math.Clamp(mr, 1, 50) : 20;
-            var timeoutMs = doc.RootElement.TryGetProperty("timeout", out var toEl) && toEl.TryGetInt32(out var t)
-                ? Math.Clamp(t, 1000, 60_000) : 10_000;
+            var maxRedirects = ToolJson.GetInt32Clamped(root, "max_redirects", 20,     1,    50);
+            var timeoutMs    = ToolJson.GetInt32Clamped(root, "timeout",       10_000, 1000, 60_000);
 
             var sb = new StringBuilder();
             sb.AppendLine($"Redirect chain for: {url}");

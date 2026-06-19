@@ -5,20 +5,55 @@ description: TLS/SSL certificate and protocol audit — chain, expiry, cipher su
 
 # SSL/TLS Audit
 
-## Tool availability
+## Memory Keys Used by This Skill
 
-Before starting, call `agent.info` with each tool name you intend to use to confirm it is registered.
-Prefer `network.*` plugin tools when available — they return structured data and handle errors cleanly.
-If a specific `network.*` tool is absent, fall back to `RunCommandTool` (cmd/shell: openssl s_client) to accomplish the same step.
-Adapt the execution sequence below based on what is actually available.
+### session scope
+- `context:plan` — (object) Step list and current progress
+- `context:step` — (number) Currently executing step index
 
-Run when the user asks to "check SSL", "check the certificate", "is the cert valid", "проверь сертификат", "TLS проблема".
+### project scope
+- `host:{ip}:tls` — TLS/SSL audit findings (port, cert chain, protocol, cipher, HSTS)
+
+### State handling
+- session: execution state and plan only
+- project: written at finalize step if target resolves to an IP. Schema defined in plugin default_prompt.
+- If the target is a domain name only (no resolved IP), skip host:{ip}:tls and report inline.
+
+## Step 0 — Confirm tools and initialize plan
+
+Call `agent_info` with each tool name you intend to use to confirm it is registered.
+Prefer lower_snake_case network tools when available — they return structured data and handle errors cleanly.
+If a specific lower_snake_case network tool is absent, fall back to `system_run_shell` (cmd/shell: openssl s_client) to accomplish the same step.
+Adapt the plan below based on what is actually available.
+
+Write the full plan to `context:plan` in session KV:
+
+```json
+{
+  "total_steps": 4,
+  "current_step": 0,
+  "steps": [
+    "Step 1: network_check_tls on target host:port → host:{ip}:tls",
+    "Step 2: network_check_http_redirects — verify HTTPS redirect chain",
+    "Step 3: network_http_head — check HSTS header → update host:{ip}:tls",
+    "Step 4: finalize — write project KV, clear context:, deactivate"
+  ]
+}
+```
 
 ## Execution sequence
 
-1. `network.ssl.check` on the target host:port (default 443 if not specified)
-2. If HTTP redirects are relevant: `network.http.redirects` — verify HTTPS redirect chain is clean
-3. `network.http.head` — check HSTS header (`Strict-Transport-Security`)
+After each numbered step, update both `context:plan.current_step` and `context:step` in session KV.
+
+1. `network_check_tls` on the target host:port (default 443 if not specified). Write `host:{ip}:tls` in project KV.
+2. If HTTP redirects are relevant: `network_check_http_redirects` — verify the HTTPS redirect chain is clean.
+3. `network_http_head` — check HSTS header (`Strict-Transport-Security`). Update `host:{ip}:tls` with hsts field.
+
+If a step fails or is not applicable, note it in one line and continue.
+
+## Step 4 — Finalize
+
+Confirm all project KV writes are complete. Clear session context keys with `agent_memory_clear {scope:"session", filter:"context:"}`. Then call `skill_deactivate`.
 
 ## What to report
 

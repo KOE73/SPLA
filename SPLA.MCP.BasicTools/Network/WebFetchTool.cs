@@ -1,5 +1,6 @@
 using SPLA.Domain.Models;
 using SPLA.MCP.Core.Interfaces;
+using SPLA.MCP.Core.Json;
 using System;
 using System.Net.Http;
 using System.Net;
@@ -14,7 +15,7 @@ public class WebFetchTool : IMcpTool
 {
     private static readonly HttpClient _httpClient = new();
 
-    public string Name => "web.fetch";
+    public string Name => "web_fetch";
 
     public ToolDefinition GetDefinition() => new ToolDefinition
     {
@@ -22,10 +23,11 @@ public class WebFetchTool : IMcpTool
         Function = new ToolFunctionDefinition
         {
             Name = Name,
-            Description = "Fetches the text content of a concrete URL (HTML is stripped to plain text). Use web.search first for search queries, news lookup, or finding pages; do not pass search-engine result URLs here.",
+            Description = "Fetches the text content of a concrete URL (HTML is stripped to plain text). Use web_search first for search queries, news lookup, or finding pages; do not pass search-engine result URLs here.",
             Scope = ToolScope.Internet,
             Effect = ToolEffect.Read,
             Risk = ToolRisk.Low,
+            StrictSchema = true,
             Parameters = new
             {
                 type = "object",
@@ -42,15 +44,12 @@ public class WebFetchTool : IMcpTool
     {
         try
         {
-            var doc = JsonDocument.Parse(argumentsJson);
-            if (doc.RootElement.TryGetProperty("url", out var urlElement))
-            {
-                var url = urlElement.GetString();
-                if (string.IsNullOrEmpty(url)) return "Error: URL is empty.";
-                
-                if (!url.StartsWith("http")) url = "https://" + url;
+            using var doc = JsonDocument.Parse(argumentsJson);
+            var url = ToolJson.GetStringTrimmed(doc.RootElement, "url");
+            if (url is null) return "Error: Missing 'url' parameter.";
+            if (!url.StartsWith("http")) url = "https://" + url;
 
-                using var request = new HttpRequestMessage(HttpMethod.Get, url);
+            using var request = new HttpRequestMessage(HttpMethod.Get, url);
                 request.Headers.UserAgent.ParseAdd("SPLA/1.0");
                 
                 using var response = await _httpClient.SendAsync(request, cancellationToken);
@@ -77,8 +76,6 @@ public class WebFetchTool : IMcpTool
                 }
 
                 return text;
-            }
-            return "Error: Missing 'url' parameter.";
         }
         catch (OperationCanceledException)
         {

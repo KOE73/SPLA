@@ -2,6 +2,7 @@ using DnsClient;
 using DnsClient.Protocol;
 using SPLA.Domain.Models;
 using SPLA.MCP.Core.Interfaces;
+using SPLA.MCP.Core.Json;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
@@ -30,7 +31,7 @@ public class DnsPropagationTool : IMcpTool
         ("Comodo",       "8.26.56.26"),
     };
 
-    public string Name => "network.dns.propagation";
+    public string Name => "network_check_dns_propagation";
 
     public ToolDefinition GetDefinition() => new ToolDefinition
     {
@@ -65,14 +66,11 @@ public class DnsPropagationTool : IMcpTool
         try
         {
             using var doc = JsonDocument.Parse(argumentsJson);
-            if (!doc.RootElement.TryGetProperty("host", out var hostEl))
-                return "Error: Missing 'host' parameter.";
+            var root = doc.RootElement;
+            var host = ToolJson.GetStringTrimmed(root, "host");
+            if (host is null) return "Error: Missing 'host' parameter.";
 
-            var host = hostEl.GetString();
-            if (string.IsNullOrWhiteSpace(host))
-                return "Error: Host is empty.";
-
-            var typeName = doc.RootElement.TryGetProperty("type", out var typeEl) ? typeEl.GetString() ?? "A" : "A";
+            var typeName = ToolJson.GetString(root, "type") ?? "A";
             if (!Enum.TryParse<QueryType>(typeName, ignoreCase: true, out var queryType))
                 return $"Error: Unknown record type '{typeName}'.";
 

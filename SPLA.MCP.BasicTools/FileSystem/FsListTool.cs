@@ -1,5 +1,6 @@
 using SPLA.Domain.Models;
 using SPLA.MCP.Core.Interfaces;
+using SPLA.MCP.Core.Json;
 using System.IO;
 using System.Text.Json;
 using System.Threading;
@@ -10,7 +11,7 @@ namespace SPLA.MCP.BasicTools.FileSystem;
 
 public class FsListTool : IMcpTool
 {
-    public string Name => "system.fs.list";
+    public string Name => "system_list_files";
 
     public ToolDefinition GetDefinition() => new ToolDefinition
     {
@@ -22,6 +23,7 @@ public class FsListTool : IMcpTool
             Scope = ToolScope.Project,
             Effect = ToolEffect.Read,
             Risk = ToolRisk.Low,
+            StrictSchema = true,
             Parameters = new
             {
                 type = "object",
@@ -43,26 +45,22 @@ public class FsListTool : IMcpTool
         try
         {
             using var doc = JsonDocument.Parse(argumentsJson);
-            if (doc.RootElement.TryGetProperty("path", out var pathElement))
+            var path = ToolJson.GetStringTrimmed(doc.RootElement, "path");
+            if (path is null) return Task.FromResult("Error: Missing 'path' parameter.");
+
+            if (Directory.Exists(path))
             {
-                var path = pathElement.GetString();
-                if (string.IsNullOrEmpty(path)) return Task.FromResult("Error: path is empty.");
+                var sb = new StringBuilder();
+                var dirs = Directory.GetDirectories(path);
+                var files = Directory.GetFiles(path);
 
-                if (Directory.Exists(path))
-                {
-                    var sb = new StringBuilder();
-                    var dirs = Directory.GetDirectories(path);
-                    var files = Directory.GetFiles(path);
+                sb.AppendLine($"Directory contents of {path}:");
+                foreach (var d in dirs) sb.AppendLine($"[DIR] {Path.GetFileName(d)}");
+                foreach (var f in files) sb.AppendLine($"[FILE] {Path.GetFileName(f)}");
 
-                    sb.AppendLine($"Directory contents of {path}:");
-                    foreach (var d in dirs) sb.AppendLine($"[DIR] {Path.GetFileName(d)}");
-                    foreach (var f in files) sb.AppendLine($"[FILE] {Path.GetFileName(f)}");
-                    
-                    return Task.FromResult(sb.ToString());
-                }
-                return Task.FromResult($"Error: Directory not found at {path}");
+                return Task.FromResult(sb.ToString());
             }
-            return Task.FromResult("Error: Missing 'path' parameter.");
+            return Task.FromResult($"Error: Directory not found at {path}");
         }
         catch (JsonException)
         {

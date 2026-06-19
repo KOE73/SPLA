@@ -1,5 +1,6 @@
 using SPLA.Domain.Models;
 using SPLA.MCP.Core.Interfaces;
+using SPLA.MCP.Core.Json;
 using System;
 using System.Linq;
 using System.Net;
@@ -10,9 +11,9 @@ using System.Threading.Tasks;
 
 namespace SPLA.Plugins.Network;
 
-public class ReverseDnsTool : IMcpTool
+public class ReverseDnsTool : IMcpTool, IToolHelpProvider
 {
-    public string Name => "network.dns.reverse";
+    public string Name => "network_reverse_dns";
 
     public ToolDefinition GetDefinition() => new ToolDefinition
     {
@@ -33,7 +34,7 @@ public class ReverseDnsTool : IMcpTool
                     {
                         type = "array",
                         items = new { type = "string" },
-                        description = "One or more IPv4/IPv6 addresses to reverse-resolve (e.g. ['192.168.1.1', '8.8.8.8'])."
+                        description = "JSON array of IPv4/IPv6 address strings to reverse-resolve, e.g. {\"addresses\":[\"192.168.1.1\",\"8.8.8.8\"]}. Do not pass a comma-separated string."
                     }
                 },
                 required = new[] { "addresses" }
@@ -46,21 +47,12 @@ public class ReverseDnsTool : IMcpTool
         try
         {
             using var doc = JsonDocument.Parse(argumentsJson);
-            if (!doc.RootElement.TryGetProperty("addresses", out var addressesElement) ||
-                addressesElement.ValueKind != JsonValueKind.Array)
-            {
-                return "Error: Missing or invalid 'addresses' parameter (expected array of IP strings).";
-            }
-
-            var ips = new System.Collections.Generic.List<string>();
-            foreach (var el in addressesElement.EnumerateArray())
-            {
-                var s = el.GetString();
-                if (!string.IsNullOrWhiteSpace(s)) ips.Add(s.Trim());
-            }
-
-            if (ips.Count == 0)
-                return "Error: 'addresses' array is empty.";
+            var ips = ToolJson.GetStringArray(doc.RootElement, "addresses")
+                          ?.Where(s => !string.IsNullOrWhiteSpace(s))
+                          .Select(s => s.Trim())
+                          .ToList();
+            if (ips is null || ips.Count == 0)
+                return "Error: Missing or empty 'addresses' parameter (expected array of IP strings).";
 
             // Resolve all addresses in parallel.
             var tasks = ips.Select(ip => ResolveAsync(ip, cancellationToken)).ToArray();
@@ -84,6 +76,35 @@ public class ReverseDnsTool : IMcpTool
             return $"Error performing reverse DNS: {ex.Message}";
         }
     }
+
+    public string? GetHelpText() =>
+        """
+        tool: network_reverse_dns
+
+        summary: Bulk reverse DNS lookup. Resolves PTR names for one or more IP addresses.
+
+        arguments:
+          addresses:
+            required: true
+            type: array
+            items: string
+            formats:
+              - ipv4_address
+              - ipv6_address
+            rules:
+              - Pass a real JSON array of strings.
+              - Do not pass a comma-separated string.
+              - Do not wrap the array in another string.
+              - Batching is optional; use smaller batches only if the model or endpoint struggles with large tool arguments.
+            examples:
+              - {"addresses":["172.16.21.0","172.16.21.1","172.16.21.2"]}
+              - {"addresses":["192.168.1.1","8.8.8.8"]}
+
+        common mistakes:
+          - wrong: {"addresses":"172.16.21.0,172.16.21.1"}
+          - wrong: {"addresses":"[\"172.16.21.0\",\"172.16.21.1\"]"}
+          - right: {"addresses":["172.16.21.0","172.16.21.1"]}
+        """;
 
     private static async Task<(string Ip, string Hostname)> ResolveAsync(string ip, CancellationToken cancellationToken)
     {

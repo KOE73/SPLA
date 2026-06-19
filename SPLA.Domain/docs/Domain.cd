@@ -1,0 +1,405 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<ClassDiagram MajorVersion="1" MinorVersion="1">
+  <Comment CommentText="SPLA.Domain. Кластеры (слева направо, сверху вниз): ① Conversation/Message/ToolCall runtime  ② ToolDefinition + permission enums  ③ ToolProgress channel  ④ ChatSession + Interfaces  ⑤ KV store + Agent enums  ⑥ ResolvedSettings + Display  ⑦ Config sections (SplaProject/Defaults → секции → sub-секции)">
+    <Position X="26.25" Y="0.75" Height="0.75" Width="16" />
+  </Comment>
+  <Class Name="SPLA.Domain.Models.Conversation">
+    <Position X="22.5" Y="1.75" Width="2" />
+    <TypeIdentifier>
+      <HashCode>AAIAAAAAAAAAAAAAAAAABAQAAAACAAAAEAAAAQBIAAA=</HashCode>
+      <FileName>Models\Conversation.cs</FileName>
+    </TypeIdentifier>
+    <ShowAsCollectionAssociation>
+      <Field Name="_messages" />
+    </ShowAsCollectionAssociation>
+  </Class>
+  <Class Name="SPLA.Domain.Models.ToolCall">
+    <Position X="31.5" Y="1.75" Width="2" />
+    <TypeIdentifier>
+      <HashCode>AAACAAAAAAAAAAAAAAAAAAIAAAAAAAAAAQAAAAAAAAA=</HashCode>
+      <FileName>Models\ToolCall.cs</FileName>
+    </TypeIdentifier>
+    <ShowAsAssociation>
+      <Property Name="Function" />
+    </ShowAsAssociation>
+  </Class>
+  <Class Name="SPLA.Domain.Models.FunctionCall">
+    <Position X="31.5" Y="5.5" Width="2" />
+    <TypeIdentifier>
+      <HashCode>AAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAAIAAAAAAAAAA=</HashCode>
+      <FileName>Models\ToolCall.cs</FileName>
+    </TypeIdentifier>
+  </Class>
+  <Class Name="SPLA.Domain.Models.ToolDefinition">
+    <Position X="34.5" Y="1.75" Width="2" />
+    <TypeIdentifier>
+      <HashCode>AAAAAAAAAAAAAAAAAAAAAAIAAAAAAAAAAQAAAAAAAAA=</HashCode>
+      <FileName>Models\ToolDefinition.cs</FileName>
+    </TypeIdentifier>
+    <ShowAsAssociation>
+      <Property Name="Function" />
+    </ShowAsAssociation>
+  </Class>
+  <Class Name="SPLA.Domain.Models.ToolFunctionDefinition">
+    <Position X="34.5" Y="4.5" Width="2" />
+    <TypeIdentifier>
+      <HashCode>AAAAAAAAAAkgACAAAAAAAAQAAAAAAAAAAIAAAAAAAAA=</HashCode>
+      <FileName>Models\ToolDefinition.cs</FileName>
+    </TypeIdentifier>
+  </Class>
+  <Class Name="SPLA.Domain.Models.ToolProgress">
+    <Position X="40.25" Y="1.75" Width="2" />
+    <TypeIdentifier>
+      <HashCode>AAAAAAAAAAABAAAAAACAAAAAAAAAQAEAAAAAIAAAAAA=</HashCode>
+      <FileName>Models\ToolProgress.cs</FileName>
+    </TypeIdentifier>
+  </Class>
+  <Class Name="SPLA.Domain.Tools.ToolProgressScope">
+    <Position X="43.25" Y="6.5" Width="2" />
+    <NestedTypes>
+      <Class Name="SPLA.Domain.Tools.ToolProgressScope.Restore" Collapsed="true">
+        <TypeIdentifier>
+          <NewMemberFileName>Tools\ToolProgressScope.cs</NewMemberFileName>
+        </TypeIdentifier>
+        <Lollipop Position="0.2" />
+      </Class>
+    </NestedTypes>
+    <TypeIdentifier>
+      <HashCode>AAAAACAAAAAAAAAAAAAAAAAAAAAAEAAAAAAAAAAABAA=</HashCode>
+      <FileName>Tools\ToolProgressScope.cs</FileName>
+    </TypeIdentifier>
+  </Class>
+  <Class Name="SPLA.Domain.Models.ChatSession">
+    <Position X="8.75" Y="12.75" Width="2" />
+    <TypeIdentifier>
+      <HashCode>IAACAAAAAgBACEAAACEAAAAAAAAAAAAAAAgIAQAAAAA=</HashCode>
+      <FileName>Models\ChatSession.cs</FileName>
+    </TypeIdentifier>
+    <ShowAsAssociation>
+      <Property Name="Model" />
+      <Property Name="Agent" />
+      <Property Name="Context" />
+    </ShowAsAssociation>
+    <ShowAsCollectionAssociation>
+      <Property Name="Messages" />
+    </ShowAsCollectionAssociation>
+  </Class>
+  <Class Name="SPLA.Domain.Models.ChatSessionMessage">
+    <Position X="7.25" Y="16.75" Width="2" />
+    <TypeIdentifier>
+      <HashCode>AAAGAAAAAgAAAAAAECAAAAAAAAAAAAAAAAAAAAAAAAA=</HashCode>
+      <FileName>Models\ChatSession.cs</FileName>
+    </TypeIdentifier>
+  </Class>
+  <Class Name="SPLA.Domain.Models.ChatSessionContext">
+    <Position X="10" Y="16.75" Width="2" />
+    <TypeIdentifier>
+      <HashCode>AAAAAgAAAAAAAAAAAAAAAAAAAAAAAAICAAAIAAAAAAA=</HashCode>
+      <FileName>Models\ChatSession.cs</FileName>
+    </TypeIdentifier>
+  </Class>
+  <Class Name="SPLA.Domain.Context.ContextAssembler">
+    <Position X="33.25" Y="10" Width="2" />
+    <TypeIdentifier>
+      <HashCode>AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAACAAAAAABAAA=</HashCode>
+      <FileName>Context\ContextAssembler.cs</FileName>
+    </TypeIdentifier>
+  </Class>
+  <Class Name="SPLA.Domain.Models.ModelInfo">
+    <Position X="47.25" Y="7" Width="2" />
+    <TypeIdentifier>
+      <HashCode>ACgCEEAAJAAkAAAIACAAAEAAAQAkAIAgCQIAgAAgwAA=</HashCode>
+      <FileName>Models\ModelInfo.cs</FileName>
+    </TypeIdentifier>
+  </Class>
+  <Class Name="SPLA.Domain.Agent.KeyValueStore">
+    <Position X="47.5" Y="26.5" Width="2" />
+    <TypeIdentifier>
+      <HashCode>AAAAAAAAAQAgBCBgBAAAAAAAABEEAAAAAAAAAIBAAAI=</HashCode>
+      <FileName>Agent\KeyValueStore.cs</FileName>
+    </TypeIdentifier>
+    <Lollipop Position="0.2" />
+  </Class>
+  <Class Name="SPLA.Domain.Settings.ProjectKvStore">
+    <Position X="51" Y="26.5" Width="2" />
+    <TypeIdentifier>
+      <HashCode>AAAAgIAAAAAAAiAAAAACAAAAAABAAAAAAAAAAQAAAAA=</HashCode>
+      <FileName>Settings\ProjectKvStore.cs</FileName>
+    </TypeIdentifier>
+    <ShowAsAssociation>
+      <Property Name="Store" />
+    </ShowAsAssociation>
+  </Class>
+  <Class Name="SPLA.Domain.Settings.ResolvedSettings">
+    <Position X="21.75" Y="16.5" Width="4" />
+    <TypeIdentifier>
+      <HashCode>kAAQABAACIABEgCQCGACgAABIAIIAQABAwgAAAAEAAA=</HashCode>
+      <FileName>Settings\SettingsResolver.cs</FileName>
+    </TypeIdentifier>
+    <ShowAsAssociation>
+      <Property Name="Mode" />
+    </ShowAsAssociation>
+    <ShowAsCollectionAssociation>
+      <Property Name="ToolPermissionRules" />
+      <Property Name="Plugins" />
+      <Property Name="Skills" />
+    </ShowAsCollectionAssociation>
+  </Class>
+  <Class Name="SPLA.Domain.Settings.LLMSettings">
+    <Position X="27.5" Y="20" Width="2" />
+    <TypeIdentifier>
+      <HashCode>AAAAAAAAAIAAEAAQAAAAgAAAAAAAAAAgAAAAAAgEAAA=</HashCode>
+      <FileName>Settings\LLMSettings.cs</FileName>
+    </TypeIdentifier>
+    <ShowAsAssociation>
+      <Property Name="Mode" />
+    </ShowAsAssociation>
+  </Class>
+  <Class Name="SPLA.Domain.Settings.SettingsResolver">
+    <Position X="36.5" Y="15.5" Width="2" />
+    <TypeIdentifier>
+      <HashCode>AAAAAAAAAACAAAAAAAAAAAAAAEAAAAAAAAAAAAAAAAA=</HashCode>
+      <FileName>Settings\SettingsResolver.cs</FileName>
+    </TypeIdentifier>
+  </Class>
+  <Class Name="SPLA.Domain.Settings.ConfigLoader">
+    <Position X="38.75" Y="14.75" Width="2" />
+    <TypeIdentifier>
+      <HashCode>AAgEAAIAAAAEgCAAAAACAABAAAFgICAAAAAggAAAAAA=</HashCode>
+      <FileName>Settings\ConfigLoader.cs</FileName>
+    </TypeIdentifier>
+  </Class>
+  <Class Name="SPLA.Domain.Settings.ChatManager">
+    <Position X="45.5" Y="14.75" Width="2" />
+    <TypeIdentifier>
+      <HashCode>ACIABAgAAIAAADIAggAEAAAAEBBIAACIQAAAAAAAAAA=</HashCode>
+      <FileName>Settings\ChatManager.cs</FileName>
+    </TypeIdentifier>
+  </Class>
+  <Class Name="SPLA.Domain.Settings.ChatDisplayProfile">
+    <Position X="56.5" Y="14.5" Width="2" />
+    <TypeIdentifier>
+      <HashCode>AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=</HashCode>
+      <FileName>Settings\ChatDisplayProfile.cs</FileName>
+    </TypeIdentifier>
+    <ShowAsAssociation>
+      <Property Name="ToolDisplayMode" />
+    </ShowAsAssociation>
+  </Class>
+  <Class Name="SPLA.Domain.Settings.SplaProject">
+    <Position X="13.5" Y="10" Width="15" />
+    <TypeIdentifier>
+      <HashCode>MAAAABAACABAAAAAABEAAAQAAAAAAAAAEgQAAAAAAAA=</HashCode>
+      <FileName>Settings\SplaProject.cs</FileName>
+    </TypeIdentifier>
+    <ShowAsAssociation>
+      <Property Name="Agent" />
+      <Property Name="Llm" />
+      <Property Name="Ui" />
+      <Property Name="Permissions" />
+    </ShowAsAssociation>
+    <ShowAsCollectionAssociation>
+      <Property Name="Plugins" />
+      <Property Name="Skills" />
+    </ShowAsCollectionAssociation>
+  </Class>
+  <Class Name="SPLA.Domain.Settings.SplaDefaults">
+    <Position X="13.5" Y="15.75" Width="2" />
+    <TypeIdentifier>
+      <HashCode>IAAAAAAAAAAAAAAAABEAAAAAAAAAAAAAAAQAAAAAAAA=</HashCode>
+      <FileName>Settings\SplaDefaults.cs</FileName>
+    </TypeIdentifier>
+    <ShowAsAssociation>
+      <Property Name="Llm" />
+      <Property Name="Agent" />
+      <Property Name="Ui" />
+    </ShowAsAssociation>
+  </Class>
+  <Class Name="SPLA.Domain.Settings.SplaAgentSection">
+    <Position X="13.5" Y="12.75" Width="2" />
+    <TypeIdentifier>
+      <HashCode>AAAAAAAAAIABAACAAAAAAAAAAAAIAAAAAAAAAAAAAAA=</HashCode>
+      <FileName>Settings\SplaSections.cs</FileName>
+    </TypeIdentifier>
+  </Class>
+  <Class Name="SPLA.Domain.Settings.SplaLlmSection">
+    <Position X="17.75" Y="14.25" Width="2" />
+    <TypeIdentifier>
+      <HashCode>AAAAAAAAAAAEEAAAAEAAgAAAAAAAAAAAAAgAAAAEAAA=</HashCode>
+      <FileName>Settings\SplaSections.cs</FileName>
+    </TypeIdentifier>
+  </Class>
+  <Class Name="SPLA.Domain.Settings.SplaUiSection">
+    <Position X="19" Y="16.5" Width="2" />
+    <TypeIdentifier>
+      <HashCode>AAAAAIAEAAAAAgAQAAAAAAABAAAAAAABAAAAAAgAAAA=</HashCode>
+      <FileName>Settings\SplaSections.cs</FileName>
+    </TypeIdentifier>
+  </Class>
+  <Class Name="SPLA.Domain.Settings.SplaPermissionsSection">
+    <Position X="27.25" Y="13.25" Width="2" />
+    <TypeIdentifier>
+      <HashCode>AAAAAAAAAIAAAAAAAAAAAAAgCAAAAAAAQAAAAAEAAAA=</HashCode>
+      <FileName>Settings\SplaSections.cs</FileName>
+    </TypeIdentifier>
+    <ShowAsCollectionAssociation>
+      <Property Name="Tools" />
+    </ShowAsCollectionAssociation>
+  </Class>
+  <Class Name="SPLA.Domain.Settings.SplaPluginSection">
+    <Position X="21.75" Y="13.25" Width="2" />
+    <TypeIdentifier>
+      <HashCode>AAAAAAAAAAABAIAAAAAAAAAAAAAAAAAAQAAAAAAAAAA=</HashCode>
+      <FileName>Settings\SplaPluginSection.cs</FileName>
+    </TypeIdentifier>
+  </Class>
+  <Class Name="SPLA.Domain.Settings.SplaSkillSection">
+    <Position X="24" Y="13.25" Width="2" />
+    <TypeIdentifier>
+      <HashCode>AAAAAAAAAAAAAIAAAAAAAAAAAAAAAAAAAAAAAAAABAA=</HashCode>
+      <FileName>Settings\SplaSkillSection.cs</FileName>
+    </TypeIdentifier>
+  </Class>
+  <Class Name="SPLA.Domain.Settings.SplaToolPermissionRule">
+    <Position X="27.25" Y="16.25" Width="2" />
+    <TypeIdentifier>
+      <HashCode>AAAAAACAAAAAAAAAAAAAAAAAAAAAAQAAIAAAAAAAAAA=</HashCode>
+      <FileName>Settings\SplaSections.cs</FileName>
+    </TypeIdentifier>
+  </Class>
+  <Class Name="SPLA.Domain.Agent.SkillSession">
+    <Position X="44" Y="26" Width="1.5" />
+    <TypeIdentifier>
+      <HashCode>AAIAAAAAAABAAABABAAAAAAAAAAAAAAAAAAAAAAAAAA=</HashCode>
+      <FileName>Agent\SkillSession.cs</FileName>
+    </TypeIdentifier>
+    <Lollipop Position="0.2" />
+  </Class>
+  <Class Name="SPLA.Domain.Models.ChatMessage">
+    <Position X="26.25" Y="1.75" Width="2" />
+    <TypeIdentifier>
+      <HashCode>AAAEAAAAAiAAAAAAEAQAAAAAACAAAAAAwAAAAAAEAAA=</HashCode>
+      <FileName>Models\ChatMessage.cs</FileName>
+    </TypeIdentifier>
+    <ShowAsAssociation>
+      <Property Name="Role" />
+      <Property Name="RetentionPolicy" />
+    </ShowAsAssociation>
+    <ShowAsCollectionAssociation>
+      <Property Name="ToolCalls" />
+    </ShowAsCollectionAssociation>
+  </Class>
+  <Struct Name="SPLA.Domain.Models.ToolProgressDetail">
+    <Position X="54.5" Y="3" Width="2" />
+    <TypeIdentifier>
+      <HashCode>AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=</HashCode>
+      <FileName>Models\ToolProgress.cs</FileName>
+    </TypeIdentifier>
+  </Struct>
+  <Interface Name="SPLA.Domain.Interfaces.ILLMService">
+    <Position X="37.75" Y="4.75" Width="2.25" />
+    <TypeIdentifier>
+      <HashCode>AQAAAAAAAAACAAAAAAAAAAAQAAAAAAAAAAAAAAAAAAA=</HashCode>
+      <FileName>Interfaces\ILLMService.cs</FileName>
+    </TypeIdentifier>
+  </Interface>
+  <Interface Name="SPLA.Domain.Interfaces.ITokenUsageReporter">
+    <Position X="36.5" Y="11.25" Width="2.25" />
+    <TypeIdentifier>
+      <HashCode>AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAACAAAAAA=</HashCode>
+      <FileName>Interfaces\ITokenUsageReporter.cs</FileName>
+    </TypeIdentifier>
+  </Interface>
+  <Interface Name="SPLA.Domain.Interfaces.IToolHost">
+    <Position X="41.25" Y="4.25" Width="2.25" />
+    <TypeIdentifier>
+      <HashCode>AAAAAAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAAAABAAAA=</HashCode>
+      <FileName>Interfaces\IToolHost.cs</FileName>
+    </TypeIdentifier>
+  </Interface>
+  <Interface Name="SPLA.Domain.Interfaces.IModelManagementService">
+    <Position X="36.5" Y="7.5" Width="2.25" />
+    <TypeIdentifier>
+      <HashCode>AAAAAAAAAAAAAAAAAQAAAAAAgBABAAAAAAAAAAAAAAA=</HashCode>
+      <FileName>Interfaces\IModelManagementService.cs</FileName>
+    </TypeIdentifier>
+  </Interface>
+  <Interface Name="SPLA.Domain.Agent.IKeyValueStore">
+    <Position X="54.75" Y="26.5" Width="2" />
+    <TypeIdentifier>
+      <HashCode>AAAAAAAAAAAABCBABAAAAAAAAAEEAAAAAAAAAAAAAAI=</HashCode>
+      <FileName>Agent\IKeyValueStore.cs</FileName>
+    </TypeIdentifier>
+  </Interface>
+  <Interface Name="SPLA.Domain.Agent.ISkillSession">
+    <Position X="44" Y="28.75" Width="1.5" />
+    <TypeIdentifier>
+      <HashCode>AAIAAAAAAABAAABABAAAAAAAAAAAAAAAAAAAAAAAAAA=</HashCode>
+      <FileName>Agent\ISkillSession.cs</FileName>
+    </TypeIdentifier>
+  </Interface>
+  <Enum Name="SPLA.Domain.Models.ChatRole">
+    <Position X="25.25" Y="5.25" Width="1.75" />
+    <TypeIdentifier>
+      <HashCode>AAABAACAAIAAAAAAAAAAAAgAAAAAAAAAAAAAAAAAAAA=</HashCode>
+      <FileName>Models\ChatRole.cs</FileName>
+    </TypeIdentifier>
+  </Enum>
+  <Enum Name="SPLA.Domain.Models.ContextRetention">
+    <Position X="27.75" Y="5.25" Width="1.75" />
+    <TypeIdentifier>
+      <HashCode>AAAAgAAAAMAAAAAAAAEAAAAAAAAAAABAAAAAAAAAAAA=</HashCode>
+      <FileName>Models\ChatMessage.cs</FileName>
+    </TypeIdentifier>
+  </Enum>
+  <Enum Name="SPLA.Domain.Models.ToolScope">
+    <Position X="50.25" Y="6.75" Width="1.75" />
+    <TypeIdentifier>
+      <HashCode>AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=</HashCode>
+      <FileName>Models\PermissionEnums.cs</FileName>
+    </TypeIdentifier>
+  </Enum>
+  <Enum Name="SPLA.Domain.Models.ToolEffect">
+    <Position X="52.25" Y="6.75" Width="1.75" />
+    <TypeIdentifier>
+      <HashCode>AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=</HashCode>
+      <FileName>Models\PermissionEnums.cs</FileName>
+    </TypeIdentifier>
+  </Enum>
+  <Enum Name="SPLA.Domain.Models.ToolRisk">
+    <Position X="54.25" Y="6.75" Width="1.75" />
+    <TypeIdentifier>
+      <HashCode>AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=</HashCode>
+      <FileName>Models\PermissionEnums.cs</FileName>
+    </TypeIdentifier>
+  </Enum>
+  <Enum Name="SPLA.Domain.Models.PermissionResult">
+    <Position X="50.25" Y="3" Width="1.75" />
+    <TypeIdentifier>
+      <HashCode>AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=</HashCode>
+      <FileName>Models\PermissionEnums.cs</FileName>
+    </TypeIdentifier>
+  </Enum>
+  <Enum Name="SPLA.Domain.Models.PermissionDecision">
+    <Position X="52.25" Y="3" Width="1.75" />
+    <TypeIdentifier>
+      <HashCode>AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=</HashCode>
+      <FileName>Models\PermissionEnums.cs</FileName>
+    </TypeIdentifier>
+  </Enum>
+  <Enum Name="SPLA.Domain.Models.AgentMode">
+    <Position X="25.25" Y="23.5" Width="1.75" />
+    <TypeIdentifier>
+      <HashCode>AAAAAAAAAAAAAAAAAAEAAAAAAAAAQAgCBAAAAAAAAAA=</HashCode>
+      <FileName>Models\PermissionEnums.cs</FileName>
+    </TypeIdentifier>
+  </Enum>
+  <Enum Name="SPLA.Domain.Settings.ToolDisplayMode">
+    <Position X="56" Y="19.25" Width="1.75" />
+    <TypeIdentifier>
+      <HashCode>AAAAgAAAAAAAAAAAAAAAAAAAAAAAAAAAAACAAAAEAAA=</HashCode>
+      <FileName>Settings\ChatDisplayProfile.cs</FileName>
+    </TypeIdentifier>
+  </Enum>
+  <Font Name="Segoe UI" Size="9" />
+</ClassDiagram>

@@ -1,5 +1,6 @@
 using SPLA.Domain.Models;
 using SPLA.MCP.Core.Interfaces;
+using SPLA.MCP.Core.Json;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -13,7 +14,7 @@ namespace SPLA.Plugins.Network;
 
 public class PingStatsTool : IMcpTool
 {
-    public string Name => "network.diag.ping_stats";
+    public string Name => "network_ping_host_stats";
 
     public ToolDefinition GetDefinition() => new ToolDefinition
     {
@@ -45,16 +46,13 @@ public class PingStatsTool : IMcpTool
         try
         {
             using var doc = JsonDocument.Parse(argumentsJson);
-            if (!doc.RootElement.TryGetProperty("host", out var hostEl))
-                return "Error: Missing 'host' parameter.";
+            var root = doc.RootElement;
+            var host = ToolJson.GetStringTrimmed(root, "host");
+            if (host is null) return "Error: Missing 'host' parameter.";
 
-            var host = hostEl.GetString();
-            if (string.IsNullOrWhiteSpace(host))
-                return "Error: Host is empty.";
-
-            var count    = doc.RootElement.TryGetProperty("count", out var cEl) && cEl.TryGetInt32(out var c) ? Math.Clamp(c, 1, 100) : 10;
-            var timeout  = doc.RootElement.TryGetProperty("timeout", out var tEl) && tEl.TryGetInt32(out var t) ? Math.Clamp(t, 100, 30_000) : 2000;
-            var interval = doc.RootElement.TryGetProperty("interval", out var iEl) && iEl.TryGetInt32(out var iv) ? Math.Clamp(iv, 0, 10_000) : 200;
+            var count    = ToolJson.GetInt32Clamped(root, "count",    10,    1,  100);
+            var timeout  = ToolJson.GetInt32Clamped(root, "timeout",  2000, 100, 30_000);
+            var interval = ToolJson.GetInt32Clamped(root, "interval", 200,   0,  10_000);
 
             var rtts = new List<long>(count);
             int lost = 0;

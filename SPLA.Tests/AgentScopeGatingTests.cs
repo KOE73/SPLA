@@ -23,7 +23,7 @@ public class AgentScopeGatingTests
     [InlineData(AgentMode.Agent)]
     public void Filter_always_allows_agent_scope(AgentMode mode)
     {
-        // Even a Write-effect agent tool (like agent.memory) passes in every mode.
+        // Even a Write-effect agent tool (like agent_memory) passes in every mode.
         Assert.True(ToolModeFilter.IsAllowed(Tool(ToolScope.Agent, ToolEffect.Write), mode));
     }
 
@@ -54,7 +54,7 @@ public class AgentScopeGatingTests
     public void Permission_always_allows_agent_scope(AgentMode mode)
     {
         var pm = new PermissionManager();
-        var def = new ToolFunctionDefinition { Name = "agent.memory", Scope = ToolScope.Agent, Effect = ToolEffect.Write };
+        var def = new ToolFunctionDefinition { Name = "agent_memory", Scope = ToolScope.Agent, Effect = ToolEffect.Write };
         Assert.Equal(PermissionResult.Allow, pm.CheckPermission(mode, def, "{}"));
     }
 
@@ -62,7 +62,7 @@ public class AgentScopeGatingTests
     public void Permission_denies_local_write_in_chat()
     {
         var pm = new PermissionManager();
-        var def = new ToolFunctionDefinition { Name = "fs.write", Scope = ToolScope.Local, Effect = ToolEffect.Write };
+        var def = new ToolFunctionDefinition { Name = "system_write_file", Scope = ToolScope.Local, Effect = ToolEffect.Write };
         Assert.Equal(PermissionResult.Deny, pm.CheckPermission(AgentMode.Chat, def, "{}"));
     }
 }

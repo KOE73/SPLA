@@ -59,13 +59,14 @@ public class ConversationOrchestratorTests
         var llm = new FakeLlm(new[] { new ChatMessage { Role = ChatRole.Assistant, Content = "done" } });
         var host = new FakeToolHost();
         var orch = new ConversationOrchestrator(llm, host) { ToolFilter = (t, _) => t };
-        var convo = new List<ChatMessage> { new() { Role = ChatRole.User, Content = "hi" } };
+        var convo = new Conversation();
+        convo.Add(new ChatMessage { Role = ChatRole.User, Content = "hi" });
 
         await orch.RunAsync(convo, new LLMSettings(), AgentMode.Agent, new AgentCallbacks());
 
         Assert.Single(llm.SeenContexts);
         Assert.Empty(host.Executed);
-        Assert.Equal("done", convo.Last().Content);
+        Assert.Equal("done", convo.Messages.Last().Content);
     }
 
     [Fact]
@@ -73,20 +74,21 @@ public class ConversationOrchestratorTests
     {
         var llm = new FakeLlm(new[]
         {
-            new ChatMessage { Role = ChatRole.Assistant, Content = "", ToolCalls = new() { Call("1", "fs.read") } },
+            new ChatMessage { Role = ChatRole.Assistant, Content = "", ToolCalls = new() { Call("1", "system_read_file") } },
             new ChatMessage { Role = ChatRole.Assistant, Content = "here it is" }
         });
         var host = new FakeToolHost();
         var orch = new ConversationOrchestrator(llm, host) { ToolFilter = (t, _) => t };
-        var convo = new List<ChatMessage> { new() { Role = ChatRole.User, Content = "read file" } };
+        var convo = new Conversation();
+        convo.Add(new ChatMessage { Role = ChatRole.User, Content = "read file" });
 
         await orch.RunAsync(convo, new LLMSettings(), AgentMode.Agent, new AgentCallbacks());
 
         Assert.Single(host.Executed);
-        Assert.Equal("fs.read", host.Executed[0].name);
+        Assert.Equal("system_read_file", host.Executed[0].name);
         // tool result is appended and visible to the model on the second call
-        Assert.Contains(convo, m => m.Role == ChatRole.Tool && m.Content == "result of fs.read");
-        Assert.Equal("here it is", convo.Last().Content);
+        Assert.Contains(convo.Messages, m => m.Role == ChatRole.Tool && m.Content == "result of system_read_file");
+        Assert.Equal("here it is", convo.Messages.Last().Content);
     }
 
     [Fact]
@@ -94,11 +96,12 @@ public class ConversationOrchestratorTests
     {
         // Model keeps asking for the same tool forever; guard must stop it and emit a notice.
         var responses = Enumerable.Range(0, 10)
-            .Select(_ => new ChatMessage { Role = ChatRole.Assistant, Content = "", ToolCalls = new() { Call("1", "fs.read") } });
+            .Select(_ => new ChatMessage { Role = ChatRole.Assistant, Content = "", ToolCalls = new() { Call("1", "system_read_file") } });
         var llm = new FakeLlm(responses);
         var host = new FakeToolHost();
         var orch = new ConversationOrchestrator(llm, host) { ToolFilter = (t, _) => t, ToolLoopWindow = 3 };
-        var convo = new List<ChatMessage> { new() { Role = ChatRole.User, Content = "go" } };
+        var convo = new Conversation();
+        convo.Add(new ChatMessage { Role = ChatRole.User, Content = "go" });
 
         string? notice = null;
         var cb = new AgentCallbacks { OnNotice = n => { notice = n; return Task.CompletedTask; } };

@@ -1,5 +1,6 @@
 using SPLA.Domain.Models;
 using SPLA.MCP.Core.Interfaces;
+using SPLA.MCP.Core.Json;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -14,7 +15,7 @@ namespace SPLA.Plugins.Network;
 
 public class SmtpProbeTool : IMcpTool
 {
-    public string Name => "network.smtp.probe";
+    public string Name => "network_probe_smtp";
 
     public ToolDefinition GetDefinition() => new ToolDefinition
     {
@@ -34,7 +35,7 @@ public class SmtpProbeTool : IMcpTool
                     host     = new { type = "string",  description = "SMTP server hostname or IP." },
                     port     = new { type = "integer", description = "SMTP port (default: 25; 587 for submission)." },
                     timeout  = new { type = "integer", description = "Connection timeout in milliseconds (default: 5000)." },
-                    ehloName = new { type = "string",  description = "Domain name sent in the EHLO command (default: 'localhost')." }
+                    ehlo_name = new { type = "string",  description = "Domain name sent in the EHLO command (default: 'localhost')." }
                 },
                 required = new[] { "host" }
             }
@@ -46,17 +47,13 @@ public class SmtpProbeTool : IMcpTool
         try
         {
             using var doc = JsonDocument.Parse(argumentsJson);
-            if (!doc.RootElement.TryGetProperty("host", out var hostEl))
-                return "Error: Missing 'host' parameter.";
+            var root = doc.RootElement;
+            var host = ToolJson.GetStringTrimmed(root, "host");
+            if (host is null) return "Error: Missing 'host' parameter.";
 
-            var host = hostEl.GetString();
-            if (string.IsNullOrWhiteSpace(host))
-                return "Error: Host is empty.";
-
-            var port      = doc.RootElement.TryGetProperty("port", out var portEl) && portEl.TryGetInt32(out var p) ? Math.Clamp(p, 1, 65535) : 25;
-            var timeoutMs = doc.RootElement.TryGetProperty("timeout", out var toEl) && toEl.TryGetInt32(out var t) ? Math.Clamp(t, 500, 30_000) : 5000;
-            var ehloName  = doc.RootElement.TryGetProperty("ehloName", out var eEl) ? eEl.GetString()?.Trim() ?? "localhost" : "localhost";
-            if (string.IsNullOrEmpty(ehloName)) ehloName = "localhost";
+            var port      = ToolJson.GetInt32Clamped(root, "port",    25,   1,   65535);
+            var timeoutMs = ToolJson.GetInt32Clamped(root, "timeout", 5000, 500, 30_000);
+            var ehloName  = ToolJson.GetStringTrimmed(root, "ehlo_name") ?? "localhost";
 
             using var cts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
             cts.CancelAfter(timeoutMs);

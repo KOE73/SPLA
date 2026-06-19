@@ -1,5 +1,6 @@
 using SPLA.Domain.Models;
 using SPLA.MCP.Core.Interfaces;
+using SPLA.MCP.Core.Json;
 using System;
 using System.Net.Http;
 using System.Text;
@@ -14,7 +15,7 @@ public class HttpPostTool : IMcpTool
     // Timeout.InfiniteTimeSpan — per-request timeout is controlled via CancellationTokenSource.
     private static readonly HttpClient HttpClient = new() { Timeout = System.Threading.Timeout.InfiniteTimeSpan };
 
-    public string Name => "network.http.post";
+    public string Name => "network_http_post";
 
     public ToolDefinition GetDefinition() => new ToolDefinition
     {
@@ -33,9 +34,9 @@ public class HttpPostTool : IMcpTool
                 {
                     url = new { type = "string", description = "Target HTTP/HTTPS URL." },
                     body = new { type = "string", description = "Request body (e.g. JSON string or form data). Optional." },
-                    contentType = new { type = "string", description = "Content-Type header (default: 'application/json')." },
+                    content_type = new { type = "string", description = "Content-Type header (default: 'application/json')." },
                     timeout = new { type = "integer", description = "Request timeout in milliseconds (default: 30000)." },
-                    maxResponseLength = new { type = "integer", description = "Max characters of the response body to return (default: 2000, max: 10000)." },
+                    max_response_length = new { type = "integer", description = "Max characters of the response body to return (default: 2000, max: 10000)." },
                     headers = new
                     {
                         type = "object",
@@ -52,19 +53,14 @@ public class HttpPostTool : IMcpTool
         try
         {
             using var doc = JsonDocument.Parse(argumentsJson);
-            if (!doc.RootElement.TryGetProperty("url", out var urlElement))
-                return "Error: Missing 'url' parameter.";
+            var root = doc.RootElement;
+            var url = ToolJson.GetStringTrimmed(root, "url");
+            if (url is null) return "Error: Missing 'url' parameter.";
 
-            var url = urlElement.GetString();
-            if (string.IsNullOrWhiteSpace(url))
-                return "Error: URL is empty.";
-
-            var body = doc.RootElement.TryGetProperty("body", out var bodyEl) ? bodyEl.GetString() ?? "" : "";
-            var contentType = doc.RootElement.TryGetProperty("contentType", out var ctEl) ? ctEl.GetString() ?? "application/json" : "application/json";
-            var maxLen = doc.RootElement.TryGetProperty("maxResponseLength", out var maxLenEl) && maxLenEl.TryGetInt32(out var ml)
-                ? Math.Clamp(ml, 1, 10000) : 2000;
-            var timeoutMs = doc.RootElement.TryGetProperty("timeout", out var timeoutEl) && timeoutEl.TryGetInt32(out var t)
-                ? Math.Clamp(t, 1000, 300_000) : 30_000;
+            var body        = ToolJson.GetString(root, "body") ?? "";
+            var contentType = ToolJson.GetString(root, "content_type") ?? "application/json";
+            var maxLen      = ToolJson.GetInt32Clamped(root, "max_response_length", 2000,  1,    10000);
+            var timeoutMs   = ToolJson.GetInt32Clamped(root, "timeout",             30_000, 1000, 300_000);
 
             using var cts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
             cts.CancelAfter(timeoutMs);
@@ -73,13 +69,11 @@ public class HttpPostTool : IMcpTool
             request.Headers.UserAgent.ParseAdd("Mozilla/5.0 (Windows NT 10.0; Win64; x64) SPLA/1.0");
             request.Content = new StringContent(body, Encoding.UTF8, contentType);
 
-            if (doc.RootElement.TryGetProperty("headers", out var headersEl) && headersEl.ValueKind == JsonValueKind.Object)
+            var headers = ToolJson.GetStringDictionary(root, "headers");
+            if (headers != null)
             {
-                foreach (var prop in headersEl.EnumerateObject())
-                {
-                    var val = prop.Value.GetString();
-                    if (val != null) request.Headers.TryAddWithoutValidation(prop.Name, val);
-                }
+                foreach (var (key, val) in headers)
+                    request.Headers.TryAddWithoutValidation(key, val);
             }
 
             using var response = await HttpClient.SendAsync(request, cts.Token);
@@ -97,7 +91,7 @@ public class HttpPostTool : IMcpTool
             if (responseBody.Length > maxLen)
             {
                 sb.AppendLine(responseBody.Substring(0, maxLen));
-                sb.AppendLine($"\n[Output truncated. Body length is {responseBody.Length} characters, maxResponseLength was {maxLen}.]");
+                sb.AppendLine($"\n[Output truncated. Body length is {responseBody.Length} characters, max_response_length was {maxLen}.]");
             }
             else
             {

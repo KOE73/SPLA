@@ -1,5 +1,6 @@
 using SPLA.Domain.Models;
 using SPLA.MCP.Core.Interfaces;
+using SPLA.MCP.Core.Json;
 using System;
 using System.IO;
 using System.Net.Sockets;
@@ -13,7 +14,7 @@ namespace SPLA.Plugins.Network;
 
 public class WhoisTool : IMcpTool
 {
-    public string Name => "network.dns.whois";
+    public string Name => "network_lookup_whois";
 
     public ToolDefinition GetDefinition() => new ToolDefinition
     {
@@ -44,16 +45,12 @@ public class WhoisTool : IMcpTool
         try
         {
             using var doc = JsonDocument.Parse(argumentsJson);
-            if (!doc.RootElement.TryGetProperty("query", out var queryEl))
-                return "Error: Missing 'query' parameter.";
+            var root = doc.RootElement;
+            var query = ToolJson.GetStringTrimmed(root, "query");
+            if (query is null) return "Error: Missing 'query' parameter.";
 
-            var query = queryEl.GetString()?.Trim();
-            if (string.IsNullOrEmpty(query))
-                return "Error: Query is empty.";
-
-            var overrideServer = doc.RootElement.TryGetProperty("server", out var serverEl) ? serverEl.GetString()?.Trim() : null;
-            var timeoutMs = doc.RootElement.TryGetProperty("timeout", out var toEl) && toEl.TryGetInt32(out var t)
-                ? Math.Clamp(t, 1000, 30_000) : 10_000;
+            var overrideServer = ToolJson.GetStringTrimmed(root, "server");
+            var timeoutMs = ToolJson.GetInt32Clamped(root, "timeout", 10_000, 1000, 30_000);
 
             var sb = new StringBuilder();
             sb.AppendLine($"WHOIS: {query}");

@@ -1,6 +1,7 @@
 using System.Text.Json;
 using SPLA.Domain.Models;
 using SPLA.MCP.Core.Interfaces;
+using SPLA.MCP.Core.Json;
 using SPLA.Plugins.OneC.Indexing;
 using SPLA.Plugins.OneC.Storage;
 
@@ -13,7 +14,7 @@ namespace SPLA.Plugins.OneC.Tools;
 public class IndexConfigurationTool : IMcpTool
 {
     private readonly OneCIndexDatabase _db;
-    public string Name => "onec.index.build";
+    public string Name => "onec_build_index";
     public string Description => "Parses 1C source files and updates the local SQLite index. Run this before doing any OneC object search or explanation.";
 
     public IndexConfigurationTool(OneCIndexDatabase db) => _db = db;
@@ -63,13 +64,13 @@ public class IndexConfigurationTool : IMcpTool
 
         var yaml = YamlResponse.Object(b =>
         {
-            b.Field("configPath",    absPath);
-            b.Field("objectsAdded",  report.ObjectsAdded);
-            b.Field("objectsUpdated",report.ObjectsUpdated);
-            b.Field("relationsAdded",report.RelationsAdded);
-            b.Field("filesSkipped",  report.FilesSkipped);
-            b.Field("filesWithErrors",report.FilesWithErrors);
-            b.Field("elapsedSeconds", Math.Round(report.Elapsed.TotalSeconds, 2));
+            b.Field("config_path", absPath);
+            b.Field("objects_added", report.ObjectsAdded);
+            b.Field("objects_updated", report.ObjectsUpdated);
+            b.Field("relations_added", report.RelationsAdded);
+            b.Field("files_skipped", report.FilesSkipped);
+            b.Field("files_with_errors", report.FilesWithErrors);
+            b.Field("elapsed_seconds", Math.Round(report.Elapsed.TotalSeconds, 2));
             if (report.Errors.Count > 0)
                 b.List("errors", report.Errors.Take(20));
         });

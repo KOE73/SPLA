@@ -39,22 +39,14 @@ public partial class MainWindowViewModel : ViewModelBase
         foreach (var profile in resolved.EffectiveProfiles)
             AvailableProfiles.Add(new SPLA.UI.Avalonia.ViewModels.Chat.ChatProfileViewModel(profile));
 
-        // Resolve render mode, migrating old "web" view selection
-        var legacyId = Settings.ActiveProfileId;
-        if (legacyId == "web")
+        // Migrate legacy "web" profile id to proper render mode setting
+        if (Settings.ActiveProfileId == "web")
         {
-            ActiveRenderMode = "web";
+            Settings.ChatRenderMode = "web";
             Settings.ActiveProfileId = "bubbles";
         }
-        else
-        {
-            ActiveRenderMode = Settings.ChatRenderMode;
-        }
 
-        var targetProfile = AvailableProfiles.FirstOrDefault(p => p.Id == Settings.ActiveProfileId)
-                         ?? AvailableProfiles.First();
-        targetProfile.IsSelected = true;
-        SelectedProfile = targetProfile;
+        Session.InitializeSessionDefaults();
 
         Status.Endpoint = resolved.Endpoint;
         Status.Mode = resolved.Mode;
@@ -92,6 +84,7 @@ public partial class MainWindowViewModel : ViewModelBase
         Settings.PropertyChanged += Settings_PropertyChanged;
 
         _chatManager = new ChatManager(resolved);
+        Session.SetChatManager(_chatManager);
         LoadChatsList();
         LoadRecentProjectsList();
         

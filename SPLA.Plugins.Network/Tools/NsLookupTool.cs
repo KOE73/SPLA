@@ -1,5 +1,6 @@
 using SPLA.Domain.Models;
 using SPLA.MCP.Core.Interfaces;
+using SPLA.MCP.Core.Json;
 using System;
 using System.Net;
 using System.Text;
@@ -11,7 +12,7 @@ namespace SPLA.Plugins.Network;
 
 public class NsLookupTool : IMcpTool
 {
-    public string Name => "network.dns.nslookup";
+    public string Name => "network_resolve_host";
 
     public ToolDefinition GetDefinition() => new ToolDefinition
     {
@@ -40,16 +41,8 @@ public class NsLookupTool : IMcpTool
         try
         {
             using var doc = JsonDocument.Parse(argumentsJson);
-            if (!doc.RootElement.TryGetProperty("host", out var hostElement))
-            {
-                return "Error: Missing 'host' parameter.";
-            }
-
-            var host = hostElement.GetString();
-            if (string.IsNullOrWhiteSpace(host))
-            {
-                return "Error: Host is empty.";
-            }
+            var host = ToolJson.GetStringTrimmed(doc.RootElement, "host");
+            if (host is null) return "Error: Missing 'host' parameter.";
 
             var addresses = await Dns.GetHostAddressesAsync(host, cancellationToken);
             if (addresses.Length == 0)

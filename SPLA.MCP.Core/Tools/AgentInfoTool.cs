@@ -1,5 +1,6 @@
 using SPLA.Domain.Models;
 using SPLA.MCP.Core.Interfaces;
+using SPLA.MCP.Core.Json;
 using SPLA.MCP.Core.Plugins;
 using System;
 using System.Linq;
@@ -25,7 +26,7 @@ public sealed class AgentInfoTool : IMcpTool, IToolHelpProvider
         _skillManager = skillManager;
     }
 
-    public string Name => "agent.info";
+    public string Name => "agent_info";
 
     public ToolDefinition GetDefinition() => new()
     {
@@ -37,6 +38,7 @@ public sealed class AgentInfoTool : IMcpTool, IToolHelpProvider
             Scope = ToolScope.Agent,
             Effect = ToolEffect.Read,
             Risk = ToolRisk.Low,
+            StrictSchema = true,
             Parameters = new
             {
                 type = "object",
@@ -44,11 +46,11 @@ public sealed class AgentInfoTool : IMcpTool, IToolHelpProvider
                 {
                     id = new
                     {
-                        type = "string",
-                        description = "Tool name (e.g. network.scan.ports) or skill id (e.g. network.range-audit). Partial names return suggestions. Omit for full index."
+                        type = new[] { "string", "null" },
+                        description = "Tool name or skill id. Partial names return suggestions. Null = full index."
                     }
                 },
-                required = Array.Empty<string>()
+                required = new[] { "id" }
             }
         }
     };
@@ -65,8 +67,7 @@ public sealed class AgentInfoTool : IMcpTool, IToolHelpProvider
         try
         {
             using var doc = JsonDocument.Parse(argumentsJson);
-            doc.RootElement.TryGetProperty("id", out var idEl);
-            var id = idEl.ValueKind == JsonValueKind.String ? idEl.GetString()?.Trim() : null;
+            var id = ToolJson.GetStringTrimmed(doc.RootElement, "id");
 
             if (string.IsNullOrEmpty(id))
                 return Task.FromResult(BuildIndex(mode));
@@ -138,7 +139,7 @@ public sealed class AgentInfoTool : IMcpTool, IToolHelpProvider
     }
 
     public string? GetHelpText() => """
-        tool: agent.info
+        tool: agent_info
 
         summary: Universal capability lookup. Resolves by kind automatically.
                  Use for: tool usage help, skill instructions, or full capability index.
@@ -152,7 +153,7 @@ public sealed class AgentInfoTool : IMcpTool, IToolHelpProvider
               - partial_name      → suggestions from tools + skills
               - (omit)            → full index of all tools and skills
             examples:
-              - network.scan.ports
+              - network_scan_tcp_ports
               - network.range-audit
               - scan
 
@@ -166,7 +167,7 @@ public sealed class AgentInfoTool : IMcpTool, IToolHelpProvider
           - request:
               id: network.range-audit
           - request:
-              id: network.scan.ports
+              id: network_scan_tcp_ports
           - request: {}
         """;
 }

@@ -47,19 +47,19 @@ public partial class MainWindowViewModel : ViewModelBase
                 return mode == AgentMode.Research || mode == AgentMode.Edit || mode == AgentMode.Agent;
             }
 
-            // Local read tools (system.fs.list, system.fs.read, system.fs.search, get_context, get_current_date_time) are for Inspect, Edit, and Agent
+            // Local read tools (system_list_files, system_read_file, system_search_text, agent_get_context, agent_get_current_time) are for Inspect, Edit, and Agent
             if (t.Function.Effect == ToolEffect.Read)
             {
                 return mode == AgentMode.Inspect || mode == AgentMode.Edit || mode == AgentMode.Agent;
             }
 
-            // Local write tools (system.fs.create, system.fs.patch, system.fs.write, system.fs.delete) are for Edit and Agent
+            // Local write tools (system_create_file, system_patch_file, system_write_file, system_delete_file) are for Edit and Agent
             if (t.Function.Effect == ToolEffect.Write)
             {
                 return mode == AgentMode.Edit || mode == AgentMode.Agent;
             }
 
-            // Command execution tools (run_command) are only for Agent
+            // Command execution tools (system_run_shell) are only for Agent
             if (t.Function.Effect == ToolEffect.Execute)
             {
                 return mode == AgentMode.Agent;
@@ -69,12 +69,5 @@ public partial class MainWindowViewModel : ViewModelBase
         }).ToList();
     }
 
-    /// <summary>
-    /// Snapshot of both working-memory stores for the orchestrator's per-turn context:* injection.
-    /// </summary>
-    private IReadOnlyList<(string scope, string key, string value)> CollectWorkingMemory()
-        => _sessionKv.List().Select(kv => (_sessionKv.Scope, kv.Key, kv.Value))
-            .Concat(_projectKv.Store.List().Select(kv => (_projectKv.Store.Scope, kv.Key, kv.Value)))
-            .ToList();
 }
 

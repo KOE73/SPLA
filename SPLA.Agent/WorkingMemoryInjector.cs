@@ -8,7 +8,7 @@ namespace SPLA.Agent;
 /// Renders the live "working memory" block injected into the prompt each turn. By convention, only
 /// entries whose key starts with <see cref="KeyPrefix"/> are auto-shown — the agent puts its plan,
 /// current step, etc. under <c>context:*</c> keys and removes them when stale. Everything else in
-/// the key/value store stays out of the prompt and is read on demand via the agent.memory tool.
+/// the key/value store stays out of the prompt and is read on demand via agent_memory_get / agent_memory_list.
 /// </summary>
 public static class WorkingMemoryInjector
 {
@@ -28,7 +28,7 @@ public static class WorkingMemoryInjector
         var sb = new StringBuilder();
         sb.Append("--- Working memory (live) ---\n");
         sb.Append("These entries are auto-shown because their keys start with `context:`. ");
-        sb.Append("Maintain them with the agent.memory tool (set/delete); remove stale entries.\n");
+        sb.Append("Maintain them with agent_memory_set / agent_memory_delete; remove stale entries.\n");
         foreach (var (scope, key, value) in ctx)
             sb.Append($"[{scope}] {key} = {value}\n");
         return sb.ToString().TrimEnd();

@@ -1,5 +1,6 @@
 using SPLA.Domain.Models;
 using SPLA.MCP.Core.Interfaces;
+using SPLA.MCP.Core.Json;
 using SPLA.MCP.BasicTools.Network.SearchEngines;
 using System;
 using System.Collections.Generic;
@@ -16,7 +17,7 @@ public class WebSearchTool : IMcpTool
 {
     private static readonly HttpClient HttpClient = new();
 
-    public string Name => "web.search";
+    public string Name => "web_search";
 
     public ToolDefinition GetDefinition() => new ToolDefinition
     {
@@ -28,6 +29,7 @@ public class WebSearchTool : IMcpTool
             Scope = ToolScope.Internet,
             Effect = ToolEffect.Read,
             Risk = ToolRisk.Low,
+            StrictSchema = true,
             Parameters = new
             {
                 type = "object",
@@ -36,12 +38,12 @@ public class WebSearchTool : IMcpTool
                     query = new { type = "string", description = "Search query." },
                     engines = new
                     {
-                        type = "array",
+                        type = new[] { "array", "null" },
                         items = new { type = "string" },
-                        description = "Optional list of search engines to use. Available: 'duckduckgo' (or 'ddg'), 'yahoo', 'google', 'bing'. If omitted, queries DuckDuckGo first, then falls back to Yahoo."
+                        description = "Search engines to use: 'duckduckgo' (or 'ddg'), 'yahoo', 'google', 'bing'. Null = DuckDuckGo → Yahoo fallback."
                     }
                 },
-                required = new[] { "query" }
+                required = new[] { "query", "engines" }
             }
         }
     };
@@ -51,30 +53,13 @@ public class WebSearchTool : IMcpTool
         try
         {
             using var doc = JsonDocument.Parse(argumentsJson);
-            if (!doc.RootElement.TryGetProperty("query", out var queryElement))
-            {
-                return "Error: Missing 'query' parameter.";
-            }
+            var query = ToolJson.GetStringTrimmed(doc.RootElement, "query");
+            if (query is null) return "Error: Missing 'query' parameter.";
 
-            var query = queryElement.GetString();
-            if (string.IsNullOrWhiteSpace(query))
-            {
-                return "Error: Query is empty.";
-            }
-
-            var requestedEngines = new List<string>();
-            if (doc.RootElement.TryGetProperty("engines", out var enginesElement) && enginesElement.ValueKind == JsonValueKind.Array)
-            {
-                foreach (var item in enginesElement.EnumerateArray())
-                {
-                    var engineName = item.GetString()?.ToLowerInvariant();
-                    if (!string.IsNullOrEmpty(engineName))
-                    {
-                        if (engineName == "ddg") engineName = "duckduckgo";
-                        requestedEngines.Add(engineName);
-                    }
-                }
-            }
+            var rawEngines = ToolJson.GetStringArray(doc.RootElement, "engines");
+            var requestedEngines = rawEngines?
+                .Select(e => { var n = e.ToLowerInvariant(); return n == "ddg" ? "duckduckgo" : n; })
+                .ToList() ?? new List<string>();
 
             // Default fallback chain if no engines specified
             if (requestedEngines.Count == 0)

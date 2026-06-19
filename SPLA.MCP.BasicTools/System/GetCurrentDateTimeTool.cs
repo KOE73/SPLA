@@ -6,7 +6,7 @@ namespace SPLA.MCP.BasicTools.SystemTools;
 
 public class GetCurrentDateTimeTool : IMcpTool
 {
-    public string Name => "agent.now";
+    public string Name => "agent_get_current_time";
 
     public ToolDefinition GetDefinition() => new ToolDefinition
     {
@@ -18,6 +18,7 @@ public class GetCurrentDateTimeTool : IMcpTool
             Scope = ToolScope.Agent,
             Effect = ToolEffect.Read,
             Risk = ToolRisk.Low,
+            StrictSchema = true,
             Parameters = new
             {
                 type = "object",

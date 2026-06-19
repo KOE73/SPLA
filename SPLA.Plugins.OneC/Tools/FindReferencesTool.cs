@@ -1,6 +1,7 @@
 using System.Text.Json;
 using SPLA.Domain.Models;
 using SPLA.MCP.Core.Interfaces;
+using SPLA.MCP.Core.Json;
 using SPLA.Plugins.OneC.Storage;
 
 namespace SPLA.Plugins.OneC.Tools;
@@ -9,7 +10,7 @@ namespace SPLA.Plugins.OneC.Tools;
 public class FindReferencesTool : IMcpTool
 {
     private readonly OneCIndexDatabase _db;
-    public string Name => "onec.reference.find";
+    public string Name => "onec_find_references";
     public string Description => "Finds all incoming references to a 1C object (where this object is used).";
 
     public FindReferencesTool(OneCIndexDatabase db) => _db = db;
@@ -29,13 +30,13 @@ public class FindReferencesTool : IMcpTool
                 type       = "object",
                 properties = new
                 {
-                    fullName       = new { type = "string",  description = "Fully-qualified target object name." },
-                    relationTypes  = new { type = "array",   items = new { type = "string" }, description = "Filter by relation types (owns, uses, calls, reads, writes, queries). Omit for all." },
+                    full_name = new { type = "string",  description = "Fully-qualified target object name." },
+                    relation_types = new { type = "array",   items = new { type = "string" }, description = "Filter by relation types (owns, uses, calls, reads, writes, queries). Omit for all." },
                     limit          = new { type = "integer", description = "Max items returned (default 50)." },
                     offset         = new { type = "integer", description = "Pagination offset (default 0)." },
-                    includeSnippets = new { type = "boolean", description = "Include source file and line number (default true)." },
+                    include_snippets = new { type = "boolean", description = "Include source file and line number (default true)." },
                 },
-                required = new[] { "fullName" }
+                required = new[] { "full_name" }
             }
         }
     };
@@ -43,13 +44,13 @@ public class FindReferencesTool : IMcpTool
     public Task<string> ExecuteAsync(string argumentsJson, CancellationToken cancellationToken = default)
     {
         var doc      = JsonDocument.Parse(argumentsJson);
-        var fullName = doc.RootElement.TryGetProperty("fullName",       out var fn) ? fn.GetString() ?? "" : "";
+        var fullName = ToolJson.GetString(doc.RootElement, "full_name") ?? "";
         var limit    = doc.RootElement.TryGetProperty("limit",          out var l)  ? l.GetInt32() : 50;
         var offset   = doc.RootElement.TryGetProperty("offset",         out var o)  ? o.GetInt32() : 0;
-        var snippets = !doc.RootElement.TryGetProperty("includeSnippets", out var sn) || sn.GetBoolean();
+        var snippets = ToolJson.GetBoolean(doc.RootElement, "include_snippets", true);
 
         string[]? types = null;
-        if (doc.RootElement.TryGetProperty("relationTypes", out var rt) && rt.ValueKind == System.Text.Json.JsonValueKind.Array)
+        if (ToolJson.TryGetProperty(doc.RootElement, "relation_types", out var rt) && rt.ValueKind == System.Text.Json.JsonValueKind.Array)
             types = rt.EnumerateArray().Select(e => e.GetString()!).ToArray();
 
         var obj = _db.GetObjectByFullName(fullName);

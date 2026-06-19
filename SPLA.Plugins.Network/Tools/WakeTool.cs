@@ -1,5 +1,6 @@
 using SPLA.Domain.Models;
 using SPLA.MCP.Core.Interfaces;
+using SPLA.MCP.Core.Json;
 using System;
 using System.Linq;
 using System.Net;
@@ -13,7 +14,7 @@ namespace SPLA.Plugins.Network;
 
 public class WakeTool : IMcpTool
 {
-    public string Name => "network.host.wake";
+    public string Name => "network_wake_host";
 
     public ToolDefinition GetDefinition() => new ToolDefinition
     {
@@ -45,25 +46,21 @@ public class WakeTool : IMcpTool
         try
         {
             using var doc = JsonDocument.Parse(argumentsJson);
-            if (!doc.RootElement.TryGetProperty("mac", out var macEl))
-                return "Error: Missing 'mac' parameter.";
-
-            var macStr = macEl.GetString()?.Trim();
-            if (string.IsNullOrEmpty(macStr))
-                return "Error: MAC address is empty.";
+            var root = doc.RootElement;
+            var macStr = ToolJson.GetStringTrimmed(root, "mac");
+            if (macStr is null) return "Error: Missing 'mac' parameter.";
 
             var macBytes = ParseMac(macStr);
             if (macBytes == null)
                 return $"Error: Cannot parse MAC address '{macStr}'. Expected: 00:11:22:33:44:55 / 00-11-22-33-44-55 / 001122334455.";
 
-            var broadcastStr = doc.RootElement.TryGetProperty("broadcast", out var bcEl) ? bcEl.GetString()?.Trim() : null;
-            if (string.IsNullOrEmpty(broadcastStr)) broadcastStr = "255.255.255.255";
+            var broadcastStr = ToolJson.GetStringTrimmed(root, "broadcast") ?? "255.255.255.255";
 
             if (!IPAddress.TryParse(broadcastStr, out var broadcastAddr))
                 return $"Error: Invalid broadcast address '{broadcastStr}'.";
 
-            var port   = doc.RootElement.TryGetProperty("port", out var portEl) && portEl.TryGetInt32(out var p) ? Math.Clamp(p, 1, 65535) : 9;
-            var repeat = doc.RootElement.TryGetProperty("repeat", out var repEl) && repEl.TryGetInt32(out var r) ? Math.Clamp(r, 1, 10) : 3;
+            var port   = ToolJson.GetInt32Clamped(root, "port",   9, 1, 65535);
+            var repeat = ToolJson.GetInt32Clamped(root, "repeat", 3, 1, 10);
 
             var packet   = BuildMagicPacket(macBytes);
             var endpoint = new IPEndPoint(broadcastAddr, port);

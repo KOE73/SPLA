@@ -3,6 +3,7 @@ using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Threading;
 using SPLA.Domain.Models;
 using SPLA.MCP.Core.Interfaces;
+using SPLA.MCP.Core.Json;
 using SPLA.Plugins.OneC.Graph;
 using SPLA.Plugins.OneC.Storage;
 using SPLA.Plugins.OneC.Avalonia.Views.OneC;
@@ -14,14 +15,14 @@ public sealed class OneCGraphOpenTool(string workspacePath) : IMcpTool, IToolHel
 {
     private readonly string _databasePath = Path.Combine(workspacePath, ".spla", "onec.sqlite");
 
-    public string Name => "onec.graph.open";
+    public string Name => "onec_open_graph";
 
     public ToolDefinition GetDefinition() => new()
     {
         Function = new ToolFunctionDefinition
         {
             Name = Name,
-            Description = "[H] Build and open a large interactive 1C graph window. Use this when the user asks to show, draw, or open a graph of dependencies, references, or data flow. If the exact fullName is unknown, first call onec.object.find.",
+            Description = "[H] Build and open a large interactive 1C graph window. Use this when the user asks to show, draw, or open a graph of dependencies, references, or data flow. If the exact full_name is unknown, first call onec_find_object.",
             Scope = ToolScope.Local,
             Effect = ToolEffect.Read,
             Risk = ToolRisk.Low,
@@ -30,19 +31,19 @@ public sealed class OneCGraphOpenTool(string workspacePath) : IMcpTool, IToolHel
                 type = "object",
                 properties = new
                 {
-                    fullName = new { type = "string", description = "Exact 1C object full name, for example Report.ГрафикПродажПоКлиентам." },
+                    full_name = new { type = "string", description = "Exact 1C object full name, for example Report.ГрафикПродажПоКлиентам." },
                     mode = new { type = "string", description = "Graph mode: dependencies, references, or dataflow." },
                     depth = new { type = "integer", description = "Traversal depth. Recommended 1..5.", minimum = 1 },
                     limit = new { type = "integer", description = "Max edge count. Recommended 100..1200.", minimum = 1 }
                 },
-                required = new[] { "fullName" }
+                required = new[] { "full_name" }
             }
         }
     };
 
     public string? GetHelpText() =>
         """
-        tool: onec.graph.open
+        tool: onec_open_graph
 
         summary: Builds a 1C graph and opens it in a dedicated large window.
 
@@ -53,13 +54,13 @@ public sealed class OneCGraphOpenTool(string workspacePath) : IMcpTool, IToolHel
           - the user wants data flow graph
 
         arguments:
-          fullName: exact object full name.
+          full_name: exact object full name.
           mode: dependencies | references | dataflow. Default: dependencies.
           depth: traversal depth. Default: 3.
           limit: edge limit. Default: 400.
 
         examples:
-          - fullName: Report.ГрафикПродажПоКлиентам
+          - full_name: Report.ГрафикПродажПоКлиентам
             mode: dependencies
             depth: 3
             limit: 400
@@ -68,12 +69,10 @@ public sealed class OneCGraphOpenTool(string workspacePath) : IMcpTool, IToolHel
     public async Task<string> ExecuteAsync(string argumentsJson, CancellationToken cancellationToken = default)
     {
         using var doc = JsonDocument.Parse(argumentsJson);
-        var root = doc.RootElement.TryGetProperty("fullName", out var rootElement)
-            ? rootElement.GetString()
-            : null;
+        var root = ToolJson.GetString(doc.RootElement, "full_name");
         if (string.IsNullOrWhiteSpace(root))
         {
-            return "opened: false\nreason: missing fullName";
+            return "opened: false\nreason: missing full_name";
         }
 
         var mode = ParseMode(doc.RootElement);

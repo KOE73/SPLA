@@ -1,6 +1,6 @@
 using Avalonia.Controls;
 using Avalonia.Threading;
-using SPLA.UI.Avalonia.ViewModels;
+using SPLA.UI.Avalonia.ViewModels.Chat;
 using SPLA.UI.Avalonia.ViewModels.Messages;
 using System;
 using System.Collections.Specialized;
@@ -10,7 +10,7 @@ namespace SPLA.UI.Avalonia.Views.Chat;
 
 public partial class ChatNativeView : UserControl
 {
-    private MainWindowViewModel? _viewModel;
+    private ChatSessionViewModel? _viewModel;
     private StreamingMessageViewModel? _activeStreaming;
 
     public ChatNativeView()
@@ -22,11 +22,11 @@ public partial class ChatNativeView : UserControl
     private void OnDataContextChanged(object? sender, EventArgs e)
     {
         DetachViewModel();
-        if (DataContext is MainWindowViewModel vm)
+        if (DataContext is ChatSessionViewModel vm)
             AttachViewModel(vm);
     }
 
-    private void AttachViewModel(MainWindowViewModel vm)
+    private void AttachViewModel(ChatSessionViewModel vm)
     {
         _viewModel = vm;
         vm.Messages.CollectionChanged += OnMessagesCollectionChanged;
@@ -46,8 +46,7 @@ public partial class ChatNativeView : UserControl
 
     private void OnViewModelPropertyChanged(object? sender, PropertyChangedEventArgs e)
     {
-        if (e.PropertyName is nameof(MainWindowViewModel.SelectedProfile)
-                            or nameof(MainWindowViewModel.ActiveRenderMode))
+        if (e.PropertyName is nameof(ChatSessionViewModel.ActiveProfile))
             ScrollToEnd();
     }
 

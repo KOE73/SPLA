@@ -13,13 +13,19 @@
                 <TextBlock Text="{Binding ActiveOperation}" Foreground="{DynamicResource SubTextForegroundBrush}" FontSize="10" />
                 <TextBlock Text="{Binding ActiveElapsedSeconds, StringFormat='{}{0}s'}" Foreground="{DynamicResource SubTextForegroundBrush}" FontSize="10" />
             </StackPanel>
+            <!-- Live tool detail: counts / percent / findings. Hidden when the tool reports nothing. -->
+            <TextBlock Text="{Binding ActiveOperationDetail}" Foreground="{DynamicResource SubTextForegroundBrush}"
+                       FontSize="10" TextAlignment="Right" TextWrapping="Wrap" MaxWidth="220"
+                       IsVisible="{Binding ActiveOperationDetail, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
             <StackPanel Orientation="Horizontal" Spacing="10" HorizontalAlignment="Right">
                 <TextBlock Text="{Binding CurrentPromptTokens, StringFormat='P: {0}'}" Foreground="{DynamicResource SubTextForegroundBrush}" FontSize="10" />
                 <TextBlock Text="{Binding CurrentCompletionTokens, StringFormat='C: {0}'}" Foreground="{DynamicResource SubTextForegroundBrush}" FontSize="10" />
             </StackPanel>
         </StackPanel>
         
-        <Button Grid.Column="0" Grid.Row="1" Content="⚙️" FontSize="20" Background="Transparent" Foreground="{DynamicResource TextForegroundBrush}"
-                Click="SettingsButton_Click" Cursor="Hand" VerticalAlignment="Bottom" HorizontalAlignment="Left" BorderThickness="0" Padding="0" Margin="0,10,10,0"/>
+        <StackPanel Grid.Column="0" Grid.Row="1" Orientation="Horizontal" Spacing="6" VerticalAlignment="Bottom" HorizontalAlignment="Left">
+            <Button Content="⚙️" FontSize="20" Background="Transparent" Foreground="{DynamicResource TextForegroundBrush}"
+                    Click="SettingsButton_Click" Cursor="Hand" BorderThickness="0" Padding="0" Margin="0,10,0,0"/>
+        </StackPanel>
     </Grid>
 </UserControl>

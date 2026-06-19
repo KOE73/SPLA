@@ -2,6 +2,7 @@ using DnsClient;
 using DnsClient.Protocol;
 using SPLA.Domain.Models;
 using SPLA.MCP.Core.Interfaces;
+using SPLA.MCP.Core.Json;
 using System;
 using System.Linq;
 using System.Text;
@@ -17,7 +18,7 @@ namespace SPLA.Plugins.Network;
 /// </summary>
 public class DnsQueryTool : IMcpTool
 {
-    public string Name => "network.dns.query";
+    public string Name => "network_query_dns";
 
     public ToolDefinition GetDefinition() => new ToolDefinition
     {
@@ -25,7 +26,7 @@ public class DnsQueryTool : IMcpTool
         Function = new ToolFunctionDefinition
         {
             Name = Name,
-            Description = "Queries specific DNS record types (A, AAAA, CNAME, MX, NS, PTR, SOA, SRV, TXT). Use this instead of network.dns.nslookup when you need record types other than A/AAAA, e.g. to check SPF (TXT), mail servers (MX), or name servers (NS).",
+            Description = "Queries specific DNS record types (A, AAAA, CNAME, MX, NS, PTR, SOA, SRV, TXT). Use this instead of network_resolve_host when you need record types other than A/AAAA, e.g. to check SPF (TXT), mail servers (MX), or name servers (NS).",
             Scope = ToolScope.Internet,
             Effect = ToolEffect.Read,
             Risk = ToolRisk.Low,
@@ -53,21 +54,19 @@ public class DnsQueryTool : IMcpTool
         try
         {
             using var doc = JsonDocument.Parse(argumentsJson);
-            if (!doc.RootElement.TryGetProperty("host", out var hostEl))
-                return "Error: Missing 'host' parameter.";
+            var root = doc.RootElement;
+            var host = ToolJson.GetStringTrimmed(root, "host");
+            if (host is null) return "Error: Missing 'host' parameter.";
 
-            var host = hostEl.GetString();
-            if (string.IsNullOrWhiteSpace(host))
-                return "Error: Host is empty.";
-
-            var typeName = doc.RootElement.TryGetProperty("type", out var typeEl) ? typeEl.GetString() ?? "A" : "A";
+            var typeName = ToolJson.GetString(root, "type") ?? "A";
             if (!Enum.TryParse<QueryType>(typeName, ignoreCase: true, out var queryType))
                 return $"Error: Unknown record type '{typeName}'. Supported: A, AAAA, CNAME, MX, NS, PTR, SOA, SRV, TXT.";
 
             LookupClient client;
-            if (doc.RootElement.TryGetProperty("nameserver", out var nsEl) && !string.IsNullOrWhiteSpace(nsEl.GetString()))
+            var nameserver = ToolJson.GetStringTrimmed(root, "nameserver");
+            if (!string.IsNullOrWhiteSpace(nameserver))
             {
-                var nsAddress = System.Net.IPAddress.Parse(nsEl.GetString()!.Trim());
+                var nsAddress = System.Net.IPAddress.Parse(nameserver);
                 client = new LookupClient(nsAddress);
             }
             else

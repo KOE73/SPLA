@@ -345,15 +345,17 @@ public class LMStudioClient : ILLMService, ITokenUsageReporter
 
         if (tools?.Any() == true)
         {
-            payload["tools"] = tools.Select(t => new Dictionary<string, object>
+            payload["tools"] = tools.Select(t =>
             {
-                ["type"] = t.Type,
-                ["function"] = new Dictionary<string, object?>
+                var func = new Dictionary<string, object?>
                 {
-                    ["name"] = t.Function.Name,
+                    ["name"]        = t.Function.Name,
                     ["description"] = t.Function.Description,
-                    ["parameters"] = t.Function.Parameters ?? new { type = "object", properties = new { } }
-                }
+                    ["parameters"]  = ToolSchemaSerializer.Normalize(t.Function.Parameters)
+                };
+                if (t.Function.StrictSchema)
+                    func["strict"] = true;
+                return new Dictionary<string, object?> { ["type"] = t.Type, ["function"] = func };
             }).ToArray();
         }
 

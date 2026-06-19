@@ -1,7 +1,7 @@
 using Avalonia.Controls;
 using Avalonia.Input;
 using Avalonia.Interactivity;
-using SPLA.UI.Avalonia.ViewModels;
+using SPLA.UI.Avalonia.ViewModels.Chat;
 
 namespace SPLA.UI.Avalonia.Views.Chat;
 
@@ -20,7 +20,7 @@ public partial class ChatInputView : UserControl
 
     private void InputTextBox_KeyDown(object? sender, KeyEventArgs e)
     {
-        var vm = DataContext as MainWindowViewModel;
+        var vm = DataContext as ChatSessionViewModel;
         if (vm == null) return;
 
         if (e.Key == Key.Enter)

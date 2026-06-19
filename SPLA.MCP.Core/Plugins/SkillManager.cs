@@ -10,14 +10,30 @@ public class SkillManager
 {
     private readonly ILogger<SkillManager>? _logger;
     private readonly List<SkillMeta> _skills = [];
+    private string? _pluginsDirectory;
+
+    /// <summary>Raised after a successful <see cref="Reload"/>.</summary>
+    public event EventHandler? Reloaded;
 
     public SkillManager(ILogger<SkillManager>? logger = null)
     {
         _logger = logger;
     }
 
+    /// <summary>
+    /// Re-scans the last loaded plugins directory and rebuilds the skill list.
+    /// No-op if <see cref="LoadSkills"/> has not been called yet.
+    /// </summary>
+    public void Reload()
+    {
+        if (_pluginsDirectory is null) return;
+        LoadSkills(_pluginsDirectory);
+        Reloaded?.Invoke(this, EventArgs.Empty);
+    }
+
     public void LoadSkills(string pluginsDirectory)
     {
+        _pluginsDirectory = pluginsDirectory;
         _skills.Clear();
 
         if (!Directory.Exists(pluginsDirectory)) return;

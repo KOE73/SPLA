@@ -1,5 +1,6 @@
 using SPLA.Domain.Models;
 using SPLA.MCP.Core.Interfaces;
+using SPLA.MCP.Core.Json;
 using SPLA.MCP.BasicTools.FileSystem.Search;
 using System;
 using System.IO;
@@ -12,7 +13,7 @@ namespace SPLA.MCP.BasicTools.FileSystem;
 
 public class FsSearchTextTool : IMcpTool, IToolHelpProvider
 {
-    public string Name => "system.fs.search_text";
+    public string Name => "system_search_text";
 
     public ToolDefinition GetDefinition() => new ToolDefinition
     {
@@ -24,20 +25,21 @@ public class FsSearchTextTool : IMcpTool, IToolHelpProvider
             Scope = ToolScope.Project,
             Effect = ToolEffect.Read,
             Risk = ToolRisk.Low,
+            StrictSchema = true,
             Parameters = new
             {
                 type = "object",
                 properties = new
                 {
-                    Query = new { type = "string", description = "The text pattern to search for." },
-                    Path = new { type = "string", description = "Optional directory path to search. Defaults to current workspace." },
-                    Regex = new { type = "boolean", description = "If true, treats Query as a regular expression. Defaults to false." },
-                    CaseSensitive = new { type = "boolean", description = "If true, performs case-sensitive match. Defaults to false." },
-                    MaxResults = new { type = "integer", description = "Maximum number of results to return. Defaults to 100." },
-                    IncludePatterns = new { type = "array", items = new { type = "string" }, description = "Optional glob patterns to include (e.g. ['*.cs'])." },
-                    ExcludePatterns = new { type = "array", items = new { type = "string" }, description = "Optional glob patterns to exclude (e.g. ['bin/*', 'obj/*'])." }
+                    query            = new { type = "string",                      description = "Text pattern to search for." },
+                    path             = new { type = new[] { "string",  "null" },   description = "Directory to search. Null = current workspace." },
+                    regex            = new { type = new[] { "boolean", "null" },   description = "Treat query as regex. Null = false." },
+                    case_sensitive   = new { type = new[] { "boolean", "null" },   description = "Case-sensitive match. Null = false." },
+                    max_results      = new { type = new[] { "integer", "null" },   description = "Max results. Null = 100." },
+                    include_patterns = new { type = new[] { "array",   "null" }, items = new { type = "string" }, description = "Glob patterns to include, e.g. ['*.cs']. Null = all files." },
+                    exclude_patterns = new { type = new[] { "array",   "null" }, items = new { type = "string" }, description = "Glob patterns to exclude, e.g. ['bin/*']. Null = none." }
                 },
-                required = new[] { "Query" }
+                required = new[] { "query", "path", "regex", "case_sensitive", "max_results", "include_patterns", "exclude_patterns" }
             }
         }
     };
@@ -46,63 +48,46 @@ public class FsSearchTextTool : IMcpTool, IToolHelpProvider
     {
         try
         {
-            var options = new JsonSerializerOptions { PropertyNameCaseInsensitive = true };
-            var request = JsonSerializer.Deserialize<SearchTextRequest>(argumentsJson, options);
-            if (request == null || string.IsNullOrEmpty(request.Query))
-            {
-                return JsonSerializer.Serialize(new SearchTextResult
-                {
-                    Query = request?.Query ?? string.Empty,
-                    TotalMatches = 0,
-                    ReturnedMatches = 0,
-                    Matches = new List<SearchMatch>()
-                });
-            }
+            using var doc = JsonDocument.Parse(argumentsJson);
+            var root = doc.RootElement;
 
-            var rootPath = string.IsNullOrEmpty(request.Path) ? Directory.GetCurrentDirectory() : request.Path;
+            var query          = ToolJson.GetStringTrimmed(root, "query");
+            var path           = ToolJson.GetStringTrimmed(root, "path");
+            var regex          = ToolJson.GetBoolean(root, "regex", false);
+            var caseSensitive  = ToolJson.GetBoolean(root, "case_sensitive", false);
+            var maxResults     = ToolJson.GetInt32Clamped(root, "max_results", 100, 1, 10000);
+            var includePatterns= ToolJson.GetStringArray(root, "include_patterns");
+            var excludePatterns= ToolJson.GetStringArray(root, "exclude_patterns");
+
+            if (string.IsNullOrEmpty(query))
+                return JsonSerializer.Serialize(new SearchTextResult { Query = string.Empty, TotalMatches = 0, ReturnedMatches = 0, Matches = new List<SearchMatch>() });
+
+            var rootPath = path ?? Directory.GetCurrentDirectory();
             if (!Directory.Exists(rootPath))
-            {
                 return $"Error: Directory not found at {rootPath}";
-            }
-
-            var maxResults = request.MaxResults <= 0 ? 100 : request.MaxResults;
 
             List<SearchMatch> rawMatches;
             try
             {
                 var rgEngine = new RipgrepSearchEngine();
                 rawMatches = await rgEngine.SearchAsync(
-                    rootPath,
-                    request.Query,
-                    request.Regex,
-                    request.CaseSensitive,
-                    request.IncludePatterns,
-                    request.ExcludePatterns,
-                    cancellationToken);
+                    rootPath, query, regex, caseSensitive,
+                    includePatterns, excludePatterns, cancellationToken);
             }
             catch
             {
-                // Fallback to pure .NET implementation
                 var dotnetEngine = new DotnetSearchEngine();
                 rawMatches = await dotnetEngine.SearchAsync(
-                    rootPath,
-                    request.Query,
-                    request.Regex,
-                    request.CaseSensitive,
-                    request.IncludePatterns,
-                    request.ExcludePatterns,
-                    cancellationToken);
+                    rootPath, query, regex, caseSensitive,
+                    includePatterns, excludePatterns, cancellationToken);
             }
 
-            // Total matches found before ranking and truncation
-            int totalMatches = rawMatches.Count;
-
-            // Apply ranking, deduplication, and truncation
-            var rankedMatches = SearchRanking.RankAndFilter(rawMatches, request.Query, maxResults);
+            int totalMatches  = rawMatches.Count;
+            var rankedMatches = SearchRanking.RankAndFilter(rawMatches, query, maxResults);
 
             var result = new SearchTextResult
             {
-                Query = request.Query,
+                Query = query,
                 TotalMatches = totalMatches,
                 ReturnedMatches = rankedMatches.Count,
                 Matches = rankedMatches
@@ -122,42 +107,42 @@ public class FsSearchTextTool : IMcpTool, IToolHelpProvider
 
     public string? GetHelpText() =>
         """
-        tool: system.fs.search_text
+        tool: system_search_text
 
         summary: Search text in project files using ripgrep when available, with a .NET fallback and relevance-ranked results.
 
         arguments:
-          Query:
+          query:
             required: true
             formats:
               - literal_text
-              - regex_when_Regex_true
+              - regex_when_regex_true
             examples:
               - ToolDescriptor
               - "class\\s+McpHost"
-          Path:
+          path:
             required: false
             default: current_workspace
             formats:
               - absolute_directory_path
               - relative_directory_path
-          Regex:
+          regex:
             required: false
             default: false
-          CaseSensitive:
+          case_sensitive:
             required: false
             default: false
-          MaxResults:
+          max_results:
             required: false
             default: 100
-          IncludePatterns:
+          include_patterns:
             required: false
             formats:
               - glob_array
             examples:
               - ["*.cs"]
               - ["SPLA.MCP.Core/**/*.cs"]
-          ExcludePatterns:
+          exclude_patterns:
             required: false
             formats:
               - glob_array
@@ -169,21 +154,10 @@ public class FsSearchTextTool : IMcpTool, IToolHelpProvider
 
         examples:
           - request:
-              Query: ToolDefinition
-              IncludePatterns: ["*.cs"]
-              MaxResults: 50
+              query: ToolDefinition
+              include_patterns: ["*.cs"]
+              max_results: 50
         """;
-}
-
-public class SearchTextRequest
-{
-    public string Query { get; set; } = string.Empty;
-    public string? Path { get; set; }
-    public bool Regex { get; set; }
-    public bool CaseSensitive { get; set; }
-    public int MaxResults { get; set; } = 100;
-    public string[]? IncludePatterns { get; set; }
-    public string[]? ExcludePatterns { get; set; }
 }
 
 public class SearchTextResult

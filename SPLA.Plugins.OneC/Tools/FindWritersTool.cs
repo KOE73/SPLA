@@ -1,6 +1,7 @@
 using System.Text.Json;
 using SPLA.Domain.Models;
 using SPLA.MCP.Core.Interfaces;
+using SPLA.MCP.Core.Json;
 using SPLA.Plugins.OneC.Models;
 using SPLA.Plugins.OneC.Storage;
 
@@ -10,7 +11,7 @@ namespace SPLA.Plugins.OneC.Tools;
 public class FindWritersTool : IMcpTool
 {
     private readonly OneCIndexDatabase _db;
-    public string Name => "onec.reference.writers";
+    public string Name => "onec_find_writers";
     public string Description => "Finds objects that WRITE to the specified 1C object (e.g. write to a Register).";
 
     public FindWritersTool(OneCIndexDatabase db) => _db = db;
@@ -30,11 +31,11 @@ public class FindWritersTool : IMcpTool
                 type       = "object",
                 properties = new
                 {
-                    fullName = new { type = "string",  description = "Fully-qualified register name, e.g. AccumulationRegister.ОстаткиТоваров." },
+                    full_name = new { type = "string",  description = "Fully-qualified register name, e.g. AccumulationRegister.ОстаткиТоваров." },
                     limit    = new { type = "integer", description = "Max results (default 50)." },
                     offset   = new { type = "integer", description = "Pagination offset (default 0)." },
                 },
-                required = new[] { "fullName" }
+                required = new[] { "full_name" }
             }
         }
     };
@@ -42,7 +43,7 @@ public class FindWritersTool : IMcpTool
     public Task<string> ExecuteAsync(string argumentsJson, CancellationToken cancellationToken = default)
     {
         var doc      = JsonDocument.Parse(argumentsJson);
-        var fullName = doc.RootElement.TryGetProperty("fullName", out var fn) ? fn.GetString() ?? "" : "";
+        var fullName = ToolJson.GetString(doc.RootElement, "full_name") ?? "";
         var limit    = doc.RootElement.TryGetProperty("limit",    out var l)  ? l.GetInt32() : 50;
         var offset   = doc.RootElement.TryGetProperty("offset",   out var o)  ? o.GetInt32() : 0;
 

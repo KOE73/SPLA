@@ -15,7 +15,7 @@
             <Setter Property="Foreground" Value="{DynamicResource SubTextForegroundBrush}"/>
             <Setter Property="Margin" Value="0,0,0,4"/>
         </Style>
-        <Style Selector="TextBlock.key">
+        <Style Selector="SelectableTextBlock.key">
             <Setter Property="FontFamily" Value="Consolas,Cascadia Code,Courier New,monospace"/>
             <Setter Property="FontSize" Value="11"/>
             <Setter Property="Foreground" Value="{DynamicResource AccentBrush}"/>
@@ -24,7 +24,7 @@
             <Setter Property="MinWidth" Value="160"/>
             <Setter Property="MaxWidth" Value="200"/>
         </Style>
-        <Style Selector="TextBlock.value">
+        <Style Selector="SelectableTextBlock.value">
             <Setter Property="FontFamily" Value="Consolas,Cascadia Code,Courier New,monospace"/>
             <Setter Property="FontSize" Value="11"/>
             <Setter Property="Foreground" Value="{DynamicResource TextForegroundBrush}"/>
@@ -106,13 +106,13 @@
                         <ItemsControl.ItemTemplate>
                             <DataTemplate x:DataType="vm:KvEntryViewModel">
                                 <Grid ColumnDefinitions="Auto,8,*,Auto" Margin="0,2">
-                                    <TextBlock Grid.Column="0" Classes="key" Text="{Binding Key}"
-                                               ToolTip.Tip="{Binding Key}"/>
+                                    <SelectableTextBlock Grid.Column="0" Classes="key" Text="{Binding Key}"
+                                                         ToolTip.Tip="{Binding Key}"/>
                                     <TextBlock Grid.Column="1" Text="=" FontSize="11"
                                                Foreground="{DynamicResource SubTextForegroundBrush}"
                                                VerticalAlignment="Top"/>
-                                    <TextBlock Grid.Column="2" Classes="value" Text="{Binding Value}"
-                                               ToolTip.Tip="{Binding Value}"/>
+                                    <SelectableTextBlock Grid.Column="2" Classes="value" Text="{Binding Value}"
+                                                         ToolTip.Tip="{Binding Value}"/>
                                     <Button Grid.Column="3" Classes="del"
                                             Command="{Binding DeleteCommand}"
                                             ToolTip.Tip="Delete entry"/>
@@ -157,13 +157,13 @@
                         <ItemsControl.ItemTemplate>
                             <DataTemplate x:DataType="vm:KvEntryViewModel">
                                 <Grid ColumnDefinitions="Auto,8,*,Auto" Margin="0,2">
-                                    <TextBlock Grid.Column="0" Classes="key" Text="{Binding Key}"
-                                               ToolTip.Tip="{Binding Key}"/>
+                                    <SelectableTextBlock Grid.Column="0" Classes="key" Text="{Binding Key}"
+                                                         ToolTip.Tip="{Binding Key}"/>
                                     <TextBlock Grid.Column="1" Text="=" FontSize="11"
                                                Foreground="{DynamicResource SubTextForegroundBrush}"
                                                VerticalAlignment="Top"/>
-                                    <TextBlock Grid.Column="2" Classes="value" Text="{Binding Value}"
-                                               ToolTip.Tip="{Binding Value}"/>
+                                    <SelectableTextBlock Grid.Column="2" Classes="value" Text="{Binding Value}"
+                                                         ToolTip.Tip="{Binding Value}"/>
                                     <Button Grid.Column="3" Classes="del"
                                             Command="{Binding DeleteCommand}"
                                             ToolTip.Tip="Delete entry"/>

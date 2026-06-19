@@ -54,6 +54,7 @@ public static class ChatHtmlRenderer
 
     public static string SerializeMessage(MessageViewModel message, int index)
     {
+        var perm = message as PermissionMessageViewModel;
         var msg = new ChatHtmlMessage(
             index,
             message.Role.ToString(),
@@ -68,7 +69,10 @@ public static class ChatHtmlRenderer
             message.IsError,
             message.IsToolCallNotice,
             message.IsPlainText,
-            message.IsMarkdown);
+            message.IsMarkdown,
+            perm != null,
+            perm?.IsAnswered ?? false,
+            perm?.Arguments ?? "");
         return JsonSerializer.Serialize(msg, JsonOptions);
     }
 
@@ -78,22 +82,29 @@ public static class ChatHtmlRenderer
         ArgumentNullException.ThrowIfNull(theme);
 
         var payload = messages
-            .Select((message, index) => new ChatHtmlMessage(
-                index,
-                message.Role.ToString(),
-                message.Content,
-                message.Reasoning ?? "",
-                message.RetentionIcon,
-                message.RetentionDescription,
-                message.IsUser,
-                message.IsAssistant,
-                message.IsSystem,
-                message.IsTool,
-                message.IsError,
-                message.IsToolCallNotice,
-                message.IsPlainText,
-                message.IsMarkdown))
-            .Where(message => !string.IsNullOrWhiteSpace(message.Content) || !string.IsNullOrWhiteSpace(message.Reasoning))
+            .Select((message, index) =>
+            {
+                var perm = message as PermissionMessageViewModel;
+                return new ChatHtmlMessage(
+                    index,
+                    message.Role.ToString(),
+                    message.Content,
+                    message.Reasoning ?? "",
+                    message.RetentionIcon,
+                    message.RetentionDescription,
+                    message.IsUser,
+                    message.IsAssistant,
+                    message.IsSystem,
+                    message.IsTool,
+                    message.IsError,
+                    message.IsToolCallNotice,
+                    message.IsPlainText,
+                    message.IsMarkdown,
+                    perm != null,
+                    perm?.IsAnswered ?? false,
+                    perm?.Arguments ?? "");
+            })
+            .Where(message => !string.IsNullOrWhiteSpace(message.Content) || !string.IsNullOrWhiteSpace(message.Reasoning) || message.IsPermission)
             .ToArray();
 
         var json = JsonSerializer.Serialize(payload, JsonOptions);
@@ -405,6 +416,111 @@ body {
   margin-top: var(--compact-margin);
 }
 
+/* ── Permission block ── */
+
+.perm-block {
+  padding: var(--standard-padding);
+  padding-top: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.perm-args {
+  margin: 0;
+  padding: 8px 12px;
+  border: 1px solid var(--panel-border);
+  border-radius: var(--radius);
+  background: rgba(0, 0, 0, .06);
+  font-family: "Cascadia Mono", "Consolas", monospace;
+  font-size: var(--small-font-size);
+  color: var(--muted);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.perm-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.perm-btn {
+  padding: 6px 14px;
+  border: none;
+  border-radius: var(--radius);
+  cursor: pointer;
+  font: inherit;
+  font-size: var(--small-font-size);
+  font-weight: 600;
+  color: #fff;
+  transition: opacity .15s;
+}
+.perm-btn:hover { opacity: .85; }
+
+.perm-allow-remember { background: #2E7D32; }
+.perm-allow-once     { background: var(--accent); }
+.perm-deny           { background: #C62828; }
+
+.perm-decided {
+  font-size: var(--small-font-size);
+  font-style: italic;
+  color: var(--muted);
+}
+
+/* ── Clarify widget ── */
+
+#clarify-widget {
+  display: none;
+  position: sticky;
+  bottom: 0;
+  background: var(--panel-bg);
+  border-top: 1px solid var(--accent);
+  padding: 12px 16px 14px 16px;
+}
+
+#clarify-widget.visible { display: block; }
+
+#clarify-question {
+  font-size: var(--base-font-size);
+  font-weight: 600;
+  color: var(--text);
+  margin-bottom: 10px;
+}
+
+#clarify-options {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 8px;
+}
+
+.clarify-btn {
+  padding: 5px 14px;
+  border: none;
+  border-radius: var(--radius);
+  background: var(--accent);
+  color: #fff;
+  font: inherit;
+  font-size: var(--small-font-size);
+  font-weight: 600;
+  cursor: pointer;
+  transition: opacity .15s;
+}
+.clarify-btn:hover { opacity: .82; }
+
+#clarify-skip {
+  background: transparent;
+  border: none;
+  color: var(--muted);
+  font: inherit;
+  font-size: var(--small-font-size);
+  cursor: pointer;
+  padding: 0;
+  display: block;
+}
+#clarify-skip:hover { color: var(--text); }
+
 /* ── Profile overrides ── */
 
 /* Bubbles: margin-based offset, full width within those margins */
@@ -428,6 +544,11 @@ body.profile-diagnostic .meta { display: inline-flex; }
 </head>
 <body class="profile-{{profileId}}">
 <main id="chat"></main>
+<div id="clarify-widget">
+  <div id="clarify-question"></div>
+  <div id="clarify-options"></div>
+  <button id="clarify-skip" data-action="clarify-dismiss">Skip / let agent decide</button>
+</div>
 <script src="../assets/marked.min.js"></script>
 <script src="../assets/mermaid.min.js"></script>
 <script>
@@ -500,6 +621,7 @@ function messageClasses(message) {
   if (message.isTool) classes.push("tool");
   if (message.isError) classes.push("error");
   if (message.isToolCallNotice) classes.push("tool-call");
+  if (message.isPermission) classes.push("permission");
   return classes.join(" ");
 }
 
@@ -520,7 +642,26 @@ function buildShell(message) {
         <pre class="reasoning-body">${escapeHtml(message.reasoning ?? "")}</pre>
       </details>
       <section class="content" data-content="${message.index}"></section>
+      ${message.isPermission ? buildPermBlock(message) : ""}
     </article>`;
+}
+
+function buildPermBlock(message) {
+  if (message.isAnswered) {
+    return `<div class="perm-block"><div class="perm-decided">Decision made.</div></div>`;
+  }
+  const args = message.permArguments && message.permArguments.trim()
+    ? `<pre class="perm-args">${escapeHtml(message.permArguments)}</pre>`
+    : "";
+  return `
+    <div class="perm-block">
+      ${args}
+      <div class="perm-actions">
+        <button class="perm-btn perm-allow-remember" data-action="permission" data-index="${message.index}" data-decision="allowRemember">Allow &amp; remember</button>
+        <button class="perm-btn perm-allow-once" data-action="permission" data-index="${message.index}" data-decision="allowOnce">Allow once</button>
+        <button class="perm-btn perm-deny" data-action="permission" data-index="${message.index}" data-decision="deny">Deny</button>
+      </div>
+    </div>`;
 }
 
 function setReasoning(index, text) {
@@ -642,6 +783,18 @@ document.addEventListener("click", event => {
     postToHost({ action: "copyText", index, text: button.dataset.text ?? "" });
     return;
   }
+  if (action === "permission") {
+    postToHost({ action: "permission", index, decision: button.dataset.decision ?? "" });
+    return;
+  }
+  if (action === "clarify-choose") {
+    postToHost({ action: "clarify", choice: button.dataset.choice ?? "" });
+    return;
+  }
+  if (action === "clarify-dismiss") {
+    postToHost({ action: "clarify", choice: null });
+    return;
+  }
 
   postToHost({ action, index });
 });
@@ -700,6 +853,32 @@ window.__splaRemoveMessage = function(index) {
 
 window.__splaSetReasoning = function(index, text) {
   setReasoning(index, text);
+};
+
+// ── Clarify widget ────────────────────────────────────────────────────────
+
+window.__splaClarify = function(json) {
+  const data = JSON.parse(json);
+  const widget = document.getElementById("clarify-widget");
+  document.getElementById("clarify-question").textContent = data.question ?? "";
+  const optionsEl = document.getElementById("clarify-options");
+  optionsEl.innerHTML = "";
+  for (const opt of (data.options ?? [])) {
+    const btn = document.createElement("button");
+    btn.className = "clarify-btn";
+    btn.dataset.action = "clarify-choose";
+    btn.dataset.choice = opt.label;
+    btn.textContent = opt.label;
+    if (opt.description) btn.title = opt.description;
+    optionsEl.appendChild(btn);
+  }
+  widget.classList.add("visible");
+  window.scrollTo(0, document.body.scrollHeight);
+};
+
+window.__splaClearClarify = function() {
+  const widget = document.getElementById("clarify-widget");
+  widget.classList.remove("visible");
 };
 </script>
 </body>
@@ -795,7 +974,10 @@ window.__splaSetReasoning = function(index, text) {
         bool IsError,
         bool IsToolCallNotice,
         bool IsPlainText,
-        bool IsMarkdown);
+        bool IsMarkdown,
+        bool IsPermission,
+        bool IsAnswered,
+        string PermArguments);
 }
 
 public sealed record RenderedWebChat(string DocumentPath, Uri DocumentUri);

@@ -1,5 +1,6 @@
 using SPLA.Domain.Models;
 using SPLA.MCP.Core.Interfaces;
+using SPLA.MCP.Core.Json;
 using System;
 using System.Net;
 using System.Net.NetworkInformation;
@@ -12,7 +13,7 @@ namespace SPLA.Plugins.Network;
 
 public class TraceRouteTool : IMcpTool
 {
-    public string Name => "network.diag.traceroute";
+    public string Name => "network_trace_route";
 
     public ToolDefinition GetDefinition() => new ToolDefinition
     {
@@ -30,9 +31,9 @@ public class TraceRouteTool : IMcpTool
                 properties = new
                 {
                     host = new { type = "string", description = "Target IP address or domain name (e.g. '8.8.8.8' or 'google.com')." },
-                    maxHops = new { type = "integer", description = "Maximum number of hops to trace (default: 20, max: 30)." },
+                    max_hops = new { type = "integer", description = "Maximum number of hops to trace (default: 20, max: 30)." },
                     timeout = new { type = "integer", description = "Ping timeout in milliseconds for each hop (default: 1000)." },
-                    resolveHops = new { type = "boolean", description = "Reverse-resolve each hop IP to a hostname. Adds latency per hop. Default: false." }
+                    resolve_hops = new { type = "boolean", description = "Reverse-resolve each hop IP to a hostname. Adds latency per hop. Default: false." }
                 },
                 required = new[] { "host" }
             }
@@ -49,22 +50,13 @@ public class TraceRouteTool : IMcpTool
         try
         {
             using var doc = JsonDocument.Parse(argumentsJson);
-            if (!doc.RootElement.TryGetProperty("host", out var hostElement))
-                return "Error: Missing 'host' parameter.";
+            var root = doc.RootElement;
+            var host = ToolJson.GetStringTrimmed(root, "host");
+            if (host is null) return "Error: Missing 'host' parameter.";
 
-            var host = hostElement.GetString();
-            if (string.IsNullOrWhiteSpace(host))
-                return "Error: Host is empty.";
-
-            var maxHops = doc.RootElement.TryGetProperty("maxHops", out var maxHopsElement) && maxHopsElement.TryGetInt32(out var m)
-                ? Math.Clamp(m, 1, 30)
-                : 20;
-
-            var timeout = doc.RootElement.TryGetProperty("timeout", out var timeoutElement) && timeoutElement.TryGetInt32(out var t)
-                ? Math.Clamp(t, 100, 10000)
-                : 1000;
-
-            var resolveHops = doc.RootElement.TryGetProperty("resolveHops", out var rhEl) && rhEl.ValueKind == JsonValueKind.True;
+            var maxHops     = ToolJson.GetInt32Clamped(root, "max_hops", 20,   1,   30);
+            var timeout     = ToolJson.GetInt32Clamped(root, "timeout",  1000, 100, 10000);
+            var resolveHops = ToolJson.GetBoolean(root, "resolve_hops", false);
 
             using var ping = new Ping();
             var sb = new StringBuilder();

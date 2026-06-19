@@ -1,5 +1,6 @@
 using SPLA.Domain.Models;
 using SPLA.MCP.Core.Interfaces;
+using SPLA.MCP.Core.Json;
 using System;
 using System.Diagnostics;
 using System.IO;
@@ -12,7 +13,7 @@ namespace SPLA.MCP.BasicTools.SystemTools;
 
 public class DotnetTestTool : IMcpTool
 {
-    public string Name => "dotnet.test";
+    public string Name => "dotnet_test_project";
 
     public ToolDefinition GetDefinition() => new ToolDefinition
     {
@@ -24,37 +25,39 @@ public class DotnetTestTool : IMcpTool
             Scope = ToolScope.Shell,
             Effect = ToolEffect.Execute,
             Risk = ToolRisk.Medium,
+            StrictSchema = true,
             Parameters = new
             {
                 type = "object",
                 properties = new
                 {
-                    projectPath = new
+                    project_path = new
                     {
-                        type = "string",
-                        description = "The path to the project or solution file to test. If omitted, tests the project in the current directory."
+                        type = new[] { "string", "null" },
+                        description = "Path to the project or solution file. Null = test in current directory."
                     },
                     configuration = new
                     {
-                        type = "string",
-                        description = "The configuration to use for testing (e.g., 'Debug' or 'Release'). Defaults to 'Debug'."
+                        type = new[] { "string", "null" },
+                        description = "Test configuration: 'Debug' or 'Release'. Null = Debug."
                     },
-                    noBuild = new
+                    no_build = new
                     {
-                        type = "boolean",
-                        description = "If true, does not build the test project before running it."
+                        type = new[] { "boolean", "null" },
+                        description = "True = skip build before running tests. Null = false."
                     },
                     filter = new
                     {
-                        type = "string",
-                        description = "Run tests that match the given expression."
+                        type = new[] { "string", "null" },
+                        description = "Filter expression to select specific tests. Null = run all tests."
                     },
                     cwd = new
                     {
-                        type = "string",
-                        description = "Current working directory for the command (optional)"
+                        type = new[] { "string", "null" },
+                        description = "Working directory for the command. Null = current directory."
                     }
-                }
+                },
+                required = new[] { "project_path", "configuration", "no_build", "filter", "cwd" }
             }
         }
     };
@@ -65,11 +68,11 @@ public class DotnetTestTool : IMcpTool
         {
             var doc = JsonDocument.Parse(argumentsJson);
             
-            var projectPath = doc.RootElement.TryGetProperty("projectPath", out var ppElement) ? ppElement.GetString() : null;
-            var configuration = doc.RootElement.TryGetProperty("configuration", out var confElement) ? confElement.GetString() : "Debug";
-            var noBuild = doc.RootElement.TryGetProperty("noBuild", out var nbElement) && nbElement.GetBoolean();
-            var filter = doc.RootElement.TryGetProperty("filter", out var fElement) ? fElement.GetString() : null;
-            var cwd = doc.RootElement.TryGetProperty("cwd", out var cwdElement) ? cwdElement.GetString() : null;
+            var projectPath = ToolJson.GetString(doc.RootElement, "project_path");
+            var configuration = ToolJson.GetString(doc.RootElement, "configuration") ?? "Debug";
+            var noBuild       = ToolJson.GetBoolean(doc.RootElement, "no_build", false);
+            var filter        = ToolJson.GetString(doc.RootElement, "filter");
+            var cwd           = ToolJson.GetString(doc.RootElement, "cwd");
 
             var arguments = new StringBuilder("test");
             

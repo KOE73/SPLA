@@ -1,5 +1,6 @@
 using SPLA.Domain.Models;
 using SPLA.MCP.Core.Interfaces;
+using SPLA.MCP.Core.Json;
 using System;
 using System.Diagnostics;
 using System.Text;
@@ -11,7 +12,7 @@ namespace SPLA.Plugins.Network;
 
 public class RouteTool : IMcpTool
 {
-    public string Name => "network.host.route";
+    public string Name => "network_get_routes";
 
     public ToolDefinition GetDefinition() => new ToolDefinition
     {
@@ -47,8 +48,7 @@ public class RouteTool : IMcpTool
             if (!string.IsNullOrWhiteSpace(argumentsJson))
             {
                 using var doc = JsonDocument.Parse(argumentsJson);
-                if (doc.RootElement.TryGetProperty("family", out var familyEl))
-                    family = familyEl.GetString()?.ToLowerInvariant() ?? "ipv4";
+                family = ToolJson.GetStringTrimmed(doc.RootElement, "family")?.ToLowerInvariant() ?? "ipv4";
             }
 
             string output;

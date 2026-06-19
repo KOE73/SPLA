@@ -1,5 +1,6 @@
 using SPLA.Domain.Models;
 using SPLA.MCP.Core.Interfaces;
+using SPLA.MCP.Core.Json;
 using System;
 using System.Net.Sockets;
 using System.Text.Json;
@@ -10,7 +11,7 @@ namespace SPLA.Plugins.Network;
 
 public class PortCheckTool : IMcpTool
 {
-    public string Name => "network.tcp.check";
+    public string Name => "network_check_tcp_port";
 
     public ToolDefinition GetDefinition() => new ToolDefinition
     {
@@ -43,27 +44,17 @@ public class PortCheckTool : IMcpTool
         try
         {
             using var doc = JsonDocument.Parse(argumentsJson);
-            if (!doc.RootElement.TryGetProperty("host", out var hostElement) ||
-                !doc.RootElement.TryGetProperty("port", out var portElement))
-            {
-                return "Error: Missing 'host' or 'port' parameters.";
-            }
+            var root = doc.RootElement;
+            var hostVal = ToolJson.GetStringTrimmed(root, "host");
+            if (hostVal is null) return "Error: Missing 'host' or 'port' parameters.";
+            host = hostVal;
 
-            host = hostElement.GetString() ?? "Unknown";
-            if (string.IsNullOrWhiteSpace(host))
-            {
-                return "Error: Host is empty.";
-            }
-
-            if (!portElement.TryGetInt32(out var p) || p < 1 || p > 65535)
-            {
+            var portVal = ToolJson.GetInt32(root, "port");
+            if (portVal is null || portVal < 1 || portVal > 65535)
                 return "Error: Port must be an integer between 1 and 65535.";
-            }
-            port = p;
+            port = portVal.Value;
 
-            var timeout = doc.RootElement.TryGetProperty("timeout", out var timeoutElement) && timeoutElement.TryGetInt32(out var t)
-                ? t
-                : 3000;
+            var timeout = ToolJson.GetInt32(root, "timeout", 3000);
 
             using var tcpClient = new TcpClient();
             var connectTask = tcpClient.ConnectAsync(host, port, cancellationToken).AsTask();

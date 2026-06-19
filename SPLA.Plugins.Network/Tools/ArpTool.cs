@@ -1,5 +1,6 @@
 using SPLA.Domain.Models;
 using SPLA.MCP.Core.Interfaces;
+using SPLA.MCP.Core.Json;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
@@ -15,7 +16,7 @@ namespace SPLA.Plugins.Network;
 
 public class ArpTool : IMcpTool
 {
-    public string Name => "network.host.arp";
+    public string Name => "network_get_arp_cache";
 
     public ToolDefinition GetDefinition() => new ToolDefinition
     {
@@ -50,9 +51,7 @@ public class ArpTool : IMcpTool
             if (!string.IsNullOrWhiteSpace(argumentsJson))
             {
                 using var doc = JsonDocument.Parse(argumentsJson);
-                if (doc.RootElement.TryGetProperty("filter", out var filterEl))
-                    filter = filterEl.GetString()?.Trim();
-                if (string.IsNullOrEmpty(filter)) filter = null;
+                filter = ToolJson.GetStringTrimmed(doc.RootElement, "filter");
             }
 
             var entries = OperatingSystem.IsLinux()

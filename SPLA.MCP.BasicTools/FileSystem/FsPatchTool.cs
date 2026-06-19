@@ -1,5 +1,6 @@
 using SPLA.Domain.Models;
 using SPLA.MCP.Core.Interfaces;
+using SPLA.MCP.Core.Json;
 using System;
 using System.IO;
 using System.Text.Json;
@@ -10,7 +11,7 @@ namespace SPLA.MCP.BasicTools.FileSystem;
 
 public class FsPatchTool : IMcpTool, IToolHelpProvider
 {
-    public string Name => "system.fs.patch";
+    public string Name => "system_patch_file";
 
     public ToolDefinition GetDefinition() => new ToolDefinition
     {
@@ -18,20 +19,21 @@ public class FsPatchTool : IMcpTool, IToolHelpProvider
         Function = new ToolFunctionDefinition
         {
             Name = Name,
-            Description = "Safely replaces a specific block of text in an existing file. The oldText block must exist uniquely in the file.",
+            Description = "Safely replaces a specific block of text in an existing file. The old_text block must exist uniquely in the file.",
             Scope = ToolScope.Project,
             Effect = ToolEffect.Write,
             Risk = ToolRisk.Medium,
+            StrictSchema = true,
             Parameters = new
             {
                 type = "object",
                 properties = new
                 {
                     path = new { type = "string", description = "Absolute or relative path to the file to modify." },
-                    oldText = new { type = "string", description = "The exact text block to search for in the file (must match uniquely)." },
-                    newText = new { type = "string", description = "The new text block to replace the oldText block with." }
+                    old_text = new { type = "string", description = "The exact text block to search for in the file (must match uniquely)." },
+                    new_text = new { type = "string", description = "The new text block to replace the old_text block with." }
                 },
-                required = new[] { "path", "oldText", "newText" }
+                required = new[] { "path", "old_text", "new_text" }
             }
         }
     };
@@ -41,20 +43,12 @@ public class FsPatchTool : IMcpTool, IToolHelpProvider
         try
         {
             using var doc = JsonDocument.Parse(argumentsJson);
-            if (!doc.RootElement.TryGetProperty("path", out var pathElement) ||
-                !doc.RootElement.TryGetProperty("oldText", out var oldElement) ||
-                !doc.RootElement.TryGetProperty("newText", out var newElement))
-            {
-                return "Error: Missing 'path', 'oldText', or 'newText' parameter.";
-            }
+            var path    = ToolJson.GetStringTrimmed(doc.RootElement, "path");
+            var oldText = ToolJson.GetString(doc.RootElement, "old_text");
+            var newText = ToolJson.GetString(doc.RootElement, "new_text");
 
-            var path = pathElement.GetString();
-            var oldText = oldElement.GetString();
-            var newText = newElement.GetString();
-
-            if (string.IsNullOrEmpty(path)) return "Error: path is empty.";
-            if (oldText == null) return "Error: oldText is null.";
-            if (newText == null) return "Error: newText is null.";
+            if (path is null || oldText is null || newText is null)
+                return "Error: Missing 'path', 'old_text', or 'new_text' parameter.";
 
             if (!File.Exists(path))
             {
@@ -81,7 +75,7 @@ public class FsPatchTool : IMcpTool, IToolHelpProvider
                 return "status: failed\n" +
                        $"file: {path}\n" +
                        "reason: old_text_not_found\n" +
-                       "hint: The oldText string was not found in the file. Read the file again to obtain the latest exact content.";
+                       "hint: The old_text string was not found in the file. Read the file again to obtain the latest exact content.";
             }
 
             var secondIndex = normalizedContent.IndexOf(normalizedOld, index + normalizedOld.Length);
@@ -90,7 +84,7 @@ public class FsPatchTool : IMcpTool, IToolHelpProvider
                 return "status: failed\n" +
                        $"file: {path}\n" +
                        "reason: old_text_not_unique\n" +
-                       "hint: The oldText block matches multiple locations in the file. Provide a larger unique oldText context block.";
+                       "hint: The old_text block matches multiple locations in the file. Provide a larger unique old_text context block.";
             }
 
             // Execute replacement
@@ -109,7 +103,7 @@ public class FsPatchTool : IMcpTool, IToolHelpProvider
             return "status: success\n" +
                    $"file: {path}\n" +
                    $"changedLines: {changedLinesCount}\n" +
-                   "summary: Replaced the unique target oldText block successfully.";
+                   "summary: Replaced the unique target old_text block successfully.";
         }
         catch (JsonException)
         {
@@ -123,7 +117,7 @@ public class FsPatchTool : IMcpTool, IToolHelpProvider
 
     public string? GetHelpText() =>
         """
-        tool: system.fs.patch
+        tool: system_patch_file
 
         summary: Replace one exact text block in an existing file. Use this for narrow edits after reading the current file content.
 
@@ -133,13 +127,13 @@ public class FsPatchTool : IMcpTool, IToolHelpProvider
             formats:
               - absolute_file_path
               - relative_file_path
-          oldText:
+          old_text:
             required: true
             rules:
               - Must match existing file content exactly after CRLF/LF normalization.
               - Must be unique in the file.
               - Include enough surrounding context to avoid ambiguous matches.
-          newText:
+          new_text:
             required: true
             rules:
               - Replacement block.
@@ -147,7 +141,7 @@ public class FsPatchTool : IMcpTool, IToolHelpProvider
 
         behavior:
           old_text_not_found: read the file again and retry with current exact text.
-          old_text_not_unique: provide a larger oldText context block.
+          old_text_not_unique: provide a larger old_text context block.
           line_endings: preserves CRLF when the original file uses CRLF.
 
         risk:
@@ -156,7 +150,7 @@ public class FsPatchTool : IMcpTool, IToolHelpProvider
         examples:
           - request:
               path: SPLA.MCP.Core/McpHost.cs
-              oldText: "public void RegisterTool(IMcpTool tool)\n{\n"
-              newText: "public void RegisterTool(IMcpTool tool)\n{\n    ArgumentNullException.ThrowIfNull(tool);\n"
+              old_text: "public void RegisterTool(IMcpTool tool)\n{\n"
+              new_text: "public void RegisterTool(IMcpTool tool)\n{\n    ArgumentNullException.ThrowIfNull(tool);\n"
         """;
 }

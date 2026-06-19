@@ -13,32 +13,32 @@
     *   Поиск объектов по имени или части имени (FullName или Name).
     *   Возвращает список совпадений: `[ { fullName, kind, path } ]`.
 
-*   **`onec.get_object(fullName: string)`**
+*   **`onec_get_object(full_name: string)`**
     *   Получает полную карточку объекта.
     *   Возвращает метаданные объекта и списки *исходящих* связей, сгруппированные по типу (owns, writes, reads, calls и т.д.).
 
 ## Инструменты анализа связей и зависимостей
 
-*   **`onec.find_references(fullName: string, relationTypes?: string[], limit: int, offset: int, includeSnippets: bool)`**
+*   **`onec_find_references(full_name: string, relation_types?: string[], limit: int, offset: int, include_snippets: bool)`**
     *   Кто использует этот объект? (Входящие связи).
-    *   Возвращает список ссылающихся объектов, и, при `includeSnippets=true`, указывает файл и номер строки BSL.
+    *   Возвращает список ссылающихся объектов, и, при `include_snippets=true`, указывает файл и номер строки BSL.
 
-*   **`onec.get_dependencies(fullName: string, depth: int, relationTypes?: string[], limit: int)`**
+*   **`onec_get_dependencies(full_name: string, depth: int, relation_types?: string[], limit: int)`**
     *   От чего зависит этот объект? (Исходящий граф).
     *   Возвращает список узлов и рёбер графа глубиной до `depth` (1 или 2).
 
-*   **`onec.get_reverse_dependencies(fullName: string, depth: int, ...)`**
+*   **`onec_get_reverse_dependencies(full_name: string, depth: int, ...)`**
     *   Кто зависит от этого объекта? (Входящий граф).
     *   Возвращает узлы и рёбра. Полезно для анализа влияния (Impact Analysis) при изменении регистра или общего модуля.
 
 ## Специализированные "быстрые" инструменты
 
-*   **`onec.find_writers(fullName: string)`**
+*   **`onec_find_writers(full_name: string)`**
     *   Быстрый поиск объектов, которые делают `writes` в указанный регистр.
 
-*   **`onec.find_readers(fullName: string)`**
+*   **`onec_find_readers(full_name: string)`**
     *   Быстрый поиск объектов, которые делают `reads` или `queries` к указанному регистру или справочнику.
 
-*   **`onec.explain_object(fullName: string)`**
+*   **`onec_explain_object(full_name: string)`**
     *   Собирает компактный YAML-контекст по объекту (карточка, дети, чтение/запись, важные BSL файлы).
     *   Агент вызывает этот инструмент, чтобы собрать данные и затем самостоятельно объяснить объект пользователю человеческим языком.

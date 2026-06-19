@@ -43,18 +43,16 @@ public class WorkingMemoryInjectionTests
             ToolFilter = (t, _) => t,
             WorkingMemory = () => new List<(string, string, string)> { ("session", "context:plan", "step 1") }
         };
-        var convo = new List<ChatMessage>
-        {
-            new() { Role = ChatRole.System, Content = "SYS" },
-            new() { Role = ChatRole.User, Content = "hi" }
-        };
+        var convo = new Conversation();
+        convo.Add(new ChatMessage { Role = ChatRole.System, Content = "SYS" });
+        convo.Add(new ChatMessage { Role = ChatRole.User, Content = "hi" });
 
         await orch.RunAsync(convo, new LLMSettings(), AgentMode.Agent, new AgentCallbacks());
 
         var seen = llm.SeenContexts.Single();
         // Injected as a system message right after the leading system prompt — and not persisted.
         Assert.Contains(seen, m => m.Role == ChatRole.System && (m.Content?.Contains("context:plan = step 1") ?? false));
-        Assert.DoesNotContain(convo, m => (m.Content?.Contains("Working memory") ?? false));
+        Assert.DoesNotContain(convo.Messages, m => (m.Content?.Contains("Working memory") ?? false));
     }
 
     // Minimal fakes (kept local to avoid coupling to ConversationOrchestratorTests' private types).

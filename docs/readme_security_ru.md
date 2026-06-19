@@ -90,3 +90,21 @@ SPLA использует несколько уровней доступа. Ре
 * Выполни задачу от начала до результата без пошагового участия пользователя.
 
 Даже в режиме Agent агент ограничен настройками проекта, разрешенными инструментами, рабочей областью и политиками безопасности.
+
+## Имена инструментов
+
+Имена инструментов, видимые модели, являются частью контракта tool/function calling.
+
+Правило: только `lower_snake_case`, ASCII буквы/цифры/подчеркивание, без точек, пробелов, кириллицы, CamelCase и namespace-style имен.
+
+Формат: `<domain>_<action>[_object]`.
+
+Примеры:
+
+* `system_read_file`
+* `system_search_text`
+* `network_discover_hosts`
+* `network_scan_tcp_ports`
+* `agent_memory_set` / `agent_memory_get` / `agent_memory_delete` / `agent_memory_list` / `agent_memory_clear`
+
+ID навыков остаются отдельной сущностью и могут выглядеть как `network.range-audit`; они передаются параметром в `skill_activate`, но не являются именами инструментов.

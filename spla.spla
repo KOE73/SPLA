@@ -15,8 +15,8 @@ llm:
 ui:
   theme: Cream
   density: mini
-  bubble_chat: false
-  selected_chat_view_id: web
+  chat_render_mode: web
+  active_profile_id: bubbles
 permissions:
   read: allow
   write: ask

@@ -1,5 +1,6 @@
 using SPLA.Domain.Models;
 using SPLA.MCP.Core.Interfaces;
+using SPLA.MCP.Core.Json;
 using System;
 using System.IO;
 using System.Text.Json;
@@ -10,7 +11,7 @@ namespace SPLA.MCP.BasicTools.FileSystem;
 
 public class FsDeleteTool : IMcpTool
 {
-    public string Name => "system.fs.delete";
+    public string Name => "system_delete_file";
 
     public ToolDefinition GetDefinition() => new ToolDefinition
     {
@@ -22,6 +23,7 @@ public class FsDeleteTool : IMcpTool
             Scope = ToolScope.Project,
             Effect = ToolEffect.Write,
             Risk = ToolRisk.Medium,
+            StrictSchema = true,
             Parameters = new
             {
                 type = "object",
@@ -39,13 +41,8 @@ public class FsDeleteTool : IMcpTool
         try
         {
             using var doc = JsonDocument.Parse(argumentsJson);
-            if (!doc.RootElement.TryGetProperty("path", out var pathElement))
-            {
-                return Task.FromResult("Error: Missing 'path' parameter.");
-            }
-
-            var path = pathElement.GetString();
-            if (string.IsNullOrEmpty(path)) return Task.FromResult("Error: path is empty.");
+            var path = ToolJson.GetStringTrimmed(doc.RootElement, "path");
+            if (path is null) return Task.FromResult("Error: Missing 'path' parameter.");
 
             if (!File.Exists(path))
             {

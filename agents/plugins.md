@@ -17,18 +17,30 @@ default_prompt: |
 ```
 
 ## Tool Naming Convention
-To prevent collisions and maintain a clean architecture, all tools exposed by plugins **MUST** follow this structured naming convention:
+Model-facing tool names are part of the LLM contract. They must be stable, easy to copy into tool calls, and compatible with OpenAI-style function/tool calling.
 
-`[plugin].[domain].[action]`
+All tools exposed to the model **MUST** use lower_snake_case:
 
-- **plugin**: The unique identifier of the plugin (matches `id` in `meta.yaml`). E.g., `onec`, `system`, `git`.
-- **domain**: The area of responsibility or subsystem. E.g., `fs`, `network`, `object`.
-- **action**: The specific action performed by the tool. E.g., `read`, `find`, `explain`.
+`<domain>_<action>[_object]`
+
+Rules:
+
+- Use only ASCII letters, digits, and underscore.
+- Use lowercase only.
+- Do not use dots, spaces, Cyrillic, CamelCase, or namespace-style names.
+- Keep the name atomic and understandable without UI hierarchy.
+- Keep the name at most 64 characters.
+- Use the broad functional domain as the prefix, not the plugin folder or UI group unless they are the same concept.
+- Do not rely on the name as the whole description; the tool description must explain when to use the tool, required inputs, and practical limits.
+
+The compatible provider-level shape is `^[a-zA-Z0-9_-]{1,64}$`; SPLA intentionally narrows this to lower_snake_case so models do not have to choose between dotted namespaces, hyphens, and mixed casing.
 
 ### Examples
-- `system.fs.read`
-- `onec.object.explain`
-- `test.sys.ping`
+- `system_read_file`
+- `network_discover_hosts`
+- `network_scan_tcp_ports`
+- `onec_explain_object`
+- `plugin_run_command`
 
 ## Tool Help
 Tool descriptions should stay short so the model can choose the right tool without loading rare usage details into every prompt.
@@ -39,7 +51,7 @@ Complex tools SHOULD implement `IToolHelpProvider` and return LLM-oriented help 
 public sealed class MyTool : IMcpTool, IToolHelpProvider
 {
     public string? GetHelpText() => """
-        tool: my_plugin.domain.action
+        tool: my_domain_do_action
 
         summary: ...
 
@@ -58,7 +70,7 @@ public sealed class MyTool : IMcpTool, IToolHelpProvider
 }
 ```
 
-SPLA registers one system meta-tool, `agent.info`, which routes by active tool name through `McpHost`.
+SPLA registers one system meta-tool, `agent_info`, which routes by active tool name through `McpHost`.
 
 When a tool implements `IToolHelpProvider`, `McpHost` automatically prefixes its model-facing description with `[H]`. Do not write this flag manually in tool descriptions.
 
@@ -66,10 +78,10 @@ See [Tool Help System](tool-help.md) for the full flow and examples.
 
 Rules:
 
-- `agent.info` only returns help for tools currently registered in the host.
-- Disabled plugins or disabled plugin tools are not visible through `agent.info`.
-- Tools unavailable in the current agent mode are not exposed through `agent.info`.
-- If the name is partial or inexact, `agent.info` returns suggestions from visible tools.
+- `agent_info` only returns help for tools currently registered in the host.
+- Disabled plugins or disabled plugin tools are not visible through `agent_info`.
+- Tools unavailable in the current agent mode are not exposed through `agent_info`.
+- If the name is partial or inexact, `agent_info` returns suggestions from visible tools.
 - Do not move detailed usage formats into `description`; keep them in `GetHelpText()`.
 
 ## Project Settings Integration (`.spla`)
@@ -81,7 +93,7 @@ plugins:
     enabled: true
     custom_prompt: "Override the default plugin prompt here."
     tools:
-      test.sys.ping: false # Disables just this specific tool
+      test_ping_host: false # Disables just this specific tool
 ```
 
 ## Skills
@@ -116,7 +128,7 @@ description: One-line description shown in the system prompt index.
 ### Runtime
 
 - `SkillManager` scans `plugins/*/skills/*.md` at startup — no plugin dependency.
-- `skill.load` MCP tool returns the skill body on demand; model calls it when the request matches.
+- `agent_info {"id": "<skill-id>"}` returns the full skill body on demand; model calls it when the request matches.
 - `IsEnabled` / `IsPreloaded` flags are persisted in `.spla` under `skills:`.
 
 ```yaml

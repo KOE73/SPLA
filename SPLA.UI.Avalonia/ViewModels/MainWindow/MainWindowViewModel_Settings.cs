@@ -41,13 +41,12 @@ public partial class MainWindowViewModel : ViewModelBase
         else if (e.PropertyName == nameof(SettingsViewModel.ActiveProfileId))
         {
             var matched = AvailableProfiles.FirstOrDefault(p => p.Id == Settings.ActiveProfileId);
-            if (matched != null && matched != SelectedProfile)
-                SelectProfileCommand.Execute(matched);
+            if (matched != null)
+                Session.SelectProfileCommand.Execute(matched);
         }
         else if (e.PropertyName == nameof(SettingsViewModel.ChatRenderMode))
         {
-            if (Settings.ChatRenderMode != ActiveRenderMode)
-                SelectRenderModeCommand.Execute(Settings.ChatRenderMode);
+            Session.SelectRenderModeCommand.Execute(Settings.ChatRenderMode);
         }
     }
 }

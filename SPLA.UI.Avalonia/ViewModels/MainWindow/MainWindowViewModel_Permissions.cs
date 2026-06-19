@@ -58,7 +58,7 @@ public partial class MainWindowViewModel : ViewModelBase
         
         await Dispatcher.UIThread.InvokeAsync(() =>
         {
-            Messages.Add(new PermissionMessageViewModel(def, args, tcs));
+            Session.Messages.Add(new PermissionMessageViewModel(def, args, tcs));
         });
 
         var decision = await tcs.Task;

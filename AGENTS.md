@@ -10,10 +10,18 @@ For comprehensive details on agent permission models, tool matrices, autonomy co
 - **[Project Structure](agents/structure.md)**: Overview of the solution layout and module responsibilities.
 - **[Plugin System & Tool Naming](agents/plugins.md)**: Rules for creating plugins, extending the system prompt, and standardizing tool names (`[plugin].[domain].[action]`).
 - **[Documentation Layout](agents/documentation.md)**: Defines the separation between `agents/` and `docs/`, including README translation rules.
-- **[Capability Lookup (agent.info)](agents/tool-help.md)**: How `agent.info` works — unified tool help + skill loading. `[H]` flag, routing logic, help text format.
+- **[Capability Lookup (agent_info)](agents/tool-help.md)**: How `agent_info` works — unified tool help + skill loading. `[H]` flag, routing logic, help text format.
 - **[Chat Message Architecture](agents/chat-messages.md)**: Canonical design for chat message types, display profiles, tool progress streaming, scroll fix, and Web view incremental update. Read before touching `Views/Chat/` or `ViewModels/Messages/`.
 - **[Data Ownership Rules](agents/data-ownership.md)**: STOP — read this before adding any registry, flag, or discovery logic. UI ViewModels must not own domain data. Violations cause data loss on restart, CLI blindness, and untestable state.
+- **[System Prompt Authoring Rules](agents/sys_prompt_rules.md)**: STOP — read this before writing any system prompt block, skill description, tool help text, or plugin prompt. Defines how to avoid logical contradictions between rules. Russian translation: [`docs/sys_prompt_rules_ru.md`](docs/sys_prompt_rules_ru.md).
+- **[Skill System Architecture](agents/skills.md)**: STOP — read this before touching `SkillManager`, `SystemPromptBuilder`, skill tool implementations (`skill_activate`, `skill_deactivate`, `agent_clarify`, `agent_spawn`), or any UI that reflects skill state. Defines the lifecycle state machine, assembly order, permission matrix, and hot reload behavior.
 
+
+## Translation Policy
+
+Any file under `agents/` that is updated must have its Russian translation in `docs/` updated in the same commit.
+Translation target: `docs/<same-name>_ru.md`.
+Exception: files with no existing `_ru` counterpart do not require one unless explicitly requested.
 
 ## Skill & Plugin Authoring Language
 

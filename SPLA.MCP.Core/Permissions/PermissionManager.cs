@@ -31,6 +31,20 @@ public class PermissionManager : IPermissionManager
         if (toolMetadata.Scope == ToolScope.Agent)
             return PermissionResult.Allow;
 
+        // Skill-scoped tools: activation requires user confirmation in interactive modes.
+        // Deactivation uses ToolScope.Agent (always allowed) and never reaches this branch.
+        if (toolMetadata.Scope == ToolScope.Skill)
+        {
+            return mode switch
+            {
+                AgentMode.Chat    => PermissionResult.Ask,
+                AgentMode.Inspect => PermissionResult.Ask,
+                AgentMode.Edit    => PermissionResult.Allow,
+                AgentMode.Agent   => PermissionResult.Allow,
+                _                 => PermissionResult.Deny   // Research and unknown modes
+            };
+        }
+
         var remembered = _rememberedPermissions.FirstOrDefault(x =>
             string.Equals(x.Tool, toolMetadata.Name, StringComparison.OrdinalIgnoreCase) &&
             (x.Arguments == "*" || string.Equals(x.Arguments, argumentsJson, StringComparison.Ordinal)));

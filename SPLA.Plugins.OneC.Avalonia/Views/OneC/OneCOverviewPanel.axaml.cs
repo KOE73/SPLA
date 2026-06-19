@@ -246,7 +246,7 @@ public partial class OneCOverviewPanel : UserControl
         _objectDetails.Text = $"""
             kind: {obj.Kind}
             name: {obj.Name}
-            fullName: {obj.FullName}
+            full_name: {obj.FullName}
             path: {obj.Path ?? ""}
             summary: {obj.Summary ?? ""}
 

@@ -30,6 +30,14 @@ public sealed class AgentCallbacks
     /// <summary>A tool is about to execute.</summary>
     public Func<ToolCall, Task>? OnToolCallStarted { get; init; }
 
+    /// <summary>
+    /// A running tool reported progress (a <see cref="ToolProgress"/> tick). Deliberately a
+    /// fire-and-forget <see cref="Action"/>, not an async hook: a progress tick must never block or
+    /// back-pressure the tool, and may fire thousands of times — the consumer is expected to throttle
+    /// and marshal to its UI thread itself. Wired from <see cref="SPLA.Domain.Tools.ToolProgressScope"/>.
+    /// </summary>
+    public Action<ToolCall, ToolProgress>? OnToolProgress { get; init; }
+
     /// <summary>A tool finished; carries the raw result string.</summary>
     public Func<ToolCall, string, Task>? OnToolResult { get; init; }
 

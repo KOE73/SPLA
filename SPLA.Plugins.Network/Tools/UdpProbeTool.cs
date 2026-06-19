@@ -1,5 +1,6 @@
 using SPLA.Domain.Models;
 using SPLA.MCP.Core.Interfaces;
+using SPLA.MCP.Core.Json;
 using System;
 using System.Diagnostics;
 using System.Net.Sockets;
@@ -12,7 +13,7 @@ namespace SPLA.Plugins.Network;
 
 public class UdpProbeTool : IMcpTool
 {
-    public string Name => "network.udp.probe";
+    public string Name => "network_probe_udp";
 
     public ToolDefinition GetDefinition() => new ToolDefinition
     {
@@ -32,7 +33,7 @@ public class UdpProbeTool : IMcpTool
                     host = new { type = "string", description = "Target IP or hostname." },
                     port = new { type = "integer", description = "UDP port (1-65535)." },
                     payload = new { type = "string", description = "Data to send (UDP usually requires a payload to elicit a response)." },
-                    payloadIsHex = new { type = "boolean", description = "If true, 'payload' is parsed as a hex string (e.g. '0A 0D'). Default: false." },
+                    payload_is_hex = new { type = "boolean", description = "If true, 'payload' is parsed as a hex string (e.g. '0A 0D'). Default: false." },
                     timeout = new { type = "integer", description = "Timeout in milliseconds for receiving (default: 3000)." }
                 },
                 required = new[] { "host", "port", "payload" }
@@ -49,21 +50,19 @@ public class UdpProbeTool : IMcpTool
             using var doc = JsonDocument.Parse(argumentsJson);
             var root = doc.RootElement;
 
-            if (!root.TryGetProperty("host", out var hostElement) || 
-                !root.TryGetProperty("port", out var portElement) ||
-                !root.TryGetProperty("payload", out var payloadElement))
-            {
-                return "Error: Missing 'host', 'port', or 'payload' parameters.";
-            }
+            var hostVal = ToolJson.GetStringTrimmed(root, "host");
+            if (hostVal is null) return "Error: Missing 'host', 'port', or 'payload' parameters.";
+            host = hostVal;
 
-            host = hostElement.GetString() ?? string.Empty;
-            if (!portElement.TryGetInt32(out port)) return "Error: Invalid port.";
+            var portVal = ToolJson.GetInt32(root, "port");
+            if (portVal is null || portVal < 1 || portVal > 65535) return "Error: Port must be an integer between 1 and 65535.";
+            port = portVal.Value;
 
-            var payload = payloadElement.GetString();
+            var payload = ToolJson.GetString(root, "payload");
             if (string.IsNullOrEmpty(payload)) return "Error: UDP probe requires a non-empty payload to elicit a response.";
 
-            var payloadIsHex = root.TryGetProperty("payloadIsHex", out var ph) && ph.GetBoolean();
-            var timeout = root.TryGetProperty("timeout", out var to) && to.TryGetInt32(out var t) ? t : 3000;
+            var payloadIsHex = ToolJson.GetBoolean(root, "payload_is_hex", false);
+            var timeout      = ToolJson.GetInt32(root, "timeout", 3000);
 
             byte[] sendData;
             if (payloadIsHex)

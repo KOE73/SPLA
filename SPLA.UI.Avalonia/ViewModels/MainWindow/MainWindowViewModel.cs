@@ -47,64 +47,13 @@ public partial class MainWindowViewModel : ViewModelBase
         public Func<ChatSession, Task<bool>>? ConfirmDeleteChatAsync { get; set; }
         public Func<Task<string?>>? SelectProjectFolderAsync { get; set; }
     
-        // ── Display profiles ───────────────────────────────────────────────────
-
+        // ── Display profiles (global list; selection lives in ChatSessionViewModel) ──
         [ObservableProperty]
         private ObservableCollection<ChatProfileViewModel> _availableProfiles = new();
 
-        [ObservableProperty]
-        private ChatProfileViewModel? _selectedProfile;
+        /// <summary>Owns all conversation state for the currently active chat session.</summary>
+        public ChatSessionViewModel Session { get; private set; } = null!;
 
-        partial void OnSelectedProfileChanged(ChatProfileViewModel? value)
-        {
-            OnPropertyChanged(nameof(ActiveProfile));
-            OnPropertyChanged(nameof(ActiveProfileUsesBubbles));
-            OnPropertyChanged(nameof(ActiveProfileUsesLinear));
-
-            if (value != null && Settings.ActiveProfileId != value.Id)
-            {
-                Settings.ActiveProfileId = value.Id;
-                _ = Settings.SaveSettingsAsync();
-            }
-        }
-
-        public bool ActiveProfileUsesBubbles => SelectedProfile?.Profile.UseBubbleLayout == true;
-        public bool ActiveProfileUsesLinear  => SelectedProfile?.Profile.UseBubbleLayout != true;
-
-        // ── Render mode: "native" | "web" ─────────────────────────────────────
-
-        [ObservableProperty]
-        [NotifyPropertyChangedFor(nameof(IsNativeChatViewSelected))]
-        [NotifyPropertyChangedFor(nameof(IsWebChatViewSelected))]
-        private string _activeRenderMode = "native";
-
-        partial void OnActiveRenderModeChanged(string value)
-        {
-            if (Settings.ChatRenderMode != value)
-            {
-                Settings.ChatRenderMode = value;
-                _ = Settings.SaveSettingsAsync();
-            }
-        }
-
-        public bool IsNativeChatViewSelected => ActiveRenderMode == "native";
-        public bool IsWebChatViewSelected => ActiveRenderMode == "web";
-
-        /// <summary>The active display profile domain object (null only before initialization).</summary>
-        public ChatDisplayProfile? ActiveProfile => SelectedProfile?.Profile;
-    
-        [ObservableProperty]
-        private ObservableCollection<MessageViewModel> _messages = new();
-    
-        [ObservableProperty]
-        private string _inputText = "";
-    
-        [ObservableProperty]
-        [NotifyPropertyChangedFor(nameof(IsNotBusy))]
-        private bool _isBusy;
-    
-        public bool IsNotBusy => !IsBusy;
-    
         [ObservableProperty]
         private ObservableCollection<ChatSession> _chats = new();
     
@@ -127,21 +76,21 @@ public partial class MainWindowViewModel : ViewModelBase
         private readonly SPLA.MCP.Core.Plugins.SkillManager _skillManager;
         private readonly SPLA.MCP.Core.Plugins.CapabilityRegistry _capabilityRegistry;
         private readonly HttpClient _httpClient;
+        private readonly SPLA.LLM.LMStudio.LMStudioClient _llmClient;
         private readonly List<ToolDefinition> _tools;
         // Fundamental agent working memory. session = current chat (persisted with the chat);
         // project = shared across chats (persisted to project-kv.yaml). Both exposed to the debug view.
-        private readonly KeyValueStore _sessionKv = new("session");
         private readonly ProjectKvStore _projectKv;
+        private readonly SPLA.Agent.CheckpointManager _checkpointManager = new();
+        private readonly SPLA.Domain.Agent.SkillSession _skillSession = new();
+        private SPLA.MCP.Core.Plugins.SkillFileWatcher? _skillFileWatcher;
         private ChatManager? _chatManager;
         private bool _isReloadingChats;
-        private string? _loadedChatId;
-        private CancellationTokenSource? _currentRequestCts;
-        private DispatcherTimer? _tokenEstimateTimer;
-        private DateTime _tokenEstimateStartedAt;
     
         public MainWindowViewModel()
         {
             _httpClient = new HttpClient { Timeout = TimeSpan.FromMinutes(10) };
+            _llmClient = new SPLA.LLM.LMStudio.LMStudioClient(_httpClient);
             _permissionManager = CreatePermissionManager();
             
             var logger = App.Services.GetRequiredService<ILogger<MainWindowViewModel>>();
@@ -156,6 +105,7 @@ public partial class MainWindowViewModel : ViewModelBase
             _skillManager = new SPLA.MCP.Core.Plugins.SkillManager(
                 App.Services.GetRequiredService<ILogger<SPLA.MCP.Core.Plugins.SkillManager>>());
             _skillManager.LoadSkills(pluginsDir);
+            _skillFileWatcher = new SPLA.MCP.Core.Plugins.SkillFileWatcher(_skillManager, _skillSession, pluginsDir);
             _skillManager.ApplySettings(App.ResolvedSettings.Skills.ToDictionary(
                 kvp => kvp.Key,
                 kvp => (kvp.Value.Enabled ?? true, kvp.Value.Preloaded ?? false)));
@@ -170,6 +120,19 @@ public partial class MainWindowViewModel : ViewModelBase
             _mcpHost.OnPermissionRequested = HandlePermissionRequestAsync;
 
             _projectKv = new ProjectKvStore(App.ResolvedSettings);
+
+            Session = new SPLA.UI.Avalonia.ViewModels.Chat.ChatSessionViewModel(
+                this,
+                _llmClient,
+                _mcpHost,
+                _skillManager,
+                _pluginManager,
+                _skillSession,
+                Settings,
+                Status,
+                GetFilteredToolsForMode,
+                _checkpointManager);
+            Session.OnChatSaved = LoadChatsList;
 
             _mcpHost.RegisterTool(new FsListTool());
             _mcpHost.RegisterTool(new FsReadTool());
@@ -187,7 +150,21 @@ public partial class MainWindowViewModel : ViewModelBase
             _mcpHost.RegisterTool(new SPLA.MCP.BasicTools.Network.WebFetchTool());
             _mcpHost.RegisterTool(new SPLA.MCP.BasicTools.Network.WebSearchTool());
             _mcpHost.RegisterTool(new SPLA.MCP.Core.Tools.AgentInfoTool(_mcpHost, _skillManager));
-            _mcpHost.RegisterTool(new SPLA.MCP.Core.Tools.AgentMemoryTool(_sessionKv, _projectKv.Store));
+            _mcpHost.RegisterTool(new SPLA.MCP.Core.Tools.AgentMemorySetTool(Session.SessionKv, _projectKv.Store));
+            _mcpHost.RegisterTool(new SPLA.MCP.Core.Tools.AgentMemoryGetTool(Session.SessionKv, _projectKv.Store));
+            _mcpHost.RegisterTool(new SPLA.MCP.Core.Tools.AgentMemoryDeleteTool(Session.SessionKv, _projectKv.Store));
+            _mcpHost.RegisterTool(new SPLA.MCP.Core.Tools.AgentMemoryListTool(Session.SessionKv, _projectKv.Store));
+            _mcpHost.RegisterTool(new SPLA.MCP.Core.Tools.AgentMemoryClearTool(Session.SessionKv, _projectKv.Store));
+            _mcpHost.RegisterTool(new SPLA.MCP.Core.Tools.SkillActivateTool(_skillSession, _skillManager));
+            _mcpHost.RegisterTool(new SPLA.MCP.Core.Tools.SkillDeactivateTool(_skillSession));
+            _mcpHost.RegisterTool(new SPLA.MCP.Core.Tools.AgentClarifyTool());
+            var spawnedRunner = new SPLA.Agent.SpawnedAgentRunner(_llmClient, _mcpHost, _skillManager, _pluginManager, App.ResolvedSettings);
+            _mcpHost.RegisterTool(new SPLA.MCP.Core.Tools.AgentSpawnTool(spawnedRunner));
+            _mcpHost.RegisterTool(new SPLA.MCP.Core.Tools.AgentSpawnBatchTool(spawnedRunner));
+            _mcpHost.RegisterTool(new SPLA.MCP.Core.Tools.ContextCheckpointSetTool(_checkpointManager));
+            _mcpHost.RegisterTool(new SPLA.MCP.Core.Tools.ContextCheckpointRestoreTool(_checkpointManager));
+            _mcpHost.RegisterTool(new SPLA.MCP.Core.Tools.MarkSetTool(_checkpointManager));
+            _mcpHost.RegisterTool(new SPLA.MCP.Core.Tools.MarkRollbackTool(_checkpointManager));
             _mcpHost.RegisterTool(new PluginCommandRunTool(
                 _pluginManager.GetUiCommands(),
                 App.Services.GetRequiredService<IPluginPanelHostService>(),
@@ -206,6 +183,7 @@ public partial class MainWindowViewModel : ViewModelBase
             Sidebar.Build(_capabilityRegistry.Items);
             LoadPluginUiCommands();
     
+            Status.AttachSkillSession(_skillSession);
             _ = InitializeAsync();
             Status.PropertyChanged += Status_PropertyChanged;
         }

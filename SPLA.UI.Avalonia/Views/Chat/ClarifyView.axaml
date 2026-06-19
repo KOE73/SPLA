@@ -1,0 +1,60 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:SPLA.UI.Avalonia.ViewModels.Chat"
+             x:Class="SPLA.UI.Avalonia.Views.Chat.ClarifyView"
+             x:DataType="vm:ClarifyViewModel">
+
+    <!-- Semi-transparent backdrop so it visually floats over the message list -->
+    <Border Background="{DynamicResource PanelBackgroundBrush}"
+            BorderBrush="{DynamicResource AccentBrush}"
+            BorderThickness="1"
+            CornerRadius="8"
+            Padding="14,10"
+            Margin="16,0,16,8"
+            MaxWidth="560"
+            HorizontalAlignment="Left">
+
+        <StackPanel Spacing="8">
+            <!-- Question -->
+            <TextBlock Text="{Binding Question}"
+                       TextWrapping="Wrap"
+                       FontSize="{DynamicResource BaseFontSize}"
+                       Foreground="{DynamicResource TextForegroundBrush}"
+                       FontWeight="SemiBold" />
+
+            <!-- Options -->
+            <ItemsControl ItemsSource="{Binding Options}">
+                <ItemsControl.ItemsPanel>
+                    <ItemsPanelTemplate>
+                        <WrapPanel Orientation="Horizontal" />
+                    </ItemsPanelTemplate>
+                </ItemsControl.ItemsPanel>
+                <ItemsControl.ItemTemplate>
+                    <DataTemplate x:DataType="vm:ClarifyOptionViewModel">
+                        <Button Command="{Binding ChooseCommand}"
+                                Margin="0,0,6,6"
+                                Padding="10,4"
+                                Background="{DynamicResource AccentBrush}"
+                                Foreground="White"
+                                CornerRadius="4"
+                                Cursor="Hand"
+                                ToolTip.Tip="{Binding Description}">
+                            <TextBlock Text="{Binding Label}" FontSize="{DynamicResource SmallFontSize}" />
+                        </Button>
+                    </DataTemplate>
+                </ItemsControl.ItemTemplate>
+            </ItemsControl>
+
+            <!-- Dismiss link -->
+            <Button Content="Skip / let agent decide"
+                    Command="{Binding DismissCommand}"
+                    Background="Transparent"
+                    Foreground="{DynamicResource SubTextForegroundBrush}"
+                    BorderThickness="0"
+                    Padding="0"
+                    FontSize="{DynamicResource SmallFontSize}"
+                    Cursor="Hand"
+                    HorizontalAlignment="Left" />
+        </StackPanel>
+    </Border>
+</UserControl>

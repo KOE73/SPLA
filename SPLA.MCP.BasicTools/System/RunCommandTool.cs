@@ -1,5 +1,6 @@
 using SPLA.Domain.Models;
 using SPLA.MCP.Core.Interfaces;
+using SPLA.MCP.Core.Json;
 using System;
 using System.Diagnostics;
 using System.IO;
@@ -12,7 +13,7 @@ namespace SPLA.MCP.BasicTools.SystemTools;
 
 public class RunCommandTool : IMcpTool
 {
-    public string Name => "sys.shell";
+    public string Name => "system_run_shell";
 
     public ToolDefinition GetDefinition() => new ToolDefinition
     {
@@ -24,6 +25,7 @@ public class RunCommandTool : IMcpTool
             Scope = ToolScope.Shell,
             Effect = ToolEffect.Execute,
             Risk = ToolRisk.High,
+            StrictSchema = true,
             Parameters = new
             {
                 type = "object",
@@ -36,16 +38,16 @@ public class RunCommandTool : IMcpTool
                     },
                     cwd = new
                     {
-                        type = "string",
-                        description = "Current working directory for the command (optional)"
+                        type = new[] { "string", "null" },
+                        description = "Current working directory for the command. Null = current directory."
                     },
-                    codepage = new
+                    code_page = new
                     {
-                        type = "integer",
-                        description = "Windows console code page for native command output. Defaults to 65001 (UTF-8)."
+                        type = new[] { "integer", "null" },
+                        description = "Windows console code page for native command output. Null = 65001 (UTF-8)."
                     }
                 },
-                required = new[] { "command" }
+                required = new[] { "command", "cwd", "code_page" }
             }
         }
     };
@@ -55,16 +57,13 @@ public class RunCommandTool : IMcpTool
         try
         {
             Encoding.RegisterProvider(CodePagesEncodingProvider.Instance);
-            var doc = JsonDocument.Parse(argumentsJson);
-            if (doc.RootElement.TryGetProperty("command", out var cmdElement))
-            {
-                var cmd = cmdElement.GetString();
-                var cwd = doc.RootElement.TryGetProperty("cwd", out var cwdElement) ? cwdElement.GetString() : null;
-                var codePage = doc.RootElement.TryGetProperty("codepage", out var codePageElement) && codePageElement.TryGetInt32(out var parsedCodePage)
-                    ? parsedCodePage
-                    : 65001;
+            using var doc = JsonDocument.Parse(argumentsJson);
+            var cmd      = ToolJson.GetString(doc.RootElement, "command");
+            var cwd      = ToolJson.GetString(doc.RootElement, "cwd");
+            var codePage = ToolJson.GetInt32(doc.RootElement, "code_page", 65001);
 
-                if (string.IsNullOrEmpty(cmd)) return "Error: command is empty.";
+            if (string.IsNullOrEmpty(cmd)) return "Error: Missing 'command' parameter.";
+            {
                 var encoding = Encoding.GetEncoding(codePage);
                 var encodedScript = Convert.ToBase64String(Encoding.Unicode.GetBytes(BuildPowerShellScript(cmd, codePage)));
 
@@ -96,7 +95,6 @@ public class RunCommandTool : IMcpTool
 
                 return $"ExitCode: {process.ExitCode}\nCodePage: {codePage}\nOutput:\n{output}\nError:\n{error}";
             }
-            return "Error: Missing 'command' parameter.";
         }
         catch (JsonException)
         {

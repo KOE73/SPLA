@@ -15,8 +15,10 @@ public enum ToolScope
     Project,    // Project-specific files
     Shell,      // Command line execution
     Internet,   // Web search, APIs
-    Agent       // Capabilities scoped to the agent itself (memory, info, datetime, context).
+    Agent,      // Capabilities scoped to the agent itself (memory, info, datetime, context).
                 // Fundamental: always available in every mode, bypasses mode/permission gating.
+    Skill       // Skill lifecycle tools (skill.activate, agent.spawn).
+                // Deactivation is Agent-scoped (always allowed). Activation is Skill-scoped (mode-gated).
 }
 
 public enum ToolEffect

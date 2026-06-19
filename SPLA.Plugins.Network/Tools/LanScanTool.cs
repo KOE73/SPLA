@@ -1,5 +1,7 @@
 using SPLA.Domain.Models;
+using SPLA.Domain.Tools;
 using SPLA.MCP.Core.Interfaces;
+using SPLA.MCP.Core.Json;
 using System;
 using System.Collections.Concurrent;
 using System.Linq;
@@ -13,7 +15,7 @@ namespace SPLA.Plugins.Network;
 
 public class LanScanTool : IMcpTool, IToolHelpProvider
 {
-    public string Name => "network.scan.lan";
+    public string Name => "network_discover_hosts";
 
     public ToolDefinition GetDefinition() => new ToolDefinition
     {
@@ -37,7 +39,7 @@ public class LanScanTool : IMcpTool, IToolHelpProvider
                     ping = new { type = "boolean", description = "Use ICMP ping. Default: true." },
                     timeout = new { type = "integer", description = "Ping/connect timeout in milliseconds. Default: 500." },
                     concurrency = new { type = "integer", description = "Parallel host scans. Default: 64, max: 256." },
-                    maxHosts = new { type = "integer", description = "Safety limit for host count. Default: 4096, max: 4096." }
+                    max_hosts = new { type = "integer", description = "Safety limit for host count. Default: 4096, max: 4096." }
                 }
             }
         }
@@ -48,21 +50,16 @@ public class LanScanTool : IMcpTool, IToolHelpProvider
         try
         {
             using var doc = JsonDocument.Parse(argumentsJson);
-            var cidr = doc.RootElement.TryGetProperty("cidr", out var cidrElement) ? cidrElement.GetString() : null;
-            var start = doc.RootElement.TryGetProperty("start", out var startElement) ? startElement.GetString() : null;
-            var end = doc.RootElement.TryGetProperty("end", out var endElement) ? endElement.GetString() : null;
-            var portsValue = doc.RootElement.TryGetProperty("ports", out var portsElement) ? portsElement.GetString() : null;
+            var root        = doc.RootElement;
+            var cidr        = ToolJson.GetString(root, "cidr");
+            var start       = ToolJson.GetString(root, "start");
+            var end         = ToolJson.GetString(root, "end");
+            var portsValue  = ToolJson.GetString(root, "ports");
             var usePortProbe = !string.IsNullOrWhiteSpace(portsValue);
-            var usePing = !doc.RootElement.TryGetProperty("ping", out var pingElement) || pingElement.ValueKind != JsonValueKind.False;
-            var timeout = doc.RootElement.TryGetProperty("timeout", out var timeoutElement) && timeoutElement.TryGetInt32(out var parsedTimeout)
-                ? Math.Clamp(parsedTimeout, 100, 10000)
-                : 500;
-            var concurrency = doc.RootElement.TryGetProperty("concurrency", out var concurrencyElement) && concurrencyElement.TryGetInt32(out var parsedConcurrency)
-                ? Math.Clamp(parsedConcurrency, 1, 256)
-                : 64;
-            var maxHosts = doc.RootElement.TryGetProperty("maxHosts", out var maxHostsElement) && maxHostsElement.TryGetInt32(out var parsedMaxHosts)
-                ? Math.Clamp(parsedMaxHosts, 1, 4096)
-                : 4096;
+            var usePing     = ToolJson.GetBoolean(root, "ping", true);
+            var timeout     = ToolJson.GetInt32Clamped(root, "timeout",     500,  100, 10000);
+            var concurrency = ToolJson.GetInt32Clamped(root, "concurrency", 64,   1,   256);
+            var maxHosts    = ToolJson.GetInt32Clamped(root, "max_hosts",   4096, 1,   4096);
 
             if (!usePing && !usePortProbe)
             {
@@ -72,6 +69,9 @@ public class LanScanTool : IMcpTool, IToolHelpProvider
             var hosts = NetworkScanHelpers.ParseHostRange(cidr, start, end, maxHosts);
             var ports = usePortProbe ? NetworkScanHelpers.ParsePorts(portsValue) : Array.Empty<int>();
             var results = new ConcurrentBag<HostScanResult>();
+            var total = hosts.Count;
+            long done = 0;
+            var step = Math.Max(1, total / 200);
 
             await Parallel.ForEachAsync(hosts, new ParallelOptions
             {
@@ -96,9 +96,18 @@ public class LanScanTool : IMcpTool, IToolHelpProvider
                     }
                 }
 
-                if ((!usePortProbe && pingAlive) || (usePortProbe && openPort.HasValue))
+                var found = (!usePortProbe && pingAlive) || (usePortProbe && openPort.HasValue);
+                if (found)
                 {
                     results.Add(new HostScanResult(address, openPort));
+                }
+
+                // Report on each responsive host (interesting), at each step boundary, and at the end.
+                var n = Interlocked.Increment(ref done);
+                if (found || n % step == 0 || n == total)
+                {
+                    var details = new[] { new ToolProgressDetail("alive", results.Count.ToString()) };
+                    ToolProgressScope.Report(n, total, "scanning hosts", details);
                 }
             });
 
@@ -138,7 +147,7 @@ public class LanScanTool : IMcpTool, IToolHelpProvider
 
     public string? GetHelpText() =>
         """
-        tool: network.scan.lan
+        tool: network_discover_hosts
 
         summary: Discover responsive hosts in a bounded IPv4 LAN range. Defaults to ping-only.
 
@@ -177,7 +186,7 @@ public class LanScanTool : IMcpTool, IToolHelpProvider
               - If omitted, no ports are scanned.
               - If provided, ports are used only as a host-presence probe.
               - For each host, scanning stops after the first open port.
-              - Use network.scan.ports for detailed port scanning.
+              - Use network_scan_tcp_ports for detailed port scanning.
           ping:
             required: false
             default: true
@@ -192,15 +201,15 @@ public class LanScanTool : IMcpTool, IToolHelpProvider
             default: 64
             min: 1
             max: 256
-          maxHosts:
+          max_hosts:
             required: false
             default: 4096
             min: 1
             max: 4096
 
         limits:
-          maxHostsDefault: 4096
-          maxHostsAbsolute: 4096
+          max_hosts_default: 4096
+          max_hosts_absolute: 4096
 
         risk:
           broadScan: ask the user for an explicit bounded subnet or range before scanning.

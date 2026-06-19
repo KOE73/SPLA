@@ -71,14 +71,14 @@ public partial class MainWindowViewModel : ViewModelBase
                 var opened = await App.Services.GetRequiredService<IPluginPanelHostService>().OpenPanelAsync(command.Target);
                 if (!opened)
                 {
-                    Messages.Add(new MessageViewModel(ChatRole.System, $"Plugin command failed: panel not found: {command.Target}"));
+                    Session.Messages.Add(new MessageViewModel(ChatRole.System, $"Plugin command failed: panel not found: {command.Target}"));
                 }
                 return;
             }
 
             if (command.Kind == SplaPluginUiCommandKind.OpenFile && !File.Exists(command.Target))
             {
-                Messages.Add(new MessageViewModel(ChatRole.System, $"Plugin command failed: file not found: {command.Target}"));
+                Session.Messages.Add(new MessageViewModel(ChatRole.System, $"Plugin command failed: file not found: {command.Target}"));
                 return;
             }
 
@@ -90,25 +90,8 @@ public partial class MainWindowViewModel : ViewModelBase
         }
         catch (Exception ex)
         {
-            Messages.Add(new MessageViewModel(ChatRole.System, $"Plugin command failed: {ex.Message}"));
+            Session.Messages.Add(new MessageViewModel(ChatRole.System, $"Plugin command failed: {ex.Message}"));
         }
-    }
-
-    [RelayCommand]
-    private void SelectProfile(SPLA.UI.Avalonia.ViewModels.Chat.ChatProfileViewModel? profile)
-    {
-        if (profile == null || profile == SelectedProfile) return;
-        if (SelectedProfile != null) SelectedProfile.IsSelected = false;
-        profile.IsSelected = true;
-        SelectedProfile = profile;
-        OnPropertyChanged(nameof(ActiveProfile));
-    }
-
-    [RelayCommand]
-    private void SelectRenderMode(string? mode)
-    {
-        if (string.IsNullOrEmpty(mode) || mode == ActiveRenderMode) return;
-        ActiveRenderMode = mode;
     }
 
     [RelayCommand]
@@ -123,7 +106,7 @@ public partial class MainWindowViewModel : ViewModelBase
     [RelayCommand]
     private async Task CreateProjectAsync()
     {
-        if (SelectProjectFolderAsync == null || IsBusy) return;
+        if (SelectProjectFolderAsync == null || Session.IsBusy) return;
 
         var folder = await SelectProjectFolderAsync();
         if (string.IsNullOrWhiteSpace(folder)) return;

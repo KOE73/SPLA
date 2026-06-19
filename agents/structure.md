@@ -62,7 +62,7 @@ Skills are named instruction sets stored as `.md` files in `SPLA.Skills.<PluginI
 They are independent of plugin code — a skill describes a procedure, not a capability declaration.
 
 - `SPLA.Skills.Network/`: Network skills. Built by `SPLA.Skills.Network.csproj` (Microsoft.Build.NoTargets).
-  - `CopySkills` target copies `*.md` to `plugins/network/skills/` in UI and CLI debug output on every build.
+  - `CopySkills` target copies `skills/*.md` to `plugins/network/skills/` in UI and CLI debug output on every build.
   - Published by `PublishAll.cmd` via `xcopy /s /y SPLA.Skills.Network .publish\work\plugins\network\skills\`.
 
 **Skill file format:**
@@ -75,7 +75,7 @@ description: One-line description used as the skill index entry in the system pr
 # Skill Title
 
 ## Tool availability
-[standard preamble — check tool.help, prefer network.* tools, fall back to cmd]
+[standard preamble — check `agent_info`, prefer lower_snake_case network tools, fall back to shell when allowed]
 
 [skill instructions...]
 ```
@@ -85,7 +85,7 @@ description: One-line description used as the skill index entry in the system pr
 - `CapabilityRegistry` includes skills alongside tools and plugins in a unified list.
 - `SidebarPanelViewModel` displays skills from `CapabilityRegistry` — it does NOT scan files or own skill data.
 - System prompt receives only the skill index (`id — description`, one line per skill).
-- Model calls `skill.load` tool to get full instructions when a request matches.
+- Model calls `agent_info {"id": "<skill-id>"}` to get full skill instructions when a request matches.
 - `IsPreloaded=true` (per-skill setting in `.spla`) injects the full body into the system prompt immediately.
 - Flags `IsEnabled`/`IsPreloaded` persist via the `skills:` section in `.spla` / `defaults.yaml`.
 

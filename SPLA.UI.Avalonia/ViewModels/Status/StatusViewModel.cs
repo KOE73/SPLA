@@ -1,11 +1,56 @@
+using Avalonia.Threading;
 using CommunityToolkit.Mvvm.ComponentModel;
+using CommunityToolkit.Mvvm.Input;
+using SPLA.Domain.Agent;
 using SPLA.Domain.Models;
 using System;
+using System.Collections.Generic;
+using System.Linq;
 
 namespace SPLA.UI.Avalonia.ViewModels.Status;
 
 public partial class StatusViewModel : ViewModelBase
 {
+    private ISkillSession? _skillSession;
+
+    /// <summary>Wires up skill session observation. Call once from MainWindowViewModel.</summary>
+    public void AttachSkillSession(ISkillSession session)
+    {
+        if (_skillSession != null)
+            _skillSession.Changed -= OnSkillSessionChanged;
+        _skillSession = session;
+        _skillSession.Changed += OnSkillSessionChanged;
+        SyncSkillState();
+    }
+
+    private void OnSkillSessionChanged(object? sender, EventArgs e)
+    {
+        if (Dispatcher.UIThread.CheckAccess())
+            SyncSkillState();
+        else
+            Dispatcher.UIThread.Post(SyncSkillState);
+    }
+
+    private void SyncSkillState()
+    {
+        ActiveSkillId = _skillSession?.ActiveSkillId;
+    }
+
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(HasActiveSkill))]
+    private string? _activeSkillId;
+
+    public bool HasActiveSkill => ActiveSkillId is not null;
+
+    [RelayCommand(CanExecute = nameof(HasActiveSkill))]
+    private void UnloadSkill() => _skillSession?.Deactivate();
+
+    partial void OnActiveSkillIdChanged(string? value)
+    {
+        UnloadSkillCommand.NotifyCanExecuteChanged();
+    }
+
+
     [ObservableProperty]
     private string _endpoint = "http://127.0.0.1:1234/v1/";
 
@@ -58,6 +103,10 @@ public partial class StatusViewModel : ViewModelBase
 
     [ObservableProperty]
     private string _activeOperation = "Idle";
+
+    /// <summary>Second status line: live counts / percent / interesting findings from the running tool.</summary>
+    [ObservableProperty]
+    private string? _activeOperationDetail;
 
     [ObservableProperty]
     private int _activeElapsedSeconds;
@@ -123,6 +172,26 @@ public partial class StatusViewModel : ViewModelBase
     public void SetActiveOperation(string operation)
     {
         ActiveOperation = string.IsNullOrWhiteSpace(operation) ? "Idle" : operation;
+        ActiveOperationDetail = null;
+    }
+
+    /// <summary>
+    /// Renders a <see cref="ToolProgress"/> tick into the two status lines, generically: the header
+    /// shows the tool and percent (when known); the detail line shows count, message, and any extra
+    /// findings. Knows nothing tool-specific — every tool that reports gets the same treatment.
+    /// </summary>
+    public void ReportProgress(string toolName, ToolProgress p)
+    {
+        var pct = p.Fraction is double f ? $"  {f * 100:0}%" : "";
+        ActiveOperation = $"⏳ {toolName}{pct}";
+
+        var parts = new List<string>();
+        if (p.Current is long c && p.Total is long t) parts.Add($"{c:N0} / {t:N0}");
+        if (!string.IsNullOrWhiteSpace(p.Message)) parts.Add(p.Message!);
+        if (p.Details is { Count: > 0 })
+            parts.AddRange(p.Details.Select(d => $"{d.Label}: {d.Value}"));
+
+        ActiveOperationDetail = parts.Count > 0 ? string.Join("  ·  ", parts) : null;
     }
 
     public void ClearActiveTokens()
@@ -131,6 +200,7 @@ public partial class StatusViewModel : ViewModelBase
         ActiveCompletionTokens = 0;
         ActiveElapsedSeconds = 0;
         ActiveOperation = "Idle";
+        ActiveOperationDetail = null;
     }
 }
 

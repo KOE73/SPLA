@@ -104,7 +104,24 @@ mcpHost.RegisterTool(new SPLA.MCP.Core.Tools.AgentInfoTool(mcpHost, skillManager
 // Fundamental agent working memory: session (this chat) + project (shared, persistent).
 var projectKv = new ProjectKvStore(settings);
 var sessionKv = new KeyValueStore("session");
-mcpHost.RegisterTool(new SPLA.MCP.Core.Tools.AgentMemoryTool(sessionKv, projectKv.Store));
+mcpHost.RegisterTool(new SPLA.MCP.Core.Tools.AgentMemorySetTool(sessionKv, projectKv.Store));
+mcpHost.RegisterTool(new SPLA.MCP.Core.Tools.AgentMemoryGetTool(sessionKv, projectKv.Store));
+mcpHost.RegisterTool(new SPLA.MCP.Core.Tools.AgentMemoryDeleteTool(sessionKv, projectKv.Store));
+mcpHost.RegisterTool(new SPLA.MCP.Core.Tools.AgentMemoryListTool(sessionKv, projectKv.Store));
+mcpHost.RegisterTool(new SPLA.MCP.Core.Tools.AgentMemoryClearTool(sessionKv, projectKv.Store));
+
+var skillSession = new SPLA.Domain.Agent.SkillSession();
+mcpHost.RegisterTool(new SPLA.MCP.Core.Tools.SkillActivateTool(skillSession, skillManager));
+mcpHost.RegisterTool(new SPLA.MCP.Core.Tools.SkillDeactivateTool(skillSession));
+mcpHost.RegisterTool(new SPLA.MCP.Core.Tools.AgentClarifyTool());
+var spawnedRunner = new SPLA.Agent.SpawnedAgentRunner(llmClient, mcpHost, skillManager, pluginManager, settings);
+mcpHost.RegisterTool(new SPLA.MCP.Core.Tools.AgentSpawnTool(spawnedRunner));
+mcpHost.RegisterTool(new SPLA.MCP.Core.Tools.AgentSpawnBatchTool(spawnedRunner));
+var checkpointManager = new SPLA.Agent.CheckpointManager();
+mcpHost.RegisterTool(new SPLA.MCP.Core.Tools.ContextCheckpointSetTool(checkpointManager));
+mcpHost.RegisterTool(new SPLA.MCP.Core.Tools.ContextCheckpointRestoreTool(checkpointManager));
+mcpHost.RegisterTool(new SPLA.MCP.Core.Tools.MarkSetTool(checkpointManager));
+mcpHost.RegisterTool(new SPLA.MCP.Core.Tools.MarkRollbackTool(checkpointManager));
 
 var tools = mcpHost.GetToolDefinitions().ToList();
 Console.WriteLine($"Tools registered: {tools.Count}");
@@ -168,13 +185,12 @@ sessionKv.LoadFrom(currentChat.Kv);
 
 var orchestrator = new SPLA.Agent.ConversationOrchestrator(llmClient, mcpHost)
 {
-    WorkingMemory = () => CollectWorkingMemory(sessionKv, projectKv.Store)
+    WorkingMemory = () => CollectWorkingMemory(sessionKv, projectKv.Store),
+    Checkpoint = checkpointManager
 };
 
-var messages = new List<ChatMessage>
-{
-    new ChatMessage { Role = ChatRole.System, Content = systemPrompt }
-};
+var conversation = new Conversation();
+conversation.Add(new ChatMessage { Role = ChatRole.System, Content = systemPrompt });
 
 // Load existing messages if opening chat
 foreach (var m in currentChat.Messages)
@@ -186,7 +202,7 @@ foreach (var m in currentChat.Messages)
         "tool" => ChatRole.Tool,
         _ => ChatRole.System
     };
-    messages.Add(new ChatMessage { Role = role, Content = m.Content });
+    conversation.Add(new ChatMessage { Role = role, Content = m.Content });
 }
 
 // --- Chat loop ---
@@ -217,15 +233,15 @@ while (true)
         var id = input["/skills load ".Length..].Trim();
         var body = skillManager.LoadBody(id);
         if (body == null) { Console.WriteLine($"Skill '{id}' not found."); continue; }
-        messages.Add(new ChatMessage { Role = ChatRole.User, Content = $"[Skill loaded: {id}]\n\n{body}" });
+        conversation.Add(new ChatMessage { Role = ChatRole.User, Content = $"[Skill loaded: {id}]\n\n{body}" });
         Console.WriteLine($"Skill '{id}' loaded into context.");
-        SaveCliChat(chatManager, currentChat, messages, sessionKv);
+        SaveCliChat(chatManager, currentChat, conversation, sessionKv);
         continue;
     }
 
     var requestId = Guid.NewGuid().ToString("N");
-    messages.Add(new ChatMessage { Role = ChatRole.User, Content = input });
-    SaveCliChat(chatManager, currentChat, messages, sessionKv);
+    conversation.Add(new ChatMessage { Role = ChatRole.User, Content = input });
+    SaveCliChat(chatManager, currentChat, conversation, sessionKv);
 
     using var requestTelemetryContext = SplaTelemetry.PushContext(new(
         ConversationId: currentChat.Id,
@@ -234,13 +250,14 @@ while (true)
         WorkspacePath: settings.WorkspacePath));
 
     Console.Write("SPLA: ");
+    var lastCliProgress = DateTime.MinValue;
     var callbacks = new SPLA.Agent.AgentCallbacks
     {
         OnDelta = chunk => { Console.Write(chunk); return Task.CompletedTask; },
         OnAssistantMessage = msg =>
         {
             Console.WriteLine();
-            SaveCliChat(chatManager, currentChat, messages, sessionKv);
+            SaveCliChat(chatManager, currentChat, conversation, sessionKv);
             return Task.CompletedTask;
         },
         OnToolCallStarted = tc =>
@@ -248,10 +265,23 @@ while (true)
             Console.WriteLine($" -> Call: {tc.Function.Name}");
             return Task.CompletedTask;
         },
+        OnToolProgress = (tc, progress) =>
+        {
+            // Overwrite a single line with the latest tick. Throttled by time to avoid console spam.
+            var now = DateTime.UtcNow;
+            if ((now - lastCliProgress).TotalMilliseconds < 150 && progress.Fraction < 1.0) return;
+            lastCliProgress = now;
+
+            var pct = progress.Fraction is double f ? $" {f * 100:0}%" : "";
+            var detail = progress.Details is { Count: > 0 }
+                ? "  " + string.Join("  ", progress.Details.Select(d => $"{d.Label}: {d.Value}"))
+                : "";
+            Console.Write($"\r    {tc.Function.Name}{pct} ({progress.Current}/{progress.Total}){detail}        ");
+        },
         OnToolResult = (tc, result) =>
         {
-            Console.WriteLine($" -> Result received ({result.Length} chars).");
-            SaveCliChat(chatManager, currentChat, messages, sessionKv);
+            Console.WriteLine($"\r -> Result received ({result.Length} chars).            ");
+            SaveCliChat(chatManager, currentChat, conversation, sessionKv);
             return Task.CompletedTask;
         },
         OnNotice = note => { Console.WriteLine($"\n{note}"); return Task.CompletedTask; }
@@ -259,7 +289,23 @@ while (true)
 
     try
     {
-        await orchestrator.RunAsync(messages, llmSettings, settings.Mode, callbacks);
+        using var clarifyScope = SPLA.Domain.Tools.ClarifyScope.Begin(async req =>
+        {
+            Console.WriteLine($"\n[?] {req.Question}");
+            for (int i = 0; i < req.Options.Count; i++)
+            {
+                var o = req.Options[i];
+                var desc = o.Description != null ? $" — {o.Description}" : "";
+                Console.WriteLine($"  {i + 1}. {o.Label}{desc}");
+            }
+            Console.Write("Choice (number, or Enter to skip): ");
+            var line = Console.ReadLine()?.Trim();
+            if (int.TryParse(line, out var idx) && idx >= 1 && idx <= req.Options.Count)
+                return req.Options[idx - 1].Label;
+            return null;
+        });
+
+        await orchestrator.RunAsync(conversation, llmSettings, settings.Mode, callbacks);
     }
     catch (Exception ex)
     {
@@ -267,15 +313,16 @@ while (true)
     }
 }
 
-static void SaveCliChat(ChatManager manager, ChatSession chat, List<ChatMessage> msgs, IKeyValueStore sessionKv)
+static void SaveCliChat(ChatManager manager, ChatSession chat, Conversation conversation, IKeyValueStore sessionKv)
 {
     chat.Messages.Clear();
-    foreach (var m in msgs.Where(x => x.Role != ChatRole.System))
+    foreach (var m in conversation.Persistable)
     {
         chat.Messages.Add(new ChatSessionMessage
         {
             Role = m.Role.ToString().ToLower(),
-            Content = m.Content ?? ""
+            Content = m.Content ?? "",
+            Reasoning = string.IsNullOrEmpty(m.Reasoning) ? null : m.Reasoning
         });
     }
     chat.Kv = ((KeyValueStore)sessionKv).Snapshot();

@@ -1,5 +1,6 @@
 using SPLA.Domain.Models;
 using SPLA.MCP.Core.Interfaces;
+using SPLA.MCP.Core.Json;
 using System;
 using System.IO;
 using System.Text.Json;
@@ -10,7 +11,7 @@ namespace SPLA.MCP.BasicTools.FileSystem;
 
 public class FsWriteTool : IMcpTool
 {
-    public string Name => "system.fs.write";
+    public string Name => "system_write_file";
 
     public ToolDefinition GetDefinition() => new ToolDefinition
     {
@@ -18,10 +19,11 @@ public class FsWriteTool : IMcpTool
         Function = new ToolFunctionDefinition
         {
             Name = Name,
-            Description = "Overwrites or creates a file with the specified content. Use system.fs.patch for partial edits of existing large files.",
+            Description = "Overwrites or creates a file with the specified content. Use system_patch_file for partial edits of existing large files.",
             Scope = ToolScope.Project,
             Effect = ToolEffect.Write,
             Risk = ToolRisk.Medium,
+            StrictSchema = true,
             Parameters = new
             {
                 type = "object",
@@ -40,16 +42,11 @@ public class FsWriteTool : IMcpTool
         try
         {
             using var doc = JsonDocument.Parse(argumentsJson);
-            if (!doc.RootElement.TryGetProperty("path", out var pathElement) ||
-                !doc.RootElement.TryGetProperty("content", out var contentElement))
-            {
+            var path    = ToolJson.GetStringTrimmed(doc.RootElement, "path");
+            var content = ToolJson.GetString(doc.RootElement, "content");
+
+            if (path is null || content is null)
                 return "Error: Missing 'path' or 'content' parameter.";
-            }
-
-            var path = pathElement.GetString();
-            var content = contentElement.GetString();
-
-            if (string.IsNullOrEmpty(path)) return "Error: path is empty.";
 
             // Create directories if they don't exist
             var dir = Path.GetDirectoryName(path);

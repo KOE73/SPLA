@@ -144,60 +144,7 @@ public partial class MainWindow : Window
 
     private async Task<bool> ConfirmDeleteChatAsync(ChatSession chat)
     {
-        var dialog = new Window
-        {
-            Title = "Delete chat",
-            Width = 360,
-            Height = 170,
-            WindowStartupLocation = WindowStartupLocation.CenterOwner,
-            Background = Background,
-            CanResize = false,
-            Content = new StackPanel
-            {
-                Margin = new global::Avalonia.Thickness(16),
-                Spacing = 12,
-                Children =
-                {
-                    new TextBlock
-                    {
-                        Text = "Delete this chat?",
-                        FontWeight = global::Avalonia.Media.FontWeight.Bold,
-                        FontSize = 16
-                    },
-                    new TextBlock
-                    {
-                        Text = chat.Title,
-                        TextWrapping = global::Avalonia.Media.TextWrapping.Wrap
-                    },
-                    new StackPanel
-                    {
-                        Orientation = global::Avalonia.Layout.Orientation.Horizontal,
-                        HorizontalAlignment = global::Avalonia.Layout.HorizontalAlignment.Right,
-                        Spacing = 8,
-                        Children =
-                        {
-                            new Button
-                            {
-                                Content = "Cancel",
-                                MinWidth = 80,
-                                Padding = new global::Avalonia.Thickness(10, 5)
-                            },
-                            new Button
-                            {
-                                Content = "Delete",
-                                MinWidth = 80,
-                                Padding = new global::Avalonia.Thickness(10, 5)
-                            }
-                        }
-                    }
-                }
-            }
-        };
-
-        var buttons = ((StackPanel)((StackPanel)dialog.Content!).Children[2]).Children;
-        ((Button)buttons[0]).Click += (_, _) => dialog.Close(false);
-        ((Button)buttons[1]).Click += (_, _) => dialog.Close(true);
-
+        var dialog = new ConfirmDeleteChatWindow(chat.Title);
         return await dialog.ShowDialog<bool>(this);
     }
 

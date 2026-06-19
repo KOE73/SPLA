@@ -1,5 +1,7 @@
 using SPLA.Domain.Models;
+using SPLA.Domain.Tools;
 using SPLA.MCP.Core.Interfaces;
+using SPLA.MCP.Core.Json;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -12,7 +14,7 @@ namespace SPLA.Plugins.Network;
 
 public class PortScanTool : IMcpTool, IToolHelpProvider
 {
-    public string Name => "network.scan.ports";
+    public string Name => "network_scan_tcp_ports";
 
     public ToolDefinition GetDefinition() => new ToolDefinition
     {
@@ -20,7 +22,7 @@ public class PortScanTool : IMcpTool, IToolHelpProvider
         Function = new ToolFunctionDefinition
         {
             Name = Name,
-            Description = "Scans TCP ports on one host. If ports are omitted, scans a practical common service set. Use ports like 'common', '1-1024', '22,80,443,3389', or 'all' only when explicitly requested.",
+            Description = "Scans TCP ports on one host. Omitting ports scans a practical common service set (~49 ports). Accepts: 'common', comma list, range (e.g. 1-1024), or 'all'.",
             Scope = ToolScope.Internet,
             Effect = ToolEffect.Read,
             Risk = ToolRisk.Medium,
@@ -44,27 +46,20 @@ public class PortScanTool : IMcpTool, IToolHelpProvider
         try
         {
             using var doc = JsonDocument.Parse(argumentsJson);
-            if (!doc.RootElement.TryGetProperty("host", out var hostElement))
-            {
-                return "Error: Missing 'host' parameter.";
-            }
+            var root = doc.RootElement;
+            var host = ToolJson.GetStringTrimmed(root, "host");
+            if (host is null) return "Error: Missing 'host' parameter.";
 
-            var host = hostElement.GetString();
-            if (string.IsNullOrWhiteSpace(host))
-            {
-                return "Error: Host is empty.";
-            }
-
-            var portsValue = doc.RootElement.TryGetProperty("ports", out var portsElement) ? portsElement.GetString() : null;
-            var timeout = doc.RootElement.TryGetProperty("timeout", out var timeoutElement) && timeoutElement.TryGetInt32(out var parsedTimeout)
-                ? Math.Clamp(parsedTimeout, 100, 10000)
-                : 500;
-            var concurrency = doc.RootElement.TryGetProperty("concurrency", out var concurrencyElement) && concurrencyElement.TryGetInt32(out var parsedConcurrency)
-                ? Math.Clamp(parsedConcurrency, 1, 512)
-                : 128;
+            var portsValue  = ToolJson.GetString(root, "ports");
+            var timeout     = ToolJson.GetInt32Clamped(root, "timeout",     500,   100, 10000);
+            var concurrency = ToolJson.GetInt32Clamped(root, "concurrency", 128,   1,   512);
 
             var ports = NetworkScanHelpers.ParsePorts(portsValue);
+            var total = ports.Count;
             var openPorts = new List<int>();
+            long done = 0;
+            // Cap progress chatter at ~200 ticks regardless of port count.
+            var step = Math.Max(1, total / 200);
 
             await Parallel.ForEachAsync(ports, new ParallelOptions
             {
@@ -72,12 +67,25 @@ public class PortScanTool : IMcpTool, IToolHelpProvider
                 CancellationToken = cancellationToken
             }, async (port, token) =>
             {
-                if (await NetworkScanHelpers.CheckPortAsync(host, port, timeout, token))
+                var isOpen = await NetworkScanHelpers.CheckPortAsync(host, port, timeout, token);
+                if (isOpen)
                 {
                     lock (openPorts)
                     {
                         openPorts.Add(port);
                     }
+                }
+
+                // Report on every open port (interesting), at each step boundary, and at the end.
+                var n = Interlocked.Increment(ref done);
+                if (isOpen || n % step == 0 || n == total)
+                {
+                    int[] snapshot;
+                    lock (openPorts) snapshot = openPorts.OrderBy(x => x).ToArray();
+                    var details = snapshot.Length > 0
+                        ? new[] { new ToolProgressDetail("open", NetworkScanHelpers.FormatPorts(snapshot)) }
+                        : null;
+                    ToolProgressScope.Report(n, total, $"scanning {host}", details);
                 }
             });
 
@@ -102,7 +110,7 @@ public class PortScanTool : IMcpTool, IToolHelpProvider
 
     public string? GetHelpText() =>
         """
-        tool: network.scan.ports
+        tool: network_scan_tcp_ports
 
         summary: Scan TCP ports on one host. Use for a single host or IP, not for subnet scanning.
 

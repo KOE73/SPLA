@@ -1,6 +1,7 @@
 using System.Text.Json;
 using SPLA.Domain.Models;
 using SPLA.MCP.Core.Interfaces;
+using SPLA.MCP.Core.Json;
 using SPLA.Plugins.OneC.Models;
 using SPLA.Plugins.OneC.Storage;
 
@@ -14,7 +15,7 @@ public class ExplainObjectTool : IMcpTool
 {
     private readonly OneCIndexDatabase _db;
 
-    public string Name => "onec.object.explain";
+    public string Name => "onec_explain_object";
     public string Description => "Explains the purpose, structure, and usage of a 1C object based on index and LLM analysis.";
 
     public ExplainObjectTool(OneCIndexDatabase db) => _db = db;
@@ -35,9 +36,9 @@ public class ExplainObjectTool : IMcpTool
                 type       = "object",
                 properties = new
                 {
-                    fullName = new { type = "string", description = "Fully-qualified object name." },
+                    full_name = new { type = "string", description = "Fully-qualified object name." },
                 },
-                required = new[] { "fullName" }
+                required = new[] { "full_name" }
             }
         }
     };
@@ -45,7 +46,7 @@ public class ExplainObjectTool : IMcpTool
     public Task<string> ExecuteAsync(string argumentsJson, CancellationToken cancellationToken = default)
     {
         var doc      = JsonDocument.Parse(argumentsJson);
-        var fullName = doc.RootElement.TryGetProperty("fullName", out var fn) ? fn.GetString() ?? "" : "";
+        var fullName = ToolJson.GetString(doc.RootElement, "full_name") ?? "";
 
         var obj = _db.GetObjectByFullName(fullName);
         if (obj is null)
@@ -69,7 +70,7 @@ public class ExplainObjectTool : IMcpTool
         {
             b.Section("object", o =>
             {
-                o.Field("fullName", obj.FullName);
+                o.Field("full_name", obj.FullName);
                 o.Field("kind",     obj.Kind);
                 if (obj.Summary is not null) o.Field("summary", obj.Summary);
             });
@@ -80,7 +81,7 @@ public class ExplainObjectTool : IMcpTool
             if (queries.Count > 0) b.List("queries", queries.Select(r => r.ToFullName));
             if (calls.Count   > 0) b.List("calls",   calls  .Select(r => r.ToFullName));
             if (uses.Count    > 0) b.List("uses",    uses   .Select(r => r.ToFullName));
-            if (importantFiles.Count > 0) b.List("importantFiles", importantFiles);
+            if (importantFiles.Count > 0) b.List("important_files", importantFiles);
         });
         return Task.FromResult(yaml);
     }

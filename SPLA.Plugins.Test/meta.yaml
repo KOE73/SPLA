@@ -4,4 +4,7 @@ type: dll
 entry_point: SPLA.Plugins.Test.dll
 default_prompt: |
   You have access to the 'test' plugin. 
-  Use the test.sys.ping tool whenever the user asks if you are alive.
+  Test plugin tools are available for plugin-system diagnostics.
+
+  Tools:
+    test_ping_host — returns a simple pong response for plugin loading checks.

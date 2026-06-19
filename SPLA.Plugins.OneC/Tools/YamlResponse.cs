@@ -73,13 +73,13 @@ internal class YamlBuilder
         _sb.AppendLine($"{Pad}{key}:");
         foreach (var r in list)
         {
-            _sb.AppendLine($"{Pad}  - fullName: {r.ToFullName}");
+            _sb.AppendLine($"{Pad}  - full_name: {r.ToFullName}");
             _sb.AppendLine($"{Pad}    kind: {r.ToKind}");
             if (includeSource && r.SourcePath is not null)
             {
-                _sb.AppendLine($"{Pad}    sourcePath: {r.SourcePath}");
+                _sb.AppendLine($"{Pad}    source_path: {r.SourcePath}");
                 if (r.SourceLine.HasValue)
-                    _sb.AppendLine($"{Pad}    sourceLine: {r.SourceLine}");
+                    _sb.AppendLine($"{Pad}    source_line: {r.SourceLine}");
             }
             _sb.AppendLine($"{Pad}    confidence: {r.Confidence}");
         }
@@ -95,12 +95,12 @@ internal class YamlBuilder
         {
             _sb.AppendLine($"{Pad}  - relation: {r.Type}");
             _sb.AppendLine($"{Pad}    from: {r.FromFullName}");
-            _sb.AppendLine($"{Pad}    fromKind: {r.FromKind}");
+            _sb.AppendLine($"{Pad}    from_kind: {r.FromKind}");
             if (includeSource && r.SourcePath is not null)
             {
-                _sb.AppendLine($"{Pad}    sourcePath: {r.SourcePath}");
+                _sb.AppendLine($"{Pad}    source_path: {r.SourcePath}");
                 if (r.SourceLine.HasValue)
-                    _sb.AppendLine($"{Pad}    sourceLine: {r.SourceLine}");
+                    _sb.AppendLine($"{Pad}    source_line: {r.SourceLine}");
             }
         }
         return this;

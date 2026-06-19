@@ -1,5 +1,6 @@
 using SPLA.Domain.Models;
 using SPLA.MCP.Core.Interfaces;
+using SPLA.MCP.Core.Json;
 using System;
 using System.Linq;
 using System.Net.Security;
@@ -16,7 +17,7 @@ namespace SPLA.Plugins.Network;
 
 public class SslCheckTool : IMcpTool
 {
-    public string Name => "network.ssl.check";
+    public string Name => "network_check_tls";
 
     public ToolDefinition GetDefinition() => new ToolDefinition
     {
@@ -36,7 +37,7 @@ public class SslCheckTool : IMcpTool
                     host = new { type = "string", description = "Domain name or IP address (e.g. 'example.com')." },
                     port = new { type = "integer", description = "TLS port (default: 443)." },
                     timeout = new { type = "integer", description = "Connection timeout in milliseconds (default: 5000)." },
-                    sniHost = new { type = "string", description = "SNI hostname override (defaults to 'host'). Set when the IP serves multiple vhosts." }
+                    sni_host = new { type = "string", description = "SNI hostname override (defaults to 'host'). Set when the IP serves multiple vhosts." }
                 },
                 required = new[] { "host" }
             }
@@ -48,19 +49,13 @@ public class SslCheckTool : IMcpTool
         try
         {
             using var doc = JsonDocument.Parse(argumentsJson);
-            if (!doc.RootElement.TryGetProperty("host", out var hostEl))
-                return "Error: Missing 'host' parameter.";
+            var root = doc.RootElement;
+            var host = ToolJson.GetStringTrimmed(root, "host");
+            if (host is null) return "Error: Missing 'host' parameter.";
 
-            var host = hostEl.GetString();
-            if (string.IsNullOrWhiteSpace(host))
-                return "Error: Host is empty.";
-
-            var port = doc.RootElement.TryGetProperty("port", out var portEl) && portEl.TryGetInt32(out var p)
-                ? Math.Clamp(p, 1, 65535) : 443;
-            var timeoutMs = doc.RootElement.TryGetProperty("timeout", out var timeoutEl) && timeoutEl.TryGetInt32(out var t)
-                ? Math.Clamp(t, 500, 60_000) : 5000;
-            var sniHost = doc.RootElement.TryGetProperty("sniHost", out var sniEl) ? sniEl.GetString() : null;
-            sniHost = string.IsNullOrWhiteSpace(sniHost) ? host : sniHost;
+            var port      = ToolJson.GetInt32Clamped(root, "port",    443,  1,   65535);
+            var timeoutMs = ToolJson.GetInt32Clamped(root, "timeout", 5000, 500, 60_000);
+            var sniHost   = ToolJson.GetStringTrimmed(root, "sni_host") ?? host;
 
             using var cts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
             cts.CancelAfter(timeoutMs);

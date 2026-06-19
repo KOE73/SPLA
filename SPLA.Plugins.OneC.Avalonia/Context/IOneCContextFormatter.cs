@@ -30,7 +30,7 @@ public sealed class ObjectCardYamlContextFormatter : IOneCContextFormatter
 
         return $"""
             object:
-              fullName: {obj.FullName}
+              full_name: {obj.FullName}
               kind: {obj.Kind}
               path: {obj.Path ?? ""}
               summary: {obj.Summary ?? ""}

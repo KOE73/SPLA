@@ -80,7 +80,7 @@ public class ContextAssemblerTests
             {
                 Role = ChatRole.Assistant,
                 Content = "",
-                ToolCalls = new() { new ToolCall { Id = "1", Function = new FunctionCall { Name = "fs.read", Arguments = "{}" } } }
+                ToolCalls = new() { new ToolCall { Id = "1", Function = new FunctionCall { Name = "system_read_file", Arguments = "{}" } } }
             }
         };
 

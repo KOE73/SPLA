@@ -1,5 +1,6 @@
 using SPLA.Domain.Models;
 using SPLA.MCP.Core.Interfaces;
+using SPLA.MCP.Core.Json;
 using System;
 using System.Net.Http;
 using System.Text;
@@ -14,7 +15,7 @@ public class HttpHeadTool : IMcpTool
     // Timeout.InfiniteTimeSpan — per-request timeout is controlled via CancellationTokenSource below.
     private static readonly HttpClient HttpClient = new() { Timeout = System.Threading.Timeout.InfiniteTimeSpan };
 
-    public string Name => "network.http.head";
+    public string Name => "network_http_head";
 
     public ToolDefinition GetDefinition() => new ToolDefinition
     {
@@ -44,20 +45,11 @@ public class HttpHeadTool : IMcpTool
         try
         {
             using var doc = JsonDocument.Parse(argumentsJson);
-            if (!doc.RootElement.TryGetProperty("url", out var urlElement))
-            {
-                return "Error: Missing 'url' parameter.";
-            }
+            var root = doc.RootElement;
+            var url = ToolJson.GetStringTrimmed(root, "url");
+            if (url is null) return "Error: Missing 'url' parameter.";
 
-            var url = urlElement.GetString();
-            if (string.IsNullOrWhiteSpace(url))
-            {
-                return "Error: URL is empty.";
-            }
-
-            var timeoutMs = doc.RootElement.TryGetProperty("timeout", out var timeoutElement) && timeoutElement.TryGetInt32(out var t)
-                ? Math.Clamp(t, 1000, 300_000)
-                : 30_000;
+            var timeoutMs = ToolJson.GetInt32Clamped(root, "timeout", 30_000, 1000, 300_000);
 
             using var cts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
             cts.CancelAfter(timeoutMs);
