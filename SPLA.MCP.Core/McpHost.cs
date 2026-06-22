@@ -169,6 +169,13 @@ public class McpHost : IToolHost
                 }
             }
 
+            // Make this host + mode ambiently available so a tool can invoke other tools by name
+            // (e.g. a script's ctx.Run) under the same mode, with permissions and progress intact.
+            using var hostScope = SPLA.Domain.Tools.ToolHostScope.Begin(this, mode);
+            // Open a progress-tree node for this tool call. This is the single place nodes are created,
+            // so tools the model calls directly and tools a script invokes via the host both nest
+            // correctly — the script's call sits above its parallel children with no extra wiring.
+            using var progressNode = SPLA.Domain.Tools.ProgressScope.BeginNode(name);
             try
             {
                 if (tool is AgentInfoTool agentInfoTool)
@@ -184,11 +191,13 @@ public class McpHost : IToolHost
             }
             catch (OperationCanceledException)
             {
+                progressNode.Fail();
                 _logger?.LogWarning("Tool execution canceled. Tool={ToolName} Mode={Mode}", name, mode);
                 throw;
             }
             catch (Exception ex)
             {
+                progressNode.Fail();
                 SplaTelemetry.ToolErrors.Add(1);
                 _logger?.LogError(ex, "Tool execution failed. Tool={ToolName} Mode={Mode}", name, mode);
                 return $"Error executing tool {name}: {ex.Message}";

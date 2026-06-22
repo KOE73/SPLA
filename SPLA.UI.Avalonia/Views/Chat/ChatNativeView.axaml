@@ -6,51 +6,24 @@
              x:Class="SPLA.UI.Avalonia.Views.Chat.ChatNativeView"
              x:DataType="chatvm:ChatSessionViewModel">
 
+    <!-- Native renderer's own permission UX: a docked bar (row 1) that never scrolls away,
+         plus the scrollable message list (row 0). Web has its own independent HTML rendering. -->
+    <Grid RowDefinitions="*,Auto">
+
     <!-- Padding lives on the ItemsControl (scrollable content) rather than the ScrollViewer,
          so the last line is never clipped by the bottom padding and stays reachable by scroll. -->
-    <ScrollViewer x:Name="ChatScrollViewer"
+    <ScrollViewer x:Name="ChatScrollViewer" Grid.Row="0"
                   HorizontalScrollBarVisibility="Disabled">
 
-        <ItemsControl ItemsSource="{Binding Messages}"
+        <!-- ItemsSource is set explicitly from code-behind (AttachViewModel) rather than bound:
+             the declarative {Binding Messages} on ItemsControl did not refresh when DataContext
+             switched between chats, so the list showed the previous chat. -->
+        <ItemsControl x:Name="MessagesList"
                       Margin="{DynamicResource StandardMargin}">
             <ItemsControl.DataTemplates>
 
-                <!-- ══════════════════════════════════════════════════════════
-                     PERMISSION — same in all profiles
-                     ══════════════════════════════════════════════════════════ -->
-                <DataTemplate DataType="msg:PermissionMessageViewModel">
-                    <Border Margin="{DynamicResource CompactMargin}"
-                            Padding="{DynamicResource StandardPadding}"
-                            CornerRadius="{DynamicResource StandardCornerRadius}"
-                            Background="{DynamicResource PanelBackgroundBrush}"
-                            BorderBrush="{DynamicResource AccentBrush}" BorderThickness="1">
-                        <StackPanel Spacing="{DynamicResource StandardSpacing}">
-                            <TextBlock Text="⚠️ Permission Required" FontSize="{DynamicResource BaseFontSize}"
-                                       FontWeight="Bold" Foreground="{DynamicResource AccentBrush}" />
-                            <SelectableTextBlock Text="{Binding Content}" TextWrapping="Wrap"
-                                                 Foreground="{DynamicResource TextForegroundBrush}"
-                                                 FontSize="{DynamicResource BaseFontSize}" />
-                            <SelectableTextBlock Text="{Binding Arguments}" TextWrapping="Wrap"
-                                                 Foreground="{DynamicResource SubTextForegroundBrush}"
-                                                 FontSize="{DynamicResource SmallFontSize}" FontFamily="Consolas" />
-                            <StackPanel Orientation="Horizontal" Spacing="{DynamicResource StandardSpacing}"
-                                        Margin="0,5,0,0" IsVisible="{Binding !IsAnswered}">
-                                <Button Content="Allow &amp; remember" Command="{Binding AllowRememberCommand}"
-                                        Background="#2E7D32" Foreground="White" Cursor="Hand"
-                                        FontSize="{DynamicResource BaseFontSize}" Padding="{DynamicResource CompactMargin}" />
-                                <Button Content="Allow once" Command="{Binding AllowOnceCommand}"
-                                        Background="{DynamicResource AccentBrush}" Foreground="White" Cursor="Hand"
-                                        FontSize="{DynamicResource BaseFontSize}" Padding="{DynamicResource CompactMargin}" />
-                                <Button Content="Deny" Command="{Binding DenyCommand}"
-                                        Background="#C62828" Foreground="White" Cursor="Hand"
-                                        FontSize="{DynamicResource BaseFontSize}" Padding="{DynamicResource CompactMargin}" />
-                            </StackPanel>
-                            <TextBlock Text="Decision made." IsVisible="{Binding IsAnswered}"
-                                       Foreground="{DynamicResource SubTextForegroundBrush}"
-                                       FontStyle="Italic" FontSize="{DynamicResource SmallFontSize}" />
-                        </StackPanel>
-                    </Border>
-                </DataTemplate>
+                <!-- Permission is NOT rendered inline in the list — it shows in the docked bar below
+                     (PermissionDock) so it stays visible and cannot scroll away. -->
 
                 <!-- ══════════════════════════════════════════════════════════
                      USER MESSAGE
@@ -405,4 +378,42 @@
         </ItemsControl>
 
     </ScrollViewer>
+
+    <!-- ══════════════════════════════════════════════════════════
+         DOCKED PERMISSION BAR (native-only). DataContext + visibility are
+         driven from code-behind (PermissionDock), tracking the pending
+         PermissionMessageViewModel in Messages.
+         ══════════════════════════════════════════════════════════ -->
+    <Border x:Name="PermissionDock" Grid.Row="1" IsVisible="False"
+            x:DataType="msg:PermissionMessageViewModel"
+            Margin="{DynamicResource StandardMargin}"
+            Padding="{DynamicResource StandardPadding}"
+            CornerRadius="{DynamicResource StandardCornerRadius}"
+            Background="{DynamicResource PanelBackgroundBrush}"
+            BorderBrush="{DynamicResource AccentBrush}" BorderThickness="1">
+        <StackPanel Spacing="{DynamicResource StandardSpacing}">
+            <TextBlock Text="⚠️ Permission Required" FontSize="{DynamicResource BaseFontSize}"
+                       FontWeight="Bold" Foreground="{DynamicResource AccentBrush}" />
+            <SelectableTextBlock Text="{Binding Content}" TextWrapping="Wrap"
+                                 Foreground="{DynamicResource TextForegroundBrush}"
+                                 FontSize="{DynamicResource BaseFontSize}" />
+            <SelectableTextBlock Text="{Binding Arguments}" TextWrapping="Wrap"
+                                 MaxHeight="140"
+                                 Foreground="{DynamicResource SubTextForegroundBrush}"
+                                 FontSize="{DynamicResource SmallFontSize}" FontFamily="Consolas" />
+            <StackPanel Orientation="Horizontal" Spacing="{DynamicResource StandardSpacing}" Margin="0,5,0,0">
+                <Button Content="Allow &amp; remember" Command="{Binding AllowRememberCommand}"
+                        Background="#2E7D32" Foreground="White" Cursor="Hand"
+                        FontSize="{DynamicResource BaseFontSize}" Padding="{DynamicResource CompactMargin}" />
+                <Button Content="Allow once" Command="{Binding AllowOnceCommand}"
+                        Background="{DynamicResource AccentBrush}" Foreground="White" Cursor="Hand"
+                        FontSize="{DynamicResource BaseFontSize}" Padding="{DynamicResource CompactMargin}" />
+                <Button Content="Deny" Command="{Binding DenyCommand}"
+                        Background="#C62828" Foreground="White" Cursor="Hand"
+                        FontSize="{DynamicResource BaseFontSize}" Padding="{DynamicResource CompactMargin}" />
+            </StackPanel>
+        </StackPanel>
+    </Border>
+
+    </Grid>
 </UserControl>

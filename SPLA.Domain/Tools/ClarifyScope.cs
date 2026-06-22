@@ -10,7 +10,7 @@ namespace SPLA.Domain.Tools;
 /// opens a scope with <see cref="Begin"/> and supplies a handler that surfaces the question to
 /// the UI or CLI and returns the chosen option.
 /// <para>
-/// Same <see cref="AsyncLocal{T}"/> approach as <see cref="ToolProgressScope"/> — the tool
+/// Same <see cref="AsyncLocal{T}"/> approach as <see cref="ProgressScope"/> — the tool
 /// needs no signature change and no direct dependency on the host.
 /// When no scope is open, <see cref="AskAsync"/> returns <c>null</c> immediately.
 /// </para>

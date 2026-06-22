@@ -66,6 +66,15 @@
                            FontSize="12" FontWeight="SemiBold"
                            Foreground="{DynamicResource SubTextForegroundBrush}"
                            VerticalAlignment="Center"/>
+                <TextBlock Text="—"
+                           FontSize="12"
+                           Margin="8,0"
+                           Foreground="{DynamicResource SubTextForegroundBrush}"
+                           VerticalAlignment="Center"/>
+                <TextBlock Text="{Binding ProjectFilePath}"
+                           FontSize="12"
+                           Foreground="{DynamicResource SubTextForegroundBrush}"
+                           VerticalAlignment="Center"/>
             </StackPanel>
 
             <!-- Window controls (right) -->

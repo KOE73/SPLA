@@ -1,5 +1,7 @@
+using Avalonia.Controls;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using Microsoft.Extensions.DependencyInjection;
 using SPLA.Domain.Models;
 using SPLA.Domain.Settings;
 using SPLA.LLM.LMStudio;
@@ -16,6 +18,10 @@ namespace SPLA.UI.Avalonia.ViewModels.Settings;
 
 public partial class SettingsViewModel : ViewModelBase
 {
+    public string ProjectFilePath => string.IsNullOrWhiteSpace(App.ProjectFilePath)
+        ? "no project"
+        : App.ProjectFilePath;
+
     [ObservableProperty]
     private string _baseUrl = "http://127.0.0.1:1234/v1/";
 
@@ -110,8 +116,51 @@ public partial class SettingsViewModel : ViewModelBase
 
     public ObservableCollection<PluginSettingViewModel> PluginsSettings { get; } = new();
 
-    // Categories for Left Menu
-    public string[] Categories { get; } = new[] { "App Appearance", "LLM Provider", "Server", "Agent Settings", "Local Permissions", "System Integration", "Plugins", "", "About SPLA" };
+    public ObservableCollection<string> IgnorePatterns { get; } = new();
+
+    [ObservableProperty]
+    private string _newIgnorePattern = "";
+
+    [RelayCommand]
+    private void AddIgnorePattern()
+    {
+        var p = NewIgnorePattern.Trim();
+        if (!string.IsNullOrEmpty(p) && !IgnorePatterns.Contains(p))
+            IgnorePatterns.Add(p);
+        NewIgnorePattern = "";
+    }
+
+    [RelayCommand]
+    private void RemoveIgnorePattern(string? pattern)
+    {
+        if (pattern is not null) IgnorePatterns.Remove(pattern);
+    }
+
+    [RelayCommand]
+    private void ResetIgnorePatterns()
+    {
+        IgnorePatterns.Clear();
+        foreach (var p in ConfigLoader.DefaultIgnorePatterns) IgnorePatterns.Add(p);
+    }
+
+    // Categories for Left Menu (plugin-provided settings pages are inserted under "Plugins").
+    private static readonly string[] BaseCategories =
+        { "App Appearance", "LLM Provider", "Server", "Agent Settings", "Project", "Local Permissions", "System Integration", "Plugins" };
+    private static readonly string[] TailCategories = { "", "About SPLA" };
+
+    public ObservableCollection<string> Categories { get; } = new(BaseCategories.Concat(TailCategories));
+
+    /// <summary>Menu title -> the plugin row whose editor that page shows.</summary>
+    private readonly Dictionary<string, PluginSettingViewModel> _pluginEditorPages = new();
+
+    /// <summary>The plugin editor control shown when a plugin settings page is selected.
+    /// Typed as <see cref="Control"/> so that <see cref="SettingsWindow"/> can assign it to
+    /// <c>Border.Child</c> directly — avoids the "already has a visual parent" crash that
+    /// ContentControl triggers when <c>IsVisible=False</c> keeps the child in the visual tree.</summary>
+    public Control? CurrentPluginEditorView { get; private set; }
+
+    /// <summary>True when the selected menu item is a plugin-provided settings page.</summary>
+    public bool IsPluginEditorPage { get; private set; }
 
     [ObservableProperty]
     private string _selectedCategory = "App Appearance";
@@ -131,16 +180,25 @@ public partial class SettingsViewModel : ViewModelBase
         OnPropertyChanged(nameof(IsLlmProvider));
         OnPropertyChanged(nameof(IsServer));
         OnPropertyChanged(nameof(IsAgentSettings));
+        OnPropertyChanged(nameof(IsProject));
         OnPropertyChanged(nameof(IsLocalPermissions));
         OnPropertyChanged(nameof(IsSystemIntegration));
         OnPropertyChanged(nameof(IsPlugins));
         OnPropertyChanged(nameof(IsAbout));
+
+        IsPluginEditorPage = _pluginEditorPages.TryGetValue(value, out var page);
+        if (IsPluginEditorPage && page?.Editor != null && page.SettingsStore != null)
+            ReloadPluginEditor(page);
+        CurrentPluginEditorView = IsPluginEditorPage ? page!.EditorView as Control : null;
+        OnPropertyChanged(nameof(IsPluginEditorPage));
+        OnPropertyChanged(nameof(CurrentPluginEditorView));
     }
 
     public bool IsAppAppearance => SelectedCategory == "App Appearance";
     public bool IsLlmProvider => SelectedCategory == "LLM Provider";
     public bool IsServer => SelectedCategory == "Server";
     public bool IsAgentSettings => SelectedCategory == "Agent Settings";
+    public bool IsProject => SelectedCategory == "Project";
     public bool IsLocalPermissions => SelectedCategory == "Local Permissions";
     public bool IsSystemIntegration => SelectedCategory == "System Integration";
     public bool IsPlugins => SelectedCategory == "Plugins";
@@ -172,6 +230,9 @@ public partial class SettingsViewModel : ViewModelBase
         ActiveProfileId = resolved.ActiveProfileId;
         ChatRenderMode = resolved.ChatRenderMode;
         CustomPrompt = resolved.CustomPrompt ?? "";
+
+        IgnorePatterns.Clear();
+        foreach (var p in resolved.Ignore) IgnorePatterns.Add(p);
 
         if (resolved.Model != "auto" && !string.IsNullOrEmpty(resolved.Model))
         {
@@ -210,6 +271,8 @@ public partial class SettingsViewModel : ViewModelBase
                     ActiveProfileId = ActiveProfileId
                 };
 
+                project.Ignore = IgnorePatterns.Count > 0 ? IgnorePatterns.ToList() : null;
+
                 if (PluginsSettings.Count > 0)
                 {
                     project.Plugins ??= new System.Collections.Generic.Dictionary<string, SplaPluginSection>();
@@ -222,6 +285,13 @@ public partial class SettingsViewModel : ViewModelBase
                         }
                         pSec.Enabled = p.Enabled;
                         pSec.CustomPrompt = string.IsNullOrWhiteSpace(p.CustomPrompt) ? null : p.CustomPrompt;
+
+                        // Let a plugin-provided settings editor persist its own opaque blob.
+                        if (p.Editor is not null && p.SettingsStore is not null)
+                        {
+                            p.Editor.Save(p.SettingsStore);
+                            pSec.Settings = ConfigLoader.DeserializeBlob(p.SettingsStore.GetYaml());
+                        }
                     }
                 }
 
@@ -294,6 +364,72 @@ public partial class SettingsViewModel : ViewModelBase
 
             PluginsSettings.Add(viewModel);
         }
+
+        WirePluginSettingsEditors(resolved, viewModels);
+    }
+
+    /// <summary>
+    /// Attaches plugin-provided settings editors (registered by avalonia-ui plugins) to the
+    /// matching plugin rows, and primes each editor from its opaque blob in .spla.
+    /// </summary>
+    private void WirePluginSettingsEditors(
+        ResolvedSettings resolved, Dictionary<string, PluginSettingViewModel> viewModels)
+    {
+        _pluginEditorPages.Clear();
+        RebuildCategories();
+
+        var registry = App.Services.GetService<Services.Plugins.IAvaloniaPluginSettingsRegistry>();
+        if (registry is null) return;
+
+        foreach (var descriptor in registry.Descriptors)
+        {
+            if (!viewModels.TryGetValue(descriptor.PluginId, out var vm))
+                continue;
+
+            resolved.Plugins.TryGetValue(descriptor.PluginId, out var section);
+            var store = new Services.Plugins.PluginSettingsStore(ConfigLoader.SerializeBlob(section?.Settings));
+            var editor = descriptor.CreateEditor();
+            editor.Load(store);
+
+            vm.AttachEditor(editor, store);
+
+            // Each editor becomes its own page nested under "Plugins" in the left menu.
+            var pageTitle = "    " + descriptor.DisplayName;
+            _pluginEditorPages[pageTitle] = vm;
+        }
+
+        RebuildCategories();
+    }
+
+    /// <summary>
+    /// Re-reads plugin settings from the .spla file and reloads the editor.
+    /// Called each time the user navigates to a plugin settings page so changes
+    /// made by the agent are reflected without reopening the Settings window.
+    /// </summary>
+    private static void ReloadPluginEditor(PluginSettingViewModel page)
+    {
+        if (page.Editor == null || page.SettingsStore == null) return;
+        var projectFilePath = App.ProjectFilePath;
+        if (string.IsNullOrWhiteSpace(projectFilePath) || !File.Exists(projectFilePath)) return;
+
+        try
+        {
+            var project = ConfigLoader.LoadProjectRaw(projectFilePath);
+            SplaPluginSection? section = null;
+            project.Plugins?.TryGetValue(page.Id, out section);
+            var freshYaml = ConfigLoader.SerializeBlob(section?.Settings);
+            page.SettingsStore.SetYaml(freshYaml ?? "");
+            page.Editor.Load(page.SettingsStore);
+        }
+        catch { /* ignore read errors; stale view is acceptable */ }
+    }
+
+    private void RebuildCategories()
+    {
+        Categories.Clear();
+        foreach (var c in BaseCategories) Categories.Add(c);
+        foreach (var title in _pluginEditorPages.Keys) Categories.Add(title);
+        foreach (var c in TailCategories) Categories.Add(c);
     }
 
     private IEnumerable<PluginSettingViewModel> EnumeratePluginSettings()

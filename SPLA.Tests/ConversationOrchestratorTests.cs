@@ -99,7 +99,7 @@ public class ConversationOrchestratorTests
             .Select(_ => new ChatMessage { Role = ChatRole.Assistant, Content = "", ToolCalls = new() { Call("1", "system_read_file") } });
         var llm = new FakeLlm(responses);
         var host = new FakeToolHost();
-        var orch = new ConversationOrchestrator(llm, host) { ToolFilter = (t, _) => t, ToolLoopWindow = 3 };
+        var orch = new ConversationOrchestrator(llm, host) { ToolFilter = (t, _) => t, ToolLoopWindow = 3, EnableLoopGuard = true };
         var convo = new Conversation();
         convo.Add(new ChatMessage { Role = ChatRole.User, Content = "go" });
 

@@ -1,4 +1,5 @@
 using SPLA.Domain.Models;
+using SPLA.Domain.Secrets;
 
 namespace SPLA.Domain.Settings;
 
@@ -52,6 +53,18 @@ public class ResolvedSettings
     // Project
     public string? ProjectName { get; set; }
     public string WorkspacePath { get; set; } = ".";
+
+    /// <summary>Absolute path to the .spla file that was loaded, or null when running without a project.
+    /// Plugins that need to persist their own settings (e.g. sql_manage_connection) use this.</summary>
+    public string? ProjectFilePath { get; set; }
+
+    /// <summary>Global secrets store (project + machine scoped). Set during load. Never null after
+    /// <see cref="ConfigLoader.LoadAndResolve"/>; plugins reach it via this property.</summary>
+    public ISecretStore Secrets { get; set; } = null!;
+
+    /// <summary>Resolves <c>secret:</c> / <c>env:</c> references in config values to plaintext.</summary>
+    public ISecretResolver SecretResolver { get; set; } = null!;
+
     public List<string> Docs { get; set; } = new();
     public List<string> Ignore { get; set; } = new();
 

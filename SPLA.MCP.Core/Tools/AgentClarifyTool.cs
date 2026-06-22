@@ -13,7 +13,7 @@ namespace SPLA.MCP.Core.Tools;
 
 /// <summary>
 /// Sends a structured question to the user and awaits their choice.
-/// Uses <see cref="ClarifyScope"/> — same ambient-channel pattern as ToolProgressScope.
+/// Uses <see cref="ClarifyScope"/> — same ambient-channel pattern as ProgressScope.
 /// When no scope is active (autonomous/headless), returns null immediately so the agent can
 /// proceed with a default or skip the question.
 /// Agent-scoped: always allowed — asking is information gathering, not a side effect.

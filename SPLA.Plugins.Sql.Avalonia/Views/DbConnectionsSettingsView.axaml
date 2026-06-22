@@ -1,0 +1,125 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:SPLA.Plugins.Sql.Avalonia.ViewModels"
+             x:Class="SPLA.Plugins.Sql.Avalonia.Views.DbConnectionsSettingsView"
+             x:DataType="vm:DbConnectionsSettingsViewModel">
+
+    <StackPanel Spacing="8">
+        <TextBlock Text="Named database connections available to the SQL agent. Stored opaquely in the .spla project file."
+                   Foreground="{DynamicResource SubTextForegroundBrush}" FontSize="12" TextWrapping="Wrap"/>
+
+        <StackPanel Orientation="Horizontal" Spacing="16">
+            <StackPanel Orientation="Horizontal" Spacing="6">
+                <TextBlock Text="Default connection" VerticalAlignment="Center" Foreground="{DynamicResource SubTextForegroundBrush}"/>
+                <TextBox Text="{Binding DefaultConnection}" Width="140"
+                         Background="{DynamicResource SurfaceBackgroundBrush}"
+                         Foreground="{DynamicResource TextForegroundBrush}"
+                         BorderBrush="{DynamicResource PanelBorderBrush}"/>
+            </StackPanel>
+            <StackPanel Orientation="Horizontal" Spacing="6">
+                <TextBlock Text="Default row limit" VerticalAlignment="Center" Foreground="{DynamicResource SubTextForegroundBrush}"/>
+                <NumericUpDown Value="{Binding DefaultLimit}" Minimum="1" Maximum="100000" Width="110"
+                               Background="{DynamicResource SurfaceBackgroundBrush}"
+                               Foreground="{DynamicResource TextForegroundBrush}"/>
+            </StackPanel>
+        </StackPanel>
+
+        <Button Content="+ Add Connection" Command="{Binding AddConnectionCommand}"
+                Background="{DynamicResource AccentBrush}" Foreground="White"
+                CornerRadius="4" HorizontalAlignment="Left"/>
+
+        <ItemsControl ItemsSource="{Binding Connections}">
+            <ItemsControl.ItemTemplate>
+                <DataTemplate x:DataType="vm:DbConnectionViewModel">
+                    <Border Background="{DynamicResource SurfaceBackgroundBrush}"
+                            BorderBrush="{DynamicResource PanelBorderBrush}"
+                            BorderThickness="1" CornerRadius="4" Padding="10" Margin="0,0,0,8">
+                        <StackPanel Spacing="6">
+
+                            <Grid ColumnDefinitions="*,Auto">
+                                <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="10">
+                                    <TextBlock Text="Name" VerticalAlignment="Center" Foreground="{DynamicResource SubTextForegroundBrush}"/>
+                                    <TextBox Text="{Binding Name}" Width="150"
+                                             Background="{DynamicResource SurfaceBackgroundBrush}"
+                                             Foreground="{DynamicResource TextForegroundBrush}"
+                                             BorderBrush="{DynamicResource PanelBorderBrush}"/>
+                                    <TextBlock Text="Provider" VerticalAlignment="Center" Foreground="{DynamicResource SubTextForegroundBrush}"/>
+                                    <ComboBox ItemsSource="{Binding AvailableProviders}" SelectedItem="{Binding Provider}"
+                                              Background="{DynamicResource SurfaceBackgroundBrush}"
+                                              Foreground="{DynamicResource TextForegroundBrush}"/>
+                                </StackPanel>
+                                <Button Grid.Column="1" Content="Remove"
+                                        Command="{Binding $parent[ItemsControl].((vm:DbConnectionsSettingsViewModel)DataContext).RemoveConnectionCommand}"
+                                        CommandParameter="{Binding}"
+                                        Background="Transparent" Foreground="{DynamicResource SubTextForegroundBrush}"
+                                        BorderThickness="0" VerticalAlignment="Center"/>
+                            </Grid>
+
+                            <!-- MSSQL / Postgres fields -->
+                            <Grid ColumnDefinitions="80,*,20,80,*" IsVisible="{Binding !IsSqlite}">
+                                <TextBlock Grid.Column="0" Text="Server" VerticalAlignment="Center" Foreground="{DynamicResource SubTextForegroundBrush}"/>
+                                <TextBox   Grid.Column="1" Text="{Binding Server}" PlaceholderText="sql01 or 192.168.1.10"
+                                           Background="{DynamicResource SurfaceBackgroundBrush}"
+                                           Foreground="{DynamicResource TextForegroundBrush}"
+                                           BorderBrush="{DynamicResource PanelBorderBrush}"/>
+                                <TextBlock Grid.Column="3" Text="Database" VerticalAlignment="Center" Foreground="{DynamicResource SubTextForegroundBrush}"/>
+                                <TextBox   Grid.Column="4" Text="{Binding Database}"
+                                           Background="{DynamicResource SurfaceBackgroundBrush}"
+                                           Foreground="{DynamicResource TextForegroundBrush}"
+                                           BorderBrush="{DynamicResource PanelBorderBrush}"/>
+                            </Grid>
+
+                            <StackPanel Orientation="Horizontal" Spacing="10" IsVisible="{Binding !IsSqlite}">
+                                <CheckBox IsChecked="{Binding TrustedConnection}" Content="Windows Auth (domain)"
+                                          IsVisible="{Binding ShowTrustedConnection}"
+                                          Foreground="{DynamicResource TextForegroundBrush}"/>
+                                <TextBlock Text="User" VerticalAlignment="Center" IsVisible="{Binding !TrustedConnection}" Foreground="{DynamicResource SubTextForegroundBrush}"/>
+                                <TextBox Text="{Binding User}" Width="130" IsVisible="{Binding !TrustedConnection}"
+                                         Background="{DynamicResource SurfaceBackgroundBrush}"
+                                         Foreground="{DynamicResource TextForegroundBrush}"
+                                         BorderBrush="{DynamicResource PanelBorderBrush}"/>
+                                <TextBlock Text="Password" VerticalAlignment="Center" IsVisible="{Binding !TrustedConnection}" Foreground="{DynamicResource SubTextForegroundBrush}"/>
+                                <TextBox Text="{Binding Password}" Width="130" PasswordChar="•" IsVisible="{Binding !TrustedConnection}"
+                                         PlaceholderText="or env:MY_VAR"
+                                         Background="{DynamicResource SurfaceBackgroundBrush}"
+                                         Foreground="{DynamicResource TextForegroundBrush}"
+                                         BorderBrush="{DynamicResource PanelBorderBrush}"/>
+                            </StackPanel>
+
+                            <!-- SQLite file -->
+                            <StackPanel Orientation="Horizontal" Spacing="10" IsVisible="{Binding IsSqlite}">
+                                <TextBlock Text="File" VerticalAlignment="Center" Width="80" Foreground="{DynamicResource SubTextForegroundBrush}"/>
+                                <TextBox Text="{Binding Server}" Width="400" PlaceholderText="C:\data\mydb.sqlite"
+                                         Background="{DynamicResource SurfaceBackgroundBrush}"
+                                         Foreground="{DynamicResource TextForegroundBrush}"
+                                         BorderBrush="{DynamicResource PanelBorderBrush}"/>
+                            </StackPanel>
+
+                            <StackPanel Orientation="Horizontal" Spacing="10">
+                                <TextBlock Text="Description" VerticalAlignment="Center" Width="80" Foreground="{DynamicResource SubTextForegroundBrush}"/>
+                                <TextBox Text="{Binding Description}" Width="500"
+                                         PlaceholderText="Shown to the AI — what this database contains"
+                                         Background="{DynamicResource SurfaceBackgroundBrush}"
+                                         Foreground="{DynamicResource TextForegroundBrush}"
+                                         BorderBrush="{DynamicResource PanelBorderBrush}"/>
+                            </StackPanel>
+
+                            <StackPanel Orientation="Horizontal" Spacing="10">
+                                <Button Content="Test Connection" Command="{Binding TestConnectionCommand}"
+                                        Background="Transparent" Foreground="{DynamicResource TextForegroundBrush}"
+                                        BorderBrush="{DynamicResource PanelBorderBrush}" BorderThickness="1" CornerRadius="4"/>
+                                <TextBlock Text="{Binding TestStatus}" VerticalAlignment="Center"
+                                           Foreground="{DynamicResource SubTextForegroundBrush}" FontSize="12" TextWrapping="Wrap"/>
+                            </StackPanel>
+
+                        </StackPanel>
+                    </Border>
+                </DataTemplate>
+            </ItemsControl.ItemTemplate>
+        </ItemsControl>
+
+        <TextBlock IsVisible="{Binding !Connections.Count}"
+                   Text="No connections yet. Click '+ Add Connection'."
+                   Foreground="{DynamicResource SubTextForegroundBrush}" FontStyle="Italic"/>
+    </StackPanel>
+</UserControl>

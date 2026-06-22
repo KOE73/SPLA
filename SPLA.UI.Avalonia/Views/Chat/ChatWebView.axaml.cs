@@ -120,6 +120,13 @@ public partial class ChatWebView : UserControl
 
         _viewModel = viewModel;
 
+        // Invalidate page immediately so messages from Load() don't append to the old page
+        // while we wait for the 150ms debounce timer to fire the full re-render.
+        _pageReady = false;
+        _pendingOps.Clear();
+        _lastStreamedContent.Clear();
+        _shellEnsured.Clear();
+
         if (_viewModel != null)
         {
             _viewModel.Messages.CollectionChanged += OnMessagesCollectionChanged;

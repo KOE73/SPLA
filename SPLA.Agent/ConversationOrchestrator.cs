@@ -73,6 +73,21 @@ public sealed class ConversationOrchestrator
         if (Checkpoint != null) Checkpoint.Target = conversation;
         bool didRollback = false;
 
+        // One progress tree per turn. The host opens a node per tool call (see McpHost), so direct
+        // calls and tools invoked inside a script both land in here. For backward-compatible single-bar
+        // hosts we forward the currently executing top-level call's root progress to OnToolProgress;
+        // richer hosts subscribe to the tree itself via OnProgressTree.
+        var progressTree = new ProgressTree();
+        ToolCall? activeTopLevel = null;
+        progressTree.NodeChanged += node =>
+        {
+            var tc = activeTopLevel;
+            if (tc != null && node.ParentId == null && node.Latest != null)
+                callbacks.OnToolProgress?.Invoke(tc, node.Latest);
+        };
+        callbacks.OnProgressTree?.Invoke(progressTree);
+        using var _progressTreeScope = ProgressScope.BeginTree(progressTree);
+
         bool needToCallLLM = true;
         while (needToCallLLM)
         {
@@ -158,15 +173,11 @@ public sealed class ConversationOrchestrator
                 if (callbacks.OnToolCallStarted != null)
                     await callbacks.OnToolCallStarted(tc);
 
-                // Open an ambient progress channel for this tool call. The tool reports into it via
-                // ToolProgressScope.Report; the sink flows transparently through the host and any
-                // parallel work. A captured local copy of tc keeps the right call attached per tick.
-                var current = tc;
-                string result;
-                using (ToolProgressScope.Begin(p => callbacks.OnToolProgress?.Invoke(current, p)))
-                {
-                    result = await _tools.ExecuteToolAsync(mode, tc.Function.Name, tc.Function.Arguments, cancellationToken);
-                }
+                // Mark which top-level call is running so tree progress maps back to it. Tools execute
+                // sequentially here, so a single active call is unambiguous; the host opens the node and
+                // the tool reports into it via ProgressScope.Report (flowing through parallel work too).
+                activeTopLevel = tc;
+                var result = await _tools.ExecuteToolAsync(mode, tc.Function.Name, tc.Function.Arguments, cancellationToken);
                 cancellationToken.ThrowIfCancellationRequested();
 
                 var isError = result.StartsWith("Error:", StringComparison.OrdinalIgnoreCase)

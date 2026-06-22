@@ -85,7 +85,7 @@ public class PortScanTool : IMcpTool, IToolHelpProvider
                     var details = snapshot.Length > 0
                         ? new[] { new ToolProgressDetail("open", NetworkScanHelpers.FormatPorts(snapshot)) }
                         : null;
-                    ToolProgressScope.Report(n, total, $"scanning {host}", details);
+                    ProgressScope.Report(n, total, $"scanning {host}", details);
                 }
             });
 

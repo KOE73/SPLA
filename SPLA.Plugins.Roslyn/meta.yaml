@@ -1,0 +1,20 @@
+id: roslyn
+version: 1.0.0
+type: dll
+entry_point: SPLA.Plugins.Roslyn.dll
+default_prompt: |
+  C# tooling (Roslyn) is available.
+
+  roslyn_compile_check — compiles a self-contained C# snippet/file against the .NET base class
+                         library and returns compiler diagnostics (CS#### errors and warnings).
+  roslyn_script_run    — compiles and runs a C# script that drives your plan: it calls tools by name
+                         via ctx.Run(name, args), loops/parallelizes in plain C#, and reports via
+                         ctx.Progress/ctx.Log.
+
+  Use roslyn_compile_check to verify generated C# actually compiles before you present or apply it,
+  instead of guessing. It checks the code in isolation against the BCL — it does NOT see other files
+  in the user's project or its NuGet packages, so types defined elsewhere will appear as errors.
+
+  Use roslyn_script_run to execute a repetitive multi-step plan deterministically in one call —
+  e.g. iterate over many inputs and call a tool for each (optionally in parallel with Task.WhenAll) —
+  instead of issuing each tool call yourself. Tool calls inside the script obey the same permissions.

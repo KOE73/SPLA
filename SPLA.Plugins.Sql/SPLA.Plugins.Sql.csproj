@@ -1,0 +1,36 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <RootNamespace>SPLA.Plugins.Sql</RootNamespace>
+    <AssemblyName>SPLA.Plugins.Sql</AssemblyName>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\SPLA.Domain\SPLA.Domain.csproj" />
+    <ProjectReference Include="..\SPLA.MCP.Core\SPLA.MCP.Core.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Data.SqlClient" Version="5.*" />
+    <!-- <PackageReference Include="Npgsql" Version="9.*" /> -->
+    <!-- <PackageReference Include="Microsoft.Data.Sqlite" Version="9.*" /> -->
+    <PackageReference Include="Dapper" Version="2.*" />
+    <PackageReference Include="YamlDotNet" Version="18.0.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Include="meta.yaml" CopyToOutputDirectory="PreserveNewest" Link="plugins\sql\meta.yaml" />
+  </ItemGroup>
+
+  <Target Name="CopyPlugin" AfterTargets="Build">
+    <ItemGroup>
+      <PluginFiles Include="$(TargetDir)**\*.*" />
+      <MetaFile Include="meta.yaml" />
+    </ItemGroup>
+    <Copy SourceFiles="@(PluginFiles)" DestinationFolder="$(MSBuildThisFileDirectory)..\SPLA.UI.Avalonia\bin\$(Configuration)\$(TargetFramework)\plugins\sql\%(RecursiveDir)" />
+    <Copy SourceFiles="@(MetaFile)" DestinationFolder="$(MSBuildThisFileDirectory)..\SPLA.UI.Avalonia\bin\$(Configuration)\$(TargetFramework)\plugins\sql\" />
+    <Copy SourceFiles="@(PluginFiles)" DestinationFolder="$(MSBuildThisFileDirectory)..\SPLA.CLI\bin\$(Configuration)\$(TargetFramework)\plugins\sql\%(RecursiveDir)" />
+    <Copy SourceFiles="@(MetaFile)" DestinationFolder="$(MSBuildThisFileDirectory)..\SPLA.CLI\bin\$(Configuration)\$(TargetFramework)\plugins\sql\" />
+  </Target>
+
+</Project>

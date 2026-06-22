@@ -38,6 +38,12 @@ public partial class MainWindowViewModel : ViewModelBase
         public SettingsViewModel Settings { get; } = new();
         public SidebarPanelViewModel Sidebar { get; } = new();
 
+        /// <summary>Full path + filename of the open project, shown in the custom title bar
+        /// (the native title is hidden by ExtendClientAreaToDecorationsHint).</summary>
+        public string ProjectFilePath => string.IsNullOrWhiteSpace(App.ProjectFilePath)
+            ? "no project"
+            : App.ProjectFilePath;
+
         [ObservableProperty]
         private bool _isSidebarOpen = false;
 

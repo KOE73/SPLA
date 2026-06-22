@@ -107,7 +107,7 @@ public class LanScanTool : IMcpTool, IToolHelpProvider
                 if (found || n % step == 0 || n == total)
                 {
                     var details = new[] { new ToolProgressDetail("alive", results.Count.ToString()) };
-                    ToolProgressScope.Report(n, total, "scanning hosts", details);
+                    ProgressScope.Report(n, total, "scanning hosts", details);
                 }
             });
 

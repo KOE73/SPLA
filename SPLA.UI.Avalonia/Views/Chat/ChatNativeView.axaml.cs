@@ -12,6 +12,7 @@ public partial class ChatNativeView : UserControl
 {
     private ChatSessionViewModel? _viewModel;
     private StreamingMessageViewModel? _activeStreaming;
+    private PermissionMessageViewModel? _pendingPermission;
 
     public ChatNativeView()
     {
@@ -29,9 +30,15 @@ public partial class ChatNativeView : UserControl
     private void AttachViewModel(ChatSessionViewModel vm)
     {
         _viewModel = vm;
+        // Rebind the list explicitly — the declarative ItemsSource binding did not refresh on
+        // DataContext change, leaving the previous chat's messages on screen.
+        var list = this.FindControl<ItemsControl>("MessagesList");
+        if (list != null) list.ItemsSource = vm.Messages;
+
         vm.Messages.CollectionChanged += OnMessagesCollectionChanged;
         vm.PropertyChanged += OnViewModelPropertyChanged;
         TrackLastStreamingMessage();
+        RefreshPendingPermission();
         ScrollToEnd();
     }
 
@@ -41,6 +48,11 @@ public partial class ChatNativeView : UserControl
         _viewModel.Messages.CollectionChanged -= OnMessagesCollectionChanged;
         _viewModel.PropertyChanged -= OnViewModelPropertyChanged;
         UntrackStreamingMessage();
+        UntrackPendingPermission();
+
+        var list = this.FindControl<ItemsControl>("MessagesList");
+        if (list != null) list.ItemsSource = null;
+
         _viewModel = null;
     }
 
@@ -54,7 +66,53 @@ public partial class ChatNativeView : UserControl
     {
         UntrackStreamingMessage();
         TrackLastStreamingMessage();
+        RefreshPendingPermission();
         ScrollToEnd();
+    }
+
+    // ── Docked permission bar (native-only) ──────────────────────────────────
+    private void RefreshPendingPermission()
+    {
+        PermissionMessageViewModel? pending = null;
+        if (_viewModel != null)
+        {
+            for (var i = _viewModel.Messages.Count - 1; i >= 0; i--)
+            {
+                if (_viewModel.Messages[i] is PermissionMessageViewModel p && !p.IsAnswered)
+                {
+                    pending = p;
+                    break;
+                }
+            }
+        }
+
+        if (ReferenceEquals(pending, _pendingPermission)) return;
+
+        UntrackPendingPermission();
+        _pendingPermission = pending;
+
+        var dock = this.FindControl<Border>("PermissionDock");
+        if (dock != null)
+        {
+            dock.DataContext = pending;
+            dock.IsVisible = pending != null;
+        }
+
+        if (pending != null)
+            pending.PropertyChanged += OnPendingPermissionPropertyChanged;
+    }
+
+    private void UntrackPendingPermission()
+    {
+        if (_pendingPermission == null) return;
+        _pendingPermission.PropertyChanged -= OnPendingPermissionPropertyChanged;
+        _pendingPermission = null;
+    }
+
+    private void OnPendingPermissionPropertyChanged(object? sender, PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName == nameof(PermissionMessageViewModel.IsAnswered))
+            RefreshPendingPermission();
     }
 
     private void TrackLastStreamingMessage()

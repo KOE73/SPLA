@@ -133,9 +133,13 @@ public partial class MainWindow : Window
     private async void StatusControl_SettingsRequested(object? sender, System.EventArgs e)
     {
         var vm = (MainWindowViewModel)DataContext!;
+        var projectLabel = string.IsNullOrWhiteSpace(App.ProjectFilePath)
+            ? "no project"
+            : App.ProjectFilePath;
         var settingsWindow = new SettingsWindow
         {
-            DataContext = vm.Settings
+            DataContext = vm.Settings,
+            Title = $"Settings — {projectLabel}"
         };
         await settingsWindow.ShowDialog(this);
     }

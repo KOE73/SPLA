@@ -1,0 +1,57 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:SPLA.UI.Avalonia.ViewModels.Settings"
+             x:Class="SPLA.UI.Avalonia.Views.Settings.SettingsProjectView"
+             x:DataType="vm:SettingsViewModel">
+    <StackPanel Spacing="{DynamicResource StandardSpacing}">
+        <TextBlock Text="Project" FontSize="{DynamicResource BaseFontSize}" FontWeight="Bold" Foreground="{DynamicResource TextForegroundBrush}"/>
+
+        <Border Background="{DynamicResource PanelBackgroundBrush}" BorderBrush="{DynamicResource PanelBorderBrush}" BorderThickness="1" CornerRadius="{DynamicResource StandardCornerRadius}" Padding="{DynamicResource StandardPadding}">
+            <StackPanel Spacing="{DynamicResource StandardSpacing}">
+                <TextBlock Text="Ignore Patterns" Foreground="{DynamicResource TextForegroundBrush}" FontSize="{DynamicResource BaseFontSize}" FontWeight="Bold"/>
+                <TextBlock TextWrapping="Wrap" Foreground="{DynamicResource SubTextForegroundBrush}" FontSize="{DynamicResource BaseFontSize}"
+                           Text="Files and folders matching these glob patterns are hidden from the agent's file tools. Saved to the project's .spla file."/>
+
+                <!-- Pattern list -->
+                <Border Background="{DynamicResource SurfaceBackgroundBrush}" BorderBrush="{DynamicResource PanelBorderBrush}" BorderThickness="1" CornerRadius="{DynamicResource StandardCornerRadius}" Padding="4" MinHeight="80">
+                    <ItemsControl ItemsSource="{Binding IgnorePatterns}">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate x:DataType="x:String">
+                                <Grid ColumnDefinitions="*,Auto" Margin="2,1">
+                                    <TextBlock Grid.Column="0" Text="{Binding}" Foreground="{DynamicResource TextForegroundBrush}"
+                                               FontFamily="Cascadia Code,Consolas,monospace"
+                                               FontSize="{DynamicResource BaseFontSize}" VerticalAlignment="Center" Margin="4,0"/>
+                                    <Button Grid.Column="1" Content="✕" FontSize="10"
+                                            Command="{Binding $parent[UserControl].((vm:SettingsViewModel)DataContext).RemoveIgnorePatternCommand}"
+                                            CommandParameter="{Binding}"
+                                            Background="Transparent" Foreground="{DynamicResource SubTextForegroundBrush}"
+                                            BorderThickness="0" Padding="4,2" VerticalAlignment="Center"/>
+                                </Grid>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </Border>
+
+                <!-- Add new pattern -->
+                <Grid ColumnDefinitions="*,Auto">
+                    <TextBox Grid.Column="0" Text="{Binding NewIgnorePattern}"
+                             PlaceholderText="e.g.  dist/  or  **/*.log"
+                             Background="{DynamicResource SurfaceBackgroundBrush}"
+                             Foreground="{DynamicResource TextForegroundBrush}"
+                             BorderBrush="{DynamicResource PanelBorderBrush}"
+                             FontFamily="Cascadia Code,Consolas,monospace"
+                             FontSize="{DynamicResource BaseFontSize}"
+                             Margin="0,0,4,0"/>
+                    <Button Grid.Column="1" Content="Add" Command="{Binding AddIgnorePatternCommand}"
+                            Background="{DynamicResource AccentBrush}" Foreground="White"
+                            CornerRadius="{DynamicResource StandardCornerRadius}"/>
+                </Grid>
+
+                <Button Content="Reset to defaults" Command="{Binding ResetIgnorePatternsCommand}"
+                        Background="Transparent" Foreground="{DynamicResource SubTextForegroundBrush}"
+                        BorderThickness="0" Padding="0" HorizontalAlignment="Left"
+                        FontSize="{DynamicResource SmallFontSize}"/>
+            </StackPanel>
+        </Border>
+    </StackPanel>
+</UserControl>

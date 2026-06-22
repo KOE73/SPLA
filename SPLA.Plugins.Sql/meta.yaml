@@ -1,0 +1,25 @@
+id: sql
+version: 0.1.0
+type: dll
+entry_point: SPLA.Plugins.Sql.dll
+default_prompt: |
+  SQL database tools are available. Connections are configured in .spla/sql.yaml.
+
+  Tools:
+    sql_connections    — list available named connections with descriptions; call first when unsure which DB to use
+    sql_query          — execute a SELECT and return results; read-only
+    sql_schema         — inspect tables, columns, PK/FK, indexes for a connection or specific table
+    sql_query_plan     — get the native execution plan (raw provider output); use before sql_execute
+    sql_execute        — run INSERT / UPDATE / DELETE; requires Edit or Agent mode; DDL is blocked
+    sql_verify_context — compare .spla/sql/*.md context files against the live schema; call when schema may have changed
+
+  Usage rules:
+  - Call sql_connections first if you do not know which connection to use.
+  - Always call sql_schema before sql_query on an unfamiliar table.
+  - Estimate result size before querying: choose only the columns and rows you need.
+  - Default row limit is 10. Set 'limit' explicitly when you need more — justify the value.
+  - For UPDATE/DELETE: call sql_query_plan first and pass estimated_rows to sql_execute.
+  - UPDATE/DELETE without WHERE or estimated_rows > 1000 will pause for confirmation.
+  - DDL (DROP, ALTER, CREATE) is not available — use a DB admin tool for schema changes.
+  - Context files in .spla/sql/ describe the business meaning of tables and columns.
+    Read them before querying unfamiliar databases. Run sql_verify_context after schema changes.

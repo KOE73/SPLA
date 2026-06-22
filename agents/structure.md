@@ -8,13 +8,14 @@ The active solution file is `SPLA.slnx`.
 
 Projects included in the solution:
 
-- `SPLA.Domain`: Shared domain models and cross-project contracts.
+- `SPLA.Domain`: Shared domain models and cross-project contracts. Contains ambient-scope utilities that tools use without signature changes: `ProgressScope`/`ProgressTree`/`ProgressNode` (progress tree per agent turn), `ToolHostScope` (current `IToolHost`+`AgentMode`), `ClarifyScope`, `AgentSessionScope`.
 - `SPLA.LLM.LMStudio`: Local LLM provider integration for LM Studio / OpenAI-compatible API endpoints.
 - `SPLA.MCP.Core`: MCP host core, tool abstractions, plugin metadata, plugin loading, command descriptors, permissions integration, and tool help routing.
 - `SPLA.MCP.BasicTools`: Built-in tools for filesystem, shell, .NET build/test, context, date/time, web fetch, and web search.
 - `SPLA.Observability`: Shared logging, tracing, metrics, correlation, and log destination infrastructure.
 - `SPLA.Plugins.Host.Avalonia`: Avalonia UI plugin host contracts shared between the main UI and UI plugins.
 - `SPLA.Plugins.Network`: Network plugin with host info, LAN scan, port scan, ping, nslookup, HTTP GET/HEAD, port check, and traceroute tools.
+- `SPLA.Plugins.Roslyn`: Roslyn C# tooling plugin. `roslyn_compile_check` compiles a self-contained snippet against the .NET BCL and returns diagnostics. `roslyn_script_run` compiles and runs a C# script (top-level statements) that drives a plan by invoking tools via `ctx.Run(name, args)`, with `Task.WhenAll` parallelism and progress reporting.
 - `SPLA.Skills.Network`: Network skill definitions (`.md` files). Independent of the plugin — skills are instructions, not code. Built via `Microsoft.Build.NoTargets`; `CopySkills` target copies files to `plugins/network/skills/` in UI and CLI output directories.
 - `SPLA.Plugins.OneC`: 1C analysis plugin with indexing, object lookup/explanation, references, dependency analysis, readers/writers, and graph data support.
 - `SPLA.Plugins.OneC.Avalonia`: Avalonia UI plugin for the 1C analysis experience. Its manifest type is `avalonia-ui` and it depends on `onec`.
@@ -98,6 +99,7 @@ Plugin projects use `meta.yaml` manifests and are published into `.publish/work/
 Current plugin manifests:
 
 - `SPLA.Plugins.Network/meta.yaml`: `id: network`, `type: dll`.
+- `SPLA.Plugins.Roslyn/meta.yaml`: `id: roslyn`, `type: dll`.
 - `SPLA.Plugins.OneC/meta.yaml`: `id: onec`, `type: dll`.
 - `SPLA.Plugins.OneC.Avalonia/meta.yaml`: `id: onec_avalonia`, `type: avalonia-ui`, `depends_on: onec`.
 - `SPLA.Plugins.Test/meta.yaml`: Test plugin manifest. The project exists in the repository but is not currently listed in `SPLA.slnx`.

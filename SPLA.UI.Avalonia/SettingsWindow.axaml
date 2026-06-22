@@ -46,9 +46,12 @@
         <!-- Right Pane: Content -->
         <ScrollViewer Grid.Column="1" Grid.Row="1" Margin="{DynamicResource StandardMargin}">
             <StackPanel Spacing="{DynamicResource StandardSpacing}">
-                <StackPanel Orientation="Horizontal" Spacing="10" Margin="0,0,0,20">
-                    <TextBlock Text="SPLA ✎" FontSize="{DynamicResource HeaderFontSize}" FontWeight="Bold" Foreground="{DynamicResource TextForegroundBrush}" VerticalAlignment="Center"/>
-                    <TextBlock Text="Manage project settings and appearance." Foreground="{DynamicResource SubTextForegroundBrush}" FontSize="{DynamicResource BaseFontSize}" VerticalAlignment="Center"/>
+                <StackPanel Spacing="2" Margin="0,0,0,20">
+                    <StackPanel Orientation="Horizontal" Spacing="10">
+                        <TextBlock Text="SPLA ✎" FontSize="{DynamicResource HeaderFontSize}" FontWeight="Bold" Foreground="{DynamicResource TextForegroundBrush}" VerticalAlignment="Center"/>
+                        <TextBlock Text="Manage project settings and appearance." Foreground="{DynamicResource SubTextForegroundBrush}" FontSize="{DynamicResource BaseFontSize}" VerticalAlignment="Center"/>
+                    </StackPanel>
+                    <TextBlock Text="{Binding ProjectFilePath}" Foreground="{DynamicResource SubTextForegroundBrush}" FontSize="{DynamicResource SmallFontSize}" TextWrapping="Wrap" Opacity="0.7"/>
                 </StackPanel>
                 
                 <!-- SECTION: App Appearance -->
@@ -63,6 +66,9 @@
                 <!-- SECTION: Agent Settings -->
                 <settings:SettingsAgentView IsVisible="{Binding IsAgentSettings}" />
 
+                <!-- SECTION: Project (ignore patterns, workspace) -->
+                <settings:SettingsProjectView IsVisible="{Binding IsProject}" />
+
                 <!-- SECTION: Permissions -->
                 <settings:SettingsPermissionsView IsVisible="{Binding IsLocalPermissions}" />
 
@@ -71,6 +77,12 @@
 
                 <!-- SECTION: Plugins -->
                 <settings:SettingsPluginsView IsVisible="{Binding IsPlugins}" />
+
+                <!-- SECTION: Plugin-provided settings page (nested under Plugins) -->
+                <!-- Use Border.Child (not ContentControl.Content) — Border properly detaches the old
+                     child before adding the new one. ContentControl with IsVisible=False keeps the child
+                     in the visual tree and throws "already has a visual parent" on reassignment. -->
+                <Border x:Name="PluginEditorHost" IsVisible="{Binding IsPluginEditorPage}"/>
 
                 <!-- SECTION: About SPLA -->
                 <settings:SettingsAboutView IsVisible="{Binding IsAbout}" />

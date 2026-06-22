@@ -26,9 +26,11 @@ public class ChatManager
     {
         _settings = settings;
 
-        // If there is a project file, store in [workspace]/.spla/chats/
-        // Otherwise store in ~/.spla/chats/
-        var baseDir = _settings.ProjectName != null 
+        // If a project file is open, store chats next to it in [workspace]/.spla/chats/.
+        // Fall back to ~/.spla/chats/ only when running without any project file.
+        // NOTE: do NOT use ProjectName here — it is null when the .spla file has no `name:` field,
+        // which would incorrectly redirect all those projects' chats into the global defaults dir.
+        var baseDir = _settings.ProjectFilePath != null
             ? Path.Combine(_settings.WorkspacePath, ".spla")
             : ConfigLoader.GetDefaultsDir();
 

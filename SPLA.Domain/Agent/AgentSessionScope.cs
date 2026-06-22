@@ -38,7 +38,7 @@ public sealed class AgentSession : IAgentSession
 /// loop is currently running. A chat opens a scope with <see cref="Begin"/> around its run; tools
 /// — however deep in the call stack and across async/parallel boundaries — read
 /// <see cref="Current"/> to act on the right chat's state. Same <see cref="AsyncLocal{T}"/>
-/// approach as <see cref="Tools.ClarifyScope"/> and <see cref="Tools.ToolProgressScope"/>, so
+/// approach as <see cref="Tools.ClarifyScope"/> and <see cref="Tools.ProgressScope"/>, so
 /// multiple chats can run concurrently in the background without their tool calls colliding.
 /// When no scope is open, <see cref="Current"/> is <c>null</c>.
 /// </summary>

@@ -174,12 +174,59 @@ public static class ConfigLoader
     }
 
     /// <summary>
+    /// Serializes an opaque plugin settings blob (nested mapping) to a YAML string.
+    /// Used to hand a plugin its own settings across the assembly-load-context boundary.
+    /// </summary>
+    public static string? SerializeBlob(Dictionary<string, object>? blob) =>
+        blob is null || blob.Count == 0 ? null : Serializer.Serialize(blob);
+
+    /// <summary>
+    /// Parses a YAML string produced by a plugin back into an opaque nested mapping for storage.
+    /// </summary>
+    public static Dictionary<string, object>? DeserializeBlob(string? yaml) =>
+        string.IsNullOrWhiteSpace(yaml) ? null : Deserializer.Deserialize<Dictionary<string, object>>(yaml);
+
+    /// <summary>
     /// Saves a .spla project file.
     /// </summary>
     public static void SaveProject(SplaProject project, string splaFilePath)
     {
         var yaml = Serializer.Serialize(project);
         File.WriteAllText(splaFilePath, yaml);
+    }
+
+    /// <summary>
+    /// Standard ignore patterns written into every new project file.
+    /// </summary>
+    public static readonly IReadOnlyList<string> DefaultIgnorePatterns =
+    [
+        "bin/", "obj/", ".git/", ".svn/",
+        "node_modules/", ".vs/", ".idea/",
+        ".spla/", "*.user", "*.suo"
+    ];
+
+    /// <summary>
+    /// If the project file looks like a freshly-created empty file (no name, no ignore list),
+    /// fills in sensible scaffolding: project name from the filename and standard ignore patterns.
+    /// Writes the result back to disk so subsequent opens already have the full config.
+    /// No-op when the file already has a name or an explicit ignore list.
+    /// </summary>
+    public static void ScaffoldIfNew(string splaFilePath)
+    {
+        SplaProject project;
+        try { project = LoadProjectRaw(splaFilePath); }
+        catch { return; }
+
+        // Only scaffold genuinely empty / newly-created files.
+        if (project.Name != null || (project.Ignore != null && project.Ignore.Count > 0))
+            return;
+
+        project.Name = Path.GetFileNameWithoutExtension(splaFilePath);
+        project.Workspace ??= ".";
+        project.Ignore = [.. DefaultIgnorePatterns];
+
+        try { SaveProject(project, splaFilePath); }
+        catch { /* best-effort */ }
     }
 
     /// <summary>
@@ -205,6 +252,18 @@ public static class ConfigLoader
             project = LoadProject(splaFilePath);
         }
 
-        return SettingsResolver.Resolve(defaults, project);
+        var resolved = SettingsResolver.Resolve(defaults, project);
+        if (splaFilePath != null && File.Exists(splaFilePath))
+            resolved.ProjectFilePath = Path.GetFullPath(splaFilePath);
+
+        // Global secrets service: project scope under the workspace, machine scope under ~/.spla.
+        var workspace = resolved.ProjectFilePath != null
+            ? Path.GetDirectoryName(resolved.ProjectFilePath)
+            : null;
+        var store = new Secrets.FileSecretStore(workspace, GetDefaultsDir());
+        resolved.Secrets = store;
+        resolved.SecretResolver = new Secrets.SecretResolver(store);
+
+        return resolved;
     }
 }

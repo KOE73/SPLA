@@ -29,6 +29,7 @@
   </Folder>
   <Folder Name="/plugins/" />
   <Folder Name="/plugins/network/" />
+  <Folder Name="/plugins/roslyn/" />
   <Folder Name="/skills/network/">
     <File Path="SPLA.Skills.Network\host-audit.md" />
     <File Path="SPLA.Skills.Network\lan-discovery.md" />
@@ -46,6 +47,9 @@
   <Project Path="SPLA.Observability/SPLA.Observability.csproj" />
   <Project Path="SPLA.Plugins.Host.Avalonia/SPLA.Plugins.Host.Avalonia.csproj" />
   <Project Path="SPLA.Plugins.Network/SPLA.Plugins.Network.csproj" />
+  <Project Path="SPLA.Plugins.Roslyn/SPLA.Plugins.Roslyn.csproj" />
+  <Project Path="SPLA.Plugins.Sql/SPLA.Plugins.Sql.csproj" />
+  <Project Path="SPLA.Plugins.Sql.Avalonia/SPLA.Plugins.Sql.Avalonia.csproj" />
   <Project Path="SPLA.Skills.Network/SPLA.Skills.Network.csproj" />
   <Project Path="SPLA.Plugins.OneC.Avalonia/SPLA.Plugins.OneC.Avalonia.csproj" />
   <Project Path="SPLA.Plugins.OneC/SPLA.Plugins.OneC.csproj" />

@@ -13,6 +13,7 @@ namespace SPLA.UI.Avalonia.Services.Plugins;
 
 public sealed class AvaloniaPluginLoader(
     IAvaloniaPluginPanelRegistry panelRegistry,
+    IAvaloniaPluginSettingsRegistry settingsRegistry,
     IPluginInteractionService interaction,
     ILogger<AvaloniaPluginLoader> logger) : IAvaloniaPluginLoader
 {
@@ -58,6 +59,17 @@ public sealed class AvaloniaPluginLoader(
                     {
                         panelRegistry.Register(panel);
                         logger.LogInformation("Avalonia plugin panel registered. Plugin={PluginId} Panel={PanelId}", plugin.Meta.Id, panel.Id);
+                    }
+
+                    if (avaloniaPlugin is IAvaloniaPluginSettingsProvider settingsProvider)
+                    {
+                        var settingsContext = new AvaloniaPluginSettingsContext
+                        {
+                            WorkspacePath = App.ResolvedSettings.WorkspacePath
+                        };
+                        var descriptor = settingsProvider.GetSettings(settingsContext);
+                        settingsRegistry.Register(descriptor);
+                        logger.LogInformation("Avalonia plugin settings editor registered. Plugin={PluginId}", descriptor.PluginId);
                     }
 
                     if (avaloniaPlugin is IAvaloniaPluginToolProvider toolProvider)
@@ -117,5 +129,14 @@ internal sealed class AvaloniaPluginLoadContext(string pluginPath) : AssemblyLoa
 
         var assemblyPath = _resolver.ResolveAssemblyToPath(assemblyName);
         return assemblyPath is not null ? LoadFromAssemblyPath(assemblyPath) : null;
+    }
+
+    // Resolve native sub-dependencies (e.g. Microsoft.Data.SqlClient.SNI.dll) from the plugin's
+    // own runtimes/<rid>/native folder via its .deps.json. Without this the default P/Invoke search
+    // looks next to the host exe (which has no such natives) and fails with "Dll was not found".
+    protected override IntPtr LoadUnmanagedDll(string unmanagedDllName)
+    {
+        var libraryPath = _resolver.ResolveUnmanagedDllToPath(unmanagedDllName);
+        return libraryPath is not null ? LoadUnmanagedDllFromPath(libraryPath) : IntPtr.Zero;
     }
 }

@@ -8,7 +8,7 @@ namespace SPLA.Domain.Models;
 /// whatever it can — a fraction, a current/total count, a human message, and any extra "details"
 /// worth surfacing (e.g. open ports discovered so far). Consumers (status bar, CLI) format what is
 /// present and ignore the rest. This is the universal shape long-running tools speak; see
-/// <see cref="SPLA.Domain.Tools.ToolProgressScope"/> for how a tool emits it without touching its
+/// <see cref="SPLA.Domain.Tools.ProgressScope"/> for how a tool emits it without touching its
 /// signature.
 /// </summary>
 public sealed class ToolProgress

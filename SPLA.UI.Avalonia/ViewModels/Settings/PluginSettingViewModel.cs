@@ -1,10 +1,31 @@
 using CommunityToolkit.Mvvm.ComponentModel;
 using System.Collections.ObjectModel;
+using SPLA.Plugins.Host.Avalonia;
+using SPLA.UI.Avalonia.Services.Plugins;
 
 namespace SPLA.UI.Avalonia.ViewModels.Settings;
 
 public partial class PluginSettingViewModel : ViewModelBase
 {
+    /// <summary>Optional settings editor contributed by an avalonia-ui plugin for this plugin id.</summary>
+    public IPluginSettingsEditor? Editor { get; private set; }
+
+    /// <summary>Backing store handed to the editor; persisted into .spla on save.</summary>
+    public PluginSettingsStore? SettingsStore { get; private set; }
+
+    public bool HasEditor => Editor is not null;
+
+    /// <summary>The editor's control, for hosting in the settings view.</summary>
+    public object? EditorView => Editor?.View;
+
+    public void AttachEditor(IPluginSettingsEditor editor, PluginSettingsStore store)
+    {
+        Editor = editor;
+        SettingsStore = store;
+        OnPropertyChanged(nameof(HasEditor));
+        OnPropertyChanged(nameof(EditorView));
+    }
+
     [ObservableProperty]
     private string _id = "";
 

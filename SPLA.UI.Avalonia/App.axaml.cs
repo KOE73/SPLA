@@ -53,6 +53,7 @@ public partial class App : Application
         services.AddSingleton<IActiveConversationAccessor, ActiveConversationAccessor>();
         services.AddSingleton<IPluginInteractionService, PluginInteractionService>();
         services.AddSingleton<IAvaloniaPluginPanelRegistry, AvaloniaPluginPanelRegistry>();
+        services.AddSingleton<IAvaloniaPluginSettingsRegistry, AvaloniaPluginSettingsRegistry>();
         services.AddSingleton<IPluginPanelHostService, PluginPanelHostService>();
         services.AddSingleton<IAvaloniaPluginLoader, AvaloniaPluginLoader>();
         return services.BuildServiceProvider();
@@ -75,6 +76,10 @@ public partial class App : Application
 
             // Auto-detect in CWD
             splaFile ??= ConfigLoader.FindProjectFile(Directory.GetCurrentDirectory());
+
+            // Scaffold new/empty project files before resolving so the first resolve
+            // already sees the project name and ignore patterns.
+            if (splaFile != null) ConfigLoader.ScaffoldIfNew(splaFile);
 
             ProjectFilePath = splaFile;
             ResolvedSettings = ConfigLoader.LoadAndResolve(splaFile);

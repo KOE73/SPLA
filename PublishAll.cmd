@@ -41,6 +41,18 @@ echo 4. OneC Avalonia UI Plugin...
 dotnet publish SPLA.Plugins.OneC.Avalonia/SPLA.Plugins.OneC.Avalonia.csproj -c Release -o .publish/work/plugins/onec_avalonia
 copy /y SPLA.Plugins.OneC.Avalonia\meta.yaml .publish\work\plugins\onec_avalonia\
 
+echo 5. SQL Plugin...
+dotnet publish SPLA.Plugins.Sql/SPLA.Plugins.Sql.csproj -c Release -o .publish/work/plugins/sql
+copy /y SPLA.Plugins.Sql\meta.yaml .publish\work\plugins\sql\
+
+echo 5b. SQL Avalonia UI Plugin...
+dotnet publish SPLA.Plugins.Sql.Avalonia/SPLA.Plugins.Sql.Avalonia.csproj -c Release -o .publish/work/plugins/sql_avalonia
+copy /y SPLA.Plugins.Sql.Avalonia\meta.yaml .publish\work\plugins\sql_avalonia\
+
+echo 6. Roslyn Plugin...
+dotnet publish SPLA.Plugins.Roslyn/SPLA.Plugins.Roslyn.csproj -c Release -o .publish/work/plugins/roslyn
+copy /y SPLA.Plugins.Roslyn\meta.yaml .publish\work\plugins\roslyn\
+
 echo Cleaning debug and documentation artifacts from publish work folder...
 del /s /q .publish\work\*.pdb >nul 2>nul
 del /s /q .publish\work\*.xml >nul 2>nul
