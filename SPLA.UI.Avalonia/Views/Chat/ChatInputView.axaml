@@ -120,6 +120,45 @@
                         </Grid>
                     </StackPanel>
 
+                    <!-- Presence penalty -->
+                    <StackPanel Orientation="Horizontal" Spacing="4" VerticalAlignment="Center"
+                                ToolTip.Tip="Presence penalty — 0 = off (default). Subtracts a fixed amount from any token the model already used (count=1 → X, count=5 → still X). Pushes toward new words and topics. Safe: 0.0–0.2. Above 0.3 the model may avoid needed terms, variable names, JSON keys. For code/JSON keep at 0.">
+                        <TextBlock Text="P.pen" Foreground="{DynamicResource SubTextForegroundBrush}"
+                                   FontSize="{DynamicResource SmallFontSize}" VerticalAlignment="Center" />
+                        <TextBlock Text="{Binding PresencePenalty, StringFormat='{}{0:0.00}'}"
+                                   Foreground="{DynamicResource SubTextForegroundBrush}"
+                                   FontSize="{DynamicResource SmallFontSize}" Width="32"
+                                   TextAlignment="Right" VerticalAlignment="Center" />
+                        <Slider Minimum="0" Maximum="1.0" TickFrequency="0.05" IsSnapToTickEnabled="True"
+                                Value="{Binding PresencePenalty}" Width="100" Height="18" VerticalAlignment="Center" Margin="2,0" />
+                    </StackPanel>
+
+                    <!-- Frequency penalty -->
+                    <StackPanel Orientation="Horizontal" Spacing="4" VerticalAlignment="Center"
+                                ToolTip.Tip="Frequency penalty — 0 = off (default). Penalty grows with each repetition (count=1 → X, count=5 → 5X). Best against hard verbatim loops. Safe: 0.0–0.2. Above 0.3 code, JSON, technical terms start to break. Don't raise all three penalties at once.">
+                        <TextBlock Text="F.pen" Foreground="{DynamicResource SubTextForegroundBrush}"
+                                   FontSize="{DynamicResource SmallFontSize}" VerticalAlignment="Center" />
+                        <TextBlock Text="{Binding FrequencyPenalty, StringFormat='{}{0:0.00}'}"
+                                   Foreground="{DynamicResource SubTextForegroundBrush}"
+                                   FontSize="{DynamicResource SmallFontSize}" Width="32"
+                                   TextAlignment="Right" VerticalAlignment="Center" />
+                        <Slider Minimum="0" Maximum="1.0" TickFrequency="0.05" IsSnapToTickEnabled="True"
+                                Value="{Binding FrequencyPenalty}" Width="100" Height="18" VerticalAlignment="Center" Margin="2,0" />
+                    </StackPanel>
+
+                    <!-- Repeat penalty (llama.cpp / LM Studio) -->
+                    <StackPanel Orientation="Horizontal" Spacing="4" VerticalAlignment="Center"
+                                ToolTip.Tip="Repeat penalty — 1.0 = off (default, llama.cpp / LM Studio). Multiplies down the logit of any token seen in the recent window. 1.05–1.1 = mild; 1.2+ = aggressive. Below 1.0 makes loops worse. Works independently of P.pen and F.pen — tune one at a time, never set all three high at once.">
+                        <TextBlock Text="R.pen" Foreground="{DynamicResource SubTextForegroundBrush}"
+                                   FontSize="{DynamicResource SmallFontSize}" VerticalAlignment="Center" />
+                        <TextBlock Text="{Binding RepeatPenalty, StringFormat='{}{0:0.00}'}"
+                                   Foreground="{DynamicResource SubTextForegroundBrush}"
+                                   FontSize="{DynamicResource SmallFontSize}" Width="32"
+                                   TextAlignment="Right" VerticalAlignment="Center" />
+                        <Slider Minimum="1.0" Maximum="1.5" TickFrequency="0.05" IsSnapToTickEnabled="True"
+                                Value="{Binding RepeatPenalty}" Width="100" Height="18" VerticalAlignment="Center" Margin="2,0" />
+                    </StackPanel>
+
                     <!-- Render mode selector: Native | Web -->
                     <StackPanel Orientation="Horizontal" Spacing="2" VerticalAlignment="Center">
                         <StackPanel.Styles>

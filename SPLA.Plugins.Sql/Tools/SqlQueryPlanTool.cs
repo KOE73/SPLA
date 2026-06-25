@@ -3,9 +3,11 @@ using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
 using Dapper;
+using SPLA.Domain.Agent;
 using SPLA.Domain.Models;
 using SPLA.MCP.Core.Interfaces;
 using SPLA.MCP.Core.Json;
+using SPLA.MCP.Core.Tools;
 using SPLA.Plugins.Sql.Factory;
 
 namespace SPLA.Plugins.Sql.Tools;
@@ -35,8 +37,10 @@ public class SqlQueryPlanTool : SqlToolBase, IMcpTool
                 type = "object",
                 properties = new
                 {
-                    sql        = new { type = "string", description = "SQL statement to analyse." },
-                    connection = new { type = "string", description = "Named connection. Omit to use the default." }
+                    sql         = new { type = "string", description = "SQL statement to analyse." },
+                    connection  = new { type = "string", description = "Named connection. Omit to use the default." },
+                    output      = SchemaParts.Output,
+                    output_name = SchemaParts.OutputName
                 },
                 required = new[] { "sql" }
             }
@@ -58,11 +62,16 @@ public class SqlQueryPlanTool : SqlToolBase, IMcpTool
 
             using var conn = await SqlConnectionFactory.CreateAsync(cfg!, cancellationToken);
 
-            return cfg!.Provider.ToLowerInvariant() switch
+            var result = cfg!.Provider.ToLowerInvariant() switch
             {
                 "mssql" => await MssqlPlanAsync(conn, sql),
                 _       => "[stub] query plan not yet implemented for this provider"
             };
+
+            var target = DataChannel.ParseTarget(ToolJson.GetStringTrimmed(root, "output"));
+            if (target == OutputTarget.Context) return result;
+            var name = ToolJson.GetStringTrimmed(root, "output_name");
+            return DataChannel.Route(target, BlobPayload.OfText(result), "sql_query_plan", name);
         }
         catch (JsonException) { return "Error: Invalid JSON arguments."; }
         catch (Exception ex)  { return $"Error: {ex.Message}"; }

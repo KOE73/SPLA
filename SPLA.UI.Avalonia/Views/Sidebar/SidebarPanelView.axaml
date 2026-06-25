@@ -140,6 +140,12 @@
                                                Foreground="{DynamicResource SubTextForegroundBrush}"
                                                VerticalAlignment="Center"/>
 
+                                    <!-- ✨ prefix for skill-pack plugin nodes -->
+                                    <TextBlock Text="{Binding PluginKindIcon}"
+                                               IsVisible="{Binding IsSkillPlugin}"
+                                               FontSize="{DynamicResource SidebarIconFontSize}"
+                                               VerticalAlignment="Center"/>
+
                                     <!-- Plugin header — bold -->
                                     <TextBlock Text="{Binding Label}"
                                                IsVisible="{Binding IsPlugin}"

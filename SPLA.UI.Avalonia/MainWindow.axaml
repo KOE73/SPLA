@@ -18,30 +18,7 @@
         Background="{DynamicResource AppBackgroundBrush}">
 
     <Window.Styles>
-        <!-- Caption buttons: transparent by default, subtle hover -->
-        <Style Selector="Button.caption">
-            <Setter Property="Background" Value="Transparent"/>
-            <Setter Property="Foreground" Value="{DynamicResource SubTextForegroundBrush}"/>
-            <Setter Property="BorderThickness" Value="0"/>
-            <Setter Property="Padding" Value="0"/>
-            <Setter Property="Width" Value="42"/>
-            <Setter Property="Height" Value="30"/>
-            <Setter Property="VerticalContentAlignment" Value="Center"/>
-            <Setter Property="HorizontalContentAlignment" Value="Center"/>
-            <Setter Property="FontSize" Value="14"/>
-            <Setter Property="CornerRadius" Value="0"/>
-        </Style>
-        <Style Selector="Button.caption:pointerover /template/ ContentPresenter#PART_ContentPresenter">
-            <Setter Property="Background" Value="#20FFFFFF"/>
-        </Style>
-        <!-- Close button gets red on hover -->
-        <Style Selector="Button.caption.close:pointerover /template/ ContentPresenter#PART_ContentPresenter">
-            <Setter Property="Background" Value="#C42B1C"/>
-        </Style>
-        <Style Selector="Button.caption.close:pointerover">
-            <Setter Property="Foreground" Value="White"/>
-        </Style>
-        <!-- Sidebar toggle: slightly more visible accent on hover -->
+        <!-- Sidebar toggle accent override (base caption styles are in App.axaml) -->
         <Style Selector="Button.caption.sidebar:pointerover /template/ ContentPresenter#PART_ContentPresenter">
             <Setter Property="Background" Value="#30007ACC"/>
         </Style>
@@ -54,7 +31,7 @@
 
         <!-- ── Custom Title Bar ── -->
         <DockPanel Grid.Row="0" Grid.ColumnSpan="4"
-                   Background="{DynamicResource PanelBackgroundBrush}">
+                   Background="{DynamicResource TitleBarBackgroundBrush}">
 
             <!-- App name (left, non-interactive so drag works through it) -->
             <StackPanel DockPanel.Dock="Left"
@@ -89,6 +66,16 @@
                         Content="📋"
                         Command="{Binding OpenContextDebugCommand}"
                         ToolTip.Tip="Real Context (last request)"/>
+                <!-- System prompt preview -->
+                <Button Classes="caption"
+                        Content="📝"
+                        Command="{Binding OpenPromptDebugCommand}"
+                        ToolTip.Tip="System Prompt (live preview by source)"/>
+                <!-- TEMP: schema-editor live debug (Фаза 1). Убрать после verify. -->
+                <Button Classes="caption"
+                        Content="🧩"
+                        Click="OpenSchemaEditorDebug_Click"
+                        ToolTip.Tip="Workspace Shell (live debug)"/>
                 <!-- Sidebar toggle -->
                 <Button Classes="caption sidebar"
                         Content="◧"

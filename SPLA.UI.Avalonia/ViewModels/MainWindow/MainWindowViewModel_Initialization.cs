@@ -1,6 +1,9 @@
 using Avalonia.Threading;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
+using SPLA.Agent;
 using SPLA.Domain.Models;
 using SPLA.Domain.Settings;
 using SPLA.LLM.LMStudio;
@@ -61,7 +64,8 @@ public partial class MainWindowViewModel : ViewModelBase
             ProjectKv     = _projectKv.Store,
             ToolFilter    = GetFilteredToolsForMode,
             ModelCatalog  = () => Settings.ModelDetails,
-            PersistPermission = SaveToolPermissionDecision
+            PersistPermission = SaveToolPermissionDecision,
+            Logger        = App.Services?.GetService<ILogger<ConversationOrchestrator>>()
         };
 
         SyncChatsFromDisk();

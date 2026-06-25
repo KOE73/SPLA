@@ -153,10 +153,15 @@ public class McpHost : IToolHost
 
             if (permission == PermissionResult.Ask)
             {
+                _logger?.LogInformation(
+                    "Tool requires user confirmation — awaiting permission. Tool={ToolName} Mode={Mode} Scope={Scope} Effect={Effect} Risk={Risk}",
+                    name, mode, def.Function.Scope, def.Function.Effect, def.Function.Risk);
                 var pending = PermissionScope.RequestAsync(def.Function, argumentsJson);
                 if (pending != null)
                 {
                     var decision = await pending;
+                    _logger?.LogInformation(
+                        "Permission decision received. Tool={ToolName} Decision={Decision}", name, decision);
                     if (decision == PermissionDecision.Deny)
                     {
                         _logger?.LogWarning("Tool execution denied by user. Tool={ToolName} Mode={Mode}", name, mode);
@@ -165,6 +170,9 @@ public class McpHost : IToolHost
                 }
                 else
                 {
+                    _logger?.LogWarning(
+                        "Tool requires confirmation but NO permission handler is attached — execution blocked. Tool={ToolName} Mode={Mode}",
+                        name, mode);
                     return $"Error: Tool '{name}' requires user confirmation, but no permission handler is attached.";
                 }
             }

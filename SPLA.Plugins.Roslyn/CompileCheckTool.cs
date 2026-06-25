@@ -1,8 +1,10 @@
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
+using SPLA.Domain.Agent;
 using SPLA.Domain.Models;
 using SPLA.MCP.Core.Interfaces;
 using SPLA.MCP.Core.Json;
+using SPLA.MCP.Core.Tools;
 using System;
 using System.Linq;
 using System.Text;
@@ -36,8 +38,10 @@ public sealed class CompileCheckTool : IMcpTool, IToolHelpProvider
                 type = "object",
                 properties = new
                 {
-                    code = new { type = "string", description = "The C# source to compile. A full file (namespace/class) by default, or top-level statements when kind='program'." },
-                    kind = new { type = "string", description = "'library' (default) for a class/file with no entry point, or 'program' for top-level statements / a Main entry point." }
+                    code        = new { type = "string", description = "The C# source to compile. A full file (namespace/class) by default, or top-level statements when kind='program'." },
+                    kind        = new { type = "string", description = "'library' (default) for a class/file with no entry point, or 'program' for top-level statements / a Main entry point." },
+                    output      = SchemaParts.Output,
+                    output_name = SchemaParts.OutputName
                 },
                 required = new[] { "code" }
             }
@@ -119,7 +123,12 @@ public sealed class CompileCheckTool : IMcpTool, IToolHelpProvider
                 sb.AppendLine($"  {d.Severity.ToString().ToLowerInvariant()} {d.Id} ({pos.Line + 1},{pos.Character + 1}): {d.GetMessage()}");
             }
 
-            return Task.FromResult(sb.ToString().TrimEnd());
+            var result = sb.ToString().TrimEnd();
+            var outputTarget = DataChannel.ParseTarget(ToolJson.GetStringTrimmed(root, "output"));
+            if (outputTarget == OutputTarget.Context) return Task.FromResult(result);
+            var blobName = ToolJson.GetStringTrimmed(root, "output_name");
+            return Task.FromResult(DataChannel.Route(outputTarget, BlobPayload.OfText(result),
+                $"roslyn_compile_check: {(hasErrors ? "errors" : "ok")}, {diagnostics.Count} diagnostics", blobName));
         }
         catch (JsonException)
         {

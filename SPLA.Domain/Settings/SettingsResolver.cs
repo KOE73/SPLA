@@ -14,6 +14,9 @@ public class ResolvedSettings
     public string Model { get; set; } = "auto";
     public double Temperature { get; set; } = 0.7;
     public string? ReasoningLevel { get; set; }
+    public double PresencePenalty { get; set; } = 0.0;
+    public double FrequencyPenalty { get; set; } = 0.0;
+    public double RepeatPenalty { get; set; } = 1.0;
 
     /// <summary>Named connections available to chats. Never empty after resolution — a default is
     /// synthesized from the single <c>llm</c> section when none are configured.</summary>
@@ -92,7 +95,10 @@ public class ResolvedSettings
         Temperature = Temperature,
         Mode = Mode,
         Theme = Theme,
-        ReasoningLevel = ReasoningLevel
+        ReasoningLevel   = ReasoningLevel,
+        PresencePenalty  = PresencePenalty,
+        FrequencyPenalty = FrequencyPenalty,
+        RepeatPenalty    = RepeatPenalty
     };
 }
 
@@ -120,6 +126,9 @@ public static class SettingsResolver
                 r.Model = defaults.Llm.Model ?? r.Model;
                 r.Temperature = defaults.Llm.Temperature ?? r.Temperature;
                 r.ReasoningLevel = defaults.Llm.ReasoningLevel ?? r.ReasoningLevel;
+                r.PresencePenalty  = defaults.Llm.PresencePenalty  ?? r.PresencePenalty;
+                r.FrequencyPenalty = defaults.Llm.FrequencyPenalty ?? r.FrequencyPenalty;
+                r.RepeatPenalty    = defaults.Llm.RepeatPenalty    ?? r.RepeatPenalty;
             }
             if (defaults.Agent != null)
             {
@@ -156,6 +165,9 @@ public static class SettingsResolver
                 r.Model = project.Llm.Model ?? r.Model;
                 r.Temperature = project.Llm.Temperature ?? r.Temperature;
                 r.ReasoningLevel = project.Llm.ReasoningLevel ?? r.ReasoningLevel;
+                r.PresencePenalty  = project.Llm.PresencePenalty  ?? r.PresencePenalty;
+                r.FrequencyPenalty = project.Llm.FrequencyPenalty ?? r.FrequencyPenalty;
+                r.RepeatPenalty    = project.Llm.RepeatPenalty    ?? r.RepeatPenalty;
             }
             if (project.Agent != null)
             {

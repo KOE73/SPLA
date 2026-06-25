@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>SPLA Text Editor</title>
+    <style>
+      html, body { margin: 0; height: 100%; font-family: sans-serif; }
+      /* Сплит: слева редактор, справа preview (preview скрыт, кроме markdown). */
+      #wrap { display: flex; height: 100%; }
+      #editor { flex: 1 1 50%; min-width: 0; overflow: auto; }
+      #preview {
+        flex: 1 1 50%; min-width: 0; overflow: auto; padding: 8px 14px;
+        border-left: 1px solid #ddd; display: none;
+      }
+      #preview.on { display: block; }
+      #editor.full { flex-basis: 100%; }
+      .cm-editor { height: 100%; }
+      /* Диагностические оверлеи (как в schema-editor). */
+      #err {
+        white-space: pre-wrap; color: #b00; background: #fff3f3;
+        font-family: monospace; font-size: 12px; padding: 6px 10px; display: none;
+      }
+    </style>
+    <script>
+      window.addEventListener("error", function (e) {
+        var b = document.getElementById("err");
+        if (b) { b.style.display = "block"; b.textContent += "ERROR: " + (e.message || e.error) + "\n"; }
+      });
+    </script>
+  </head>
+  <body>
+    <div id="err"></div>
+    <div id="wrap">
+      <div id="editor"></div>
+      <div id="preview"></div>
+    </div>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>

@@ -57,7 +57,31 @@ public class SkillManager
 
     public IReadOnlyList<SkillMeta> GetAll() => _skills;
 
-    public IReadOnlyList<SkillMeta> GetEnabled() => _skills.Where(s => s.IsEnabled).ToList();
+    public IReadOnlyList<SkillMeta> GetEnabled() =>
+        _skills.Where(s => s.IsEnabled && (s.OwnerPlugin?.IsEffectivelyEnabled ?? true)).ToList();
+
+    /// <summary>Register a single skill file sourced from a type:skills plugin descriptor.
+    /// Replaces any scan-loaded entry with the same Id so there are no duplicates during migration.</summary>
+    public void RegisterFromPlugin(string filePath, string pluginId, PluginDescriptor owner)
+    {
+        var meta = ParseFrontmatter(filePath, pluginId);
+        meta.OwnerPlugin = owner;
+        // Remove stale scan-path entry with the same Id (e.g. old plugins/network/skills/*.md)
+        for (int i = _skills.Count - 1; i >= 0; i--)
+            if (_skills[i].Id.Equals(meta.Id, StringComparison.OrdinalIgnoreCase) && _skills[i].OwnerPlugin == null)
+                _skills.RemoveAt(i);
+        _skills.Add(meta);
+        _logger?.LogInformation("Skill registered from plugin. Plugin={PluginId} Skill={SkillId}", pluginId, meta.Id);
+    }
+
+    /// <summary>Remove all skills that were registered via <see cref="RegisterFromPlugin"/>.
+    /// Call before re-running <see cref="LoadPlugins"/> on the owning PluginManager.</summary>
+    public void ClearPluginSkills()
+    {
+        for (int i = _skills.Count - 1; i >= 0; i--)
+            if (_skills[i].OwnerPlugin != null)
+                _skills.RemoveAt(i);
+    }
 
     public SkillMeta? Find(string id) =>
         _skills.FirstOrDefault(s => s.Id.Equals(id, StringComparison.OrdinalIgnoreCase));

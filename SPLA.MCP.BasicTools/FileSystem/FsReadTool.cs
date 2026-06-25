@@ -1,6 +1,8 @@
+using SPLA.Domain.Agent;
 using SPLA.Domain.Models;
 using SPLA.MCP.Core.Interfaces;
 using SPLA.MCP.Core.Json;
+using SPLA.MCP.Core.Tools;
 using System;
 using System.IO;
 using System.Text;
@@ -20,7 +22,8 @@ public class FsReadTool : IMcpTool
         Function = new ToolFunctionDefinition
         {
             Name = Name,
-            Description = "Reads the content of a file, returning lines with line numbers. Supports reading specific line ranges.",
+            Description = "Reads the content of a file, returning lines with line numbers. Supports reading specific line ranges. " +
+                          "Set output='blob' to capture the full content as a blob:<handle> (bypasses context) — useful for large files or binary-adjacent formats (docx, zip) that another tool will consume.",
             Scope = ToolScope.Project,
             Effect = ToolEffect.Read,
             Risk = ToolRisk.Low,
@@ -30,11 +33,13 @@ public class FsReadTool : IMcpTool
                 type = "object",
                 properties = new
                 {
-                    path       = new { type = "string",                       description = "Absolute or relative path to the file." },
-                    start_line = new { type = new[] { "integer", "null" },    description = "1-indexed starting line to read (default: 1)." },
-                    line_count = new { type = new[] { "integer", "null" },    description = "Number of lines to read. Null = read to end of file." }
+                    path        = new { type = "string",                       description = "Absolute or relative path to the file." },
+                    start_line  = new { type = new[] { "integer", "null" },    description = "1-indexed starting line to read (default: 1)." },
+                    line_count  = new { type = new[] { "integer", "null" },    description = "Number of lines to read. Null = read to end of file." },
+                    output      = SchemaParts.Output,
+                    output_name = SchemaParts.OutputName
                 },
-                required = new[] { "path", "start_line", "line_count" }
+                required = new[] { "path", "start_line", "line_count", "output", "output_name" }
             }
         }
     };
@@ -74,7 +79,11 @@ public class FsReadTool : IMcpTool
                 sb.AppendLine($"{i + 1}: {lines[i]}");
             }
 
-            return sb.ToString();
+            var content = sb.ToString();
+            var target = DataChannel.ParseTarget(ToolJson.GetStringTrimmed(doc.RootElement, "output"));
+            if (target == OutputTarget.Context) return content;
+            var blobName = ToolJson.GetStringTrimmed(doc.RootElement, "output_name");
+            return DataChannel.Route(target, BlobPayload.OfText(content), $"system_read_file: {lines.Length} lines from {path}", blobName);
         }
         catch (JsonException)
         {

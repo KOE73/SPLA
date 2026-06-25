@@ -4,6 +4,7 @@ using SPLA.Domain.Models;
 using SPLA.Domain.Settings;
 using SPLA.Domain.Tools;
 using SPLA.Agent.Guards;
+using Microsoft.Extensions.Logging;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -49,6 +50,9 @@ public sealed class ConversationOrchestrator
     /// whenever a tool signals <see cref="Domain.Agent.MarkManager.RestoreRequested"/>.
     /// </summary>
     public Domain.Agent.MarkManager? Checkpoint { get; init; }
+
+    /// <summary>Optional logger. When set, the loop logs each LLM turn and tool call (start/end).</summary>
+    public ILogger? Logger { get; init; }
 
     public ConversationOrchestrator(ILLMService llm, IToolHost tools)
     {
@@ -119,6 +123,10 @@ public sealed class ConversationOrchestrator
                 }
             }
 
+            Logger?.LogInformation(
+                "LLM request → mode={Mode} messages={MessageCount} tools={ToolCount}",
+                mode, coreMessages.Count, tools.Count());
+
             ChatMessage response;
             try
             {
@@ -132,6 +140,17 @@ public sealed class ConversationOrchestrator
             }
 
             conversation.Add(response);
+
+            // Real token accounting lives in the core loop, not the UI: every turn — answer or
+            // tool-call, success or not — reports the provider's figures exactly once. Hosts fold
+            // these into per-chat and persistent project-lifetime tallies.
+            callbacks.OnTokenUsage?.Invoke(response.PromptTokens, response.CompletionTokens);
+
+            Logger?.LogInformation(
+                "LLM response ← textChars={TextChars} toolCalls={ToolCalls} promptTokens={PromptTokens} completionTokens={CompletionTokens}",
+                response.Content?.Length ?? 0, response.ToolCalls?.Count ?? 0,
+                response.PromptTokens, response.CompletionTokens);
+
             if (callbacks.OnAssistantMessage != null)
                 await callbacks.OnAssistantMessage(response);
 
@@ -177,7 +196,11 @@ public sealed class ConversationOrchestrator
                 // sequentially here, so a single active call is unambiguous; the host opens the node and
                 // the tool reports into it via ProgressScope.Report (flowing through parallel work too).
                 activeTopLevel = tc;
+                Logger?.LogInformation(
+                    "Tool call → {ToolName} args={Args}", tc.Function.Name, tc.Function.Arguments);
                 var result = await _tools.ExecuteToolAsync(mode, tc.Function.Name, tc.Function.Arguments, cancellationToken);
+                Logger?.LogInformation(
+                    "Tool result ← {ToolName} resultChars={ResultChars}", tc.Function.Name, result?.Length ?? 0);
                 cancellationToken.ThrowIfCancellationRequested();
 
                 var isError = result.StartsWith("Error:", StringComparison.OrdinalIgnoreCase)

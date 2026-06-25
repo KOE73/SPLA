@@ -1,6 +1,8 @@
+using SPLA.Domain.Agent;
 using SPLA.Domain.Models;
 using SPLA.MCP.Core.Interfaces;
 using SPLA.MCP.Core.Json;
+using SPLA.MCP.Core.Tools;
 using SPLA.MCP.BasicTools.FileSystem.Search;
 using System;
 using System.IO;
@@ -37,9 +39,11 @@ public class FsSearchTextTool : IMcpTool, IToolHelpProvider
                     case_sensitive   = new { type = new[] { "boolean", "null" },   description = "Case-sensitive match. Null = false." },
                     max_results      = new { type = new[] { "integer", "null" },   description = "Max results. Null = 100." },
                     include_patterns = new { type = new[] { "array",   "null" }, items = new { type = "string" }, description = "Glob patterns to include, e.g. ['*.cs']. Null = all files." },
-                    exclude_patterns = new { type = new[] { "array",   "null" }, items = new { type = "string" }, description = "Glob patterns to exclude, e.g. ['bin/*']. Null = none." }
+                    exclude_patterns = new { type = new[] { "array",   "null" }, items = new { type = "string" }, description = "Glob patterns to exclude, e.g. ['bin/*']. Null = none." },
+                    output      = SchemaParts.Output,
+                    output_name = SchemaParts.OutputName
                 },
-                required = new[] { "query", "path", "regex", "case_sensitive", "max_results", "include_patterns", "exclude_patterns" }
+                required = new[] { "query", "path", "regex", "case_sensitive", "max_results", "include_patterns", "exclude_patterns", "output", "output_name" }
             }
         }
     };
@@ -93,7 +97,11 @@ public class FsSearchTextTool : IMcpTool, IToolHelpProvider
                 Matches = rankedMatches
             };
 
-            return JsonSerializer.Serialize(result, new JsonSerializerOptions { WriteIndented = true });
+            var json = JsonSerializer.Serialize(result, new JsonSerializerOptions { WriteIndented = true });
+            var target = DataChannel.ParseTarget(ToolJson.GetStringTrimmed(root, "output"));
+            if (target == OutputTarget.Context) return json;
+            var blobName = ToolJson.GetStringTrimmed(root, "output_name");
+            return DataChannel.Route(target, BlobPayload.OfText(json), $"system_search_text: {result.ReturnedMatches}/{result.TotalMatches} matches for '{query}'", blobName);
         }
         catch (JsonException)
         {

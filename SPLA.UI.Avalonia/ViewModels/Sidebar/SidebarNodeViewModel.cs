@@ -1,10 +1,11 @@
 using CommunityToolkit.Mvvm.ComponentModel;
 using SPLA.MCP.Core.Plugins;
 using System.Collections.ObjectModel;
+using System.Linq;
 
 namespace SPLA.UI.Avalonia.ViewModels.Sidebar;
 
-public enum SidebarNodeKind { Plugin, Tool, Skill }
+public enum SidebarNodeKind { Plugin, SkillPlugin, Tool, Skill }
 
 public partial class SidebarNodeViewModel : ObservableObject
 {
@@ -25,17 +26,35 @@ public partial class SidebarNodeViewModel : ObservableObject
     [ObservableProperty]
     private bool _isExpanded = true;
 
+    partial void OnIsEnabledChanged(bool value)
+    {
+        // Group toggle on a skills-type plugin: cascade to all child skills
+        if (Kind == SidebarNodeKind.SkillPlugin)
+        {
+            foreach (var child in Children)
+            {
+                child.IsEnabled = value;
+                // Write through to domain object so GetEnabled() reflects the change immediately
+                if (child.Source?.SourceSkill != null)
+                    child.Source.SourceSkill.IsEnabled = value;
+            }
+        }
+    }
+
     public ObservableCollection<SidebarNodeViewModel> Children { get; } = [];
 
-    public bool HasChildren => Children.Count > 0;
-    public bool IsPlugin    => Kind == SidebarNodeKind.Plugin;
-    public bool IsLeaf      => Kind != SidebarNodeKind.Plugin;
-    public bool IsSkill     => Kind == SidebarNodeKind.Skill;
+    public bool HasChildren    => Children.Count > 0;
+    public bool IsPlugin       => Kind is SidebarNodeKind.Plugin or SidebarNodeKind.SkillPlugin;
+    public bool IsLeaf         => Kind is SidebarNodeKind.Tool or SidebarNodeKind.Skill;
+    public bool IsSkill        => Kind == SidebarNodeKind.Skill;
+    public bool IsSkillPlugin  => Kind == SidebarNodeKind.SkillPlugin;
 
     public string KindIcon => Kind switch
     {
-        SidebarNodeKind.Skill => "✨",
-        SidebarNodeKind.Tool  => "🔨",
-        _                     => ""
+        SidebarNodeKind.Skill       => "✨",
+        SidebarNodeKind.Tool        => "🔨",
+        _                           => ""
     };
+
+    public string PluginKindIcon => IsSkillPlugin ? "✨" : "";
 }

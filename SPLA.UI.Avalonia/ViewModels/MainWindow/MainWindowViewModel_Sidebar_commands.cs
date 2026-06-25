@@ -2,6 +2,7 @@ using Avalonia.Threading;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 using SPLA.Domain.Models;
 using SPLA.Domain.Settings;
 using SPLA.LLM.LMStudio;
@@ -99,9 +100,11 @@ public partial class MainWindowViewModel : ViewModelBase
     {
         if (_chatManager == null) return;
         var chat = _chatManager.CreateNewChat();
+        BindLog?.LogInformation("[CHATBIND] NewChat created id={Id}", chat.Id);
         SyncChatsFromDisk();
         if (_chatVms.TryGetValue(chat.Id, out var vm))
             ActiveChat = vm;
+        BindLog?.LogInformation("[CHATBIND] NewChat done, ActiveChat={Id}", ActiveChat?.Id);
     }
 
     [RelayCommand]

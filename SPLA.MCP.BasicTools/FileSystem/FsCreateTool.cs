@@ -1,6 +1,7 @@
 using SPLA.Domain.Models;
 using SPLA.MCP.Core.Interfaces;
 using SPLA.MCP.Core.Json;
+using SPLA.MCP.Core.Tools;
 using System;
 using System.IO;
 using System.Text.Json;
@@ -19,7 +20,8 @@ public class FsCreateTool : IMcpTool
         Function = new ToolFunctionDefinition
         {
             Name = Name,
-            Description = "Creates a new file with the specified content. Returns an error if the file already exists.",
+            Description = "Creates a new file with the specified content. Returns an error if the file already exists. " +
+                          "'content' may be a literal string or a blob:<handle> from a producing tool.",
             Scope = ToolScope.Project,
             Effect = ToolEffect.Write,
             Risk = ToolRisk.Medium,
@@ -30,7 +32,7 @@ public class FsCreateTool : IMcpTool
                 properties = new
                 {
                     path = new { type = "string", description = "Absolute or relative path to create the new file." },
-                    content = new { type = "string", description = "Content to write to the file." }
+                    content = new { type = "string", description = "Content to write, OR a blob:<handle> to write stored data directly." }
                 },
                 required = new[] { "path", "content" }
             }
@@ -47,6 +49,9 @@ public class FsCreateTool : IMcpTool
 
             if (path is null || content is null)
                 return "Error: Missing 'path' or 'content' parameter.";
+
+            if (!DataChannel.ResolveText(content, out content, out var resolveError))
+                return $"Error: {resolveError}";
 
             if (File.Exists(path))
             {

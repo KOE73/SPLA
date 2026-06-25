@@ -1,4 +1,5 @@
 using CommunityToolkit.Mvvm.Input;
+using Microsoft.Extensions.Logging;
 using SPLA.UI.Avalonia.ViewModels.Chat;
 using System.Linq;
 using System.Threading.Tasks;
@@ -21,11 +22,11 @@ public partial class MainWindowViewModel : ViewModelBase
         foreach (var staleId in _chatVms.Keys.Where(k => !ids.Contains(k)).ToList())
             _chatVms.Remove(staleId);
 
-        var activeId = ActiveChat?.Id;
         _isReloadingChats = true;
         try
         {
-            Chats.Clear();
+            // Build the desired ordered VM list, reusing live view-models from the cache.
+            var desired = new System.Collections.Generic.List<ChatSessionViewModel>(metas.Count);
             foreach (var meta in metas)
             {
                 if (!_chatVms.TryGetValue(meta.Id, out var vm))
@@ -37,11 +38,28 @@ public partial class MainWindowViewModel : ViewModelBase
                 {
                     vm.Title = meta.Title;
                 }
-                Chats.Add(vm);
+                desired.Add(vm);
             }
 
-            if (activeId != null && _chatVms.TryGetValue(activeId, out var stillActive))
-                ActiveChat = stillActive;
+            // Reconcile `Chats` to match `desired` IN PLACE — never Clear(). Clearing empties the
+            // collection, which nulls the ListBox SelectedItem and writes garbage back through the
+            // two-way ActiveChat binding (the active chat would thrash to whichever chat just saved).
+            for (int i = Chats.Count - 1; i >= 0; i--)
+                if (!ids.Contains(Chats[i].Id))
+                    Chats.RemoveAt(i);
+
+            for (int i = 0; i < desired.Count; i++)
+            {
+                var vm = desired[i];
+                var current = Chats.IndexOf(vm);
+                if (current < 0)
+                    Chats.Insert(i, vm);
+                else if (current != i)
+                    Chats.Move(current, i);
+            }
+
+            BindLog?.LogInformation("[CHATBIND] SyncChatsFromDisk: order=[{Order}] active={Active}",
+                string.Join(",", Chats.Select(c => c.Id)), ActiveChat?.Id);
         }
         finally
         {
@@ -55,6 +73,16 @@ public partial class MainWindowViewModel : ViewModelBase
 
     partial void OnActiveChatChanged(ChatSessionViewModel? value)
     {
+        BindLog?.LogInformation("[CHATBIND] OnActiveChatChanged -> {Id} (title='{Title}', reloading={R})",
+            value?.Id, value?.Title, _isReloadingChats);
+
+        // Debug views read the active chat's stores through computed properties — tell them to re-pull,
+        // and let any open debug windows re-target themselves at the new chat's live stores.
+        OnPropertyChanged(nameof(SessionKv));
+        OnPropertyChanged(nameof(Blobs));
+        OnPropertyChanged(nameof(ContextSnapshot));
+        ActiveChatChanged?.Invoke(this, System.EventArgs.Empty);
+
         if (_isReloadingChats) return;
         value?.Load();
     }

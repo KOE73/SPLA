@@ -63,12 +63,13 @@ using var httpClient = new HttpClient { Timeout = TimeSpan.FromMinutes(10) };
 var llmClient = new LMStudioClient(httpClient, loggerFactory.CreateLogger<LMStudioClient>());
 var llmSettings = settings.ToLLMSettings();
 
-var pluginManager = new SPLA.MCP.Core.Plugins.PluginManager(settings, loggerFactory.CreateLogger<SPLA.MCP.Core.Plugins.PluginManager>());
 var pluginsDir = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "plugins");
-pluginManager.LoadPlugins(pluginsDir);
 
 var skillManager = new SPLA.MCP.Core.Plugins.SkillManager(loggerFactory.CreateLogger<SPLA.MCP.Core.Plugins.SkillManager>());
 skillManager.LoadSkills(pluginsDir);
+
+var pluginManager = new SPLA.MCP.Core.Plugins.PluginManager(settings, loggerFactory.CreateLogger<SPLA.MCP.Core.Plugins.PluginManager>(), skillManager);
+pluginManager.LoadPlugins(pluginsDir);
 skillManager.ApplySettings(settings.Skills.ToDictionary(
     kvp => kvp.Key,
     kvp => (kvp.Value.Enabled ?? true, kvp.Value.Preloaded ?? false)));
@@ -190,8 +191,16 @@ sessionKv.LoadFrom(currentChat.Kv);
 var orchestrator = new SPLA.Agent.ConversationOrchestrator(llmClient, mcpHost)
 {
     WorkingMemory = () => CollectWorkingMemory(sessionKv, projectKv.Store),
-    Checkpoint = checkpointManager
+    Checkpoint = checkpointManager,
+    Logger = loggerFactory.CreateLogger<SPLA.Agent.ConversationOrchestrator>()
 };
+
+// Persistent token tallies — cumulative across every run and chat. Project-scoped + machine-global.
+SPLA.Domain.Interfaces.ITokenUsageStore tokenUsage = new SPLA.Domain.Agent.FileTokenUsageStore(
+    System.IO.Path.Combine(settings.WorkspacePath, ".spla", "token-usage.json"));
+SPLA.Domain.Interfaces.ITokenUsageStore tokenUsageGlobal = new SPLA.Domain.Agent.FileTokenUsageStore(
+    System.IO.Path.Combine(
+        Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), ".spla", "token-usage.json"));
 
 var conversation = new Conversation();
 conversation.Add(new ChatMessage { Role = ChatRole.System, Content = systemPrompt });
@@ -288,7 +297,21 @@ while (true)
             SaveCliChat(chatManager, currentChat, conversation, sessionKv);
             return Task.CompletedTask;
         },
-        OnNotice = note => { Console.WriteLine($"\n{note}"); return Task.CompletedTask; }
+        OnNotice = note => { Console.WriteLine($"\n{note}"); return Task.CompletedTask; },
+        OnTokenUsage = (prompt, completion) =>
+        {
+            tokenUsage.Record(prompt, completion);
+            tokenUsageGlobal.Record(prompt, completion);
+            if (prompt is int || completion is int)
+            {
+                var t = tokenUsage.Total;
+                var g = tokenUsageGlobal.Total;
+                Console.WriteLine(
+                    $"   [tokens] turn in:{prompt?.ToString() ?? "?"} out:{completion?.ToString() ?? "?"}" +
+                    $"  ·  project Σ {t.TotalTokens:N0} (in {t.PromptTokens:N0}/out {t.CompletionTokens:N0})" +
+                    $"  ·  machine Σ {g.TotalTokens:N0}");
+            }
+        }
     };
 
     try

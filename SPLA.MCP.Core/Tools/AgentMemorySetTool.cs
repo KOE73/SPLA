@@ -28,14 +28,14 @@ public sealed class AgentMemorySetTool : IMcpTool
             Scope = ToolScope.Agent,
             Effect = ToolEffect.Write,
             Risk = ToolRisk.Low,
-            StrictSchema = true,
+            StrictSchema = false,
             Parameters = new
             {
                 type = "object",
                 properties = new
                 {
                     key   = new { type = "string",                          description = "Entry key. Use namespace:name (e.g. context:plan, task:current, note:finding, project:build-cmd)." },
-                    value = new { type = "string",                          description = "Value to store. May be empty to clear the content while keeping the key." },
+                    value = new { description = "Value to store. Pass any JSON type: string, number, boolean, object, or array." },
                     scope = new { type = "string", @enum = new[] { "session", "project" }, description = "session = this chat (default); project = shared, persistent." }
                 },
                 required = new[] { "key", "value" }
@@ -50,11 +50,15 @@ public sealed class AgentMemorySetTool : IMcpTool
             using var doc = JsonDocument.Parse(string.IsNullOrWhiteSpace(argumentsJson) ? "{}" : argumentsJson);
             var root  = doc.RootElement;
             var key   = ToolJson.GetString(root, "key");
-            var value = ToolJson.GetString(root,"value");
-            var scope = ToolJson.GetString(root,"scope");
+            var scope = ToolJson.GetString(root, "scope");
 
             if (string.IsNullOrWhiteSpace(key)) return Task.FromResult("error: key is required");
-            if (value is null)                  return Task.FromResult("error: value is required");
+            if (!root.TryGetProperty("value", out var valueProp) || valueProp.ValueKind == JsonValueKind.Undefined)
+                return Task.FromResult("error: value is required");
+
+            var value = valueProp.ValueKind == JsonValueKind.String
+                ? valueProp.GetString() ?? ""
+                : valueProp.GetRawText();
 
             var store = AgentMemoryHelpers.SelectStore(_project, scope);
             if (store is null) return Task.FromResult("error: no active chat session");

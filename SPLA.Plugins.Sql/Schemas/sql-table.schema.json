@@ -1,0 +1,54 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "sql-table@1",
+  "title": "DB table description",
+  "type": "object",
+  "required": ["meta", "fields"],
+  "properties": {
+    "meta": {
+      "type": "object",
+      "title": "Table metadata",
+      "required": ["table"],
+      "properties": {
+        "table": { "type": "string", "title": "Table" },
+        "rules": {
+          "type": "array",
+          "title": "Rules",
+          "items": { "type": "string" }
+        },
+        "joins": {
+          "type": "array",
+          "title": "Joins",
+          "items": {
+            "type": "object",
+            "required": ["to", "on"],
+            "properties": {
+              "to": { "type": "string", "title": "To table" },
+              "on": { "type": "string", "title": "On column" }
+            }
+          }
+        }
+      }
+    },
+    "fields": {
+      "type": "array",
+      "title": "Fields",
+      "items": {
+        "type": "object",
+        "required": ["name", "data_type"],
+        "properties": {
+          "name": { "type": "string", "title": "Field" },
+          "data_type": { "type": "string", "title": "Type" },
+          "agg": {
+            "type": "string",
+            "title": "Aggregation",
+            "enum": ["SUM", "AVG", "MIN", "MAX", "filter", "group", "none"],
+            "default": "none"
+          },
+          "desc": { "type": "string", "title": "Description" },
+          "note": { "type": "string", "title": "Note" }
+        }
+      }
+    }
+  }
+}

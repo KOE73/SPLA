@@ -27,6 +27,7 @@ public class PluginManager
 {
     private readonly ResolvedSettings _settings;
     private readonly ILogger<PluginManager>? _logger;
+    private readonly SkillManager? _skillManager;
     private readonly List<PluginDescriptor> _plugins = new();
     private readonly List<PluginInstance> _activePlugins = new();
     private readonly List<SPLA.MCP.Core.Interfaces.IMcpTool> _dynamicTools = new();
@@ -34,11 +35,15 @@ public class PluginManager
     private readonly List<string> _loadErrors = new();
     private readonly List<AssemblyLoadContext> _loadContexts = new();
 
-    public PluginManager(ResolvedSettings settings, ILogger<PluginManager>? logger = null)
+    public PluginManager(ResolvedSettings settings, ILogger<PluginManager>? logger = null, SkillManager? skillManager = null)
     {
         _settings = settings;
         _logger = logger;
+        _skillManager = skillManager;
     }
+
+    private static bool IsSkillsType(PluginDescriptor d) =>
+        d.Meta.Type.Equals("skills", StringComparison.OrdinalIgnoreCase);
 
     /// <summary>
     /// Scans the specified directory for plugins, loading those that are not disabled in settings.
@@ -50,11 +55,16 @@ public class PluginManager
         _uiCommands.Clear();
         _loadErrors.Clear();
         _plugins.Clear();
+        _skillManager?.ClearPluginSkills();
 
         _plugins.AddRange(DiscoverPlugins(_settings, pluginsDirectory, _loadErrors));
         _logger?.LogInformation("Plugin discovery finished. Directory={PluginDirectory} Count={PluginCount} Errors={ErrorCount}", pluginsDirectory, _plugins.Count, _loadErrors.Count);
 
-        foreach (var descriptor in _plugins.Where(p => p.IsEffectivelyEnabled))
+        // Register skills from type:skills plugins (regardless of enabled state so sidebar shows them)
+        foreach (var descriptor in _plugins.Where(IsSkillsType))
+            RegisterSkillPlugin(descriptor);
+
+        foreach (var descriptor in _plugins.Where(p => p.IsEffectivelyEnabled && !IsSkillsType(p)))
         {
             LoadEnabledPlugin(descriptor);
         }
@@ -118,6 +128,25 @@ public class PluginManager
 
         ApplyDependencyStates(descriptors);
         return descriptors;
+    }
+
+    private void RegisterSkillPlugin(PluginDescriptor descriptor)
+    {
+        if (_skillManager == null) return;
+        try
+        {
+            foreach (var file in Directory.GetFiles(descriptor.DirectoryPath, "*.md").OrderBy(f => f))
+                _skillManager.RegisterFromPlugin(file, descriptor.Meta.Id, descriptor);
+
+            if (descriptor.IsEffectivelyEnabled)
+                _activePlugins.Add(new PluginInstance(descriptor.Meta, descriptor.EffectivePrompt));
+
+            _logger?.LogInformation("Skills plugin registered. Plugin={PluginId} Enabled={Enabled}", descriptor.Meta.Id, descriptor.IsEffectivelyEnabled);
+        }
+        catch (Exception ex)
+        {
+            SetLoadError(descriptor, $"Error registering skills plugin '{descriptor.Meta.Id}': {ex.Message}");
+        }
     }
 
     public IReadOnlyList<PluginDescriptor> GetPlugins() => _plugins;

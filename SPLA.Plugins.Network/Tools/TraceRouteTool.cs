@@ -1,6 +1,8 @@
+using SPLA.Domain.Agent;
 using SPLA.Domain.Models;
 using SPLA.MCP.Core.Interfaces;
 using SPLA.MCP.Core.Json;
+using SPLA.MCP.Core.Tools;
 using System;
 using System.Net;
 using System.Net.NetworkInformation;
@@ -33,7 +35,9 @@ public class TraceRouteTool : IMcpTool
                     host = new { type = "string", description = "Target IP address or domain name (e.g. '8.8.8.8' or 'google.com')." },
                     max_hops = new { type = "integer", description = "Maximum number of hops to trace (default: 20, max: 30)." },
                     timeout = new { type = "integer", description = "Ping timeout in milliseconds for each hop (default: 1000)." },
-                    resolve_hops = new { type = "boolean", description = "Reverse-resolve each hop IP to a hostname. Adds latency per hop. Default: false." }
+                    resolve_hops = new { type = "boolean", description = "Reverse-resolve each hop IP to a hostname. Adds latency per hop. Default: false." },
+                    output       = SchemaParts.Output,
+                    output_name  = SchemaParts.OutputName
                 },
                 required = new[] { "host" }
             }
@@ -94,7 +98,11 @@ public class TraceRouteTool : IMcpTool
                 }
             }
 
-            return sb.ToString();
+            var result = sb.ToString();
+            var target = DataChannel.ParseTarget(ToolJson.GetStringTrimmed(root, "output"));
+            if (target == OutputTarget.Context) return result;
+            var blobName = ToolJson.GetStringTrimmed(root, "output_name");
+            return DataChannel.Route(target, BlobPayload.OfText(result), $"network_trace_route: {host}", blobName);
         }
         catch (JsonException)
         {

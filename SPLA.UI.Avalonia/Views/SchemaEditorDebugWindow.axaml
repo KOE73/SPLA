@@ -1,0 +1,40 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:ed="clr-namespace:SPLA.Editor.Schema;assembly=SPLA.Editor.Schema"
+        x:Class="SPLA.UI.Avalonia.Views.SchemaEditorDebugWindow"
+        Width="1100" Height="750"
+        Title="WORKSPACE SHELL — live debug"
+        WindowDecorations="BorderOnly"
+        ExtendClientAreaToDecorationsHint="True"
+        Background="{DynamicResource AppBackgroundBrush}">
+
+    <Grid RowDefinitions="30,*">
+        <!-- Title bar -->
+        <DockPanel Grid.Row="0"
+                   Background="{DynamicResource TitleBarBackgroundBrush}">
+            <StackPanel DockPanel.Dock="Left"
+                        Orientation="Horizontal"
+                        VerticalAlignment="Center"
+                        Margin="12,0,0,0"
+                        IsHitTestVisible="False">
+                <TextBlock Text="WORKSPACE SHELL"
+                           FontSize="12" FontWeight="SemiBold"
+                           Foreground="{DynamicResource SubTextForegroundBrush}"
+                           VerticalAlignment="Center"/>
+                <TextBlock Text="— live debug"
+                           FontSize="12" Margin="6,0,0,0"
+                           Foreground="{DynamicResource SubTextForegroundBrush}"
+                           Opacity="0.5"
+                           VerticalAlignment="Center"/>
+            </StackPanel>
+            <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
+                <Button Classes="caption" Content="─" Click="MinimizeButton_Click"/>
+                <Button Classes="caption" Content="□" Click="MaximizeButton_Click"/>
+                <Button Classes="caption close" Content="✕" Click="CloseButton_Click"/>
+            </StackPanel>
+            <Border Background="Transparent" PointerPressed="TitleBar_PointerPressed"/>
+        </DockPanel>
+
+        <ed:WorkspaceShellView x:Name="Shell" Grid.Row="1"/>
+    </Grid>
+</Window>

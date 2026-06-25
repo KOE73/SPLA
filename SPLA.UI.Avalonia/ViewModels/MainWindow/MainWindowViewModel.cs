@@ -67,6 +67,10 @@ public partial class MainWindowViewModel : ViewModelBase
 
         private readonly Dictionary<string, ChatSessionViewModel> _chatVms = new();
 
+        /// <summary>Logger for the chat-selection → active-chat wiring. Logs land in
+        /// &lt;workspace&gt;\.spla\logs\ and %LocalAppData%\SPLA\logs\ (prefix [CHATBIND]).</summary>
+        private ILogger? BindLog => App.Services?.GetService<ILogger<MainWindowViewModel>>();
+
         [ObservableProperty]
         private ObservableCollection<RecentProjectViewModel> _recentProjects = new();
 
@@ -103,15 +107,17 @@ public partial class MainWindowViewModel : ViewModelBase
             var logger = App.Services.GetRequiredService<ILogger<MainWindowViewModel>>();
             logger.LogInformation("MainWindowViewModel initialization started.");
 
-            _pluginManager = new SPLA.MCP.Core.Plugins.PluginManager(
-                App.ResolvedSettings,
-                App.Services.GetRequiredService<ILogger<SPLA.MCP.Core.Plugins.PluginManager>>());
             var pluginsDir = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "plugins");
-            _pluginManager.LoadPlugins(pluginsDir);
 
             _skillManager = new SPLA.MCP.Core.Plugins.SkillManager(
                 App.Services.GetRequiredService<ILogger<SPLA.MCP.Core.Plugins.SkillManager>>());
             _skillManager.LoadSkills(pluginsDir);
+
+            _pluginManager = new SPLA.MCP.Core.Plugins.PluginManager(
+                App.ResolvedSettings,
+                App.Services.GetRequiredService<ILogger<SPLA.MCP.Core.Plugins.PluginManager>>(),
+                _skillManager);
+            _pluginManager.LoadPlugins(pluginsDir);
             // Defer reloads while any chat has a skill active (per-chat skill sessions).
             _skillFileWatcher = new SPLA.MCP.Core.Plugins.SkillFileWatcher(
                 _skillManager, () => Chats.Any(c => c.Status.HasActiveSkill), pluginsDir);

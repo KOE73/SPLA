@@ -1,4 +1,6 @@
 using Avalonia.Controls;
+using Avalonia.Input;
+using Avalonia.Interactivity;
 using SPLA.Plugins.Host.Avalonia;
 using System;
 
@@ -9,12 +11,14 @@ public partial class PluginPanelHostWindow : Window
     public PluginPanelHostWindow()
     {
         InitializeComponent();
+        ExtendClientAreaTitleBarHeightHint = 30;
     }
 
     public PluginPanelHostWindow(AvaloniaPluginPanelDescriptor descriptor, AvaloniaPluginPanelContext context)
         : this()
     {
         Title = descriptor.DisplayName;
+        TitleBarText.Text = descriptor.DisplayName;
 
         try
         {
@@ -29,4 +33,10 @@ public partial class PluginPanelHostWindow : Window
             };
         }
     }
+
+    private void TitleBar_PointerPressed(object? sender, PointerPressedEventArgs e) => BeginMoveDrag(e);
+    private void MinimizeButton_Click(object? sender, RoutedEventArgs e) => WindowState = WindowState.Minimized;
+    private void MaximizeButton_Click(object? sender, RoutedEventArgs e)
+        => WindowState = WindowState == WindowState.Maximized ? WindowState.Normal : WindowState.Maximized;
+    private void CloseButton_Click(object? sender, RoutedEventArgs e) => Close();
 }

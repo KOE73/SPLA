@@ -1,7 +1,9 @@
 using System.Text.Json;
+using SPLA.Domain.Agent;
 using SPLA.Domain.Models;
 using SPLA.MCP.Core.Interfaces;
 using SPLA.MCP.Core.Json;
+using SPLA.MCP.Core.Tools;
 using SPLA.Plugins.OneC.Models;
 using SPLA.Plugins.OneC.Storage;
 
@@ -32,8 +34,10 @@ public class FindWritersTool : IMcpTool
                 properties = new
                 {
                     full_name = new { type = "string",  description = "Fully-qualified register name, e.g. AccumulationRegister.ОстаткиТоваров." },
-                    limit    = new { type = "integer", description = "Max results (default 50)." },
-                    offset   = new { type = "integer", description = "Pagination offset (default 0)." },
+                    limit       = new { type = "integer", description = "Max results (default 50)." },
+                    offset      = new { type = "integer", description = "Pagination offset (default 0)." },
+                    output      = SchemaParts.Output,
+                    output_name = SchemaParts.OutputName
                 },
                 required = new[] { "full_name" }
             }
@@ -63,7 +67,10 @@ public class FindWritersTool : IMcpTool
             b.Field("truncated", offset + rows.Count < total);
             b.ReverseRelationList("writers", rows, includeSource: true);
         });
-        return Task.FromResult(yaml);
+        var target = DataChannel.ParseTarget(ToolJson.GetStringTrimmed(doc.RootElement, "output"));
+        if (target == OutputTarget.Context) return Task.FromResult(yaml);
+        var blobName = ToolJson.GetStringTrimmed(doc.RootElement, "output_name");
+        return Task.FromResult(DataChannel.Route(target, BlobPayload.OfText(yaml), $"onec_find_writers: {fullName}", blobName));
     }
 }
 

@@ -6,10 +6,15 @@
   </Folder>
   <Folder Name="/docs/">
     <File Path="docs/TODO.md" />
+    <File Path="docs/TODO_SQLITE_VULN.md" />
     <File Path="docs/readme_security.md" />
     <File Path="docs/readme_security_ru.md" />
     <File Path="docs/sys_prompt_rules_ru.md" />
     <File Path="docs/skills_lifecycle_plan.md" />
+    <File Path="docs/data-channel-plan.md" />
+    <File Path="docs/schema-editor-plan.md" />
+    <File Path="docs/schema-editor-doc-a-schemas.md" />
+    <File Path="docs/schema-editor-doc-b-tokens.md" />
   </Folder>
   <Folder Name="/agents/">
     <File Path="agents/avalonia.md" />
@@ -41,6 +46,7 @@
   <Project Path="SPLA.Agent/SPLA.Agent.csproj" />
   <Project Path="SPLA.CLI/SPLA.CLI.csproj" />
   <Project Path="SPLA.Domain/SPLA.Domain.csproj" />
+  <Project Path="SPLA.Editor.Schema/SPLA.Editor.Schema.csproj" />
   <Project Path="SPLA.LLM.LMStudio/SPLA.LLM.LMStudio.csproj" />
   <Project Path="SPLA.MCP.BasicTools/SPLA.MCP.BasicTools.csproj" />
   <Project Path="SPLA.MCP.Core/SPLA.MCP.Core.csproj" />

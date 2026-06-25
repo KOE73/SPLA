@@ -134,19 +134,19 @@ public class LMStudioClient : ILLMService, ITokenUsageReporter
                 continue;
             }
 
+            // The final usage chunk from LM Studio arrives with choices:[] (empty) and only
+            // the usage field populated. Must capture it BEFORE the choice==null guard below.
+            if (chunk?.Usage != null)
+            {
+                promptTokens    = chunk.Usage.PromptTokens;
+                completionTokens = chunk.Usage.CompletionTokens;
+            }
+
             var choice = chunk?.Choices?.FirstOrDefault();
             if (choice == null) continue;
 
             if (!string.IsNullOrEmpty(choice.FinishReason))
                 finishReason = choice.FinishReason;
-
-            // Usage may appear in the last chunk (some servers send it). Capture the real
-            // prompt-token count too — that is the actual size of the request we just sent.
-            if (chunk?.Usage != null)
-            {
-                promptTokens = chunk.Usage.PromptTokens;
-                completionTokens = chunk.Usage.CompletionTokens;
-            }
 
             var delta = choice.Delta;
             if (delta == null) continue;
@@ -325,6 +325,9 @@ public class LMStudioClient : ILLMService, ITokenUsageReporter
             ["model"] = settings.ModelName,
             ["temperature"] = settings.Temperature,
             ["stream"] = stream,
+            ["presence_penalty"]  = settings.PresencePenalty,
+            ["frequency_penalty"] = settings.FrequencyPenalty,
+            ["repeat_penalty"]    = settings.RepeatPenalty,
             ["messages"] = messages.Select(m => 
             {
                 if (m.Role == ChatRole.Tool)
@@ -360,6 +363,11 @@ public class LMStudioClient : ILLMService, ITokenUsageReporter
                 return msgDict;
             }).ToArray()
         };
+
+        // stream_options.include_usage is only meaningful (and valid) for streaming requests.
+        // For non-streaming calls usage is returned in the single response body without this flag.
+        if (stream)
+            payload["stream_options"] = new Dictionary<string, object> { ["include_usage"] = true };
 
         // Reasoning lever for the OpenAI-compatible endpoint. on/off maps to the chat-template
         // kwarg (Qwen3/Gemma-style); graded values map to reasoning_effort (gpt-oss-style).

@@ -1,6 +1,8 @@
+using SPLA.Domain.Agent;
 using SPLA.Domain.Models;
 using SPLA.MCP.Core.Interfaces;
 using SPLA.MCP.Core.Json;
+using SPLA.MCP.Core.Tools;
 using SPLA.MCP.BasicTools.Network.SearchEngines;
 using System;
 using System.Collections.Generic;
@@ -41,9 +43,11 @@ public class WebSearchTool : IMcpTool
                         type = new[] { "array", "null" },
                         items = new { type = "string" },
                         description = "Search engines to use: 'duckduckgo' (or 'ddg'), 'yahoo', 'google', 'bing'. Null = DuckDuckGo → Yahoo fallback."
-                    }
+                    },
+                    output      = SchemaParts.Output,
+                    output_name = SchemaParts.OutputName
                 },
-                required = new[] { "query", "engines" }
+                required = new[] { "query", "engines", "output", "output_name" }
             }
         }
     };
@@ -97,7 +101,11 @@ public class WebSearchTool : IMcpTool
                             var r = results[i];
                             lines.Add($"[{engine.Name.ToUpperInvariant()}] {i + 1}. {r.Title}\n   {r.Url}\n   {r.Snippet}");
                         }
-                        return string.Join("\n\n", lines);
+                        var searchResult = string.Join("\n\n", lines);
+                        var target = DataChannel.ParseTarget(ToolJson.GetStringTrimmed(doc.RootElement, "output"));
+                        if (target == OutputTarget.Context) return searchResult;
+                        var blobName = ToolJson.GetStringTrimmed(doc.RootElement, "output_name");
+                        return DataChannel.Route(target, BlobPayload.OfText(searchResult), $"web_search: {query}", blobName);
                     }
                     else
                     {

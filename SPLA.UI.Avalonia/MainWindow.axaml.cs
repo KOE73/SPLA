@@ -26,6 +26,8 @@ public partial class MainWindow : Window
         vm.SelectProjectFolderAsync = SelectProjectFolderAsync;
         vm.KvDebugRequested += VmOnKvDebugRequested;
         vm.ContextDebugRequested += VmOnContextDebugRequested;
+        vm.PromptDebugRequested += VmOnPromptDebugRequested;
+        vm.ActiveChatChanged += VmOnActiveChatChanged;
         DataContext = vm;
         App.Services.GetRequiredService<IActiveConversationAccessor>().CurrentInput = new MainWindowConversationInput(vm);
 
@@ -83,6 +85,10 @@ public partial class MainWindow : Window
     private void CloseButton_Click(object? sender, RoutedEventArgs e)
         => Close();
 
+    // TEMP: открыть debug-окно schema-editor (Фаза 1 live-проверка). Убрать после verify.
+    private void OpenSchemaEditorDebug_Click(object? sender, RoutedEventArgs e)
+        => new Views.SchemaEditorDebugWindow { } .Show(this);
+
     // ── Existing handlers ────────────────────────────────────────────────────
 
     private void MainWindow_Loaded(object? sender, global::Avalonia.Interactivity.RoutedEventArgs e)
@@ -107,10 +113,64 @@ public partial class MainWindow : Window
         }
         var vm = (MainWindowViewModel)DataContext!;
         if (vm.SessionKv == null) return;
-        var debugVm = new KvDebugWindowViewModel(vm.SessionKv, vm.ProjectKv);
+        var debugVm = new KvDebugWindowViewModel(vm.SessionKv, vm.ProjectKv, vm.Blobs);
         _kvDebugWindow = new KvDebugWindow(debugVm);
         _kvDebugWindow.Closed += (_, _) => _kvDebugWindow = null;
         _kvDebugWindow.Show(this);
+    }
+
+    /// <summary>When the active chat changes, re-target any open debug windows at the new chat's
+    /// live stores instead of leaving them pinned to the chat that was active when they opened.</summary>
+    private void VmOnActiveChatChanged(object? sender, System.EventArgs e)
+    {
+        var vm = (MainWindowViewModel)DataContext!;
+
+        if (_kvDebugWindow?.DataContext is KvDebugWindowViewModel kvVm && vm.SessionKv != null)
+            kvVm.Rebind(vm.SessionKv, vm.Blobs);
+
+        if (_contextDebugWindow != null)
+            _contextDebugWindow.DataContext = vm.ContextSnapshot;
+
+        // The prompt preview pulls from vm.SystemPromptSegments live, so a re-pull retargets it.
+        if (_promptDebugWindow?.DataContext is PromptDebugWindowViewModel promptVm)
+        {
+            HookPromptLiveChat(vm.ActiveChat);
+            promptVm.Refresh();
+        }
+    }
+
+    private PromptDebugWindow? _promptDebugWindow;
+    private ViewModels.Chat.ChatSessionViewModel? _promptLiveChat;
+
+    private void VmOnPromptDebugRequested(object? sender, System.EventArgs e)
+    {
+        if (_promptDebugWindow != null)
+        {
+            _promptDebugWindow.Activate();
+            return;
+        }
+        var vm = (MainWindowViewModel)DataContext!;
+        var promptVm = new PromptDebugWindowViewModel(() => vm.SystemPromptSegments);
+        _promptDebugWindow = new PromptDebugWindow(promptVm);
+        _promptDebugWindow.Closed += (_, _) => { _promptDebugWindow = null; HookPromptLiveChat(null); };
+        HookPromptLiveChat(vm.ActiveChat);
+        _promptDebugWindow.Show(this);
+    }
+
+    /// <summary>Keep the open prompt preview subscribed to the active chat's prompt rebuilds (build-at-send),
+    /// so it refreshes live as messages are sent. Re-points on chat switch, detaches on window close.</summary>
+    private void HookPromptLiveChat(ViewModels.Chat.ChatSessionViewModel? chat)
+    {
+        if (ReferenceEquals(_promptLiveChat, chat)) return;
+        if (_promptLiveChat != null) _promptLiveChat.SystemPromptChanged -= OnLiveSystemPromptChanged;
+        _promptLiveChat = chat;
+        if (_promptLiveChat != null) _promptLiveChat.SystemPromptChanged += OnLiveSystemPromptChanged;
+    }
+
+    private void OnLiveSystemPromptChanged(object? sender, System.EventArgs e)
+    {
+        if (_promptDebugWindow?.DataContext is PromptDebugWindowViewModel promptVm)
+            global::Avalonia.Threading.Dispatcher.UIThread.Post(promptVm.Refresh);
     }
 
     private ContextDebugWindow? _contextDebugWindow;

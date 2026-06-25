@@ -1,0 +1,28 @@
+{
+  "name": "spla-schema-editor-web",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "description": "Build-time only. Produces a single self-contained dist/index.html embedded into SPLA.Editor.Schema.dll.",
+  "scripts": {
+    "build": "vite build",
+    "dev": "vite"
+  },
+  "dependencies": {
+    "@jsonforms/core": "^3.5.1",
+    "@jsonforms/react": "^3.5.1",
+    "@jsonforms/vanilla-renderers": "^3.5.1",
+    "ajv": "^8.17.1",
+    "ajv-formats": "^3.0.1",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1"
+  },
+  "devDependencies": {
+    "@types/react": "^18.3.12",
+    "@types/react-dom": "^18.3.1",
+    "@vitejs/plugin-react": "^4.3.4",
+    "typescript": "^5.6.3",
+    "vite": "^6.0.3",
+    "vite-plugin-singlefile": "^2.1.0"
+  }
+}

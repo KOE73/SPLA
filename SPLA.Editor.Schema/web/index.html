@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="ru">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>SPLA Schema Editor</title>
+    <style>
+      body { font-family: sans-serif; margin: 0; }
+      /* Диагностические оверлеи: видны без девтулзов. main.tsx прячет #boot при монтировании React. */
+      #boot { padding: 8px 12px; color: #888; font-size: 13px; }
+      #err {
+        white-space: pre-wrap; color: #b00; background: #fff3f3;
+        font-family: monospace; font-size: 12px; padding: 8px 12px; display: none;
+        border-bottom: 1px solid #f0c0c0;
+      }
+    </style>
+    <!-- Classic-скрипт: выполняется ВСЕГДА (не модуль), ловит ошибки и показывает их в DOM. -->
+    <script>
+      window.addEventListener("error", function (e) {
+        var box = document.getElementById("err");
+        if (box) { box.style.display = "block"; box.textContent += "ERROR: " + (e.message || e.error) + "\n"; }
+      });
+      window.addEventListener("unhandledrejection", function (e) {
+        var box = document.getElementById("err");
+        if (box) { box.style.display = "block"; box.textContent += "REJECT: " + (e.reason && e.reason.message ? e.reason.message : e.reason) + "\n"; }
+      });
+    </script>
+  </head>
+  <body>
+    <div id="err"></div>
+    <div id="boot">boot: страница загружена, ждём React…</div>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>

@@ -39,10 +39,12 @@ public partial class ChatSessionViewModel : ViewModelBase, IAgentSession
     private readonly ChatSession _chat;
     private readonly Conversation _conversation = new();
     private readonly KeyValueStore _sessionKv = new("session");
+    private readonly BlobStore _blobs = new();
     private readonly CheckpointManager _checkpointManager = new();
     private readonly SkillSession _skillSession = new();
 
     public IKeyValueStore SessionKv => _sessionKv;
+    public IBlobStore Blobs => _blobs;
     MarkManager IAgentSession.Checkpoint => _checkpointManager;
     ISkillSession IAgentSession.Skills => _skillSession;
 
@@ -52,6 +54,10 @@ public partial class ChatSessionViewModel : ViewModelBase, IAgentSession
     private bool _loadStarted;
     private bool _loaded;
     private int _pendingPermissions;
+
+    // The live system message (always _conversation[0]) and its display VM, refreshed at send time.
+    private ChatMessage? _systemMessage;
+    private SystemMessageViewModel? _systemMessageVm;
 
     public string Id => _chat.Id;
     public ChatSession Chat => _chat;
@@ -110,6 +116,15 @@ public partial class ChatSessionViewModel : ViewModelBase, IAgentSession
     [ObservableProperty]
     private string _reasoningLevel = "";
 
+    [ObservableProperty]
+    private double _presencePenalty = 0.0;
+
+    [ObservableProperty]
+    private double _frequencyPenalty = 0.0;
+
+    [ObservableProperty]
+    private double _repeatPenalty = 1.0;
+
     private ModelInfo? CurrentModelInfo =>
         _services.ModelCatalog().FirstOrDefault(m => m.Id == SelectedConnection?.Model);
 
@@ -128,8 +143,11 @@ public partial class ChatSessionViewModel : ViewModelBase, IAgentSession
         if (_loaded) SaveChat();
     }
 
-    partial void OnTemperatureChanged(double value) { if (_loaded) SaveChat(); }
-    partial void OnReasoningLevelChanged(string value) { if (_loaded) SaveChat(); }
+    partial void OnTemperatureChanged(double value)       { if (_loaded) SaveChat(); }
+    partial void OnReasoningLevelChanged(string value)    { if (_loaded) SaveChat(); }
+    partial void OnPresencePenaltyChanged(double value)   { if (_loaded) SaveChat(); }
+    partial void OnFrequencyPenaltyChanged(double value)  { if (_loaded) SaveChat(); }
+    partial void OnRepeatPenaltyChanged(double value)     { if (_loaded) SaveChat(); }
 
     // ── Render mode + display profile (per chat) ─────────────────────────────
     [ObservableProperty]
@@ -183,6 +201,7 @@ public partial class ChatSessionViewModel : ViewModelBase, IAgentSession
         _title    = chat.Title;
 
         Status.AttachSkillSession(_skillSession);
+        Status.AttachUsageStore(App.TokenUsage);
 
         // Persist per-chat mode when the user changes it via the bottom-bar combo.
         Status.PropertyChanged += (_, e) =>
@@ -210,9 +229,40 @@ public partial class ChatSessionViewModel : ViewModelBase, IAgentSession
             Temperature    = Temperature,
             Mode           = Status.Mode,
             Theme          = App.ResolvedSettings.Theme,
-            ReasoningLevel = string.IsNullOrEmpty(ReasoningLevel) ? null : ReasoningLevel
+            ReasoningLevel   = string.IsNullOrEmpty(ReasoningLevel) ? null : ReasoningLevel,
+            PresencePenalty  = PresencePenalty,
+            FrequencyPenalty = FrequencyPenalty,
+            RepeatPenalty    = RepeatPenalty
         };
     }
+
+    // ── System prompt (built fresh from current settings/skill/plugins) ───────
+
+    private SystemPromptBuilder CreatePromptBuilder()
+        => new(_services.SkillManager, _services.PluginManager, _skillSession);
+
+    /// <summary>The source-tagged segments of this chat's current system prompt — used by the prompt preview.</summary>
+    public IReadOnlyList<PromptSegment> BuildSystemSegments()
+        => CreatePromptBuilder().BuildSegments(App.ResolvedSettings, Directory.GetCurrentDirectory());
+
+    private string BuildSystemPrompt()
+        => CreatePromptBuilder().Build(App.ResolvedSettings, Directory.GetCurrentDirectory());
+
+    /// <summary>Rebuilds the system message (always _conversation[0]) from the current settings/skill/plugin
+    /// state. Called at send time so every request reflects live config — no chat restart needed.</summary>
+    public void RefreshSystemPrompt()
+    {
+        if (_systemMessage == null) return;
+        var prompt = BuildSystemPrompt();
+        if (prompt == _systemMessage.Content) return;
+
+        _systemMessage.Content = prompt;
+        if (_systemMessageVm != null) _systemMessageVm.Content = prompt;
+        SystemPromptChanged?.Invoke(this, EventArgs.Empty);
+    }
+
+    /// <summary>Raised after the system prompt is rebuilt, so an open preview can re-pull its segments.</summary>
+    public event EventHandler? SystemPromptChanged;
 
     // ── Loading ──────────────────────────────────────────────────────────────
 
@@ -233,8 +283,11 @@ public partial class ChatSessionViewModel : ViewModelBase, IAgentSession
                           ?? Connections.FirstOrDefault();
 
         // Behaviour knobs.
-        Temperature   = _chat.Model?.Temperature ?? resolved.Temperature;
-        ReasoningLevel = _chat.Model?.ReasoningLevel ?? resolved.ReasoningLevel ?? "";
+        Temperature      = _chat.Model?.Temperature ?? resolved.Temperature;
+        ReasoningLevel   = _chat.Model?.ReasoningLevel ?? resolved.ReasoningLevel ?? "";
+        PresencePenalty  = _chat.Model?.PresencePenalty  ?? resolved.PresencePenalty;
+        FrequencyPenalty = _chat.Model?.FrequencyPenalty ?? resolved.FrequencyPenalty;
+        RepeatPenalty    = _chat.Model?.RepeatPenalty    ?? resolved.RepeatPenalty;
         Status.Mode = _chat.Agent?.Mode != null && Enum.TryParse<AgentMode>(_chat.Agent.Mode, true, out var m)
             ? m : resolved.Mode;
 
@@ -265,12 +318,11 @@ public partial class ChatSessionViewModel : ViewModelBase, IAgentSession
         if (resolved.ProjectName != null)
             Messages.Add(new SystemMessageViewModel($"Project: {resolved.ProjectName} | Mode: {Status.Mode}"));
 
-        var promptBuilder = new SystemPromptBuilder(_services.SkillManager, _services.PluginManager, _skillSession);
-        var systemPrompt  = promptBuilder.Build(resolved, Directory.GetCurrentDirectory());
-
-        var sysMsg = new ChatMessage { Role = ChatRole.System, Content = systemPrompt };
-        _conversation.Add(sysMsg);
-        Messages.Add(new SystemMessageViewModel(systemPrompt, isSystemPrompt: true) { Domain = sysMsg });
+        var systemPrompt = BuildSystemPrompt();
+        _systemMessage   = new ChatMessage { Role = ChatRole.System, Content = systemPrompt };
+        _conversation.Add(_systemMessage);
+        _systemMessageVm = new SystemMessageViewModel(systemPrompt, isSystemPrompt: true) { Domain = _systemMessage };
+        Messages.Add(_systemMessageVm);
 
         foreach (var msg in _chat.Messages)
         {
@@ -365,6 +417,10 @@ public partial class ChatSessionViewModel : ViewModelBase, IAgentSession
             IsBusy = false;
             return;
         }
+
+        // Build-at-send: refresh the system prompt from current settings/skill/plugin state so this
+        // request reflects live config (changed custom prompt, toggled plugins, etc.) without a restart.
+        RefreshSystemPrompt();
 
         var userMsg = new ChatMessage { Role = ChatRole.User, Content = userText };
         _conversation.Add(userMsg);
@@ -478,8 +534,11 @@ public partial class ChatSessionViewModel : ViewModelBase, IAgentSession
         _chat.ConnectionId = SelectedConnection?.Id ?? _chat.ConnectionId;
         _chat.Model = new SplaLlmSection
         {
-            Temperature    = Temperature,
-            ReasoningLevel = string.IsNullOrEmpty(ReasoningLevel) ? null : ReasoningLevel
+            Temperature      = Temperature,
+            ReasoningLevel   = string.IsNullOrEmpty(ReasoningLevel) ? null : ReasoningLevel,
+            PresencePenalty  = PresencePenalty  != 0   ? PresencePenalty  : null,
+            FrequencyPenalty = FrequencyPenalty != 0   ? FrequencyPenalty : null,
+            RepeatPenalty    = RepeatPenalty    != 1.0 ? RepeatPenalty    : null,
         };
         _chat.Agent = new SplaAgentSection { Mode = Status.Mode.ToString() };
         _chat.Title = Title;
@@ -547,7 +606,7 @@ public partial class ChatSessionViewModel : ViewModelBase, IAgentSession
         try
         {
             var decision = await tcs.Task;
-            if (decision is PermissionDecision.AllowRemember or PermissionDecision.Deny)
+            if (decision == PermissionDecision.AllowRemember)
                 _services.PersistPermission(def, args, decision);
             return decision;
         }
@@ -584,9 +643,11 @@ public partial class ChatSessionViewModel : ViewModelBase, IAgentSession
         {
             var orchestrator = new ConversationOrchestrator(_services.Llm, _services.McpHost)
             {
-                ToolFilter    = (_, mode) => _services.ToolFilter(mode),
-                WorkingMemory = CollectWorkingMemory,
-                Checkpoint    = _checkpointManager
+                ToolFilter      = (_, mode) => _services.ToolFilter(mode),
+                WorkingMemory   = CollectWorkingMemory,
+                Checkpoint      = _checkpointManager,
+                Logger          = _services.Logger,
+                EnableLoopGuard = true
             };
 
             var callbacks = new AgentCallbacks
@@ -653,7 +714,7 @@ public partial class ChatSessionViewModel : ViewModelBase, IAgentSession
                         }
 
                         StopTokenEstimate();
-                        Status.AddTokens(msg.PromptTokens, msg.CompletionTokens);
+                        // Real token accounting is folded in via OnTokenUsage (core loop), not here.
 
                         if (vm != null)
                         {
@@ -713,6 +774,15 @@ public partial class ChatSessionViewModel : ViewModelBase, IAgentSession
                 OnNotice = async note =>
                 {
                     await Dispatcher.UIThread.InvokeAsync(() => Messages.Add(new SystemMessageViewModel(note)));
+                },
+
+                // Real per-turn token usage from the core loop: fold into the persistent project
+                // total (thread-safe) and the live per-chat counter (marshalled to the UI thread).
+                OnTokenUsage = (prompt, completion) =>
+                {
+                    App.TokenUsage.Record(prompt, completion);       // per-project lifetime
+                    App.TokenUsageGlobal.Record(prompt, completion); // machine-global lifetime
+                    Dispatcher.UIThread.Post(() => Status.AddTokens(prompt, completion));
                 }
             };
 

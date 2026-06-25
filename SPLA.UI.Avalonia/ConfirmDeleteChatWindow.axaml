@@ -2,10 +2,12 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         x:Class="SPLA.UI.Avalonia.ConfirmDeleteChatWindow"
         Title="Delete chat"
-        Width="360" Height="160"
+        Width="360" Height="190"
         MinWidth="300"
         CanResize="False"
         WindowStartupLocation="CenterOwner"
+        WindowDecorations="BorderOnly"
+        ExtendClientAreaToDecorationsHint="True"
         Background="{DynamicResource AppBackgroundBrush}">
 
     <Window.Styles>
@@ -35,7 +37,25 @@
         </Style>
     </Window.Styles>
 
-    <Grid RowDefinitions="*,Auto" Margin="20,16,20,16">
+    <Grid RowDefinitions="30,*">
+
+        <!-- Title bar (close only — no resize) -->
+        <DockPanel Grid.Row="0" Background="{DynamicResource TitleBarBackgroundBrush}">
+            <StackPanel DockPanel.Dock="Left" Orientation="Horizontal"
+                        VerticalAlignment="Center" Margin="12,0,0,0"
+                        IsHitTestVisible="False">
+                <TextBlock Text="Confirm"
+                           FontSize="12" FontWeight="SemiBold"
+                           Foreground="{DynamicResource SubTextForegroundBrush}"
+                           VerticalAlignment="Center"/>
+            </StackPanel>
+            <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
+                <Button Classes="caption close" Content="✕" Click="TitleBarClose_Click"/>
+            </StackPanel>
+            <Border Background="Transparent" PointerPressed="TitleBar_PointerPressed"/>
+        </DockPanel>
+
+        <Grid Grid.Row="1" RowDefinitions="*,Auto" Margin="20,16,20,16">
 
         <StackPanel Grid.Row="0" Spacing="8" VerticalAlignment="Center">
             <TextBlock Text="Delete this chat?"
@@ -57,6 +77,8 @@
             <Button x:Name="CancelBtn" Classes="action cancel" Content="Cancel"/>
             <Button x:Name="DeleteBtn" Classes="action danger" Content="Delete"/>
         </StackPanel>
+
+        </Grid>
 
     </Grid>
 </Window>

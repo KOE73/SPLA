@@ -6,7 +6,36 @@
 
     <Application.Styles>
         <FluentTheme />
-        
+
+        <!-- ── Custom window chrome ── -->
+        <Style Selector="Button.caption">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="Foreground" Value="{DynamicResource SubTextForegroundBrush}"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Padding" Value="0"/>
+            <Setter Property="Width" Value="42"/>
+            <Setter Property="Height" Value="30"/>
+            <Setter Property="VerticalContentAlignment" Value="Center"/>
+            <Setter Property="HorizontalContentAlignment" Value="Center"/>
+            <Setter Property="FontSize" Value="14"/>
+            <Setter Property="CornerRadius" Value="0"/>
+        </Style>
+        <Style Selector="Button.caption:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="Background" Value="{DynamicResource CaptionHoverBrush}"/>
+        </Style>
+        <Style Selector="Button.caption.close:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="Background" Value="#C42B1C"/>
+        </Style>
+        <Style Selector="Button.caption.close:pointerover">
+            <Setter Property="Foreground" Value="White"/>
+        </Style>
+        <Style Selector="Button.caption.sidebar:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="Background" Value="#30007ACC"/>
+        </Style>
+        <Style Selector="Button.caption.sidebar:pointerover">
+            <Setter Property="Foreground" Value="{DynamicResource AccentBrush}"/>
+        </Style>
+
         <!-- Fix TextBox background and foreground on focus/hover for custom themes -->
         <Style Selector="TextBox:pointerover /template/ Border#PART_BorderElement">
             <Setter Property="Background" Value="{DynamicResource InputBackgroundBrush}" />

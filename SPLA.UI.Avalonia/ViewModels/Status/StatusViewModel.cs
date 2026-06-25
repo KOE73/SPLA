@@ -122,6 +122,45 @@ public partial class StatusViewModel : ViewModelBase
     public int CurrentPromptTokens => ActivePromptTokens > 0 ? ActivePromptTokens : LastPromptTokens;
     public int CurrentCompletionTokens => ActiveCompletionTokens > 0 ? ActiveCompletionTokens : LastCompletionTokens;
 
+    // ── Project-lifetime cumulative totals (persisted via ITokenUsageStore) ──────
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(TotalTokens))]
+    private long _totalPromptTokens;
+
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(TotalTokens))]
+    private long _totalCompletionTokens;
+
+    public long TotalTokens => TotalPromptTokens + TotalCompletionTokens;
+
+    private SPLA.Domain.Interfaces.ITokenUsageStore? _usageStore;
+
+    /// <summary>
+    /// Binds this status bar to the persistent project-lifetime token store. Reflects the current
+    /// total immediately and keeps it live as turns are recorded. Call once from the chat VM.
+    /// </summary>
+    public void AttachUsageStore(SPLA.Domain.Interfaces.ITokenUsageStore store)
+    {
+        if (_usageStore != null) _usageStore.Changed -= OnUsageStoreChanged;
+        _usageStore = store;
+        _usageStore.Changed += OnUsageStoreChanged;
+        SyncTotals();
+    }
+
+    private void OnUsageStoreChanged(object? sender, EventArgs e)
+    {
+        if (Dispatcher.UIThread.CheckAccess()) SyncTotals();
+        else Dispatcher.UIThread.Post(SyncTotals);
+    }
+
+    private void SyncTotals()
+    {
+        var t = _usageStore?.Total;
+        if (t == null) return;
+        TotalPromptTokens = t.PromptTokens;
+        TotalCompletionTokens = t.CompletionTokens;
+    }
+
     /// <summary>
     /// Records the real usage reported by the provider for the last turn. Null arguments mean the
     /// provider did not report that figure, so we leave the running totals / "last" values untouched

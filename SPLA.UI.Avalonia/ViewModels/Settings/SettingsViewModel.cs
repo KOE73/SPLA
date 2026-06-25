@@ -146,7 +146,7 @@ public partial class SettingsViewModel : ViewModelBase
     // Categories for Left Menu (plugin-provided settings pages are inserted under "Plugins").
     private static readonly string[] BaseCategories =
         { "App Appearance", "LLM Provider", "Server", "Agent Settings", "Project", "Local Permissions", "System Integration", "Plugins" };
-    private static readonly string[] TailCategories = { "", "About SPLA" };
+    private static readonly string[] TailCategories = { "", "Token Usage", "About SPLA" };
 
     public ObservableCollection<string> Categories { get; } = new(BaseCategories.Concat(TailCategories));
 
@@ -184,7 +184,10 @@ public partial class SettingsViewModel : ViewModelBase
         OnPropertyChanged(nameof(IsLocalPermissions));
         OnPropertyChanged(nameof(IsSystemIntegration));
         OnPropertyChanged(nameof(IsPlugins));
+        OnPropertyChanged(nameof(IsTokenUsage));
         OnPropertyChanged(nameof(IsAbout));
+
+        if (IsTokenUsage) RefreshTokenUsage();
 
         IsPluginEditorPage = _pluginEditorPages.TryGetValue(value, out var page);
         if (IsPluginEditorPage && page?.Editor != null && page.SettingsStore != null)
@@ -202,6 +205,7 @@ public partial class SettingsViewModel : ViewModelBase
     public bool IsLocalPermissions => SelectedCategory == "Local Permissions";
     public bool IsSystemIntegration => SelectedCategory == "System Integration";
     public bool IsPlugins => SelectedCategory == "Plugins";
+    public bool IsTokenUsage => SelectedCategory == "Token Usage";
     public bool IsAbout => SelectedCategory == "About SPLA";
 
     public LLMSettings GetSettings() => new LLMSettings
@@ -296,6 +300,7 @@ public partial class SettingsViewModel : ViewModelBase
                 }
 
                 ConfigLoader.SaveProject(project, App.ProjectFilePath);
+                App.ReloadResolvedSettings();   // refresh the in-memory snapshot so new chats pick this up without a restart
                 StatusMessage = $"Project settings saved: {Path.GetFileName(App.ProjectFilePath)}";
                 return;
             }
@@ -323,6 +328,7 @@ public partial class SettingsViewModel : ViewModelBase
             };
 
             ConfigLoader.SaveDefaults(defaults);
+            App.ReloadResolvedSettings();   // refresh the in-memory snapshot so new chats pick this up without a restart
             StatusMessage = "Settings saved.";
         }
         catch (Exception ex)
@@ -574,6 +580,59 @@ public partial class SettingsViewModel : ViewModelBase
             CreateNoWindow = true,
             WindowStyle = System.Diagnostics.ProcessWindowStyle.Hidden
         })?.WaitForExit();
+    }
+
+    // ── Token usage statistics (real provider-reported tokens) ──────────────────
+    // Three scopes: this run (Session), this project's lifetime, and the whole machine.
+
+    [ObservableProperty] private long _usageSessionPrompt;
+    [ObservableProperty] private long _usageSessionCompletion;
+    [ObservableProperty] private long _usageSessionTurns;
+
+    [ObservableProperty] private long _usageProjectPrompt;
+    [ObservableProperty] private long _usageProjectCompletion;
+    [ObservableProperty] private long _usageProjectTurns;
+
+    [ObservableProperty] private long _usageGlobalPrompt;
+    [ObservableProperty] private long _usageGlobalCompletion;
+    [ObservableProperty] private long _usageGlobalTurns;
+
+    public long UsageSessionTotal => UsageSessionPrompt + UsageSessionCompletion;
+    public long UsageProjectTotal => UsageProjectPrompt + UsageProjectCompletion;
+    public long UsageGlobalTotal  => UsageGlobalPrompt + UsageGlobalCompletion;
+
+    // Prompt share (0..1) of each scope's total, for the in/out split bars.
+    public double UsageSessionPromptFraction => Fraction(UsageSessionPrompt, UsageSessionTotal);
+    public double UsageProjectPromptFraction => Fraction(UsageProjectPrompt, UsageProjectTotal);
+    public double UsageGlobalPromptFraction  => Fraction(UsageGlobalPrompt, UsageGlobalTotal);
+
+    private static double Fraction(long part, long whole) => whole > 0 ? (double)part / whole : 0;
+
+    [RelayCommand]
+    public void RefreshTokenUsage()
+    {
+        var session = App.TokenUsage.Session;
+        var project = App.TokenUsage.Total;
+        var global  = App.TokenUsageGlobal.Total;
+
+        UsageSessionPrompt = session.PromptTokens;
+        UsageSessionCompletion = session.CompletionTokens;
+        UsageSessionTurns = session.Turns;
+
+        UsageProjectPrompt = project.PromptTokens;
+        UsageProjectCompletion = project.CompletionTokens;
+        UsageProjectTurns = project.Turns;
+
+        UsageGlobalPrompt = global.PromptTokens;
+        UsageGlobalCompletion = global.CompletionTokens;
+        UsageGlobalTurns = global.Turns;
+
+        OnPropertyChanged(nameof(UsageSessionTotal));
+        OnPropertyChanged(nameof(UsageProjectTotal));
+        OnPropertyChanged(nameof(UsageGlobalTotal));
+        OnPropertyChanged(nameof(UsageSessionPromptFraction));
+        OnPropertyChanged(nameof(UsageProjectPromptFraction));
+        OnPropertyChanged(nameof(UsageGlobalPromptFraction));
     }
 
     public string BuildTime

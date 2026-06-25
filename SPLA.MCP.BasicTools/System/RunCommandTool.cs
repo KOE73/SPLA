@@ -1,6 +1,8 @@
+using SPLA.Domain.Agent;
 using SPLA.Domain.Models;
 using SPLA.MCP.Core.Interfaces;
 using SPLA.MCP.Core.Json;
+using SPLA.MCP.Core.Tools;
 using System;
 using System.Diagnostics;
 using System.IO;
@@ -21,7 +23,8 @@ public class RunCommandTool : IMcpTool
         Function = new ToolFunctionDefinition
         {
             Name = Name,
-            Description = "Executes a shell command on the host system.",
+            Description = "Executes a shell command on the host system. " +
+                          "Set output='blob' to capture large stdout without flooding context.",
             Scope = ToolScope.Shell,
             Effect = ToolEffect.Execute,
             Risk = ToolRisk.High,
@@ -45,9 +48,11 @@ public class RunCommandTool : IMcpTool
                     {
                         type = new[] { "integer", "null" },
                         description = "Windows console code page for native command output. Null = 65001 (UTF-8)."
-                    }
+                    },
+                    output      = SchemaParts.Output,
+                    output_name = SchemaParts.OutputName
                 },
-                required = new[] { "command", "cwd", "code_page" }
+                required = new[] { "command", "cwd", "code_page", "output", "output_name" }
             }
         }
     };
@@ -93,7 +98,11 @@ public class RunCommandTool : IMcpTool
                 var output = await outputTask;
                 var error = await errorTask;
 
-                return $"ExitCode: {process.ExitCode}\nCodePage: {codePage}\nOutput:\n{output}\nError:\n{error}";
+                var result = $"ExitCode: {process.ExitCode}\nCodePage: {codePage}\nOutput:\n{output}\nError:\n{error}";
+                var target = DataChannel.ParseTarget(ToolJson.GetStringTrimmed(doc.RootElement, "output"));
+                if (target == OutputTarget.Context) return result;
+                var blobName = ToolJson.GetStringTrimmed(doc.RootElement, "output_name");
+                return DataChannel.Route(target, BlobPayload.OfText(result), $"system_run_shell: exit={process.ExitCode}, {output.Length} chars output", blobName);
             }
         }
         catch (JsonException)

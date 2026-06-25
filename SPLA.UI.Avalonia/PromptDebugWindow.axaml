@@ -1,0 +1,115 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="using:SPLA.UI.Avalonia.ViewModels.Debug"
+        x:Class="SPLA.UI.Avalonia.PromptDebugWindow"
+        x:DataType="vm:PromptDebugWindowViewModel"
+        Title="System Prompt — live preview"
+        Width="760" Height="600" MinWidth="460" MinHeight="350"
+        WindowStartupLocation="CenterOwner"
+        WindowDecorations="BorderOnly"
+        ExtendClientAreaToDecorationsHint="True"
+        Background="{DynamicResource AppBackgroundBrush}">
+
+    <Window.Styles>
+        <Style Selector="TextBlock.section-header">
+            <Setter Property="FontSize" Value="11"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+            <Setter Property="Foreground" Value="{DynamicResource SubTextForegroundBrush}"/>
+            <Setter Property="VerticalAlignment" Value="Center"/>
+        </Style>
+        <Style Selector="Button.toggle">
+            <Setter Property="FontSize" Value="11"/>
+            <Setter Property="Padding" Value="8,2"/>
+            <Setter Property="CornerRadius" Value="4"/>
+            <Setter Property="Background" Value="{DynamicResource PanelBackgroundBrush}"/>
+            <Setter Property="BorderBrush" Value="{DynamicResource PanelBorderBrush}"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="Foreground" Value="{DynamicResource SubTextForegroundBrush}"/>
+            <Setter Property="VerticalAlignment" Value="Center"/>
+        </Style>
+        <Style Selector="Button.toggle:pointerover /template/ ContentPresenter">
+            <Setter Property="Background" Value="{DynamicResource HoverBrush}"/>
+        </Style>
+        <Style Selector="TextBlock.block-title">
+            <Setter Property="FontSize" Value="12"/>
+            <Setter Property="FontWeight" Value="Bold"/>
+            <Setter Property="Foreground" Value="White"/>
+            <Setter Property="VerticalAlignment" Value="Center"/>
+        </Style>
+        <Style Selector="TextBlock.block-count">
+            <Setter Property="FontSize" Value="10"/>
+            <Setter Property="Foreground" Value="#E8FFFFFF"/>
+            <Setter Property="VerticalAlignment" Value="Center"/>
+        </Style>
+        <Style Selector="SelectableTextBlock.block-body">
+            <Setter Property="FontFamily" Value="Consolas,Cascadia Code,Courier New,monospace"/>
+            <Setter Property="FontSize" Value="11"/>
+            <Setter Property="Foreground" Value="{DynamicResource TextForegroundBrush}"/>
+            <Setter Property="TextWrapping" Value="Wrap"/>
+            <Setter Property="Margin" Value="10,6,10,10"/>
+        </Style>
+    </Window.Styles>
+
+    <Grid RowDefinitions="30,*">
+
+        <!-- Title bar -->
+        <DockPanel Grid.Row="0" Background="{DynamicResource TitleBarBackgroundBrush}">
+            <StackPanel DockPanel.Dock="Left" Orientation="Horizontal"
+                        VerticalAlignment="Center" Margin="12,0,0,0"
+                        IsHitTestVisible="False">
+                <TextBlock Text="System Prompt"
+                           FontSize="12" FontWeight="SemiBold"
+                           Foreground="{DynamicResource SubTextForegroundBrush}"
+                           VerticalAlignment="Center"/>
+                <TextBlock Text="— live preview"
+                           FontSize="12" Margin="6,0,0,0"
+                           Foreground="{DynamicResource SubTextForegroundBrush}"
+                           Opacity="0.5" VerticalAlignment="Center"/>
+            </StackPanel>
+            <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
+                <Button Classes="caption" Content="─" Click="MinimizeButton_Click"/>
+                <Button Classes="caption" Content="□" Click="MaximizeButton_Click"/>
+                <Button Classes="caption close" Content="✕" Click="CloseButton_Click"/>
+            </StackPanel>
+            <Border Background="Transparent" PointerPressed="TitleBar_PointerPressed"/>
+        </DockPanel>
+
+        <Grid Grid.Row="1" RowDefinitions="Auto,*" Margin="12">
+
+        <Grid Grid.Row="0" ColumnDefinitions="*,Auto" Margin="0,0,0,8">
+            <TextBlock Grid.Column="0" Classes="section-header"
+                       Text="{Binding Summary, Mode=OneWay}"/>
+            <Button Grid.Column="1" Classes="toggle"
+                    Command="{Binding RefreshCommand}"
+                    Content="↻ Rebuild" ToolTip.Tip="Rebuild from current settings / skill / plugins"/>
+        </Grid>
+
+        <ScrollViewer Grid.Row="1" HorizontalScrollBarVisibility="Disabled">
+            <ItemsControl ItemsSource="{Binding Segments}">
+                <ItemsControl.ItemTemplate>
+                    <DataTemplate x:DataType="vm:PromptSegmentViewModel">
+                        <Border BorderThickness="1"
+                                BorderBrush="{DynamicResource PanelBorderBrush}"
+                                CornerRadius="6"
+                                Margin="0,0,0,8"
+                                ClipToBounds="True">
+                            <StackPanel>
+                                <Border Background="{Binding AccentColor}" Padding="10,5">
+                                    <Grid ColumnDefinitions="*,Auto">
+                                        <TextBlock Grid.Column="0" Classes="block-title" Text="{Binding Title}"/>
+                                        <TextBlock Grid.Column="1" Classes="block-count" Text="{Binding CharLabel}"/>
+                                    </Grid>
+                                </Border>
+                                <SelectableTextBlock Classes="block-body" Text="{Binding Body}"
+                                                     Background="{DynamicResource PanelBackgroundBrush}"/>
+                            </StackPanel>
+                        </Border>
+                    </DataTemplate>
+                </ItemsControl.ItemTemplate>
+            </ItemsControl>
+        </ScrollViewer>
+
+        </Grid>
+
+    </Grid>
+</Window>

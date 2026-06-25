@@ -1,9 +1,11 @@
 using Microsoft.CodeAnalysis.CSharp.Scripting;
 using Microsoft.CodeAnalysis.Scripting;
+using SPLA.Domain.Agent;
 using SPLA.Domain.Models;
 using SPLA.Domain.Tools;
 using SPLA.MCP.Core.Interfaces;
 using SPLA.MCP.Core.Json;
+using SPLA.MCP.Core.Tools;
 using System;
 using System.IO;
 using System.Linq;
@@ -45,7 +47,9 @@ public sealed class ScriptRunTool : IMcpTool, IToolHelpProvider
                 properties = new
                 {
                     code = new { type = "string", description = "C# script body (top-level statements). The 'ctx' globals expose: Task<string> Run(string tool, object? args), void Progress(...), void Log(object), CancellationToken Cancellation. Use await ctx.Run(\"tool_name\", new { param = value })." },
-                    timeout_seconds = new { type = "integer", description = $"Hard timeout in seconds (default {DefaultTimeoutSeconds}, max {MaxTimeoutSeconds}). Cancels awaits that honor ctx.Cancellation; a pure CPU loop cannot be interrupted." }
+                    timeout_seconds = new { type = "integer", description = $"Hard timeout in seconds (default {DefaultTimeoutSeconds}, max {MaxTimeoutSeconds}). Cancels awaits that honor ctx.Cancellation; a pure CPU loop cannot be interrupted." },
+                    output      = SchemaParts.Output,
+                    output_name = SchemaParts.OutputName
                 },
                 required = new[] { "code" }
             }
@@ -135,7 +139,20 @@ public sealed class ScriptRunTool : IMcpTool, IToolHelpProvider
             if (state.ReturnValue is { } rv)
                 sb.AppendLine($"return: {rv}");
             AppendOutput(sb, output);
-            return sb.ToString().TrimEnd();
+            var scriptResult = sb.ToString().TrimEnd();
+
+            OutputTarget outputTarget;
+            string? blobName;
+            try
+            {
+                using var argDoc = JsonDocument.Parse(argumentsJson);
+                outputTarget = DataChannel.ParseTarget(ToolJson.GetStringTrimmed(argDoc.RootElement, "output"));
+                blobName = ToolJson.GetStringTrimmed(argDoc.RootElement, "output_name");
+            }
+            catch { outputTarget = OutputTarget.Context; blobName = null; }
+
+            if (outputTarget == OutputTarget.Context) return scriptResult;
+            return DataChannel.Route(outputTarget, BlobPayload.OfText(scriptResult), "roslyn_script_run: ok", blobName);
         }
         catch (CompilationErrorException ex)
         {

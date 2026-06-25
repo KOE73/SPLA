@@ -1,8 +1,10 @@
 using DnsClient;
 using DnsClient.Protocol;
+using SPLA.Domain.Agent;
 using SPLA.Domain.Models;
 using SPLA.MCP.Core.Interfaces;
 using SPLA.MCP.Core.Json;
+using SPLA.MCP.Core.Tools;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
@@ -54,7 +56,9 @@ public class DnsPropagationTool : IMcpTool
                         type = "string",
                         description = "DNS record type (default: A). One of: A, AAAA, CNAME, MX, NS, TXT.",
                         @enum = new[] { "A", "AAAA", "CNAME", "MX", "NS", "TXT" }
-                    }
+                    },
+                    output      = SchemaParts.Output,
+                    output_name = SchemaParts.OutputName
                 },
                 required = new[] { "host" }
             }
@@ -102,7 +106,11 @@ public class DnsPropagationTool : IMcpTool
                     sb.AppendLine($"  {ans}");
             }
 
-            return sb.ToString();
+            var result = sb.ToString();
+            var outputTarget = DataChannel.ParseTarget(ToolJson.GetStringTrimmed(root, "output"));
+            if (outputTarget == OutputTarget.Context) return result;
+            var blobName = ToolJson.GetStringTrimmed(root, "output_name");
+            return DataChannel.Route(outputTarget, BlobPayload.OfText(result), $"network_check_dns_propagation: {host} {typeName}", blobName);
         }
         catch (JsonException)
         {

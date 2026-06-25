@@ -8,12 +8,16 @@
     <ItemGroup>
       <SkillFiles Include="$(MSBuildThisFileDirectory)skills\*.md" />
     </ItemGroup>
-    <MakeDir Directories="..\SPLA.UI.Avalonia\bin\$(Configuration)\$(TargetFramework)\plugins\network\skills\" />
-    <MakeDir Directories="..\SPLA.CLI\bin\$(Configuration)\$(TargetFramework)\plugins\network\skills\" />
+    <MakeDir Directories="..\SPLA.UI.Avalonia\bin\$(Configuration)\$(TargetFramework)\plugins\network.skills\" />
+    <MakeDir Directories="..\SPLA.CLI\bin\$(Configuration)\$(TargetFramework)\plugins\network.skills\" />
+    <Copy SourceFiles="$(MSBuildThisFileDirectory)meta.yaml"
+          DestinationFolder="..\SPLA.UI.Avalonia\bin\$(Configuration)\$(TargetFramework)\plugins\network.skills\" />
+    <Copy SourceFiles="$(MSBuildThisFileDirectory)meta.yaml"
+          DestinationFolder="..\SPLA.CLI\bin\$(Configuration)\$(TargetFramework)\plugins\network.skills\" />
     <Copy SourceFiles="@(SkillFiles)"
-          DestinationFolder="..\SPLA.UI.Avalonia\bin\$(Configuration)\$(TargetFramework)\plugins\network\skills\" />
+          DestinationFolder="..\SPLA.UI.Avalonia\bin\$(Configuration)\$(TargetFramework)\plugins\network.skills\" />
     <Copy SourceFiles="@(SkillFiles)"
-          DestinationFolder="..\SPLA.CLI\bin\$(Configuration)\$(TargetFramework)\plugins\network\skills\" />
+          DestinationFolder="..\SPLA.CLI\bin\$(Configuration)\$(TargetFramework)\plugins\network.skills\" />
   </Target>
 
 </Project>

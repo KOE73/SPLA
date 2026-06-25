@@ -1,6 +1,8 @@
+using SPLA.Domain.Agent;
 using SPLA.Domain.Models;
 using SPLA.MCP.Core.Interfaces;
 using SPLA.MCP.Core.Json;
+using SPLA.MCP.Core.Tools;
 using System;
 using System.Diagnostics;
 using System.IO;
@@ -55,9 +57,11 @@ public class DotnetTestTool : IMcpTool
                     {
                         type = new[] { "string", "null" },
                         description = "Working directory for the command. Null = current directory."
-                    }
+                    },
+                    output      = SchemaParts.Output,
+                    output_name = SchemaParts.OutputName
                 },
-                required = new[] { "project_path", "configuration", "no_build", "filter", "cwd" }
+                required = new[] { "project_path", "configuration", "no_build", "filter", "cwd", "output", "output_name" }
             }
         }
     };
@@ -120,7 +124,11 @@ public class DotnetTestTool : IMcpTool
             var output = await outputTask;
             var error = await errorTask;
 
-            return $"ExitCode: {process.ExitCode}\nOutput:\n{output}\nError:\n{error}";
+            var result = $"ExitCode: {process.ExitCode}\nOutput:\n{output}\nError:\n{error}";
+            var target = DataChannel.ParseTarget(ToolJson.GetString(doc.RootElement, "output"));
+            if (target == OutputTarget.Context) return result;
+            var blobName = ToolJson.GetString(doc.RootElement, "output_name");
+            return DataChannel.Route(target, BlobPayload.OfText(result), $"dotnet_test: exit={process.ExitCode}", blobName);
         }
         catch (JsonException)
         {

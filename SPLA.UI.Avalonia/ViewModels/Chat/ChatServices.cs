@@ -1,3 +1,4 @@
+using Microsoft.Extensions.Logging;
 using SPLA.Domain.Agent;
 using SPLA.Domain.Models;
 using SPLA.LLM.LMStudio;
@@ -34,4 +35,7 @@ public sealed class ChatServices
 
     /// <summary>Persists a remembered tool-permission decision to project config + the manager.</summary>
     public required Action<ToolFunctionDefinition, string, PermissionDecision> PersistPermission { get; init; }
+
+    /// <summary>Logger for the per-chat conversation loop (LLM turns, tool calls).</summary>
+    public ILogger? Logger { get; init; }
 }

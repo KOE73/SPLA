@@ -3,16 +3,39 @@ using SPLA.Domain.Models;
 using SPLA.Domain.Settings;
 using SPLA.MCP.Core.Plugins;
 using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Text;
 
 namespace SPLA.Agent;
 
+/// <summary>Origin of a single system-prompt segment. Drives the colour grouping in the prompt preview.</summary>
+public enum PromptSegmentKind
+{
+    Mode,
+    Core,
+    Instructions,
+    Custom,
+    ActiveSkill,
+    Skill,
+    SkillsIndex,
+    Plugin,
+    PluginCommands
+}
+
+/// <summary>One layer of the assembled system prompt. <see cref="Body"/> is the clean content for display;
+/// <see cref="Text"/> is the exact contribution to the final prompt (separators + machine header included),
+/// so concatenating every segment's <see cref="Text"/> reproduces the prompt byte-for-byte.</summary>
+public sealed record PromptSegment(PromptSegmentKind Kind, string Title, string Body, string Text);
+
 /// <summary>
 /// Single, layered builder for the agent system prompt. Assembly order (top = highest authority):
-/// mode preamble → global rules → instruction files → custom prompt → active skill body →
-/// plugin prompts → plugin commands → skills index (on-demand list).
+/// mode preamble → core → instruction files → custom prompt → active skill body →
+/// preloaded skills → skills index → plugin prompts → plugin commands.
+///
+/// <para>The builder produces an intermediate <see cref="PromptSegment"/> list — the single source of truth.
+/// <see cref="Build"/> flattens it for the LLM; the UI renders the same segments as coloured blocks.</para>
 /// </summary>
 public sealed class SystemPromptBuilder
 {
@@ -31,24 +54,34 @@ public sealed class SystemPromptBuilder
         _skillSession = skillSession;
     }
 
+    /// <summary>Flatten the segments into the final system prompt string sent to the LLM.</summary>
     public string Build(ResolvedSettings settings, string workingDirectory)
+        => string.Concat(BuildSegments(settings, workingDirectory).Select(s => s.Text));
+
+    /// <summary>The intermediate, source-tagged segments. Both <see cref="Build"/> and the prompt preview
+    /// derive from this list, so what you see is exactly what is sent.</summary>
+    public IReadOnlyList<PromptSegment> BuildSegments(ResolvedSettings settings, string workingDirectory)
     {
-        var sb = new StringBuilder();
+        var segments = new List<PromptSegment>();
 
-        sb.Append(ModePreamble(settings.Mode));
-        sb.Append('\n').Append(BuildMainPrompt(workingDirectory));
+        var preamble = ModePreamble(settings.Mode);
+        segments.Add(new(PromptSegmentKind.Mode, $"Mode: {settings.Mode}", preamble, preamble));
 
-        AppendInstructions(sb, settings, workingDirectory);
+        var core = BuildMainPrompt(workingDirectory);
+        segments.Add(new(PromptSegmentKind.Core, "Core instructions", core, "\n" + core));
+
+        AppendInstructions(segments, settings, workingDirectory);
 
         if (!string.IsNullOrWhiteSpace(settings.CustomPrompt))
-            sb.Append("\n\n--- Custom Prompt ---\n").Append(settings.CustomPrompt);
+            segments.Add(new(PromptSegmentKind.Custom, "Custom prompt", settings.CustomPrompt,
+                "\n\n--- Custom Prompt ---\n" + settings.CustomPrompt));
 
-        AppendActiveSkill(sb);
-        AppendSkills(sb);
-        AppendPluginPrompts(sb);
-        AppendPluginCommands(sb);
+        AppendActiveSkill(segments);
+        AppendSkills(segments);
+        AppendPluginPrompts(segments);
+        AppendPluginCommands(segments);
 
-        return sb.ToString();
+        return segments;
     }
 
     private static string ModePreamble(AgentMode mode) => mode switch
@@ -73,7 +106,7 @@ public sealed class SystemPromptBuilder
         return reader.ReadToEnd().Trim();
     }
 
-    private static void AppendInstructions(StringBuilder sb, ResolvedSettings settings, string workingDirectory)
+    private static void AppendInstructions(List<PromptSegment> segments, ResolvedSettings settings, string workingDirectory)
     {
         foreach (var instrPath in settings.Instructions)
         {
@@ -81,12 +114,13 @@ public sealed class SystemPromptBuilder
             if (File.Exists(fullPath))
             {
                 var content = File.ReadAllText(fullPath);
-                sb.Append($"\n\n--- Instructions from {instrPath} ---\n").Append(content);
+                segments.Add(new(PromptSegmentKind.Instructions, $"Instructions: {instrPath}", content,
+                    $"\n\n--- Instructions from {instrPath} ---\n" + content));
             }
         }
     }
 
-    private void AppendActiveSkill(StringBuilder sb)
+    private void AppendActiveSkill(List<PromptSegment> segments)
     {
         var activeId = _skillSession?.ActiveSkillId;
         if (string.IsNullOrEmpty(activeId)) return;
@@ -94,31 +128,32 @@ public sealed class SystemPromptBuilder
         var body = _skills.LoadBody(activeId);
         if (string.IsNullOrEmpty(body)) return;
 
-        sb.Append($"\n\n=== ACTIVE SKILL: {activeId} ===\n");
-        sb.Append(body);
-        sb.Append($"\n=== END ACTIVE SKILL: {activeId} ===");
+        var text = $"\n\n=== ACTIVE SKILL: {activeId} ===\n" + body + $"\n=== END ACTIVE SKILL: {activeId} ===";
+        segments.Add(new(PromptSegmentKind.ActiveSkill, $"Active skill: {activeId}", body, text));
     }
 
-    private void AppendSkills(StringBuilder sb)
+    private void AppendSkills(List<PromptSegment> segments)
     {
         var enabledSkills = _skills.GetEnabled().ToList();
         if (enabledSkills.Count == 0) return;
 
-        var preloaded    = enabledSkills.Where(s => s.IsPreloaded).ToList();
-        var onDemand     = enabledSkills.Where(s => !s.IsPreloaded).ToList();
+        var preloaded = enabledSkills.Where(s => s.IsPreloaded).ToList();
+        var onDemand  = enabledSkills.Where(s => !s.IsPreloaded).ToList();
 
         // ── Preloaded skills: inject body directly, no agent_info needed ──
         foreach (var skill in preloaded)
         {
             var body = _skills.LoadBody(skill.Id);
             if (!string.IsNullOrEmpty(body))
-                sb.Append($"\n\n--- Skill: {skill.Id} ---\n").Append(body);
+                segments.Add(new(PromptSegmentKind.Skill, $"Skill: {skill.Id}", body,
+                    $"\n\n--- Skill: {skill.Id} ---\n" + body));
         }
 
         // ── On-demand skills: list + agent_info load rule ──
         // Suppressed while a skill is active — the active skill body is already injected above.
         if (onDemand.Count == 0 || _skillSession?.ActiveSkillId is not null) return;
 
+        var sb = new StringBuilder();
         sb.Append("\n\n--- Skills ---");
         sb.Append("\nRULE: When the user's request matches a skill listed below, you MUST call agent_info FIRST — before calling any other tool or executing any step.");
         sb.Append("\nRULE: After agent_info, you MUST call skill_activate with the skill id BEFORE any task tool call. This is MANDATORY — do NOT skip it, do NOT proceed to task tools without it. agent_info alone only previews/loads instructions and does not make the skill active.");
@@ -132,24 +167,32 @@ public sealed class SystemPromptBuilder
         sb.Append("\n\nAvailable skills:");
         foreach (var skill in onDemand)
             sb.Append($"\n  {skill.Id} — {skill.Description}");
+
+        var text = sb.ToString();
+        segments.Add(new(PromptSegmentKind.SkillsIndex, "Skills index", text.TrimStart('\n'), text));
     }
 
-    private void AppendPluginPrompts(StringBuilder sb)
+    private void AppendPluginPrompts(List<PromptSegment> segments)
     {
         foreach (var plugin in _plugins.GetActivePlugins())
         {
             if (!string.IsNullOrWhiteSpace(plugin.EffectivePrompt))
-                sb.Append($"\n\n--- Plugin: {plugin.Meta.Id} ---\n").Append(plugin.EffectivePrompt);
+                segments.Add(new(PromptSegmentKind.Plugin, $"Plugin: {plugin.Meta.Id}", plugin.EffectivePrompt,
+                    $"\n\n--- Plugin: {plugin.Meta.Id} ---\n" + plugin.EffectivePrompt));
         }
     }
 
-    private void AppendPluginCommands(StringBuilder sb)
+    private void AppendPluginCommands(List<PromptSegment> segments)
     {
         var pluginCommands = _plugins.GetUiCommands();
         if (pluginCommands.Count == 0) return;
 
+        var sb = new StringBuilder();
         sb.Append("\n\n--- Plugin Commands ---\nUse tool `plugin_run_command` with `commandId` to run these commands. These are commands, not direct tool names.");
         foreach (var command in pluginCommands)
             sb.Append($"\n- {command.Id}: {command.DisplayName} ({command.Kind})");
+
+        var text = sb.ToString();
+        segments.Add(new(PromptSegmentKind.PluginCommands, "Plugin commands", text.TrimStart('\n'), text));
     }
 }

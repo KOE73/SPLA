@@ -7,12 +7,41 @@
         Title="Settings - SPLA" Width="900" Height="700"
         Icon="avares://SPLA.UI.Avalonia/Assets/spla_icon.png"
         ExtendClientAreaToDecorationsHint="True"
+        WindowDecorations="BorderOnly"
         WindowStartupLocation="CenterOwner"
         Background="{DynamicResource AppBackgroundBrush}">
-    
+
+
     <Grid ColumnDefinitions="250,*" RowDefinitions="30,*,Auto">
-        <!-- Title Bar Area for dragging -->
-        <Border Grid.Row="0" Grid.ColumnSpan="2" Background="Transparent" IsHitTestVisible="False"/>
+        <!-- Title Bar -->
+        <DockPanel Grid.Row="0" Grid.ColumnSpan="2"
+                   Background="{DynamicResource TitleBarBackgroundBrush}">
+            <StackPanel DockPanel.Dock="Left"
+                        Orientation="Horizontal"
+                        VerticalAlignment="Center"
+                        Margin="12,0,0,0"
+                        IsHitTestVisible="False">
+                <TextBlock Text="Settings"
+                           FontSize="12" FontWeight="SemiBold"
+                           Foreground="{DynamicResource SubTextForegroundBrush}"
+                           VerticalAlignment="Center"/>
+                <TextBlock Text="—"
+                           FontSize="12" Margin="8,0"
+                           Foreground="{DynamicResource SubTextForegroundBrush}"
+                           VerticalAlignment="Center"/>
+                <TextBlock Text="{Binding ProjectFilePath, FallbackValue='no project'}"
+                           FontSize="12"
+                           Foreground="{DynamicResource SubTextForegroundBrush}"
+                           Opacity="0.6"
+                           VerticalAlignment="Center"/>
+            </StackPanel>
+            <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
+                <Button Classes="caption" Content="─" Click="MinimizeButton_Click"/>
+                <Button Classes="caption" Content="□" Click="MaximizeButton_Click"/>
+                <Button Classes="caption close" Content="✕" Click="CloseButton_Click"/>
+            </StackPanel>
+            <Border Background="Transparent" PointerPressed="TitleBar_PointerPressed"/>
+        </DockPanel>
 
         <!-- Left Pane: Menu -->
         <Border Grid.Column="0" Grid.Row="1" Background="{DynamicResource PanelBackgroundBrush}" BorderBrush="{DynamicResource PanelBorderBrush}" BorderThickness="0,0,1,0">
@@ -83,6 +112,9 @@
                      child before adding the new one. ContentControl with IsVisible=False keeps the child
                      in the visual tree and throws "already has a visual parent" on reassignment. -->
                 <Border x:Name="PluginEditorHost" IsVisible="{Binding IsPluginEditorPage}"/>
+
+                <!-- SECTION: Token Usage statistics -->
+                <settings:SettingsUsageView IsVisible="{Binding IsTokenUsage}" />
 
                 <!-- SECTION: About SPLA -->
                 <settings:SettingsAboutView IsVisible="{Binding IsAbout}" />

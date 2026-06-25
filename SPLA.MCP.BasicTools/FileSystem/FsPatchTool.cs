@@ -1,6 +1,7 @@
 using SPLA.Domain.Models;
 using SPLA.MCP.Core.Interfaces;
 using SPLA.MCP.Core.Json;
+using SPLA.MCP.Core.Tools;
 using System;
 using System.IO;
 using System.Text.Json;
@@ -31,7 +32,7 @@ public class FsPatchTool : IMcpTool, IToolHelpProvider
                 {
                     path = new { type = "string", description = "Absolute or relative path to the file to modify." },
                     old_text = new { type = "string", description = "The exact text block to search for in the file (must match uniquely)." },
-                    new_text = new { type = "string", description = "The new text block to replace the old_text block with." }
+                    new_text = new { type = "string", description = "The new text block to replace old_text with, OR a blob:<handle> whose content is used as the replacement." }
                 },
                 required = new[] { "path", "old_text", "new_text" }
             }
@@ -49,6 +50,9 @@ public class FsPatchTool : IMcpTool, IToolHelpProvider
 
             if (path is null || oldText is null || newText is null)
                 return "Error: Missing 'path', 'old_text', or 'new_text' parameter.";
+
+            if (!DataChannel.ResolveText(newText, out newText, out var resolveError))
+                return $"Error: {resolveError}";
 
             if (!File.Exists(path))
             {

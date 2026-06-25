@@ -4,8 +4,10 @@
         x:Class="SPLA.UI.Avalonia.KvDebugWindow"
         x:DataType="vm:KvDebugWindowViewModel"
         Title="Agent Memory — KV Debug"
-        Width="640" Height="500" MinWidth="400" MinHeight="300"
+        Width="640" Height="700" MinWidth="400" MinHeight="430"
         WindowStartupLocation="CenterOwner"
+        WindowDecorations="BorderOnly"
+        ExtendClientAreaToDecorationsHint="True"
         Background="{DynamicResource AppBackgroundBrush}">
 
     <Window.Styles>
@@ -59,7 +61,31 @@
         </Style>
     </Window.Styles>
 
-    <Grid RowDefinitions="Auto,8,*,8,*" Margin="12">
+    <Grid RowDefinitions="30,*">
+
+        <!-- Title bar -->
+        <DockPanel Grid.Row="0" Background="{DynamicResource TitleBarBackgroundBrush}">
+            <StackPanel DockPanel.Dock="Left" Orientation="Horizontal"
+                        VerticalAlignment="Center" Margin="12,0,0,0"
+                        IsHitTestVisible="False">
+                <TextBlock Text="Agent Memory"
+                           FontSize="12" FontWeight="SemiBold"
+                           Foreground="{DynamicResource SubTextForegroundBrush}"
+                           VerticalAlignment="Center"/>
+                <TextBlock Text="— KV Debug"
+                           FontSize="12" Margin="6,0,0,0"
+                           Foreground="{DynamicResource SubTextForegroundBrush}"
+                           Opacity="0.5" VerticalAlignment="Center"/>
+            </StackPanel>
+            <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
+                <Button Classes="caption" Content="─" Click="MinimizeButton_Click"/>
+                <Button Classes="caption" Content="□" Click="MaximizeButton_Click"/>
+                <Button Classes="caption close" Content="✕" Click="CloseButton_Click"/>
+            </StackPanel>
+            <Border Background="Transparent" PointerPressed="TitleBar_PointerPressed"/>
+        </DockPanel>
+
+        <Grid Grid.Row="1" RowDefinitions="Auto,8,*,8,*,8,*" Margin="12">
 
         <!-- ── Filter bar ── -->
         <Grid Grid.Row="0" ColumnDefinitions="*,Auto" Margin="0,0,0,4">
@@ -173,6 +199,81 @@
                     </ItemsControl>
                 </ScrollViewer>
             </Border>
+        </Grid>
+
+        <!-- ── Splitter 2 ── -->
+        <GridSplitter Grid.Row="5"
+                      HorizontalAlignment="Stretch"
+                      VerticalAlignment="Stretch"
+                      Background="{DynamicResource PanelBorderBrush}"
+                      ResizeBehavior="PreviousAndNext"/>
+
+        <!-- ── Blob store ── -->
+        <Grid Grid.Row="6" RowDefinitions="Auto,*">
+            <DockPanel Grid.Row="0" Margin="0,0,0,6">
+                <Button Classes="clear-btn"
+                        DockPanel.Dock="Right"
+                        Command="{Binding ClearBlobsCommand}"
+                        ToolTip.Tip="Delete all blobs"
+                        Content="Clear"/>
+                <TextBlock Classes="section-header"
+                           VerticalAlignment="Center">
+                    <Run Text="BLOBS  "/>
+                    <Run Text="{Binding BlobCount, StringFormat='({0} blobs'}"
+                         Foreground="{DynamicResource SubTextForegroundBrush}"/>
+                    <Run Text=",  "
+                         Foreground="{DynamicResource SubTextForegroundBrush}"/>
+                    <Run Text="{Binding BlobTotalSizeLabel}"
+                         Foreground="{DynamicResource SubTextForegroundBrush}"/>
+                    <Run Text=")"
+                         Foreground="{DynamicResource SubTextForegroundBrush}"/>
+                </TextBlock>
+            </DockPanel>
+
+            <Border Grid.Row="1"
+                    BorderBrush="{DynamicResource PanelBorderBrush}"
+                    BorderThickness="1"
+                    CornerRadius="4"
+                    Background="{DynamicResource PanelBackgroundBrush}">
+                <ScrollViewer HorizontalScrollBarVisibility="Disabled">
+                    <ItemsControl ItemsSource="{Binding BlobEntries}" Margin="6,4">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate x:DataType="vm:BlobEntryViewModel">
+                                <!-- handle | kind-badge | size | delete -->
+                                <Grid ColumnDefinitions="*,6,Auto,6,Auto,Auto" Margin="0,2">
+                                    <SelectableTextBlock Grid.Column="0" Classes="key"
+                                                         Text="{Binding DisplayHandle}"
+                                                         ToolTip.Tip="{Binding DisplayHandle}"
+                                                         MaxWidth="99999"/>
+                                    <Border Grid.Column="2"
+                                            Background="{DynamicResource AccentBrush}"
+                                            CornerRadius="3"
+                                            Padding="4,1"
+                                            VerticalAlignment="Center">
+                                        <TextBlock Text="{Binding KindLabel}"
+                                                   FontFamily="Consolas,Cascadia Code,Courier New,monospace"
+                                                   FontSize="9"
+                                                   Foreground="{DynamicResource AppBackgroundBrush}"/>
+                                    </Border>
+                                    <TextBlock Grid.Column="4"
+                                               Text="{Binding SizeLabel}"
+                                               FontFamily="Consolas,Cascadia Code,Courier New,monospace"
+                                               FontSize="11"
+                                               Foreground="{DynamicResource SubTextForegroundBrush}"
+                                               VerticalAlignment="Center"
+                                               MinWidth="55"
+                                               TextAlignment="Right"/>
+                                    <Button Grid.Column="5" Classes="del"
+                                            Command="{Binding DeleteCommand}"
+                                            ToolTip.Tip="Delete blob"/>
+                                </Grid>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </ScrollViewer>
+            </Border>
+        </Grid>
+
         </Grid>
 
     </Grid>

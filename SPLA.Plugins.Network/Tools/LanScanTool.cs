@@ -1,7 +1,9 @@
+using SPLA.Domain.Agent;
 using SPLA.Domain.Models;
 using SPLA.Domain.Tools;
 using SPLA.MCP.Core.Interfaces;
 using SPLA.MCP.Core.Json;
+using SPLA.MCP.Core.Tools;
 using System;
 using System.Collections.Concurrent;
 using System.Linq;
@@ -39,7 +41,9 @@ public class LanScanTool : IMcpTool, IToolHelpProvider
                     ping = new { type = "boolean", description = "Use ICMP ping. Default: true." },
                     timeout = new { type = "integer", description = "Ping/connect timeout in milliseconds. Default: 500." },
                     concurrency = new { type = "integer", description = "Parallel host scans. Default: 64, max: 256." },
-                    max_hosts = new { type = "integer", description = "Safety limit for host count. Default: 4096, max: 4096." }
+                    max_hosts   = new { type = "integer", description = "Safety limit for host count. Default: 4096, max: 4096." },
+                    output      = SchemaParts.Output,
+                    output_name = SchemaParts.OutputName
                 }
             }
         }
@@ -126,14 +130,18 @@ public class LanScanTool : IMcpTool, IToolHelpProvider
             sb.AppendLine($"Responsive hosts: {ordered.Length}");
             sb.AppendLine();
 
-            foreach (var result in ordered)
+            foreach (var host in ordered)
             {
-                sb.AppendLine(result.OpenPort.HasValue
-                    ? $"{result.Address} {result.OpenPort.Value}"
-                    : result.Address.ToString());
+                sb.AppendLine(host.OpenPort.HasValue
+                    ? $"{host.Address} {host.OpenPort.Value}"
+                    : host.Address.ToString());
             }
 
-            return sb.ToString();
+            var result = sb.ToString();
+            var target = DataChannel.ParseTarget(ToolJson.GetStringTrimmed(root, "output"));
+            if (target == OutputTarget.Context) return result;
+            var blobName = ToolJson.GetStringTrimmed(root, "output_name");
+            return DataChannel.Route(target, BlobPayload.OfText(result), $"network_discover_hosts: {ordered.Length} responsive", blobName);
         }
         catch (JsonException)
         {

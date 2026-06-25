@@ -96,16 +96,41 @@ public partial class ContextSnapshotViewModel : ObservableObject
             foreach (var m in context)
                 _contextLines.Add(new ContextLineViewModel(m) { Index = ++idx, InContext = true });
 
-            // All-messages lines (full history, bold = in context, dim = not).
+            // All-messages lines: full history (labels, ephemerals included) + dynamically-injected
+            // messages from ctx that are absent from _conversation (e.g. working memory).
             if (allMessages != null)
             {
+                // Messages injected per-turn (working memory etc.) have no stable MsgId in _conversation.
+                var allMsgIds = new HashSet<string>(
+                    allMessages.Where(m => !string.IsNullOrEmpty(m.MsgId)).Select(m => m.MsgId!));
+                var injected = context
+                    .Where(m => string.IsNullOrEmpty(m.MsgId) || !allMsgIds.Contains(m.MsgId))
+                    .ToList();
+
+                // Merge: conversation messages (with labels/ephemerals) + injected after leading system.
+                var merged = new List<ChatMessage>();
+                bool injectedInserted = false;
+                foreach (var m in allMessages)
+                {
+                    merged.Add(m);
+                    // Insert injected messages right after the first system message (same position
+                    // as InjectWorkingMemory does in the assembled context).
+                    if (!injectedInserted && m.Role == ChatRole.System && !m.IsLabel)
+                    {
+                        merged.AddRange(injected);
+                        injectedInserted = true;
+                    }
+                }
+                if (!injectedInserted) merged.AddRange(injected);
+
                 _allLines = new List<ContextLineViewModel>();
                 idx = 0;
-                foreach (var m in allMessages)
+                foreach (var m in merged)
                     _allLines.Add(new ContextLineViewModel(m)
                     {
                         Index = ++idx,
-                        InContext = contextSet.Contains(m.MsgId)
+                        InContext = !string.IsNullOrEmpty(m.MsgId) && contextSet.Contains(m.MsgId)
+                                    || (string.IsNullOrEmpty(m.MsgId) && injected.Contains(m))
                     });
             }
             else

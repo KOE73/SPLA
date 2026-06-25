@@ -10,6 +10,9 @@ public interface IAgentSession
     /// <summary>This chat's session-scoped working memory (persisted with the chat).</summary>
     IKeyValueStore SessionKv { get; }
 
+    /// <summary>This chat's transient data-channel store for bulk tool output (not persisted).</summary>
+    IBlobStore Blobs { get; }
+
     /// <summary>This chat's checkpoint/mark manager (bound to this chat's conversation).</summary>
     MarkManager Checkpoint { get; }
 
@@ -21,14 +24,16 @@ public interface IAgentSession
 /// spawned sub-agents to open an <see cref="AgentSessionScope"/> over an isolated state set.</summary>
 public sealed class AgentSession : IAgentSession
 {
-    public AgentSession(IKeyValueStore sessionKv, MarkManager checkpoint, ISkillSession skills)
+    public AgentSession(IKeyValueStore sessionKv, MarkManager checkpoint, ISkillSession skills, IBlobStore? blobs = null)
     {
         SessionKv = sessionKv;
         Checkpoint = checkpoint;
         Skills = skills;
+        Blobs = blobs ?? new BlobStore();
     }
 
     public IKeyValueStore SessionKv { get; }
+    public IBlobStore Blobs { get; }
     public MarkManager Checkpoint { get; }
     public ISkillSession Skills { get; }
 }

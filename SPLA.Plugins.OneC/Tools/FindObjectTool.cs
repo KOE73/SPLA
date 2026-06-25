@@ -1,7 +1,9 @@
 using System.Text.Json;
+using SPLA.Domain.Agent;
 using SPLA.Domain.Models;
 using SPLA.MCP.Core.Interfaces;
 using SPLA.MCP.Core.Json;
+using SPLA.MCP.Core.Tools;
 using SPLA.Plugins.OneC.Storage;
 
 namespace SPLA.Plugins.OneC.Tools;
@@ -31,8 +33,10 @@ public class FindObjectTool : IMcpTool
                 properties = new
                 {
                     query  = new { type = "string",  description = "Name or partial name to search for." },
-                    limit  = new { type = "integer", description = "Maximum results to return (default 20)." },
-                    offset = new { type = "integer", description = "Pagination offset (default 0)." },
+                    limit       = new { type = "integer", description = "Maximum results to return (default 20)." },
+                    offset      = new { type = "integer", description = "Pagination offset (default 0)." },
+                    output      = SchemaParts.Output,
+                    output_name = SchemaParts.OutputName
                 },
                 required = new[] { "query" }
             }
@@ -71,7 +75,10 @@ public class FindObjectTool : IMcpTool
                 }
             });
         });
-        return Task.FromResult(yaml);
+        var target = DataChannel.ParseTarget(ToolJson.GetStringTrimmed(doc.RootElement, "output"));
+        if (target == OutputTarget.Context) return Task.FromResult(yaml);
+        var blobName = ToolJson.GetStringTrimmed(doc.RootElement, "output_name");
+        return Task.FromResult(DataChannel.Route(target, BlobPayload.OfText(yaml), $"onec_find_object: '{query}' {matches.Count} results", blobName));
     }
 }
 

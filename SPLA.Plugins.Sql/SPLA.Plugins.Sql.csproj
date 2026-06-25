@@ -22,6 +22,18 @@
     <None Include="meta.yaml" CopyToOutputDirectory="PreserveNewest" Link="plugins\sql\meta.yaml" />
   </ItemGroup>
 
+  <!-- Reference schemas for the schema-driven editor (docs/schema-editor-plan.md, Фаза 2).
+       Вшиваются в DLL как ресурсы и отдаются через SqlSchemaProvider — НИ ОДНОГО файла рядом
+       с приложением. LogicalName совпадает с именем схемы, которое декларирует файл данных. -->
+  <ItemGroup>
+    <EmbeddedResource Include="Schemas\sql-table.schema.json">
+      <LogicalName>sql-table@1</LogicalName>
+    </EmbeddedResource>
+    <EmbeddedResource Include="Schemas\sql-table.ui.json">
+      <LogicalName>sql-table.ui</LogicalName>
+    </EmbeddedResource>
+  </ItemGroup>
+
   <Target Name="CopyPlugin" AfterTargets="Build">
     <ItemGroup>
       <PluginFiles Include="$(TargetDir)**\*.*" />

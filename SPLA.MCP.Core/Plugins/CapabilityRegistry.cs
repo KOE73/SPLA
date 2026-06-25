@@ -59,7 +59,7 @@ public class CapabilityRegistry
                 Label = skill.Id,
                 Description = skill.Description,
                 PluginId = string.IsNullOrEmpty(skill.PluginId) ? null : skill.PluginId,
-                IsEnabled = skill.IsEnabled,
+                IsEnabled = skill.IsEnabled && (skill.OwnerPlugin?.IsEffectivelyEnabled ?? true),
                 IsPreloaded = skill.IsPreloaded,
                 SourceSkill = skill
             });

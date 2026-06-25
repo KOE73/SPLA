@@ -21,6 +21,10 @@
                 <TextBlock Text="{Binding CurrentPromptTokens, StringFormat='P: {0}'}" Foreground="{DynamicResource SubTextForegroundBrush}" FontSize="10" />
                 <TextBlock Text="{Binding CurrentCompletionTokens, StringFormat='C: {0}'}" Foreground="{DynamicResource SubTextForegroundBrush}" FontSize="10" />
             </StackPanel>
+            <!-- Cumulative project-lifetime token tally (persisted, ever-growing). -->
+            <TextBlock Text="{Binding TotalTokens, StringFormat='Σ in+out: {0:N0}'}"
+                       ToolTip.Tip="{Binding TotalPromptTokens, StringFormat='Project lifetime — prompt: {0:N0}'}"
+                       Foreground="{DynamicResource SubTextForegroundBrush}" FontSize="10" HorizontalAlignment="Right" />
         </StackPanel>
         
         <StackPanel Grid.Column="0" Grid.Row="1" Orientation="Horizontal" Spacing="6" VerticalAlignment="Bottom" HorizontalAlignment="Left">

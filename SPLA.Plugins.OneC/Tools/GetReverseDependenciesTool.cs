@@ -1,7 +1,9 @@
 using System.Text.Json;
+using SPLA.Domain.Agent;
 using SPLA.Domain.Models;
 using SPLA.MCP.Core.Interfaces;
 using SPLA.MCP.Core.Json;
+using SPLA.MCP.Core.Tools;
 using SPLA.Plugins.OneC.Storage;
 
 namespace SPLA.Plugins.OneC.Tools;
@@ -37,7 +39,9 @@ public class GetReverseDependenciesTool : IMcpTool
                     full_name = new { type = "string",  description = "Root object full name." },
                     depth         = new { type = "integer", description = "Traversal depth 1 or 2 (default 1)." },
                     relation_types = new { type = "array",   items = new { type = "string" }, description = "Relation types to follow (default all)." },
-                    limit         = new { type = "integer", description = "Max edges to return (default 100)." },
+                    limit          = new { type = "integer", description = "Max edges to return (default 100)." },
+                    output         = SchemaParts.Output,
+                    output_name    = SchemaParts.OutputName
                 },
                 required = new[] { "full_name" }
             }
@@ -92,7 +96,10 @@ public class GetReverseDependenciesTool : IMcpTool
                 }
             });
         });
-        return Task.FromResult(yaml);
+        var target = DataChannel.ParseTarget(ToolJson.GetStringTrimmed(doc.RootElement, "output"));
+        if (target == OutputTarget.Context) return Task.FromResult(yaml);
+        var blobName = ToolJson.GetStringTrimmed(doc.RootElement, "output_name");
+        return Task.FromResult(DataChannel.Route(target, BlobPayload.OfText(yaml), $"onec_get_reverse_dependencies: {fullName}", blobName));
     }
 
     private void Traverse(

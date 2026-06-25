@@ -5,6 +5,7 @@ using Dapper;
 using SPLA.Domain.Models;
 using SPLA.MCP.Core.Interfaces;
 using SPLA.MCP.Core.Json;
+using SPLA.MCP.Core.Tools;
 using SPLA.Plugins.Sql.Factory;
 using SPLA.Plugins.Sql.Safety;
 
@@ -37,7 +38,7 @@ public class SqlExecuteTool : SqlToolBase, IMcpTool
                 type = "object",
                 properties = new
                 {
-                    sql            = new { type = "string",  description = "INSERT / UPDATE / DELETE statement." },
+                    sql            = new { type = "string",  description = "INSERT / UPDATE / DELETE statement. Accepts a blob handle (blob:<id>) from a prior tool call." },
                     connection     = new { type = "string",  description = "Named connection. Omit to use the default." },
                     estimated_rows = new { type = "integer", description = "Estimated affected rows from sql_query_plan. Required for UPDATE/DELETE with WHERE." },
                     confirmed      = new { type = "boolean", description = "Set true after the user has confirmed a high-risk or large-impact operation." }
@@ -54,8 +55,9 @@ public class SqlExecuteTool : SqlToolBase, IMcpTool
             using var doc = JsonDocument.Parse(argumentsJson);
             var root = doc.RootElement;
 
-            var sql = ToolJson.GetStringTrimmed(root, "sql");
-            if (string.IsNullOrWhiteSpace(sql)) return "Error: Missing 'sql' parameter.";
+            var sqlRaw = ToolJson.GetStringTrimmed(root, "sql");
+            if (string.IsNullOrWhiteSpace(sqlRaw)) return "Error: Missing 'sql' parameter.";
+            if (!DataChannel.ResolveText(sqlRaw, out var sql, out var resolveErr)) return resolveErr!;
 
             if (!TryResolve(ToolJson.GetStringTrimmed(root, "connection"), out var cfg, out var err))
                 return err!;

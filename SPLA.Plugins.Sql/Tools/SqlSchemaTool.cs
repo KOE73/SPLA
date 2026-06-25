@@ -3,9 +3,11 @@ using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
 using Dapper;
+using SPLA.Domain.Agent;
 using SPLA.Domain.Models;
 using SPLA.MCP.Core.Interfaces;
 using SPLA.MCP.Core.Json;
+using SPLA.MCP.Core.Tools;
 using SPLA.Plugins.Sql.Factory;
 
 namespace SPLA.Plugins.Sql.Tools;
@@ -36,9 +38,11 @@ public class SqlSchemaTool : SqlToolBase, IMcpTool
                 type = "object",
                 properties = new
                 {
-                    connection = new { type = "string", description = "Named connection. Omit to use the default." },
-                    table      = new { type = "string", description = "Table name to inspect. Omit to list all tables." },
-                    schema     = new { type = "string", description = "Schema filter (e.g. 'dbo'). Optional." }
+                    connection  = new { type = "string", description = "Named connection. Omit to use the default." },
+                    table       = new { type = "string", description = "Table name to inspect. Omit to list all tables." },
+                    schema      = new { type = "string", description = "Schema filter (e.g. 'dbo'). Optional." },
+                    output      = SchemaParts.Output,
+                    output_name = SchemaParts.OutputName
                 },
                 required = Array.Empty<string>()
             }
@@ -60,13 +64,19 @@ public class SqlSchemaTool : SqlToolBase, IMcpTool
 
             using var conn = await SqlConnectionFactory.CreateAsync(cfg!, cancellationToken);
 
-            return cfg!.Provider.ToLowerInvariant() switch
+            var result = cfg!.Provider.ToLowerInvariant() switch
             {
                 "mssql" => table is null
                     ? await MssqlListTablesAsync(conn, schema)
                     : await MssqlDescribeTableAsync(conn, table, schema),
                 _ => "[stub] provider schema not yet implemented"
             };
+
+            var target = DataChannel.ParseTarget(ToolJson.GetStringTrimmed(root, "output"));
+            if (target == OutputTarget.Context) return result;
+            var name = ToolJson.GetStringTrimmed(root, "output_name");
+            var summary = table is null ? $"sql_schema: table list" : $"sql_schema: {schema ?? "dbo"}.{table}";
+            return DataChannel.Route(target, BlobPayload.OfText(result), summary, name);
         }
         catch (JsonException) { return "Error: Invalid JSON arguments."; }
         catch (Exception ex)  { return $"Error: {ex.Message}"; }

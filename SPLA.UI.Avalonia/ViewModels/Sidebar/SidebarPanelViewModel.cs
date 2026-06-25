@@ -43,9 +43,10 @@ public partial class SidebarPanelViewModel : ObservableObject
 
         foreach (var plugin in items.Where(i => i.Kind == CapabilityKind.Plugin).OrderBy(i => i.Id))
         {
+            var isSkillPack = plugin.SourcePlugin?.Meta.Type.Equals("skills", System.StringComparison.OrdinalIgnoreCase) == true;
             var pluginNode = new SidebarNodeViewModel
             {
-                Kind = SidebarNodeKind.Plugin,
+                Kind = isSkillPack ? SidebarNodeKind.SkillPlugin : SidebarNodeKind.Plugin,
                 Id = plugin.Id,
                 Label = plugin.Id,
                 IsEnabled = plugin.IsEnabled

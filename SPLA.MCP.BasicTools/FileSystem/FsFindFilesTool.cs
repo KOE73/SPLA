@@ -1,6 +1,8 @@
+using SPLA.Domain.Agent;
 using SPLA.Domain.Models;
 using SPLA.MCP.Core.Interfaces;
 using SPLA.MCP.Core.Json;
+using SPLA.MCP.Core.Tools;
 using System;
 using System.IO;
 using System.Text.Json;
@@ -35,9 +37,11 @@ public class FsFindFilesTool : IMcpTool
                     path             = new { type = new[] { "string",  "null" }, description = "Directory to start search. Null = current workspace." },
                     pattern          = new { type = new[] { "string",  "null" }, description = "Glob pattern, e.g. '*.cs'. Null = '*'." },
                     max_results      = new { type = new[] { "integer", "null" }, description = "Max file paths to return. Null = 1000." },
-                    exclude_patterns = new { type = new[] { "array",   "null" }, items = new { type = "string" }, description = "Glob patterns to exclude, e.g. ['bin/*', 'obj/*']. Null = none." }
+                    exclude_patterns = new { type = new[] { "array",   "null" }, items = new { type = "string" }, description = "Glob patterns to exclude, e.g. ['bin/*', 'obj/*']. Null = none." },
+                    output      = SchemaParts.Output,
+                    output_name = SchemaParts.OutputName
                 },
-                required = new[] { "path", "pattern", "max_results", "exclude_patterns" }
+                required = new[] { "path", "pattern", "max_results", "exclude_patterns", "output", "output_name" }
             }
         }
     };
@@ -76,7 +80,11 @@ public class FsFindFilesTool : IMcpTool
                 TotalCount = matches.Count
             };
 
-            return Task.FromResult(JsonSerializer.Serialize(result, new JsonSerializerOptions { WriteIndented = true }));
+            var json = JsonSerializer.Serialize(result, new JsonSerializerOptions { WriteIndented = true });
+            var target = DataChannel.ParseTarget(ToolJson.GetStringTrimmed(root, "output"));
+            if (target == OutputTarget.Context) return Task.FromResult(json);
+            var blobName = ToolJson.GetStringTrimmed(root, "output_name");
+            return Task.FromResult(DataChannel.Route(target, BlobPayload.OfText(json), $"system_find_files: {result.TotalCount} files", blobName));
         }
         catch (JsonException)
         {

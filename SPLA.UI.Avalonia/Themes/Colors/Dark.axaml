@@ -6,6 +6,8 @@
     <SolidColorBrush x:Key="AppBackgroundBrush" Color="#1E1E1E" />
     <SolidColorBrush x:Key="PanelBackgroundBrush" Color="#252526" />
     <SolidColorBrush x:Key="PanelBorderBrush" Color="#333333" />
+    <SolidColorBrush x:Key="TitleBarBackgroundBrush" Color="#2F2F30" />
+    <SolidColorBrush x:Key="CaptionHoverBrush" Color="#3C3C3C" />
     <SolidColorBrush x:Key="TextForegroundBrush" Color="#FFFFFF" />
     <SolidColorBrush x:Key="SubTextForegroundBrush" Color="#888888" />
     <SolidColorBrush x:Key="AccentBrush" Color="#007ACC" />

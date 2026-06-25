@@ -1,7 +1,9 @@
 using System.Text.Json;
+using SPLA.Domain.Agent;
 using SPLA.Domain.Models;
 using SPLA.MCP.Core.Interfaces;
 using SPLA.MCP.Core.Json;
+using SPLA.MCP.Core.Tools;
 using SPLA.Plugins.OneC.Storage;
 
 namespace SPLA.Plugins.OneC.Tools;
@@ -35,6 +37,8 @@ public class FindReferencesTool : IMcpTool
                     limit          = new { type = "integer", description = "Max items returned (default 50)." },
                     offset         = new { type = "integer", description = "Pagination offset (default 0)." },
                     include_snippets = new { type = "boolean", description = "Include source file and line number (default true)." },
+                    output           = SchemaParts.Output,
+                    output_name      = SchemaParts.OutputName
                 },
                 required = new[] { "full_name" }
             }
@@ -68,7 +72,10 @@ public class FindReferencesTool : IMcpTool
             b.Field("truncated", offset + rows.Count < total);
             b.Section("references", r => r.ReverseRelationList("items", rows, snippets));
         });
-        return Task.FromResult(yaml);
+        var target = DataChannel.ParseTarget(ToolJson.GetStringTrimmed(doc.RootElement, "output"));
+        if (target == OutputTarget.Context) return Task.FromResult(yaml);
+        var blobName = ToolJson.GetStringTrimmed(doc.RootElement, "output_name");
+        return Task.FromResult(DataChannel.Route(target, BlobPayload.OfText(yaml), $"onec_find_references: {fullName}", blobName));
     }
 }
 

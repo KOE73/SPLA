@@ -42,6 +42,15 @@ public class SplaLlmSection
 
     [YamlMember(Alias = "reasoning_level")]
     public string? ReasoningLevel { get; set; }
+
+    [YamlMember(Alias = "presence_penalty")]
+    public double? PresencePenalty { get; set; }
+
+    [YamlMember(Alias = "frequency_penalty")]
+    public double? FrequencyPenalty { get; set; }
+
+    [YamlMember(Alias = "repeat_penalty")]
+    public double? RepeatPenalty { get; set; }
 }
 
 /// <summary>

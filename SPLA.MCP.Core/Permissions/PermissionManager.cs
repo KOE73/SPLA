@@ -45,15 +45,20 @@ public class PermissionManager : IPermissionManager
             };
         }
 
-        var remembered = _rememberedPermissions.FirstOrDefault(x =>
-            string.Equals(x.Tool, toolMetadata.Name, StringComparison.OrdinalIgnoreCase) &&
-            (x.Arguments == "*" || string.Equals(x.Arguments, argumentsJson, StringComparison.Ordinal)));
-
-        if (remembered != null)
+        // Agent mode: mode-based rules are authoritative; remembered denies must not override them.
+        // Remembered allows are also redundant here (everything is already allowed), so skip entirely.
+        if (mode != AgentMode.Agent)
         {
-            return remembered.Decision == PermissionDecision.AllowRemember
-                ? PermissionResult.Allow
-                : PermissionResult.Deny;
+            var remembered = _rememberedPermissions.FirstOrDefault(x =>
+                string.Equals(x.Tool, toolMetadata.Name, StringComparison.OrdinalIgnoreCase) &&
+                (x.Arguments == "*" || string.Equals(x.Arguments, argumentsJson, StringComparison.Ordinal)));
+
+            if (remembered != null)
+            {
+                return remembered.Decision == PermissionDecision.AllowRemember
+                    ? PermissionResult.Allow
+                    : PermissionResult.Deny;
+            }
         }
 
         if (mode == AgentMode.Chat)

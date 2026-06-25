@@ -53,4 +53,12 @@ public sealed class AgentCallbacks
 
     /// <summary>An ephemeral notice for the user (guard tripped, loop stopped). Never sent to the model.</summary>
     public Func<string, Task>? OnNotice { get; init; }
+
+    /// <summary>
+    /// Real provider-reported token usage for one LLM turn: (promptTokens, completionTokens), either
+    /// null when the provider does not expose that figure. Fired once per LLM response, for every turn
+    /// — including the ones whose only output is tool calls — so a host can keep an exact per-chat and
+    /// cumulative tally. Fire-and-forget: never blocks the loop. Null when the host does not care.
+    /// </summary>
+    public Action<int?, int?>? OnTokenUsage { get; init; }
 }

@@ -1,6 +1,8 @@
+using SPLA.Domain.Agent;
 using SPLA.Domain.Models;
 using SPLA.MCP.Core.Interfaces;
 using SPLA.MCP.Core.Json;
+using SPLA.MCP.Core.Tools;
 using System;
 using System.Linq;
 using System.Net;
@@ -52,7 +54,9 @@ public class HostNetworkInfoTool : IMcpTool
                         type = "array",
                         items = new { type = "string" },
                         description = "Optional JSON array of extra plain-text IP endpoint URLs to query in addition to built-in sources, e.g. {\"custom_public_ip_endpoints\":[\"https://myproxy.internal/ip\"]}."
-                    }
+                    },
+                    output      = SchemaParts.Output,
+                    output_name = SchemaParts.OutputName
                 }
             }
         }
@@ -125,7 +129,19 @@ public class HostNetworkInfoTool : IMcpTool
             sb.AppendLine($"  DNS: {string.Join(", ", ip.DnsAddresses)}");
         }
 
-        return sb.ToString();
+        var result = sb.ToString();
+        OutputTarget target;
+        string? blobName;
+        try
+        {
+            using var doc2 = JsonDocument.Parse(!string.IsNullOrWhiteSpace(argumentsJson) ? argumentsJson : "{}");
+            target = DataChannel.ParseTarget(ToolJson.GetStringTrimmed(doc2.RootElement, "output"));
+            blobName = ToolJson.GetStringTrimmed(doc2.RootElement, "output_name");
+        }
+        catch { target = OutputTarget.Context; blobName = null; }
+
+        if (target == OutputTarget.Context) return result;
+        return DataChannel.Route(target, BlobPayload.OfText(result), "network_get_host_info", blobName);
     }
 
     private static async Task<(string Label, string Ip)> QueryPublicIpAsync(string label, string url, CancellationToken cancellationToken)

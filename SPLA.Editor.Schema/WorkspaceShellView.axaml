@@ -1,0 +1,124 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:local="clr-namespace:SPLA.Editor.Schema"
+             x:Class="SPLA.Editor.Schema.WorkspaceShellView"
+             Background="{DynamicResource AppBackgroundBrush}">
+    <Grid RowDefinitions="Auto,*">
+
+        <Grid.Styles>
+            <!-- TreeViewItem: compact, density-aware -->
+            <Style Selector="TreeViewItem">
+                <Setter Property="Padding" Value="{DynamicResource CompactMargin}"/>
+                <Setter Property="MinHeight" Value="0"/>
+                <Setter Property="HorizontalAlignment" Value="Stretch"/>
+            </Style>
+            <!-- Сегментированный переключатель -->
+            <Style Selector="Border.segmented">
+                <Setter Property="CornerRadius" Value="{DynamicResource StandardCornerRadius}"/>
+                <Setter Property="BorderBrush" Value="{DynamicResource PanelBorderBrush}"/>
+                <Setter Property="BorderThickness" Value="1"/>
+                <Setter Property="ClipToBounds" Value="True"/>
+            </Style>
+            <Style Selector="Border.segmented ToggleButton">
+                <Setter Property="Background" Value="Transparent"/>
+                <Setter Property="BorderThickness" Value="0"/>
+                <Setter Property="CornerRadius" Value="0"/>
+                <Setter Property="Padding" Value="12,4"/>
+                <Setter Property="MinWidth" Value="60"/>
+                <Setter Property="FontSize" Value="{DynamicResource SidebarNodeFontSize}"/>
+                <Setter Property="Foreground" Value="{DynamicResource SubTextForegroundBrush}"/>
+                <Setter Property="HorizontalContentAlignment" Value="Center"/>
+            </Style>
+            <Style Selector="Border.segmented ToggleButton:checked /template/ ContentPresenter#PART_ContentPresenter">
+                <Setter Property="Background" Value="{DynamicResource AccentBrush}"/>
+                <Setter Property="TextElement.Foreground" Value="{DynamicResource TextForegroundBrush}"/>
+            </Style>
+        </Grid.Styles>
+
+        <!-- ── Тулбар ── -->
+        <Border Grid.Row="0"
+                Padding="8,5"
+                Background="{DynamicResource PanelBackgroundBrush}"
+                BorderBrush="{DynamicResource PanelBorderBrush}"
+                BorderThickness="0,0,0,1">
+            <DockPanel LastChildFill="False">
+
+                <!-- Статус справа -->
+                <TextBlock x:Name="StatusText"
+                           DockPanel.Dock="Right"
+                           VerticalAlignment="Center"
+                           FontSize="{DynamicResource SmallFontSize}"
+                           Foreground="{DynamicResource SubTextForegroundBrush}"
+                           Opacity="0.7"
+                           Margin="8,0,0,0"/>
+
+                <!-- Переключатели слева -->
+                <StackPanel Orientation="Horizontal"
+                            Spacing="{DynamicResource StandardSpacing}"
+                            VerticalAlignment="Center">
+                    <StackPanel Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
+                        <TextBlock Text="Mode:"
+                                   VerticalAlignment="Center"
+                                   FontSize="{DynamicResource SidebarNodeFontSize}"
+                                   Foreground="{DynamicResource SubTextForegroundBrush}"/>
+                        <Border Classes="segmented">
+                            <StackPanel Orientation="Horizontal">
+                                <ToggleButton x:Name="ModeView" Content="View" IsChecked="True"
+                                              Click="OnModeClick"/>
+                                <ToggleButton x:Name="ModeEdit" Content="Edit"
+                                              Click="OnModeClick"/>
+                            </StackPanel>
+                        </Border>
+                    </StackPanel>
+                    <StackPanel Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
+                        <TextBlock Text="Editor (jsonl):"
+                                   VerticalAlignment="Center"
+                                   FontSize="{DynamicResource SidebarNodeFontSize}"
+                                   Foreground="{DynamicResource SubTextForegroundBrush}"/>
+                        <Border Classes="segmented">
+                            <StackPanel Orientation="Horizontal">
+                                <ToggleButton x:Name="EditorForms" Content="Forms" IsChecked="True"
+                                              Click="OnEditorClick"/>
+                                <ToggleButton x:Name="EditorText" Content="CodeMirror"
+                                              Click="OnEditorClick"/>
+                            </StackPanel>
+                        </Border>
+                    </StackPanel>
+                </StackPanel>
+
+            </DockPanel>
+        </Border>
+
+        <!-- ── Дерево | редактор ── -->
+        <Grid Grid.Row="1" ColumnDefinitions="320,4,*">
+
+            <!-- Дерево файлов с колонками Имя/Размер/Дата -->
+            <TreeView x:Name="Tree" Grid.Column="0"
+                      Background="{DynamicResource PanelBackgroundBrush}"
+                      SelectionChanged="OnTreeSelectionChanged">
+                <TreeView.ItemTemplate>
+                    <TreeDataTemplate DataType="local:BrowserNode" ItemsSource="{Binding Children}">
+                        <Grid ColumnDefinitions="*,70,110">
+                            <TextBlock Grid.Column="0" Text="{Binding Label}"
+                                       FontSize="{DynamicResource SidebarNodeFontSize}"
+                                       Foreground="{DynamicResource TextForegroundBrush}"
+                                       TextTrimming="CharacterEllipsis"/>
+                            <TextBlock Grid.Column="1" Text="{Binding SizeText}"
+                                       FontSize="{DynamicResource SidebarNodeFontSize}"
+                                       Foreground="{DynamicResource SubTextForegroundBrush}"
+                                       HorizontalAlignment="Right" Margin="0,0,8,0"/>
+                            <TextBlock Grid.Column="2" Text="{Binding DateText}"
+                                       FontSize="{DynamicResource SidebarNodeFontSize}"
+                                       Foreground="{DynamicResource SubTextForegroundBrush}"/>
+                        </Grid>
+                    </TreeDataTemplate>
+                </TreeView.ItemTemplate>
+            </TreeView>
+
+            <GridSplitter Grid.Column="1" Background="{DynamicResource PanelBorderBrush}"/>
+
+            <!-- Хост редактора (свапается между Forms и CodeMirror) -->
+            <Border x:Name="EditorHost" Grid.Column="2"/>
+        </Grid>
+    </Grid>
+</UserControl>

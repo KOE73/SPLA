@@ -52,6 +52,8 @@ public partial class ChatWebView : UserControl
         DataContextChanged += (_, _) => AttachViewModel(DataContext as ChatSessionViewModel);
         Loaded += OnLoaded;
         Unloaded += OnUnloaded;
+        // Реакция на смену видимости — через override OnPropertyChanged ниже
+        // (в Avalonia нет события IsVisibleChanged).
         _browser.WebMessageReceived += (_, args) => _ = HandleWebMessageAsync(args);
         App.VisualResourcesChanged += OnVisualResourcesChanged;
     }
@@ -68,6 +70,14 @@ public partial class ChatWebView : UserControl
     {
         AttachViewModel(null);
         _fullRenderTimer.Stop();
+    }
+
+    protected override void OnPropertyChanged(AvaloniaPropertyChangedEventArgs change)
+    {
+        base.OnPropertyChanged(change);
+        // Стало видимым → перерисовать (раньше было через несуществующее событие IsVisibleChanged).
+        if (change.Property == IsVisibleProperty && change.GetNewValue<bool>())
+            QueueFullRender();
     }
 
     protected override void OnDetachedFromVisualTree(global::Avalonia.VisualTreeAttachmentEventArgs e)

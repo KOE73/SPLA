@@ -1,7 +1,9 @@
+using SPLA.Domain.Agent;
 using SPLA.Domain.Models;
 using SPLA.Domain.Tools;
 using SPLA.MCP.Core.Interfaces;
 using SPLA.MCP.Core.Json;
+using SPLA.MCP.Core.Tools;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -34,7 +36,9 @@ public class PortScanTool : IMcpTool, IToolHelpProvider
                     host = new { type = "string", description = "Target host or IPv4 address." },
                     ports = new { type = "string", description = "Optional ports: 'common' default, comma list, range, or 'all'." },
                     timeout = new { type = "integer", description = "Per-port timeout in milliseconds. Default: 500." },
-                    concurrency = new { type = "integer", description = "Parallel connection attempts. Default: 128, max: 512." }
+                    concurrency = new { type = "integer", description = "Parallel connection attempts. Default: 128, max: 512." },
+                    output      = SchemaParts.Output,
+                    output_name = SchemaParts.OutputName
                 },
                 required = new[] { "host" }
             }
@@ -96,7 +100,11 @@ public class PortScanTool : IMcpTool, IToolHelpProvider
             sb.AppendLine($"Timeout: {timeout} ms");
             sb.AppendLine($"Concurrency: {concurrency}");
             sb.AppendLine($"Open ports: {(orderedOpen.Length == 0 ? "none" : NetworkScanHelpers.FormatPorts(orderedOpen))}");
-            return sb.ToString();
+            var result = sb.ToString();
+            var target = DataChannel.ParseTarget(ToolJson.GetStringTrimmed(root, "output"));
+            if (target == OutputTarget.Context) return result;
+            var blobName = ToolJson.GetStringTrimmed(root, "output_name");
+            return DataChannel.Route(target, BlobPayload.OfText(result), $"network_scan_tcp_ports: {host}, {orderedOpen.Length} open", blobName);
         }
         catch (JsonException)
         {
