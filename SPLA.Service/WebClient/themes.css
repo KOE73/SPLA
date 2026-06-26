@@ -1,0 +1,61 @@
+/*
+  SPLA web client — color themes.
+
+  One flat, extensible variable contract that every component reads. To add a theme, copy a block and
+  recolor — nothing else in the app references raw colors. The goal: a designer (or the agent, in
+  chat) can do 95–100% of restyling here, purely via these CSS variables.
+
+  Variable groups:
+    Surfaces : --bg --panel --elevated --border
+    Text     : --text --muted --faint
+    Accent   : --accent --accent-contrast --accent-soft
+    Roles    : --user-bg --assistant-bg --tool-bg --system-bg --error-bg --reasoning-fg
+    Code     : --code-bg --code-border --code-fg
+    Feedback : --ok --warn --danger
+  Layout/scale variables (radius, spacing, fonts) live in app.css and are theme-independent.
+*/
+
+/* ── Dark (default) ───────────────────────────────────────────────────────── */
+:root,
+:root[data-theme="dark"] {
+  --bg: #1e1e1e;          --panel: #252526;      --elevated: #2d2d30;   --border: #3a3a3c;
+  --text: #e6e6e6;        --muted: #9aa0a6;       --faint: #6b7178;
+  --accent: #4ea1ff;      --accent-contrast: #04121f; --accent-soft: rgba(78,161,255,.14);
+  --user-bg: #243447;     --assistant-bg: #252526; --tool-bg: #20201f;   --system-bg: #2a2620; --error-bg: #3a1f1f;
+  --reasoning-fg: #9aa0a6;
+  --code-bg: #1a1a1a;     --code-border: #3a3a3c;  --code-fg: #e6e6e6;
+  --ok: #2e9e5b;          --warn: #d9a23a;         --danger: #e05555;
+}
+
+/* ── Emerald (dark green) ─────────────────────────────────────────────────── */
+:root[data-theme="emerald"] {
+  --bg: #0f1714;          --panel: #16221d;       --elevated: #1c2e27;   --border: #1f332a;
+  --text: #e0f2e9;        --muted: #8fafa1;        --faint: #5f786c;
+  --accent: #10b981;      --accent-contrast: #042018; --accent-soft: rgba(16,185,129,.14);
+  --user-bg: #1c2e27;     --assistant-bg: #16221d; --tool-bg: #14201b;   --system-bg: #18241e; --error-bg: #3a1f1f;
+  --reasoning-fg: #8fafa1;
+  --code-bg: #0d1411;     --code-border: #1f332a;  --code-fg: #e0f2e9;
+  --ok: #10b981;          --warn: #d9a23a;         --danger: #e05555;
+}
+
+/* ── Cream (light warm) ───────────────────────────────────────────────────── */
+:root[data-theme="cream"] {
+  --bg: #fdfbf7;          --panel: #f5f2eb;       --elevated: #efeadd;   --border: #e8e2d2;
+  --text: #4a3b2c;        --muted: #8a7b6c;        --faint: #b3a695;
+  --accent: #e18f2f;      --accent-contrast: #ffffff; --accent-soft: rgba(225,143,47,.14);
+  --user-bg: #efe7d6;     --assistant-bg: #f5f2eb; --tool-bg: #f0ece0;   --system-bg: #f2ecdd; --error-bg: #f6e1de;
+  --reasoning-fg: #8a7b6c;
+  --code-bg: #f3eee2;     --code-border: #e8e2d2;  --code-fg: #4a3b2c;
+  --ok: #2e9e5b;          --warn: #c8841f;         --danger: #c0392b;
+}
+
+/* ── Light (neutral) ──────────────────────────────────────────────────────── */
+:root[data-theme="light"] {
+  --bg: #f5f5f5;          --panel: #ffffff;       --elevated: #f0f0f0;   --border: #e0e0e0;
+  --text: #1f2328;        --muted: #6a737d;        --faint: #9aa0a6;
+  --accent: #2563eb;      --accent-contrast: #ffffff; --accent-soft: rgba(37,99,235,.12);
+  --user-bg: #e7efff;     --assistant-bg: #ffffff; --tool-bg: #f3f4f6;   --system-bg: #f6f5ee; --error-bg: #fde2e2;
+  --reasoning-fg: #6a737d;
+  --code-bg: #f6f8fa;     --code-border: #e0e0e0;  --code-fg: #1f2328;
+  --ok: #1f8b4c;          --warn: #b8860b;         --danger: #c0392b;
+}

@@ -45,10 +45,6 @@ public partial class MainWindowViewModel : ViewModelBase
             if (matched != null)
                 ActiveChat?.SelectProfileCommand.Execute(matched);
         }
-        else if (e.PropertyName == nameof(SettingsViewModel.ChatRenderMode))
-        {
-            ActiveChat?.SelectRenderModeCommand.Execute(Settings.ChatRenderMode);
-        }
     }
 }
 

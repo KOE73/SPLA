@@ -3,6 +3,15 @@
   <PropertyGroup>
     <RootNamespace>SPLA.Plugins.Sql</RootNamespace>
     <AssemblyName>SPLA.Plugins.Sql</AssemblyName>
+    <!--
+      A plugin must be self-contained: its third-party NuGet dependencies (Microsoft.Data.SqlClient
+      and its native SNI, Dapper, YamlDotNet) have to sit in the plugin's own output folder so the
+      PluginLoadContext's AssemblyDependencyResolver finds them under ANY host. Without this, a class
+      library does not copy package DLLs locally, so the plugin only loaded under Avalonia (which
+      happened to carry Microsoft.Data.SqlClient in its app base dir) and threw "Could not load file
+      or assembly 'Microsoft.Data.SqlClient'" under the CLI/service host.
+    -->
+    <CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies>
   </PropertyGroup>
 
   <ItemGroup>

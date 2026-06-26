@@ -42,4 +42,11 @@ public partial class MainWindowViewModel : ViewModelBase
 
     [RelayCommand]
     private void OpenPromptDebug() => PromptDebugRequested?.Invoke(this, System.EventArgs.Empty);
+
+    /// <summary>Raised when the user opens the thin-client (web) window. The View creates the window
+    /// so the ViewModel stays free of Avalonia types.</summary>
+    public event System.EventHandler? ThinClientRequested;
+
+    [RelayCommand]
+    private void OpenThinClient() => ThinClientRequested?.Invoke(this, System.EventArgs.Empty);
 }

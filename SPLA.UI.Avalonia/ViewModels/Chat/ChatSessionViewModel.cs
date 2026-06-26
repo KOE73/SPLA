@@ -149,27 +149,15 @@ public partial class ChatSessionViewModel : ViewModelBase, IAgentSession
     partial void OnFrequencyPenaltyChanged(double value)  { if (_loaded) SaveChat(); }
     partial void OnRepeatPenaltyChanged(double value)     { if (_loaded) SaveChat(); }
 
-    // ── Render mode + display profile (per chat) ─────────────────────────────
-    [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(IsNativeChatViewSelected))]
-    [NotifyPropertyChangedFor(nameof(IsWebChatViewSelected))]
-    private string _activeRenderMode = "native";
-
-    public bool IsNativeChatViewSelected => ActiveRenderMode == "native";
-    public bool IsWebChatViewSelected    => ActiveRenderMode == "web";
-
+    // ── Display profile (per chat) ────────────────────────────────────────────
     [ObservableProperty]
     private ChatProfileViewModel? _selectedProfile;
 
-    public ChatDisplayProfile? ActiveProfile  => SelectedProfile?.Profile;
-    public bool ActiveProfileUsesBubbles      => SelectedProfile?.Profile.UseBubbleLayout == true;
-    public bool ActiveProfileUsesLinear       => SelectedProfile?.Profile.UseBubbleLayout != true;
+    public ChatDisplayProfile? ActiveProfile => SelectedProfile?.Profile;
 
     partial void OnSelectedProfileChanged(ChatProfileViewModel? value)
     {
         OnPropertyChanged(nameof(ActiveProfile));
-        OnPropertyChanged(nameof(ActiveProfileUsesBubbles));
-        OnPropertyChanged(nameof(ActiveProfileUsesLinear));
     }
 
     public ObservableCollection<ChatProfileViewModel> AvailableProfiles => _owner.AvailableProfiles;
@@ -182,13 +170,6 @@ public partial class ChatSessionViewModel : ViewModelBase, IAgentSession
         if (SelectedProfile != null) SelectedProfile.IsSelected = false;
         profile.IsSelected = true;
         SelectedProfile = profile;
-    }
-
-    [RelayCommand]
-    private void SelectRenderMode(string? mode)
-    {
-        if (string.IsNullOrEmpty(mode) || mode == ActiveRenderMode) return;
-        ActiveRenderMode = mode;
     }
 
     // ────────────────────────────────────────────────────────────────────────
@@ -291,8 +272,7 @@ public partial class ChatSessionViewModel : ViewModelBase, IAgentSession
         Status.Mode = _chat.Agent?.Mode != null && Enum.TryParse<AgentMode>(_chat.Agent.Mode, true, out var m)
             ? m : resolved.Mode;
 
-        // Render mode + profile default from resolved settings (per-chat, in-memory).
-        ActiveRenderMode = resolved.ChatRenderMode;
+        // Profile default from resolved settings (per-chat, in-memory).
         var targetProfile = AvailableProfiles.FirstOrDefault(p => p.Id == resolved.ActiveProfileId)
                          ?? AvailableProfiles.FirstOrDefault();
         if (targetProfile != null)

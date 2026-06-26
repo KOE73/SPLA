@@ -1,0 +1,34 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    The SPLA service host: wraps the agent core (same stack the CLI builds) behind a WebSocket
+    protocol so any client — the Avalonia thin client, a browser, a phone — drives one agent the
+    same way, whether it is in-process (embedded) or across the network (remote).
+  -->
+
+  <PropertyGroup>
+    <!-- Minimal ASP.NET host for the WebSocket endpoint + static web client assets later. -->
+    <UseAspNet>true</UseAspNet>
+  </PropertyGroup>
+
+  <ItemGroup Condition="'$(UseAspNet)' == 'true'">
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- The browser client is served as embedded static assets (html/css/js + marked/mermaid),
+         so the service is self-contained and needs no content-root/wwwroot wiring at runtime. -->
+    <EmbeddedResource Include="WebClient\**\*.*" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\SPLA.Service.Contracts\SPLA.Service.Contracts.csproj" />
+    <ProjectReference Include="..\SPLA.Agent\SPLA.Agent.csproj" />
+    <ProjectReference Include="..\SPLA.Domain\SPLA.Domain.csproj" />
+    <ProjectReference Include="..\SPLA.LLM.LMStudio\SPLA.LLM.LMStudio.csproj" />
+    <ProjectReference Include="..\SPLA.MCP.BasicTools\SPLA.MCP.BasicTools.csproj" />
+    <ProjectReference Include="..\SPLA.MCP.Core\SPLA.MCP.Core.csproj" />
+    <ProjectReference Include="..\SPLA.Observability\SPLA.Observability.csproj" />
+  </ItemGroup>
+
+</Project>

@@ -51,6 +51,8 @@
   <Project Path="SPLA.MCP.BasicTools/SPLA.MCP.BasicTools.csproj" />
   <Project Path="SPLA.MCP.Core/SPLA.MCP.Core.csproj" />
   <Project Path="SPLA.Observability/SPLA.Observability.csproj" />
+  <Project Path="SPLA.Service.Contracts/SPLA.Service.Contracts.csproj" />
+  <Project Path="SPLA.Service/SPLA.Service.csproj" />
   <Project Path="SPLA.Plugins.Host.Avalonia/SPLA.Plugins.Host.Avalonia.csproj" />
   <Project Path="SPLA.Plugins.Network/SPLA.Plugins.Network.csproj" />
   <Project Path="SPLA.Plugins.Roslyn/SPLA.Plugins.Roslyn.csproj" />

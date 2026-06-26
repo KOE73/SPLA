@@ -95,10 +95,6 @@ public class SplaUiSection
     [YamlMember(Alias = "density")]
     public string? Density { get; set; }
 
-    // ── Chat render engine: "native" | "web" ─────────────────────────────
-    [YamlMember(Alias = "chat_render_mode")]
-    public string? ChatRenderMode { get; set; }
-
     // ── Active display profile id ─────────────────────────────────────────
     [YamlMember(Alias = "active_profile_id")]
     public string? ActiveProfileId { get; set; }

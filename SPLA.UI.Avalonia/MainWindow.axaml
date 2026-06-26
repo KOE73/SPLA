@@ -76,6 +76,11 @@
                         Content="🧩"
                         Click="OpenSchemaEditorDebug_Click"
                         ToolTip.Tip="Workspace Shell (live debug)"/>
+                <!-- Thin client: web UI over an embedded service (preview). -->
+                <Button Classes="caption"
+                        Content="🌐"
+                        Command="{Binding OpenThinClientCommand}"
+                        ToolTip.Tip="Thin Client — web UI over embedded service (preview)"/>
                 <!-- Sidebar toggle -->
                 <Button Classes="caption sidebar"
                         Content="◧"

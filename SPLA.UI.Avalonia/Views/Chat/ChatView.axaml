@@ -14,10 +14,7 @@
         <Grid RowDefinitions="*,Auto,Auto">
 
             <Grid Grid.Row="0">
-                <chat:ChatNativeView DataContext="{Binding}"
-                                     IsVisible="{Binding IsNativeChatViewSelected}" />
-                <chat:ChatWebView DataContext="{Binding}"
-                                  IsVisible="{Binding IsWebChatViewSelected}" />
+                <chat:ChatWebView DataContext="{Binding}" />
                 <!-- Clarify overlay: floats at the bottom of the message area while agent awaits answer -->
                 <chat:ClarifyView DataContext="{Binding ActiveClarify}"
                                    IsVisible="{Binding $parent[UserControl].((chatvm:ChatSessionViewModel)DataContext).HasActiveClarify}"

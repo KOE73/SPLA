@@ -68,9 +68,6 @@ public partial class SettingsViewModel : ViewModelBase
     private string _activeProfileId = "bubbles";
 
     [ObservableProperty]
-    private string _chatRenderMode = "native";
-
-    [ObservableProperty]
     private ObservableCollection<string> _availableModels = new();
 
     [ObservableProperty]
@@ -232,7 +229,6 @@ public partial class SettingsViewModel : ViewModelBase
         Theme = resolved.Theme;
         Density = resolved.Density;
         ActiveProfileId = resolved.ActiveProfileId;
-        ChatRenderMode = resolved.ChatRenderMode;
         CustomPrompt = resolved.CustomPrompt ?? "";
 
         IgnorePatterns.Clear();
@@ -271,7 +267,6 @@ public partial class SettingsViewModel : ViewModelBase
                 {
                     Theme = Theme,
                     Density = Density,
-                    ChatRenderMode = ChatRenderMode,
                     ActiveProfileId = ActiveProfileId
                 };
 
@@ -322,7 +317,6 @@ public partial class SettingsViewModel : ViewModelBase
                 {
                     Theme = Theme,
                     Density = Density,
-                    ChatRenderMode = ChatRenderMode,
                     ActiveProfileId = ActiveProfileId
                 }
             };

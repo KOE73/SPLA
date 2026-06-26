@@ -42,13 +42,6 @@ public partial class MainWindowViewModel : ViewModelBase
         foreach (var profile in resolved.EffectiveProfiles)
             AvailableProfiles.Add(new SPLA.UI.Avalonia.ViewModels.Chat.ChatProfileViewModel(profile));
 
-        // Migrate legacy "web" profile id to proper render mode setting
-        if (Settings.ActiveProfileId == "web")
-        {
-            Settings.ChatRenderMode = "web";
-            Settings.ActiveProfileId = "bubbles";
-        }
-
         App.ChangeTheme(resolved.Theme);
 
         Settings.PropertyChanged += Settings_PropertyChanged;

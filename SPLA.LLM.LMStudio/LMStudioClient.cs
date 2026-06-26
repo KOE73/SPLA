@@ -343,7 +343,11 @@ public class LMStudioClient : ILLMService, ITokenUsageReporter
                 var msgDict = new Dictionary<string, object?>
                 {
                     ["role"] = m.Role.ToString().ToLowerInvariant(),
-                    ["content"] = m.Content
+                    // Vision: a user message with images is sent as the OpenAI parts array
+                    // (text + image_url data URLs); otherwise the plain string content.
+                    ["content"] = m.Images is { Count: > 0 }
+                        ? BuildMultimodalContent(m.Content, m.Images)
+                        : (object?)m.Content
                 };
 
                 if (m.Role == ChatRole.Assistant && m.ToolCalls?.Any() == true)
@@ -401,6 +405,22 @@ public class LMStudioClient : ILLMService, ITokenUsageReporter
         request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", settings.ApiKey);
         request.Content = JsonContent.Create(payload, null, _jsonOptions);
         return request;
+    }
+
+    /// <summary>Builds the OpenAI vision "content parts" array: a text part (if any) followed by one
+    /// image_url part per attached data URL. LM Studio routes these to vision-capable models.</summary>
+    private static object[] BuildMultimodalContent(string? text, List<string> images)
+    {
+        var parts = new List<object>();
+        if (!string.IsNullOrEmpty(text))
+            parts.Add(new Dictionary<string, object?> { ["type"] = "text", ["text"] = text });
+        foreach (var url in images)
+            parts.Add(new Dictionary<string, object?>
+            {
+                ["type"] = "image_url",
+                ["image_url"] = new Dictionary<string, object?> { ["url"] = url }
+            });
+        return parts.ToArray();
     }
 
     private static Uri BuildEndpointUri(string baseUrl, string relativePath)

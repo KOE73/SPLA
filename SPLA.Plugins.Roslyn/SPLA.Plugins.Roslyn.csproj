@@ -3,6 +3,10 @@
   <PropertyGroup>
     <RootNamespace>SPLA.Plugins.Roslyn</RootNamespace>
     <AssemblyName>SPLA.Plugins.Roslyn</AssemblyName>
+    <!-- Self-contained plugin: copy third-party NuGet deps (Microsoft.CodeAnalysis.*) into the plugin
+         folder so the PluginLoadContext resolver finds them under any host (CLI/service, not just
+         Avalonia). -->
+    <CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies>
   </PropertyGroup>
 
   <ItemGroup>

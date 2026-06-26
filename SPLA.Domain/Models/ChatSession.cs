@@ -64,6 +64,12 @@ public class ChatSessionMessage
 
     [YamlMember(Alias = "reasoning")]
     public string? Reasoning { get; set; }
+
+    /// <summary>Filenames of images attached to this message, stored as sidecar files under
+    /// <c>.spla/chat-images/&lt;chatId&gt;/</c>. Only the filenames live in the chat YAML — the binary
+    /// payload never bloats it. Null/empty for text-only messages.</summary>
+    [YamlMember(Alias = "images")]
+    public List<string>? Images { get; set; }
 }
 
 public class ChatSessionContext

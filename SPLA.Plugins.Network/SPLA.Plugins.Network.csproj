@@ -3,6 +3,9 @@
   <PropertyGroup>
     <RootNamespace>SPLA.Plugins.Network</RootNamespace>
     <AssemblyName>SPLA.Plugins.Network</AssemblyName>
+    <!-- Self-contained plugin: copy third-party NuGet deps (DnsClient) into the plugin folder so the
+         PluginLoadContext resolver finds them under any host (CLI/service, not just Avalonia). -->
+    <CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies>
   </PropertyGroup>
 
   <ItemGroup>

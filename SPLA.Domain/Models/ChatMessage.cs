@@ -37,6 +37,13 @@ public class ChatMessage
     public string? Content { get; set; } = string.Empty;
 
     /// <summary>
+    /// Optional attached images for a user message, as data URLs (data:image/...;base64,...). When
+    /// present, an OpenAI-compatible vision client emits the message content as a parts array
+    /// (text + image_url) instead of a plain string. Null/empty for normal text messages.
+    /// </summary>
+    public List<string>? Images { get; set; }
+
+    /// <summary>
     /// Separate chain-of-thought / reasoning text emitted by reasoning models
     /// (OpenAI <c>reasoning_content</c> field, or stripped from inline &lt;think&gt; tags).
     /// Null/empty when the model did not reason or reasoning was not exposed.

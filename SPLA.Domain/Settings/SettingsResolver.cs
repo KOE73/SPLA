@@ -32,9 +32,6 @@ public class ResolvedSettings
     public string Theme { get; set; } = "Dark";
     public string Density { get; set; } = "norm";
 
-    // Chat engine: "native" | "web"
-    public string ChatRenderMode { get; set; } = "native";
-
     // Active display profile id
     public string ActiveProfileId { get; set; } = "bubbles";
 
@@ -143,7 +140,6 @@ public static class SettingsResolver
             {
                 r.Theme = defaults.Ui.Theme ?? r.Theme;
                 r.Density = defaults.Ui.Density ?? r.Density;
-                r.ChatRenderMode = defaults.Ui.ChatRenderMode ?? r.ChatRenderMode;
                 r.ActiveProfileId = ResolveActiveProfileId(defaults.Ui) ?? r.ActiveProfileId;
                 if (defaults.Ui.ChatProfiles?.Count > 0) r.CustomProfiles = defaults.Ui.ChatProfiles;
             }
@@ -183,7 +179,6 @@ public static class SettingsResolver
             {
                 r.Theme = project.Ui.Theme ?? r.Theme;
                 r.Density = project.Ui.Density ?? r.Density;
-                r.ChatRenderMode = project.Ui.ChatRenderMode ?? r.ChatRenderMode;
                 r.ActiveProfileId = ResolveActiveProfileId(project.Ui) ?? r.ActiveProfileId;
                 if (project.Ui.ChatProfiles?.Count > 0) r.CustomProfiles = project.Ui.ChatProfiles;
             }

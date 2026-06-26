@@ -159,38 +159,6 @@
                                 Value="{Binding RepeatPenalty}" Width="100" Height="18" VerticalAlignment="Center" Margin="2,0" />
                     </StackPanel>
 
-                    <!-- Render mode selector: Native | Web -->
-                    <StackPanel Orientation="Horizontal" Spacing="2" VerticalAlignment="Center">
-                        <StackPanel.Styles>
-                            <Style Selector="Button.RenderModeBtn">
-                                <Setter Property="Padding" Value="8,3"/>
-                                <Setter Property="Background" Value="Transparent"/>
-                                <Setter Property="BorderThickness" Value="1"/>
-                                <Setter Property="BorderBrush" Value="{DynamicResource PanelBorderBrush}"/>
-                                <Setter Property="CornerRadius" Value="4"/>
-                                <Setter Property="Cursor" Value="Hand"/>
-                                <Setter Property="MinHeight" Value="22"/>
-                                <Setter Property="Foreground" Value="{DynamicResource SubTextForegroundBrush}"/>
-                                <Setter Property="FontSize" Value="{DynamicResource SmallFontSize}"/>
-                            </Style>
-                            <Style Selector="Button.RenderModeBtn.selected">
-                                <Setter Property="Background" Value="{DynamicResource AccentBrush}"/>
-                                <Setter Property="Foreground" Value="White"/>
-                                <Setter Property="BorderBrush" Value="{DynamicResource AccentBrush}"/>
-                            </Style>
-                        </StackPanel.Styles>
-                        <Button Classes="RenderModeBtn"
-                                Classes.selected="{Binding IsNativeChatViewSelected}"
-                                Content="Native"
-                                Command="{Binding SelectRenderModeCommand}"
-                                CommandParameter="native" />
-                        <Button Classes="RenderModeBtn"
-                                Classes.selected="{Binding IsWebChatViewSelected}"
-                                Content="Web"
-                                Command="{Binding SelectRenderModeCommand}"
-                                CommandParameter="web" />
-                    </StackPanel>
-
                     <!-- Display profile selector: data-driven from AvailableProfiles -->
                     <ItemsControl ItemsSource="{Binding AvailableProfiles}" VerticalAlignment="Center">
                         <ItemsControl.ItemsPanel>

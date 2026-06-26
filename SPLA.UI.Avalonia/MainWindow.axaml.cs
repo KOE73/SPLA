@@ -27,6 +27,7 @@ public partial class MainWindow : Window
         vm.KvDebugRequested += VmOnKvDebugRequested;
         vm.ContextDebugRequested += VmOnContextDebugRequested;
         vm.PromptDebugRequested += VmOnPromptDebugRequested;
+        vm.ThinClientRequested += VmOnThinClientRequested;
         vm.ActiveChatChanged += VmOnActiveChatChanged;
         DataContext = vm;
         App.Services.GetRequiredService<IActiveConversationAccessor>().CurrentInput = new MainWindowConversationInput(vm);
@@ -88,6 +89,9 @@ public partial class MainWindow : Window
     // TEMP: открыть debug-окно schema-editor (Фаза 1 live-проверка). Убрать после verify.
     private void OpenSchemaEditorDebug_Click(object? sender, RoutedEventArgs e)
         => new Views.SchemaEditorDebugWindow { } .Show(this);
+
+    private void VmOnThinClientRequested(object? sender, System.EventArgs e)
+        => new ThinClientWindow().Show(this);
 
     // ── Existing handlers ────────────────────────────────────────────────────
 

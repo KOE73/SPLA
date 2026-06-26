@@ -58,6 +58,16 @@ Console.WriteLine($"Workspace: {Directory.GetCurrentDirectory()}");
 Console.WriteLine($"Endpoint:  {settings.Endpoint}");
 Console.WriteLine($"Mode:      {settings.Mode}");
 
+// --- serve: run the WebSocket service, optionally with a parallel console REPL ---
+// Same agent stack as the interactive REPL below, but exposed over the network so any client
+// (Avalonia thin client, browser, phone) drives it. With --repl the console becomes just another
+// входной канал alongside the sockets, sharing one chat registry.
+if (args.Length > 0 && args[0].Equals("serve", StringComparison.OrdinalIgnoreCase))
+{
+    await RunServeAsync(args, settings, loggerFactory);
+    return;
+}
+
 // --- Init LLM + MCP ---
 using var httpClient = new HttpClient { Timeout = TimeSpan.FromMinutes(10) };
 var llmClient = new LMStudioClient(httpClient, loggerFactory.CreateLogger<LMStudioClient>());
@@ -362,3 +372,133 @@ static IReadOnlyList<(string scope, string key, string value)> CollectWorkingMem
     => session.List().Select(kv => (session.Scope, kv.Key, kv.Value))
         .Concat(project.List().Select(kv => (project.Scope, kv.Key, kv.Value)))
         .ToList();
+
+// ── serve command ────────────────────────────────────────────────────────────
+static async Task RunServeAsync(string[] args, ResolvedSettings settings, ILoggerFactory loggerFactory)
+{
+    // The CLI had no global exception net, so a fault on a background turn task killed the whole
+    // process silently (nothing reached the log). Install one: log + print, never let it vanish.
+    var crashLog = loggerFactory.CreateLogger("serve");
+    AppDomain.CurrentDomain.UnhandledException += (_, e) =>
+    {
+        var ex = e.ExceptionObject as Exception;
+        crashLog.LogCritical(ex, "Unhandled exception (terminating={Terminating})", e.IsTerminating);
+        Console.Error.WriteLine($"\n[FATAL] {ex}");
+    };
+    TaskScheduler.UnobservedTaskException += (_, e) =>
+    {
+        crashLog.LogError(e.Exception, "Unobserved task exception");
+        Console.Error.WriteLine($"\n[UNOBSERVED] {e.Exception}");
+        e.SetObserved();
+    };
+    AppDomain.CurrentDomain.ProcessExit += (_, _) =>
+        crashLog.LogInformation("serve process exiting.");
+
+    int port = 5050;
+    string bind = "127.0.0.1";
+    string? token = null;
+    bool repl = false;
+
+    for (int i = 1; i < args.Length; i++)
+    {
+        switch (args[i].ToLowerInvariant())
+        {
+            case "--repl": repl = true; break;
+            case "--port": if (i + 1 < args.Length && int.TryParse(args[++i], out var p)) port = p; break;
+            case "--bind": if (i + 1 < args.Length) bind = args[++i]; break;
+            case "--token": if (i + 1 < args.Length) token = args[++i]; break;
+        }
+    }
+
+    using var runtime = new SPLA.Service.AgentRuntime(settings, loggerFactory);
+    var chats = new SPLA.Service.ChatRegistry(runtime);
+    var options = new SPLA.Service.ServiceOptions { Port = port, Bind = bind, Token = token };
+    var host = SPLA.Service.SplaServiceHost.Build(runtime, options, chats);
+    await host.StartAsync();
+
+    var wsUrl = host.Url.Replace("http://", "ws://") + "/ws";
+    Console.WriteLine($"\nSPLA service listening on {host.Url}  (WebSocket: {wsUrl})");
+    if (token == null && !options.IsLoopback)
+        Console.WriteLine("WARNING: bound to a non-loopback address without --token — anyone who can reach this port controls the agent.");
+
+    var stop = new TaskCompletionSource();
+    Console.CancelKeyPress += (_, e) => { e.Cancel = true; stop.TrySetResult(); };
+
+    if (repl)
+    {
+        Console.WriteLine("Parallel console REPL active. Type a message, or 'exit' to stop the service.");
+        var explicitExit = await RunServeReplAsync(runtime, chats);
+        // Only an explicit 'exit' stops the service. A null/EOF stdin (e.g. piped, or focus lost)
+        // must NOT kill the host — the sockets keep serving; wait for Ctrl+C instead.
+        if (!explicitExit)
+        {
+            Console.WriteLine("Console input closed — service still running. Press Ctrl+C to stop.");
+            await stop.Task;
+        }
+    }
+    else
+    {
+        Console.WriteLine("Press Ctrl+C to stop.");
+        await stop.Task;
+    }
+
+    await host.StopAsync();
+}
+
+// A minimal console chat that drives a shared ChatRuntime — proves console + sockets share one agent.
+// Returns true only when the user explicitly typed 'exit'/'quit'; false on EOF (so the caller keeps
+// the service alive rather than tearing it down).
+static async Task<bool> RunServeReplAsync(SPLA.Service.AgentRuntime runtime, SPLA.Service.ChatRegistry chats)
+{
+    var chat = chats.CreateNew("Console");
+    Console.WriteLine($"[console chat: {chat.ChatId}]");
+
+    while (true)
+    {
+        Console.Write("\nYou: ");
+        var input = Console.ReadLine();
+        if (input == null) return false; // EOF — stdin closed, keep the service running
+        if (string.IsNullOrWhiteSpace(input)) continue;
+        if (input.Equals("exit", StringComparison.OrdinalIgnoreCase) || input.Equals("quit", StringComparison.OrdinalIgnoreCase)) return true;
+
+        var callbacks = new SPLA.Agent.AgentCallbacks
+        {
+            OnDelta = chunk => { Console.Write(chunk); return Task.CompletedTask; },
+            OnAssistantMessage = _ => { Console.WriteLine(); return Task.CompletedTask; },
+            OnToolCallStarted = tc => { Console.WriteLine($" -> Call: {tc.Function.Name}"); return Task.CompletedTask; },
+            OnToolResult = (_, result) => { Console.WriteLine($" -> Result ({result.Length} chars)"); return Task.CompletedTask; },
+            OnNotice = note => { Console.WriteLine($"\n{note}"); return Task.CompletedTask; }
+        };
+
+        Func<ToolFunctionDefinition, string, Task<PermissionDecision>> perm = (def, argsJson) =>
+        {
+            Console.Write($"\n[PERMISSION] {def.Name} {argsJson}\nAllow? (y/N): ");
+            var ans = Console.ReadLine();
+            return Task.FromResult(ans?.Trim().ToLower().StartsWith("y") == true
+                ? PermissionDecision.AllowOnce
+                : PermissionDecision.Deny);
+        };
+
+        Func<ClarifyRequest, Task<string?>> clarify = req =>
+        {
+            Console.WriteLine($"\n[?] {req.Question}");
+            for (int i = 0; i < req.Options.Count; i++)
+                Console.WriteLine($"  {i + 1}. {req.Options[i].Label}");
+            Console.Write("Choice: ");
+            var line = Console.ReadLine()?.Trim();
+            return Task.FromResult(int.TryParse(line, out var idx) && idx >= 1 && idx <= req.Options.Count
+                ? req.Options[idx - 1].Label
+                : null);
+        };
+
+        Console.Write("SPLA: ");
+        try
+        {
+            await chat.SendAsync(input, callbacks, perm, clarify, CancellationToken.None);
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"\n[Error]: {ex.Message}");
+        }
+    }
+}
