@@ -8,71 +8,14 @@
 <link rel="stylesheet" href="/app.css">
 </head>
 <body>
-<div id="app">
-  <aside id="sidebar">
-    <header>
-      <b>SPLA</b>
-      <button id="new" class="btn">+ New</button>
-    </header>
-    <div id="chats"></div>
-  </aside>
-
-  <section id="main">
-    <div id="status">
-      <span><span id="dot">●</span> <span id="conn">connecting…</span></span>
-      <span id="project"></span>
-      <label>mode <select id="modeSel" disabled></select></label>
-      <label>model <select id="connSel" disabled></select></label>
-      <label>theme <select id="themeSel">
-        <option value="dark">Dark</option>
-        <option value="emerald">Emerald</option>
-        <option value="cream">Cream</option>
-        <option value="light">Light</option>
-      </select></label>
-      <button id="debugBtn" class="filter">debug</button>
-      <span id="tokens"></span>
-    </div>
-
-    <!-- Per-type visibility toggles -->
-    <div id="filters">
-      <span>show:</span>
-      <button class="filter" data-kind="user">me</button>
-      <button class="filter" data-kind="assistant">assistant</button>
-      <button class="filter" data-kind="tool">tools</button>
-      <button class="filter" data-kind="reasoning">reasoning</button>
-    </div>
-
-    <div id="log"></div>
-
-    <div id="composer">
-      <div id="attachments"></div>
-      <div class="row">
-        <button id="attachBtn" class="icon-btn" title="Attach image">+</button>
-        <input id="fileInput" type="file" accept="image/*" multiple hidden>
-        <textarea id="input" rows="2" placeholder="Message…  (Enter to send, Shift+Enter for newline, paste images)" disabled></textarea>
-        <button id="send" class="btn" disabled>Send</button>
-        <button id="stop" class="btn danger" hidden>Stop</button>
-      </div>
-    </div>
-  </section>
-
-  <!-- Debug drawer: container is minimal on purpose; renderers fill #debugBody. Layout TBD by user. -->
-  <aside id="debug">
-    <header><b>Debug</b><button id="debugClose" class="filter">close</button></header>
-    <div class="tabs">
-      <button class="tab" data-kind="kv.session">session kv</button>
-      <button class="tab" data-kind="kv.project">project kv</button>
-      <button class="tab" data-kind="blobs">blobs</button>
-      <button class="tab" data-kind="context.last">context</button>
-      <button class="tab" data-kind="prompt">prompt</button>
-    </div>
-    <div id="debugBody"></div>
-  </aside>
-</div>
+<!-- The app is assembled from surfaces (surfaces.js) into a chosen layout (layouts.js) by app.js. -->
+<div id="root"></div>
 
 <script src="/lib/marked.min.js"></script>
 <script src="/lib/mermaid.min.js"></script>
 <script src="/renderers.js"></script>
+<script src="/surfaces.js"></script>
+<script src="/layouts.js"></script>
 <script src="/app.js"></script>
 </body>
 </html>

@@ -21,6 +21,11 @@ html, body { margin: 0; height: 100%; background: var(--bg); color: var(--text);
 button { font: inherit; cursor: pointer; }
 
 #app { display: grid; grid-template-columns: 240px 1fr; height: 100vh; }
+/* Layout variants (the placement axis — see layouts.js). */
+#app.focus { grid-template-columns: 1fr; }
+#app.single { display: block; }
+#app.single #solo { height: 100vh; overflow: auto; }
+.surface-missing { color: var(--muted); font-size: var(--fs-sm); padding: 12px; }
 
 /* ── Sidebar ──────────────────────────────────────────────────────────────── */
 #sidebar { background: var(--panel); border-right: 1px solid var(--border);
