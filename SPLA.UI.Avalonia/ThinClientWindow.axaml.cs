@@ -35,11 +35,13 @@ public partial class ThinClientWindow : Window
     {
         try
         {
-            // Run the embedded service in the current project's workspace so it resolves the same
-            // .spla settings/connections/chats as the native app.
+            // Universal target: if SPLA_SERVICE_URL is set, connect to that (possibly remote) service;
+            // otherwise spin up a local child service in the current project's workspace so it resolves
+            // the same .spla settings/connections/chats as the native app.
+            var remote = Environment.GetEnvironmentVariable("SPLA_SERVICE_URL");
             var workspace = App.ResolvedSettings.WorkspacePath;
-            _url = await _launcher.StartAsync(workspace);
-            StatusText.Text = "— " + _url;
+            _url = await _launcher.StartAsync(remote, workspace);
+            StatusText.Text = (string.IsNullOrWhiteSpace(remote) ? "— local " : "— remote ") + _url;
             Browser.Navigate(new Uri(_url));
         }
         catch (Exception ex)

@@ -26,9 +26,23 @@ public sealed class EmbeddedServiceLauncher : IDisposable
 
     public string? Url { get; private set; }
 
-    /// <summary>Starts the child service on a free loopback port and waits until it answers /health.</summary>
-    public async Task<string> StartAsync(string? workingDirectory = null, CancellationToken ct = default)
+    /// <summary>
+    /// Resolves a service to talk to and returns its base URL. Universal local-or-remote:
+    /// when <paramref name="remoteUrl"/> is given, connects to that existing (possibly remote) service
+    /// after verifying it is healthy — no child process is spawned. Otherwise starts a local child
+    /// <c>SPLA.CLI serve</c> on a free loopback port. Either way the client then talks the same
+    /// WebSocket protocol against the returned URL.
+    /// </summary>
+    public async Task<string> StartAsync(string? remoteUrl = null, string? workingDirectory = null, CancellationToken ct = default)
     {
+        if (!string.IsNullOrWhiteSpace(remoteUrl))
+        {
+            var url = remoteUrl.TrimEnd('/');
+            await WaitForHealthAsync(url, ct);
+            Url = url;
+            return url;
+        }
+
         var port = FreeLoopbackPort();
         var (exe, args) = ResolveCliInvocation(port);
 
