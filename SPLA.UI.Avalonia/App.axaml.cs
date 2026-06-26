@@ -153,6 +153,30 @@ public partial class App : Application
         ResolvedSettings = ConfigLoader.LoadAndResolve(ProjectFilePath);
     }
 
+    // ── Embedded service (one agent, many windows) ───────────────────────────
+    // The whole desktop app is a shell over a single SPLA service: every window (main + tear-off
+    // surface windows) is a NativeWebView talking the same WebSocket to ONE agent. Started once,
+    // lazily, on the project's workspace (or SPLA_SERVICE_URL for a remote agent). No in-process
+    // agent stack — the service owns chats, tools, plugins, secrets.
+    private static EmbeddedServiceLauncher? _serviceLauncher;
+    private static Task<string>? _serviceUrlTask;
+
+    /// <summary>Starts the embedded/remote service once and returns its base URL; subsequent calls
+    /// reuse the same running service. All windows navigate WebViews against this URL.</summary>
+    public static Task<string> ServiceUrlAsync()
+        => _serviceUrlTask ??= StartServiceAsync();
+
+    private static async Task<string> StartServiceAsync()
+    {
+        _serviceLauncher = new EmbeddedServiceLauncher();
+        var remote = Environment.GetEnvironmentVariable("SPLA_SERVICE_URL");
+        return await _serviceLauncher.StartAsync(remote, ResolvedSettings.WorkspacePath);
+    }
+
+    /// <summary>Stops the local child service (no-op for a remote target). Called when the main
+    /// window closes.</summary>
+    public static void ShutdownService() => _serviceLauncher?.Dispose();
+
     public static void ChangeDensity(string densityName)
     {
         var app = Current;

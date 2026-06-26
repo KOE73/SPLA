@@ -263,6 +263,8 @@
   // ── Debug drawer (slot = #debug; CSS targets #debug.open) ────────────────────
   Spla.registerSurface("debug", c => {
     const slot = c.slot;
+    slot.classList.add("debug-surface");                 // inner styling is layout-independent
+    const solo = slot.id !== "debug";                    // mounted alone (e.g. a tear-off window)?
     slot.innerHTML = `
       <header><b>Debug</b><button id="debugClose" class="filter">close</button></header>
       <div class="tabs">
@@ -282,6 +284,13 @@
     slot.querySelectorAll(".tab").forEach(tab => tab.onclick = () => request(tab.dataset.kind));
 
     c.sub("debug.open", () => { slot.classList.add("open"); request("kv.session"); });
+    if (solo) {
+      // Standalone window: no drawer chrome, no debug button — show immediately and auto-load once
+      // the socket is up (welcome). Re-request on chat switch so context-bound tabs stay live.
+      $("#debugClose", slot).style.display = "none";
+      c.sub("welcome", () => request("kv.session"));
+      c.sub("chat.current", () => request(slot.querySelector(".tab.on")?.dataset.kind || "kv.session"));
+    }
     c.sub("debug.snapshot", p => {
       body.innerHTML = "";
       if (p.entries) {
@@ -305,6 +314,10 @@
   const params = new URLSearchParams(location.search);
 
   function boot() {
+    // Theme is global, not owned by any one surface — apply it before any layout so single-surface
+    // windows (which have no status bar) are still themed.
+    document.documentElement.setAttribute("data-theme", LS.getItem("spla.theme") || "dark");
+
     const solo = params.get("surface");
     if (solo) {
       Spla.layoutDefs.single.placement = { solo };

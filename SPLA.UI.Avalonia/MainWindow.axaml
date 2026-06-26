@@ -2,146 +2,50 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-        xmlns:vm="using:SPLA.UI.Avalonia.ViewModels"
-        xmlns:chat="clr-namespace:SPLA.UI.Avalonia.Views.Chat"
-        xmlns:plugins="clr-namespace:SPLA.UI.Avalonia.Views.Plugins"
-        xmlns:status="clr-namespace:SPLA.UI.Avalonia.Views.Status"
-        xmlns:sidebar="clr-namespace:SPLA.UI.Avalonia.Views.Sidebar"
+        xmlns:web="clr-namespace:Avalonia.Controls;assembly=Avalonia.Controls.WebView"
         mc:Ignorable="d" d:DesignWidth="1000" d:DesignHeight="600"
         x:Class="SPLA.UI.Avalonia.MainWindow"
         x:Name="RootWindow"
-        x:DataType="vm:MainWindowViewModel"
         Title="SPLA - Local AI Assistant"
         Icon="avares://SPLA.UI.Avalonia/Assets/spla_icon.png"
+        Width="1200" Height="820" MinWidth="640" MinHeight="420"
         WindowDecorations="BorderOnly"
         ExtendClientAreaToDecorationsHint="True"
         Background="{DynamicResource AppBackgroundBrush}">
 
-    <Window.Styles>
-        <!-- Sidebar toggle accent override (base caption styles are in App.axaml) -->
-        <Style Selector="Button.caption.sidebar:pointerover /template/ ContentPresenter#PART_ContentPresenter">
-            <Setter Property="Background" Value="#30007ACC"/>
-        </Style>
-        <Style Selector="Button.caption.sidebar:pointerover">
-            <Setter Property="Foreground" Value="{DynamicResource AccentBrush}"/>
-        </Style>
-    </Window.Styles>
+    <!-- The window is a pure shell: Avalonia owns only the OS frame; the entire content is the web
+         client (one renderer) over the shared embedded service. Debug/other panels open as separate
+         SurfaceWindow frames (tear-off), each hosting a single web surface. -->
+    <Grid RowDefinitions="30,*">
 
-    <Grid RowDefinitions="30,*" ColumnDefinitions="300,*,5,240" x:Name="RootGrid">
-
-        <!-- ── Custom Title Bar ── -->
-        <DockPanel Grid.Row="0" Grid.ColumnSpan="4"
-                   Background="{DynamicResource TitleBarBackgroundBrush}">
-
-            <!-- App name (left, non-interactive so drag works through it) -->
-            <StackPanel DockPanel.Dock="Left"
-                        Orientation="Horizontal"
-                        VerticalAlignment="Center"
-                        Margin="12,0,0,0"
-                        IsHitTestVisible="False">
-                <TextBlock Text="SPLA"
-                           FontSize="12" FontWeight="SemiBold"
-                           Foreground="{DynamicResource SubTextForegroundBrush}"
-                           VerticalAlignment="Center"/>
-                <TextBlock Text="—"
-                           FontSize="12"
-                           Margin="8,0"
-                           Foreground="{DynamicResource SubTextForegroundBrush}"
-                           VerticalAlignment="Center"/>
-                <TextBlock Text="{Binding ProjectFilePath}"
-                           FontSize="12"
-                           Foreground="{DynamicResource SubTextForegroundBrush}"
-                           VerticalAlignment="Center"/>
+        <!-- ── Custom title bar (the only native chrome) ── -->
+        <DockPanel Grid.Row="0" Background="{DynamicResource TitleBarBackgroundBrush}">
+            <StackPanel DockPanel.Dock="Left" Orientation="Horizontal"
+                        VerticalAlignment="Center" Margin="12,0,0,0" IsHitTestVisible="False">
+                <TextBlock Text="SPLA" FontSize="12" FontWeight="SemiBold"
+                           Foreground="{DynamicResource SubTextForegroundBrush}" VerticalAlignment="Center"/>
+                <TextBlock Text="—" FontSize="12" Margin="8,0"
+                           Foreground="{DynamicResource SubTextForegroundBrush}" VerticalAlignment="Center"/>
+                <TextBlock x:Name="TitleText" FontSize="12"
+                           Foreground="{DynamicResource SubTextForegroundBrush}" VerticalAlignment="Center"/>
             </StackPanel>
 
-            <!-- Window controls (right) -->
             <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
-                <!-- Agent memory debug -->
-                <Button Classes="caption"
-                        Content="🧠"
-                        Command="{Binding OpenKvDebugCommand}"
-                        ToolTip.Tip="Agent Memory (KV Debug)"/>
-                <!-- Real context debug -->
-                <Button Classes="caption"
-                        Content="📋"
-                        Command="{Binding OpenContextDebugCommand}"
-                        ToolTip.Tip="Real Context (last request)"/>
-                <!-- System prompt preview -->
-                <Button Classes="caption"
-                        Content="📝"
-                        Command="{Binding OpenPromptDebugCommand}"
-                        ToolTip.Tip="System Prompt (live preview by source)"/>
-                <!-- TEMP: schema-editor live debug (Фаза 1). Убрать после verify. -->
-                <Button Classes="caption"
-                        Content="🧩"
-                        Click="OpenSchemaEditorDebug_Click"
-                        ToolTip.Tip="Workspace Shell (live debug)"/>
-                <!-- Stage A: swap this window's content for the web client in-place (toggle). -->
-                <Button Classes="caption"
-                        Content="🪟"
-                        x:Name="WebOverlayButton"
-                        Click="ToggleWebOverlay_Click"
-                        ToolTip.Tip="Web UI in this window (Stage A preview) — toggle native ⇄ web"/>
-                <!-- Thin client: web UI over an embedded service, separate window (preview). -->
-                <Button Classes="caption"
-                        Content="🌐"
-                        Command="{Binding OpenThinClientCommand}"
-                        ToolTip.Tip="Thin Client — web UI over embedded service (separate window)"/>
-                <!-- Sidebar toggle -->
-                <Button Classes="caption sidebar"
-                        Content="◧"
-                        Command="{Binding ToggleSidebarCommand}"
-                        ToolTip.Tip="Plugins &amp; Skills"/>
-                <!-- Minimize -->
-                <Button Classes="caption"
-                        Content="─"
-                        Click="MinimizeButton_Click"
-                        ToolTip.Tip="Minimize"/>
-                <!-- Maximize / Restore -->
-                <Button Classes="caption"
-                        Content="□"
-                        Click="MaximizeButton_Click"
-                        x:Name="MaximizeButton"
-                        ToolTip.Tip="Maximize"/>
-                <!-- Close -->
-                <Button Classes="caption close"
-                        Content="✕"
-                        Click="CloseButton_Click"
-                        ToolTip.Tip="Close"/>
+                <!-- Debug as a tear-off web surface window -->
+                <Button Classes="caption" Content="🧠" Click="OpenDebugSurface_Click"
+                        ToolTip.Tip="Debug (memory / context / prompt) — opens as a separate window"/>
+                <!-- Reload the web client -->
+                <Button Classes="caption" Content="⟳" Click="Reload_Click" ToolTip.Tip="Reload web client"/>
+                <Button Classes="caption" Content="─" Click="MinimizeButton_Click" ToolTip.Tip="Minimize"/>
+                <Button Classes="caption" Content="□" Click="MaximizeButton_Click"
+                        x:Name="MaximizeButton" ToolTip.Tip="Maximize"/>
+                <Button Classes="caption close" Content="✕" Click="CloseButton_Click" ToolTip.Tip="Close"/>
             </StackPanel>
 
-            <!-- Drag area (fills center, passes through to window drag) -->
-            <Border Background="Transparent"
-                    PointerPressed="TitleBar_PointerPressed"/>
+            <Border Background="Transparent" PointerPressed="TitleBar_PointerPressed"/>
         </DockPanel>
 
-        <!-- ── Navigation Panel (left) ── -->
-        <Grid Grid.Row="1" Grid.Column="0" RowDefinitions="*,Auto,Auto">
-            <chat:ChatListView Grid.Row="0" DataContext="{Binding}" />
-            <plugins:PluginCommandsView Grid.Row="1" DataContext="{Binding}" />
-            <status:StatusView Grid.Row="2" DataContext="{Binding ActiveChat.Status}" SettingsRequested="StatusControl_SettingsRequested" />
-        </Grid>
-
-        <!-- ── Chat Area (active chat; background chats keep running unseen) ── -->
-        <chat:ChatView Grid.Row="1" Grid.Column="1" DataContext="{Binding ActiveChat}" />
-
-        <!-- ── Sidebar splitter (col 2) ── -->
-        <GridSplitter Grid.Row="1" Grid.Column="2"
-                      HorizontalAlignment="Stretch"
-                      VerticalAlignment="Stretch"
-                      Background="{DynamicResource PanelBorderBrush}"
-                      ResizeBehavior="PreviousAndNext"/>
-
-        <!-- ── Right Sidebar (col 3) ── -->
-        <sidebar:SidebarPanelView Grid.Row="1" Grid.Column="3"
-                                   DataContext="{Binding Sidebar}"/>
-
-        <!-- ── Stage A web overlay: covers the whole content row when toggled on. The NativeWebView
-                is created in code-behind on first activation (over the universal embedded/remote
-                service). Non-destructive: the native views above stay in the tree, hidden behind it. -->
-        <Border Grid.Row="1" Grid.Column="0" Grid.ColumnSpan="4"
-                x:Name="WebOverlay" IsVisible="False"
-                Background="{DynamicResource AppBackgroundBrush}"/>
-
+        <!-- ── The whole UI: web client ── -->
+        <web:NativeWebView x:Name="Browser" Grid.Row="1"/>
     </Grid>
 </Window>

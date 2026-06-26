@@ -155,17 +155,22 @@ body.hide-reasoning .reasoning { display: none; }
   border-radius: var(--radius-sm); width: 38px; height: 38px; font-size: 18px; }
 .icon-btn:hover { color: var(--accent); border-color: var(--accent); }
 
-/* ── Debug drawer (renderers separate from container; container minimal here) ─ */
+/* ── Debug surface ────────────────────────────────────────────────────────────
+   Placement vs content are separated: #debug is ONLY the slide-in drawer frame used by the default
+   layout; the actual debug content is styled by .debug-surface, so the same surface renders cleanly
+   whether it's the drawer here or fills a standalone tear-off window (single layout). */
 #debug { position: fixed; right: 0; top: 0; bottom: 0; width: 420px; max-width: 90vw;
-  background: var(--panel); border-left: 1px solid var(--border); transform: translateX(100%);
-  transition: transform .18s ease; display: flex; flex-direction: column; z-index: 20; }
+  transform: translateX(100%); transition: transform .18s ease; z-index: 20; }
 #debug.open { transform: translateX(0); }
-#debug header { display: flex; gap: 8px; align-items: center; padding: 10px 12px; border-bottom: 1px solid var(--border); }
-#debug header b { flex: 1; }
-#debug .tabs { display: flex; gap: 6px; padding: 8px 12px; border-bottom: 1px solid var(--border); }
-#debug .tab { background: transparent; border: 1px solid var(--border); color: var(--muted);
+
+.debug-surface { background: var(--panel); border-left: 1px solid var(--border);
+  display: flex; flex-direction: column; height: 100%; min-height: 0; }
+.debug-surface header { display: flex; gap: 8px; align-items: center; padding: 10px 12px; border-bottom: 1px solid var(--border); }
+.debug-surface header b { flex: 1; }
+.debug-surface .tabs { display: flex; gap: 6px; padding: 8px 12px; border-bottom: 1px solid var(--border); flex-wrap: wrap; }
+.debug-surface .tab { background: transparent; border: 1px solid var(--border); color: var(--muted);
   border-radius: 999px; padding: 3px 10px; font-size: var(--fs-xs); }
-#debug .tab.on { background: var(--accent-soft); color: var(--accent); border-color: var(--accent); }
+.debug-surface .tab.on { background: var(--accent-soft); color: var(--accent); border-color: var(--accent); }
 #debugBody { flex: 1; overflow: auto; padding: 12px; font-family: var(--mono); font-size: var(--fs-sm); }
 .kv-row { display: flex; gap: 8px; padding: 3px 0; border-bottom: 1px solid color-mix(in srgb, var(--border) 50%, transparent); }
 .kv-row .k { color: var(--accent); min-width: 140px; max-width: 200px; overflow: hidden; text-overflow: ellipsis; }
