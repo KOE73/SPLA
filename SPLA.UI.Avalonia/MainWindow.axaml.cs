@@ -93,6 +93,58 @@ public partial class MainWindow : Window
     private void VmOnThinClientRequested(object? sender, System.EventArgs e)
         => new ThinClientWindow().Show(this);
 
+    // ── Stage A: in-window web overlay ───────────────────────────────────────
+    // Toggles this window's content between the native views and the web client (the same web UI a
+    // browser loads), hosted in a NativeWebView over the universal embedded/remote service. Built
+    // additively so we can confirm parity before retiring any native render. The child service is
+    // started once on first activation and lives until the window closes.
+    private EmbeddedServiceLauncher? _webLauncher;
+    private global::Avalonia.Controls.NativeWebView? _webView;
+    private bool _webStarting;
+
+    private async void ToggleWebOverlay_Click(object? sender, RoutedEventArgs e)
+    {
+        if (WebOverlay.IsVisible)
+        {
+            WebOverlay.IsVisible = false;
+            if (WebOverlayButton != null) WebOverlayButton.Content = "🪟";
+            return;
+        }
+
+        WebOverlay.IsVisible = true;
+        if (WebOverlayButton != null) WebOverlayButton.Content = "🖥";
+
+        if (_webView != null || _webStarting) return; // already started — just reshown
+        _webStarting = true;
+        try
+        {
+            _webLauncher = new EmbeddedServiceLauncher();
+            // Universal target: SPLA_SERVICE_URL → remote, else a local child service in this project's
+            // workspace (same .spla settings/connections/chats as the native shell).
+            var remote = System.Environment.GetEnvironmentVariable("SPLA_SERVICE_URL");
+            var url = await _webLauncher.StartAsync(remote, App.ResolvedSettings.WorkspacePath);
+            _webView = new global::Avalonia.Controls.NativeWebView();
+            WebOverlay.Child = _webView;
+            _webView.Navigate(new System.Uri(url));
+        }
+        catch (System.Exception ex)
+        {
+            WebOverlay.Child = new TextBlock
+            {
+                Text = "Web UI failed to start: " + ex.Message,
+                Margin = new global::Avalonia.Thickness(16),
+                TextWrapping = global::Avalonia.Media.TextWrapping.Wrap
+            };
+        }
+        finally { _webStarting = false; }
+    }
+
+    protected override void OnClosed(System.EventArgs e)
+    {
+        _webLauncher?.Dispose();
+        base.OnClosed(e);
+    }
+
     // ── Existing handlers ────────────────────────────────────────────────────
 
     private void MainWindow_Loaded(object? sender, global::Avalonia.Interactivity.RoutedEventArgs e)

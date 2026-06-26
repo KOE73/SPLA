@@ -5,6 +5,8 @@
     <File Path="README_RU.md" />
   </Folder>
   <Folder Name="/docs/">
+    <File Path="docs/Doctrine.ru.md" />
+    <File Path="docs/Doctrine.en.md" />
     <File Path="docs/TODO.md" />
     <File Path="docs/TODO_SQLITE_VULN.md" />
     <File Path="docs/readme_security.md" />

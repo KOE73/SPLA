@@ -1,5 +1,32 @@
 # SPLA Agents Configuration
 
+## Doctrine (read first — the frame every change must fit)
+
+SPLA is **not a chat client for a model. It is an environment where an agent lives on a project
+and acts within it through its own tools.** The bet, inverted from frontier agents: **move the
+intelligence out of the model and into the tool.** A small local model should win not by being
+smarter, but by acting as a **dispatcher** over narrow, typed, deterministic tools that each
+collapse a long reasoning chain into one call. Such a tool stays valuable when a large model
+later arrives — it becomes an accelerator and a determinism/safety layer instead of a crutch.
+
+Guardrails for any work here:
+
+- **Build only what frontier clients structurally cannot have.** Anything commodity already does
+  well (chat chrome, themes, markdown) — borrow or ignore, don't reinvent.
+- **The moat is curation + tool interface design, not tool count.** A junk drawer of 50 mediocre
+  tools hurts a small model more than 8 sharp ones. Narrow the interface so a weak model *cannot*
+  misuse it; digest the output so it doesn't blow the context; route bulk data by handle, not
+  through the model's window.
+- **The window is just a window.** Authority, permissions, secrets, and memory belong to the
+  agent on the project, never to a client/UI.
+- **Judge every new tool by:** *which reasoning chain does it extract from the model, and will it
+  still pay off on a large model?* If neither — it's probably a junk-drawer feature, not a tool.
+
+Full text: [`docs/Doctrine.en.md`](docs/Doctrine.en.md) · [`docs/Doctrine.ru.md`](docs/Doctrine.ru.md).
+If a change doesn't advance this doctrine, question whether it should be built.
+
+---
+
 For comprehensive details on agent permission models, tool matrices, autonomy configurations, and documentation layout, refer to the agent documentation:
 
 - **[Agent Security & Permission Modes](agents/security.md)**: Describes the 5 operational modes (`Chat`, `Research`, `Inspect`, `Edit`, `Agent`), allowed actions, and execution risks.

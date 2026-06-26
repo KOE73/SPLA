@@ -76,11 +76,17 @@
                         Content="🧩"
                         Click="OpenSchemaEditorDebug_Click"
                         ToolTip.Tip="Workspace Shell (live debug)"/>
-                <!-- Thin client: web UI over an embedded service (preview). -->
+                <!-- Stage A: swap this window's content for the web client in-place (toggle). -->
+                <Button Classes="caption"
+                        Content="🪟"
+                        x:Name="WebOverlayButton"
+                        Click="ToggleWebOverlay_Click"
+                        ToolTip.Tip="Web UI in this window (Stage A preview) — toggle native ⇄ web"/>
+                <!-- Thin client: web UI over an embedded service, separate window (preview). -->
                 <Button Classes="caption"
                         Content="🌐"
                         Command="{Binding OpenThinClientCommand}"
-                        ToolTip.Tip="Thin Client — web UI over embedded service (preview)"/>
+                        ToolTip.Tip="Thin Client — web UI over embedded service (separate window)"/>
                 <!-- Sidebar toggle -->
                 <Button Classes="caption sidebar"
                         Content="◧"
@@ -129,6 +135,13 @@
         <!-- ── Right Sidebar (col 3) ── -->
         <sidebar:SidebarPanelView Grid.Row="1" Grid.Column="3"
                                    DataContext="{Binding Sidebar}"/>
+
+        <!-- ── Stage A web overlay: covers the whole content row when toggled on. The NativeWebView
+                is created in code-behind on first activation (over the universal embedded/remote
+                service). Non-destructive: the native views above stay in the tree, hidden behind it. -->
+        <Border Grid.Row="1" Grid.Column="0" Grid.ColumnSpan="4"
+                x:Name="WebOverlay" IsVisible="False"
+                Background="{DynamicResource AppBackgroundBrush}"/>
 
     </Grid>
 </Window>
