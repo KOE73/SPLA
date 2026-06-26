@@ -81,6 +81,10 @@ public static class MessageTypes
     public const string ConnectionsGet = "connections.get";
     /// <summary>Replace the connection list (persisted to the .spla project when there is one).</summary>
     public const string ConnectionsSave = "connections.save";
+    /// <summary>Ask for the editable agent settings (default mode + permission overrides).</summary>
+    public const string AgentGet = "agent.get";
+    /// <summary>Save agent settings (persisted to the .spla project when there is one).</summary>
+    public const string AgentSave = "agent.save";
 
     // ── Server → Client ──────────────────────────────────────────────────
     public const string Welcome = "welcome";
@@ -104,6 +108,8 @@ public static class MessageTypes
     /// <summary>The current connection list — answer to <see cref="ConnectionsGet"/> and broadcast to all
     /// after <see cref="ConnectionsSave"/> so every window's pickers refresh.</summary>
     public const string ConnectionsResult = "connections.result";
+    /// <summary>The current agent settings — answer to <see cref="AgentGet"/> and broadcast after <see cref="AgentSave"/>.</summary>
+    public const string AgentResult = "agent.result";
     public const string Error = "error";
 }
 

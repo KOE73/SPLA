@@ -238,6 +238,18 @@ public sealed class ClientConnection
                 break;
             }
 
+            case MessageTypes.AgentGet:
+                await SendAsync(MessageTypes.AgentResult, SettingsOps.GetAgent(_runtime));
+                break;
+
+            case MessageTypes.AgentSave:
+            {
+                var p = Payload<AgentSettingsPayload>(env);
+                if (p != null)
+                    await _hub.BroadcastAsync(MessageTypes.AgentResult, SettingsOps.SaveAgent(_runtime, p));
+                break;
+            }
+
             case MessageTypes.DebugRequest:
             {
                 var p = Payload<DebugRequestPayload>(env);

@@ -148,6 +148,22 @@ public sealed class ConnectionsPayload
     public bool CanPersist { get; set; }
 }
 
+/// <summary>Editable agent settings: the default mode for new chats and the four permission-effect
+/// overrides. <see cref="AgentGet"/> answer / <see cref="AgentSave"/> body / broadcast result.
+/// Permission values: "allow" | "ask" | "deny"; null/empty = use the mode's default.</summary>
+public sealed class AgentSettingsPayload
+{
+    public string Mode { get; set; } = string.Empty;
+    /// <summary>Available modes (server-provided, for the picker). Ignored on save.</summary>
+    public List<string> Modes { get; set; } = new();
+    public string? PermRead { get; set; }
+    public string? PermWrite { get; set; }
+    public string? PermShell { get; set; }
+    public string? PermInternet { get; set; }
+    /// <summary>False when there is no .spla project to persist into (server-set; ignored on save).</summary>
+    public bool CanPersist { get; set; }
+}
+
 /// <summary>Asks the server for a debug snapshot. <see cref="Kind"/> selects which inspector view.</summary>
 public sealed class DebugRequestPayload
 {

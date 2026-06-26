@@ -1,3 +1,4 @@
+using SPLA.Domain.Models;
 using SPLA.Domain.Settings;
 using SPLA.Service.Contracts;
 
@@ -54,6 +55,46 @@ public static class SettingsOps
         runtime.Settings.Connections.AddRange(sections);
 
         return GetConnections(runtime);
+    }
+
+    // ── Agent settings: default mode + permission overrides ──────────────────
+
+    public static AgentSettingsPayload GetAgent(AgentRuntime runtime) => new()
+    {
+        CanPersist = runtime.Settings.ProjectFilePath != null,
+        Mode = runtime.Settings.Mode.ToString(),
+        Modes = Enum.GetNames<AgentMode>().ToList(),
+        PermRead = runtime.Settings.PermRead,
+        PermWrite = runtime.Settings.PermWrite,
+        PermShell = runtime.Settings.PermShell,
+        PermInternet = runtime.Settings.PermInternet
+    };
+
+    /// <summary>Persists agent mode + permission overrides to the .spla project (when present) and
+    /// updates the live settings. Note: the system prompt is built once at startup, so a default-mode
+    /// change takes effect for new chats/turns, not retroactively — per-chat mode still governs each chat.</summary>
+    public static AgentSettingsPayload SaveAgent(AgentRuntime runtime, AgentSettingsPayload dto)
+    {
+        var read = Blank(dto.PermRead); var write = Blank(dto.PermWrite);
+        var shell = Blank(dto.PermShell); var net = Blank(dto.PermInternet);
+
+        var path = runtime.Settings.ProjectFilePath;
+        if (path != null)
+        {
+            var project = ConfigLoader.LoadProjectRaw(path);
+            (project.Agent ??= new SplaAgentSection()).Mode = Blank(dto.Mode);
+            var anyPerm = read != null || write != null || shell != null || net != null;
+            project.Permissions = anyPerm
+                ? new SplaPermissionsSection { Read = read, Write = write, Shell = shell, Internet = net }
+                : null;
+            ConfigLoader.SaveProject(project, path);
+        }
+
+        if (Enum.TryParse<AgentMode>(dto.Mode, true, out var mode)) runtime.Settings.Mode = mode;
+        runtime.Settings.PermRead = read; runtime.Settings.PermWrite = write;
+        runtime.Settings.PermShell = shell; runtime.Settings.PermInternet = net;
+
+        return GetAgent(runtime);
     }
 
     private static SplaConnectionSection ToSection(ConnectionEditDto d)

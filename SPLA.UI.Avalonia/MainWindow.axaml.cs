@@ -47,6 +47,9 @@ public partial class MainWindow : Window
     private void OpenConnectionsSurface_Click(object? sender, RoutedEventArgs e)
         => new SurfaceWindow("connections", "Connections").Show(this);
 
+    private void OpenAgentSurface_Click(object? sender, RoutedEventArgs e)
+        => new SurfaceWindow("agent", "Agent").Show(this);
+
     private void Reload_Click(object? sender, RoutedEventArgs e)
     {
         if (_url != null) Browser.Navigate(new Uri(_url));

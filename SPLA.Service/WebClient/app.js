@@ -384,6 +384,51 @@
     return { el: null };
   });
 
+  // ── Agent settings editor (default mode + permission overrides) ─────────────
+  Spla.registerSurface("agent", c => {
+    const slot = c.slot;
+    slot.classList.add("settings-surface");
+    const PERMS = [["permRead", "Read files"], ["permWrite", "Write files"], ["permShell", "Run commands"], ["permInternet", "Internet"]];
+    slot.innerHTML = `
+      <header><b>Agent</b><span class="hint"></span></header>
+      <div class="list">
+        <div class="conn-card">
+          <label class="field"><span>Default mode</span><select class="modeSel"></select></label>
+        </div>
+        <div class="conn-card">
+          <div class="conn-head"><span class="id">Permissions</span></div>
+          ${PERMS.map(([k, l]) => `<label class="field"><span>${l}</span><select data-perm="${k}">
+            <option value="">(mode default)</option><option value="allow">allow</option>
+            <option value="ask">ask</option><option value="deny">deny</option></select></label>`).join("")}
+        </div>
+      </div>
+      <div class="bar"><span class="grow"></span><button class="btn save">Save</button></div>`;
+    const modeSel = $(".modeSel", slot), hintEl = $(".hint", slot);
+
+    c.sub("agent.result", p => {
+      modeSel.innerHTML = "";
+      for (const m of (p.modes || [])) { const o = document.createElement("option"); o.value = o.textContent = m; modeSel.appendChild(o); }
+      modeSel.value = p.mode || "";
+      const set = (k, v) => { const el = slot.querySelector(`[data-perm="${k}"]`); if (el) el.value = v || ""; };
+      set("permRead", p.permRead); set("permWrite", p.permWrite); set("permShell", p.permShell); set("permInternet", p.permInternet);
+      hintEl.textContent = p.canPersist ? "" : "no .spla project — edits are session-only";
+    });
+    $(".save", slot).onclick = () => {
+      c.send("agent.save", {
+        mode: modeSel.value,
+        permRead: slot.querySelector('[data-perm="permRead"]').value,
+        permWrite: slot.querySelector('[data-perm="permWrite"]').value,
+        permShell: slot.querySelector('[data-perm="permShell"]').value,
+        permInternet: slot.querySelector('[data-perm="permInternet"]').value
+      });
+      $(".save", slot).textContent = "Saved ✓";
+      setTimeout(() => { const b = $(".save", slot); if (b) b.textContent = "Save"; }, 1200);
+    };
+    c.sub("welcome", () => c.send("agent.get"));
+    c.send("agent.get");
+    return { el: null };
+  });
+
   // ╔═══════════════════════════════════════════════════════════════════════════╗
   // ║ Boot                                                                        ║
   // ╚═══════════════════════════════════════════════════════════════════════════╝
