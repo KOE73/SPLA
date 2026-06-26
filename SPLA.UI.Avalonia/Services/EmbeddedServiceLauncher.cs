@@ -37,10 +37,10 @@ public sealed class EmbeddedServiceLauncher : IDisposable
     {
         if (!string.IsNullOrWhiteSpace(remoteUrl))
         {
-            var url = remoteUrl.TrimEnd('/');
-            await WaitForHealthAsync(url, ct);
-            Url = url;
-            return url;
+            var normalized = remoteUrl.TrimEnd('/');
+            await WaitForHealthAsync(normalized, ct);
+            Url = normalized;
+            return normalized;
         }
 
         var port = FreeLoopbackPort();
