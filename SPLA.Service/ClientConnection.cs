@@ -225,6 +225,19 @@ public sealed class ClientConnection
                 break;
             }
 
+            case MessageTypes.ConnectionsGet:
+                await SendAsync(MessageTypes.ConnectionsResult, SettingsOps.GetConnections(_runtime));
+                break;
+
+            case MessageTypes.ConnectionsSave:
+            {
+                var p = Payload<ConnectionsPayload>(env);
+                var result = SettingsOps.SaveConnections(_runtime, p?.Connections ?? new());
+                // Everyone refreshes pickers/editors against the new list.
+                await _hub.BroadcastAsync(MessageTypes.ConnectionsResult, result);
+                break;
+            }
+
             case MessageTypes.DebugRequest:
             {
                 var p = Payload<DebugRequestPayload>(env);

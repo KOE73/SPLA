@@ -78,7 +78,8 @@ public class SplaConnectionSection
     [YamlMember(Alias = "model")]
     public string? Model { get; set; }
 
-    /// <summary>Display label for the picker — falls back to the model or id.</summary>
+    /// <summary>Display label for the picker — falls back to the model or id. Computed, never persisted.</summary>
+    [YamlIgnore]
     public string DisplayName => !string.IsNullOrWhiteSpace(Name) ? Name!
         : !string.IsNullOrWhiteSpace(Model) ? Model!
         : Id;

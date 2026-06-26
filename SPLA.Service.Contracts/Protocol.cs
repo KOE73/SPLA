@@ -76,6 +76,12 @@ public static class MessageTypes
     public const string ClarifyChoice = "clarify.choice";
     public const string DebugRequest = "debug.request";
 
+    // ── Settings: connections editor (client → server) ───────────────────
+    /// <summary>Ask for the editable connection list.</summary>
+    public const string ConnectionsGet = "connections.get";
+    /// <summary>Replace the connection list (persisted to the .spla project when there is one).</summary>
+    public const string ConnectionsSave = "connections.save";
+
     // ── Server → Client ──────────────────────────────────────────────────
     public const string Welcome = "welcome";
     public const string ChatListResult = "chat.list.result";
@@ -95,6 +101,9 @@ public static class MessageTypes
     public const string DebugSnapshot = "debug.snapshot";
     /// <summary>Broadcast to all connections when a window changes the focused chat (see <see cref="FocusSet"/>).</summary>
     public const string FocusChanged = "focus.changed";
+    /// <summary>The current connection list — answer to <see cref="ConnectionsGet"/> and broadcast to all
+    /// after <see cref="ConnectionsSave"/> so every window's pickers refresh.</summary>
+    public const string ConnectionsResult = "connections.result";
     public const string Error = "error";
 }
 

@@ -135,6 +135,12 @@
       if (p.promptTokens != null || p.completionTokens != null)
         $("#tokens", c.slot).textContent = "tokens in:" + (p.promptTokens ?? "?") + " out:" + (p.completionTokens ?? "?");
     });
+    c.sub("connections.result", p => {
+      // Live refresh after the connections editor saves — keep the current selection if still present.
+      const keep = connSel.value;
+      fill(connSel, (p.connections || []).map(x => [x.id, x.name || x.model || x.id]), null);
+      if ([...connSel.options].some(o => o.value === keep)) connSel.value = keep;
+    });
     return { el: null };
   });
 
@@ -318,6 +324,63 @@
         const pre = document.createElement("pre"); pre.style.whiteSpace = "pre-wrap"; pre.textContent = p.text; body.appendChild(pre);
       }
     });
+    return { el: null };
+  });
+
+  // ── Connections editor (slot, or a tear-off window via ?surface=connections) ─
+  Spla.registerSurface("connections", c => {
+    const slot = c.slot;
+    slot.classList.add("settings-surface");
+    slot.innerHTML = `
+      <header><b>Connections</b><span class="hint"></span></header>
+      <div class="list"></div>
+      <div class="bar">
+        <button class="btn ghost add">+ Add connection</button>
+        <span class="grow"></span>
+        <button class="btn save">Save</button>
+      </div>`;
+    const listEl = $(".list", slot), hintEl = $(".hint", slot);
+    let conns = [];
+
+    const FIELDS = [["name", "Name"], ["provider", "Provider"], ["endpoint", "Endpoint"], ["model", "Model"], ["apiKey", "API key"]];
+
+    function render() {
+      listEl.innerHTML = "";
+      conns.forEach((conn, i) => {
+        const card = document.createElement("div"); card.className = "conn-card";
+        const head = document.createElement("div"); head.className = "conn-head";
+        head.innerHTML = `<span class="id">${R.escapeHtml(conn.id || "(new)")}</span>`;
+        const rm = document.createElement("button"); rm.className = "x"; rm.textContent = "✕"; rm.title = "Remove";
+        rm.onclick = () => { conns.splice(i, 1); render(); };
+        head.appendChild(rm);
+        card.appendChild(head);
+        for (const [key, label] of FIELDS) {
+          const row = document.createElement("label"); row.className = "field";
+          row.innerHTML = `<span>${label}</span>`;
+          const inp = document.createElement("input");
+          inp.type = key === "apiKey" ? "password" : "text";
+          inp.value = conn[key] || "";
+          inp.oninput = () => { conn[key] = inp.value; if (key === "name" && !conn.id) head.querySelector(".id").textContent = "(new)"; };
+          row.appendChild(inp); card.appendChild(row);
+        }
+        listEl.appendChild(card);
+      });
+    }
+
+    $(".add", slot).onclick = () => { conns.push({ id: "", name: "", provider: "lmstudio", endpoint: "http://127.0.0.1:1234/v1/", model: "", apiKey: "" }); render(); };
+    $(".save", slot).onclick = () => {
+      c.send("connections.save", { connections: conns });
+      $(".save", slot).textContent = "Saved ✓";
+      setTimeout(() => { const b = $(".save", slot); if (b) b.textContent = "Save"; }, 1200);
+    };
+
+    c.sub("connections.result", p => {
+      conns = (p.connections || []).map(x => ({ ...x }));
+      hintEl.textContent = p.canPersist ? "" : "no .spla project — edits are session-only";
+      render();
+    });
+    c.sub("welcome", () => c.send("connections.get"));
+    c.send("connections.get");
     return { el: null };
   });
 

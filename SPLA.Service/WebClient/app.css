@@ -176,6 +176,29 @@ body.hide-reasoning .reasoning { display: none; }
 .kv-row .k { color: var(--accent); min-width: 140px; max-width: 200px; overflow: hidden; text-overflow: ellipsis; }
 .kv-row .v { color: var(--text); white-space: pre-wrap; overflow-wrap: anywhere; }
 
+/* ── Settings surfaces (connections editor, future modes/plugins) ───────────── */
+.settings-surface { background: var(--panel); display: flex; flex-direction: column; height: 100%; min-height: 0; }
+.settings-surface header { display: flex; gap: 8px; align-items: baseline; padding: 10px 14px;
+  border-bottom: 1px solid var(--border); }
+.settings-surface header b { font-size: var(--fs); }
+.settings-surface .hint { color: var(--muted); font-size: var(--fs-xs); font-style: italic; }
+.settings-surface .list { flex: 1; overflow: auto; padding: 12px 14px; display: flex; flex-direction: column; gap: 12px; }
+.settings-surface .bar { display: flex; align-items: center; gap: 8px; padding: 10px 14px;
+  border-top: 1px solid var(--border); }
+.settings-surface .bar .grow { flex: 1; }
+
+.conn-card { border: 1px solid var(--border); border-radius: var(--radius); background: var(--elevated);
+  padding: 10px 12px; display: flex; flex-direction: column; gap: 7px; }
+.conn-head { display: flex; align-items: center; gap: 8px; }
+.conn-head .id { flex: 1; font-family: var(--mono); font-size: var(--fs-xs); color: var(--accent); }
+.conn-head .x { color: var(--muted); cursor: pointer; font-size: var(--fs-sm); padding: 0 4px; }
+.conn-head .x:hover { color: var(--danger); }
+.field { display: grid; grid-template-columns: 92px 1fr; align-items: center; gap: 8px; }
+.field > span { color: var(--muted); font-size: var(--fs-sm); }
+.field input { background: var(--bg); color: var(--text); border: 1px solid var(--border);
+  border-radius: var(--radius-sm); padding: 6px 9px; font: inherit; font-size: var(--fs-sm); }
+.field input:focus { outline: none; border-color: var(--accent); }
+
 /* scrollbars */
 ::-webkit-scrollbar { width: 10px; height: 10px; }
 ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 6px; }

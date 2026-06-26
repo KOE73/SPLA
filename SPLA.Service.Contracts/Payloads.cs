@@ -126,6 +126,28 @@ public sealed class ClarifyChoicePayload
     public string? Choice { get; set; }
 }
 
+/// <summary>One editable LLM connection (full shape, unlike the id+name <see cref="ConnectionDto"/>
+/// used for pickers). Carried both ways: server→client for the editor, client→server on save.</summary>
+public sealed class ConnectionEditDto
+{
+    public string Id { get; set; } = string.Empty;
+    public string? Name { get; set; }
+    public string? Provider { get; set; }
+    public string? Endpoint { get; set; }
+    public string? ApiKey { get; set; }
+    public string? Model { get; set; }
+}
+
+/// <summary>The full connection list for the editor. <see cref="ConnectionsGet"/> answer and
+/// <see cref="ConnectionsSave"/> body; also broadcast as <see cref="MessageTypes.ConnectionsResult"/>.</summary>
+public sealed class ConnectionsPayload
+{
+    public List<ConnectionEditDto> Connections { get; set; } = new();
+
+    /// <summary>False when there is no .spla project to persist into (edits then live only in-memory).</summary>
+    public bool CanPersist { get; set; }
+}
+
 /// <summary>Asks the server for a debug snapshot. <see cref="Kind"/> selects which inspector view.</summary>
 public sealed class DebugRequestPayload
 {

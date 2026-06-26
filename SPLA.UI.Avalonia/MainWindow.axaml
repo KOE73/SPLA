@@ -31,6 +31,9 @@
             </StackPanel>
 
             <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
+                <!-- Connections editor as a tear-off web surface window -->
+                <Button Classes="caption" Content="⚙" Click="OpenConnectionsSurface_Click"
+                        ToolTip.Tip="Connections (LLM endpoints / models) — opens as a separate window"/>
                 <!-- Debug as a tear-off web surface window -->
                 <Button Classes="caption" Content="🧠" Click="OpenDebugSurface_Click"
                         ToolTip.Tip="Debug (memory / context / prompt) — opens as a separate window"/>
