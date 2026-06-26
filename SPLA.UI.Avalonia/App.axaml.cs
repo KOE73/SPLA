@@ -8,9 +8,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using SPLA.Domain.Settings;
 using SPLA.Observability;
-using SPLA.Plugins.Host.Avalonia;
 using SPLA.UI.Avalonia.Services;
-using SPLA.UI.Avalonia.Services.Plugins;
 
 namespace SPLA.UI.Avalonia;
 
@@ -63,6 +61,8 @@ public partial class App : Application
 
     private static IServiceProvider ConfigureServices()
     {
+        // The shell hosts no agent/plugin services in-process any more — those live in the embedded
+        // service (own process). Only logging remains for the shell itself.
         var services = new ServiceCollection();
         services.AddLogging(builder =>
         {
@@ -70,12 +70,6 @@ public partial class App : Application
             builder.AddProvider(SplaTelemetry.CreateFileLoggerProvider());
             builder.SetMinimumLevel(LogLevel.Information);
         });
-        services.AddSingleton<IActiveConversationAccessor, ActiveConversationAccessor>();
-        services.AddSingleton<IPluginInteractionService, PluginInteractionService>();
-        services.AddSingleton<IAvaloniaPluginPanelRegistry, AvaloniaPluginPanelRegistry>();
-        services.AddSingleton<IAvaloniaPluginSettingsRegistry, AvaloniaPluginSettingsRegistry>();
-        services.AddSingleton<IPluginPanelHostService, PluginPanelHostService>();
-        services.AddSingleton<IAvaloniaPluginLoader, AvaloniaPluginLoader>();
         return services.BuildServiceProvider();
     }
 
