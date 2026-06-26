@@ -67,6 +67,10 @@ public static class MessageTypes
     public const string ChatDelete = "chat.delete";
     public const string ChatSend = "chat.send";
     public const string ChatSettings = "chat.settings";
+    /// <summary>A window tells the service which chat it has focused; the service echoes
+    /// <see cref="FocusChanged"/> to every connection so auxiliary windows (e.g. a tear-off debug
+    /// panel) can follow the active chat across separate sockets.</summary>
+    public const string FocusSet = "focus.set";
     public const string Cancel = "cancel";
     public const string PermissionDecision = "permission.decision";
     public const string ClarifyChoice = "clarify.choice";
@@ -89,6 +93,8 @@ public static class MessageTypes
     public const string PermissionRequest = "permission.request";
     public const string ClarifyRequest = "clarify.request";
     public const string DebugSnapshot = "debug.snapshot";
+    /// <summary>Broadcast to all connections when a window changes the focused chat (see <see cref="FocusSet"/>).</summary>
+    public const string FocusChanged = "focus.changed";
     public const string Error = "error";
 }
 

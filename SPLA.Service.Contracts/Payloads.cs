@@ -97,6 +97,13 @@ public sealed class ChatSendPayload
     public List<string>? Images { get; set; }
 }
 
+/// <summary>Which chat a window has focused. Sent as <see cref="MessageTypes.FocusSet"/> and echoed
+/// back to all connections as <see cref="MessageTypes.FocusChanged"/> so tear-off windows can follow.</summary>
+public sealed class FocusPayload
+{
+    public string ChatId { get; set; } = string.Empty;
+}
+
 /// <summary>Changes a chat's behaviour: its mode and/or which connection it uses. Null fields are left as-is.</summary>
 public sealed class ChatSettingsPayload
 {

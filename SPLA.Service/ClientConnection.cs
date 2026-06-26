@@ -193,6 +193,15 @@ public sealed class ClientConnection
                 break;
             }
 
+            case MessageTypes.FocusSet:
+            {
+                // A window focused a chat; echo to everyone so tear-off windows follow the active chat.
+                var p = Payload<FocusPayload>(env);
+                if (p != null && !string.IsNullOrEmpty(p.ChatId))
+                    await _hub.BroadcastAsync(MessageTypes.FocusChanged, new FocusPayload { ChatId = p.ChatId });
+                break;
+            }
+
             case MessageTypes.Cancel:
             {
                 if (env.ChatId != null && _activeTurns.TryGetValue(env.ChatId, out var cts))

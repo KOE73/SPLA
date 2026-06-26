@@ -16,6 +16,9 @@
 
   const bus = Spla.makeBus();
   const state = { currentChat: null, bubbles: {}, attachments: [], connected: false };
+  // A single-surface window (e.g. a tear-off debug panel) follows the main window's active chat
+  // instead of driving its own — see focus.set / focus.changed below.
+  const isSolo = !!new URLSearchParams(location.search).get("surface");
 
   // ── WebSocket ────────────────────────────────────────────────────────────────
   let ws;
@@ -29,7 +32,16 @@
     ws.onmessage = ev => {
       const env = JSON.parse(ev.data);
       if (env.type === "welcome") setConn(true, "connected");
-      if (env.type === "chat.opened") { state.currentChat = env.payload.chatId; bus.emit("chat.current", env.payload); }
+      if (env.type === "chat.opened") {
+        state.currentChat = env.payload.chatId;
+        bus.emit("chat.current", env.payload);
+        if (!isSolo) send("focus.set", { chatId: env.payload.chatId });   // tell tear-off windows
+      }
+      if (env.type === "focus.changed") {
+        // The main window switched chats — follow it (used by solo surfaces with no chat list).
+        state.currentChat = env.payload.chatId;
+        bus.emit("focus.changed", env.payload);
+      }
       bus.emit(env.type, env.payload || {}, env);
     };
   }
@@ -288,8 +300,10 @@
       // Standalone window: no drawer chrome, no debug button — show immediately and auto-load once
       // the socket is up (welcome). Re-request on chat switch so context-bound tabs stay live.
       $("#debugClose", slot).style.display = "none";
-      c.sub("welcome", () => request("kv.session"));
-      c.sub("chat.current", () => request(slot.querySelector(".tab.on")?.dataset.kind || "kv.session"));
+      const reload = () => request(slot.querySelector(".tab.on")?.dataset.kind || "kv.session");
+      c.sub("welcome", reload);
+      c.sub("focus.changed", reload);     // main window switched chats → refresh against the new one
+      c.sub("chat.current", reload);
     }
     c.sub("debug.snapshot", p => {
       body.innerHTML = "";
