@@ -18,7 +18,13 @@ class Program
         }
         catch (Exception ex)
         {
-            System.IO.File.WriteAllText(@"c:\GitKOE\SPLA\crash.txt", ex.ToString());
+            // Best-effort crash dump next to the executable (portable, not a hardcoded dev path).
+            try
+            {
+                var path = System.IO.Path.Combine(AppContext.BaseDirectory, "spla-crash.txt");
+                System.IO.File.WriteAllText(path, ex.ToString());
+            }
+            catch { /* nothing we can do */ }
             throw;
         }
     }
