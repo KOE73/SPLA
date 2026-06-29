@@ -60,7 +60,7 @@ public static class SettingsOps
     // ── Agent settings: default mode + permission overrides ──────────────────
 
     private static readonly List<string> KnownThemes   = ["dark", "emerald", "cream", "light"];
-    private static readonly List<string> KnownDensities = ["compact", "norm", "comfortable"];
+    private static readonly List<string> KnownDensities = ["nano", "mini", "norm", "max"];
 
     public static AgentSettingsPayload GetAgent(AgentRuntime runtime) => new()
     {

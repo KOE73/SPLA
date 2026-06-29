@@ -453,7 +453,7 @@
       const h = panelHint("agent"); if (h) h.textContent = p.canPersist ? "" : "no .spla project — session-only";
       // Appearance
       themeSel.innerHTML = ""; for (const t of (p.themes || [])) { const o = document.createElement("option"); o.value = t; o.textContent = t[0].toUpperCase() + t.slice(1); themeSel.appendChild(o); }
-      densitySel.innerHTML = ""; for (const d of (p.densities || [])) { const o = document.createElement("option"); o.value = d; o.textContent = { compact:"Compact", norm:"Normal", comfortable:"Comfortable" }[d] || d; densitySel.appendChild(o); }
+      densitySel.innerHTML = ""; for (const d of (p.densities || [])) { const o = document.createElement("option"); o.value = d; o.textContent = { nano:"Nano", mini:"Mini", norm:"Normal", max:"Max" }[d] || d; densitySel.appendChild(o); }
       themeSel.value = p.theme || LS.getItem("spla.theme") || "dark";
       densitySel.value = p.density || LS.getItem("spla.density") || "norm";
       const ah = panelHint("appearance"); if (ah) ah.textContent = p.canPersist ? "saved to .spla project" : "no .spla project — session-only";
