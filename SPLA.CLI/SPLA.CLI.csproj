@@ -3,9 +3,6 @@
   <ItemGroup>
     <ProjectReference Include="..\SPLA.Agent\SPLA.Agent.csproj" />
     <ProjectReference Include="..\SPLA.Domain\SPLA.Domain.csproj" />
-    <ProjectReference Include="..\SPLA.LLM.LMStudio\SPLA.LLM.LMStudio.csproj" />
-    <ProjectReference Include="..\SPLA.MCP.BasicTools\SPLA.MCP.BasicTools.csproj" />
-    <ProjectReference Include="..\SPLA.MCP.Core\SPLA.MCP.Core.csproj" />
     <ProjectReference Include="..\SPLA.Observability\SPLA.Observability.csproj" />
     <ProjectReference Include="..\SPLA.Service\SPLA.Service.csproj" />
   </ItemGroup>

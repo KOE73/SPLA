@@ -8,10 +8,7 @@ namespace SPLA.Domain.Settings;
 /// </summary>
 public class ResolvedSettings
 {
-    // LLM
-    public string Endpoint { get; set; } = "http://127.0.0.1:1234/v1/";
-    public string ApiKey { get; set; } = "lm-studio";
-    public string Model { get; set; } = "auto";
+    // LLM behaviour (endpoint/key/model live in Connections — not here)
     public double Temperature { get; set; } = 0.7;
     public string? ReasoningLevel { get; set; }
     public double PresencePenalty { get; set; } = 0.0;
@@ -19,7 +16,7 @@ public class ResolvedSettings
     public double RepeatPenalty { get; set; } = 1.0;
 
     /// <summary>Named connections available to chats. Never empty after resolution — a default is
-    /// synthesized from the single <c>llm</c> section when none are configured.</summary>
+    /// synthesized from the <c>llm:</c> section when none are configured.</summary>
     public List<SplaConnectionSection> Connections { get; set; } = new();
 
     // Agent
@@ -81,17 +78,18 @@ public class ResolvedSettings
     // Skills
     public Dictionary<string, SplaSkillSection> Skills { get; set; } = new();
 
-    /// <summary>
-    /// Converts to LLMSettings for backward compatibility with LLM client.
-    /// </summary>
-    public LLMSettings ToLLMSettings() => new()
+    /// <summary>Builds LLMSettings from the first connection + behaviour fields.
+    /// Callers that need a specific connection should use <see cref="ToLLMSettings(SplaConnectionSection?)"/>.</summary>
+    public LLMSettings ToLLMSettings() => ToLLMSettings(Connections.FirstOrDefault());
+
+    public LLMSettings ToLLMSettings(SplaConnectionSection? conn) => new()
     {
-        BaseUrl = Endpoint,
-        ApiKey = ApiKey,
-        ModelName = Model == "auto" ? "local-model" : Model,
-        Temperature = Temperature,
-        Mode = Mode,
-        Theme = Theme,
+        BaseUrl          = conn?.Endpoint ?? "http://127.0.0.1:1234/v1/",
+        ApiKey           = conn?.ApiKey   ?? "lm-studio",
+        ModelName        = conn?.Model is { Length: > 0 } m && m != "auto" ? m : "local-model",
+        Temperature      = Temperature,
+        Mode             = Mode,
+        Theme            = Theme,
         ReasoningLevel   = ReasoningLevel,
         PresencePenalty  = PresencePenalty,
         FrequencyPenalty = FrequencyPenalty,
@@ -112,20 +110,27 @@ public static class SettingsResolver
         // Connections merge across layers by id (project overrides/extends defaults).
         var connections = new Dictionary<string, SplaConnectionSection>(StringComparer.OrdinalIgnoreCase);
 
+        // llm: section fields — tracked locally and used only to synthesize the fallback default
+        // connection when no connections are declared. Endpoint/ApiKey/Model no longer live on
+        // ResolvedSettings; Connections is the single source of truth for those.
+        string llmEndpoint = "http://127.0.0.1:1234/v1/";
+        string llmApiKey   = "lm-studio";
+        string llmModel    = "auto";
+
         // Layer 1: defaults
         if (defaults != null)
         {
             MergeConnections(connections, defaults.Connections);
             if (defaults.Llm != null)
             {
-                r.Endpoint = defaults.Llm.Endpoint ?? r.Endpoint;
-                r.ApiKey = defaults.Llm.ApiKey ?? r.ApiKey;
-                r.Model = defaults.Llm.Model ?? r.Model;
-                r.Temperature = defaults.Llm.Temperature ?? r.Temperature;
-                r.ReasoningLevel = defaults.Llm.ReasoningLevel ?? r.ReasoningLevel;
-                r.PresencePenalty  = defaults.Llm.PresencePenalty  ?? r.PresencePenalty;
-                r.FrequencyPenalty = defaults.Llm.FrequencyPenalty ?? r.FrequencyPenalty;
-                r.RepeatPenalty    = defaults.Llm.RepeatPenalty    ?? r.RepeatPenalty;
+                llmEndpoint          = defaults.Llm.Endpoint    ?? llmEndpoint;
+                llmApiKey            = defaults.Llm.ApiKey      ?? llmApiKey;
+                llmModel             = defaults.Llm.Model       ?? llmModel;
+                r.Temperature        = defaults.Llm.Temperature ?? r.Temperature;
+                r.ReasoningLevel     = defaults.Llm.ReasoningLevel  ?? r.ReasoningLevel;
+                r.PresencePenalty    = defaults.Llm.PresencePenalty  ?? r.PresencePenalty;
+                r.FrequencyPenalty   = defaults.Llm.FrequencyPenalty ?? r.FrequencyPenalty;
+                r.RepeatPenalty      = defaults.Llm.RepeatPenalty    ?? r.RepeatPenalty;
             }
             if (defaults.Agent != null)
             {
@@ -156,14 +161,14 @@ public static class SettingsResolver
             MergeConnections(connections, project.Connections);
             if (project.Llm != null)
             {
-                r.Endpoint = project.Llm.Endpoint ?? r.Endpoint;
-                r.ApiKey = project.Llm.ApiKey ?? r.ApiKey;
-                r.Model = project.Llm.Model ?? r.Model;
-                r.Temperature = project.Llm.Temperature ?? r.Temperature;
-                r.ReasoningLevel = project.Llm.ReasoningLevel ?? r.ReasoningLevel;
-                r.PresencePenalty  = project.Llm.PresencePenalty  ?? r.PresencePenalty;
-                r.FrequencyPenalty = project.Llm.FrequencyPenalty ?? r.FrequencyPenalty;
-                r.RepeatPenalty    = project.Llm.RepeatPenalty    ?? r.RepeatPenalty;
+                llmEndpoint          = project.Llm.Endpoint    ?? llmEndpoint;
+                llmApiKey            = project.Llm.ApiKey      ?? llmApiKey;
+                llmModel             = project.Llm.Model       ?? llmModel;
+                r.Temperature        = project.Llm.Temperature ?? r.Temperature;
+                r.ReasoningLevel     = project.Llm.ReasoningLevel  ?? r.ReasoningLevel;
+                r.PresencePenalty    = project.Llm.PresencePenalty  ?? r.PresencePenalty;
+                r.FrequencyPenalty   = project.Llm.FrequencyPenalty ?? r.FrequencyPenalty;
+                r.RepeatPenalty      = project.Llm.RepeatPenalty    ?? r.RepeatPenalty;
             }
             if (project.Agent != null)
             {
@@ -202,21 +207,15 @@ public static class SettingsResolver
             }
         }
 
-        // Finalize connections: keep configured ones; synthesize a default from the resolved single
-        // llm section when none were declared, so chats always have at least one connection to use.
+        // Finalize: keep configured connections; synthesize a default from the llm: section when none
+        // are declared, so chats always have at least one connection to resolve against.
         r.Connections = connections.Values.ToList();
         if (r.Connections.Count == 0)
-        {
             r.Connections.Add(new SplaConnectionSection
             {
-                Id = "default",
-                Name = "Default",
-                Provider = "lmstudio",
-                Endpoint = r.Endpoint,
-                ApiKey = r.ApiKey,
-                Model = r.Model
+                Id = "default", Name = "Default", Provider = "lmstudio",
+                Endpoint = llmEndpoint, ApiKey = llmApiKey, Model = llmModel
             });
-        }
 
         return r;
     }

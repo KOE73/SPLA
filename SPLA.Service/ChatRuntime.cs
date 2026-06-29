@@ -54,6 +54,14 @@ public sealed class ChatRuntime
 
     public void CaptureLastContext(IReadOnlyList<ChatMessage> context) => LastContext = context;
 
+    /// <summary>Injects a message directly into the conversation without running a turn (e.g. skill load).
+    /// The message is persisted immediately.</summary>
+    public void InjectMessage(ChatRole role, string content)
+    {
+        _conversation.Add(new ChatMessage { Role = role, Content = content });
+        Save();
+    }
+
     /// <summary>This chat's effective mode name (its own, or the project default).</summary>
     public string ModeName => ResolveMode().ToString();
 
@@ -208,24 +216,18 @@ public sealed class ChatRuntime
     /// own behaviour knobs (temperature/reasoning/penalties), falling back to project defaults.</summary>
     private LLMSettings ResolveLlmSettings()
     {
-        var baseSettings = _runtime.Settings.ToLLMSettings();
         var conn = _runtime.Settings.Connections.FirstOrDefault(c => c.Id == _chat.ConnectionId)
                    ?? _runtime.Settings.Connections.FirstOrDefault();
+        var s = _runtime.Settings.ToLLMSettings(conn);
         var chatModel = _chat.Model;
 
-        return new LLMSettings
-        {
-            BaseUrl          = string.IsNullOrWhiteSpace(conn?.Endpoint) ? baseSettings.BaseUrl : conn!.Endpoint!,
-            ApiKey           = string.IsNullOrWhiteSpace(conn?.ApiKey) ? baseSettings.ApiKey : conn!.ApiKey!,
-            ModelName        = string.IsNullOrWhiteSpace(conn?.Model) || conn!.Model == "auto" ? "local-model" : conn.Model!,
-            Temperature      = chatModel?.Temperature ?? baseSettings.Temperature,
-            Mode             = ResolveMode(),
-            Theme            = baseSettings.Theme,
-            ReasoningLevel   = string.IsNullOrEmpty(chatModel?.ReasoningLevel) ? baseSettings.ReasoningLevel : chatModel!.ReasoningLevel,
-            PresencePenalty  = chatModel?.PresencePenalty ?? baseSettings.PresencePenalty,
-            FrequencyPenalty = chatModel?.FrequencyPenalty ?? baseSettings.FrequencyPenalty,
-            RepeatPenalty    = chatModel?.RepeatPenalty ?? baseSettings.RepeatPenalty
-        };
+        s.Mode             = ResolveMode();
+        s.Temperature      = chatModel?.Temperature      ?? s.Temperature;
+        s.ReasoningLevel   = string.IsNullOrEmpty(chatModel?.ReasoningLevel) ? s.ReasoningLevel : chatModel!.ReasoningLevel;
+        s.PresencePenalty  = chatModel?.PresencePenalty  ?? s.PresencePenalty;
+        s.FrequencyPenalty = chatModel?.FrequencyPenalty ?? s.FrequencyPenalty;
+        s.RepeatPenalty    = chatModel?.RepeatPenalty    ?? s.RepeatPenalty;
+        return s;
     }
 
     /// <summary>The chat's mode (from its agent section), falling back to the project default.</summary>

@@ -61,7 +61,7 @@ public sealed class SpawnedAgentRunner : Domain.Interfaces.IAgentSpawner
         var agentSession = new AgentSession(new KeyValueStore("session"), checkpoint, skillSession);
 
         var promptBuilder = new SystemPromptBuilder(_skills, _plugins, skillSession);
-        var systemPrompt = promptBuilder.Build(_settings, System.IO.Directory.GetCurrentDirectory());
+        var systemPrompt = promptBuilder.Build(_settings, _settings.WorkspacePath);
 
         var conversation = new Conversation();
         conversation.Add(new ChatMessage { Role = ChatRole.System, Content = systemPrompt });

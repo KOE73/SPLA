@@ -51,7 +51,6 @@ public sealed class AgentRuntime : IDisposable
     public string SystemPrompt { get; }
 
     public AgentMode Mode => Settings.Mode;
-    public LLMSettings LlmSettings => Settings.ToLLMSettings();
 
     public AgentRuntime(ResolvedSettings settings, ILoggerFactory loggerFactory)
     {
