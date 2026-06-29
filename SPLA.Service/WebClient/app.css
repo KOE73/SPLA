@@ -14,6 +14,9 @@
   --fs-sm: 12px;
   --fs-xs: 11px;
 }
+/* Density axis — compact / norm / comfortable */
+:root[data-density="compact"] { --fs: 12px; --fs-sm: 11px; --fs-xs: 10px; --pad: 8px; --gap: 6px; --radius: 7px; }
+:root[data-density="comfortable"] { --fs: 15px; --fs-sm: 13px; --fs-xs: 12px; --pad: 16px; --gap: 14px; --radius: 12px; }
 
 * { box-sizing: border-box; }
 html, body { margin: 0; height: 100%; background: var(--bg); color: var(--text);

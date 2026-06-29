@@ -31,7 +31,13 @@
     ws.onclose = () => { setConn(false, "disconnected — retrying"); setTimeout(connect, 1500); };
     ws.onmessage = ev => {
       const env = JSON.parse(ev.data);
-      if (env.type === "welcome") setConn(true, "connected");
+      if (env.type === "welcome") {
+        setConn(true, "connected");
+        // Server carries the project's ui.theme/density — apply immediately so per-project
+        // themes load on connect without waiting for agent.get/result.
+        if (env.payload?.theme) applyTheme(env.payload.theme);
+        if (env.payload?.density) applyDensity(env.payload.density);
+      }
       if (env.type === "chat.opened") {
         state.currentChat = env.payload.chatId;
         bus.emit("chat.current", env.payload);
@@ -46,6 +52,17 @@
     };
   }
   function setConn(on, text) { state.connected = on; bus.emit("conn", { on, text }); }
+
+  // Global appearance helpers — used by boot (localStorage) and welcome (server-authoritative).
+  function applyTheme(name) {
+    document.documentElement.setAttribute("data-theme", name);
+    LS.setItem("spla.theme", name);
+    R.reinitMermaidTheme && R.reinitMermaidTheme();
+  }
+  function applyDensity(name) {
+    document.documentElement.setAttribute("data-density", name || "norm");
+    LS.setItem("spla.density", name || "norm");
+  }
 
   const ctx = { send, state, on: bus.on, emit: bus.emit };
 
@@ -87,29 +104,10 @@
       <span id="project"></span>
       <label>mode <select id="modeSel" disabled></select></label>
       <label>model <select id="connSel" disabled></select></label>
-      <label>theme <select id="themeSel">
-        <option value="dark">Dark</option><option value="emerald">Emerald</option>
-        <option value="cream">Cream</option><option value="light">Light</option></select></label>
-      <label>layout <select id="layoutSel"></select></label>
       <button id="settingsBtn" class="filter">⚙</button>
       <button id="debugBtn" class="filter">debug</button>
       <span id="tokens"></span>`;
-    const modeSel = $("#modeSel", c.slot), connSel = $("#connSel", c.slot),
-          themeSel = $("#themeSel", c.slot), layoutSel = $("#layoutSel", c.slot);
-
-    function applyTheme(name) {
-      document.documentElement.setAttribute("data-theme", name);
-      themeSel.value = name; LS.setItem("spla.theme", name); R.reinitMermaidTheme();
-    }
-    applyTheme(LS.getItem("spla.theme") || "dark");
-    themeSel.onchange = () => applyTheme(themeSel.value);
-
-    Spla.layoutNames().forEach(n => {
-      const o = document.createElement("option"); o.value = n;
-      o.textContent = (Spla.layoutDefs[n].label || n); layoutSel.appendChild(o);
-    });
-    layoutSel.value = LS.getItem("spla.layout") || "default";
-    layoutSel.onchange = () => { LS.setItem("spla.layout", layoutSel.value); c.emit("layout.request", { name: layoutSel.value }); };
+    const modeSel = $("#modeSel", c.slot), connSel = $("#connSel", c.slot);
 
     function fill(sel, pairs, value) {
       sel.innerHTML = "";
@@ -358,6 +356,7 @@
           <div class="nav-item on" data-tab="connections"><span class="nav-ic">⇄</span>Connections</div>
           <div class="nav-item" data-tab="agent"><span class="nav-ic">◎</span>Agent</div>
           <div class="nav-item" data-tab="plugins"><span class="nav-ic">⬡</span>Plugins</div>
+          <div class="nav-item" data-tab="appearance"><span class="nav-ic">◈</span>Appearance</div>
         </nav>
         <div class="settings-main">
           <div class="s-panel on" data-tab="connections">
@@ -380,6 +379,18 @@
             <div class="s-head"><b>Plugins</b><span class="hint"></span></div>
             <div class="pl-list"></div>
           </div>
+          <div class="s-panel" data-tab="appearance">
+            <div class="s-head"><b>Appearance</b><span class="hint">saved to .spla project</span></div>
+            <div class="conn-card">
+              <div class="conn-head"><span class="id">Theme</span></div>
+              <label class="field"><span>Color theme</span><select class="themeSel"></select></label>
+              <label class="field"><span>UI density</span><select class="densitySel"></select></label>
+            </div>
+            <div class="conn-card">
+              <div class="conn-head"><span class="id">Layout</span><span class="state" style="color:var(--muted);font-size:var(--fs-xs)">this device only</span></div>
+              <label class="field"><span>Panel layout</span><select class="layoutSel"></select></label>
+            </div>
+          </div>
           <div class="settings-bar"><span class="grow"></span><button class="btn save">Save</button></div>
         </div>
       </div>`;
@@ -387,7 +398,16 @@
     const saveBtn = $(".save", slot);
     const connList = $(".conn-list", slot), plList = $(".pl-list", slot);
     const modeSel = $(".modeSel", slot);
+    const themeSel = $(".themeSel", slot), densitySel = $(".densitySel", slot), layoutSel = $(".layoutSel", slot);
     let currentTab = new URLSearchParams(location.search).get("tab") || "connections";
+
+    // Populate layout selector (client-only pref)
+    Spla.layoutNames().forEach(n => {
+      const o = document.createElement("option"); o.value = n;
+      o.textContent = Spla.layoutDefs[n].label || n; layoutSel.appendChild(o);
+    });
+    layoutSel.value = LS.getItem("spla.layout") || "default";
+    layoutSel.onchange = () => { LS.setItem("spla.layout", layoutSel.value); c.emit("layout.request", { name: layoutSel.value }); };
 
     const panelHint = tab => slot.querySelector(`.s-panel[data-tab="${tab}"] .hint`);
 
@@ -431,6 +451,12 @@
       const setP = (k, v) => { const el = slot.querySelector(`[data-perm="${k}"]`); if (el) el.value = v || ""; };
       setP("permRead", p.permRead); setP("permWrite", p.permWrite); setP("permShell", p.permShell); setP("permInternet", p.permInternet);
       const h = panelHint("agent"); if (h) h.textContent = p.canPersist ? "" : "no .spla project — session-only";
+      // Appearance
+      themeSel.innerHTML = ""; for (const t of (p.themes || [])) { const o = document.createElement("option"); o.value = t; o.textContent = t[0].toUpperCase() + t.slice(1); themeSel.appendChild(o); }
+      densitySel.innerHTML = ""; for (const d of (p.densities || [])) { const o = document.createElement("option"); o.value = d; o.textContent = { compact:"Compact", norm:"Normal", comfortable:"Comfortable" }[d] || d; densitySel.appendChild(o); }
+      themeSel.value = p.theme || LS.getItem("spla.theme") || "dark";
+      densitySel.value = p.density || LS.getItem("spla.density") || "norm";
+      const ah = panelHint("appearance"); if (ah) ah.textContent = p.canPersist ? "saved to .spla project" : "no .spla project — session-only";
     });
 
     // --- Plugins ---
@@ -471,7 +497,8 @@
         permRead: slot.querySelector('[data-perm="permRead"]').value,
         permWrite: slot.querySelector('[data-perm="permWrite"]').value,
         permShell: slot.querySelector('[data-perm="permShell"]').value,
-        permInternet: slot.querySelector('[data-perm="permInternet"]').value
+        permInternet: slot.querySelector('[data-perm="permInternet"]').value,
+        theme: themeSel.value, density: densitySel.value
       }),
       plugins: () => c.send("plugins.save", {
         plugins: [...plList.querySelectorAll(".conn-card")].map(card => ({
@@ -480,7 +507,19 @@
           customPrompt: card.querySelector(".cprompt").value,
           settingsYaml: card.querySelector(".pset").value
         }))
-      })
+      }),
+      appearance: () => {
+        // Apply theme + density immediately (instant preview); then persist via agent.save
+        applyTheme(themeSel.value); applyDensity(densitySel.value);
+        c.send("agent.save", {
+          mode: modeSel.value,
+          permRead: slot.querySelector('[data-perm="permRead"]').value,
+          permWrite: slot.querySelector('[data-perm="permWrite"]').value,
+          permShell: slot.querySelector('[data-perm="permShell"]').value,
+          permInternet: slot.querySelector('[data-perm="permInternet"]').value,
+          theme: themeSel.value, density: densitySel.value
+        });
+      }
     };
     function switchTab(name) {
       currentTab = name;
@@ -507,9 +546,9 @@
   const params = new URLSearchParams(location.search);
 
   function boot() {
-    // Theme is global, not owned by any one surface — apply it before any layout so single-surface
-    // windows (which have no status bar) are still themed.
-    document.documentElement.setAttribute("data-theme", LS.getItem("spla.theme") || "dark");
+    // Apply last-known appearance before the socket connects — avoids flash of default theme.
+    applyTheme(LS.getItem("spla.theme") || "dark");
+    applyDensity(LS.getItem("spla.density") || "norm");
 
     const solo = params.get("surface");
     if (solo) {

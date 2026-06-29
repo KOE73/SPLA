@@ -59,6 +59,9 @@ public static class SettingsOps
 
     // ── Agent settings: default mode + permission overrides ──────────────────
 
+    private static readonly List<string> KnownThemes   = ["dark", "emerald", "cream", "light"];
+    private static readonly List<string> KnownDensities = ["compact", "norm", "comfortable"];
+
     public static AgentSettingsPayload GetAgent(AgentRuntime runtime) => new()
     {
         CanPersist = runtime.Settings.ProjectFilePath != null,
@@ -67,7 +70,11 @@ public static class SettingsOps
         PermRead = runtime.Settings.PermRead,
         PermWrite = runtime.Settings.PermWrite,
         PermShell = runtime.Settings.PermShell,
-        PermInternet = runtime.Settings.PermInternet
+        PermInternet = runtime.Settings.PermInternet,
+        Theme = runtime.Settings.Theme,
+        Density = runtime.Settings.Density,
+        Themes = KnownThemes,
+        Densities = KnownDensities
     };
 
     /// <summary>Persists agent mode + permission overrides to the .spla project (when present) and
@@ -78,6 +85,15 @@ public static class SettingsOps
         var read = Blank(dto.PermRead); var write = Blank(dto.PermWrite);
         var shell = Blank(dto.PermShell); var net = Blank(dto.PermInternet);
 
+        if (Enum.TryParse<AgentMode>(dto.Mode, true, out var mode)) runtime.Settings.Mode = mode;
+        runtime.Settings.PermRead = read; runtime.Settings.PermWrite = write;
+        runtime.Settings.PermShell = shell; runtime.Settings.PermInternet = net;
+
+        var theme   = Blank(dto.Theme)   ?? runtime.Settings.Theme;
+        var density = Blank(dto.Density) ?? runtime.Settings.Density;
+        runtime.Settings.Theme   = theme;
+        runtime.Settings.Density = density;
+
         var path = runtime.Settings.ProjectFilePath;
         if (path != null)
         {
@@ -87,12 +103,10 @@ public static class SettingsOps
             project.Permissions = anyPerm
                 ? new SplaPermissionsSection { Read = read, Write = write, Shell = shell, Internet = net }
                 : null;
+            (project.Ui ??= new()).Theme   = theme;
+            project.Ui.Density             = density;
             ConfigLoader.SaveProject(project, path);
         }
-
-        if (Enum.TryParse<AgentMode>(dto.Mode, true, out var mode)) runtime.Settings.Mode = mode;
-        runtime.Settings.PermRead = read; runtime.Settings.PermWrite = write;
-        runtime.Settings.PermShell = shell; runtime.Settings.PermInternet = net;
 
         return GetAgent(runtime);
     }

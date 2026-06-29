@@ -295,7 +295,9 @@ public sealed class ClientConnection
             Connections = _runtime.Settings.Connections
                 .Select(c => new ConnectionDto { Id = c.Id, Name = c.DisplayName }).ToList(),
             Modes = Enum.GetNames<AgentMode>(),
-            DefaultMode = _runtime.Settings.Mode.ToString()
+            DefaultMode = _runtime.Settings.Mode.ToString(),
+            Theme = _runtime.Settings.Theme,
+            Density = _runtime.Settings.Density
         });
     }
 

@@ -160,6 +160,11 @@ public sealed class AgentSettingsPayload
     public string? PermWrite { get; set; }
     public string? PermShell { get; set; }
     public string? PermInternet { get; set; }
+    // UI appearance — stored in .spla ui: section
+    public string Theme { get; set; } = "dark";
+    public string Density { get; set; } = "norm";
+    public List<string> Themes { get; set; } = new();
+    public List<string> Densities { get; set; } = new();
     /// <summary>False when there is no .spla project to persist into (server-set; ignored on save).</summary>
     public bool CanPersist { get; set; }
 }
@@ -226,6 +231,11 @@ public sealed class WelcomePayload
     public List<ConnectionDto> Connections { get; set; } = new();
     public string[] Modes { get; set; } = System.Array.Empty<string>();
     public string DefaultMode { get; set; } = string.Empty;
+
+    /// <summary>UI appearance resolved from the project file — the client applies these on first
+    /// connect so per-project themes load immediately without a separate get/result round-trip.</summary>
+    public string Theme { get; set; } = "dark";
+    public string Density { get; set; } = "norm";
 }
 
 public sealed class ChatListResultPayload
