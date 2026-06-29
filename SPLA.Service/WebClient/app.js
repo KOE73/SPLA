@@ -352,38 +352,44 @@
     const CONN_FIELDS = [["name","Name"],["provider","Provider"],["endpoint","Endpoint"],["model","Model"],["apiKey","API key"]];
 
     slot.innerHTML = `
-      <header><b>Settings</b><span class="hint"></span></header>
-      <div class="s-tabs">
-        <button class="s-tab" data-tab="connections">Connections</button>
-        <button class="s-tab" data-tab="agent">Agent</button>
-        <button class="s-tab" data-tab="plugins">Plugins</button>
-      </div>
-      <div class="s-panels">
-        <div class="s-panel" data-tab="connections">
-          <div class="conn-list"></div>
-        </div>
-        <div class="s-panel" data-tab="agent">
-          <div class="conn-card">
-            <label class="field"><span>Default mode</span><select class="modeSel"></select></label>
+      <div class="settings-shell">
+        <nav class="settings-nav">
+          <div class="nav-section">Settings</div>
+          <div class="nav-item on" data-tab="connections"><span class="nav-ic">⇄</span>Connections</div>
+          <div class="nav-item" data-tab="agent"><span class="nav-ic">◎</span>Agent</div>
+          <div class="nav-item" data-tab="plugins"><span class="nav-ic">⬡</span>Plugins</div>
+        </nav>
+        <div class="settings-main">
+          <div class="s-panel on" data-tab="connections">
+            <div class="s-head"><b>Connections</b><span class="hint"></span></div>
+            <div class="conn-list"></div>
           </div>
-          <div class="conn-card">
-            <div class="conn-head"><span class="id">Permissions</span></div>
-            ${PERMS.map(([k,l]) => `<label class="field"><span>${l}</span><select data-perm="${k}">
-              <option value="">(mode default)</option><option value="allow">allow</option>
-              <option value="ask">ask</option><option value="deny">deny</option></select></label>`).join("")}
+          <div class="s-panel" data-tab="agent">
+            <div class="s-head"><b>Agent</b><span class="hint"></span></div>
+            <div class="conn-card">
+              <label class="field"><span>Default mode</span><select class="modeSel"></select></label>
+            </div>
+            <div class="conn-card">
+              <div class="conn-head"><span class="id">Permissions</span></div>
+              ${PERMS.map(([k,l]) => `<label class="field"><span>${l}</span><select data-perm="${k}">
+                <option value="">(mode default)</option><option value="allow">allow</option>
+                <option value="ask">ask</option><option value="deny">deny</option></select></label>`).join("")}
+            </div>
           </div>
+          <div class="s-panel" data-tab="plugins">
+            <div class="s-head"><b>Plugins</b><span class="hint"></span></div>
+            <div class="pl-list"></div>
+          </div>
+          <div class="settings-bar"><span class="grow"></span><button class="btn save">Save</button></div>
         </div>
-        <div class="s-panel" data-tab="plugins">
-          <div class="pl-list"></div>
-        </div>
-      </div>
-      <div class="bar"><span class="grow"></span><button class="btn save">Save</button></div>`;
+      </div>`;
 
-    const hintEl = $(".hint", slot), saveBtn = $(".save", slot);
+    const saveBtn = $(".save", slot);
     const connList = $(".conn-list", slot), plList = $(".pl-list", slot);
     const modeSel = $(".modeSel", slot);
-    const hints = { connections: "", agent: "", plugins: "" };
     let currentTab = new URLSearchParams(location.search).get("tab") || "connections";
+
+    const panelHint = tab => slot.querySelector(`.s-panel[data-tab="${tab}"] .hint`);
 
     // --- Connections ---
     let conns = [];
@@ -413,8 +419,7 @@
     }
     c.sub("connections.result", p => {
       conns = (p.connections || []).map(x => ({ ...x }));
-      hints.connections = p.canPersist ? "" : "no .spla project — edits are session-only";
-      if (currentTab === "connections") hintEl.textContent = hints.connections;
+      const h = panelHint("connections"); if (h) h.textContent = p.canPersist ? "" : "no .spla project — session-only";
       renderConns();
     });
 
@@ -425,8 +430,7 @@
       modeSel.value = p.mode || "";
       const setP = (k, v) => { const el = slot.querySelector(`[data-perm="${k}"]`); if (el) el.value = v || ""; };
       setP("permRead", p.permRead); setP("permWrite", p.permWrite); setP("permShell", p.permShell); setP("permInternet", p.permInternet);
-      hints.agent = p.canPersist ? "" : "no .spla project — edits are session-only";
-      if (currentTab === "agent") hintEl.textContent = hints.agent;
+      const h = panelHint("agent"); if (h) h.textContent = p.canPersist ? "" : "no .spla project — session-only";
     });
 
     // --- Plugins ---
@@ -454,13 +458,12 @@
     c.sub("plugins.result", p => {
       renderPlugins(p);
       const bits = [];
-      if (!p.canPersist) bits.push("no .spla project — edits are session-only");
+      if (!p.canPersist) bits.push("no .spla project — session-only");
       if (p.restartToApply) bits.push("enable/disable applies on next launch");
-      hints.plugins = bits.join(" · ");
-      if (currentTab === "plugins") hintEl.textContent = hints.plugins;
+      const h = panelHint("plugins"); if (h) h.textContent = bits.join(" · ");
     });
 
-    // --- Tab switching ---
+    // --- Nav switching ---
     const saveFns = {
       connections: () => c.send("connections.save", { connections: conns }),
       agent: () => c.send("agent.save", {
@@ -481,11 +484,10 @@
     };
     function switchTab(name) {
       currentTab = name;
-      slot.querySelectorAll(".s-tab").forEach(t => t.classList.toggle("on", t.dataset.tab === name));
+      slot.querySelectorAll(".nav-item").forEach(t => t.classList.toggle("on", t.dataset.tab === name));
       slot.querySelectorAll(".s-panel").forEach(p => p.classList.toggle("on", p.dataset.tab === name));
-      hintEl.textContent = hints[name] || "";
     }
-    slot.querySelectorAll(".s-tab").forEach(t => t.onclick = () => switchTab(t.dataset.tab));
+    slot.querySelectorAll(".nav-item").forEach(t => t.onclick = () => switchTab(t.dataset.tab));
     switchTab(currentTab);
 
     saveBtn.onclick = () => {
