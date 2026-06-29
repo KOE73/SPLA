@@ -429,6 +429,62 @@
     return { el: null };
   });
 
+  // ── Plugins editor (enable/disable + custom prompt + opaque settings blob) ──
+  Spla.registerSurface("plugins", c => {
+    const slot = c.slot;
+    slot.classList.add("settings-surface");
+    slot.innerHTML = `
+      <header><b>Plugins</b><span class="hint"></span></header>
+      <div class="list"></div>
+      <div class="bar"><span class="grow"></span><button class="btn save">Save</button></div>`;
+    const listEl = $(".list", slot), hintEl = $(".hint", slot);
+
+    function render(payload) {
+      listEl.innerHTML = "";
+      const plugins = payload.plugins || [];
+      if (!plugins.length) { listEl.innerHTML = `<div class="notice">no plugins discovered</div>`; return; }
+      for (const pl of plugins) {
+        const card = document.createElement("div"); card.className = "conn-card"; card.dataset.id = pl.id;
+        const off = pl.state && pl.state !== "Enabled";
+        card.innerHTML = `
+          <div class="conn-head">
+            <label class="pl-enable"><input type="checkbox" class="en" ${pl.enabled ? "checked" : ""}>
+              <b>${R.escapeHtml(pl.name || pl.id)}</b>
+              <span class="ver">${R.escapeHtml(pl.version || "")} · ${R.escapeHtml(pl.id)}</span></label>
+            <span class="state">${off ? R.escapeHtml(pl.stateReason || pl.state) : ""}</span>
+          </div>
+          <label class="field col"><span>Custom prompt</span><textarea class="cprompt" rows="2"></textarea></label>
+          <label class="field col"><span>Settings (YAML)</span><textarea class="pset mono" rows="4" spellcheck="false"></textarea></label>`;
+        card.querySelector(".cprompt").value = pl.customPrompt || "";
+        card.querySelector(".pset").value = pl.settingsYaml || "";
+        listEl.appendChild(card);
+      }
+    }
+
+    $(".save", slot).onclick = () => {
+      const plugins = [...listEl.querySelectorAll(".conn-card")].map(card => ({
+        id: card.dataset.id,
+        enabled: card.querySelector(".en").checked,
+        customPrompt: card.querySelector(".cprompt").value,
+        settingsYaml: card.querySelector(".pset").value
+      }));
+      c.send("plugins.save", { plugins });
+      $(".save", slot).textContent = "Saved ✓";
+      setTimeout(() => { const b = $(".save", slot); if (b) b.textContent = "Save"; }, 1200);
+    };
+
+    c.sub("plugins.result", p => {
+      render(p);
+      const bits = [];
+      if (!p.canPersist) bits.push("no .spla project — edits are session-only");
+      if (p.restartToApply) bits.push("enable/disable applies on next launch");
+      hintEl.textContent = bits.join(" · ");
+    });
+    c.sub("welcome", () => c.send("plugins.get"));
+    c.send("plugins.get");
+    return { el: null };
+  });
+
   // ╔═══════════════════════════════════════════════════════════════════════════╗
   // ║ Boot                                                                        ║
   // ╚═══════════════════════════════════════════════════════════════════════════╝

@@ -50,6 +50,9 @@ public partial class MainWindow : Window
     private void OpenAgentSurface_Click(object? sender, RoutedEventArgs e)
         => new SurfaceWindow("agent", "Agent").Show(this);
 
+    private void OpenPluginsSurface_Click(object? sender, RoutedEventArgs e)
+        => new SurfaceWindow("plugins", "Plugins").Show(this);
+
     private void Reload_Click(object? sender, RoutedEventArgs e)
     {
         if (_url != null) Browser.Navigate(new Uri(_url));

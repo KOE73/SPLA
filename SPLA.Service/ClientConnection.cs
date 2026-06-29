@@ -242,6 +242,17 @@ public sealed class ClientConnection
                 await SendAsync(MessageTypes.AgentResult, SettingsOps.GetAgent(_runtime));
                 break;
 
+            case MessageTypes.PluginsGet:
+                await SendAsync(MessageTypes.PluginsResult, SettingsOps.GetPlugins(_runtime));
+                break;
+
+            case MessageTypes.PluginsSave:
+            {
+                var p = Payload<PluginsPayload>(env);
+                await _hub.BroadcastAsync(MessageTypes.PluginsResult, SettingsOps.SavePlugins(_runtime, p?.Plugins ?? new()));
+                break;
+            }
+
             case MessageTypes.AgentSave:
             {
                 var p = Payload<AgentSettingsPayload>(env);

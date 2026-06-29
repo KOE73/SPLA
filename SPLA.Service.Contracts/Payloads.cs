@@ -164,6 +164,34 @@ public sealed class AgentSettingsPayload
     public bool CanPersist { get; set; }
 }
 
+/// <summary>One plugin's editable state. The settings blob is opaque to host and client alike — it
+/// travels as a YAML string (<see cref="SettingsYaml"/>) and is never interpreted here.</summary>
+public sealed class PluginEditDto
+{
+    public string Id { get; set; } = string.Empty;
+    public string? Name { get; set; }
+    public string? Type { get; set; }
+    public string? Version { get; set; }
+    public bool Enabled { get; set; } = true;
+    /// <summary>Effective state name (Enabled / DisabledByUser / DisabledByDependency / LoadError…). Read-only.</summary>
+    public string? State { get; set; }
+    public string? StateReason { get; set; }
+    public string? CustomPrompt { get; set; }
+    /// <summary>The plugin's opaque settings blob serialized to YAML (null when none).</summary>
+    public string? SettingsYaml { get; set; }
+}
+
+/// <summary>The discovered plugins. <see cref="PluginsGet"/> answer / <see cref="PluginsSave"/> body /
+/// broadcast result.</summary>
+public sealed class PluginsPayload
+{
+    public List<PluginEditDto> Plugins { get; set; } = new();
+    public bool CanPersist { get; set; }
+
+    /// <summary>True when enable/disable takes effect only on the next service start (plugins load once).</summary>
+    public bool RestartToApply { get; set; }
+}
+
 /// <summary>Asks the server for a debug snapshot. <see cref="Kind"/> selects which inspector view.</summary>
 public sealed class DebugRequestPayload
 {

@@ -97,6 +97,73 @@ public static class SettingsOps
         return GetAgent(runtime);
     }
 
+    // ── Plugins: enable/disable + custom prompt + opaque settings blob ───────
+
+    public static PluginsPayload GetPlugins(AgentRuntime runtime)
+    {
+        var payload = new PluginsPayload
+        {
+            CanPersist = runtime.Settings.ProjectFilePath != null,
+            RestartToApply = true   // plugins load once at startup; enable/disable applies next launch
+        };
+
+        foreach (var d in runtime.PluginManager.GetPlugins())
+        {
+            runtime.Settings.Plugins.TryGetValue(d.Meta.Id, out var section);
+            payload.Plugins.Add(new PluginEditDto
+            {
+                Id = d.Meta.Id,
+                Name = d.Meta.Metadata.TryGetValue("name", out var n) && !string.IsNullOrWhiteSpace(n) ? n : d.Meta.Id,
+                Type = d.Meta.Type,
+                Version = d.Meta.Version,
+                // Prefer the live settings section (reflects edits made this session); the descriptor's
+                // UserEnabled is fixed at startup and would otherwise mask an unsaved/just-saved toggle.
+                Enabled = section?.Enabled ?? d.UserEnabled,
+                State = d.EffectiveState.ToString(),
+                StateReason = string.IsNullOrWhiteSpace(d.EffectiveStateReason) ? null : d.EffectiveStateReason,
+                CustomPrompt = section?.CustomPrompt,
+                SettingsYaml = ConfigLoader.SerializeBlob(section?.Settings)
+            });
+        }
+        return payload;
+    }
+
+    /// <summary>Persists plugin enable flags, custom prompts and opaque settings blobs to the .spla
+    /// project and mutates the live settings. Per-tool toggles (<c>tools:</c>) are preserved untouched.
+    /// Enable/disable only takes effect on the next service start (plugins are loaded once).</summary>
+    public static PluginsPayload SavePlugins(AgentRuntime runtime, IEnumerable<PluginEditDto> incoming)
+    {
+        var path = runtime.Settings.ProjectFilePath;
+        SplaProject? project = path != null ? ConfigLoader.LoadProjectRaw(path) : null;
+
+        foreach (var dto in incoming)
+        {
+            if (string.IsNullOrWhiteSpace(dto.Id)) continue;
+
+            // Preserve anything the web editor doesn't touch (per-tool toggles) from the existing section.
+            var existing = (project?.Plugins?.GetValueOrDefault(dto.Id))
+                           ?? (runtime.Settings.Plugins.TryGetValue(dto.Id, out var s) ? s : null);
+
+            Dictionary<string, object>? blob;
+            try { blob = ConfigLoader.DeserializeBlob(dto.SettingsYaml); }
+            catch { blob = existing?.Settings; }   // bad YAML → keep what was there
+
+            var merged = new SplaPluginSection
+            {
+                Enabled = dto.Enabled,
+                CustomPrompt = Blank(dto.CustomPrompt),
+                Settings = blob,
+                Tools = existing?.Tools
+            };
+
+            if (project != null) { (project.Plugins ??= new())[dto.Id] = merged; }
+            runtime.Settings.Plugins[dto.Id] = merged;
+        }
+
+        if (project != null && path != null) ConfigLoader.SaveProject(project, path);
+        return GetPlugins(runtime);
+    }
+
     private static SplaConnectionSection ToSection(ConnectionEditDto d)
     {
         var id = string.IsNullOrWhiteSpace(d.Id) ? Slug(d.Name ?? d.Model ?? "") : d.Id.Trim();

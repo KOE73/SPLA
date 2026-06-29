@@ -85,6 +85,10 @@ public static class MessageTypes
     public const string AgentGet = "agent.get";
     /// <summary>Save agent settings (persisted to the .spla project when there is one).</summary>
     public const string AgentSave = "agent.save";
+    /// <summary>Ask for the discovered plugins and their enable/prompt/settings state.</summary>
+    public const string PluginsGet = "plugins.get";
+    /// <summary>Save plugin enable flags, custom prompts and opaque settings blobs.</summary>
+    public const string PluginsSave = "plugins.save";
 
     // ── Server → Client ──────────────────────────────────────────────────
     public const string Welcome = "welcome";
@@ -110,6 +114,8 @@ public static class MessageTypes
     public const string ConnectionsResult = "connections.result";
     /// <summary>The current agent settings — answer to <see cref="AgentGet"/> and broadcast after <see cref="AgentSave"/>.</summary>
     public const string AgentResult = "agent.result";
+    /// <summary>The current plugin list/state — answer to <see cref="PluginsGet"/> and broadcast after <see cref="PluginsSave"/>.</summary>
+    public const string PluginsResult = "plugins.result";
     public const string Error = "error";
 }
 

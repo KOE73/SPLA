@@ -195,9 +195,15 @@ body.hide-reasoning .reasoning { display: none; }
 .conn-head .x:hover { color: var(--danger); }
 .field { display: grid; grid-template-columns: 92px 1fr; align-items: center; gap: 8px; }
 .field > span { color: var(--muted); font-size: var(--fs-sm); }
-.field input { background: var(--bg); color: var(--text); border: 1px solid var(--border);
+.field input, .field select, .field textarea { background: var(--bg); color: var(--text); border: 1px solid var(--border);
   border-radius: var(--radius-sm); padding: 6px 9px; font: inherit; font-size: var(--fs-sm); }
-.field input:focus { outline: none; border-color: var(--accent); }
+.field input:focus, .field select:focus, .field textarea:focus { outline: none; border-color: var(--accent); }
+.field.col { grid-template-columns: 1fr; gap: 4px; }
+.field textarea { resize: vertical; }
+.field textarea.mono { font-family: var(--mono); font-size: 12.5px; }
+.pl-enable { display: flex; align-items: center; gap: 7px; flex: 1; cursor: pointer; }
+.pl-enable .ver { color: var(--muted); font-size: var(--fs-xs); font-family: var(--mono); }
+.conn-head .state { color: var(--danger); font-size: var(--fs-xs); }
 
 /* scrollbars */
 ::-webkit-scrollbar { width: 10px; height: 10px; }

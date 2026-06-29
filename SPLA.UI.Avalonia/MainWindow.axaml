@@ -37,6 +37,9 @@
                 <!-- Agent settings (mode / permissions) as a tear-off web surface window -->
                 <Button Classes="caption" Content="⚖" Click="OpenAgentSurface_Click"
                         ToolTip.Tip="Agent (default mode / permissions) — opens as a separate window"/>
+                <!-- Plugins (enable / settings) as a tear-off web surface window -->
+                <Button Classes="caption" Content="🧩" Click="OpenPluginsSurface_Click"
+                        ToolTip.Tip="Plugins (enable / settings) — opens as a separate window"/>
                 <!-- Debug as a tear-off web surface window -->
                 <Button Classes="caption" Content="🧠" Click="OpenDebugSurface_Click"
                         ToolTip.Tip="Debug (memory / context / prompt) — opens as a separate window"/>
