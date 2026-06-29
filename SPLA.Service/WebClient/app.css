@@ -176,16 +176,27 @@ body.hide-reasoning .reasoning { display: none; }
 .kv-row .k { color: var(--accent); min-width: 140px; max-width: 200px; overflow: hidden; text-overflow: ellipsis; }
 .kv-row .v { color: var(--text); white-space: pre-wrap; overflow-wrap: anywhere; }
 
-/* ── Settings surfaces (connections editor, future modes/plugins) ───────────── */
+/* ── Settings surface: tabbed shell (connections | agent | plugins) ─────────── */
 .settings-surface { background: var(--panel); display: flex; flex-direction: column; height: 100%; min-height: 0; }
 .settings-surface header { display: flex; gap: 8px; align-items: baseline; padding: 10px 14px;
   border-bottom: 1px solid var(--border); }
 .settings-surface header b { font-size: var(--fs); }
 .settings-surface .hint { color: var(--muted); font-size: var(--fs-xs); font-style: italic; }
+/* legacy single-section surfaces keep .list; tabbed settings uses .s-panels */
 .settings-surface .list { flex: 1; overflow: auto; padding: 12px 14px; display: flex; flex-direction: column; gap: 12px; }
 .settings-surface .bar { display: flex; align-items: center; gap: 8px; padding: 10px 14px;
   border-top: 1px solid var(--border); }
 .settings-surface .bar .grow { flex: 1; }
+
+/* Tab strip */
+.s-tabs { display: flex; gap: 4px; padding: 8px 14px; border-bottom: 1px solid var(--border); flex-wrap: wrap; }
+.s-tab { background: transparent; border: 1px solid var(--border); color: var(--muted);
+  border-radius: 999px; padding: 3px 12px; font: inherit; font-size: var(--fs-sm); }
+.s-tab.on { background: var(--accent-soft); color: var(--accent); border-color: var(--accent); }
+/* Tab panels */
+.s-panels { flex: 1; overflow: auto; }
+.s-panel { display: none; padding: 12px 14px; flex-direction: column; gap: 12px; }
+.s-panel.on { display: flex; }
 
 .conn-card { border: 1px solid var(--border); border-radius: var(--radius); background: var(--elevated);
   padding: 10px 12px; display: flex; flex-direction: column; gap: 7px; }

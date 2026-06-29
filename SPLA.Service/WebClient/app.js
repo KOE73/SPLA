@@ -327,122 +327,97 @@
     return { el: null };
   });
 
-  // ── Connections editor (slot, or a tear-off window via ?surface=connections) ─
-  Spla.registerSurface("connections", c => {
+  // ── Settings editor: tabbed (connections | agent | plugins) ─────────────────
+  // A single tear-off surface with three tabs; deep-link to a tab via ?tab=<name>.
+  Spla.registerSurface("settings", c => {
     const slot = c.slot;
     slot.classList.add("settings-surface");
+    const PERMS = [["permRead","Read files"],["permWrite","Write files"],["permShell","Run commands"],["permInternet","Internet"]];
+    const CONN_FIELDS = [["name","Name"],["provider","Provider"],["endpoint","Endpoint"],["model","Model"],["apiKey","API key"]];
+
     slot.innerHTML = `
-      <header><b>Connections</b><span class="hint"></span></header>
-      <div class="list"></div>
-      <div class="bar">
-        <button class="btn ghost add">+ Add connection</button>
-        <span class="grow"></span>
-        <button class="btn save">Save</button>
-      </div>`;
-    const listEl = $(".list", slot), hintEl = $(".hint", slot);
+      <header><b>Settings</b><span class="hint"></span></header>
+      <div class="s-tabs">
+        <button class="s-tab" data-tab="connections">Connections</button>
+        <button class="s-tab" data-tab="agent">Agent</button>
+        <button class="s-tab" data-tab="plugins">Plugins</button>
+      </div>
+      <div class="s-panels">
+        <div class="s-panel" data-tab="connections">
+          <div class="conn-list"></div>
+        </div>
+        <div class="s-panel" data-tab="agent">
+          <div class="conn-card">
+            <label class="field"><span>Default mode</span><select class="modeSel"></select></label>
+          </div>
+          <div class="conn-card">
+            <div class="conn-head"><span class="id">Permissions</span></div>
+            ${PERMS.map(([k,l]) => `<label class="field"><span>${l}</span><select data-perm="${k}">
+              <option value="">(mode default)</option><option value="allow">allow</option>
+              <option value="ask">ask</option><option value="deny">deny</option></select></label>`).join("")}
+          </div>
+        </div>
+        <div class="s-panel" data-tab="plugins">
+          <div class="pl-list"></div>
+        </div>
+      </div>
+      <div class="bar"><span class="grow"></span><button class="btn save">Save</button></div>`;
+
+    const hintEl = $(".hint", slot), saveBtn = $(".save", slot);
+    const connList = $(".conn-list", slot), plList = $(".pl-list", slot);
+    const modeSel = $(".modeSel", slot);
+    const hints = { connections: "", agent: "", plugins: "" };
+    let currentTab = new URLSearchParams(location.search).get("tab") || "connections";
+
+    // --- Connections ---
     let conns = [];
-
-    const FIELDS = [["name", "Name"], ["provider", "Provider"], ["endpoint", "Endpoint"], ["model", "Model"], ["apiKey", "API key"]];
-
-    function render() {
-      listEl.innerHTML = "";
+    function renderConns() {
+      connList.innerHTML = "";
       conns.forEach((conn, i) => {
         const card = document.createElement("div"); card.className = "conn-card";
         const head = document.createElement("div"); head.className = "conn-head";
         head.innerHTML = `<span class="id">${R.escapeHtml(conn.id || "(new)")}</span>`;
         const rm = document.createElement("button"); rm.className = "x"; rm.textContent = "✕"; rm.title = "Remove";
-        rm.onclick = () => { conns.splice(i, 1); render(); };
-        head.appendChild(rm);
-        card.appendChild(head);
-        for (const [key, label] of FIELDS) {
+        rm.onclick = () => { conns.splice(i, 1); renderConns(); };
+        head.appendChild(rm); card.appendChild(head);
+        for (const [key, label] of CONN_FIELDS) {
           const row = document.createElement("label"); row.className = "field";
           row.innerHTML = `<span>${label}</span>`;
           const inp = document.createElement("input");
           inp.type = key === "apiKey" ? "password" : "text";
           inp.value = conn[key] || "";
-          inp.oninput = () => { conn[key] = inp.value; if (key === "name" && !conn.id) head.querySelector(".id").textContent = "(new)"; };
+          inp.oninput = () => { conn[key] = inp.value; };
           row.appendChild(inp); card.appendChild(row);
         }
-        listEl.appendChild(card);
+        connList.appendChild(card);
       });
+      const addBtn = document.createElement("button"); addBtn.className = "btn ghost"; addBtn.textContent = "+ Add connection";
+      addBtn.onclick = () => { conns.push({ id:"", name:"", provider:"lmstudio", endpoint:"http://127.0.0.1:1234/v1/", model:"", apiKey:"" }); renderConns(); };
+      connList.appendChild(addBtn);
     }
-
-    $(".add", slot).onclick = () => { conns.push({ id: "", name: "", provider: "lmstudio", endpoint: "http://127.0.0.1:1234/v1/", model: "", apiKey: "" }); render(); };
-    $(".save", slot).onclick = () => {
-      c.send("connections.save", { connections: conns });
-      $(".save", slot).textContent = "Saved ✓";
-      setTimeout(() => { const b = $(".save", slot); if (b) b.textContent = "Save"; }, 1200);
-    };
-
     c.sub("connections.result", p => {
       conns = (p.connections || []).map(x => ({ ...x }));
-      hintEl.textContent = p.canPersist ? "" : "no .spla project — edits are session-only";
-      render();
+      hints.connections = p.canPersist ? "" : "no .spla project — edits are session-only";
+      if (currentTab === "connections") hintEl.textContent = hints.connections;
+      renderConns();
     });
-    c.sub("welcome", () => c.send("connections.get"));
-    c.send("connections.get");
-    return { el: null };
-  });
 
-  // ── Agent settings editor (default mode + permission overrides) ─────────────
-  Spla.registerSurface("agent", c => {
-    const slot = c.slot;
-    slot.classList.add("settings-surface");
-    const PERMS = [["permRead", "Read files"], ["permWrite", "Write files"], ["permShell", "Run commands"], ["permInternet", "Internet"]];
-    slot.innerHTML = `
-      <header><b>Agent</b><span class="hint"></span></header>
-      <div class="list">
-        <div class="conn-card">
-          <label class="field"><span>Default mode</span><select class="modeSel"></select></label>
-        </div>
-        <div class="conn-card">
-          <div class="conn-head"><span class="id">Permissions</span></div>
-          ${PERMS.map(([k, l]) => `<label class="field"><span>${l}</span><select data-perm="${k}">
-            <option value="">(mode default)</option><option value="allow">allow</option>
-            <option value="ask">ask</option><option value="deny">deny</option></select></label>`).join("")}
-        </div>
-      </div>
-      <div class="bar"><span class="grow"></span><button class="btn save">Save</button></div>`;
-    const modeSel = $(".modeSel", slot), hintEl = $(".hint", slot);
-
+    // --- Agent ---
     c.sub("agent.result", p => {
       modeSel.innerHTML = "";
       for (const m of (p.modes || [])) { const o = document.createElement("option"); o.value = o.textContent = m; modeSel.appendChild(o); }
       modeSel.value = p.mode || "";
-      const set = (k, v) => { const el = slot.querySelector(`[data-perm="${k}"]`); if (el) el.value = v || ""; };
-      set("permRead", p.permRead); set("permWrite", p.permWrite); set("permShell", p.permShell); set("permInternet", p.permInternet);
-      hintEl.textContent = p.canPersist ? "" : "no .spla project — edits are session-only";
+      const setP = (k, v) => { const el = slot.querySelector(`[data-perm="${k}"]`); if (el) el.value = v || ""; };
+      setP("permRead", p.permRead); setP("permWrite", p.permWrite); setP("permShell", p.permShell); setP("permInternet", p.permInternet);
+      hints.agent = p.canPersist ? "" : "no .spla project — edits are session-only";
+      if (currentTab === "agent") hintEl.textContent = hints.agent;
     });
-    $(".save", slot).onclick = () => {
-      c.send("agent.save", {
-        mode: modeSel.value,
-        permRead: slot.querySelector('[data-perm="permRead"]').value,
-        permWrite: slot.querySelector('[data-perm="permWrite"]').value,
-        permShell: slot.querySelector('[data-perm="permShell"]').value,
-        permInternet: slot.querySelector('[data-perm="permInternet"]').value
-      });
-      $(".save", slot).textContent = "Saved ✓";
-      setTimeout(() => { const b = $(".save", slot); if (b) b.textContent = "Save"; }, 1200);
-    };
-    c.sub("welcome", () => c.send("agent.get"));
-    c.send("agent.get");
-    return { el: null };
-  });
 
-  // ── Plugins editor (enable/disable + custom prompt + opaque settings blob) ──
-  Spla.registerSurface("plugins", c => {
-    const slot = c.slot;
-    slot.classList.add("settings-surface");
-    slot.innerHTML = `
-      <header><b>Plugins</b><span class="hint"></span></header>
-      <div class="list"></div>
-      <div class="bar"><span class="grow"></span><button class="btn save">Save</button></div>`;
-    const listEl = $(".list", slot), hintEl = $(".hint", slot);
-
-    function render(payload) {
-      listEl.innerHTML = "";
+    // --- Plugins ---
+    function renderPlugins(payload) {
+      plList.innerHTML = "";
       const plugins = payload.plugins || [];
-      if (!plugins.length) { listEl.innerHTML = `<div class="notice">no plugins discovered</div>`; return; }
+      if (!plugins.length) { plList.innerHTML = `<div class="notice">no plugins discovered</div>`; return; }
       for (const pl of plugins) {
         const card = document.createElement("div"); card.className = "conn-card"; card.dataset.id = pl.id;
         const off = pl.state && pl.state !== "Enabled";
@@ -457,31 +432,53 @@
           <label class="field col"><span>Settings (YAML)</span><textarea class="pset mono" rows="4" spellcheck="false"></textarea></label>`;
         card.querySelector(".cprompt").value = pl.customPrompt || "";
         card.querySelector(".pset").value = pl.settingsYaml || "";
-        listEl.appendChild(card);
+        plList.appendChild(card);
       }
     }
-
-    $(".save", slot).onclick = () => {
-      const plugins = [...listEl.querySelectorAll(".conn-card")].map(card => ({
-        id: card.dataset.id,
-        enabled: card.querySelector(".en").checked,
-        customPrompt: card.querySelector(".cprompt").value,
-        settingsYaml: card.querySelector(".pset").value
-      }));
-      c.send("plugins.save", { plugins });
-      $(".save", slot).textContent = "Saved ✓";
-      setTimeout(() => { const b = $(".save", slot); if (b) b.textContent = "Save"; }, 1200);
-    };
-
     c.sub("plugins.result", p => {
-      render(p);
+      renderPlugins(p);
       const bits = [];
       if (!p.canPersist) bits.push("no .spla project — edits are session-only");
       if (p.restartToApply) bits.push("enable/disable applies on next launch");
-      hintEl.textContent = bits.join(" · ");
+      hints.plugins = bits.join(" · ");
+      if (currentTab === "plugins") hintEl.textContent = hints.plugins;
     });
-    c.sub("welcome", () => c.send("plugins.get"));
-    c.send("plugins.get");
+
+    // --- Tab switching ---
+    const saveFns = {
+      connections: () => c.send("connections.save", { connections: conns }),
+      agent: () => c.send("agent.save", {
+        mode: modeSel.value,
+        permRead: slot.querySelector('[data-perm="permRead"]').value,
+        permWrite: slot.querySelector('[data-perm="permWrite"]').value,
+        permShell: slot.querySelector('[data-perm="permShell"]').value,
+        permInternet: slot.querySelector('[data-perm="permInternet"]').value
+      }),
+      plugins: () => c.send("plugins.save", {
+        plugins: [...plList.querySelectorAll(".conn-card")].map(card => ({
+          id: card.dataset.id,
+          enabled: card.querySelector(".en").checked,
+          customPrompt: card.querySelector(".cprompt").value,
+          settingsYaml: card.querySelector(".pset").value
+        }))
+      })
+    };
+    function switchTab(name) {
+      currentTab = name;
+      slot.querySelectorAll(".s-tab").forEach(t => t.classList.toggle("on", t.dataset.tab === name));
+      slot.querySelectorAll(".s-panel").forEach(p => p.classList.toggle("on", p.dataset.tab === name));
+      hintEl.textContent = hints[name] || "";
+    }
+    slot.querySelectorAll(".s-tab").forEach(t => t.onclick = () => switchTab(t.dataset.tab));
+    switchTab(currentTab);
+
+    saveBtn.onclick = () => {
+      if (saveFns[currentTab]) saveFns[currentTab]();
+      saveBtn.textContent = "Saved ✓"; setTimeout(() => { saveBtn.textContent = "Save"; }, 1200);
+    };
+
+    c.sub("welcome", () => { c.send("connections.get"); c.send("agent.get"); c.send("plugins.get"); });
+    c.send("connections.get"); c.send("agent.get"); c.send("plugins.get");
     return { el: null };
   });
 

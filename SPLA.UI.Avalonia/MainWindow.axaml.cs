@@ -44,14 +44,8 @@ public partial class MainWindow : Window
     private void OpenDebugSurface_Click(object? sender, RoutedEventArgs e)
         => new SurfaceWindow("debug", "Debug").Show(this);
 
-    private void OpenConnectionsSurface_Click(object? sender, RoutedEventArgs e)
-        => new SurfaceWindow("connections", "Connections").Show(this);
-
-    private void OpenAgentSurface_Click(object? sender, RoutedEventArgs e)
-        => new SurfaceWindow("agent", "Agent").Show(this);
-
-    private void OpenPluginsSurface_Click(object? sender, RoutedEventArgs e)
-        => new SurfaceWindow("plugins", "Plugins").Show(this);
+    private void OpenSettingsSurface_Click(object? sender, RoutedEventArgs e)
+        => new SurfaceWindow("settings", "Settings").Show(this);
 
     private void Reload_Click(object? sender, RoutedEventArgs e)
     {
