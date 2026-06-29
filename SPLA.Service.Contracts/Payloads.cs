@@ -243,6 +243,14 @@ public sealed class ChatListResultPayload
     public List<ChatSummaryDto> Chats { get; set; } = new();
 }
 
+/// <summary>The project's UI appearance after a change — broadcast as <see cref="MessageTypes.AppearanceChanged"/>.
+/// Every window applies these; the native shell picks them up via the webview bridge.</summary>
+public sealed class AppearanceChangedPayload
+{
+    public string Theme { get; set; } = "dark";
+    public string Density { get; set; } = "norm";
+}
+
 /// <summary>Full state of a chat the client just opened (or created): its existing messages + settings.</summary>
 public sealed class ChatOpenedPayload
 {

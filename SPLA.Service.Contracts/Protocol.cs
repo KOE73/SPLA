@@ -116,6 +116,10 @@ public static class MessageTypes
     public const string AgentResult = "agent.result";
     /// <summary>The current plugin list/state — answer to <see cref="PluginsGet"/> and broadcast after <see cref="PluginsSave"/>.</summary>
     public const string PluginsResult = "plugins.result";
+    /// <summary>The project's UI appearance (theme/density) changed — broadcast to every window so all
+    /// apply it uniformly, independent of which surface they show. A dedicated channel, not piggy-backed
+    /// on <see cref="AgentResult"/>, so any view can react without understanding the settings editor.</summary>
+    public const string AppearanceChanged = "appearance.changed";
     public const string Error = "error";
 }
 

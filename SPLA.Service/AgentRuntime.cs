@@ -32,6 +32,10 @@ public sealed class AgentRuntime : IDisposable
 
     public ResolvedSettings Settings { get; }
     public ILoggerFactory LoggerFactory { get; }
+
+    /// <summary>Process-wide domain-event hub. Mutators publish state changes here; the host fans them
+    /// out to clients. The single "say what changed once" point — see <see cref="ServiceEvents"/>.</summary>
+    public ServiceEvents Events { get; } = new();
     public LMStudioClient Llm { get; }
     public McpHost McpHost { get; }
     public SkillManager SkillManager { get; }

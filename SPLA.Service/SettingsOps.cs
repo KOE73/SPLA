@@ -108,6 +108,10 @@ public static class SettingsOps
             ConfigLoader.SaveProject(project, path);
         }
 
+        // Appearance is a cross-cutting concern: announce it on its own channel so every window applies
+        // it, not just the settings editor. The host turns this into an appearance.changed broadcast.
+        runtime.Events.Publish(new AppearanceChanged(theme, density));
+
         return GetAgent(runtime);
     }
 

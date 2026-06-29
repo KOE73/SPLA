@@ -60,6 +60,19 @@ public sealed class SplaServiceHost
         var auth = new AuthGate(options.Token);
         var inspector = new LiveAgentInspector(runtime);
 
+        // The single place that maps domain events to wire broadcasts. Mutators publish to
+        // runtime.Events knowing nothing of sockets; here each event becomes a fan-out message.
+        runtime.Events.Subscribe(evt =>
+        {
+            switch (evt)
+            {
+                case AppearanceChanged a:
+                    _ = hub.BroadcastAsync(Contracts.MessageTypes.AppearanceChanged,
+                        new Contracts.AppearanceChangedPayload { Theme = a.Theme, Density = a.Density });
+                    break;
+            }
+        });
+
         app.MapGet("/health", () => Results.Text("SPLA service running. Connect a client to /ws.", "text/plain"));
 
         // The browser client — served from embedded static assets. Any client drives the same agent /ws.

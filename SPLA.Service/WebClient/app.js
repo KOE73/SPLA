@@ -33,10 +33,9 @@
       const env = JSON.parse(ev.data);
       if (env.type === "welcome") {
         setConn(true, "connected");
-        // Server carries the project's ui.theme/density — apply immediately so per-project
-        // themes load on connect without waiting for agent.get/result.
-        if (env.payload?.theme) applyTheme(env.payload.theme);
-        if (env.payload?.density) applyDensity(env.payload.density);
+        // Server carries the project's ui.theme/density — route through the same appearance channel
+        // so the one reactor applies it (and forwards to the native shell) on connect.
+        bus.emit("appearance.changed", { theme: env.payload?.theme, density: env.payload?.density });
       }
       if (env.type === "chat.opened") {
         state.currentChat = env.payload.chatId;
@@ -63,6 +62,16 @@
     document.documentElement.setAttribute("data-density", name || "norm");
     LS.setItem("spla.density", name || "norm");
   }
+
+  // Global appearance reactor — registered once, independent of any surface. Fires for both the
+  // server broadcast (appearance.changed, every window) and local instant-preview emits (the picker
+  // emits the same event on change). The native shell bridges off this via window.chrome.webview.
+  bus.on("appearance.changed", p => {
+    if (p?.theme)   applyTheme(p.theme);
+    if (p?.density) applyDensity(p.density);
+    // Forward to the Avalonia host (if embedded) so the native window chrome follows the theme too.
+    try { window.chrome?.webview?.postMessage({ kind: "appearance", theme: p?.theme, density: p?.density }); } catch {}
+  });
 
   const ctx = { send, state, on: bus.on, emit: bus.emit };
 
@@ -401,6 +410,11 @@
     const themeSel = $(".themeSel", slot), densitySel = $(".densitySel", slot), layoutSel = $(".layoutSel", slot);
     let currentTab = new URLSearchParams(location.search).get("tab") || "connections";
 
+    // Instant preview: emit the appearance event locally the moment a value is picked, so the change
+    // is visible everywhere in this window before (and independent of) saving. Save persists it.
+    themeSel.onchange   = () => c.emit("appearance.changed", { theme: themeSel.value, density: densitySel.value });
+    densitySel.onchange = () => c.emit("appearance.changed", { theme: themeSel.value, density: densitySel.value });
+
     // Populate layout selector (client-only pref)
     Spla.layoutNames().forEach(n => {
       const o = document.createElement("option"); o.value = n;
@@ -509,8 +523,8 @@
         }))
       }),
       appearance: () => {
-        // Apply theme + density immediately (instant preview); then persist via agent.save
-        applyTheme(themeSel.value); applyDensity(densitySel.value);
+        // Preview already applied on change. Persist via agent.save; the server's appearance.changed
+        // broadcast then applies it across every other window (and the native shell) uniformly.
         c.send("agent.save", {
           mode: modeSel.value,
           permRead: slot.querySelector('[data-perm="permRead"]').value,
