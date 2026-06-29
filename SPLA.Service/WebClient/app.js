@@ -303,16 +303,30 @@
     $("#debugClose", slot).onclick = () => slot.classList.remove("open");
     slot.querySelectorAll(".tab").forEach(tab => tab.onclick = () => request(tab.dataset.kind));
 
+    const activeKind = () => slot.querySelector(".tab.on")?.dataset.kind || "kv.session";
+    const reload = () => request(activeKind());
+
     c.sub("debug.open", () => { slot.classList.add("open"); request("kv.session"); });
+
     if (solo) {
-      // Standalone window: no drawer chrome, no debug button — show immediately and auto-load once
-      // the socket is up (welcome). Re-request on chat switch so context-bound tabs stay live.
+      // Standalone window: no drawer chrome — show immediately and auto-load once socket is up.
       $("#debugClose", slot).style.display = "none";
-      const reload = () => request(slot.querySelector(".tab.on")?.dataset.kind || "kv.session");
       c.sub("welcome", reload);
       c.sub("focus.changed", reload);     // main window switched chats → refresh against the new one
       c.sub("chat.current", reload);
     }
+
+    // Auto-refresh the active tab when KV is likely mutated (tools write, turns complete).
+    // Debounced so rapid successive tool results collapse into one request.
+    let refreshTimer = 0;
+    const scheduleRefresh = () => {
+      clearTimeout(refreshTimer);
+      refreshTimer = setTimeout(() => {
+        if (solo || slot.classList.contains("open")) reload();
+      }, 400);
+    };
+    c.sub("tool.result", scheduleRefresh);
+    c.sub("turn.complete", scheduleRefresh);
     c.sub("debug.snapshot", p => {
       body.innerHTML = "";
       if (p.entries) {
