@@ -32,6 +32,7 @@ public partial class MainWindow : Window
 
         try
         {
+            Helpers.WebViewBridge.Attach(Browser);
             _url = await App.ServiceUrlAsync();
             Browser.Navigate(new Uri(_url));
         }

@@ -34,6 +34,7 @@ public partial class SurfaceWindow : Window
     {
         try
         {
+            Helpers.WebViewBridge.Attach(Browser);
             var baseUrl = await App.ServiceUrlAsync();
             _url = baseUrl.TrimEnd('/') + "/?surface=" + Uri.EscapeDataString(_surface);
             Browser.Navigate(new Uri(_url));
