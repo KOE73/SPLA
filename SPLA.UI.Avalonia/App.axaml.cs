@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Threading.Tasks;
 using Avalonia;
@@ -124,14 +125,19 @@ public partial class App : Application
         base.OnFrameworkInitializationCompleted();
     }
 
+    private static readonly HashSet<string> KnownThemes    = ["Dark", "Light", "Cream", "Emerald"];
+    private static readonly HashSet<string> KnownDensities = ["Nano", "Mini", "Norm", "Max"];
+
     public static void ChangeTheme(string themeName)
     {
         var app = Current;
         if (app != null)
         {
-            var uri = new Uri("avares://SPLA.UI.Avalonia/Themes/Colors/" + themeName + ".axaml");
+            var name = char.ToUpper(themeName[0]) + themeName.Substring(1).ToLower();
+            if (!KnownThemes.Contains(name)) name = "Dark";
+            var uri = new Uri("avares://SPLA.UI.Avalonia/Themes/Colors/" + name + ".axaml");
             var dict = new global::Avalonia.Markup.Xaml.Styling.ResourceInclude(uri) { Source = uri };
-            
+
             // Themes is index 0
             if (app.Resources.MergedDictionaries.Count > 0)
                 app.Resources.MergedDictionaries[0] = dict;
@@ -176,9 +182,9 @@ public partial class App : Application
         var app = Current;
         if (app != null)
         {
-            // Normalize name (e.g. "norm" -> "Norm")
-            densityName = char.ToUpper(densityName[0]) + densityName.Substring(1).ToLower();
-            var uri = new Uri("avares://SPLA.UI.Avalonia/Themes/Densities/" + densityName + ".axaml");
+            var name = char.ToUpper(densityName[0]) + densityName.Substring(1).ToLower();
+            if (!KnownDensities.Contains(name)) name = "Norm";
+            var uri = new Uri("avares://SPLA.UI.Avalonia/Themes/Densities/" + name + ".axaml");
             var dict = new global::Avalonia.Markup.Xaml.Styling.ResourceInclude(uri) { Source = uri };
             
             // Densities is index 1
