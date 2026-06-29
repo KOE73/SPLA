@@ -134,7 +134,7 @@ public partial class App : Application
         if (app != null)
         {
             var name = char.ToUpper(themeName[0]) + themeName.Substring(1).ToLower();
-            if (!KnownThemes.Contains(name)) name = "Dark";
+            if (!KnownThemes.Contains(name)) name = "Cream";
             var uri = new Uri("avares://SPLA.UI.Avalonia/Themes/Colors/" + name + ".axaml");
             var dict = new global::Avalonia.Markup.Xaml.Styling.ResourceInclude(uri) { Source = uri };
 
