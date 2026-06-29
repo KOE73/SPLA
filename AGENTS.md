@@ -42,6 +42,7 @@ For comprehensive details on agent permission models, tool matrices, autonomy co
 - **[Data Ownership Rules](agents/data-ownership.md)**: STOP — read this before adding any registry, flag, or discovery logic. UI ViewModels must not own domain data. Violations cause data loss on restart, CLI blindness, and untestable state.
 - **[System Prompt Authoring Rules](agents/sys_prompt_rules.md)**: STOP — read this before writing any system prompt block, skill description, tool help text, or plugin prompt. Defines how to avoid logical contradictions between rules. Russian translation: [`docs/sys_prompt_rules_ru.md`](docs/sys_prompt_rules_ru.md).
 - **[Skill System Architecture](agents/skills.md)**: STOP — read this before touching `SkillManager`, `SystemPromptBuilder`, skill tool implementations (`skill_activate`, `skill_deactivate`, `agent_clarify`, `agent_spawn`), or any UI that reflects skill state. Defines the lifecycle state machine, assembly order, permission matrix, and hot reload behavior.
+- **[Wire Protocol & Event Registry](agents/protocol.md)**: STOP — read this before adding, renaming, or removing any WebSocket message type, payload, or client bus event. Message names are soft strings on the JS side; this is the registry of every `MessageTypes` constant, payload, fan-out semantics, domain events (`ServiceEvents`), and client-local bus events that keeps both sides in sync.
 
 
 ## Translation Policy

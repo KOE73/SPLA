@@ -48,6 +48,9 @@ public partial class MainWindow : Window
     private void OpenSettingsSurface_Click(object? sender, RoutedEventArgs e)
         => new SurfaceWindow("settings", "Settings").Show(this);
 
+    private void OpenWireSurface_Click(object? sender, RoutedEventArgs e)
+        => new SurfaceWindow("wire", "Wire").Show(this);
+
     private void Reload_Click(object? sender, RoutedEventArgs e)
     {
         if (_url != null) Browser.Navigate(new Uri(_url));

@@ -180,6 +180,26 @@ body.hide-reasoning .reasoning { display: none; }
 .kv-row .k { color: var(--accent); min-width: 140px; max-width: 200px; overflow: hidden; text-overflow: ellipsis; }
 .kv-row .v { color: var(--text); white-space: pre-wrap; overflow-wrap: anywhere; }
 
+/* Wire tap — passive protocol monitor (?surface=wire). Mirrors .debug-surface chrome. */
+.wire-surface { background: var(--panel); border-left: 1px solid var(--border);
+  display: flex; flex-direction: column; height: 100%; min-height: 0; }
+.wire-surface header { display: flex; gap: 8px; align-items: center; padding: 10px 12px; border-bottom: 1px solid var(--border); }
+.wire-surface header b { flex-shrink: 0; }
+.wire-filter { flex: 1; background: var(--code-bg); border: 1px solid var(--border); color: var(--text);
+  border-radius: var(--radius-sm); padding: 4px 8px; font-family: var(--mono); font-size: var(--fs-xs); }
+.wire-surface .filter.on { background: var(--accent-soft); color: var(--accent); border-color: var(--accent); }
+.wire-log { flex: 1; overflow: auto; padding: 6px 10px; font-family: var(--mono); font-size: var(--fs-xs); }
+.wire-row { display: flex; gap: 8px; align-items: baseline; padding: 2px 0;
+  border-bottom: 1px solid color-mix(in srgb, var(--border) 40%, transparent); }
+.wire-row.hide { display: none; }
+.wire-row .wt { color: var(--muted); flex-shrink: 0; }
+.wire-row .wd { flex-shrink: 0; font-weight: 700; }
+.wire-row.in  .wd { color: var(--accent); }
+.wire-row.out .wd { color: #d08770; }
+.wire-row .wtype { flex-shrink: 0; color: var(--text); font-weight: 600; min-width: 130px; }
+.wire-row .wmeta { flex-shrink: 0; color: var(--muted); }
+.wire-row .wpay { color: var(--muted); white-space: pre-wrap; overflow-wrap: anywhere; }
+
 /* ── Settings surface: left-nav shell (connections | agent | plugins) ────────── */
 .settings-surface { background: var(--panel); display: flex; flex-direction: column; height: 100%; min-height: 0; }
 

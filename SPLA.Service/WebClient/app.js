@@ -24,6 +24,7 @@
   let ws;
   function send(type, payload, extra) {
     if (ws && ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify(Object.assign({ type, payload }, extra)));
+    bus.emit("wire", { dir: "out", type, payload, chatId: extra?.chatId, requestId: extra?.requestId, ts: Date.now() });
   }
   function connect() {
     ws = new WebSocket((location.protocol === "https:" ? "wss://" : "ws://") + location.host + "/ws");
@@ -31,6 +32,7 @@
     ws.onclose = () => { setConn(false, "disconnected — retrying"); setTimeout(connect, 1500); };
     ws.onmessage = ev => {
       const env = JSON.parse(ev.data);
+      bus.emit("wire", { dir: "in", type: env.type, payload: env.payload, chatId: env.chatId, requestId: env.requestId, ts: Date.now() });
       if (env.type === "welcome") {
         setConn(true, "connected");
         // Server carries the project's ui.theme/density — route through the same appearance channel
@@ -346,6 +348,59 @@
       } else if (p.text != null) {
         const pre = document.createElement("pre"); pre.style.whiteSpace = "pre-wrap"; pre.textContent = p.text; body.appendChild(pre);
       }
+    });
+    return { el: null };
+  });
+
+  // ── Wire tap (slot = standalone window / ?surface=wire) ──────────────────────
+  // A passive protocol monitor: every frame in/out is emitted on the local "wire" event by send()
+  // and ws.onmessage. This surface just logs them, so a name mismatch (soft strings!) is visible
+  // instead of a silent no-op. Filter by substring; pause to freeze; clear to reset.
+  Spla.registerSurface("wire", c => {
+    const slot = c.slot;
+    slot.classList.add("wire-surface");
+    slot.innerHTML = `
+      <header>
+        <b>Wire</b>
+        <input id="wireFilter" class="wire-filter" placeholder="filter type/payload…" spellcheck="false">
+        <button id="wirePause" class="filter">pause</button>
+        <button id="wireClear" class="filter">clear</button>
+        <span id="wireCount" class="hint"></span>
+      </header>
+      <div id="wireLog" class="wire-log"></div>`;
+    const log = $("#wireLog", slot), filterEl = $("#wireFilter", slot);
+    const pauseBtn = $("#wirePause", slot), countEl = $("#wireCount", slot);
+    let paused = false, total = 0;
+    const MAX = 500;   // ring cap so a long session doesn't grow unbounded
+
+    pauseBtn.onclick = () => { paused = !paused; pauseBtn.classList.toggle("on", paused); pauseBtn.textContent = paused ? "resume" : "pause"; };
+    $("#wireClear", slot).onclick = () => { log.innerHTML = ""; total = 0; countEl.textContent = ""; };
+    filterEl.oninput = () => {
+      const q = filterEl.value.toLowerCase();
+      log.querySelectorAll(".wire-row").forEach(r => r.classList.toggle("hide", q && !r.dataset.search.includes(q)));
+    };
+
+    c.sub("wire", e => {
+      if (paused) return;
+      const payloadStr = e.payload == null ? "" : JSON.stringify(e.payload);
+      const row = document.createElement("div");
+      row.className = "wire-row " + (e.dir === "in" ? "in" : "out");
+      row.dataset.search = (e.type + " " + payloadStr).toLowerCase();
+      const t = new Date(e.ts).toLocaleTimeString();
+      const meta = [e.chatId && "chat=" + e.chatId, e.requestId && "req=" + e.requestId].filter(Boolean).join(" ");
+      row.innerHTML =
+        `<span class="wt">${t}</span>` +
+        `<span class="wd">${e.dir === "in" ? "←" : "→"}</span>` +
+        `<span class="wtype">${R.escapeHtml(e.type)}</span>` +
+        (meta ? `<span class="wmeta">${R.escapeHtml(meta)}</span>` : "") +
+        (payloadStr ? `<span class="wpay">${R.escapeHtml(payloadStr.length > 300 ? payloadStr.slice(0, 300) + "…" : payloadStr)}</span>` : "");
+      const q = filterEl.value.toLowerCase();
+      if (q && !row.dataset.search.includes(q)) row.classList.add("hide");
+      const atBottom = log.scrollHeight - log.scrollTop - log.clientHeight < 40;
+      log.appendChild(row);
+      while (log.childElementCount > MAX) log.removeChild(log.firstChild);
+      if (atBottom) log.scrollTop = log.scrollHeight;
+      countEl.textContent = (++total) + " frames";
     });
     return { el: null };
   });
