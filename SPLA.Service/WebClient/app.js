@@ -465,10 +465,12 @@
     const themeSel = $(".themeSel", slot), densitySel = $(".densitySel", slot), layoutSel = $(".layoutSel", slot);
     let currentTab = new URLSearchParams(location.search).get("tab") || "connections";
 
-    // Instant preview: emit the appearance event locally the moment a value is picked, so the change
-    // is visible everywhere in this window before (and independent of) saving. Save persists it.
-    themeSel.onchange   = () => c.emit("appearance.changed", { theme: themeSel.value, density: densitySel.value });
-    densitySel.onchange = () => c.emit("appearance.changed", { theme: themeSel.value, density: densitySel.value });
+    // Appearance auto-applies: no Save step. Each pick persists to .spla and broadcasts
+    // appearance.changed, so EVERY window (web + native chrome) updates live through one path —
+    // not just this webview. A low-stakes, instantly-reversible preference: preview is the commit.
+    const saveAppearance = () => c.send("appearance.save", { theme: themeSel.value, density: densitySel.value });
+    themeSel.onchange   = saveAppearance;
+    densitySel.onchange = saveAppearance;
 
     // Populate layout selector (client-only pref)
     Spla.layoutNames().forEach(n => {
@@ -525,7 +527,7 @@
       densitySel.innerHTML = ""; for (const d of (p.densities || [])) { const o = document.createElement("option"); o.value = d; o.textContent = { nano:"Nano", mini:"Mini", norm:"Normal", max:"Max" }[d] || d; densitySel.appendChild(o); }
       themeSel.value = p.theme || LS.getItem("spla.theme") || "dark";
       densitySel.value = p.density || LS.getItem("spla.density") || "norm";
-      const ah = panelHint("appearance"); if (ah) ah.textContent = p.canPersist ? "saved to .spla project" : "no .spla project — session-only";
+      const ah = panelHint("appearance"); if (ah) ah.textContent = p.canPersist ? "applies instantly · saved to .spla" : "applies instantly · session-only";
     });
 
     // --- Plugins ---
@@ -576,24 +578,15 @@
           customPrompt: card.querySelector(".cprompt").value,
           settingsYaml: card.querySelector(".pset").value
         }))
-      }),
-      appearance: () => {
-        // Preview already applied on change. Persist via agent.save; the server's appearance.changed
-        // broadcast then applies it across every other window (and the native shell) uniformly.
-        c.send("agent.save", {
-          mode: modeSel.value,
-          permRead: slot.querySelector('[data-perm="permRead"]').value,
-          permWrite: slot.querySelector('[data-perm="permWrite"]').value,
-          permShell: slot.querySelector('[data-perm="permShell"]').value,
-          permInternet: slot.querySelector('[data-perm="permInternet"]').value,
-          theme: themeSel.value, density: densitySel.value
-        });
-      }
+      })
+      // appearance: no Save — auto-applies on change (see saveAppearance above).
     };
     function switchTab(name) {
       currentTab = name;
       slot.querySelectorAll(".nav-item").forEach(t => t.classList.toggle("on", t.dataset.tab === name));
       slot.querySelectorAll(".s-panel").forEach(p => p.classList.toggle("on", p.dataset.tab === name));
+      // Appearance auto-applies, so it needs no Save button — the other (transactional) tabs do.
+      saveBtn.style.display = saveFns[name] ? "" : "none";
     }
     slot.querySelectorAll(".nav-item").forEach(t => t.onclick = () => switchTab(t.dataset.tab));
     switchTab(currentTab);

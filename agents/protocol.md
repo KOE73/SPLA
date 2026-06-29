@@ -48,9 +48,10 @@ a wire message, add the constant to `MessageTypes` **and** update the client **a
 | `connections.get` | `ConnectionsGet` | — | Reply `connections.result`. |
 | `connections.save` | `ConnectionsSave` | `ConnectionsPayload` | Broadcasts `connections.result`. |
 | `agent.get` | `AgentGet` | — | Reply `agent.result`. |
-| `agent.save` | `AgentSave` | `AgentSettingsPayload` | Broadcasts `agent.result` **and** `appearance.changed`. |
+| `agent.save` | `AgentSave` | `AgentSettingsPayload` | Mode + permissions only. Broadcasts `agent.result`. |
 | `plugins.get` | `PluginsGet` | — | Reply `plugins.result`. |
 | `plugins.save` | `PluginsSave` | `PluginsPayload` | Broadcasts `plugins.result`. |
+| `appearance.save` | `AppearanceSave` | `AppearanceChangedPayload` | Auto-sent on change (no Save step). Persists ui: + broadcasts `appearance.changed`. |
 
 ## Server → Client
 

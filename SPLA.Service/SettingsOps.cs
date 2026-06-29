@@ -89,11 +89,6 @@ public static class SettingsOps
         runtime.Settings.PermRead = read; runtime.Settings.PermWrite = write;
         runtime.Settings.PermShell = shell; runtime.Settings.PermInternet = net;
 
-        var theme   = Blank(dto.Theme)   ?? runtime.Settings.Theme;
-        var density = Blank(dto.Density) ?? runtime.Settings.Density;
-        runtime.Settings.Theme   = theme;
-        runtime.Settings.Density = density;
-
         var path = runtime.Settings.ProjectFilePath;
         if (path != null)
         {
@@ -103,16 +98,33 @@ public static class SettingsOps
             project.Permissions = anyPerm
                 ? new SplaPermissionsSection { Read = read, Write = write, Shell = shell, Internet = net }
                 : null;
-            (project.Ui ??= new()).Theme   = theme;
-            project.Ui.Density             = density;
             ConfigLoader.SaveProject(project, path);
         }
 
-        // Appearance is a cross-cutting concern: announce it on its own channel so every window applies
-        // it, not just the settings editor. The host turns this into an appearance.changed broadcast.
-        runtime.Events.Publish(new AppearanceChanged(theme, density));
-
         return GetAgent(runtime);
+    }
+
+    /// <summary>Persists just the UI appearance (theme/density) to the .spla project and mutates the
+    /// live settings, then publishes <see cref="AppearanceChanged"/> so every window applies it. Kept
+    /// separate from agent settings: appearance is a low-stakes, instantly-reversible preference that
+    /// auto-applies on change with no Save step — unlike the transactional mode/permission edits.</summary>
+    public static void SaveAppearance(AgentRuntime runtime, string? theme, string? density)
+    {
+        theme   = Blank(theme)   ?? runtime.Settings.Theme;
+        density = Blank(density) ?? runtime.Settings.Density;
+        runtime.Settings.Theme   = theme;
+        runtime.Settings.Density = density;
+
+        var path = runtime.Settings.ProjectFilePath;
+        if (path != null)
+        {
+            var project = ConfigLoader.LoadProjectRaw(path);
+            (project.Ui ??= new()).Theme = theme;
+            project.Ui.Density           = density;
+            ConfigLoader.SaveProject(project, path);
+        }
+
+        runtime.Events.Publish(new AppearanceChanged(theme, density));
     }
 
     // ── Plugins: enable/disable + custom prompt + opaque settings blob ───────

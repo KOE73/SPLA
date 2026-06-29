@@ -89,6 +89,9 @@ public static class MessageTypes
     public const string PluginsGet = "plugins.get";
     /// <summary>Save plugin enable flags, custom prompts and opaque settings blobs.</summary>
     public const string PluginsSave = "plugins.save";
+    /// <summary>Persist UI appearance (theme/density). Auto-sent on change — appearance has no Save step.
+    /// Body is <see cref="AppearanceChangedPayload"/>; the server persists and broadcasts <see cref="AppearanceChanged"/>.</summary>
+    public const string AppearanceSave = "appearance.save";
 
     // ── Server → Client ──────────────────────────────────────────────────
     public const string Welcome = "welcome";

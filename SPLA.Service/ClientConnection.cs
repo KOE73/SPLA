@@ -261,6 +261,15 @@ public sealed class ClientConnection
                 break;
             }
 
+            case MessageTypes.AppearanceSave:
+            {
+                // Appearance auto-saves on change. SaveAppearance persists + publishes AppearanceChanged;
+                // the host's event subscriber fans appearance.changed out to every window (incl. this one).
+                var p = Payload<AppearanceChangedPayload>(env);
+                if (p != null) SettingsOps.SaveAppearance(_runtime, p.Theme, p.Density);
+                break;
+            }
+
             case MessageTypes.DebugRequest:
             {
                 var p = Payload<DebugRequestPayload>(env);
