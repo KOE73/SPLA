@@ -112,7 +112,7 @@ public sealed class AgentRuntime : IDisposable
         ChatManager = new ChatManager(settings);
 
         PromptBuilder = new SystemPromptBuilder(SkillManager, PluginManager);
-        SystemPrompt = PromptBuilder.Build(settings, Directory.GetCurrentDirectory());
+        SystemPrompt = PromptBuilder.Build(settings, settings.WorkspacePath);
 
         TokenUsageProject = new FileTokenUsageStore(
             Path.Combine(settings.WorkspacePath, ".spla", "token-usage.json"));

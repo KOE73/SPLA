@@ -42,6 +42,7 @@ ResolvedSettings settings;
 if (splaFile != null)
 {
     Console.WriteLine($"Project file: {splaFile}");
+    ConfigLoader.ScaffoldIfNew(splaFile);
     settings = ConfigLoader.LoadAndResolve(splaFile);
     Directory.SetCurrentDirectory(settings.WorkspacePath);
     SplaTelemetry.ConfigureProjectLogs(settings.WorkspacePath);
@@ -191,9 +192,8 @@ else
 }
 
 // --- Build system prompt (shared core: same builder the UI uses) ---
-var currentDir = Directory.GetCurrentDirectory();
 var promptBuilder = new SPLA.Agent.SystemPromptBuilder(skillManager, pluginManager);
-var systemPrompt = promptBuilder.Build(settings, currentDir);
+var systemPrompt = promptBuilder.Build(settings, settings.WorkspacePath);
 
 // Restore this chat's session memory (survives restart) and feed live context:* into each turn.
 sessionKv.LoadFrom(currentChat.Kv);

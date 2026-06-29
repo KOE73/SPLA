@@ -29,25 +29,6 @@ public partial class App : Application
     /// </summary>
     public static string? ProjectFilePath { get; private set; }
 
-    /// <summary>
-    /// Persistent project-lifetime token tally. Created once the workspace is resolved at startup,
-    /// backed by <c>&lt;workspace&gt;/.spla/token-usage.json</c>. Every chat folds its real per-turn
-    /// usage in here, so the count is cumulative across the whole project, ultimate and ever-growing.
-    /// </summary>
-    public static SPLA.Domain.Interfaces.ITokenUsageStore TokenUsage { get; private set; } =
-        new SPLA.Domain.Agent.FileTokenUsageStore(
-            Path.Combine(Directory.GetCurrentDirectory(), ".spla", "token-usage.json"));
-
-    /// <summary>
-    /// Machine-global token tally, shared across every project on this machine. Backed by
-    /// <c>~/.spla/token-usage.json</c>. Every turn folds into both this and the per-project
-    /// <see cref="TokenUsage"/>.
-    /// </summary>
-    public static SPLA.Domain.Interfaces.ITokenUsageStore TokenUsageGlobal { get; } =
-        new SPLA.Domain.Agent.FileTokenUsageStore(
-            Path.Combine(
-                Environment.GetFolderPath(Environment.SpecialFolder.UserProfile),
-                ".spla", "token-usage.json"));
 
     public override void Initialize()
     {
@@ -99,9 +80,7 @@ public partial class App : Application
             ProjectFilePath = splaFile;
             ResolvedSettings = ConfigLoader.LoadAndResolve(splaFile);
             SplaTelemetry.ConfigureProjectLogs(ResolvedSettings.WorkspacePath);
-            TokenUsage = new SPLA.Domain.Agent.FileTokenUsageStore(
-                Path.Combine(ResolvedSettings.WorkspacePath, ".spla", "token-usage.json"));
-
+        
             var logger = Services.GetRequiredService<ILogger<App>>();
             logger.LogInformation(
                 "Application startup. ProjectFile={ProjectFile} WorkspacePath={WorkspacePath} Mode={Mode}",
@@ -146,11 +125,6 @@ public partial class App : Application
 
             VisualResourcesChanged?.Invoke(app, EventArgs.Empty);
         }
-    }
-
-    public static void ReloadResolvedSettings()
-    {
-        ResolvedSettings = ConfigLoader.LoadAndResolve(ProjectFilePath);
     }
 
     // ── Embedded service (one agent, many windows) ───────────────────────────

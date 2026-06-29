@@ -25,7 +25,7 @@ public sealed class ProjectKvStore
 
     public ProjectKvStore(ResolvedSettings settings)
     {
-        var baseDir = settings.ProjectName != null
+        var baseDir = settings.ProjectFilePath != null
             ? Path.Combine(settings.WorkspacePath, ".spla")
             : ConfigLoader.GetDefaultsDir();
         Directory.CreateDirectory(baseDir);
