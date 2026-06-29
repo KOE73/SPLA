@@ -91,6 +91,7 @@
         <option value="dark">Dark</option><option value="emerald">Emerald</option>
         <option value="cream">Cream</option><option value="light">Light</option></select></label>
       <label>layout <select id="layoutSel"></select></label>
+      <button id="settingsBtn" class="filter">⚙</button>
       <button id="debugBtn" class="filter">debug</button>
       <span id="tokens"></span>`;
     const modeSel = $("#modeSel", c.slot), connSel = $("#connSel", c.slot),
@@ -117,6 +118,7 @@
     }
     modeSel.onchange = () => { if (c.state.currentChat) c.send("chat.settings", { chatId: c.state.currentChat, mode: modeSel.value }); };
     connSel.onchange = () => { if (c.state.currentChat) c.send("chat.settings", { chatId: c.state.currentChat, connectionId: connSel.value }); };
+    $("#settingsBtn", c.slot).onclick = () => window.open("/?surface=settings", "spla-settings", "width=640,height=720,resizable=yes");
     $("#debugBtn", c.slot).onclick = () => c.emit("debug.open");
 
     c.sub("conn", p => { $("#dot", c.slot).className = p.on ? "on" : ""; $("#conn", c.slot).textContent = p.text; });
