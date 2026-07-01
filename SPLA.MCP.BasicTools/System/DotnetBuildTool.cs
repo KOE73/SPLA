@@ -1,11 +1,10 @@
 using SPLA.Domain.Agent;
+using SPLA.Domain.Host;
 using SPLA.Domain.Models;
 using SPLA.MCP.Core.Interfaces;
 using SPLA.MCP.Core.Json;
 using SPLA.MCP.Core.Tools;
 using System;
-using System.Diagnostics;
-using System.IO;
 using System.Text;
 using System.Text.Json;
 using System.Threading;
@@ -72,52 +71,36 @@ public class DotnetBuildTool : IMcpTool
             var noRestore     = ToolJson.GetBoolean(doc.RootElement, "no_restore", false);
             var cwd           = ToolJson.GetString(doc.RootElement, "cwd");
 
-            var arguments = new StringBuilder("build");
-            
+            var arguments = new StringBuilder("dotnet build");
+
             if (!string.IsNullOrWhiteSpace(projectPath))
             {
                 arguments.Append($" \"{projectPath}\"");
             }
-            
+
             if (!string.IsNullOrWhiteSpace(configuration))
             {
                 arguments.Append($" -c {configuration}");
             }
-            
+
             if (noRestore)
             {
                 arguments.Append(" --no-restore");
             }
 
-            var processStartInfo = new ProcessStartInfo
-            {
-                FileName = "dotnet",
-                Arguments = arguments.ToString(),
-                RedirectStandardOutput = true,
-                RedirectStandardError = true,
-                UseShellExecute = false,
-                CreateNoWindow = true,
-                WorkingDirectory = string.IsNullOrEmpty(cwd) ? Directory.GetCurrentDirectory() : cwd
-            };
-            
-            processStartInfo.Environment["DOTNET_CLI_UI_LANGUAGE"] = "en";
+            var sandbox = HostServices.Sandbox;
+            if (!sandbox.Gate.CanExecute() || sandbox.Shell is not { } shell)
+                return "Error: Shell execution is disabled in this environment.";
 
-            using var process = Process.Start(processStartInfo);
-            if (process == null) return "Error: Could not start process.";
+            var run = await shell.RunAsync(
+                new ShellCommand(arguments.ToString(), string.IsNullOrEmpty(cwd) ? null : cwd),
+                cancellationToken);
 
-            var outputTask = process.StandardOutput.ReadToEndAsync(cancellationToken);
-            var errorTask = process.StandardError.ReadToEndAsync(cancellationToken);
-
-            await process.WaitForExitAsync(cancellationToken);
-
-            var output = await outputTask;
-            var error = await errorTask;
-
-            var result = $"ExitCode: {process.ExitCode}\nOutput:\n{output}\nError:\n{error}";
+            var result = $"ExitCode: {run.ExitCode}\nOutput:\n{run.StandardOutput}\nError:\n{run.StandardError}";
             var target = DataChannel.ParseTarget(ToolJson.GetString(doc.RootElement, "output"));
             if (target == OutputTarget.Context) return result;
             var blobName = ToolJson.GetString(doc.RootElement, "output_name");
-            return DataChannel.Route(target, BlobPayload.OfText(result), $"dotnet_build: exit={process.ExitCode}", blobName);
+            return DataChannel.Route(target, BlobPayload.OfText(result), $"dotnet_build: exit={run.ExitCode}", blobName);
         }
         catch (JsonException)
         {

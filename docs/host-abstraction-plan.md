@@ -69,9 +69,11 @@ IAgentContext                 ← архитектурный верх (пока 
 переведены на `Sandbox.Workspace` (`IWorkspace` расширен `ReadAllTextAsync`/`DeleteFile`) —
 write-bypass закрыт полностью.
 
-**Фаза 0.2 (потом):** read-инструменты `FsSearchTextTool`/`FsFindFilesTool` (внешний ripgrep —
-нужен `MapPathToHost`) и System `DotnetBuildTool`/`DotnetTestTool` (внешние процессы → `IShell`)
-на тот же шов.
+**Фаза 0.2 (частично сделано):** `DotnetBuildTool`/`DotnetTestTool` переведены на `IShell`
+(были `Process.Start("dotnet")` напрямую — execute-bypass; теперь уважают `Gate.CanExecute()` и
+отключаются вместе с shell). ОСТАЛОСЬ: read-инструменты `FsSearchTextTool`/`FsFindFilesTool`
+(внешний ripgrep — нужен `MapPathToHost`, отдельный дизайн: как виртуальный workspace вообще
+поддерживает полнотекстовый поиск).
 
 ## Проверка шва
 
