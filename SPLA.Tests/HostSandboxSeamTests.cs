@@ -38,6 +38,31 @@ public sealed class HostSandboxSeamTests
     }
 
     [Fact]
+    public async Task Create_patch_delete_flow_through_scoped_workspace()
+    {
+        var ws = new MemoryWorkspace();
+        using var _ = Scope(new PassthroughSandbox(workspace: ws, shell: null));
+
+        var create = await new FsCreateTool().ExecuteAsync(
+            """{"path":"/virtual/a.txt","content":"one two three"}""");
+        Assert.Contains("Successfully created", create);
+        Assert.True(ws.FileExists("/virtual/a.txt"));
+        Assert.False(File.Exists("/virtual/a.txt"));
+
+        var patch = await new FsPatchTool().ExecuteAsync(
+            """{"path":"/virtual/a.txt","old_text":"two","new_text":"TWO"}""");
+        Assert.Contains("status: success", patch);
+
+        var read = await new FsReadTool().ExecuteAsync(
+            """{"path":"/virtual/a.txt","start_line":1,"line_count":null,"output":null,"output_name":null}""");
+        Assert.Contains("one TWO three", read);
+
+        var delete = await new FsDeleteTool().ExecuteAsync("""{"path":"/virtual/a.txt"}""");
+        Assert.Contains("Successfully deleted", delete);
+        Assert.False(ws.FileExists("/virtual/a.txt"));
+    }
+
+    [Fact]
     public async Task Shell_tool_reports_disabled_when_sandbox_has_no_shell()
     {
         // PassthroughSandbox always supplies a shell; a no-execute scenario uses a sandbox whose
@@ -74,12 +99,16 @@ public sealed class HostSandboxSeamTests
                 ? v.Split('\n')
                 : System.Array.Empty<string>());
 
+        public Task<string> ReadAllTextAsync(string path, CancellationToken ct = default)
+            => Task.FromResult(_files.TryGetValue(path, out var v) ? v : string.Empty);
+
         public Task WriteAllTextAsync(string path, string content, CancellationToken ct = default)
         {
             _files[path] = content;
             return Task.CompletedTask;
         }
 
+        public void DeleteFile(string path) => _files.Remove(path);
         public void CreateDirectory(string path) { /* virtual: directories are implicit */ }
 
         public IReadOnlyList<string> GetDirectories(string path) => System.Array.Empty<string>();

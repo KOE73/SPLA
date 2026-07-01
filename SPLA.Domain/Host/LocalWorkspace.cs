@@ -21,9 +21,13 @@ public sealed class LocalWorkspace : IWorkspace
     public Task<string[]> ReadAllLinesAsync(string path, CancellationToken ct = default)
         => File.ReadAllLinesAsync(path, ct);
 
+    public Task<string> ReadAllTextAsync(string path, CancellationToken ct = default)
+        => File.ReadAllTextAsync(path, ct);
+
     public Task WriteAllTextAsync(string path, string content, CancellationToken ct = default)
         => File.WriteAllTextAsync(path, content, ct);
 
+    public void DeleteFile(string path) => File.Delete(path);
     public void CreateDirectory(string path) => Directory.CreateDirectory(path);
     public IReadOnlyList<string> GetDirectories(string path) => Directory.GetDirectories(path);
     public IReadOnlyList<string> GetFiles(string path) => Directory.GetFiles(path);

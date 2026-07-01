@@ -65,8 +65,13 @@ IAgentContext                 ← архитектурный верх (пока 
 - `RunCommandTool` (shell) → `HostServices.Sandbox.Shell` (если `null` — «shell disabled»);
   логика powershell/процесса переезжает в `LocalShell`.
 
-**Фаза 0.1 (потом):** остальные fs-инструменты (Patch/Delete/Create/SearchText/FindFiles) и
-System (DotnetBuild/DotnetTest) на тот же шов.
+**Фаза 0.1 (сделано):** мутационные fs-инструменты `FsCreateTool`/`FsDeleteTool`/`FsPatchTool`
+переведены на `Sandbox.Workspace` (`IWorkspace` расширен `ReadAllTextAsync`/`DeleteFile`) —
+write-bypass закрыт полностью.
+
+**Фаза 0.2 (потом):** read-инструменты `FsSearchTextTool`/`FsFindFilesTool` (внешний ripgrep —
+нужен `MapPathToHost`) и System `DotnetBuildTool`/`DotnetTestTool` (внешние процессы → `IShell`)
+на тот же шов.
 
 ## Проверка шва
 
