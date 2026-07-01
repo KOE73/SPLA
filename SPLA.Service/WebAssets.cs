@@ -3,12 +3,13 @@ using System.Reflection;
 namespace SPLA.Service;
 
 /// <summary>
-/// Serves the browser client's static files (html/css/js + marked/mermaid).
+/// Serves the browser client's static files — the built output of <c>web/</c> (Vue 3 + TS + Vite).
 /// <para>
-/// In development the files are read straight from the source <c>WebClient/</c> directory (found by
-/// walking up from the binary directory), so a JS/CSS change is visible on the next browser reload
-/// without a rebuild. In distribution (no source directory present) every file falls back to the
-/// embedded resource baked into the assembly.
+/// In development the files are read straight from <c>web/dist/</c> (found by walking up from the
+/// binary directory), so a rebuild (<c>npm run build</c> in <c>web/</c>, or the .csproj's pre-build
+/// target) is visible on the next browser reload without rebuilding the .NET host. In distribution
+/// (no source directory present) every file falls back to the embedded resource baked into the
+/// assembly at .NET build time.
 /// </para>
 /// </summary>
 public static class WebAssets
@@ -43,6 +44,18 @@ public static class WebAssets
         return (ms.ToArray(), MimeType(path));
     }
 
+    /// <summary>Loads a file straight from a plugin's own directory on disk (its prebuilt web settings
+    /// module — see <c>web_settings_entry</c> in meta.yaml). Plugins live outside the assembly, so
+    /// there is no embedded-resource fallback here, only a path-traversal guard.</summary>
+    public static (byte[] Bytes, string ContentType)? GetFromDirectory(string baseDir, string relPath)
+    {
+        var baseFull = Path.GetFullPath(baseDir);
+        var filePath = Path.GetFullPath(Path.Combine(baseFull, relPath.Replace('/', Path.DirectorySeparatorChar)));
+        if (!filePath.StartsWith(baseFull, StringComparison.OrdinalIgnoreCase) || !File.Exists(filePath))
+            return null;
+        return (File.ReadAllBytes(filePath), MimeType(filePath));
+    }
+
     private static string MimeType(string path) => Path.GetExtension(path).ToLowerInvariant() switch
     {
         ".html" => "text/html; charset=utf-8",
@@ -54,17 +67,15 @@ public static class WebAssets
         _       => "application/octet-stream"
     };
 
-    // Walk up from the binary directory to find the source WebClient/ folder.
+    // Walk up from the binary directory to find the repo's web/dist/ folder.
     // Works both when the CLI runs from SPLA.CLI/bin/…/ and when SPLA.Service itself is the host.
     private static string? FindDevWebClientDir()
     {
         var dir = new DirectoryInfo(AppContext.BaseDirectory);
         for (var i = 0; i < 8 && dir != null; i++, dir = dir.Parent)
         {
-            var direct  = Path.Combine(dir.FullName, "WebClient");
-            if (Directory.Exists(direct)) return direct;
-            var sibling = Path.Combine(dir.FullName, "SPLA.Service", "WebClient");
-            if (Directory.Exists(sibling)) return sibling;
+            var dist = Path.Combine(dir.FullName, "web", "dist");
+            if (Directory.Exists(dist)) return dist;
         }
         return null;
     }

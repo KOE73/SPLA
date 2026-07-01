@@ -1,3 +1,5 @@
+using SPLA.Domain.Context;
+using SPLA.Domain.Models;
 using SPLA.Service.Contracts;
 
 namespace SPLA.Service;
@@ -61,10 +63,59 @@ public sealed class LiveAgentInspector : IAgentInspector
                 break;
 
             case DebugKinds.LastContext:
-                snap.Text = chat is { } c && c.LastContext.Count > 0
-                    ? string.Join("\n\n", c.LastContext.Select((m, i) =>
-                        $"[{i}] {m.Role}:\n{Truncate(m.Content, 2000)}"))
-                    : "(no request captured yet — send a message first)";
+                if (chat is { } lc)
+                {
+                    // LastContext is captured live from the most recent LLM turn and is process-memory
+                    // only — empty right after a fresh service start even though chat history is on
+                    // disk. Fall back to recomputing what WOULD be sent right now so the panel is
+                    // useful immediately, not just after the next message.
+                    var isLive = lc.LastContext.Count > 0;
+                    var sentContext = isLive ? lc.LastContext : ContextAssembler.Assemble(lc.Messages);
+                    snap.ContextIsLive = isLive;
+
+                    var ctxSet = new HashSet<string>(sentContext.Select(m => m.MsgId).Where(id => id != null)!);
+                    var allMessages = lc.Messages;
+                    var idx = 0;
+                    var lines = new List<ContextLineDto>();
+
+                    // All messages (full history) — dimmed if not in context
+                    foreach (var m in allMessages)
+                    {
+                        lines.Add(new ContextLineDto
+                        {
+                            Index = ++idx,
+                            MsgId = string.IsNullOrEmpty(m.Mark) ? m.MsgId : $"{m.MsgId} [{m.Mark}]",
+                            Source = DescribeSource(m),
+                            Full = BuildFull(m),
+                            Preview = Flatten(BuildFull(m)),
+                            ApproxTokens = (BuildFull(m).Length + 3) / 4,
+                            InContext = !string.IsNullOrEmpty(m.MsgId) && ctxSet.Contains(m.MsgId)
+                        });
+                    }
+                    // Working-memory and other injected messages absent from history
+                    foreach (var m in sentContext.Where(m => string.IsNullOrEmpty(m.MsgId) || !allMessages.Any(h => h.MsgId == m.MsgId)))
+                    {
+                        lines.Add(new ContextLineDto
+                        {
+                            Index = ++idx,
+                            MsgId = "(injected)",
+                            Source = DescribeSource(m),
+                            Full = BuildFull(m),
+                            Preview = Flatten(BuildFull(m)),
+                            ApproxTokens = (BuildFull(m).Length + 3) / 4,
+                            InContext = true
+                        });
+                    }
+                    var ctxLines = lines.Where(l => l.InContext).ToList();
+                    snap.ContextLines = lines;
+                    snap.ContextCount = ctxLines.Count;
+                    snap.TotalCount = lines.Count;
+                    snap.ApproxTokens = ctxLines.Sum(l => l.ApproxTokens);
+                }
+                else
+                {
+                    snap.Text = "(no request captured yet — send a message first)";
+                }
                 break;
 
             default:
@@ -72,6 +123,40 @@ public sealed class LiveAgentInspector : IAgentInspector
                 break;
         }
         return snap;
+    }
+
+    private static string DescribeSource(ChatMessage m)
+    {
+        if (m.IsLabel) return string.IsNullOrEmpty(m.Mark) ? "label" : $"label [{m.Mark}]";
+        return m.Role switch
+        {
+            ChatRole.System when (m.Content ?? "").StartsWith("--- Working memory", StringComparison.Ordinal) => "working-mem",
+            ChatRole.System    => "system",
+            ChatRole.User      => "user",
+            ChatRole.Assistant when m.ToolCalls is { Count: > 0 } => "asst→tool",
+            ChatRole.Assistant => "assistant",
+            ChatRole.Tool      => "tool-result",
+            _                  => m.Role.ToString().ToLowerInvariant()
+        };
+    }
+
+    private static string BuildFull(ChatMessage m)
+    {
+        if (m.ToolCalls is { Count: > 0 })
+        {
+            var calls = string.Join(", ", m.ToolCalls.Select(t => $"{t.Function.Name}({t.Function.Arguments})"));
+            var head = string.IsNullOrEmpty(m.Content) ? "" : m.Content + " ";
+            return $"{head}[tools: {calls}]";
+        }
+        return m.Content ?? string.Empty;
+    }
+
+    private static string Flatten(string text)
+    {
+        if (string.IsNullOrEmpty(text)) return "(empty)";
+        var s = text.Replace('\r', ' ').Replace('\n', ' ').Replace('\t', ' ').Trim();
+        while (s.Contains("  ")) s = s.Replace("  ", " ");
+        return s;
     }
 
     private static string Truncate(string? s, int max)

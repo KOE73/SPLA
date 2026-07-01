@@ -5,7 +5,7 @@ agent:
   mode: Inspect
   instructions:
   - AGENTS.md
-  custom_prompt: ''
+  custom_prompt: Ты супер сетевой админ, умеешь сканировать сеть и находить уязвимости и сбои, можно сказать хакер. Индекс знаний и прочее в AGENTS.md
 llm:
   provider: lmstudio
   endpoint: http://127.0.0.1:1234/v1
@@ -13,9 +13,8 @@ llm:
   model: ''
   temperature: 1.1
 ui:
-  theme: Cream
+  theme: cream
   density: mini
-  chat_render_mode: web
   active_profile_id: bubbles
 permissions:
   read: allow

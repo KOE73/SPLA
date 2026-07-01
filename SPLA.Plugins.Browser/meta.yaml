@@ -1,0 +1,85 @@
+id: browser
+version: 0.1.0
+type: dll
+entry_point: SPLA.Plugins.Browser.dll
+
+# ── Launch argument flags ──────────────────────────────────────────────────────────────────────
+# All flags are true (enabled) by default — this matches Playwright's stock behaviour.
+# Set a flag to false to pass it to IgnoreDefaultArgs, removing it from the Chromium command line.
+#
+# Example — test your own site without the automation banner and with extensions loaded:
+#   plugins:
+#     browser:
+#       settings:
+#         enable_automation: false      # removes --enable-automation (no banner, navigator.webdriver=false)
+#         disable_extensions: false     # removes --disable-extensions (real profile extensions load)
+#         extra_args:
+#           - "--mute-audio"
+#
+# Available flags (all default true):
+#   enable_automation           — --enable-automation  (automation banner + navigator.webdriver=true)
+#   disable_background_networking — --disable-background-networking
+#   disable_extensions          — --disable-extensions
+#   no_default_browser_check    — --no-default-browser-check
+#   no_first_run                — --no-first-run
+#   disable_popup_blocking      — --disable-popup-blocking
+#   extra_args: []              — extra Chromium flags appended verbatim every launch
+
+default_prompt: |
+  Browser automation tools (Playwright) are available — you can open a real browser, navigate
+  sites, and interact with the page like a user would.
+
+  Lifecycle:
+    browser_start  — launch the browser. channel: "msedge" | "chrome" | "chromium" (default: tries
+                      msedge first, falls back to installing a managed Chromium on first use).
+                      profile: "new" (fresh, temporary), "project" (persistent, stored in this
+                      project, reused across runs), a real profile's name/email from
+                      browser_list_profiles (uses the user's actual logged-in browser profile —
+                      they get access to its saved logins/cookies, so only do this when the task
+                      needs it), or a raw folder path. Omit 'profile' to be ASKED — never guess
+                      between these, the choice has real privacy implications. headless: false by
+                      default so you can watch it work.
+    browser_list_profiles — preview what browser_start would offer (project profile + detected
+                      real Edge/Chrome profiles) before deciding or asking.
+    browser_status  — is it running, which profile/channel, which tab is active.
+    browser_stop    — close the browser and free the process.
+
+  Tabs:
+    browser_tabs, browser_new_tab, browser_switch_tab, browser_close_tab.
+
+  Navigation:
+    browser_navigate — open a URL on the active tab.
+    browser_wait_navigation — wait out a navigation triggered by a click (e.g. a submit button).
+
+  Perceiving the page (call browser_snapshot FIRST, before any action):
+    browser_snapshot  — a compact tree of the page's interactive/notable elements, each tagged with
+                         a short ref like [ref=e12]. THIS is your primary way of "seeing" the page —
+                         prefer it over screenshots for finding things to click/fill.
+    browser_inspect    — full detail on one element by ref: role, name, value, attributes, bounding
+                          box, and state (visible/enabled/editable/checked/focused).
+    browser_get_text   — visible text of the page or one element by ref.
+    browser_screenshot — a real picture (viewport, full page, or one element). Stored as a blob and
+                          automatically queued so you SEE it as an image on your very next turn — use
+                          this when the snapshot tree isn't enough (visual layout, a chart, a CAPTCHA).
+
+  Acting on elements — always target by ref from the latest browser_snapshot:
+    browser_click, browser_fill, browser_press, browser_select, browser_scroll.
+    A ref becomes stale after navigation or a snapshot taken since — if an action reports "stale ref",
+    call browser_snapshot again before retrying.
+
+  Waiting (use these instead of sleeping):
+    browser_wait_element — wait for an element to appear/disappear/become visible.
+
+  Files:
+    browser_upload — set a local file into a file input (ref-targeted).
+
+  Diagnostics:
+    browser_console, browser_page_errors — recent console messages / uncaught JS errors on the
+    active tab, useful when a page misbehaves.
+
+  Rules:
+  - Always browser_snapshot after navigating or after an action that changes the page, before your
+    next click/fill — refs from a stale snapshot will fail.
+  - Prefer ref-targeted actions over coordinates.
+  - browser_start only once per session; reuse the running browser for the rest of the task.
+  - Call browser_stop when you are done browsing to free the process.

@@ -19,6 +19,7 @@
     <ProjectReference Include="..\SPLA.Agent\SPLA.Agent.csproj" />
     <ProjectReference Include="..\SPLA.MCP.BasicTools\SPLA.MCP.BasicTools.csproj" />
     <ProjectReference Include="..\SPLA.Domain\SPLA.Domain.csproj" />
+    <ProjectReference Include="..\SPLA.Plugins.Browser\SPLA.Plugins.Browser.csproj" />
     <ProjectReference Include="..\SPLA.Plugins.Network\SPLA.Plugins.Network.csproj" />
     <ProjectReference Include="..\SPLA.Plugins.Roslyn\SPLA.Plugins.Roslyn.csproj" />
     <ProjectReference Include="..\SPLA.Plugins.Sql\SPLA.Plugins.Sql.csproj" />

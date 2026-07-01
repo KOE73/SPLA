@@ -18,24 +18,31 @@ public interface IAgentSession
 
     /// <summary>This chat's single active-skill session.</summary>
     ISkillSession Skills { get; }
+
+    /// <summary>This chat's queue of images a tool wants injected into the model's context on the
+    /// next turn (e.g. a browser screenshot). See <see cref="IPendingImageSink"/>.</summary>
+    IPendingImageSink Images { get; }
 }
 
-/// <summary>Plain bundle of the three per-chat agent dependencies. Used by the UI chat VM and by
+/// <summary>Plain bundle of the per-chat agent dependencies. Used by the UI chat VM and by
 /// spawned sub-agents to open an <see cref="AgentSessionScope"/> over an isolated state set.</summary>
 public sealed class AgentSession : IAgentSession
 {
-    public AgentSession(IKeyValueStore sessionKv, MarkManager checkpoint, ISkillSession skills, IBlobStore? blobs = null)
+    public AgentSession(IKeyValueStore sessionKv, MarkManager checkpoint, ISkillSession skills,
+        IBlobStore? blobs = null, IPendingImageSink? images = null)
     {
         SessionKv = sessionKv;
         Checkpoint = checkpoint;
         Skills = skills;
         Blobs = blobs ?? new BlobStore();
+        Images = images ?? new PendingImageSink();
     }
 
     public IKeyValueStore SessionKv { get; }
     public IBlobStore Blobs { get; }
     public MarkManager Checkpoint { get; }
     public ISkillSession Skills { get; }
+    public IPendingImageSink Images { get; }
 }
 
 /// <summary>

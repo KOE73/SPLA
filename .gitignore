@@ -1,10 +1,15 @@
 /.publish/
 /.spla/
+**/.spla/
 /.claude/
 /.vs/
 **/bin/
 **/obj/
 *.user
+
+# Node / web build
+**/node_modules/
+web/dist/
 
 # Local environment and secrets
 .env

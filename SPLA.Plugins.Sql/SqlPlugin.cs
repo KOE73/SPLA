@@ -1,11 +1,33 @@
+using System.Text.Json;
 using SPLA.Domain.Settings;
 using SPLA.MCP.Core.Interfaces;
 using SPLA.Plugins.Sql.Tools;
 
 namespace SPLA.Plugins.Sql;
 
-public class SqlPlugin : ISplaPlugin
+public class SqlPlugin : ISplaPlugin, ISplaPluginAction, SPLA.Domain.Editor.ISchemaContributor
 {
+    private static readonly JsonSerializerOptions JsonOpts = new(JsonSerializerDefaults.Web);
+
+    /// <summary>Handles actions invoked from the plugin's web settings UI. Currently just
+    /// "testConnection", shared with the <c>sql_test_connection</c> agent tool via
+    /// <see cref="SqlConnectionTester"/> so both paths report identical results.</summary>
+    public SPLA.Domain.Editor.IJsonSchemaProvider GetSchemaProvider() => SqlSchemaProvider.Create();
+
+    public async Task<object?> InvokeActionAsync(string action, string? valueJson, CancellationToken ct = default)
+    {
+        if (action != "testConnection")
+            throw new InvalidOperationException($"Unknown sql plugin action: {action}");
+
+        var cfg = string.IsNullOrWhiteSpace(valueJson)
+            ? throw new InvalidOperationException("testConnection requires a connection config")
+            : JsonSerializer.Deserialize<SqlConnectionConfig>(valueJson, JsonOpts)
+              ?? throw new InvalidOperationException("invalid connection config");
+
+        var result = await SqlConnectionTester.TestAsync(cfg, ct);
+        return new { ok = result.Ok, message = result.Message };
+    }
+
     public IEnumerable<IMcpTool> Initialize(ResolvedSettings settings)
     {
         settings.Plugins.TryGetValue("sql", out var section);

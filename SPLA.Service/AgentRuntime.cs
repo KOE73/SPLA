@@ -1,6 +1,8 @@
+using System.Collections.Concurrent;
 using Microsoft.Extensions.Logging;
 using SPLA.Agent;
 using SPLA.Domain.Agent;
+using SPLA.Domain.Interfaces;
 using SPLA.Domain.Models;
 using SPLA.Domain.Settings;
 using SPLA.LLM.LMStudio;
@@ -37,6 +39,7 @@ public sealed class AgentRuntime : IDisposable
     /// out to clients. The single "say what changed once" point — see <see cref="ServiceEvents"/>.</summary>
     public ServiceEvents Events { get; } = new();
     public LMStudioClient Llm { get; }
+    public IModelManagementService ModelManagement { get; }
     public McpHost McpHost { get; }
     public SkillManager SkillManager { get; }
     public PluginManager PluginManager { get; }
@@ -56,6 +59,12 @@ public sealed class AgentRuntime : IDisposable
 
     public AgentMode Mode => Settings.Mode;
 
+    /// <summary>Cached reachability per connection id. null = not yet checked.</summary>
+    public ConcurrentDictionary<string, (bool Ok, string? Error)> ConnectionHealth { get; } = new();
+
+    /// <summary>Schemas registered by plugins at startup (data + UI, resolved by name).</summary>
+    public SPLA.Domain.Editor.SchemaRegistry SchemaRegistry { get; }
+
     public AgentRuntime(ResolvedSettings settings, ILoggerFactory loggerFactory)
     {
         Settings = settings;
@@ -63,6 +72,7 @@ public sealed class AgentRuntime : IDisposable
 
         _httpClient = new HttpClient { Timeout = TimeSpan.FromMinutes(10) };
         Llm = new LMStudioClient(_httpClient, loggerFactory.CreateLogger<LMStudioClient>());
+        ModelManagement = new LMStudioManagementClient(_httpClient);
 
         var pluginsDir = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "plugins");
 
@@ -71,6 +81,11 @@ public sealed class AgentRuntime : IDisposable
 
         PluginManager = new PluginManager(settings, loggerFactory.CreateLogger<PluginManager>(), SkillManager);
         PluginManager.LoadPlugins(pluginsDir);
+
+        SchemaRegistry = new SPLA.Domain.Editor.SchemaRegistry();
+        foreach (var p in PluginManager.GetSchemaProviders())
+            SchemaRegistry.Register(p);
+
         SkillManager.ApplySettings(settings.Skills.ToDictionary(
             kvp => kvp.Key,
             kvp => (kvp.Value.Enabled ?? true, kvp.Value.Preloaded ?? false)));
@@ -99,6 +114,7 @@ public sealed class AgentRuntime : IDisposable
         McpHost.RegisterTool(new SPLA.MCP.Core.Tools.AgentMemoryDeleteTool(ProjectKv.Store));
         McpHost.RegisterTool(new SPLA.MCP.Core.Tools.AgentMemoryListTool(ProjectKv.Store));
         McpHost.RegisterTool(new SPLA.MCP.Core.Tools.AgentMemoryClearTool(ProjectKv.Store));
+        McpHost.RegisterTool(new SPLA.MCP.Core.Tools.ImageViewTool());
 
         // ── Skill lifecycle + spawn + checkpoint/mark (resolve per-chat via ambient scope) ──
         McpHost.RegisterTool(new SPLA.MCP.Core.Tools.SkillActivateTool(SkillManager));

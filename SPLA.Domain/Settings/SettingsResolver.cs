@@ -86,7 +86,7 @@ public class ResolvedSettings
     {
         BaseUrl          = conn?.Endpoint ?? "http://127.0.0.1:1234/v1/",
         ApiKey           = conn?.ApiKey   ?? "lm-studio",
-        ModelName        = conn?.Model is { Length: > 0 } m && m != "auto" ? m : "local-model",
+        ModelName        = conn?.Model is { Length: > 0 } m && m != "auto" ? m : "",
         Temperature      = Temperature,
         Mode             = Mode,
         Theme            = Theme,

@@ -78,6 +78,14 @@ public class SplaConnectionSection
     [YamlMember(Alias = "model")]
     public string? Model { get; set; }
 
+    /// <summary>When true the model field is locked — no picker shown in UI, model can only be viewed.</summary>
+    [YamlMember(Alias = "lock_model")]
+    public bool LockModel { get; set; }
+
+    /// <summary>When true picking a different model triggers LM Studio unload+load via the management API.</summary>
+    [YamlMember(Alias = "swap_model")]
+    public bool SwapModel { get; set; }
+
     /// <summary>Display label for the picker — falls back to the model or id. Computed, never persisted.</summary>
     [YamlIgnore]
     public string DisplayName => !string.IsNullOrWhiteSpace(Name) ? Name!

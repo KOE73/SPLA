@@ -34,6 +34,8 @@ public class PluginManager
     private readonly List<SPLA.MCP.Core.Interfaces.SplaPluginUiCommand> _uiCommands = new();
     private readonly List<string> _loadErrors = new();
     private readonly List<AssemblyLoadContext> _loadContexts = new();
+    private readonly Dictionary<string, SPLA.MCP.Core.Interfaces.ISplaPluginAction> _actionHandlers = new(StringComparer.OrdinalIgnoreCase);
+    private readonly List<SPLA.Domain.Editor.IJsonSchemaProvider> _schemaProviders = new();
 
     public PluginManager(ResolvedSettings settings, ILogger<PluginManager>? logger = null, SkillManager? skillManager = null)
     {
@@ -55,6 +57,8 @@ public class PluginManager
         _uiCommands.Clear();
         _loadErrors.Clear();
         _plugins.Clear();
+        _actionHandlers.Clear();
+        _schemaProviders.Clear();
         _skillManager?.ClearPluginSkills();
 
         _plugins.AddRange(DiscoverPlugins(_settings, pluginsDirectory, _loadErrors));
@@ -154,6 +158,21 @@ public class PluginManager
     public IReadOnlyList<SPLA.MCP.Core.Interfaces.IMcpTool> GetDynamicTools() => _dynamicTools;
     public IReadOnlyList<SPLA.MCP.Core.Interfaces.SplaPluginUiCommand> GetUiCommands() => _uiCommands;
     public IReadOnlyList<string> GetLoadErrors() => _loadErrors;
+    public IReadOnlyList<SPLA.Domain.Editor.IJsonSchemaProvider> GetSchemaProviders() => _schemaProviders;
+
+    /// <summary>Invokes an action exposed by a plugin's <see cref="SPLA.MCP.Core.Interfaces.ISplaPluginAction"/>
+    /// (e.g. "Test Connection" from its web settings UI). Throws if the plugin has no handler.</summary>
+    public Task<object?> InvokeActionAsync(string pluginId, string action, string? valueJson, CancellationToken ct = default)
+    {
+        if (!_actionHandlers.TryGetValue(pluginId, out var handler))
+            throw new InvalidOperationException($"Plugin '{pluginId}' has no action handler.");
+        return handler.InvokeActionAsync(action, valueJson, ct);
+    }
+
+    /// <summary>Resolves the on-disk directory for a discovered plugin, or null if unknown.
+    /// Used to serve the plugin's prebuilt web settings asset (see <see cref="PluginMeta.WebSettingsEntry"/>).</summary>
+    public string? GetPluginDirectory(string pluginId) =>
+        _plugins.FirstOrDefault(p => string.Equals(p.Meta.Id, pluginId, StringComparison.OrdinalIgnoreCase))?.DirectoryPath;
 
     private static string ResolvePluginCommandTarget(string pluginDir, SPLA.MCP.Core.Interfaces.SplaPluginUiCommand command)
     {
@@ -213,6 +232,12 @@ public class PluginManager
                                     AddPluginCommand(descriptor, command, publish: true);
                                 }
                             }
+
+                            if (plugin is SPLA.MCP.Core.Interfaces.ISplaPluginAction actionHandler)
+                                _actionHandlers[meta.Id] = actionHandler;
+
+                            if (plugin is SPLA.Domain.Editor.ISchemaContributor sc)
+                                _schemaProviders.Add(sc.GetSchemaProvider());
                         }
                     }
 

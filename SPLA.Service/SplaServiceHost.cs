@@ -75,6 +75,19 @@ public sealed class SplaServiceHost
 
         app.MapGet("/health", () => Results.Text("SPLA service running. Connect a client to /ws.", "text/plain"));
 
+        // Warm the health cache in the background right after the service starts so the first
+        // client to open settings sees real results (or the cached "not yet checked" state) instantly.
+        _ = Task.Run(async () =>
+        {
+            try
+            {
+                var health = await ConnectionDiagOps.PingAllAsync(
+                    runtime.Settings.Connections, runtime.ConnectionHealth);
+                await hub.BroadcastAsync(Contracts.MessageTypes.ConnectionsHealth, health);
+            }
+            catch { }
+        });
+
         // The browser client — served from embedded static assets. Any client drives the same agent /ws.
         static IResult ServeAsset(string path)
         {
@@ -88,6 +101,17 @@ public sealed class SplaServiceHost
             return path != null
                 ? Results.File(path, ChatImages.ContentType(file))
                 : Results.NotFound();
+        });
+
+        // Plugin-contributed web settings UI — served straight from each plugin's own directory
+        // (see PluginMeta.WebSettingsEntry). The host never builds or knows the content of these
+        // files; it only resolves pluginId → directory and streams whatever is there.
+        app.MapGet("/plugin-assets/{pluginId}/{**path}", (string pluginId, string path) =>
+        {
+            var dir = runtime.PluginManager.GetPluginDirectory(pluginId);
+            if (dir == null) return Results.NotFound();
+            var asset = WebAssets.GetFromDirectory(dir, path);
+            return asset is { } a ? Results.Bytes(a.Bytes, a.ContentType) : Results.NotFound();
         });
 
         app.MapGet("/", () => ServeAsset("/index.html"));

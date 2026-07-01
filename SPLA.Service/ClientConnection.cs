@@ -159,6 +159,13 @@ public sealed class ClientConnection
                 break;
             }
 
+            case MessageTypes.ChatWatch:
+            {
+                var p = Payload<ChatOpenPayload>(env);
+                if (!string.IsNullOrEmpty(p?.ChatId)) _openChats[p.ChatId] = 0;
+                break;
+            }
+
             case MessageTypes.ChatSend:
             {
                 var p = Payload<ChatSendPayload>(env);
@@ -226,8 +233,39 @@ public sealed class ClientConnection
             }
 
             case MessageTypes.ConnectionsGet:
-                await SendAsync(MessageTypes.ConnectionsResult, SettingsOps.GetConnections(_runtime));
+                await SendAsync(MessageTypes.ConnectionsResult, SettingsOps.GetConnections(_runtime), requestId: env.RequestId);
+                // Send cached health immediately so dots render without waiting for the network check.
+                await SendAsync(MessageTypes.ConnectionsHealth,
+                    ConnectionDiagOps.GetCachedHealth(_runtime.Settings.Connections, _runtime.ConnectionHealth));
+                // Re-ping all in background (settings panel just opened) → broadcast to all clients.
+                _ = PingAllAndBroadcastAsync();
                 break;
+
+            case MessageTypes.ConnectionPing:
+                await SendAsync(MessageTypes.ConnectionPingResult,
+                    await ConnectionDiagOps.PingAsync(Payload<ConnectionDiagRequest>(env)), requestId: env.RequestId);
+                break;
+
+            case MessageTypes.ConnectionModels:
+                await SendAsync(MessageTypes.ConnectionModelsResult,
+                    await ConnectionDiagOps.GetModelsAsync(Payload<ConnectionDiagRequest>(env)), requestId: env.RequestId);
+                break;
+
+            case MessageTypes.ConnectionTest:
+                await SendAsync(MessageTypes.ConnectionTestResult,
+                    await ConnectionDiagOps.TestChatAsync(Payload<ConnectionDiagRequest>(env)), requestId: env.RequestId);
+                break;
+
+            case MessageTypes.ConnectionSwapModel:
+            {
+                var req = Payload<ConnectionSwapModelRequest>(env);
+                if (req == null) break;
+                var swapResult = await SwapModelAsync(req, hostStopping);
+                await SendAsync(MessageTypes.ConnectionSwapModelResult, swapResult, requestId: env.RequestId);
+                if (swapResult.Error == null)
+                    await _hub.BroadcastAsync(MessageTypes.ConnectionsResult, SettingsOps.GetConnections(_runtime));
+                break;
+            }
 
             case MessageTypes.ConnectionsSave:
             {
@@ -235,21 +273,40 @@ public sealed class ClientConnection
                 var result = SettingsOps.SaveConnections(_runtime, p?.Connections ?? new());
                 // Everyone refreshes pickers/editors against the new list.
                 await _hub.BroadcastAsync(MessageTypes.ConnectionsResult, result);
+                // Re-ping after save — new or changed endpoints need a fresh check.
+                _ = PingAllAndBroadcastAsync();
                 break;
             }
 
             case MessageTypes.AgentGet:
-                await SendAsync(MessageTypes.AgentResult, SettingsOps.GetAgent(_runtime));
+                await SendAsync(MessageTypes.AgentResult, SettingsOps.GetAgent(_runtime), requestId: env.RequestId);
                 break;
 
             case MessageTypes.PluginsGet:
-                await SendAsync(MessageTypes.PluginsResult, SettingsOps.GetPlugins(_runtime));
+                await SendAsync(MessageTypes.PluginsResult, SettingsOps.GetPlugins(_runtime), requestId: env.RequestId);
                 break;
 
             case MessageTypes.PluginsSave:
             {
                 var p = Payload<PluginsPayload>(env);
                 await _hub.BroadcastAsync(MessageTypes.PluginsResult, SettingsOps.SavePlugins(_runtime, p?.Plugins ?? new()));
+                break;
+            }
+
+            case MessageTypes.PluginAction:
+            {
+                var p = Payload<PluginActionPayload>(env);
+                PluginActionResultPayload result;
+                try
+                {
+                    var value = await _runtime.PluginManager.InvokeActionAsync(p?.PluginId ?? "", p?.Action ?? "", p?.ValueJson);
+                    result = new PluginActionResultPayload { Ok = true, ResultJson = System.Text.Json.JsonSerializer.Serialize(value) };
+                }
+                catch (Exception ex)
+                {
+                    result = new PluginActionResultPayload { Ok = false, Error = ex.Message };
+                }
+                await SendAsync(MessageTypes.PluginActionResult, result, requestId: env.RequestId);
                 break;
             }
 
@@ -260,6 +317,14 @@ public sealed class ClientConnection
                     await _hub.BroadcastAsync(MessageTypes.AgentResult, SettingsOps.SaveAgent(_runtime, p));
                 break;
             }
+
+            case MessageTypes.UsageGet:
+                await SendAsync(MessageTypes.UsageResult, SettingsOps.GetUsage(_runtime), requestId: env.RequestId);
+                break;
+
+            case MessageTypes.SystemRegisterAssociation:
+                await SendAsync(MessageTypes.SystemRegisterAssociationResult, SystemOps.RegisterFileAssociation(), requestId: env.RequestId);
+                break;
 
             case MessageTypes.AppearanceSave:
             {
@@ -275,7 +340,60 @@ public sealed class ClientConnection
                 var p = Payload<DebugRequestPayload>(env);
                 var chat = env.ChatId != null ? _chats.GetOrOpen(env.ChatId) : null;
                 var snap = _inspector.Snapshot(p?.Kind ?? "", chat);
-                await SendAsync(MessageTypes.DebugSnapshot, snap, env.ChatId);
+                await SendAsync(MessageTypes.DebugSnapshot, snap, env.ChatId, env.RequestId);
+                break;
+            }
+
+            case MessageTypes.SchemaGet:
+            {
+                var p = Payload<SchemaGetPayload>(env);
+                if (string.IsNullOrWhiteSpace(p?.Name))
+                {
+                    await SendAsync(MessageTypes.SchemaResult,
+                        new SchemaResultPayload { Error = "Name is required." }, requestId: env.RequestId);
+                    break;
+                }
+                await SendAsync(MessageTypes.SchemaResult,
+                    SchemaOps.Get(_runtime.SchemaRegistry, p.Name), requestId: env.RequestId);
+                break;
+            }
+
+            case MessageTypes.FsBrowse:
+            {
+                var p = Payload<FsBrowsePayload>(env);
+                var root = _runtime.Settings.WorkspacePath;
+                await SendAsync(MessageTypes.FsBrowseResult,
+                    WorkspaceOps.Browse(root, p?.ParentRef), requestId: env.RequestId);
+                break;
+            }
+
+            case MessageTypes.FsRead:
+            {
+                var p = Payload<FsReadPayload>(env);
+                if (string.IsNullOrWhiteSpace(p?.Ref))
+                {
+                    await SendAsync(MessageTypes.FsReadResult,
+                        new FsReadResultPayload { Error = "Ref is required." }, requestId: env.RequestId);
+                    break;
+                }
+                var root = _runtime.Settings.WorkspacePath;
+                await SendAsync(MessageTypes.FsReadResult,
+                    WorkspaceOps.Read(root, p.Ref), requestId: env.RequestId);
+                break;
+            }
+
+            case MessageTypes.FsWrite:
+            {
+                var p = Payload<FsWritePayload>(env);
+                if (string.IsNullOrWhiteSpace(p?.Ref))
+                {
+                    await SendAsync(MessageTypes.FsWriteResult,
+                        new FsWriteResultPayload { Error = "Ref is required." }, requestId: env.RequestId);
+                    break;
+                }
+                var root = _runtime.Settings.WorkspacePath;
+                await SendAsync(MessageTypes.FsWriteResult,
+                    WorkspaceOps.Write(root, p.Ref, p.Text ?? ""), requestId: env.RequestId);
                 break;
             }
 
@@ -312,6 +430,45 @@ public sealed class ClientConnection
 
     private Task BroadcastChatListAsync()
         => _hub.BroadcastAsync(MessageTypes.ChatListResult, new ChatListResultPayload { Chats = _chats.List() });
+
+    private Task PingAllAndBroadcastAsync() => Task.Run(async () =>
+    {
+        try
+        {
+            var health = await ConnectionDiagOps.PingAllAsync(
+                _runtime.Settings.Connections, _runtime.ConnectionHealth);
+            await _hub.BroadcastAsync(MessageTypes.ConnectionsHealth, health);
+        }
+        catch { }
+    });
+
+    private async Task<ConnectionSwapModelResult> SwapModelAsync(ConnectionSwapModelRequest req, CancellationToken ct)
+    {
+        var result = new ConnectionSwapModelResult { Id = req.Id };
+        try
+        {
+            var endpoint = req.Endpoint ?? "";
+            var apiKey   = req.ApiKey   ?? "lm-studio";
+
+            // Unload every currently loaded model instance before loading the new one.
+            var models = await _runtime.ModelManagement.GetModelDetailsAsync(endpoint, apiKey, ct);
+            foreach (var m in models.Where(m => m.IsLoaded))
+                await _runtime.ModelManagement.UnloadModelAsync(endpoint, apiKey, m.UnloadId, ct);
+
+            await _runtime.ModelManagement.LoadModelAsync(endpoint, apiKey, req.ModelKey, ct);
+
+            // Update the live connection so chats immediately use the new model.
+            var conn = _runtime.Settings.Connections.FirstOrDefault(c => c.Id == req.Id);
+            if (conn != null) conn.Model = req.ModelKey;
+
+            result.Model = req.ModelKey;
+        }
+        catch (Exception ex)
+        {
+            result.Error = ex.Message;
+        }
+        return result;
+    }
 
     /// <summary>Hub-facing send that never throws — used for broadcasts to all/watching connections.</summary>
     public async Task TrySendAsync(string type, object? payload, string? chatId = null)
@@ -414,6 +571,7 @@ public sealed class ClientConnection
                 _runtime.TokenUsageProject.Record(prompt, completion);
                 _runtime.TokenUsageGlobal.Record(prompt, completion);
                 _ = ToWatchers(MessageTypes.TokenUsage, new TokenUsagePayload { PromptTokens = prompt, CompletionTokens = completion });
+                _ = _hub.BroadcastAsync(MessageTypes.UsageResult, SettingsOps.GetUsage(_runtime));
             }
         };
     }

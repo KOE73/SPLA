@@ -218,6 +218,20 @@ public sealed class ConversationOrchestrator
                 if (callbacks.OnToolResult != null)
                     await callbacks.OnToolResult(tc, result);
 
+                // A tool may have pushed image(s) into the pending sink (e.g. a browser screenshot).
+                // Tool-result messages cannot reliably carry images to every vision API, so drain the
+                // sink into a synthetic user-role message — the model sees the picture on its next turn.
+                var pendingImages = Domain.Agent.AgentSessionScope.Current?.Images.DrainAll();
+                if (pendingImages is { Count: > 0 })
+                {
+                    conversation.Add(new ChatMessage
+                    {
+                        Role = ChatRole.User,
+                        Content = $"[Image from {tc.Function.Name}]",
+                        Images = pendingImages.ToList()
+                    });
+                }
+
                 if (Checkpoint?.RestoreRequested == true && Checkpoint.RestoreAnchorId != null)
                 {
                     var anchorId = Checkpoint.RestoreAnchorId;

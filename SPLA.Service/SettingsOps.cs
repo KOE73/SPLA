@@ -26,7 +26,9 @@ public static class SettingsOps
             Provider = c.Provider,
             Endpoint = c.Endpoint,
             ApiKey = c.ApiKey,
-            Model = c.Model
+            Model = c.Model,
+            LockModel = c.LockModel,
+            SwapModel = c.SwapModel
         }).ToList()
     };
 
@@ -57,6 +59,23 @@ public static class SettingsOps
         return GetConnections(runtime);
     }
 
+    // ── Token usage: session/project/machine totals ───────────────────────────
+
+    public static UsageResultPayload GetUsage(AgentRuntime runtime) => new()
+    {
+        Session = ToScope(runtime.TokenUsageProject.Session),
+        Project = ToScope(runtime.TokenUsageProject.Total),
+        Machine = ToScope(runtime.TokenUsageGlobal.Total)
+    };
+
+    private static TokenUsageScopePayload ToScope(SPLA.Domain.Models.TokenUsageTotals t) => new()
+    {
+        PromptTokens = t.PromptTokens,
+        CompletionTokens = t.CompletionTokens,
+        Turns = t.Turns,
+        TotalTokens = t.TotalTokens
+    };
+
     // ── Agent settings: default mode + permission overrides ──────────────────
 
     private static readonly List<string> KnownThemes   = ["dark", "emerald", "cream", "light"];
@@ -71,6 +90,7 @@ public static class SettingsOps
         PermWrite = runtime.Settings.PermWrite,
         PermShell = runtime.Settings.PermShell,
         PermInternet = runtime.Settings.PermInternet,
+        CustomPrompt = runtime.Settings.CustomPrompt,
         Theme = runtime.Settings.Theme,
         Density = runtime.Settings.Density,
         Themes = KnownThemes,
@@ -88,12 +108,14 @@ public static class SettingsOps
         if (Enum.TryParse<AgentMode>(dto.Mode, true, out var mode)) runtime.Settings.Mode = mode;
         runtime.Settings.PermRead = read; runtime.Settings.PermWrite = write;
         runtime.Settings.PermShell = shell; runtime.Settings.PermInternet = net;
+        runtime.Settings.CustomPrompt = Blank(dto.CustomPrompt);
 
         var path = runtime.Settings.ProjectFilePath;
         if (path != null)
         {
             var project = ConfigLoader.LoadProjectRaw(path);
             (project.Agent ??= new SplaAgentSection()).Mode = Blank(dto.Mode);
+            project.Agent.CustomPrompt = Blank(dto.CustomPrompt);
             var anyPerm = read != null || write != null || shell != null || net != null;
             project.Permissions = anyPerm
                 ? new SplaPermissionsSection { Read = read, Write = write, Shell = shell, Internet = net }
@@ -152,7 +174,10 @@ public static class SettingsOps
                 State = d.EffectiveState.ToString(),
                 StateReason = string.IsNullOrWhiteSpace(d.EffectiveStateReason) ? null : d.EffectiveStateReason,
                 CustomPrompt = section?.CustomPrompt,
-                SettingsYaml = ConfigLoader.SerializeBlob(section?.Settings)
+                SettingsYaml = ConfigLoader.SerializeBlob(section?.Settings),
+                WebSettingsUrl = string.IsNullOrWhiteSpace(d.Meta.WebSettingsEntry)
+                    ? null
+                    : $"/plugin-assets/{Uri.EscapeDataString(d.Meta.Id)}/{d.Meta.WebSettingsEntry.Replace('\\', '/')}"
             });
         }
         return payload;
@@ -204,7 +229,9 @@ public static class SettingsOps
             Provider = Blank(d.Provider),
             Endpoint = Blank(d.Endpoint),
             ApiKey = Blank(d.ApiKey),
-            Model = Blank(d.Model)
+            Model = Blank(d.Model),
+            LockModel = d.LockModel,
+            SwapModel = d.SwapModel
         };
     }
 

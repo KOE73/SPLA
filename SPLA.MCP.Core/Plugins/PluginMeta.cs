@@ -17,6 +17,12 @@ public class PluginMeta
     [YamlMember(Alias = "entry_point")]
     public string EntryPoint { get; set; } = string.Empty;
 
+    /// <summary>Relative path (from the plugin's directory) to a prebuilt, self-contained ES module
+    /// the web client dynamically imports to render this plugin's settings UI. Optional — plugins
+    /// without one fall back to the generic YAML-blob editor.</summary>
+    [YamlMember(Alias = "web_settings_entry")]
+    public string? WebSettingsEntry { get; set; }
+
     [YamlMember(Alias = "default_prompt")]
     public string DefaultPrompt { get; set; } = string.Empty;
 

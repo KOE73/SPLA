@@ -28,7 +28,7 @@ button { font: inherit; cursor: pointer; }
 /* Layout variants (the placement axis — see layouts.js). */
 #app.focus { grid-template-columns: 1fr; }
 #app.single { display: block; }
-#app.single #solo { height: 100vh; overflow: auto; }
+#solo { height: 100vh; overflow: auto; }
 .surface-missing { color: var(--muted); font-size: var(--fs-sm); padding: 12px; }
 
 /* ── Sidebar ──────────────────────────────────────────────────────────────── */
@@ -180,6 +180,67 @@ body.hide-reasoning .reasoning { display: none; }
 .kv-row .k { color: var(--accent); min-width: 140px; max-width: 200px; overflow: hidden; text-overflow: ellipsis; }
 .kv-row .v { color: var(--text); white-space: pre-wrap; overflow-wrap: anywhere; }
 
+/* ── Context snapshot table ───────────────────────────────────────────────────
+   Compact by design — density vars deliberately not used here. Each row is
+   as tight as possible so the user can scan many messages at once. The header
+   bar must never scroll, so #debugBody itself stops scrolling in this mode and
+   only .ctx-scroll (just the rows) does — see #debugBody.ctx-mode below.    */
+#debugBody.ctx-mode { overflow: hidden; padding: 10px 12px; display: flex; flex-direction: column; min-height: 0; }
+.ctx-header { display: flex; align-items: baseline; gap: 10px; margin-bottom: 6px; flex-wrap: wrap; flex-shrink: 0; }
+.ctx-header .ctx-stats { flex: 1; font-size: var(--fs-xs); color: var(--muted); }
+.ctx-header .ctx-toggle { font-size: var(--fs-xs); background: transparent; border: 1px solid var(--border);
+  color: var(--muted); border-radius: 999px; padding: 2px 9px; cursor: pointer; }
+.ctx-header .ctx-toggle.on { background: var(--accent-soft); color: var(--accent); border-color: var(--accent); }
+.ctx-scroll { flex: 1; min-height: 0; overflow: auto; }
+
+.ctx-table { width: 100%; border-collapse: collapse; }
+
+/* Column widths */
+.ctx-table col.c-idx  { width: 28px; }
+.ctx-table col.c-id   { width: 72px; }
+.ctx-table col.c-tok  { width: 52px; }
+.ctx-table col.c-src  { width: 82px; }
+.ctx-table col.c-pre  { /* fills rest */ }
+
+/* Header row — sticky within .ctx-scroll so column labels stay visible while rows scroll */
+.ctx-table thead th { position: sticky; top: 0; background: var(--panel); z-index: 1;
+  font-size: 10px; font-weight: 600; color: var(--muted); text-transform: uppercase;
+  letter-spacing: .04em; padding: 0 4px 4px; text-align: left; border-bottom: 1px solid var(--border); }
+.ctx-table thead th.c-idx,
+.ctx-table thead th.c-tok { text-align: right; }
+
+/* ── In-context rows (sent to LLM) ── */
+.ctx-row { cursor: pointer; }
+.ctx-row:hover { background: color-mix(in srgb, var(--accent) 6%, transparent); }
+.ctx-row td { padding: 1px 4px; font-size: var(--fs-xs); line-height: 1.55; white-space: nowrap;
+  overflow: hidden; text-overflow: ellipsis; max-width: 0; border-bottom: 1px solid color-mix(in srgb, var(--border) 35%, transparent); }
+.ctx-row td.c-idx  { color: var(--muted); text-align: right; opacity: .6; }
+.ctx-row td.c-id   { color: var(--accent); font-weight: 500; }
+.ctx-row td.c-tok  { color: var(--muted); text-align: right; opacity: .7; }
+.ctx-row td.c-src  { }
+.ctx-row td.c-pre  { color: var(--text); font-weight: 400; max-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+/* In-context rows (sent to LLM) get bold preview text — the only visual distinction; no opacity
+   dimming for the rest, so out-of-context text stays fully readable. */
+.ctx-row:not(.dimmed) td.c-pre { font-weight: 700; }
+
+/* source type colours — apply regardless of in/out-of-context status */
+.ctx-row.src-system    td.c-src { color: var(--muted); }
+.ctx-row.src-working   td.c-src { color: color-mix(in srgb, var(--accent) 70%, var(--muted)); font-style: italic; }
+.ctx-row.src-user      td.c-src { color: var(--text); }
+.ctx-row.src-assistant td.c-src { color: var(--accent); }
+.ctx-row.src-tool      td.c-src { color: color-mix(in srgb, var(--accent) 50%, var(--muted)); }
+.ctx-row.src-label     td.c-src,
+.ctx-row.src-label     td.c-id  { color: var(--warning, #d4a520); font-style: italic; }
+.ctx-row.src-label     td.c-pre { color: var(--warning, #d4a520); font-style: italic; }
+
+/* ── Expanded body row ── */
+.ctx-expand td { padding: 0; border-bottom: 1px solid color-mix(in srgb, var(--border) 60%, transparent); }
+.ctx-expand pre { margin: 0; padding: 4px 8px 6px 34px; font-family: var(--mono); font-size: var(--fs-xs);
+  line-height: 1.5; white-space: pre-wrap; overflow-wrap: anywhere;
+  background: color-mix(in srgb, var(--accent) 4%, transparent);
+  color: var(--text); max-height: 260px; overflow-y: auto; }
+
 /* Wire tap — passive protocol monitor (?surface=wire). Mirrors .debug-surface chrome. */
 .wire-surface { background: var(--panel); border-left: 1px solid var(--border);
   display: flex; flex-direction: column; height: 100%; min-height: 0; }
@@ -230,16 +291,75 @@ body.hide-reasoning .reasoning { display: none; }
   border-top: 1px solid var(--border); flex-shrink: 0; }
 .settings-bar .grow { flex: 1; }
 
+.conn-list { display: flex; flex-direction: column; gap: 14px; }
 .conn-card { border: 1px solid var(--border); border-radius: var(--radius); background: var(--elevated);
-  padding: 10px 12px; display: flex; flex-direction: column; gap: 7px; }
+  padding: 6px 10px 8px; display: flex; flex-direction: column; gap: 4px; }
+
+/* Tiny mono id label at the top of each card */
+.conn-id-bar { font-family: var(--mono); font-size: var(--fs-xs); color: var(--accent);
+  padding-bottom: 4px; border-bottom: 1px solid color-mix(in srgb, var(--border) 60%, transparent); margin-bottom: 1px; }
+
+/* Compact Name row: label + input + dot + ✕ in one line */
+.conn-name-row { display: flex; align-items: center; gap: 6px; }
+.conn-name-row > span { width: 84px; flex-shrink: 0; color: var(--muted); font-size: var(--fs-sm); }
+.conn-name-row > input { flex: 1; min-width: 0; background: var(--bg); color: var(--text);
+  border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 5px 8px;
+  font: inherit; font-size: var(--fs-sm); }
+.conn-name-row > input:focus { outline: none; border-color: var(--accent); }
+.conn-name-row .x { color: var(--muted); cursor: pointer; font-size: 13px; padding: 2px 3px;
+  background: none; border: none; flex-shrink: 0; line-height: 1; }
+.conn-name-row .x:hover { color: var(--danger); }
+
+/* Legacy conn-head (still used by plugin cards) */
 .conn-head { display: flex; align-items: center; gap: 8px; }
 .conn-head .id { flex: 1; font-family: var(--mono); font-size: var(--fs-xs); color: var(--accent); }
 .conn-head .x { color: var(--muted); cursor: pointer; font-size: var(--fs-sm); padding: 0 4px; }
 .conn-head .x:hover { color: var(--danger); }
+
+/* Traffic-light status dot — settings cards and status bar picker */
+.conn-status { display: inline-block; box-sizing: border-box; flex: 0 0 8px; width: 8px; height: 8px;
+  min-width: 8px; max-width: 8px; border-radius: 50%;
+  background: var(--muted); opacity: .4; transition: background .25s, opacity .25s;
+  vertical-align: middle; }
+/* In settings card header, a bit larger */
+.conn-head .conn-status { width: 9px; height: 9px; cursor: default; }
+/* In status bar, small gap after the select */
+#connHealthDot { margin-left: 5px; }
+.conn-status.ok  { background: #4caf50; opacity: 1; }
+.conn-status.err { background: #f44336; opacity: 1; }
+.conn-status.busy { background: #ff9800; opacity: 1; animation: conn-pulse .8s ease-in-out infinite; }
+@keyframes conn-pulse { 0%,100% { opacity: 1; } 50% { opacity: .3; } }
+
+/* Model row: input + ☰ button side by side */
+.conn-model-wrap { display: flex; gap: 4px; }
+.conn-model-wrap input { flex: 1; min-width: 0; }
+.conn-list-btn { padding: 0 8px; font-size: var(--fs-xs); flex-shrink: 0; }
+
+/* Model flags (lock / hot-swap checkboxes) — share the .field grid so they line up under the inputs */
+.conn-flags-wrap { display: flex; gap: 16px; }
+.flag-check { display: flex; align-items: center; gap: 5px; font-size: var(--fs-sm); cursor: pointer; user-select: none; }
+.flag-check input[type=checkbox] { cursor: pointer; }
+input.locked { opacity: 0.6; cursor: default; background: var(--bg); }
+
+/* Action bar below fields */
+.conn-actions { display: flex; gap: 8px; padding-top: 4px; border-top: 1px solid var(--border); }
+
+/* Inline test-chat reply */
+.conn-test-reply { font-size: var(--fs-sm); padding: 6px 9px; background: var(--bg);
+  border-radius: var(--radius-sm); white-space: pre-wrap; line-height: 1.5; }
+.conn-test-reply[data-err="1"] { color: var(--danger); }
+
+/* Model list popup (position:fixed, appended to body) */
+.models-popup { position: fixed; z-index: 200; background: var(--elevated); border: 1px solid var(--border);
+  border-radius: var(--radius-sm); padding: 4px 0; max-height: 220px; overflow-y: auto;
+  min-width: 240px; box-shadow: 0 4px 20px rgba(0,0,0,.25); }
+.models-popup .model-item { padding: 6px 12px; font-size: var(--fs-sm); cursor: pointer;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.models-popup .model-item:hover { background: var(--accent-soft); color: var(--accent); }
 .field { display: grid; grid-template-columns: 92px 1fr; align-items: center; gap: 8px; }
 .field > span { color: var(--muted); font-size: var(--fs-sm); }
 .field input, .field select, .field textarea { background: var(--bg); color: var(--text); border: 1px solid var(--border);
-  border-radius: var(--radius-sm); padding: 6px 9px; font: inherit; font-size: var(--fs-sm); }
+  border-radius: var(--radius-sm); padding: 4px 8px; font: inherit; font-size: var(--fs-sm); }
 .field input:focus, .field select:focus, .field textarea:focus { outline: none; border-color: var(--accent); }
 .field.col { grid-template-columns: 1fr; gap: 4px; }
 .field textarea { resize: vertical; }

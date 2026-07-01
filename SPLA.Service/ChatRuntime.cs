@@ -186,6 +186,13 @@ public sealed class ChatRuntime
             await _orchestrator.RunAsync(
                 _conversation, ResolveLlmSettings(), ResolveMode(), callbacks, cancellationToken);
 
+            // A tool may have injected a synthetic image message mid-turn (see ConversationOrchestrator's
+            // pending-image-sink drain). Persist its data URLs to sidecar files exactly like a
+            // user-attached image, so the chat YAML stays small and the picture survives reopen.
+            foreach (var m in _conversation.Messages)
+                if (m.Images is { Count: > 0 } && !_imageFiles.ContainsKey(m))
+                    PersistImages(m, m.Images);
+
             Save();
         }
         finally

@@ -4,6 +4,8 @@ using SPLA.MCP.BasicTools.FileSystem;
 using SPLA.MCP.BasicTools.Network;
 using SPLA.MCP.BasicTools.SystemTools;
 using SPLA.MCP.Core.Interfaces;
+using SPLA.MCP.Core.Tools;
+using SPLA.Plugins.Browser;
 using SPLA.Plugins.Network;
 
 namespace SPLA.Tests;
@@ -33,9 +35,11 @@ public sealed class ToolNameConventionTests
             new GetCurrentDateTimeTool(),
             new WebFetchTool(),
             new WebSearchTool(),
+            new ImageViewTool(),
         };
 
-        tools.AddRange(new NetworkPlugin().Initialize(new ResolvedSettings()));
+        tools.AddRange(new NetworkPlugin().Initialize(new ResolvedSettings { WorkspacePath = "." }));
+        tools.AddRange(new BrowserPlugin().Initialize(new ResolvedSettings { WorkspacePath = "." }));
 
         foreach (var tool in tools)
         {

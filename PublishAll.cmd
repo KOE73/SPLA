@@ -8,6 +8,9 @@ echo Cleaning publish folder...
 if exist .publish\work rmdir /s /q .publish\work
 mkdir .publish\work
 
+echo Cleaning web dist to force fresh client build...
+if exist web\dist rmdir /s /q web\dist
+
 echo Publishing SPLA.UI.Avalonia (UI)...
 dotnet publish SPLA.UI.Avalonia/SPLA.UI.Avalonia.csproj -p:PublishProfile=SingleFile -c Release -o .publish/work
 if %ERRORLEVEL% neq 0 (
@@ -52,6 +55,10 @@ copy /y SPLA.Plugins.Sql.Avalonia\meta.yaml .publish\work\plugins\sql_avalonia\
 echo 6. Roslyn Plugin...
 dotnet publish SPLA.Plugins.Roslyn/SPLA.Plugins.Roslyn.csproj -c Release -o .publish/work/plugins/roslyn
 copy /y SPLA.Plugins.Roslyn\meta.yaml .publish\work\plugins\roslyn\
+
+echo 7. Browser Plugin...
+dotnet publish SPLA.Plugins.Browser/SPLA.Plugins.Browser.csproj -c Release -o .publish/work/plugins/browser
+copy /y SPLA.Plugins.Browser\meta.yaml .publish\work\plugins\browser\
 
 echo Cleaning debug and documentation artifacts from publish work folder...
 del /s /q .publish\work\*.pdb >nul 2>nul

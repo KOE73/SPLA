@@ -17,6 +17,8 @@
     <File Path="docs/schema-editor-plan.md" />
     <File Path="docs/schema-editor-doc-a-schemas.md" />
     <File Path="docs/schema-editor-doc-b-tokens.md" />
+    <File Path="docs/web-vue-migration-plan.md" />
+    <File Path="docs/browser-playwright-plugin-plan.md" />
   </Folder>
   <Folder Name="/agents/">
     <File Path="agents/avalonia.md" />
@@ -33,6 +35,32 @@
     <File Path="agents/tool-help.md" />
     <File Path="agents/tool-args.md" />
     <File Path="agents/ui-theming.md" />
+  </Folder>
+  <Folder Name="/web/">
+    <File Path="web/package.json" />
+    <File Path="web/vite.config.ts" />
+    <File Path="web/tsconfig.json" />
+    <File Path="web/index.html" />
+    <File Path="web/src/main.ts" />
+    <File Path="web/src/protocol/SplaClient.ts" />
+    <File Path="web/src/protocol/types.ts" />
+    <File Path="web/src/state/store.ts" />
+    <File Path="web/src/state/uiBus.ts" />
+    <File Path="web/src/layouts/layouts.ts" />
+    <File Path="web/src/layouts/LayoutHost.vue" />
+    <File Path="web/src/layouts/LayoutNodeView.vue" />
+    <File Path="web/src/surfaces/registry.ts" />
+    <File Path="web/src/composables/useMarkdown.ts" />
+    <File Path="web/src/composables/useFsBrowser.ts" />
+    <File Path="web/src/surfaces/Workspace/WorkspaceShell.vue" />
+    <File Path="web/src/surfaces/Workspace/FileBrowser.vue" />
+    <File Path="web/src/surfaces/Workspace/BrowserNode.vue" />
+    <File Path="web/src/surfaces/Workspace/EditorHost.vue" />
+    <File Path="web/src/surfaces/Workspace/editors/TextEditor.vue" />
+    <File Path="web/src/surfaces/Workspace/editors/MarkdownPreview.vue" />
+    <File Path="web/src/surfaces/Workspace/editors/FormsEditor.vue" />
+    <File Path="web/src/surfaces/Workspace/editors/formsRegistry.ts" />
+    <File Path="web/src/surfaces/Workspace/editors/TableArrayRenderer.vue" />
   </Folder>
   <Folder Name="/plugins/" />
   <Folder Name="/plugins/network/" />
@@ -55,6 +83,7 @@
   <Project Path="SPLA.Observability/SPLA.Observability.csproj" />
   <Project Path="SPLA.Service.Contracts/SPLA.Service.Contracts.csproj" />
   <Project Path="SPLA.Service/SPLA.Service.csproj" />
+  <Project Path="SPLA.Plugins.Browser/SPLA.Plugins.Browser.csproj" />
   <Project Path="SPLA.Plugins.Host.Avalonia/SPLA.Plugins.Host.Avalonia.csproj" />
   <Project Path="SPLA.Plugins.Network/SPLA.Plugins.Network.csproj" />
   <Project Path="SPLA.Plugins.Roslyn/SPLA.Plugins.Roslyn.csproj" />

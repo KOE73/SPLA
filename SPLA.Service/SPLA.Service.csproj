@@ -15,10 +15,19 @@
     <FrameworkReference Include="Microsoft.AspNetCore.App" />
   </ItemGroup>
 
+  <!-- The browser client (web/, Vue 3 + TS + Vite) builds to web/dist before each build, then
+       ships embedded — the service stays self-contained with no content-root/wwwroot wiring at
+       runtime. LogicalName is set explicitly so it still resolves to "SPLA.Service.WebClient.*",
+       matching WebAssets.cs — files outside the project cone otherwise lose their directory path. -->
+  <Target Name="BuildWebClient" BeforeTargets="BeforeBuild" Condition="Exists('$(MSBuildThisFileDirectory)..\web\package.json')">
+    <Exec Command="npm install" WorkingDirectory="$(MSBuildThisFileDirectory)..\web" Condition="!Exists('$(MSBuildThisFileDirectory)..\web\node_modules')" />
+    <Exec Command="npm run build" WorkingDirectory="$(MSBuildThisFileDirectory)..\web" />
+  </Target>
+
   <ItemGroup>
-    <!-- The browser client is served as embedded static assets (html/css/js + marked/mermaid),
-         so the service is self-contained and needs no content-root/wwwroot wiring at runtime. -->
-    <EmbeddedResource Include="WebClient\**\*.*" />
+    <EmbeddedResource Include="..\web\dist\**\*.*">
+      <LogicalName>SPLA.Service.WebClient.$([System.String]::new('%(RecursiveDir)%(Filename)%(Extension)').Replace('\', '.'))</LogicalName>
+    </EmbeddedResource>
   </ItemGroup>
 
   <ItemGroup>

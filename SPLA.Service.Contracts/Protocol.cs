@@ -62,6 +62,10 @@ public static class MessageTypes
     public const string Hello = "hello";
     public const string ChatList = "chat.list";
     public const string ChatOpen = "chat.open";
+    /// <summary>Registers this connection as a watcher of a chat without the side effects of
+    /// <see cref="ChatOpen"/> (no chat.opened echo) — used by solo windows (e.g. a tear-off debug
+    /// panel) that follow the main window's focus and need turn/tool events but never "open" a chat.</summary>
+    public const string ChatWatch = "chat.watch";
     public const string ChatNew = "chat.new";
     public const string ChatRename = "chat.rename";
     public const string ChatDelete = "chat.delete";
@@ -79,6 +83,15 @@ public static class MessageTypes
     // ── Settings: connections editor (client → server) ───────────────────
     /// <summary>Ask for the editable connection list.</summary>
     public const string ConnectionsGet = "connections.get";
+    // ── Connection diagnostics (client → server) ─────────────────────────
+    /// <summary>Quick reachability check — GET /models on the endpoint.</summary>
+    public const string ConnectionPing = "connection.ping";
+    /// <summary>Fetch available model ids from the endpoint's /models API.</summary>
+    public const string ConnectionModels = "connection.models";
+    /// <summary>Send a short test message and return the reply.</summary>
+    public const string ConnectionTest = "connection.test";
+    /// <summary>Unload the current model and load a new one via the management API (LM Studio only).</summary>
+    public const string ConnectionSwapModel = "connection.swap_model";
     /// <summary>Replace the connection list (persisted to the .spla project when there is one).</summary>
     public const string ConnectionsSave = "connections.save";
     /// <summary>Ask for the editable agent settings (default mode + permission overrides).</summary>
@@ -89,9 +102,29 @@ public static class MessageTypes
     public const string PluginsGet = "plugins.get";
     /// <summary>Save plugin enable flags, custom prompts and opaque settings blobs.</summary>
     public const string PluginsSave = "plugins.save";
+    /// <summary>Invoke an ad-hoc action on a plugin's web settings UI (e.g. "Test Connection").
+    /// Body is <see cref="PluginActionPayload"/>; answer is <see cref="PluginActionResult"/>.</summary>
+    public const string PluginAction = "plugin.action";
     /// <summary>Persist UI appearance (theme/density). Auto-sent on change — appearance has no Save step.
     /// Body is <see cref="AppearanceChangedPayload"/>; the server persists and broadcasts <see cref="AppearanceChanged"/>.</summary>
     public const string AppearanceSave = "appearance.save";
+    /// <summary>Ask for the current token usage totals (session/project/machine).</summary>
+    public const string UsageGet = "usage.get";
+    /// <summary>Register the .spla file extension with this app in Windows Explorer (Windows only,
+    /// per-user registry, no admin rights needed).</summary>
+    public const string SystemRegisterAssociation = "system.register_association";
+
+    // ── Schema editor (client → server) ─────────────────────────────────
+    /// <summary>Resolve a named JSON schema (data + UI) from the registry — used by the Forms editor.</summary>
+    public const string SchemaGet = "schema.get";
+
+    // ── Workspace filesystem browser (client → server) ───────────────────
+    /// <summary>List children of a directory (null parentRef = workspace root).</summary>
+    public const string FsBrowse = "fs.browse";
+    /// <summary>Read the text content of a file by its ref (absolute path).</summary>
+    public const string FsRead = "fs.read";
+    /// <summary>Write (autosave) text content back to a file.</summary>
+    public const string FsWrite = "fs.write";
 
     // ── Server → Client ──────────────────────────────────────────────────
     public const string Welcome = "welcome";
@@ -115,14 +148,37 @@ public static class MessageTypes
     /// <summary>The current connection list — answer to <see cref="ConnectionsGet"/> and broadcast to all
     /// after <see cref="ConnectionsSave"/> so every window's pickers refresh.</summary>
     public const string ConnectionsResult = "connections.result";
+    // ── Connection diagnostics (server → client) ─────────────────────────
+    public const string ConnectionPingResult      = "connection.ping.result";
+    public const string ConnectionModelsResult    = "connection.models.result";
+    public const string ConnectionSwapModelResult = "connection.swap_model.result";
+    public const string ConnectionTestResult   = "connection.test.result";
+    /// <summary>Health snapshot for all configured connections — broadcast on startup and on
+    /// <see cref="ConnectionsGet"/> so every window can show live/dead indicators.</summary>
+    public const string ConnectionsHealth = "connections.health";
     /// <summary>The current agent settings — answer to <see cref="AgentGet"/> and broadcast after <see cref="AgentSave"/>.</summary>
     public const string AgentResult = "agent.result";
     /// <summary>The current plugin list/state — answer to <see cref="PluginsGet"/> and broadcast after <see cref="PluginsSave"/>.</summary>
     public const string PluginsResult = "plugins.result";
+    /// <summary>Answer to <see cref="PluginAction"/>.</summary>
+    public const string PluginActionResult = "plugin.action.result";
     /// <summary>The project's UI appearance (theme/density) changed — broadcast to every window so all
     /// apply it uniformly, independent of which surface they show. A dedicated channel, not piggy-backed
     /// on <see cref="AgentResult"/>, so any view can react without understanding the settings editor.</summary>
     public const string AppearanceChanged = "appearance.changed";
+    /// <summary>Token usage totals — answer to <see cref="UsageGet"/>.</summary>
+    public const string UsageResult = "usage.result";
+    /// <summary>Result of <see cref="SystemRegisterAssociation"/>.</summary>
+    public const string SystemRegisterAssociationResult = "system.register_association.result";
+    /// <summary>Answer to <see cref="SchemaGet"/>.</summary>
+    public const string SchemaResult = "schema.result";
+
+    /// <summary>Answer to <see cref="FsBrowse"/>.</summary>
+    public const string FsBrowseResult = "fs.browse.result";
+    /// <summary>Answer to <see cref="FsRead"/>.</summary>
+    public const string FsReadResult = "fs.read.result";
+    /// <summary>Answer to <see cref="FsWrite"/>.</summary>
+    public const string FsWriteResult = "fs.write.result";
     public const string Error = "error";
 }
 

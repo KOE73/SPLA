@@ -136,6 +136,25 @@ public sealed class ConnectionEditDto
     public string? Endpoint { get; set; }
     public string? ApiKey { get; set; }
     public string? Model { get; set; }
+    public bool LockModel { get; set; }
+    public bool SwapModel { get; set; }
+}
+
+/// <summary>Request to hot-swap the loaded model on a connection via the management API (LM Studio).</summary>
+public sealed class ConnectionSwapModelRequest
+{
+    public string Id { get; set; } = string.Empty;
+    public string? Endpoint { get; set; }
+    public string? ApiKey { get; set; }
+    public string ModelKey { get; set; } = string.Empty;
+}
+
+/// <summary>Result of a model swap — new model name on success, error message on failure.</summary>
+public sealed class ConnectionSwapModelResult
+{
+    public string Id { get; set; } = string.Empty;
+    public string? Model { get; set; }
+    public string? Error { get; set; }
 }
 
 /// <summary>The full connection list for the editor. <see cref="ConnectionsGet"/> answer and
@@ -146,6 +165,54 @@ public sealed class ConnectionsPayload
 
     /// <summary>False when there is no .spla project to persist into (edits then live only in-memory).</summary>
     public bool CanPersist { get; set; }
+}
+
+/// <summary>Health state for one connection. <see cref="Ok"/> is null when not yet checked.</summary>
+public sealed class ConnectionHealthDto
+{
+    public string? Id { get; set; }
+    /// <summary>null = unchecked, true = reachable, false = unreachable.</summary>
+    public bool? Ok { get; set; }
+    public string? Error { get; set; }
+}
+
+/// <summary>Snapshot of health for all configured connections.
+/// Broadcast as <see cref="MessageTypes.ConnectionsHealth"/>.</summary>
+public sealed class ConnectionsHealthPayload
+{
+    public List<ConnectionHealthDto> Statuses { get; set; } = new();
+}
+
+/// <summary>Request body for connection diagnostics (ping / models / test).</summary>
+public sealed class ConnectionDiagRequest
+{
+    /// <summary>Correlation key — echoed back in the result so the UI can match card to response.</summary>
+    public string? Id { get; set; }
+    public string? Provider { get; set; }
+    public string? Endpoint { get; set; }
+    public string? ApiKey { get; set; }
+    public string? Model { get; set; }
+}
+
+public sealed class ConnectionPingResultPayload
+{
+    public string? Id { get; set; }
+    public bool Ok { get; set; }
+    public string? Error { get; set; }
+}
+
+public sealed class ConnectionModelsResultPayload
+{
+    public string? Id { get; set; }
+    public List<string> Models { get; set; } = new();
+    public string? Error { get; set; }
+}
+
+public sealed class ConnectionTestResultPayload
+{
+    public string? Id { get; set; }
+    public string? Reply { get; set; }
+    public string? Error { get; set; }
 }
 
 /// <summary>Editable agent settings: the default mode for new chats and the four permission-effect
@@ -160,6 +227,8 @@ public sealed class AgentSettingsPayload
     public string? PermWrite { get; set; }
     public string? PermShell { get; set; }
     public string? PermInternet { get; set; }
+    /// <summary>Free-text appended to the system prompt — stored in .spla agent: custom_prompt.</summary>
+    public string? CustomPrompt { get; set; }
     // UI appearance — stored in .spla ui: section
     public string Theme { get; set; } = "dark";
     public string Density { get; set; } = "norm";
@@ -167,6 +236,13 @@ public sealed class AgentSettingsPayload
     public List<string> Densities { get; set; } = new();
     /// <summary>False when there is no .spla project to persist into (server-set; ignored on save).</summary>
     public bool CanPersist { get; set; }
+}
+
+/// <summary>Result of registering the .spla file association — answer to <see cref="MessageTypes.SystemRegisterAssociation"/>.</summary>
+public sealed class SystemRegisterAssociationResultPayload
+{
+    public bool Ok { get; set; }
+    public string? Message { get; set; }
 }
 
 /// <summary>One plugin's editable state. The settings blob is opaque to host and client alike — it
@@ -184,6 +260,28 @@ public sealed class PluginEditDto
     public string? CustomPrompt { get; set; }
     /// <summary>The plugin's opaque settings blob serialized to YAML (null when none).</summary>
     public string? SettingsYaml { get; set; }
+    /// <summary>URL of the plugin's prebuilt web settings module (see <c>web_settings_entry</c> in
+    /// meta.yaml), or null when the plugin has none — the client falls back to the generic YAML editor.</summary>
+    public string? WebSettingsUrl { get; set; }
+}
+
+/// <summary>Invokes an ad-hoc action on a plugin's web settings UI (e.g. "Test Connection").
+/// <see cref="MessageTypes.PluginAction"/> request body.</summary>
+public sealed class PluginActionPayload
+{
+    public string PluginId { get; set; } = string.Empty;
+    public string Action { get; set; } = string.Empty;
+    /// <summary>Action-specific argument, serialized to JSON by the caller; opaque to the host.</summary>
+    public string? ValueJson { get; set; }
+}
+
+/// <summary>Answer to <see cref="MessageTypes.PluginAction"/>.</summary>
+public sealed class PluginActionResultPayload
+{
+    public bool Ok { get; set; }
+    /// <summary>JSON-serialized result on success, or an error message in <see cref="Error"/> on failure.</summary>
+    public string? ResultJson { get; set; }
+    public string? Error { get; set; }
 }
 
 /// <summary>The discovered plugins. <see cref="PluginsGet"/> answer / <see cref="PluginsSave"/> body /
@@ -318,6 +416,24 @@ public sealed class TokenUsagePayload
     public int? CompletionTokens { get; set; }
 }
 
+/// <summary>One usage scope's running totals (session/project/machine), shaped for direct display.</summary>
+public sealed class TokenUsageScopePayload
+{
+    public long PromptTokens { get; set; }
+    public long CompletionTokens { get; set; }
+    public long Turns { get; set; }
+    public long TotalTokens { get; set; }
+}
+
+/// <summary>Answer to <see cref="Protocol.MessageTypes.UsageGet"/> — session (this process), project
+/// (.spla/token-usage.json) and machine-global (~/.spla/token-usage.json) totals.</summary>
+public sealed class UsageResultPayload
+{
+    public TokenUsageScopePayload Session { get; set; } = new();
+    public TokenUsageScopePayload Project { get; set; } = new();
+    public TokenUsageScopePayload Machine { get; set; } = new();
+}
+
 /// <summary>Sent when a chat's turn finishes (the agent loop returned), so the client can re-enable input.</summary>
 public sealed class TurnCompletePayload
 {
@@ -349,6 +465,27 @@ public sealed class DebugSnapshotPayload
     public List<DebugKvEntryDto>? Entries { get; set; }
     public List<DebugSegmentDto>? Segments { get; set; }
     public string? Text { get; set; }
+    /// <summary>Structured context lines for the context.last view.</summary>
+    public List<ContextLineDto>? ContextLines { get; set; }
+    public int ContextCount { get; set; }
+    public int TotalCount { get; set; }
+    public int ApproxTokens { get; set; }
+    /// <summary>True when ContextLines reflect an actual captured LLM request; false when they are a
+    /// freshly-computed preview because no turn has run yet in this process.</summary>
+    public bool ContextIsLive { get; set; }
+}
+
+/// <summary>One row in the context debug view.</summary>
+public sealed class ContextLineDto
+{
+    public int Index { get; set; }
+    public string MsgId { get; set; } = string.Empty;
+    public string Source { get; set; } = string.Empty;
+    public string Preview { get; set; } = string.Empty;
+    public string Full { get; set; } = string.Empty;
+    public int ApproxTokens { get; set; }
+    /// <summary>True = included in the context sent to LLM; false = exists in history but was not sent.</summary>
+    public bool InContext { get; set; }
 }
 
 public sealed class DebugKvEntryDto
@@ -367,4 +504,89 @@ public sealed class ErrorPayload
 {
     public string Message { get; set; } = string.Empty;
     public string? Detail { get; set; }
+}
+
+// ──────────────────────────────────────────────────────────────────────────
+//  Schema editor  (schema.get / schema.result)
+// ──────────────────────────────────────────────────────────────────────────
+
+/// <summary>Client → server: resolve a named schema pair (data + UI) from the registry.</summary>
+public sealed class SchemaGetPayload
+{
+    /// <summary>Data schema name, e.g. "sql-table@1". The server also resolves the matching UI schema.</summary>
+    public string Name { get; set; } = string.Empty;
+}
+
+/// <summary>Answer to <see cref="MessageTypes.SchemaGet"/>.</summary>
+public sealed class SchemaResultPayload
+{
+    public string Name { get; set; } = string.Empty;
+    /// <summary>Raw JSON of the data schema (JSON Schema 2020-12), or null when not found.</summary>
+    public string? DataSchema { get; set; }
+    /// <summary>Raw JSON of the UI schema (JSON Forms UISchema), or null when none registered.</summary>
+    public string? UiSchema { get; set; }
+    public string? Error { get; set; }
+}
+
+// ──────────────────────────────────────────────────────────────────────────
+//  Workspace filesystem browser  (fs.browse / fs.read / fs.write)
+// ──────────────────────────────────────────────────────────────────────────
+
+/// <summary>Client → server: list children of a directory.
+/// <see cref="ParentRef"/> null means workspace root.</summary>
+public sealed class FsBrowsePayload
+{
+    public string? ParentRef { get; set; }
+}
+
+/// <summary>Client → server: read a text file by its <see cref="Ref"/> (absolute path).</summary>
+public sealed class FsReadPayload
+{
+    public string Ref { get; set; } = string.Empty;
+}
+
+/// <summary>Client → server: autosave text back to a file.</summary>
+public sealed class FsWritePayload
+{
+    public string Ref { get; set; } = string.Empty;
+    public string Text { get; set; } = string.Empty;
+}
+
+/// <summary>One node in the workspace file tree. <see cref="Ref"/> is an opaque handle
+/// (currently an absolute FS path) understood by <see cref="FsReadPayload"/> and
+/// <see cref="FsWritePayload"/>. Kind is "folder" | "leaf".</summary>
+public sealed class FsNodeDto
+{
+    public string Ref { get; set; } = string.Empty;
+    public string Label { get; set; } = string.Empty;
+    /// <summary>"folder" | "leaf"</summary>
+    public string Kind { get; set; } = string.Empty;
+    /// <summary>Content type hint for leaves: "md", "json", "jsonl", "yaml", "sql", "cs", "txt"…</summary>
+    public string? ContentType { get; set; }
+    public long? SizeBytes { get; set; }
+    /// <summary>ISO-8601 last-write timestamp, or null when unknown.</summary>
+    public string? Modified { get; set; }
+}
+
+/// <summary>Answer to <see cref="MessageTypes.FsBrowse"/>.</summary>
+public sealed class FsBrowseResultPayload
+{
+    public List<FsNodeDto> Nodes { get; set; } = new();
+}
+
+/// <summary>Answer to <see cref="MessageTypes.FsRead"/>.</summary>
+public sealed class FsReadResultPayload
+{
+    public string Ref { get; set; } = string.Empty;
+    public string Text { get; set; } = string.Empty;
+    public string? ContentType { get; set; }
+    public string? Error { get; set; }
+}
+
+/// <summary>Answer to <see cref="MessageTypes.FsWrite"/>.</summary>
+public sealed class FsWriteResultPayload
+{
+    public string Ref { get; set; } = string.Empty;
+    public bool Ok { get; set; }
+    public string? Error { get; set; }
 }

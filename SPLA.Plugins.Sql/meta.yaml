@@ -2,6 +2,7 @@ id: sql
 version: 0.1.0
 type: dll
 entry_point: SPLA.Plugins.Sql.dll
+web_settings_entry: web/dist/settings.js
 default_prompt: |
   SQL database tools are available. Connections are configured in .spla/sql.yaml.
 

@@ -2,26 +2,9 @@
   "type": "VerticalLayout",
   "elements": [
     {
-      "type": "Group",
-      "label": "Table",
-      "elements": [
-        { "type": "Control", "scope": "#/properties/meta/properties/table" },
-        { "type": "Control", "scope": "#/properties/meta/properties/rules" }
-      ]
-    },
-    {
-      "type": "Group",
-      "label": "Joins",
-      "elements": [
-        { "type": "Control", "scope": "#/properties/meta/properties/joins" }
-      ]
-    },
-    {
-      "type": "Group",
-      "label": "Fields",
-      "elements": [
-        { "type": "Control", "scope": "#/properties/fields", "options": { "elementLabelProp": "name" } }
-      ]
+      "type": "Control",
+      "scope": "#/properties/fields",
+      "options": { "elementLabelProp": "field" }
     }
   ]
 }
