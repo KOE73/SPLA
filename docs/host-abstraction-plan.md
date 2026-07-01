@@ -69,11 +69,18 @@ IAgentContext                 ← архитектурный верх (пока 
 переведены на `Sandbox.Workspace` (`IWorkspace` расширен `ReadAllTextAsync`/`DeleteFile`) —
 write-bypass закрыт полностью.
 
-**Фаза 0.2 (частично сделано):** `DotnetBuildTool`/`DotnetTestTool` переведены на `IShell`
-(были `Process.Start("dotnet")` напрямую — execute-bypass; теперь уважают `Gate.CanExecute()` и
-отключаются вместе с shell). ОСТАЛОСЬ: read-инструменты `FsSearchTextTool`/`FsFindFilesTool`
-(внешний ripgrep — нужен `MapPathToHost`, отдельный дизайн: как виртуальный workspace вообще
-поддерживает полнотекстовый поиск).
+**Фаза 0.2 (сделано):** ВСЕ оставшиеся инструменты на шве.
+- `DotnetBuildTool`/`DotnetTestTool` → `IShell` (были `Process.Start("dotnet")` напрямую —
+  execute-bypass; теперь уважают `Gate.CanExecute()` и отключаются вместе с shell).
+- `FsFindFilesTool` — обход дерева переписан с `DirectoryInfo` на `IWorkspace.GetFiles`/
+  `GetDirectories` (рекурсия по строковому API workspace).
+- `FsSearchTextTool` — корень резолвится через `IWorkspace.MapPathToHost`; движки поиска
+  (ripgrep/.NET) остаются диск-ориентированными, но виртуальный workspace вернёт `null` →
+  «поиск недоступен». Полноценный поиск по виртуальному workspace — отдельная задача (движок
+  внутри workspace), но граница «инструмент не лезет на диск сам» уже проведена.
+
+**Итог Фазы 0:** ни один встроенный инструмент не трогает `System.IO`/`Process` напрямую —
+всё через `ISandbox`. Весь сьют (158) зелёный.
 
 ## Проверка шва
 

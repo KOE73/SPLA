@@ -63,6 +63,23 @@ public sealed class HostSandboxSeamTests
     }
 
     [Fact]
+    public async Task Find_files_recurses_through_scoped_workspace()
+    {
+        var ws = new MemoryWorkspace();
+        await ws.WriteAllTextAsync("/proj/src/a.cs", "x");
+        await ws.WriteAllTextAsync("/proj/src/deep/b.cs", "y");
+        await ws.WriteAllTextAsync("/proj/src/readme.md", "z");
+        using var _ = Scope(new PassthroughSandbox(workspace: ws, shell: null));
+
+        var result = await new FsFindFilesTool().ExecuteAsync(
+            """{"path":"/proj","pattern":"*.cs","max_results":null,"exclude_patterns":null,"output":null,"output_name":null}""");
+
+        Assert.Contains("a.cs", result);
+        Assert.Contains("b.cs", result);       // found via recursion into /proj/src/deep
+        Assert.DoesNotContain("readme.md", result);
+    }
+
+    [Fact]
     public async Task Shell_tool_reports_disabled_when_sandbox_has_no_shell()
     {
         // PassthroughSandbox always supplies a shell; a no-execute scenario uses a sandbox whose
@@ -87,12 +104,19 @@ public sealed class HostSandboxSeamTests
     {
         private readonly Dictionary<string, string> _files = new();
 
-        public string? MapPathToHost(string logicalPath) => null; // virtual: no host address
+        // Identity mapping: this store's logical paths are its own address space (no real disk).
+        public string? MapPathToHost(string logicalPath) => logicalPath;
         public string? MapPathToProject(string hostPath) => hostPath;
 
         public bool FileExists(string path) => _files.ContainsKey(path);
         public bool DirectoryExists(string path)
             => _files.Keys.Any(k => k.StartsWith(path.TrimEnd('/') + "/"));
+
+        private static string Parent(string path)
+        {
+            var i = path.LastIndexOf('/');
+            return i <= 0 ? "/" : path.Substring(0, i);
+        }
 
         public Task<string[]> ReadAllLinesAsync(string path, CancellationToken ct = default)
             => Task.FromResult(_files.TryGetValue(path, out var v)
@@ -111,8 +135,23 @@ public sealed class HostSandboxSeamTests
         public void DeleteFile(string path) => _files.Remove(path);
         public void CreateDirectory(string path) { /* virtual: directories are implicit */ }
 
-        public IReadOnlyList<string> GetDirectories(string path) => System.Array.Empty<string>();
+        // Immediate children only, so recursive walkers behave like a real tree.
         public IReadOnlyList<string> GetFiles(string path)
-            => _files.Keys.Where(k => k.StartsWith(path.TrimEnd('/') + "/")).ToList();
+        {
+            var dir = path.TrimEnd('/');
+            return _files.Keys.Where(k => Parent(k) == dir).ToList();
+        }
+
+        public IReadOnlyList<string> GetDirectories(string path)
+        {
+            var prefix = path.TrimEnd('/') + "/";
+            return _files.Keys
+                .Where(k => k.StartsWith(prefix))
+                .Select(k => k.Substring(prefix.Length))
+                .Where(rest => rest.Contains('/'))
+                .Select(rest => prefix + rest.Substring(0, rest.IndexOf('/')))
+                .Distinct()
+                .ToList();
+        }
     }
 }
