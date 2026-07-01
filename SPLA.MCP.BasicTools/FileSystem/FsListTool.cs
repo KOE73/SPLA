@@ -1,3 +1,4 @@
+using SPLA.Domain.Host;
 using SPLA.Domain.Models;
 using SPLA.MCP.Core.Interfaces;
 using SPLA.MCP.Core.Json;
@@ -48,11 +49,12 @@ public class FsListTool : IMcpTool
             var path = ToolJson.GetStringTrimmed(doc.RootElement, "path");
             if (path is null) return Task.FromResult("Error: Missing 'path' parameter.");
 
-            if (Directory.Exists(path))
+            var ws = HostServices.Sandbox.Workspace;
+            if (ws.DirectoryExists(path))
             {
                 var sb = new StringBuilder();
-                var dirs = Directory.GetDirectories(path);
-                var files = Directory.GetFiles(path);
+                var dirs = ws.GetDirectories(path);
+                var files = ws.GetFiles(path);
 
                 sb.AppendLine($"Directory contents of {path}:");
                 foreach (var d in dirs) sb.AppendLine($"[DIR] {Path.GetFileName(d)}");
