@@ -90,7 +90,8 @@ public sealed class AgentRuntime : IDisposable
             kvp => kvp.Key,
             kvp => (kvp.Value.Enabled ?? true, kvp.Value.Preloaded ?? false)));
 
-        McpHost = new McpHost(new PermissionManager(), PluginManager, loggerFactory.CreateLogger<McpHost>());
+        McpHost = new McpHost(
+            new PermissionManager(settings: settings), PluginManager, loggerFactory.CreateLogger<McpHost>());
 
         // ── Basic tools (mirrors CLI registration) ──────────────────────────
         McpHost.RegisterTool(new FsListTool());

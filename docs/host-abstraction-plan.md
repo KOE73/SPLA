@@ -170,10 +170,44 @@ no-project-сентинел). Сьют 169 зелёный.
 опциональный `?project=` (по умолчанию — DefaultProjectId), но НЕ протестированы отдельно —
 низкий риск (то же поведение что раньше, если `?project=` не передан).
 
+## Фаза 3.0 — реальный Gate: закрыт немой разрыв в PermissionManager (сделано)
+
+При разборе `capability-security-model` для планирования Identity+Gate обнаружился реальный,
+уже существующий разрыв, независимый от Identity: `ResolvedSettings.PermRead/PermWrite/PermShell/
+PermInternet` (плюс `ToolPermissionRules`) уже год как гоняются туда-обратно через настройки
+(`SettingsOps.GetAgent`/`SaveAgent`, персист в `.spla`), но **`PermissionManager.CheckPermission`
+их вообще не читал** — пользователь мог поставить в UI «Shell: deny» для проекта, это молча
+сохранялось и НИКАК не влияло на поведение агента. Это не Identity-вопрос — это уже сломанная
+project-policy часть модели «источники × права», которую стоило починить раньше самого Identity.
+
+Правка: `PermissionManager` получил (опциональную) живую ссылку на `ResolvedSettings` — читает
+`PermRead/PermWrite/PermShell/PermInternet` НА КАЖДОЙ проверке (не копирует при конструировании),
+поэтому `agent.save` из UI применяется со следующего же вызова инструмента без пересборки
+`McpHost`/`PermissionManager`. Категория берётся из существующей дискриминации по
+`ToolScope`/`ToolEffect` (Shell/Internet — по Scope, Write/Read — по Effect для Project|Local) —
+той же, что уже используют ветки по режимам. Явный проект-оверрайд — теперь ЖЁСТКИЙ пол/потолок:
+побеждает и над дефолтом режима, и над «remembered» разрешениями сессии, действует ВО ВСЕХ
+режимах включая Agent (раньше «remembered» специально игнорировался в Agent-режиме — эта же логика
+теперь верна и для проектного оверрайда, но по другой причине: явная политика проекта весомее
+разового согласия). `AgentRuntime` передаёт `settings` в конструктор `PermissionManager`.
+
+`ToolPermissionRules` (`SplaToolPermissionRule`, per-tool оверрайды) НЕ тронуты — они не
+достижимы ни из одного UI (в `AgentSettingsPayload` нет поля `Tools`), чинить нечего показывать.
+
+Тесты: `PermissionOverrideTests` (5 — deny шелла даже в Agent-режиме, allow снимает Ask в Edit,
+живое чтение той же ссылки на settings без пересборки, дефолты без оверрайда не сломаны,
+`settings: null` эквивалентен старому конструктору). Сьют 175 зелёный.
+
 ## Открытые вопросы (следующие фазы)
 
-- Identity/auth в хосте (Local/Windows-integrated/OIDC), `IAgentContextFactory`.
-- `HardGate` (win Job Objects / linux seccomp+ns) — серверный этап.
+- `IIdentity`/auth в хосте (Local/Windows-integrated/OIDC), `IAgentContextFactory`. Сознательно
+  не начато: локально тривиально (один пользователь, всегда полный доступ — уже верно и без
+  Identity), а реальной multi-tenant server-инфраструктуры (владение проектами per-user) пока
+  нет — строить абстракцию без потребителя = театр безопасности, которого модель explicitly
+  избегает.
+- `HardGate` (win Job Objects / linux seccomp+ns) — серверный этап, зависит от Identity выше.
 - Квоты токенов и число параллельных сессий per-identity.
-- `IProject` как брокер хранилищ + `IProjectBackend`/`IProjectProvider` (отдельный план).
+- `ICapabilityGate.CanRead/CanWrite` (path-уровень, ось «источники»: project-only vs +explicit
+  paths vs full) — сейчас `AllowAllGate` everywhere; для этого нужна конфигурация «доп. папок»,
+  которой в `SplaProject` пока нет (отдельная фича, не просто gate-проводка).
 - Транспорт: один WebSocket + `sessionId` в конверте (мультиплекс) — уже решено.
