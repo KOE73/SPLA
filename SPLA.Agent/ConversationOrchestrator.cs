@@ -198,9 +198,12 @@ public sealed class ConversationOrchestrator
                 activeTopLevel = tc;
                 Logger?.LogInformation(
                     "Tool call → {ToolName} args={Args}", tc.Function.Name, tc.Function.Arguments);
-                var result = await _tools.ExecuteToolAsync(mode, tc.Function.Name, tc.Function.Arguments, cancellationToken);
+                // Normalize a null tool result to empty here so the error-detection and the tool
+                // message below don't have to null-check (a null result is simply "no output").
+                var result = await _tools.ExecuteToolAsync(mode, tc.Function.Name, tc.Function.Arguments, cancellationToken)
+                             ?? string.Empty;
                 Logger?.LogInformation(
-                    "Tool result ← {ToolName} resultChars={ResultChars}", tc.Function.Name, result?.Length ?? 0);
+                    "Tool result ← {ToolName} resultChars={ResultChars}", tc.Function.Name, result.Length);
                 cancellationToken.ThrowIfCancellationRequested();
 
                 var isError = result.StartsWith("Error:", StringComparison.OrdinalIgnoreCase)
