@@ -108,7 +108,8 @@ public sealed class AgentRuntime : IDisposable
         McpHost.RegisterTool(new SPLA.MCP.Core.Tools.AgentInfoTool(McpHost, SkillManager));
 
         // ── Fundamental agent working memory (project-scoped shared; session resolves via scope) ──
-        ProjectKv = new ProjectKvStore(settings);
+        ProjectKv = new ProjectKvStore(
+            settings.Project.GetBucket(SPLA.Domain.Project.IProjectBackend.RootBucket).MapToHostDirectory()!);
         McpHost.RegisterTool(new SPLA.MCP.Core.Tools.AgentMemorySetTool(ProjectKv.Store));
         McpHost.RegisterTool(new SPLA.MCP.Core.Tools.AgentMemoryGetTool(ProjectKv.Store));
         McpHost.RegisterTool(new SPLA.MCP.Core.Tools.AgentMemoryDeleteTool(ProjectKv.Store));
@@ -133,8 +134,15 @@ public sealed class AgentRuntime : IDisposable
         PromptBuilder = new SystemPromptBuilder(SkillManager, PluginManager);
         SystemPrompt = PromptBuilder.Build(settings, settings.WorkspacePath);
 
+        // Project tally goes through the broker only when a real project is open; the historical
+        // no-project path (cwd/.spla) is kept as-is so the tally never collides with the global file.
         TokenUsageProject = new FileTokenUsageStore(
-            Path.Combine(settings.WorkspacePath, ".spla", "token-usage.json"));
+            settings.ProjectFilePath != null
+                ? Path.Combine(
+                    settings.Project.GetBucket(SPLA.Domain.Project.IProjectBackend.RootBucket)
+                        .MapToHostDirectory()!,
+                    "token-usage.json")
+                : Path.Combine(settings.WorkspacePath, ".spla", "token-usage.json"));
         TokenUsageGlobal = new FileTokenUsageStore(
             Path.Combine(
                 Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), ".spla", "token-usage.json"));

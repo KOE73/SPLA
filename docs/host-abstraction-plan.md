@@ -88,6 +88,26 @@ write-bypass закрыт полностью.
 `FsReadTool` — данные живут в памяти, не на диске. Доказывает, что инструменты не знают, что за
 песочницей.
 
+## Фаза 1 — проект как брокер хранилищ (в работе)
+
+Контракты в `SPLA.Domain/Project/`: `IProject` (GetWorkspace/GetKV/GetSecrets/GetBucket),
+`IProjectBackend` (ProjectId + GetBucket, физика хранения), `IBucket` (opaque key/value text +
+`MapToHostDirectory()` для диск-зависимых потребителей — та же стадийность, что
+`MapPathToHost`). Реализации: `FileBucket` (папка, ленивое создание), `LocalProjectBackend`
+(`.spla/` рядом с манифестом, без проекта — `~/.spla`; ЕДИНСТВЕННАЯ точка этого решения),
+`LocalProject`.
+
+**Фаза 1.0 (сделано):** контракты + инъекция `ResolvedSettings.Project` (lazy default =
+LocalProject, хост может подменить) + миграция ядровых потребителей: `ProjectKvStore` (ctor
+принимает baseDir от брокера), `ChatManager` (chats/summaries/backups = бакеты), `AgentRuntime`
+(project KV + token-usage через root-бакет). Раскладка на диске НЕ изменилась. Тесты:
+`ProjectBrokerTests` (4) + весь сьют 162 зелёный.
+
+**Фаза 1.1 (следующее):** остальные потребители `.spla/` через бакеты: `ChatImages`,
+`SplaTelemetry` (logs), `FileSecretStore` (решение о пути — в бэкенд), `IconGenerator`;
+плагины получают свой бакет при init (OneC sqlite → bucket("onec"), Browser profile →
+bucket("browser-profile")) вместо ручной склейки workspacePath.
+
 ## Открытые вопросы (следующие фазы)
 
 - Identity/auth в хосте (Local/Windows-integrated/OIDC), `IAgentContextFactory`.

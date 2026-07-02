@@ -26,23 +26,17 @@ public class ChatManager
     {
         _settings = settings;
 
-        // If a project file is open, store chats next to it in [workspace]/.spla/chats/.
-        // Fall back to ~/.spla/chats/ only when running without any project file.
-        // NOTE: do NOT use ProjectName here — it is null when the .spla file has no `name:` field,
-        // which would incorrectly redirect all those projects' chats into the global defaults dir.
-        var baseDir = _settings.ProjectFilePath != null
-            ? Path.Combine(_settings.WorkspacePath, ".spla")
-            : ConfigLoader.GetDefaultsDir();
+        // Chat history lives in project buckets; where those physically are (workspace .spla/
+        // vs global ~/.spla) is the project backend's decision, not ours. The manager still does
+        // raw file IO, so it maps each bucket to a host directory — a virtual backend would make
+        // history unavailable until a bucket-native rewrite (later phase).
+        var project = _settings.Project;
+        _chatsDir = project.GetBucket("chats").MapToHostDirectory()
+            ?? throw new InvalidOperationException("Chat history needs a disk-backed project backend.");
+        _summariesDir = project.GetBucket("summaries").MapToHostDirectory()!;
+        _backupsDir = project.GetBucket("backups").MapToHostDirectory()!;
 
-        _chatsDir = Path.Combine(baseDir, "chats");
-        _summariesDir = Path.Combine(baseDir, "summaries");
-        _backupsDir = Path.Combine(baseDir, "backups");
-
-        Directory.CreateDirectory(_chatsDir);
-        Directory.CreateDirectory(_summariesDir);
-        Directory.CreateDirectory(_backupsDir);
-
-        ConfigLoader.TryHideDirectory(baseDir);
+        ConfigLoader.TryHideDirectory(Path.GetDirectoryName(_chatsDir)!);
     }
 
     public string GenerateChatId()
