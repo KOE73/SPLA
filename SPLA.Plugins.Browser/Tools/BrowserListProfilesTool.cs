@@ -1,4 +1,5 @@
 using SPLA.Domain.Models;
+using SPLA.Domain.Project;
 using SPLA.MCP.Core.Interfaces;
 using System.Text;
 using System.Threading;
@@ -10,9 +11,9 @@ namespace SPLA.Plugins.Browser.Tools;
 /// project-local persistent profile and any real Edge/Chrome profiles found on this machine.</summary>
 public sealed class BrowserListProfilesTool : IMcpTool
 {
-    private readonly string _workspacePath;
+    private readonly IProject _project;
 
-    public BrowserListProfilesTool(string workspacePath) => _workspacePath = workspacePath;
+    public BrowserListProfilesTool(IProject project) => _project = project;
 
     public string Name => "browser_list_profiles";
 
@@ -37,8 +38,8 @@ public sealed class BrowserListProfilesTool : IMcpTool
     {
         var sb = new StringBuilder();
 
-        var hasState = BrowserProfilePaths.ProjectProfileHasState(_workspacePath);
-        sb.AppendLine($"\"project\" — {BrowserProfilePaths.ProjectProfileDir(_workspacePath)}" +
+        var hasState = BrowserProfilePaths.ProjectProfileHasState(_project);
+        sb.AppendLine($"\"project\" — {BrowserProfilePaths.ProjectProfileDir(_project)}" +
                       (hasState ? " (has saved state from earlier runs)" : " (not created yet)"));
 
         var detected = BrowserProfileDiscovery.Discover();
