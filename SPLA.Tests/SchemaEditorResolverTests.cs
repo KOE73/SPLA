@@ -27,12 +27,12 @@ public class SchemaEditorResolverTests
         Assert.Equal("sql-table@1", doc.RootElement.GetProperty("$id").GetString());
         Assert.Equal("object", doc.RootElement.GetProperty("type").GetString());
 
-        // enum агрегаций — это DATA-схема (а не UI): проверяем, что он на месте.
+        // DATA-схема несёт плоский массив полей {field,type,desc,agg,note}: проверяем, что
+        // поле-агрегация на месте и является свободной строкой (enum убран в редизайне схемы).
         var agg = doc.RootElement
             .GetProperty("properties").GetProperty("fields")
-            .GetProperty("items").GetProperty("properties").GetProperty("agg")
-            .GetProperty("enum");
-        Assert.Contains("SUM", agg.EnumerateArray().Select(e => e.GetString()));
+            .GetProperty("items").GetProperty("properties").GetProperty("agg");
+        Assert.Equal("string", agg.GetProperty("type").GetString());
     }
 
     [Fact]

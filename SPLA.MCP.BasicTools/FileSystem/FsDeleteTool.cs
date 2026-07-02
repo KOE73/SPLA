@@ -1,8 +1,8 @@
+using SPLA.Domain.Host;
 using SPLA.Domain.Models;
 using SPLA.MCP.Core.Interfaces;
 using SPLA.MCP.Core.Json;
 using System;
-using System.IO;
 using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
@@ -44,12 +44,13 @@ public class FsDeleteTool : IMcpTool
             var path = ToolJson.GetStringTrimmed(doc.RootElement, "path");
             if (path is null) return Task.FromResult("Error: Missing 'path' parameter.");
 
-            if (!File.Exists(path))
+            var ws = HostServices.Sandbox.Workspace;
+            if (!ws.FileExists(path))
             {
                 return Task.FromResult($"Error: File not found at {path}");
             }
 
-            File.Delete(path);
+            ws.DeleteFile(path);
             return Task.FromResult($"Successfully deleted file: {path}");
         }
         catch (JsonException)

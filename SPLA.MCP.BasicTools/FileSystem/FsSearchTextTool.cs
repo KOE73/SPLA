@@ -1,11 +1,11 @@
 using SPLA.Domain.Agent;
+using SPLA.Domain.Host;
 using SPLA.Domain.Models;
 using SPLA.MCP.Core.Interfaces;
 using SPLA.MCP.Core.Json;
 using SPLA.MCP.Core.Tools;
 using SPLA.MCP.BasicTools.FileSystem.Search;
 using System;
-using System.IO;
 using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
@@ -66,8 +66,13 @@ public class FsSearchTextTool : IMcpTool, IToolHelpProvider
             if (string.IsNullOrEmpty(query))
                 return JsonSerializer.Serialize(new SearchTextResult { Query = string.Empty, TotalMatches = 0, ReturnedMatches = 0, Matches = new List<SearchMatch>() });
 
-            var rootPath = path ?? Directory.GetCurrentDirectory();
-            if (!Directory.Exists(rootPath))
+            // Text search runs an external engine over a real host path; the workspace maps the
+            // logical root and refuses (null) if it is virtual — where disk search doesn't apply.
+            var ws = HostServices.Sandbox.Workspace;
+            var rootPath = ws.MapPathToHost(path ?? ".");
+            if (rootPath is null)
+                return "Error: Text search is not available for this workspace.";
+            if (!ws.DirectoryExists(rootPath))
                 return $"Error: Directory not found at {rootPath}";
 
             List<SearchMatch> rawMatches;

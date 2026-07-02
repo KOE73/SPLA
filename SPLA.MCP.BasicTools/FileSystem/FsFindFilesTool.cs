@@ -1,4 +1,5 @@
 using SPLA.Domain.Agent;
+using SPLA.Domain.Host;
 using SPLA.Domain.Models;
 using SPLA.MCP.Core.Interfaces;
 using SPLA.MCP.Core.Json;
@@ -53,12 +54,16 @@ public class FsFindFilesTool : IMcpTool
             using var doc = JsonDocument.Parse(argumentsJson);
             var root = doc.RootElement;
 
-            var rootPath       = ToolJson.GetStringTrimmed(root, "path") ?? Directory.GetCurrentDirectory();
             var pattern        = ToolJson.GetStringTrimmed(root, "pattern") ?? "*";
             var maxResults     = ToolJson.GetInt32Clamped(root, "max_results", 1000, 1, 10000);
             var excludePatterns= ToolJson.GetStringArray(root, "exclude_patterns");
 
-            if (!Directory.Exists(rootPath))
+            var ws = HostServices.Sandbox.Workspace;
+            var rootPath = ws.MapPathToHost(ToolJson.GetStringTrimmed(root, "path") ?? ".");
+            if (rootPath is null)
+                return Task.FromResult("Error: File search is not available for this workspace.");
+
+            if (!ws.DirectoryExists(rootPath))
                 return Task.FromResult($"Error: Directory not found at {rootPath}");
 
             var includeRegex = GlobToRegex(pattern);
@@ -70,9 +75,7 @@ public class FsFindFilesTool : IMcpTool
             };
 
             var matches = new List<string>();
-            var rootDir = new DirectoryInfo(rootPath);
-            
-            FindFilesRecursive(rootDir, rootPath, ignoreFolders, includeRegex, excludeRegexes, matches, maxResults, cancellationToken);
+            FindFilesRecursive(ws, rootPath, rootPath, ignoreFolders, includeRegex, excludeRegexes, matches, maxResults, cancellationToken);
 
             var result = new FindFilesResult
             {
@@ -97,7 +100,8 @@ public class FsFindFilesTool : IMcpTool
     }
 
     private void FindFilesRecursive(
-        DirectoryInfo dir,
+        IWorkspace ws,
+        string dir,
         string rootPath,
         HashSet<string> ignoreFolders,
         Regex includeRegex,
@@ -111,13 +115,13 @@ public class FsFindFilesTool : IMcpTool
 
         try
         {
-            foreach (var file in dir.GetFiles())
+            foreach (var file in ws.GetFiles(dir))
             {
                 if (matches.Count >= maxResults) return;
                 cancellationToken.ThrowIfCancellationRequested();
 
-                var relativePath = Path.GetRelativePath(rootPath, file.FullName).Replace("\\", "/");
-                var filename = file.Name;
+                var relativePath = Path.GetRelativePath(rootPath, file).Replace("\\", "/");
+                var filename = Path.GetFileName(file);
 
                 // Match both full relative path and just filename for convenience
                 if (includeRegex.IsMatch(relativePath) || includeRegex.IsMatch(filename))
@@ -126,17 +130,17 @@ public class FsFindFilesTool : IMcpTool
                     {
                         continue;
                     }
-                    matches.Add(file.FullName);
+                    matches.Add(file);
                 }
             }
 
-            foreach (var subDir in dir.GetDirectories())
+            foreach (var subDir in ws.GetDirectories(dir))
             {
                 if (matches.Count >= maxResults) return;
                 cancellationToken.ThrowIfCancellationRequested();
 
-                if (ignoreFolders.Contains(subDir.Name)) continue;
-                FindFilesRecursive(subDir, rootPath, ignoreFolders, includeRegex, excludeRegexes, matches, maxResults, cancellationToken);
+                if (ignoreFolders.Contains(Path.GetFileName(subDir))) continue;
+                FindFilesRecursive(ws, subDir, rootPath, ignoreFolders, includeRegex, excludeRegexes, matches, maxResults, cancellationToken);
             }
         }
         catch

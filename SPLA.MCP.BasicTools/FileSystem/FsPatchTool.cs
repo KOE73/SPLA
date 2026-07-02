@@ -1,9 +1,9 @@
+using SPLA.Domain.Host;
 using SPLA.Domain.Models;
 using SPLA.MCP.Core.Interfaces;
 using SPLA.MCP.Core.Json;
 using SPLA.MCP.Core.Tools;
 using System;
-using System.IO;
 using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
@@ -54,12 +54,13 @@ public class FsPatchTool : IMcpTool, IToolHelpProvider
             if (!DataChannel.ResolveText(newText, out newText, out var resolveError))
                 return $"Error: {resolveError}";
 
-            if (!File.Exists(path))
+            var ws = HostServices.Sandbox.Workspace;
+            if (!ws.FileExists(path))
             {
                 return $"Error: File not found at {path}";
             }
 
-            var content = await File.ReadAllTextAsync(path, cancellationToken);
+            var content = await ws.ReadAllTextAsync(path, cancellationToken);
             if (content.Length == 0 && oldText.Length > 0)
             {
                 return "status: failed\n" +
@@ -100,7 +101,7 @@ public class FsPatchTool : IMcpTool, IToolHelpProvider
                 replacedContent = replacedContent.Replace("\n", "\r\n");
             }
 
-            await File.WriteAllTextAsync(path, replacedContent, cancellationToken);
+            await ws.WriteAllTextAsync(path, replacedContent, cancellationToken);
 
             var changedLinesCount = normalizedNew.Split('\n').Length;
 

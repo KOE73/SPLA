@@ -1,4 +1,5 @@
 using SPLA.Domain.Agent;
+using SPLA.Domain.Host;
 using SPLA.Domain.Models;
 using SPLA.MCP.Core.Interfaces;
 using SPLA.MCP.Core.Json;
@@ -52,7 +53,8 @@ public class FsReadTool : IMcpTool
             var path = ToolJson.GetStringTrimmed(doc.RootElement, "path");
             if (path is null) return "Error: Missing 'path' parameter.";
 
-            if (!File.Exists(path))
+            var ws = HostServices.Sandbox.Workspace;
+            if (!ws.FileExists(path))
             {
                 return $"Error: File not found at {path}";
             }
@@ -60,7 +62,7 @@ public class FsReadTool : IMcpTool
             var startLine = Math.Max(1, ToolJson.GetInt32(doc.RootElement, "start_line", 1));
             var lineCount = ToolJson.GetInt32(doc.RootElement, "line_count") is { } c ? (int?)Math.Max(1, c) : null;
 
-            var lines = await File.ReadAllLinesAsync(path, cancellationToken);
+            var lines = await ws.ReadAllLinesAsync(path, cancellationToken);
             if (lines.Length == 0)
             {
                 return "[File is empty]";

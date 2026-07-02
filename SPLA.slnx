@@ -19,6 +19,7 @@
     <File Path="docs/schema-editor-doc-b-tokens.md" />
     <File Path="docs/web-vue-migration-plan.md" />
     <File Path="docs/browser-playwright-plugin-plan.md" />
+    <File Path="docs/host-abstraction-plan.md" />
   </Folder>
   <Folder Name="/agents/">
     <File Path="agents/avalonia.md" />

@@ -1,3 +1,5 @@
+using SPLA.Domain.Host;
+
 namespace SPLA.Domain.Agent;
 
 /// <summary>
@@ -22,6 +24,11 @@ public interface IAgentSession
     /// <summary>This chat's queue of images a tool wants injected into the model's context on the
     /// next turn (e.g. a browser screenshot). See <see cref="IPendingImageSink"/>.</summary>
     IPendingImageSink Images { get; }
+
+    /// <summary>The host boundary (files, shell, capability gate) this chat's tools act through.
+    /// See <see cref="ISandbox"/>. Local chats share a passthrough sandbox; server chats get a
+    /// scoped, sandboxed one — tools never know the difference.</summary>
+    ISandbox Sandbox { get; }
 }
 
 /// <summary>Plain bundle of the per-chat agent dependencies. Used by the UI chat VM and by
@@ -29,13 +36,14 @@ public interface IAgentSession
 public sealed class AgentSession : IAgentSession
 {
     public AgentSession(IKeyValueStore sessionKv, MarkManager checkpoint, ISkillSession skills,
-        IBlobStore? blobs = null, IPendingImageSink? images = null)
+        IBlobStore? blobs = null, IPendingImageSink? images = null, ISandbox? sandbox = null)
     {
         SessionKv = sessionKv;
         Checkpoint = checkpoint;
         Skills = skills;
         Blobs = blobs ?? new BlobStore();
         Images = images ?? new PendingImageSink();
+        Sandbox = sandbox ?? PassthroughSandbox.Default;
     }
 
     public IKeyValueStore SessionKv { get; }
@@ -43,6 +51,7 @@ public sealed class AgentSession : IAgentSession
     public MarkManager Checkpoint { get; }
     public ISkillSession Skills { get; }
     public IPendingImageSink Images { get; }
+    public ISandbox Sandbox { get; }
 }
 
 /// <summary>

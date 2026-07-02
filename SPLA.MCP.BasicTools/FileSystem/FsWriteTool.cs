@@ -1,3 +1,4 @@
+using SPLA.Domain.Host;
 using SPLA.Domain.Models;
 using SPLA.MCP.Core.Interfaces;
 using SPLA.MCP.Core.Json;
@@ -57,14 +58,16 @@ public class FsWriteTool : IMcpTool
             if (!DataChannel.ResolveText(content, out content, out var resolveError))
                 return $"Error: {resolveError}";
 
+            var ws = HostServices.Sandbox.Workspace;
+
             // Create directories if they don't exist
             var dir = Path.GetDirectoryName(path);
-            if (!string.IsNullOrEmpty(dir) && !Directory.Exists(dir))
+            if (!string.IsNullOrEmpty(dir) && !ws.DirectoryExists(dir))
             {
-                Directory.CreateDirectory(dir);
+                ws.CreateDirectory(dir);
             }
 
-            await File.WriteAllTextAsync(path, content ?? string.Empty, cancellationToken);
+            await ws.WriteAllTextAsync(path, content ?? string.Empty, cancellationToken);
             return $"Successfully wrote content to: {path}";
         }
         catch (JsonException)
