@@ -1,4 +1,5 @@
 using SPLA.Domain.Models;
+using SPLA.Domain.Settings;
 
 namespace SPLA.MCP.Core.Permissions;
 
@@ -11,9 +12,16 @@ public class PermissionManager : IPermissionManager
 {
     private readonly List<RememberedToolPermission> _rememberedPermissions;
 
-    public PermissionManager(IEnumerable<RememberedToolPermission>? rememberedPermissions = null)
+    /// <summary>Live reference to the project's settings — read at check time (not copied at
+    /// construction) so an in-session <c>agent.save</c> permission-override edit takes effect on the
+    /// very next tool call, the same way <see cref="ResolvedSettings.Mode"/> already does.</summary>
+    private readonly ResolvedSettings? _settings;
+
+    public PermissionManager(
+        IEnumerable<RememberedToolPermission>? rememberedPermissions = null, ResolvedSettings? settings = null)
     {
         _rememberedPermissions = rememberedPermissions?.ToList() ?? new List<RememberedToolPermission>();
+        _settings = settings;
     }
 
     public void Remember(RememberedToolPermission permission)
@@ -23,6 +31,38 @@ public class PermissionManager : IPermissionManager
             string.Equals(x.Arguments, permission.Arguments, StringComparison.Ordinal));
         _rememberedPermissions.Add(permission);
     }
+
+    /// <summary>Which project-level override category (if any) governs this tool — mirrors the same
+    /// scope/effect discrimination the mode-based branches below already use, so the override maps
+    /// onto exactly the categories a project can actually configure (read/write/shell/internet).</summary>
+    private static string? ClassifyCategory(ToolFunctionDefinition toolMetadata) => toolMetadata switch
+    {
+        { Scope: ToolScope.Shell } => "shell",
+        { Scope: ToolScope.Internet } => "internet",
+        { Effect: ToolEffect.Write } => "write",
+        { Effect: ToolEffect.Read, Scope: ToolScope.Project or ToolScope.Local } => "read",
+        _ => null
+    };
+
+    private static PermissionResult? ParseOverride(string? value) => value?.Trim().ToLowerInvariant() switch
+    {
+        "allow" => PermissionResult.Allow,
+        "deny" => PermissionResult.Deny,
+        "ask" => PermissionResult.Ask,
+        _ => null
+    };
+
+    /// <summary>The project's explicit override for this tool's category, or null when unset (falls
+    /// through to mode-based logic). A project policy is a hard floor/ceiling: it wins over BOTH
+    /// mode defaults and session "remembered" exceptions — "most restrictive/most explicit wins".</summary>
+    private PermissionResult? ProjectOverride(ToolFunctionDefinition toolMetadata) => ClassifyCategory(toolMetadata) switch
+    {
+        "read" => ParseOverride(_settings?.PermRead),
+        "write" => ParseOverride(_settings?.PermWrite),
+        "shell" => ParseOverride(_settings?.PermShell),
+        "internet" => ParseOverride(_settings?.PermInternet),
+        _ => null
+    };
 
     public PermissionResult CheckPermission(AgentMode mode, ToolFunctionDefinition toolMetadata, string argumentsJson)
     {
@@ -44,6 +84,12 @@ public class PermissionManager : IPermissionManager
                 _                 => PermissionResult.Deny   // Research and unknown modes
             };
         }
+
+        // An explicit project policy (Settings → Agent → read/write/shell/internet) is the hard
+        // floor/ceiling for its category — applies in every mode, including Agent, and cannot be
+        // bypassed by a stale session "remembered" grant from before the policy was set.
+        if (ProjectOverride(toolMetadata) is { } forced)
+            return forced;
 
         // Agent mode: mode-based rules are authoritative; remembered denies must not override them.
         // Remembered allows are also redundant here (everything is already allowed), so skip entirely.

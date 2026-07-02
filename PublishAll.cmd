@@ -8,8 +8,18 @@ echo Cleaning publish folder...
 if exist .publish\work rmdir /s /q .publish\work
 mkdir .publish\work
 
-echo Cleaning web dist to force fresh client build...
+echo Rebuilding web client (Vue) so both UI and CLI embed the fresh bundle...
 if exist web\dist rmdir /s /q web\dist
+if not exist web\node_modules call npm --prefix web install
+if %ERRORLEVEL% neq 0 (
+    echo Error installing web client dependencies.
+    exit /b %ERRORLEVEL%
+)
+call npm --prefix web run build
+if %ERRORLEVEL% neq 0 (
+    echo Error building web client.
+    exit /b %ERRORLEVEL%
+)
 
 echo Publishing SPLA.UI.Avalonia (UI)...
 dotnet publish SPLA.UI.Avalonia/SPLA.UI.Avalonia.csproj -p:PublishProfile=SingleFile -c Release -o .publish/work

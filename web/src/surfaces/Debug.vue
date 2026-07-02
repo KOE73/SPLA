@@ -63,7 +63,7 @@ const offOpen = uiBus.on("debug.open", () => {
 });
 
 function watchAndReload() {
-  if (store.currentChat) client.send("chat.watch", { chatId: store.currentChat });
+  if (store.currentChat) client.send("chat.watch", { chatId: store.currentChat }, { projectId: store.currentProjectId ?? undefined });
   reload();
 }
 const offWelcome = solo ? client.on("welcome", watchAndReload) : () => {};

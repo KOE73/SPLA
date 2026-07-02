@@ -96,7 +96,9 @@ public sealed class BrowserPluginTests
     [Fact]
     public async Task Browser_start_without_active_session_reports_clear_error_not_an_exception()
     {
-        var tool = new BrowserStartTool(".", new BrowserSettings());
+        var tool = new BrowserStartTool(
+            SPLA.Domain.Project.LocalProject.For(new SPLA.Domain.Settings.ResolvedSettings()),
+            new BrowserSettings());
         var result = await tool.ExecuteAsync("{}");
         Assert.Contains("No active chat session", result);
     }
@@ -105,7 +107,12 @@ public sealed class BrowserPluginTests
     public async Task Browser_list_profiles_runs_without_a_chat_session_and_lists_the_project_option()
     {
         // Read-only — no AgentSessionScope needed, never touches Playwright.
-        var tool = new BrowserListProfilesTool(Path.GetTempPath());
+        var tool = new BrowserListProfilesTool(SPLA.Domain.Project.LocalProject.For(
+            new SPLA.Domain.Settings.ResolvedSettings
+            {
+                ProjectFilePath = Path.Combine(Path.GetTempPath(), "browser-test.spla"),
+                WorkspacePath = Path.GetTempPath()
+            }));
         var result = await tool.ExecuteAsync("{}");
 
         Assert.Contains("\"project\"", result);

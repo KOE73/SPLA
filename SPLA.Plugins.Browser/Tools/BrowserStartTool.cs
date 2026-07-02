@@ -21,12 +21,12 @@ namespace SPLA.Plugins.Browser.Tools;
 /// </summary>
 public sealed class BrowserStartTool : IMcpTool
 {
-    private readonly string _workspacePath;
+    private readonly SPLA.Domain.Project.IProject _project;
     private readonly BrowserSettings _settings;
 
-    public BrowserStartTool(string workspacePath, BrowserSettings settings)
+    public BrowserStartTool(SPLA.Domain.Project.IProject project, BrowserSettings settings)
     {
-        _workspacePath = workspacePath;
+        _project = project;
         _settings = settings;
     }
 
@@ -118,7 +118,7 @@ public sealed class BrowserStartTool : IMcpTool
             return new ResolvedProfile(null, null, null, null);
 
         if (profile.Equals("project", StringComparison.OrdinalIgnoreCase))
-            return new ResolvedProfile(BrowserProfilePaths.ProjectProfileDir(_workspacePath), null, null, null);
+            return new ResolvedProfile(BrowserProfilePaths.ProjectProfileDir(_project), null, null, null);
 
         var detected = BrowserProfileDiscovery.Discover().FirstOrDefault(p =>
             p.DisplayName.Equals(profile, StringComparison.OrdinalIgnoreCase) ||
@@ -137,7 +137,7 @@ public sealed class BrowserStartTool : IMcpTool
         var options = new List<ClarifyOption>();
         var byLabel = new Dictionary<string, ResolvedProfile>();
 
-        var projectHasState = BrowserProfilePaths.ProjectProfileHasState(_workspacePath);
+        var projectHasState = BrowserProfilePaths.ProjectProfileHasState(_project);
         var projectOption = new ClarifyOption
         {
             Label = BrowserProfilePaths.ProjectProfileLabel,
@@ -146,7 +146,7 @@ public sealed class BrowserStartTool : IMcpTool
                 : "Fresh now, but persists in this project — reused (and accumulates state) on future runs."
         };
         options.Add(projectOption);
-        byLabel[projectOption.Label] = new ResolvedProfile(BrowserProfilePaths.ProjectProfileDir(_workspacePath), null, null, null);
+        byLabel[projectOption.Label] = new ResolvedProfile(BrowserProfilePaths.ProjectProfileDir(_project), null, null, null);
 
         foreach (var p in detected)
         {

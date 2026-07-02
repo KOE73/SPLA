@@ -38,14 +38,8 @@ button { font: inherit; cursor: pointer; }
   border-bottom: 1px solid var(--border); }
 #sidebar header b { flex: 1; letter-spacing: .04em; }
 #chats { overflow: auto; flex: 1; }
-.chat-item { padding: 9px 12px; border-bottom: 1px solid color-mix(in srgb, var(--border) 40%, transparent);
-  display: flex; align-items: center; gap: 6px; }
-.chat-item:hover { background: color-mix(in srgb, var(--text) 6%, transparent); }
-.chat-item.active { background: var(--accent-soft); color: var(--accent); }
-.chat-item .t { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; cursor: pointer; }
-.chat-item .x { color: var(--muted); opacity: 0; font-size: var(--fs-sm); padding: 0 2px; }
-.chat-item:hover .x { opacity: .8; }
-.chat-item .x:hover { color: var(--danger); }
+/* .chat-item itself now lives in ChatListItem.vue (scoped) — kept out of this global sheet so the
+   list-row look has exactly one place to change. */
 
 /* ── Buttons ──────────────────────────────────────────────────────────────── */
 .btn { background: var(--accent); color: var(--accent-contrast); border: 0;

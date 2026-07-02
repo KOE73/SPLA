@@ -30,6 +30,13 @@ public sealed class ProtocolEnvelope
     /// <summary>Which chat this message concerns, when applicable.</summary>
     public string? ChatId { get; set; }
 
+    /// <summary>Which project this message concerns. Null means "this connection's default
+    /// project" (the one the service was started against) — a single-project client never has to
+    /// set this. A multi-project client (project browser, several open project windows over the
+    /// same socket) sets it explicitly on every project- or chat-scoped message; the server never
+    /// remembers a "current project" for the connection, so there is no state to drift.</summary>
+    public string? ProjectId { get; set; }
+
     /// <summary>
     /// Correlation id for request/response pairs that need one — permission and clarify round-trips
     /// carry the same RequestId on the outgoing request and the incoming answer.
@@ -118,6 +125,17 @@ public static class MessageTypes
     /// <summary>Resolve a named JSON schema (data + UI) from the registry — used by the Forms editor.</summary>
     public const string SchemaGet = "schema.get";
 
+    // ── Project browser (client → server) ─────────────────────────────────
+    /// <summary>List every known project (registry), most recently opened first.</summary>
+    public const string ProjectList = "project.list";
+    /// <summary>Same as <see cref="ProjectList"/>, explicitly ordered by recency (convenience for
+    /// a "recent projects" picker that wants the same data as <see cref="ProjectList"/>).</summary>
+    public const string ProjectRecent = "project.recent";
+    /// <summary>Opens (building the runtime on first touch) a known project by id.</summary>
+    public const string ProjectOpen = "project.open";
+    /// <summary>Creates a new project (writes its manifest) and opens it.</summary>
+    public const string ProjectCreate = "project.create";
+
     // ── Workspace filesystem browser (client → server) ───────────────────
     /// <summary>List children of a directory (null parentRef = workspace root).</summary>
     public const string FsBrowse = "fs.browse";
@@ -172,6 +190,13 @@ public static class MessageTypes
     public const string SystemRegisterAssociationResult = "system.register_association.result";
     /// <summary>Answer to <see cref="SchemaGet"/>.</summary>
     public const string SchemaResult = "schema.result";
+
+    /// <summary>Answer to <see cref="ProjectList"/>/<see cref="ProjectRecent"/>.</summary>
+    public const string ProjectListResult = "project.list.result";
+    /// <summary>Answer to <see cref="ProjectOpen"/>/<see cref="ProjectCreate"/> — the same shape
+    /// <see cref="WelcomePayload"/> carries for the connection's default project, but for any
+    /// project id, so a client can render a new project window without a second round trip.</summary>
+    public const string ProjectContext = "project.context";
 
     /// <summary>Answer to <see cref="FsBrowse"/>.</summary>
     public const string FsBrowseResult = "fs.browse.result";

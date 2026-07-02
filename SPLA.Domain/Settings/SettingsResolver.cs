@@ -62,6 +62,17 @@ public class ResolvedSettings
     /// <summary>Resolves <c>secret:</c> / <c>env:</c> references in config values to plaintext.</summary>
     public ISecretResolver SecretResolver { get; set; } = null!;
 
+    private Project.IProject? _project;
+
+    /// <summary>The project as a storage broker. Defaults to a local project over the same
+    /// runtime layout the app always used (<c>.spla/</c> or <c>~/.spla</c>); a host can inject
+    /// a different backend (server, memory) before anything touches it.</summary>
+    public Project.IProject Project
+    {
+        get => _project ??= Domain.Project.LocalProject.For(this);
+        set => _project = value;
+    }
+
     public List<string> Docs { get; set; } = new();
     public List<string> Ignore { get; set; } = new();
 

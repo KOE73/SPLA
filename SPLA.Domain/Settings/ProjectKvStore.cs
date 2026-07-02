@@ -23,11 +23,8 @@ public sealed class ProjectKvStore
         .IgnoreUnmatchedProperties()
         .Build();
 
-    public ProjectKvStore(ResolvedSettings settings)
+    public ProjectKvStore(string baseDir)
     {
-        var baseDir = settings.ProjectFilePath != null
-            ? Path.Combine(settings.WorkspacePath, ".spla")
-            : ConfigLoader.GetDefaultsDir();
         Directory.CreateDirectory(baseDir);
         _filePath = Path.Combine(baseDir, "project-kv.yaml");
 

@@ -6,6 +6,7 @@ export interface WireFrame {
   type: string;
   payload: unknown;
   chatId?: string;
+  projectId?: string;
   requestId?: string;
   ts: number;
 }
@@ -14,6 +15,9 @@ export interface Envelope<P = unknown> {
   type: string;
   payload: P;
   chatId?: string;
+  /** Which project this message concerns; absent = the connection's default project. See
+   * AgentRuntimeRegistry.DefaultProjectId server-side — single-project usage never sets this. */
+  projectId?: string;
   requestId?: string;
 }
 
@@ -200,12 +204,35 @@ export interface FsWriteResultPayload {
   error?: string;
 }
 
+// ── Project browser ─────────────────────────────────────────────────────────
+export interface ProjectDescriptor {
+  id: string;
+  name?: string;
+  manifestPath?: string;
+  lastOpened?: string;
+}
+
+export interface ProjectListResultPayload {
+  projects: ProjectDescriptor[];
+}
+
+export interface ProjectContextPayload {
+  projectId: string;
+  projectName?: string;
+  workspacePath?: string;
+  connections?: ConnectionDto[];
+  modes?: string[];
+  defaultMode?: string;
+  theme?: string;
+  density?: string;
+}
+
 // ── Events the server pushes unprompted (subscribe via client.on) ──────────────
 export interface ServerEvents {
   /** Local-only: emitted by SplaClient itself on socket open/close, never sent by the server. */
   "conn": { on: boolean; text?: string };
   "welcome": {
-    theme?: string; density?: string; projectName?: string; workspacePath?: string;
+    theme?: string; density?: string; projectId?: string; projectName?: string; workspacePath?: string;
     modes?: string[]; defaultMode?: string;
     connections?: { id: string; name?: string }[];
   };
@@ -240,4 +267,6 @@ export interface ServerEvents {
   "schema.result": SchemaResultPayload;
   "debug.snapshot": DebugSnapshotPayload;
   "local.userMsg": { text: string; images?: string[] };
+  "project.list.result": ProjectListResultPayload;
+  "project.context": ProjectContextPayload;
 }

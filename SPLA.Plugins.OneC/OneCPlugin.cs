@@ -13,10 +13,14 @@ public class OneCPlugin : ISplaPlugin
 
     public IEnumerable<IMcpTool> Initialize(ResolvedSettings settings)
     {
-        // Use the workspace path to initialize the database
-        var workspacePath = string.IsNullOrWhiteSpace(settings.WorkspacePath) ? "." : settings.WorkspacePath;
-        var dbPath = Path.Combine(workspacePath, ".spla", "onec.sqlite");
-        
+        // The index lives in the project's runtime area (root bucket keeps the historical
+        // .spla/onec.sqlite location, which the Avalonia-side panel also expects).
+        var runtimeDir = settings.Project
+            .GetBucket(SPLA.Domain.Project.IProjectBackend.RootBucket)
+            .MapToHostDirectory()
+            ?? throw new InvalidOperationException("OneC index needs a disk-backed project backend.");
+        var dbPath = Path.Combine(runtimeDir, "onec.sqlite");
+
         _db = new OneCIndexDatabase(dbPath);
         _db.EnsureCreated();
 

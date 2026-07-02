@@ -38,13 +38,13 @@ if (splaFile != null)
     ConfigLoader.ScaffoldIfNew(splaFile);
     settings = ConfigLoader.LoadAndResolve(splaFile);
     Directory.SetCurrentDirectory(settings.WorkspacePath);
-    SplaTelemetry.ConfigureProjectLogs(settings.WorkspacePath);
+    SplaTelemetry.ConfigureProjectLogs(settings.Project.GetBucket("logs").MapToHostDirectory());
     Console.WriteLine($"Project: {settings.ProjectName ?? Path.GetFileNameWithoutExtension(splaFile)}");
 }
 else
 {
     settings = ConfigLoader.LoadAndResolve();
-    SplaTelemetry.ConfigureProjectLogs(settings.WorkspacePath);
+    SplaTelemetry.ConfigureProjectLogs(settings.Project.GetBucket("logs").MapToHostDirectory());
 }
 logger.LogInformation("CLI startup. ProjectFile={ProjectFile} WorkspacePath={WorkspacePath} Mode={Mode}",
     splaFile, settings.WorkspacePath, settings.Mode);
@@ -249,10 +249,15 @@ static async Task RunServeAsync(string[] args, ResolvedSettings settings, ILogge
         }
     }
 
-    using var runtime = new AgentRuntime(settings, loggerFactory);
-    var chats = new ChatRegistry(runtime);
+    using var registry = new AgentRuntimeRegistry(loggerFactory)
+    {
+        DefaultProjectId = settings.ProjectFilePath ?? AgentRuntimeRegistry.NoProjectId
+    };
+    // Same cached entry Build() resolves internally — opening it here first just lets the parallel
+    // REPL (below) drive the identical runtime/chats a socket client would.
+    var (runtime, chats) = registry.Open(registry.DefaultProjectId);
     var options = new ServiceOptions { Port = port, Bind = bind, Token = token };
-    var host = SplaServiceHost.Build(runtime, options, chats);
+    var host = SplaServiceHost.Build(registry, options);
     await host.StartAsync();
 
     var wsUrl = host.Url.Replace("http://", "ws://") + "/ws";

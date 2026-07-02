@@ -23,8 +23,8 @@ public class BrowserPlugin : ISplaPlugin
     private static IEnumerable<IMcpTool> Initialize(ResolvedSettings settings, BrowserSettings browserSettings) =>
     [
         // Lifecycle
-        new BrowserStartTool(settings.WorkspacePath, browserSettings),
-        new BrowserListProfilesTool(settings.WorkspacePath),
+        new BrowserStartTool(settings.Project, browserSettings),
+        new BrowserListProfilesTool(settings.Project),
         new BrowserStopTool(),
         new BrowserStatusTool(),
         // Tabs
