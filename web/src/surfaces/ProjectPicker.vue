@@ -31,6 +31,7 @@
 import { onMounted, ref } from "vue";
 import { client } from "../protocol/SplaClient";
 import { store } from "../state/store";
+import { setCurrentProject } from "../state/project";
 import type { ProjectContextPayload, ProjectListResultPayload } from "../protocol/types";
 import ProjectListItem from "./ProjectListItem.vue";
 
@@ -78,8 +79,7 @@ async function createProject() {
 }
 
 function applyContext(ctx: ProjectContextPayload) {
-  store.currentProjectId = ctx.projectId;
-  store.currentProjectName = ctx.projectName ?? null;
+  setCurrentProject(ctx.projectId, ctx.projectName);
   store.workspacePath = ctx.workspacePath ?? null;
   if (ctx.theme) store.theme = ctx.theme;
   store.currentChat = null;

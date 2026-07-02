@@ -6,24 +6,34 @@ using Avalonia.Threading;
 namespace SPLA.UI.Avalonia.Helpers;
 
 /// <summary>
-/// Bridges appearance events from the hosted web client to the native Avalonia chrome. The web client
-/// posts <c>{ kind: "appearance", theme, density }</c> via <c>window.chrome.webview.postMessage</c>
-/// whenever the theme/density changes (on connect, on a server broadcast, or on instant preview); this
-/// applies it to the window frame through <see cref="App.ChangeTheme"/>/<see cref="App.ChangeDensity"/>
-/// so the native title bar follows the same single appearance event the webviews react to.
+/// Bridges events from the hosted web client to the native Avalonia chrome via
+/// <c>window.chrome.webview.postMessage</c>:
+/// <list type="bullet">
+/// <item><c>{ kind: "appearance", theme, density }</c> — applied through
+/// <see cref="App.ChangeTheme"/>/<see cref="App.ChangeDensity"/> so the whole app follows one
+/// appearance event.</item>
+/// <item><c>{ kind: "project", projectName }</c> — the web client's in-page project focus changed
+/// (see web/src/state/project.ts). Without this the OS window title/taskbar thumbnail stayed on
+/// whatever project the process started with even after the sidebar's ProjectPicker switched focus
+/// to a different one — confusing next to the native title-bar picker, which spawns a whole new
+/// window (and so gets a correct title "for free"). <paramref name="onProjectChanged"/> lets the
+/// specific window that owns this browser update its own <c>Title</c>; optional because only
+/// <see cref="MainWindow"/> has a meaningful title to update — <see cref="SurfaceWindow"/> frames
+/// (debug/settings/wire) don't call this.</item>
+/// </list>
 /// </summary>
 public static class WebViewBridge
 {
-    public static void Attach(NativeWebView browser)
+    public static void Attach(NativeWebView browser, Action<string?>? onProjectChanged = null)
     {
-        browser.WebMessageReceived += (_, e) => Handle(e.Body);
+        browser.WebMessageReceived += (_, e) => Handle(e.Body, onProjectChanged);
     }
 
-    private static void Handle(string? message)
+    private static void Handle(string? message, Action<string?>? onProjectChanged)
     {
         if (string.IsNullOrWhiteSpace(message)) return;
 
-        string? theme = null, density = null, kind = null;
+        string? theme = null, density = null, kind = null, projectName = null;
         try
         {
             using var doc = JsonDocument.Parse(message);
@@ -32,16 +42,24 @@ public static class WebViewBridge
             if (root.TryGetProperty("kind", out var k)) kind = k.GetString();
             if (root.TryGetProperty("theme", out var t)) theme = t.GetString();
             if (root.TryGetProperty("density", out var d)) density = d.GetString();
+            if (root.TryGetProperty("projectName", out var p)) projectName = p.GetString();
         }
         catch { return; }   // not our message — ignore
 
-        if (kind != "appearance") return;
-
-        // The post may arrive off the UI thread; theming touches Application resources.
-        Dispatcher.UIThread.Post(() =>
+        // The post may arrive off the UI thread; both branches touch UI-thread-affine state.
+        switch (kind)
         {
-            if (!string.IsNullOrWhiteSpace(theme)) App.ChangeTheme(theme!);
-            if (!string.IsNullOrWhiteSpace(density)) App.ChangeDensity(density!);
-        });
+            case "appearance":
+                Dispatcher.UIThread.Post(() =>
+                {
+                    if (!string.IsNullOrWhiteSpace(theme)) App.ChangeTheme(theme!);
+                    if (!string.IsNullOrWhiteSpace(density)) App.ChangeDensity(density!);
+                });
+                break;
+
+            case "project":
+                Dispatcher.UIThread.Post(() => onProjectChanged?.Invoke(projectName));
+                break;
+        }
     }
 }

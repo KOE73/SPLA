@@ -29,10 +29,13 @@ public partial class MainWindow : Window
         TitleText.Text = string.IsNullOrWhiteSpace(App.ProjectFilePath) ? "no project" : App.ProjectFilePath;
         // The custom in-window title bar text above is invisible to the OS taskbar/Alt+Tab, which
         // read Window.Title instead — without this, every open project shows an identical
-        // "SPLA - Local AI Assistant" thumbnail and there is no way to tell windows apart.
-        var projectLabel = App.ResolvedSettings.ProjectName
+        // "SPLA - Local AI Assistant" thumbnail and there is no way to tell windows apart. Seeded
+        // from this process's own project; ApplyProjectTitle (via WebViewBridge) keeps it in sync
+        // if the web client's in-page ProjectPicker later focuses a DIFFERENT project over the same
+        // socket — otherwise the title would silently go stale the moment that happens.
+        var startupLabel = App.ResolvedSettings.ProjectName
             ?? (App.ProjectFilePath is { } p ? Path.GetFileNameWithoutExtension(p) : null);
-        Title = projectLabel != null ? $"SPLA — {projectLabel}" : "SPLA - Local AI Assistant";
+        ApplyProjectTitle(startupLabel);
         Loaded += MainWindow_Loaded;
     }
 
@@ -44,7 +47,7 @@ public partial class MainWindow : Window
 
         try
         {
-            Helpers.WebViewBridge.Attach(Browser);
+            Helpers.WebViewBridge.Attach(Browser, ApplyProjectTitle);
             _url = await App.ServiceUrlAsync();
             Browser.Navigate(new Uri(_url));
         }
@@ -163,6 +166,12 @@ public partial class MainWindow : Window
 
     private void OpenWireSurface_Click(object? sender, RoutedEventArgs e)
         => new SurfaceWindow("wire", "Wire").Show(this);
+
+    /// <summary>Sets the OS window title (taskbar/Alt+Tab) from a project display name, or the
+    /// generic app name when null/blank. Called at startup and whenever the web client's in-page
+    /// focus changes (see <see cref="Helpers.WebViewBridge"/>).</summary>
+    private void ApplyProjectTitle(string? projectLabel)
+        => Title = string.IsNullOrWhiteSpace(projectLabel) ? "SPLA - Local AI Assistant" : $"SPLA — {projectLabel}";
 
     private void Reload_Click(object? sender, RoutedEventArgs e)
     {
