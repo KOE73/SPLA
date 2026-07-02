@@ -1,6 +1,8 @@
 <template>
   <div class="sidebar-header">
-    <b class="app-title">SPLA</b>
+    <button class="app-title" title="Switch project" @click="store.projectPickerOpen = true">
+      📂 {{ store.currentProjectName || "SPLA" }}
+    </button>
     <div class="nav-tabs">
       <button
         class="nav-tab"
@@ -30,6 +32,8 @@
       @delete="remove"
     />
   </div>
+
+  <ProjectPicker v-if="store.projectPickerOpen" @close="store.projectPickerOpen = false" />
 </template>
 
 <script setup lang="ts">
@@ -38,31 +42,38 @@ import { client } from "../protocol/SplaClient";
 import { store } from "../state/store";
 import type { ChatSummary } from "../protocol/types";
 import ChatListItem from "./ChatListItem.vue";
+import ProjectPicker from "./ProjectPicker.vue";
 
 const offList = client.on("chat.list.result", p => { store.chats = p.chats || []; });
 onUnmounted(offList);
+
+/** The project this connection is currently focused on — undefined (omitted) means "the
+ * connection's default project", exactly what a single-project client already wants. */
+function projectExtra() {
+  return store.currentProjectId ? { projectId: store.currentProjectId } : undefined;
+}
 
 function setLayout(name: string) {
   store.layout = name;
   localStorage.setItem("spla.layout", name);
 }
 
-function newChat() { client.send("chat.new", { title: null }); }
+function newChat() { client.send("chat.new", { title: null }, projectExtra()); }
 
 function onChatClick(chatId: string) {
-  client.send("chat.open", { chatId });
+  client.send("chat.open", { chatId }, projectExtra());
   // Switch to chat layout when opening a chat from file-browser mode
   if (store.layout !== "default") setLayout("default");
 }
 
 function rename(chat: ChatSummary) {
   const nt = prompt("Rename chat", chat.title || "");
-  if (nt) client.send("chat.rename", { chatId: chat.id, title: nt });
+  if (nt) client.send("chat.rename", { chatId: chat.id, title: nt }, projectExtra());
 }
 
 function remove(chatId: string) {
   if (!confirm("Delete this chat?")) return;
-  client.send("chat.delete", { chatId });
+  client.send("chat.delete", { chatId }, projectExtra());
   if (chatId === store.currentChat) store.currentChat = null;
 }
 </script>
@@ -80,11 +91,22 @@ function remove(chatId: string) {
 }
 
 .app-title {
+  font: inherit;
   font-size: var(--fs-sm);
+  font-weight: 600;
   color: var(--text);
   white-space: nowrap;
   margin-right: 2px;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+  padding: 3px 6px;
+  cursor: pointer;
+  max-width: 130px;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
+.app-title:hover { background: color-mix(in srgb, var(--text) 6%, transparent); border-color: var(--border); }
 
 /* ── Nav tabs (💬 / ◫) ───────────────────────────────────────────────────────── */
 .nav-tabs {

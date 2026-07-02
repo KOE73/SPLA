@@ -64,7 +64,7 @@ function send() {
   uiBus.emit("local.userMsg", { text: t, images });
   text.value = "";
   turnActive.value = true;
-  client.send("chat.send", { chatId: store.currentChat, text: t, images });
+  client.send("chat.send", { chatId: store.currentChat, text: t, images }, { projectId: store.currentProjectId ?? undefined });
   store.attachments = [];
   nextTick(() => textareaEl.value?.focus());
 }

@@ -50,10 +50,10 @@ const healthTitle = computed(() => {
 });
 
 function onModeChange() {
-  if (store.currentChat) client.send("chat.settings", { chatId: store.currentChat, mode: mode.value });
+  if (store.currentChat) client.send("chat.settings", { chatId: store.currentChat, mode: mode.value }, { projectId: store.currentProjectId ?? undefined });
 }
 function onConnectionChange() {
-  if (store.currentChat) client.send("chat.settings", { chatId: store.currentChat, connectionId: connectionId.value });
+  if (store.currentChat) client.send("chat.settings", { chatId: store.currentChat, connectionId: connectionId.value }, { projectId: store.currentProjectId ?? undefined });
 }
 function openSettings() {
   window.open("/?surface=settings", "spla-settings", "width=640,height=720,resizable=yes");

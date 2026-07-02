@@ -27,6 +27,12 @@ public partial class MainWindow : Window
     {
         InitializeComponent();
         TitleText.Text = string.IsNullOrWhiteSpace(App.ProjectFilePath) ? "no project" : App.ProjectFilePath;
+        // The custom in-window title bar text above is invisible to the OS taskbar/Alt+Tab, which
+        // read Window.Title instead — without this, every open project shows an identical
+        // "SPLA - Local AI Assistant" thumbnail and there is no way to tell windows apart.
+        var projectLabel = App.ResolvedSettings.ProjectName
+            ?? (App.ProjectFilePath is { } p ? Path.GetFileNameWithoutExtension(p) : null);
+        Title = projectLabel != null ? $"SPLA — {projectLabel}" : "SPLA - Local AI Assistant";
         Loaded += MainWindow_Loaded;
     }
 
