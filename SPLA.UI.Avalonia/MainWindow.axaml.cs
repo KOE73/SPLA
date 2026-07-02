@@ -26,13 +26,10 @@ public partial class MainWindow : Window
     public MainWindow()
     {
         InitializeComponent();
-        TitleText.Text = string.IsNullOrWhiteSpace(App.ProjectFilePath) ? "no project" : App.ProjectFilePath;
-        // The custom in-window title bar text above is invisible to the OS taskbar/Alt+Tab, which
-        // read Window.Title instead — without this, every open project shows an identical
-        // "SPLA - Local AI Assistant" thumbnail and there is no way to tell windows apart. Seeded
-        // from this process's own project; ApplyProjectTitle (via WebViewBridge) keeps it in sync
-        // if the web client's in-page ProjectPicker later focuses a DIFFERENT project over the same
-        // socket — otherwise the title would silently go stale the moment that happens.
+        // ApplyProjectTitle is the single source of truth for BOTH this in-window text and the OS
+        // Window.Title — it used to only touch Window.Title, so switching projects via the web
+        // client's in-page ProjectPicker left this custom title bar text stuck on the stale path
+        // while the OS taskbar correctly updated. WebViewBridge re-invokes it whenever that happens.
         var startupLabel = App.ResolvedSettings.ProjectName
             ?? (App.ProjectFilePath is { } p ? Path.GetFileNameWithoutExtension(p) : null);
         ApplyProjectTitle(startupLabel);
@@ -167,11 +164,16 @@ public partial class MainWindow : Window
     private void OpenWireSurface_Click(object? sender, RoutedEventArgs e)
         => new SurfaceWindow("wire", "Wire").Show(this);
 
-    /// <summary>Sets the OS window title (taskbar/Alt+Tab) from a project display name, or the
-    /// generic app name when null/blank. Called at startup and whenever the web client's in-page
-    /// focus changes (see <see cref="Helpers.WebViewBridge"/>).</summary>
+    /// <summary>Sets BOTH the OS window title (taskbar/Alt+Tab) and the custom in-window title bar
+    /// text from a project display name, or the generic app name when null/blank — the two must stay
+    /// in lockstep or one silently goes stale (that was the actual bug: only Window.Title was wired
+    /// up at first). Called at startup and whenever the web client's in-page focus changes (see
+    /// <see cref="Helpers.WebViewBridge"/>).</summary>
     private void ApplyProjectTitle(string? projectLabel)
-        => Title = string.IsNullOrWhiteSpace(projectLabel) ? "SPLA - Local AI Assistant" : $"SPLA — {projectLabel}";
+    {
+        Title = string.IsNullOrWhiteSpace(projectLabel) ? "SPLA - Local AI Assistant" : $"SPLA — {projectLabel}";
+        TitleText.Text = string.IsNullOrWhiteSpace(projectLabel) ? "no project" : projectLabel;
+    }
 
     private void Reload_Click(object? sender, RoutedEventArgs e)
     {
