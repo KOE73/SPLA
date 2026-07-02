@@ -249,10 +249,15 @@ static async Task RunServeAsync(string[] args, ResolvedSettings settings, ILogge
         }
     }
 
-    using var registry = new AgentRuntimeRegistry(loggerFactory);
-    var (runtime, chats) = registry.Open(settings.ProjectFilePath);
+    using var registry = new AgentRuntimeRegistry(loggerFactory)
+    {
+        DefaultProjectId = settings.ProjectFilePath ?? AgentRuntimeRegistry.NoProjectId
+    };
+    // Same cached entry Build() resolves internally — opening it here first just lets the parallel
+    // REPL (below) drive the identical runtime/chats a socket client would.
+    var (runtime, chats) = registry.Open(registry.DefaultProjectId);
     var options = new ServiceOptions { Port = port, Bind = bind, Token = token };
-    var host = SplaServiceHost.Build(runtime, options, chats);
+    var host = SplaServiceHost.Build(registry, options);
     await host.StartAsync();
 
     var wsUrl = host.Url.Replace("http://", "ws://") + "/ws";

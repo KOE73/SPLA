@@ -33,6 +33,18 @@ public sealed class AgentRuntimeRegistry : IDisposable
     private readonly IProjectProvider _provider;
     private readonly ConcurrentDictionary<string, RuntimeEntry> _entries = new();
 
+    /// <summary>The project a connection means when it omits ProjectId on a message — the one the
+    /// service was anchored to at startup (a real manifest path, or <see cref="NoProjectId"/> when
+    /// none). Single-project clients never learn about project ids at all; this is what keeps them
+    /// working unchanged once the service can hold more than one project.</summary>
+    public string DefaultProjectId { get; set; } = NoProjectId;
+
+    /// <summary>Fires once, synchronously, right after a runtime is built — the host wires each new
+    /// runtime's events/health into the live connection fan-out here (keyed by project id, since
+    /// broadcasts must be scoped per project), so a project opened lazily via <see cref="Open"/>/
+    /// <see cref="Create"/> gets the same live wiring the startup-time default did.</summary>
+    public event Action<string, RuntimeEntry>? RuntimeCreated;
+
     public AgentRuntimeRegistry(ILoggerFactory loggerFactory, IProjectProvider? provider = null)
     {
         _loggerFactory = loggerFactory;
@@ -42,11 +54,11 @@ public sealed class AgentRuntimeRegistry : IDisposable
     public IReadOnlyList<ProjectDescriptor> List() => _provider.List();
     public IReadOnlyList<ProjectDescriptor> Recent() => _provider.Recent();
 
-    /// <summary>Opens (building on first touch) the runtime for a known project id, or the sentinel
-    /// no-project runtime when <paramref name="projectId"/> is null/empty/<see cref="NoProjectId"/>.</summary>
+    /// <summary>Opens (building on first touch) the runtime for a known project id, or
+    /// <see cref="DefaultProjectId"/> when <paramref name="projectId"/> is null/empty.</summary>
     public RuntimeEntry Open(string? projectId)
     {
-        var key = string.IsNullOrEmpty(projectId) ? NoProjectId : projectId;
+        var key = string.IsNullOrEmpty(projectId) ? DefaultProjectId : projectId;
         return _entries.GetOrAdd(key, id =>
         {
             ResolvedSettings settings;
@@ -61,7 +73,7 @@ public sealed class AgentRuntimeRegistry : IDisposable
                 _provider.Open(id);
                 settings = ConfigLoader.LoadAndResolve(id);
             }
-            return Build(settings);
+            return Build(id, settings);
         });
     }
 
@@ -70,13 +82,15 @@ public sealed class AgentRuntimeRegistry : IDisposable
     {
         _provider.Create(descriptor);
         var id = descriptor.ManifestPath ?? descriptor.Id;
-        return _entries.GetOrAdd(id, _ => Build(ConfigLoader.LoadAndResolve(id)));
+        return _entries.GetOrAdd(id, _ => Build(id, ConfigLoader.LoadAndResolve(id)));
     }
 
-    private RuntimeEntry Build(ResolvedSettings settings)
+    private RuntimeEntry Build(string id, ResolvedSettings settings)
     {
         var runtime = new AgentRuntime(settings, _loggerFactory);
-        return new RuntimeEntry(runtime, new ChatRegistry(runtime));
+        var entry = new RuntimeEntry(runtime, new ChatRegistry(runtime));
+        RuntimeCreated?.Invoke(id, entry);
+        return entry;
     }
 
     public void Dispose()

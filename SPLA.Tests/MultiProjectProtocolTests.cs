@@ -1,0 +1,116 @@
+using System.Net.WebSockets;
+using System.Text;
+using System.Text.Json;
+using Microsoft.Extensions.Logging.Abstractions;
+using SPLA.Domain.Project;
+using SPLA.Service;
+using SPLA.Service.Contracts;
+
+namespace SPLA.Tests;
+
+/// <summary>
+/// Phase 2.2 (docs/host-abstraction-plan.md), variant B: every chat/project-scoped envelope carries
+/// its own ProjectId (null = the connection's default project); the server keeps no "current
+/// project" state on the socket. This is the end-to-end proof the earlier unit tests couldn't give:
+/// a REAL WebSocket connection touching two different projects gets genuinely isolated results —
+/// not just that the registry object graph looks right in isolation.
+/// </summary>
+public sealed class MultiProjectProtocolTests
+{
+    private static readonly JsonSerializerOptions Json = new(JsonSerializerDefaults.Web);
+
+    private static string TempRoot() =>
+        Directory.CreateDirectory(
+            Path.Combine(Path.GetTempPath(), $"spla-ws-{Guid.NewGuid():N}")).FullName;
+
+    [Fact]
+    public async Task Two_projects_over_one_socket_stay_isolated()
+    {
+        var root = TempRoot();
+        try
+        {
+            var provider = new LocalProjectProvider(Path.Combine(root, "state"));
+            var alphaManifest = Path.Combine(root, "alpha", "alpha.spla");
+            var betaManifest = Path.Combine(root, "beta", "beta.spla");
+
+            using var registry = new AgentRuntimeRegistry(NullLoggerFactory.Instance, provider);
+            registry.Create(new ProjectDescriptor { Id = alphaManifest, ManifestPath = alphaManifest, Name = "Alpha" });
+            registry.Create(new ProjectDescriptor { Id = betaManifest, ManifestPath = betaManifest, Name = "Beta" });
+            registry.DefaultProjectId = alphaManifest;
+
+            var port = 25731; // fixed dev-loopback port; this suite doesn't run alongside a live `spla serve`.
+            var host = SplaServiceHost.Build(registry, new ServiceOptions { Port = port });
+            await host.StartAsync();
+            try
+            {
+                using var socket = new ClientWebSocket();
+                await socket.ConnectAsync(new Uri($"ws://127.0.0.1:{port}/ws"), CancellationToken.None);
+
+                await SendAsync(socket, MessageTypes.Hello, new HelloPayload());
+                var welcome = await ReceiveAsync<WelcomePayload>(socket, MessageTypes.Welcome);
+                Assert.Equal(alphaManifest, welcome.ProjectId);
+                Assert.Equal("Alpha", welcome.ProjectName);
+
+                // Create a chat explicitly in Beta (not the default project).
+                await SendAsync(socket, MessageTypes.ChatNew, new ChatNewPayload { Title = "Beta chat" }, projectId: betaManifest);
+                var opened = await ReceiveAsync<ChatOpenedPayload>(socket, MessageTypes.ChatOpened);
+                Assert.Equal("Beta chat", opened.Title);
+
+                // chat.new also broadcasts an unsolicited chat.list.result to this project's watchers
+                // (sidebar auto-refresh) — correlate by RequestId so that broadcast noise can't be
+                // mistaken for the reply to an explicit query below.
+                const string betaReqId = "beta-list";
+                const string alphaReqId = "alpha-list";
+
+                // Beta's list shows the new chat.
+                await SendAsync(socket, MessageTypes.ChatList, null, projectId: betaManifest, requestId: betaReqId);
+                var betaList = await ReceiveAsync<ChatListResultPayload>(socket, MessageTypes.ChatListResult, betaReqId);
+                Assert.Single(betaList.Chats);
+
+                // The default project (Alpha, ProjectId omitted) was never touched — still empty.
+                await SendAsync(socket, MessageTypes.ChatList, null, requestId: alphaReqId);
+                var alphaList = await ReceiveAsync<ChatListResultPayload>(socket, MessageTypes.ChatListResult, alphaReqId);
+                Assert.Empty(alphaList.Chats);
+
+                await socket.CloseAsync(WebSocketCloseStatus.NormalClosure, "done", CancellationToken.None);
+            }
+            finally
+            {
+                await host.StopAsync();
+            }
+        }
+        finally { Directory.Delete(root, recursive: true); }
+    }
+
+    private static async Task SendAsync(
+        ClientWebSocket socket, string type, object? payload, string? projectId = null, string? requestId = null)
+    {
+        var env = new ProtocolEnvelope
+        {
+            Type = type,
+            ProjectId = projectId,
+            RequestId = requestId,
+            Payload = payload == null ? null : JsonSerializer.SerializeToElement(payload, Json)
+        };
+        var bytes = JsonSerializer.SerializeToUtf8Bytes(env, Json);
+        await socket.SendAsync(bytes, WebSocketMessageType.Text, true, CancellationToken.None);
+    }
+
+    /// <summary>Reads envelopes until one matches <paramref name="expectedType"/> (and, when given,
+    /// <paramref name="expectedRequestId"/>) — skips broadcasts this call isn't waiting on, e.g. the
+    /// sidebar-refresh chat.list.result a chat.new triggers for every watcher of that project.</summary>
+    private static async Task<T> ReceiveAsync<T>(ClientWebSocket socket, string expectedType, string? expectedRequestId = null)
+    {
+        var buffer = new byte[64 * 1024];
+        using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(10));
+
+        while (true)
+        {
+            var result = await socket.ReceiveAsync(buffer, cts.Token);
+            var text = Encoding.UTF8.GetString(buffer, 0, result.Count);
+            var env = JsonSerializer.Deserialize<ProtocolEnvelope>(text, Json)!;
+            if (env.Type == expectedType && (expectedRequestId == null || env.RequestId == expectedRequestId))
+                return env.Payload!.Value.Deserialize<T>(Json)!;
+        }
+    }
+}

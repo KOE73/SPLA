@@ -311,9 +311,55 @@ public static class DebugKinds
     public const string Prompt = "prompt";
 }
 
+/// <summary>One known project as the picker/tree sees it — enough to list and choose, no store opened.</summary>
+public sealed class ProjectDescriptorDto
+{
+    public string Id { get; set; } = string.Empty;
+    public string? Name { get; set; }
+    public string? ManifestPath { get; set; }
+    public string? LastOpened { get; set; }
+}
+
+/// <summary>Opens a known project by id (<see cref="MessageTypes.ProjectOpen"/>).</summary>
+public sealed class ProjectOpenPayload
+{
+    public string ProjectId { get; set; } = string.Empty;
+}
+
+/// <summary>Creates a new project from a manifest path (<see cref="MessageTypes.ProjectCreate"/>).</summary>
+public sealed class ProjectCreatePayload
+{
+    public string ManifestPath { get; set; } = string.Empty;
+    public string? Name { get; set; }
+}
+
 // ──────────────────────────────────────────────────────────────────────────
 //  Server → Client
 // ──────────────────────────────────────────────────────────────────────────
+
+/// <summary>Answer to <see cref="MessageTypes.ProjectList"/>/<see cref="MessageTypes.ProjectRecent"/>.</summary>
+public sealed class ProjectListResultPayload
+{
+    public List<ProjectDescriptorDto> Projects { get; set; } = new();
+}
+
+/// <summary>
+/// Full context for one project — the same fields <see cref="WelcomePayload"/> carries for the
+/// connection's default project, keyed explicitly by <see cref="ProjectId"/> so a client juggling
+/// several open projects over one socket can tell them apart. Answer to
+/// <see cref="MessageTypes.ProjectOpen"/>/<see cref="MessageTypes.ProjectCreate"/>.
+/// </summary>
+public sealed class ProjectContextPayload
+{
+    public string ProjectId { get; set; } = string.Empty;
+    public string? ProjectName { get; set; }
+    public string? WorkspacePath { get; set; }
+    public List<ConnectionDto> Connections { get; set; } = new();
+    public string[] Modes { get; set; } = System.Array.Empty<string>();
+    public string DefaultMode { get; set; } = string.Empty;
+    public string Theme { get; set; } = "dark";
+    public string Density { get; set; } = "norm";
+}
 
 public sealed class WelcomePayload
 {
@@ -321,6 +367,9 @@ public sealed class WelcomePayload
     public string ActorId { get; set; } = string.Empty;
     public string[] Capabilities { get; set; } = System.Array.Empty<string>();
     public string ServerName { get; set; } = "SPLA";
+
+    /// <summary>The connection's default project id — omit ProjectId on later messages to mean this one.</summary>
+    public string ProjectId { get; set; } = string.Empty;
     public string? ProjectName { get; set; }
     public string? WorkspacePath { get; set; }
 
