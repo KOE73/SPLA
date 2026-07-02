@@ -38,13 +38,13 @@ if (splaFile != null)
     ConfigLoader.ScaffoldIfNew(splaFile);
     settings = ConfigLoader.LoadAndResolve(splaFile);
     Directory.SetCurrentDirectory(settings.WorkspacePath);
-    SplaTelemetry.ConfigureProjectLogs(settings.WorkspacePath);
+    SplaTelemetry.ConfigureProjectLogs(settings.Project.GetBucket("logs").MapToHostDirectory());
     Console.WriteLine($"Project: {settings.ProjectName ?? Path.GetFileNameWithoutExtension(splaFile)}");
 }
 else
 {
     settings = ConfigLoader.LoadAndResolve();
-    SplaTelemetry.ConfigureProjectLogs(settings.WorkspacePath);
+    SplaTelemetry.ConfigureProjectLogs(settings.Project.GetBucket("logs").MapToHostDirectory());
 }
 logger.LogInformation("CLI startup. ProjectFile={ProjectFile} WorkspacePath={WorkspacePath} Mode={Mode}",
     splaFile, settings.WorkspacePath, settings.Mode);

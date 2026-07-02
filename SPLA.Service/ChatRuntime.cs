@@ -135,13 +135,13 @@ public sealed class ChatRuntime
     /// <summary>Writes the message's data-URL images to sidecar files and records their filenames.</summary>
     private void PersistImages(ChatMessage message, IReadOnlyList<string> dataUrls)
     {
-        var workspace = _runtime.Settings.WorkspacePath;
+        var project = _runtime.Settings.Project;
         var names = new List<string>();
         foreach (var url in dataUrls)
         {
             try
             {
-                var name = ChatImages.WriteDataUrl(workspace, _chat.Id, url);
+                var name = ChatImages.WriteDataUrl(project, _chat.Id, url);
                 if (name != null) names.Add(name);
             }
             catch { /* a bad image must not break the turn */ }

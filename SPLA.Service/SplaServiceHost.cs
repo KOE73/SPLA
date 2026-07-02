@@ -97,7 +97,7 @@ public sealed class SplaServiceHost
         // Persisted chat image attachments (sidecar files). Served read-only with a path-traversal guard.
         app.MapGet("/chat-image/{chatId}/{file}", (string chatId, string file) =>
         {
-            var path = ChatImages.Resolve(runtime.Settings.WorkspacePath, chatId, file);
+            var path = ChatImages.Resolve(runtime.Settings.Project, chatId, file);
             return path != null
                 ? Results.File(path, ChatImages.ContentType(file))
                 : Results.NotFound();

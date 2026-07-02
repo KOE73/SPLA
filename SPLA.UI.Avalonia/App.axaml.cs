@@ -79,7 +79,8 @@ public partial class App : Application
 
             ProjectFilePath = splaFile;
             ResolvedSettings = ConfigLoader.LoadAndResolve(splaFile);
-            SplaTelemetry.ConfigureProjectLogs(ResolvedSettings.WorkspacePath);
+            SplaTelemetry.ConfigureProjectLogs(
+                ResolvedSettings.Project.GetBucket("logs").MapToHostDirectory());
         
             var logger = Services.GetRequiredService<ILogger<App>>();
             logger.LogInformation(

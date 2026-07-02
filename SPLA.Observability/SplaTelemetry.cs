@@ -41,13 +41,12 @@ public static class SplaTelemetry
         FileLoggerProvider.SetGlobalLogDirectory(logsDirectory);
     }
 
-    public static void ConfigureProjectLogs(string? workspacePath)
+    /// <summary>Points project-scoped logs at the given directory (null disables them). Where that
+    /// directory lives is the caller's project-backend decision — observability stays layout-agnostic.</summary>
+    public static void ConfigureProjectLogs(string? logsDirectory)
     {
-        var logsDirectory = string.IsNullOrWhiteSpace(workspacePath)
-            ? null
-            : Path.Combine(workspacePath, ".spla", "logs");
-
-        FileLoggerProvider.SetProjectLogDirectory(logsDirectory);
+        FileLoggerProvider.SetProjectLogDirectory(
+            string.IsNullOrWhiteSpace(logsDirectory) ? null : logsDirectory);
     }
 
     public static Activity? StartActivity(string name, ActivityKind kind = ActivityKind.Internal)
