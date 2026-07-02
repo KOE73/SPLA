@@ -66,29 +66,42 @@ public class FsSearchTextTool : IMcpTool, IToolHelpProvider
             if (string.IsNullOrEmpty(query))
                 return JsonSerializer.Serialize(new SearchTextResult { Query = string.Empty, TotalMatches = 0, ReturnedMatches = 0, Matches = new List<SearchMatch>() });
 
-            // Text search runs an external engine over a real host path; the workspace maps the
-            // logical root and refuses (null) if it is virtual — where disk search doesn't apply.
+            // Disk-backed workspaces map the logical root to a real host path and run an external
+            // engine (ripgrep, with a .NET fallback) over it. A virtual workspace returns null from
+            // MapPathToHost — there is no disk path to point those engines at — so we walk the
+            // workspace's own logical API instead (WorkspaceSearchEngine), keeping search available
+            // everywhere the fs tools already are, not just on local disk.
             var ws = HostServices.Sandbox.Workspace;
-            var rootPath = ws.MapPathToHost(path ?? ".");
-            if (rootPath is null)
-                return "Error: Text search is not available for this workspace.";
-            if (!ws.DirectoryExists(rootPath))
-                return $"Error: Directory not found at {rootPath}";
+            var logicalRoot = path ?? ".";
+            var rootPath = ws.MapPathToHost(logicalRoot);
 
             List<SearchMatch> rawMatches;
-            try
+            if (rootPath is null)
             {
-                var rgEngine = new RipgrepSearchEngine();
-                rawMatches = await rgEngine.SearchAsync(
-                    rootPath, query, regex, caseSensitive,
+                if (!ws.DirectoryExists(logicalRoot))
+                    return $"Error: Directory not found at {logicalRoot}";
+                rawMatches = await new WorkspaceSearchEngine(ws).SearchAsync(
+                    logicalRoot, query, regex, caseSensitive,
                     includePatterns, excludePatterns, cancellationToken);
             }
-            catch
+            else
             {
-                var dotnetEngine = new DotnetSearchEngine();
-                rawMatches = await dotnetEngine.SearchAsync(
-                    rootPath, query, regex, caseSensitive,
-                    includePatterns, excludePatterns, cancellationToken);
+                if (!ws.DirectoryExists(rootPath))
+                    return $"Error: Directory not found at {rootPath}";
+                try
+                {
+                    var rgEngine = new RipgrepSearchEngine();
+                    rawMatches = await rgEngine.SearchAsync(
+                        rootPath, query, regex, caseSensitive,
+                        includePatterns, excludePatterns, cancellationToken);
+                }
+                catch
+                {
+                    var dotnetEngine = new DotnetSearchEngine();
+                    rawMatches = await dotnetEngine.SearchAsync(
+                        rootPath, query, regex, caseSensitive,
+                        includePatterns, excludePatterns, cancellationToken);
+                }
             }
 
             int totalMatches  = rawMatches.Count;

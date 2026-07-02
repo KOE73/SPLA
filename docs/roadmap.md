@@ -47,11 +47,13 @@
 
 ## C. Виртуальный workspace — [авто]
 
-6. **Полнотекстовый поиск по `IWorkspace`.** Отложено с Фазы 0: `FsSearchTextTool` резолвит
-   корень через `MapPathToHost`, а виртуальный workspace возвращает null → «поиск недоступен».
-   Движок поиска сейчас диск-ориентирован (ripgrep/.NET). Чтобы виртуальный workspace искал —
-   нужен обход `IWorkspace.GetFiles`/`ReadAllLinesAsync` внутри инструмента (медленнее, но
-   host-agnostic). Тестируемо через `MemoryWorkspace`. Средний объём.
+6. **Полнотекстовый поиск по `IWorkspace`. — СДЕЛАНО.** `WorkspaceSearchEngine` обходит
+   `IWorkspace.GetFiles`/`GetDirectories`/`ReadAllLinesAsync` по логическим путям (общие
+   glob/binary-правила вынесены в `SearchPatterns`, чтобы виртуальный и дисковый поиск фильтровали
+   одинаково). `FsSearchTextTool`: когда `MapPathToHost` возвращает null (виртуальный ws) — идёт
+   этим движком вместо «поиск недоступен»; дисковый путь (ripgrep/.NET) не тронут. Тесты
+   `WorkspaceSearchTests` (3: находит по дереву, уважает include-glob, пропускает ignore-папки).
+   Сьют 178.
 
 ## D. Типизированные аспекты проекта — [авто]
 
