@@ -20,17 +20,15 @@
 
   <!-- Chat list — shown in both layouts so the user can switch chats while browsing files -->
   <div id="chats">
-    <div
+    <ChatListItem
       v-for="chat in store.chats"
       :key="chat.id"
-      class="chat-item"
-      :class="{ active: chat.id === store.currentChat }"
-      @click="onChatClick(chat.id)"
-    >
-      <span class="t">{{ chat.title || chat.id }}</span>
-      <span class="x" title="Rename" @click.stop="rename(chat)">✎</span>
-      <span class="x" title="Delete" @click.stop="remove(chat.id)">✕</span>
-    </div>
+      :chat="chat"
+      :active="chat.id === store.currentChat"
+      @select="onChatClick"
+      @rename="rename"
+      @delete="remove"
+    />
   </div>
 </template>
 
@@ -39,6 +37,7 @@ import { onUnmounted } from "vue";
 import { client } from "../protocol/SplaClient";
 import { store } from "../state/store";
 import type { ChatSummary } from "../protocol/types";
+import ChatListItem from "./ChatListItem.vue";
 
 const offList = client.on("chat.list.result", p => { store.chats = p.chats || []; });
 onUnmounted(offList);
@@ -74,7 +73,7 @@ function remove(chatId: string) {
   display: flex;
   align-items: center;
   gap: 6px;
-  padding: var(--pad);
+  padding: 6px var(--pad);
   border-bottom: 1px solid var(--border);
   background: var(--panel);
   flex-shrink: 0;

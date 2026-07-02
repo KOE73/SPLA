@@ -31,6 +31,10 @@
             </StackPanel>
 
             <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
+                <!-- New/Open/Recent project — each launches a separate window/process (one project
+                     per process, matches the embedded-service model; see MainWindow.axaml.cs). -->
+                <Button Classes="caption" Content="📂" Click="OpenProjectMenu_Click"
+                        ToolTip.Tip="New / Open / Recent project"/>
                 <!-- Settings: connections / agent / plugins in one tabbed window -->
                 <Button Classes="caption" Content="⚙" Click="OpenSettingsSurface_Click"
                         ToolTip.Tip="Settings (connections / agent / plugins) — opens as a separate window"/>
