@@ -24,11 +24,25 @@
     <Exec Command="npm run build" WorkingDirectory="$(MSBuildThisFileDirectory)..\web" />
   </Target>
 
-  <ItemGroup>
-    <EmbeddedResource Include="..\web\dist\**\*.*">
-      <LogicalName>SPLA.Service.WebClient.$([System.String]::new('%(RecursiveDir)%(Filename)%(Extension)').Replace('\', '.'))</LogicalName>
-    </EmbeddedResource>
-  </ItemGroup>
+  <!-- Glob the embedded resources INSIDE a target that runs after the web build, not as a static
+       ItemGroup. A static glob is evaluated at project-load time and captures the PREVIOUS build's
+       hashed filenames (index-<hash>.js/css); BuildWebClient then regenerates dist with NEW hashes,
+       so the compiler was handed items pointing at files that no longer exist — the first
+       `dotnet build` after editing any web source failed with CS1566 ("could not find
+       index-<hash>.css") and only a second run, re-evaluated against the fresh dist, succeeded.
+       Running the glob at BeforeCompile (after BuildWebClient) always sees the just-produced files. -->
+  <!-- Single hook (BeforeTargets="CoreCompile") + DependsOnTargets="BuildWebClient" so the target
+       runs exactly ONCE, after the web build and before compile. Hooking both AfterTargets and
+       BeforeTargets makes MSBuild execute the body at BOTH injection points, adding the same items
+       twice → CS1508 (duplicate resource identifier). -->
+  <Target Name="EmbedWebClient" BeforeTargets="CoreCompile" DependsOnTargets="BuildWebClient"
+          Condition="Exists('$(MSBuildThisFileDirectory)..\web\dist')">
+    <ItemGroup>
+      <EmbeddedResource Include="..\web\dist\**\*.*">
+        <LogicalName>SPLA.Service.WebClient.$([System.String]::new('%(RecursiveDir)%(Filename)%(Extension)').Replace('\', '.'))</LogicalName>
+      </EmbeddedResource>
+    </ItemGroup>
+  </Target>
 
   <ItemGroup>
     <ProjectReference Include="..\SPLA.Service.Contracts\SPLA.Service.Contracts.csproj" />
