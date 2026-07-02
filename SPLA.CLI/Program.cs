@@ -249,8 +249,8 @@ static async Task RunServeAsync(string[] args, ResolvedSettings settings, ILogge
         }
     }
 
-    using var runtime = new AgentRuntime(settings, loggerFactory);
-    var chats = new ChatRegistry(runtime);
+    using var registry = new AgentRuntimeRegistry(loggerFactory);
+    var (runtime, chats) = registry.Open(settings.ProjectFilePath);
     var options = new ServiceOptions { Port = port, Bind = bind, Token = token };
     var host = SplaServiceHost.Build(runtime, options, chats);
     await host.StartAsync();

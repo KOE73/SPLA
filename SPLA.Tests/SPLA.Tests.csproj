@@ -23,6 +23,7 @@
     <ProjectReference Include="..\SPLA.Plugins.Network\SPLA.Plugins.Network.csproj" />
     <ProjectReference Include="..\SPLA.Plugins.Roslyn\SPLA.Plugins.Roslyn.csproj" />
     <ProjectReference Include="..\SPLA.Plugins.Sql\SPLA.Plugins.Sql.csproj" />
+    <ProjectReference Include="..\SPLA.Service\SPLA.Service.csproj" />
   </ItemGroup>
 
 </Project>
