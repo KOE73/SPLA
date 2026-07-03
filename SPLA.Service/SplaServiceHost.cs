@@ -1,8 +1,19 @@
+using Microsoft.AspNetCore.Authentication;
+using Microsoft.AspNetCore.Authentication.Cookies;
+using Microsoft.AspNetCore.Authentication.Negotiate;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Builder;
+using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Server.Kestrel.Core;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
+using System.Net;
+using System.Security.Claims;
+using System.Security.Cryptography;
+using System.Security.Cryptography.X509Certificates;
+using SPLA.Domain.Identity;
 
 namespace SPLA.Service;
 
@@ -17,7 +28,28 @@ public sealed record ServiceOptions
     /// <summary>Connect secret required for non-loopback clients. Null = no token (loopback use).</summary>
     public string? Token { get; init; }
 
+    /// <summary>When true, the host enforces Negotiate (NTLM/Kerberos) auth: every request must carry a
+    /// domain principal, and each connection's <see cref="ClientConnection"/> gets that user's identity.
+    /// The server deployment (SPLA.Server) sets this; loopback/embedded leaves it false and stays
+    /// single-user, so existing tests and the embedded WebView are unaffected.</summary>
+    public bool RequireAuthentication { get; init; }
+
     public bool IsLoopback => Bind is "127.0.0.1" or "localhost" or "::1";
+
+    /// <summary>
+    /// When true, the host binds HTTPS instead of HTTP and generates (or loads) a self-signed
+    /// certificate. Required for <c>crypto.randomUUID</c> and other Secure Context browser APIs
+    /// to work on non-localhost origins. The cert is stored as a PFX next to the exe and reused
+    /// across restarts; clients must add it to their trusted store once.
+    /// </summary>
+    public bool UseHttps { get; init; }
+
+    /// <summary>Path to an existing PFX certificate file. When null and <see cref="UseHttps"/> is
+    /// true, a self-signed cert is generated and saved to <c>spla-cert.pfx</c> next to the exe.</summary>
+    public string? CertPath { get; init; }
+
+    /// <summary>Password for the PFX. Empty string if none.</summary>
+    public string CertPassword { get; init; } = "spla";
 }
 
 /// <summary>
@@ -31,6 +63,9 @@ public sealed record ServiceOptions
 /// </summary>
 public sealed class SplaServiceHost
 {
+    /// <summary>Claim that carries the authenticated user's stable key (SID) in the auth cookie.</summary>
+    private const string UserKeyClaim = "spla.userkey";
+
     private readonly WebApplication _app;
     public string Url { get; }
 
@@ -40,12 +75,42 @@ public sealed class SplaServiceHost
         Url = url;
     }
 
-    public static SplaServiceHost Build(AgentRuntimeRegistry registry, ServiceOptions options)
+    public static SplaServiceHost Build(
+        AgentRuntimeRegistry registry, ServiceOptions options, IIdentityProvider? identityProvider = null,
+        SPLA.Domain.Project.ServerProjectRoot? serverRoot = null)
     {
+        // The host never references a platform: the provider is passed in (loaded from config by the
+        // deployment) or defaults to the neutral claims provider. Windows is a DLL, not a dependency.
+        var idp = identityProvider ?? new ClaimsIdentityProvider();
+
         var builder = WebApplication.CreateBuilder();
 
         var hub = new ConnectionHub();
         var auth = new AuthGate(options.Token);
+
+        // Domain auth for the server deployment. Negotiate (NTLM/Kerberos) authenticates the PAGE once
+        // via /login; that issues a cookie, and every later request — crucially the WebSocket upgrade,
+        // which a browser cannot drive through a Negotiate challenge/response — rides that cookie. So
+        // the default scheme is the cookie; the challenge redirects to /login where Negotiate runs.
+        if (options.RequireAuthentication)
+        {
+            builder.Services.AddAuthentication(options =>
+                {
+                    options.DefaultScheme = CookieAuthenticationDefaults.AuthenticationScheme;
+                    options.DefaultChallengeScheme = CookieAuthenticationDefaults.AuthenticationScheme;
+                })
+                .AddCookie(o =>
+                {
+                    o.Cookie.Name = "spla.auth";
+                    o.Cookie.HttpOnly = true;
+                    o.ExpireTimeSpan = TimeSpan.FromHours(10);
+                    o.SlidingExpiration = true;
+                    o.LoginPath = "/login";
+                })
+                .AddNegotiate();
+            builder.Services.AddAuthorizationBuilder()
+                .SetFallbackPolicy(new AuthorizationPolicyBuilder().RequireAuthenticatedUser().Build());
+        }
 
         // Wires a newly-built runtime's domain events and initial connection-health check into the
         // hub, scoped to its own project id — fires for the eagerly-opened default project below AND
@@ -87,13 +152,64 @@ public sealed class SplaServiceHost
         builder.Logging.ClearProviders();
         builder.Logging.AddProvider(new ForwardingLoggerProvider(loggerFactory));
 
-        var url = $"http://{options.Bind}:{options.Port}";
+        string scheme;
+        if (options.UseHttps)
+        {
+            var cert = LoadOrCreateCertificate(options);
+            var bindIp = options.Bind == "0.0.0.0" ? IPAddress.Any : IPAddress.Parse(options.Bind);
+            builder.WebHost.ConfigureKestrel(k =>
+            {
+                k.Listen(bindIp, options.Port, lo =>
+                {
+                    lo.UseHttps(httpsOpts => { httpsOpts.ServerCertificate = cert; });
+                });
+            });
+            scheme = "https";
+        }
+        else
+        {
+            scheme = "http";
+        }
+        var url = $"{scheme}://{options.Bind}:{options.Port}";
 
         var app = builder.Build();
-        app.Urls.Add(url);
+        if (!options.UseHttps) app.Urls.Add(url);
         app.UseWebSockets();
 
-        app.MapGet("/health", () => Results.Text("SPLA service running. Connect a client to /ws.", "text/plain"));
+        if (options.RequireAuthentication)
+        {
+            app.UseAuthentication();
+            app.UseAuthorization();
+        }
+
+        app.MapGet("/health", () => Results.Text("SPLA service running. Connect a client to /ws.", "text/plain"))
+            .AllowAnonymous();
+
+        if (options.RequireAuthentication)
+        {
+            // The one place Negotiate runs: reaching here means the browser authenticated (NTLM/
+            // Kerberos). Sign that principal into the cookie, then bounce back to the app — every
+            // request after this (including the /ws upgrade) authenticates by cookie, not Negotiate.
+            app.MapGet("/login", async (HttpContext ctx) =>
+            {
+                // Put the user KEY + display name straight into the cookie — small (two claims, no
+                // group SIDs), so no size/chunking problem and, crucially, no server-side session
+                // store to go stale across restarts. Groups aren't carried here; they're only needed
+                // for sharing (future) and will be re-resolved from the key then.
+                var id = idp.FromPrincipal(ctx.User);
+                var cookiePrincipal = new ClaimsPrincipal(new ClaimsIdentity(
+                    new[]
+                    {
+                        new Claim(UserKeyClaim, id.UserKey),
+                        new Claim(ClaimTypes.Name, id.DisplayName)
+                    },
+                    CookieAuthenticationDefaults.AuthenticationScheme));
+                await ctx.SignInAsync(CookieAuthenticationDefaults.AuthenticationScheme, cookiePrincipal);
+
+                var ret = ctx.Request.Query["returnUrl"].FirstOrDefault();
+                return Results.Redirect(string.IsNullOrEmpty(ret) ? "/" : ret);
+            }).RequireAuthorization(new AuthorizeAttribute { AuthenticationSchemes = NegotiateDefaults.AuthenticationScheme });
+        }
 
         // The browser client — served from embedded static assets. Any client drives the same agent /ws.
         static IResult ServeAsset(string path)
@@ -138,9 +254,34 @@ public sealed class SplaServiceHost
                 return;
             }
 
+            // The connection's user comes straight from the auth cookie (set at /login) — the user key
+            // and display name, no server-side lookup, so it survives restarts. Reaching here already
+            // means the cookie authenticated (fallback policy on /ws); the key is just read back.
+            IIdentity identity;
+            if (options.RequireAuthentication)
+            {
+                var userKey = context.User.FindFirst(UserKeyClaim)?.Value;
+                if (string.IsNullOrEmpty(userKey))
+                {
+                    context.Response.StatusCode = StatusCodes.Status401Unauthorized;
+                    return;
+                }
+                identity = new ClaimIdentity(userKey, context.User.Identity?.Name ?? userKey, Array.Empty<string>());
+            }
+            else
+            {
+                identity = LocalIdentity.Single;
+            }
+
+            // Server mode: scope the connection to the user's own area — their project list and the
+            // default project they land in come from {serverRoot}/users/{sid}/, auto-provisioned on
+            // first connect. Local/embedded (serverRoot == null) keeps the shared registry scope.
+            var userProvider = serverRoot?.ProviderFor(identity);
+            var userDefault = serverRoot?.EnsureDefaultProject(identity);
+
             using var socket = await context.WebSockets.AcceptWebSocketAsync();
             var log = loggerFactory.CreateLogger<ClientConnection>();
-            var conn = new ClientConnection(socket, registry, hub, auth, log);
+            var conn = new ClientConnection(socket, registry, hub, auth, log, identity, userProvider, userDefault);
             await conn.RunAsync(context.RequestAborted);
         });
 
@@ -149,6 +290,61 @@ public sealed class SplaServiceHost
 
     public Task StartAsync(CancellationToken ct = default) => _app.StartAsync(ct);
     public Task StopAsync(CancellationToken ct = default) => _app.StopAsync(ct);
+
+    /// <summary>
+    /// Loads the PFX from <see cref="ServiceOptions.CertPath"/> when specified, or generates a
+    /// self-signed RSA-2048 certificate valid for 10 years and saves it as <c>spla-cert.pfx</c>
+    /// next to the exe. Subsequent starts reuse the same file so clients only need to trust it once.
+    /// </summary>
+    private static X509Certificate2 LoadOrCreateCertificate(ServiceOptions options)
+    {
+        var path = options.CertPath
+            ?? Path.Combine(AppContext.BaseDirectory, "spla-cert.pfx");
+        var password = options.CertPassword;
+
+        if (File.Exists(path))
+        {
+            Console.WriteLine($"[HTTPS] Loading certificate from {path}");
+            return X509CertificateLoader.LoadPkcs12FromFile(path, password);
+        }
+
+        Console.WriteLine($"[HTTPS] Generating self-signed certificate → {path}");
+        using var rsa = RSA.Create(2048);
+        var req = new CertificateRequest(
+            "CN=SPLA Server,O=SPLA,C=RU",
+            rsa,
+            HashAlgorithmName.SHA256,
+            RSASignaturePadding.Pkcs1);
+
+        req.CertificateExtensions.Add(new X509BasicConstraintsExtension(false, false, 0, false));
+        req.CertificateExtensions.Add(new X509KeyUsageExtension(
+            X509KeyUsageFlags.DigitalSignature | X509KeyUsageFlags.KeyEncipherment, false));
+        req.CertificateExtensions.Add(new X509EnhancedKeyUsageExtension(
+            new OidCollection { new Oid("1.3.6.1.5.5.7.3.1") }, false)); // TLS server
+
+        // SAN: DNS name + all common LAN patterns so the cert works with hostname or IP
+        var sanBuilder = new SubjectAlternativeNameBuilder();
+        sanBuilder.AddDnsName("localhost");
+        sanBuilder.AddIpAddress(IPAddress.Loopback);
+        sanBuilder.AddIpAddress(IPAddress.IPv6Loopback);
+        // Add the machine hostname so \\PC-UOIT140\... style access works too
+        sanBuilder.AddDnsName(Environment.MachineName);
+        sanBuilder.AddDnsName(Environment.MachineName.ToLowerInvariant());
+        req.CertificateExtensions.Add(sanBuilder.Build());
+
+        var notBefore = DateTimeOffset.UtcNow.AddDays(-1);
+        var notAfter  = notBefore.AddYears(10);
+        using var cert = req.CreateSelfSigned(notBefore, notAfter);
+
+        // Export with private key so Kestrel can use it
+        var pfxBytes = cert.Export(X509ContentType.Pfx, password);
+        File.WriteAllBytes(path, pfxBytes);
+        Console.WriteLine($"[HTTPS] Certificate saved. Add it to Trusted Root CAs on every client machine.");
+        Console.WriteLine($"[HTTPS]   File: {path}");
+        Console.WriteLine($"[HTTPS]   Thumbprint: {cert.Thumbprint}");
+
+        return X509CertificateLoader.LoadPkcs12(pfxBytes, password);
+    }
 
     /// <summary>Starts and blocks until the host shuts down.</summary>
     public Task RunAsync() => _app.RunAsync();

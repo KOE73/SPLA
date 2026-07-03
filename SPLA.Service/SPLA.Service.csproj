@@ -13,6 +13,10 @@
 
   <ItemGroup Condition="'$(UseAspNet)' == 'true'">
     <FrameworkReference Include="Microsoft.AspNetCore.App" />
+    <!-- Negotiate (NTLM/Kerberos) auth for the server host. Not in the shared framework — a separate
+         package. Only enforced when ServiceOptions.RequireAuthentication is set (the SPLA.Server host);
+         loopback/embedded stays auth-free. -->
+    <PackageReference Include="Microsoft.AspNetCore.Authentication.Negotiate" Version="10.0.0" />
   </ItemGroup>
 
   <!-- The browser client (web/, Vue 3 + TS + Vite) builds to web/dist before each build, then

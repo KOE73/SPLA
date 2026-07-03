@@ -33,6 +33,9 @@
     />
   </div>
 
+  <!-- Server/user context slot, pinned under the chat list. -->
+  <Identity />
+
   <ProjectPicker v-if="store.projectPickerOpen" @close="store.projectPickerOpen = false" />
 </template>
 
@@ -43,6 +46,7 @@ import { store } from "../state/store";
 import type { ChatSummary } from "../protocol/types";
 import ChatListItem from "./ChatListItem.vue";
 import ProjectPicker from "./ProjectPicker.vue";
+import Identity from "./Identity.vue";
 
 const offList = client.on("chat.list.result", p => { store.chats = p.chats || []; });
 onUnmounted(offList);

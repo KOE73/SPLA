@@ -1,0 +1,7 @@
+{
+  "serverRoot": "C:\\GitKOE\\SPLA.ServerDemo",
+  "identity": {
+    "assembly": "identity/SPLA.Identity.Windows.dll",
+    "type": "SPLA.Identity.Windows.WindowsIdentityProvider"
+  }
+}

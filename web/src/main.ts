@@ -12,6 +12,7 @@ client.on("chat.opened", p => { store.currentChat = p.chatId; });
 client.on("focus.changed", p => { store.currentChat = p.chatId; });
 client.on("welcome", p => {
   store.workspacePath = p.workspacePath ?? null;
+  store.userName = p.userName || null;
   setCurrentProject(p.projectId ?? null, p.projectName);
   if (p.theme) store.theme = p.theme;
   client.send("chat.list");

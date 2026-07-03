@@ -63,9 +63,6 @@
     <File Path="web/src/surfaces/Workspace/editors/formsRegistry.ts" />
     <File Path="web/src/surfaces/Workspace/editors/TableArrayRenderer.vue" />
   </Folder>
-  <Folder Name="/plugins/" />
-  <Folder Name="/plugins/network/" />
-  <Folder Name="/plugins/roslyn/" />
   <Folder Name="/skills/network/">
     <File Path="SPLA.Skills.Network\host-audit.md" />
     <File Path="SPLA.Skills.Network\lan-discovery.md" />
@@ -74,25 +71,37 @@
     <File Path="SPLA.Skills.Network\ssl-audit.md" />
     <File Path="SPLA.Skills.Network\smtp-probe.md" />
   </Folder>
-  <Project Path="SPLA.Agent/SPLA.Agent.csproj" />
-  <Project Path="SPLA.CLI/SPLA.CLI.csproj" />
-  <Project Path="SPLA.Domain/SPLA.Domain.csproj" />
-  <Project Path="SPLA.Editor.Schema/SPLA.Editor.Schema.csproj" />
-  <Project Path="SPLA.LLM.LMStudio/SPLA.LLM.LMStudio.csproj" />
-  <Project Path="SPLA.MCP.BasicTools/SPLA.MCP.BasicTools.csproj" />
-  <Project Path="SPLA.MCP.Core/SPLA.MCP.Core.csproj" />
-  <Project Path="SPLA.Observability/SPLA.Observability.csproj" />
-  <Project Path="SPLA.Service.Contracts/SPLA.Service.Contracts.csproj" />
-  <Project Path="SPLA.Service/SPLA.Service.csproj" />
-  <Project Path="SPLA.Plugins.Browser/SPLA.Plugins.Browser.csproj" />
-  <Project Path="SPLA.Plugins.Host.Avalonia/SPLA.Plugins.Host.Avalonia.csproj" />
-  <Project Path="SPLA.Plugins.Network/SPLA.Plugins.Network.csproj" />
-  <Project Path="SPLA.Plugins.Roslyn/SPLA.Plugins.Roslyn.csproj" />
-  <Project Path="SPLA.Plugins.Sql/SPLA.Plugins.Sql.csproj" />
-  <Project Path="SPLA.Plugins.Sql.Avalonia/SPLA.Plugins.Sql.Avalonia.csproj" />
-  <Project Path="SPLA.Skills.Network/SPLA.Skills.Network.csproj" />
-  <Project Path="SPLA.Plugins.OneC.Avalonia/SPLA.Plugins.OneC.Avalonia.csproj" />
-  <Project Path="SPLA.Plugins.OneC/SPLA.Plugins.OneC.csproj" />
-  <Project Path="SPLA.Tests/SPLA.Tests.csproj" />
-  <Project Path="SPLA.UI.Avalonia/SPLA.UI.Avalonia.csproj" />
+  <Folder Name="/src/">
+    <Project Path="SPLA.Domain/SPLA.Domain.csproj" />
+    <Project Path="SPLA.Agent/SPLA.Agent.csproj" />
+    <Project Path="SPLA.MCP.Core/SPLA.MCP.Core.csproj" />
+    <Project Path="SPLA.MCP.BasicTools/SPLA.MCP.BasicTools.csproj" />
+    <Project Path="SPLA.Observability/SPLA.Observability.csproj" />
+    <Project Path="SPLA.Editor.Schema/SPLA.Editor.Schema.csproj" />
+    <Project Path="SPLA.LLM.LMStudio/SPLA.LLM.LMStudio.csproj" />
+    <Project Path="SPLA.Identity.Windows/SPLA.Identity.Windows.csproj" />
+  </Folder>
+  <Folder Name="/src/service/">
+    <Project Path="SPLA.Service/SPLA.Service.csproj" />
+    <Project Path="SPLA.Service.Contracts/SPLA.Service.Contracts.csproj" />
+  </Folder>
+  <Folder Name="/apps/">
+    <Project Path="SPLA.CLI/SPLA.CLI.csproj" />
+    <Project Path="SPLA.Server/SPLA.Server.csproj" />
+    <Project Path="SPLA.UI.Avalonia/SPLA.UI.Avalonia.csproj" />
+  </Folder>
+  <Folder Name="/plugins/">
+    <Project Path="SPLA.Plugins.Browser/SPLA.Plugins.Browser.csproj" />
+    <Project Path="SPLA.Plugins.Host.Avalonia/SPLA.Plugins.Host.Avalonia.csproj" />
+    <Project Path="SPLA.Plugins.Network/SPLA.Plugins.Network.csproj" />
+    <Project Path="SPLA.Plugins.Roslyn/SPLA.Plugins.Roslyn.csproj" />
+    <Project Path="SPLA.Plugins.Sql/SPLA.Plugins.Sql.csproj" />
+    <Project Path="SPLA.Plugins.Sql.Avalonia/SPLA.Plugins.Sql.Avalonia.csproj" />
+    <Project Path="SPLA.Plugins.OneC/SPLA.Plugins.OneC.csproj" />
+    <Project Path="SPLA.Plugins.OneC.Avalonia/SPLA.Plugins.OneC.Avalonia.csproj" />
+    <Project Path="SPLA.Skills.Network/SPLA.Skills.Network.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="SPLA.Tests/SPLA.Tests.csproj" />
+  </Folder>
 </Solution>

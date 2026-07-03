@@ -23,6 +23,7 @@ import { onUnmounted, reactive, ref } from "vue";
 import { client } from "../../protocol/SplaClient";
 import type { ConnectionDto, ConnHealth } from "../../protocol/types";
 import ConnectionCard from "./ConnectionCard.vue";
+import { uuid } from "../../util/uuid";
 
 const KNOWN_DEFAULT_EP = "http://127.0.0.1:1234/v1";
 
@@ -31,11 +32,11 @@ const health = reactive<Record<string, ConnHealth>>({});
 const hint = ref("");
 
 function addConnection() {
-  conns.value.push({ id: "", clientId: crypto.randomUUID(), name: "", provider: "lmstudio", endpoint: KNOWN_DEFAULT_EP, model: "", apiKey: "" });
+  conns.value.push({ id: "", clientId: uuid(), name: "", provider: "lmstudio", endpoint: KNOWN_DEFAULT_EP, model: "", apiKey: "" });
 }
 
 function applyResult(connections: ConnectionDto[]) {
-  conns.value = connections.map(c => ({ ...c, clientId: c.id || crypto.randomUUID() }));
+  conns.value = connections.map(c => ({ ...c, clientId: c.id || uuid() }));
 }
 
 const offResult = client.on("connections.result", p => {

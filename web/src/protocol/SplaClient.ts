@@ -1,4 +1,5 @@
 import type { Envelope, ServerEvents, WireFrame } from "./types";
+import { uuid } from "../util/uuid";
 
 type Handler<P> = (payload: P, env: Envelope<P>) => void;
 type WireListener = (frame: WireFrame) => void;
@@ -61,7 +62,7 @@ export class SplaClient {
 
   /** Command with a correlated response. Server must echo the same requestId. */
   invoke<R = unknown>(type: string, payload?: unknown, extra?: { chatId?: string; projectId?: string }, timeoutMs = 15000): Promise<R> {
-    const requestId = crypto.randomUUID();
+    const requestId = uuid();
     return new Promise<R>((resolve, reject) => {
       const timer = window.setTimeout(() => {
         this.pending.delete(requestId);

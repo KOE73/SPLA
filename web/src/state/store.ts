@@ -7,6 +7,8 @@ export const store = reactive({
   chats: [] as ChatSummary[],
   attachments: [] as string[],
   workspacePath: null as string | null,
+  /** Authenticated user (server mode); null on local/embedded → identity badge hidden. */
+  userName: null as string | null,
   theme: (localStorage.getItem("spla.theme") || "dark") as string,
   layout: (localStorage.getItem("spla.layout") || "default") as string,
 

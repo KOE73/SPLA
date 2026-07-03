@@ -86,11 +86,28 @@
   и схемы — продуктовое/инфраструктурное решение. Но как только ChatManager backend-agnostic,
   подключение — это реализация `IProjectBackend`/`IBucket` над БД, без изменений ядра.
 
-## E. Identity / многопользовательский сервер — [нужен человек + серверная инфра]
+## E. Identity / многопользовательский сервер — [В РАБОТЕ — потребитель есть]
 
-8. **`IIdentity` + `IAgentContextFactory`.** Сознательно отложено: нет реального multi-tenant
-   потребителя (владение проектами per-user). Строить абстракцию без потребителя = театр. Ждёт
-   решения «делаем ли публичный/командный сервер».
+**Сценарий (задан пользователем 2026-07-03):** один `spla serve` в Windows-домене; сотрудники
+коннектятся, **NTLM = Negotiate-аутентификация к серверу** (не к SQL); каждому автоматом заводится
+файловая область на диске сервера; видит своё + расшаренное на его группы; внутри делает проекты,
+цепляет плагины, работает — как локально, но многопользовательски. Хранилище остаётся ФАЙЛОВЫМ
+(per-user папки), не БД. Это тот самый потребитель, которого не было — Identity перестаёт быть театром.
+
+8. **`IIdentity` + Windows-резолвер — СДЕЛАНО (шаг 1).** Платформенно-нейтральные контракты в
+   `SPLA.Domain/Identity` (`IIdentity{UserKey,DisplayName,Groups}`, `ClaimIdentity`, `LocalIdentity.Single`).
+   `SPLA.Identity.Windows` (net10.0-windows, отдельный проект — платформенная реализация за
+   интерфейсом, рядом сможет лечь `SPLA.Identity.Linux`): `WindowsIdentityResolver` мапит
+   `WindowsIdentity/WindowsPrincipal` → `IIdentity` (UserKey=SID, Groups=group SIDs). `ServerProjectRoot`
+   (в Domain): `{root}/users/{sid}/` автосоздание + per-user `LocalProjectProvider` (переиспользуем
+   готовый провайдер, изоляция чисто от корня). Тесты `IdentityTests` (2) — против РЕАЛЬНОЙ доменной
+   identity (KOMBINAT\koe, S-1-..., 97 групп) + изоляция областей. Сьют 183.
+8b. **Шаринг по группам — СЛЕДУЮЩЕЕ [авто].** share-запись (проект→группы) + декоратор
+   `IProjectProvider`: `List` = свои ∪ shared-to(identity.Groups), ACL-чек в `Open`/`ClientConnection.Resolve`.
+   Тестируемо с фейковыми группами + реальными SID.
+8c. **Negotiate-auth на `SplaServiceHost` + `WindowsPrincipal→IIdentity` в handshake — [плумбинг авто,
+   живая доменная проверка = пользователь].** Ось «источники» из [[capability-security-model]] на
+   уровне проекта. Linux/Kerberos/token-auth — позже, за теми же интерфейсами.
 
 9. **`HardGate` (OS-изоляция shell).** Win Job Objects / linux seccomp+ns. Серверный этап,
    зависит от Identity. ОС-зависимо, требует ручной проверки на целевой ОС.

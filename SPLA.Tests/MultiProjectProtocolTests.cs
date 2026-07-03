@@ -1,3 +1,5 @@
+using System.Net;
+using System.Net.Http;
 using System.Net.WebSockets;
 using System.Text;
 using System.Text.Json;
@@ -80,6 +82,96 @@ public sealed class MultiProjectProtocolTests
             }
         }
         finally { Directory.Delete(root, recursive: true); }
+    }
+
+    [Fact]
+    public async Task Server_mode_lands_a_user_in_their_own_area()
+    {
+        var root = TempRoot();
+        try
+        {
+            // Registry provider rooted in temp so the test never touches the real ~/.spla registry.
+            var provider = new LocalProjectProvider(Path.Combine(root, "state"));
+            using var registry = new AgentRuntimeRegistry(NullLoggerFactory.Instance, provider);
+
+            // Server mode: a per-user root. Auth is off here, so the connection's identity is the
+            // implicit single local user (UserKey "local") — enough to prove routing without Negotiate.
+            var serverRoot = new ServerProjectRoot(Path.Combine(root, "srv"));
+            var port = 25732;
+            var host = SplaServiceHost.Build(registry, new ServiceOptions { Port = port }, null, serverRoot);
+            await host.StartAsync();
+            try
+            {
+                using var socket = new ClientWebSocket();
+                await socket.ConnectAsync(new Uri($"ws://127.0.0.1:{port}/ws"), CancellationToken.None);
+
+                await SendAsync(socket, MessageTypes.Hello, new HelloPayload());
+                var welcome = await ReceiveAsync<WelcomePayload>(socket, MessageTypes.Welcome);
+
+                // Landed in the user's OWN default project, auto-provisioned under their area — NOT a
+                // shared or server-owned project. This is the fix for "fell into the server's projects".
+                var expected = Path.Combine(root, "srv", "users", "local", "default.spla");
+                Assert.Equal(expected, welcome.ProjectId);
+                Assert.True(File.Exists(expected));
+
+                await socket.CloseAsync(WebSocketCloseStatus.NormalClosure, "done", CancellationToken.None);
+            }
+            finally { await host.StopAsync(); }
+        }
+        finally { Directory.Delete(root, recursive: true); }
+    }
+
+    [Fact]
+    public async Task Negotiate_login_issues_cookie_then_ws_authenticates_and_routes_to_user_area()
+    {
+        var root = TempRoot();
+        try
+        {
+            var provider = new LocalProjectProvider(Path.Combine(root, "state"));
+            using var registry = new AgentRuntimeRegistry(NullLoggerFactory.Instance, provider);
+            var serverRoot = new ServerProjectRoot(Path.Combine(root, "srv"));
+            var port = 25733;
+            var host = SplaServiceHost.Build(registry,
+                new ServiceOptions { Port = port, RequireAuthentication = true }, null, serverRoot);
+            await host.StartAsync();
+            try
+            {
+                // 1) A normal HTTP GET does the Negotiate handshake (loopback → the current domain user)
+                //    and comes back with the auth cookie — exactly what the browser does on page load.
+                var cookies = new CookieContainer();
+                using (var handler = new HttpClientHandler
+                       {
+                           Credentials = CredentialCache.DefaultCredentials,
+                           AllowAutoRedirect = true,
+                           CookieContainer = cookies,
+                           PreAuthenticate = true
+                       })
+                using (var http = new HttpClient(handler))
+                {
+                    // Hit /login directly so Negotiate runs on the first request (loopback → current
+                    // domain user); it signs the cookie and 302s back to / which returns 200.
+                    var page = await http.GetAsync($"http://127.0.0.1:{port}/login");
+                    Assert.Equal(HttpStatusCode.OK, page.StatusCode);
+                }
+
+                // 2) The WebSocket carries that cookie (as a browser would) — no Negotiate on the WS.
+                using var socket = new ClientWebSocket();
+                socket.Options.Cookies = cookies;
+                await socket.ConnectAsync(new Uri($"ws://127.0.0.1:{port}/ws"), CancellationToken.None);
+
+                await SendAsync(socket, MessageTypes.Hello, new HelloPayload());
+                var welcome = await ReceiveAsync<WelcomePayload>(socket, MessageTypes.Welcome);
+
+                // The real domain user was resolved and routed into their OWN provisioned area.
+                Assert.False(string.IsNullOrEmpty(welcome.UserName));
+                Assert.Contains(Path.Combine("users"), welcome.ProjectId);
+                Assert.True(File.Exists(welcome.ProjectId));
+
+                await socket.CloseAsync(WebSocketCloseStatus.NormalClosure, "done", CancellationToken.None);
+            }
+            finally { await host.StopAsync(); }
+        }
+        finally { try { Directory.Delete(root, recursive: true); } catch { } }
     }
 
     private static async Task SendAsync(

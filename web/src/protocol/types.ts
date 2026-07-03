@@ -235,6 +235,8 @@ export interface ServerEvents {
     theme?: string; density?: string; projectId?: string; projectName?: string; workspacePath?: string;
     modes?: string[]; defaultMode?: string;
     connections?: { id: string; name?: string }[];
+    /** Authenticated user (server mode). Empty on local/embedded — the identity badge stays hidden. */
+    userKey?: string; userName?: string;
   };
   "appearance.changed": { theme?: string; density?: string };
   "chat.opened": ChatOpenedPayload;

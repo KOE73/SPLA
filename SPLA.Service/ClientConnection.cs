@@ -35,6 +35,22 @@ public sealed class ClientConnection
     private readonly ConnectionHub _hub;
     private readonly AuthGate _auth;
     private readonly ILogger _log;
+    private readonly SPLA.Domain.Identity.IIdentity _identity;
+
+    /// <summary>Per-user project scope (server mode): this connection lists/defaults to the projects in
+    /// the authenticated user's own area, not the process-global set. Null in local/embedded mode,
+    /// where the connection falls back to the shared registry's provider and default.</summary>
+    private readonly IProjectProvider? _userProvider;
+    private readonly string? _userDefaultProjectId;
+
+    /// <summary>The project a bare (no ProjectId) message means for THIS connection — the user's own
+    /// default in server mode, else the registry's shared default.</summary>
+    private string DefaultProjectId => _userDefaultProjectId ?? _registry.DefaultProjectId;
+
+    private IReadOnlyList<ProjectDescriptor> ListProjects()
+        => _userProvider?.List() ?? _registry.List();
+    private IReadOnlyList<ProjectDescriptor> RecentProjects()
+        => _userProvider?.Recent() ?? _registry.Recent();
     private readonly SemaphoreSlim _sendLock = new(1, 1);
 
     private readonly ConcurrentDictionary<string, TaskCompletionSource<PermissionDecision>> _pendingPermissions = new();
@@ -54,13 +70,18 @@ public sealed class ClientConnection
     public bool IsWatchingProject(string projectId) => _openProjects.ContainsKey(projectId);
 
     public ClientConnection(
-        WebSocket socket, AgentRuntimeRegistry registry, ConnectionHub hub, AuthGate auth, ILogger log)
+        WebSocket socket, AgentRuntimeRegistry registry, ConnectionHub hub, AuthGate auth, ILogger log,
+        SPLA.Domain.Identity.IIdentity? identity = null,
+        IProjectProvider? userProvider = null, string? userDefaultProjectId = null)
     {
         _socket = socket;
         _registry = registry;
         _hub = hub;
         _auth = auth;
         _log = log;
+        _identity = identity ?? SPLA.Domain.Identity.LocalIdentity.Single;
+        _userProvider = userProvider;
+        _userDefaultProjectId = userDefaultProjectId;
     }
 
     /// <summary>Resolves the runtime an envelope means: its explicit ProjectId, or the connection's
@@ -68,7 +89,7 @@ public sealed class ClientConnection
     /// project-scoped broadcasts reach it.</summary>
     private (RuntimeEntry Entry, string ProjectId) Resolve(ProtocolEnvelope env)
     {
-        var projectId = string.IsNullOrEmpty(env.ProjectId) ? _registry.DefaultProjectId : env.ProjectId;
+        var projectId = string.IsNullOrEmpty(env.ProjectId) ? DefaultProjectId : env.ProjectId;
         _openProjects[projectId] = 0;
         return (_registry.Open(projectId), projectId);
     }
@@ -144,13 +165,13 @@ public sealed class ClientConnection
             // ── Project browser ──────────────────────────────────────────
             case MessageTypes.ProjectList:
                 await SendAsync(MessageTypes.ProjectListResult,
-                    new ProjectListResultPayload { Projects = _registry.List().Select(ToDto).ToList() },
+                    new ProjectListResultPayload { Projects = ListProjects().Select(ToDto).ToList() },
                     requestId: env.RequestId);
                 break;
 
             case MessageTypes.ProjectRecent:
                 await SendAsync(MessageTypes.ProjectListResult,
-                    new ProjectListResultPayload { Projects = _registry.Recent().Select(ToDto).ToList() },
+                    new ProjectListResultPayload { Projects = RecentProjects().Select(ToDto).ToList() },
                     requestId: env.RequestId);
                 break;
 
@@ -521,15 +542,25 @@ public sealed class ClientConnection
         }
 
         // The handshake always describes the connection's default project — a single-project
-        // client never needs to know projects exist at all.
-        var projectId = _registry.DefaultProjectId;
+        // client never needs to know projects exist at all. In server mode this is the user's OWN
+        // default project (in their area), so a domain user lands in their space, not the server's.
+        var projectId = DefaultProjectId;
         _openProjects[projectId] = 0;
         var ctx = ToContext(projectId, _registry.Open(projectId).Runtime);
+
+        _log.LogInformation("Client connected as {User} ({Key}, {Groups} groups).",
+            _identity.DisplayName, _identity.UserKey, _identity.Groups.Count);
+
+        // Only a really-authenticated user populates the identity fields; the local/embedded sentinel
+        // stays blank so the client's identity badge collapses (no "who" chrome in single-user mode).
+        var authed = !ReferenceEquals(_identity, SPLA.Domain.Identity.LocalIdentity.Single);
 
         await SendAsync(MessageTypes.Welcome, new WelcomePayload
         {
             ActorId = decision.ActorId,
             Capabilities = decision.Capabilities,
+            UserKey = authed ? _identity.UserKey : "",
+            UserName = authed ? _identity.DisplayName : "",
             ProjectId = ctx.ProjectId,
             ProjectName = ctx.ProjectName,
             WorkspacePath = ctx.WorkspacePath,

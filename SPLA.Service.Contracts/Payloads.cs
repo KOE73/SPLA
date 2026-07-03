@@ -368,6 +368,11 @@ public sealed class WelcomePayload
     public string[] Capabilities { get; set; } = System.Array.Empty<string>();
     public string ServerName { get; set; } = "SPLA";
 
+    /// <summary>The authenticated user (Negotiate/NTLM). Empty when the server runs without auth
+    /// (loopback/embedded). UserKey is the stable SID; UserName is the human DOMAIN\user for display.</summary>
+    public string UserKey { get; set; } = string.Empty;
+    public string UserName { get; set; } = string.Empty;
+
     /// <summary>The connection's default project id — omit ProjectId on later messages to mean this one.</summary>
     public string ProjectId { get; set; } = string.Empty;
     public string? ProjectName { get; set; }

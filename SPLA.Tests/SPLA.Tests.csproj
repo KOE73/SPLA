@@ -2,6 +2,9 @@
 
   <PropertyGroup>
     <IsPackable>false</IsPackable>
+    <!-- Windows-targeted: the domain scenario (per-user areas, group sharing) is proven against a
+         real WindowsIdentity, so the suite exercises the actual platform it ships on. -->
+    <TargetFramework>net10.0-windows</TargetFramework>
   </PropertyGroup>
 
   <ItemGroup>
@@ -24,6 +27,7 @@
     <ProjectReference Include="..\SPLA.Plugins.Roslyn\SPLA.Plugins.Roslyn.csproj" />
     <ProjectReference Include="..\SPLA.Plugins.Sql\SPLA.Plugins.Sql.csproj" />
     <ProjectReference Include="..\SPLA.Service\SPLA.Service.csproj" />
+    <ProjectReference Include="..\SPLA.Identity.Windows\SPLA.Identity.Windows.csproj" />
   </ItemGroup>
 
 </Project>
