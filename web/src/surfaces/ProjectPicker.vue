@@ -64,11 +64,19 @@ async function select(projectId: string) {
 }
 
 async function createProject() {
-  const manifestPath = prompt(
-    "Path for the new project's .spla manifest (e.g. C:\\Projects\\Demo\\Demo.spla):"
-  );
-  if (!manifestPath) return;
-  const name = prompt("Project name:", manifestPath.split(/[\\/]/).pop()?.replace(/\.spla$/i, "") || "");
+  // Server mode (an authenticated user): the project lives in the user's own area on the server, so
+  // the client only asks for a name — never a server filesystem path. Local/embedded still takes a path.
+  const serverMode = !!store.userName;
+  let manifestPath: string | undefined;
+  let name: string | null;
+  if (serverMode) {
+    name = prompt("Project name:");
+    if (!name) return;
+  } else {
+    manifestPath = prompt("Path for the new project's .spla manifest (e.g. C:\\Projects\\Demo\\Demo.spla):") || undefined;
+    if (!manifestPath) return;
+    name = prompt("Project name:", manifestPath.split(/[\\/]/).pop()?.replace(/\.spla$/i, "") || "");
+  }
   try {
     const ctx = await client.invoke<ProjectContextPayload>("project.create", { manifestPath, name });
     applyContext(ctx);

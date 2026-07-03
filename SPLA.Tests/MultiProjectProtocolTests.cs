@@ -174,6 +174,50 @@ public sealed class MultiProjectProtocolTests
         finally { try { Directory.Delete(root, recursive: true); } catch { } }
     }
 
+    [Fact]
+    public async Task Server_project_create_lands_in_user_area_lists_and_is_empty()
+    {
+        var root = TempRoot();
+        try
+        {
+            var provider = new LocalProjectProvider(Path.Combine(root, "state"));
+            using var registry = new AgentRuntimeRegistry(NullLoggerFactory.Instance, provider);
+            var serverRoot = new ServerProjectRoot(Path.Combine(root, "srv"));
+            var port = 25734;
+            var host = SplaServiceHost.Build(registry, new ServiceOptions { Port = port }, null, serverRoot);
+            await host.StartAsync();
+            try
+            {
+                using var socket = new ClientWebSocket();
+                await socket.ConnectAsync(new Uri($"ws://127.0.0.1:{port}/ws"), CancellationToken.None);
+                await SendAsync(socket, MessageTypes.Hello, new HelloPayload());
+                await ReceiveAsync<WelcomePayload>(socket, MessageTypes.Welcome);
+
+                // Create by NAME only (no path) — the server places it in the user's own area.
+                await SendAsync(socket, MessageTypes.ProjectCreate, new ProjectCreatePayload { Name = "Demo" }, requestId: "c1");
+                var ctx = await ReceiveAsync<ProjectContextPayload>(socket, MessageTypes.ProjectContext, "c1");
+
+                var expected = Path.Combine(root, "srv", "users", "local", "Demo", "Demo.spla");
+                Assert.Equal(Path.GetFullPath(expected), Path.GetFullPath(ctx.ProjectId));
+                Assert.True(File.Exists(ctx.ProjectId));
+
+                // Shows up in the user's project list — the "no projects after refresh" bug.
+                await SendAsync(socket, MessageTypes.ProjectList, null, requestId: "l1");
+                var list = await ReceiveAsync<ProjectListResultPayload>(socket, MessageTypes.ProjectListResult, "l1");
+                Assert.Contains(list.Projects, p => Path.GetFullPath(p.Id) == Path.GetFullPath(ctx.ProjectId));
+
+                // Its chats are ITS OWN (empty) — not another project's ("strange foreign chats" bug).
+                await SendAsync(socket, MessageTypes.ChatList, null, projectId: ctx.ProjectId, requestId: "h1");
+                var chats = await ReceiveAsync<ChatListResultPayload>(socket, MessageTypes.ChatListResult, "h1");
+                Assert.Empty(chats.Chats);
+
+                await socket.CloseAsync(WebSocketCloseStatus.NormalClosure, "done", CancellationToken.None);
+            }
+            finally { await host.StopAsync(); }
+        }
+        finally { try { Directory.Delete(root, recursive: true); } catch { } }
+    }
+
     private static async Task SendAsync(
         ClientWebSocket socket, string type, object? payload, string? projectId = null, string? requestId = null)
     {

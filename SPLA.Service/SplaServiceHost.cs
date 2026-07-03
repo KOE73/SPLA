@@ -278,10 +278,11 @@ public sealed class SplaServiceHost
             // first connect. Local/embedded (serverRoot == null) keeps the shared registry scope.
             var userProvider = serverRoot?.ProviderFor(identity);
             var userDefault = serverRoot?.EnsureDefaultProject(identity);
+            var userArea = serverRoot?.EnsureUserArea(identity.UserKey);
 
             using var socket = await context.WebSockets.AcceptWebSocketAsync();
             var log = loggerFactory.CreateLogger<ClientConnection>();
-            var conn = new ClientConnection(socket, registry, hub, auth, log, identity, userProvider, userDefault);
+            var conn = new ClientConnection(socket, registry, hub, auth, log, identity, userProvider, userDefault, userArea);
             await conn.RunAsync(context.RequestAborted);
         });
 

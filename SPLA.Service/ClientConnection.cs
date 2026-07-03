@@ -42,6 +42,9 @@ public sealed class ClientConnection
     /// where the connection falls back to the shared registry's provider and default.</summary>
     private readonly IProjectProvider? _userProvider;
     private readonly string? _userDefaultProjectId;
+    /// <summary>The user's own storage area root (server mode) — new projects are created inside it
+    /// from just a name, so a browser client never picks a server filesystem path.</summary>
+    private readonly string? _userArea;
 
     /// <summary>The project a bare (no ProjectId) message means for THIS connection — the user's own
     /// default in server mode, else the registry's shared default.</summary>
@@ -72,7 +75,7 @@ public sealed class ClientConnection
     public ClientConnection(
         WebSocket socket, AgentRuntimeRegistry registry, ConnectionHub hub, AuthGate auth, ILogger log,
         SPLA.Domain.Identity.IIdentity? identity = null,
-        IProjectProvider? userProvider = null, string? userDefaultProjectId = null)
+        IProjectProvider? userProvider = null, string? userDefaultProjectId = null, string? userArea = null)
     {
         _socket = socket;
         _registry = registry;
@@ -82,6 +85,7 @@ public sealed class ClientConnection
         _identity = identity ?? SPLA.Domain.Identity.LocalIdentity.Single;
         _userProvider = userProvider;
         _userDefaultProjectId = userDefaultProjectId;
+        _userArea = userArea;
     }
 
     /// <summary>Resolves the runtime an envelope means: its explicit ProjectId, or the connection's
@@ -192,17 +196,33 @@ public sealed class ClientConnection
             case MessageTypes.ProjectCreate:
             {
                 var p = Payload<ProjectCreatePayload>(env);
-                if (string.IsNullOrWhiteSpace(p?.ManifestPath))
+                string manifestPath;
+                if (_userProvider != null && _userArea != null)
                 {
-                    await SendAsync(MessageTypes.Error, new ErrorPayload { Message = "ManifestPath is required." }, requestId: env.RequestId);
-                    break;
+                    // Server mode: the user gives only a NAME; the project is created inside their own
+                    // area and registered in their per-user provider (so it shows up on refresh).
+                    if (string.IsNullOrWhiteSpace(p?.Name))
+                    {
+                        await SendAsync(MessageTypes.Error, new ErrorPayload { Message = "Project name is required." }, requestId: env.RequestId);
+                        break;
+                    }
+                    var safe = SanitizeName(p.Name);
+                    manifestPath = System.IO.Path.Combine(_userArea, safe, safe + ".spla");
+                    _userProvider.Create(new ProjectDescriptor { Id = manifestPath, ManifestPath = manifestPath, Name = p.Name });
                 }
-                var created = _registry.Create(new ProjectDescriptor
+                else
                 {
-                    Id = p.ManifestPath, ManifestPath = p.ManifestPath, Name = p.Name
-                });
-                _openProjects[p.ManifestPath] = 0;
-                await SendAsync(MessageTypes.ProjectContext, ToContext(p.ManifestPath, created.Runtime), requestId: env.RequestId);
+                    if (string.IsNullOrWhiteSpace(p?.ManifestPath))
+                    {
+                        await SendAsync(MessageTypes.Error, new ErrorPayload { Message = "ManifestPath is required." }, requestId: env.RequestId);
+                        break;
+                    }
+                    manifestPath = p.ManifestPath;
+                    _registry.Create(new ProjectDescriptor { Id = manifestPath, ManifestPath = manifestPath, Name = p.Name });
+                }
+                _openProjects[manifestPath] = 0;
+                var opened = _registry.Open(manifestPath);
+                await SendAsync(MessageTypes.ProjectContext, ToContext(manifestPath, opened.Runtime), requestId: env.RequestId);
                 break;
             }
 
@@ -771,6 +791,15 @@ public sealed class ClientConnection
 
         using (ct.Register(() => { if (_pendingClarifies.TryRemove(reqId, out var t)) t.TrySetResult(null); }))
             return await tcs.Task;
+    }
+
+    /// <summary>Turns a user-typed project name into a filesystem-safe folder/file name.</summary>
+    private static string SanitizeName(string name)
+    {
+        var invalid = System.IO.Path.GetInvalidFileNameChars();
+        var chars = name.Select(c => invalid.Contains(c) ? '_' : c).ToArray();
+        var s = new string(chars).Trim();
+        return string.IsNullOrEmpty(s) ? "project" : s;
     }
 
     private static T? Payload<T>(ProtocolEnvelope env) where T : class
