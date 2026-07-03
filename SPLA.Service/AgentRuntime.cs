@@ -110,7 +110,7 @@ public sealed class AgentRuntime : IDisposable
 
         // ── Fundamental agent working memory (project-scoped shared; session resolves via scope) ──
         ProjectKv = new ProjectKvStore(
-            settings.Project.GetBucket(SPLA.Domain.Project.IProjectBackend.RootBucket).MapToHostDirectory()!);
+            settings.Project.GetBucket(SPLA.Domain.Project.IProjectBackend.RootBucket));
         McpHost.RegisterTool(new SPLA.MCP.Core.Tools.AgentMemorySetTool(ProjectKv.Store));
         McpHost.RegisterTool(new SPLA.MCP.Core.Tools.AgentMemoryGetTool(ProjectKv.Store));
         McpHost.RegisterTool(new SPLA.MCP.Core.Tools.AgentMemoryDeleteTool(ProjectKv.Store));

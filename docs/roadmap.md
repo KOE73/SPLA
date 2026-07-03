@@ -62,6 +62,30 @@
    через `ResolvedSettings` напрямую. Рефактор-инфраструктура, тестируемо. Не срочно, но чистит
    архитектуру перед серверным этапом.
 
+## G. Зачатки серверного варианта — хранилище backend-agnostic — [авто]
+
+Настоящий «сервер» — это не хост (сетевой bind+token уже работает: `serve --bind 0.0.0.0
+--token X`) и не auth (см. E — преждевременно). Это ХРАНИЛИЩЕ: на сервере проекты живут не в
+локальных `.spla`, а в БД/S3/пользовательских каталогах. `IBucket` уже даёт key/value API
+(`ReadText/WriteText/ListKeys`) — форму не-дискового бэкенда. Задача — снять зависимость
+ядровых сторов от `MapToHostDirectory()` (диск), чтобы серверный бэкенд слотировался за теми же
+интерфейсами.
+
+- **`MemoryBucket`/`MemoryProjectBackend` — СДЕЛАНО.** Первоклассный не-дисковый бэкенд
+  (`MapToHostDirectory()` == null) в `SPLA.Domain/Project`: эталон и шаблон для будущего
+  `ServerProjectBackend` (БД/S3), плюс детерминированный бэкенд для тестов.
+- **`ProjectKvStore` над bucket KV — СДЕЛАНО.** Рабочая память проекта больше не требует
+  дисковой директории — пишет `project-kv.yaml`-ключ через `IBucket.ReadText/WriteText`. Локально
+  (FileBucket над `.spla/`) раскладка на диске идентична; над `MemoryProjectBackend` — round-trip
+  без диска. Доказано `ServerBackendSeamTests` (3). Сьют 181.
+- **`ChatManager` над bucket KV — СЛЕДУЮЩЕЕ [авто, крупнее].** История чатов всё ещё берёт
+  `GetBucket("chats").MapToHostDirectory()` и делает File IO с подпапками chats/summaries/backups
+  и листингом по mtime. Перевод на bucket KV — больше работы (плоский key/value vs подпапки+mtime),
+  но той же природы. Это последняя крупная дисковая зависимость ядрового стора.
+- **`ServerProjectBackend`/`ServerProjectProvider` (реальная БД) — [нужен человек].** Выбор СУБД
+  и схемы — продуктовое/инфраструктурное решение. Но как только ChatManager backend-agnostic,
+  подключение — это реализация `IProjectBackend`/`IBucket` над БД, без изменений ядра.
+
 ## E. Identity / многопользовательский сервер — [нужен человек + серверная инфра]
 
 8. **`IIdentity` + `IAgentContextFactory`.** Сознательно отложено: нет реального multi-tenant

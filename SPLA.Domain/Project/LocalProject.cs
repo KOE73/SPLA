@@ -22,10 +22,8 @@ public sealed class LocalProject : IProject
     {
         _settings = settings;
         _backend = backend;
-        _kv = new(() => new ProjectKvStore(
-            backend.GetBucket(IProjectBackend.RootBucket).MapToHostDirectory()
-            ?? throw new InvalidOperationException(
-                "Project KV over a virtual backend needs a KV-capable backend (later phase).")));
+        // Project KV rides the root bucket's key/value API — works over any backend, disk or not.
+        _kv = new(() => new ProjectKvStore(backend.GetBucket(IProjectBackend.RootBucket)));
     }
 
     public static LocalProject For(ResolvedSettings settings)
