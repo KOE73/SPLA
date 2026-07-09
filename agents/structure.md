@@ -93,21 +93,35 @@ Current agent docs:
 - `agents/documentation.md`: Documentation layout and translation rules.
 - `agents/observability.md`: Observability conventions.
 - `agents/plugins.md`: Plugin system and tool naming conventions.
+- `agents/protocol.md`: Wire protocol & event registry (every `MessageTypes` constant; guarded by `ProtocolDocTests`).
 - `agents/security.md`: Agent permission modes and capabilities.
+- `agents/skills.md`: Skill system architecture (lifecycle, assembly order, permission matrix).
 - `agents/spla-file.md`: `.spla` project file format.
 - `agents/structure.md`: This repository structure map.
+- `agents/sys_prompt_rules.md`: System-prompt authoring rules (avoiding rule contradictions).
+- `agents/tool-args.md`: Tool argument conventions.
 - `agents/tool-help.md`: Tool help system flow.
 - `agents/ui-theming.md`: UI theming and density rules.
 - `agents/data-ownership.md`: Data ownership rules — UI must not own domain data. Read before adding any registry, flag, or discovery logic.
 
+Per-layer directional docs also live next to the code: `src/core/AGENTS.md`, `src/agent/AGENTS.md`,
+`src/service/AGENTS.md`, `src/apps/AGENTS.md`, `src/plugins/AGENTS.md`.
+
 ## Skills
 
-Skills are named instruction sets stored as `.md` files in `SPLA.Skills.<PluginId>/`.
+Skills are named instruction sets stored as `.md` files in `src/plugins/SPLA.Skills.<PluginId>/`.
 They are independent of plugin code — a skill describes a procedure, not a capability declaration.
 
-- `SPLA.Skills.Network/`: Network skills. Built by `SPLA.Skills.Network.csproj` (Microsoft.Build.NoTargets).
-  - `CopySkills` target copies `skills/*.md` to `plugins/network/skills/` in UI and CLI debug output on every build.
-  - Published by `PublishAll.cmd` via `xcopy /s /y SPLA.Skills.Network .publish\work\plugins\network\skills\`.
+- `src/plugins/SPLA.Skills.Network/`: Network skills. Built by `SPLA.Skills.Network.csproj` (Microsoft.Build.NoTargets).
+  - **Debug builds:** the `CopySkills` target copies `meta.yaml` + `skills/*.md` into a flat
+    `plugins/network.skills/` folder in the CLI and UI output. Because that folder carries its own
+    `type: skills` `meta.yaml`, `PluginManager` registers the skills from it directly (via
+    `RegisterFromPlugin`).
+  - **Publish builds:** `PublishAll.cmd` instead `xcopy`s `src\plugins\SPLA.Skills.Network\skills` into
+    `plugins\network\skills\` (a `skills` subfolder of the network DLL plugin), where the legacy
+    `SkillManager.LoadSkills` scan path (`plugins/*/skills/*.md`) picks them up.
+  - Net effect is the same skill set either way; the two layouts + two discovery mechanisms are a
+    known fragility, not a bug.
 
 **Skill file format:**
 ```markdown
@@ -141,11 +155,13 @@ Plugin projects use `meta.yaml` manifests and are published into `.publish/work/
 
 Current plugin manifests:
 
-- `SPLA.Plugins.Network/meta.yaml`: `id: network`, `type: dll`.
-- `SPLA.Plugins.Roslyn/meta.yaml`: `id: roslyn`, `type: dll`.
-- `SPLA.Plugins.OneC/meta.yaml`: `id: onec`, `type: dll`.
-- `SPLA.Plugins.OneC.Avalonia/meta.yaml`: `id: onec_avalonia`, `type: avalonia-ui`, `depends_on: onec`.
-- `SPLA.Plugins.Test/meta.yaml`: Test plugin manifest. The project exists in the repository but is not currently listed in `SPLA.slnx`.
+- `src/plugins/SPLA.Plugins.Network/meta.yaml`: `id: network`, `type: dll`.
+- `src/plugins/SPLA.Plugins.Roslyn/meta.yaml`: `id: roslyn`, `type: dll`.
+- `src/plugins/SPLA.Plugins.OneC/meta.yaml`: `id: onec`, `type: dll`.
+- `src/plugins/SPLA.Plugins.OneC.Avalonia/meta.yaml`: `id: onec_avalonia`, `type: avalonia-ui`, `depends_on: onec`.
+- `src/plugins/SPLA.Plugins.Sql/meta.yaml`: `id: sql`, `type: dll`; `src/plugins/SPLA.Plugins.Sql.Avalonia/meta.yaml`: `id: sql_avalonia`, `type: avalonia-ui`, `depends_on: sql`.
+- `src/plugins/SPLA.Plugins.Browser/meta.yaml`: `id: browser`, `type: dll`.
+- `src/plugins/SPLA.Plugins.Test/meta.yaml`: Test plugin manifest. The project exists in the repository but is not currently listed in `SPLA.slnx`.
 
 ## Publish Output
 
@@ -159,5 +175,4 @@ Do not treat `.publish/` contents as authoritative source.
 
 ## Out-of-Solution Notes
 
-- `SPLA.Plugins.Test` exists with a `.csproj` and `meta.yaml`, but it is not currently included in `SPLA.slnx`.
-- `SPLA.Tools.OneC` exists as a folder but currently contains only build artifacts in this workspace and is not included in `SPLA.slnx`.
+- `src/plugins/SPLA.Plugins.Test` exists with a `.csproj` and `meta.yaml`, but it is not currently included in `SPLA.slnx`.

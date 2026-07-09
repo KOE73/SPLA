@@ -69,7 +69,7 @@ Frontmatter is metadata. Body is the procedure. They are structurally separate (
 `ISkillSession` — a domain interface owned by the conversation/agent core.
 
 ```csharp
-// SPLA.Domain/Agent/ISkillSession.cs
+// src/core/SPLA.Domain/Agent/ISkillSession.cs
 string? ActiveSkillId { get; }
 void Activate(string skillId);
 void Deactivate();
