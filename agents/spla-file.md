@@ -53,6 +53,7 @@ ignore:
 | `llm.endpoint` | No | API base URL. |
 | `llm.model` | No | Model name. `auto` = use whatever is loaded. |
 | `ui.theme` | No | Color theme: `Dark`, `Light`, `Cream`, `Emerald`. |
+| `ui.density` | No | UI density: `norm`, `mini`, `nano`, `max`. |
 | `permissions.*` | No | Per-effect overrides: `allow`, `ask`, `deny`. Overrides the mode's default matrix. |
 | `docs` | No | Documentation directories to index. |
 | `ignore` | No | Directories/files the agent will never touch. |
