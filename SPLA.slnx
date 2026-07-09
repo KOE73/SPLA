@@ -23,7 +23,6 @@
   </Folder>
   <Folder Name="/agents/">
     <File Path="agents/avalonia.md" />
-    <File Path="agents/chat-messages.md" />
     <File Path="agents/data-ownership.md" />
     <File Path="agents/documentation.md" />
     <File Path="agents/observability.md" />
