@@ -368,37 +368,3 @@ public class PluginManager
         return true;
     }
 }
-
-internal sealed class PluginLoadContext : AssemblyLoadContext
-{
-    private static readonly HashSet<string> SharedAssemblies = new(StringComparer.OrdinalIgnoreCase)
-    {
-        "SPLA.Domain",
-        "SPLA.MCP.Core",
-        "SPLA.Observability"
-    };
-
-    private readonly AssemblyDependencyResolver _resolver;
-
-    public PluginLoadContext(string pluginPath) : base(isCollectible: false)
-    {
-        _resolver = new AssemblyDependencyResolver(pluginPath);
-    }
-
-    protected override Assembly? Load(AssemblyName assemblyName)
-    {
-        if (assemblyName.Name != null && SharedAssemblies.Contains(assemblyName.Name))
-        {
-            return null;
-        }
-
-        var assemblyPath = _resolver.ResolveAssemblyToPath(assemblyName);
-        return assemblyPath != null ? LoadFromAssemblyPath(assemblyPath) : null;
-    }
-
-    protected override IntPtr LoadUnmanagedDll(string unmanagedDllName)
-    {
-        var libraryPath = _resolver.ResolveUnmanagedDllToPath(unmanagedDllName);
-        return libraryPath != null ? LoadUnmanagedDllFromPath(libraryPath) : IntPtr.Zero;
-    }
-}
