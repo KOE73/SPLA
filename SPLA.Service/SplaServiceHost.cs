@@ -254,6 +254,22 @@ public sealed class SplaServiceHost
                 return;
             }
 
+            // Origin gate (cookie/Negotiate deployments only). The /ws upgrade authenticates by the
+            // ambient auth cookie, so a page on any other site the user has open could open a socket
+            // here and drive the agent with the victim's cookie (cross-site WebSocket hijacking). A
+            // browser always sends Origin on a WS handshake; require it to match this server's own
+            // host. Non-browser clients (CLI/embedded) send no Origin and are unaffected; the check
+            // is skipped entirely when auth is off (loopback/embedded).
+            if (options.RequireAuthentication)
+            {
+                var origin = context.Request.Headers.Origin.ToString();
+                if (!string.IsNullOrEmpty(origin) && !IsSameHostOrigin(origin, context.Request))
+                {
+                    context.Response.StatusCode = StatusCodes.Status403Forbidden;
+                    return;
+                }
+            }
+
             // The connection's user comes straight from the auth cookie (set at /login) — the user key
             // and display name, no server-side lookup, so it survives restarts. Reaching here already
             // means the cookie authenticated (fallback policy on /ws); the key is just read back.
@@ -345,6 +361,16 @@ public sealed class SplaServiceHost
         Console.WriteLine($"[HTTPS]   Thumbprint: {cert.Thumbprint}");
 
         return X509CertificateLoader.LoadPkcs12(pfxBytes, password);
+    }
+
+    /// <summary>True when <paramref name="origin"/> names the same host this request arrived on (scheme
+    /// and port ignored — TLS termination or a reverse proxy can rewrite those; the host is what a
+    /// cross-site attacker cannot forge). Malformed Origin values are treated as a mismatch.</summary>
+    private static bool IsSameHostOrigin(string origin, HttpRequest request)
+    {
+        if (!Uri.TryCreate(origin, UriKind.Absolute, out var originUri))
+            return false;
+        return string.Equals(originUri.Host, request.Host.Host, StringComparison.OrdinalIgnoreCase);
     }
 
     /// <summary>Starts and blocks until the host shuts down.</summary>

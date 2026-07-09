@@ -25,6 +25,20 @@ public sealed class MultiProjectProtocolTests
         Directory.CreateDirectory(
             Path.Combine(Path.GetTempPath(), $"spla-ws-{Guid.NewGuid():N}")).FullName;
 
+    /// <summary>Grabs a free loopback TCP port from the OS (bind to port 0, read the assigned port,
+    /// release it) so the suite never collides with whatever else is listening on this machine —
+    /// license daemons, another `spla serve`, a previous run's lingering socket. There is a tiny race
+    /// between releasing the port here and the host binding it, but on loopback in a test it is
+    /// effectively never lost, and a fresh port per test keeps runs independent.</summary>
+    private static int FreePort()
+    {
+        var listener = new System.Net.Sockets.TcpListener(IPAddress.Loopback, 0);
+        listener.Start();
+        var port = ((IPEndPoint)listener.LocalEndpoint).Port;
+        listener.Stop();
+        return port;
+    }
+
     [Fact]
     public async Task Two_projects_over_one_socket_stay_isolated()
     {
@@ -40,7 +54,7 @@ public sealed class MultiProjectProtocolTests
             registry.Create(new ProjectDescriptor { Id = betaManifest, ManifestPath = betaManifest, Name = "Beta" });
             registry.DefaultProjectId = alphaManifest;
 
-            var port = 25731; // fixed dev-loopback port; this suite doesn't run alongside a live `spla serve`.
+            var port = FreePort();
             var host = SplaServiceHost.Build(registry, new ServiceOptions { Port = port });
             await host.StartAsync();
             try
@@ -97,7 +111,7 @@ public sealed class MultiProjectProtocolTests
             // Server mode: a per-user root. Auth is off here, so the connection's identity is the
             // implicit single local user (UserKey "local") — enough to prove routing without Negotiate.
             var serverRoot = new ServerProjectRoot(Path.Combine(root, "srv"));
-            var port = 25732;
+            var port = FreePort();
             var host = SplaServiceHost.Build(registry, new ServiceOptions { Port = port }, null, serverRoot);
             await host.StartAsync();
             try
@@ -130,7 +144,7 @@ public sealed class MultiProjectProtocolTests
             var provider = new LocalProjectProvider(Path.Combine(root, "state"));
             using var registry = new AgentRuntimeRegistry(NullLoggerFactory.Instance, provider);
             var serverRoot = new ServerProjectRoot(Path.Combine(root, "srv"));
-            var port = 25733;
+            var port = FreePort();
             var host = SplaServiceHost.Build(registry,
                 new ServiceOptions { Port = port, RequireAuthentication = true }, null, serverRoot);
             await host.StartAsync();
@@ -183,7 +197,7 @@ public sealed class MultiProjectProtocolTests
             var provider = new LocalProjectProvider(Path.Combine(root, "state"));
             using var registry = new AgentRuntimeRegistry(NullLoggerFactory.Instance, provider);
             var serverRoot = new ServerProjectRoot(Path.Combine(root, "srv"));
-            var port = 25734;
+            var port = FreePort();
             var host = SplaServiceHost.Build(registry, new ServiceOptions { Port = port }, null, serverRoot);
             await host.StartAsync();
             try

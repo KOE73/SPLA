@@ -12,48 +12,38 @@ using SPLA.Service.Contracts;
 namespace SPLA.Service;
 
 /// <summary>
-/// One connected client over a WebSocket. Translates between the wire protocol and the agent core:
-/// inbound envelopes become agent actions; the orchestrator's <see cref="AgentCallbacks"/> become
-/// outbound envelopes. Permission and clarify round-trips are correlated by RequestId through
-/// <see cref="TaskCompletionSource{T}"/>s completed by the receive loop, so a running turn can ask
-/// the very client that started it and await the answer without blocking the socket.
+/// One connected client over a WebSocket. Owns only the connection's own concerns: transport
+/// (framing, the receive loop, the send lock), the cross-cutting auth gate, and the correlation
+/// tables that let a running turn ask the initiating client a permission/clarify question and await
+/// the answer without blocking the socket. Business logic for each message type lives in a
+/// per-module <see cref="IMessageHandler"/> reached through <see cref="MessageRouter"/>; the
+/// connection exposes exactly what handlers need via <see cref="IClientSession"/>, so a new message
+/// type is a new handler and never edits this class.
 /// <para>
 /// Multi-project: there is no "current project" stored on the connection. Every project- or
 /// chat-scoped envelope carries its own <see cref="ProtocolEnvelope.ProjectId"/> (null meaning the
-/// connection's default project — see <see cref="AgentRuntimeRegistry.DefaultProjectId"/>), and each
-/// message resolves the runtime it needs fresh via <see cref="Resolve"/>. This mirrors the earlier
-/// choice for chat scoping (sessionId per message, no mutable state) one level up: a socket that
-/// touches several projects never has ambiguous "which one did I mean" state to drift.
+/// connection's default project), and each message resolves the runtime it needs fresh via
+/// <see cref="Resolve"/> — a socket that touches several projects never has ambiguous state to drift.
 /// </para>
 /// </summary>
-public sealed class ClientConnection
+public sealed class ClientConnection : IClientSession
 {
-    private static readonly JsonSerializerOptions Json = new(JsonSerializerDefaults.Web);
-
     private readonly WebSocket _socket;
     private readonly AgentRuntimeRegistry _registry;
     private readonly ConnectionHub _hub;
     private readonly AuthGate _auth;
     private readonly ILogger _log;
     private readonly SPLA.Domain.Identity.IIdentity _identity;
+    private readonly MessageRouter _router;
 
     /// <summary>Per-user project scope (server mode): this connection lists/defaults to the projects in
-    /// the authenticated user's own area, not the process-global set. Null in local/embedded mode,
-    /// where the connection falls back to the shared registry's provider and default.</summary>
+    /// the authenticated user's own area, not the process-global set. Null in local/embedded mode.</summary>
     private readonly IProjectProvider? _userProvider;
     private readonly string? _userDefaultProjectId;
     /// <summary>The user's own storage area root (server mode) — new projects are created inside it
     /// from just a name, so a browser client never picks a server filesystem path.</summary>
     private readonly string? _userArea;
 
-    /// <summary>The project a bare (no ProjectId) message means for THIS connection — the user's own
-    /// default in server mode, else the registry's shared default.</summary>
-    private string DefaultProjectId => _userDefaultProjectId ?? _registry.DefaultProjectId;
-
-    private IReadOnlyList<ProjectDescriptor> ListProjects()
-        => _userProvider?.List() ?? _registry.List();
-    private IReadOnlyList<ProjectDescriptor> RecentProjects()
-        => _userProvider?.Recent() ?? _registry.Recent();
     private readonly SemaphoreSlim _sendLock = new(1, 1);
 
     private readonly ConcurrentDictionary<string, TaskCompletionSource<PermissionDecision>> _pendingPermissions = new();
@@ -61,9 +51,16 @@ public sealed class ClientConnection
     private readonly ConcurrentDictionary<string, CancellationTokenSource> _activeTurns = new();
     private readonly ConcurrentDictionary<string, byte> _openChats = new();
 
+    /// <summary>Set once a successful <see cref="MessageTypes.Hello"/> handshake has run. When the
+    /// server requires a connect token (<see cref="AuthGate.RequiresToken"/>), every non-Hello frame
+    /// received before this is rejected and the socket is closed — otherwise a client could skip the
+    /// handshake and drive the agent past the token check (the token was only ever validated inside
+    /// <see cref="HandleHelloAsync"/>).</summary>
+    private bool _authenticated;
+
     /// <summary>Every project id this connection has touched — the project-level analogue of
-    /// <see cref="_openChats"/>, used to scope broadcasts (see <see cref="ConnectionHub.BroadcastToProjectAsync"/>)
-    /// so a client only watching project A never receives project B's settings/usage/chat-list results.</summary>
+    /// <see cref="_openChats"/>, used to scope broadcasts so a client only watching project A never
+    /// receives project B's settings/usage/chat-list results.</summary>
     private readonly ConcurrentDictionary<string, byte> _openProjects = new();
 
     /// <summary>True when this connection currently has <paramref name="chatId"/> open (a watcher of it).</summary>
@@ -86,17 +83,56 @@ public sealed class ClientConnection
         _userProvider = userProvider;
         _userDefaultProjectId = userDefaultProjectId;
         _userArea = userArea;
+        _router = MessageRouter.Default;
     }
 
+    // ── IClientSession (the surface handlers act through) ─────────────────────
+
+    SPLA.Domain.Identity.IIdentity IClientSession.Identity => _identity;
+    ConnectionHub IClientSession.Hub => _hub;
+    AgentRuntimeRegistry IClientSession.Registry => _registry;
+    IProjectProvider? IClientSession.UserProvider => _userProvider;
+    string? IClientSession.UserArea => _userArea;
+
+    /// <summary>The project a bare (no ProjectId) message means for THIS connection — the user's own
+    /// default in server mode, else the registry's shared default.</summary>
+    public string DefaultProjectId => _userDefaultProjectId ?? _registry.DefaultProjectId;
+
+    public IReadOnlyList<ProjectDescriptor> ListProjects() => _userProvider?.List() ?? _registry.List();
+    public IReadOnlyList<ProjectDescriptor> RecentProjects() => _userProvider?.Recent() ?? _registry.Recent();
+
     /// <summary>Resolves the runtime an envelope means: its explicit ProjectId, or the connection's
-    /// default when omitted. Marks the resolved project as "touched" by this connection so later
-    /// project-scoped broadcasts reach it.</summary>
-    private (RuntimeEntry Entry, string ProjectId) Resolve(ProtocolEnvelope env)
+    /// default when omitted. Marks the resolved project as "touched" so later broadcasts reach it.</summary>
+    public (RuntimeEntry Entry, string ProjectId) Resolve(ProtocolEnvelope env)
     {
         var projectId = string.IsNullOrEmpty(env.ProjectId) ? DefaultProjectId : env.ProjectId;
         _openProjects[projectId] = 0;
         return (_registry.Open(projectId), projectId);
     }
+
+    void IClientSession.MarkProjectOpen(string projectId) => _openProjects[projectId] = 0;
+    void IClientSession.MarkChatOpen(string chatId) => _openChats[chatId] = 0;
+
+    void IClientSession.StartTurn(
+        AgentRuntime runtime, string projectId, ChatRuntime chat, string text, List<string>? images,
+        CancellationToken hostStopping)
+        // Run the turn in the background so the receive loop keeps serving this turn's
+        // permission/clarify answers and its cancel request.
+        => _ = RunTurnAsync(runtime, projectId, chat, text, images, hostStopping);
+
+    bool IClientSession.TryCancelTurn(string chatId)
+    {
+        if (_activeTurns.TryGetValue(chatId, out var cts)) { cts.Cancel(); return true; }
+        return false;
+    }
+
+    bool IClientSession.CompletePermission(string requestId, PermissionDecision decision)
+        => _pendingPermissions.TryRemove(requestId, out var tcs) && tcs.TrySetResult(decision);
+
+    bool IClientSession.CompleteClarify(string requestId, string? choice)
+        => _pendingClarifies.TryRemove(requestId, out var tcs) && tcs.TrySetResult(choice);
+
+    // ── Connection lifecycle ─────────────────────────────────────────────────
 
     /// <summary>Reads and dispatches frames until the socket closes or the host stops.</summary>
     public async Task RunAsync(CancellationToken hostStopping)
@@ -155,400 +191,36 @@ public sealed class ClientConnection
         }
     }
 
+    /// <summary>
+    /// The connection's own responsibilities per frame — deserialize, the two cross-cutting concerns
+    /// (token gate + handshake), then hand off to the module handler via <see cref="_router"/>.
+    /// </summary>
     private async Task DispatchAsync(string json, CancellationToken hostStopping)
     {
-        var env = JsonSerializer.Deserialize<ProtocolEnvelope>(json, Json);
+        var env = JsonSerializer.Deserialize<ProtocolEnvelope>(json, ServiceJson.Options);
         if (env == null) return;
 
-        switch (env.Type)
+        // Token gate: when a connect token is required, nothing but the handshake is honoured until
+        // that handshake has succeeded. Without this, only Hello validated the token — every other
+        // message type was dispatched unchecked, so a client could omit Hello entirely and still act.
+        if (_auth.RequiresToken && !_authenticated && env.Type != MessageTypes.Hello)
         {
-            case MessageTypes.Hello:
-                await HandleHelloAsync(env);
-                break;
-
-            // ── Project browser ──────────────────────────────────────────
-            case MessageTypes.ProjectList:
-                await SendAsync(MessageTypes.ProjectListResult,
-                    new ProjectListResultPayload { Projects = ListProjects().Select(ToDto).ToList() },
-                    requestId: env.RequestId);
-                break;
-
-            case MessageTypes.ProjectRecent:
-                await SendAsync(MessageTypes.ProjectListResult,
-                    new ProjectListResultPayload { Projects = RecentProjects().Select(ToDto).ToList() },
-                    requestId: env.RequestId);
-                break;
-
-            case MessageTypes.ProjectOpen:
-            {
-                var p = Payload<ProjectOpenPayload>(env);
-                if (string.IsNullOrWhiteSpace(p?.ProjectId))
-                {
-                    await SendAsync(MessageTypes.Error, new ErrorPayload { Message = "ProjectId is required." }, requestId: env.RequestId);
-                    break;
-                }
-                _openProjects[p.ProjectId] = 0;
-                var opened = _registry.Open(p.ProjectId);
-                await SendAsync(MessageTypes.ProjectContext, ToContext(p.ProjectId, opened.Runtime), requestId: env.RequestId);
-                break;
-            }
-
-            case MessageTypes.ProjectCreate:
-            {
-                var p = Payload<ProjectCreatePayload>(env);
-                string manifestPath;
-                if (_userProvider != null && _userArea != null)
-                {
-                    // Server mode: the user gives only a NAME; the project is created inside their own
-                    // area and registered in their per-user provider (so it shows up on refresh).
-                    if (string.IsNullOrWhiteSpace(p?.Name))
-                    {
-                        await SendAsync(MessageTypes.Error, new ErrorPayload { Message = "Project name is required." }, requestId: env.RequestId);
-                        break;
-                    }
-                    var safe = SanitizeName(p.Name);
-                    manifestPath = System.IO.Path.Combine(_userArea, safe, safe + ".spla");
-                    _userProvider.Create(new ProjectDescriptor { Id = manifestPath, ManifestPath = manifestPath, Name = p.Name });
-                }
-                else
-                {
-                    if (string.IsNullOrWhiteSpace(p?.ManifestPath))
-                    {
-                        await SendAsync(MessageTypes.Error, new ErrorPayload { Message = "ManifestPath is required." }, requestId: env.RequestId);
-                        break;
-                    }
-                    manifestPath = p.ManifestPath;
-                    _registry.Create(new ProjectDescriptor { Id = manifestPath, ManifestPath = manifestPath, Name = p.Name });
-                }
-                _openProjects[manifestPath] = 0;
-                var opened = _registry.Open(manifestPath);
-                await SendAsync(MessageTypes.ProjectContext, ToContext(manifestPath, opened.Runtime), requestId: env.RequestId);
-                break;
-            }
-
-            // ── Chats ─────────────────────────────────────────────────────
-            case MessageTypes.ChatList:
-            {
-                var (entry, _) = Resolve(env);
-                await SendAsync(MessageTypes.ChatListResult, new ChatListResultPayload { Chats = entry.Chats.List() },
-                    requestId: env.RequestId);
-                break;
-            }
-
-            case MessageTypes.ChatNew:
-            {
-                var (entry, projectId) = Resolve(env);
-                var p = Payload<ChatNewPayload>(env) ?? new ChatNewPayload();
-                var chat = entry.Chats.CreateNew(p.Title);
-                await SendOpenedAsync(chat);
-                await BroadcastChatListAsync(projectId, entry.Chats);
-                break;
-            }
-
-            case MessageTypes.ChatRename:
-            {
-                var (entry, projectId) = Resolve(env);
-                var p = Payload<ChatRenamePayload>(env);
-                if (p != null) { entry.Chats.Rename(p.ChatId, p.Title); await BroadcastChatListAsync(projectId, entry.Chats); }
-                break;
-            }
-
-            case MessageTypes.ChatDelete:
-            {
-                var (entry, projectId) = Resolve(env);
-                var p = Payload<ChatDeletePayload>(env);
-                if (p != null) { entry.Chats.Delete(p.ChatId); await BroadcastChatListAsync(projectId, entry.Chats); }
-                break;
-            }
-
-            case MessageTypes.ChatOpen:
-            {
-                var (entry, _) = Resolve(env);
-                var p = Payload<ChatOpenPayload>(env);
-                var chat = p != null ? entry.Chats.GetOrOpen(p.ChatId) : null;
-                if (chat == null)
-                {
-                    await SendAsync(MessageTypes.Error, new ErrorPayload { Message = $"Chat not found: {p?.ChatId}" });
-                    break;
-                }
-                await SendOpenedAsync(chat);
-                break;
-            }
-
-            case MessageTypes.ChatWatch:
-            {
-                // Registers this connection as a watcher of both the chat (for turn events) and the
-                // project (for settings/usage broadcasts) without the side effects of ChatOpen.
-                Resolve(env);
-                var p = Payload<ChatOpenPayload>(env);
-                if (!string.IsNullOrEmpty(p?.ChatId)) _openChats[p.ChatId] = 0;
-                break;
-            }
-
-            case MessageTypes.ChatSend:
-            {
-                var (entry, projectId) = Resolve(env);
-                var p = Payload<ChatSendPayload>(env);
-                if (p == null) break;
-                var chat = entry.Chats.GetOrOpen(p.ChatId);
-                if (chat == null)
-                {
-                    await SendAsync(MessageTypes.Error, new ErrorPayload { Message = $"Chat not found: {p.ChatId}" });
-                    break;
-                }
-                // The sender must be a watcher of this chat, otherwise the turn's stream (which now
-                // fans out to watchers only) would never reach the very client that started it.
-                _openChats[p.ChatId] = 0;
-                // Run the turn in the background so the receive loop keeps serving permission/clarify
-                // answers and cancel requests for this very turn.
-                _ = RunTurnAsync(entry.Runtime, projectId, chat, p.Text, p.Images, hostStopping);
-                break;
-            }
-
-            case MessageTypes.ChatSettings:
-            {
-                var (entry, _) = Resolve(env);
-                var p = Payload<ChatSettingsPayload>(env);
-                if (p != null)
-                {
-                    var chat = entry.Chats.GetOrOpen(p.ChatId);
-                    if (chat != null)
-                    {
-                        chat.ApplySettings(p.Mode, p.ConnectionId);
-                        await SendOpenedAsync(chat);   // echo back the applied settings
-                    }
-                }
-                break;
-            }
-
-            case MessageTypes.FocusSet:
-            {
-                // A window focused a chat; echo to everyone so tear-off windows follow the active chat.
-                // Connection-level, not project-scoped — a debug/tear-off window may follow focus
-                // regardless of which project it is itself looking at.
-                var p = Payload<FocusPayload>(env);
-                if (p != null && !string.IsNullOrEmpty(p.ChatId))
-                    await _hub.BroadcastAsync(MessageTypes.FocusChanged, new FocusPayload { ChatId = p.ChatId });
-                break;
-            }
-
-            case MessageTypes.Cancel:
-            {
-                if (env.ChatId != null && _activeTurns.TryGetValue(env.ChatId, out var cts))
-                    cts.Cancel();
-                break;
-            }
-
-            case MessageTypes.PermissionDecision:
-            {
-                var p = Payload<PermissionDecisionPayload>(env);
-                if (env.RequestId != null && _pendingPermissions.TryRemove(env.RequestId, out var tcs))
-                    tcs.TrySetResult(ProtocolMapper.ParseDecision(p?.Decision));
-                break;
-            }
-
-            case MessageTypes.ClarifyChoice:
-            {
-                var p = Payload<ClarifyChoicePayload>(env);
-                if (env.RequestId != null && _pendingClarifies.TryRemove(env.RequestId, out var tcs))
-                    tcs.TrySetResult(p?.Choice);
-                break;
-            }
-
-            // ── Settings / connections ────────────────────────────────────
-            case MessageTypes.ConnectionsGet:
-            {
-                var (entry, projectId) = Resolve(env);
-                await SendAsync(MessageTypes.ConnectionsResult, SettingsOps.GetConnections(entry.Runtime), requestId: env.RequestId);
-                // Send cached health immediately so dots render without waiting for the network check.
-                await SendAsync(MessageTypes.ConnectionsHealth,
-                    ConnectionDiagOps.GetCachedHealth(entry.Runtime.Settings.Connections, entry.Runtime.ConnectionHealth));
-                // Re-ping all in background (settings panel just opened) → broadcast to this project's clients.
-                _ = PingAllAndBroadcastAsync(entry.Runtime, projectId);
-                break;
-            }
-
-            case MessageTypes.ConnectionPing:
-                await SendAsync(MessageTypes.ConnectionPingResult,
-                    await ConnectionDiagOps.PingAsync(Payload<ConnectionDiagRequest>(env)), requestId: env.RequestId);
-                break;
-
-            case MessageTypes.ConnectionModels:
-                await SendAsync(MessageTypes.ConnectionModelsResult,
-                    await ConnectionDiagOps.GetModelsAsync(Payload<ConnectionDiagRequest>(env)), requestId: env.RequestId);
-                break;
-
-            case MessageTypes.ConnectionTest:
-                await SendAsync(MessageTypes.ConnectionTestResult,
-                    await ConnectionDiagOps.TestChatAsync(Payload<ConnectionDiagRequest>(env)), requestId: env.RequestId);
-                break;
-
-            case MessageTypes.ConnectionSwapModel:
-            {
-                var (entry, projectId) = Resolve(env);
-                var req = Payload<ConnectionSwapModelRequest>(env);
-                if (req == null) break;
-                var swapResult = await SwapModelAsync(entry.Runtime, req, hostStopping);
-                await SendAsync(MessageTypes.ConnectionSwapModelResult, swapResult, requestId: env.RequestId);
-                if (swapResult.Error == null)
-                    await _hub.BroadcastToProjectAsync(projectId, MessageTypes.ConnectionsResult, SettingsOps.GetConnections(entry.Runtime));
-                break;
-            }
-
-            case MessageTypes.ConnectionsSave:
-            {
-                var (entry, projectId) = Resolve(env);
-                var p = Payload<ConnectionsPayload>(env);
-                var result = SettingsOps.SaveConnections(entry.Runtime, p?.Connections ?? new());
-                // Everyone on this project refreshes pickers/editors against the new list.
-                await _hub.BroadcastToProjectAsync(projectId, MessageTypes.ConnectionsResult, result);
-                // Re-ping after save — new or changed endpoints need a fresh check.
-                _ = PingAllAndBroadcastAsync(entry.Runtime, projectId);
-                break;
-            }
-
-            case MessageTypes.AgentGet:
-            {
-                var (entry, _) = Resolve(env);
-                await SendAsync(MessageTypes.AgentResult, SettingsOps.GetAgent(entry.Runtime), requestId: env.RequestId);
-                break;
-            }
-
-            case MessageTypes.PluginsGet:
-            {
-                var (entry, _) = Resolve(env);
-                await SendAsync(MessageTypes.PluginsResult, SettingsOps.GetPlugins(entry.Runtime), requestId: env.RequestId);
-                break;
-            }
-
-            case MessageTypes.PluginsSave:
-            {
-                var (entry, projectId) = Resolve(env);
-                var p = Payload<PluginsPayload>(env);
-                await _hub.BroadcastToProjectAsync(projectId, MessageTypes.PluginsResult,
-                    SettingsOps.SavePlugins(entry.Runtime, p?.Plugins ?? new()));
-                break;
-            }
-
-            case MessageTypes.PluginAction:
-            {
-                var (entry, _) = Resolve(env);
-                var p = Payload<PluginActionPayload>(env);
-                PluginActionResultPayload result;
-                try
-                {
-                    var value = await entry.Runtime.PluginManager.InvokeActionAsync(p?.PluginId ?? "", p?.Action ?? "", p?.ValueJson);
-                    result = new PluginActionResultPayload { Ok = true, ResultJson = JsonSerializer.Serialize(value) };
-                }
-                catch (Exception ex)
-                {
-                    result = new PluginActionResultPayload { Ok = false, Error = ex.Message };
-                }
-                await SendAsync(MessageTypes.PluginActionResult, result, requestId: env.RequestId);
-                break;
-            }
-
-            case MessageTypes.AgentSave:
-            {
-                var (entry, projectId) = Resolve(env);
-                var p = Payload<AgentSettingsPayload>(env);
-                if (p != null)
-                    await _hub.BroadcastToProjectAsync(projectId, MessageTypes.AgentResult, SettingsOps.SaveAgent(entry.Runtime, p));
-                break;
-            }
-
-            case MessageTypes.UsageGet:
-            {
-                var (entry, _) = Resolve(env);
-                await SendAsync(MessageTypes.UsageResult, SettingsOps.GetUsage(entry.Runtime), requestId: env.RequestId);
-                break;
-            }
-
-            case MessageTypes.SystemRegisterAssociation:
-                await SendAsync(MessageTypes.SystemRegisterAssociationResult, SystemOps.RegisterFileAssociation(), requestId: env.RequestId);
-                break;
-
-            case MessageTypes.AppearanceSave:
-            {
-                // Appearance auto-saves on change. SaveAppearance persists + publishes AppearanceChanged;
-                // the host's event subscriber fans appearance.changed out to this project's windows.
-                var (entry, _) = Resolve(env);
-                var p = Payload<AppearanceChangedPayload>(env);
-                if (p != null) SettingsOps.SaveAppearance(entry.Runtime, p.Theme, p.Density);
-                break;
-            }
-
-            case MessageTypes.DebugRequest:
-            {
-                var (entry, _) = Resolve(env);
-                var p = Payload<DebugRequestPayload>(env);
-                var chat = env.ChatId != null ? entry.Chats.GetOrOpen(env.ChatId) : null;
-                var snap = new LiveAgentInspector(entry.Runtime).Snapshot(p?.Kind ?? "", chat);
-                await SendAsync(MessageTypes.DebugSnapshot, snap, env.ChatId, env.RequestId);
-                break;
-            }
-
-            case MessageTypes.SchemaGet:
-            {
-                var (entry, _) = Resolve(env);
-                var p = Payload<SchemaGetPayload>(env);
-                if (string.IsNullOrWhiteSpace(p?.Name))
-                {
-                    await SendAsync(MessageTypes.SchemaResult,
-                        new SchemaResultPayload { Error = "Name is required." }, requestId: env.RequestId);
-                    break;
-                }
-                await SendAsync(MessageTypes.SchemaResult,
-                    SchemaOps.Get(entry.Runtime.SchemaRegistry, p.Name), requestId: env.RequestId);
-                break;
-            }
-
-            case MessageTypes.FsBrowse:
-            {
-                var (entry, _) = Resolve(env);
-                var p = Payload<FsBrowsePayload>(env);
-                var root = entry.Runtime.Settings.WorkspacePath;
-                await SendAsync(MessageTypes.FsBrowseResult,
-                    WorkspaceOps.Browse(root, p?.ParentRef), requestId: env.RequestId);
-                break;
-            }
-
-            case MessageTypes.FsRead:
-            {
-                var (entry, _) = Resolve(env);
-                var p = Payload<FsReadPayload>(env);
-                if (string.IsNullOrWhiteSpace(p?.Ref))
-                {
-                    await SendAsync(MessageTypes.FsReadResult,
-                        new FsReadResultPayload { Error = "Ref is required." }, requestId: env.RequestId);
-                    break;
-                }
-                var root = entry.Runtime.Settings.WorkspacePath;
-                await SendAsync(MessageTypes.FsReadResult,
-                    WorkspaceOps.Read(root, p.Ref), requestId: env.RequestId);
-                break;
-            }
-
-            case MessageTypes.FsWrite:
-            {
-                var (entry, _) = Resolve(env);
-                var p = Payload<FsWritePayload>(env);
-                if (string.IsNullOrWhiteSpace(p?.Ref))
-                {
-                    await SendAsync(MessageTypes.FsWriteResult,
-                        new FsWriteResultPayload { Error = "Ref is required." }, requestId: env.RequestId);
-                    break;
-                }
-                var root = entry.Runtime.Settings.WorkspacePath;
-                await SendAsync(MessageTypes.FsWriteResult,
-                    WorkspaceOps.Write(root, p.Ref, p.Text ?? ""), requestId: env.RequestId);
-                break;
-            }
-
-            default:
-                _log.LogWarning("Unknown message type: {Type}", env.Type);
-                break;
+            await SendAsync(MessageTypes.Error, new ErrorPayload { Message = "Unauthorized: handshake required." });
+            await _socket.CloseAsync(WebSocketCloseStatus.PolicyViolation, "unauthenticated", CancellationToken.None);
+            return;
         }
+
+        // Handshake is a connection concern (it flips authentication and describes the default
+        // project), so it stays here rather than in a handler.
+        if (env.Type == MessageTypes.Hello)
+        {
+            await HandleHelloAsync(env);
+            return;
+        }
+
+        var ctx = new RequestContext { Session = this, Env = env, HostStopping = hostStopping };
+        if (!await _router.TryDispatchAsync(ctx))
+            _log.LogWarning("Unknown message type: {Type}", env.Type);
     }
 
     private async Task HandleHelloAsync(ProtocolEnvelope env)
@@ -561,12 +233,15 @@ public sealed class ClientConnection
             return;
         }
 
-        // The handshake always describes the connection's default project — a single-project
-        // client never needs to know projects exist at all. In server mode this is the user's OWN
-        // default project (in their area), so a domain user lands in their space, not the server's.
+        // Handshake accepted — subsequent frames may be dispatched (see the token gate above).
+        _authenticated = true;
+
+        // The handshake always describes the connection's default project — a single-project client
+        // never needs to know projects exist at all. In server mode this is the user's OWN default
+        // project (in their area), so a domain user lands in their space, not the server's.
         var projectId = DefaultProjectId;
         _openProjects[projectId] = 0;
-        var ctx = ToContext(projectId, _registry.Open(projectId).Runtime);
+        var ctx = ProtocolProjection.ToContext(projectId, _registry.Open(projectId).Runtime);
 
         _log.LogInformation("Client connected as {User} ({Key}, {Groups} groups).",
             _identity.DisplayName, _identity.UserKey, _identity.Groups.Count);
@@ -592,68 +267,7 @@ public sealed class ClientConnection
         });
     }
 
-    private static ProjectDescriptorDto ToDto(ProjectDescriptor d) => new()
-    {
-        Id = d.Id,
-        Name = d.Name,
-        ManifestPath = d.ManifestPath,
-        LastOpened = d.LastOpened?.ToString("o")
-    };
-
-    private static ProjectContextPayload ToContext(string projectId, AgentRuntime runtime) => new()
-    {
-        ProjectId = projectId,
-        ProjectName = runtime.Settings.ProjectName,
-        WorkspacePath = runtime.Settings.WorkspacePath,
-        Connections = runtime.Settings.Connections
-            .Select(c => new ConnectionDto { Id = c.Id, Name = c.DisplayName }).ToList(),
-        Modes = Enum.GetNames<AgentMode>(),
-        DefaultMode = runtime.Settings.Mode.ToString(),
-        Theme = runtime.Settings.Theme,
-        Density = runtime.Settings.Density
-    };
-
-    private Task BroadcastChatListAsync(string projectId, ChatRegistry chats)
-        => _hub.BroadcastToProjectAsync(projectId, MessageTypes.ChatListResult, new ChatListResultPayload { Chats = chats.List() });
-
-    private Task PingAllAndBroadcastAsync(AgentRuntime runtime, string projectId) => Task.Run(async () =>
-    {
-        try
-        {
-            var health = await ConnectionDiagOps.PingAllAsync(runtime.Settings.Connections, runtime.ConnectionHealth);
-            await _hub.BroadcastToProjectAsync(projectId, MessageTypes.ConnectionsHealth, health);
-        }
-        catch { }
-    });
-
-    private static async Task<ConnectionSwapModelResult> SwapModelAsync(
-        AgentRuntime runtime, ConnectionSwapModelRequest req, CancellationToken ct)
-    {
-        var result = new ConnectionSwapModelResult { Id = req.Id };
-        try
-        {
-            var endpoint = req.Endpoint ?? "";
-            var apiKey   = req.ApiKey   ?? "lm-studio";
-
-            // Unload every currently loaded model instance before loading the new one.
-            var models = await runtime.ModelManagement.GetModelDetailsAsync(endpoint, apiKey, ct);
-            foreach (var m in models.Where(m => m.IsLoaded))
-                await runtime.ModelManagement.UnloadModelAsync(endpoint, apiKey, m.UnloadId, ct);
-
-            await runtime.ModelManagement.LoadModelAsync(endpoint, apiKey, req.ModelKey, ct);
-
-            // Update the live connection so chats immediately use the new model.
-            var conn = runtime.Settings.Connections.FirstOrDefault(c => c.Id == req.Id);
-            if (conn != null) conn.Model = req.ModelKey;
-
-            result.Model = req.ModelKey;
-        }
-        catch (Exception ex)
-        {
-            result.Error = ex.Message;
-        }
-        return result;
-    }
+    // ── Turn execution + outbound streaming ───────────────────────────────────
 
     /// <summary>Hub-facing send that never throws — used for broadcasts to all/watching connections.</summary>
     public async Task TrySendAsync(string type, object? payload, string? chatId = null)
@@ -662,7 +276,7 @@ public sealed class ClientConnection
         catch { /* a single dead client must not break a broadcast */ }
     }
 
-    private async Task SendOpenedAsync(ChatRuntime chat)
+    public async Task SendOpenedAsync(ChatRuntime chat)
     {
         _openChats[chat.ChatId] = 0;   // this connection now watches this chat
         await SendAsync(MessageTypes.ChatOpened, new ChatOpenedPayload
@@ -793,28 +407,18 @@ public sealed class ClientConnection
             return await tcs.Task;
     }
 
-    /// <summary>Turns a user-typed project name into a filesystem-safe folder/file name.</summary>
-    private static string SanitizeName(string name)
-    {
-        var invalid = System.IO.Path.GetInvalidFileNameChars();
-        var chars = name.Select(c => invalid.Contains(c) ? '_' : c).ToArray();
-        var s = new string(chars).Trim();
-        return string.IsNullOrEmpty(s) ? "project" : s;
-    }
+    // ── Framing ────────────────────────────────────────────────────────────────
 
-    private static T? Payload<T>(ProtocolEnvelope env) where T : class
-        => env.Payload is { } el ? el.Deserialize<T>(Json) : null;
-
-    private async Task SendAsync(string type, object? payload, string? chatId = null, string? requestId = null)
+    public async Task SendAsync(string type, object? payload, string? chatId = null, string? requestId = null)
     {
         var env = new ProtocolEnvelope
         {
             Type = type,
             ChatId = chatId,
             RequestId = requestId,
-            Payload = payload == null ? null : JsonSerializer.SerializeToElement(payload, Json)
+            Payload = payload == null ? null : JsonSerializer.SerializeToElement(payload, ServiceJson.Options)
         };
-        var bytes = JsonSerializer.SerializeToUtf8Bytes(env, Json);
+        var bytes = JsonSerializer.SerializeToUtf8Bytes(env, ServiceJson.Options);
 
         await _sendLock.WaitAsync();
         try
