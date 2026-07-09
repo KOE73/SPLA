@@ -1,0 +1,17 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\core\SPLA.Domain\SPLA.Domain.csproj" />
+    <ProjectReference Include="..\..\core\SPLA.MCP.Core\SPLA.MCP.Core.csproj" />
+    <ProjectReference Include="..\..\core\SPLA.Observability\SPLA.Observability.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="10.0.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <EmbeddedResource Include="main_sys_prompt.md" LogicalName="SPLA.Agent.main_sys_prompt.md" />
+  </ItemGroup>
+
+</Project>

@@ -1,0 +1,35 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <RootNamespace>SPLA.Plugins.Network</RootNamespace>
+    <AssemblyName>SPLA.Plugins.Network</AssemblyName>
+    <!-- Self-contained plugin: copy third-party NuGet deps (DnsClient) into the plugin folder so the
+         PluginLoadContext resolver finds them under any host (CLI/service, not just Avalonia). -->
+    <CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\core\SPLA.Domain\SPLA.Domain.csproj" />
+    <ProjectReference Include="..\..\core\SPLA.MCP.Core\SPLA.MCP.Core.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Full DNS record-type resolution (MX, TXT, CNAME, NS, SOA, SRV, PTR, etc.) -->
+    <PackageReference Include="DnsClient" Version="1.8.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Include="meta.yaml" CopyToOutputDirectory="PreserveNewest" Link="plugins\network\meta.yaml" />
+  </ItemGroup>
+
+  <Target Name="CopyPlugin" AfterTargets="Build">
+    <ItemGroup>
+      <PluginFiles Include="$(TargetDir)**\*.*" />
+      <MetaFile Include="meta.yaml" />
+    </ItemGroup>
+    <Copy SourceFiles="@(PluginFiles)" DestinationFolder="$(MSBuildThisFileDirectory)..\SPLA.UI.Avalonia\bin\$(Configuration)\$(TargetFramework)\plugins\network\%(RecursiveDir)" />
+    <Copy SourceFiles="@(MetaFile)" DestinationFolder="$(MSBuildThisFileDirectory)..\SPLA.UI.Avalonia\bin\$(Configuration)\$(TargetFramework)\plugins\network\" />
+    <Copy SourceFiles="@(PluginFiles)" DestinationFolder="$(MSBuildThisFileDirectory)..\SPLA.CLI\bin\$(Configuration)\$(TargetFramework)\plugins\network\%(RecursiveDir)" />
+    <Copy SourceFiles="@(MetaFile)" DestinationFolder="$(MSBuildThisFileDirectory)..\SPLA.CLI\bin\$(Configuration)\$(TargetFramework)\plugins\network\" />
+  </Target>
+</Project>

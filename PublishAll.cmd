@@ -22,14 +22,14 @@ if %ERRORLEVEL% neq 0 (
 )
 
 echo Publishing SPLA.UI.Avalonia (UI)...
-dotnet publish SPLA.UI.Avalonia/SPLA.UI.Avalonia.csproj -p:PublishProfile=SingleFile -c Release -o .publish/work
+dotnet publish src/apps/SPLA.UI.Avalonia/SPLA.UI.Avalonia.csproj -p:PublishProfile=SingleFile -c Release -o .publish/work
 if %ERRORLEVEL% neq 0 (
     echo Error publishing UI.
     exit /b %ERRORLEVEL%
 )
 
 echo Publishing SPLA.CLI (CLI)...
-dotnet publish SPLA.CLI/SPLA.CLI.csproj -c Release -o .publish/work
+dotnet publish src/apps/SPLA.CLI/SPLA.CLI.csproj -c Release -o .publish/work
 if %ERRORLEVEL% neq 0 (
     echo Error publishing CLI.
     exit /b %ERRORLEVEL%
@@ -37,38 +37,38 @@ if %ERRORLEVEL% neq 0 (
 
 echo Building plugins...
 echo 1. Network Plugin...
-dotnet publish SPLA.Plugins.Network/SPLA.Plugins.Network.csproj -c Release -o .publish/work/plugins/network
-copy /y SPLA.Plugins.Network\meta.yaml .publish\work\plugins\network\
-xcopy /s /y SPLA.Skills.Network\skills .publish\work\plugins\network\skills\
+dotnet publish src/plugins/SPLA.Plugins.Network/SPLA.Plugins.Network.csproj -c Release -o .publish/work/plugins/network
+copy /y src\plugins\SPLA.Plugins.Network\meta.yaml .publish\work\plugins\network\
+xcopy /s /y src\plugins\SPLA.Skills.Network\skills .publish\work\plugins\network\skills\
 
 echo 2. Test Plugin...
-dotnet publish SPLA.Plugins.Test/SPLA.Plugins.Test.csproj -c Release -o .publish/work/plugins/test
-copy /y SPLA.Plugins.Test\meta.yaml .publish\work\plugins\test\
+dotnet publish src/plugins/SPLA.Plugins.Test/SPLA.Plugins.Test.csproj -c Release -o .publish/work/plugins/test
+copy /y src\plugins\SPLA.Plugins.Test\meta.yaml .publish\work\plugins\test\
 
 echo 3. OneC Plugin...
-dotnet publish SPLA.Plugins.OneC/SPLA.Plugins.OneC.csproj -c Release -o .publish/work/plugins/onec
-copy /y SPLA.Plugins.OneC\meta.yaml .publish\work\plugins\onec\
-if exist SPLA.Plugins.OneC\Assets xcopy /s /y SPLA.Plugins.OneC\Assets .publish\work\plugins\onec\Assets\
+dotnet publish src/plugins/SPLA.Plugins.OneC/SPLA.Plugins.OneC.csproj -c Release -o .publish/work/plugins/onec
+copy /y src\plugins\SPLA.Plugins.OneC\meta.yaml .publish\work\plugins\onec\
+if exist src\plugins\SPLA.Plugins.OneC\Assets xcopy /s /y src\plugins\SPLA.Plugins.OneC\Assets .publish\work\plugins\onec\Assets\
 
 echo 4. OneC Avalonia UI Plugin...
-dotnet publish SPLA.Plugins.OneC.Avalonia/SPLA.Plugins.OneC.Avalonia.csproj -c Release -o .publish/work/plugins/onec_avalonia
-copy /y SPLA.Plugins.OneC.Avalonia\meta.yaml .publish\work\plugins\onec_avalonia\
+dotnet publish src/plugins/SPLA.Plugins.OneC.Avalonia/SPLA.Plugins.OneC.Avalonia.csproj -c Release -o .publish/work/plugins/onec_avalonia
+copy /y src\plugins\SPLA.Plugins.OneC.Avalonia\meta.yaml .publish\work\plugins\onec_avalonia\
 
 echo 5. SQL Plugin...
-dotnet publish SPLA.Plugins.Sql/SPLA.Plugins.Sql.csproj -c Release -o .publish/work/plugins/sql
-copy /y SPLA.Plugins.Sql\meta.yaml .publish\work\plugins\sql\
+dotnet publish src/plugins/SPLA.Plugins.Sql/SPLA.Plugins.Sql.csproj -c Release -o .publish/work/plugins/sql
+copy /y src\plugins\SPLA.Plugins.Sql\meta.yaml .publish\work\plugins\sql\
 
 echo 5b. SQL Avalonia UI Plugin...
-dotnet publish SPLA.Plugins.Sql.Avalonia/SPLA.Plugins.Sql.Avalonia.csproj -c Release -o .publish/work/plugins/sql_avalonia
-copy /y SPLA.Plugins.Sql.Avalonia\meta.yaml .publish\work\plugins\sql_avalonia\
+dotnet publish src/plugins/SPLA.Plugins.Sql.Avalonia/SPLA.Plugins.Sql.Avalonia.csproj -c Release -o .publish/work/plugins/sql_avalonia
+copy /y src\plugins\SPLA.Plugins.Sql.Avalonia\meta.yaml .publish\work\plugins\sql_avalonia\
 
 echo 6. Roslyn Plugin...
-dotnet publish SPLA.Plugins.Roslyn/SPLA.Plugins.Roslyn.csproj -c Release -o .publish/work/plugins/roslyn
-copy /y SPLA.Plugins.Roslyn\meta.yaml .publish\work\plugins\roslyn\
+dotnet publish src/plugins/SPLA.Plugins.Roslyn/SPLA.Plugins.Roslyn.csproj -c Release -o .publish/work/plugins/roslyn
+copy /y src\plugins\SPLA.Plugins.Roslyn\meta.yaml .publish\work\plugins\roslyn\
 
 echo 7. Browser Plugin...
-dotnet publish SPLA.Plugins.Browser/SPLA.Plugins.Browser.csproj -c Release -o .publish/work/plugins/browser
-copy /y SPLA.Plugins.Browser\meta.yaml .publish\work\plugins\browser\
+dotnet publish src/plugins/SPLA.Plugins.Browser/SPLA.Plugins.Browser.csproj -c Release -o .publish/work/plugins/browser
+copy /y src\plugins\SPLA.Plugins.Browser\meta.yaml .publish\work\plugins\browser\
 
 echo Cleaning debug and documentation artifacts from publish work folder...
 del /s /q .publish\work\*.pdb >nul 2>nul

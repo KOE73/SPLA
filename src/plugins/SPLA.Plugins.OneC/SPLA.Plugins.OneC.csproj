@@ -1,0 +1,44 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <RootNamespace>SPLA.Plugins.OneC</RootNamespace>
+    <AssemblyName>SPLA.Plugins.OneC</AssemblyName>
+    <!-- Self-contained plugin: copy third-party NuGet deps (Microsoft.Data.Sqlite + native
+         SQLitePCLRaw e_sqlite3) into the plugin folder so the PluginLoadContext resolver finds them
+         under any host (CLI/service, not just Avalonia). -->
+    <CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\core\SPLA.MCP.Core\SPLA.MCP.Core.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Data.Sqlite" Version="10.0.9" />
+    <!--
+      SQLITE_VULN_OVERRIDE (see docs/TODO_SQLITE_VULN.md).
+      Microsoft.Data.Sqlite 10.0.9 still pulls SQLitePCLRaw 2.1.x, whose native
+      SQLitePCLRaw.lib.e_sqlite3 is deprecated and flagged by GHSA-2m69-gcr7-jv3q
+      (no fix on the 2.1 line). Override to the 3.0.x bundle, which swaps in
+      SourceGear.sqlite3 (SQLite 3.50.4) and carries the fix.
+    -->
+    <PackageReference Include="SQLitePCLRaw.bundle_e_sqlite3" Version="3.0.3" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Embed the Cytoscape.js HTML viewer as an embedded resource -->
+    <EmbeddedResource Include="Assets\onec_graph.html" />
+  </ItemGroup>
+
+  <Target Name="CopyPlugin" AfterTargets="Build">
+    <ItemGroup>
+      <PluginFiles Include="$(TargetDir)**\*.*" />
+      <MetaFile Include="meta.yaml" />
+    </ItemGroup>
+    <Copy SourceFiles="@(PluginFiles)" DestinationFolder="$(MSBuildThisFileDirectory)..\SPLA.UI.Avalonia\bin\$(Configuration)\$(TargetFramework)\plugins\onec\%(RecursiveDir)" />
+    <Copy SourceFiles="@(MetaFile)" DestinationFolder="$(MSBuildThisFileDirectory)..\SPLA.UI.Avalonia\bin\$(Configuration)\$(TargetFramework)\plugins\onec\" />
+    <Copy SourceFiles="@(PluginFiles)" DestinationFolder="$(MSBuildThisFileDirectory)..\SPLA.CLI\bin\$(Configuration)\$(TargetFramework)\plugins\onec\%(RecursiveDir)" />
+    <Copy SourceFiles="@(MetaFile)" DestinationFolder="$(MSBuildThisFileDirectory)..\SPLA.CLI\bin\$(Configuration)\$(TargetFramework)\plugins\onec\" />
+  </Target>
+
+</Project>

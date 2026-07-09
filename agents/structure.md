@@ -6,22 +6,65 @@ This file is an agent-facing map of the current repository layout.
 
 The active solution file is `SPLA.slnx`.
 
-Projects included in the solution:
+Projects live under `src/` grouped by architectural layer, with tests under `tests/`. Each layer
+folder carries a directional `AGENTS.md` where it has non-trivial local invariants (`src/core`,
+`src/agent`, `src/service`, `src/apps`, `src/plugins`) — read the one for the layer you are editing
+in addition to the root `AGENTS.md`.
 
-- `SPLA.Domain`: Shared domain models and cross-project contracts. Contains ambient-scope utilities that tools use without signature changes: `ProgressScope`/`ProgressTree`/`ProgressNode` (progress tree per agent turn), `ToolHostScope` (current `IToolHost`+`AgentMode`), `ClarifyScope`, `AgentSessionScope`.
-- `SPLA.LLM.LMStudio`: Local LLM provider integration for LM Studio / OpenAI-compatible API endpoints.
-- `SPLA.MCP.Core`: MCP host core, tool abstractions, plugin metadata, plugin loading, command descriptors, permissions integration, and tool help routing.
-- `SPLA.MCP.BasicTools`: Built-in tools for filesystem, shell, .NET build/test, context, date/time, web fetch, and web search.
+### `src/core/` — foundation (no upward/outward deps)
+
+- `SPLA.Domain`: Shared domain models and cross-project contracts. Contains ambient-scope utilities that tools use without signature changes: `ProgressScope`/`ProgressTree`/`ProgressNode` (progress tree per agent turn), `ToolHostScope` (current `IToolHost`+`AgentMode`), `ClarifyScope`, `AgentSessionScope`. Also the host boundary (`ISandbox`/`IWorkspace`/`IShell`/`ICapabilityGate`), project backends (`IProjectBackend`/`IBucket`), identity, and secrets.
+- `SPLA.MCP.Core`: MCP host core, tool abstractions, plugin metadata, plugin loading, permissions (`PermissionManager`, `PermissionScope`), and tool help routing.
 - `SPLA.Observability`: Shared logging, tracing, metrics, correlation, and log destination infrastructure.
+
+### `src/agent/` — the agent loop
+
+- `SPLA.Agent`: The single agent loop (`ConversationOrchestrator`), layered system-prompt builder (`SystemPromptBuilder`), mode-based tool gating (`ToolModeFilter`), and headless skill sub-agents (`SpawnedAgentRunner`).
+- `SPLA.MCP.BasicTools`: Built-in tools for filesystem, shell, .NET build/test, context, date/time, web fetch, and web search. Reach the system only through `HostServices.Sandbox`.
+
+### `src/llm/`
+
+- `SPLA.LLM.LMStudio`: Local LLM provider integration for LM Studio / OpenAI-compatible API endpoints.
+
+### `src/editor/`
+
+- `SPLA.Editor.Schema`: Schema/JSON editor domain (content sources, schema registry) for the workspace forms/text editors.
+
+### `src/identity/`
+
+- `SPLA.Identity.Windows`: Windows identity provider (`net10.0-windows`) mapping `WindowsIdentity`/`WindowsPrincipal` → `IIdentity`. A platform DLL loaded by reflection, not referenced by the host.
+
+### `src/service/` — service core & wire protocol
+
+- `SPLA.Service`: WebSocket host (`SplaServiceHost`), per-project/per-chat runtimes (`AgentRuntime`/`ChatRuntime`/`AgentRuntimeRegistry`), and the message-handler registry (`Protocol/MessageRouter.cs` + `Protocol/Handlers/*`). `ClientConnection` owns only transport, auth/handshake, correlation, and turn plumbing.
+- `SPLA.Service.Contracts`: The wire protocol — `MessageTypes` constants and payload DTOs shared with the web client.
+
+### `src/apps/` — entry points
+
+- `SPLA.CLI`: Command-line entry point (REPL + `serve`) on the same core/LLM/tools/observability layers.
+- `SPLA.Server`: Domain deployment host — Negotiate auth, per-user file areas, identity provider loaded by config. References no platform.
+- `SPLA.UI.Avalonia`: Desktop shell. A WebView over the web client that spawns a child `SPLA.CLI serve` on loopback (`EmbeddedServiceLauncher`) and talks the same protocol a browser does.
+
+### `src/plugins/` — plugins & skills
+
 - `SPLA.Plugins.Host.Avalonia`: Avalonia UI plugin host contracts shared between the main UI and UI plugins.
 - `SPLA.Plugins.Network`: Network plugin with host info, LAN scan, port scan, ping, nslookup, HTTP GET/HEAD, port check, and traceroute tools.
 - `SPLA.Plugins.Roslyn`: Roslyn C# tooling plugin. `roslyn_compile_check` compiles a self-contained snippet against the .NET BCL and returns diagnostics. `roslyn_script_run` compiles and runs a C# script (top-level statements) that drives a plan by invoking tools via `ctx.Run(name, args)`, with `Task.WhenAll` parallelism and progress reporting.
-- `SPLA.Skills.Network`: Network skill definitions (`.md` files). Independent of the plugin — skills are instructions, not code. Built via `Microsoft.Build.NoTargets`; `CopySkills` target copies files to `plugins/network/skills/` in UI and CLI output directories.
+- `SPLA.Skills.Network`: Network skill definitions (`.md` files). Independent of the plugin — skills are instructions, not code. Built via `Microsoft.Build.NoTargets`; `CopySkills` target copies files to `plugins/network.skills/` in the CLI and UI output directories (paths are relative to `src/plugins/` → `src/apps/`).
 - `SPLA.Plugins.OneC`: 1C analysis plugin with indexing, object lookup/explanation, references, dependency analysis, readers/writers, and graph data support.
 - `SPLA.Plugins.OneC.Avalonia`: Avalonia UI plugin for the 1C analysis experience. Its manifest type is `avalonia-ui` and it depends on `onec`.
-- `SPLA.UI.Avalonia`: Main desktop application. Hosts chat, settings, plugin commands, plugin panels, webchat assets, themes, and project interaction services.
-- `SPLA.CLI`: Command-line entry point using the same core, LLM, basic tools, and observability layers.
-- `SPLA.Tests`: Test project.
+- `SPLA.Plugins.Sql`, `SPLA.Plugins.Sql.Avalonia`: SQL query/schema/execute plugin and its Avalonia UI panel.
+- `SPLA.Plugins.Browser`: Playwright-driven browser automation plugin.
+- `SPLA.Plugins.Test`: Test plugin manifest. Present in the repository but not currently listed in `SPLA.slnx`.
+
+### `tests/`
+
+- `SPLA.Tests`: Test project. Protocol tests bind an OS-assigned free port (`FreePort()`), never a hardcoded one.
+
+## Non-code top-level folders
+
+- `web/`: The Vue 3 + TS + Vite browser client, embedded into `SPLA.Service` at build time.
+- `docs/`, `agents/`, `Images/`: Documentation and assets (unchanged by the layered `src/` layout).
 
 ## Root Files
 

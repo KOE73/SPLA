@@ -1,0 +1,37 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <RootNamespace>SPLA.Plugins.Roslyn</RootNamespace>
+    <AssemblyName>SPLA.Plugins.Roslyn</AssemblyName>
+    <!-- Self-contained plugin: copy third-party NuGet deps (Microsoft.CodeAnalysis.*) into the plugin
+         folder so the PluginLoadContext resolver finds them under any host (CLI/service, not just
+         Avalonia). -->
+    <CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\core\SPLA.Domain\SPLA.Domain.csproj" />
+    <ProjectReference Include="..\..\core\SPLA.MCP.Core\SPLA.MCP.Core.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- C# compiler-as-a-service: parse, compile, diagnostics. Scripting drives roslyn_script_run. -->
+    <PackageReference Include="Microsoft.CodeAnalysis.CSharp" Version="4.14.0" />
+    <PackageReference Include="Microsoft.CodeAnalysis.CSharp.Scripting" Version="4.14.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Include="meta.yaml" CopyToOutputDirectory="PreserveNewest" Link="plugins\roslyn\meta.yaml" />
+  </ItemGroup>
+
+  <Target Name="CopyPlugin" AfterTargets="Build">
+    <ItemGroup>
+      <PluginFiles Include="$(TargetDir)**\*.*" />
+      <MetaFile Include="meta.yaml" />
+    </ItemGroup>
+    <Copy SourceFiles="@(PluginFiles)" DestinationFolder="$(MSBuildThisFileDirectory)..\SPLA.UI.Avalonia\bin\$(Configuration)\$(TargetFramework)\plugins\roslyn\%(RecursiveDir)" />
+    <Copy SourceFiles="@(MetaFile)" DestinationFolder="$(MSBuildThisFileDirectory)..\SPLA.UI.Avalonia\bin\$(Configuration)\$(TargetFramework)\plugins\roslyn\" />
+    <Copy SourceFiles="@(PluginFiles)" DestinationFolder="$(MSBuildThisFileDirectory)..\SPLA.CLI\bin\$(Configuration)\$(TargetFramework)\plugins\roslyn\%(RecursiveDir)" />
+    <Copy SourceFiles="@(MetaFile)" DestinationFolder="$(MSBuildThisFileDirectory)..\SPLA.CLI\bin\$(Configuration)\$(TargetFramework)\plugins\roslyn\" />
+  </Target>
+</Project>

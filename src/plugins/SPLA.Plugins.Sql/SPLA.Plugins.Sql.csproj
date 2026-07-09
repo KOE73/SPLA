@@ -1,0 +1,57 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <RootNamespace>SPLA.Plugins.Sql</RootNamespace>
+    <AssemblyName>SPLA.Plugins.Sql</AssemblyName>
+    <!--
+      A plugin must be self-contained: its third-party NuGet dependencies (Microsoft.Data.SqlClient
+      and its native SNI, Dapper, YamlDotNet) have to sit in the plugin's own output folder so the
+      PluginLoadContext's AssemblyDependencyResolver finds them under ANY host. Without this, a class
+      library does not copy package DLLs locally, so the plugin only loaded under Avalonia (which
+      happened to carry Microsoft.Data.SqlClient in its app base dir) and threw "Could not load file
+      or assembly 'Microsoft.Data.SqlClient'" under the CLI/service host.
+    -->
+    <CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\core\SPLA.Domain\SPLA.Domain.csproj" />
+    <ProjectReference Include="..\..\core\SPLA.MCP.Core\SPLA.MCP.Core.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Data.SqlClient" Version="5.*" />
+    <!-- <PackageReference Include="Npgsql" Version="9.*" /> -->
+    <!-- <PackageReference Include="Microsoft.Data.Sqlite" Version="9.*" /> -->
+    <PackageReference Include="Dapper" Version="2.*" />
+    <PackageReference Include="YamlDotNet" Version="18.0.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Include="meta.yaml" CopyToOutputDirectory="PreserveNewest" Link="plugins\sql\meta.yaml" />
+  </ItemGroup>
+
+  <!-- Reference schemas for the schema-driven editor (docs/schema-editor-plan.md, Фаза 2).
+       Вшиваются в DLL как ресурсы и отдаются через SqlSchemaProvider — НИ ОДНОГО файла рядом
+       с приложением. LogicalName совпадает с именем схемы, которое декларирует файл данных. -->
+  <ItemGroup>
+    <EmbeddedResource Include="Schemas\sql-table.schema.json">
+      <LogicalName>sql-table@1</LogicalName>
+    </EmbeddedResource>
+    <EmbeddedResource Include="Schemas\sql-table.ui.json">
+      <LogicalName>sql-table.ui</LogicalName>
+    </EmbeddedResource>
+  </ItemGroup>
+
+  <Target Name="CopyPlugin" AfterTargets="Build">
+    <ItemGroup>
+      <PluginFiles Include="$(TargetDir)**\*.*" />
+      <MetaFile Include="meta.yaml" />
+    </ItemGroup>
+    <Copy SourceFiles="@(PluginFiles)" DestinationFolder="$(MSBuildThisFileDirectory)..\SPLA.UI.Avalonia\bin\$(Configuration)\$(TargetFramework)\plugins\sql\%(RecursiveDir)" />
+    <Copy SourceFiles="@(MetaFile)" DestinationFolder="$(MSBuildThisFileDirectory)..\SPLA.UI.Avalonia\bin\$(Configuration)\$(TargetFramework)\plugins\sql\" />
+    <Copy SourceFiles="@(PluginFiles)" DestinationFolder="$(MSBuildThisFileDirectory)..\SPLA.CLI\bin\$(Configuration)\$(TargetFramework)\plugins\sql\%(RecursiveDir)" />
+    <Copy SourceFiles="@(MetaFile)" DestinationFolder="$(MSBuildThisFileDirectory)..\SPLA.CLI\bin\$(Configuration)\$(TargetFramework)\plugins\sql\" />
+  </Target>
+
+</Project>

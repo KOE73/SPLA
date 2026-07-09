@@ -1,0 +1,36 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <!-- Platform-NEUTRAL on purpose: the host has no Windows reference. Negotiate itself is
+         cross-platform; the only platform-specific piece (resolving the OS principal) lives in a DLL
+         loaded by config at runtime. To target Linux, ship a different identity DLL and edit
+         server.json — this project and its TFM never change. -->
+    <TargetFramework>net10.0</TargetFramework>
+    <AssemblyName>SPLA.Server</AssemblyName>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\core\SPLA.Domain\SPLA.Domain.csproj" />
+    <ProjectReference Include="..\..\service\SPLA.Service\SPLA.Service.csproj" />
+    <ProjectReference Include="..\..\core\SPLA.Observability\SPLA.Observability.csproj" />
+  </ItemGroup>
+
+  <!-- server.json (identity provider wiring) ships next to the exe. -->
+  <ItemGroup>
+    <None Update="server.json" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
+  <!-- Drop the Windows identity provider DLL into identity/ as an ARTIFACT, not a reference: the host
+       never compiles against it, it is only present for server.json to load by reflection. Copied
+       from the sibling project's build output when it exists (build it first, e.g. via RunServer.cmd
+       or a full solution build). On a non-Windows box you simply omit it and configure another DLL. -->
+  <Target Name="CopyWindowsIdentityProvider" AfterTargets="Build"
+          Condition="Exists('$(MSBuildProjectDirectory)\..\SPLA.Identity.Windows\bin\$(Configuration)\net10.0-windows\SPLA.Identity.Windows.dll')">
+    <ItemGroup>
+      <_IdentityDll Include="$(MSBuildProjectDirectory)\..\SPLA.Identity.Windows\bin\$(Configuration)\net10.0-windows\SPLA.Identity.Windows.dll" />
+    </ItemGroup>
+    <Copy SourceFiles="@(_IdentityDll)" DestinationFolder="$(OutDir)identity" SkipUnchangedFiles="true" />
+  </Target>
+
+</Project>

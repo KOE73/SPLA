@@ -1,0 +1,23 @@
+<Project Sdk="Microsoft.Build.NoTargets/3.7.56">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+  </PropertyGroup>
+
+  <Target Name="CopySkills" AfterTargets="Build">
+    <ItemGroup>
+      <SkillFiles Include="$(MSBuildThisFileDirectory)skills\*.md" />
+    </ItemGroup>
+    <MakeDir Directories="..\..\apps\SPLA.UI.Avalonia\bin\$(Configuration)\$(TargetFramework)\plugins\network.skills\" />
+    <MakeDir Directories="..\..\apps\SPLA.CLI\bin\$(Configuration)\$(TargetFramework)\plugins\network.skills\" />
+    <Copy SourceFiles="$(MSBuildThisFileDirectory)meta.yaml"
+          DestinationFolder="..\..\apps\SPLA.UI.Avalonia\bin\$(Configuration)\$(TargetFramework)\plugins\network.skills\" />
+    <Copy SourceFiles="$(MSBuildThisFileDirectory)meta.yaml"
+          DestinationFolder="..\..\apps\SPLA.CLI\bin\$(Configuration)\$(TargetFramework)\plugins\network.skills\" />
+    <Copy SourceFiles="@(SkillFiles)"
+          DestinationFolder="..\..\apps\SPLA.UI.Avalonia\bin\$(Configuration)\$(TargetFramework)\plugins\network.skills\" />
+    <Copy SourceFiles="@(SkillFiles)"
+          DestinationFolder="..\..\apps\SPLA.CLI\bin\$(Configuration)\$(TargetFramework)\plugins\network.skills\" />
+  </Target>
+
+</Project>

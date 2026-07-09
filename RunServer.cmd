@@ -24,7 +24,7 @@ if errorlevel 1 (
 )
 
 echo Building the Windows identity provider DLL (loaded by server.json, not referenced)...
-dotnet build SPLA.Identity.Windows\SPLA.Identity.Windows.csproj -c Debug --nologo -v q
+dotnet build src\identity\SPLA.Identity.Windows\SPLA.Identity.Windows.csproj -c Debug --nologo -v q
 if errorlevel 1 (
     echo Error building identity provider.
     exit /b 1
@@ -37,6 +37,6 @@ start "" /b powershell -NoProfile -Command "Start-Sleep -Seconds 7; Start-Proces
 
 echo Starting SPLA.Server (build + serve) on 0.0.0.0:5050 with Negotiate auth ...
 echo (Ctrl+C to stop.)
-dotnet run --project SPLA.Server -c Debug -- --port 5050
+dotnet run --project src/apps/SPLA.Server -c Debug -- --port 5050
 
 endlocal
