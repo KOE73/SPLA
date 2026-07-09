@@ -41,11 +41,33 @@ public sealed class LocalShell : IShell
         using var process = Process.Start(psi)
             ?? throw new InvalidOperationException("Could not start process.");
 
-        var outputTask = process.StandardOutput.ReadToEndAsync(ct);
-        var errorTask = process.StandardError.ReadToEndAsync(ct);
-        await process.WaitForExitAsync(ct);
+        try
+        {
+            var outputTask = process.StandardOutput.ReadToEndAsync(ct);
+            var errorTask = process.StandardError.ReadToEndAsync(ct);
+            await process.WaitForExitAsync(ct);
 
-        return new ShellResult(process.ExitCode, await outputTask, await errorTask);
+            return new ShellResult(process.ExitCode, await outputTask, await errorTask);
+        }
+        catch (OperationCanceledException)
+        {
+            // Cancelling the turn must not leave an orphaned PowerShell — and whatever long-running
+            // command it spawned (a build, a scan) — running on the host. Kill the whole tree.
+            TryKillTree(process);
+            throw;
+        }
+    }
+
+    private static void TryKillTree(Process process)
+    {
+        try
+        {
+            if (!process.HasExited) process.Kill(entireProcessTree: true);
+        }
+        catch
+        {
+            // Already exited, or we lost the race / lack access — nothing more we can do here.
+        }
     }
 
     private static string BuildPowerShellScript(string command, int codePage)
