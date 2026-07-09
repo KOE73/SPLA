@@ -33,6 +33,9 @@ crash.txt
 *.temp
 *.cache
 
+# Local build log written by build_network.bat
+build_output.txt
+
 # Local databases and indexes
 *.db
 *.db-shm
