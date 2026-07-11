@@ -87,9 +87,12 @@ routes an interactive prompt via `PermissionScope` to the initiating client and 
 ## Caveats agents must know (not obvious from the matrix)
 
 - **No tool currently declares `Risk == Danger`.** So in Agent mode the only "Ask on shell" branch
-  never fires — `system_run_shell` (`Risk == High`) and `roslyn_script_run` (`Scope.Shell`,
-  `Risk == High`) are **auto-allowed in Agent mode without a prompt**. If you want a shell command to
-  require confirmation in Agent mode, it must be classified `Danger` (or the mode logic must change).
+  never fires — `system_run_shell` (`Risk == High`), `roslyn_script_run`, and the
+  `roslyn_project_build` / `roslyn_project_run` / `roslyn_project_test` tools (all `Scope.Shell`,
+  `Risk == High`, invoking the `dotnet` SDK — a build or `dotnet run` executes arbitrary
+  project/MSBuild code) are **auto-allowed in Agent mode without a prompt**. If you want a shell
+  command to require confirmation in Agent mode, it must be classified `Danger` (or the mode logic
+  must change).
 - **`Scope == Agent` is unconditional Allow.** A tool that declares `Scope.Agent` runs in *every*
   mode, including Chat, with no prompt. Do not give a plugin tool `Scope.Agent`/`Scope.Skill` — those
   are core-only classifications (see `src/plugins/AGENTS.md`).
