@@ -15,6 +15,12 @@
   <button class="filter" @click="openSettings">⚙</button>
   <button class="filter" @click="uiBus.emit('debug.open')">debug</button>
   <span id="tokens">{{ tokensText }}</span>
+  <span
+    v-if="ctxPercent != null"
+    id="ctxBudget"
+    :class="{ warn: ctxPercent >= 80, crit: ctxPercent >= 95 }"
+    :title="ctxTitle"
+  >ctx {{ ctxPercent }}%</span>
 </template>
 
 <script setup lang="ts">
@@ -32,6 +38,20 @@ const connPairs = ref<{ id: string; label: string }[]>([]);
 const connectionId = ref("");
 const connHealth = ref<Record<string, ConnHealth>>({});
 const tokensText = ref("");
+const ctxUsed = ref<number | null>(null);
+const ctxWindow = ref<number | null>(null);
+
+const ctxPercent = computed(() => {
+  if (ctxUsed.value == null || !ctxWindow.value) return null;
+  return Math.min(100, Math.round((ctxUsed.value / ctxWindow.value) * 100));
+});
+const ctxTitle = computed(() => {
+  if (ctxUsed.value == null || !ctxWindow.value) return "";
+  const base = `context: ${ctxUsed.value.toLocaleString()} of ${ctxWindow.value.toLocaleString()} tokens`;
+  if ((ctxPercent.value ?? 0) >= 95) return base + " — almost full: start a new chat or the next request may fail";
+  if ((ctxPercent.value ?? 0) >= 80) return base + " — getting full: consider a new chat soon";
+  return base;
+});
 
 function connEmoji(id: string): string {
   const h = connHealth.value[id];
@@ -69,10 +89,20 @@ const offWelcome = client.on("welcome", p => {
 const offChatOpened = client.on("chat.opened", p => {
   if (p.mode) mode.value = p.mode;
   connectionId.value = p.connectionId || "";
+  // Another chat has a different history size — a stale percent is misleading until its first turn.
+  ctxUsed.value = null;
+  ctxWindow.value = null;
 });
 const offTokens = client.on("token.usage", p => {
   if (p.promptTokens != null || p.completionTokens != null)
     tokensText.value = "tokens in:" + (p.promptTokens ?? "?") + " out:" + (p.completionTokens ?? "?");
+  // Context budget: prompt tokens vs the model's operative window (when the server knows it).
+  // Warn well before the provider would reject the request — local runtimes often fail with an
+  // opaque 500 instead of a clean "context exceeded" error.
+  if (p.contextLength && p.promptTokens != null) {
+    ctxUsed.value = p.promptTokens + (p.completionTokens ?? 0);
+    ctxWindow.value = p.contextLength;
+  }
 });
 const offResult = client.on("connections.result", p => {
   connPairs.value = (p.connections || []).map(x => ({ id: x.id, label: x.name || x.model || x.id }));

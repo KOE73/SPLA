@@ -29,6 +29,7 @@
 <script setup lang="ts">
 import { onUnmounted, ref } from "vue";
 import { client } from "../../protocol/SplaClient";
+import { projectEnvelope } from "../../state/project";
 import { layoutNames } from "../../layouts/layouts";
 
 const theme = ref(localStorage.getItem("spla.theme") || "dark");
@@ -43,7 +44,7 @@ function densityLabel(d: string) { return ({ nano: "Nano", mini: "Mini", norm: "
 
 // Auto-applies: no Save step. Each pick persists to .spla and broadcasts appearance.changed,
 // so every window updates live through one path — preview is the commit.
-function saveAppearance() { client.send("appearance.save", { theme: theme.value, density: density.value }); }
+function saveAppearance() { client.send("appearance.save", { theme: theme.value, density: density.value }, projectEnvelope()); }
 function saveLayout() { localStorage.setItem("spla.layout", layoutName.value); }
 
 const off = client.on("agent.result", p => {

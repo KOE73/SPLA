@@ -99,7 +99,7 @@ client/types **and** this table.
 | `tool.progress` | `ToolProgress` | `ToolProgressPayload` | watchers | Throttled progress ticks. |
 | `tool.result` | `ToolResult` | `ToolResultPayload` | watchers | A tool call finished. |
 | `notice` | `Notice` | `NoticePayload` | watchers | Inline notice. |
-| `token.usage` | `TokenUsage` | `TokenUsagePayload` | watchers | Per-turn token counts. |
+| `token.usage` | `TokenUsage` | `TokenUsagePayload` | watchers | Per-turn token counts; `contextLength` (nullable) carries the model's operative window for the client's context-budget display. |
 | `turn.complete` | `TurnComplete` | `TurnCompletePayload` | watchers | Turn ended; re-enable input. |
 | `permission.request` | `PermissionRequest` | `PermissionRequestPayload` | unicast | To the initiating client (by `requestId`). |
 | `clarify.request` | `ClarifyRequest` | `ClarifyRequestPayload` | unicast | To the initiating client (by `requestId`). |

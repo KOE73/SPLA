@@ -3,6 +3,7 @@ using SPLA.Domain.Identity;
 using SPLA.Domain.Settings;
 using SPLA.Observability;
 using SPLA.Service;
+using SPLA.Service.Auth;
 using Microsoft.Extensions.Logging;
 
 // The dedicated server host. The actual WebSocket/HTTP service lives in SPLA.Service
@@ -27,17 +28,22 @@ var identityProvider = LoadIdentityProvider();
 var hostIdentity = identityProvider.Current();
 Console.WriteLine($"Server identity: {hostIdentity.DisplayName}  ({hostIdentity.UserKey}, {hostIdentity.Groups.Count} groups)");
 
-// args: [--port N] [--bind addr] [--token X] [--no-auth] [--root DIR]
+// args: [--port N] [--bind addr] [--token X] [--auth negotiate|local|none] [--no-auth]
+//       [--no-register] [--root DIR] [--https] [--cert file] [--cert-password pw]
 // Binds all interfaces by default — this is the remote server host, meant to be reached from other
-// domain machines. Access is gated by Negotiate (NTLM/Kerberos), not by binding to loopback.
+// machines. Domain deployments gate access by Negotiate; home/workgroup deployments use --auth local
+// (username/password + admin panel). --no-auth is the same as --auth none.
 int port = 5050;
 string bind = "0.0.0.0";
 string? token = null;
 bool requireAuth = true;
+string? authArg = null;
+bool allowRegister = true;
 string? rootOverride = null;
 bool useHttps = false;
 string? certPath = null;
 string certPassword = "spla";
+string? otlpEndpoint = null;
 for (int i = 0; i < args.Length; i++)
 {
     switch (args[i].ToLowerInvariant())
@@ -45,13 +51,26 @@ for (int i = 0; i < args.Length; i++)
         case "--port":     if (i + 1 < args.Length && int.TryParse(args[++i], out var p)) port = p; break;
         case "--bind":     if (i + 1 < args.Length) bind = args[++i]; break;
         case "--token":    if (i + 1 < args.Length) token = args[++i]; break;
+        case "--auth":     if (i + 1 < args.Length) authArg = args[++i]; break;
         case "--no-auth":  requireAuth = false; break;
+        case "--no-register": allowRegister = false; break;
         case "--root":     if (i + 1 < args.Length) rootOverride = args[++i]; break;
         case "--https":    useHttps = true; break;
         case "--cert":     if (i + 1 < args.Length) certPath = args[++i]; break;
         case "--cert-password": if (i + 1 < args.Length) certPassword = args[++i]; break;
+        case "--otlp-endpoint": if (i + 1 < args.Length) otlpEndpoint = args[++i]; break;
     }
 }
+
+// Resolve the auth mode: an explicit --auth wins; otherwise --no-auth → none, default → negotiate.
+var authMode = authArg?.ToLowerInvariant() switch
+{
+    "local"     => AuthMode.Local,
+    "negotiate" => AuthMode.Negotiate,
+    "none"      => AuthMode.None,
+    null        => requireAuth ? AuthMode.Negotiate : AuthMode.None,
+    _           => requireAuth ? AuthMode.Negotiate : AuthMode.None
+};
 
 // The server's storage root: {root}/users/{sid}/ holds each user's own area. --root wins over
 // server.json "serverRoot". This is the setting the user asked for — one folder where everything for
@@ -83,20 +102,56 @@ using var registry = new AgentRuntimeRegistry(loggerFactory)
 {
     DefaultProjectId = AgentRuntimeRegistry.NoProjectId
 };
+
+// Local-credentials mode: a JSON user store lives in the server root (so it sits with the per-user
+// areas) or next to the exe when no root is configured. The account service seeds a first admin when
+// the store is empty (random password printed to the console on that first run).
+LocalAccountService? accounts = null;
+if (authMode == AuthMode.Local)
+{
+    var usersPath = !string.IsNullOrWhiteSpace(serverRootPath)
+        ? Path.Combine(serverRootPath, "users.json")
+        : Path.Combine(AppContext.BaseDirectory, "users.json");
+    accounts = new LocalAccountService(
+        new JsonUserStore(usersPath), allowRegister, loggerFactory.CreateLogger("LocalAuth"));
+}
+
+// Persist the local stats "over time" buckets in the server root (survives restart) when a root is set.
+var statsPath = string.IsNullOrWhiteSpace(serverRootPath)
+    ? null
+    : Path.Combine(serverRootPath, "stats.json");
+
 var options = new ServiceOptions
 {
-    Port = port, Bind = bind, Token = token, RequireAuthentication = requireAuth,
-    UseHttps = useHttps, CertPath = certPath, CertPassword = certPassword
+    Port = port, Bind = bind, Token = token,
+    Auth = authMode, RequireAuthentication = authMode == AuthMode.Negotiate,
+    AllowSelfRegistration = allowRegister,
+    UseHttps = useHttps, CertPath = certPath, CertPassword = certPassword,
+    StatsPath = statsPath, OtlpEndpoint = otlpEndpoint
 };
-var host = SplaServiceHost.Build(registry, options, identityProvider, serverRoot);
+var host = SplaServiceHost.Build(registry, options, identityProvider, serverRoot, accounts);
 await host.StartAsync();
 
 var wsUrl = host.Url.Replace("http://", "ws://") + "/ws";
 Console.WriteLine($"\nSPLA server listening on {host.Url}  (WebSocket: {wsUrl})");
-if (requireAuth)
-    Console.WriteLine("Auth: Negotiate (NTLM/Kerberos) — each client authenticates as its domain user; identity flows to the connection.");
-else if (token == null && !options.IsLoopback)
-    Console.WriteLine("WARNING: --no-auth on a non-loopback bind without --token — anyone who can reach this port controls the agent.");
+switch (authMode)
+{
+    case AuthMode.Negotiate:
+        Console.WriteLine("Auth: Negotiate (NTLM/Kerberos) — each client authenticates as its domain user; identity flows to the connection.");
+        break;
+    case AuthMode.Local:
+        Console.WriteLine($"Auth: local username/password. Sign in at {host.Url}/login  ·  admin panel at {host.Url}/admin");
+        Console.WriteLine($"      Self-registration: {(allowRegister ? "enabled (/register)" : "disabled — admin creates accounts")}.");
+        if (string.IsNullOrWhiteSpace(serverRootPath))
+            Console.WriteLine("      NOTE: no server root set — all users share one project. Set --root for per-user areas.");
+        break;
+    case AuthMode.None:
+        if (token == null && !options.IsLoopback)
+            Console.WriteLine("WARNING: --no-auth on a non-loopback bind without --token — anyone who can reach this port controls the agent.");
+        break;
+}
+Console.WriteLine($"Stats: local dashboard at {host.Url}/stats"
+    + (string.IsNullOrWhiteSpace(otlpEndpoint) ? "  (OTLP export off — pass --otlp-endpoint to ship to Grafana/Jaeger/…)" : $"  ·  OTLP → {otlpEndpoint}"));
 Console.WriteLine("Press Ctrl+C to stop.");
 
 var stop = new TaskCompletionSource();

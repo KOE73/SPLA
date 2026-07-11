@@ -78,6 +78,14 @@ public class SplaConnectionSection
     [YamlMember(Alias = "model")]
     public string? Model { get; set; }
 
+    /// <summary>
+    /// Manual context-window override in tokens for this connection. When set it wins over any
+    /// auto-detected value (LM Studio native API / vLLM <c>max_model_len</c>) — for providers that
+    /// report nothing, or when the user knows better. Null/0 = auto-detect.
+    /// </summary>
+    [YamlMember(Alias = "context_length")]
+    public int? ContextLength { get; set; }
+
     /// <summary>When true the model field is locked — no picker shown in UI, model can only be viewed.</summary>
     [YamlMember(Alias = "lock_model")]
     public bool LockModel { get; set; }

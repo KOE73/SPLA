@@ -244,7 +244,7 @@ export interface ServerEvents {
   "chat.cleared": Record<string, never>;
   "chat.current": ChatOpenedPayload;
   "focus.changed": { chatId: string };
-  "token.usage": { promptTokens?: number; completionTokens?: number };
+  "token.usage": { promptTokens?: number; completionTokens?: number; contextLength?: number };
   "delta": { msgIndex: number; text: string };
   "reasoning": { msgIndex: number; text: string };
   "llm.turn.start": { msgIndex: number };

@@ -21,14 +21,38 @@
       <div v-if="error" class="picker-error">{{ error }}</div>
 
       <div class="picker-footer">
-        <button class="btn-new-project" @click="createProject">+ New Project…</button>
+        <form v-if="showCreate" class="create-form" @submit.prevent="submitCreate">
+          <!-- Local/embedded takes a filesystem path for the manifest; server mode takes only a name
+               (the project lives in the user's own area). Replaces window.prompt, which the in-app
+               WebView2/preview browser does not support. -->
+          <input
+            v-if="!serverMode"
+            v-model="newPath"
+            class="create-input"
+            placeholder="C:\Projects\Demo\Demo.spla"
+            spellcheck="false"
+            autofocus
+          >
+          <input
+            v-model="newName"
+            class="create-input"
+            placeholder="Project name"
+            spellcheck="false"
+            :autofocus="serverMode"
+          >
+          <div class="create-actions">
+            <button type="button" class="create-cancel" @click="cancelCreate">Cancel</button>
+            <button type="submit" class="create-ok" :disabled="!canCreate">Create</button>
+          </div>
+        </form>
+        <button v-else class="btn-new-project" @click="openCreate">+ New Project…</button>
       </div>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { onMounted, ref } from "vue";
+import { computed, onMounted, ref } from "vue";
 import { client } from "../protocol/SplaClient";
 import { store } from "../state/store";
 import { setCurrentProject } from "../state/project";
@@ -38,6 +62,15 @@ import ProjectListItem from "./ProjectListItem.vue";
 const emit = defineEmits<{ close: [] }>();
 const loading = ref(true);
 const error = ref<string | null>(null);
+
+// Inline "new project" form state (replaces window.prompt, unsupported in the embedded browser).
+// Server mode (authenticated user) asks only for a name; local/embedded also needs a manifest path.
+const serverMode = !!store.userName;
+const showCreate = ref(false);
+const newPath = ref("");
+const newName = ref("");
+const canCreate = computed(() =>
+  serverMode ? newName.value.trim().length > 0 : newPath.value.trim().length > 0);
 
 onMounted(async () => {
   try {
@@ -63,22 +96,27 @@ async function select(projectId: string) {
   }
 }
 
-async function createProject() {
-  // Server mode (an authenticated user): the project lives in the user's own area on the server, so
-  // the client only asks for a name — never a server filesystem path. Local/embedded still takes a path.
-  const serverMode = !!store.userName;
-  let manifestPath: string | undefined;
-  let name: string | null;
-  if (serverMode) {
-    name = prompt("Project name:");
-    if (!name) return;
-  } else {
-    manifestPath = prompt("Path for the new project's .spla manifest (e.g. C:\\Projects\\Demo\\Demo.spla):") || undefined;
-    if (!manifestPath) return;
-    name = prompt("Project name:", manifestPath.split(/[\\/]/).pop()?.replace(/\.spla$/i, "") || "");
-  }
+function openCreate() {
+  error.value = null;
+  newPath.value = "";
+  newName.value = "";
+  showCreate.value = true;
+}
+
+function cancelCreate() {
+  showCreate.value = false;
+}
+
+async function submitCreate() {
+  if (!canCreate.value) return;
+  // Server mode: the project lives in the user's own area, so we send only a name. Local/embedded
+  // sends the manifest path; default the name from the filename when the user leaves it blank.
+  const manifestPath = serverMode ? undefined : newPath.value.trim();
+  const name = newName.value.trim()
+    || (manifestPath ? manifestPath.split(/[\\/]/).pop()?.replace(/\.spla$/i, "") || null : null);
   try {
     const ctx = await client.invoke<ProjectContextPayload>("project.create", { manifestPath, name });
+    showCreate.value = false;
     applyContext(ctx);
   } catch (e) {
     error.value = "Failed to create project: " + e;
@@ -152,4 +190,30 @@ function applyContext(ctx: ProjectContextPayload) {
   cursor: pointer;
 }
 .btn-new-project:hover { background: var(--accent-soft); color: var(--accent); border-color: var(--accent); }
+
+.create-form { display: flex; flex-direction: column; gap: 6px; }
+.create-input {
+  width: 100%;
+  box-sizing: border-box;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  color: var(--text);
+  font-size: var(--fs-sm);
+  padding: 6px 8px;
+}
+.create-input:focus { outline: none; border-color: var(--accent); }
+.create-actions { display: flex; justify-content: flex-end; gap: 6px; }
+.create-cancel, .create-ok {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  font-size: var(--fs-sm);
+  padding: 5px 10px;
+  cursor: pointer;
+  background: transparent;
+  color: var(--text);
+}
+.create-ok { background: var(--accent); color: var(--accent-contrast, #fff); border-color: var(--accent); }
+.create-ok:disabled { opacity: 0.5; cursor: default; }
+.create-cancel:hover { border-color: var(--danger); color: var(--danger); }
 </style>

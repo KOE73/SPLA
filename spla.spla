@@ -2,10 +2,10 @@ version: 1
 name: SPLA
 workspace: .
 agent:
-  mode: Inspect
+  mode: Agent
   instructions:
   - AGENTS.md
-  custom_prompt: Ты супер сетевой админ, умеешь сканировать сеть и находить уязвимости и сбои, можно сказать хакер. Индекс знаний и прочее в AGENTS.md
+  custom_prompt: Test project for SPLA Roslyn plugin validation. Prefer Roslyn tools for C# compile checks and deterministic scripts. Keep generated artifacts inside the workspace.
 llm:
   provider: lmstudio
   endpoint: http://127.0.0.1:1234/v1
@@ -15,21 +15,28 @@ llm:
 ui:
   theme: cream
   density: mini
-  active_profile_id: bubbles
 permissions:
   read: allow
-  write: ask
-  shell: ask
+  write: allow
+  shell: allow
   internet: allow
 plugins:
   network:
-    enabled: true
+    enabled: false
   onec:
-    enabled: true
+    enabled: false
   onec_avalonia:
     enabled: true
   test:
     enabled: true
+  browser:
+    enabled: false
+  network.skills:
+    enabled: false
+  roslyn:
+    enabled: true
+  sql:
+    enabled: false
 docs:
 - docs/
 ignore:

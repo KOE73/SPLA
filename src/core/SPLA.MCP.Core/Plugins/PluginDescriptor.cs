@@ -12,7 +12,10 @@ public sealed class PluginDescriptor
     public string EffectivePrompt { get; set; } = string.Empty;
     public List<SplaPluginUiCommand> Commands { get; } = [];
 
-    public bool IsEffectivelyEnabled => EffectiveState == PluginEffectiveState.Enabled;
+    /// <summary>Whether the plugin's tools are live. A <see cref="PluginEffectiveState.Degraded"/>
+    /// plugin still counts — it loaded and registered its tools; the self-check only flags a risk.</summary>
+    public bool IsEffectivelyEnabled =>
+        EffectiveState is PluginEffectiveState.Enabled or PluginEffectiveState.Degraded;
 }
 
 public enum PluginEffectiveState
@@ -21,5 +24,8 @@ public enum PluginEffectiveState
     DisabledByUser,
     DisabledByMissingDependency,
     DisabledByDependency,
-    LoadError
+    LoadError,
+    /// <summary>Loaded and active, but the plugin's own load-time self-check reported a problem
+    /// (a runtime prerequisite missing/broken). Tools stay registered; this is a diagnostic flag.</summary>
+    Degraded
 }

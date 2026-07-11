@@ -2,6 +2,7 @@ using Microsoft.Extensions.Logging;
 using SPLA.Domain.Interfaces;
 using SPLA.Domain.Models;
 using SPLA.Domain.Settings;
+using System.Net;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Runtime.CompilerServices;
@@ -100,7 +101,7 @@ public sealed partial class LMStudioClient : ILLMService, ITokenUsageReporter
         Func<string, Task>? onReasoning = null)
     {
         var request = CreateRequestMessage(messages, settings, tools, stream: true);
-        using var response = await _httpClient.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, cancellationToken);
+        using var response = await SendWithConnectivityAsync(request, settings.BaseUrl, cancellationToken);
         await EnsureSuccessWithBodyAsync(response, cancellationToken);
 
         using var stream = await response.Content.ReadAsStreamAsync(cancellationToken);
@@ -433,21 +434,125 @@ public sealed partial class LMStudioClient : ILLMService, ITokenUsageReporter
         return new Uri(new Uri(baseUrl), relativePath);
     }
 
+    /// <summary>Sends the request, converting a transport failure (endpoint down, wrong URL, refused
+    /// connection) into a typed <see cref="LlmErrorKind.Unreachable"/> error instead of a raw
+    /// <see cref="HttpRequestException"/>. A cancelled request is left to propagate as
+    /// <see cref="OperationCanceledException"/>.</summary>
+    private async Task<HttpResponseMessage> SendWithConnectivityAsync(HttpRequestMessage request, string baseUrl, CancellationToken cancellationToken)
+    {
+        try
+        {
+            return await _httpClient.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, cancellationToken);
+        }
+        catch (HttpRequestException ex)
+        {
+            throw new LlmRequestException(LlmErrorKind.Unreachable,
+                $"Could not reach the LLM endpoint at {baseUrl}. Is the server running and the URL correct?",
+                ex.StatusCode, ex.ToString());
+        }
+        catch (TaskCanceledException ex) when (!cancellationToken.IsCancellationRequested)
+        {
+            // A timeout (HttpClient.Timeout), not a user cancel.
+            throw new LlmRequestException(LlmErrorKind.Unreachable,
+                $"The LLM endpoint at {baseUrl} did not respond in time.", null, ex.ToString());
+        }
+    }
+
     private static async Task EnsureSuccessWithBodyAsync(HttpResponseMessage response, CancellationToken cancellationToken)
     {
         if (response.IsSuccessStatusCode) return;
 
         var body = await response.Content.ReadAsStringAsync(cancellationToken);
-        if (string.IsNullOrWhiteSpace(body))
+        throw ClassifyHttpFailure(response.StatusCode, response.ReasonPhrase, body);
+    }
+
+    /// <summary>
+    /// Normalizes an unsuccessful HTTP response into a typed <see cref="LlmRequestException"/> with a
+    /// short, actionable message. Providers disagree on how they report a full context window — OpenAI
+    /// and vLLM return a clean 400 whose JSON <c>error.message</c> names the token limits, while LM
+    /// Studio commonly returns a 500 with an HTML page — so we key off both the status and the body
+    /// text and collapse them into one <see cref="LlmErrorKind.ContextExhausted"/> signal the UI can act on.
+    /// </summary>
+    internal static LlmRequestException ClassifyHttpFailure(HttpStatusCode status, string? reason, string? body)
+    {
+        var providerMessage = ExtractProviderMessage(body);
+        var haystack = (providerMessage ?? body ?? string.Empty);
+
+        // OpenAI/vLLM: 400 (or an explicit code) whose message names the context length.
+        var looksLikeContext =
+            haystack.Contains("context length", StringComparison.OrdinalIgnoreCase) ||
+            haystack.Contains("context_length_exceeded", StringComparison.OrdinalIgnoreCase) ||
+            haystack.Contains("maximum context", StringComparison.OrdinalIgnoreCase) ||
+            haystack.Contains("too many tokens", StringComparison.OrdinalIgnoreCase) ||
+            haystack.Contains("reduce the length", StringComparison.OrdinalIgnoreCase);
+
+        if (looksLikeContext)
         {
-            response.EnsureSuccessStatusCode();
+            var detail = string.IsNullOrWhiteSpace(providerMessage) ? null : providerMessage;
+            return new LlmRequestException(LlmErrorKind.ContextExhausted,
+                "The conversation is too long for the model's context window. Start a new chat or shorten "
+                + "the conversation, then try again."
+                + (detail != null ? $" (provider: {Truncate(detail, 200)})" : string.Empty),
+                status, body);
         }
 
-        throw new HttpRequestException(
-            $"Response status code does not indicate success: {(int)response.StatusCode} ({response.ReasonPhrase}). Body: {body}",
-            null,
-            response.StatusCode);
+        switch ((int)status)
+        {
+            case 401:
+            case 403:
+                return new LlmRequestException(LlmErrorKind.AuthFailed,
+                    $"The LLM endpoint rejected the request (HTTP {(int)status}). Check the connection's API key.",
+                    status, body);
+            case 429:
+                return new LlmRequestException(LlmErrorKind.RateLimited,
+                    "The LLM endpoint is rate-limited or overloaded (HTTP 429). Wait a moment and retry.",
+                    status, body);
+            case 500:
+            case 502:
+            case 503:
+                // LM Studio (llama.cpp) frequently answers a 500 with an HTML page when the prompt
+                // overflows the loaded context or the model faults. We cannot be certain which, so the
+                // message names the likeliest cause without over-claiming.
+                return new LlmRequestException(LlmErrorKind.ProviderError,
+                    $"The LLM server returned HTTP {(int)status}. With local runtimes (e.g. LM Studio) this "
+                    + "usually means the context window overflowed or the model errored — try a new chat or a "
+                    + "smaller request."
+                    + (!string.IsNullOrWhiteSpace(providerMessage) ? $" ({Truncate(providerMessage!, 200)})" : string.Empty),
+                    status, body);
+            default:
+                var tail = !string.IsNullOrWhiteSpace(providerMessage) ? providerMessage! : (reason ?? "unknown error");
+                return new LlmRequestException(LlmErrorKind.ProviderError,
+                    $"The LLM endpoint returned HTTP {(int)status}: {Truncate(tail, 200)}",
+                    status, body);
+        }
     }
+
+    /// <summary>Pulls a human message out of an OpenAI/vLLM-style error body (<c>{"error":{"message":…}}</c>
+    /// or <c>{"message":…}</c>). Returns null for HTML/empty/unparseable bodies.</summary>
+    internal static string? ExtractProviderMessage(string? body)
+    {
+        if (string.IsNullOrWhiteSpace(body)) return null;
+        var trimmed = body.TrimStart();
+        if (!trimmed.StartsWith('{')) return null; // HTML error page etc.
+        try
+        {
+            using var doc = JsonDocument.Parse(body);
+            var root = doc.RootElement;
+            if (root.TryGetProperty("error", out var err))
+            {
+                if (err.ValueKind == JsonValueKind.String) return err.GetString();
+                if (err.ValueKind == JsonValueKind.Object && err.TryGetProperty("message", out var em))
+                    return em.GetString();
+            }
+            if (root.TryGetProperty("message", out var m) && m.ValueKind == JsonValueKind.String)
+                return m.GetString();
+        }
+        catch (JsonException) { /* not JSON we understand */ }
+        return null;
+    }
+
+    private static string Truncate(string s, int max)
+        => s.Length <= max ? s : s[..max] + "…";
 
     // ─── Accumulator helper ───────────────────────────────────────────────────
 

@@ -14,6 +14,8 @@ using System.Security.Claims;
 using System.Security.Cryptography;
 using System.Security.Cryptography.X509Certificates;
 using SPLA.Domain.Identity;
+using SPLA.Service.Auth;
+using SPLA.Service.Observability;
 
 namespace SPLA.Service;
 
@@ -31,8 +33,26 @@ public sealed record ServiceOptions
     /// <summary>When true, the host enforces Negotiate (NTLM/Kerberos) auth: every request must carry a
     /// domain principal, and each connection's <see cref="ClientConnection"/> gets that user's identity.
     /// The server deployment (SPLA.Server) sets this; loopback/embedded leaves it false and stays
-    /// single-user, so existing tests and the embedded WebView are unaffected.</summary>
+    /// single-user, so existing tests and the embedded WebView are unaffected.
+    /// <para>Back-compat shim: this is the boolean face of <see cref="Auth"/>. When set with
+    /// <see cref="Auth"/> left at its default, it means <see cref="AuthMode.Negotiate"/>.</para></summary>
     public bool RequireAuthentication { get; init; }
+
+    /// <summary>The authentication mode. When left at <see cref="AuthMode.None"/> but
+    /// <see cref="RequireAuthentication"/> is true, the effective mode is
+    /// <see cref="AuthMode.Negotiate"/> (so existing callers keep working). <see cref="AuthMode.Local"/>
+    /// enables username/password auth with an admin panel — the home/workgroup deployment.</summary>
+    public AuthMode Auth { get; init; } = AuthMode.None;
+
+    /// <summary>Local-auth only: whether the public <c>/register</c> page is offered.</summary>
+    public bool AllowSelfRegistration { get; init; } = true;
+
+    /// <summary>The resolved auth mode, folding the legacy <see cref="RequireAuthentication"/> flag in.</summary>
+    public AuthMode EffectiveAuthMode =>
+        Auth != AuthMode.None ? Auth : (RequireAuthentication ? AuthMode.Negotiate : AuthMode.None);
+
+    /// <summary>True when any authentication is enforced (cookie pipeline is wired, /ws needs identity).</summary>
+    public bool AuthEnabled => EffectiveAuthMode != AuthMode.None;
 
     public bool IsLoopback => Bind is "127.0.0.1" or "localhost" or "::1";
 
@@ -50,6 +70,19 @@ public sealed record ServiceOptions
 
     /// <summary>Password for the PFX. Empty string if none.</summary>
     public string CertPassword { get; init; } = "spla";
+
+    /// <summary>Whether the batteries-included local stats collector + <c>/stats</c> dashboard run.
+    /// Cheap (in-process listeners on the existing meter/traces); on by default.</summary>
+    public bool EnableLocalStats { get; init; } = true;
+
+    /// <summary>Optional JSON file the local stats collector persists its per-period buckets to, so the
+    /// "over time" view survives a restart. Null = in-memory only (resets on restart).</summary>
+    public string? StatsPath { get; init; }
+
+    /// <summary>Optional OTLP endpoint (e.g. <c>http://localhost:4317</c>) to export traces + metrics to
+    /// an external observability backend. Null = no export (local stats only). A control-plane / egress
+    /// setting — it determines where telemetry leaves the host.</summary>
+    public string? OtlpEndpoint { get; init; }
 }
 
 /// <summary>
@@ -64,20 +97,26 @@ public sealed record ServiceOptions
 public sealed class SplaServiceHost
 {
     /// <summary>Claim that carries the authenticated user's stable key (SID) in the auth cookie.</summary>
-    private const string UserKeyClaim = "spla.userkey";
+    private const string UserKeyClaim = AuthClaims.UserKey;
 
     private readonly WebApplication _app;
+    private readonly SPLA.Observability.Collection.TelemetryCollector? _collector;
+    private readonly IDisposable? _gaugeTimer;
     public string Url { get; }
 
-    private SplaServiceHost(WebApplication app, string url)
+    private SplaServiceHost(
+        WebApplication app, string url,
+        SPLA.Observability.Collection.TelemetryCollector? collector = null, IDisposable? gaugeTimer = null)
     {
         _app = app;
+        _collector = collector;
+        _gaugeTimer = gaugeTimer;
         Url = url;
     }
 
     public static SplaServiceHost Build(
         AgentRuntimeRegistry registry, ServiceOptions options, IIdentityProvider? identityProvider = null,
-        SPLA.Domain.Project.ServerProjectRoot? serverRoot = null)
+        SPLA.Domain.Project.ServerProjectRoot? serverRoot = null, LocalAccountService? accounts = null)
     {
         // The host never references a platform: the provider is passed in (loaded from config by the
         // deployment) or defaults to the neutral claims provider. Windows is a DLL, not a dependency.
@@ -88,60 +127,9 @@ public sealed class SplaServiceHost
         var hub = new ConnectionHub();
         var auth = new AuthGate(options.Token);
 
-        // Domain auth for the server deployment. Negotiate (NTLM/Kerberos) authenticates the PAGE once
-        // via /login; that issues a cookie, and every later request — crucially the WebSocket upgrade,
-        // which a browser cannot drive through a Negotiate challenge/response — rides that cookie. So
-        // the default scheme is the cookie; the challenge redirects to /login where Negotiate runs.
-        if (options.RequireAuthentication)
-        {
-            builder.Services.AddAuthentication(options =>
-                {
-                    options.DefaultScheme = CookieAuthenticationDefaults.AuthenticationScheme;
-                    options.DefaultChallengeScheme = CookieAuthenticationDefaults.AuthenticationScheme;
-                })
-                .AddCookie(o =>
-                {
-                    o.Cookie.Name = "spla.auth";
-                    o.Cookie.HttpOnly = true;
-                    o.ExpireTimeSpan = TimeSpan.FromHours(10);
-                    o.SlidingExpiration = true;
-                    o.LoginPath = "/login";
-                })
-                .AddNegotiate();
-            builder.Services.AddAuthorizationBuilder()
-                .SetFallbackPolicy(new AuthorizationPolicyBuilder().RequireAuthenticatedUser().Build());
-        }
-
-        // Wires a newly-built runtime's domain events and initial connection-health check into the
-        // hub, scoped to its own project id — fires for the eagerly-opened default project below AND
-        // for any project a client opens/creates later via ProjectOps, so live updates are never
-        // limited to whichever project happened to exist at process startup.
-        registry.RuntimeCreated += (projectId, entry) =>
-        {
-            entry.Runtime.Events.Subscribe(evt =>
-            {
-                switch (evt)
-                {
-                    case AppearanceChanged a:
-                        _ = hub.BroadcastToProjectAsync(projectId, Contracts.MessageTypes.AppearanceChanged,
-                            new Contracts.AppearanceChangedPayload { Theme = a.Theme, Density = a.Density });
-                        break;
-                }
-            });
-
-            // Warm the health cache in the background right after the runtime starts so the first
-            // client to open settings sees real results (or the cached "not yet checked" state) instantly.
-            _ = Task.Run(async () =>
-            {
-                try
-                {
-                    var health = await ConnectionDiagOps.PingAllAsync(
-                        entry.Runtime.Settings.Connections, entry.Runtime.ConnectionHealth);
-                    await hub.BroadcastToProjectAsync(projectId, Contracts.MessageTypes.ConnectionsHealth, health);
-                }
-                catch { }
-            });
-        };
+        ConfigureAuthentication(builder, options);
+        OtlpExport.MaybeWire(builder, options);
+        WireRuntimeEvents(registry, hub);
 
         // Build (and wire, via the event above) the connection's default project eagerly, the same
         // moment today's single-runtime host used to construct its one AgentRuntime.
@@ -176,7 +164,7 @@ public sealed class SplaServiceHost
         if (!options.UseHttps) app.Urls.Add(url);
         app.UseWebSockets();
 
-        if (options.RequireAuthentication)
+        if (options.AuthEnabled)
         {
             app.UseAuthentication();
             app.UseAuthorization();
@@ -185,7 +173,7 @@ public sealed class SplaServiceHost
         app.MapGet("/health", () => Results.Text("SPLA service running. Connect a client to /ws.", "text/plain"))
             .AllowAnonymous();
 
-        if (options.RequireAuthentication)
+        if (options.EffectiveAuthMode == AuthMode.Negotiate)
         {
             // The one place Negotiate runs: reaching here means the browser authenticated (NTLM/
             // Kerberos). Sign that principal into the cookie, then bounce back to the app — every
@@ -209,6 +197,14 @@ public sealed class SplaServiceHost
                 var ret = ctx.Request.Query["returnUrl"].FirstOrDefault();
                 return Results.Redirect(string.IsNullOrEmpty(ret) ? "/" : ret);
             }).RequireAuthorization(new AuthorizeAttribute { AuthenticationSchemes = NegotiateDefaults.AuthenticationScheme });
+        }
+        else if (options.EffectiveAuthMode == AuthMode.Local && accounts != null)
+        {
+            // Local username/password auth: the login/register/account pages and the admin panel.
+            // All of them issue the same cookie the Negotiate path does, so /ws and per-user areas
+            // are identical downstream.
+            AuthEndpoints.Map(app, accounts);
+            AdminEndpoints.Map(app, accounts);
         }
 
         // The browser client — served from embedded static assets. Any client drives the same agent /ws.
@@ -243,70 +239,204 @@ public sealed class SplaServiceHost
             return asset is { } a ? Results.Bytes(a.Bytes, a.ContentType) : Results.NotFound();
         });
 
+        // Observability plane: the batteries-included local stats collector taps the existing meter and
+        // traces in-process (nothing added to the hot path) and serves the /stats dashboard. Admin-gated
+        // under local auth; open on a loopback/no-auth box. The connection gauge is refreshed on a timer.
+        SPLA.Observability.Collection.TelemetryCollector? collector = null;
+        System.Threading.Timer? gaugeTimer = null;
+        if (options.EnableLocalStats)
+        {
+            collector = new SPLA.Observability.Collection.TelemetryCollector(persistPath: options.StatsPath);
+            collector.SetGauge("connections.active", hub.Count);
+
+            var statsHub = new StatsHub();
+            // Each completed activity is pushed live to the firehose (admins + the acting user).
+            var liveCollector = collector;
+            collector.EventRecorded += evt => _ = statsHub.PushEventAsync(evt);
+            // One timer refreshes the connection gauge AND pushes a fresh scoped snapshot to every
+            // viewer — so the KPIs/gauges update by server push, with no client-side polling.
+            gaugeTimer = new System.Threading.Timer(_ =>
+            {
+                liveCollector.SetGauge("connections.active", hub.Count);
+                _ = statsHub.PushSnapshotsAsync(liveCollector);
+            }, null, TimeSpan.FromSeconds(2), TimeSpan.FromSeconds(3));
+
+            StatsEndpoints.Map(app, statsHub, authEnabled: options.AuthEnabled);
+        }
+
         app.MapGet("/", () => ServeAsset("/index.html"));
         app.MapGet("/{**path}", (string path) => ServeAsset("/" + path));
 
-        app.Map("/ws", async (HttpContext context) =>
-        {
-            if (!context.WebSockets.IsWebSocketRequest)
+        app.Map("/ws", (HttpContext context) =>
+            HandleWebSocketAsync(context, registry, options, serverRoot, hub, auth, loggerFactory));
+
+        return new SplaServiceHost(app, url, collector, gaugeTimer);
+    }
+
+    /// <summary>Configures the auth pipeline for the effective mode. Both server modes issue the same
+    /// <c>spla.auth</c> cookie so everything downstream (the /ws upgrade, per-user areas) is identical:
+    /// <list type="bullet">
+    /// <item><b>Negotiate</b> — NTLM/Kerberos authenticates the page once via <c>/login</c>, which
+    /// issues the cookie every later request rides.</item>
+    /// <item><b>Local</b> — cookie only (no Negotiate); credentials are validated by
+    /// <see cref="LocalAccountService"/> and an <c>spla.admin</c> policy gates the admin panel.</item>
+    /// </list></summary>
+    private static void ConfigureAuthentication(WebApplicationBuilder builder, ServiceOptions options)
+    {
+        var mode = options.EffectiveAuthMode;
+        if (mode == AuthMode.None) return;
+
+        var authentication = builder.Services.AddAuthentication(o =>
             {
-                context.Response.StatusCode = StatusCodes.Status400BadRequest;
+                o.DefaultScheme = CookieAuthenticationDefaults.AuthenticationScheme;
+                o.DefaultChallengeScheme = CookieAuthenticationDefaults.AuthenticationScheme;
+            })
+            .AddCookie(o =>
+            {
+                o.Cookie.Name = "spla.auth";
+                o.Cookie.HttpOnly = true;
+                o.ExpireTimeSpan = TimeSpan.FromHours(10);
+                o.SlidingExpiration = true;
+                o.LoginPath = "/login";
+                o.AccessDeniedPath = "/Account/AccessDenied";
+
+                // API paths (the admin panel's fetch calls) must see real status codes, not a 302 to
+                // an HTML page: unauthenticated → 401, authenticated-but-forbidden → 403. Browser
+                // navigations still get the usual redirect to /login or the access-denied page.
+                o.Events.OnRedirectToLogin = ctx =>
+                {
+                    if (IsApiPath(ctx.Request)) { ctx.Response.StatusCode = StatusCodes.Status401Unauthorized; return Task.CompletedTask; }
+                    ctx.Response.Redirect(ctx.RedirectUri);
+                    return Task.CompletedTask;
+                };
+                o.Events.OnRedirectToAccessDenied = ctx =>
+                {
+                    if (IsApiPath(ctx.Request)) { ctx.Response.StatusCode = StatusCodes.Status403Forbidden; return Task.CompletedTask; }
+                    ctx.Response.Redirect(ctx.RedirectUri);
+                    return Task.CompletedTask;
+                };
+            });
+
+        if (mode == AuthMode.Negotiate)
+            authentication.AddNegotiate();
+
+        var authorization = builder.Services.AddAuthorizationBuilder()
+            .SetFallbackPolicy(new AuthorizationPolicyBuilder().RequireAuthenticatedUser().Build());
+
+        // The admin panel is role-gated (local mode only — Negotiate has no local roles).
+        if (mode == AuthMode.Local)
+            authorization.AddPolicy("spla.admin", p => p.RequireAuthenticatedUser().RequireRole("admin"));
+    }
+
+    /// <summary>True for endpoints a programmatic client (the admin panel's fetch) calls, where an auth
+    /// failure should be a status code rather than a redirect to an HTML page.</summary>
+    private static bool IsApiPath(HttpRequest request)
+        => request.Path.StartsWithSegments("/admin/api") || request.Path.StartsWithSegments("/stats/api");
+
+    /// <summary>Wires each newly-built runtime's domain events and initial connection-health warm-up
+    /// into the hub, scoped to its own project id — fires for the eagerly-opened default project and
+    /// for any project a client opens/creates later, so live updates are never limited to whichever
+    /// project happened to exist at process startup.</summary>
+    private static void WireRuntimeEvents(AgentRuntimeRegistry registry, ConnectionHub hub)
+    {
+        registry.RuntimeCreated += (projectId, entry) =>
+        {
+            entry.Runtime.Events.Subscribe(evt =>
+            {
+                switch (evt)
+                {
+                    case AppearanceChanged a:
+                        _ = hub.BroadcastToProjectAsync(projectId, Contracts.MessageTypes.AppearanceChanged,
+                            new Contracts.AppearanceChangedPayload { Theme = a.Theme, Density = a.Density });
+                        break;
+                }
+            });
+
+            // Warm the health cache in the background right after the runtime starts so the first
+            // client to open settings sees real results (or the cached "not yet checked" state) instantly.
+            _ = Task.Run(async () =>
+            {
+                try
+                {
+                    var health = await ConnectionDiagOps.PingAllAsync(
+                        entry.Runtime.Settings.Connections, entry.Runtime.ConnectionHealth);
+                    await hub.BroadcastToProjectAsync(projectId, Contracts.MessageTypes.ConnectionsHealth, health);
+                }
+                catch { }
+            });
+        };
+    }
+
+    /// <summary>Handles a <c>/ws</c> upgrade: the Origin gate (CSWSH defence in cookie deployments),
+    /// resolving the connection's identity from the auth cookie (or the local sentinel), scoping it to
+    /// the user's own server area, then running the <see cref="ClientConnection"/> for the socket's life.</summary>
+    private static async Task HandleWebSocketAsync(
+        HttpContext context, AgentRuntimeRegistry registry, ServiceOptions options,
+        SPLA.Domain.Project.ServerProjectRoot? serverRoot, ConnectionHub hub, AuthGate auth, ILoggerFactory loggerFactory)
+    {
+        if (!context.WebSockets.IsWebSocketRequest)
+        {
+            context.Response.StatusCode = StatusCodes.Status400BadRequest;
+            return;
+        }
+
+        // Origin gate (cookie/Negotiate deployments only). The /ws upgrade authenticates by the
+        // ambient auth cookie, so a page on any other site the user has open could open a socket
+        // here and drive the agent with the victim's cookie (cross-site WebSocket hijacking). A
+        // browser always sends Origin on a WS handshake; require it to match this server's own
+        // host. Non-browser clients (CLI/embedded) send no Origin and are unaffected; the check
+        // is skipped entirely when auth is off (loopback/embedded).
+        if (options.AuthEnabled)
+        {
+            var origin = context.Request.Headers.Origin.ToString();
+            if (!string.IsNullOrEmpty(origin) && !IsSameHostOrigin(origin, context.Request))
+            {
+                context.Response.StatusCode = StatusCodes.Status403Forbidden;
                 return;
             }
+        }
 
-            // Origin gate (cookie/Negotiate deployments only). The /ws upgrade authenticates by the
-            // ambient auth cookie, so a page on any other site the user has open could open a socket
-            // here and drive the agent with the victim's cookie (cross-site WebSocket hijacking). A
-            // browser always sends Origin on a WS handshake; require it to match this server's own
-            // host. Non-browser clients (CLI/embedded) send no Origin and are unaffected; the check
-            // is skipped entirely when auth is off (loopback/embedded).
-            if (options.RequireAuthentication)
+        // The connection's user comes straight from the auth cookie (set at /login) — the user key,
+        // display name, and any group claims, no server-side lookup, so it survives restarts. Reaching
+        // here already means the cookie authenticated (fallback policy on /ws); the claims are read back.
+        IIdentity identity;
+        if (options.AuthEnabled)
+        {
+            var userKey = context.User.FindFirst(UserKeyClaim)?.Value;
+            if (string.IsNullOrEmpty(userKey))
             {
-                var origin = context.Request.Headers.Origin.ToString();
-                if (!string.IsNullOrEmpty(origin) && !IsSameHostOrigin(origin, context.Request))
-                {
-                    context.Response.StatusCode = StatusCodes.Status403Forbidden;
-                    return;
-                }
+                context.Response.StatusCode = StatusCodes.Status401Unauthorized;
+                return;
             }
+            var groups = context.User.FindAll(AuthClaims.Group).Select(c => c.Value).ToArray();
+            identity = new ClaimIdentity(userKey, context.User.Identity?.Name ?? userKey, groups);
+        }
+        else
+        {
+            identity = LocalIdentity.Single;
+        }
 
-            // The connection's user comes straight from the auth cookie (set at /login) — the user key
-            // and display name, no server-side lookup, so it survives restarts. Reaching here already
-            // means the cookie authenticated (fallback policy on /ws); the key is just read back.
-            IIdentity identity;
-            if (options.RequireAuthentication)
-            {
-                var userKey = context.User.FindFirst(UserKeyClaim)?.Value;
-                if (string.IsNullOrEmpty(userKey))
-                {
-                    context.Response.StatusCode = StatusCodes.Status401Unauthorized;
-                    return;
-                }
-                identity = new ClaimIdentity(userKey, context.User.Identity?.Name ?? userKey, Array.Empty<string>());
-            }
-            else
-            {
-                identity = LocalIdentity.Single;
-            }
+        // Server mode: scope the connection to the user's own area — their project list and the
+        // default project they land in come from {serverRoot}/users/{sid}/, auto-provisioned on
+        // first connect. Local/embedded (serverRoot == null) keeps the shared registry scope.
+        var userProvider = serverRoot?.ProviderFor(identity);
+        var userDefault = serverRoot?.EnsureDefaultProject(identity);
+        var userArea = serverRoot?.EnsureUserArea(identity.UserKey);
 
-            // Server mode: scope the connection to the user's own area — their project list and the
-            // default project they land in come from {serverRoot}/users/{sid}/, auto-provisioned on
-            // first connect. Local/embedded (serverRoot == null) keeps the shared registry scope.
-            var userProvider = serverRoot?.ProviderFor(identity);
-            var userDefault = serverRoot?.EnsureDefaultProject(identity);
-            var userArea = serverRoot?.EnsureUserArea(identity.UserKey);
-
-            using var socket = await context.WebSockets.AcceptWebSocketAsync();
-            var log = loggerFactory.CreateLogger<ClientConnection>();
-            var conn = new ClientConnection(socket, registry, hub, auth, log, identity, userProvider, userDefault, userArea);
-            await conn.RunAsync(context.RequestAborted);
-        });
-
-        return new SplaServiceHost(app, url);
+        using var socket = await context.WebSockets.AcceptWebSocketAsync();
+        var log = loggerFactory.CreateLogger<ClientConnection>();
+        var conn = new ClientConnection(socket, registry, hub, auth, log, identity, userProvider, userDefault, userArea);
+        await conn.RunAsync(context.RequestAborted);
     }
 
     public Task StartAsync(CancellationToken ct = default) => _app.StartAsync(ct);
-    public Task StopAsync(CancellationToken ct = default) => _app.StopAsync(ct);
+
+    public async Task StopAsync(CancellationToken ct = default)
+    {
+        _gaugeTimer?.Dispose();
+        _collector?.Dispose();   // flushes persisted stats
+        await _app.StopAsync(ct);
+    }
 
     /// <summary>
     /// Loads the PFX from <see cref="ServiceOptions.CertPath"/> when specified, or generates a

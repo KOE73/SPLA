@@ -33,8 +33,21 @@ public class ModelInfo
     /// <summary>On-disk size in bytes, or 0 when unknown.</summary>
     public long SizeBytes { get; set; }
 
-    /// <summary>Maximum context length in tokens, or 0 when unknown.</summary>
+    /// <summary>Maximum context length in tokens the model supports, or 0 when unknown.</summary>
     public int MaxContextLength { get; set; }
+
+    /// <summary>
+    /// Context length in tokens the currently loaded instance was configured with, or 0 when the
+    /// model is not loaded / the provider does not report it. This is the OPERATIVE limit for
+    /// context-budget tracking: a model may support <see cref="MaxContextLength"/> (e.g. 262144)
+    /// but be loaded with a much smaller window (e.g. 101120), and requests fail against the loaded
+    /// value, not the maximum. From LM Studio's native API: <c>loaded_instances[].config.context_length</c>.
+    /// </summary>
+    public int LoadedContextLength { get; set; }
+
+    /// <summary>Best-known effective context limit: the loaded instance's configured window when
+    /// available, else the model maximum, else 0 (unknown).</summary>
+    public int EffectiveContextLength => LoadedContextLength > 0 ? LoadedContextLength : MaxContextLength;
 
     /// <summary>Whether at least one instance of the model is currently loaded.</summary>
     public bool IsLoaded { get; set; }

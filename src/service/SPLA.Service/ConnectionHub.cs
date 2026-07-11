@@ -14,6 +14,9 @@ public sealed class ConnectionHub
     public void Add(ClientConnection c) => _connections[c] = 0;
     public void Remove(ClientConnection c) => _connections.TryRemove(c, out _);
 
+    /// <summary>Number of currently connected clients — surfaced as a live gauge on the stats plane.</summary>
+    public int Count => _connections.Count;
+
     /// <summary>Sends one message to every connected client. Failures to a single client are ignored.
     /// Reserved for truly connection-level events (e.g. <see cref="Contracts.MessageTypes.FocusChanged"/>)
     /// that aren't scoped to any one project — most broadcasts should use

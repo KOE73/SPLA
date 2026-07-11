@@ -138,13 +138,18 @@ public sealed class LMStudioManagementClient : IModelManagementService
                 else if (q.ValueKind == JsonValueKind.String) quant = q.GetString() ?? "";
             }
 
-            // loaded_instances is a non-empty array when the model is loaded.
+            // loaded_instances is a non-empty array when the model is loaded. The instance's config
+            // carries the OPERATIVE context window (context_length it was loaded with) — distinct
+            // from the model's max_context_length, and the one requests actually fail against.
             bool loaded = false;
             string loadedInstanceId = "";
+            int loadedContextLength = 0;
             if (item.TryGetProperty("loaded_instances", out var li) && li.ValueKind == JsonValueKind.Array && li.GetArrayLength() > 0)
             {
                 loaded = true;
                 loadedInstanceId = GetStr(li[0], "id");
+                if (li[0].TryGetProperty("config", out var cfg) && cfg.ValueKind == JsonValueKind.Object)
+                    loadedContextLength = GetInt(cfg, "context_length");
             }
             if (!loaded) loaded = string.Equals(GetStr(item, "state"), "loaded", StringComparison.OrdinalIgnoreCase);
 
@@ -159,6 +164,7 @@ public sealed class LMStudioManagementClient : IModelManagementService
                 ParamsString = GetStr(item, "params_string"),
                 SizeBytes = GetLong(item, "size_bytes"),
                 MaxContextLength = GetInt(item, "max_context_length"),
+                LoadedContextLength = loadedContextLength,
                 IsLoaded = loaded,
                 LoadedInstanceId = loadedInstanceId,
                 SupportsVision = vision || string.Equals(type, "vlm", StringComparison.OrdinalIgnoreCase),
@@ -191,7 +197,13 @@ public sealed class LMStudioManagementClient : IModelManagementService
             foreach (var item in data.EnumerateArray())
             {
                 var id = GetStr(item, "id");
-                if (!string.IsNullOrEmpty(id)) result.Add(new ModelInfo { Id = id, HasDetails = false });
+                if (string.IsNullOrEmpty(id)) continue;
+                // vLLM extends the OpenAI shape with max_model_len (the serving window). Other
+                // OpenAI-compatible servers occasionally use context_window/context_length.
+                var contextLen = GetInt(item, "max_model_len");
+                if (contextLen == 0) contextLen = GetInt(item, "context_window");
+                if (contextLen == 0) contextLen = GetInt(item, "context_length");
+                result.Add(new ModelInfo { Id = id, MaxContextLength = contextLen, HasDetails = false });
             }
         }
         return result;

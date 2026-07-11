@@ -1,5 +1,6 @@
 using Microsoft.CodeAnalysis.CSharp.Scripting;
 using Microsoft.CodeAnalysis.Scripting;
+using Microsoft.CodeAnalysis.Scripting.Hosting;
 using SPLA.Domain.Agent;
 using SPLA.Domain.Models;
 using SPLA.Domain.Tools;
@@ -37,7 +38,12 @@ public sealed class ScriptRunTool : IMcpTool, IToolHelpProvider
         Function = new ToolFunctionDefinition
         {
             Name = Name,
-            Description = "Compiles and runs a C# script that drives your plan: it calls tools by name via ctx.Run(name, args), loops/parallelizes in plain C#, and reports via ctx.Progress/ctx.Log. Use it to execute a repetitive multi-step plan deterministically in one call instead of issuing each tool call yourself.",
+            Description = "Compiles and runs a C# script (top-level statements) that drives your plan in ONE deterministic call — "
+                + "use instead of issuing many tool calls yourself, e.g. to loop over inputs or parallelize with Task.WhenAll. "
+                + "The script has a 'ctx' global with: await ctx.Run(\"tool_name\", new { param = value }) — call any tool by name and get its text result; "
+                + "ctx.Log(value) — emit a line to the output; ctx.Progress(message) or ctx.Progress(current, total, message) — report progress; "
+                + "ctx.Cancellation — the timeout CancellationToken to pass to your awaits. Tool calls inside obey the same permissions. "
+                + "Example: ctx.Log(await ctx.Run(\"system_read_file\", new { path = \"a.txt\" }));",
             Scope = ToolScope.Shell,
             Effect = ToolEffect.Execute,
             Risk = ToolRisk.High,
@@ -132,7 +138,16 @@ public sealed class ScriptRunTool : IMcpTool, IToolHelpProvider
         Console.SetOut(capture);
         try
         {
-            var state = await CSharpScript.RunAsync(code, options, ctx, typeof(ScriptContext), timeoutCts.Token);
+            // The script's globals type (ScriptContext) lives in THIS plugin assembly, which the host
+            // loaded into an isolated PluginLoadContext. Roslyn's scripting engine loads the compiled
+            // script assembly through its own InteractiveAssemblyLoader; left to its defaults it would
+            // resolve the plugin assembly a SECOND time from disk, giving a different ScriptContext type
+            // identity and an InvalidCastException on the globals — even for a trivial `ctx.Log(...)`.
+            // RegisterDependency pins the reference to the already-loaded assembly so the identities unify.
+            using var assemblyLoader = new InteractiveAssemblyLoader();
+            assemblyLoader.RegisterDependency(typeof(ScriptContext).Assembly);
+            var script = CSharpScript.Create<object>(code, options, typeof(ScriptContext), assemblyLoader);
+            var state = await script.RunAsync(ctx, timeoutCts.Token);
 
             var sb = new StringBuilder();
             sb.AppendLine("ok: true");

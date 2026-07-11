@@ -19,6 +19,13 @@
     <PackageReference Include="Microsoft.AspNetCore.Authentication.Negotiate" Version="10.0.0" />
   </ItemGroup>
 
+  <!-- OTLP export (Grafana/Tempo/Jaeger/Datadog/…). Only active when an OTLP endpoint is configured;
+       ships out the same "SPLA" meter/traces the local stats collector taps in-process. -->
+  <ItemGroup>
+    <PackageReference Include="OpenTelemetry.Extensions.Hosting" Version="1.16.0" />
+    <PackageReference Include="OpenTelemetry.Exporter.OpenTelemetryProtocol" Version="1.16.0" />
+  </ItemGroup>
+
   <!-- The browser client (web/, Vue 3 + TS + Vite) builds to web/dist before each build, then
        ships embedded — the service stays self-contained with no content-root/wwwroot wiring at
        runtime. LogicalName is set explicitly so it still resolves to "SPLA.Service.WebClient.*",

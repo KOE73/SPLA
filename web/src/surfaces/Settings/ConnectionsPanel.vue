@@ -21,6 +21,7 @@
 <script setup lang="ts">
 import { onUnmounted, reactive, ref } from "vue";
 import { client } from "../../protocol/SplaClient";
+import { projectEnvelope } from "../../state/project";
 import type { ConnectionDto, ConnHealth } from "../../protocol/types";
 import ConnectionCard from "./ConnectionCard.vue";
 import { uuid } from "../../util/uuid";
@@ -48,14 +49,14 @@ const offHealth = client.on("connections.health", p => {
 });
 onUnmounted(() => { offResult(); offHealth(); });
 
-function recheck() { client.send("connections.get"); }
+function recheck() { client.send("connections.get", undefined, projectEnvelope()); }
 
 /** Send + wait for the broadcast result that confirms the save actually landed (or timeout). */
 function save(): Promise<void> {
   return new Promise((resolve, reject) => {
     const timer = window.setTimeout(() => { off(); reject(new Error("save timed out")); }, 8000);
     const off = client.on("connections.result", () => { clearTimeout(timer); off(); resolve(); });
-    if (!client.send("connections.save", { connections: conns.value })) {
+    if (!client.send("connections.save", { connections: conns.value }, projectEnvelope())) {
       clearTimeout(timer); off(); reject(new Error("socket closed"));
     }
   });

@@ -219,6 +219,12 @@ public sealed class ChatRuntime
         _runtime.ChatManager.SaveChat(_chat);
     }
 
+    /// <summary>The operative context window for this chat's connection (tokens), or null when
+    /// unknown. Cached by the runtime with a short TTL; cheap to call once per turn. Lets the turn
+    /// path report "prompt tokens vs window" so the UI can warn before the provider rejects.</summary>
+    public Task<int?> GetContextLengthAsync(CancellationToken ct = default)
+        => _runtime.GetContextLengthAsync(ResolveLlmSettings(), ct);
+
     /// <summary>The chat's effective LLM settings: its connection (endpoint/model) layered with its
     /// own behaviour knobs (temperature/reasoning/penalties), falling back to project defaults.</summary>
     private LLMSettings ResolveLlmSettings()

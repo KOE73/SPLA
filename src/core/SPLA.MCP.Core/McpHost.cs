@@ -206,6 +206,7 @@ public class McpHost : IToolHost
             catch (Exception ex)
             {
                 progressNode.Fail();
+                activity?.SetStatus(System.Diagnostics.ActivityStatusCode.Error, ex.Message);
                 SplaTelemetry.ToolErrors.Add(1);
                 _logger?.LogError(ex, "Tool execution failed. Tool={ToolName} Mode={Mode}", name, mode);
                 return $"Error executing tool {name}: {ex.Message}";

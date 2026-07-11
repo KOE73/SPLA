@@ -52,6 +52,8 @@ ignore:
 | `llm.provider` | No | LLM provider. Currently only `lmstudio`. |
 | `llm.endpoint` | No | API base URL. |
 | `llm.model` | No | Model name. `auto` = use whatever is loaded. |
+| `connections` | No | Named connection list (merged over defaults by `id`); each entry: `id`, `name`, `provider`, `endpoint`, `api_key`, `model`, `context_length`, `lock_model`, `swap_model`. When absent, a default connection is synthesized from `llm.*`. |
+| `connections[].context_length` | No | Manual context-window override in tokens. Unset/0 = auto-detect from the provider (LM Studio native API reports the loaded instance's configured window; vLLM reports `max_model_len`). |
 | `ui.theme` | No | Color theme: `Dark`, `Light`, `Cream`, `Emerald`. |
 | `ui.density` | No | UI density: `norm`, `mini`, `nano`, `max`. |
 | `permissions.*` | No | Per-effect overrides: `allow`, `ask`, `deny`. Overrides the mode's default matrix. |

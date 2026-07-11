@@ -7,6 +7,14 @@ public class LLMSettings
     public string BaseUrl { get; set; } = "http://127.0.0.1:1234/v1/";
     public string ModelName { get; set; } = "local-model";
     public string ApiKey { get; set; } = "lm-studio";
+
+    /// <summary>
+    /// Manual context-window override in tokens from the connection (<c>context_length</c> in .spla).
+    /// Null = not configured; the runtime then auto-detects the operative window from the provider
+    /// (LM Studio native API loaded-instance config, vLLM <c>max_model_len</c>) where possible.
+    /// </summary>
+    public int? ContextLength { get; set; }
+
     public double Temperature { get; set; } = 0.7;
     public AgentMode Mode { get; set; } = AgentMode.Edit;
     public string Theme { get; set; } = "Dark";

@@ -11,7 +11,8 @@ public sealed record SplaTelemetryContext(
     string? MessageId = null,
     string? ToolCallId = null,
     string? ProjectId = null,
-    string? WorkspacePath = null);
+    string? WorkspacePath = null,
+    string? UserKey = null);
 
 public static class SplaTelemetry
 {
@@ -22,6 +23,8 @@ public static class SplaTelemetry
     public static readonly Counter<long> ToolCalls = Meter.CreateCounter<long>("spla.tool.calls");
     public static readonly Counter<long> ToolErrors = Meter.CreateCounter<long>("spla.tool.errors");
     public static readonly Histogram<double> ToolDurationMs = Meter.CreateHistogram<double>("spla.tool.duration.ms");
+    public static readonly Counter<long> PromptTokens = Meter.CreateCounter<long>("spla.tokens.prompt");
+    public static readonly Counter<long> CompletionTokens = Meter.CreateCounter<long>("spla.tokens.completion");
 
     private static readonly AsyncLocal<SplaTelemetryContext?> CurrentContextSlot = new();
     private static readonly SplaFileLoggerProvider FileLoggerProvider = new();
@@ -73,7 +76,12 @@ public static class SplaTelemetry
         SetTag(activity, "spla.tool_call_id", context.ToolCallId);
         SetTag(activity, "spla.project_id", context.ProjectId);
         SetTag(activity, "spla.workspace_path", context.WorkspacePath);
+        SetTag(activity, "spla.user", context.UserKey);
     }
+
+    /// <summary>The user key on the ambient context, if any — read by the local stats collector to
+    /// attribute a measurement/activity to the acting user (for the per-user stats slice).</summary>
+    public static string? CurrentUserKey => CurrentContext?.UserKey;
 
     private static void SetTag(Activity activity, string name, string? value)
     {

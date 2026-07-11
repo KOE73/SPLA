@@ -62,6 +62,11 @@ public sealed class AgentRuntime : IDisposable
     /// <summary>Cached reachability per connection id. null = not yet checked.</summary>
     public ConcurrentDictionary<string, (bool Ok, string? Error)> ConnectionHealth { get; } = new();
 
+    /// <summary>Cached operative context window per endpoint+model, with a short TTL so a model
+    /// reloaded with a different window is picked up. See <see cref="GetContextLengthAsync"/>.</summary>
+    private readonly ConcurrentDictionary<string, (int? Length, DateTimeOffset At)> _contextLengthCache = new();
+    private static readonly TimeSpan ContextLengthTtl = TimeSpan.FromSeconds(60);
+
     /// <summary>Schemas registered by plugins at startup (data + UI, resolved by name).</summary>
     public SPLA.Domain.Editor.SchemaRegistry SchemaRegistry { get; }
 
@@ -147,6 +152,47 @@ public sealed class AgentRuntime : IDisposable
         TokenUsageGlobal = new FileTokenUsageStore(
             Path.Combine(
                 Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), ".spla", "token-usage.json"));
+    }
+
+    /// <summary>
+    /// Resolves the operative context window (tokens) for a connection's model, or null when unknown.
+    /// Priority: the connection's manual <c>context_length</c> override → the provider-reported value
+    /// (LM Studio native API: the LOADED instance's configured window, which is what requests actually
+    /// fail against — not the model's max; vLLM: <c>max_model_len</c>) → null. Detection results are
+    /// cached per endpoint+model for <see cref="ContextLengthTtl"/> so a reload with a different
+    /// window is picked up without hammering the provider on every turn.
+    /// </summary>
+    public async Task<int?> GetContextLengthAsync(LLMSettings llm, CancellationToken ct = default)
+    {
+        if (llm.ContextLength is > 0) return llm.ContextLength;
+
+        var key = $"{llm.BaseUrl}|{llm.ModelName}";
+        if (_contextLengthCache.TryGetValue(key, out var hit) && DateTimeOffset.UtcNow - hit.At < ContextLengthTtl)
+            return hit.Length;
+
+        int? detected = null;
+        try
+        {
+            var models = await ModelManagement.GetModelDetailsAsync(llm.BaseUrl, llm.ApiKey, ct);
+
+            // A named model matches by id; "auto"/empty means "whatever is loaded" — take the loaded
+            // LLM instance (LM Studio picks the same one for chat), else the single listed model.
+            var model = !string.IsNullOrEmpty(llm.ModelName)
+                ? models.FirstOrDefault(m => string.Equals(m.Id, llm.ModelName, StringComparison.OrdinalIgnoreCase))
+                : models.FirstOrDefault(m => m.IsLoaded && !string.Equals(m.Type, "embedding", StringComparison.OrdinalIgnoreCase))
+                  ?? (models.Count == 1 ? models[0] : null);
+
+            var len = model?.EffectiveContextLength ?? 0;
+            detected = len > 0 ? len : null;
+        }
+        catch
+        {
+            // Provider offline or no management surface — leave unknown; the reactive error path
+            // still catches an actual overflow.
+        }
+
+        _contextLengthCache[key] = (detected, DateTimeOffset.UtcNow);
+        return detected;
     }
 
     public void Dispose() => _httpClient.Dispose();

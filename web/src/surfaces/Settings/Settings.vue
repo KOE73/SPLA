@@ -29,6 +29,7 @@
 <script setup lang="ts">
 import { ref } from "vue";
 import { client } from "../../protocol/SplaClient";
+import { projectEnvelope } from "../../state/project";
 import ConnectionsPanel from "./ConnectionsPanel.vue";
 import AgentPanel from "./AgentPanel.vue";
 import PluginsPanel from "./PluginsPanel.vue";
@@ -73,9 +74,9 @@ async function onSave() {
 }
 
 function fetchAll() {
-  client.send("connections.get");
-  client.send("agent.get");
-  client.send("plugins.get");
+  client.send("connections.get", undefined, projectEnvelope());
+  client.send("agent.get", undefined, projectEnvelope());
+  client.send("plugins.get", undefined, projectEnvelope());
 }
 client.on("welcome", fetchAll);
 fetchAll();

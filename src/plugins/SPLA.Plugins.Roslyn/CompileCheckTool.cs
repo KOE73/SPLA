@@ -39,7 +39,7 @@ public sealed class CompileCheckTool : IMcpTool, IToolHelpProvider
                 properties = new
                 {
                     code        = new { type = "string", description = "The C# source to compile. A full file (namespace/class) by default, or top-level statements when kind='program'." },
-                    kind        = new { type = "string", description = "'library' (default) for a class/file with no entry point, or 'program' for top-level statements / a Main entry point." },
+                    kind        = new { type = "string", @enum = new[] { "library", "program" }, description = "'library' (default) for a class/file with no entry point, or 'program' for top-level statements / a Main entry point." },
                     output      = SchemaParts.Output,
                     output_name = SchemaParts.OutputName
                 },

@@ -143,8 +143,14 @@ public sealed class ConversationOrchestrator
 
             // Real token accounting lives in the core loop, not the UI: every turn — answer or
             // tool-call, success or not — reports the provider's figures exactly once. Hosts fold
-            // these into per-chat and persistent project-lifetime tallies.
+            // these into per-chat and persistent project-lifetime tallies; the same figures are
+            // recorded on the telemetry meter here so they reach both the local stats view and any
+            // OTLP backend from this single choke point.
             callbacks.OnTokenUsage?.Invoke(response.PromptTokens, response.CompletionTokens);
+            if (response.PromptTokens is { } promptTokens and > 0)
+                Observability.SplaTelemetry.PromptTokens.Add(promptTokens);
+            if (response.CompletionTokens is { } completionTokens and > 0)
+                Observability.SplaTelemetry.CompletionTokens.Add(completionTokens);
 
             Logger?.LogInformation(
                 "LLM response ← textChars={TextChars} toolCalls={ToolCalls} promptTokens={PromptTokens} completionTokens={CompletionTokens}",

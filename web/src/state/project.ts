@@ -14,6 +14,14 @@ export function projectLabel(projectId: string | null, projectName?: string | nu
   return base.replace(/\.spla$/i, "") || "SPLA";
 }
 
+/** Envelope options that scope a request to the currently focused project. Settings surfaces
+ * (agent/plugins/connections/usage/appearance) MUST pass this: without a projectId the server's
+ * Resolve() falls back to the connection's default project, so edits to a project opened via the
+ * ProjectPicker would silently save into the wrong .spla. */
+export function projectEnvelope(): { projectId?: string } {
+  return { projectId: store.currentProjectId ?? undefined };
+}
+
 export function setCurrentProject(projectId: string | null, projectName?: string | null) {
   store.currentProjectId = projectId;
   store.currentProjectName = projectLabel(projectId, projectName);

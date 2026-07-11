@@ -468,6 +468,11 @@ public sealed class TokenUsagePayload
 {
     public int? PromptTokens { get; set; }
     public int? CompletionTokens { get; set; }
+
+    /// <summary>The model's operative context window in tokens, when known (connection override or
+    /// provider-detected). Lets the client render prompt usage as a fraction of the window and warn
+    /// before the provider rejects the request. Null = unknown.</summary>
+    public int? ContextLength { get; set; }
 }
 
 /// <summary>One usage scope's running totals (session/project/machine), shaped for direct display.</summary>

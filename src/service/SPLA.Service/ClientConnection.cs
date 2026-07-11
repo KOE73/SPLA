@@ -296,7 +296,20 @@ public sealed class ClientConnection : IClientSession
         using var turnCts = CancellationTokenSource.CreateLinkedTokenSource(hostStopping);
         _activeTurns[chat.ChatId] = turnCts;
 
+        // Make the acting user (and chat/project) ambient for this turn's telemetry, so tool-call and
+        // token measurements the collector taps can be attributed to this user for the per-user stats
+        // slice. AsyncLocal flows into the orchestrator/McpHost on this same async path.
+        using var telemetryScope = SPLA.Observability.SplaTelemetry.PushContext(
+            new SPLA.Observability.SplaTelemetryContext(
+                ConversationId: chat.ChatId, ProjectId: projectId, UserKey: _identity.UserKey));
+
         var ctx = new TurnContext();
+
+        // Resolve the model's operative context window up front (cached; one cheap local call) so
+        // every token.usage broadcast this turn can carry "prompt vs window" for the UI's budget bar.
+        try { ctx.ContextLength = await chat.GetContextLengthAsync(turnCts.Token); }
+        catch { /* unknown window — usage still reports raw counts */ }
+
         var callbacks = BuildCallbacks(runtime, projectId, chat, ctx);
 
         string? error = null;
@@ -371,7 +384,12 @@ public sealed class ClientConnection : IClientSession
             {
                 runtime.TokenUsageProject.Record(prompt, completion);
                 runtime.TokenUsageGlobal.Record(prompt, completion);
-                _ = ToWatchers(MessageTypes.TokenUsage, new TokenUsagePayload { PromptTokens = prompt, CompletionTokens = completion });
+                _ = ToWatchers(MessageTypes.TokenUsage, new TokenUsagePayload
+                {
+                    PromptTokens = prompt,
+                    CompletionTokens = completion,
+                    ContextLength = ctx.ContextLength
+                });
                 _ = _hub.BroadcastToProjectAsync(projectId, MessageTypes.UsageResult, SettingsOps.GetUsage(runtime));
             }
         };
@@ -437,5 +455,7 @@ public sealed class ClientConnection : IClientSession
     {
         public int NextIndex;
         public int CurrentMsgIndex;
+        /// <summary>The model's operative context window (tokens) resolved at turn start; null = unknown.</summary>
+        public int? ContextLength;
     }
 }
