@@ -12,6 +12,7 @@
     <button :title="dockState.maximized ? 'Restore layout' : 'Maximize active panel'" @click="toggleMaximize">
       {{ dockState.maximized ? '❐' : '⛶' }}
     </button>
+    <button title="Collapse active panel" @click="collapseActivePanel">▁</button>
     <button title="Open active panel in a separate window" @click="popoutActivePanel">↗</button>
     <button title="Close active panel" :disabled="activeProtected" @click="closeActivePanel">×</button>
     <button title="Reset layout" @click="resetDock">↺</button>
@@ -20,7 +21,7 @@
 
 <script setup lang="ts">
 import { computed } from "vue";
-import { closeActivePanel, dockState, isProtected, openPanel, popoutActivePanel, resetDock, toggleMaximize } from "./dockController";
+import { closeActivePanel, collapseActivePanel, dockState, isProtected, openPanel, popoutActivePanel, resetDock, toggleMaximize } from "./dockController";
 
 const activeProtected = computed(() => {
   dockState.activePanelId;

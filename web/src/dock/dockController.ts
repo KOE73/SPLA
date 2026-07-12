@@ -8,6 +8,7 @@ export const dockState = shallowReactive({
   api: null as DockviewApi | null,
   activePanelId: null as string | null,
   maximized: false,
+  collapsedPanelIds: [] as string[],
 });
 
 function addPanel(kind: PanelKind, referencePanel?: string, direction: "left" | "right" | "above" | "below" | "within" = "right") {
@@ -16,7 +17,9 @@ function addPanel(kind: PanelKind, referencePanel?: string, direction: "left" | 
   const definition = panelCatalog[kind];
   const existing = api.getPanel(definition.id);
   if (existing) {
+    existing.api.group.api.setVisible(true);
     existing.api.setActive();
+    dockState.collapsedPanelIds = dockState.collapsedPanelIds.filter(id => id !== existing.id);
     return;
   }
 
@@ -76,6 +79,15 @@ export function toggleMaximize() {
   else api.activePanel?.api.maximize();
 }
 
+export function collapseActivePanel() {
+  const panel = dockState.api?.activePanel;
+  if (!panel) return;
+  const groupPanels = panel.api.group.panels.map(item => item.id);
+  panel.api.group.api.setVisible(false);
+  dockState.collapsedPanelIds = [...new Set([...dockState.collapsedPanelIds, ...groupPanels])];
+  dockState.activePanelId = dockState.api?.activePanel?.id ?? null;
+}
+
 export async function popoutActivePanel() {
   const api = dockState.api;
   if (api?.activePanel) await api.addPopoutGroup(api.activePanel);
@@ -93,6 +105,7 @@ export function resetDock() {
   if (!api) return;
   localStorage.removeItem(storageKey);
   api.clear();
+  dockState.collapsedPanelIds = [];
   addPanel("navigation");
   addPanel("chat", "navigation", "right");
 }

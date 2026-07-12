@@ -93,6 +93,20 @@ internal sealed class BrowserScreencastSession : ISplaPluginPanelSession
             case "click":
                 await _page.Mouse.ClickAsync(payload.GetProperty("x").GetSingle(), payload.GetProperty("y").GetSingle());
                 break;
+            case "pointerDown":
+                await _page.Mouse.MoveAsync(payload.GetProperty("x").GetSingle(), payload.GetProperty("y").GetSingle());
+                await _page.Mouse.DownAsync(new MouseDownOptions { Button = ResolveMouseButton(payload) });
+                break;
+            case "pointerMove":
+                await _page.Mouse.MoveAsync(payload.GetProperty("x").GetSingle(), payload.GetProperty("y").GetSingle());
+                break;
+            case "pointerUp":
+                await _page.Mouse.MoveAsync(payload.GetProperty("x").GetSingle(), payload.GetProperty("y").GetSingle());
+                await _page.Mouse.UpAsync(new MouseUpOptions { Button = ResolveMouseButton(payload) });
+                break;
+            case "wheel":
+                await _page.Mouse.WheelAsync(payload.GetProperty("deltaX").GetSingle(), payload.GetProperty("deltaY").GetSingle());
+                break;
             case "text":
                 await _page.Keyboard.InsertTextAsync(payload.GetProperty("text").GetString() ?? string.Empty);
                 break;
@@ -130,6 +144,13 @@ internal sealed class BrowserScreencastSession : ISplaPluginPanelSession
 
     private static string NormalizeUrl(string url) =>
         Uri.TryCreate(url, UriKind.Absolute, out _) ? url : $"https://{url}";
+
+    private static Microsoft.Playwright.MouseButton ResolveMouseButton(JsonElement payload) => payload.GetProperty("button").GetInt32() switch
+    {
+        1 => Microsoft.Playwright.MouseButton.Middle,
+        2 => Microsoft.Playwright.MouseButton.Right,
+        _ => Microsoft.Playwright.MouseButton.Left
+    };
 
     public async ValueTask DisposeAsync()
     {

@@ -18,8 +18,10 @@ import { dockComponents, dockTabComponents } from "./panelCatalog";
 .dock-shell > .dockview-theme-spla { flex: 1; min-height: 0; }
 .dockview-theme-spla,
 .dockview-theme-spla > .dv-shell { width: 100%; height: 100%; }
-.dockview-theme-spla {
+.dockview-theme-spla,
+.dockview-theme-spla .dockview-theme-abyss {
   --dv-background-color: var(--bg);
+  --dv-group-view-background-color: var(--bg);
   --dv-paneview-active-outline-color: var(--accent);
   --dv-tabs-and-actions-container-background-color: var(--panel);
   --dv-activegroup-visiblepanel-tab-background-color: var(--elevated);
@@ -32,6 +34,11 @@ import { dockComponents, dockTabComponents } from "./panelCatalog";
   --dv-inactivegroup-visiblepanel-tab-color: var(--muted);
   --dv-inactivegroup-hiddenpanel-tab-color: var(--muted);
   --dv-separator-border: var(--border);
+  --dv-sash-color: var(--border);
+  --dv-active-sash-color: var(--accent);
+  --dv-scrollbar-background-color: var(--muted);
+  --dv-context-menu-background-color: var(--panel);
+  --dv-context-menu-color: var(--text);
   --dv-paneview-header-border-color: var(--border);
   --dv-drag-over-background-color: color-mix(in srgb, var(--accent) 20%, transparent);
   --dv-icon-hover-background-color: var(--accent-soft);

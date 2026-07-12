@@ -1,13 +1,16 @@
 <template>
   <div class="screencast-surface">
     <form class="browser-bar" @submit.prevent="navigate">
-      <button type="button" title="Reload" @click="sendInput('key', { key: 'Control+R' })">↻</button>
+      <button type="button" title="Reload" @click="navigate">↻</button>
       <input v-model="address" aria-label="Browser address" placeholder="Enter URL" />
       <button type="submit">Go</button>
       <span class="state">{{ state }}</span>
     </form>
-    <div ref="viewport" class="browser-viewport">
-      <img v-if="frame" :src="frame" draggable="false" alt="Browser screencast" @click="clickFrame" />
+    <div ref="viewport" class="browser-viewport" tabindex="0" @keydown.prevent="keyFrame" @wheel.prevent="wheelFrame">
+      <img v-if="frame" :src="frame" draggable="false" alt="Browser screencast"
+           @pointerdown.prevent="pointerFrame('pointerDown', $event)"
+           @pointermove.prevent="pointerFrame('pointerMove', $event)"
+           @pointerup.prevent="pointerFrame('pointerUp', $event)" />
       <div v-else class="browser-empty">{{ error || "Starting experimental browser…" }}</div>
     </div>
   </div>
@@ -32,13 +35,31 @@ function sendInput(inputType: string, data: object) {
 }
 function navigate() { sendInput("navigate", { url: address.value }); }
 
-function clickFrame(event: MouseEvent) {
+function framePoint(event: PointerEvent) {
   const image = event.currentTarget as HTMLImageElement;
   const bounds = image.getBoundingClientRect();
-  sendInput("click", {
+  return {
     x: (event.clientX - bounds.left) * image.naturalWidth / bounds.width,
     y: (event.clientY - bounds.top) * image.naturalHeight / bounds.height,
-  });
+    button: event.button,
+  };
+}
+function pointerFrame(inputType: string, event: PointerEvent) {
+  viewport.value?.focus();
+  if (inputType === "pointerDown") (event.currentTarget as HTMLElement).setPointerCapture(event.pointerId);
+  sendInput(inputType, framePoint(event));
+}
+function keyFrame(event: KeyboardEvent) {
+  if (event.key.length === 1 && !event.ctrlKey && !event.altKey && !event.metaKey) {
+    sendInput("text", { text: event.key });
+    return;
+  }
+  const modifiers = [event.ctrlKey && "Control", event.altKey && "Alt", event.shiftKey && "Shift", event.metaKey && "Meta"].filter(Boolean);
+  const key = [...modifiers, event.key].join("+");
+  sendInput("key", { key });
+}
+function wheelFrame(event: WheelEvent) {
+  sendInput("wheel", { deltaX: event.deltaX, deltaY: event.deltaY });
 }
 
 onMounted(() => {
@@ -62,6 +83,13 @@ onMounted(() => {
       state.value = "error";
     }
   }));
+  const resizeObserver = new ResizeObserver(entries => {
+    const bounds = entries[0]?.contentRect;
+    if (bounds && bounds.width > 0 && bounds.height > 0)
+      sendInput("resize", { width: Math.max(320, Math.round(bounds.width)), height: Math.max(200, Math.round(bounds.height)) });
+  });
+  if (viewport.value) resizeObserver.observe(viewport.value);
+  disposers.push(() => resizeObserver.disconnect());
 });
 
 onBeforeUnmount(() => {

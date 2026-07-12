@@ -1,4 +1,5 @@
 <template>
+  <div class="wire-surface">
   <header>
     <b>Wire</b>
     <input v-model="filter" class="wire-filter" placeholder="filter type/payload…" spellcheck="false">
@@ -19,6 +20,7 @@
       <span v-if="meta(f)" class="wmeta">{{ meta(f) }}</span>
       <span v-if="payloadText(f)" class="wpay">{{ payloadText(f) }}</span>
     </div>
+  </div>
   </div>
 </template>
 
