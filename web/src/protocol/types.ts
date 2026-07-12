@@ -275,4 +275,6 @@ export interface ServerEvents {
   "terminal.opened": { terminalId: string; host: string };
   "terminal.data": { terminalId: string; data: string };
   "terminal.closed": { terminalId: string; reason?: string };
+  "plugin.panel.opened": { panelId: string };
+  "plugin.panel.event": { panelId: string; eventType: string; data?: { base64?: string; mimeType?: string; url?: string; message?: string } };
 }

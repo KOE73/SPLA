@@ -17,6 +17,7 @@ internal sealed record LoadedPlugin(
     IReadOnlyList<IMcpTool> Tools,
     IReadOnlyList<SplaPluginUiCommand> GeneratedCommands,
     ISplaPluginAction? ActionHandler,
+    IReadOnlyList<ISplaPluginPanelProvider> PanelProviders,
     IReadOnlyList<IJsonSchemaProvider> SchemaProviders,
     PluginHealth Health);
 
@@ -57,6 +58,7 @@ internal sealed class PluginAssemblyLoader
         var tools = new List<IMcpTool>();
         var generatedCommands = new List<SplaPluginUiCommand>();
         ISplaPluginAction? actionHandler = null;
+        var panelProviders = new List<ISplaPluginPanelProvider>();
         var schemaProviders = new List<IJsonSchemaProvider>();
         var health = PluginHealth.Ok;
 
@@ -79,6 +81,9 @@ internal sealed class PluginAssemblyLoader
             if (plugin is ISplaPluginAction handler)
                 actionHandler = handler;
 
+            if (plugin is ISplaPluginPanelProvider panelProvider)
+                panelProviders.Add(panelProvider);
+
             if (plugin is ISchemaContributor schemaContributor)
                 schemaProviders.Add(schemaContributor.GetSchemaProvider());
 
@@ -88,7 +93,7 @@ internal sealed class PluginAssemblyLoader
                 health = RunSelfCheck(meta.Id, selfCheck);
         }
 
-        return new LoadedPlugin(tools, generatedCommands, actionHandler, schemaProviders, health);
+        return new LoadedPlugin(tools, generatedCommands, actionHandler, panelProviders, schemaProviders, health);
     }
 
     private PluginHealth RunSelfCheck(string pluginId, ISplaPluginSelfCheck selfCheck)

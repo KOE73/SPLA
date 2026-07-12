@@ -37,7 +37,7 @@ interface AssistantBubbleHandle {
 }
 
 const items = ref<Item[]>([]);
-// This component renders directly into the #log slot (the parent LayoutNodeView wrapper div),
+// This component renders directly into the #log slot owned by ChatSurface,
 // which already carries the flex/scroll CSS — `display:contents` on our own root keeps us out
 // of the box tree so .msg children become real flex items of #log, not of an extra inner div.
 const logEl = () => document.getElementById("log");

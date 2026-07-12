@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.Text.Json;
 
 namespace SPLA.Service.Contracts;
 
@@ -705,4 +706,35 @@ public sealed class TerminalClosedPayload
 {
     public string TerminalId { get; set; } = string.Empty;
     public string? Reason { get; set; }
+}
+
+public sealed class PluginPanelOpenPayload
+{
+    public string PanelId { get; set; } = string.Empty;
+    public string PanelType { get; set; } = string.Empty;
+    public Dictionary<string, string?> Parameters { get; set; } = [];
+}
+
+public sealed class PluginPanelInputPayload
+{
+    public string PanelId { get; set; } = string.Empty;
+    public string InputType { get; set; } = string.Empty;
+    public JsonElement Data { get; set; }
+}
+
+public sealed class PluginPanelClosePayload
+{
+    public string PanelId { get; set; } = string.Empty;
+}
+
+public sealed class PluginPanelOpenedPayload
+{
+    public string PanelId { get; set; } = string.Empty;
+}
+
+public sealed class PluginPanelEventPayload
+{
+    public string PanelId { get; set; } = string.Empty;
+    public string EventType { get; set; } = string.Empty;
+    public object? Data { get; set; }
 }

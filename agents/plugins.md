@@ -5,6 +5,10 @@ SPLA supports a dynamic plugin system that allows the AI agent to gain new capab
 ## Plugin Discovery
 Plugins are located in the `plugins/` directory adjacent to the main executable. Each plugin must be in its own subdirectory and contain a `meta.yaml` manifest.
 
+DLL plugins may additionally implement `ISplaPluginPanelProvider`. The service then routes opaque
+`plugin.panel.*` messages between the web panel and the plugin-owned session without learning the
+provider's domain model. Panel providers own their sessions; the UI owns only layout and viewer state.
+
 ## `meta.yaml` Structure
 ```yaml
 id: my_plugin

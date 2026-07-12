@@ -39,6 +39,7 @@ public sealed class ClientConnection : IClientSession
     /// <summary>This connection's live SSH terminals (phase B). Created here, torn down in the
     /// receive-loop finally so a dropped socket closes every SSH session it opened.</summary>
     private readonly SshTerminalManager _terminals;
+    private readonly PluginPanelManager _pluginPanels;
 
     /// <summary>Per-user project scope (server mode): this connection lists/defaults to the projects in
     /// the authenticated user's own area, not the process-global set. Null in local/embedded mode.</summary>
@@ -89,6 +90,7 @@ public sealed class ClientConnection : IClientSession
         _userArea = userArea;
         _router = MessageRouter.Default;
         _terminals = new SshTerminalManager((type, payload) => SendAsync(type, payload), log);
+        _pluginPanels = new PluginPanelManager((type, payload) => SendAsync(type, payload));
     }
 
     // ── IClientSession (the surface handlers act through) ─────────────────────
@@ -116,6 +118,7 @@ public sealed class ClientConnection : IClientSession
     }
 
     SshTerminalManager IClientSession.Terminals => _terminals;
+    PluginPanelManager IClientSession.PluginPanels => _pluginPanels;
 
     void IClientSession.MarkProjectOpen(string projectId) => _openProjects[projectId] = 0;
     void IClientSession.MarkChatOpen(string chatId) => _openChats[chatId] = 0;
@@ -158,6 +161,7 @@ public sealed class ClientConnection : IClientSession
             foreach (var cts in _activeTurns.Values) cts.Cancel();
             // Tear down any live SSH terminals this connection opened.
             await _terminals.DisposeAsync();
+            await _pluginPanels.DisposeAsync();
         }
     }
 

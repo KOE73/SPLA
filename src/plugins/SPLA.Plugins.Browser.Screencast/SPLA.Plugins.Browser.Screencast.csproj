@@ -1,0 +1,22 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <RootNamespace>SPLA.Plugins.Browser.Screencast</RootNamespace>
+    <AssemblyName>SPLA.Plugins.Browser.Screencast</AssemblyName>
+    <CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\..\core\SPLA.Domain\SPLA.Domain.csproj" />
+    <ProjectReference Include="..\..\core\SPLA.MCP.Core\SPLA.MCP.Core.csproj" />
+    <PackageReference Include="Microsoft.Playwright" Version="1.49.0" />
+  </ItemGroup>
+  <Target Name="CopyPlugin" AfterTargets="Build">
+    <ItemGroup>
+      <PluginFiles Include="$(TargetDir)**\*.*" />
+      <MetaFile Include="meta.yaml" />
+    </ItemGroup>
+    <Copy SourceFiles="@(PluginFiles)" DestinationFolder="$(MSBuildThisFileDirectory)..\..\apps\SPLA.UI.Avalonia\bin\$(Configuration)\$(TargetFramework)\plugins\browser_screencast\%(RecursiveDir)" />
+    <Copy SourceFiles="@(MetaFile)" DestinationFolder="$(MSBuildThisFileDirectory)..\..\apps\SPLA.UI.Avalonia\bin\$(Configuration)\$(TargetFramework)\plugins\browser_screencast\" />
+    <Copy SourceFiles="@(PluginFiles)" DestinationFolder="$(MSBuildThisFileDirectory)..\..\apps\SPLA.CLI\bin\$(Configuration)\$(TargetFramework)\plugins\browser_screencast\%(RecursiveDir)" />
+    <Copy SourceFiles="@(MetaFile)" DestinationFolder="$(MSBuildThisFileDirectory)..\..\apps\SPLA.CLI\bin\$(Configuration)\$(TargetFramework)\plugins\browser_screencast\" />
+  </Target>
+</Project>

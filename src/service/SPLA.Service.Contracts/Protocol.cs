@@ -155,6 +155,9 @@ public static class MessageTypes
     public const string TerminalResize = "terminal.resize";
     /// <summary>Close a terminal. Body <see cref="TerminalClosePayload"/>.</summary>
     public const string TerminalClose = "terminal.close";
+    public const string PluginPanelOpen = "plugin.panel.open";
+    public const string PluginPanelInput = "plugin.panel.input";
+    public const string PluginPanelClose = "plugin.panel.close";
 
     // ── Server → Client ──────────────────────────────────────────────────
     public const string Welcome = "welcome";
@@ -224,6 +227,8 @@ public static class MessageTypes
     public const string TerminalData = "terminal.data";
     /// <summary>Terminal closed (by request, disconnect, or error). Body <see cref="TerminalClosedPayload"/>.</summary>
     public const string TerminalClosed = "terminal.closed";
+    public const string PluginPanelOpened = "plugin.panel.opened";
+    public const string PluginPanelEvent = "plugin.panel.event";
 
     public const string Error = "error";
 }

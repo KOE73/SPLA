@@ -93,6 +93,7 @@
   </Folder>
   <Folder Name="/plugins/">
     <Project Path="src/plugins/SPLA.Plugins.Browser/SPLA.Plugins.Browser.csproj" />
+    <Project Path="src/plugins/SPLA.Plugins.Browser.Screencast/SPLA.Plugins.Browser.Screencast.csproj" />
     <Project Path="src/plugins/SPLA.Plugins.Host.Avalonia/SPLA.Plugins.Host.Avalonia.csproj" />
     <Project Path="src/plugins/SPLA.Plugins.Network/SPLA.Plugins.Network.csproj" />
     <Project Path="src/plugins/SPLA.Plugins.Roslyn/SPLA.Plugins.Roslyn.csproj" />

@@ -51,6 +51,7 @@ internal interface IClientSession
     /// <summary>This connection's live SSH terminals (phase B). Per-connection state, torn down with
     /// the socket.</summary>
     SshTerminalManager Terminals { get; }
+    PluginPanelManager PluginPanels { get; }
 
     /// <summary>Sends a chat.opened snapshot and registers this connection as its watcher.</summary>
     Task SendOpenedAsync(ChatRuntime chat);
@@ -138,6 +139,7 @@ internal sealed class MessageRouter
         new SettingsHandlers(),
         new WorkspaceHandlers(),
         new TerminalHandlers(),
+        new PluginPanelHandlers(),
     ]);
 }
 

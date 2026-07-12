@@ -41,6 +41,7 @@ public class PluginManager
     private readonly List<SplaPluginUiCommand> _uiCommands = new();
     private readonly List<string> _loadErrors = new();
     private readonly Dictionary<string, ISplaPluginAction> _actionHandlers = new(StringComparer.OrdinalIgnoreCase);
+    private readonly Dictionary<string, ISplaPluginPanelProvider> _panelProviders = new(StringComparer.OrdinalIgnoreCase);
     private readonly List<IJsonSchemaProvider> _schemaProviders = new();
 
     public PluginManager(ResolvedSettings settings, ILogger<PluginManager>? logger = null, SkillManager? skillManager = null)
@@ -65,6 +66,7 @@ public class PluginManager
         _loadErrors.Clear();
         _plugins.Clear();
         _actionHandlers.Clear();
+        _panelProviders.Clear();
         _schemaProviders.Clear();
         _skillManager?.ClearPluginSkills();
 
@@ -110,6 +112,8 @@ public class PluginManager
     public IReadOnlyList<SplaPluginUiCommand> GetUiCommands() => _uiCommands;
     public IReadOnlyList<string> GetLoadErrors() => _loadErrors;
     public IReadOnlyList<IJsonSchemaProvider> GetSchemaProviders() => _schemaProviders;
+    public ISplaPluginPanelProvider? GetPanelProvider(string panelType) =>
+        _panelProviders.GetValueOrDefault(panelType);
 
     /// <summary>Invokes an action exposed by a plugin's <see cref="ISplaPluginAction"/>
     /// (e.g. "Test Connection" from its web settings UI). Throws if the plugin has no handler.</summary>
@@ -138,6 +142,8 @@ public class PluginManager
                 _schemaProviders.AddRange(loaded.SchemaProviders);
                 if (loaded.ActionHandler != null)
                     _actionHandlers[meta.Id] = loaded.ActionHandler;
+                foreach (var provider in loaded.PanelProviders)
+                    _panelProviders[provider.PanelType] = provider;
 
                 foreach (var command in loaded.GeneratedCommands)
                     PublishGeneratedCommand(descriptor, command);

@@ -55,6 +55,9 @@ in addition to the root `AGENTS.md`.
 - `SPLA.Plugins.OneC.Avalonia`: Avalonia UI plugin for the 1C analysis experience. Its manifest type is `avalonia-ui` and it depends on `onec`.
 - `SPLA.Plugins.Sql`, `SPLA.Plugins.Sql.Avalonia`: SQL query/schema/execute plugin and its Avalonia UI panel.
 - `SPLA.Plugins.Browser`: Playwright-driven browser automation plugin.
+- `SPLA.Plugins.Browser.Screencast`: Experimental, separate headless-browser panel provider. It
+  streams in-memory frames through the generic plugin-panel transport and does not replace or modify
+  `SPLA.Plugins.Browser`.
 - `SPLA.Plugins.Test`: Test plugin manifest. Present in the repository but not currently listed in `SPLA.slnx`.
 
 ### `tests/`
@@ -161,6 +164,7 @@ Current plugin manifests:
 - `src/plugins/SPLA.Plugins.OneC.Avalonia/meta.yaml`: `id: onec_avalonia`, `type: avalonia-ui`, `depends_on: onec`.
 - `src/plugins/SPLA.Plugins.Sql/meta.yaml`: `id: sql`, `type: dll`; `src/plugins/SPLA.Plugins.Sql.Avalonia/meta.yaml`: `id: sql_avalonia`, `type: avalonia-ui`, `depends_on: sql`.
 - `src/plugins/SPLA.Plugins.Browser/meta.yaml`: `id: browser`, `type: dll`.
+- `src/plugins/SPLA.Plugins.Browser.Screencast/meta.yaml`: `id: browser_screencast`, `type: dll`.
 - `src/plugins/SPLA.Plugins.Test/meta.yaml`: Test plugin manifest. The project exists in the repository but is not currently listed in `SPLA.slnx`.
 
 ## Publish Output

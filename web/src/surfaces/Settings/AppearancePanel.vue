@@ -16,11 +16,7 @@
     </div>
     <div class="conn-card">
       <div class="conn-head"><span class="id">Layout</span><span class="state" style="color:var(--muted);font-size:var(--fs-xs)">this device only</span></div>
-      <label class="field"><span>Panel layout</span>
-        <select v-model="layoutName" @change="saveLayout">
-          <option v-for="n in layoutNames()" :key="n" :value="n">{{ n }}</option>
-        </select>
-      </label>
+      <button class="btn ghost" @click="resetDock">Reset panel layout</button>
     </div>
     <div class="hint">{{ hint }}</div>
   </div>
@@ -30,11 +26,10 @@
 import { onUnmounted, ref } from "vue";
 import { client } from "../../protocol/SplaClient";
 import { projectEnvelope } from "../../state/project";
-import { layoutNames } from "../../layouts/layouts";
+import { resetDock } from "../../dock/dockController";
 
 const theme = ref(localStorage.getItem("spla.theme") || "dark");
 const density = ref(localStorage.getItem("spla.density") || "norm");
-const layoutName = ref(localStorage.getItem("spla.layout") || "default");
 const themes = ref<string[]>([theme.value]);
 const densities = ref<string[]>([density.value]);
 const hint = ref("");
@@ -45,7 +40,6 @@ function densityLabel(d: string) { return ({ nano: "Nano", mini: "Mini", norm: "
 // Auto-applies: no Save step. Each pick persists to .spla and broadcasts appearance.changed,
 // so every window updates live through one path — preview is the commit.
 function saveAppearance() { client.send("appearance.save", { theme: theme.value, density: density.value }, projectEnvelope()); }
-function saveLayout() { localStorage.setItem("spla.layout", layoutName.value); }
 
 const off = client.on("agent.result", p => {
   themes.value = p.themes && p.themes.length ? p.themes : themes.value;

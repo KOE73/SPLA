@@ -6,18 +6,16 @@
     <div class="nav-tabs">
       <button
         class="nav-tab"
-        :class="{ active: store.layout === 'default' }"
         title="Chats"
-        @click="setLayout('default')"
+        @click="openPanel('chat')"
       >💬</button>
       <button
         class="nav-tab"
-        :class="{ active: store.layout === 'workspace' }"
         title="Project files"
-        @click="setLayout('workspace')"
+        @click="openPanel('workspace')"
       >◫</button>
     </div>
-    <button v-if="store.layout === 'default'" class="btn-new" @click="newChat">+ New</button>
+    <button class="btn-new" @click="newChat">+ New</button>
   </div>
 
   <!-- Chat list — shown in both layouts so the user can switch chats while browsing files -->
@@ -47,6 +45,7 @@ import type { ChatSummary } from "../protocol/types";
 import ChatListItem from "./ChatListItem.vue";
 import ProjectPicker from "./ProjectPicker.vue";
 import Identity from "./Identity.vue";
+import { openPanel } from "../dock/dockController";
 
 const offList = client.on("chat.list.result", p => { store.chats = p.chats || []; });
 onUnmounted(offList);
@@ -57,17 +56,11 @@ function projectExtra() {
   return store.currentProjectId ? { projectId: store.currentProjectId } : undefined;
 }
 
-function setLayout(name: string) {
-  store.layout = name;
-  localStorage.setItem("spla.layout", name);
-}
-
 function newChat() { client.send("chat.new", { title: null }, projectExtra()); }
 
 function onChatClick(chatId: string) {
   client.send("chat.open", { chatId }, projectExtra());
-  // Switch to chat layout when opening a chat from file-browser mode
-  if (store.layout !== "default") setLayout("default");
+  openPanel("chat");
 }
 
 function rename(chat: ChatSummary) {

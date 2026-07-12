@@ -81,6 +81,13 @@ client/types **and** this table.
 | `fs.browse` | `FsBrowse` | `FsBrowsePayload` | List a workspace directory; reply `fs.browse.result`. |
 | `fs.read` | `FsRead` | `FsReadPayload` | Read a file by ref; reply `fs.read.result`. |
 | `fs.write` | `FsWrite` | `FsWritePayload` | Autosave a file; reply `fs.write.result`. |
+| `terminal.open` | `TerminalOpen` | `TerminalOpenPayload` | Open a configured SSH host as an interactive terminal. |
+| `terminal.input` | `TerminalInput` | `TerminalInputPayload` | Send human keystrokes to an SSH terminal. |
+| `terminal.resize` | `TerminalResize` | `TerminalResizePayload` | Update terminal rows and columns. |
+| `terminal.close` | `TerminalClose` | `TerminalClosePayload` | Close an SSH terminal. |
+| `plugin.panel.open` | `PluginPanelOpen` | `PluginPanelOpenPayload` | Open an interactive session supplied by an enabled plugin panel provider. |
+| `plugin.panel.input` | `PluginPanelInput` | `PluginPanelInputPayload` | Send opaque typed input to a plugin-owned panel session. |
+| `plugin.panel.close` | `PluginPanelClose` | `PluginPanelClosePayload` | Close a plugin-owned panel session. |
 
 ## Server → Client
 
@@ -121,6 +128,11 @@ client/types **and** this table.
 | `fs.browse.result` | `FsBrowseResult` | `FsBrowseResultPayload` | unicast | Answer to `fs.browse`. |
 | `fs.read.result` | `FsReadResult` | `FsReadResultPayload` | unicast | Answer to `fs.read`. |
 | `fs.write.result` | `FsWriteResult` | `FsWriteResultPayload` | unicast | Answer to `fs.write`. |
+| `terminal.opened` | `TerminalOpened` | `TerminalOpenedPayload` | unicast | SSH terminal is ready. |
+| `terminal.data` | `TerminalData` | `TerminalDataPayload` | unicast | Raw SSH terminal output. |
+| `terminal.closed` | `TerminalClosed` | `TerminalClosedPayload` | unicast | SSH terminal ended or failed. |
+| `plugin.panel.opened` | `PluginPanelOpened` | `PluginPanelOpenedPayload` | unicast | Plugin panel session is ready. |
+| `plugin.panel.event` | `PluginPanelEvent` | `PluginPanelEventPayload` | unicast | Opaque event emitted by a plugin-owned panel session. |
 | `error` | `Error` | `ErrorPayload` | unicast | A handler threw, or a request was rejected. |
 
 `watchers` = every connection currently watching that `chatId`. `broadcast` = every connection;
