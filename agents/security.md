@@ -94,8 +94,10 @@ routes an interactive prompt via `PermissionScope` to the initiating client and 
   command to require confirmation in Agent mode, it must be classified `Danger` (or the mode logic
   must change).
 - **`Scope == Agent` is unconditional Allow.** A tool that declares `Scope.Agent` runs in *every*
-  mode, including Chat, with no prompt. Do not give a plugin tool `Scope.Agent`/`Scope.Skill` — those
-  are core-only classifications (see `src/plugins/AGENTS.md`).
+  mode, including Chat, with no prompt. `Scope.Agent`/`Scope.Skill` are core-only classifications
+  (see `src/plugins/AGENTS.md`); this is now **enforced**: `McpHost.RegisterTool` refuses to register
+  a plugin-loaded tool that declares either scope (logged as `Plugin tool rejected: reserved scope`),
+  so a plugin DLL can no longer self-declare its way into always-allowed execution.
 - **Remembered grants are runtime-scoped**, i.e. shared across all chats of a project (and, on a
   shared server project, across users). Exact-argument matching rarely re-matches, so a remembered
   grant is usually `*` (broad). Treat "remember" as coarse.

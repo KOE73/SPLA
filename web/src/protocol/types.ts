@@ -271,4 +271,8 @@ export interface ServerEvents {
   "local.userMsg": { text: string; images?: string[] };
   "project.list.result": ProjectListResultPayload;
   "project.context": ProjectContextPayload;
+  // Live SSH terminal (phase B)
+  "terminal.opened": { terminalId: string; host: string };
+  "terminal.data": { terminalId: string; data: string };
+  "terminal.closed": { terminalId: string; reason?: string };
 }

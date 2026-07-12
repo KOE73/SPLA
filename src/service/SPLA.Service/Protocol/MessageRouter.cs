@@ -48,6 +48,10 @@ internal interface IClientSession
 
     Task SendAsync(string type, object? payload, string? chatId = null, string? requestId = null);
 
+    /// <summary>This connection's live SSH terminals (phase B). Per-connection state, torn down with
+    /// the socket.</summary>
+    SshTerminalManager Terminals { get; }
+
     /// <summary>Sends a chat.opened snapshot and registers this connection as its watcher.</summary>
     Task SendOpenedAsync(ChatRuntime chat);
 
@@ -133,6 +137,7 @@ internal sealed class MessageRouter
         new ConnectionHandlers(),
         new SettingsHandlers(),
         new WorkspaceHandlers(),
+        new TerminalHandlers(),
     ]);
 }
 

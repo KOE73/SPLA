@@ -70,6 +70,10 @@ echo 7. Browser Plugin...
 dotnet publish src/plugins/SPLA.Plugins.Browser/SPLA.Plugins.Browser.csproj -c Release -o .publish/work/plugins/browser
 copy /y src\plugins\SPLA.Plugins.Browser\meta.yaml .publish\work\plugins\browser\
 
+echo 8. SSH Plugin...
+dotnet publish src/plugins/SPLA.Plugins.Ssh/SPLA.Plugins.Ssh.csproj -c Release -o .publish/work/plugins/ssh
+copy /y src\plugins\SPLA.Plugins.Ssh\meta.yaml .publish\work\plugins\ssh\
+
 echo Cleaning debug and documentation artifacts from publish work folder...
 del /s /q .publish\work\*.pdb >nul 2>nul
 del /s /q .publish\work\*.xml >nul 2>nul

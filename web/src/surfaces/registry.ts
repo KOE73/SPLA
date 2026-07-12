@@ -8,6 +8,7 @@ import Debug from "./Debug.vue";
 import Wire from "./Wire.vue";
 import ChatLog from "./ChatLog.vue";
 import WorkspaceShell from "./Workspace/WorkspaceShell.vue";
+import Terminal from "./Terminal.vue";
 
 // name → Vue component. Populated incrementally as each surface is migrated (Phases 3-7).
 export const surfaces: Record<string, Component> = {
@@ -20,4 +21,5 @@ export const surfaces: Record<string, Component> = {
   wire: Wire,
   chatLog: ChatLog,
   workspace: WorkspaceShell,
+  terminal: Terminal,
 };

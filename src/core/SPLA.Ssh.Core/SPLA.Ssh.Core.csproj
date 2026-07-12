@@ -1,0 +1,23 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <RootNamespace>SPLA.Plugins.Ssh</RootNamespace>
+    <AssemblyName>SPLA.Ssh.Core</AssemblyName>
+    <!-- SSH mechanics shared by the SSH plugin (agent tools) and the service (the live xterm terminal
+         bridge). Namespace stays SPLA.Plugins.Ssh so the plugin and tests need no using changes. -->
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="SSH.NET" Version="2024.2.0" />
+    <ProjectReference Include="..\SPLA.Domain\SPLA.Domain.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- SshSession / registry / guard are internal; the plugin tools, the service terminal bridge,
+         and the tests all consume them. -->
+    <InternalsVisibleTo Include="SPLA.Plugins.Ssh" />
+    <InternalsVisibleTo Include="SPLA.Service" />
+    <InternalsVisibleTo Include="SPLA.Tests" />
+  </ItemGroup>
+
+</Project>

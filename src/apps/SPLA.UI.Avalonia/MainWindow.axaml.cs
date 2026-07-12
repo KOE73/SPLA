@@ -164,6 +164,21 @@ public partial class MainWindow : Window
     private void OpenWireSurface_Click(object? sender, RoutedEventArgs e)
         => new SurfaceWindow("wire", "Wire").Show(this);
 
+    private void OpenInBrowser_Click(object? sender, RoutedEventArgs e)
+    {
+        var currentUrl = Browser.Source?.AbsoluteUri ?? _url;
+        if (currentUrl is null) return;
+
+        try
+        {
+            Process.Start(new ProcessStartInfo(currentUrl) { UseShellExecute = true });
+        }
+        catch (Exception ex)
+        {
+            TitleText.Text = "— browser launch failed: " + ex.Message;
+        }
+    }
+
     /// <summary>Sets BOTH the OS window title (taskbar/Alt+Tab) and the custom in-window title bar
     /// text from a project display name, or the generic app name when null/blank — the two must stay
     /// in lockstep or one silently goes stale (that was the actual bug: only Window.Title was wired

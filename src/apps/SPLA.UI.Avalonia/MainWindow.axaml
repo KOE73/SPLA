@@ -44,6 +44,9 @@
                 <!-- Wire: live protocol monitor -->
                 <Button Classes="caption" Content="🔌" Click="OpenWireSurface_Click"
                         ToolTip.Tip="Wire (live protocol monitor) — opens as a separate window"/>
+                <!-- Open the same web client location in the user's default browser -->
+                <Button Classes="caption" Content="🌐" Click="OpenInBrowser_Click"
+                        ToolTip.Tip="Open current location in browser"/>
                 <!-- Reload the web client -->
                 <Button Classes="caption" Content="⟳" Click="Reload_Click" ToolTip.Tip="Reload web client"/>
                 <Button Classes="caption" Content="─" Click="MinimizeButton_Click" ToolTip.Tip="Minimize"/>

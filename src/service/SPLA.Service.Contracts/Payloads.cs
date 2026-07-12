@@ -649,3 +649,60 @@ public sealed class FsWriteResultPayload
     public bool Ok { get; set; }
     public string? Error { get; set; }
 }
+
+// ── Live SSH terminal (phase B) ──────────────────────────────────────────────
+// A raw xterm terminal bridged to an SSH pty. terminalId scopes every message to one terminal so a
+// connection can hold several. Payloads never carry credentials — the host is a configured name; the
+// password is resolved server-side from the secret store, exactly as for the SSH tools.
+
+/// <summary><see cref="MessageTypes.TerminalOpen"/> — open a terminal to a configured host.</summary>
+public sealed class TerminalOpenPayload
+{
+    public string TerminalId { get; set; } = string.Empty;
+    /// <summary>Configured host name; null uses the SSH plugin's default_host.</summary>
+    public string? Host { get; set; }
+    public int Cols { get; set; } = 120;
+    public int Rows { get; set; } = 30;
+}
+
+/// <summary><see cref="MessageTypes.TerminalInput"/> — raw human keystrokes into the pty.</summary>
+public sealed class TerminalInputPayload
+{
+    public string TerminalId { get; set; } = string.Empty;
+    public string Data { get; set; } = string.Empty;
+}
+
+/// <summary><see cref="MessageTypes.TerminalResize"/> — terminal geometry changed.</summary>
+public sealed class TerminalResizePayload
+{
+    public string TerminalId { get; set; } = string.Empty;
+    public int Cols { get; set; }
+    public int Rows { get; set; }
+}
+
+/// <summary><see cref="MessageTypes.TerminalClose"/> — close one terminal.</summary>
+public sealed class TerminalClosePayload
+{
+    public string TerminalId { get; set; } = string.Empty;
+}
+
+/// <summary><see cref="MessageTypes.TerminalOpened"/> — the terminal is live.</summary>
+public sealed class TerminalOpenedPayload
+{
+    public string TerminalId { get; set; } = string.Empty;
+    public string Host { get; set; } = string.Empty;
+}
+
+/// <summary><see cref="MessageTypes.TerminalData"/> — a chunk of raw pty output (ANSI included).</summary>
+public sealed class TerminalDataPayload
+{
+    public string TerminalId { get; set; } = string.Empty;
+    public string Data { get; set; } = string.Empty;
+}
+
+/// <summary><see cref="MessageTypes.TerminalClosed"/> — the terminal ended.</summary>
+public sealed class TerminalClosedPayload
+{
+    public string TerminalId { get; set; } = string.Empty;
+    public string? Reason { get; set; }
+}

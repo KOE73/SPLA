@@ -144,6 +144,18 @@ public static class MessageTypes
     /// <summary>Write (autosave) text content back to a file.</summary>
     public const string FsWrite = "fs.write";
 
+    // ── Live SSH terminal (client → server) ──────────────────────────────
+    // Phase B of the "live console": a raw xterm terminal bridged to an SSH pty. Per-connection,
+    // bidirectional — the human types freely (no read-only guard: their own supervised session).
+    /// <summary>Open a terminal to a configured SSH host. Body <see cref="TerminalOpenPayload"/>.</summary>
+    public const string TerminalOpen = "terminal.open";
+    /// <summary>Human keystrokes into the pty. Body <see cref="TerminalInputPayload"/>.</summary>
+    public const string TerminalInput = "terminal.input";
+    /// <summary>Terminal resized in the browser. Body <see cref="TerminalResizePayload"/>.</summary>
+    public const string TerminalResize = "terminal.resize";
+    /// <summary>Close a terminal. Body <see cref="TerminalClosePayload"/>.</summary>
+    public const string TerminalClose = "terminal.close";
+
     // ── Server → Client ──────────────────────────────────────────────────
     public const string Welcome = "welcome";
     public const string ChatListResult = "chat.list.result";
@@ -204,6 +216,15 @@ public static class MessageTypes
     public const string FsReadResult = "fs.read.result";
     /// <summary>Answer to <see cref="FsWrite"/>.</summary>
     public const string FsWriteResult = "fs.write.result";
+
+    // ── Live SSH terminal (server → client) ──────────────────────────────
+    /// <summary>Terminal opened OK. Body <see cref="TerminalOpenedPayload"/>.</summary>
+    public const string TerminalOpened = "terminal.opened";
+    /// <summary>A chunk of raw pty output (ANSI included) for the terminal to render. Body <see cref="TerminalDataPayload"/>.</summary>
+    public const string TerminalData = "terminal.data";
+    /// <summary>Terminal closed (by request, disconnect, or error). Body <see cref="TerminalClosedPayload"/>.</summary>
+    public const string TerminalClosed = "terminal.closed";
+
     public const string Error = "error";
 }
 

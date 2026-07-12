@@ -50,9 +50,31 @@ public class McpHost : IToolHost
             _logger?.LogInformation("Tool disabled by settings. Tool={ToolName}", tool.Name);
             return; // Tool is disabled via settings
         }
+
+        // A plugin DLL must not self-declare a Scope that bypasses gating. ToolScope.Agent is
+        // always-allowed in every mode (including Chat) and ToolScope.Skill drives skill/spawn
+        // lifecycle — both are reserved for built-in tools the core ships. Plugin-originated tools
+        // (those loaded via PluginManager) are refused if they claim either scope, closing the worst
+        // self-declaration vector (arch-review debt #3, step a).
+        if (IsPluginTool(tool))
+        {
+            var scope = tool.GetDefinition().Function.Scope;
+            if (scope is ToolScope.Agent or ToolScope.Skill)
+            {
+                _logger?.LogWarning(
+                    "Plugin tool rejected: reserved scope. Tool={ToolName} Scope={Scope}", tool.Name, scope);
+                return;
+            }
+        }
+
         _tools[tool.Name] = tool;
         _logger?.LogInformation("Tool registered. Tool={ToolName}", tool.Name);
     }
+
+    /// <summary>True when the tool was loaded from a plugin (as opposed to a built-in core/agent
+    /// tool). Plugin tools are exactly those the <see cref="Plugins.PluginManager"/> discovered.</summary>
+    private bool IsPluginTool(IMcpTool tool)
+        => _pluginManager != null && _pluginManager.GetDynamicTools().Contains(tool);
 
     public IEnumerable<ToolDefinition> GetToolDefinitions()
     {

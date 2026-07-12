@@ -29,8 +29,15 @@ public sealed class ConversationOrchestrator
     /// <summary>Window for the "same tool call / same error N times" guards.</summary>
     public int ToolLoopWindow { get; init; } = 3;
 
-    /// <summary>When false (default) the loop guards are disabled entirely.</summary>
+    /// <summary>When false (default) the tool-call loop guard is disabled.</summary>
     public bool EnableLoopGuard { get; init; } = false;
+
+    /// <summary>
+    /// Gates the error-repeat guard separately. Kept off until the tool result becomes a typed
+    /// contract (arch-review debt #4): today "is error" is a string heuristic
+    /// (<c>result.StartsWith("Error:")</c>), so this guard would fire on false positives.
+    /// </summary>
+    public bool EnableErrorLoopGuard { get; init; } = false;
 
     /// <summary>
     /// Optional override for tool gating (e.g. the UI sidebar toggle layered on top of mode rules).
@@ -179,7 +186,7 @@ public sealed class ConversationOrchestrator
                     await Notify(callbacks, "⚠️ Generation stopped: The model is repeating the same tool calls.");
                     return;
                 }
-                if (LoopGuards.HasErrorLoop(recentToolErrors, ToolLoopWindow))
+                if (EnableErrorLoopGuard && LoopGuards.HasErrorLoop(recentToolErrors, ToolLoopWindow))
                 {
                     await Notify(callbacks, "⚠️ Generation stopped: The same tool has returned an error too many times in a row.");
                     return;

@@ -63,6 +63,8 @@
     <ProjectReference Include="..\..\agent\SPLA.MCP.BasicTools\SPLA.MCP.BasicTools.csproj" />
     <ProjectReference Include="..\..\core\SPLA.MCP.Core\SPLA.MCP.Core.csproj" />
     <ProjectReference Include="..\..\core\SPLA.Observability\SPLA.Observability.csproj" />
+    <!-- SSH mechanics for the live xterm terminal bridge (phase B), shared with the SSH plugin. -->
+    <ProjectReference Include="..\..\core\SPLA.Ssh.Core\SPLA.Ssh.Core.csproj" />
   </ItemGroup>
 
 </Project>

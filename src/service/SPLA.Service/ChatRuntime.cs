@@ -114,6 +114,9 @@ public sealed class ChatRuntime
         {
             WorkingMemory = () => CollectWorkingMemory(_sessionKv, runtime.ProjectKv.Store),
             Checkpoint = _checkpoint,
+            // Guard the main failure mode of a local model: repeating the same tool call forever.
+            // Only the tool-call guard is on; the error guard waits on a typed ToolResult (debt #4).
+            EnableLoopGuard = true,
             Logger = runtime.LoggerFactory.CreateLogger<ConversationOrchestrator>()
         };
     }

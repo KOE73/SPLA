@@ -36,6 +36,10 @@ public sealed class ClientConnection : IClientSession
     private readonly SPLA.Domain.Identity.IIdentity _identity;
     private readonly MessageRouter _router;
 
+    /// <summary>This connection's live SSH terminals (phase B). Created here, torn down in the
+    /// receive-loop finally so a dropped socket closes every SSH session it opened.</summary>
+    private readonly SshTerminalManager _terminals;
+
     /// <summary>Per-user project scope (server mode): this connection lists/defaults to the projects in
     /// the authenticated user's own area, not the process-global set. Null in local/embedded mode.</summary>
     private readonly IProjectProvider? _userProvider;
@@ -84,6 +88,7 @@ public sealed class ClientConnection : IClientSession
         _userDefaultProjectId = userDefaultProjectId;
         _userArea = userArea;
         _router = MessageRouter.Default;
+        _terminals = new SshTerminalManager((type, payload) => SendAsync(type, payload), log);
     }
 
     // ── IClientSession (the surface handlers act through) ─────────────────────
@@ -109,6 +114,8 @@ public sealed class ClientConnection : IClientSession
         _openProjects[projectId] = 0;
         return (_registry.Open(projectId), projectId);
     }
+
+    SshTerminalManager IClientSession.Terminals => _terminals;
 
     void IClientSession.MarkProjectOpen(string projectId) => _openProjects[projectId] = 0;
     void IClientSession.MarkChatOpen(string chatId) => _openChats[chatId] = 0;
@@ -149,6 +156,8 @@ public sealed class ClientConnection : IClientSession
             foreach (var tcs in _pendingPermissions.Values) tcs.TrySetResult(PermissionDecision.Deny);
             foreach (var tcs in _pendingClarifies.Values) tcs.TrySetResult(null);
             foreach (var cts in _activeTurns.Values) cts.Cancel();
+            // Tear down any live SSH terminals this connection opened.
+            await _terminals.DisposeAsync();
         }
     }
 

@@ -69,7 +69,8 @@ public sealed class SpawnedAgentRunner : Domain.Interfaces.IAgentSpawner
 
         string lastAssistantMessage = string.Empty;
 
-        var orchestrator = new ConversationOrchestrator(_llm, _tools) { Checkpoint = checkpoint };
+        // Spawned sub-agents are the most prone to tool-call loops; guard them too (tool-call only).
+        var orchestrator = new ConversationOrchestrator(_llm, _tools) { Checkpoint = checkpoint, EnableLoopGuard = true };
         var callbacks = new AgentCallbacks
         {
             OnAssistantMessage = msg =>
