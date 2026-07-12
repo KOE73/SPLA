@@ -6,8 +6,17 @@ default_prompt: |
   SSH tools are available for running READ-ONLY commands on remote hosts.
 
   Tools:
-    ssh_list_hosts  — list configured SSH hosts (name, address, user, auth type). Never shows passwords.
-    ssh_run         — run ONE read-only command on a host and return its output.
+    ssh_list_hosts    — list configured SSH hosts (name, address, user, auth type). Never shows passwords.
+    ssh_run           — run ONE read-only command on a host and return its output (stateless, one-shot).
+    ssh_session_exec  — run a read-only command in a PERSISTENT live shell session; output streams to
+                        the human in real time; shell state (cd, env) carries over between calls.
+    ssh_session_close — end a persistent session.
+
+  Live console (ssh_session_exec):
+  - This is a live console the human watches: output streams as it arrives, not just at the end.
+  - The session persists between calls — prefer it over ssh_run for any multi-step work, since cd and
+    environment carry over (ssh_run is stateless, each call is independent).
+  - Same read-only guard as ssh_run applies to every command. Use ssh_session_close when done.
 
   Read-only enforcement:
   - Only read-only commands are permitted (ls, cat, head, tail, grep, find, ps, df, du, free,

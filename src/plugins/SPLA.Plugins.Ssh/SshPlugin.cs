@@ -17,10 +17,16 @@ public sealed class SshPlugin : ISplaPlugin
         settings.Plugins.TryGetValue("ssh", out var section);
         var ssh = SshSettings.FromBlob(section?.Settings);
 
+        // One shared session registry per plugin instance (i.e. per agent session): live shell
+        // sessions persist across tool calls so cd/env carry over — the "console" model.
+        var sessions = new SshSessionRegistry(ssh, settings.SecretResolver);
+
         return new IMcpTool[]
         {
             new SshListHostsTool(ssh),
             new SshRunTool(ssh, settings.SecretResolver),
+            new SshSessionExecTool(sessions, ssh.TimeoutSeconds),
+            new SshSessionCloseTool(sessions),
         };
     }
 }

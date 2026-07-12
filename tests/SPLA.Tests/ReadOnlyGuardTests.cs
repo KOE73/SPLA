@@ -19,6 +19,9 @@ public class ReadOnlyGuardTests
     [InlineData("cat /etc/passwd | grep root")]      // pipe between two read-only commands
     [InlineData("systemctl status sshd")]
     [InlineData("ip addr show")]
+    [InlineData("cd /var/log")]        // session navigation — carries over in a persistent session
+    [InlineData("cd /tmp; ls -la")]    // cd chained with a read-only command
+    [InlineData("export TZ=UTC")]      // session env — harmless read-only-wise
     public void Allows_ReadOnlyCommands(string cmd)
         => Assert.Null(ReadOnlyGuard.Reject(cmd));
 

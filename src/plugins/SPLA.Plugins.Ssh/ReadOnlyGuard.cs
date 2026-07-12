@@ -20,6 +20,9 @@ internal static class ReadOnlyGuard
     // that writes. Grows by review, not by guesswork.
     private static readonly HashSet<string> Allowed = new(StringComparer.Ordinal)
     {
+        // shell/session state — navigation and env only; change the shell, not the system. Essential
+        // for a persistent session (cd must carry over) and harmless read-only-wise.
+        "cd", "pushd", "popd", "dirs", "export",
         // identity / system info
         "uname", "hostname", "whoami", "id", "uptime", "date", "w", "who", "last",
         "lsb_release", "arch", "nproc", "getconf", "locale", "tty",
