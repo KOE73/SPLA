@@ -72,6 +72,7 @@
   </Folder>
   <Folder Name="/src/">
     <Project Path="src/core/SPLA.Domain/SPLA.Domain.csproj" />
+    <Project Path="src/core/SPLA.Secrets.Dpapi/SPLA.Secrets.Dpapi.csproj" />
     <Project Path="src/agent/SPLA.Agent/SPLA.Agent.csproj" />
     <Project Path="src/core/SPLA.MCP.Core/SPLA.MCP.Core.csproj" />
     <Project Path="src/agent/SPLA.MCP.BasicTools/SPLA.MCP.BasicTools.csproj" />
@@ -94,6 +95,7 @@
     <Project Path="src/plugins/SPLA.Plugins.Host.Avalonia/SPLA.Plugins.Host.Avalonia.csproj" />
     <Project Path="src/plugins/SPLA.Plugins.Network/SPLA.Plugins.Network.csproj" />
     <Project Path="src/plugins/SPLA.Plugins.Roslyn/SPLA.Plugins.Roslyn.csproj" />
+    <Project Path="src/plugins/SPLA.Plugins.Ssh/SPLA.Plugins.Ssh.csproj" />
     <Project Path="src/plugins/SPLA.Plugins.Sql/SPLA.Plugins.Sql.csproj" />
     <Project Path="src/plugins/SPLA.Plugins.Sql.Avalonia/SPLA.Plugins.Sql.Avalonia.csproj" />
     <Project Path="src/plugins/SPLA.Plugins.OneC/SPLA.Plugins.OneC.csproj" />

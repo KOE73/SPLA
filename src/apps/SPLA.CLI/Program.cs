@@ -13,12 +13,23 @@ using var loggerFactory = LoggerFactory.Create(builder =>
 });
 var logger = loggerFactory.CreateLogger("SPLA.CLI");
 
+// Make the DPAPI secret backend selectable (secrets.backend: dpapi in ~/.spla/defaults.yaml).
+// No-op on non-Windows — the config loader then falls back to the plaintext file store.
+SPLA.Secrets.Dpapi.DpapiSecrets.Register(msg => logger.LogWarning("{Message}", msg));
+
 var ctx = CliBootstrap.Resolve(args, logger);
 
 // serve: run the WebSocket service (its own runtime lifecycle) and return.
 if (args.Length > 0 && args[0].Equals("serve", StringComparison.OrdinalIgnoreCase))
 {
     await ServeCommand.RunAsync(args, ctx.Settings, loggerFactory);
+    return;
+}
+
+// secret: manage the secret store (no agent stack needed).
+if (SecretCommands.IsSecretCommand(args))
+{
+    Environment.ExitCode = await SecretCommands.RunAsync(ctx.Settings, args);
     return;
 }
 

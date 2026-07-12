@@ -23,6 +23,14 @@ public static class ConfigLoader
     /// </summary>
     public static string GetDefaultsDir()
     {
+        // SPLA_HOME overrides the machine layer (~/.spla) wholesale — defaults.yaml, machine
+        // secrets, token-usage, everything. Lets a second instance run against an isolated home
+        // (e.g. a plaintext-secrets dev copy alongside the DPAPI-encrypted production one) without
+        // sharing or clobbering the real ~/.spla. Empty/whitespace = not set.
+        var overrideHome = Environment.GetEnvironmentVariable("SPLA_HOME");
+        if (!string.IsNullOrWhiteSpace(overrideHome))
+            return Path.GetFullPath(overrideHome.Trim());
+
         var home = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
         return Path.Combine(home, ".spla");
     }
@@ -56,7 +64,7 @@ public static class ConfigLoader
                 Model = "auto",
                 Temperature = 0.7
             },
-            Agent = new SplaAgentSection { Mode = "Edit" },
+            Agent = new SplaAgentSection { Mode = "Research" },
             Ui = new SplaUiSection { Theme = "Dark" }
         };
 
@@ -260,10 +268,41 @@ public static class ConfigLoader
         var workspace = resolved.ProjectFilePath != null
             ? Path.GetDirectoryName(resolved.ProjectFilePath)
             : null;
-        var store = new Secrets.FileSecretStore(workspace, GetDefaultsDir());
+        var store = ResolveSecretStore(defaults, workspace);
         resolved.Secrets = store;
         resolved.SecretResolver = new Secrets.SecretResolver(store);
 
         return resolved;
+    }
+
+    /// <summary>
+    /// Pluggable factory for non-default secret backends. SPLA.Domain must not reference Windows
+    /// (DPAPI) or other platform packages, so the app entry point registers a factory here before
+    /// the first <see cref="LoadAndResolve"/>. Signature: (backend, workspacePath, machineDir) → store,
+    /// or null if this backend cannot be provided (wrong OS, package missing) — the caller then falls
+    /// back to the plaintext <see cref="Secrets.FileSecretStore"/>.
+    /// </summary>
+    public static Func<string, string?, string, Secrets.ISecretStore?>? SecretStoreFactory { get; set; }
+
+    private static bool _secretBackendWarned;
+
+    private static Secrets.ISecretStore ResolveSecretStore(SplaDefaults defaults, string? workspace)
+    {
+        var machineDir = GetDefaultsDir();
+        var backend = (defaults.Secrets?.Backend ?? "file").Trim().ToLowerInvariant();
+
+        if (backend != "file" && SecretStoreFactory != null)
+        {
+            var store = SecretStoreFactory(backend, workspace, machineDir);
+            if (store != null) return store;
+        }
+
+        if (backend != "file" && !_secretBackendWarned)
+        {
+            _secretBackendWarned = true;
+            Console.WriteLine($"[secrets] backend '{backend}' unavailable (no factory / unsupported platform); using plaintext file store.");
+        }
+
+        return new Secrets.FileSecretStore(workspace, machineDir);
     }
 }

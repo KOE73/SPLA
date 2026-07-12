@@ -7,4 +7,11 @@
     <PackageReference Include="YamlDotNet" Version="18.0.0" />
   </ItemGroup>
 
+  <ItemGroup>
+    <!-- The DPAPI secret store shares SecretYamlFile (the on-disk container format) so both backends
+         stay byte-for-byte consistent. Kept internal to avoid widening the public API surface. -->
+    <InternalsVisibleTo Include="SPLA.Secrets.Dpapi" />
+    <InternalsVisibleTo Include="SPLA.Tests" />
+  </ItemGroup>
+
 </Project>

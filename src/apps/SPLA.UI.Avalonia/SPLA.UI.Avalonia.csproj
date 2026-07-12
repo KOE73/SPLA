@@ -30,6 +30,7 @@
          (Domain) and logging (Observability); the agent stack, LLM, MCP tools and plugins all live in
          the service process and are not referenced here. -->
     <ProjectReference Include="..\..\core\SPLA.Domain\SPLA.Domain.csproj" />
+    <ProjectReference Include="..\..\core\SPLA.Secrets.Dpapi\SPLA.Secrets.Dpapi.csproj" />
     <ProjectReference Include="..\..\core\SPLA.Observability\SPLA.Observability.csproj" />
   </ItemGroup>
 </Project>

@@ -3,6 +3,7 @@
   <ItemGroup>
     <ProjectReference Include="..\..\agent\SPLA.Agent\SPLA.Agent.csproj" />
     <ProjectReference Include="..\..\core\SPLA.Domain\SPLA.Domain.csproj" />
+    <ProjectReference Include="..\..\core\SPLA.Secrets.Dpapi\SPLA.Secrets.Dpapi.csproj" />
     <ProjectReference Include="..\..\core\SPLA.Observability\SPLA.Observability.csproj" />
     <ProjectReference Include="..\..\service\SPLA.Service\SPLA.Service.csproj" />
   </ItemGroup>

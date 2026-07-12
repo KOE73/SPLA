@@ -1,0 +1,40 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <RootNamespace>SPLA.Plugins.Ssh</RootNamespace>
+    <AssemblyName>SPLA.Plugins.Ssh</AssemblyName>
+    <!-- Self-contained plugin: copy third-party NuGet deps (SSH.NET) into the plugin folder so the
+         PluginLoadContext resolver finds them under any host (CLI/service, not just Avalonia). -->
+    <CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\core\SPLA.Domain\SPLA.Domain.csproj" />
+    <ProjectReference Include="..\..\core\SPLA.MCP.Core\SPLA.MCP.Core.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="SSH.NET" Version="2024.2.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- The read-only guard is the security boundary; SPLA.Tests exercises it directly. -->
+    <InternalsVisibleTo Include="SPLA.Tests" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Lands at TargetDir/meta.yaml so the CopyPlugin glob deploys it to plugins/ssh/meta.yaml. -->
+    <None Include="meta.yaml" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
+  <!-- Deploy the built plugin (dll + SSH.NET deps + meta.yaml) into each host app's plugins/ssh
+       folder, which is where the runtime discovers plugins (AppContext.BaseDirectory/plugins).
+       Path is ..\..\apps\<app> — the host apps live under src/apps, not src/plugins. -->
+  <Target Name="CopyPlugin" AfterTargets="Build">
+    <ItemGroup>
+      <PluginFiles Include="$(TargetDir)**\*.*" />
+    </ItemGroup>
+    <Copy SourceFiles="@(PluginFiles)" DestinationFolder="$(MSBuildThisFileDirectory)..\..\apps\SPLA.UI.Avalonia\bin\$(Configuration)\$(TargetFramework)\plugins\ssh\%(RecursiveDir)" SkipUnchangedFiles="true" />
+    <Copy SourceFiles="@(PluginFiles)" DestinationFolder="$(MSBuildThisFileDirectory)..\..\apps\SPLA.CLI\bin\$(Configuration)\$(TargetFramework)\plugins\ssh\%(RecursiveDir)" SkipUnchangedFiles="true" />
+  </Target>
+</Project>

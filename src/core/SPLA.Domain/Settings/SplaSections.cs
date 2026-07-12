@@ -102,6 +102,18 @@ public class SplaConnectionSection
 }
 
 /// <summary>
+/// Secret-store backend selection. Machine-level only (<c>~/.spla/defaults.yaml</c>) — the backend
+/// is a property of the machine, never of a committable project. To run a second instance on a
+/// different backend without editing this file, point it at an isolated home via <c>SPLA_HOME</c>.
+/// </summary>
+public class SplaSecretsSection
+{
+    /// <summary><c>file</c> (default, plaintext) or <c>dpapi</c> (Windows-encrypted). Unknown/empty = file.</summary>
+    [YamlMember(Alias = "backend")]
+    public string? Backend { get; set; }
+}
+
+/// <summary>
 /// UI preferences section.
 /// </summary>
 public class SplaUiSection

@@ -150,8 +150,7 @@ public sealed class AgentRuntime : IDisposable
                     "token-usage.json")
                 : Path.Combine(settings.WorkspacePath, ".spla", "token-usage.json"));
         TokenUsageGlobal = new FileTokenUsageStore(
-            Path.Combine(
-                Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), ".spla", "token-usage.json"));
+            Path.Combine(SPLA.Domain.Settings.ConfigLoader.GetDefaultsDir(), "token-usage.json"));
     }
 
     /// <summary>

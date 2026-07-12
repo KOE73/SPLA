@@ -1,0 +1,30 @@
+id: ssh
+version: 0.1.0
+type: dll
+entry_point: SPLA.Plugins.Ssh.dll
+default_prompt: |
+  SSH tools are available for running READ-ONLY commands on remote hosts.
+
+  Tools:
+    ssh_list_hosts  — list configured SSH hosts (name, address, user, auth type). Never shows passwords.
+    ssh_run         — run ONE read-only command on a host and return its output.
+
+  Read-only enforcement:
+  - Only read-only commands are permitted (ls, cat, head, tail, grep, find, ps, df, du, free,
+    uname, hostname, whoami, id, uptime, ip, ss, netstat, dig, systemctl status, journalctl, etc.).
+  - Anything that modifies the system is refused BEFORE connecting: no rm/mv/dd/mkfs/kill/shutdown,
+    no package installs, no output redirection (> >>), no command substitution, no sudo/su.
+  - If a command is refused, do NOT try to work around the guard. Report the refusal and pick a
+    read-only alternative.
+
+  Configuration & secrets:
+  - Hosts are defined in project config under plugins.ssh.settings.hosts. Each host names an address,
+    user, and a credential REFERENCE (password: secret:KEY or env:VAR), never a literal password.
+  - Passwords live in the secret store, not in config or chat. If a connection fails for missing
+    credentials, tell the user to store the secret (e.g. `spla secret set <key>`), do not ask them to
+    paste the password into the chat.
+
+  Usage:
+  - ssh_run takes a single command; there is no persistent shell, so each call is independent (cd does
+    not carry over). Pass an absolute path instead of relying on a working directory.
+  - Omit 'host' to use the configured default host.

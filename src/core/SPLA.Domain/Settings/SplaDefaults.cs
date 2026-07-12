@@ -23,4 +23,8 @@ public class SplaDefaults
 
     [YamlMember(Alias = "ui")]
     public SplaUiSection? Ui { get; set; }
+
+    /// <summary>Secret-store backend selection. Machine-only; absent = plaintext file store.</summary>
+    [YamlMember(Alias = "secrets")]
+    public SplaSecretsSection? Secrets { get; set; }
 }

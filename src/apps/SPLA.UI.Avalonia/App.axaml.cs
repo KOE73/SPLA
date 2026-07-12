@@ -57,6 +57,9 @@ public partial class App : Application
 
     public override void OnFrameworkInitializationCompleted()
     {
+        // Make the DPAPI secret backend selectable before any settings are resolved.
+        SPLA.Secrets.Dpapi.DpapiSecrets.Register();
+
         if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
         {
             // Check for .spla file in command-line args
