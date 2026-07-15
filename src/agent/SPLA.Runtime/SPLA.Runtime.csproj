@@ -1,0 +1,23 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    SPLA Runtime: the autonomous, transport-neutral home of the project agent.
+    It owns the full agent stack — project settings, LLM connection, tool host, plugins,
+    skills, chats, working memory, token tallies — with zero dependencies on any client
+    (CLI, WebSocket service, Avalonia, browser). Any host — a service, a REPL, a headless
+    automation app, a test — references this project, points it at a .spla file, and gets
+    a fully functional agent living on that project.
+
+    Layering: clients/protocols depend on SPLA.Runtime; SPLA.Runtime never depends on them.
+  -->
+
+  <ItemGroup>
+    <ProjectReference Include="..\SPLA.Agent\SPLA.Agent.csproj" />
+    <ProjectReference Include="..\SPLA.MCP.BasicTools\SPLA.MCP.BasicTools.csproj" />
+    <ProjectReference Include="..\..\core\SPLA.Domain\SPLA.Domain.csproj" />
+    <ProjectReference Include="..\..\core\SPLA.MCP.Core\SPLA.MCP.Core.csproj" />
+    <ProjectReference Include="..\..\core\SPLA.Observability\SPLA.Observability.csproj" />
+    <ProjectReference Include="..\..\llm\SPLA.LLM.LMStudio\SPLA.LLM.LMStudio.csproj" />
+  </ItemGroup>
+
+</Project>

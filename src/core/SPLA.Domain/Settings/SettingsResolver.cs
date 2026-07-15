@@ -24,6 +24,14 @@ public class ResolvedSettings
     public List<string> Instructions { get; set; } = new();
     public int CompactTailMessages { get; set; } = 2;
     public string? CustomPrompt { get; set; }
+    /// <summary>Stop the turn when the model repeats the same tool call. Default OFF — see
+    /// <see cref="SplaAgentSection.LoopGuard"/>.</summary>
+    public bool LoopGuard { get; set; }
+    public int LoopGuardRepeats { get; set; } = 3;
+
+    /// <summary>Enabled built-in agent capabilities. Null = all enabled (backward compatible);
+    /// see <see cref="SplaAgentSection.Capabilities"/> for full semantics.</summary>
+    public List<string>? Capabilities { get; set; }
 
     // UI
     public string Theme { get; set; } = "Dark";
@@ -43,6 +51,13 @@ public class ResolvedSettings
 
     /// <summary>Resolves <c>secret:</c> / <c>env:</c> references in config values to plaintext.</summary>
     public ISecretResolver SecretResolver { get; set; } = null!;
+
+    /// <summary>Cross-component shared services scoped to this project's runtime. Lets independently
+    /// loaded parties (a plugin's tools, the service's protocol handlers) meet on one object without
+    /// the domain knowing its type — e.g. the SSH session hub is created here by whoever touches it
+    /// first (<c>GetOrAdd</c>) and every later consumer gets the same instance. Keys are owned by the
+    /// registering component ("ssh.session-hub").</summary>
+    public System.Collections.Concurrent.ConcurrentDictionary<string, object> SharedServices { get; } = new();
 
     private Project.IProject? _project;
 
@@ -134,6 +149,9 @@ public static class SettingsResolver
                     r.CompactTailMessages = defaults.Agent.CompactTailMessages.Value;
                 if (!string.IsNullOrEmpty(defaults.Agent.CustomPrompt))
                     r.CustomPrompt = defaults.Agent.CustomPrompt;
+                r.LoopGuard = defaults.Agent.LoopGuard ?? r.LoopGuard;
+                r.LoopGuardRepeats = defaults.Agent.LoopGuardRepeats ?? r.LoopGuardRepeats;
+                r.Capabilities = defaults.Agent.Capabilities ?? r.Capabilities;
             }
             if (defaults.Ui != null)
             {
@@ -171,6 +189,9 @@ public static class SettingsResolver
                     r.CompactTailMessages = project.Agent.CompactTailMessages.Value;
                 if (!string.IsNullOrEmpty(project.Agent.CustomPrompt))
                     r.CustomPrompt = project.Agent.CustomPrompt;
+                r.LoopGuard = project.Agent.LoopGuard ?? r.LoopGuard;
+                r.LoopGuardRepeats = project.Agent.LoopGuardRepeats ?? r.LoopGuardRepeats;
+                r.Capabilities = project.Agent.Capabilities ?? r.Capabilities;
             }
             if (project.Ui != null)
             {

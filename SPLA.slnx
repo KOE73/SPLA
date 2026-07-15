@@ -75,6 +75,7 @@
     <Project Path="src/core/SPLA.Secrets.Dpapi/SPLA.Secrets.Dpapi.csproj" />
     <Project Path="src/core/SPLA.Ssh.Core/SPLA.Ssh.Core.csproj" />
     <Project Path="src/agent/SPLA.Agent/SPLA.Agent.csproj" />
+    <Project Path="src/agent/SPLA.Runtime/SPLA.Runtime.csproj" />
     <Project Path="src/core/SPLA.MCP.Core/SPLA.MCP.Core.csproj" />
     <Project Path="src/agent/SPLA.MCP.BasicTools/SPLA.MCP.BasicTools.csproj" />
     <Project Path="src/core/SPLA.Observability/SPLA.Observability.csproj" />
@@ -103,6 +104,10 @@
     <Project Path="src/plugins/SPLA.Plugins.OneC/SPLA.Plugins.OneC.csproj" />
     <Project Path="src/plugins/SPLA.Plugins.OneC.Avalonia/SPLA.Plugins.OneC.Avalonia.csproj" />
     <Project Path="src/plugins/SPLA.Skills.Network/SPLA.Skills.Network.csproj" />
+  </Folder>
+  <Folder Name="/demo/">
+    <Project Path="demo/VisionAgent/VisionAgent.csproj" />
+    <Project Path="demo/LogSentry/LogSentry.csproj" />
   </Folder>
   <Folder Name="/tests/">
     <Project Path="tests/SPLA.Tests/SPLA.Tests.csproj" />

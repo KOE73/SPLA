@@ -1,0 +1,29 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    LogSentry — a second standalone SPLA Runtime host. It tails a log file, batches fresh
+    lines, sends each batch to the agent (the triage prompt is the project's instructions),
+    and prints the verdict to the console. No CLI, no service, no UI — just the runtime.
+  -->
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <RootNamespace>SPLA.Demo.LogSentry</RootNamespace>
+    <AssemblyName>LogSentry</AssemblyName>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\agent\SPLA.Runtime\SPLA.Runtime.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Extensions.Logging" Version="10.0.0" />
+    <PackageReference Include="YamlDotNet" Version="18.0.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Include="sentry.spla" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="prompt.md" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
+</Project>

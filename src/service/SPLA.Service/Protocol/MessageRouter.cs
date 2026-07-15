@@ -1,3 +1,4 @@
+using SPLA.Runtime;
 using System.Text.Json;
 using Microsoft.Extensions.Logging;
 using SPLA.Domain.Identity;
@@ -137,6 +138,7 @@ internal sealed class MessageRouter
         new CorrelationHandlers(),
         new ConnectionHandlers(),
         new SettingsHandlers(),
+        new SecretHandlers(),
         new WorkspaceHandlers(),
         new TerminalHandlers(),
         new PluginPanelHandlers(),

@@ -11,8 +11,10 @@ namespace SPLA.Plugins.Ssh;
 /// </summary>
 public sealed class SshListHostsTool : IMcpTool
 {
-    private readonly SshSettings _settings;
-    public SshListHostsTool(SshSettings settings) => _settings = settings;
+    // Live settings provider — re-read per call so hosts saved from the Settings UI show up
+    // without a restart.
+    private readonly Func<SshSettings> _settings;
+    public SshListHostsTool(Func<SshSettings> settings) => _settings = settings;
 
     public string Name => "ssh_list_hosts";
 
@@ -32,16 +34,21 @@ public sealed class SshListHostsTool : IMcpTool
 
     public Task<string> ExecuteAsync(string argumentsJson, CancellationToken cancellationToken = default)
     {
-        if (_settings.Hosts.Count == 0)
+        var settings = _settings();
+        if (settings.Hosts.Count == 0)
             return Task.FromResult("No SSH hosts are configured. Add them under plugins.ssh.settings.hosts in the project config.");
 
         var sb = new StringBuilder();
-        sb.AppendLine($"Configured SSH hosts: {_settings.Hosts.Count}" +
-                      (_settings.DefaultHost is { } d ? $" (default: {d})" : ""));
-        foreach (var (name, h) in _settings.Hosts)
+        sb.AppendLine($"Configured SSH hosts: {settings.Hosts.Count}" +
+                      (settings.DefaultHost is { } d ? $" (default: {d})" : ""));
+        foreach (var (name, h) in settings.Hosts)
         {
-            var auth = !string.IsNullOrWhiteSpace(h.KeyFile) ? "key" : "password";
-            sb.AppendLine($"  {name}: {h.User}@{h.Host}:{h.Port}  [auth: {auth}]" +
+            // Which auth path ConnectAsync will take. A credential entry decides by its own fields
+            // (private_key vs password) — we only name the entry here, never look inside it.
+            var auth = !string.IsNullOrWhiteSpace(h.Credential) ? $"credential '{h.Credential}'"
+                : !string.IsNullOrWhiteSpace(h.KeyFile) ? "key" : "password";
+            var user = h.User ?? (h.Credential is null ? "?" : "<from credential>");
+            sb.AppendLine($"  {name}: {user}@{h.Host}:{h.Port}  [auth: {auth}]" +
                           (string.IsNullOrWhiteSpace(h.Description) ? "" : $"  — {h.Description}"));
         }
         return Task.FromResult(sb.ToString().TrimEnd());

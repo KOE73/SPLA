@@ -30,10 +30,10 @@ import { store } from "../state/store";
 import { uiBus } from "../state/uiBus";
 
 const text = ref("");
-const turnActive = ref(false);
 const fileInput = ref<HTMLInputElement>();
 const textareaEl = ref<HTMLTextAreaElement>();
 
+const turnActive = computed(() => !!store.currentChat && !!store.turnActiveByChat[store.currentChat]);
 const ready = computed(() => store.connected && !!store.currentChat && !turnActive.value);
 
 function addImageFiles(files: FileList | File[]) {
@@ -63,7 +63,7 @@ function send() {
   const images = store.attachments.slice();
   uiBus.emit("local.userMsg", { text: t, images });
   text.value = "";
-  turnActive.value = true;
+  store.turnActiveByChat[store.currentChat] = true;
   client.send("chat.send", { chatId: store.currentChat, text: t, images }, { projectId: store.currentProjectId ?? undefined });
   store.attachments = [];
   nextTick(() => textareaEl.value?.focus());
@@ -72,9 +72,17 @@ function stop() {
   if (store.currentChat) client.send("cancel", null, { chatId: store.currentChat });
 }
 
-const offTurn = client.on("turn.complete", () => {
-  turnActive.value = false;
+// Rewind pulls the removed user message back into the composer for editing.
+const offComposerSet = uiBus.on("composer.set", p => {
+  text.value = (p as { text: string }).text;
   nextTick(() => textareaEl.value?.focus());
 });
-onUnmounted(offTurn);
+
+const offTurn = client.on("turn.complete", (_p, env) => {
+  const chatId = env.chatId;
+  if (chatId) store.turnActiveByChat[chatId] = false;
+  else if (store.currentChat) store.turnActiveByChat[store.currentChat] = false;
+  if (!chatId || chatId === store.currentChat) nextTick(() => textareaEl.value?.focus());
+});
+onUnmounted(() => { offTurn(); offComposerSet(); });
 </script>

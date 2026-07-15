@@ -85,6 +85,11 @@ client/types **and** this table.
 | `terminal.input` | `TerminalInput` | `TerminalInputPayload` | Send human keystrokes to an SSH terminal. |
 | `terminal.resize` | `TerminalResize` | `TerminalResizePayload` | Update terminal rows and columns. |
 | `terminal.close` | `TerminalClose` | `TerminalClosePayload` | Close an SSH terminal. |
+| `ssh.sessions.get` | `SshSessionsGet` | — | Snapshot for the SSH picker: configured hosts, every live session (host#N), this connection's open terminals. Reply `ssh.sessions.result`. |
+| `ssh.session.close` | `SshSessionClose` | `SshSessionClosePayload` | Close one live SSH session for every viewer. |
+| `secret.list` | `SecretList` | `SecretListPayload` | List secret entries (keys + field names only, never values); reply `secret.result`. |
+| `secret.set` | `SecretSet` | `SecretSetPayload` | Create/merge a secret entry's fields; reply `secret.result`. |
+| `secret.delete` | `SecretDelete` | `SecretDeletePayload` | Delete a whole entry or one field; reply `secret.result`. |
 | `plugin.panel.open` | `PluginPanelOpen` | `PluginPanelOpenPayload` | Open an interactive session supplied by an enabled plugin panel provider. |
 | `plugin.panel.input` | `PluginPanelInput` | `PluginPanelInputPayload` | Send opaque typed input to a plugin-owned panel session. |
 | `plugin.panel.close` | `PluginPanelClose` | `PluginPanelClosePayload` | Close a plugin-owned panel session. |
@@ -131,6 +136,9 @@ client/types **and** this table.
 | `terminal.opened` | `TerminalOpened` | `TerminalOpenedPayload` | unicast | SSH terminal is ready. |
 | `terminal.data` | `TerminalData` | `TerminalDataPayload` | unicast | Raw SSH terminal output. |
 | `terminal.closed` | `TerminalClosed` | `TerminalClosedPayload` | unicast | SSH terminal ended or failed. |
+| `ssh.sessions.result` | `SshSessionsResult` | `SshSessionsResultPayload` | unicast | Answer to `ssh.sessions.get` — names only, never credentials. |
+| `ssh.sessions.changed` | `SshSessionsChanged` | — | broadcast (project) | The set of live SSH sessions changed; clients re-fetch. |
+| `secret.result` | `SecretResult` | `SecretListResultPayload` | unicast | Answer to any `secret.*` request — entry keys + field names, never values. |
 | `plugin.panel.opened` | `PluginPanelOpened` | `PluginPanelOpenedPayload` | unicast | Plugin panel session is ready. |
 | `plugin.panel.event` | `PluginPanelEvent` | `PluginPanelEventPayload` | unicast | Opaque event emitted by a plugin-owned panel session. |
 | `error` | `Error` | `ErrorPayload` | unicast | A handler threw, or a request was rejected. |

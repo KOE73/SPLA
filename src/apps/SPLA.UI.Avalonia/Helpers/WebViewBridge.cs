@@ -34,6 +34,7 @@ public static class WebViewBridge
         if (string.IsNullOrWhiteSpace(message)) return;
 
         string? theme = null, density = null, kind = null, projectName = null;
+        string? surface = null, query = null, title = null;
         try
         {
             using var doc = JsonDocument.Parse(message);
@@ -43,6 +44,9 @@ public static class WebViewBridge
             if (root.TryGetProperty("theme", out var t)) theme = t.GetString();
             if (root.TryGetProperty("density", out var d)) density = d.GetString();
             if (root.TryGetProperty("projectName", out var p)) projectName = p.GetString();
+            if (root.TryGetProperty("surface", out var s)) surface = s.GetString();
+            if (root.TryGetProperty("query", out var q)) query = q.GetString();
+            if (root.TryGetProperty("title", out var w)) title = w.GetString();
         }
         catch { return; }   // not our message — ignore
 
@@ -59,6 +63,13 @@ public static class WebViewBridge
 
             case "project":
                 Dispatcher.UIThread.Post(() => onProjectChanged?.Invoke(projectName));
+                break;
+
+            // Web dock's "detach panel" inside the embedded shell: WebView2 can't host dockview's
+            // window.open popouts, so the web side asks for a real OS window running the surface
+            // solo (e.g. surface=terminal&host=x — a detached SSH terminal).
+            case "openWindow" when !string.IsNullOrWhiteSpace(surface):
+                Dispatcher.UIThread.Post(() => new SurfaceWindow(surface!, title, query).Show());
                 break;
         }
     }

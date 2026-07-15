@@ -5,11 +5,11 @@
     <component :is="surfaces[soloName]" v-if="surfaces[soloName]" />
     <div v-else class="surface-missing">no surface: {{ soloName }}</div>
   </div>
-  <DockWorkspace v-else />
+  <AppShell v-else />
 </template>
 
 <script setup lang="ts">
-import DockWorkspace from "../dock/DockWorkspace.vue";
+import AppShell from "./AppShell.vue";
 import { surfaces } from "../surfaces/registry";
 
 const soloName = new URLSearchParams(location.search).get("surface");

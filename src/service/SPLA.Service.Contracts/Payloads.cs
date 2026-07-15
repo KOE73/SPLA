@@ -25,6 +25,8 @@ public sealed class ChatMessageDto
     public string Role { get; set; } = string.Empty;
     public string? Content { get; set; }
     public string? Reasoning { get; set; }
+    /// <summary>ISO-8601 UTC creation time, or null when unknown (old chat files).</summary>
+    public string? CreatedAt { get; set; }
     public List<ToolCallDto>? ToolCalls { get; set; }
     public string? ToolCallId { get; set; }
     public bool IsEphemeral { get; set; }
@@ -76,6 +78,24 @@ public sealed class ChatOpenPayload
 public sealed class ChatNewPayload
 {
     public string? Title { get; set; }
+}
+
+/// <summary>Rewind a chat to a message: everything after it is discarded. With
+/// <see cref="Before"/> the anchor message itself is removed too (used when a user message is
+/// pulled back into the composer). The server answers with a fresh chat.opened snapshot.</summary>
+public sealed class ChatRewindPayload
+{
+    public string ChatId { get; set; } = string.Empty;
+    public string MsgId { get; set; } = string.Empty;
+    public bool Before { get; set; }
+}
+
+/// <summary>Fork a chat into a new one, keeping messages up to and including
+/// <see cref="MsgId"/> (or the whole chat when null). The server opens the fork.</summary>
+public sealed class ChatForkPayload
+{
+    public string ChatId { get; set; } = string.Empty;
+    public string? MsgId { get; set; }
 }
 
 public sealed class ChatRenamePayload
@@ -230,6 +250,10 @@ public sealed class AgentSettingsPayload
     public string? PermInternet { get; set; }
     /// <summary>Free-text appended to the system prompt — stored in .spla agent: custom_prompt.</summary>
     public string? CustomPrompt { get; set; }
+    /// <summary>Anti-repeat guard: stop the turn when the model repeats the same tool call N times.
+    /// Stored in .spla agent: loop_guard / loop_guard_repeats. Default off.</summary>
+    public bool? LoopGuard { get; set; }
+    public int? LoopGuardRepeats { get; set; }
     // UI appearance — stored in .spla ui: section
     public string Theme { get; set; } = "dark";
     public string Density { get; set; } = "norm";
@@ -426,6 +450,14 @@ public sealed class ReasoningPayload
     public string Text { get; set; } = string.Empty;
 }
 
+/// <summary>Server ack of the user message that started the current turn — carries the MsgId the
+/// conversation assigned, so the client's local echo can become a rewind/fork anchor.</summary>
+public sealed class UserMessagePayload
+{
+    public string MsgId { get; set; } = string.Empty;
+    public string? CreatedAt { get; set; }
+}
+
 public sealed class AssistantMessagePayload
 {
     public int MsgIndex { get; set; }
@@ -439,6 +471,7 @@ public sealed class ToolStartedPayload
 
 public sealed class ToolProgressPayload
 {
+    public string ToolCallId { get; set; } = string.Empty;
     public string ToolName { get; set; } = string.Empty;
     public long Current { get; set; }
     public long Total { get; set; }
@@ -662,6 +695,9 @@ public sealed class TerminalOpenPayload
     public string TerminalId { get; set; } = string.Empty;
     /// <summary>Configured host name; null uses the SSH plugin's default_host.</summary>
     public string? Host { get; set; }
+    /// <summary>Existing session id (host#N) to ATTACH to instead of opening a new session —
+    /// the "watch the agent's session / reattach" path. Wins over <see cref="Host"/>.</summary>
+    public string? Session { get; set; }
     public int Cols { get; set; } = 120;
     public int Rows { get; set; } = 30;
 }
@@ -692,6 +728,8 @@ public sealed class TerminalOpenedPayload
 {
     public string TerminalId { get; set; } = string.Empty;
     public string Host { get; set; } = string.Empty;
+    /// <summary>The live session this terminal is a view of (host#N) — shown in the tab title.</summary>
+    public string SessionId { get; set; } = string.Empty;
 }
 
 /// <summary><see cref="MessageTypes.TerminalData"/> — a chunk of raw pty output (ANSI included).</summary>
@@ -706,6 +744,51 @@ public sealed class TerminalClosedPayload
 {
     public string TerminalId { get; set; } = string.Empty;
     public string? Reason { get; set; }
+}
+
+/// <summary><see cref="MessageTypes.SshSessionsResult"/> — the SSH picker's snapshot: configured
+/// hosts, the agent's live shell sessions (host names), and this connection's open terminals.
+/// Names only — never credentials.</summary>
+public sealed class SshSessionsResultPayload
+{
+    public List<SshHostDto> Hosts { get; set; } = [];
+    /// <summary>Every live session in the project's hub — agent-opened and human-opened alike.</summary>
+    public List<SshSessionDto> Sessions { get; set; } = [];
+    /// <summary>Terminals this client connection has open (views over sessions).</summary>
+    public List<SshTerminalDto> Terminals { get; set; } = [];
+}
+
+public sealed class SshSessionDto
+{
+    /// <summary>Addressable id, host#N.</summary>
+    public string Id { get; set; } = string.Empty;
+    public string Host { get; set; } = string.Empty;
+    /// <summary>"agent" or "human".</summary>
+    public string OpenedBy { get; set; } = string.Empty;
+    /// <summary>How many terminals are currently attached.</summary>
+    public int Viewers { get; set; }
+}
+
+/// <summary><see cref="MessageTypes.SshSessionClose"/> — end a live session for everyone.</summary>
+public sealed class SshSessionClosePayload
+{
+    public string SessionId { get; set; } = string.Empty;
+}
+
+public sealed class SshHostDto
+{
+    public string Name { get; set; } = string.Empty;
+    public string? Host { get; set; }
+    public int Port { get; set; } = 22;
+    public bool IsDefault { get; set; }
+    public string? Description { get; set; }
+}
+
+public sealed class SshTerminalDto
+{
+    public string TerminalId { get; set; } = string.Empty;
+    public string Host { get; set; } = string.Empty;
+    public string SessionId { get; set; } = string.Empty;
 }
 
 public sealed class PluginPanelOpenPayload
@@ -737,4 +820,43 @@ public sealed class PluginPanelEventPayload
     public string PanelId { get; set; } = string.Empty;
     public string EventType { get; set; } = string.Empty;
     public object? Data { get; set; }
+}
+
+// ── Secret store ─────────────────────────────────────────────────────────────
+/// <summary><see cref="MessageTypes.SecretSet"/> — store fields of an entry (merged over existing
+/// fields; an entry is a named record like user+password or a lone token). <see cref="Scope"/> is
+/// "project" or "machine". Field values travel browser→server only; never echoed back or logged.</summary>
+public sealed class SecretSetPayload
+{
+    public string Key { get; set; } = string.Empty;
+    /// <summary>Field name → value. E.g. { "user": "koe", "password": "…" }.</summary>
+    public Dictionary<string, string> Fields { get; set; } = [];
+    public string Scope { get; set; } = "machine";
+}
+
+/// <summary><see cref="MessageTypes.SecretDelete"/> — remove a whole entry, or one field of it when
+/// <see cref="Field"/> is set (deleting the last field removes the entry).</summary>
+public sealed class SecretDeletePayload
+{
+    public string Key { get; set; } = string.Empty;
+    public string? Field { get; set; }
+    public string Scope { get; set; } = "machine";
+}
+
+/// <summary>One entry in a listing: key + field NAMES, never values.</summary>
+public sealed class SecretEntryDto
+{
+    public string Key { get; set; } = string.Empty;
+    public List<string> Fields { get; set; } = [];
+}
+
+/// <summary><see cref="MessageTypes.SecretResult"/> — entries per scope (keys + field names, NEVER
+/// values). <see cref="ProjectOpen"/> is false when no project is open (project-scope edits are then
+/// disabled in the UI).</summary>
+public sealed class SecretListResultPayload
+{
+    public List<SecretEntryDto> Machine { get; set; } = [];
+    public List<SecretEntryDto> Project { get; set; } = [];
+    public bool ProjectOpen { get; set; }
+    public string? Error { get; set; }
 }

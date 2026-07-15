@@ -17,7 +17,16 @@ internal sealed class PluginLoadContext : AssemblyLoadContext
     {
         "SPLA.Domain",
         "SPLA.MCP.Core",
-        "SPLA.Observability"
+        "SPLA.Observability",
+        // Cross-host contract: the service's terminal handlers and the ssh plugin's tools must meet
+        // on the SAME SshSessionHub/SshLiveSession types via ResolvedSettings.SharedServices — a
+        // plugin-ALC copy would make that cast throw (the InvalidCastException class of bug the
+        // Roslyn scripting globals already hit).
+        "SPLA.Ssh.Core",
+        // SPLA.Ssh.Core's public surface carries Renci.SshNet types (SshClient, ShellStream), so
+        // SSH.NET must unify with the host's copy too — a plugin-ALC Renci.SshNet makes the shared
+        // factory's signature textually identical but a different method ("Method not found").
+        "Renci.SshNet"
     };
 
     private readonly AssemblyDependencyResolver _resolver;

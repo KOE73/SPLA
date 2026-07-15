@@ -44,6 +44,15 @@ For comprehensive details on agent permission models, tool matrices, autonomy co
 - **[Wire Protocol & Event Registry](agents/protocol.md)**: STOP — read this before adding, renaming, or removing any WebSocket message type, payload, or client bus event. Message names are soft strings on the JS side; this is the registry of every `MessageTypes` constant, payload, fan-out semantics, domain events (`ServiceEvents`), and client-local bus events that keeps both sides in sync.
 
 
+## Web UI: Chat-Scoped State (recurring bug — do not regress)
+
+The composer input, Send/Stop button, and every other per-conversation UI state belong to the
+**current chat**, not the window. In `web/src` any such state MUST live in `store.ts` keyed by
+`chatId` (e.g. `store.turnActiveByChat`) and be read via a computed over `store.currentChat`.
+Never hold it in a component-local `ref` — it leaks across chat switches (a running turn in chat A
+locked input in chat B, twice). Server events must be applied by `env.chatId` from the envelope,
+never to whatever chat happens to be open.
+
 ## Translation Policy
 
 Any file under `agents/` that is updated must have its Russian translation in `docs/` updated in the same commit.

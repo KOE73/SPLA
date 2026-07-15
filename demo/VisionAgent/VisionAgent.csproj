@@ -1,0 +1,34 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    VisionAgent — a standalone demo of the SPLA Runtime used without any SPLA client.
+    It opens a regular .spla project file (vision.spla), stands up the full agent stack via
+    SPLA.Runtime, grabs frames from a video source (USB camera / RTSP stream / video file)
+    with OpenCV, sends each frame to the model as a chat turn, and prints the analysis to
+    the console — in a loop. The analysis prompt lives in the project file's instructions.
+  -->
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <RootNamespace>SPLA.Demo.Vision</RootNamespace>
+    <AssemblyName>VisionAgent</AssemblyName>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\agent\SPLA.Runtime\SPLA.Runtime.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Extensions.Logging" Version="10.0.0" />
+    <PackageReference Include="Spectre.Console" Version="0.49.1" />
+    <PackageReference Include="OpenCvSharp4" Version="4.10.0.20241108" />
+    <PackageReference Include="OpenCvSharp4.runtime.win" Version="4.10.0.20241108" />
+    <PackageReference Include="YamlDotNet" Version="18.0.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Include="vision.spla" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="prompt.md" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
+</Project>

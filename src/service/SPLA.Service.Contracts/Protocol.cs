@@ -77,6 +77,11 @@ public static class MessageTypes
     public const string ChatRename = "chat.rename";
     public const string ChatDelete = "chat.delete";
     public const string ChatSend = "chat.send";
+    /// <summary>Discard messages after (optionally including) an anchor message. Body is
+    /// <see cref="ChatRewindPayload"/>; the server re-sends <see cref="ChatOpened"/>.</summary>
+    public const string ChatRewind = "chat.rewind";
+    /// <summary>Fork a chat at a message into a new chat. Body is <see cref="ChatForkPayload"/>.</summary>
+    public const string ChatFork = "chat.fork";
     public const string ChatSettings = "chat.settings";
     /// <summary>A window tells the service which chat it has focused; the service echoes
     /// <see cref="FocusChanged"/> to every connection so auxiliary windows (e.g. a tear-off debug
@@ -121,6 +126,17 @@ public static class MessageTypes
     /// per-user registry, no admin rights needed).</summary>
     public const string SystemRegisterAssociation = "system.register_association";
 
+    // ── Secret store (client → server) ───────────────────────────────────
+    // Management of the global secret store (machine + project scope) from the Settings UI. Values
+    // only ever travel browser→server (the user typing a secret in); the server never sends a value
+    // back — listings are keys only. This is the UI half of "secrets go in out-of-band, never via chat".
+    /// <summary>List secret keys per scope (never values). Answer is <see cref="SecretResult"/>.</summary>
+    public const string SecretList = "secret.list";
+    /// <summary>Store (overwrite) a secret value in a scope. Body <see cref="SecretSetPayload"/>.</summary>
+    public const string SecretSet = "secret.set";
+    /// <summary>Delete a secret from a scope. Body <see cref="SecretDeletePayload"/>.</summary>
+    public const string SecretDelete = "secret.delete";
+
     // ── Schema editor (client → server) ─────────────────────────────────
     /// <summary>Resolve a named JSON schema (data + UI) from the registry — used by the Forms editor.</summary>
     public const string SchemaGet = "schema.get";
@@ -155,6 +171,10 @@ public static class MessageTypes
     public const string TerminalResize = "terminal.resize";
     /// <summary>Close a terminal. Body <see cref="TerminalClosePayload"/>.</summary>
     public const string TerminalClose = "terminal.close";
+    /// <summary>List configured SSH hosts + live sessions (agent + terminals). Reply <see cref="SshSessionsResult"/>.</summary>
+    public const string SshSessionsGet = "ssh.sessions.get";
+    /// <summary>Close one live SSH session for everyone. Body <see cref="SshSessionClosePayload"/>.</summary>
+    public const string SshSessionClose = "ssh.session.close";
     public const string PluginPanelOpen = "plugin.panel.open";
     public const string PluginPanelInput = "plugin.panel.input";
     public const string PluginPanelClose = "plugin.panel.close";
@@ -167,6 +187,8 @@ public static class MessageTypes
     public const string Delta = "delta";
     public const string Reasoning = "reasoning";
     public const string AssistantMessage = "assistant.message";
+    /// <summary>Ack of the turn's user message with its assigned MsgId (<see cref="UserMessagePayload"/>).</summary>
+    public const string UserMessage = "user.message";
     public const string ToolStarted = "tool.started";
     public const string ToolProgress = "tool.progress";
     public const string ToolResult = "tool.result";
@@ -203,6 +225,10 @@ public static class MessageTypes
     public const string UsageResult = "usage.result";
     /// <summary>Result of <see cref="SystemRegisterAssociation"/>.</summary>
     public const string SystemRegisterAssociationResult = "system.register_association.result";
+    /// <summary>Current secret keys per scope — answer to <see cref="SecretList"/> and to a set/delete.
+    /// Keys only, never values. Body <see cref="SecretListResultPayload"/>.</summary>
+    public const string SecretResult = "secret.result";
+
     /// <summary>Answer to <see cref="SchemaGet"/>.</summary>
     public const string SchemaResult = "schema.result";
 
@@ -227,6 +253,10 @@ public static class MessageTypes
     public const string TerminalData = "terminal.data";
     /// <summary>Terminal closed (by request, disconnect, or error). Body <see cref="TerminalClosedPayload"/>.</summary>
     public const string TerminalClosed = "terminal.closed";
+    /// <summary>Hosts + live SSH sessions snapshot. Body <see cref="SshSessionsResultPayload"/>.</summary>
+    public const string SshSessionsResult = "ssh.sessions.result";
+    /// <summary>The set of live SSH sessions changed (opened/closed) — clients re-fetch via <see cref="SshSessionsGet"/>. No body.</summary>
+    public const string SshSessionsChanged = "ssh.sessions.changed";
     public const string PluginPanelOpened = "plugin.panel.opened";
     public const string PluginPanelEvent = "plugin.panel.event";
 

@@ -18,6 +18,25 @@ public class SplaAgentSection
 
     [YamlMember(Alias = "custom_prompt")]
     public string? CustomPrompt { get; set; }
+
+    /// <summary>Guard against machine-gun tool loops (a small-local-model failure mode). Only
+    /// rapid identical calls with identical results and no commentary count; the first trip asks
+    /// the model in-band whether it is stuck, a rebuilt streak stops the turn. Off by default —
+    /// deliberate polling (ssh_session_wait etc.) is a legitimate repeat pattern.</summary>
+    [YamlMember(Alias = "loop_guard")]
+    public bool? LoopGuard { get; set; }
+
+    /// <summary>How many suspicious consecutive repeats trigger each stage (default 3).</summary>
+    [YamlMember(Alias = "loop_guard_repeats")]
+    public int? LoopGuardRepeats { get; set; }
+
+    /// <summary>Enabled built-in agent capabilities (dotted "core.*" feature ids — see
+    /// <c>SPLA.MCP.Core.Agent.AgentFeatureCatalog</c>). Null (key absent) = every feature enabled,
+    /// the historical behaviour. Empty list = no built-in feature (only the mode preamble,
+    /// instructions, custom_prompt, and plugins remain). Unknown ids are ignored with a warning;
+    /// a feature's dependencies are auto-enabled.</summary>
+    [YamlMember(Alias = "capabilities")]
+    public List<string>? Capabilities { get; set; }
 }
 
 /// <summary>

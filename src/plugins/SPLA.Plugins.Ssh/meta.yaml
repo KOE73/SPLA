@@ -2,36 +2,60 @@ id: ssh
 version: 0.1.0
 type: dll
 entry_point: SPLA.Plugins.Ssh.dll
+web_settings_entry: web/dist/settings.js
 default_prompt: |
-  SSH tools are available for running READ-ONLY commands on remote hosts.
+  SSH tools run commands on remote hosts. Sessions are live and human-visible: the operator watches
+  the commands and output appear in a terminal panel and can type into the same shell.
 
   Tools:
     ssh_list_hosts    — list configured SSH hosts (name, address, user, auth type). Never shows passwords.
-    ssh_run           — run ONE read-only command on a host and return its output (stateless, one-shot).
-    ssh_session_exec  — run a read-only command in a PERSISTENT live shell session; output streams to
-                        the human in real time; shell state (cd, env) carries over between calls.
-    ssh_session_close — end a persistent session.
+    ssh_run           — run ONE command on a host and return its output (stateless, one-shot).
+    ssh_sessions      — list open live sessions with their ids (host#N), who opened them, viewer count.
+    ssh_session_exec  — run a command in a PERSISTENT live shell session the human watches; shell state
+                        (cd, env) carries over. Target an exact session with 'session' (host#N), or a
+                        host with 'host'. A command still running at the timeout is NOT killed: you get
+                        the output so far (status running) and continue with ssh_session_wait.
+    ssh_session_wait  — keep waiting on a running command (or watch for new output). Returns only the
+                        NEW output since your last look; nothing is lost between calls. Ends on
+                        completion, on an 'until' regex match, on disconnect, or on timeout (call again).
+    ssh_session_send  — send raw keys (answer a prompt, q to leave a pager, ctrl_c to interrupt).
+    ssh_session_close — end a live session (host#N) for everyone.
 
-  Live console (ssh_session_exec):
-  - This is a live console the human watches: output streams as it arrives, not just at the end.
-  - The session persists between calls — prefer it over ssh_run for any multi-step work, since cd and
-    environment carry over (ssh_run is stateless, each call is independent).
-  - Same read-only guard as ssh_run applies to every command. Use ssh_session_close when done.
+  Sessions (host#N):
+  - Several parallel sessions to one host are normal and identified as host#1, host#2, … Use
+    ssh_sessions to see them, then pass 'session' to ssh_session_exec to run in a specific one — e.g.
+    watch `top` in ioBroker#1 while working in ioBroker#2.
+  - Prefer a session over ssh_run for multi-step work (cd/env persist). The human sees every command;
+    do not treat it as a private channel.
 
-  Read-only enforcement:
-  - Only read-only commands are permitted (ls, cat, head, tail, grep, find, ps, df, du, free,
-    uname, hostname, whoami, id, uptime, ip, ss, netstat, dig, systemctl status, journalctl, etc.).
-  - Anything that modifies the system is refused BEFORE connecting: no rm/mv/dd/mkfs/kill/shutdown,
-    no package installs, no output redirection (> >>), no command substitution, no sudo/su.
-  - If a command is refused, do NOT try to work around the guard. Report the refusal and pick a
-    read-only alternative.
+  Long-running commands (apt upgrade, builds, reboots):
+  - Give exec a reasonable timeout_seconds; if it returns "STILL RUNNING", loop on ssh_session_wait —
+    each call is cheap and returns only new output. If wait returns nothing repeatedly, the command is
+    probably asking a question: check the last output and answer with ssh_session_send.
+  - `reboot` drops the connection — exec/wait return status "disconnected" immediately. That is normal:
+    open a new session after a pause and retry until the host is back (wait's 'until' regex helps).
+  - For apt/dpkg prefer DEBIAN_FRONTEND=noninteractive to avoid full-screen dialogs entirely.
+
+  Interactive programs (top, htop, less, an install asking Y/n):
+  - To sample top-like screens pass interrupt_on_timeout=true with a short timeout_seconds (snapshot,
+    then Ctrl+C recovers the shell).
+  - Answer prompts or interrupt with ssh_session_send (ctrl_c, q, enter, or literal text).
+
+  Write access (per host):
+  - By default the read-only guard blocks mutating commands (rm, mv, dd, kill, package installs,
+    redirection, sudo, …). A host with `allow_write: true` in its settings lifts the guard entirely —
+    apt, systemctl restart, editing files are then allowed. Only hosts the operator opted in accept
+    writes; on a read-only host, report the refusal and pick a read-only alternative, do not try to
+    bypass the guard.
 
   Configuration & secrets:
-  - Hosts are defined in project config under plugins.ssh.settings.hosts. Each host names an address,
-    user, and a credential REFERENCE (password: secret:KEY or env:VAR), never a literal password.
-  - Passwords live in the secret store, not in config or chat. If a connection fails for missing
-    credentials, tell the user to store the secret (e.g. `spla secret set <key>`), do not ask them to
-    paste the password into the chat.
+  - Hosts are defined in project config under plugins.ssh.settings.hosts. Each host names an address
+    and a credential REFERENCE — `credential: <entry>` pointing at a secret-store entry whose fields
+    (user, password, or private_key+passphrase) supply the login — never a literal password. Older
+    single-value pointers (password: secret:KEY or env:VAR) also work.
+  - Credentials live in the secret store, not in config or chat. If a connection fails for missing
+    credentials, tell the user to store the secret (e.g. `spla secret set <entry> --field password`
+    or the Settings → Secrets page), do not ask them to paste the password into the chat.
 
   Usage:
   - ssh_run takes a single command; there is no persistent shell, so each call is independent (cd does

@@ -24,6 +24,8 @@
   <ItemGroup>
     <!-- Lands at TargetDir/meta.yaml so the CopyPlugin glob deploys it to plugins/ssh/meta.yaml. -->
     <None Include="meta.yaml" CopyToOutputDirectory="PreserveNewest" />
+    <!-- Prebuilt web settings module (web_settings_entry in meta.yaml) — deployed via the same glob. -->
+    <None Include="web\dist\**" CopyToOutputDirectory="PreserveNewest" Link="web\dist\%(RecursiveDir)%(Filename)%(Extension)" />
   </ItemGroup>
 
   <!-- Deploy the built plugin (dll + SSH.NET deps + meta.yaml) into each host app's plugins/ssh

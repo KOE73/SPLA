@@ -1,3 +1,4 @@
+using SPLA.Runtime;
 using SPLA.Service.Contracts;
 
 namespace SPLA.Service;
@@ -10,6 +11,7 @@ internal sealed class ChatHandlers : IMessageHandler
     [
         MessageTypes.ChatList, MessageTypes.ChatNew, MessageTypes.ChatRename, MessageTypes.ChatDelete,
         MessageTypes.ChatOpen, MessageTypes.ChatWatch, MessageTypes.ChatSend, MessageTypes.ChatSettings,
+        MessageTypes.ChatRewind, MessageTypes.ChatFork,
     ];
 
     public Task HandleAsync(RequestContext ctx) => ctx.Env.Type switch
@@ -22,6 +24,8 @@ internal sealed class ChatHandlers : IMessageHandler
         MessageTypes.ChatWatch    => Watch(ctx),
         MessageTypes.ChatSend     => Send(ctx),
         MessageTypes.ChatSettings => Settings(ctx),
+        MessageTypes.ChatRewind   => Rewind(ctx),
+        MessageTypes.ChatFork     => Fork(ctx),
         _ => Task.CompletedTask
     };
 
@@ -96,6 +100,34 @@ internal sealed class ChatHandlers : IMessageHandler
         if (chat == null) return;
         chat.ApplySettings(p.Mode, p.ConnectionId);
         await ctx.Session.SendOpenedAsync(chat);   // echo back the applied settings
+    }
+
+    private static async Task Rewind(RequestContext ctx)
+    {
+        var (entry, _) = ctx.Session.Resolve(ctx.Env);
+        var p = ctx.Payload<ChatRewindPayload>();
+        var chat = p != null ? entry.Chats.GetOrOpen(p.ChatId) : null;
+        if (chat == null || p == null) return;
+        if (!chat.Rewind(p.MsgId, p.Before))
+        {
+            await ctx.Send(MessageTypes.Error, new ErrorPayload { Message = "Rewind failed — message not found or a turn is running." });
+            return;
+        }
+        await ctx.Session.SendOpenedAsync(chat);   // re-render the truncated log
+    }
+
+    private static async Task Fork(RequestContext ctx)
+    {
+        var (entry, projectId) = ctx.Session.Resolve(ctx.Env);
+        var p = ctx.Payload<ChatForkPayload>();
+        var fork = p != null ? entry.Chats.Fork(p.ChatId, p.MsgId) : null;
+        if (fork == null)
+        {
+            await ctx.Send(MessageTypes.Error, new ErrorPayload { Message = "Fork failed — chat not found or a turn is running." });
+            return;
+        }
+        await ctx.Session.SendOpenedAsync(fork);   // switches this client to the fork
+        await BroadcastChatList(ctx, projectId, entry.Chats);
     }
 
     private static Task BroadcastChatList(RequestContext ctx, string projectId, ChatRegistry chats)

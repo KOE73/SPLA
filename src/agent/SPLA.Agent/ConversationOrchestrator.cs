@@ -26,18 +26,13 @@ public sealed class ConversationOrchestrator
     private readonly ILLMService _llm;
     private readonly IToolHost _tools;
 
-    /// <summary>Window for the "same tool call / same error N times" guards.</summary>
-    public int ToolLoopWindow { get; init; } = 3;
+    /// <summary>How many suspicious repeats (see <see cref="ToolRepeatTracker"/>) trigger a stage:
+    /// first the in-band "are you stuck?" challenge, then — if the streak rebuilds — a hard stop.
+    /// Settable so a live settings edit applies to the next turn without recreating the orchestrator.</summary>
+    public int ToolLoopWindow { get; set; } = 3;
 
-    /// <summary>When false (default) the tool-call loop guard is disabled.</summary>
-    public bool EnableLoopGuard { get; init; } = false;
-
-    /// <summary>
-    /// Gates the error-repeat guard separately. Kept off until the tool result becomes a typed
-    /// contract (arch-review debt #4): today "is error" is a string heuristic
-    /// (<c>result.StartsWith("Error:")</c>), so this guard would fire on false positives.
-    /// </summary>
-    public bool EnableErrorLoopGuard { get; init; } = false;
+    /// <summary>When false (default) the tool-call repeat guard is disabled.</summary>
+    public bool EnableLoopGuard { get; set; } = false;
 
     /// <summary>
     /// Optional override for tool gating (e.g. the UI sidebar toggle layered on top of mode rules).
@@ -78,8 +73,7 @@ public sealed class ConversationOrchestrator
         AgentCallbacks callbacks,
         CancellationToken cancellationToken = default)
     {
-        var recentToolCalls = new Queue<(string name, string args)>();
-        var recentToolErrors = new Queue<(string name, string args, bool isError)>();
+        var repeatTracker = new ToolRepeatTracker();
 
         if (Checkpoint != null) Checkpoint.Target = conversation;
         bool didRollback = false;
@@ -173,26 +167,6 @@ public sealed class ConversationOrchestrator
                 continue;
             }
 
-            foreach (var tc in response.ToolCalls)
-            {
-                recentToolCalls.Enqueue((tc.Function.Name, tc.Function.Arguments));
-                if (recentToolCalls.Count > ToolLoopWindow) recentToolCalls.Dequeue();
-            }
-
-            if (EnableLoopGuard)
-            {
-                if (LoopGuards.HasToolCallLoop(recentToolCalls, ToolLoopWindow))
-                {
-                    await Notify(callbacks, "⚠️ Generation stopped: The model is repeating the same tool calls.");
-                    return;
-                }
-                if (EnableErrorLoopGuard && LoopGuards.HasErrorLoop(recentToolErrors, ToolLoopWindow))
-                {
-                    await Notify(callbacks, "⚠️ Generation stopped: The same tool has returned an error too many times in a row.");
-                    return;
-                }
-            }
-
             // Tell MarkManager which assistant message is being executed so that
             // checkpoint_save / mark_set know where to insert the label.
             if (Checkpoint != null)
@@ -219,10 +193,10 @@ public sealed class ConversationOrchestrator
                     "Tool result ← {ToolName} resultChars={ResultChars}", tc.Function.Name, result.Length);
                 cancellationToken.ThrowIfCancellationRequested();
 
-                var isError = result.StartsWith("Error:", StringComparison.OrdinalIgnoreCase)
-                              || result.Contains("exception", StringComparison.OrdinalIgnoreCase);
-                recentToolErrors.Enqueue((tc.Function.Name, tc.Function.Arguments, isError));
-                if (recentToolErrors.Count > ToolLoopWindow) recentToolErrors.Dequeue();
+                repeatTracker.Observe(tc.Function.Name, tc.Function.Arguments, result,
+                    hadText: !string.IsNullOrWhiteSpace(response.Content) ||
+                             !string.IsNullOrWhiteSpace(response.Reasoning),
+                    DateTimeOffset.UtcNow);
 
                 conversation.Add(new ChatMessage
                 {
@@ -280,6 +254,34 @@ public sealed class ConversationOrchestrator
                     needToCallLLM = true;
                     didRollback = true;
                     break;
+                }
+            }
+
+            // Two-stage repeat guard. Stage 1: the streak of suspicious repeats (identical call,
+            // identical result, no commentary, fast rounds — see ToolRepeatTracker) reached the
+            // threshold → ask the model in-band whether it is stuck, instead of killing the turn
+            // (deliberate polling survives by simply saying so). Stage 2: the streak rebuilt after
+            // the challenge → the model really is looping, stop.
+            if (EnableLoopGuard && repeatTracker.Streak >= Math.Max(2, ToolLoopWindow))
+            {
+                if (!repeatTracker.Challenged)
+                {
+                    conversation.Add(new ChatMessage
+                    {
+                        Role = ChatRole.User,
+                        Content = "[loop-check] You have repeated the same tool call " +
+                                  $"{repeatTracker.Streak} times in a row with identical arguments and an identical " +
+                                  "result, without saying why. If this is deliberate (e.g. polling), state briefly " +
+                                  "what you are waiting for and continue; otherwise change your approach or stop " +
+                                  "and summarize."
+                    });
+                    repeatTracker.BeginChallenge();
+                    await Notify(callbacks, "⚠️ Loop check: asked the model to confirm it isn't stuck.");
+                }
+                else
+                {
+                    await Notify(callbacks, "⚠️ Generation stopped: the model kept repeating the same tool call after a loop check.");
+                    return;
                 }
             }
 

@@ -16,10 +16,11 @@ namespace SPLA.Plugins.Ssh;
 /// </summary>
 public sealed class SshRunTool : IMcpTool
 {
-    private readonly SshSettings _settings;
+    // Live settings provider — re-read per call so host edits apply without a restart.
+    private readonly Func<SshSettings> _settings;
     private readonly ISecretResolver _resolver;
 
-    public SshRunTool(SshSettings settings, ISecretResolver resolver)
+    public SshRunTool(Func<SshSettings> settings, ISecretResolver resolver)
     {
         _settings = settings;
         _resolver = resolver;
@@ -72,24 +73,29 @@ public sealed class SshRunTool : IMcpTool
         if (string.IsNullOrWhiteSpace(command))
             return "Error: 'command' is required.";
 
-        // Read-only enforcement happens BEFORE connecting — a rejected command never reaches the host.
-        var rejection = ReadOnlyGuard.Reject(command);
-        if (rejection != null)
-            return $"Refused (read-only mode): {rejection}.";
-
-        var (name, cfg) = ResolveHost(hostName);
+        var settings = _settings();
+        var (name, cfg) = ResolveHost(settings, hostName);
         if (cfg == null)
             return hostName == null
                 ? "Error: no default host configured. Set plugins.ssh.settings.default_host or pass 'host'."
                 : $"Error: unknown host '{hostName}'. Use ssh_list_hosts to see configured hosts.";
 
+        // Read-only enforcement (per host policy) happens BEFORE connecting — a rejected command
+        // never reaches the host. Hosts opted in with allow_write skip the guard.
+        if (!cfg.AllowWrite)
+        {
+            var rejection = ReadOnlyGuard.Reject(command);
+            if (rejection != null)
+                return $"Refused (read-only host — set allow_write in the host settings to lift): {rejection}.";
+        }
+
         SshClient? client = null;
         try
         {
-            client = await SshConnectionFactory.ConnectAsync(cfg, _settings.TimeoutSeconds, _resolver, cancellationToken);
+            client = await SshConnectionFactory.ConnectAsync(cfg, settings.TimeoutSeconds, _resolver, cancellationToken);
 
             using var cmd = client.CreateCommand(command);
-            cmd.CommandTimeout = TimeSpan.FromSeconds(Math.Clamp(_settings.TimeoutSeconds, 5, 120));
+            cmd.CommandTimeout = TimeSpan.FromSeconds(Math.Clamp(settings.TimeoutSeconds, 5, 120));
             var stdout = await Task.Run(() => cmd.Execute(), cancellationToken);
 
             var sb = new StringBuilder();
@@ -120,11 +126,11 @@ public sealed class SshRunTool : IMcpTool
         }
     }
 
-    private (string name, SshHostConfig? cfg) ResolveHost(string? requested)
+    private static (string name, SshHostConfig? cfg) ResolveHost(SshSettings settings, string? requested)
     {
-        var name = requested ?? _settings.DefaultHost
-            ?? (_settings.Hosts.Count == 1 ? _settings.Hosts.Keys.First() : null);
-        if (name != null && _settings.Hosts.TryGetValue(name, out var cfg))
+        var name = requested ?? settings.DefaultHost
+            ?? (settings.Hosts.Count == 1 ? settings.Hosts.Keys.First() : null);
+        if (name != null && settings.Hosts.TryGetValue(name, out var cfg))
             return (name, cfg);
         return (name ?? "(none)", null);
     }

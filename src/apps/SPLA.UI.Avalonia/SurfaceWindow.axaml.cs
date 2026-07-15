@@ -14,6 +14,7 @@ namespace SPLA.UI.Avalonia;
 public partial class SurfaceWindow : Window
 {
     private string _surface = "debug";
+    private string? _query;
     private string? _url;
 
     public SurfaceWindow()
@@ -22,9 +23,12 @@ public partial class SurfaceWindow : Window
         Opened += OnOpened;
     }
 
-    public SurfaceWindow(string surface, string? title = null) : this()
+    /// <param name="query">Extra pre-encoded query params for the surface (e.g. "host=x&amp;project=y"),
+    /// used by tear-offs that need context — an SSH terminal's host, the focused project.</param>
+    public SurfaceWindow(string surface, string? title = null, string? query = null) : this()
     {
         _surface = surface;
+        _query = query;
         var label = title ?? surface;
         Title = "SPLA — " + label;
         TitleText.Text = "— " + label;
@@ -36,7 +40,8 @@ public partial class SurfaceWindow : Window
         {
             Helpers.WebViewBridge.Attach(Browser);
             var baseUrl = await App.ServiceUrlAsync();
-            _url = baseUrl.TrimEnd('/') + "/?surface=" + Uri.EscapeDataString(_surface);
+            _url = baseUrl.TrimEnd('/') + "/?surface=" + Uri.EscapeDataString(_surface)
+                 + (string.IsNullOrEmpty(_query) ? "" : "&" + _query);
             Browser.Navigate(new Uri(_url));
         }
         catch (Exception ex)

@@ -20,6 +20,7 @@ in addition to the root `AGENTS.md`.
 ### `src/agent/` — the agent loop
 
 - `SPLA.Agent`: The single agent loop (`ConversationOrchestrator`), layered system-prompt builder (`SystemPromptBuilder`), mode-based tool gating (`ToolModeFilter`), and headless skill sub-agents (`SpawnedAgentRunner`).
+- `SPLA.Runtime`: The autonomous, transport-neutral agent runtime — the embeddable "SPLA Runtime". Owns the full agent stack for one project (`AgentRuntime`: LLM client, tool host, plugins, skills, project KV, prompt, token tallies), per-chat state (`ChatRuntime`), the open-chat set (`ChatRegistry`), the multi-project home (`AgentRuntimeRegistry`), the in-process domain-event hub (`ServiceEvents`), and sidecar image persistence (`ChatImages`). Zero dependencies on any client or protocol: CLI, the WebSocket service, and standalone hosts (see `demo/`) all reference this project and get an identical agent. Wire/DTO projections of these objects live in `SPLA.Service` (`Chat/RuntimeProjections.cs`), never here.
 - `SPLA.MCP.BasicTools`: Built-in tools for filesystem, shell, .NET build/test, context, date/time, web fetch, and web search. Reach the system only through `HostServices.Sandbox`.
 
 ### `src/llm/`
@@ -63,6 +64,10 @@ in addition to the root `AGENTS.md`.
 ### `tests/`
 
 - `SPLA.Tests`: Test project. Protocol tests bind an OS-assigned free port (`FreePort()`), never a hardcoded one.
+
+### `demo/` — standalone runtime hosts
+
+- `VisionAgent`: A headless console app that proves the `SPLA.Runtime` boundary: it references only the runtime (no CLI/service/UI), opens a normal `.spla` project file (`vision.spla`), and loops "grab a video frame (USB camera / RTSP / file via OpenCvSharp) → send it as a chat turn with an image → print the model's analysis". The analysis prompt is ordinary `agent.instructions`; the demo's own knobs live in a `vision:` section of the same `.spla` (unknown sections are ignored by the standard loader).
 
 ## Non-code top-level folders
 

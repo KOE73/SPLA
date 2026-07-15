@@ -1,15 +1,15 @@
 namespace SPLA.Domain.Secrets;
 
 /// <summary>
-/// Phase-1 naive backend: plaintext YAML files. Project secrets in
-/// <c>&lt;workspace&gt;/.spla/secrets.yaml</c>, machine secrets in <c>&lt;machineDir&gt;/secrets.yaml</c>.
-/// Both folders are gitignored, so this keeps secrets out of source control — but NOT encrypted
-/// at rest. The DPAPI backend (<c>SPLA.Secrets.Dpapi</c>) swaps in behind <see cref="ISecretStore"/>
-/// without touching callers; this store stays the default and the intended choice for local
-/// development and tests, where transparency (inspect / seed a fixture) is a feature, not a risk.
+/// Naive plaintext backend: YAML files. Project secrets in <c>&lt;workspace&gt;/.spla/secrets.yaml</c>,
+/// machine secrets in <c>&lt;machineDir&gt;/secrets.yaml</c>. Both folders are gitignored, so this keeps
+/// secrets out of source control — but NOT encrypted at rest. The DPAPI backend
+/// (<c>SPLA.Secrets.Dpapi</c>) swaps in behind <see cref="ISecretStore"/> without touching callers;
+/// this store stays the default and the intended choice for local development and tests, where
+/// transparency (inspect / seed a fixture) is a feature, not a risk.
 ///
-/// File format is shared with the DPAPI store via <see cref="SecretYamlFile"/> — a flat
-/// <c>key: value</c> map, read fresh each access so cross-process writes need no restart.
+/// File format is shared with the DPAPI store via <see cref="SecretYamlFile"/> — entry key →
+/// field map, read fresh each access so cross-process writes need no restart.
 /// </summary>
 public sealed class FileSecretStore : ISecretStore
 {
@@ -29,23 +29,26 @@ public sealed class FileSecretStore : ISecretStore
     private string? FileFor(SecretScope scope) =>
         scope == SecretScope.Project ? _projectFile : _machineFile;
 
-    public ValueTask<string?> GetAsync(string key, CancellationToken ct = default)
+    private static SecretEntry? Read(string? file, string key)
     {
-        // Project overrides Machine.
-        var v = SecretYamlFile.Load(_projectFile).GetValueOrDefault(key)
-                ?? SecretYamlFile.Load(_machineFile).GetValueOrDefault(key);
-        return ValueTask.FromResult(v);
+        var fields = SecretYamlFile.Load(file).GetValueOrDefault(key);
+        return fields is { Count: > 0 } ? new SecretEntry(key, fields) : null;
     }
 
-    public ValueTask<string?> GetAsync(string key, SecretScope scope, CancellationToken ct = default)
-        => ValueTask.FromResult(SecretYamlFile.Load(FileFor(scope)).GetValueOrDefault(key));
+    public ValueTask<SecretEntry?> GetEntryAsync(string key, CancellationToken ct = default)
+        // Project overrides Machine.
+        => ValueTask.FromResult(Read(_projectFile, key) ?? Read(_machineFile, key));
 
-    public ValueTask SetAsync(string key, string value, SecretScope scope, CancellationToken ct = default)
+    public ValueTask<SecretEntry?> GetEntryAsync(string key, SecretScope scope, CancellationToken ct = default)
+        => ValueTask.FromResult(Read(FileFor(scope), key));
+
+    public ValueTask SetEntryAsync(string key, IReadOnlyDictionary<string, string> fields, SecretScope scope, CancellationToken ct = default)
     {
         var file = FileFor(scope)
             ?? throw new InvalidOperationException("No project is open — cannot store a project-scoped secret.");
         var map = SecretYamlFile.Load(file);
-        map[key] = value;
+        if (fields.Count == 0) map.Remove(key);
+        else map[key] = new Dictionary<string, string>(fields, StringComparer.OrdinalIgnoreCase);
         SecretYamlFile.Save(file, map);
         return ValueTask.CompletedTask;
     }
@@ -60,12 +63,15 @@ public sealed class FileSecretStore : ISecretStore
         return ValueTask.FromResult(removed);
     }
 
-    public ValueTask<IReadOnlyList<string>> ListKeysAsync(SecretScope scope, string? prefix = null, CancellationToken ct = default)
+    public ValueTask<IReadOnlyList<SecretEntryInfo>> ListEntriesAsync(SecretScope scope, string? prefix = null, CancellationToken ct = default)
     {
-        IEnumerable<string> keys = SecretYamlFile.Load(FileFor(scope)).Keys;
+        IEnumerable<KeyValuePair<string, Dictionary<string, string>>> entries = SecretYamlFile.Load(FileFor(scope));
         if (!string.IsNullOrEmpty(prefix))
-            keys = keys.Where(k => k.StartsWith(prefix, StringComparison.OrdinalIgnoreCase));
-        return ValueTask.FromResult<IReadOnlyList<string>>(keys.OrderBy(k => k).ToList());
+            entries = entries.Where(e => e.Key.StartsWith(prefix, StringComparison.OrdinalIgnoreCase));
+        return ValueTask.FromResult<IReadOnlyList<SecretEntryInfo>>(entries
+            .OrderBy(e => e.Key, StringComparer.OrdinalIgnoreCase)
+            .Select(e => new SecretEntryInfo(e.Key, e.Value.Keys.OrderBy(k => k, StringComparer.OrdinalIgnoreCase).ToList()))
+            .ToList());
     }
 
     public ValueTask<bool> ContainsAsync(string key, CancellationToken ct = default)

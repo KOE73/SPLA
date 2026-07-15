@@ -6,13 +6,13 @@ using SPLA.MCP.Core.Json;
 namespace SPLA.Plugins.Ssh;
 
 /// <summary>
-/// <c>ssh_session_close</c> — closes a persistent shell session opened by <c>ssh_session_exec</c>.
-/// Omit <c>host</c> to close the only open session. Idempotent: closing a non-open session is not an error.
+/// <c>ssh_session_close</c> — closes one live SSH session by id (<c>host#N</c>). Omit <c>session</c>
+/// to close the only open one. Any terminals attached to it show "closed". Idempotent.
 /// </summary>
 internal sealed class SshSessionCloseTool : IMcpTool
 {
-    private readonly SshSessionRegistry _registry;
-    public SshSessionCloseTool(SshSessionRegistry registry) => _registry = registry;
+    private readonly SshSessionHub _hub;
+    public SshSessionCloseTool(SshSessionHub hub) => _hub = hub;
 
     public string Name => "ssh_session_close";
 
@@ -22,7 +22,7 @@ internal sealed class SshSessionCloseTool : IMcpTool
         Function = new ToolFunctionDefinition
         {
             Name = Name,
-            Description = "Closes a persistent SSH shell session (from ssh_session_exec). Omit 'host' to close the only open one.",
+            Description = "Closes an open SSH session (from ssh_sessions). Pass 'session' (host#N); omit to close the sole open one.",
             Scope = ToolScope.Internet,
             Effect = ToolEffect.Read,
             Risk = ToolRisk.Low,
@@ -31,7 +31,7 @@ internal sealed class SshSessionCloseTool : IMcpTool
                 type = "object",
                 properties = new
                 {
-                    host = new { type = "string", description = "Configured host name whose session to close. Omit to close the sole open session." }
+                    session = new { type = "string", description = "Session id (host#N). Omit to close the only open session." }
                 }
             }
         }
@@ -39,22 +39,30 @@ internal sealed class SshSessionCloseTool : IMcpTool
 
     public Task<string> ExecuteAsync(string argumentsJson, CancellationToken cancellationToken = default)
     {
-        string? hostName = null;
+        string? sessionId = null;
         try
         {
             using var doc = JsonDocument.Parse(argumentsJson);
-            hostName = ToolJson.GetStringTrimmed(doc.RootElement, "host");
+            sessionId = ToolJson.GetStringTrimmed(doc.RootElement, "session")
+                     ?? ToolJson.GetStringTrimmed(doc.RootElement, "host"); // tolerate the old shape
         }
         catch (JsonException) { /* no args is fine */ }
 
-        var open = _registry.OpenSessions();
-        var name = hostName ?? (open.Count == 1 ? open[0] : null);
-        if (name == null)
+        var open = _hub.List();
+        // Old callers pass a bare host name — accept it when it maps to exactly one session.
+        if (sessionId != null && _hub.Get(sessionId) == null)
+        {
+            var byHost = _hub.ForHost(sessionId);
+            if (byHost.Count == 1) sessionId = byHost[0].Id;
+        }
+        sessionId ??= open.Count == 1 ? open[0].Id : null;
+
+        if (sessionId == null)
             return Task.FromResult(open.Count == 0
                 ? "No open SSH sessions."
-                : "Multiple sessions open — specify 'host'. Open: " + string.Join(", ", open));
+                : "Multiple sessions open — specify 'session'. Open: " + string.Join(", ", open.Select(s => s.Id)));
 
-        var closed = _registry.Close(name);
-        return Task.FromResult(closed ? $"Closed session on '{name}'." : $"No open session on '{name}'.");
+        var closed = _hub.Close(sessionId);
+        return Task.FromResult(closed ? $"Closed session '{sessionId}'." : $"No open session '{sessionId}'.");
     }
 }

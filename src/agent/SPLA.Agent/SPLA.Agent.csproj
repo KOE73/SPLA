@@ -10,8 +10,16 @@
     <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="10.0.0" />
   </ItemGroup>
 
+  <!-- Core prompt fragments, one per built-in agent feature (see AgentFeatureCatalog). Each file sits
+       next to its feature's id below; SystemPromptBuilder loads them by this exact logical name. -->
   <ItemGroup>
-    <EmbeddedResource Include="main_sys_prompt.md" LogicalName="SPLA.Agent.main_sys_prompt.md" />
+    <EmbeddedResource Include="Features\CoreWorkspace\prompt.md" LogicalName="SPLA.Agent.Features.CoreWorkspace.prompt.md" />
+    <EmbeddedResource Include="Features\CoreToolHelp\prompt.md" LogicalName="SPLA.Agent.Features.CoreToolHelp.prompt.md" />
+    <EmbeddedResource Include="Features\CoreDiscipline\prompt.md" LogicalName="SPLA.Agent.Features.CoreDiscipline.prompt.md" />
+    <EmbeddedResource Include="Features\CoreMemory\prompt.md" LogicalName="SPLA.Agent.Features.CoreMemory.prompt.md" />
+    <EmbeddedResource Include="Features\CoreCheckpoints\prompt.md" LogicalName="SPLA.Agent.Features.CoreCheckpoints.prompt.md" />
+    <EmbeddedResource Include="Features\CoreSkills\prompt.md" LogicalName="SPLA.Agent.Features.CoreSkills.prompt.md" />
+    <EmbeddedResource Include="Features\CoreBlobs\prompt.md" LogicalName="SPLA.Agent.Features.CoreBlobs.prompt.md" />
   </ItemGroup>
 
 </Project>

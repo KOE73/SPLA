@@ -38,6 +38,13 @@ public class PluginManager
     private readonly List<PluginDescriptor> _plugins = new();
     private readonly List<PluginInstance> _activePlugins = new();
     private readonly List<IMcpTool> _dynamicTools = new();
+    // Which plugin each dynamic tool came from — lets the host gate a tool by the plugin's LIVE
+    // enabled flag (a disabled plugin's tools vanish immediately; enabling a plugin that was never
+    // loaded still needs a restart because its assembly was skipped at startup).
+    private readonly Dictionary<IMcpTool, string> _toolOwners = new();
+    // dll plugins whose assembly has actually been loaded (enabled at startup, or lazily via
+    // EnsureLoaded when the user enables one at runtime).
+    private readonly HashSet<string> _loadedPluginIds = new(StringComparer.OrdinalIgnoreCase);
     private readonly List<SplaPluginUiCommand> _uiCommands = new();
     private readonly List<string> _loadErrors = new();
     private readonly Dictionary<string, ISplaPluginAction> _actionHandlers = new(StringComparer.OrdinalIgnoreCase);
@@ -65,6 +72,8 @@ public class PluginManager
         _uiCommands.Clear();
         _loadErrors.Clear();
         _plugins.Clear();
+        _toolOwners.Clear();
+        _loadedPluginIds.Clear();
         _actionHandlers.Clear();
         _panelProviders.Clear();
         _schemaProviders.Clear();
@@ -129,16 +138,41 @@ public class PluginManager
     public string? GetPluginDirectory(string pluginId) =>
         _plugins.FirstOrDefault(p => string.Equals(p.Meta.Id, pluginId, StringComparison.OrdinalIgnoreCase))?.DirectoryPath;
 
+    /// <summary>
+    /// Lazily loads a dll plugin that was skipped at startup (disabled then, enabled now) and
+    /// returns the tools it just contributed — the caller registers them with its tool host. This is
+    /// what makes enable/disable symmetric at runtime: DISABLE only gates exposure (assembly stays),
+    /// ENABLE loads on demand — no service restart, which a multi-user server cannot afford.
+    /// Returns an empty list when the plugin is unknown, already loaded, still disabled, or not a
+    /// dll plugin.
+    /// </summary>
+    public IReadOnlyList<IMcpTool> EnsureLoaded(string pluginId)
+    {
+        var descriptor = _plugins.FirstOrDefault(p =>
+            string.Equals(p.Meta.Id, pluginId, StringComparison.OrdinalIgnoreCase));
+        if (descriptor == null || IsSkillsType(descriptor)) return [];
+        if (_loadedPluginIds.Contains(descriptor.Meta.Id)) return [];
+        if (!IsPluginEnabled(descriptor.Meta.Id)) return [];
+
+        var before = _dynamicTools.Count;
+        LoadEnabledPlugin(descriptor);
+        if (descriptor.EffectiveState == PluginEffectiveState.DisabledByUser)
+            descriptor.EffectiveState = PluginEffectiveState.Enabled;
+        return _dynamicTools.Skip(before).ToList();
+    }
+
     private void LoadEnabledPlugin(PluginDescriptor descriptor)
     {
         try
         {
             var meta = descriptor.Meta;
+            _loadedPluginIds.Add(meta.Id);
 
             if (string.Equals(meta.Type, "dll", StringComparison.OrdinalIgnoreCase) && !string.IsNullOrWhiteSpace(meta.EntryPoint))
             {
                 var loaded = _loader.Load(descriptor);
                 _dynamicTools.AddRange(loaded.Tools);
+                foreach (var tool in loaded.Tools) _toolOwners[tool] = meta.Id;
                 _schemaProviders.AddRange(loaded.SchemaProviders);
                 if (loaded.ActionHandler != null)
                     _actionHandlers[meta.Id] = loaded.ActionHandler;
@@ -204,6 +238,18 @@ public class PluginManager
         descriptor.EffectiveStateReason = message;
         _loadErrors.Add(message);
         _logger?.LogWarning("Plugin load issue. Plugin={PluginId} Message={Message}", descriptor.Meta.Id, message);
+    }
+
+    /// <summary>True when the tool may be offered/executed RIGHT NOW: non-plugin tools always are;
+    /// a plugin tool follows its plugin's live <c>Enabled</c> flag in settings (mutated in place by
+    /// plugins.save), so disabling a plugin takes effect without a restart.</summary>
+    /// <summary>Live enabled flag for a plugin id (settings mutated in place by plugins.save).</summary>
+    public bool IsPluginEnabled(string pluginId)
+        => !_settings.Plugins.TryGetValue(pluginId, out var section) || section.Enabled != false;
+
+    public bool IsToolAvailable(IMcpTool tool)
+    {
+        return !_toolOwners.TryGetValue(tool, out var pluginId) || IsPluginEnabled(pluginId);
     }
 
     /// <summary>

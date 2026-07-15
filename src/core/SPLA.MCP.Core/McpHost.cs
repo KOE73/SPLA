@@ -78,7 +78,11 @@ public class McpHost : IToolHost
 
     public IEnumerable<ToolDefinition> GetToolDefinitions()
     {
-        return _tools.Values.Select(GetDefinitionForModel);
+        // Live plugin gating: a disabled plugin's tools drop out of the offered list immediately
+        // (no restart) — the assemblies stay loaded, only exposure is gated.
+        return _tools.Values
+            .Where(t => _pluginManager == null || _pluginManager.IsToolAvailable(t))
+            .Select(GetDefinitionForModel);
     }
 
     public string GetToolHelp(string? name, AgentMode? mode = null)
@@ -158,6 +162,12 @@ public class McpHost : IToolHost
     {
         if (_tools.TryGetValue(name, out var tool))
         {
+            if (_pluginManager != null && !_pluginManager.IsToolAvailable(tool))
+            {
+                _logger?.LogWarning("Tool refused: owning plugin is disabled. Tool={ToolName}", name);
+                return $"Error: tool '{name}' belongs to a plugin that is currently disabled.";
+            }
+
             using var activity = SplaTelemetry.StartActivity("mcp.tool.execute");
             activity?.SetTag("spla.tool.name", name);
             activity?.SetTag("spla.agent.mode", mode.ToString());

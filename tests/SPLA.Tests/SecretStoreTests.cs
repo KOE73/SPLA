@@ -28,7 +28,7 @@ public class SecretStoreTests : IDisposable
     {
         if (!OperatingSystem.IsWindows()) return;
 
-        var store = new DpapiFileSecretStore(workspacePath: null, machineDir: _dir);
+        ISecretStore store = new DpapiFileSecretStore(workspacePath: null, machineDir: _dir);
         await store.SetAsync("ssh/box/koe", "test-pw-value", SecretScope.Machine);
 
         Assert.Equal("test-pw-value", await store.GetAsync("ssh/box/koe"));
@@ -44,7 +44,7 @@ public class SecretStoreTests : IDisposable
     {
         if (!OperatingSystem.IsWindows()) return;
 
-        var store = new DpapiFileSecretStore(null, _dir);
+        ISecretStore store = new DpapiFileSecretStore(null, _dir);
         await store.SetAsync("a/one", "v1", SecretScope.Machine);
         await store.SetAsync("b/two", "v2", SecretScope.Machine);
 
@@ -66,7 +66,7 @@ public class SecretStoreTests : IDisposable
 
         var ws = Path.Combine(_dir, "workspace");
         Directory.CreateDirectory(ws);
-        var store = new DpapiFileSecretStore(ws, _dir);
+        ISecretStore store = new DpapiFileSecretStore(ws, _dir);
 
         await store.SetAsync("k", "machine-val", SecretScope.Machine);
         await store.SetAsync("k", "project-val", SecretScope.Project);
@@ -80,12 +80,52 @@ public class SecretStoreTests : IDisposable
     {
         if (!OperatingSystem.IsWindows()) return;
 
-        var store = new DpapiFileSecretStore(null, _dir);
+        ISecretStore store = new DpapiFileSecretStore(null, _dir);
         await store.SetAsync("k", "v", SecretScope.Machine);
 
         Assert.True(await store.DeleteAsync("k", SecretScope.Machine));
         Assert.False(await store.DeleteAsync("k", SecretScope.Machine));
         Assert.Null(await store.GetAsync("k"));
+    }
+
+    [Fact]
+    public async Task Entry_RoundTrips_MultipleFields_And_ResolvesByField()
+    {
+        ISecretStore store = new FileSecretStore(workspacePath: null, machineDir: _dir);
+        await store.SetEntryAsync("box", new Dictionary<string, string>
+        {
+            ["user"] = "koe",
+            ["password"] = "pw-value"
+        }, SecretScope.Machine);
+
+        var entry = await store.GetEntryAsync("box");
+        Assert.NotNull(entry);
+        Assert.Equal("koe", entry!["user"]);
+        Assert.Equal(new[] { "password", "user" }, entry.FieldNames);
+        // Bare secret:KEY prefers the password field; #field picks explicitly.
+        Assert.Equal("pw-value", entry.DefaultValue);
+
+        var resolver = new SecretResolver(store);
+        Assert.Equal("koe", await resolver.ResolveAsync("secret:box#user"));
+        Assert.Equal("pw-value", await resolver.ResolveAsync("secret:box"));
+        Assert.Null(await resolver.ResolveAsync("secret:box#missing"));
+
+        // Listing exposes field names, never values.
+        var listed = Assert.Single(await store.ListEntriesAsync(SecretScope.Machine));
+        Assert.Equal("box", listed.Key);
+        Assert.Equal(new[] { "password", "user" }, listed.Fields);
+    }
+
+    [Fact]
+    public async Task Entry_LegacyScalarFile_ReadsAsPasswordField()
+    {
+        // Pre-entry flat "key: value" shape degrades to a single password field instead of vanishing.
+        await File.WriteAllTextAsync(Path.Combine(_dir, "secrets.yaml"), "old/key: old-value\n");
+        ISecretStore store = new FileSecretStore(null, _dir);
+
+        Assert.Equal("old-value", await store.GetAsync("old/key"));
+        var entry = await store.GetEntryAsync("old/key");
+        Assert.Equal(new[] { "password" }, entry!.FieldNames);
     }
 
     [Fact]

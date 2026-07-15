@@ -6,6 +6,8 @@ export const store = reactive({
   currentChat: null as string | null,
   chats: [] as ChatSummary[],
   attachments: [] as string[],
+  /** chatId → turn in flight; drives per-chat Send/Stop and input enable state. */
+  turnActiveByChat: {} as Record<string, boolean>,
   workspacePath: null as string | null,
   /** Authenticated user (server mode); null on local/embedded → identity badge hidden. */
   userName: null as string | null,

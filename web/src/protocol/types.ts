@@ -22,10 +22,26 @@ export interface Envelope<P = unknown> {
 }
 
 export interface ChatMessage {
+  msgId?: string;
   role: "user" | "assistant" | "tool";
   content?: string;
   reasoning?: string;
+  /** ISO-8601 UTC creation time; absent on chats saved before timestamps existed. */
+  createdAt?: string;
   images?: string[];
+  toolCalls?: ToolCallDto[];
+  toolCallId?: string;
+}
+
+export interface ToolCallDto {
+  id: string;
+  name: string;
+  arguments: string;
+}
+
+export interface ToolProgressDetail {
+  label: string;
+  value: string;
 }
 
 export interface ChatSummary {
@@ -63,6 +79,7 @@ export interface AgentResultPayload {
   modes?: string[];
   permRead?: string; permWrite?: string; permShell?: string; permInternet?: string;
   customPrompt?: string;
+  loopGuard?: boolean; loopGuardRepeats?: number;
   theme?: string; density?: string;
   themes?: string[]; densities?: string[];
   canPersist?: boolean;
@@ -169,6 +186,20 @@ export interface DebugSnapshotPayload {
   text?: string;
 }
 
+// ── Secret store ─────────────────────────────────────────────────────────────
+/** One entry: key + field NAMES (user, password, token, private_key, …) — never values. */
+export interface SecretEntryDto {
+  key: string;
+  fields: string[];
+}
+
+export interface SecretListResultPayload {
+  machine: SecretEntryDto[];
+  project: SecretEntryDto[];
+  projectOpen: boolean;
+  error?: string;
+}
+
 // ── Schema editor ──────────────────────────────────────────────────────────
 export interface SchemaResultPayload {
   name: string;
@@ -227,6 +258,33 @@ export interface ProjectContextPayload {
   density?: string;
 }
 
+// ── Live SSH picker (ssh.sessions.get → ssh.sessions.result) ──────────────────
+export interface SshHostDto {
+  name: string;
+  host?: string;
+  port?: number;
+  isDefault?: boolean;
+  description?: string;
+}
+
+export interface SshSessionDto {
+  /** Addressable id, host#N. */
+  id: string;
+  host: string;
+  /** "agent" or "human". */
+  openedBy: string;
+  /** How many terminals are attached. */
+  viewers: number;
+}
+
+export interface SshSessionsResultPayload {
+  hosts: SshHostDto[];
+  /** Every live session in the project's hub — agent- and human-opened. */
+  sessions: SshSessionDto[];
+  /** Terminals this client connection has open (views over sessions). */
+  terminals: { terminalId: string; host: string; sessionId: string }[];
+}
+
 // ── Events the server pushes unprompted (subscribe via client.on) ──────────────
 export interface ServerEvents {
   /** Local-only: emitted by SplaClient itself on socket open/close, never sent by the server. */
@@ -249,9 +307,13 @@ export interface ServerEvents {
   "reasoning": { msgIndex: number; text: string };
   "llm.turn.start": { msgIndex: number };
   "assistant.message": { msgIndex: number; message: ChatMessage };
+  /** Ack of the turn's user message — carries the server-assigned MsgId so the local echo can
+   * become a rewind/fork anchor. */
+  "user.message": { msgId: string; createdAt?: string };
   "turn.complete": { cancelled?: boolean; error?: string };
-  "tool.started": { toolCall: { name: string } };
-  "tool.result": { toolName: string; result: string };
+  "tool.started": { toolCall: ToolCallDto };
+  "tool.progress": { toolCallId?: string; toolName: string; current: number; total: number; fraction?: number | null; message?: string | null; details?: ToolProgressDetail[] | null };
+  "tool.result": { toolCallId: string; toolName: string; result: string };
   "notice": { text: string };
   "error": { message: string };
   "permission.request": { toolName: string; arguments?: string };
@@ -266,15 +328,18 @@ export interface ServerEvents {
   "plugins.result": PluginsResultPayload;
   "usage.result": UsageResultPayload;
   "system.register_association.result": { ok?: boolean; message?: string };
+  "secret.result": SecretListResultPayload;
   "schema.result": SchemaResultPayload;
   "debug.snapshot": DebugSnapshotPayload;
   "local.userMsg": { text: string; images?: string[] };
   "project.list.result": ProjectListResultPayload;
   "project.context": ProjectContextPayload;
   // Live SSH terminal (phase B)
-  "terminal.opened": { terminalId: string; host: string };
+  "terminal.opened": { terminalId: string; host: string; sessionId: string };
   "terminal.data": { terminalId: string; data: string };
   "terminal.closed": { terminalId: string; reason?: string };
+  "ssh.sessions.result": SshSessionsResultPayload;
+  "ssh.sessions.changed": Record<string, never>;
   "plugin.panel.opened": { panelId: string };
   "plugin.panel.event": { panelId: string; eventType: string; data?: { base64?: string; mimeType?: string; url?: string; message?: string } };
 }

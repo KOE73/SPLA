@@ -29,6 +29,10 @@
 
   <ItemGroup>
     <None Include="meta.yaml" CopyToOutputDirectory="PreserveNewest" Link="plugins\sql\meta.yaml" />
+    <!-- Prebuilt web settings module (web_settings_entry in meta.yaml). Landing it in TargetDir under
+         web/dist means the CopyPlugin glob deploys it into each host's plugins/sql/web/dist — without
+         this the served /plugin-assets URL 404s and the settings UI silently falls back to raw YAML. -->
+    <None Include="web\dist\**" CopyToOutputDirectory="PreserveNewest" Link="web\dist\%(RecursiveDir)%(Filename)%(Extension)" />
   </ItemGroup>
 
   <!-- Reference schemas for the schema-driven editor (docs/schema-editor-plan.md, Фаза 2).
@@ -48,10 +52,13 @@
       <PluginFiles Include="$(TargetDir)**\*.*" />
       <MetaFile Include="meta.yaml" />
     </ItemGroup>
-    <Copy SourceFiles="@(PluginFiles)" DestinationFolder="$(MSBuildThisFileDirectory)..\SPLA.UI.Avalonia\bin\$(Configuration)\$(TargetFramework)\plugins\sql\%(RecursiveDir)" />
-    <Copy SourceFiles="@(MetaFile)" DestinationFolder="$(MSBuildThisFileDirectory)..\SPLA.UI.Avalonia\bin\$(Configuration)\$(TargetFramework)\plugins\sql\" />
-    <Copy SourceFiles="@(PluginFiles)" DestinationFolder="$(MSBuildThisFileDirectory)..\SPLA.CLI\bin\$(Configuration)\$(TargetFramework)\plugins\sql\%(RecursiveDir)" />
-    <Copy SourceFiles="@(MetaFile)" DestinationFolder="$(MSBuildThisFileDirectory)..\SPLA.CLI\bin\$(Configuration)\$(TargetFramework)\plugins\sql\" />
+    <!-- Host apps live under src/apps (..\..\apps\<app>), NOT next to the plugins — a stale ..\SPLA.CLI
+         path here silently deployed into src/plugins/SPLA.CLI for months while the real CLI kept
+         loading whatever old copy it had. -->
+    <Copy SourceFiles="@(PluginFiles)" DestinationFolder="$(MSBuildThisFileDirectory)..\..\apps\SPLA.UI.Avalonia\bin\$(Configuration)\$(TargetFramework)\plugins\sql\%(RecursiveDir)" SkipUnchangedFiles="true" />
+    <Copy SourceFiles="@(MetaFile)" DestinationFolder="$(MSBuildThisFileDirectory)..\..\apps\SPLA.UI.Avalonia\bin\$(Configuration)\$(TargetFramework)\plugins\sql\" SkipUnchangedFiles="true" />
+    <Copy SourceFiles="@(PluginFiles)" DestinationFolder="$(MSBuildThisFileDirectory)..\..\apps\SPLA.CLI\bin\$(Configuration)\$(TargetFramework)\plugins\sql\%(RecursiveDir)" SkipUnchangedFiles="true" />
+    <Copy SourceFiles="@(MetaFile)" DestinationFolder="$(MSBuildThisFileDirectory)..\..\apps\SPLA.CLI\bin\$(Configuration)\$(TargetFramework)\plugins\sql\" SkipUnchangedFiles="true" />
   </Target>
 
 </Project>

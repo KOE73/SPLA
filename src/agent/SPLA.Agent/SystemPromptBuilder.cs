@@ -1,6 +1,7 @@
 using SPLA.Domain.Agent;
 using SPLA.Domain.Models;
 using SPLA.Domain.Settings;
+using SPLA.MCP.Core.Agent;
 using SPLA.MCP.Core.Plugins;
 using System;
 using System.Collections.Generic;
@@ -39,20 +40,42 @@ public sealed record PromptSegment(PromptSegmentKind Kind, string Title, string 
 /// </summary>
 public sealed class SystemPromptBuilder
 {
-    private const string MainPromptResourceName = "SPLA.Agent.main_sys_prompt.md";
     private const string WorkingDirectoryPlaceholder = "{{workingDirectory}}";
-    private static readonly Lazy<string> MainPromptTemplate = new(LoadMainPromptTemplate);
 
     private readonly SkillManager _skills;
     private readonly PluginManager _plugins;
     private readonly ISkillSession? _skillSession;
 
-    public SystemPromptBuilder(SkillManager skills, PluginManager plugins, ISkillSession? skillSession = null)
+    /// <summary>Enabled core features, in catalog order. Each feature's <see cref="IAgentFeature.PromptFragment"/>
+    /// becomes one Core segment; the presence of the "core.skills" id gates the skills-related
+    /// segments (ActiveSkill/Skills/SkillsIndex). Defaults to the full catalog (every id in
+    /// <see cref="AgentFeatureCatalog.Order"/> with its fragment from <see cref="CoreFeaturePrompts"/>)
+    /// when not supplied, so callers that predate the capabilities feature (and direct-construction
+    /// tests) keep the full, unrestricted prompt.</summary>
+    private readonly IReadOnlyList<IAgentFeature> _enabledFeatures;
+    private readonly bool _skillsEnabled;
+
+    public SystemPromptBuilder(
+        SkillManager skills,
+        PluginManager plugins,
+        ISkillSession? skillSession = null,
+        IReadOnlyList<IAgentFeature>? enabledFeatures = null)
     {
         _skills = skills;
         _plugins = plugins;
         _skillSession = skillSession;
+        _enabledFeatures = enabledFeatures ?? FullCatalog.Value;
+        _skillsEnabled = _enabledFeatures.Any(f => f.Id == "core.skills");
     }
+
+    /// <summary>Prompt-side view of the full feature set: every catalog id with its fragment from
+    /// <see cref="CoreFeaturePrompts"/> and no tools — only used when the caller supplies no feature
+    /// list, i.e. outside the AgentRuntime gating path.</summary>
+    private static readonly Lazy<IReadOnlyList<IAgentFeature>> FullCatalog = new(() =>
+        AgentFeatureCatalog.Order
+            .Select(id => (IAgentFeature)new AgentFeature(
+                id, promptFragment: CoreFeaturePrompts.Load(id), requires: AgentFeatureCatalog.RequiresOf(id)))
+            .ToList());
 
     /// <summary>Flatten the segments into the final system prompt string sent to the LLM.</summary>
     public string Build(ResolvedSettings settings, string workingDirectory)
@@ -67,8 +90,7 @@ public sealed class SystemPromptBuilder
         var preamble = ModePreamble(settings.Mode);
         segments.Add(new(PromptSegmentKind.Mode, $"Mode: {settings.Mode}", preamble, preamble));
 
-        var core = BuildMainPrompt(workingDirectory);
-        segments.Add(new(PromptSegmentKind.Core, "Core instructions", core, "\n" + core));
+        AppendCoreFeatureSegments(segments, workingDirectory);
 
         AppendInstructions(segments, settings, workingDirectory);
 
@@ -76,12 +98,34 @@ public sealed class SystemPromptBuilder
             segments.Add(new(PromptSegmentKind.Custom, "Custom prompt", settings.CustomPrompt,
                 "\n\n--- Custom Prompt ---\n" + settings.CustomPrompt));
 
-        AppendActiveSkill(segments);
-        AppendSkills(segments);
+        // Skill-related segments (active skill body, preloaded skills, on-demand skills index) are
+        // gated on core.skills so the prompt never talks about skill_activate/skill_deactivate when
+        // that feature (and its tools) is disabled.
+        if (_skillsEnabled)
+        {
+            AppendActiveSkill(segments);
+            AppendSkills(segments);
+        }
         AppendPluginPrompts(segments);
         AppendPluginCommands(segments);
 
         return segments;
+    }
+
+    /// <summary>One Core segment per enabled feature that has a prompt fragment, in the order the
+    /// features were supplied (catalog order) — replaces the old single monolithic Core segment.
+    /// The fragment comes from the feature itself (<see cref="IAgentFeature.PromptFragment"/>), so
+    /// tools and prompt text are gated by the same object; a feature with a null fragment
+    /// (tools-only, e.g. core.files) contributes nothing here.</summary>
+    private void AppendCoreFeatureSegments(List<PromptSegment> segments, string workingDirectory)
+    {
+        foreach (var feature in _enabledFeatures)
+        {
+            if (string.IsNullOrEmpty(feature.PromptFragment)) continue;
+
+            var body = feature.PromptFragment.Replace(WorkingDirectoryPlaceholder, workingDirectory);
+            segments.Add(new(PromptSegmentKind.Core, $"Core: {feature.Id}", body, "\n\n" + body));
+        }
     }
 
     private static string ModePreamble(AgentMode mode) => mode switch
@@ -93,18 +137,6 @@ public sealed class SystemPromptBuilder
         AgentMode.Agent => "You are a fully autonomous AI Agent. You can read, write, and execute commands without prompting the user. Proactively complete the requested tasks end-to-end.",
         _ => "You are a helpful local AI assistant named SPLA."
     };
-
-    private static string BuildMainPrompt(string workingDirectory)
-        => MainPromptTemplate.Value.Replace(WorkingDirectoryPlaceholder, workingDirectory);
-
-    private static string LoadMainPromptTemplate()
-    {
-        var assembly = typeof(SystemPromptBuilder).Assembly;
-        using var stream = assembly.GetManifestResourceStream(MainPromptResourceName)
-            ?? throw new InvalidOperationException($"Embedded resource '{MainPromptResourceName}' was not found.");
-        using var reader = new StreamReader(stream, Encoding.UTF8);
-        return reader.ReadToEnd().Trim();
-    }
 
     private static void AppendInstructions(List<PromptSegment> segments, ResolvedSettings settings, string workingDirectory)
     {
@@ -176,6 +208,9 @@ public sealed class SystemPromptBuilder
     {
         foreach (var plugin in _plugins.GetActivePlugins())
         {
+            // Live gating: a plugin disabled after startup keeps its assembly loaded but must not
+            // speak in the prompt (McpHost filters its tools the same way).
+            if (!_plugins.IsPluginEnabled(plugin.Meta.Id)) continue;
             if (!string.IsNullOrWhiteSpace(plugin.EffectivePrompt))
                 segments.Add(new(PromptSegmentKind.Plugin, $"Plugin: {plugin.Meta.Id}", plugin.EffectivePrompt,
                     $"\n\n--- Plugin: {plugin.Meta.Id} ---\n" + plugin.EffectivePrompt));

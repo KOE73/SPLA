@@ -7,27 +7,11 @@ namespace SPLA.Agent.Guards;
 /// <summary>
 /// Anti-loop guards for the agent loop. Canonical home for logic that previously lived
 /// (duplicated, and only in the UI) under SPLA.UI.Avalonia/Services/Guards.
+/// Tool-call repetition moved to <see cref="ToolRepeatTracker"/> (timing/result-aware, two-stage);
+/// only the streamed-text guard remains here.
 /// </summary>
 public static class LoopGuards
 {
-    /// <summary>Returns true when the last <paramref name="windowSize"/> tool calls are identical.</summary>
-    public static bool HasToolCallLoop(IReadOnlyCollection<(string name, string args)> recentCalls, int windowSize = 3)
-    {
-        if (recentCalls.Count < windowSize) return false;
-        var arr = recentCalls.TakeLast(windowSize).ToArray();
-        var first = arr[0];
-        return arr.All(x => x == first);
-    }
-
-    /// <summary>Returns true when the last <paramref name="windowSize"/> entries are the same failing call.</summary>
-    public static bool HasErrorLoop(IReadOnlyCollection<(string name, string args, bool isError)> recentErrors, int windowSize = 3)
-    {
-        if (recentErrors.Count < windowSize) return false;
-        var arr = recentErrors.TakeLast(windowSize).ToArray();
-        var first = arr[0];
-        return arr.All(x => x.isError && x.name == first.name && x.args == first.args);
-    }
-
     /// <summary>
     /// Returns true when the tail of <paramref name="text"/> contains a suffix of at least
     /// <paramref name="minSuffixLen"/> chars repeating at least <paramref name="minRepeats"/> times.

@@ -8,6 +8,8 @@
       :ref="item.kind === 'assistant' ? (el => setBubbleRef(item.msgIndex, el)) : undefined"
       @decide="onPermissionDecide"
       @choose="onClarifyChoose"
+      @rewind="onRewind"
+      @fork="onFork"
     />
   </div>
 </template>
@@ -20,13 +22,15 @@ import { uiBus } from "../state/uiBus";
 import UserBubble from "./UserBubble.vue";
 import AssistantBubble from "./AssistantBubble.vue";
 import ToolLine from "./ToolLine.vue";
+import ToolCard, { type ToolCallState } from "./ToolCard.vue";
 import PermissionAsk from "./PermissionAsk.vue";
 import ClarifyAsk from "./ClarifyAsk.vue";
 
 type Item =
-  | { kind: "user"; key: string; text: string; images?: string[] }
-  | { kind: "assistant"; key: string; msgIndex: number }
+  | { kind: "user"; key: string; text: string; images?: string[]; msgId?: string; createdAt?: string | number }
+  | { kind: "assistant"; key: string; msgIndex: number; msgId?: string; createdAt?: string | number }
   | { kind: "tool" | "notice"; key: string; text: string }
+  | { kind: "toolcall"; key: string; call: ToolCallState }
   | { kind: "permission"; key: string; requestId: string; toolName: string; argumentsText?: string }
   | { kind: "clarify"; key: string; requestId: string; question: string; options?: { label: string; description?: string }[] };
 
@@ -57,6 +61,7 @@ function itemComponent(item: Item) {
     case "user": return UserBubble;
     case "assistant": return AssistantBubble;
     case "tool": case "notice": return ToolLine;
+    case "toolcall": return ToolCard;
     case "permission": return PermissionAsk;
     case "clarify": return ClarifyAsk;
   }
@@ -70,19 +75,32 @@ function scroll() {
   nextTick(() => { const el = logEl(); if (el) el.scrollTop = el.scrollHeight; });
 }
 
+// Live/loaded tool calls by id — tool.progress and tool.result mutate the card in place.
+const toolCalls = new Map<string, ToolCallState>();
+function addToolCall(call: ToolCallState) {
+  const reactiveItem: Item = { kind: "toolcall", key: nextKey(), call };
+  items.value.push(reactiveItem);
+  // grab the reactive proxy back so later mutations trigger re-render
+  const stored = (items.value[items.value.length - 1] as { call: ToolCallState }).call;
+  if (call.callId) toolCalls.set(call.callId, stored);
+  return stored;
+}
+
 function clearAll() {
+  renderedChatId = null;
   items.value = [];
+  toolCalls.clear();
   streams.forEach(s => clearTimeout(s.timer));
   streams.clear();
   bubbleRefs.clear();
 }
 
-function addAssistantItem(msgIndex: number) {
-  items.value.push({ kind: "assistant", key: "asst" + msgIndex, msgIndex });
+function addAssistantItem(msgIndex: number, msgId?: string, createdAt?: string | number) {
+  items.value.push({ kind: "assistant", key: "asst" + msgIndex, msgIndex, msgId, createdAt });
 }
 
 function startBubble(msgIndex: number) {
-  addAssistantItem(msgIndex);
+  addAssistantItem(msgIndex, undefined, Date.now());
   streams.set(msgIndex, { raw: "", timer: 0 });
 }
 function appendDelta(msgIndex: number, text: string) {
@@ -96,27 +114,59 @@ function finalizeBubble(msgIndex: number, message: { content?: string; reasoning
   let s = streams.get(msgIndex);
   if (!s) { addAssistantItem(msgIndex); s = { raw: "", timer: 0 }; streams.set(msgIndex, s); }
   clearTimeout(s.timer);
+  // The finalized message carries the server-side MsgId — attach it so rewind/fork can anchor here.
+  const item = items.value.find(i => i.kind === "assistant" && i.msgIndex === msgIndex);
+  if (item && item.kind === "assistant") {
+    const m = message as { msgId?: string; createdAt?: string };
+    if (m.msgId) item.msgId = m.msgId;
+    if (m.createdAt) item.createdAt = m.createdAt;
+  }
   if (message.reasoning) bubbleRefs.get(msgIndex)?.setReasoning(message.reasoning);
   nextTick(() => bubbleRefs.get(msgIndex)?.renderInto(message.content || "").then(scroll));
 }
 
-function openChat(p: { messages: { role: string; content?: string; reasoning?: string; images?: string[] }[] }) {
+// The chat this log is actually rendering. Rewind/fork must anchor to THIS id, never to
+// store.currentChat — focus.changed from another window can retarget the store mid-click,
+// which would send a destructive rewind to a chat the user never looked at.
+let renderedChatId: string | null = null;
+
+function openChat(p: { chatId?: string; messages: { msgId?: string; role: string; content?: string; reasoning?: string;
+  createdAt?: string; images?: string[];
+  toolCalls?: { id: string; name: string; arguments: string }[]; toolCallId?: string }[] }) {
   clearAll();
+  renderedChatId = p.chatId ?? null;
   for (const m of p.messages) {
-    if (m.role === "user") items.value.push({ kind: "user", key: nextKey(), text: m.content || "", images: m.images });
+    if (m.role === "user") items.value.push({ kind: "user", key: nextKey(), text: m.content || "",
+      images: m.images, msgId: m.msgId, createdAt: m.createdAt });
     else if (m.role === "assistant") {
-      const msgIndex = -1 - items.value.length; // synthetic stable index for historical messages
-      addAssistantItem(msgIndex);
-      nextTick(() => {
-        const b = bubbleRefs.get(msgIndex);
-        b?.setReasoning(m.reasoning || "");
-        b?.renderInto(m.content || "");
-      });
+      if (m.content || m.reasoning) {
+        const msgIndex = -1 - items.value.length; // synthetic stable index for historical messages
+        addAssistantItem(msgIndex, m.msgId, m.createdAt);
+        nextTick(() => {
+          const b = bubbleRefs.get(msgIndex);
+          b?.setReasoning(m.reasoning || "");
+          b?.renderInto(m.content || "");
+        });
+      }
+      // historical tool calls become collapsed done-cards; the matching tool message fills in the result
+      for (const tc of m.toolCalls || [])
+        addToolCall({ callId: tc.id, name: tc.name, argumentsText: tc.arguments, status: "done" });
     } else if (m.role === "tool") {
-      items.value.push({ kind: "tool", key: nextKey(), text: "← tool result (" + (m.content || "").length + " chars)" });
+      const call = m.toolCallId ? toolCalls.get(m.toolCallId) : undefined;
+      if (call) call.result = m.content || "";
+      else items.value.push({ kind: "tool", key: nextKey(), text: "← tool result (" + (m.content || "").length + " chars)" });
     }
   }
   scroll();
+}
+
+// Fallback matcher for events that arrive without a usable toolCallId.
+function lastRunningByName(name: string): ToolCallState | undefined {
+  for (let i = items.value.length - 1; i >= 0; i--) {
+    const it = items.value[i];
+    if (it.kind === "toolcall" && it.call.status === "running" && it.call.name === name) return it.call;
+  }
+  return undefined;
 }
 
 function onPermissionDecide(requestId: string, decision: string) {
@@ -128,20 +178,61 @@ function onClarifyChoose(requestId: string, choice: string | null) {
   items.value = items.value.filter(i => !(i.kind === "clarify" && i.requestId === requestId));
 }
 
+// Rewind: a user bubble also passes its text (goes back to the composer and the message itself is
+// removed); an assistant bubble is kept and only what follows it is discarded. The server answers
+// with chat.opened, which rebuilds the log.
+function onRewind(msgId: string, text?: string) {
+  if (!renderedChatId || !msgId) return;
+  if (text !== undefined) uiBus.emit("composer.set", { text });
+  client.send("chat.rewind", { chatId: renderedChatId, msgId, before: text !== undefined },
+    { projectId: store.currentProjectId ?? undefined });
+}
+function onFork(msgId: string) {
+  if (!renderedChatId || !msgId) return;
+  client.send("chat.fork", { chatId: renderedChatId, msgId },
+    { projectId: store.currentProjectId ?? undefined });
+}
+
 // ── Wiring ───────────────────────────────────────────────────────────────────
 const offs = [
   client.on("chat.opened", openChat),
   uiBus.on("local.userMsg", (p: unknown) => {
     const { text, images } = p as { text: string; images?: string[] };
-    items.value.push({ kind: "user", key: nextKey(), text, images });
+    items.value.push({ kind: "user", key: nextKey(), text, images, createdAt: Date.now() });
     scroll();
+  }),
+  // The server acks the turn's user message with its MsgId — attach it to the local echo so the
+  // freshly sent message can be rewound/forked without reopening the chat.
+  client.on("user.message", p => {
+    for (let i = items.value.length - 1; i >= 0; i--) {
+      const it = items.value[i];
+      if (it.kind === "user") { if (!it.msgId) { it.msgId = p.msgId; if (p.createdAt) it.createdAt = p.createdAt; } break; }
+    }
   }),
   client.on("llm.turn.start", p => startBubble(p.msgIndex)),
   client.on("delta", p => appendDelta(p.msgIndex, p.text)),
   client.on("reasoning", p => { bubbleRefs.get(p.msgIndex)?.appendReasoning(p.text); scroll(); }),
   client.on("assistant.message", p => finalizeBubble(p.msgIndex, p.message)),
-  client.on("tool.started", p => { items.value.push({ kind: "tool", key: nextKey(), text: "→ " + p.toolCall.name }); scroll(); }),
-  client.on("tool.result", p => { items.value.push({ kind: "tool", key: nextKey(), text: "← " + p.toolName + " (" + (p.result || "").length + " chars)" }); scroll(); }),
+  client.on("tool.started", p => {
+    addToolCall({ callId: p.toolCall.id, name: p.toolCall.name, argumentsText: p.toolCall.arguments,
+      status: "running", startedAt: Date.now() });
+    scroll();
+  }),
+  client.on("tool.progress", p => {
+    const call = (p.toolCallId && toolCalls.get(p.toolCallId)) || lastRunningByName(p.toolName);
+    if (call) call.progress = { fraction: p.fraction, message: p.message, details: p.details };
+  }),
+  client.on("tool.result", p => {
+    const call = toolCalls.get(p.toolCallId) || lastRunningByName(p.toolName);
+    if (call) { call.result = p.result || ""; call.status = "done"; call.finishedAt = Date.now(); }
+    else items.value.push({ kind: "tool", key: nextKey(), text: "← " + p.toolName + " (" + (p.result || "").length + " chars)" });
+    scroll();
+  }),
+  // A cancelled/failed turn can strand cards in "running" — stop their spinners.
+  client.on("turn.complete", () => {
+    for (const it of items.value)
+      if (it.kind === "toolcall" && it.call.status === "running") { it.call.status = "done"; it.call.finishedAt = Date.now(); }
+  }),
   client.on("notice", p => { items.value.push({ kind: "notice", key: nextKey(), text: p.text }); scroll(); }),
   client.on("error", p => { items.value.push({ kind: "notice", key: nextKey(), text: "⚠ " + p.message }); scroll(); }),
 ];

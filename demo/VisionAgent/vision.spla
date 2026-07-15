@@ -1,0 +1,104 @@
+version: 1
+
+name: Vision Agent Demo
+
+workspace: .
+
+agent:
+  mode: Chat
+  instructions:
+    - prompt.md
+  # ── Встроенные способности агента (capabilities) ──────────────────────────
+  # Каждый id разом включает свою группу инструментов И её кусок системного промпта.
+  # []            — ни одной: чистый классификатор (преамбула режима + prompt.md + плагины). ← это демо
+  # ключ убран    — включены ВСЕ (обычный полноценный агент).
+  # список ниже   — включить только перечисленные.
+  #
+  # Each id enables its tool group AND its slice of the system prompt together.
+  # []            — none: a bare classifier (mode preamble + prompt.md + plugins). ← this demo
+  # key removed   — ALL enabled (a normal full agent).
+  # explicit list — only the ids you list.
+  #
+  # Доступные id / available ids (зависимости подтягиваются сами / deps auto-included):
+  #   core.workspace    — рабочая папка + AGENTS.md (get_context, дата/время)
+  #                       working directory + AGENTS.md (get_context, date/time)
+  #   core.tool-help    — расширенная справка по инструментам (agent_info) / extended tool help
+  #   core.discipline   — правила поведения (лимит попыток, Mermaid) / behaviour rules
+  #   core.files        — чтение/запись/поиск файлов, просмотр картинок / file read/write/search, image view
+  #   core.shell        — запуск команд оболочки / run shell commands
+  #   core.web          — загрузка веб-страниц (web_fetch) / fetch web pages
+  #   core.memory       — KV-память агента / agent KV memory
+  #   core.checkpoints  — чекпоинты/откат контекста / context checkpoints & rollback  [требует core.memory]
+  #   core.skills       — активация скиллов / skill activation                        [требует core.tool-help]
+  #   core.spawn        — порождение под-агентов / spawn sub-agents
+  #   core.clarify      — уточняющие вопросы пользователю / ask the user to clarify
+  #   core.blobs        — крупный вывод через blob-канал / bulk output via blob channel
+  #
+  # Примеры для экспериментов / experiment examples (раскомментируй нужную строку):
+  #   capabilities: [core.files, core.shell]            # дать агенту руки к ФС и терминалу
+  #   capabilities: [core.memory, core.checkpoints]     # состояние между кадрами + чекпоинты
+  # (закомментируй строку ниже, полностью убери ключ = включить всё / comment it out entirely = all on)
+  capabilities: []
+
+llm:
+  provider: lmstudio
+  endpoint: http://127.0.0.1:1234/v1
+  model: auto
+  # ── reasoning_level — это КЛЮЧ; значения перечислены ниже ──────────────────
+  # ── reasoning_level is the KEY; its possible VALUES are listed below ───────
+  #
+  # Управляет режимом размышлений (thinking) модели. Самый действенный способ
+  # ускорить кадр — off. Ключ закомментирован = оставить дефолт модели.
+  # Controls the model's thinking mode. The single most effective way to speed
+  # up a frame is off. Key commented out = keep the model's own default.
+  #
+  # Значения / values:
+  #   off     — выключить размышления совсем (Gemma/Qwen: enable_thinking=false)
+  #             disable thinking entirely (Gemma/Qwen: enable_thinking=false)
+  #   on      — принудительно включить размышления (Gemma/Qwen)
+  #             force thinking on (Gemma/Qwen)
+  #   low     — короткие размышления (gpt-oss-модели: reasoning_effort=low)
+  #             short reasoning (gpt-oss-style models: reasoning_effort=low)
+  #   medium  — средние размышления (reasoning_effort=medium)
+  #             medium reasoning (reasoning_effort=medium)
+  #   high    — максимальные размышления (reasoning_effort=high)
+  #             maximum reasoning (reasoning_effort=high)
+  #
+  # Примеры / examples:
+  #   reasoning_level: off      # самый быстрый кадр / fastest frame
+  #   reasoning_level: low      # компромисс для gpt-oss / gpt-oss compromise
+  #
+  # ВАЖНО / IMPORTANT: Gemma понимает только off/on; low/medium/high она игнорирует
+  # (это reasoning_effort для gpt-oss). Gemma only honours off/on; it ignores low/medium/high.
+  reasoning_level: off
+
+# ── Секция демо (стандартный загрузчик SPLA её игнорирует, читает только VisionAgent) ──
+vision:
+  # Источник видео:
+  #   usb:0            — USB-камера с индексом 0 (usb:1 — вторая и т.д.)
+  #   rtsp://host/...  — RTSP-поток
+  #   path/to/file.mp4 — видеофайл (путь относительно этого файла)
+  source: usb:0
+
+  # Пауза между анализируемыми кадрами, секунд.
+  interval_seconds: 5
+
+  # Кадр ужимается до этой ширины перед отправкой в модель (0 = не ужимать).
+  max_width: 1024
+
+  # Качество JPEG (1–100).
+  jpeg_quality: 80
+
+  # Сколько предыдущих кадров-ходов оставлять в контексте (0 = каждый кадр независим).
+  keep_history: 0
+
+  # Куда складывать копии отправленных кадров для контроля (пусто = не сохранять).
+  save_frames: ""
+
+  # Показывать окна предпросмотра: Live — непрерывный поток источника,
+  # Sent — кадр, только что ушедший в модель. false = полностью headless.
+  show_windows: true
+
+  # Печатать рассуждения модели серым цветом (Spectre.Console). На слабой модели
+  # рассуждений много и они тормозят видимый ответ — по умолчанию выключено.
+  show_reasoning: true

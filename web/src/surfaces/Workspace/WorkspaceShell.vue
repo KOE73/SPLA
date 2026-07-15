@@ -139,7 +139,10 @@ async function onSave(payload: { docId: string; text: string }) {
 /* ── Root wrapper ────────────────────────────────────────────────────────────── */
 .ws-root {
   display: flex;
-  flex: 1;
+  /* Fill the dock panel. dockview's content container isn't a flex column, so `flex:1` alone
+     collapses to content height — pin height/width like the other dock surfaces do. */
+  width: 100%;
+  height: 100%;
   min-height: 0;
   overflow: hidden;
 }

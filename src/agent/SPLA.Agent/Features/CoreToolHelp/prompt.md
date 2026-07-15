@@ -1,0 +1,1 @@
+Tool descriptions are intentionally short. Tool flag: [H] = extended help available. If a [H] tool's details are unclear, call agent_info with the tool name before using it. Do not guess complex argument formats.

@@ -33,6 +33,10 @@ public class ChatMessage
     /// </summary>
     public bool IsLabel { get; set; }
 
+    /// <summary>UTC creation time. Preserved across save/load so clients can show message age;
+    /// defaults to "now" for messages created this session.</summary>
+    public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+
     public ChatRole Role { get; set; }
     public string? Content { get; set; } = string.Empty;
 

@@ -58,6 +58,7 @@
   <ItemGroup>
     <ProjectReference Include="..\..\service\SPLA.Service.Contracts\SPLA.Service.Contracts.csproj" />
     <ProjectReference Include="..\..\agent\SPLA.Agent\SPLA.Agent.csproj" />
+    <ProjectReference Include="..\..\agent\SPLA.Runtime\SPLA.Runtime.csproj" />
     <ProjectReference Include="..\..\core\SPLA.Domain\SPLA.Domain.csproj" />
     <ProjectReference Include="..\..\llm\SPLA.LLM.LMStudio\SPLA.LLM.LMStudio.csproj" />
     <ProjectReference Include="..\..\agent\SPLA.MCP.BasicTools\SPLA.MCP.BasicTools.csproj" />

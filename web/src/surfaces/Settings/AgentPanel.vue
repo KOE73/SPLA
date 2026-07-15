@@ -10,6 +10,15 @@
       <label class="field col"><span>Custom prompt</span>
         <textarea v-model="customPrompt" rows="4" placeholder="Appended to the system prompt for every chat"></textarea>
       </label>
+      <label class="field"><span>Loop guard</span>
+        <span style="display: flex; align-items: center; gap: 8px">
+          <input type="checkbox" v-model="loopGuard" />
+          <span class="hint">on identical rapid-fire tool calls: first ask the model if it's stuck, then stop</span>
+        </span>
+      </label>
+      <label v-if="loopGuard" class="field"><span>Repeats to trigger</span>
+        <input type="number" v-model.number="loopGuardRepeats" min="2" max="20" style="width: 6em" />
+      </label>
     </div>
     <div class="conn-card">
       <div class="conn-head"><span class="id">Permissions</span></div>
@@ -44,6 +53,8 @@ const PERMS: { key: "permRead" | "permWrite" | "permShell" | "permInternet"; lab
 
 const mode = ref("");
 const customPrompt = ref("");
+const loopGuard = ref(false);
+const loopGuardRepeats = ref(3);
 const modes = ref<string[]>([]);
 const perms = reactive<Record<string, string>>({ permRead: "", permWrite: "", permShell: "", permInternet: "" });
 const hint = ref("");
@@ -58,6 +69,8 @@ const off = client.on("agent.result", p => {
   modes.value = p.modes || [];
   mode.value = p.mode || "";
   customPrompt.value = p.customPrompt || "";
+  loopGuard.value = p.loopGuard === true;
+  loopGuardRepeats.value = p.loopGuardRepeats ?? 3;
   perms.permRead = p.permRead || "";
   perms.permWrite = p.permWrite || "";
   perms.permShell = p.permShell || "";
@@ -75,6 +88,8 @@ function save(): Promise<void> {
     const ok = client.send("agent.save", {
       mode: mode.value,
       customPrompt: customPrompt.value,
+      loopGuard: loopGuard.value,
+      loopGuardRepeats: loopGuardRepeats.value,
       permRead: perms.permRead, permWrite: perms.permWrite, permShell: perms.permShell, permInternet: perms.permInternet,
       theme: lastTheme, density: lastDensity
     }, projectEnvelope());

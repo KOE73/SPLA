@@ -1,0 +1,32 @@
+version: 1
+
+name: Log Sentry Demo
+
+workspace: .
+
+agent:
+  mode: Chat
+  instructions:
+    - prompt.md
+
+llm:
+  provider: lmstudio
+  endpoint: http://127.0.0.1:1234/v1
+  model: auto
+
+# ── Секция демо (стандартный загрузчик SPLA её игнорирует, читает только LogSentry) ──
+sentry:
+  # Файл лога, за которым следим (путь относительно этого файла).
+  log_file: app.log
+
+  # Отправлять агенту только строки, содержащие любой из маркеров (пусто = все строки).
+  triggers: [error, exception, fatal, fail, denied, timeout]
+
+  # Сколько секунд копить строки перед отправкой пачкой.
+  batch_seconds: 10
+
+  # Максимум строк в одной пачке (лишнее ждёт следующей).
+  max_lines: 40
+
+  # Сколько прошлых пачек-ходов держать в контексте (агент видит историю инцидентов).
+  keep_history: 3

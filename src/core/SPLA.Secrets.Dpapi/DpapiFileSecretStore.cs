@@ -7,17 +7,17 @@ namespace SPLA.Secrets.Dpapi;
 
 /// <summary>
 /// Windows DPAPI backend for <see cref="ISecretStore"/>. Same two-file, project-overrides-machine
-/// layout as <see cref="FileSecretStore"/>, but values are encrypted at rest with
+/// layout as <see cref="FileSecretStore"/>, but every FIELD VALUE is encrypted at rest with
 /// <see cref="ProtectedData"/> under <see cref="DataProtectionScope.CurrentUser"/> — only the same
 /// Windows user on the same machine can decrypt. Files are named <c>secrets.dpapi.yaml</c> so an
 /// encrypted store never shares a file with, or clobbers, a plaintext <see cref="FileSecretStore"/>
 /// — the two can coexist (e.g. prod-DPAPI + a dev copy under a different <c>SPLA_HOME</c>).
 ///
-/// <para><b>Keys stay readable.</b> Only the value is encrypted; the YAML key is stored verbatim so
-/// listing (management UIs) never needs to decrypt anything. Each value is stored as
-/// <c>dpapi:&lt;base64&gt;</c>. A value that fails to decrypt (corrupt file, copied from another
-/// user/machine) is treated as absent — <see cref="GetAsync(string,CancellationToken)"/> returns
-/// null and a warning is logged — rather than throwing, so one bad entry can't break the whole store.</para>
+/// <para><b>Keys and field names stay readable.</b> Only values are encrypted; entry keys and field
+/// names are stored verbatim so listing (management UIs) never needs to decrypt anything. Each value
+/// is stored as <c>dpapi:&lt;base64&gt;</c>. A field that fails to decrypt (corrupt file, copied from
+/// another user/machine) is treated as absent — a warning is logged rather than throwing, so one bad
+/// field can't break the whole store.</para>
 ///
 /// <para><b>DPAPI's known trade-off:</b> it protects at rest and against other users, but any process
 /// running as the same user can decrypt. That is the accepted, standard compromise for a local
@@ -57,12 +57,12 @@ public sealed class DpapiFileSecretStore : ISecretStore
         return Prefix + Convert.ToBase64String(cipher);
     }
 
-    /// <summary>Decrypts a stored value, or null if it is malformed / not decryptable by this user.</summary>
-    private string? Unprotect(string key, string stored)
+    /// <summary>Decrypts a stored field value, or null if it is malformed / not decryptable by this user.</summary>
+    private string? Unprotect(string key, string field, string stored)
     {
         if (!stored.StartsWith(Prefix, StringComparison.Ordinal))
         {
-            _warn?.Invoke($"Secret '{key}' is not in DPAPI format and was ignored.");
+            _warn?.Invoke($"Secret '{key}#{field}' is not in DPAPI format and was ignored.");
             return null;
         }
         try
@@ -74,29 +74,40 @@ public sealed class DpapiFileSecretStore : ISecretStore
         catch (Exception ex) when (ex is CryptographicException or FormatException)
         {
             // Corrupt, or encrypted by a different user/machine. Never log the stored blob.
-            _warn?.Invoke($"Secret '{key}' could not be decrypted and was ignored.");
+            _warn?.Invoke($"Secret '{key}#{field}' could not be decrypted and was ignored.");
             return null;
         }
     }
 
-    private string? Read(string? file, string key)
+    private SecretEntry? Read(string? file, string key)
     {
         var stored = SecretYamlFile.Load(file).GetValueOrDefault(key);
-        return stored is null ? null : Unprotect(key, stored);
+        if (stored is not { Count: > 0 }) return null;
+        var fields = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+        foreach (var (name, blob) in stored)
+            if (Unprotect(key, name, blob) is { } plain)
+                fields[name] = plain;
+        return fields.Count > 0 ? new SecretEntry(key, fields) : null;
     }
 
-    public ValueTask<string?> GetAsync(string key, CancellationToken ct = default)
+    public ValueTask<SecretEntry?> GetEntryAsync(string key, CancellationToken ct = default)
         => ValueTask.FromResult(Read(_projectFile, key) ?? Read(_machineFile, key));
 
-    public ValueTask<string?> GetAsync(string key, SecretScope scope, CancellationToken ct = default)
+    public ValueTask<SecretEntry?> GetEntryAsync(string key, SecretScope scope, CancellationToken ct = default)
         => ValueTask.FromResult(Read(FileFor(scope), key));
 
-    public ValueTask SetAsync(string key, string value, SecretScope scope, CancellationToken ct = default)
+    public ValueTask SetEntryAsync(string key, IReadOnlyDictionary<string, string> fields, SecretScope scope, CancellationToken ct = default)
     {
         var file = FileFor(scope)
             ?? throw new InvalidOperationException("No project is open — cannot store a project-scoped secret.");
         var map = SecretYamlFile.Load(file);
-        map[key] = Protect(value);
+        if (fields.Count == 0) map.Remove(key);
+        else
+        {
+            var protected_ = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+            foreach (var (name, value) in fields) protected_[name] = Protect(value);
+            map[key] = protected_;
+        }
         SecretYamlFile.Save(file, map);
         return ValueTask.CompletedTask;
     }
@@ -111,13 +122,16 @@ public sealed class DpapiFileSecretStore : ISecretStore
         return ValueTask.FromResult(removed);
     }
 
-    public ValueTask<IReadOnlyList<string>> ListKeysAsync(SecretScope scope, string? prefix = null, CancellationToken ct = default)
+    public ValueTask<IReadOnlyList<SecretEntryInfo>> ListEntriesAsync(SecretScope scope, string? prefix = null, CancellationToken ct = default)
     {
-        // Keys are stored verbatim — listing never decrypts.
-        IEnumerable<string> keys = SecretYamlFile.Load(FileFor(scope)).Keys;
+        // Keys and field names are stored verbatim — listing never decrypts.
+        IEnumerable<KeyValuePair<string, Dictionary<string, string>>> entries = SecretYamlFile.Load(FileFor(scope));
         if (!string.IsNullOrEmpty(prefix))
-            keys = keys.Where(k => k.StartsWith(prefix, StringComparison.OrdinalIgnoreCase));
-        return ValueTask.FromResult<IReadOnlyList<string>>(keys.OrderBy(k => k).ToList());
+            entries = entries.Where(e => e.Key.StartsWith(prefix, StringComparison.OrdinalIgnoreCase));
+        return ValueTask.FromResult<IReadOnlyList<SecretEntryInfo>>(entries
+            .OrderBy(e => e.Key, StringComparer.OrdinalIgnoreCase)
+            .Select(e => new SecretEntryInfo(e.Key, e.Value.Keys.OrderBy(k => k, StringComparer.OrdinalIgnoreCase).ToList()))
+            .ToList());
     }
 
     public ValueTask<bool> ContainsAsync(string key, CancellationToken ct = default)
