@@ -1,9 +1,0 @@
-id: sql_avalonia
-type: avalonia-ui
-entry_point: SPLA.Plugins.Sql.Avalonia.dll
-depends_on:
-  - sql
-metadata:
-  icon: database
-  group: SQL
-  order: "110"

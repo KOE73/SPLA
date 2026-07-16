@@ -48,13 +48,11 @@ in addition to the root `AGENTS.md`.
 
 ### `src/plugins/` — plugins & skills
 
-- `SPLA.Plugins.Host.Avalonia`: Avalonia UI plugin host contracts shared between the main UI and UI plugins.
 - `SPLA.Plugins.Network`: Network plugin with host info, LAN scan, port scan, ping, nslookup, HTTP GET/HEAD, port check, and traceroute tools.
 - `SPLA.Plugins.Roslyn`: Roslyn C# tooling plugin. `roslyn_compile_check` compiles a self-contained snippet against the .NET BCL and returns diagnostics. `roslyn_script_run` compiles and runs a C# script (top-level statements) that drives a plan by invoking tools via `ctx.Run(name, args)`, with `Task.WhenAll` parallelism and progress reporting. `roslyn_project_build`, `roslyn_project_run`, and `roslyn_project_test` shell out to the real `dotnet` SDK against actual files in the workspace (build a `.csproj`/`.sln`, run a project or a single `.cs` file-based app, run `dotnet test`) — `Scope.Shell`, `Risk.High`; a shared `DotnetCli` runner enforces workspace-path containment, a hard timeout, and process-tree kill. `CopyPlugin` copies the built plugin to `plugins/roslyn/` in the CLI and UI output directories (paths are relative to `src/plugins/` → `src/apps/`).
 - `SPLA.Skills.Network`: Network skill definitions (`.md` files). Independent of the plugin — skills are instructions, not code. Built via `Microsoft.Build.NoTargets`; `CopySkills` target copies files to `plugins/network.skills/` in the CLI and UI output directories (paths are relative to `src/plugins/` → `src/apps/`).
-- `SPLA.Plugins.OneC`: 1C analysis plugin with indexing, object lookup/explanation, references, dependency analysis, readers/writers, and graph data support.
-- `SPLA.Plugins.OneC.Avalonia`: Avalonia UI plugin for the 1C analysis experience. Its manifest type is `avalonia-ui` and it depends on `onec`.
-- `SPLA.Plugins.Sql`, `SPLA.Plugins.Sql.Avalonia`: SQL query/schema/execute plugin and its Avalonia UI panel.
+- `SPLA.Plugins.OneC`: 1C analysis plugin with indexing, object lookup/explanation, references, dependency analysis, readers/writers, graph data support, and an in-plugin web browser panel. The former `SPLA.Plugins.OneC.Avalonia` and shared `SPLA.Plugins.Host.Avalonia` projects were removed.
+- `SPLA.Plugins.Sql`: SQL query/schema/execute plugin. Its settings UI (named connections) ships as an in-plugin web panel; the former `SPLA.Plugins.Sql.Avalonia` editor was removed.
 - `SPLA.Plugins.Browser`: Playwright-driven browser automation plugin.
 - `SPLA.Plugins.Browser.Screencast`: Experimental, separate headless-browser panel provider. It
   streams in-memory frames through the generic plugin-panel transport and does not replace or modify
@@ -166,8 +164,7 @@ Current plugin manifests:
 - `src/plugins/SPLA.Plugins.Network/meta.yaml`: `id: network`, `type: dll`.
 - `src/plugins/SPLA.Plugins.Roslyn/meta.yaml`: `id: roslyn`, `type: dll`.
 - `src/plugins/SPLA.Plugins.OneC/meta.yaml`: `id: onec`, `type: dll`.
-- `src/plugins/SPLA.Plugins.OneC.Avalonia/meta.yaml`: `id: onec_avalonia`, `type: avalonia-ui`, `depends_on: onec`.
-- `src/plugins/SPLA.Plugins.Sql/meta.yaml`: `id: sql`, `type: dll`; `src/plugins/SPLA.Plugins.Sql.Avalonia/meta.yaml`: `id: sql_avalonia`, `type: avalonia-ui`, `depends_on: sql`.
+- `src/plugins/SPLA.Plugins.Sql/meta.yaml`: `id: sql`, `type: dll`. (The former `sql_avalonia` settings-editor plugin was removed; its connection editor now lives in the plugin's web settings panel.)
 - `src/plugins/SPLA.Plugins.Browser/meta.yaml`: `id: browser`, `type: dll`.
 - `src/plugins/SPLA.Plugins.Browser.Screencast/meta.yaml`: `id: browser_screencast`, `type: dll`.
 - `src/plugins/SPLA.Plugins.Test/meta.yaml`: Test plugin manifest. The project exists in the repository but is not currently listed in `SPLA.slnx`.

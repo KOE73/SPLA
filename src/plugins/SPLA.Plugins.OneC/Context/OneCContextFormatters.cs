@@ -1,8 +1,15 @@
 using SPLA.Plugins.OneC.Graph;
 using SPLA.Plugins.OneC.Models;
 
-namespace SPLA.Plugins.OneC.Avalonia.Context;
+namespace SPLA.Plugins.OneC.Context;
 
+/// <summary>
+/// A selection the user wants to export into the chat prompt: an object and, optionally, the graph
+/// currently rendered for it. Formatters below turn that into copy/insert-ready text.
+///
+/// Moved verbatim from SPLA.Plugins.OneC.Avalonia — this is pure text formatting with no UI
+/// dependency, so the web browser panel reuses it through the <c>format</c> plugin action.
+/// </summary>
 public sealed record OneCSelection(OneCObject? Object, OneCGraph? Graph = null);
 
 public interface IOneCContextFormatter
@@ -74,4 +81,16 @@ public sealed class SelectedRelationsContextFormatter : IOneCContextFormatter
 
         return string.Join(Environment.NewLine, lines);
     }
+}
+
+/// <summary>The formatters offered in the panel's "Context export" dropdown, in display order.</summary>
+public static class OneCContextFormatters
+{
+    public static IReadOnlyList<IOneCContextFormatter> All { get; } =
+    [
+        new FullNameContextFormatter(),
+        new ObjectCardYamlContextFormatter(),
+        new GraphSummaryContextFormatter(),
+        new SelectedRelationsContextFormatter()
+    ];
 }

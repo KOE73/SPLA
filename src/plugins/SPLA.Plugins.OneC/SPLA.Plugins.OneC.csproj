@@ -28,6 +28,10 @@
   <ItemGroup>
     <!-- Embed the Cytoscape.js HTML viewer as an embedded resource -->
     <EmbeddedResource Include="Assets\onec_graph.html" />
+    <!-- Prebuilt web browser module (web_settings_entry in meta.yaml). Landing it in TargetDir under
+         web/dist means the CopyPlugin glob deploys it into each host's plugins/onec/web/dist — without
+         this the served /plugin-assets URL 404s and the UI silently falls back to raw YAML. -->
+    <None Include="Web\dist\**" CopyToOutputDirectory="PreserveNewest" Link="web\dist\%(RecursiveDir)%(Filename)%(Extension)" />
   </ItemGroup>
 
   <Target Name="CopyPlugin" AfterTargets="Build">
@@ -35,10 +39,13 @@
       <PluginFiles Include="$(TargetDir)**\*.*" />
       <MetaFile Include="meta.yaml" />
     </ItemGroup>
-    <Copy SourceFiles="@(PluginFiles)" DestinationFolder="$(MSBuildThisFileDirectory)..\SPLA.UI.Avalonia\bin\$(Configuration)\$(TargetFramework)\plugins\onec\%(RecursiveDir)" />
-    <Copy SourceFiles="@(MetaFile)" DestinationFolder="$(MSBuildThisFileDirectory)..\SPLA.UI.Avalonia\bin\$(Configuration)\$(TargetFramework)\plugins\onec\" />
-    <Copy SourceFiles="@(PluginFiles)" DestinationFolder="$(MSBuildThisFileDirectory)..\SPLA.CLI\bin\$(Configuration)\$(TargetFramework)\plugins\onec\%(RecursiveDir)" />
-    <Copy SourceFiles="@(MetaFile)" DestinationFolder="$(MSBuildThisFileDirectory)..\SPLA.CLI\bin\$(Configuration)\$(TargetFramework)\plugins\onec\" />
+    <!-- Host apps live under src/apps (..\..\apps\<app>), NOT next to the plugins — the old ..\SPLA.CLI
+         path silently deployed into a non-existent src/plugins/SPLA.CLI (see the same note in the SQL
+         plugin csproj). -->
+    <Copy SourceFiles="@(PluginFiles)" DestinationFolder="$(MSBuildThisFileDirectory)..\..\apps\SPLA.UI.Avalonia\bin\$(Configuration)\$(TargetFramework)\plugins\onec\%(RecursiveDir)" SkipUnchangedFiles="true" />
+    <Copy SourceFiles="@(MetaFile)" DestinationFolder="$(MSBuildThisFileDirectory)..\..\apps\SPLA.UI.Avalonia\bin\$(Configuration)\$(TargetFramework)\plugins\onec\" SkipUnchangedFiles="true" />
+    <Copy SourceFiles="@(PluginFiles)" DestinationFolder="$(MSBuildThisFileDirectory)..\..\apps\SPLA.CLI\bin\$(Configuration)\$(TargetFramework)\plugins\onec\%(RecursiveDir)" SkipUnchangedFiles="true" />
+    <Copy SourceFiles="@(MetaFile)" DestinationFolder="$(MSBuildThisFileDirectory)..\..\apps\SPLA.CLI\bin\$(Configuration)\$(TargetFramework)\plugins\onec\" SkipUnchangedFiles="true" />
   </Target>
 
 </Project>

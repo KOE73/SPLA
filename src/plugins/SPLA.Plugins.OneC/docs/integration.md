@@ -1,13 +1,24 @@
 # Интеграция с SPLA
 
-Проект `SPLA.Tools.OneC` задуман как независимая библиотека, которую можно подключить к `SPLA.UI.Avalonia`.
+`SPLA.Plugins.OneC` — самодостаточный DLL-плагин: анализ-tools для агента + web-панель «1C
+Configuration Browser».
 
-## Шаги по подключению
+## Как подключается
 
-1.  В `SPLA.slnx` уже добавлен путь к `SPLA.Tools.OneC.csproj`.
-2.  В `SPLA.UI.Avalonia.csproj` необходимо добавить `ProjectReference` на `SPLA.Tools.OneC`.
-3.  Для визуализации потребуется добавить NuGet-пакеты для WebView (например, `Avalonia.WebView` и `Avalonia.WebView.Desktop`).
-4.  В `MainWindowViewModel.cs` (или где регистрируются инструменты `McpHost`) необходимо инстанцировать `OneCIndexDatabase` и зарегистрировать все классы, реализующие `IMcpTool` из пространства имён `SPLA.Tools.OneC.Tools`.
-5.  В Avalonia UI необходимо добавить новые View и ViewModel для отображения списка объектов и WebView с графом.
+1.  Плагин указан в `SPLA.slnx` и собирается в `plugins/onec/` рядом с каждым хостом (CLI, UI,
+    Service) — см. target `CopyPlugin` в `SPLA.Plugins.OneC.csproj`.
+2.  `meta.yaml` объявляет `entry_point: SPLA.Plugins.OneC.dll` и `web_settings_entry: web/dist/settings.js`.
+3.  `OneCPlugin.Initialize` открывает индекс `onec.sqlite` (в runtime-каталоге проекта, историческое
+    расположение `.spla/onec.sqlite`) и регистрирует агент-tools из `Tools/`.
+4.  `OneCPlugin` реализует `ISplaPluginAction`: web-панель дергает backend через канал `plugin.action`
+    (actions: `overview`, `search`, `object`, `graph`, `formatters`, `format`, `rebuild`).
 
-В данной реализации код UI (Avalonia) оставлен на стороне основного проекта SPLA, чтобы `SPLA.Tools.OneC` оставался чистым и не зависел от графического фреймворка.
+## Разделение слоёв
+
+*   **Данные/логика** (`Storage/`, `Indexing/`, `Graph/`, `Models/`, `Context/`, `Web/`) —
+    UI-независимы, без графических зависимостей.
+*   **Презентация** — web (`web/`, Vue + Cytoscape), грузится host'ом в рантайме и не импортируется в
+    сборку плагина.
+
+> Ранее презентация жила в `SPLA.Plugins.OneC.Avalonia` поверх `SPLA.Plugins.Host.Avalonia`
+> (`IAvaloniaPlugin`, `NativeWebView`). Оба проекта удалены. Незакрытые задачи миграции — в `TODO.md`.

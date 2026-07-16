@@ -1,6 +1,7 @@
 id: onec
 type: dll
 entry_point: SPLA.Plugins.OneC.dll
+web_settings_entry: web/dist/settings.js
 default_prompt: |
   1C:Enterprise analysis tools are available.
 

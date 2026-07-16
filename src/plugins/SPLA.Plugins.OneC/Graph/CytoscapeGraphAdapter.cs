@@ -1,8 +1,20 @@
 using System.Text.Json;
-using SPLA.Plugins.OneC.Graph;
 
-namespace SPLA.Plugins.OneC.Avalonia.Graph;
+namespace SPLA.Plugins.OneC.Graph;
 
+/// <summary>
+/// Renders an <see cref="OneCGraph"/> into the Cytoscape.js shapes the graph view expects.
+///
+/// Two outputs:
+///   * <see cref="ToJson"/>       — the { nodes, edges } payload consumed by the web panel
+///                                  (passed to <c>window.loadGraph(json)</c> in onec_graph.html).
+///   * <see cref="ToHtmlDocument"/> — a fully self-contained HTML page that renders the graph
+///                                  without any host bridge. Handy for a quick "open graph in a
+///                                  new tab" flow or offline export.
+///
+/// This type is UI-framework independent (no Avalonia/WPF), so it lives in the plugin proper and is
+/// shared by every host (CLI, service/web). It used to live in SPLA.Plugins.OneC.Avalonia.
+/// </summary>
 public static class CytoscapeGraphAdapter
 {
     public static string ToJson(OneCGraph graph)
