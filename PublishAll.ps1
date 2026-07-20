@@ -1,9 +1,10 @@
 # === SPLA Publish All ===
 # PowerShell 5.1 compatible. Strategy:
 #   1. one solution build (MSBuild parallelizes internally, no obj/ races),
-#   2. plugin publishes run --no-build in parallel jobs (each to its own folder),
-#   3. UI/CLI publish sequentially into the shared .publish/work (UI's SingleFile
-#      profile sets its own RID, so it cannot reuse the solution build).
+#   2. plugin publishes run in parallel jobs (each to its own folder); projects
+#      outside the solution build themselves, the rest reuse the solution build,
+#   3. UI/CLI publish sequentially into the shared .publish/work. Their single-file
+#      publishes require RID-specific outputs that the solution build does not produce.
 $ErrorActionPreference = 'Stop'
 Set-Location $PSScriptRoot
 $sw = [System.Diagnostics.Stopwatch]::StartNew()
@@ -38,7 +39,7 @@ if ($LASTEXITCODE -ne 0) { Fail 'solution build failed.' }
 $plugins = @(
     @{ Name = 'network';            Proj = 'src/plugins/SPLA.Plugins.Network/SPLA.Plugins.Network.csproj';
        Extras = @(@{ From = 'src\plugins\SPLA.Skills.Network\skills'; To = 'skills' }) }
-    @{ Name = 'test';               Proj = 'src/plugins/SPLA.Plugins.Test/SPLA.Plugins.Test.csproj' }
+    @{ Name = 'test';               Proj = 'src/plugins/SPLA.Plugins.Test/SPLA.Plugins.Test.csproj'; Build = $true }
     @{ Name = 'onec';               Proj = 'src/plugins/SPLA.Plugins.OneC/SPLA.Plugins.OneC.csproj' }
     @{ Name = 'sql';                Proj = 'src/plugins/SPLA.Plugins.Sql/SPLA.Plugins.Sql.csproj' }
     @{ Name = 'roslyn';             Proj = 'src/plugins/SPLA.Plugins.Roslyn/SPLA.Plugins.Roslyn.csproj' }
@@ -47,13 +48,15 @@ $plugins = @(
     @{ Name = 'browser_screencast'; Proj = 'src/plugins/SPLA.Plugins.Browser.Screencast/SPLA.Plugins.Browser.Screencast.csproj' }
 )
 
-Write-Host "Publishing $($plugins.Count) plugins in parallel (--no-build)..."
+Write-Host "Publishing $($plugins.Count) plugins in parallel..."
 $jobs = foreach ($p in $plugins) {
     Start-Job -Name $p.Name -ArgumentList $PSScriptRoot, $p -ScriptBlock {
         param($root, $p)
         Set-Location $root
         $out = ".publish/work/plugins/$($p.Name)"
-        dotnet publish $p.Proj -c Release --no-build -o $out --nologo -v q 2>&1 | Out-String | Write-Output
+        $publishArguments = @('publish', $p.Proj, '-c', 'Release', '-o', $out, '--nologo', '-v', 'q')
+        if (-not $p.Build) { $publishArguments += '--no-build' }
+        dotnet @publishArguments 2>&1 | Out-String | Write-Output
         if ($LASTEXITCODE -ne 0) { throw "publish failed for $($p.Name)" }
         $metaDir = Split-Path $p.Proj -Parent
         Copy-Item (Join-Path $metaDir 'meta.yaml') $out -Force
@@ -72,7 +75,7 @@ dotnet publish src/apps/SPLA.UI.Avalonia/SPLA.UI.Avalonia.csproj -p:PublishProfi
 if ($LASTEXITCODE -ne 0) { Fail 'UI publish failed.' }
 
 Write-Host 'Publishing SPLA.CLI...'
-dotnet publish src/apps/SPLA.CLI/SPLA.CLI.csproj -c Release --no-build -o .publish/work --nologo
+dotnet publish src/apps/SPLA.CLI/SPLA.CLI.csproj -c Release -o .publish/work --nologo
 if ($LASTEXITCODE -ne 0) { Fail 'CLI publish failed.' }
 
 Write-Host 'Waiting for plugin jobs...'
