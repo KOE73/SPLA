@@ -63,13 +63,32 @@ public sealed class SqlConnectionRegistry
     public void SetDefault(string name) => _defaultConnection = name;
 
     /// <summary>
-    /// Returns a copy of the named connection ready to open: its password reference
-    /// (<c>secret:</c> / <c>env:</c>) is resolved to plaintext. The stored config is left untouched.
+    /// Returns a copy of the named connection ready to open, with secrets materialized to plaintext.
+    /// When <see cref="SqlConnectionConfig.Credential"/> names a secret-store entry, its <c>user</c>
+    /// (unless overridden here) and <c>password</c> are pulled from that record; otherwise the legacy
+    /// <see cref="SqlConnectionConfig.Password"/> pointer (<c>secret:</c>/<c>env:</c>) is resolved.
+    /// The stored config is left untouched. The plaintext lives only on the returned clone.
     /// </summary>
     public SqlConnectionConfig ResolveForOpen(SqlConnectionConfig cfg)
     {
         var clone = Clone(cfg, dropPassword: false);
-        clone.Password = _resolver.Resolve(cfg.Password);
+
+        if (!string.IsNullOrWhiteSpace(cfg.Credential))
+        {
+            // Whole credential record — resolved only here, at connection-open. Secret backends are
+            // local (file/DPAPI); blocking briefly is consistent with Persist's SetAsync path.
+            var entry = _resolver.GetEntryAsync(cfg.Credential).AsTask().GetAwaiter().GetResult()
+                ?? throw new InvalidOperationException(
+                    $"credential '{cfg.Credential}' not found in the secret store");
+            if (string.IsNullOrWhiteSpace(clone.User))
+                clone.User = entry[SecretFields.User];
+            clone.Password = entry[SecretFields.Password] ?? entry.DefaultValue;
+        }
+        else
+        {
+            clone.Password = _resolver.Resolve(cfg.Password);
+        }
+
         return clone;
     }
 
@@ -100,7 +119,8 @@ public sealed class SqlConnectionRegistry
 
             foreach (var (name, cfg) in _connections)
             {
-                if (!string.IsNullOrEmpty(cfg.Password) && !ISecretResolver.IsReference(cfg.Password))
+                if (string.IsNullOrWhiteSpace(cfg.Credential)
+                    && !string.IsNullOrEmpty(cfg.Password) && !ISecretResolver.IsReference(cfg.Password))
                 {
                     // Literal password → secret store; config keeps only a reference.
                     _secrets.SetAsync(SecretKey(name), cfg.Password, SecretScope.Project)
@@ -141,6 +161,7 @@ public sealed class SqlConnectionRegistry
         Port = c.Port,
         Database = c.Database,
         User = c.User,
+        Credential = c.Credential,
         Password = dropPassword ? null : c.Password,
         TrustedConnection = c.TrustedConnection,
         File = c.File,

@@ -54,8 +54,9 @@ public class SqlManageConnectionTool : IMcpTool
                     server = new { type = "string", description = "Host/server name or instance (mssql/postgres). For sqlite: file path." },
                     database = new { type = "string", description = "Database name." },
                     trusted_connection = new { type = "boolean", description = "Use Windows/domain auth (mssql only). Default: true." },
-                    user = new { type = "string", description = "Login (when not using Windows auth)." },
-                    password = new { type = "string", description = "Password or env:VAR_NAME reference." },
+                    user = new { type = "string", description = "Login (when not using Windows auth). Optional if the credential entry carries a 'user' field." },
+                    credential = new { type = "string", description = "Secret-store entry name holding user+password. Preferred over 'password' — the literal never enters the project file." },
+                    password = new { type = "string", description = "Password or env:VAR_NAME reference. Ignored when 'credential' is set." },
                     description = new { type = "string", description = "Human-readable description shown to the AI." }
                 },
                 required = new[] { "action" }
@@ -109,6 +110,7 @@ public class SqlManageConnectionTool : IMcpTool
         var database = root.GetString("database");
         var trustedConnection = root.TryGetProperty("trusted_connection", out var tc) ? tc.GetBoolean() : true;
         var user = root.GetString("user");
+        var credential = root.GetString("credential");
         var password = root.GetString("password");
         var description = root.GetString("description");
 
@@ -120,7 +122,8 @@ public class SqlManageConnectionTool : IMcpTool
             Database = database,
             TrustedConnection = trustedConnection,
             User = user,
-            Password = password,
+            Credential = credential,
+            Password = credential is { Length: > 0 } ? null : password,
             Description = description
         };
 

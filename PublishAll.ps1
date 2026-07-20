@@ -39,10 +39,8 @@ $plugins = @(
     @{ Name = 'network';            Proj = 'src/plugins/SPLA.Plugins.Network/SPLA.Plugins.Network.csproj';
        Extras = @(@{ From = 'src\plugins\SPLA.Skills.Network\skills'; To = 'skills' }) }
     @{ Name = 'test';               Proj = 'src/plugins/SPLA.Plugins.Test/SPLA.Plugins.Test.csproj' }
-    @{ Name = 'onec';               Proj = 'src/plugins/SPLA.Plugins.OneC/SPLA.Plugins.OneC.csproj';
-       Extras = @(@{ From = 'src\plugins\SPLA.Plugins.OneC\Assets'; To = 'Assets' }) }
+    @{ Name = 'onec';               Proj = 'src/plugins/SPLA.Plugins.OneC/SPLA.Plugins.OneC.csproj' }
     @{ Name = 'sql';                Proj = 'src/plugins/SPLA.Plugins.Sql/SPLA.Plugins.Sql.csproj' }
-    @{ Name = 'sql_avalonia';       Proj = 'src/plugins/SPLA.Plugins.Sql.Avalonia/SPLA.Plugins.Sql.Avalonia.csproj' }
     @{ Name = 'roslyn';             Proj = 'src/plugins/SPLA.Plugins.Roslyn/SPLA.Plugins.Roslyn.csproj' }
     @{ Name = 'browser';            Proj = 'src/plugins/SPLA.Plugins.Browser/SPLA.Plugins.Browser.csproj' }
     @{ Name = 'ssh';                Proj = 'src/plugins/SPLA.Plugins.Ssh/SPLA.Plugins.Ssh.csproj' }

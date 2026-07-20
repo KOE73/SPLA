@@ -3,7 +3,6 @@
 These rules apply to:
 
 - `SPLA.UI.Avalonia`
-- `SPLA.Plugins.Host.Avalonia`
 - any Avalonia-based UI plugin such as `SPLA.Plugins.*.Avalonia`
 
 The goal is predictable structure, theme consistency, and minimal UI drift.

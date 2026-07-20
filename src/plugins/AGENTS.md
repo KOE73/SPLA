@@ -1,8 +1,7 @@
 # src/plugins — plugins & skills
 
-All `SPLA.Plugins.*` (DLL and `avalonia-ui` plugins), `SPLA.Plugins.Host.Avalonia` (UI-plugin
-contracts), and `SPLA.Skills.Network` (skills = markdown data, not code). Read the root `AGENTS.md`
-and `agents/plugins.md` first.
+All `SPLA.Plugins.*` projects and `SPLA.Skills.Network` (skills = markdown data, not code). Read the
+root `AGENTS.md` and `agents/plugins.md` first.
 
 ## Invariants (all plugins)
 

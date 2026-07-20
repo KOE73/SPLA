@@ -95,12 +95,10 @@
   <Folder Name="/plugins/">
     <Project Path="src/plugins/SPLA.Plugins.Browser/SPLA.Plugins.Browser.csproj" />
     <Project Path="src/plugins/SPLA.Plugins.Browser.Screencast/SPLA.Plugins.Browser.Screencast.csproj" />
-    <Project Path="src/plugins/SPLA.Plugins.Host.Avalonia/SPLA.Plugins.Host.Avalonia.csproj" />
     <Project Path="src/plugins/SPLA.Plugins.Network/SPLA.Plugins.Network.csproj" />
     <Project Path="src/plugins/SPLA.Plugins.Roslyn/SPLA.Plugins.Roslyn.csproj" />
     <Project Path="src/plugins/SPLA.Plugins.Ssh/SPLA.Plugins.Ssh.csproj" />
     <Project Path="src/plugins/SPLA.Plugins.Sql/SPLA.Plugins.Sql.csproj" />
-    <Project Path="src/plugins/SPLA.Plugins.Sql.Avalonia/SPLA.Plugins.Sql.Avalonia.csproj" />
     <Project Path="src/plugins/SPLA.Plugins.OneC/SPLA.Plugins.OneC.csproj" />
     <Project Path="src/plugins/SPLA.Skills.Network/SPLA.Skills.Network.csproj" />
   </Folder>

@@ -26,7 +26,15 @@ public sealed class SqlConnectionConfig
     [YamlMember(Alias = "user")]
     public string? User { get; set; }
 
-    /// <summary>Plain text or "env:VAR_NAME".</summary>
+    /// <summary>Secret-store entry key holding this connection's credential record (fields
+    /// <c>user</c> + <c>password</c>). When set, it supplies the login user (unless <c>user</c> is
+    /// given here) and the password; the literal never enters this committable config. Mirrors the
+    /// SSH plugin's <c>credential</c> field. Takes precedence over <see cref="Password"/>.</summary>
+    [YamlMember(Alias = "credential")]
+    public string? Credential { get; set; }
+
+    /// <summary>Reference to the password: <c>secret:KEY</c> or <c>env:VAR</c> (legacy single-value
+    /// pointer). Ignored when <see cref="Credential"/> is set.</summary>
     [YamlMember(Alias = "password")]
     public string? Password { get; set; }
 
