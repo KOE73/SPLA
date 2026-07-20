@@ -1,8 +1,9 @@
 id: onec
 type: dll
 entry_point: SPLA.Plugins.OneC.dll
+web_settings_entry: web/dist/settings.js
 default_prompt: |
   Provides indexed analysis of exported 1C:Enterprise configurations: object lookup and explanation,
   incoming and outgoing dependencies, references, readers, and writers. The project-local SQLite
-  index is shared by all OneC tools. Typed graph records are an internal data layer for future web
-  presentation and are not model-facing capabilities.
+  index is shared by all OneC tools. Typed graph records also back a human-facing Vue browser and
+  are not model-facing capabilities.

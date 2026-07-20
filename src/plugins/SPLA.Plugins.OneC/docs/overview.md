@@ -12,12 +12,11 @@
 Выгрузка конфигурации (файлы)
          ↓ детерминированный индексатор
 SQLite-граф объектов и связей
-         ↓
-         ↓
-Инструменты агента
+         ├→ Инструменты агента
+         └→ plugin.action → Vue-обозреватель
 
-Типизированный слой данных графа сохранён отдельно от UI. В дальнейшем сервис сможет отдавать эти
-данные web-клиенту на Vue, не открывая клиенту прямой доступ к SQLite.
+Типизированный слой данных графа остаётся отдельно от UI. Сервис отдаёт подготовленные DTO
+plugin-owned Vue-клиенту, не открывая ему прямой доступ к SQLite.
 ```
 
 ## Ключевые компоненты
@@ -33,6 +32,8 @@ SQLite-граф объектов и связей
 | `Tools/*Tool` | `IMcpTool`-реализации для агента |
 | `Graph/OneCGraph` | Типизированные узлы, связи, параметры и сводка графа |
 | `Graph/OneCGraphBuilder` | Построение ограниченного подграфа из SQLite-индекса без UI-зависимостей |
+| `Web/OneCWebActions` | Backend DTO и действия Vue-обозревателя поверх отдельного SQLite-соединения |
+| `Web/src/*` | Тонкий Vue-клиент: дерево, поиск, карточка объекта и Cytoscape-граф |
 
 ## Поток данных
 
@@ -43,7 +44,7 @@ SQLite-граф объектов и связей
     → OneCIndexer: 2-й проход (BSL → Relations)
     → индекс записан в .spla/onec.sqlite
     → агент задаёт вопросы через onec_* tools
-    → в будущем сервис сможет передать типизированный подграф web-клиенту
+    → Vue-обозреватель получает дерево и типизированный подграф через plugin.action
 ```
 
 ## Расположение файлов
@@ -88,5 +89,14 @@ src/plugins/SPLA.Plugins.OneC/
     ExplainObjectTool.cs
     IndexConfigurationTool.cs
     YamlResponse.cs
+  Web/
+    OneCWebActions.cs
+    src/
+      BrowserPanel.vue
+      TreeNode.vue
+      mount.ts
+      browser.css
+    dist/
+      settings.js
   SPLA.Plugins.OneC.csproj
 ```

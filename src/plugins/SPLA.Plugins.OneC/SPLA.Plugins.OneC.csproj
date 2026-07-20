@@ -25,15 +25,21 @@
     <PackageReference Include="SQLitePCLRaw.bundle_e_sqlite3" Version="3.0.3" />
   </ItemGroup>
 
+  <ItemGroup>
+    <!-- Prebuilt Vue configuration browser. It is served directly from the plugin directory via
+         web_settings_entry; the host knows only the generic plugin web-module contract. -->
+    <None Include="Web\dist\**" CopyToOutputDirectory="PreserveNewest" Link="web\dist\%(RecursiveDir)%(Filename)%(Extension)" />
+  </ItemGroup>
+
   <Target Name="CopyPlugin" AfterTargets="Build">
     <ItemGroup>
       <PluginFiles Include="$(TargetDir)**\*.*" />
       <MetaFile Include="meta.yaml" />
     </ItemGroup>
-    <Copy SourceFiles="@(PluginFiles)" DestinationFolder="$(MSBuildThisFileDirectory)..\..\apps\SPLA.UI.Avalonia\bin\$(Configuration)\$(TargetFramework)\plugins\onec\%(RecursiveDir)" />
-    <Copy SourceFiles="@(MetaFile)" DestinationFolder="$(MSBuildThisFileDirectory)..\..\apps\SPLA.UI.Avalonia\bin\$(Configuration)\$(TargetFramework)\plugins\onec\" />
-    <Copy SourceFiles="@(PluginFiles)" DestinationFolder="$(MSBuildThisFileDirectory)..\..\apps\SPLA.CLI\bin\$(Configuration)\$(TargetFramework)\plugins\onec\%(RecursiveDir)" />
-    <Copy SourceFiles="@(MetaFile)" DestinationFolder="$(MSBuildThisFileDirectory)..\..\apps\SPLA.CLI\bin\$(Configuration)\$(TargetFramework)\plugins\onec\" />
+    <Copy SourceFiles="@(PluginFiles)" DestinationFolder="$(MSBuildThisFileDirectory)..\..\apps\SPLA.UI.Avalonia\bin\$(Configuration)\$(TargetFramework)\plugins\onec\%(RecursiveDir)" SkipUnchangedFiles="true" />
+    <Copy SourceFiles="@(MetaFile)" DestinationFolder="$(MSBuildThisFileDirectory)..\..\apps\SPLA.UI.Avalonia\bin\$(Configuration)\$(TargetFramework)\plugins\onec\" SkipUnchangedFiles="true" />
+    <Copy SourceFiles="@(PluginFiles)" DestinationFolder="$(MSBuildThisFileDirectory)..\..\apps\SPLA.CLI\bin\$(Configuration)\$(TargetFramework)\plugins\onec\%(RecursiveDir)" SkipUnchangedFiles="true" />
+    <Copy SourceFiles="@(MetaFile)" DestinationFolder="$(MSBuildThisFileDirectory)..\..\apps\SPLA.CLI\bin\$(Configuration)\$(TargetFramework)\plugins\onec\" SkipUnchangedFiles="true" />
   </Target>
 
 </Project>

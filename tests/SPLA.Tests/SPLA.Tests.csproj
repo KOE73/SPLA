@@ -26,6 +26,7 @@
     <ProjectReference Include="..\..\src\plugins\SPLA.Plugins.Ssh\SPLA.Plugins.Ssh.csproj" />
     <ProjectReference Include="..\..\src\plugins\SPLA.Plugins.Browser\SPLA.Plugins.Browser.csproj" />
     <ProjectReference Include="..\..\src\plugins\SPLA.Plugins.Network\SPLA.Plugins.Network.csproj" />
+    <ProjectReference Include="..\..\src\plugins\SPLA.Plugins.OneC\SPLA.Plugins.OneC.csproj" />
     <ProjectReference Include="..\..\src\plugins\SPLA.Plugins.Roslyn\SPLA.Plugins.Roslyn.csproj" />
     <ProjectReference Include="..\..\src\plugins\SPLA.Plugins.Sql\SPLA.Plugins.Sql.csproj" />
     <ProjectReference Include="..\..\src\service\SPLA.Service\SPLA.Service.csproj" />
