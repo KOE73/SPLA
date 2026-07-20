@@ -1,24 +1,18 @@
 # Интеграция с SPLA
 
-`SPLA.Plugins.OneC` — самодостаточный DLL-плагин: анализ-tools для агента + web-панель «1C
-Configuration Browser».
+`SPLA.Plugins.OneC` загружается обычным механизмом DLL-плагинов по манифесту `meta.yaml` и предоставляет инструменты агенту через `ISplaPlugin`.
 
-## Как подключается
+## Текущая граница
 
-1.  Плагин указан в `SPLA.slnx` и собирается в `plugins/onec/` рядом с каждым хостом (CLI, UI,
-    Service) — см. target `CopyPlugin` в `SPLA.Plugins.OneC.csproj`.
-2.  `meta.yaml` объявляет `entry_point: SPLA.Plugins.OneC.dll` и `web_settings_entry: web/dist/settings.js`.
-3.  `OneCPlugin.Initialize` открывает индекс `onec.sqlite` (в runtime-каталоге проекта, историческое
-    расположение `.spla/onec.sqlite`) и регистрирует агент-tools из `Tools/`.
-4.  `OneCPlugin` реализует `ISplaPluginAction`: web-панель дергает backend через канал `plugin.action`
-    (actions: `overview`, `search`, `object`, `graph`, `formatters`, `format`, `rebuild`).
+- индекс, анализ конфигурации и построение данных графа принадлежат OneC-плагину;
+- UI не читает SQLite и не владеет индексом;
+- клиент получает возможности плагина только через инструменты или сервисный контракт;
+- отдельного Avalonia-плагина для 1С больше нет.
 
-## Разделение слоёв
+## Web-интеграция
 
-*   **Данные/логика** (`Storage/`, `Indexing/`, `Graph/`, `Models/`, `Context/`, `Web/`) —
-    UI-независимы, без графических зависимостей.
-*   **Презентация** — web (`web/`, Vue + Cytoscape), грузится host'ом в рантайме и не импортируется в
-    сборку плагина.
+Vue-обозреватель поставляется самим OneC-плагином как собранный ES-модуль `Web/dist/settings.js`. Host загружает его через общий `web_settings_entry`, а запросы `overview`, `search`, `object`, `graph` и `rebuild` проходят через существующий `plugin.action` к `OneCWebActions`.
 
-> Ранее презентация жила в `SPLA.Plugins.OneC.Avalonia` поверх `SPLA.Plugins.Host.Avalonia`
-> (`IAvaloniaPlugin`, `NativeWebView`). Оба проекта удалены. Незакрытые задачи миграции — в `TODO.md`.
+Vue отвечает только за отображение, фильтры, выбранный элемент и преобразование DTO в формат Cytoscape. Индекс, обход графа, ограничения результата и проверка пути индексации остаются в плагине. Переиндексация из UI принимает только каталог внутри workspace текущего проекта.
+
+Не следует возвращать встроенный HTML/WebView-вьюер или переносить чтение SQLite в браузерный клиент.

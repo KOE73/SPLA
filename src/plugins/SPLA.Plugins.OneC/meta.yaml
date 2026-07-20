@@ -3,13 +3,7 @@ type: dll
 entry_point: SPLA.Plugins.OneC.dll
 web_settings_entry: web/dist/settings.js
 default_prompt: |
-  1C:Enterprise analysis tools are available.
-
-  onec_build_index   — builds or updates the 1C object index from the workspace
-  onec_find_object   — finds 1C objects by name, type, or pattern
-  onec_explain_object — returns a detailed explanation of a 1C object
-  onec_get_dependencies — returns textual dependency information for a given object
-
-  Domain context:
-  - onec_find_object, onec_explain_object, and onec_get_dependencies require the index to be built first with onec_build_index.
-  - Text tools return structured text data; visual graph commands are UI features, not model-facing tools.
+  Provides indexed analysis of exported 1C:Enterprise configurations: object lookup and explanation,
+  incoming and outgoing dependencies, references, readers, and writers. The project-local SQLite
+  index is shared by all OneC tools. Typed graph records also back a human-facing Vue browser and
+  are not model-facing capabilities.

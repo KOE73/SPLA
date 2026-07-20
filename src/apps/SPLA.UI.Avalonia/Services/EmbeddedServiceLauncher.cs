@@ -97,17 +97,39 @@ public sealed class EmbeddedServiceLauncher : IDisposable
 
     private static string? FindDevCliDll(string fromDir)
     {
+        var (configuration, targetFramework) = GetBuildFlavor(fromDir);
         var dir = new DirectoryInfo(fromDir);
         for (int i = 0; i < 8 && dir != null; i++, dir = dir.Parent)
         {
             var candidate = Path.Combine(dir.FullName, "SPLA.CLI", "bin");
-            if (Directory.Exists(candidate))
+            if (!Directory.Exists(candidate)) continue;
+
+            // Keep the desktop shell and its child service on the same build flavor. Returning the
+            // first recursive match was filesystem-order dependent and a Release UI regularly
+            // launched an older Debug CLI, including a stale embedded web bundle.
+            if (configuration is not null && targetFramework is not null)
             {
-                foreach (var dll in Directory.EnumerateFiles(candidate, "SPLA.CLI.dll", SearchOption.AllDirectories))
-                    return dll;
+                var matchingDll = Path.Combine(candidate, configuration, targetFramework, "SPLA.CLI.dll");
+                return File.Exists(matchingDll) ? matchingDll : null;
             }
+
+            return Directory.EnumerateFiles(candidate, "SPLA.CLI.dll", SearchOption.AllDirectories)
+                .OrderByDescending(File.GetLastWriteTimeUtc)
+                .ThenBy(path => path, StringComparer.OrdinalIgnoreCase)
+                .FirstOrDefault();
         }
         return null;
+    }
+
+    private static (string? Configuration, string? TargetFramework) GetBuildFlavor(string baseDir)
+    {
+        var dir = new DirectoryInfo(baseDir);
+        for (var i = 0; i < 4 && dir?.Parent?.Parent is not null; i++, dir = dir.Parent)
+        {
+            if (dir.Parent.Parent.Name.Equals("bin", StringComparison.OrdinalIgnoreCase))
+                return (dir.Parent.Name, dir.Name);
+        }
+        return (null, null);
     }
 
     private static string[] Prepend(string first, string[] rest)

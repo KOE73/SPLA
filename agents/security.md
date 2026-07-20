@@ -1,7 +1,7 @@
 # SPLA Agent Modes & Capabilities
 
 SPLA uses a 5-tier permission model. The mode can be switched per chat. This file describes the
-**actual** decision logic in `PermissionManager` (`src/service/SPLA.MCP.Core/Permissions/PermissionManager.cs`)
+**actual** decision logic in `PermissionManager` (`src/core/SPLA.MCP.Core/Permissions/PermissionManager.cs`)
 and the mode-based tool visibility in `ToolModeFilter` (`src/agent/SPLA.Agent/ToolModeFilter.cs`).
 Keep it in sync with those two files — they are the source of truth.
 

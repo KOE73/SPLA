@@ -1,25 +1,40 @@
 import { createApp, type App } from "vue";
 import BrowserPanel from "./BrowserPanel.vue";
+import browserStyles from "./browser.css?inline";
 
-// Contract the host expects — kept in sync by convention with
-// web/src/protocol/types.ts (PluginSettingsMount) in the main project, NOT by a shared import.
-// Deliberately duplicated: this plugin must build and ship independently of the host's source tree.
+// Kept in sync by convention with web/src/protocol/types.ts. The plugin ships independently and
+// deliberately does not import host sources.
 export interface MountApi {
   /** Current opaque settings blob as JSON, or null when none. */
   getJson(): string | null;
   invoke<R = unknown>(type: string, payload?: unknown): Promise<R>;
 }
+
 export interface MountHandle {
   save(): string | null;
   destroy?(): void;
 }
 
-export function mount(el: HTMLElement, api: MountApi): MountHandle {
+const styleId = "spla-onec-web-styles";
+
+function ensureStyles() {
+  if (document.getElementById(styleId)) return;
+  const style = document.createElement("style");
+  style.id = styleId;
+  style.textContent = browserStyles;
+  document.head.appendChild(style);
+}
+
+export function mount(element: HTMLElement, api: MountApi): MountHandle {
+  ensureStyles();
   let app: App | null = createApp(BrowserPanel, { api });
-  app.mount(el);
+  app.mount(element);
   return {
-    // The OneC browser edits no settings blob — return the unchanged JSON so a Save is a no-op.
+    // The browser owns no plugin settings; Save must preserve the opaque host blob unchanged.
     save: () => api.getJson(),
-    destroy: () => { app?.unmount(); app = null; }
+    destroy: () => {
+      app?.unmount();
+      app = null;
+    }
   };
 }

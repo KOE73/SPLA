@@ -1,4 +1,4 @@
-# Обзор модуля SPLA.Tools.OneC
+# Обзор модуля SPLA.Plugins.OneC
 
 ## Зачем этот модуль?
 
@@ -6,17 +6,17 @@
 Загрузить всё это в контекст LLM — невозможно. Поиск по тексту файлов даёт много
 шума и не различает семантику связей.
 
-`SPLA.Tools.OneC` решает эту проблему через три уровня:
+`SPLA.Plugins.OneC` решает эту проблему через детерминированный индекс и узкие инструменты агента:
 
 ```
 Выгрузка конфигурации (файлы)
          ↓ детерминированный индексатор
 SQLite-граф объектов и связей
-         ↓
-    ┌────┴─────┐
-    │          │
- Агент      UI / человек
-(tools)    (граф объекта)
+         ├→ Инструменты агента
+         └→ plugin.action → Vue-обозреватель
+
+Типизированный слой данных графа остаётся отдельно от UI. Сервис отдаёт подготовленные DTO
+plugin-owned Vue-клиенту, не открывая ему прямой доступ к SQLite.
 ```
 
 ## Ключевые компоненты
@@ -30,27 +30,27 @@ SQLite-граф объектов и связей
 | `Indexing/OneCIndexer` | Оркестратор двух проходов с инкрементальным хешированием |
 | `Storage/OneCIndexDatabase` | DAL поверх SQLite (WAL-режим) |
 | `Tools/*Tool` | `IMcpTool`-реализации для агента |
-| `GraphDataBuilder` | JSON для Cytoscape.js (нет UI-зависимостей) |
-| `Assets/onec_graph.html` | Встроенный WebView-вьюер (Cytoscape.js) |
+| `Graph/OneCGraph` | Типизированные узлы, связи, параметры и сводка графа |
+| `Graph/OneCGraphBuilder` | Построение ограниченного подграфа из SQLite-индекса без UI-зависимостей |
+| `Web/OneCWebActions` | Backend DTO и действия Vue-обозревателя поверх отдельного SQLite-соединения |
+| `Web/src/*` | Тонкий Vue-клиент: дерево, поиск, карточка объекта и Cytoscape-граф |
 
 ## Поток данных
 
 ```
 1С-разработчик выгружает конфигурацию в каталог
-    → агент вызывает onec.index_configuration
+    → агент вызывает onec_build_index
     → OneCIndexer: 1-й проход (XML → Objects)
     → OneCIndexer: 2-й проход (BSL → Relations)
-    → индекс записан в .spla/index/onec.sqlite
-    → агент задаёт вопросы через onec.* tools
-    → UI читает граф через GraphDataBuilder → WebView
+    → индекс записан в .spla/onec.sqlite
+    → агент задаёт вопросы через onec_* tools
+    → Vue-обозреватель получает дерево и типизированный подграф через plugin.action
 ```
 
 ## Расположение файлов
 
 ```
-SPLA.Tools.OneC/
-  Assets/
-    onec_graph.html          — встроенный вьюер графа
+src/plugins/SPLA.Plugins.OneC/
   docs/
     README.md                — этот файл
     overview.md              — архитектурный обзор
@@ -58,7 +58,7 @@ SPLA.Tools.OneC/
     index-schema.md          — схема SQLite
     relation-types.md        — семантика типов связей
     tools-reference.md       — справочник по tools
-    graph-view.md            — использование WebView
+    graph-view.md            — типизированный слой данных графа
     integration.md           — подключение к SPLA
     limitations.md           — ограничения v1
   Indexing/
@@ -75,6 +75,9 @@ SPLA.Tools.OneC/
   Storage/
     OneCIndexSchema.cs
     OneCIndexDatabase.cs
+  Graph/
+    OneCGraph.cs
+    OneCGraphBuilder.cs
   Tools/
     FindObjectTool.cs
     GetObjectTool.cs
@@ -86,6 +89,14 @@ SPLA.Tools.OneC/
     ExplainObjectTool.cs
     IndexConfigurationTool.cs
     YamlResponse.cs
-  GraphDataBuilder.cs
-  SPLA.Tools.OneC.csproj
+  Web/
+    OneCWebActions.cs
+    src/
+      BrowserPanel.vue
+      TreeNode.vue
+      mount.ts
+      browser.css
+    dist/
+      settings.js
+  SPLA.Plugins.OneC.csproj
 ```

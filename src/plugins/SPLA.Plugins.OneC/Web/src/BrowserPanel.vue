@@ -1,292 +1,411 @@
-<!--
-  1C Configuration Browser — web port of the Avalonia OneCOverviewPanel.
-
-  All data comes from the plugin backend over the plugin.action channel (see OneCPlugin.
-  InvokeActionAsync): overview counters + owns-tree, substring search, object card, the three graph
-  modes, context export, and index rebuild. The graph is rendered with Cytoscape.js loaded from a
-  CDN (see TODO.md — bundling it locally is a follow-up).
-
-  Note: this ships today through the plugin's web_settings_entry, so it opens under
-  Settings → Plugins → 1C. Promoting it to a first-class dockable workspace surface is a host change
-  tracked in TODO.md.
--->
 <template>
-  <div class="onec">
-    <!-- Left column: search + tree + counters + export/rebuild -->
-    <div class="col-left">
-      <div class="card">
-        <input v-model="query" class="search" placeholder="Поиск объекта 1С…" spellcheck="false" />
-        <ul v-if="searchResults.length" class="search-results">
-          <li v-for="o in searchResults" :key="o.fullName"
-              :class="{ sel: selected?.fullName === o.fullName }"
-              @click="select(o)">{{ o.fullName }}</li>
+  <div class="onec-browser">
+    <aside class="onec-sidebar">
+      <section class="onec-card onec-explorer">
+        <div class="onec-heading">
+          <strong>1C Configuration</strong>
+          <button title="Refresh index summary" @click="loadOverview">↻</button>
+        </div>
+
+        <input v-model="query" class="onec-search" placeholder="Search objects…" spellcheck="false" />
+        <div v-if="searching" class="onec-muted onec-inline-state">Searching…</div>
+        <ul v-else-if="searchResults.length" class="onec-search-results">
+          <li v-for="item in searchResults" :key="item.fullName">
+            <button :class="{ selected: selected?.fullName === item.fullName }" @click="selectObject(item.fullName)">
+              <span>{{ item.fullName }}</span><small>{{ item.kind }}</small>
+            </button>
+          </li>
         </ul>
-        <div class="tree">
-          <div v-for="s in tree" :key="s.kind" class="tree-section">
-            <div class="tree-section-head" @click="toggle(s.kind)">
-              <span class="chev">{{ open[s.kind] ? '▾' : '▸' }}</span>{{ s.section }} ({{ s.count }})
+
+        <div class="onec-tree">
+          <section v-for="section in sections" :key="section.kind" class="onec-tree-section">
+            <button class="onec-section-head" @click="openSections[section.kind] = !openSections[section.kind]">
+              <span>{{ openSections[section.kind] ? "▾" : "▸" }}</span>
+              <strong>{{ section.kind }}</strong>
+              <small>{{ section.count }}</small>
+            </button>
+            <div v-if="openSections[section.kind]" class="onec-section-objects">
+              <TreeNode
+                v-for="node in section.objects"
+                :key="node.fullName"
+                :node="node"
+                :selected="selected?.fullName"
+                @select="selectObject($event.fullName)"
+              />
             </div>
-            <div v-if="open[s.kind]" class="tree-children">
-              <TreeNode v-for="n in s.objects" :key="n.fullName" :node="n"
-                        :selected="selected?.fullName" @select="select" />
-            </div>
+          </section>
+          <div v-if="!loading && !sections.length" class="onec-empty">
+            The OneC index is empty. Build it below or run <code>onec_build_index</code>.
           </div>
         </div>
-      </div>
+      </section>
 
-      <div class="card counters">
-        <div><span class="muted">Objects</span> <b>{{ overview.objectCount }}</b></div>
-        <div><span class="muted">Relations</span> <b>{{ overview.relationCount }}</b></div>
-        <div><span class="muted">Sections</span> <b>{{ overview.sectionCount }}</b></div>
-      </div>
+      <section class="onec-card onec-summary">
+        <div><span>Objects</span><strong>{{ overview.objectCount }}</strong></div>
+        <div><span>Relations</span><strong>{{ overview.relationCount }}</strong></div>
+        <div><span>Sections</span><strong>{{ overview.sectionCount }}</strong></div>
+      </section>
 
-      <div class="card export">
-        <div class="muted">Context export</div>
-        <div class="row">
-          <select v-model="formatterId">
-            <option v-for="f in formatters" :key="f.id" :value="f.id">{{ f.name }}</option>
+      <section class="onec-card onec-rebuild">
+        <strong>Build index</strong>
+        <p>Path inside the current project workspace.</p>
+        <div class="onec-row">
+          <input v-model="rebuildPath" class="onec-grow" placeholder="e.g. configuration/" spellcheck="false" />
+          <button :disabled="rebuilding || !rebuildPath.trim()" @click="rebuildIndex">
+            {{ rebuilding ? "Building…" : "Build" }}
+          </button>
+        </div>
+      </section>
+    </aside>
+
+    <main class="onec-main onec-card">
+      <header class="onec-object-header">
+        <div>
+          <strong>{{ selected?.fullName || "Choose an object" }}</strong>
+          <span v-if="selected" class="onec-kind">{{ selected.kind }}</span>
+        </div>
+        <div class="onec-graph-controls">
+          <select v-model="graphMode" :disabled="!selected">
+            <option value="dependencies">Dependencies</option>
+            <option value="references">References</option>
+            <option value="dataflow">Data flow</option>
           </select>
-          <button @click="copy" :disabled="!selected">Copy</button>
+          <label>Depth <input v-model.number="depth" type="number" min="1" max="8" /></label>
+          <label>Edges <input v-model.number="limit" type="number" min="1" max="1000" step="25" /></label>
+          <button :disabled="!selected || graphLoading" @click="loadGraph">
+            {{ graphLoading ? "Loading…" : "Show graph" }}
+          </button>
         </div>
-        <div class="muted">Rebuild index</div>
-        <div class="row">
-          <input v-model="rebuildPath" class="grow" placeholder="Путь к дампу конфигурации 1С…" spellcheck="false" />
-          <button @click="rebuild" :disabled="rebuilding">{{ rebuilding ? '…' : 'Rebuild' }}</button>
-        </div>
-        <div v-if="status" class="muted status">{{ status }}</div>
-      </div>
-    </div>
+      </header>
 
-    <!-- Right column: object card + graph -->
-    <div class="col-right card">
-      <div class="obj-title">{{ selected?.fullName || 'Выберите объект' }}</div>
-      <div class="row">
-        <button @click="graph('dependencies')" :disabled="!selected">Dependencies Graph</button>
-        <button @click="graph('references')" :disabled="!selected">References Graph</button>
-        <button @click="graph('dataflow')" :disabled="!selected">Data Flow Graph</button>
+      <div v-if="selected" class="onec-object-details">
+        <div><span>Name</span>{{ selected.name }}</div>
+        <div><span>Path</span>{{ selected.path || "—" }}</div>
+        <div><span>Summary</span>{{ selected.summary || "—" }}</div>
       </div>
-      <div class="muted graph-summary">{{ graphSummary }}</div>
-      <pre v-if="selected" class="obj-details">{{ objDetails }}</pre>
-      <div ref="cyEl" class="cy"></div>
-    </div>
+
+      <div class="onec-graph-status">
+        <span>{{ graphStatus }}</span>
+        <span v-if="graphSummary">
+          {{ graphSummary.nodeCount }} nodes · {{ graphSummary.edgeCount }} edges · depth {{ graphSummary.depth }}
+          <b v-if="graphSummary.truncated"> · truncated</b>
+        </span>
+      </div>
+      <div ref="graphElement" class="onec-graph"></div>
+
+      <div v-if="status" class="onec-status" :class="{ error: statusIsError }">{{ status }}</div>
+    </main>
   </div>
 </template>
 
 <script setup lang="ts">
-import { onMounted, reactive, ref, watch } from "vue";
+import cytoscape, {
+  type Core,
+  type EdgeSingular,
+  type ElementDefinition,
+  type NodeSingular,
+  type StylesheetJson
+} from "cytoscape";
+import { onBeforeUnmount, onMounted, reactive, ref, watch } from "vue";
 import type { MountApi } from "./mount";
-import TreeNode from "./TreeNode.vue";
+import TreeNode, { type TreeObject } from "./TreeNode.vue";
 
-interface ObjDto { name: string; kind: string; fullName: string; path: string; summary: string }
-interface TreeObj { name: string; kind: string; fullName: string; children: TreeObj[] }
-interface Section { section: string; kind: string; count: number; objects: TreeObj[] }
+interface ObjectDto {
+  name: string;
+  kind: string;
+  fullName: string;
+  path: string;
+  summary: string;
+}
+
+interface SectionDto {
+  kind: string;
+  count: number;
+  objects: TreeObject[];
+}
+
+interface OverviewDto {
+  objectCount: number;
+  relationCount: number;
+  sectionCount: number;
+  treeTruncated: boolean;
+  sections: SectionDto[];
+}
+
+interface GraphNodeDto {
+  id: string;
+  label: string;
+  kind: string;
+  isCenter: boolean;
+}
+
+interface GraphEdgeDto {
+  id: string;
+  source: string;
+  target: string;
+  type: string;
+}
+
+interface GraphSummaryDto {
+  rootFullName: string;
+  mode: string;
+  depth: number;
+  limit: number;
+  nodeCount: number;
+  edgeCount: number;
+  truncated: boolean;
+  relationTypeCounts: Record<string, number>;
+}
+
+interface GraphDto {
+  summary: GraphSummaryDto;
+  nodes: GraphNodeDto[];
+  edges: GraphEdgeDto[];
+}
 
 const props = defineProps<{ api: MountApi }>();
-
 const overview = reactive({ objectCount: 0, relationCount: 0, sectionCount: 0 });
-const tree = ref<Section[]>([]);
-const open = reactive<Record<string, boolean>>({});
+const sections = ref<SectionDto[]>([]);
+const openSections = reactive<Record<string, boolean>>({});
 const query = ref("");
-const searchResults = ref<ObjDto[]>([]);
-const selected = ref<ObjDto | null>(null);
-const formatters = ref<{ id: string; name: string }[]>([]);
-const formatterId = ref("full-name");
+const searching = ref(false);
+const searchResults = ref<ObjectDto[]>([]);
+const selected = ref<ObjectDto | null>(null);
 const rebuildPath = ref("");
 const rebuilding = ref(false);
+const loading = ref(false);
 const status = ref("");
-const graphSummary = ref("");
-const cyEl = ref<HTMLElement | null>(null);
-let lastMode = "";
-let cy: any = null;
+const statusIsError = ref(false);
+const graphMode = ref("dependencies");
+const depth = ref(2);
+const limit = ref(250);
+const graphLoading = ref(false);
+const graphStatus = ref("Select an object and load a graph.");
+const graphSummary = ref<GraphSummaryDto | null>(null);
+const graphElement = ref<HTMLElement | null>(null);
+let graph: Core | null = null;
+let resizeObserver: ResizeObserver | null = null;
+let searchTimer: number | undefined;
+let searchSequence = 0;
 
-const objDetails = ref("");
-
-/** Thin wrapper over the host plugin.action RPC. */
-async function action<R = unknown>(name: string, payload: Record<string, unknown> = {}): Promise<R> {
-  const r = await props.api.invoke<{ ok: boolean; resultJson?: string; error?: string }>("plugin.action", {
+async function action<Result>(name: string, payload: Record<string, unknown> = {}): Promise<Result> {
+  const response = await props.api.invoke<{ ok: boolean; resultJson?: string; error?: string }>("plugin.action", {
     pluginId: "onec",
     action: name,
     valueJson: JSON.stringify(payload)
   });
-  if (!r.ok) throw new Error(r.error || "action failed");
-  return (r.resultJson ? JSON.parse(r.resultJson) : null) as R;
+  if (!response.ok) throw new Error(response.error || `OneC action '${name}' failed.`);
+  return (response.resultJson ? JSON.parse(response.resultJson) : null) as Result;
 }
-
-onMounted(async () => {
-  await loadOverview();
-  try {
-    const f = await action<{ formatters: { id: string; name: string }[] }>("formatters");
-    formatters.value = f.formatters;
-  } catch { /* formatters are optional */ }
-});
 
 async function loadOverview() {
+  loading.value = true;
   try {
-    const o = await action<{ objectCount: number; relationCount: number; sectionCount: number; tree: Section[] }>("overview");
-    overview.objectCount = o.objectCount;
-    overview.relationCount = o.relationCount;
-    overview.sectionCount = o.sectionCount;
-    tree.value = o.tree;
-    for (const s of o.tree) if (!(s.kind in open)) open[s.kind] = false;
-  } catch (e) {
-    status.value = "Не удалось открыть индекс 1С: " + msg(e);
+    const result = await action<OverviewDto>("overview");
+    overview.objectCount = result.objectCount;
+    overview.relationCount = result.relationCount;
+    overview.sectionCount = result.sectionCount;
+    sections.value = result.sections;
+    for (const section of result.sections)
+      if (!(section.kind in openSections)) openSections[section.kind] = false;
+    if (result.treeTruncated) setStatus("The navigation tree is limited to 20,000 indexed objects.");
+    else if (status.value.startsWith("The navigation tree")) setStatus("");
+  } catch (error) {
+    setStatus(`Unable to load the OneC index: ${message(error)}`, true);
+  } finally {
+    loading.value = false;
   }
 }
 
-let searchTimer: number | undefined;
-watch(query, (q) => {
-  clearTimeout(searchTimer);
+watch(query, value => {
+  window.clearTimeout(searchTimer);
+  const sequence = ++searchSequence;
   searchTimer = window.setTimeout(async () => {
-    if (!q.trim()) { searchResults.value = []; return; }
+    if (!value.trim()) {
+      searchResults.value = [];
+      searching.value = false;
+      return;
+    }
+    searching.value = true;
     try {
-      const r = await action<{ results: ObjDto[] }>("search", { query: q });
-      searchResults.value = r.results;
-    } catch { searchResults.value = []; }
-  }, 150);
+      const result = await action<{ results: ObjectDto[] }>("search", { query: value });
+      if (sequence === searchSequence) searchResults.value = result.results;
+    } catch (error) {
+      if (sequence === searchSequence) setStatus(`Search failed: ${message(error)}`, true);
+    } finally {
+      if (sequence === searchSequence) searching.value = false;
+    }
+  }, 180);
 });
 
-function toggle(kind: string) { open[kind] = !open[kind]; }
-
-function select(o: { fullName: string }) {
-  action<ObjDto | null>("object", { fullName: o.fullName }).then((dto) => {
-    selected.value = dto;
-    graphSummary.value = "Выберите Dependencies, References или Data Flow.";
-    objDetails.value = dto
-      ? `kind: ${dto.kind}\nname: ${dto.name}\nfull_name: ${dto.fullName}\npath: ${dto.path}\nsummary: ${dto.summary}`
-      : "";
-    lastMode = "";
-    cy?.elements().remove();
-  });
-}
-
-async function graph(mode: string) {
-  if (!selected.value) return;
-  lastMode = mode;
+async function selectObject(fullName: string) {
   try {
-    const g = await action<any>("graph", { fullName: selected.value.fullName, mode, depth: 3, limit: 400 });
-    graphSummary.value = `mode: ${g.mode} · nodes: ${g.nodeCount} · edges: ${g.edgeCount} · depth: ${g.depth} · truncated: ${g.truncated}`;
-    await renderGraph(g.elements);
-  } catch (e) {
-    graphSummary.value = "Не удалось построить граф: " + msg(e);
+    selected.value = await action<ObjectDto | null>("object", { fullName });
+    graphSummary.value = null;
+    graphStatus.value = selected.value ? "Choose a graph mode." : "The selected object no longer exists.";
+    graph?.elements().remove();
+  } catch (error) {
+    setStatus(`Unable to load the object: ${message(error)}`, true);
   }
 }
 
-async function copy() {
+async function loadGraph() {
   if (!selected.value) return;
+  graphLoading.value = true;
   try {
-    const r = await action<{ text: string }>("format", {
-      formatterId: formatterId.value,
+    const result = await action<GraphDto>("graph", {
       fullName: selected.value.fullName,
-      mode: lastMode,
-      depth: 3,
-      limit: 400
+      mode: graphMode.value,
+      depth: depth.value,
+      limit: limit.value
     });
-    await navigator.clipboard.writeText(r.text);
-    status.value = "Скопировано в буфер обмена.";
-  } catch (e) {
-    status.value = "Копирование не удалось: " + msg(e);
+    graphSummary.value = result.summary;
+    graphStatus.value = result.nodes.length ? "" : "No graph data was found for this object.";
+    renderGraph(result);
+  } catch (error) {
+    graphStatus.value = `Graph failed: ${message(error)}`;
+  } finally {
+    graphLoading.value = false;
   }
 }
 
-async function rebuild() {
-  if (!rebuildPath.value.trim()) { status.value = "Укажите путь к дампу конфигурации."; return; }
+async function rebuildIndex() {
   rebuilding.value = true;
-  status.value = "Индексация запущена…";
+  setStatus("Indexing the configuration…");
   try {
-    const r = await action<any>("rebuild", { path: rebuildPath.value.trim() });
-    status.value = `Готово. Объектов: +${r.objectsAdded} ~${r.objectsUpdated}, связей: +${r.relationsAdded}, пропущено: ${r.filesSkipped}, ошибок: ${r.filesWithErrors}, за ${r.elapsedSeconds}с`;
+    const result = await action<{
+      objectsAdded: number;
+      objectsUpdated: number;
+      relationsAdded: number;
+      filesSkipped: number;
+      filesWithErrors: number;
+      elapsedSeconds: number;
+    }>("rebuild", { path: rebuildPath.value });
+    setStatus(
+      `Index ready: +${result.objectsAdded} objects, ${result.objectsUpdated} updated, `
+      + `+${result.relationsAdded} relations, ${result.filesSkipped} skipped, `
+      + `${result.filesWithErrors} errors in ${result.elapsedSeconds}s.`
+    );
     await loadOverview();
-  } catch (e) {
-    status.value = "Индексация не удалась: " + msg(e);
+  } catch (error) {
+    setStatus(`Index build failed: ${message(error)}`, true);
   } finally {
     rebuilding.value = false;
   }
 }
 
-// ── Cytoscape (loaded from CDN on first graph render) ───────────────────────
-const KIND_COLOR: Record<string, string> = {
-  Document: "#89b4fa", Catalog: "#a6e3a1", AccumulationRegister: "#f38ba8",
-  InformationRegister: "#fab387", AccountingRegister: "#f38ba8", CalculationRegister: "#f38ba8",
-  CommonModule: "#cba6f7", Report: "#f9e2af", Processing: "#f9e2af", Form: "#94e2d5", TabularSection: "#94e2d5"
-};
-const EDGE_COLOR: Record<string, string> = {
-  writes: "#f38ba8", reads: "#89b4fa", queries: "#fab387", calls: "#a6e3a1", owns: "#6c7086", uses: "#cba6f7"
+const kindColors: Record<string, string> = {
+  Document: "#6ea8fe",
+  Catalog: "#64c487",
+  AccumulationRegister: "#e8798a",
+  InformationRegister: "#e6a15a",
+  AccountingRegister: "#d67586",
+  CalculationRegister: "#d67586",
+  CommonModule: "#ad8be8",
+  Report: "#d8bc68",
+  Processing: "#d8bc68",
+  Form: "#54b8ad",
+  TabularSection: "#54b8ad"
 };
 
-async function ensureCytoscape(): Promise<any> {
-  if ((window as any).cytoscape) return (window as any).cytoscape;
-  await new Promise<void>((resolve, reject) => {
-    const s = document.createElement("script");
-    s.src = "https://cdnjs.cloudflare.com/ajax/libs/cytoscape/3.30.2/cytoscape.min.js";
-    s.onload = () => resolve();
-    s.onerror = () => reject(new Error("cytoscape CDN load failed"));
-    document.head.appendChild(s);
-  });
-  return (window as any).cytoscape;
-}
+const relationColors: Record<string, string> = {
+  writes: "#e8798a",
+  reads: "#6ea8fe",
+  queries: "#e6a15a",
+  calls: "#64c487",
+  owns: "#7d8590",
+  uses: "#ad8be8"
+};
 
-async function renderGraph(data: { nodes: any[]; edges: any[] }) {
-  const cytoscape = await ensureCytoscape();
-  if (!cyEl.value) return;
-  const elements = [
-    ...data.nodes.map((n) => ({ data: n })),
-    ...data.edges.map((e) => ({ data: e }))
+const graphStyles: StylesheetJson = [
+  {
+    selector: "node",
+    style: {
+      "background-color": (node: NodeSingular) => kindColors[String(node.data("kind"))] || "#7d8590",
+      label: "data(label)",
+      color: "#d8dee9",
+      "font-size": 10,
+      "text-valign": "bottom",
+      "text-margin-y": 5,
+      "text-outline-width": 2,
+      "text-outline-color": "#20242b",
+      width: 34,
+      height: 34
+    }
+  },
+  {
+    selector: "node[?isCenter]",
+    style: {
+      width: 50,
+      height: 50,
+      "border-width": 3,
+      "border-color": "#d8dee9",
+      "font-size": 12,
+      "font-weight": "bold"
+    }
+  },
+  {
+    selector: "edge",
+    style: {
+      "line-color": (edge: EdgeSingular) => relationColors[String(edge.data("type"))] || "#7d8590",
+      "target-arrow-color": (edge: EdgeSingular) => relationColors[String(edge.data("type"))] || "#7d8590",
+      "target-arrow-shape": "triangle",
+      "curve-style": "bezier",
+      width: 1.5,
+      opacity: 0.82,
+      label: "data(type)",
+      "font-size": 8,
+      color: "#8b949e",
+      "text-rotation": "autorotate"
+    }
+  }
+];
+
+function renderGraph(result: GraphDto) {
+  if (!graphElement.value) return;
+  const elements: ElementDefinition[] = [
+    ...result.nodes.map(node => ({ data: node })),
+    ...result.edges.map(edge => ({ data: edge }))
   ];
-  if (cy) cy.destroy();
-  cy = cytoscape({
-    container: cyEl.value,
+  graph?.destroy();
+  graph = cytoscape({
+    container: graphElement.value,
     elements,
+    style: graphStyles,
+    minZoom: 0.05,
+    maxZoom: 1.8,
     wheelSensitivity: 0.25,
-    style: [
-      { selector: "node", style: {
-        "background-color": (n: any) => KIND_COLOR[n.data("kind")] || "#6c7086",
-        label: "data(label)", color: "#cdd6f4", "font-size": "10px",
-        "text-valign": "bottom", "text-margin-y": 4, "text-outline-width": 2,
-        "text-outline-color": "#1e1e2e", width: 34, height: 34
-      } },
-      { selector: "node[?isCenter]", style: {
-        width: 52, height: 52, "border-width": 3, "border-color": "#cdd6f4",
-        "font-size": "12px", "font-weight": "bold"
-      } },
-      { selector: "edge", style: {
-        "line-color": (e: any) => EDGE_COLOR[e.data("type")] || "#6c7086",
-        "target-arrow-color": (e: any) => EDGE_COLOR[e.data("type")] || "#6c7086",
-        "target-arrow-shape": "triangle", "curve-style": "bezier", width: 1.6, opacity: 0.85,
-        label: "data(type)", "font-size": 8, color: "#6c7086", "text-rotation": "autorotate"
-      } }
-    ],
-    layout: { name: "cose", animate: false, padding: 35, nodeRepulsion: 6500, idealEdgeLength: 120 }
+    layout: {
+      name: "cose",
+      animate: false,
+      padding: 35,
+      nodeRepulsion: () => 6_500,
+      idealEdgeLength: () => 120
+    }
   });
-  setTimeout(() => cy?.fit(undefined, 30), 100);
+  window.setTimeout(() => graph?.fit(undefined, 30), 80);
 }
 
-function msg(e: unknown) { return e instanceof Error ? e.message : String(e); }
-</script>
+function setStatus(value: string, error = false) {
+  status.value = value;
+  statusIsError.value = error;
+}
 
-<style scoped>
-.onec { display: flex; gap: 12px; height: 100%; min-height: 480px; font-size: 13px; }
-.col-left { width: 360px; display: flex; flex-direction: column; gap: 12px; }
-.col-right { flex: 1; display: flex; flex-direction: column; gap: 10px; }
-.card { background: var(--panel-bg, #252526); border: 1px solid var(--border, #333); border-radius: 8px; padding: 12px; }
-.col-left .card:first-child { flex: 1; display: flex; flex-direction: column; gap: 8px; min-height: 0; }
-.search { width: 100%; box-sizing: border-box; }
-.search-results { list-style: none; margin: 0; padding: 0; max-height: 160px; overflow: auto; border: 1px solid var(--border, #333); border-radius: 6px; }
-.search-results li { padding: 3px 6px; cursor: pointer; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.search-results li:hover, .search-results li.sel { background: var(--accent, #007acc); color: #fff; }
-.tree { flex: 1; overflow: auto; min-height: 0; }
-.tree-section-head { cursor: pointer; font-weight: 600; padding: 2px 0; }
-.chev { display: inline-block; width: 14px; }
-.tree-children { padding-left: 8px; }
-.counters { display: flex; gap: 16px; }
-.export { display: flex; flex-direction: column; gap: 6px; }
-.row { display: flex; gap: 6px; align-items: center; }
-.grow { flex: 1; }
-.muted { color: var(--muted, #888); }
-.status { white-space: pre-wrap; }
-.obj-title { font-size: 16px; font-weight: 700; }
-.graph-summary { white-space: pre-wrap; }
-.obj-details { margin: 0; max-height: 150px; overflow: auto; white-space: pre-wrap; font-family: inherit; }
-.cy { flex: 1; min-height: 260px; border: 1px solid var(--border, #333); border-radius: 6px; }
-button { cursor: pointer; }
-button:disabled { opacity: 0.5; cursor: default; }
-</style>
+function message(error: unknown) {
+  return error instanceof Error ? error.message : String(error);
+}
+
+onMounted(() => {
+  void loadOverview();
+  if (graphElement.value) {
+    resizeObserver = new ResizeObserver(() => graph?.resize());
+    resizeObserver.observe(graphElement.value);
+  }
+});
+
+onBeforeUnmount(() => {
+  window.clearTimeout(searchTimer);
+  resizeObserver?.disconnect();
+  graph?.destroy();
+});
+</script>

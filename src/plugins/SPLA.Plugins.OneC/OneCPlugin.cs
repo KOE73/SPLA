@@ -11,15 +11,13 @@ namespace SPLA.Plugins.OneC;
 
 public class OneCPlugin : ISplaPlugin, ISplaPluginAction
 {
-    private static readonly JsonSerializerOptions JsonOpts = new(JsonSerializerDefaults.Web);
-
     private OneCIndexDatabase? _db;
-    private OneCBrowserActions? _browser;
+    private OneCWebActions? _webActions;
 
     public IEnumerable<IMcpTool> Initialize(ResolvedSettings settings)
     {
-        // The index lives in the project's runtime area (root bucket keeps the historical
-        // .spla/onec.sqlite location, which the web browser panel also reads).
+        // The index lives in the project's runtime area. The root bucket keeps the historical
+        // .spla/onec.sqlite location.
         var runtimeDir = settings.Project
             .GetBucket(SPLA.Domain.Project.IProjectBackend.RootBucket)
             .MapToHostDirectory()
@@ -28,7 +26,7 @@ public class OneCPlugin : ISplaPlugin, ISplaPluginAction
 
         _db = new OneCIndexDatabase(dbPath);
         _db.EnsureCreated();
-        _browser = new OneCBrowserActions(_db);
+        _webActions = new(dbPath, settings.WorkspacePath);
 
         return
         [
@@ -44,41 +42,15 @@ public class OneCPlugin : ISplaPlugin, ISplaPluginAction
         ];
     }
 
-    /// <summary>
-    /// Handles actions invoked from the "1C Configuration Browser" web panel via <c>plugin.action</c>.
-    /// These are human-triggered browsing/rebuild operations, not agent tools — they replace the
-    /// event handlers that used to live in the Avalonia panel's code-behind.
-    /// </summary>
-    public async Task<object?> InvokeActionAsync(string action, string? valueJson, CancellationToken ct = default)
+    public async Task<object?> InvokeActionAsync(
+        string action,
+        string? valueJson,
+        CancellationToken ct = default)
     {
-        if (_browser is null)
+        if (_webActions is null)
             throw new InvalidOperationException("OneC plugin is not initialized.");
 
-        using var doc = string.IsNullOrWhiteSpace(valueJson)
-            ? JsonDocument.Parse("{}")
-            : JsonDocument.Parse(valueJson);
-        var p = doc.RootElement;
-
-        return action switch
-        {
-            "overview" => _browser.Overview(),
-            "search" => _browser.Search(Str(p, "query")),
-            "object" => _browser.Object(Str(p, "fullName")),
-            "graph" => _browser.Graph(Str(p, "fullName"), Str(p, "mode"), Int(p, "depth", 3), Int(p, "limit", 400)),
-            "formatters" => _browser.Formatters(),
-            "format" => _browser.Format(Str(p, "formatterId"), Str(p, "fullName"), Str(p, "mode"), Int(p, "depth", 3), Int(p, "limit", 400)),
-            "rebuild" => await _browser.RebuildAsync(Str(p, "path"), ct),
-            _ => throw new InvalidOperationException($"Unknown onec plugin action: {action}")
-        };
+        using var payload = JsonDocument.Parse(string.IsNullOrWhiteSpace(valueJson) ? "{}" : valueJson);
+        return await _webActions.InvokeAsync(action, payload.RootElement, ct);
     }
-
-    private static string? Str(JsonElement e, string name) =>
-        e.ValueKind == JsonValueKind.Object && e.TryGetProperty(name, out var v) && v.ValueKind == JsonValueKind.String
-            ? v.GetString()
-            : null;
-
-    private static int Int(JsonElement e, string name, int fallback) =>
-        e.ValueKind == JsonValueKind.Object && e.TryGetProperty(name, out var v) && v.TryGetInt32(out var i)
-            ? i
-            : fallback;
 }

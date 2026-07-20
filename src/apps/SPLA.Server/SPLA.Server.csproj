@@ -26,9 +26,9 @@
        from the sibling project's build output when it exists (build it first, e.g. via RunServer.cmd
        or a full solution build). On a non-Windows box you simply omit it and configure another DLL. -->
   <Target Name="CopyWindowsIdentityProvider" AfterTargets="Build"
-          Condition="Exists('$(MSBuildProjectDirectory)\..\SPLA.Identity.Windows\bin\$(Configuration)\net10.0-windows\SPLA.Identity.Windows.dll')">
+          Condition="Exists('$(MSBuildProjectDirectory)\..\..\identity\SPLA.Identity.Windows\bin\$(Configuration)\net10.0-windows\SPLA.Identity.Windows.dll')">
     <ItemGroup>
-      <_IdentityDll Include="$(MSBuildProjectDirectory)\..\SPLA.Identity.Windows\bin\$(Configuration)\net10.0-windows\SPLA.Identity.Windows.dll" />
+      <_IdentityDll Include="$(MSBuildProjectDirectory)\..\..\identity\SPLA.Identity.Windows\bin\$(Configuration)\net10.0-windows\SPLA.Identity.Windows.dll" />
     </ItemGroup>
     <Copy SourceFiles="@(_IdentityDll)" DestinationFolder="$(OutDir)identity" SkipUnchangedFiles="true" />
   </Target>

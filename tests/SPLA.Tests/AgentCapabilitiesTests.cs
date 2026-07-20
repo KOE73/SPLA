@@ -74,7 +74,7 @@ public sealed class AgentCapabilitiesTests
             Assert.Contains("Your current working directory is:", prompt);
             Assert.Contains("Tool descriptions are intentionally short.", prompt);
             Assert.Contains("Mermaid note:", prompt);
-            Assert.Contains("KV memory (5 tools)", prompt);
+            Assert.Contains("KV memory: a persistent scoped key/value store", prompt);
             Assert.Contains("context management (4 tools)", prompt);
             Assert.Contains("Skill selection comes before tool planning.", prompt);
             Assert.Contains("Data channel — bulk output", prompt);

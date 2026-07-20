@@ -9,7 +9,7 @@ using SPLA.Plugins.OneC.Storage;
 
 namespace SPLA.Plugins.OneC.Tools;
 
-/// <summary>onec.get_object — full card for a single object including its relations.</summary>
+/// <summary>onec_get_object — full card for a single object including its relations.</summary>
 public class GetObjectTool : IMcpTool
 {
     private readonly OneCIndexDatabase _db;

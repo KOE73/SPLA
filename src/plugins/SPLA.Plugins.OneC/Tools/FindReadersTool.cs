@@ -9,7 +9,7 @@ using SPLA.Plugins.OneC.Storage;
 
 namespace SPLA.Plugins.OneC.Tools;
 
-/// <summary>onec.find_readers — who reads from this register/catalog?</summary>
+/// <summary>onec_find_readers — who reads from this register/catalog?</summary>
 public class FindReadersTool : IMcpTool
 {
     private readonly OneCIndexDatabase _db;

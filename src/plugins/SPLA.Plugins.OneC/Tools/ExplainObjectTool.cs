@@ -10,7 +10,7 @@ using SPLA.Plugins.OneC.Storage;
 namespace SPLA.Plugins.OneC.Tools;
 
 /// <summary>
-/// onec.explain_object — aggregate structured context about an object for LLM explanation.
+/// onec_explain_object — aggregate structured context about an object for LLM explanation.
 /// Does not generate text itself — assembles data that the model will use to explain.
 /// </summary>
 public class ExplainObjectTool : IMcpTool

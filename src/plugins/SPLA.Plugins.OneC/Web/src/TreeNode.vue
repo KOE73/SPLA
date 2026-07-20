@@ -1,13 +1,21 @@
-<!-- Recursive owns-hierarchy node for the 1C object tree. -->
 <template>
-  <div class="node">
-    <div class="node-head" :class="{ sel: selected === node.fullName }" @click="onClick">
-      <span class="chev" v-if="node.children.length" @click.stop="expanded = !expanded">{{ expanded ? '▾' : '▸' }}</span>
-      <span class="chev" v-else>·</span>
-      {{ node.name }} <span class="kind">[{{ node.kind }}]</span>
-    </div>
-    <div v-if="expanded && node.children.length" class="children">
-      <TreeNode v-for="c in node.children" :key="c.fullName" :node="c" :selected="selected" @select="$emit('select', $event)" />
+  <div class="onec-tree-node">
+    <button class="onec-node-head" :class="{ selected: selected === node.fullName }" @click="selectNode">
+      <span v-if="node.children.length" class="onec-chevron" @click.stop="expanded = !expanded">
+        {{ expanded ? "▾" : "▸" }}
+      </span>
+      <span v-else class="onec-chevron">·</span>
+      <span class="onec-node-name">{{ node.name }}</span>
+      <span class="onec-kind">{{ node.kind }}</span>
+    </button>
+    <div v-if="expanded && node.children.length" class="onec-node-children">
+      <TreeNode
+        v-for="child in node.children"
+        :key="child.fullName"
+        :node="child"
+        :selected="selected"
+        @select="emit('select', $event)"
+      />
     </div>
   </div>
 </template>
@@ -15,17 +23,18 @@
 <script setup lang="ts">
 import { ref } from "vue";
 
-interface TreeObj { name: string; kind: string; fullName: string; children: TreeObj[] }
-const props = defineProps<{ node: TreeObj; selected?: string }>();
-const emit = defineEmits<{ (e: "select", node: TreeObj): void }>();
-const expanded = ref(false);
-function onClick() { emit("select", props.node); }
-</script>
+export interface TreeObject {
+  name: string;
+  kind: string;
+  fullName: string;
+  children: TreeObject[];
+}
 
-<style scoped>
-.node-head { cursor: pointer; padding: 1px 0; white-space: nowrap; }
-.node-head.sel { color: var(--accent, #007acc); font-weight: 600; }
-.chev { display: inline-block; width: 14px; }
-.kind { color: var(--muted, #888); font-size: 11px; }
-.children { padding-left: 12px; }
-</style>
+const props = defineProps<{ node: TreeObject; selected?: string }>();
+const emit = defineEmits<{ select: [node: TreeObject] }>();
+const expanded = ref(false);
+
+function selectNode() {
+  emit("select", props.node);
+}
+</script>

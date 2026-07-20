@@ -159,8 +159,8 @@ gate features on what they were granted, so a restricted grant (groups/roles, la
 ## Domain events (server-side)
 
 Cross-cutting state changes are not broadcast directly from handler code. A mutator publishes a typed
-`ServiceEvent` to `AgentRuntime.Events` (`src/service/SPLA.Service/ServiceEvents.cs`); a single
-subscriber in `SplaServiceHost.Build` maps each event to a wire broadcast, scoped by project id. To
+`ServiceEvent` to `AgentRuntime.Events` (`src/agent/SPLA.Runtime/ServiceEvents.cs`); a single
+subscriber in `src/service/SPLA.Service/Hosting/SplaServiceHost.cs` maps each event to a wire broadcast, scoped by project id. To
 add one:
 
 1. Add a `record X : ServiceEvent` in `ServiceEvents.cs`.

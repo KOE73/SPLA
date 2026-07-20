@@ -9,7 +9,7 @@ using SPLA.Plugins.OneC.Storage;
 namespace SPLA.Plugins.OneC.Tools;
 
 /// <summary>
-/// onec.get_reverse_dependencies — who depends on this object?
+/// onec_get_reverse_dependencies — who depends on this object?
 /// Used for impact analysis: "what breaks if I change X?"
 /// </summary>
 public class GetReverseDependenciesTool : IMcpTool
