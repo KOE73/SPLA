@@ -20,7 +20,7 @@ in addition to the root `AGENTS.md`.
 ### `src/agent/` — the agent loop
 
 - `SPLA.Agent`: The single agent loop (`ConversationOrchestrator`), layered system-prompt builder (`SystemPromptBuilder`), mode-based tool gating (`ToolModeFilter`), and headless skill sub-agents (`SpawnedAgentRunner`).
-- `SPLA.Runtime`: The autonomous, transport-neutral agent runtime — the embeddable "SPLA Runtime". Owns the full agent stack for one project (`AgentRuntime`: LLM client, tool host, plugins, skills, project KV, prompt, token tallies), per-chat state (`ChatRuntime`), the open-chat set (`ChatRegistry`), the multi-project home (`AgentRuntimeRegistry`), the in-process domain-event hub (`ServiceEvents`), and sidecar image persistence (`ChatImages`). Zero dependencies on any client or protocol: CLI, the WebSocket service, and standalone hosts (see `demo/`) all reference this project and get an identical agent. Wire/DTO projections of these objects live in `SPLA.Service` (`Chat/RuntimeProjections.cs`), never here.
+- `SPLA.Runtime`: The autonomous, transport-neutral agent runtime — the embeddable "SPLA Runtime". Owns the full agent stack for one project (`AgentRuntime`: LLM client, tool host, plugins, skills, project KV, prompt, token tallies), per-chat state (`ChatRuntime`), the open-chat set (`ChatRegistry`), the multi-project home (`AgentRuntimeRegistry`), the in-process domain-event hub (`ServiceEvents`), and sidecar image persistence (`ChatImages`). Zero dependencies on any client or protocol: CLI, the WebSocket service, and standalone hosts (see `demo/workers/`) all reference this project and get an identical agent. Wire/DTO projections of these objects live in `SPLA.Service` (`Chat/RuntimeProjections.cs`), never here.
 - `SPLA.MCP.BasicTools`: Built-in tools for filesystem, shell, .NET build/test, context, date/time, web fetch, and web search. Reach the system only through `HostServices.Sandbox`.
 
 ### `src/llm/`
@@ -54,18 +54,20 @@ in addition to the root `AGENTS.md`.
 - `SPLA.Plugins.OneC`: 1C analysis plugin with indexing, object lookup/explanation, references, dependency analysis, readers/writers, graph data support, and an in-plugin web browser panel. The former `SPLA.Plugins.OneC.Avalonia` and shared `SPLA.Plugins.Host.Avalonia` projects were removed.
 - `SPLA.Plugins.Sql`: SQL query/schema/execute plugin. Its settings UI (named connections) ships as an in-plugin web panel; the former `SPLA.Plugins.Sql.Avalonia` editor was removed.
 - `SPLA.Plugins.Browser`: Playwright-driven browser automation plugin.
-- `SPLA.Plugins.Browser.Screencast`: Experimental, separate headless-browser panel provider. It
-  streams in-memory frames through the generic plugin-panel transport and does not replace or modify
-  `SPLA.Plugins.Browser`.
+- `SPLA.Plugins.Browser.Screencast`: Embedded headless-browser panel provider. It streams in-memory
+  frames through the generic plugin-panel transport and exposes a narrow agent tool set over that
+  same shared page; the separate `SPLA.Plugins.Browser` automation engine remains independent.
 - `SPLA.Plugins.Test`: Test plugin manifest. Present in the repository but not currently listed in `SPLA.slnx`.
 
 ### `tests/`
 
 - `SPLA.Tests`: Test project. Protocol tests bind an OS-assigned free port (`FreePort()`), never a hardcoded one.
 
-### `demo/` — standalone runtime hosts
+### `demo/` — examples
 
-- `VisionAgent`: A headless console app that proves the `SPLA.Runtime` boundary: it references only the runtime (no CLI/service/UI), opens a normal `.spla` project file (`vision.spla`), and loops "grab a video frame (USB camera / RTSP / file via OpenCvSharp) → send it as a chat turn with an image → print the model's analysis". The analysis prompt is ordinary `agent.instructions`; the demo's own knobs live in a `vision:` section of the same `.spla` (unknown sections are ignored by the standard loader).
+- `workers/VisionAgent`: A headless console app that proves the `SPLA.Runtime` boundary: it references only the runtime (no CLI/service/UI), opens a normal `.spla` project file (`vision.spla`), and loops "grab a video frame (USB camera / RTSP / file via OpenCvSharp) → send it as a chat turn with an image → print the model's analysis". The analysis prompt is ordinary `agent.instructions`; the demo's own knobs live in a `vision:` section of the same `.spla` (unknown sections are ignored by the standard loader).
+- `workers/LogSentry`: A headless console app that tails a log file, batches suspicious lines, sends them to an agent for triage, and prints the verdict.
+- `projects/RemoteWeb`: An embedded browser-automation demo for remote Web access. Its `.spla` enables only the narrow Screencast tool set needed to open Wikipedia, visibly type a search, click through, and read the result; the ASCII-only `Run.cmd` delegates to `Run.ps1`, which builds that plugin, opens Browser Lab beside the chat, starts `SPLA.CLI serve` on the LAN, and seeds the first Web chat through `--new-chat` with UTF-8-safe argument handling.
 
 ## Non-code top-level folders
 

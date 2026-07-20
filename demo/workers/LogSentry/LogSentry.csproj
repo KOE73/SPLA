@@ -13,7 +13,7 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\..\src\agent\SPLA.Runtime\SPLA.Runtime.csproj" />
+    <ProjectReference Include="..\..\..\src\agent\SPLA.Runtime\SPLA.Runtime.csproj" />
   </ItemGroup>
 
   <ItemGroup>

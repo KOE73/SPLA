@@ -1,0 +1,62 @@
+version: 1
+name: Remote Web Demo
+workspace: .
+
+agent:
+  # Research: Chat mode strips all non-Agent-scoped tools (ToolModeFilter), including the
+  # Internet-scoped browser_screencast tools this demo is about.
+  mode: Research
+  #capabilities: []
+  custom_prompt: Reply to the user in Russian. This project demonstrates browser automation inside the Web UI.
+
+llm:
+  provider: lmstudio
+  endpoint: http://127.0.0.1:1234/v1
+  api_key: lm-studio
+  model: auto
+  temperature: 0.7
+
+ui:
+  theme: Dark
+  density: mini
+
+permissions:
+  read: deny
+  write: deny
+  shell: deny
+  internet: allow
+
+plugins:
+  browser:
+    enabled: false
+  browser_screencast:
+    enabled: true
+    custom_prompt: |
+      The Browser Lab panel shows the same embedded page controlled by the enabled screencast tools.
+      Element refs come from the latest screencast snapshot and become stale after a new snapshot.
+      Text entry is animated character by character for the human viewer.
+    tools:
+      browser_screencast_navigate: true
+      browser_screencast_snapshot: true
+      browser_screencast_click: true
+      browser_screencast_type: true
+      browser_screencast_get_text: true
+  network:
+    enabled: false
+  network.skills:
+    enabled: false
+  onec:
+    enabled: false
+  roslyn:
+    enabled: false
+  sql:
+    enabled: false
+  ssh:
+    enabled: false
+  test:
+    enabled: false
+
+ignore:
+  - .spla/
+  - bin/
+  - obj/

@@ -22,8 +22,8 @@
    `lms server start && lms load google/gemma-4-12b-qat --context-length 8192 --yes`
 2. Поправьте `vision.spla` (источник, endpoint, model).
 3. ```
-   dotnet run --project demo/VisionAgent            # vision.spla берётся рядом
-   dotnet run --project demo/VisionAgent -- path/to/other.spla
+   dotnet run --project demo/workers/VisionAgent            # vision.spla берётся рядом
+   dotnet run --project demo/workers/VisionAgent -- path/to/other.spla
    ```
 
 Остановка — `Ctrl+C`. В конце всегда печатается явный статус: `готово` / `не готово`.

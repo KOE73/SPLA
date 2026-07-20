@@ -17,7 +17,7 @@
 
 1. LM Studio с любой моделью: `lms server start && lms load <model> --yes`
 2. Настройте `sentry.spla` (`log_file`, `triggers`, endpoint, model).
-3. `dotnet run --project demo/LogSentry` (или аргументом путь к другому `.spla`).
+3. `dotnet run --project demo/workers/LogSentry` (или аргументом путь к другому `.spla`).
 
 Остановка — `Ctrl+C`; в конце печатается `готово` / `не готово`.
 
