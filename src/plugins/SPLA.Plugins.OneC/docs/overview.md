@@ -48,7 +48,7 @@ SQLite-граф объектов и связей
 ## Расположение файлов
 
 ```
-SPLA.Tools.OneC/
+src/plugins/SPLA.Plugins.OneC/
   Assets/
     onec_graph.html          — встроенный вьюер графа
   docs/

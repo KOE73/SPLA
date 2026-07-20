@@ -25,7 +25,7 @@ god-классов первой ревизии и добавлены новые 
 
 ### 1.2 `SplaServiceHost` (517 строк) — **осталось; вырос за счёт новых фич**
 
-[src/service/SPLA.Service/SplaServiceHost.cs](../../src/service/SPLA.Service/SplaServiceHost.cs).
+[src/service/SPLA.Service/Hosting/SplaServiceHost.cs](../../src/service/SPLA.Service/Hosting/SplaServiceHost.cs).
 Частично разобран (извлечены `ConfigureAuthentication`, `WireRuntimeEvents`, `HandleWebSocketAsync`,
 `LoadOrCreateCertificate`, `IsSameHostOrigin`), но за день добавились три auth-режима, HTTPS/cert-
 генерация и wiring stats-плоскости — файл вырос. `Build` всё ещё ~150 строк и мешает несколько тем.
