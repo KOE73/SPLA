@@ -1,3 +1,5 @@
+using System.Text.Json;
+using System.Text.Json.Nodes;
 using YamlDotNet.Serialization;
 using YamlDotNet.Serialization.NamingConventions;
 
@@ -194,14 +196,107 @@ public static class ConfigLoader
     public static Dictionary<string, object>? DeserializeBlob(string? yaml) =>
         string.IsNullOrWhiteSpace(yaml) ? null : Deserializer.Deserialize<Dictionary<string, object>>(yaml);
 
+    // ── JSON blob transport ───────────────────────────────────────────────────
+    // Web settings panels exchange the opaque plugin blob as JSON (native in the browser — no YAML
+    // library shipped in every plugin bundle); the host converts to/from the YAML-backed mapping
+    // here, in one place.
+
+    /// <summary>Serializes an opaque plugin settings blob to a JSON string for the web client.</summary>
+    public static string? BlobToJson(Dictionary<string, object>? blob) =>
+        blob is null || blob.Count == 0 ? null : ToJsonNode(blob)!.ToJsonString();
+
+    /// <summary>Parses a JSON string from a web settings panel back into the opaque nested mapping.</summary>
+    public static Dictionary<string, object>? BlobFromJson(string? json)
+    {
+        if (string.IsNullOrWhiteSpace(json)) return null;
+        var node = JsonNode.Parse(json);
+        return FromJsonNode(node) as Dictionary<string, object>;
+    }
+
+    private static JsonNode? ToJsonNode(object? value) => value switch
+    {
+        null => null,
+        string s => JsonValue.Create(s),
+        bool b => JsonValue.Create(b),
+        int i => JsonValue.Create(i),
+        long l => JsonValue.Create(l),
+        double d => JsonValue.Create(d),
+        // YAML deserialization yields object-keyed mappings for nested levels.
+        System.Collections.IDictionary map => new JsonObject(map.Keys.Cast<object>()
+            .Select(k => new KeyValuePair<string, JsonNode?>(k.ToString()!, ToJsonNode(map[k])))),
+        System.Collections.IEnumerable seq => new JsonArray(seq.Cast<object?>().Select(ToJsonNode).ToArray()),
+        _ => JsonValue.Create(value.ToString())
+    };
+
+    private static object? FromJsonNode(JsonNode? node) => node switch
+    {
+        null => null,
+        JsonObject obj => obj.ToDictionary(kv => kv.Key, kv => FromJsonNode(kv.Value)!),
+        JsonArray arr => arr.Select(FromJsonNode).ToList(),
+        JsonValue v => v.GetValueKind() switch
+        {
+            JsonValueKind.String => v.GetValue<string>(),
+            JsonValueKind.True => true,
+            JsonValueKind.False => false,
+            JsonValueKind.Number => v.TryGetValue<long>(out var l) ? l : v.GetValue<double>(),
+            _ => v.ToJsonString()
+        },
+        _ => node.ToJsonString()
+    };
+
     /// <summary>
-    /// Saves a .spla project file.
+    /// Saves a .spla project file by rewriting it wholesale. Comments and formatting are lost —
+    /// use only for brand-new files (scaffolding); targeted edits go through
+    /// <see cref="SaveProjectSections"/>, which preserves the rest of the file.
     /// </summary>
     public static void SaveProject(SplaProject project, string splaFilePath)
     {
         var yaml = Serializer.Serialize(project);
         File.WriteAllText(splaFilePath, yaml);
     }
+
+    /// <summary>
+    /// Persists only the named top-level sections of a .spla file (e.g. "ui", "connections"),
+    /// splicing them into the existing text so hand-written comments and formatting elsewhere in
+    /// the file survive. A null section property removes the key. Falls back to a full
+    /// <see cref="SaveProject"/> when the file is missing or its YAML defeats the splicer.
+    /// </summary>
+    public static void SaveProjectSections(SplaProject project, string splaFilePath, params string[] sectionKeys)
+    {
+        try
+        {
+            var text = File.ReadAllText(splaFilePath);
+            foreach (var key in sectionKeys)
+            {
+                var value = GetSectionValue(project, key);
+                var sectionText = value == null
+                    ? null
+                    : Serializer.Serialize(new Dictionary<string, object> { [key] = value });
+                text = YamlSectionSplicer.ReplaceSection(text, key, sectionText);
+            }
+            File.WriteAllText(splaFilePath, text);
+        }
+        catch (Exception ex) when (ex is IOException or YamlDotNet.Core.YamlException)
+        {
+            SaveProject(project, splaFilePath);
+        }
+    }
+
+    private static object? GetSectionValue(SplaProject p, string key) => key switch
+    {
+        "name" => p.Name,
+        "workspace" => p.Workspace,
+        "agent" => p.Agent,
+        "llm" => p.Llm,
+        "connections" => p.Connections,
+        "ui" => p.Ui,
+        "permissions" => p.Permissions,
+        "plugins" => p.Plugins,
+        "skills" => p.Skills,
+        "docs" => p.Docs,
+        "ignore" => p.Ignore,
+        _ => throw new ArgumentException($"unknown .spla section '{key}'", nameof(key))
+    };
 
     /// <summary>
     /// Standard ignore patterns written into every new project file.

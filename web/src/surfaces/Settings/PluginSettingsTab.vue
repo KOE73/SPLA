@@ -31,10 +31,10 @@ const webRef = ref<InstanceType<typeof PluginWebSettings>>();
 const mountKey = ref(0);
 watch(() => props.plugin, () => mountKey.value++);
 
-/** Pulls the edited YAML out of the mounted module and persists just this plugin's dto. */
+/** Pulls the edited JSON out of the mounted module and persists just this plugin's dto. */
 function save(): Promise<void> {
   const pl = props.plugin;
-  pl.settingsYaml = webRef.value?.save() ?? undefined;
+  pl.settingsJson = webRef.value?.save() ?? undefined;
   return new Promise((resolve, reject) => {
     const timer = window.setTimeout(() => { offRes(); reject(new Error("save timed out")); }, 8000);
     const offRes = client.on("plugins.result", () => { clearTimeout(timer); offRes(); resolve(); });

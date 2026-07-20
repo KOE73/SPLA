@@ -3,6 +3,5 @@ version: 0.1.0
 type: dll
 entry_point: SPLA.Plugins.Browser.Screencast.dll
 default_prompt: |
-  An experimental interactive browser panel is available. It renders a plugin-owned headless
-  Chromium page as an in-memory frame stream for the human UI. The stable browser plugin remains
-  independent and unchanged.
+  An embedded Browser Lab page is available to both the agent and the human viewer. Its tools
+  navigate, inspect, click, type into, and read the same page whose frames are streamed to the Web UI.

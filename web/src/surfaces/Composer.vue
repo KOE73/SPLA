@@ -78,11 +78,20 @@ const offComposerSet = uiBus.on("composer.set", p => {
   nextTick(() => textareaEl.value?.focus());
 });
 
+// Server-side signals are the source of truth for the in-flight flag: turns started outside
+// this composer (auto-run demos, another window, reconnect mid-turn) must still show Stop.
+function markActive(env: { chatId?: string }) {
+  const chatId = env.chatId ?? store.currentChat;
+  if (chatId) store.turnActiveByChat[chatId] = true;
+}
+const offTurnStart = client.on("llm.turn.start", (_p, env) => markActive(env));
+const offToolStart = client.on("tool.started", (_p, env) => markActive(env));
+
 const offTurn = client.on("turn.complete", (_p, env) => {
   const chatId = env.chatId;
   if (chatId) store.turnActiveByChat[chatId] = false;
   else if (store.currentChat) store.turnActiveByChat[store.currentChat] = false;
   if (!chatId || chatId === store.currentChat) nextTick(() => textareaEl.value?.focus());
 });
-onUnmounted(() => { offTurn(); offComposerSet(); });
+onUnmounted(() => { offTurn(); offTurnStart(); offToolStart(); offComposerSet(); });
 </script>

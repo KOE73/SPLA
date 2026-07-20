@@ -100,7 +100,6 @@
 
 <script setup lang="ts">
 import { onMounted, reactive, ref } from "vue";
-import { parse, stringify } from "yaml";
 import type { MountApi } from "./mount";
 
 const props = defineProps<{ api: MountApi }>();
@@ -169,7 +168,7 @@ function rowToCfg(c: ConnRow): ConnCfg {
 }
 
 const blob: SqlSettingsBlob = (() => {
-  try { return (parse(props.api.getYaml() || "") as SqlSettingsBlob) || {}; }
+  try { return (JSON.parse(props.api.getJson() || "null") as SqlSettingsBlob) || {}; }
   catch { return {}; }
 })();
 
@@ -249,7 +248,7 @@ function toJsonCfg(c: ConnRow) {
   };
 }
 
-function toYaml(): string {
+function toJson(): string {
   const out: SqlSettingsBlob = {
     default_connection: defaultConnection.value || undefined,
     default_limit: defaultLimit.value || 10,
@@ -257,10 +256,10 @@ function toYaml(): string {
       connections.filter(c => c.name.trim()).map(c => [c.name.trim(), rowToCfg(c)])
     )
   };
-  return stringify(out);
+  return JSON.stringify(out);
 }
 
-defineExpose({ toYaml });
+defineExpose({ toJson });
 </script>
 
 <style scoped>

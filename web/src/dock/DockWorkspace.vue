@@ -1,7 +1,7 @@
 <template>
   <div class="dock-shell">
     <DockToolbar />
-    <DockviewVue class="dockview-theme-spla" :components="dockComponents" :tab-components="dockTabComponents" @ready="event => initializeDock(event.api)" />
+    <DockviewVue class="dockview-theme-spla" :components="dockComponents" :tab-components="dockTabComponents" @ready="ready" />
   </div>
 </template>
 
@@ -10,10 +10,16 @@ import { onUnmounted } from "vue";
 import { DockviewVue } from "dockview-vue";
 import "dockview-vue/dist/styles/dockview.css";
 import DockToolbar from "./DockToolbar.vue";
-import { initializeDock, openSshTerminal } from "./dockController";
+import { initializeDock, openPanel, openSshTerminal } from "./dockController";
 import { dockComponents, dockTabComponents } from "./panelCatalog";
 import { client } from "../protocol/SplaClient";
 import { projectEnvelope } from "../state/project";
+
+function ready(event: { api: Parameters<typeof initializeDock>[0] }) {
+  initializeDock(event.api);
+  const requestedPanel = new URLSearchParams(location.search).get("panel");
+  if (requestedPanel === "browserScreencast") openPanel("browserScreencast");
+}
 
 // "Watch the agent live": when the agent opens an SSH session, auto-attach a terminal panel so the
 // operator SEES the commands and output appear — not silently somewhere. We only auto-open each

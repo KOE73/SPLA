@@ -31,6 +31,11 @@ public sealed record ServiceOptions
     /// <summary>Connect secret required for non-loopback clients. Null = no token (loopback use).</summary>
     public string? Token { get; init; }
 
+    /// <summary>Optional one-shot startup message. The first WebSocket client that completes the
+    /// handshake gets a newly-created chat and sends this message through the normal interactive
+    /// turn path, so streaming, permission prompts, and clarification prompts stay in the UI.</summary>
+    public string? InitialChatMessage { get; init; }
+
     /// <summary>When true, the host enforces Negotiate (NTLM/Kerberos) auth: every request must carry a
     /// domain principal, and each connection's <see cref="ClientConnection"/> gets that user's identity.
     /// The server deployment (SPLA.Server) sets this; loopback/embedded leaves it false and stays
@@ -127,6 +132,7 @@ public sealed class SplaServiceHost
 
         var hub = new ConnectionHub();
         var auth = new AuthGate(options.Token);
+        var initialChat = InitialChatRequest.Create(options.InitialChatMessage);
 
         ConfigureAuthentication(builder, options);
         OtlpExport.MaybeWire(builder, options);
@@ -269,7 +275,7 @@ public sealed class SplaServiceHost
         app.MapGet("/{**path}", (string path) => ServeAsset("/" + path));
 
         app.Map("/ws", (HttpContext context) =>
-            HandleWebSocketAsync(context, registry, options, serverRoot, hub, auth, loggerFactory));
+            HandleWebSocketAsync(context, registry, options, serverRoot, hub, auth, initialChat, loggerFactory));
 
         return new SplaServiceHost(app, url, collector, gaugeTimer);
     }
@@ -380,7 +386,8 @@ public sealed class SplaServiceHost
     /// the user's own server area, then running the <see cref="ClientConnection"/> for the socket's life.</summary>
     private static async Task HandleWebSocketAsync(
         HttpContext context, AgentRuntimeRegistry registry, ServiceOptions options,
-        SPLA.Domain.Project.ServerProjectRoot? serverRoot, ConnectionHub hub, AuthGate auth, ILoggerFactory loggerFactory)
+        SPLA.Domain.Project.ServerProjectRoot? serverRoot, ConnectionHub hub, AuthGate auth,
+        InitialChatRequest? initialChat, ILoggerFactory loggerFactory)
     {
         if (!context.WebSockets.IsWebSocketRequest)
         {
@@ -433,7 +440,8 @@ public sealed class SplaServiceHost
 
         using var socket = await context.WebSockets.AcceptWebSocketAsync();
         var log = loggerFactory.CreateLogger<ClientConnection>();
-        var conn = new ClientConnection(socket, registry, hub, auth, log, identity, userProvider, userDefault, userArea);
+        var conn = new ClientConnection(
+            socket, registry, hub, auth, log, identity, userProvider, userDefault, userArea, initialChat);
         await conn.RunAsync(context.RequestAborted);
     }
 

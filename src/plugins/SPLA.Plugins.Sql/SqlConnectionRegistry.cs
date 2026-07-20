@@ -142,7 +142,7 @@ public sealed class SqlConnectionRegistry
                 Connections = stored
             };
             section.Settings = ConfigLoader.DeserializeBlob(settings.ToYaml());
-            ConfigLoader.SaveProject(project, _projectFilePath);
+            ConfigLoader.SaveProjectSections(project, _projectFilePath, "plugins");
 
             var note = secretCount > 0 ? $" ({secretCount} password(s) → secrets store)" : "";
             return $"Saved {_connections.Count} connection(s) to {Path.GetFileName(_projectFilePath)}{note}.";

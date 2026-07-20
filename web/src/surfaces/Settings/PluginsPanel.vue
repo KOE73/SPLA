@@ -19,9 +19,9 @@
         <div v-if="isOpen(pl.id)" class="pl-body">
           <label class="field col"><span>Custom prompt</span><textarea v-model="pl.customPrompt" rows="2"></textarea></label>
           <!-- A plugin with its own web settings module renders itself here; everything else falls
-               back to the generic opaque YAML editor. The panel never branches on plugin id. -->
+               back to the generic opaque JSON editor. The panel never branches on plugin id. -->
           <PluginWebSettings v-if="pl.webSettingsUrl" :plugin="pl" :ref="(el) => setWebRef(pl.id, el)" />
-          <label v-else class="field col"><span>Settings (YAML)</span><textarea v-model="pl.settingsYaml" class="mono" rows="4" spellcheck="false"></textarea></label>
+          <label v-else class="field col"><span>Settings (JSON)</span><textarea v-model="pl.settingsJson" class="mono" rows="4" spellcheck="false"></textarea></label>
         </div>
       </div>
     </div>
@@ -51,8 +51,8 @@ function toggle(id: string) {
 function summary(pl: PluginDto): string {
   const bits: string[] = [];
   if (pl.customPrompt?.trim()) bits.push(`prompt: ${pl.customPrompt.trim().slice(0, 40)}${pl.customPrompt.trim().length > 40 ? "…" : ""}`);
-  const yaml = pl.settingsYaml?.trim();
-  if (yaml) bits.push(`settings: ${yaml.split("\n").length} line(s)`);
+  const json = pl.settingsJson?.trim();
+  if (json) bits.push(`settings: ${json.length} chars`);
   else if (pl.webSettingsUrl) bits.push("has settings UI");
   return bits.join(" · ");
 }
@@ -73,11 +73,11 @@ const off = client.on("plugins.result", p => {
 onUnmounted(off);
 
 function save(): Promise<void> {
-  // Pull the edited YAML out of each plugin's own mounted module before sending. Modules exist only
-  // for expanded cards; collapsed ones keep whatever settingsYaml the server sent — unchanged.
+  // Pull the edited JSON out of each plugin's own mounted module before sending. Modules exist only
+  // for expanded cards; collapsed ones keep whatever settingsJson the server sent — unchanged.
   for (const pl of plugins.value) {
     const handle = webRefs.get(pl.id);
-    if (handle) pl.settingsYaml = handle.save() ?? undefined;
+    if (handle) pl.settingsJson = handle.save() ?? undefined;
   }
   return new Promise((resolve, reject) => {
     const timer = window.setTimeout(() => { offRes(); reject(new Error("save timed out")); }, 8000);

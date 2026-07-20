@@ -83,7 +83,6 @@
 
 <script setup lang="ts">
 import { onMounted, reactive, ref } from "vue";
-import { parse, stringify } from "yaml";
 import type { MountApi } from "./mount";
 
 const props = defineProps<{ api: MountApi }>();
@@ -133,7 +132,7 @@ function rowToCfg(h: HostRow): HostCfg {
 }
 
 const blob: SshSettingsBlob = (() => {
-  try { return (parse(props.api.getYaml() || "") as SshSettingsBlob) || {}; }
+  try { return (JSON.parse(props.api.getJson() || "null") as SshSettingsBlob) || {}; }
   catch { return {}; }
 })();
 
@@ -202,7 +201,7 @@ async function testHost(h: HostRow) {
   }
 }
 
-function toYaml(): string {
+function toJson(): string {
   const out: SshSettingsBlob = {
     default_host: defaultHost.value || undefined,
     timeout_seconds: timeoutSeconds.value || 20,
@@ -210,10 +209,10 @@ function toYaml(): string {
       hosts.filter(h => h.name.trim()).map(h => [h.name.trim(), rowToCfg(h)])
     )
   };
-  return stringify(out);
+  return JSON.stringify(out);
 }
 
-defineExpose({ toYaml });
+defineExpose({ toJson });
 </script>
 
 <style scoped>

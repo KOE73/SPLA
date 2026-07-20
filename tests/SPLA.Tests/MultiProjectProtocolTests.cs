@@ -233,6 +233,54 @@ public sealed class MultiProjectProtocolTests
         finally { try { Directory.Delete(root, recursive: true); } catch { } }
     }
 
+    [Fact]
+    public async Task Initial_chat_is_created_once_and_first_message_is_streamed_to_the_web_client()
+    {
+        var root = TempRoot();
+        try
+        {
+            var provider = new LocalProjectProvider(Path.Combine(root, "state"));
+            var manifest = Path.Combine(root, "demo", "RemoteWeb.spla");
+            using var registry = new AgentRuntimeRegistry(NullLoggerFactory.Instance, provider);
+            registry.Create(new ProjectDescriptor { Id = manifest, ManifestPath = manifest, Name = "Remote Web" });
+            registry.DefaultProjectId = manifest;
+
+            var port = FreePort();
+            var host = SplaServiceHost.Build(registry, new ServiceOptions
+            {
+                Port = port,
+                InitialChatMessage = "Hello from startup"
+            });
+            await host.StartAsync();
+            try
+            {
+                using var first = new ClientWebSocket();
+                await first.ConnectAsync(new Uri($"ws://127.0.0.1:{port}/ws"), CancellationToken.None);
+                await SendAsync(first, MessageTypes.Hello, new HelloPayload());
+                await ReceiveAsync<WelcomePayload>(first, MessageTypes.Welcome);
+
+                var opened = await ReceiveAsync<ChatOpenedPayload>(first, MessageTypes.ChatOpened);
+                Assert.Equal("Hello from startup", opened.Title);
+
+                var userMessage = await ReceiveAsync<UserMessagePayload>(first, MessageTypes.UserMessage);
+                Assert.Equal("Hello from startup", userMessage.Text);
+
+                using var second = new ClientWebSocket();
+                await second.ConnectAsync(new Uri($"ws://127.0.0.1:{port}/ws"), CancellationToken.None);
+                await SendAsync(second, MessageTypes.Hello, new HelloPayload());
+                await ReceiveAsync<WelcomePayload>(second, MessageTypes.Welcome);
+                await SendAsync(second, MessageTypes.ChatList, null, requestId: "startup-list");
+                var chats = await ReceiveAsync<ChatListResultPayload>(second, MessageTypes.ChatListResult, "startup-list");
+                Assert.Single(chats.Chats);
+
+                await first.CloseAsync(WebSocketCloseStatus.NormalClosure, "done", CancellationToken.None);
+                await second.CloseAsync(WebSocketCloseStatus.NormalClosure, "done", CancellationToken.None);
+            }
+            finally { await host.StopAsync(); }
+        }
+        finally { try { Directory.Delete(root, recursive: true); } catch { } }
+    }
+
     private static async Task SendAsync(
         ClientWebSocket socket, string type, object? payload, string? projectId = null, string? requestId = null)
     {

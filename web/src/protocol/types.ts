@@ -93,21 +93,22 @@ export interface PluginDto {
   stateReason?: string;
   enabled?: boolean;
   customPrompt?: string;
-  settingsYaml?: string;
+  /** Opaque settings blob as JSON (the host converts to/from the YAML stored in the .spla file). */
+  settingsJson?: string;
   /** URL of the plugin's prebuilt web settings module (dynamically imported), or absent when the
-   * plugin has none — the panel falls back to the generic YAML editor. */
+   * plugin has none — the panel falls back to the generic JSON editor. */
   webSettingsUrl?: string;
 }
 
 /** Contract a plugin's web settings module must export — see web_settings_entry in meta.yaml. */
 export interface PluginSettingsMountApi {
-  /** Current opaque settings blob as YAML, or null when none. */
-  getYaml(): string | null;
+  /** Current opaque settings blob as JSON, or null when none. */
+  getJson(): string | null;
   /** Generic RPC into the host/plugin backend, e.g. invoke("plugin.action", {...}). */
   invoke<R = unknown>(type: string, payload?: unknown): Promise<R>;
 }
 export interface PluginSettingsHandle {
-  /** Returns the edited settings serialized back to YAML. Called when the host Saves. */
+  /** Returns the edited settings serialized back to JSON. Called when the host Saves. */
   save(): string | null;
   destroy?(): void;
 }
@@ -307,9 +308,9 @@ export interface ServerEvents {
   "reasoning": { msgIndex: number; text: string };
   "llm.turn.start": { msgIndex: number };
   "assistant.message": { msgIndex: number; message: ChatMessage };
-  /** Ack of the turn's user message — carries the server-assigned MsgId so the local echo can
-   * become a rewind/fork anchor. */
-  "user.message": { msgId: string; createdAt?: string };
+  /** User message accepted by the server. Text is present so server-initiated turns can render
+   * without a local echo; ordinary composer turns use it only as a fallback. */
+  "user.message": { msgId: string; createdAt?: string; text?: string };
   "turn.complete": { cancelled?: boolean; error?: string };
   "tool.started": { toolCall: ToolCallDto };
   "tool.progress": { toolCallId?: string; toolName: string; current: number; total: number; fraction?: number | null; message?: string | null; details?: ToolProgressDetail[] | null };

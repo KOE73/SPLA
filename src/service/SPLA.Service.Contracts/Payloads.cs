@@ -271,7 +271,8 @@ public sealed class SystemRegisterAssociationResultPayload
 }
 
 /// <summary>One plugin's editable state. The settings blob is opaque to host and client alike — it
-/// travels as a YAML string (<see cref="SettingsYaml"/>) and is never interpreted here.</summary>
+/// travels as a JSON string (<see cref="SettingsJson"/>) and is never interpreted here; the host
+/// converts it to/from the YAML-backed mapping in ConfigLoader.</summary>
 public sealed class PluginEditDto
 {
     public string Id { get; set; } = string.Empty;
@@ -283,10 +284,10 @@ public sealed class PluginEditDto
     public string? State { get; set; }
     public string? StateReason { get; set; }
     public string? CustomPrompt { get; set; }
-    /// <summary>The plugin's opaque settings blob serialized to YAML (null when none).</summary>
-    public string? SettingsYaml { get; set; }
+    /// <summary>The plugin's opaque settings blob serialized to JSON (null when none).</summary>
+    public string? SettingsJson { get; set; }
     /// <summary>URL of the plugin's prebuilt web settings module (see <c>web_settings_entry</c> in
-    /// meta.yaml), or null when the plugin has none — the client falls back to the generic YAML editor.</summary>
+    /// meta.yaml), or null when the plugin has none — the client falls back to the generic JSON editor.</summary>
     public string? WebSettingsUrl { get; set; }
 }
 
@@ -450,12 +451,14 @@ public sealed class ReasoningPayload
     public string Text { get; set; } = string.Empty;
 }
 
-/// <summary>Server ack of the user message that started the current turn — carries the MsgId the
-/// conversation assigned, so the client's local echo can become a rewind/fork anchor.</summary>
+/// <summary>Server event for the user message that started the current turn. <see cref="Text"/> lets
+/// clients render server-initiated turns; ordinary client-initiated turns use it only as a fallback
+/// because their optimistic local echo is already visible.</summary>
 public sealed class UserMessagePayload
 {
     public string MsgId { get; set; } = string.Empty;
     public string? CreatedAt { get; set; }
+    public string? Text { get; set; }
 }
 
 public sealed class AssistantMessagePayload

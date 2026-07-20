@@ -49,6 +49,7 @@ ignore:
 | `workspace` | No | Working directory, relative to the `.spla` file. Default: `.` |
 | `agent.mode` | No | Default mode: `Chat`, `Research`, `Inspect`, `Edit`, `Agent`. |
 | `agent.instructions` | No | Markdown files injected into the system prompt. Paths relative to workspace. |
+| `agent.capabilities` | No | Enabled built-in `core.*` capabilities. Missing = all; `[]` = pure chat with no built-in tools. |
 | `llm.provider` | No | LLM provider. Currently only `lmstudio`. |
 | `llm.endpoint` | No | API base URL. |
 | `llm.model` | No | Model name. `auto` = use whatever is loaded. |
@@ -98,6 +99,9 @@ spla run my-project.spla
 
 # Auto-detect (looks for *.spla in CWD)
 spla
+
+# Web service; create a chat and send its first message when the first client connects
+spla serve --new-chat "Introduce this project"
 ```
 
 ### GUI

@@ -25,6 +25,7 @@
     <ProjectReference Include="..\..\src\core\SPLA.Secrets.Dpapi\SPLA.Secrets.Dpapi.csproj" />
     <ProjectReference Include="..\..\src\plugins\SPLA.Plugins.Ssh\SPLA.Plugins.Ssh.csproj" />
     <ProjectReference Include="..\..\src\plugins\SPLA.Plugins.Browser\SPLA.Plugins.Browser.csproj" />
+    <ProjectReference Include="..\..\src\plugins\SPLA.Plugins.Browser.Screencast\SPLA.Plugins.Browser.Screencast.csproj" />
     <ProjectReference Include="..\..\src\plugins\SPLA.Plugins.Network\SPLA.Plugins.Network.csproj" />
     <ProjectReference Include="..\..\src\plugins\SPLA.Plugins.Roslyn\SPLA.Plugins.Roslyn.csproj" />
     <ProjectReference Include="..\..\src\plugins\SPLA.Plugins.Sql\SPLA.Plugins.Sql.csproj" />

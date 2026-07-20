@@ -50,7 +50,7 @@ public static class SettingsOps
         {
             var project = ConfigLoader.LoadProjectRaw(path);
             project.Connections = sections.Count > 0 ? sections : null;
-            ConfigLoader.SaveProject(project, path);
+            ConfigLoader.SaveProjectSections(project, path, "connections");
         }
 
         // Mutate the live settings in place so running chats resolve against the new list.
@@ -130,7 +130,7 @@ public static class SettingsOps
             project.Permissions = anyPerm
                 ? new SplaPermissionsSection { Read = read, Write = write, Shell = shell, Internet = net }
                 : null;
-            ConfigLoader.SaveProject(project, path);
+            ConfigLoader.SaveProjectSections(project, path, "agent", "permissions");
         }
 
         return GetAgent(runtime);
@@ -153,7 +153,7 @@ public static class SettingsOps
             var project = ConfigLoader.LoadProjectRaw(path);
             (project.Ui ??= new()).Theme = theme;
             project.Ui.Density           = density;
-            ConfigLoader.SaveProject(project, path);
+            ConfigLoader.SaveProjectSections(project, path, "ui");
         }
 
         runtime.Events.Publish(new AppearanceChanged(theme, density));
@@ -186,7 +186,7 @@ public static class SettingsOps
                 State = d.EffectiveState.ToString(),
                 StateReason = string.IsNullOrWhiteSpace(d.EffectiveStateReason) ? null : d.EffectiveStateReason,
                 CustomPrompt = section?.CustomPrompt,
-                SettingsYaml = ConfigLoader.SerializeBlob(section?.Settings),
+                SettingsJson = ConfigLoader.BlobToJson(section?.Settings),
                 WebSettingsUrl = string.IsNullOrWhiteSpace(d.Meta.WebSettingsEntry)
                     ? null
                     : $"/plugin-assets/{Uri.EscapeDataString(d.Meta.Id)}/{d.Meta.WebSettingsEntry.Replace('\\', '/')}"
@@ -212,8 +212,8 @@ public static class SettingsOps
                            ?? (runtime.Settings.Plugins.TryGetValue(dto.Id, out var s) ? s : null);
 
             Dictionary<string, object>? blob;
-            try { blob = ConfigLoader.DeserializeBlob(dto.SettingsYaml); }
-            catch { blob = existing?.Settings; }   // bad YAML → keep what was there
+            try { blob = ConfigLoader.BlobFromJson(dto.SettingsJson); }
+            catch { blob = existing?.Settings; }   // bad JSON → keep what was there
 
             var merged = new SplaPluginSection
             {
@@ -227,7 +227,7 @@ public static class SettingsOps
             runtime.Settings.Plugins[dto.Id] = merged;
         }
 
-        if (project != null && path != null) ConfigLoader.SaveProject(project, path);
+        if (project != null && path != null) ConfigLoader.SaveProjectSections(project, path, "plugins");
 
         // Live ENABLE: a plugin that was disabled at startup never got its assembly loaded — load it
         // now and expose its tools immediately (disable needs nothing: exposure is gated per call).

@@ -258,20 +258,13 @@ public class PluginManager
     /// </summary>
     public bool IsToolEnabled(string toolName)
     {
-        var parts = toolName.Split('.');
-        if (parts.Length == 0) return true; // Can't identify plugin, default to true
-
-        var pluginId = parts[0];
-
-        if (_settings.Plugins.TryGetValue(pluginId, out var pluginSettings))
+        foreach (var pluginSettings in _settings.Plugins.Values)
         {
             if (pluginSettings.Tools != null && pluginSettings.Tools.TryGetValue(toolName, out var isToolEnabled))
-            {
                 return isToolEnabled;
-            }
         }
 
-        // Default to enabled if no explicit rule is found
+        // Tool names are globally unique. An absent explicit rule keeps the plugin default.
         return true;
     }
 }

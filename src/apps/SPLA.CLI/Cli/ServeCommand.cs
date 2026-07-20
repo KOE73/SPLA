@@ -14,7 +14,7 @@ internal static class ServeCommand
     {
         InstallCrashLogging(loggerFactory);
 
-        var (port, bind, token, repl) = ParseArgs(args);
+        var (port, bind, token, repl, initialChatMessage) = ParseArgs(args);
 
         using var registry = new AgentRuntimeRegistry(loggerFactory)
         {
@@ -23,7 +23,13 @@ internal static class ServeCommand
         // Same cached entry Build() resolves internally — opening it here first just lets the parallel
         // REPL (below) drive the identical runtime/chats a socket client would.
         var (_, chats) = registry.Open(registry.DefaultProjectId);
-        var options = new ServiceOptions { Port = port, Bind = bind, Token = token };
+        var options = new ServiceOptions
+        {
+            Port = port,
+            Bind = bind,
+            Token = token,
+            InitialChatMessage = initialChatMessage
+        };
         var host = SplaServiceHost.Build(registry, options);
         await host.StartAsync();
 
@@ -54,12 +60,13 @@ internal static class ServeCommand
         await host.StopAsync();
     }
 
-    private static (int Port, string Bind, string? Token, bool Repl) ParseArgs(string[] args)
+    private static (int Port, string Bind, string? Token, bool Repl, string? InitialChatMessage) ParseArgs(string[] args)
     {
         int port = 5050;
         string bind = "127.0.0.1";
         string? token = null;
         bool repl = false;
+        string? initialChatMessage = null;
 
         for (int i = 1; i < args.Length; i++)
         {
@@ -69,10 +76,11 @@ internal static class ServeCommand
                 case "--port": if (i + 1 < args.Length && int.TryParse(args[++i], out var p)) port = p; break;
                 case "--bind": if (i + 1 < args.Length) bind = args[++i]; break;
                 case "--token": if (i + 1 < args.Length) token = args[++i]; break;
+                case "--new-chat": if (i + 1 < args.Length) initialChatMessage = args[++i]; break;
             }
         }
 
-        return (port, bind, token, repl);
+        return (port, bind, token, repl, initialChatMessage);
     }
 
     private static void InstallCrashLogging(ILoggerFactory loggerFactory)

@@ -58,6 +58,8 @@ client/types **and** this table.
 | `chat.delete` | `ChatDelete` | `ChatDeletePayload` | Broadcasts `chat.list.result`. |
 | `chat.send` | `ChatSend` | `ChatSendPayload` | Runs a turn; streams to watchers. |
 | `chat.settings` | `ChatSettings` | `ChatSettingsPayload` | Change mode/connection; echoes `chat.opened`. |
+| `chat.rewind` | `ChatRewind` | `ChatRewindPayload` | Truncate a chat at/before a message; echoes `chat.opened`. |
+| `chat.fork` | `ChatFork` | `ChatForkPayload` | Copy a chat at a message boundary; opens the fork and broadcasts `chat.list.result`. |
 | `focus.set` | `FocusSet` | `FocusPayload` | Window focused a chat; echoes `focus.changed` to all. |
 | `cancel` | `Cancel` | — (uses `chatId`) | Cancel the active turn of `chatId`. |
 | `permission.decision` | `PermissionDecision` | `PermissionDecisionPayload` | Answer to `permission.request` (by `requestId`). |
@@ -103,6 +105,7 @@ client/types **and** this table.
 | `project.context` | `ProjectContext` | `ProjectContextPayload` | unicast | Answer to `project.open`/`project.create`. |
 | `chat.list.result` | `ChatListResult` | `ChatListResultPayload` | broadcast (project) | Every sidebar in that project refreshes. |
 | `chat.opened` | `ChatOpened` | `ChatOpenedPayload` | unicast | Full chat state on open. |
+| `user.message` | `UserMessage` | `UserMessagePayload` | watchers | Accepted user message id/time; optional text renders server-initiated turns. |
 | `llm.turn.start` | `LlmTurnStart` | `DeltaPayload` | watchers | New assistant message index. |
 | `delta` | `Delta` | `DeltaPayload` | watchers | Streamed assistant text chunk. |
 | `reasoning` | `Reasoning` | `ReasoningPayload` | watchers | Streamed reasoning chunk. |

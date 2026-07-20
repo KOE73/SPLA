@@ -20,7 +20,7 @@ onMounted(async () => {
     const mod = await import(/* @vite-ignore */ props.plugin.webSettingsUrl);
     const mount = mod.mount as PluginSettingsMount;
     handle = mount(mountEl.value, {
-      getYaml: () => props.plugin.settingsYaml ?? null,
+      getJson: () => props.plugin.settingsJson ?? null,
       invoke: (type, payload) => client.invoke(type, payload)
     });
   } catch (e) {
@@ -30,9 +30,9 @@ onMounted(async () => {
 
 onBeforeUnmount(() => handle?.destroy?.());
 
-/** Returns the edited settings as YAML; falls back to the unedited blob if the module failed to load. */
+/** Returns the edited settings as JSON; falls back to the unedited blob if the module failed to load. */
 function save(): string | null {
-  return handle ? handle.save() : (props.plugin.settingsYaml ?? null);
+  return handle ? handle.save() : (props.plugin.settingsJson ?? null);
 }
 
 defineExpose({ save });

@@ -36,6 +36,7 @@ public sealed class ClientConnection : IClientSession
     private readonly ILogger _log;
     private readonly SPLA.Domain.Identity.IIdentity _identity;
     private readonly MessageRouter _router;
+    private readonly InitialChatRequest? _initialChat;
 
     /// <summary>This connection's live SSH terminals (phase B). Created here, torn down in the
     /// receive-loop finally so a dropped socket closes every SSH session it opened.</summary>
@@ -79,6 +80,15 @@ public sealed class ClientConnection : IClientSession
         WebSocket socket, AgentRuntimeRegistry registry, ConnectionHub hub, AuthGate auth, ILogger log,
         SPLA.Domain.Identity.IIdentity? identity = null,
         IProjectProvider? userProvider = null, string? userDefaultProjectId = null, string? userArea = null)
+        : this(socket, registry, hub, auth, log, identity, userProvider, userDefaultProjectId, userArea, null)
+    {
+    }
+
+    internal ClientConnection(
+        WebSocket socket, AgentRuntimeRegistry registry, ConnectionHub hub, AuthGate auth, ILogger log,
+        SPLA.Domain.Identity.IIdentity? identity,
+        IProjectProvider? userProvider, string? userDefaultProjectId, string? userArea,
+        InitialChatRequest? initialChat)
     {
         _socket = socket;
         _registry = registry;
@@ -89,6 +99,7 @@ public sealed class ClientConnection : IClientSession
         _userProvider = userProvider;
         _userDefaultProjectId = userDefaultProjectId;
         _userArea = userArea;
+        _initialChat = initialChat;
         _router = MessageRouter.Default;
         _terminals = new SshTerminalManager((type, payload) => SendAsync(type, payload), log);
         _pluginPanels = new PluginPanelManager((type, payload) => SendAsync(type, payload));
@@ -228,7 +239,7 @@ public sealed class ClientConnection : IClientSession
         // project), so it stays here rather than in a handler.
         if (env.Type == MessageTypes.Hello)
         {
-            await HandleHelloAsync(env);
+            await HandleHelloAsync(env, hostStopping);
             return;
         }
 
@@ -237,7 +248,7 @@ public sealed class ClientConnection : IClientSession
             _log.LogWarning("Unknown message type: {Type}", env.Type);
     }
 
-    private async Task HandleHelloAsync(ProtocolEnvelope env)
+    private async Task HandleHelloAsync(ProtocolEnvelope env, CancellationToken hostStopping)
     {
         var decision = _auth.Authorize(env.Auth);
         if (!decision.Ok)
@@ -279,6 +290,28 @@ public sealed class ClientConnection : IClientSession
             Theme = ctx.Theme,
             Density = ctx.Density
         });
+
+        await TryStartInitialChatAsync(hostStopping);
+    }
+
+    /// <summary>Consumes the process-wide startup request once, opens the resulting chat in this
+    /// client, refreshes project chat lists, then runs the first turn through this connection so all
+    /// interactive prompts and streamed events have a real Web UI owner.</summary>
+    private async Task TryStartInitialChatAsync(CancellationToken hostStopping)
+    {
+        var request = _initialChat?.Take();
+        if (request == null) return;
+
+        var projectId = DefaultProjectId;
+        _openProjects[projectId] = 0;
+        var entry = _registry.Open(projectId);
+        var chat = entry.Chats.CreateNew(request.Title);
+
+        await SendOpenedAsync(chat);
+        await _hub.BroadcastToProjectAsync(projectId, MessageTypes.ChatListResult,
+            new ChatListResultPayload { Chats = entry.Chats.List() });
+
+        _ = RunTurnAsync(entry.Runtime, projectId, chat, request.Message, null, hostStopping);
     }
 
     // ── Turn execution + outbound streaming ───────────────────────────────────
@@ -337,7 +370,12 @@ public sealed class ClientConnection : IClientSession
                 turnCts.Token,
                 images,
                 onUserMessage: m => _ = _hub.BroadcastToWatchersAsync(chat.ChatId, MessageTypes.UserMessage,
-                    new UserMessagePayload { MsgId = m.MsgId, CreatedAt = m.CreatedAt.ToString("o") }));
+                    new UserMessagePayload
+                    {
+                        MsgId = m.MsgId,
+                        CreatedAt = m.CreatedAt.ToString("o"),
+                        Text = text
+                    }));
         }
         catch (OperationCanceledException) { /* cancelled turn — reported below */ }
         catch (Exception ex)

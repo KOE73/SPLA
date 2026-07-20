@@ -201,13 +201,23 @@ const offs = [
     items.value.push({ kind: "user", key: nextKey(), text, images, createdAt: Date.now() });
     scroll();
   }),
-  // The server acks the turn's user message with its MsgId — attach it to the local echo so the
-  // freshly sent message can be rewound/forked without reopening the chat.
-  client.on("user.message", p => {
+  // Attach the server MsgId to the composer's optimistic local echo. A server-initiated startup
+  // turn has no local echo, so its optional text becomes a real user bubble here.
+  client.on("user.message", (p, env) => {
+    if (env.chatId && env.chatId !== renderedChatId) return;
+    let attached = false;
     for (let i = items.value.length - 1; i >= 0; i--) {
       const it = items.value[i];
-      if (it.kind === "user") { if (!it.msgId) { it.msgId = p.msgId; if (p.createdAt) it.createdAt = p.createdAt; } break; }
+      if (it.kind === "user" && !it.msgId) {
+        it.msgId = p.msgId;
+        if (p.createdAt) it.createdAt = p.createdAt;
+        attached = true;
+        break;
+      }
     }
+    if (!attached && p.text !== undefined)
+      items.value.push({ kind: "user", key: nextKey(), text: p.text, msgId: p.msgId, createdAt: p.createdAt });
+    scroll();
   }),
   client.on("llm.turn.start", p => startBubble(p.msgIndex)),
   client.on("delta", p => appendDelta(p.msgIndex, p.text)),
