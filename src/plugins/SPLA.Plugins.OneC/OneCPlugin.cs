@@ -13,8 +13,8 @@ public class OneCPlugin : ISplaPlugin
 
     public IEnumerable<IMcpTool> Initialize(ResolvedSettings settings)
     {
-        // The index lives in the project's runtime area (root bucket keeps the historical
-        // .spla/onec.sqlite location, which the Avalonia-side panel also expects).
+        // The index lives in the project's runtime area. The root bucket keeps the historical
+        // .spla/onec.sqlite location.
         var runtimeDir = settings.Project
             .GetBucket(SPLA.Domain.Project.IProjectBackend.RootBucket)
             .MapToHostDirectory()

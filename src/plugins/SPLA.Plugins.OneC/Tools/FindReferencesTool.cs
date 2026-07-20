@@ -8,7 +8,7 @@ using SPLA.Plugins.OneC.Storage;
 
 namespace SPLA.Plugins.OneC.Tools;
 
-/// <summary>onec.find_references — find all objects that reference the given object.</summary>
+/// <summary>onec_find_references — find all objects that reference the given object.</summary>
 public class FindReferencesTool : IMcpTool
 {
     private readonly OneCIndexDatabase _db;

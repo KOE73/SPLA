@@ -25,11 +25,6 @@
     <PackageReference Include="SQLitePCLRaw.bundle_e_sqlite3" Version="3.0.3" />
   </ItemGroup>
 
-  <ItemGroup>
-    <!-- Embed the Cytoscape.js HTML viewer as an embedded resource -->
-    <EmbeddedResource Include="Assets\onec_graph.html" />
-  </ItemGroup>
-
   <Target Name="CopyPlugin" AfterTargets="Build">
     <ItemGroup>
       <PluginFiles Include="$(TargetDir)**\*.*" />

@@ -8,7 +8,7 @@ using SPLA.Plugins.OneC.Storage;
 
 namespace SPLA.Plugins.OneC.Tools;
 
-/// <summary>onec.find_object — find objects by name or partial name.</summary>
+/// <summary>onec_find_object — find objects by name or partial name.</summary>
 public class FindObjectTool : IMcpTool
 {
     private readonly OneCIndexDatabase _db;

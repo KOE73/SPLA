@@ -102,7 +102,6 @@
     <Project Path="src/plugins/SPLA.Plugins.Sql/SPLA.Plugins.Sql.csproj" />
     <Project Path="src/plugins/SPLA.Plugins.Sql.Avalonia/SPLA.Plugins.Sql.Avalonia.csproj" />
     <Project Path="src/plugins/SPLA.Plugins.OneC/SPLA.Plugins.OneC.csproj" />
-    <Project Path="src/plugins/SPLA.Plugins.OneC.Avalonia/SPLA.Plugins.OneC.Avalonia.csproj" />
     <Project Path="src/plugins/SPLA.Skills.Network/SPLA.Skills.Network.csproj" />
   </Folder>
   <Folder Name="/demo/">

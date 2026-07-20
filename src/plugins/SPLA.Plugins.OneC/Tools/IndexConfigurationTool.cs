@@ -8,14 +8,13 @@ using SPLA.Plugins.OneC.Storage;
 namespace SPLA.Plugins.OneC.Tools;
 
 /// <summary>
-/// onec.index_configuration — trigger indexing of a 1C configuration dump directory.
-/// This is the entry-point tool that the agent (or user) calls first.
+/// onec_build_index — index a 1C configuration dump directory.
 /// </summary>
 public class IndexConfigurationTool : IMcpTool
 {
     private readonly OneCIndexDatabase _db;
     public string Name => "onec_build_index";
-    public string Description => "Parses 1C source files and updates the local SQLite index. Run this before doing any OneC object search or explanation.";
+    public string Description => "Parses 1C source files and updates the local SQLite index used by the OneC analysis tools.";
 
     public IndexConfigurationTool(OneCIndexDatabase db) => _db = db;
 
@@ -24,11 +23,9 @@ public class IndexConfigurationTool : IMcpTool
         Function = new ToolFunctionDefinition
         {
             Name        = Name,
-            Description = "Index a 1C configuration dump directory. " +
-                          "Builds (or incrementally updates) the local SQLite index of objects and relations. " +
-                          "Must be called before using any other onec.* tools on a new configuration.",
+            Description = "Builds or incrementally updates the local SQLite index of objects and relations from a 1C configuration dump directory.",
             Scope       = global::SPLA.Domain.Models.ToolScope.Project,
-            Effect      = global::SPLA.Domain.Models.ToolEffect.Write,    // writes to .spla/index/onec.sqlite
+            Effect      = global::SPLA.Domain.Models.ToolEffect.Write,    // writes to .spla/onec.sqlite
             Risk        = global::SPLA.Domain.Models.ToolRisk.Medium,
             Parameters  = new
             {

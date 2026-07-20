@@ -1,16 +1,10 @@
 using Avalonia.Controls;
-using SPLA.MCP.Core.Interfaces;
 
 namespace SPLA.Plugins.Host.Avalonia;
 
 public interface IAvaloniaPlugin
 {
     IEnumerable<AvaloniaPluginPanelDescriptor> GetPanels(AvaloniaPluginContext context);
-}
-
-public interface IAvaloniaPluginToolProvider
-{
-    IEnumerable<IMcpTool> GetTools(AvaloniaPluginContext context);
 }
 
 public sealed class AvaloniaPluginContext

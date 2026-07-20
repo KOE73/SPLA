@@ -9,7 +9,7 @@ using SPLA.Plugins.OneC.Storage;
 
 namespace SPLA.Plugins.OneC.Tools;
 
-/// <summary>onec.find_writers — who writes to this register?</summary>
+/// <summary>onec_find_writers — who writes to this register?</summary>
 public class FindWritersTool : IMcpTool
 {
     private readonly OneCIndexDatabase _db;

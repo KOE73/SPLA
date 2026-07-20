@@ -11,7 +11,7 @@ using SPLA.Plugins.OneC.Storage;
 namespace SPLA.Plugins.OneC.Tools;
 
 /// <summary>
-/// onec.get_dependencies — outgoing dependency graph to a given depth.
+/// onec_get_dependencies — outgoing dependency graph to a given depth.
 /// Returns a compact node+edge list so the agent can reason about
 /// what the object depends on.
 /// </summary>
