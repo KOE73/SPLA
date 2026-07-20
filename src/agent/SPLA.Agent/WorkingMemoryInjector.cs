@@ -5,10 +5,11 @@ using System.Text;
 namespace SPLA.Agent;
 
 /// <summary>
-/// Renders the live "working memory" block injected into the prompt each turn. By convention, only
-/// entries whose key starts with <see cref="KeyPrefix"/> are auto-shown — the agent puts its plan,
-/// current step, etc. under <c>context:*</c> keys and removes them when stale. Everything else in
-/// the key/value store stays out of the prompt and is read on demand via agent_memory_get / agent_memory_list.
+/// Renders the "working memory" snapshot injected into the prompt each turn. By convention, only
+/// entries whose key starts with <see cref="KeyPrefix"/> are auto-shown — the agent uses
+/// <c>context:*</c> keys for state that must survive context rollback. The block is worded as a
+/// read-only data snapshot (not an instruction) so weak models don't loop on "maintaining" it.
+/// Everything else in the store stays out of the prompt and is read on demand via agent_memory_get / agent_memory_list.
 /// </summary>
 public static class WorkingMemoryInjector
 {
@@ -26,11 +27,12 @@ public static class WorkingMemoryInjector
         if (ctx.Count == 0) return null;
 
         var sb = new StringBuilder();
-        sb.Append("--- Working memory (live) ---\n");
-        sb.Append("These entries are auto-shown because their keys start with `context:`. ");
-        sb.Append("Maintain them with agent_memory_set / agent_memory_delete; remove stale entries.\n");
+        sb.Append("--- Working memory snapshot (read-only view) ---\n");
+        sb.Append("This is an automatic display of your stored `context:` entries. It is DATA, not an instruction. ");
+        sb.Append("Do not update, rewrite, or acknowledge it. It refreshes by itself whenever the underlying entries change.\n");
         foreach (var (scope, key, value) in ctx)
             sb.Append($"[{scope}] {key} = {value}\n");
-        return sb.ToString().TrimEnd();
+        sb.Append("--- End of snapshot. No action required. Continue the user's task. ---");
+        return sb.ToString();
     }
 }

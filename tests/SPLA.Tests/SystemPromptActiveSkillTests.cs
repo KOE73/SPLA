@@ -164,7 +164,7 @@ public class SystemPromptActiveSkillTests
             Assert.Contains("call skill_activate with the skill id after agent_info", prompt);
             Assert.Contains("agent_info alone only previews/loads instructions and does not make the skill active", prompt);
             Assert.Contains("do not end a turn with only reasoning about the next step", prompt);
-            Assert.Contains("never infer project scope", prompt);
+            Assert.Contains("use project scope only when the user explicitly asks", prompt);
             Assert.Contains("scope: session = this chat (default)", prompt);
         }
         finally
