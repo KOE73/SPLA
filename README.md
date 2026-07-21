@@ -50,7 +50,12 @@ The exact set of available tools depends on project settings, enabled capabiliti
 
 ### Plugins
 
-Plugins are separate from the built-in toolset and can be enabled per project. The following implemented plugins add tools to the agent:
+Plugins are distributed separately from the built-in toolset and can be enabled for individual projects.
+Plugins are located next to the published application in the `plugins/` directory.
+Each plugin has its own `meta.yaml`; a plugin can add tools, prompt instructions, UI commands, settings, and its own interactive panels.
+Tool naming rules and plugin metadata are described in [plugins.md](agents/plugins.md).
+
+The following implemented plugins add tools to the agent:
 
 #### Browser
 
@@ -158,10 +163,6 @@ SPLA uses five agent modes:
 | Inspect | Diagnostics and inspection |
 | Edit | Modify project files |
 | Agent | Autonomous multi-step execution |
-
-## Plugins
-
-Plugins are located next to the published application in the `plugins/` directory. Each plugin has its own `meta.yaml` and can add tools, prompt instructions, UI commands, settings, and interactive panels. Tool naming rules and plugin metadata are described in [plugins.md](agents/plugins.md).
 
 ## Responsible Use
 
