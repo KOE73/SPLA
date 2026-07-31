@@ -6,8 +6,8 @@
   <div class="settings-surface">
     <div class="settings-shell">
       <nav class="settings-nav">
-        <div class="nav-section">Settings</div>
         <template v-for="t in TABS" :key="t.id">
+          <div v-if="groupStarts.has(t.id)" class="nav-section">{{ t.group }}</div>
           <div class="nav-item" :class="{ on: tab === t.id }" @click="tab = t.id">
             <span class="nav-ic">{{ t.icon }}</span>{{ t.label }}
           </div>
@@ -24,7 +24,9 @@
       <div class="settings-main">
         <ConnectionsPanel :class="{ on: tab === 'connections' }" ref="connectionsRef" />
         <AgentPanel :class="{ on: tab === 'agent' }" ref="agentRef" />
+        <FeaturesPanel :class="{ on: tab === 'features' }" ref="featuresRef" />
         <PluginsPanel :class="{ on: tab === 'plugins' }" ref="pluginsRef" />
+        <SkillsPanel :class="{ on: tab === 'skills' }" ref="skillsRef" @open-plugin="focusPlugin" />
         <SecretsPanel :class="{ on: tab === 'secrets' }" />
         <AppearancePanel :class="{ on: tab === 'appearance' }" />
         <UsagePanel :class="{ on: tab === 'usage' }" />
@@ -47,19 +49,33 @@ import type { PluginDto } from "../../protocol/types";
 import ConnectionsPanel from "./ConnectionsPanel.vue";
 import AgentPanel from "./AgentPanel.vue";
 import PluginsPanel from "./PluginsPanel.vue";
+import FeaturesPanel from "./FeaturesPanel.vue";
+import SkillsPanel from "./SkillsPanel.vue";
 import PluginSettingsTab from "./PluginSettingsTab.vue";
 import SecretsPanel from "./SecretsPanel.vue";
 import AppearancePanel from "./AppearancePanel.vue";
 import UsagePanel from "./UsagePanel.vue";
 
+/**
+ * Nav entries, grouped. Built-in / Plugins / Skills sit together under Capabilities because they are
+ * the same kind of thing — a list of switchable capabilities with a resolved state — but they get
+ * SEPARATE tabs rather than sections of one page: the skill list is the one that grows without
+ * bound, and nesting it under Plugins would reassert an ownership that no longer exists.
+ */
 const TABS = [
-  { id: "connections", label: "Connections", icon: "⇄" },
-  { id: "agent", label: "Agent", icon: "◎" },
-  { id: "plugins", label: "Plugins", icon: "⬡" },
-  { id: "secrets", label: "Secrets", icon: "🔑" },
-  { id: "appearance", label: "Appearance", icon: "◈" },
-  { id: "usage", label: "Usage", icon: "Σ" }
+  { id: "connections", label: "Connections", icon: "⇄", group: "General" },
+  { id: "agent", label: "Agent", icon: "◎", group: "General" },
+  { id: "appearance", label: "Appearance", icon: "◈", group: "General" },
+  { id: "features", label: "Built-in", icon: "⚙", group: "Capabilities" },
+  { id: "plugins", label: "Plugins", icon: "⬡", group: "Capabilities" },
+  { id: "skills", label: "Skills", icon: "✦", group: "Capabilities" },
+  { id: "secrets", label: "Secrets", icon: "🔑", group: "Data" },
+  { id: "usage", label: "Usage", icon: "Σ", group: "Data" }
 ] as const;
+
+/** First tab of each group, so the nav renders one header per group without a nested data shape. */
+const groupStarts = new Set(
+  TABS.filter((t, i) => i === 0 || TABS[i - 1].group !== t.group).map(t => t.id));
 
 // Tab id is either a fixed TABS id or "plugin:<id>" for a plugin's second-level tab.
 const tab = ref<string>(new URLSearchParams(location.search).get("tab") || "connections");
@@ -82,6 +98,17 @@ watch(pluginTabs, tabs => {
 const connectionsRef = ref<InstanceType<typeof ConnectionsPanel>>();
 const agentRef = ref<InstanceType<typeof AgentPanel>>();
 const pluginsRef = ref<InstanceType<typeof PluginsPanel>>();
+const featuresRef = ref<InstanceType<typeof FeaturesPanel>>();
+const skillsRef = ref<InstanceType<typeof SkillsPanel>>();
+
+/** A skill blocked by a disabled plugin links to the plugin that would unblock it — the connection
+ * is shown where it matters instead of forcing the three lists to share one screen. */
+function focusPlugin(pluginId: string) {
+  tab.value = "plugins";
+  requestAnimationFrame(() =>
+    document.querySelector(`[data-plugin-id="${CSS.escape(pluginId)}"]`)
+      ?.scrollIntoView({ block: "center" }));
+}
 const plRefs = new Map<string, InstanceType<typeof PluginSettingsTab>>();
 function setPlRef(id: string, el: unknown) {
   if (el) plRefs.set(id, el as InstanceType<typeof PluginSettingsTab>);
@@ -94,8 +121,10 @@ const saveable = computed(() =>
   tab.value.startsWith("plugin:") || !["secrets", "appearance", "usage"].includes(tab.value));
 
 async function onSave() {
-  const panels: Record<string, { save: () => Promise<void> } | undefined> =
-    { connections: connectionsRef.value, agent: agentRef.value, plugins: pluginsRef.value };
+  const panels: Record<string, { save: () => Promise<void> } | undefined> = {
+    connections: connectionsRef.value, agent: agentRef.value, plugins: pluginsRef.value,
+    features: featuresRef.value, skills: skillsRef.value
+  };
   const panel = tab.value.startsWith("plugin:")
     ? plRefs.get(tab.value.slice("plugin:".length))
     : panels[tab.value];
@@ -117,6 +146,8 @@ function fetchAll() {
   client.send("connections.get", undefined, projectEnvelope());
   client.send("agent.get", undefined, projectEnvelope());
   client.send("plugins.get", undefined, projectEnvelope());
+  client.send("features.get", undefined, projectEnvelope());
+  client.send("skills.get", undefined, projectEnvelope());
 }
 client.on("welcome", fetchAll);
 fetchAll();

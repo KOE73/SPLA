@@ -5,7 +5,8 @@
       <div v-if="!plugins.length" class="notice">no plugins discovered</div>
       <!-- One collapsed row per plugin; click the row to expand its editors. Configured bits show
            as small summary text on the collapsed row so a glance tells what's customized. -->
-      <div v-for="pl in plugins" :key="pl.id" class="pl-card" :class="{ open: isOpen(pl.id) }">
+      <div v-for="pl in plugins" :key="pl.id" class="pl-card" :class="{ open: isOpen(pl.id) }"
+           :data-plugin-id="pl.id">
         <div class="pl-row" @click="toggle(pl.id)">
           <input type="checkbox" v-model="pl.enabled" @click.stop>
           <b class="pl-name">{{ pl.name || pl.id }}</b>

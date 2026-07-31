@@ -120,6 +120,53 @@ export interface PluginsResultPayload {
   restartToApply?: boolean;
 }
 
+/**
+ * One switchable capability — a built-in `core.*` feature or a skill. Plugins keep the richer
+ * PluginDto above (settings blob, web settings URL), but all three render through the same row
+ * component in the Capabilities settings group, so the common shape is shared.
+ */
+export interface CapabilityDto {
+  id: string;
+  kind: "builtin" | "skill";
+  name: string;
+  description?: string;
+  enabled?: boolean;
+  /** Available / MissingTools / DisabledByUser / DisabledByTrust / Shadowed — read-only. */
+  state?: string;
+  stateReason?: string;
+  /** Provider id for a skill ("project", "machine", "plugin:network"); absent for built-ins. */
+  source?: string;
+  sourceLabel?: string;
+  preloaded?: boolean;
+  missingTools?: string[];
+  missingFeatures?: string[];
+  /** Plugins owning the missing tools — the panel offers to enable them. */
+  missingPlugins?: string[];
+  /** Built-in ids this one depends on; enabling it pulls them in. */
+  requires?: string[];
+}
+
+export interface SkillSourceDto {
+  id: string;
+  label: string;
+  trust: string;
+  /** Filesystem location for folder-backed sources; absent for anything else. */
+  path?: string;
+}
+
+export interface SkillsResultPayload {
+  skills: CapabilityDto[];
+  sources: SkillSourceDto[];
+  canPersist?: boolean;
+}
+
+export interface FeaturesResultPayload {
+  features: CapabilityDto[];
+  canPersist?: boolean;
+  /** Feature tools register once at startup, so a change applies on the next service start. */
+  restartToApply?: boolean;
+}
+
 export interface ConnectionsResultPayload {
   connections: ConnectionDto[];
   canPersist?: boolean;
@@ -338,6 +385,8 @@ export interface ServerEvents {
   "connection.swap_model.result": ConnectionSwapModelResultPayload;
   "agent.result": AgentResultPayload;
   "plugins.result": PluginsResultPayload;
+  "skills.result": SkillsResultPayload;
+  "features.result": FeaturesResultPayload;
   "usage.result": UsageResultPayload;
   "system.register_association.result": { ok?: boolean; message?: string };
   "secret.result": SecretListResultPayload;
