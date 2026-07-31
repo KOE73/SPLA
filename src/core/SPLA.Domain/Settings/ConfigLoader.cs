@@ -359,7 +359,8 @@ public static class ConfigLoader
         if (splaFilePath != null && File.Exists(splaFilePath))
             resolved.ProjectFilePath = Path.GetFullPath(splaFilePath);
 
-        // Global secrets service: project scope under the workspace, machine scope under ~/.spla.
+        // Global secrets service: project scope under the workspace, user/shared under ~/.spla.
+        // The access policy starts permissive — a server swaps in the ACL-backed one after load.
         var workspace = resolved.ProjectFilePath != null
             ? Path.GetDirectoryName(resolved.ProjectFilePath)
             : null;

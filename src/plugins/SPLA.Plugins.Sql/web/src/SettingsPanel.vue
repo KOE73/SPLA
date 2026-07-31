@@ -74,7 +74,13 @@
             <input v-model="c.credName" placeholder="entry name" class="w-140" spellcheck="false">
             <input v-model="c.credUser" placeholder="user" class="w-120" spellcheck="false">
             <input v-model="c.credPassword" type="password" placeholder="password" class="w-140" autocomplete="new-password">
-            <button type="button" :disabled="!c.credName || !c.credPassword" @click="createCredential(c)">Save to store</button>
+            <select v-model="c.credScope" title="Where this credential is stored">
+              <option value="">scope…</option>
+              <option value="user">user — mine only</option>
+              <option value="project">project — travels with the project</option>
+              <option value="shared">shared — administered</option>
+            </select>
+            <button type="button" :disabled="!c.credName || !c.credPassword || !c.credScope" @click="createCredential(c)">Save to store</button>
             <span class="muted">{{ c.credStatus }}</span>
           </div>
 
@@ -114,7 +120,7 @@ interface ConnRow {
   credential: string;
   trustedConnection: boolean;
   description: string;
-  newCred: boolean; credName: string; credUser: string; credPassword: string; credStatus: string;
+  newCred: boolean; credName: string; credUser: string; credPassword: string; credScope: string; credStatus: string;
   testing: boolean;
   testStatus: string;
 }
@@ -148,7 +154,7 @@ function rowFromCfg(name: string, cfg: ConnCfg): ConnRow {
     credential: cfg.credential || "",
     trustedConnection: cfg.trusted_connection ?? true,
     description: cfg.description || "",
-    newCred: false, credName: "", credUser: "", credPassword: "", credStatus: "",
+    newCred: false, credName: "", credUser: "", credPassword: "", credScope: "", credStatus: "",
     testing: false,
     testStatus: ""
   };
@@ -178,15 +184,18 @@ const connections = reactive<ConnRow[]>(
   Object.entries(blob.connections || {}).map(([name, cfg]) => rowFromCfg(name, cfg))
 );
 
-/** Secret-store entry names (machine + project) for the credential dropdown. Keys only — the
- * secret.list protocol never returns values. */
-const credentials = ref<string[]>([]);
-interface SecretEntryDto { key: string; fields: string[] }
-interface SecretListResult { machine: SecretEntryDto[]; project: SecretEntryDto[] }
+/** Secret-store entries for the credential dropdown. Keys and scopes only — the secret.list
+ * protocol never returns values. The scope is shown next to every key on purpose: two entries may
+ * legitimately share a name in different scopes, and the reference below is what disambiguates. */
+const credentials = ref<{ reference: string; label: string }[]>([]);
+interface SecretEntryDto { key: string; fields: string[]; scope: string; reference: string }
+interface SecretListResult { user: SecretEntryDto[]; project: SecretEntryDto[]; shared: SecretEntryDto[] }
 async function loadCredentials() {
   try {
     const r = await props.api.invoke<SecretListResult>("secret.list");
-    credentials.value = [...new Set([...(r.machine || []), ...(r.project || [])].map(e => e.key))].sort();
+    credentials.value = [...(r.user || []), ...(r.project || []), ...(r.shared || [])]
+      .map(e => ({ reference: e.reference, label: `${e.key} · ${e.scope}` }))
+      .sort((a, b) => a.label.localeCompare(b.label));
   } catch { /* store unreachable — dropdown stays empty, manual entry still works */ }
 }
 onMounted(loadCredentials);
@@ -195,15 +204,16 @@ function addConnection() {
   connections.push(rowFromCfg(`db${connections.length + 1}`, { provider: "mssql" }));
 }
 
-/** Writes user+password as a machine-scope secret entry and binds the connection to it. */
+/** Writes user+password into the scope the user picked and binds the connection to the resulting
+ * reference. No default scope: the form stays disabled until one is chosen. */
 async function createCredential(c: ConnRow) {
   c.credStatus = "Saving…";
   try {
     const fields: Record<string, string> = { password: c.credPassword };
     if (c.credUser) fields.user = c.credUser;
-    await props.api.invoke("secret.set", { key: c.credName.trim(), fields, scope: "machine" });
-    c.credential = c.credName.trim();
-    c.newCred = false; c.credName = ""; c.credUser = ""; c.credPassword = ""; c.credStatus = "";
+    await props.api.invoke("secret.set", { key: c.credName.trim(), fields, scope: c.credScope });
+    c.credential = `secret:${c.credScope}:${c.credName.trim()}`;
+    c.newCred = false; c.credName = ""; c.credUser = ""; c.credPassword = ""; c.credScope = ""; c.credStatus = "";
     await loadCredentials();
   } catch (e) {
     c.credStatus = "Failed: " + (e instanceof Error ? e.message : String(e));

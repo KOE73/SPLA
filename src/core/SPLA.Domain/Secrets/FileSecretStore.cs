@@ -1,12 +1,24 @@
 namespace SPLA.Domain.Secrets;
 
 /// <summary>
-/// Naive plaintext backend: YAML files. Project secrets in <c>&lt;workspace&gt;/.spla/secrets.yaml</c>,
-/// machine secrets in <c>&lt;machineDir&gt;/secrets.yaml</c>. Both folders are gitignored, so this keeps
+/// Naive plaintext backend: YAML files, one per scope. The folders are gitignored, so this keeps
 /// secrets out of source control — but NOT encrypted at rest. The DPAPI backend
 /// (<c>SPLA.Secrets.Dpapi</c>) swaps in behind <see cref="ISecretStore"/> without touching callers;
 /// this store stays the default and the intended choice for local development and tests, where
 /// transparency (inspect / seed a fixture) is a feature, not a risk.
+///
+/// <para>Scope → file:</para>
+/// <list type="bullet">
+/// <item><see cref="SecretScope.User"/> → <c>&lt;userDir&gt;/secrets.yaml</c></item>
+/// <item><see cref="SecretScope.Project"/> → <c>&lt;project&gt;/.spla/secrets.yaml</c></item>
+/// <item><see cref="SecretScope.Shared"/> → <c>&lt;sharedDir&gt;/secrets.shared.yaml</c></item>
+/// </list>
+/// <para>
+/// Locally User and Shared sit under the same home and enjoy the same OS protection — the difference
+/// only becomes real on a server, where User is the caller's private area and Shared is administered
+/// centrally. Keeping them separate even locally means a project authored on a laptop declares the
+/// same scopes it will need on the server, instead of being rewritten on arrival.
+/// </para>
 ///
 /// File format is shared with the DPAPI store via <see cref="SecretYamlFile"/> — entry key →
 /// field map, read fresh each access so cross-process writes need no restart.
@@ -14,30 +26,39 @@ namespace SPLA.Domain.Secrets;
 public sealed class FileSecretStore : ISecretStore
 {
     private readonly string? _projectFile;
-    private readonly string _machineFile;
+    private readonly string _userFile;
+    private readonly string _sharedFile;
 
     /// <param name="workspacePath">Project root, or null when running without a project (no project scope).</param>
-    /// <param name="machineDir">Directory for machine-global secrets (typically <c>~/.spla</c>).</param>
-    public FileSecretStore(string? workspacePath, string machineDir)
+    /// <param name="userDir">Directory for this person's secrets (typically <c>~/.spla</c>).</param>
+    /// <param name="sharedDir">Directory for administered/shared secrets. Null = same place as
+    /// <paramref name="userDir"/>, which is what a single-user local install wants.</param>
+    public FileSecretStore(string? workspacePath, string userDir, string? sharedDir = null)
     {
         _projectFile = string.IsNullOrWhiteSpace(workspacePath)
             ? null
             : Path.Combine(workspacePath, ".spla", "secrets.yaml");
-        _machineFile = Path.Combine(machineDir, "secrets.yaml");
+        _userFile = Path.Combine(userDir, "secrets.yaml");
+        _sharedFile = Path.Combine(sharedDir ?? userDir, "secrets.shared.yaml");
+
+        Acl = new FileSecretAclStore(workspacePath, userDir, sharedDir);
     }
 
-    private string? FileFor(SecretScope scope) =>
-        scope == SecretScope.Project ? _projectFile : _machineFile;
+    public ISecretAclStore Acl { get; }
+
+    private string? FileFor(SecretScope scope) => scope switch
+    {
+        SecretScope.Project => _projectFile,
+        SecretScope.User => _userFile,
+        SecretScope.Shared => _sharedFile,
+        _ => throw new ArgumentOutOfRangeException(nameof(scope))
+    };
 
     private static SecretEntry? Read(string? file, string key)
     {
         var fields = SecretYamlFile.Load(file).GetValueOrDefault(key);
         return fields is { Count: > 0 } ? new SecretEntry(key, fields) : null;
     }
-
-    public ValueTask<SecretEntry?> GetEntryAsync(string key, CancellationToken ct = default)
-        // Project overrides Machine.
-        => ValueTask.FromResult(Read(_projectFile, key) ?? Read(_machineFile, key));
 
     public ValueTask<SecretEntry?> GetEntryAsync(string key, SecretScope scope, CancellationToken ct = default)
         => ValueTask.FromResult(Read(FileFor(scope), key));
@@ -74,6 +95,6 @@ public sealed class FileSecretStore : ISecretStore
             .ToList());
     }
 
-    public ValueTask<bool> ContainsAsync(string key, CancellationToken ct = default)
-        => ValueTask.FromResult(SecretYamlFile.Load(_projectFile).ContainsKey(key) || SecretYamlFile.Load(_machineFile).ContainsKey(key));
+    public ValueTask<bool> ContainsAsync(string key, SecretScope scope, CancellationToken ct = default)
+        => ValueTask.FromResult(SecretYamlFile.Load(FileFor(scope)).ContainsKey(key));
 }

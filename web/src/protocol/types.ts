@@ -188,15 +188,26 @@ export interface DebugSnapshotPayload {
 }
 
 // ── Secret store ─────────────────────────────────────────────────────────────
-/** One entry: key + field NAMES (user, password, token, private_key, …) — never values. */
+/** Where a secret lives. Always explicit — the server never picks one for you. */
+export type SecretScopeId = "user" | "project" | "shared";
+
+/** One entry: key + field NAMES (user, password, token, private_key, …) — never values.
+ *  `scope` and `reference` travel with every entry so a picker can show WHERE a credential lives
+ *  instead of leaving the user to guess between two identically named ones. */
 export interface SecretEntryDto {
   key: string;
   fields: string[];
+  scope: SecretScopeId;
+  /** Ready-to-paste `secret:<scope>:<key>`. */
+  reference: string;
+  /** False when this user may use the entry but not change it (shared scope, ACL). */
+  canManage: boolean;
 }
 
 export interface SecretListResultPayload {
-  machine: SecretEntryDto[];
+  user: SecretEntryDto[];
   project: SecretEntryDto[];
+  shared: SecretEntryDto[];
   projectOpen: boolean;
   error?: string;
 }

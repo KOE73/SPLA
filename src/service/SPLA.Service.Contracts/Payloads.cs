@@ -827,14 +827,17 @@ public sealed class PluginPanelEventPayload
 
 // ── Secret store ─────────────────────────────────────────────────────────────
 /// <summary><see cref="MessageTypes.SecretSet"/> — store fields of an entry (merged over existing
-/// fields; an entry is a named record like user+password or a lone token). <see cref="Scope"/> is
-/// "project" or "machine". Field values travel browser→server only; never echoed back or logged.</summary>
+/// fields; an entry is a named record like user+password or a lone token). Field values travel
+/// browser→server only; never echoed back or logged.</summary>
 public sealed class SecretSetPayload
 {
     public string Key { get; set; } = string.Empty;
     /// <summary>Field name → value. E.g. { "user": "koe", "password": "…" }.</summary>
     public Dictionary<string, string> Fields { get; set; } = [];
-    public string Scope { get; set; } = "machine";
+    /// <summary>"user", "project" or "shared". <b>Required — there is no default.</b> The client must
+    /// state where the secret goes; the server never picks for it, because a store that guesses
+    /// eventually writes somewhere the user did not mean and reads back somebody else's value.</summary>
+    public string Scope { get; set; } = string.Empty;
 }
 
 /// <summary><see cref="MessageTypes.SecretDelete"/> — remove a whole entry, or one field of it when
@@ -843,23 +846,33 @@ public sealed class SecretDeletePayload
 {
     public string Key { get; set; } = string.Empty;
     public string? Field { get; set; }
-    public string Scope { get; set; } = "machine";
+    /// <summary>"user", "project" or "shared". Required — see <see cref="SecretSetPayload.Scope"/>.</summary>
+    public string Scope { get; set; } = string.Empty;
 }
 
-/// <summary>One entry in a listing: key + field NAMES, never values.</summary>
+/// <summary>One entry in a listing: key + field NAMES, never values. <see cref="Scope"/> travels
+/// with every entry so a picker can show WHERE each credential lives instead of leaving the user to
+/// guess between two identically named ones.</summary>
 public sealed class SecretEntryDto
 {
     public string Key { get; set; } = string.Empty;
     public List<string> Fields { get; set; } = [];
+    /// <summary>"user", "project" or "shared".</summary>
+    public string Scope { get; set; } = string.Empty;
+    /// <summary>Full reference to paste into config: <c>secret:&lt;scope&gt;:&lt;key&gt;</c>.</summary>
+    public string Reference { get; set; } = string.Empty;
+    /// <summary>True when this caller may overwrite or delete the entry (shared scope + ACL).</summary>
+    public bool CanManage { get; set; } = true;
 }
 
 /// <summary><see cref="MessageTypes.SecretResult"/> — entries per scope (keys + field names, NEVER
 /// values). <see cref="ProjectOpen"/> is false when no project is open (project-scope edits are then
-/// disabled in the UI).</summary>
+/// disabled in the UI). Shared entries the caller may not even see are filtered out server-side.</summary>
 public sealed class SecretListResultPayload
 {
-    public List<SecretEntryDto> Machine { get; set; } = [];
+    public List<SecretEntryDto> User { get; set; } = [];
     public List<SecretEntryDto> Project { get; set; } = [];
+    public List<SecretEntryDto> Shared { get; set; } = [];
     public bool ProjectOpen { get; set; }
     public string? Error { get; set; }
 }

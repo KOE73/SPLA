@@ -20,7 +20,15 @@ internal static class SecretCommands
     {
         var sub = args.Length > 1 ? args[1].ToLowerInvariant() : "";
         var projectOpen = settings.ProjectFilePath != null;
-        var scope = ParseScope(args, projectOpen);
+
+        // No default scope, deliberately. "Where does this credential live" is the user's call, and a
+        // tool that picks for them is how the same key ends up in two stores with one shadowing the
+        // other. One flag is cheap; finding that bug is not.
+        if (ParseScope(args) is not { } scope)
+        {
+            Console.Error.WriteLine($"Scope is required: {ScopeFlags}");
+            return 2;
+        }
 
         switch (sub)
         {
@@ -31,10 +39,10 @@ internal static class SecretCommands
             case "set":
             {
                 var key = PositionalArg(args);
-                if (key == null) { Console.Error.WriteLine("usage: spla secret set <key> [--field <name>] [--project|--machine]"); return 2; }
+                if (key == null) { Console.Error.WriteLine($"usage: spla secret set <key> [--field <name>] {ScopeFlags}"); return 2; }
                 if (scope == SecretScope.Project && !projectOpen)
                 {
-                    Console.Error.WriteLine("No project is open — use --machine or run inside a project.");
+                    Console.Error.WriteLine("No project is open — use --user/--shared or run inside a project.");
                     return 2;
                 }
                 var field = FlagValue(args, "--field") ?? SecretFields.Password;
@@ -54,7 +62,7 @@ internal static class SecretCommands
             case "delete":
             {
                 var key = PositionalArg(args);
-                if (key == null) { Console.Error.WriteLine("usage: spla secret delete <key> [--field <name>] [--project|--machine]"); return 2; }
+                if (key == null) { Console.Error.WriteLine($"usage: spla secret delete <key> [--field <name>] {ScopeFlags}"); return 2; }
                 if (FlagValue(args, "--field") is { } fieldName)
                 {
                     var entry = await settings.Secrets.GetEntryAsync(key, scope);
@@ -93,12 +101,17 @@ internal static class SecretCommands
         return i >= 0 && i + 1 < args.Length ? args[i + 1] : null;
     }
 
-    /// <summary>Scope from flags. Default: project when one is open, else machine.</summary>
-    private static SecretScope ParseScope(string[] args, bool projectOpen)
+    /// <summary>Flag list for usage lines — built from the scope names so it cannot drift.</summary>
+    private static string ScopeFlags => string.Join(" | ", SecretRef.AllNames.Select(n => "--" + n));
+
+    /// <summary>Scope from flags, or null when none was given. There is no default: see RunAsync.</summary>
+    private static SecretScope? ParseScope(string[] args)
     {
-        if (args.Any(a => a.Equals("--machine", StringComparison.OrdinalIgnoreCase))) return SecretScope.Machine;
-        if (args.Any(a => a.Equals("--project", StringComparison.OrdinalIgnoreCase))) return SecretScope.Project;
-        return projectOpen ? SecretScope.Project : SecretScope.Machine;
+        foreach (var name in SecretRef.AllNames)
+            if (args.Any(a => a.Equals("--" + name, StringComparison.OrdinalIgnoreCase))
+                && SecretRef.TryParseScope(name, out var scope))
+                return scope;
+        return null;
     }
 
     /// <summary>First non-flag token after the sub-command (the key), or null. Skips flag values

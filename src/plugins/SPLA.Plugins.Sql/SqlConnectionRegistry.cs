@@ -24,8 +24,15 @@ public sealed class SqlConnectionRegistry
     /// <summary>Secret-store key for a connection's password (shared with the GUI editor).</summary>
     public static string SecretKey(string name) => $"sql:{name}";
 
-    /// <summary>The <c>secret:</c> reference stored in <c>*.spla</c> for a connection's password.</summary>
-    public static string SecretRef(string name) => $"secret:{SecretKey(name)}";
+    /// <summary>Scope a connection password is written to when the user typed a literal. Project,
+    /// because a SQL connection is part of the project — but it is written explicitly, never guessed
+    /// at read time; the reference below carries the scope with it.</summary>
+    public const SecretScope PasswordScope = SecretScope.Project;
+
+    /// <summary>The reference stored in <c>*.spla</c> for a connection's password. Built through
+    /// <see cref="Domain.Secrets.SecretRef"/> so the syntax lives in exactly one place.</summary>
+    public static string SecretReference(string name)
+        => Domain.Secrets.SecretRef.Format(PasswordScope, SecretKey(name));
 
     public SqlConnectionRegistry(
         Dictionary<string, SqlConnectionConfig> connections,
@@ -77,7 +84,7 @@ public sealed class SqlConnectionRegistry
         {
             // Whole credential record — resolved only here, at connection-open. Secret backends are
             // local (file/DPAPI); blocking briefly is consistent with Persist's SetAsync path.
-            var entry = _resolver.GetEntryAsync(cfg.Credential).AsTask().GetAwaiter().GetResult()
+            var entry = _resolver.GetEntryByRefAsync(cfg.Credential).AsTask().GetAwaiter().GetResult()
                 ?? throw new InvalidOperationException(
                     $"credential '{cfg.Credential}' not found in the secret store");
             if (string.IsNullOrWhiteSpace(clone.User))
@@ -123,10 +130,10 @@ public sealed class SqlConnectionRegistry
                     && !string.IsNullOrEmpty(cfg.Password) && !ISecretResolver.IsReference(cfg.Password))
                 {
                     // Literal password → secret store; config keeps only a reference.
-                    _secrets.SetAsync(SecretKey(name), cfg.Password, SecretScope.Project)
+                    _secrets.SetAsync(SecretKey(name), cfg.Password, PasswordScope)
                         .AsTask().GetAwaiter().GetResult();
                     var def = Clone(cfg, dropPassword: false);
-                    def.Password = SecretRef(name);
+                    def.Password = SecretReference(name);
                     stored[name] = def;
                     secretCount++;
                 }

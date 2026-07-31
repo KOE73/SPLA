@@ -24,7 +24,7 @@ internal static class SshConnectionFactory
     {
         SecretEntry? cred = null;
         if (!string.IsNullOrWhiteSpace(cfg.Credential))
-            cred = await resolver.GetEntryAsync(cfg.Credential, ct);
+            cred = await resolver.GetEntryByRefAsync(cfg.Credential, ct);
         return cred?[SecretFields.Password] ?? cred?.DefaultValue
             ?? await resolver.ResolveAsync(cfg.Password, ct);
     }
@@ -38,7 +38,7 @@ internal static class SshConnectionFactory
         // Whole credential record, when the host references one.
         SecretEntry? cred = null;
         if (!string.IsNullOrWhiteSpace(cfg.Credential))
-            cred = await resolver.GetEntryAsync(cfg.Credential, ct)
+            cred = await resolver.GetEntryByRefAsync(cfg.Credential, ct)
                 ?? throw new InvalidOperationException($"credential '{cfg.Credential}' not found in the secret store");
 
         var user = cfg.User ?? cred?[SecretFields.User]

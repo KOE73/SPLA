@@ -33,23 +33,37 @@ public sealed class DpapiFileSecretStore : ISecretStore
     private static readonly byte[] Entropy = Encoding.UTF8.GetBytes("SPLA.SecretStore.v1");
 
     private readonly string? _projectFile;
-    private readonly string _machineFile;
+    private readonly string _userFile;
+    private readonly string _sharedFile;
     private readonly Action<string>? _warn;
 
     /// <param name="workspacePath">Project root, or null when running without a project (no project scope).</param>
-    /// <param name="machineDir">Directory for machine-global secrets (typically <c>~/.spla</c>).</param>
+    /// <param name="userDir">Directory for this person's secrets (typically <c>~/.spla</c>).</param>
+    /// <param name="sharedDir">Directory for administered/shared secrets; null = alongside the user's.</param>
     /// <param name="warn">Optional sink for decrypt-failure warnings. Never receives secret values.</param>
-    public DpapiFileSecretStore(string? workspacePath, string machineDir, Action<string>? warn = null)
+    public DpapiFileSecretStore(string? workspacePath, string userDir, string? sharedDir = null, Action<string>? warn = null)
     {
         _projectFile = string.IsNullOrWhiteSpace(workspacePath)
             ? null
             : Path.Combine(workspacePath, ".spla", "secrets.dpapi.yaml");
-        _machineFile = Path.Combine(machineDir, "secrets.dpapi.yaml");
+        _userFile = Path.Combine(userDir, "secrets.dpapi.yaml");
+        _sharedFile = Path.Combine(sharedDir ?? userDir, "secrets.shared.dpapi.yaml");
         _warn = warn;
+
+        // ACLs are metadata, not credential material, and must stay readable so a listing can be
+        // filtered without decrypting anything — hence the plaintext ACL store even here.
+        Acl = new FileSecretAclStore(workspacePath, userDir, sharedDir);
     }
 
-    private string? FileFor(SecretScope scope) =>
-        scope == SecretScope.Project ? _projectFile : _machineFile;
+    public ISecretAclStore Acl { get; }
+
+    private string? FileFor(SecretScope scope) => scope switch
+    {
+        SecretScope.Project => _projectFile,
+        SecretScope.User => _userFile,
+        SecretScope.Shared => _sharedFile,
+        _ => throw new ArgumentOutOfRangeException(nameof(scope))
+    };
 
     private static string Protect(string value)
     {
@@ -89,9 +103,6 @@ public sealed class DpapiFileSecretStore : ISecretStore
                 fields[name] = plain;
         return fields.Count > 0 ? new SecretEntry(key, fields) : null;
     }
-
-    public ValueTask<SecretEntry?> GetEntryAsync(string key, CancellationToken ct = default)
-        => ValueTask.FromResult(Read(_projectFile, key) ?? Read(_machineFile, key));
 
     public ValueTask<SecretEntry?> GetEntryAsync(string key, SecretScope scope, CancellationToken ct = default)
         => ValueTask.FromResult(Read(FileFor(scope), key));
@@ -134,6 +145,6 @@ public sealed class DpapiFileSecretStore : ISecretStore
             .ToList());
     }
 
-    public ValueTask<bool> ContainsAsync(string key, CancellationToken ct = default)
-        => ValueTask.FromResult(SecretYamlFile.Load(_projectFile).ContainsKey(key) || SecretYamlFile.Load(_machineFile).ContainsKey(key));
+    public ValueTask<bool> ContainsAsync(string key, SecretScope scope, CancellationToken ct = default)
+        => ValueTask.FromResult(SecretYamlFile.Load(FileFor(scope)).ContainsKey(key));
 }

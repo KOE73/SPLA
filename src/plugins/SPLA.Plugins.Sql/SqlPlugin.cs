@@ -46,7 +46,7 @@ public class SqlPlugin : ISplaPlugin, ISplaPluginAction, SPLA.Domain.Editor.ISch
 
         if (!string.IsNullOrWhiteSpace(cfg.Credential))
         {
-            var entry = await _resolver.GetEntryAsync(cfg.Credential, ct)
+            var entry = await _resolver.GetEntryByRefAsync(cfg.Credential, ct)
                 ?? throw new InvalidOperationException(
                     $"credential '{cfg.Credential}' not found in the secret store");
             cfg.User = string.IsNullOrWhiteSpace(cfg.User) ? entry[SecretFields.User] : cfg.User;

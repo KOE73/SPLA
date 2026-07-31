@@ -19,7 +19,7 @@ public static class DpapiSecrets
         {
             if (!OperatingSystem.IsWindows()) return null;
             if (!string.Equals(backend, "dpapi", StringComparison.OrdinalIgnoreCase)) return null;
-            return new DpapiFileSecretStore(workspace, machineDir, warn);
+            return new DpapiFileSecretStore(workspace, machineDir, sharedDir: null, warn);
         };
     }
 }

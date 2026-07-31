@@ -45,12 +45,28 @@ public class ResolvedSettings
     /// Plugins that need to persist their own settings (e.g. sql_manage_connection) use this.</summary>
     public string? ProjectFilePath { get; set; }
 
-    /// <summary>Global secrets store (project + machine scoped). Set during load. Never null after
-    /// <see cref="ConfigLoader.LoadAndResolve"/>; plugins reach it via this property.</summary>
+    /// <summary>Global secrets store (user / project / shared scopes). Set during load. Never null
+    /// after <see cref="ConfigLoader.LoadAndResolve"/>; plugins reach it via this property.</summary>
     public ISecretStore Secrets { get; set; } = null!;
 
     /// <summary>Resolves <c>secret:</c> / <c>env:</c> references in config values to plaintext.</summary>
     public ISecretResolver SecretResolver { get; set; } = null!;
+
+    /// <summary>Who may use or manage which entry. Permissive locally (one person, nothing to
+    /// arbitrate); a server replaces it with the ACL-backed policy before serving anyone. Assigning
+    /// it also rebuilds <see cref="SecretResolver"/>, because the resolver is where the check
+    /// actually bites — see <see cref="Secrets.SecretResolver"/>.</summary>
+    public ISecretAccessPolicy SecretAccessPolicy
+    {
+        get => _secretAccessPolicy;
+        set
+        {
+            _secretAccessPolicy = value;
+            SecretResolver = new Secrets.SecretResolver(Secrets, value);
+        }
+    }
+
+    private ISecretAccessPolicy _secretAccessPolicy = PermissiveSecretAccessPolicy.Instance;
 
     /// <summary>Cross-component shared services scoped to this project's runtime. Lets independently
     /// loaded parties (a plugin's tools, the service's protocol handlers) meet on one object without
