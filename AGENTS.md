@@ -45,11 +45,20 @@ For comprehensive details on agent permission models, tool matrices, autonomy co
 - **[Wire Protocol & Event Registry](agents/protocol.md)**: STOP — read this before adding, renaming, or removing any WebSocket message type, payload, or client bus event. Message names are soft strings on the JS side; this is the registry of every `MessageTypes` constant, payload, fan-out semantics, domain events (`ServiceEvents`), and client-local bus events that keeps both sides in sync.
 
 
-## Git: never commit unless asked
+## Git: one branch, and never commit unless asked
 
-**Do not commit, amend, push, tag, create or switch branches, or reset anything unless the user asks
-for it in the message you are answering.** Finishing a piece of work is not permission to record it.
-Neither is the work being correct, tested, and obviously ready.
+**This repository has exactly one branch: `main`. Work on it directly.** Do not create feature
+branches, do not offer to, and do not treat committing to the default branch as something that needs
+avoiding here — the owner has decided against branch workflows deliberately and does not want to
+maintain them. If a general rule you carry says "branch before committing to the default branch",
+this line overrides it for this repository.
+
+If a piece of work genuinely cannot live on `main` — an experiment that must not touch working code —
+say so and ask. Do not decide it alone.
+
+**Do not commit, amend, push, tag, or reset anything unless the user asks for it in the message you
+are answering.** Finishing a piece of work is not permission to record it. Neither is the work being
+correct, tested, and obviously ready.
 
 - A commit requested earlier authorizes **that** commit only. It does not stand for the next one, or
   for "everything from now on". If in doubt, you were not asked.
@@ -59,6 +68,10 @@ Neither is the work being correct, tested, and obviously ready.
   `git status` for files you never touched before every commit.
 - Same rule for anything else that leaves the machine or is hard to undo: pushing, force-pushing,
   deleting branches, rewriting history.
+- **Before deleting any branch, check what would be lost.** `git branch --no-merged main` and
+  `git log main..<branch>`. A branch whose commits are all in `main` is free to delete; one with
+  unique commits is not — preserve it as a tag (`archive/<name>`), push the tag, and say what was in
+  it. Never let a delete be the reason work disappears.
 
 **Do remind, though.** Silence while changes pile up is its own failure — a large mixed working tree
 is hard to review and easy to lose. Say something (one line, not a nag) when:
