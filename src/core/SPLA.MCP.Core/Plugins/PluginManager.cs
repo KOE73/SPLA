@@ -5,6 +5,7 @@ using Microsoft.Extensions.Logging;
 using SPLA.Domain.Editor;
 using SPLA.Domain.Settings;
 using SPLA.MCP.Core.Interfaces;
+using SPLA.MCP.Core.Skills;
 
 namespace SPLA.MCP.Core.Plugins;
 
@@ -31,7 +32,6 @@ public class PluginManager
 {
     private readonly ResolvedSettings _settings;
     private readonly ILogger<PluginManager>? _logger;
-    private readonly SkillManager? _skillManager;
     private readonly PluginAssemblyLoader _loader;
 
     // Runtime registry state — the result of the most recent LoadPlugins pass.
@@ -51,11 +51,10 @@ public class PluginManager
     private readonly Dictionary<string, ISplaPluginPanelProvider> _panelProviders = new(StringComparer.OrdinalIgnoreCase);
     private readonly List<IJsonSchemaProvider> _schemaProviders = new();
 
-    public PluginManager(ResolvedSettings settings, ILogger<PluginManager>? logger = null, SkillManager? skillManager = null)
+    public PluginManager(ResolvedSettings settings, ILogger<PluginManager>? logger = null)
     {
         _settings = settings;
         _logger = logger;
-        _skillManager = skillManager;
         _loader = new PluginAssemblyLoader(settings, logger);
     }
 
@@ -77,43 +76,61 @@ public class PluginManager
         _actionHandlers.Clear();
         _panelProviders.Clear();
         _schemaProviders.Clear();
-        _skillManager?.ClearPluginSkills();
 
         _plugins.AddRange(PluginDiscovery.Discover(_settings, pluginsDirectory, _loadErrors));
         _logger?.LogInformation("Plugin discovery finished. Directory={PluginDirectory} Count={PluginCount} Errors={ErrorCount}", pluginsDirectory, _plugins.Count, _loadErrors.Count);
 
-        // Register skills from type:skills plugins (regardless of enabled state so sidebar shows them)
-        foreach (var descriptor in _plugins.Where(IsSkillsType))
-            RegisterSkillPlugin(descriptor);
+        // A type:skills package contributes a prompt but no assembly; its markdown reaches the agent
+        // through the skill source built in BuildSkillSources, not from here.
+        foreach (var descriptor in _plugins.Where(p => IsSkillsType(p) && p.IsEffectivelyEnabled))
+            _activePlugins.Add(new PluginInstance(descriptor.Meta, descriptor.EffectivePrompt));
 
         foreach (var descriptor in _plugins.Where(p => p.IsEffectivelyEnabled && !IsSkillsType(p)))
             LoadEnabledPlugin(descriptor);
     }
+
+    /// <summary>
+    /// One skill source per discovered plugin that ships skill files, in discovery order.
+    ///
+    /// <para>The source reads the plugin's LIVE enabled flag on every enumeration rather than
+    /// capturing it, so toggling a plugin in settings adds or removes its skills without a reload
+    /// pass — the same "disable only gates exposure" rule its tools already follow.</para>
+    /// </summary>
+    public IReadOnlyList<ISkillSource> BuildSkillSources(ILogger? logger = null)
+    {
+        var sources = new List<ISkillSource>();
+
+        foreach (var descriptor in _plugins)
+        {
+            if (!PluginSkillSource.HasSkills(descriptor.DirectoryPath)) continue;
+
+            var id = descriptor.Meta.Id;
+            sources.Add(new PluginSkillSource(
+                id,
+                id,
+                descriptor.DirectoryPath,
+                () => descriptor.IsEffectivelyEnabled && IsPluginEnabled(id),
+                logger));
+        }
+
+        return sources;
+    }
+
+    /// <summary>
+    /// Tool name → owning plugin id, for explaining which plugin a skill is waiting on.
+    /// <para>Covers LOADED plugins only: a plugin disabled at startup never had its assembly read, so
+    /// its tool names are unknown until it is enabled. A skill blocked by such a tool still reports
+    /// the tool by name — it just cannot offer the one-click "enable that plugin" shortcut. Fixing
+    /// that properly means declaring tool names in meta.yaml, which is a separate change.</para>
+    /// </summary>
+    public IReadOnlyDictionary<string, string> GetToolOwners() =>
+        _toolOwners.ToDictionary(kvp => kvp.Key.Name, kvp => kvp.Value, StringComparer.OrdinalIgnoreCase);
 
     /// <summary>Discovery-only enumeration (no assembly loading) — used by the settings UI to list
     /// plugins and their effective states without paying the cost or side effects of loading DLLs.</summary>
     public static IReadOnlyList<PluginDescriptor> DiscoverPlugins(
         ResolvedSettings settings, string pluginsDirectory, List<string>? loadErrors = null)
         => PluginDiscovery.Discover(settings, pluginsDirectory, loadErrors);
-
-    private void RegisterSkillPlugin(PluginDescriptor descriptor)
-    {
-        if (_skillManager == null) return;
-        try
-        {
-            foreach (var file in System.IO.Directory.GetFiles(descriptor.DirectoryPath, "*.md").OrderBy(f => f))
-                _skillManager.RegisterFromPlugin(file, descriptor.Meta.Id, descriptor);
-
-            if (descriptor.IsEffectivelyEnabled)
-                _activePlugins.Add(new PluginInstance(descriptor.Meta, descriptor.EffectivePrompt));
-
-            _logger?.LogInformation("Skills plugin registered. Plugin={PluginId} Enabled={Enabled}", descriptor.Meta.Id, descriptor.IsEffectivelyEnabled);
-        }
-        catch (Exception ex)
-        {
-            SetLoadError(descriptor, $"Error registering skills plugin '{descriptor.Meta.Id}': {ex.Message}");
-        }
-    }
 
     public IReadOnlyList<PluginDescriptor> GetPlugins() => _plugins;
     public IReadOnlyList<PluginInstance> GetActivePlugins() => _activePlugins;

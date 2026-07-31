@@ -1,7 +1,7 @@
 using SPLA.Domain.Agent;
 using SPLA.Domain.Models;
 using SPLA.MCP.Core.Permissions;
-using SPLA.MCP.Core.Plugins;
+using SPLA.MCP.Core.Skills;
 using SPLA.MCP.Core.Tools;
 
 namespace SPLA.Tests;

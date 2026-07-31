@@ -99,8 +99,13 @@ public class ResolvedSettings
     // Plugins
     public Dictionary<string, SplaPluginSection> Plugins { get; set; } = new();
 
-    // Skills
+    // Skills — per-skill overrides (skills.items), keyed by skill id.
     public Dictionary<string, SplaSkillSection> Skills { get; set; } = new();
+
+    /// <summary>Configured skill providers (skills.sources), in priority order. Null = the built-in
+    /// default set. Replaced wholesale by the more specific layer, never merged: merging would make
+    /// an inherited source impossible to drop.</summary>
+    public List<SplaSkillSourceSection>? SkillSources { get; set; }
 
     /// <summary>Builds LLMSettings from the first connection + behaviour fields.
     /// Callers that need a specific connection should use <see cref="ToLLMSettings(SplaConnectionSection?)"/>.</summary>
@@ -174,6 +179,7 @@ public static class SettingsResolver
                 r.Theme = defaults.Ui.Theme ?? r.Theme;
                 r.Density = defaults.Ui.Density ?? r.Density;
             }
+            ApplySkills(r, defaults.Skills);
         }
 
         // Layer 2: project overrides
@@ -227,11 +233,7 @@ public static class SettingsResolver
                 foreach (var kvp in project.Plugins)
                     r.Plugins[kvp.Key] = kvp.Value;
             }
-            if (project.Skills != null)
-            {
-                foreach (var kvp in project.Skills)
-                    r.Skills[kvp.Key] = kvp.Value;
-            }
+            ApplySkills(r, project.Skills);
         }
 
         // Finalize: keep configured connections; synthesize a default from the llm: section when none
@@ -245,6 +247,24 @@ public static class SettingsResolver
             });
 
         return r;
+    }
+
+    /// <summary>
+    /// Layers one <c>skills:</c> block over the result. The two halves behave differently on purpose:
+    /// per-skill items MERGE by id (a project switches off one inherited skill without restating the
+    /// rest), while the source list REPLACES wholesale (merging would leave no way to drop a source
+    /// inherited from defaults). A layer that omits <c>sources</c> leaves the inherited list alone.
+    /// </summary>
+    private static void ApplySkills(ResolvedSettings r, SplaSkillsSection? skills)
+    {
+        if (skills == null) return;
+
+        if (skills.Sources != null)
+            r.SkillSources = skills.Sources;
+
+        if (skills.Items != null)
+            foreach (var kvp in skills.Items)
+                r.Skills[kvp.Key] = kvp.Value;
     }
 
     /// <summary>Adds/overrides connections by id, skipping entries without an id.</summary>

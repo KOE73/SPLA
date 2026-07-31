@@ -4,20 +4,24 @@
     <TargetFramework>net10.0</TargetFramework>
   </PropertyGroup>
 
+  <!--
+    The network skills ship INSIDE the network plugin, as plugins\network\skills\*.md.
+
+    They used to deploy as a separate `network.skills` package with its own meta.yaml: two switches
+    for one capability, and the skills stayed on while the plugin providing their tools was off.
+    A plugin now provides skills from its own skills\ subfolder and they follow that plugin's single
+    toggle. PublishAll.ps1 already produced this layout for release; the dev build did not, and that
+    divergence is how a disabled network plugin kept injecting its skills into the system prompt.
+  -->
   <Target Name="CopySkills" AfterTargets="Build">
     <ItemGroup>
       <SkillFiles Include="$(MSBuildThisFileDirectory)skills\*.md" />
     </ItemGroup>
-    <MakeDir Directories="..\..\apps\SPLA.UI.Avalonia\bin\$(Configuration)\$(TargetFramework)\plugins\network.skills\" />
-    <MakeDir Directories="..\..\apps\SPLA.CLI\bin\$(Configuration)\$(TargetFramework)\plugins\network.skills\" />
-    <Copy SourceFiles="$(MSBuildThisFileDirectory)meta.yaml"
-          DestinationFolder="..\..\apps\SPLA.UI.Avalonia\bin\$(Configuration)\$(TargetFramework)\plugins\network.skills\" />
-    <Copy SourceFiles="$(MSBuildThisFileDirectory)meta.yaml"
-          DestinationFolder="..\..\apps\SPLA.CLI\bin\$(Configuration)\$(TargetFramework)\plugins\network.skills\" />
     <Copy SourceFiles="@(SkillFiles)"
-          DestinationFolder="..\..\apps\SPLA.UI.Avalonia\bin\$(Configuration)\$(TargetFramework)\plugins\network.skills\" />
+          DestinationFolder="..\..\apps\SPLA.CLI\bin\$(Configuration)\$(TargetFramework)\plugins\network\skills\" />
     <Copy SourceFiles="@(SkillFiles)"
-          DestinationFolder="..\..\apps\SPLA.CLI\bin\$(Configuration)\$(TargetFramework)\plugins\network.skills\" />
+          DestinationFolder="..\..\apps\SPLA.UI.Avalonia\bin\$(Configuration)\$(TargetFramework)\plugins\network\skills\"
+          Condition="Exists('..\..\apps\SPLA.UI.Avalonia\bin\$(Configuration)\$(TargetFramework)')" />
   </Target>
 
 </Project>

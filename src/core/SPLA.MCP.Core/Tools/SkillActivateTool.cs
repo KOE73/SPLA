@@ -2,7 +2,7 @@ using SPLA.Domain.Agent;
 using SPLA.Domain.Models;
 using SPLA.MCP.Core.Interfaces;
 using SPLA.MCP.Core.Json;
-using SPLA.MCP.Core.Plugins;
+using SPLA.MCP.Core.Skills;
 using System;
 using System.Linq;
 using System.Text.Json;
@@ -71,7 +71,7 @@ public sealed class SkillActivateTool : IMcpTool
             var skill = _skills.Find(id);
             if (skill is null)
             {
-                var suggestions = _skills.GetEnabled()
+                var suggestions = _skills.GetAvailable()
                     .Where(s => s.Id.Contains(id, StringComparison.OrdinalIgnoreCase))
                     .Select(s => s.Id)
                     .Take(5)
@@ -82,6 +82,12 @@ public sealed class SkillActivateTool : IMcpTool
                     msg += "\nsuggestions:\n" + string.Join("\n", suggestions.Select(s => $"  - {s}"));
                 return Task.FromResult(msg);
             }
+
+            // A known-but-unavailable skill reports WHY rather than pretending it does not exist:
+            // "needs port_scan — from plugin 'network'" is actionable, "unknown skill" is not.
+            if (skill.State != SkillState.Available)
+                return Task.FromResult(
+                    $"error: skill '{skill.Id}' is not available — {skill.StateReason}");
 
             session.Activate(id);
             return Task.FromResult($"ok: activated '{id}' — skill procedure is now injected into the prompt. Follow the steps and call skill_deactivate when done.");

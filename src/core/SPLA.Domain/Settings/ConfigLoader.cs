@@ -178,10 +178,12 @@ public static class ConfigLoader
     /// Loads a .spla project file without resolving relative paths. Use this before editing and saving it.
     /// </summary>
     public static SplaProject LoadProjectRaw(string splaFilePath)
-    {
-        var yaml = File.ReadAllText(splaFilePath);
-        return Deserializer.Deserialize<SplaProject>(yaml) ?? new SplaProject();
-    }
+        => ParseProjectYaml(File.ReadAllText(splaFilePath));
+
+    /// <summary>Deserializes .spla content that is already in memory — same shape and conventions as
+    /// <see cref="LoadProjectRaw"/>, without touching the filesystem.</summary>
+    public static SplaProject ParseProjectYaml(string yaml)
+        => Deserializer.Deserialize<SplaProject>(yaml) ?? new SplaProject();
 
     /// <summary>
     /// Serializes an opaque plugin settings blob (nested mapping) to a YAML string.

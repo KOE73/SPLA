@@ -117,6 +117,14 @@ public static class MessageTypes
     /// <summary>Invoke an ad-hoc action on a plugin's web settings UI (e.g. "Test Connection").
     /// Body is <see cref="PluginActionPayload"/>; answer is <see cref="PluginActionResult"/>.</summary>
     public const string PluginAction = "plugin.action";
+    /// <summary>Ask for every known skill with its source and resolved state.</summary>
+    public const string SkillsGet = "skills.get";
+    /// <summary>Save per-skill enable/preload switches (persisted to <c>skills.items</c>).</summary>
+    public const string SkillsSave = "skills.save";
+    /// <summary>Ask for the built-in agent capabilities (<c>core.*</c>) and their enabled state.</summary>
+    public const string FeaturesGet = "features.get";
+    /// <summary>Save the enabled built-in capability set (persisted to <c>agent.capabilities</c>).</summary>
+    public const string FeaturesSave = "features.save";
     /// <summary>Persist UI appearance (theme/density). Auto-sent on change — appearance has no Save step.
     /// Body is <see cref="AppearanceChangedPayload"/>; the server persists and broadcasts <see cref="AppearanceChanged"/>.</summary>
     public const string AppearanceSave = "appearance.save";
@@ -217,6 +225,10 @@ public static class MessageTypes
     public const string PluginsResult = "plugins.result";
     /// <summary>Answer to <see cref="PluginAction"/>.</summary>
     public const string PluginActionResult = "plugin.action.result";
+    /// <summary>The current skill list/state — answer to <see cref="SkillsGet"/> and broadcast after <see cref="SkillsSave"/>.</summary>
+    public const string SkillsResult = "skills.result";
+    /// <summary>The current built-in capability set — answer to <see cref="FeaturesGet"/> and broadcast after <see cref="FeaturesSave"/>.</summary>
+    public const string FeaturesResult = "features.result";
     /// <summary>The project's UI appearance (theme/density) changed — broadcast to every window so all
     /// apply it uniformly, independent of which surface they show. A dedicated channel, not piggy-backed
     /// on <see cref="AgentResult"/>, so any view can react without understanding the settings editor.</summary>

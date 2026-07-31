@@ -3,6 +3,7 @@ using SPLA.Domain.Interfaces;
 using SPLA.Domain.Models;
 using SPLA.Domain.Settings;
 using SPLA.MCP.Core.Plugins;
+using SPLA.MCP.Core.Skills;
 using SPLA.MCP.Core.Tools;
 using System.Collections.Generic;
 using System.IO;
@@ -45,21 +46,8 @@ public class AgentSpawnToolTests
     {
         var llm = new StubLlmService(llmResponse);
         var tools = new StubToolHost();
-        var skills = new SkillManager();
-
-        // Write a temporary skill
-        var tempDir = Path.Combine(Path.GetTempPath(), "spla_spawn_" + Path.GetRandomFileName());
-        var skillsDir = Path.Combine(tempDir, "test-plugin", "skills");
-        Directory.CreateDirectory(skillsDir);
-        File.WriteAllText(Path.Combine(skillsDir, "test.skill.md"), """
-            ---
-            id: test.skill
-            description: A test skill
-            ---
-            Step 1: Do the thing.
-            Step 2: Report done.
-            """);
-        skills.LoadSkills(tempDir);
+        var skills = new SkillManager([new SPLA.Tests.Fakes.FakeSkillSource()
+            .With("test.skill", body: "Step 1: Do the thing.\nStep 2: Report done.", description: "A test skill")]);
 
         var settings = new ResolvedSettings { Mode = AgentMode.Edit };
         var plugins = new PluginManager(settings);

@@ -12,6 +12,7 @@ using SPLA.MCP.Core;
 using SPLA.MCP.Core.Agent;
 using SPLA.MCP.Core.Permissions;
 using SPLA.MCP.Core.Plugins;
+using SPLA.MCP.Core.Skills;
 
 namespace SPLA.Runtime;
 
@@ -108,19 +109,30 @@ public sealed class AgentRuntime : IDisposable
 
         var pluginsDir = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "plugins");
 
-        SkillManager = new SkillManager(loggerFactory.CreateLogger<SkillManager>());
-        SkillManager.LoadSkills(pluginsDir);
-
-        PluginManager = new PluginManager(settings, loggerFactory.CreateLogger<PluginManager>(), SkillManager);
+        // Plugins load first: their descriptors are what the plugin-backed skill sources are built
+        // from, and a plugin's live enabled flag is what makes its skills appear or vanish.
+        PluginManager = new PluginManager(settings, loggerFactory.CreateLogger<PluginManager>());
         PluginManager.LoadPlugins(pluginsDir);
 
         SchemaRegistry = new SPLA.Domain.Editor.SchemaRegistry();
         foreach (var p in PluginManager.GetSchemaProviders())
             SchemaRegistry.Register(p);
 
-        SkillManager.ApplySettings(settings.Skills.ToDictionary(
-            kvp => kvp.Key,
-            kvp => (kvp.Value.Enabled ?? true, kvp.Value.Preloaded ?? false)));
+        // Skill providers: the configured ones (project/machine folders by default) in priority
+        // order, then one per plugin that ships skills. SetProbe below completes the wiring once the
+        // tool host and feature set exist — requirement resolution needs both.
+        var skillSources = SkillSourceRegistry.Build(
+            settings.SkillSources,
+            new SkillSourceContext(
+                Path.GetFullPath(settings.WorkspacePath),
+                ConfigLoader.GetDefaultsDir(),
+                loggerFactory,
+                AppDomain.CurrentDomain.BaseDirectory),
+            PluginManager.BuildSkillSources(loggerFactory.CreateLogger<PluginSkillSource>()),
+            loggerFactory.CreateLogger<SkillManager>());
+
+        SkillManager = new SkillManager(skillSources, loggerFactory.CreateLogger<SkillManager>());
+        SkillManager.ApplySettings(settings.Skills);
 
         McpHost = new McpHost(
             new PermissionManager(settings: settings), PluginManager, loggerFactory.CreateLogger<McpHost>());
@@ -196,6 +208,11 @@ public sealed class AgentRuntime : IDisposable
 
         ChatManager = new ChatManager(settings);
 
+        // Now that every tool is registered and the feature set is known, skills can be told what
+        // this agent can actually do. A skill declaring tools that are absent (its plugin is off)
+        // resolves to MissingTools and stays out of the prompt instead of describing dead calls.
+        RefreshSkillCapabilities();
+
         PromptBuilder = new SystemPromptBuilder(SkillManager, PluginManager, null, enabledFeatures);
 
         // Project tally goes through the broker only when a real project is open; the historical
@@ -210,6 +227,20 @@ public sealed class AgentRuntime : IDisposable
         TokenUsageGlobal = new FileTokenUsageStore(
             Path.Combine(SPLA.Domain.Settings.ConfigLoader.GetDefaultsDir(), "token-usage.json"));
     }
+
+    /// <summary>
+    /// Re-reads what the agent can do and rebuilds the skill registry against it.
+    ///
+    /// <para>Call after anything that changes the live tool surface — notably enabling a plugin,
+    /// which both adds tools and makes that plugin's own skills enumerable. Without it the skill list
+    /// keeps the state it was resolved with at startup, so a freshly enabled plugin's skills stay
+    /// invisible until restart while its tools are already live.</para>
+    /// </summary>
+    public void RefreshSkillCapabilities() =>
+        SkillManager.SetProbe(new SkillCapabilityProbe(
+            McpHost.GetToolDefinitions().Select(d => d.Function.Name),
+            EnabledFeatureIds,
+            PluginManager.GetToolOwners()));
 
     /// <summary>
     /// Resolves the operative context window (tokens) for a connection's model, or null when unknown.

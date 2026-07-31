@@ -14,6 +14,7 @@ function Fail($msg) { Write-Host "ERROR: $msg" -ForegroundColor Red; exit 1 }
 Write-Host '=== SPLA Publish All ===' -ForegroundColor Cyan
 
 . "$PSScriptRoot\EnsureNodeJs.ps1"
+. "$PSScriptRoot\CopySkills.ps1"
 
 Write-Host 'Stopping running SPLA processes...'
 foreach ($name in 'SPLA.UI.Avalonia', 'SPLA.CLI') {
@@ -62,10 +63,12 @@ $jobs = foreach ($p in $plugins) {
         if ($LASTEXITCODE -ne 0) { throw "publish failed for $($p.Name)" }
         $metaDir = Split-Path $p.Proj -Parent
         Copy-Item (Join-Path $metaDir 'meta.yaml') $out -Force
+
+        # Skill trees go through the shared helper — one definition of what a skills folder is.
+        # Jobs run in their own runspace, so it has to be dot-sourced again here.
+        . (Join-Path $root 'CopySkills.ps1')
         foreach ($e in @($p.Extras)) {
-            if ($e -and (Test-Path $e.From)) {
-                Copy-Item $e.From (Join-Path $out $e.To) -Recurse -Force
-            }
+            if ($e) { Copy-Skills -From $e.From -To (Join-Path $out $e.To) | Out-Null }
         }
         "plugin $($p.Name): OK"
     }
@@ -92,6 +95,13 @@ foreach ($j in $jobs) {
     Remove-Job -Job $j -Force
 }
 if ($failed.Count -gt 0) { Fail ("plugin publish failed: " + ($failed -join ', ')) }
+
+# Skills that ship with the product, laid out beside plugins/ where the runtime looks for them
+# (SkillSourceRegistry appends <install>/skills as the lowest-priority source, so a project's own
+# skills/ folder overrides a shipped skill by reusing its id).
+Write-Host 'Copying shipped skills...'
+$skillCount = Copy-Skills -From 'skills' -To '.publish\work\skills' -Clean
+Write-Host "  $skillCount skill file(s)"
 
 Write-Host 'Cleaning debug and documentation artifacts...'
 Get-ChildItem .publish\work -Recurse -Include *.pdb, *.xml | Remove-Item -Force

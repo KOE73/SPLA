@@ -321,6 +321,74 @@ public sealed class PluginsPayload
     public bool RestartToApply { get; set; }
 }
 
+/// <summary>
+/// One switchable capability — a built-in <c>core.*</c> feature or a skill. Plugins keep their own
+/// richer <see cref="PluginEditDto"/> (settings blob, web settings URL), but all three render through
+/// the same row in the Capabilities settings group, so the shared shape lives here.
+/// </summary>
+public sealed class CapabilityDto
+{
+    public string Id { get; set; } = string.Empty;
+    /// <summary>"builtin" or "skill".</summary>
+    public string Kind { get; set; } = string.Empty;
+    public string Name { get; set; } = string.Empty;
+    public string? Description { get; set; }
+    public bool Enabled { get; set; } = true;
+
+    /// <summary>Resolved state name — Available / MissingTools / DisabledByUser / DisabledByTrust /
+    /// Shadowed for skills, Enabled / DisabledByUser for built-ins. Read-only.</summary>
+    public string? State { get; set; }
+    public string? StateReason { get; set; }
+
+    /// <summary>Provider id for a skill ("project", "machine", "plugin:network"); null for built-ins.</summary>
+    public string? Source { get; set; }
+    public string? SourceLabel { get; set; }
+
+    /// <summary>Body goes into the base prompt instead of waiting for activation. Skills only.</summary>
+    public bool Preloaded { get; set; }
+
+    /// <summary>Unsatisfied requirements, so the panel can name them and offer to enable the owning
+    /// plugin instead of just reporting that something is missing.</summary>
+    public List<string> MissingTools { get; set; } = new();
+    public List<string> MissingFeatures { get; set; } = new();
+    public List<string> MissingPlugins { get; set; } = new();
+
+    /// <summary>Ids this capability depends on (built-ins only) — enabling it pulls them in.</summary>
+    public List<string> Requires { get; set; } = new();
+}
+
+/// <summary>Where the listed skills came from — shown as group headers, and as guidance on where to
+/// drop a new skill file.</summary>
+public sealed class SkillSourceDto
+{
+    public string Id { get; set; } = string.Empty;
+    public string Label { get; set; } = string.Empty;
+    public string Trust { get; set; } = "Trusted";
+    /// <summary>Filesystem location for folder-backed sources; null for anything else.</summary>
+    public string? Path { get; set; }
+}
+
+/// <summary>Every known skill with its source and state. <see cref="MessageTypes.SkillsGet"/> answer /
+/// <see cref="MessageTypes.SkillsSave"/> body / broadcast result.</summary>
+public sealed class SkillsPayload
+{
+    public List<CapabilityDto> Skills { get; set; } = new();
+    public List<SkillSourceDto> Sources { get; set; } = new();
+    public bool CanPersist { get; set; }
+}
+
+/// <summary>The built-in <c>core.*</c> capabilities. <see cref="MessageTypes.FeaturesGet"/> answer /
+/// <see cref="MessageTypes.FeaturesSave"/> body / broadcast result.</summary>
+public sealed class FeaturesPayload
+{
+    public List<CapabilityDto> Features { get; set; } = new();
+    public bool CanPersist { get; set; }
+
+    /// <summary>Always true: feature tools are registered once at startup, so a change to the set
+    /// takes effect on the next service start. Skills, by contrast, apply immediately.</summary>
+    public bool RestartToApply { get; set; } = true;
+}
+
 /// <summary>Asks the server for a debug snapshot. <see cref="Kind"/> selects which inspector view.</summary>
 public sealed class DebugRequestPayload
 {
