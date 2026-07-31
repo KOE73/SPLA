@@ -45,6 +45,30 @@ For comprehensive details on agent permission models, tool matrices, autonomy co
 - **[Wire Protocol & Event Registry](agents/protocol.md)**: STOP — read this before adding, renaming, or removing any WebSocket message type, payload, or client bus event. Message names are soft strings on the JS side; this is the registry of every `MessageTypes` constant, payload, fan-out semantics, domain events (`ServiceEvents`), and client-local bus events that keeps both sides in sync.
 
 
+## Git: never commit unless asked
+
+**Do not commit, amend, push, tag, create or switch branches, or reset anything unless the user asks
+for it in the message you are answering.** Finishing a piece of work is not permission to record it.
+Neither is the work being correct, tested, and obviously ready.
+
+- A commit requested earlier authorizes **that** commit only. It does not stand for the next one, or
+  for "everything from now on". If in doubt, you were not asked.
+- Leave the work in the working tree and say what changed. The user decides when it becomes history.
+- **Never stage with `git add -A` or `git add .`** when the tree holds changes you did not make —
+  concurrent work by the user or another agent is normal here. Stage explicit paths, and check
+  `git status` for files you never touched before every commit.
+- Same rule for anything else that leaves the machine or is hard to undo: pushing, force-pushing,
+  deleting branches, rewriting history.
+
+**Do remind, though.** Silence while changes pile up is its own failure — a large mixed working tree
+is hard to review and easy to lose. Say something (one line, not a nag) when:
+
+- more than roughly ten files are uncommitted, or
+- the changes span several areas at once (`src/`, `web/`, `docs/`, `agents/`, `tests/`), or
+- a self-contained piece of work just built and passed its tests — the natural place to draw a line.
+
+State what is uncommitted, in which areas, and offer to commit. Then wait.
+
 ## Web UI: Chat-Scoped State (recurring bug — do not regress)
 
 The composer input, Send/Stop button, and every other per-conversation UI state belong to the

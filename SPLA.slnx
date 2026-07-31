@@ -37,6 +37,7 @@
   <Folder Name="/docs/adr/">
     <File Path="docs/adr/ADR_20260712_secrets_store-and-ssh.md" />
     <File Path="docs/adr/ADR_20260715_plugins_ssh-live-session.md" />
+    <File Path="docs/adr/ADR_20260731-2_docs_reviews-fresh-eyes.md" />
     <File Path="docs/adr/ADR_20260731_docs_genres-and-naming.md" />
     <File Path="docs/adr/ADR_20260731_llm_pipeline-diagrams.md" />
     <File Path="docs/adr/ADR_20260731_llm_pipeline.md" />
