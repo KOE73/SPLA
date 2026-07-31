@@ -13,6 +13,8 @@ function Fail($msg) { Write-Host "ERROR: $msg" -ForegroundColor Red; exit 1 }
 
 Write-Host '=== SPLA Publish All ===' -ForegroundColor Cyan
 
+. "$PSScriptRoot\EnsureNodeJs.ps1"
+
 Write-Host 'Stopping running SPLA processes...'
 foreach ($name in 'SPLA.UI.Avalonia', 'SPLA.CLI') {
     Get-Process -Name $name -ErrorAction SilentlyContinue | Stop-Process -Force -ErrorAction SilentlyContinue
