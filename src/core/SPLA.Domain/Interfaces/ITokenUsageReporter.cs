@@ -1,7 +1,7 @@
 namespace SPLA.Domain.Interfaces;
 
 /// <summary>
-/// Optional capability for an <see cref="ILLMService"/> provider that can report real token usage
+/// Optional capability for an <see cref="Llm.ILlmClient"/> provider that can report real token usage
 /// (as opposed to a client-side estimate). It is intentionally <b>separate</b> from the core service
 /// contract: a provider that has no usage information simply does not implement this interface, and
 /// consumers detect support with a type check —

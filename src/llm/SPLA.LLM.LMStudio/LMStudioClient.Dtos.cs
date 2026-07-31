@@ -82,6 +82,14 @@ public sealed partial class LMStudioClient
 
     private class OpenAIStreamResponse
     {
+        /// <summary>
+        /// The model that actually answered, which is not always the one that was asked for:
+        /// <c>model: auto</c> is resolved by the server to whatever is loaded, and clouds substitute
+        /// dated versions. Accounting keys off this, never off the requested name.
+        /// </summary>
+        [JsonPropertyName("model")]
+        public string? Model { get; set; }
+
         [JsonPropertyName("choices")]
         public List<OpenAIStreamChoice>? Choices { get; set; }
 

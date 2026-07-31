@@ -12,31 +12,20 @@ using System.Threading.Tasks;
 
 namespace SPLA.Tests;
 
-/// <summary>Stub LLM service that returns a fixed response without making network calls.</summary>
-file sealed class StubLlmService : ILLMService
+/// <summary>Stub gateway that returns a fixed response without making network calls.</summary>
+file sealed class StubLlmService : SPLA.Domain.Llm.ILlmGateway
 {
     private readonly string _response;
     public StubLlmService(string response = "stub result") => _response = response;
 
-    public Task<ChatMessage> SendMessageAsync(IEnumerable<ChatMessage> messages, LLMSettings settings,
-        IEnumerable<ToolDefinition>? tools = null, CancellationToken cancellationToken = default)
-        => Task.FromResult(new ChatMessage { Role = ChatRole.Assistant, Content = _response });
-
-    public async IAsyncEnumerable<string> SendMessageStreamAsync(IEnumerable<ChatMessage> messages,
-        LLMSettings settings, IEnumerable<ToolDefinition>? tools = null,
-        [EnumeratorCancellation] CancellationToken cancellationToken = default)
+    public Task<SPLA.Domain.Llm.LlmTurnResult> InvokeAsync(
+        SPLA.Domain.Llm.LlmTurnContext ctx, CancellationToken ct = default)
     {
-        yield return _response;
-        await Task.CompletedTask;
-    }
-
-    public Task<ChatMessage> SendMessageStreamFullAsync(IEnumerable<ChatMessage> messages,
-        LLMSettings settings, IEnumerable<ToolDefinition>? tools,
-        Func<string, Task>? onDelta, CancellationToken cancellationToken = default,
-        Func<string, Task>? onReasoning = null)
-    {
-        onDelta?.Invoke(_response);
-        return Task.FromResult(new ChatMessage { Role = ChatRole.Assistant, Content = _response });
+        ctx.OnDelta?.Invoke(_response);
+        return Task.FromResult(new SPLA.Domain.Llm.LlmTurnResult
+        {
+            Message = new ChatMessage { Role = ChatRole.Assistant, Content = _response }
+        });
     }
 }
 

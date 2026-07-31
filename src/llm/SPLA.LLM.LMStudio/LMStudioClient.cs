@@ -1,5 +1,6 @@
 using Microsoft.Extensions.Logging;
 using SPLA.Domain.Interfaces;
+using SPLA.Domain.Llm;
 using SPLA.Domain.Models;
 using SPLA.Domain.Settings;
 using System.Net;
@@ -12,7 +13,7 @@ using System.Text.Json.Serialization;
 
 namespace SPLA.LLM.LMStudio;
 
-public sealed partial class LMStudioClient : ILLMService, ITokenUsageReporter
+public sealed partial class LMStudioClient : ILlmClient, ITokenUsageReporter
 {
     /// <summary>LM Studio's OpenAI-compatible endpoint returns a <c>usage</c> block, so real
     /// prompt/completion counts are available (see <see cref="ITokenUsageReporter"/>).</summary>
@@ -60,39 +61,38 @@ public sealed partial class LMStudioClient : ILLMService, ITokenUsageReporter
         return models;
     }
 
-    public async Task<ChatMessage> SendMessageAsync(IEnumerable<ChatMessage> messages, LLMSettings settings, IEnumerable<ToolDefinition>? tools = null, CancellationToken cancellationToken = default)
+    /// <summary>
+    /// The pipeline's terminal step: one call, one model. Streaming is decided by the sinks on the
+    /// context, not by picking a different method — the non-streaming case is simply both sinks null.
+    /// </summary>
+    public async Task<LlmTurnResult> InvokeAsync(LlmTurnContext ctx, CancellationToken ct = default)
     {
-        var request = CreateRequestMessage(messages, settings, tools, stream: false);
-        var response = await _httpClient.SendAsync(request, cancellationToken);
-        response.EnsureSuccessStatusCode();
+        var (message, modelReported) = await SendMessageStreamFullAsync(
+            ctx.Messages, ctx.Settings, ctx.Tools, ctx.OnDelta, ct, ctx.OnReasoning);
 
-        var responseData = await response.Content.ReadFromJsonAsync<OpenAIResponse>(_jsonOptions, cancellationToken);
-        var msg = responseData?.Choices?.FirstOrDefault()?.Message;
+        // Raw counters keyed by their wire names: the accounting layer classifies them against the
+        // token-kind dictionary, so a counter this build has never seen is still carried, not lost.
+        var usage = new Dictionary<string, long>(StringComparer.OrdinalIgnoreCase);
+        if (message.PromptTokens is int prompt) usage["prompt_tokens"] = prompt;
+        if (message.CompletionTokens is int completion) usage["completion_tokens"] = completion;
 
-        var (content, reasoning) = SplitReasoning(msg?.Content ?? "", msg?.ReasoningText);
-
-        return new ChatMessage
+        return new LlmTurnResult
         {
-            Role = ChatRole.Assistant,
-            Content = content,
-            Reasoning = reasoning,
-            ToolCalls = msg?.ToolCalls?.Select(t => new ToolCall
-            {
-                Id = t.Id,
-                Type = t.Type,
-                Function = new FunctionCall
-                {
-                    Name = t.Function.Name,
-                    Arguments = t.Function.Arguments
-                }
-            }).ToList(),
-            PromptTokens = responseData?.Usage?.PromptTokens,
-            CompletionTokens = responseData?.Usage?.CompletionTokens
+            Message       = message,
+            // What the server says answered — falls back to the requested name only when the
+            // provider reported nothing at all.
+            ModelReported = modelReported ?? ctx.Settings.ModelName,
+            RawUsage      = usage,
+            Status        = usage.Count > 0 ? LlmTurnStatus.Ok : LlmTurnStatus.UsageMissing
         };
     }
 
-    /// <inheritdoc/>
-    public async Task<ChatMessage> SendMessageStreamFullAsync(
+    /// <summary>
+    /// Streams a chat request, invoking <paramref name="onDelta"/> for each text chunk and
+    /// <paramref name="onReasoning"/> for each reasoning chunk as they arrive, and returns the fully
+    /// assembled message (including tool_calls and reasoning) when the stream finishes.
+    /// </summary>
+    private async Task<(ChatMessage Message, string? ModelReported)> SendMessageStreamFullAsync(
         IEnumerable<ChatMessage> messages,
         LLMSettings settings,
         IEnumerable<ToolDefinition>? tools,
@@ -114,6 +114,7 @@ public sealed partial class LMStudioClient : ILLMService, ITokenUsageReporter
         int? promptTokens = null;
         int? completionTokens = null;
         string? finishReason = null;
+        string? modelReported = null;
 
         string? line;
         while ((line = await reader.ReadLineAsync(cancellationToken)) != null)
@@ -134,6 +135,11 @@ public sealed partial class LMStudioClient : ILLMService, ITokenUsageReporter
                 // malformed SSE chunk — skip
                 continue;
             }
+
+            // Every chunk repeats the resolved model name; the first one that carries it wins.
+            // This is what "model: auto" actually turned into — see LlmTurnResult.ModelReported.
+            if (modelReported == null && !string.IsNullOrEmpty(chunk?.Model))
+                modelReported = chunk.Model;
 
             // The final usage chunk from LM Studio arrives with choices:[] (empty) and only
             // the usage field populated. Must capture it BEFORE the choice==null guard below.
@@ -239,7 +245,7 @@ public sealed partial class LMStudioClient : ILLMService, ITokenUsageReporter
         // as <think>...</think> in the content; reconcile both into a single field.
         var (finalContent, inlineReasoning) = SplitReasoning(contentBuilder.ToString(), reasoningBuilder.ToString());
 
-        return new ChatMessage
+        return (new ChatMessage
         {
             Role             = ChatRole.Assistant,
             Content          = finalContent,
@@ -247,7 +253,7 @@ public sealed partial class LMStudioClient : ILLMService, ITokenUsageReporter
             ToolCalls        = toolCalls,
             PromptTokens     = promptTokens,
             CompletionTokens = completionTokens
-        };
+        }, modelReported);
     }
 
     /// <summary>
@@ -290,33 +296,6 @@ public sealed partial class LMStudioClient : ILLMService, ITokenUsageReporter
 
         var reasoning = reasoningParts.Count > 0 ? string.Join("\n\n", reasoningParts) : null;
         return (content, reasoning);
-    }
-
-    public async IAsyncEnumerable<string> SendMessageStreamAsync(IEnumerable<ChatMessage> messages, LLMSettings settings, IEnumerable<ToolDefinition>? tools = null, [EnumeratorCancellation] CancellationToken cancellationToken = default)
-    {
-        var request = CreateRequestMessage(messages, settings, tools, stream: true);
-        using var response = await _httpClient.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, cancellationToken);
-        await EnsureSuccessWithBodyAsync(response, cancellationToken);
-
-        using var stream = await response.Content.ReadAsStreamAsync(cancellationToken);
-        using var reader = new StreamReader(stream);
-
-        string? line;
-        while ((line = await reader.ReadLineAsync(cancellationToken)) != null)
-        {
-            if (string.IsNullOrWhiteSpace(line) || !line.StartsWith("data: ")) continue;
-
-            var data = line.Substring(6);
-            if (data == "[DONE]") break;
-
-            var chunk = JsonSerializer.Deserialize<OpenAIStreamResponse>(data, _jsonOptions);
-            var content = chunk?.Choices?.FirstOrDefault()?.Delta?.Content;
-            
-            if (!string.IsNullOrEmpty(content))
-            {
-                yield return content;
-            }
-        }
     }
 
     private HttpRequestMessage CreateRequestMessage(IEnumerable<ChatMessage> messages, LLMSettings settings, IEnumerable<ToolDefinition>? tools, bool stream)

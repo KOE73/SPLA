@@ -39,7 +39,12 @@ public sealed class AgentRuntime : IDisposable
     /// <summary>Process-wide domain-event hub. Mutators publish state changes here; the host fans them
     /// out to clients. The single "say what changed once" point — see <see cref="ServiceEvents"/>.</summary>
     public ServiceEvents Events { get; } = new();
-    public LMStudioClient Llm { get; }
+    /// <summary>
+    /// The composed LLM pipeline — the only way anything in this runtime reaches a model. Provider
+    /// clients are deliberately never exposed: if they were reachable, accounting, quotas and privacy
+    /// would be optional in practice. See <see cref="SPLA.Domain.Llm.ILlmGateway"/>.
+    /// </summary>
+    public SPLA.Domain.Llm.ILlmGateway Llm { get; }
     public IModelManagementService ModelManagement { get; }
     public McpHost McpHost { get; }
     public SkillManager SkillManager { get; }
@@ -88,7 +93,17 @@ public sealed class AgentRuntime : IDisposable
         LoggerFactory = loggerFactory;
 
         _httpClient = new HttpClient { Timeout = TimeSpan.FromMinutes(10) };
-        Llm = new LMStudioClient(_httpClient, loggerFactory.CreateLogger<LMStudioClient>());
+        // ── The LLM pipeline, baked once ──────────────────────────────────────────────────────────
+        // The blueprint is what a host varies (CLI, worker and server each declare their own set);
+        // baking happens here because providers arrive as plugins and plugins are enabled per project.
+        // Nothing is assembled per turn — per-turn variation travels in LlmTurnContext instead.
+        // TODO(stage 4): resolve the client from the plugin-supplied provider registry by the
+        // connection's `provider` field, instead of the single built-in client below.
+        var lmStudio = new LMStudioClient(_httpClient, loggerFactory.CreateLogger<LMStudioClient>());
+        Llm = new SPLA.Domain.Llm.LlmPipelineBlueprint()
+            .Use(new SPLA.Domain.Llm.Middleware.TurnOutcomeMiddleware())
+            .Build(new SPLA.Domain.Llm.SingleClientResolver(lmStudio));
+
         ModelManagement = new LMStudioManagementClient(_httpClient);
 
         var pluginsDir = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "plugins");
