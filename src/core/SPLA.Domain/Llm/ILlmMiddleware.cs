@@ -18,11 +18,19 @@ public enum LlmPipelineStage
     /// <summary>Shaping what is sent: capability checks, image downscaling, attachment limits. Open to plugins.</summary>
     Content = 200,
 
-    /// <summary>Recording what happened. Host-owned, sealed to plugins.</summary>
-    Accounting = 300,
+    /// <summary>
+    /// Repeating a failed network attempt. Its own stage, and deliberately <b>outside</b>
+    /// <see cref="Accounting"/>: every attempt costs money — a provider may bill the prefill of a
+    /// call that then dropped — so each one has to produce its own ledger row. Were it inside, a
+    /// turn that retried three times would be recorded as one. Host-owned, sealed to plugins.
+    /// </summary>
+    Retry = 300,
 
-    /// <summary>Retries and credential materialization — innermost, next to the wire. Host-owned, sealed to plugins.</summary>
-    Transport = 400
+    /// <summary>Recording what happened, once per network attempt. Host-owned, sealed to plugins.</summary>
+    Accounting = 400,
+
+    /// <summary>Credential materialization — innermost, next to the wire. Host-owned, sealed to plugins.</summary>
+    Transport = 500
 }
 
 /// <summary>

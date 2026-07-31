@@ -90,7 +90,7 @@ interface ILlmMiddleware {
 | 5 | Policy | `Quota` | предпроверка бюджета |
 | 6 | Content | `CapabilityGuard` | vision / tools / reasoning против capabilities → ошибка до сети |
 | 7 | Content | `ContentPolicy` | даунскейл картинок, лимиты вложений |
-| 8 | Transport | `Retry` | только транзиентные, только то же подключение и та же модель |
+| 8 | Retry | `Retry` | только транзиентные, только то же подключение и та же модель |
 | 9 | Accounting | `Usage` | `try/finally` вокруг вызова |
 | 10 | Transport | `Credentials` | резолв секрета → создание клиента |
 | 11 | — | *вызов провайдера* | терминальный шаг |
@@ -105,7 +105,10 @@ interface ILlmMiddleware {
 
 ### Стадии и права на вставку
 
-`Trace | Policy | Content | Accounting | Transport`
+`Trace | Policy | Content | Retry | Accounting | Transport`
+
+У `Retry` своя стадия именно потому, что порядок задаётся стадией: будь он частью `Transport`, он
+оказался бы **внутри** `Accounting`, и три сетевые попытки записались бы одной строкой.
 
 **Плагинам открыты только `Policy` и `Content`. `Accounting` и `Transport` запечатаны хостом.**
 Тогда «плагин встал между `Usage` и провайдером и обнулил учёт» невозможно **по построению**, а не по

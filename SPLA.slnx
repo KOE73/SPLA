@@ -34,6 +34,7 @@
   </Folder>
   <Folder Name="/docs/design/">
     <File Path="docs/DESIGN_LLM_Pipeline.md" />
+    <File Path="docs/DESIGN_LLM_Pipeline_Diagram.md" />
     <File Path="docs/DESIGN_Secrets_and_SSH.md" />
     <File Path="docs/DESIGN_SSH_LiveSession_Tools.md" />
     <File Path="docs/PLAN_Secrets_Phase2.md" />
