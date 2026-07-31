@@ -3,23 +3,7 @@
     <File Path="Directory.Build.props" />
     <File Path="README.md" />
     <File Path="README_RU.md" />
-  </Folder>
-  <Folder Name="/docs/">
-    <File Path="docs/Doctrine.ru.md" />
-    <File Path="docs/Doctrine.en.md" />
-    <File Path="docs/TODO.md" />
-    <File Path="docs/TODO_SQLITE_VULN.md" />
-    <File Path="docs/readme_security.md" />
-    <File Path="docs/readme_security_ru.md" />
-    <File Path="docs/sys_prompt_rules_ru.md" />
-    <File Path="docs/skills_lifecycle_plan.md" />
-    <File Path="docs/data-channel-plan.md" />
-    <File Path="docs/schema-editor-plan.md" />
-    <File Path="docs/schema-editor-doc-a-schemas.md" />
-    <File Path="docs/schema-editor-doc-b-tokens.md" />
-    <File Path="docs/web-vue-migration-plan.md" />
-    <File Path="docs/browser-playwright-plugin-plan.md" />
-    <File Path="docs/host-abstraction-plan.md" />
+    <File Path="AGENTS.md" />
   </Folder>
   <Folder Name="/agents/">
     <File Path="agents/avalonia.md" />
@@ -27,14 +11,109 @@
     <File Path="agents/documentation.md" />
     <File Path="agents/observability.md" />
     <File Path="agents/plugins.md" />
+    <File Path="agents/protocol.md" />
+    <File Path="agents/secrets.md" />
     <File Path="agents/security.md" />
+    <File Path="agents/skills.md" />
     <File Path="agents/spla-file.md" />
     <File Path="agents/structure.md" />
-    <File Path="agents/skills.md" />
     <File Path="agents/sys_prompt_rules.md" />
-    <File Path="agents/tool-help.md" />
     <File Path="agents/tool-args.md" />
+    <File Path="agents/tool-help.md" />
     <File Path="agents/ui-theming.md" />
+  </Folder>
+  <Folder Name="/docs/">
+    <File Path="docs/Doctrine.en.md" />
+    <File Path="docs/Doctrine.ru.md" />
+    <File Path="docs/readme_auth.md" />
+    <File Path="docs/readme_observability.md" />
+    <File Path="docs/readme_security.md" />
+    <File Path="docs/readme_security_ru.md" />
+    <File Path="docs/secrets_ru.md" />
+    <File Path="docs/sys_prompt_rules_ru.md" />
+  </Folder>
+  <Folder Name="/docs/design/">
+    <File Path="docs/DESIGN_LLM_Pipeline.md" />
+    <File Path="docs/DESIGN_Secrets_and_SSH.md" />
+    <File Path="docs/DESIGN_SSH_LiveSession_Tools.md" />
+    <File Path="docs/PLAN_Secrets_Phase2.md" />
+    <File Path="docs/browser-playwright-plugin-plan.md" />
+    <File Path="docs/data-channel-plan.md" />
+    <File Path="docs/host-abstraction-plan.md" />
+    <File Path="docs/schema-editor-plan.md" />
+    <File Path="docs/schema-editor-doc-a-schemas.md" />
+    <File Path="docs/schema-editor-doc-b-tokens.md" />
+    <File Path="docs/skills_lifecycle_plan.md" />
+    <File Path="docs/web-vue-migration-plan.md" />
+  </Folder>
+  <Folder Name="/docs/roadmap/">
+    <File Path="docs/roadmap.md" />
+    <File Path="docs/TODO.md" />
+    <File Path="docs/TODO_ConnectionList.md" />
+    <File Path="docs/TODO_Plagins.md" />
+    <File Path="docs/TODO_SQLITE_VULN.md" />
+    <File Path="docs/TODO_X.md" />
+    <File Path="docs/TODONetwork.md" />
+    <File Path="docs/TODONext.md" />
+    <File Path="docs/TODONext2.md" />
+    <File Path="docs/TODONext3.md" />
+  </Folder>
+  <Folder Name="/src/core/">
+    <Project Path="src/core/SPLA.Domain/SPLA.Domain.csproj" />
+    <Project Path="src/core/SPLA.MCP.Core/SPLA.MCP.Core.csproj" />
+    <Project Path="src/core/SPLA.Observability/SPLA.Observability.csproj" />
+  </Folder>
+  <Folder Name="/src/core/infrastructure/">
+    <Project Path="src/core/SPLA.Secrets.Dpapi/SPLA.Secrets.Dpapi.csproj" />
+    <Project Path="src/core/SPLA.Ssh.Core/SPLA.Ssh.Core.csproj" />
+  </Folder>
+  <Folder Name="/src/identity-providers/">
+    <Project Path="src/identity/SPLA.Identity.Windows/SPLA.Identity.Windows.csproj" />
+  </Folder>
+  <Folder Name="/src/agent/">
+    <Project Path="src/agent/SPLA.Agent/SPLA.Agent.csproj" />
+    <Project Path="src/agent/SPLA.Runtime/SPLA.Runtime.csproj" />
+    <Project Path="src/agent/SPLA.MCP.BasicTools/SPLA.MCP.BasicTools.csproj" />
+  </Folder>
+  <Folder Name="/src/llm/">
+    <Project Path="src/llm/SPLA.LLM.LMStudio/SPLA.LLM.LMStudio.csproj" />
+  </Folder>
+  <Folder Name="/src/service/">
+    <Project Path="src/service/SPLA.Service/SPLA.Service.csproj" />
+    <Project Path="src/service/SPLA.Service.Contracts/SPLA.Service.Contracts.csproj" />
+  </Folder>
+  <Folder Name="/src/editor/">
+    <Project Path="src/editor/SPLA.Editor.Schema/SPLA.Editor.Schema.csproj" />
+  </Folder>
+  <Folder Name="/src/apps/">
+    <Project Path="src/apps/SPLA.CLI/SPLA.CLI.csproj" />
+    <Project Path="src/apps/SPLA.Server/SPLA.Server.csproj" />
+    <Project Path="src/apps/SPLA.UI.Avalonia/SPLA.UI.Avalonia.csproj" />
+  </Folder>
+  <Folder Name="/src/plugins/browser/">
+    <Project Path="src/plugins/SPLA.Plugins.Browser/SPLA.Plugins.Browser.csproj" />
+    <Project Path="src/plugins/SPLA.Plugins.Browser.Screencast/SPLA.Plugins.Browser.Screencast.csproj" />
+  </Folder>
+  <Folder Name="/src/plugins/data/">
+    <Project Path="src/plugins/SPLA.Plugins.Sql/SPLA.Plugins.Sql.csproj" />
+    <Project Path="src/plugins/SPLA.Plugins.OneC/SPLA.Plugins.OneC.csproj" />
+  </Folder>
+  <Folder Name="/src/plugins/dev/">
+    <Project Path="src/plugins/SPLA.Plugins.Roslyn/SPLA.Plugins.Roslyn.csproj" />
+    <Project Path="src/plugins/SPLA.Plugins.Test/SPLA.Plugins.Test.csproj" />
+  </Folder>
+  <Folder Name="/src/plugins/infra/">
+    <Project Path="src/plugins/SPLA.Plugins.Network/SPLA.Plugins.Network.csproj" />
+    <Project Path="src/plugins/SPLA.Plugins.Ssh/SPLA.Plugins.Ssh.csproj" />
+  </Folder>
+  <Folder Name="/src/plugins/infra/skills-network/">
+    <Project Path="src/plugins/SPLA.Skills.Network/SPLA.Skills.Network.csproj" />
+    <File Path="src/plugins/SPLA.Skills.Network/dns-diagnostics.md" />
+    <File Path="src/plugins/SPLA.Skills.Network/host-audit.md" />
+    <File Path="src/plugins/SPLA.Skills.Network/lan-discovery.md" />
+    <File Path="src/plugins/SPLA.Skills.Network/network-range-audit.md" />
+    <File Path="src/plugins/SPLA.Skills.Network/smtp-probe.md" />
+    <File Path="src/plugins/SPLA.Skills.Network/ssl-audit.md" />
   </Folder>
   <Folder Name="/web/">
     <File Path="web/package.json" />
@@ -61,46 +140,6 @@
     <File Path="web/src/surfaces/Workspace/editors/FormsEditor.vue" />
     <File Path="web/src/surfaces/Workspace/editors/formsRegistry.ts" />
     <File Path="web/src/surfaces/Workspace/editors/TableArrayRenderer.vue" />
-  </Folder>
-  <Folder Name="/skills/network/">
-    <File Path="src\plugins\SPLA.Skills.Network\host-audit.md" />
-    <File Path="src\plugins\SPLA.Skills.Network\lan-discovery.md" />
-    <File Path="src\plugins\SPLA.Skills.Network\network-range-audit.md" />
-    <File Path="src\plugins\SPLA.Skills.Network\dns-diagnostics.md" />
-    <File Path="src\plugins\SPLA.Skills.Network\ssl-audit.md" />
-    <File Path="src\plugins\SPLA.Skills.Network\smtp-probe.md" />
-  </Folder>
-  <Folder Name="/src/">
-    <Project Path="src/core/SPLA.Domain/SPLA.Domain.csproj" />
-    <Project Path="src/core/SPLA.Secrets.Dpapi/SPLA.Secrets.Dpapi.csproj" />
-    <Project Path="src/core/SPLA.Ssh.Core/SPLA.Ssh.Core.csproj" />
-    <Project Path="src/agent/SPLA.Agent/SPLA.Agent.csproj" />
-    <Project Path="src/agent/SPLA.Runtime/SPLA.Runtime.csproj" />
-    <Project Path="src/core/SPLA.MCP.Core/SPLA.MCP.Core.csproj" />
-    <Project Path="src/agent/SPLA.MCP.BasicTools/SPLA.MCP.BasicTools.csproj" />
-    <Project Path="src/core/SPLA.Observability/SPLA.Observability.csproj" />
-    <Project Path="src/editor/SPLA.Editor.Schema/SPLA.Editor.Schema.csproj" />
-    <Project Path="src/llm/SPLA.LLM.LMStudio/SPLA.LLM.LMStudio.csproj" />
-    <Project Path="src/identity/SPLA.Identity.Windows/SPLA.Identity.Windows.csproj" />
-  </Folder>
-  <Folder Name="/src/service/">
-    <Project Path="src/service/SPLA.Service/SPLA.Service.csproj" />
-    <Project Path="src/service/SPLA.Service.Contracts/SPLA.Service.Contracts.csproj" />
-  </Folder>
-  <Folder Name="/apps/">
-    <Project Path="src/apps/SPLA.CLI/SPLA.CLI.csproj" />
-    <Project Path="src/apps/SPLA.Server/SPLA.Server.csproj" />
-    <Project Path="src/apps/SPLA.UI.Avalonia/SPLA.UI.Avalonia.csproj" />
-  </Folder>
-  <Folder Name="/plugins/">
-    <Project Path="src/plugins/SPLA.Plugins.Browser/SPLA.Plugins.Browser.csproj" />
-    <Project Path="src/plugins/SPLA.Plugins.Browser.Screencast/SPLA.Plugins.Browser.Screencast.csproj" />
-    <Project Path="src/plugins/SPLA.Plugins.Network/SPLA.Plugins.Network.csproj" />
-    <Project Path="src/plugins/SPLA.Plugins.Roslyn/SPLA.Plugins.Roslyn.csproj" />
-    <Project Path="src/plugins/SPLA.Plugins.Ssh/SPLA.Plugins.Ssh.csproj" />
-    <Project Path="src/plugins/SPLA.Plugins.Sql/SPLA.Plugins.Sql.csproj" />
-    <Project Path="src/plugins/SPLA.Plugins.OneC/SPLA.Plugins.OneC.csproj" />
-    <Project Path="src/plugins/SPLA.Skills.Network/SPLA.Skills.Network.csproj" />
   </Folder>
   <Folder Name="/demo/workers/">
     <Project Path="demo/workers/VisionAgent/VisionAgent.csproj" />

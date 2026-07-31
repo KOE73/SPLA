@@ -23,6 +23,11 @@ credentials.*
 *.secrets
 *.credential
 *.credentials
+# agents/ and docs/ are documentation, never storage: nothing there is a secret, and a file named
+# after one (secrets.md, credentials.md) must not be swallowed by the patterns above. Placed here
+# deliberately — the log, database, and private-key patterns below still apply to both folders.
+!agents/**
+!docs/**
 
 # Logs, crash dumps, and local runtime state
 *.log
