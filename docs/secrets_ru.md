@@ -11,8 +11,8 @@
 
 Смежное: [`agents/protocol.md`](../agents/protocol.md) (граница провода) ·
 [`agents/spla-file.md`](../agents/spla-file.md) (формат конфигурации) ·
-[`docs/DESIGN_Secrets_and_SSH.md`](DESIGN_Secrets_and_SSH.md) (почему бэкенды устроены так — ADR, а не
-политика) · [`docs/readme_auth.md`](readme_auth.md) (серверные учётные записи для входа — другая тема).
+[`adr/ADR_20260712_secrets_store-and-ssh.md`](adr/ADR_20260712_secrets_store-and-ssh.md) (почему бэкенды устроены так — ADR, а не
+политика) · [`readme_auth`](readme_auth.md) (серверные учётные записи для входа — другая тема).
 
 ---
 

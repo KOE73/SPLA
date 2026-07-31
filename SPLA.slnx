@@ -30,34 +30,38 @@
     <File Path="docs/readme_security.md" />
     <File Path="docs/readme_security_ru.md" />
     <File Path="docs/secrets_ru.md" />
-    <File Path="docs/sys_prompt_rules_ru.md" />
-  </Folder>
-  <Folder Name="/docs/design/">
-    <File Path="docs/DESIGN_LLM_Pipeline.md" />
-    <File Path="docs/DESIGN_LLM_Pipeline_Diagram.md" />
-    <File Path="docs/DESIGN_Secrets_and_SSH.md" />
-    <File Path="docs/DESIGN_SSH_LiveSession_Tools.md" />
-    <File Path="docs/PLAN_Secrets_Phase2.md" />
-    <File Path="docs/browser-playwright-plugin-plan.md" />
-    <File Path="docs/data-channel-plan.md" />
-    <File Path="docs/host-abstraction-plan.md" />
-    <File Path="docs/schema-editor-plan.md" />
     <File Path="docs/schema-editor-doc-a-schemas.md" />
     <File Path="docs/schema-editor-doc-b-tokens.md" />
-    <File Path="docs/skills_lifecycle_plan.md" />
-    <File Path="docs/web-vue-migration-plan.md" />
+    <File Path="docs/sys_prompt_rules_ru.md" />
   </Folder>
-  <Folder Name="/docs/roadmap/">
-    <File Path="docs/roadmap.md" />
-    <File Path="docs/TODO.md" />
-    <File Path="docs/TODO_ConnectionList.md" />
-    <File Path="docs/TODO_Plagins.md" />
-    <File Path="docs/TODO_SQLITE_VULN.md" />
-    <File Path="docs/TODO_X.md" />
-    <File Path="docs/TODONetwork.md" />
-    <File Path="docs/TODONext.md" />
-    <File Path="docs/TODONext2.md" />
-    <File Path="docs/TODONext3.md" />
+  <Folder Name="/docs/adr/">
+    <File Path="docs/adr/ADR_20260712_secrets_store-and-ssh.md" />
+    <File Path="docs/adr/ADR_20260715_plugins_ssh-live-session.md" />
+    <File Path="docs/adr/ADR_20260731_docs_genres-and-naming.md" />
+    <File Path="docs/adr/ADR_20260731_llm_pipeline-diagrams.md" />
+    <File Path="docs/adr/ADR_20260731_llm_pipeline.md" />
+  </Folder>
+  <Folder Name="/docs/plans/">
+    <File Path="docs/plans/PLAN_20260619_agent_skills-lifecycle.md" />
+    <File Path="docs/plans/PLAN_20260625_core_data-channel.md" />
+    <File Path="docs/plans/PLAN_20260625_editor_schema.md" />
+    <File Path="docs/plans/PLAN_20260701_core_host-abstraction.md" />
+    <File Path="docs/plans/PLAN_20260701_plugins_browser-playwright.md" />
+    <File Path="docs/plans/PLAN_20260701_web_vue-migration.md" />
+    <File Path="docs/plans/PLAN_20260712_secrets_phase2.md" />
+    <File Path="docs/plans/PLAN_20260731_llm_pipeline.md" />
+  </Folder>
+  <Folder Name="/docs/ideas/">
+    <File Path="docs/ideas/IDEA_20260611_core_todo-general.md" />
+    <File Path="docs/ideas/IDEA_20260611_plugins_network.md" />
+    <File Path="docs/ideas/IDEA_20260616-2_core_next-2.md" />
+    <File Path="docs/ideas/IDEA_20260616_core_next-1.md" />
+    <File Path="docs/ideas/IDEA_20260619_core_next-3.md" />
+    <File Path="docs/ideas/IDEA_20260625_core_sqlite-vulnerability.md" />
+    <File Path="docs/ideas/IDEA_20260702_core_roadmap.md" />
+    <File Path="docs/ideas/IDEA_20260711_llm_model-registry.md" />
+    <File Path="docs/ideas/IDEA_20260712_plugins_ideas.md" />
+    <File Path="docs/ideas/IDEA_20260715_core_misc.md" />
   </Folder>
   <Folder Name="/src/core/">
     <Project Path="src/core/SPLA.Domain/SPLA.Domain.csproj" />

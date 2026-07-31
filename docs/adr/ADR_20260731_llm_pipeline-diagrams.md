@@ -1,6 +1,6 @@
 # Конвейер LLM — схемы
 
-Визуальное приложение к [`DESIGN_LLM_Pipeline.md`](DESIGN_LLM_Pipeline.md). Текст решений и
+Визуальное приложение к [`ADR_20260731_llm_pipeline.md`](ADR_20260731_llm_pipeline.md). Текст решений и
 обоснования — там; здесь только устройство. При расхождении прав основной документ.
 
 ---
@@ -11,10 +11,11 @@
 порядок задаётся стадией middleware, а не порядком регистрации.
 
 ```mermaid
+%%{init: {'flowchart': {'subGraphTitleMargin': {'top': 12, 'bottom': 12}, 'nodeSpacing': 40, 'rankSpacing': 50, 'wrappingWidth': 450, 'htmlLabels': true}}}%%
 flowchart TB
-    CALLER["<b>Вызывающий</b><br/>ConversationOrchestrator · SpawnedAgentRunner · воркер"]
-    CTX["<b>LlmTurnContext</b> — создаётся на каждый ход<br/>сообщения · инструменты · настройки · connectionId<br/>приёмники OnDelta / OnReasoning"]
-    GW["<b>ILlmGateway</b><br/>единственный публикуемый вход"]
+    CALLER["**Вызывающий** - <i>ConversationOrchestrator · SpawnedAgentRunner · воркер</i>"]
+    CTX["**LlmTurnContext** - <i>создаётся на каждый ход: сообщения · инструменты · настройки · connectionId · приёмники OnDelta / OnReasoning</i>"]
+    GW["**ILlmGateway** - <i>единственный публикуемый вход</i>"]
 
     CALLER --> CTX --> GW
 
@@ -23,45 +24,45 @@ flowchart TB
 
         subgraph ST1["① Trace"]
             direction TB
-            M1["Trace<br/><i>трасса хода; снаружи всего,<br/>чтобы отказ тоже был виден</i>"]
-            M2["ConnectionResolve<br/><i>id → дескриптор + провайдер + capabilities;<br/>дальше id никто не резолвит</i>"]
+            M1["**Trace** - <i>трасса хода; снаружи всего, чтобы отказ тоже был виден</i>"]
+            M2["**ConnectionResolve** - <i>id → дескриптор + провайдер + capabilities; дальше id никто не резолвит</i>"]
             M1 --> M2
         end
 
         subgraph ST2["② Policy — открыта плагинам"]
             direction TB
-            M3["Authorize<br/><i>можно ли этому caller'у<br/>это подключение и эту модель</i>"]
-            M4["Privacy<br/><i>можно ли ЭТОТ контент<br/>в ЭТО подключение</i>"]
-            M5["Quota<br/><i>предпроверка бюджета</i>"]
+            M3["**Authorize** - <i>можно ли этому caller'у это подключение и эту модель</i>"]
+            M4["**Privacy** - <i>можно ли ЭТОТ контент в ЭТО подключение</i>"]
+            M5["**Quota** - <i>предпроверка бюджета</i>"]
             M3 --> M4 --> M5
         end
 
         subgraph ST3["③ Content — открыта плагинам"]
             direction TB
-            M6["CapabilityGuard<br/><i>vision / tools / reasoning против capabilities<br/>→ внятная ошибка ДО сети</i>"]
-            M7["ContentPolicy<br/><i>даунскейл картинок, лимиты вложений</i>"]
+            M6["**CapabilityGuard** - <i>vision / tools / reasoning против capabilities → внятная ошибка ДО сети</i>"]
+            M7["**ContentPolicy** - <i>даунскейл картинок, лимиты вложений</i>"]
             M6 --> M7
         end
 
         subgraph ST4["④ Retry — запечатана"]
-            M8["Retry<br/><i>только транзиентные, только<br/>то же подключение и та же модель</i>"]
+            M8["**Retry** - <i>только транзиентные, только то же подключение и та же модель</i>"]
         end
 
         subgraph ST5["⑤ Accounting — запечатана"]
-            M9["Usage<br/><i>try/finally вокруг вызова:<br/>отмена и ошибка тоже дают строку</i>"]
+            M9["**Usage** - <i>try/finally вокруг вызова: отмена и ошибка тоже дают строку</i>"]
         end
 
         subgraph ST6["⑥ Transport — запечатана"]
-            M10["Credentials<br/><i>резолв секрета в последний момент,<br/>дальше материал не оседает</i>"]
+            M10["**Credentials** - <i>резолв секрета в последний момент, дальше материал не оседает</i>"]
         end
 
         ST1 --> ST2 --> ST3 --> ST4 --> ST5 --> ST6
     end
 
     GW --> ST1
-    ST6 --> PROV["<b>ILlmClient</b> — терминальный шаг<br/>единственное место, знающее провод<br/><i>LM Studio · OpenAI · Anthropic · Google</i>"]
-    PROV --> RES["<b>LlmTurnResult</b><br/>message · rawUsage · modelReported · status"]
-    RES -.->|"обратный ход через те же слои"| CALLER
+    ST6 --> PROV["**ILlmClient** - <i>терминальный шаг, единственное место, знающее провод: LM Studio · OpenAI · Anthropic · Google</i>"]
+    PROV --> RES["**LlmTurnResult** - <i>message · rawUsage · modelReported · status</i>"]
+    RES -.- BACK["обратный ход через те же слои — назад к вызывающему"]
 
     classDef open fill:#1f5c2e22,stroke:#2f9e4f,stroke-width:2px
     classDef sealedStage fill:#5c1f1f22,stroke:#b34747,stroke-width:2px
@@ -85,21 +86,22 @@ flowchart TB
 поток данных проходит мимо слоёв.
 
 ```mermaid
+%%{init: {'flowchart': {'subGraphTitleMargin': {'top': 12, 'bottom': 12}, 'nodeSpacing': 40, 'rankSpacing': 50, 'wrappingWidth': 260, 'htmlLabels': true}}}%%
 flowchart LR
     subgraph CALLPATH["Поток ВЫЗОВА — 2 раза за ход: вниз и вверх"]
         direction LR
         A1["Trace"] --> A2["Policy"] --> A3["Content"] --> A4["Retry"] --> A5["Accounting"] --> A6["Transport"] --> A7["провайдер"]
     end
 
-    SOCK["сокет провайдера<br/><i>цикл чтения SSE</i>"]
-    SINK["ctx.OnDelta<br/>ctx.OnReasoning"]
-    UI["WebSocket → браузер<br/>Spectre.Console → консоль воркера"]
+    SOCK["**сокет провайдера** - <i>цикл чтения SSE</i>"]
+    SINK["**ctx.OnDelta** / **ctx.OnReasoning**"]
+    UI["**WebSocket → браузер** / **Spectre.Console → консоль воркера**"]
 
     SOCK ==>|"поток ДАННЫХ — тысячи раз за ход"| SINK
     SINK ==> UI
     A7 -.->|"зовёт приёмники прямо из цикла"| SOCK
 
-    NOTE["Middleware в потоке вызова<br/>и физически отсутствует в потоке данных.<br/>Первый токен приходит в ту же миллисекунду,<br/>сколько бы слоёв ни было."]
+    NOTE["Middleware в потоке вызова и физически отсутствует в потоке данных.<br/>Первый токен приходит в ту же миллисекунду, сколько бы слоёв ни было."]
 
     classDef note fill:#3a3a1f22,stroke:#b3a047,stroke-width:1px
     class NOTE note
@@ -116,13 +118,14 @@ flowchart LR
 Три уровня с тремя разными временами жизни. Путать их — главный способ сгноить такую архитектуру.
 
 ```mermaid
+%%{init: {'flowchart': {'subGraphTitleMargin': {'top': 12, 'bottom': 12}, 'nodeSpacing': 40, 'rankSpacing': 50, 'wrappingWidth': 260, 'htmlLabels': true}}}%%
 flowchart TB
     subgraph L1["① Хост — один раз при старте процесса"]
         direction LR
-        H1["SPLA.CLI<br/><i>профиль local</i>"]
-        H2["SPLA.Server<br/><i>профиль server</i>"]
-        H3["воркер<br/><i>bare или worker</i>"]
-        BP["<b>LlmPipelineBlueprint</b><br/>список middleware по стадиям +<br/>хостовые реализации политик"]
+        H1["**SPLA.CLI** - <i>профиль local</i>"]
+        H2["**SPLA.Server** - <i>профиль server</i>"]
+        H3["**воркер** - <i>bare или worker</i>"]
+        BP["**LlmPipelineBlueprint** - <i>список middleware по стадиям + хостовые реализации политик</i>"]
         H1 --> BP
         H2 --> BP
         H3 --> BP
@@ -131,8 +134,8 @@ flowchart TB
     subgraph L2["② AgentRuntime — в конструкторе, после загрузки плагинов"]
         direction TB
         P1["LoadPlugins()"] --> P2["ProviderRegistry.From(plugins)"]
-        P2 --> P3["blueprint.Build(registry, settings)<br/><i>валидация порядка здесь, на старте</i>"]
-        P3 --> P4["<b>ILlmGateway</b> — неизменяем,<br/>один на рантайм, общий для всех чатов"]
+        P2 --> P3["**blueprint.Build(registry, settings)** - <i>валидация порядка здесь, на старте</i>"]
+        P3 --> P4["**ILlmGateway** - <i>неизменяем, один на рантайм, общий для всех чатов</i>"]
     end
 
     subgraph L3["③ Ход — не собирается НИЧЕГО"]
@@ -143,7 +146,7 @@ flowchart TB
     BP --> P3
     P4 --> T2
 
-    NOTE2["Провайдеры приходят плагинами, а плагины<br/>включаются по проекту — поэтому выпечка<br/>именно здесь, а не при старте процесса."]
+    NOTE2["Провайдеры приходят плагинами, а плагины включаются по проекту — поэтому выпечка именно здесь, а не при старте процесса."]
     P3 -.- NOTE2
 
     classDef host fill:#1f3c5c22,stroke:#4787b3,stroke-width:2px
@@ -166,13 +169,14 @@ flowchart TB
 ## 4. Граница, которую нельзя двигать
 
 ```mermaid
+%%{init: {'flowchart': {'subGraphTitleMargin': {'top': 12, 'bottom': 12}, 'nodeSpacing': 40, 'rankSpacing': 50, 'wrappingWidth': 260, 'htmlLabels': true}}}%%
 flowchart TB
     subgraph AGENT["Ход агента — N сетевых вызовов, живёт НАД gateway"]
         direction TB
         U["сообщение пользователя"] --> L1{"нужен вызов модели?"}
-        L1 -->|да| G["gateway.InvokeAsync<br/><b>= ОДИН вызов к ОДНОЙ модели</b>"]
+        L1 -->|да| G["**gateway.InvokeAsync** - <i>= ОДИН вызов к ОДНОЙ модели</i>"]
         G --> TC{"модель попросила инструменты?"}
-        TC -->|да| EX["выполнить инструменты<br/>дописать результаты в диалог"]
+        TC -->|да| EX["**выполнить инструменты** - <i>дописать результаты в диалог</i>"]
         EX --> L1
         TC -->|нет| DONE["ответ пользователю"]
     end

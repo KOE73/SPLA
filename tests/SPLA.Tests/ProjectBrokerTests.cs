@@ -5,7 +5,7 @@ using SPLA.Domain.Settings;
 namespace SPLA.Tests;
 
 /// <summary>
-/// Phase 1 (docs/host-abstraction-plan.md): the project is a storage BROKER. Consumers get
+/// Phase 1 (../../docs/plans/PLAN_20260701_core_host-abstraction.md): the project is a storage BROKER. Consumers get
 /// buckets/KV from <see cref="IProject"/> and never hand-roll ".spla" paths; the physical layout
 /// decision lives in exactly one place — <see cref="LocalProjectBackend.For"/>.
 /// </summary>

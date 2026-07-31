@@ -6,7 +6,7 @@ using SPLA.Plugins.Sql;
 namespace SPLA.Tests;
 
 /// <summary>
-/// Фаза 2 schema-editor (docs/schema-editor-plan.md): проверяем путь резолва схем и контента
+/// Фаза 2 schema-editor (../../docs/plans/PLAN_20260625_editor_schema.md): проверяем путь резолва схем и контента
 /// БЕЗ GUI. GUI (реальный рендер формы в WebView) проверяется вручную в конце.
 /// </summary>
 public class SchemaEditorResolverTests

@@ -6,7 +6,7 @@ using SPLA.Service;
 namespace SPLA.Tests;
 
 /// <summary>
-/// Phase 2.1 (docs/host-abstraction-plan.md): the multi-project seam. A single service process
+/// Phase 2.1 (../../docs/plans/PLAN_20260701_core_host-abstraction.md): the multi-project seam. A single service process
 /// can hold more than one <see cref="AgentRuntime"/> side by side, each keyed by project id and
 /// built lazily; reopening the same project returns the SAME runtime so its state (chats, KV,
 /// connection-health cache) stays one consistent instance regardless of caller.

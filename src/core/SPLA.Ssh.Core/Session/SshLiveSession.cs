@@ -158,7 +158,7 @@ public sealed class SshLiveSession : IDisposable
     // command KEEPS RUNNING as the session's pending run — the tool returns "running" with the output
     // so far, and later WaitAsync calls continue reading from the same cursor (nothing between calls
     // is lost; output keeps accumulating in the run buffer). A dropped connection is a RESULT
-    // ("disconnected"), never a hang. See docs/DESIGN_SSH_LiveSession_Tools.md.
+    // ("disconnected"), never a hang. See ../../../../docs/adr/ADR_20260715_plugins_ssh-live-session.md.
 
     /// <summary>Terminal states: done (marker seen, ExitCode set), running (timeout, command still
     /// going), matched (a WaitAsync 'until' regex hit), interrupted (Ctrl+C sent after timeout),

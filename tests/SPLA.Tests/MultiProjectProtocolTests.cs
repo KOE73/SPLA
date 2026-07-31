@@ -12,7 +12,7 @@ using SPLA.Service.Contracts;
 namespace SPLA.Tests;
 
 /// <summary>
-/// Phase 2.2 (docs/host-abstraction-plan.md), variant B: every chat/project-scoped envelope carries
+/// Phase 2.2 (../../docs/plans/PLAN_20260701_core_host-abstraction.md), variant B: every chat/project-scoped envelope carries
 /// its own ProjectId (null = the connection's default project); the server keeps no "current
 /// project" state on the socket. This is the end-to-end proof the earlier unit tests couldn't give:
 /// a REAL WebSocket connection touching two different projects gets genuinely isolated results —

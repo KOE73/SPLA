@@ -1,7 +1,7 @@
 # Секреты фазы 2 + SSH-плагин — как построено (as-built)
 
 Реализовано и протестировано 2026-07-12 (ветка `roslyn-project-tools`). «Почему» (все решения с
-обоснованиями) — в [DESIGN_Secrets_and_SSH.md](DESIGN_Secrets_and_SSH.md). Здесь — «что и где» плюс
+обоснованиями) — в [../adr/ADR_20260712_secrets_store-and-ssh.md](../adr/ADR_20260712_secrets_store-and-ssh.md). Здесь — «что и где» плюс
 как настраивать и тестировать.
 
 ## Инварианты (держать при любом развитии)
@@ -128,4 +128,4 @@ spla secret set ssh/box/koe --machine    # ввести пароль скрыт�
 Миграция plaintext→DPAPI, Windows Credential Manager, композитные хранилища, Linux-бэкенд (libsecret),
 редакция секретов в логах агента, TLS для не-loopback. Живая консоль фазы A (персистентная сессия со
 стримингом) — **сделана**; фаза B (xterm-терминал в web-UI со свободным вводом человека в pty, поверх
-`SshSession.SendRaw`) — следующий крупный шаг: см. [DESIGN_Secrets_and_SSH.md](DESIGN_Secrets_and_SSH.md).
+`SshSession.SendRaw`) — следующий крупный шаг: см. [../adr/ADR_20260712_secrets_store-and-ssh.md](../adr/ADR_20260712_secrets_store-and-ssh.md).

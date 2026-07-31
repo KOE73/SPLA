@@ -4,7 +4,7 @@ using SPLA.Domain.Project;
 namespace SPLA.Tests;
 
 /// <summary>
-/// Phase 2 (docs/host-abstraction-plan.md): the provider level above a single project —
+/// Phase 2 (../../docs/plans/PLAN_20260701_core_host-abstraction.md): the provider level above a single project —
 /// create/open/list/recent against an isolated state dir, never touching the real ~/.spla.
 /// </summary>
 public sealed class ProjectProviderTests

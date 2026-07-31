@@ -92,7 +92,7 @@ See `agents/documentation.md` for the exact documentation and translation rules.
 
 Current user docs:
 
-- `docs/TODO.md`: User-maintained TODO notes. Agents should not treat this file as agent instructions.
+- `../docs/ideas/IDEA_20260611_core_todo-general.md`: User-maintained TODO notes. Agents should not treat this file as agent instructions.
 - `docs/readme_security_ru.md`: Russian user-facing security/modes documentation.
 
 Current agent docs:

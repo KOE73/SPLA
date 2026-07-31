@@ -14,7 +14,7 @@ namespace SPLA.Plugins.Browser.Tools;
 /// Takes a real screenshot. Unlike every other browser_* tool, this one's result is more than the
 /// text it returns: the PNG is stored in the chat's blob store AND queued in the chat's
 /// <see cref="IPendingImageSink"/>, so the orchestrator injects it as an actual image on the
-/// model's very next turn (see docs/browser-playwright-plugin-plan.md, "Скриншот ОБЯЗАН дойти...").
+/// model's very next turn (see ../../../../docs/plans/PLAN_20260701_plugins_browser-playwright.md, "Скриншот ОБЯЗАН дойти...").
 /// </summary>
 public sealed class BrowserScreenshotTool : IMcpTool
 {

@@ -7,8 +7,8 @@ restatement plus a pointer here. If you find a rule stated somewhere else and it
 file, this file wins and the other place is a bug.
 
 Related: [`agents/protocol.md`](protocol.md) (wire boundary) · [`agents/spla-file.md`](spla-file.md)
-(config format) · [`docs/DESIGN_Secrets_and_SSH.md`](../docs/DESIGN_Secrets_and_SSH.md) (why the
-backends look like this — ADR, not policy) · [`docs/readme_auth.md`](../docs/readme_auth.md) (server
+(config format) · [`ADR_20260712_secrets_store-and-ssh`](../docs/adr/ADR_20260712_secrets_store-and-ssh.md) (why the
+backends look like this — ADR, not policy) · [`readme_auth`](../docs/readme_auth.md) (server
 login accounts, a different subject).
 
 ---

@@ -5,7 +5,7 @@ using SPLA.Domain.Editor;
 namespace SPLA.Plugins.Sql;
 
 /// <summary>
-/// Поставщик схем редактора от SQL-плагина (docs/schema-editor-plan.md, Фаза 2).
+/// Поставщик схем редактора от SQL-плагина (../../../docs/plans/PLAN_20260625_editor_schema.md, Фаза 2).
 ///
 /// SQL — лишь первый, РЕФЕРЕНСНЫЙ источник схемы табличного JSONL: он вшивает «золотой стандарт»
 /// `sql-table@1` (DATA-схема) и `sql-table.ui` (раскладка) как embedded-ресурсы и отдаёт их через

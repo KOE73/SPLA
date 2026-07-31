@@ -30,7 +30,7 @@ before implementing. Honor `agents/data-ownership.md`: domain owns state, UI onl
 - Create `agents/skills.md` — skill system architecture: lifecycle state machine (Idle → confirming → Active → Idle), the `skill.*` and `agent_clarify` tools, `agent_spawn`, hot reload, single-active-skill invariant, where state lives.
 - Add a `## Skill Lifecycle` section to `agents/sys_prompt_rules.md` (and mirror in `docs/sys_prompt_rules_ru.md`): rules S7 "Single active skill, explicit lifecycle" and S8 "Activation is a tool call, deactivation is explicit".
 - Update `AGENTS.md` — add link to `agents/skills.md`.
-- Update `SPLA.slnx` — add `agents/skills.md` to `/agents/`, `docs/skills_lifecycle_plan.md` to `/docs/`.
+- Update `SPLA.slnx` — add `agents/skills.md` to `/agents/`, `PLAN_20260619_agent_skills-lifecycle.md` to `/docs/`.
 
 **Acceptance:** docs exist, AGENTS.md links them, slnx lists them. No build impact.
 
