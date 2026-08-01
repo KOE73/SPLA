@@ -360,11 +360,21 @@ input.locked { opacity: 0.6; cursor: default; background: var(--bg); }
 
 /* Model list popup (position:fixed, appended to body) */
 .models-popup { position: fixed; z-index: 200; background: var(--elevated); border: 1px solid var(--border);
-  border-radius: var(--radius-sm); padding: 4px 0; max-height: 220px; overflow-y: auto;
-  min-width: 240px; box-shadow: 0 4px 20px rgba(0,0,0,.25); }
+  border-radius: var(--radius-sm); box-shadow: 0 4px 20px rgba(0,0,0,.25);
+  display: flex; flex-direction: column; overflow: hidden; resize: both;
+  width: 380px; height: 360px; min-width: 240px; min-height: 140px; }
+.models-popup .model-filter { display: flex; align-items: center; gap: 6px; padding: 6px 8px;
+  border-bottom: 1px solid var(--border); flex: none; }
+.models-popup .model-filter input { flex: 1; min-width: 0; background: var(--bg); color: var(--text);
+  border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 4px 8px;
+  font: inherit; font-size: var(--fs-sm); }
+.models-popup .model-count { color: var(--muted); font-size: var(--fs-sm); white-space: nowrap; }
+.models-popup .model-hint { color: var(--muted); font-size: var(--fs-sm); cursor: help; user-select: none; }
+.models-popup .model-list { flex: 1; overflow-y: auto; padding: 4px 0; }
 .models-popup .model-item { padding: 6px 12px; font-size: var(--fs-sm); cursor: pointer;
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.models-popup .model-item:hover { background: var(--accent-soft); color: var(--accent); }
+.models-popup .model-item:hover, .models-popup .model-item[data-active="1"] { background: var(--accent-soft); color: var(--accent); }
+.models-popup .model-empty { padding: 6px 12px; font-size: var(--fs-sm); color: var(--muted); font-style: italic; }
 .field { display: grid; grid-template-columns: 92px 1fr; align-items: center; gap: 8px; }
 .field > span { color: var(--muted); font-size: var(--fs-sm); }
 .field input, .field select, .field textarea { background: var(--bg); color: var(--text); border: 1px solid var(--border);
