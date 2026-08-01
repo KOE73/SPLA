@@ -106,6 +106,9 @@ public static class MessageTypes
     public const string ConnectionSwapModel = "connection.swap_model";
     /// <summary>Replace the connection list (persisted to the .spla project when there is one).</summary>
     public const string ConnectionsSave = "connections.save";
+    /// <summary>Account and model figures behind one model entry — the "i" popup. Read-only, and
+    /// never returns credential material: only what the provider reports about it.</summary>
+    public const string ProviderInfo = "provider.info";
     /// <summary>Ask for the editable agent settings (default mode + permission overrides).</summary>
     public const string AgentGet = "agent.get";
     /// <summary>Save agent settings (persisted to the .spla project when there is one).</summary>
@@ -216,6 +219,7 @@ public static class MessageTypes
     public const string ConnectionModelsResult    = "connection.models.result";
     public const string ConnectionSwapModelResult = "connection.swap_model.result";
     public const string ConnectionTestResult   = "connection.test.result";
+    public const string ProviderInfoResult     = "provider.info.result";
     /// <summary>Health snapshot for all configured connections — broadcast on startup and on
     /// <see cref="ConnectionsGet"/> so every window can show live/dead indicators.</summary>
     public const string ConnectionsHealth = "connections.health";

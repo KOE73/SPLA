@@ -132,6 +132,8 @@ public class ResolvedSettings
 
     public LLMSettings ToLLMSettings(ResolvedModelEntry? entry) => new()
     {
+        Provider         = entry?.Provider,
+        ConnectionId     = entry?.Connection.Id,
         BaseUrl          = entry?.Endpoint ?? "http://127.0.0.1:1234/v1/",
         ApiKey           = entry?.ApiKey   ?? "lm-studio",
         ModelName        = entry?.Model is { Length: > 0 } m && m != "auto" ? m : "",

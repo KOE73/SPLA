@@ -90,6 +90,33 @@ export interface ModelPickDto {
   provider?: string;
 }
 
+/** One provider-reported figure. `kind` drives formatting, `severity` drives the dot. */
+export interface ProviderFactDto {
+  key: string;
+  label: string;
+  value: string;
+  unit?: string;
+  kind?: "counter" | "money" | "percent" | "duration" | "timestamp" | "text";
+  severity?: "normal" | "warn" | "critical";
+  observedAt?: string;
+  resetsAt?: string;
+}
+
+export interface ProviderFactSectionDto {
+  title: string;
+  facts: ProviderFactDto[];
+  deepLink?: string;
+}
+
+export interface ProviderInfoResultPayload {
+  modelId: string;
+  connectionId: string;
+  connectionName: string;
+  provider?: string;
+  sections: ProviderFactSectionDto[];
+  error?: string;
+}
+
 export interface ConnHealth {
   ok: boolean | null;
   error?: string;
@@ -406,6 +433,7 @@ export interface ServerEvents {
   "connection.ping.result": ConnectionPingResultPayload;
   "connection.test.result": ConnectionTestResultPayload;
   "connection.swap_model.result": ConnectionSwapModelResultPayload;
+  "provider.info.result": ProviderInfoResultPayload;
   "agent.result": AgentResultPayload;
   "plugins.result": PluginsResultPayload;
   "skills.result": SkillsResultPayload;

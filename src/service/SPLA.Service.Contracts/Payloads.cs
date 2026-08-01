@@ -220,6 +220,50 @@ public sealed class ConnectionsPayload
     public string? Error { get; set; }
 }
 
+/// <summary>Asks for the account/model figures behind one model entry — the "i" popup next to the
+/// model picker. Identified by model id because that is what a chat holds; the server walks up to the
+/// owning connection for the credential-scoped half.</summary>
+public sealed class ProviderInfoRequest
+{
+    public string ModelId { get; set; } = string.Empty;
+}
+
+/// <summary>One provider-reported figure. Mirrors the domain's ProviderFact — the generic middle
+/// layer, so a counter this build has never heard of still reaches the UI.</summary>
+public sealed class ProviderFactDto
+{
+    public string Key { get; set; } = string.Empty;
+    public string Label { get; set; } = string.Empty;
+    public string Value { get; set; } = string.Empty;
+    public string Unit { get; set; } = string.Empty;
+    /// <summary>counter | money | percent | duration | timestamp | text — drives formatting.</summary>
+    public string Kind { get; set; } = "text";
+    /// <summary>normal | warn | critical — drives the dot next to the picker.</summary>
+    public string Severity { get; set; } = "normal";
+    public DateTimeOffset ObservedAt { get; set; }
+    public DateTimeOffset? ResetsAt { get; set; }
+}
+
+/// <summary>A titled group of facts, with an optional link to the provider's own dashboard.</summary>
+public sealed class ProviderFactSectionDto
+{
+    public string Title { get; set; } = string.Empty;
+    public List<ProviderFactDto> Facts { get; set; } = new();
+    public string? DeepLink { get; set; }
+}
+
+/// <summary>What the "i" popup shows. Sections are ordered connection-first, then model.</summary>
+public sealed class ProviderInfoResult
+{
+    public string ModelId { get; set; } = string.Empty;
+    public string ConnectionId { get; set; } = string.Empty;
+    public string ConnectionName { get; set; } = string.Empty;
+    public string? Provider { get; set; }
+    public List<ProviderFactSectionDto> Sections { get; set; } = new();
+    /// <summary>Set when nothing could be read at all (unknown model id, provider offline).</summary>
+    public string? Error { get; set; }
+}
+
 /// <summary>Health state for one connection. <see cref="Ok"/> is null when not yet checked.</summary>
 public sealed class ConnectionHealthDto
 {

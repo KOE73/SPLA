@@ -13,6 +13,14 @@
       </optgroup>
     </select>
     <span id="connHealthDot" class="conn-status" :class="healthClass" :title="healthTitle"></span>
+    <button
+      ref="infoBtn"
+      class="pi-btn"
+      :class="alertClass"
+      :disabled="!modelId"
+      title="Provider and model details"
+      @click.stop="toggleInfo"
+    >i</button>
   </label>
   <button class="filter" @click="openSettings">⚙</button>
   <button class="filter" @click="uiBus.emit('debug.open')">debug</button>
@@ -23,6 +31,13 @@
     :class="{ warn: ctxPercent >= 80, crit: ctxPercent >= 95 }"
     :title="ctxTitle"
   >ctx {{ ctxPercent }}%</span>
+
+  <ProviderInfoPopup
+    v-if="infoOpen && infoBtn && modelId"
+    :model-id="modelId"
+    :anchor="infoBtn"
+    @close="infoOpen = false"
+  />
 </template>
 
 <script setup lang="ts">
@@ -31,6 +46,7 @@ import { client } from "../protocol/SplaClient";
 import { store } from "../state/store";
 import { uiBus } from "../state/uiBus";
 import type { ConnHealth, ModelPickDto } from "../protocol/types";
+import ProviderInfoPopup from "./ProviderInfoPopup.vue";
 
 const connText = ref("connecting…");
 const project = ref("");
@@ -93,10 +109,26 @@ const healthTitle = computed(() => {
   return h.ok ? "Reachable" : (h.error || "Unreachable");
 });
 
+// ── Provider info ("i") ──────────────────────────────────────────────────────
+// Passive by design: it never polls. It reads on open, and afterwards reflects whatever the last
+// read reported — a badge that quietly hammered the provider on a timer would cost money on some of
+// them and lie on the rest.
+const infoBtn = ref<HTMLElement>();
+const infoOpen = ref(false);
+const worstSeverity = ref<"normal" | "warn" | "critical">("normal");
+
+function toggleInfo() { infoOpen.value = !infoOpen.value; }
+
+const alertClass = computed(() =>
+  worstSeverity.value === "critical" ? "crit" : worstSeverity.value === "warn" ? "warn" : "");
+
 function onModeChange() {
   if (store.currentChat) client.send("chat.settings", { chatId: store.currentChat, mode: mode.value }, { projectId: store.currentProjectId ?? undefined });
 }
 function onModelChange() {
+  // A different model may sit behind a different key, so the previous badge says nothing about it.
+  worstSeverity.value = "normal";
+  infoOpen.value = false;
   if (store.currentChat) client.send("chat.settings", { chatId: store.currentChat, modelId: modelId.value }, { projectId: store.currentProjectId ?? undefined });
 }
 function openSettings() {
@@ -141,9 +173,17 @@ const offResult = client.on("connections.result", p => {
       provider: c.provider
     })));
 });
+// The badge follows whatever the last read reported — including a read triggered by another window.
+const offInfo = client.on("provider.info.result", p => {
+  if (p.modelId !== modelId.value) return;
+  const all = (p.sections || []).flatMap(s => s.facts || []);
+  worstSeverity.value = all.some(f => f.severity === "critical") ? "critical"
+    : all.some(f => f.severity === "warn") ? "warn"
+    : "normal";
+});
 const offHealth = client.on("connections.health", p => {
   connHealth.value = {};
   for (const s of p.statuses || []) connHealth.value[s.id] = { ok: s.ok, error: s.error };
 });
-onUnmounted(() => { offConn(); offWelcome(); offChatOpened(); offTokens(); offResult(); offHealth(); });
+onUnmounted(() => { offConn(); offWelcome(); offChatOpened(); offTokens(); offResult(); offHealth(); offInfo(); });
 </script>

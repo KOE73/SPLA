@@ -4,6 +4,20 @@ namespace SPLA.Domain.Settings;
 
 public class LLMSettings
 {
+    /// <summary>
+    /// Which provider serves this turn — the connection's <c>provider</c> field, and the key the
+    /// client resolver dispatches on. Empty/null means "the default provider", which keeps a project
+    /// that never named one working.
+    /// </summary>
+    public string? Provider { get; set; }
+
+    /// <summary>
+    /// The connection this turn runs on. Carried alongside the model because rate limits, balance and
+    /// reachability are properties of the credential, not of the model — anything recording those has
+    /// to key by connection or five models under one key would report five different budgets.
+    /// </summary>
+    public string? ConnectionId { get; set; }
+
     public string BaseUrl { get; set; } = "http://127.0.0.1:1234/v1/";
     public string ModelName { get; set; } = "local-model";
     public string ApiKey { get; set; } = "lm-studio";

@@ -42,6 +42,18 @@ public sealed class LlmTurnResult
     public IReadOnlyDictionary<string, long> RawUsage { get; init; }
         = new Dictionary<string, long>(StringComparer.OrdinalIgnoreCase);
 
+    /// <summary>
+    /// Observations the provider volunteered alongside the answer — rate-limit budget, reset times,
+    /// anything else it puts in headers. Declared, not acted upon: the client knows the wire format
+    /// and reports what it saw; a middleware knows the policy and decides what that means.
+    /// <para>
+    /// They ride here rather than in <see cref="RawUsage"/> because they are not usage: usage is per
+    /// call and billable, these describe the <i>key's</i> current standing and are free to collect —
+    /// the provider already sent them.
+    /// </para>
+    /// </summary>
+    public IReadOnlyList<ProviderFact> Signals { get; init; } = [];
+
     public LlmTurnStatus Status { get; init; } = LlmTurnStatus.Ok;
 
     /// <summary>Wall-clock time of the call, stamped by the pipeline.</summary>

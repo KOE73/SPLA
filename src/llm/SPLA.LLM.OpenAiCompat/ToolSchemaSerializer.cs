@@ -1,7 +1,7 @@
 using System.Text.Json;
 using System.Text.Json.Nodes;
 
-namespace SPLA.LLM.LMStudio;
+namespace SPLA.LLM.OpenAiCompat;
 
 /// <summary>
 /// Normalizes a tool's Parameters object before it is sent to an OpenAI-compatible endpoint.

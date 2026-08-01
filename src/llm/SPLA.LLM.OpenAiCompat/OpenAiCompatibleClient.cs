@@ -11,9 +11,9 @@ using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 
-namespace SPLA.LLM.LMStudio;
+namespace SPLA.LLM.OpenAiCompat;
 
-public sealed partial class LMStudioClient : ILlmClient, ITokenUsageReporter
+public sealed partial class OpenAiCompatibleClient : ILlmClient, ITokenUsageReporter
 {
     /// <summary>LM Studio's OpenAI-compatible endpoint returns a <c>usage</c> block, so real
     /// prompt/completion counts are available (see <see cref="ITokenUsageReporter"/>).</summary>
@@ -21,12 +21,17 @@ public sealed partial class LMStudioClient : ILlmClient, ITokenUsageReporter
 
     private readonly HttpClient _httpClient;
     private readonly JsonSerializerOptions _jsonOptions;
-    private readonly ILogger<LMStudioClient> _logger;
+    private readonly ILogger<OpenAiCompatibleClient> _logger;
+    private readonly IOpenAiCompatProfile _profile;
 
-    public LMStudioClient(HttpClient httpClient, ILogger<LMStudioClient> logger)
+    /// <param name="profile">Provider dialect. Omitted = plain OpenAI-compatible, which is what
+    /// LM Studio, vLLM and OpenAI all speak. One class serves the whole family because the wire
+    /// format really is the same; the differences are small enough to be data.</param>
+    public OpenAiCompatibleClient(HttpClient httpClient, ILogger<OpenAiCompatibleClient> logger, IOpenAiCompatProfile? profile = null)
     {
         _httpClient = httpClient;
         _logger = logger;
+        _profile = profile ?? PlainOpenAiCompatProfile.Instance;
         _jsonOptions = new JsonSerializerOptions
         {
             DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull,
@@ -67,7 +72,7 @@ public sealed partial class LMStudioClient : ILlmClient, ITokenUsageReporter
     /// </summary>
     public async Task<LlmTurnResult> InvokeAsync(LlmTurnContext ctx, CancellationToken ct = default)
     {
-        var (message, modelReported) = await SendMessageStreamFullAsync(
+        var (message, modelReported, signals) = await SendMessageStreamFullAsync(
             ctx.Messages, ctx.Settings, ctx.Tools, ctx.OnDelta, ct, ctx.OnReasoning);
 
         // Raw counters keyed by their wire names: the accounting layer classifies them against the
@@ -83,6 +88,7 @@ public sealed partial class LMStudioClient : ILlmClient, ITokenUsageReporter
             // provider reported nothing at all.
             ModelReported = modelReported ?? ctx.Settings.ModelName,
             RawUsage      = usage,
+            Signals       = signals,
             Status        = usage.Count > 0 ? LlmTurnStatus.Ok : LlmTurnStatus.UsageMissing
         };
     }
@@ -92,7 +98,7 @@ public sealed partial class LMStudioClient : ILlmClient, ITokenUsageReporter
     /// <paramref name="onReasoning"/> for each reasoning chunk as they arrive, and returns the fully
     /// assembled message (including tool_calls and reasoning) when the stream finishes.
     /// </summary>
-    private async Task<(ChatMessage Message, string? ModelReported)> SendMessageStreamFullAsync(
+    private async Task<(ChatMessage Message, string? ModelReported, IReadOnlyList<ProviderFact> Signals)> SendMessageStreamFullAsync(
         IEnumerable<ChatMessage> messages,
         LLMSettings settings,
         IEnumerable<ToolDefinition>? tools,
@@ -103,6 +109,9 @@ public sealed partial class LMStudioClient : ILlmClient, ITokenUsageReporter
         var request = CreateRequestMessage(messages, settings, tools, stream: true);
         using var response = await SendWithConnectivityAsync(request, settings.BaseUrl, cancellationToken);
         await EnsureSuccessWithBodyAsync(response, cancellationToken);
+
+        // Read before the body: headers are available immediately, and this costs nothing.
+        var signals = RateLimitSignals.From(response.Headers);
 
         using var stream = await response.Content.ReadAsStreamAsync(cancellationToken);
         using var reader = new StreamReader(stream);
@@ -253,7 +262,7 @@ public sealed partial class LMStudioClient : ILlmClient, ITokenUsageReporter
             ToolCalls        = toolCalls,
             PromptTokens     = promptTokens,
             CompletionTokens = completionTokens
-        }, modelReported);
+        }, modelReported, signals);
     }
 
     /// <summary>
@@ -381,8 +390,14 @@ public sealed partial class LMStudioClient : ILlmClient, ITokenUsageReporter
             }).ToArray();
         }
 
+        // The one place a provider dialect gets to differ. Everything above is plain OpenAI-compatible
+        // and is identical for LM Studio, vLLM, OpenAI and OpenRouter; the profile adds only what a
+        // particular provider needs on top (extra body fields, extra headers).
+        _profile.ShapeBody(payload);
+
         var request = new HttpRequestMessage(HttpMethod.Post, BuildEndpointUri(settings.BaseUrl, "chat/completions"));
         request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", settings.ApiKey);
+        _profile.ShapeHeaders(request.Headers);
         request.Content = JsonContent.Create(payload, null, _jsonOptions);
         return request;
     }
@@ -442,7 +457,15 @@ public sealed partial class LMStudioClient : ILlmClient, ITokenUsageReporter
         if (response.IsSuccessStatusCode) return;
 
         var body = await response.Content.ReadAsStringAsync(cancellationToken);
-        throw ClassifyHttpFailure(response.StatusCode, response.ReasonPhrase, body);
+        var failure = ClassifyHttpFailure(response.StatusCode, response.ReasonPhrase, body);
+
+        // Rate-limit headers are richest on exactly this path — a 429 is the response most likely to
+        // carry them, and it never produces a result object. Attaching them to the failure is what
+        // stops the most valuable observation from being the one we throw away.
+        throw new LlmRequestException(failure.Kind, failure.Message, failure.StatusCode, failure.Detail)
+        {
+            Signals = RateLimitSignals.From(response.Headers)
+        };
     }
 
     /// <summary>

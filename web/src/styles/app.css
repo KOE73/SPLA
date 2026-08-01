@@ -353,6 +353,37 @@ input.locked { opacity: 0.6; cursor: default; background: var(--bg); }
 /* Action bar below fields */
 .conn-actions { display: flex; gap: 8px; padding-top: 4px; border-top: 1px solid var(--border); }
 
+/* ── Provider info ("i") ──────────────────────────────────────────────────── */
+.pi-btn { background: none; border: 1px solid var(--border); color: inherit; cursor: pointer;
+  border-radius: 50%; width: 15px; height: 15px; line-height: 1; padding: 0;
+  font-size: 9px; font-style: italic; font-family: Georgia, serif; opacity: .6; flex-shrink: 0; }
+.pi-btn:hover:not(:disabled) { opacity: 1; }
+.pi-btn:disabled { opacity: .25; cursor: default; }
+.pi-btn.warn { color: var(--warn, #d89a1a); border-color: currentColor; opacity: 1; }
+.pi-btn.crit { color: var(--danger); border-color: currentColor; opacity: 1; }
+
+.pi-popup { position: fixed; z-index: 220; min-width: 260px; max-width: 380px;
+  max-height: 60vh; overflow-y: auto; padding: 8px 10px;
+  background: var(--elevated); border: 1px solid var(--border);
+  border-radius: var(--radius-sm); box-shadow: 0 6px 24px rgb(0 0 0 / .35);
+  font-size: var(--fs-sm); }
+.pi-head { display: flex; align-items: baseline; gap: 6px; padding-bottom: 6px;
+  border-bottom: 1px solid var(--border); }
+.pi-provider { font-size: var(--fs-xs); opacity: .55; }
+.pi-section { padding-top: 7px; }
+.pi-section-head { display: flex; align-items: center; gap: 6px; font-size: var(--fs-xs);
+  text-transform: uppercase; letter-spacing: .04em; opacity: .6; margin-bottom: 3px; }
+.pi-section-head > span { flex: 1; }
+.pi-section-head a { color: inherit; text-decoration: none; opacity: .8; }
+.pi-fact { display: flex; align-items: baseline; gap: 8px; padding: 1px 0; }
+.pi-label { flex: 1; opacity: .8; min-width: 0; }
+.pi-value { font-variant-numeric: tabular-nums; white-space: nowrap; }
+.pi-fact[data-sev="warn"] .pi-value { color: var(--warn, #d89a1a); }
+.pi-fact[data-sev="critical"] .pi-value { color: var(--danger); font-weight: 600; }
+.pi-reset { font-size: var(--fs-xs); opacity: .5; white-space: nowrap; }
+.pi-empty { opacity: .5; padding: 4px 0; }
+.pi-err { color: var(--danger); opacity: 1; }
+
 /* Model list under a connection. Rows stay one line high and expand on demand — a connection with
    eight models has to read as a list, not as eight stacked cards. */
 .conn-models { border-top: 1px solid var(--border); padding-top: 6px; display: flex; flex-direction: column; gap: 2px; }

@@ -1,7 +1,14 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
+  <!--
+    LM Studio's NATIVE management API (load/unload a model, report the loaded instance's context
+    window). That is genuinely LM Studio-specific and has no OpenAI-compatible equivalent, which is
+    why this project still exists after the transport moved to SPLA.LLM.OpenAiCompat.
+  -->
+
   <ItemGroup>
     <ProjectReference Include="..\..\core\SPLA.Domain\SPLA.Domain.csproj" />
+    <ProjectReference Include="..\SPLA.LLM.OpenAiCompat\SPLA.LLM.OpenAiCompat.csproj" />
     <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="9.0.0" />
   </ItemGroup>
 

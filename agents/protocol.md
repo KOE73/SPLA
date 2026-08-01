@@ -71,6 +71,7 @@ client/types **and** this table.
 | `connection.models` | `ConnectionModels` | `ConnectionDiagRequest` | Reply `connection.models.result`. |
 | `connection.test` | `ConnectionTest` | `ConnectionDiagRequest` | Reply `connection.test.result`. |
 | `connection.swap_model` | `ConnectionSwapModel` | `ConnectionSwapModelRequest` | Reply `connection.swap_model.result`; broadcasts `connections.result` on success. |
+| `provider.info` | `ProviderInfo` | `ProviderInfoRequest` | Reply `provider.info.result`. Account/model figures for one model entry; never returns credential material. |
 | `agent.get` | `AgentGet` | — | Reply `agent.result`. |
 | `agent.save` | `AgentSave` | `AgentSettingsPayload` | Mode + permission overrides. Broadcasts `agent.result`. |
 | `plugins.get` | `PluginsGet` | — | Reply `plugins.result`. |
@@ -130,6 +131,7 @@ client/types **and** this table.
 | `connection.models.result` | `ConnectionModelsResult` | diag result | unicast | Answer to `connection.models`. |
 | `connection.test.result` | `ConnectionTestResult` | diag result | unicast | Answer to `connection.test`. |
 | `connection.swap_model.result` | `ConnectionSwapModelResult` | `ConnectionSwapModelResult` | unicast | Answer to `connection.swap_model`. |
+| `provider.info.result` | `ProviderInfoResult` | `ProviderInfoResult` | unicast | Answer to `provider.info`. Sections ordered connection-first, then model. |
 | `agent.result` | `AgentResult` | `AgentSettingsPayload` | unicast/broadcast | Answer to get; broadcast after save. |
 | `plugins.result` | `PluginsResult` | `PluginsPayload` | unicast/broadcast | Answer to get; broadcast after save. |
 | `plugin.action.result` | `PluginActionResult` | `PluginActionResultPayload` | unicast | Answer to `plugin.action`. |

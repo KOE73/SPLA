@@ -1,13 +1,13 @@
 using System.Text.Json.Serialization;
 
-namespace SPLA.LLM.LMStudio;
+namespace SPLA.LLM.OpenAiCompat;
 
 /// <summary>
 /// The OpenAI-compatible request/response DTOs the client (de)serializes. Kept in a partial of
-/// <see cref="LMStudioClient"/> so they stay private to the client (nothing else should bind to the
+/// <see cref="OpenAiCompatibleClient"/> so they stay private to the client (nothing else should bind to the
 /// provider's wire shape) while keeping the main file focused on the request/stream logic.
 /// </summary>
-public sealed partial class LMStudioClient
+public sealed partial class OpenAiCompatibleClient
 {
     // ─── Non-streaming response DTOs ──────────────────────────────────────────
 

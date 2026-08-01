@@ -6,6 +6,8 @@ using SPLA.Domain.Interfaces;
 using SPLA.Domain.Models;
 using SPLA.Domain.Settings;
 using SPLA.LLM.LMStudio;
+using SPLA.LLM.OpenAiCompat;
+using SPLA.LLM.OpenRouter;
 using SPLA.MCP.BasicTools.FileSystem;
 using SPLA.MCP.BasicTools.SystemTools;
 using SPLA.MCP.Core;
@@ -46,6 +48,21 @@ public sealed class AgentRuntime : IDisposable
     /// would be optional in practice. See <see cref="SPLA.Domain.Llm.ILlmGateway"/>.
     /// </summary>
     public SPLA.Domain.Llm.ILlmGateway Llm { get; }
+
+    /// <summary>The providers this runtime can dispatch to, keyed by a connection's <c>provider</c>
+    /// field. Exposed for settings UIs that list what is available — never as a way to reach a
+    /// client directly; turns go through <see cref="Llm"/>.</summary>
+    public SPLA.Domain.Llm.LlmProviderRegistry Providers { get; }
+
+    /// <summary>The OpenRouter provider, for the settings surfaces that need its catalog and account
+    /// figures. Held concretely because those are provider-specific by nature — the generic path is
+    /// the <see cref="SPLA.Domain.Llm.IProviderAccountInfo"/> type check, which is what callers that
+    /// must stay provider-agnostic use instead.</summary>
+    public OpenRouterProvider OpenRouter { get; private set; } = null!;
+
+    /// <summary>Last-seen provider figures per connection (rate-limit budget, reset times). Distinct
+    /// from the token ledger: this is current state, overwritten; the ledger is history, appended.</summary>
+    public SPLA.Domain.Llm.ProviderStateStore ProviderState { get; } = new();
     public IModelManagementService ModelManagement { get; }
     public McpHost McpHost { get; }
     public SkillManager SkillManager { get; }
@@ -95,15 +112,22 @@ public sealed class AgentRuntime : IDisposable
 
         _httpClient = new HttpClient { Timeout = TimeSpan.FromMinutes(10) };
         // ── The LLM pipeline, baked once ──────────────────────────────────────────────────────────
-        // The blueprint is what a host varies (CLI, worker and server each declare their own set);
-        // baking happens here because providers arrive as plugins and plugins are enabled per project.
+        // The blueprint is what a host varies (CLI, worker and server each declare their own set).
         // Nothing is assembled per turn — per-turn variation travels in LlmTurnContext instead.
-        // TODO(stage 4): resolve the client from the plugin-supplied provider registry by the
-        // connection's `provider` field, instead of the single built-in client below.
-        var lmStudio = new LMStudioClient(_httpClient, loggerFactory.CreateLogger<LMStudioClient>());
+        //
+        // A provider is its own project, referenced directly. It is not a tool plugin and has nothing
+        // to do with that host: it contributes data for the pipeline's terminal step and cannot
+        // intercept a turn, which is what keeps accounting and credentials non-optional.
+        Providers = BuildProviderRegistry(loggerFactory);
         Llm = new SPLA.Domain.Llm.LlmPipelineBlueprint()
             .Use(new SPLA.Domain.Llm.Middleware.TurnOutcomeMiddleware())
-            .Build(new SPLA.Domain.Llm.SingleClientResolver(lmStudio));
+            // Records what the provider said about the key's standing, on both the success and the
+            // failure path — a 429 is the response that reports the budget, and it throws.
+            .Use(new SPLA.Domain.Llm.Middleware.ProviderStateMiddleware(ProviderState))
+            // Credential materialization is the innermost layer: the key exists only for the provider
+            // call itself, and never for accounting, which sits outside it.
+            .Use(new SPLA.Domain.Llm.Middleware.CredentialsMiddleware(settings.SecretResolver))
+            .Build(new SPLA.Domain.Llm.ProviderClientResolver(Providers));
 
         ModelManagement = new LMStudioManagementClient(_httpClient);
 
@@ -281,6 +305,31 @@ public sealed class AgentRuntime : IDisposable
 
         _contextLengthCache[key] = (detected, DateTimeOffset.UtcNow);
         return detected;
+    }
+
+    /// <summary>
+    /// Composes the providers this runtime can reach. Each provider is its own project and owns its
+    /// id, dialect and account telemetry; this method only says which ones are present.
+    /// <para>
+    /// Adding a provider is therefore: a project, and one line here. Nothing in the pipeline, the
+    /// settings protocol or the UI has to know it exists.
+    /// </para>
+    /// <para>
+    /// The plain family registers first, so <c>lmstudio</c> is the fallback for connections that name
+    /// no provider — the least surprising default, since it needs no credential and cannot spend money.
+    /// </para>
+    /// </summary>
+    private SPLA.Domain.Llm.LlmProviderRegistry BuildProviderRegistry(ILoggerFactory loggerFactory)
+    {
+        var registry = new SPLA.Domain.Llm.LlmProviderRegistry();
+
+        foreach (var descriptor in LmStudioProvider.Create(_httpClient, loggerFactory))
+            registry.Register(descriptor);
+
+        OpenRouter = new OpenRouterProvider(_httpClient, loggerFactory);
+        registry.Register(OpenRouter);
+
+        return registry;
     }
 
     public void Dispose() => _httpClient.Dispose();
