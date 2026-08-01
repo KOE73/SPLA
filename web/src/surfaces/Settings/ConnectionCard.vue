@@ -44,14 +44,11 @@
     <div class="conn-models">
       <div class="conn-models-head">
         <span>Models</span>
-        <button class="btn ghost conn-list-btn" title="Fetch model list" :disabled="fetchingModels" @click="fetchModels">
-          {{ fetchingModels ? "…" : "☰" }}
-        </button>
-        <button class="btn ghost" title="Add an empty model row" @click="addModel()">+</button>
+        <button class="x" title="Add a model" @click="addModel()">+</button>
       </div>
 
       <div v-if="!conn.models.length" class="conn-models-empty">
-        No models yet — pick from the provider (☰) or add one by hand.
+        No models yet — add one with + and pick the model string from the provider (☰).
       </div>
 
       <div v-for="(m, i) in conn.models" :key="m.clientId || m.id" class="conn-model-row">
@@ -67,7 +64,15 @@
             <input v-model="m.id" :placeholder="suggestedId(m)">
           </label>
           <label class="field"><span>Model</span>
-            <input v-model="m.model" placeholder="provider's model string">
+            <span class="conn-model-wrap">
+              <input v-model="m.model" placeholder="provider's model string">
+              <button
+                class="btn ghost conn-list-btn"
+                title="Pick from the provider's catalog"
+                :disabled="fetchingModels"
+                @click.prevent="fetchModels($event, m)"
+              >{{ fetchingModels ? "…" : "☰" }}</button>
+            </span>
           </label>
           <label class="field"><span>Context</span>
             <input type="number" v-model.number="m.contextLength" placeholder="auto-detect">
@@ -88,7 +93,7 @@
       :anchor="modelPopup.anchor"
       :locked="false"
       :swap="!!conn.swapModel"
-      :current="''"
+      :current="modelPopup.target.model || ''"
       @pick="onPickModel"
       @swap="onSwapModel"
       @close="modelPopup = null"
@@ -156,8 +161,8 @@ function suggestedId(m: ModelEntryDto): string {
   return prefix && base ? `${prefix}-${base}` : base || prefix;
 }
 
-function addModel(model = "") {
-  const m: ModelEntryDto = { id: "", clientId: uuid(), name: "", model };
+function addModel() {
+  const m: ModelEntryDto = { id: "", clientId: uuid(), name: "", model: "" };
   m.id = suggestedId(m);
   props.conn.models.push(m);
   expanded.value = keyOf(m);
@@ -165,31 +170,44 @@ function addModel(model = "") {
 
 // ── Catalog fetch + popup ────────────────────────────────────────────────────
 const fetchingModels = ref(false);
-const modelPopup = ref<{ models: string[]; anchor: HTMLElement } | null>(null);
+const modelPopup = ref<{ models: string[]; anchor: HTMLElement; target: ModelEntryDto } | null>(null);
 
-async function fetchModels(e: MouseEvent) {
+/** The catalog belongs to one model row: it fills that row's `model` field. */
+async function fetchModels(e: MouseEvent, target: ModelEntryDto) {
+  // Grab the element now: the browser nulls `currentTarget` once the handler returns, so reading it
+  // after the await threw and the popup never opened.
+  const anchor = e.currentTarget as HTMLElement;
   fetchingModels.value = true;
+  reply.value = null;
   try {
     const result = await client.invoke<{ id: string; models?: string[]; error?: string }>(
       "connection.models",
       { id: requestKey.value, provider: props.conn.provider, endpoint: props.conn.endpoint, apiKey: props.conn.apiKey }
     );
-    if (result.error || !result.models?.length) return;
-    modelPopup.value = { models: result.models, anchor: (e.currentTarget as HTMLElement).parentElement as HTMLElement };
+    if (result.error || !result.models?.length) {
+      replyIsError.value = true;
+      reply.value = result.error || "provider returned no models";
+      return;
+    }
+    modelPopup.value = { models: result.models, anchor, target };
+  } catch (err) {
+    replyIsError.value = true;
+    reply.value = err instanceof Error ? err.message : String(err);
   } finally {
     fetchingModels.value = false;
   }
 }
 
-/** Picking from the catalog ADDS a row rather than overwriting one — under the tree a connection
- *  holds several models, so "pick" means "select another", not "replace the one". */
 function onPickModel(model: string) {
+  const target = modelPopup.value?.target;
   modelPopup.value = null;
-  if (props.conn.models.some(m => m.model === model)) return;
-  addModel(model);
+  if (!target) return;
+  target.model = model;
+  if (!target.id) target.id = suggestedId(target);
 }
 
 async function onSwapModel(model: string) {
+  const target = modelPopup.value?.target;
   modelPopup.value = null;
   try {
     const result = await client.invoke<{ id: string; model?: string; error?: string }>(
@@ -197,7 +215,10 @@ async function onSwapModel(model: string) {
       { id: requestKey.value, endpoint: props.conn.endpoint, apiKey: props.conn.apiKey, modelKey: model }
     );
     if (result.error) { reply.value = "Swap error: " + result.error; replyIsError.value = true; }
-    else addModel(result.model || model);
+    else if (target) {
+      target.model = result.model || model;
+      if (!target.id) target.id = suggestedId(target);
+    }
   } catch (e) {
     reply.value = "Swap error: " + (e instanceof Error ? e.message : String(e));
     replyIsError.value = true;

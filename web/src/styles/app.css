@@ -390,6 +390,12 @@ input.locked { opacity: 0.6; cursor: default; background: var(--bg); }
 .conn-models-head { display: flex; align-items: center; gap: 6px; font-size: var(--fs-xs);
   text-transform: uppercase; letter-spacing: .04em; opacity: .7; }
 .conn-models-head > span:first-child { flex: 1; }
+/* add and remove are the same affordance — same size, same weight, only the glyph differs */
+.conn-models-head .x, .conn-model-line .x { font-size: 13px; line-height: 1; padding: 3px 7px;
+  flex-shrink: 0; color: var(--muted); background: transparent;
+  border: 1px solid var(--border); border-radius: var(--radius-sm); }
+.conn-models-head .x:hover { color: var(--accent); border-color: var(--accent); }
+.conn-model-line .x:hover { color: var(--danger); border-color: var(--danger); }
 .conn-models-empty { font-size: var(--fs-sm); opacity: .6; padding: 4px 0; }
 
 .conn-model-row { border-radius: var(--radius-sm); }
