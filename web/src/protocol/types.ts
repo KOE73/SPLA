@@ -65,7 +65,7 @@ export interface ConnectionDto {
   provider?: string;
   endpoint?: string;
   apiKey?: string;
-  /** Account-management credential (provisioning / admin key). Never used for inference. */
+  /** Account-management credential (management / admin key). Never used for inference. */
   adminKey?: string;
   swapModel?: boolean;
   models: ModelEntryDto[];

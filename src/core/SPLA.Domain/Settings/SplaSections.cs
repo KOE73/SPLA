@@ -104,7 +104,7 @@ public class SplaConnectionSection
 
     /// <summary>
     /// Optional account-management credential, separate from <see cref="ApiKey"/> because providers
-    /// keep them separate: OpenRouter's balance needs a provisioning key, OpenAI's cost endpoints an
+    /// keep them separate: OpenRouter's balance needs a management key, OpenAI's cost endpoints an
     /// admin key, Anthropic's an <c>sk-ant-admin</c>. Null for every local provider and for anyone
     /// who does not need account figures — inference never uses it.
     /// </summary>

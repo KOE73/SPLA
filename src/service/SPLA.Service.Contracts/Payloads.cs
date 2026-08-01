@@ -170,7 +170,7 @@ public sealed class ConnectionEditDto
     public string? Endpoint { get; set; }
     public string? ApiKey { get; set; }
 
-    /// <summary>Account-management credential (provisioning / admin key). Never used for inference.</summary>
+    /// <summary>Account-management credential (management / admin key). Never used for inference.</summary>
     public string? AdminKey { get; set; }
 
     public bool SwapModel { get; set; }
