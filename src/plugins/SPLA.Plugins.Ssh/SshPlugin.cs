@@ -40,10 +40,21 @@ public sealed class SshPlugin : ISplaPlugin, ISplaPluginAction
         _hub = hub;
         var ctx = new SessionToolContext { Settings = Current, Resolver = settings.SecretResolver };
 
+        // File transfer runs over SFTP, not the shell: separate connection, separate tool family, and
+        // local paths resolved under the project rather than named absolutely by the model.
+        var transfer = new Transfer.SftpTransfer(Current, settings.SecretResolver, settings.WorkspacePath);
+        var workspaceRoot = settings.WorkspacePath;
+
         return new IMcpTool[]
         {
             new SshListHostsTool(Current),
             new SshRunTool(Current, settings.SecretResolver),
+            new SftpLsTool(transfer),
+            new SftpDownloadTool(transfer),
+            new SftpUploadTool(transfer),
+            new TarListTool(workspaceRoot),
+            new TarReadTool(workspaceRoot),
+            new TarWriteTool(workspaceRoot),
             new SshSessionsListTool(hub),
             new SshSessionExecTool(hub, ctx),
             new SshSessionWaitTool(hub, ctx),
