@@ -3,7 +3,7 @@
        transform makes position:fixed resolve against that ancestor instead of the viewport — the
        popup then renders far off-screen. Same reason .models-popup is appended to body. -->
   <Teleport to="body">
-  <div class="pi-popup" :style="style" @click.stop>
+  <div ref="popEl" class="pi-popup" :style="style" @click.stop>
     <div v-if="loading" class="pi-empty">reading…</div>
     <div v-else-if="info?.error" class="pi-empty pi-err">{{ info.error }}</div>
 
@@ -33,7 +33,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, onUnmounted, ref } from "vue";
+import { computed, nextTick, onMounted, onUnmounted, ref } from "vue";
 import { client } from "../protocol/SplaClient";
 import { projectEnvelope } from "../state/project";
 import type { ProviderFactDto, ProviderInfoResultPayload } from "../protocol/types";
@@ -43,12 +43,24 @@ const emit = defineEmits<{ close: [] }>();
 
 const info = ref<ProviderInfoResultPayload | null>(null);
 const loading = ref(true);
+const popEl = ref<HTMLElement>();
+// Reflows once real content replaces the "reading…" placeholder, so width/height used for
+// clamping match what's actually on screen instead of the tiny loading state.
+const size = ref(0);
 
 const style = computed(() => {
+  size.value; // register as a dependency so late measurements re-run this
   const r = props.anchor.getBoundingClientRect();
+  const popW = popEl.value?.offsetWidth ?? 380;
+  const popH = popEl.value?.offsetHeight ?? 200;
   // Anchored above the status bar, which sits at the bottom — opening downwards would render
-  // the popup off-screen.
-  return { left: `${Math.max(8, r.left)}px`, bottom: `${window.innerHeight - r.top + 6}px` };
+  // the popup off-screen. Clamp both edges so it never spills past the viewport.
+  const left = Math.min(Math.max(8, r.left), Math.max(8, window.innerWidth - popW - 8));
+  const bottom = Math.min(
+    Math.max(8, window.innerHeight - r.top + 6),
+    window.innerHeight - popH - 8
+  );
+  return { left: `${left}px`, bottom: `${Math.max(8, bottom)}px` };
 });
 
 /** Formatting is driven by `kind`, which is exactly why the generic layer carries it: the UI must
@@ -78,19 +90,28 @@ async function load() {
       error: e instanceof Error ? e.message : String(e) };
   } finally {
     loading.value = false;
+    nextTick(() => { size.value++; });
   }
 }
 
 function onDocClick() { emit("close"); }
 function onKey(e: KeyboardEvent) { if (e.key === "Escape") emit("close"); }
+function onResize() { size.value++; }
+
+let ro: ResizeObserver | undefined;
 
 onMounted(() => {
   load();
   document.addEventListener("click", onDocClick);
   document.addEventListener("keydown", onKey);
+  window.addEventListener("resize", onResize);
+  ro = new ResizeObserver(() => { size.value++; });
+  if (popEl.value) ro.observe(popEl.value);
 });
 onUnmounted(() => {
   document.removeEventListener("click", onDocClick);
   document.removeEventListener("keydown", onKey);
+  window.removeEventListener("resize", onResize);
+  ro?.disconnect();
 });
 </script>
