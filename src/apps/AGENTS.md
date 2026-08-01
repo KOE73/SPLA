@@ -19,6 +19,14 @@ DLL by config), `SPLA.UI.Avalonia` (desktop shell). Read the root `AGENTS.md` fi
   into write/execute-capable modes; treat the safe mode as the server default and require explicit
   escalation.
 
+## CLI surface is documented, and the doc is part of the change
+
+`docs/README_CLI.ru.md` + `docs/README_CLI.en.md` list every command and flag the CLI accepts. Any
+change to argument parsing (`SPLA.CLI/Program.cs`, `Cli/CliBootstrap.cs`, `Cli/ServeCommand.cs`,
+`Cli/SecretCommands.cs`, `Cli/ChatCommands.cs`, `Cli/InteractiveRepl.cs`) updates both files in the
+same commit. A stale reference is worse than none — it is followed literally and fails, and the
+failure looks like a broken tool rather than a wrong document.
+
 ## Build/publish
 
 Publish layout is flat (`<exe>\plugins\<name>`), independent of this source tree's folders. If you
