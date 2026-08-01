@@ -96,9 +96,10 @@ internal sealed class ConnectionHandlers : IMessageHandler
 
             await runtime.ModelManagement.LoadModelAsync(endpoint, apiKey, req.ModelKey, ct);
 
-            // Update the live connection so chats immediately use the new model.
-            var conn = runtime.Settings.Connections.FirstOrDefault(c => c.Id == req.Id);
-            if (conn != null) conn.Model = req.ModelKey;
+            // Update the live model entry so chats immediately use the new model. The request's id is
+            // the model entry (that is what the picker edits), not its connection.
+            var entry = runtime.Settings.FindModel(req.Id);
+            if (entry != null) entry.Entry.Model = req.ModelKey;
 
             result.Model = req.ModelKey;
         }

@@ -98,7 +98,7 @@ internal sealed class ChatHandlers : IMessageHandler
         if (p == null) return;
         var chat = entry.Chats.GetOrOpen(p.ChatId);
         if (chat == null) return;
-        chat.ApplySettings(p.Mode, p.ConnectionId);
+        chat.ApplySettings(p.Mode, p.ModelId);
         await ctx.Session.SendOpenedAsync(chat);   // echo back the applied settings
     }
 

@@ -23,11 +23,14 @@ public class ChatSession
     [YamlMember(Alias = "workspace")]
     public string Workspace { get; set; } = string.Empty;
 
-    /// <summary>Id of the project connection this chat uses (live reference into the project's
-    /// connection list). When the referenced connection is missing, the chat falls back to the
-    /// first available one.</summary>
-    [YamlMember(Alias = "connection_id")]
-    public string? ConnectionId { get; set; }
+    /// <summary>Id of the model entry this chat runs on (live reference into the project's model
+    /// list). When the referenced entry is missing, the chat falls back to the first available one.
+    /// <para>
+    /// Points at the <i>leaf</i>: transport and credentials belong to the connection that owns the
+    /// entry, and <c>connection_id</c> is reserved for that node. A chat picks a model, not a wire.
+    /// </para></summary>
+    [YamlMember(Alias = "model_id")]
+    public string? ModelId { get; set; }
 
     /// <summary>Per-chat LLM behaviour knobs layered on the chosen connection: temperature and
     /// reasoning level. Endpoint/model come from the connection, not from here.</summary>

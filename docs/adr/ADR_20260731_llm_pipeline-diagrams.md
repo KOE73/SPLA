@@ -14,7 +14,7 @@
 %%{init: {'flowchart': {'subGraphTitleMargin': {'top': 12, 'bottom': 12}, 'nodeSpacing': 40, 'rankSpacing': 50, 'wrappingWidth': 450, 'htmlLabels': true}}}%%
 flowchart TB
     CALLER["**Вызывающий** - <i>ConversationOrchestrator · SpawnedAgentRunner · воркер</i>"]
-    CTX["**LlmTurnContext** - <i>создаётся на каждый ход: сообщения · инструменты · настройки · connectionId · приёмники OnDelta / OnReasoning</i>"]
+    CTX["**LlmTurnContext** - <i>создаётся на каждый ход: сообщения · инструменты · настройки · modelId · приёмники OnDelta / OnReasoning</i>"]
     GW["**ILlmGateway** - <i>единственный публикуемый вход</i>"]
 
     CALLER --> CTX --> GW

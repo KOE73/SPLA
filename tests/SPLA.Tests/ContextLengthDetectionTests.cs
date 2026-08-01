@@ -92,7 +92,11 @@ public class ContextLengthDetectionTests
         {
             Connections = new List<SplaConnectionSection>
             {
-                new() { Id = "main", Endpoint = "http://127.0.0.1:1234/v1/", Model = "auto", ContextLength = 50000 }
+                new()
+                {
+                    Id = "main", Endpoint = "http://127.0.0.1:1234/v1/",
+                    Models = { new SplaModelSection { Id = "main-auto", Model = "auto", ContextLength = 50000 } }
+                }
             }
         });
 

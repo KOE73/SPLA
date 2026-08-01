@@ -57,7 +57,7 @@ client/types **and** this table.
 | `chat.rename` | `ChatRename` | `ChatRenamePayload` | Broadcasts `chat.list.result`. |
 | `chat.delete` | `ChatDelete` | `ChatDeletePayload` | Broadcasts `chat.list.result`. |
 | `chat.send` | `ChatSend` | `ChatSendPayload` | Runs a turn; streams to watchers. |
-| `chat.settings` | `ChatSettings` | `ChatSettingsPayload` | Change mode/connection; echoes `chat.opened`. |
+| `chat.settings` | `ChatSettings` | `ChatSettingsPayload` | Change mode/model entry; echoes `chat.opened`. |
 | `chat.rewind` | `ChatRewind` | `ChatRewindPayload` | Truncate a chat at/before a message; echoes `chat.opened`. |
 | `chat.fork` | `ChatFork` | `ChatForkPayload` | Copy a chat at a message boundary; opens the fork and broadcasts `chat.list.result`. |
 | `focus.set` | `FocusSet` | `FocusPayload` | Window focused a chat; echoes `focus.changed` to all. |

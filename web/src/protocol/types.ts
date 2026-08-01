@@ -54,19 +54,40 @@ export interface ChatOpenedPayload {
   title?: string;
   messages: ChatMessage[];
   mode?: string;
-  connectionId?: string;
+  modelId?: string;
 }
 
+/** One editable connection: transport + credentials, owning its model entries. */
 export interface ConnectionDto {
   id: string;
   clientId?: string;
   name?: string;
   provider?: string;
   endpoint?: string;
-  model?: string;
   apiKey?: string;
-  lockModel?: boolean;
+  /** Account-management credential (provisioning / admin key). Never used for inference. */
+  adminKey?: string;
   swapModel?: boolean;
+  models: ModelEntryDto[];
+}
+
+/** One model under a connection. `id` is ours and globally unique; `model` is the provider's string. */
+export interface ModelEntryDto {
+  id: string;
+  clientId?: string;
+  name?: string;
+  model?: string;
+  contextLength?: number;
+}
+
+/** A model entry flattened for pickers, keeping its owning connection for grouping. */
+export interface ModelPickDto {
+  id: string;
+  name: string;
+  model?: string;
+  connectionId: string;
+  connectionName: string;
+  provider?: string;
 }
 
 export interface ConnHealth {
@@ -170,6 +191,8 @@ export interface FeaturesResultPayload {
 export interface ConnectionsResultPayload {
   connections: ConnectionDto[];
   canPersist?: boolean;
+  /** Set when a save was refused (e.g. duplicate model id); the list echoes what is still in effect. */
+  error?: string;
 }
 
 export interface ConnectionsHealthPayload {
@@ -310,7 +333,7 @@ export interface ProjectContextPayload {
   projectId: string;
   projectName?: string;
   workspacePath?: string;
-  connections?: ConnectionDto[];
+  connections?: ModelPickDto[];
   modes?: string[];
   defaultMode?: string;
   theme?: string;
@@ -351,7 +374,7 @@ export interface ServerEvents {
   "welcome": {
     theme?: string; density?: string; projectId?: string; projectName?: string; workspacePath?: string;
     modes?: string[]; defaultMode?: string;
-    connections?: { id: string; name?: string }[];
+    connections?: ModelPickDto[];
     /** Authenticated user (server mode). Empty on local/embedded — the identity badge stays hidden. */
     userKey?: string; userName?: string;
   };

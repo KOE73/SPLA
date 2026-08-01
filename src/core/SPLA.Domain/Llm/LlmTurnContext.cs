@@ -23,8 +23,8 @@ public sealed class LlmTurnContext
     /// <summary>Endpoint, model and sampling knobs for this turn.</summary>
     public required LLMSettings Settings { get; init; }
 
-    /// <summary>Which connection this turn runs on. Null = the project's first/default connection.</summary>
-    public string? ConnectionId { get; init; }
+    /// <summary>Which model entry this turn runs on. Null = the project's first/default entry.</summary>
+    public string? ModelId { get; init; }
 
     // ── Sinks ────────────────────────────────────────────────────────────────────────────────────
     // Streaming is not a separate operation: it is the presence of these. The provider calls them

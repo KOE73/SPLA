@@ -65,18 +65,18 @@ public sealed class ChatRuntime
     /// <summary>This chat's effective mode name (its own, or the project default).</summary>
     public string ModeName => ResolveMode().ToString();
 
-    /// <summary>The connection this chat points at, if any.</summary>
-    public string? ConnectionId => _chat.ConnectionId;
+    /// <summary>The model entry this chat points at, if any.</summary>
+    public string? ModelId => _chat.ModelId;
 
-    /// <summary>Changes the chat's mode and/or connection (null = leave as-is) and persists it.</summary>
-    public void ApplySettings(string? mode, string? connectionId)
+    /// <summary>Changes the chat's mode and/or model entry (null = leave as-is) and persists it.</summary>
+    public void ApplySettings(string? mode, string? modelId)
     {
         if (!string.IsNullOrWhiteSpace(mode))
         {
             _chat.Agent ??= new SplaAgentSection();
             _chat.Agent.Mode = mode;
         }
-        if (connectionId != null) _chat.ConnectionId = connectionId;
+        if (modelId != null) _chat.ModelId = modelId;
         Save();
     }
 
@@ -286,13 +286,13 @@ public sealed class ChatRuntime
     public Task<int?> GetContextLengthAsync(CancellationToken ct = default)
         => _runtime.GetContextLengthAsync(ResolveLlmSettings(), ct);
 
-    /// <summary>The chat's effective LLM settings: its connection (endpoint/model) layered with its
+    /// <summary>The chat's effective LLM settings: its model entry (endpoint/model) layered with its
     /// own behaviour knobs (temperature/reasoning/penalties), falling back to project defaults.</summary>
     private LLMSettings ResolveLlmSettings()
     {
-        var conn = _runtime.Settings.Connections.FirstOrDefault(c => c.Id == _chat.ConnectionId)
-                   ?? _runtime.Settings.Connections.FirstOrDefault();
-        var s = _runtime.Settings.ToLLMSettings(conn);
+        var entry = _runtime.Settings.FindModel(_chat.ModelId)
+                    ?? _runtime.Settings.Models.FirstOrDefault();
+        var s = _runtime.Settings.ToLLMSettings(entry);
         var chatModel = _chat.Model;
 
         s.Mode             = ResolveMode();

@@ -73,15 +73,22 @@ public class SplaLlmSection
 }
 
 /// <summary>
-/// A named LLM connection in the project's connection list. A connection bundles a provider with a
-/// concrete endpoint and model; a chat references one by <see cref="Id"/> and can switch live.
-/// Behaviour knobs (mode/temperature/reasoning) live on the chat, not here.
+/// A connection to one provider account: transport and credentials, plus the models selected under
+/// it. It is a container — a chat never points here, it points at one of the <see cref="Models"/>.
+/// <para>
+/// The split exists because a key and an endpoint are shared by every model reached through them:
+/// five OpenRouter models under one key must not mean five copies of that key. Everything that is a
+/// property of the <i>account</i> (credentials, rate limits, balance, reachability) belongs here;
+/// everything that is a property of the <i>model</i> belongs on the leaf.
+/// </para>
 /// </summary>
 public class SplaConnectionSection
 {
     [YamlMember(Alias = "id")]
     public string Id { get; set; } = string.Empty;
 
+    /// <summary>Display label for the connection. Falls back to <see cref="Id"/> — never to the
+    /// provider name, which cannot distinguish two connections to the same provider.</summary>
     [YamlMember(Alias = "name")]
     public string? Name { get; set; }
 
@@ -91,29 +98,63 @@ public class SplaConnectionSection
     [YamlMember(Alias = "endpoint")]
     public string? Endpoint { get; set; }
 
+    /// <summary>The inference credential. A <c>secret:</c> reference in practice.</summary>
     [YamlMember(Alias = "api_key")]
     public string? ApiKey { get; set; }
 
-    [YamlMember(Alias = "model")]
-    public string? Model { get; set; }
-
     /// <summary>
-    /// Manual context-window override in tokens for this connection. When set it wins over any
-    /// auto-detected value (LM Studio native API / vLLM <c>max_model_len</c>) — for providers that
-    /// report nothing, or when the user knows better. Null/0 = auto-detect.
+    /// Optional account-management credential, separate from <see cref="ApiKey"/> because providers
+    /// keep them separate: OpenRouter's balance needs a provisioning key, OpenAI's cost endpoints an
+    /// admin key, Anthropic's an <c>sk-ant-admin</c>. Null for every local provider and for anyone
+    /// who does not need account figures — inference never uses it.
     /// </summary>
-    [YamlMember(Alias = "context_length")]
-    public int? ContextLength { get; set; }
-
-    /// <summary>When true the model field is locked — no picker shown in UI, model can only be viewed.</summary>
-    [YamlMember(Alias = "lock_model")]
-    public bool LockModel { get; set; }
+    [YamlMember(Alias = "admin_key")]
+    public string? AdminKey { get; set; }
 
     /// <summary>When true picking a different model triggers LM Studio unload+load via the management API.</summary>
     [YamlMember(Alias = "swap_model")]
     public bool SwapModel { get; set; }
 
-    /// <summary>Display label for the picker — falls back to the model or id. Computed, never persisted.</summary>
+    /// <summary>The models selected under this connection. Each is what a chat can point at.</summary>
+    [YamlMember(Alias = "models")]
+    public List<SplaModelSection> Models { get; set; } = new();
+
+    /// <summary>Display label for the connection tree. Computed, never persisted.</summary>
+    [YamlIgnore]
+    public string DisplayName => !string.IsNullOrWhiteSpace(Name) ? Name! : Id;
+}
+
+/// <summary>
+/// One model selected under a connection — the leaf a chat points at by <see cref="Id"/>.
+/// <para>
+/// <see cref="Id"/> is ours and must be globally unique across the project (chats reference it flat,
+/// without the owning connection); <see cref="Model"/> is the provider's own string and goes on the
+/// wire verbatim. Two entries may carry the same <see cref="Model"/> under different connections —
+/// that is the point: "opus on the work key" and "opus on the personal key" are different choices.
+/// </para>
+/// </summary>
+public class SplaModelSection
+{
+    [YamlMember(Alias = "id")]
+    public string Id { get; set; } = string.Empty;
+
+    [YamlMember(Alias = "name")]
+    public string? Name { get; set; }
+
+    /// <summary>The model identifier sent to the provider (<c>anthropic/claude-opus-4</c>, an LM
+    /// Studio key, …). "auto" or empty = let the provider decide.</summary>
+    [YamlMember(Alias = "model")]
+    public string? Model { get; set; }
+
+    /// <summary>
+    /// Manual context-window override in tokens. When set it wins over any auto-detected value
+    /// (LM Studio native API / vLLM <c>max_model_len</c>) — for providers that report nothing, or
+    /// when the user knows better. Null/0 = auto-detect.
+    /// </summary>
+    [YamlMember(Alias = "context_length")]
+    public int? ContextLength { get; set; }
+
+    /// <summary>Display label for the picker — falls back to the wire model string, then the id.</summary>
     [YamlIgnore]
     public string DisplayName => !string.IsNullOrWhiteSpace(Name) ? Name!
         : !string.IsNullOrWhiteSpace(Model) ? Model!

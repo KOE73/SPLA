@@ -332,7 +332,7 @@ public sealed class ClientConnection : IClientSession
             Title = chat.Title,
             Messages = chat.SnapshotMessages(),
             Mode = chat.ModeName,
-            ConnectionId = chat.ConnectionId
+            ModelId = chat.ModelId
         }, chat.ChatId);
     }
 

@@ -162,8 +162,16 @@ internal static class ProtocolProjection
         ProjectId = projectId,
         ProjectName = runtime.Settings.ProjectName,
         WorkspacePath = runtime.Settings.WorkspacePath,
-        Connections = runtime.Settings.Connections
-            .Select(c => new ConnectionDto { Id = c.Id, Name = c.DisplayName }).ToList(),
+        Connections = runtime.Settings.Models
+            .Select(m => new ConnectionDto
+            {
+                Id = m.Id,
+                Name = m.Entry.DisplayName,
+                Model = m.Model,
+                ConnectionId = m.Connection.Id,
+                ConnectionName = m.Connection.DisplayName,
+                Provider = m.Provider
+            }).ToList(),
         Modes = Enum.GetNames<AgentMode>(),
         DefaultMode = runtime.Settings.Mode.ToString(),
         Theme = runtime.Settings.Theme,

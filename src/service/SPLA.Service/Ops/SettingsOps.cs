@@ -27,9 +27,15 @@ public static class SettingsOps
             Provider = c.Provider,
             Endpoint = c.Endpoint,
             ApiKey = c.ApiKey,
-            Model = c.Model,
-            LockModel = c.LockModel,
-            SwapModel = c.SwapModel
+            AdminKey = c.AdminKey,
+            SwapModel = c.SwapModel,
+            Models = c.Models.Select(m => new ModelEditDto
+            {
+                Id = m.Id,
+                Name = m.Name,
+                Model = m.Model,
+                ContextLength = m.ContextLength
+            }).ToList()
         }).ToList()
     };
 
@@ -44,6 +50,21 @@ public static class SettingsOps
             .Select(g => g.Last())
             .ToList();
 
+        // Model ids are referenced by chats without naming a connection, so a duplicate across two
+        // connections has no defined meaning. Resolution throws on one — refusing the save here is
+        // what keeps a bad edit from writing a project file that no longer loads.
+        var clash = sections
+            .SelectMany(c => c.Models.Select(m => (Conn: c.Id, m.Id)))
+            .GroupBy(x => x.Id, StringComparer.OrdinalIgnoreCase)
+            .FirstOrDefault(g => g.Count() > 1);
+        if (clash != null)
+        {
+            var result = GetConnections(runtime);
+            result.Error = $"Model id '{clash.Key}' is used by more than one connection " +
+                           $"({string.Join(", ", clash.Select(x => x.Conn).Distinct())}). Ids must be unique across the project.";
+            return result;
+        }
+
         // Persist into the project file's connections: section, leaving everything else untouched.
         var path = runtime.Settings.ProjectFilePath;
         if (path != null)
@@ -53,9 +74,14 @@ public static class SettingsOps
             ConfigLoader.SaveProjectSections(project, path, "connections");
         }
 
-        // Mutate the live settings in place so running chats resolve against the new list.
+        // Mutate the live settings in place so running chats resolve against the new list. The flat
+        // model projection is rebuilt from the same objects — chats resolve through it, so leaving it
+        // stale would keep them pointed at the pre-save tree.
         runtime.Settings.Connections.Clear();
         runtime.Settings.Connections.AddRange(sections);
+        runtime.Settings.Models = sections
+            .SelectMany(c => c.Models.Select(m => new ResolvedModelEntry { Connection = c, Entry = m }))
+            .ToList();
 
         return GetConnections(runtime);
     }
@@ -370,7 +396,7 @@ public static class SettingsOps
 
     private static SplaConnectionSection ToSection(ConnectionEditDto d)
     {
-        var id = string.IsNullOrWhiteSpace(d.Id) ? Slug(d.Name ?? d.Model ?? "") : d.Id.Trim();
+        var id = string.IsNullOrWhiteSpace(d.Id) ? Slug(d.Name ?? "") : d.Id.Trim();
         return new SplaConnectionSection
         {
             Id = id,
@@ -378,9 +404,29 @@ public static class SettingsOps
             Provider = Blank(d.Provider),
             Endpoint = Blank(d.Endpoint),
             ApiKey = Blank(d.ApiKey),
+            AdminKey = Blank(d.AdminKey),
+            SwapModel = d.SwapModel,
+            Models = d.Models
+                .Select(m => ToModelSection(m, id))
+                .Where(m => !string.IsNullOrWhiteSpace(m.Id))
+                .GroupBy(m => m.Id, StringComparer.OrdinalIgnoreCase)   // last write wins per id
+                .Select(g => g.Last())
+                .ToList()
+        };
+    }
+
+    /// <summary>Maps one model row. A blank id is derived from the entry's own name or wire model,
+    /// prefixed with the owning connection — the readable default for the common case where two
+    /// connections carry the same model and a bare "opus" would collide across them.</summary>
+    private static SplaModelSection ToModelSection(ModelEditDto d, string connectionId)
+    {
+        var raw = string.IsNullOrWhiteSpace(d.Id) ? Slug($"{connectionId}-{d.Name ?? d.Model ?? ""}") : d.Id.Trim();
+        return new SplaModelSection
+        {
+            Id = raw,
+            Name = string.IsNullOrWhiteSpace(d.Name) ? null : d.Name.Trim(),
             Model = Blank(d.Model),
-            LockModel = d.LockModel,
-            SwapModel = d.SwapModel
+            ContextLength = d.ContextLength is > 0 ? d.ContextLength : null
         };
     }
 

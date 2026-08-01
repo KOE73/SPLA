@@ -33,16 +33,27 @@ const health = reactive<Record<string, ConnHealth>>({});
 const hint = ref("");
 
 function addConnection() {
-  conns.value.push({ id: "", clientId: uuid(), name: "", provider: "lmstudio", endpoint: KNOWN_DEFAULT_EP, model: "", apiKey: "" });
+  conns.value.push({
+    id: "", clientId: uuid(), name: "", provider: "lmstudio",
+    endpoint: KNOWN_DEFAULT_EP, apiKey: "", models: []
+  });
 }
 
 function applyResult(connections: ConnectionDto[]) {
-  conns.value = connections.map(c => ({ ...c, clientId: c.id || uuid() }));
+  conns.value = connections.map(c => ({
+    ...c,
+    clientId: c.id || uuid(),
+    models: (c.models || []).map(m => ({ ...m, clientId: m.id || uuid() }))
+  }));
 }
 
 const offResult = client.on("connections.result", p => {
   applyResult(p.connections || []);
-  hint.value = p.canPersist === false ? "no .spla project — session-only" : "";
+  // A refused save (duplicate model id) echoes the list still in effect — say so instead of
+  // letting the editor silently snap back to the old values.
+  hint.value = p.error ? p.error
+    : p.canPersist === false ? "no .spla project — session-only"
+    : "";
 });
 const offHealth = client.on("connections.health", p => {
   for (const s of p.statuses || []) health[s.id] = { ok: s.ok, error: s.error };

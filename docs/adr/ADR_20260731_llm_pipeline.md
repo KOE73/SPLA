@@ -23,7 +23,7 @@ Legacy нет — система новая, миграций не делаем.
   `new`. Тот же объект уходит в `SpawnedAgentRunner` (`:117`) и в оркестратор
   (`ChatRuntime.cs:114`).
 - Подключения уже есть (`SplaConnectionSection`), мержатся по id между слоями настроек, чат хранит
-  `ConnectionId`. **Поле `provider` объявлено, но нигде не диспетчеризуется** — точка расширения
+  `ModelId`. **Поле `provider` объявлено, но нигде не диспетчеризуется** — точка расширения
   прорезана и пуста.
 - Управление моделями уже отделено от диалога (`IModelManagementService`) — правильный прецедент.
 - Учёт: `ITokenUsageStore` + JSON-файл, три числа (prompt / completion / turns), два экземпляра
@@ -53,7 +53,7 @@ Legacy нет — система новая, миграций не делаем.
 ## 3. Контракт хода
 
 ```csharp
-LlmTurnRequest   // messages, tools, параметры модели, connectionId          — что просят
+LlmTurnRequest   // messages, tools, параметры модели, modelId              — что просят
 LlmTurnContext   // request + caller + connection + capabilities + приёмники — что знает конвейер
 LlmTurnResult    // message, rawUsage{wireName→amount}, modelReported, тайминги, status
 
@@ -305,7 +305,7 @@ UI не хардкодит области — рисует то, что верн
 token_kind      id, provider, wire_name, direction(in|out|cache_in|cache_out|reasoning),
                 billable, display, status(classified|unclassified)
 
-llm_call        id, ts_utc, user_key, connection_id, provider,
+llm_call        id, ts_utc, user_key, connection_id, model_id, provider,
                 model_requested, model_reported, chat_id, run_id,
                 origin(chat|spawn|worker|diag), attempt_no,
                 duration_ms, status(ok|error|canceled|usage_missing), error_kind

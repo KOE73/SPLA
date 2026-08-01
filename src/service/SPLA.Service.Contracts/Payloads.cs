@@ -51,11 +51,24 @@ public sealed class ClarifyOptionDto
     public string? Description { get; set; }
 }
 
-/// <summary>A project connection (endpoint/model bundle) a chat can be pointed at.</summary>
+/// <summary>One model entry a chat can be pointed at, flattened out of the connection tree but
+/// keeping its owner so a picker can group by connection. <see cref="Id"/> is the model entry's id —
+/// what a chat stores — not the provider's model string, which travels in <see cref="Model"/>.</summary>
 public sealed class ConnectionDto
 {
     public string Id { get; set; } = string.Empty;
     public string Name { get; set; } = string.Empty;
+
+    /// <summary>The provider's own model string, for display next to the name.</summary>
+    public string? Model { get; set; }
+
+    /// <summary>Owning connection — the picker's grouping key and its health key.</summary>
+    public string ConnectionId { get; set; } = string.Empty;
+
+    /// <summary>Owning connection's label. Never the provider name: two connections may share one.</summary>
+    public string ConnectionName { get; set; } = string.Empty;
+
+    public string? Provider { get; set; }
 }
 
 // ──────────────────────────────────────────────────────────────────────────
@@ -125,12 +138,12 @@ public sealed class FocusPayload
     public string ChatId { get; set; } = string.Empty;
 }
 
-/// <summary>Changes a chat's behaviour: its mode and/or which connection it uses. Null fields are left as-is.</summary>
+/// <summary>Changes a chat's behaviour: its mode and/or which model entry it runs on. Null fields are left as-is.</summary>
 public sealed class ChatSettingsPayload
 {
     public string ChatId { get; set; } = string.Empty;
     public string? Mode { get; set; }
-    public string? ConnectionId { get; set; }
+    public string? ModelId { get; set; }
 }
 
 /// <summary>Answer to a <see cref="PermissionRequestPayload"/>; correlated by envelope RequestId.</summary>
@@ -156,9 +169,24 @@ public sealed class ConnectionEditDto
     public string? Provider { get; set; }
     public string? Endpoint { get; set; }
     public string? ApiKey { get; set; }
-    public string? Model { get; set; }
-    public bool LockModel { get; set; }
+
+    /// <summary>Account-management credential (provisioning / admin key). Never used for inference.</summary>
+    public string? AdminKey { get; set; }
+
     public bool SwapModel { get; set; }
+
+    /// <summary>The models selected under this connection.</summary>
+    public List<ModelEditDto> Models { get; set; } = new();
+}
+
+/// <summary>One editable model entry under a connection. <see cref="Id"/> is ours and globally
+/// unique; <see cref="Model"/> is the provider's string sent on the wire.</summary>
+public sealed class ModelEditDto
+{
+    public string Id { get; set; } = string.Empty;
+    public string? Name { get; set; }
+    public string? Model { get; set; }
+    public int? ContextLength { get; set; }
 }
 
 /// <summary>Request to hot-swap the loaded model on a connection via the management API (LM Studio).</summary>
@@ -186,6 +214,10 @@ public sealed class ConnectionsPayload
 
     /// <summary>False when there is no .spla project to persist into (edits then live only in-memory).</summary>
     public bool CanPersist { get; set; }
+
+    /// <summary>Set when a save was refused; the list then echoes back what is still in effect.
+    /// Null on a successful save and on plain reads.</summary>
+    public string? Error { get; set; }
 }
 
 /// <summary>Health state for one connection. <see cref="Ok"/> is null when not yet checked.</summary>
@@ -504,7 +536,7 @@ public sealed class ChatOpenedPayload
     public string Title { get; set; } = string.Empty;
     public List<ChatMessageDto> Messages { get; set; } = new();
     public string Mode { get; set; } = string.Empty;
-    public string? ConnectionId { get; set; }
+    public string? ModelId { get; set; }
 }
 
 public sealed class DeltaPayload
