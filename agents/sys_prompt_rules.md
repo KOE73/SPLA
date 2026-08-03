@@ -34,7 +34,7 @@ The prompt is built top to bottom. **Position is authority: the higher a block s
                                    one-line description. Lowest authority.
 
    Skill body — NOT part of the assembled prompt.
-                Loaded on demand via agent_info when a skill is selected.
+                Loaded into the prompt by skill_activate when a skill is selected.
 ```
 
 Two blocks are not plain text in the assembled prompt and are therefore special:
@@ -137,7 +137,7 @@ If P ≠ Q and there is no explicit override — the prompt is broken.
 When a known conflict cannot be immediately resolved, mark it explicitly in the source:
 
 ```
-// CONFLICT: this block says "start immediately"; global rule §5 requires agent_info first.
+// CONFLICT: this block says "start immediately"; global rule §5 requires skill_activate first.
 // Pending resolution. Until resolved, global rule takes precedence.
 ```
 
@@ -166,15 +166,15 @@ The global prompt must state that skill matching happens before tool planning, t
 Required clauses:
 
 - **Check skills before tools** — before explaining which tools it will use, making a plan, or calling task tools, the agent must compare the user's request with the available skill metadata.
-- **Load the matching skill first** — if a listed skill matches the task, the agent must call `agent_info` for that skill before selecting task tools or executing steps.
-- **Activate before executing** — `agent_info` only previews/loads instructions. If the user asked the agent to execute the matched skill procedure, the agent must call `skill_activate` with the skill id after `agent_info` and before any task tool call. If the user only asks what would be used, do not activate.
+- **Activate the matching skill first** — if a listed skill matches the task and the user asked for execution, the agent must call `skill_activate` for that skill before selecting task tools or executing steps.
+- **Plan from the procedure, not before it** — the procedure arrives in the message after `skill_activate`. If the user only asks what would be used, answer from the skill's description in the index and do not activate.
 - **Report from the selected procedure** — when the user asks "what will you use?", the agent should mention the matching skill first, then the relevant tools from that skill's procedure.
-- **Do not deny skill availability prematurely** — the agent must not answer that no skill applies until it has checked the `--- Skills ---` section or the `agent_info` index.
+- **Do not deny skill availability prematurely** — the agent must not answer that no skill applies until it has checked the `--- Skills ---` section.
 
 **Why:** Users often ask for a tool plan before execution. Without this clause, the agent may answer with low-level tools only, skip the skill lookup, and later discover the skill after the user asks explicitly. That creates inconsistent behavior: the same task is handled differently depending on whether the user says "do it" or "first tell me what you will use." Skill matching must be an entry gate for both execution and planning. Activation is separate from lookup: without `skill_activate`, the UI cannot show the loaded-skill button and the prompt assembler will not inject the active skill body on later turns.
 
 **Pattern:**
-> "Before explaining which tools you will use, making a plan, or calling task tools, compare the user's request with the available skills. If a skill matches, call `agent_info` for that skill first and base the tool plan on the skill procedure. If you will execute the skill, call `skill_activate` before task tools."
+> "Before explaining which tools you will use, making a plan, or calling task tools, compare the user's request with the available skills. If a skill matches and the user asked you to execute, call `skill_activate` with the skill id before any task tool call, and plan from the procedure it returns."
 
 ---
 
@@ -264,7 +264,7 @@ A skill has two distinct parts with different jobs, and they live in different p
 - `description`: one or two sentences — what scenario this skill handles and when it applies
 - `trigger`: keywords or conditions that should cause the agent to load this skill
 
-**Skill body** — NOT in the assembled prompt; loaded via `agent_info` on demand:
+**Skill body** — NOT in the assembled prompt; injected by `skill_activate` on demand:
 - Step-by-step procedure for the scenario
 - Specific tool call sequences
 - Expected outputs and how to handle results
@@ -277,7 +277,7 @@ A skill has two distinct parts with different jobs, and they live in different p
 S1. **Metadata is facts, body is procedure** — keep them structurally separate.
 S2. **Metadata never contains steps** — the description is for matching, not execution.
 S3. **Body never redefines global rules** — a skill is a procedure within the global context, not a replacement for it.
-S4. **Body states its pre-step status explicitly** — either the global agent_info rule applies, or the skill explicitly states no pre-step is required.
+S4. **Body states its pre-step status explicitly** — either the global activation rule applies, or the skill explicitly states no pre-step is required.
 S5. **Body uses declarative steps, not imperative pressure** — "Call port.scan with..." not "You must immediately call port.scan."
 S6. **One skill, one scenario** — a top-level if/else over two workflows means two skills.
 
@@ -305,7 +305,7 @@ The `description` and `trigger` fields must not contain step sequences, tool nam
 
 ## Skill Rule S3 — Body Never Redefines Global Rules
 
-A skill body may not override, restate, or contradict the global prompt. This includes ordering rules, memory conventions, agent_info loading behavior, and permission constraints.
+A skill body may not override, restate, or contradict the global prompt. This includes ordering rules, memory conventions, skill loading behavior, and permission constraints.
 
 A skill may define the internal order of its own steps. It may not claim authority over the agent's general behavior.
 
@@ -317,7 +317,7 @@ A skill may define the internal order of its own steps. It may not claim authori
 
 Every skill body must contain one of:
 
-- (implicit) The global rule requiring `agent_info` first already applies — nothing to add.
+- (implicit) The global rule requiring `skill_activate` first already applies — nothing to add.
 - (explicit, if truly exempt) `No pre-step required for this skill — proceed directly to step 1.`
 
 This makes the pre-step contract unambiguous without duplicating the global rule.
@@ -359,7 +359,7 @@ At most one skill is active at any time. Activation and deactivation are explici
 
 A skill is not "active" because the agent decided to follow it. A skill is active because `skill_activate` was called and `ISkillSession.ActiveSkillId` is set. The assembler injects the body deterministically from that state.
 
-The agent cannot "switch to" a skill by mentioning it or by loading its body via `agent_info`. Only `skill_activate` transitions the state.
+The agent cannot "switch to" a skill by mentioning it or by quoting its description. Only `skill_activate` transitions the state.
 
 **Why:** Text decisions are non-deterministic — the model can change its mind mid-conversation. A tool call is a discrete, logged, permission-gated event. This is where we recover determinism from the inherently probabilistic LLM layer.
 

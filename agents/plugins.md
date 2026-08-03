@@ -46,47 +46,56 @@ The compatible provider-level shape is `^[a-zA-Z0-9_-]{1,64}$`; SPLA intentional
 - `onec_explain_object`
 - `plugin_run_command`
 
-## Tool Help
-Tool descriptions should stay short so the model can choose the right tool without loading rare usage details into every prompt.
+## Tool Details
+Tool descriptions stay short: the model chooses between tools by them, and rare usage detail read on
+every request is a cost paid by every other tool too.
 
-Complex tools SHOULD implement `IToolHelpProvider` and return LLM-oriented help text:
+Everything that does not fit one line — argument formats, defaults, limits, worked examples — goes in
+`Details` on the tool's definition, next to the schema it documents:
 
 ```csharp
-public sealed class MyTool : IMcpTool, IToolHelpProvider
+public ToolDefinition GetDefinition() => new()
 {
-    public string? GetHelpText() => """
-        tool: my_domain_do_action
+    Type = "function",
+    Function = new ToolFunctionDefinition
+    {
+        Name = Name,
+        Details = DetailsText,
+        Description = "Scans TCP ports on one host.",
+        ...
+    }
+};
 
-        summary: ...
+private static readonly string DetailsText = """
+    tool: network_scan_tcp_ports
 
-        arguments:
-          target:
-            formats:
-              - ...
+    summary: Scan TCP ports on one host.
 
-        limits:
-          maxItems: 100
+    arguments:
+      ports:
+        default: common
+        formats: [common, single_port, comma_list, range]
 
-        examples:
-          - request:
-              target: example
-        """;
-}
+    limits:
+      maxItems: 100
+
+    examples:
+      - request:
+          host: 192.168.1.10
+          ports: 80,443
+    """;
 ```
 
-SPLA registers one system meta-tool, `agent_info`, which routes by active tool name through `McpHost`.
-
-When a tool implements `IToolHelpProvider`, `McpHost` automatically prefixes its model-facing description with `[H]`. Do not write this flag manually in tool descriptions.
-
-See [Tool Help System](tool-help.md) for the full flow and examples.
+`McpHost` folds `Details` into the model-facing description at the moment the tool's set is disclosed.
 
 Rules:
 
-- `agent_info` only returns help for tools currently registered in the host.
-- Disabled plugins or disabled plugin tools are not visible through `agent_info`.
-- Tools unavailable in the current agent mode are not exposed through `agent_info`.
-- If the name is partial or inexact, `agent_info` returns suggestions from visible tools.
-- Do not move detailed usage formats into `description`; keep them in `GetHelpText()`.
+- **There is no help tool and no `[H]` marker.** They were removed with the tool-set work: a tool is
+  disclosed with everything it has to say about itself, or not at all. Do not reintroduce a lookup
+  call — see [Tool Sets](toolsets.md).
+- Keep `Description` to one or two lines; put every format and edge case in `Details`.
+- `Details` is written for a model, not for a person: terse, structured, example-first. English only.
+- A tool whose set is not disclosed contributes nothing at all — neither description nor details.
 
 ## Project Settings Integration (`.spla`)
 Plugins and their specific tools can be toggled via the `.spla` project file:
@@ -132,7 +141,7 @@ description: One-line description shown in the system prompt index.
 ### Runtime
 
 - `SkillManager` scans `plugins/*/skills/*.md` at startup — no plugin dependency.
-- `agent_info {"id": "<skill-id>"}` returns the full skill body on demand; model calls it when the request matches.
+- `skill_activate {"id": "<skill-id>"}` injects the full skill body into the prompt for the run; the model calls it when the request matches.
 - `IsEnabled` / `IsPreloaded` flags are persisted in `.spla` under `skills:`.
 
 ```yaml

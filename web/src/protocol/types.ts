@@ -57,6 +57,19 @@ export interface ChatOpenedPayload {
   modelId?: string;
   /** The skill running in this chat, if any — the unload control keys off this. */
   activeSkillId?: string | null;
+  /** Tool sets this chat can see, raised or merely announced. */
+  toolSets?: ToolSetState[];
+}
+
+/** One tool set as a chat sees it. `level` is the standing permission, `by` is who raised it here
+ * (empty when merely announced), `disclosed` is whether its tools are in the context right now —
+ * which is what the status bar weights by, since that is what actually costs. */
+export interface ToolSetState {
+  setId: string;
+  by: "skill" | "agent" | "user" | "";
+  reason?: string | null;
+  level: string;
+  disclosed: boolean;
 }
 
 /** One editable connection: transport + credentials, owning its model entries. */
@@ -142,6 +155,11 @@ export interface PluginDto {
   state?: string;
   stateReason?: string;
   enabled?: boolean;
+  /** How far this plugin's tool set may reach the model: "disabled" | "skill_demand" |
+   * "agent_demand" | "enabled". Empty/absent = follows `enabled`, which is what every project
+   * written before tool sets does. Delivery (`enabled`) and disclosure (`level`) are separate
+   * decisions — see agents/toolsets.md. */
+  level?: string;
   customPrompt?: string;
   /** Opaque settings blob as JSON (the host converts to/from the YAML stored in the .spla file). */
   settingsJson?: string;
@@ -458,6 +476,8 @@ export interface ServerEvents {
   "turn.complete": { cancelled?: boolean; error?: string; activeSkillId?: string | null };
   /** A chat's active skill changed — after an explicit unload. */
   "chat.skill.state": { chatId: string; activeSkillId?: string | null };
+  /** A chat's raised tool sets changed — after a turn, or after an explicit lowering. */
+  "chat.toolset.state": { chatId: string; sets?: ToolSetState[] };
   "tool.started": { toolCall: ToolCallDto };
   "tool.progress": { toolCallId?: string; toolName: string; current: number; total: number; fraction?: number | null; message?: string | null; details?: ToolProgressDetail[] | null };
   "tool.result": { toolCallId: string; toolName: string; result: string };

@@ -27,6 +27,7 @@ public sealed class ChatRuntime
     private readonly Conversation _conversation = new();
     private readonly KeyValueStore _sessionKv = new("session");
     private readonly SkillSession _skillSession = new();
+    private readonly ToolSetSession _toolSetSession = new();
     private readonly CheckpointManager _checkpoint = new();
     private readonly AgentSession _agentSession;
     private readonly ConversationOrchestrator _orchestrator;
@@ -57,8 +58,18 @@ public sealed class ChatRuntime
     {
         var previous = _skillSession.ActiveSkillId;
         _skillSession.Deactivate();
+        _toolSetSession.DeactivateAllBy(ToolSetActivationBy.Skill);
         return previous;
     }
+
+    /// <summary>Tool sets raised in this chat, in the order they were raised — what the status bar
+    /// shows and what a host offers to lower.</summary>
+    public IReadOnlyList<ToolSetActivation> ActiveToolSets => _toolSetSession.Active;
+
+    /// <summary>Lowers a raised set from outside the model — the person's way out, and the reason
+    /// <c>toolset_deactivate</c> can stay a permission for the model rather than a duty.</summary>
+    /// <returns>True when something was actually lowered.</returns>
+    public bool DeactivateToolSet(string setId) => _toolSetSession.Deactivate(setId);
 
     /// <summary>
     /// Composes this chat's context surface for inspection — the same call the agent loop makes,
@@ -141,7 +152,7 @@ public sealed class ChatRuntime
         // Restore this chat's session memory (survives restart) and feed live context:* each turn.
         _sessionKv.LoadFrom(chat.Kv);
 
-        _agentSession = new AgentSession(_sessionKv, _checkpoint, _skillSession);
+        _agentSession = new AgentSession(_sessionKv, _checkpoint, _skillSession, toolSets: _toolSetSession);
         _orchestrator = new ConversationOrchestrator(runtime.Llm, runtime.McpHost)
         {
             // Live context surface, recomposed on every iteration inside this turn's

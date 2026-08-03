@@ -22,14 +22,12 @@ agent:
   # Доступные id / available ids (зависимости подтягиваются сами / deps auto-included):
   #   core.workspace    — рабочая папка + AGENTS.md (get_context, дата/время)
   #                       working directory + AGENTS.md (get_context, date/time)
-  #   core.tool-help    — расширенная справка по инструментам (agent_info) / extended tool help
   #   core.discipline   — правила поведения (лимит попыток, Mermaid) / behaviour rules
   #   core.files        — чтение/запись/поиск файлов, просмотр картинок / file read/write/search, image view
   #   core.shell        — запуск команд оболочки / run shell commands
   #   core.web          — загрузка веб-страниц (web_fetch) / fetch web pages
   #   core.memory       — KV-память агента / agent KV memory
   #   core.checkpoints  — чекпоинты/откат контекста / context checkpoints & rollback  [требует core.memory]
-  #   core.skills       — активация скиллов / skill activation                        [требует core.tool-help]
   #   core.spawn        — порождение под-агентов / spawn sub-agents
   #   core.clarify      — уточняющие вопросы пользователю / ask the user to clarify
   #   core.blobs        — крупный вывод через blob-канал / bulk output via blob channel

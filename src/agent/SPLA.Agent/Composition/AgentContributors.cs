@@ -3,6 +3,7 @@ using SPLA.MCP.Core.Agent;
 using SPLA.MCP.Core.Composition;
 using SPLA.MCP.Core.Plugins;
 using SPLA.MCP.Core.Skills;
+using SPLA.MCP.Core.ToolSets;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -34,12 +35,15 @@ public static class AgentContributors
     /// catalog, which keeps callers that predate <c>agent.capabilities</c> on the unrestricted prompt.</param>
     /// <param name="session">Explicit skill session; null resolves the running chat's one ambiently.</param>
     /// <param name="projectKv">Project-scoped working memory. Null contributes session entries only.</param>
+    /// <param name="toolSets">The set catalogue. Null means no set announcements — the state of a
+    /// host that has no levelled sets to speak of (tests, a directly constructed sub-agent).</param>
     public static IReadOnlyList<IAgentContributor> Default(
         SkillManager skills,
         PluginManager plugins,
         ISkillSession? session = null,
         IReadOnlyList<IAgentFeature>? enabledFeatures = null,
-        IKeyValueStore? projectKv = null)
+        IKeyValueStore? projectKv = null,
+        ToolSetRegistry? toolSets = null)
     {
         var features = enabledFeatures ?? FullCatalog.Value;
         var enabledIds = new HashSet<string>(features.Select(f => f.Id), StringComparer.Ordinal);
@@ -54,6 +58,11 @@ public static class AgentContributors
 
         if (enabledIds.Contains("core.skills"))
             contributors.Add(new SkillsContributor(skills, session));
+
+        // Announcements of sets the agent may raise itself. Same gate as the tools that do the
+        // raising: no toolset_activate, no index telling the model to call it.
+        if (toolSets != null && enabledIds.Contains("core.toolsets"))
+            contributors.Add(new ToolSetsContributor(toolSets));
 
         contributors.Add(new PluginPromptContributor(plugins));
         contributors.Add(new PluginCommandContributor(plugins));

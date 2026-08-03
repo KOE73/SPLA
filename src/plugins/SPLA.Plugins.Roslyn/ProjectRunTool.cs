@@ -22,37 +22,10 @@ internal sealed class ProjectRunTool : DotnetProjectTool
     protected override int DefaultTimeoutSeconds => 120;
     protected override string Verb => "run";
 
-    public override ToolDefinition GetDefinition() => new ToolDefinition
-    {
-        Type = "function",
-        Function = new ToolFunctionDefinition
-        {
-            Name = Name,
-            Description = "Runs a REAL program from the workspace via 'dotnet run' and returns its console output and exit code. "
-                + "'path' may be a .csproj / project folder, OR a single .cs file (run as a .NET file-based app). "
-                + "Use this to actually EXECUTE scaffolded code and see its output — not roslyn_script_run, which runs an in-memory orchestration script rather than a file on disk. "
-                + "Pass program arguments in 'args'.",
-            Scope = ToolScope.Shell,
-            Effect = ToolEffect.Execute,
-            Risk = ToolRisk.High,
-            Parameters = new
-            {
-                type = "object",
-                properties = new
-                {
-                    path            = new { type = "string", description = "Path (relative to the workspace) to a .csproj, a project folder, or a single .cs file to run. Omit to run the project in the workspace root." },
-                    args            = new { type = "string", description = "Optional arguments passed to the program (appended after '--')." },
-                    configuration   = new { type = "string", description = "Build configuration: 'Debug' (default) or 'Release'." },
-                    timeout_seconds = new { type = "integer", description = "Hard timeout in seconds (default 120, max 600). The process tree is killed on timeout — use it to bound programs that might hang or wait for input." },
-                    output          = SchemaParts.Output,
-                    output_name     = SchemaParts.OutputName
-                },
-                required = Array.Empty<string>()
-            }
-        }
-    };
-
-    public override string? GetHelpText() => """
+    /// <summary>Everything about this tool that does not fit its one-line description.
+    /// Disclosed together with the tool itself — see <c>ToolFunctionDefinition.Details</c>.</summary>
+    private static readonly string DetailsText =
+        """
         tool: roslyn_project_run
 
         summary: Runs a real program (project or single .cs file) via 'dotnet run' and returns its output.
@@ -79,6 +52,37 @@ internal sealed class ProjectRunTool : DotnetProjectTool
           - request: { "path": "Program.cs" }
           - request: { "path": "src/Tool/Tool.csproj", "args": "--input data.txt" }
         """;
+    public override ToolDefinition GetDefinition() => new ToolDefinition
+    {
+        Type = "function",
+        Function = new ToolFunctionDefinition
+        {
+            Name = Name,
+            Details = DetailsText,
+            Description = "Runs a REAL program from the workspace via 'dotnet run' and returns its console output and exit code. "
+                + "'path' may be a .csproj / project folder, OR a single .cs file (run as a .NET file-based app). "
+                + "Use this to actually EXECUTE scaffolded code and see its output — not roslyn_script_run, which runs an in-memory orchestration script rather than a file on disk. "
+                + "Pass program arguments in 'args'.",
+            Scope = ToolScope.Shell,
+            Effect = ToolEffect.Execute,
+            Risk = ToolRisk.High,
+            Parameters = new
+            {
+                type = "object",
+                properties = new
+                {
+                    path            = new { type = "string", description = "Path (relative to the workspace) to a .csproj, a project folder, or a single .cs file to run. Omit to run the project in the workspace root." },
+                    args            = new { type = "string", description = "Optional arguments passed to the program (appended after '--')." },
+                    configuration   = new { type = "string", description = "Build configuration: 'Debug' (default) or 'Release'." },
+                    timeout_seconds = new { type = "integer", description = "Hard timeout in seconds (default 120, max 600). The process tree is killed on timeout — use it to bound programs that might hang or wait for input." },
+                    output          = SchemaParts.Output,
+                    output_name     = SchemaParts.OutputName
+                },
+                required = Array.Empty<string>()
+            }
+        }
+    };
+
 
     protected override string BuildArguments(string resolvedPath, JsonElement root)
     {

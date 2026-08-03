@@ -30,6 +30,11 @@ permissions:
   shell: ask
   internet: allow
 
+toolsets:
+  ssh: agent_demand
+  network: skill_demand
+  roslyn: disabled
+
 docs:
   - docs/
 
@@ -58,6 +63,7 @@ ignore:
 | `ui.theme` | No | Color theme: `Dark`, `Light`, `Cream`, `Emerald`. |
 | `ui.density` | No | UI density: `norm`, `mini`, `nano`, `max`. |
 | `permissions.*` | No | Per-effect overrides: `allow`, `ask`, `deny`. Overrides the mode's default matrix. |
+| `toolsets.<id>` | No | How far a tool set may reach the model: `disabled`, `skill_demand`, `agent_demand`, `enabled`. Absent = derived from the supplier's `plugins.<id>.enabled` flag, so projects written before tool sets are unaffected. `on`/`off` are refused — YAML reads them as booleans. See [Tool Sets](toolsets.md). |
 | `docs` | No | Documentation directories to index. |
 | `ignore` | No | Directories/files the agent will never touch. |
 

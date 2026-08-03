@@ -80,6 +80,18 @@ button { font: inherit; cursor: pointer; }
   font-size: var(--fs-xs); line-height: 1; padding: 2px 5px; border-radius: 999px; opacity: .7; }
 #activeSkill .skill-unload:hover { opacity: 1; background: var(--accent); color: var(--bg); }
 
+/* Tool sets this chat can reach — its own line at the foot of the status bar, so the readout is
+   "what is the model carrying right now" rather than another settings list. Weight follows COST:
+   a disclosed set carries every one of its definitions in every request and reads as normal text;
+   an announced one costs a single line and stays faint. Nothing raised, no line at all. */
+#toolSets { flex-basis: 100%; display: flex; flex-wrap: wrap; gap: 6px; align-items: center;
+  margin-top: -2px; }
+#toolSets .toolset { background: transparent; border: 0; padding: 0; font: inherit;
+  font-size: var(--fs-xs); color: var(--faint); cursor: default; }
+#toolSets .toolset.disclosed { color: var(--text); }
+#toolSets .toolset.lowerable { cursor: pointer; text-decoration: underline dotted; }
+#toolSets .toolset.lowerable:hover { color: var(--accent); }
+
 /* ── Filter bar (per-type visibility toggles) ─────────────────────────────── */
 #filters { padding: 5px 14px; border-bottom: 1px solid var(--border); display: flex; gap: 6px;
   align-items: center; font-size: var(--fs-xs); }

@@ -16,7 +16,7 @@ Keep it in sync with those two files — they are the source of truth.
 For each tool call, `PermissionManager.CheckPermission(mode, toolMetadata, argsJson)` returns
 `Allow` / `Ask` / `Deny`, evaluated in this order:
 
-1. **`Scope == Agent`** (memory, `agent_info`, datetime, context) → **Allow in every mode**, including
+1. **`Scope == Agent`** (memory, `toolset_activate`, datetime, context) → **Allow in every mode**, including
    Chat. These touch only the agent's own state.
 2. **`Scope == Skill`** (skill activation) → `Chat`/`Inspect` = Ask, `Edit`/`Agent` = Allow, otherwise
    Deny (Research and unknown). Skill *deactivation* uses `Scope.Agent` and is always allowed.

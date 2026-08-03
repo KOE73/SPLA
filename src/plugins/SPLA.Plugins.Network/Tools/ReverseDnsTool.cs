@@ -11,9 +11,40 @@ using System.Threading.Tasks;
 
 namespace SPLA.Plugins.Network;
 
-public class ReverseDnsTool : IMcpTool, IToolHelpProvider
+public class ReverseDnsTool : IMcpTool
 {
     public string Name => "network_reverse_dns";
+
+    /// <summary>Everything about this tool that does not fit its one-line description.
+    /// Disclosed together with the tool itself — see <c>ToolFunctionDefinition.Details</c>.</summary>
+    private static readonly string DetailsText =
+        """
+        tool: network_reverse_dns
+
+        summary: Bulk reverse DNS lookup. Resolves PTR names for one or more IP addresses.
+
+        arguments:
+          addresses:
+            required: true
+            type: array
+            items: string
+            formats:
+              - ipv4_address
+              - ipv6_address
+            rules:
+              - Pass a real JSON array of strings.
+              - Do not pass a comma-separated string.
+              - Do not wrap the array in another string.
+              - Batching is optional; use smaller batches only if the model or endpoint struggles with large tool arguments.
+            examples:
+              - {"addresses":["172.16.21.0","172.16.21.1","172.16.21.2"]}
+              - {"addresses":["192.168.1.1","8.8.8.8"]}
+
+        common mistakes:
+          - wrong: {"addresses":"172.16.21.0,172.16.21.1"}
+          - wrong: {"addresses":"[\"172.16.21.0\",\"172.16.21.1\"]"}
+          - right: {"addresses":["172.16.21.0","172.16.21.1"]}
+        """;
 
     public ToolDefinition GetDefinition() => new ToolDefinition
     {
@@ -21,6 +52,7 @@ public class ReverseDnsTool : IMcpTool, IToolHelpProvider
         Function = new ToolFunctionDefinition
         {
             Name = Name,
+            Details = DetailsText,
             Description = "Performs a reverse DNS lookup (PTR record) for one or more IP addresses. Useful after a LAN scan to resolve IPs to hostnames.",
             Scope = ToolScope.Internet,
             Effect = ToolEffect.Read,
@@ -77,34 +109,6 @@ public class ReverseDnsTool : IMcpTool, IToolHelpProvider
         }
     }
 
-    public string? GetHelpText() =>
-        """
-        tool: network_reverse_dns
-
-        summary: Bulk reverse DNS lookup. Resolves PTR names for one or more IP addresses.
-
-        arguments:
-          addresses:
-            required: true
-            type: array
-            items: string
-            formats:
-              - ipv4_address
-              - ipv6_address
-            rules:
-              - Pass a real JSON array of strings.
-              - Do not pass a comma-separated string.
-              - Do not wrap the array in another string.
-              - Batching is optional; use smaller batches only if the model or endpoint struggles with large tool arguments.
-            examples:
-              - {"addresses":["172.16.21.0","172.16.21.1","172.16.21.2"]}
-              - {"addresses":["192.168.1.1","8.8.8.8"]}
-
-        common mistakes:
-          - wrong: {"addresses":"172.16.21.0,172.16.21.1"}
-          - wrong: {"addresses":"[\"172.16.21.0\",\"172.16.21.1\"]"}
-          - right: {"addresses":["172.16.21.0","172.16.21.1"]}
-        """;
 
     private static async Task<(string Ip, string Hostname)> ResolveAsync(string ip, CancellationToken cancellationToken)
     {

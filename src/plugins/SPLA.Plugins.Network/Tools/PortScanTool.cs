@@ -14,9 +14,67 @@ using System.Threading.Tasks;
 
 namespace SPLA.Plugins.Network;
 
-public class PortScanTool : IMcpTool, IToolHelpProvider
+public class PortScanTool : IMcpTool
 {
     public string Name => "network_scan_tcp_ports";
+
+    /// <summary>Everything about this tool that does not fit its one-line description.
+    /// Disclosed together with the tool itself — see <c>ToolFunctionDefinition.Details</c>.</summary>
+    private static readonly string DetailsText =
+        """
+        tool: network_scan_tcp_ports
+
+        summary: Scan TCP ports on one host. Use for a single host or IP, not for subnet scanning.
+
+        arguments:
+          host:
+            required: true
+            formats:
+              - hostname
+              - ipv4_address
+              - ipv6_address_if_supported_by_runtime_dns
+            examples:
+              - 192.168.1.10
+              - host.example.com
+          ports:
+            required: false
+            default: common
+            formats:
+              - common
+              - all
+              - single_port
+              - comma_list
+              - range
+            examples:
+              - common
+              - 80
+              - 22,80,443,3389
+              - 1-1024
+          timeout:
+            required: false
+            default: 500
+            min: 100
+            max: 10000
+            unit: milliseconds
+          concurrency:
+            required: false
+            default: 128
+            min: 1
+            max: 512
+
+        risk:
+          all_ports: use only when explicitly requested by the user.
+          remote_scan: avoid scanning hosts the user does not own or administer.
+
+        examples:
+          - request:
+              host: 192.168.1.10
+              ports: 80,443,8080
+          - request:
+              host: localhost
+              ports: common
+              timeout: 300
+        """;
 
     public ToolDefinition GetDefinition() => new ToolDefinition
     {
@@ -24,6 +82,7 @@ public class PortScanTool : IMcpTool, IToolHelpProvider
         Function = new ToolFunctionDefinition
         {
             Name = Name,
+            Details = DetailsText,
             Description = "Scans TCP ports on one host. Omitting ports scans a practical common service set (~49 ports). Accepts: 'common', comma list, range (e.g. 1-1024), or 'all'.",
             Scope = ToolScope.Internet,
             Effect = ToolEffect.Read,
@@ -116,59 +175,4 @@ public class PortScanTool : IMcpTool, IToolHelpProvider
         }
     }
 
-    public string? GetHelpText() =>
-        """
-        tool: network_scan_tcp_ports
-
-        summary: Scan TCP ports on one host. Use for a single host or IP, not for subnet scanning.
-
-        arguments:
-          host:
-            required: true
-            formats:
-              - hostname
-              - ipv4_address
-              - ipv6_address_if_supported_by_runtime_dns
-            examples:
-              - 192.168.1.10
-              - host.example.com
-          ports:
-            required: false
-            default: common
-            formats:
-              - common
-              - all
-              - single_port
-              - comma_list
-              - range
-            examples:
-              - common
-              - 80
-              - 22,80,443,3389
-              - 1-1024
-          timeout:
-            required: false
-            default: 500
-            min: 100
-            max: 10000
-            unit: milliseconds
-          concurrency:
-            required: false
-            default: 128
-            min: 1
-            max: 512
-
-        risk:
-          all_ports: use only when explicitly requested by the user.
-          remote_scan: avoid scanning hosts the user does not own or administer.
-
-        examples:
-          - request:
-              host: 192.168.1.10
-              ports: 80,443,8080
-          - request:
-              host: localhost
-              ports: common
-              timeout: 300
-        """;
 }

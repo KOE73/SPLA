@@ -108,7 +108,7 @@ Current agent docs:
 - `agents/structure.md`: This repository structure map.
 - `agents/sys_prompt_rules.md`: System-prompt authoring rules (avoiding rule contradictions).
 - `agents/tool-args.md`: Tool argument conventions.
-- `agents/tool-help.md`: Tool help system flow.
+- `agents/toolsets.md`: Tool set levels and per-chat activation.
 - `agents/ui-theming.md`: UI theming and density rules.
 - `agents/data-ownership.md`: Data ownership rules — UI must not own domain data. Read before adding any registry, flag, or discovery logic.
 
@@ -141,7 +141,7 @@ description: One-line description used as the skill index entry in the system pr
 # Skill Title
 
 ## Tool availability
-[standard preamble — check `agent_info`, prefer lower_snake_case network tools, fall back to shell when allowed]
+[standard preamble — prefer lower_snake_case network tools, fall back to shell when allowed]
 
 [skill instructions...]
 ```
@@ -151,7 +151,7 @@ description: One-line description used as the skill index entry in the system pr
 - `CapabilityRegistry` includes skills alongside tools and plugins in a unified list.
 - `SidebarPanelViewModel` displays skills from `CapabilityRegistry` — it does NOT scan files or own skill data.
 - System prompt receives only the skill index (`id — description`, one line per skill).
-- Model calls `agent_info {"id": "<skill-id>"}` to get full skill instructions when a request matches.
+- Model calls `skill_activate {"id": "<skill-id>"}` to get full skill instructions when a request matches.
 - `IsPreloaded=true` (per-skill setting in `.spla`) injects the full body into the system prompt immediately.
 - Flags `IsEnabled`/`IsPreloaded` persist via the `skills:` section in `.spla` / `defaults.yaml`.
 

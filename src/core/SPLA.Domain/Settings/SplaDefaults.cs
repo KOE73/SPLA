@@ -32,4 +32,9 @@ public class SplaDefaults
     /// <c>skills:</c> block overrides this one.</summary>
     [YamlMember(Alias = "skills")]
     public SplaSkillsSection? Skills { get; set; }
+
+    /// <summary>Tool set levels that apply to every project. A project's own <c>toolsets:</c> block
+    /// overrides an entry it mentions and inherits the rest.</summary>
+    [YamlMember(Alias = "toolsets")]
+    public Dictionary<string, string>? ToolSets { get; set; }
 }

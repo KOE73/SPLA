@@ -48,7 +48,7 @@ context_rollback                                         ← REQUIRED after all 
 
 ## Step 0 — Confirm tools and initialize plan
 
-Call `agent_info` with each tool name you intend to use to confirm it is registered.
+Use only tools that are listed in your context; if one is missing, fall back to `system_run_shell`.
 Prefer lower_snake_case network tools — they return structured data and handle errors cleanly.
 Fall back to `system_run_shell` (telnet, openssl s_client) only when a specific tool is absent.
 

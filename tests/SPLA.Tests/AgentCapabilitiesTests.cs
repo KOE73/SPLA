@@ -27,7 +27,6 @@ public sealed class AgentCapabilitiesTests
     private static readonly string[] AllCoreToolNames =
     {
         "agent_get_context", "agent_get_current_time",
-        "agent_info",
         "system_list_files", "system_read_file", "system_search_text", "system_find_files",
         "system_create_file", "system_patch_file", "system_write_file", "system_delete_file", "image_view",
         "system_run_shell",
@@ -35,6 +34,7 @@ public sealed class AgentCapabilitiesTests
         "agent_memory_set", "agent_memory_get", "agent_memory_delete", "agent_memory_list", "agent_memory_clear",
         "checkpoint_save", "context_rollback", "mark_set", "mark_rollback",
         "skill_activate", "skill_deactivate",
+        "toolset_activate", "toolset_deactivate",
         "agent_spawn", "agent_spawn_batch",
         "agent_clarify",
     };
@@ -75,7 +75,7 @@ public sealed class AgentCapabilitiesTests
 
             var prompt = runtime.SystemPrompt;
             Assert.Contains("Your current working directory is:", prompt);
-            Assert.Contains("Tool descriptions are intentionally short.", prompt);
+            Assert.Contains("Some tool sets are announced without their tools.", prompt);
             Assert.Contains("Mermaid note:", prompt);
             Assert.Contains("KV memory: a persistent scoped key/value store", prompt);
             Assert.Contains("context management (4 tools)", prompt);

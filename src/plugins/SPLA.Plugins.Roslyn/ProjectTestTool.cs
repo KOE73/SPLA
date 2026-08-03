@@ -20,12 +20,34 @@ internal sealed class ProjectTestTool : DotnetProjectTool
     protected override int DefaultTimeoutSeconds => 240;
     protected override string Verb => "test";
 
+    /// <summary>Everything about this tool that does not fit its one-line description.
+    /// Disclosed together with the tool itself — see <c>ToolFunctionDefinition.Details</c>.</summary>
+    private static readonly string DetailsText =
+        """
+        tool: roslyn_project_test
+
+        summary: Runs 'dotnet test' on a real test project/solution and reports pass/fail.
+
+        arguments:
+          path: relative path to a test .csproj/.sln/.slnx or folder. Omit for the workspace root.
+          filter: optional --filter expression to run a subset of tests.
+          configuration: Debug (default) or Release.
+          timeout_seconds: hard timeout (default 240, max 600).
+
+        output:
+          - "ok: true/false" + "exit_code: N" (0 = all passed), then the test runner output.
+
+        examples:
+          - request: { "path": "tests/Calculator.Tests" }
+          - request: { "path": "tests/Calculator.Tests", "filter": "FullyQualifiedName~Add" }
+        """;
     public override ToolDefinition GetDefinition() => new ToolDefinition
     {
         Type = "function",
         Function = new ToolFunctionDefinition
         {
             Name = Name,
+            Details = DetailsText,
             Description = "Runs 'dotnet test' on a REAL test project/solution in the workspace and returns the pass/fail summary with failure details. "
                 + "Use it to verify scaffolded tests pass. 'path' is relative to the workspace; omit to test the project/solution in the workspace root. "
                 + "Narrow to specific tests with 'filter' (dotnet --filter expression).",
@@ -49,24 +71,6 @@ internal sealed class ProjectTestTool : DotnetProjectTool
         }
     };
 
-    public override string? GetHelpText() => """
-        tool: roslyn_project_test
-
-        summary: Runs 'dotnet test' on a real test project/solution and reports pass/fail.
-
-        arguments:
-          path: relative path to a test .csproj/.sln/.slnx or folder. Omit for the workspace root.
-          filter: optional --filter expression to run a subset of tests.
-          configuration: Debug (default) or Release.
-          timeout_seconds: hard timeout (default 240, max 600).
-
-        output:
-          - "ok: true/false" + "exit_code: N" (0 = all passed), then the test runner output.
-
-        examples:
-          - request: { "path": "tests/Calculator.Tests" }
-          - request: { "path": "tests/Calculator.Tests", "filter": "FullyQualifiedName~Add" }
-        """;
 
     protected override string BuildArguments(string resolvedPath, JsonElement root)
     {

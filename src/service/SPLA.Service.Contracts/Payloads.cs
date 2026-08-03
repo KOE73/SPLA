@@ -356,6 +356,16 @@ public sealed class PluginEditDto
     public string? Type { get; set; }
     public string? Version { get; set; }
     public bool Enabled { get; set; } = true;
+
+    /// <summary>
+    /// How far this plugin's tool set may reach the model: <c>disabled</c>, <c>skill_demand</c>,
+    /// <c>agent_demand</c>, <c>enabled</c>. This is the DISCLOSURE decision, distinct from
+    /// <see cref="Enabled"/>, which is delivery — whether the assembly is loaded at all.
+    /// <para>Absent (null) means no explicit level: the set follows <see cref="Enabled"/>, which is
+    /// how every project written before tool sets keeps behaving as it did.</para>
+    /// </summary>
+    public string? Level { get; set; }
+
     /// <summary>Effective state name (Enabled / DisabledByUser / DisabledByDependency / LoadError…). Read-only.</summary>
     public string? State { get; set; }
     public string? StateReason { get; set; }
@@ -585,6 +595,10 @@ public sealed class ChatOpenedPayload
     /// <summary>The skill running in this chat, or null. Sent on open so a window attaching to a chat
     /// that was left mid-skill can offer the way out immediately.</summary>
     public string? ActiveSkillId { get; set; }
+
+    /// <summary>Tool sets this chat can see, raised or merely announced. Same reason as the active
+    /// skill: a window attaching mid-conversation has to show what the model can currently reach.</summary>
+    public List<ToolSetStateDto> ToolSets { get; set; } = new();
 }
 
 public sealed class DeltaPayload
@@ -706,6 +720,43 @@ public sealed class ChatSkillStatePayload
 {
     public string ChatId { get; set; } = string.Empty;
     public string? ActiveSkillId { get; set; }
+}
+
+/// <summary>
+/// One tool set as a chat currently sees it. Sets the user levelled off are never sent — for this
+/// chat they do not exist.
+/// <para>Both halves travel together on purpose: <see cref="Level"/> is the standing permission and
+/// <see cref="By"/> is who raised it here (empty when it is merely announced). The status bar weights
+/// them by what they actually cost in context — a fully disclosed set carries all its definitions,
+/// an announced one costs a single line.</para>
+/// </summary>
+public sealed class ToolSetStateDto
+{
+    public string SetId { get; set; } = string.Empty;
+
+    /// <summary>"skill", "agent", "user" — or empty when the set is announced but not raised.</summary>
+    public string By { get; set; } = string.Empty;
+    public string? Reason { get; set; }
+    public string Level { get; set; } = string.Empty;
+
+    /// <summary>True when the set's tools are in this chat's context right now.</summary>
+    public bool Disclosed { get; set; }
+}
+
+/// <summary>Request to lower a tool set raised in a chat — the person's control, the reason
+/// <c>toolset_deactivate</c> can stay a permission for the model rather than a duty.
+/// Answered with <see cref="ChatToolSetStatePayload"/>.</summary>
+public sealed class ChatToolSetDeactivatePayload
+{
+    public string ChatId { get; set; } = string.Empty;
+    public string SetId { get; set; } = string.Empty;
+}
+
+/// <summary>A chat's tool sets, broadcast to its watchers after any change.</summary>
+public sealed class ChatToolSetStatePayload
+{
+    public string ChatId { get; set; } = string.Empty;
+    public List<ToolSetStateDto> Sets { get; set; } = new();
 }
 
 public sealed class PermissionRequestPayload

@@ -54,7 +54,7 @@ For public internet ranges: ask the user to confirm authorization before scannin
 
 ## Step 0 — Confirm tools, create plan
 
-Call `agent_info` for each tool you intend to use. Fall back to `system_run_shell` only when a specific tool is absent.
+Use only tools that are listed in your context. Fall back to `system_run_shell` only when a specific tool is absent.
 
 Write plan to `context:plan` (session KV):
 

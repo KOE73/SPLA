@@ -3,6 +3,7 @@ using SPLA.Domain.Interfaces;
 using SPLA.MCP.Core.Interfaces;
 using SPLA.MCP.Core.Permissions;
 using SPLA.MCP.Core.Tools;
+using SPLA.MCP.Core.ToolSets;
 using SPLA.Observability;
 using Microsoft.Extensions.Logging;
 using System;
@@ -76,86 +77,81 @@ public class McpHost : IToolHost
     private bool IsPluginTool(IMcpTool tool)
         => _pluginManager != null && _pluginManager.GetDynamicTools().Contains(tool);
 
+    /// <summary>
+    /// The tool sets this host knows and how far each may reach the model. Assigned after
+    /// construction because a set knows its tools only once they are registered, and this host is
+    /// what registers them. Null (tests, hosts that predate tool sets) means no set gating at all.
+    /// </summary>
+    public ToolSetRegistry? ToolSets { get; set; }
+
     public IEnumerable<ToolDefinition> GetToolDefinitions()
     {
         // Live plugin gating: a disabled plugin's tools drop out of the offered list immediately
         // (no restart) — the assemblies stay loaded, only exposure is gated.
         return _tools.Values
             .Where(t => _pluginManager == null || _pluginManager.IsToolAvailable(t))
+            .Where(t => IsDisclosed(t.Name))
             .Select(GetDefinitionForModel);
     }
 
-    public string GetToolHelp(string? name, AgentMode? mode = null)
+    /// <summary>
+    /// Every tool the project PERMITS, whether or not it is disclosed right now — i.e. everything
+    /// except sets levelled off entirely.
+    ///
+    /// <para>This is what skill requirements resolve against, and it must not be the disclosed list:
+    /// a skill's whole job at the "on skill demand" level is to raise the set it needs, so judging it
+    /// by what is raised before it runs would mark exactly those skills unavailable.</para>
+    /// </summary>
+    public IEnumerable<string> GetPermittedToolNames()
     {
-        if (string.IsNullOrWhiteSpace(name))
+        return _tools.Values
+            .Where(t => _pluginManager == null || _pluginManager.IsToolAvailable(t))
+            .Where(t => ToolSets == null || ToolSets.LevelOfTool(t.Name) != ToolSetLevel.Disabled)
+            .Select(t => t.Name);
+    }
+
+    /// <summary>True when the model may see this tool right now: its set is fully enabled, or it is
+    /// raised in the chat currently running. A tool no set claims is always disclosed.</summary>
+    private bool IsDisclosed(string toolName)
+    {
+        if (ToolSets == null) return true;
+
+        var setId = ToolSets.SetOfTool(toolName);
+        if (setId == null) return true;
+
+        return ToolSets.LevelOf(setId) switch
         {
-            return "found: false\nreason: missing_name";
-        }
+            ToolSetLevel.Enabled => true,
+            ToolSetLevel.Disabled => false,
+            _ => SPLA.Domain.Agent.AgentSessionScope.Current?.ToolSets.IsActive(setId) == true
+        };
+    }
 
-        if (_tools.TryGetValue(name, out var tool))
+    /// <summary>
+    /// Why this call cannot run right now, or null when the tool's set permits it.
+    ///
+    /// <para>The wording is deliberate. A set the user levelled off does not exist — saying anything
+    /// else would leak what the project holds. A set that is merely not raised does exist, and saying
+    /// so is the useful answer: a dead end costs more than the disclosure, because a model told "no
+    /// such tool" about a tool it can see in the history just tries again (IDEA_20260802_core §6.8).</para>
+    /// </summary>
+    private string? ToolSetRefusal(string toolName)
+    {
+        if (ToolSets == null) return null;
+        if (ToolSets.SetOfTool(toolName) is not { } setId) return null;
+
+        return ToolSets.LevelOf(setId) switch
         {
-            if (mode.HasValue && !IsToolAvailableInMode(tool, mode.Value))
-            {
-                return "found: false\nreason: tool_not_available_in_current_mode";
-            }
-
-            var definition = tool.GetDefinition().Function;
-            var pluginId = GetPluginId(definition.Name);
-            var helpText = tool is IToolHelpProvider helpProvider
-                ? helpProvider.GetHelpText()
-                : null;
-
-            var sb = new StringBuilder();
-            sb.AppendLine("found: true");
-            sb.AppendLine($"tool: {definition.Name}");
-            if (!string.IsNullOrWhiteSpace(pluginId))
-            {
-                sb.AppendLine($"plugin: {pluginId}");
-            }
-
-            sb.AppendLine($"description: {definition.Description}");
-            sb.AppendLine("parameters:");
-            sb.AppendLine(Indent(JsonSerializer.Serialize(definition.Parameters ?? new { type = "object", properties = new { } }, new JsonSerializerOptions
-            {
-                WriteIndented = true
-            }), "  "));
-
-            if (!string.IsNullOrWhiteSpace(helpText))
-            {
-                sb.AppendLine("help: |");
-                sb.AppendLine(Indent(helpText.Trim(), "  "));
-            }
-            else
-            {
-                sb.AppendLine("help: null");
-                sb.AppendLine("note: This tool does not provide extended help yet. Use the schema and description above.");
-            }
-
-            return sb.ToString();
-        }
-
-        var suggestions = _tools.Keys
-            .Where(toolName => !mode.HasValue || IsToolAvailableInMode(_tools[toolName], mode.Value))
-            .Where(toolName => toolName.Contains(name, StringComparison.OrdinalIgnoreCase))
-            .OrderBy(toolName => toolName, StringComparer.OrdinalIgnoreCase)
-            .Take(10)
-            .ToArray();
-
-        if (suggestions.Length == 0)
-        {
-            return "found: false\nreason: tool_not_registered_or_plugin_disabled";
-        }
-
-        var suggestionBuilder = new StringBuilder();
-        suggestionBuilder.AppendLine("found: false");
-        suggestionBuilder.AppendLine("reason: exact_tool_not_found");
-        suggestionBuilder.AppendLine("suggestions:");
-        foreach (var suggestion in suggestions)
-        {
-            suggestionBuilder.AppendLine($"  - {suggestion}");
-        }
-
-        return suggestionBuilder.ToString();
+            ToolSetLevel.Enabled => null,
+            ToolSetLevel.Disabled => $"Error: Tool '{toolName}' not found.",
+            _ when SPLA.Domain.Agent.AgentSessionScope.Current?.ToolSets.IsActive(setId) == true => null,
+            ToolSetLevel.AgentDemand =>
+                $"Error: tool '{toolName}' belongs to tool set '{setId}', which is not active in this chat. "
+                + $"Call toolset_activate with setId '{setId}' first.",
+            _ =>
+                $"Error: tool '{toolName}' belongs to tool set '{setId}', which only a skill or the user "
+                + "can activate. Ask the user, or run a skill that requires it."
+        };
     }
 
     public async Task<string> ExecuteToolAsync(AgentMode mode, string name, string argumentsJson, CancellationToken cancellationToken = default)
@@ -166,6 +162,12 @@ public class McpHost : IToolHost
             {
                 _logger?.LogWarning("Tool refused: owning plugin is disabled. Tool={ToolName}", name);
                 return $"Error: tool '{name}' belongs to a plugin that is currently disabled.";
+            }
+
+            if (ToolSetRefusal(name) is { } refusal)
+            {
+                _logger?.LogInformation("Tool refused: its set is not raised. Tool={ToolName}", name);
+                return refusal;
             }
 
             using var activity = SplaTelemetry.StartActivity("mcp.tool.execute");
@@ -218,13 +220,6 @@ public class McpHost : IToolHost
             using var progressNode = SPLA.Domain.Tools.ProgressScope.BeginNode(name);
             try
             {
-                if (tool is AgentInfoTool agentInfoTool)
-                {
-                    var helpResult = await agentInfoTool.ExecuteAsync(mode, argumentsJson, cancellationToken);
-                    RecordToolSuccess(name, started, helpResult.Length);
-                    return helpResult;
-                }
-
                 var result = await tool.ExecuteAsync(argumentsJson, cancellationToken);
                 RecordToolSuccess(name, started, result.Length);
                 return result;
@@ -266,18 +261,21 @@ public class McpHost : IToolHost
         return dot > 0 ? toolName[..dot] : null;
     }
 
+    /// <summary>
+    /// The definition as the model sees it: description plus the tool's own details, folded into one
+    /// text. A tool is disclosed with everything it has to say about itself or not at all — the model
+    /// never has to decide whether to go and read more, which is the decision the old help tool and
+    /// its [H] marker cost on every call.
+    /// </summary>
     private static ToolDefinition GetDefinitionForModel(IMcpTool tool)
     {
         var definition = tool.GetDefinition();
-        if (tool is not IToolHelpProvider helpProvider || string.IsNullOrWhiteSpace(helpProvider.GetHelpText()))
-        {
-            return definition;
-        }
+        var details = definition.Function.Details;
+        if (string.IsNullOrWhiteSpace(details)) return definition;
 
-        if (!definition.Function.Description.StartsWith("[H]", StringComparison.Ordinal))
-        {
-            definition.Function.Description = $"[H] {definition.Function.Description}";
-        }
+        if (!definition.Function.Description.Contains(details.Trim(), StringComparison.Ordinal))
+            definition.Function.Description =
+                definition.Function.Description.TrimEnd() + Environment.NewLine + Environment.NewLine + details.Trim();
 
         return definition;
     }

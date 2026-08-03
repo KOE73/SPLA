@@ -36,6 +36,13 @@ public class SplaProject
     [YamlMember(Alias = "plugins")]
     public Dictionary<string, SplaPluginSection>? Plugins { get; set; }
 
+    /// <summary>Tool set id → disclosure level (<c>disabled</c>, <c>skill_demand</c>,
+    /// <c>agent_demand</c>, <c>enabled</c>). A set with no entry derives its level from its
+    /// supplier's on/off flag, so this section is only written when the user departs from that.
+    /// See <c>agents/toolsets.md</c>.</summary>
+    [YamlMember(Alias = "toolsets")]
+    public Dictionary<string, string>? ToolSets { get; set; }
+
     [YamlMember(Alias = "skills")]
     public SplaSkillsSection? Skills { get; set; }
 

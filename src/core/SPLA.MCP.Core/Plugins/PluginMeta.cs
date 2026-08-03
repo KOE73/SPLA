@@ -23,6 +23,17 @@ public class PluginMeta
     [YamlMember(Alias = "web_settings_entry")]
     public string? WebSettingsEntry { get; set; }
 
+    /// <summary>One line: what this plugin's tool set is. Shown in the UI and used as the first half
+    /// of the set's declaration when its level is "on agent demand". English only.</summary>
+    [YamlMember(Alias = "description")]
+    public string Description { get; set; } = string.Empty;
+
+    /// <summary>When the agent should call for this set — the half of a declaration that cannot be
+    /// derived from <see cref="Description"/> and has to be written by the set's author. Read only
+    /// at the "on agent demand" level; see <c>agents/toolsets.md</c>. English only.</summary>
+    [YamlMember(Alias = "summon")]
+    public string Summon { get; set; } = string.Empty;
+
     [YamlMember(Alias = "default_prompt")]
     public string DefaultPrompt { get; set; } = string.Empty;
 

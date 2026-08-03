@@ -9,7 +9,7 @@ using System.Threading.Tasks;
 
 namespace SPLA.MCP.Core.Tools;
 
-public sealed class AgentMemoryListTool : IMcpTool, IToolHelpProvider
+public sealed class AgentMemoryListTool : IMcpTool
 {
     private readonly IKeyValueStore _project;
 
@@ -17,12 +17,55 @@ public sealed class AgentMemoryListTool : IMcpTool, IToolHelpProvider
 
     public string Name => "agent_memory_list";
 
+    /// <summary>Everything about this tool that does not fit its one-line description.
+    /// Disclosed together with the tool itself — see <c>ToolFunctionDefinition.Details</c>.</summary>
+    private static readonly string DetailsText =
+        """
+        tool: agent_memory_list
+
+        summary: List key/value entries with glob key filter, value where clause, and pagination.
+
+        arguments:
+          filter: key filter, supports glob * (e.g. 'host:*:tls', 'context:', 'host:172.16.*')
+          where:  value filter — 'field=pattern' extracts JSON field and glob-matches
+                  '=pattern' matches the raw value string
+                  examples: 'hostname=*kombinat*', 'ping=true', 'class=active'
+          top:    max entries to return
+          skip:   pagination offset
+          scope:  session (default) or project
+
+        filter_mode:
+          glob  (default) — '*' matches any sequence; no '*' = case-insensitive substring
+          regex           — full .NET regex, case-insensitive; '.' is NOT auto-escaped
+
+        glob examples:
+          host:*:tls        — all TLS records
+          host:172.16.*     — subnet prefix
+          *:smtp            — keys ending with :smtp
+          host:             — substring match
+
+        regex examples:
+          filter='host:172\.16\.(20|21)\.17[0-4].*'  filter_mode='regex'
+          filter='host:172\.16\.20\.17[0-4].*'        filter_mode='regex'
+
+        default behaviour (top=null):
+          match ≤ 25  → return all
+          match > 25  → return first 10 + hint with next-page args
+
+        examples:
+          filter='host:*:tls'                    — all TLS records
+          filter='host:*' where='ping=true'      — all hosts that answered ping
+          filter='host:*:http' where='status=200'— HTTP records with 200 OK
+          filter='host:*' where='class=active'   — active hosts only
+        """;
+
     public ToolDefinition GetDefinition() => new()
     {
         Type = "function",
         Function = new ToolFunctionDefinition
         {
             Name = Name,
+            Details = DetailsText,
             Description = "List key/value entries in agent working memory with optional filter, where clause, and pagination. " +
                           "filter supports glob patterns with * (e.g. 'host:*:tls'). " +
                           "where filters by value field: 'field=pattern' (e.g. 'hostname=*kombinat*'). " +
@@ -75,42 +118,4 @@ public sealed class AgentMemoryListTool : IMcpTool, IToolHelpProvider
         catch (JsonException) { return Task.FromResult("error: invalid_json"); }
     }
 
-    public string? GetHelpText() => """
-        tool: agent_memory_list
-
-        summary: List key/value entries with glob key filter, value where clause, and pagination.
-
-        arguments:
-          filter: key filter, supports glob * (e.g. 'host:*:tls', 'context:', 'host:172.16.*')
-          where:  value filter — 'field=pattern' extracts JSON field and glob-matches
-                  '=pattern' matches the raw value string
-                  examples: 'hostname=*kombinat*', 'ping=true', 'class=active'
-          top:    max entries to return
-          skip:   pagination offset
-          scope:  session (default) or project
-
-        filter_mode:
-          glob  (default) — '*' matches any sequence; no '*' = case-insensitive substring
-          regex           — full .NET regex, case-insensitive; '.' is NOT auto-escaped
-
-        glob examples:
-          host:*:tls        — all TLS records
-          host:172.16.*     — subnet prefix
-          *:smtp            — keys ending with :smtp
-          host:             — substring match
-
-        regex examples:
-          filter='host:172\.16\.(20|21)\.17[0-4].*'  filter_mode='regex'
-          filter='host:172\.16\.20\.17[0-4].*'        filter_mode='regex'
-
-        default behaviour (top=null):
-          match ≤ 25  → return all
-          match > 25  → return first 10 + hint with next-page args
-
-        examples:
-          filter='host:*:tls'                    — all TLS records
-          filter='host:*' where='ping=true'      — all hosts that answered ping
-          filter='host:*:http' where='status=200'— HTTP records with 200 OK
-          filter='host:*' where='class=active'   — active hosts only
-        """;
 }

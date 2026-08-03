@@ -333,7 +333,8 @@ public sealed class ClientConnection : IClientSession
             Messages = chat.SnapshotMessages(),
             Mode = chat.ModeName,
             ModelId = chat.ModelId,
-            ActiveSkillId = chat.ActiveSkillId
+            ActiveSkillId = chat.ActiveSkillId,
+            ToolSets = ChatHandlers.ToolSetDtos(_registry.Open(DefaultProjectId), chat)
         }, chat.ChatId);
     }
 
@@ -396,6 +397,11 @@ public sealed class ClientConnection : IClientSession
                 Error = error,
                 ActiveSkillId = chat.ActiveSkillId
             });
+
+        // The sets the model reached for during the turn. Sent at the same moment as the active skill
+        // and for the same reason: end of turn is when the person can see, and act on, what is still up.
+        await _hub.BroadcastToWatchersAsync(chat.ChatId, MessageTypes.ChatToolSetState,
+            new ChatToolSetStatePayload { ChatId = chat.ChatId, Sets = ChatHandlers.ToolSetDtos(_registry.Open(projectId), chat) });
     }
 
     /// <summary>

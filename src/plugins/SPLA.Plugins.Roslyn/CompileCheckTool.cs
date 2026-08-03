@@ -19,36 +19,14 @@ namespace SPLA.Plugins.Roslyn;
 /// library and returns compiler diagnostics. Lets the agent verify generated C# actually compiles
 /// instead of guessing. Isolated: it does not see the user's other project files or NuGet packages.
 /// </summary>
-public sealed class CompileCheckTool : IMcpTool, IToolHelpProvider
+public sealed class CompileCheckTool : IMcpTool
 {
     public string Name => "roslyn_compile_check";
 
-    public ToolDefinition GetDefinition() => new ToolDefinition
-    {
-        Type = "function",
-        Function = new ToolFunctionDefinition
-        {
-            Name = Name,
-            Description = "Compiles a self-contained C# snippet against the .NET base class library and returns compiler diagnostics (CS#### errors/warnings). Use it to verify generated C# compiles before applying it.",
-            Scope = ToolScope.Local,
-            Effect = ToolEffect.Read,
-            Risk = ToolRisk.Low,
-            Parameters = new
-            {
-                type = "object",
-                properties = new
-                {
-                    code        = new { type = "string", description = "The C# source to compile. A full file (namespace/class) by default, or top-level statements when kind='program'." },
-                    kind        = new { type = "string", @enum = new[] { "library", "program" }, description = "'library' (default) for a class/file with no entry point, or 'program' for top-level statements / a Main entry point." },
-                    output      = SchemaParts.Output,
-                    output_name = SchemaParts.OutputName
-                },
-                required = new[] { "code" }
-            }
-        }
-    };
-
-    public string? GetHelpText() => """
+    /// <summary>Everything about this tool that does not fit its one-line description.
+    /// Disclosed together with the tool itself — see <c>ToolFunctionDefinition.Details</c>.</summary>
+    private static readonly string DetailsText =
+        """
         tool: roslyn_compile_check
 
         summary: Compiles C# in isolation against the .NET BCL and reports compiler diagnostics.
@@ -72,6 +50,33 @@ public sealed class CompileCheckTool : IMcpTool, IToolHelpProvider
           - request: { "code": "public class C { public int Add(int a, int b) => a + b; }" }
           - request: { "code": "Console.WriteLine(\"hi\");", "kind": "program" }
         """;
+
+    public ToolDefinition GetDefinition() => new ToolDefinition
+    {
+        Type = "function",
+        Function = new ToolFunctionDefinition
+        {
+            Name = Name,
+            Details = DetailsText,
+            Description = "Compiles a self-contained C# snippet against the .NET base class library and returns compiler diagnostics (CS#### errors/warnings). Use it to verify generated C# compiles before applying it.",
+            Scope = ToolScope.Local,
+            Effect = ToolEffect.Read,
+            Risk = ToolRisk.Low,
+            Parameters = new
+            {
+                type = "object",
+                properties = new
+                {
+                    code        = new { type = "string", description = "The C# source to compile. A full file (namespace/class) by default, or top-level statements when kind='program'." },
+                    kind        = new { type = "string", @enum = new[] { "library", "program" }, description = "'library' (default) for a class/file with no entry point, or 'program' for top-level statements / a Main entry point." },
+                    output      = SchemaParts.Output,
+                    output_name = SchemaParts.OutputName
+                },
+                required = new[] { "code" }
+            }
+        }
+    };
+
 
     public Task<string> ExecuteAsync(string argumentsJson, CancellationToken cancellationToken = default)
     {

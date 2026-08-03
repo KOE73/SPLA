@@ -101,15 +101,13 @@ public sealed class SkillsContributor : IAgentContributor
     {
         var body = new StringBuilder();
         body.Append("--- Skills ---");
-        body.Append("\nRULE: When the user's request matches a skill listed below, you MUST call agent_info FIRST — before calling any other tool or executing any step.");
-        body.Append("\nRULE: After agent_info, you MUST call skill_activate with the skill id BEFORE any task tool call. This is MANDATORY — do NOT skip it, do NOT proceed to task tools without it. agent_info alone only previews/loads instructions and does not make the skill active.");
+        body.Append("\nRULE: When the user's request matches a skill listed below, you MUST call skill_activate with its id FIRST — before calling any other tool or executing any step. This is MANDATORY: the full procedure arrives in your next message, and you plan from it.");
         body.Append("\nIf the user asks what you will use, first check whether a listed skill applies, then mention that skill and the relevant tools from its procedure without activating unless execution is requested.");
         body.Append("\nThis rule overrides any plugin instruction that says to 'start immediately'.");
         body.Append("\nSkill descriptions are in English. The user may write in any language — translate the intent to English and match semantically.");
         body.Append("\n");
-        body.Append("\nHow to load a skill — call agent_info with {\"id\": \"<skill-id>\"}");
-        body.Append("\nExample: call agent_info with {\"id\": \"network.range-audit\"}");
-        body.Append("\nagent_info works for both tool help AND skill instructions — use it for any capability lookup.");
+        body.Append("\nHow to load a skill — call skill_activate with {\"id\": \"<skill-id>\"}");
+        body.Append("\nExample: call skill_activate with {\"id\": \"network.range-audit\"}");
         body.Append("\n\nAvailable skills:");
         foreach (var skill in onDemand)
             body.Append($"\n  {skill.Id} — {skill.Description}");

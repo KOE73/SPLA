@@ -21,7 +21,7 @@ description: TLS/SSL certificate and protocol audit — chain, expiry, cipher su
 
 ## Step 0 — Confirm tools and initialize plan
 
-Call `agent_info` with each tool name you intend to use to confirm it is registered.
+Use only tools that are listed in your context; if one is missing, fall back to `system_run_shell`.
 Prefer lower_snake_case network tools when available — they return structured data and handle errors cleanly.
 If a specific lower_snake_case network tool is absent, fall back to `system_run_shell` (cmd/shell: openssl s_client) to accomplish the same step.
 Adapt the plan below based on what is actually available.

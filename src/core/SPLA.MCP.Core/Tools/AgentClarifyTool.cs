@@ -18,9 +18,45 @@ namespace SPLA.MCP.Core.Tools;
 /// proceed with a default or skip the question.
 /// Agent-scoped: always allowed — asking is information gathering, not a side effect.
 /// </summary>
-public sealed class AgentClarifyTool : IMcpTool, IToolHelpProvider
+public sealed class AgentClarifyTool : IMcpTool
 {
     public string Name => "agent_clarify";
+
+    /// <summary>Everything about this tool that does not fit its one-line description.
+    /// Disclosed together with the tool itself — see <c>ToolFunctionDefinition.Details</c>.</summary>
+    private static readonly string DetailsText =
+        """
+        tool: agent_clarify
+
+        summary: Asks the user a structured question and returns their chosen option.
+                 Uses an ambient channel — no scope active means headless/autonomous mode (returns null).
+
+        arguments:
+          question:
+            required: true
+            type: string
+            description: The question shown to the user.
+          options:
+            required: true
+            type: array of { label: string, description?: string }
+            minimum: 1 item
+
+        returns:
+          "chosen: <label>"          — the label of the option the user selected
+          "clarify: no_handler"      — no UI/CLI handler is active (autonomous mode), proceed with default
+
+        examples:
+          - request:
+              question: "Ready to run network.range-audit on 10.0.0.0/24?"
+              options:
+                - { label: "Yes", description: "Proceed with the scan" }
+                - { label: "No",  description: "Cancel" }
+          - request:
+              question: "Which skill should I use?"
+              options:
+                - { label: "network.range-audit" }
+                - { label: "host-audit" }
+        """;
 
     public ToolDefinition GetDefinition() => new()
     {
@@ -28,6 +64,7 @@ public sealed class AgentClarifyTool : IMcpTool, IToolHelpProvider
         Function = new ToolFunctionDefinition
         {
             Name = Name,
+            Details = DetailsText,
             Description = "[H] Sends a structured question with options to the user and returns their choice. Returns no_handler in autonomous/headless mode.",
             Scope = ToolScope.Agent,
             Effect = ToolEffect.Read,
@@ -105,36 +142,4 @@ public sealed class AgentClarifyTool : IMcpTool, IToolHelpProvider
         }
     }
 
-    public string? GetHelpText() => """
-        tool: agent_clarify
-
-        summary: Asks the user a structured question and returns their chosen option.
-                 Uses an ambient channel — no scope active means headless/autonomous mode (returns null).
-
-        arguments:
-          question:
-            required: true
-            type: string
-            description: The question shown to the user.
-          options:
-            required: true
-            type: array of { label: string, description?: string }
-            minimum: 1 item
-
-        returns:
-          "chosen: <label>"          — the label of the option the user selected
-          "clarify: no_handler"      — no UI/CLI handler is active (autonomous mode), proceed with default
-
-        examples:
-          - request:
-              question: "Ready to run network.range-audit on 10.0.0.0/24?"
-              options:
-                - { label: "Yes", description: "Proceed with the scan" }
-                - { label: "No",  description: "Cancel" }
-          - request:
-              question: "Which skill should I use?"
-              options:
-                - { label: "network.range-audit" }
-                - { label: "host-audit" }
-        """;
 }

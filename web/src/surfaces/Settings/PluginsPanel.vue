@@ -18,6 +18,19 @@
         </div>
 
         <div v-if="isOpen(pl.id)" class="pl-body">
+          <!-- Two separate decisions, and the wording has to keep them apart: the checkbox above is
+               DELIVERY (is the assembly loaded at all), this is DISCLOSURE (how much of the set the
+               model is shown before it is needed). -->
+          <label class="field col">
+            <span>Tools in context</span>
+            <select v-model="pl.level" :disabled="pl.enabled === false">
+              <option value="">follow the enable flag</option>
+              <option value="enabled">always — full definitions in every request</option>
+              <option value="agent_demand">announced — one line; the agent loads it when needed</option>
+              <option value="skill_demand">on skill demand — nothing until a skill requires it</option>
+              <option value="disabled">never — the set does not exist for the model</option>
+            </select>
+          </label>
           <label class="field col"><span>Custom prompt</span><textarea v-model="pl.customPrompt" rows="2"></textarea></label>
           <!-- A plugin with its own web settings module renders itself here; everything else falls
                back to the generic opaque JSON editor. The panel never branches on plugin id. -->
@@ -36,6 +49,14 @@ import { projectEnvelope } from "../../state/project";
 import type { PluginDto } from "../../protocol/types";
 import PluginWebSettings from "./PluginWebSettings.vue";
 
+/** Collapsed-row wording for a level the user set explicitly. */
+const LEVEL_LABELS: Record<string, string> = {
+  enabled: "always",
+  agent_demand: "announced",
+  skill_demand: "on skill demand",
+  disabled: "never"
+};
+
 const plugins = ref<PluginDto[]>([]);
 const hint = ref("");
 const webRefs = new Map<string, InstanceType<typeof PluginWebSettings>>();
@@ -52,6 +73,7 @@ function toggle(id: string) {
 function summary(pl: PluginDto): string {
   const bits: string[] = [];
   if (pl.customPrompt?.trim()) bits.push(`prompt: ${pl.customPrompt.trim().slice(0, 40)}${pl.customPrompt.trim().length > 40 ? "…" : ""}`);
+  if (pl.level) bits.push(`tools: ${LEVEL_LABELS[pl.level] ?? pl.level}`);
   const json = pl.settingsJson?.trim();
   if (json) bits.push(`settings: ${json.length} chars`);
   else if (pl.webSettingsUrl) bits.push("has settings UI");

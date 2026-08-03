@@ -161,7 +161,7 @@ because telling someone their switched-off skill also lacks a plugin is noise:
 4. **`Available`** — otherwise. Empty requirements land here, which is the common case.
 
 Only `Available` skills reach the prompt (`SkillManager.GetAvailable`), get previewed by
-`agent_info`, or can be activated. `GetAll` keeps everything for the settings panel, so a skill that
+the index, or can be activated. `GetAll` keeps everything for the settings panel, so a skill that
 is off explains itself instead of disappearing.
 
 Capability answers come from `ISkillCapabilityProbe`, supplied via `SetProbe` once the tool host and
@@ -239,7 +239,7 @@ becomes visible and actionable). Neither needs an event subscription kept alive 
   reason* ("needs `port_scan` — from plugin 'network'") rather than pretending it does not exist,
   then calls `ISkillSession.Activate`. Mode-gated (see the matrix below).
 - **`skill_deactivate`** — `ToolScope.Agent`, allowed in every mode. Stopping is always safe.
-- **`agent_info`** — doubles as skill preview; returns a body only for `Available` skills, since
+- **`skill_activate`** — loads the body only for `Available` skills, since
   handing back a procedure whose tools are missing just walks the model into failing calls.
 - **`agent_clarify`** — the confirmation gate before activation, and general structured questions.
 

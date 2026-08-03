@@ -1,3 +1,4 @@
+using SPLA.MCP.Core.ToolSets;
 using SPLA.Runtime;
 using SPLA.Service.Contracts;
 
@@ -12,6 +13,7 @@ internal sealed class ChatHandlers : IMessageHandler
         MessageTypes.ChatList, MessageTypes.ChatNew, MessageTypes.ChatRename, MessageTypes.ChatDelete,
         MessageTypes.ChatOpen, MessageTypes.ChatWatch, MessageTypes.ChatSend, MessageTypes.ChatSettings,
         MessageTypes.ChatRewind, MessageTypes.ChatFork, MessageTypes.ChatSkillDeactivate,
+        MessageTypes.ChatToolSetDeactivate,
     ];
 
     public Task HandleAsync(RequestContext ctx) => ctx.Env.Type switch
@@ -27,6 +29,7 @@ internal sealed class ChatHandlers : IMessageHandler
         MessageTypes.ChatRewind   => Rewind(ctx),
         MessageTypes.ChatFork     => Fork(ctx),
         MessageTypes.ChatSkillDeactivate => SkillDeactivate(ctx),
+        MessageTypes.ChatToolSetDeactivate => ToolSetDeactivate(ctx),
         _ => Task.CompletedTask
     };
 
@@ -153,6 +156,56 @@ internal sealed class ChatHandlers : IMessageHandler
         // whether a skill is running.
         await ctx.Session.Hub.BroadcastToWatchersAsync(chat.ChatId, MessageTypes.ChatSkillState,
             new ChatSkillStatePayload { ChatId = chat.ChatId, ActiveSkillId = chat.ActiveSkillId });
+    }
+
+    /// <summary>
+    /// Lowers a tool set the model (or a skill) raised in this chat. The person's control over what
+    /// the agent can reach — and what lets <c>toolset_deactivate</c> stay a permission for the model
+    /// instead of a duty it has to remember.
+    /// </summary>
+    private static async Task ToolSetDeactivate(RequestContext ctx)
+    {
+        var (entry, _) = ctx.Session.Resolve(ctx.Env);
+        var p = ctx.Payload<ChatToolSetDeactivatePayload>();
+        var chat = p != null ? entry.Chats.GetOrOpen(p.ChatId) : null;
+        if (chat == null || p == null) return;
+
+        chat.DeactivateToolSet(p.SetId);
+
+        await ctx.Session.Hub.BroadcastToWatchersAsync(chat.ChatId, MessageTypes.ChatToolSetState,
+            new ChatToolSetStatePayload { ChatId = chat.ChatId, Sets = ToolSetDtos(entry, chat) });
+    }
+
+    /// <summary>
+    /// Every set this chat can see — raised or merely announced — with what raised it. Sets levelled
+    /// off are omitted: for this chat they do not exist, and listing them would leak what the project
+    /// holds into a window that is not allowed to use it.
+    /// </summary>
+    internal static List<ToolSetStateDto> ToolSetDtos(RuntimeEntry entry, ChatRuntime chat)
+    {
+        var registry = entry.Runtime.ToolSets;
+        var raised = chat.ActiveToolSets.ToDictionary(a => a.SetId, StringComparer.OrdinalIgnoreCase);
+
+        return registry.All
+            .Select(set => (Set: set, Level: registry.LevelOf(set.Id)))
+            .Where(x => x.Level != ToolSetLevel.Disabled)
+            .Select(x =>
+            {
+                raised.TryGetValue(x.Set.Id, out var activation);
+                var isRaised = raised.ContainsKey(x.Set.Id);
+                return new ToolSetStateDto
+                {
+                    SetId = x.Set.Id,
+                    By = isRaised ? activation.By.ToString().ToLowerInvariant() : string.Empty,
+                    Reason = isRaised ? activation.Reason : null,
+                    Level = ToolSetRegistry.Format(x.Level),
+                    Disclosed = isRaised || x.Level == ToolSetLevel.Enabled
+                };
+            })
+            // A set waiting on a skill costs nothing and is invisible to the model until it runs —
+            // showing it would turn a cost readout into a settings list.
+            .Where(dto => dto.Disclosed || dto.Level == ToolSetRegistry.Format(ToolSetLevel.AgentDemand))
+            .ToList();
     }
 
     private static Task BroadcastChatList(RequestContext ctx, string projectId, ChatRegistry chats)

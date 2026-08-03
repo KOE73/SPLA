@@ -38,6 +38,17 @@
     <span class="ctx-label">{{ ctxLabel }}</span>
   </span>
 
+  <span v-if="toolSets.length" id="toolSets">
+    <button
+      v-for="t in toolSets"
+      :key="t.setId"
+      class="toolset"
+      :class="{ disclosed: t.disclosed, lowerable: t.by === 'agent' || t.by === 'user' }"
+      :title="toolSetTitle(t)"
+      @click="lowerToolSet(t)"
+    >{{ t.setId }}</button>
+  </span>
+
   <ProviderInfoPopup
     v-if="infoOpen && infoBtn && modelId"
     :model-id="modelId"
@@ -51,7 +62,7 @@ import { computed, onUnmounted, ref } from "vue";
 import { client } from "../protocol/SplaClient";
 import { store } from "../state/store";
 import { uiBus } from "../state/uiBus";
-import type { ConnHealth, ModelPickDto } from "../protocol/types";
+import type { ConnHealth, ModelPickDto, ToolSetState } from "../protocol/types";
 import ProviderInfoPopup from "./ProviderInfoPopup.vue";
 
 const connText = ref("connecting…");
@@ -66,6 +77,8 @@ const lastCompletion = ref<number | null>(null);
 const ctxUsed = ref<number | null>(null);
 const ctxWindow = ref<number | null>(null);
 const activeSkill = ref<string | null>(null);
+/** Tool sets raised in THIS chat — what the model can reach beyond its always-on tools. */
+const toolSets = ref<ToolSetState[]>([]);
 
 /**
  * Ends the running skill from the UI.
@@ -78,6 +91,34 @@ function unloadSkill() {
   if (!store.currentChat) return;
   client.send("chat.skill.deactivate", { chatId: store.currentChat },
     { projectId: store.currentProjectId ?? undefined });
+}
+
+/**
+ * Lowers a raised tool set from the UI.
+ *
+ * This is the person's half of the design: the model MAY release a set it no longer needs, but is
+ * never told it must — remembering to hand tools back is exactly the bookkeeping decision tool sets
+ * exist to remove. So the reliable control lives here.
+ */
+function lowerToolSet(t: ToolSetState) {
+  // An always-on set is a project setting, and a set a skill is running on belongs to that run —
+  // neither is this control's to touch.
+  if (!store.currentChat || (t.by !== "agent" && t.by !== "user")) return;
+  client.send("chat.toolset.deactivate", { chatId: store.currentChat, setId: t.setId },
+    { projectId: store.currentProjectId ?? undefined });
+}
+
+/** Why this set is in the line, and what it costs — the whole point of showing it. */
+function toolSetTitle(t: ToolSetState): string {
+  if (!t.disclosed) return `${t.setId} — announced only; the agent can load it when needed`;
+
+  const who = t.by === "skill" ? "loaded by the active skill"
+    : t.by === "agent" ? "loaded by the agent"
+    : t.by === "user" ? "loaded by you"
+    : "always on for this project";
+  const canLower = t.by === "agent" || t.by === "user";
+  return `${t.setId} — ${who}${t.reason ? ` (${t.reason})` : ""}`
+    + (canLower ? ". Click to unload." : "");
 }
 
 const ctxPercent = computed(() => {
@@ -205,11 +246,17 @@ const offChatOpened = client.on("chat.opened", p => {
   // Sent on open too: a window attaching to a chat that was left mid-skill has to show the exit
   // straight away, not only after the next turn.
   activeSkill.value = p.activeSkillId || null;
+  toolSets.value = p.toolSets || [];
 });
 // End of turn is when a skill the model forgot to close becomes visible and actionable.
 const offTurnSkill = client.on("turn.complete", p => { activeSkill.value = p.activeSkillId || null; });
 const offSkillState = client.on("chat.skill.state", p => {
   if (p.chatId === store.currentChat) activeSkill.value = p.activeSkillId || null;
+});
+// Applied by chatId from the envelope, never to whatever chat happens to be open: raised sets are
+// per-chat state, and a background chat's turn must not rewrite the visible one's line.
+const offToolSetState = client.on("chat.toolset.state", p => {
+  if (p.chatId === store.currentChat) toolSets.value = p.sets || [];
 });
 const offTokens = client.on("token.usage", p => {
   lastPrompt.value = p.promptTokens ?? null;
@@ -248,5 +295,5 @@ const offHealth = client.on("connections.health", p => {
   connHealth.value = {};
   for (const s of p.statuses || []) connHealth.value[s.id] = { ok: s.ok, error: s.error };
 });
-onUnmounted(() => { offConn(); offWelcome(); offChatOpened(); offTokens(); offResult(); offHealth(); offInfo(); offTurnSkill(); offSkillState(); });
+onUnmounted(() => { offConn(); offWelcome(); offChatOpened(); offTokens(); offResult(); offHealth(); offInfo(); offTurnSkill(); offSkillState(); offToolSetState(); });
 </script>

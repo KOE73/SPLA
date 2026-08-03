@@ -294,6 +294,7 @@ public static class ConfigLoader
         "ui" => p.Ui,
         "permissions" => p.Permissions,
         "plugins" => p.Plugins,
+        "toolsets" => p.ToolSets,
         "skills" => p.Skills,
         "docs" => p.Docs,
         "ignore" => p.Ignore,

@@ -22,6 +22,6 @@ public interface IAgentFeature
     IEnumerable<IMcpTool> Tools { get; }
 
     /// <summary>System-prompt text this feature contributes, or null when it has none (tools-only
-    /// feature). Rendered as its own <c>Core: {Id}</c> segment by <c>SystemPromptBuilder</c>.</summary>
+    /// feature). Rendered as its own <c>core</c> contribution item by <c>CoreFeatureContributor</c>.</summary>
     string? PromptFragment { get; }
 }

@@ -22,12 +22,12 @@ public static class CoreFeaturePrompts
         new Dictionary<string, string>(StringComparer.Ordinal)
         {
             ["core.workspace"] = "SPLA.Agent.Features.CoreWorkspace.prompt.md",
-            ["core.tool-help"] = "SPLA.Agent.Features.CoreToolHelp.prompt.md",
             ["core.discipline"] = "SPLA.Agent.Features.CoreDiscipline.prompt.md",
             ["core.memory"] = "SPLA.Agent.Features.CoreMemory.prompt.md",
             ["core.checkpoints"] = "SPLA.Agent.Features.CoreCheckpoints.prompt.md",
             ["core.skills"] = "SPLA.Agent.Features.CoreSkills.prompt.md",
             ["core.blobs"] = "SPLA.Agent.Features.CoreBlobs.prompt.md",
+            ["core.toolsets"] = "SPLA.Agent.Features.CoreToolSets.prompt.md",
         };
 
     private static readonly ConcurrentDictionary<string, string?> Cache = new();

@@ -71,11 +71,12 @@ authority order, top-down, and belongs to the composition root — never to a co
 | `instructions` | each existing instruction file from settings | — |
 | `custom-prompt` | `agent.custom_prompt` | — |
 | `skills` | active skill body, preloaded bodies, on-demand index | `core.skills` |
+| `toolsets` | one declaration line per set the agent may raise and has not | `core.toolsets` |
 | `plugins` | each enabled plugin's own prompt | — |
 | `plugin-commands` | the `plugin_run_command` list | — |
 | `working-memory` | the live `context:*` snapshot, as a **turn message** | `core.memory` |
 
-The two conditional entries are gated on exactly the decision that gated their tools: a capability
+The conditional entries are gated on exactly the decision that gated their tools: a capability
 that is off leaves **no contributor behind**, so the prompt can never describe a tool that was not
 registered.
 

@@ -25,44 +25,17 @@ namespace SPLA.Plugins.Roslyn;
 /// deterministic run — saving intermediate context and enabling parallelism — rather than the model
 /// hand-driving every step.
 /// </summary>
-public sealed class ScriptRunTool : IMcpTool, IToolHelpProvider
+public sealed class ScriptRunTool : IMcpTool
 {
     private const int DefaultTimeoutSeconds = 60;
     private const int MaxTimeoutSeconds = 600;
 
     public string Name => "roslyn_script_run";
 
-    public ToolDefinition GetDefinition() => new ToolDefinition
-    {
-        Type = "function",
-        Function = new ToolFunctionDefinition
-        {
-            Name = Name,
-            Description = "Compiles and runs a C# script (top-level statements) that drives your plan in ONE deterministic call — "
-                + "use instead of issuing many tool calls yourself, e.g. to loop over inputs or parallelize with Task.WhenAll. "
-                + "The script has a 'ctx' global with: await ctx.Run(\"tool_name\", new { param = value }) — call any tool by name and get its text result; "
-                + "ctx.Log(value) — emit a line to the output; ctx.Progress(message) or ctx.Progress(current, total, message) — report progress; "
-                + "ctx.Cancellation — the timeout CancellationToken to pass to your awaits. Tool calls inside obey the same permissions. "
-                + "Example: ctx.Log(await ctx.Run(\"system_read_file\", new { path = \"a.txt\" }));",
-            Scope = ToolScope.Shell,
-            Effect = ToolEffect.Execute,
-            Risk = ToolRisk.High,
-            Parameters = new
-            {
-                type = "object",
-                properties = new
-                {
-                    code = new { type = "string", description = "C# script body (top-level statements). The 'ctx' globals expose: Task<string> Run(string tool, object? args), void Progress(...), void Log(object), CancellationToken Cancellation. Use await ctx.Run(\"tool_name\", new { param = value })." },
-                    timeout_seconds = new { type = "integer", description = $"Hard timeout in seconds (default {DefaultTimeoutSeconds}, max {MaxTimeoutSeconds}). Cancels awaits that honor ctx.Cancellation; a pure CPU loop cannot be interrupted." },
-                    output      = SchemaParts.Output,
-                    output_name = SchemaParts.OutputName
-                },
-                required = new[] { "code" }
-            }
-        }
-    };
-
-    public string? GetHelpText() => $$"""
+    /// <summary>Everything about this tool that does not fit its one-line description.
+    /// Disclosed together with the tool itself — see <c>ToolFunctionDefinition.Details</c>.</summary>
+    private static readonly string DetailsText =
+        $$"""
         tool: roslyn_script_run
 
         summary: Compile and run a C# script that executes your plan, calling tools via ctx.Run.
@@ -97,6 +70,37 @@ public sealed class ScriptRunTool : IMcpTool, IToolHelpProvider
             var results = await Task.WhenAll(hosts.Select(h => ctx.Run("network_ping_host", new { host = h })));
             for (int i = 0; i < hosts.Length; i++) ctx.Log($"{hosts[i]}: {results[i]}");
         """;
+    public ToolDefinition GetDefinition() => new ToolDefinition
+    {
+        Type = "function",
+        Function = new ToolFunctionDefinition
+        {
+            Name = Name,
+            Details = DetailsText,
+            Description = "Compiles and runs a C# script (top-level statements) that drives your plan in ONE deterministic call — "
+                + "use instead of issuing many tool calls yourself, e.g. to loop over inputs or parallelize with Task.WhenAll. "
+                + "The script has a 'ctx' global with: await ctx.Run(\"tool_name\", new { param = value }) — call any tool by name and get its text result; "
+                + "ctx.Log(value) — emit a line to the output; ctx.Progress(message) or ctx.Progress(current, total, message) — report progress; "
+                + "ctx.Cancellation — the timeout CancellationToken to pass to your awaits. Tool calls inside obey the same permissions. "
+                + "Example: ctx.Log(await ctx.Run(\"system_read_file\", new { path = \"a.txt\" }));",
+            Scope = ToolScope.Shell,
+            Effect = ToolEffect.Execute,
+            Risk = ToolRisk.High,
+            Parameters = new
+            {
+                type = "object",
+                properties = new
+                {
+                    code = new { type = "string", description = "C# script body (top-level statements). The 'ctx' globals expose: Task<string> Run(string tool, object? args), void Progress(...), void Log(object), CancellationToken Cancellation. Use await ctx.Run(\"tool_name\", new { param = value })." },
+                    timeout_seconds = new { type = "integer", description = $"Hard timeout in seconds (default {DefaultTimeoutSeconds}, max {MaxTimeoutSeconds}). Cancels awaits that honor ctx.Cancellation; a pure CPU loop cannot be interrupted." },
+                    output      = SchemaParts.Output,
+                    output_name = SchemaParts.OutputName
+                },
+                required = new[] { "code" }
+            }
+        }
+    };
+
 
     public async Task<string> ExecuteAsync(string argumentsJson, CancellationToken cancellationToken = default)
     {

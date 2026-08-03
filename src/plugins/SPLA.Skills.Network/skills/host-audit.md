@@ -42,7 +42,7 @@ mark_rollback "host-audit-start"
 
 ## Step 0 — Confirm tools and initialize
 
-Call `agent_info` for each tool you intend to use. Fall back to `system_run_shell` only when a specific tool is absent.
+Use only tools that are listed in your context. Fall back to `system_run_shell` only when a specific tool is absent.
 
 **Write `context:current_ip`** — `agent_memory_set {key:"context:current_ip", scope:"session", value:"{ip}"}`.
 

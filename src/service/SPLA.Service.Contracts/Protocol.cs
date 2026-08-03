@@ -86,6 +86,10 @@ public static class MessageTypes
     /// <summary>End the skill running in a chat. Body is <see cref="ChatSkillDeactivatePayload"/>;
     /// the server broadcasts <see cref="ChatSkillState"/> to the chat's watchers.</summary>
     public const string ChatSkillDeactivate = "chat.skill.deactivate";
+
+    /// <summary>Lower a tool set raised in a chat. Body is <see cref="ChatToolSetDeactivatePayload"/>;
+    /// the server broadcasts <see cref="ChatToolSetState"/> to the chat's watchers.</summary>
+    public const string ChatToolSetDeactivate = "chat.toolset.deactivate";
     /// <summary>A window tells the service which chat it has focused; the service echoes
     /// <see cref="FocusChanged"/> to every connection so auxiliary windows (e.g. a tear-off debug
     /// panel) can follow the active chat across separate sockets.</summary>
@@ -211,6 +215,9 @@ public static class MessageTypes
     public const string TurnComplete = "turn.complete";
     /// <summary>A chat's active skill changed. Body is <see cref="ChatSkillStatePayload"/>.</summary>
     public const string ChatSkillState = "chat.skill.state";
+
+    /// <summary>A chat's raised tool sets changed. Body is <see cref="ChatToolSetStatePayload"/>.</summary>
+    public const string ChatToolSetState = "chat.toolset.state";
     public const string PermissionRequest = "permission.request";
     public const string ClarifyRequest = "clarify.request";
     public const string DebugSnapshot = "debug.snapshot";

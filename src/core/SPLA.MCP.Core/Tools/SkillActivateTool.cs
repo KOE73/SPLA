@@ -4,6 +4,7 @@ using SPLA.MCP.Core.Interfaces;
 using SPLA.MCP.Core.Json;
 using SPLA.MCP.Core.Skills;
 using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Text.Json;
 using System.Threading;
@@ -19,8 +20,13 @@ namespace SPLA.MCP.Core.Tools;
 public sealed class SkillActivateTool : IMcpTool
 {
     private readonly SkillManager _skills;
+    private readonly ToolSets.ToolSetRegistry? _toolSets;
 
-    public SkillActivateTool(SkillManager skills) => _skills = skills;
+    public SkillActivateTool(SkillManager skills, ToolSets.ToolSetRegistry? toolSets = null)
+    {
+        _skills = skills;
+        _toolSets = toolSets;
+    }
 
     public string Name => "skill_activate";
 
@@ -99,11 +105,42 @@ public sealed class SkillActivateTool : IMcpTool
                     $"error: skill '{skill.Id}' has no readable procedure — its source '{skill.SourceId}' returned nothing");
 
             session.Activate(skill.Id, body);
-            return Task.FromResult($"ok: activated '{skill.Id}' — skill procedure is now injected into the prompt. Follow the steps and call skill_deactivate when done.");
+            var raised = RaiseRequiredToolSets(skill);
+            var raisedNote = raised.Count > 0
+                ? $" Tool sets activated for it: {string.Join(", ", raised)}."
+                : string.Empty;
+            return Task.FromResult($"ok: activated '{skill.Id}' — skill procedure is now injected into the prompt.{raisedNote} Follow the steps and call skill_deactivate when done.");
         }
         catch (JsonException)
         {
             return Task.FromResult("error: invalid_json");
         }
+    }
+
+    /// <summary>
+    /// Raises the sets this skill's requirements name and that wait for exactly this — the "on skill
+    /// demand" level. Mechanical and free of context: the skill already declared what it needs, so
+    /// nothing had to be announced to the model beforehand.
+    ///
+    /// <para>Only that level is touched. A set the user levelled off stays off (a skill must not
+    /// widen the project's boundary), and a fully enabled one needs nothing.</para>
+    /// </summary>
+    private IReadOnlyList<string> RaiseRequiredToolSets(SkillMeta skill)
+    {
+        var toolSetSession = AgentSessionScope.Current?.ToolSets;
+        if (_toolSets is null || toolSetSession is null) return [];
+
+        var raised = new List<string>();
+        foreach (var toolName in skill.Requires.Tools)
+        {
+            if (_toolSets.SetOfTool(toolName) is not { } setId) continue;
+            if (_toolSets.LevelOf(setId) != ToolSets.ToolSetLevel.SkillDemand) continue;
+            if (toolSetSession.IsActive(setId)) continue;
+
+            toolSetSession.Activate(setId, ToolSetActivationBy.Skill, $"required by skill '{skill.Id}'");
+            raised.Add(setId);
+        }
+
+        return raised;
     }
 }

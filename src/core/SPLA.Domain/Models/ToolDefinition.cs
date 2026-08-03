@@ -11,6 +11,17 @@ public class ToolFunctionDefinition
     public string Name { get; set; } = string.Empty;
     public string Description { get; set; } = string.Empty;
     public object? Parameters { get; set; }
+
+    /// <summary>
+    /// Everything about this tool that does not fit one line: argument formats, defaults, limits,
+    /// worked examples. Kept apart from <see cref="Description"/> because it is only disclosed when
+    /// the owning tool set is, and folded into the description at that moment (<c>McpHost</c>).
+    ///
+    /// <para>This replaced the former help tool. Documentation is not something the model fetches by
+    /// making a call — it arrives with the tool or not at all, so there is no lookup to decide on, no
+    /// turn spent on it, and no text landing loose in the middle of the conversation.</para>
+    /// </summary>
+    public string? Details { get; set; }
     
     // Permission Metadata
     public ToolScope Scope { get; set; } = ToolScope.Project;

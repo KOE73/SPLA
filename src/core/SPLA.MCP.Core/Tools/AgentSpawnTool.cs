@@ -15,7 +15,7 @@ namespace SPLA.MCP.Core.Tools;
 /// Bypasses skill_activate / skill_deactivate routing — the skill is activated
 /// directly in the spawned session and does not affect the parent session.
 /// </summary>
-public sealed class AgentSpawnTool : IMcpTool, IToolHelpProvider
+public sealed class AgentSpawnTool : IMcpTool
 {
     private readonly IAgentSpawner _runner;
 
@@ -23,12 +23,58 @@ public sealed class AgentSpawnTool : IMcpTool, IToolHelpProvider
 
     public string Name => "agent_spawn";
 
+    /// <summary>Everything about this tool that does not fit its one-line description.
+    /// Disclosed together with the tool itself — see <c>ToolFunctionDefinition.Details</c>.</summary>
+    private static readonly string DetailsText =
+        """
+        tool: agent_spawn
+
+        summary: Runs a skill headlessly in an isolated agent session and returns the result.
+                 The spawned agent uses the same tools as the parent but has its own conversation,
+                 skill session, and memory. Does not affect the parent session state.
+
+        arguments:
+          skill:
+            required: true
+            description: Skill id to execute (e.g. network.range-audit).
+          input:
+            required: true
+            description: Seed message — what the spawned agent should do within the skill.
+          mode:
+            required: false
+            default: Edit
+            values: Chat | Research | Inspect | Edit | Agent
+            description: Mode for the spawned run. Use a stricter mode to limit capabilities.
+                         The spawned mode may differ from the parent mode.
+
+        returns:
+          The last assistant message produced by the skill run.
+          "spawn: completed skill '<id>' (no output)" if the skill produced no text.
+          "error: ..." on validation failure.
+
+        notes:
+          - skill_activate / skill_deactivate are NOT called in the parent session.
+          - The spawned session is fully isolated — no shared KV, no shared active skill.
+          - Clarification (agent_clarify) in the spawned agent returns no_handler —
+            seed the input with enough context to avoid disambiguation.
+
+        examples:
+          - request:
+              skill: network.range-audit
+              input: "Audit 10.0.0.0/24 and report open ports"
+              mode: Agent
+          - request:
+              skill: host-audit
+              input: "Full audit of 10.0.0.5"
+        """;
+
     public ToolDefinition GetDefinition() => new()
     {
         Type = "function",
         Function = new ToolFunctionDefinition
         {
             Name = Name,
+            Details = DetailsText,
             Description = "[H] Spawns a headless agent to run a skill to completion and return the result. Isolated from the current session.",
             Scope = ToolScope.Skill,
             Effect = ToolEffect.Execute,
@@ -95,45 +141,4 @@ public sealed class AgentSpawnTool : IMcpTool, IToolHelpProvider
         }
     }
 
-    public string? GetHelpText() => """
-        tool: agent_spawn
-
-        summary: Runs a skill headlessly in an isolated agent session and returns the result.
-                 The spawned agent uses the same tools as the parent but has its own conversation,
-                 skill session, and memory. Does not affect the parent session state.
-
-        arguments:
-          skill:
-            required: true
-            description: Skill id to execute (e.g. network.range-audit).
-          input:
-            required: true
-            description: Seed message — what the spawned agent should do within the skill.
-          mode:
-            required: false
-            default: Edit
-            values: Chat | Research | Inspect | Edit | Agent
-            description: Mode for the spawned run. Use a stricter mode to limit capabilities.
-                         The spawned mode may differ from the parent mode.
-
-        returns:
-          The last assistant message produced by the skill run.
-          "spawn: completed skill '<id>' (no output)" if the skill produced no text.
-          "error: ..." on validation failure.
-
-        notes:
-          - skill_activate / skill_deactivate are NOT called in the parent session.
-          - The spawned session is fully isolated — no shared KV, no shared active skill.
-          - Clarification (agent_clarify) in the spawned agent returns no_handler —
-            seed the input with enough context to avoid disambiguation.
-
-        examples:
-          - request:
-              skill: network.range-audit
-              input: "Audit 10.0.0.0/24 and report open ports"
-              mode: Agent
-          - request:
-              skill: host-audit
-              input: "Full audit of 10.0.0.5"
-        """;
 }

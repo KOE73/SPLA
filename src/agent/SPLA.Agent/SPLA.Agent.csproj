@@ -14,12 +14,12 @@
        next to its feature's id below; SystemPromptBuilder loads them by this exact logical name. -->
   <ItemGroup>
     <EmbeddedResource Include="Features\CoreWorkspace\prompt.md" LogicalName="SPLA.Agent.Features.CoreWorkspace.prompt.md" />
-    <EmbeddedResource Include="Features\CoreToolHelp\prompt.md" LogicalName="SPLA.Agent.Features.CoreToolHelp.prompt.md" />
     <EmbeddedResource Include="Features\CoreDiscipline\prompt.md" LogicalName="SPLA.Agent.Features.CoreDiscipline.prompt.md" />
     <EmbeddedResource Include="Features\CoreMemory\prompt.md" LogicalName="SPLA.Agent.Features.CoreMemory.prompt.md" />
     <EmbeddedResource Include="Features\CoreCheckpoints\prompt.md" LogicalName="SPLA.Agent.Features.CoreCheckpoints.prompt.md" />
     <EmbeddedResource Include="Features\CoreSkills\prompt.md" LogicalName="SPLA.Agent.Features.CoreSkills.prompt.md" />
     <EmbeddedResource Include="Features\CoreBlobs\prompt.md" LogicalName="SPLA.Agent.Features.CoreBlobs.prompt.md" />
+    <EmbeddedResource Include="Features\CoreToolSets\prompt.md" LogicalName="SPLA.Agent.Features.CoreToolSets.prompt.md" />
   </ItemGroup>
 
 </Project>

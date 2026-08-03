@@ -21,7 +21,7 @@ description: DNS troubleshooting — resolution, record types, propagation check
 
 ## Step 0 — Confirm tools and choose branch
 
-Call `agent_info` with each tool name you intend to use to confirm it is registered.
+Use only tools that are listed in your context; if one is missing, fall back to `system_run_shell`.
 Prefer lower_snake_case network tools when available — they return structured data and handle errors cleanly.
 If a specific lower_snake_case network tool is absent, fall back to `system_run_shell` (cmd/shell: nslookup, dig) to accomplish the same step.
 Choose the branch and write the plan from the tools that are actually available.

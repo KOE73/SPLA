@@ -112,6 +112,11 @@ public class ResolvedSettings
     // Plugins
     public Dictionary<string, SplaPluginSection> Plugins { get; set; } = new();
 
+    /// <summary>Tool set id → disclosure level, as written. Parsing and the fallback to the
+    /// supplier's flag belong to <c>ToolSetRegistry</c>: settings stay a transport for what the file
+    /// said, and an unknown level word must not silently become a different level here.</summary>
+    public Dictionary<string, string> ToolSets { get; set; } = new(StringComparer.OrdinalIgnoreCase);
+
     // Skills — per-skill overrides (skills.items), keyed by skill id.
     public Dictionary<string, SplaSkillSection> Skills { get; set; } = new();
 
@@ -230,6 +235,7 @@ public static class SettingsResolver
                 r.Density = defaults.Ui.Density ?? r.Density;
             }
             ApplySkills(r, defaults.Skills);
+            ApplyToolSets(r, defaults.ToolSets);
         }
 
         // Layer 2: project overrides
@@ -283,6 +289,7 @@ public static class SettingsResolver
                 foreach (var kvp in project.Plugins)
                     r.Plugins[kvp.Key] = kvp.Value;
             }
+            ApplyToolSets(r, project.ToolSets);
             ApplySkills(r, project.Skills);
         }
 
@@ -337,6 +344,16 @@ public static class SettingsResolver
     /// rest), while the source list REPLACES wholesale (merging would leave no way to drop a source
     /// inherited from defaults). A layer that omits <c>sources</c> leaves the inherited list alone.
     /// </summary>
+    /// <summary>Merges one layer's <c>toolsets:</c> entries key by key — the more specific layer
+    /// overrides a set it mentions and leaves the rest of the inherited levels alone.</summary>
+    private static void ApplyToolSets(ResolvedSettings r, Dictionary<string, string>? toolSets)
+    {
+        if (toolSets == null) return;
+
+        foreach (var kvp in toolSets)
+            r.ToolSets[kvp.Key] = kvp.Value;
+    }
+
     private static void ApplySkills(ResolvedSettings r, SplaSkillsSection? skills)
     {
         if (skills == null) return;

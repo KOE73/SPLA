@@ -1,3 +1,4 @@
+using SPLA.MCP.Core.ToolSets;
 using SPLA.Runtime;
 using SPLA.Domain.Models;
 using SPLA.Domain.Settings;
@@ -209,6 +210,9 @@ public static class SettingsOps
                 // Prefer the live settings section (reflects edits made this session); the descriptor's
                 // UserEnabled is fixed at startup and would otherwise mask an unsaved/just-saved toggle.
                 Enabled = section?.Enabled ?? d.UserEnabled,
+                // The level as written, not as resolved: a set with no entry must show as "follows the
+                // enable flag", otherwise saving the panel back would freeze a derived level into the file.
+                Level = runtime.Settings.ToolSets.GetValueOrDefault(d.Meta.Id),
                 State = d.EffectiveState.ToString(),
                 StateReason = string.IsNullOrWhiteSpace(d.EffectiveStateReason) ? null : d.EffectiveStateReason,
                 CustomPrompt = section?.CustomPrompt,
@@ -251,9 +255,24 @@ public static class SettingsOps
 
             if (project != null) { (project.Plugins ??= new())[dto.Id] = merged; }
             runtime.Settings.Plugins[dto.Id] = merged;
+
+            // The level lives in its own section: it is a property of the SET, and the plugin section
+            // is about the supplier. An empty level clears the entry so the set goes back to following
+            // the enable flag rather than being pinned to whatever it happened to resolve to.
+            if (string.IsNullOrWhiteSpace(dto.Level))
+            {
+                runtime.Settings.ToolSets.Remove(dto.Id);
+                project?.ToolSets?.Remove(dto.Id);
+            }
+            else if (ToolSetRegistry.TryParseLevel(dto.Level, out var level))
+            {
+                var written = ToolSetRegistry.Format(level);
+                runtime.Settings.ToolSets[dto.Id] = written;
+                if (project != null) (project.ToolSets ??= new())[dto.Id] = written;
+            }
         }
 
-        if (project != null && path != null) ConfigLoader.SaveProjectSections(project, path, "plugins");
+        if (project != null && path != null) ConfigLoader.SaveProjectSections(project, path, "plugins", "toolsets");
 
         // Live ENABLE: a plugin that was disabled at startup never got its assembly loaded — load it
         // now and expose its tools immediately (disable needs nothing: exposure is gated per call).

@@ -13,9 +13,65 @@ using System.Collections.Generic;
 
 namespace SPLA.MCP.BasicTools.FileSystem;
 
-public class FsSearchTextTool : IMcpTool, IToolHelpProvider
+public class FsSearchTextTool : IMcpTool
 {
     public string Name => "system_search_text";
+
+    /// <summary>Everything about this tool that does not fit its one-line description.
+    /// Disclosed together with the tool itself — see <c>ToolFunctionDefinition.Details</c>.</summary>
+    private static readonly string DetailsText =
+        """
+        tool: system_search_text
+
+        summary: Search text in project files using ripgrep when available, with a .NET fallback and relevance-ranked results.
+
+        arguments:
+          query:
+            required: true
+            formats:
+              - literal_text
+              - regex_when_regex_true
+            examples:
+              - ToolDescriptor
+              - "class\\s+McpHost"
+          path:
+            required: false
+            default: current_workspace
+            formats:
+              - absolute_directory_path
+              - relative_directory_path
+          regex:
+            required: false
+            default: false
+          case_sensitive:
+            required: false
+            default: false
+          max_results:
+            required: false
+            default: 100
+          include_patterns:
+            required: false
+            formats:
+              - glob_array
+            examples:
+              - ["*.cs"]
+              - ["SPLA.MCP.Core/**/*.cs"]
+          exclude_patterns:
+            required: false
+            formats:
+              - glob_array
+            examples:
+              - ["bin/*", "obj/*"]
+
+        limits:
+          resultCapDefault: 100
+
+        examples:
+          - request:
+              query: ToolDefinition
+              include_patterns: ["*.cs"]
+              max_results: 50
+        """;
 
     public ToolDefinition GetDefinition() => new ToolDefinition
     {
@@ -23,6 +79,7 @@ public class FsSearchTextTool : IMcpTool, IToolHelpProvider
         Function = new ToolFunctionDefinition
         {
             Name = Name,
+            Details = DetailsText,
             Description = "Production-ready advanced search subsystem for SPLA. Search text in files using Ripgrep with .NET fallback, with relevance ranking, cap results and duplicate reduction.",
             Scope = ToolScope.Project,
             Effect = ToolEffect.Read,
@@ -131,59 +188,6 @@ public class FsSearchTextTool : IMcpTool, IToolHelpProvider
         }
     }
 
-    public string? GetHelpText() =>
-        """
-        tool: system_search_text
-
-        summary: Search text in project files using ripgrep when available, with a .NET fallback and relevance-ranked results.
-
-        arguments:
-          query:
-            required: true
-            formats:
-              - literal_text
-              - regex_when_regex_true
-            examples:
-              - ToolDescriptor
-              - "class\\s+McpHost"
-          path:
-            required: false
-            default: current_workspace
-            formats:
-              - absolute_directory_path
-              - relative_directory_path
-          regex:
-            required: false
-            default: false
-          case_sensitive:
-            required: false
-            default: false
-          max_results:
-            required: false
-            default: 100
-          include_patterns:
-            required: false
-            formats:
-              - glob_array
-            examples:
-              - ["*.cs"]
-              - ["SPLA.MCP.Core/**/*.cs"]
-          exclude_patterns:
-            required: false
-            formats:
-              - glob_array
-            examples:
-              - ["bin/*", "obj/*"]
-
-        limits:
-          resultCapDefault: 100
-
-        examples:
-          - request:
-              query: ToolDefinition
-              include_patterns: ["*.cs"]
-              max_results: 50
-        """;
 }
 
 public class SearchTextResult

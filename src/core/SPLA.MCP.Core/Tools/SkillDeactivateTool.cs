@@ -42,6 +42,10 @@ public sealed class SkillDeactivateTool : IMcpTool
 
         var previous = session.ActiveSkillId;
         session.Deactivate();
+
+        // Sets the skill raised go down with it. Anything the agent or the user raised stays —
+        // it was not this procedure's to take away.
+        AgentSessionScope.Current?.ToolSets.DeactivateAllBy(ToolSetActivationBy.Skill);
         return Task.FromResult(previous is not null
             ? $"ok: deactivated '{previous}'"
             : "ok: no active skill");

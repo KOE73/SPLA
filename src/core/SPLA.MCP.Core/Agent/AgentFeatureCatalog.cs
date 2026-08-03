@@ -17,7 +17,6 @@ public static class AgentFeatureCatalog
     public static readonly IReadOnlyList<string> Order = new[]
     {
         "core.workspace",
-        "core.tool-help",
         "core.discipline",
         "core.files",
         "core.shell",
@@ -25,6 +24,7 @@ public static class AgentFeatureCatalog
         "core.memory",
         "core.checkpoints",
         "core.skills",
+        "core.toolsets",
         "core.spawn",
         "core.clarify",
         "core.blobs",
@@ -33,7 +33,6 @@ public static class AgentFeatureCatalog
     private static readonly Dictionary<string, string[]> RequiresMap = new(System.StringComparer.Ordinal)
     {
         ["core.checkpoints"] = new[] { "core.memory" },
-        ["core.skills"] = new[] { "core.tool-help" },
     };
 
     /// <summary>Ids another feature depends on, or empty when it has none.</summary>

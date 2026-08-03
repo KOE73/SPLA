@@ -17,6 +17,7 @@ using SPLA.MCP.Core.Agent;
 using SPLA.MCP.Core.Permissions;
 using SPLA.MCP.Core.Plugins;
 using SPLA.MCP.Core.Skills;
+using SPLA.MCP.Core.ToolSets;
 
 namespace SPLA.Runtime;
 
@@ -69,6 +70,10 @@ public sealed class AgentRuntime : IDisposable
     public McpHost McpHost { get; }
     public SkillManager SkillManager { get; }
     public PluginManager PluginManager { get; }
+
+    /// <summary>Tool sets and their levels — "allowed how far", never "raised right now".
+    /// See <c>ToolSetRegistry</c> and PLAN_20260803_core.</summary>
+    public ToolSetRegistry ToolSets { get; }
     public ProjectKvStore ProjectKv { get; }
     public ChatManager ChatManager { get; }
 
@@ -176,6 +181,13 @@ public sealed class AgentRuntime : IDisposable
         McpHost = new McpHost(
             new PermissionManager(settings: settings), PluginManager, loggerFactory.CreateLogger<McpHost>());
 
+        // Tool sets: what exists and how far each may reach the model. Process-wide on purpose — a
+        // level is the user's standing decision, while "raised right now" belongs to a chat and lives
+        // in its AgentSession. Core features are not levelled yet: agent.capabilities already decides
+        // whether they exist at all, so passing them here would give the same answer twice.
+        ToolSets = new ToolSetRegistry(settings, PluginManager);
+        McpHost.ToolSets = ToolSets;
+
         // ── Fundamental agent working memory (project-scoped shared; session resolves via scope) ──
         // Built before the feature catalog below — several features' tools (memory, spawn) need it.
         ProjectKv = new ProjectKvStore(
@@ -196,8 +208,6 @@ public sealed class AgentRuntime : IDisposable
             Feature("core.workspace",
                 new GetContextTool(),
                 new GetCurrentDateTimeTool()),
-            Feature("core.tool-help",
-                new SPLA.MCP.Core.Tools.AgentInfoTool(McpHost, SkillManager)),
             Feature("core.discipline"),
             Feature("core.files",
                 new FsListTool(),
@@ -225,8 +235,11 @@ public sealed class AgentRuntime : IDisposable
                 new SPLA.MCP.Core.Tools.MarkSetTool(),
                 new SPLA.MCP.Core.Tools.MarkRollbackTool()),
             Feature("core.skills",
-                new SPLA.MCP.Core.Tools.SkillActivateTool(SkillManager),
+                new SPLA.MCP.Core.Tools.SkillActivateTool(SkillManager, ToolSets),
                 new SPLA.MCP.Core.Tools.SkillDeactivateTool()),
+            Feature("core.toolsets",
+                new SPLA.MCP.Core.Tools.ToolSetActivateTool(ToolSets),
+                new SPLA.MCP.Core.Tools.ToolSetDeactivateTool()),
             Feature("core.spawn",
                 new SPLA.MCP.Core.Tools.AgentSpawnTool(SpawnedRunner),
                 new SPLA.MCP.Core.Tools.AgentSpawnBatchTool(SpawnedRunner)),
@@ -256,7 +269,7 @@ public sealed class AgentRuntime : IDisposable
         // decided which tools were registered above.
         var compositionLogger = loggerFactory.CreateLogger("SPLA.Agent.Composition");
         ContextComposer = new AgentContextComposer(
-            AgentContributors.Default(SkillManager, PluginManager, null, enabledFeatures, ProjectKv.Store),
+            AgentContributors.Default(SkillManager, PluginManager, null, enabledFeatures, ProjectKv.Store, ToolSets),
             compositionLogger);
 
         // What this agent was assembled from, once, at startup. Per-composition logging is Debug and
@@ -288,7 +301,10 @@ public sealed class AgentRuntime : IDisposable
     /// </summary>
     public void RefreshSkillCapabilities() =>
         SkillManager.SetProbe(new SkillCapabilityProbe(
-            McpHost.GetToolDefinitions().Select(d => d.Function.Name),
+            // Permitted, not disclosed: a skill at the "on skill demand" level exists precisely to
+            // raise the set it needs, so judging it against what is raised right now would mark
+            // exactly those skills unavailable.
+            McpHost.GetPermittedToolNames(),
             EnabledFeatureIds,
             PluginManager.GetToolOwners()));
 

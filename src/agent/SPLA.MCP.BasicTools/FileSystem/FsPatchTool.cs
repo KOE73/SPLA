@@ -10,9 +10,50 @@ using System.Threading.Tasks;
 
 namespace SPLA.MCP.BasicTools.FileSystem;
 
-public class FsPatchTool : IMcpTool, IToolHelpProvider
+public class FsPatchTool : IMcpTool
 {
     public string Name => "system_patch_file";
+
+    /// <summary>Everything about this tool that does not fit its one-line description.
+    /// Disclosed together with the tool itself — see <c>ToolFunctionDefinition.Details</c>.</summary>
+    private static readonly string DetailsText =
+        """
+        tool: system_patch_file
+
+        summary: Replace one exact text block in an existing file. Use this for narrow edits after reading the current file content.
+
+        arguments:
+          path:
+            required: true
+            formats:
+              - absolute_file_path
+              - relative_file_path
+          old_text:
+            required: true
+            rules:
+              - Must match existing file content exactly after CRLF/LF normalization.
+              - Must be unique in the file.
+              - Include enough surrounding context to avoid ambiguous matches.
+          new_text:
+            required: true
+            rules:
+              - Replacement block.
+              - May be empty only when intentionally deleting the matched block.
+
+        behavior:
+          old_text_not_found: read the file again and retry with current exact text.
+          old_text_not_unique: provide a larger old_text context block.
+          line_endings: preserves CRLF when the original file uses CRLF.
+
+        risk:
+          writes_file: requires Edit or Agent mode permission.
+
+        examples:
+          - request:
+              path: SPLA.MCP.Core/McpHost.cs
+              old_text: "public void RegisterTool(IMcpTool tool)\n{\n"
+              new_text: "public void RegisterTool(IMcpTool tool)\n{\n    ArgumentNullException.ThrowIfNull(tool);\n"
+        """;
 
     public ToolDefinition GetDefinition() => new ToolDefinition
     {
@@ -20,6 +61,7 @@ public class FsPatchTool : IMcpTool, IToolHelpProvider
         Function = new ToolFunctionDefinition
         {
             Name = Name,
+            Details = DetailsText,
             Description = "Safely replaces a specific block of text in an existing file. The old_text block must exist uniquely in the file.",
             Scope = ToolScope.Project,
             Effect = ToolEffect.Write,
@@ -120,42 +162,4 @@ public class FsPatchTool : IMcpTool, IToolHelpProvider
         }
     }
 
-    public string? GetHelpText() =>
-        """
-        tool: system_patch_file
-
-        summary: Replace one exact text block in an existing file. Use this for narrow edits after reading the current file content.
-
-        arguments:
-          path:
-            required: true
-            formats:
-              - absolute_file_path
-              - relative_file_path
-          old_text:
-            required: true
-            rules:
-              - Must match existing file content exactly after CRLF/LF normalization.
-              - Must be unique in the file.
-              - Include enough surrounding context to avoid ambiguous matches.
-          new_text:
-            required: true
-            rules:
-              - Replacement block.
-              - May be empty only when intentionally deleting the matched block.
-
-        behavior:
-          old_text_not_found: read the file again and retry with current exact text.
-          old_text_not_unique: provide a larger old_text context block.
-          line_endings: preserves CRLF when the original file uses CRLF.
-
-        risk:
-          writes_file: requires Edit or Agent mode permission.
-
-        examples:
-          - request:
-              path: SPLA.MCP.Core/McpHost.cs
-              old_text: "public void RegisterTool(IMcpTool tool)\n{\n"
-              new_text: "public void RegisterTool(IMcpTool tool)\n{\n    ArgumentNullException.ThrowIfNull(tool);\n"
-        """;
 }

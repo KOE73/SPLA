@@ -108,8 +108,8 @@ public class SystemPromptActiveSkillTests
         Assert.Contains("Skill selection comes before tool planning.", prompt);
         Assert.Contains("Before explaining which tools you will use", prompt);
         Assert.Contains("compare the user's request with the available skills", prompt);
-        Assert.Contains("call skill_activate with the skill id after agent_info", prompt);
-        Assert.Contains("agent_info alone only previews/loads instructions and does not make the skill active", prompt);
+        Assert.Contains("call skill_activate with the skill id before any task tool call", prompt);
+        Assert.Contains("its full procedure arrives in your next message", prompt);
         Assert.Contains("do not end a turn with only reasoning about the next step", prompt);
         Assert.Contains("use project scope only when the user explicitly asks", prompt);
         Assert.Contains("scope: session = this chat (default)", prompt);

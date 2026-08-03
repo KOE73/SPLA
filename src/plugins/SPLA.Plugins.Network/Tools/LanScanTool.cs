@@ -15,9 +15,96 @@ using System.Threading.Tasks;
 
 namespace SPLA.Plugins.Network;
 
-public class LanScanTool : IMcpTool, IToolHelpProvider
+public class LanScanTool : IMcpTool
 {
     public string Name => "network_discover_hosts";
+
+    /// <summary>Everything about this tool that does not fit its one-line description.
+    /// Disclosed together with the tool itself — see <c>ToolFunctionDefinition.Details</c>.</summary>
+    private static readonly string DetailsText =
+        """
+        tool: network_discover_hosts
+
+        summary: Discover responsive hosts in a bounded IPv4 LAN range. Defaults to ping-only.
+
+        arguments:
+          cidr:
+            required: false
+            mutuallyExclusiveWith:
+              - start
+              - end
+            formats:
+              - ipv4_cidr
+            examples:
+              - 192.168.1.0/24
+          start:
+            required: false
+            requires:
+              - end
+            formats:
+              - ipv4_address
+          end:
+            required: false
+            requires:
+              - start
+            formats:
+              - ipv4_address
+          ports:
+            required: false
+            default: none
+            formats:
+              - common
+              - all
+              - single_port
+              - comma_list
+              - range
+            behavior:
+              - If omitted, no ports are scanned.
+              - If provided, ports are used only as a host-presence probe.
+              - For each host, scanning stops after the first open port.
+              - Use network_scan_tcp_ports for detailed port scanning.
+          ping:
+            required: false
+            default: true
+          timeout:
+            required: false
+            default: 500
+            min: 100
+            max: 10000
+            unit: milliseconds
+          concurrency:
+            required: false
+            default: 64
+            min: 1
+            max: 256
+          max_hosts:
+            required: false
+            default: 4096
+            min: 1
+            max: 4096
+
+        limits:
+          max_hosts_default: 4096
+          max_hosts_absolute: 4096
+
+        risk:
+          broadScan: ask the user for an explicit bounded subnet or range before scanning.
+          all_ports: use only when explicitly requested by the user.
+
+        output:
+          stats: emitted first.
+          ping_mode_rows: one responsive IP per line.
+          port_probe_rows: one IP and one successful port per line.
+
+        examples:
+          - request:
+              cidr: 192.168.1.0/24
+              ping: true
+          - request:
+              start: 192.168.1.10
+              end: 192.168.1.50
+              ports: 22,80,443
+        """;
 
     public ToolDefinition GetDefinition() => new ToolDefinition
     {
@@ -25,6 +112,7 @@ public class LanScanTool : IMcpTool, IToolHelpProvider
         Function = new ToolFunctionDefinition
         {
             Name = Name,
+            Details = DetailsText,
             Description = "Discovers responsive hosts in a bounded IPv4 LAN range. Defaults to ping-only; optional ports are only a lightweight host-presence probe.",
             Scope = ToolScope.Internet,
             Effect = ToolEffect.Read,
@@ -153,90 +241,6 @@ public class LanScanTool : IMcpTool, IToolHelpProvider
         }
     }
 
-    public string? GetHelpText() =>
-        """
-        tool: network_discover_hosts
-
-        summary: Discover responsive hosts in a bounded IPv4 LAN range. Defaults to ping-only.
-
-        arguments:
-          cidr:
-            required: false
-            mutuallyExclusiveWith:
-              - start
-              - end
-            formats:
-              - ipv4_cidr
-            examples:
-              - 192.168.1.0/24
-          start:
-            required: false
-            requires:
-              - end
-            formats:
-              - ipv4_address
-          end:
-            required: false
-            requires:
-              - start
-            formats:
-              - ipv4_address
-          ports:
-            required: false
-            default: none
-            formats:
-              - common
-              - all
-              - single_port
-              - comma_list
-              - range
-            behavior:
-              - If omitted, no ports are scanned.
-              - If provided, ports are used only as a host-presence probe.
-              - For each host, scanning stops after the first open port.
-              - Use network_scan_tcp_ports for detailed port scanning.
-          ping:
-            required: false
-            default: true
-          timeout:
-            required: false
-            default: 500
-            min: 100
-            max: 10000
-            unit: milliseconds
-          concurrency:
-            required: false
-            default: 64
-            min: 1
-            max: 256
-          max_hosts:
-            required: false
-            default: 4096
-            min: 1
-            max: 4096
-
-        limits:
-          max_hosts_default: 4096
-          max_hosts_absolute: 4096
-
-        risk:
-          broadScan: ask the user for an explicit bounded subnet or range before scanning.
-          all_ports: use only when explicitly requested by the user.
-
-        output:
-          stats: emitted first.
-          ping_mode_rows: one responsive IP per line.
-          port_probe_rows: one IP and one successful port per line.
-
-        examples:
-          - request:
-              cidr: 192.168.1.0/24
-              ping: true
-          - request:
-              start: 192.168.1.10
-              end: 192.168.1.50
-              ports: 22,80,443
-        """;
 
     private static uint ToSortableUInt32(IPAddress address)
     {

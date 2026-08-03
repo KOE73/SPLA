@@ -17,7 +17,7 @@ namespace SPLA.Plugins.Roslyn;
 /// and the concrete <c>dotnet</c> argument line; parsing the <c>path</c>, workspace containment, timeout,
 /// process execution and result routing all live here so the three stay consistent.
 /// </summary>
-internal abstract class DotnetProjectTool : IMcpTool, IToolHelpProvider
+internal abstract class DotnetProjectTool : IMcpTool
 {
     protected const int MaxTimeoutSeconds = 600;
 
@@ -27,7 +27,6 @@ internal abstract class DotnetProjectTool : IMcpTool, IToolHelpProvider
 
     public abstract string Name { get; }
     public abstract ToolDefinition GetDefinition();
-    public abstract string? GetHelpText();
 
     /// <summary>Default hard timeout when the caller does not specify one. Builds/tests get longer.</summary>
     protected abstract int DefaultTimeoutSeconds { get; }

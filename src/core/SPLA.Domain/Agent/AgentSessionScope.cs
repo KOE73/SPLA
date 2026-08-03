@@ -21,6 +21,10 @@ public interface IAgentSession
     /// <summary>This chat's single active-skill session.</summary>
     ISkillSession Skills { get; }
 
+    /// <summary>Tool sets raised in this chat. The level that permits raising them at all is a
+    /// project setting; this is what is armed here and now.</summary>
+    IToolSetSession ToolSets { get; }
+
     /// <summary>This chat's queue of images a tool wants injected into the model's context on the
     /// next turn (e.g. a browser screenshot). See <see cref="IPendingImageSink"/>.</summary>
     IPendingImageSink Images { get; }
@@ -36,11 +40,13 @@ public interface IAgentSession
 public sealed class AgentSession : IAgentSession
 {
     public AgentSession(IKeyValueStore sessionKv, MarkManager checkpoint, ISkillSession skills,
-        IBlobStore? blobs = null, IPendingImageSink? images = null, ISandbox? sandbox = null)
+        IBlobStore? blobs = null, IPendingImageSink? images = null, ISandbox? sandbox = null,
+        IToolSetSession? toolSets = null)
     {
         SessionKv = sessionKv;
         Checkpoint = checkpoint;
         Skills = skills;
+        ToolSets = toolSets ?? new ToolSetSession();
         Blobs = blobs ?? new BlobStore();
         Images = images ?? new PendingImageSink();
         Sandbox = sandbox ?? PassthroughSandbox.Default;
@@ -50,6 +56,7 @@ public sealed class AgentSession : IAgentSession
     public IBlobStore Blobs { get; }
     public MarkManager Checkpoint { get; }
     public ISkillSession Skills { get; }
+    public IToolSetSession ToolSets { get; }
     public IPendingImageSink Images { get; }
     public ISandbox Sandbox { get; }
 }
