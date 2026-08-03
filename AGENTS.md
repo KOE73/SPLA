@@ -73,6 +73,14 @@ correct, tested, and obviously ready.
   unique commits is not — preserve it as a tag (`archive/<name>`), push the tag, and say what was in
   it. Never let a delete be the reason work disappears.
 
+**If `git status` looks clean but a file is visibly new in the editor, suspect a stale untracked
+cache before anything else.** `core.untrackedcache=true` is a per-clone, unversioned `.git/config`
+setting — it does not travel with the repo. When enabled, `git status` can silently miss newly
+created files while `git status <path>` (or `--untracked-files=all`) still finds them, and the IDE
+(which watches the filesystem directly, not the git index) shows the truth. Fix per machine:
+`git config core.untrackedcache false`. Do this once per clone if you hit the symptom; it is not a
+repo-wide setting you can ship in tracked files.
+
 **Do remind, though.** Silence while changes pile up is its own failure — a large mixed working tree
 is hard to review and easy to lose. Say something (one line, not a nag) when:
 
