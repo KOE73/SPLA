@@ -18,6 +18,8 @@
     <ProjectReference Include="..\..\core\SPLA.MCP.Core\SPLA.MCP.Core.csproj" />
     <ProjectReference Include="..\..\core\SPLA.Observability\SPLA.Observability.csproj" />
     <ProjectReference Include="..\..\llm\SPLA.LLM.LMStudio\SPLA.LLM.LMStudio.csproj" />
+    <ProjectReference Include="..\..\llm\SPLA.LLM.OpenAiCompat\SPLA.LLM.OpenAiCompat.csproj" />
+    <ProjectReference Include="..\..\llm\SPLA.LLM.OpenRouter\SPLA.LLM.OpenRouter.csproj" />
   </ItemGroup>
 
 </Project>

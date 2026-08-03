@@ -1,0 +1,23 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    The OpenAI-compatible transport, on its own so that anything which needs to reach a model can
+    reference it — including provider plugins, which cannot take a dependency on another provider's
+    assembly. While this lived inside SPLA.LLM.LMStudio the only choices were "fork 500 lines of
+    streaming per provider" or "bolt every provider onto the LM Studio client"; both are wrong, and
+    the second is what shipped before this split.
+
+    Deliberately depends on SPLA.Domain only. A transport knows a wire format and nothing else — no
+    settings UI, no plugin host, no accounting.
+  -->
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\core\SPLA.Domain\SPLA.Domain.csproj" />
+    <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="9.0.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="SPLA.Tests" />
+  </ItemGroup>
+
+</Project>

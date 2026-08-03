@@ -4,7 +4,7 @@ namespace SPLA.Domain.Editor;
 
 /// <summary>
 /// Реестр поставщиков схем. Собирает <see cref="IJsonSchemaProvider"/> (от плагинов, проекта, агента)
-/// и резолвит схему по первому совпадению в порядке регистрации (см. docs/schema-editor-plan.md —
+/// и резолвит схему по первому совпадению в порядке регистрации (см. ../../../../docs/plans/PLAN_20260625_editor_schema.md —
 /// разрешение по имени класса). Подходит и для DATA-схем, и для UI-схем (имя несёт суффикс ".ui").
 /// </summary>
 public sealed class SchemaRegistry

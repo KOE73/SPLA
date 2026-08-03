@@ -19,7 +19,44 @@ default_prompt: |
                         NEW output since your last look; nothing is lost between calls. Ends on
                         completion, on an 'until' regex match, on disconnect, or on timeout (call again).
     ssh_session_send  — send raw keys (answer a prompt, q to leave a pager, ctrl_c to interrupt).
+                        ctrl_c is the way to un-stick a session: it interrupts, verifies the shell
+                        came back, and frees the session for the next exec.
     ssh_session_close — end a live session (host#N) for everyone.
+
+  File transfer (SFTP — never through the shell):
+    sftp_ls           — list files/directories on a remote host, with sizes and times.
+    sftp_download     — copy a remote file or directory into the project.
+    sftp_upload       — write one file onto a remote host (writable hosts only).
+    tar_list          — list what is inside a container in the project.
+    tar_read          — read one file out of a container.
+    tar_write         — add, replace or remove one file inside a container.
+
+  Moving files is ALWAYS sftp_*. Never move file content through the shell — no scp, no
+  `curl -o`, no `base64 | cat`. sftp_* needs no quoting, works regardless of which commands the
+  host allows, and reports what failed per file instead of as parsed text.
+  Remote paths have no shell behind them: `~` is resolved for you, but `*` and `$VAR` are not
+  expanded — pass a directory plus an 'include' pattern instead of a wildcard path.
+
+  Containers (.tar):
+  - A path ending in `.tar` is a CONTAINER FILE: one file on the local disk holding a Linux
+    directory tree. `sftp_download` decides by that name alone — 'staging/prod.tar' creates a
+    container, 'staging/prod' writes ordinary files and folders. There is no format parameter.
+  - A container keeps a Linux tree as it was. Names Windows cannot store survive inside it
+    (`a:b`, `README` next to `readme`, `aux`), and symlinks and permission bits are recorded.
+    Written into a plain folder those same files fail the whole download instead — so when taking
+    a real config tree off a server, name the destination `.tar`.
+  - Recorded permissions and links are INFORMATION about the source host, not something restored.
+    On the new host decide what is right and set it yourself; the old owner and mode rarely apply.
+  - A container stays one object and does not mix into the project's files. The ordinary system_*
+    file tools do NOT look inside it — use tar_list / tar_read / tar_write.
+  - Cost: tar cannot change a file in place, so every tar_write rewrites the whole container.
+    At configuration sizes this is nothing; do not loop it over hundreds of entries.
+  - Use a plain folder instead when it is a couple of files you want to read and edit with the
+    ordinary file tools.
+
+  Moving configuration between servers is analysis, not copying: read what the old host has,
+  judge what the new one actually needs, then write the adapted file with sftp_upload. Do not
+  push a downloaded file back verbatim unless you have checked it fits the target.
 
   Sessions (host#N):
   - Several parallel sessions to one host are normal and identified as host#1, host#2, … Use
@@ -37,9 +74,23 @@ default_prompt: |
   - For apt/dpkg prefer DEBIAN_FRONTEND=noninteractive to avoid full-screen dialogs entirely.
 
   Interactive programs (top, htop, less, an install asking Y/n):
+  - Pagers are already disabled in every session (PAGER/SYSTEMD_PAGER/GIT_PAGER/MANPAGER=cat), so
+    systemctl status, journalctl, git log and man return normally. Do not add --no-pager.
   - To sample top-like screens pass interrupt_on_timeout=true with a short timeout_seconds (snapshot,
     then Ctrl+C recovers the shell).
   - Answer prompts or interrupt with ssh_session_send (ctrl_c, q, enter, or literal text).
+
+  A session that will not accept commands ("a command is still running here"):
+  - One command at a time per session — while one is pending, exec is REFUSED. Retrying the same call
+    is always wrong: it fails identically. Do one of the following instead.
+  - No output arriving? Send ctrl_c. It is not a blind keystroke: it interrupts, checks that the shell
+    came back, frees the session, and tells you which happened. After "INTERRUPTED" or "ALREADY
+    FINISHED" go straight to ssh_session_exec — do not call ssh_session_wait to "confirm".
+  - "CTRL+C DID NOT FREE THE SHELL" means a full-screen program owns the terminal (pager, top, vim,
+    installer); Ctrl+C does not quit those. Send q (pager/top), or esc then ':q!' with enter=true (vim).
+    Sending ctrl_c a second time achieves nothing.
+  - Still stuck: ssh_session_exec with force=true abandons the command and runs anyway, or work in a
+    second session (pass a different 'session'/'host'), or ssh_session_close and open a new one.
 
   Write access (per host):
   - By default the read-only guard blocks mutating commands (rm, mv, dd, kill, package installs,
@@ -47,6 +98,9 @@ default_prompt: |
     apt, systemctl restart, editing files are then allowed. Only hosts the operator opted in accept
     writes; on a read-only host, report the refusal and pick a read-only alternative, do not try to
     bypass the guard.
+  - The same opt-in governs sftp_upload. File transfer runs over SFTP and never reaches the shell,
+    so the read-only guard cannot see it: taking files OFF a host is always allowed, putting files
+    ON one is refused unless that host has allow_write.
 
   Configuration & secrets:
   - Hosts are defined in project config under plugins.ssh.settings.hosts. Each host names an address
@@ -54,8 +108,9 @@ default_prompt: |
     (user, password, or private_key+passphrase) supply the login — never a literal password. Older
     single-value pointers (password: secret:KEY or env:VAR) also work.
   - Credentials live in the secret store, not in config or chat. If a connection fails for missing
-    credentials, tell the user to store the secret (e.g. `spla secret set <entry> --field password`
-    or the Settings → Secrets page), do not ask them to paste the password into the chat.
+    credentials, tell the user to store the secret — `spla secret set <entry> --field password --user`
+    (one field per call; the scope flag --user/--project/--shared is required and has no default) or
+    the Settings → Secrets page. Do not ask them to paste the password into the chat.
 
   Usage:
   - ssh_run takes a single command; there is no persistent shell, so each call is independent (cd does

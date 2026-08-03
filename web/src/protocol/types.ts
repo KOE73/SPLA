@@ -54,19 +54,67 @@ export interface ChatOpenedPayload {
   title?: string;
   messages: ChatMessage[];
   mode?: string;
-  connectionId?: string;
+  modelId?: string;
 }
 
+/** One editable connection: transport + credentials, owning its model entries. */
 export interface ConnectionDto {
   id: string;
   clientId?: string;
   name?: string;
   provider?: string;
   endpoint?: string;
-  model?: string;
   apiKey?: string;
-  lockModel?: boolean;
+  /** Account-management credential (management / admin key). Never used for inference. */
+  adminKey?: string;
   swapModel?: boolean;
+  models: ModelEntryDto[];
+}
+
+/** One model under a connection. `id` is ours and globally unique; `model` is the provider's string. */
+export interface ModelEntryDto {
+  id: string;
+  clientId?: string;
+  name?: string;
+  model?: string;
+  contextLength?: number;
+}
+
+/** A model entry flattened for pickers, keeping its owning connection for grouping. */
+export interface ModelPickDto {
+  id: string;
+  name: string;
+  model?: string;
+  connectionId: string;
+  connectionName: string;
+  provider?: string;
+}
+
+/** One provider-reported figure. `kind` drives formatting, `severity` drives the dot. */
+export interface ProviderFactDto {
+  key: string;
+  label: string;
+  value: string;
+  unit?: string;
+  kind?: "counter" | "money" | "percent" | "duration" | "timestamp" | "text";
+  severity?: "normal" | "warn" | "critical";
+  observedAt?: string;
+  resetsAt?: string;
+}
+
+export interface ProviderFactSectionDto {
+  title: string;
+  facts: ProviderFactDto[];
+  deepLink?: string;
+}
+
+export interface ProviderInfoResultPayload {
+  modelId: string;
+  connectionId: string;
+  connectionName: string;
+  provider?: string;
+  sections: ProviderFactSectionDto[];
+  error?: string;
 }
 
 export interface ConnHealth {
@@ -120,9 +168,58 @@ export interface PluginsResultPayload {
   restartToApply?: boolean;
 }
 
+/**
+ * One switchable capability — a built-in `core.*` feature or a skill. Plugins keep the richer
+ * PluginDto above (settings blob, web settings URL), but all three render through the same row
+ * component in the Capabilities settings group, so the common shape is shared.
+ */
+export interface CapabilityDto {
+  id: string;
+  kind: "builtin" | "skill";
+  name: string;
+  description?: string;
+  enabled?: boolean;
+  /** Available / MissingTools / DisabledByUser / DisabledByTrust / Shadowed — read-only. */
+  state?: string;
+  stateReason?: string;
+  /** Provider id for a skill ("project", "machine", "plugin:network"); absent for built-ins. */
+  source?: string;
+  sourceLabel?: string;
+  preloaded?: boolean;
+  missingTools?: string[];
+  missingFeatures?: string[];
+  /** Plugins owning the missing tools — the panel offers to enable them. */
+  missingPlugins?: string[];
+  /** Built-in ids this one depends on; enabling it pulls them in. */
+  requires?: string[];
+}
+
+export interface SkillSourceDto {
+  id: string;
+  label: string;
+  trust: string;
+  /** Filesystem location for folder-backed sources; absent for anything else. */
+  path?: string;
+}
+
+export interface SkillsResultPayload {
+  skills: CapabilityDto[];
+  sources: SkillSourceDto[];
+  canPersist?: boolean;
+}
+
+export interface FeaturesResultPayload {
+  features: CapabilityDto[];
+  canPersist?: boolean;
+  /** Feature tools register once at startup, so a change applies on the next service start. */
+  restartToApply?: boolean;
+}
+
 export interface ConnectionsResultPayload {
   connections: ConnectionDto[];
   canPersist?: boolean;
+  /** Set when a save was refused (e.g. duplicate model id); the list echoes what is still in effect. */
+  error?: string;
 }
 
 export interface ConnectionsHealthPayload {
@@ -188,15 +285,26 @@ export interface DebugSnapshotPayload {
 }
 
 // ── Secret store ─────────────────────────────────────────────────────────────
-/** One entry: key + field NAMES (user, password, token, private_key, …) — never values. */
+/** Where a secret lives. Always explicit — the server never picks one for you. */
+export type SecretScopeId = "user" | "project" | "shared";
+
+/** One entry: key + field NAMES (user, password, token, private_key, …) — never values.
+ *  `scope` and `reference` travel with every entry so a picker can show WHERE a credential lives
+ *  instead of leaving the user to guess between two identically named ones. */
 export interface SecretEntryDto {
   key: string;
   fields: string[];
+  scope: SecretScopeId;
+  /** Ready-to-paste `secret:<scope>:<key>`. */
+  reference: string;
+  /** False when this user may use the entry but not change it (shared scope, ACL). */
+  canManage: boolean;
 }
 
 export interface SecretListResultPayload {
-  machine: SecretEntryDto[];
+  user: SecretEntryDto[];
   project: SecretEntryDto[];
+  shared: SecretEntryDto[];
   projectOpen: boolean;
   error?: string;
 }
@@ -252,7 +360,7 @@ export interface ProjectContextPayload {
   projectId: string;
   projectName?: string;
   workspacePath?: string;
-  connections?: ConnectionDto[];
+  connections?: ModelPickDto[];
   modes?: string[];
   defaultMode?: string;
   theme?: string;
@@ -293,7 +401,7 @@ export interface ServerEvents {
   "welcome": {
     theme?: string; density?: string; projectId?: string; projectName?: string; workspacePath?: string;
     modes?: string[]; defaultMode?: string;
-    connections?: { id: string; name?: string }[];
+    connections?: ModelPickDto[];
     /** Authenticated user (server mode). Empty on local/embedded — the identity badge stays hidden. */
     userKey?: string; userName?: string;
   };
@@ -325,8 +433,11 @@ export interface ServerEvents {
   "connection.ping.result": ConnectionPingResultPayload;
   "connection.test.result": ConnectionTestResultPayload;
   "connection.swap_model.result": ConnectionSwapModelResultPayload;
+  "provider.info.result": ProviderInfoResultPayload;
   "agent.result": AgentResultPayload;
   "plugins.result": PluginsResultPayload;
+  "skills.result": SkillsResultPayload;
+  "features.result": FeaturesResultPayload;
   "usage.result": UsageResultPayload;
   "system.register_association.result": { ok?: boolean; message?: string };
   "secret.result": SecretListResultPayload;

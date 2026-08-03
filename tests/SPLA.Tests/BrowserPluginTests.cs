@@ -13,7 +13,7 @@ namespace SPLA.Tests;
 /// Smoke tests that don't need a real browser process: every tool's metadata is well-formed, and
 /// every tool behaves gracefully (returns a clear error string, never throws) when called outside
 /// an active chat session or before browser_start. Actually driving a browser is exercised manually
-/// per docs/browser-playwright-plugin-plan.md — launching Chromium/Edge in CI is out of scope here.
+/// per ../../docs/plans/PLAN_20260701_plugins_browser-playwright.md — launching Chromium/Edge in CI is out of scope here.
 /// </summary>
 public sealed class BrowserPluginTests
 {

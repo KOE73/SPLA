@@ -1,5 +1,6 @@
 using SPLA.Domain.Context;
 using SPLA.Domain.Interfaces;
+using SPLA.Domain.Llm;
 using SPLA.Domain.Models;
 using SPLA.Domain.Settings;
 using SPLA.Domain.Tools;
@@ -23,7 +24,7 @@ namespace SPLA.Agent;
 /// </summary>
 public sealed class ConversationOrchestrator
 {
-    private readonly ILLMService _llm;
+    private readonly ILlmGateway _llm;
     private readonly IToolHost _tools;
 
     /// <summary>How many suspicious repeats (see <see cref="ToolRepeatTracker"/>) trigger a stage:
@@ -56,7 +57,7 @@ public sealed class ConversationOrchestrator
     /// <summary>Optional logger. When set, the loop logs each LLM turn and tool call (start/end).</summary>
     public ILogger? Logger { get; init; }
 
-    public ConversationOrchestrator(ILLMService llm, IToolHost tools)
+    public ConversationOrchestrator(ILlmGateway llm, IToolHost tools)
     {
         _llm = llm;
         _tools = tools;
@@ -131,8 +132,19 @@ public sealed class ConversationOrchestrator
             ChatMessage response;
             try
             {
-                response = await _llm.SendMessageStreamFullAsync(
-                    coreMessages, llmSettings, tools, OnDelta, textLoopCts.Token, callbacks.OnReasoning);
+                // One gateway call = one network call to one model. The agent loop makes N of them
+                // per user turn and stays above the gateway — everything the pipeline needs to know
+                // about THIS call travels in the context, never in how the pipeline was composed.
+                var turn = new LlmTurnContext
+                {
+                    Messages    = coreMessages,
+                    Tools       = tools as IReadOnlyList<ToolDefinition> ?? tools.ToList(),
+                    Settings    = llmSettings,
+                    OnDelta     = OnDelta,
+                    OnReasoning = callbacks.OnReasoning
+                };
+
+                response = (await _llm.InvokeAsync(turn, textLoopCts.Token)).Message;
             }
             catch (OperationCanceledException) when (textLoopTripped && !cancellationToken.IsCancellationRequested)
             {

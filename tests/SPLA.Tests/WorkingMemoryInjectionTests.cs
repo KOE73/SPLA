@@ -56,28 +56,17 @@ public class WorkingMemoryInjectionTests
     }
 
     // Minimal fakes (kept local to avoid coupling to ConversationOrchestratorTests' private types).
-    private sealed class FakeLlm : ILLMService
+    private sealed class FakeLlm : SPLA.Domain.Llm.ILlmGateway
     {
         private readonly Queue<ChatMessage> _responses;
         public List<List<ChatMessage>> SeenContexts { get; } = new();
         public FakeLlm(IEnumerable<ChatMessage> responses) => _responses = new(responses);
 
-        public Task<ChatMessage> SendMessageStreamFullAsync(
-            IEnumerable<ChatMessage> messages, LLMSettings settings, IEnumerable<ToolDefinition>? tools,
-            System.Func<string, Task>? onDelta, CancellationToken cancellationToken = default,
-            System.Func<string, Task>? onReasoning = null)
+        public Task<SPLA.Domain.Llm.LlmTurnResult> InvokeAsync(
+            SPLA.Domain.Llm.LlmTurnContext ctx, CancellationToken ct = default)
         {
-            SeenContexts.Add(messages.ToList());
-            return Task.FromResult(_responses.Dequeue());
-        }
-
-        public Task<ChatMessage> SendMessageAsync(IEnumerable<ChatMessage> messages, LLMSettings settings, IEnumerable<ToolDefinition>? tools = null, CancellationToken cancellationToken = default)
-            => Task.FromResult(_responses.Dequeue());
-
-        public async IAsyncEnumerable<string> SendMessageStreamAsync(IEnumerable<ChatMessage> messages, LLMSettings settings, IEnumerable<ToolDefinition>? tools = null, [System.Runtime.CompilerServices.EnumeratorCancellation] CancellationToken cancellationToken = default)
-        {
-            await Task.CompletedTask;
-            yield break;
+            SeenContexts.Add(ctx.Messages.ToList());
+            return Task.FromResult(new SPLA.Domain.Llm.LlmTurnResult { Message = _responses.Dequeue() });
         }
     }
 

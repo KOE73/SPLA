@@ -3,6 +3,7 @@ using SPLA.Agent;
 using SPLA.Domain.Settings;
 using SPLA.MCP.Core.Agent;
 using SPLA.MCP.Core.Plugins;
+using SPLA.MCP.Core.Skills;
 using SPLA.Runtime;
 using System.Collections.Generic;
 using System.IO;

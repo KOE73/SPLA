@@ -12,6 +12,8 @@ internal sealed class SettingsHandlers : IMessageHandler
     [
         MessageTypes.AgentGet, MessageTypes.AgentSave,
         MessageTypes.PluginsGet, MessageTypes.PluginsSave, MessageTypes.PluginAction,
+        MessageTypes.SkillsGet, MessageTypes.SkillsSave,
+        MessageTypes.FeaturesGet, MessageTypes.FeaturesSave,
         MessageTypes.UsageGet, MessageTypes.AppearanceSave, MessageTypes.SystemRegisterAssociation,
     ];
 
@@ -22,6 +24,10 @@ internal sealed class SettingsHandlers : IMessageHandler
         MessageTypes.PluginsGet                => PluginsGet(ctx),
         MessageTypes.PluginsSave               => PluginsSave(ctx),
         MessageTypes.PluginAction              => PluginAction(ctx),
+        MessageTypes.SkillsGet                 => SkillsGet(ctx),
+        MessageTypes.SkillsSave                => SkillsSave(ctx),
+        MessageTypes.FeaturesGet               => FeaturesGet(ctx),
+        MessageTypes.FeaturesSave              => FeaturesSave(ctx),
         MessageTypes.UsageGet                  => UsageGet(ctx),
         MessageTypes.AppearanceSave            => AppearanceSave(ctx),
         MessageTypes.SystemRegisterAssociation => RegisterAssociation(ctx),
@@ -71,6 +77,34 @@ internal sealed class SettingsHandlers : IMessageHandler
             result = new PluginActionResultPayload { Ok = false, Error = ex.Message };
         }
         await ctx.Reply(MessageTypes.PluginActionResult, result);
+    }
+
+    private static Task SkillsGet(RequestContext ctx)
+    {
+        var (entry, _) = ctx.Session.Resolve(ctx.Env);
+        return ctx.Reply(MessageTypes.SkillsResult, SettingsOps.GetSkills(entry.Runtime));
+    }
+
+    private static async Task SkillsSave(RequestContext ctx)
+    {
+        var (entry, projectId) = ctx.Session.Resolve(ctx.Env);
+        var p = ctx.Payload<SkillsPayload>();
+        await ctx.Session.Hub.BroadcastToProjectAsync(projectId, MessageTypes.SkillsResult,
+            SettingsOps.SaveSkills(entry.Runtime, p?.Skills ?? new()));
+    }
+
+    private static Task FeaturesGet(RequestContext ctx)
+    {
+        var (entry, _) = ctx.Session.Resolve(ctx.Env);
+        return ctx.Reply(MessageTypes.FeaturesResult, SettingsOps.GetFeatures(entry.Runtime));
+    }
+
+    private static async Task FeaturesSave(RequestContext ctx)
+    {
+        var (entry, projectId) = ctx.Session.Resolve(ctx.Env);
+        var p = ctx.Payload<FeaturesPayload>();
+        await ctx.Session.Hub.BroadcastToProjectAsync(projectId, MessageTypes.FeaturesResult,
+            SettingsOps.SaveFeatures(entry.Runtime, p?.Features ?? new()));
     }
 
     private static Task UsageGet(RequestContext ctx)

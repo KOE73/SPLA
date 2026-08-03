@@ -57,7 +57,7 @@ client/types **and** this table.
 | `chat.rename` | `ChatRename` | `ChatRenamePayload` | Broadcasts `chat.list.result`. |
 | `chat.delete` | `ChatDelete` | `ChatDeletePayload` | Broadcasts `chat.list.result`. |
 | `chat.send` | `ChatSend` | `ChatSendPayload` | Runs a turn; streams to watchers. |
-| `chat.settings` | `ChatSettings` | `ChatSettingsPayload` | Change mode/connection; echoes `chat.opened`. |
+| `chat.settings` | `ChatSettings` | `ChatSettingsPayload` | Change mode/model entry; echoes `chat.opened`. |
 | `chat.rewind` | `ChatRewind` | `ChatRewindPayload` | Truncate a chat at/before a message; echoes `chat.opened`. |
 | `chat.fork` | `ChatFork` | `ChatForkPayload` | Copy a chat at a message boundary; opens the fork and broadcasts `chat.list.result`. |
 | `focus.set` | `FocusSet` | `FocusPayload` | Window focused a chat; echoes `focus.changed` to all. |
@@ -71,11 +71,16 @@ client/types **and** this table.
 | `connection.models` | `ConnectionModels` | `ConnectionDiagRequest` | Reply `connection.models.result`. |
 | `connection.test` | `ConnectionTest` | `ConnectionDiagRequest` | Reply `connection.test.result`. |
 | `connection.swap_model` | `ConnectionSwapModel` | `ConnectionSwapModelRequest` | Reply `connection.swap_model.result`; broadcasts `connections.result` on success. |
+| `provider.info` | `ProviderInfo` | `ProviderInfoRequest` | Reply `provider.info.result`. Account/model figures for one model entry; never returns credential material. |
 | `agent.get` | `AgentGet` | — | Reply `agent.result`. |
 | `agent.save` | `AgentSave` | `AgentSettingsPayload` | Mode + permission overrides. Broadcasts `agent.result`. |
 | `plugins.get` | `PluginsGet` | — | Reply `plugins.result`. |
 | `plugins.save` | `PluginsSave` | `PluginsPayload` | Broadcasts `plugins.result`. |
 | `plugin.action` | `PluginAction` | `PluginActionPayload` | Invoke a plugin web-settings action; reply `plugin.action.result`. |
+| `skills.get` | `SkillsGet` | — | Reply `skills.result`. |
+| `skills.save` | `SkillsSave` | `SkillsPayload` | Per-skill enable/preload → `skills.items`. Applies live. Broadcasts `skills.result`. |
+| `features.get` | `FeaturesGet` | — | Reply `features.result`. |
+| `features.save` | `FeaturesSave` | `FeaturesPayload` | Built-in `core.*` set → `agent.capabilities`. Broadcasts `features.result`. |
 | `usage.get` | `UsageGet` | — | Reply `usage.result`. |
 | `appearance.save` | `AppearanceSave` | `AppearanceChangedPayload` | Auto-sent on change (no Save step). Persists `ui:` + broadcasts `appearance.changed`. |
 | `system.register_association` | `SystemRegisterAssociation` | — | Register the `.spla` extension (Windows, per-user). Reply `system.register_association.result`. |
@@ -126,9 +131,12 @@ client/types **and** this table.
 | `connection.models.result` | `ConnectionModelsResult` | diag result | unicast | Answer to `connection.models`. |
 | `connection.test.result` | `ConnectionTestResult` | diag result | unicast | Answer to `connection.test`. |
 | `connection.swap_model.result` | `ConnectionSwapModelResult` | `ConnectionSwapModelResult` | unicast | Answer to `connection.swap_model`. |
+| `provider.info.result` | `ProviderInfoResult` | `ProviderInfoResult` | unicast | Answer to `provider.info`. Sections ordered connection-first, then model. |
 | `agent.result` | `AgentResult` | `AgentSettingsPayload` | unicast/broadcast | Answer to get; broadcast after save. |
 | `plugins.result` | `PluginsResult` | `PluginsPayload` | unicast/broadcast | Answer to get; broadcast after save. |
 | `plugin.action.result` | `PluginActionResult` | `PluginActionResultPayload` | unicast | Answer to `plugin.action`. |
+| `skills.result` | `SkillsResult` | `SkillsPayload` | unicast/broadcast | Answer to get; broadcast after save. Lists every skill with source + resolved state, unavailable ones included. |
+| `features.result` | `FeaturesResult` | `FeaturesPayload` | unicast/broadcast | Answer to get; broadcast after save. `restartToApply` is always true — feature tools register once at startup. |
 | `usage.result` | `UsageResult` | usage totals | unicast/broadcast (project) | Answer to `usage.get`; also broadcast after each turn's token accounting. |
 | `appearance.changed` | `AppearanceChanged` | `AppearanceChangedPayload` | broadcast | Theme/density; every window applies it. See [Domain events](#domain-events-server-side). |
 | `system.register_association.result` | `SystemRegisterAssociationResult` | result | unicast | Answer to `system.register_association`. |

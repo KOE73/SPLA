@@ -22,6 +22,7 @@
     <ProjectReference Include="..\..\src\agent\SPLA.Agent\SPLA.Agent.csproj" />
     <ProjectReference Include="..\..\src\agent\SPLA.MCP.BasicTools\SPLA.MCP.BasicTools.csproj" />
     <ProjectReference Include="..\..\src\core\SPLA.Domain\SPLA.Domain.csproj" />
+    <ProjectReference Include="..\..\src\llm\SPLA.LLM.OpenAiCompat\SPLA.LLM.OpenAiCompat.csproj" />
     <ProjectReference Include="..\..\src\core\SPLA.Secrets.Dpapi\SPLA.Secrets.Dpapi.csproj" />
     <ProjectReference Include="..\..\src\plugins\SPLA.Plugins.Ssh\SPLA.Plugins.Ssh.csproj" />
     <ProjectReference Include="..\..\src\plugins\SPLA.Plugins.Browser\SPLA.Plugins.Browser.csproj" />

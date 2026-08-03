@@ -18,6 +18,12 @@ namespace SPLA.Plugins.Ssh;
 /// (<c>cmd; echo MARKER$?</c>) collected through its own subscription — so agent execution and
 /// human keystrokes coexist on the same stream. The marker echo is visible to human viewers by
 /// design: transparency over cosmetics.</para>
+///
+/// <para>Because completion is marker-based, anything that stops the marker from printing wedges the
+/// session — so both known causes are handled here rather than left to the caller's discipline:
+/// interactive pagers are disabled at open (<see cref="PagerSuppression"/>), and a Ctrl+C — which
+/// makes bash discard the marker along with the rest of the line — must go through
+/// <see cref="InterruptAsync"/>, which settles the pending run instead of orphaning it.</para>
 /// </summary>
 public sealed class SshLiveSession : IDisposable
 {
@@ -46,6 +52,33 @@ public sealed class SshLiveSession : IDisposable
         "|" + Esc + @"\][^" + Bel + "]*(?:" + Bel + "|" + Esc + @"\\)" +
         "|[" + Bel + "]",
         RegexOptions.Compiled);
+
+    /// <summary>Every token this class types into the shell for its own bookkeeping — end markers and
+    /// shell probes, in both their echoed (<c>…$?</c>) and executed (<c>…0</c>) form. Stripped globally,
+    /// not just per-run: a marker orphaned by an interrupt must not surface inside a LATER command's
+    /// output, which is exactly the kind of ghost that makes an agent misread what it is looking at.</summary>
+    private static readonly Regex SplaNoiseRx = new(
+        @"(?:;\s*)?(?:echo\s+)?__SPLA_(?:END|PROBE)_[0-9a-f]{8}__(?:\$\?|-?\d+)?",
+        RegexOptions.Compiled);
+
+    /// <summary>
+    /// Typed into every session before anything else runs: it neuters the interactive pagers that
+    /// would otherwise swallow a command and wait for a keypress. <c>systemctl status</c>,
+    /// <c>journalctl</c>, <c>git log</c> and <c>man</c> all pipe into <c>less</c> by default, and
+    /// <c>less</c> never returns — so the end marker never prints and the agent sees a command that
+    /// "never finishes" while a human looking at the terminal sees a blinking cursor and "lines 1-44".
+    ///
+    /// <para>This is deliberately enforced HERE and not asked of the agent in a prompt: a rule that
+    /// must be remembered on every single command, by every model, is a rule that will be forgotten.
+    /// The list of pager-using tools is open-ended; the environment closes the whole class at once.
+    /// <c>LESS=FRX</c> is the belt-and-braces case — if something launches <c>less</c> anyway it now
+    /// quits on short output (F), keeps colours (R) and leaves its output on screen (X).</para>
+    ///
+    /// <para>The line is visible to human viewers, like the end-marker echo: transparency over
+    /// cosmetics — a human must be able to account for every character the agent typed.</para>
+    /// </summary>
+    private const string PagerSuppression =
+        "export PAGER=cat SYSTEMD_PAGER=cat GIT_PAGER=cat MANPAGER=cat LESS=FRX";
 
     public string Id { get; }
     public string HostName { get; }
@@ -79,7 +112,12 @@ public sealed class SshLiveSession : IDisposable
         var shell = client.CreateShellStream("xterm-256color",
             Math.Clamp(cols, 20, 500), Math.Clamp(rows, 5, 200), 0, 0, 64 * 1024);
         var sudoPassword = await SshConnectionFactory.ResolveLoginPasswordAsync(cfg, resolver, ct);
-        return new SshLiveSession(id, hostName, openedBy, client, shell, sudoPassword);
+        var session = new SshLiveSession(id, hostName, openedBy, client, shell, sudoPassword);
+        // Before the session is handed to anyone: kill the pagers (see PagerSuppression). Queued into
+        // the pty straight away — the shell consumes it as soon as it is ready, so the first real
+        // command already inherits the environment.
+        session.Write(PagerSuppression + "\n");
+        return session;
     }
 
     // ── Fan-out ────────────────────────────────────────────────────────────────
@@ -158,7 +196,7 @@ public sealed class SshLiveSession : IDisposable
     // command KEEPS RUNNING as the session's pending run — the tool returns "running" with the output
     // so far, and later WaitAsync calls continue reading from the same cursor (nothing between calls
     // is lost; output keeps accumulating in the run buffer). A dropped connection is a RESULT
-    // ("disconnected"), never a hang. See docs/DESIGN_SSH_LiveSession_Tools.md.
+    // ("disconnected"), never a hang. See ../../../../docs/adr/ADR_20260715_plugins_ssh-live-session.md.
 
     /// <summary>Terminal states: done (marker seen, ExitCode set), running (timeout, command still
     /// going), matched (a WaitAsync 'until' regex hit), interrupted (Ctrl+C sent after timeout),
@@ -202,8 +240,12 @@ public sealed class SshLiveSession : IDisposable
         {
             if (_run != null)
                 throw new InvalidOperationException(
-                    $"a command is still running here: '{_run.Command}'. Use ssh_session_wait to keep " +
-                    "waiting, ssh_session_send ctrl_c to interrupt, or another session.");
+                    $"a command is still running here: '{_run.Command}'. Pick ONE: ssh_session_wait to keep " +
+                    "waiting; ssh_session_send with ctrl_c to interrupt it (that also frees the session); " +
+                    "ssh_session_send with q if a pager or other full-screen program has the terminal; " +
+                    "ssh_session_exec again with force=true to abandon it and run anyway; or ssh_session_exec " +
+                    "with a different 'host'/'session' to work in a second session. Do NOT simply retry the " +
+                    "same call — it will fail identically.");
             var marker = "__SPLA_END_" + Guid.NewGuid().ToString("N")[..8] + "__";
             run = new AgentRun
             {
@@ -228,6 +270,99 @@ public sealed class SshLiveSession : IDisposable
                 extra.Status == "done" ? "done" : "interrupted");
         }
         return result;
+    }
+
+    /// <summary>
+    /// Ctrl+C as a COMPLETE operation: interrupt, verify the shell came back, and settle the pending
+    /// run — the three things that have to happen together.
+    ///
+    /// <para>Why this can't be a bare <see cref="Write"/> of <c>\x03</c>: on SIGINT bash discards the
+    /// rest of the command line, so the <c>; echo MARKER$?</c> tail never runs and the end marker
+    /// never prints. A run whose completion is detected only by that marker therefore stays pending
+    /// FOREVER — every later <see cref="ExecAsync"/> refuses with "a command is still running" even
+    /// though the shell is sitting at a fresh prompt. The session is wedged until it is closed.
+    /// (<see cref="ExecAsync"/>'s own interrupt-on-timeout path always knew this and finished the run
+    /// by hand; the externally driven Ctrl+C did not, which is the bug this method exists to kill.)</para>
+    ///
+    /// <para>Verification is a probe: <c>echo PROBE$?</c> typed after the interrupt. If its OUTPUT
+    /// comes back, the shell owns the terminal again and the run is genuinely over. If it doesn't,
+    /// something interactive still holds the tty (a pager, top, vim, an installer) — the run stays
+    /// pending and the caller is told to send <c>q</c> instead of pretending the interrupt worked.</para>
+    /// </summary>
+    /// <returns>Status: <c>done</c> (it had actually finished on its own, ExitCode set),
+    /// <c>interrupted</c> (killed, shell is back), <c>still-busy</c> (a full-screen program has the
+    /// terminal — send <c>q</c>), <c>idle</c> (nothing was running; shell is free),
+    /// <c>disconnected</c>.</returns>
+    public async Task<AgentRunResult> InterruptAsync(CancellationToken ct)
+    {
+        AgentRun? pending;
+        lock (_sinkLock) pending = _run;
+
+        Write("\x03");
+        await Task.Delay(200, ct); // let the signal land and bash print its new prompt
+        var shellIsBack = await ProbeShellAsync(TimeSpan.FromSeconds(3), ct);
+
+        if (!IsAlive)
+        {
+            var dropped = pending == null ? "" : TakeOutput(pending, holdback: false);
+            if (pending != null) FinishRun(pending);
+            return new AgentRunResult(dropped, null, "disconnected");
+        }
+        if (pending == null)
+            return new AgentRunResult("", null, shellIsBack ? "idle" : "still-busy");
+
+        // The command may have completed on its own in the moment before the Ctrl+C landed — then the
+        // marker DID arrive and we have a real exit code. Prefer that over reporting an interrupt.
+        var exit = pending.Done.Task.IsCompleted ? pending.Done.Task.Result : null;
+        var output = TakeOutput(pending, holdback: false);
+
+        if (!shellIsBack && exit == null)
+            return new AgentRunResult(output, null, "still-busy"); // keep it pending — nothing was freed
+
+        FinishRun(pending);
+        return new AgentRunResult(output, exit, exit != null ? "done" : "interrupted");
+    }
+
+    /// <summary>Last-resort escape hatch: forgets the pending run WITHOUT touching the remote, so the
+    /// session accepts commands again. The remote command may well still be running — its leftover
+    /// output lands in whatever runs next (its marker is stripped by <see cref="SplaNoiseRx"/>, so it
+    /// cannot be mistaken for a result). Returns true when something was actually abandoned.</summary>
+    public bool ForceReleaseRun()
+    {
+        AgentRun? run;
+        lock (_sinkLock) { run = _run; _run = null; }
+        if (run == null) return false;
+        run.Sub?.Dispose();
+        run.OnChunk = null;
+        return true;
+    }
+
+    /// <summary>Asks the shell to prove it is at a prompt by echoing a one-off token. Only the
+    /// EXECUTED form matches (<c>PROBE0</c>) — the pty's echo of the typed line ends in a literal
+    /// <c>$?</c>, so seeing our own keystrokes can never be mistaken for an answer.</summary>
+    private async Task<bool> ProbeShellAsync(TimeSpan timeout, CancellationToken ct)
+    {
+        if (!IsAlive) return false;
+        var probe = "__SPLA_PROBE_" + Guid.NewGuid().ToString("N")[..8] + "__";
+        var rx = new Regex(Regex.Escape(probe) + @"(-?\d+)");
+        var seen = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+        var buf = new StringBuilder();
+        using var sub = Subscribe(chunk =>
+        {
+            lock (buf)
+            {
+                buf.Append(chunk);
+                if (rx.IsMatch(buf.ToString())) seen.TrySetResult(true);
+            }
+        }, withReplay: false);
+
+        Write("echo " + probe + "$?\n");
+
+        using var timer = CancellationTokenSource.CreateLinkedTokenSource(ct);
+        var delay = Task.Delay(timeout, timer.Token);
+        var winner = await Task.WhenAny(seen.Task, delay);
+        timer.Cancel(); // don't leave the loser pending
+        return winner == seen.Task;
     }
 
     /// <summary>Continues reading the session from the agent's cursor: returns when the pending
@@ -311,7 +446,10 @@ public sealed class SshLiveSession : IDisposable
                     return new AgentRunResult(TakeOutput(run, holdback: false), null, "matched");
             }
             if (DateTimeOffset.UtcNow >= deadline)
-                return new AgentRunResult(TakeOutput(run, holdback: true), null, "running");
+                // A passive watch has nothing to "still be running" — say so plainly ("quiet") rather
+                // than reporting a running command that does not exist.
+                return new AgentRunResult(TakeOutput(run, holdback: true), null,
+                    run.Marker == null ? "quiet" : "running");
             await Task.Delay(100, ct);
         }
     }
@@ -360,12 +498,10 @@ public sealed class SshLiveSession : IDisposable
     private string CleanFor(AgentRun run, string s)
     {
         s = AnsiRx.Replace(s, "");
-        if (run.Marker != null)
-        {
-            s = s.Replace(run.EchoTail, "");
-            if (run.MarkerRx != null) s = run.MarkerRx.Replace(s, "");
-        }
-        return s;
+        if (run.Marker != null) s = s.Replace(run.EchoTail, "");
+        // Global, not just this run's marker: probes and markers orphaned by an interrupt can print
+        // long after their run ended, and must never be readable as part of some later result.
+        return SplaNoiseRx.Replace(s, "");
     }
 
     public void Dispose()

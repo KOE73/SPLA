@@ -15,9 +15,22 @@ public class ResolvedSettings
     public double FrequencyPenalty { get; set; } = 0.0;
     public double RepeatPenalty { get; set; } = 1.0;
 
-    /// <summary>Named connections available to chats. Never empty after resolution — a default is
-    /// synthesized from the <c>llm:</c> section when none are configured.</summary>
+    /// <summary>Connections available to this project, each owning its models. Never empty after
+    /// resolution — a default is synthesized from the <c>llm:</c> section when none are configured.
+    /// This is the <i>tree</i>, for the settings UI; consumers that need to run a turn want
+    /// <see cref="Models"/>.</summary>
     public List<SplaConnectionSection> Connections { get; set; } = new();
+
+    /// <summary>
+    /// Every model entry across every connection, flattened, each still knowing its owner. This is
+    /// what a chat resolves against: the chat holds a model id, and running a turn needs the model's
+    /// wire name together with its connection's endpoint and credential.
+    /// <para>
+    /// Ids are globally unique (enforced at resolution), so the flat lookup is unambiguous and a
+    /// chat reference does not have to name the owning connection.
+    /// </para>
+    /// </summary>
+    public List<ResolvedModelEntry> Models { get; set; } = new();
 
     // Agent
     public AgentMode Mode { get; set; } = AgentMode.Edit;
@@ -45,12 +58,28 @@ public class ResolvedSettings
     /// Plugins that need to persist their own settings (e.g. sql_manage_connection) use this.</summary>
     public string? ProjectFilePath { get; set; }
 
-    /// <summary>Global secrets store (project + machine scoped). Set during load. Never null after
-    /// <see cref="ConfigLoader.LoadAndResolve"/>; plugins reach it via this property.</summary>
+    /// <summary>Global secrets store (user / project / shared scopes). Set during load. Never null
+    /// after <see cref="ConfigLoader.LoadAndResolve"/>; plugins reach it via this property.</summary>
     public ISecretStore Secrets { get; set; } = null!;
 
     /// <summary>Resolves <c>secret:</c> / <c>env:</c> references in config values to plaintext.</summary>
     public ISecretResolver SecretResolver { get; set; } = null!;
+
+    /// <summary>Who may use or manage which entry. Permissive locally (one person, nothing to
+    /// arbitrate); a server replaces it with the ACL-backed policy before serving anyone. Assigning
+    /// it also rebuilds <see cref="SecretResolver"/>, because the resolver is where the check
+    /// actually bites — see <see cref="Secrets.SecretResolver"/>.</summary>
+    public ISecretAccessPolicy SecretAccessPolicy
+    {
+        get => _secretAccessPolicy;
+        set
+        {
+            _secretAccessPolicy = value;
+            SecretResolver = new Secrets.SecretResolver(Secrets, value);
+        }
+    }
+
+    private ISecretAccessPolicy _secretAccessPolicy = PermissiveSecretAccessPolicy.Instance;
 
     /// <summary>Cross-component shared services scoped to this project's runtime. Lets independently
     /// loaded parties (a plugin's tools, the service's protocol handlers) meet on one object without
@@ -83,19 +112,32 @@ public class ResolvedSettings
     // Plugins
     public Dictionary<string, SplaPluginSection> Plugins { get; set; } = new();
 
-    // Skills
+    // Skills — per-skill overrides (skills.items), keyed by skill id.
     public Dictionary<string, SplaSkillSection> Skills { get; set; } = new();
 
-    /// <summary>Builds LLMSettings from the first connection + behaviour fields.
-    /// Callers that need a specific connection should use <see cref="ToLLMSettings(SplaConnectionSection?)"/>.</summary>
-    public LLMSettings ToLLMSettings() => ToLLMSettings(Connections.FirstOrDefault());
+    /// <summary>Configured skill providers (skills.sources), in priority order. Null = the built-in
+    /// default set. Replaced wholesale by the more specific layer, never merged: merging would make
+    /// an inherited source impossible to drop.</summary>
+    public List<SplaSkillSourceSection>? SkillSources { get; set; }
 
-    public LLMSettings ToLLMSettings(SplaConnectionSection? conn) => new()
+    /// <summary>Looks up a model entry by its global id. Null id or unknown id = null.</summary>
+    public ResolvedModelEntry? FindModel(string? modelId) =>
+        string.IsNullOrWhiteSpace(modelId)
+            ? null
+            : Models.FirstOrDefault(m => string.Equals(m.Id, modelId, StringComparison.OrdinalIgnoreCase));
+
+    /// <summary>Builds LLMSettings from the first model entry + behaviour fields.
+    /// Callers that need a specific entry should use <see cref="ToLLMSettings(ResolvedModelEntry?)"/>.</summary>
+    public LLMSettings ToLLMSettings() => ToLLMSettings(Models.FirstOrDefault());
+
+    public LLMSettings ToLLMSettings(ResolvedModelEntry? entry) => new()
     {
-        BaseUrl          = conn?.Endpoint ?? "http://127.0.0.1:1234/v1/",
-        ApiKey           = conn?.ApiKey   ?? "lm-studio",
-        ModelName        = conn?.Model is { Length: > 0 } m && m != "auto" ? m : "",
-        ContextLength    = conn?.ContextLength is > 0 ? conn.ContextLength : null,
+        Provider         = entry?.Provider,
+        ConnectionId     = entry?.Connection.Id,
+        BaseUrl          = entry?.Endpoint ?? "http://127.0.0.1:1234/v1/",
+        ApiKey           = entry?.ApiKey   ?? "lm-studio",
+        ModelName        = entry?.Model is { Length: > 0 } m && m != "auto" ? m : "",
+        ContextLength    = entry?.ContextLength is > 0 ? entry.ContextLength : null,
         Temperature      = Temperature,
         Mode             = Mode,
         Theme            = Theme,
@@ -104,6 +146,35 @@ public class ResolvedSettings
         FrequencyPenalty = FrequencyPenalty,
         RepeatPenalty    = RepeatPenalty
     };
+}
+
+/// <summary>
+/// One model entry paired with the connection that owns it — everything a turn needs in one object,
+/// so callers never have to walk back up the tree to find an endpoint or a key.
+/// <para>
+/// Both halves are the live config objects, not copies: editing a connection in the settings panel
+/// is visible to chats immediately, which is the behaviour the flat list had and nothing should
+/// have lost.
+/// </para>
+/// </summary>
+public sealed class ResolvedModelEntry
+{
+    public required SplaConnectionSection Connection { get; init; }
+    public required SplaModelSection Entry { get; init; }
+
+    /// <summary>The model entry's globally unique id — what a chat stores.</summary>
+    public string Id => Entry.Id;
+
+    /// <summary>Label for pickers: the model's own name, qualified by its connection. Two entries for
+    /// the same model under different keys are told apart by the connection half, so it is never
+    /// dropped.</summary>
+    public string DisplayName => $"{Connection.DisplayName} · {Entry.DisplayName}";
+
+    public string? Provider => Connection.Provider;
+    public string? Endpoint => Connection.Endpoint;
+    public string? ApiKey => Connection.ApiKey;
+    public string? Model => Entry.Model;
+    public int? ContextLength => Entry.ContextLength;
 }
 
 /// <summary>
@@ -158,6 +229,7 @@ public static class SettingsResolver
                 r.Theme = defaults.Ui.Theme ?? r.Theme;
                 r.Density = defaults.Ui.Density ?? r.Density;
             }
+            ApplySkills(r, defaults.Skills);
         }
 
         // Layer 2: project overrides
@@ -211,24 +283,70 @@ public static class SettingsResolver
                 foreach (var kvp in project.Plugins)
                     r.Plugins[kvp.Key] = kvp.Value;
             }
-            if (project.Skills != null)
-            {
-                foreach (var kvp in project.Skills)
-                    r.Skills[kvp.Key] = kvp.Value;
-            }
+            ApplySkills(r, project.Skills);
         }
 
         // Finalize: keep configured connections; synthesize a default from the llm: section when none
-        // are declared, so chats always have at least one connection to resolve against.
+        // are declared, so chats always have at least one model entry to resolve against.
         r.Connections = connections.Values.ToList();
         if (r.Connections.Count == 0)
             r.Connections.Add(new SplaConnectionSection
             {
                 Id = "default", Name = "Default", Provider = "lmstudio",
-                Endpoint = llmEndpoint, ApiKey = llmApiKey, Model = llmModel
+                Endpoint = llmEndpoint, ApiKey = llmApiKey,
+                Models = { new SplaModelSection { Id = "default", Name = "Default", Model = llmModel } }
             });
 
+        r.Models = FlattenModels(r.Connections);
         return r;
+    }
+
+    /// <summary>
+    /// Projects the connection tree onto the flat, globally-keyed model list chats resolve against.
+    /// <para>
+    /// Duplicate ids throw rather than silently winning: a chat reference is a bare id, so two entries
+    /// sharing one would make which model a chat runs on depend on list order — a bug that surfaces as
+    /// "it answered from the wrong key" long after the config was edited. A connection with no models
+    /// is legal (half-configured, being set up) and simply contributes nothing.
+    /// </para>
+    /// </summary>
+    private static List<ResolvedModelEntry> FlattenModels(List<SplaConnectionSection> connections)
+    {
+        var seen = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+        var models = new List<ResolvedModelEntry>();
+
+        foreach (var conn in connections)
+            foreach (var entry in conn.Models)
+            {
+                if (string.IsNullOrWhiteSpace(entry.Id)) continue;
+                if (seen.TryGetValue(entry.Id, out var owner))
+                    throw new InvalidOperationException(
+                        $"Duplicate model id '{entry.Id}': declared under both connection '{owner}' and " +
+                        $"'{conn.Id}'. Model ids are referenced by chats without naming a connection, so " +
+                        $"they must be unique across the whole project.");
+                seen[entry.Id] = conn.Id;
+                models.Add(new ResolvedModelEntry { Connection = conn, Entry = entry });
+            }
+
+        return models;
+    }
+
+    /// <summary>
+    /// Layers one <c>skills:</c> block over the result. The two halves behave differently on purpose:
+    /// per-skill items MERGE by id (a project switches off one inherited skill without restating the
+    /// rest), while the source list REPLACES wholesale (merging would leave no way to drop a source
+    /// inherited from defaults). A layer that omits <c>sources</c> leaves the inherited list alone.
+    /// </summary>
+    private static void ApplySkills(ResolvedSettings r, SplaSkillsSection? skills)
+    {
+        if (skills == null) return;
+
+        if (skills.Sources != null)
+            r.SkillSources = skills.Sources;
+
+        if (skills.Items != null)
+            foreach (var kvp in skills.Items)
+                r.Skills[kvp.Key] = kvp.Value;
     }
 
     /// <summary>Adds/overrides connections by id, skipping entries without an id.</summary>

@@ -5,7 +5,7 @@ using SPLA.MCP.Core.Permissions;
 namespace SPLA.Tests;
 
 /// <summary>
-/// Phase 3.0 (docs/host-abstraction-plan.md): ResolvedSettings.PermRead/PermWrite/PermShell/
+/// Phase 3.0 (../../docs/plans/PLAN_20260701_core_host-abstraction.md): ResolvedSettings.PermRead/PermWrite/PermShell/
 /// PermInternet were already round-tripped through the settings UI (SettingsOps.GetAgent/SaveAgent,
 /// persisted to the .spla project) but PermissionManager never consulted them — a project could be
 /// configured to deny shell entirely and the agent would ignore it completely. This closes that gap:

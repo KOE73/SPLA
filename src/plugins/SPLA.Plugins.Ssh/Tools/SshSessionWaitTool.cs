@@ -41,7 +41,10 @@ internal sealed class SshSessionWaitTool : IMcpTool
                 "'until' (a regex) matches the output, when the connection drops (status disconnected — e.g. " +
                 "the reboot you asked for), or when timeout_seconds passes (status running — call again; for " +
                 "long jobs like apt upgrade just keep calling with generous timeouts). If output stalls and the " +
-                "command seems to wait for input, answer with ssh_session_send.",
+                "command seems to wait for input, answer with ssh_session_send. " +
+                "Waiting is only right while output is still arriving: if a wait comes back with NO output at all, " +
+                "stop waiting and act — ssh_session_send with ctrl_c frees the session and reports whether the " +
+                "shell came back. Status 'quiet' means nothing is running at all, so further waiting is pointless.",
             Scope = ToolScope.Internet,
             Effect = ToolEffect.Read,
             Risk = ToolRisk.Low,
@@ -116,8 +119,16 @@ internal sealed class SshSessionWaitTool : IMcpTool
                 "done" => $"exit: {res.ExitCode?.ToString() ?? "?"}",
                 "matched" => "'until' pattern matched — new output below." +
                              (pending is null ? "" : " The command is still running."),
-                "running" => $"STILL RUNNING after {timeout.TotalSeconds:0}s more — new output below (empty means no " +
-                             "output at all: the command may be waiting for input — check with ssh_session_send / the terminal).",
+                "running" => $"STILL RUNNING after {timeout.TotalSeconds:0}s more — new output below." +
+                             (string.IsNullOrWhiteSpace(res.NewOutput)
+                                 ? " NO OUTPUT AT ALL in that window. Do not just wait again: this usually means " +
+                                   "the command is waiting for a keypress. Send ctrl_c (it frees the session and " +
+                                   "tells you whether the shell came back); if the answer says a full-screen " +
+                                   "program still owns the terminal, send q."
+                                 : " Continue with ssh_session_wait, or ssh_session_send with ctrl_c to stop it."),
+                "quiet" => $"NOTHING IS RUNNING in this session — it is idle at a shell prompt, and this was a " +
+                           $"passive watch that saw no new output for {timeout.TotalSeconds:0}s. Waiting again will " +
+                           "not change that: run a command with ssh_session_exec.",
                 "disconnected" => "CONNECTION CLOSED BY REMOTE (reboot or network drop) — the session is gone. " +
                                   "Open a new session to reconnect; after a reboot retry with pauses until the host is back.",
                 _ => res.Status

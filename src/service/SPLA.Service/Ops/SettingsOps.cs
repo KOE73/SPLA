@@ -27,9 +27,15 @@ public static class SettingsOps
             Provider = c.Provider,
             Endpoint = c.Endpoint,
             ApiKey = c.ApiKey,
-            Model = c.Model,
-            LockModel = c.LockModel,
-            SwapModel = c.SwapModel
+            AdminKey = c.AdminKey,
+            SwapModel = c.SwapModel,
+            Models = c.Models.Select(m => new ModelEditDto
+            {
+                Id = m.Id,
+                Name = m.Name,
+                Model = m.Model,
+                ContextLength = m.ContextLength
+            }).ToList()
         }).ToList()
     };
 
@@ -44,6 +50,21 @@ public static class SettingsOps
             .Select(g => g.Last())
             .ToList();
 
+        // Model ids are referenced by chats without naming a connection, so a duplicate across two
+        // connections has no defined meaning. Resolution throws on one — refusing the save here is
+        // what keeps a bad edit from writing a project file that no longer loads.
+        var clash = sections
+            .SelectMany(c => c.Models.Select(m => (Conn: c.Id, m.Id)))
+            .GroupBy(x => x.Id, StringComparer.OrdinalIgnoreCase)
+            .FirstOrDefault(g => g.Count() > 1);
+        if (clash != null)
+        {
+            var result = GetConnections(runtime);
+            result.Error = $"Model id '{clash.Key}' is used by more than one connection " +
+                           $"({string.Join(", ", clash.Select(x => x.Conn).Distinct())}). Ids must be unique across the project.";
+            return result;
+        }
+
         // Persist into the project file's connections: section, leaving everything else untouched.
         var path = runtime.Settings.ProjectFilePath;
         if (path != null)
@@ -53,9 +74,14 @@ public static class SettingsOps
             ConfigLoader.SaveProjectSections(project, path, "connections");
         }
 
-        // Mutate the live settings in place so running chats resolve against the new list.
+        // Mutate the live settings in place so running chats resolve against the new list. The flat
+        // model projection is rebuilt from the same objects — chats resolve through it, so leaving it
+        // stale would keep them pointed at the pre-save tree.
         runtime.Settings.Connections.Clear();
         runtime.Settings.Connections.AddRange(sections);
+        runtime.Settings.Models = sections
+            .SelectMany(c => c.Models.Select(m => new ResolvedModelEntry { Connection = c, Entry = m }))
+            .ToList();
 
         return GetConnections(runtime);
     }
@@ -236,12 +262,141 @@ public static class SettingsOps
                 foreach (var tool in runtime.PluginManager.EnsureLoaded(dto.Id))
                     runtime.McpHost.RegisterTool(tool);
 
+        // A plugin toggle moves skills too: the plugin's own bundled skills appear or vanish, and a
+        // skill elsewhere that required one of its tools becomes available or blocked. Rebuild here
+        // rather than leaving the skill list resolved against the tool surface as it was at startup.
+        runtime.RefreshSkillCapabilities();
+
         return GetPlugins(runtime);
+    }
+
+    // ── Skills: per-skill switches over the source registry ──────────────────
+
+    public static SkillsPayload GetSkills(AgentRuntime runtime)
+    {
+        var payload = new SkillsPayload { CanPersist = runtime.Settings.ProjectFilePath != null };
+
+        foreach (var source in runtime.SkillManager.Sources)
+            payload.Sources.Add(new SkillSourceDto
+            {
+                Id = source.Id,
+                Label = source.Label,
+                Trust = source.Trust.ToString(),
+                Path = (source as SPLA.MCP.Core.Skills.DirectorySkillSource)?.RootPath
+            });
+
+        // GetAll, not GetAvailable: an unavailable skill must stay visible WITH its reason, otherwise
+        // the panel silently loses the one thing the user needs in order to fix it.
+        foreach (var skill in runtime.SkillManager.GetAll())
+            payload.Skills.Add(new CapabilityDto
+            {
+                Id = skill.Id,
+                Kind = "skill",
+                Name = skill.Id,
+                Description = skill.Description,
+                Enabled = skill.IsEnabled,
+                Preloaded = skill.IsPreloaded,
+                State = skill.State.ToString(),
+                StateReason = string.IsNullOrWhiteSpace(skill.StateReason) ? null : skill.StateReason,
+                Source = skill.SourceId,
+                SourceLabel = skill.SourceLabel,
+                MissingTools = skill.MissingTools.ToList(),
+                MissingFeatures = skill.MissingFeatures.ToList(),
+                MissingPlugins = skill.MissingPlugins.ToList()
+            });
+
+        return payload;
+    }
+
+    /// <summary>Persists per-skill switches to <c>skills.items</c> and applies them live — skills are
+    /// read on demand, so unlike plugin assemblies nothing needs a restart. The <c>sources</c> half of
+    /// the section is left untouched: this editor switches skills on and off, it does not repoint
+    /// where they come from.</summary>
+    public static SkillsPayload SaveSkills(AgentRuntime runtime, IEnumerable<CapabilityDto> incoming)
+    {
+        foreach (var dto in incoming)
+        {
+            if (string.IsNullOrWhiteSpace(dto.Id)) continue;
+            runtime.Settings.Skills[dto.Id] = new SplaSkillSection
+            {
+                Enabled = dto.Enabled,
+                Preloaded = dto.Preloaded ? true : null
+            };
+        }
+
+        var path = runtime.Settings.ProjectFilePath;
+        if (path != null)
+        {
+            var project = ConfigLoader.LoadProjectRaw(path);
+            var section = project.Skills ??= new SplaSkillsSection();
+            section.Items ??= new Dictionary<string, SplaSkillSection>();
+            foreach (var kvp in runtime.Settings.Skills) section.Items[kvp.Key] = kvp.Value;
+            ConfigLoader.SaveProjectSections(project, path, "skills");
+        }
+
+        runtime.SkillManager.ApplySettings(runtime.Settings.Skills);
+        return GetSkills(runtime);
+    }
+
+    // ── Built-in capabilities: the agent.capabilities set ────────────────────
+
+    public static FeaturesPayload GetFeatures(AgentRuntime runtime)
+    {
+        var payload = new FeaturesPayload { CanPersist = runtime.Settings.ProjectFilePath != null };
+
+        // Resolved from the LIVE setting rather than runtime.HasFeature, which is frozen at startup:
+        // after a save the panel must show what was saved, while RestartToApply explains that the
+        // tools themselves follow on the next start.
+        var enabledIds = SPLA.MCP.Core.Agent.AgentFeatureCatalog
+            .Resolve(runtime.Settings.Capabilities)
+            .ToHashSet(StringComparer.Ordinal);
+
+        foreach (var id in SPLA.MCP.Core.Agent.AgentFeatureCatalog.Order)
+        {
+            var enabled = enabledIds.Contains(id);
+            payload.Features.Add(new CapabilityDto
+            {
+                Id = id,
+                Kind = "builtin",
+                Name = id,
+                Enabled = enabled,
+                State = enabled ? "Enabled" : "DisabledByUser",
+                Requires = SPLA.MCP.Core.Agent.AgentFeatureCatalog.RequiresOf(id).ToList()
+            });
+        }
+
+        return payload;
+    }
+
+    /// <summary>Persists the enabled built-in set to <c>agent.capabilities</c>. Dependencies are
+    /// resolved through the catalog before writing, so the stored list is always self-consistent —
+    /// enabling core.checkpoints without core.memory would otherwise produce a file that silently
+    /// means something else than it says. Takes effect on the next start: feature tools register once.</summary>
+    public static FeaturesPayload SaveFeatures(AgentRuntime runtime, IEnumerable<CapabilityDto> incoming)
+    {
+        var selected = incoming.Where(f => f.Enabled && !string.IsNullOrWhiteSpace(f.Id))
+                               .Select(f => f.Id).ToList();
+        var resolved = SPLA.MCP.Core.Agent.AgentFeatureCatalog.Resolve(selected).ToList();
+
+        // The full catalog means "no restriction" — store null rather than an exhaustive list, so a
+        // capability added in a future version is enabled by default instead of silently missing.
+        var isFullSet = resolved.Count == SPLA.MCP.Core.Agent.AgentFeatureCatalog.Order.Count;
+        runtime.Settings.Capabilities = isFullSet ? null : resolved;
+
+        var path = runtime.Settings.ProjectFilePath;
+        if (path != null)
+        {
+            var project = ConfigLoader.LoadProjectRaw(path);
+            (project.Agent ??= new SplaAgentSection()).Capabilities = isFullSet ? null : resolved;
+            ConfigLoader.SaveProjectSections(project, path, "agent");
+        }
+
+        return GetFeatures(runtime);
     }
 
     private static SplaConnectionSection ToSection(ConnectionEditDto d)
     {
-        var id = string.IsNullOrWhiteSpace(d.Id) ? Slug(d.Name ?? d.Model ?? "") : d.Id.Trim();
+        var id = string.IsNullOrWhiteSpace(d.Id) ? Slug(d.Name ?? "") : d.Id.Trim();
         return new SplaConnectionSection
         {
             Id = id,
@@ -249,9 +404,29 @@ public static class SettingsOps
             Provider = Blank(d.Provider),
             Endpoint = Blank(d.Endpoint),
             ApiKey = Blank(d.ApiKey),
+            AdminKey = Blank(d.AdminKey),
+            SwapModel = d.SwapModel,
+            Models = d.Models
+                .Select(m => ToModelSection(m, id))
+                .Where(m => !string.IsNullOrWhiteSpace(m.Id))
+                .GroupBy(m => m.Id, StringComparer.OrdinalIgnoreCase)   // last write wins per id
+                .Select(g => g.Last())
+                .ToList()
+        };
+    }
+
+    /// <summary>Maps one model row. A blank id is derived from the entry's own name or wire model,
+    /// prefixed with the owning connection — the readable default for the common case where two
+    /// connections carry the same model and a bare "opus" would collide across them.</summary>
+    private static SplaModelSection ToModelSection(ModelEditDto d, string connectionId)
+    {
+        var raw = string.IsNullOrWhiteSpace(d.Id) ? Slug($"{connectionId}-{d.Name ?? d.Model ?? ""}") : d.Id.Trim();
+        return new SplaModelSection
+        {
+            Id = raw,
+            Name = string.IsNullOrWhiteSpace(d.Name) ? null : d.Name.Trim(),
             Model = Blank(d.Model),
-            LockModel = d.LockModel,
-            SwapModel = d.SwapModel
+            ContextLength = d.ContextLength is > 0 ? d.ContextLength : null
         };
     }
 

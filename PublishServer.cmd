@@ -1,6 +1,12 @@
 @echo off
 setlocal
 echo === SPLA Publish Server (full bundle with plugins) ===
+
+set "NODEJS_DIR="
+for /f "usebackq delims=" %%I in (`powershell -NoProfile -ExecutionPolicy Bypass -File "%~dp0EnsureNodeJs.ps1" -PathOnly`) do set "NODEJS_DIR=%%I"
+if not defined NODEJS_DIR exit /b 1
+set "PATH=%NODEJS_DIR%;%PATH%"
+
 echo Stopping running SPLA processes...
 taskkill /IM SPLA.Server.exe /F >nul 2>nul
 taskkill /IM SPLA.CLI.exe /F >nul 2>nul

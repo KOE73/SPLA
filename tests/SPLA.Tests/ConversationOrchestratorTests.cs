@@ -4,6 +4,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using SPLA.Agent;
 using SPLA.Domain.Interfaces;
+using SPLA.Domain.Llm;
 using SPLA.Domain.Models;
 using SPLA.Domain.Settings;
 
@@ -12,29 +13,17 @@ namespace SPLA.Tests;
 public class ConversationOrchestratorTests
 {
     // A scripted LLM: returns each queued response in order. Records the context it was given.
-    private sealed class FakeLlm : ILLMService
+    private sealed class FakeLlm : ILlmGateway
     {
         private readonly Queue<ChatMessage> _responses;
         public List<List<ChatMessage>> SeenContexts { get; } = new();
 
         public FakeLlm(IEnumerable<ChatMessage> responses) => _responses = new(responses);
 
-        public Task<ChatMessage> SendMessageStreamFullAsync(
-            IEnumerable<ChatMessage> messages, LLMSettings settings, IEnumerable<ToolDefinition>? tools,
-            System.Func<string, Task>? onDelta, CancellationToken cancellationToken = default,
-            System.Func<string, Task>? onReasoning = null)
+        public Task<LlmTurnResult> InvokeAsync(LlmTurnContext ctx, CancellationToken ct = default)
         {
-            SeenContexts.Add(messages.ToList());
-            return Task.FromResult(_responses.Dequeue());
-        }
-
-        public Task<ChatMessage> SendMessageAsync(IEnumerable<ChatMessage> messages, LLMSettings settings, IEnumerable<ToolDefinition>? tools = null, CancellationToken cancellationToken = default)
-            => Task.FromResult(_responses.Dequeue());
-
-        public async IAsyncEnumerable<string> SendMessageStreamAsync(IEnumerable<ChatMessage> messages, LLMSettings settings, IEnumerable<ToolDefinition>? tools = null, [System.Runtime.CompilerServices.EnumeratorCancellation] CancellationToken cancellationToken = default)
-        {
-            await Task.CompletedTask;
-            yield break;
+            SeenContexts.Add(ctx.Messages.ToList());
+            return Task.FromResult(new LlmTurnResult { Message = _responses.Dequeue() });
         }
     }
 

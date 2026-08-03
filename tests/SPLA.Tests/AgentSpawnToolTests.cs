@@ -3,6 +3,7 @@ using SPLA.Domain.Interfaces;
 using SPLA.Domain.Models;
 using SPLA.Domain.Settings;
 using SPLA.MCP.Core.Plugins;
+using SPLA.MCP.Core.Skills;
 using SPLA.MCP.Core.Tools;
 using System.Collections.Generic;
 using System.IO;
@@ -12,31 +13,20 @@ using System.Threading.Tasks;
 
 namespace SPLA.Tests;
 
-/// <summary>Stub LLM service that returns a fixed response without making network calls.</summary>
-file sealed class StubLlmService : ILLMService
+/// <summary>Stub gateway that returns a fixed response without making network calls.</summary>
+file sealed class StubLlmService : SPLA.Domain.Llm.ILlmGateway
 {
     private readonly string _response;
     public StubLlmService(string response = "stub result") => _response = response;
 
-    public Task<ChatMessage> SendMessageAsync(IEnumerable<ChatMessage> messages, LLMSettings settings,
-        IEnumerable<ToolDefinition>? tools = null, CancellationToken cancellationToken = default)
-        => Task.FromResult(new ChatMessage { Role = ChatRole.Assistant, Content = _response });
-
-    public async IAsyncEnumerable<string> SendMessageStreamAsync(IEnumerable<ChatMessage> messages,
-        LLMSettings settings, IEnumerable<ToolDefinition>? tools = null,
-        [EnumeratorCancellation] CancellationToken cancellationToken = default)
+    public Task<SPLA.Domain.Llm.LlmTurnResult> InvokeAsync(
+        SPLA.Domain.Llm.LlmTurnContext ctx, CancellationToken ct = default)
     {
-        yield return _response;
-        await Task.CompletedTask;
-    }
-
-    public Task<ChatMessage> SendMessageStreamFullAsync(IEnumerable<ChatMessage> messages,
-        LLMSettings settings, IEnumerable<ToolDefinition>? tools,
-        Func<string, Task>? onDelta, CancellationToken cancellationToken = default,
-        Func<string, Task>? onReasoning = null)
-    {
-        onDelta?.Invoke(_response);
-        return Task.FromResult(new ChatMessage { Role = ChatRole.Assistant, Content = _response });
+        ctx.OnDelta?.Invoke(_response);
+        return Task.FromResult(new SPLA.Domain.Llm.LlmTurnResult
+        {
+            Message = new ChatMessage { Role = ChatRole.Assistant, Content = _response }
+        });
     }
 }
 
@@ -56,21 +46,8 @@ public class AgentSpawnToolTests
     {
         var llm = new StubLlmService(llmResponse);
         var tools = new StubToolHost();
-        var skills = new SkillManager();
-
-        // Write a temporary skill
-        var tempDir = Path.Combine(Path.GetTempPath(), "spla_spawn_" + Path.GetRandomFileName());
-        var skillsDir = Path.Combine(tempDir, "test-plugin", "skills");
-        Directory.CreateDirectory(skillsDir);
-        File.WriteAllText(Path.Combine(skillsDir, "test.skill.md"), """
-            ---
-            id: test.skill
-            description: A test skill
-            ---
-            Step 1: Do the thing.
-            Step 2: Report done.
-            """);
-        skills.LoadSkills(tempDir);
+        var skills = new SkillManager([new SPLA.Tests.Fakes.FakeSkillSource()
+            .With("test.skill", body: "Step 1: Do the thing.\nStep 2: Report done.", description: "A test skill")]);
 
         var settings = new ResolvedSettings { Mode = AgentMode.Edit };
         var plugins = new PluginManager(settings);

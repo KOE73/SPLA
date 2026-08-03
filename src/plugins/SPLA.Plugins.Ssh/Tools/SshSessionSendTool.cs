@@ -1,3 +1,4 @@
+using System.Text;
 using System.Text.Json;
 using SPLA.Domain.Models;
 using SPLA.MCP.Core.Interfaces;
@@ -31,8 +32,15 @@ internal sealed class SshSessionSendTool : IMcpTool
         {
             Name = Name,
             Description =
-                "Sends raw keys into a live SSH session (no completion wait): answer an interactive prompt, " +
-                "press q to leave a pager, ctrl_c to interrupt. Special names: ctrl_c, ctrl_d, enter, esc — " +
+                "Sends raw keys into a live SSH session: answer an interactive prompt, press q to leave a " +
+                "pager, ctrl_c to interrupt a running command. " +
+                "ctrl_c is handled specially and IS the way to free a session whose command will not end: it " +
+                "interrupts, checks that the shell came back and reports one of INTERRUPTED / ALREADY FINISHED / " +
+                "CTRL+C DID NOT FREE THE SHELL — after INTERRUPTED the session is immediately usable again, so " +
+                "go straight to ssh_session_exec and do not call ssh_session_wait. " +
+                "Ctrl+C does NOT quit full-screen programs (less, top, vim, installers): if you get " +
+                "CTRL+C DID NOT FREE THE SHELL, send q (pager/top) rather than repeating ctrl_c. " +
+                "Special names: ctrl_c, ctrl_d, enter, esc — " +
                 "anything else is sent literally (kept verbatim, no trimming). To answer a prompt or pick a menu " +
                 "item that requires confirmation, set enter=true so a newline is appended after the text — e.g. " +
                 "keys='y' enter=true, or keys='23' enter=true for a numbered menu. Leave enter=false (default) for " +
@@ -109,7 +117,40 @@ internal sealed class SshSessionSendTool : IMcpTool
         if (appendEnter && !payload.EndsWith('\n'))
             payload += "\n";
 
+        // ctrl_c is NOT a keystroke like the others: SIGINT destroys the end marker of whatever the
+        // agent was running, so writing \x03 blindly would leave the session's pending run un-finishable
+        // and every later ssh_session_exec refusing with "a command is still running". InterruptAsync
+        // interrupts, verifies the shell returned, and settles the run — and tells us which of those
+        // actually happened, so the answer below can never claim a success that didn't occur.
+        if (keys == "ctrl_c")
+        {
+            var pending = session.PendingCommand;
+            var res = await session.InterruptAsync(cancellationToken);
+            var sb = new StringBuilder();
+            sb.AppendLine($"[{session.Id}] Ctrl+C" + (pending is null ? "" : $" → {pending}"));
+            sb.AppendLine(res.Status switch
+            {
+                "interrupted" => "INTERRUPTED — the command was stopped and the shell is back at a prompt. " +
+                                 "The session is free: run the next command with ssh_session_exec.",
+                "done" => $"ALREADY FINISHED before the interrupt landed — exit: {res.ExitCode?.ToString() ?? "?"}. " +
+                          "The session is free.",
+                "idle" => "Nothing was running. The shell is at a prompt and the session is free.",
+                "still-busy" => "CTRL+C DID NOT FREE THE SHELL — a full-screen program still owns the terminal " +
+                                "(a pager such as less, or top/vim/an installer). Ctrl+C does not quit those. " +
+                                "Send keys='q' next (pagers, top), or keys='esc' then ':q!' with enter=true (vim). " +
+                                "Do NOT send ctrl_c again — it will do exactly the same nothing. If nothing helps, " +
+                                "ssh_session_exec with force=true abandons the stuck command, or ssh_session_close " +
+                                "ends the session.",
+                "disconnected" => "CONNECTION CLOSED BY REMOTE — the session is gone. Open a new one to reconnect.",
+                _ => res.Status
+            });
+            if (!string.IsNullOrWhiteSpace(res.NewOutput)) sb.AppendLine(res.NewOutput.TrimEnd());
+            return sb.ToString().TrimEnd();
+        }
+
         session.Write(payload);
-        return $"Sent to '{session.Id}'.";
+        return $"Sent to '{session.Id}'." + (session.PendingCommand is null
+            ? " Nothing is running in this session — check the effect with ssh_session_exec."
+            : $" '{session.PendingCommand}' is still pending here — read the effect with ssh_session_wait.");
     }
 }

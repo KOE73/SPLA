@@ -37,7 +37,7 @@ public class SplaProject
     public Dictionary<string, SplaPluginSection>? Plugins { get; set; }
 
     [YamlMember(Alias = "skills")]
-    public Dictionary<string, SplaSkillSection>? Skills { get; set; }
+    public SplaSkillsSection? Skills { get; set; }
 
     [YamlMember(Alias = "docs")]
     public List<string>? Docs { get; set; }

@@ -32,6 +32,17 @@ public sealed class LlmRequestException : Exception
     /// <summary>The raw provider body/reason, kept for logs; never shown to the user directly.</summary>
     public string? Detail { get; }
 
+    /// <summary>
+    /// Provider observations that came with the failure — the same shape as
+    /// <see cref="Llm.LlmTurnResult.Signals"/>.
+    /// <para>
+    /// They must travel on the failure path too, and specifically here: a 429 is the one response
+    /// guaranteed to carry rate-limit headers, and it never produces a result object. Collecting
+    /// signals only from successful turns would lose them exactly when they matter.
+    /// </para>
+    /// </summary>
+    public IReadOnlyList<Llm.ProviderFact> Signals { get; init; } = [];
+
     public LlmRequestException(LlmErrorKind kind, string message, HttpStatusCode? statusCode = null, string? detail = null)
         : base(message)
     {

@@ -6,12 +6,15 @@ using SPLA.Domain.Interfaces;
 using SPLA.Domain.Models;
 using SPLA.Domain.Settings;
 using SPLA.LLM.LMStudio;
+using SPLA.LLM.OpenAiCompat;
+using SPLA.LLM.OpenRouter;
 using SPLA.MCP.BasicTools.FileSystem;
 using SPLA.MCP.BasicTools.SystemTools;
 using SPLA.MCP.Core;
 using SPLA.MCP.Core.Agent;
 using SPLA.MCP.Core.Permissions;
 using SPLA.MCP.Core.Plugins;
+using SPLA.MCP.Core.Skills;
 
 namespace SPLA.Runtime;
 
@@ -39,7 +42,27 @@ public sealed class AgentRuntime : IDisposable
     /// <summary>Process-wide domain-event hub. Mutators publish state changes here; the host fans them
     /// out to clients. The single "say what changed once" point — see <see cref="ServiceEvents"/>.</summary>
     public ServiceEvents Events { get; } = new();
-    public LMStudioClient Llm { get; }
+    /// <summary>
+    /// The composed LLM pipeline — the only way anything in this runtime reaches a model. Provider
+    /// clients are deliberately never exposed: if they were reachable, accounting, quotas and privacy
+    /// would be optional in practice. See <see cref="SPLA.Domain.Llm.ILlmGateway"/>.
+    /// </summary>
+    public SPLA.Domain.Llm.ILlmGateway Llm { get; }
+
+    /// <summary>The providers this runtime can dispatch to, keyed by a connection's <c>provider</c>
+    /// field. Exposed for settings UIs that list what is available — never as a way to reach a
+    /// client directly; turns go through <see cref="Llm"/>.</summary>
+    public SPLA.Domain.Llm.LlmProviderRegistry Providers { get; }
+
+    /// <summary>The OpenRouter provider, for the settings surfaces that need its catalog and account
+    /// figures. Held concretely because those are provider-specific by nature — the generic path is
+    /// the <see cref="SPLA.Domain.Llm.IProviderAccountInfo"/> type check, which is what callers that
+    /// must stay provider-agnostic use instead.</summary>
+    public OpenRouterProvider OpenRouter { get; private set; } = null!;
+
+    /// <summary>Last-seen provider figures per connection (rate-limit budget, reset times). Distinct
+    /// from the token ledger: this is current state, overwritten; the ledger is history, appended.</summary>
+    public SPLA.Domain.Llm.ProviderStateStore ProviderState { get; } = new();
     public IModelManagementService ModelManagement { get; }
     public McpHost McpHost { get; }
     public SkillManager SkillManager { get; }
@@ -88,24 +111,52 @@ public sealed class AgentRuntime : IDisposable
         LoggerFactory = loggerFactory;
 
         _httpClient = new HttpClient { Timeout = TimeSpan.FromMinutes(10) };
-        Llm = new LMStudioClient(_httpClient, loggerFactory.CreateLogger<LMStudioClient>());
+        // ── The LLM pipeline, baked once ──────────────────────────────────────────────────────────
+        // The blueprint is what a host varies (CLI, worker and server each declare their own set).
+        // Nothing is assembled per turn — per-turn variation travels in LlmTurnContext instead.
+        //
+        // A provider is its own project, referenced directly. It is not a tool plugin and has nothing
+        // to do with that host: it contributes data for the pipeline's terminal step and cannot
+        // intercept a turn, which is what keeps accounting and credentials non-optional.
+        Providers = BuildProviderRegistry(loggerFactory);
+        Llm = new SPLA.Domain.Llm.LlmPipelineBlueprint()
+            .Use(new SPLA.Domain.Llm.Middleware.TurnOutcomeMiddleware())
+            // Records what the provider said about the key's standing, on both the success and the
+            // failure path — a 429 is the response that reports the budget, and it throws.
+            .Use(new SPLA.Domain.Llm.Middleware.ProviderStateMiddleware(ProviderState))
+            // Credential materialization is the innermost layer: the key exists only for the provider
+            // call itself, and never for accounting, which sits outside it.
+            .Use(new SPLA.Domain.Llm.Middleware.CredentialsMiddleware(settings.SecretResolver))
+            .Build(new SPLA.Domain.Llm.ProviderClientResolver(Providers));
+
         ModelManagement = new LMStudioManagementClient(_httpClient);
 
         var pluginsDir = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "plugins");
 
-        SkillManager = new SkillManager(loggerFactory.CreateLogger<SkillManager>());
-        SkillManager.LoadSkills(pluginsDir);
-
-        PluginManager = new PluginManager(settings, loggerFactory.CreateLogger<PluginManager>(), SkillManager);
+        // Plugins load first: their descriptors are what the plugin-backed skill sources are built
+        // from, and a plugin's live enabled flag is what makes its skills appear or vanish.
+        PluginManager = new PluginManager(settings, loggerFactory.CreateLogger<PluginManager>());
         PluginManager.LoadPlugins(pluginsDir);
 
         SchemaRegistry = new SPLA.Domain.Editor.SchemaRegistry();
         foreach (var p in PluginManager.GetSchemaProviders())
             SchemaRegistry.Register(p);
 
-        SkillManager.ApplySettings(settings.Skills.ToDictionary(
-            kvp => kvp.Key,
-            kvp => (kvp.Value.Enabled ?? true, kvp.Value.Preloaded ?? false)));
+        // Skill providers: the configured ones (project/machine folders by default) in priority
+        // order, then one per plugin that ships skills. SetProbe below completes the wiring once the
+        // tool host and feature set exist — requirement resolution needs both.
+        var skillSources = SkillSourceRegistry.Build(
+            settings.SkillSources,
+            new SkillSourceContext(
+                Path.GetFullPath(settings.WorkspacePath),
+                ConfigLoader.GetDefaultsDir(),
+                loggerFactory,
+                AppDomain.CurrentDomain.BaseDirectory),
+            PluginManager.BuildSkillSources(loggerFactory.CreateLogger<PluginSkillSource>()),
+            loggerFactory.CreateLogger<SkillManager>());
+
+        SkillManager = new SkillManager(skillSources, loggerFactory.CreateLogger<SkillManager>());
+        SkillManager.ApplySettings(settings.Skills);
 
         McpHost = new McpHost(
             new PermissionManager(settings: settings), PluginManager, loggerFactory.CreateLogger<McpHost>());
@@ -181,6 +232,11 @@ public sealed class AgentRuntime : IDisposable
 
         ChatManager = new ChatManager(settings);
 
+        // Now that every tool is registered and the feature set is known, skills can be told what
+        // this agent can actually do. A skill declaring tools that are absent (its plugin is off)
+        // resolves to MissingTools and stays out of the prompt instead of describing dead calls.
+        RefreshSkillCapabilities();
+
         PromptBuilder = new SystemPromptBuilder(SkillManager, PluginManager, null, enabledFeatures);
 
         // Project tally goes through the broker only when a real project is open; the historical
@@ -195,6 +251,20 @@ public sealed class AgentRuntime : IDisposable
         TokenUsageGlobal = new FileTokenUsageStore(
             Path.Combine(SPLA.Domain.Settings.ConfigLoader.GetDefaultsDir(), "token-usage.json"));
     }
+
+    /// <summary>
+    /// Re-reads what the agent can do and rebuilds the skill registry against it.
+    ///
+    /// <para>Call after anything that changes the live tool surface — notably enabling a plugin,
+    /// which both adds tools and makes that plugin's own skills enumerable. Without it the skill list
+    /// keeps the state it was resolved with at startup, so a freshly enabled plugin's skills stay
+    /// invisible until restart while its tools are already live.</para>
+    /// </summary>
+    public void RefreshSkillCapabilities() =>
+        SkillManager.SetProbe(new SkillCapabilityProbe(
+            McpHost.GetToolDefinitions().Select(d => d.Function.Name),
+            EnabledFeatureIds,
+            PluginManager.GetToolOwners()));
 
     /// <summary>
     /// Resolves the operative context window (tokens) for a connection's model, or null when unknown.
@@ -235,6 +305,31 @@ public sealed class AgentRuntime : IDisposable
 
         _contextLengthCache[key] = (detected, DateTimeOffset.UtcNow);
         return detected;
+    }
+
+    /// <summary>
+    /// Composes the providers this runtime can reach. Each provider is its own project and owns its
+    /// id, dialect and account telemetry; this method only says which ones are present.
+    /// <para>
+    /// Adding a provider is therefore: a project, and one line here. Nothing in the pipeline, the
+    /// settings protocol or the UI has to know it exists.
+    /// </para>
+    /// <para>
+    /// The plain family registers first, so <c>lmstudio</c> is the fallback for connections that name
+    /// no provider — the least surprising default, since it needs no credential and cannot spend money.
+    /// </para>
+    /// </summary>
+    private SPLA.Domain.Llm.LlmProviderRegistry BuildProviderRegistry(ILoggerFactory loggerFactory)
+    {
+        var registry = new SPLA.Domain.Llm.LlmProviderRegistry();
+
+        foreach (var descriptor in LmStudioProvider.Create(_httpClient, loggerFactory))
+            registry.Register(descriptor);
+
+        OpenRouter = new OpenRouterProvider(_httpClient, loggerFactory);
+        registry.Register(OpenRouter);
+
+        return registry;
     }
 
     public void Dispose() => _httpClient.Dispose();

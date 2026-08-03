@@ -11,6 +11,7 @@ internal sealed class ConnectionHandlers : IMessageHandler
     [
         MessageTypes.ConnectionsGet, MessageTypes.ConnectionPing, MessageTypes.ConnectionModels,
         MessageTypes.ConnectionTest, MessageTypes.ConnectionSwapModel, MessageTypes.ConnectionsSave,
+        MessageTypes.ProviderInfo,
     ];
 
     public Task HandleAsync(RequestContext ctx) => ctx.Env.Type switch
@@ -21,8 +22,17 @@ internal sealed class ConnectionHandlers : IMessageHandler
         MessageTypes.ConnectionTest        => Test(ctx),
         MessageTypes.ConnectionSwapModel   => Swap(ctx),
         MessageTypes.ConnectionsSave       => Save(ctx),
+        MessageTypes.ProviderInfo          => Info(ctx),
         _ => Task.CompletedTask
     };
+
+    private static async Task Info(RequestContext ctx)
+    {
+        var (entry, _) = ctx.Session.Resolve(ctx.Env);
+        var p = ctx.Payload<ProviderInfoRequest>();
+        await ctx.Reply(MessageTypes.ProviderInfoResult,
+            await ProviderInfoOps.GetAsync(entry.Runtime, p?.ModelId, ctx.HostStopping));
+    }
 
     private static async Task Get(RequestContext ctx)
     {
@@ -96,9 +106,10 @@ internal sealed class ConnectionHandlers : IMessageHandler
 
             await runtime.ModelManagement.LoadModelAsync(endpoint, apiKey, req.ModelKey, ct);
 
-            // Update the live connection so chats immediately use the new model.
-            var conn = runtime.Settings.Connections.FirstOrDefault(c => c.Id == req.Id);
-            if (conn != null) conn.Model = req.ModelKey;
+            // Update the live model entry so chats immediately use the new model. The request's id is
+            // the model entry (that is what the picker edits), not its connection.
+            var entry = runtime.Settings.FindModel(req.Id);
+            if (entry != null) entry.Entry.Model = req.ModelKey;
 
             result.Model = req.ModelKey;
         }

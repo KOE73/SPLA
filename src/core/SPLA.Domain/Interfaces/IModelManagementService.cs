@@ -7,7 +7,7 @@ namespace SPLA.Domain.Interfaces;
 
 /// <summary>
 /// Server-management side of a provider — listing, loading and unloading models.
-/// This is distinct from <see cref="ILLMService"/> (dialogue): LM Studio exposes these via its
+/// This is distinct from <see cref="Llm.ILlmClient"/> (dialogue): LM Studio exposes these via its
 /// native <c>/api/v1/*</c> API, which does not support custom tools or assistant messages and so
 /// cannot be used for SPLA's chat. Providers that aren't LM Studio simply report
 /// <see cref="IsAvailableAsync"/> = false and the management UI is hidden.

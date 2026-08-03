@@ -47,7 +47,11 @@ internal sealed class SshSessionExecTool : IMcpTool
                 "A command still running at the timeout is NOT killed: you get the output so far with status " +
                 "'running' — call ssh_session_wait to keep waiting (cheap, nothing is lost between calls), " +
                 "ssh_session_send to answer a prompt, or pass interrupt_on_timeout=true to Ctrl+C instead " +
-                "(useful to snapshot interactive programs like top). A dropped connection (e.g. after 'reboot') " +
+                "(useful to snapshot interactive programs like top). While a command is pending the session " +
+                "refuses new commands: never retry the same call — either wait, or ctrl_c, or force=true, or use " +
+                "another session. Pagers are already disabled in every session (PAGER/SYSTEMD_PAGER/GIT_PAGER=cat), " +
+                "so systemctl/journalctl/git return normally; you do not need --no-pager. " +
+                "A dropped connection (e.g. after 'reboot') " +
                 "returns immediately with status 'disconnected' — reconnect later by opening a new session. " +
                 "sudo password prompts are answered automatically with the host's stored credential — just run " +
                 "'sudo ...' normally; never ask the user for a password and never type one yourself. " +
@@ -64,7 +68,8 @@ internal sealed class SshSessionExecTool : IMcpTool
                     session = new { type = "string", description = "Exact session id (host#N) to run in. Omit to use/open a session on 'host'." },
                     host = new { type = "string", description = "Configured host name. Omit to use the default host / the already-open session." },
                     timeout_seconds = new { type = "integer", description = "Max seconds to wait for completion (5–300). On expiry the command keeps running — continue with ssh_session_wait." },
-                    interrupt_on_timeout = new { type = "boolean", description = "Send Ctrl+C when the timeout expires instead of leaving the command running (default false). Use for top-like programs you only want to sample." }
+                    interrupt_on_timeout = new { type = "boolean", description = "Send Ctrl+C when the timeout expires instead of leaving the command running (default false). Use for top-like programs you only want to sample." },
+                    force = new { type = "boolean", description = "Escape hatch for a session stuck on an unfinishable command: interrupt it, and abandon it if it will not die, then run this command anyway (default false). Only use after a normal attempt was refused with 'a command is still running'." }
                 },
                 required = new[] { "command" }
             }
@@ -77,6 +82,7 @@ internal sealed class SshSessionExecTool : IMcpTool
         string? sessionId, hostName;
         int? timeoutOverride = null;
         var interruptOnTimeout = false;
+        var force = false;
         try
         {
             using var doc = JsonDocument.Parse(argumentsJson);
@@ -88,6 +94,9 @@ internal sealed class SshSessionExecTool : IMcpTool
             if (doc.RootElement.TryGetProperty("interrupt_on_timeout", out var i)
                 && i.ValueKind is JsonValueKind.True or JsonValueKind.False)
                 interruptOnTimeout = i.GetBoolean();
+            if (doc.RootElement.TryGetProperty("force", out var f)
+                && f.ValueKind is JsonValueKind.True or JsonValueKind.False)
+                force = f.GetBoolean();
         }
         catch (JsonException)
         {
@@ -107,6 +116,23 @@ internal sealed class SshSessionExecTool : IMcpTool
             var rejection = ReadOnlyGuard.Reject(command);
             if (rejection != null)
                 return $"Refused (read-only host — set allow_write in the host settings to lift): {rejection}.";
+        }
+
+        // force: clear the way before running. Try the polite route first (Ctrl+C, which also verifies
+        // the shell came back); only if the command refuses to die do we abandon it outright — and say
+        // so, because its output may still turn up in this command's stream.
+        string? forceNote = null;
+        if (force && session.PendingCommand != null)
+        {
+            var stuck = session.PendingCommand;
+            var interrupt = await session.InterruptAsync(cancellationToken);
+            if (session.PendingCommand != null && session.ForceReleaseRun())
+                forceNote = $"(force: '{stuck}' would not stop — abandoned. It may STILL BE RUNNING on the host " +
+                            "and its late output can appear below; verify with ps/systemctl if it matters.)";
+            else
+                forceNote = interrupt.Status == "done"
+                    ? $"(force: '{stuck}' had already finished — exit: {interrupt.ExitCode?.ToString() ?? "?"}.)"
+                    : $"(force: '{stuck}' interrupted, shell is back.)";
         }
 
         try
@@ -129,11 +155,20 @@ internal sealed class SshSessionExecTool : IMcpTool
 
             var sb = new StringBuilder();
             sb.AppendLine($"[{session.Id}] $ {command}");
+            if (forceNote != null) sb.AppendLine(forceNote);
             sb.AppendLine(res.Status switch
             {
                 "done" => $"exit: {res.ExitCode?.ToString() ?? "?"}",
                 "running" => $"STILL RUNNING after {timeout.TotalSeconds:0}s — output so far below. " +
-                             "Continue with ssh_session_wait (or ssh_session_send to answer a prompt / ctrl_c to stop).",
+                             "The command was NOT killed and this session is busy until it ends. Pick ONE: " +
+                             "ssh_session_wait to keep waiting; ssh_session_send with ctrl_c to stop it and free " +
+                             "the session; ssh_session_send with keys='y'/'q'/etc if the output below shows it is " +
+                             "waiting for an answer or sitting in a pager; ssh_session_exec with force=true to give " +
+                             "up on it. Repeating this exact call will be refused, not retried." +
+                             (string.IsNullOrWhiteSpace(res.NewOutput)
+                                 ? " NOTE: no output at all — most often a full-screen program is waiting for a " +
+                                   "keypress; try ctrl_c first, then q."
+                                 : ""),
                 "interrupted" => "(no exit within timeout — Ctrl+C sent, output below is a snapshot)",
                 "disconnected" => "CONNECTION CLOSED BY REMOTE (reboot or network drop) — the session is gone. " +
                                   "Open a new session to reconnect; if you just rebooted, retry with pauses until the host is back.",

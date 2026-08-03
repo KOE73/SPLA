@@ -13,7 +13,7 @@ using SPLA.Domain.Editor;
 namespace SPLA.Editor.Schema;
 
 /// <summary>
-/// Workspace-shell (Фаза 3, docs/schema-editor-plan.md §Фаза 3): дерево файлов слева (колонки
+/// Workspace-shell (Фаза 3, ../../../docs/plans/PLAN_20260625_editor_schema.md §Фаза 3): дерево файлов слева (колонки
 /// Имя/Размер/Дата) + редактор справа. Две оси-переключателя сверху:
 ///   Mode  : View (read-only, ничего не пишет) | Edit (autosave по потере фокуса)
 ///   Editor: Forms (SchemaEditorView) | CodeMirror (TextEditorView) — ЯВНЫЙ выбор для .jsonl.

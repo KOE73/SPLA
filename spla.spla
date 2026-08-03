@@ -29,12 +29,20 @@ plugins:
     enabled: true
   browser:
     enabled: false
-  network.skills:
-    enabled: false
   roslyn:
     enabled: true
   sql:
     enabled: false
+  browser_screencast:
+    enabled: true
+  ssh:
+    enabled: true
+skills:
+  sources:
+  - type: directory
+    path: skills
+  - type: directory
+    path: .spla/skills
 docs:
 - docs/
 ignore:

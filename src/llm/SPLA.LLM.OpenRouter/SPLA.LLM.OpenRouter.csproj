@@ -1,0 +1,18 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    The OpenRouter provider: its id, its dialect, its account telemetry and its model catalog.
+    A provider is a project, not a plugin and not a middleware — it contributes data for the
+    pipeline's terminal step and cannot intercept a turn.
+
+    References the SHARED transport rather than owning one. Adding a provider must never mean
+    copying the streaming and tool-call code again.
+  -->
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\core\SPLA.Domain\SPLA.Domain.csproj" />
+    <ProjectReference Include="..\SPLA.LLM.OpenAiCompat\SPLA.LLM.OpenAiCompat.csproj" />
+    <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="9.0.0" />
+  </ItemGroup>
+
+</Project>

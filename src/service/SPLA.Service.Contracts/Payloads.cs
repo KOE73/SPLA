@@ -51,11 +51,24 @@ public sealed class ClarifyOptionDto
     public string? Description { get; set; }
 }
 
-/// <summary>A project connection (endpoint/model bundle) a chat can be pointed at.</summary>
+/// <summary>One model entry a chat can be pointed at, flattened out of the connection tree but
+/// keeping its owner so a picker can group by connection. <see cref="Id"/> is the model entry's id —
+/// what a chat stores — not the provider's model string, which travels in <see cref="Model"/>.</summary>
 public sealed class ConnectionDto
 {
     public string Id { get; set; } = string.Empty;
     public string Name { get; set; } = string.Empty;
+
+    /// <summary>The provider's own model string, for display next to the name.</summary>
+    public string? Model { get; set; }
+
+    /// <summary>Owning connection — the picker's grouping key and its health key.</summary>
+    public string ConnectionId { get; set; } = string.Empty;
+
+    /// <summary>Owning connection's label. Never the provider name: two connections may share one.</summary>
+    public string ConnectionName { get; set; } = string.Empty;
+
+    public string? Provider { get; set; }
 }
 
 // ──────────────────────────────────────────────────────────────────────────
@@ -125,12 +138,12 @@ public sealed class FocusPayload
     public string ChatId { get; set; } = string.Empty;
 }
 
-/// <summary>Changes a chat's behaviour: its mode and/or which connection it uses. Null fields are left as-is.</summary>
+/// <summary>Changes a chat's behaviour: its mode and/or which model entry it runs on. Null fields are left as-is.</summary>
 public sealed class ChatSettingsPayload
 {
     public string ChatId { get; set; } = string.Empty;
     public string? Mode { get; set; }
-    public string? ConnectionId { get; set; }
+    public string? ModelId { get; set; }
 }
 
 /// <summary>Answer to a <see cref="PermissionRequestPayload"/>; correlated by envelope RequestId.</summary>
@@ -156,9 +169,24 @@ public sealed class ConnectionEditDto
     public string? Provider { get; set; }
     public string? Endpoint { get; set; }
     public string? ApiKey { get; set; }
-    public string? Model { get; set; }
-    public bool LockModel { get; set; }
+
+    /// <summary>Account-management credential (management / admin key). Never used for inference.</summary>
+    public string? AdminKey { get; set; }
+
     public bool SwapModel { get; set; }
+
+    /// <summary>The models selected under this connection.</summary>
+    public List<ModelEditDto> Models { get; set; } = new();
+}
+
+/// <summary>One editable model entry under a connection. <see cref="Id"/> is ours and globally
+/// unique; <see cref="Model"/> is the provider's string sent on the wire.</summary>
+public sealed class ModelEditDto
+{
+    public string Id { get; set; } = string.Empty;
+    public string? Name { get; set; }
+    public string? Model { get; set; }
+    public int? ContextLength { get; set; }
 }
 
 /// <summary>Request to hot-swap the loaded model on a connection via the management API (LM Studio).</summary>
@@ -186,6 +214,54 @@ public sealed class ConnectionsPayload
 
     /// <summary>False when there is no .spla project to persist into (edits then live only in-memory).</summary>
     public bool CanPersist { get; set; }
+
+    /// <summary>Set when a save was refused; the list then echoes back what is still in effect.
+    /// Null on a successful save and on plain reads.</summary>
+    public string? Error { get; set; }
+}
+
+/// <summary>Asks for the account/model figures behind one model entry — the "i" popup next to the
+/// model picker. Identified by model id because that is what a chat holds; the server walks up to the
+/// owning connection for the credential-scoped half.</summary>
+public sealed class ProviderInfoRequest
+{
+    public string ModelId { get; set; } = string.Empty;
+}
+
+/// <summary>One provider-reported figure. Mirrors the domain's ProviderFact — the generic middle
+/// layer, so a counter this build has never heard of still reaches the UI.</summary>
+public sealed class ProviderFactDto
+{
+    public string Key { get; set; } = string.Empty;
+    public string Label { get; set; } = string.Empty;
+    public string Value { get; set; } = string.Empty;
+    public string Unit { get; set; } = string.Empty;
+    /// <summary>counter | money | percent | duration | timestamp | text — drives formatting.</summary>
+    public string Kind { get; set; } = "text";
+    /// <summary>normal | warn | critical — drives the dot next to the picker.</summary>
+    public string Severity { get; set; } = "normal";
+    public DateTimeOffset ObservedAt { get; set; }
+    public DateTimeOffset? ResetsAt { get; set; }
+}
+
+/// <summary>A titled group of facts, with an optional link to the provider's own dashboard.</summary>
+public sealed class ProviderFactSectionDto
+{
+    public string Title { get; set; } = string.Empty;
+    public List<ProviderFactDto> Facts { get; set; } = new();
+    public string? DeepLink { get; set; }
+}
+
+/// <summary>What the "i" popup shows. Sections are ordered connection-first, then model.</summary>
+public sealed class ProviderInfoResult
+{
+    public string ModelId { get; set; } = string.Empty;
+    public string ConnectionId { get; set; } = string.Empty;
+    public string ConnectionName { get; set; } = string.Empty;
+    public string? Provider { get; set; }
+    public List<ProviderFactSectionDto> Sections { get; set; } = new();
+    /// <summary>Set when nothing could be read at all (unknown model id, provider offline).</summary>
+    public string? Error { get; set; }
 }
 
 /// <summary>Health state for one connection. <see cref="Ok"/> is null when not yet checked.</summary>
@@ -321,6 +397,74 @@ public sealed class PluginsPayload
     public bool RestartToApply { get; set; }
 }
 
+/// <summary>
+/// One switchable capability — a built-in <c>core.*</c> feature or a skill. Plugins keep their own
+/// richer <see cref="PluginEditDto"/> (settings blob, web settings URL), but all three render through
+/// the same row in the Capabilities settings group, so the shared shape lives here.
+/// </summary>
+public sealed class CapabilityDto
+{
+    public string Id { get; set; } = string.Empty;
+    /// <summary>"builtin" or "skill".</summary>
+    public string Kind { get; set; } = string.Empty;
+    public string Name { get; set; } = string.Empty;
+    public string? Description { get; set; }
+    public bool Enabled { get; set; } = true;
+
+    /// <summary>Resolved state name — Available / MissingTools / DisabledByUser / DisabledByTrust /
+    /// Shadowed for skills, Enabled / DisabledByUser for built-ins. Read-only.</summary>
+    public string? State { get; set; }
+    public string? StateReason { get; set; }
+
+    /// <summary>Provider id for a skill ("project", "machine", "plugin:network"); null for built-ins.</summary>
+    public string? Source { get; set; }
+    public string? SourceLabel { get; set; }
+
+    /// <summary>Body goes into the base prompt instead of waiting for activation. Skills only.</summary>
+    public bool Preloaded { get; set; }
+
+    /// <summary>Unsatisfied requirements, so the panel can name them and offer to enable the owning
+    /// plugin instead of just reporting that something is missing.</summary>
+    public List<string> MissingTools { get; set; } = new();
+    public List<string> MissingFeatures { get; set; } = new();
+    public List<string> MissingPlugins { get; set; } = new();
+
+    /// <summary>Ids this capability depends on (built-ins only) — enabling it pulls them in.</summary>
+    public List<string> Requires { get; set; } = new();
+}
+
+/// <summary>Where the listed skills came from — shown as group headers, and as guidance on where to
+/// drop a new skill file.</summary>
+public sealed class SkillSourceDto
+{
+    public string Id { get; set; } = string.Empty;
+    public string Label { get; set; } = string.Empty;
+    public string Trust { get; set; } = "Trusted";
+    /// <summary>Filesystem location for folder-backed sources; null for anything else.</summary>
+    public string? Path { get; set; }
+}
+
+/// <summary>Every known skill with its source and state. <see cref="MessageTypes.SkillsGet"/> answer /
+/// <see cref="MessageTypes.SkillsSave"/> body / broadcast result.</summary>
+public sealed class SkillsPayload
+{
+    public List<CapabilityDto> Skills { get; set; } = new();
+    public List<SkillSourceDto> Sources { get; set; } = new();
+    public bool CanPersist { get; set; }
+}
+
+/// <summary>The built-in <c>core.*</c> capabilities. <see cref="MessageTypes.FeaturesGet"/> answer /
+/// <see cref="MessageTypes.FeaturesSave"/> body / broadcast result.</summary>
+public sealed class FeaturesPayload
+{
+    public List<CapabilityDto> Features { get; set; } = new();
+    public bool CanPersist { get; set; }
+
+    /// <summary>Always true: feature tools are registered once at startup, so a change to the set
+    /// takes effect on the next service start. Skills, by contrast, apply immediately.</summary>
+    public bool RestartToApply { get; set; } = true;
+}
+
 /// <summary>Asks the server for a debug snapshot. <see cref="Kind"/> selects which inspector view.</summary>
 public sealed class DebugRequestPayload
 {
@@ -436,7 +580,7 @@ public sealed class ChatOpenedPayload
     public string Title { get; set; } = string.Empty;
     public List<ChatMessageDto> Messages { get; set; } = new();
     public string Mode { get; set; } = string.Empty;
-    public string? ConnectionId { get; set; }
+    public string? ModelId { get; set; }
 }
 
 public sealed class DeltaPayload
@@ -827,14 +971,17 @@ public sealed class PluginPanelEventPayload
 
 // ── Secret store ─────────────────────────────────────────────────────────────
 /// <summary><see cref="MessageTypes.SecretSet"/> — store fields of an entry (merged over existing
-/// fields; an entry is a named record like user+password or a lone token). <see cref="Scope"/> is
-/// "project" or "machine". Field values travel browser→server only; never echoed back or logged.</summary>
+/// fields; an entry is a named record like user+password or a lone token). Field values travel
+/// browser→server only; never echoed back or logged.</summary>
 public sealed class SecretSetPayload
 {
     public string Key { get; set; } = string.Empty;
     /// <summary>Field name → value. E.g. { "user": "koe", "password": "…" }.</summary>
     public Dictionary<string, string> Fields { get; set; } = [];
-    public string Scope { get; set; } = "machine";
+    /// <summary>"user", "project" or "shared". <b>Required — there is no default.</b> The client must
+    /// state where the secret goes; the server never picks for it, because a store that guesses
+    /// eventually writes somewhere the user did not mean and reads back somebody else's value.</summary>
+    public string Scope { get; set; } = string.Empty;
 }
 
 /// <summary><see cref="MessageTypes.SecretDelete"/> — remove a whole entry, or one field of it when
@@ -843,23 +990,33 @@ public sealed class SecretDeletePayload
 {
     public string Key { get; set; } = string.Empty;
     public string? Field { get; set; }
-    public string Scope { get; set; } = "machine";
+    /// <summary>"user", "project" or "shared". Required — see <see cref="SecretSetPayload.Scope"/>.</summary>
+    public string Scope { get; set; } = string.Empty;
 }
 
-/// <summary>One entry in a listing: key + field NAMES, never values.</summary>
+/// <summary>One entry in a listing: key + field NAMES, never values. <see cref="Scope"/> travels
+/// with every entry so a picker can show WHERE each credential lives instead of leaving the user to
+/// guess between two identically named ones.</summary>
 public sealed class SecretEntryDto
 {
     public string Key { get; set; } = string.Empty;
     public List<string> Fields { get; set; } = [];
+    /// <summary>"user", "project" or "shared".</summary>
+    public string Scope { get; set; } = string.Empty;
+    /// <summary>Full reference to paste into config: <c>secret:&lt;scope&gt;:&lt;key&gt;</c>.</summary>
+    public string Reference { get; set; } = string.Empty;
+    /// <summary>True when this caller may overwrite or delete the entry (shared scope + ACL).</summary>
+    public bool CanManage { get; set; } = true;
 }
 
 /// <summary><see cref="MessageTypes.SecretResult"/> — entries per scope (keys + field names, NEVER
 /// values). <see cref="ProjectOpen"/> is false when no project is open (project-scope edits are then
-/// disabled in the UI).</summary>
+/// disabled in the UI). Shared entries the caller may not even see are filtered out server-side.</summary>
 public sealed class SecretListResultPayload
 {
-    public List<SecretEntryDto> Machine { get; set; } = [];
+    public List<SecretEntryDto> User { get; set; } = [];
     public List<SecretEntryDto> Project { get; set; } = [];
+    public List<SecretEntryDto> Shared { get; set; } = [];
     public bool ProjectOpen { get; set; }
     public string? Error { get; set; }
 }

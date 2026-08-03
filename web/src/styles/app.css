@@ -353,6 +353,62 @@ input.locked { opacity: 0.6; cursor: default; background: var(--bg); }
 /* Action bar below fields */
 .conn-actions { display: flex; gap: 8px; padding-top: 4px; border-top: 1px solid var(--border); }
 
+/* ── Provider info ("i") ──────────────────────────────────────────────────── */
+.pi-btn { background: none; border: 1px solid var(--border); color: inherit; cursor: pointer;
+  border-radius: 50%; width: 15px; height: 15px; line-height: 1; padding: 0;
+  font-size: 9px; font-style: italic; font-family: Georgia, serif; opacity: .6; flex-shrink: 0; }
+.pi-btn:hover:not(:disabled) { opacity: 1; }
+.pi-btn:disabled { opacity: .25; cursor: default; }
+.pi-btn.warn { color: var(--warn, #d89a1a); border-color: currentColor; opacity: 1; }
+.pi-btn.crit { color: var(--danger); border-color: currentColor; opacity: 1; }
+
+.pi-popup { position: fixed; z-index: 220; min-width: 260px; max-width: 380px;
+  max-height: 60vh; overflow-y: auto; padding: 8px 10px;
+  background: var(--elevated); border: 1px solid var(--border);
+  border-radius: var(--radius-sm); box-shadow: 0 6px 24px rgb(0 0 0 / .35);
+  font-size: var(--fs-sm); }
+.pi-head { display: flex; align-items: baseline; gap: 6px; padding-bottom: 6px;
+  border-bottom: 1px solid var(--border); }
+.pi-provider { font-size: var(--fs-xs); opacity: .55; }
+.pi-section { padding-top: 7px; }
+.pi-section-head { display: flex; align-items: center; gap: 6px; font-size: var(--fs-xs);
+  text-transform: uppercase; letter-spacing: .04em; opacity: .6; margin-bottom: 3px; }
+.pi-section-head > span { flex: 1; }
+.pi-section-head a { color: inherit; text-decoration: none; opacity: .8; }
+.pi-fact { display: flex; align-items: baseline; gap: 8px; padding: 1px 0; }
+.pi-label { flex: 1; opacity: .8; min-width: 0; }
+.pi-value { font-variant-numeric: tabular-nums; white-space: nowrap; }
+.pi-fact[data-sev="warn"] .pi-value { color: var(--warn, #d89a1a); }
+.pi-fact[data-sev="critical"] .pi-value { color: var(--danger); font-weight: 600; }
+.pi-reset { font-size: var(--fs-xs); opacity: .5; white-space: nowrap; }
+.pi-empty { opacity: .5; padding: 4px 0; }
+.pi-err { color: var(--danger); opacity: 1; }
+
+/* Model list under a connection. Rows stay one line high and expand on demand — a connection with
+   eight models has to read as a list, not as eight stacked cards. */
+.conn-models { border-top: 1px solid var(--border); padding-top: 6px; display: flex; flex-direction: column; gap: 2px; }
+.conn-models-head { display: flex; align-items: center; gap: 6px; font-size: var(--fs-xs);
+  text-transform: uppercase; letter-spacing: .04em; opacity: .7; }
+.conn-models-head > span:first-child { flex: 1; }
+/* add and remove are the same affordance — same size, same weight, only the glyph differs */
+.conn-models-head .x, .conn-model-line .x { font-size: 13px; line-height: 1; padding: 3px 7px;
+  flex-shrink: 0; color: var(--muted); background: transparent;
+  border: 1px solid var(--border); border-radius: var(--radius-sm); }
+.conn-models-head .x:hover { color: var(--accent); border-color: var(--accent); }
+.conn-model-line .x:hover { color: var(--danger); border-color: var(--danger); }
+.conn-models-empty { font-size: var(--fs-sm); opacity: .6; padding: 4px 0; }
+
+.conn-model-row { border-radius: var(--radius-sm); }
+.conn-model-line { display: flex; align-items: center; gap: 6px; padding: 2px 4px; cursor: pointer; }
+.conn-model-line:hover { background: var(--bg); }
+.conn-model-caret { background: none; border: none; color: inherit; cursor: pointer;
+  padding: 0 2px; font-size: var(--fs-xs); opacity: .7; }
+.conn-model-name { flex: 1; min-width: 0; }
+.conn-model-wire { font-size: var(--fs-xs); opacity: .55; max-width: 45%;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.conn-model-detail { display: flex; flex-direction: column; gap: 6px;
+  padding: 6px 4px 8px 20px; background: var(--bg); border-radius: var(--radius-sm); }
+
 /* Inline test-chat reply */
 .conn-test-reply { font-size: var(--fs-sm); padding: 6px 9px; background: var(--bg);
   border-radius: var(--radius-sm); white-space: pre-wrap; line-height: 1.5; }
@@ -360,11 +416,21 @@ input.locked { opacity: 0.6; cursor: default; background: var(--bg); }
 
 /* Model list popup (position:fixed, appended to body) */
 .models-popup { position: fixed; z-index: 200; background: var(--elevated); border: 1px solid var(--border);
-  border-radius: var(--radius-sm); padding: 4px 0; max-height: 220px; overflow-y: auto;
-  min-width: 240px; box-shadow: 0 4px 20px rgba(0,0,0,.25); }
+  border-radius: var(--radius-sm); box-shadow: 0 4px 20px rgba(0,0,0,.25);
+  display: flex; flex-direction: column; overflow: hidden; resize: both;
+  width: 380px; height: 360px; min-width: 240px; min-height: 140px; }
+.models-popup .model-filter { display: flex; align-items: center; gap: 6px; padding: 6px 8px;
+  border-bottom: 1px solid var(--border); flex: none; }
+.models-popup .model-filter input { flex: 1; min-width: 0; background: var(--bg); color: var(--text);
+  border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 4px 8px;
+  font: inherit; font-size: var(--fs-sm); }
+.models-popup .model-count { color: var(--muted); font-size: var(--fs-sm); white-space: nowrap; }
+.models-popup .model-hint { color: var(--muted); font-size: var(--fs-sm); cursor: help; user-select: none; }
+.models-popup .model-list { flex: 1; overflow-y: auto; padding: 4px 0; }
 .models-popup .model-item { padding: 6px 12px; font-size: var(--fs-sm); cursor: pointer;
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.models-popup .model-item:hover { background: var(--accent-soft); color: var(--accent); }
+.models-popup .model-item:hover, .models-popup .model-item[data-active="1"] { background: var(--accent-soft); color: var(--accent); }
+.models-popup .model-empty { padding: 6px 12px; font-size: var(--fs-sm); color: var(--muted); font-style: italic; }
 .field { display: grid; grid-template-columns: 92px 1fr; align-items: center; gap: 8px; }
 .field > span { color: var(--muted); font-size: var(--fs-sm); }
 .field input, .field select, .field textarea { background: var(--bg); color: var(--text); border: 1px solid var(--border);

@@ -2,9 +2,11 @@
   Global secret store management (the browser half of `spla secret`). The unit is an ENTRY — a named
   record of fields (user+password, a lone token, a PEM private_key…). Only keys and field NAMES ever
   come back from the server — values are write-only from here (typed into a password field, sent,
-  never echoed). Two scopes: Machine (~/.spla) shared across projects, Project (<workspace>/.spla)
-  travels with the project. Project edits are disabled when no project is open.
-  Plugin configs consume entries via `credential: <key>` (whole record) or `secret:<key>#<field>`.
+  never echoed). Three scopes, always stated explicitly — User (mine), Project (travels with the
+  project), Shared (administered, ACL-gated). Nothing defaults: where a credential lives is the
+  user's decision, and the scope is shown on every row so two same-named entries are never confused.
+  Project edits are disabled when no project is open. Plugin configs consume entries by full
+  reference: `credential: secret:<scope>:<key>` or `secret:<scope>:<key>#<field>`.
 -->
 <template>
   <div class="s-panel" data-tab="secrets">
@@ -17,8 +19,9 @@
     <p class="expl">
       An entry is a named credential record — e.g. <code>user</code> + <code>password</code> for a host,
       a single <code>token</code> for an API, or a <code>private_key</code> for SSH. Plugin configs never
-      hold values, only references: <code>credential: &lt;entry&gt;</code> (whole record) or
-      <code>secret:&lt;entry&gt;#&lt;field&gt;</code> (one field).
+      hold values, only references: <code>credential: secret:&lt;scope&gt;:&lt;entry&gt;</code> (whole record)
+      or <code>secret:&lt;scope&gt;:&lt;entry&gt;#&lt;field&gt;</code> (one field). The scope is part of the
+      reference — there is no search and no fallback between scopes.
     </p>
 
     <section v-for="s in scopes" :key="s.id" class="scope" :class="{ disabled: s.disabled }">
@@ -32,15 +35,16 @@
         <div v-for="e in s.entries" :key="e.key" class="entry">
           <div class="e-row">
             <code class="e-key">{{ e.key }}</code>
-            <span v-for="f in e.fields" :key="f" class="chip" :title="`secret:${e.key}#${f}`">
+            <span v-for="f in e.fields" :key="f" class="chip" :title="`${e.reference}#${f}`">
               {{ f }}
-              <button class="chip-btn" :title="`Copy 'secret:${e.key}#${f}'`" @click="copy(`secret:${e.key}#${f}`)">⧉</button>
-              <button class="chip-btn del" title="Delete field" @click="del(s.id, e.key, f)">×</button>
+              <button class="chip-btn" :title="`Copy '${e.reference}#${f}'`" @click="copy(`${e.reference}#${f}`)">⧉</button>
+              <button class="chip-btn del" v-if="e.canManage" title="Delete field" @click="del(s.id, e.key, f)">×</button>
             </span>
             <span class="grow"></span>
-            <button class="btn ghost tiny" :title="`Copy 'credential: ${e.key}'`" @click="copy(`credential: ${e.key}`)">⧉ ref</button>
-            <button class="btn ghost tiny" :class="{ on: isOpen(s.id, e.key) }" title="Add field" @click="toggle(s.id, e.key)">＋</button>
-            <button class="btn ghost del" title="Delete entry" @click="del(s.id, e.key)">×</button>
+            <button class="btn ghost tiny" :title="`Copy 'credential: ${e.reference}'`" @click="copy(`credential: ${e.reference}`)">⧉ ref</button>
+            <button class="btn ghost tiny" v-if="e.canManage" :class="{ on: isOpen(s.id, e.key) }" title="Add field" @click="toggle(s.id, e.key)">＋</button>
+            <button class="btn ghost del" v-if="e.canManage" title="Delete entry" @click="del(s.id, e.key)">×</button>
+            <span v-else class="chip ro" title="You may use this credential but not change it">read-only</span>
           </div>
           <form v-if="isOpen(s.id, e.key)" class="add add-field" @submit.prevent="addField(s.id, e.key)">
             <select v-model="s.fieldForm.name">
@@ -73,30 +77,34 @@ import { client } from "../../protocol/SplaClient";
 import { projectEnvelope } from "../../state/project";
 import type { SecretEntryDto, SecretListResultPayload } from "../../protocol/types";
 
-type ScopeId = "machine" | "project";
+type ScopeId = "user" | "project" | "shared";
 
 /** Conventional field names (mirrors SecretFields in the domain). Free-form via "custom…". */
 const FIELD_NAMES = ["password", "user", "token", "private_key", "passphrase"];
 
-const machine = ref<SecretEntryDto[]>([]);
+const user = ref<SecretEntryDto[]>([]);
 const project = ref<SecretEntryDto[]>([]);
+const shared = ref<SecretEntryDto[]>([]);
 const projectOpen = ref(false);
 const error = ref("");
 
 interface EntryForm { key: string; user: string; password: string }
 interface FieldForm { name: string; custom: string; value: string }
 const forms = reactive<Record<ScopeId, EntryForm>>({
-  machine: { key: "", user: "", password: "" },
+  user: { key: "", user: "", password: "" },
   project: { key: "", user: "", password: "" },
+  shared: { key: "", user: "", password: "" },
 });
 const fieldForms = reactive<Record<ScopeId, FieldForm>>({
-  machine: { name: "password", custom: "", value: "" },
+  user: { name: "password", custom: "", value: "" },
   project: { name: "password", custom: "", value: "" },
+  shared: { name: "password", custom: "", value: "" },
 });
 
 const scopes = computed(() => [
-  { id: "machine" as ScopeId, label: "Machine", sub: "~/.spla — shared across all projects", entries: machine.value, disabled: false, form: forms.machine, fieldForm: fieldForms.machine },
+  { id: "user" as ScopeId, label: "User", sub: "mine only — never shared with anyone", entries: user.value, disabled: false, form: forms.user, fieldForm: fieldForms.user },
   { id: "project" as ScopeId, label: "Project", sub: "<workspace>/.spla — travels with the project", entries: project.value, disabled: !projectOpen.value, form: forms.project, fieldForm: fieldForms.project },
+  { id: "shared" as ScopeId, label: "Shared", sub: "administered — visible only to those it is granted to", entries: shared.value, disabled: false, form: forms.shared, fieldForm: fieldForms.shared },
 ]);
 
 /** Which entry has its add-field form open ("scope:key"), one at a time — rows stay one-line otherwise. */
@@ -110,8 +118,9 @@ function fieldName(f: FieldForm) { return (f.name || f.custom).trim(); }
 function isMultiline(f: FieldForm) { return fieldName(f) === "private_key"; }
 
 function apply(p: SecretListResultPayload) {
-  machine.value = p.machine || [];
+  user.value = p.user || [];
   project.value = p.project || [];
+  shared.value = p.shared || [];
   projectOpen.value = !!p.projectOpen;
   error.value = p.error || "";
 }

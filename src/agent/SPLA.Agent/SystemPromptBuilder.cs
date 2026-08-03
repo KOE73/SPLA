@@ -3,6 +3,7 @@ using SPLA.Domain.Models;
 using SPLA.Domain.Settings;
 using SPLA.MCP.Core.Agent;
 using SPLA.MCP.Core.Plugins;
+using SPLA.MCP.Core.Skills;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -166,11 +167,14 @@ public sealed class SystemPromptBuilder
 
     private void AppendSkills(List<PromptSegment> segments)
     {
-        var enabledSkills = _skills.GetEnabled().ToList();
-        if (enabledSkills.Count == 0) return;
+        // GetAvailable, not "all known": a skill is offered only when its source vouches for it, it
+        // is switched on, and every tool it declared is actually registered right now. Anything else
+        // stays in the settings panel with a reason and never reaches the model.
+        var available = _skills.GetAvailable();
+        if (available.Count == 0) return;
 
-        var preloaded = enabledSkills.Where(s => s.IsPreloaded).ToList();
-        var onDemand  = enabledSkills.Where(s => !s.IsPreloaded).ToList();
+        var preloaded = available.Where(s => s.IsPreloaded).ToList();
+        var onDemand  = available.Where(s => !s.IsPreloaded).ToList();
 
         // ── Preloaded skills: inject body directly, no agent_info needed ──
         foreach (var skill in preloaded)

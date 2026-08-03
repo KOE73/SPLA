@@ -27,4 +27,9 @@ public class SplaDefaults
     /// <summary>Secret-store backend selection. Machine-only; absent = plaintext file store.</summary>
     [YamlMember(Alias = "secrets")]
     public SplaSecretsSection? Secrets { get; set; }
+
+    /// <summary>Skill providers and per-skill switches that apply to every project. A project's own
+    /// <c>skills:</c> block overrides this one.</summary>
+    [YamlMember(Alias = "skills")]
+    public SplaSkillsSection? Skills { get; set; }
 }

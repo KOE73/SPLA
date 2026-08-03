@@ -1,7 +1,7 @@
 using SPLA.Domain.Models;
 using SPLA.MCP.Core.Interfaces;
 using SPLA.MCP.Core.Json;
-using SPLA.MCP.Core.Plugins;
+using SPLA.MCP.Core.Skills;
 using System;
 using System.Linq;
 using System.Text;
@@ -72,8 +72,10 @@ public sealed class AgentInfoTool : IMcpTool, IToolHelpProvider
             if (string.IsNullOrEmpty(id))
                 return Task.FromResult(BuildIndex(mode));
 
-            // Exact skill match takes priority (skill ids look like tool names and would confuse tool lookup)
-            if (_skillManager != null)
+            // Exact skill match takes priority (skill ids look like tool names and would confuse tool lookup).
+            // Only available skills are previewed — handing back a procedure whose tools are missing
+            // would just walk the model into calls that cannot succeed.
+            if (_skillManager != null && _skillManager.Find(id)?.State == SkillState.Available)
             {
                 var body = _skillManager.LoadBody(id);
                 if (body != null)
@@ -94,7 +96,7 @@ public sealed class AgentInfoTool : IMcpTool, IToolHelpProvider
             // If tool not found either, append skill suggestions too
             if (toolResult.StartsWith("found: false", StringComparison.Ordinal) && _skillManager != null)
             {
-                var skillHits = _skillManager.GetEnabled()
+                var skillHits = _skillManager.GetAvailable()
                     .Where(s => s.Id.Contains(id, StringComparison.OrdinalIgnoreCase))
                     .Select(s => s.Id)
                     .Take(5)
@@ -126,7 +128,7 @@ public sealed class AgentInfoTool : IMcpTool, IToolHelpProvider
 
         if (_skillManager != null)
         {
-            var skills = _skillManager.GetEnabled().ToList();
+            var skills = _skillManager.GetAvailable().ToList();
             if (skills.Count > 0)
             {
                 sb.AppendLine("skills:");

@@ -36,13 +36,51 @@ For comprehensive details on agent permission models, tool matrices, autonomy co
 - **[`.spla` Project File Format](agents/spla-file.md)**: Specification for the `.spla` project entry point — workspace, mode, instructions, permissions, and settings cascade.
 - **[Project Structure](agents/structure.md)**: Overview of the solution layout and module responsibilities.
 - **[Plugin System & Tool Naming](agents/plugins.md)**: Rules for creating plugins, extending the system prompt, and standardizing tool names (`[plugin].[domain].[action]`).
-- **[Documentation Layout](agents/documentation.md)**: Defines the separation between `agents/` and `docs/`, including README translation rules.
+- **[Documentation Layout](agents/documentation.md)**: Where a document goes and how it is named. Documents are separated by how long they stay true, not by topic: `ADR_` decisions (never edited — they are the record of how the thinking evolved), `PLAN_` work plans, `IDEA_` notes for the future, `readme_` user guides, and `agents/` rules that must match the code. Naming is `GENRE_YYYYMMDD_zone_short-name.md`. Read before creating any file under `docs/`.
 - **[Capability Lookup (agent_info)](agents/tool-help.md)**: How `agent_info` works — unified tool help + skill loading. `[H]` flag, routing logic, help text format.
 - **[Data Ownership Rules](agents/data-ownership.md)**: STOP — read this before adding any registry, flag, or discovery logic. UI ViewModels must not own domain data. Violations cause data loss on restart, CLI blindness, and untestable state.
 - **[System Prompt Authoring Rules](agents/sys_prompt_rules.md)**: STOP — read this before writing any system prompt block, skill description, tool help text, or plugin prompt. Defines how to avoid logical contradictions between rules. Russian translation: [`docs/sys_prompt_rules_ru.md`](docs/sys_prompt_rules_ru.md).
 - **[Skill System Architecture](agents/skills.md)**: STOP — read this before touching `SkillManager`, `SystemPromptBuilder`, skill tool implementations (`skill_activate`, `skill_deactivate`, `agent_clarify`, `agent_spawn`), or any UI that reflects skill state. Defines the lifecycle state machine, assembly order, permission matrix, and hot reload behavior.
+- **[Secrets, Credentials & API Keys](agents/secrets.md)**: STOP — read this before writing any code that touches a password, API key, token, private key, or connection string. The canonical policy: what the store is, how config references it (`secret:`/`env:`/`credential:`), when resolution happens, what may never cross the client/server boundary or enter the model's context, and the list of known open leaks. Every other mention in the repo is a one-line restatement plus a pointer here.
 - **[Wire Protocol & Event Registry](agents/protocol.md)**: STOP — read this before adding, renaming, or removing any WebSocket message type, payload, or client bus event. Message names are soft strings on the JS side; this is the registry of every `MessageTypes` constant, payload, fan-out semantics, domain events (`ServiceEvents`), and client-local bus events that keeps both sides in sync.
 
+
+## Git: one branch, and never commit unless asked
+
+**This repository has exactly one branch: `main`. Work on it directly.** Do not create feature
+branches, do not offer to, and do not treat committing to the default branch as something that needs
+avoiding here — the owner has decided against branch workflows deliberately and does not want to
+maintain them. If a general rule you carry says "branch before committing to the default branch",
+this line overrides it for this repository.
+
+If a piece of work genuinely cannot live on `main` — an experiment that must not touch working code —
+say so and ask. Do not decide it alone.
+
+**Do not commit, amend, push, tag, or reset anything unless the user asks for it in the message you
+are answering.** Finishing a piece of work is not permission to record it. Neither is the work being
+correct, tested, and obviously ready.
+
+- A commit requested earlier authorizes **that** commit only. It does not stand for the next one, or
+  for "everything from now on". If in doubt, you were not asked.
+- Leave the work in the working tree and say what changed. The user decides when it becomes history.
+- **Never stage with `git add -A` or `git add .`** when the tree holds changes you did not make —
+  concurrent work by the user or another agent is normal here. Stage explicit paths, and check
+  `git status` for files you never touched before every commit.
+- Same rule for anything else that leaves the machine or is hard to undo: pushing, force-pushing,
+  deleting branches, rewriting history.
+- **Before deleting any branch, check what would be lost.** `git branch --no-merged main` and
+  `git log main..<branch>`. A branch whose commits are all in `main` is free to delete; one with
+  unique commits is not — preserve it as a tag (`archive/<name>`), push the tag, and say what was in
+  it. Never let a delete be the reason work disappears.
+
+**Do remind, though.** Silence while changes pile up is its own failure — a large mixed working tree
+is hard to review and easy to lose. Say something (one line, not a nag) when:
+
+- more than roughly ten files are uncommitted, or
+- the changes span several areas at once (`src/`, `web/`, `docs/`, `agents/`, `tests/`), or
+- a self-contained piece of work just built and passed its tests — the natural place to draw a line.
+
+State what is uncommitted, in which areas, and offer to commit. Then wait.
 
 ## Web UI: Chat-Scoped State (recurring bug — do not regress)
 

@@ -9,7 +9,7 @@ Keep it in sync with those two files — they are the source of truth.
 > that will bound file/network access by path/host is still `AllowAllGate` everywhere, and the
 > server deployment runs without an execution sandbox. See
 > `docs/reviews/2026-07-09-fable5-security-review.md` for the gaps and the target model, and
-> `docs/roadmap.md` (sections B/E) for the planned work.
+> `../docs/ideas/IDEA_20260702_core_roadmap.md` (sections B/E) for the planned work.
 
 ## How a decision is made
 

@@ -3,6 +3,7 @@ using SPLA.Domain.Interfaces;
 using SPLA.Domain.Models;
 using SPLA.Domain.Settings;
 using SPLA.MCP.Core.Plugins;
+using SPLA.MCP.Core.Skills;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
@@ -18,14 +19,14 @@ namespace SPLA.Agent;
 /// </summary>
 public sealed class SpawnedAgentRunner : Domain.Interfaces.IAgentSpawner
 {
-    private readonly ILLMService _llm;
+    private readonly Domain.Llm.ILlmGateway _llm;
     private readonly Domain.Interfaces.IToolHost _tools;
     private readonly SkillManager _skills;
     private readonly PluginManager _plugins;
     private readonly ResolvedSettings _settings;
 
     public SpawnedAgentRunner(
-        ILLMService llm,
+        Domain.Llm.ILlmGateway llm,
         Domain.Interfaces.IToolHost tools,
         SkillManager skills,
         PluginManager plugins,
