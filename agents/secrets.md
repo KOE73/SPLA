@@ -195,6 +195,18 @@ program does not choose where someone's credential lives.
 Listings are filtered **server-side** by the access policy, and each entry carries `canManage` so the
 UI renders read-only rows honestly instead of offering buttons that will fail.
 
+**There is exactly one browser-side implementation, and panels borrow it.** `web/src/secrets/` owns
+the whole client half: `store.ts` is the only module in `web/` allowed to send `secret.*`, and
+[`CredentialField.vue`](../web/src/secrets/CredentialField.vue) (picker + inline
+[`SecretEntryEditor.vue`](../web/src/secrets/SecretEntryEditor.vue)) is the control every consumer
+embeds. Plugin settings modules are built separately and cannot import it, so the host **hands it
+over** through `PluginSettingsMountApi.mountCredentialField` — the plugin supplies an element and
+gets back a reference. A plugin that speaks `secret.*` itself is a defect: each copy is another place
+to drop the project envelope, to write its own scope default, or to mistake a refusal for success.
+That last one is not hypothetical — `secret.*` answers refusals in `secret.result.error` rather than
+rejecting, so a caller that only try/catches records a reference to a credential that was never
+stored. `store.ts` turns `error` into a throw once, for everyone.
+
 Consequence for settings: **never ship a settings blob to a client unfiltered.** Any structure that
 may contain a literal credential is filtered on the way out and merged (not overwritten) on the way
 in, so a value the client never saw cannot be erased by a round-trip.
@@ -248,8 +260,9 @@ Do not treat these as accepted behaviour; they are recorded defects.
 2. **Plugin settings blobs cross the boundary unfiltered** — SSH host `password`/`key_passphrase`
    and SQL connection `password` can still be literals and are shipped to clients and round-tripped
    by panels. §5 is the target state.
-3. **`sql_manage_connection` declares a `password` tool argument** — a direct violation of §6. The
-   value transits the model's context even though it is stored correctly afterwards.
+3. ~~`sql_manage_connection` declares a `password` tool argument~~ — **closed**: the tool is gone.
+   Connections are operator configuration, like SSH hosts; `SqlConnectionRegistry` is read-only, so
+   there is no longer a tool through which a credential could reach the model's context.
 4. **LLM `api_key` is currently a plain field** in the connection schema, the outbound DTO, the
    broadcast, and the committed `*.spla` files. §7 is the target state; this is the largest open
    leak in the repo.

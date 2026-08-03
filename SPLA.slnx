@@ -148,6 +148,10 @@
     <File Path="web/src/surfaces/Workspace/editors/FormsEditor.vue" />
     <File Path="web/src/surfaces/Workspace/editors/formsRegistry.ts" />
     <File Path="web/src/surfaces/Workspace/editors/TableArrayRenderer.vue" />
+    <File Path="web/src/secrets/store.ts" />
+    <File Path="web/src/secrets/SecretEntryEditor.vue" />
+    <File Path="web/src/secrets/CredentialField.vue" />
+    <File Path="web/src/secrets/mountCredentialField.ts" />
   </Folder>
   <Folder Name="/demo/workers/">
     <Project Path="demo/workers/VisionAgent/VisionAgent.csproj" />

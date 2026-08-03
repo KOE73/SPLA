@@ -1,5 +1,6 @@
 import { defineConfig } from "vite";
 import vue from "@vitejs/plugin-vue";
+import cssInjectedByJsPlugin from "vite-plugin-css-injected-by-js";
 
 // Library build → one self-contained ES module (Vue + yaml bundled in, zero external runtime deps).
 // The host (SPLA.Service) serves this file straight from the plugin's own directory and the web
@@ -8,7 +9,10 @@ export default defineConfig({
   // Lib mode doesn't statically replace process.env.NODE_ENV inside bundled Vue — in a browser
   // there is no `process`, so the module throws on import without this define.
   define: { "process.env.NODE_ENV": JSON.stringify("production") },
-  plugins: [vue()],
+  // cssInjectedByJs: lib mode extracts scoped CSS into a file nobody loads — the host only ever
+  // imports web_settings_entry (settings.js), so without this the panel ships styleless. Inject it
+  // from the module itself instead, keeping the single-file "settings.js is everything" contract.
+  plugins: [vue(), cssInjectedByJsPlugin()],
   build: {
     outDir: "dist",
     emptyOutDir: true,

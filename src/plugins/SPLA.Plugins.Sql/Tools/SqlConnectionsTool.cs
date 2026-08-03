@@ -36,7 +36,8 @@ public class SqlConnectionsTool : IMcpTool
     public Task<string> ExecuteAsync(string argumentsJson, CancellationToken cancellationToken = default)
     {
         if (_registry.Connections.Count == 0)
-            return Task.FromResult("No database connections configured. Use sql_manage_connection to add connections.");
+            return Task.FromResult(
+                "No database connections configured. Ask the operator to add one in Settings → Plugins → sql.");
 
         var sb = new StringBuilder();
         sb.AppendLine("Available connections:");

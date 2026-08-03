@@ -55,7 +55,7 @@ public class ResolvedSettings
     public string WorkspacePath { get; set; } = ".";
 
     /// <summary>Absolute path to the .spla file that was loaded, or null when running without a project.
-    /// Plugins that need to persist their own settings (e.g. sql_manage_connection) use this.</summary>
+    /// Plugins that need to persist their own settings use this.</summary>
     public string? ProjectFilePath { get; set; }
 
     /// <summary>Global secrets store (user / project / shared scopes). Set during load. Never null

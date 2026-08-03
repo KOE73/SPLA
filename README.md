@@ -106,7 +106,7 @@ Tools: `roslyn_compile_check`, `roslyn_script_run`, `roslyn_project_build`, `ros
 
 Works with configured database connections: inspects schemas, runs safe queries, analyzes query plans, and performs controlled data modifications.
 
-Tools: `sql_connections`, `sql_test_connection`, `sql_manage_connection`, `sql_schema`, `sql_query`, `sql_query_plan`, `sql_execute`, `sql_verify_context`.
+Tools: `sql_connections`, `sql_test_connection`, `sql_schema`, `sql_query`, `sql_query_plan`, `sql_execute`, `sql_verify_context`.
 
 #### SSH
 

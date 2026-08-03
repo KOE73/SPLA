@@ -82,7 +82,7 @@ internal static class SecretCommands
             }
 
             default:
-                Console.Error.WriteLine("usage: spla secret <list|set|delete> [<key>] [--field <name>] [--project|--machine]");
+                Console.Error.WriteLine($"usage: spla secret <list|set|delete> [<key>] [--field <name>] {ScopeFlags}");
                 return 2;
         }
     }

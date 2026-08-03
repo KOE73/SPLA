@@ -4,15 +4,18 @@ type: dll
 entry_point: SPLA.Plugins.Sql.dll
 web_settings_entry: web/dist/settings.js
 default_prompt: |
-  SQL database tools are available. Connections are configured in .spla/sql.yaml.
+  SQL database tools are available. Databases are reached through named connections: you use a name,
+  and the credentials behind it are resolved for you and never shown. Connections are configured by
+  the operator — you cannot add or change one.
 
   Tools:
-    sql_connections    — list available named connections with descriptions; call first when unsure which DB to use
-    sql_query          — execute a SELECT and return results; read-only
-    sql_schema         — inspect tables, columns, PK/FK, indexes for a connection or specific table
-    sql_query_plan     — get the native execution plan (raw provider output); use before sql_execute
-    sql_execute        — run INSERT / UPDATE / DELETE; requires Edit or Agent mode; DDL is blocked
-    sql_verify_context — compare .spla/sql/*.md context files against the live schema; call when schema may have changed
+    sql_connections       — list available named connections with descriptions; call first when unsure which DB to use
+    sql_test_connection   — check that a named connection actually opens
+    sql_query             — execute a SELECT and return results; read-only
+    sql_schema            — inspect tables, columns, PK/FK, indexes for a connection or specific table
+    sql_query_plan        — get the native execution plan (raw provider output); use before sql_execute
+    sql_execute           — run INSERT / UPDATE / DELETE; requires Edit or Agent mode; DDL is blocked
+    sql_verify_context    — compare .spla/sql/*.md context files against the live schema; call when schema may have changed
 
   Usage rules:
   - Call sql_connections first if you do not know which connection to use.
@@ -24,3 +27,11 @@ default_prompt: |
   - DDL (DROP, ALTER, CREATE) is not available — use a DB admin tool for schema changes.
   - Context files in .spla/sql/ describe the business meaning of tables and columns.
     Read them before querying unfamiliar databases. Run sql_verify_context after schema changes.
+
+  Credentials:
+  - Never ask the user to type or paste a password, key or token into the chat. Passwords live in
+    the secret store; a connection names an entry, and the value is resolved at connect time.
+  - When a connection fails for missing or wrong credentials, say which entry is missing and let the
+    user store it out of band — Settings → Secrets, or `spla secret set <entry> --field password --user`
+    (one field per call; the scope flag --user/--project/--shared is required and has no default).
+    Then retry.

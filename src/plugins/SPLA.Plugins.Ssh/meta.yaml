@@ -102,11 +102,9 @@ default_prompt: |
     so the read-only guard cannot see it: taking files OFF a host is always allowed, putting files
     ON one is refused unless that host has allow_write.
 
-  Configuration & secrets:
-  - Hosts are defined in project config under plugins.ssh.settings.hosts. Each host names an address
-    and a credential REFERENCE — `credential: <entry>` pointing at a secret-store entry whose fields
-    (user, password, or private_key+passphrase) supply the login — never a literal password. Older
-    single-value pointers (password: secret:KEY or env:VAR) also work.
+  Credentials:
+  - Hosts are configured by the operator, not by you: you use a host NAME and the login behind it is
+    resolved at connect time. You never see it and cannot set it.
   - Credentials live in the secret store, not in config or chat. If a connection fails for missing
     credentials, tell the user to store the secret — `spla secret set <entry> --field password --user`
     (one field per call; the scope flag --user/--project/--shared is required and has no default) or

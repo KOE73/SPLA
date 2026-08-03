@@ -107,7 +107,7 @@ Browser Screencast не использует сессию или профили 
 
 Работает с настроенными подключениями к базам данных: исследует схему, выполняет безопасные запросы, анализирует планы и контролируемо изменяет данные.
 
-Инструменты: `sql_connections`, `sql_test_connection`, `sql_manage_connection`, `sql_schema`, `sql_query`, `sql_query_plan`, `sql_execute`, `sql_verify_context`.
+Инструменты: `sql_connections`, `sql_test_connection`, `sql_schema`, `sql_query`, `sql_query_plan`, `sql_execute`, `sql_verify_context`.
 
 #### SSH
 

@@ -1,8 +1,8 @@
 <!--
   SQL plugin settings UI (built and shipped INSIDE the plugin, mounted by the host at runtime).
   Edits the plugins.sql.settings blob: named connections, each binding an address to a CREDENTIAL —
-  a reference into the global secret store, never a literal password. The "new credential" inline
-  form writes user/password straight to the secret store via secret.set (values never enter this
+  a reference into the global secret store, never a literal password. Picking or creating that entry
+  is the HOST's credential control, borrowed through CredentialSlot (values never enter this
   blob or the chat); the connection config keeps only the entry name. Mirrors the SSH plugin.
 -->
 <template>
@@ -62,26 +62,7 @@
         <template v-if="!c.trustedConnection || c.provider !== 'mssql'">
           <div class="row">
             <span class="muted w-70">Credential</span>
-            <select v-model="c.credential">
-              <option value="">(none — use fields below)</option>
-              <option v-for="cr in credentials" :key="cr" :value="cr">{{ cr }}</option>
-            </select>
-            <button type="button" @click="c.newCred = !c.newCred">{{ c.newCred ? "cancel" : "new…" }}</button>
-            <span class="muted">entry in the secret store: user + password</span>
-          </div>
-
-          <div v-if="c.newCred" class="row new-cred">
-            <input v-model="c.credName" placeholder="entry name" class="w-140" spellcheck="false">
-            <input v-model="c.credUser" placeholder="user" class="w-120" spellcheck="false">
-            <input v-model="c.credPassword" type="password" placeholder="password" class="w-140" autocomplete="new-password">
-            <select v-model="c.credScope" title="Where this credential is stored">
-              <option value="">scope…</option>
-              <option value="user">user — mine only</option>
-              <option value="project">project — travels with the project</option>
-              <option value="shared">shared — administered</option>
-            </select>
-            <button type="button" :disabled="!c.credName || !c.credPassword || !c.credScope" @click="createCredential(c)">Save to store</button>
-            <span class="muted">{{ c.credStatus }}</span>
+            <CredentialSlot :api="api" v-model="c.credential" />
           </div>
 
           <div class="row">
@@ -105,7 +86,8 @@
 </template>
 
 <script setup lang="ts">
-import { onMounted, reactive, ref } from "vue";
+import { reactive, ref } from "vue";
+import CredentialSlot from "./CredentialSlot.vue";
 import type { MountApi } from "./mount";
 
 const props = defineProps<{ api: MountApi }>();
@@ -120,7 +102,6 @@ interface ConnRow {
   credential: string;
   trustedConnection: boolean;
   description: string;
-  newCred: boolean; credName: string; credUser: string; credPassword: string; credScope: string; credStatus: string;
   testing: boolean;
   testStatus: string;
 }
@@ -154,7 +135,6 @@ function rowFromCfg(name: string, cfg: ConnCfg): ConnRow {
     credential: cfg.credential || "",
     trustedConnection: cfg.trusted_connection ?? true,
     description: cfg.description || "",
-    newCred: false, credName: "", credUser: "", credPassword: "", credScope: "", credStatus: "",
     testing: false,
     testStatus: ""
   };
@@ -184,40 +164,8 @@ const connections = reactive<ConnRow[]>(
   Object.entries(blob.connections || {}).map(([name, cfg]) => rowFromCfg(name, cfg))
 );
 
-/** Secret-store entries for the credential dropdown. Keys and scopes only — the secret.list
- * protocol never returns values. The scope is shown next to every key on purpose: two entries may
- * legitimately share a name in different scopes, and the reference below is what disambiguates. */
-const credentials = ref<{ reference: string; label: string }[]>([]);
-interface SecretEntryDto { key: string; fields: string[]; scope: string; reference: string }
-interface SecretListResult { user: SecretEntryDto[]; project: SecretEntryDto[]; shared: SecretEntryDto[] }
-async function loadCredentials() {
-  try {
-    const r = await props.api.invoke<SecretListResult>("secret.list");
-    credentials.value = [...(r.user || []), ...(r.project || []), ...(r.shared || [])]
-      .map(e => ({ reference: e.reference, label: `${e.key} · ${e.scope}` }))
-      .sort((a, b) => a.label.localeCompare(b.label));
-  } catch { /* store unreachable — dropdown stays empty, manual entry still works */ }
-}
-onMounted(loadCredentials);
-
 function addConnection() {
   connections.push(rowFromCfg(`db${connections.length + 1}`, { provider: "mssql" }));
-}
-
-/** Writes user+password into the scope the user picked and binds the connection to the resulting
- * reference. No default scope: the form stays disabled until one is chosen. */
-async function createCredential(c: ConnRow) {
-  c.credStatus = "Saving…";
-  try {
-    const fields: Record<string, string> = { password: c.credPassword };
-    if (c.credUser) fields.user = c.credUser;
-    await props.api.invoke("secret.set", { key: c.credName.trim(), fields, scope: c.credScope });
-    c.credential = `secret:${c.credScope}:${c.credName.trim()}`;
-    c.newCred = false; c.credName = ""; c.credUser = ""; c.credPassword = ""; c.credScope = ""; c.credStatus = "";
-    await loadCredentials();
-  } catch (e) {
-    c.credStatus = "Failed: " + (e instanceof Error ? e.message : String(e));
-  }
 }
 
 async function testConnection(c: ConnRow) {
@@ -285,7 +233,6 @@ defineExpose({ toJson });
 .w-140 { width: 140px; } .w-160 { width: 160px; } .w-220 { width: 220px; } .w-400 { width: 400px; }
 .conn-card { border: 1px solid var(--border, #444); border-radius: var(--radius, 6px); padding: 8px 10px;
   display: flex; flex-direction: column; gap: 6px; background: var(--panel, transparent); }
-.new-cred { padding: 4px 6px; border: 1px dashed var(--border, #444); border-radius: 5px; }
 .chk { cursor: pointer; }
 .chk input { height: auto; }
 label { display: flex; gap: 6px; align-items: center; }

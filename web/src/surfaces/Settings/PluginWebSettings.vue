@@ -8,6 +8,8 @@
 // at build time; only the URL and the PluginSettingsMount contract (web/src/protocol/types.ts).
 import { onBeforeUnmount, onMounted, ref } from "vue";
 import { client } from "../../protocol/SplaClient";
+import { projectEnvelope } from "../../state/project";
+import { mountCredentialField } from "../../secrets/mountCredentialField";
 import type { PluginDto, PluginSettingsHandle, PluginSettingsMount } from "../../protocol/types";
 
 const props = defineProps<{ plugin: PluginDto }>();
@@ -21,7 +23,10 @@ onMounted(async () => {
     const mount = mod.mount as PluginSettingsMount;
     handle = mount(mountEl.value, {
       getJson: () => props.plugin.settingsJson ?? null,
-      invoke: (type, payload) => client.invoke(type, payload)
+      // The envelope travels here, not in each plugin: a request sent without it resolves the
+      // project scope somewhere else, which a panel has no way to notice.
+      invoke: (type, payload) => client.invoke(type, payload, projectEnvelope()),
+      mountCredentialField
     });
   } catch (e) {
     console.error("failed to load plugin web settings:", props.plugin.id, e);

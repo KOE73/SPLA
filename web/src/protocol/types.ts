@@ -156,6 +156,27 @@ export interface PluginSettingsMountApi {
   getJson(): string | null;
   /** Generic RPC into the host/plugin backend, e.g. invoke("plugin.action", {...}). */
   invoke<R = unknown>(type: string, payload?: unknown): Promise<R>;
+  /**
+   * Mounts the host's credential control into a plugin-owned element: pick an existing secret-store
+   * entry or create one, yielding a `secret:<scope>:<key>` reference through `onChange`. Handed out
+   * rather than reimplemented per plugin — that is what keeps `secret.*` (and any chance of a value
+   * escaping into a settings blob) out of plugin code entirely.
+   */
+  mountCredentialField(el: HTMLElement, opts: CredentialFieldOptions): CredentialFieldHandle;
+}
+
+export interface CredentialFieldOptions {
+  /** Current reference, or empty. */
+  value?: string;
+  onChange(reference: string): void;
+  /** Offer "(none)" for consumers that can also work without a credential. Default true. */
+  allowNone?: boolean;
+  noneLabel?: string;
+  createScope?: SecretScopeId | "";
+}
+export interface CredentialFieldHandle {
+  setValue(reference: string): void;
+  destroy(): void;
 }
 export interface PluginSettingsHandle {
   /** Returns the edited settings serialized back to JSON. Called when the host Saves. */

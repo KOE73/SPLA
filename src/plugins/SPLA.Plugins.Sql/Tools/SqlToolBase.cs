@@ -1,8 +1,8 @@
 namespace SPLA.Plugins.Sql.Tools;
 
 /// <summary>
-/// Shared helpers for all SQL tools. Uses <see cref="SqlConnectionRegistry"/> so that
-/// connections added via sql_manage_connection are visible immediately in the same session.
+/// Shared helpers for all SQL tools. All of them read the same <see cref="SqlConnectionRegistry"/>,
+/// which is read-only: connections are operator configuration, not something a tool creates.
 /// </summary>
 public abstract class SqlToolBase
 {
