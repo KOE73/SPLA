@@ -56,8 +56,13 @@ public sealed class SpawnedAgentRunner : Domain.Interfaces.IAgentSpawner
         // Fresh isolated agent state — own skill session, working memory, and checkpoint manager.
         // Opening an AgentSessionScope keeps the sub-agent's tool calls (memory, marks, skills) off
         // the parent chat's state, even though the spawn happens inside the parent's async flow.
+        var body = _skills.LoadBody(skillId);
+        if (string.IsNullOrWhiteSpace(body))
+            throw new System.ArgumentException(
+                $"Skill '{skillId}' has no readable procedure.", nameof(skillId));
+
         var skillSession = new SkillSession();
-        skillSession.Activate(skillId);
+        skillSession.Activate(skillId, body);
         var checkpoint = new CheckpointManager();
         var agentSession = new AgentSession(new KeyValueStore("session"), checkpoint, skillSession);
 

@@ -11,7 +11,7 @@ internal sealed class ChatHandlers : IMessageHandler
     [
         MessageTypes.ChatList, MessageTypes.ChatNew, MessageTypes.ChatRename, MessageTypes.ChatDelete,
         MessageTypes.ChatOpen, MessageTypes.ChatWatch, MessageTypes.ChatSend, MessageTypes.ChatSettings,
-        MessageTypes.ChatRewind, MessageTypes.ChatFork,
+        MessageTypes.ChatRewind, MessageTypes.ChatFork, MessageTypes.ChatSkillDeactivate,
     ];
 
     public Task HandleAsync(RequestContext ctx) => ctx.Env.Type switch
@@ -26,6 +26,7 @@ internal sealed class ChatHandlers : IMessageHandler
         MessageTypes.ChatSettings => Settings(ctx),
         MessageTypes.ChatRewind   => Rewind(ctx),
         MessageTypes.ChatFork     => Fork(ctx),
+        MessageTypes.ChatSkillDeactivate => SkillDeactivate(ctx),
         _ => Task.CompletedTask
     };
 
@@ -128,6 +129,30 @@ internal sealed class ChatHandlers : IMessageHandler
         }
         await ctx.Session.SendOpenedAsync(fork);   // switches this client to the fork
         await BroadcastChatList(ctx, projectId, entry.Chats);
+    }
+
+    /// <summary>
+    /// Ends the chat's skill on the user's say-so.
+    ///
+    /// <para>Exists because <c>skill_deactivate</c> is the model's decision, and a model that never
+    /// makes it leaves the chat unable to recover on its own: the skills index is suppressed while a
+    /// skill is active, so it cannot be pointed at another one, and <c>skill_activate</c> refuses a
+    /// second. The CLI's <c>/skills unload</c> only reaches chats inside that one process — this is
+    /// the same exit for every window on the service.</para>
+    /// </summary>
+    private static async Task SkillDeactivate(RequestContext ctx)
+    {
+        var (entry, _) = ctx.Session.Resolve(ctx.Env);
+        var p = ctx.Payload<ChatSkillDeactivatePayload>();
+        var chat = p != null ? entry.Chats.GetOrOpen(p.ChatId) : null;
+        if (chat == null) return;
+
+        chat.DeactivateSkill();
+
+        // To watchers, not just the requester: two windows on one chat must not disagree about
+        // whether a skill is running.
+        await ctx.Session.Hub.BroadcastToWatchersAsync(chat.ChatId, MessageTypes.ChatSkillState,
+            new ChatSkillStatePayload { ChatId = chat.ChatId, ActiveSkillId = chat.ActiveSkillId });
     }
 
     private static Task BroadcastChatList(RequestContext ctx, string projectId, ChatRegistry chats)

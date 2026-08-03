@@ -40,7 +40,7 @@ public class SystemPromptActiveSkillTests
     {
         var session = new SkillSession();
         var skills = ManagerWith(new FakeSkillSource().With("test.skill", body: "Step 1: Do the thing."));
-        session.Activate("test.skill");
+        session.Activate("test.skill", "Step 1: Do the thing.");
 
         var prompt = BuilderFor(skills, session).Build(MinimalSettings(), Directory.GetCurrentDirectory());
 
@@ -54,7 +54,7 @@ public class SystemPromptActiveSkillTests
     {
         var session = new SkillSession();
         var skills = ManagerWith(new FakeSkillSource().With("test.skill"));
-        session.Activate("test.skill");
+        session.Activate("test.skill", "Step 1: Do the thing.");
 
         var prompt = BuilderFor(skills, session).Build(MinimalSettings(), Directory.GetCurrentDirectory());
 

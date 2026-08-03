@@ -68,6 +68,18 @@ button { font: inherit; cursor: pointer; }
 .ctx-bar-fill { height: 100%; background: currentColor; opacity: .6; }
 #ctxBudget.warn .ctx-bar-fill, #ctxBudget.crit .ctx-bar-fill { opacity: 1; }
 
+/* Active-skill chip: shown only while a skill is running in the focused chat. It carries the user's
+   way out — the model is meant to call skill_deactivate itself, and when it does not, nothing else
+   in the UI can end the procedure. Accented rather than quiet: an unnoticed active skill is exactly
+   the failure this exists for. */
+#activeSkill { display: flex; align-items: center; gap: 4px; font-size: var(--fs-xs);
+  border: 1px solid var(--accent); color: var(--accent); background: var(--accent-soft);
+  border-radius: 999px; padding: 1px 4px 1px 9px; }
+#activeSkill .skill-label { white-space: nowrap; }
+#activeSkill .skill-unload { background: transparent; border: 0; color: inherit; cursor: pointer;
+  font-size: var(--fs-xs); line-height: 1; padding: 2px 5px; border-radius: 999px; opacity: .7; }
+#activeSkill .skill-unload:hover { opacity: 1; background: var(--accent); color: var(--bg); }
+
 /* ── Filter bar (per-type visibility toggles) ─────────────────────────────── */
 #filters { padding: 5px 14px; border-bottom: 1px solid var(--border); display: flex; gap: 6px;
   align-items: center; font-size: var(--fs-xs); }

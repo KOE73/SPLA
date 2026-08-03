@@ -24,6 +24,10 @@
   </label>
   <button class="filter" @click="openSettings">⚙</button>
   <button class="filter" @click="uiBus.emit('debug.open')">debug</button>
+  <span v-if="activeSkill" id="activeSkill" :title="`Skill '${activeSkill}' is running in this chat`">
+    <span class="skill-label">skill: {{ activeSkill }}</span>
+    <button class="skill-unload" title="End this skill" @click="unloadSkill">✕</button>
+  </span>
   <span
     v-if="ctxUsed != null"
     id="ctxBudget"
@@ -61,6 +65,20 @@ const lastPrompt = ref<number | null>(null);
 const lastCompletion = ref<number | null>(null);
 const ctxUsed = ref<number | null>(null);
 const ctxWindow = ref<number | null>(null);
+const activeSkill = ref<string | null>(null);
+
+/**
+ * Ends the running skill from the UI.
+ *
+ * The model is supposed to call skill_deactivate as its last step; when it does not, the chat cannot
+ * recover on its own — the skills index is suppressed while a skill is active, so it cannot be told
+ * about another one, and a second activation is refused. This is the way out.
+ */
+function unloadSkill() {
+  if (!store.currentChat) return;
+  client.send("chat.skill.deactivate", { chatId: store.currentChat },
+    { projectId: store.currentProjectId ?? undefined });
+}
 
 const ctxPercent = computed(() => {
   if (ctxUsed.value == null || !ctxWindow.value) return null;
@@ -184,6 +202,14 @@ const offChatOpened = client.on("chat.opened", p => {
   lastCompletion.value = null;
   ctxUsed.value = null;
   ctxWindow.value = null;
+  // Sent on open too: a window attaching to a chat that was left mid-skill has to show the exit
+  // straight away, not only after the next turn.
+  activeSkill.value = p.activeSkillId || null;
+});
+// End of turn is when a skill the model forgot to close becomes visible and actionable.
+const offTurnSkill = client.on("turn.complete", p => { activeSkill.value = p.activeSkillId || null; });
+const offSkillState = client.on("chat.skill.state", p => {
+  if (p.chatId === store.currentChat) activeSkill.value = p.activeSkillId || null;
 });
 const offTokens = client.on("token.usage", p => {
   lastPrompt.value = p.promptTokens ?? null;
@@ -222,5 +248,5 @@ const offHealth = client.on("connections.health", p => {
   connHealth.value = {};
   for (const s of p.statuses || []) connHealth.value[s.id] = { ok: s.ok, error: s.error };
 });
-onUnmounted(() => { offConn(); offWelcome(); offChatOpened(); offTokens(); offResult(); offHealth(); offInfo(); });
+onUnmounted(() => { offConn(); offWelcome(); offChatOpened(); offTokens(); offResult(); offHealth(); offInfo(); offTurnSkill(); offSkillState(); });
 </script>

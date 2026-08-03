@@ -49,6 +49,21 @@ public sealed class ConversationOrchestrator
     public Func<IReadOnlyList<(string scope, string key, string value)>>? WorkingMemory { get; init; }
 
     /// <summary>
+    /// Optional provider of the system prompt. When set, it is invoked on every iteration of the
+    /// loop and its result replaces the leading system message of the assembled list — the stored
+    /// conversation is left untouched.
+    ///
+    /// <para>Per-iteration rather than per-turn because some state the prompt reflects is changed by
+    /// the model itself, mid-turn: <c>skill_activate</c> is the case that forced this. A prompt built
+    /// once before the loop would inject the activated skill's procedure only from the user's *next*
+    /// message, by which point the model has already had to act without it.</para>
+    ///
+    /// <para>The provider runs inside this turn's <c>AgentSessionScope</c>, which is what lets the
+    /// assembler resolve per-chat state (the active skill) from a runtime-wide builder.</para>
+    /// </summary>
+    public Func<string>? SystemPrompt { get; init; }
+
+    /// <summary>
     /// Optional mark/checkpoint manager. When set, the orchestrator truncates the conversation
     /// whenever a tool signals <see cref="Domain.Agent.MarkManager.RestoreRequested"/>.
     /// </summary>
@@ -100,6 +115,7 @@ public sealed class ConversationOrchestrator
             cancellationToken.ThrowIfCancellationRequested();
 
             var coreMessages = ContextAssembler.Assemble(conversation.Messages);
+            RefreshSystemPrompt(coreMessages);
             InjectWorkingMemory(coreMessages);
 
             var tools = (ToolFilter ?? ((t, m) => ToolModeFilter.Filter(t, m)))
@@ -301,6 +317,26 @@ public sealed class ConversationOrchestrator
                 needToCallLLM = true; // normal tool loop: always continue until model stops calling tools
             didRollback = false;
         }
+    }
+
+    /// <summary>
+    /// Re-renders the leading system message from <see cref="SystemPrompt"/>. Replaces the entry
+    /// with a fresh <see cref="ChatMessage"/> rather than assigning to the existing one — the
+    /// assembled list holds the very objects the conversation stores, and mutating one would write
+    /// a per-iteration rendering into persisted history.
+    /// </summary>
+    private void RefreshSystemPrompt(List<ChatMessage> coreMessages)
+    {
+        if (SystemPrompt == null) return;
+
+        var text = SystemPrompt();
+        if (string.IsNullOrEmpty(text)) return;
+
+        var message = new ChatMessage { Role = ChatRole.System, Content = text };
+        var firstSystem = coreMessages.FindIndex(m => m.Role == ChatRole.System);
+
+        if (firstSystem >= 0) coreMessages[firstSystem] = message;
+        else coreMessages.Insert(0, message);
     }
 
     /// <summary>

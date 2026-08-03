@@ -55,6 +55,8 @@ export interface ChatOpenedPayload {
   messages: ChatMessage[];
   mode?: string;
   modelId?: string;
+  /** The skill running in this chat, if any — the unload control keys off this. */
+  activeSkillId?: string | null;
 }
 
 /** One editable connection: transport + credentials, owning its model entries. */
@@ -419,7 +421,9 @@ export interface ServerEvents {
   /** User message accepted by the server. Text is present so server-initiated turns can render
    * without a local echo; ordinary composer turns use it only as a fallback. */
   "user.message": { msgId: string; createdAt?: string; text?: string };
-  "turn.complete": { cancelled?: boolean; error?: string };
+  "turn.complete": { cancelled?: boolean; error?: string; activeSkillId?: string | null };
+  /** A chat's active skill changed — after an explicit unload. */
+  "chat.skill.state": { chatId: string; activeSkillId?: string | null };
   "tool.started": { toolCall: ToolCallDto };
   "tool.progress": { toolCallId?: string; toolName: string; current: number; total: number; fraction?: number | null; message?: string | null; details?: ToolProgressDetail[] | null };
   "tool.result": { toolCallId: string; toolName: string; result: string };

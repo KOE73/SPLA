@@ -47,6 +47,18 @@ internal static class InteractiveRepl
             if (all.Count == 0) Console.WriteLine("No skills available.");
             else foreach (var s in all)
                 Console.WriteLine($"  [{(s.IsEnabled ? "on " : "off")}] {s.Id} — {s.Description}");
+
+            if (chat.ActiveSkillId is { } active)
+                Console.WriteLine($"\nActive: {active}  (/skills unload to end it)");
+            return true;
+        }
+
+        if (input.Equals("/skills unload", StringComparison.OrdinalIgnoreCase))
+        {
+            var previous = chat.DeactivateSkill();
+            Console.WriteLine(previous is not null
+                ? $"Skill '{previous}' deactivated."
+                : "No skill is active.");
             return true;
         }
 

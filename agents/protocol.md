@@ -60,6 +60,7 @@ client/types **and** this table.
 | `chat.settings` | `ChatSettings` | `ChatSettingsPayload` | Change mode/model entry; echoes `chat.opened`. |
 | `chat.rewind` | `ChatRewind` | `ChatRewindPayload` | Truncate a chat at/before a message; echoes `chat.opened`. |
 | `chat.fork` | `ChatFork` | `ChatForkPayload` | Copy a chat at a message boundary; opens the fork and broadcasts `chat.list.result`. |
+| `chat.skill.deactivate` | `ChatSkillDeactivate` | `ChatSkillDeactivatePayload` | End the chat's running skill; broadcasts `chat.skill.state` to watchers. The user's exit when the model never calls `skill_deactivate`. |
 | `focus.set` | `FocusSet` | `FocusPayload` | Window focused a chat; echoes `focus.changed` to all. |
 | `cancel` | `Cancel` | — (uses `chatId`) | Cancel the active turn of `chatId`. |
 | `permission.decision` | `PermissionDecision` | `PermissionDecisionPayload` | Answer to `permission.request` (by `requestId`). |
@@ -120,7 +121,8 @@ client/types **and** this table.
 | `tool.result` | `ToolResult` | `ToolResultPayload` | watchers | A tool call finished. |
 | `notice` | `Notice` | `NoticePayload` | watchers | Inline notice. |
 | `token.usage` | `TokenUsage` | `TokenUsagePayload` | watchers | Per-turn token counts; `contextLength` (nullable) carries the model's operative window for the client's context-budget display. |
-| `turn.complete` | `TurnComplete` | `TurnCompletePayload` | watchers | Turn ended; re-enable input. |
+| `turn.complete` | `TurnComplete` | `TurnCompletePayload` | watchers | Turn ended; re-enable input. `activeSkillId` reports a skill still running — end of turn is when one the model forgot to close becomes actionable. |
+| `chat.skill.state` | `ChatSkillState` | `ChatSkillStatePayload` | watchers | The chat's active skill changed (after an explicit unload). |
 | `permission.request` | `PermissionRequest` | `PermissionRequestPayload` | unicast | To the initiating client (by `requestId`). |
 | `clarify.request` | `ClarifyRequest` | `ClarifyRequestPayload` | unicast | To the initiating client (by `requestId`). |
 | `debug.snapshot` | `DebugSnapshot` | `DebugSnapshotPayload` | unicast | Answer to `debug.request`. |

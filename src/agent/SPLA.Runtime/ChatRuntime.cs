@@ -41,6 +41,25 @@ public sealed class ChatRuntime
     public ChatSession Session => _chat;
     public IReadOnlyList<ChatMessage> Messages => _conversation.Messages;
 
+    /// <summary>The skill running in this chat, or null when idle.</summary>
+    public string? ActiveSkillId => _skillSession.ActiveSkillId;
+
+    /// <summary>
+    /// Ends the running skill from outside the model — the user's way out.
+    ///
+    /// <para>Needed because <c>skill_deactivate</c> is the model's own decision, and a model that
+    /// simply never calls it leaves the chat wedged: the skills index is suppressed while a skill is
+    /// active, so it cannot be told about another one, and <c>skill_activate</c> refuses a second.
+    /// Hosts bind this to an "Unload skill" control.</para>
+    /// </summary>
+    /// <returns>The id that was deactivated, or null when nothing was running.</returns>
+    public string? DeactivateSkill()
+    {
+        var previous = _skillSession.ActiveSkillId;
+        _skillSession.Deactivate();
+        return previous;
+    }
+
     /// <summary>This chat's session-scoped working memory entries (for the debug inspector).</summary>
     public IEnumerable<(string Key, string Value)> SessionKvEntries
         => _sessionKv.List().Select(e => (e.Key, e.Value));
@@ -119,6 +138,11 @@ public sealed class ChatRuntime
             WorkingMemory = runtime.HasFeature("core.memory")
                 ? () => CollectWorkingMemory(_sessionKv, runtime.ProjectKv.Store)
                 : null,
+            // Live system prompt, rebuilt on every iteration inside this turn's AgentSessionScope.
+            // Settings and plugin edits made since the chat opened apply immediately, and — the
+            // reason it is per-iteration — a skill the model activates mid-turn has its procedure in
+            // the prompt for the very next LLM call rather than for the next user message.
+            SystemPrompt = () => runtime.SystemPrompt,
             Checkpoint = _checkpoint,
             // Anti-repeat guard is a per-project setting (agent: loop_guard, default off) — it targets
             // small local models that loop forever, but false-fires on legitimate poll/wait patterns.
@@ -185,10 +209,10 @@ public sealed class ChatRuntime
             if (images is { Count: > 0 }) PersistImages(userMsg, images);
             Save();
 
-            // Live system prompt: refresh the seeded system message so settings/plugin changes made
-            // since the chat opened (e.g. new SSH hosts, edited plugin prompts) apply this turn.
-            var sysMsg = _conversation.Messages.FirstOrDefault(m => m.Role == ChatRole.System);
-            if (sysMsg != null) sysMsg.Content = _runtime.SystemPrompt;
+            // The seeded system message is a placeholder from here on: the orchestrator's SystemPrompt
+            // provider re-renders it on every iteration, inside the session scope. Refreshing it here
+            // would be both redundant and too early — the scope that carries this chat's active skill
+            // opens a few lines below.
 
             // Live loop-guard setting: a toggle in Settings applies to the very next turn.
             _orchestrator.EnableLoopGuard = _runtime.Settings.LoopGuard;

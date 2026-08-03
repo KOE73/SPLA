@@ -35,6 +35,31 @@ public class SkillSourceTests : IDisposable
         Assert.Empty(source.Enumerate());
     }
 
+    /// <summary>
+    /// A folder that does not exist yet is the normal state of <c>.spla/skills</c> — it appears the
+    /// moment the user writes a first draft. FileSystemWatcher cannot watch a missing path, so the
+    /// source watches the nearest existing ancestor until the root shows up. Without this the very
+    /// folder a user just created stayed dark until restart, which is the opposite of hot reload.
+    /// </summary>
+    [Fact]
+    public void Directory_source_lights_up_when_its_folder_is_created_later()
+    {
+        Directory.CreateDirectory(_temp);
+        var root = Path.Combine(_temp, "later", "skills");
+
+        using var source = new DirectorySkillSource("local", "local", root, SkillTrust.Trusted);
+        using var signal = new ManualResetEventSlim();
+        source.Changed += () => signal.Set();
+
+        Assert.Empty(source.Enumerate());
+
+        Directory.CreateDirectory(root);
+        Write(Path.Combine(root, "drafted.md"), "A procedure written just now.");
+
+        Assert.True(signal.Wait(TimeSpan.FromSeconds(10)), "the source never reported the new folder");
+        Assert.Contains(source.Enumerate(), e => e.Id == "drafted");
+    }
+
     [Fact]
     public void Directory_source_reads_flat_files_and_folder_skills()
     {

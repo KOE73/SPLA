@@ -102,4 +102,79 @@ public class ConversationOrchestratorTests
         // Stopped well before exhausting the 10 scripted responses.
         Assert.True(host.Executed.Count <= 3);
     }
+
+    // ── System prompt provider ───────────────────────────────────────────────
+
+    /// <summary>
+    /// Per-iteration, not per-turn. The case that demands it: the model calls skill_activate, and
+    /// the activated procedure has to be in the prompt for the LLM call that immediately follows —
+    /// not for the user's next message, by which point the model has already acted without it.
+    /// </summary>
+    [Fact]
+    public async Task System_prompt_is_re_rendered_on_every_iteration()
+    {
+        var llm = new FakeLlm(new[]
+        {
+            new ChatMessage { Role = ChatRole.Assistant, Content = "", ToolCalls = new() { Call("1", "system_read_file") } },
+            new ChatMessage { Role = ChatRole.Assistant, Content = "done" }
+        });
+
+        var renders = 0;
+        var orch = new ConversationOrchestrator(llm, new FakeToolHost())
+        {
+            ToolFilter = (t, _) => t,
+            SystemPrompt = () => $"PROMPT #{++renders}"
+        };
+
+        var convo = new Conversation();
+        convo.Add(new ChatMessage { Role = ChatRole.System, Content = "seeded placeholder" });
+        convo.Add(new ChatMessage { Role = ChatRole.User, Content = "go" });
+
+        await orch.RunAsync(convo, new LLMSettings(), AgentMode.Agent, new AgentCallbacks());
+
+        Assert.Equal(2, llm.SeenContexts.Count);
+        Assert.Equal("PROMPT #1", llm.SeenContexts[0].First(m => m.Role == ChatRole.System).Content);
+        Assert.Equal("PROMPT #2", llm.SeenContexts[1].First(m => m.Role == ChatRole.System).Content);
+    }
+
+    /// <summary>The assembled list holds the very objects the conversation stores, so the refresh
+    /// has to replace the entry rather than assign to it — otherwise a per-iteration rendering gets
+    /// written into persisted chat history.</summary>
+    [Fact]
+    public async Task System_prompt_refresh_does_not_touch_stored_history()
+    {
+        var llm = new FakeLlm(new[] { new ChatMessage { Role = ChatRole.Assistant, Content = "done" } });
+        var orch = new ConversationOrchestrator(llm, new FakeToolHost())
+        {
+            ToolFilter = (t, _) => t,
+            SystemPrompt = () => "freshly rendered"
+        };
+
+        var convo = new Conversation();
+        var seeded = new ChatMessage { Role = ChatRole.System, Content = "seeded placeholder" };
+        convo.Add(seeded);
+        convo.Add(new ChatMessage { Role = ChatRole.User, Content = "go" });
+
+        await orch.RunAsync(convo, new LLMSettings(), AgentMode.Agent, new AgentCallbacks());
+
+        Assert.Equal("freshly rendered", llm.SeenContexts[0].First(m => m.Role == ChatRole.System).Content);
+        Assert.Equal("seeded placeholder", seeded.Content);
+    }
+
+    /// <summary>No provider — the seeded system message is sent as-is. Keeps the spawned-agent path,
+    /// which builds its prompt once up front, working unchanged.</summary>
+    [Fact]
+    public async Task Without_a_provider_the_seeded_system_message_is_sent_unchanged()
+    {
+        var llm = new FakeLlm(new[] { new ChatMessage { Role = ChatRole.Assistant, Content = "done" } });
+        var orch = new ConversationOrchestrator(llm, new FakeToolHost()) { ToolFilter = (t, _) => t };
+
+        var convo = new Conversation();
+        convo.Add(new ChatMessage { Role = ChatRole.System, Content = "built once" });
+        convo.Add(new ChatMessage { Role = ChatRole.User, Content = "go" });
+
+        await orch.RunAsync(convo, new LLMSettings(), AgentMode.Agent, new AgentCallbacks());
+
+        Assert.Equal("built once", llm.SeenContexts[0].First(m => m.Role == ChatRole.System).Content);
+    }
 }

@@ -89,8 +89,17 @@ public sealed class SkillActivateTool : IMcpTool
                 return Task.FromResult(
                     $"error: skill '{skill.Id}' is not available — {skill.StateReason}");
 
-            session.Activate(id);
-            return Task.FromResult($"ok: activated '{id}' — skill procedure is now injected into the prompt. Follow the steps and call skill_deactivate when done.");
+            // The body is read once, here, and pinned in the session for the run. Editing the file
+            // of a running skill therefore cannot swap the procedure mid-flight; the edit applies at
+            // the next activation. A source that cannot produce the body fails the activation
+            // outright rather than activating into an empty ACTIVE SKILL block.
+            var body = _skills.LoadBody(skill.Id);
+            if (string.IsNullOrWhiteSpace(body))
+                return Task.FromResult(
+                    $"error: skill '{skill.Id}' has no readable procedure — its source '{skill.SourceId}' returned nothing");
+
+            session.Activate(skill.Id, body);
+            return Task.FromResult($"ok: activated '{skill.Id}' — skill procedure is now injected into the prompt. Follow the steps and call skill_deactivate when done.");
         }
         catch (JsonException)
         {

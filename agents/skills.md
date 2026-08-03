@@ -191,6 +191,48 @@ At most one skill is Active per chat. `skill_activate` while another is active i
 `ISkillSession` (`src/core/SPLA.Domain/Agent/ISkillSession.cs`) holds the state, one instance per
 chat, and raises `Changed` so the UI and the prompt assembler react.
 
+### The body is pinned for the run
+
+`Activate` takes the procedure text, not just the id, and the session holds it until `Deactivate`.
+Everything downstream reads that snapshot; nothing re-fetches from the source while a skill is
+active.
+
+That is what reconciles the two halves of hot reload: a skill file can be edited, added or deleted
+at any time and the registry follows along, but the procedure a model is *currently executing*
+cannot be swapped out from under it mid-run. The edit takes effect at the next activation. A source
+that cannot produce the body fails the activation outright rather than activating into an empty
+block.
+
+`SkillManager.IsSkillActive` still exists and still defers a source-triggered rebuild while set. It
+is no longer what protects a running skill — the pin does that — so it is free to be used as a
+plain flag.
+
+### Ending a skill
+
+Three ways out, and the last one matters more than it looks:
+
+- the model calls `skill_deactivate` as its final step (the designed path);
+- the chat is closed — `SkillSession` is in-memory and deliberately not persisted;
+- **the user ends it** — `ChatRuntime.DeactivateSkill()`, reachable from every client:
+  - `chat.skill.deactivate` over the protocol, answered with a `chat.skill.state` broadcast to the
+    chat's watchers, so two windows on one chat never disagree;
+  - the active-skill chip in the web status bar (which the desktop shell hosts, so that is the
+    desktop control too);
+  - `/skills unload` in the CLI REPL.
+
+The user's exit is not a convenience. A model that simply never calls `skill_deactivate` wedges the
+chat: the skills index is suppressed while a skill is active, so it cannot be told about another
+one, and `skill_activate` refuses a second. With the tool as the only exit, the chat is stuck until
+restart.
+
+Note what the CLI command alone does *not* solve: a skill session lives in the `ChatRuntime` of the
+process running it, so `/skills unload` reaches only chats inside that CLI. A chat wedged in the
+desktop or web client needs the protocol op — which is why the escape hatch belongs there first.
+
+Clients learn the state from `ChatOpenedPayload.ActiveSkillId` (attaching to a chat left mid-skill)
+and `TurnCompletePayload.ActiveSkillId` (end of turn — the moment a forgotten `skill_deactivate`
+becomes visible and actionable). Neither needs an event subscription kept alive across a turn.
+
 ### Tools
 
 - **`skill_activate`** — validates via `SkillManager.Find`, refuses a non-`Available` skill *with its
@@ -225,14 +267,36 @@ chat, and raises `Changed` so the UI and the prompt assembler react.
 The index lists `GetAvailable()` only. The standing description of what an ACTIVE SKILL block means
 lives once in the global prompt; skill bodies must not repeat it.
 
+### When it is assembled
+
+`ConversationOrchestrator.SystemPrompt` is a provider invoked on **every iteration** of the agent
+loop, and its result replaces the leading system message of the assembled list (a fresh message —
+the stored conversation is never written to).
+
+Per-iteration rather than per-turn because `skill_activate` is a move the model makes *mid-turn*: a
+prompt built once before the loop would inject the procedure only from the user's next message, by
+which point the model has already had to act without it.
+
+The provider runs inside the turn's `AgentSessionScope`, and that is what lets a runtime-wide
+`SystemPromptBuilder` render per-chat state at all. The builder resolves its session from the
+constructor argument if given, else from the ambient scope — the same pattern the skill tools use.
+Passing one explicitly still wins, which is how a spawned sub-agent keeps describing its own skill
+while running inside the parent's async flow.
+
 ---
 
 ## Reload
 
-Sources raise `Changed`; `SkillManager` re-enumerates and recomputes. Set `SkillManager.IsSkillActive`
-to defer a reload while a procedure is mid-run. Plugin packages do not change under a running
-process, so `PluginSkillSource` never raises `Changed` — the registry is rebuilt on a plugin load
-pass instead.
+Sources raise `Changed`; `SkillManager` re-enumerates and recomputes. A running procedure is safe
+regardless — see "The body is pinned for the run" above; `SkillManager.IsSkillActive` additionally
+defers the rebuild itself while set. Plugin packages do not change under a running process, so
+`PluginSkillSource` never raises `Changed` — the registry is rebuilt on a plugin load pass instead.
+
+`DirectorySkillSource` watches its root when it exists, and the nearest existing **ancestor** when it
+does not, swapping to the real watcher the moment the folder appears. A missing folder is the normal
+state of `.spla/skills` right up until the user writes a first draft there, and requiring a restart
+at exactly that moment is the opposite of hot reload. Deleting the root re-arms the ancestor watch,
+so delete-and-recreate is survivable rather than one-way.
 
 ---
 

@@ -153,12 +153,27 @@ public sealed class SystemPromptBuilder
         }
     }
 
+    /// <summary>
+    /// The skill session this build reflects: the one handed to the constructor, else the ambient
+    /// one of the chat currently running.
+    ///
+    /// <para>The fallback exists because this builder is a singleton on the runtime while a skill
+    /// session belongs to a chat — they cannot be tied together by constructor. Resolving through
+    /// <see cref="AgentSessionScope"/> is the same ambient pattern the skill tools already use, and
+    /// it is what makes an activation visible to the very next LLM turn: the orchestrator rebuilds
+    /// the system prompt inside that scope on every iteration.</para>
+    /// </summary>
+    private ISkillSession? Session => _skillSession ?? AgentSessionScope.Current?.Skills;
+
     private void AppendActiveSkill(List<PromptSegment> segments)
     {
-        var activeId = _skillSession?.ActiveSkillId;
+        var session = Session;
+        var activeId = session?.ActiveSkillId;
         if (string.IsNullOrEmpty(activeId)) return;
 
-        var body = _skills.LoadBody(activeId);
+        // The pinned snapshot, not a fresh read: a skill mid-run keeps the procedure it started with
+        // even while its file is edited and the source hot-reloads around it.
+        var body = session!.ActiveBody;
         if (string.IsNullOrEmpty(body)) return;
 
         var text = $"\n\n=== ACTIVE SKILL: {activeId} ===\n" + body + $"\n=== END ACTIVE SKILL: {activeId} ===";
@@ -187,7 +202,7 @@ public sealed class SystemPromptBuilder
 
         // ── On-demand skills: list + agent_info load rule ──
         // Suppressed while a skill is active — the active skill body is already injected above.
-        if (onDemand.Count == 0 || _skillSession?.ActiveSkillId is not null) return;
+        if (onDemand.Count == 0 || Session?.ActiveSkillId is not null) return;
 
         var sb = new StringBuilder();
         sb.Append("\n\n--- Skills ---");

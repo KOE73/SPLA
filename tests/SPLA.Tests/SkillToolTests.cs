@@ -53,7 +53,7 @@ public class SkillToolTests
     public async Task Activate_while_skill_active_returns_error()
     {
         var session = new SkillSession();
-        session.Activate("first.skill");   // manually put into active state
+        session.Activate("first.skill", "Step 1.");   // manually put into active state
 
         var skills = BuildSkillManager();
         var tool = new SkillActivateTool(skills);
@@ -82,7 +82,7 @@ public class SkillToolTests
     public async Task Deactivate_when_active_returns_ok_and_clears_session()
     {
         var session = new SkillSession();
-        session.Activate("network.range-audit");
+        session.Activate("network.range-audit", "Step 1.");
         var tool = new SkillDeactivateTool();
 
         using var _ = Scope(session);

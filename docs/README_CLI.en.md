@@ -42,8 +42,9 @@ Creates a new chat and enters a "line in → agent turn" loop. Inside the REPL:
 
 | Input | Effect |
 |-------|--------|
-| `/skills` | list available skills: `[on]`/`[off]`, id, description |
+| `/skills` | list available skills: `[on]`/`[off]`, id, description; plus the active one, if any |
 | `/skills load <id>` | load a skill's body into the current chat's context |
+| `/skills unload` | end the active skill when the model has not done so itself |
 | `exit` / `quit` | leave |
 | empty line | leave |
 

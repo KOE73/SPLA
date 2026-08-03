@@ -332,7 +332,8 @@ public sealed class ClientConnection : IClientSession
             Title = chat.Title,
             Messages = chat.SnapshotMessages(),
             Mode = chat.ModeName,
-            ModelId = chat.ModelId
+            ModelId = chat.ModelId,
+            ActiveSkillId = chat.ActiveSkillId
         }, chat.ChatId);
     }
 
@@ -389,7 +390,12 @@ public sealed class ClientConnection : IClientSession
         }
 
         await _hub.BroadcastToWatchersAsync(chat.ChatId, MessageTypes.TurnComplete,
-            new TurnCompletePayload { Cancelled = turnCts.IsCancellationRequested, Error = error });
+            new TurnCompletePayload
+            {
+                Cancelled = turnCts.IsCancellationRequested,
+                Error = error,
+                ActiveSkillId = chat.ActiveSkillId
+            });
     }
 
     /// <summary>

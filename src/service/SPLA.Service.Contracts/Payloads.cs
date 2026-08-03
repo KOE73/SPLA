@@ -581,6 +581,10 @@ public sealed class ChatOpenedPayload
     public List<ChatMessageDto> Messages { get; set; } = new();
     public string Mode { get; set; } = string.Empty;
     public string? ModelId { get; set; }
+
+    /// <summary>The skill running in this chat, or null. Sent on open so a window attaching to a chat
+    /// that was left mid-skill can offer the way out immediately.</summary>
+    public string? ActiveSkillId { get; set; }
 }
 
 public sealed class DeltaPayload
@@ -679,6 +683,29 @@ public sealed class TurnCompletePayload
 {
     public bool Cancelled { get; set; }
     public string? Error { get; set; }
+
+    /// <summary>The skill still running once the turn ended, or null.
+    /// <para>End of turn is exactly when a stuck skill becomes visible and actionable: the model was
+    /// supposed to call <c>skill_deactivate</c> as its final step, and if it did not, the chat is now
+    /// idle with a skill still pinned — index suppressed, a second activation refused. Reporting it
+    /// here means the client can offer the unload control at the moment it is needed, with no event
+    /// subscription to keep alive.</para></summary>
+    public string? ActiveSkillId { get; set; }
+}
+
+/// <summary>Request to end the skill running in a chat — the user's way out when the model never
+/// called <c>skill_deactivate</c>. Answered with <see cref="ChatSkillStatePayload"/>.</summary>
+public sealed class ChatSkillDeactivatePayload
+{
+    public string ChatId { get; set; } = string.Empty;
+}
+
+/// <summary>A chat's active-skill state, broadcast to the chat's watchers after it changes so every
+/// window on that chat agrees.</summary>
+public sealed class ChatSkillStatePayload
+{
+    public string ChatId { get; set; } = string.Empty;
+    public string? ActiveSkillId { get; set; }
 }
 
 public sealed class PermissionRequestPayload

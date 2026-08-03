@@ -27,8 +27,10 @@ public sealed class DirectorySkillSource : IEditableSkillSource, IDisposable
 
     private readonly string _root;
     private readonly ILogger? _logger;
-    private readonly FileSystemWatcher? _watcher;
+    private readonly object _gate = new();
+    private FileSystemWatcher? _watcher;
     private Timer? _debounce;
+    private bool _disposed;
 
     public string Id { get; }
     public string Label { get; }
@@ -48,23 +50,102 @@ public sealed class DirectorySkillSource : IEditableSkillSource, IDisposable
         _root = Path.GetFullPath(rootPath);
         _logger = logger;
 
-        // A missing folder is the normal case (most projects have no .spla/skills), so it is not an
-        // error and not created eagerly — but it must still be watched for, since creating it later
-        // should light the source up without a restart. FileSystemWatcher cannot watch a path that
-        // does not exist, so watching starts only once the folder is there.
-        if (watch && Directory.Exists(_root))
+        if (watch) StartWatching();
+    }
+
+    /// <summary>
+    /// Attaches the watcher appropriate to the current state of the root folder.
+    ///
+    /// <para>A missing folder is the normal case — most projects have no <c>.spla/skills</c> until
+    /// the first draft is written — so it is neither an error nor created eagerly. But
+    /// FileSystemWatcher cannot watch a path that does not exist, and simply giving up would mean
+    /// the folder a user creates mid-session stays dark until restart. So an absent root is watched
+    /// for on the nearest existing ancestor instead, and the moment it appears this swaps itself for
+    /// the real content watcher.</para>
+    /// </summary>
+    private void StartWatching()
+    {
+        lock (_gate)
         {
-            _watcher = new FileSystemWatcher(_root, "*.md")
+            if (_disposed) return;
+
+            DetachWatcher();
+
+            if (Directory.Exists(_root))
+            {
+                _watcher = Attach(_root, "*.md",
+                    NotifyFilters.LastWrite | NotifyFilters.FileName | NotifyFilters.DirectoryName,
+                    OnFileEvent);
+                return;
+            }
+
+            var ancestor = NearestExistingAncestor(_root);
+            if (ancestor is null)
+            {
+                _logger?.LogDebug(
+                    "Skill folder and all its ancestors are missing — not watched. Source={SourceId} Path={Path}",
+                    Id, _root);
+                return;
+            }
+
+            _watcher = Attach(ancestor, "*.*", NotifyFilters.DirectoryName, OnAncestorEvent);
+        }
+    }
+
+    private FileSystemWatcher? Attach(
+        string path, string filter, NotifyFilters notify, FileSystemEventHandler handler)
+    {
+        try
+        {
+            var watcher = new FileSystemWatcher(path, filter)
             {
                 IncludeSubdirectories = true,
-                NotifyFilter = NotifyFilters.LastWrite | NotifyFilters.FileName | NotifyFilters.DirectoryName,
+                NotifyFilter = notify,
                 EnableRaisingEvents = true
             };
-            _watcher.Changed += OnFileEvent;
-            _watcher.Created += OnFileEvent;
-            _watcher.Deleted += OnFileEvent;
-            _watcher.Renamed += OnFileEvent;
+            watcher.Changed += handler;
+            watcher.Created += handler;
+            watcher.Deleted += handler;
+            watcher.Renamed += (s, e) => handler(s, e);
+            return watcher;
         }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or ArgumentException)
+        {
+            // An unwatchable folder still enumerates fine — the source degrades to no hot reload
+            // rather than failing to construct.
+            _logger?.LogWarning(ex, "Skill folder cannot be watched. Source={SourceId} Path={Path}", Id, path);
+            return null;
+        }
+    }
+
+    private static string? NearestExistingAncestor(string path)
+    {
+        for (var dir = Path.GetDirectoryName(path); dir != null; dir = Path.GetDirectoryName(dir))
+            if (Directory.Exists(dir)) return dir;
+
+        return null;
+    }
+
+    /// <summary>Something appeared under an ancestor while the root was missing. Only the root
+    /// showing up matters; anything else is a neighbouring folder and is ignored.</summary>
+    private void OnAncestorEvent(object sender, FileSystemEventArgs e)
+    {
+        if (!Directory.Exists(_root)) return;
+
+        StartWatching();
+        Changed?.Invoke();
+    }
+
+    private void DetachWatcher()
+    {
+        if (_watcher is null) return;
+
+        // Disposing is enough to silence it — the handlers are reachable only from the watcher and
+        // go with it. Unsubscribing each one first would buy nothing and has to be kept in step with
+        // Attach, which is exactly the kind of drift worth not signing up for.
+        _watcher.EnableRaisingEvents = false;
+        _watcher.Dispose();
+        _watcher = null;
     }
 
     public bool CanWrite => true;
@@ -188,18 +269,33 @@ public sealed class DirectorySkillSource : IEditableSkillSource, IDisposable
 
     private void OnFileEvent(object sender, FileSystemEventArgs e)
     {
-        // Editors write a file in several bursts; collapse them into one reload.
-        _debounce?.Dispose();
-        _debounce = new Timer(_ => Changed?.Invoke(), null, DebounceMs, Timeout.Infinite);
+        lock (_gate)
+        {
+            if (_disposed) return;
+
+            // Editors write a file in several bursts; collapse them into one reload.
+            _debounce?.Dispose();
+            _debounce = new Timer(_ => Fire(), null, DebounceMs, Timeout.Infinite);
+        }
+    }
+
+    private void Fire()
+    {
+        // The root can be the thing that was removed. Re-arming here drops back to watching the
+        // ancestor, so deleting and recreating the folder is survivable rather than one-way.
+        if (!Directory.Exists(_root)) StartWatching();
+
+        Changed?.Invoke();
     }
 
     public void Dispose()
     {
-        if (_watcher != null)
+        lock (_gate)
         {
-            _watcher.EnableRaisingEvents = false;
-            _watcher.Dispose();
+            _disposed = true;
+            DetachWatcher();
+            _debounce?.Dispose();
+            _debounce = null;
         }
-        _debounce?.Dispose();
     }
 }
