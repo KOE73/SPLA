@@ -285,22 +285,31 @@ public sealed class AgentRuntime : IDisposable
         int? detected = null;
         try
         {
-            var models = await ModelManagement.GetModelDetailsAsync(llm.BaseUrl, llm.ApiKey, ct);
+            // Remote catalogs (OpenRouter: models are never "loaded") report the window per model id
+            // directly; local runtimes (LM Studio) go through the load/unload management surface below.
+            if (Providers.Resolve(llm.Provider) is SPLA.Domain.Llm.IModelCatalogInfo catalog)
+            {
+                detected = await catalog.GetContextLengthAsync(llm.BaseUrl, llm.ModelName, llm.ApiKey, ct);
+            }
+            else
+            {
+                var models = await ModelManagement.GetModelDetailsAsync(llm.BaseUrl, llm.ApiKey, ct);
 
-            // A named model matches by id; "auto"/empty means "whatever is loaded" — take the loaded
-            // LLM instance (LM Studio picks the same one for chat), else the single listed model.
-            var model = !string.IsNullOrEmpty(llm.ModelName)
-                ? models.FirstOrDefault(m => string.Equals(m.Id, llm.ModelName, StringComparison.OrdinalIgnoreCase))
-                : models.FirstOrDefault(m => m.IsLoaded && !string.Equals(m.Type, "embedding", StringComparison.OrdinalIgnoreCase))
-                  ?? (models.Count == 1 ? models[0] : null);
+                // A named model matches by id; "auto"/empty means "whatever is loaded" — take the loaded
+                // LLM instance (LM Studio picks the same one for chat), else the single listed model.
+                var model = !string.IsNullOrEmpty(llm.ModelName)
+                    ? models.FirstOrDefault(m => string.Equals(m.Id, llm.ModelName, StringComparison.OrdinalIgnoreCase))
+                    : models.FirstOrDefault(m => m.IsLoaded && !string.Equals(m.Type, "embedding", StringComparison.OrdinalIgnoreCase))
+                      ?? (models.Count == 1 ? models[0] : null);
 
-            var len = model?.EffectiveContextLength ?? 0;
-            detected = len > 0 ? len : null;
+                var len = model?.EffectiveContextLength ?? 0;
+                detected = len > 0 ? len : null;
+            }
         }
         catch
         {
-            // Provider offline or no management surface — leave unknown; the reactive error path
-            // still catches an actual overflow.
+            // Provider offline or no management/catalog surface — leave unknown; the reactive error
+            // path still catches an actual overflow.
         }
 
         _contextLengthCache[key] = (detected, DateTimeOffset.UtcNow);

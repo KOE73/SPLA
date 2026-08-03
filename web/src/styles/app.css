@@ -57,12 +57,16 @@ button { font: inherit; cursor: pointer; }
 #status select { background: var(--bg); color: var(--text); border: 1px solid var(--border);
   border-radius: var(--radius-sm); padding: 2px 4px; font: inherit; font-size: var(--fs-sm); }
 #dot { color: var(--danger); } #dot.on { color: var(--ok); }
-#tokens { margin-left: auto; }
 
-/* Context-budget chip: prompt tokens as % of the model's operative window. Quiet until it matters. */
-#ctxBudget { border: 1px solid var(--border); border-radius: 999px; padding: 1px 8px; }
+/* Context-budget pill: last call's occupancy as a fraction of the model's operative window (or just
+   the raw count when the window is unknown). Quiet until it matters; exact in/out sits in the title. */
+#ctxBudget { margin-left: auto; display: flex; align-items: center; gap: 6px;
+  border: 1px solid var(--border); border-radius: 999px; padding: 1px 8px; font-size: var(--fs-xs); }
 #ctxBudget.warn { color: var(--warn, #b58900); border-color: var(--warn, #b58900); }
 #ctxBudget.crit { color: var(--danger); border-color: var(--danger); font-weight: 600; }
+.ctx-bar { width: 40px; height: 5px; border-radius: 3px; background: var(--bg-2, #2a2a2a); overflow: hidden; }
+.ctx-bar-fill { height: 100%; background: currentColor; opacity: .6; }
+#ctxBudget.warn .ctx-bar-fill, #ctxBudget.crit .ctx-bar-fill { opacity: 1; }
 
 /* ── Filter bar (per-type visibility toggles) ─────────────────────────────── */
 #filters { padding: 5px 14px; border-bottom: 1px solid var(--border); display: flex; gap: 6px;

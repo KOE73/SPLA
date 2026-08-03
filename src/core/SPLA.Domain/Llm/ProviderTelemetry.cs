@@ -98,3 +98,22 @@ public interface IProviderAccountInfo
     Task<IReadOnlyList<ProviderFactSection>> GetAccountInfoAsync(
         string endpoint, string? apiKey, string? adminKey, CancellationToken ct = default);
 }
+
+/// <summary>
+/// Optional capability for a provider that publishes context-window size per model in its own
+/// catalog (OpenRouter's <c>context_length</c>), as opposed to a native load/unload management
+/// surface (LM Studio's <see cref="Interfaces.IModelManagementService"/>). Detected with a type
+/// check, exactly like <see cref="IProviderAccountInfo"/>.
+/// <para>
+/// A provider implements at most one of the two context-length sources: this one when models are
+/// hosted remotely and never "loaded", <see cref="Interfaces.IModelManagementService"/> when the
+/// provider runs models locally and the operative window depends on how one was launched.
+/// </para>
+/// </summary>
+public interface IModelCatalogInfo
+{
+    /// <summary>The model's context window in tokens, or null when the model is unknown to the
+    /// catalog or reports no window.</summary>
+    Task<int?> GetContextLengthAsync(
+        string endpoint, string modelId, string? apiKey, CancellationToken ct = default);
+}

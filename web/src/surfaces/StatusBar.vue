@@ -24,13 +24,15 @@
   </label>
   <button class="filter" @click="openSettings">⚙</button>
   <button class="filter" @click="uiBus.emit('debug.open')">debug</button>
-  <span id="tokens">{{ tokensText }}</span>
   <span
-    v-if="ctxPercent != null"
+    v-if="ctxUsed != null"
     id="ctxBudget"
-    :class="{ warn: ctxPercent >= 80, crit: ctxPercent >= 95 }"
+    :class="{ warn: ctxPercent != null && ctxPercent >= 80, crit: ctxPercent != null && ctxPercent >= 95 }"
     :title="ctxTitle"
-  >ctx {{ ctxPercent }}%</span>
+  >
+    <span v-if="ctxPercent != null" class="ctx-bar"><span class="ctx-bar-fill" :style="{ width: ctxPercent + '%' }"></span></span>
+    <span class="ctx-label">{{ ctxLabel }}</span>
+  </span>
 
   <ProviderInfoPopup
     v-if="infoOpen && infoBtn && modelId"
@@ -55,7 +57,8 @@ const mode = ref("");
 const picks = ref<ModelPickDto[]>([]);
 const modelId = ref("");
 const connHealth = ref<Record<string, ConnHealth>>({});
-const tokensText = ref("");
+const lastPrompt = ref<number | null>(null);
+const lastCompletion = ref<number | null>(null);
 const ctxUsed = ref<number | null>(null);
 const ctxWindow = ref<number | null>(null);
 
@@ -63,12 +66,43 @@ const ctxPercent = computed(() => {
   if (ctxUsed.value == null || !ctxWindow.value) return null;
   return Math.min(100, Math.round((ctxUsed.value / ctxWindow.value) * 100));
 });
+
+/** Compact "18.5k" / "1.0M" form — the pill has no room for raw token counts. */
+function formatCompact(n: number): string {
+  if (n >= 1_000_000) return trimZero(n / 1_000_000) + "M";
+  if (n >= 1_000) return trimZero(n / 1_000) + "k";
+  return String(n);
+}
+function trimZero(v: number): string {
+  return v.toFixed(1).replace(/\.0$/, "");
+}
+
+/** "18.5k / 1.0M (2%)" when the window is known, else just the raw count — degrades gracefully
+ *  for providers/runtimes GetContextLengthAsync can't resolve a window for. */
+const ctxLabel = computed(() => {
+  if (ctxUsed.value == null) return "";
+  const used = formatCompact(ctxUsed.value);
+  return ctxWindow.value
+    ? `${used} / ${formatCompact(ctxWindow.value)} (${ctxPercent.value}%)`
+    : `${used} tokens`;
+});
+
+/** This is the LAST LLM call, not a running total for the conversation — the agent loop makes one
+ *  call per tool round-trip, and each resends the full history, so the latest call's token counts
+ *  ARE the current context occupancy. The exact in/out split lives here, in the tooltip, since the
+ *  pill only has room for the compact size. */
 const ctxTitle = computed(() => {
-  if (ctxUsed.value == null || !ctxWindow.value) return "";
-  const base = `context: ${ctxUsed.value.toLocaleString()} of ${ctxWindow.value.toLocaleString()} tokens`;
-  if ((ctxPercent.value ?? 0) >= 95) return base + " — almost full: start a new chat or the next request may fail";
-  if ((ctxPercent.value ?? 0) >= 80) return base + " — getting full: consider a new chat soon";
-  return base;
+  if (ctxUsed.value == null) return "";
+  const parts: string[] = [];
+  if (lastPrompt.value != null) parts.push(`in: ${lastPrompt.value.toLocaleString()}`);
+  if (lastCompletion.value != null) parts.push(`out: ${lastCompletion.value.toLocaleString()}`);
+  let title = parts.length ? `last request — ${parts.join(", ")}` : "";
+  if (ctxWindow.value) {
+    title += (title ? "\n" : "") + `context: ${ctxUsed.value.toLocaleString()} of ${ctxWindow.value.toLocaleString()} tokens`;
+    if ((ctxPercent.value ?? 0) >= 95) title += " — almost full: start a new chat or the next request may fail";
+    else if ((ctxPercent.value ?? 0) >= 80) title += " — getting full: consider a new chat soon";
+  }
+  return title;
 });
 
 /** Model entries grouped by their owning connection — the picker's two levels. Grouped by connection
@@ -146,18 +180,21 @@ const offChatOpened = client.on("chat.opened", p => {
   if (p.mode) mode.value = p.mode;
   modelId.value = p.modelId || "";
   // Another chat has a different history size — a stale percent is misleading until its first turn.
+  lastPrompt.value = null;
+  lastCompletion.value = null;
   ctxUsed.value = null;
   ctxWindow.value = null;
 });
 const offTokens = client.on("token.usage", p => {
-  if (p.promptTokens != null || p.completionTokens != null)
-    tokensText.value = "tokens in:" + (p.promptTokens ?? "?") + " out:" + (p.completionTokens ?? "?");
-  // Context budget: prompt tokens vs the model's operative window (when the server knows it).
-  // Warn well before the provider would reject the request — local runtimes often fail with an
-  // opaque 500 instead of a clean "context exceeded" error.
-  if (p.contextLength && p.promptTokens != null) {
+  lastPrompt.value = p.promptTokens ?? null;
+  lastCompletion.value = p.completionTokens ?? null;
+  // Context occupancy: this call's prompt (+ completion, since it joins the history for the next
+  // call) vs the model's operative window (when the server knows it). Warn well before the provider
+  // would reject the request — local runtimes often fail with an opaque 500 instead of a clean
+  // "context exceeded" error.
+  if (p.promptTokens != null) {
     ctxUsed.value = p.promptTokens + (p.completionTokens ?? 0);
-    ctxWindow.value = p.contextLength;
+    ctxWindow.value = p.contextLength ?? null;
   }
 });
 // The editor broadcasts the connection TREE; the picker needs it flattened. Done here rather than

@@ -1,6 +1,7 @@
 using Microsoft.Extensions.Logging;
 using SPLA.Domain.Llm;
 using SPLA.LLM.OpenAiCompat;
+using System.Linq;
 
 namespace SPLA.LLM.OpenRouter;
 
@@ -18,7 +19,7 @@ namespace SPLA.LLM.OpenRouter;
 /// change to the pipeline, no change to the settings protocol.
 /// </para>
 /// </summary>
-public sealed class OpenRouterProvider : ILlmProviderDescriptor, IProviderAccountInfo
+public sealed class OpenRouterProvider : ILlmProviderDescriptor, IProviderAccountInfo, IModelCatalogInfo
 {
     public const string ProviderId = "openrouter";
 
@@ -48,6 +49,18 @@ public sealed class OpenRouterProvider : ILlmProviderDescriptor, IProviderAccoun
 
     /// <summary>The model catalog, with prices and capabilities as OpenRouter reports them.</summary>
     public OpenRouterCatalogClient Catalog { get; }
+
+    /// <summary>
+    /// The capability itself: OpenRouter models are never "loaded", so their context window comes
+    /// from the catalog's <c>context_length</c> rather than a native management surface.
+    /// </summary>
+    public async Task<int?> GetContextLengthAsync(
+        string endpoint, string modelId, string? apiKey, CancellationToken ct = default)
+    {
+        var models = await Catalog.GetModelsAsync(endpoint, apiKey, ct);
+        var match = models.FirstOrDefault(m => string.Equals(m.Id, modelId, StringComparison.OrdinalIgnoreCase));
+        return match is { ContextLength: > 0 } ? match.ContextLength : null;
+    }
 
     /// <param name="appTitle">Sent as <c>X-Title</c> so traffic is attributable on OpenRouter's side.</param>
     public OpenRouterProvider(HttpClient http, ILoggerFactory loggerFactory, string? appTitle = "SPLA", string? appUrl = null)
