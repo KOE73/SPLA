@@ -16,7 +16,7 @@
     <!-- Negotiate (NTLM/Kerberos) auth for the server host. Not in the shared framework — a separate
          package. Only enforced when ServiceOptions.RequireAuthentication is set (the SPLA.Server host);
          loopback/embedded stays auth-free. -->
-    <PackageReference Include="Microsoft.AspNetCore.Authentication.Negotiate" Version="10.0.0" />
+    <PackageReference Include="Microsoft.AspNetCore.Authentication.Negotiate" Version="10.0.10" />
   </ItemGroup>
 
   <!-- OTLP export (Grafana/Tempo/Jaeger/Datadog/…). Only active when an OTLP endpoint is configured;

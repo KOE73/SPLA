@@ -119,7 +119,7 @@ public class SkillAvailabilityTests
         Assert.Equal("project", manager.Find("net.audit")!.SourceId);
         Assert.Equal("project version", manager.LoadBody("net.audit"));
 
-        var shadowed = Assert.Single(manager.GetAll().Where(s => s.State == SkillState.Shadowed));
+        var shadowed = Assert.Single(manager.GetAll(), skill => skill.State == SkillState.Shadowed);
         Assert.Equal("plugin:network", shadowed.SourceId);
         Assert.Contains("overridden by source 'project'", shadowed.StateReason);
     }
