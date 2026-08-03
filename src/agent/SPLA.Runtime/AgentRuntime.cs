@@ -1,7 +1,9 @@
 using System.Collections.Concurrent;
 using Microsoft.Extensions.Logging;
 using SPLA.Agent;
+using SPLA.Agent.Composition;
 using SPLA.Domain.Agent;
+using SPLA.MCP.Core.Composition;
 using SPLA.Domain.Interfaces;
 using SPLA.Domain.Models;
 using SPLA.Domain.Settings;
@@ -69,7 +71,15 @@ public sealed class AgentRuntime : IDisposable
     public PluginManager PluginManager { get; }
     public ProjectKvStore ProjectKv { get; }
     public ChatManager ChatManager { get; }
-    public SystemPromptBuilder PromptBuilder { get; }
+
+    /// <summary>
+    /// The contributors that make up this agent's context surface, and the machinery that folds them
+    /// into one. Everything that reaches the model as text — mode, capabilities, instruction files,
+    /// skills, plugin prompts, working memory — comes through here, and the manifest it produces says
+    /// which contributor is answerable for which piece.
+    /// </summary>
+    public AgentContextComposer ContextComposer { get; }
+
     public SpawnedAgentRunner SpawnedRunner { get; }
 
     /// <summary>The <c>agent.capabilities</c> setting resolved against <see cref="AgentFeatureCatalog"/>:
@@ -87,10 +97,15 @@ public sealed class AgentRuntime : IDisposable
     /// <summary>Machine-global token tally (~/.spla/token-usage.json).</summary>
     public SPLA.Domain.Interfaces.ITokenUsageStore TokenUsageGlobal { get; }
 
-    /// <summary>The system prompt for this workspace. Rebuilt on every read so live settings edits
-    /// (plugin settings/prompts, mode) reach chats without a restart — ChatRuntime re-reads this at
-    /// the start of each turn.</summary>
-    public string SystemPrompt => PromptBuilder.Build(Settings, Settings.WorkspacePath);
+    /// <summary>Composes the agent's context surface: the system prompt, the per-turn items, and the
+    /// manifest explaining both. Recomposed on every call so live settings edits (plugin
+    /// settings/prompts, mode) reach chats without a restart, and so a skill activated mid-turn is
+    /// reflected on the very next iteration.</summary>
+    public ComposedContext ComposeContext() => ContextComposer.Compose(Settings, Settings.WorkspacePath);
+
+    /// <summary>The system-prompt half of <see cref="ComposeContext"/>, for callers that only need
+    /// the text (a freshly seeded chat, the debug view).</summary>
+    public string SystemPrompt => ComposeContext().SystemPrompt;
 
     public AgentMode Mode => Settings.Mode;
 
@@ -237,7 +252,18 @@ public sealed class AgentRuntime : IDisposable
         // resolves to MissingTools and stays out of the prompt instead of describing dead calls.
         RefreshSkillCapabilities();
 
-        PromptBuilder = new SystemPromptBuilder(SkillManager, PluginManager, null, enabledFeatures);
+        // The context surface: one contributor per source, gated by the same enabled-feature set that
+        // decided which tools were registered above.
+        var compositionLogger = loggerFactory.CreateLogger("SPLA.Agent.Composition");
+        ContextComposer = new AgentContextComposer(
+            AgentContributors.Default(SkillManager, PluginManager, null, enabledFeatures, ProjectKv.Store),
+            compositionLogger);
+
+        // What this agent was assembled from, once, at startup. Per-composition logging is Debug and
+        // usually off; this line is what a service log has to carry, because "the model was told
+        // something odd" is nearly always answered by which contributor put it there.
+        compositionLogger.LogInformation("Agent surface at startup:\n{Manifest}",
+            ComposeContext().Manifest.ToText());
 
         // Project tally goes through the broker only when a real project is open; the historical
         // no-project path (cwd/.spla) is kept as-is so the tally never collides with the global file.

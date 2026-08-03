@@ -1,4 +1,4 @@
-<Solution>
+﻿<Solution>
   <Folder Name="/README/">
     <File Path="Directory.Build.props" />
     <File Path="README.md" />
@@ -7,6 +7,7 @@
   </Folder>
   <Folder Name="/agents/">
     <File Path="agents/avalonia.md" />
+    <File Path="agents/composition.md" />
     <File Path="agents/data-ownership.md" />
     <File Path="agents/documentation.md" />
     <File Path="agents/observability.md" />
@@ -41,6 +42,7 @@
     <File Path="docs/adr/ADR_20260731_docs_genres-and-naming.md" />
     <File Path="docs/adr/ADR_20260731_llm_pipeline-diagrams.md" />
     <File Path="docs/adr/ADR_20260731_llm_pipeline.md" />
+    <File Path="docs/adr/ADR_20260803_agent_typed-contributions.md" />
   </Folder>
   <Folder Name="/docs/plans/">
     <File Path="docs/plans/PLAN_20260619_agent_skills-lifecycle.md" />

@@ -1,7 +1,7 @@
 # Skill System Architecture
 
-Read this before touching `SkillManager`, any `ISkillSource`, `SystemPromptBuilder`, the skill tools,
-or any UI that reflects skill state.
+Read this before touching `SkillManager`, any `ISkillSource`, `SkillsContributor`, the skill tools,
+or any UI that reflects skill state. How the prompt is assembled around them: [`composition.md`](composition.md).
 
 ---
 
@@ -256,7 +256,7 @@ becomes visible and actionable). Neither needs an event subscription kept alive 
 
 ```
 [ Mode preamble ]
-[ Core feature fragments ]      ← skill segments are gated on core.skills
+[ Core feature fragments ]      ← the skills contributor is gated on core.skills
 [ Instructions / custom prompt ]
 [ === ACTIVE SKILL: id === ]    ← when ISkillSession.ActiveSkillId != null
 [ Preloaded skill bodies ]
@@ -264,13 +264,18 @@ becomes visible and actionable). Neither needs an event subscription kept alive 
 [ Plugin prompts / commands ]
 ```
 
+Skills are **one contributor among several** (`SkillsContributor`), not a branch of a prompt builder:
+the assembly order above is declared in `AgentContributors.Default` and folded by
+`AgentContextComposer`. See [`composition.md`](composition.md) for the mechanism; this section covers
+only what the skill system puts in.
+
 The index lists `GetAvailable()` only. The standing description of what an ACTIVE SKILL block means
 lives once in the global prompt; skill bodies must not repeat it.
 
 ### When it is assembled
 
-`ConversationOrchestrator.SystemPrompt` is a provider invoked on **every iteration** of the agent
-loop, and its result replaces the leading system message of the assembled list (a fresh message —
+`ConversationOrchestrator.Context` is a provider invoked on **every iteration** of the agent loop, and
+its system-prompt half replaces the leading system message of the assembled list (a fresh message —
 the stored conversation is never written to).
 
 Per-iteration rather than per-turn because `skill_activate` is a move the model makes *mid-turn*: a
@@ -278,7 +283,7 @@ prompt built once before the loop would inject the procedure only from the user'
 which point the model has already had to act without it.
 
 The provider runs inside the turn's `AgentSessionScope`, and that is what lets a runtime-wide
-`SystemPromptBuilder` render per-chat state at all. The builder resolves its session from the
+contributor render per-chat state at all. `SkillsContributor` resolves its session from the
 constructor argument if given, else from the ambient scope — the same pattern the skill tools use.
 Passing one explicitly still wins, which is how a spawned sub-agent keeps describing its own skill
 while running inside the parent's async flow.

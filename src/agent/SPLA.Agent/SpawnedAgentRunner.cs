@@ -2,6 +2,8 @@ using SPLA.Domain.Agent;
 using SPLA.Domain.Interfaces;
 using SPLA.Domain.Models;
 using SPLA.Domain.Settings;
+using SPLA.Agent.Composition;
+using SPLA.MCP.Core.Composition;
 using SPLA.MCP.Core.Plugins;
 using SPLA.MCP.Core.Skills;
 using System.Linq;
@@ -66,8 +68,13 @@ public sealed class SpawnedAgentRunner : Domain.Interfaces.IAgentSpawner
         var checkpoint = new CheckpointManager();
         var agentSession = new AgentSession(new KeyValueStore("session"), checkpoint, skillSession);
 
-        var promptBuilder = new SystemPromptBuilder(_skills, _plugins, skillSession);
-        var systemPrompt = promptBuilder.Build(_settings, _settings.WorkspacePath);
+        // Composed once, up front: a sub-agent runs one pinned procedure and cannot activate another,
+        // so there is nothing for a per-iteration recomposition to pick up. The session is passed
+        // explicitly rather than resolved ambiently — the spawn happens inside the parent's async
+        // flow, and the sub-agent must describe its own skill, not the parent's.
+        var composer = new AgentContextComposer(
+            AgentContributors.Default(_skills, _plugins, skillSession));
+        var systemPrompt = composer.Compose(_settings, _settings.WorkspacePath).SystemPrompt;
 
         var conversation = new Conversation();
         conversation.Add(new ChatMessage { Role = ChatRole.System, Content = systemPrompt });

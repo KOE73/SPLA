@@ -1,7 +1,9 @@
 using Microsoft.Extensions.Logging.Abstractions;
 using SPLA.Agent;
+using SPLA.Agent.Composition;
 using SPLA.Domain.Settings;
 using SPLA.MCP.Core.Agent;
+using SPLA.MCP.Core.Composition;
 using SPLA.MCP.Core.Plugins;
 using SPLA.MCP.Core.Skills;
 using SPLA.Runtime;
@@ -71,7 +73,7 @@ public sealed class AgentCapabilitiesTests
 
             Assert.Equal(AllCoreToolNames.OrderBy(n => n), RegisteredToolNames(runtime));
 
-            var prompt = runtime.PromptBuilder.Build(runtime.Settings, runtime.Settings.WorkspacePath);
+            var prompt = runtime.SystemPrompt;
             Assert.Contains("Your current working directory is:", prompt);
             Assert.Contains("Tool descriptions are intentionally short.", prompt);
             Assert.Contains("Mermaid note:", prompt);
@@ -94,9 +96,9 @@ public sealed class AgentCapabilitiesTests
             Assert.Empty(RegisteredToolNames(runtime));
             Assert.Empty(runtime.EnabledFeatureIds);
 
-            var segments = runtime.PromptBuilder.BuildSegments(runtime.Settings, runtime.Settings.WorkspacePath);
-            Assert.DoesNotContain(segments, s => s.Kind == SPLA.Agent.PromptSegmentKind.Core);
-            Assert.Contains(segments, s => s.Kind == SPLA.Agent.PromptSegmentKind.Mode);
+            var items = runtime.ComposeContext().Items;
+            Assert.DoesNotContain(items, i => i.Contributor == "core");
+            Assert.Contains(items, i => i.Contributor == "mode");
         }
         finally { Directory.Delete(root, recursive: true); }
     }
@@ -123,10 +125,10 @@ public sealed class AgentCapabilitiesTests
     }
 
     [Fact]
-    public void Only_features_with_a_prompt_fragment_produce_a_core_segment()
+    public void Only_features_with_a_prompt_fragment_produce_a_core_item()
     {
-        // Direct construction, no AgentRuntime: the builder renders exactly what the supplied
-        // IAgentFeature objects carry — a null PromptFragment yields no Core segment, text yields one.
+        // Direct construction, no AgentRuntime: the core contributor renders exactly what the
+        // supplied IAgentFeature objects carry — a null PromptFragment yields no item, text yields one.
         var settings = new ResolvedSettings
         {
             Mode = SPLA.Domain.Models.AgentMode.Edit,
@@ -139,15 +141,39 @@ public sealed class AgentCapabilitiesTests
             new AgentFeature("core.shell"), // tools-only: PromptFragment = null
             new AgentFeature("core.memory", promptFragment: "MEMORY FRAGMENT TEXT"),
         };
-        var builder = new SystemPromptBuilder(
-            new SkillManager(), new PluginManager(settings), null, features);
+        var composer = new AgentContextComposer(
+            AgentContributors.Default(new SkillManager(), new PluginManager(settings), null, features));
 
-        var segments = builder.BuildSegments(settings, Directory.GetCurrentDirectory());
+        var items = composer.Compose(settings, Directory.GetCurrentDirectory()).Items;
 
-        var core = segments.Where(s => s.Kind == PromptSegmentKind.Core).ToList();
-        var only = Assert.Single(core);
+        var only = Assert.Single(items, i => i.Contributor == "core");
         Assert.Equal("Core: core.memory", only.Title);
         Assert.Equal("MEMORY FRAGMENT TEXT", only.Body);
+    }
+
+    /// <summary>Gating is one decision, applied to tools and to text: a feature that is off leaves no
+    /// contributor behind. core.skills off means no skills contributor at all — not an empty one.</summary>
+    [Fact]
+    public void A_disabled_capability_removes_its_contributor()
+    {
+        var settings = new ResolvedSettings
+        {
+            Mode = SPLA.Domain.Models.AgentMode.Edit,
+            Instructions = [],
+            CustomPrompt = null,
+            Skills = new Dictionary<string, SplaSkillSection>()
+        };
+
+        var withSkills = AgentContributors.Default(
+            new SkillManager(), new PluginManager(settings), null,
+            [new AgentFeature("core.skills"), new AgentFeature("core.memory")]);
+        var without = AgentContributors.Default(
+            new SkillManager(), new PluginManager(settings), null, [new AgentFeature("core.shell")]);
+
+        Assert.Contains(withSkills, c => c.Id == "skills");
+        Assert.Contains(withSkills, c => c.Id == "working-memory");
+        Assert.DoesNotContain(without, c => c.Id == "skills");
+        Assert.DoesNotContain(without, c => c.Id == "working-memory");
     }
 
     [Fact]

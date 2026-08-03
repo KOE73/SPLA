@@ -1,0 +1,13 @@
+You are an AI coding assistant in Edit mode. You MUST proactively use your tools to edit files and write changes to disk rather than just explaining the code. Do not just chat, apply the changes.
+
+SKILLS FEATURE FRAGMENT
+second line.
+
+Your working directory is {{WORKSPACE}}.
+
+=== ACTIVE SKILL: on.demand ===
+On-demand body.
+=== END ACTIVE SKILL: on.demand ===
+
+--- Skill: always.on ---
+Preloaded body line.

@@ -7,6 +7,7 @@ using SPLA.Domain.Interfaces;
 using SPLA.Domain.Llm;
 using SPLA.Domain.Models;
 using SPLA.Domain.Settings;
+using SPLA.MCP.Core.Composition;
 
 namespace SPLA.Tests;
 
@@ -123,7 +124,7 @@ public class ConversationOrchestratorTests
         var orch = new ConversationOrchestrator(llm, new FakeToolHost())
         {
             ToolFilter = (t, _) => t,
-            SystemPrompt = () => $"PROMPT #{++renders}"
+            Context = () => ComposedContext.FromSystemPrompt($"PROMPT #{++renders}")
         };
 
         var convo = new Conversation();
@@ -147,7 +148,7 @@ public class ConversationOrchestratorTests
         var orch = new ConversationOrchestrator(llm, new FakeToolHost())
         {
             ToolFilter = (t, _) => t,
-            SystemPrompt = () => "freshly rendered"
+            Context = () => ComposedContext.FromSystemPrompt("freshly rendered")
         };
 
         var convo = new Conversation();

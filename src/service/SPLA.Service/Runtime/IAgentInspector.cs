@@ -46,12 +46,40 @@ public sealed class LiveAgentInspector : IAgentInspector
                 break;
 
             case DebugKinds.Prompt:
-                snap.Text = _runtime.SystemPrompt;
-                snap.Segments = new List<DebugSegmentDto>
-                {
-                    new() { Title = "System Prompt", Body = _runtime.SystemPrompt }
-                };
+            {
+                // Composed in the chat's scope when there is one: the active skill and this chat's
+                // working memory are per-chat state, and a runtime-wide composition would show a
+                // surface that disagrees with what the chat actually sends.
+                var composed = chat is not null ? chat.ComposeContext() : _runtime.ComposeContext();
+                snap.Text = composed.SystemPrompt;
+                snap.ApproxTokens = composed.Manifest.ApproxTokens;
+
+                snap.Segments = composed.Items
+                    .Select(item => new DebugSegmentDto
+                    {
+                        Title = item.Title,
+                        Body = item.Body,
+                        Contributor = item.Contributor,
+                        Source = item.Source,
+                        Placement = item.Placement == SPLA.MCP.Core.Composition.ContextPlacement.SystemPrompt ? "prompt" : "turn",
+                        ApproxTokens = item.ApproxTokens
+                    })
+                    // A contributor that threw has no item — only a manifest line saying why. Showing
+                    // it is the whole point: missing text with a reason beats missing text.
+                    .Concat(composed.Manifest.Entries
+                        .Where(e => e.Problem is not null)
+                        .Select(e => new DebugSegmentDto
+                        {
+                            Title = e.Title,
+                            Body = e.Problem!,
+                            Contributor = e.Contributor,
+                            Source = e.Source,
+                            Placement = "failed",
+                            Problem = e.Problem
+                        }))
+                    .ToList();
                 break;
+            }
 
             case DebugKinds.Blobs:
                 snap.Entries = chat?.BlobEntries

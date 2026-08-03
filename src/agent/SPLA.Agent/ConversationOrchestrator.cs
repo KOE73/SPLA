@@ -4,6 +4,7 @@ using SPLA.Domain.Llm;
 using SPLA.Domain.Models;
 using SPLA.Domain.Settings;
 using SPLA.Domain.Tools;
+using SPLA.MCP.Core.Composition;
 using SPLA.Agent.Guards;
 using Microsoft.Extensions.Logging;
 using System;
@@ -42,26 +43,25 @@ public sealed class ConversationOrchestrator
     public Func<IEnumerable<ToolDefinition>, AgentMode, IEnumerable<ToolDefinition>>? ToolFilter { get; init; }
 
     /// <summary>
-    /// Optional provider of agent working-memory entries (scope, key, value). When set, entries whose
-    /// key starts with <see cref="WorkingMemoryInjector.KeyPrefix"/> are rendered fresh and injected
-    /// into the prompt on every turn (live, never persisted). See <see cref="WorkingMemoryInjector"/>.
-    /// </summary>
-    public Func<IReadOnlyList<(string scope, string key, string value)>>? WorkingMemory { get; init; }
-
-    /// <summary>
-    /// Optional provider of the system prompt. When set, it is invoked on every iteration of the
-    /// loop and its result replaces the leading system message of the assembled list — the stored
-    /// conversation is left untouched.
+    /// Optional provider of the assembled agent context. When set, it is invoked on every iteration
+    /// of the loop: its system-prompt half replaces the leading system message of the assembled list,
+    /// and each of its turn-message items (today: the working-memory snapshot) is inserted after it.
+    /// The stored conversation is left untouched — both are per-iteration renderings.
     ///
-    /// <para>Per-iteration rather than per-turn because some state the prompt reflects is changed by
-    /// the model itself, mid-turn: <c>skill_activate</c> is the case that forced this. A prompt built
-    /// once before the loop would inject the activated skill's procedure only from the user's *next*
+    /// <para>Per-iteration rather than per-turn because some of what the context reflects is changed
+    /// by the model itself, mid-turn: <c>skill_activate</c> is the case that forced this. A context
+    /// built once before the loop would inject the activated procedure only from the user's *next*
     /// message, by which point the model has already had to act without it.</para>
     ///
-    /// <para>The provider runs inside this turn's <c>AgentSessionScope</c>, which is what lets the
-    /// assembler resolve per-chat state (the active skill) from a runtime-wide builder.</para>
+    /// <para>The provider runs inside this turn's <c>AgentSessionScope</c>, which is what lets
+    /// contributors resolve per-chat state (the active skill, this chat's working memory) from
+    /// process-wide objects.</para>
+    ///
+    /// <para>One provider rather than two (prompt + memory) because the loop has no business knowing
+    /// which sources of context exist — it delivers what the composer produced, addressed by
+    /// placement. See <see cref="SPLA.MCP.Core.Composition.IAgentContributor"/>.</para>
     /// </summary>
-    public Func<string>? SystemPrompt { get; init; }
+    public Func<ComposedContext>? Context { get; init; }
 
     /// <summary>
     /// Optional mark/checkpoint manager. When set, the orchestrator truncates the conversation
@@ -115,8 +115,7 @@ public sealed class ConversationOrchestrator
             cancellationToken.ThrowIfCancellationRequested();
 
             var coreMessages = ContextAssembler.Assemble(conversation.Messages);
-            RefreshSystemPrompt(coreMessages);
-            InjectWorkingMemory(coreMessages);
+            ApplyComposedContext(coreMessages);
 
             var tools = (ToolFilter ?? ((t, m) => ToolModeFilter.Filter(t, m)))
                 (_tools.GetToolDefinitions(), mode);
@@ -320,38 +319,39 @@ public sealed class ConversationOrchestrator
     }
 
     /// <summary>
-    /// Re-renders the leading system message from <see cref="SystemPrompt"/>. Replaces the entry
-    /// with a fresh <see cref="ChatMessage"/> rather than assigning to the existing one — the
-    /// assembled list holds the very objects the conversation stores, and mutating one would write
-    /// a per-iteration rendering into persisted history.
+    /// Applies this iteration's composed context to the assembled list: the system prompt replaces
+    /// the leading system message, then every turn-message item is inserted after it, in composition
+    /// order.
+    ///
+    /// <para>Both replace rather than mutate: the assembled list holds the very objects the
+    /// conversation stores, and writing into one would put a per-iteration rendering into persisted
+    /// history.</para>
     /// </summary>
-    private void RefreshSystemPrompt(List<ChatMessage> coreMessages)
+    private void ApplyComposedContext(List<ChatMessage> coreMessages)
     {
-        if (SystemPrompt == null) return;
+        if (Context == null) return;
 
-        var text = SystemPrompt();
-        if (string.IsNullOrEmpty(text)) return;
+        var composed = Context();
 
-        var message = new ChatMessage { Role = ChatRole.System, Content = text };
+        var prompt = composed.SystemPrompt;
         var firstSystem = coreMessages.FindIndex(m => m.Role == ChatRole.System);
+        if (!string.IsNullOrEmpty(prompt))
+        {
+            var message = new ChatMessage { Role = ChatRole.System, Content = prompt };
+            if (firstSystem >= 0)
+            {
+                coreMessages[firstSystem] = message;
+            }
+            else
+            {
+                coreMessages.Insert(0, message);
+                firstSystem = 0;
+            }
+        }
 
-        if (firstSystem >= 0) coreMessages[firstSystem] = message;
-        else coreMessages.Insert(0, message);
-    }
-
-    /// <summary>
-    /// Inserts the live working-memory block (if any) right after the leading system prompt. Operates
-    /// on the per-turn assembled list, so it is recomputed every turn and never stored in history.
-    /// </summary>
-    private void InjectWorkingMemory(List<ChatMessage> coreMessages)
-    {
-        if (WorkingMemory == null) return;
-        var block = WorkingMemoryInjector.Render(WorkingMemory());
-        if (block == null) return;
-
-        var msg = new ChatMessage { Role = ChatRole.System, Content = block };
-        var firstSystem = coreMessages.FindIndex(m => m.Role == ChatRole.System);
-        coreMessages.Insert(firstSystem >= 0 ? firstSystem + 1 : 0, msg);
+        var insertAt = firstSystem >= 0 ? firstSystem + 1 : 0;
+        foreach (var item in composed.TurnMessages)
+            coreMessages.Insert(insertAt++, new ChatMessage { Role = ChatRole.System, Content = item.Text });
     }
 
     private static Task Notify(AgentCallbacks callbacks, string message)

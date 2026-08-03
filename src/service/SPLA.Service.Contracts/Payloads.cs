@@ -761,10 +761,23 @@ public sealed class DebugKvEntryDto
     public string Value { get; set; } = string.Empty;
 }
 
+/// <summary>
+/// One contribution in the assembled agent context — a line of the composition manifest plus the
+/// text it stands for. <see cref="Contributor"/> answers "who put this here", <see cref="Source"/>
+/// answers "which of its pieces", and <see cref="ApproxTokens"/> is a local estimate for attribution
+/// only (the authoritative figures come from the provider).
+/// </summary>
 public sealed class DebugSegmentDto
 {
     public string Title { get; set; } = string.Empty;
     public string Body { get; set; } = string.Empty;
+    public string Contributor { get; set; } = string.Empty;
+    public string Source { get; set; } = string.Empty;
+    /// <summary>"prompt" (part of the system message) or "turn" (its own per-turn message).</summary>
+    public string Placement { get; set; } = string.Empty;
+    public int ApproxTokens { get; set; }
+    /// <summary>Why this contribution is missing, when a contributor failed. Null when it is present.</summary>
+    public string? Problem { get; set; }
 }
 
 public sealed class ErrorPayload

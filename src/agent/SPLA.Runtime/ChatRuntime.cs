@@ -60,6 +60,18 @@ public sealed class ChatRuntime
         return previous;
     }
 
+    /// <summary>
+    /// Composes this chat's context surface for inspection — the same call the agent loop makes,
+    /// wrapped in this chat's <see cref="AgentSessionScope"/> so contributors see the right chat's
+    /// active skill and working memory. Without the scope the debug view would show the surface of
+    /// an idle chat and quietly disagree with what was actually sent.
+    /// </summary>
+    public SPLA.MCP.Core.Composition.ComposedContext ComposeContext()
+    {
+        using var scope = AgentSessionScope.Begin(_agentSession);
+        return _runtime.ComposeContext();
+    }
+
     /// <summary>This chat's session-scoped working memory entries (for the debug inspector).</summary>
     public IEnumerable<(string Key, string Value)> SessionKvEntries
         => _sessionKv.List().Select(e => (e.Key, e.Value));
@@ -132,17 +144,13 @@ public sealed class ChatRuntime
         _agentSession = new AgentSession(_sessionKv, _checkpoint, _skillSession);
         _orchestrator = new ConversationOrchestrator(runtime.Llm, runtime.McpHost)
         {
-            // core.memory owns both the agent_memory_* tools AND the auto-injected "context:*" block —
-            // gated together so a disabled core.memory can't leave a live-memory prompt with no tools
-            // behind it (WorkingMemoryInjector.KeyPrefix, see AgentFeatureCatalog).
-            WorkingMemory = runtime.HasFeature("core.memory")
-                ? () => CollectWorkingMemory(_sessionKv, runtime.ProjectKv.Store)
-                : null,
-            // Live system prompt, rebuilt on every iteration inside this turn's AgentSessionScope.
-            // Settings and plugin edits made since the chat opened apply immediately, and — the
-            // reason it is per-iteration — a skill the model activates mid-turn has its procedure in
-            // the prompt for the very next LLM call rather than for the next user message.
-            SystemPrompt = () => runtime.SystemPrompt,
+            // Live context surface, recomposed on every iteration inside this turn's
+            // AgentSessionScope — which is what lets runtime-wide contributors read this chat's
+            // active skill and working memory. Settings and plugin edits made since the chat opened
+            // apply immediately, and — the reason it is per-iteration — a skill the model activates
+            // mid-turn has its procedure in the prompt for the very next LLM call rather than for the
+            // next user message.
+            Context = runtime.ComposeContext,
             Checkpoint = _checkpoint,
             // Anti-repeat guard is a per-project setting (agent: loop_guard, default off) — it targets
             // small local models that loop forever, but false-fires on legitimate poll/wait patterns.
@@ -332,10 +340,4 @@ public sealed class ChatRuntime
     private AgentMode ResolveMode()
         => _chat.Agent?.Mode != null && Enum.TryParse<AgentMode>(_chat.Agent.Mode, true, out var m)
             ? m : _runtime.Settings.Mode;
-
-    private static IReadOnlyList<(string scope, string key, string value)> CollectWorkingMemory(
-        IKeyValueStore session, IKeyValueStore project)
-        => session.List().Select(kv => (session.Scope, kv.Key, kv.Value))
-            .Concat(project.List().Select(kv => (project.Scope, kv.Key, kv.Value)))
-            .ToList();
 }

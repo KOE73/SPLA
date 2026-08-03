@@ -19,7 +19,7 @@ in addition to the root `AGENTS.md`.
 
 ### `src/agent/` — the agent loop
 
-- `SPLA.Agent`: The single agent loop (`ConversationOrchestrator`), layered system-prompt builder (`SystemPromptBuilder`), mode-based tool gating (`ToolModeFilter`), and headless skill sub-agents (`SpawnedAgentRunner`).
+- `SPLA.Agent`: The single agent loop (`ConversationOrchestrator`), this product's context contributors (`Composition/`, folded by `SPLA.MCP.Core`'s `AgentContextComposer` — see [`composition.md`](composition.md)), mode-based tool gating (`ToolModeFilter`), and headless skill sub-agents (`SpawnedAgentRunner`).
 - `SPLA.Runtime`: The autonomous, transport-neutral agent runtime — the embeddable "SPLA Runtime". Owns the full agent stack for one project (`AgentRuntime`: LLM client, tool host, plugins, skills, project KV, prompt, token tallies), per-chat state (`ChatRuntime`), the open-chat set (`ChatRegistry`), the multi-project home (`AgentRuntimeRegistry`), the in-process domain-event hub (`ServiceEvents`), and sidecar image persistence (`ChatImages`). Zero dependencies on any client or protocol: CLI, the WebSocket service, and standalone hosts (see `demo/workers/`) all reference this project and get an identical agent. Wire/DTO projections of these objects live in `SPLA.Service` (`Chat/RuntimeProjections.cs`), never here.
 - `SPLA.MCP.BasicTools`: Built-in tools for filesystem, shell, .NET build/test, context, date/time, web fetch, and web search. Reach the system only through `HostServices.Sandbox`.
 

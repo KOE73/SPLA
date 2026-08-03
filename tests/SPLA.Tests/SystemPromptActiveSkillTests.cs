@@ -1,5 +1,7 @@
 using SPLA.Agent;
+using SPLA.Agent.Composition;
 using SPLA.Domain.Agent;
+using SPLA.MCP.Core.Composition;
 using SPLA.Domain.Models;
 using SPLA.Domain.Settings;
 using SPLA.MCP.Core.Skills;
@@ -22,8 +24,16 @@ public class SystemPromptActiveSkillTests
 
     private static SkillManager ManagerWith(params ISkillSource[] sources) => new(sources);
 
-    private static SystemPromptBuilder BuilderFor(SkillManager skills, ISkillSession session)
-        => new(skills, EmptyPluginManager(), session);
+    private static PromptFor BuilderFor(SkillManager skills, ISkillSession session)
+        => new(new AgentContextComposer(AgentContributors.Default(skills, EmptyPluginManager(), session)));
+
+    /// <summary>Tiny shim so these tests keep reading as "build the prompt and look at it" now that
+    /// the builder is a composer over contributors.</summary>
+    private sealed record PromptFor(AgentContextComposer Composer)
+    {
+        public string Build(ResolvedSettings settings, string workingDirectory)
+            => Composer.Compose(settings, workingDirectory).SystemPrompt;
+    }
 
     [Fact]
     public void Prompt_contains_no_active_skill_block_when_idle()

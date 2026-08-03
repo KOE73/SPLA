@@ -297,6 +297,18 @@ export interface ContextLine {
 }
 
 /** debug.request "kind" determines which of these shapes comes back; only one set of fields is present. */
+/** One contribution to the assembled agent context: who produced it, which of its pieces it is,
+ *  where it is delivered ("prompt" | "turn" | "failed"), and a local token estimate for attribution. */
+export interface DebugSegment {
+  title: string;
+  body: string;
+  contributor: string;
+  source: string;
+  placement: string;
+  approxTokens: number;
+  problem?: string | null;
+}
+
 export interface DebugSnapshotPayload {
   contextLines?: ContextLine[];
   totalCount?: number;
@@ -304,6 +316,7 @@ export interface DebugSnapshotPayload {
   approxTokens?: number;
   contextIsLive?: boolean;
   entries?: { key: string; value: string }[];
+  segments?: DebugSegment[];
   text?: string;
 }
 

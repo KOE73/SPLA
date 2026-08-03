@@ -12,6 +12,24 @@
           <span class="k">{{ e.key }}</span><span class="v">{{ e.value }}</span>
         </div>
       </template>
+      <!-- Composition manifest: what the agent's context is made of, and who contributed each piece.
+           Bodies are collapsed — the question this view answers first is "why is this here and what
+           does it cost", not "what does it say". -->
+      <template v-else-if="snapshot?.segments?.length">
+        <div class="manifest-head">
+          {{ snapshot.segments.length }} contributions · ~{{ snapshot.approxTokens }} tokens (estimate)
+        </div>
+        <div v-for="(s, i) in snapshot.segments" :key="i" class="manifest-item">
+          <button class="manifest-row" :class="{ failed: !!s.problem }" @click="toggle(i)">
+            <span class="caret">{{ open.has(i) ? "▾" : "▸" }}</span>
+            <span class="who">{{ s.contributor }}</span>
+            <span class="what">{{ s.source }}</span>
+            <span class="place">{{ s.placement }}</span>
+            <span class="cost">~{{ s.approxTokens }}</span>
+          </button>
+          <pre v-if="open.has(i)" class="manifest-body">{{ s.body }}</pre>
+        </div>
+      </template>
       <pre v-else-if="snapshot?.text != null" style="white-space: pre-wrap">{{ snapshot.text }}</pre>
     </div>
   </div>
@@ -39,6 +57,15 @@ const TABS = [
 const activeKind = ref<string>("kv.session");
 const snapshot = ref<DebugSnapshotPayload | null>(null);
 const isOpen = ref(false);
+/** Which manifest rows are expanded. Reset on every fetch — row indexes are only meaningful
+ *  for the snapshot they came from. */
+const open = ref(new Set<number>());
+
+function toggle(i: number) {
+  const next = new Set(open.value);
+  next.has(i) ? next.delete(i) : next.add(i);
+  open.value = next;
+}
 
 function request(kind: string) {
   activeKind.value = kind;
@@ -53,7 +80,7 @@ function scheduleRefresh() {
   refreshTimer = window.setTimeout(() => { if (solo || isOpen.value) reload(); }, 400);
 }
 
-const offSnapshot = client.on("debug.snapshot", p => { snapshot.value = p; });
+const offSnapshot = client.on("debug.snapshot", p => { snapshot.value = p; open.value = new Set(); });
 const offToolResult = client.on("tool.result", scheduleRefresh);
 const offTurnComplete = client.on("turn.complete", scheduleRefresh);
 const offOpen = uiBus.on("debug.open", () => {

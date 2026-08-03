@@ -1,5 +1,7 @@
 using SPLA.Agent;
+using SPLA.Agent.Composition;
 using SPLA.Domain.Agent;
+using SPLA.MCP.Core.Composition;
 using SPLA.Domain.Models;
 using SPLA.Domain.Settings;
 using SPLA.MCP.Core.Skills;
@@ -26,11 +28,12 @@ public class SkillPinningTests
         Skills = new Dictionary<string, SplaSkillSection>()
     };
 
-    private static SystemPromptBuilder BuilderFor(SkillManager skills, ISkillSession? session = null)
-        => new(skills, new SPLA.MCP.Core.Plugins.PluginManager(MinimalSettings()), session);
+    private static AgentContextComposer BuilderFor(SkillManager skills, ISkillSession? session = null)
+        => new(AgentContributors.Default(
+            skills, new SPLA.MCP.Core.Plugins.PluginManager(MinimalSettings()), session));
 
-    private static string Build(SystemPromptBuilder builder)
-        => builder.Build(MinimalSettings(), Directory.GetCurrentDirectory());
+    private static string Build(AgentContextComposer composer)
+        => composer.Compose(MinimalSettings(), Directory.GetCurrentDirectory()).SystemPrompt;
 
     private static IDisposable Scope(ISkillSession skills)
         => AgentSessionScope.Begin(new AgentSession(new KeyValueStore("session"), new MarkManager(), skills));
