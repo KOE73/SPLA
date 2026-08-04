@@ -30,6 +30,7 @@
     <File Path="docs/readme_observability.md" />
     <File Path="docs/readme_security.md" />
     <File Path="docs/readme_security_ru.md" />
+    <File Path="docs/readme_skills_ru.md" />
     <File Path="docs/secrets_ru.md" />
     <File Path="docs/schema-editor-doc-a-schemas.md" />
     <File Path="docs/schema-editor-doc-b-tokens.md" />
@@ -43,6 +44,7 @@
     <File Path="docs/adr/ADR_20260731_llm_pipeline-diagrams.md" />
     <File Path="docs/adr/ADR_20260731_llm_pipeline.md" />
     <File Path="docs/adr/ADR_20260803_agent_typed-contributions.md" />
+    <File Path="docs/adr/ADR_20260804_agent_skills-library.md" />
   </Folder>
   <Folder Name="/docs/plans/">
     <File Path="docs/plans/PLAN_20260619_agent_skills-lifecycle.md" />
@@ -53,6 +55,8 @@
     <File Path="docs/plans/PLAN_20260701_web_vue-migration.md" />
     <File Path="docs/plans/PLAN_20260712_secrets_phase2.md" />
     <File Path="docs/plans/PLAN_20260731_llm_pipeline.md" />
+    <File Path="docs/plans/PLAN_20260803_core_toolset-levels.md" />
+    <File Path="docs/plans/PLAN_20260804_agent_skills-library-rewrite.md" />
   </Folder>
   <Folder Name="/docs/ideas/">
     <File Path="docs/ideas/IDEA_20260611_core_todo-general.md" />
