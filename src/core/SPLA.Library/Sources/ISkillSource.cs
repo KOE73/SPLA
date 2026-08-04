@@ -35,7 +35,6 @@ public sealed record SkillEntry(
     SkillRequirements Requires,
     SkillRequirements Uses,
     bool DefaultEnabled,
-    bool DefaultPreloaded,
     IReadOnlyList<string>? Tags = null)
 {
     /// <summary>Subject words for catalog lookup, already normalised and deduplicated. Empty is the

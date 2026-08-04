@@ -430,9 +430,6 @@ public sealed class CapabilityDto
     public string? Source { get; set; }
     public string? SourceLabel { get; set; }
 
-    /// <summary>Body goes into the base prompt instead of waiting for activation. Skills only.</summary>
-    public bool Preloaded { get; set; }
-
     /// <summary>Normalised subject words. Skills only — what the panel's facets filter on, and the
     /// only place a person can see the vocabulary drifting.</summary>
     public List<string> Tags { get; set; } = new();

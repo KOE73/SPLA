@@ -315,7 +315,6 @@ public static class SettingsOps
                 Name = skill.Id,
                 Description = skill.Description,
                 Enabled = skill.IsEnabled,
-                Preloaded = skill.IsPreloaded,
                 Tags = skill.Tags.ToList(),
                 State = skill.State.ToString(),
                 StateReason = string.IsNullOrWhiteSpace(skill.StateReason) ? null : skill.StateReason,
@@ -338,11 +337,7 @@ public static class SettingsOps
         foreach (var dto in incoming)
         {
             if (string.IsNullOrWhiteSpace(dto.Id)) continue;
-            runtime.Settings.Skills[dto.Id] = new SplaSkillSection
-            {
-                Enabled = dto.Enabled,
-                Preloaded = dto.Preloaded ? true : null
-            };
+            runtime.Settings.Skills[dto.Id] = new SplaSkillSection { Enabled = dto.Enabled };
         }
 
         var path = runtime.Settings.ProjectFilePath;

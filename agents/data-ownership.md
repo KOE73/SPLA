@@ -22,7 +22,7 @@ If you catch yourself writing `foreach (var item in SomeViewModel.GetItems())` t
 
 ### 2. Flags that affect system behavior must be stored in the domain layer
 
-Toggle states (enabled, preloaded, disabled) belong on the domain object — `SkillCard`, `PluginDescriptor`, `CapabilityItem` — not on the ViewModel node.
+Toggle states (enabled, disabled) belong on the domain object — `SkillCard`, `PluginDescriptor`, `CapabilityItem` — not on the ViewModel node.
 
 The ViewModel binds to the flag. It does not own it.
 
@@ -62,6 +62,6 @@ If a feature (skill, plugin, tool flag) is only accessible from the UI because i
 ## Checklist before adding any new capability type
 
 1. Is there a manager/service in `SPLA.MCP.Core` or `SPLA.Domain` that owns it? If not, create one first.
-2. Do the flags (enabled, preloaded, etc.) live on the domain object and get persisted? If not, add them there.
+2. Do the flags (enabled, etc.) live on the domain object and get persisted? If not, add them there.
 3. Can the CLI access this capability without touching any UI assembly? If not, move the data.
 4. Does the ViewModel only receive a list and display it? If the ViewModel is scanning or parsing — refactor.

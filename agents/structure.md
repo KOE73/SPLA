@@ -153,8 +153,7 @@ description: One-line description used as the skill index entry in the system pr
 - `SidebarPanelViewModel` displays skills from `CapabilityRegistry` — it does NOT scan files or own skill data.
 - System prompt receives only the skill index (`id — description`, one line per skill).
 - Model calls `skill_activate {"id": "<skill-id>"}` to get full skill instructions when a request matches.
-- `IsPreloaded=true` (per-skill setting in `.spla`) injects the full body into the system prompt immediately.
-- Flags `IsEnabled`/`IsPreloaded` persist via the `skills:` section in `.spla` / `defaults.yaml`.
+- The `IsEnabled` flag persists via the `skills:` section in `.spla` / `defaults.yaml`.
 
 **Slash commands:** `/skills` lists all skills; `/skills load <id>` injects skill body into the current chat context.
 

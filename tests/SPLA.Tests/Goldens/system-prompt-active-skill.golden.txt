@@ -8,6 +8,3 @@ Your working directory is {{WORKSPACE}}.
 === ACTIVE SKILL: on.demand ===
 On-demand body.
 === END ACTIVE SKILL: on.demand ===
-
---- Skill: always.on ---
-Preloaded body line.

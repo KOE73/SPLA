@@ -60,7 +60,6 @@
         <CapabilityRow
           v-for="skill in group.items" :key="skill.id"
           :item="skill"
-          :badge="skill.preloaded ? 'preloaded' : undefined"
           :disabled="skill.state === 'Superseded'"
           @toggle="enabled => onToggle(skill, enabled)">
           <template #actions>

@@ -7,9 +7,14 @@ or any UI that reflects skill state. How the prompt is assembled around them: [`
 
 ## Overview
 
-Skills are on-demand procedures. A skill body is loaded into the agent's context only when the skill
-is activated (or when it is marked `preloaded`) — it is never part of the base prompt by default.
-That keeps the base prompt lean and stops skill rules from competing with each other.
+Skills are on-demand procedures. **A skill is loaded or it is not**, exactly one at a time, and its
+body reaches the prompt only through activation. There is no third state.
+
+There used to be one — `preloaded: true` put a body into the base prompt forever — and it is gone.
+It answered "is this text in the base prompt", which describes prompt assembly rather than the
+document, and it showed: a preloaded skill was not indexed, not activatable, not deactivatable, and
+bypassed the source level. Text that must always be in the prompt is `agent.instructions`, which owns
+that job with its own settings key and its own contributor.
 
 A skill is **not owned by a plugin**. It comes from a *source*, declares what it *needs*, and the
 runtime decides whether it can be offered. There are four layers:
@@ -56,7 +61,6 @@ requires:                       # optional — omit entirely for a plain procedu
 uses:                           # optional — nice to have, never gates availability
   tools: [tls_probe]
 enabled: true                   # the skill's own default; settings can override
-preloaded: false                # true = body goes into the base prompt, no activation step
 ---
 
 Step 1: ...
@@ -395,7 +399,6 @@ the caveat in [`security.md`](security.md).
 [ Core feature fragments ]      ← the skills contributor is gated on core.skills
 [ Instructions / custom prompt ]
 [ === ACTIVE SKILL: id === ]    ← when ISkillSession.ActiveSkillId != null
-[ Preloaded skill bodies ]
 [ Skills index ]                ← suppressed while a skill is active
 [ Plugin prompts / commands ]
 ```
@@ -437,9 +440,9 @@ model also sometimes guesses an id before searching, which is why the refusal na
 rather than leaving a dead end, and why suggestions are filtered by level: a wrong guess must not
 become a way to enumerate the fond.
 
-Level also outranks `preloaded`. A preloaded skill from an `out-of-catalog` source would be the
-loudest possible way of telling the model about a source it is not supposed to know — the whole body,
-unasked — so the contributor gates preloading on the level too.
+Nothing bypasses this. When a skill is active the section is suppressed entirely and **no other
+skill's body reaches the prompt by any route** — the removal of `preloaded` closed the last one,
+which used to inject bodies even into a chat that already had a skill running.
 
 The ACTIVE SKILL block ends with the skill's resource list when it has one — **names only**, never
 contents. A procedure that opens two of fourteen files should not carry the other twelve in every

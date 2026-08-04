@@ -70,7 +70,7 @@ authority order, top-down, and belongs to the composition root — never to a co
 | `core` | one item per enabled `IAgentFeature` that carries prompt text | the feature set |
 | `instructions` | each existing instruction file from settings | — |
 | `custom-prompt` | `agent.custom_prompt` | — |
-| `skills` | active skill body, preloaded bodies, on-demand index | `core.skills` |
+| `skills` | active skill body, on-demand catalog (shelf + tag cloud) | `core.skills` |
 | `toolsets` | one declaration line per set the agent may raise and has not | `core.toolsets` |
 | `plugins` | each enabled plugin's own prompt | — |
 | `plugin-commands` | the `plugin_run_command` list | — |

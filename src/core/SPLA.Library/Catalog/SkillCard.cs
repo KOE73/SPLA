@@ -50,9 +50,6 @@ public sealed class SkillCard
     /// <summary>Effective on/off after settings are layered over the frontmatter default.</summary>
     public bool IsEnabled { get; set; } = true;
 
-    /// <summary>Body goes into the base prompt instead of being listed for on-demand activation.</summary>
-    public bool IsPreloaded { get; set; }
-
     public SkillState State { get; set; } = SkillState.Available;
 
     /// <summary>Human-readable explanation for any non-Available state, e.g.

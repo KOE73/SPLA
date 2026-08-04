@@ -142,13 +142,12 @@ description: One-line description shown in the system prompt index.
 
 - `SkillLibrary` scans `plugins/*/skills/*.md` at startup — no plugin dependency.
 - `skill_activate {"id": "<skill-id>"}` injects the full skill body into the prompt for the run; the model calls it when the request matches.
-- `IsEnabled` / `IsPreloaded` flags are persisted in `.spla` under `skills:`.
+- The `IsEnabled` flag is persisted in `.spla` under `skills:`.
 
 ```yaml
 skills:
   network.range-audit:
     enabled: true
-    preloaded: false   # true = inject full body into system prompt immediately
 ```
 
 ### Adding a new skill project

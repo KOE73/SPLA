@@ -226,7 +226,6 @@ export interface CapabilityDto {
   /** Provider id for a skill ("project", "machine", "plugin:network"); absent for built-ins. */
   source?: string;
   sourceLabel?: string;
-  preloaded?: boolean;
   /** Normalised subject words. Skills only — what the panel's facets filter on. */
   tags?: string[];
   missingTools?: string[];

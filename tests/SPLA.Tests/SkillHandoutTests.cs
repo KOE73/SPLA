@@ -55,6 +55,30 @@ public class SkillHandoutTests
         Assert.DoesNotContain("skill_find", after);            // nor the instructions for using one
     }
 
+    /// <summary>
+    /// A skill is loaded or it is not — there is no third state that bypasses the catalog and lands
+    /// in the prompt anyway.
+    ///
+    /// <para>That third state used to exist: <c>preloaded: true</c> put a body into the base prompt
+    /// forever, outside the index, outside activation, outside the source level. It was
+    /// <c>agent.instructions</c> wearing a skill's clothes, and it leaked past every rule the library
+    /// has — including into a chat that already had a skill running, which is the case this pins.</para>
+    /// </summary>
+    [Fact]
+    public void No_skill_can_reach_the_prompt_without_being_loaded()
+    {
+        var source = new FakeSkillSource()
+            .With("other.one", body: "OTHER-BODY-MARKER", description: "not the one running");
+        var library = new SkillLibrary([source]);
+
+        var session = new SkillSession();
+        session.Activate("running.one", "THE RUNNING PROCEDURE");
+        var prompt = Prompt(library, session);
+
+        Assert.Contains("THE RUNNING PROCEDURE", prompt);
+        Assert.DoesNotContain("OTHER-BODY-MARKER", prompt);
+    }
+
     /// <summary>Handing over is cheaper than being told: the same fond costs a fraction once a skill
     /// is running, and the remainder is the procedure the user asked for.</summary>
     [Fact]

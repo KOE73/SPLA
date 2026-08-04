@@ -59,12 +59,11 @@ public class SplaSkillSourceSection
     public Dictionary<string, string>? Options { get; set; }
 }
 
-/// <summary>Per-skill override. Both fields null = "leave the skill's own frontmatter default".</summary>
+/// <summary>Per-skill override. Null = "leave the skill's own frontmatter default".
+/// <para>Only on/off lives here. Text that must always be in the prompt is not a skill setting — it
+/// is <c>agent.instructions</c>, which owns that job outright.</para></summary>
 public class SplaSkillSection
 {
     [YamlMember(Alias = "enabled")]
     public bool? Enabled { get; set; }
-
-    [YamlMember(Alias = "preloaded")]
-    public bool? Preloaded { get; set; }
 }

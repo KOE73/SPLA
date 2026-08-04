@@ -12,9 +12,6 @@ Rule two.
 --- Custom Prompt ---
 CUSTOM PROMPT TEXT
 
---- Skill: always.on ---
-Preloaded body line.
-
 --- Skills ---
 RULE: When the user's request matches a skill listed below, you MUST call skill_activate with its id FIRST — before calling any other tool or executing any step. This is MANDATORY: the full procedure arrives in your next message, and you plan from it.
 If the user asks what you will use, first check whether a listed skill applies, then mention that skill and the relevant tools from its procedure without activating unless execution is requested.
@@ -25,4 +22,5 @@ How to load a skill — call skill_activate with {"id": "<skill-id>"}
 Example: call skill_activate with {"id": "network.range-audit"}
 
 Available skills:
+  second.one — another one in the catalog
   on.demand — loaded when asked

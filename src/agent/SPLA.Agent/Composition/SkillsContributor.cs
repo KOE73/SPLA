@@ -10,8 +10,12 @@ using System.Text;
 namespace SPLA.Agent.Composition;
 
 /// <summary>
-/// Everything the skill system puts in front of the model: the running procedure, the bodies of
-/// preloaded skills, and the index of what else could be loaded.
+/// Everything the skill system puts in front of the model: the running skill, and the catalog of
+/// what else could be loaded.
+///
+/// <para>There is no third thing. A skill is either loaded or it is not, and text that must be in the
+/// prompt regardless is <c>agent.instructions</c> — a separate contributor with its own settings key,
+/// which is where that job has always belonged.</para>
 ///
 /// <para>Gated as a whole by <c>core.skills</c> — the composer simply leaves this contributor out
 /// when the capability is off, so the prompt never mentions <c>skill_activate</c> without the tool
@@ -60,34 +64,15 @@ public sealed class SkillsContributor : IAgentContributor
         var available = _skills.Catalog();
         if (available.Count == 0) return AgentContribution.FromContext(items);
 
-        // A preloaded skill from a source the model is not supposed to know about would be the
-        // loudest possible way of telling it — the whole body, unasked. Level outranks the flag.
-        foreach (var skill in available.Where(s => s.IsPreloaded && Announceable(s)))
-        {
-            var body = _skills.LoadBody(skill.Id);
-            if (string.IsNullOrEmpty(body)) continue;
-
-            items.Add(new ContextItem
-            {
-                Source = skill.Id,
-                Title = $"Skill: {skill.Id}",
-                Body = body,
-                Prefix = $"\n\n--- Skill: {skill.Id} ---\n"
-            });
-        }
-
         // Suppressed while a skill is active, since its body is already injected and a second
         // activation is refused anyway.
         if (session?.ActiveSkillId is not null) return AgentContribution.FromContext(items);
 
-        var view = CatalogView.Build(available.Where(s => !s.IsPreloaded), _shelfLimit);
+        var view = CatalogView.Build(available, _shelfLimit);
         if (!view.IsEmpty) items.Add(BuildIndex(view));
 
         return AgentContribution.FromContext(items);
     }
-
-    private static bool Announceable(SkillCard card) =>
-        card.Level is SourceLevel.InCatalog or SourceLevel.OnShelf;
 
     private void AppendActiveSkill(List<ContextItem> items, ISkillSession? session)
     {

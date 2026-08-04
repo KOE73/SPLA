@@ -206,7 +206,6 @@ public class SkillSourceTests : IDisposable
             ---
             id: net.audit
             description: does things
-            preloaded: true
             requires:
               tools: [dns_lookup, port_scan]
               features: [core.memory]
@@ -220,7 +219,6 @@ public class SkillSourceTests : IDisposable
         Assert.Equal(["dns_lookup", "port_scan"], entry.Requires.Tools);
         Assert.Equal(["core.memory"], entry.Requires.Features);
         Assert.Equal(["tls_probe"], entry.Uses.Tools);
-        Assert.True(entry.DefaultPreloaded);
         Assert.True(entry.DefaultEnabled);
     }
 
@@ -276,7 +274,7 @@ public class SkillSourceTests : IDisposable
             ---
             id: network.dns-diagnostics
             description: DNS troubleshooting. Trigger on: DNS not resolving, check DNS records.
-            preloaded: false
+            enabled: false
             ---
             Step 1.
             """, "dns-diagnostics", "dns.md");
@@ -284,7 +282,7 @@ public class SkillSourceTests : IDisposable
         Assert.Equal("network.dns-diagnostics", entry.Id);
         Assert.StartsWith("DNS troubleshooting.", entry.Description);
         Assert.Contains("Trigger on: DNS not resolving", entry.Description);
-        Assert.False(entry.DefaultPreloaded);
+        Assert.False(entry.DefaultEnabled);   // a scalar after the offending line is recovered too
     }
 
     // ── Registry ─────────────────────────────────────────────────────────────

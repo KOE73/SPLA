@@ -213,7 +213,6 @@ public sealed class SkillLibrary : IDisposable
         _settings.TryGetValue(entry.Id, out var configured);
 
         var enabled = configured?.Enabled ?? entry.DefaultEnabled;
-        meta.IsPreloaded = configured?.Preloaded ?? entry.DefaultPreloaded;
         meta.IsEnabled = enabled;
 
         if (!enabled)

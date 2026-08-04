@@ -50,7 +50,7 @@ public sealed class SystemPromptGoldenTests
             File.WriteAllText(Path.Combine(root, "RULES.md"), "Rule one.\nRule two.");
 
             var skills = new SkillLibrary([new FakeSkillSource()
-                .With("always.on", body: "Preloaded body line.", description: "always in the prompt", preloaded: true)
+                .With("second.one", body: "Second body.", description: "another one in the catalog")
                 .With("on.demand", body: "On-demand body.", description: "loaded when asked")]);
 
             var builder = new AgentContextComposer(AgentContributors.Default(
@@ -74,7 +74,7 @@ public sealed class SystemPromptGoldenTests
             session.Activate("on.demand", "On-demand body.");
 
             var skills = new SkillLibrary([new FakeSkillSource()
-                .With("always.on", body: "Preloaded body line.", description: "always in the prompt", preloaded: true)
+                .With("second.one", body: "Second body.", description: "another one in the catalog")
                 .With("on.demand", body: "On-demand body.", description: "loaded when asked")]);
 
             var builder = new AgentContextComposer(AgentContributors.Default(

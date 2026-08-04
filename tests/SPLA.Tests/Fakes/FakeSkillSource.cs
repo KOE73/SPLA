@@ -40,14 +40,13 @@ public sealed class FakeSkillSource : ISkillSource
         IReadOnlyList<string>? requiresTools = null,
         IReadOnlyList<string>? requiresFeatures = null,
         bool enabled = true,
-        bool preloaded = false,
         IReadOnlyList<string>? tags = null)
     {
         _skills[id] = (new SkillEntry(
             id, description, $"{id}.md",
             new SkillRequirements(requiresTools ?? [], requiresFeatures ?? []),
             SkillRequirements.None,
-            enabled, preloaded,
+            enabled,
             SPLA.Library.Catalog.SkillTag.NormalizeAll(tags)), body);
         return this;
     }
