@@ -27,6 +27,7 @@ src/core/SPLA.Library/          the library itself — no dependency on the tool
   ISkillCapabilityProbe.cs      the one question it asks the outside world
   Catalog/    SkillCard, SkillState, SkillTag, TagVocabulary, CatalogView
   Sources/    ISkillSource, SourceLevel, DirectorySkillSource, PluginSkillSource, SkillSourceRegistry
+  Librarians/ ITagLibrarian, TagLibrarian
   Format/     SkillFrontmatter
 ```
 
@@ -344,11 +345,18 @@ becomes visible and actionable). Neither needs an event subscription kept alive 
   already let in is not a second decision, and asking per reference would mean a dozen prompts for one
   step of one procedure — which trains the user to click through the prompt that does matter. Research
   still denies the whole scope: nothing can be activated there, so there is nothing to read.
+- **`skill_find`** — asks the tag librarian what the fond has on a subject, and returns **cards, never
+  bodies**: a stack of annotations to pick from, not procedures. Handing back bodies would put the
+  full text of skills nobody chose straight back into the context, which is the thing this whole
+  design exists to avoid. Read-effect like `skill_read_resource`, so asking costs no prompt.
+  An empty result distinguishes "nobody wrote a skill for this" from "that is not a word here" —
+  only the second is fixable by asking again, so the answer says which happened.
 - **`agent_clarify`** — the confirmation gate before activation, and general structured questions.
 
 | Tool | ToolScope | Chat | Research | Inspect | Edit | Agent |
 |---|---|---|---|---|---|---|
 | `skill_activate` | Skill | Ask | Deny | Ask | Allow | Allow |
+| `skill_find` | Skill | Allow | Deny | Allow | Allow | Allow |
 | `skill_read_resource` | Skill | Allow | Deny | Allow | Allow | Allow |
 | `skill_deactivate` | Agent | Allow | Allow | Allow | Allow | Allow |
 | `agent_clarify` | Agent | Allow | Allow | Allow | Allow | Allow |
@@ -396,6 +404,19 @@ tags instead. **Untagged skills are never demoted** — a skill with no tags can
 so moving it to the cloud would not summarise it, it would delete it. It keeps its place and keeps
 costing what it costs. That is deliberately visible: the way to make a large fond cheap is to tag it,
 and a project that has not should feel the price rather than lose the skills.
+
+When the cloud is non-empty the section also spells out the sequence — subject → `skill_find` →
+`skill_activate` — in those words. That is not decoration: two-step selection introduces one new way
+to fail, a model that never asks, and runs showed the wording carries real weight.
+
+**What the runs actually showed** (`gemma-4-26b-a4b-qat`, 2026-08-04). In a clean context the weak
+model handles the two steps first try: `skill_find` then `skill_activate`. What breaks it is **tool
+competition** — with ninety plugin tools registered it went straight to `ssh_list_hosts` and never
+consulted the catalog at all. That is the same failure the index rule about "start immediately"
+already names, not a new one `skill_find` created; the prompt does not currently close it. A weak
+model also sometimes guesses an id before searching, which is why the refusal names `skill_find`
+rather than leaving a dead end, and why suggestions are filtered by level: a wrong guess must not
+become a way to enumerate the fond.
 
 Level also outranks `preloaded`. A preloaded skill from an `out-of-catalog` source would be the
 loudest possible way of telling the model about a source it is not supposed to know — the whole body,

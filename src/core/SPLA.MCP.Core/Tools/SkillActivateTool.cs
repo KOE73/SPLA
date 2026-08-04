@@ -4,6 +4,7 @@ using SPLA.MCP.Core.Interfaces;
 using SPLA.MCP.Core.Json;
 using SPLA.Library;
 using SPLA.Library.Catalog;
+using SPLA.Library.Sources;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -78,15 +79,22 @@ public sealed class SkillActivateTool : IMcpTool
             var skill = _skills.Find(id);
             if (skill is null)
             {
+                // Suggestions must respect the level. Naming a skill here that the catalog
+                // deliberately withheld would make a wrong guess a way of enumerating the fond —
+                // and OutOfCatalog means "the model is not told", not "the model is not told twice".
                 var suggestions = _skills.Catalog()
+                    .Where(s => s.Level is SourceLevel.InCatalog or SourceLevel.OnShelf)
                     .Where(s => s.Id.Contains(id, StringComparison.OrdinalIgnoreCase))
                     .Select(s => s.Id)
                     .Take(5)
                     .ToArray();
 
                 var msg = $"error: unknown skill '{id}'";
-                if (suggestions.Length > 0)
-                    msg += "\nsuggestions:\n" + string.Join("\n", suggestions.Select(s => $"  - {s}"));
+                msg += suggestions.Length > 0
+                    ? "\nsuggestions:\n" + string.Join("\n", suggestions.Select(s => $"  - {s}"))
+                    // The observed failure: a weak model guesses an id from a subject word, gets this
+                    // error, and thrashes. Naming the recovery turns a dead end into one more call.
+                    : "\nDo not guess skill ids. Call skill_find with a subject or with free text to get real ids, then activate one of those.";
                 return Task.FromResult(msg);
             }
 

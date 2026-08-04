@@ -159,6 +159,16 @@ public sealed class SkillsContributor : IAgentContributor
             body.Append($"\n\nFurther skills are catalogued by subject, not listed here ({view.CloudedSkills.Count} of them). Subjects, with how many skills carry each:");
             foreach (var tag in view.Cloud.All())
                 body.Append($"\n  {tag.Tag} ({tag.Count})");
+
+            // The two-step selection is the one new way this can fail: a model that never asks simply
+            // does not see most of the fond. Spelling out the sequence, with the words to use, is the
+            // cheapest thing that closes it.
+            body.Append("\nThose skills are NOT listed above and you cannot name them yet. To use one:");
+            body.Append("\n  1. call skill_find with {\"tags\": [\"<subject>\"]} — subjects come from the list just above;");
+            body.Append("\n  2. it answers with skill ids and descriptions;");
+            body.Append("\n  3. call skill_activate with the id you chose.");
+            body.Append("\nMANDATORY: if the request matches one of those subjects, call skill_find BEFORE doing the work yourself or saying no skill exists. Never guess a skill id — activating an id you did not read from skill_find will fail.");
+            body.Append("\nIf no subject fits, call skill_find with {\"text\": \"<what the user wants>\"} instead.");
         }
 
         return new ContextItem

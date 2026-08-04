@@ -70,6 +70,10 @@ public sealed class AgentRuntime : IDisposable
     public IModelManagementService ModelManagement { get; }
     public McpHost McpHost { get; }
     public SkillLibrary SkillLibrary { get; }
+
+    /// <summary>The tag librarian over <see cref="SkillLibrary"/>. Reads holdings live, so it needs no
+    /// rebuilding when a source changes.</summary>
+    public SPLA.Library.Librarians.ITagLibrarian SkillLibrarian { get; }
     public PluginManager PluginManager { get; }
 
     /// <summary>Tool sets and their levels — "allowed how far", never "raised right now".
@@ -178,6 +182,7 @@ public sealed class AgentRuntime : IDisposable
 
         SkillLibrary = new SkillLibrary(skillSources, loggerFactory.CreateLogger<SkillLibrary>());
         SkillLibrary.ApplySettings(settings.Skills);
+        SkillLibrarian = new SPLA.Library.Librarians.TagLibrarian(SkillLibrary);
 
         McpHost = new McpHost(
             new PermissionManager(settings: settings), PluginManager, loggerFactory.CreateLogger<McpHost>());
@@ -238,7 +243,8 @@ public sealed class AgentRuntime : IDisposable
             Feature("core.skills",
                 new SPLA.MCP.Core.Tools.SkillActivateTool(SkillLibrary, ToolSets),
                 new SPLA.MCP.Core.Tools.SkillDeactivateTool(),
-                new SPLA.MCP.Core.Tools.SkillReadResourceTool(SkillLibrary)),
+                new SPLA.MCP.Core.Tools.SkillReadResourceTool(SkillLibrary),
+                new SPLA.MCP.Core.Tools.SkillFindTool(SkillLibrarian)),
             Feature("core.toolsets",
                 new SPLA.MCP.Core.Tools.ToolSetActivateTool(ToolSets),
                 new SPLA.MCP.Core.Tools.ToolSetDeactivateTool()),
