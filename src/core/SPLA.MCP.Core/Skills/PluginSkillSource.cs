@@ -84,9 +84,8 @@ public sealed class PluginSkillSource : ISkillSource
 
     public string? ReadBody(string skillRef)
     {
-        var full = Path.GetFullPath(Path.Combine(_directory, skillRef));
-        var rootPrefix = Path.GetFullPath(_directory) + Path.DirectorySeparatorChar;
-        if (!full.StartsWith(rootPrefix, StringComparison.OrdinalIgnoreCase) || !File.Exists(full)) return null;
+        var full = ResolveUnder(_directory, skillRef);
+        if (full is null || !File.Exists(full)) return null;
 
         try
         {
@@ -97,6 +96,74 @@ public sealed class PluginSkillSource : ISkillSource
             _logger?.LogWarning(ex, "Plugin skill body unreadable. Source={SourceId} Ref={Ref}", Id, skillRef);
             return null;
         }
+    }
+
+    /// <summary>
+    /// A plugin skill is a single markdown file, so its attachments live in the folder named after it
+    /// beside it — <c>skills/host-audit.md</c> is served by <c>skills/host-audit/</c>. That folder is
+    /// invisible to <see cref="Enumerate"/> (which only reads top-level <c>*.md</c>), so the
+    /// convention costs nothing and cannot turn an appendix into a skill of its own.
+    /// </summary>
+    public IReadOnlyList<string> ListResources(string skillRef)
+    {
+        var root = ResourceRoot(skillRef);
+        if (root is null || !Directory.Exists(root)) return [];
+
+        try
+        {
+            return Directory.EnumerateFiles(root, "*", SearchOption.AllDirectories)
+                .Select(f => Path.GetRelativePath(root, f).Replace('\\', '/'))
+                .OrderBy(p => p, StringComparer.OrdinalIgnoreCase)
+                .ToList();
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            _logger?.LogWarning(ex, "Plugin skill resources unreadable. Source={SourceId} Ref={Ref}", Id, skillRef);
+            return [];
+        }
+    }
+
+    public string? ReadResource(string skillRef, string resourcePath)
+    {
+        var root = ResourceRoot(skillRef);
+        if (root is null) return null;
+
+        var path = ResolveUnder(root, resourcePath);
+        if (path is null || !File.Exists(path)) return null;
+
+        try
+        {
+            return File.ReadAllText(path);
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            _logger?.LogWarning(ex, "Plugin skill resource unreadable. Source={SourceId} Ref={Ref} Resource={Resource}",
+                Id, skillRef, resourcePath);
+            return null;
+        }
+    }
+
+    /// <summary>The sidecar folder for a skill ref, or null when the ref itself escapes the package.
+    /// A disabled plugin serves nothing here either — the skill does not exist while it is off.</summary>
+    private string? ResourceRoot(string skillRef)
+    {
+        if (!_isEnabled()) return null;
+
+        var file = ResolveUnder(_directory, skillRef);
+        if (file is null || !File.Exists(file)) return null;
+
+        return Path.Combine(Path.GetDirectoryName(file)!, Path.GetFileNameWithoutExtension(file));
+    }
+
+    private static string? ResolveUnder(string baseDir, string relative)
+    {
+        if (string.IsNullOrWhiteSpace(relative)) return null;
+
+        var root = Path.GetFullPath(baseDir);
+        var full = Path.GetFullPath(Path.Combine(root, relative));
+        return full.StartsWith(root + Path.DirectorySeparatorChar, StringComparison.OrdinalIgnoreCase)
+            ? full
+            : null;
     }
 
     /// <summary>Both packaging layouts: markdown at the package root (type:skills packages) and a

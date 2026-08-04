@@ -72,7 +72,7 @@ public sealed class SkillManager : IDisposable
         var skill = Find(id);
         if (skill is null) return null;
 
-        var source = _sources.FirstOrDefault(s => s.Id.Equals(skill.SourceId, StringComparison.OrdinalIgnoreCase));
+        var source = SourceOf(skill.SourceId);
         if (source is null)
         {
             _logger?.LogWarning("Skill source vanished. Skill={SkillId} Source={SourceId}", id, skill.SourceId);
@@ -81,6 +81,37 @@ public sealed class SkillManager : IDisposable
 
         return source.ReadBody(skill.Ref);
     }
+
+    /// <summary>The attachments a skill came with, listed by its owning source. Empty when the skill is
+    /// unknown or carries none. Called once, at activation, to fill the loan slip.</summary>
+    public IReadOnlyList<string> ListResources(string id)
+    {
+        var skill = Find(id);
+        if (skill is null) return [];
+
+        return SourceOf(skill.SourceId)?.ListResources(skill.Ref) ?? [];
+    }
+
+    /// <summary>
+    /// One attachment's text, addressed by the coordinates pinned at activation rather than by skill
+    /// id. That is the point: the loan slip stays valid across a rebuild that shadowed the skill,
+    /// renamed nothing and moved nothing — and it stops resolving the moment the source itself is
+    /// gone, which is the honest answer to "the shelf disappeared while the book is out".
+    /// </summary>
+    public string? ReadResource(string sourceId, string skillRef, string resourcePath)
+    {
+        var source = SourceOf(sourceId);
+        if (source is null)
+        {
+            _logger?.LogWarning("Skill source vanished. Source={SourceId} Ref={Ref}", sourceId, skillRef);
+            return null;
+        }
+
+        return source.ReadResource(skillRef, resourcePath);
+    }
+
+    private ISkillSource? SourceOf(string sourceId) =>
+        _sources.FirstOrDefault(s => s.Id.Equals(sourceId, StringComparison.OrdinalIgnoreCase));
 
     /// <summary>Supplies the capability answers used to resolve requirements, then rebuilds. Called
     /// once the tool host and the feature set exist — until then requirements resolve optimistically,

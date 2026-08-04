@@ -33,7 +33,7 @@ public sealed class AgentCapabilitiesTests
         "web_fetch",
         "agent_memory_set", "agent_memory_get", "agent_memory_delete", "agent_memory_list", "agent_memory_clear",
         "checkpoint_save", "context_rollback", "mark_set", "mark_rollback",
-        "skill_activate", "skill_deactivate",
+        "skill_activate", "skill_deactivate", "skill_read_resource",
         "toolset_activate", "toolset_deactivate",
         "agent_spawn", "agent_spawn_batch",
         "agent_clarify",

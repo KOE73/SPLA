@@ -91,10 +91,29 @@ public sealed class SkillsContributor : IAgentContributor
         {
             Source = activeId,
             Title = $"Active skill: {activeId}",
-            Body = body,
+            Body = body + BuildResourceList(session.ActiveResources),
             Prefix = $"\n\n=== ACTIVE SKILL: {activeId} ===\n",
             Suffix = $"\n=== END ACTIVE SKILL: {activeId} ==="
         });
+    }
+
+    /// <summary>
+    /// The attachments that came with the active skill, listed by name only.
+    ///
+    /// <para>Names, not contents: a procedure that opens two references out of fourteen files should
+    /// not carry the other twelve in every iteration. But it cannot ask for what it does not know
+    /// exists, so the list itself is not optional — it is the catalogue card for the vkladyshi.</para>
+    /// </summary>
+    private static string BuildResourceList(IReadOnlyList<string> resources)
+    {
+        if (resources.Count == 0) return string.Empty;
+
+        var body = new StringBuilder();
+        body.Append("\n\n--- Resources of this skill ---");
+        body.Append("\nRead any of these with skill_read_resource {\"path\": \"<path>\"}. They are available only while this skill is active.");
+        foreach (var path in resources) body.Append($"\n  {path}");
+
+        return body.ToString();
     }
 
     private static ContextItem BuildIndex(IReadOnlyList<SkillMeta> onDemand)

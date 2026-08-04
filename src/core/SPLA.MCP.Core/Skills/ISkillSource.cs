@@ -60,6 +60,26 @@ public interface ISkillSource
     /// <summary>The skill's procedure text, or null when the ref is unknown or unreadable.</summary>
     string? ReadBody(string skillRef);
 
+    /// <summary>
+    /// The skill's own attachments — the <c>references/</c> and <c>assets/</c> that live with it and
+    /// are useless without it. Paths are relative to the skill and forward-slashed; they are handed to
+    /// <see cref="ReadResource"/> unchanged and are as opaque to the core as <see cref="SkillEntry.Ref"/>.
+    ///
+    /// <para>Returns empty for a skill that carries none, and for an unknown ref. Must not throw:
+    /// listing attachments is never the reason a skill fails.</para>
+    /// </summary>
+    IReadOnlyList<string> ListResources(string skillRef) => [];
+
+    /// <summary>
+    /// One attachment's text, or null when the skill, the attachment, or the source itself is gone.
+    ///
+    /// <para>Resolution happens HERE, inside the source, for the same reason <see cref="SkillEntry.Ref"/>
+    /// is opaque: only the source knows what its refs mean, and only it can tell an attachment of this
+    /// skill from anything else it can reach. A file-shaped source must refuse a path that escapes the
+    /// skill's own folder — these strings arrive from a model.</para>
+    /// </summary>
+    string? ReadResource(string skillRef, string resourcePath) => null;
+
     /// <summary>Raised when the underlying content changed and the manager should re-enumerate.</summary>
     event Action? Changed;
 }

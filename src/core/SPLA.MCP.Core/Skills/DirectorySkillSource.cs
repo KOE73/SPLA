@@ -13,8 +13,8 @@ namespace SPLA.MCP.Core.Skills;
 ///
 /// <para>Two layouts, both first-class: a bare <c>name.md</c> in the root is a simple skill, and a
 /// subfolder containing <c>SKILL.md</c> is a skill that carries resources alongside it (scripts,
-/// references). The second form exists so a long procedure can keep its attachments together; the
-/// attachments themselves are not read yet.</para>
+/// references). The second form exists so a long procedure can keep its attachments together, and
+/// <see cref="ListResources"/> / <see cref="ReadResource"/> are how they are handed out.</para>
 ///
 /// <para>Change detection lives here rather than in a separate watcher class: a FileSystemWatcher is
 /// an implementation detail of file-shaped sources, and a server or database source will raise
@@ -247,6 +247,86 @@ public sealed class DirectorySkillSource : IEditableSkillSource, IDisposable
         }
     }
 
+    /// <summary>
+    /// Everything beside a folder skill's <c>SKILL.md</c>, walked recursively — that is exactly the
+    /// definition <see cref="Scan"/> already uses to stop descending, read from the other side.
+    ///
+    /// <para>A bare <c>name.md</c> in a grouping folder has no attachments at all, and deliberately so:
+    /// its neighbours are other people's skills, not its vkladyshi. Carrying attachments is what the
+    /// folder layout is FOR.</para>
+    /// </summary>
+    public IReadOnlyList<string> ListResources(string skillRef)
+    {
+        var root = ResourceRoot(skillRef);
+        if (root is null) return [];
+
+        var found = new List<string>();
+        try
+        {
+            Collect(root, root, found);
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            _logger?.LogWarning(ex, "Skill resources unreadable. Source={SourceId} Ref={Ref}", Id, skillRef);
+        }
+
+        found.Sort(StringComparer.OrdinalIgnoreCase);
+        return found;
+    }
+
+    public string? ReadResource(string skillRef, string resourcePath)
+    {
+        var root = ResourceRoot(skillRef);
+        if (root is null) return null;
+
+        var path = ResolveUnder(root, resourcePath);
+        if (path is null || !File.Exists(path)) return null;
+
+        // SKILL.md is the book, not an appendix. It is already pinned in the session, and letting it
+        // back in through the resource door would just be a second way to read the same text.
+        if (Path.GetFileName(path).Equals(FolderSkillFile, StringComparison.OrdinalIgnoreCase)) return null;
+
+        try
+        {
+            return File.ReadAllText(path);
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            _logger?.LogWarning(ex, "Skill resource unreadable. Source={SourceId} Ref={Ref} Resource={Resource}",
+                Id, skillRef, resourcePath);
+            return null;
+        }
+    }
+
+    /// <summary>The folder whose contents are this skill's attachments, or null when the skill has
+    /// none — either the ref is unknown, or it names a bare file rather than a skill folder.</summary>
+    private string? ResourceRoot(string skillRef)
+    {
+        var path = Resolve(skillRef);
+        if (path is null || !File.Exists(path)) return null;
+        if (!Path.GetFileName(path).Equals(FolderSkillFile, StringComparison.OrdinalIgnoreCase)) return null;
+
+        return Path.GetDirectoryName(path);
+    }
+
+    private static void Collect(string root, string directory, List<string> found)
+    {
+        foreach (var file in Directory.EnumerateFiles(directory))
+        {
+            if (Path.GetFileName(file).Equals(FolderSkillFile, StringComparison.OrdinalIgnoreCase)) continue;
+            found.Add(Path.GetRelativePath(root, file).Replace('\\', '/'));
+        }
+
+        foreach (var sub in Directory.EnumerateDirectories(directory))
+        {
+            // The same exclusions the scanner uses — noise beside authored files is not an appendix.
+            var name = Path.GetFileName(sub);
+            if (name.StartsWith('.') || name is "bin" or "obj" or "node_modules") continue;
+
+            Collect(root, sub, found);
+        }
+    }
+
     public void WriteBody(string skillRef, string text)
     {
         var path = Resolve(skillRef)
@@ -258,13 +338,21 @@ public sealed class DirectorySkillSource : IEditableSkillSource, IDisposable
 
     /// <summary>Maps a ref back to a full path, refusing anything that would escape the root — refs
     /// can reach this source from a client, so "../../etc" must not resolve.</summary>
-    private string? Resolve(string skillRef)
-    {
-        if (string.IsNullOrWhiteSpace(skillRef)) return null;
+    private string? Resolve(string skillRef) => ResolveUnder(_root, skillRef);
 
-        var full = Path.GetFullPath(Path.Combine(_root, skillRef));
-        var rootPrefix = _root.EndsWith(Path.DirectorySeparatorChar) ? _root : _root + Path.DirectorySeparatorChar;
-        return full.StartsWith(rootPrefix, StringComparison.OrdinalIgnoreCase) ? full : null;
+    /// <summary>The containment check both refs and resource paths go through. Kept in one place so
+    /// the attachment door cannot drift away from the door the skill ref already uses: an absolute
+    /// path, a "..", or a symlink-free sideways hop all end up outside <paramref name="baseDir"/> and
+    /// all resolve to null.</summary>
+    private static string? ResolveUnder(string baseDir, string relative)
+    {
+        if (string.IsNullOrWhiteSpace(relative)) return null;
+
+        var full = Path.GetFullPath(Path.Combine(baseDir, relative));
+        var prefix = baseDir.EndsWith(Path.DirectorySeparatorChar)
+            ? baseDir
+            : baseDir + Path.DirectorySeparatorChar;
+        return full.StartsWith(prefix, StringComparison.OrdinalIgnoreCase) ? full : null;
     }
 
     private void OnFileEvent(object sender, FileSystemEventArgs e)

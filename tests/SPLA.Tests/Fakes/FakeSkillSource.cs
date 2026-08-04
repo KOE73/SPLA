@@ -10,6 +10,7 @@ namespace SPLA.Tests.Fakes;
 public sealed class FakeSkillSource : ISkillSource
 {
     private readonly Dictionary<string, (SkillEntry Entry, string Body)> _skills = new();
+    private readonly Dictionary<(string Ref, string Path), string> _resources = new();
 
     public string Id { get; }
     public string Label { get; }
@@ -45,6 +46,14 @@ public sealed class FakeSkillSource : ISkillSource
         return this;
     }
 
+    /// <summary>Attaches a resource to an already-added skill. Keyed by the skill's ref, the way a
+    /// real source addresses it — the manager never passes an id down here.</summary>
+    public FakeSkillSource WithResource(string skillId, string path, string text)
+    {
+        _resources[($"{skillId}.md", path)] = text;
+        return this;
+    }
+
     public void Raise() => Changed?.Invoke();
 
     public IReadOnlyList<SkillEntry> Enumerate() =>
@@ -52,4 +61,13 @@ public sealed class FakeSkillSource : ISkillSource
 
     public string? ReadBody(string skillRef) =>
         _skills.Values.FirstOrDefault(v => v.Entry.Ref == skillRef).Body;
+
+    public IReadOnlyList<string> ListResources(string skillRef) =>
+        Offline
+            ? []
+            : _resources.Keys.Where(k => k.Ref == skillRef).Select(k => k.Path)
+                             .OrderBy(p => p, StringComparer.OrdinalIgnoreCase).ToList();
+
+    public string? ReadResource(string skillRef, string resourcePath) =>
+        Offline ? null : _resources.GetValueOrDefault((skillRef, resourcePath));
 }

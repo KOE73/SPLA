@@ -52,7 +52,8 @@ public sealed class SpawnedAgentRunner : Domain.Interfaces.IAgentSpawner
         AgentMode mode,
         CancellationToken cancellationToken = default)
     {
-        if (_skills.Find(skillId) is null)
+        var meta = _skills.Find(skillId);
+        if (meta is null)
             throw new System.ArgumentException($"Skill '{skillId}' not found.", nameof(skillId));
 
         // Fresh isolated agent state — own skill session, working memory, and checkpoint manager.
@@ -64,7 +65,9 @@ public sealed class SpawnedAgentRunner : Domain.Interfaces.IAgentSpawner
                 $"Skill '{skillId}' has no readable procedure.", nameof(skillId));
 
         var skillSession = new SkillSession();
-        skillSession.Activate(skillId, body);
+        // Same loan slip as an in-chat activation: a sub-agent running a skill needs that skill's
+        // references as much as the parent would, and its own session is the only place to hold them.
+        skillSession.Activate(skillId, body, meta.SourceId, meta.Ref, _skills.ListResources(skillId));
         var checkpoint = new CheckpointManager();
         var agentSession = new AgentSession(new KeyValueStore("session"), checkpoint, skillSession);
 

@@ -13,9 +13,16 @@ public sealed class SkillSession : ISkillSession
 
     public string? ActiveBody { get; private set; }
 
+    public string? ActiveSourceId { get; private set; }
+
+    public string? ActiveRef { get; private set; }
+
+    public IReadOnlyList<string> ActiveResources { get; private set; } = [];
+
     public event EventHandler? Changed;
 
-    public void Activate(string skillId, string body)
+    public void Activate(string skillId, string body, string? sourceId = null, string? skillRef = null,
+        IReadOnlyList<string>? resources = null)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(skillId);
         if (ActiveSkillId is not null)
@@ -24,6 +31,9 @@ public sealed class SkillSession : ISkillSession
 
         ActiveSkillId = skillId;
         ActiveBody = body;
+        ActiveSourceId = sourceId;
+        ActiveRef = skillRef;
+        ActiveResources = resources ?? [];
         Changed?.Invoke(this, EventArgs.Empty);
     }
 
@@ -32,6 +42,12 @@ public sealed class SkillSession : ISkillSession
         if (ActiveSkillId is null) return;
         ActiveSkillId = null;
         ActiveBody = null;
+
+        // The loan slip goes back with the book. Leaving it would leave skill_read_resource able to
+        // serve the attachments of a skill nobody is running.
+        ActiveSourceId = null;
+        ActiveRef = null;
+        ActiveResources = [];
         Changed?.Invoke(this, EventArgs.Empty);
     }
 }

@@ -60,6 +60,8 @@ public interface ISkillSource
     SkillTrust Trust { get; }
     IReadOnlyList<SkillEntry> Enumerate();
     string?    ReadBody(string skillRef);
+    IReadOnlyList<string> ListResources(string skillRef);          // default: []
+    string?    ReadResource(string skillRef, string resourcePath); // default: null
     event Action? Changed;
 }
 ```
@@ -72,6 +74,12 @@ addressed by `SourceId` + `Ref`; `SkillMeta` carries no file path.
 `IEditableSkillSource` is the optional second role for sources that can be written back. It exists so
 an editor can be added without reopening `ISkillSource`. Only `DirectorySkillSource` implements it,
 and no UI calls it yet.
+
+The two resource members have interface defaults, so a source that serves bare text implements
+nothing. Resolution happens **inside** the source for the same reason `Ref` is opaque: only the source
+knows what its refs mean, and only it can tell one skill's attachment from anything else it can reach.
+A file-shaped source must refuse a path that escapes the skill's own folder — these strings arrive
+from a model.
 
 Parsing is **not** a source's job — `SkillFrontmatter` does it on top. A future source serving a
 different kind of prompt asset reuses the same source with a different parser.
@@ -99,6 +107,15 @@ A folder tree, walked recursively. One rule decides what a subfolder is:
 
 So nesting is free for organisation and never ambiguous. `README.md` at any level is documentation
 about the folder, not a skill; dot-folders, `bin`, `obj` and `node_modules` are skipped.
+
+`ListResources` is that same rule read from the other side: for a folder skill it returns everything
+beside the `SKILL.md`, walked recursively with the same exclusions, `SKILL.md` itself left out. A bare
+`name.md` therefore has **no** resources — its neighbours are other people's skills, not its own
+attachments, and carrying attachments is exactly what the folder layout is for.
+
+A plugin skill is a single file, so its attachments live in the folder named after it beside it:
+`skills/host-audit.md` is served by `skills/host-audit/`. That folder is invisible to `Enumerate`,
+which reads only top-level `*.md`, so the convention cannot turn an appendix into a skill of its own.
 
 A file that declares no `id:` gets one from its path: `skills/network/dns.md` → `network.dns`. Folder
 structure becomes an id namespace, which matches how skills are already named and stops two files
@@ -207,6 +224,26 @@ block.
 is no longer what protects a running skill — the pin does that — so it is free to be used as a
 plain flag.
 
+### The loan slip: what is pinned about attachments
+
+`Activate` also takes the skill's `SourceId`, its `Ref`, and the **list** of its resources; all three
+go back to null/empty on `Deactivate`. That triple is the loan slip, and it decides two things:
+
+- **Where attachments come from.** `skill_read_resource` addresses the source by the pinned id, not by
+  a fresh lookup on `ActiveSkillId`. A rebuild that shadows the skill therefore cannot redirect a
+  running procedure to a different edition's appendices — the same guarantee the pinned body gives.
+- **What may be asked for.** A path not on the slip is refused before any source is touched, which is
+  what stops one skill reaching another's references.
+
+Only the list is pinned; **the text is fetched live at the moment it is asked for.** A procedure that
+opens two references out of fourteen files should not pay for the other twelve at activation, and on a
+server the whole set is not on the client's machine to begin with. The cost of the live read is the
+"the shelf disappeared while the book is out" case: `skill_read_resource` then returns an error while
+the pinned procedure keeps running, which is the honest answer rather than a wedged chat.
+
+The consequence worth knowing: a resource **added** to the folder after activation is not on the slip
+and is not readable until the next activation. That is the same shape as the body's pin, not a bug.
+
 ### Ending a skill
 
 Three ways out, and the last one matters more than it looks:
@@ -238,14 +275,20 @@ becomes visible and actionable). Neither needs an event subscription kept alive 
 - **`skill_activate`** — validates via `SkillManager.Find`, refuses a non-`Available` skill *with its
   reason* ("needs `port_scan` — from plugin 'network'") rather than pretending it does not exist,
   then calls `ISkillSession.Activate`. Mode-gated (see the matrix below).
+  It also loads the body only for `Available` skills, since handing back a procedure whose tools are
+  missing just walks the model into failing calls, and it fills the loan slip (see above).
 - **`skill_deactivate`** — `ToolScope.Agent`, allowed in every mode. Stopping is always safe.
-- **`skill_activate`** — loads the body only for `Available` skills, since
-  handing back a procedure whose tools are missing just walks the model into failing calls.
+- **`skill_read_resource`** — one attachment of the **currently active** skill, by a path from the
+  loan slip. There is no argument naming a skill, which is why the model cannot ask for another one's;
+  the source resolves the path itself, so escaping the folder fails inside the source rather than
+  being checked in the tool. Both halves are needed: a loan check over a careless source would still
+  serve `../../etc/passwd` to the one chat that is entitled.
 - **`agent_clarify`** — the confirmation gate before activation, and general structured questions.
 
 | Tool | ToolScope | Chat | Research | Inspect | Edit | Agent |
 |---|---|---|---|---|---|---|
 | `skill_activate` | Skill | Ask | Deny | Ask | Allow | Allow |
+| `skill_read_resource` | Skill | Ask | Deny | Ask | Allow | Allow |
 | `skill_deactivate` | Agent | Allow | Allow | Allow | Allow | Allow |
 | `agent_clarify` | Agent | Allow | Allow | Allow | Allow | Allow |
 | `agent_spawn` | Agent | Ask | Deny | Deny | Allow | Allow |
@@ -271,6 +314,11 @@ only what the skill system puts in.
 
 The index lists `GetAvailable()` only. The standing description of what an ACTIVE SKILL block means
 lives once in the global prompt; skill bodies must not repeat it.
+
+The ACTIVE SKILL block ends with the skill's resource list when it has one — **names only**, never
+contents. A procedure that opens two of fourteen files should not carry the other twelve in every
+iteration, but it also cannot ask for what it does not know exists, so the list itself is not
+optional. It is the catalogue card for the attachments.
 
 ### When it is assembled
 

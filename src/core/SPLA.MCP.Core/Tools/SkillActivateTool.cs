@@ -104,12 +104,20 @@ public sealed class SkillActivateTool : IMcpTool
                 return Task.FromResult(
                     $"error: skill '{skill.Id}' has no readable procedure — its source '{skill.SourceId}' returned nothing");
 
-            session.Activate(skill.Id, body);
+            // The loan slip: where this skill came from, plus what came with it. Only the LIST of
+            // attachments is taken now — their text is fetched on demand, so a procedure that reads
+            // two references out of fourteen files pays for two.
+            var resources = _skills.ListResources(skill.Id);
+            session.Activate(skill.Id, body, skill.SourceId, skill.Ref, resources);
+
             var raised = RaiseRequiredToolSets(skill);
             var raisedNote = raised.Count > 0
                 ? $" Tool sets activated for it: {string.Join(", ", raised)}."
                 : string.Empty;
-            return Task.FromResult($"ok: activated '{skill.Id}' — skill procedure is now injected into the prompt.{raisedNote} Follow the steps and call skill_deactivate when done.");
+            var resourceNote = resources.Count > 0
+                ? $" It carries {resources.Count} resource(s) — read them with skill_read_resource; they are listed in the ACTIVE SKILL block."
+                : string.Empty;
+            return Task.FromResult($"ok: activated '{skill.Id}' — skill procedure is now injected into the prompt.{raisedNote}{resourceNote} Follow the steps and call skill_deactivate when done.");
         }
         catch (JsonException)
         {
