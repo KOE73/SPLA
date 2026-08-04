@@ -1,4 +1,6 @@
 using SPLA.Domain.Agent;
+using SPLA.Domain.Models;
+using SPLA.MCP.Core.Permissions;
 using SPLA.MCP.Core.Skills;
 using SPLA.MCP.Core.Tools;
 using SPLA.Tests.Fakes;
@@ -226,6 +228,52 @@ public class SkillResourceTests : IDisposable
         Assert.Equal("mine", session.ActiveSkillId);
         Assert.False(string.IsNullOrEmpty(session.ActiveBody));
     }
+
+    // ── Permissions: the gate is the activation, not each page ───────────────
+
+    /// <summary>Reading inside a skill the user already let in is not a second decision, so a
+    /// read-effect Skill-scoped tool is allowed where a write-effect one is asked about. Otherwise one
+    /// step of one procedure means a dozen prompts, which trains the user to click through the prompt
+    /// that actually matters.</summary>
+    [Theory]
+    [InlineData(AgentMode.Chat)]
+    [InlineData(AgentMode.Inspect)]
+    [InlineData(AgentMode.Edit)]
+    [InlineData(AgentMode.Agent)]
+    public void Reading_a_resource_never_asks(AgentMode mode)
+    {
+        var pm = new PermissionManager();
+
+        Assert.Equal(PermissionResult.Allow, pm.CheckPermission(mode, ReadResourceDefinition(), "{}"));
+    }
+
+    /// <summary>Research still denies the whole scope: no skill can be activated there, so there is
+    /// nothing to read and no reason to carve an exception.</summary>
+    [Fact]
+    public void Research_still_denies_reading_a_resource()
+    {
+        var pm = new PermissionManager();
+
+        Assert.Equal(PermissionResult.Deny,
+            pm.CheckPermission(AgentMode.Research, ReadResourceDefinition(), "{}"));
+    }
+
+    /// <summary>The split is on effect, not on the tool's name — activation keeps asking.</summary>
+    [Fact]
+    public void Activation_still_asks_in_chat()
+    {
+        var pm = new PermissionManager();
+        var activate = new ToolFunctionDefinition
+        {
+            Name = "skill_activate", Scope = ToolScope.Skill,
+            Effect = ToolEffect.Write, Risk = ToolRisk.Medium
+        };
+
+        Assert.Equal(PermissionResult.Ask, pm.CheckPermission(AgentMode.Chat, activate, "{}"));
+    }
+
+    private static ToolFunctionDefinition ReadResourceDefinition() =>
+        new SkillReadResourceTool(new SkillManager([])).GetDefinition().Function!;
 
     // ── The two halves together, on the real folder layout ───────────────────
 

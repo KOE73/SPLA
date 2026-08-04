@@ -283,15 +283,25 @@ becomes visible and actionable). Neither needs an event subscription kept alive 
   the source resolves the path itself, so escaping the folder fails inside the source rather than
   being checked in the tool. Both halves are needed: a loan check over a careless source would still
   serve `../../etc/passwd` to the one chat that is entitled.
+  Skill-scoped like `skill_activate`, but `ToolEffect.Read`, and `PermissionManager` splits the scope
+  on exactly that: **the gate is the activation, not each page.** Reading inside a skill the user
+  already let in is not a second decision, and asking per reference would mean a dozen prompts for one
+  step of one procedure — which trains the user to click through the prompt that does matter. Research
+  still denies the whole scope: nothing can be activated there, so there is nothing to read.
 - **`agent_clarify`** — the confirmation gate before activation, and general structured questions.
 
 | Tool | ToolScope | Chat | Research | Inspect | Edit | Agent |
 |---|---|---|---|---|---|---|
 | `skill_activate` | Skill | Ask | Deny | Ask | Allow | Allow |
-| `skill_read_resource` | Skill | Ask | Deny | Ask | Allow | Allow |
+| `skill_read_resource` | Skill | Allow | Deny | Allow | Allow | Allow |
 | `skill_deactivate` | Agent | Allow | Allow | Allow | Allow | Allow |
 | `agent_clarify` | Agent | Allow | Allow | Allow | Allow | Allow |
 | `agent_spawn` | Agent | Ask | Deny | Deny | Allow | Allow |
+
+The table is `PermissionManager`, which runs at **execution** time. `ToolModeFilter` decides
+**visibility** first, and in Chat mode it offers nothing but `Scope.Agent` — so the Skill-scoped rows
+never come up there at all, and the Chat column describes a branch that is currently unreachable. See
+the caveat in [`security.md`](security.md).
 
 ---
 

@@ -20,6 +20,11 @@ For each tool call, `PermissionManager.CheckPermission(mode, toolMetadata, argsJ
    Chat. These touch only the agent's own state.
 2. **`Scope == Skill`** (skill activation) → `Chat`/`Inspect` = Ask, `Edit`/`Agent` = Allow, otherwise
    Deny (Research and unknown). Skill *deactivation* uses `Scope.Agent` and is always allowed.
+   The one split inside this branch is on **effect**: a `Effect.Read` skill tool
+   (`skill_read_resource`) is Allow where a write one is Ask, because the gate is taking the skill on,
+   not each page of it — a procedure that opens a dozen of its own references must not cost a dozen
+   prompts. It cannot widen anything: the tool has no argument naming a skill, and the source refuses
+   any path outside that skill's own folder. Research stays Deny across the whole scope.
 3. **Project policy override** (Settings → Agent → `perm_read`/`perm_write`/`perm_shell`/`perm_internet`
    = allow/deny/ask) → a hard floor/ceiling for that category, applied in **every** mode including
    Agent, and it wins over a session "remembered" grant.
@@ -33,7 +38,7 @@ For each tool call, `PermissionManager.CheckPermission(mode, toolMetadata, argsJ
 `Risk ∈ { Low, Medium, High, Danger }`.
 
 ### Chat
-Deny everything except `Scope.Agent` (rule 1) and skill-activation Ask (rule 2).
+Deny everything except `Scope.Agent` (rule 1), skill-activation Ask and skill-resource Allow (rule 2).
 
 ### Research
 - `Project`/`Local` + `Read` → Allow
@@ -82,9 +87,16 @@ routes an interactive prompt via `PermissionScope` to the initiating client and 
 | `system_run_shell` | Shell | Execute | High |
 | `web_fetch` | Internet | Read | Low |
 | `agent_*` (memory/info/context/datetime) | Agent | Read | Low |
-| `skill_activate` | Skill | — | — |
+| `skill_activate` | Skill | Write | Medium |
+| `skill_read_resource` | Skill | Read | Low |
 
 ## Caveats agents must know (not obvious from the matrix)
+
+- **Chat mode contradicts itself about Skill scope, and visibility wins.** `PermissionManager` says
+  `Scope.Skill` is Ask in Chat, but `ToolModeFilter.IsAllowed` returns false for *everything* that is
+  not `Scope.Agent` once the mode is Chat — so `skill_activate` is never offered there and that Ask
+  branch is currently dead code. Whichever of the two is wrong, they should not disagree; do not read
+  the permission matrix as evidence that skills work in Chat.
 
 - **No tool currently declares `Risk == Danger`.** So in Agent mode the only "Ask on shell" branch
   never fires — `system_run_shell` (`Risk == High`), `roslyn_script_run`, and the

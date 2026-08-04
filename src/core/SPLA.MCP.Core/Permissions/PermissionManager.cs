@@ -71,14 +71,21 @@ public class PermissionManager : IPermissionManager
         if (toolMetadata.Scope == ToolScope.Agent)
             return PermissionResult.Allow;
 
-        // Skill-scoped tools: activation requires user confirmation in interactive modes.
+        // Skill-scoped tools: taking a skill on requires user confirmation in interactive modes.
         // Deactivation uses ToolScope.Agent (always allowed) and never reaches this branch.
         if (toolMetadata.Scope == ToolScope.Skill)
         {
+            // Reading inside a skill the user already let in is not a second decision. The gate is
+            // the activation; skill_read_resource cannot reach past the loan slip — no argument names
+            // another skill, and the source refuses anything outside the skill's own folder. Asking
+            // again per reference would mean a dozen prompts for one step of one procedure, which
+            // trains the user to click through the prompt that actually matters.
+            var confirmable = toolMetadata.Effect != ToolEffect.Read;
+
             return mode switch
             {
-                AgentMode.Chat    => PermissionResult.Ask,
-                AgentMode.Inspect => PermissionResult.Ask,
+                AgentMode.Chat    => confirmable ? PermissionResult.Ask : PermissionResult.Allow,
+                AgentMode.Inspect => confirmable ? PermissionResult.Ask : PermissionResult.Allow,
                 AgentMode.Edit    => PermissionResult.Allow,
                 AgentMode.Agent   => PermissionResult.Allow,
                 _                 => PermissionResult.Deny   // Research and unknown modes
