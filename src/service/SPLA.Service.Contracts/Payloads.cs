@@ -421,8 +421,8 @@ public sealed class CapabilityDto
     public string? Description { get; set; }
     public bool Enabled { get; set; } = true;
 
-    /// <summary>Resolved state name — Available / MissingTools / DisabledByUser / DisabledByTrust /
-    /// Shadowed for skills, Enabled / DisabledByUser for built-ins. Read-only.</summary>
+    /// <summary>Resolved state name — Available / MissingPrerequisites / DisabledByUser /
+    /// DisabledByTrust / Superseded for skills, Enabled / DisabledByUser for built-ins. Read-only.</summary>
     public string? State { get; set; }
     public string? StateReason { get; set; }
 

@@ -17,10 +17,10 @@ namespace SPLA.Agent.Composition;
 /// </summary>
 public sealed class SkillsContributor : IAgentContributor
 {
-    private readonly SkillManager _skills;
+    private readonly SkillLibrary _skills;
     private readonly ISkillSession? _session;
 
-    public SkillsContributor(SkillManager skills, ISkillSession? session = null)
+    public SkillsContributor(SkillLibrary skills, ISkillSession? session = null)
     {
         _skills = skills;
         _session = session;
@@ -49,10 +49,10 @@ public sealed class SkillsContributor : IAgentContributor
 
         AppendActiveSkill(items, session);
 
-        // GetAvailable, not "all known": a skill is offered only when its source vouches for it, it
+        // Catalog, not the whole holdings: a skill is offered only when its source vouches for it, it
         // is switched on, and every tool it declared is actually registered right now. Anything else
         // stays in the settings panel with a reason and never reaches the model.
-        var available = _skills.GetAvailable();
+        var available = _skills.Catalog();
         if (available.Count == 0) return AgentContribution.FromContext(items);
 
         foreach (var skill in available.Where(s => s.IsPreloaded))
@@ -116,7 +116,7 @@ public sealed class SkillsContributor : IAgentContributor
         return body.ToString();
     }
 
-    private static ContextItem BuildIndex(IReadOnlyList<SkillMeta> onDemand)
+    private static ContextItem BuildIndex(IReadOnlyList<SkillCard> onDemand)
     {
         var body = new StringBuilder();
         body.Append("--- Skills ---");

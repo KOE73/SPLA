@@ -17,11 +17,11 @@ namespace SPLA.MCP.Core.Skills;
 /// registration and produced entries with no owner, which then passed the "owner enabled?" filter by
 /// way of `?? true`), and that is why disabled plugins kept injecting their skills into the prompt.</para>
 /// </summary>
-public sealed class SkillManager : IDisposable
+public sealed class SkillLibrary : IDisposable
 {
     private readonly List<ISkillSource> _sources = [];
-    private readonly ILogger<SkillManager>? _logger;
-    private readonly List<SkillMeta> _skills = [];
+    private readonly ILogger<SkillLibrary>? _logger;
+    private readonly List<SkillCard> _skills = [];
     private readonly Dictionary<string, SplaSkillSection> _settings =
         new(StringComparer.OrdinalIgnoreCase);
 
@@ -34,7 +34,7 @@ public sealed class SkillManager : IDisposable
     /// running procedure is not swapped out mid-flight. Hosts that track active skills wire it.</summary>
     public Func<bool>? IsSkillActive { get; set; }
 
-    public SkillManager(IEnumerable<ISkillSource>? sources = null, ILogger<SkillManager>? logger = null)
+    public SkillLibrary(IEnumerable<ISkillSource>? sources = null, ILogger<SkillLibrary>? logger = null)
     {
         _logger = logger;
         if (sources != null)
@@ -54,15 +54,15 @@ public sealed class SkillManager : IDisposable
 
     /// <summary>Every known skill, including unavailable ones — this is what the settings panel
     /// lists, so a skill that is off still explains itself.</summary>
-    public IReadOnlyList<SkillMeta> GetAll() => _skills;
+    public IReadOnlyList<SkillCard> Holdings() => _skills;
 
     /// <summary>The skills that may be offered to the model right now. The prompt builder and the
     /// skill tools use only this.</summary>
-    public IReadOnlyList<SkillMeta> GetAvailable() =>
+    public IReadOnlyList<SkillCard> Catalog() =>
         _skills.Where(s => s.State == SkillState.Available).ToList();
 
-    public SkillMeta? Find(string id) =>
-        _skills.FirstOrDefault(s => s.State != SkillState.Shadowed &&
+    public SkillCard? Find(string id) =>
+        _skills.FirstOrDefault(s => s.State != SkillState.Superseded &&
                                     s.Id.Equals(id, StringComparison.OrdinalIgnoreCase));
 
     /// <summary>Procedure text for a skill, fetched from its owning source. Null when the skill is
@@ -150,7 +150,7 @@ public sealed class SkillManager : IDisposable
         _skills.Clear();
 
         // Source order IS priority order: the first source to claim an id owns it, later ones are
-        // marked Shadowed rather than dropped so the panel can show that an override is in effect.
+        // marked Superseded rather than dropped so the panel can show that an override is in effect.
         var claimed = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
 
         foreach (var source in _sources)
@@ -168,7 +168,7 @@ public sealed class SkillManager : IDisposable
 
             foreach (var entry in entries)
             {
-                var meta = new SkillMeta
+                var meta = new SkillCard
                 {
                     Id = entry.Id,
                     SourceId = source.Id,
@@ -182,7 +182,7 @@ public sealed class SkillManager : IDisposable
 
                 if (claimed.TryGetValue(entry.Id, out var owner))
                 {
-                    meta.State = SkillState.Shadowed;
+                    meta.State = SkillState.Superseded;
                     meta.StateReason = $"overridden by source '{owner}'";
                     meta.IsEnabled = false;
                     _skills.Add(meta);
@@ -204,7 +204,7 @@ public sealed class SkillManager : IDisposable
     /// <summary>Decides a single skill's effective flags and state. Order matters: an explicit user
     /// decision outranks trust, and both outrank a missing tool — telling someone their disabled
     /// skill also lacks a plugin is noise.</summary>
-    private void Resolve(SkillMeta meta, SkillEntry entry)
+    private void Resolve(SkillCard meta, SkillEntry entry)
     {
         _settings.TryGetValue(entry.Id, out var configured);
 
@@ -246,7 +246,7 @@ public sealed class SkillManager : IDisposable
             .Distinct(StringComparer.OrdinalIgnoreCase)
             .ToList();
 
-        meta.State = SkillState.MissingTools;
+        meta.State = SkillState.MissingPrerequisites;
         meta.MissingTools = missingTools;
         meta.MissingFeatures = missingFeatures;
         meta.MissingPlugins = plugins;

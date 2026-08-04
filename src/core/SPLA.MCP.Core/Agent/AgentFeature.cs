@@ -6,7 +6,7 @@ namespace SPLA.MCP.Core.Agent;
 
 /// <summary>
 /// Generic <see cref="IAgentFeature"/> — a plain bundle of already-constructed tools plus an optional
-/// prompt fragment. Concrete tool instances still need per-project dependencies (KV store, SkillManager,
+/// prompt fragment. Concrete tool instances still need per-project dependencies (KV store, SkillLibrary,
 /// SpawnedAgentRunner, ...) exactly as before; this type only groups the finished instances under one
 /// id/requires/prompt triple so the composition root (AgentRuntime) can gate them as a unit.
 /// </summary>

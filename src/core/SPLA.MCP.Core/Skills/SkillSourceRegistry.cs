@@ -130,7 +130,7 @@ public static class SkillSourceRegistry
     /// are what the product came with. Putting them in <c>skills.sources</c> would make a project
     /// that overrides that list lose them without saying so. Coming last, they can still be
     /// overridden per skill — a project's own file with the same id wins and the shipped one is
-    /// marked Shadowed.</para>
+    /// marked Superseded.</para>
     /// </summary>
     public static IReadOnlyList<ISkillSource> Build(
         IReadOnlyList<SplaSkillSourceSection>? configured,

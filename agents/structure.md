@@ -147,7 +147,7 @@ description: One-line description used as the skill index entry in the system pr
 ```
 
 **Runtime behavior:**
-- `SkillManager` (in `SPLA.MCP.Core`) scans `plugins/*/skills/*.md` on startup and builds a registry.
+- `SkillLibrary` (in `SPLA.MCP.Core`) scans `plugins/*/skills/*.md` on startup and builds a registry.
 - `CapabilityRegistry` includes skills alongside tools and plugins in a unified list.
 - `SidebarPanelViewModel` displays skills from `CapabilityRegistry` — it does NOT scan files or own skill data.
 - System prompt receives only the skill index (`id — description`, one line per skill).

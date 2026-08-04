@@ -1,6 +1,6 @@
 # Skill System Architecture
 
-Read this before touching `SkillManager`, any `ISkillSource`, `SkillsContributor`, the skill tools,
+Read this before touching `SkillLibrary`, any `ISkillSource`, `SkillsContributor`, the skill tools,
 or any UI that reflects skill state. How the prompt is assembled around them: [`composition.md`](composition.md).
 
 ---
@@ -16,7 +16,7 @@ runtime decides whether it can be offered. There are four layers:
 
 - **Sources** (`ISkillSource`) — where skills come from: a folder, a plugin package, later a server.
 - **Frontmatter** (`SkillFrontmatter`) — the file format, parsed outside the source.
-- **Registry** (`SkillManager`) — collects, layers settings, resolves state, answers queries.
+- **Library** (`SkillLibrary`) — collects, layers settings, resolves state, answers queries.
 - **Session** (`ISkillSession`) — which skill, if any, is active in a given chat.
 
 ---
@@ -69,7 +69,7 @@ public interface ISkillSource
 Deliberately minimal — enumerate and read, nothing else. `Ref` is **opaque to everything outside the
 owning source**: a relative path for a folder, a primary key for a database, a URL for a server. The
 core never interprets it, which is what makes a non-filesystem provider possible. A skill is
-addressed by `SourceId` + `Ref`; `SkillMeta` carries no file path.
+addressed by `SourceId` + `Ref`; `SkillCard` carries no file path.
 
 `IEditableSkillSource` is the optional second role for sources that can be written back. It exists so
 an editor can be added without reopening `ISkillSource`. Only `DirectorySkillSource` implements it,
@@ -147,13 +147,13 @@ Layering across `~/.spla/defaults.yaml` and the project `.spla`:
 - **`items` merges by id**, project wins. A project switches one skill off without restating the rest.
 
 List order is priority order: the first source offering an id owns it, later ones are marked
-`Shadowed` (still listed in the panel, so an override is visible).
+`Superseded` (still listed in the panel, so an override is visible).
 
 The installation's own sources — `builtin` and one per plugin — are appended after the configured
 list and are **not** declared in `skills.sources`, for the same reason plugins are discovered rather
 than declared: they are what the product came with, and a project that replaces `sources` must not
 lose them silently. Coming last, they are still overridable per skill: a project file reusing a
-shipped skill's id wins, and the shipped one shows as `Shadowed`.
+shipped skill's id wins, and the shipped one shows as `Superseded`.
 
 A plugin's skills follow that plugin's own toggle, so there is exactly **one** switch per plugin
 rather than two.
@@ -163,7 +163,7 @@ rather than two.
 ## State resolution
 
 ```csharp
-public enum SkillState { Available, MissingTools, DisabledByUser, DisabledByTrust, Shadowed }
+public enum SkillState { Available, MissingPrerequisites, DisabledByUser, DisabledByTrust, Superseded }
 ```
 
 Resolved in this order — an explicit user decision outranks trust, and both outrank a missing tool,
@@ -173,16 +173,16 @@ because telling someone their switched-off skill also lacks a plugin is noise:
 2. **`DisabledByTrust`** — untrusted source and no explicit `enabled: true`. A skill body becomes part
    of the system prompt, so content the user did not write needs a deliberate opt-in; the file saying
    `enabled: true` about itself is not the user's decision.
-3. **`MissingTools`** — some `requires.tools` is not registered, or some `requires.features` is not in
-   the resolved `agent.capabilities`. The reason names the tools and the plugins that own them.
+3. **`MissingPrerequisites`** — some `requires.tools` is not registered, or some `requires.features` is
+   not in the resolved `agent.capabilities`. The reason names the tools and the plugins that own them.
 4. **`Available`** — otherwise. Empty requirements land here, which is the common case.
 
-Only `Available` skills reach the prompt (`SkillManager.GetAvailable`), get previewed by
-the index, or can be activated. `GetAll` keeps everything for the settings panel, so a skill that
+Only `Available` skills reach the prompt (`SkillLibrary.Catalog()`), get previewed by
+the index, or can be activated. `Holdings()` keeps everything for the settings panel, so a skill that
 is off explains itself instead of disappearing.
 
 Capability answers come from `ISkillCapabilityProbe`, supplied via `SetProbe` once the tool host and
-feature set exist. `SkillManager` therefore depends on neither.
+feature set exist. `SkillLibrary` therefore depends on neither.
 
 ### Fail-closed
 
@@ -220,7 +220,7 @@ cannot be swapped out from under it mid-run. The edit takes effect at the next a
 that cannot produce the body fails the activation outright rather than activating into an empty
 block.
 
-`SkillManager.IsSkillActive` still exists and still defers a source-triggered rebuild while set. It
+`SkillLibrary.IsSkillActive` still exists and still defers a source-triggered rebuild while set. It
 is no longer what protects a running skill — the pin does that — so it is free to be used as a
 plain flag.
 
@@ -272,7 +272,7 @@ becomes visible and actionable). Neither needs an event subscription kept alive 
 
 ### Tools
 
-- **`skill_activate`** — validates via `SkillManager.Find`, refuses a non-`Available` skill *with its
+- **`skill_activate`** — validates via `SkillLibrary.Find`, refuses a non-`Available` skill *with its
   reason* ("needs `port_scan` — from plugin 'network'") rather than pretending it does not exist,
   then calls `ISkillSession.Activate`. Mode-gated (see the matrix below).
   It also loads the body only for `Available` skills, since handing back a procedure whose tools are
@@ -322,7 +322,7 @@ the assembly order above is declared in `AgentContributors.Default` and folded b
 `AgentContextComposer`. See [`composition.md`](composition.md) for the mechanism; this section covers
 only what the skill system puts in.
 
-The index lists `GetAvailable()` only. The standing description of what an ACTIVE SKILL block means
+The index lists `Catalog()` only. The standing description of what an ACTIVE SKILL block means
 lives once in the global prompt; skill bodies must not repeat it.
 
 The ACTIVE SKILL block ends with the skill's resource list when it has one — **names only**, never
@@ -350,8 +350,8 @@ while running inside the parent's async flow.
 
 ## Reload
 
-Sources raise `Changed`; `SkillManager` re-enumerates and recomputes. A running procedure is safe
-regardless — see "The body is pinned for the run" above; `SkillManager.IsSkillActive` additionally
+Sources raise `Changed`; `SkillLibrary` re-enumerates and recomputes. A running procedure is safe
+regardless — see "The body is pinned for the run" above; `SkillLibrary.IsSkillActive` additionally
 defers the rebuild itself while set. Plugin packages do not change under a running process, so
 `PluginSkillSource` never raises `Changed` — the registry is rebuilt on a plugin load pass instead.
 

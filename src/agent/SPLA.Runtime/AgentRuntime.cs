@@ -68,7 +68,7 @@ public sealed class AgentRuntime : IDisposable
     public SPLA.Domain.Llm.ProviderStateStore ProviderState { get; } = new();
     public IModelManagementService ModelManagement { get; }
     public McpHost McpHost { get; }
-    public SkillManager SkillManager { get; }
+    public SkillLibrary SkillLibrary { get; }
     public PluginManager PluginManager { get; }
 
     /// <summary>Tool sets and their levels — "allowed how far", never "raised right now".
@@ -173,10 +173,10 @@ public sealed class AgentRuntime : IDisposable
                 loggerFactory,
                 AppDomain.CurrentDomain.BaseDirectory),
             PluginManager.BuildSkillSources(loggerFactory.CreateLogger<PluginSkillSource>()),
-            loggerFactory.CreateLogger<SkillManager>());
+            loggerFactory.CreateLogger<SkillLibrary>());
 
-        SkillManager = new SkillManager(skillSources, loggerFactory.CreateLogger<SkillManager>());
-        SkillManager.ApplySettings(settings.Skills);
+        SkillLibrary = new SkillLibrary(skillSources, loggerFactory.CreateLogger<SkillLibrary>());
+        SkillLibrary.ApplySettings(settings.Skills);
 
         McpHost = new McpHost(
             new PermissionManager(settings: settings), PluginManager, loggerFactory.CreateLogger<McpHost>());
@@ -192,7 +192,7 @@ public sealed class AgentRuntime : IDisposable
         // Built before the feature catalog below — several features' tools (memory, spawn) need it.
         ProjectKv = new ProjectKvStore(
             settings.Project.GetBucket(SPLA.Domain.Project.IProjectBackend.RootBucket));
-        SpawnedRunner = new SpawnedAgentRunner(Llm, McpHost, SkillManager, PluginManager, settings);
+        SpawnedRunner = new SpawnedAgentRunner(Llm, McpHost, SkillLibrary, PluginManager, settings);
 
         // ── Modular built-in capabilities: one IAgentFeature per "core.*" id, in
         // AgentFeatureCatalog.Order. Each feature carries its tools AND its prompt fragment
@@ -235,9 +235,9 @@ public sealed class AgentRuntime : IDisposable
                 new SPLA.MCP.Core.Tools.MarkSetTool(),
                 new SPLA.MCP.Core.Tools.MarkRollbackTool()),
             Feature("core.skills",
-                new SPLA.MCP.Core.Tools.SkillActivateTool(SkillManager, ToolSets),
+                new SPLA.MCP.Core.Tools.SkillActivateTool(SkillLibrary, ToolSets),
                 new SPLA.MCP.Core.Tools.SkillDeactivateTool(),
-                new SPLA.MCP.Core.Tools.SkillReadResourceTool(SkillManager)),
+                new SPLA.MCP.Core.Tools.SkillReadResourceTool(SkillLibrary)),
             Feature("core.toolsets",
                 new SPLA.MCP.Core.Tools.ToolSetActivateTool(ToolSets),
                 new SPLA.MCP.Core.Tools.ToolSetDeactivateTool()),
@@ -263,14 +263,14 @@ public sealed class AgentRuntime : IDisposable
 
         // Now that every tool is registered and the feature set is known, skills can be told what
         // this agent can actually do. A skill declaring tools that are absent (its plugin is off)
-        // resolves to MissingTools and stays out of the prompt instead of describing dead calls.
+        // resolves to MissingPrerequisites and stays out of the prompt instead of describing dead calls.
         RefreshSkillCapabilities();
 
         // The context surface: one contributor per source, gated by the same enabled-feature set that
         // decided which tools were registered above.
         var compositionLogger = loggerFactory.CreateLogger("SPLA.Agent.Composition");
         ContextComposer = new AgentContextComposer(
-            AgentContributors.Default(SkillManager, PluginManager, null, enabledFeatures, ProjectKv.Store, ToolSets),
+            AgentContributors.Default(SkillLibrary, PluginManager, null, enabledFeatures, ProjectKv.Store, ToolSets),
             compositionLogger);
 
         // What this agent was assembled from, once, at startup. Per-composition logging is Debug and
@@ -301,7 +301,7 @@ public sealed class AgentRuntime : IDisposable
     /// invisible until restart while its tools are already live.</para>
     /// </summary>
     public void RefreshSkillCapabilities() =>
-        SkillManager.SetProbe(new SkillCapabilityProbe(
+        SkillLibrary.SetProbe(new SkillCapabilityProbe(
             // Permitted, not disclosed: a skill at the "on skill demand" level exists precisely to
             // raise the set it needs, so judging it against what is raised right now would mark
             // exactly those skills unavailable.

@@ -22,7 +22,7 @@ If you catch yourself writing `foreach (var item in SomeViewModel.GetItems())` t
 
 ### 2. Flags that affect system behavior must be stored in the domain layer
 
-Toggle states (enabled, preloaded, disabled) belong on the domain object — `SkillMeta`, `PluginDescriptor`, `CapabilityItem` — not on the ViewModel node.
+Toggle states (enabled, preloaded, disabled) belong on the domain object — `SkillCard`, `PluginDescriptor`, `CapabilityItem` — not on the ViewModel node.
 
 The ViewModel binds to the flag. It does not own it.
 
@@ -33,7 +33,7 @@ Why: flags that live in ViewModels cannot be persisted, cannot be read by CLI, c
 File system scanning, manifest parsing, and directory enumeration for plugins, skills, or any runtime capability belong in:
 
 - `PluginManager` — for plugins and their tools
-- `SkillManager` — for skills (to be created)
+- `SkillLibrary` — for skills (to be created)
 - A dedicated service class if neither applies
 
 The Sidebar, the MainWindow, and any View or ViewModel receive a pre-built list. They do not scan anything.

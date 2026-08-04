@@ -23,14 +23,14 @@ public sealed class SpawnedAgentRunner : Domain.Interfaces.IAgentSpawner
 {
     private readonly Domain.Llm.ILlmGateway _llm;
     private readonly Domain.Interfaces.IToolHost _tools;
-    private readonly SkillManager _skills;
+    private readonly SkillLibrary _skills;
     private readonly PluginManager _plugins;
     private readonly ResolvedSettings _settings;
 
     public SpawnedAgentRunner(
         Domain.Llm.ILlmGateway llm,
         Domain.Interfaces.IToolHost tools,
-        SkillManager skills,
+        SkillLibrary skills,
         PluginManager plugins,
         ResolvedSettings settings)
     {

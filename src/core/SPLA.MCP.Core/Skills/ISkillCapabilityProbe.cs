@@ -5,7 +5,7 @@ namespace SPLA.MCP.Core.Skills;
 
 /// <summary>
 /// Answers "does this agent currently have that capability?" for requirement resolution. Kept as an
-/// interface so <see cref="SkillManager"/> does not depend on the tool host or the feature catalog —
+/// interface so <see cref="SkillLibrary"/> does not depend on the tool host or the feature catalog —
 /// it only needs the answers, and tests can supply them directly.
 /// </summary>
 public interface ISkillCapabilityProbe

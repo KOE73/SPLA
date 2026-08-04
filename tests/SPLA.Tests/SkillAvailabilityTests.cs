@@ -8,9 +8,9 @@ namespace SPLA.Tests;
 /// into one state — the decision that determines what the model is told about.</summary>
 public class SkillAvailabilityTests
 {
-    private static SkillManager Manager(FakeSkillSource source, ISkillCapabilityProbe? probe = null)
+    private static SkillLibrary Manager(FakeSkillSource source, ISkillCapabilityProbe? probe = null)
     {
-        var manager = new SkillManager([source]);
+        var manager = new SkillLibrary([source]);
         if (probe != null) manager.SetProbe(probe);
         return manager;
     }
@@ -35,12 +35,12 @@ public class SkillAvailabilityTests
 
         var skill = manager.Find("network.host-audit")!;
 
-        Assert.Equal(SkillState.MissingTools, skill.State);
+        Assert.Equal(SkillState.MissingPrerequisites, skill.State);
         Assert.Equal(["port_scan"], skill.MissingTools);
         Assert.Equal(["network"], skill.MissingPlugins);
         Assert.Contains("port_scan", skill.StateReason);
         Assert.Contains("network", skill.StateReason);
-        Assert.Empty(manager.GetAvailable());
+        Assert.Empty(manager.Catalog());
     }
 
     [Fact]
@@ -50,7 +50,7 @@ public class SkillAvailabilityTests
             new FakeSkillSource().With("uses.memory", requiresFeatures: ["core.memory"]),
             new SkillCapabilityProbe(tools: null, features: ["core.workspace"]));
 
-        Assert.Equal(SkillState.MissingTools, manager.Find("uses.memory")!.State);
+        Assert.Equal(SkillState.MissingPrerequisites, manager.Find("uses.memory")!.State);
         Assert.Equal(["core.memory"], manager.Find("uses.memory")!.MissingFeatures);
     }
 
@@ -114,42 +114,42 @@ public class SkillAvailabilityTests
         var project = new FakeSkillSource("project").With("net.audit", body: "project version");
         var plugin = new FakeSkillSource("plugin:network").With("net.audit", body: "plugin version");
 
-        var manager = new SkillManager([project, plugin]);
+        var manager = new SkillLibrary([project, plugin]);
 
         Assert.Equal("project", manager.Find("net.audit")!.SourceId);
         Assert.Equal("project version", manager.LoadBody("net.audit"));
 
-        var shadowed = Assert.Single(manager.GetAll(), skill => skill.State == SkillState.Shadowed);
-        Assert.Equal("plugin:network", shadowed.SourceId);
-        Assert.Contains("overridden by source 'project'", shadowed.StateReason);
+        var superseded = Assert.Single(manager.Holdings(), skill => skill.State == SkillState.Superseded);
+        Assert.Equal("plugin:network", superseded.SourceId);
+        Assert.Contains("overridden by source 'project'", superseded.StateReason);
     }
 
     [Fact]
     public void A_source_change_rebuilds_the_list()
     {
         var source = new FakeSkillSource().With("a");
-        var manager = new SkillManager([source]);
-        Assert.Single(manager.GetAll());
+        var manager = new SkillLibrary([source]);
+        Assert.Single(manager.Holdings());
 
         source.With("b");
         source.Raise();
 
-        Assert.Equal(2, manager.GetAll().Count);
+        Assert.Equal(2, manager.Holdings().Count);
     }
 
     [Fact]
     public void A_reload_is_deferred_while_a_skill_is_running()
     {
         var source = new FakeSkillSource().With("a");
-        var manager = new SkillManager([source]) { IsSkillActive = () => true };
+        var manager = new SkillLibrary([source]) { IsSkillActive = () => true };
 
         source.With("b");
         source.Raise();
-        Assert.Single(manager.GetAll());
+        Assert.Single(manager.Holdings());
 
         manager.IsSkillActive = () => false;
         source.Raise();
-        Assert.Equal(2, manager.GetAll().Count);
+        Assert.Equal(2, manager.Holdings().Count);
     }
 
     [Fact]
@@ -159,7 +159,7 @@ public class SkillAvailabilityTests
             new FakeSkillSource().With("net.audit", requiresTools: ["port_scan"]),
             new SkillCapabilityProbe(tools: [], features: []));
 
-        Assert.Single(manager.GetAll());
-        Assert.Empty(manager.GetAvailable());
+        Assert.Single(manager.Holdings());
+        Assert.Empty(manager.Catalog());
     }
 }

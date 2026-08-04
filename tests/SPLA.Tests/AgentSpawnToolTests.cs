@@ -46,7 +46,7 @@ public class AgentSpawnToolTests
     {
         var llm = new StubLlmService(llmResponse);
         var tools = new StubToolHost();
-        var skills = new SkillManager([new SPLA.Tests.Fakes.FakeSkillSource()
+        var skills = new SkillLibrary([new SPLA.Tests.Fakes.FakeSkillSource()
             .With("test.skill", body: "Step 1: Do the thing.\nStep 2: Report done.", description: "A test skill")]);
 
         var settings = new ResolvedSettings { Mode = AgentMode.Edit };

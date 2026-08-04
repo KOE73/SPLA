@@ -187,10 +187,10 @@ public class SkillSourceTests : IDisposable
         var pluginDir = Dir("plugins", "network");
         Write(Path.Combine(pluginDir, "host-audit.md"), "---\nid: network.host-audit\n---\nscan it");
 
-        var manager = new SkillManager([new PluginSkillSource("network", "Network", pluginDir, () => false)]);
+        var manager = new SkillLibrary([new PluginSkillSource("network", "Network", pluginDir, () => false)]);
 
-        Assert.Empty(manager.GetAll());
-        Assert.Empty(manager.GetAvailable());
+        Assert.Empty(manager.Holdings());
+        Assert.Empty(manager.Catalog());
         Assert.Null(manager.Find("network.host-audit"));
     }
 

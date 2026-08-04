@@ -10,13 +10,13 @@ public enum SkillState
     /// <summary>Listed in the prompt and activatable.</summary>
     Available,
     /// <summary>Declares tools or features that are not present right now (usually a disabled plugin).</summary>
-    MissingTools,
+    MissingPrerequisites,
     /// <summary>Turned off in settings, or by its own <c>enabled: false</c> frontmatter.</summary>
     DisabledByUser,
     /// <summary>Comes from an untrusted source and has not been explicitly enabled.</summary>
     DisabledByTrust,
     /// <summary>A higher-priority source provides the same id.</summary>
-    Shadowed
+    Superseded
 }
 
 /// <summary>
@@ -26,7 +26,7 @@ public enum SkillState
 /// makes a non-filesystem source possible at all — while the model carried a path, every provider
 /// had to be a folder.</para>
 /// </summary>
-public sealed class SkillMeta
+public sealed class SkillCard
 {
     public required string Id { get; init; }
     public required string SourceId { get; init; }

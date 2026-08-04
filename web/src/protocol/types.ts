@@ -220,7 +220,7 @@ export interface CapabilityDto {
   name: string;
   description?: string;
   enabled?: boolean;
-  /** Available / MissingTools / DisabledByUser / DisabledByTrust / Shadowed — read-only. */
+  /** Available / MissingPrerequisites / DisabledByUser / DisabledByTrust / Superseded — read-only. */
   state?: string;
   stateReason?: string;
   /** Provider id for a skill ("project", "machine", "plugin:network"); absent for built-ins. */

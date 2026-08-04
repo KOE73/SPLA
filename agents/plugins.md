@@ -140,7 +140,7 @@ description: One-line description shown in the system prompt index.
 
 ### Runtime
 
-- `SkillManager` scans `plugins/*/skills/*.md` at startup — no plugin dependency.
+- `SkillLibrary` scans `plugins/*/skills/*.md` at startup — no plugin dependency.
 - `skill_activate {"id": "<skill-id>"}` injects the full skill body into the prompt for the run; the model calls it when the request matches.
 - `IsEnabled` / `IsPreloaded` flags are persisted in `.spla` under `skills:`.
 

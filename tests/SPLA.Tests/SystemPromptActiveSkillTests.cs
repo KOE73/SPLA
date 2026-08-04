@@ -22,9 +22,9 @@ public class SystemPromptActiveSkillTests
     private static SPLA.MCP.Core.Plugins.PluginManager EmptyPluginManager()
         => new(MinimalSettings());
 
-    private static SkillManager ManagerWith(params ISkillSource[] sources) => new(sources);
+    private static SkillLibrary ManagerWith(params ISkillSource[] sources) => new(sources);
 
-    private static PromptFor BuilderFor(SkillManager skills, ISkillSession session)
+    private static PromptFor BuilderFor(SkillLibrary skills, ISkillSession session)
         => new(new AgentContextComposer(AgentContributors.Default(skills, EmptyPluginManager(), session)));
 
     /// <summary>Tiny shim so these tests keep reading as "build the prompt and look at it" now that

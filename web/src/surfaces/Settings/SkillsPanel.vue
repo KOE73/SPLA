@@ -33,7 +33,7 @@
           v-for="skill in group.items" :key="skill.id"
           :item="skill"
           :badge="skill.preloaded ? 'preloaded' : undefined"
-          :disabled="skill.state === 'Shadowed'"
+          :disabled="skill.state === 'Superseded'"
           @toggle="enabled => onToggle(skill, enabled)">
           <template #actions>
             <!-- The missing piece is almost always a disabled plugin, so offer the jump rather than

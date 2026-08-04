@@ -38,7 +38,7 @@ public static class AgentContributors
     /// <param name="toolSets">The set catalogue. Null means no set announcements — the state of a
     /// host that has no levelled sets to speak of (tests, a directly constructed sub-agent).</param>
     public static IReadOnlyList<IAgentContributor> Default(
-        SkillManager skills,
+        SkillLibrary skills,
         PluginManager plugins,
         ISkillSession? session = null,
         IReadOnlyList<IAgentFeature>? enabledFeatures = null,

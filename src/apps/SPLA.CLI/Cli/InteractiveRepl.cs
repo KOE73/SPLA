@@ -43,7 +43,7 @@ internal static class InteractiveRepl
     {
         if (input.Equals("/skills", StringComparison.OrdinalIgnoreCase))
         {
-            var all = runtime.SkillManager.GetAll();
+            var all = runtime.SkillLibrary.Holdings();
             if (all.Count == 0) Console.WriteLine("No skills available.");
             else foreach (var s in all)
                 Console.WriteLine($"  [{(s.IsEnabled ? "on " : "off")}] {s.Id} — {s.Description}");
@@ -65,7 +65,7 @@ internal static class InteractiveRepl
         if (input.StartsWith("/skills load ", StringComparison.OrdinalIgnoreCase))
         {
             var id = input["/skills load ".Length..].Trim();
-            var body = runtime.SkillManager.LoadBody(id);
+            var body = runtime.SkillLibrary.LoadBody(id);
             if (body == null) { Console.WriteLine($"Skill '{id}' not found."); return true; }
             chat.InjectMessage(ChatRole.User, $"[Skill loaded: {id}]\n\n{body}");
             Console.WriteLine($"Skill '{id}' loaded into context.");

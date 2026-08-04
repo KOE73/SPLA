@@ -8,12 +8,12 @@ namespace SPLA.Tests;
 
 public class SkillToolTests
 {
-    private static SkillManager BuildSkillManager()
+    private static SkillLibrary BuildSkillLibrary()
     {
-        // SkillManager with no real files — we'll inject a skill via reflection for testing.
+        // SkillLibrary with no real files — we'll inject a skill via reflection for testing.
         // For tool tests we only need Find() to work; use a real file-less manager and test
         // the "unknown skill" path, plus a separate test with a stubbed session.
-        return new SkillManager();
+        return new SkillLibrary();
     }
 
     /// <summary>Opens an ambient agent session carrying <paramref name="skills"/> so the
@@ -27,7 +27,7 @@ public class SkillToolTests
     public async Task Activate_unknown_skill_returns_error()
     {
         var session = new SkillSession();
-        var skills = BuildSkillManager();
+        var skills = BuildSkillLibrary();
         var tool = new SkillActivateTool(skills);
 
         using var _ = Scope(session);
@@ -40,7 +40,7 @@ public class SkillToolTests
     public async Task Activate_missing_id_returns_error()
     {
         var session = new SkillSession();
-        var skills = BuildSkillManager();
+        var skills = BuildSkillLibrary();
         var tool = new SkillActivateTool(skills);
 
         using var _ = Scope(session);
@@ -55,7 +55,7 @@ public class SkillToolTests
         var session = new SkillSession();
         session.Activate("first.skill", "Step 1.");   // manually put into active state
 
-        var skills = BuildSkillManager();
+        var skills = BuildSkillLibrary();
         var tool = new SkillActivateTool(skills);
 
         using var _ = Scope(session);
@@ -68,7 +68,7 @@ public class SkillToolTests
     public async Task Activate_invalid_json_returns_error()
     {
         var session = new SkillSession();
-        var tool = new SkillActivateTool(BuildSkillManager());
+        var tool = new SkillActivateTool(BuildSkillLibrary());
 
         using var _ = Scope(session);
         var result = await tool.ExecuteAsync("not-json");

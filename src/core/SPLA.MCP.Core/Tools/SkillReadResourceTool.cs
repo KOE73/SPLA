@@ -26,9 +26,9 @@ namespace SPLA.MCP.Core.Tools;
 /// </summary>
 public sealed class SkillReadResourceTool : IMcpTool
 {
-    private readonly SkillManager _skills;
+    private readonly SkillLibrary _skills;
 
-    public SkillReadResourceTool(SkillManager skills) => _skills = skills;
+    public SkillReadResourceTool(SkillLibrary skills) => _skills = skills;
 
     public string Name => "skill_read_resource";
 

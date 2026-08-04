@@ -19,10 +19,10 @@ namespace SPLA.MCP.Core.Tools;
 /// </summary>
 public sealed class SkillActivateTool : IMcpTool
 {
-    private readonly SkillManager _skills;
+    private readonly SkillLibrary _skills;
     private readonly ToolSets.ToolSetRegistry? _toolSets;
 
-    public SkillActivateTool(SkillManager skills, ToolSets.ToolSetRegistry? toolSets = null)
+    public SkillActivateTool(SkillLibrary skills, ToolSets.ToolSetRegistry? toolSets = null)
     {
         _skills = skills;
         _toolSets = toolSets;
@@ -77,7 +77,7 @@ public sealed class SkillActivateTool : IMcpTool
             var skill = _skills.Find(id);
             if (skill is null)
             {
-                var suggestions = _skills.GetAvailable()
+                var suggestions = _skills.Catalog()
                     .Where(s => s.Id.Contains(id, StringComparison.OrdinalIgnoreCase))
                     .Select(s => s.Id)
                     .Take(5)
@@ -133,7 +133,7 @@ public sealed class SkillActivateTool : IMcpTool
     /// <para>Only that level is touched. A set the user levelled off stays off (a skill must not
     /// widen the project's boundary), and a fully enabled one needs nothing.</para>
     /// </summary>
-    private IReadOnlyList<string> RaiseRequiredToolSets(SkillMeta skill)
+    private IReadOnlyList<string> RaiseRequiredToolSets(SkillCard skill)
     {
         var toolSetSession = AgentSessionScope.Current?.ToolSets;
         if (_toolSets is null || toolSetSession is null) return [];

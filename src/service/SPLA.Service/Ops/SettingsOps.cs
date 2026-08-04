@@ -295,7 +295,7 @@ public static class SettingsOps
     {
         var payload = new SkillsPayload { CanPersist = runtime.Settings.ProjectFilePath != null };
 
-        foreach (var source in runtime.SkillManager.Sources)
+        foreach (var source in runtime.SkillLibrary.Sources)
             payload.Sources.Add(new SkillSourceDto
             {
                 Id = source.Id,
@@ -304,9 +304,9 @@ public static class SettingsOps
                 Path = (source as SPLA.MCP.Core.Skills.DirectorySkillSource)?.RootPath
             });
 
-        // GetAll, not GetAvailable: an unavailable skill must stay visible WITH its reason, otherwise
+        // Holdings, not Catalog: an unavailable skill must stay visible WITH its reason, otherwise
         // the panel silently loses the one thing the user needs in order to fix it.
-        foreach (var skill in runtime.SkillManager.GetAll())
+        foreach (var skill in runtime.SkillLibrary.Holdings())
             payload.Skills.Add(new CapabilityDto
             {
                 Id = skill.Id,
@@ -353,7 +353,7 @@ public static class SettingsOps
             ConfigLoader.SaveProjectSections(project, path, "skills");
         }
 
-        runtime.SkillManager.ApplySettings(runtime.Settings.Skills);
+        runtime.SkillLibrary.ApplySettings(runtime.Settings.Skills);
         return GetSkills(runtime);
     }
 

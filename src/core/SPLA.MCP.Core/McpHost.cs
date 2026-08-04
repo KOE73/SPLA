@@ -41,7 +41,7 @@ public class McpHost : IToolHost
             }
         }
 
-        // agent_info is registered externally (requires SkillManager which McpHost doesn't own)
+        // agent_info is registered externally (requires SkillLibrary which McpHost doesn't own)
     }
 
     public void RegisterTool(IMcpTool tool)

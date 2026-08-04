@@ -28,7 +28,7 @@ public class SkillPinningTests
         Skills = new Dictionary<string, SplaSkillSection>()
     };
 
-    private static AgentContextComposer BuilderFor(SkillManager skills, ISkillSession? session = null)
+    private static AgentContextComposer BuilderFor(SkillLibrary skills, ISkillSession? session = null)
         => new(AgentContributors.Default(
             skills, new SPLA.MCP.Core.Plugins.PluginManager(MinimalSettings()), session));
 
@@ -47,7 +47,7 @@ public class SkillPinningTests
         var session = new SkillSession();
 
         using var _ = Scope(session);
-        var result = await new SkillActivateTool(new SkillManager([source])).ExecuteAsync("""{"id":"test.skill"}""");
+        var result = await new SkillActivateTool(new SkillLibrary([source])).ExecuteAsync("""{"id":"test.skill"}""");
 
         Assert.StartsWith("ok:", result);
         Assert.Equal(Original, session.ActiveBody);
@@ -63,7 +63,7 @@ public class SkillPinningTests
         var session = new SkillSession();
 
         using var _ = Scope(session);
-        var result = await new SkillActivateTool(new SkillManager([source])).ExecuteAsync("""{"id":"test.skill"}""");
+        var result = await new SkillActivateTool(new SkillLibrary([source])).ExecuteAsync("""{"id":"test.skill"}""");
 
         Assert.StartsWith("error:", result);
         Assert.Contains("no readable procedure", result);
@@ -78,7 +78,7 @@ public class SkillPinningTests
     public void Editing_a_running_skill_leaves_its_prompt_body_untouched()
     {
         var source = new FakeSkillSource().With("test.skill", body: Original);
-        var skills = new SkillManager([source]);
+        var skills = new SkillLibrary([source]);
         var session = new SkillSession();
         session.Activate("test.skill", skills.LoadBody("test.skill")!);
 
@@ -97,7 +97,7 @@ public class SkillPinningTests
     public void Reactivating_after_the_run_picks_up_the_edit()
     {
         var source = new FakeSkillSource().With("test.skill", body: Original);
-        var skills = new SkillManager([source]);
+        var skills = new SkillLibrary([source]);
         var session = new SkillSession();
         session.Activate("test.skill", skills.LoadBody("test.skill")!);
 
@@ -119,7 +119,7 @@ public class SkillPinningTests
     public void Deleting_a_running_skill_does_not_empty_the_prompt()
     {
         var source = new FakeSkillSource().With("test.skill", body: Original);
-        var skills = new SkillManager([source]);
+        var skills = new SkillLibrary([source]);
         var session = new SkillSession();
         session.Activate("test.skill", skills.LoadBody("test.skill")!);
 
@@ -137,7 +137,7 @@ public class SkillPinningTests
     [Fact]
     public void Builder_without_a_session_resolves_the_ambient_one()
     {
-        var skills = new SkillManager([new FakeSkillSource().With("test.skill", body: Original)]);
+        var skills = new SkillLibrary([new FakeSkillSource().With("test.skill", body: Original)]);
         var session = new SkillSession();
         session.Activate("test.skill", Original);
 
@@ -151,7 +151,7 @@ public class SkillPinningTests
     [Fact]
     public void Builder_outside_any_scope_renders_no_active_skill()
     {
-        var skills = new SkillManager([new FakeSkillSource().With("test.skill", body: Original)]);
+        var skills = new SkillLibrary([new FakeSkillSource().With("test.skill", body: Original)]);
 
         var prompt = Build(BuilderFor(skills));
 
@@ -163,7 +163,7 @@ public class SkillPinningTests
     [Fact]
     public void Explicit_session_wins_over_the_ambient_one()
     {
-        var skills = new SkillManager([
+        var skills = new SkillLibrary([
             new FakeSkillSource().With("parent.skill", body: "PARENT BODY").With("child.skill", body: "CHILD BODY")
         ]);
 
@@ -185,7 +185,7 @@ public class SkillPinningTests
     [Fact]
     public void Ambient_active_skill_suppresses_the_skills_index()
     {
-        var skills = new SkillManager([
+        var skills = new SkillLibrary([
             new FakeSkillSource().With("test.skill", body: Original).With("other.skill")
         ]);
         var session = new SkillSession();

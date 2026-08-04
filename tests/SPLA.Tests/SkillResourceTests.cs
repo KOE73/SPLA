@@ -132,7 +132,7 @@ public class SkillResourceTests : IDisposable
     [Fact]
     public async Task Active_skill_can_read_its_own_resource()
     {
-        var skills = new SkillManager([TwoSkillsWithResources()]);
+        var skills = new SkillLibrary([TwoSkillsWithResources()]);
         var session = new SkillSession();
         using var _ = Scope(session);
 
@@ -148,7 +148,7 @@ public class SkillResourceTests : IDisposable
     [Fact]
     public async Task Activation_pins_the_loan_slip()
     {
-        var skills = new SkillManager([TwoSkillsWithResources()]);
+        var skills = new SkillLibrary([TwoSkillsWithResources()]);
         var session = new SkillSession();
         using var _ = Scope(session);
 
@@ -164,7 +164,7 @@ public class SkillResourceTests : IDisposable
     [Fact]
     public async Task Another_skills_resource_is_refused()
     {
-        var skills = new SkillManager([TwoSkillsWithResources()]);
+        var skills = new SkillLibrary([TwoSkillsWithResources()]);
         var session = new SkillSession();
         using var _ = Scope(session);
 
@@ -179,7 +179,7 @@ public class SkillResourceTests : IDisposable
     [Fact]
     public async Task Reading_without_an_active_skill_is_refused()
     {
-        var skills = new SkillManager([TwoSkillsWithResources()]);
+        var skills = new SkillLibrary([TwoSkillsWithResources()]);
         using var _ = Scope(new SkillSession());
 
         var result = await new SkillReadResourceTool(skills)
@@ -194,7 +194,7 @@ public class SkillResourceTests : IDisposable
     [Fact]
     public async Task Resources_stop_being_readable_after_deactivation()
     {
-        var skills = new SkillManager([TwoSkillsWithResources()]);
+        var skills = new SkillLibrary([TwoSkillsWithResources()]);
         var session = new SkillSession();
         using var _ = Scope(session);
 
@@ -214,7 +214,7 @@ public class SkillResourceTests : IDisposable
     public async Task Vanished_source_fails_the_read_but_not_the_run()
     {
         var source = TwoSkillsWithResources();
-        var skills = new SkillManager([source]);
+        var skills = new SkillLibrary([source]);
         var session = new SkillSession();
         using var _ = Scope(session);
 
@@ -273,7 +273,7 @@ public class SkillResourceTests : IDisposable
     }
 
     private static ToolFunctionDefinition ReadResourceDefinition() =>
-        new SkillReadResourceTool(new SkillManager([])).GetDefinition().Function!;
+        new SkillReadResourceTool(new SkillLibrary([])).GetDefinition().Function!;
 
     // ── The two halves together, on the real folder layout ───────────────────
 
@@ -282,7 +282,7 @@ public class SkillResourceTests : IDisposable
     [Fact]
     public async Task Folder_skill_step_zero_reads_its_references_through_the_tool()
     {
-        var skills = new SkillManager([Source()]);
+        var skills = new SkillLibrary([Source()]);
         var session = new SkillSession();
         using var _ = Scope(session);
 

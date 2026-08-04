@@ -34,7 +34,7 @@ const emit = defineEmits<{ (e: "toggle", enabled: boolean): void }>();
  * removed elsewhere. Rendered in the warning colour so "off because you said so" and "off because
  * something is missing" never look the same. */
 const isBlocked = computed(() =>
-  props.item.state === "MissingTools" || props.item.state === "Shadowed");
+  props.item.state === "MissingPrerequisites" || props.item.state === "Superseded");
 
 function onToggle(e: Event) {
   emit("toggle", (e.target as HTMLInputElement).checked);

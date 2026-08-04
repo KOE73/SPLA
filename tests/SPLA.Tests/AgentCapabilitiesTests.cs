@@ -142,7 +142,7 @@ public sealed class AgentCapabilitiesTests
             new AgentFeature("core.memory", promptFragment: "MEMORY FRAGMENT TEXT"),
         };
         var composer = new AgentContextComposer(
-            AgentContributors.Default(new SkillManager(), new PluginManager(settings), null, features));
+            AgentContributors.Default(new SkillLibrary(), new PluginManager(settings), null, features));
 
         var items = composer.Compose(settings, Directory.GetCurrentDirectory()).Items;
 
@@ -165,10 +165,10 @@ public sealed class AgentCapabilitiesTests
         };
 
         var withSkills = AgentContributors.Default(
-            new SkillManager(), new PluginManager(settings), null,
+            new SkillLibrary(), new PluginManager(settings), null,
             [new AgentFeature("core.skills"), new AgentFeature("core.memory")]);
         var without = AgentContributors.Default(
-            new SkillManager(), new PluginManager(settings), null, [new AgentFeature("core.shell")]);
+            new SkillLibrary(), new PluginManager(settings), null, [new AgentFeature("core.shell")]);
 
         Assert.Contains(withSkills, c => c.Id == "skills");
         Assert.Contains(withSkills, c => c.Id == "working-memory");
