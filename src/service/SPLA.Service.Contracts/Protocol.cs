@@ -83,6 +83,14 @@ public static class MessageTypes
     /// <summary>Fork a chat at a message into a new chat. Body is <see cref="ChatForkPayload"/>.</summary>
     public const string ChatFork = "chat.fork";
     public const string ChatSettings = "chat.settings";
+    /// <summary>Hand a skill to a chat on the user's say-so — the loan desk. Body is
+    /// <see cref="ChatSkillActivatePayload"/>; the server broadcasts <see cref="ChatSkillState"/> to
+    /// the chat's watchers.
+    /// <para>Costs the prompt nothing but the procedure: the catalog is suppressed while a skill is
+    /// active, so a handed-out chat carries none at all. That is what makes this the answer for a
+    /// small context window, and why it exists alongside the model's own selection rather than
+    /// instead of it.</para></summary>
+    public const string ChatSkillActivate = "chat.skill.activate";
     /// <summary>End the skill running in a chat. Body is <see cref="ChatSkillDeactivatePayload"/>;
     /// the server broadcasts <see cref="ChatSkillState"/> to the chat's watchers.</summary>
     public const string ChatSkillDeactivate = "chat.skill.deactivate";

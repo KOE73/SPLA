@@ -718,6 +718,17 @@ public sealed class TurnCompletePayload
     public string? ActiveSkillId { get; set; }
 }
 
+/// <summary>Request to hand a skill to a chat — the person choosing, rather than the model.
+/// Answered with <see cref="ChatSkillStatePayload"/>, or an error naming why not.</summary>
+public sealed class ChatSkillActivatePayload
+{
+    public string ChatId { get; set; } = string.Empty;
+
+    /// <summary>Skill id. May name a skill the model was never told about: an out-of-catalog source
+    /// is invisible to the model and fully visible to its owner, and that is the point of it.</summary>
+    public string SkillId { get; set; } = string.Empty;
+}
+
 /// <summary>Request to end the skill running in a chat — the user's way out when the model never
 /// called <c>skill_deactivate</c>. Answered with <see cref="ChatSkillStatePayload"/>.</summary>
 public sealed class ChatSkillDeactivatePayload

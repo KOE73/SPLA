@@ -4,6 +4,7 @@ using SPLA.Domain.Agent;
 using SPLA.Domain.Models;
 using SPLA.Domain.Settings;
 using SPLA.Domain.Tools;
+using SPLA.Library.Catalog;
 using SPLA.MCP.Core.Permissions;
 
 namespace SPLA.Runtime;
@@ -53,6 +54,51 @@ public sealed class ChatRuntime
     /// active, so it cannot be told about another one, and <c>skill_activate</c> refuses a second.
     /// Hosts bind this to an "Unload skill" control.</para>
     /// </summary>
+    /// <summary>
+    /// Hands a skill to this chat on the user's say-so — the loan-desk counterpart of
+    /// <see cref="DeactivateSkill"/>, and the third way of taking a book out that the ADR names.
+    ///
+    /// <para><b>Level is deliberately not consulted.</b> A person choosing from a list they can see
+    /// is the whole point of an out-of-catalog source: invisible to the model, perfectly visible to
+    /// its owner. State still is: a skill switched off, untrusted, or missing its tools must not slip
+    /// in through a different door than the model's.</para>
+    ///
+    /// <para>Costs the prompt nothing beyond the procedure itself. The index is suppressed while a
+    /// skill is active, so a handed-out chat carries no catalog at all — which is what makes this the
+    /// answer for a small context window.</para>
+    /// </summary>
+    /// <returns>Null on success, else a human-readable reason.</returns>
+    public string? ActivateSkill(string skillId)
+    {
+        if (string.IsNullOrWhiteSpace(skillId)) return "no skill id given";
+        if (_skillSession.ActiveSkillId is { } running)
+            return $"skill '{running}' is already active — end it first";
+
+        var skill = _runtime.SkillLibrary.Find(skillId);
+        if (skill is null) return $"unknown skill '{skillId}'";
+        if (skill.State != SkillState.Available) return $"'{skill.Id}' is not available — {skill.StateReason}";
+
+        var body = _runtime.SkillLibrary.LoadBody(skill.Id);
+        if (string.IsNullOrWhiteSpace(body))
+            return $"'{skill.Id}' has no readable procedure — its source '{skill.SourceId}' returned nothing";
+
+        _skillSession.Activate(skill.Id, body, skill.SourceId, skill.Ref,
+            _runtime.SkillLibrary.ListResources(skill.Id));
+
+        // The same sets skill_activate would have raised. A procedure handed over by a person must
+        // arrive able to run, and the sets waiting on exactly this were declared by the skill itself.
+        foreach (var toolName in skill.Requires.Tools)
+        {
+            if (_runtime.ToolSets.SetOfTool(toolName) is not { } setId) continue;
+            if (_runtime.ToolSets.LevelOf(setId) != SPLA.MCP.Core.ToolSets.ToolSetLevel.SkillDemand) continue;
+            if (_toolSetSession.IsActive(setId)) continue;
+
+            _toolSetSession.Activate(setId, ToolSetActivationBy.Skill, $"required by skill '{skill.Id}'");
+        }
+
+        return null;
+    }
+
     /// <returns>The id that was deactivated, or null when nothing was running.</returns>
     public string? DeactivateSkill()
     {

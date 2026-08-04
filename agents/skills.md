@@ -301,6 +301,25 @@ the pinned procedure keeps running, which is the honest answer rather than a wed
 The consequence worth knowing: a resource **added** to the folder after activation is not on the slip
 and is not readable until the next activation. That is the same shape as the body's pin, not a bug.
 
+### Starting one on the user's say-so
+
+`ChatRuntime.ActivateSkill(id)` is the loan desk — `chat.skill.activate` over the protocol, the
+`+ skill` picker in the status bar. It is the third of the ADR's three ways to take a book out, and
+the cheapest: **the catalog is suppressed while a skill is active, so a handed-out chat carries no
+index at all.** That is what closes the "weak model, small context" case outright, and it sidesteps
+the failure the stage-4 runs found — nothing has to be chosen by the model, so no competing tool can
+distract it from choosing.
+
+Two rules, and the asymmetry between them is the point:
+
+- **Level is not consulted.** A person picking from a list they can see is exactly what an
+  `out-of-catalog` source is for: invisible to the model, fully visible to its owner.
+- **State is.** A skill that is switched off, untrusted, or missing its tools must not slip in through
+  a different door than the model's, so the refusal is reported rather than swallowed.
+
+It raises the same `SkillDemand` tool sets `skill_activate` would have: a procedure handed over by a
+person must arrive able to run.
+
 ### Ending a skill
 
 Three ways out, and the last one matters more than it looks:

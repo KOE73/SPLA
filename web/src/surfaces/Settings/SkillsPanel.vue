@@ -4,6 +4,7 @@
       <b>Skills</b>
       <span class="hint">{{ hint }}</span>
       <span class="grow"></span>
+      <input class="sk-search" v-model="search" type="text" placeholder="filter by id or text" spellcheck="false">
       <label class="filter"><input type="checkbox" v-model="showUnavailable"> show unavailable</label>
     </div>
 
@@ -39,6 +40,15 @@
         <span v-if="group.source.level && group.source.level !== 'OnShelf'"
               class="sk-level" :title="levelHint(group.source.level)">{{ levelLabel(group.source.level) }}</span>
         <span class="grow"></span>
+        <!-- Acts on what is VISIBLE, not on the whole source: with a filter applied, "all" meaning
+             something other than what you are looking at is how people switch off things they never
+             saw. Superseded rows are skipped — their toggle does nothing anyway. -->
+        <button v-if="group.items.length > 1" class="btn tiny"
+                :title="`Switch on the ${toggleable(group).length} shown skill(s)`"
+                @click.stop="setGroup(group, true)">all on</button>
+        <button v-if="group.items.length > 1" class="btn tiny"
+                :title="`Switch off the ${toggleable(group).length} shown skill(s)`"
+                @click.stop="setGroup(group, false)">all off</button>
         <!-- The folder is the actionable part of a skill source: it is where you put a new .md file. -->
         <span v-if="group.source.path" class="sk-path" :title="group.source.path">{{ group.source.path }}</span>
         <span class="sk-count">{{ group.items.length }}</span>
@@ -81,8 +91,29 @@ const skills = ref<CapabilityDto[]>([]);
 const sources = ref<SkillSourceDto[]>([]);
 const hint = ref("");
 const showUnavailable = ref(true);
+const search = ref("");
 const collapsed = ref<Set<string>>(new Set());
 const selectedTags = ref<Set<string>>(new Set());
+
+/** All terms must match, in any order, against id and description — same shape as the model picker's
+ *  filter, so one habit works in both places. */
+function matchesSearch(skill: CapabilityDto) {
+  const terms = search.value.trim().toLowerCase().split(/\s+/).filter(Boolean);
+  if (!terms.length) return true;
+  const haystack = `${skill.id} ${skill.description ?? ""}`.toLowerCase();
+  return terms.every(t => haystack.includes(t));
+}
+
+type Group = { source: SkillSourceDto; items: CapabilityDto[] };
+
+/** A Superseded row's toggle changes nothing, so a bulk action must not pretend otherwise. */
+function toggleable(group: Group) {
+  return group.items.filter(s => s.state !== "Superseded");
+}
+
+function setGroup(group: Group, enabled: boolean) {
+  for (const skill of toggleable(group)) skill.enabled = enabled;
+}
 
 /** Every tag in the fond with its count, commonest first — the same order the prompt prints. */
 const vocabulary = computed(() => {
@@ -132,7 +163,7 @@ const groups = computed(() =>
     items: skills.value.filter(s =>
       s.source === source.id &&
       (showUnavailable.value || s.state === "Available") &&
-      matchesTags(s))
+      matchesTags(s) && matchesSearch(s))
   })));
 
 function onToggle(skill: CapabilityDto, enabled: boolean) {
@@ -178,6 +209,9 @@ defineExpose({ save });
 .sk-untrusted { font-size: var(--fs-xs); color: var(--danger, #f85149); }
 .sk-level { font-size: var(--fs-xs); color: var(--muted);
   border: 1px solid color-mix(in srgb, var(--text) 18%, transparent); border-radius: 3px; padding: 0 4px; }
+.sk-search { background: transparent; color: var(--text); font-size: var(--fs-xs);
+  border: 1px solid color-mix(in srgb, var(--text) 18%, transparent); border-radius: 3px;
+  padding: 1px 6px; width: 12em; }
 .sk-facets { display: flex; flex-wrap: wrap; gap: 4px; margin-bottom: var(--gap, 8px); }
 .sk-tag { font-size: var(--fs-xs); font-family: var(--mono); cursor: pointer;
   background: transparent; color: var(--muted); padding: 1px 6px; border-radius: 3px;

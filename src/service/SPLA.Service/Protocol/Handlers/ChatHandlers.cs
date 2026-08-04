@@ -12,7 +12,8 @@ internal sealed class ChatHandlers : IMessageHandler
     [
         MessageTypes.ChatList, MessageTypes.ChatNew, MessageTypes.ChatRename, MessageTypes.ChatDelete,
         MessageTypes.ChatOpen, MessageTypes.ChatWatch, MessageTypes.ChatSend, MessageTypes.ChatSettings,
-        MessageTypes.ChatRewind, MessageTypes.ChatFork, MessageTypes.ChatSkillDeactivate,
+        MessageTypes.ChatRewind, MessageTypes.ChatFork,
+        MessageTypes.ChatSkillActivate, MessageTypes.ChatSkillDeactivate,
         MessageTypes.ChatToolSetDeactivate,
     ];
 
@@ -28,6 +29,7 @@ internal sealed class ChatHandlers : IMessageHandler
         MessageTypes.ChatSettings => Settings(ctx),
         MessageTypes.ChatRewind   => Rewind(ctx),
         MessageTypes.ChatFork     => Fork(ctx),
+        MessageTypes.ChatSkillActivate => SkillActivate(ctx),
         MessageTypes.ChatSkillDeactivate => SkillDeactivate(ctx),
         MessageTypes.ChatToolSetDeactivate => ToolSetDeactivate(ctx),
         _ => Task.CompletedTask
@@ -132,6 +134,34 @@ internal sealed class ChatHandlers : IMessageHandler
         }
         await ctx.Session.SendOpenedAsync(fork);   // switches this client to the fork
         await BroadcastChatList(ctx, projectId, entry.Chats);
+    }
+
+    /// <summary>
+    /// Hands a skill to the chat because a person picked it — the loan desk, and the cheapest of the
+    /// three ways the ADR names of taking a book out.
+    ///
+    /// <para>The catalog costs nothing here: it is suppressed while a skill is active, so a chat with
+    /// a handed-out skill carries no index at all. That closes the "weak model, small context" case
+    /// outright, and it sidesteps the failure the stage-4 runs found — nothing has to be chosen by
+    /// the model, so no competing tool can distract it from choosing.</para>
+    /// </summary>
+    private static async Task SkillActivate(RequestContext ctx)
+    {
+        var (entry, _) = ctx.Session.Resolve(ctx.Env);
+        var p = ctx.Payload<ChatSkillActivatePayload>();
+        var chat = p != null ? entry.Chats.GetOrOpen(p.ChatId) : null;
+        if (chat == null || p == null) return;
+
+        // Refusals are reported, not swallowed: the user picked this from a list, so "nothing
+        // happened" would be indistinguishable from a lost message.
+        if (chat.ActivateSkill(p.SkillId) is { } reason)
+        {
+            await ctx.Send(MessageTypes.Error, new ErrorPayload { Message = $"Cannot use skill: {reason}" });
+            return;
+        }
+
+        await ctx.Session.Hub.BroadcastToWatchersAsync(chat.ChatId, MessageTypes.ChatSkillState,
+            new ChatSkillStatePayload { ChatId = chat.ChatId, ActiveSkillId = chat.ActiveSkillId });
     }
 
     /// <summary>

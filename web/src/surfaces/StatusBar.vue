@@ -28,6 +28,15 @@
     <span class="skill-label">skill: {{ activeSkill }}</span>
     <button class="skill-unload" title="End this skill" @click="unloadSkill">✕</button>
   </span>
+  <!-- Hand a skill to this chat yourself. Offered only when none is running, because a second
+       activation is refused anyway — and hidden without a chat, since there is nothing to hand it to. -->
+  <button
+    v-else-if="store.currentChat"
+    ref="skillBtn"
+    class="filter"
+    title="Give this chat a skill — costs no catalog in the prompt"
+    @click.stop="skillPickerOpen = !skillPickerOpen"
+  >+ skill</button>
   <span
     v-if="ctxUsed != null"
     id="ctxBudget"
@@ -55,6 +64,11 @@
     :anchor="infoBtn"
     @close="infoOpen = false"
   />
+  <SkillPickerPopup
+    v-if="skillPickerOpen && skillBtn"
+    :anchor="skillBtn"
+    @close="skillPickerOpen = false"
+  />
 </template>
 
 <script setup lang="ts">
@@ -64,6 +78,7 @@ import { store } from "../state/store";
 import { uiBus } from "../state/uiBus";
 import type { ConnHealth, ModelPickDto, ToolSetState } from "../protocol/types";
 import ProviderInfoPopup from "./ProviderInfoPopup.vue";
+import SkillPickerPopup from "./SkillPickerPopup.vue";
 
 const connText = ref("connecting…");
 const project = ref("");
@@ -77,6 +92,8 @@ const lastCompletion = ref<number | null>(null);
 const ctxUsed = ref<number | null>(null);
 const ctxWindow = ref<number | null>(null);
 const activeSkill = ref<string | null>(null);
+const skillBtn = ref<HTMLElement>();
+const skillPickerOpen = ref(false);
 /** Tool sets raised in THIS chat — what the model can reach beyond its always-on tools. */
 const toolSets = ref<ToolSetState[]>([]);
 

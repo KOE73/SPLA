@@ -60,6 +60,7 @@ client/types **and** this table.
 | `chat.settings` | `ChatSettings` | `ChatSettingsPayload` | Change mode/model entry; echoes `chat.opened`. |
 | `chat.rewind` | `ChatRewind` | `ChatRewindPayload` | Truncate a chat at/before a message; echoes `chat.opened`. |
 | `chat.fork` | `ChatFork` | `ChatForkPayload` | Copy a chat at a message boundary; opens the fork and broadcasts `chat.list.result`. |
+| `chat.skill.activate` | `ChatSkillActivate` | `ChatSkillActivatePayload` | Hand a skill to the chat because a person picked it; broadcasts `chat.skill.state` to watchers, or answers `error` with the reason. May name a skill the model was never told about — level hides from the model, not from its owner. |
 | `chat.skill.deactivate` | `ChatSkillDeactivate` | `ChatSkillDeactivatePayload` | End the chat's running skill; broadcasts `chat.skill.state` to watchers. The user's exit when the model never calls `skill_deactivate`. |
 | `chat.toolset.deactivate` | `ChatToolSetDeactivate` | `ChatToolSetDeactivatePayload` | Lower a tool set raised in a chat; broadcasts `chat.toolset.state` to watchers. The person's control — the model may release a set but is never told it must. |
 | `focus.set` | `FocusSet` | `FocusPayload` | Window focused a chat; echoes `focus.changed` to all. |
@@ -123,7 +124,7 @@ client/types **and** this table.
 | `notice` | `Notice` | `NoticePayload` | watchers | Inline notice. |
 | `token.usage` | `TokenUsage` | `TokenUsagePayload` | watchers | Per-turn token counts; `contextLength` (nullable) carries the model's operative window for the client's context-budget display. |
 | `turn.complete` | `TurnComplete` | `TurnCompletePayload` | watchers | Turn ended; re-enable input. `activeSkillId` reports a skill still running — end of turn is when one the model forgot to close becomes actionable. |
-| `chat.skill.state` | `ChatSkillState` | `ChatSkillStatePayload` | watchers | The chat's active skill changed (after an explicit unload). |
+| `chat.skill.state` | `ChatSkillState` | `ChatSkillStatePayload` | watchers | The chat's active skill changed (an explicit hand-out or unload). |
 | `chat.toolset.state` | `ChatToolSetState` | `ChatToolSetStatePayload` | watchers | The chat's tool sets, raised or merely announced. Sent after every turn and after an explicit lowering; sets levelled off are never listed. |
 | `permission.request` | `PermissionRequest` | `PermissionRequestPayload` | unicast | To the initiating client (by `requestId`). |
 | `clarify.request` | `ClarifyRequest` | `ClarifyRequestPayload` | unicast | To the initiating client (by `requestId`). |
