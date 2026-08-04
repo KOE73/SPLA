@@ -2,6 +2,7 @@ using SPLA.Domain.Agent;
 using SPLA.MCP.Core.Composition;
 using SPLA.Library;
 using SPLA.Library.Catalog;
+using SPLA.Library.Sources;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -20,11 +21,14 @@ public sealed class SkillsContributor : IAgentContributor
 {
     private readonly SkillLibrary _skills;
     private readonly ISkillSession? _session;
+    private readonly int _shelfLimit;
 
-    public SkillsContributor(SkillLibrary skills, ISkillSession? session = null)
+    public SkillsContributor(SkillLibrary skills, ISkillSession? session = null,
+        int shelfLimit = CatalogView.DefaultShelfLimit)
     {
         _skills = skills;
         _session = session;
+        _shelfLimit = shelfLimit;
     }
 
     public string Id => "skills";
@@ -56,7 +60,9 @@ public sealed class SkillsContributor : IAgentContributor
         var available = _skills.Catalog();
         if (available.Count == 0) return AgentContribution.FromContext(items);
 
-        foreach (var skill in available.Where(s => s.IsPreloaded))
+        // A preloaded skill from a source the model is not supposed to know about would be the
+        // loudest possible way of telling it — the whole body, unasked. Level outranks the flag.
+        foreach (var skill in available.Where(s => s.IsPreloaded && Announceable(s)))
         {
             var body = _skills.LoadBody(skill.Id);
             if (string.IsNullOrEmpty(body)) continue;
@@ -70,13 +76,18 @@ public sealed class SkillsContributor : IAgentContributor
             });
         }
 
-        // On-demand index — suppressed while a skill is active, since its body is already injected.
-        var onDemand = available.Where(s => !s.IsPreloaded).ToList();
-        if (onDemand.Count > 0 && session?.ActiveSkillId is null)
-            items.Add(BuildIndex(onDemand));
+        // Suppressed while a skill is active, since its body is already injected and a second
+        // activation is refused anyway.
+        if (session?.ActiveSkillId is not null) return AgentContribution.FromContext(items);
+
+        var view = CatalogView.Build(available.Where(s => !s.IsPreloaded), _shelfLimit);
+        if (!view.IsEmpty) items.Add(BuildIndex(view));
 
         return AgentContribution.FromContext(items);
     }
+
+    private static bool Announceable(SkillCard card) =>
+        card.Level is SourceLevel.InCatalog or SourceLevel.OnShelf;
 
     private void AppendActiveSkill(List<ContextItem> items, ISkillSession? session)
     {
@@ -117,7 +128,14 @@ public sealed class SkillsContributor : IAgentContributor
         return body.ToString();
     }
 
-    private static ContextItem BuildIndex(IReadOnlyList<SkillCard> onDemand)
+    /// <summary>
+    /// The skills section: the listed shelf, the tag cloud, or both.
+    ///
+    /// <para>The cloud is printed with counts. A bare word list would leave the model guessing whether
+    /// a subject is one skill or forty, and that is exactly the judgement it needs in order to decide
+    /// whether asking is worth a turn.</para>
+    /// </summary>
+    private static ContextItem BuildIndex(CatalogView view)
     {
         var body = new StringBuilder();
         body.Append("--- Skills ---");
@@ -128,9 +146,20 @@ public sealed class SkillsContributor : IAgentContributor
         body.Append("\n");
         body.Append("\nHow to load a skill — call skill_activate with {\"id\": \"<skill-id>\"}");
         body.Append("\nExample: call skill_activate with {\"id\": \"network.range-audit\"}");
-        body.Append("\n\nAvailable skills:");
-        foreach (var skill in onDemand)
-            body.Append($"\n  {skill.Id} — {skill.Description}");
+
+        if (view.Shelf.Count > 0)
+        {
+            body.Append("\n\nAvailable skills:");
+            foreach (var skill in view.Shelf)
+                body.Append($"\n  {skill.Id} — {skill.Description}");
+        }
+
+        if (!view.Cloud.IsEmpty)
+        {
+            body.Append($"\n\nFurther skills are catalogued by subject, not listed here ({view.CloudedSkills.Count} of them). Subjects, with how many skills carry each:");
+            foreach (var tag in view.Cloud.All())
+                body.Append($"\n  {tag.Tag} ({tag.Count})");
+        }
 
         return new ContextItem
         {

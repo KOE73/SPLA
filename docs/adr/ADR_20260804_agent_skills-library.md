@@ -174,12 +174,17 @@ src/core/SPLA.Library/
   Catalog/    SkillCard, SkillState, TagVocabulary, CatalogView
   Sources/    ISkillSource, ISkillSourceFactory, SourceLevel,
               DirectorySource, PluginSource, BranchSource
-  Loans/      ISkillSession
   Librarians/ ITagLibrarian, IAgentLibrarian
   Format/     SkillFrontmatter
 ```
 
-Четыре понятия — фонд, каталог, выдача, библиотекарь — и каждое в своей папке.
+Три понятия — фонд, каталог, библиотекарь — и каждое в своей папке.
+
+**Выдачи среди них нет, и это не упущение.** `ISkillSession` остаётся в `SPLA.Domain/Agent/`, где его
+составляют `AgentSession` и `AgentSessionScope`, а `SkillLibrary` зависит от `SPLA.Domain.Settings`,
+чтобы накладывать `skills.items`. Папка `Loans/` замкнула бы цикл `Domain → Library → Domain`.
+Метафора здесь не пострадала, а уточнилась: формуляр лежит у читателя, а не в библиотеке — выдача
+принадлежит чату. Решение владельца, 2026-08-04, при реализации Этапа 2.
 
 ---
 

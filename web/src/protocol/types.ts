@@ -227,6 +227,8 @@ export interface CapabilityDto {
   source?: string;
   sourceLabel?: string;
   preloaded?: boolean;
+  /** Normalised subject words. Skills only — what the panel's facets filter on. */
+  tags?: string[];
   missingTools?: string[];
   missingFeatures?: string[];
   /** Plugins owning the missing tools — the panel offers to enable them. */
@@ -239,6 +241,9 @@ export interface SkillSourceDto {
   id: string;
   label: string;
   trust: string;
+  /** OutOfCatalog / Findable / InCatalog / OnShelf — how much of this source the model is told
+   *  about unasked. Read-only: set in .spla, not from the panel. */
+  level?: string;
   /** Filesystem location for folder-backed sources; absent for anything else. */
   path?: string;
 }

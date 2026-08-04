@@ -36,6 +36,14 @@ public sealed class SkillCard
     public required SkillTrust Trust { get; init; }
 
     public string Description { get; init; } = string.Empty;
+
+    /// <summary>Normalised subject words, as the source reported them. What a tag librarian intersects
+    /// and what the prompt's tag cloud is built from.</summary>
+    public IReadOnlyList<string> Tags { get; init; } = [];
+
+    /// <summary>How much of this card reaches the model unasked — inherited from its source, not
+    /// declared per skill. Copied onto the card so nothing downstream has to hold the source.</summary>
+    public SourceLevel Level { get; init; } = SourceLevel.OnShelf;
     public SkillRequirements Requires { get; init; } = SkillRequirements.None;
     public SkillRequirements Uses { get; init; } = SkillRequirements.None;
 

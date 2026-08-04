@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using YamlDotNet.Serialization;
 using YamlDotNet.Serialization.NamingConventions;
+using SPLA.Library.Catalog;
 using SPLA.Library.Sources;
 
 namespace SPLA.Library.Format;
@@ -28,6 +29,7 @@ public static class SkillFrontmatter
         public string? Description { get; set; }
         public bool? Enabled { get; set; }
         public bool? Preloaded { get; set; }
+        public List<string>? Tags { get; set; }
         public RawRequirements? Requires { get; set; }
         public RawRequirements? Uses { get; set; }
     }
@@ -60,7 +62,10 @@ public static class SkillFrontmatter
             Requires: ToRequirements(raw?.Requires),
             Uses: ToRequirements(raw?.Uses),
             DefaultEnabled: raw?.Enabled ?? true,
-            DefaultPreloaded: raw?.Preloaded ?? false);
+            DefaultPreloaded: raw?.Preloaded ?? false,
+            // Normalised here, at the only door tags come through, so nothing downstream ever has to
+            // wonder whether it is holding "SSH" or "ssh".
+            Tags: SkillTag.NormalizeAll(raw?.Tags));
     }
 
     /// <summary>The procedure text — everything after the frontmatter block, or the whole document

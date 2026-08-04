@@ -177,7 +177,9 @@ public sealed class SkillLibrary : IDisposable
                     SourceLabel = source.Label,
                     Ref = entry.Ref,
                     Trust = source.Trust,
+                    Level = source.Level,
                     Description = entry.Description,
+                    Tags = entry.Tags,
                     Requires = entry.Requires,
                     Uses = entry.Uses
                 };

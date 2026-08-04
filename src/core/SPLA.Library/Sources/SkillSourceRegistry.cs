@@ -65,7 +65,8 @@ public sealed class DirectorySkillSourceFactory : ISkillSourceFactory
 
         return new DirectorySkillSource(
             id, config.Label ?? label, full, SkillSourceRegistry.ParseTrust(config.Trust),
-            context.Loggers?.CreateLogger<DirectorySkillSource>());
+            context.Loggers?.CreateLogger<DirectorySkillSource>(),
+            level: SkillSourceRegistry.ParseLevel(config.Level));
     }
 
     /// <summary>Friendly id and display name for the conventional folders, falling back to the folder
@@ -188,6 +189,19 @@ public static class SkillSourceRegistry
 
         return sources;
     }
+
+    /// <summary>Reads the <c>level:</c> field. Unset or unrecognised means <see cref="SourceLevel.OnShelf"/>
+    /// — the behaviour sources have always had. Hyphens are optional, so both <c>in-catalog</c> and
+    /// <c>incatalog</c> work; a typo falls back rather than silently hiding a source's skills, because
+    /// hiding is the failure that is hardest to notice.</summary>
+    internal static SourceLevel ParseLevel(string? value) =>
+        value?.Trim().Replace("-", "").Replace("_", "").ToLowerInvariant() switch
+        {
+            "outofcatalog" or "hidden" => SourceLevel.OutOfCatalog,
+            "findable" => SourceLevel.Findable,
+            "incatalog" => SourceLevel.InCatalog,
+            _ => SourceLevel.OnShelf
+        };
 
     internal static SkillTrust ParseTrust(string? value) =>
         string.Equals(value?.Trim(), "untrusted", StringComparison.OrdinalIgnoreCase)

@@ -11,6 +11,20 @@
       no skills found — drop a .md file into one of the folders below
     </div>
 
+    <!-- The whole vocabulary, always, not a search box: the drift a normaliser cannot catch is two
+         words for one subject ("ssh" and "ssh-access"), and seeing them side by side is the only
+         thing that makes it noticeable. Selecting several intersects — the same set arithmetic the
+         model gets, so what you see here is what it would find. -->
+    <div v-if="vocabulary.length" class="sk-facets">
+      <button
+        v-for="tag in vocabulary" :key="tag.tag"
+        class="sk-tag" :class="{ on: selectedTags.has(tag.tag) }"
+        @click="toggleTag(tag.tag)">
+        {{ tag.tag }} <span class="sk-tag-n">{{ tag.count }}</span>
+      </button>
+      <button v-if="selectedTags.size" class="sk-tag clear" @click="selectedTags = new Set()">clear</button>
+    </div>
+
     <!-- Grouped by source, not flattened: the list is the one that grows without bound (a user can
          write any number of skills), and "where did this come from" is the first question about a
          skill you did not write yourself. -->
@@ -20,6 +34,10 @@
         <b>{{ group.source.label }}</b>
         <span class="sk-id">{{ group.source.id }}</span>
         <span v-if="group.source.trust !== 'Trusted'" class="sk-untrusted">untrusted</span>
+        <!-- Why a switched-on skill is never chosen: the source is not in the model's catalog. Read
+             only — the level is a .spla decision, not a panel toggle. -->
+        <span v-if="group.source.level && group.source.level !== 'OnShelf'"
+              class="sk-level" :title="levelHint(group.source.level)">{{ levelLabel(group.source.level) }}</span>
         <span class="grow"></span>
         <!-- The folder is the actionable part of a skill source: it is where you put a new .md file. -->
         <span v-if="group.source.path" class="sk-path" :title="group.source.path">{{ group.source.path }}</span>
@@ -64,6 +82,42 @@ const sources = ref<SkillSourceDto[]>([]);
 const hint = ref("");
 const showUnavailable = ref(true);
 const collapsed = ref<Set<string>>(new Set());
+const selectedTags = ref<Set<string>>(new Set());
+
+/** Every tag in the fond with its count, commonest first — the same order the prompt prints. */
+const vocabulary = computed(() => {
+  const counts = new Map<string, number>();
+  for (const skill of skills.value)
+    for (const tag of skill.tags || []) counts.set(tag, (counts.get(tag) || 0) + 1);
+
+  return [...counts.entries()]
+    .map(([tag, count]) => ({ tag, count }))
+    .sort((a, b) => b.count - a.count || a.tag.localeCompare(b.tag));
+});
+
+function toggleTag(tag: string) {
+  const next = new Set(selectedTags.value);
+  next.has(tag) ? next.delete(tag) : next.add(tag);
+  selectedTags.value = next;
+}
+
+/** Intersection, not union: selecting two tags narrows. Deterministic set arithmetic is the whole
+ *  reason tags were chosen over a fixed rubric. */
+function matchesTags(skill: CapabilityDto) {
+  if (!selectedTags.value.size) return true;
+  const tags = new Set(skill.tags || []);
+  return [...selectedTags.value].every(t => tags.has(t));
+}
+
+const LEVELS: Record<string, [string, string]> = {
+  OutOfCatalog: ["not in catalog", "The model is told nothing about these — not the id, not the tags. Only a person can hand one to a chat."],
+  Findable: ["findable only", "Reachable through skill_find, absent from the prompt entirely."],
+  InCatalog: ["by subject", "Tags reach the prompt; descriptions do not. The model asks for specifics."],
+  OnShelf: ["listed", "Id and description in every request."]
+};
+
+function levelLabel(level: string) { return LEVELS[level]?.[0] ?? level; }
+function levelHint(level: string) { return LEVELS[level]?.[1] ?? ""; }
 
 function isOpen(id: string) { return !collapsed.value.has(id); }
 function toggleGroup(id: string) {
@@ -76,7 +130,9 @@ const groups = computed(() =>
   sources.value.map(source => ({
     source,
     items: skills.value.filter(s =>
-      s.source === source.id && (showUnavailable.value || s.state === "Available"))
+      s.source === source.id &&
+      (showUnavailable.value || s.state === "Available") &&
+      matchesTags(s))
   })));
 
 function onToggle(skill: CapabilityDto, enabled: boolean) {
@@ -120,6 +176,17 @@ defineExpose({ save });
 .sk-group-head:hover { background: color-mix(in srgb, var(--text) 4%, transparent); }
 .sk-id { font-family: var(--mono); font-size: var(--fs-xs); color: var(--muted); }
 .sk-untrusted { font-size: var(--fs-xs); color: var(--danger, #f85149); }
+.sk-level { font-size: var(--fs-xs); color: var(--muted);
+  border: 1px solid color-mix(in srgb, var(--text) 18%, transparent); border-radius: 3px; padding: 0 4px; }
+.sk-facets { display: flex; flex-wrap: wrap; gap: 4px; margin-bottom: var(--gap, 8px); }
+.sk-tag { font-size: var(--fs-xs); font-family: var(--mono); cursor: pointer;
+  background: transparent; color: var(--muted); padding: 1px 6px; border-radius: 3px;
+  border: 1px solid color-mix(in srgb, var(--text) 18%, transparent); }
+.sk-tag:hover { background: color-mix(in srgb, var(--text) 6%, transparent); }
+.sk-tag.on { color: var(--text); border-color: var(--accent, currentColor);
+  background: color-mix(in srgb, var(--accent, var(--text)) 14%, transparent); }
+.sk-tag-n { opacity: 0.6; }
+.sk-tag.clear { font-style: italic; }
 .sk-count { font-size: var(--fs-xs); color: var(--muted); }
 .sk-path { font-family: var(--mono); font-size: var(--fs-xs); color: var(--muted);
   overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 50%; }

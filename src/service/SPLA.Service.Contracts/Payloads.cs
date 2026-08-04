@@ -433,6 +433,10 @@ public sealed class CapabilityDto
     /// <summary>Body goes into the base prompt instead of waiting for activation. Skills only.</summary>
     public bool Preloaded { get; set; }
 
+    /// <summary>Normalised subject words. Skills only — what the panel's facets filter on, and the
+    /// only place a person can see the vocabulary drifting.</summary>
+    public List<string> Tags { get; set; } = new();
+
     /// <summary>Unsatisfied requirements, so the panel can name them and offer to enable the owning
     /// plugin instead of just reporting that something is missing.</summary>
     public List<string> MissingTools { get; set; } = new();
@@ -450,6 +454,13 @@ public sealed class SkillSourceDto
     public string Id { get; set; } = string.Empty;
     public string Label { get; set; } = string.Empty;
     public string Trust { get; set; } = "Trusted";
+
+    /// <summary>How much of this source reaches the model unasked — OutOfCatalog / Findable /
+    /// InCatalog / OnShelf. Read-only here: the level is a deployment decision in <c>.spla</c>, not a
+    /// panel toggle, and showing it is how a person understands why a skill is switched on and still
+    /// never chosen.</summary>
+    public string Level { get; set; } = "OnShelf";
+
     /// <summary>Filesystem location for folder-backed sources; null for anything else.</summary>
     public string? Path { get; set; }
 }

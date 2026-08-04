@@ -25,8 +25,8 @@ runtime decides whether it can be offered. There are four layers:
 src/core/SPLA.Library/          the library itself — no dependency on the tool host
   SkillLibrary.cs               holdings + catalog
   ISkillCapabilityProbe.cs      the one question it asks the outside world
-  Catalog/    SkillCard, SkillState
-  Sources/    ISkillSource, DirectorySkillSource, PluginSkillSource, SkillSourceRegistry
+  Catalog/    SkillCard, SkillState, SkillTag, TagVocabulary, CatalogView
+  Sources/    ISkillSource, SourceLevel, DirectorySkillSource, PluginSkillSource, SkillSourceRegistry
   Format/     SkillFrontmatter
 ```
 
@@ -48,6 +48,7 @@ The skill tools (`skill_activate`, `skill_deactivate`, `skill_read_resource`) st
 ---
 id: network.host-audit
 description: One or two sentences used for matching a user request to this skill.
+tags: [ssh, linux, audit]      # optional — subject words for catalog lookup
 requires:                       # optional — omit entirely for a plain procedure
   tools: [dns_lookup, port_scan]
   features: [core.memory]
@@ -68,6 +69,17 @@ are opt-in: most skills are prose, not tool choreography.
 
 `requires` is the only thing that can make a skill vanish. Declare a tool there when calling it *is*
 the procedure; declare it in `uses` when the skill merely benefits from it.
+
+`tags` are normalised at the door by `SkillTag.Normalize` — lower-case, kebab-case, punctuation
+collapsed to one dash, duplicates dropped, and anything that normalises to nothing thrown away. So
+`SSH`, `ssh_access` and `SSH---Access` cannot become three subjects. What normalisation cannot catch
+is `ssh` and `ssh-access` being two words for one thing; the settings panel therefore shows the whole
+vocabulary at once, because seeing them side by side is the only way that becomes noticeable.
+
+Tags are **not** recovered by the lenient parser. Like `requires`, they are structured, and the
+existing rule holds: guessing at the shape of a malformed list is worse than treating the skill as
+untagged and letting the author fix the quoting. An untagged skill is not an error — it simply cannot
+be found by subject, and therefore never leaves the shelf (see below).
 
 ---
 
@@ -152,6 +164,7 @@ skills:
     - type: directory
       path: /srv/shared-skills
       trust: untrusted
+      level: in-catalog          # absent = on-shelf
       label: Shared
   items:
     network.host-audit:
@@ -160,6 +173,28 @@ skills:
 
 `type` selects an `ISkillSourceFactory`; the factory validates its own fields. Adding a source kind
 (server, database, git) means registering a factory — no core changes.
+
+### Level: how much of a source reaches the model
+
+`SourceLevel` is the same ladder shape as [`ToolSetLevel`](../src/core/SPLA.MCP.Core/ToolSets/ToolSetLevel.cs)
+and answers the same question — not "may these run" but "who is told they exist, and at what price".
+
+| `level:` | In the prompt | Reached by |
+|---|---|---|
+| `out-of-catalog` | nothing at all | a person, handing the skill to a chat |
+| `findable` | nothing at all | `skill_find` (stage 4; until then, same as above) |
+| `in-catalog` | its tags, in the cloud | the model, in two steps |
+| `on-shelf` *(default)* | id + description, every request | the model, in one step |
+
+**The level is on the source, not the skill.** A hundred skills would be a hundred decisions; one
+external repository is one decision, and that is the decision a person actually holds an opinion
+about. An unparseable or absent value falls back to `on-shelf` — a typo must not silently hide a
+source's skills, because hiding is the failure hardest to notice.
+
+**Level is not trust.** Trust decides whether a skill may be used at all and needs the user's
+consent; level decides only who is told. An `out-of-catalog` skill is still listed in the panel, still
+activatable by a person, and still refused if its source is untrusted. Neither axis substitutes for
+the other.
 
 Layering across `~/.spla/defaults.yaml` and the project `.spla`:
 
@@ -345,6 +380,26 @@ only what the skill system puts in.
 
 The index lists `Catalog()` only. The standing description of what an ACTIVE SKILL block means
 lives once in the global prompt; skill bodies must not repeat it.
+
+### What the index actually contains
+
+`CatalogView.Build` splits the available skills into two, and the split is the point:
+
+- **Shelf** — id and description per skill, the expensive half.
+- **Cloud** — subject words with counts and nothing else, the half whose price stops tracking the
+  size of the fond. Counts are printed because a bare word list would leave the model guessing
+  whether a subject is one skill or forty — exactly the judgement it needs to decide whether asking
+  is worth a turn.
+
+Beyond `DefaultShelfLimit` (25) the shelf collapses: skills that would have been listed contribute
+tags instead. **Untagged skills are never demoted** — a skill with no tags cannot be found by subject,
+so moving it to the cloud would not summarise it, it would delete it. It keeps its place and keeps
+costing what it costs. That is deliberately visible: the way to make a large fond cheap is to tag it,
+and a project that has not should feel the price rather than lose the skills.
+
+Level also outranks `preloaded`. A preloaded skill from an `out-of-catalog` source would be the
+loudest possible way of telling the model about a source it is not supposed to know — the whole body,
+unasked — so the contributor gates preloading on the level too.
 
 The ACTIVE SKILL block ends with the skill's resource list when it has one — **names only**, never
 contents. A procedure that opens two of fourteen files should not carry the other twelve in every

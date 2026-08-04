@@ -35,7 +35,14 @@ public sealed record SkillEntry(
     SkillRequirements Requires,
     SkillRequirements Uses,
     bool DefaultEnabled,
-    bool DefaultPreloaded);
+    bool DefaultPreloaded,
+    IReadOnlyList<string>? Tags = null)
+{
+    /// <summary>Subject words for catalog lookup, already normalised and deduplicated. Empty is the
+    /// honest answer for a skill whose author wrote none — an untagged skill is simply not findable
+    /// by subject, which is a fact about the skill rather than an error.</summary>
+    public IReadOnlyList<string> Tags { get; init; } = Tags ?? [];
+}
 
 /// <summary>
 /// A place skills come from. Deliberately minimal: enumerate and read. Everything else — parsing
@@ -52,6 +59,11 @@ public interface ISkillSource
     string Label { get; }
 
     SkillTrust Trust { get; }
+
+    /// <summary>How much of this source reaches the model unasked. Defaults to <see cref="SourceLevel.OnShelf"/>
+    /// so a source that says nothing behaves the way sources always have — a handful of local skills
+    /// listed in full is the right answer for a handful of local skills.</summary>
+    SourceLevel Level => SourceLevel.OnShelf;
 
     /// <summary>Every skill this source currently offers. Called on every reload — implementations
     /// should be cheap or cache internally. Must not throw: an unreachable source returns empty.</summary>

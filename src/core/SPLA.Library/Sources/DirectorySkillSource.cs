@@ -36,6 +36,7 @@ public sealed class DirectorySkillSource : IEditableSkillSource, IDisposable
     public string Id { get; }
     public string Label { get; }
     public SkillTrust Trust { get; }
+    public SourceLevel Level { get; }
     public event Action? Changed;
 
     /// <summary>The folder this source serves. Exposed for the settings panel, which shows the user
@@ -43,11 +44,12 @@ public sealed class DirectorySkillSource : IEditableSkillSource, IDisposable
     public string RootPath => _root;
 
     public DirectorySkillSource(string id, string label, string rootPath, SkillTrust trust,
-        ILogger? logger = null, bool watch = true)
+        ILogger? logger = null, bool watch = true, SourceLevel level = SourceLevel.OnShelf)
     {
         Id = id;
         Label = label;
         Trust = trust;
+        Level = level;
         _root = Path.GetFullPath(rootPath);
         _logger = logger;
 

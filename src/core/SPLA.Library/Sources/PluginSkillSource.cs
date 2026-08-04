@@ -34,6 +34,10 @@ public sealed class PluginSkillSource : ISkillSource
     /// run in-process, so their markdown is not the weak link.</summary>
     public SkillTrust Trust => SkillTrust.Trusted;
 
+    /// <summary>A plugin ships a handful of procedures for its own tools, and the plugin's toggle
+    /// already gates them. Listing them in full is the right price for that quantity.</summary>
+    public SourceLevel Level => SourceLevel.OnShelf;
+
     /// <summary>Plugin packages do not change under a running process; the registry re-creates these
     /// sources on every plugin load pass instead.</summary>
     public event Action? Changed { add { } remove { } }

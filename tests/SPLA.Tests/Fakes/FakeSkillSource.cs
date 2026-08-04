@@ -21,11 +21,15 @@ public sealed class FakeSkillSource : ISkillSource
 
     public event Action? Changed;
 
-    public FakeSkillSource(string id = "test", SkillTrust trust = SkillTrust.Trusted, string? label = null)
+    public SourceLevel Level { get; }
+
+    public FakeSkillSource(string id = "test", SkillTrust trust = SkillTrust.Trusted, string? label = null,
+        SourceLevel level = SourceLevel.OnShelf)
     {
         Id = id;
         Label = label ?? id;
         Trust = trust;
+        Level = level;
     }
 
     /// <summary>Adds a skill. Requirements default to none — the common case for a plain procedure.</summary>
@@ -36,13 +40,15 @@ public sealed class FakeSkillSource : ISkillSource
         IReadOnlyList<string>? requiresTools = null,
         IReadOnlyList<string>? requiresFeatures = null,
         bool enabled = true,
-        bool preloaded = false)
+        bool preloaded = false,
+        IReadOnlyList<string>? tags = null)
     {
         _skills[id] = (new SkillEntry(
             id, description, $"{id}.md",
             new SkillRequirements(requiresTools ?? [], requiresFeatures ?? []),
             SkillRequirements.None,
-            enabled, preloaded), body);
+            enabled, preloaded,
+            SPLA.Library.Catalog.SkillTag.NormalizeAll(tags)), body);
         return this;
     }
 

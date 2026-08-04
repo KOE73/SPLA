@@ -39,6 +39,13 @@ public class SplaSkillSourceSection
     [YamlMember(Alias = "path")]
     public string? Path { get; set; }
 
+    /// <summary>How much of this source reaches the model unasked: "out-of-catalog", "findable",
+    /// "in-catalog" or "on-shelf". Absent = on-shelf, which is how sources have always behaved.
+    /// <para>Separate from <c>trust</c> on purpose: trust says whether the skills may be used at all,
+    /// level says only who is told they exist.</para></summary>
+    [YamlMember(Alias = "level")]
+    public string? Level { get; set; }
+
     /// <summary>"trusted" or "untrusted". Absent = trusted for local sources.</summary>
     [YamlMember(Alias = "trust")]
     public string? Trust { get; set; }

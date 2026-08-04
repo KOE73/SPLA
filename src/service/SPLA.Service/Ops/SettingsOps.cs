@@ -301,6 +301,7 @@ public static class SettingsOps
                 Id = source.Id,
                 Label = source.Label,
                 Trust = source.Trust.ToString(),
+                Level = source.Level.ToString(),
                 Path = (source as SPLA.Library.Sources.DirectorySkillSource)?.RootPath
             });
 
@@ -315,6 +316,7 @@ public static class SettingsOps
                 Description = skill.Description,
                 Enabled = skill.IsEnabled,
                 Preloaded = skill.IsPreloaded,
+                Tags = skill.Tags.ToList(),
                 State = skill.State.ToString(),
                 StateReason = string.IsNullOrWhiteSpace(skill.StateReason) ? null : skill.StateReason,
                 Source = skill.SourceId,
