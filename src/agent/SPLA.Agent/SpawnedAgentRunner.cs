@@ -5,7 +5,7 @@ using SPLA.Domain.Settings;
 using SPLA.Agent.Composition;
 using SPLA.MCP.Core.Composition;
 using SPLA.MCP.Core.Plugins;
-using SPLA.MCP.Core.Skills;
+using SPLA.Library;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;

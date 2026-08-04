@@ -1,6 +1,7 @@
 using SPLA.Domain.Agent;
 using SPLA.MCP.Core.Composition;
-using SPLA.MCP.Core.Skills;
+using SPLA.Library;
+using SPLA.Library.Catalog;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;

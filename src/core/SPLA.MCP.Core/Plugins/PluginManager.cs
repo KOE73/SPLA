@@ -5,7 +5,7 @@ using Microsoft.Extensions.Logging;
 using SPLA.Domain.Editor;
 using SPLA.Domain.Settings;
 using SPLA.MCP.Core.Interfaces;
-using SPLA.MCP.Core.Skills;
+using SPLA.Library.Sources;
 
 namespace SPLA.MCP.Core.Plugins;
 

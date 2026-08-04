@@ -3,8 +3,10 @@ using System.Collections.Generic;
 using System.Linq;
 using Microsoft.Extensions.Logging;
 using SPLA.Domain.Settings;
+using SPLA.Library.Catalog;
+using SPLA.Library.Sources;
 
-namespace SPLA.MCP.Core.Skills;
+namespace SPLA.Library;
 
 /// <summary>
 /// The skill registry: collects entries from every <see cref="ISkillSource"/> in priority order,

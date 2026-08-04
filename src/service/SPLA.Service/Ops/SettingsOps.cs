@@ -301,7 +301,7 @@ public static class SettingsOps
                 Id = source.Id,
                 Label = source.Label,
                 Trust = source.Trust.ToString(),
-                Path = (source as SPLA.MCP.Core.Skills.DirectorySkillSource)?.RootPath
+                Path = (source as SPLA.Library.Sources.DirectorySkillSource)?.RootPath
             });
 
         // Holdings, not Catalog: an unavailable skill must stay visible WITH its reason, otherwise

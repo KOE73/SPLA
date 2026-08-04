@@ -4,8 +4,9 @@ using System.IO;
 using System.Linq;
 using System.Threading;
 using Microsoft.Extensions.Logging;
+using SPLA.Library.Format;
 
-namespace SPLA.MCP.Core.Skills;
+namespace SPLA.Library.Sources;
 
 /// <summary>
 /// Skills stored as markdown in a folder — the project's <c>.spla/skills</c> and the machine's

@@ -1,7 +1,7 @@
 using System.Collections.Generic;
 using System.Linq;
 
-namespace SPLA.MCP.Core.Skills;
+namespace SPLA.Library;
 
 /// <summary>
 /// Answers "does this agent currently have that capability?" for requirement resolution. Kept as an

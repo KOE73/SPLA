@@ -72,6 +72,7 @@
   </Folder>
   <Folder Name="/src/core/">
     <Project Path="src/core/SPLA.Domain/SPLA.Domain.csproj" />
+    <Project Path="src/core/SPLA.Library/SPLA.Library.csproj" />
     <Project Path="src/core/SPLA.MCP.Core/SPLA.MCP.Core.csproj" />
     <Project Path="src/core/SPLA.Observability/SPLA.Observability.csproj" />
   </Folder>

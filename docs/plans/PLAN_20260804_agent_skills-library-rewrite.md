@@ -81,18 +81,35 @@
 
 Механически, без изменения поведения. Словарь — в ADR, раздел «Словарь».
 
-- [ ] Новый проект `src/core/SPLA.Library/` с раскладкой `Catalog/ Sources/ Loans/ Librarians/
-      Format/`; старая папка `SPLA.MCP.Core/Skills/` удаляется.
-- [ ] `SkillManager`→`SkillLibrary`, `SkillMeta`→`SkillCard`, `GetAvailable()`→`Catalog()`,
+Сделано двумя коммитами: сначала имена на месте, потом переезд файлов. Иначе дифф переезда был бы
+смесью перемещений и правок, и обещание «только имена» нечем было бы проверить.
+
+- [x] `SkillManager`→`SkillLibrary`, `SkillMeta`→`SkillCard`, `GetAvailable()`→`Catalog()`,
       `GetAll()`→`Holdings()`, `MissingTools`→`MissingPrerequisites`, `Shadowed`→`Superseded`.
-- [ ] Не трогать: `ISkillSource`, `ISkillSession`, `Activate`/`Deactivate`, `SkillState`,
+      **Уточнение:** `MissingTools` переименован только как член `SkillState`. Одноимённое свойство
+      `SkillCard.MissingTools` — буквально список инструментов рядом с `MissingFeatures`, и назвать
+      его `MissingPrerequisites` значило бы соврать.
+      **Имя состояния уходит по проводу строкой** (`CapabilityDto.State`), поэтому в том же коммите
+      правятся `CapabilityRow.vue` и `SkillsPanel.vue` — они сравнивали со старыми литералами.
+- [x] Новый проект `src/core/SPLA.Library/` с раскладкой `Catalog/ Sources/ Format/`; старая папка
+      `SPLA.MCP.Core/Skills/` удалена. `SPLA.MCP.Core` ссылается на `SPLA.Library`, не наоборот.
+      **Отклонение от раскладки ADR, требует вашего решения:** папки `Loans/` и `Librarians/` не
+      созданы. `Librarians/` — просто пусто до Этапов 4 и 7. А `Loans/ ISkillSession` **невозможен
+      как написано**: `AgentSession` и `AgentSessionScope` живут в `SPLA.Domain` и составляют
+      `ISkillSession`, а `SkillLibrary` нужен `SPLA.Domain.Settings` — перенос замкнул бы цикл
+      `Domain → Library → Domain`. Сейчас `ISkillSession` оставлен в `SPLA.Domain/Agent/`; это
+      согласуется с сутью (выдача принадлежит чату, а не фонду), но расходится с текстом ADR.
+- [x] Не трогать: `ISkillSource`, `ISkillSession`, `Activate`/`Deactivate`, `SkillState`,
       `Available`, `DisabledByUser`, `DisabledByTrust`, `skill_activate`, `skill_deactivate`,
       `skill_read_resource`.
-- [ ] `SPLA.slnx`, `agents/skills.md`, `docs/readme_skills_ru.md` — привести к новым именам.
-- [ ] Golden-тесты системного промпта перегенерировать **осознанно**: сверить диффы глазами, а не
-      принять пачкой.
+- [x] `SPLA.slnx`, `agents/skills.md`, `agents/structure.md`, `agents/plugins.md`,
+      `agents/data-ownership.md`, `AGENTS.md`, `docs/readme_skills_ru.md` — приведены к новым именам.
+- [x] Golden-тесты системного промпта перегенерировать **осознанно**: перегенерировать не
+      потребовалось — они прошли без единой правки, что и есть доказательство, что поведение не
+      изменилось: ни одна строка, которую видит модель, не сдвинулась.
 
-**Проверка этапа:** тесты зелёные, диффы содержат только имена.
+**Проверка этапа:** ✅ тесты зелёные (420 из 422; два падения предсуществующие, не связаны со
+скилами). Дифф шага «имена» — 139 вставок против 139 удалений, симметрично.
 
 ---
 

@@ -1,7 +1,7 @@
 using System;
 using System.Collections.Generic;
 
-namespace SPLA.MCP.Core.Skills;
+namespace SPLA.Library.Sources;
 
 /// <summary>How far a source's content is trusted. A skill body becomes part of the system prompt,
 /// so an untrusted source is a prompt-injection surface: its skills stay off until the user opts in

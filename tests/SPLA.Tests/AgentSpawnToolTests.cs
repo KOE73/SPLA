@@ -3,7 +3,7 @@ using SPLA.Domain.Interfaces;
 using SPLA.Domain.Models;
 using SPLA.Domain.Settings;
 using SPLA.MCP.Core.Plugins;
-using SPLA.MCP.Core.Skills;
+using SPLA.Library;
 using SPLA.MCP.Core.Tools;
 using System.Collections.Generic;
 using System.IO;

@@ -2,7 +2,7 @@ using SPLA.Domain.Agent;
 using SPLA.Domain.Models;
 using SPLA.MCP.Core.Interfaces;
 using SPLA.MCP.Core.Json;
-using SPLA.MCP.Core.Skills;
+using SPLA.Library;
 using System;
 using System.Linq;
 using System.Text.Json;

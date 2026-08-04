@@ -5,7 +5,7 @@ using System.Linq;
 using Microsoft.Extensions.Logging;
 using SPLA.Domain.Settings;
 
-namespace SPLA.MCP.Core.Skills;
+namespace SPLA.Library.Sources;
 
 /// <summary>Builds one <see cref="ISkillSource"/> from one configured <c>skills.sources</c> entry.
 /// The factory owns validation of its own fields — the registry never inspects them, which is what

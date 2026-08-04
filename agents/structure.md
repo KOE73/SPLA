@@ -14,6 +14,7 @@ in addition to the root `AGENTS.md`.
 ### `src/core/` — foundation (no upward/outward deps)
 
 - `SPLA.Domain`: Shared domain models and cross-project contracts. Contains ambient-scope utilities that tools use without signature changes: `ProgressScope`/`ProgressTree`/`ProgressNode` (progress tree per agent turn), `ToolHostScope` (current `IToolHost`+`AgentMode`), `ClarifyScope`, `AgentSessionScope`. Also the host boundary (`ISandbox`/`IWorkspace`/`IShell`/`ICapabilityGate`), project backends (`IProjectBackend`/`IBucket`), identity, and secrets.
+- `SPLA.Library`: The skill library — holdings, catalog, sources, frontmatter. Depends on `SPLA.Domain` only: it knows nothing of the tool host, and `SPLA.MCP.Core` references it rather than the other way round.
 - `SPLA.MCP.Core`: MCP host core, tool abstractions, plugin metadata, plugin loading, permissions (`PermissionManager`, `PermissionScope`), and tool help routing.
 - `SPLA.Observability`: Shared logging, tracing, metrics, correlation, and log destination infrastructure.
 
@@ -147,7 +148,7 @@ description: One-line description used as the skill index entry in the system pr
 ```
 
 **Runtime behavior:**
-- `SkillLibrary` (in `SPLA.MCP.Core`) scans `plugins/*/skills/*.md` on startup and builds a registry.
+- `SkillLibrary` (in `SPLA.Library`) scans `plugins/*/skills/*.md` on startup and builds its holdings.
 - `CapabilityRegistry` includes skills alongside tools and plugins in a unified list.
 - `SidebarPanelViewModel` displays skills from `CapabilityRegistry` — it does NOT scan files or own skill data.
 - System prompt receives only the skill index (`id — description`, one line per skill).

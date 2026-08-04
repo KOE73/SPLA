@@ -3,8 +3,9 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using Microsoft.Extensions.Logging;
+using SPLA.Library.Format;
 
-namespace SPLA.MCP.Core.Skills;
+namespace SPLA.Library.Sources;
 
 /// <summary>
 /// Skills shipped inside an installed plugin — either a <c>type: skills</c> plugin whose markdown

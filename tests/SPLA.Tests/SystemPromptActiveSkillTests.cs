@@ -4,7 +4,8 @@ using SPLA.Domain.Agent;
 using SPLA.MCP.Core.Composition;
 using SPLA.Domain.Models;
 using SPLA.Domain.Settings;
-using SPLA.MCP.Core.Skills;
+using SPLA.Library;
+using SPLA.Library.Sources;
 using SPLA.Tests.Fakes;
 
 namespace SPLA.Tests;

@@ -19,6 +19,27 @@ runtime decides whether it can be offered. There are four layers:
 - **Library** (`SkillLibrary`) — collects, layers settings, resolves state, answers queries.
 - **Session** (`ISkillSession`) — which skill, if any, is active in a given chat.
 
+### Where the code lives
+
+```
+src/core/SPLA.Library/          the library itself — no dependency on the tool host
+  SkillLibrary.cs               holdings + catalog
+  ISkillCapabilityProbe.cs      the one question it asks the outside world
+  Catalog/    SkillCard, SkillState
+  Sources/    ISkillSource, DirectorySkillSource, PluginSkillSource, SkillSourceRegistry
+  Format/     SkillFrontmatter
+```
+
+`ISkillSession` stays in `SPLA.Domain/Agent/` rather than moving here, and that is a dependency fact
+rather than a preference: `AgentSession` and `AgentSessionScope` in `SPLA.Domain` compose it, while
+`SkillLibrary` needs `SPLA.Domain.Settings` to layer `skills.items`. Putting the session in
+`SPLA.Library` would close the loop `Domain → Library → Domain`. The loan lives with the chat; the
+library is what the chat borrows from.
+
+The skill tools (`skill_activate`, `skill_deactivate`, `skill_read_resource`) stay in
+`SPLA.MCP.Core/Tools/` with every other tool — they are tools first, and `SPLA.MCP.Core` references
+`SPLA.Library`, never the reverse.
+
 ---
 
 ## Skill file format

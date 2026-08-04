@@ -1,5 +1,8 @@
 using SPLA.Domain.Settings;
-using SPLA.MCP.Core.Skills;
+using SPLA.Library;
+using SPLA.Library.Catalog;
+using SPLA.Library.Format;
+using SPLA.Library.Sources;
 
 namespace SPLA.Tests;
 

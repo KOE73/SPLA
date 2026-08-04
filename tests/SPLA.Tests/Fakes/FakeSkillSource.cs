@@ -1,4 +1,4 @@
-using SPLA.MCP.Core.Skills;
+using SPLA.Library.Sources;
 
 namespace SPLA.Tests.Fakes;
 

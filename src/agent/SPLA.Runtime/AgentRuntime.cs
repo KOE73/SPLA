@@ -16,7 +16,8 @@ using SPLA.MCP.Core;
 using SPLA.MCP.Core.Agent;
 using SPLA.MCP.Core.Permissions;
 using SPLA.MCP.Core.Plugins;
-using SPLA.MCP.Core.Skills;
+using SPLA.Library;
+using SPLA.Library.Sources;
 using SPLA.MCP.Core.ToolSets;
 
 namespace SPLA.Runtime;

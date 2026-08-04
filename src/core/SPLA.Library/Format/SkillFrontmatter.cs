@@ -3,8 +3,9 @@ using System.Collections.Generic;
 using System.Linq;
 using YamlDotNet.Serialization;
 using YamlDotNet.Serialization.NamingConventions;
+using SPLA.Library.Sources;
 
-namespace SPLA.MCP.Core.Skills;
+namespace SPLA.Library.Format;
 
 /// <summary>
 /// Splits a skill document into its YAML frontmatter (metadata) and its body (the procedure).

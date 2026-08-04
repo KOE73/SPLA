@@ -5,7 +5,7 @@ using SPLA.Domain.Models;
 using SPLA.Domain.Settings;
 using SPLA.MCP.Core.Agent;
 using SPLA.MCP.Core.Composition;
-using SPLA.MCP.Core.Skills;
+using SPLA.Library;
 using SPLA.Tests.Fakes;
 using System.Runtime.CompilerServices;
 

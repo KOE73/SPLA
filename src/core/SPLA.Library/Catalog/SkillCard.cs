@@ -1,6 +1,7 @@
 using System.Collections.Generic;
+using SPLA.Library.Sources;
 
-namespace SPLA.MCP.Core.Skills;
+namespace SPLA.Library.Catalog;
 
 /// <summary>Why a skill is or is not offered to the model. Everything except
 /// <see cref="Available"/> keeps the skill visible in the settings panel with a reason, rather than
