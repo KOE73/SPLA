@@ -216,11 +216,17 @@ export interface PluginsResultPayload {
  */
 export interface CapabilityDto {
   id: string;
+  /**
+   * A skill's full address, `branch:id` — what identifies it, since two branches may hold the same
+   * name. Absent for built-ins. Key rows and saves on this, never on `id`: two editions of one name
+   * would otherwise share a row and a switch.
+   */
+  address?: string;
   kind: "builtin" | "skill";
   name: string;
   description?: string;
   enabled?: boolean;
-  /** Available / MissingPrerequisites / DisabledByUser / DisabledByTrust / Superseded — read-only. */
+  /** Available / MissingPrerequisites / DisabledByUser / DisabledByTrust — read-only. */
   state?: string;
   stateReason?: string;
   /** Provider id for a skill ("project", "machine", "plugin:network"); absent for built-ins. */

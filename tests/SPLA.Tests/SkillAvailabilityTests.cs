@@ -111,19 +111,84 @@ public class SkillAvailabilityTests
     }
 
     [Fact]
-    public void The_first_source_wins_and_the_loser_is_marked_shadowed()
+    public void Two_branches_holding_the_same_name_both_keep_their_book()
     {
         var project = new FakeSkillSource("project").With("net.audit", body: "project version");
         var plugin = new FakeSkillSource("plugin:network").With("net.audit", body: "plugin version");
 
         var manager = new SkillLibrary([project, plugin]);
 
-        Assert.Equal("project", manager.Find("net.audit")!.SourceId);
-        Assert.Equal("project version", manager.LoadBody("net.audit"));
+        // Neither is evicted, and neither is demoted: two editions of one title is a normal state of
+        // a fond. The reader picks by address.
+        Assert.Equal(2, manager.Holdings().Count);
+        Assert.All(manager.Holdings(), skill => Assert.Equal(SkillState.Available, skill.State));
 
-        var superseded = Assert.Single(manager.Holdings(), skill => skill.State == SkillState.Superseded);
-        Assert.Equal("plugin:network", superseded.SourceId);
-        Assert.Contains("overridden by source 'project'", superseded.StateReason);
+        Assert.Equal("project version", manager.LoadBody("project:net.audit"));
+        Assert.Equal("plugin version", manager.LoadBody("plugin:network:net.audit"));
+    }
+
+    [Fact]
+    public void A_name_two_branches_answer_to_is_an_error_that_names_the_candidates()
+    {
+        var project = new FakeSkillSource("project").With("net.audit");
+        var plugin = new FakeSkillSource("plugin:network").With("net.audit");
+
+        var manager = new SkillLibrary([project, plugin]);
+
+        var lookup = manager.Resolve("net.audit");
+
+        Assert.True(lookup.IsAmbiguous);
+        Assert.Null(lookup.Card);
+        Assert.Equal(["project:net.audit", "plugin:network:net.audit"],
+            lookup.Candidates.Select(c => c.Address));
+    }
+
+    [Fact]
+    public void A_shared_name_is_printed_as_an_address_and_a_unique_one_stays_short()
+    {
+        var project = new FakeSkillSource("project").With("net.audit").With("only.here");
+        var plugin = new FakeSkillSource("plugin:network").With("net.audit");
+
+        var manager = new SkillLibrary([project, plugin]);
+
+        Assert.Equal("only.here", manager.Find("only.here")!.DisplayId);
+        Assert.All(manager.Holdings().Where(s => s.Id == "net.audit"),
+            skill => Assert.Equal(skill.Address, skill.DisplayId));
+    }
+
+    [Fact]
+    public void One_available_edition_settles_the_name_without_asking()
+    {
+        var project = new FakeSkillSource("project").With("net.audit");
+        var plugin = new FakeSkillSource("plugin:network").With("net.audit");
+
+        var manager = new SkillLibrary([project, plugin]);
+        // A full address switches off exactly one edition; the bare name then means the other.
+        manager.ApplySettings(new Dictionary<string, SplaSkillSection>
+        {
+            ["plugin:network:net.audit"] = new() { Enabled = false }
+        });
+
+        var lookup = manager.Resolve("net.audit");
+
+        Assert.False(lookup.IsAmbiguous);
+        Assert.Equal("project", lookup.Card!.SourceId);
+    }
+
+    [Fact]
+    public void A_bare_item_key_is_a_predicate_and_reaches_every_edition()
+    {
+        var project = new FakeSkillSource("project").With("net.audit");
+        var plugin = new FakeSkillSource("plugin:network").With("net.audit");
+
+        var manager = new SkillLibrary([project, plugin]);
+        manager.ApplySettings(new Dictionary<string, SplaSkillSection>
+        {
+            ["net.audit"] = new() { Enabled = false }
+        });
+
+        Assert.All(manager.Holdings(),
+            skill => Assert.Equal(SkillState.DisabledByUser, skill.State));
     }
 
     [Fact]

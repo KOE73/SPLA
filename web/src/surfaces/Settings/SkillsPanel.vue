@@ -42,7 +42,7 @@
         <span class="grow"></span>
         <!-- Acts on what is VISIBLE, not on the whole source: with a filter applied, "all" meaning
              something other than what you are looking at is how people switch off things they never
-             saw. Superseded rows are skipped — their toggle does nothing anyway. -->
+             saw. -->
         <button v-if="group.items.length > 1" class="btn tiny"
                 :title="`Switch on the ${toggleable(group).length} shown skill(s)`"
                 @click.stop="setGroup(group, true)">all on</button>
@@ -57,10 +57,11 @@
       <div v-if="isOpen(group.source.id)" class="sk-items">
         <div v-if="!group.items.length" class="sk-empty">nothing here</div>
 
+        <!-- Keyed by address, not id: two branches may hold the same name, and an id key would
+             collapse both editions into one row with one switch. -->
         <CapabilityRow
-          v-for="skill in group.items" :key="skill.id"
+          v-for="skill in group.items" :key="skill.address || skill.id"
           :item="skill"
-          :disabled="skill.state === 'Superseded'"
           @toggle="enabled => onToggle(skill, enabled)">
           <template #actions>
             <!-- The missing piece is almost always a disabled plugin, so offer the jump rather than
@@ -105,9 +106,10 @@ function matchesSearch(skill: CapabilityDto) {
 
 type Group = { source: SkillSourceDto; items: CapabilityDto[] };
 
-/** A Superseded row's toggle changes nothing, so a bulk action must not pretend otherwise. */
+/** Every row is toggleable now: overriding by id is gone, so no row's switch is inert. Kept as a
+ *  function because the bulk buttons count what they are about to act on. */
 function toggleable(group: Group) {
-  return group.items.filter(s => s.state !== "Superseded");
+  return group.items;
 }
 
 function setGroup(group: Group, enabled: boolean) {

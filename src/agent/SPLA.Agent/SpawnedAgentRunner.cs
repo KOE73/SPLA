@@ -52,14 +52,20 @@ public sealed class SpawnedAgentRunner : Domain.Interfaces.IAgentSpawner
         AgentMode mode,
         CancellationToken cancellationToken = default)
     {
-        var meta = _skills.Find(skillId);
+        var lookup = _skills.Resolve(skillId);
+        if (lookup.IsAmbiguous)
+            throw new System.ArgumentException(
+                $"Skill '{skillId}' is held by more than one source — name one of: " +
+                string.Join(", ", lookup.Candidates.Select(c => c.Address)), nameof(skillId));
+
+        var meta = lookup.Card;
         if (meta is null)
             throw new System.ArgumentException($"Skill '{skillId}' not found.", nameof(skillId));
 
         // Fresh isolated agent state — own skill session, working memory, and checkpoint manager.
         // Opening an AgentSessionScope keeps the sub-agent's tool calls (memory, marks, skills) off
         // the parent chat's state, even though the spawn happens inside the parent's async flow.
-        var body = _skills.LoadBody(skillId);
+        var body = _skills.LoadBody(meta.Address);
         if (string.IsNullOrWhiteSpace(body))
             throw new System.ArgumentException(
                 $"Skill '{skillId}' has no readable procedure.", nameof(skillId));
@@ -67,7 +73,7 @@ public sealed class SpawnedAgentRunner : Domain.Interfaces.IAgentSpawner
         var skillSession = new SkillSession();
         // Same loan slip as an in-chat activation: a sub-agent running a skill needs that skill's
         // references as much as the parent would, and its own session is the only place to hold them.
-        skillSession.Activate(skillId, body, meta.SourceId, meta.Ref, _skills.ListResources(skillId));
+        skillSession.Activate(meta.DisplayId, body, meta.SourceId, meta.Ref, _skills.ListResources(meta.Address));
         var checkpoint = new CheckpointManager();
         var agentSession = new AgentSession(new KeyValueStore("session"), checkpoint, skillSession);
 

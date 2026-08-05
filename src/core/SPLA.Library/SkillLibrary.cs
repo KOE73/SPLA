@@ -63,9 +63,44 @@ public sealed class SkillLibrary : IDisposable
     public IReadOnlyList<SkillCard> Catalog() =>
         _skills.Where(s => s.State == SkillState.Available).ToList();
 
-    public SkillCard? Find(string id) =>
-        _skills.FirstOrDefault(s => s.State != SkillState.Superseded &&
-                                    s.Id.Equals(id, StringComparison.OrdinalIgnoreCase));
+    /// <summary>
+    /// Resolves an address to one card. Accepts the full <c>branch:id</c> and the bare id, which keeps
+    /// working for as long as it is unambiguous.
+    ///
+    /// <para><b>Ambiguity is judged among the usable books first.</b> Two editions of a name where
+    /// only one is available is not a question anyone needs asked: the offered one is meant. Two
+    /// AVAILABLE editions is a real question, and it is returned as one. When none is available the
+    /// single match is still returned, so the caller can report the actual reason it cannot be used —
+    /// "needs port_scan, from plugin 'network'" is actionable and "unknown skill" is not.</para>
+    /// </summary>
+    public SkillLookup Resolve(string address)
+    {
+        var wanted = address?.Trim() ?? string.Empty;
+        if (wanted.Length == 0) return SkillLookup.Miss();
+
+        // Matched whole, never split on ':'. Source ids carry colons of their own — a plugin branch is
+        // literally "plugin:network", so "plugin:network:net.audit" has two — and any rule about which
+        // colon separates what would be a rule someone eventually gets wrong. A full address names one
+        // shelf, so there is nothing left to be ambiguous about.
+        if (_skills.FirstOrDefault(s => s.Address.Equals(wanted, StringComparison.OrdinalIgnoreCase))
+            is { } exact)
+            return SkillLookup.Hit(exact);
+
+        var matches = _skills
+            .Where(s => s.Id.Equals(wanted, StringComparison.OrdinalIgnoreCase))
+            .ToList();
+
+        if (matches.Count == 0) return SkillLookup.Miss();
+        if (matches.Count == 1) return SkillLookup.Hit(matches[0]);
+
+        var available = matches.Where(s => s.State == SkillState.Available).ToList();
+        return available.Count == 1
+            ? SkillLookup.Hit(available[0])
+            : SkillLookup.Ambiguous(available.Count > 1 ? available : matches);
+    }
+
+    /// <summary>Convenience for callers that only need the card and treat "ambiguous" as "no".</summary>
+    public SkillCard? Find(string address) => Resolve(address).Card;
 
     /// <summary>Procedure text for a skill, fetched from its owning source. Null when the skill is
     /// unknown or its source cannot produce the body.</summary>
@@ -151,10 +186,10 @@ public sealed class SkillLibrary : IDisposable
     {
         _skills.Clear();
 
-        // Source order IS priority order: the first source to claim an id owns it, later ones are
-        // marked Superseded rather than dropped so the panel can show that an override is in effect.
-        var claimed = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
-
+        // Source order is display order and the tie-break in ranking — it is NOT priority. Two
+        // branches holding the same skill id both keep their book; the reader picks by address. The
+        // shelf that used to claim an id and mark the rest Superseded is gone with the idea behind
+        // it: a library where the second edition evicts the first is not a library.
         foreach (var source in _sources)
         {
             IReadOnlyList<SkillEntry> entries;
@@ -184,20 +219,12 @@ public sealed class SkillLibrary : IDisposable
                     Uses = entry.Uses
                 };
 
-                if (claimed.TryGetValue(entry.Id, out var owner))
-                {
-                    meta.State = SkillState.Superseded;
-                    meta.StateReason = $"overridden by source '{owner}'";
-                    meta.IsEnabled = false;
-                    _skills.Add(meta);
-                    continue;
-                }
-
-                claimed[entry.Id] = source.Id;
-                Resolve(meta, entry);
+                ResolveState(meta, entry);
                 _skills.Add(meta);
             }
         }
+
+        AssignDisplayIds();
 
         _logger?.LogInformation("Skills rebuilt. Total={Total} Available={Available}",
             _skills.Count, _skills.Count(s => s.State == SkillState.Available));
@@ -205,12 +232,46 @@ public sealed class SkillLibrary : IDisposable
         Reloaded?.Invoke(this, EventArgs.Empty);
     }
 
+    /// <summary>
+    /// Gives every card the shortest name that still identifies it: the bare id while it occurs once,
+    /// the full address once two branches hold it.
+    ///
+    /// <para>One rule, computed in one place, rather than each caller deciding how much to print.
+    /// Always printing the address would be correct and would also charge every prompt for a branch
+    /// name in the overwhelmingly common case where there is nothing to disambiguate.</para>
+    /// </summary>
+    private void AssignDisplayIds()
+    {
+        var shared = _skills
+            .GroupBy(s => s.Id, StringComparer.OrdinalIgnoreCase)
+            .Where(g => g.Count() > 1)
+            .Select(g => g.Key)
+            .ToHashSet(StringComparer.OrdinalIgnoreCase);
+
+        foreach (var card in _skills)
+            card.DisplayId = shared.Contains(card.Id) ? card.Address : card.Id;
+    }
+
+    /// <summary>
+    /// The <c>skills.items</c> entry that applies to a card. A full address selects one edition; a
+    /// bare id applies to every edition of that name and is never ambiguous.
+    ///
+    /// <para>The key is a PREDICATE here, not an address, and that is the difference between settings
+    /// and a loan. "The skill called foo is not for me" is a statement about a name, and switching off
+    /// everything under one name is both legitimate and impossible to misread. Needing exactly one
+    /// book is a property of borrowing, which is where ambiguity is an error.</para>
+    /// </summary>
+    private SplaSkillSection? SettingFor(SkillCard meta) =>
+        _settings.TryGetValue(meta.Address, out var byAddress) ? byAddress
+        : _settings.TryGetValue(meta.Id, out var byId) ? byId
+        : null;
+
     /// <summary>Decides a single skill's effective flags and state. Order matters: an explicit user
     /// decision outranks trust, and both outrank a missing tool — telling someone their disabled
     /// skill also lacks a plugin is noise.</summary>
-    private void Resolve(SkillCard meta, SkillEntry entry)
+    private void ResolveState(SkillCard meta, SkillEntry entry)
     {
-        _settings.TryGetValue(entry.Id, out var configured);
+        var configured = SettingFor(meta);
 
         var enabled = configured?.Enabled ?? entry.DefaultEnabled;
         meta.IsEnabled = enabled;

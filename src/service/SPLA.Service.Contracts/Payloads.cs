@@ -415,6 +415,16 @@ public sealed class PluginsPayload
 public sealed class CapabilityDto
 {
     public string Id { get; set; } = string.Empty;
+
+    /// <summary>
+    /// A skill's full address, <c>branch:id</c> — the thing that actually identifies it, since two
+    /// branches may hold the same name. Empty for built-ins, which have no branch.
+    ///
+    /// <para>This is what a save must key on and what a list must key rows on: two editions of one
+    /// name would otherwise collapse into a single row and a single switch.</para>
+    /// </summary>
+    public string Address { get; set; } = string.Empty;
+
     /// <summary>"builtin" or "skill".</summary>
     public string Kind { get; set; } = string.Empty;
     public string Name { get; set; } = string.Empty;
@@ -422,7 +432,7 @@ public sealed class CapabilityDto
     public bool Enabled { get; set; } = true;
 
     /// <summary>Resolved state name — Available / MissingPrerequisites / DisabledByUser /
-    /// DisabledByTrust / Superseded for skills, Enabled / DisabledByUser for built-ins. Read-only.</summary>
+    /// DisabledByTrust for skills, Enabled / DisabledByUser for built-ins. Read-only.</summary>
     public string? State { get; set; }
     public string? StateReason { get; set; }
 

@@ -74,16 +74,21 @@ public sealed class ChatRuntime
         if (_skillSession.ActiveSkillId is { } running)
             return $"skill '{running}' is already active — end it first";
 
-        var skill = _runtime.SkillLibrary.Find(skillId);
+        var lookup = _runtime.SkillLibrary.Resolve(skillId);
+        if (lookup.IsAmbiguous)
+            return $"'{skillId}' is held by more than one source — ask for one of: " +
+                   string.Join(", ", lookup.Candidates.Select(c => c.Address));
+
+        var skill = lookup.Card;
         if (skill is null) return $"unknown skill '{skillId}'";
-        if (skill.State != SkillState.Available) return $"'{skill.Id}' is not available — {skill.StateReason}";
+        if (skill.State != SkillState.Available) return $"'{skill.DisplayId}' is not available — {skill.StateReason}";
 
-        var body = _runtime.SkillLibrary.LoadBody(skill.Id);
+        var body = _runtime.SkillLibrary.LoadBody(skill.Address);
         if (string.IsNullOrWhiteSpace(body))
-            return $"'{skill.Id}' has no readable procedure — its source '{skill.SourceId}' returned nothing";
+            return $"'{skill.DisplayId}' has no readable procedure — its source '{skill.SourceId}' returned nothing";
 
-        _skillSession.Activate(skill.Id, body, skill.SourceId, skill.Ref,
-            _runtime.SkillLibrary.ListResources(skill.Id));
+        _skillSession.Activate(skill.DisplayId, body, skill.SourceId, skill.Ref,
+            _runtime.SkillLibrary.ListResources(skill.Address));
 
         // The same sets skill_activate would have raised. A procedure handed over by a person must
         // arrive able to run, and the sets waiting on exactly this were declared by the skill itself.

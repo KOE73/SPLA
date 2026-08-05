@@ -311,8 +311,11 @@ public static class SettingsOps
             payload.Skills.Add(new CapabilityDto
             {
                 Id = skill.Id,
+                Address = skill.Address,
                 Kind = "skill",
-                Name = skill.Id,
+                // What the model would be shown: bare while the name is unique, qualified once it is
+                // not, so the panel and the prompt call the same book the same thing.
+                Name = skill.DisplayId,
                 Description = skill.Description,
                 Enabled = skill.IsEnabled,
                 Tags = skill.Tags.ToList(),
@@ -331,13 +334,19 @@ public static class SettingsOps
     /// <summary>Persists per-skill switches to <c>skills.items</c> and applies them live — skills are
     /// read on demand, so unlike plugin assemblies nothing needs a restart. The <c>sources</c> half of
     /// the section is left untouched: this editor switches skills on and off, it does not repoint
-    /// where they come from.</summary>
+    /// where they come from.
+    ///
+    /// <para>Written under the full address, never the bare id. A row in this panel is one edition of
+    /// one book, and the person clicking it is looking at its branch; a bare key would be a statement
+    /// about every branch at once, which is a legitimate thing to write by hand and a terrible thing
+    /// to produce by clicking.</para></summary>
     public static SkillsPayload SaveSkills(AgentRuntime runtime, IEnumerable<CapabilityDto> incoming)
     {
         foreach (var dto in incoming)
         {
-            if (string.IsNullOrWhiteSpace(dto.Id)) continue;
-            runtime.Settings.Skills[dto.Id] = new SplaSkillSection { Enabled = dto.Enabled };
+            var key = !string.IsNullOrWhiteSpace(dto.Address) ? dto.Address : dto.Id;
+            if (string.IsNullOrWhiteSpace(key)) continue;
+            runtime.Settings.Skills[key] = new SplaSkillSection { Enabled = dto.Enabled };
         }
 
         var path = runtime.Settings.ProjectFilePath;
