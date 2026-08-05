@@ -72,18 +72,24 @@ public class SkillGrantedSourceTests : IDisposable
             new SplaDefaults(),
             new SplaProject { Skills = new SplaSkillsSection { Sources = [Entry("ops", "from-project")] } });
 
+        // Absolute and outside the workspace: a folder of the person's own, which is the case this
+        // test is about. Anything inside the workspace is untrusted by location no matter who added
+        // it — that rule has its own tests.
+        var mine = Path.Combine(_temp, "mine");
         var store = Store();
-        store.Save([Entry("ops", "from-me")]);
+        store.Save([Entry("ops", mine)]);
         settings.SkillSourceStore = store;
 
         var effective = settings.EffectiveSkillSources();
 
-        Assert.Equal(["from-project", "from-me"], effective.Select(s => s.Path));
+        Assert.Equal(["from-project", mine], effective.Select(s => s.Path));
         Assert.Equal([SourceOrigin.Project, SourceOrigin.Granted], effective.Select(s => s.Origin));
 
         // Folded: one branch, pointed where the person said, standing as theirs rather than the
-        // project's — which is also what lifts it past the project ceiling.
-        var built = SkillSourceRegistry.Build(effective, new SkillSourceContext(_temp, _temp, null),
+        // project's — which is also what lifts it past the project ceiling. The workspace is
+        // elsewhere, so only the layer rule is in play here.
+        var built = SkillSourceRegistry.Build(
+            effective, new SkillSourceContext(Path.Combine(_temp, "workspace"), _temp, null),
             inheritDefaults: false).Single();
         Assert.Equal("ops", built.Id);
         Assert.Equal(SkillTrust.Trusted, built.Trust);

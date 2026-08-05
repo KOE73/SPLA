@@ -77,11 +77,23 @@ public sealed class FileSkillTrustStore : ISkillTrustStore
         catch { return path.Trim(); }
     }
 
+    /// <summary>
+    /// The on-disk shape. <see cref="GrantedAt"/> is a STRING, not a <see cref="DateTimeOffset"/>:
+    /// YamlDotNet serialises that type by walking its properties, so a timestamp came out as twenty
+    /// lines of day-of-year and total-offset-minutes. This file is meant to be readable by the person
+    /// whose decisions it records.
+    /// </summary>
     private sealed class Record
     {
-        [YamlMember(Alias = "granted_at")] public DateTimeOffset GrantedAt { get; set; }
+        [YamlMember(Alias = "granted_at")] public string? GrantedAt { get; set; }
         [YamlMember(Alias = "granted_by")] public string? GrantedBy { get; set; }
     }
+
+    private static DateTimeOffset ParseGrantedAt(string? value) =>
+        DateTimeOffset.TryParse(value, System.Globalization.CultureInfo.InvariantCulture,
+            System.Globalization.DateTimeStyles.RoundtripKind, out var parsed)
+            ? parsed
+            : default;
 
     private Dictionary<string, Record> Load()
     {
@@ -128,7 +140,7 @@ public sealed class FileSkillTrustStore : ISkillTrustStore
         if (key.Length == 0) return;
 
         var map = Load();
-        map[key] = new Record { GrantedAt = DateTimeOffset.Now, GrantedBy = userKey };
+        map[key] = new Record { GrantedAt = DateTimeOffset.Now.ToString("o"), GrantedBy = userKey };
         Store(map);
     }
 
@@ -141,7 +153,7 @@ public sealed class FileSkillTrustStore : ISkillTrustStore
     }
 
     public IReadOnlyList<SkillTrustGrant> List() =>
-        Load().Select(kv => new SkillTrustGrant(kv.Key, kv.Value.GrantedAt, kv.Value.GrantedBy))
+        Load().Select(kv => new SkillTrustGrant(kv.Key, ParseGrantedAt(kv.Value.GrantedAt), kv.Value.GrantedBy))
               .OrderBy(g => g.Path, StringComparer.OrdinalIgnoreCase)
               .ToList();
 }

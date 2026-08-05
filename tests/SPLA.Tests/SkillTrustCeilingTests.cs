@@ -19,12 +19,16 @@ public class SkillTrustCeilingTests : IDisposable
         if (Directory.Exists(_temp)) Directory.Delete(_temp, recursive: true);
     }
 
-    private SkillSourceContext Context() => new(_temp, Path.Combine(_temp, "home"), null);
+    private SkillSourceContext Context() => new(Path.Combine(_temp, "workspace"), Path.Combine(_temp, "home"), null);
 
-    private static SplaSkillSourceSection Entry(
+    /// <summary>Points outside the workspace by default, so these cases exercise the LAYER ceiling
+    /// on its own. A folder inside the workspace is untrusted regardless of who declared it, which
+    /// would otherwise mask every result here.</summary>
+    private SplaSkillSourceSection Entry(
         string id, SourceOrigin origin, string? trust = null, string? path = null, string? level = null) => new()
     {
-        Id = id, Type = "directory", Path = path ?? id, Trust = trust, Level = level, Origin = origin
+        Id = id, Type = "directory", Path = path ?? Path.Combine(_temp, "elsewhere", id),
+        Trust = trust, Level = level, Origin = origin
     };
 
     private ISkillSource Built(SplaSkillSourceSection entry, string? maxTrust = null) =>
@@ -93,7 +97,10 @@ public class SkillTrustCeilingTests : IDisposable
         var repointed = SkillSourceRegistry.Build(
         [
             Entry("ops", SourceOrigin.Machine, trust: "trusted"),
-            new SplaSkillSourceSection { Id = "ops", Path = "somewhere-in-the-repo", Origin = SourceOrigin.Project }
+            new SplaSkillSourceSection
+            {
+                Id = "ops", Path = Path.Combine(_temp, "elsewhere", "other"), Origin = SourceOrigin.Project
+            }
         ], context, inheritDefaults: false).Single();
         Assert.Equal(SkillTrust.Untrusted, repointed.Trust);
     }
@@ -102,30 +109,77 @@ public class SkillTrustCeilingTests : IDisposable
     public void Restating_a_default_path_is_not_a_repointing()
     {
         // This repository's own .spla lists `skills` and `.spla/skills` — the same two folders the
-        // built-in entries already name. Treating a restatement as a choice of content would untrust
-        // every project that wrote its list out in full, which is most of them.
+        // built-in entries already name. Treating a restatement as a choice of content would demote
+        // the entry for the wrong reason; whether those two are trusted is decided by WHERE they are,
+        // which the workspace rule below covers.
         var sources = SkillSourceRegistry.Build(
         [
             new SplaSkillSourceSection { Type = "directory", Path = "skills", Origin = SourceOrigin.Project },
             new SplaSkillSourceSection { Type = "directory", Path = ".spla/skills", Origin = SourceOrigin.Project }
         ], Context());
 
-        Assert.All(sources, s => Assert.Equal(SkillTrust.Trusted, s.Trust));
         Assert.Equal(["repo", "local", "machine"], sources.Select(s => s.Id));
+        // machine lives in the person's home, so restating project paths left it alone.
+        Assert.Equal(SkillTrust.Trusted, sources.Single(s => s.Id == "machine").Trust);
+    }
+
+    // ── Where the folder is, not who declared it ─────────────────────────────
+
+    [Fact]
+    public void A_folder_inside_the_workspace_starts_untrusted_even_with_nobody_declaring_it()
+    {
+        // The case the layer ceiling missed entirely: a stranger's repository with a skills/ folder
+        // and no config at all. Nobody declared anything, so nobody could be caught claiming trust —
+        // and the text walked straight into the system prompt.
+        var sources = SkillSourceRegistry.Build(null, Context());
+
+        Assert.Equal(SkillTrust.Untrusted, sources.Single(s => s.Id == "repo").Trust);
+        Assert.Equal(SkillTrust.Untrusted, sources.Single(s => s.Id == "local").Trust);
+        // The person's own home is not somewhere a clone can put anything.
+        Assert.Equal(SkillTrust.Trusted, sources.Single(s => s.Id == "machine").Trust);
     }
 
     [Fact]
-    public void An_absolute_restatement_of_a_relative_default_counts_as_the_same_folder()
+    public void Approving_the_folder_is_what_lifts_it()
     {
-        var sources = SkillSourceRegistry.Build(
-            [new SplaSkillSourceSection
-            {
-                Id = "repo", Type = "directory",
-                Path = Path.Combine(_temp, "skills"), Origin = SourceOrigin.Project
-            }],
-            Context());
+        var repoSkills = Path.Combine(_temp, "workspace", "skills");
+        Directory.CreateDirectory(repoSkills);
 
-        Assert.Equal(SkillTrust.Trusted, sources.Single(s => s.Id == "repo").Trust);
+        var grants = new FileSkillTrustStore(_temp);
+        Assert.Equal(SkillTrust.Untrusted,
+            SkillSourceRegistry.Build(null, Context(), trustStore: grants).Single(s => s.Id == "repo").Trust);
+
+        grants.Grant(repoSkills);
+        Assert.Equal(SkillTrust.Trusted,
+            SkillSourceRegistry.Build(null, Context(), trustStore: grants).Single(s => s.Id == "repo").Trust);
+    }
+
+    [Fact]
+    public void The_installation_branch_is_not_workspace_content_even_when_it_sits_inside_one()
+    {
+        // True whenever this product is developed on itself: bin/ is under the workspace, and skills
+        // shipped beside the executable are the product's own wherever it was built.
+        var workspace = Path.Combine(_temp, "workspace");
+        var app = Path.Combine(workspace, "src", "apps", "bin");
+        Directory.CreateDirectory(app);
+        var context = new SkillSourceContext(workspace, Path.Combine(_temp, "home"), null, app);
+
+        var sources = SkillSourceRegistry.Build(null, context);
+
+        Assert.Equal(SkillTrust.Trusted, sources.Single(s => s.Id == "builtin").Trust);
+        Assert.Equal(SkillTrust.Untrusted, sources.Single(s => s.Id == "repo").Trust);
+    }
+
+    [Fact]
+    public void A_folder_outside_the_workspace_is_unaffected_by_the_rule()
+    {
+        var outside = Path.Combine(Path.GetTempPath(), "spla_outside_" + Path.GetRandomFileName());
+
+        var built = SkillSourceRegistry.Build(
+            [new SplaSkillSourceSection { Id = "ops", Type = "directory", Path = outside, Origin = SourceOrigin.Granted }],
+            Context(), inheritDefaults: false).Single();
+
+        Assert.Equal(SkillTrust.Trusted, built.Trust);
     }
 
     [Fact]

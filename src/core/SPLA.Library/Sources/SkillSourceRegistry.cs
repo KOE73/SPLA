@@ -229,7 +229,8 @@ public static class SkillSourceRegistry
                 ? SkillTrust.Trusted
                 : (SkillTrust?)null;
 
-            var trust = EffectiveTrust(entry, id, granted, maxTrust, logger);
+            var trust = EffectiveTrust(entry, id, granted, maxTrust, logger,
+                insideWorkspace: grantKey is not null && IsInsideWorkspace(grantKey, context));
             var source = factory.Create(entry, id, trust, context, out var error);
             if (source is null)
             {
@@ -390,7 +391,8 @@ public static class SkillSourceRegistry
     /// always have; the cap is what makes that safe for entries arriving from elsewhere.</para>
     /// </summary>
     internal static SkillTrust EffectiveTrust(
-        SplaSkillSourceSection entry, string id, SkillTrust? granted, string? maxTrust, ILogger? logger)
+        SplaSkillSourceSection entry, string id, SkillTrust? granted, string? maxTrust, ILogger? logger,
+        bool insideWorkspace = false)
     {
         var asked = ParseTrust(entry.Trust);
         var trust = asked;
@@ -406,6 +408,20 @@ public static class SkillSourceRegistry
                     id, entry.Trust);
         }
 
+        // Where the folder IS, not who declared it. A branch inside the workspace arrives with the
+        // clone whether a .spla named it or it was simply sitting in skills/ — and the second case is
+        // both easier to arrange and, before this, entirely unguarded: the layer ceiling only ever
+        // looked at who wrote the entry, so a stranger's repository with a skills/ folder and no
+        // config at all walked straight into the system prompt. Opening a project in a folder that
+        // already has skills now means seeing them and deciding, which is the whole point.
+        if (trust == SkillTrust.Trusted && insideWorkspace)
+        {
+            trust = SkillTrust.Untrusted;
+            logger?.LogInformation(
+                "Skill source '{Id}' lives inside the workspace, so it arrives with whoever wrote the project — untrusted until approved in the settings panel.",
+                id);
+        }
+
         // The grant is the user's separate, explicitly recorded decision, so it outranks the entry.
         if (granted is { } g && g == SkillTrust.Trusted) trust = SkillTrust.Trusted;
 
@@ -417,6 +433,35 @@ public static class SkillSourceRegistry
         }
 
         return trust;
+    }
+
+    /// <summary>
+    /// Whether a folder sits inside the project being worked on — i.e. whether it arrives with the
+    /// clone.
+    ///
+    /// <para>The installation folder is excluded even when it happens to lie inside the workspace,
+    /// which it does whenever this product is developed on itself: skills shipped beside the
+    /// executable are the product's own wherever the executable was built. Build output is not
+    /// somebody else's content.</para>
+    /// </summary>
+    private static bool IsInsideWorkspace(string fullPath, SkillSourceContext context)
+    {
+        if (context.AppDirectory.Length > 0 && IsUnder(fullPath, context.AppDirectory)) return false;
+        return IsUnder(fullPath, context.WorkspacePath);
+    }
+
+    private static bool IsUnder(string path, string root)
+    {
+        try
+        {
+            var p = Path.GetFullPath(path).TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
+            var r = Path.GetFullPath(root).TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
+            if (r.Length == 0) return false;
+
+            return p.Equals(r, StringComparison.OrdinalIgnoreCase) ||
+                   p.StartsWith(r + Path.DirectorySeparatorChar, StringComparison.OrdinalIgnoreCase);
+        }
+        catch { return false; }
     }
 
     private static ISkillSourceFactory? FactoryFor(string? type) =>

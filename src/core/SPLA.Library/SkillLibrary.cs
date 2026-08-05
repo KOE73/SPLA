@@ -345,7 +345,7 @@ public sealed class SkillLibrary : IDisposable
         {
             meta.State = SkillState.DisabledByTrust;
             meta.StateReason =
-                $"source '{meta.SourceId}' is untrusted — trust the source itself, or copy this skill into one you trust";
+                $"source '{meta.SourceId}' is untrusted — approve the folder in Settings → Skills, or copy this skill into a source you already trust";
             meta.IsEnabled = false;
             return;
         }

@@ -72,6 +72,23 @@ public class SkillTrustGrantTests : IDisposable
     }
 
     [Fact]
+    public void The_grant_file_stays_readable_by_the_person_it_belongs_to()
+    {
+        var folder = Folder("ops");
+        var grants = new FileSkillTrustStore(_temp);
+        grants.Grant(folder, "koe");
+
+        var text = File.ReadAllText(grants.FilePath);
+
+        // A DateTimeOffset serialised as an object turns one timestamp into twenty lines of
+        // day_of_year and total_offset_minutes. This file records a person's own decisions; they
+        // have to be able to read it.
+        Assert.DoesNotContain("day_of_year", text);
+        Assert.Contains("granted_by: koe", text);
+        Assert.True(Math.Abs((grants.List().Single().GrantedAt - DateTimeOffset.Now).TotalMinutes) < 5);
+    }
+
+    [Fact]
     public void One_spelling_per_location()
     {
         var folder = Folder("ops");
@@ -144,6 +161,6 @@ public class SkillTrustGrantTests : IDisposable
         // contradiction: the contents arrived together, from the same place, on the same terms.
         var skill = library.Find("imported.thing")!;
         Assert.Equal(SPLA.Library.Catalog.SkillState.DisabledByTrust, skill.State);
-        Assert.Contains("copy this skill into one you trust", skill.StateReason);
+        Assert.Contains("approve the folder", skill.StateReason);
     }
 }
