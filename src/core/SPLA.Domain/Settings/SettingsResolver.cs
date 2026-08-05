@@ -135,6 +135,10 @@ public class ResolvedSettings
     /// white list — "only what I named". Last layer to mention it wins, like every other scalar.</summary>
     public bool SkillsInheritDefaults { get; set; } = true;
 
+    /// <summary>The administrator's ceiling on source trust (<c>skills.policy.max_trust</c>), read
+    /// only from the machine layer. Null = no ceiling, i.e. a granted source may be trusted.</summary>
+    public string? SkillsMaxTrust { get; set; }
+
     // The model-backed librarian (skills.librarian). Null = off; skill_find stays deterministic.
     public SplaLibrarianSection? SkillLibrarian { get; set; }
 
@@ -247,7 +251,7 @@ public static class SettingsResolver
                 r.Theme = defaults.Ui.Theme ?? r.Theme;
                 r.Density = defaults.Ui.Density ?? r.Density;
             }
-            ApplySkills(r, defaults.Skills);
+            ApplySkills(r, defaults.Skills, SourceOrigin.Machine);
             ApplyToolSets(r, defaults.ToolSets);
         }
 
@@ -303,7 +307,7 @@ public static class SettingsResolver
                     r.Plugins[kvp.Key] = kvp.Value;
             }
             ApplyToolSets(r, project.ToolSets);
-            ApplySkills(r, project.Skills);
+            ApplySkills(r, project.Skills, SourceOrigin.Project);
         }
 
         // Finalize: keep configured connections; synthesize a default from the llm: section when none
@@ -371,15 +375,24 @@ public static class SettingsResolver
     /// be worked out. Appending rather than replacing is the whole point of the change: adding a
     /// folder is one entry in any layer, and dropping an inherited one is <c>enabled: false</c>.</para>
     /// </summary>
-    private static void ApplySkills(ResolvedSettings r, SplaSkillsSection? skills)
+    private static void ApplySkills(ResolvedSettings r, SplaSkillsSection? skills, SourceOrigin origin)
     {
         if (skills == null) return;
 
         if (skills.InheritDefaults.HasValue)
             r.SkillsInheritDefaults = skills.InheritDefaults.Value;
 
+        // Policy is the administrator's, so it is heard from the administrator's layer only. A
+        // project raising its own ceiling would be the exact move the ceiling exists to stop.
+        if (origin == SourceOrigin.Machine && skills.Policy?.MaxTrust is { } maxTrust)
+            r.SkillsMaxTrust = maxTrust;
+
         if (skills.Sources != null)
-            r.SkillSources.AddRange(skills.Sources);
+            foreach (var source in skills.Sources)
+            {
+                source.Origin = origin;
+                r.SkillSources.Add(source);
+            }
 
         if (skills.Items != null)
             foreach (var kvp in skills.Items)

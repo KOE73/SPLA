@@ -26,9 +26,14 @@ public interface ISkillSourceFactory
     /// </summary>
     string DeriveId(SplaSkillSourceSection config, SkillSourceContext context);
 
-    /// <summary>Creates the source under an already-resolved <paramref name="id"/>, or returns null
-    /// with a reason when the entry is unusable.</summary>
-    ISkillSource? Create(SplaSkillSourceSection config, string id, SkillSourceContext context, out string? error);
+    /// <summary>Creates the source under an already-resolved <paramref name="id"/> and an
+    /// already-decided <paramref name="trust"/>, or returns null with a reason when the entry is
+    /// unusable.
+    ///
+    /// <para>Trust arrives decided rather than being read off <c>config.Trust</c> here: what an entry
+    /// asks for and what it is allowed depend on which layer declared it and on what the user
+    /// granted, and a factory that re-derived it would be a second opinion on a security question.</para></summary>
+    ISkillSource? Create(SplaSkillSourceSection config, string id, SkillTrust trust, SkillSourceContext context, out string? error);
 }
 
 /// <summary>Ambient information every factory may need: where the project lives, where the machine
@@ -73,7 +78,8 @@ public sealed class DirectorySkillSourceFactory : ISkillSourceFactory
         catch { return config.Path.Trim(); }
     }
 
-    public ISkillSource? Create(SplaSkillSourceSection config, string id, SkillSourceContext context, out string? error)
+    public ISkillSource? Create(
+        SplaSkillSourceSection config, string id, SkillTrust trust, SkillSourceContext context, out string? error)
     {
         if (string.IsNullOrWhiteSpace(config.Path))
         {
@@ -85,8 +91,7 @@ public sealed class DirectorySkillSourceFactory : ISkillSourceFactory
         var full = context.ResolvePath(config.Path);
 
         return new DirectorySkillSource(
-            id, config.Label ?? Describe(full, context).Label, full,
-            SkillSourceRegistry.ParseTrust(config.Trust),
+            id, config.Label ?? Describe(full, context).Label, full, trust,
             context.Loggers?.CreateLogger<DirectorySkillSource>(),
             level: SkillSourceRegistry.ParseLevel(config.Level));
     }
@@ -174,12 +179,14 @@ public static class SkillSourceRegistry
     /// </summary>
     /// <param name="declared">Entries accumulated from the settings layers, in declaration order.</param>
     /// <param name="inheritDefaults">False = a white list: only what <paramref name="declared"/> names.</param>
+    /// <param name="maxTrust">The administrator's ceiling (<c>skills.policy.max_trust</c>), or null.</param>
     public static IReadOnlyList<ISkillSource> Build(
         IReadOnlyList<SplaSkillSourceSection>? declared,
         SkillSourceContext context,
         IEnumerable<ISkillSource>? pluginSources = null,
         ILogger? logger = null,
-        bool inheritDefaults = true)
+        bool inheritDefaults = true,
+        string? maxTrust = null)
     {
         var sources = new List<ISkillSource>();
         var seenIds = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
@@ -196,7 +203,8 @@ public static class SkillSourceRegistry
             // because an entry nobody can build also has no name to be addressed by.
             var factory = FactoryFor(entry.Type)!;
 
-            var source = factory.Create(entry, id, context, out var error);
+            var trust = EffectiveTrust(entry, id, granted: null, maxTrust, logger);
+            var source = factory.Create(entry, id, trust, context, out var error);
             if (source is null)
             {
                 logger?.LogWarning("Skill source '{Id}' not created: {Error}", id, error ?? "unknown reason");
@@ -294,20 +302,78 @@ public static class SkillSourceRegistry
         return merged;
     }
 
-    /// <summary>One entry laid over another: a field the newer entry left unset keeps the inherited
-    /// value. That is what makes <c>- id: local</c> + <c>enabled: false</c> a complete statement —
-    /// you switch a branch off without having to restate where it points.</summary>
-    private static SplaSkillSourceSection Overlay(SplaSkillSourceSection under, SplaSkillSourceSection over) => new()
+    /// <summary>
+    /// One entry laid over another: a field the newer entry left unset keeps the inherited value.
+    /// That is what makes <c>- id: local</c> + <c>enabled: false</c> a complete statement — you switch
+    /// a branch off without having to restate where it points.
+    ///
+    /// <para><b>Origin follows the two fields that decide security</b>, not the act of touching the
+    /// entry. A layer that repoints <c>path</c> or restates <c>trust</c> owns the result and stamps
+    /// its own, less privileged origin: it chose what content arrives and how far it is believed. A
+    /// layer that only adjusts <c>level</c> or <c>label</c> changes neither, so the entry keeps the
+    /// standing of the layer that declared it. Demoting on any touch at all would mean a project
+    /// setting <c>level: findable</c> on the user's own drafts folder quietly untrusted it.</para>
+    /// </summary>
+    private static SplaSkillSourceSection Overlay(SplaSkillSourceSection under, SplaSkillSourceSection over)
     {
-        Id      = over.Id      ?? under.Id,
-        Type    = over.Type    ?? under.Type,
-        Path    = over.Path    ?? under.Path,
-        Level   = over.Level   ?? under.Level,
-        Trust   = over.Trust   ?? under.Trust,
-        Label   = over.Label   ?? under.Label,
-        Enabled = over.Enabled ?? under.Enabled,
-        Options = over.Options ?? under.Options
-    };
+        var movesContentOrTrust = over.Path is not null || over.Trust is not null;
+
+        return new()
+        {
+            Id      = over.Id      ?? under.Id,
+            Origin  = movesContentOrTrust && over.Origin < under.Origin ? over.Origin : under.Origin,
+            Type    = over.Type    ?? under.Type,
+            Path    = over.Path    ?? under.Path,
+            Level   = over.Level   ?? under.Level,
+            Trust   = over.Trust   ?? under.Trust,
+            Label   = over.Label   ?? under.Label,
+            Enabled = over.Enabled ?? under.Enabled,
+            Options = over.Options ?? under.Options
+        };
+    }
+
+    /// <summary>
+    /// How far this entry is believed: what it asked for, capped by what its layer may claim, then
+    /// capped again by the administrator.
+    ///
+    /// <para>The two caps are not redundant. The first says a project cannot vouch for itself — the
+    /// scenario is one sentence long: clone a repository, its <c>.spla</c> adds a source pointing
+    /// inside that same repository and calls it trusted, and its text is now in your system prompt.
+    /// The second is the administrator's right to forbid what the user granted, which is a different
+    /// question with a different answer on a server.</para>
+    ///
+    /// <para>A source declaring nothing is trusted, so the built-in branches keep behaving as they
+    /// always have; the cap is what makes that safe for entries arriving from elsewhere.</para>
+    /// </summary>
+    internal static SkillTrust EffectiveTrust(
+        SplaSkillSourceSection entry, string id, SkillTrust? granted, string? maxTrust, ILogger? logger)
+    {
+        var asked = ParseTrust(entry.Trust);
+        var trust = asked;
+
+        // Only the person at the keyboard and the administrator may vouch. A project file travels
+        // with somebody else's repository, so it may ask and may not decide.
+        if (trust == SkillTrust.Trusted && entry.Origin == SourceOrigin.Project)
+        {
+            trust = SkillTrust.Untrusted;
+            if (entry.Trust is not null)
+                logger?.LogWarning(
+                    "Skill source '{Id}' declared trust '{Declared}' from the project layer, which cannot vouch for itself — lowered to untrusted. Trust it from the settings panel if you have read it.",
+                    id, entry.Trust);
+        }
+
+        // The grant is the user's separate, explicitly recorded decision, so it outranks the entry.
+        if (granted is { } g && g == SkillTrust.Trusted) trust = SkillTrust.Trusted;
+
+        if (trust == SkillTrust.Trusted && ParseTrust(maxTrust) == SkillTrust.Untrusted)
+        {
+            trust = SkillTrust.Untrusted;
+            logger?.LogInformation(
+                "Skill source '{Id}' held at untrusted by skills.policy.max_trust.", id);
+        }
+
+        return trust;
+    }
 
     private static ISkillSourceFactory? FactoryFor(string? type) =>
         string.IsNullOrWhiteSpace(type)

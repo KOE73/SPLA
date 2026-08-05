@@ -42,6 +42,29 @@ public class SplaSkillsSection
     /// <summary>The model-backed librarian. Absent = off, and skill_find stays purely deterministic.</summary>
     [YamlMember(Alias = "librarian")]
     public SplaLibrarianSection? Librarian { get; set; }
+
+    /// <summary>Deployment policy. Honoured only from the machine layer — see
+    /// <see cref="SplaSkillsPolicySection"/> for why that is the right place rather than a weak one.</summary>
+    [YamlMember(Alias = "policy")]
+    public SplaSkillsPolicySection? Policy { get; set; }
+}
+
+/// <summary>
+/// What the administrator allows, as opposed to what a layer asks for.
+///
+/// <para>Read <b>only</b> from the machine layer (<c>~/.spla/defaults.yaml</c>), and that is not a
+/// weak choice of location: locally it is the home of the person at the keyboard, who is their own
+/// administrator; on a server it is the service account's home, which a user cannot write to. The
+/// same key means "my own preference" on a laptop and "the rule" on a server without either of them
+/// needing a second mechanism.</para>
+/// </summary>
+public class SplaSkillsPolicySection
+{
+    /// <summary>Highest trust any source may reach, whatever it declares and whatever the user
+    /// granted: <c>trusted</c> (default) or <c>untrusted</c>. This is the administrator's right to
+    /// forbid the personal, which is the third list every mature deployment model has.</summary>
+    [YamlMember(Alias = "max_trust")]
+    public string? MaxTrust { get; set; }
 }
 
 /// <summary>
@@ -90,6 +113,14 @@ public class SplaSkillSourceSection
     /// There is no way to delete an inherited entry, and that is the intended shape.</summary>
     [YamlMember(Alias = "enabled")]
     public bool? Enabled { get; set; }
+
+    /// <summary>
+    /// Which layer this entry came from. Stamped during resolution, never written in a file — an
+    /// entry that could name its own origin could name a privileged one, which is the whole thing
+    /// being prevented.
+    /// </summary>
+    [YamlIgnore]
+    public SourceOrigin Origin { get; set; } = SourceOrigin.Machine;
 
     /// <summary>Registered factory id, e.g. "directory".</summary>
     [YamlMember(Alias = "type")]

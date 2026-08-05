@@ -185,7 +185,8 @@ public sealed class AgentRuntime : IDisposable
                 AppDomain.CurrentDomain.BaseDirectory),
             PluginManager.BuildSkillSources(loggerFactory.CreateLogger<PluginSkillSource>()),
             loggerFactory.CreateLogger<SkillLibrary>(),
-            settings.SkillsInheritDefaults);
+            settings.SkillsInheritDefaults,
+            settings.SkillsMaxTrust);
 
         SkillLibrary = new SkillLibrary(skillSources, loggerFactory.CreateLogger<SkillLibrary>());
         SkillLibrary.ApplySettings(settings.Skills);
