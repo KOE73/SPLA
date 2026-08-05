@@ -33,6 +33,10 @@ public sealed class DirectorySkillSource : IEditableSkillSource, IDisposable
     private Timer? _debounce;
     private bool _disposed;
 
+    /// <summary>Set by <see cref="OnWatcherError"/>: the next <see cref="Fire"/> must re-attach the
+    /// watcher, not merely rebuild.</summary>
+    private bool _rearmPending;
+
     public string Id { get; }
     public string Label { get; }
     public SkillTrust Trust { get; }
@@ -110,6 +114,7 @@ public sealed class DirectorySkillSource : IEditableSkillSource, IDisposable
             watcher.Created += handler;
             watcher.Deleted += handler;
             watcher.Renamed += (s, e) => handler(s, e);
+            watcher.Error += (_, e) => OnWatcherError(path, e);
             return watcher;
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or ArgumentException)
@@ -358,6 +363,51 @@ public sealed class DirectorySkillSource : IEditableSkillSource, IDisposable
         return full.StartsWith(prefix, StringComparison.OrdinalIgnoreCase) ? full : null;
     }
 
+    /// <summary>
+    /// The watcher reporting that it failed. Two very different causes arrive through this one event,
+    /// and only the second is worth the code.
+    ///
+    /// <para><b>Buffer overflow</b> — more filesystem changes than the watcher could hand over (a
+    /// <c>git pull</c> across a large skills tree). Events are lost, but this is <b>largely
+    /// self-healing and NOT the reason this handler exists</b>: <c>Rebuild</c> re-enumerates every
+    /// source from scratch, so it does not matter which events were lost — one surviving event
+    /// repairs the whole catalog. Only losing the tail of a burst leaves anything stale. Note the
+    /// <c>*.md</c> filter does not protect the buffer: the OS fills it with every change in the tree
+    /// and .NET filters afterwards, so <c>assets/</c> and <c>.git/</c> compete for the same space.</para>
+    ///
+    /// <para><b>The watcher stopping</b> — the directory renamed, a network share dropped, the handle
+    /// invalidated. This is the real case, and without this handler it is unrecoverable: the re-arm
+    /// logic lives in <see cref="Fire"/>, <see cref="Fire"/> runs only from an event, and a dead
+    /// watcher raises no more events. The recovery path exists and is unreachable in exactly the
+    /// situation it was written for. <c>Error</c> is the only notification there is.</para>
+    ///
+    /// <para><b>The owner is not convinced this is a real problem</b>, and the doubt is recorded here
+    /// rather than argued away. Nobody has observed either failure in this repository; the case above
+    /// is reasoning about FileSystemWatcher's contract, not a reproduction. It is also <b>not covered
+    /// by a test</b> — provoking a genuine overflow or handle death reliably is not worth the
+    /// flakiness it would add. What is certain is the cost: three lines and a bool. What is uncertain
+    /// is whether they will ever fire. Delete this if a year passes and the log line never appears.</para>
+    ///
+    /// <para>Re-arming is deferred through the debounce timer rather than done inline, because
+    /// <see cref="StartWatching"/> disposes the watcher — and disposing a <see cref="FileSystemWatcher"/>
+    /// from inside its own callback is how you deadlock. The timer callback runs on the thread pool,
+    /// which is the same reason <see cref="OnFileEvent"/> already goes through it.</para>
+    /// </summary>
+    private void OnWatcherError(string path, ErrorEventArgs e)
+    {
+        _logger?.LogWarning(e.GetException(),
+            "Skill watcher failed and is being re-armed. Source={SourceId} Path={Path}", Id, path);
+
+        lock (_gate)
+        {
+            if (_disposed) return;
+
+            _rearmPending = true;
+            _debounce?.Dispose();
+            _debounce = new Timer(_ => Fire(), null, DebounceMs, Timeout.Infinite);
+        }
+    }
+
     private void OnFileEvent(object sender, FileSystemEventArgs e)
     {
         lock (_gate)
@@ -372,9 +422,18 @@ public sealed class DirectorySkillSource : IEditableSkillSource, IDisposable
 
     private void Fire()
     {
-        // The root can be the thing that was removed. Re-arming here drops back to watching the
-        // ancestor, so deleting and recreating the folder is survivable rather than one-way.
-        if (!Directory.Exists(_root)) StartWatching();
+        bool rearm;
+        lock (_gate)
+        {
+            rearm = _rearmPending;
+            _rearmPending = false;
+        }
+
+        // Two reasons to re-attach, and they are not the same one. The root can be the thing that was
+        // removed — re-arming drops back to watching the ancestor, so delete-and-recreate is
+        // survivable rather than one-way. Or the watcher itself failed, in which case the folder is
+        // still there and the handle is not.
+        if (rearm || !Directory.Exists(_root)) StartWatching();
 
         Changed?.Invoke();
     }
