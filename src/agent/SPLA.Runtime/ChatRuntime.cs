@@ -110,6 +110,11 @@ public sealed class ChatRuntime
         var previous = _skillSession.ActiveSkillId;
         _skillSession.Deactivate();
         _toolSetSession.DeactivateAllBy(ToolSetActivationBy.Skill);
+
+        // Returning the book is the moment a fond change held back for it can safely land. Without
+        // this, a folder added mid-procedure would simply never appear — nothing else is scheduled
+        // to make it appear.
+        _runtime.SkillLibrary.ApplyDeferredRebuild();
         return previous;
     }
 

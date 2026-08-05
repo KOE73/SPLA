@@ -28,6 +28,7 @@ public sealed class SkillLibrary : IDisposable
         new(StringComparer.OrdinalIgnoreCase);
 
     private ISkillCapabilityProbe _probe = SkillCapabilityProbe.AllAvailable;
+    private bool _rebuildPending;
 
     /// <summary>Raised after the skill list has been rebuilt, for any reason.</summary>
     public event EventHandler? Reloaded;
@@ -45,11 +46,38 @@ public sealed class SkillLibrary : IDisposable
         Rebuild();
     }
 
-    /// <summary>Registers a source at the end of the priority order.</summary>
+    /// <summary>Registers a source at the end of the list.</summary>
     public void Add(ISkillSource source)
     {
         _sources.Add(source);
         source.Changed += OnSourceChanged;
+    }
+
+    /// <summary>
+    /// Replaces the whole set of branches — what happens when the source list itself is edited,
+    /// rather than the contents of a branch.
+    ///
+    /// <para>Old sources are unsubscribed and disposed, because a folder watcher nobody reads is a
+    /// handle nobody closes. The rebuild is deferred while a skill is running, for the same reason
+    /// a content change is: swapping the fond under a procedure mid-flight is a failure nobody would
+    /// think to suspect.</para>
+    /// </summary>
+    public void SetSources(IEnumerable<ISkillSource> sources)
+    {
+        foreach (var source in _sources)
+        {
+            source.Changed -= OnSourceChanged;
+            (source as IDisposable)?.Dispose();
+        }
+        _sources.Clear();
+
+        foreach (var source in sources)
+        {
+            _sources.Add(source);
+            source.Changed += OnSourceChanged;
+        }
+
+        RebuildOrDefer();
     }
 
     public IReadOnlyList<ISkillSource> Sources => _sources;
@@ -172,13 +200,35 @@ public sealed class SkillLibrary : IDisposable
     /// <summary>Re-enumerates every source and recomputes states.</summary>
     public void Reload() => Rebuild();
 
-    private void OnSourceChanged()
+    private void OnSourceChanged() => RebuildOrDefer();
+
+    /// <summary>
+    /// Rebuilds now, or remembers to once the running skill finishes.
+    ///
+    /// <para>This used to SKIP the rebuild outright, which was survivable while the only trigger was
+    /// a file changing — another save would come along and <see cref="Rebuild"/> re-reads everything
+    /// anyway. It stops being survivable once the source LIST can change: a person adds a folder,
+    /// a skill happens to be running, and the folder simply never appears, with nothing further
+    /// scheduled to make it appear. Deferring costs one flag and closes that.</para>
+    /// </summary>
+    private void RebuildOrDefer()
     {
         if (IsSkillActive?.Invoke() == true)
         {
-            _logger?.LogDebug("Skill source changed while a skill is active — reload skipped.");
+            _rebuildPending = true;
+            _logger?.LogDebug("Skill fond changed while a skill is active — rebuild deferred.");
             return;
         }
+        Rebuild();
+    }
+
+    /// <summary>Applies a rebuild that was deferred while a skill was running. Called by the host
+    /// when a skill is released; a no-op when nothing was deferred.</summary>
+    public void ApplyDeferredRebuild()
+    {
+        if (!_rebuildPending) return;
+        _rebuildPending = false;
+        _logger?.LogDebug("Applying the rebuild deferred while a skill was active.");
         Rebuild();
     }
 

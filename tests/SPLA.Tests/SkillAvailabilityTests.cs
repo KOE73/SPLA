@@ -224,6 +224,44 @@ public class SkillAvailabilityTests
     }
 
     [Fact]
+    public void A_deferred_rebuild_lands_when_the_book_is_returned()
+    {
+        var source = new FakeSkillSource().With("a");
+        var manager = new SkillLibrary([source]) { IsSkillActive = () => true };
+
+        source.With("b");
+        source.Raise();
+        Assert.Single(manager.Holdings());
+
+        // Nothing else is scheduled to make it appear. Skipping was survivable while only file
+        // changes triggered this — another save would come along — and stops being survivable once
+        // the source LIST can change: a folder added mid-procedure would never show up at all.
+        manager.IsSkillActive = () => false;
+        manager.ApplyDeferredRebuild();
+        Assert.Equal(2, manager.Holdings().Count);
+    }
+
+    [Fact]
+    public void Replacing_the_branches_disposes_the_old_ones_exactly_once()
+    {
+        var first = new FakeSkillSource("first").With("a");
+        var manager = new SkillLibrary([first]);
+
+        manager.SetSources([new FakeSkillSource("second").With("b")]);
+
+        Assert.Equal(["second"], manager.Sources.Select(s => s.Id));
+        Assert.Equal(["b"], manager.Holdings().Select(s => s.Id));
+
+        // A watcher nobody reads is a handle nobody closes.
+        Assert.Equal(1, first.DisposeCount);
+
+        // And it is unsubscribed: a source that is gone must not still be able to trigger rebuilds.
+        first.With("c");
+        first.Raise();
+        Assert.Equal(["b"], manager.Holdings().Select(s => s.Id));
+    }
+
+    [Fact]
     public void Unavailable_skills_stay_listed_so_the_panel_can_explain_them()
     {
         var manager = Manager(

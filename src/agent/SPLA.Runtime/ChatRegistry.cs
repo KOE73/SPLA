@@ -11,7 +11,18 @@ public sealed class ChatRegistry
     private readonly AgentRuntime _runtime;
     private readonly ConcurrentDictionary<string, ChatRuntime> _open = new();
 
-    public ChatRegistry(AgentRuntime runtime) => _runtime = runtime;
+    public ChatRegistry(AgentRuntime runtime)
+    {
+        _runtime = runtime;
+
+        // The library's guard against being rebuilt under a running procedure. It has existed
+        // unassigned outside tests, which was harmless while the only trigger was a file changing —
+        // another save re-reads everything anyway. It stops being harmless now that the source LIST
+        // is editable: a person adds a folder while some chat is mid-skill, and without this the
+        // rebuild would land on top of that procedure. Any open chat counts, because the fond is
+        // shared and the one running it may not be the one you are looking at.
+        _runtime.SkillLibrary.IsSkillActive = () => _open.Values.Any(c => c.ActiveSkillId is not null);
+    }
 
     /// <summary>The project runtime these chats belong to.</summary>
     public AgentRuntime Runtime => _runtime;

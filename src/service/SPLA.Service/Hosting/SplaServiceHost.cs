@@ -356,6 +356,13 @@ public sealed class SplaServiceHost
                         _ = hub.BroadcastToProjectAsync(projectId, Contracts.MessageTypes.AppearanceChanged,
                             new Contracts.AppearanceChangedPayload { Theme = a.Theme, Density = a.Density });
                         break;
+
+                    // The whole list, not a delta: it is small, and a panel that reconciles deltas
+                    // is a panel that can drift from what the fond actually holds.
+                    case SkillsChanged:
+                        _ = hub.BroadcastToProjectAsync(projectId, Contracts.MessageTypes.SkillsResult,
+                            SettingsOps.GetSkills(entry.Runtime));
+                        break;
                 }
             });
 
