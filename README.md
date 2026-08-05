@@ -25,6 +25,16 @@ Portable local AI assistant.
 - Extensible through plugins.
 - Explicit permission model.
 
+## Design Principles
+
+**Single-language core.** The agent, its tools, and every plugin are C# and .NET — no Python
+runtime, no Node process, no subprocess-based tool implementations in the agent's execution path.
+One toolchain to build, debug, and ship means one failure surface, not three. This is a hard
+constraint on the core and plugins, not a slogan: a plugin that needs Python or Node to *run* the
+agent's tools does not belong here. The web client is the one deliberate exception — it is a
+browser UI (Vue/TypeScript), not part of the agent runtime, and talks to the C# service the same
+way any other client would.
+
 ## Core Capabilities
 
 1. **Local LLMs.** SPLA is designed for local models and OpenAI-compatible APIs. The default setup uses LM Studio at `http://127.0.0.1:1234/v1`, but another compatible runtime can be used.
