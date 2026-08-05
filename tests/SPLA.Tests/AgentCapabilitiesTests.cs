@@ -80,6 +80,10 @@ public sealed class AgentCapabilitiesTests
             Assert.Contains("KV memory: a persistent scoped key/value store", prompt);
             Assert.Contains("context management (4 tools)", prompt);
             Assert.Contains("Skill selection comes before tool planning.", prompt);
+            // A qualified id is ONE name, not a source plus a name — the model has to pass the whole
+            // thing through. Asserted because the goldens do not carry the skills feature prompt, so
+            // nothing else would notice this rule going missing.
+            Assert.Contains("use a skill id exactly as it was printed to you", prompt);
             Assert.Contains("Data channel — bulk output", prompt);
         }
         finally { Directory.Delete(root, recursive: true); }
