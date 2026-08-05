@@ -288,40 +288,130 @@ public class SkillSourceTests : IDisposable
     // ── Registry ─────────────────────────────────────────────────────────────
 
     [Fact]
-    public void Registry_builds_the_default_set_when_nothing_is_configured()
+    public void Registry_builds_the_default_set_when_nothing_is_declared()
     {
         var context = new SkillSourceContext(_temp, Path.Combine(_temp, "home"), null);
 
         var sources = SkillSourceRegistry.Build(null, context);
 
+        // No builtin: an empty AppDirectory is how tests and embedded hosts drop the shipped branch.
         Assert.Equal(["repo", "local", "machine"], sources.Select(s => s.Id));
     }
 
     [Fact]
-    public void Registry_skips_unusable_entries_and_keeps_the_rest()
+    public void The_installation_branch_is_an_ordinary_entry_now_not_an_unconditional_append()
+    {
+        var app = Dir("app");
+        var context = new SkillSourceContext(_temp, Path.Combine(_temp, "home"), null, app);
+
+        // It sits in the built-in set, in its declared position — not tacked on after the rest.
+        Assert.Equal(["repo", "local", "machine", "builtin"],
+            SkillSourceRegistry.Build(null, context).Select(s => s.Id));
+
+        // And, being ordinary, it is switchable one at a time like any other branch.
+        var withoutBuiltin = SkillSourceRegistry.Build(
+            [new SplaSkillSourceSection { Id = "builtin", Enabled = false }], context);
+        Assert.Equal(["repo", "local", "machine"], withoutBuiltin.Select(s => s.Id));
+    }
+
+    [Fact]
+    public void A_declared_entry_extends_the_built_in_set_instead_of_replacing_it()
+    {
+        var context = new SkillSourceContext(_temp, Path.Combine(_temp, "home"), null);
+
+        var sources = SkillSourceRegistry.Build(
+            [new SplaSkillSourceSection { Id = "ops", Type = "directory", Path = "ops-skills" }],
+            context);
+
+        // The whole point of the change: adding a folder is one entry, and nothing was restated.
+        Assert.Equal(["repo", "local", "machine", "ops"], sources.Select(s => s.Id));
+    }
+
+    [Fact]
+    public void An_inherited_branch_is_switched_off_by_name_without_restating_it()
+    {
+        var context = new SkillSourceContext(_temp, Path.Combine(_temp, "home"), null);
+
+        var sources = SkillSourceRegistry.Build(
+            [new SplaSkillSourceSection { Id = "local", Enabled = false }], context);
+
+        Assert.Equal(["repo", "machine"], sources.Select(s => s.Id));
+    }
+
+    [Fact]
+    public void Inherit_defaults_false_is_a_white_list()
+    {
+        var context = new SkillSourceContext(_temp, Path.Combine(_temp, "home"), null, Dir("app"));
+
+        var sources = SkillSourceRegistry.Build(
+            [new SplaSkillSourceSection { Id = "ops", Type = "directory", Path = "ops-skills" }],
+            context, inheritDefaults: false);
+
+        Assert.Equal(["ops"], sources.Select(s => s.Id));
+    }
+
+    [Fact]
+    public void A_later_layer_overlays_fields_and_keeps_the_position_of_the_first_appearance()
     {
         var context = new SkillSourceContext(_temp, Path.Combine(_temp, "home"), null);
 
         var sources = SkillSourceRegistry.Build(
         [
-            new SplaSkillSourceSection { Type = "directory" },                       // no path
-            new SplaSkillSourceSection { Type = "carrier-pigeon", Path = "x" },      // no factory
-            new SplaSkillSourceSection { Type = "directory", Path = ".spla/skills" }
+            new SplaSkillSourceSection { Id = "ops", Type = "directory", Path = "ops-skills", Label = "Ops" },
+            new SplaSkillSourceSection { Id = "machine", Label = "Renamed" },
+            new SplaSkillSourceSection { Id = "ops", Level = "findable" }
         ], context);
 
-        Assert.Equal(["local"], sources.Select(s => s.Id));
+        // "machine" keeps its inherited position despite being touched last of the built-ins:
+        // editing a label must not silently reorder the fond.
+        Assert.Equal(["repo", "local", "machine", "ops"], sources.Select(s => s.Id));
+        Assert.Equal("Renamed", sources.Single(s => s.Id == "machine").Label);
+
+        // The overlay set only `level`; type, path and label survived from the entry underneath.
+        var ops = sources.Single(s => s.Id == "ops");
+        Assert.Equal(SourceLevel.Findable, ops.Level);
+        Assert.Equal("Ops", ops.Label);
     }
 
     [Fact]
-    public void Registry_appends_plugin_sources_after_configured_ones()
+    public void An_entry_that_cannot_be_named_or_built_is_skipped_and_the_rest_survive()
+    {
+        var context = new SkillSourceContext(_temp, Path.Combine(_temp, "home"), null);
+
+        var sources = SkillSourceRegistry.Build(
+        [
+            new SplaSkillSourceSection { Id = "nameless" },                       // named, but no type anywhere
+            new SplaSkillSourceSection { Type = "carrier-pigeon", Path = "x" },   // no factory, no id
+            new SplaSkillSourceSection { Id = "pathless", Type = "directory" },   // buildable type, no path
+            new SplaSkillSourceSection { Id = "ops", Type = "directory", Path = "ops-skills" }
+        ], context);
+
+        Assert.Equal(["repo", "local", "machine", "ops"], sources.Select(s => s.Id));
+    }
+
+    [Fact]
+    public void An_entry_without_an_id_still_gets_one_from_its_location_and_merges_on_it()
+    {
+        var context = new SkillSourceContext(_temp, Path.Combine(_temp, "home"), null);
+
+        // Same folder as the built-in `local`, spelled the same way and named by nobody: the fallback
+        // resolves it to "local" and it overlays rather than arriving as a second branch.
+        var sources = SkillSourceRegistry.Build(
+            [new SplaSkillSourceSection { Type = "directory", Path = ".spla/skills", Label = "Drafts" }],
+            context);
+
+        Assert.Equal(["repo", "local", "machine"], sources.Select(s => s.Id));
+        Assert.Equal("Drafts", sources.Single(s => s.Id == "local").Label);
+    }
+
+    [Fact]
+    public void Registry_appends_plugin_sources_after_declared_ones()
     {
         var context = new SkillSourceContext(_temp, Path.Combine(_temp, "home"), null);
         var pluginSource = new PluginSkillSource("network", "Network", Dir("plugins", "network"), () => true);
 
-        var sources = SkillSourceRegistry.Build(
-            [new SplaSkillSourceSection { Type = "directory", Path = ".spla/skills" }],
-            context, [pluginSource]);
+        var sources = SkillSourceRegistry.Build(null, context, [pluginSource]);
 
-        Assert.Equal(["local", "plugin:network"], sources.Select(s => s.Id));
+        Assert.Equal(["repo", "local", "machine", "plugin:network"], sources.Select(s => s.Id));
     }
 }

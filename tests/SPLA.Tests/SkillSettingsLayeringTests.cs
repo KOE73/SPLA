@@ -2,9 +2,16 @@ using SPLA.Domain.Settings;
 
 namespace SPLA.Tests;
 
-/// <summary>The two halves of the <c>skills:</c> block layer differently on purpose — sources are
-/// replaced, items are merged. Getting this backwards would either make an inherited source
-/// impossible to drop or force every project to restate every switch.</summary>
+/// <summary>
+/// Both halves of the <c>skills:</c> block now layer the same way — by key. Sources used to be
+/// replaced wholesale, and these tests used to prove it; the replacement was not a decision but the
+/// only expressible behaviour for entries that had no name, and it made "add one folder" mean
+/// "restate the whole list".
+///
+/// <para>The merge itself lives in <c>SkillSourceRegistry</c>, because resolving an unnamed entry's
+/// fallback id needs paths. What the resolver owes is accumulation in layer order plus the two
+/// scalars — that is what is checked here; <c>SkillSourceMergeTests</c> checks the fold.</para>
+/// </summary>
 public class SkillSettingsLayeringTests
 {
     private static SplaSkillsSection Sources(params string[] paths) => new()
@@ -13,23 +20,26 @@ public class SkillSettingsLayeringTests
     };
 
     [Fact]
-    public void No_skills_block_anywhere_leaves_sources_at_the_built_in_default()
+    public void No_skills_block_anywhere_declares_nothing_and_still_inherits_the_built_ins()
     {
         var resolved = SettingsResolver.Resolve(new SplaDefaults(), new SplaProject());
 
-        Assert.Null(resolved.SkillSources);
+        Assert.Empty(resolved.SkillSources);
+        Assert.True(resolved.SkillsInheritDefaults);
         Assert.Empty(resolved.Skills);
     }
 
     [Fact]
-    public void Project_sources_replace_the_machine_list_rather_than_extending_it()
+    public void Project_sources_extend_the_machine_list_rather_than_replacing_it()
     {
         var defaults = new SplaDefaults { Skills = Sources("~/skills", "/shared/skills") };
         var project = new SplaProject { Skills = Sources(".spla/skills") };
 
         var resolved = SettingsResolver.Resolve(defaults, project);
 
-        Assert.Equal([".spla/skills"], resolved.SkillSources!.Select(s => s.Path));
+        // Layer order, machine first: the fold downstream keys on the id, not on the position.
+        Assert.Equal(["~/skills", "/shared/skills", ".spla/skills"],
+            resolved.SkillSources.Select(s => s.Path));
     }
 
     [Fact]
@@ -46,8 +56,21 @@ public class SkillSettingsLayeringTests
 
         var resolved = SettingsResolver.Resolve(defaults, project);
 
-        Assert.Equal(["~/skills"], resolved.SkillSources!.Select(s => s.Path));
+        Assert.Equal(["~/skills"], resolved.SkillSources.Select(s => s.Path));
         Assert.False(resolved.Skills["a"].Enabled);
+    }
+
+    [Fact]
+    public void Inherit_defaults_is_a_scalar_and_the_last_layer_to_mention_it_wins()
+    {
+        var defaults = new SplaDefaults { Skills = new SplaSkillsSection { InheritDefaults = false } };
+
+        // A project that says nothing leaves the machine's white list alone...
+        Assert.False(SettingsResolver.Resolve(defaults, new SplaProject()).SkillsInheritDefaults);
+
+        // ...and a project that says something means it.
+        var project = new SplaProject { Skills = new SplaSkillsSection { InheritDefaults = true } };
+        Assert.True(SettingsResolver.Resolve(defaults, project).SkillsInheritDefaults);
     }
 
     [Fact]
@@ -84,13 +107,15 @@ public class SkillSettingsLayeringTests
         var yaml = """
             version: 1
             skills:
+              inherit_defaults: false
               sources:
-                - type: directory
-                  path: .spla/skills
-                - type: directory
+                - id: ops
+                  type: directory
                   path: /srv/shared-skills
                   trust: untrusted
                   label: Shared
+                - id: local
+                  enabled: false
               items:
                 network.host-audit:
                   enabled: false
@@ -98,11 +123,19 @@ public class SkillSettingsLayeringTests
 
         var project = ConfigLoader.ParseProjectYaml(yaml);
 
-        Assert.Equal(2, project.Skills!.Sources!.Count);
-        Assert.Equal("directory", project.Skills.Sources[0].Type);
-        Assert.Equal(".spla/skills", project.Skills.Sources[0].Path);
-        Assert.Equal("untrusted", project.Skills.Sources[1].Trust);
-        Assert.Equal("Shared", project.Skills.Sources[1].Label);
+        Assert.False(project.Skills!.InheritDefaults);
+        Assert.Equal(2, project.Skills.Sources!.Count);
+
+        Assert.Equal("ops", project.Skills.Sources[0].Id);
+        Assert.Equal("/srv/shared-skills", project.Skills.Sources[0].Path);
+        Assert.Equal("untrusted", project.Skills.Sources[0].Trust);
+        Assert.Equal("Shared", project.Skills.Sources[0].Label);
+
+        // Switching an inherited branch off is a complete statement on its own: no type, no path.
+        Assert.Equal("local", project.Skills.Sources[1].Id);
+        Assert.False(project.Skills.Sources[1].Enabled);
+        Assert.Null(project.Skills.Sources[1].Path);
+
         Assert.False(project.Skills.Items!["network.host-audit"].Enabled);
     }
 }

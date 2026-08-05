@@ -120,10 +120,20 @@ public class ResolvedSettings
     // Skills — per-skill overrides (skills.items), keyed by skill id.
     public Dictionary<string, SplaSkillSection> Skills { get; set; } = new();
 
-    /// <summary>Configured skill providers (skills.sources), in priority order. Null = the built-in
-    /// default set. Replaced wholesale by the more specific layer, never merged: merging would make
-    /// an inherited source impossible to drop.</summary>
-    public List<SplaSkillSourceSection>? SkillSources { get; set; }
+    /// <summary>
+    /// Declared skill providers (skills.sources), accumulated across layers in declaration order —
+    /// the machine layer first, the project's after it.
+    ///
+    /// <para>This is what was WRITTEN, not the effective set: entries are merged by their declared
+    /// id, and the built-in entries are prepended, by <c>SkillSourceRegistry.Build</c>. That work
+    /// happens there rather than here because deriving the fallback id of an unnamed entry means
+    /// resolving its path, and this resolver is a pure function with no idea where anything lives.</para>
+    /// </summary>
+    public List<SplaSkillSourceSection> SkillSources { get; set; } = new();
+
+    /// <summary>Whether the built-in source entries are part of the fond. False is a deployment's
+    /// white list — "only what I named". Last layer to mention it wins, like every other scalar.</summary>
+    public bool SkillsInheritDefaults { get; set; } = true;
 
     // The model-backed librarian (skills.librarian). Null = off; skill_find stays deterministic.
     public SplaLibrarianSection? SkillLibrarian { get; set; }
@@ -341,12 +351,6 @@ public static class SettingsResolver
         return models;
     }
 
-    /// <summary>
-    /// Layers one <c>skills:</c> block over the result. The two halves behave differently on purpose:
-    /// per-skill items MERGE by id (a project switches off one inherited skill without restating the
-    /// rest), while the source list REPLACES wholesale (merging would leave no way to drop a source
-    /// inherited from defaults). A layer that omits <c>sources</c> leaves the inherited list alone.
-    /// </summary>
     /// <summary>Merges one layer's <c>toolsets:</c> entries key by key — the more specific layer
     /// overrides a set it mentions and leaves the rest of the inherited levels alone.</summary>
     private static void ApplyToolSets(ResolvedSettings r, Dictionary<string, string>? toolSets)
@@ -357,12 +361,25 @@ public static class SettingsResolver
             r.ToolSets[kvp.Key] = kvp.Value;
     }
 
+    /// <summary>
+    /// Layers one <c>skills:</c> block over the result. Both halves now merge, and by the same
+    /// principle: per-skill items by skill id, sources by their declared source id. A layer that
+    /// omits either half changes neither.
+    ///
+    /// <para>Sources are only ACCUMULATED here, in layer order — the merge itself happens in
+    /// <c>SkillSourceRegistry.Build</c>, which is the first place an unnamed entry's fallback id can
+    /// be worked out. Appending rather than replacing is the whole point of the change: adding a
+    /// folder is one entry in any layer, and dropping an inherited one is <c>enabled: false</c>.</para>
+    /// </summary>
     private static void ApplySkills(ResolvedSettings r, SplaSkillsSection? skills)
     {
         if (skills == null) return;
 
+        if (skills.InheritDefaults.HasValue)
+            r.SkillsInheritDefaults = skills.InheritDefaults.Value;
+
         if (skills.Sources != null)
-            r.SkillSources = skills.Sources;
+            r.SkillSources.AddRange(skills.Sources);
 
         if (skills.Items != null)
             foreach (var kvp in skills.Items)

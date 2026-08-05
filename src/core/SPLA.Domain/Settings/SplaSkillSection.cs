@@ -6,16 +6,34 @@ namespace SPLA.Domain.Settings;
 /// The <c>skills:</c> block of a .spla / defaults.yaml file.
 ///
 /// <para>Two independent concerns live here on purpose. <see cref="Sources"/> says WHERE skills come
-/// from; <see cref="Items"/> says which individual skills are on. Sources are replaced wholesale by
-/// the more specific layer (otherwise a project could never drop an inherited source), while items
-/// merge by id.</para>
+/// from; <see cref="Items"/> says which individual skills are on. Both merge by key — sources by
+/// their declared <c>id</c>, items by skill id — which is what every other named collection in these
+/// files already does.</para>
+///
+/// <para>Sources used to be REPLACED wholesale by the more specific layer, and the comment justifying
+/// it named the symptom rather than the cause: an entry had no name, so there was no key to merge on
+/// and replacement was the only expressible thing. Once the entry declares an id, adding a folder is
+/// one line in any layer instead of restating the whole list.</para>
 /// </summary>
 public class SplaSkillsSection
 {
-    /// <summary>Ordered list of skill providers. Earlier entries win when two sources offer the same
-    /// skill id. Null (absent) means "use the built-in default set" — see SkillSourceRegistry.</summary>
+    /// <summary>Skill providers, in declaration order. Merged with the layers below by
+    /// <see cref="SplaSkillSourceSection.Id"/>; an absent or empty list adds nothing and drops
+    /// nothing. To stop inheriting entirely, say <see cref="InheritDefaults"/> instead.</summary>
     [YamlMember(Alias = "sources")]
     public List<SplaSkillSourceSection>? Sources { get; set; }
+
+    /// <summary>
+    /// Whether the built-in entries (<c>repo</c>, <c>local</c>, <c>machine</c>, <c>builtin</c>) are
+    /// part of the fond. Null = true.
+    ///
+    /// <para>Exists for deployment, not for convenience: an administrator needs a white list — "only
+    /// what I named" — rather than the hope that nobody forgot to switch off an extra folder. It is
+    /// deliberately a separate flag, so clearing the inherited set is something you say out loud
+    /// instead of a side effect of having written your own list.</para>
+    /// </summary>
+    [YamlMember(Alias = "inherit_defaults")]
+    public bool? InheritDefaults { get; set; }
 
     /// <summary>Per-skill overrides, keyed by skill id.</summary>
     [YamlMember(Alias = "items")]
@@ -55,6 +73,24 @@ public class SplaLibrarianSection
 /// </summary>
 public class SplaSkillSourceSection
 {
+    /// <summary>
+    /// The branch's declared name — a short word, unique across the whole library, and the key every
+    /// layer merges on.
+    ///
+    /// <para>Absent is legal and falls back to a name derived from the entry itself (for a folder,
+    /// the conventional name of that location, else the folder name). That is a fallback, not the
+    /// identity: an entry that wants to be extended or switched off from another layer says its name.
+    /// The path is an ordinary field, and renaming a folder no longer renames the branch.</para>
+    /// </summary>
+    [YamlMember(Alias = "id")]
+    public string? Id { get; set; }
+
+    /// <summary>Off switch. Null = on. This is how an inherited branch is dropped: it goes dark and
+    /// stays visible in the panel, rather than vanishing so that nobody can remember it existed.
+    /// There is no way to delete an inherited entry, and that is the intended shape.</summary>
+    [YamlMember(Alias = "enabled")]
+    public bool? Enabled { get; set; }
+
     /// <summary>Registered factory id, e.g. "directory".</summary>
     [YamlMember(Alias = "type")]
     public string? Type { get; set; }

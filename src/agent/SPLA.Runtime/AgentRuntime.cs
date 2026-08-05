@@ -8,6 +8,7 @@ using SPLA.Domain.Interfaces;
 using SPLA.Domain.Models;
 using SPLA.Domain.Settings;
 using SPLA.LLM.LMStudio;
+using SPLA.LLM.LocalAI;
 using SPLA.LLM.OpenAiCompat;
 using SPLA.LLM.OpenRouter;
 using SPLA.MCP.BasicTools.FileSystem;
@@ -172,9 +173,9 @@ public sealed class AgentRuntime : IDisposable
         foreach (var p in PluginManager.GetSchemaProviders())
             SchemaRegistry.Register(p);
 
-        // Skill providers: the configured ones (project/machine folders by default) in priority
-        // order, then one per plugin that ships skills. SetProbe below completes the wiring once the
-        // tool host and feature set exist — requirement resolution needs both.
+        // Skill providers: the built-in branches with the declared ones merged over them by name,
+        // then one per plugin that ships skills. SetProbe below completes the wiring once the tool
+        // host and feature set exist — requirement resolution needs both.
         var skillSources = SkillSourceRegistry.Build(
             settings.SkillSources,
             new SkillSourceContext(
@@ -183,7 +184,8 @@ public sealed class AgentRuntime : IDisposable
                 loggerFactory,
                 AppDomain.CurrentDomain.BaseDirectory),
             PluginManager.BuildSkillSources(loggerFactory.CreateLogger<PluginSkillSource>()),
-            loggerFactory.CreateLogger<SkillLibrary>());
+            loggerFactory.CreateLogger<SkillLibrary>(),
+            settings.SkillsInheritDefaults);
 
         SkillLibrary = new SkillLibrary(skillSources, loggerFactory.CreateLogger<SkillLibrary>());
         SkillLibrary.ApplySettings(settings.Skills);
@@ -394,6 +396,8 @@ public sealed class AgentRuntime : IDisposable
 
         foreach (var descriptor in LmStudioProvider.Create(_httpClient, loggerFactory))
             registry.Register(descriptor);
+
+        registry.Register(new LocalAIProvider(_httpClient, loggerFactory));
 
         OpenRouter = new OpenRouterProvider(_httpClient, loggerFactory);
         registry.Register(OpenRouter);

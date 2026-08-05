@@ -15,8 +15,20 @@ public interface ISkillSourceFactory
     /// <summary>Value of the entry's <c>type:</c> field this factory answers to.</summary>
     string Type { get; }
 
-    /// <summary>Creates the source, or returns null with a reason when the entry is unusable.</summary>
-    ISkillSource? Create(SplaSkillSourceSection config, SkillSourceContext context, out string? error);
+    /// <summary>
+    /// Fallback name for an entry that declared no <c>id</c>. Owned by the factory for the same
+    /// reason validation is: only it knows what its own fields mean, and only it can say what a
+    /// nameless entry should be called.
+    ///
+    /// <para>Called BEFORE <see cref="Create"/> and on entries that may well be unusable, so it must
+    /// not throw and must not touch the disk — a name is needed even for an entry that is about to
+    /// be rejected, because that is how the rejection gets reported.</para>
+    /// </summary>
+    string DeriveId(SplaSkillSourceSection config, SkillSourceContext context);
+
+    /// <summary>Creates the source under an already-resolved <paramref name="id"/>, or returns null
+    /// with a reason when the entry is unusable.</summary>
+    ISkillSource? Create(SplaSkillSourceSection config, string id, SkillSourceContext context, out string? error);
 }
 
 /// <summary>Ambient information every factory may need: where the project lives, where the machine
@@ -51,7 +63,17 @@ public sealed class DirectorySkillSourceFactory : ISkillSourceFactory
 {
     public string Type => "directory";
 
-    public ISkillSource? Create(SplaSkillSourceSection config, SkillSourceContext context, out string? error)
+    /// <summary>The conventional name of this location, else the folder's own name. A path that is
+    /// missing or unresolvable still has to yield something printable — the caller needs a name in
+    /// order to say which entry it is rejecting.</summary>
+    public string DeriveId(SplaSkillSourceSection config, SkillSourceContext context)
+    {
+        if (string.IsNullOrWhiteSpace(config.Path)) return "directory";
+        try { return Describe(context.ResolvePath(config.Path), context).Id; }
+        catch { return config.Path.Trim(); }
+    }
+
+    public ISkillSource? Create(SplaSkillSourceSection config, string id, SkillSourceContext context, out string? error)
     {
         if (string.IsNullOrWhiteSpace(config.Path))
         {
@@ -61,17 +83,18 @@ public sealed class DirectorySkillSourceFactory : ISkillSourceFactory
 
         error = null;
         var full = context.ResolvePath(config.Path);
-        var (id, label) = Describe(full, context);
 
         return new DirectorySkillSource(
-            id, config.Label ?? label, full, SkillSourceRegistry.ParseTrust(config.Trust),
+            id, config.Label ?? Describe(full, context).Label, full,
+            SkillSourceRegistry.ParseTrust(config.Trust),
             context.Loggers?.CreateLogger<DirectorySkillSource>(),
             level: SkillSourceRegistry.ParseLevel(config.Level));
     }
 
     /// <summary>Friendly id and display name for the conventional folders, falling back to the folder
-    /// name. The id is part of a skill's address and shows in the UI, so a short word beats a full
-    /// path; the path itself is surfaced separately by the panel.</summary>
+    /// name. Now a FALLBACK for entries that declared no id, not the identity itself — an entry that
+    /// wants to be addressed from another layer says its name. The path is surfaced separately by the
+    /// panel, so a short word still beats a full path in the UI.</summary>
     private static (string Id, string Label) Describe(string fullPath, SkillSourceContext context)
     {
         // The repository's own skills/ — committed, shared with whoever clones the project.
@@ -97,10 +120,19 @@ public sealed class DirectorySkillSourceFactory : ISkillSourceFactory
 }
 
 /// <summary>
-/// Resolves the configured <c>skills.sources</c> list into live sources, in priority order.
+/// Resolves the declared <c>skills.sources</c> entries into live sources.
 ///
-/// <para>Priority is list order: the first source offering a skill id wins, later ones are shadowed.
-/// Plugin-provided sources are appended last and are not configurable here — they follow their
+/// <para>Entries are merged BY NAME, the way every other named collection in these settings files
+/// already merges: the built-in entries first, then whatever the configuration layers declared, an
+/// entry with an existing id overlaying that entry rather than being appended beside it. Adding a
+/// branch is one entry in any layer; dropping an inherited one is <c>enabled: false</c>; clearing the
+/// lot is <c>inherit_defaults: false</c>.</para>
+///
+/// <para>List order is display order, and the tie-break in <c>skill_find</c> ranking. It is NOT
+/// priority: two branches offering the same skill id both keep their book, and the reader picks by
+/// address.</para>
+///
+/// <para>Plugin-provided sources are appended last and are not configurable here — they follow their
 /// plugin's own toggle, so there is exactly one switch per plugin instead of two.</para>
 /// </summary>
 public static class SkillSourceRegistry
@@ -108,87 +140,179 @@ public static class SkillSourceRegistry
     private static readonly ISkillSourceFactory[] Factories = [new DirectorySkillSourceFactory()];
 
     /// <summary>
-    /// Sources used when <c>skills.sources</c> is absent, in priority order — most specific first:
-    /// the project's committed <c>skills/</c>, personal drafts in the git-ignored
-    /// <c>.spla/skills</c>, then the user's machine-wide folder (under the SPLA home, so SPLA_HOME
-    /// redirects it along with everything else). Any of them may be missing on disk — that is not an
-    /// error. Skills that shipped with the installation are not listed here; see <see cref="Build"/>.
+    /// The branches the product comes with, as ordinary named entries: the project's committed
+    /// <c>skills/</c>, personal drafts in the git-ignored <c>.spla/skills</c>, the user's machine-wide
+    /// folder (under the SPLA home, so SPLA_HOME redirects it along with everything else), and the
+    /// skills shipped beside <c>plugins/</c>. Any of them may be missing on disk — that is not an
+    /// error.
+    ///
+    /// <para>These used to be two mechanisms: an implicit default list, plus the installation folder
+    /// appended unconditionally after the configured entries so that a project overriding the list
+    /// could not lose it silently. Merging by name removes the reason for both — an inherited branch
+    /// cannot be lost silently any more, only switched off out loud — so they are now four ordinary
+    /// entries with declared names, each switchable one at a time.</para>
     /// </summary>
-    public static IReadOnlyList<SplaSkillSourceSection> DefaultSources(SkillSourceContext context) =>
-    [
-        new() { Type = "directory", Path = "skills" },
-        new() { Type = "directory", Path = ".spla/skills" },
-        new() { Type = "directory", Path = Path.Combine(context.MachineHomePath, "skills") }
-    ];
+    public static IReadOnlyList<SplaSkillSourceSection> DefaultSources(SkillSourceContext context)
+    {
+        var defaults = new List<SplaSkillSourceSection>
+        {
+            new() { Id = "repo",    Type = "directory", Path = "skills" },
+            new() { Id = "local",   Type = "directory", Path = ".spla/skills" },
+            new() { Id = "machine", Type = "directory", Path = Path.Combine(context.MachineHomePath, "skills") }
+        };
+
+        // Empty AppDirectory disables the shipped branch, which is what tests and embedded hosts want.
+        if (context.AppDirectory.Length > 0)
+            defaults.Add(new() { Id = "builtin", Type = "directory", Path = Path.Combine(context.AppDirectory, "skills") });
+
+        return defaults;
+    }
 
     /// <summary>
-    /// Builds every source for a runtime, in priority order: the configured ones first, then the two
-    /// that come from the installation itself — skills shipped beside <c>plugins/</c>, and one per
-    /// plugin that carries skills.
-    ///
-    /// <para>The installation's own sources are appended unconditionally rather than being part of
-    /// the configurable list, for the same reason plugins are discovered rather than declared: they
-    /// are what the product came with. Putting them in <c>skills.sources</c> would make a project
-    /// that overrides that list lose them without saying so. Coming last, they can still be
-    /// overridden per skill — a project's own file with the same id wins and the shipped one is
-    /// marked Superseded.</para>
+    /// Builds every source for a runtime: the built-in entries, the declared ones merged over them by
+    /// name, then one per plugin that carries skills.
     /// </summary>
+    /// <param name="declared">Entries accumulated from the settings layers, in declaration order.</param>
+    /// <param name="inheritDefaults">False = a white list: only what <paramref name="declared"/> names.</param>
     public static IReadOnlyList<ISkillSource> Build(
-        IReadOnlyList<SplaSkillSourceSection>? configured,
+        IReadOnlyList<SplaSkillSourceSection>? declared,
         SkillSourceContext context,
         IEnumerable<ISkillSource>? pluginSources = null,
-        ILogger? logger = null)
+        ILogger? logger = null,
+        bool inheritDefaults = true)
     {
         var sources = new List<ISkillSource>();
         var seenIds = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
 
-        var entries = new List<SplaSkillSourceSection>(configured ?? DefaultSources(context));
-        if (context.AppDirectory.Length > 0)
-            entries.Add(new() { Type = "directory", Path = Path.Combine(context.AppDirectory, "skills") });
-
-        foreach (var entry in entries)
+        foreach (var (id, entry) in Merge(declared, context, logger, inheritDefaults))
         {
-            var type = entry.Type?.Trim();
-            if (string.IsNullOrEmpty(type))
+            if (entry.Enabled == false)
             {
-                logger?.LogWarning("Skill source entry has no 'type' — skipped.");
+                logger?.LogDebug("Skill source '{Id}' is switched off.", id);
                 continue;
             }
 
-            var factory = Factories.FirstOrDefault(f =>
-                f.Type.Equals(type, StringComparison.OrdinalIgnoreCase));
-            if (factory is null)
-            {
-                logger?.LogWarning("Unknown skill source type '{Type}' — skipped.", type);
-                continue;
-            }
+            // Type is guaranteed resolvable here: Merge drops entries whose type has no factory,
+            // because an entry nobody can build also has no name to be addressed by.
+            var factory = FactoryFor(entry.Type)!;
 
-            var source = factory.Create(entry, context, out var error);
+            var source = factory.Create(entry, id, context, out var error);
             if (source is null)
             {
-                logger?.LogWarning("Skill source '{Type}' not created: {Error}", type, error ?? "unknown reason");
+                logger?.LogWarning("Skill source '{Id}' not created: {Error}", id, error ?? "unknown reason");
                 continue;
             }
 
-            if (!seenIds.Add(source.Id))
-            {
-                logger?.LogWarning("Duplicate skill source id '{Id}' — later entry skipped.", source.Id);
-                (source as IDisposable)?.Dispose();
-                continue;
-            }
-
+            seenIds.Add(source.Id);
             sources.Add(source);
         }
 
         foreach (var pluginSource in pluginSources ?? [])
             if (seenIds.Add(pluginSource.Id))
                 sources.Add(pluginSource);
+            else
+                logger?.LogWarning(
+                    "Plugin skill source '{Id}' collides with a configured source of the same name — plugin source skipped.",
+                    pluginSource.Id);
 
         logger?.LogInformation("Skill sources built. Count={Count} Ids={Ids}",
             sources.Count, string.Join(", ", sources.Select(s => s.Id)));
 
         return sources;
     }
+
+    /// <summary>
+    /// Folds the built-in entries and every declared layer into one named list: first appearance of a
+    /// name fixes its position, later entries with that name overlay its fields.
+    ///
+    /// <para>Position is fixed by first appearance rather than by the last layer to touch the entry,
+    /// so that editing a <c>label</c> cannot silently reorder the fond. Order is display and ranking
+    /// only, but "changed the label, changed the ranking" is exactly the kind of surprise that costs
+    /// an afternoon to trace.</para>
+    /// </summary>
+    internal static IReadOnlyList<(string Id, SplaSkillSourceSection Entry)> Merge(
+        IReadOnlyList<SplaSkillSourceSection>? declared,
+        SkillSourceContext context,
+        ILogger? logger = null,
+        bool inheritDefaults = true)
+    {
+        var order = new List<string>();
+        var byId = new Dictionary<string, SplaSkillSourceSection>(StringComparer.OrdinalIgnoreCase);
+
+        var all = new List<SplaSkillSourceSection>();
+        if (inheritDefaults) all.AddRange(DefaultSources(context));
+        if (declared != null) all.AddRange(declared);
+
+        foreach (var entry in all)
+        {
+            string id;
+            if (entry.Id?.Trim() is { Length: > 0 } declaredId)
+            {
+                // A named entry needs nothing else to be placed. That is what makes switching an
+                // inherited branch off a complete statement — `- id: local` + `enabled: false`, with
+                // no type and no path, because both are inherited from the entry it lands on.
+                id = declaredId;
+            }
+            else
+            {
+                var factory = FactoryFor(entry.Type);
+                if (factory is null)
+                {
+                    logger?.LogWarning(
+                        "Skill source entry has neither an 'id' nor a usable 'type' ('{Type}') — nothing to call it by, skipped.",
+                        entry.Type ?? "(none)");
+                    continue;
+                }
+                id = factory.DeriveId(entry, context);
+            }
+
+            if (byId.TryGetValue(id, out var existing))
+                byId[id] = Overlay(existing, entry);
+            else
+            {
+                byId[id] = entry;
+                order.Add(id);
+            }
+        }
+
+        // Type is validated on the MERGED entry, not on each layer: an overlay is allowed to omit it,
+        // and the only type that ever mattered is the one the finished entry ends up with.
+        var merged = new List<(string, SplaSkillSourceSection)>();
+        foreach (var id in order)
+        {
+            var entry = byId[id];
+            if (FactoryFor(entry.Type) is null)
+            {
+                logger?.LogWarning(
+                    "Skill source '{Id}' has an unknown or missing type '{Type}' — skipped.",
+                    id, entry.Type ?? "(none)");
+                continue;
+            }
+            merged.Add((id, entry));
+        }
+
+        return merged;
+    }
+
+    /// <summary>One entry laid over another: a field the newer entry left unset keeps the inherited
+    /// value. That is what makes <c>- id: local</c> + <c>enabled: false</c> a complete statement —
+    /// you switch a branch off without having to restate where it points.</summary>
+    private static SplaSkillSourceSection Overlay(SplaSkillSourceSection under, SplaSkillSourceSection over) => new()
+    {
+        Id      = over.Id      ?? under.Id,
+        Type    = over.Type    ?? under.Type,
+        Path    = over.Path    ?? under.Path,
+        Level   = over.Level   ?? under.Level,
+        Trust   = over.Trust   ?? under.Trust,
+        Label   = over.Label   ?? under.Label,
+        Enabled = over.Enabled ?? under.Enabled,
+        Options = over.Options ?? under.Options
+    };
+
+    private static ISkillSourceFactory? FactoryFor(string? type) =>
+        string.IsNullOrWhiteSpace(type)
+            ? null
+            : Factories.FirstOrDefault(f => f.Type.Equals(type.Trim(), StringComparison.OrdinalIgnoreCase));
 
     /// <summary>Reads the <c>level:</c> field. Unset or unrecognised means <see cref="SourceLevel.OnShelf"/>
     /// — the behaviour sources have always had. Hyphens are optional, so both <c>in-catalog</c> and
