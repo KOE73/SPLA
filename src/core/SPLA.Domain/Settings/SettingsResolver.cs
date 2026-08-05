@@ -139,6 +139,24 @@ public class ResolvedSettings
     /// only from the machine layer. Null = no ceiling, i.e. a granted source may be trusted.</summary>
     public string? SkillsMaxTrust { get; set; }
 
+    /// <summary>The branches this person added themselves — the half of the fond they own and the UI
+    /// may write. Null only in tests and embedded hosts that never granted anything.</summary>
+    public ISkillSourceStore? SkillSourceStore { get; set; }
+
+    /// <summary>
+    /// The declared entries with the granted ones appended, which is the order the fold expects:
+    /// granted last means most specific, so a personal entry overrides a prescribed one of the same
+    /// name instead of being shadowed by it.
+    ///
+    /// <para>That ordering is what makes "switch off an inherited branch from the panel" possible
+    /// without the UI writing into a committed project file — it records an override under the same
+    /// id, in the person's own store.</para>
+    /// </summary>
+    public List<SplaSkillSourceSection> EffectiveSkillSources() =>
+        SkillSourceStore is null
+            ? SkillSources
+            : [.. SkillSources, .. SkillSourceStore.Load()];
+
     // The model-backed librarian (skills.librarian). Null = off; skill_find stays deterministic.
     public SplaLibrarianSection? SkillLibrarian { get; set; }
 

@@ -177,7 +177,7 @@ public sealed class AgentRuntime : IDisposable
         // then one per plugin that ships skills. SetProbe below completes the wiring once the tool
         // host and feature set exist — requirement resolution needs both.
         var skillSources = SkillSourceRegistry.Build(
-            settings.SkillSources,
+            settings.EffectiveSkillSources(),
             new SkillSourceContext(
                 Path.GetFullPath(settings.WorkspacePath),
                 ConfigLoader.GetDefaultsDir(),

@@ -307,21 +307,25 @@ public static class SkillSourceRegistry
     /// That is what makes <c>- id: local</c> + <c>enabled: false</c> a complete statement — you switch
     /// a branch off without having to restate where it points.
     ///
-    /// <para><b>Origin follows the two fields that decide security</b>, not the act of touching the
-    /// entry. A layer that repoints <c>path</c> or restates <c>trust</c> owns the result and stamps
-    /// its own, less privileged origin: it chose what content arrives and how far it is believed. A
-    /// layer that only adjusts <c>level</c> or <c>label</c> changes neither, so the entry keeps the
-    /// standing of the layer that declared it. Demoting on any touch at all would mean a project
-    /// setting <c>level: findable</c> on the user's own drafts folder quietly untrusted it.</para>
+    /// <para><b>Standing belongs to whoever last chose the content</b> — the layer that set
+    /// <c>path</c> or <c>trust</c> — and not to whoever merely touched the entry. A layer adjusting
+    /// only <c>level</c> or <c>label</c> changes neither what arrives nor how far it is believed, so
+    /// the entry keeps the standing of the layer that pointed it.</para>
+    ///
+    /// <para>Deliberately not "the least privileged of the two". That version demotes on any touch,
+    /// so a project setting <c>level: findable</c> would quietly untrust the user's own drafts folder;
+    /// worse, it also demotes upward-corrections, so a person repointing a project's branch at a
+    /// folder of their own would still be treated as reading the project's content. Whoever supplies
+    /// the text carries the standing, in both directions.</para>
     /// </summary>
     private static SplaSkillSourceSection Overlay(SplaSkillSourceSection under, SplaSkillSourceSection over)
     {
-        var movesContentOrTrust = over.Path is not null || over.Trust is not null;
+        var choosesContent = over.Path is not null || over.Trust is not null;
 
         return new()
         {
             Id      = over.Id      ?? under.Id,
-            Origin  = movesContentOrTrust && over.Origin < under.Origin ? over.Origin : under.Origin,
+            Origin  = choosesContent ? over.Origin : under.Origin,
             Type    = over.Type    ?? under.Type,
             Path    = over.Path    ?? under.Path,
             Level   = over.Level   ?? under.Level,

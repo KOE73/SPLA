@@ -371,6 +371,10 @@ public static class ConfigLoader
         resolved.Secrets = store;
         resolved.SecretResolver = new Secrets.SecretResolver(store);
 
+        // The branches this person added themselves. Same area as their secrets and for the same
+        // reason: it is theirs, it is never committed, and the UI has to be able to write it.
+        resolved.SkillSourceStore = new FileSkillSourceStore(GetDefaultsDir());
+
         return resolved;
     }
 
