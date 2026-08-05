@@ -117,7 +117,7 @@ public sealed class SkillFindTool : IMcpTool
         sb.Append(". Call skill_activate with the id you want:");
         foreach (var match in matches)
         {
-            sb.Append($"\n\n  {match.Card.Id}");
+            sb.Append($"\n\n  {match.Card.DisplayId}");
             if (match.Card.Tags.Count > 0) sb.Append($"  [{string.Join(", ", match.Card.Tags)}]");
             if (match.Card.Description.Length > 0) sb.Append($"\n    {match.Card.Description}");
         }

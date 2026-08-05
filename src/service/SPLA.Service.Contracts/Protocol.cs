@@ -139,6 +139,19 @@ public static class MessageTypes
     public const string SkillsGet = "skills.get";
     /// <summary>Save per-skill enable/preload switches (persisted to <c>skills.items</c>).</summary>
     public const string SkillsSave = "skills.save";
+    /// <summary>Ask for the branches this person owns — the editable half of the fond.
+    /// Answer is <see cref="SkillSourcesPayload"/>.</summary>
+    public const string SkillSourcesGet = "skills.sources.get";
+    /// <summary>Replace this person's branch list. Body is <see cref="SkillSourcesPayload"/>; written
+    /// to their own store, never to a committed project file, and the sources are rebuilt live.
+    /// The server broadcasts <see cref="SkillsResult"/>.</summary>
+    public const string SkillSourcesSave = "skills.sources.save";
+    /// <summary>Approve or withdraw approval of one branch's contents. Body is
+    /// <see cref="SkillSourceTrustPayload"/>; the server broadcasts <see cref="SkillsResult"/>.
+    /// <para>Separate from <see cref="SkillSourcesSave"/> because adding a folder and vouching for
+    /// its text are different acts with different costs — one dialog answering two questions is a
+    /// dialog people stop reading.</para></summary>
+    public const string SkillSourceTrust = "skills.source.trust";
     /// <summary>Ask for the built-in agent capabilities (<c>core.*</c>) and their enabled state.</summary>
     public const string FeaturesGet = "features.get";
     /// <summary>Save the enabled built-in capability set (persisted to <c>agent.capabilities</c>).</summary>
@@ -249,8 +262,12 @@ public static class MessageTypes
     public const string PluginsResult = "plugins.result";
     /// <summary>Answer to <see cref="PluginAction"/>.</summary>
     public const string PluginActionResult = "plugin.action.result";
-    /// <summary>The current skill list/state — answer to <see cref="SkillsGet"/> and broadcast after <see cref="SkillsSave"/>.</summary>
+    /// <summary>The current skill list/state — answer to <see cref="SkillsGet"/>, broadcast after
+    /// <see cref="SkillsSave"/>, and broadcast unprompted whenever the fond is rebuilt for any
+    /// reason at all (a file changed, a branch was added, a grant moved).</summary>
     public const string SkillsResult = "skills.result";
+    /// <summary>The branches this person owns — answer to <see cref="SkillSourcesGet"/>.</summary>
+    public const string SkillSourcesResult = "skills.sources.result";
     /// <summary>The current built-in capability set — answer to <see cref="FeaturesGet"/> and broadcast after <see cref="FeaturesSave"/>.</summary>
     public const string FeaturesResult = "features.result";
     /// <summary>The project's UI appearance (theme/density) changed — broadcast to every window so all

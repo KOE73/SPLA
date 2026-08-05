@@ -7,8 +7,14 @@ namespace SPLA.Tests.Fakes;
 /// private fields — the whole point of the source abstraction is that the manager does not care
 /// where entries come from, and the tests should demonstrate that rather than work around it.
 /// </summary>
-public sealed class FakeSkillSource : ISkillSource
+public sealed class FakeSkillSource : ISkillSource, IDisposable
 {
+    /// <summary>How many times the library let go of this source. Replacing the branch set has to
+    /// dispose the old ones exactly once — a watcher nobody reads is a handle nobody closes.</summary>
+    public int DisposeCount { get; private set; }
+
+    public void Dispose() => DisposeCount++;
+
     private readonly Dictionary<string, (SkillEntry Entry, string Body)> _skills = new();
     private readonly Dictionary<(string Ref, string Path), string> _resources = new();
 

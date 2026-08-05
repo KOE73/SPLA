@@ -415,6 +415,16 @@ public sealed class PluginsPayload
 public sealed class CapabilityDto
 {
     public string Id { get; set; } = string.Empty;
+
+    /// <summary>
+    /// A skill's full address, <c>branch:id</c> — the thing that actually identifies it, since two
+    /// branches may hold the same name. Empty for built-ins, which have no branch.
+    ///
+    /// <para>This is what a save must key on and what a list must key rows on: two editions of one
+    /// name would otherwise collapse into a single row and a single switch.</para>
+    /// </summary>
+    public string Address { get; set; } = string.Empty;
+
     /// <summary>"builtin" or "skill".</summary>
     public string Kind { get; set; } = string.Empty;
     public string Name { get; set; } = string.Empty;
@@ -422,7 +432,7 @@ public sealed class CapabilityDto
     public bool Enabled { get; set; } = true;
 
     /// <summary>Resolved state name — Available / MissingPrerequisites / DisabledByUser /
-    /// DisabledByTrust / Superseded for skills, Enabled / DisabledByUser for built-ins. Read-only.</summary>
+    /// DisabledByTrust for skills, Enabled / DisabledByUser for built-ins. Read-only.</summary>
     public string? State { get; set; }
     public string? StateReason { get; set; }
 
@@ -452,6 +462,25 @@ public sealed class SkillSourceDto
     public string Label { get; set; } = string.Empty;
     public string Trust { get; set; } = "Trusted";
 
+    /// <summary>Which layer declared it: Project / Machine / Granted / Deployment. The panel shows
+    /// both halves of the fond as one list — a person needs to see the whole thing, not the half they
+    /// own — so each row has to say where it came from.</summary>
+    public string Origin { get; set; } = "Machine";
+
+    /// <summary>False when this branch is switched off. Off is not gone: an inherited branch can only
+    /// be darkened, never deleted, so that nobody is left wondering whether it ever existed.</summary>
+    public bool Enabled { get; set; } = true;
+
+    /// <summary>True when the row itself lives in this person's own store and can be edited or
+    /// removed outright. A prescribed row is not editable in place — switching it off records an
+    /// override under the same id instead, which is why every row is still switchable.</summary>
+    public bool Editable { get; set; }
+
+    /// <summary>True when this location carries an explicit trust grant. Kept separate from
+    /// <see cref="Trust"/> so "trusted because I approved this folder" never looks like "trusted
+    /// because nothing said otherwise".</summary>
+    public bool TrustGranted { get; set; }
+
     /// <summary>How much of this source reaches the model unasked — OutOfCatalog / Findable /
     /// InCatalog / OnShelf. Read-only here: the level is a deployment decision in <c>.spla</c>, not a
     /// panel toggle, and showing it is how a person understands why a skill is switched on and still
@@ -469,6 +498,56 @@ public sealed class SkillsPayload
     public List<CapabilityDto> Skills { get; set; } = new();
     public List<SkillSourceDto> Sources { get; set; } = new();
     public bool CanPersist { get; set; }
+}
+
+/// <summary>
+/// The branches this person owns — <see cref="MessageTypes.SkillSourcesGet"/> answer and
+/// <see cref="MessageTypes.SkillSourcesSave"/> body.
+///
+/// <para>Only the granted half travels here. Prescribed entries are read-only by construction and
+/// already arrive with <see cref="SkillsPayload.Sources"/>; sending them back would invite a client
+/// to "save" them, and the only place they could be saved to is a committed project file.</para>
+/// </summary>
+public sealed class SkillSourcesPayload
+{
+    public List<SkillSourceEditDto> Sources { get; set; } = new();
+}
+
+/// <summary>One editable branch, as the panel holds it.</summary>
+public sealed class SkillSourceEditDto
+{
+    /// <summary>The declared name. Reusing the name of a prescribed branch is how you override it —
+    /// that is a feature, and it is the only way to switch an inherited branch off from the UI.</summary>
+    public string Id { get; set; } = string.Empty;
+
+    /// <summary>Absent for a pure override (a row that only says <c>enabled: false</c>).</summary>
+    public string? Path { get; set; }
+
+    public string? Label { get; set; }
+
+    /// <summary>OutOfCatalog / Findable / InCatalog / OnShelf. How much reaches the model unasked —
+    /// context economy, which is the fond owner's call and has nothing to do with trust.</summary>
+    public string? Level { get; set; }
+
+    public bool Enabled { get; set; } = true;
+}
+
+/// <summary>
+/// Approve or withdraw approval of one location's contents —
+/// <see cref="MessageTypes.SkillSourceTrust"/>.
+///
+/// <para>Deliberately not part of the save. Adding a folder and vouching for its text are different
+/// acts with different costs: the first is bookkeeping, the second puts somebody else's words into
+/// the system prompt. Folding them together would mean one dialog answering two questions, and
+/// people answer that dialog once and stop reading it.</para>
+/// </summary>
+public sealed class SkillSourceTrustPayload
+{
+    /// <summary>The branch to act on, by its resolved id.</summary>
+    public string SourceId { get; set; } = string.Empty;
+
+    /// <summary>True to grant, false to withdraw.</summary>
+    public bool Trusted { get; set; }
 }
 
 /// <summary>The built-in <c>core.*</c> capabilities. <see cref="MessageTypes.FeaturesGet"/> answer /

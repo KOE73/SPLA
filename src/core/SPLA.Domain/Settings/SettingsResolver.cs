@@ -120,10 +120,73 @@ public class ResolvedSettings
     // Skills — per-skill overrides (skills.items), keyed by skill id.
     public Dictionary<string, SplaSkillSection> Skills { get; set; } = new();
 
-    /// <summary>Configured skill providers (skills.sources), in priority order. Null = the built-in
-    /// default set. Replaced wholesale by the more specific layer, never merged: merging would make
-    /// an inherited source impossible to drop.</summary>
-    public List<SplaSkillSourceSection>? SkillSources { get; set; }
+    /// <summary>
+    /// Declared skill providers (skills.sources), accumulated across layers in declaration order —
+    /// the machine layer first, the project's after it.
+    ///
+    /// <para>This is what was WRITTEN, not the effective set: entries are merged by their declared
+    /// id, and the built-in entries are prepended, by <c>SkillSourceRegistry.Build</c>. That work
+    /// happens there rather than here because deriving the fallback id of an unnamed entry means
+    /// resolving its path, and this resolver is a pure function with no idea where anything lives.</para>
+    /// </summary>
+    public List<SplaSkillSourceSection> SkillSources { get; set; } = new();
+
+    /// <summary>Whether the built-in source entries are part of the fond. False is a deployment's
+    /// white list — "only what I named". Last layer to mention it wins, like every other scalar.</summary>
+    public bool SkillsInheritDefaults { get; set; } = true;
+
+    /// <summary>The administrator's ceiling on source trust (<c>skills.policy.max_trust</c>), read
+    /// only from the machine layer. Null = no ceiling, i.e. a granted source may be trusted.</summary>
+    public string? SkillsMaxTrust { get; set; }
+
+    /// <summary>As declared by <c>skills.policy.user_may_vouch</c>. Null = nobody said, so the
+    /// deployment's own default applies — see <see cref="SkillsUserMayVouchEffective"/>.</summary>
+    public bool? SkillsUserMayVouch { get; set; }
+
+    /// <summary>True when this install serves more than one person, i.e. personal directories are
+    /// resolved per user rather than everyone sharing the machine home.</summary>
+    public bool IsMultiUserDeployment { get; set; }
+
+    /// <summary>
+    /// Whether the person may vouch for a folder themselves.
+    ///
+    /// <para>True locally: they are their own administrator, and the confirmation dialog is the whole
+    /// ceremony. False on a server unless an administrator says otherwise — a user writing in their
+    /// own area is not a risk, but the trust level that entry claims is, and the trust level is the
+    /// axis worth cutting on rather than the right to write.</para>
+    /// </summary>
+    public bool SkillsUserMayVouchEffective => SkillsUserMayVouch ?? !IsMultiUserDeployment;
+
+    /// <summary>
+    /// Where this person's own state lives — their skill branches, their trust grants, their
+    /// machine-wide skills folder. <c>~/.spla</c> locally; on a server, their own area under
+    /// <c>{root}/users/{userKey}</c>, so one server's users do not share a fond or each other's
+    /// approvals.
+    /// </summary>
+    public string PersonalDir { get; set; } = string.Empty;
+
+    /// <summary>The branches this person added themselves — the half of the fond they own and the UI
+    /// may write. Null only in tests and embedded hosts that never granted anything.</summary>
+    public ISkillSourceStore? SkillSourceStore { get; set; }
+
+    /// <summary>Which locations this person has vouched for. Separate from the source list on
+    /// purpose: a grant is a decision about safety, and it must not be editable as a field of the
+    /// thing it is about.</summary>
+    public ISkillTrustStore? SkillTrustStore { get; set; }
+
+    /// <summary>
+    /// The declared entries with the granted ones appended, which is the order the fold expects:
+    /// granted last means most specific, so a personal entry overrides a prescribed one of the same
+    /// name instead of being shadowed by it.
+    ///
+    /// <para>That ordering is what makes "switch off an inherited branch from the panel" possible
+    /// without the UI writing into a committed project file — it records an override under the same
+    /// id, in the person's own store.</para>
+    /// </summary>
+    public List<SplaSkillSourceSection> EffectiveSkillSources() =>
+        SkillSourceStore is null
+            ? SkillSources
+            : [.. SkillSources, .. SkillSourceStore.Load()];
 
     // The model-backed librarian (skills.librarian). Null = off; skill_find stays deterministic.
     public SplaLibrarianSection? SkillLibrarian { get; set; }
@@ -237,7 +300,7 @@ public static class SettingsResolver
                 r.Theme = defaults.Ui.Theme ?? r.Theme;
                 r.Density = defaults.Ui.Density ?? r.Density;
             }
-            ApplySkills(r, defaults.Skills);
+            ApplySkills(r, defaults.Skills, SourceOrigin.Machine);
             ApplyToolSets(r, defaults.ToolSets);
         }
 
@@ -293,7 +356,7 @@ public static class SettingsResolver
                     r.Plugins[kvp.Key] = kvp.Value;
             }
             ApplyToolSets(r, project.ToolSets);
-            ApplySkills(r, project.Skills);
+            ApplySkills(r, project.Skills, SourceOrigin.Project);
         }
 
         // Finalize: keep configured connections; synthesize a default from the llm: section when none
@@ -341,12 +404,6 @@ public static class SettingsResolver
         return models;
     }
 
-    /// <summary>
-    /// Layers one <c>skills:</c> block over the result. The two halves behave differently on purpose:
-    /// per-skill items MERGE by id (a project switches off one inherited skill without restating the
-    /// rest), while the source list REPLACES wholesale (merging would leave no way to drop a source
-    /// inherited from defaults). A layer that omits <c>sources</c> leaves the inherited list alone.
-    /// </summary>
     /// <summary>Merges one layer's <c>toolsets:</c> entries key by key — the more specific layer
     /// overrides a set it mentions and leaves the rest of the inherited levels alone.</summary>
     private static void ApplyToolSets(ResolvedSettings r, Dictionary<string, string>? toolSets)
@@ -357,12 +414,37 @@ public static class SettingsResolver
             r.ToolSets[kvp.Key] = kvp.Value;
     }
 
-    private static void ApplySkills(ResolvedSettings r, SplaSkillsSection? skills)
+    /// <summary>
+    /// Layers one <c>skills:</c> block over the result. Both halves now merge, and by the same
+    /// principle: per-skill items by skill id, sources by their declared source id. A layer that
+    /// omits either half changes neither.
+    ///
+    /// <para>Sources are only ACCUMULATED here, in layer order — the merge itself happens in
+    /// <c>SkillSourceRegistry.Build</c>, which is the first place an unnamed entry's fallback id can
+    /// be worked out. Appending rather than replacing is the whole point of the change: adding a
+    /// folder is one entry in any layer, and dropping an inherited one is <c>enabled: false</c>.</para>
+    /// </summary>
+    private static void ApplySkills(ResolvedSettings r, SplaSkillsSection? skills, SourceOrigin origin)
     {
         if (skills == null) return;
 
+        if (skills.InheritDefaults.HasValue)
+            r.SkillsInheritDefaults = skills.InheritDefaults.Value;
+
+        // Policy is the administrator's, so it is heard from the administrator's layer only. A
+        // project raising its own ceiling would be the exact move the ceiling exists to stop.
+        if (origin == SourceOrigin.Machine && skills.Policy is { } policy)
+        {
+            if (policy.MaxTrust is { } maxTrust) r.SkillsMaxTrust = maxTrust;
+            if (policy.UserMayVouch is { } mayVouch) r.SkillsUserMayVouch = mayVouch;
+        }
+
         if (skills.Sources != null)
-            r.SkillSources = skills.Sources;
+            foreach (var source in skills.Sources)
+            {
+                source.Origin = origin;
+                r.SkillSources.Add(source);
+            }
 
         if (skills.Items != null)
             foreach (var kvp in skills.Items)

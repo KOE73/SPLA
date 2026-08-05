@@ -13,6 +13,7 @@ internal sealed class SettingsHandlers : IMessageHandler
         MessageTypes.AgentGet, MessageTypes.AgentSave,
         MessageTypes.PluginsGet, MessageTypes.PluginsSave, MessageTypes.PluginAction,
         MessageTypes.SkillsGet, MessageTypes.SkillsSave,
+        MessageTypes.SkillSourcesGet, MessageTypes.SkillSourcesSave, MessageTypes.SkillSourceTrust,
         MessageTypes.FeaturesGet, MessageTypes.FeaturesSave,
         MessageTypes.UsageGet, MessageTypes.AppearanceSave, MessageTypes.SystemRegisterAssociation,
     ];
@@ -26,6 +27,9 @@ internal sealed class SettingsHandlers : IMessageHandler
         MessageTypes.PluginAction              => PluginAction(ctx),
         MessageTypes.SkillsGet                 => SkillsGet(ctx),
         MessageTypes.SkillsSave                => SkillsSave(ctx),
+        MessageTypes.SkillSourcesGet           => SkillSourcesGet(ctx),
+        MessageTypes.SkillSourcesSave          => SkillSourcesSave(ctx),
+        MessageTypes.SkillSourceTrust          => SkillSourceTrust(ctx),
         MessageTypes.FeaturesGet               => FeaturesGet(ctx),
         MessageTypes.FeaturesSave              => FeaturesSave(ctx),
         MessageTypes.UsageGet                  => UsageGet(ctx),
@@ -91,6 +95,32 @@ internal sealed class SettingsHandlers : IMessageHandler
         var p = ctx.Payload<SkillsPayload>();
         await ctx.Session.Hub.BroadcastToProjectAsync(projectId, MessageTypes.SkillsResult,
             SettingsOps.SaveSkills(entry.Runtime, p?.Skills ?? new()));
+    }
+
+    private static Task SkillSourcesGet(RequestContext ctx)
+    {
+        var (entry, _) = ctx.Session.Resolve(ctx.Env);
+        return ctx.Reply(MessageTypes.SkillSourcesResult, SettingsOps.GetSkillSources(entry.Runtime));
+    }
+
+    private static async Task SkillSourcesSave(RequestContext ctx)
+    {
+        var (entry, projectId) = ctx.Session.Resolve(ctx.Env);
+        var p = ctx.Payload<SkillSourcesPayload>();
+        // Broadcast the SKILLS, not the source list: the point of adding a branch is the books that
+        // appear, and every open panel has to see them without asking again.
+        await ctx.Session.Hub.BroadcastToProjectAsync(projectId, MessageTypes.SkillsResult,
+            SettingsOps.SaveSkillSources(entry.Runtime, p?.Sources ?? new()));
+    }
+
+    private static async Task SkillSourceTrust(RequestContext ctx)
+    {
+        var (entry, projectId) = ctx.Session.Resolve(ctx.Env);
+        var p = ctx.Payload<SkillSourceTrustPayload>();
+        if (p == null || string.IsNullOrWhiteSpace(p.SourceId)) return;
+
+        await ctx.Session.Hub.BroadcastToProjectAsync(projectId, MessageTypes.SkillsResult,
+            SettingsOps.SetSkillSourceTrust(entry.Runtime, p.SourceId, p.Trusted));
     }
 
     private static Task FeaturesGet(RequestContext ctx)

@@ -81,7 +81,10 @@ client/types **and** this table.
 | `plugins.save` | `PluginsSave` | `PluginsPayload` | Broadcasts `plugins.result`. |
 | `plugin.action` | `PluginAction` | `PluginActionPayload` | Invoke a plugin web-settings action; reply `plugin.action.result`. |
 | `skills.get` | `SkillsGet` | — | Reply `skills.result`. |
-| `skills.save` | `SkillsSave` | `SkillsPayload` | Per-skill enable/preload → `skills.items`. Applies live. Broadcasts `skills.result`. |
+| `skills.save` | `SkillsSave` | `SkillsPayload` | Per-skill enable → `skills.items`, keyed by full address. Applies live. Broadcasts `skills.result`. |
+| `skills.sources.get` | `SkillSourcesGet` | — | Reply `skills.sources.result`. Only the branches this person owns; prescribed ones are read-only and already travel with `skills.result`. |
+| `skills.sources.save` | `SkillSourcesSave` | `SkillSourcesPayload` | Replaces the person's branch list in their own store — never the project file. Rebuilds sources live. Broadcasts `skills.result`. |
+| `skills.source.trust` | `SkillSourceTrust` | `SkillSourceTrustPayload` | Grants or withdraws approval of one branch's contents, stored against the resolved folder. Separate from save on purpose: adding a folder and vouching for its text are different acts with different costs. Broadcasts `skills.result`. |
 | `features.get` | `FeaturesGet` | — | Reply `features.result`. |
 | `features.save` | `FeaturesSave` | `FeaturesPayload` | Built-in `core.*` set → `agent.capabilities`. Broadcasts `features.result`. |
 | `usage.get` | `UsageGet` | — | Reply `usage.result`. |
@@ -140,7 +143,8 @@ client/types **and** this table.
 | `agent.result` | `AgentResult` | `AgentSettingsPayload` | unicast/broadcast | Answer to get; broadcast after save. |
 | `plugins.result` | `PluginsResult` | `PluginsPayload` | unicast/broadcast | Answer to get; broadcast after save. |
 | `plugin.action.result` | `PluginActionResult` | `PluginActionResultPayload` | unicast | Answer to `plugin.action`. |
-| `skills.result` | `SkillsResult` | `SkillsPayload` | unicast/broadcast | Answer to get; broadcast after save. Lists every skill with source + resolved state, unavailable ones included. |
+| `skills.result` | `SkillsResult` | `SkillsPayload` | unicast/broadcast | Answer to get; broadcast after any save AND unprompted whenever the fond is rebuilt — a file changed, a branch was added, a grant moved. Lists every skill with its address, source and resolved state, unavailable ones included. |
+| `skills.sources.result` | `SkillSourcesResult` | `SkillSourcesPayload` | unicast | Answer to `skills.sources.get`. The editable half of the fond only. |
 | `features.result` | `FeaturesResult` | `FeaturesPayload` | unicast/broadcast | Answer to get; broadcast after save. `restartToApply` is always true — feature tools register once at startup. |
 | `usage.result` | `UsageResult` | usage totals | unicast/broadcast (project) | Answer to `usage.get`; also broadcast after each turn's token accounting. |
 | `appearance.changed` | `AppearanceChanged` | `AppearanceChangedPayload` | broadcast | Theme/density; every window applies it. See [Domain events](#domain-events-server-side). |

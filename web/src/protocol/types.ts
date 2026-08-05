@@ -216,11 +216,17 @@ export interface PluginsResultPayload {
  */
 export interface CapabilityDto {
   id: string;
+  /**
+   * A skill's full address, `branch:id` — what identifies it, since two branches may hold the same
+   * name. Absent for built-ins. Key rows and saves on this, never on `id`: two editions of one name
+   * would otherwise share a row and a switch.
+   */
+  address?: string;
   kind: "builtin" | "skill";
   name: string;
   description?: string;
   enabled?: boolean;
-  /** Available / MissingPrerequisites / DisabledByUser / DisabledByTrust / Superseded — read-only. */
+  /** Available / MissingPrerequisites / DisabledByUser / DisabledByTrust — read-only. */
   state?: string;
   stateReason?: string;
   /** Provider id for a skill ("project", "machine", "plugin:network"); absent for built-ins. */
@@ -241,16 +247,41 @@ export interface SkillSourceDto {
   label: string;
   trust: string;
   /** OutOfCatalog / Findable / InCatalog / OnShelf — how much of this source the model is told
-   *  about unasked. Read-only: set in .spla, not from the panel. */
+   *  about unasked. Editable for your own branches, read-only for prescribed ones. */
   level?: string;
   /** Filesystem location for folder-backed sources; absent for anything else. */
   path?: string;
+  /** Project / Machine / Granted / Deployment — which layer declared it. */
+  origin?: string;
+  /** False when switched off. Off is not gone: an inherited branch can only be darkened. */
+  enabled?: boolean;
+  /** True when the row lives in your own store and can be edited or removed outright. */
+  editable?: boolean;
+  /** True when this location carries an explicit trust grant, as opposed to being trusted by
+   *  default. Kept apart so the two never look alike. */
+  trustGranted?: boolean;
 }
 
 export interface SkillsResultPayload {
   skills: CapabilityDto[];
   sources: SkillSourceDto[];
   canPersist?: boolean;
+}
+
+/** One branch as the panel edits it. Only the person's own branches are editable this way. */
+export interface SkillSourceEditDto {
+  /** Reusing a prescribed branch's id is how you override it — the only way to switch one off. */
+  id: string;
+  /** Absent for a pure override (a row that only says "off"). */
+  path?: string;
+  label?: string;
+  /** OutOfCatalog / Findable / InCatalog / OnShelf — context economy, unrelated to trust. */
+  level?: string;
+  enabled?: boolean;
+}
+
+export interface SkillSourcesResultPayload {
+  sources: SkillSourceEditDto[];
 }
 
 export interface FeaturesResultPayload {
@@ -499,6 +530,7 @@ export interface ServerEvents {
   "agent.result": AgentResultPayload;
   "plugins.result": PluginsResultPayload;
   "skills.result": SkillsResultPayload;
+  "skills.sources.result": SkillSourcesResultPayload;
   "features.result": FeaturesResultPayload;
   "usage.result": UsageResultPayload;
   "system.register_association.result": { ok?: boolean; message?: string };

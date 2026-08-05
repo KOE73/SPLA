@@ -8,6 +8,7 @@ using SPLA.Domain.Interfaces;
 using SPLA.Domain.Models;
 using SPLA.Domain.Settings;
 using SPLA.LLM.LMStudio;
+using SPLA.LLM.LocalAI;
 using SPLA.LLM.OpenAiCompat;
 using SPLA.LLM.OpenRouter;
 using SPLA.MCP.BasicTools.FileSystem;
@@ -80,6 +81,9 @@ public sealed class AgentRuntime : IDisposable
     /// before any work begins.</summary>
     public SPLA.Library.Librarians.IAgentLibrarian SkillAgentLibrarian { get; }
     public PluginManager PluginManager { get; }
+
+    /// <summary>Kept because skill sources are rebuilt after startup now — see <see cref="RebuildSkillSources"/>.</summary>
+    private readonly ILoggerFactory _loggerFactory;
 
     /// <summary>Tool sets and their levels — "allowed how far", never "raised right now".
     /// See <c>ToolSetRegistry</c> and PLAN_20260803_core.</summary>
@@ -172,21 +176,15 @@ public sealed class AgentRuntime : IDisposable
         foreach (var p in PluginManager.GetSchemaProviders())
             SchemaRegistry.Register(p);
 
-        // Skill providers: the configured ones (project/machine folders by default) in priority
-        // order, then one per plugin that ships skills. SetProbe below completes the wiring once the
-        // tool host and feature set exist — requirement resolution needs both.
-        var skillSources = SkillSourceRegistry.Build(
-            settings.SkillSources,
-            new SkillSourceContext(
-                Path.GetFullPath(settings.WorkspacePath),
-                ConfigLoader.GetDefaultsDir(),
-                loggerFactory,
-                AppDomain.CurrentDomain.BaseDirectory),
-            PluginManager.BuildSkillSources(loggerFactory.CreateLogger<PluginSkillSource>()),
-            loggerFactory.CreateLogger<SkillLibrary>());
-
-        SkillLibrary = new SkillLibrary(skillSources, loggerFactory.CreateLogger<SkillLibrary>());
+        // Skill providers: the built-in branches with the declared ones merged over them by name,
+        // then one per plugin that ships skills. SetProbe below completes the wiring once the tool
+        // host and feature set exist — requirement resolution needs both.
+        _loggerFactory = loggerFactory;
+        SkillLibrary = new SkillLibrary(BuildSkillSources(), loggerFactory.CreateLogger<SkillLibrary>());
         SkillLibrary.ApplySettings(settings.Skills);
+        // Until now Reloaded fired into an empty room: a watcher would notice a new skill file and
+        // no window would ever hear about it. One subscriber closes that, for every cause at once.
+        SkillLibrary.Reloaded += (_, _) => Events.Publish(new SkillsChanged());
         SkillLibrarian = new SPLA.Library.Librarians.TagLibrarian(SkillLibrary);
         // Settings read through a lambda, not captured: a librarian switched on in a live settings
         // edit must take effect on the next call, the same way the mode already does.
@@ -317,6 +315,38 @@ public sealed class AgentRuntime : IDisposable
     /// keeps the state it was resolved with at startup, so a freshly enabled plugin's skills stay
     /// invisible until restart while its tools are already live.</para>
     /// </summary>
+    /// <summary>
+    /// Resolves the configured branches into live sources. Kept as a method rather than inlined into
+    /// the constructor because the source LIST is now editable at runtime: a person adding a folder
+    /// in the settings panel has to get that folder without restarting the service, which is the
+    /// difference between closing the original task and imitating it.
+    /// </summary>
+    private IReadOnlyList<ISkillSource> BuildSkillSources() =>
+        SkillSourceRegistry.Build(
+            Settings.EffectiveSkillSources(),
+            new SkillSourceContext(
+                Path.GetFullPath(Settings.WorkspacePath),
+                // The person's own area, not the machine's: on a server that is their folder under
+                // the server root, so the `machine` branch stops being one shared pile for everyone.
+                Settings.PersonalDir.Length > 0 ? Settings.PersonalDir : ConfigLoader.GetDefaultsDir(),
+                _loggerFactory,
+                AppDomain.CurrentDomain.BaseDirectory),
+            PluginManager.BuildSkillSources(_loggerFactory.CreateLogger<PluginSkillSource>()),
+            _loggerFactory.CreateLogger<SkillLibrary>(),
+            Settings.SkillsInheritDefaults,
+            Settings.SkillsMaxTrust,
+            Settings.SkillTrustStore,
+            Settings.SkillsUserMayVouchEffective);
+
+    /// <summary>Rebuilds every skill source from the current settings and stores — call after the
+    /// source list or a trust grant changed. Re-probes afterwards, because a new branch's skills have
+    /// requirements that need resolving against the live tool surface.</summary>
+    public void RebuildSkillSources()
+    {
+        SkillLibrary.SetSources(BuildSkillSources());
+        RefreshSkillCapabilities();
+    }
+
     public void RefreshSkillCapabilities() =>
         SkillLibrary.SetProbe(new SkillCapabilityProbe(
             // Permitted, not disclosed: a skill at the "on skill demand" level exists precisely to
@@ -394,6 +424,8 @@ public sealed class AgentRuntime : IDisposable
 
         foreach (var descriptor in LmStudioProvider.Create(_httpClient, loggerFactory))
             registry.Register(descriptor);
+
+        registry.Register(new LocalAIProvider(_httpClient, loggerFactory));
 
         OpenRouter = new OpenRouterProvider(_httpClient, loggerFactory);
         registry.Register(OpenRouter);

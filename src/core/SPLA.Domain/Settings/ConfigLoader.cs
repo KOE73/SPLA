@@ -371,8 +371,35 @@ public static class ConfigLoader
         resolved.Secrets = store;
         resolved.SecretResolver = new Secrets.SecretResolver(store);
 
+        // Where this person's own state lives. Locally the machine home; on a server, their own area,
+        // so two users of one server neither share a fond nor inherit each other's approvals.
+        // A deployment that resolves personal directories is one with more than one person in it, and
+        // that single fact drives both consequences: whose folders these are, and whether they get to
+        // call their own folders vetted.
+        var personal = PersonalDirResolver?.Invoke(workspace);
+        resolved.IsMultiUserDeployment = personal is not null;
+        resolved.PersonalDir = personal ?? GetDefaultsDir();
+
+        // The branches this person added themselves. Same area as their secrets and for the same
+        // reason: it is theirs, it is never committed, and the UI has to be able to write it.
+        resolved.SkillSourceStore = new FileSkillSourceStore(resolved.PersonalDir);
+        // Grants live beside the list, never inside it — the same rule as secrets and their ACL.
+        resolved.SkillTrustStore = new FileSkillTrustStore(resolved.PersonalDir);
+
         return resolved;
     }
+
+    /// <summary>
+    /// Maps a workspace to the directory holding that person's own state, or null to use the machine
+    /// home. Registered by a deployment that has more than one person in it — the server points it at
+    /// <c>{root}/users/{userKey}</c>.
+    ///
+    /// <para>A hook rather than a parameter for the same reason <see cref="SecretStoreFactory"/> is
+    /// one: SPLA.Domain must not learn what a server root is, and every caller of
+    /// <see cref="LoadAndResolve"/> would otherwise have to thread through something only one
+    /// deployment has.</para>
+    /// </summary>
+    public static Func<string?, string?>? PersonalDirResolver { get; set; }
 
     /// <summary>
     /// Pluggable factory for non-default secret backends. SPLA.Domain must not reference Windows

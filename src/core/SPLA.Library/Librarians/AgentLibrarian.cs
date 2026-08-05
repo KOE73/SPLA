@@ -111,7 +111,7 @@ public sealed class AgentLibrarian : IAgentLibrarian
 
         foreach (var card in cards)
         {
-            sb.Append($"{card.Id}");
+            sb.Append($"{card.DisplayId}");
             if (card.Tags.Count > 0) sb.Append($" [{string.Join(", ", card.Tags)}]");
             if (card.Description.Length > 0) sb.Append($" — {card.Description}");
             sb.Append('\n');
@@ -129,7 +129,15 @@ public sealed class AgentLibrarian : IAgentLibrarian
     {
         if (string.IsNullOrWhiteSpace(answer)) return [];
 
-        var byId = cards.ToDictionary(c => c.Id, StringComparer.OrdinalIgnoreCase);
+        // Keyed by both spellings: the prompt shows the shortest unambiguous name, but a model that
+        // qualifies it anyway is being MORE precise, not wrong, and must not be punished for it.
+        var byId = new Dictionary<string, SkillCard>(StringComparer.OrdinalIgnoreCase);
+        foreach (var c in cards)
+        {
+            byId[c.Address] = c;
+            byId.TryAdd(c.DisplayId, c);
+        }
+
         var matches = new List<SkillMatch>();
         var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
 
@@ -140,12 +148,19 @@ public sealed class AgentLibrarian : IAgentLibrarian
             // dropping a correct answer over punctuation.
             var line = raw.Trim().TrimStart('-', '*', '•', ' ');
             line = StripEnumerator(line).Trim('`', ' ');
-            var cut = line.IndexOfAny([' ', '\t', ':', '—']);
-            if (cut > 0) line = line[..cut];
-            line = line.TrimEnd('.', ',', ')');
             if (line.Length == 0 || line.Equals("NONE", StringComparison.OrdinalIgnoreCase)) continue;
 
-            if (byId.TryGetValue(line, out var card) && seen.Add(card.Id))
+            // Whole line first, THEN the cut. ':' is no longer a separator to chop at — it is part of
+            // an address, and cutting there would turn "builtin:foo" into a branch name and a miss.
+            if (!byId.TryGetValue(line, out var card))
+            {
+                var cut = line.IndexOfAny([' ', '\t', '—']);
+                if (cut > 0) line = line[..cut];
+                line = line.TrimEnd('.', ',', ')', ':');
+                byId.TryGetValue(line, out card);
+            }
+
+            if (card is not null && seen.Add(card.Address))
             {
                 // Rank is the order the librarian gave, expressed as a descending score so a caller
                 // can merge these with tag matches without knowing where they came from.

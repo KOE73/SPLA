@@ -15,9 +15,7 @@ public enum SkillState
     /// <summary>Turned off in settings, or by its own <c>enabled: false</c> frontmatter.</summary>
     DisabledByUser,
     /// <summary>Comes from an untrusted source and has not been explicitly enabled.</summary>
-    DisabledByTrust,
-    /// <summary>A higher-priority source provides the same id.</summary>
-    Superseded
+    DisabledByTrust
 }
 
 /// <summary>
@@ -34,6 +32,25 @@ public sealed class SkillCard
     public required string SourceLabel { get; init; }
     public required string Ref { get; init; }
     public required SkillTrust Trust { get; init; }
+
+    /// <summary>
+    /// The book's full address — branch plus number. This, not <see cref="Id"/>, is what identifies a
+    /// skill: two branches may each hold a book of the same name, and that is a normal state of a
+    /// fond rather than a conflict to resolve.
+    ///
+    /// <para>Priority-by-source-order is exactly how dependency confusion works — a package resolved
+    /// by which feed answered first instead of by where it came from. Naming the branch makes that
+    /// class of mistake inexpressible here.</para>
+    /// </summary>
+    public string Address => $"{SourceId}:{Id}";
+
+    /// <summary>
+    /// The shortest name that identifies this card unambiguously right now: the bare id while it
+    /// occurs once in the holdings, the full address once it occurs twice. Assigned by the library on
+    /// every rebuild — nothing else computes it, so what the model reads, what the panel shows and
+    /// what <c>skill_activate</c> accepts cannot drift apart.
+    /// </summary>
+    public string DisplayId { get; set; } = string.Empty;
 
     public string Description { get; init; } = string.Empty;
 

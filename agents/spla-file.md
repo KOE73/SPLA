@@ -96,6 +96,28 @@ ui:
   theme: Dark
 ```
 
+## Personal state — the layer that is not a settings file
+
+Some things belong to the person rather than to the project or the machine's configuration, and must
+never be committed. They live as separate files in the **personal directory** — `~/.spla` locally,
+`{server root}/users/{userKey}` on a server, so one server's users share none of it.
+
+| File | Holds | Written by |
+|---|---|---|
+| `secrets.yaml` | credential values | secrets UI |
+| `secrets.acl.yaml` | who may use/manage each secret | secrets UI |
+| `skills.yaml` | skill branches this person added | Settings → Skills |
+| `skills.acl.yaml` | folders this person approved, keyed by resolved path | Settings → Skills |
+
+The pattern is the same in both pairs and worth keeping: **the list and the permission over it are two
+files, never one.** A list is edited as data; an approval is a decision about safety, and one document
+for both is a way to grant yourself something by editing the field next door.
+
+These are not a settings layer in the cascade sense — they hold what the cascade cannot, namely a
+decision that would be wrong to deliver to everyone who clones the repository. `skills.yaml` does
+merge into the source list as the most specific layer, which is what lets the panel switch an
+inherited branch off without touching the project file.
+
 ## Usage
 
 ### CLI

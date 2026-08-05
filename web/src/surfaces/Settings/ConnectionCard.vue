@@ -113,7 +113,8 @@ const KNOWN_PROVIDERS = [
   { value: "vllm", label: "vLLM" },
   { value: "openai", label: "OpenAI" },
   { value: "openrouter", label: "OpenRouter" },
-  { value: "openai-compat", label: "OpenAI-compat" }
+  { value: "openai-compat", label: "OpenAI-compat" },
+  { value: "localai", label: "LocalAI" }
 ];
 const PROVIDER_DEFAULT_EP: Record<string, string> = {
   lmstudio: "http://127.0.0.1:1234/v1",

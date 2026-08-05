@@ -76,7 +76,17 @@ public sealed class SkillActivateTool : IMcpTool
                 return Task.FromResult(
                     $"error: skill '{session.ActiveSkillId}' is already active — call skill_deactivate first");
 
-            var skill = _skills.Find(id);
+            var lookup = _skills.Resolve(id);
+
+            // Two branches answer to this name. Deciding for the model here is the one failure nobody
+            // would think to check for, so it is refused — and the refusal MUST list the addresses,
+            // because an ambiguity error without alternatives is just a dead end with extra words.
+            if (lookup.IsAmbiguous)
+                return Task.FromResult(
+                    $"error: '{id}' is held by more than one source — activate one of these by its full address:\n" +
+                    string.Join("\n", lookup.Candidates.Select(c => $"  - {c.Address}")));
+
+            var skill = lookup.Card;
             if (skill is null)
             {
                 // Suggestions must respect the level. Naming a skill here that the catalog
@@ -85,7 +95,7 @@ public sealed class SkillActivateTool : IMcpTool
                 var suggestions = _skills.Catalog()
                     .Where(s => s.Level is SourceLevel.InCatalog or SourceLevel.OnShelf)
                     .Where(s => s.Id.Contains(id, StringComparison.OrdinalIgnoreCase))
-                    .Select(s => s.Id)
+                    .Select(s => s.DisplayId)
                     .Take(5)
                     .ToArray();
 
@@ -102,22 +112,24 @@ public sealed class SkillActivateTool : IMcpTool
             // "needs port_scan — from plugin 'network'" is actionable, "unknown skill" is not.
             if (skill.State != SkillState.Available)
                 return Task.FromResult(
-                    $"error: skill '{skill.Id}' is not available — {skill.StateReason}");
+                    $"error: skill '{skill.DisplayId}' is not available — {skill.StateReason}");
 
             // The body is read once, here, and pinned in the session for the run. Editing the file
             // of a running skill therefore cannot swap the procedure mid-flight; the edit applies at
             // the next activation. A source that cannot produce the body fails the activation
             // outright rather than activating into an empty ACTIVE SKILL block.
-            var body = _skills.LoadBody(skill.Id);
+            // Addressed, not named: re-resolving a bare id here would be a second chance to pick the
+            // wrong edition, in the one place where the answer is already settled.
+            var body = _skills.LoadBody(skill.Address);
             if (string.IsNullOrWhiteSpace(body))
                 return Task.FromResult(
-                    $"error: skill '{skill.Id}' has no readable procedure — its source '{skill.SourceId}' returned nothing");
+                    $"error: skill '{skill.DisplayId}' has no readable procedure — its source '{skill.SourceId}' returned nothing");
 
             // The loan slip: where this skill came from, plus what came with it. Only the LIST of
             // attachments is taken now — their text is fetched on demand, so a procedure that reads
             // two references out of fourteen files pays for two.
-            var resources = _skills.ListResources(skill.Id);
-            session.Activate(skill.Id, body, skill.SourceId, skill.Ref, resources);
+            var resources = _skills.ListResources(skill.Address);
+            session.Activate(skill.DisplayId, body, skill.SourceId, skill.Ref, resources);
 
             var raised = RaiseRequiredToolSets(skill);
             var raisedNote = raised.Count > 0
@@ -126,7 +138,7 @@ public sealed class SkillActivateTool : IMcpTool
             var resourceNote = resources.Count > 0
                 ? $" It carries {resources.Count} resource(s) — read them with skill_read_resource; they are listed in the ACTIVE SKILL block."
                 : string.Empty;
-            return Task.FromResult($"ok: activated '{skill.Id}' — skill procedure is now injected into the prompt.{raisedNote}{resourceNote} Follow the steps and call skill_deactivate when done.");
+            return Task.FromResult($"ok: activated '{skill.DisplayId}' — skill procedure is now injected into the prompt.{raisedNote}{resourceNote} Follow the steps and call skill_deactivate when done.");
         }
         catch (JsonException)
         {

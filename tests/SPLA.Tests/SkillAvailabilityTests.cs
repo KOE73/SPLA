@@ -95,7 +95,7 @@ public class SkillAvailabilityTests
     }
 
     [Fact]
-    public void An_untrusted_sources_skill_stays_off_until_it_is_enabled_by_name()
+    public void An_untrusted_sources_skill_stays_off_and_no_switch_here_lifts_it()
     {
         var manager = Manager(new FakeSkillSource("server", SkillTrust.Untrusted).With("imported.thing"));
 
@@ -103,27 +103,96 @@ public class SkillAvailabilityTests
         Assert.Equal(SkillState.DisabledByTrust, skill.State);
         Assert.False(skill.IsEnabled);
 
+        // This used to be the way past it. It is not any more: trust belongs to the source, and one
+        // arbitrarily trusted book out of an untrusted branch is a contradiction. The grant — kept
+        // where the source cannot write it — is the only way up, and copying the skill into a branch
+        // you already trust is the other. See SkillTrustGrantTests.
         manager.ApplySettings(new Dictionary<string, SplaSkillSection>
         {
             ["imported.thing"] = new() { Enabled = true }
         });
-        Assert.Equal(SkillState.Available, manager.Find("imported.thing")!.State);
+        Assert.Equal(SkillState.DisabledByTrust, manager.Find("imported.thing")!.State);
     }
 
     [Fact]
-    public void The_first_source_wins_and_the_loser_is_marked_shadowed()
+    public void Two_branches_holding_the_same_name_both_keep_their_book()
     {
         var project = new FakeSkillSource("project").With("net.audit", body: "project version");
         var plugin = new FakeSkillSource("plugin:network").With("net.audit", body: "plugin version");
 
         var manager = new SkillLibrary([project, plugin]);
 
-        Assert.Equal("project", manager.Find("net.audit")!.SourceId);
-        Assert.Equal("project version", manager.LoadBody("net.audit"));
+        // Neither is evicted, and neither is demoted: two editions of one title is a normal state of
+        // a fond. The reader picks by address.
+        Assert.Equal(2, manager.Holdings().Count);
+        Assert.All(manager.Holdings(), skill => Assert.Equal(SkillState.Available, skill.State));
 
-        var superseded = Assert.Single(manager.Holdings(), skill => skill.State == SkillState.Superseded);
-        Assert.Equal("plugin:network", superseded.SourceId);
-        Assert.Contains("overridden by source 'project'", superseded.StateReason);
+        Assert.Equal("project version", manager.LoadBody("project:net.audit"));
+        Assert.Equal("plugin version", manager.LoadBody("plugin:network:net.audit"));
+    }
+
+    [Fact]
+    public void A_name_two_branches_answer_to_is_an_error_that_names_the_candidates()
+    {
+        var project = new FakeSkillSource("project").With("net.audit");
+        var plugin = new FakeSkillSource("plugin:network").With("net.audit");
+
+        var manager = new SkillLibrary([project, plugin]);
+
+        var lookup = manager.Resolve("net.audit");
+
+        Assert.True(lookup.IsAmbiguous);
+        Assert.Null(lookup.Card);
+        Assert.Equal(["project:net.audit", "plugin:network:net.audit"],
+            lookup.Candidates.Select(c => c.Address));
+    }
+
+    [Fact]
+    public void A_shared_name_is_printed_as_an_address_and_a_unique_one_stays_short()
+    {
+        var project = new FakeSkillSource("project").With("net.audit").With("only.here");
+        var plugin = new FakeSkillSource("plugin:network").With("net.audit");
+
+        var manager = new SkillLibrary([project, plugin]);
+
+        Assert.Equal("only.here", manager.Find("only.here")!.DisplayId);
+        Assert.All(manager.Holdings().Where(s => s.Id == "net.audit"),
+            skill => Assert.Equal(skill.Address, skill.DisplayId));
+    }
+
+    [Fact]
+    public void One_available_edition_settles_the_name_without_asking()
+    {
+        var project = new FakeSkillSource("project").With("net.audit");
+        var plugin = new FakeSkillSource("plugin:network").With("net.audit");
+
+        var manager = new SkillLibrary([project, plugin]);
+        // A full address switches off exactly one edition; the bare name then means the other.
+        manager.ApplySettings(new Dictionary<string, SplaSkillSection>
+        {
+            ["plugin:network:net.audit"] = new() { Enabled = false }
+        });
+
+        var lookup = manager.Resolve("net.audit");
+
+        Assert.False(lookup.IsAmbiguous);
+        Assert.Equal("project", lookup.Card!.SourceId);
+    }
+
+    [Fact]
+    public void A_bare_item_key_is_a_predicate_and_reaches_every_edition()
+    {
+        var project = new FakeSkillSource("project").With("net.audit");
+        var plugin = new FakeSkillSource("plugin:network").With("net.audit");
+
+        var manager = new SkillLibrary([project, plugin]);
+        manager.ApplySettings(new Dictionary<string, SplaSkillSection>
+        {
+            ["net.audit"] = new() { Enabled = false }
+        });
+
+        Assert.All(manager.Holdings(),
+            skill => Assert.Equal(SkillState.DisabledByUser, skill.State));
     }
 
     [Fact]
@@ -152,6 +221,44 @@ public class SkillAvailabilityTests
         manager.IsSkillActive = () => false;
         source.Raise();
         Assert.Equal(2, manager.Holdings().Count);
+    }
+
+    [Fact]
+    public void A_deferred_rebuild_lands_when_the_book_is_returned()
+    {
+        var source = new FakeSkillSource().With("a");
+        var manager = new SkillLibrary([source]) { IsSkillActive = () => true };
+
+        source.With("b");
+        source.Raise();
+        Assert.Single(manager.Holdings());
+
+        // Nothing else is scheduled to make it appear. Skipping was survivable while only file
+        // changes triggered this — another save would come along — and stops being survivable once
+        // the source LIST can change: a folder added mid-procedure would never show up at all.
+        manager.IsSkillActive = () => false;
+        manager.ApplyDeferredRebuild();
+        Assert.Equal(2, manager.Holdings().Count);
+    }
+
+    [Fact]
+    public void Replacing_the_branches_disposes_the_old_ones_exactly_once()
+    {
+        var first = new FakeSkillSource("first").With("a");
+        var manager = new SkillLibrary([first]);
+
+        manager.SetSources([new FakeSkillSource("second").With("b")]);
+
+        Assert.Equal(["second"], manager.Sources.Select(s => s.Id));
+        Assert.Equal(["b"], manager.Holdings().Select(s => s.Id));
+
+        // A watcher nobody reads is a handle nobody closes.
+        Assert.Equal(1, first.DisposeCount);
+
+        // And it is unsubscribed: a source that is gone must not still be able to trigger rebuilds.
+        first.With("c");
+        first.Raise();
+        Assert.Equal(["b"], manager.Holdings().Select(s => s.Id));
     }
 
     [Fact]

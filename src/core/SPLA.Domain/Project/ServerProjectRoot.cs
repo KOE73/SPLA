@@ -47,6 +47,33 @@ public sealed class ServerProjectRoot
         return manifest;
     }
 
+    /// <summary>
+    /// The user area that contains <paramref name="path"/>, or null when it lies outside every one of
+    /// them. Used to work out whose personal state a project belongs to — on a server, a workspace
+    /// under <c>{root}/users/{sid}/…</c> means that person's skill branches, grants and drafts, not
+    /// the service account's.
+    /// </summary>
+    public string? UserAreaFor(string? path)
+    {
+        if (string.IsNullOrWhiteSpace(path)) return null;
+
+        try
+        {
+            var usersRoot = Path.GetFullPath(Path.Combine(_root, "users"));
+            var full = Path.GetFullPath(path);
+            if (!full.StartsWith(usersRoot + Path.DirectorySeparatorChar, StringComparison.OrdinalIgnoreCase))
+                return null;
+
+            // The first segment below users/ IS the area; anything deeper is inside a project.
+            var relative = full[(usersRoot.Length + 1)..];
+            var cut = relative.IndexOfAny([Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar]);
+            var area = cut < 0 ? relative : relative[..cut];
+
+            return area.Length == 0 ? null : Path.Combine(usersRoot, area);
+        }
+        catch { return null; }
+    }
+
     private static string Sanitize(string key)
     {
         var invalid = Path.GetInvalidFileNameChars();

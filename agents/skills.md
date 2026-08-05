@@ -163,17 +163,23 @@ with the same leaf name from colliding. An explicit `id:` in the frontmatter alw
 
 ```yaml
 skills:
-  sources:                        # absent = the two defaults below
-    - type: directory
-      path: .spla/skills
-    - type: directory
+  inherit_defaults: true          # false = a white list: only what is named here
+  sources:
+    - id: ops                     # the key every layer merges on
+      type: directory
       path: /srv/shared-skills
-      trust: untrusted
-      level: in-catalog          # absent = on-shelf
+      level: in-catalog           # absent = on-shelf
       label: Shared
-  items:
-    network.host-audit:
+    - id: local                   # switching an inherited branch off is a complete statement
       enabled: false
+  items:
+    builtin:network.host-audit:   # a full address selects one edition...
+      enabled: false
+    network.host-audit:           # ...a bare id reaches every edition of that name
+      enabled: false
+  policy:                         # honoured only from the machine layer
+    max_trust: untrusted          # nothing may exceed this, grants included
+    user_may_vouch: false         # default: true locally, false on a server
   librarian:                      # absent = off; skill_find stays deterministic
     enabled: true
     model: gpt-oss-120b           # null = the project's default, i.e. the chat's own model
@@ -181,6 +187,21 @@ skills:
 
 `type` selects an `ISkillSourceFactory`; the factory validates its own fields. Adding a source kind
 (server, database, git) means registering a factory — no core changes.
+
+**A branch declares its name.** `id` is the key, and everything follows from having one: adding a
+folder is one entry in any layer, dropping an inherited one is `enabled: false`, clearing the set is
+`inherit_defaults: false`. An entry without `id` falls back to a name derived from its location —
+that is a fallback, not the identity, and a path is now an ordinary field.
+
+An overlay may omit everything but the `id`: type is validated on the *merged* entry, never per
+layer, which is what makes `- id: local` + `enabled: false` complete. Position is fixed by first
+appearance, so editing a label cannot silently reorder the fond.
+
+**Two stores, one model.** Prescribed entries live in the settings layers and travel with the project;
+granted ones live in `<personal dir>/skills.yaml`, are stamped `Granted` on the way in, and come last
+in the fold. That ordering is what lets the panel switch an inherited branch off without writing to a
+committed file — it records an override under the same id, in the person's own store. The personal
+dir is `~/.spla` locally and `{server root}/users/{userKey}` on a server.
 
 ### Level: how much of a source reaches the model
 
@@ -206,37 +227,74 @@ the other.
 
 Layering across `~/.spla/defaults.yaml` and the project `.spla`:
 
-- **`sources` replaces wholesale.** Merging would leave no way to drop an inherited source. A layer
-  that omits `sources` keeps the inherited list.
-- **`items` merges by id**, project wins. A project switches one skill off without restating the rest.
+- **`sources` merges by `id`**, like every other named collection here. It used to replace wholesale,
+  and the comment justifying that named the symptom: an entry had no name, so there was no key to
+  merge on. The name removed the reason.
+- **`items` merges by key**, project wins.
 
-List order is priority order: the first source offering an id owns it, later ones are marked
-`Superseded` (still listed in the panel, so an override is visible).
+**List order is display order and the tie-break in `skill_find` ranking — not priority.** Two branches
+holding the same skill id both keep their book; see *Addressing* below.
 
-The installation's own sources — `builtin` and one per plugin — are appended after the configured
-list and are **not** declared in `skills.sources`, for the same reason plugins are discovered rather
-than declared: they are what the product came with, and a project that replaces `sources` must not
-lose them silently. Coming last, they are still overridable per skill: a project file reusing a
-shipped skill's id wins, and the shipped one shows as `Superseded`.
+### Addressing: a book is a branch plus a number
 
-A plugin's skills follow that plugin's own toggle, so there is exactly **one** switch per plugin
-rather than two.
+A skill's identity is `SkillCard.Address` — `branch:id`. `Id` alone is not identity: two branches may
+each hold a book of the same name, and that is a normal state of a fond rather than a conflict.
+Resolving a name by which shelf answered first is exactly the shape of dependency confusion, so it is
+not done.
+
+`SkillLibrary.Resolve` has **three** answers, not two: found, not found, and *ambiguous with the
+candidates attached*. The third is the point — a librarian who picks for you will be wrong once,
+quietly, and nobody will think to check. Every refusal must print the addresses; an ambiguity error
+without alternatives is a dead end with extra words.
+
+Ambiguity is judged **among the usable books first**. Two editions where only one is available is not
+a question worth asking; two available ones is. When none is available the single match is still
+returned, so the caller reports the real reason instead of "unknown skill".
+
+Addresses are matched **whole, never split on `:`**. Source ids carry colons of their own — a plugin
+branch is literally `plugin:network`, so `plugin:network:net.audit` has two — and any rule about which
+colon separates what is a rule someone eventually gets wrong.
+
+The model reads `DisplayId`: the bare id while it occurs once in the holdings, the full address once
+it occurs twice. Computed once per rebuild, so the prompt, the panel and what `skill_activate` accepts
+cannot drift apart. Always printing the address would be correct and would charge every prompt for a
+branch name nobody needed.
+
+`skills.items` keys are **predicates, not addresses**: a full address selects one edition, a bare id
+reaches every edition of that name and is never ambiguous. "The skill called foo is not for me" is a
+statement about a name; needing exactly one book is a property of borrowing, which is where ambiguity
+is an error. The panel still writes addresses — a row is one edition, and a bare key is a fine thing
+to write by hand and a terrible one to produce by clicking.
+
+There is no `Superseded` state and no override-by-id. To replace a shipped skill, switch it off by
+address and add your own under its own name — one place to grep instead of a resolution rule to know.
+
+`builtin` is an **ordinary named entry** in the built-in set, switchable one at a time like any other.
+It used to be appended unconditionally after the configured list, so that a project replacing
+`sources` could not lose the shipped skills silently; merging by name makes losing anything silently
+impossible, and the special case had nothing left to protect.
+
+Plugin branches are still appended and are still not declarable in `skills.sources` — a plugin's
+skills follow that plugin's own toggle, so there is exactly **one** switch per plugin rather than two.
 
 ---
 
 ## State resolution
 
 ```csharp
-public enum SkillState { Available, MissingPrerequisites, DisabledByUser, DisabledByTrust, Superseded }
+public enum SkillState { Available, MissingPrerequisites, DisabledByUser, DisabledByTrust }
 ```
 
 Resolved in this order — an explicit user decision outranks trust, and both outrank a missing tool,
 because telling someone their switched-off skill also lacks a plugin is noise:
 
-1. **`DisabledByUser`** — `skills.items.<id>.enabled: false`, or the skill's own `enabled: false`.
-2. **`DisabledByTrust`** — untrusted source and no explicit `enabled: true`. A skill body becomes part
-   of the system prompt, so content the user did not write needs a deliberate opt-in; the file saying
-   `enabled: true` about itself is not the user's decision.
+1. **`DisabledByUser`** — a matching `skills.items` key says `enabled: false`, or the skill's own
+   frontmatter does.
+2. **`DisabledByTrust`** — untrusted source. **There is no per-skill way past this.** Switching one
+   skill on used to lift it and no longer does: if the branch as a whole is not trusted, one
+   arbitrarily trusted book out of it is a contradiction — the contents arrived together, from the
+   same place, on the same terms. The two ways up are trusting the source (below) and copying the
+   skill into a branch you already trust, which is one act visible in a diff.
 3. **`MissingPrerequisites`** — some `requires.tools` is not registered, or some `requires.features` is
    not in the resolved `agent.capabilities`. The reason names the tools and the plugins that own them.
 4. **`Available`** — otherwise. Empty requirements land here, which is the common case.
@@ -257,6 +315,49 @@ The previous design had one, and it is worth remembering: a directory scan ran *
 registration and produced entries with no owner, which the filter then admitted via
 `OwnerPlugin?.IsEffectivelyEnabled ?? true`. Disabled plugins kept injecting their skills into the
 system prompt. Both the scan and the nullable owner are gone.
+
+### Trust: declared nowhere, granted from outside
+
+A skill body becomes part of the system prompt, so an untrusted source is a prompt-injection surface:
+reading an unfamiliar book aloud in the middle of your own flat. Trust is therefore never something a
+source can state about itself. Three rules, applied in this order:
+
+**1. Where the folder is.** Anything inside the workspace arrives with the clone — whether a `.spla`
+named it or it was simply sitting in `skills/` — and starts `Untrusted`. The second case is the one
+authorship rules miss entirely: nobody declared anything, so nobody could be caught claiming trust.
+The installation folder is excluded even when it sits inside the workspace, which it does whenever
+this product is developed on itself; build output is not somebody else's content.
+
+**2. Which layer declared it.** A project `.spla` may *ask* for trust and may not decide it, because
+it travels with a repository that may not be yours. The machine layer is the person at the keyboard.
+`SourceOrigin` is stamped during resolution and never read from a file — an entry that could name its
+own origin could name a privileged one. Standing belongs to whoever last chose the content (set
+`path` or `trust`), in both directions; restating a path that *resolves* to where the entry already
+pointed is not a choice, or every project writing its list out in full would untrust itself.
+
+**3. The grant.** Only a record in `<personal dir>/skills.acl.yaml` lifts a source, and its key is the
+**resolved path**, not the id. Rename the folder and approval does not follow — what is there now is
+not what was read; rename the entry and approval stays with the folder, so a renamed entry cannot
+inherit somebody else's decision. This is [`SecretAcl`](../src/core/SPLA.Domain/Secrets/SecretAcl.cs)'s
+rule for a different object: *an ACL lives beside the store, never inside it.* Self-signed trust is not
+trust, which is why `git` refuses a config from a repository owned by someone else and `apt` keeps
+repository keys in a keyring the repository does not control.
+
+Then two ceilings the administrator owns, read **only** from the machine layer — locally the person's
+own home, on a server the service account's, unwritable by users:
+
+| Key | Effect |
+|---|---|
+| `policy.max_trust: untrusted` | nothing reaches `Trusted`, grants included |
+| `policy.user_may_vouch: false` | a person may add branches but not vouch for them; both the entry's claim and their own grant stop working |
+
+`user_may_vouch` defaults to *true locally, false on a server*, derived from one fact: a deployment
+that resolves personal directories has more than one person in it. The cut is on the trust level, not
+on the right to write — a user adding a branch in their own area is doing nothing dangerous.
+
+Plugin branches carry no grant key, deliberately: enabling a plugin already trusted it with executable
+code, which is strictly more than trusting its text, and a second switch for one decision is a way to
+have the two disagree.
 
 ---
 
@@ -501,9 +602,19 @@ while running inside the parent's async flow.
 ## Reload
 
 Sources raise `Changed`; `SkillLibrary` re-enumerates and recomputes. A running procedure is safe
-regardless — see "The body is pinned for the run" above; `SkillLibrary.IsSkillActive` additionally
-defers the rebuild itself while set. Plugin packages do not change under a running process, so
-`PluginSkillSource` never raises `Changed` — the registry is rebuilt on a plugin load pass instead.
+regardless — see "The body is pinned for the run" above; `SkillLibrary.IsSkillActive` (wired by
+`ChatRegistry`, any open chat counts) additionally **defers** the rebuild while a skill runs, and
+`ApplyDeferredRebuild` lands it when the book comes back. Deferring rather than skipping matters now
+that the source *list* can change: a lost file event is repaired by the next save, but a folder added
+mid-procedure would otherwise never appear at all.
+
+`SetSources` replaces the whole branch set — unsubscribing and disposing the old sources, because a
+watcher nobody reads is a handle nobody closes — and `AgentRuntime.RebuildSkillSources` is what the
+settings panel calls after editing the list or moving a grant. `SkillLibrary.Reloaded` is broadcast to
+every client as `skills.result`, for every cause at once.
+
+Plugin packages do not change under a running process, so `PluginSkillSource` never raises `Changed` —
+the registry is rebuilt on a plugin load pass instead.
 
 `DirectorySkillSource` watches its root when it exists, and the nearest existing **ancestor** when it
 does not, swapping to the real watcher the moment the folder appears. A missing folder is the normal

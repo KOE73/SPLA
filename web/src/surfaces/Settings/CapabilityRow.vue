@@ -30,11 +30,10 @@ const props = defineProps<{
 
 const emit = defineEmits<{ (e: "toggle", enabled: boolean): void }>();
 
-/** States the user cannot fix with this checkbox alone — they need a plugin enabled or an override
- * removed elsewhere. Rendered in the warning colour so "off because you said so" and "off because
- * something is missing" never look the same. */
-const isBlocked = computed(() =>
-  props.item.state === "MissingPrerequisites" || props.item.state === "Superseded");
+/** States the user cannot fix with this checkbox alone — they need a plugin enabled. Rendered in the
+ * warning colour so "off because you said so" and "off because something is missing" never look the
+ * same. */
+const isBlocked = computed(() => props.item.state === "MissingPrerequisites");
 
 function onToggle(e: Event) {
   emit("toggle", (e.target as HTMLInputElement).checked);

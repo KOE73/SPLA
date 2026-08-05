@@ -136,7 +136,7 @@ public sealed class SkillsContributor : IAgentContributor
         {
             body.Append("\n\nAvailable skills:");
             foreach (var skill in view.Shelf)
-                body.Append($"\n  {skill.Id} — {skill.Description}");
+                body.Append($"\n  {skill.DisplayId} — {skill.Description}");
         }
 
         if (!view.Cloud.IsEmpty)

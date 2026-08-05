@@ -17,6 +17,16 @@ public abstract record ServiceEvent;
 public sealed record AppearanceChanged(string Theme, string Density) : ServiceEvent;
 
 /// <summary>
+/// The skill fond was rebuilt — a file changed under a branch, the source list was edited, or a
+/// trust grant moved. Every open panel re-reads; nobody has to have asked.
+///
+/// <para><c>SkillLibrary.Reloaded</c> has fired into an empty room since it was written: zero
+/// subscribers, so a folder watcher noticing a new skill reached no window at all. This is the wire
+/// that was missing, and it matters more now that the list itself can change from the panel.</para>
+/// </summary>
+public sealed record SkillsChanged : ServiceEvent;
+
+/// <summary>
 /// The in-process event hub: components <see cref="Publish"/> domain events, subscribers react.
 /// Lives on <see cref="AgentRuntime"/> (process-wide, chat-agnostic). Handlers run synchronously on
 /// the publisher's thread and must not block — the broadcast subscriber fires its async sends and

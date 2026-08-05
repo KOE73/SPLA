@@ -26,14 +26,14 @@
       <div ref="listEl" class="sp-list">
         <div
           v-for="(s, i) in shown"
-          :key="s.id"
+          :key="s.address || s.id"
           class="sp-item"
           :data-active="i === active ? '1' : undefined"
           :title="s.description || undefined"
           @click="pick(s)"
           @mousemove="active = i"
         >
-          <div class="sp-id">{{ s.id }}</div>
+          <div class="sp-id">{{ s.name || s.id }}</div>
           <div v-if="s.description" class="sp-desc">{{ s.description }}</div>
           <div v-if="s.tags?.length" class="sp-item-tags">{{ s.tags.join(" · ") }}</div>
         </div>
@@ -116,7 +116,7 @@ function toggleTag(tag: string) {
 function pick(skill: CapabilityDto) {
   if (!store.currentChat) return;
   client.send("chat.skill.activate",
-    { chatId: store.currentChat, skillId: skill.id },
+    { chatId: store.currentChat, skillId: skill.address || skill.id },
     { projectId: store.currentProjectId ?? undefined });
   emit("close");
 }
