@@ -128,6 +128,11 @@ Tool: `test_ping_host` — returns a test response confirming that the plugin is
 
 The additional `sql_avalonia` module integrates the SQL plugin with the user interface.
 
+## Related Projects
+
+[SPLA.Skills](https://github.com/KOE73/SPLA.Skills) — public library of reusable SPLA agent
+skills: self-contained procedures an agent finds by subject and loads on demand.
+
 ## Quick Start and Building from Source
 
 Requirements:
