@@ -99,6 +99,36 @@ public class SkillTrustCeilingTests : IDisposable
     }
 
     [Fact]
+    public void Restating_a_default_path_is_not_a_repointing()
+    {
+        // This repository's own .spla lists `skills` and `.spla/skills` — the same two folders the
+        // built-in entries already name. Treating a restatement as a choice of content would untrust
+        // every project that wrote its list out in full, which is most of them.
+        var sources = SkillSourceRegistry.Build(
+        [
+            new SplaSkillSourceSection { Type = "directory", Path = "skills", Origin = SourceOrigin.Project },
+            new SplaSkillSourceSection { Type = "directory", Path = ".spla/skills", Origin = SourceOrigin.Project }
+        ], Context());
+
+        Assert.All(sources, s => Assert.Equal(SkillTrust.Trusted, s.Trust));
+        Assert.Equal(["repo", "local", "machine"], sources.Select(s => s.Id));
+    }
+
+    [Fact]
+    public void An_absolute_restatement_of_a_relative_default_counts_as_the_same_folder()
+    {
+        var sources = SkillSourceRegistry.Build(
+            [new SplaSkillSourceSection
+            {
+                Id = "repo", Type = "directory",
+                Path = Path.Combine(_temp, "skills"), Origin = SourceOrigin.Project
+            }],
+            Context());
+
+        Assert.Equal(SkillTrust.Trusted, sources.Single(s => s.Id == "repo").Trust);
+    }
+
+    [Fact]
     public void Policy_is_heard_only_from_the_machine_layer()
     {
         var defaults = new SplaDefaults

@@ -295,15 +295,51 @@ public static class SettingsOps
     {
         var payload = new SkillsPayload { CanPersist = runtime.Settings.ProjectFilePath != null };
 
+        // Both halves of the fond as one list. A person needs to see everything they have, not the
+        // half they happen to own — the prescribed rows are simply marked as not editable in place.
+        var declared = runtime.Settings.EffectiveSkillSources()
+            .GroupBy(s => s.Id ?? string.Empty, StringComparer.OrdinalIgnoreCase)
+            .ToDictionary(g => g.Key, g => g.Last(), StringComparer.OrdinalIgnoreCase);
+        var grants = runtime.Settings.SkillTrustStore;
+
         foreach (var source in runtime.SkillLibrary.Sources)
+        {
+            var path = (source as SPLA.Library.Sources.DirectorySkillSource)?.RootPath;
+            declared.TryGetValue(source.Id, out var entry);
+
             payload.Sources.Add(new SkillSourceDto
             {
                 Id = source.Id,
                 Label = source.Label,
                 Trust = source.Trust.ToString(),
                 Level = source.Level.ToString(),
-                Path = (source as SPLA.Library.Sources.DirectorySkillSource)?.RootPath
+                Path = path,
+                Origin = (entry?.Origin ?? SourceOrigin.Machine).ToString(),
+                Enabled = true,   // a switched-off branch never becomes a source; see below
+                Editable = entry?.Origin == SourceOrigin.Granted,
+                TrustGranted = path is not null && grants?.IsGranted(path) == true
             });
+        }
+
+        // Switched-off branches are not sources, so the loop above cannot show them — and a branch
+        // that vanishes from the panel the moment it is turned off is one nobody can turn back on.
+        foreach (var (id, entry) in declared)
+        {
+            if (entry.Enabled != false || payload.Sources.Any(s => s.Id.Equals(id, StringComparison.OrdinalIgnoreCase)))
+                continue;
+
+            payload.Sources.Add(new SkillSourceDto
+            {
+                Id = id,
+                Label = entry.Label ?? id,
+                Trust = "Untrusted",
+                Level = "OnShelf",
+                Path = entry.Path,
+                Origin = entry.Origin.ToString(),
+                Enabled = false,
+                Editable = entry.Origin == SourceOrigin.Granted
+            });
+        }
 
         // Holdings, not Catalog: an unavailable skill must stay visible WITH its reason, otherwise
         // the panel silently loses the one thing the user needs in order to fix it.
@@ -360,6 +396,88 @@ public static class SettingsOps
         }
 
         runtime.SkillLibrary.ApplySettings(runtime.Settings.Skills);
+        return GetSkills(runtime);
+    }
+
+    // ── Skill sources: the branches this person owns ─────────────────────────
+
+    /// <summary>The editable half of the fond. Prescribed entries are not returned: they are
+    /// read-only by construction and already travel with <see cref="GetSkills"/>, and offering them
+    /// here would invite a client to save them somewhere they must not be saved.</summary>
+    public static SkillSourcesPayload GetSkillSources(AgentRuntime runtime)
+    {
+        var payload = new SkillSourcesPayload();
+        foreach (var entry in runtime.Settings.SkillSourceStore?.Load() ?? [])
+            payload.Sources.Add(new SkillSourceEditDto
+            {
+                Id = entry.Id ?? string.Empty,
+                Path = entry.Path,
+                Label = entry.Label,
+                Level = entry.Level,
+                Enabled = entry.Enabled ?? true
+            });
+
+        return payload;
+    }
+
+    /// <summary>
+    /// Replaces this person's branch list and rebuilds the fond live.
+    ///
+    /// <para>Written to their own store — never to the project file. That is the whole point of the
+    /// second store: "I added a folder from my D: drive" is one person's decision, and committing it
+    /// would deliver that decision to everyone who clones the repository.</para>
+    ///
+    /// <para>Trust is NOT settable here. A new branch arrives untrusted and is vouched for by
+    /// <see cref="SetSkillSourceTrust"/>, which is a separate act with a separate confirmation.</para>
+    /// </summary>
+    public static SkillsPayload SaveSkillSources(AgentRuntime runtime, IEnumerable<SkillSourceEditDto> incoming)
+    {
+        var entries = new List<SplaSkillSourceSection>();
+        foreach (var dto in incoming)
+        {
+            var id = dto.Id?.Trim();
+            if (string.IsNullOrWhiteSpace(id)) continue;
+
+            entries.Add(new SplaSkillSourceSection
+            {
+                Id = id,
+                // A row that only switches an inherited branch off carries no path, and must not
+                // invent a type either — the overlay inherits both from the entry underneath.
+                Type = string.IsNullOrWhiteSpace(dto.Path) ? null : "directory",
+                Path = string.IsNullOrWhiteSpace(dto.Path) ? null : dto.Path.Trim(),
+                Label = string.IsNullOrWhiteSpace(dto.Label) ? null : dto.Label.Trim(),
+                Level = string.IsNullOrWhiteSpace(dto.Level) ? null : dto.Level.Trim(),
+                Enabled = dto.Enabled ? null : false,
+                Origin = SourceOrigin.Granted
+            });
+        }
+
+        runtime.Settings.SkillSourceStore?.Save(entries);
+        runtime.RebuildSkillSources();
+        return GetSkills(runtime);
+    }
+
+    /// <summary>
+    /// Records or withdraws approval of a branch's contents.
+    ///
+    /// <para>Addressed by the branch's id here, because that is what the person clicked, but STORED
+    /// against the resolved folder — approval is about contents, and contents live at a location.
+    /// Rename the folder and the grant does not follow it.</para>
+    /// </summary>
+    public static SkillsPayload SetSkillSourceTrust(AgentRuntime runtime, string sourceId, bool trusted)
+    {
+        var source = runtime.SkillLibrary.Sources
+            .FirstOrDefault(s => s.Id.Equals(sourceId, StringComparison.OrdinalIgnoreCase));
+
+        if (source is SPLA.Library.Sources.DirectorySkillSource dir &&
+            runtime.Settings.SkillTrustStore is { } grants)
+        {
+            if (trusted) grants.Grant(dir.RootPath);
+            else grants.Revoke(dir.RootPath);
+
+            runtime.RebuildSkillSources();
+        }
+
         return GetSkills(runtime);
     }
 

@@ -301,7 +301,7 @@ public static class SkillSourceRegistry
             }
 
             if (byId.TryGetValue(id, out var existing))
-                byId[id] = Overlay(existing, entry);
+                byId[id] = Overlay(existing, entry, context);
             else
             {
                 byId[id] = entry;
@@ -343,10 +343,24 @@ public static class SkillSourceRegistry
     /// worse, it also demotes upward-corrections, so a person repointing a project's branch at a
     /// folder of their own would still be treated as reading the project's content. Whoever supplies
     /// the text carries the standing, in both directions.</para>
+    ///
+    /// <para>And a path that RESOLVES to where the entry already pointed is not a repointing. Restating
+    /// a default is extremely common — this very repository's <c>.spla</c> lists <c>skills</c> and
+    /// <c>.spla/skills</c>, the same two folders the built-in entries name — and treating it as a
+    /// choice of content would untrust every project that ever wrote its own list out in full. The
+    /// comparison is on the resolved location, because <c>skills</c> and an absolute path to it are
+    /// the same folder written two ways.</para>
     /// </summary>
-    private static SplaSkillSourceSection Overlay(SplaSkillSourceSection under, SplaSkillSourceSection over)
+    private static SplaSkillSourceSection Overlay(
+        SplaSkillSourceSection under, SplaSkillSourceSection over, SkillSourceContext context)
     {
-        var choosesContent = over.Path is not null || over.Trust is not null;
+        var factory = FactoryFor(over.Type ?? under.Type);
+        var repoints = over.Path is not null && factory is not null &&
+            !string.Equals(factory.GrantKey(under, context), factory.GrantKey(over, context),
+                           StringComparison.OrdinalIgnoreCase);
+
+        // An explicit trust claim always belongs to whoever wrote it, wherever the folder is.
+        var choosesContent = over.Trust is not null || repoints;
 
         return new()
         {

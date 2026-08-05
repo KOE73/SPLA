@@ -148,6 +148,9 @@ function fetchAll() {
   client.send("plugins.get", undefined, projectEnvelope());
   client.send("features.get", undefined, projectEnvelope());
   client.send("skills.get", undefined, projectEnvelope());
+  // The editable half of the fond travels separately: skills.get carries every branch for display,
+  // this one carries only the branches the panel is allowed to rewrite.
+  client.send("skills.sources.get", undefined, projectEnvelope());
 }
 client.on("welcome", fetchAll);
 fetchAll();
