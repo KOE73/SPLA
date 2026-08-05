@@ -139,6 +139,32 @@ public class ResolvedSettings
     /// only from the machine layer. Null = no ceiling, i.e. a granted source may be trusted.</summary>
     public string? SkillsMaxTrust { get; set; }
 
+    /// <summary>As declared by <c>skills.policy.user_may_vouch</c>. Null = nobody said, so the
+    /// deployment's own default applies — see <see cref="SkillsUserMayVouchEffective"/>.</summary>
+    public bool? SkillsUserMayVouch { get; set; }
+
+    /// <summary>True when this install serves more than one person, i.e. personal directories are
+    /// resolved per user rather than everyone sharing the machine home.</summary>
+    public bool IsMultiUserDeployment { get; set; }
+
+    /// <summary>
+    /// Whether the person may vouch for a folder themselves.
+    ///
+    /// <para>True locally: they are their own administrator, and the confirmation dialog is the whole
+    /// ceremony. False on a server unless an administrator says otherwise — a user writing in their
+    /// own area is not a risk, but the trust level that entry claims is, and the trust level is the
+    /// axis worth cutting on rather than the right to write.</para>
+    /// </summary>
+    public bool SkillsUserMayVouchEffective => SkillsUserMayVouch ?? !IsMultiUserDeployment;
+
+    /// <summary>
+    /// Where this person's own state lives — their skill branches, their trust grants, their
+    /// machine-wide skills folder. <c>~/.spla</c> locally; on a server, their own area under
+    /// <c>{root}/users/{userKey}</c>, so one server's users do not share a fond or each other's
+    /// approvals.
+    /// </summary>
+    public string PersonalDir { get; set; } = string.Empty;
+
     /// <summary>The branches this person added themselves — the half of the fond they own and the UI
     /// may write. Null only in tests and embedded hosts that never granted anything.</summary>
     public ISkillSourceStore? SkillSourceStore { get; set; }
@@ -407,8 +433,11 @@ public static class SettingsResolver
 
         // Policy is the administrator's, so it is heard from the administrator's layer only. A
         // project raising its own ceiling would be the exact move the ceiling exists to stop.
-        if (origin == SourceOrigin.Machine && skills.Policy?.MaxTrust is { } maxTrust)
-            r.SkillsMaxTrust = maxTrust;
+        if (origin == SourceOrigin.Machine && skills.Policy is { } policy)
+        {
+            if (policy.MaxTrust is { } maxTrust) r.SkillsMaxTrust = maxTrust;
+            if (policy.UserMayVouch is { } mayVouch) r.SkillsUserMayVouch = mayVouch;
+        }
 
         if (skills.Sources != null)
             foreach (var source in skills.Sources)

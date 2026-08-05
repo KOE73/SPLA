@@ -65,6 +65,18 @@ public class SplaSkillsPolicySection
     /// forbid the personal, which is the third list every mature deployment model has.</summary>
     [YamlMember(Alias = "max_trust")]
     public string? MaxTrust { get; set; }
+
+    /// <summary>
+    /// Whether a person may approve a folder for themselves. Null = the deployment's own default:
+    /// true locally, false on a server.
+    ///
+    /// <para>The cut is on the trust level, not on the right to write. A user adding a branch in
+    /// their own area is doing nothing dangerous; a user declaring that branch vetted is making a
+    /// claim the administrator may not want to accept from them. Setting this true on a server is how
+    /// an administrator hands that judgement back.</para>
+    /// </summary>
+    [YamlMember(Alias = "user_may_vouch")]
+    public bool? UserMayVouch { get; set; }
 }
 
 /// <summary>

@@ -82,6 +82,12 @@ if (!string.IsNullOrWhiteSpace(serverRootPath))
 {
     serverRoot = new SPLA.Domain.Project.ServerProjectRoot(serverRootPath);
     Console.WriteLine($"Server root: {serverRootPath}  (each user gets {serverRootPath}\\users\\<sid>\\)");
+
+    // A project inside somebody's area means THEIR skill branches, THEIR trust grants and THEIR
+    // drafts folder — not the service account's. Registered before the first LoadAndResolve, and
+    // deliberately keyed off the workspace rather than the connection: a runtime is per project, and
+    // on a server a project already lives in exactly one person's area.
+    ConfigLoader.PersonalDirResolver = workspace => serverRoot.UserAreaFor(workspace);
 }
 else
 {

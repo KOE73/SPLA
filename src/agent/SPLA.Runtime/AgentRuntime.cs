@@ -326,14 +326,17 @@ public sealed class AgentRuntime : IDisposable
             Settings.EffectiveSkillSources(),
             new SkillSourceContext(
                 Path.GetFullPath(Settings.WorkspacePath),
-                ConfigLoader.GetDefaultsDir(),
+                // The person's own area, not the machine's: on a server that is their folder under
+                // the server root, so the `machine` branch stops being one shared pile for everyone.
+                Settings.PersonalDir.Length > 0 ? Settings.PersonalDir : ConfigLoader.GetDefaultsDir(),
                 _loggerFactory,
                 AppDomain.CurrentDomain.BaseDirectory),
             PluginManager.BuildSkillSources(_loggerFactory.CreateLogger<PluginSkillSource>()),
             _loggerFactory.CreateLogger<SkillLibrary>(),
             Settings.SkillsInheritDefaults,
             Settings.SkillsMaxTrust,
-            Settings.SkillTrustStore);
+            Settings.SkillTrustStore,
+            Settings.SkillsUserMayVouchEffective);
 
     /// <summary>Rebuilds every skill source from the current settings and stores — call after the
     /// source list or a trust grant changed. Re-probes afterwards, because a new branch's skills have

@@ -205,7 +205,8 @@ public static class SkillSourceRegistry
         ILogger? logger = null,
         bool inheritDefaults = true,
         string? maxTrust = null,
-        ISkillTrustStore? trustStore = null)
+        ISkillTrustStore? trustStore = null,
+        bool userMayVouch = true)
     {
         var sources = new List<ISkillSource>();
         var seenIds = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
@@ -230,7 +231,8 @@ public static class SkillSourceRegistry
                 : (SkillTrust?)null;
 
             var trust = EffectiveTrust(entry, id, granted, maxTrust, logger,
-                insideWorkspace: grantKey is not null && IsInsideWorkspace(grantKey, context));
+                insideWorkspace: grantKey is not null && IsInsideWorkspace(grantKey, context),
+                userMayVouch: userMayVouch);
             var source = factory.Create(entry, id, trust, context, out var error);
             if (source is null)
             {
@@ -392,7 +394,7 @@ public static class SkillSourceRegistry
     /// </summary>
     internal static SkillTrust EffectiveTrust(
         SplaSkillSourceSection entry, string id, SkillTrust? granted, string? maxTrust, ILogger? logger,
-        bool insideWorkspace = false)
+        bool insideWorkspace = false, bool userMayVouch = true)
     {
         var asked = ParseTrust(entry.Trust);
         var trust = asked;
@@ -420,6 +422,19 @@ public static class SkillSourceRegistry
             logger?.LogInformation(
                 "Skill source '{Id}' lives inside the workspace, so it arrives with whoever wrote the project — untrusted until approved in the settings panel.",
                 id);
+        }
+
+        // A person who may not vouch may still add branches — writing in your own area is not the
+        // risk. What they cannot do is declare the result vetted, so both routes up close together:
+        // the entry's own claim and the folder approval they recorded.
+        if (!userMayVouch && entry.Origin == SourceOrigin.Granted)
+        {
+            if (trust == SkillTrust.Trusted)
+                logger?.LogInformation(
+                    "Skill source '{Id}' was added by the user, and this deployment does not let users vouch — held at untrusted.",
+                    id);
+            trust = SkillTrust.Untrusted;
+            granted = null;
         }
 
         // The grant is the user's separate, explicitly recorded decision, so it outranks the entry.
