@@ -1,0 +1,19 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    LocalAI speaks the plain OpenAI dialect for chat (usage included, via SPLA.LLM.OpenAiCompat), but
+    exposes context window size through its own extension API (/api/models/config-json/{id}), not
+    through /v1/models like OpenRouter's catalog. That one endpoint is the only thing this project adds.
+  -->
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\core\SPLA.Domain\SPLA.Domain.csproj" />
+    <ProjectReference Include="..\SPLA.LLM.OpenAiCompat\SPLA.LLM.OpenAiCompat.csproj" />
+    <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="9.0.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="SPLA.Tests" />
+  </ItemGroup>
+
+</Project>

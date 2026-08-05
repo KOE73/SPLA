@@ -92,6 +92,7 @@
   </Folder>
   <Folder Name="/src/llm/">
     <Project Path="src/llm/SPLA.LLM.LMStudio/SPLA.LLM.LMStudio.csproj" />
+    <Project Path="src/llm/SPLA.LLM.LocalAI/SPLA.LLM.LocalAI.csproj" />
     <Project Path="src/llm/SPLA.LLM.OpenAiCompat/SPLA.LLM.OpenAiCompat.csproj" />
     <Project Path="src/llm/SPLA.LLM.OpenRouter/SPLA.LLM.OpenRouter.csproj" />
   </Folder>
