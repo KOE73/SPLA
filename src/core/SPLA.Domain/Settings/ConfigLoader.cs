@@ -374,6 +374,8 @@ public static class ConfigLoader
         // The branches this person added themselves. Same area as their secrets and for the same
         // reason: it is theirs, it is never committed, and the UI has to be able to write it.
         resolved.SkillSourceStore = new FileSkillSourceStore(GetDefaultsDir());
+        // Grants live beside the list, never inside it — the same rule as secrets and their ACL.
+        resolved.SkillTrustStore = new FileSkillTrustStore(GetDefaultsDir());
 
         return resolved;
     }

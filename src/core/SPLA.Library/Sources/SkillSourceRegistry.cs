@@ -26,6 +26,16 @@ public interface ISkillSourceFactory
     /// </summary>
     string DeriveId(SplaSkillSourceSection config, SkillSourceContext context);
 
+    /// <summary>
+    /// The location a trust grant would be recorded against, or null when this kind of source has no
+    /// location to vouch for.
+    ///
+    /// <para>Null is the honest answer for a plugin branch, and it is not a gap: enabling a plugin
+    /// already trusted it with executable code, which is strictly more than trusting its text. A
+    /// second switch for the same decision is a way to have the two disagree.</para>
+    /// </summary>
+    string? GrantKey(SplaSkillSourceSection config, SkillSourceContext context) => null;
+
     /// <summary>Creates the source under an already-resolved <paramref name="id"/> and an
     /// already-decided <paramref name="trust"/>, or returns null with a reason when the entry is
     /// unusable.
@@ -76,6 +86,14 @@ public sealed class DirectorySkillSourceFactory : ISkillSourceFactory
         if (string.IsNullOrWhiteSpace(config.Path)) return "directory";
         try { return Describe(context.ResolvePath(config.Path), context).Id; }
         catch { return config.Path.Trim(); }
+    }
+
+    /// <summary>The folder itself: what a person actually looked at before saying they trust it.</summary>
+    public string? GrantKey(SplaSkillSourceSection config, SkillSourceContext context)
+    {
+        if (string.IsNullOrWhiteSpace(config.Path)) return null;
+        try { return context.ResolvePath(config.Path); }
+        catch { return null; }
     }
 
     public ISkillSource? Create(
@@ -186,7 +204,8 @@ public static class SkillSourceRegistry
         IEnumerable<ISkillSource>? pluginSources = null,
         ILogger? logger = null,
         bool inheritDefaults = true,
-        string? maxTrust = null)
+        string? maxTrust = null,
+        ISkillTrustStore? trustStore = null)
     {
         var sources = new List<ISkillSource>();
         var seenIds = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
@@ -203,7 +222,14 @@ public static class SkillSourceRegistry
             // because an entry nobody can build also has no name to be addressed by.
             var factory = FactoryFor(entry.Type)!;
 
-            var trust = EffectiveTrust(entry, id, granted: null, maxTrust, logger);
+            // The grant is looked up by where the source points, not by what the entry is called:
+            // rename the folder and approval does not follow it, which is the intended behaviour.
+            var grantKey = factory.GrantKey(entry, context);
+            var granted = grantKey is not null && trustStore?.IsGranted(grantKey) == true
+                ? SkillTrust.Trusted
+                : (SkillTrust?)null;
+
+            var trust = EffectiveTrust(entry, id, granted, maxTrust, logger);
             var source = factory.Create(entry, id, trust, context, out var error);
             if (source is null)
             {

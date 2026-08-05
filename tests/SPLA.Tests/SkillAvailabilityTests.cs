@@ -95,7 +95,7 @@ public class SkillAvailabilityTests
     }
 
     [Fact]
-    public void An_untrusted_sources_skill_stays_off_until_it_is_enabled_by_name()
+    public void An_untrusted_sources_skill_stays_off_and_no_switch_here_lifts_it()
     {
         var manager = Manager(new FakeSkillSource("server", SkillTrust.Untrusted).With("imported.thing"));
 
@@ -103,11 +103,15 @@ public class SkillAvailabilityTests
         Assert.Equal(SkillState.DisabledByTrust, skill.State);
         Assert.False(skill.IsEnabled);
 
+        // This used to be the way past it. It is not any more: trust belongs to the source, and one
+        // arbitrarily trusted book out of an untrusted branch is a contradiction. The grant — kept
+        // where the source cannot write it — is the only way up, and copying the skill into a branch
+        // you already trust is the other. See SkillTrustGrantTests.
         manager.ApplySettings(new Dictionary<string, SplaSkillSection>
         {
             ["imported.thing"] = new() { Enabled = true }
         });
-        Assert.Equal(SkillState.Available, manager.Find("imported.thing")!.State);
+        Assert.Equal(SkillState.DisabledByTrust, manager.Find("imported.thing")!.State);
     }
 
     [Fact]

@@ -143,6 +143,11 @@ public class ResolvedSettings
     /// may write. Null only in tests and embedded hosts that never granted anything.</summary>
     public ISkillSourceStore? SkillSourceStore { get; set; }
 
+    /// <summary>Which locations this person has vouched for. Separate from the source list on
+    /// purpose: a grant is a decision about safety, and it must not be editable as a field of the
+    /// thing it is about.</summary>
+    public ISkillTrustStore? SkillTrustStore { get; set; }
+
     /// <summary>
     /// The declared entries with the granted ones appended, which is the order the fold expects:
     /// granted last means most specific, so a personal entry overrides a prescribed one of the same

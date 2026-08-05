@@ -283,12 +283,19 @@ public sealed class SkillLibrary : IDisposable
             return;
         }
 
-        // An untrusted source's skill becomes part of the system prompt, so it needs a deliberate
-        // opt-in — its own frontmatter saying enabled:true is not the user's decision.
-        if (meta.Trust == SkillTrust.Untrusted && configured?.Enabled != true)
+        // An untrusted source's skill becomes part of the system prompt, and there is now exactly one
+        // way past that: trusting the source, recorded outside anything the source can write.
+        //
+        // Switching a single skill on used to lift this, and no longer does. If the branch as a whole
+        // is not trusted, one arbitrarily trusted book out of it is a contradiction — the contents
+        // arrived together, from the same place, on the same terms. The way up is to read the book
+        // and copy it into a branch you do trust: one act, visible in a diff, instead of a flag
+        // somebody has to remember the meaning of.
+        if (meta.Trust == SkillTrust.Untrusted)
         {
             meta.State = SkillState.DisabledByTrust;
-            meta.StateReason = $"source '{meta.SourceId}' is untrusted — enable this skill explicitly to use it";
+            meta.StateReason =
+                $"source '{meta.SourceId}' is untrusted — trust the source itself, or copy this skill into one you trust";
             meta.IsEnabled = false;
             return;
         }
