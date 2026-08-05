@@ -102,6 +102,38 @@ public class SkillFindTests
         Assert.Equal("net.dns", matches[0].Card.Id);
     }
 
+    /// <summary>
+    /// Found by measuring, not by reading: the text pass used <c>Contains</c>, so <c>our</c> matched
+    /// inside <c>behaviour</c> and "our outgoing email" hit an SMTP skill for no reason.
+    ///
+    /// <para>A pass that always succeeds is worse than one that never does — it reports a false hit
+    /// AND stops the model-backed librarian behind it from ever being reached.</para>
+    /// </summary>
+    [Fact]
+    public void A_term_never_matches_inside_a_longer_word()
+    {
+        var source = new FakeSkillSource(level: SourceLevel.InCatalog)
+            .With("mail.probe", description: "Checks an SMTP server: relay behaviour.");
+        var librarian = new TagLibrarian(new SkillLibrary([source]));
+
+        Assert.Empty(librarian.Find(new SkillQuery(Text: "our outgoing email")));
+        // …but a real prefix still works, so plurals and stems are not lost.
+        Assert.Single(librarian.Find(new SkillQuery(Text: "relays")));
+    }
+
+    /// <summary>The other half of the same defect: words long enough to survive a length rule that
+    /// still carry no subject. "recipe for borscht" matched a DNS skill through <c>for</c>.</summary>
+    [Fact]
+    public void Stopwords_do_not_match_anything()
+    {
+        var source = new FakeSkillSource(level: SourceLevel.InCatalog)
+            .With("net.dns", description: "Diagnoses DNS resolution failures for a domain.");
+        var librarian = new TagLibrarian(new SkillLibrary([source]));
+
+        Assert.Empty(librarian.Find(new SkillQuery(Text: "recipe for borscht")));
+        Assert.Single(librarian.Find(new SkillQuery(Text: "domain resolution")));
+    }
+
     [Fact]
     public void Short_words_do_not_flatten_the_ranking()
     {

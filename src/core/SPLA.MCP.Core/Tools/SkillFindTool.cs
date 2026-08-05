@@ -21,6 +21,12 @@ namespace SPLA.MCP.Core.Tools;
 ///
 /// <para>Read-effect and Skill-scoped, so it does not prompt: asking the catalogue a question commits
 /// to nothing, and <c>skill_activate</c> remains the gate that does.</para>
+///
+/// <para><b>Two librarians, one tool.</b> The ADR calls them layers rather than competitors, and the
+/// stage-4 runs are why that matters in practice: a weak model already struggles to call this tool at
+/// all, so a second search tool beside it would make selection worse, not better. The deterministic
+/// tag pass runs first and free; the model-backed librarian runs only when that found nothing, and
+/// only when one is configured.</para>
 /// </summary>
 public sealed class SkillFindTool : IMcpTool
 {
@@ -28,8 +34,13 @@ public sealed class SkillFindTool : IMcpTool
     private const int MaxLimit = 15;
 
     private readonly ITagLibrarian _librarian;
+    private readonly IAgentLibrarian? _agentLibrarian;
 
-    public SkillFindTool(ITagLibrarian librarian) => _librarian = librarian;
+    public SkillFindTool(ITagLibrarian librarian, IAgentLibrarian? agentLibrarian = null)
+    {
+        _librarian = librarian;
+        _agentLibrarian = agentLibrarian;
+    }
 
     public string Name => "skill_find";
 
@@ -66,37 +77,62 @@ public sealed class SkillFindTool : IMcpTool
         }
     };
 
-    public Task<string> ExecuteAsync(string argumentsJson, CancellationToken cancellationToken = default)
+    public async Task<string> ExecuteAsync(string argumentsJson, CancellationToken cancellationToken = default)
     {
+        SkillQuery query;
         try
         {
             using var doc = JsonDocument.Parse(argumentsJson);
-            var tags = ToolJson.GetStringArray(doc.RootElement, "tags");
-            var text = ToolJson.GetStringTrimmed(doc.RootElement, "text");
-
-            var query = new SkillQuery(tags, text);
-            if (query.IsEmpty)
-                return Task.FromResult(
-                    "error: give 'tags', 'text', or both\n" + KnownSubjects());
-
-            var matches = _librarian.Find(query, DefaultLimit);
-            if (matches.Count == 0) return Task.FromResult(NothingFound(query));
-
-            var sb = new StringBuilder();
-            sb.Append($"{matches.Count} matching skill(s). Call skill_activate with the id you want:");
-            foreach (var match in matches)
-            {
-                sb.Append($"\n\n  {match.Card.Id}");
-                if (match.Card.Tags.Count > 0) sb.Append($"  [{string.Join(", ", match.Card.Tags)}]");
-                if (match.Card.Description.Length > 0) sb.Append($"\n    {match.Card.Description}");
-            }
-
-            return Task.FromResult(sb.ToString());
+            query = new SkillQuery(
+                ToolJson.GetStringArray(doc.RootElement, "tags"),
+                ToolJson.GetStringTrimmed(doc.RootElement, "text"));
         }
         catch (JsonException)
         {
-            return Task.FromResult("error: invalid_json");
+            return "error: invalid_json";
         }
+
+        if (query.IsEmpty) return "error: give 'tags', 'text', or both\n" + KnownSubjects();
+
+        // The free, deterministic pass first, always. Set intersection answers most questions at no
+        // cost, and paying an LLM call to be told what a dictionary lookup already knew is the kind
+        // of latency nobody attributes to the right thing later.
+        var matches = _librarian.Find(query, DefaultLimit);
+
+        // Only when it found nothing: the reader used words the fond does not use. That is exactly
+        // and only what a librarian who reads the question is for.
+        var askedLibrarian = false;
+        if (matches.Count == 0 && _agentLibrarian is { IsAvailable: true })
+        {
+            askedLibrarian = true;
+            matches = await _agentLibrarian.AskAsync(
+                QuestionFrom(query), DefaultLimit, cancellationToken);
+        }
+
+        if (matches.Count == 0) return NothingFound(query);
+
+        var sb = new StringBuilder();
+        sb.Append($"{matches.Count} matching skill(s)");
+        if (askedLibrarian) sb.Append(" (matched by meaning, not by subject word)");
+        sb.Append(". Call skill_activate with the id you want:");
+        foreach (var match in matches)
+        {
+            sb.Append($"\n\n  {match.Card.Id}");
+            if (match.Card.Tags.Count > 0) sb.Append($"  [{string.Join(", ", match.Card.Tags)}]");
+            if (match.Card.Description.Length > 0) sb.Append($"\n    {match.Card.Description}");
+        }
+
+        return sb.ToString();
+    }
+
+    /// <summary>The query as a sentence for a librarian that reads rather than matches. Tags carry
+    /// real intent even when they matched nothing, so they are not thrown away.</summary>
+    private static string QuestionFrom(SkillQuery query)
+    {
+        var parts = new List<string>();
+        if (!string.IsNullOrWhiteSpace(query.Text)) parts.Add(query.Text!.Trim());
+        if (query.Tags is { Count: > 0 }) parts.Add(string.Join(" ", query.Tags));
+        return string.Join(" — ", parts);
     }
 
     /// <summary>An empty result has two different causes and the model must not confuse them: a

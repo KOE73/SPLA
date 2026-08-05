@@ -20,6 +20,31 @@ public class SplaSkillsSection
     /// <summary>Per-skill overrides, keyed by skill id.</summary>
     [YamlMember(Alias = "items")]
     public Dictionary<string, SplaSkillSection>? Items { get; set; }
+
+    /// <summary>The model-backed librarian. Absent = off, and skill_find stays purely deterministic.</summary>
+    [YamlMember(Alias = "librarian")]
+    public SplaLibrarianSection? Librarian { get; set; }
+}
+
+/// <summary>
+/// The librarian that understands a question instead of matching words.
+///
+/// <para><b>Why it has its own model.</b> The catalog goes into ITS system prompt, not the chat's, so
+/// the expensive context is spent once in a throwaway call. That makes "weak model in the chat, a
+/// competent one at the desk" a configuration rather than a compromise — which is the whole point of
+/// putting the index somewhere other than the conversation.</para>
+/// </summary>
+public class SplaLibrarianSection
+{
+    /// <summary>Model entry id to ask. Null = the project's default model, i.e. the same one the chat
+    /// uses — useful only when the chat model is already competent.</summary>
+    [YamlMember(Alias = "model")]
+    public string? Model { get; set; }
+
+    /// <summary>Off by default: this costs an LLM call before work begins, and a deterministic tag
+    /// match already answers most questions. Turn it on when the fond outgrows its vocabulary.</summary>
+    [YamlMember(Alias = "enabled")]
+    public bool? Enabled { get; set; }
 }
 
 /// <summary>

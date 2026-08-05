@@ -74,6 +74,11 @@ public sealed class AgentRuntime : IDisposable
     /// <summary>The tag librarian over <see cref="SkillLibrary"/>. Reads holdings live, so it needs no
     /// rebuilding when a source changes.</summary>
     public SPLA.Library.Librarians.ITagLibrarian SkillLibrarian { get; }
+
+    /// <summary>The model-backed librarian, consulted by <c>skill_find</c> only when the tag pass
+    /// found nothing. Off unless <c>skills.librarian.enabled</c> says otherwise — it costs an LLM call
+    /// before any work begins.</summary>
+    public SPLA.Library.Librarians.IAgentLibrarian SkillAgentLibrarian { get; }
     public PluginManager PluginManager { get; }
 
     /// <summary>Tool sets and their levels — "allowed how far", never "raised right now".
@@ -183,6 +188,11 @@ public sealed class AgentRuntime : IDisposable
         SkillLibrary = new SkillLibrary(skillSources, loggerFactory.CreateLogger<SkillLibrary>());
         SkillLibrary.ApplySettings(settings.Skills);
         SkillLibrarian = new SPLA.Library.Librarians.TagLibrarian(SkillLibrary);
+        // Settings read through a lambda, not captured: a librarian switched on in a live settings
+        // edit must take effect on the next call, the same way the mode already does.
+        SkillAgentLibrarian = new SPLA.Library.Librarians.AgentLibrarian(
+            SkillLibrary, Llm, () => Settings,
+            loggerFactory.CreateLogger<SPLA.Library.Librarians.AgentLibrarian>());
 
         McpHost = new McpHost(
             new PermissionManager(settings: settings), PluginManager, loggerFactory.CreateLogger<McpHost>());
@@ -244,7 +254,7 @@ public sealed class AgentRuntime : IDisposable
                 new SPLA.MCP.Core.Tools.SkillActivateTool(SkillLibrary, ToolSets),
                 new SPLA.MCP.Core.Tools.SkillDeactivateTool(),
                 new SPLA.MCP.Core.Tools.SkillReadResourceTool(SkillLibrary),
-                new SPLA.MCP.Core.Tools.SkillFindTool(SkillLibrarian)),
+                new SPLA.MCP.Core.Tools.SkillFindTool(SkillLibrarian, SkillAgentLibrarian)),
             Feature("core.toolsets",
                 new SPLA.MCP.Core.Tools.ToolSetActivateTool(ToolSets),
                 new SPLA.MCP.Core.Tools.ToolSetDeactivateTool()),

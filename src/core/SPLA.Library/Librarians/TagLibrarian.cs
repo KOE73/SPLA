@@ -67,23 +67,71 @@ public sealed class TagLibrarian : ITagLibrarian
 
     private static int TextScore(SkillCard card, IReadOnlyList<string> terms)
     {
+        if (terms.Count == 0) return 0;
+
+        var idWords = Words(card.Id);
+        var descriptionWords = Words(card.Description);
+
         var score = 0;
         foreach (var term in terms)
         {
-            if (card.Id.Contains(term, StringComparison.OrdinalIgnoreCase)) score += IdWeight;
-            else if (card.Description.Contains(term, StringComparison.OrdinalIgnoreCase)) score += DescriptionWeight;
+            if (Matches(idWords, term)) score += IdWeight;
+            else if (Matches(descriptionWords, term)) score += DescriptionWeight;
         }
 
         return score;
     }
 
-    /// <summary>Splits free text into words worth matching. One- and two-letter words are dropped:
-    /// "on", "to", "my" match everything and would flatten the ranking into noise.</summary>
+    /// <summary>
+    /// A term matches a whole word, or shares a long enough prefix with one — in either direction,
+    /// so both "rebuild"/"Rebuilds" and "relays"/"relay" work. Which of the query and the text
+    /// carries the plural is not something a searcher should have to guess.
+    ///
+    /// <para><b>Never a substring.</b> That was the original spelling and it made the text pass fire
+    /// on almost anything: <c>our</c> is inside <c>behaviour</c>, so "our outgoing email" matched an
+    /// SMTP skill for no reason at all. A pass that always succeeds is worse than one that never
+    /// does — it reports a false hit AND stops the model-backed librarian from ever being reached.</para>
+    /// </summary>
+    private static bool Matches(IReadOnlyList<string> words, string term) =>
+        words.Any(w => w.Equals(term, StringComparison.OrdinalIgnoreCase) || SharePrefix(w, term));
+
+    private static bool SharePrefix(string word, string term) =>
+        word.Length >= MinPrefix && term.Length >= MinPrefix &&
+        (word.StartsWith(term, StringComparison.OrdinalIgnoreCase) ||
+         term.StartsWith(word, StringComparison.OrdinalIgnoreCase));
+
+    /// <summary>Below this a shared prefix is a coincidence, not a stem.</summary>
+    private const int MinPrefix = 4;
+
+    private static IReadOnlyList<string> Words(string text) =>
+        text.Split(Separators, StringSplitOptions.RemoveEmptyEntries);
+
+    private static readonly char[] Separators =
+        [' ', ',', ';', ':', '\t', '\n', '\r', '.', '"', '\'', '(', ')', '/', '\\', '-', '_', '—'];
+
+    /// <summary>
+    /// Splits free text into words worth matching, dropping the ones that carry no subject.
+    ///
+    /// <para>Both filters are needed and neither replaces the other. Short words match too much;
+    /// stopwords are the ones that are long enough to survive a length rule and still mean nothing —
+    /// "recipe for borscht" matched a DNS skill through <c>for</c>, which appears in half the
+    /// descriptions ever written.</para>
+    /// </summary>
     private static IReadOnlyList<string> Terms(string? text) =>
         string.IsNullOrWhiteSpace(text)
             ? []
-            : text.Split([' ', ',', ';', '\t', '\n', '\r', '.', '"', '\''], StringSplitOptions.RemoveEmptyEntries)
-                  .Where(w => w.Length > 2)
+            : text.Split(Separators, StringSplitOptions.RemoveEmptyEntries)
+                  .Where(w => w.Length > 2 && !Stopwords.Contains(w))
                   .Distinct(StringComparer.OrdinalIgnoreCase)
                   .ToList();
+
+    /// <summary>Deliberately small: only words that are common AND carry no subject. Anything
+    /// domain-ish stays — "host" and "server" are exactly what someone searching means.</summary>
+    private static readonly HashSet<string> Stopwords = new(StringComparer.OrdinalIgnoreCase)
+    {
+        "the", "and", "for", "with", "from", "into", "out", "our", "your", "their", "its",
+        "this", "that", "these", "those", "any", "all", "some", "not", "but", "you", "was", "were",
+        "are", "can", "will", "would", "should", "could", "how", "why", "what", "when", "where",
+        "need", "want", "make", "get", "got", "has", "have", "had", "does", "did", "please"
+    };
 }

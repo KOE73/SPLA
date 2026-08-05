@@ -32,7 +32,7 @@ src/core/SPLA.Library/          the library itself — no dependency on the tool
   ISkillCapabilityProbe.cs      the one question it asks the outside world
   Catalog/    SkillCard, SkillState, SkillTag, TagVocabulary, CatalogView
   Sources/    ISkillSource, SourceLevel, DirectorySkillSource, PluginSkillSource, SkillSourceRegistry
-  Librarians/ ITagLibrarian, TagLibrarian
+  Librarians/ ITagLibrarian, TagLibrarian, IAgentLibrarian, AgentLibrarian
   Format/     SkillFrontmatter
 ```
 
@@ -174,6 +174,9 @@ skills:
   items:
     network.host-audit:
       enabled: false
+  librarian:                      # absent = off; skill_find stays deterministic
+    enabled: true
+    model: gpt-oss-120b           # null = the project's default, i.e. the chat's own model
 ```
 
 `type` selects an `ISkillSourceFactory`; the factory validates its own fields. Adding a source kind
@@ -375,6 +378,34 @@ becomes visible and actionable). Neither needs an event subscription kept alive 
   An empty result distinguishes "nobody wrote a skill for this" from "that is not a word here" —
   only the second is fixable by asking again, so the answer says which happened.
 - **`agent_clarify`** — the confirmation gate before activation, and general structured questions.
+
+### Two librarians behind one tool
+
+The ADR calls them layers, not competitors, and `skill_find` is where that becomes real. There is
+deliberately **no second search tool**: the stage-4 runs showed a weak model already struggles to call
+this one at all, so adding a sibling would make selection worse rather than better.
+
+| | Where the index lives | Cost | Reaches |
+|---|---|---|---|
+| `TagLibrarian` | nowhere — set intersection on the spot | 0–3 ms | only what an author tagged or wrote |
+| `AgentLibrarian` | its own throwaway system prompt | 1.4–2.7 s, one LLM call | meaning: synonyms nobody tagged |
+
+The tag pass always runs first and free. The model-backed one runs **only when that found nothing**,
+and only when `skills.librarian.enabled` is on — it is off by default because it costs a call before
+any work begins.
+
+`AgentLibrarian` is **not** built on `agent_spawn`, despite the plan's wording: a spawn is a full
+agent loop and it runs a *skill*, which a lookup is not. One `ILlmGateway` call is the whole thing,
+with accounting and quotas already in that path.
+
+**Its answer is never trusted as text.** The model returns ids; every one is looked up in the holdings
+and anything that does not resolve is dropped. A hallucinated id is the obvious failure of this
+approach, and mapping back through the library is what makes it impossible rather than merely
+unlikely. `OutOfCatalog` skills never enter its prompt and would be refused coming back — the level
+boundary holds here exactly as it does for tags.
+
+It has its own `model:` because the catalog goes into *its* prompt, not the chat's. That is what makes
+"weak model in the chat, a competent one at the desk" a setting rather than a compromise.
 
 | Tool | ToolScope | Chat | Research | Inspect | Edit | Agent |
 |---|---|---|---|---|---|---|

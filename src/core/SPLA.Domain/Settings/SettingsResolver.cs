@@ -125,6 +125,9 @@ public class ResolvedSettings
     /// an inherited source impossible to drop.</summary>
     public List<SplaSkillSourceSection>? SkillSources { get; set; }
 
+    // The model-backed librarian (skills.librarian). Null = off; skill_find stays deterministic.
+    public SplaLibrarianSection? SkillLibrarian { get; set; }
+
     /// <summary>Looks up a model entry by its global id. Null id or unknown id = null.</summary>
     public ResolvedModelEntry? FindModel(string? modelId) =>
         string.IsNullOrWhiteSpace(modelId)
@@ -364,6 +367,11 @@ public static class SettingsResolver
         if (skills.Items != null)
             foreach (var kvp in skills.Items)
                 r.Skills[kvp.Key] = kvp.Value;
+
+        // Replaced wholesale, like sources: a two-field block is not worth a merge, and a project
+        // that names a librarian means that one.
+        if (skills.Librarian != null)
+            r.SkillLibrarian = skills.Librarian;
     }
 
     /// <summary>Adds/overrides connections by id, skipping entries without an id.</summary>
