@@ -42,6 +42,7 @@ public sealed class SkillActivateTool : IMcpTool
             Scope = ToolScope.Skill,
             Effect = ToolEffect.Write,
             Risk = ToolRisk.Medium,
+            ConversationBound = true,
             StrictSchema = true,
             Parameters = new
             {

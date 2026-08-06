@@ -29,6 +29,19 @@ public class ToolFunctionDefinition
     public ToolRisk Risk { get; set; } = ToolRisk.Low;
 
     /// <summary>
+    /// True when the call only means something inside the conversation of the head that issued it:
+    /// it sets a mark, rewinds the history, asks this chat's user, or changes what the next turn
+    /// discloses. Such a tool cannot be served to a foreign head — not as a matter of policy, but
+    /// because outside its own conversation the call has no referent.
+    ///
+    /// <para>Deliberately a fourth axis rather than another <see cref="ToolScope"/> value: scope is
+    /// load-bearing for permissions (it maps to the project's read/write/shell/internet overrides),
+    /// and this asks a different question. It is a property of the tool, never a decision about who
+    /// may call it — that decision belongs to whatever profile serves the caller.</para>
+    /// </summary>
+    public bool ConversationBound { get; set; }
+
+    /// <summary>
     /// When true the serializer adds "strict": true to the function payload (OpenAI strict
     /// function calling). Only set this for tools where every parameter is either listed in
     /// <c>required</c> or declared with a nullable type — the provider enforces this contract.

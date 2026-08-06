@@ -20,6 +20,7 @@ public class GetContextTool : IMcpTool
             Scope = ToolScope.Agent,
             Effect = ToolEffect.Read,
             Risk = ToolRisk.Low,
+            ConversationBound = true,
             StrictSchema = true,
             Parameters = new
             {

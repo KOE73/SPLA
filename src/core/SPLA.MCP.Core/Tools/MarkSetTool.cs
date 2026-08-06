@@ -25,6 +25,7 @@ public sealed class MarkSetTool : IMcpTool
             Scope = ToolScope.Agent,
             Effect = ToolEffect.Write,
             Risk = ToolRisk.Low,
+            ConversationBound = true,
             StrictSchema = true,
             Parameters = new
             {

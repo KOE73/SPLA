@@ -24,6 +24,7 @@ public sealed class ContextCheckpointRestoreTool : IMcpTool
             Scope = ToolScope.Agent,
             Effect = ToolEffect.Execute,
             Risk = ToolRisk.Low,
+            ConversationBound = true,
             StrictSchema = true,
             Parameters = new
             {

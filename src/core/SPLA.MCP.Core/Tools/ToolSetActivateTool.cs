@@ -33,6 +33,7 @@ public sealed class ToolSetActivateTool : IMcpTool
             Scope = ToolScope.Agent,
             Effect = ToolEffect.Write,
             Risk = ToolRisk.Low,
+            ConversationBound = true,
             StrictSchema = true,
             Parameters = new
             {
@@ -106,6 +107,7 @@ public sealed class ToolSetDeactivateTool : IMcpTool
             Scope = ToolScope.Agent,
             Effect = ToolEffect.Write,
             Risk = ToolRisk.Low,
+            ConversationBound = true,
             StrictSchema = true,
             Parameters = new
             {
