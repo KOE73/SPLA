@@ -47,11 +47,14 @@ public sealed class ScriptContext
     public CancellationToken Cancellation => _ct;
 
     /// <summary>
-    /// Invokes a tool by name and returns its raw text result. <paramref name="args"/> may be an
+    /// Invokes a tool by name and returns its result — <c>.TextContent</c> for the text,
+    /// <c>.IsError</c> to tell a refusal or failure from an answer. <paramref name="args"/> may be an
     /// anonymous object (serialized to JSON), a raw JSON string, or null (no arguments). Safe to call
     /// in parallel via <c>Task.WhenAll</c> — each call becomes a child node in the progress tree.
+    /// <para>Deliberately not a bare string: a script that cannot see a failed call will happily
+    /// carry the failure text forward as if it were data.</para>
     /// </summary>
-    public Task<string> Run(string tool, object? args = null)
+    public Task<ToolResult> Run(string tool, object? args = null)
     {
         _ct.ThrowIfCancellationRequested();
         var json = args switch

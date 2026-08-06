@@ -49,7 +49,7 @@ public class SqlSchemaTool : SqlToolBase, IMcpTool
         }
     };
 
-    public async Task<string> ExecuteAsync(string argumentsJson, CancellationToken cancellationToken = default)
+    public async Task<ToolResult> ExecuteAsync(string argumentsJson, CancellationToken cancellationToken = default)
     {
         try
         {
@@ -57,7 +57,7 @@ public class SqlSchemaTool : SqlToolBase, IMcpTool
             var root = doc.RootElement;
 
             if (!TryResolve(ToolJson.GetStringTrimmed(root, "connection"), out var cfg, out var err))
-                return err!;
+                return ToolResult.Fail(err!, "connection not resolved");
 
             var table  = ToolJson.GetStringTrimmed(root, "table");
             var schema = ToolJson.GetStringTrimmed(root, "schema");
@@ -73,13 +73,13 @@ public class SqlSchemaTool : SqlToolBase, IMcpTool
             };
 
             var target = DataChannel.ParseTarget(ToolJson.GetStringTrimmed(root, "output"));
-            if (target == OutputTarget.Context) return result;
+            if (target == OutputTarget.Context) return ToolResult.Text(result);
             var name = ToolJson.GetStringTrimmed(root, "output_name");
             var summary = table is null ? $"sql_schema: table list" : $"sql_schema: {schema ?? "dbo"}.{table}";
-            return DataChannel.Route(target, BlobPayload.OfText(result), summary, name);
+            return ToolResult.Text(DataChannel.Route(target, BlobPayload.OfText(result), summary, name));
         }
-        catch (JsonException) { return "Error: Invalid JSON arguments."; }
-        catch (Exception ex)  { return $"Error: {ex.Message}"; }
+        catch (JsonException) { return ToolResult.Fail("Error: Invalid JSON arguments.", "invalid json"); }
+        catch (Exception ex)  { return ToolResult.Fail($"Error: {ex.Message}", ex.GetType().Name); }
     }
 
     // ── MSSQL ──────────────────────────────────────────────────────────────────

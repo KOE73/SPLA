@@ -79,7 +79,7 @@ public class RoslynPlugin : ISplaPlugin, ISplaPluginSelfCheck
     {
         public static readonly NoOpToolHost Instance = new();
         public IEnumerable<ToolDefinition> GetToolDefinitions() => Array.Empty<ToolDefinition>();
-        public Task<string> ExecuteToolAsync(AgentMode mode, string name, string argumentsJson, CancellationToken ct = default)
-            => Task.FromResult(string.Empty);
+        public Task<ToolResult> ExecuteToolAsync(AgentMode mode, string name, string argumentsJson, CancellationToken ct = default)
+            => Task.FromResult(ToolResult.Empty());
     }
 }

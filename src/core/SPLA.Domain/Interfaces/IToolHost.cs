@@ -14,5 +14,5 @@ public interface IToolHost
 {
     IEnumerable<ToolDefinition> GetToolDefinitions();
 
-    Task<string> ExecuteToolAsync(AgentMode mode, string name, string argumentsJson, CancellationToken cancellationToken = default);
+    Task<ToolResult> ExecuteToolAsync(AgentMode mode, string name, string argumentsJson, CancellationToken cancellationToken = default);
 }

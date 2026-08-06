@@ -41,8 +41,12 @@ public sealed class ScriptRunTool : IMcpTool
         summary: Compile and run a C# script that executes your plan, calling tools via ctx.Run.
 
         globals (members of 'ctx', available directly):
-          Task<string> Run(string tool, object? args)  - invoke a tool by name; args is an anonymous
+          Task<ToolResult> Run(string tool, object? args) - invoke a tool by name; args is an anonymous
                                                           object, a raw JSON string, or null.
+                                                          Read .TextContent for the text and .IsError
+                                                          to tell a refused or failed call from an
+                                                          answer. Do NOT treat a result as data
+                                                          without checking .IsError first.
           void Progress(string message)                - report a progress message.
           void Progress(long current, long total, string? message) - report N-of-total progress.
           void Log(object value)                       - append a line to the returned output.
@@ -68,7 +72,8 @@ public sealed class ScriptRunTool : IMcpTool
           code: |
             var hosts = new[] { "8.8.8.8", "1.1.1.1" };
             var results = await Task.WhenAll(hosts.Select(h => ctx.Run("network_ping_host", new { host = h })));
-            for (int i = 0; i < hosts.Length; i++) ctx.Log($"{hosts[i]}: {results[i]}");
+            for (int i = 0; i < hosts.Length; i++)
+                ctx.Log($"{hosts[i]}: {(results[i].IsError ? "failed: " : "")}{results[i].TextContent}");
         """;
     public ToolDefinition GetDefinition() => new ToolDefinition
     {
@@ -79,10 +84,10 @@ public sealed class ScriptRunTool : IMcpTool
             Details = DetailsText,
             Description = "Compiles and runs a C# script (top-level statements) that drives your plan in ONE deterministic call — "
                 + "use instead of issuing many tool calls yourself, e.g. to loop over inputs or parallelize with Task.WhenAll. "
-                + "The script has a 'ctx' global with: await ctx.Run(\"tool_name\", new { param = value }) — call any tool by name and get its text result; "
+                + "The script has a 'ctx' global with: await ctx.Run(\"tool_name\", new { param = value }) — call any tool by name; read .TextContent for the text and .IsError to tell a refused or failed call from an answer; "
                 + "ctx.Log(value) — emit a line to the output; ctx.Progress(message) or ctx.Progress(current, total, message) — report progress; "
                 + "ctx.Cancellation — the timeout CancellationToken to pass to your awaits. Tool calls inside obey the same permissions. "
-                + "Example: ctx.Log(await ctx.Run(\"system_read_file\", new { path = \"a.txt\" }));",
+                + "Example: ctx.Log((await ctx.Run(\"system_read_file\", new { path = \"a.txt\" })).TextContent);",
             Scope = ToolScope.Shell,
             Effect = ToolEffect.Execute,
             Risk = ToolRisk.High,
@@ -91,7 +96,7 @@ public sealed class ScriptRunTool : IMcpTool
                 type = "object",
                 properties = new
                 {
-                    code = new { type = "string", description = "C# script body (top-level statements). The 'ctx' globals expose: Task<string> Run(string tool, object? args), void Progress(...), void Log(object), CancellationToken Cancellation. Use await ctx.Run(\"tool_name\", new { param = value })." },
+                    code = new { type = "string", description = "C# script body (top-level statements). The 'ctx' globals expose: Task<ToolResult> Run(string tool, object? args) whose result has .TextContent and .IsError, void Progress(...), void Log(object), CancellationToken Cancellation. Use await ctx.Run(\"tool_name\", new { param = value })." },
                     timeout_seconds = new { type = "integer", description = $"Hard timeout in seconds (default {DefaultTimeoutSeconds}, max {MaxTimeoutSeconds}). Cancels awaits that honor ctx.Cancellation; a pure CPU loop cannot be interrupted." },
                     output      = SchemaParts.Output,
                     output_name = SchemaParts.OutputName

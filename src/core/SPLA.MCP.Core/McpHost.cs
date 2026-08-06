@@ -154,20 +154,22 @@ public class McpHost : IToolHost
         };
     }
 
-    public async Task<string> ExecuteToolAsync(AgentMode mode, string name, string argumentsJson, CancellationToken cancellationToken = default)
+    public async Task<ToolResult> ExecuteToolAsync(AgentMode mode, string name, string argumentsJson, CancellationToken cancellationToken = default)
     {
         if (_tools.TryGetValue(name, out var tool))
         {
             if (_pluginManager != null && !_pluginManager.IsToolAvailable(tool))
             {
                 _logger?.LogWarning("Tool refused: owning plugin is disabled. Tool={ToolName}", name);
-                return $"Error: tool '{name}' belongs to a plugin that is currently disabled.";
+                return ToolResult.Refuse(
+                    $"Error: tool '{name}' belongs to a plugin that is currently disabled.",
+                    "plugin disabled");
             }
 
             if (ToolSetRefusal(name) is { } refusal)
             {
                 _logger?.LogInformation("Tool refused: its set is not raised. Tool={ToolName}", name);
-                return refusal;
+                return ToolResult.Refuse(refusal, "tool set not raised");
             }
 
             using var activity = SplaTelemetry.StartActivity("mcp.tool.execute");
@@ -182,7 +184,9 @@ public class McpHost : IToolHost
             if (permission == PermissionResult.Deny)
             {
                 _logger?.LogWarning("Tool execution denied by policy. Tool={ToolName} Mode={Mode}", name, mode);
-                return $"Error: Execution of tool '{name}' was denied by permission policy in {mode} mode.";
+                return ToolResult.Refuse(
+                    $"Error: Execution of tool '{name}' was denied by permission policy in {mode} mode.",
+                    $"denied by policy in {mode} mode");
             }
 
             if (permission == PermissionResult.Ask)
@@ -199,7 +203,9 @@ public class McpHost : IToolHost
                     if (decision == PermissionDecision.Deny)
                     {
                         _logger?.LogWarning("Tool execution denied by user. Tool={ToolName} Mode={Mode}", name, mode);
-                        return $"Error: Execution of tool '{name}' was denied by the user.";
+                        return ToolResult.Refuse(
+                            $"Error: Execution of tool '{name}' was denied by the user.",
+                            "denied by the user");
                     }
                 }
                 else
@@ -207,7 +213,9 @@ public class McpHost : IToolHost
                     _logger?.LogWarning(
                         "Tool requires confirmation but NO permission handler is attached — execution blocked. Tool={ToolName} Mode={Mode}",
                         name, mode);
-                    return $"Error: Tool '{name}' requires user confirmation, but no permission handler is attached.";
+                    return ToolResult.Refuse(
+                        $"Error: Tool '{name}' requires user confirmation, but no permission handler is attached.",
+                        "no permission handler attached");
                 }
             }
 
@@ -221,7 +229,15 @@ public class McpHost : IToolHost
             try
             {
                 var result = await tool.ExecuteAsync(argumentsJson, cancellationToken);
-                RecordToolSuccess(name, started, result.Length);
+                // A tool that reports failure is a failure, whether it said so by throwing or by
+                // returning. Before the result carried an outcome only the throw was visible here,
+                // so a returned "error: …" was recorded as a successful call.
+                if (result.IsError)
+                {
+                    progressNode.Fail();
+                    activity?.SetStatus(System.Diagnostics.ActivityStatusCode.Error, result.Reason);
+                }
+                RecordToolCall(name, started, result);
                 return result;
             }
             catch (OperationCanceledException)
@@ -236,23 +252,25 @@ public class McpHost : IToolHost
                 activity?.SetStatus(System.Diagnostics.ActivityStatusCode.Error, ex.Message);
                 SplaTelemetry.ToolErrors.Add(1);
                 _logger?.LogError(ex, "Tool execution failed. Tool={ToolName} Mode={Mode}", name, mode);
-                return $"Error executing tool {name}: {ex.Message}";
+                return ToolResult.Fail($"Error executing tool {name}: {ex.Message}", ex.GetType().Name);
             }
         }
         _logger?.LogWarning("Tool not found. Tool={ToolName} Mode={Mode}", name, mode);
-        return $"Error: Tool '{name}' not found.";
+        return ToolResult.Fail($"Error: Tool '{name}' not found.", "tool not found");
     }
 
-    private void RecordToolSuccess(string name, long started, int resultLength)
+    private void RecordToolCall(string name, long started, ToolResult result)
     {
         var elapsedMs = Stopwatch.GetElapsedTime(started).TotalMilliseconds;
         SplaTelemetry.ToolCalls.Add(1);
         SplaTelemetry.ToolDurationMs.Record(elapsedMs);
+        if (result.IsError) SplaTelemetry.ToolErrors.Add(1);
         _logger?.LogInformation(
-            "Tool execution finished. Tool={ToolName} DurationMs={DurationMs:F1} ResultLength={ResultLength}",
+            "Tool execution finished. Tool={ToolName} Outcome={Outcome} DurationMs={DurationMs:F1} ResultLength={ResultLength}",
             name,
+            result.Outcome,
             elapsedMs,
-            resultLength);
+            result.TextContent.Length);
     }
 
     private static string? GetPluginId(string toolName)

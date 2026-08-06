@@ -48,7 +48,7 @@ public class SqlExecuteTool : SqlToolBase, IMcpTool
         }
     };
 
-    public async Task<string> ExecuteAsync(string argumentsJson, CancellationToken cancellationToken = default)
+    public async Task<ToolResult> ExecuteAsync(string argumentsJson, CancellationToken cancellationToken = default)
     {
         try
         {
@@ -56,11 +56,11 @@ public class SqlExecuteTool : SqlToolBase, IMcpTool
             var root = doc.RootElement;
 
             var sqlRaw = ToolJson.GetStringTrimmed(root, "sql");
-            if (string.IsNullOrWhiteSpace(sqlRaw)) return "Error: Missing 'sql' parameter.";
-            if (!DataChannel.ResolveText(sqlRaw, out var sql, out var resolveErr)) return resolveErr!;
+            if (string.IsNullOrWhiteSpace(sqlRaw)) return ToolResult.Fail("Error: Missing 'sql' parameter.", "missing sql");
+            if (!DataChannel.ResolveText(sqlRaw, out var sql, out var resolveErr)) return ToolResult.Fail(resolveErr!, "blob not resolved");
 
             if (!TryResolve(ToolJson.GetStringTrimmed(root, "connection"), out var cfg, out var err))
-                return err!;
+                return ToolResult.Fail(err!, "connection not resolved");
 
             var estimatedRows = ToolJson.GetInt32(root, "estimated_rows", 0);
             var confirmed = root.TryGetProperty("confirmed", out var cv) && cv.GetBoolean();
@@ -69,27 +69,31 @@ public class SqlExecuteTool : SqlToolBase, IMcpTool
             var risk = SqlSafetyAnalyzer.Analyze(sql);
 
             if (risk.Level == SqlRiskLevel.Forbidden)
-                return $"Blocked: {risk.Reason}";
+                return ToolResult.Refuse($"Blocked: {risk.Reason}", risk.Reason);
 
             if (risk.Level == SqlRiskLevel.High && !confirmed)
-                return $"Requires confirmation — {risk.Reason}\nCall again with confirmed:true after user approves.";
+                return ToolResult.Refuse(
+                    $"Requires confirmation — {risk.Reason}\nCall again with confirmed:true after user approves.",
+                    risk.Reason);
 
             if (risk.Level == SqlRiskLevel.Moderate)
             {
                 if (risk.RequiresQueryPlan && estimatedRows == 0)
-                    return "Please call sql_query_plan first and pass the result as 'estimated_rows'.";
+                    return ToolResult.Refuse("Please call sql_query_plan first and pass the result as 'estimated_rows'.", "row estimate required");
 
                 var warning = SqlSafetyAnalyzer.CheckEstimatedRows(estimatedRows);
                 if (warning is not null && !confirmed)
-                    return $"Requires confirmation — {warning}\nCall again with confirmed:true after user approves.";
+                    return ToolResult.Refuse(
+                        $"Requires confirmation — {warning}\nCall again with confirmed:true after user approves.",
+                        warning);
             }
 
             // ── Execute ────────────────────────────────────────────────────────
             using var conn = await SqlConnectionFactory.CreateAsync(cfg!, cancellationToken);
             var affected = await conn.ExecuteAsync(sql);
-            return $"OK — {affected} row(s) affected.";
+            return ToolResult.Text($"OK — {affected} row(s) affected.");
         }
-        catch (JsonException) { return "Error: Invalid JSON arguments."; }
-        catch (Exception ex)  { return $"Error: {ex.Message}"; }
+        catch (JsonException) { return ToolResult.Fail("Error: Invalid JSON arguments.", "invalid json"); }
+        catch (Exception ex)  { return ToolResult.Fail($"Error: {ex.Message}", ex.GetType().Name); }
     }
 }

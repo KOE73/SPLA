@@ -214,10 +214,13 @@ public sealed class ConversationOrchestrator
                     "Tool call → {ToolName} args={Args}", tc.Function.Name, tc.Function.Arguments);
                 // Normalize a null tool result to empty here so the error-detection and the tool
                 // message below don't have to null-check (a null result is simply "no output").
-                var result = await _tools.ExecuteToolAsync(mode, tc.Function.Name, tc.Function.Arguments, cancellationToken)
-                             ?? string.Empty;
+                var toolResult = await _tools.ExecuteToolAsync(mode, tc.Function.Name, tc.Function.Arguments, cancellationToken)
+                             ?? ToolResult.Empty();
+                // The conversation carries text; other content is routed below by whoever handles it.
+                var result = toolResult.TextContent;
                 Logger?.LogInformation(
-                    "Tool result ← {ToolName} resultChars={ResultChars}", tc.Function.Name, result.Length);
+                    "Tool result ← {ToolName} outcome={Outcome} resultChars={ResultChars}",
+                    tc.Function.Name, toolResult.Outcome, result.Length);
                 cancellationToken.ThrowIfCancellationRequested();
 
                 repeatTracker.Observe(tc.Function.Name, tc.Function.Arguments, result,
@@ -235,10 +238,16 @@ public sealed class ConversationOrchestrator
                 if (callbacks.OnToolResult != null)
                     await callbacks.OnToolResult(tc, result);
 
-                // A tool may have pushed image(s) into the pending sink (e.g. a browser screenshot).
-                // Tool-result messages cannot reliably carry images to every vision API, so drain the
-                // sink into a synthetic user-role message — the model sees the picture on its next turn.
-                var pendingImages = Domain.Agent.AgentSessionScope.Current?.Images.DrainAll();
+                // Images the tool declared in its result, plus anything still arriving through the
+                // pending sink. Deciding how a picture reaches a given model belongs here, not in the
+                // tool: tool-result messages cannot reliably carry images to every vision API, so both
+                // sources drain into a synthetic user-role message and the model sees them next turn.
+                var images = toolResult.Content.OfType<ToolImage>()
+                    .Select(i => $"data:{i.MimeType};base64,{i.Data}")
+                    .ToList();
+                var sunkImages = Domain.Agent.AgentSessionScope.Current?.Images.DrainAll();
+                if (sunkImages is { Count: > 0 }) images.AddRange(sunkImages);
+                var pendingImages = images;
                 if (pendingImages is { Count: > 0 })
                 {
                     conversation.Add(new ChatMessage

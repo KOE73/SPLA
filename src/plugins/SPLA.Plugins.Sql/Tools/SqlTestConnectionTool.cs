@@ -43,7 +43,7 @@ public class SqlTestConnectionTool : SqlToolBase, IMcpTool
         }
     };
 
-    public async Task<string> ExecuteAsync(string argumentsJson, CancellationToken cancellationToken = default)
+    public async Task<ToolResult> ExecuteAsync(string argumentsJson, CancellationToken cancellationToken = default)
     {
         string? name = null;
         if (!string.IsNullOrWhiteSpace(argumentsJson))
@@ -54,9 +54,11 @@ public class SqlTestConnectionTool : SqlToolBase, IMcpTool
         }
 
         if (!TryResolve(name, out var cfg, out var error))
-            return error!;
+            return ToolResult.Fail(error!, "connection not resolved");
 
         var result = await SqlConnectionTester.TestAsync(cfg!, cancellationToken);
-        return result.Message;
+        return result.Success
+            ? ToolResult.Text(result.Message)
+            : ToolResult.Fail(result.Message, "connection test failed");
     }
 }

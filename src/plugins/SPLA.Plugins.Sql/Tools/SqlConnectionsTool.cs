@@ -33,10 +33,10 @@ public class SqlConnectionsTool : IMcpTool
         }
     };
 
-    public Task<string> ExecuteAsync(string argumentsJson, CancellationToken cancellationToken = default)
+    public Task<ToolResult> ExecuteAsync(string argumentsJson, CancellationToken cancellationToken = default)
     {
         if (_registry.Connections.Count == 0)
-            return Task.FromResult(
+            return Task.FromResult(ToolResult.Text(
                 "No database connections configured. Ask the operator to add one in Settings → Plugins → sql.");
 
         var sb = new StringBuilder();
@@ -47,6 +47,6 @@ public class SqlConnectionsTool : IMcpTool
                 ? " [default]" : "";
             sb.AppendLine($"  {name}{mark} ({cfg.Provider}) — {cfg.Description ?? "(no description)"}");
         }
-        return Task.FromResult(sb.ToString().TrimEnd());
+        return Task.FromResult(ToolResult.Text(sb.ToString().TrimEnd()));
     }
 }

@@ -40,7 +40,7 @@ public class SqlVerifyContextTool : SqlToolBase, IMcpTool
         }
     };
 
-    public async Task<string> ExecuteAsync(string argumentsJson, CancellationToken cancellationToken = default)
+    public async Task<ToolResult> ExecuteAsync(string argumentsJson, CancellationToken cancellationToken = default)
     {
         try
         {
@@ -48,16 +48,16 @@ public class SqlVerifyContextTool : SqlToolBase, IMcpTool
             var root = doc.RootElement;
 
             if (!TryResolve(ToolJson.GetStringTrimmed(root, "connection"), out var cfg, out var err))
-                return err!;
+                return ToolResult.Fail(err!, "connection not resolved");
 
             // TODO:
             // 1. Locate context MD files for this connection (from AGENTS.md index)
             // 2. Parse table/column names from MD (regex on code blocks and bold names)
             // 3. Run sql_schema to get live schema
             // 4. Diff: stale references, renamed columns, undocumented tables
-            return $"[stub] sql_verify_context({cfg!.Provider}): schema vs MD comparison not yet implemented.";
+            return ToolResult.Text($"[stub] sql_verify_context({cfg!.Provider}): schema vs MD comparison not yet implemented.");
         }
-        catch (JsonException) { return "Error: Invalid JSON arguments."; }
-        catch (Exception ex)  { return $"Error: {ex.Message}"; }
+        catch (JsonException) { return ToolResult.Fail("Error: Invalid JSON arguments.", "invalid json"); }
+        catch (Exception ex)  { return ToolResult.Fail($"Error: {ex.Message}", ex.GetType().Name); }
     }
 }

@@ -47,7 +47,7 @@ public class SqlQueryPlanTool : SqlToolBase, IMcpTool
         }
     };
 
-    public async Task<string> ExecuteAsync(string argumentsJson, CancellationToken cancellationToken = default)
+    public async Task<ToolResult> ExecuteAsync(string argumentsJson, CancellationToken cancellationToken = default)
     {
         try
         {
@@ -55,10 +55,10 @@ public class SqlQueryPlanTool : SqlToolBase, IMcpTool
             var root = doc.RootElement;
 
             var sql = ToolJson.GetStringTrimmed(root, "sql");
-            if (string.IsNullOrWhiteSpace(sql)) return "Error: Missing 'sql' parameter.";
+            if (string.IsNullOrWhiteSpace(sql)) return ToolResult.Fail("Error: Missing 'sql' parameter.", "missing sql");
 
             if (!TryResolve(ToolJson.GetStringTrimmed(root, "connection"), out var cfg, out var err))
-                return err!;
+                return ToolResult.Fail(err!, "connection not resolved");
 
             using var conn = await SqlConnectionFactory.CreateAsync(cfg!, cancellationToken);
 
@@ -69,12 +69,12 @@ public class SqlQueryPlanTool : SqlToolBase, IMcpTool
             };
 
             var target = DataChannel.ParseTarget(ToolJson.GetStringTrimmed(root, "output"));
-            if (target == OutputTarget.Context) return result;
+            if (target == OutputTarget.Context) return ToolResult.Text(result);
             var name = ToolJson.GetStringTrimmed(root, "output_name");
-            return DataChannel.Route(target, BlobPayload.OfText(result), "sql_query_plan", name);
+            return ToolResult.Text(DataChannel.Route(target, BlobPayload.OfText(result), "sql_query_plan", name));
         }
-        catch (JsonException) { return "Error: Invalid JSON arguments."; }
-        catch (Exception ex)  { return $"Error: {ex.Message}"; }
+        catch (JsonException) { return ToolResult.Fail("Error: Invalid JSON arguments.", "invalid json"); }
+        catch (Exception ex)  { return ToolResult.Fail($"Error: {ex.Message}", ex.GetType().Name); }
     }
 
     private static async Task<string> MssqlPlanAsync(System.Data.IDbConnection conn, string sql)
