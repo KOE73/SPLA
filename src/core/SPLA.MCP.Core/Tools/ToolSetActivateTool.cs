@@ -51,40 +51,42 @@ public sealed class ToolSetActivateTool : IMcpTool
         }
     };
 
-    public Task<string> ExecuteAsync(string argumentsJson, CancellationToken cancellationToken = default)
+    public Task<ToolResult> ExecuteAsync(string argumentsJson, CancellationToken cancellationToken = default)
     {
         var session = AgentSessionScope.Current?.ToolSets;
-        if (session is null) return Task.FromResult("error: no active chat session");
+        if (session is null) return Task.FromResult(ToolResult.Refuse("error: no active chat session", "no chat session"));
 
         using var doc = JsonDocument.Parse(argumentsJson);
         var setId = ToolJson.GetStringTrimmed(doc.RootElement, "setId");
         if (string.IsNullOrEmpty(setId))
-            return Task.FromResult("error: 'setId' parameter is required");
+            return Task.FromResult(ToolResult.Fail("error: 'setId' parameter is required", "missing setId"));
 
         var set = _sets.Find(setId);
         if (set is null)
-            return Task.FromResult($"error: unknown tool set '{setId}'");
+            return Task.FromResult(ToolResult.Fail($"error: unknown tool set '{setId}'", "unknown tool set"));
 
         var level = _sets.LevelOf(set.Id);
         if (level != ToolSetLevel.AgentDemand)
             return Task.FromResult(level switch
             {
-                ToolSetLevel.Enabled => $"tool set '{set.Id}' is already fully available — no activation needed",
+                ToolSetLevel.Enabled => ToolResult.Text($"tool set '{set.Id}' is already fully available — no activation needed"),
                 ToolSetLevel.SkillDemand =>
-                    $"error: tool set '{set.Id}' can only be activated by a skill that requires it, or by the user",
-                _ => $"error: unknown tool set '{setId}'"
+                    ToolResult.Refuse(
+                        $"error: tool set '{set.Id}' can only be activated by a skill that requires it, or by the user",
+                        "not agent-demand"),
+                _ => ToolResult.Fail($"error: unknown tool set '{setId}'", "unknown tool set")
             });
 
         if (session.IsActive(set.Id))
-            return Task.FromResult($"tool set '{set.Id}' is already active");
+            return Task.FromResult(ToolResult.Text($"tool set '{set.Id}' is already active"));
 
         session.Activate(set.Id, ToolSetActivationBy.Agent);
 
         var tools = set.ToolNames.Count > 0
             ? $" Tools: {string.Join(", ", set.ToolNames)}."
             : string.Empty;
-        return Task.FromResult(
-            $"tool set '{set.Id}' activated for this chat.{tools} Their full definitions are available from the next message on.");
+        return Task.FromResult(ToolResult.Text(
+            $"tool set '{set.Id}' activated for this chat.{tools} Their full definitions are available from the next message on."));
     }
 }
 
@@ -125,27 +127,28 @@ public sealed class ToolSetDeactivateTool : IMcpTool
         }
     };
 
-    public Task<string> ExecuteAsync(string argumentsJson, CancellationToken cancellationToken = default)
+    public Task<ToolResult> ExecuteAsync(string argumentsJson, CancellationToken cancellationToken = default)
     {
         var session = AgentSessionScope.Current?.ToolSets;
-        if (session is null) return Task.FromResult("error: no active chat session");
+        if (session is null) return Task.FromResult(ToolResult.Refuse("error: no active chat session", "no chat session"));
 
         using var doc = JsonDocument.Parse(argumentsJson);
         var setId = ToolJson.GetStringTrimmed(doc.RootElement, "setId");
         if (string.IsNullOrEmpty(setId))
-            return Task.FromResult("error: 'setId' parameter is required");
+            return Task.FromResult(ToolResult.Fail("error: 'setId' parameter is required", "missing setId"));
 
         // A set a skill raised is the skill's to drop: releasing it mid-procedure would break the
         // very requirements the skill declared.
         var activation = session.Active.FirstOrDefault(a =>
             string.Equals(a.SetId, setId, System.StringComparison.OrdinalIgnoreCase));
         if (activation.SetId is null)
-            return Task.FromResult($"tool set '{setId}' is not active");
+            return Task.FromResult(ToolResult.Text($"tool set '{setId}' is not active"));
         if (activation.By != ToolSetActivationBy.Agent)
-            return Task.FromResult(
-                $"error: tool set '{setId}' was activated by {activation.By.ToString().ToLowerInvariant()} and cannot be released here");
+            return Task.FromResult(ToolResult.Refuse(
+                $"error: tool set '{setId}' was activated by {activation.By.ToString().ToLowerInvariant()} and cannot be released here",
+                "not agent-activated"));
 
         session.Deactivate(setId);
-        return Task.FromResult($"tool set '{setId}' deactivated");
+        return Task.FromResult(ToolResult.Text($"tool set '{setId}' deactivated"));
     }
 }

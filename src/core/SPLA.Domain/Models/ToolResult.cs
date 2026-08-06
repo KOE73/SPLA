@@ -17,8 +17,21 @@ namespace SPLA.Domain.Models;
 /// </summary>
 public enum ToolOutcome
 {
-    /// <summary>The tool did what was asked. Says nothing about whether the answer was useful —
-    /// "no matches found" is a perfectly successful search.</summary>
+    /// <summary>
+    /// The tool did what was asked.
+    /// <para>
+    /// <b>The outcome describes the tool's own work, never the verdict on what it examined or ran.</b>
+    /// A search with no matches, a host that does not answer, a closed port, a shell command exiting
+    /// non-zero, a remote ssh command failing, a build that reports compiler errors, a test run with
+    /// failures, a script that throws — all <see cref="Ok"/>. In each case the tool was asked to find
+    /// out, and it found out.
+    /// </para>
+    /// <para>
+    /// Getting this backwards is not a matter of taste: it makes the error rate a measure of the
+    /// user's code and network rather than of the tools, which is the same kind of lie the old
+    /// string result told.
+    /// </para>
+    /// </summary>
     Ok,
 
     /// <summary>The tool tried and could not: bad arguments, a broken connection, an exception.</summary>
@@ -91,6 +104,16 @@ public sealed class ToolResult
         string.Join("\n\n", Content.OfType<ToolText>().Select(t => t.Text));
 
     public bool IsError => Outcome != ToolOutcome.Ok;
+
+    /// <summary>
+    /// The text, so that logging or interpolating a result shows what it says rather than the name
+    /// of its type. Scripts the model writes reach for <c>ctx.Log(result)</c> as the obvious gesture,
+    /// and it should do the obvious thing.
+    /// <para>Not a substitute for the missing implicit conversion, and not in tension with it: this
+    /// only affects display. A failed result still cannot be assigned where a successful one is
+    /// expected, which is the property that keeps the outcome honest.</para>
+    /// </summary>
+    public override string ToString() => TextContent;
 
     /// <summary>The ordinary answer: the tool did its job and has something to say.</summary>
     public static ToolResult Text(string text) => new() { Content = [new ToolText(text)] };

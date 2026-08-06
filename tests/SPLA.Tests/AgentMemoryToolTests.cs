@@ -19,7 +19,7 @@ public sealed class AgentMemoryToolTests
 
         using var _ = Scope(session);
         var tool   = new AgentMemoryClearTool(project);
-        var result = await tool.ExecuteAsync("""{"filter":"context:","scope":null}""");
+        var result = (await tool.ExecuteAsync("""{"filter":"context:","scope":null}""")).TextContent;
 
         Assert.Contains("ok: cleared [session]", result);
         Assert.DoesNotContain("[project]", result);
@@ -37,7 +37,7 @@ public sealed class AgentMemoryToolTests
 
         using var _ = Scope(session);
         var tool   = new AgentMemoryListTool(project);
-        var result = await tool.ExecuteAsync("""{"filter":"task:","top":null,"skip":null,"scope":null}""");
+        var result = (await tool.ExecuteAsync("""{"filter":"task:","top":null,"skip":null,"scope":null}""")).TextContent;
 
         Assert.Contains("task:state = session", result);
         Assert.DoesNotContain("task:state = project", result);
@@ -54,7 +54,7 @@ public sealed class AgentMemoryToolTests
         var getter = new AgentMemoryGetTool(project);
 
         await setter.ExecuteAsync("""{"key":"context:plan","value":"step 1","scope":null}""");
-        var value = await getter.ExecuteAsync("""{"key":"context:plan","scope":null}""");
+        var value = (await getter.ExecuteAsync("""{"key":"context:plan","scope":null}""")).TextContent;
 
         Assert.Equal("step 1", value);
     }
@@ -68,7 +68,7 @@ public sealed class AgentMemoryToolTests
 
         using var _ = Scope(session);
         var tool   = new AgentMemoryDeleteTool(project);
-        var result = await tool.ExecuteAsync("""{"key":"note:x","scope":null}""");
+        var result = (await tool.ExecuteAsync("""{"key":"note:x","scope":null}""")).TextContent;
 
         Assert.Contains("ok: deleted [session]", result);
         Assert.Null(session.Get("note:x"));
@@ -82,7 +82,7 @@ public sealed class AgentMemoryToolTests
 
         using var _ = Scope(session);
         var tool   = new AgentMemoryGetTool(project);
-        var result = await tool.ExecuteAsync("""{"key":"missing:key","scope":null}""");
+        var result = (await tool.ExecuteAsync("""{"key":"missing:key","scope":null}""")).TextContent;
 
         Assert.Contains("not_found", result);
     }
@@ -100,7 +100,7 @@ public sealed class AgentMemoryToolTests
         await setter.ExecuteAsync("""{"key":"project:build-cmd","value":"dotnet build","scope":"project"}""");
 
         Assert.Null(session.Get("project:build-cmd"));
-        var value = await getter.ExecuteAsync("""{"key":"project:build-cmd","scope":"project"}""");
+        var value = (await getter.ExecuteAsync("""{"key":"project:build-cmd","scope":"project"}""")).TextContent;
         Assert.Equal("dotnet build", value);
     }
 }

@@ -34,7 +34,7 @@ public sealed class BrowserListProfilesTool : IMcpTool
         }
     };
 
-    public Task<string> ExecuteAsync(string argumentsJson, CancellationToken cancellationToken = default)
+    public Task<ToolResult> ExecuteAsync(string argumentsJson, CancellationToken cancellationToken = default)
     {
         var sb = new StringBuilder();
 
@@ -58,6 +58,6 @@ public sealed class BrowserListProfilesTool : IMcpTool
         }
 
         sb.AppendLine("\"new\" — fresh, temporary profile, no saved state.");
-        return Task.FromResult(sb.ToString().TrimEnd());
+        return Task.FromResult(ToolResult.Text(sb.ToString().TrimEnd()));
     }
 }

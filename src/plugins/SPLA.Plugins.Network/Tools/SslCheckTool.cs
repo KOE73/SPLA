@@ -44,14 +44,14 @@ public class SslCheckTool : IMcpTool
         }
     };
 
-    public async Task<string> ExecuteAsync(string argumentsJson, CancellationToken cancellationToken = default)
+    public async Task<ToolResult> ExecuteAsync(string argumentsJson, CancellationToken cancellationToken = default)
     {
         try
         {
             using var doc = JsonDocument.Parse(argumentsJson);
             var root = doc.RootElement;
             var host = ToolJson.GetStringTrimmed(root, "host");
-            if (host is null) return "Error: Missing 'host' parameter.";
+            if (host is null) return ToolResult.Fail("Error: Missing 'host' parameter.", "missing host");
 
             var port      = ToolJson.GetInt32Clamped(root, "port",    443,  1,   65535);
             var timeoutMs = ToolJson.GetInt32Clamped(root, "timeout", 5000, 500, 60_000);
@@ -79,7 +79,7 @@ public class SslCheckTool : IMcpTool
                 ?? (sslStream.RemoteCertificate is { } raw ? new X509Certificate2(raw) : null);
 
             if (leaf == null)
-                return "Error: No certificate returned by the server.";
+                return ToolResult.Fail("Error: No certificate returned by the server.", "no certificate");
 
             var sb = new StringBuilder();
             var now = DateTime.UtcNow;
@@ -220,15 +220,15 @@ public class SslCheckTool : IMcpTool
                 }
             }
 
-            return sb.ToString();
+            return ToolResult.Text(sb.ToString());
         }
         catch (JsonException)
         {
-            return "Error: Invalid JSON arguments.";
+            return ToolResult.Fail("Error: Invalid JSON arguments.", "invalid json");
         }
         catch (Exception ex)
         {
-            return $"Error checking TLS: {ex.Message}";
+            return ToolResult.Fail($"Error checking TLS: {ex.Message}", "tls check failed");
         }
     }
 }

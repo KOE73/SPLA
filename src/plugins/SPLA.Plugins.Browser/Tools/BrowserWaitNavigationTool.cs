@@ -37,7 +37,7 @@ public sealed class BrowserWaitNavigationTool : IMcpTool
         }
     };
 
-    public async Task<string> ExecuteAsync(string argumentsJson, CancellationToken cancellationToken = default)
+    public async Task<ToolResult> ExecuteAsync(string argumentsJson, CancellationToken cancellationToken = default)
     {
         var mgr = BrowserToolBase.Current;
         if (mgr is null) return BrowserToolBase.NotRunning;
@@ -52,7 +52,7 @@ public sealed class BrowserWaitNavigationTool : IMcpTool
             waitUntil = ToolJson.GetStringTrimmed(root, "wait_until");
             timeout = ToolJson.GetInt32Clamped(root, "timeout", 15_000, 1000, 120_000);
         }
-        catch (JsonException) { return "Error: invalid JSON arguments."; }
+        catch (JsonException) { return ToolResult.Fail("Error: invalid JSON arguments.", "invalid json"); }
 
         var (resolvedTabId, page, error) = BrowserToolBase.ResolveTab(mgr, tabId);
         if (page is null) return error!;
@@ -60,9 +60,9 @@ public sealed class BrowserWaitNavigationTool : IMcpTool
         try
         {
             await page.WaitForLoadStateAsync(ParseWaitUntil(waitUntil), new PageWaitForLoadStateOptions { Timeout = timeout });
-            return $"Tab {resolvedTabId} settled at {page.Url}.";
+            return ToolResult.Text($"Tab {resolvedTabId} settled at {page.Url}.");
         }
-        catch (TimeoutException ex) { return $"Error: wait timed out — {ex.Message}"; }
+        catch (TimeoutException ex) { return ToolResult.Fail($"Error: wait timed out — {ex.Message}", "wait timeout"); }
         catch (PlaywrightException ex) { return BrowserToolBase.Fail("browser_wait_navigation", ex); }
     }
 

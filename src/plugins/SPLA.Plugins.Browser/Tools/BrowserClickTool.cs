@@ -39,7 +39,7 @@ public sealed class BrowserClickTool : IMcpTool
         }
     };
 
-    public async Task<string> ExecuteAsync(string argumentsJson, CancellationToken cancellationToken = default)
+    public async Task<ToolResult> ExecuteAsync(string argumentsJson, CancellationToken cancellationToken = default)
     {
         var mgr = BrowserToolBase.Current;
         if (mgr is null) return BrowserToolBase.NotRunning;
@@ -58,7 +58,7 @@ public sealed class BrowserClickTool : IMcpTool
             doubleClick = ToolJson.GetBoolean(root, "double_click", false);
             timeout = ToolJson.GetInt32Clamped(root, "timeout", 10_000, 500, 60_000);
         }
-        catch (JsonException) { return "Error: invalid JSON arguments."; }
+        catch (JsonException) { return ToolResult.Fail("Error: invalid JSON arguments.", "invalid json"); }
 
         var (resolvedTabId, page, tabError) = BrowserToolBase.ResolveTab(mgr, tabId);
         if (page is null) return tabError!;
@@ -73,9 +73,9 @@ public sealed class BrowserClickTool : IMcpTool
             else
                 await locator.ClickAsync(new LocatorClickOptions { Button = ParseButton(button), Timeout = timeout });
 
-            return $"Clicked {(refId ?? selector)} on tab {resolvedTabId}.";
+            return ToolResult.Text($"Clicked {(refId ?? selector)} on tab {resolvedTabId}.");
         }
-        catch (TimeoutException ex) { return $"Error: click timed out — {ex.Message}"; }
+        catch (TimeoutException ex) { return ToolResult.Fail($"Error: click timed out — {ex.Message}", "click timeout"); }
         catch (PlaywrightException ex) { return BrowserToolBase.Fail("browser_click", ex); }
     }
 

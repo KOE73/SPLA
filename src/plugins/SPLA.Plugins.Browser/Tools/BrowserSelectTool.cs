@@ -43,7 +43,7 @@ public sealed class BrowserSelectTool : IMcpTool
         }
     };
 
-    public async Task<string> ExecuteAsync(string argumentsJson, CancellationToken cancellationToken = default)
+    public async Task<ToolResult> ExecuteAsync(string argumentsJson, CancellationToken cancellationToken = default)
     {
         var mgr = BrowserToolBase.Current;
         if (mgr is null) return BrowserToolBase.NotRunning;
@@ -59,9 +59,9 @@ public sealed class BrowserSelectTool : IMcpTool
             tabId = ToolJson.GetStringTrimmed(root, "tab_id");
             values = ToolJson.GetStringArray(root, "values");
         }
-        catch (JsonException) { return "Error: invalid JSON arguments."; }
+        catch (JsonException) { return ToolResult.Fail("Error: invalid JSON arguments.", "invalid json"); }
 
-        if (values is null || values.Length == 0) return "Error: 'values' must be a non-empty array.";
+        if (values is null || values.Length == 0) return ToolResult.Fail("Error: 'values' must be a non-empty array.", "missing values");
 
         var (resolvedTabId, page, tabError) = BrowserToolBase.ResolveTab(mgr, tabId);
         if (page is null) return tabError!;
@@ -72,7 +72,7 @@ public sealed class BrowserSelectTool : IMcpTool
         try
         {
             var selected = await locator.SelectOptionAsync(values);
-            return $"Selected [{string.Join(", ", selected)}] on {(refId ?? selector)}, tab {resolvedTabId}.";
+            return ToolResult.Text($"Selected [{string.Join(", ", selected)}] on {(refId ?? selector)}, tab {resolvedTabId}.");
         }
         catch (PlaywrightException ex) { return BrowserToolBase.Fail("browser_select", ex); }
     }

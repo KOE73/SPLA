@@ -51,7 +51,7 @@ public sealed class BrowserUploadTool : IMcpTool
         }
     };
 
-    public async Task<string> ExecuteAsync(string argumentsJson, CancellationToken cancellationToken = default)
+    public async Task<ToolResult> ExecuteAsync(string argumentsJson, CancellationToken cancellationToken = default)
     {
         var mgr = BrowserToolBase.Current;
         if (mgr is null) return BrowserToolBase.NotRunning;
@@ -67,12 +67,12 @@ public sealed class BrowserUploadTool : IMcpTool
             tabId = ToolJson.GetStringTrimmed(root, "tab_id");
             files = ToolJson.GetStringArray(root, "files");
         }
-        catch (JsonException) { return "Error: invalid JSON arguments."; }
+        catch (JsonException) { return ToolResult.Fail("Error: invalid JSON arguments.", "invalid json"); }
 
-        if (files is null || files.Length == 0) return "Error: 'files' must be a non-empty array of local paths.";
+        if (files is null || files.Length == 0) return ToolResult.Fail("Error: 'files' must be a non-empty array of local paths.", "missing files");
 
         var missing = files.Where(f => !File.Exists(f)).ToArray();
-        if (missing.Length > 0) return $"Error: file(s) not found: {string.Join(", ", missing)}";
+        if (missing.Length > 0) return ToolResult.Fail($"Error: file(s) not found: {string.Join(", ", missing)}", "file not found");
 
         var (resolvedTabId, page, tabError) = BrowserToolBase.ResolveTab(mgr, tabId);
         if (page is null) return tabError!;
@@ -83,7 +83,7 @@ public sealed class BrowserUploadTool : IMcpTool
         try
         {
             await locator.SetInputFilesAsync(files);
-            return $"Uploaded {files.Length} file(s) to {(refId ?? selector)} on tab {resolvedTabId}.";
+            return ToolResult.Text($"Uploaded {files.Length} file(s) to {(refId ?? selector)} on tab {resolvedTabId}.");
         }
         catch (PlaywrightException ex) { return BrowserToolBase.Fail("browser_upload", ex); }
     }

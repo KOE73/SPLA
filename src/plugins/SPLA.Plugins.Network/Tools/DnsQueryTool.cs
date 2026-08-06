@@ -49,18 +49,18 @@ public class DnsQueryTool : IMcpTool
         }
     };
 
-    public async Task<string> ExecuteAsync(string argumentsJson, CancellationToken cancellationToken = default)
+    public async Task<ToolResult> ExecuteAsync(string argumentsJson, CancellationToken cancellationToken = default)
     {
         try
         {
             using var doc = JsonDocument.Parse(argumentsJson);
             var root = doc.RootElement;
             var host = ToolJson.GetStringTrimmed(root, "host");
-            if (host is null) return "Error: Missing 'host' parameter.";
+            if (host is null) return ToolResult.Fail("Error: Missing 'host' parameter.", "missing host");
 
             var typeName = ToolJson.GetString(root, "type") ?? "A";
             if (!Enum.TryParse<QueryType>(typeName, ignoreCase: true, out var queryType))
-                return $"Error: Unknown record type '{typeName}'. Supported: A, AAAA, CNAME, MX, NS, PTR, SOA, SRV, TXT.";
+                return ToolResult.Fail($"Error: Unknown record type '{typeName}'. Supported: A, AAAA, CNAME, MX, NS, PTR, SOA, SRV, TXT.", "unknown record type");
 
             LookupClient client;
             var nameserver = ToolJson.GetStringTrimmed(root, "nameserver");
@@ -77,10 +77,10 @@ public class DnsQueryTool : IMcpTool
             var result = await client.QueryAsync(host, queryType, cancellationToken: cancellationToken);
 
             if (result.HasError)
-                return $"DNS error: {result.ErrorMessage}";
+                return ToolResult.Text($"DNS error: {result.ErrorMessage}");
 
             if (!result.Answers.Any())
-                return $"No {typeName} records found for '{host}'.";
+                return ToolResult.Text($"No {typeName} records found for '{host}'.");
 
             var sb = new StringBuilder();
             sb.AppendLine($"DNS query: {host} IN {typeName}");
@@ -105,15 +105,15 @@ public class DnsQueryTool : IMcpTool
                 sb.AppendLine(formatted);
             }
 
-            return sb.ToString();
+            return ToolResult.Text(sb.ToString());
         }
         catch (JsonException)
         {
-            return "Error: Invalid JSON arguments.";
+            return ToolResult.Fail("Error: Invalid JSON arguments.", "invalid json");
         }
         catch (Exception ex)
         {
-            return $"Error querying DNS: {ex.Message}";
+            return ToolResult.Fail($"Error querying DNS: {ex.Message}", "dns query failed");
         }
     }
 }

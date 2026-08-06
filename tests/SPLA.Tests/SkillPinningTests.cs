@@ -48,7 +48,7 @@ public class SkillPinningTests
         var session = new SkillSession();
 
         using var _ = Scope(session);
-        var result = await new SkillActivateTool(new SkillLibrary([source])).ExecuteAsync("""{"id":"test.skill"}""");
+        var result = (await new SkillActivateTool(new SkillLibrary([source])).ExecuteAsync("""{"id":"test.skill"}""")).TextContent;
 
         Assert.StartsWith("ok:", result);
         Assert.Equal(Original, session.ActiveBody);
@@ -64,7 +64,7 @@ public class SkillPinningTests
         var session = new SkillSession();
 
         using var _ = Scope(session);
-        var result = await new SkillActivateTool(new SkillLibrary([source])).ExecuteAsync("""{"id":"test.skill"}""");
+        var result = (await new SkillActivateTool(new SkillLibrary([source])).ExecuteAsync("""{"id":"test.skill"}""")).TextContent;
 
         Assert.StartsWith("error:", result);
         Assert.Contains("no readable procedure", result);

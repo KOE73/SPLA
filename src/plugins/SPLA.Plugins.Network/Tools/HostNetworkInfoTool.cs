@@ -62,7 +62,7 @@ public class HostNetworkInfoTool : IMcpTool
         }
     };
 
-    public async Task<string> ExecuteAsync(string argumentsJson, CancellationToken cancellationToken = default)
+    public async Task<ToolResult> ExecuteAsync(string argumentsJson, CancellationToken cancellationToken = default)
     {
         var includePublicIp = true;
         string[] customEndpoints = Array.Empty<string>();
@@ -140,8 +140,8 @@ public class HostNetworkInfoTool : IMcpTool
         }
         catch { target = OutputTarget.Context; blobName = null; }
 
-        if (target == OutputTarget.Context) return result;
-        return DataChannel.Route(target, BlobPayload.OfText(result), "network_get_host_info", blobName);
+        if (target == OutputTarget.Context) return ToolResult.Text(result);
+        return ToolResult.Text(DataChannel.Route(target, BlobPayload.OfText(result), "network_get_host_info", blobName));
     }
 
     private static async Task<(string Label, string Ip)> QueryPublicIpAsync(string label, string url, CancellationToken cancellationToken)

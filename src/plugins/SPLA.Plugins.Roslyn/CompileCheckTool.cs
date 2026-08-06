@@ -78,7 +78,7 @@ public sealed class CompileCheckTool : IMcpTool
     };
 
 
-    public Task<string> ExecuteAsync(string argumentsJson, CancellationToken cancellationToken = default)
+    public Task<ToolResult> ExecuteAsync(string argumentsJson, CancellationToken cancellationToken = default)
     {
         try
         {
@@ -87,7 +87,7 @@ public sealed class CompileCheckTool : IMcpTool
 
             var code = ToolJson.GetString(root, "code");
             if (string.IsNullOrWhiteSpace(code))
-                return Task.FromResult("Error: Missing 'code' parameter.");
+                return Task.FromResult(ToolResult.Fail("Error: Missing 'code' parameter.", "missing code"));
 
             var kind = ToolJson.GetStringTrimmed(root, "kind")?.ToLowerInvariant() ?? "library";
             var outputKind = kind == "program"
@@ -117,7 +117,7 @@ public sealed class CompileCheckTool : IMcpTool
             if (diagnostics.Count == 0)
             {
                 sb.AppendLine("diagnostics: none");
-                return Task.FromResult(sb.ToString().TrimEnd());
+                return Task.FromResult(ToolResult.Text(sb.ToString().TrimEnd()));
             }
 
             sb.AppendLine($"diagnostics: {diagnostics.Count}");
@@ -130,14 +130,14 @@ public sealed class CompileCheckTool : IMcpTool
 
             var result = sb.ToString().TrimEnd();
             var outputTarget = DataChannel.ParseTarget(ToolJson.GetStringTrimmed(root, "output"));
-            if (outputTarget == OutputTarget.Context) return Task.FromResult(result);
+            if (outputTarget == OutputTarget.Context) return Task.FromResult(ToolResult.Text(result));
             var blobName = ToolJson.GetStringTrimmed(root, "output_name");
-            return Task.FromResult(DataChannel.Route(outputTarget, BlobPayload.OfText(result),
-                $"roslyn_compile_check: {(hasErrors ? "errors" : "ok")}, {diagnostics.Count} diagnostics", blobName));
+            return Task.FromResult(ToolResult.Text(DataChannel.Route(outputTarget, BlobPayload.OfText(result),
+                $"roslyn_compile_check: {(hasErrors ? "errors" : "ok")}, {diagnostics.Count} diagnostics", blobName)));
         }
         catch (JsonException)
         {
-            return Task.FromResult("Error: Invalid JSON arguments.");
+            return Task.FromResult(ToolResult.Fail("Error: Invalid JSON arguments.", "invalid json"));
         }
         catch (OperationCanceledException)
         {
@@ -145,7 +145,7 @@ public sealed class CompileCheckTool : IMcpTool
         }
         catch (Exception ex)
         {
-            return Task.FromResult($"Error during compile check: {ex.Message}");
+            return Task.FromResult(ToolResult.Fail($"Error during compile check: {ex.Message}", "exception"));
         }
     }
 }

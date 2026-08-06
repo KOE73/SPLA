@@ -30,7 +30,7 @@ public sealed class BrowserCloseTabTool : IMcpTool
         }
     };
 
-    public async Task<string> ExecuteAsync(string argumentsJson, CancellationToken cancellationToken = default)
+    public async Task<ToolResult> ExecuteAsync(string argumentsJson, CancellationToken cancellationToken = default)
     {
         var mgr = BrowserToolBase.Current;
         if (mgr is null) return BrowserToolBase.NotRunning;
@@ -41,7 +41,7 @@ public sealed class BrowserCloseTabTool : IMcpTool
             using var doc = JsonDocument.Parse(string.IsNullOrWhiteSpace(argumentsJson) ? "{}" : argumentsJson);
             tabId = ToolJson.GetStringTrimmed(doc.RootElement, "tab_id");
         }
-        catch (JsonException) { return "Error: invalid JSON arguments."; }
+        catch (JsonException) { return ToolResult.Fail("Error: invalid JSON arguments.", "invalid json"); }
 
         var (resolvedId, _, error) = BrowserToolBase.ResolveTab(mgr, tabId);
         if (error != null) return error;
@@ -49,7 +49,9 @@ public sealed class BrowserCloseTabTool : IMcpTool
         try
         {
             var closed = await mgr.Pages.CloseAsync(resolvedId!);
-            return closed ? $"Closed tab {resolvedId}." : $"Error: unknown tab '{resolvedId}'.";
+            return closed
+                ? ToolResult.Text($"Closed tab {resolvedId}.")
+                : ToolResult.Refuse($"Error: unknown tab '{resolvedId}'.", "unknown tab");
         }
         catch (Exception ex) { return BrowserToolBase.Fail("browser_close_tab", ex); }
     }

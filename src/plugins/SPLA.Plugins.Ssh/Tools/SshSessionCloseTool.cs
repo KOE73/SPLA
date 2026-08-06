@@ -37,7 +37,7 @@ internal sealed class SshSessionCloseTool : IMcpTool
         }
     };
 
-    public Task<string> ExecuteAsync(string argumentsJson, CancellationToken cancellationToken = default)
+    public Task<ToolResult> ExecuteAsync(string argumentsJson, CancellationToken cancellationToken = default)
     {
         string? sessionId = null;
         try
@@ -59,10 +59,12 @@ internal sealed class SshSessionCloseTool : IMcpTool
 
         if (sessionId == null)
             return Task.FromResult(open.Count == 0
-                ? "No open SSH sessions."
-                : "Multiple sessions open — specify 'session'. Open: " + string.Join(", ", open.Select(s => s.Id)));
+                ? ToolResult.Refuse("No open SSH sessions.", "no open sessions")
+                : ToolResult.Refuse("Multiple sessions open — specify 'session'. Open: " + string.Join(", ", open.Select(s => s.Id)), "ambiguous session"));
 
         var closed = _hub.Close(sessionId);
-        return Task.FromResult(closed ? $"Closed session '{sessionId}'." : $"No open session '{sessionId}'.");
+        return Task.FromResult(closed
+            ? ToolResult.Text($"Closed session '{sessionId}'.")
+            : ToolResult.Refuse($"No open session '{sessionId}'.", "no such session"));
     }
 }

@@ -28,7 +28,7 @@ public class GetCurrentDateTimeTool : IMcpTool
         }
     };
 
-    public Task<string> ExecuteAsync(string argumentsJson, CancellationToken cancellationToken = default)
+    public Task<ToolResult> ExecuteAsync(string argumentsJson, CancellationToken cancellationToken = default)
     {
         var now = DateTimeOffset.Now;
         var utcNow = DateTimeOffset.UtcNow;
@@ -45,6 +45,6 @@ public class GetCurrentDateTimeTool : IMcpTool
             $"ISO local: {now:O}\n" +
             $"ISO UTC: {utcNow:O}";
 
-        return Task.FromResult(result);
+        return Task.FromResult(ToolResult.Text(result));
     }
 }

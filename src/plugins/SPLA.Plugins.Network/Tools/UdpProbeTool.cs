@@ -41,7 +41,7 @@ public class UdpProbeTool : IMcpTool
         }
     };
 
-    public async Task<string> ExecuteAsync(string argumentsJson, CancellationToken cancellationToken = default)
+    public async Task<ToolResult> ExecuteAsync(string argumentsJson, CancellationToken cancellationToken = default)
     {
         string host = string.Empty;
         int port = 0;
@@ -51,15 +51,15 @@ public class UdpProbeTool : IMcpTool
             var root = doc.RootElement;
 
             var hostVal = ToolJson.GetStringTrimmed(root, "host");
-            if (hostVal is null) return "Error: Missing 'host', 'port', or 'payload' parameters.";
+            if (hostVal is null) return ToolResult.Fail("Error: Missing 'host', 'port', or 'payload' parameters.", "missing host");
             host = hostVal;
 
             var portVal = ToolJson.GetInt32(root, "port");
-            if (portVal is null || portVal < 1 || portVal > 65535) return "Error: Port must be an integer between 1 and 65535.";
+            if (portVal is null || portVal < 1 || portVal > 65535) return ToolResult.Fail("Error: Port must be an integer between 1 and 65535.", "invalid port");
             port = portVal.Value;
 
             var payload = ToolJson.GetString(root, "payload");
-            if (string.IsNullOrEmpty(payload)) return "Error: UDP probe requires a non-empty payload to elicit a response.";
+            if (string.IsNullOrEmpty(payload)) return ToolResult.Fail("Error: UDP probe requires a non-empty payload to elicit a response.", "missing payload");
 
             var payloadIsHex = ToolJson.GetBoolean(root, "payload_is_hex", false);
             var timeout      = ToolJson.GetInt32(root, "timeout", 3000);
@@ -107,16 +107,16 @@ public class UdpProbeTool : IMcpTool
                     if (bytesRead > 512) sb.AppendLine("... (hex dump truncated)");
                 }
 
-                return sb.ToString();
+                return ToolResult.Text(sb.ToString());
             }
             catch (OperationCanceledException)
             {
-                return $"Sent {sendData.Length} bytes. Timeout ({timeout}ms) waiting for UDP response from {host}:{port}.";
+                return ToolResult.Text($"Sent {sendData.Length} bytes. Timeout ({timeout}ms) waiting for UDP response from {host}:{port}.");
             }
         }
         catch (Exception ex)
         {
-            return $"Error probing UDP {host}:{port} - {ex.Message}";
+            return ToolResult.Fail($"Error probing UDP {host}:{port} - {ex.Message}", "udp probe failed");
         }
     }
 }

@@ -21,21 +21,21 @@ public class ScriptRunToolTests
 
         public IEnumerable<ToolDefinition> GetToolDefinitions() => Array.Empty<ToolDefinition>();
 
-        public Task<string> ExecuteToolAsync(AgentMode mode, string name, string argumentsJson, CancellationToken ct = default)
+        public Task<ToolResult> ExecuteToolAsync(AgentMode mode, string name, string argumentsJson, CancellationToken ct = default)
         {
             Interlocked.Increment(ref Calls);
-            return Task.FromResult(_handler(name, argumentsJson));
+            return Task.FromResult(ToolResult.Text(_handler(name, argumentsJson)));
         }
     }
 
-    private static Task<string> Run(IToolHost host, string code, int? timeout = null)
+    private static async Task<string> Run(IToolHost host, string code, int? timeout = null)
     {
         var tool = new ScriptRunTool();
         var args = timeout is null
             ? JsonSerializer.Serialize(new { code })
             : JsonSerializer.Serialize(new { code, timeout_seconds = timeout.Value });
         using (ToolHostScope.Begin(host, AgentMode.Agent))
-            return tool.ExecuteAsync(args);
+            return (await tool.ExecuteAsync(args)).TextContent;
     }
 
     [Fact]
@@ -118,7 +118,7 @@ public class ScriptRunToolTests
     public async Task Without_host_scope_returns_error()
     {
         var tool = new ScriptRunTool();
-        var result = await tool.ExecuteAsync(JsonSerializer.Serialize(new { code = "1+1" }));
+        var result = (await tool.ExecuteAsync(JsonSerializer.Serialize(new { code = "1+1" }))).TextContent;
         Assert.StartsWith("Error:", result);
         Assert.Contains("No tool host", result);
     }

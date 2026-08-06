@@ -102,7 +102,7 @@ public sealed class AgentClarifyTool : IMcpTool
         }
     };
 
-    public async Task<string> ExecuteAsync(string argumentsJson, CancellationToken cancellationToken = default)
+    public async Task<ToolResult> ExecuteAsync(string argumentsJson, CancellationToken cancellationToken = default)
     {
         try
         {
@@ -111,10 +111,10 @@ public sealed class AgentClarifyTool : IMcpTool
 
             var question = ToolJson.GetString(root, "question");
             if (string.IsNullOrWhiteSpace(question))
-                return "error: 'question' is required";
+                return ToolResult.Fail("error: 'question' is required", "missing question");
 
             if (!root.TryGetProperty("options", out var optEl) || optEl.ValueKind != JsonValueKind.Array)
-                return "error: 'options' array is required";
+                return ToolResult.Fail("error: 'options' array is required", "missing options");
 
             var options = optEl.EnumerateArray()
                 .Select(o =>
@@ -127,19 +127,19 @@ public sealed class AgentClarifyTool : IMcpTool
                 .ToArray();
 
             if (options.Length == 0)
-                return "error: at least one option with a non-empty label is required";
+                return ToolResult.Fail("error: at least one option with a non-empty label is required", "empty options");
 
             var request = new ClarifyRequest { Question = question!, Options = options };
             var chosen = await ClarifyScope.AskAsync(request);
 
             if (chosen is null)
-                return "clarify: no_handler — proceeding without user input";
+                return ToolResult.Text("clarify: no_handler — proceeding without user input");
 
-            return $"chosen: {chosen}";
+            return ToolResult.Text($"chosen: {chosen}");
         }
         catch (JsonException)
         {
-            return "error: invalid_json";
+            return ToolResult.Fail("error: invalid_json", "invalid json");
         }
     }
 

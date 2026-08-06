@@ -35,9 +35,9 @@ file sealed class StubToolHost : IToolHost
 {
     public IEnumerable<ToolDefinition> GetToolDefinitions() => [];
 
-    public Task<string> ExecuteToolAsync(AgentMode mode, string name, string argumentsJson,
+    public Task<ToolResult> ExecuteToolAsync(AgentMode mode, string name, string argumentsJson,
         CancellationToken cancellationToken = default)
-        => Task.FromResult($"tool not found: {name}");
+        => Task.FromResult(ToolResult.Fail($"tool not found: {name}", "tool not found"));
 }
 
 public class AgentSpawnToolTests
@@ -59,7 +59,7 @@ public class AgentSpawnToolTests
     public async Task Spawn_unknown_skill_returns_error()
     {
         var tool = new AgentSpawnTool(BuildRunner());
-        var result = await tool.ExecuteAsync("""{"skill":"no.such","input":"go"}""");
+        var result = (await tool.ExecuteAsync("""{"skill":"no.such","input":"go"}""")).TextContent;
         Assert.StartsWith("error:", result);
     }
 
@@ -67,7 +67,7 @@ public class AgentSpawnToolTests
     public async Task Spawn_missing_skill_param_returns_error()
     {
         var tool = new AgentSpawnTool(BuildRunner());
-        var result = await tool.ExecuteAsync("""{"input":"go"}""");
+        var result = (await tool.ExecuteAsync("""{"input":"go"}""")).TextContent;
         Assert.StartsWith("error: 'skill'", result);
     }
 
@@ -75,7 +75,7 @@ public class AgentSpawnToolTests
     public async Task Spawn_missing_input_param_returns_error()
     {
         var tool = new AgentSpawnTool(BuildRunner());
-        var result = await tool.ExecuteAsync("""{"skill":"test.skill"}""");
+        var result = (await tool.ExecuteAsync("""{"skill":"test.skill"}""")).TextContent;
         Assert.StartsWith("error: 'input'", result);
     }
 
@@ -83,7 +83,7 @@ public class AgentSpawnToolTests
     public async Task Spawn_invalid_json_returns_error()
     {
         var tool = new AgentSpawnTool(BuildRunner());
-        var result = await tool.ExecuteAsync("not-json");
+        var result = (await tool.ExecuteAsync("not-json")).TextContent;
         Assert.StartsWith("error: invalid_json", result);
     }
 
@@ -91,7 +91,7 @@ public class AgentSpawnToolTests
     public async Task Spawn_valid_skill_returns_llm_response()
     {
         var tool = new AgentSpawnTool(BuildRunner("skill completed successfully"));
-        var result = await tool.ExecuteAsync("""{"skill":"test.skill","input":"run it","mode":"Research"}""");
+        var result = (await tool.ExecuteAsync("""{"skill":"test.skill","input":"run it","mode":"Research"}""")).TextContent;
         Assert.Contains("skill completed successfully", result);
     }
 

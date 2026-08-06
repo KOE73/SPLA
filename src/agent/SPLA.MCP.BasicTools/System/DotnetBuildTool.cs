@@ -60,7 +60,7 @@ public class DotnetBuildTool : IMcpTool
         }
     };
 
-    public async Task<string> ExecuteAsync(string argumentsJson, CancellationToken cancellationToken = default)
+    public async Task<ToolResult> ExecuteAsync(string argumentsJson, CancellationToken cancellationToken = default)
     {
         try
         {
@@ -90,7 +90,7 @@ public class DotnetBuildTool : IMcpTool
 
             var sandbox = HostServices.Sandbox;
             if (!sandbox.Gate.CanExecute() || sandbox.Shell is not { } shell)
-                return "Error: Shell execution is disabled in this environment.";
+                return ToolResult.Refuse("Error: Shell execution is disabled in this environment.", "shell disabled");
 
             var run = await shell.RunAsync(
                 new ShellCommand(arguments.ToString(), string.IsNullOrEmpty(cwd) ? null : cwd),
@@ -98,17 +98,19 @@ public class DotnetBuildTool : IMcpTool
 
             var result = $"ExitCode: {run.ExitCode}\nOutput:\n{run.StandardOutput}\nError:\n{run.StandardError}";
             var target = DataChannel.ParseTarget(ToolJson.GetString(doc.RootElement, "output"));
-            if (target == OutputTarget.Context) return result;
+            if (target == OutputTarget.Context)
+                return ToolResult.Text(result);
             var blobName = ToolJson.GetString(doc.RootElement, "output_name");
-            return DataChannel.Route(target, BlobPayload.OfText(result), $"dotnet_build: exit={run.ExitCode}", blobName);
+            var routed = DataChannel.Route(target, BlobPayload.OfText(result), $"dotnet_build: exit={run.ExitCode}", blobName);
+            return ToolResult.Text(routed);
         }
         catch (JsonException)
         {
-            return "Error: Invalid JSON arguments.";
+            return ToolResult.Fail("Error: Invalid JSON arguments.", "invalid json");
         }
         catch (Exception ex)
         {
-            return $"Error executing command: {ex.Message}";
+            return ToolResult.Fail($"Error executing command: {ex.Message}", "execution failed");
         }
     }
 }

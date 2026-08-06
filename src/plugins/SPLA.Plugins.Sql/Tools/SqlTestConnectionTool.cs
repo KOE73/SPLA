@@ -57,7 +57,7 @@ public class SqlTestConnectionTool : SqlToolBase, IMcpTool
             return ToolResult.Fail(error!, "connection not resolved");
 
         var result = await SqlConnectionTester.TestAsync(cfg!, cancellationToken);
-        return result.Success
+        return result.Ok
             ? ToolResult.Text(result.Message)
             : ToolResult.Fail(result.Message, "connection test failed");
     }

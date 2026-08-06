@@ -122,7 +122,7 @@ public class WorkingMemoryInjectionTests
     private sealed class NoTools : IToolHost
     {
         public IEnumerable<ToolDefinition> GetToolDefinitions() => System.Array.Empty<ToolDefinition>();
-        public Task<string> ExecuteToolAsync(AgentMode mode, string name, string argumentsJson, CancellationToken cancellationToken = default)
-            => Task.FromResult("");
+        public Task<ToolResult> ExecuteToolAsync(AgentMode mode, string name, string argumentsJson, CancellationToken cancellationToken = default)
+            => Task.FromResult(ToolResult.Empty());
     }
 }

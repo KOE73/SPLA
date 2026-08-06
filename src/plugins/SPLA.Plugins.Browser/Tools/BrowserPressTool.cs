@@ -39,7 +39,7 @@ public sealed class BrowserPressTool : IMcpTool
         }
     };
 
-    public async Task<string> ExecuteAsync(string argumentsJson, CancellationToken cancellationToken = default)
+    public async Task<ToolResult> ExecuteAsync(string argumentsJson, CancellationToken cancellationToken = default)
     {
         var mgr = BrowserToolBase.Current;
         if (mgr is null) return BrowserToolBase.NotRunning;
@@ -54,9 +54,9 @@ public sealed class BrowserPressTool : IMcpTool
             selector = ToolJson.GetStringTrimmed(root, "selector");
             tabId = ToolJson.GetStringTrimmed(root, "tab_id");
         }
-        catch (JsonException) { return "Error: invalid JSON arguments."; }
+        catch (JsonException) { return ToolResult.Fail("Error: invalid JSON arguments.", "invalid json"); }
 
-        if (key is null) return "Error: 'key' is required.";
+        if (key is null) return ToolResult.Fail("Error: 'key' is required.", "missing key");
 
         var (resolvedTabId, page, tabError) = BrowserToolBase.ResolveTab(mgr, tabId);
         if (page is null) return tabError!;
@@ -73,7 +73,7 @@ public sealed class BrowserPressTool : IMcpTool
             {
                 await page.Keyboard.PressAsync(key);
             }
-            return $"Pressed '{key}' on tab {resolvedTabId}.";
+            return ToolResult.Text($"Pressed '{key}' on tab {resolvedTabId}.");
         }
         catch (PlaywrightException ex) { return BrowserToolBase.Fail("browser_press", ex); }
     }

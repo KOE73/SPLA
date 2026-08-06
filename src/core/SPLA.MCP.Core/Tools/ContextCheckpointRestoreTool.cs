@@ -35,9 +35,11 @@ public sealed class ContextCheckpointRestoreTool : IMcpTool
         }
     };
 
-    public Task<string> ExecuteAsync(string argumentsJson, CancellationToken cancellationToken = default)
+    public Task<ToolResult> ExecuteAsync(string argumentsJson, CancellationToken cancellationToken = default)
     {
         var marks = AgentSessionScope.Current?.Checkpoint;
-        return Task.FromResult(marks is null ? "error: no active chat session" : marks.ContextRollback());
+        return Task.FromResult(marks is null
+            ? ToolResult.Refuse("error: no active chat session", "no chat session")
+            : marks.ContextRollback());
     }
 }

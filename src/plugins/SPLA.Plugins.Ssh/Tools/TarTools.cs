@@ -59,7 +59,7 @@ public sealed class TarListTool : IMcpTool
         }
     };
 
-    public Task<string> ExecuteAsync(string argumentsJson, CancellationToken cancellationToken = default)
+    public Task<ToolResult> ExecuteAsync(string argumentsJson, CancellationToken cancellationToken = default)
     {
         string path;
         string? pattern;
@@ -71,15 +71,15 @@ public sealed class TarListTool : IMcpTool
         }
         catch (JsonException)
         {
-            return Task.FromResult("Error: invalid JSON arguments.");
+            return Task.FromResult(ToolResult.Fail("Error: invalid JSON arguments.", "invalid json"));
         }
 
-        if (path.Length == 0) return Task.FromResult("Error: 'path' is required.");
+        if (path.Length == 0) return Task.FromResult(ToolResult.Fail("Error: 'path' is required.", "missing path"));
 
         try
         {
             var container = TarToolSupport.Open(_workspaceRoot, path);
-            if (!container.Exists) return Task.FromResult($"Error: no container at {path}.");
+            if (!container.Exists) return Task.FromResult(ToolResult.Fail($"Error: no container at {path}.", "no container"));
 
             var entries = container.List();
             if (pattern is not null)
@@ -87,7 +87,7 @@ public sealed class TarListTool : IMcpTool
                 var needle = pattern.Trim('*');
                 entries = entries.Where(e => e.Path.Contains(needle, StringComparison.OrdinalIgnoreCase)).ToList();
             }
-            if (entries.Count == 0) return Task.FromResult($"{path} has no matching entries.");
+            if (entries.Count == 0) return Task.FromResult(ToolResult.Text($"{path} has no matching entries."));
 
             var text = new StringBuilder($"{entries.Count} entr(ies) in {path}:\n");
             foreach (var entry in entries)
@@ -98,11 +98,11 @@ public sealed class TarListTool : IMcpTool
                 if (entry.LinkTarget is not null) text.Append($"  -> {entry.LinkTarget}");
                 text.Append('\n');
             }
-            return Task.FromResult(text.ToString());
+            return Task.FromResult(ToolResult.Text(text.ToString()));
         }
         catch (Exception ex)
         {
-            return Task.FromResult($"Error: {ex.Message}");
+            return Task.FromResult(ToolResult.Fail($"Error: {ex.Message}", "tar list failed"));
         }
     }
 
@@ -145,7 +145,7 @@ public sealed class TarReadTool : IMcpTool
         }
     };
 
-    public Task<string> ExecuteAsync(string argumentsJson, CancellationToken cancellationToken = default)
+    public Task<ToolResult> ExecuteAsync(string argumentsJson, CancellationToken cancellationToken = default)
     {
         string path, entry;
         string? output, outputName;
@@ -159,17 +159,17 @@ public sealed class TarReadTool : IMcpTool
         }
         catch (JsonException)
         {
-            return Task.FromResult("Error: invalid JSON arguments.");
+            return Task.FromResult(ToolResult.Fail("Error: invalid JSON arguments.", "invalid json"));
         }
 
         if (path.Length == 0 || entry.Length == 0)
-            return Task.FromResult("Error: 'path' and 'entry' are required.");
+            return Task.FromResult(ToolResult.Fail("Error: 'path' and 'entry' are required.", "missing arguments"));
 
         try
         {
             var container = TarToolSupport.Open(_workspaceRoot, path);
             var bytes = container.ReadBytes(entry);
-            if (bytes is null) return Task.FromResult($"Error: {path} has no file entry '{entry}'.");
+            if (bytes is null) return Task.FromResult(ToolResult.Fail($"Error: {path} has no file entry '{entry}'.", "no such entry"));
 
             // Configuration is text; a binary entry can still be moved on to another host as a blob,
             // it just is not worth putting in front of the model as mojibake.
@@ -182,13 +182,13 @@ public sealed class TarReadTool : IMcpTool
                 ? BlobPayload.OfBytes(bytes, contentType)
                 : BlobPayload.OfText(text, contentType);
 
-            return Task.FromResult(DataChannel.Route(
+            return Task.FromResult(ToolResult.Text(DataChannel.Route(
                 DataChannel.ParseTarget(output), payload,
-                $"{entry} from {path} ({bytes.Length} bytes)", outputName));
+                $"{entry} from {path} ({bytes.Length} bytes)", outputName)));
         }
         catch (Exception ex)
         {
-            return Task.FromResult($"Error: {ex.Message}");
+            return Task.FromResult(ToolResult.Fail($"Error: {ex.Message}", "tar read failed"));
         }
     }
 }
@@ -239,7 +239,7 @@ public sealed class TarWriteTool : IMcpTool
         }
     };
 
-    public Task<string> ExecuteAsync(string argumentsJson, CancellationToken cancellationToken = default)
+    public Task<ToolResult> ExecuteAsync(string argumentsJson, CancellationToken cancellationToken = default)
     {
         string path, entry;
         string? content, mode;
@@ -255,11 +255,11 @@ public sealed class TarWriteTool : IMcpTool
         }
         catch (JsonException)
         {
-            return Task.FromResult("Error: invalid JSON arguments.");
+            return Task.FromResult(ToolResult.Fail("Error: invalid JSON arguments.", "invalid json"));
         }
 
         if (path.Length == 0 || entry.Length == 0)
-            return Task.FromResult("Error: 'path' and 'entry' are required.");
+            return Task.FromResult(ToolResult.Fail("Error: 'path' and 'entry' are required.", "missing arguments"));
 
         try
         {
@@ -269,13 +269,13 @@ public sealed class TarWriteTool : IMcpTool
             {
                 var removed = container.Delete(new[] { entry });
                 return Task.FromResult(removed > 0
-                    ? $"Removed {entry} from {path}."
-                    : $"{path} has no entry '{entry}' — nothing removed.");
+                    ? ToolResult.Text($"Removed {entry} from {path}.")
+                    : ToolResult.Text($"{path} has no entry '{entry}' — nothing removed."));
             }
 
-            if (content is null) return Task.FromResult("Error: 'content' is required unless delete is true.");
+            if (content is null) return Task.FromResult(ToolResult.Fail("Error: 'content' is required unless delete is true.", "missing content"));
             if (!DataChannel.ResolveBytes(content, out var bytes, out var error))
-                return Task.FromResult($"Error: {error}");
+                return Task.FromResult(ToolResult.Fail($"Error: {error}", "content unresolved"));
 
             var meta = new TransferEntry(
                 entry, TransferEntryType.File, bytes.LongLength,
@@ -285,11 +285,11 @@ public sealed class TarWriteTool : IMcpTool
                 new[] { new PendingEntry(meta, () => new MemoryStream(bytes)) },
                 append: container.Exists);
 
-            return Task.FromResult($"Wrote {entry} ({bytes.Length} bytes) into {path}.");
+            return Task.FromResult(ToolResult.Text($"Wrote {entry} ({bytes.Length} bytes) into {path}."));
         }
         catch (Exception ex)
         {
-            return Task.FromResult($"Error: {ex.Message}");
+            return Task.FromResult(ToolResult.Fail($"Error: {ex.Message}", "tar write failed"));
         }
     }
 

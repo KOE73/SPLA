@@ -31,7 +31,7 @@ public class SkillToolTests
         var tool = new SkillActivateTool(skills);
 
         using var _ = Scope(session);
-        var result = await tool.ExecuteAsync("""{"id":"nonexistent.skill"}""");
+        var result = (await tool.ExecuteAsync("""{"id":"nonexistent.skill"}""")).TextContent;
 
         Assert.StartsWith("error: unknown skill", result);
     }
@@ -44,7 +44,7 @@ public class SkillToolTests
         var tool = new SkillActivateTool(skills);
 
         using var _ = Scope(session);
-        var result = await tool.ExecuteAsync("{}");
+        var result = (await tool.ExecuteAsync("{}")).TextContent;
 
         Assert.StartsWith("error: 'id'", result);
     }
@@ -59,7 +59,7 @@ public class SkillToolTests
         var tool = new SkillActivateTool(skills);
 
         using var _ = Scope(session);
-        var result = await tool.ExecuteAsync("""{"id":"second.skill"}""");
+        var result = (await tool.ExecuteAsync("""{"id":"second.skill"}""")).TextContent;
 
         Assert.StartsWith("error: skill 'first.skill' is already active", result);
     }
@@ -71,7 +71,7 @@ public class SkillToolTests
         var tool = new SkillActivateTool(BuildSkillLibrary());
 
         using var _ = Scope(session);
-        var result = await tool.ExecuteAsync("not-json");
+        var result = (await tool.ExecuteAsync("not-json")).TextContent;
 
         Assert.StartsWith("error: invalid_json", result);
     }
@@ -86,7 +86,7 @@ public class SkillToolTests
         var tool = new SkillDeactivateTool();
 
         using var _ = Scope(session);
-        var result = await tool.ExecuteAsync("{}");
+        var result = (await tool.ExecuteAsync("{}")).TextContent;
 
         Assert.Equal("ok: deactivated 'network.range-audit'", result);
         Assert.Null(session.ActiveSkillId);
@@ -99,7 +99,7 @@ public class SkillToolTests
         var tool = new SkillDeactivateTool();
 
         using var _ = Scope(session);
-        var result = await tool.ExecuteAsync("{}");
+        var result = (await tool.ExecuteAsync("{}")).TextContent;
 
         Assert.Equal("ok: no active skill", result);
     }

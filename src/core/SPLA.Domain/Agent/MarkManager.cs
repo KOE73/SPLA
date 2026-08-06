@@ -41,25 +41,25 @@ public class MarkManager
     /// <summary>
     /// Inserts a label before the current assistant message (from CurrentAssistantMsg) and pushes its MsgId.
     /// </summary>
-    public string CheckpointSave(string? resume = null)
+    public ToolResult CheckpointSave(string? resume = null)
     {
         if (Target == null || CurrentAssistantMsg == null)
-            return "error: no conversation attached";
+            return ToolResult.Refuse("error: no conversation attached", "no conversation");
 
         var label = Target.InsertLabelBefore(CurrentAssistantMsg, markName: null, resume: resume);
         _checkpointStack.Push(label.MsgId);
-        return $"ok: checkpoint pushed at {label.MsgId} (stack depth: {_checkpointStack.Count})";
+        return ToolResult.Text($"ok: checkpoint pushed at {label.MsgId} (stack depth: {_checkpointStack.Count})");
     }
 
     /// <summary>Pops the top checkpoint and signals the orchestrator to restore.</summary>
-    public string ContextRollback()
+    public ToolResult ContextRollback()
     {
         if (_checkpointStack.Count == 0)
-            return "error: no checkpoint saved — call checkpoint_save first";
+            return ToolResult.Refuse("error: no checkpoint saved — call checkpoint_save first", "no checkpoint");
 
         var labelId = _checkpointStack.Pop();
         SetRestore(labelId);
-        return $"ok: rollback to {labelId} scheduled";
+        return ToolResult.Text($"ok: rollback to {labelId} scheduled");
     }
 
     // ── Named marks ───────────────────────────────────────────────────────────
@@ -68,10 +68,10 @@ public class MarkManager
     /// Inserts a label with <paramref name="name"/> before the current assistant message.
     /// If a label with this name already exists it is cleared first (named marks don't accumulate).
     /// </summary>
-    public string MarkSet(string name, string? resume = null)
+    public ToolResult MarkSet(string name, string? resume = null)
     {
         if (Target == null || CurrentAssistantMsg == null)
-            return "error: no conversation attached";
+            return ToolResult.Refuse("error: no conversation attached", "no conversation");
 
         // Remove previous label with the same name to avoid accumulation.
         var old = Target.FindLabel(name);
@@ -81,21 +81,21 @@ public class MarkManager
         }
 
         var label = Target.InsertLabelBefore(CurrentAssistantMsg, markName: name, resume: resume);
-        return $"ok: mark '{name}' set at {label.MsgId}";
+        return ToolResult.Text($"ok: mark '{name}' set at {label.MsgId}");
     }
 
     /// <summary>Finds the label carrying <paramref name="name"/> and requests restore.</summary>
-    public string MarkRollback(string name)
+    public ToolResult MarkRollback(string name)
     {
         if (Target == null)
-            return "error: no conversation attached";
+            return ToolResult.Refuse("error: no conversation attached", "no conversation");
 
         var label = Target.FindLabel(name);
         if (label == null)
-            return $"error: mark '{name}' not found — it may have been deleted";
+            return ToolResult.Fail($"error: mark '{name}' not found — it may have been deleted", "mark not found");
 
         SetRestore(label.MsgId);
-        return $"ok: rollback to mark '{name}' ({label.MsgId}) scheduled";
+        return ToolResult.Text($"ok: rollback to mark '{name}' ({label.MsgId}) scheduled");
     }
 
     // ── Orchestrator handshake ─────────────────────────────────────────────────

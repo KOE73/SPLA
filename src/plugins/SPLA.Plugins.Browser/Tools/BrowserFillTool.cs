@@ -39,7 +39,7 @@ public sealed class BrowserFillTool : IMcpTool
         }
     };
 
-    public async Task<string> ExecuteAsync(string argumentsJson, CancellationToken cancellationToken = default)
+    public async Task<ToolResult> ExecuteAsync(string argumentsJson, CancellationToken cancellationToken = default)
     {
         var mgr = BrowserToolBase.Current;
         if (mgr is null) return BrowserToolBase.NotRunning;
@@ -56,9 +56,9 @@ public sealed class BrowserFillTool : IMcpTool
             value = ToolJson.GetString(root, "value");
             timeout = ToolJson.GetInt32Clamped(root, "timeout", 10_000, 500, 60_000);
         }
-        catch (JsonException) { return "Error: invalid JSON arguments."; }
+        catch (JsonException) { return ToolResult.Fail("Error: invalid JSON arguments.", "invalid json"); }
 
-        if (value is null) return "Error: 'value' is required.";
+        if (value is null) return ToolResult.Fail("Error: 'value' is required.", "missing value");
 
         var (resolvedTabId, page, tabError) = BrowserToolBase.ResolveTab(mgr, tabId);
         if (page is null) return tabError!;
@@ -69,9 +69,9 @@ public sealed class BrowserFillTool : IMcpTool
         try
         {
             await locator.FillAsync(value, new LocatorFillOptions { Timeout = timeout });
-            return $"Filled {(refId ?? selector)} on tab {resolvedTabId}.";
+            return ToolResult.Text($"Filled {(refId ?? selector)} on tab {resolvedTabId}.");
         }
-        catch (TimeoutException ex) { return $"Error: fill timed out — {ex.Message}"; }
+        catch (TimeoutException ex) { return ToolResult.Fail($"Error: fill timed out — {ex.Message}", "fill timeout"); }
         catch (PlaywrightException ex) { return BrowserToolBase.Fail("browser_fill", ex); }
     }
 }

@@ -39,7 +39,7 @@ public sealed class BrowserWaitElementTool : IMcpTool
         }
     };
 
-    public async Task<string> ExecuteAsync(string argumentsJson, CancellationToken cancellationToken = default)
+    public async Task<ToolResult> ExecuteAsync(string argumentsJson, CancellationToken cancellationToken = default)
     {
         var mgr = BrowserToolBase.Current;
         if (mgr is null) return BrowserToolBase.NotRunning;
@@ -56,7 +56,7 @@ public sealed class BrowserWaitElementTool : IMcpTool
             state = ToolJson.GetStringTrimmed(root, "state");
             timeout = ToolJson.GetInt32Clamped(root, "timeout", 15_000, 500, 120_000);
         }
-        catch (JsonException) { return "Error: invalid JSON arguments."; }
+        catch (JsonException) { return ToolResult.Fail("Error: invalid JSON arguments.", "invalid json"); }
 
         var (resolvedTabId, page, tabError) = BrowserToolBase.ResolveTab(mgr, tabId);
         if (page is null) return tabError!;
@@ -67,9 +67,9 @@ public sealed class BrowserWaitElementTool : IMcpTool
         try
         {
             await locator.WaitForAsync(new LocatorWaitForOptions { State = ParseState(state), Timeout = timeout });
-            return $"{(refId ?? selector)} reached state '{state ?? "visible"}' on tab {resolvedTabId}.";
+            return ToolResult.Text($"{(refId ?? selector)} reached state '{state ?? "visible"}' on tab {resolvedTabId}.");
         }
-        catch (TimeoutException ex) { return $"Error: wait timed out — {ex.Message}"; }
+        catch (TimeoutException ex) { return ToolResult.Fail($"Error: wait timed out — {ex.Message}", "wait timeout"); }
         catch (PlaywrightException ex) { return BrowserToolBase.Fail("browser_wait_element", ex); }
     }
 

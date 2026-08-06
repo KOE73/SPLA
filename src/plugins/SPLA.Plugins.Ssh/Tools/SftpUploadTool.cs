@@ -58,7 +58,7 @@ public sealed class SftpUploadTool : IMcpTool
         }
     };
 
-    public async Task<string> ExecuteAsync(string argumentsJson, CancellationToken cancellationToken = default)
+    public async Task<ToolResult> ExecuteAsync(string argumentsJson, CancellationToken cancellationToken = default)
     {
         string remotePath;
         string? content, host;
@@ -73,23 +73,23 @@ public sealed class SftpUploadTool : IMcpTool
         }
         catch (JsonException)
         {
-            return "Error: invalid JSON arguments.";
+            return ToolResult.Fail("Error: invalid JSON arguments.", "invalid json");
         }
 
-        if (remotePath.Length == 0) return "Error: 'remote_path' is required.";
-        if (content is null) return "Error: 'content' is required.";
+        if (remotePath.Length == 0) return ToolResult.Fail("Error: 'remote_path' is required.", "missing remote_path");
+        if (content is null) return ToolResult.Fail("Error: 'content' is required.", "missing content");
         if (!DataChannel.ResolveBytes(content, out var bytes, out var error))
-            return $"Error: {error}";
+            return ToolResult.Fail($"Error: {error}", "content unresolved");
 
         try
         {
             var (name, cfg) = _transfer.ResolveHost(host);
             var result = await _transfer.UploadAsync(cfg, name, remotePath, bytes, overwrite, cancellationToken);
-            return $"Uploaded {result.BytesTransferred} bytes to {name}:{result.Target}.";
+            return ToolResult.Text($"Uploaded {result.BytesTransferred} bytes to {name}:{result.Target}.");
         }
         catch (Exception ex)
         {
-            return $"Error: {ex.Message}";
+            return ToolResult.Fail($"Error: {ex.Message}", "upload failed");
         }
     }
 }

@@ -65,18 +65,18 @@ public class DnsPropagationTool : IMcpTool
         }
     };
 
-    public async Task<string> ExecuteAsync(string argumentsJson, CancellationToken cancellationToken = default)
+    public async Task<ToolResult> ExecuteAsync(string argumentsJson, CancellationToken cancellationToken = default)
     {
         try
         {
             using var doc = JsonDocument.Parse(argumentsJson);
             var root = doc.RootElement;
             var host = ToolJson.GetStringTrimmed(root, "host");
-            if (host is null) return "Error: Missing 'host' parameter.";
+            if (host is null) return ToolResult.Fail("Error: Missing 'host' parameter.", "missing host");
 
             var typeName = ToolJson.GetString(root, "type") ?? "A";
             if (!Enum.TryParse<QueryType>(typeName, ignoreCase: true, out var queryType))
-                return $"Error: Unknown record type '{typeName}'.";
+                return ToolResult.Fail($"Error: Unknown record type '{typeName}'.", "unknown record type");
 
             var tasks = PublicResolvers
                 .Select(r => QueryResolverAsync(r.Label, r.Ip, host, queryType, cancellationToken))
@@ -108,17 +108,17 @@ public class DnsPropagationTool : IMcpTool
 
             var result = sb.ToString();
             var outputTarget = DataChannel.ParseTarget(ToolJson.GetStringTrimmed(root, "output"));
-            if (outputTarget == OutputTarget.Context) return result;
+            if (outputTarget == OutputTarget.Context) return ToolResult.Text(result);
             var blobName = ToolJson.GetStringTrimmed(root, "output_name");
-            return DataChannel.Route(outputTarget, BlobPayload.OfText(result), $"network_check_dns_propagation: {host} {typeName}", blobName);
+            return ToolResult.Text(DataChannel.Route(outputTarget, BlobPayload.OfText(result), $"network_check_dns_propagation: {host} {typeName}", blobName));
         }
         catch (JsonException)
         {
-            return "Error: Invalid JSON arguments.";
+            return ToolResult.Fail("Error: Invalid JSON arguments.", "invalid json");
         }
         catch (Exception ex)
         {
-            return $"Error: {ex.Message}";
+            return ToolResult.Fail($"Error: {ex.Message}", "exception");
         }
     }
 

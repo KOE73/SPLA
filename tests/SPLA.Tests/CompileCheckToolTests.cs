@@ -6,13 +6,13 @@ namespace SPLA.Tests;
 
 public class CompileCheckToolTests
 {
-    private static Task<string> Check(string code, string? kind = null)
+    private static async Task<string> Check(string code, string? kind = null)
     {
         var tool = new CompileCheckTool();
         var args = kind is null
             ? JsonSerializer.Serialize(new { code })
             : JsonSerializer.Serialize(new { code, kind });
-        return tool.ExecuteAsync(args);
+        return (await tool.ExecuteAsync(args)).TextContent;
     }
 
     [Fact]
@@ -60,7 +60,7 @@ public class CompileCheckToolTests
     public async Task Missing_code_returns_error()
     {
         var tool = new CompileCheckTool();
-        var result = await tool.ExecuteAsync("{}");
+        var result = (await tool.ExecuteAsync("{}")).TextContent;
         Assert.StartsWith("Error:", result);
     }
 }

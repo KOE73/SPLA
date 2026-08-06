@@ -107,7 +107,7 @@ public sealed class ScriptRunTool : IMcpTool
     };
 
 
-    public async Task<string> ExecuteAsync(string argumentsJson, CancellationToken cancellationToken = default)
+    public async Task<ToolResult> ExecuteAsync(string argumentsJson, CancellationToken cancellationToken = default)
     {
         string code;
         int timeoutSeconds;
@@ -117,18 +117,18 @@ public sealed class ScriptRunTool : IMcpTool
             var root = doc.RootElement;
             var parsed = ToolJson.GetString(root, "code");
             if (string.IsNullOrWhiteSpace(parsed))
-                return "Error: Missing 'code' parameter.";
+                return ToolResult.Fail("Error: Missing 'code' parameter.", "missing code");
             code = parsed;
             timeoutSeconds = ToolJson.GetInt32Clamped(root, "timeout_seconds", DefaultTimeoutSeconds, 1, MaxTimeoutSeconds);
         }
         catch (JsonException)
         {
-            return "Error: Invalid JSON arguments.";
+            return ToolResult.Fail("Error: Invalid JSON arguments.", "invalid json");
         }
 
         var ambient = ToolHostScope.Current;
         if (ambient is null)
-            return "Error: No tool host is available to the script (roslyn_script_run must run inside the agent host).";
+            return ToolResult.Refuse("Error: No tool host is available to the script (roslyn_script_run must run inside the agent host).", "no tool host");
 
         var output = new StringBuilder();
         using var timeoutCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
@@ -175,8 +175,8 @@ public sealed class ScriptRunTool : IMcpTool
             }
             catch { outputTarget = OutputTarget.Context; blobName = null; }
 
-            if (outputTarget == OutputTarget.Context) return scriptResult;
-            return DataChannel.Route(outputTarget, BlobPayload.OfText(scriptResult), "roslyn_script_run: ok", blobName);
+            if (outputTarget == OutputTarget.Context) return ToolResult.Text(scriptResult);
+            return ToolResult.Text(DataChannel.Route(outputTarget, BlobPayload.OfText(scriptResult), "roslyn_script_run: ok", blobName));
         }
         catch (CompilationErrorException ex)
         {
@@ -188,7 +188,7 @@ public sealed class ScriptRunTool : IMcpTool
                 var pos = d.Location.GetLineSpan().StartLinePosition;
                 sb.AppendLine($"  {d.Severity.ToString().ToLowerInvariant()} {d.Id} ({pos.Line + 1},{pos.Character + 1}): {d.GetMessage()}");
             }
-            return sb.ToString().TrimEnd();
+            return ToolResult.Text(sb.ToString().TrimEnd());
         }
         catch (OperationCanceledException) when (timeoutCts.IsCancellationRequested && !cancellationToken.IsCancellationRequested)
         {
@@ -196,7 +196,7 @@ public sealed class ScriptRunTool : IMcpTool
             sb.AppendLine($"ok: false");
             sb.AppendLine($"error: script timed out after {timeoutSeconds}s");
             AppendOutput(sb, output);
-            return sb.ToString().TrimEnd();
+            return ToolResult.Fail(sb.ToString().TrimEnd(), "script timeout");
         }
         catch (OperationCanceledException)
         {
@@ -205,11 +205,15 @@ public sealed class ScriptRunTool : IMcpTool
         catch (Exception ex)
         {
             // Runtime exception thrown by the script itself — report it, don't crash the host.
+            // Ok, not Failed: the tool was asked to run this script and did, then reported faithfully
+            // what came of it. Same rule as a shell command exiting non-zero or a remote ssh command
+            // failing — the outcome describes the tool's own work, not the verdict on what it ran.
+            // (A timeout above is Failed by that same rule: there the tool did not get to finish.)
             var sb = new StringBuilder();
             sb.AppendLine("ok: false");
             sb.AppendLine($"error: {ex.GetType().Name}: {ex.Message}");
             AppendOutput(sb, output);
-            return sb.ToString().TrimEnd();
+            return ToolResult.Text(sb.ToString().TrimEnd());
         }
         finally
         {

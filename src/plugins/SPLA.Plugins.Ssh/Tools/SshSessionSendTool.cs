@@ -64,7 +64,7 @@ internal sealed class SshSessionSendTool : IMcpTool
         }
     };
 
-    public async Task<string> ExecuteAsync(string argumentsJson, CancellationToken cancellationToken = default)
+    public async Task<ToolResult> ExecuteAsync(string argumentsJson, CancellationToken cancellationToken = default)
     {
         string keys;
         string? sessionId;
@@ -83,20 +83,20 @@ internal sealed class SshSessionSendTool : IMcpTool
         }
         catch (JsonException)
         {
-            return "Error: invalid JSON arguments.";
+            return ToolResult.Fail("Error: invalid JSON arguments.", "invalid json");
         }
 
-        if (keys.Length == 0) return "Error: 'keys' is required.";
+        if (keys.Length == 0) return ToolResult.Fail("Error: 'keys' is required.", "missing keys");
 
         var open = _hub.List();
         sessionId ??= open.Count == 1 ? open[0].Id : null;
         if (sessionId == null)
             return open.Count == 0
-                ? "Error: no open SSH sessions."
-                : "Error: multiple sessions open — specify 'session'. Open: " + string.Join(", ", open.Select(s => s.Id));
+                ? ToolResult.Refuse("Error: no open SSH sessions.", "no open sessions")
+                : ToolResult.Refuse("Error: multiple sessions open — specify 'session'. Open: " + string.Join(", ", open.Select(s => s.Id)), "ambiguous session");
 
         var (session, cfg, error) = await _ctx.ResolveAsync(_hub, sessionId, null, "agent", cancellationToken);
-        if (session == null || cfg == null) return error ?? "Error: session not found.";
+        if (session == null || cfg == null) return ToolResult.Refuse(error ?? "Error: session not found.", "session not resolved");
 
         var payload = keys switch
         {
@@ -111,8 +111,8 @@ internal sealed class SshSessionSendTool : IMcpTool
         // A bare Enter after 'q'/'enter'/'esc' is harmless; typed text (keys not a control name) is not.
         var safe = keys is "ctrl_c" or "ctrl_d" or "enter" or "esc" or "q";
         if (!cfg.AllowWrite && !safe)
-            return "Refused (read-only host): only ctrl_c / ctrl_d / enter / esc / q may be sent here. " +
-                   "Set allow_write on the host to lift.";
+            return ToolResult.Refuse("Refused (read-only host): only ctrl_c / ctrl_d / enter / esc / q may be sent here. " +
+                   "Set allow_write on the host to lift.", "read-only host");
 
         if (appendEnter && !payload.EndsWith('\n'))
             payload += "\n";
@@ -145,12 +145,12 @@ internal sealed class SshSessionSendTool : IMcpTool
                 _ => res.Status
             });
             if (!string.IsNullOrWhiteSpace(res.NewOutput)) sb.AppendLine(res.NewOutput.TrimEnd());
-            return sb.ToString().TrimEnd();
+            return ToolResult.Text(sb.ToString().TrimEnd());
         }
 
         session.Write(payload);
-        return $"Sent to '{session.Id}'." + (session.PendingCommand is null
+        return ToolResult.Text($"Sent to '{session.Id}'." + (session.PendingCommand is null
             ? " Nothing is running in this session — check the effect with ssh_session_exec."
-            : $" '{session.PendingCommand}' is still pending here — read the effect with ssh_session_wait.");
+            : $" '{session.PendingCommand}' is still pending here — read the effect with ssh_session_wait."));
     }
 }

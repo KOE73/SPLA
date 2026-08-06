@@ -170,7 +170,7 @@ public sealed class BlobStoreTests
         using var _ = Scope(store);
         var handle = store.Put(BlobPayload.OfBytes(new byte[] { 0x4D, 0x52, 0x53, 0x00 }));
 
-        var result = await new ImageViewTool().ExecuteAsync($$"""{"handle":"{{handle}}"}""");
+        var result = (await new ImageViewTool().ExecuteAsync($$"""{"handle":"{{handle}}"}""")).TextContent;
 
         Assert.Contains("not a viewable image", result);
         Assert.Contains("blob_peek", result);
@@ -186,7 +186,7 @@ public sealed class BlobStoreTests
         using var _ = Scope(store);
         var handle = store.Put(BlobPayload.OfBytes(Encoding.ASCII.GetBytes("MRS\0payload")));
 
-        var result = await new BlobPeekTool().ExecuteAsync($$"""{"handle":"{{handle}}"}""");
+        var result = (await new BlobPeekTool().ExecuteAsync($$"""{"handle":"{{handle}}"}""")).TextContent;
 
         Assert.Contains("binary", result);
         Assert.Contains("4d 52 53 00", result);   // MRS\0
@@ -200,7 +200,7 @@ public sealed class BlobStoreTests
         using var _ = Scope(store);
         var handle = store.Put(BlobPayload.OfText(new string('x', 100) + "TAIL"));
 
-        var result = await new BlobPeekTool().ExecuteAsync($$"""{"handle":"{{handle}}","offset":0,"length":10}""");
+        var result = (await new BlobPeekTool().ExecuteAsync($$"""{"handle":"{{handle}}","offset":0,"length":10}""")).TextContent;
 
         Assert.Contains("xxxxxxxxxx", result);
         Assert.DoesNotContain("TAIL", result);
@@ -212,7 +212,7 @@ public sealed class BlobStoreTests
     {
         var store = new BlobStore();
         using var _ = Scope(store);
-        var result = await new BlobPeekTool().ExecuteAsync("""{"handle":"blob:nope"}""");
+        var result = (await new BlobPeekTool().ExecuteAsync("""{"handle":"blob:nope"}""")).TextContent;
         Assert.Contains("no blob found", result);
     }
 

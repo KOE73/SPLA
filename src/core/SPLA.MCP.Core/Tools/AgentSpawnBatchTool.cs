@@ -71,7 +71,7 @@ public sealed class AgentSpawnBatchTool : IMcpTool
         }
     };
 
-    public async Task<string> ExecuteAsync(string argumentsJson, CancellationToken cancellationToken = default)
+    public async Task<ToolResult> ExecuteAsync(string argumentsJson, CancellationToken cancellationToken = default)
     {
         List<(string skill, string input, AgentMode mode)> tasks;
         int maxConcurrency;
@@ -82,7 +82,7 @@ public sealed class AgentSpawnBatchTool : IMcpTool
             var root = doc.RootElement;
 
             if (!root.TryGetProperty("tasks", out var tasksEl) || tasksEl.ValueKind != JsonValueKind.Array)
-                return "error: 'tasks' array is required";
+                return ToolResult.Fail("error: 'tasks' array is required", "missing tasks");
 
             tasks = new();
             foreach (var item in tasksEl.EnumerateArray())
@@ -90,7 +90,7 @@ public sealed class AgentSpawnBatchTool : IMcpTool
                 var skill = ToolJson.GetStringTrimmed(item, "skill");
                 var input = ToolJson.GetStringTrimmed(item, "input");
                 if (string.IsNullOrEmpty(skill) || string.IsNullOrEmpty(input))
-                    return "error: each task requires 'skill' and 'input'";
+                    return ToolResult.Fail("error: each task requires 'skill' and 'input'", "incomplete task");
 
                 var mode = AgentMode.Edit;
                 var modeStr = ToolJson.GetStringTrimmed(item, "mode");
@@ -105,11 +105,11 @@ public sealed class AgentSpawnBatchTool : IMcpTool
         }
         catch (JsonException)
         {
-            return "error: invalid_json";
+            return ToolResult.Fail("error: invalid_json", "invalid json");
         }
 
         if (tasks.Count == 0)
-            return "error: tasks array is empty";
+            return ToolResult.Fail("error: tasks array is empty", "empty tasks");
 
         var results = new string[tasks.Count];
         using var semaphore = new SemaphoreSlim(maxConcurrency);
@@ -148,6 +148,6 @@ public sealed class AgentSpawnBatchTool : IMcpTool
             if (i > 0) sb.AppendLine("---");
             sb.AppendLine(results[i]);
         }
-        return sb.ToString().TrimEnd();
+        return ToolResult.Text(sb.ToString().TrimEnd());
     }
 }

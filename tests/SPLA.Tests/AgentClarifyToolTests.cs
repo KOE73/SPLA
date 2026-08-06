@@ -12,9 +12,9 @@ public class AgentClarifyToolTests
     [Fact]
     public async Task No_scope_returns_no_handler_message()
     {
-        var result = await Tool().ExecuteAsync("""
+        var result = (await Tool().ExecuteAsync("""
             {"question":"Go?","options":[{"label":"Yes"},{"label":"No"}]}
-            """);
+            """)).TextContent;
         Assert.StartsWith("clarify: no_handler", result);
     }
 
@@ -23,9 +23,9 @@ public class AgentClarifyToolTests
     {
         using var _ = ClarifyScope.Begin(req => Task.FromResult<string?>(req.Options[1].Label));
 
-        var result = await Tool().ExecuteAsync("""
+        var result = (await Tool().ExecuteAsync("""
             {"question":"Pick one","options":[{"label":"A"},{"label":"B"}]}
-            """);
+            """)).TextContent;
 
         Assert.Equal("chosen: B", result);
     }
@@ -33,28 +33,28 @@ public class AgentClarifyToolTests
     [Fact]
     public async Task Missing_question_returns_error()
     {
-        var result = await Tool().ExecuteAsync("""{"options":[{"label":"Yes"}]}""");
+        var result = (await Tool().ExecuteAsync("""{"options":[{"label":"Yes"}]}""")).TextContent;
         Assert.StartsWith("error: 'question'", result);
     }
 
     [Fact]
     public async Task Missing_options_returns_error()
     {
-        var result = await Tool().ExecuteAsync("""{"question":"Go?"}""");
+        var result = (await Tool().ExecuteAsync("""{"question":"Go?"}""")).TextContent;
         Assert.StartsWith("error: 'options'", result);
     }
 
     [Fact]
     public async Task Empty_options_returns_error()
     {
-        var result = await Tool().ExecuteAsync("""{"question":"Go?","options":[]}""");
+        var result = (await Tool().ExecuteAsync("""{"question":"Go?","options":[]}""")).TextContent;
         Assert.StartsWith("error: at least one option", result);
     }
 
     [Fact]
     public async Task Invalid_json_returns_error()
     {
-        var result = await Tool().ExecuteAsync("not-json");
+        var result = (await Tool().ExecuteAsync("not-json")).TextContent;
         Assert.StartsWith("error: invalid_json", result);
     }
 

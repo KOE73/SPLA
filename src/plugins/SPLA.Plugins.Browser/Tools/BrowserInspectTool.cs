@@ -90,7 +90,7 @@ public sealed class BrowserInspectTool : IMcpTool
         }
     };
 
-    public async Task<string> ExecuteAsync(string argumentsJson, CancellationToken cancellationToken = default)
+    public async Task<ToolResult> ExecuteAsync(string argumentsJson, CancellationToken cancellationToken = default)
     {
         var mgr = BrowserToolBase.Current;
         if (mgr is null) return BrowserToolBase.NotRunning;
@@ -103,15 +103,15 @@ public sealed class BrowserInspectTool : IMcpTool
             refId = ToolJson.GetStringTrimmed(root, "ref");
             tabId = ToolJson.GetStringTrimmed(root, "tab_id");
         }
-        catch (JsonException) { return "Error: invalid JSON arguments."; }
+        catch (JsonException) { return ToolResult.Fail("Error: invalid JSON arguments.", "invalid json"); }
 
-        if (refId is null) return "Error: 'ref' is required.";
+        if (refId is null) return ToolResult.Fail("Error: 'ref' is required.", "missing ref");
 
         var (resolvedTabId, page, tabError) = BrowserToolBase.ResolveTab(mgr, tabId);
         if (page is null) return tabError!;
 
         var (locator, refError) = mgr.Refs.Resolve(page, resolvedTabId!, refId.Trim());
-        if (locator is null) return refError!;
+        if (locator is null) return BrowserToolBase.RefFailure(refError!);
 
         try
         {
@@ -141,7 +141,7 @@ public sealed class BrowserInspectTool : IMcpTool
                 foreach (var a in attrs.EnumerateObject())
                     sb.AppendLine($"  {a.Name} = {a.Value.GetString()}");
             }
-            return sb.ToString().TrimEnd();
+            return ToolResult.Text(sb.ToString().TrimEnd());
         }
         catch (PlaywrightException ex) { return BrowserToolBase.Fail("browser_inspect", ex); }
     }

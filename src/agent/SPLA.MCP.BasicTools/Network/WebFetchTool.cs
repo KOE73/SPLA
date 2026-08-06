@@ -46,13 +46,13 @@ public class WebFetchTool : IMcpTool
         }
     };
 
-    public async Task<string> ExecuteAsync(string argumentsJson, CancellationToken cancellationToken = default)
+    public async Task<ToolResult> ExecuteAsync(string argumentsJson, CancellationToken cancellationToken = default)
     {
         try
         {
             using var doc = JsonDocument.Parse(argumentsJson);
             var url = ToolJson.GetStringTrimmed(doc.RootElement, "url");
-            if (url is null) return "Error: Missing 'url' parameter.";
+            if (url is null) return ToolResult.Fail("Error: Missing 'url' parameter.", "missing url");
             if (!url.StartsWith("http")) url = "https://" + url;
 
             using var request = new HttpRequestMessage(HttpMethod.Get, url);
@@ -72,7 +72,7 @@ public class WebFetchTool : IMcpTool
 
                 if (text.Contains("You are being redirected to the non-JavaScript site", StringComparison.OrdinalIgnoreCase))
                 {
-                    return "Error: web_fetch received a search-engine redirect page instead of article content. Use web_search for search queries, then web_fetch a concrete result URL.";
+                    return ToolResult.Fail("Error: web_fetch received a search-engine redirect page instead of article content. Use web_search for search queries, then web_fetch a concrete result URL.", "search redirect page");
                 }
 
                 var target = DataChannel.ParseTarget(ToolJson.GetStringTrimmed(doc.RootElement, "output"));
@@ -81,9 +81,9 @@ public class WebFetchTool : IMcpTool
                 if (target == OutputTarget.Context && text.Length > 8000)
                     text = text[..8000] + "\n...[Content truncated — use output='blob' to capture in full]...";
 
-                if (target == OutputTarget.Context) return text;
+                if (target == OutputTarget.Context) return ToolResult.Text(text);
                 var blobName = ToolJson.GetStringTrimmed(doc.RootElement, "output_name");
-                return DataChannel.Route(target, BlobPayload.OfText(text), $"web_fetch: {url} ({text.Length} chars)", blobName);
+                return ToolResult.Text(DataChannel.Route(target, BlobPayload.OfText(text), $"web_fetch: {url} ({text.Length} chars)", blobName));
         }
         catch (OperationCanceledException)
         {
@@ -91,7 +91,7 @@ public class WebFetchTool : IMcpTool
         }
         catch (Exception ex)
         {
-            return $"Error fetching URL: {ex.Message}";
+            return ToolResult.Fail($"Error fetching URL: {ex.Message}", "fetch failed");
         }
     }
 }

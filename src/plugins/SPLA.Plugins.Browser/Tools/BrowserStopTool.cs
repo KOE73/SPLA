@@ -24,11 +24,11 @@ public sealed class BrowserStopTool : IMcpTool
         }
     };
 
-    public async Task<string> ExecuteAsync(string argumentsJson, CancellationToken cancellationToken = default)
+    public async Task<ToolResult> ExecuteAsync(string argumentsJson, CancellationToken cancellationToken = default)
     {
         var mgr = BrowserToolBase.Current;
-        if (mgr is null) return "Browser is not running.";
-        try { return await mgr.StopAsync(); }
+        if (mgr is null) return ToolResult.Refuse("Browser is not running.", "browser not running");
+        try { return ToolResult.Text(await mgr.StopAsync()); }
         catch (Exception ex) { return BrowserToolBase.Fail("browser_stop", ex); }
     }
 }

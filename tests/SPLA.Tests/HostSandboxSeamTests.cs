@@ -26,16 +26,16 @@ public sealed class HostSandboxSeamTests
         var ws = new MemoryWorkspace();
         using var _ = Scope(new PassthroughSandbox(workspace: ws, shell: null));
 
-        var write = await new FsWriteTool().ExecuteAsync(
-            """{"path":"/virtual/note.txt","content":"hello seam"}""");
+        var write = (await new FsWriteTool().ExecuteAsync(
+            """{"path":"/virtual/note.txt","content":"hello seam"}""")).TextContent;
         Assert.Contains("Successfully wrote", write);
 
         // Lives only in the in-memory workspace — nothing was written to a real path.
         Assert.False(File.Exists("/virtual/note.txt"));
         Assert.True(ws.FileExists("/virtual/note.txt"));
 
-        var read = await new FsReadTool().ExecuteAsync(
-            """{"path":"/virtual/note.txt","start_line":1,"line_count":null,"output":null,"output_name":null}""");
+        var read = (await new FsReadTool().ExecuteAsync(
+            """{"path":"/virtual/note.txt","start_line":1,"line_count":null,"output":null,"output_name":null}""")).TextContent;
         Assert.Contains("hello seam", read);
     }
 
@@ -47,8 +47,8 @@ public sealed class HostSandboxSeamTests
         await ws.WriteAllTextAsync("/virtual/deploy.sh", originalContent);
         using var _ = Scope(new PassthroughSandbox(workspace: ws, shell: null));
 
-        var result = await new FsReadTool().ExecuteAsync(
-            """{"path":"/virtual/deploy.sh","start_line":1,"line_count":null,"output":"blob","output_name":"deploy-script"}""");
+        var result = (await new FsReadTool().ExecuteAsync(
+            """{"path":"/virtual/deploy.sh","start_line":1,"line_count":null,"output":"blob","output_name":"deploy-script"}""")).TextContent;
 
         Assert.Contains("blob:deploy-script", result);
         Assert.True(DataChannel.ResolveBytes("blob:deploy-script", out var blobContent, out var error), error);
@@ -62,21 +62,21 @@ public sealed class HostSandboxSeamTests
         var ws = new MemoryWorkspace();
         using var _ = Scope(new PassthroughSandbox(workspace: ws, shell: null));
 
-        var create = await new FsCreateTool().ExecuteAsync(
-            """{"path":"/virtual/a.txt","content":"one two three"}""");
+        var create = (await new FsCreateTool().ExecuteAsync(
+            """{"path":"/virtual/a.txt","content":"one two three"}""")).TextContent;
         Assert.Contains("Successfully created", create);
         Assert.True(ws.FileExists("/virtual/a.txt"));
         Assert.False(File.Exists("/virtual/a.txt"));
 
-        var patch = await new FsPatchTool().ExecuteAsync(
-            """{"path":"/virtual/a.txt","old_text":"two","new_text":"TWO"}""");
+        var patch = (await new FsPatchTool().ExecuteAsync(
+            """{"path":"/virtual/a.txt","old_text":"two","new_text":"TWO"}""")).TextContent;
         Assert.Contains("status: success", patch);
 
-        var read = await new FsReadTool().ExecuteAsync(
-            """{"path":"/virtual/a.txt","start_line":1,"line_count":null,"output":null,"output_name":null}""");
+        var read = (await new FsReadTool().ExecuteAsync(
+            """{"path":"/virtual/a.txt","start_line":1,"line_count":null,"output":null,"output_name":null}""")).TextContent;
         Assert.Contains("one TWO three", read);
 
-        var delete = await new FsDeleteTool().ExecuteAsync("""{"path":"/virtual/a.txt"}""");
+        var delete = (await new FsDeleteTool().ExecuteAsync("""{"path":"/virtual/a.txt"}""")).TextContent;
         Assert.Contains("Successfully deleted", delete);
         Assert.False(ws.FileExists("/virtual/a.txt"));
     }
@@ -90,8 +90,8 @@ public sealed class HostSandboxSeamTests
         await ws.WriteAllTextAsync("/proj/src/readme.md", "z");
         using var _ = Scope(new PassthroughSandbox(workspace: ws, shell: null));
 
-        var result = await new FsFindFilesTool().ExecuteAsync(
-            """{"path":"/proj","pattern":"*.cs","max_results":null,"exclude_patterns":null,"output":null,"output_name":null}""");
+        var result = (await new FsFindFilesTool().ExecuteAsync(
+            """{"path":"/proj","pattern":"*.cs","max_results":null,"exclude_patterns":null,"output":null,"output_name":null}""")).TextContent;
 
         Assert.Contains("a.cs", result);
         Assert.Contains("b.cs", result);       // found via recursion into /proj/src/deep
@@ -105,8 +105,8 @@ public sealed class HostSandboxSeamTests
         // Shell is genuinely null (the contract's way to forbid execution).
         using var _ = Scope(new NoShellSandbox());
 
-        var result = await new SPLA.MCP.BasicTools.SystemTools.RunCommandTool().ExecuteAsync(
-            """{"command":"echo hi","cwd":null,"code_page":null,"output":null,"output_name":null}""");
+        var result = (await new SPLA.MCP.BasicTools.SystemTools.RunCommandTool().ExecuteAsync(
+            """{"command":"echo hi","cwd":null,"code_page":null,"output":null,"output_name":null}""")).TextContent;
 
         Assert.Contains("disabled", result);
     }

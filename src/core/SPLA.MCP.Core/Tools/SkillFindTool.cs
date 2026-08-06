@@ -77,7 +77,7 @@ public sealed class SkillFindTool : IMcpTool
         }
     };
 
-    public async Task<string> ExecuteAsync(string argumentsJson, CancellationToken cancellationToken = default)
+    public async Task<ToolResult> ExecuteAsync(string argumentsJson, CancellationToken cancellationToken = default)
     {
         SkillQuery query;
         try
@@ -89,10 +89,10 @@ public sealed class SkillFindTool : IMcpTool
         }
         catch (JsonException)
         {
-            return "error: invalid_json";
+            return ToolResult.Fail("error: invalid_json", "invalid json");
         }
 
-        if (query.IsEmpty) return "error: give 'tags', 'text', or both\n" + KnownSubjects();
+        if (query.IsEmpty) return ToolResult.Fail("error: give 'tags', 'text', or both\n" + KnownSubjects(), "empty query");
 
         // The free, deterministic pass first, always. Set intersection answers most questions at no
         // cost, and paying an LLM call to be told what a dictionary lookup already knew is the kind
@@ -109,7 +109,7 @@ public sealed class SkillFindTool : IMcpTool
                 QuestionFrom(query), DefaultLimit, cancellationToken);
         }
 
-        if (matches.Count == 0) return NothingFound(query);
+        if (matches.Count == 0) return ToolResult.Text(NothingFound(query));
 
         var sb = new StringBuilder();
         sb.Append($"{matches.Count} matching skill(s)");
@@ -122,7 +122,7 @@ public sealed class SkillFindTool : IMcpTool
             if (match.Card.Description.Length > 0) sb.Append($"\n    {match.Card.Description}");
         }
 
-        return sb.ToString();
+        return ToolResult.Text(sb.ToString());
     }
 
     /// <summary>The query as a sentence for a librarian that reads rather than matches. Tags carry

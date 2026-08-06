@@ -45,7 +45,7 @@ public class ArpTool : IMcpTool
         }
     };
 
-    public async Task<string> ExecuteAsync(string argumentsJson, CancellationToken cancellationToken = default)
+    public async Task<ToolResult> ExecuteAsync(string argumentsJson, CancellationToken cancellationToken = default)
     {
         try
         {
@@ -74,15 +74,15 @@ public class ArpTool : IMcpTool
             foreach (var e in entries)
                 sb.AppendLine($"{e.IpAddress,-18} {e.MacAddress,-20} {e.Type,-10} {e.Interface}");
 
-            return sb.ToString();
+            return ToolResult.Text(sb.ToString());
         }
         catch (JsonException)
         {
-            return "Error: Invalid JSON arguments.";
+            return ToolResult.Fail("Error: Invalid JSON arguments.", "invalid json");
         }
         catch (Exception ex)
         {
-            return $"Error reading ARP cache: {ex.Message}";
+            return ToolResult.Fail($"Error reading ARP cache: {ex.Message}", "arp read failed");
         }
     }
 

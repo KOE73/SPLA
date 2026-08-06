@@ -160,7 +160,7 @@ public class SkillFindTests
 
     // ── The tool ─────────────────────────────────────────────────────────────
 
-    private static Task<string> Find(string args) => new SkillFindTool(Librarian()).ExecuteAsync(args);
+    private static async Task<string> Find(string args) => (await new SkillFindTool(Librarian()).ExecuteAsync(args)).TextContent;
 
     /// <summary>Cards, not bodies. Returning procedures would put back exactly what the two-step
     /// selection exists to keep out of the context.</summary>
@@ -224,7 +224,7 @@ public class SkillFindTests
                 new SPLA.Domain.Agent.KeyValueStore("session"),
                 new SPLA.Domain.Agent.MarkManager(), session));
 
-        var result = await new SkillActivateTool(Fond()).ExecuteAsync("""{"id":"secret"}""");
+        var result = (await new SkillActivateTool(Fond()).ExecuteAsync("""{"id":"secret"}""")).TextContent;
 
         Assert.StartsWith("error:", result);
         Assert.DoesNotContain("payroll", result);
@@ -241,7 +241,7 @@ public class SkillFindTests
                 new SPLA.Domain.Agent.KeyValueStore("session"),
                 new SPLA.Domain.Agent.MarkManager(), session));
 
-        var result = await new SkillActivateTool(Fond()).ExecuteAsync("""{"id":"zzzz"}""");
+        var result = (await new SkillActivateTool(Fond()).ExecuteAsync("""{"id":"zzzz"}""")).TextContent;
 
         Assert.Contains("skill_find", result);
     }

@@ -42,7 +42,7 @@ public class FsWriteTool : IMcpTool
         }
     };
 
-    public async Task<string> ExecuteAsync(string argumentsJson, CancellationToken cancellationToken = default)
+    public async Task<ToolResult> ExecuteAsync(string argumentsJson, CancellationToken cancellationToken = default)
     {
         try
         {
@@ -51,12 +51,12 @@ public class FsWriteTool : IMcpTool
             var content = ToolJson.GetString(doc.RootElement, "content");
 
             if (path is null || content is null)
-                return "Error: Missing 'path' or 'content' parameter.";
+                return ToolResult.Fail("Error: Missing 'path' or 'content' parameter.", "missing arguments");
 
             // 'content' may be a blob:<handle> produced by another tool — resolve it (data flows
             // store→file, bypassing context). A literal string resolves to itself.
             if (!DataChannel.ResolveText(content, out content, out var resolveError))
-                return $"Error: {resolveError}";
+                return ToolResult.Fail($"Error: {resolveError}", "blob resolve failed");
 
             var ws = HostServices.Sandbox.Workspace;
 
@@ -68,15 +68,15 @@ public class FsWriteTool : IMcpTool
             }
 
             await ws.WriteAllTextAsync(path, content ?? string.Empty, cancellationToken);
-            return $"Successfully wrote content to: {path}";
+            return ToolResult.Text($"Successfully wrote content to: {path}");
         }
         catch (JsonException)
         {
-            return "Error: Invalid JSON arguments.";
+            return ToolResult.Fail("Error: Invalid JSON arguments.", "invalid json");
         }
         catch (Exception ex)
         {
-            return $"Error writing file: {ex.Message}";
+            return ToolResult.Fail($"Error writing file: {ex.Message}", "write failed");
         }
     }
 }

@@ -34,7 +34,7 @@ public sealed class BrowserNewTabTool : IMcpTool
         }
     };
 
-    public async Task<string> ExecuteAsync(string argumentsJson, CancellationToken cancellationToken = default)
+    public async Task<ToolResult> ExecuteAsync(string argumentsJson, CancellationToken cancellationToken = default)
     {
         var mgr = BrowserToolBase.Current;
         if (mgr is null) return BrowserToolBase.NotRunning;
@@ -45,7 +45,7 @@ public sealed class BrowserNewTabTool : IMcpTool
             using var doc = JsonDocument.Parse(string.IsNullOrWhiteSpace(argumentsJson) ? "{}" : argumentsJson);
             url = ToolJson.GetStringTrimmed(doc.RootElement, "url");
         }
-        catch (JsonException) { return "Error: invalid JSON arguments."; }
+        catch (JsonException) { return ToolResult.Fail("Error: invalid JSON arguments.", "invalid json"); }
 
         try
         {
@@ -60,7 +60,7 @@ public sealed class BrowserNewTabTool : IMcpTool
             if (!string.IsNullOrWhiteSpace(url))
                 await page.GotoAsync(url, new PageGotoOptions { WaitUntil = WaitUntilState.Load });
 
-            return $"Opened tab {tabId} ({page.Url}).";
+            return ToolResult.Text($"Opened tab {tabId} ({page.Url}).");
         }
         catch (Exception ex) { return BrowserToolBase.Fail("browser_new_tab", ex); }
     }

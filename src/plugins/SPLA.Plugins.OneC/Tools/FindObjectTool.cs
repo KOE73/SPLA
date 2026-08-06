@@ -43,7 +43,7 @@ public class FindObjectTool : IMcpTool
         }
     };
 
-    public Task<string> ExecuteAsync(string argumentsJson, CancellationToken cancellationToken = default)
+    public Task<ToolResult> ExecuteAsync(string argumentsJson, CancellationToken cancellationToken = default)
     {
         var doc    = JsonDocument.Parse(argumentsJson);
         var query  = doc.RootElement.TryGetProperty("query",  out var q) ? q.GetString() ?? "" : "";
@@ -76,9 +76,9 @@ public class FindObjectTool : IMcpTool
             });
         });
         var target = DataChannel.ParseTarget(ToolJson.GetStringTrimmed(doc.RootElement, "output"));
-        if (target == OutputTarget.Context) return Task.FromResult(yaml);
+        if (target == OutputTarget.Context) return Task.FromResult(ToolResult.Text(yaml));
         var blobName = ToolJson.GetStringTrimmed(doc.RootElement, "output_name");
-        return Task.FromResult(DataChannel.Route(target, BlobPayload.OfText(yaml), $"onec_find_object: '{query}' {matches.Count} results", blobName));
+        return Task.FromResult(ToolResult.Text(DataChannel.Route(target, BlobPayload.OfText(yaml), $"onec_find_object: '{query}' {matches.Count} results", blobName)));
     }
 }
 

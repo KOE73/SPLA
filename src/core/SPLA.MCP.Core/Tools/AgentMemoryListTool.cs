@@ -92,7 +92,7 @@ public sealed class AgentMemoryListTool : IMcpTool
         }
     };
 
-    public Task<string> ExecuteAsync(string argumentsJson, CancellationToken cancellationToken = default)
+    public Task<ToolResult> ExecuteAsync(string argumentsJson, CancellationToken cancellationToken = default)
     {
         try
         {
@@ -107,15 +107,15 @@ public sealed class AgentMemoryListTool : IMcpTool
             var regexMode  = string.Equals(filterMode, "regex", StringComparison.OrdinalIgnoreCase);
 
             var store = AgentMemoryHelpers.SelectStore(_project, scope);
-            if (store is null) return Task.FromResult("error: no active chat session");
+            if (store is null) return Task.FromResult(ToolResult.Refuse("error: no active chat session", "no chat session"));
             var sb    = new StringBuilder();
             AgentMemoryHelpers.AppendList(sb, store, filter, top, skip, where, regexMode);
             var text = sb.ToString().TrimEnd();
-            return Task.FromResult(text.Length == 0
+            return Task.FromResult(ToolResult.Text(text.Length == 0
                 ? (string.IsNullOrEmpty(filter) ? "(empty)" : $"(no entries matching '{filter}')")
-                : text);
+                : text));
         }
-        catch (JsonException) { return Task.FromResult("error: invalid_json"); }
+        catch (JsonException) { return Task.FromResult(ToolResult.Fail("error: invalid_json", "invalid json")); }
     }
 
 }

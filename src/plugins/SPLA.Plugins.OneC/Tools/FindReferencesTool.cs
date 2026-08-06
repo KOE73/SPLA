@@ -45,7 +45,7 @@ public class FindReferencesTool : IMcpTool
         }
     };
 
-    public Task<string> ExecuteAsync(string argumentsJson, CancellationToken cancellationToken = default)
+    public Task<ToolResult> ExecuteAsync(string argumentsJson, CancellationToken cancellationToken = default)
     {
         var doc      = JsonDocument.Parse(argumentsJson);
         var fullName = ToolJson.GetString(doc.RootElement, "full_name") ?? "";
@@ -59,7 +59,7 @@ public class FindReferencesTool : IMcpTool
 
         var obj = _db.GetObjectByFullName(fullName);
         if (obj is null)
-            return Task.FromResult($"error: object '{fullName}' not found in index.");
+            return Task.FromResult(ToolResult.Text($"error: object '{fullName}' not found in index."));
 
         var total = _db.CountRelationsTo(obj.Id, types);
         var rows  = _db.GetRelationsTo(obj.Id, types, limit + offset).Skip(offset).Take(limit).ToList();
@@ -73,9 +73,9 @@ public class FindReferencesTool : IMcpTool
             b.Section("references", r => r.ReverseRelationList("items", rows, snippets));
         });
         var target = DataChannel.ParseTarget(ToolJson.GetStringTrimmed(doc.RootElement, "output"));
-        if (target == OutputTarget.Context) return Task.FromResult(yaml);
+        if (target == OutputTarget.Context) return Task.FromResult(ToolResult.Text(yaml));
         var blobName = ToolJson.GetStringTrimmed(doc.RootElement, "output_name");
-        return Task.FromResult(DataChannel.Route(target, BlobPayload.OfText(yaml), $"onec_find_references: {fullName}", blobName));
+        return Task.FromResult(ToolResult.Text(DataChannel.Route(target, BlobPayload.OfText(yaml), $"onec_find_references: {fullName}", blobName)));
     }
 }
 

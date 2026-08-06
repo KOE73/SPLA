@@ -32,11 +32,11 @@ public sealed class SshListHostsTool : IMcpTool
         }
     };
 
-    public Task<string> ExecuteAsync(string argumentsJson, CancellationToken cancellationToken = default)
+    public Task<ToolResult> ExecuteAsync(string argumentsJson, CancellationToken cancellationToken = default)
     {
         var settings = _settings();
         if (settings.Hosts.Count == 0)
-            return Task.FromResult("No SSH hosts are configured. Add them under plugins.ssh.settings.hosts in the project config.");
+            return Task.FromResult(ToolResult.Text("No SSH hosts are configured. Add them under plugins.ssh.settings.hosts in the project config."));
 
         var sb = new StringBuilder();
         sb.AppendLine($"Configured SSH hosts: {settings.Hosts.Count}" +
@@ -51,6 +51,6 @@ public sealed class SshListHostsTool : IMcpTool
             sb.AppendLine($"  {name}: {user}@{h.Host}:{h.Port}  [auth: {auth}]" +
                           (string.IsNullOrWhiteSpace(h.Description) ? "" : $"  — {h.Description}"));
         }
-        return Task.FromResult(sb.ToString().TrimEnd());
+        return Task.FromResult(ToolResult.Text(sb.ToString().TrimEnd()));
     }
 }

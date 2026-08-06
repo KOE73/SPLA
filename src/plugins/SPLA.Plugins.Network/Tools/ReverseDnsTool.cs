@@ -74,7 +74,7 @@ public class ReverseDnsTool : IMcpTool
         }
     };
 
-    public async Task<string> ExecuteAsync(string argumentsJson, CancellationToken cancellationToken = default)
+    public async Task<ToolResult> ExecuteAsync(string argumentsJson, CancellationToken cancellationToken = default)
     {
         try
         {
@@ -84,7 +84,7 @@ public class ReverseDnsTool : IMcpTool
                           .Select(s => s.Trim())
                           .ToList();
             if (ips is null || ips.Count == 0)
-                return "Error: Missing or empty 'addresses' parameter (expected array of IP strings).";
+                return ToolResult.Fail("Error: Missing or empty 'addresses' parameter (expected array of IP strings).", "missing addresses");
 
             // Resolve all addresses in parallel.
             var tasks = ips.Select(ip => ResolveAsync(ip, cancellationToken)).ToArray();
@@ -97,15 +97,15 @@ public class ReverseDnsTool : IMcpTool
                 sb.AppendLine($"  {ip,-40} {hostname}");
             }
 
-            return sb.ToString();
+            return ToolResult.Text(sb.ToString());
         }
         catch (JsonException)
         {
-            return "Error: Invalid JSON arguments.";
+            return ToolResult.Fail("Error: Invalid JSON arguments.", "invalid json");
         }
         catch (Exception ex)
         {
-            return $"Error performing reverse DNS: {ex.Message}";
+            return ToolResult.Fail($"Error performing reverse DNS: {ex.Message}", "reverse dns failed");
         }
     }
 

@@ -36,30 +36,30 @@ public class FsDeleteTool : IMcpTool
         }
     };
 
-    public Task<string> ExecuteAsync(string argumentsJson, CancellationToken cancellationToken = default)
+    public Task<ToolResult> ExecuteAsync(string argumentsJson, CancellationToken cancellationToken = default)
     {
         try
         {
             using var doc = JsonDocument.Parse(argumentsJson);
             var path = ToolJson.GetStringTrimmed(doc.RootElement, "path");
-            if (path is null) return Task.FromResult("Error: Missing 'path' parameter.");
+            if (path is null) return Task.FromResult(ToolResult.Fail("Error: Missing 'path' parameter.", "missing path"));
 
             var ws = HostServices.Sandbox.Workspace;
             if (!ws.FileExists(path))
             {
-                return Task.FromResult($"Error: File not found at {path}");
+                return Task.FromResult(ToolResult.Fail($"Error: File not found at {path}", "file not found"));
             }
 
             ws.DeleteFile(path);
-            return Task.FromResult($"Successfully deleted file: {path}");
+            return Task.FromResult(ToolResult.Text($"Successfully deleted file: {path}"));
         }
         catch (JsonException)
         {
-            return Task.FromResult("Error: Invalid JSON arguments.");
+            return Task.FromResult(ToolResult.Fail("Error: Invalid JSON arguments.", "invalid json"));
         }
         catch (Exception ex)
         {
-            return Task.FromResult($"Error deleting file: {ex.Message}");
+            return Task.FromResult(ToolResult.Fail($"Error deleting file: {ex.Message}", "delete failed"));
         }
     }
 }

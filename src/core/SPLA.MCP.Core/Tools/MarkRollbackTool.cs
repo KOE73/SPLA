@@ -39,15 +39,15 @@ public sealed class MarkRollbackTool : IMcpTool
         }
     };
 
-    public Task<string> ExecuteAsync(string argumentsJson, CancellationToken cancellationToken = default)
+    public Task<ToolResult> ExecuteAsync(string argumentsJson, CancellationToken cancellationToken = default)
     {
         var marks = AgentSessionScope.Current?.Checkpoint;
-        if (marks is null) return Task.FromResult("error: no active chat session");
+        if (marks is null) return Task.FromResult(ToolResult.Refuse("error: no active chat session", "no chat session"));
 
         using var doc = JsonDocument.Parse(argumentsJson);
         var root = doc.RootElement;
         if (!root.TryGetProperty("name", out var nameProp) || string.IsNullOrWhiteSpace(nameProp.GetString()))
-            return Task.FromResult("error: 'name' is required");
+            return Task.FromResult(ToolResult.Fail("error: 'name' is required", "missing name"));
 
         return Task.FromResult(marks.MarkRollback(nameProp.GetString()!));
     }

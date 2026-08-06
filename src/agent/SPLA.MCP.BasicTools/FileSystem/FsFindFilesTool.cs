@@ -47,7 +47,7 @@ public class FsFindFilesTool : IMcpTool
         }
     };
 
-    public Task<string> ExecuteAsync(string argumentsJson, CancellationToken cancellationToken = default)
+    public Task<ToolResult> ExecuteAsync(string argumentsJson, CancellationToken cancellationToken = default)
     {
         try
         {
@@ -61,10 +61,10 @@ public class FsFindFilesTool : IMcpTool
             var ws = HostServices.Sandbox.Workspace;
             var rootPath = ws.MapPathToHost(ToolJson.GetStringTrimmed(root, "path") ?? ".");
             if (rootPath is null)
-                return Task.FromResult("Error: File search is not available for this workspace.");
+                return Task.FromResult(ToolResult.Refuse("Error: File search is not available for this workspace.", "search unavailable"));
 
             if (!ws.DirectoryExists(rootPath))
-                return Task.FromResult($"Error: Directory not found at {rootPath}");
+                return Task.FromResult(ToolResult.Fail($"Error: Directory not found at {rootPath}", "directory not found"));
 
             var includeRegex = GlobToRegex(pattern);
             var excludeRegexes = excludePatterns?.Select(GlobToRegex).ToList();
@@ -85,17 +85,17 @@ public class FsFindFilesTool : IMcpTool
 
             var json = JsonSerializer.Serialize(result, new JsonSerializerOptions { WriteIndented = true });
             var target = DataChannel.ParseTarget(ToolJson.GetStringTrimmed(root, "output"));
-            if (target == OutputTarget.Context) return Task.FromResult(json);
+            if (target == OutputTarget.Context) return Task.FromResult(ToolResult.Text(json));
             var blobName = ToolJson.GetStringTrimmed(root, "output_name");
-            return Task.FromResult(DataChannel.Route(target, BlobPayload.OfText(json), $"system_find_files: {result.TotalCount} files", blobName));
+            return Task.FromResult(ToolResult.Text(DataChannel.Route(target, BlobPayload.OfText(json), $"system_find_files: {result.TotalCount} files", blobName)));
         }
         catch (JsonException)
         {
-            return Task.FromResult("Error: Invalid JSON arguments.");
+            return Task.FromResult(ToolResult.Fail("Error: Invalid JSON arguments.", "invalid json"));
         }
         catch (Exception ex)
         {
-            return Task.FromResult($"Error performing file search: {ex.Message}");
+            return Task.FromResult(ToolResult.Fail($"Error performing file search: {ex.Message}", "search failed"));
         }
     }
 

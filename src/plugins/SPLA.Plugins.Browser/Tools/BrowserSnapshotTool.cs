@@ -39,7 +39,7 @@ public sealed class BrowserSnapshotTool : IMcpTool
         }
     };
 
-    public async Task<string> ExecuteAsync(string argumentsJson, CancellationToken cancellationToken = default)
+    public async Task<ToolResult> ExecuteAsync(string argumentsJson, CancellationToken cancellationToken = default)
     {
         var mgr = BrowserToolBase.Current;
         if (mgr is null) return BrowserToolBase.NotRunning;
@@ -53,14 +53,14 @@ public sealed class BrowserSnapshotTool : IMcpTool
             tabId = ToolJson.GetStringTrimmed(root, "tab_id");
             maxChars = ToolJson.GetInt32Clamped(root, "max_chars", 8000, 500, 30_000);
         }
-        catch (JsonException) { return "Error: invalid JSON arguments."; }
+        catch (JsonException) { return ToolResult.Fail("Error: invalid JSON arguments.", "invalid json"); }
 
         var (resolvedTabId, page, error) = BrowserToolBase.ResolveTab(mgr, tabId);
         if (page is null) return error!;
 
         try
         {
-            return await BrowserSnapshotService.CaptureAsync(page, mgr.Refs, resolvedTabId!, maxChars);
+            return ToolResult.Text(await BrowserSnapshotService.CaptureAsync(page, mgr.Refs, resolvedTabId!, maxChars));
         }
         catch (PlaywrightException ex) { return BrowserToolBase.Fail("browser_snapshot", ex); }
     }

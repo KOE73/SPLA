@@ -87,7 +87,7 @@ public sealed class BrowserPluginTests
             _ => "{}"
         };
 
-        var result = await tool.ExecuteAsync(args);
+        var result = (await tool.ExecuteAsync(args)).TextContent;
         Assert.False(string.IsNullOrWhiteSpace(result));
         // Either "not running" or a normal validation error — never an unhandled exception (which
         // would have already failed this test via a thrown exception instead of a returned string).
@@ -99,7 +99,7 @@ public sealed class BrowserPluginTests
         var tool = new BrowserStartTool(
             SPLA.Domain.Project.LocalProject.For(new SPLA.Domain.Settings.ResolvedSettings()),
             new BrowserSettings());
-        var result = await tool.ExecuteAsync("{}");
+        var result = (await tool.ExecuteAsync("{}")).TextContent;
         Assert.Contains("No active chat session", result);
     }
 
@@ -113,7 +113,7 @@ public sealed class BrowserPluginTests
                 ProjectFilePath = Path.Combine(Path.GetTempPath(), "browser-test.spla"),
                 WorkspacePath = Path.GetTempPath()
             }));
-        var result = await tool.ExecuteAsync("{}");
+        var result = (await tool.ExecuteAsync("{}")).TextContent;
 
         Assert.Contains("\"project\"", result);
         Assert.Contains("\"new\"", result);
@@ -123,7 +123,7 @@ public sealed class BrowserPluginTests
     public async Task Image_view_without_active_session_reports_clear_error()
     {
         var tool = new ImageViewTool();
-        var result = await tool.ExecuteAsync("""{"handle":"blob:abc"}""");
+        var result = (await tool.ExecuteAsync("""{"handle":"blob:abc"}""")).TextContent;
         Assert.Contains("no active chat session", result, StringComparison.OrdinalIgnoreCase);
     }
 
@@ -132,12 +132,16 @@ public sealed class BrowserPluginTests
     {
         using var _ = Scope();
         var tool = new ImageViewTool();
-        var result = await tool.ExecuteAsync("""{"handle":"blob:does-not-exist"}""");
+        var result = (await tool.ExecuteAsync("""{"handle":"blob:does-not-exist"}""")).TextContent;
         Assert.Contains("no blob found", result, StringComparison.OrdinalIgnoreCase);
     }
 
+    /// <summary>
+    /// The picture travels in the result, not through the chat's pending sink. The tool states that
+    /// it has an image; how a particular model gets to see it is the conversation layer's decision.
+    /// </summary>
     [Fact]
-    public async Task Image_view_pushes_data_url_into_pending_sink()
+    public async Task Image_view_returns_the_picture_as_content()
     {
         var session = new AgentSession(new KeyValueStore("session"), new MarkManager(), new SkillSession());
         using var _ = AgentSessionScope.Begin(session);
@@ -148,9 +152,14 @@ public sealed class BrowserPluginTests
         var tool = new ImageViewTool();
         var result = await tool.ExecuteAsync($$"""{"handle":"{{handle}}"}""");
 
-        Assert.Contains("ok:", result);
-        var pending = session.Images.DrainAll();
-        Assert.Single(pending);
-        Assert.StartsWith("data:image/png;base64,", pending[0]);
+        Assert.Equal(ToolOutcome.Ok, result.Outcome);
+        Assert.Contains("ok:", result.TextContent);
+
+        var image = Assert.Single(result.Content.OfType<ToolImage>());
+        Assert.Equal("image/png", image.MimeType);
+        Assert.Equal(Convert.ToBase64String(bytes), image.Data);
+
+        // Nothing was pushed sideways: the sink is no longer this tool's business.
+        Assert.Empty(session.Images.DrainAll());
     }
 }

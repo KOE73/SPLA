@@ -37,7 +37,7 @@ public class SqlConnectionsTool : IMcpTool
     {
         if (_registry.Connections.Count == 0)
             return Task.FromResult(ToolResult.Text(
-                "No database connections configured. Ask the operator to add one in Settings → Plugins → sql.");
+                "No database connections configured. Ask the operator to add one in Settings → Plugins → sql."));
 
         var sb = new StringBuilder();
         sb.AppendLine("Available connections:");

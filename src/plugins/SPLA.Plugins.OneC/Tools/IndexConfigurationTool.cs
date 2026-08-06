@@ -39,18 +39,18 @@ public class IndexConfigurationTool : IMcpTool
         }
     };
 
-    public async Task<string> ExecuteAsync(string argumentsJson, CancellationToken cancellationToken = default)
+    public async Task<ToolResult> ExecuteAsync(string argumentsJson, CancellationToken cancellationToken = default)
     {
         var doc  = JsonDocument.Parse(argumentsJson);
         var path = doc.RootElement.TryGetProperty("path", out var p) ? p.GetString() ?? "" : "";
 
         if (string.IsNullOrWhiteSpace(path))
-            return "error: 'path' parameter is required.";
+            return ToolResult.Fail("error: 'path' parameter is required.", "missing path");
 
         // Resolve relative to CWD
         var absPath = Path.GetFullPath(path);
         if (!Directory.Exists(absPath))
-            return $"error: directory not found: {absPath}";
+            return ToolResult.Fail($"error: directory not found: {absPath}", "directory not found");
 
         var indexer = new OneCIndexer(_db);
         var progress = new List<string>();
@@ -71,7 +71,7 @@ public class IndexConfigurationTool : IMcpTool
             if (report.Errors.Count > 0)
                 b.List("errors", report.Errors.Take(20));
         });
-        return yaml;
+        return ToolResult.Text(yaml);
     }
 }
 

@@ -44,7 +44,7 @@ public class TraceRouteTool : IMcpTool
         }
     };
 
-    public async Task<string> ExecuteAsync(string argumentsJson, CancellationToken cancellationToken = default)
+    public async Task<ToolResult> ExecuteAsync(string argumentsJson, CancellationToken cancellationToken = default)
     {
         // TODO (Linux): ICMP raw sockets require CAP_NET_RAW or root.
         //   Option A: setcap cap_net_raw+ep on the host binary.
@@ -56,7 +56,7 @@ public class TraceRouteTool : IMcpTool
             using var doc = JsonDocument.Parse(argumentsJson);
             var root = doc.RootElement;
             var host = ToolJson.GetStringTrimmed(root, "host");
-            if (host is null) return "Error: Missing 'host' parameter.";
+            if (host is null) return ToolResult.Fail("Error: Missing 'host' parameter.", "missing host");
 
             var maxHops     = ToolJson.GetInt32Clamped(root, "max_hops", 20,   1,   30);
             var timeout     = ToolJson.GetInt32Clamped(root, "timeout",  1000, 100, 10000);
@@ -100,17 +100,17 @@ public class TraceRouteTool : IMcpTool
 
             var result = sb.ToString();
             var target = DataChannel.ParseTarget(ToolJson.GetStringTrimmed(root, "output"));
-            if (target == OutputTarget.Context) return result;
+            if (target == OutputTarget.Context) return ToolResult.Text(result);
             var blobName = ToolJson.GetStringTrimmed(root, "output_name");
-            return DataChannel.Route(target, BlobPayload.OfText(result), $"network_trace_route: {host}", blobName);
+            return ToolResult.Text(DataChannel.Route(target, BlobPayload.OfText(result), $"network_trace_route: {host}", blobName));
         }
         catch (JsonException)
         {
-            return "Error: Invalid JSON arguments.";
+            return ToolResult.Fail("Error: Invalid JSON arguments.", "invalid json");
         }
         catch (Exception ex)
         {
-            return $"Error performing traceroute: {ex.Message}";
+            return ToolResult.Fail($"Error performing traceroute: {ex.Message}", "traceroute failed");
         }
     }
 

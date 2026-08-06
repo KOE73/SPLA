@@ -71,7 +71,7 @@ public sealed class BrowserStartTool : IMcpTool
         }
     };
 
-    public async Task<string> ExecuteAsync(string argumentsJson, CancellationToken cancellationToken = default)
+    public async Task<ToolResult> ExecuteAsync(string argumentsJson, CancellationToken cancellationToken = default)
     {
         string? channel, profile;
         bool headless;
@@ -86,7 +86,7 @@ public sealed class BrowserStartTool : IMcpTool
             vw = ToolJson.GetInt32(root, "viewport_width");
             vh = ToolJson.GetInt32(root, "viewport_height");
         }
-        catch (JsonException) { return "Error: invalid JSON arguments."; }
+        catch (JsonException) { return ToolResult.Fail("Error: invalid JSON arguments.", "invalid json"); }
 
         try
         {
@@ -103,9 +103,10 @@ public sealed class BrowserStartTool : IMcpTool
             var mergedArgs = MergeArgs(resolved.ExtraArgs, _settings.ExtraArgs);
             var ignoreArgs = _settings.GetIgnoreDefaultArgs();
 
-            return await mgr.StartAsync(effectiveChannel, headless, resolved.ProfilePath, vw, vh, mergedArgs, ignoreArgs) + note;
+            return ToolResult.Text(
+                await mgr.StartAsync(effectiveChannel, headless, resolved.ProfilePath, vw, vh, mergedArgs, ignoreArgs) + note);
         }
-        catch (InvalidOperationException ex) { return $"Error: {ex.Message}"; }
+        catch (InvalidOperationException ex) { return ToolResult.Fail($"Error: {ex.Message}", "start failed"); }
         catch (Exception ex) { return BrowserToolBase.Fail("browser_start", ex); }
     }
 

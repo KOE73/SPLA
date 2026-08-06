@@ -36,10 +36,10 @@ public sealed class SkillDeactivateTool : IMcpTool
         }
     };
 
-    public Task<string> ExecuteAsync(string argumentsJson, CancellationToken cancellationToken = default)
+    public Task<ToolResult> ExecuteAsync(string argumentsJson, CancellationToken cancellationToken = default)
     {
         var session = AgentSessionScope.Current?.Skills;
-        if (session is null) return Task.FromResult("error: no active chat session");
+        if (session is null) return Task.FromResult(ToolResult.Refuse("error: no active chat session", "no chat session"));
 
         var previous = session.ActiveSkillId;
         session.Deactivate();
@@ -47,8 +47,8 @@ public sealed class SkillDeactivateTool : IMcpTool
         // Sets the skill raised go down with it. Anything the agent or the user raised stays —
         // it was not this procedure's to take away.
         AgentSessionScope.Current?.ToolSets.DeactivateAllBy(ToolSetActivationBy.Skill);
-        return Task.FromResult(previous is not null
+        return Task.FromResult(ToolResult.Text(previous is not null
             ? $"ok: deactivated '{previous}'"
-            : "ok: no active skill");
+            : "ok: no active skill"));
     }
 }

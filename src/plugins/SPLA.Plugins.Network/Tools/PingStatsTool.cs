@@ -41,14 +41,14 @@ public class PingStatsTool : IMcpTool
         }
     };
 
-    public async Task<string> ExecuteAsync(string argumentsJson, CancellationToken cancellationToken = default)
+    public async Task<ToolResult> ExecuteAsync(string argumentsJson, CancellationToken cancellationToken = default)
     {
         try
         {
             using var doc = JsonDocument.Parse(argumentsJson);
             var root = doc.RootElement;
             var host = ToolJson.GetStringTrimmed(root, "host");
-            if (host is null) return "Error: Missing 'host' parameter.";
+            if (host is null) return ToolResult.Fail("Error: Missing 'host' parameter.", "missing host");
 
             var count    = ToolJson.GetInt32Clamped(root, "count",    10,    1,  100);
             var timeout  = ToolJson.GetInt32Clamped(root, "timeout",  2000, 100, 30_000);
@@ -92,15 +92,15 @@ public class PingStatsTool : IMcpTool
                 sb.AppendLine($"Jitter (avg δ):  {jitter:F1} ms");
             }
 
-            return sb.ToString();
+            return ToolResult.Text(sb.ToString());
         }
         catch (JsonException)
         {
-            return "Error: Invalid JSON arguments.";
+            return ToolResult.Fail("Error: Invalid JSON arguments.", "invalid json");
         }
         catch (Exception ex)
         {
-            return $"Error: {ex.Message}";
+            return ToolResult.Fail($"Error: {ex.Message}", "exception");
         }
     }
 }

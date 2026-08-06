@@ -55,7 +55,7 @@ public sealed class SshRunTool : IMcpTool
         }
     };
 
-    public async Task<string> ExecuteAsync(string argumentsJson, CancellationToken cancellationToken = default)
+    public async Task<ToolResult> ExecuteAsync(string argumentsJson, CancellationToken cancellationToken = default)
     {
         string command;
         string? hostName;
@@ -67,18 +67,18 @@ public sealed class SshRunTool : IMcpTool
         }
         catch (JsonException)
         {
-            return "Error: invalid JSON arguments.";
+            return ToolResult.Fail("Error: invalid JSON arguments.", "invalid json");
         }
 
         if (string.IsNullOrWhiteSpace(command))
-            return "Error: 'command' is required.";
+            return ToolResult.Fail("Error: 'command' is required.", "missing command");
 
         var settings = _settings();
         var (name, cfg) = ResolveHost(settings, hostName);
         if (cfg == null)
             return hostName == null
-                ? "Error: no default host configured. Set plugins.ssh.settings.default_host or pass 'host'."
-                : $"Error: unknown host '{hostName}'. Use ssh_list_hosts to see configured hosts.";
+                ? ToolResult.Refuse("Error: no default host configured. Set plugins.ssh.settings.default_host or pass 'host'.", "no default host")
+                : ToolResult.Refuse($"Error: unknown host '{hostName}'. Use ssh_list_hosts to see configured hosts.", "unknown host");
 
         // Read-only enforcement (per host policy) happens BEFORE connecting — a rejected command
         // never reaches the host. Hosts opted in with allow_write skip the guard.
@@ -86,7 +86,7 @@ public sealed class SshRunTool : IMcpTool
         {
             var rejection = ReadOnlyGuard.Reject(command);
             if (rejection != null)
-                return $"Refused (read-only host — set allow_write in the host settings to lift): {rejection}.";
+                return ToolResult.Refuse($"Refused (read-only host — set allow_write in the host settings to lift): {rejection}.", "read-only host");
         }
 
         SshClient? client = null;
@@ -105,16 +105,16 @@ public sealed class SshRunTool : IMcpTool
                 sb.AppendLine(stdout.TrimEnd());
             if (!string.IsNullOrEmpty(cmd.Error))
                 sb.AppendLine($"[stderr]\n{cmd.Error.TrimEnd()}");
-            return sb.ToString().TrimEnd();
+            return ToolResult.Text(sb.ToString().TrimEnd());
         }
         catch (OperationCanceledException)
         {
-            return "Error: command cancelled or timed out.";
+            return ToolResult.Fail("Error: command cancelled or timed out.", "cancelled or timeout");
         }
         catch (Exception ex)
         {
             // Never echo the arguments/credential; report only the failure reason.
-            return $"Error connecting/running on '{name}': {ex.Message}";
+            return ToolResult.Fail($"Error connecting/running on '{name}': {ex.Message}", "connect or run failed");
         }
         finally
         {

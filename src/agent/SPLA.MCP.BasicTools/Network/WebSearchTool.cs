@@ -52,13 +52,13 @@ public class WebSearchTool : IMcpTool
         }
     };
 
-    public async Task<string> ExecuteAsync(string argumentsJson, CancellationToken cancellationToken = default)
+    public async Task<ToolResult> ExecuteAsync(string argumentsJson, CancellationToken cancellationToken = default)
     {
         try
         {
             using var doc = JsonDocument.Parse(argumentsJson);
             var query = ToolJson.GetStringTrimmed(doc.RootElement, "query");
-            if (query is null) return "Error: Missing 'query' parameter.";
+            if (query is null) return ToolResult.Fail("Error: Missing 'query' parameter.", "missing query");
 
             var rawEngines = ToolJson.GetStringArray(doc.RootElement, "engines");
             var requestedEngines = rawEngines?
@@ -103,9 +103,9 @@ public class WebSearchTool : IMcpTool
                         }
                         var searchResult = string.Join("\n\n", lines);
                         var target = DataChannel.ParseTarget(ToolJson.GetStringTrimmed(doc.RootElement, "output"));
-                        if (target == OutputTarget.Context) return searchResult;
+                        if (target == OutputTarget.Context) return ToolResult.Text(searchResult);
                         var blobName = ToolJson.GetStringTrimmed(doc.RootElement, "output_name");
-                        return DataChannel.Route(target, BlobPayload.OfText(searchResult), $"web_search: {query}", blobName);
+                        return ToolResult.Text(DataChannel.Route(target, BlobPayload.OfText(searchResult), $"web_search: {query}", blobName));
                     }
                     else
                     {
@@ -118,7 +118,7 @@ public class WebSearchTool : IMcpTool
                 }
             }
 
-            return "Error: Search returned no parseable results from all requested sources:\n" + string.Join("\n", errors);
+            return ToolResult.Fail("Error: Search returned no parseable results from all requested sources:\n" + string.Join("\n", errors), "all engines failed");
         }
         catch (OperationCanceledException)
         {
@@ -126,7 +126,7 @@ public class WebSearchTool : IMcpTool
         }
         catch (Exception ex)
         {
-            return $"Error parsing arguments: {ex.Message}";
+            return ToolResult.Fail($"Error parsing arguments: {ex.Message}", "invalid arguments");
         }
     }
 }

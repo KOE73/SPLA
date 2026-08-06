@@ -40,7 +40,7 @@ public sealed class AgentMemoryGetTool : IMcpTool
         }
     };
 
-    public Task<string> ExecuteAsync(string argumentsJson, CancellationToken cancellationToken = default)
+    public Task<ToolResult> ExecuteAsync(string argumentsJson, CancellationToken cancellationToken = default)
     {
         try
         {
@@ -49,14 +49,14 @@ public sealed class AgentMemoryGetTool : IMcpTool
             var key   = ToolJson.GetString(root,"key");
             var scope = ToolJson.GetString(root,"scope");
 
-            if (string.IsNullOrWhiteSpace(key)) return Task.FromResult("error: key is required");
+            if (string.IsNullOrWhiteSpace(key)) return Task.FromResult(ToolResult.Fail("error: key is required", "missing key"));
 
             var store = AgentMemoryHelpers.SelectStore(_project, scope);
-            if (store is null) return Task.FromResult("error: no active chat session");
-            return Task.FromResult(store.Get(key) is { } v
+            if (store is null) return Task.FromResult(ToolResult.Refuse("error: no active chat session", "no chat session"));
+            return Task.FromResult(ToolResult.Text(store.Get(key) is { } v
                 ? v
-                : $"not_found: [{store.Scope}] {key}");
+                : $"not_found: [{store.Scope}] {key}"));
         }
-        catch (JsonException) { return Task.FromResult("error: invalid_json"); }
+        catch (JsonException) { return Task.FromResult(ToolResult.Fail("error: invalid_json", "invalid json")); }
     }
 }

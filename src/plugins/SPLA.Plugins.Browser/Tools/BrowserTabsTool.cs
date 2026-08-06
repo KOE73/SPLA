@@ -24,13 +24,13 @@ public sealed class BrowserTabsTool : IMcpTool
         }
     };
 
-    public async Task<string> ExecuteAsync(string argumentsJson, CancellationToken cancellationToken = default)
+    public async Task<ToolResult> ExecuteAsync(string argumentsJson, CancellationToken cancellationToken = default)
     {
         var mgr = BrowserToolBase.Current;
         if (mgr is null) return BrowserToolBase.NotRunning;
 
         var tabs = mgr.Pages.All();
-        if (tabs.Count == 0) return "No open tabs.";
+        if (tabs.Count == 0) return ToolResult.Text("No open tabs.");
 
         var sb = new StringBuilder();
         foreach (var (id, page) in tabs)
@@ -40,6 +40,6 @@ public sealed class BrowserTabsTool : IMcpTool
             var mark = id == mgr.Pages.ActiveTabId ? " [active]" : "";
             sb.AppendLine($"{id}{mark} — \"{title}\" — {page.Url}");
         }
-        return sb.ToString().TrimEnd();
+        return ToolResult.Text(sb.ToString().TrimEnd());
     }
 }

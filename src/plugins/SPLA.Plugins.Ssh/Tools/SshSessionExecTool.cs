@@ -76,7 +76,7 @@ internal sealed class SshSessionExecTool : IMcpTool
         }
     };
 
-    public async Task<string> ExecuteAsync(string argumentsJson, CancellationToken cancellationToken = default)
+    public async Task<ToolResult> ExecuteAsync(string argumentsJson, CancellationToken cancellationToken = default)
     {
         string command;
         string? sessionId, hostName;
@@ -100,22 +100,22 @@ internal sealed class SshSessionExecTool : IMcpTool
         }
         catch (JsonException)
         {
-            return "Error: invalid JSON arguments.";
+            return ToolResult.Fail("Error: invalid JSON arguments.", "invalid json");
         }
 
         if (string.IsNullOrWhiteSpace(command))
-            return "Error: 'command' is required.";
+            return ToolResult.Fail("Error: 'command' is required.", "missing command");
 
         var (session, cfg, error) = await _ctx.ResolveAsync(_hub, sessionId, hostName, "agent", cancellationToken);
         if (session == null || cfg == null)
-            return error ?? "Error: could not resolve an SSH session.";
+            return ToolResult.Refuse(error ?? "Error: could not resolve an SSH session.", "session not resolved");
 
         // Read-only enforcement per host policy — screened before the shell sees anything.
         if (!cfg.AllowWrite)
         {
             var rejection = ReadOnlyGuard.Reject(command);
             if (rejection != null)
-                return $"Refused (read-only host — set allow_write in the host settings to lift): {rejection}.";
+                return ToolResult.Refuse($"Refused (read-only host — set allow_write in the host settings to lift): {rejection}.", "read-only host");
         }
 
         // force: clear the way before running. Try the polite route first (Ctrl+C, which also verifies
@@ -176,15 +176,15 @@ internal sealed class SshSessionExecTool : IMcpTool
             });
             var body = StripEchoedCommand(res.NewOutput, command);
             if (!string.IsNullOrWhiteSpace(body)) sb.AppendLine(body.TrimEnd());
-            return sb.ToString().TrimEnd();
+            return ToolResult.Text(sb.ToString().TrimEnd());
         }
         catch (OperationCanceledException)
         {
-            return "Error: command cancelled.";
+            return ToolResult.Fail("Error: command cancelled.", "cancelled");
         }
         catch (Exception ex)
         {
-            return $"Error in session '{session.Id}': {ex.Message}";
+            return ToolResult.Fail($"Error in session '{session.Id}': {ex.Message}", "session error");
         }
     }
 

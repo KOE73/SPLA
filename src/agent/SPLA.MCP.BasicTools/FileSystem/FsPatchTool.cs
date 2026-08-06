@@ -81,7 +81,7 @@ public class FsPatchTool : IMcpTool
         }
     };
 
-    public async Task<string> ExecuteAsync(string argumentsJson, CancellationToken cancellationToken = default)
+    public async Task<ToolResult> ExecuteAsync(string argumentsJson, CancellationToken cancellationToken = default)
     {
         try
         {
@@ -91,24 +91,24 @@ public class FsPatchTool : IMcpTool
             var newText = ToolJson.GetString(doc.RootElement, "new_text");
 
             if (path is null || oldText is null || newText is null)
-                return "Error: Missing 'path', 'old_text', or 'new_text' parameter.";
+                return ToolResult.Fail("Error: Missing 'path', 'old_text', or 'new_text' parameter.", "missing arguments");
 
             if (!DataChannel.ResolveText(newText, out newText, out var resolveError))
-                return $"Error: {resolveError}";
+                return ToolResult.Fail($"Error: {resolveError}", "blob resolve failed");
 
             var ws = HostServices.Sandbox.Workspace;
             if (!ws.FileExists(path))
             {
-                return $"Error: File not found at {path}";
+                return ToolResult.Fail($"Error: File not found at {path}", "file not found");
             }
 
             var content = await ws.ReadAllTextAsync(path, cancellationToken);
             if (content.Length == 0 && oldText.Length > 0)
             {
-                return "status: failed\n" +
+                return ToolResult.Fail("status: failed\n" +
                        $"file: {path}\n" +
                        "reason: file_is_empty\n" +
-                       "hint: file is empty, cannot apply patch.";
+                       "hint: file is empty, cannot apply patch.", "file_is_empty");
             }
 
             // Normalise line endings for comparison to prevent matches failing due to carriage return differences
@@ -119,19 +119,19 @@ public class FsPatchTool : IMcpTool
             var index = normalizedContent.IndexOf(normalizedOld);
             if (index == -1)
             {
-                return "status: failed\n" +
+                return ToolResult.Fail("status: failed\n" +
                        $"file: {path}\n" +
                        "reason: old_text_not_found\n" +
-                       "hint: The old_text string was not found in the file. Read the file again to obtain the latest exact content.";
+                       "hint: The old_text string was not found in the file. Read the file again to obtain the latest exact content.", "old_text_not_found");
             }
 
             var secondIndex = normalizedContent.IndexOf(normalizedOld, index + normalizedOld.Length);
             if (secondIndex != -1)
             {
-                return "status: failed\n" +
+                return ToolResult.Fail("status: failed\n" +
                        $"file: {path}\n" +
                        "reason: old_text_not_unique\n" +
-                       "hint: The old_text block matches multiple locations in the file. Provide a larger unique old_text context block.";
+                       "hint: The old_text block matches multiple locations in the file. Provide a larger unique old_text context block.", "old_text_not_unique");
             }
 
             // Execute replacement
@@ -147,18 +147,18 @@ public class FsPatchTool : IMcpTool
 
             var changedLinesCount = normalizedNew.Split('\n').Length;
 
-            return "status: success\n" +
+            return ToolResult.Text("status: success\n" +
                    $"file: {path}\n" +
                    $"changedLines: {changedLinesCount}\n" +
-                   "summary: Replaced the unique target old_text block successfully.";
+                   "summary: Replaced the unique target old_text block successfully.");
         }
         catch (JsonException)
         {
-            return "Error: Invalid JSON arguments.";
+            return ToolResult.Fail("Error: Invalid JSON arguments.", "invalid json");
         }
         catch (Exception ex)
         {
-            return $"Error applying patch: {ex.Message}";
+            return ToolResult.Fail($"Error applying patch: {ex.Message}", "patch failed");
         }
     }
 

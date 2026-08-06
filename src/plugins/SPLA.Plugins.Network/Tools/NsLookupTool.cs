@@ -36,18 +36,18 @@ public class NsLookupTool : IMcpTool
         }
     };
 
-    public async Task<string> ExecuteAsync(string argumentsJson, CancellationToken cancellationToken = default)
+    public async Task<ToolResult> ExecuteAsync(string argumentsJson, CancellationToken cancellationToken = default)
     {
         try
         {
             using var doc = JsonDocument.Parse(argumentsJson);
             var host = ToolJson.GetStringTrimmed(doc.RootElement, "host");
-            if (host is null) return "Error: Missing 'host' parameter.";
+            if (host is null) return ToolResult.Fail("Error: Missing 'host' parameter.", "missing host");
 
             var addresses = await Dns.GetHostAddressesAsync(host, cancellationToken);
             if (addresses.Length == 0)
             {
-                return $"Error: No IP addresses resolved for '{host}'.";
+                return ToolResult.Text($"Error: No IP addresses resolved for '{host}'.");
             }
 
             var sb = new StringBuilder();
@@ -57,15 +57,15 @@ public class NsLookupTool : IMcpTool
                 sb.AppendLine($"{i + 1}. {addresses[i]} (Type: {addresses[i].AddressFamily})");
             }
 
-            return sb.ToString();
+            return ToolResult.Text(sb.ToString());
         }
         catch (JsonException)
         {
-            return "Error: Invalid JSON arguments.";
+            return ToolResult.Fail("Error: Invalid JSON arguments.", "invalid json");
         }
         catch (Exception ex)
         {
-            return $"Error resolving host: {ex.Message}";
+            return ToolResult.Fail($"Error resolving host: {ex.Message}", "resolve failed");
         }
     }
 }

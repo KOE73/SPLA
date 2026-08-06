@@ -41,7 +41,7 @@ public class TcpProbeTool : IMcpTool
         }
     };
 
-    public async Task<string> ExecuteAsync(string argumentsJson, CancellationToken cancellationToken = default)
+    public async Task<ToolResult> ExecuteAsync(string argumentsJson, CancellationToken cancellationToken = default)
     {
         string host = string.Empty;
         int port = 0;
@@ -51,11 +51,11 @@ public class TcpProbeTool : IMcpTool
             var root = doc.RootElement;
 
             var hostVal = ToolJson.GetStringTrimmed(root, "host");
-            if (hostVal is null) return "Error: Missing 'host' or 'port' parameters.";
+            if (hostVal is null) return ToolResult.Fail("Error: Missing 'host' or 'port' parameters.", "missing host");
             host = hostVal;
 
             var portVal = ToolJson.GetInt32(root, "port");
-            if (portVal is null || portVal < 1 || portVal > 65535) return "Error: Port must be an integer between 1 and 65535.";
+            if (portVal is null || portVal < 1 || portVal > 65535) return ToolResult.Fail("Error: Port must be an integer between 1 and 65535.", "invalid port");
             port = portVal.Value;
 
             var payload      = ToolJson.GetString(root, "payload");
@@ -121,7 +121,7 @@ public class TcpProbeTool : IMcpTool
                 }
             }
             catch (OperationCanceledException) { /* Read timeout, that's fine, we return what we have (0 bytes) */ }
-            catch (Exception ex) { return $"Connected to {host}:{port} in {connectTime}ms. Error reading: {ex.Message}"; }
+            catch (Exception ex) { return ToolResult.Fail($"Connected to {host}:{port} in {connectTime}ms. Error reading: {ex.Message}", "read failed"); }
 
             var sb = new StringBuilder();
             sb.AppendLine($"Connection: Established in {connectTime}ms");
@@ -142,15 +142,15 @@ public class TcpProbeTool : IMcpTool
                 if (bytesRead > 512) sb.AppendLine("... (hex dump truncated)");
             }
 
-            return sb.ToString();
+            return ToolResult.Text(sb.ToString());
         }
         catch (OperationCanceledException)
         {
-            return $"Timeout connecting to or reading from {host}:{port}.";
+            return ToolResult.Text($"Timeout connecting to or reading from {host}:{port}.");
         }
         catch (Exception ex)
         {
-            return $"Error probing TCP {host}:{port} - {ex.Message}";
+            return ToolResult.Fail($"Error probing TCP {host}:{port} - {ex.Message}", "tcp probe failed");
         }
     }
 }

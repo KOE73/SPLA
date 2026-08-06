@@ -33,10 +33,10 @@ public class ConversationOrchestratorTests
         public List<(string name, string args)> Executed { get; } = new();
         public IEnumerable<ToolDefinition> GetToolDefinitions() => System.Array.Empty<ToolDefinition>();
 
-        public Task<string> ExecuteToolAsync(AgentMode mode, string name, string argumentsJson, CancellationToken cancellationToken = default)
+        public Task<ToolResult> ExecuteToolAsync(AgentMode mode, string name, string argumentsJson, CancellationToken cancellationToken = default)
         {
             Executed.Add((name, argumentsJson));
-            return Task.FromResult($"result of {name}");
+            return Task.FromResult(ToolResult.Text($"result of {name}"));
         }
     }
 

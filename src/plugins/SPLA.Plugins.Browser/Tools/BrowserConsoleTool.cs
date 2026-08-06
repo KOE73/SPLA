@@ -29,7 +29,7 @@ public sealed class BrowserConsoleTool : IMcpTool
         }
     };
 
-    public Task<string> ExecuteAsync(string argumentsJson, CancellationToken cancellationToken = default)
+    public Task<ToolResult> ExecuteAsync(string argumentsJson, CancellationToken cancellationToken = default)
     {
         var mgr = BrowserToolBase.Current;
         if (mgr is null) return Task.FromResult(BrowserToolBase.NotRunning);
@@ -40,14 +40,14 @@ public sealed class BrowserConsoleTool : IMcpTool
             using var doc = JsonDocument.Parse(string.IsNullOrWhiteSpace(argumentsJson) ? "{}" : argumentsJson);
             tabId = ToolJson.GetStringTrimmed(doc.RootElement, "tab_id");
         }
-        catch (JsonException) { return Task.FromResult("Error: invalid JSON arguments."); }
+        catch (JsonException) { return Task.FromResult(ToolResult.Fail("Error: invalid JSON arguments.", "invalid json")); }
 
         var (resolvedTabId, _, error) = BrowserToolBase.ResolveTab(mgr, tabId);
         if (error != null) return Task.FromResult(error);
 
         var entries = mgr.DiagnosticsFor(resolvedTabId!).Console();
-        return Task.FromResult(entries.Count == 0
+        return Task.FromResult(ToolResult.Text(entries.Count == 0
             ? $"No console messages recorded for tab {resolvedTabId}."
-            : string.Join("\n", entries));
+            : string.Join("\n", entries)));
     }
 }

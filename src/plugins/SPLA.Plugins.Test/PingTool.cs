@@ -31,8 +31,8 @@ public class PingTool : IMcpTool
         };
     }
 
-    public Task<string> ExecuteAsync(string argumentsJson, CancellationToken cancellationToken = default)
+    public Task<ToolResult> ExecuteAsync(string argumentsJson, CancellationToken cancellationToken = default)
     {
-        return Task.FromResult("pong! the test plugin is alive.");
+        return Task.FromResult(ToolResult.Text("pong! the test plugin is alive."));
     }
 }

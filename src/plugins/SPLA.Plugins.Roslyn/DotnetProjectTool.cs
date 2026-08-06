@@ -41,7 +41,7 @@ internal abstract class DotnetProjectTool : IMcpTool
     /// </summary>
     protected abstract string BuildArguments(string resolvedPath, JsonElement root);
 
-    public async Task<string> ExecuteAsync(string argumentsJson, CancellationToken cancellationToken = default)
+    public async Task<ToolResult> ExecuteAsync(string argumentsJson, CancellationToken cancellationToken = default)
     {
         string? path;
         int timeoutSeconds;
@@ -58,13 +58,13 @@ internal abstract class DotnetProjectTool : IMcpTool
             blobName = ToolJson.GetStringTrimmed(root, "output_name");
 
             if (!DotnetCli.ResolveInWorkspace(_workspaceRoot, path, out var resolved, out var pathError))
-                return $"ok: false\nerror: {pathError}";
+                return ToolResult.Fail($"ok: false\nerror: {pathError}", "bad path");
 
             dotnetArgs = BuildArguments(resolved, root);
         }
         catch (JsonException)
         {
-            return "Error: Invalid JSON arguments.";
+            return ToolResult.Fail("Error: Invalid JSON arguments.", "invalid json");
         }
 
         DotnetCli.Result result;
@@ -78,15 +78,15 @@ internal abstract class DotnetProjectTool : IMcpTool
         }
         catch (Exception ex)
         {
-            return $"ok: false\nerror: could not run 'dotnet {dotnetArgs}': {ex.Message}";
+            return ToolResult.Fail($"ok: false\nerror: could not run 'dotnet {dotnetArgs}': {ex.Message}", "dotnet launch failed");
         }
 
         var formatted = Format(result, timeoutSeconds);
-        if (outputTarget == OutputTarget.Context) return formatted;
+        if (outputTarget == OutputTarget.Context) return ToolResult.Text(formatted);
 
         var ok = !result.TimedOut && result.ExitCode == 0;
-        return DataChannel.Route(outputTarget, BlobPayload.OfText(formatted),
-            $"{Name}: {(ok ? "ok" : "failed")} (exit {result.ExitCode})", blobName);
+        return ToolResult.Text(DataChannel.Route(outputTarget, BlobPayload.OfText(formatted),
+            $"{Name}: {(ok ? "ok" : "failed")} (exit {result.ExitCode})", blobName));
     }
 
     private string Format(DotnetCli.Result result, int timeoutSeconds)

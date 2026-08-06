@@ -23,9 +23,9 @@ public sealed class BrowserStatusTool : IMcpTool
         }
     };
 
-    public Task<string> ExecuteAsync(string argumentsJson, CancellationToken cancellationToken = default)
+    public Task<ToolResult> ExecuteAsync(string argumentsJson, CancellationToken cancellationToken = default)
     {
         var mgr = BrowserToolBase.Current;
-        return Task.FromResult(mgr?.Status() ?? "Browser is not running. Call browser_start.");
+        return Task.FromResult(ToolResult.Text(mgr?.Status() ?? "Browser is not running. Call browser_start."));
     }
 }

@@ -47,7 +47,7 @@ public sealed class ImageViewTool : IMcpTool
         }
     };
 
-    public Task<string> ExecuteAsync(string argumentsJson, CancellationToken cancellationToken = default)
+    public Task<ToolResult> ExecuteAsync(string argumentsJson, CancellationToken cancellationToken = default)
     {
         string? handle;
         try
@@ -55,18 +55,19 @@ public sealed class ImageViewTool : IMcpTool
             using var doc = JsonDocument.Parse(string.IsNullOrWhiteSpace(argumentsJson) ? "{}" : argumentsJson);
             handle = ToolJson.GetStringTrimmed(doc.RootElement, "handle");
         }
-        catch (JsonException) { return Task.FromResult("error: invalid_json"); }
+        catch (JsonException) { return Task.FromResult(ToolResult.Fail("error: invalid_json", "invalid json")); }
 
-        if (handle is null) return Task.FromResult("error: 'handle' is required");
+        if (handle is null) return Task.FromResult(ToolResult.Fail("error: 'handle' is required", "missing handle"));
 
         var session = AgentSessionScope.Current;
-        if (session is null) return Task.FromResult("error: no active chat session");
+        if (session is null) return Task.FromResult(ToolResult.Refuse("error: no active chat session", "no chat session"));
 
         var payload = session.Blobs.Get(handle);
-        if (payload is null) return Task.FromResult($"error: no blob found for handle '{handle}'");
+        if (payload is null) return Task.FromResult(ToolResult.Fail($"error: no blob found for handle '{handle}'", "unknown handle"));
         if (payload.Kind != BlobKind.Bytes || payload.Bytes is null)
-            return Task.FromResult(
-                $"error: blob '{handle}' holds text, not an image — read it with a tool that takes text, or blob_peek it.");
+            return Task.FromResult(ToolResult.Fail(
+                $"error: blob '{handle}' holds text, not an image — read it with a tool that takes text, or blob_peek it.",
+                "not an image"));
 
         // Never assume. A byte blob whose type nobody recorded is checked against its own signature:
         // the previous default of "image/png" turned every typeless binary into a data URL of garbage
@@ -76,13 +77,17 @@ public sealed class ImageViewTool : IMcpTool
             contentType = BlobContentType.Sniff(payload.Bytes);
 
         if (!BlobContentType.IsViewableImage(contentType))
-            return Task.FromResult(
+            return Task.FromResult(ToolResult.Fail(
                 $"error: blob '{handle}' is not a viewable image (content type: {contentType ?? "unrecognised — no known image signature"}, " +
                 $"{payload.Size} bytes). Binary data cannot be looked at: pass the handle to a writing/uploading tool " +
-                $"to move it, or use blob_peek to inspect its bytes.");
+                $"to move it, or use blob_peek to inspect its bytes.",
+                "not an image"));
 
-        var dataUrl = $"data:{contentType};base64,{Convert.ToBase64String(payload.Bytes)}";
-        session.Images.Push(dataUrl);
-        return Task.FromResult($"ok: queued image from '{handle}' ({payload.Size} bytes) — visible on your next turn.");
+        // The picture rides in the result rather than being pushed into the chat's pending sink: the
+        // tool states that it has an image, and the conversation layer decides how a given model gets
+        // to see it. The wording still holds — that layer delivers it on the next turn.
+        return Task.FromResult(ToolResult.From(
+            new ToolText($"ok: queued image from '{handle}' ({payload.Size} bytes) — visible on your next turn."),
+            new ToolImage(Convert.ToBase64String(payload.Bytes), contentType!)));
     }
 }

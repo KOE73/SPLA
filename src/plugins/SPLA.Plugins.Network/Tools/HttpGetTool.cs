@@ -47,14 +47,14 @@ public class HttpGetTool : IMcpTool
         }
     };
 
-    public async Task<string> ExecuteAsync(string argumentsJson, CancellationToken cancellationToken = default)
+    public async Task<ToolResult> ExecuteAsync(string argumentsJson, CancellationToken cancellationToken = default)
     {
         try
         {
             using var doc = JsonDocument.Parse(argumentsJson);
             var root = doc.RootElement;
             var url = ToolJson.GetStringTrimmed(root, "url");
-            if (url is null) return "Error: Missing 'url' parameter.";
+            if (url is null) return ToolResult.Fail("Error: Missing 'url' parameter.", "missing url");
 
             var maxLen    = ToolJson.GetInt32Clamped(root, "max_response_length", 2000,  1,       10000);
             var timeoutMs = ToolJson.GetInt32Clamped(root, "timeout",             30_000, 1000,   300_000);
@@ -98,15 +98,15 @@ public class HttpGetTool : IMcpTool
                 sb.AppendLine(body);
             }
 
-            return sb.ToString();
+            return ToolResult.Text(sb.ToString());
         }
         catch (JsonException)
         {
-            return "Error: Invalid JSON arguments.";
+            return ToolResult.Fail("Error: Invalid JSON arguments.", "invalid json");
         }
         catch (Exception ex)
         {
-            return $"Error executing HTTP GET: {ex.Message}";
+            return ToolResult.Fail($"Error executing HTTP GET: {ex.Message}", "http get failed");
         }
     }
 }

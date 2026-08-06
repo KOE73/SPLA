@@ -137,7 +137,7 @@ public class LanScanTool : IMcpTool
         }
     };
 
-    public async Task<string> ExecuteAsync(string argumentsJson, CancellationToken cancellationToken = default)
+    public async Task<ToolResult> ExecuteAsync(string argumentsJson, CancellationToken cancellationToken = default)
     {
         try
         {
@@ -155,7 +155,7 @@ public class LanScanTool : IMcpTool
 
             if (!usePing && !usePortProbe)
             {
-                return "Error: Nothing to scan. Enable ping or provide ports.";
+                return ToolResult.Fail("Error: Nothing to scan. Enable ping or provide ports.", "nothing to scan");
             }
 
             var hosts = NetworkScanHelpers.ParseHostRange(cidr, start, end, maxHosts);
@@ -227,17 +227,17 @@ public class LanScanTool : IMcpTool
 
             var result = sb.ToString();
             var target = DataChannel.ParseTarget(ToolJson.GetStringTrimmed(root, "output"));
-            if (target == OutputTarget.Context) return result;
+            if (target == OutputTarget.Context) return ToolResult.Text(result);
             var blobName = ToolJson.GetStringTrimmed(root, "output_name");
-            return DataChannel.Route(target, BlobPayload.OfText(result), $"network_discover_hosts: {ordered.Length} responsive", blobName);
+            return ToolResult.Text(DataChannel.Route(target, BlobPayload.OfText(result), $"network_discover_hosts: {ordered.Length} responsive", blobName));
         }
         catch (JsonException)
         {
-            return "Error: Invalid JSON arguments.";
+            return ToolResult.Fail("Error: Invalid JSON arguments.", "invalid json");
         }
         catch (Exception ex)
         {
-            return $"Error scanning LAN: {ex.Message}";
+            return ToolResult.Fail($"Error scanning LAN: {ex.Message}", "lan scan failed");
         }
     }
 

@@ -41,13 +41,13 @@ public class FsListTool : IMcpTool
         }
     };
 
-    public Task<string> ExecuteAsync(string argumentsJson, CancellationToken cancellationToken = default)
+    public Task<ToolResult> ExecuteAsync(string argumentsJson, CancellationToken cancellationToken = default)
     {
         try
         {
             using var doc = JsonDocument.Parse(argumentsJson);
             var path = ToolJson.GetStringTrimmed(doc.RootElement, "path");
-            if (path is null) return Task.FromResult("Error: Missing 'path' parameter.");
+            if (path is null) return Task.FromResult(ToolResult.Fail("Error: Missing 'path' parameter.", "missing path"));
 
             var ws = HostServices.Sandbox.Workspace;
             if (ws.DirectoryExists(path))
@@ -60,13 +60,13 @@ public class FsListTool : IMcpTool
                 foreach (var d in dirs) sb.AppendLine($"[DIR] {Path.GetFileName(d)}");
                 foreach (var f in files) sb.AppendLine($"[FILE] {Path.GetFileName(f)}");
 
-                return Task.FromResult(sb.ToString());
+                return Task.FromResult(ToolResult.Text(sb.ToString()));
             }
-            return Task.FromResult($"Error: Directory not found at {path}");
+            return Task.FromResult(ToolResult.Fail($"Error: Directory not found at {path}", "directory not found"));
         }
         catch (JsonException)
         {
-            return Task.FromResult("Error: Invalid JSON arguments.");
+            return Task.FromResult(ToolResult.Fail("Error: Invalid JSON arguments.", "invalid json"));
         }
     }
 }

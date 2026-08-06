@@ -193,7 +193,7 @@ public class AgentLibrarianTests
         var tool = new SkillFindTool(new TagLibrarian(library),
             new AgentLibrarian(library, gateway, () => Settings(true)));
 
-        var result = await tool.ExecuteAsync("""{"tags":["ssh"]}""");
+        var result = (await tool.ExecuteAsync("""{"tags":["ssh"]}""")).TextContent;
 
         Assert.Contains("linux.capture", result);
         Assert.Equal(0, gateway.Calls);
@@ -207,7 +207,7 @@ public class AgentLibrarianTests
         var tool = new SkillFindTool(new TagLibrarian(library),
             new AgentLibrarian(library, gateway, () => Settings(true)));
 
-        var result = await tool.ExecuteAsync("""{"text":"the box keeps dropping my connections"}""");
+        var result = (await tool.ExecuteAsync("""{"text":"the box keeps dropping my connections"}""")).TextContent;
 
         Assert.Equal(1, gateway.Calls);
         Assert.Contains("linux.capture", result);
@@ -222,7 +222,7 @@ public class AgentLibrarianTests
         var tool = new SkillFindTool(new TagLibrarian(library),
             new AgentLibrarian(library, gateway, () => Settings(false)));
 
-        var result = await tool.ExecuteAsync("""{"text":"zzzzz"}""");
+        var result = (await tool.ExecuteAsync("""{"text":"zzzzz"}""")).TextContent;
 
         Assert.Equal(0, gateway.Calls);
         Assert.StartsWith("no skills found", result);

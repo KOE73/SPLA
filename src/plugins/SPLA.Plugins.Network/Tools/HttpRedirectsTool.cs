@@ -45,14 +45,14 @@ public class HttpRedirectsTool : IMcpTool
         }
     };
 
-    public async Task<string> ExecuteAsync(string argumentsJson, CancellationToken cancellationToken = default)
+    public async Task<ToolResult> ExecuteAsync(string argumentsJson, CancellationToken cancellationToken = default)
     {
         try
         {
             using var doc = JsonDocument.Parse(argumentsJson);
             var root = doc.RootElement;
             var url = ToolJson.GetStringTrimmed(root, "url");
-            if (url is null) return "Error: Missing 'url' parameter.";
+            if (url is null) return ToolResult.Fail("Error: Missing 'url' parameter.", "missing url");
 
             var maxRedirects = ToolJson.GetInt32Clamped(root, "max_redirects", 20,     1,    50);
             var timeoutMs    = ToolJson.GetInt32Clamped(root, "timeout",       10_000, 1000, 60_000);
@@ -132,15 +132,15 @@ public class HttpRedirectsTool : IMcpTool
             if (hop > maxRedirects)
                 sb.AppendLine($"Stopped after {maxRedirects} redirects (limit reached).");
 
-            return sb.ToString();
+            return ToolResult.Text(sb.ToString());
         }
         catch (JsonException)
         {
-            return "Error: Invalid JSON arguments.";
+            return ToolResult.Fail("Error: Invalid JSON arguments.", "invalid json");
         }
         catch (Exception ex)
         {
-            return $"Error following redirects: {ex.Message}";
+            return ToolResult.Fail($"Error following redirects: {ex.Message}", "redirect trace failed");
         }
     }
 }

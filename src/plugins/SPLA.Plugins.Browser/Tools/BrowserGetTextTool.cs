@@ -36,7 +36,7 @@ public sealed class BrowserGetTextTool : IMcpTool
         }
     };
 
-    public async Task<string> ExecuteAsync(string argumentsJson, CancellationToken cancellationToken = default)
+    public async Task<ToolResult> ExecuteAsync(string argumentsJson, CancellationToken cancellationToken = default)
     {
         var mgr = BrowserToolBase.Current;
         if (mgr is null) return BrowserToolBase.NotRunning;
@@ -51,7 +51,7 @@ public sealed class BrowserGetTextTool : IMcpTool
             tabId = ToolJson.GetStringTrimmed(root, "tab_id");
             maxChars = ToolJson.GetInt32Clamped(root, "max_chars", 5000, 200, 30_000);
         }
-        catch (JsonException) { return "Error: invalid JSON arguments."; }
+        catch (JsonException) { return ToolResult.Fail("Error: invalid JSON arguments.", "invalid json"); }
 
         var (resolvedTabId, page, tabError) = BrowserToolBase.ResolveTab(mgr, tabId);
         if (page is null) return tabError!;
@@ -62,7 +62,7 @@ public sealed class BrowserGetTextTool : IMcpTool
             if (!string.IsNullOrWhiteSpace(refId))
             {
                 var (locator, refError) = mgr.Refs.Resolve(page, resolvedTabId!, refId.Trim());
-                if (locator is null) return refError!;
+                if (locator is null) return BrowserToolBase.RefFailure(refError!);
                 text = await locator.InnerTextAsync();
             }
             else
@@ -73,7 +73,7 @@ public sealed class BrowserGetTextTool : IMcpTool
             if (text.Length > maxChars)
                 text = text[..maxChars] + $"\n…(truncated at {maxChars} of {text.Length} chars)";
 
-            return text;
+            return ToolResult.Text(text);
         }
         catch (PlaywrightException ex) { return BrowserToolBase.Fail("browser_get_text", ex); }
     }

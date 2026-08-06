@@ -61,7 +61,7 @@ internal sealed class SshSessionWaitTool : IMcpTool
         }
     };
 
-    public async Task<string> ExecuteAsync(string argumentsJson, CancellationToken cancellationToken = default)
+    public async Task<ToolResult> ExecuteAsync(string argumentsJson, CancellationToken cancellationToken = default)
     {
         string? sessionId, untilPattern;
         var timeoutSeconds = 60;
@@ -75,24 +75,24 @@ internal sealed class SshSessionWaitTool : IMcpTool
         }
         catch (JsonException)
         {
-            return "Error: invalid JSON arguments.";
+            return ToolResult.Fail("Error: invalid JSON arguments.", "invalid json");
         }
 
         var open = _hub.List();
         sessionId ??= open.Count == 1 ? open[0].Id : null;
         if (sessionId == null)
             return open.Count == 0
-                ? "Error: no open SSH sessions."
-                : "Error: multiple sessions open — specify 'session'. Open: " + string.Join(", ", open.Select(s => s.Id));
+                ? ToolResult.Refuse("Error: no open SSH sessions.", "no open sessions")
+                : ToolResult.Refuse("Error: multiple sessions open — specify 'session'. Open: " + string.Join(", ", open.Select(s => s.Id)), "ambiguous session");
 
         var (session, cfg, error) = await _ctx.ResolveAsync(_hub, sessionId, null, "agent", cancellationToken);
-        if (session == null || cfg == null) return error ?? "Error: session not found.";
+        if (session == null || cfg == null) return ToolResult.Refuse(error ?? "Error: session not found.", "session not resolved");
 
         Regex? until = null;
         if (!string.IsNullOrEmpty(untilPattern))
         {
             try { until = new Regex(untilPattern, RegexOptions.None, TimeSpan.FromMilliseconds(200)); }
-            catch (ArgumentException ex) { return $"Error: invalid 'until' regex: {ex.Message}"; }
+            catch (ArgumentException ex) { return ToolResult.Fail($"Error: invalid 'until' regex: {ex.Message}", "invalid regex"); }
         }
 
         var pending = session.PendingCommand;
@@ -134,15 +134,15 @@ internal sealed class SshSessionWaitTool : IMcpTool
                 _ => res.Status
             });
             if (!string.IsNullOrWhiteSpace(res.NewOutput)) sb.AppendLine(res.NewOutput.TrimEnd());
-            return sb.ToString().TrimEnd();
+            return ToolResult.Text(sb.ToString().TrimEnd());
         }
         catch (OperationCanceledException)
         {
-            return "Error: wait cancelled.";
+            return ToolResult.Fail("Error: wait cancelled.", "cancelled");
         }
         catch (Exception ex)
         {
-            return $"Error in session '{session.Id}': {ex.Message}";
+            return ToolResult.Fail($"Error in session '{session.Id}': {ex.Message}", "session error");
         }
     }
 

@@ -107,7 +107,7 @@ public sealed class AgentSpawnTool : IMcpTool
         }
     };
 
-    public async Task<string> ExecuteAsync(string argumentsJson, CancellationToken cancellationToken = default)
+    public async Task<ToolResult> ExecuteAsync(string argumentsJson, CancellationToken cancellationToken = default)
     {
         try
         {
@@ -116,28 +116,28 @@ public sealed class AgentSpawnTool : IMcpTool
 
             var skillId = ToolJson.GetStringTrimmed(root, "skill");
             if (string.IsNullOrEmpty(skillId))
-                return "error: 'skill' is required";
+                return ToolResult.Fail("error: 'skill' is required", "missing skill");
 
             var input = ToolJson.GetStringTrimmed(root, "input");
             if (string.IsNullOrEmpty(input))
-                return "error: 'input' is required";
+                return ToolResult.Fail("error: 'input' is required", "missing input");
 
             var mode    = AgentMode.Edit;
             var modeStr = ToolJson.GetStringTrimmed(root, "mode");
             if (modeStr != null) Enum.TryParse<AgentMode>(modeStr, ignoreCase: true, out mode);
 
             var result = await _runner.RunSkillAsync(skillId!, input!, mode, cancellationToken);
-            return string.IsNullOrWhiteSpace(result)
+            return ToolResult.Text(string.IsNullOrWhiteSpace(result)
                 ? $"spawn: completed skill '{skillId}' (no output)"
-                : result;
+                : result);
         }
         catch (ArgumentException ex)
         {
-            return $"error: {ex.Message}";
+            return ToolResult.Fail($"error: {ex.Message}", "invalid argument");
         }
         catch (JsonException)
         {
-            return "error: invalid_json";
+            return ToolResult.Fail("error: invalid_json", "invalid json");
         }
     }
 

@@ -31,13 +31,13 @@ public class GetContextTool : IMcpTool
         }
     };
 
-    public Task<string> ExecuteAsync(string argumentsJson, CancellationToken cancellationToken = default)
+    public Task<ToolResult> ExecuteAsync(string argumentsJson, CancellationToken cancellationToken = default)
     {
         var context = $"Current Working Directory: {Directory.GetCurrentDirectory()}\n" +
                       $"OS: {System.Environment.OSVersion}\n" +
                       $"Machine Name: {System.Environment.MachineName}\n" +
                       $"User: {System.Environment.UserName}";
                       
-        return Task.FromResult(context);
+        return Task.FromResult(ToolResult.Text(context));
     }
 }

@@ -42,14 +42,14 @@ public class SmtpProbeTool : IMcpTool
         }
     };
 
-    public async Task<string> ExecuteAsync(string argumentsJson, CancellationToken cancellationToken = default)
+    public async Task<ToolResult> ExecuteAsync(string argumentsJson, CancellationToken cancellationToken = default)
     {
         try
         {
             using var doc = JsonDocument.Parse(argumentsJson);
             var root = doc.RootElement;
             var host = ToolJson.GetStringTrimmed(root, "host");
-            if (host is null) return "Error: Missing 'host' parameter.";
+            if (host is null) return ToolResult.Fail("Error: Missing 'host' parameter.", "missing host");
 
             var port      = ToolJson.GetInt32Clamped(root, "port",    25,   1,   65535);
             var timeoutMs = ToolJson.GetInt32Clamped(root, "timeout", 5000, 500, 30_000);
@@ -79,7 +79,7 @@ public class SmtpProbeTool : IMcpTool
             if (!banner.Code.StartsWith("220"))
             {
                 sb.AppendLine($"Unexpected banner code, aborting.");
-                return sb.ToString();
+                return ToolResult.Text(sb.ToString());
             }
 
             // EHLO
@@ -133,15 +133,15 @@ public class SmtpProbeTool : IMcpTool
             // Graceful quit
             try { await writer.WriteLineAsync("QUIT"); } catch { }
 
-            return sb.ToString();
+            return ToolResult.Text(sb.ToString());
         }
         catch (JsonException)
         {
-            return "Error: Invalid JSON arguments.";
+            return ToolResult.Fail("Error: Invalid JSON arguments.", "invalid json");
         }
         catch (Exception ex)
         {
-            return $"Error probing SMTP: {ex.Message}";
+            return ToolResult.Fail($"Error probing SMTP: {ex.Message}", "smtp probe failed");
         }
     }
 

@@ -29,16 +29,16 @@ internal sealed class SshSessionsListTool : IMcpTool
         }
     };
 
-    public Task<string> ExecuteAsync(string argumentsJson, CancellationToken cancellationToken = default)
+    public Task<ToolResult> ExecuteAsync(string argumentsJson, CancellationToken cancellationToken = default)
     {
         var sessions = _hub.List();
         if (sessions.Count == 0)
-            return Task.FromResult("No open SSH sessions. ssh_session_exec opens one automatically on first use.");
+            return Task.FromResult(ToolResult.Text("No open SSH sessions. ssh_session_exec opens one automatically on first use."));
 
         var sb = new StringBuilder($"Open SSH sessions: {sessions.Count}\n");
         foreach (var s in sessions)
             sb.AppendLine($"  {s.Id}  host={s.HostName}  opened_by={s.OpenedBy}  viewers={s.ViewerCount}  since={s.OpenedAt:HH:mm:ss}"
                 + (s.PendingCommand is string cmd ? $"  running: {cmd}" : ""));
-        return Task.FromResult(sb.ToString().TrimEnd());
+        return Task.FromResult(ToolResult.Text(sb.ToString().TrimEnd()));
     }
 }

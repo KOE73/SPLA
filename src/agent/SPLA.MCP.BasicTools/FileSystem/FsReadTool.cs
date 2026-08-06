@@ -45,18 +45,18 @@ public class FsReadTool : IMcpTool
         }
     };
 
-    public async Task<string> ExecuteAsync(string argumentsJson, CancellationToken cancellationToken = default)
+    public async Task<ToolResult> ExecuteAsync(string argumentsJson, CancellationToken cancellationToken = default)
     {
         try
         {
             using var doc = JsonDocument.Parse(argumentsJson);
             var path = ToolJson.GetStringTrimmed(doc.RootElement, "path");
-            if (path is null) return "Error: Missing 'path' parameter.";
+            if (path is null) return ToolResult.Fail("Error: Missing 'path' parameter.", "missing path");
 
             var ws = HostServices.Sandbox.Workspace;
             if (!ws.FileExists(path))
             {
-                return $"Error: File not found at {path}";
+                return ToolResult.Fail($"Error: File not found at {path}", "file not found");
             }
 
             var target = DataChannel.ParseTarget(ToolJson.GetStringTrimmed(doc.RootElement, "output"));
@@ -64,11 +64,11 @@ public class FsReadTool : IMcpTool
             {
                 var rawContent = await ws.ReadAllBytesAsync(path, cancellationToken);
                 var blobName = ToolJson.GetStringTrimmed(doc.RootElement, "output_name");
-                return DataChannel.Route(
+                return ToolResult.Text(DataChannel.Route(
                     target,
                     BlobPayload.OfBytes(rawContent),
                     $"system_read_file: raw content from {path}",
-                    blobName);
+                    blobName));
             }
 
             var startLine = Math.Max(1, ToolJson.GetInt32(doc.RootElement, "start_line", 1));
@@ -77,7 +77,7 @@ public class FsReadTool : IMcpTool
             var lines = await ws.ReadAllLinesAsync(path, cancellationToken);
             if (lines.Length == 0)
             {
-                return "[File is empty]";
+                return ToolResult.Text("[File is empty]");
             }
 
             var sb = new StringBuilder();
@@ -85,7 +85,7 @@ public class FsReadTool : IMcpTool
 
             if (startLine > lines.Length)
             {
-                return $"Error: start_line ({startLine}) is beyond file length ({lines.Length}).";
+                return ToolResult.Fail($"Error: start_line ({startLine}) is beyond file length ({lines.Length}).", "start_line out of range");
             }
 
             for (var i = startLine - 1; i < endLine; i++)
@@ -93,15 +93,15 @@ public class FsReadTool : IMcpTool
                 sb.AppendLine($"{i + 1}: {lines[i]}");
             }
 
-            return sb.ToString();
+            return ToolResult.Text(sb.ToString());
         }
         catch (JsonException)
         {
-            return "Error: Invalid JSON arguments.";
+            return ToolResult.Fail("Error: Invalid JSON arguments.", "invalid json");
         }
         catch (Exception ex)
         {
-            return $"Error reading file: {ex.Message}";
+            return ToolResult.Fail($"Error reading file: {ex.Message}", "read failed");
         }
     }
 }

@@ -40,7 +40,7 @@ public class FsCreateTool : IMcpTool
         }
     };
 
-    public async Task<string> ExecuteAsync(string argumentsJson, CancellationToken cancellationToken = default)
+    public async Task<ToolResult> ExecuteAsync(string argumentsJson, CancellationToken cancellationToken = default)
     {
         try
         {
@@ -49,15 +49,15 @@ public class FsCreateTool : IMcpTool
             var content = ToolJson.GetString(doc.RootElement, "content");
 
             if (path is null || content is null)
-                return "Error: Missing 'path' or 'content' parameter.";
+                return ToolResult.Fail("Error: Missing 'path' or 'content' parameter.", "missing arguments");
 
             if (!DataChannel.ResolveText(content, out content, out var resolveError))
-                return $"Error: {resolveError}";
+                return ToolResult.Fail($"Error: {resolveError}", "blob resolve failed");
 
             var ws = HostServices.Sandbox.Workspace;
             if (ws.FileExists(path))
             {
-                return $"Error: File already exists at {path}. Use system_patch_file or system_write_file to modify existing files.";
+                return ToolResult.Refuse($"Error: File already exists at {path}. Use system_patch_file or system_write_file to modify existing files.", "file exists");
             }
 
             // Create directories if they don't exist
@@ -68,15 +68,15 @@ public class FsCreateTool : IMcpTool
             }
 
             await ws.WriteAllTextAsync(path, content ?? string.Empty, cancellationToken);
-            return $"Successfully created new file: {path}";
+            return ToolResult.Text($"Successfully created new file: {path}");
         }
         catch (JsonException)
         {
-            return "Error: Invalid JSON arguments.";
+            return ToolResult.Fail("Error: Invalid JSON arguments.", "invalid json");
         }
         catch (Exception ex)
         {
-            return $"Error creating file: {ex.Message}";
+            return ToolResult.Fail($"Error creating file: {ex.Message}", "create failed");
         }
     }
 }

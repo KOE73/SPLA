@@ -12,8 +12,8 @@ namespace SPLA.Plugins.Browser.Tools;
 
 /// <summary>
 /// Takes a real screenshot. Unlike every other browser_* tool, this one's result is more than the
-/// text it returns: the PNG is stored in the chat's blob store AND queued in the chat's
-/// <see cref="IPendingImageSink"/>, so the orchestrator injects it as an actual image on the
+/// text it returns: the PNG is stored in the chat's blob store AND carried in the result itself as
+/// a <see cref="ToolImage"/>, so the orchestrator injects it as an actual image on the
 /// model's very next turn (see ../../../../docs/plans/PLAN_20260701_plugins_browser-playwright.md, "Скриншот ОБЯЗАН дойти...").
 /// </summary>
 public sealed class BrowserScreenshotTool : IMcpTool
@@ -45,13 +45,13 @@ public sealed class BrowserScreenshotTool : IMcpTool
         }
     };
 
-    public async Task<string> ExecuteAsync(string argumentsJson, CancellationToken cancellationToken = default)
+    public async Task<ToolResult> ExecuteAsync(string argumentsJson, CancellationToken cancellationToken = default)
     {
         var mgr = BrowserToolBase.Current;
         if (mgr is null) return BrowserToolBase.NotRunning;
 
         var session = AgentSessionScope.Current;
-        if (session is null) return "Error: no active chat session.";
+        if (session is null) return ToolResult.Refuse("Error: no active chat session.", "no chat session");
 
         string? tabId, refId;
         bool fullPage;
@@ -63,7 +63,7 @@ public sealed class BrowserScreenshotTool : IMcpTool
             refId = ToolJson.GetStringTrimmed(root, "ref");
             fullPage = ToolJson.GetBoolean(root, "full_page", false);
         }
-        catch (JsonException) { return "Error: invalid JSON arguments."; }
+        catch (JsonException) { return ToolResult.Fail("Error: invalid JSON arguments.", "invalid json"); }
 
         var (resolvedTabId, page, error) = BrowserToolBase.ResolveTab(mgr, tabId);
         if (page is null) return error!;
@@ -75,7 +75,7 @@ public sealed class BrowserScreenshotTool : IMcpTool
             if (!string.IsNullOrWhiteSpace(refId))
             {
                 var (locator, refError) = mgr.Refs.Resolve(page, resolvedTabId!, refId.Trim());
-                if (locator is null) return refError!;
+                if (locator is null) return BrowserToolBase.RefFailure(refError!);
                 bytes = await locator.ScreenshotAsync(new LocatorScreenshotOptions { Type = ScreenshotType.Png });
                 target = $"element {refId}";
             }
@@ -86,11 +86,11 @@ public sealed class BrowserScreenshotTool : IMcpTool
             }
 
             var handle = session.Blobs.Put(SPLA.Domain.Agent.BlobPayload.OfBytes(bytes, "image/png"));
-            var dataUrl = $"data:image/png;base64,{Convert.ToBase64String(bytes)}";
-            session.Images.Push(dataUrl);
 
-            return $"Screenshot of {target} on tab {resolvedTabId} ({bytes.Length} bytes), stored as {handle}. " +
-                   "It will appear as an image on your next turn.";
+            return ToolResult.From(
+                new ToolText($"Screenshot of {target} on tab {resolvedTabId} ({bytes.Length} bytes), stored as {handle}. " +
+                             "It will appear as an image on your next turn."),
+                new ToolImage(Convert.ToBase64String(bytes), "image/png"));
         }
         catch (PlaywrightException ex) { return BrowserToolBase.Fail("browser_screenshot", ex); }
     }

@@ -40,14 +40,14 @@ public class WhoisTool : IMcpTool
         }
     };
 
-    public async Task<string> ExecuteAsync(string argumentsJson, CancellationToken cancellationToken = default)
+    public async Task<ToolResult> ExecuteAsync(string argumentsJson, CancellationToken cancellationToken = default)
     {
         try
         {
             using var doc = JsonDocument.Parse(argumentsJson);
             var root = doc.RootElement;
             var query = ToolJson.GetStringTrimmed(root, "query");
-            if (query is null) return "Error: Missing 'query' parameter.";
+            if (query is null) return ToolResult.Fail("Error: Missing 'query' parameter.", "missing query");
 
             var overrideServer = ToolJson.GetStringTrimmed(root, "server");
             var timeoutMs = ToolJson.GetInt32Clamped(root, "timeout", 10_000, 1000, 30_000);
@@ -72,7 +72,7 @@ public class WhoisTool : IMcpTool
                     sb.AppendLine("Server: whois.iana.org");
                     sb.AppendLine();
                     sb.Append(ianaResponse);
-                    return sb.ToString();
+                    return ToolResult.Text(sb.ToString());
                 }
 
                 whoisServer = referral;
@@ -83,15 +83,15 @@ public class WhoisTool : IMcpTool
             sb.AppendLine($"Server: {whoisServer}");
             sb.AppendLine();
             sb.Append(response);
-            return sb.ToString();
+            return ToolResult.Text(sb.ToString());
         }
         catch (JsonException)
         {
-            return "Error: Invalid JSON arguments.";
+            return ToolResult.Fail("Error: Invalid JSON arguments.", "invalid json");
         }
         catch (Exception ex)
         {
-            return $"Error performing WHOIS lookup: {ex.Message}";
+            return ToolResult.Fail($"Error performing WHOIS lookup: {ex.Message}", "whois failed");
         }
     }
 

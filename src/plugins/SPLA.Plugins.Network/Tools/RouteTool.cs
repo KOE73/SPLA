@@ -40,7 +40,7 @@ public class RouteTool : IMcpTool
         }
     };
 
-    public async Task<string> ExecuteAsync(string argumentsJson, CancellationToken cancellationToken = default)
+    public async Task<ToolResult> ExecuteAsync(string argumentsJson, CancellationToken cancellationToken = default)
     {
         try
         {
@@ -91,15 +91,15 @@ public class RouteTool : IMcpTool
             sb.AppendLine($"Routing table (family: {family}):");
             sb.AppendLine();
             sb.Append(output);
-            return sb.ToString();
+            return ToolResult.Text(sb.ToString());
         }
         catch (JsonException)
         {
-            return "Error: Invalid JSON arguments.";
+            return ToolResult.Fail("Error: Invalid JSON arguments.", "invalid json");
         }
         catch (Exception ex)
         {
-            return $"Error reading routing table: {ex.Message}";
+            return ToolResult.Fail($"Error reading routing table: {ex.Message}", "route read failed");
         }
     }
 

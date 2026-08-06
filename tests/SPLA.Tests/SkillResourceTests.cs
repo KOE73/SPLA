@@ -139,8 +139,8 @@ public class SkillResourceTests : IDisposable
         using var _ = Scope(session);
 
         await new SkillActivateTool(skills).ExecuteAsync("""{"id":"mine"}""");
-        var result = await new SkillReadResourceTool(skills)
-            .ExecuteAsync("""{"path":"references/contract.md"}""");
+        var result = (await new SkillReadResourceTool(skills)
+            .ExecuteAsync("""{"path":"references/contract.md"}""")).TextContent;
 
         Assert.Equal("MY CONTRACT", result);
     }
@@ -171,8 +171,8 @@ public class SkillResourceTests : IDisposable
         using var _ = Scope(session);
 
         await new SkillActivateTool(skills).ExecuteAsync("""{"id":"mine"}""");
-        var result = await new SkillReadResourceTool(skills)
-            .ExecuteAsync("""{"path":"references/secret.md"}""");
+        var result = (await new SkillReadResourceTool(skills)
+            .ExecuteAsync("""{"path":"references/secret.md"}""")).TextContent;
 
         Assert.StartsWith("error:", result);
         Assert.DoesNotContain("THEIR SECRET", result);
@@ -184,8 +184,8 @@ public class SkillResourceTests : IDisposable
         var skills = new SkillLibrary([TwoSkillsWithResources()]);
         using var _ = Scope(new SkillSession());
 
-        var result = await new SkillReadResourceTool(skills)
-            .ExecuteAsync("""{"path":"references/contract.md"}""");
+        var result = (await new SkillReadResourceTool(skills)
+            .ExecuteAsync("""{"path":"references/contract.md"}""")).TextContent;
 
         Assert.StartsWith("error:", result);
         Assert.Contains("no skill is active", result);
@@ -202,8 +202,8 @@ public class SkillResourceTests : IDisposable
 
         await new SkillActivateTool(skills).ExecuteAsync("""{"id":"mine"}""");
         await new SkillDeactivateTool().ExecuteAsync("{}");
-        var result = await new SkillReadResourceTool(skills)
-            .ExecuteAsync("""{"path":"references/contract.md"}""");
+        var result = (await new SkillReadResourceTool(skills)
+            .ExecuteAsync("""{"path":"references/contract.md"}""")).TextContent;
 
         Assert.StartsWith("error:", result);
         Assert.Empty(session.ActiveResources);
@@ -223,8 +223,8 @@ public class SkillResourceTests : IDisposable
         await new SkillActivateTool(skills).ExecuteAsync("""{"id":"mine"}""");
         source.Offline = true;
 
-        var result = await new SkillReadResourceTool(skills)
-            .ExecuteAsync("""{"path":"references/contract.md"}""");
+        var result = (await new SkillReadResourceTool(skills)
+            .ExecuteAsync("""{"path":"references/contract.md"}""")).TextContent;
 
         Assert.StartsWith("error:", result);
         Assert.Equal("mine", session.ActiveSkillId);
@@ -289,16 +289,16 @@ public class SkillResourceTests : IDisposable
         using var _ = Scope(session);
 
         Assert.StartsWith("ok:",
-            await new SkillActivateTool(skills).ExecuteAsync("""{"id":"linux-host.capture"}"""));
+            (await new SkillActivateTool(skills).ExecuteAsync("""{"id":"linux-host.capture"}""")).TextContent);
 
         var tool = new SkillReadResourceTool(skills);
         Assert.Equal("THE CONTRACT",
-            await tool.ExecuteAsync("""{"path":"references/package-contract.md"}"""));
+            (await tool.ExecuteAsync("""{"path":"references/package-contract.md"}""")).TextContent);
         Assert.Equal("THE SSH TOOLS",
-            await tool.ExecuteAsync("""{"path":"references/ssh-tools.md"}"""));
+            (await tool.ExecuteAsync("""{"path":"references/ssh-tools.md"}""")).TextContent);
 
         // The neighbouring skill's identically named reference stays its own.
         Assert.DoesNotContain("SOMEONE ELSE'S",
-            await tool.ExecuteAsync("""{"path":"../restore/references/package-contract.md"}"""));
+            (await tool.ExecuteAsync("""{"path":"../restore/references/package-contract.md"}""")).TextContent);
     }
 }

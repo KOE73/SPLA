@@ -49,7 +49,7 @@ public sealed class SftpLsTool : IMcpTool
         }
     };
 
-    public async Task<string> ExecuteAsync(string argumentsJson, CancellationToken cancellationToken = default)
+    public async Task<ToolResult> ExecuteAsync(string argumentsJson, CancellationToken cancellationToken = default)
     {
         string remotePath;
         string? host, pattern;
@@ -66,17 +66,17 @@ public sealed class SftpLsTool : IMcpTool
         }
         catch (JsonException)
         {
-            return "Error: invalid JSON arguments.";
+            return ToolResult.Fail("Error: invalid JSON arguments.", "invalid json");
         }
 
-        if (remotePath.Length == 0) return "Error: 'remote_path' is required.";
+        if (remotePath.Length == 0) return ToolResult.Fail("Error: 'remote_path' is required.", "missing remote_path");
 
         try
         {
             var (name, cfg) = _transfer.ResolveHost(host);
             var entries = await _transfer.ListAsync(cfg, remotePath, recursive, pattern, limit, cancellationToken);
 
-            if (entries.Count == 0) return $"No entries under {remotePath} on {name}.";
+            if (entries.Count == 0) return ToolResult.Text($"No entries under {remotePath} on {name}.");
 
             var text = new StringBuilder($"{entries.Count} entr(ies) under {remotePath} on {name}:\n");
             foreach (var entry in entries)
@@ -91,11 +91,11 @@ public sealed class SftpLsTool : IMcpTool
                 if (entry.Type == TransferEntryType.File) text.Append($"  {entry.Size} bytes");
                 text.Append($"  {entry.ModifiedUtc:yyyy-MM-dd HH:mm}Z\n");
             }
-            return text.ToString();
+            return ToolResult.Text(text.ToString());
         }
         catch (Exception ex)
         {
-            return $"Error: {ex.Message}";
+            return ToolResult.Fail($"Error: {ex.Message}", "sftp list failed");
         }
     }
 }

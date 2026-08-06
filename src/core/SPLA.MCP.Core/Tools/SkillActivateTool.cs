@@ -60,10 +60,10 @@ public sealed class SkillActivateTool : IMcpTool
         }
     };
 
-    public Task<string> ExecuteAsync(string argumentsJson, CancellationToken cancellationToken = default)
+    public Task<ToolResult> ExecuteAsync(string argumentsJson, CancellationToken cancellationToken = default)
     {
         var session = AgentSessionScope.Current?.Skills;
-        if (session is null) return Task.FromResult("error: no active chat session");
+        if (session is null) return Task.FromResult(ToolResult.Refuse("error: no active chat session", "no chat session"));
 
         try
         {
@@ -71,11 +71,12 @@ public sealed class SkillActivateTool : IMcpTool
             var id = ToolJson.GetStringTrimmed(doc.RootElement, "id");
 
             if (string.IsNullOrEmpty(id))
-                return Task.FromResult("error: 'id' parameter is required");
+                return Task.FromResult(ToolResult.Fail("error: 'id' parameter is required", "missing id"));
 
             if (session.ActiveSkillId is not null)
-                return Task.FromResult(
-                    $"error: skill '{session.ActiveSkillId}' is already active — call skill_deactivate first");
+                return Task.FromResult(ToolResult.Refuse(
+                    $"error: skill '{session.ActiveSkillId}' is already active — call skill_deactivate first",
+                    "skill already active"));
 
             var lookup = _skills.Resolve(id);
 
@@ -83,9 +84,10 @@ public sealed class SkillActivateTool : IMcpTool
             // would think to check for, so it is refused — and the refusal MUST list the addresses,
             // because an ambiguity error without alternatives is just a dead end with extra words.
             if (lookup.IsAmbiguous)
-                return Task.FromResult(
+                return Task.FromResult(ToolResult.Refuse(
                     $"error: '{id}' is held by more than one source — activate one of these by its full address:\n" +
-                    string.Join("\n", lookup.Candidates.Select(c => $"  - {c.Address}")));
+                    string.Join("\n", lookup.Candidates.Select(c => $"  - {c.Address}")),
+                    "ambiguous id"));
 
             var skill = lookup.Card;
             if (skill is null)
@@ -106,14 +108,15 @@ public sealed class SkillActivateTool : IMcpTool
                     // The observed failure: a weak model guesses an id from a subject word, gets this
                     // error, and thrashes. Naming the recovery turns a dead end into one more call.
                     : "\nDo not guess skill ids. Call skill_find with a subject or with free text to get real ids, then activate one of those.";
-                return Task.FromResult(msg);
+                return Task.FromResult(ToolResult.Fail(msg, "unknown skill"));
             }
 
             // A known-but-unavailable skill reports WHY rather than pretending it does not exist:
             // "needs port_scan — from plugin 'network'" is actionable, "unknown skill" is not.
             if (skill.State != SkillState.Available)
-                return Task.FromResult(
-                    $"error: skill '{skill.DisplayId}' is not available — {skill.StateReason}");
+                return Task.FromResult(ToolResult.Refuse(
+                    $"error: skill '{skill.DisplayId}' is not available — {skill.StateReason}",
+                    "skill unavailable"));
 
             // The body is read once, here, and pinned in the session for the run. Editing the file
             // of a running skill therefore cannot swap the procedure mid-flight; the edit applies at
@@ -123,8 +126,9 @@ public sealed class SkillActivateTool : IMcpTool
             // wrong edition, in the one place where the answer is already settled.
             var body = _skills.LoadBody(skill.Address);
             if (string.IsNullOrWhiteSpace(body))
-                return Task.FromResult(
-                    $"error: skill '{skill.DisplayId}' has no readable procedure — its source '{skill.SourceId}' returned nothing");
+                return Task.FromResult(ToolResult.Fail(
+                    $"error: skill '{skill.DisplayId}' has no readable procedure — its source '{skill.SourceId}' returned nothing",
+                    "empty skill body"));
 
             // The loan slip: where this skill came from, plus what came with it. Only the LIST of
             // attachments is taken now — their text is fetched on demand, so a procedure that reads
@@ -139,11 +143,11 @@ public sealed class SkillActivateTool : IMcpTool
             var resourceNote = resources.Count > 0
                 ? $" It carries {resources.Count} resource(s) — read them with skill_read_resource; they are listed in the ACTIVE SKILL block."
                 : string.Empty;
-            return Task.FromResult($"ok: activated '{skill.DisplayId}' — skill procedure is now injected into the prompt.{raisedNote}{resourceNote} Follow the steps and call skill_deactivate when done.");
+            return Task.FromResult(ToolResult.Text($"ok: activated '{skill.DisplayId}' — skill procedure is now injected into the prompt.{raisedNote}{resourceNote} Follow the steps and call skill_deactivate when done."));
         }
         catch (JsonException)
         {
-            return Task.FromResult("error: invalid_json");
+            return Task.FromResult(ToolResult.Fail("error: invalid_json", "invalid json"));
         }
     }
 

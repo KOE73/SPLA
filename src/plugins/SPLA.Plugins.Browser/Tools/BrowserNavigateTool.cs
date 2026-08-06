@@ -38,7 +38,7 @@ public sealed class BrowserNavigateTool : IMcpTool
         }
     };
 
-    public async Task<string> ExecuteAsync(string argumentsJson, CancellationToken cancellationToken = default)
+    public async Task<ToolResult> ExecuteAsync(string argumentsJson, CancellationToken cancellationToken = default)
     {
         var mgr = BrowserToolBase.Current;
         if (mgr is null) return BrowserToolBase.NotRunning;
@@ -54,9 +54,9 @@ public sealed class BrowserNavigateTool : IMcpTool
             waitUntil = ToolJson.GetStringTrimmed(root, "wait_until");
             timeout = ToolJson.GetInt32Clamped(root, "timeout", 30_000, 1000, 120_000);
         }
-        catch (JsonException) { return "Error: invalid JSON arguments."; }
+        catch (JsonException) { return ToolResult.Fail("Error: invalid JSON arguments.", "invalid json"); }
 
-        if (url is null) return "Error: 'url' is required.";
+        if (url is null) return ToolResult.Fail("Error: 'url' is required.", "missing url");
 
         var (resolvedTabId, page, error) = BrowserToolBase.ResolveTab(mgr, tabId);
         if (page is null) return error!;
@@ -69,9 +69,9 @@ public sealed class BrowserNavigateTool : IMcpTool
                 Timeout = timeout
             });
             var status = response != null ? $"{(int)response.Status} {response.StatusText}" : "(no response)";
-            return $"Navigated tab {resolvedTabId} to {page.Url} — {status}. Call browser_snapshot to see the page.";
+            return ToolResult.Text($"Navigated tab {resolvedTabId} to {page.Url} — {status}. Call browser_snapshot to see the page.");
         }
-        catch (TimeoutException ex) { return $"Error: navigation timed out — {ex.Message}"; }
+        catch (TimeoutException ex) { return ToolResult.Fail($"Error: navigation timed out — {ex.Message}", "navigation timeout"); }
         catch (PlaywrightException ex) { return BrowserToolBase.Fail("browser_navigate", ex); }
     }
 

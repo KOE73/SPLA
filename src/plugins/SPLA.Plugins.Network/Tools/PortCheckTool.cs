@@ -37,7 +37,7 @@ public class PortCheckTool : IMcpTool
         }
     };
 
-    public async Task<string> ExecuteAsync(string argumentsJson, CancellationToken cancellationToken = default)
+    public async Task<ToolResult> ExecuteAsync(string argumentsJson, CancellationToken cancellationToken = default)
     {
         string host = "Unknown";
         int port = 0;
@@ -46,12 +46,12 @@ public class PortCheckTool : IMcpTool
             using var doc = JsonDocument.Parse(argumentsJson);
             var root = doc.RootElement;
             var hostVal = ToolJson.GetStringTrimmed(root, "host");
-            if (hostVal is null) return "Error: Missing 'host' or 'port' parameters.";
+            if (hostVal is null) return ToolResult.Fail("Error: Missing 'host' or 'port' parameters.", "missing host");
             host = hostVal;
 
             var portVal = ToolJson.GetInt32(root, "port");
             if (portVal is null || portVal < 1 || portVal > 65535)
-                return "Error: Port must be an integer between 1 and 65535.";
+                return ToolResult.Fail("Error: Port must be an integer between 1 and 65535.", "invalid port");
             port = portVal.Value;
 
             var timeout = ToolJson.GetInt32(root, "timeout", 3000);
@@ -70,25 +70,25 @@ public class PortCheckTool : IMcpTool
                 await connectTask; // propagate any connect exception
                 if (tcpClient.Connected)
                 {
-                    return $"Host: {host}\n" +
+                    return ToolResult.Text($"Host: {host}\n" +
                            $"Port: {port}\n" +
-                           $"Status: Open";
+                           $"Status: Open");
                 }
             }
 
-            return $"Host: {host}\n" +
+            return ToolResult.Text($"Host: {host}\n" +
                    $"Port: {port}\n" +
-                   $"Status: Closed or Timeout";
+                   $"Status: Closed or Timeout");
         }
         catch (JsonException)
         {
-            return "Error: Invalid JSON arguments.";
+            return ToolResult.Fail("Error: Invalid JSON arguments.", "invalid json");
         }
         catch (Exception ex)
         {
-            return $"Host: {host}\n" +
+            return ToolResult.Text($"Host: {host}\n" +
                    $"Port: {port}\n" +
-                   $"Status: Closed (Error: {ex.Message})";
+                   $"Status: Closed (Error: {ex.Message})");
         }
     }
 }

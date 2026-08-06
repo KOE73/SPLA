@@ -30,8 +30,8 @@ public sealed class ToolSetActivationTests
             Type = "function",
             Function = new ToolFunctionDefinition { Name = Name, Description = "fake" }
         };
-        public Task<string> ExecuteAsync(string argumentsJson, CancellationToken ct = default) =>
-            Task.FromResult("ran");
+        public Task<ToolResult> ExecuteAsync(string argumentsJson, CancellationToken ct = default) =>
+            Task.FromResult(ToolResult.Text("ran"));
     }
 
     /// <summary>A registry with one set, levelled as asked, owning one tool. Built by hand rather
@@ -87,7 +87,7 @@ public sealed class ToolSetActivationTests
         var (host, _) = HostWith(ToolSetLevel.AgentDemand);
         using var scope = AgentSessionScope.Begin(Session());
 
-        var result = await host.ExecuteToolAsync(AgentMode.Agent, "ssh_run", "{}");
+        var result = (await host.ExecuteToolAsync(AgentMode.Agent, "ssh_run", "{}")).TextContent;
 
         Assert.Contains("toolset_activate", result);
         Assert.Contains("ssh", result);
@@ -101,7 +101,7 @@ public sealed class ToolSetActivationTests
         var (host, _) = HostWith(ToolSetLevel.Disabled);
         using var scope = AgentSessionScope.Begin(Session());
 
-        var result = await host.ExecuteToolAsync(AgentMode.Agent, "ssh_run", "{}");
+        var result = (await host.ExecuteToolAsync(AgentMode.Agent, "ssh_run", "{}")).TextContent;
 
         Assert.Equal("Error: Tool 'ssh_run' not found.", result);
         Assert.DoesNotContain("toolset", result);
@@ -133,7 +133,7 @@ public sealed class ToolSetActivationTests
         var (host, sets) = HostWith(ToolSetLevel.SkillDemand);
         using var scope = AgentSessionScope.Begin(Session());
 
-        var result = await new ToolSetActivateTool(sets).ExecuteAsync("""{"setId":"ssh"}""");
+        var result = (await new ToolSetActivateTool(sets).ExecuteAsync("""{"setId":"ssh"}""")).TextContent;
 
         Assert.StartsWith("error:", result);
         Assert.DoesNotContain(host.GetToolDefinitions(), d => d.Function.Name == "ssh_run");
@@ -147,7 +147,7 @@ public sealed class ToolSetActivationTests
         session.ToolSets.Activate("ssh", ToolSetActivationBy.Skill, "required by skill 'x'");
         using var scope = AgentSessionScope.Begin(session);
 
-        var result = await new ToolSetDeactivateTool().ExecuteAsync("""{"setId":"ssh"}""");
+        var result = (await new ToolSetDeactivateTool().ExecuteAsync("""{"setId":"ssh"}""")).TextContent;
 
         Assert.StartsWith("error:", result);
         Assert.True(session.ToolSets.IsActive("ssh"));

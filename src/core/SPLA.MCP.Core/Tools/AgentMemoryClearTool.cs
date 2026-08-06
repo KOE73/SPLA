@@ -45,7 +45,7 @@ public sealed class AgentMemoryClearTool : IMcpTool
         }
     };
 
-    public Task<string> ExecuteAsync(string argumentsJson, CancellationToken cancellationToken = default)
+    public Task<ToolResult> ExecuteAsync(string argumentsJson, CancellationToken cancellationToken = default)
     {
         try
         {
@@ -55,11 +55,11 @@ public sealed class AgentMemoryClearTool : IMcpTool
             var scope  = ToolJson.GetString(root,"scope");
 
             var store = AgentMemoryHelpers.SelectStore(_project, scope);
-            if (store is null) return Task.FromResult("error: no active chat session");
+            if (store is null) return Task.FromResult(ToolResult.Refuse("error: no active chat session", "no chat session"));
             var sb    = new StringBuilder();
             AgentMemoryHelpers.AppendClear(sb, store, filter);
-            return Task.FromResult(sb.ToString().TrimEnd());
+            return Task.FromResult(ToolResult.Text(sb.ToString().TrimEnd()));
         }
-        catch (JsonException) { return Task.FromResult("error: invalid_json"); }
+        catch (JsonException) { return Task.FromResult(ToolResult.Fail("error: invalid_json", "invalid json")); }
     }
 }

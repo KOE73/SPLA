@@ -54,7 +54,7 @@ public sealed class BlobPeekTool : IMcpTool
         }
     };
 
-    public Task<string> ExecuteAsync(string argumentsJson, CancellationToken cancellationToken = default)
+    public Task<ToolResult> ExecuteAsync(string argumentsJson, CancellationToken cancellationToken = default)
     {
         string? handle;
         int offset, length;
@@ -65,15 +65,15 @@ public sealed class BlobPeekTool : IMcpTool
             offset = Math.Max(0, ToolJson.GetInt32(doc.RootElement, "offset", 0));
             length = Math.Clamp(ToolJson.GetInt32(doc.RootElement, "length", DefaultLength), 1, MaxLength);
         }
-        catch (JsonException) { return Task.FromResult("error: invalid_json"); }
+        catch (JsonException) { return Task.FromResult(ToolResult.Fail("error: invalid_json", "invalid json")); }
 
-        if (handle is null) return Task.FromResult("error: 'handle' is required");
+        if (handle is null) return Task.FromResult(ToolResult.Fail("error: 'handle' is required", "missing handle"));
 
         var session = AgentSessionScope.Current;
-        if (session is null) return Task.FromResult("error: no active chat session");
+        if (session is null) return Task.FromResult(ToolResult.Refuse("error: no active chat session", "no chat session"));
 
         var payload = session.Blobs.Get(handle);
-        if (payload is null) return Task.FromResult($"error: no blob found for handle '{handle}'");
+        if (payload is null) return Task.FromResult(ToolResult.Fail($"error: no blob found for handle '{handle}'", "unknown handle"));
 
         var type = string.IsNullOrWhiteSpace(payload.ContentType) ? BlobContentType.Unknown : payload.ContentType;
         var head = $"{handle} — {(payload.Kind == BlobKind.Text ? "text" : "binary")} {type}, {payload.Size} bytes total";
@@ -81,16 +81,16 @@ public sealed class BlobPeekTool : IMcpTool
         if (payload.Kind == BlobKind.Text)
         {
             var text = payload.Text ?? string.Empty;
-            if (offset >= text.Length) return Task.FromResult($"{head}\n(offset {offset} is past the end)");
+            if (offset >= text.Length) return Task.FromResult(ToolResult.Text($"{head}\n(offset {offset} is past the end)"));
             var slice = text.Substring(offset, Math.Min(length, text.Length - offset));
             var shown = offset + slice.Length;
-            return Task.FromResult(
+            return Task.FromResult(ToolResult.Text(
                 $"{head}\nchars {offset}..{shown}:\n{slice}" +
-                (shown < text.Length ? $"\n… ({text.Length - shown} more characters)" : ""));
+                (shown < text.Length ? $"\n… ({text.Length - shown} more characters)" : "")));
         }
 
         var bytes = payload.Bytes ?? Array.Empty<byte>();
-        if (offset >= bytes.Length) return Task.FromResult($"{head}\n(offset {offset} is past the end)");
+        if (offset >= bytes.Length) return Task.FromResult(ToolResult.Text($"{head}\n(offset {offset} is past the end)"));
         var count = Math.Min(length, bytes.Length - offset);
         var end = offset + count;
 
@@ -109,6 +109,6 @@ public sealed class BlobPeekTool : IMcpTool
         }
         if (end < bytes.Length) sb.Append("… (").Append(bytes.Length - end).Append(" more bytes)\n");
 
-        return Task.FromResult(sb.ToString());
+        return Task.FromResult(ToolResult.Text(sb.ToString()));
     }
 }

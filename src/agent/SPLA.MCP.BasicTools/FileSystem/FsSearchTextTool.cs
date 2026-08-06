@@ -105,7 +105,7 @@ public class FsSearchTextTool : IMcpTool
         }
     };
 
-    public async Task<string> ExecuteAsync(string argumentsJson, CancellationToken cancellationToken = default)
+    public async Task<ToolResult> ExecuteAsync(string argumentsJson, CancellationToken cancellationToken = default)
     {
         try
         {
@@ -121,7 +121,7 @@ public class FsSearchTextTool : IMcpTool
             var excludePatterns= ToolJson.GetStringArray(root, "exclude_patterns");
 
             if (string.IsNullOrEmpty(query))
-                return JsonSerializer.Serialize(new SearchTextResult { Query = string.Empty, TotalMatches = 0, ReturnedMatches = 0, Matches = new List<SearchMatch>() });
+                return ToolResult.Text(JsonSerializer.Serialize(new SearchTextResult { Query = string.Empty, TotalMatches = 0, ReturnedMatches = 0, Matches = new List<SearchMatch>() }));
 
             // Disk-backed workspaces map the logical root to a real host path and run an external
             // engine (ripgrep, with a .NET fallback) over it. A virtual workspace returns null from
@@ -136,7 +136,7 @@ public class FsSearchTextTool : IMcpTool
             if (rootPath is null)
             {
                 if (!ws.DirectoryExists(logicalRoot))
-                    return $"Error: Directory not found at {logicalRoot}";
+                    return ToolResult.Fail($"Error: Directory not found at {logicalRoot}", "directory not found");
                 rawMatches = await new WorkspaceSearchEngine(ws).SearchAsync(
                     logicalRoot, query, regex, caseSensitive,
                     includePatterns, excludePatterns, cancellationToken);
@@ -144,7 +144,7 @@ public class FsSearchTextTool : IMcpTool
             else
             {
                 if (!ws.DirectoryExists(rootPath))
-                    return $"Error: Directory not found at {rootPath}";
+                    return ToolResult.Fail($"Error: Directory not found at {rootPath}", "directory not found");
                 try
                 {
                     var rgEngine = new RipgrepSearchEngine();
@@ -174,17 +174,17 @@ public class FsSearchTextTool : IMcpTool
 
             var json = JsonSerializer.Serialize(result, new JsonSerializerOptions { WriteIndented = true });
             var target = DataChannel.ParseTarget(ToolJson.GetStringTrimmed(root, "output"));
-            if (target == OutputTarget.Context) return json;
+            if (target == OutputTarget.Context) return ToolResult.Text(json);
             var blobName = ToolJson.GetStringTrimmed(root, "output_name");
-            return DataChannel.Route(target, BlobPayload.OfText(json), $"system_search_text: {result.ReturnedMatches}/{result.TotalMatches} matches for '{query}'", blobName);
+            return ToolResult.Text(DataChannel.Route(target, BlobPayload.OfText(json), $"system_search_text: {result.ReturnedMatches}/{result.TotalMatches} matches for '{query}'", blobName));
         }
         catch (JsonException)
         {
-            return "Error: Invalid JSON arguments.";
+            return ToolResult.Fail("Error: Invalid JSON arguments.", "invalid json");
         }
         catch (Exception ex)
         {
-            return $"Error performing search: {ex.Message}";
+            return ToolResult.Fail($"Error performing search: {ex.Message}", "search failed");
         }
     }
 

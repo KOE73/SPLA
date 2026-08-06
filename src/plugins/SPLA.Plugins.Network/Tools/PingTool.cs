@@ -36,14 +36,14 @@ public class PingTool : IMcpTool
         }
     };
 
-    public async Task<string> ExecuteAsync(string argumentsJson, CancellationToken cancellationToken = default)
+    public async Task<ToolResult> ExecuteAsync(string argumentsJson, CancellationToken cancellationToken = default)
     {
         try
         {
             using var doc = JsonDocument.Parse(argumentsJson);
             var root = doc.RootElement;
             var host = ToolJson.GetStringTrimmed(root, "host");
-            if (host is null) return "Error: Missing 'host' parameter.";
+            if (host is null) return ToolResult.Fail("Error: Missing 'host' parameter.", "missing host");
 
             var timeout = ToolJson.GetInt32(root, "timeout", 5000);
 
@@ -52,21 +52,21 @@ public class PingTool : IMcpTool
 
             if (reply.Status == IPStatus.Success)
             {
-                return $"Status: Success\n" +
+                return ToolResult.Text($"Status: Success\n" +
                        $"Address: {reply.Address}\n" +
                        $"RoundTrip time: {reply.RoundtripTime} ms\n" +
-                       $"TTL: {reply.Options?.Ttl}";
+                       $"TTL: {reply.Options?.Ttl}");
             }
 
-            return $"Status: Failed ({reply.Status})";
+            return ToolResult.Text($"Status: Failed ({reply.Status})");
         }
         catch (JsonException)
         {
-            return "Error: Invalid JSON arguments.";
+            return ToolResult.Fail("Error: Invalid JSON arguments.", "invalid json");
         }
         catch (Exception ex)
         {
-            return $"Error pinging host: {ex.Message}";
+            return ToolResult.Fail($"Error pinging host: {ex.Message}", "ping failed");
         }
     }
 }

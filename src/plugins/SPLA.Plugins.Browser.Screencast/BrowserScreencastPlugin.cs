@@ -437,7 +437,7 @@ internal abstract class BrowserScreencastTool(BrowserScreencastRuntime runtime) 
     protected BrowserScreencastRuntime Runtime { get; } = runtime;
     public abstract string Name { get; }
     public abstract ToolDefinition GetDefinition();
-    public abstract Task<string> ExecuteAsync(string argumentsJson, CancellationToken cancellationToken = default);
+    public abstract Task<ToolResult> ExecuteAsync(string argumentsJson, CancellationToken cancellationToken = default);
 
     protected static string? String(JsonElement root, string name) =>
         root.TryGetProperty(name, out var value) && value.ValueKind == JsonValueKind.String
@@ -449,14 +449,16 @@ internal abstract class BrowserScreencastTool(BrowserScreencastRuntime runtime) 
             ? value.GetString()
             : null;
 
-    protected static async Task<string> RunAsync(Func<Task<string>> action)
+    protected static async Task<ToolResult> RunAsync(Func<Task<ToolResult>> action)
     {
         try { return await action(); }
-        catch (JsonException) { return "Error: invalid JSON arguments."; }
-        catch (OperationCanceledException) { return "Error: browser operation was cancelled."; }
-        catch (Exception exception) when (exception is PlaywrightException or TimeoutException or InvalidOperationException or ArgumentException)
+        catch (JsonException) { return ToolResult.Fail("Error: invalid JSON arguments.", "invalid json"); }
+        catch (OperationCanceledException) { return ToolResult.Fail("Error: browser operation was cancelled.", "cancelled"); }
+        // The panel not being open is the one case where nothing was attempted at all.
+        catch (InvalidOperationException exception) { return ToolResult.Refuse($"Error: {exception.Message}", "panel not open"); }
+        catch (Exception exception) when (exception is PlaywrightException or TimeoutException or ArgumentException)
         {
-            return $"Error: {exception.Message}";
+            return ToolResult.Fail($"Error: {exception.Message}", "browser error");
         }
     }
 }
@@ -472,12 +474,12 @@ internal sealed class BrowserScreencastNavigateTool(BrowserScreencastRuntime run
         required = new[] { "url" }
     });
 
-    public override Task<string> ExecuteAsync(string argumentsJson, CancellationToken cancellationToken = default) => RunAsync(async () =>
+    public override Task<ToolResult> ExecuteAsync(string argumentsJson, CancellationToken cancellationToken = default) => RunAsync(async () =>
     {
         using var document = JsonDocument.Parse(string.IsNullOrWhiteSpace(argumentsJson) ? "{}" : argumentsJson);
         var url = String(document.RootElement, "url") ?? throw new ArgumentException("'url' is required.");
         await Runtime.NavigateAsync(url, cancellationToken);
-        return $"Navigated the embedded browser to {url}.";
+        return ToolResult.Text($"Navigated the embedded browser to {url}.");
     });
 
     internal static ToolDefinition Definition(string name, string description, ToolEffect effect, object parameters) => new()
@@ -505,13 +507,13 @@ internal sealed class BrowserScreencastSnapshotTool(BrowserScreencastRuntime run
         ToolEffect.Read,
         new { type = "object", properties = new { max_chars = new { type = "integer", description = "Maximum output length. Default: 8000." } } });
 
-    public override Task<string> ExecuteAsync(string argumentsJson, CancellationToken cancellationToken = default) => RunAsync(async () =>
+    public override Task<ToolResult> ExecuteAsync(string argumentsJson, CancellationToken cancellationToken = default) => RunAsync(async () =>
     {
         using var document = JsonDocument.Parse(string.IsNullOrWhiteSpace(argumentsJson) ? "{}" : argumentsJson);
         var maxChars = document.RootElement.TryGetProperty("max_chars", out var value) && value.TryGetInt32(out var parsed)
             ? Math.Clamp(parsed, 500, 30_000)
             : 8000;
-        return await Runtime.SnapshotAsync(maxChars, cancellationToken);
+        return ToolResult.Text(await Runtime.SnapshotAsync(maxChars, cancellationToken));
     });
 }
 
@@ -525,13 +527,13 @@ internal sealed class BrowserScreencastClickTool(BrowserScreencastRuntime runtim
         ToolEffect.Write,
         TargetParameters());
 
-    public override Task<string> ExecuteAsync(string argumentsJson, CancellationToken cancellationToken = default) => RunAsync(async () =>
+    public override Task<ToolResult> ExecuteAsync(string argumentsJson, CancellationToken cancellationToken = default) => RunAsync(async () =>
     {
         using var document = JsonDocument.Parse(string.IsNullOrWhiteSpace(argumentsJson) ? "{}" : argumentsJson);
         var reference = String(document.RootElement, "ref");
         var selector = String(document.RootElement, "selector");
         await Runtime.ClickAsync(reference, selector, cancellationToken);
-        return $"Clicked {reference ?? selector}.";
+        return ToolResult.Text($"Clicked {reference ?? selector}.");
     });
 
     internal static object TargetParameters() => new
@@ -567,7 +569,7 @@ internal sealed class BrowserScreencastTypeTool(BrowserScreencastRuntime runtime
             required = new[] { "value" }
         });
 
-    public override Task<string> ExecuteAsync(string argumentsJson, CancellationToken cancellationToken = default) => RunAsync(async () =>
+    public override Task<ToolResult> ExecuteAsync(string argumentsJson, CancellationToken cancellationToken = default) => RunAsync(async () =>
     {
         using var document = JsonDocument.Parse(string.IsNullOrWhiteSpace(argumentsJson) ? "{}" : argumentsJson);
         var root = document.RootElement;
@@ -577,7 +579,7 @@ internal sealed class BrowserScreencastTypeTool(BrowserScreencastRuntime runtime
             : 120;
         var pressEnter = root.TryGetProperty("press_enter", out var enterValue) && enterValue.ValueKind == JsonValueKind.True;
         await Runtime.TypeAsync(String(root, "ref"), String(root, "selector"), value, delay, pressEnter, cancellationToken);
-        return $"Typed {value.Length} characters{(pressEnter ? " and pressed Enter" : string.Empty)}.";
+        return ToolResult.Text($"Typed {value.Length} characters{(pressEnter ? " and pressed Enter" : string.Empty)}.");
     });
 }
 
@@ -600,13 +602,13 @@ internal sealed class BrowserScreencastGetTextTool(BrowserScreencastRuntime runt
             }
         });
 
-    public override Task<string> ExecuteAsync(string argumentsJson, CancellationToken cancellationToken = default) => RunAsync(async () =>
+    public override Task<ToolResult> ExecuteAsync(string argumentsJson, CancellationToken cancellationToken = default) => RunAsync(async () =>
     {
         using var document = JsonDocument.Parse(string.IsNullOrWhiteSpace(argumentsJson) ? "{}" : argumentsJson);
         var root = document.RootElement;
         var maxChars = root.TryGetProperty("max_chars", out var value) && value.TryGetInt32(out var parsed)
             ? Math.Clamp(parsed, 200, 30_000)
             : 5000;
-        return await Runtime.GetTextAsync(String(root, "ref"), String(root, "selector"), maxChars, cancellationToken);
+        return ToolResult.Text(await Runtime.GetTextAsync(String(root, "ref"), String(root, "selector"), maxChars, cancellationToken));
     });
 }

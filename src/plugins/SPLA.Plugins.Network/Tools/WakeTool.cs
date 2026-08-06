@@ -41,23 +41,23 @@ public class WakeTool : IMcpTool
         }
     };
 
-    public async Task<string> ExecuteAsync(string argumentsJson, CancellationToken cancellationToken = default)
+    public async Task<ToolResult> ExecuteAsync(string argumentsJson, CancellationToken cancellationToken = default)
     {
         try
         {
             using var doc = JsonDocument.Parse(argumentsJson);
             var root = doc.RootElement;
             var macStr = ToolJson.GetStringTrimmed(root, "mac");
-            if (macStr is null) return "Error: Missing 'mac' parameter.";
+            if (macStr is null) return ToolResult.Fail("Error: Missing 'mac' parameter.", "missing mac");
 
             var macBytes = ParseMac(macStr);
             if (macBytes == null)
-                return $"Error: Cannot parse MAC address '{macStr}'. Expected: 00:11:22:33:44:55 / 00-11-22-33-44-55 / 001122334455.";
+                return ToolResult.Fail($"Error: Cannot parse MAC address '{macStr}'. Expected: 00:11:22:33:44:55 / 00-11-22-33-44-55 / 001122334455.", "invalid mac");
 
             var broadcastStr = ToolJson.GetStringTrimmed(root, "broadcast") ?? "255.255.255.255";
 
             if (!IPAddress.TryParse(broadcastStr, out var broadcastAddr))
-                return $"Error: Invalid broadcast address '{broadcastStr}'.";
+                return ToolResult.Fail($"Error: Invalid broadcast address '{broadcastStr}'.", "invalid broadcast");
 
             var port   = ToolJson.GetInt32Clamped(root, "port",   9, 1, 65535);
             var repeat = ToolJson.GetInt32Clamped(root, "repeat", 3, 1, 10);
@@ -76,19 +76,19 @@ public class WakeTool : IMcpTool
             }
 
             var formatted = string.Join("-", macBytes.Select(b => b.ToString("X2")));
-            return $"Wake-on-LAN sent.\n" +
+            return ToolResult.Text($"Wake-on-LAN sent.\n" +
                    $"Target MAC:   {formatted}\n" +
                    $"Broadcast:    {broadcastAddr}:{port}\n" +
                    $"Packets sent: {repeat}\n" +
-                   $"Packet size:  {packet.Length} bytes";
+                   $"Packet size:  {packet.Length} bytes");
         }
         catch (JsonException)
         {
-            return "Error: Invalid JSON arguments.";
+            return ToolResult.Fail("Error: Invalid JSON arguments.", "invalid json");
         }
         catch (Exception ex)
         {
-            return $"Error sending Wake-on-LAN: {ex.Message}";
+            return ToolResult.Fail($"Error sending Wake-on-LAN: {ex.Message}", "wol send failed");
         }
     }
 

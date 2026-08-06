@@ -43,7 +43,7 @@ public sealed class AgentMemorySetTool : IMcpTool
         }
     };
 
-    public Task<string> ExecuteAsync(string argumentsJson, CancellationToken cancellationToken = default)
+    public Task<ToolResult> ExecuteAsync(string argumentsJson, CancellationToken cancellationToken = default)
     {
         try
         {
@@ -52,19 +52,19 @@ public sealed class AgentMemorySetTool : IMcpTool
             var key   = ToolJson.GetString(root, "key");
             var scope = ToolJson.GetString(root, "scope");
 
-            if (string.IsNullOrWhiteSpace(key)) return Task.FromResult("error: key is required");
+            if (string.IsNullOrWhiteSpace(key)) return Task.FromResult(ToolResult.Fail("error: key is required", "missing key"));
             if (!root.TryGetProperty("value", out var valueProp) || valueProp.ValueKind == JsonValueKind.Undefined)
-                return Task.FromResult("error: value is required");
+                return Task.FromResult(ToolResult.Fail("error: value is required", "missing value"));
 
             var value = valueProp.ValueKind == JsonValueKind.String
                 ? valueProp.GetString() ?? ""
                 : valueProp.GetRawText();
 
             var store = AgentMemoryHelpers.SelectStore(_project, scope);
-            if (store is null) return Task.FromResult("error: no active chat session");
+            if (store is null) return Task.FromResult(ToolResult.Refuse("error: no active chat session", "no chat session"));
             store.Set(key, value);
-            return Task.FromResult($"ok: set [{store.Scope}] {key}");
+            return Task.FromResult(ToolResult.Text($"ok: set [{store.Scope}] {key}"));
         }
-        catch (JsonException) { return Task.FromResult("error: invalid_json"); }
+        catch (JsonException) { return Task.FromResult(ToolResult.Fail("error: invalid_json", "invalid json")); }
     }
 }

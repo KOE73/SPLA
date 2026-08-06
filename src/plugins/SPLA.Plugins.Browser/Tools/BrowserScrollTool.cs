@@ -37,7 +37,7 @@ public sealed class BrowserScrollTool : IMcpTool
         }
     };
 
-    public async Task<string> ExecuteAsync(string argumentsJson, CancellationToken cancellationToken = default)
+    public async Task<ToolResult> ExecuteAsync(string argumentsJson, CancellationToken cancellationToken = default)
     {
         var mgr = BrowserToolBase.Current;
         if (mgr is null) return BrowserToolBase.NotRunning;
@@ -53,7 +53,7 @@ public sealed class BrowserScrollTool : IMcpTool
             dx = ToolJson.GetInt32(root, "dx", 0);
             dy = ToolJson.GetInt32(root, "dy", 800);
         }
-        catch (JsonException) { return "Error: invalid JSON arguments."; }
+        catch (JsonException) { return ToolResult.Fail("Error: invalid JSON arguments.", "invalid json"); }
 
         var (resolvedTabId, page, tabError) = BrowserToolBase.ResolveTab(mgr, tabId);
         if (page is null) return tabError!;
@@ -63,13 +63,13 @@ public sealed class BrowserScrollTool : IMcpTool
             if (!string.IsNullOrWhiteSpace(refId))
             {
                 var (locator, refError) = mgr.Refs.Resolve(page, resolvedTabId!, refId.Trim());
-                if (locator is null) return refError!;
+                if (locator is null) return BrowserToolBase.RefFailure(refError!);
                 await locator.ScrollIntoViewIfNeededAsync();
-                return $"Scrolled {refId} into view on tab {resolvedTabId}.";
+                return ToolResult.Text($"Scrolled {refId} into view on tab {resolvedTabId}.");
             }
 
             await page.Mouse.WheelAsync(dx, dy);
-            return $"Scrolled tab {resolvedTabId} by (dx={dx}, dy={dy}).";
+            return ToolResult.Text($"Scrolled tab {resolvedTabId} by (dx={dx}, dy={dy}).");
         }
         catch (PlaywrightException ex) { return BrowserToolBase.Fail("browser_scroll", ex); }
     }

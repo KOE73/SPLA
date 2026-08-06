@@ -30,7 +30,7 @@ public sealed class BrowserSwitchTabTool : IMcpTool
         }
     };
 
-    public Task<string> ExecuteAsync(string argumentsJson, CancellationToken cancellationToken = default)
+    public Task<ToolResult> ExecuteAsync(string argumentsJson, CancellationToken cancellationToken = default)
     {
         var mgr = BrowserToolBase.Current;
         if (mgr is null) return Task.FromResult(BrowserToolBase.NotRunning);
@@ -41,11 +41,11 @@ public sealed class BrowserSwitchTabTool : IMcpTool
             using var doc = JsonDocument.Parse(string.IsNullOrWhiteSpace(argumentsJson) ? "{}" : argumentsJson);
             tabId = ToolJson.GetStringTrimmed(doc.RootElement, "tab_id");
         }
-        catch (JsonException) { return Task.FromResult("Error: invalid JSON arguments."); }
+        catch (JsonException) { return Task.FromResult(ToolResult.Fail("Error: invalid JSON arguments.", "invalid json")); }
 
-        if (tabId is null) return Task.FromResult("Error: 'tab_id' is required.");
+        if (tabId is null) return Task.FromResult(ToolResult.Fail("Error: 'tab_id' is required.", "missing tab_id"));
         return Task.FromResult(mgr.Pages.SetActive(tabId)
-            ? $"Active tab is now {tabId}."
-            : $"Error: unknown tab '{tabId}'. Call browser_tabs to list open tabs.");
+            ? ToolResult.Text($"Active tab is now {tabId}.")
+            : ToolResult.Refuse($"Error: unknown tab '{tabId}'. Call browser_tabs to list open tabs.", "unknown tab"));
     }
 }

@@ -58,7 +58,7 @@ public sealed class SftpDownloadTool : IMcpTool
         }
     };
 
-    public async Task<string> ExecuteAsync(string argumentsJson, CancellationToken cancellationToken = default)
+    public async Task<ToolResult> ExecuteAsync(string argumentsJson, CancellationToken cancellationToken = default)
     {
         string remotePath, localPath;
         string? host, include, exclude;
@@ -77,11 +77,11 @@ public sealed class SftpDownloadTool : IMcpTool
         }
         catch (JsonException)
         {
-            return "Error: invalid JSON arguments.";
+            return ToolResult.Fail("Error: invalid JSON arguments.", "invalid json");
         }
 
-        if (remotePath.Length == 0) return "Error: 'remote_path' is required.";
-        if (localPath.Length == 0) return "Error: 'local_path' is required.";
+        if (remotePath.Length == 0) return ToolResult.Fail("Error: 'remote_path' is required.", "missing remote_path");
+        if (localPath.Length == 0) return ToolResult.Fail("Error: 'local_path' is required.", "missing local_path");
 
         try
         {
@@ -99,11 +99,11 @@ public sealed class SftpDownloadTool : IMcpTool
                 foreach (var problem in result.Problems.Take(10))
                     text.Append($"\n  {problem.Path}: {problem.Reason}");
             }
-            return text.ToString();
+            return ToolResult.Text(text.ToString());
         }
         catch (Exception ex)
         {
-            return $"Error: {ex.Message}";
+            return ToolResult.Fail($"Error: {ex.Message}", "download failed");
         }
     }
 }

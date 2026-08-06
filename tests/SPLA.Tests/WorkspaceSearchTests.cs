@@ -39,7 +39,7 @@ public sealed class WorkspaceSearchTests
         await ws.WriteAllTextAsync("/proj/src/deep/c.cs", "found TARGET again");
         using var _ = Scope(ws);
 
-        var json = await new FsSearchTextTool().ExecuteAsync(Search("TARGET", "/proj"));
+        var json = (await new FsSearchTextTool().ExecuteAsync(Search("TARGET", "/proj"))).TextContent;
         var result = JsonSerializer.Deserialize<SearchTextResult>(json, Web)!;
 
         Assert.Equal(2, result.TotalMatches);   // a.cs line 2, deep/c.cs line 1
@@ -55,7 +55,7 @@ public sealed class WorkspaceSearchTests
         await ws.WriteAllTextAsync("/proj/skip.md", "hit");
         using var _ = Scope(ws);
 
-        var json = await new FsSearchTextTool().ExecuteAsync(Search("hit", "/proj", include: "*.cs"));
+        var json = (await new FsSearchTextTool().ExecuteAsync(Search("hit", "/proj", include: "*.cs"))).TextContent;
         var result = JsonSerializer.Deserialize<SearchTextResult>(json, Web)!;
 
         Assert.Equal(1, result.TotalMatches);
@@ -70,7 +70,7 @@ public sealed class WorkspaceSearchTests
         await ws.WriteAllTextAsync("/proj/bin/generated.cs", "needle");   // under bin/ → ignored
         using var _ = Scope(ws);
 
-        var json = await new FsSearchTextTool().ExecuteAsync(Search("needle", "/proj"));
+        var json = (await new FsSearchTextTool().ExecuteAsync(Search("needle", "/proj"))).TextContent;
         var result = JsonSerializer.Deserialize<SearchTextResult>(json, Web)!;
 
         Assert.Equal(1, result.TotalMatches);

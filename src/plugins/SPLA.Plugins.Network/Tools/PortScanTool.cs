@@ -104,14 +104,14 @@ public class PortScanTool : IMcpTool
         }
     };
 
-    public async Task<string> ExecuteAsync(string argumentsJson, CancellationToken cancellationToken = default)
+    public async Task<ToolResult> ExecuteAsync(string argumentsJson, CancellationToken cancellationToken = default)
     {
         try
         {
             using var doc = JsonDocument.Parse(argumentsJson);
             var root = doc.RootElement;
             var host = ToolJson.GetStringTrimmed(root, "host");
-            if (host is null) return "Error: Missing 'host' parameter.";
+            if (host is null) return ToolResult.Fail("Error: Missing 'host' parameter.", "missing host");
 
             var portsValue  = ToolJson.GetString(root, "ports");
             var timeout     = ToolJson.GetInt32Clamped(root, "timeout",     500,   100, 10000);
@@ -161,17 +161,17 @@ public class PortScanTool : IMcpTool
             sb.AppendLine($"Open ports: {(orderedOpen.Length == 0 ? "none" : NetworkScanHelpers.FormatPorts(orderedOpen))}");
             var result = sb.ToString();
             var target = DataChannel.ParseTarget(ToolJson.GetStringTrimmed(root, "output"));
-            if (target == OutputTarget.Context) return result;
+            if (target == OutputTarget.Context) return ToolResult.Text(result);
             var blobName = ToolJson.GetStringTrimmed(root, "output_name");
-            return DataChannel.Route(target, BlobPayload.OfText(result), $"network_scan_tcp_ports: {host}, {orderedOpen.Length} open", blobName);
+            return ToolResult.Text(DataChannel.Route(target, BlobPayload.OfText(result), $"network_scan_tcp_ports: {host}, {orderedOpen.Length} open", blobName));
         }
         catch (JsonException)
         {
-            return "Error: Invalid JSON arguments.";
+            return ToolResult.Fail("Error: Invalid JSON arguments.", "invalid json");
         }
         catch (Exception ex)
         {
-            return $"Error scanning ports: {ex.Message}";
+            return ToolResult.Fail($"Error scanning ports: {ex.Message}", "port scan failed");
         }
     }
 

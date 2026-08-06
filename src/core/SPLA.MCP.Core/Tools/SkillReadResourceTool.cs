@@ -59,10 +59,10 @@ public sealed class SkillReadResourceTool : IMcpTool
         }
     };
 
-    public Task<string> ExecuteAsync(string argumentsJson, CancellationToken cancellationToken = default)
+    public Task<ToolResult> ExecuteAsync(string argumentsJson, CancellationToken cancellationToken = default)
     {
         var session = AgentSessionScope.Current?.Skills;
-        if (session is null) return Task.FromResult("error: no active chat session");
+        if (session is null) return Task.FromResult(ToolResult.Refuse("error: no active chat session", "no chat session"));
 
         try
         {
@@ -70,15 +70,17 @@ public sealed class SkillReadResourceTool : IMcpTool
             var path = ToolJson.GetStringTrimmed(doc.RootElement, "path");
 
             if (string.IsNullOrEmpty(path))
-                return Task.FromResult("error: 'path' parameter is required");
+                return Task.FromResult(ToolResult.Fail("error: 'path' parameter is required", "missing path"));
 
             if (session.ActiveSkillId is null)
-                return Task.FromResult(
-                    "error: no skill is active — resources are only readable while their skill is active; call skill_activate first");
+                return Task.FromResult(ToolResult.Refuse(
+                    "error: no skill is active — resources are only readable while their skill is active; call skill_activate first",
+                    "no active skill"));
 
             if (session.ActiveSourceId is null || session.ActiveRef is null)
-                return Task.FromResult(
-                    $"error: skill '{session.ActiveSkillId}' was activated without a source address — its resources are not reachable");
+                return Task.FromResult(ToolResult.Fail(
+                    $"error: skill '{session.ActiveSkillId}' was activated without a source address — its resources are not reachable",
+                    "no source address"));
 
             // Normalised the way the listing is, so "references\x.md" and "./references/x.md" are not
             // three different answers to the same question. A ".." is NOT normalised away: quietly
@@ -93,19 +95,20 @@ public sealed class SkillReadResourceTool : IMcpTool
                     ? $"error: skill '{session.ActiveSkillId}' has no resources"
                     : $"error: '{path}' is not a resource of skill '{session.ActiveSkillId}'\navailable:\n" +
                       string.Join("\n", known.Select(r => $"  - {r}"));
-                return Task.FromResult(msg);
+                return Task.FromResult(ToolResult.Fail(msg, "unknown resource"));
             }
 
             var text = _skills.ReadResource(session.ActiveSourceId, session.ActiveRef, wanted);
             if (text is null)
-                return Task.FromResult(
-                    $"error: resource '{wanted}' could not be read — its source '{session.ActiveSourceId}' returned nothing");
+                return Task.FromResult(ToolResult.Fail(
+                    $"error: resource '{wanted}' could not be read — its source '{session.ActiveSourceId}' returned nothing",
+                    "resource unreadable"));
 
-            return Task.FromResult(text);
+            return Task.FromResult(ToolResult.Text(text));
         }
         catch (JsonException)
         {
-            return Task.FromResult("error: invalid_json");
+            return Task.FromResult(ToolResult.Fail("error: invalid_json", "invalid json"));
         }
     }
 }

@@ -39,10 +39,10 @@ public sealed class ContextCheckpointSetTool : IMcpTool
         }
     };
 
-    public Task<string> ExecuteAsync(string argumentsJson, CancellationToken cancellationToken = default)
+    public Task<ToolResult> ExecuteAsync(string argumentsJson, CancellationToken cancellationToken = default)
     {
         var marks = AgentSessionScope.Current?.Checkpoint;
-        if (marks is null) return Task.FromResult("error: no active chat session");
+        if (marks is null) return Task.FromResult(ToolResult.Refuse("error: no active chat session", "no chat session"));
 
         string? resume = null;
         if (!string.IsNullOrWhiteSpace(argumentsJson) && argumentsJson != "{}")
