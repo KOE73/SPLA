@@ -59,6 +59,7 @@
     <File Path="docs/plans/PLAN_20260803_core_toolset-levels.md" />
     <File Path="docs/plans/PLAN_20260804_agent_skills-library-rewrite.md" />
     <File Path="docs/plans/PLAN_20260805_agent_skills-sources.md" />
+    <File Path="docs/plans/PLAN_20260805_tools_call-contract.md" />
   </Folder>
   <Folder Name="/docs/ideas/">
     <File Path="docs/ideas/IDEA_20260611_core_todo-general.md" />
@@ -71,6 +72,8 @@
     <File Path="docs/ideas/IDEA_20260711_llm_model-registry.md" />
     <File Path="docs/ideas/IDEA_20260712_plugins_ideas.md" />
     <File Path="docs/ideas/IDEA_20260715_core_misc.md" />
+    <File Path="docs/ideas/IDEA_20260802_core_maf-directions.md" />
+    <File Path="docs/ideas/IDEA_20260805_core_external-head.md" />
   </Folder>
   <Folder Name="/src/core/">
     <Project Path="src/core/SPLA.Domain/SPLA.Domain.csproj" />
