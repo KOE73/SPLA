@@ -1,8 +1,10 @@
 using System.Collections.Generic;
 using System.Linq;
+using System.Text;
 using SPLA.Domain.Agent;
 using SPLA.Domain.Host;
 using SPLA.MCP.BasicTools.FileSystem;
+using SPLA.MCP.Core.Tools;
 
 namespace SPLA.Tests;
 
@@ -35,6 +37,23 @@ public sealed class HostSandboxSeamTests
         var read = await new FsReadTool().ExecuteAsync(
             """{"path":"/virtual/note.txt","start_line":1,"line_count":null,"output":null,"output_name":null}""");
         Assert.Contains("hello seam", read);
+    }
+
+    [Fact]
+    public async Task Blob_read_preserves_raw_content_without_display_line_numbers()
+    {
+        const string originalContent = "#!/usr/bin/env bash\nset -euo pipefail\n";
+        var ws = new MemoryWorkspace();
+        await ws.WriteAllTextAsync("/virtual/deploy.sh", originalContent);
+        using var _ = Scope(new PassthroughSandbox(workspace: ws, shell: null));
+
+        var result = await new FsReadTool().ExecuteAsync(
+            """{"path":"/virtual/deploy.sh","start_line":1,"line_count":null,"output":"blob","output_name":"deploy-script"}""");
+
+        Assert.Contains("blob:deploy-script", result);
+        Assert.True(DataChannel.ResolveBytes("blob:deploy-script", out var blobContent, out var error), error);
+        Assert.Equal(Encoding.UTF8.GetBytes(originalContent), blobContent);
+        Assert.DoesNotContain(Encoding.UTF8.GetBytes("1: "), blobContent);
     }
 
     [Fact]
@@ -125,6 +144,9 @@ public sealed class HostSandboxSeamTests
 
         public Task<string> ReadAllTextAsync(string path, CancellationToken ct = default)
             => Task.FromResult(_files.TryGetValue(path, out var v) ? v : string.Empty);
+
+        public Task<byte[]> ReadAllBytesAsync(string path, CancellationToken ct = default)
+            => Task.FromResult(Encoding.UTF8.GetBytes(_files.TryGetValue(path, out var v) ? v : string.Empty));
 
         public Task WriteAllTextAsync(string path, string content, CancellationToken ct = default)
         {

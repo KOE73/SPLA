@@ -59,6 +59,18 @@ public class FsReadTool : IMcpTool
                 return $"Error: File not found at {path}";
             }
 
+            var target = DataChannel.ParseTarget(ToolJson.GetStringTrimmed(doc.RootElement, "output"));
+            if (target != OutputTarget.Context)
+            {
+                var rawContent = await ws.ReadAllBytesAsync(path, cancellationToken);
+                var blobName = ToolJson.GetStringTrimmed(doc.RootElement, "output_name");
+                return DataChannel.Route(
+                    target,
+                    BlobPayload.OfBytes(rawContent),
+                    $"system_read_file: raw content from {path}",
+                    blobName);
+            }
+
             var startLine = Math.Max(1, ToolJson.GetInt32(doc.RootElement, "start_line", 1));
             var lineCount = ToolJson.GetInt32(doc.RootElement, "line_count") is { } c ? (int?)Math.Max(1, c) : null;
 
@@ -81,11 +93,7 @@ public class FsReadTool : IMcpTool
                 sb.AppendLine($"{i + 1}: {lines[i]}");
             }
 
-            var content = sb.ToString();
-            var target = DataChannel.ParseTarget(ToolJson.GetStringTrimmed(doc.RootElement, "output"));
-            if (target == OutputTarget.Context) return content;
-            var blobName = ToolJson.GetStringTrimmed(doc.RootElement, "output_name");
-            return DataChannel.Route(target, BlobPayload.OfText(content), $"system_read_file: {lines.Length} lines from {path}", blobName);
+            return sb.ToString();
         }
         catch (JsonException)
         {

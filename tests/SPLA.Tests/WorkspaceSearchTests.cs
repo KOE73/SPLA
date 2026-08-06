@@ -101,6 +101,10 @@ public sealed class WorkspaceSearchTests
         public Task<string> ReadAllTextAsync(string path, CancellationToken ct = default)
             => Task.FromResult(_files.TryGetValue(path, out var v) ? v : string.Empty);
 
+        public Task<byte[]> ReadAllBytesAsync(string path, CancellationToken ct = default)
+            => Task.FromResult(System.Text.Encoding.UTF8.GetBytes(
+                _files.TryGetValue(path, out var v) ? v : string.Empty));
+
         public Task WriteAllTextAsync(string path, string content, CancellationToken ct = default)
         {
             _files[path] = content;

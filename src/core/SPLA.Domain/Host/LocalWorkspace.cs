@@ -24,6 +24,9 @@ public sealed class LocalWorkspace : IWorkspace
     public Task<string> ReadAllTextAsync(string path, CancellationToken ct = default)
         => File.ReadAllTextAsync(path, ct);
 
+    public Task<byte[]> ReadAllBytesAsync(string path, CancellationToken ct = default)
+        => File.ReadAllBytesAsync(path, ct);
+
     public Task WriteAllTextAsync(string path, string content, CancellationToken ct = default)
         => File.WriteAllTextAsync(path, content, ct);
 
