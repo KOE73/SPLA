@@ -54,8 +54,17 @@ public static class DataChannel
         if (store is null)
             return Inline(payload, summary) + "\n(note: no active chat — blob storage unavailable, data inlined)";
 
+        // Record what the payload actually is, once, at the only point every producer passes through.
+        // Without this a typeless byte blob is indistinguishable from an image downstream — which is
+        // exactly how a binary config file once reached the model as a picture.
+        payload = payload with
+        {
+            ContentType = BlobContentType.Resolve(
+                payload.ContentType, payload.Bytes, name, payload.Kind == BlobKind.Text)
+        };
+
         var handle = store.Put(payload, name);
-        var meta = $"{summary}\nstored: {handle}  ({payload.Kind}, {payload.Size} bytes). " +
+        var meta = $"{summary}\nstored: {handle}  ({Describe(payload)}, {payload.Size} bytes). " +
                    $"Pass this handle to a consuming tool to use the data without loading it into context.";
 
         return target == OutputTarget.Both && payload.Kind == BlobKind.Text
@@ -99,6 +108,17 @@ public static class DataChannel
             ? payload.Bytes ?? Array.Empty<byte>()
             : Encoding.UTF8.GetBytes(payload.Text ?? string.Empty);
         return true;
+    }
+
+    /// <summary>How the stored payload is announced to the model: "text" reads as something it may ask
+    /// for, "binary application/octet-stream" reads as something it may only pass on. The bare enum name
+    /// (<c>Bytes</c>) said neither.</summary>
+    private static string Describe(BlobPayload payload)
+    {
+        var type = payload.ContentType;
+        if (payload.Kind == BlobKind.Text)
+            return string.IsNullOrEmpty(type) || type == "text/plain" ? "text" : $"text, {type}";
+        return $"binary {(string.IsNullOrEmpty(type) ? BlobContentType.Unknown : type)}";
     }
 
     private static string Inline(BlobPayload payload, string summary)

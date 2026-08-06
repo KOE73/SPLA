@@ -49,7 +49,11 @@ let keySeq = 0;
 const nextKey = () => "i" + (keySeq++);
 
 // per-msgIndex streaming state — mirrors the old `B` object in app.js
-const streams = new Map<number, { raw: string; timer: number }>();
+const streams = new Map<number, { raw: string; timer: number; sawReasoning?: boolean }>();
+// Bubbles opened by llm.turn.start that no assistant.message has closed yet. A turn that dies in the
+// provider call leaves one behind: it is the empty ASSISTANT box that used to be the only trace of a
+// failure, since turn.complete's error text was received and dropped.
+const pendingBubbles = new Set<number>();
 const bubbleRefs = new Map<number, AssistantBubbleHandle>();
 function setBubbleRef(msgIndex: number, el: unknown) {
   if (el) bubbleRefs.set(msgIndex, el as AssistantBubbleHandle);
@@ -92,6 +96,7 @@ function clearAll() {
   toolCalls.clear();
   streams.forEach(s => clearTimeout(s.timer));
   streams.clear();
+  pendingBubbles.clear();
   bubbleRefs.clear();
 }
 
@@ -102,6 +107,19 @@ function addAssistantItem(msgIndex: number, msgId?: string, createdAt?: string |
 function startBubble(msgIndex: number) {
   addAssistantItem(msgIndex, undefined, Date.now());
   streams.set(msgIndex, { raw: "", timer: 0 });
+  pendingBubbles.add(msgIndex);
+}
+
+/// Drops a bubble that never received text or reasoning. Returns true if one was actually removed.
+function discardEmptyBubble(msgIndex: number): boolean {
+  const s = streams.get(msgIndex);
+  if (s && (s.raw || s.sawReasoning)) return false;
+  if (s) clearTimeout(s.timer);
+  streams.delete(msgIndex);
+  bubbleRefs.delete(msgIndex);
+  const before = items.value.length;
+  items.value = items.value.filter(i => !(i.kind === "assistant" && i.msgIndex === msgIndex));
+  return items.value.length < before;
 }
 function appendDelta(msgIndex: number, text: string) {
   const s = streams.get(msgIndex);
@@ -111,6 +129,7 @@ function appendDelta(msgIndex: number, text: string) {
   s.timer = window.setTimeout(() => { bubbleRefs.get(msgIndex)?.renderInto(s.raw).then(scroll); }, 70);
 }
 function finalizeBubble(msgIndex: number, message: { content?: string; reasoning?: string }) {
+  pendingBubbles.delete(msgIndex);
   let s = streams.get(msgIndex);
   if (!s) { addAssistantItem(msgIndex); s = { raw: "", timer: 0 }; streams.set(msgIndex, s); }
   clearTimeout(s.timer);
@@ -221,7 +240,12 @@ const offs = [
   }),
   client.on("llm.turn.start", p => startBubble(p.msgIndex)),
   client.on("delta", p => appendDelta(p.msgIndex, p.text)),
-  client.on("reasoning", p => { bubbleRefs.get(p.msgIndex)?.appendReasoning(p.text); scroll(); }),
+  client.on("reasoning", p => {
+    const s = streams.get(p.msgIndex);
+    if (s) s.sawReasoning = true;
+    bubbleRefs.get(p.msgIndex)?.appendReasoning(p.text);
+    scroll();
+  }),
   client.on("assistant.message", p => finalizeBubble(p.msgIndex, p.message)),
   client.on("tool.started", p => {
     addToolCall({ callId: p.toolCall.id, name: p.toolCall.name, argumentsText: p.toolCall.arguments,
@@ -238,10 +262,27 @@ const offs = [
     else items.value.push({ kind: "tool", key: nextKey(), text: "← " + p.toolName + " (" + (p.result || "").length + " chars)" });
     scroll();
   }),
-  // A cancelled/failed turn can strand cards in "running" — stop their spinners.
-  client.on("turn.complete", () => {
+  // End of turn is where a failure becomes visible. The server already reports why (it logs the
+  // exception and puts its message in this payload) — everything below is the client finally saying
+  // it out loud, in the log, next to the turn that failed.
+  client.on("turn.complete", (p, env) => {
+    if (env.chatId && renderedChatId && env.chatId !== renderedChatId) return;
+
+    // A cancelled/failed turn can strand cards in "running" — stop their spinners.
     for (const it of items.value)
       if (it.kind === "toolcall" && it.call.status === "running") { it.call.status = "done"; it.call.finishedAt = Date.now(); }
+
+    // A bubble opened for a turn that produced nothing is not an answer; it is the shape of a
+    // failure. Remove it and say what happened instead of leaving a blank box.
+    let discarded = false;
+    for (const msgIndex of pendingBubbles) discarded = discardEmptyBubble(msgIndex) || discarded;
+    pendingBubbles.clear();
+
+    if (p.error) items.value.push({ kind: "notice", key: nextKey(), text: "⚠ Turn failed: " + p.error });
+    else if (p.cancelled) items.value.push({ kind: "notice", key: nextKey(), text: "⏹ Turn cancelled." });
+    else if (discarded) items.value.push({ kind: "notice", key: nextKey(), text: "⚠ The model returned no output for this turn." });
+
+    if (p.error || p.cancelled || discarded) scroll();
   }),
   client.on("notice", p => { items.value.push({ kind: "notice", key: nextKey(), text: p.text }); scroll(); }),
   client.on("error", p => { items.value.push({ kind: "notice", key: nextKey(), text: "⚠ " + p.message }); scroll(); }),

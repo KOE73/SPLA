@@ -102,39 +102,7 @@ public sealed class LiveAgentInspector : IAgentInspector
                     var sentContext = isLive ? lc.LastContext : ContextAssembler.Assemble(lc.Messages);
                     snap.ContextIsLive = isLive;
 
-                    var ctxSet = new HashSet<string>(sentContext.Select(m => m.MsgId).Where(id => id != null)!);
-                    var allMessages = lc.Messages;
-                    var idx = 0;
-                    var lines = new List<ContextLineDto>();
-
-                    // All messages (full history) — dimmed if not in context
-                    foreach (var m in allMessages)
-                    {
-                        lines.Add(new ContextLineDto
-                        {
-                            Index = ++idx,
-                            MsgId = string.IsNullOrEmpty(m.Mark) ? m.MsgId : $"{m.MsgId} [{m.Mark}]",
-                            Source = DescribeSource(m),
-                            Full = BuildFull(m),
-                            Preview = Flatten(BuildFull(m)),
-                            ApproxTokens = (BuildFull(m).Length + 3) / 4,
-                            InContext = !string.IsNullOrEmpty(m.MsgId) && ctxSet.Contains(m.MsgId)
-                        });
-                    }
-                    // Working-memory and other injected messages absent from history
-                    foreach (var m in sentContext.Where(m => string.IsNullOrEmpty(m.MsgId) || !allMessages.Any(h => h.MsgId == m.MsgId)))
-                    {
-                        lines.Add(new ContextLineDto
-                        {
-                            Index = ++idx,
-                            MsgId = "(injected)",
-                            Source = DescribeSource(m),
-                            Full = BuildFull(m),
-                            Preview = Flatten(BuildFull(m)),
-                            ApproxTokens = (BuildFull(m).Length + 3) / 4,
-                            InContext = true
-                        });
-                    }
+                    var lines = BuildContextLines(sentContext, lc.Messages);
                     var ctxLines = lines.Where(l => l.InContext).ToList();
                     snap.ContextLines = lines;
                     snap.ContextCount = ctxLines.Count;
@@ -152,6 +120,76 @@ public sealed class LiveAgentInspector : IAgentInspector
                 break;
         }
         return snap;
+    }
+
+    /// <summary>
+    /// Lays out the context table in the order the model actually saw: walk the sent request, and slot
+    /// each history message that did NOT make it in just before the next one that did.
+    /// <para>
+    /// The earlier two-pass build — all history, then injected messages appended — put the composed
+    /// system prompt at the bottom of the table. It is rebuilt fresh on every loop iteration and so
+    /// carries no MsgId to match history on, which is the only reason it landed in the second pass.
+    /// The table read as "the system prompt is sent last". It is sent first.
+    /// </para>
+    /// Public and static because it is a pure function of (request, history) and is worth testing as
+    /// one, without standing up a runtime.
+    /// </summary>
+    public static List<ContextLineDto> BuildContextLines(
+        IReadOnlyList<ChatMessage> sentContext, IReadOnlyList<ChatMessage> history)
+    {
+        var idx = 0;
+        var lines = new List<ContextLineDto>();
+        var next = 0;   // position in history not yet emitted
+
+        ContextLineDto Line(ChatMessage m, bool inContext, bool fromHistory)
+        {
+            var full = BuildFull(m);
+            return new ContextLineDto
+            {
+                Index = ++idx,
+                MsgId = !fromHistory ? "(injected)"
+                      : string.IsNullOrEmpty(m.Mark) ? m.MsgId
+                      : $"{m.MsgId} [{m.Mark}]",
+                Source = DescribeSource(m),
+                Full = full,
+                Preview = Flatten(full),
+                ApproxTokens = (full.Length + 3) / 4,
+                InContext = inContext
+            };
+        }
+
+        foreach (var m in sentContext)
+        {
+            var at = string.IsNullOrEmpty(m.MsgId)
+                ? -1
+                : IndexOfFrom(history, next, m.MsgId!);
+
+            if (at < 0)
+            {
+                // Composed system prompt, working-memory snapshot, ephemeral injections — real
+                // positions in the request, no counterpart in stored history.
+                lines.Add(Line(m, inContext: true, fromHistory: false));
+                continue;
+            }
+
+            for (; next < at; next++)                       // history dropped before this one
+                lines.Add(Line(history[next], inContext: false, fromHistory: true));
+            next = at + 1;
+            lines.Add(Line(m, inContext: true, fromHistory: true));
+        }
+
+        // History after the last message that survived into the request.
+        for (; next < history.Count; next++)
+            lines.Add(Line(history[next], inContext: false, fromHistory: true));
+
+        return lines;
+    }
+
+    private static int IndexOfFrom(IReadOnlyList<ChatMessage> history, int start, string msgId)
+    {
+        for (var i = start; i < history.Count; i++)
+            if (history[i].MsgId == msgId) return i;
+        return -1;
     }
 
     private static string DescribeSource(ChatMessage m)

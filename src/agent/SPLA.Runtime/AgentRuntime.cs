@@ -261,7 +261,8 @@ public sealed class AgentRuntime : IDisposable
                 new SPLA.MCP.Core.Tools.AgentSpawnBatchTool(SpawnedRunner)),
             Feature("core.clarify",
                 new SPLA.MCP.Core.Tools.AgentClarifyTool()),
-            Feature("core.blobs"),
+            Feature("core.blobs",
+                new SPLA.MCP.Core.Tools.BlobPeekTool()),
         };
 
         var enabledIds = AgentFeatureCatalog.Resolve(settings.Capabilities, loggerFactory.CreateLogger("SPLA.Agent.Capabilities"));

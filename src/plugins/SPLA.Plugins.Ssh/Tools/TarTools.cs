@@ -174,9 +174,13 @@ public sealed class TarReadTool : IMcpTool
             // Configuration is text; a binary entry can still be moved on to another host as a blob,
             // it just is not worth putting in front of the model as mojibake.
             var text = Encoding.UTF8.GetString(bytes);
-            var payload = text.Contains('\0')
-                ? BlobPayload.OfBytes(bytes)
-                : BlobPayload.OfText(text);
+            var isBinary = text.Contains('\0');
+            // The entry name is the best type evidence this tool has; recording it here is what keeps a
+            // consumer downstream from having to guess what the bytes are.
+            var contentType = BlobContentType.Resolve(null, bytes, entry, isText: !isBinary);
+            var payload = isBinary
+                ? BlobPayload.OfBytes(bytes, contentType)
+                : BlobPayload.OfText(text, contentType);
 
             return Task.FromResult(DataChannel.Route(
                 DataChannel.ParseTarget(output), payload,

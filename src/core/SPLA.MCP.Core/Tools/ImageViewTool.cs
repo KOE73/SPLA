@@ -64,11 +64,21 @@ public sealed class ImageViewTool : IMcpTool
         var payload = session.Blobs.Get(handle);
         if (payload is null) return Task.FromResult($"error: no blob found for handle '{handle}'");
         if (payload.Kind != BlobKind.Bytes || payload.Bytes is null)
-            return Task.FromResult($"error: blob '{handle}' is not an image (kind={payload.Kind})");
+            return Task.FromResult(
+                $"error: blob '{handle}' holds text, not an image — read it with a tool that takes text, or blob_peek it.");
 
-        var contentType = string.IsNullOrWhiteSpace(payload.ContentType) ? "image/png" : payload.ContentType;
-        if (!contentType.StartsWith("image/", StringComparison.OrdinalIgnoreCase))
-            return Task.FromResult($"error: blob '{handle}' content type '{contentType}' is not an image");
+        // Never assume. A byte blob whose type nobody recorded is checked against its own signature:
+        // the previous default of "image/png" turned every typeless binary into a data URL of garbage
+        // that the model then had to interpret as a picture.
+        var contentType = payload.ContentType;
+        if (string.IsNullOrWhiteSpace(contentType))
+            contentType = BlobContentType.Sniff(payload.Bytes);
+
+        if (!BlobContentType.IsViewableImage(contentType))
+            return Task.FromResult(
+                $"error: blob '{handle}' is not a viewable image (content type: {contentType ?? "unrecognised — no known image signature"}, " +
+                $"{payload.Size} bytes). Binary data cannot be looked at: pass the handle to a writing/uploading tool " +
+                $"to move it, or use blob_peek to inspect its bytes.");
 
         var dataUrl = $"data:{contentType};base64,{Convert.ToBase64String(payload.Bytes)}";
         session.Images.Push(dataUrl);

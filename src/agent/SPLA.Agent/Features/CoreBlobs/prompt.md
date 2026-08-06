@@ -1,1 +1,9 @@
 Data channel — bulk output without flooding context: most tools that produce large text results support an `output` parameter: `"context"` (default, inline result), `"blob"` (store data, return only a summary + handle), or `"both"`. When the result is large or you plan to pipe it directly to another tool (e.g. write to a file), use `output="blob"`. The tool returns a `blob:<id>` handle. Any consuming tool (system_write_file, system_create_file, system_patch_file — `content`/`new_text` field) accepts a handle in place of a literal value and resolves it automatically. The blob lives for this chat session only and is never injected into context automatically. Example pipeline for dumping SQL DDL to a file without flooding context: `sql_query(sql="SELECT name, object_definition(object_id) AS def FROM sys.objects WHERE ...", output="blob", output_name="ddl")` → `system_write_file(path="ddl.sql", content="blob:ddl")`.
+
+A blob is opaque to you: the handle is an address, not the data. What a blob holds is stated in the summary line that created it — `text` or `binary <content-type>` — and that distinction decides what you can do with it:
+
+- **Text blob** — pass it to a consuming tool, or `blob_peek` it to see a slice.
+- **Binary blob** — pass it on (write it to a file, upload it), or `blob_peek` it for a hex dump. You cannot read binary data as text; do not try to interpret it by feeding it somewhere that expects text.
+- **Image blob** (`binary image/png`, `image/jpeg`, …) — and only an image blob — can be looked at with `image_view`, which puts the actual picture in front of you on the next turn. `image_view` on anything else fails; a binary file is not a picture just because it is bytes.
+
+When you only need to identify what a blob is rather than use it, `blob_peek` is the cheap answer — it is bounded and will not flood context.

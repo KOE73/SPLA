@@ -37,6 +37,7 @@ public sealed class AgentCapabilitiesTests
         "toolset_activate", "toolset_deactivate",
         "agent_spawn", "agent_spawn_batch",
         "agent_clarify",
+        "blob_peek",
     };
 
     private static string TempRoot() =>

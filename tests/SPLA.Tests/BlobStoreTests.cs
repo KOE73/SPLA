@@ -119,6 +119,103 @@ public sealed class BlobStoreTests
         Assert.Contains("inline me", result);
     }
 
+    // ── Content type: what a blob holds, and who is allowed to look at it ────
+    //
+    // Regression cover for a binary config file that reached the model as a picture: nothing recorded
+    // that the bytes were not an image, and image_view defaulted an unknown type to image/png.
+
+    [Fact]
+    public void Route_records_content_type_for_typeless_bytes_and_says_binary()
+    {
+        var store = new BlobStore();
+        using var _ = Scope(store);
+
+        // A 145-byte binary blob with no recognisable signature — the mihomo rule-set case.
+        var bytes = new byte[145];
+        bytes[0] = 0x4D; bytes[1] = 0x52; bytes[2] = 0x53; bytes[3] = 0x00;
+        var result = DataChannel.Route(OutputTarget.Blob, BlobPayload.OfBytes(bytes), "one entry", "rules");
+
+        Assert.Contains("binary application/octet-stream", result);
+        Assert.DoesNotContain("image", result);
+        Assert.Equal("application/octet-stream", store.Get("blob:rules")!.ContentType);
+    }
+
+    [Fact]
+    public void Route_sniffs_a_real_image_signature()
+    {
+        var store = new BlobStore();
+        using var _ = Scope(store);
+
+        var png = new byte[] { 0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A, 0, 0, 0, 0 };
+        DataChannel.Route(OutputTarget.Blob, BlobPayload.OfBytes(png), "a screenshot", "shot");
+
+        Assert.Equal("image/png", store.Get("blob:shot")!.ContentType);
+    }
+
+    [Fact]
+    public void Content_type_prefers_declared_then_signature_then_name()
+    {
+        var jpeg = new byte[] { 0xFF, 0xD8, 0xFF, 0xE0 };
+        Assert.Equal("image/webp", BlobContentType.Resolve("image/webp", jpeg, "a.png", isText: false));
+        Assert.Equal("image/jpeg", BlobContentType.Resolve(null, jpeg, "a.png", isText: false));
+        Assert.Equal("image/png", BlobContentType.Resolve(null, new byte[] { 1, 2, 3, 4 }, "a.png", isText: false));
+        Assert.Equal("application/octet-stream", BlobContentType.Resolve(null, new byte[] { 1, 2, 3, 4 }, "a.mrs", isText: false));
+        Assert.Equal("text/plain", BlobContentType.Resolve(null, null, null, isText: true));
+    }
+
+    [Fact]
+    public async Task Image_view_refuses_a_binary_blob_that_is_not_an_image()
+    {
+        var store = new BlobStore();
+        using var _ = Scope(store);
+        var handle = store.Put(BlobPayload.OfBytes(new byte[] { 0x4D, 0x52, 0x53, 0x00 }));
+
+        var result = await new ImageViewTool().ExecuteAsync($$"""{"handle":"{{handle}}"}""");
+
+        Assert.Contains("not a viewable image", result);
+        Assert.Contains("blob_peek", result);
+        Assert.Empty(AgentSessionScope.Current!.Images.DrainAll());
+    }
+
+    // ── blob_peek ────────────────────────────────────────────────────────────
+
+    [Fact]
+    public async Task Blob_peek_hex_dumps_binary()
+    {
+        var store = new BlobStore();
+        using var _ = Scope(store);
+        var handle = store.Put(BlobPayload.OfBytes(Encoding.ASCII.GetBytes("MRS\0payload")));
+
+        var result = await new BlobPeekTool().ExecuteAsync($$"""{"handle":"{{handle}}"}""");
+
+        Assert.Contains("binary", result);
+        Assert.Contains("4d 52 53 00", result);   // MRS\0
+        Assert.Contains("MRS.payload", result);   // ascii gutter, unprintables as dots
+    }
+
+    [Fact]
+    public async Task Blob_peek_slices_text_and_reports_the_remainder()
+    {
+        var store = new BlobStore();
+        using var _ = Scope(store);
+        var handle = store.Put(BlobPayload.OfText(new string('x', 100) + "TAIL"));
+
+        var result = await new BlobPeekTool().ExecuteAsync($$"""{"handle":"{{handle}}","offset":0,"length":10}""");
+
+        Assert.Contains("xxxxxxxxxx", result);
+        Assert.DoesNotContain("TAIL", result);
+        Assert.Contains("94 more characters", result);
+    }
+
+    [Fact]
+    public async Task Blob_peek_missing_handle_reports_clear_error()
+    {
+        var store = new BlobStore();
+        using var _ = Scope(store);
+        var result = await new BlobPeekTool().ExecuteAsync("""{"handle":"blob:nope"}""");
+        Assert.Contains("no blob found", result);
+    }
+
     [Fact]
     public void ResolveText_literal_passthrough()
     {
