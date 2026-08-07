@@ -91,6 +91,11 @@ public sealed class ConversationOrchestrator
     {
         var repeatTracker = new ToolRepeatTracker();
 
+        // Whose turn this is, settled once at the top rather than re-read at each tool call. A turn
+        // belongs to one chat and one identity from start to finish; reading that afresh per call
+        // would leave the answer at the mercy of whatever flow the call happens to be on.
+        var callContext = ToolCallContext.FromAmbient();
+
         if (Checkpoint != null) Checkpoint.Target = conversation;
         bool didRollback = false;
 
@@ -214,7 +219,8 @@ public sealed class ConversationOrchestrator
                     "Tool call → {ToolName} args={Args}", tc.Function.Name, tc.Function.Arguments);
                 // Normalize a null tool result to empty here so the error-detection and the tool
                 // message below don't have to null-check (a null result is simply "no output").
-                var toolResult = await _tools.ExecuteToolAsync(mode, tc.Function.Name, tc.Function.Arguments, cancellationToken)
+                var toolResult = await _tools.ExecuteToolAsync(
+                                     mode, tc.Function.Name, tc.Function.Arguments, cancellationToken, callContext)
                              ?? ToolResult.Empty();
                 // The conversation carries text; other content is routed below by whoever handles it.
                 var result = toolResult.TextContent;

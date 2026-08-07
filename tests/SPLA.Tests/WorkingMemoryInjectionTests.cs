@@ -1,3 +1,4 @@
+using SPLA.Domain.Tools;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
@@ -122,7 +123,7 @@ public class WorkingMemoryInjectionTests
     private sealed class NoTools : IToolHost
     {
         public IEnumerable<ToolDefinition> GetToolDefinitions() => System.Array.Empty<ToolDefinition>();
-        public Task<ToolResult> ExecuteToolAsync(AgentMode mode, string name, string argumentsJson, CancellationToken cancellationToken = default)
+        public Task<ToolResult> ExecuteToolAsync(AgentMode mode, string name, string argumentsJson, CancellationToken cancellationToken = default, ToolCallContext? context = null)
             => Task.FromResult(ToolResult.Empty());
     }
 }

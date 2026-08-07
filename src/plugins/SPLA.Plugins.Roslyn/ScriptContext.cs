@@ -28,12 +28,21 @@ public sealed class ScriptContext
     private readonly object _logGate = new();
     private readonly CancellationToken _ct;
 
+    /// <summary>
+    /// Whose calls the script makes — captured once, when the script is set up, and handed to every
+    /// <see cref="Run"/>. Capturing here rather than letting each call read the ambient scopes is
+    /// what makes <c>Task.WhenAll</c> safe by construction: parallel branches carry the context they
+    /// were given instead of depending on how the ambient state happened to flow into each of them.
+    /// </summary>
+    private readonly ToolCallContext _callContext;
+
     internal ScriptContext(IToolHost host, AgentMode mode, StringBuilder log, CancellationToken ct)
     {
         _host = host;
         _mode = mode;
         _log = log;
         _ct = ct;
+        _callContext = ToolCallContext.FromAmbient();
     }
 
     /// <summary>
@@ -63,7 +72,7 @@ public sealed class ScriptContext
             string s => s,                                  // already JSON
             _ => JsonSerializer.Serialize(args, ArgOptions) // anonymous/typed object
         };
-        return _host.ExecuteToolAsync(_mode, tool, json, _ct);
+        return _host.ExecuteToolAsync(_mode, tool, json, _ct, _callContext);
     }
 
     /// <summary>Reports a human-readable progress message on the script's node.</summary>

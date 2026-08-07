@@ -1,3 +1,4 @@
+using SPLA.Domain.Tools;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
@@ -33,7 +34,7 @@ public class ConversationOrchestratorTests
         public List<(string name, string args)> Executed { get; } = new();
         public IEnumerable<ToolDefinition> GetToolDefinitions() => System.Array.Empty<ToolDefinition>();
 
-        public Task<ToolResult> ExecuteToolAsync(AgentMode mode, string name, string argumentsJson, CancellationToken cancellationToken = default)
+        public Task<ToolResult> ExecuteToolAsync(AgentMode mode, string name, string argumentsJson, CancellationToken cancellationToken = default, ToolCallContext? context = null)
         {
             Executed.Add((name, argumentsJson));
             return Task.FromResult(ToolResult.Text($"result of {name}"));

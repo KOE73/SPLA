@@ -1,3 +1,4 @@
+using SPLA.Domain.Tools;
 using SPLA.Agent;
 using SPLA.Domain.Interfaces;
 using SPLA.Domain.Models;
@@ -36,7 +37,7 @@ file sealed class StubToolHost : IToolHost
     public IEnumerable<ToolDefinition> GetToolDefinitions() => [];
 
     public Task<ToolResult> ExecuteToolAsync(AgentMode mode, string name, string argumentsJson,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken = default, ToolCallContext? context = null)
         => Task.FromResult(ToolResult.Fail($"tool not found: {name}", "tool not found"));
 }
 

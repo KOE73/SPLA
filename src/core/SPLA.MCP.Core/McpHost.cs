@@ -1,5 +1,6 @@
 using SPLA.Domain.Models;
 using SPLA.Domain.Interfaces;
+using SPLA.Domain.Tools;
 using SPLA.MCP.Core.Interfaces;
 using SPLA.MCP.Core.Permissions;
 using SPLA.MCP.Core.Tools;
@@ -154,8 +155,19 @@ public class McpHost : IToolHost
         };
     }
 
-    public async Task<ToolResult> ExecuteToolAsync(AgentMode mode, string name, string argumentsJson, CancellationToken cancellationToken = default)
+    public async Task<ToolResult> ExecuteToolAsync(
+        AgentMode mode,
+        string name,
+        string argumentsJson,
+        CancellationToken cancellationToken = default,
+        ToolCallContext? context = null)
     {
+        // The call states whose it is, or says nothing and means "the same as the surrounding flow".
+        // Entering is what makes the context the source: from here down, the ambient scopes tools
+        // read are the ones this context named. When it came from ambient state in the first place,
+        // entering re-establishes the values already in effect and changes nothing.
+        using var callScope = (context ?? ToolCallContext.FromAmbient()).Enter();
+
         if (_tools.TryGetValue(name, out var tool))
         {
             if (_pluginManager != null && !_pluginManager.IsToolAvailable(tool))

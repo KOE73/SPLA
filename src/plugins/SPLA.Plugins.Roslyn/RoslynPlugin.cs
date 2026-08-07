@@ -10,6 +10,7 @@ using SPLA.Domain.Agent;
 using SPLA.Domain.Interfaces;
 using SPLA.Domain.Models;
 using SPLA.Domain.Settings;
+using SPLA.Domain.Tools;
 using SPLA.MCP.Core.Interfaces;
 
 namespace SPLA.Plugins.Roslyn;
@@ -79,7 +80,9 @@ public class RoslynPlugin : ISplaPlugin, ISplaPluginSelfCheck
     {
         public static readonly NoOpToolHost Instance = new();
         public IEnumerable<ToolDefinition> GetToolDefinitions() => Array.Empty<ToolDefinition>();
-        public Task<ToolResult> ExecuteToolAsync(AgentMode mode, string name, string argumentsJson, CancellationToken ct = default)
+        public Task<ToolResult> ExecuteToolAsync(
+            AgentMode mode, string name, string argumentsJson,
+            CancellationToken ct = default, ToolCallContext? context = null)
             => Task.FromResult(ToolResult.Empty());
     }
 }

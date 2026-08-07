@@ -21,7 +21,7 @@ public class ScriptRunToolTests
 
         public IEnumerable<ToolDefinition> GetToolDefinitions() => Array.Empty<ToolDefinition>();
 
-        public Task<ToolResult> ExecuteToolAsync(AgentMode mode, string name, string argumentsJson, CancellationToken ct = default)
+        public Task<ToolResult> ExecuteToolAsync(AgentMode mode, string name, string argumentsJson, CancellationToken ct = default, ToolCallContext? context = null)
         {
             Interlocked.Increment(ref Calls);
             return Task.FromResult(ToolResult.Text(_handler(name, argumentsJson)));
