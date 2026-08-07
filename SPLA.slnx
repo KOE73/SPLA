@@ -60,6 +60,7 @@
     <File Path="docs/plans/PLAN_20260804_agent_skills-library-rewrite.md" />
     <File Path="docs/plans/PLAN_20260805_agent_skills-sources.md" />
     <File Path="docs/plans/PLAN_20260805_tools_call-contract.md" />
+    <File Path="docs/plans/PLAN_20260807_host_sandbox.md" />
   </Folder>
   <Folder Name="/docs/ideas/">
     <File Path="docs/ideas/IDEA_20260611_core_todo-general.md" />
