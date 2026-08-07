@@ -37,7 +37,13 @@ internal static class ConsoleHandlers
             },
             OnToolResult = (_, result) =>
             {
-                Console.WriteLine($"\r -> Result received ({result.Length} chars).            ");
+                var mark = result.Outcome switch
+                {
+                    ToolOutcome.Failed  => "Failed",
+                    ToolOutcome.Refused => "Refused",
+                    _                   => "Result received"
+                };
+                Console.WriteLine($"\r -> {mark} ({result.TextContent.Length} chars).            ");
                 return Task.CompletedTask;
             },
             OnNotice = note => { Console.WriteLine($"\n{note}"); return Task.CompletedTask; },
@@ -64,7 +70,12 @@ internal static class ConsoleHandlers
         OnDelta = chunk => { Console.Write(chunk); return Task.CompletedTask; },
         OnAssistantMessage = _ => { Console.WriteLine(); return Task.CompletedTask; },
         OnToolCallStarted = tc => { Console.WriteLine($" -> Call: {tc.Function.Name}"); return Task.CompletedTask; },
-        OnToolResult = (_, result) => { Console.WriteLine($" -> Result ({result.Length} chars)"); return Task.CompletedTask; },
+        OnToolResult = (_, result) =>
+        {
+            var mark = result.IsError ? $"{result.Outcome}" : "Result";
+            Console.WriteLine($" -> {mark} ({result.TextContent.Length} chars)");
+            return Task.CompletedTask;
+        },
         OnNotice = note => { Console.WriteLine($"\n{note}"); return Task.CompletedTask; }
     };
 

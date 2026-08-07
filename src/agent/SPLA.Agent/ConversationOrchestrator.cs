@@ -242,7 +242,7 @@ public sealed class ConversationOrchestrator
                 });
 
                 if (callbacks.OnToolResult != null)
-                    await callbacks.OnToolResult(tc, result);
+                    await callbacks.OnToolResult(tc, toolResult);
 
                 // Images the tool declared in its result, plus anything still arriving through the
                 // pending sink. Deciding how a picture reaches a given model belongs here, not in the

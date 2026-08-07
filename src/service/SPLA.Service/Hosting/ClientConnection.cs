@@ -445,7 +445,14 @@ public sealed class ClientConnection : IClientSession
                 });
             },
             OnToolResult = (tc, result) => ToWatchers(MessageTypes.ToolResult,
-                new ToolResultPayload { ToolCallId = tc.Id, ToolName = tc.Function.Name, Result = result }),
+                new ToolResultPayload
+                {
+                    ToolCallId = tc.Id,
+                    ToolName = tc.Function.Name,
+                    Result = result.TextContent,
+                    Outcome = result.Outcome.ToString(),
+                    Reason = result.Reason
+                }),
             OnNotice = note => ToWatchers(MessageTypes.Notice, new NoticePayload { Text = note }),
             OnTokenUsage = (prompt, completion) =>
             {

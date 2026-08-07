@@ -48,8 +48,16 @@ public sealed class AgentCallbacks
     /// </summary>
     public Action<SPLA.Domain.Tools.ProgressTree>? OnProgressTree { get; init; }
 
-    /// <summary>A tool finished; carries the raw result string.</summary>
-    public Func<ToolCall, string, Task>? OnToolResult { get; init; }
+    /// <summary>
+    /// A tool finished; carries the whole result, outcome included.
+    /// <para>
+    /// Deliberately not just the text. A watcher that receives a string cannot tell an answer from a
+    /// refusal, so every surface built on this — the CLI, the service's <c>tool.result</c>, whatever
+    /// renders it — was obliged to show all three the same way. That is also why there was nothing to
+    /// audit: the one place that knew a call had been refused kept it to itself.
+    /// </para>
+    /// </summary>
+    public Func<ToolCall, ToolResult, Task>? OnToolResult { get; init; }
 
     /// <summary>An ephemeral notice for the user (guard tripped, loop stopped). Never sent to the model.</summary>
     public Func<string, Task>? OnNotice { get; init; }

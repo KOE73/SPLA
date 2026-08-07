@@ -743,6 +743,17 @@ public sealed class ToolResultPayload
     public string ToolCallId { get; set; } = string.Empty;
     public string ToolName { get; set; } = string.Empty;
     public string Result { get; set; } = string.Empty;
+
+    /// <summary>How the call ended: <c>Ok</c>, <c>Failed</c> or <c>Refused</c>. A client that does
+    /// not read it renders exactly what it rendered before, which is why this could be added without
+    /// a protocol break — but until it existed, no client could tell an answer from a refusal.
+    /// <para>A plain string, not the domain enum: this assembly deliberately references nothing, so
+    /// that a client can speak the protocol without taking the engine with it.</para></summary>
+    public string Outcome { get; set; } = "Ok";
+
+    /// <summary>Why it failed or was refused; null when it succeeded. Short and machine-facing —
+    /// the sentence for the model is already in <see cref="Result"/>.</summary>
+    public string? Reason { get; set; }
 }
 
 public sealed class NoticePayload
