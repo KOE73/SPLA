@@ -60,17 +60,25 @@ public sealed class PermissionStage : IToolMiddleware
                     _logger?.LogWarning(
                         "Tool execution denied by user. Tool={ToolName} Mode={Mode}", call.Name, call.Mode);
                     return ToolResult.Refuse(
-                        $"Error: Execution of tool '{call.Name}' was denied by the user.",
+                        $"Error: Execution of tool '{call.Name}' was denied by the user. " +
+                        "This was a decision, not a fault — calling it again unchanged will be denied again. " +
+                        "Take a different approach, or ask what to do instead.",
                         "denied by the user");
                 }
             }
             else
             {
+                // Nobody is attached to ask. Until now this said "no permission handler is attached",
+                // which describes the host's wiring — something the model can neither act on nor fix,
+                // so a headless run simply died here. What it can act on is the situation: approval is
+                // needed, there is nobody to give it, and repeating the call cannot change that.
                 _logger?.LogWarning(
                     "Tool requires confirmation but NO permission handler is attached — execution blocked. Tool={ToolName} Mode={Mode}",
                     call.Name, call.Mode);
                 return ToolResult.Refuse(
-                    $"Error: Tool '{call.Name}' requires user confirmation, but no permission handler is attached.",
+                    $"Error: '{call.Name}' needs a person to approve it ({verdict.Reason}), and this run has nobody to ask. " +
+                    "Repeating the call will not help. Either reach the goal a way that needs no approval, " +
+                    "or stop and report that this step is waiting on a human decision.",
                     "no permission handler attached");
             }
         }

@@ -119,6 +119,38 @@ public class ToolOutcomeTests
         Assert.False(string.IsNullOrWhiteSpace(result.Reason));
     }
 
+    /// <summary>
+    /// A run with nobody to ask must not die on a tool that needs approval. It used to: the branch
+    /// returned "no permission handler is attached", which describes the host's wiring — something a
+    /// model can neither act on nor repair.
+    /// <para>What it can act on is the situation, so the refusal has to carry three things: why
+    /// approval was needed, that nobody is there to give it, and that repeating the call is futile.
+    /// The last one matters most — without it a model retries until the loop guard stops it.</para>
+    /// </summary>
+    [Fact]
+    public async Task A_call_needing_approval_with_nobody_to_ask_is_refused_in_terms_the_model_can_act_on()
+    {
+        var reached = false;
+        var host = HostWith(new StubTool
+        {
+            // Edit mode asks before a project write, and no permission handler is attached here.
+            Scope = ToolScope.Project,
+            Effect = ToolEffect.Write,
+            Behaviour = () => { reached = true; return ToolResult.Text("should not run"); }
+        });
+
+        var result = await host.ExecuteToolAsync(AgentMode.Edit, "stub", "{}");
+
+        Assert.Equal(ToolOutcome.Refused, result.Outcome);
+        Assert.False(reached);
+
+        var text = result.TextContent;
+        Assert.Contains("nobody to ask", text);
+        Assert.Contains("will not help", text);           // retrying is futile, and says so
+        Assert.Contains("requires confirmation", text);   // the verdict's reason, not the host's wiring
+        Assert.DoesNotContain("permission handler", text);
+    }
+
     [Fact]
     public async Task An_unknown_tool_is_Failed_not_a_silent_empty_answer()
     {
