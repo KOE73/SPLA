@@ -4,7 +4,11 @@ using SPLA.Observability;
 using SPLA.Service;
 using Microsoft.Extensions.Logging;
 
-Console.WriteLine("=== SPLA CLI ===");
+// `mcp` speaks a protocol on stdout, so it must be recognised before anything prints. The banner
+// below would be the first thing a client reads, and an unparsable first line kills the session.
+var isMcp = SPLA.CLI.McpCommand.IsMcpCommand(args);
+
+if (!isMcp) Console.WriteLine("=== SPLA CLI ===");
 SplaTelemetry.ConfigureGlobalLogs();
 using var loggerFactory = LoggerFactory.Create(builder =>
 {
@@ -18,7 +22,16 @@ var logger = loggerFactory.CreateLogger("SPLA.CLI");
 // No-op on non-Windows — the config loader then falls back to the plaintext file store.
 SPLA.Secrets.Dpapi.DpapiSecrets.Register(msg => logger.LogWarning("{Message}", msg));
 
-var ctx = CliBootstrap.Resolve(args, logger);
+// For `mcp` the startup summary goes to stderr: stdout is the protocol from the first byte.
+var ctx = CliBootstrap.Resolve(args, logger, isMcp ? Console.Error : Console.Out);
+
+// mcp: serve this project's tools to a foreign head over stdio. Before every other command, and
+// before the tool count is printed below — stdout belongs to the protocol from here on.
+if (isMcp)
+{
+    await SPLA.CLI.McpCommand.RunAsync(ctx.Settings, loggerFactory);
+    return;
+}
 
 // serve: run the WebSocket service (its own runtime lifecycle) and return.
 if (args.Length > 0 && args[0].Equals("serve", StringComparison.OrdinalIgnoreCase))

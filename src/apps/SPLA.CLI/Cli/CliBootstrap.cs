@@ -12,8 +12,13 @@ internal readonly record struct CliContext(ResolvedSettings Settings, string? Sp
 /// per-project log destination — the shared preamble every CLI entry point runs before dispatch.</summary>
 internal static class CliBootstrap
 {
-    public static CliContext Resolve(string[] args, ILogger logger)
+    /// <param name="announce">Where the startup summary goes. Defaults to stdout, but a command
+    /// that speaks a protocol there (<c>mcp</c>) passes stderr instead: the summary is worth having
+    /// while debugging a connection, and worth nothing at all if it corrupts the first line the
+    /// client reads.</param>
+    public static CliContext Resolve(string[] args, ILogger logger, TextWriter? announce = null)
     {
+        announce ??= Console.Out;
         string? splaFile;
         bool isChatCommand = false;
 
@@ -34,12 +39,12 @@ internal static class CliBootstrap
         ResolvedSettings settings;
         if (splaFile != null)
         {
-            Console.WriteLine($"Project file: {splaFile}");
+            announce.WriteLine($"Project file: {splaFile}");
             ConfigLoader.ScaffoldIfNew(splaFile);
             settings = ConfigLoader.LoadAndResolve(splaFile);
             Directory.SetCurrentDirectory(settings.WorkspacePath);
             SplaTelemetry.ConfigureProjectLogs(settings.Project.GetBucket("logs").MapToHostDirectory());
-            Console.WriteLine($"Project: {settings.ProjectName ?? Path.GetFileNameWithoutExtension(splaFile)}");
+            announce.WriteLine($"Project: {settings.ProjectName ?? Path.GetFileNameWithoutExtension(splaFile)}");
         }
         else
         {
@@ -50,9 +55,9 @@ internal static class CliBootstrap
         logger.LogInformation("CLI startup. ProjectFile={ProjectFile} WorkspacePath={WorkspacePath} Mode={Mode}",
             splaFile, settings.WorkspacePath, settings.Mode);
 
-        Console.WriteLine($"Workspace: {settings.WorkspacePath}");
-        Console.WriteLine($"Endpoint:  {settings.Connections.FirstOrDefault()?.Endpoint ?? "(none)"}");
-        Console.WriteLine($"Mode:      {settings.Mode}");
+        announce.WriteLine($"Workspace: {settings.WorkspacePath}");
+        announce.WriteLine($"Endpoint:  {settings.Connections.FirstOrDefault()?.Endpoint ?? "(none)"}");
+        announce.WriteLine($"Mode:      {settings.Mode}");
 
         return new CliContext(settings, splaFile, isChatCommand);
     }

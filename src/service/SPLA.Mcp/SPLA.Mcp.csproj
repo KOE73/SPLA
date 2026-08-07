@@ -1,0 +1,19 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    Serving SPLA's tools to a foreign head over the Model Context Protocol.
+
+    Deliberately a projection outward, never the internal model: MCP is poorer than what a tool
+    knows about itself (no place for Scope/Effect/Risk, none for tool-set levels), so anything that
+    collapses the inside to this shape cannot be unfolded again.
+
+    The protocol subset is hand-written rather than taken from a package. It is small — initialize,
+    tools/list, tools/call — and writing it keeps the projection under our control, which is the
+    whole point of the paragraph above.
+  -->
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\core\SPLA.Domain\SPLA.Domain.csproj" />
+  </ItemGroup>
+
+</Project>

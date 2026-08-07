@@ -103,6 +103,7 @@
   <Folder Name="/src/service/">
     <Project Path="src/service/SPLA.Service/SPLA.Service.csproj" />
     <Project Path="src/service/SPLA.Service.Contracts/SPLA.Service.Contracts.csproj" />
+    <Project Path="src/service/SPLA.Mcp/SPLA.Mcp.csproj" />
   </Folder>
   <Folder Name="/src/editor/">
     <Project Path="src/editor/SPLA.Editor.Schema/SPLA.Editor.Schema.csproj" />
