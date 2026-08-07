@@ -133,6 +133,25 @@ public class McpHost : IToolHost
             .Select(t => t.Name);
     }
 
+    /// <summary>
+    /// What to serve a caller that is not this chat's own head — a second head over a wire, a queued
+    /// job, anything with a conversation of its own or none at all.
+    ///
+    /// <para>Built on <see cref="GetPermittedToolNames"/> rather than on the disclosed list, and for
+    /// the same reason: disclosure is about how much a set costs the model's context in a chat, which
+    /// is nobody else's question. A foreign caller is offered what the project permits, less what is
+    /// bound to a conversation it does not have.</para>
+    /// </summary>
+    public IEnumerable<ToolDefinition> GetToolDefinitionsFor(ToolExposure exposure)
+    {
+        var permitted = GetPermittedToolNames().ToHashSet(StringComparer.OrdinalIgnoreCase);
+
+        return _tools.Values
+            .Where(t => permitted.Contains(t.Name))
+            .Where(t => exposure.Allows(t.GetDefinition().Function))
+            .Select(GetDefinitionForModel);
+    }
+
     /// <summary>True when the model may see this tool right now: its set is fully enabled, or it is
     /// raised in the chat currently running. A tool no set claims is always disclosed.</summary>
     private bool IsDisclosed(string toolName)
