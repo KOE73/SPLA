@@ -5,7 +5,13 @@ namespace SPLA.MCP.Core.Permissions;
 
 public interface IPermissionManager
 {
-    PermissionResult CheckPermission(AgentMode mode, ToolFunctionDefinition toolMetadata, string argumentsJson);
+    /// <summary>
+    /// Decides whether this call is allowed. Pure and cheap — safe to call twice: once ahead of time
+    /// by whoever might want to ask a human before a call ever crosses a wire, and once at the point
+    /// of execution by the host that actually enforces it. The verdict this returns is advice; only
+    /// the host applying it at execution is the one that counts.
+    /// </summary>
+    PermissionVerdict CheckPermission(AgentMode mode, ToolFunctionDefinition toolMetadata, string argumentsJson);
 }
 
 public class PermissionManager : IPermissionManager
@@ -64,12 +70,12 @@ public class PermissionManager : IPermissionManager
         _ => null
     };
 
-    public PermissionResult CheckPermission(AgentMode mode, ToolFunctionDefinition toolMetadata, string argumentsJson)
+    public PermissionVerdict CheckPermission(AgentMode mode, ToolFunctionDefinition toolMetadata, string argumentsJson)
     {
         // Agent-scoped capabilities (memory, info, datetime, context) are fundamental: always
         // allowed, in every mode, regardless of remembered rules. They never touch project/system.
         if (toolMetadata.Scope == ToolScope.Agent)
-            return PermissionResult.Allow;
+            return PermissionVerdict.Allow("agent-scoped capability, always allowed");
 
         // Skill-scoped tools: taking a skill on requires user confirmation in interactive modes.
         // Deactivation uses ToolScope.Agent (always allowed) and never reaches this branch.
@@ -84,19 +90,25 @@ public class PermissionManager : IPermissionManager
 
             return mode switch
             {
-                AgentMode.Chat    => confirmable ? PermissionResult.Ask : PermissionResult.Allow,
-                AgentMode.Inspect => confirmable ? PermissionResult.Ask : PermissionResult.Allow,
-                AgentMode.Edit    => PermissionResult.Allow,
-                AgentMode.Agent   => PermissionResult.Allow,
-                _                 => PermissionResult.Deny   // Research and unknown modes
+                AgentMode.Chat or AgentMode.Inspect => confirmable
+                    ? PermissionVerdict.Ask("skill activation requires confirmation in this mode", "skill")
+                    : PermissionVerdict.Allow("read-only skill access already granted by activation", "skill"),
+                AgentMode.Edit or AgentMode.Agent =>
+                    PermissionVerdict.Allow("skill tools allowed outright in this mode", "skill"),
+                _ => PermissionVerdict.Deny("skill tools not available in this mode", "skill")
             };
         }
 
         // An explicit project policy (Settings → Agent → read/write/shell/internet) is the hard
         // floor/ceiling for its category — applies in every mode, including Agent, and cannot be
         // bypassed by a stale session "remembered" grant from before the policy was set.
+        var category = ClassifyCategory(toolMetadata);
         if (ProjectOverride(toolMetadata) is { } forced)
-            return forced;
+            return new PermissionVerdict
+            {
+                Result = forced, Category = category,
+                Reason = $"project policy for '{category}' forces {forced}"
+            };
 
         // Agent mode: mode-based rules are authoritative; remembered denies must not override them.
         // Remembered allows are also redundant here (everything is already allowed), so skip entirely.
@@ -109,67 +121,83 @@ public class PermissionManager : IPermissionManager
             if (remembered != null)
             {
                 return remembered.Decision == PermissionDecision.AllowRemember
-                    ? PermissionResult.Allow
-                    : PermissionResult.Deny;
+                    ? PermissionVerdict.Allow("remembered from an earlier confirmation in this session", category)
+                    : PermissionVerdict.Deny("remembered denial from an earlier confirmation in this session", category);
             }
         }
 
         if (mode == AgentMode.Chat)
-            return PermissionResult.Deny;
-            
+            return PermissionVerdict.Deny("chat mode allows no tool calls", category);
+
         if (mode == AgentMode.Research)
         {
-            if (toolMetadata.Scope == ToolScope.Project && toolMetadata.Effect == ToolEffect.Read) return PermissionResult.Allow;
-            if (toolMetadata.Scope == ToolScope.Local && toolMetadata.Effect == ToolEffect.Read) return PermissionResult.Allow;
-            if (toolMetadata.Scope == ToolScope.Internet) return PermissionResult.Allow;
-            return PermissionResult.Deny;
+            if (toolMetadata.Scope == ToolScope.Project && toolMetadata.Effect == ToolEffect.Read)
+                return PermissionVerdict.Allow("research mode allows project reads", category);
+            if (toolMetadata.Scope == ToolScope.Local && toolMetadata.Effect == ToolEffect.Read)
+                return PermissionVerdict.Allow("research mode allows local reads", category);
+            if (toolMetadata.Scope == ToolScope.Internet)
+                return PermissionVerdict.Allow("research mode allows internet access", category);
+            return PermissionVerdict.Deny("research mode allows only reads and internet access", category);
         }
 
         if (mode == AgentMode.Inspect)
         {
-            if (toolMetadata.Scope == ToolScope.Project && toolMetadata.Effect == ToolEffect.Read) return PermissionResult.Allow;
-            if (toolMetadata.Scope == ToolScope.Local && toolMetadata.Effect == ToolEffect.Read) return PermissionResult.Allow;
-            if (toolMetadata.Scope == ToolScope.Internet) return PermissionResult.Ask;
-            return PermissionResult.Deny;
+            if (toolMetadata.Scope == ToolScope.Project && toolMetadata.Effect == ToolEffect.Read)
+                return PermissionVerdict.Allow("inspect mode allows project reads", category);
+            if (toolMetadata.Scope == ToolScope.Local && toolMetadata.Effect == ToolEffect.Read)
+                return PermissionVerdict.Allow("inspect mode allows local reads", category);
+            if (toolMetadata.Scope == ToolScope.Internet)
+                return PermissionVerdict.Ask("inspect mode requires confirmation for internet access", category);
+            return PermissionVerdict.Deny("inspect mode allows only reads and confirmed internet access", category);
         }
 
         if (mode == AgentMode.Edit)
         {
-            if (toolMetadata.Scope == ToolScope.Project && toolMetadata.Effect == ToolEffect.Read) return PermissionResult.Allow;
-            if (toolMetadata.Scope == ToolScope.Project && toolMetadata.Effect == ToolEffect.Write) return PermissionResult.Ask;
-            
-            if (toolMetadata.Scope == ToolScope.Local && toolMetadata.Effect == ToolEffect.Read) return PermissionResult.Allow;
-            
+            if (toolMetadata.Scope == ToolScope.Project && toolMetadata.Effect == ToolEffect.Read)
+                return PermissionVerdict.Allow("edit mode allows project reads", category);
+            if (toolMetadata.Scope == ToolScope.Project && toolMetadata.Effect == ToolEffect.Write)
+                return PermissionVerdict.Ask("edit mode requires confirmation for project writes", category);
+
+            if (toolMetadata.Scope == ToolScope.Local && toolMetadata.Effect == ToolEffect.Read)
+                return PermissionVerdict.Allow("edit mode allows local reads", category);
+
             if (toolMetadata.Scope == ToolScope.Shell)
             {
-                if (toolMetadata.Effect == ToolEffect.Read) return PermissionResult.Allow;
-                if (toolMetadata.Risk == ToolRisk.Danger) return PermissionResult.Deny;
-                return PermissionResult.Ask; 
+                if (toolMetadata.Effect == ToolEffect.Read)
+                    return PermissionVerdict.Allow("edit mode allows read-only shell commands", category);
+                if (toolMetadata.Risk == ToolRisk.Danger)
+                    return PermissionVerdict.Deny("edit mode denies dangerous shell commands", category);
+                return PermissionVerdict.Ask("edit mode requires confirmation for shell commands", category);
             }
-            if (toolMetadata.Scope == ToolScope.Internet) return PermissionResult.Allow;
-            
-            return PermissionResult.Deny;
+            if (toolMetadata.Scope == ToolScope.Internet)
+                return PermissionVerdict.Allow("edit mode allows internet access", category);
+
+            return PermissionVerdict.Deny("no rule in edit mode allows this tool", category);
         }
 
         if (mode == AgentMode.Agent)
         {
-            if (toolMetadata.Scope == ToolScope.Project) return PermissionResult.Allow;
+            if (toolMetadata.Scope == ToolScope.Project)
+                return PermissionVerdict.Allow("agent mode allows project access", category);
             if (toolMetadata.Scope == ToolScope.Shell)
             {
-                if (toolMetadata.Risk == ToolRisk.Danger) return PermissionResult.Ask;
-                return PermissionResult.Allow;
+                if (toolMetadata.Risk == ToolRisk.Danger)
+                    return PermissionVerdict.Ask("agent mode requires confirmation for dangerous shell commands", category);
+                return PermissionVerdict.Allow("agent mode allows shell commands", category);
             }
-            if (toolMetadata.Scope == ToolScope.Internet) return PermissionResult.Allow;
+            if (toolMetadata.Scope == ToolScope.Internet)
+                return PermissionVerdict.Allow("agent mode allows internet access", category);
             if (toolMetadata.Scope == ToolScope.Local)
             {
-                if (toolMetadata.Effect == ToolEffect.Read) return PermissionResult.Allow;
-                return PermissionResult.Ask;
+                if (toolMetadata.Effect == ToolEffect.Read)
+                    return PermissionVerdict.Allow("agent mode allows local reads", category);
+                return PermissionVerdict.Ask("agent mode requires confirmation for local writes", category);
             }
-            
-            return PermissionResult.Ask;
+
+            return PermissionVerdict.Ask("agent mode requires confirmation for an unclassified tool", category);
         }
 
-        return PermissionResult.Deny;
+        return PermissionVerdict.Deny("unrecognised mode", category);
     }
 }
 

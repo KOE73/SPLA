@@ -179,17 +179,19 @@ public class McpHost : IToolHost
             _logger?.LogInformation("Tool execution started. Tool={ToolName} Mode={Mode}", name, mode);
 
             var def = tool.GetDefinition();
-            var permission = _permissionManager.CheckPermission(mode, def.Function, argumentsJson);
+            var verdict = _permissionManager.CheckPermission(mode, def.Function, argumentsJson);
 
-            if (permission == PermissionResult.Deny)
+            if (verdict.Result == PermissionResult.Deny)
             {
-                _logger?.LogWarning("Tool execution denied by policy. Tool={ToolName} Mode={Mode}", name, mode);
+                _logger?.LogWarning(
+                    "Tool execution denied by policy. Tool={ToolName} Mode={Mode} Reason={Reason}",
+                    name, mode, verdict.Reason);
                 return ToolResult.Refuse(
-                    $"Error: Execution of tool '{name}' was denied by permission policy in {mode} mode.",
-                    $"denied by policy in {mode} mode");
+                    $"Error: Execution of tool '{name}' was denied by permission policy in {mode} mode ({verdict.Reason}).",
+                    verdict.Reason);
             }
 
-            if (permission == PermissionResult.Ask)
+            if (verdict.Result == PermissionResult.Ask)
             {
                 _logger?.LogInformation(
                     "Tool requires user confirmation — awaiting permission. Tool={ToolName} Mode={Mode} Scope={Scope} Effect={Effect} Risk={Risk}",

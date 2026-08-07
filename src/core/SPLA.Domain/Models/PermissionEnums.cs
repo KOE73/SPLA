@@ -44,6 +44,41 @@ public enum PermissionResult
     Ask
 }
 
+/// <summary>
+/// The full answer to "is this call allowed": the outcome plus why. A caller that only needs the
+/// outcome reads <see cref="Result"/>; a caller that wants to explain a refusal — the host applying
+/// it, or a head deciding whether to ask a human before ever sending the call — reads
+/// <see cref="Reason"/> and <see cref="Category"/> too.
+/// <para>
+/// Separated from applying the decision on purpose: the same verdict is computed twice for two
+/// different audiences — once, ahead of time, by whoever might want to ask a human first, and once,
+/// at the point of execution, by the host that actually allows or refuses. Recomputing costs nothing
+/// (the function is pure and cheap); trusting an unenforced pre-check would cost the enforcement.
+/// </para>
+/// </summary>
+public sealed record PermissionVerdict
+{
+    public PermissionResult Result { get; init; }
+
+    /// <summary>Human-readable — why this mode/scope/effect combination landed here. Never empty.</summary>
+    public string Reason { get; init; } = string.Empty;
+
+    /// <summary>The override category this verdict was decided under, when one applied
+    /// (read/write/shell/internet), for logs and for a caller building its own explanation.</summary>
+    public string? Category { get; init; }
+
+    public static implicit operator PermissionResult(PermissionVerdict verdict) => verdict.Result;
+
+    public static PermissionVerdict Allow(string reason, string? category = null) =>
+        new() { Result = PermissionResult.Allow, Reason = reason, Category = category };
+
+    public static PermissionVerdict Deny(string reason, string? category = null) =>
+        new() { Result = PermissionResult.Deny, Reason = reason, Category = category };
+
+    public static PermissionVerdict Ask(string reason, string? category = null) =>
+        new() { Result = PermissionResult.Ask, Reason = reason, Category = category };
+}
+
 public enum PermissionDecision
 {
     AllowOnce,
