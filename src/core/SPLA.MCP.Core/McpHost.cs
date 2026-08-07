@@ -3,6 +3,8 @@ using SPLA.Domain.Interfaces;
 using SPLA.Domain.Tools;
 using SPLA.MCP.Core.Interfaces;
 using SPLA.MCP.Core.Permissions;
+using SPLA.MCP.Core.Pipeline;
+using SPLA.MCP.Core.Pipeline.Stages;
 using SPLA.MCP.Core.Tools;
 using SPLA.MCP.Core.ToolSets;
 using SPLA.Observability;
@@ -25,6 +27,12 @@ public class McpHost : IToolHost
     private readonly SPLA.MCP.Core.Plugins.PluginManager? _pluginManager;
     private readonly ILogger<McpHost>? _logger;
 
+    /// <summary>
+    /// The chain of concerns wrapped around a tool call, baked once here and re-entered as-is by
+    /// nested calls. See <see cref="ToolPipelineStage"/> for what the order guarantees.
+    /// </summary>
+    private readonly ToolCallDelegate _pipeline;
+
     public McpHost(
         IPermissionManager permissionManager,
         SPLA.MCP.Core.Plugins.PluginManager? pluginManager = null,
@@ -33,6 +41,20 @@ public class McpHost : IToolHost
         _permissionManager = permissionManager;
         _pluginManager = pluginManager;
         _logger = logger;
+
+        _pipeline = new ToolPipelineBlueprint()
+            .Use(new ToolResolutionStage(name => _tools.TryGetValue(name, out var t) ? t : null, logger))
+            .Use(new PluginAvailabilityStage(pluginManager, logger))
+            .Use(new ToolSetDisclosureStage(ToolSetRefusal, logger))
+            .Use(new TelemetryStage(logger))
+            .Use(new PermissionStage(permissionManager, logger))
+            .Use(new AmbientHostStage(this))
+            .Use(new ProgressNodeStage())
+            .Use(new FaultStage(logger))
+            .Use(new AccountingStage(logger))
+            // The terminal step: the tool itself. Everything above is the pipeline's business;
+            // this is the only line that is the tool's.
+            .Build((call, ct) => call.Tool!.ExecuteAsync(call.ArgumentsJson, ct));
 
         if (_pluginManager != null)
         {
@@ -168,123 +190,10 @@ public class McpHost : IToolHost
         // entering re-establishes the values already in effect and changes nothing.
         using var callScope = (context ?? ToolCallContext.FromAmbient()).Enter();
 
-        if (_tools.TryGetValue(name, out var tool))
-        {
-            if (_pluginManager != null && !_pluginManager.IsToolAvailable(tool))
-            {
-                _logger?.LogWarning("Tool refused: owning plugin is disabled. Tool={ToolName}", name);
-                return ToolResult.Refuse(
-                    $"Error: tool '{name}' belongs to a plugin that is currently disabled.",
-                    "plugin disabled");
-            }
-
-            if (ToolSetRefusal(name) is { } refusal)
-            {
-                _logger?.LogInformation("Tool refused: its set is not raised. Tool={ToolName}", name);
-                return ToolResult.Refuse(refusal, "tool set not raised");
-            }
-
-            using var activity = SplaTelemetry.StartActivity("mcp.tool.execute");
-            activity?.SetTag("spla.tool.name", name);
-            activity?.SetTag("spla.agent.mode", mode.ToString());
-            var started = Stopwatch.GetTimestamp();
-            _logger?.LogInformation("Tool execution started. Tool={ToolName} Mode={Mode}", name, mode);
-
-            var def = tool.GetDefinition();
-            var verdict = _permissionManager.CheckPermission(mode, def.Function, argumentsJson);
-
-            if (verdict.Result == PermissionResult.Deny)
-            {
-                _logger?.LogWarning(
-                    "Tool execution denied by policy. Tool={ToolName} Mode={Mode} Reason={Reason}",
-                    name, mode, verdict.Reason);
-                return ToolResult.Refuse(
-                    $"Error: Execution of tool '{name}' was denied by permission policy in {mode} mode ({verdict.Reason}).",
-                    verdict.Reason);
-            }
-
-            if (verdict.Result == PermissionResult.Ask)
-            {
-                _logger?.LogInformation(
-                    "Tool requires user confirmation — awaiting permission. Tool={ToolName} Mode={Mode} Scope={Scope} Effect={Effect} Risk={Risk}",
-                    name, mode, def.Function.Scope, def.Function.Effect, def.Function.Risk);
-                var pending = PermissionScope.RequestAsync(def.Function, argumentsJson);
-                if (pending != null)
-                {
-                    var decision = await pending;
-                    _logger?.LogInformation(
-                        "Permission decision received. Tool={ToolName} Decision={Decision}", name, decision);
-                    if (decision == PermissionDecision.Deny)
-                    {
-                        _logger?.LogWarning("Tool execution denied by user. Tool={ToolName} Mode={Mode}", name, mode);
-                        return ToolResult.Refuse(
-                            $"Error: Execution of tool '{name}' was denied by the user.",
-                            "denied by the user");
-                    }
-                }
-                else
-                {
-                    _logger?.LogWarning(
-                        "Tool requires confirmation but NO permission handler is attached — execution blocked. Tool={ToolName} Mode={Mode}",
-                        name, mode);
-                    return ToolResult.Refuse(
-                        $"Error: Tool '{name}' requires user confirmation, but no permission handler is attached.",
-                        "no permission handler attached");
-                }
-            }
-
-            // Make this host + mode ambiently available so a tool can invoke other tools by name
-            // (e.g. a script's ctx.Run) under the same mode, with permissions and progress intact.
-            using var hostScope = SPLA.Domain.Tools.ToolHostScope.Begin(this, mode);
-            // Open a progress-tree node for this tool call. This is the single place nodes are created,
-            // so tools the model calls directly and tools a script invokes via the host both nest
-            // correctly — the script's call sits above its parallel children with no extra wiring.
-            using var progressNode = SPLA.Domain.Tools.ProgressScope.BeginNode(name);
-            try
-            {
-                var result = await tool.ExecuteAsync(argumentsJson, cancellationToken);
-                // A tool that reports failure is a failure, whether it said so by throwing or by
-                // returning. Before the result carried an outcome only the throw was visible here,
-                // so a returned "error: …" was recorded as a successful call.
-                if (result.IsError)
-                {
-                    progressNode.Fail();
-                    activity?.SetStatus(System.Diagnostics.ActivityStatusCode.Error, result.Reason);
-                }
-                RecordToolCall(name, started, result);
-                return result;
-            }
-            catch (OperationCanceledException)
-            {
-                progressNode.Fail();
-                _logger?.LogWarning("Tool execution canceled. Tool={ToolName} Mode={Mode}", name, mode);
-                throw;
-            }
-            catch (Exception ex)
-            {
-                progressNode.Fail();
-                activity?.SetStatus(System.Diagnostics.ActivityStatusCode.Error, ex.Message);
-                SplaTelemetry.ToolErrors.Add(1);
-                _logger?.LogError(ex, "Tool execution failed. Tool={ToolName} Mode={Mode}", name, mode);
-                return ToolResult.Fail($"Error executing tool {name}: {ex.Message}", ex.GetType().Name);
-            }
-        }
-        _logger?.LogWarning("Tool not found. Tool={ToolName} Mode={Mode}", name, mode);
-        return ToolResult.Fail($"Error: Tool '{name}' not found.", "tool not found");
-    }
-
-    private void RecordToolCall(string name, long started, ToolResult result)
-    {
-        var elapsedMs = Stopwatch.GetElapsedTime(started).TotalMilliseconds;
-        SplaTelemetry.ToolCalls.Add(1);
-        SplaTelemetry.ToolDurationMs.Record(elapsedMs);
-        if (result.IsError) SplaTelemetry.ToolErrors.Add(1);
-        _logger?.LogInformation(
-            "Tool execution finished. Tool={ToolName} Outcome={Outcome} DurationMs={DurationMs:F1} ResultLength={ResultLength}",
-            name,
-            result.Outcome,
-            elapsedMs,
-            result.TextContent.Length);
+        // Nothing is assembled per call — only the invocation, which is what the links write their
+        // findings on. That is what makes a nested ctx.Run safe: it walks the same chain with its own
+        // invocation and cannot disturb the call waiting above it.
+        return await _pipeline(new ToolCallInvocation(mode, name, argumentsJson), cancellationToken);
     }
 
     private static string? GetPluginId(string toolName)
