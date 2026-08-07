@@ -176,4 +176,109 @@ public sealed class SftpTransferTests : IDisposable
         var group = Assert.Single(collisions);
         Assert.Equal(new[] { "etc/README", "etc/readme" }, group);
     }
+
+    // ── upload sources ───────────────────────────────────────────────────────
+    // The set an upload sends is decided entirely locally, so it is testable without a server —
+    // and it is the part a small model depends on: one call has to expand into the whole tree.
+
+    private void WriteLocal(string relative, string content)
+    {
+        var full = Path.Combine(_root, relative.Replace('/', Path.DirectorySeparatorChar));
+        Directory.CreateDirectory(Path.GetDirectoryName(full)!);
+        File.WriteAllText(full, content);
+    }
+
+    private static System.Text.RegularExpressions.Regex? Glob(string? patterns)
+        => patterns is null ? null : SftpTransfer.MatcherFor(patterns);
+
+    [Fact]
+    public void A_folder_expands_into_its_whole_tree_in_one_go()
+    {
+        WriteLocal("conf/app.yml", "a");
+        WriteLocal("conf/sub/db.yml", "b");
+        WriteLocal("conf/sub/deep/x.conf", "c");
+
+        var set = UploadSource.Build(_root, "conf", recursive: true, null, null);
+
+        Assert.False(set.IsSingleFile);
+        Assert.False(set.ModeIsRecorded);
+        Assert.Equal(
+            new[] { "app.yml", "sub/db.yml", "sub/deep/x.conf" },
+            set.Items.Where(i => i.Type == TransferEntryType.File).Select(i => i.Path).OrderBy(p => p));
+        // Directories travel too, so an empty conf.d arrives instead of vanishing.
+        Assert.Contains(set.Items, i => i.Type == TransferEntryType.Directory && i.Path == "sub");
+    }
+
+    [Fact]
+    public void Recursive_false_keeps_the_upload_to_the_top_level()
+    {
+        WriteLocal("conf/app.yml", "a");
+        WriteLocal("conf/sub/db.yml", "b");
+
+        var set = UploadSource.Build(_root, "conf", recursive: false, null, null);
+
+        Assert.Equal(new[] { "app.yml" }, set.Items.Where(i => i.Type == TransferEntryType.File).Select(i => i.Path));
+    }
+
+    [Fact]
+    public void Include_and_exclude_narrow_the_set_the_same_way_a_download_does()
+    {
+        WriteLocal("conf/app.yml", "a");
+        WriteLocal("conf/app.log", "b");
+        WriteLocal("conf/cache/tmp.yml", "c");
+
+        var set = UploadSource.Build(_root, "conf", recursive: true, Glob("*.yml"), Glob("**/cache/**"));
+
+        Assert.Equal(new[] { "app.yml" }, set.Items.Where(i => i.Type == TransferEntryType.File).Select(i => i.Path));
+    }
+
+    [Fact]
+    public void A_single_file_is_marked_as_one_so_remote_path_can_be_the_file_itself()
+    {
+        WriteLocal("conf/app.yml", "hello");
+
+        var set = UploadSource.Build(_root, "conf/app.yml", recursive: true, null, null);
+
+        Assert.True(set.IsSingleFile);
+        var item = Assert.Single(set.Items);
+        Assert.Equal("app.yml", item.Path);
+        Assert.Equal(5, item.Size);
+        using var content = item.Open!();
+        Assert.Equal("hello", new StreamReader(content).ReadToEnd());
+    }
+
+    [Fact]
+    public void A_container_is_sent_back_with_its_links_and_modes()
+    {
+        var container = NewContainer();
+        container.Write(new[]
+        {
+            TextEntry("etc/nginx/nginx.conf", "worker_processes 4;", UnixFileMode.UserRead | UnixFileMode.UserWrite),
+            new PendingEntry(new TransferEntry(
+                "etc/nginx/sites-enabled/app", TransferEntryType.SymbolicLink, 0,
+                UnixFileMode.UserRead, DateTimeOffset.UtcNow, "../sites-available/app"))
+        }, append: false);
+
+        var set = UploadSource.Build(_root, "set.tar", recursive: true, null, null);
+
+        // A Linux mode only means something when it CAME from Linux — that is the flag's whole job.
+        Assert.True(set.ModeIsRecorded);
+        var link = Assert.Single(set.Items, i => i.Type == TransferEntryType.SymbolicLink);
+        Assert.Equal("../sites-available/app", link.LinkTarget);
+        var file = Assert.Single(set.Items, i => i.Type == TransferEntryType.File);
+        Assert.Equal(UnixFileMode.UserRead | UnixFileMode.UserWrite, file.Mode);
+    }
+
+    [Fact]
+    public void A_missing_local_path_says_so_instead_of_sending_nothing_quietly()
+    {
+        var error = Assert.Throws<InvalidOperationException>(
+            () => UploadSource.Build(_root, "conf", recursive: true, null, null));
+        Assert.Contains("no such file or directory", error.Message);
+    }
+
+    [Fact]
+    public void An_upload_cannot_reach_outside_the_project_either()
+        => Assert.Throws<InvalidOperationException>(
+            () => UploadSource.Build(_root, "../../etc", recursive: true, null, null));
 }

@@ -280,17 +280,18 @@ public sealed class SftpTransfer
     // ── upload ───────────────────────────────────────────────────────────────
 
     /// <summary>
-    /// Sends bytes to the remote host. Writing to a server is exactly what
-    /// <see cref="SshHostConfig.AllowWrite"/> gates, and SFTP bypasses the shell guard entirely, so
-    /// the check has to live here — it is the only thing standing between an agent and a modified
-    /// production host.
+    /// Writes given bytes to one remote path — the tool behind <c>sftp_write_file</c>, for content
+    /// that exists only as text or as a blob handle and has no file in the project.
+    /// <para>
+    /// Writing to a server is exactly what <see cref="SshHostConfig.AllowWrite"/> gates, and SFTP
+    /// bypasses the shell guard entirely, so the check has to live here — it is the only thing
+    /// standing between an agent and a modified production host.
+    /// </para>
     /// </summary>
-    public async Task<TransferResult> UploadAsync(
+    public async Task<TransferResult> WriteFileAsync(
         SshHostConfig cfg, string hostName, string remotePath, byte[] content, bool overwrite, CancellationToken ct)
     {
-        if (!cfg.AllowWrite)
-            throw new InvalidOperationException(
-                $"host '{hostName}' is read-only — uploading is refused. The operator must set allow_write: true for this host.");
+        RequireWritable(cfg, hostName);
 
         using var sftp = await ConnectAsync(cfg, ct);
         var target = ResolveRemotePath(sftp, remotePath);
@@ -298,10 +299,269 @@ public sealed class SftpTransfer
         if (!overwrite && sftp.Exists(target))
             throw new InvalidOperationException($"{target} already exists on {hostName} and overwrite is off.");
 
+        EnsureRemoteDirectory(sftp, ParentOf(target), new HashSet<string>(StringComparer.Ordinal));
+
         using var source = new MemoryStream(content);
         await Task.Run(() => sftp.UploadFile(source, target, overwrite), ct);
 
         return new TransferResult(target, 1, 0, content.LongLength, Array.Empty<TransferProblem>());
+    }
+
+    /// <summary>
+    /// Sends a file, a folder or a container from the project to the remote host — the mirror of
+    /// <see cref="DownloadAsync"/>.
+    /// <para>
+    /// It is deliberately one call for the whole job. The half-tool that only took bytes forced a
+    /// model to assemble the transfer itself — read a file, carry it, send it, repeat per entry —
+    /// and a small model loses that thread somewhere in the middle. Whatever can be decided from
+    /// the arguments is decided here instead: what the source is, whether the destination is a
+    /// directory, which targets already exist, and what to do about them.
+    /// </para>
+    /// </summary>
+    public async Task<TransferResult> UploadAsync(
+        SshHostConfig cfg, string hostName, string localPath, string remotePath, bool recursive,
+        string? include, string? exclude, UploadConflict conflict, CancellationToken ct)
+    {
+        RequireWritable(cfg, hostName);
+
+        var set = UploadSource.Build(_workspaceRoot, localPath, recursive, BuildMatcher(include), BuildMatcher(exclude));
+        PreflightUpload(set);
+
+        using var sftp = await ConnectAsync(cfg, ct);
+        var (destination, targetOf) = ResolveUploadDestination(sftp, set, remotePath, localPath);
+
+        var problems = new List<TransferProblem>();
+        var plan = PlanUpload(sftp, set, targetOf, conflict, hostName, problems);
+
+        return await Task.Run(() => Send(sftp, plan, set, destination, problems, ct), ct);
+    }
+
+    private static void RequireWritable(SshHostConfig cfg, string hostName)
+    {
+        if (!cfg.AllowWrite)
+            throw new InvalidOperationException(
+                $"host '{hostName}' is read-only — uploading is refused. The operator must set allow_write: true for this host.");
+    }
+
+    /// <summary>Same budgets as a download, applied before connecting: an accidental upload of the
+    /// whole project should be a refusal, not a slow disaster on someone's server.</summary>
+    private static void PreflightUpload(UploadSet set)
+    {
+        var files = set.Items.Where(i => i.Type == TransferEntryType.File).ToList();
+        if (set.Items.Count == 0)
+            throw new InvalidOperationException(
+                $"nothing to send from {set.Description} — the source is empty or every entry was filtered out by include/exclude.");
+
+        if (set.Items.Count > MaxEntries)
+            throw new InvalidOperationException(
+                $"{set.Items.Count} entries selected, over the {MaxEntries} limit. Narrow local_path or use include patterns.");
+
+        var oversized = files.Where(f => f.Size > MaxFileBytes).ToList();
+        if (oversized.Count > 0)
+            throw new InvalidOperationException(
+                $"{oversized.Count} file(s) exceed the {MaxFileBytes / (1024 * 1024)} MB per-file limit, largest: " +
+                string.Join(", ", oversized.OrderByDescending(f => f.Size).Take(3).Select(f => $"{f.Path} ({f.Size / (1024 * 1024)} MB)")));
+
+        var total = files.Sum(f => f.Size);
+        if (total > MaxTotalBytes)
+            throw new InvalidOperationException(
+                $"the selection is {total / (1024 * 1024)} MB, over the {MaxTotalBytes / (1024 * 1024)} MB limit. " +
+                "Narrow local_path or use include patterns.");
+    }
+
+    /// <summary>
+    /// Where the entries land. A tree always goes INTO <c>remote_path</c> as a directory. A single
+    /// file is the ambiguous case, and it is resolved by looking at the host rather than by adding a
+    /// parameter: if the path is an existing directory the file goes inside it under its own name,
+    /// otherwise the path IS the file — which is how <c>cp</c> behaves and therefore what the model
+    /// has already been trained to expect.
+    /// </summary>
+    private static (string Destination, Func<UploadItem, string> TargetOf) ResolveUploadDestination(
+        SftpClient sftp, UploadSet set, string remotePath, string localPath)
+    {
+        var root = ResolveRemotePath(sftp, remotePath);
+        var rootIsDirectory = TryGetAttributes(sftp, root)?.IsDirectory == true;
+
+        if (set.IsSingleFile && !rootIsDirectory)
+            return (root, _ => root);
+
+        if (set.IsSingleFile)
+            return (root, item => Join(root, item.Path));
+
+        if (TryGetAttributes(sftp, root) is { IsDirectory: false })
+            throw new InvalidOperationException(
+                $"{root} is an existing FILE on the host, but '{localPath}' is a tree — remote_path must be a directory.");
+
+        return (root, item => Join(root, item.Path));
+    }
+
+    /// <summary>
+    /// Decides, before anything is sent, what happens to every entry. Doing the whole decision up
+    /// front is what makes <see cref="UploadConflict.Abort"/> possible at all, and it also means the
+    /// per-entry rule cannot drift halfway through a transfer.
+    /// </summary>
+    private static List<(UploadItem Item, string Target, bool Send)> PlanUpload(
+        SftpClient sftp, UploadSet set, Func<UploadItem, string> targetOf, UploadConflict conflict,
+        string hostName, List<TransferProblem> problems)
+    {
+        var plan = new List<(UploadItem, string, bool)>(set.Items.Count);
+        var existing = new List<string>();
+
+        foreach (var item in set.Items)
+        {
+            var target = targetOf(item);
+            if (item.Type == TransferEntryType.Directory)
+            {
+                plan.Add((item, target, true)); // creating a directory that exists is a no-op, never a conflict
+                continue;
+            }
+
+            var attributes = TryGetAttributes(sftp, target);
+            if (attributes is null) { plan.Add((item, target, true)); continue; }
+
+            existing.Add(target);
+            var send = conflict switch
+            {
+                UploadConflict.Overwrite => true,
+                UploadConflict.Skip => false,
+                UploadConflict.Abort => false,
+                UploadConflict.Newer => item.ModifiedUtc.UtcDateTime
+                    > DateTime.SpecifyKind(attributes.LastWriteTime, DateTimeKind.Utc),
+                _ => true
+            };
+
+            if (!send && conflict == UploadConflict.Newer)
+                problems.Add(new TransferProblem(item.Path, "kept — the copy on the host is the same age or newer"));
+
+            plan.Add((item, target, send));
+        }
+
+        if (conflict == UploadConflict.Abort && existing.Count > 0)
+            throw new InvalidOperationException(
+                $"nothing was sent: {existing.Count} of the selected file(s) already exist on {hostName} " +
+                $"({string.Join(", ", existing.Take(3))}{(existing.Count > 3 ? ", …" : "")}). " +
+                "That is what on_conflict='abort' asks for — choose 'overwrite', 'skip' or 'newer' to proceed.");
+
+        return plan;
+    }
+
+    private static TransferResult Send(
+        SftpClient sftp, List<(UploadItem Item, string Target, bool Send)> plan, UploadSet set,
+        string destination, List<TransferProblem> problems, CancellationToken ct)
+    {
+        var created = new HashSet<string>(StringComparer.Ordinal);
+        int transferred = 0, skipped = 0;
+        long bytes = 0;
+
+        foreach (var (item, target, send) in plan)
+        {
+            ct.ThrowIfCancellationRequested();
+            if (!send) { skipped++; continue; }
+
+            try
+            {
+                switch (item.Type)
+                {
+                    case TransferEntryType.Directory:
+                        EnsureRemoteDirectory(sftp, target, created);
+                        break;
+
+                    case TransferEntryType.SymbolicLink:
+                        EnsureRemoteDirectory(sftp, ParentOf(target), created);
+                        if (string.IsNullOrEmpty(item.LinkTarget))
+                            throw new InvalidOperationException("the container recorded no target for this link");
+                        if (sftp.Exists(target)) sftp.DeleteFile(target); // a link cannot be overwritten in place
+                        sftp.SymbolicLink(item.LinkTarget, target);
+                        skipped++;
+                        break;
+
+                    default:
+                        EnsureRemoteDirectory(sftp, ParentOf(target), created);
+                        using (var content = item.Open!())
+                            sftp.UploadFile(content, target, canOverride: true);
+                        ApplyMetadata(sftp, target, item, set.ModeIsRecorded);
+                        transferred++;
+                        bytes += item.Size;
+                        break;
+                }
+            }
+            catch (Exception ex)
+            {
+                problems.Add(new TransferProblem(item.Path, ex.Message));
+            }
+        }
+
+        return new TransferResult(destination, transferred, skipped, bytes, problems);
+    }
+
+    /// <summary>
+    /// Modification time is always carried across — without it <see cref="UploadConflict.Newer"/>
+    /// would compare the local file against the moment of the last upload and answer nonsense. The
+    /// permission mode is only set when it CAME from a Linux host (a container); for a Windows file
+    /// there is no mode to carry and the server's umask is the honest default.
+    /// </summary>
+    private static void ApplyMetadata(SftpClient sftp, string target, UploadItem item, bool modeIsRecorded)
+    {
+        try
+        {
+            var attributes = sftp.GetAttributes(target);
+            attributes.LastWriteTime = item.ModifiedUtc.UtcDateTime;
+            sftp.SetAttributes(target, attributes);
+
+            if (modeIsRecorded && item.Mode != UnixFileMode.None)
+                sftp.ChangePermissions(target, (short)ToOctal(item.Mode));
+        }
+        catch (Exception)
+        {
+            // Metadata is a nicety; a server that refuses it has still received the file.
+        }
+    }
+
+    private static int ToOctal(UnixFileMode mode)
+    {
+        var bits = 0;
+        if (mode.HasFlag(UnixFileMode.UserRead)) bits |= 0x100;
+        if (mode.HasFlag(UnixFileMode.UserWrite)) bits |= 0x080;
+        if (mode.HasFlag(UnixFileMode.UserExecute)) bits |= 0x040;
+        if (mode.HasFlag(UnixFileMode.GroupRead)) bits |= 0x020;
+        if (mode.HasFlag(UnixFileMode.GroupWrite)) bits |= 0x010;
+        if (mode.HasFlag(UnixFileMode.GroupExecute)) bits |= 0x008;
+        if (mode.HasFlag(UnixFileMode.OtherRead)) bits |= 0x004;
+        if (mode.HasFlag(UnixFileMode.OtherWrite)) bits |= 0x002;
+        if (mode.HasFlag(UnixFileMode.OtherExecute)) bits |= 0x001;
+        return bits;
+    }
+
+    /// <summary>SFTP has no <c>mkdir -p</c>: each level has to be created in turn. The cache is not
+    /// an optimisation for its own sake — without it a thousand-file tree asks the server about the
+    /// same parent directory a thousand times.</summary>
+    private static void EnsureRemoteDirectory(SftpClient sftp, string path, HashSet<string> created)
+    {
+        if (path.Length == 0 || path == "/" || !created.Add(path)) return;
+
+        var parent = ParentOf(path);
+        if (parent.Length > 0 && parent != "/") EnsureRemoteDirectory(sftp, parent, created);
+
+        if (sftp.Exists(path)) return;
+        try { sftp.CreateDirectory(path); }
+        catch (Exception) when (sftp.Exists(path)) { /* another writer got there first */ }
+    }
+
+    private static string ParentOf(string path)
+    {
+        var cut = path.LastIndexOf('/');
+        return cut <= 0 ? "/" : path[..cut];
+    }
+
+    private static string Join(string root, string relative)
+        => root.TrimEnd('/') + "/" + relative.TrimStart('/');
+
+    /// <summary>Attributes, or null when there is nothing there. SSH.NET answers "does not exist"
+    /// by throwing, and an upload asks that question about every single target.</summary>
+    private static SftpFileAttributes? TryGetAttributes(SftpClient sftp, string path)
+    {
+        try { return sftp.Exists(path) ? sftp.GetAttributes(path) : null; }
+        catch (Exception) { return null; }
     }
 
     // ── remote walking ───────────────────────────────────────────────────────
@@ -465,6 +725,10 @@ public sealed class SftpTransfer
     /// NAIVE glob: <c>**</c> spans directories, <c>*</c> and <c>?</c> stay within one segment.
     /// Several comma-separated patterns are allowed; anything fancier belongs in a real matcher.
     /// </summary>
+    /// <summary>The glob matcher, exposed for tests so an upload's include/exclude can be pinned to
+    /// exactly the semantics a download uses — the two halves matching is the point.</summary>
+    internal static Regex? MatcherFor(string? patterns) => BuildMatcher(patterns);
+
     private static Regex? BuildMatcher(string? patterns)
     {
         if (string.IsNullOrWhiteSpace(patterns)) return null;

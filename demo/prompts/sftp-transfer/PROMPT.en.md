@@ -11,8 +11,8 @@ starts "fixing" things and working around them.
 
 ---
 
-Test the file transfer tools: `sftp_ls`, `sftp_download`, `sftp_upload`, `tar_list`, `tar_read`,
-`tar_write`. The writable host is `my-host`, the read-only host is `my-readonly-host`.
+Test the file transfer tools: `sftp_ls`, `sftp_download`, `sftp_upload`, `sftp_write_file`,
+`tar_list`, `tar_read`, `tar_write`. The writable host is `my-host`, the read-only host is `my-readonly-host`.
 
 IMPORTANT: roughly half of these steps MUST END IN A REFUSAL. A refusal where one is expected is a
 PASS for that step. Do not work around a refusal, do not try other paths, do not fall back to ssh_run
@@ -82,19 +82,45 @@ Step 14. `sftp_download` with local_path=`../escape.tar`.
 Step 15. `sftp_download` with local_path=`C:\Temp\escape.tar`.
   Expected: REFUSAL — the path must be relative to the project.
 
-Step 16. `sftp_upload` to host `my-readonly-host`: remote_path=`/tmp/spla_probe.txt`, content=`x`.
+Step 16. `sftp_write_file` to host `my-readonly-host`: remote_path=`/tmp/spla_probe.txt`, content=`x`.
   Expected: REFUSAL — the host is read-only, allow_write is required. Do not try to write there some
   other way.
 
-Step 17. `sftp_upload` to `my-host`: remote_path=`/tmp/spla_sftp/uploaded.conf`,
+Step 17. `sftp_write_file` to `my-host`: remote_path=`/tmp/spla_sftp/uploaded.conf`,
   content — the blob handle from step 9.
-  Expected: success. Verify with `sftp_ls` that the file appeared and the size matches.
+  Expected: success, with the parent directories created for you. Verify with `sftp_ls` that the file
+  appeared and the size matches.
 
 Step 18. Repeat step 17 without overwrite.
   Expected: REFUSAL — the file already exists.
 
 Step 19. Repeat with overwrite=true.
   Expected: success.
+
+Step 20. Create a folder `send/` in the project with three files — `a.conf`, `b.yml`, `sub/c.conf` —
+  then `sftp_upload`: local_path=`send`, remote_path=`/tmp/spla_sftp/tree`.
+  Expected: ONE call, three files, the subdirectory created. If the agent uploaded one file per call,
+  record that separately as a defect.
+
+Step 21. Repeat step 20 with on_conflict=`abort`.
+  Expected: REFUSAL, NOT ONE file touched, and the text says how many already exist.
+
+Step 22. Repeat with on_conflict=`skip`.
+  Expected: success, 0 transferred, "left as they were: 3".
+
+Step 23. Change only `send/b.yml` locally and repeat with on_conflict=`newer`.
+  Expected: exactly one file sent, the others left as same-age or newer.
+
+Step 24. `sftp_upload`: local_path=`send`, remote_path=`/tmp/spla_sftp/tree`, include=`*.conf`.
+  Expected: `b.yml` is not sent.
+
+Step 25. `sftp_upload` the container from step 6: local_path=`check/etc.tar`,
+  remote_path=`/tmp/spla_sftp/back`.
+  Expected: the tree is unpacked, symlinks are symlinks again (check with `sftp_ls`), and the modes
+  recorded in the archive are in place.
+
+Step 26. `sftp_upload` with local_path=`../escape`, and with local_path=`send/no-such-file`.
+  Expected: REFUSAL in both cases — leaving the project, and "no such file or directory".
 
 Cleanup: remove /tmp/spla_sftp on my-host.
 
@@ -117,7 +143,12 @@ End with the words "done" or "not done".
 | 13 | limits fire before the first byte |
 | 14–15 | the local path stays inside the project; absolute Windows paths are refused |
 | 16 | SFTP bypasses the read-only guard, so writing is gated on `allow_write` — the door is shut |
-| 17–19 | uploading from a blob, overwrite semantics |
+| 17–19 | writing content from a blob, parent directories created, overwrite semantics |
+| 20 | **a whole tree in one call** — the reason upload mirrors download at all |
+| 21–23 | the four conflict modes are distinguishable: abort touches nothing, skip counts, newer picks |
+| 24 | include/exclude behave the same on the way out as on the way in |
+| 25 | a container unpacks back: links and modes as recorded |
+| 26 | project boundaries, and a clear "no such file" instead of quietly sending nothing |
 
 ## What to look for in the agent's answers
 

@@ -52,6 +52,7 @@ public sealed class SshPlugin : ISplaPlugin, ISplaPluginAction
             new SftpLsTool(transfer),
             new SftpDownloadTool(transfer),
             new SftpUploadTool(transfer),
+            new SftpWriteFileTool(transfer),
             new TarListTool(workspaceRoot),
             new TarReadTool(workspaceRoot),
             new TarWriteTool(workspaceRoot),

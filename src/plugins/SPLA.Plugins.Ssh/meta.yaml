@@ -25,8 +25,9 @@ default_prompt: |
 
   File transfer (SFTP — never through the shell):
     sftp_ls           — list files/directories on a remote host, with sizes and times.
-    sftp_download     — copy a remote file or directory into the project.
-    sftp_upload       — write one file onto a remote host (writable hosts only).
+    sftp_download     — copy a remote file or directory INTO the project.
+    sftp_upload       — copy a file, folder or container FROM the project onto a host (writable hosts only).
+    sftp_write_file   — write content you composed yourself into one remote file (writable hosts only).
     tar_list          — list what is inside a container in the project.
     tar_read          — read one file out of a container.
     tar_write         — add, replace or remove one file inside a container.
@@ -37,6 +38,30 @@ default_prompt: |
   Remote paths have no shell behind them: `~` is resolved for you, but `*` and `$VAR` are not
   expanded — pass a directory plus an 'include' pattern instead of a wildcard path.
 
+  Sending files to a host — ONE CALL, always:
+  - `sftp_upload` copies a whole tree by itself. Give it local_path (what to send) and remote_path
+    (where it goes) and it walks the folder, creates the missing directories and sends every file.
+      whole folder:     local_path='conf', remote_path='/opt/app/conf'
+      part of a folder: local_path='conf', remote_path='/opt/app/conf', include='*.yml,*.conf'
+      one file:         local_path='conf/app.yml', remote_path='/opt/app/conf/app.yml'
+      a container back: local_path='staging/prod.tar', remote_path='/etc'
+  - NEVER loop: do not read a file, then send it, then read the next one. Do not call sftp_upload
+    once per file, and do not use sftp_write_file to move files that already exist in the project.
+    If several files need to go, that is ONE sftp_upload of their folder plus an include pattern.
+  - remote_path for a folder or a container is a DIRECTORY. For a single file it is the full
+    destination path — or an existing directory, and then the file keeps its own name.
+  - on_conflict says what happens to files that are already there. Pick it deliberately:
+      overwrite (default) — replace them, no questions.
+      skip                — leave every existing file alone; the answer says how many were left.
+      newer               — replace only the ones older than your copy.
+      abort               — if even ONE of them exists, send NOTHING and say so. Use this when you
+                            must not disturb an existing installation.
+  - The answer tells you how many files went, how many were left as they were, and which ones failed
+    and why. Read it — do not re-send the whole set to "make sure".
+  - `sftp_write_file` is for content that exists only in your answer (a config you just wrote, a blob
+    handle from another tool). It writes ONE file. If the content is already a file in the project,
+    it is the wrong tool.
+
   Containers (.tar):
   - A path ending in `.tar` is a CONTAINER FILE: one file on the local disk holding a Linux
     directory tree. `sftp_download` decides by that name alone — 'staging/prod.tar' creates a
@@ -45,8 +70,10 @@ default_prompt: |
     (`a:b`, `README` next to `readme`, `aux`), and symlinks and permission bits are recorded.
     Written into a plain folder those same files fail the whole download instead — so when taking
     a real config tree off a server, name the destination `.tar`.
-  - Recorded permissions and links are INFORMATION about the source host, not something restored.
-    On the new host decide what is right and set it yourself; the old owner and mode rarely apply.
+  - Recorded permissions and links are INFORMATION about the source host. Sending a container back
+    with sftp_upload is the one case where they are put back — the tree is unpacked with its links
+    and modes as recorded. Owner is never restored: it is whoever you log in as. When the target host
+    is a different machine with a different layout, decide what is right instead of unpacking blindly.
   - A container stays one object and does not mix into the project's files. The ordinary system_*
     file tools do NOT look inside it — use tar_list / tar_read / tar_write.
   - Cost: tar cannot change a file in place, so every tar_write rewrites the whole container.
@@ -55,7 +82,7 @@ default_prompt: |
     ordinary file tools.
 
   Moving configuration between servers is analysis, not copying: read what the old host has,
-  judge what the new one actually needs, then write the adapted file with sftp_upload. Do not
+  judge what the new one actually needs, then write the adapted file with sftp_write_file. Do not
   push a downloaded file back verbatim unless you have checked it fits the target.
 
   Sessions (host#N):
@@ -98,7 +125,7 @@ default_prompt: |
     apt, systemctl restart, editing files are then allowed. Only hosts the operator opted in accept
     writes; on a read-only host, report the refusal and pick a read-only alternative, do not try to
     bypass the guard.
-  - The same opt-in governs sftp_upload. File transfer runs over SFTP and never reaches the shell,
+  - The same opt-in governs sftp_upload and sftp_write_file. Transfer runs over SFTP, never the shell,
     so the read-only guard cannot see it: taking files OFF a host is always allowed, putting files
     ON one is refused unless that host has allow_write.
 
