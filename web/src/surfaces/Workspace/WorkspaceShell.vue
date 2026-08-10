@@ -30,6 +30,9 @@
     <div v-if="!selectedNode" class="ws-placeholder">
       <span>Select a file to open it.</span>
     </div>
+    <div v-else-if="selectedNode.contentType === 'binary'" class="ws-placeholder">
+      <span>Binary file — not shown ({{ selectedNode.label }})</span>
+    </div>
     <EditorHost
       v-else
       :text="fileText"
@@ -116,6 +119,8 @@ watch(workspacePath, v => {
 async function onNodeSelect(node: FsNode) {
   selectedNode.value = node;
   fileText.value = "";
+  // Двоичное в дереве видно, но в редактор не тянем — ни читать, ни сохранять его нечем.
+  if (node.contentType === "binary") return;
   try {
     const result = await client.invoke<FsReadResultPayload>("fs.read", { ref: node.ref });
     fileText.value = result?.text ?? "";

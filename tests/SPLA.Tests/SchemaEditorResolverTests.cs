@@ -105,14 +105,23 @@ public class SchemaEditorResolverTests
         File.WriteAllText(Path.Combine(root, "table_Asbest.jsonl"), "{}");
         File.WriteAllText(Path.Combine(root, "notes.md"), "# заметки");
         File.WriteAllText(Path.Combine(root, "ignored.bin"), "skip");
+        // Конфиг без знакомого расширения — раньше не показывался, теперь должен.
+        File.WriteAllText(Path.Combine(root, "app.conf"), "key = value");
+        File.WriteAllBytes(Path.Combine(root, "blob.dat"), new byte[] { 1, 0, 2, 0, 3 });
 
         try
         {
             var browser = new FileContentBrowser(root);
             var children = browser.GetChildren(null);
 
-            // .bin (неизвестное расширение) отфильтрован: папка + 2 известных листа.
-            Assert.Equal(3, children.Count);
+            // Показываем всё: папка + 5 файлов.
+            Assert.Equal(6, children.Count);
+
+            // Незнакомое расширение с текстом внутри — открываемо фолбэк-редактором.
+            Assert.Equal("txt", children.Single(n => n.Label == "app.conf").ContentType);
+            // .bin в чёрном списке, .dat распознан по нулевым байтам.
+            Assert.Equal("binary", children.Single(n => n.Label == "ignored.bin").ContentType);
+            Assert.Equal("binary", children.Single(n => n.Label == "blob.dat").ContentType);
 
             var folder = children.Single(n => n.Kind == ContentNodeKind.Folder);
             Assert.Equal("sub", folder.Label);
