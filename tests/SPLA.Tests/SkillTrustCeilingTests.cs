@@ -108,17 +108,15 @@ public class SkillTrustCeilingTests : IDisposable
     [Fact]
     public void Restating_a_default_path_is_not_a_repointing()
     {
-        // This repository's own .spla lists `skills` and `.spla/skills` — the same two folders the
-        // built-in entries already name. Treating a restatement as a choice of content would demote
-        // the entry for the wrong reason; whether those two are trusted is decided by WHERE they are,
-        // which the workspace rule below covers.
+        // A project restating `skills` — the same folder a built-in entry already names. Treating a
+        // restatement as a choice of content would demote the entry for the wrong reason; whether it
+        // is trusted is decided by WHERE it is, which the workspace rule below covers.
         var sources = SkillSourceRegistry.Build(
         [
-            new SplaSkillSourceSection { Type = "directory", Path = "skills", Origin = SourceOrigin.Project },
-            new SplaSkillSourceSection { Type = "directory", Path = ".spla/skills", Origin = SourceOrigin.Project }
+            new SplaSkillSourceSection { Type = "directory", Path = "skills", Origin = SourceOrigin.Project }
         ], Context());
 
-        Assert.Equal(["repo", "local", "machine"], sources.Select(s => s.Id));
+        Assert.Equal(["repo", "machine"], sources.Select(s => s.Id));
         // machine lives in the person's home, so restating project paths left it alone.
         Assert.Equal(SkillTrust.Trusted, sources.Single(s => s.Id == "machine").Trust);
     }
@@ -134,7 +132,6 @@ public class SkillTrustCeilingTests : IDisposable
         var sources = SkillSourceRegistry.Build(null, Context());
 
         Assert.Equal(SkillTrust.Untrusted, sources.Single(s => s.Id == "repo").Trust);
-        Assert.Equal(SkillTrust.Untrusted, sources.Single(s => s.Id == "local").Trust);
         // The person's own home is not somewhere a clone can put anything.
         Assert.Equal(SkillTrust.Trusted, sources.Single(s => s.Id == "machine").Trust);
     }

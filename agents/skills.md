@@ -127,7 +127,6 @@ different kind of prompt asset reuses the same source with a different parser.
 | Type | Id | What it serves |
 |---|---|---|
 | `DirectorySkillSource` | `repo` | The project's own committed `skills/` folder. |
-| `DirectorySkillSource` | `local` | `.spla/skills` — personal drafts. `.spla/` is local state and git-ignored in full. |
 | `DirectorySkillSource` | `machine` | `<SPLA home>/skills` — the user's, across every project. |
 | `DirectorySkillSource` | `builtin` | `<install>/skills` — shipped with the product, beside `plugins/`. |
 | `PluginSkillSource` | `plugin:<id>` | Markdown at a package root (`type: skills` packages) or in a plugin's `skills/` subfolder. **Returns nothing while its plugin is disabled.** |
@@ -618,8 +617,8 @@ the registry is rebuilt on a plugin load pass instead.
 
 `DirectorySkillSource` watches its root when it exists, and the nearest existing **ancestor** when it
 does not, swapping to the real watcher the moment the folder appears. A missing folder is the normal
-state of `.spla/skills` right up until the user writes a first draft there, and requiring a restart
-at exactly that moment is the opposite of hot reload. Deleting the root re-arms the ancestor watch,
+state of `skills/` right up until the user writes a first one there, and requiring a restart at
+exactly that moment is the opposite of hot reload. Deleting the root re-arms the ancestor watch,
 so delete-and-recreate is survivable rather than one-way.
 
 ---
@@ -630,8 +629,12 @@ so delete-and-recreate is survivable rather than one-way.
 |---|---|---|
 | one plugin's tools | that plugin's `skills/` subfolder | `plugin:<id>`, gated by the plugin's toggle |
 | this project / repo | `skills/` at the repo root, committed | `repo` |
-| you, in this project | `.spla/skills` (git-ignored) | `local` |
 | you, everywhere | `<SPLA home>/skills` | `machine` |
+
+There is no per-project personal branch. `.spla/` is the runtime's own folder and is closed to the
+agent; a draft under it was identical in trust to `skills/` anyway — everything inside the workspace
+is forced down to untrusted wherever it sits — so it bought only "stays out of the commit". A skill
+worth having is a skill that lives in the project.
 
 A separate `type: skills` plugin package still works (markdown at its root) but is no longer the
 recommended shape: it means two switches for one capability.

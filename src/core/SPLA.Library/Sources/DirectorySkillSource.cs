@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -9,7 +9,7 @@ using SPLA.Library.Format;
 namespace SPLA.Library.Sources;
 
 /// <summary>
-/// Skills stored as markdown in a folder — the project's <c>.spla/skills</c> and the machine's
+/// Skills stored as markdown in a folder — the project's <c>skills/</c> and the machine's
 /// <c>~/.spla/skills</c>.
 ///
 /// <para>Two layouts, both first-class: a bare <c>name.md</c> in the root is a simple skill, and a
@@ -63,8 +63,8 @@ public sealed class DirectorySkillSource : IEditableSkillSource, IDisposable
     /// <summary>
     /// Attaches the watcher appropriate to the current state of the root folder.
     ///
-    /// <para>A missing folder is the normal case — most projects have no <c>.spla/skills</c> until
-    /// the first draft is written — so it is neither an error nor created eagerly. But
+    /// <para>A missing folder is the normal case — most projects have no <c>skills/</c> until
+    /// the first one is written — so it is neither an error nor created eagerly. But
     /// FileSystemWatcher cannot watch a path that does not exist, and simply giving up would mean
     /// the folder a user creates mid-session stays dark until restart. So an absent root is watched
     /// for on the nearest existing ancestor instead, and the moment it appears this swaps itself for
