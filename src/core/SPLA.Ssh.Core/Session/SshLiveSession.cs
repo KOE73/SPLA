@@ -1,3 +1,4 @@
+using System.Reflection;
 using System.Text;
 using System.Text.RegularExpressions;
 using Renci.SshNet;
@@ -87,13 +88,18 @@ public sealed class SshLiveSession : IDisposable
     public DateTimeOffset OpenedAt { get; } = DateTimeOffset.UtcNow;
     public bool IsAlive => !_disposed && _client.IsConnected;
 
+    /// <summary>The pty geometry the remote currently believes in — the open size until a viewer
+    /// resizes it (see <see cref="Resize"/>).</summary>
+    public uint Cols { get; private set; }
+    public uint Rows { get; private set; }
+
     public int ViewerCount { get { lock (_sinkLock) return _sinks.Count; } }
 
     /// <summary>Fires once when the session ends (disposed or connection dropped).</summary>
     public event Action<SshLiveSession>? Closed;
 
     private SshLiveSession(string id, string hostName, string openedBy, SshClient client, ShellStream shell,
-        string? sudoPassword)
+        string? sudoPassword, uint cols, uint rows)
     {
         Id = id;
         HostName = hostName;
@@ -101,6 +107,8 @@ public sealed class SshLiveSession : IDisposable
         _client = client;
         _shell = shell;
         _sudoPassword = sudoPassword;
+        Cols = cols;
+        Rows = rows;
         _ = PumpAsync(_cts.Token);
     }
 
@@ -109,10 +117,10 @@ public sealed class SshLiveSession : IDisposable
         string openedBy, CancellationToken ct, uint cols = 120, uint rows = 30)
     {
         var client = await SshConnectionFactory.ConnectAsync(cfg, timeoutSeconds, resolver, ct);
-        var shell = client.CreateShellStream("xterm-256color",
-            Math.Clamp(cols, 20, 500), Math.Clamp(rows, 5, 200), 0, 0, 64 * 1024);
+        var (c, r) = ClampSize((int)cols, (int)rows);
+        var shell = client.CreateShellStream("xterm-256color", c, r, 0, 0, 64 * 1024);
         var sudoPassword = await SshConnectionFactory.ResolveLoginPasswordAsync(cfg, resolver, ct);
-        var session = new SshLiveSession(id, hostName, openedBy, client, shell, sudoPassword);
+        var session = new SshLiveSession(id, hostName, openedBy, client, shell, sudoPassword, c, r);
         // Before the session is handed to anyone: kill the pagers (see PagerSuppression). Queued into
         // the pty straight away — the shell consumes it as soon as it is ready, so the first real
         // command already inherits the environment.
@@ -188,6 +196,64 @@ public sealed class SshLiveSession : IDisposable
     {
         if (_disposed) return;
         try { _shell.Write(data); } catch { /* closed — pump ends the session */ }
+    }
+
+    // ── Geometry ───────────────────────────────────────────────────────────────
+
+    /// <summary>Sane pty bounds; the open size and every later resize pass through here.</summary>
+    private static (uint Cols, uint Rows) ClampSize(int cols, int rows)
+        => ((uint)Math.Clamp(cols, 20, 500), (uint)Math.Clamp(rows, 5, 200));
+
+    /// <summary>
+    /// The <c>window-change</c> channel request, reached by reflection because SSH.NET exposes no
+    /// public way to resize a <see cref="ShellStream"/> after <c>CreateShellStream</c> fixed its
+    /// geometry. The protocol message and the code that sends it both exist — the channel is simply
+    /// stored in a private field behind an internal interface.
+    ///
+    /// <para>Skipping the resize is not a cosmetic compromise, which is why it is worth reaching for:
+    /// the remote's <c>COLUMNS</c> stays at the open size forever, so readline wraps and repositions
+    /// the cursor at the wrong column (arrow keys and history smear over the previous line), and
+    /// full-screen programs — far2l, htop, vim — paint into the opening rectangle and leave the rest
+    /// of the window dead. Nothing the client can send as ordinary input fixes that: the size lives in
+    /// the pty on the far side.</para>
+    ///
+    /// <para>Null if a future SSH.NET renames either member — then <see cref="Resize"/> degrades to
+    /// the old no-op instead of throwing, and <see cref="SupportsResize"/> says so.</para>
+    /// </summary>
+    private static readonly FieldInfo? ChannelField =
+        typeof(ShellStream).GetField("_channel", BindingFlags.NonPublic | BindingFlags.Instance);
+    private static readonly MethodInfo? WindowChangeMethod =
+        ChannelField?.FieldType.GetMethod("SendWindowChangeRequest",
+            BindingFlags.Public | BindingFlags.Instance);
+
+    /// <summary>False when this SSH.NET build no longer matches <see cref="WindowChangeMethod"/>'s
+    /// assumptions — resizes are then accepted and dropped, as they were before.</summary>
+    public static bool SupportsResize => ChannelField != null && WindowChangeMethod != null;
+
+    /// <summary>
+    /// Tells the remote pty the window is now <paramref name="cols"/>×<paramref name="rows"/>, so the
+    /// shell reflows and full-screen programs repaint at the new size. A session may have several
+    /// viewers of different sizes — LAST RESIZE WINS, which is what a human resizing their own window
+    /// expects; other viewers reflow on their next own resize.
+    /// </summary>
+    /// <returns>True when the remote was actually told (false = unchanged, dead, or unsupported).</returns>
+    public bool Resize(int cols, int rows)
+    {
+        if (_disposed || !SupportsResize) return false;
+        var (c, r) = ClampSize(cols, rows);
+        lock (_sinkLock)
+        {
+            if (c == Cols && r == Rows) return false;
+        }
+        try
+        {
+            var channel = ChannelField!.GetValue(_shell);
+            if (channel == null) return false;
+            WindowChangeMethod!.Invoke(channel, [c, r, 0u, 0u]);
+        }
+        catch { return false; } // channel closed mid-flight — the pump will end the session
+        lock (_sinkLock) { Cols = c; Rows = r; }
+        return true;
     }
 
     // ── Agent command execution ────────────────────────────────────────────────

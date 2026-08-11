@@ -83,6 +83,14 @@ function refit(): boolean {
   return true;
 }
 
+// Refit + tell the remote pty, which is the half that actually matters: xterm reflowing on its own
+// only changes what the browser draws, while the shell keeps wrapping at the pty's columns. Without
+// the second half readline smears the cursor across the previous line and full-screen programs paint
+// into the old rectangle.
+function refitAndPush() {
+  if (refit()) client.send("terminal.resize", { terminalId, cols: lastCols, rows: lastRows });
+}
+
 // Open the pty only once the socket is live AND the host has a real size — a bare send() before the
 // ws handshake is dropped, and opening at a zero/default size makes the remote pty the wrong shape.
 function tryOpen() {
@@ -120,6 +128,10 @@ onMounted(() => {
     // popout attaches to THIS session rather than opening a new one.
     props.params?.api?.setTitle("⌨ " + p.sessionId);
     props.params?.api?.updateParameters({ host: requestedHost, session: p.sessionId });
+    // Push our geometry unconditionally, not via refitAndPush: when ATTACHING to a session someone
+    // else opened, the pty is still at THEIR size, and our size hasn't changed since terminal.open —
+    // so the "only on change" path would never tell the remote how wide this window really is.
+    client.send("terminal.resize", { terminalId, cols: lastCols, rows: lastRows });
     term!.focus();
   }));
   disposers.push(client.on("terminal.closed", p => {
@@ -130,12 +142,24 @@ onMounted(() => {
 
   // Reflow on any host-box size change — dockview resizes/moves the panel (including tear-off into a
   // separate window) without ever firing window.resize, which is why fit went stale before.
+  // Coalesced into a frame: fit() writes to the DOM inside the very box we observe, and reacting
+  // synchronously makes the observer re-fire on its own output ("ResizeObserver loop completed with
+  // undelivered notifications", and a burst of resize messages during a drag).
+  let pending = 0;
   const observer = new ResizeObserver(() => {
-    if (!opened) { tryOpen(); return; }
-    if (refit()) client.send("terminal.resize", { terminalId, cols: lastCols, rows: lastRows });
+    if (pending) return;
+    pending = requestAnimationFrame(() => {
+      pending = 0;
+      if (!opened) tryOpen();
+      else refitAndPush();
+    });
   });
   observer.observe(host.value!);
-  disposers.push(() => observer.disconnect());
+  disposers.push(() => { observer.disconnect(); if (pending) cancelAnimationFrame(pending); });
+
+  // The first fit is measured with whatever font the browser had at that instant; once the real
+  // monospace face is ready the cell metrics change and the column count with them.
+  document.fonts?.ready.then(() => { if (opened) refitAndPush(); else tryOpen(); });
 
   if (store.connected) tryOpen();
   disposers.push(client.on("conn", p => { if (p.on) tryOpen(); }));
@@ -149,7 +173,11 @@ onBeforeUnmount(() => {
 </script>
 
 <style scoped>
-.term-surface { display: flex; flex-direction: column; height: 100%; background: #0b0e14; }
+/* min-width:0 + overflow:hidden on both boxes: a flex item defaults to min-width:auto, so xterm's
+   own element — which is sized in whole character cells and only ever rounds UP — becomes a floor
+   the panel cannot shrink below. The terminal then pins the dock panel wider than the user left it
+   and fit() reads back the inflated width, so the pty never converges on the real window. */
+.term-surface { display: flex; flex-direction: column; height: 100%; min-width: 0; overflow: hidden; background: #0b0e14; }
 .term-bar {
   display: flex; align-items: center; gap: 8px;
   padding: 6px 10px; font-size: 12px; color: #9aa7bd;
@@ -166,5 +194,5 @@ onBeforeUnmount(() => {
 .dot.connecting { background: #d29922; }
 .dot.open { background: #3fb950; }
 .dot.closed { background: #f85149; }
-.term-host { flex: 1; min-height: 0; padding: 4px 6px; }
+.term-host { flex: 1; min-height: 0; min-width: 0; overflow: hidden; padding: 4px 6px; }
 </style>

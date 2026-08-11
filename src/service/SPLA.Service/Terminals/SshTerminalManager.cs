@@ -70,9 +70,16 @@ internal sealed class SshTerminalManager : IAsyncDisposable
         if (_terminals.TryGetValue(terminalId, out var e)) e.Session.Write(data);
     }
 
-    /// <summary>Resize is accepted but not applied — SSH.NET's ShellStream has no post-open resize,
-    /// and one session may have several differently-sized viewers anyway. Kept for contract stability.</summary>
-    public void Resize(string terminalId, int cols, int rows) { /* no-op */ }
+    /// <summary>Applies a viewer's geometry to the session's pty, so the remote shell wraps at the
+    /// right column and full-screen programs use the whole window. One session may have several
+    /// viewers of different sizes — last resize wins (see <see cref="SshLiveSession.Resize"/>).</summary>
+    public void Resize(string terminalId, int cols, int rows)
+    {
+        if (!_terminals.TryGetValue(terminalId, out var e)) return;
+        if (e.Session.Resize(cols, rows))
+            _log.LogDebug("terminal {Terminal}: session {Session} resized to {Cols}x{Rows}",
+                terminalId, e.Session.Id, cols, rows);
+    }
 
     /// <summary>Detaches one terminal from its session (the session stays alive) and tells the client.</summary>
     public async Task DetachAsync(string terminalId)

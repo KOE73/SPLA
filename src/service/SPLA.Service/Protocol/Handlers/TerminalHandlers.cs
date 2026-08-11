@@ -55,6 +55,10 @@ internal sealed class TerminalHandlers : IMessageHandler
                     { TerminalId = p.TerminalId, Reason = $"no such session '{p.Session}'" });
                     return;
                 }
+                // The session was born at whoever opened it's size (an agent session: the 120x30
+                // default). A human attaching to watch gets their own window's geometry pushed to the
+                // remote right away, otherwise far2l & friends keep painting into the old rectangle.
+                if (p.Cols > 0 && p.Rows > 0) session.Resize(p.Cols, p.Rows);
             }
             else
             {
@@ -70,8 +74,10 @@ internal sealed class TerminalHandlers : IMessageHandler
                     return;
                 }
 
+                // Geometry straight from the browser's fitted xterm (clamped inside OpenAsync), so the
+                // pty is the right shape from its very first prompt.
                 session = await hub.OpenAsync(name, cfg, ssh.TimeoutSeconds, settings.SecretResolver,
-                    openedBy: "human", ctx.HostStopping, (uint)Math.Clamp(p.Cols, 20, 500), (uint)Math.Clamp(p.Rows, 5, 200));
+                    openedBy: "human", ctx.HostStopping, (uint)p.Cols, (uint)p.Rows);
             }
 
             await ctx.Session.Terminals.AttachAsync(p.TerminalId, session);

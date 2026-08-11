@@ -29,7 +29,10 @@ function addPanel(kind: PanelKind, referencePanel?: string, direction: "left" | 
     component: definition.kind,
     title: `${definition.icon} ${definition.title}`,
     tabComponent: "splaTab",
-    initialWidth: definition.defaultWidth,
+    // Width only when this panel creates a COLUMN. dockview sizes groups, not tabs, so passing it
+    // for a "within" add re-sizes the group the tab lands in — throwing away whatever width the user
+    // dragged it to, every time they open another tab in it.
+    ...(direction === "within" ? {} : { initialWidth: definition.defaultWidth }),
     minimumWidth: definition.minimumWidth ?? 220,
     maximumWidth: definition.maximumWidth,
     renderer: "always",
@@ -113,17 +116,20 @@ export function openSshTerminal(opts: { host?: string; session?: string } = {}) 
 
   const label = opts.session ?? opts.host ?? "SSH";
   const id = `ssh:${label}:${Date.now().toString(36)}-${sshSeq++}`;
-  const ref = firstTool() ?? api.getPanel("chat");
+  const tool = firstTool();
+  const ref = tool ?? api.getPanel("chat");
   api.addPanel({
     id,
     component: "ssh",
     title: `⌨ ${label}`,
     tabComponent: "splaTab",
     params: { host: opts.host, session: opts.session },
-    initialWidth: panelCatalog.ssh.defaultWidth,
+    // Only when opening the tool COLUMN — see addPanel: a width passed on a "within" add resizes the
+    // whole group, so every extra terminal would snap the operator's widened column back to 480px.
+    ...(tool ? {} : { initialWidth: panelCatalog.ssh.defaultWidth }),
     minimumWidth: 220,
     renderer: "always",
-    position: ref ? { referencePanel: ref.id, direction: firstTool() ? "within" : "right" } : undefined,
+    position: ref ? { referencePanel: ref.id, direction: tool ? "within" : "right" } : undefined,
   });
 }
 
