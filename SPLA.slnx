@@ -46,6 +46,7 @@
     <File Path="docs/adr/ADR_20260803_agent_typed-contributions.md" />
     <File Path="docs/adr/ADR_20260804_agent_skills-library.md" />
     <File Path="docs/adr/ADR_20260805_agent_skills-sources.md" />
+    <File Path="docs/adr/ADR_20260811_core_security-zones.md" />
   </Folder>
   <Folder Name="/docs/plans/">
     <File Path="docs/plans/PLAN_20260619_agent_skills-lifecycle.md" />
@@ -61,6 +62,7 @@
     <File Path="docs/plans/PLAN_20260805_agent_skills-sources.md" />
     <File Path="docs/plans/PLAN_20260805_tools_call-contract.md" />
     <File Path="docs/plans/PLAN_20260807_host_sandbox.md" />
+    <File Path="docs/plans/PLAN_20260811_core_security-zones.md" />
   </Folder>
   <Folder Name="/docs/ideas/">
     <File Path="docs/ideas/IDEA_20260611_core_todo-general.md" />
