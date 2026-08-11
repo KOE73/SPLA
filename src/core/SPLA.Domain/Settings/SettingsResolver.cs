@@ -52,7 +52,17 @@ public class ResolvedSettings
 
     // Project
     public string? ProjectName { get; set; }
+
+    /// <summary>The project root: the directory holding the loaded manifest, always absolute.
+    /// Falls back to the current directory when running without a project — and that case has no
+    /// root at all, so nothing may be bounded by it.
+    /// <para>Not configurable. A manifest cannot point the root elsewhere: one definition, or every
+    /// boundary drawn on it is negotiable.</para></summary>
     public string WorkspacePath { get; set; } = ".";
+
+    /// <summary>Whether a manifest was actually found. <c>false</c> ⇒ there is no project and
+    /// <see cref="WorkspacePath"/> is merely where the process started, which is not a boundary.</summary>
+    public bool HasProject => ProjectFilePath is not null;
 
     /// <summary>Absolute path to the .spla file that was loaded, or null when running without a project.
     /// Plugins that need to persist their own settings use this.</summary>
@@ -308,7 +318,8 @@ public static class SettingsResolver
         if (project != null)
         {
             r.ProjectName = project.Name;
-            r.WorkspacePath = project.Workspace ?? ".";
+            // WorkspacePath is NOT resolved here: it derives from where the manifest was found, and
+            // only the loader knows that. See ConfigLoader.LoadAndResolve.
             r.Docs = project.Docs ?? new();
             r.Ignore = project.Ignore ?? new();
 

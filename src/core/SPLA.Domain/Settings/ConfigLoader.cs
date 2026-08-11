@@ -162,17 +162,7 @@ public static class ConfigLoader
     /// <summary>
     /// Loads a .spla project file.
     /// </summary>
-    public static SplaProject LoadProject(string splaFilePath)
-    {
-        var project = LoadProjectRaw(splaFilePath);
-
-        // Resolve workspace path relative to the .spla file location
-        var splaDir = Path.GetDirectoryName(Path.GetFullPath(splaFilePath)) ?? ".";
-        var workspace = project.Workspace ?? ".";
-        project.Workspace = Path.GetFullPath(Path.Combine(splaDir, workspace));
-
-        return project;
-    }
+    public static SplaProject LoadProject(string splaFilePath) => LoadProjectRaw(splaFilePath);
 
     /// <summary>
     /// Loads a .spla project file without resolving relative paths. Use this before editing and saving it.
@@ -287,7 +277,6 @@ public static class ConfigLoader
     private static object? GetSectionValue(SplaProject p, string key) => key switch
     {
         "name" => p.Name,
-        "workspace" => p.Workspace,
         "agent" => p.Agent,
         "llm" => p.Llm,
         "connections" => p.Connections,
@@ -328,7 +317,6 @@ public static class ConfigLoader
             return;
 
         project.Name = Path.GetFileNameWithoutExtension(splaFilePath);
-        project.Workspace ??= ".";
         project.Ignore = [.. DefaultIgnorePatterns];
 
         try { SaveProject(project, splaFilePath); }
@@ -362,11 +350,16 @@ public static class ConfigLoader
         if (splaFilePath != null && File.Exists(splaFilePath))
             resolved.ProjectFilePath = Path.GetFullPath(splaFilePath);
 
-        // Global secrets service: project scope under the workspace, user/shared under ~/.spla.
-        // The access policy starts permissive — a server swaps in the ACL-backed one after load.
+        // The root, decided in exactly one place: the directory the manifest was found in. Absolute
+        // from here on — it used to stay whatever the manifest said (usually "."), which only ever
+        // worked because startup chdir'd into it, so anything reading it before that got a path
+        // relative to wherever the process happened to start.
+        // No manifest ⇒ no project ⇒ no root: the current directory is where we were launched, not a
+        // boundary, and callers must consult HasProject before treating it as one.
         var workspace = resolved.ProjectFilePath != null
             ? Path.GetDirectoryName(resolved.ProjectFilePath)
             : null;
+        resolved.WorkspacePath = workspace ?? Directory.GetCurrentDirectory();
         var store = ResolveSecretStore(defaults, workspace);
         resolved.Secrets = store;
         resolved.SecretResolver = new Secrets.SecretResolver(store);

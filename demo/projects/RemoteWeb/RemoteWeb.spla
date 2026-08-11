@@ -1,6 +1,5 @@
 version: 1
 name: Remote Web Demo
-workspace: .
 
 agent:
   # Research: Chat mode strips all non-Agent-scoped tools (ToolModeFilter), including the
