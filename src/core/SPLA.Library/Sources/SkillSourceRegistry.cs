@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using Microsoft.Extensions.Logging;
+using SPLA.Domain.Host;
 using SPLA.Domain.Settings;
 
 namespace SPLA.Library.Sources;
@@ -466,17 +467,13 @@ public static class SkillSourceRegistry
         return IsUnder(fullPath, context.WorkspacePath);
     }
 
+    /// <summary>Whether <paramref name="path"/> lands inside <paramref name="root"/>. Trust is decided
+    /// by location, so "inside" has to mean the same thing here as everywhere else — including for a
+    /// folder reached through a link, which is why this is not a string comparison.</summary>
     private static bool IsUnder(string path, string root)
     {
-        try
-        {
-            var p = Path.GetFullPath(path).TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
-            var r = Path.GetFullPath(root).TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
-            if (r.Length == 0) return false;
-
-            return p.Equals(r, StringComparison.OrdinalIgnoreCase) ||
-                   p.StartsWith(r + Path.DirectorySeparatorChar, StringComparison.OrdinalIgnoreCase);
-        }
+        if (string.IsNullOrWhiteSpace(root)) return false;
+        try { return new PathBoundary(root).Contains(path); }
         catch { return false; }
     }
 
