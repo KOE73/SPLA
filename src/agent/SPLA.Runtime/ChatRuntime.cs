@@ -208,7 +208,11 @@ public sealed class ChatRuntime
         // Restore this chat's session memory (survives restart) and feed live context:* each turn.
         _sessionKv.LoadFrom(chat.Kv);
 
-        _agentSession = new AgentSession(_sessionKv, _checkpoint, _skillSession, toolSets: _toolSetSession);
+        // The project's boundary, not a fresh passthrough: until now every chat got
+        // PassthroughSandbox.Default and the seam ran empty in production, so a sandbox existed in
+        // the type system and nowhere else.
+        _agentSession = new AgentSession(
+            _sessionKv, _checkpoint, _skillSession, sandbox: runtime.Sandbox, toolSets: _toolSetSession);
         _orchestrator = new ConversationOrchestrator(runtime.Llm, runtime.McpHost)
         {
             // Live context surface, recomposed on every iteration inside this turn's

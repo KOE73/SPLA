@@ -1,9 +1,34 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 
 namespace SPLA.Domain.Host;
+
+/// <summary>Why a path was refused. Callers act on these differently — a cutout is never negotiable,
+/// while the root rule may still be running in shadow — so the reason has to survive as a value and
+/// not only as a sentence.</summary>
+public enum PathRefusal
+{
+    None,
+    Empty,
+    Unreadable,
+    NetworkShare,
+    OutsideRoot,
+    Cutout
+}
+
+/// <summary>
+/// A path the boundary refused. Distinct from an ordinary I/O failure on purpose: this is a
+/// decision, not a fault, and the difference is what stops the model from "fixing" a file it was
+/// simply not allowed to touch.
+/// </summary>
+public sealed class PathBoundaryException : Exception
+{
+    public PathBoundaryException(PathRefusal refusal, string message) : base(message) => Refusal = refusal;
+
+    public PathRefusal Refusal { get; }
+}
 
 /// <summary>
 /// One answer to "is this path inside the area I am allowed to touch", and the only one. Four
@@ -60,13 +85,20 @@ public sealed class PathBoundary
     /// and why, never how the host is laid out.
     /// </summary>
     public bool TryResolve(string logicalPath, out string fullPath, out string? error)
+        => TryResolve(logicalPath, out fullPath, out error, out _);
+
+    /// <inheritdoc cref="TryResolve(string, out string, out string?)"/>
+    /// <param name="refusal">Which rule refused, for callers that treat them differently.</param>
+    public bool TryResolve(string logicalPath, out string fullPath, out string? error, out PathRefusal refusal)
     {
         fullPath = string.Empty;
         error = null;
+        refusal = PathRefusal.None;
 
         if (string.IsNullOrWhiteSpace(logicalPath))
         {
             error = "the path is empty";
+            refusal = PathRefusal.Empty;
             return false;
         }
 
@@ -77,7 +109,12 @@ public sealed class PathBoundary
             // Unbounded: normalise and hand it back. GetFullPath still throws on genuinely malformed
             // input, and that is a fault, not a refusal.
             try { fullPath = Path.GetFullPath(candidate); return true; }
-            catch (Exception ex) { error = $"the path cannot be read: {ex.Message}"; return false; }
+            catch (Exception ex)
+            {
+                error = $"the path cannot be read: {ex.Message}";
+                refusal = PathRefusal.Unreadable;
+                return false;
+            }
         }
 
         // A network share is nobody's project. Caught before combining, because "\\host\share"
@@ -86,6 +123,7 @@ public sealed class PathBoundary
             candidate.StartsWith("//", StringComparison.Ordinal))
         {
             error = "network shares are outside the project";
+            refusal = PathRefusal.NetworkShare;
             return false;
         }
 
@@ -97,6 +135,7 @@ public sealed class PathBoundary
         catch (Exception ex)
         {
             error = $"the path cannot be read: {ex.Message}";
+            refusal = PathRefusal.Unreadable;
             return false;
         }
 
@@ -107,6 +146,7 @@ public sealed class PathBoundary
         if (!IsUnder(resolved, _root))
         {
             error = "the path is outside the project";
+            refusal = PathRefusal.OutsideRoot;
             return false;
         }
 
@@ -115,6 +155,7 @@ public sealed class PathBoundary
             if (IsUnder(resolved, cutout))
             {
                 error = $"'{Path.GetFileName(cutout)}' is the application's own folder and is not open to tools";
+                refusal = PathRefusal.Cutout;
                 return false;
             }
         }

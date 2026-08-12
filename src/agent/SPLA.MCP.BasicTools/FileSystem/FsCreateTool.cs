@@ -1,4 +1,4 @@
-using SPLA.Domain.Host;
+﻿using SPLA.Domain.Host;
 using SPLA.Domain.Models;
 using SPLA.MCP.Core.Interfaces;
 using SPLA.MCP.Core.Json;
@@ -74,6 +74,10 @@ public class FsCreateTool : IMcpTool
         {
             return ToolResult.Fail("Error: Invalid JSON arguments.", "invalid json");
         }
+        // A boundary refusal is a DECISION and must not be flattened into "error reading file" by
+        // the catch below: told it was a fault, the model retries or starts repairing something it
+        // was never allowed to touch. The pipeline turns this into a refusal with its reason.
+        catch (PathBoundaryException) { throw; }
         catch (Exception ex)
         {
             return ToolResult.Fail($"Error creating file: {ex.Message}", "create failed");

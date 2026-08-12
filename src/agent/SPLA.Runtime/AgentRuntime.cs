@@ -44,6 +44,15 @@ public sealed class AgentRuntime : IDisposable
     public ResolvedSettings Settings { get; }
     public ILoggerFactory LoggerFactory { get; }
 
+    /// <summary>
+    /// The host boundary this project's chats work behind. One per project, not per chat: the root
+    /// is a property of the project, and a chat that could pick its own would not be behind anything.
+    ///
+    /// <para>Without a manifest there is no project and therefore no boundary — the launch directory
+    /// is where the process started, not an area anybody chose.</para>
+    /// </summary>
+    public SPLA.Domain.Host.ISandbox Sandbox { get; }
+
     /// <summary>Process-wide domain-event hub. Mutators publish state changes here; the host fans them
     /// out to clients. The single "say what changed once" point — see <see cref="ServiceEvents"/>.</summary>
     public ServiceEvents Events { get; } = new();
@@ -143,6 +152,7 @@ public sealed class AgentRuntime : IDisposable
     {
         Settings = settings;
         LoggerFactory = loggerFactory;
+        Sandbox = BuildSandbox(settings, loggerFactory);
 
         _httpClient = new HttpClient { Timeout = TimeSpan.FromMinutes(10) };
         // ── The LLM pipeline, baked once ──────────────────────────────────────────────────────────
@@ -322,6 +332,34 @@ public sealed class AgentRuntime : IDisposable
     /// in the settings panel has to get that folder without restarting the service, which is the
     /// difference between closing the original task and imitating it.
     /// </summary>
+    /// <summary>
+    /// The project's host boundary. The root is the manifest's directory — the only definition there
+    /// is — and <c>.spla/</c> is carved out of it: chats, secrets, grants and accounting are the
+    /// runtime's own and nothing on the far side of the seam has business reading them.
+    ///
+    /// <para>The root rule runs in shadow for now: it records what it would have refused and refuses
+    /// nothing. Which paths a project legitimately needs outside its root is not knowable in advance,
+    /// and guessing the list is precisely what shadow mode exists to avoid. The cutout does not wait
+    /// for that evidence — it was decided on its own merits.</para>
+    /// </summary>
+    private static SPLA.Domain.Host.ISandbox BuildSandbox(ResolvedSettings settings, ILoggerFactory loggers)
+    {
+        if (!settings.HasProject)
+            return SPLA.Domain.Host.PassthroughSandbox.Default;
+
+        var log = loggers.CreateLogger<SPLA.Domain.Host.PathBoundary>();
+        var boundary = new SPLA.Domain.Host.PathBoundary(settings.WorkspacePath, [".spla"]);
+
+        var workspace = new SPLA.Domain.Host.LocalWorkspace(
+            boundary,
+            SPLA.Domain.Host.BoundaryMode.Shadow,
+            observation => log.LogInformation(
+                "Path boundary (shadow): would refuse. Path={Path} Reason={Reason} Root={Root}",
+                observation.Path, observation.Reason, boundary.Root));
+
+        return new SPLA.Domain.Host.PassthroughSandbox(workspace);
+    }
+
     private IReadOnlyList<ISkillSource> BuildSkillSources() =>
         SkillSourceRegistry.Build(
             Settings.EffectiveSkillSources(),

@@ -39,6 +39,16 @@ public sealed class FaultStage : IToolMiddleware
             _logger?.LogWarning("Tool execution canceled. Tool={ToolName} Mode={Mode}", call.Name, call.Mode);
             throw;
         }
+        catch (SPLA.Domain.Host.PathBoundaryException ex)
+        {
+            // A boundary refusal is a decision, not a fault, and the difference is what the model
+            // does next: told "error reading file" it will try to fix a file it was never allowed to
+            // touch. Caught here rather than in each tool because all twelve of them reach the disk
+            // through the same seam.
+            _logger?.LogInformation(
+                "Tool refused by the path boundary. Tool={ToolName} Reason={Reason}", call.Name, ex.Refusal);
+            return ToolResult.Refuse($"Refused: {ex.Message}.", ex.Refusal.ToString());
+        }
         catch (Exception ex)
         {
             call.Activity?.SetStatus(ActivityStatusCode.Error, ex.Message);
