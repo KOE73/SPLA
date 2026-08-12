@@ -1,4 +1,4 @@
-namespace SPLA.Domain.Agent;
+﻿namespace SPLA.Domain.Agent;
 
 /// <summary>How a blob's payload is materialised. All variants are held fully in memory
 /// (materialisation-only by design — no streaming); the kind tells consumers how to interpret it.</summary>
@@ -28,7 +28,13 @@ public sealed record BlobPayload(BlobKind Kind, string? Text, byte[]? Bytes, str
 }
 
 /// <summary>Lightweight metadata about a stored blob, for listing/inspection without pulling the payload.</summary>
-public sealed record BlobEntry(string Handle, string? Name, BlobKind Kind, long Size, DateTimeOffset CreatedAt);
+/// <param name="Origin">Where the data came from. A blob is the one place data travels with its
+/// source detached — the whole point of the channel is that it never passes through the context —
+/// so the label has to travel with it, or a payload pulled from the open web arrives at its
+/// destination looking like it came from nowhere.</param>
+public sealed record BlobEntry(
+    string Handle, string? Name, BlobKind Kind, long Size, DateTimeOffset CreatedAt,
+    Security.DataOrigin? Origin = null);
 
 /// <summary>
 /// Per-chat store for bulk tool output that should bypass the model's context — the "data channel".
@@ -49,7 +55,14 @@ public interface IBlobStore
     /// When <paramref name="name"/> is given the handle is stable (<c>blob:&lt;name&gt;</c>) and an
     /// existing blob with that name is overwritten; otherwise a fresh id is generated.
     /// </summary>
-    string Put(BlobPayload payload, string? name = null);
+    /// <param name="origin">Where the payload came from, for the label that travels with it. Null
+    /// records nothing, which is the honest answer for a producer that has not been taught to say.</param>
+    string Put(BlobPayload payload, string? name = null, Security.DataOrigin? origin = null);
+
+    /// <summary>Metadata for one blob without pulling its payload, or null if unknown. What a
+    /// consumer asks before acting on a handle: the label decides the verdict, and reading the data
+    /// to find out where it came from would be too late.</summary>
+    BlobEntry? Describe(string handle);
 
     /// <summary>Returns the payload for <paramref name="handle"/>, or null if unknown.
     /// Accepts the handle with or without the <c>blob:</c> prefix.</summary>

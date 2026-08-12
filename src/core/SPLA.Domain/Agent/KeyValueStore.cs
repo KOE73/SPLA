@@ -1,4 +1,4 @@
-namespace SPLA.Domain.Agent;
+﻿namespace SPLA.Domain.Agent;
 
 /// <summary>
 /// In-memory implementation of <see cref="IKeyValueStore"/>. Pure and dependency-free; persistence
@@ -8,6 +8,7 @@ namespace SPLA.Domain.Agent;
 public sealed class KeyValueStore : IKeyValueStore
 {
     private readonly Dictionary<string, string> _items = new(StringComparer.Ordinal);
+    private readonly Dictionary<string, Security.DataOrigin> _origins = new(StringComparer.Ordinal);
     private readonly object _lock = new();
 
     public KeyValueStore(string scope) => Scope = scope;
@@ -21,11 +22,18 @@ public sealed class KeyValueStore : IKeyValueStore
         lock (_lock) return _items.TryGetValue(key, out var v) ? v : null;
     }
 
-    public void Set(string key, string value)
+    public void Set(string key, string value) => Set(key, value, null);
+
+    public void Set(string key, string value, Security.DataOrigin? origin)
     {
         if (string.IsNullOrWhiteSpace(key))
             throw new ArgumentException("Key must not be empty.", nameof(key));
-        lock (_lock) _items[key] = value ?? string.Empty;
+        lock (_lock)
+        {
+            _items[key] = value ?? string.Empty;
+            // Overwriting relabels: the entry is the new value's, not a merge of both origins.
+            if (origin is null) _origins.Remove(key); else _origins[key] = origin;
+        }
         OnChanged();
     }
 
@@ -64,6 +72,15 @@ public sealed class KeyValueStore : IKeyValueStore
     {
         lock (_lock)
             return _items.OrderBy(kv => kv.Key, StringComparer.Ordinal).ToList();
+    }
+
+    public IReadOnlyList<KvEntry> Entries()
+    {
+        lock (_lock)
+            return _items
+                .OrderBy(kv => kv.Key, StringComparer.Ordinal)
+                .Select(kv => new KvEntry(kv.Key, kv.Value, _origins.GetValueOrDefault(kv.Key)))
+                .ToList();
     }
 
     /// <summary>Replaces all entries (used when loading from persistence). Fires <see cref="Changed"/> once.</summary>

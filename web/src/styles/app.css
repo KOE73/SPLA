@@ -216,6 +216,12 @@ body.hide-reasoning .reasoning { display: none; }
 .kv-row { display: flex; gap: 8px; padding: 3px 0; border-bottom: 1px solid color-mix(in srgb, var(--border) 50%, transparent); }
 .kv-row .k { color: var(--accent); min-width: 140px; max-width: 200px; overflow: hidden; text-overflow: ellipsis; }
 .kv-row .v { color: var(--text); white-space: pre-wrap; overflow-wrap: anywhere; }
+/* Origin column. Muted by default because most rows have nothing to say; the doubtful ones are the
+   only thing here worth catching an eye, so they are the only thing coloured. */
+.kv-row .o, .kv-head .o { min-width: 110px; max-width: 150px; overflow: hidden; text-overflow: ellipsis; color: var(--muted); }
+.kv-row .o.doubtful { color: var(--danger, #d9534f); }
+.kv-head { display: flex; gap: 8px; padding: 3px 0; border-bottom: 1px solid var(--border); color: var(--muted); text-transform: lowercase; }
+.kv-head .k { min-width: 140px; max-width: 200px; }
 
 /* ── Composition manifest (debug → prompt) ────────────────────────────────────
    One row per contribution: who contributed it, which piece, where it goes, what

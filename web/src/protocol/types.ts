@@ -352,6 +352,16 @@ export interface ContextLine {
 /** debug.request "kind" determines which of these shapes comes back; only one set of fields is present. */
 /** One contribution to the assembled agent context: who produced it, which of its pieces it is,
  *  where it is delivered ("prompt" | "turn" | "failed"), and a local token estimate for attribution. */
+/** One row of a kv/blob debug view. `origin` is where the value came from; it gets its own column
+ *  rather than being folded into the value, because a label mixed into text is a label nobody
+ *  scans for. `doubtful` is the same bit that raises the chat's flag. */
+export interface DebugKvEntry {
+  key: string;
+  value: string;
+  origin?: string | null;
+  doubtful?: boolean;
+}
+
 export interface DebugSegment {
   title: string;
   body: string;
@@ -368,7 +378,7 @@ export interface DebugSnapshotPayload {
   contextCount?: number;
   approxTokens?: number;
   contextIsLive?: boolean;
-  entries?: { key: string; value: string }[];
+  entries?: DebugKvEntry[];
   segments?: DebugSegment[];
   text?: string;
 }

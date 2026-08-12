@@ -1,4 +1,4 @@
-using SPLA.Domain.Host;
+﻿using SPLA.Domain.Host;
 
 namespace SPLA.Domain.Agent;
 
@@ -33,6 +33,11 @@ public interface IAgentSession
     /// See <see cref="ISandbox"/>. Local chats share a passthrough sandbox; server chats get a
     /// scoped, sandboxed one — tools never know the difference.</summary>
     ISandbox Sandbox { get; }
+
+    /// <summary>Whether this chat has taken in anything from a source nobody named. One bit, raised
+    /// by arrivals from the open web and never lowered by anything automatic — see
+    /// <see cref="Security.ChatDoubt"/>.</summary>
+    Security.ChatDoubt Doubt { get; }
 }
 
 /// <summary>Plain bundle of the per-chat agent dependencies. Used by the UI chat VM and by
@@ -41,8 +46,9 @@ public sealed class AgentSession : IAgentSession
 {
     public AgentSession(IKeyValueStore sessionKv, MarkManager checkpoint, ISkillSession skills,
         IBlobStore? blobs = null, IPendingImageSink? images = null, ISandbox? sandbox = null,
-        IToolSetSession? toolSets = null)
+        IToolSetSession? toolSets = null, Security.ChatDoubt? doubt = null)
     {
+        Doubt = doubt ?? new Security.ChatDoubt();
         SessionKv = sessionKv;
         Checkpoint = checkpoint;
         Skills = skills;
@@ -59,6 +65,7 @@ public sealed class AgentSession : IAgentSession
     public IToolSetSession ToolSets { get; }
     public IPendingImageSink Images { get; }
     public ISandbox Sandbox { get; }
+    public Security.ChatDoubt Doubt { get; }
 }
 
 /// <summary>

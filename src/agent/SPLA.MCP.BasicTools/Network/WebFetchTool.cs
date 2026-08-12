@@ -1,4 +1,4 @@
-using SPLA.Domain.Agent;
+﻿using SPLA.Domain.Agent;
 using SPLA.Domain.Models;
 using SPLA.MCP.Core.Interfaces;
 using SPLA.MCP.Core.Json;
@@ -75,6 +75,11 @@ public class WebFetchTool : IMcpTool
                     return ToolResult.Fail("Error: web_fetch received a search-engine redirect page instead of article content. Use web_search for search queries, then web_fetch a concrete result URL.", "search redirect page");
                 }
 
+                // The one zone nobody named. Recorded before the content goes anywhere: whether it
+                // lands in the context or in a blob, from here on it travels labelled.
+                var origin = SPLA.Domain.Security.DataOrigin.Internet;
+                SPLA.Domain.Agent.AgentSessionScope.Current?.Doubt.Observe(origin, url!);
+
                 var target = DataChannel.ParseTarget(ToolJson.GetStringTrimmed(doc.RootElement, "output"));
 
                 // Only apply the 8000-char cap when going to context; blob captures the full text.
@@ -83,7 +88,7 @@ public class WebFetchTool : IMcpTool
 
                 if (target == OutputTarget.Context) return ToolResult.Text(text);
                 var blobName = ToolJson.GetStringTrimmed(doc.RootElement, "output_name");
-                return ToolResult.Text(DataChannel.Route(target, BlobPayload.OfText(text), $"web_fetch: {url} ({text.Length} chars)", blobName));
+                return ToolResult.Text(DataChannel.Route(target, BlobPayload.OfText(text), $"web_fetch: {url} ({text.Length} chars)", blobName, origin));
         }
         catch (OperationCanceledException)
         {

@@ -1,4 +1,4 @@
-namespace SPLA.Domain.Agent;
+﻿namespace SPLA.Domain.Agent;
 
 /// <summary>
 /// Fundamental agent working memory: a flat key/value scratchpad the agent owns, independent of
@@ -16,6 +16,14 @@ public interface IKeyValueStore
 
     string? Get(string key);
     void Set(string key, string value);
+
+    /// <summary>Stores a value together with where it came from.
+    /// <para>The project store outlives the chat that wrote it, which makes it a laundry: text pulled
+    /// from the open web in one chat, read back in a fresh one, would arrive with a clean flag and
+    /// dirty contents. The label is what closes that, and it is cheap here in a way it can never be
+    /// for files.</para></summary>
+    void Set(string key, string value, Security.DataOrigin? origin);
+
     bool Delete(string key);
 
     /// <summary>
@@ -28,6 +36,12 @@ public interface IKeyValueStore
     /// <summary>All entries, ordered by key.</summary>
     IReadOnlyList<KeyValuePair<string, string>> List();
 
+    /// <summary>All entries with their labels, ordered by key.</summary>
+    IReadOnlyList<KvEntry> Entries();
+
     /// <summary>Raised after any mutation (set, delete, bulk load, clear).</summary>
     event EventHandler? Changed;
 }
+
+/// <summary>One stored entry and where its value came from.</summary>
+public sealed record KvEntry(string Key, string Value, Security.DataOrigin? Origin);

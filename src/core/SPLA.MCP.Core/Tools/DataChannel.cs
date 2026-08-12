@@ -1,4 +1,4 @@
-using SPLA.Domain.Agent;
+﻿using SPLA.Domain.Agent;
 using System.Text;
 
 namespace SPLA.MCP.Core.Tools;
@@ -45,7 +45,12 @@ public static class DataChannel
     /// what was produced (counts, size). <paramref name="name"/> optionally names the stored blob.
     /// Falls back to inlining when blob storage is requested but no store is available.
     /// </summary>
-    public static string Route(OutputTarget target, BlobPayload payload, string summary, string? name = null)
+    /// <param name="origin">Where the data came from. Recorded on the blob so the label survives the
+    /// journey — the channel exists precisely so the payload never passes through the context, which
+    /// is also the only place a reader could otherwise have inferred its source.</param>
+    public static string Route(
+        OutputTarget target, BlobPayload payload, string summary, string? name = null,
+        SPLA.Domain.Security.DataOrigin? origin = null)
     {
         if (target == OutputTarget.Context)
             return Inline(payload, summary);
@@ -63,7 +68,7 @@ public static class DataChannel
                 payload.ContentType, payload.Bytes, name, payload.Kind == BlobKind.Text)
         };
 
-        var handle = store.Put(payload, name);
+        var handle = store.Put(payload, name, origin);
         var meta = $"{summary}\nstored: {handle}  ({Describe(payload)}, {payload.Size} bytes). " +
                    $"Pass this handle to a consuming tool to use the data without loading it into context.";
 
@@ -87,10 +92,24 @@ public static class DataChannel
         var payload = Store?.Get(value);
         if (payload is null) { error = $"blob handle not found: {value}"; return false; }
 
+        InheritDoubt(value);
+
         text = payload.Kind == BlobKind.Text
             ? payload.Text ?? string.Empty
             : Encoding.UTF8.GetString(payload.Bytes ?? Array.Empty<byte>());
         return true;
+    }
+
+    /// <summary>
+    /// A consumer takes on the label of what it consumed. Data in a blob is data detached from its
+    /// source — that is the point of the channel — so without this a payload pulled off the open web
+    /// and handed to another tool would arrive looking like it came from nowhere.
+    /// </summary>
+    private static void InheritDoubt(string handle)
+    {
+        var session = SPLA.Domain.Agent.AgentSessionScope.Current;
+        if (session?.Blobs.Describe(handle)?.Origin is { } origin)
+            session.Doubt.Observe(origin, handle);
     }
 
     /// <summary>Resolves a byte input that may be either inline (treated as UTF-8 text) or a <c>blob:</c> handle.</summary>
@@ -103,6 +122,8 @@ public static class DataChannel
 
         var payload = Store?.Get(value);
         if (payload is null) { error = $"blob handle not found: {value}"; return false; }
+
+        InheritDoubt(value);
 
         bytes = payload.Kind == BlobKind.Bytes
             ? payload.Bytes ?? Array.Empty<byte>()

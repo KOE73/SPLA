@@ -1,4 +1,4 @@
-using Microsoft.Extensions.Logging;
+﻿using Microsoft.Extensions.Logging;
 using SPLA.Agent;
 using SPLA.Domain.Agent;
 using SPLA.Domain.Models;
@@ -142,6 +142,12 @@ public sealed class ChatRuntime
     /// <summary>This chat's session-scoped working memory entries (for the debug inspector).</summary>
     public IEnumerable<(string Key, string Value)> SessionKvEntries
         => _sessionKv.List().Select(e => (e.Key, e.Value));
+
+    /// <summary>This chat's session memory with origin labels (for the debug inspector).</summary>
+    public IReadOnlyList<SPLA.Domain.Agent.KvEntry> SessionKvOrigins => _sessionKv.Entries();
+
+    /// <summary>Whether this chat has taken in anything from a source nobody named.</summary>
+    public SPLA.Domain.Security.ChatDoubt Doubt => _agentSession.Doubt;
 
     /// <summary>This chat's data-channel blobs (for the debug inspector).</summary>
     public IReadOnlyList<BlobEntry> BlobEntries => _agentSession.Blobs.List();

@@ -8,8 +8,18 @@
       <ContextTable v-if="snapshot?.contextLines" :snapshot="snapshot" />
       <template v-else-if="snapshot?.entries">
         <div v-if="!snapshot.entries.length">(empty)</div>
+        <!-- Origin is its own column, never folded into the value: the question this view has to
+             answer at a glance is "which of these came from outside", and a label buried in text is
+             a label nobody scans for. -->
+        <div class="kv-head">
+          <span class="k">key</span><span class="o">origin</span><span class="v">value</span>
+        </div>
         <div v-for="(e, i) in snapshot.entries" :key="i" class="kv-row">
-          <span class="k">{{ e.key }}</span><span class="v">{{ e.value }}</span>
+          <span class="k">{{ e.key }}</span>
+          <span class="o" :class="{ doubtful: e.doubtful }" :title="e.doubtful ? 'from a source nobody named' : ''">
+            {{ e.origin ?? "—" }}
+          </span>
+          <span class="v">{{ e.value }}</span>
         </div>
       </template>
       <!-- Composition manifest: what the agent's context is made of, and who contributed each piece.

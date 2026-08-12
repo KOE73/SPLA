@@ -1,4 +1,4 @@
-using SPLA.Runtime;
+﻿using SPLA.Runtime;
 using SPLA.Domain.Context;
 using SPLA.Domain.Models;
 using SPLA.Service.Contracts;
@@ -28,21 +28,28 @@ public sealed class LiveAgentInspector : IAgentInspector
 
     public LiveAgentInspector(AgentRuntime runtime) => _runtime = runtime;
 
+    /// <summary>One row, with its label in its own column. Mixing the origin into the value would
+    /// put it where nobody scans for it — the point of showing it at all is that a glance answers
+    /// "which of these came from outside".</summary>
+    private static DebugKvEntryDto Kv(SPLA.Domain.Agent.KvEntry e) => new()
+    {
+        Key = e.Key,
+        Value = e.Value,
+        Origin = e.Origin?.Zone,
+        Doubtful = e.Origin?.RaisesDoubt ?? false
+    };
+
     public DebugSnapshotPayload Snapshot(string kind, ChatRuntime? chat)
     {
         var snap = new DebugSnapshotPayload { Kind = kind };
         switch (kind)
         {
             case DebugKinds.KvSession:
-                snap.Entries = chat?.SessionKvEntries
-                    .Select(e => new DebugKvEntryDto { Key = e.Key, Value = e.Value })
-                    .ToList() ?? new();
+                snap.Entries = chat?.SessionKvOrigins.Select(Kv).ToList() ?? new();
                 break;
 
             case DebugKinds.KvProject:
-                snap.Entries = _runtime.ProjectKv.Store.List()
-                    .Select(e => new DebugKvEntryDto { Key = e.Key, Value = e.Value })
-                    .ToList();
+                snap.Entries = _runtime.ProjectKv.Store.Entries().Select(Kv).ToList();
                 break;
 
             case DebugKinds.Prompt:
@@ -86,7 +93,9 @@ public sealed class LiveAgentInspector : IAgentInspector
                     .Select(b => new DebugKvEntryDto
                     {
                         Key = b.Handle,
-                        Value = $"{b.Kind} · {b.Size} b{(string.IsNullOrEmpty(b.Name) ? "" : " · " + b.Name)}"
+                        Value = $"{b.Kind} · {b.Size} b{(string.IsNullOrEmpty(b.Name) ? "" : " · " + b.Name)}",
+                        Origin = b.Origin?.Zone,
+                        Doubtful = b.Origin?.RaisesDoubt ?? false
                     })
                     .ToList() ?? new();
                 break;

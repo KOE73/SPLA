@@ -1,4 +1,4 @@
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using System.Text.Json;
 
 namespace SPLA.Service.Contracts;
@@ -919,6 +919,15 @@ public sealed class DebugKvEntryDto
 {
     public string Key { get; set; } = string.Empty;
     public string Value { get; set; } = string.Empty;
+
+    /// <summary>Where the value came from, as a zone name — <c>internet</c>, <c>sql:&lt;fingerprint&gt;</c>.
+    /// Null when nothing was recorded. Its own column in the debug view rather than part of the
+    /// value: a label mixed into the text is a label nobody scans for.</summary>
+    public string? Origin { get; set; }
+
+    /// <summary>True when this entry's origin is one nobody named — the same bit that raises the
+    /// chat's flag. Carried separately so the view can mark it without re-deriving the rule.</summary>
+    public bool Doubtful { get; set; }
 }
 
 /// <summary>

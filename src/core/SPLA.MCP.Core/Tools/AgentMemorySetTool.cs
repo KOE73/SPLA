@@ -1,4 +1,4 @@
-using SPLA.Domain.Agent;
+﻿using SPLA.Domain.Agent;
 using SPLA.Domain.Models;
 using SPLA.MCP.Core.Interfaces;
 using SPLA.MCP.Core.Json;
@@ -62,7 +62,15 @@ public sealed class AgentMemorySetTool : IMcpTool
 
             var store = AgentMemoryHelpers.SelectStore(_project, scope);
             if (store is null) return Task.FromResult(ToolResult.Refuse("error: no active chat session", "no chat session"));
-            store.Set(key, value);
+            // A chat that has taken in unnamed content passes that on to whatever it writes down.
+            // The project store outlives this chat, so without the label the next chat would read
+            // the text back with a clean flag — the one laundry cheap enough to close.
+            var doubt = AgentSessionScope.Current?.Doubt;
+            var origin = doubt is { IsRaised: true }
+                ? doubt.Causes[^1].Origin
+                : null;
+
+            store.Set(key, value, origin);
             return Task.FromResult(ToolResult.Text($"ok: set [{store.Scope}] {key}"));
         }
         catch (JsonException) { return Task.FromResult(ToolResult.Fail("error: invalid_json", "invalid json")); }
