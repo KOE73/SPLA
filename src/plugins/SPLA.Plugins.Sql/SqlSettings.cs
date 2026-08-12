@@ -1,3 +1,5 @@
+using System.Globalization;
+using SPLA.Domain.Security;
 using YamlDotNet.Serialization;
 using YamlDotNet.Serialization.NamingConventions;
 
@@ -49,6 +51,28 @@ public sealed class SqlConnectionConfig
     /// <summary>Shown to the LLM — describes the business purpose of this database.</summary>
     [YamlMember(Alias = "description")]
     public string? Description { get; set; }
+
+    /// <summary>
+    /// Who this connection is as an island, for grants. Built from what it reaches and as whom —
+    /// never from <paramref name="name"/>, so renaming carries no permissions with it and swapping
+    /// two names swaps nothing.
+    ///
+    /// <para><see cref="Description"/> is absent on purpose: rewording the blurb the model reads must
+    /// not cost the operator a re-approval.</para>
+    /// </summary>
+    public IslandIdentity Identity(string name) => new(
+        "sql",
+        Substance.Of(
+            ("provider", Provider),
+            ("server", Server),
+            ("host", Host),
+            ("port", Port?.ToString(CultureInfo.InvariantCulture)),
+            ("database", Database),
+            ("file", File),
+            ("user", User),
+            ("trusted", TrustedConnection ? "1" : "0"),
+            ("credential", Substance.CredentialShape(Credential, Password))),
+        name);
 }
 
 /// <summary>

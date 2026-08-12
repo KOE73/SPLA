@@ -1,3 +1,5 @@
+using System.Globalization;
+using SPLA.Domain.Security;
 using YamlDotNet.Serialization;
 using YamlDotNet.Serialization.NamingConventions;
 
@@ -52,6 +54,26 @@ public sealed class SshHostConfig
     /// default: the operator opts a host in deliberately. Human terminal input was never guarded.</summary>
     [YamlMember(Alias = "allow_write")]
     public bool AllowWrite { get; set; }
+
+    /// <summary>
+    /// Who this host is as an island, for grants. Built from what it reaches and as whom — never from
+    /// <paramref name="name"/>, so renaming carries no permissions with it and swapping two names
+    /// swaps nothing.
+    ///
+    /// <para><see cref="AllowWrite"/> is absent on purpose, and the omission is the interesting one:
+    /// it is a property of the node — may anything change this host's state at all — enforced on its
+    /// own. Identity answers a different question, and folding the two together would mean an
+    /// operator opening a host up silently invalidated every grant about it.</para>
+    /// </summary>
+    public IslandIdentity Identity(string name) => new(
+        "ssh",
+        Substance.Of(
+            ("host", Host),
+            ("port", Port.ToString(CultureInfo.InvariantCulture)),
+            ("user", User),
+            ("key_file", KeyFile),
+            ("credential", Substance.CredentialShape(Credential, Password))),
+        name);
 }
 
 /// <summary>
