@@ -47,6 +47,22 @@ half-migrated store (explicit writes, searching reads) is worse than either end 
 [`SecretEntry.cs`](../src/core/SPLA.Domain/Secrets/SecretEntry.cs). Keys and field names are
 case-insensitive.
 
+**One entry = one credential.** There are only a few ways to authenticate, and each is already a
+shape the store knows:
+
+| Shape | Fields | Used by |
+|---|---|---|
+| a single secret (bearer / API key) | `token` | LLM connections, management keys, webhooks |
+| user + password | `user` + `password` | SSH, SQL |
+| private key | `private_key` (+ `passphrase`) | SSH |
+
+A new subsystem picks one of these; it does not invent a fourth. Two credentials that merely belong
+to the same account — an OpenRouter api key and its management key — are two entries, not one entry
+with two fields. That is what keeps a bare `secret:<scope>:<key>` unambiguous: with one field it
+resolves to it, and consumers never have to agree on a private field name to read each other's
+credentials. `#field` stays available for the genuinely compound cases (`user`+`password`), where the
+fields are parts of one credential rather than separate ones.
+
 **Scopes.** Three, and the scope is **always stated explicitly**.
 
 | Scope | Local | Server |

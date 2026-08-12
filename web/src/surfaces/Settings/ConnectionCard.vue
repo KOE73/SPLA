@@ -23,12 +23,18 @@
 
     <!-- Both keys are picked from the secret store, never typed here: what this card holds is a
          reference, and the credential itself goes browser→store→server without passing through the
-         connection editor at all. -->
+         connection editor at all.
+
+         Each is its OWN entry of the plainest shape there is — one `token` field — so a bare
+         reference resolves without naming a field. An api key and a management key are two
+         credentials that happen to belong to one account, not one credential with two halves;
+         keeping them apart is what lets every consumer read a reference the same way. -->
     <div class="field"><span>API key</span>
       <div class="cred-cell">
         <CredentialField
           :model-value="conn.apiKey || ''"
           none-label="(none)"
+          create-field="token"
           @update:model-value="setCredential('apiKey', $event)"
         />
         <p v-if="conn.apiKeyIsLiteral" class="cred-literal">
@@ -42,6 +48,7 @@
         <CredentialField
           :model-value="conn.adminKey || ''"
           none-label="(none) — account balance / usage only"
+          create-field="token"
           @update:model-value="setCredential('adminKey', $event)"
         />
         <p v-if="conn.adminKeyIsLiteral" class="cred-literal">
