@@ -45,17 +45,37 @@ internal sealed class ConnectionHandlers : IMessageHandler
         PingAllAndBroadcast(ctx, entry.Runtime, projectId);
     }
 
+    // Each probe resolves the caller's credential reference through this session's runtime, so a
+    // client never has to hold key material to run a diagnostic.
     private static async Task Ping(RequestContext ctx)
         => await ctx.Reply(MessageTypes.ConnectionPingResult,
-            await ConnectionDiagOps.PingAsync(ctx.Payload<ConnectionDiagRequest>()));
+            await ConnectionDiagOps.PingAsync(Diag(ctx), Resolver(ctx)));
 
     private static async Task Models(RequestContext ctx)
         => await ctx.Reply(MessageTypes.ConnectionModelsResult,
-            await ConnectionDiagOps.GetModelsAsync(ctx.Payload<ConnectionDiagRequest>()));
+            await ConnectionDiagOps.GetModelsAsync(Diag(ctx), Resolver(ctx)));
 
     private static async Task Test(RequestContext ctx)
         => await ctx.Reply(MessageTypes.ConnectionTestResult,
-            await ConnectionDiagOps.TestChatAsync(ctx.Payload<ConnectionDiagRequest>()));
+            await ConnectionDiagOps.TestChatAsync(Diag(ctx), Resolver(ctx)));
+
+    /// <summary>The probe request, with a blank credential filled in from the saved connection. The
+    /// editor sends a reference and has none to send for a connection whose key is still a plaintext
+    /// literal — this is what keeps "Test chat" working on a project that has not been migrated yet,
+    /// without the literal ever being handed to the client to send back.</summary>
+    private static ConnectionDiagRequest? Diag(RequestContext ctx)
+    {
+        var req = ctx.Payload<ConnectionDiagRequest>();
+        if (req == null || !string.IsNullOrWhiteSpace(req.ApiKey)) return req;
+
+        var connections = ctx.Session.Resolve(ctx.Env).Entry.Runtime.Settings.Connections;
+        req.ApiKey = connections
+            .FirstOrDefault(c => string.Equals(c.Id, req.Id, StringComparison.OrdinalIgnoreCase))?.ApiKey;
+        return req;
+    }
+
+    private static SPLA.Domain.Secrets.ISecretResolver Resolver(RequestContext ctx)
+        => ctx.Session.Resolve(ctx.Env).Entry.Runtime.Settings.SecretResolver;
 
     private static async Task Swap(RequestContext ctx)
     {
@@ -84,7 +104,8 @@ internal sealed class ConnectionHandlers : IMessageHandler
         {
             try
             {
-                var health = await ConnectionDiagOps.PingAllAsync(runtime.Settings.Connections, runtime.ConnectionHealth);
+                var health = await ConnectionDiagOps.PingAllAsync(
+                    runtime.Settings.Connections, runtime.ConnectionHealth, runtime.Settings.SecretResolver);
                 await ctx.Session.Hub.BroadcastToProjectAsync(projectId, MessageTypes.ConnectionsHealth, health);
             }
             catch { }
@@ -97,7 +118,15 @@ internal sealed class ConnectionHandlers : IMessageHandler
         try
         {
             var endpoint = req.Endpoint ?? "";
-            var apiKey   = req.ApiKey   ?? "lm-studio";
+            // Same reference→value step the probes take: the management API needs the key itself, and
+            // the client only ever knew the pointer.
+            // The request's id is a model entry, so an unsent credential comes from its connection.
+            var configured = string.IsNullOrWhiteSpace(req.ApiKey)
+                ? runtime.Settings.FindModel(req.Id)?.Connection.ApiKey
+                : req.ApiKey;
+            var apiKey   = (SPLA.Domain.Secrets.ISecretResolver.IsReference(configured)
+                ? await runtime.Settings.SecretResolver.ResolveAsync(configured, ct)
+                : configured) ?? "lm-studio";
 
             // Unload every currently loaded model instance before loading the new one.
             var models = await runtime.ModelManagement.GetModelDetailsAsync(endpoint, apiKey, ct);

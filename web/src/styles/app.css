@@ -387,6 +387,11 @@ body.hide-reasoning .reasoning { display: none; }
 .conn-model-wrap input { flex: 1; min-width: 0; }
 .conn-list-btn { padding: 0 8px; font-size: var(--fs-xs); flex-shrink: 0; }
 
+/* Credential cell: the picker plus, when the project still holds a pasted key, the line that says so.
+   Occupies the .field grid's value column, hence min-width:0 — the picker must shrink, not overflow. */
+.cred-cell { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+.cred-literal { margin: 0; font-size: var(--fs-xs); color: var(--warn, var(--danger)); }
+
 /* Model flags (lock / hot-swap checkboxes) — share the .field grid so they line up under the inputs */
 .conn-flags-wrap { display: flex; gap: 16px; }
 .flag-check { display: flex; align-items: center; gap: 5px; font-size: var(--fs-sm); cursor: pointer; user-select: none; }

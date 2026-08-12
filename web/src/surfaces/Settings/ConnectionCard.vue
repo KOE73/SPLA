@@ -21,17 +21,34 @@
       <input v-model="conn.endpoint">
     </label>
 
-    <label class="field"><span>API key</span>
-      <input type="password" v-model="conn.apiKey">
-    </label>
+    <!-- Both keys are picked from the secret store, never typed here: what this card holds is a
+         reference, and the credential itself goes browser→store→server without passing through the
+         connection editor at all. -->
+    <div class="field"><span>API key</span>
+      <div class="cred-cell">
+        <CredentialField
+          :model-value="conn.apiKey || ''"
+          none-label="(none)"
+          @update:model-value="setCredential('apiKey', $event)"
+        />
+        <p v-if="conn.apiKeyIsLiteral" class="cred-literal">
+          A plaintext key is stored in this project's .spla. Pick or create a secret above to replace it.
+        </p>
+      </div>
+    </div>
 
-    <label class="field"><span>Admin key</span>
-      <input
-        type="password"
-        v-model="conn.adminKey"
-        placeholder="optional — account balance / usage only"
-      >
-    </label>
+    <div class="field"><span>Admin key</span>
+      <div class="cred-cell">
+        <CredentialField
+          :model-value="conn.adminKey || ''"
+          none-label="(none) — account balance / usage only"
+          @update:model-value="setCredential('adminKey', $event)"
+        />
+        <p v-if="conn.adminKeyIsLiteral" class="cred-literal">
+          A plaintext key is stored in this project's .spla. Pick or create a secret above to replace it.
+        </p>
+      </div>
+    </div>
 
     <div class="field conn-flags" v-show="(conn.provider || 'lmstudio') === 'lmstudio'">
       <span></span>
@@ -106,6 +123,7 @@ import { computed, ref } from "vue";
 import { client } from "../../protocol/SplaClient";
 import type { ConnectionDto, ConnHealth, ModelEntryDto } from "../../protocol/types";
 import ModelPickerPopup from "./ModelPickerPopup.vue";
+import CredentialField from "../../secrets/CredentialField.vue";
 import { uuid } from "../../util/uuid";
 
 const KNOWN_PROVIDERS = [
@@ -137,6 +155,14 @@ const healthTitle = computed(() => {
   if (!h || h.ok == null) return "Not checked yet";
   return h.ok ? "Reachable" : (h.error || "Unreachable");
 });
+
+/** Sets one credential reference and drops the "untouched literal" marker with it: the server reads
+ *  that marker as "the editor never saw this key, keep it", so leaving it set here would silently
+ *  discard the reference the user just chose — including the choice to have none. */
+function setCredential(which: "apiKey" | "adminKey", reference: string) {
+  props.conn[which] = reference;
+  props.conn[which === "apiKey" ? "apiKeyIsLiteral" : "adminKeyIsLiteral"] = false;
+}
 
 function onProviderChange() {
   const def = PROVIDER_DEFAULT_EP[props.conn.provider || ""];
