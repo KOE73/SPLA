@@ -57,6 +57,7 @@ export interface ChatOpenedPayload {
   modelId?: string;
   /** The skill running in this chat, if any — the unload control keys off this. */
   activeSkillId?: string | null;
+  doubt?: ChatDoubt;
   /** Tool sets this chat can see, raised or merely announced. */
   toolSets?: ToolSetState[];
 }
@@ -355,6 +356,13 @@ export interface ContextLine {
 /** One row of a kv/blob debug view. `origin` is where the value came from; it gets its own column
  *  rather than being folded into the value, because a label mixed into text is a label nobody
  *  scans for. `doubtful` is the same bit that raises the chat's flag. */
+/** Whether a chat has taken in anything from a source nobody named, and what did it. The causes
+ *  travel with the flag because a bare red dot with no account of itself gets dismissed on reflex. */
+export interface ChatDoubt {
+  raised: boolean;
+  causes: { zone: string; what: string; at: string }[];
+}
+
 export interface DebugKvEntry {
   key: string;
   value: string;
@@ -521,6 +529,7 @@ export interface ServerEvents {
   "turn.complete": { cancelled?: boolean; error?: string; activeSkillId?: string | null };
   /** A chat's active skill changed — after an explicit unload. */
   "chat.skill.state": { chatId: string; activeSkillId?: string | null };
+  "chat.doubt.state": { chatId: string; doubt: ChatDoubt };
   /** A chat's raised tool sets changed — after a turn, or after an explicit lowering. */
   "chat.toolset.state": { chatId: string; sets?: ToolSetState[] };
   "tool.started": { toolCall: ToolCallDto };

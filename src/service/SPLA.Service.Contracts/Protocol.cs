@@ -1,4 +1,4 @@
-using System.Text.Json;
+﻿using System.Text.Json;
 
 namespace SPLA.Service.Contracts;
 
@@ -94,6 +94,11 @@ public static class MessageTypes
     /// <summary>End the skill running in a chat. Body is <see cref="ChatSkillDeactivatePayload"/>;
     /// the server broadcasts <see cref="ChatSkillState"/> to the chat's watchers.</summary>
     public const string ChatSkillDeactivate = "chat.skill.deactivate";
+
+    /// <summary>Clears a chat's doubt flag. A person's decision, taken having seen the causes —
+    /// there is deliberately no tool for this, because a mark removable by what it guards against
+    /// guards nothing. Body is <see cref="ChatIdPayload"/>.</summary>
+    public const string ChatDoubtClear = "chat.doubt.clear";
 
     /// <summary>Lower a tool set raised in a chat. Body is <see cref="ChatToolSetDeactivatePayload"/>;
     /// the server broadcasts <see cref="ChatToolSetState"/> to the chat's watchers.</summary>
@@ -239,6 +244,9 @@ public static class MessageTypes
 
     /// <summary>A chat's raised tool sets changed. Body is <see cref="ChatToolSetStatePayload"/>.</summary>
     public const string ChatToolSetState = "chat.toolset.state";
+
+    /// <summary>A chat's doubt flag changed. Body is <see cref="ChatDoubtStatePayload"/>.</summary>
+    public const string ChatDoubtState = "chat.doubt.state";
     public const string PermissionRequest = "permission.request";
     public const string ClarifyRequest = "clarify.request";
     public const string DebugSnapshot = "debug.snapshot";

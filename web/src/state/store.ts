@@ -1,5 +1,5 @@
 import { reactive } from "vue";
-import type { ChatSummary, ProjectDescriptor } from "../protocol/types";
+import type { ChatDoubt, ChatSummary, ProjectDescriptor } from "../protocol/types";
 
 export const store = reactive({
   connected: false,
@@ -12,6 +12,10 @@ export const store = reactive({
   /** Authenticated user (server mode); null on local/embedded → identity badge hidden. */
   userName: null as string | null,
   theme: (localStorage.getItem("spla.theme") || "dark") as string,
+
+  /** Whether the open chat has taken in anything from a source nobody named. Per-chat, and it
+   *  survives a reload — a chat that went to the open web yesterday is still marked today. */
+  doubt: null as ChatDoubt | null,
 
   // ── Project focus (Phase 2.2 protocol: ProjectId rides on every chat-scoped envelope) ──
   /** null = this connection's default project (single-project usage never sets this). */

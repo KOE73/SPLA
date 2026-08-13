@@ -17,6 +17,14 @@ public class WebFetchTool : IMcpTool
 {
     private static readonly HttpClient _httpClient = new();
 
+    /// <summary>Whether a host is one the operator vouched for. Injected rather than read from a
+    /// static so the tool stays testable and so the list can move (project, machine, later a server
+    /// policy) without this file learning where it lives.</summary>
+    private readonly Func<string, bool> _isTrustedHost;
+
+    public WebFetchTool(Func<string, bool>? isTrustedHost = null)
+        => _isTrustedHost = isTrustedHost ?? (_ => false);
+
     public string Name => "web_fetch";
 
     public ToolDefinition GetDefinition() => new ToolDefinition
@@ -75,9 +83,13 @@ public class WebFetchTool : IMcpTool
                     return ToolResult.Fail("Error: web_fetch received a search-engine redirect page instead of article content. Use web_search for search queries, then web_fetch a concrete result URL.", "search redirect page");
                 }
 
-                // The one zone nobody named. Recorded before the content goes anywhere: whether it
-                // lands in the context or in a blob, from here on it travels labelled.
-                var origin = SPLA.Domain.Security.DataOrigin.Internet;
+                // Naming a source is what makes it a named one, so a domain the operator vouched for
+                // is not the open web and raises nothing. Everything else is the one unnamed zone.
+                // Recorded before the content goes anywhere: whether it lands in the context or in a
+                // blob, from here on it travels labelled.
+                var host = Uri.TryCreate(url, UriKind.Absolute, out var parsed) ? parsed.Host : string.Empty;
+                var origin = SPLA.Domain.Security.DataOrigin.Site(
+                    host.Length > 0 ? host : "unknown", _isTrustedHost(host));
                 SPLA.Domain.Agent.AgentSessionScope.Current?.Doubt.Observe(origin, url!);
 
                 var target = DataChannel.ParseTarget(ToolJson.GetStringTrimmed(doc.RootElement, "output"));

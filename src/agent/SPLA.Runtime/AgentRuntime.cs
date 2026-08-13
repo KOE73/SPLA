@@ -1,4 +1,4 @@
-using System.Collections.Concurrent;
+﻿using System.Collections.Concurrent;
 using Microsoft.Extensions.Logging;
 using SPLA.Agent;
 using SPLA.Agent.Composition;
@@ -246,7 +246,7 @@ public sealed class AgentRuntime : IDisposable
             Feature("core.shell",
                 new RunCommandTool()),
             Feature("core.web",
-                new SPLA.MCP.BasicTools.Network.WebFetchTool()),
+                new SPLA.MCP.BasicTools.Network.WebFetchTool(settings.IsTrustedDomain)),
             Feature("core.memory",
                 new SPLA.MCP.Core.Tools.AgentMemorySetTool(ProjectKv.Store),
                 new SPLA.MCP.Core.Tools.AgentMemoryGetTool(ProjectKv.Store),

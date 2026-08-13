@@ -1,5 +1,10 @@
 <template>
   <span><span id="dot" :class="{ on: store.connected }">●</span> <span id="conn">{{ connText }}</span></span>
+  <!-- Invisible when there is nothing to say. Raised, it is a mark you cannot miss rather than a
+       tidy dot: the whole value of the thing is being noticed the one time it matters. -->
+  <button v-if="store.doubt?.raised" class="doubt" :title="doubtTitle" @click="clearDoubt">
+    <span class="doubt-mark">●</span> untrusted content
+  </button>
   <span id="project">{{ project }}</span>
   <label>mode
     <select v-model="mode" :disabled="!store.currentChat" @change="onModeChange">
@@ -245,6 +250,32 @@ function openSettings() {
   window.open("/?surface=settings", "spla-settings", "width=640,height=720,resizable=yes");
 }
 
+/** What raised it, oldest first — the person clearing the flag is entitled to see what they are
+ *  clearing, and the count on its own would just be a number to dismiss. */
+const doubtTitle = computed(() => {
+  const causes = store.doubt?.causes ?? [];
+  if (!causes.length) return "";
+  const lines = causes.map(c => `· ${c.what}  (${c.zone})`);
+  return [
+    "Took in content from a source nobody named:",
+    ...lines,
+    "",
+    "Clear it once you have looked."
+  ].join("\n");
+});
+
+function clearDoubt() {
+  if (!store.currentChat) return;
+  if (!confirm(doubtTitle.value)) return;
+  client.send("chat.doubt.clear", { chatId: store.currentChat },
+    store.currentProjectId ? { projectId: store.currentProjectId } : undefined);
+}
+
+const offDoubt = client.on("chat.doubt.state", p => {
+  if (p.chatId === store.currentChat) store.doubt = p.doubt;
+});
+const offChatOpenedDoubt = client.on("chat.opened", p => { store.doubt = p.doubt ?? null; });
+
 const offConn = client.on("conn", p => { connText.value = p.text || (p.on ? "connected" : "disconnected"); });
 const offWelcome = client.on("welcome", p => {
   project.value = p.projectName || p.workspacePath || "";
@@ -312,5 +343,5 @@ const offHealth = client.on("connections.health", p => {
   connHealth.value = {};
   for (const s of p.statuses || []) connHealth.value[s.id] = { ok: s.ok, error: s.error };
 });
-onUnmounted(() => { offConn(); offWelcome(); offChatOpened(); offTokens(); offResult(); offHealth(); offInfo(); offTurnSkill(); offSkillState(); offToolSetState(); });
+onUnmounted(() => { offConn(); offWelcome(); offChatOpened(); offTokens(); offResult(); offHealth(); offInfo(); offTurnSkill(); offSkillState(); offToolSetState(); offDoubt(); offChatOpenedDoubt(); });
 </script>

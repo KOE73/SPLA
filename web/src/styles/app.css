@@ -496,3 +496,12 @@ input.locked { opacity: 0.6; cursor: default; background: var(--bg); }
 ::-webkit-scrollbar { width: 10px; height: 10px; }
 ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 6px; }
 ::-webkit-scrollbar-track { background: transparent; }
+
+/* Chat doubt indicator. Absent entirely when there is nothing to say — a control that is always
+   there is a control nobody sees. Raised, it is deliberately louder than the tidy connection dot
+   beside it: the whole value of this mark is being noticed the one time it matters. */
+.doubt { display: inline-flex; align-items: center; gap: 6px; padding: 1px 8px; cursor: pointer;
+         border: 1px solid var(--danger, #d9534f); border-radius: 999px; background: transparent;
+         color: var(--danger, #d9534f); font: inherit; }
+.doubt:hover { background: color-mix(in srgb, var(--danger, #d9534f) 12%, transparent); }
+.doubt-mark { font-size: 1.15em; line-height: 1; }

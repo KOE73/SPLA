@@ -1,4 +1,4 @@
-using Microsoft.Playwright;
+﻿using Microsoft.Playwright;
 using SPLA.Domain.Agent;
 using SPLA.Domain.Models;
 using SPLA.MCP.Core.Interfaces;
@@ -45,6 +45,11 @@ public sealed class BrowserScreenshotTool : IMcpTool
         }
     };
 
+    /// <summary>Host of the page being photographed, for the label. A picture inherits the zone of
+    /// whoever took it — there is no special physics of images.</summary>
+    private static string PageHost(IPage page)
+        => Uri.TryCreate(page.Url, UriKind.Absolute, out var u) ? u.Host : "unknown";
+
     public async Task<ToolResult> ExecuteAsync(string argumentsJson, CancellationToken cancellationToken = default)
     {
         var mgr = BrowserToolBase.Current;
@@ -85,7 +90,14 @@ public sealed class BrowserScreenshotTool : IMcpTool
                 target = fullPage ? "full page" : "viewport";
             }
 
-            var handle = session.Blobs.Put(SPLA.Domain.Agent.BlobPayload.OfBytes(bytes, "image/png"));
+            // A picture of a page is the page. It reaches the model without passing through any
+            // text-shaped reasoning about where it came from, which is exactly what makes it a
+            // classic way in — so it is labelled like any other arrival from the same zone.
+            var origin = SPLA.Domain.Security.DataOrigin.Site(PageHost(page), listed: false);
+            session.Doubt.Observe(origin, page.Url);
+
+            var handle = session.Blobs.Put(
+                SPLA.Domain.Agent.BlobPayload.OfBytes(bytes, "image/png"), name: null, origin: origin);
 
             return ToolResult.From(
                 new ToolText($"Screenshot of {target} on tab {resolvedTabId} ({bytes.Length} bytes), stored as {handle}. " +

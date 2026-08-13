@@ -686,6 +686,33 @@ public sealed class ChatOpenedPayload
     /// <summary>Tool sets this chat can see, raised or merely announced. Same reason as the active
     /// skill: a window attaching mid-conversation has to show what the model can currently reach.</summary>
     public List<ToolSetStateDto> ToolSets { get; set; } = new();
+
+    /// <summary>Whether this chat has taken in anything from a source nobody named, and what did it.
+    /// Sent on open because the flag survives a reload — a window attaching to a chat that went to
+    /// the open web yesterday has to show it.</summary>
+    public ChatDoubtDto Doubt { get; set; } = new();
+}
+
+/// <summary>
+/// The chat's doubt flag and its causes. Causes travel with it because the person deciding whether
+/// to clear it needs to see what they are clearing — a bare red dot with no account of itself gets
+/// dismissed on reflex.
+/// </summary>
+public sealed class ChatDoubtDto
+{
+    public bool Raised { get; set; }
+    public List<ChatDoubtCauseDto> Causes { get; set; } = new();
+}
+
+public sealed class ChatDoubtCauseDto
+{
+    /// <summary>Zone it came from, e.g. <c>web:news.example.com</c>.</summary>
+    public string Zone { get; set; } = string.Empty;
+
+    /// <summary>What arrived — a URL, a handle, a memory key.</summary>
+    public string What { get; set; } = string.Empty;
+
+    public string At { get; set; } = string.Empty;
 }
 
 public sealed class DeltaPayload
@@ -829,6 +856,20 @@ public sealed class ChatSkillStatePayload
 {
     public string ChatId { get; set; } = string.Empty;
     public string? ActiveSkillId { get; set; }
+}
+
+/// <summary>A chat's doubt flag, broadcast to every window watching it — two windows on one chat
+/// must not disagree about whether it is marked.</summary>
+public sealed class ChatDoubtStatePayload
+{
+    public string ChatId { get; set; } = string.Empty;
+    public ChatDoubtDto Doubt { get; set; } = new();
+}
+
+/// <summary>Clears a chat's doubt flag.</summary>
+public sealed class ChatDoubtClearPayload
+{
+    public string ChatId { get; set; } = string.Empty;
 }
 
 /// <summary>

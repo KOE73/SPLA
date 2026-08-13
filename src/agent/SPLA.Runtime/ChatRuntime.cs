@@ -219,6 +219,14 @@ public sealed class ChatRuntime
         // the type system and nowhere else.
         _agentSession = new AgentSession(
             _sessionKv, _checkpoint, _skillSession, sandbox: runtime.Sandbox, toolSets: _toolSetSession);
+
+        // A reopened chat is as doubtful as it was when it closed. Restored rather than recomputed:
+        // what raised the flag was an arrival, and arrivals do not happen again on load.
+        if (chat.Doubt.Count > 0)
+            _agentSession.Doubt.Restore(chat.Doubt.Select(d => new SPLA.Domain.Security.DoubtCause(
+                new SPLA.Domain.Security.DataOrigin(d.Zone, OperatorNamed: false),
+                d.What,
+                new DateTimeOffset(DateTime.SpecifyKind(d.At, DateTimeKind.Utc)))));
         _orchestrator = new ConversationOrchestrator(runtime.Llm, runtime.McpHost)
         {
             // Live context surface, recomposed on every iteration inside this turn's
@@ -386,6 +394,11 @@ public sealed class ChatRuntime
             });
         }
         _chat.Kv = _sessionKv.Snapshot();
+        // The flag rides with the history: it only ever goes up, and one that a reload clears is one
+        // anybody can clear by closing the window.
+        _chat.Doubt = _agentSession.Doubt.Causes
+            .Select(c => new ChatSessionDoubt { Zone = c.Origin.Zone, What = c.What, At = c.At.UtcDateTime })
+            .ToList();
         _runtime.ChatManager.SaveChat(_chat);
     }
 

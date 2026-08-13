@@ -1,4 +1,4 @@
-using YamlDotNet.Serialization;
+﻿using YamlDotNet.Serialization;
 
 namespace SPLA.Domain.Settings;
 
@@ -37,6 +37,19 @@ public class SplaAgentSection
     /// a feature's dependencies are auto-enabled.</summary>
     [YamlMember(Alias = "capabilities")]
     public List<string>? Capabilities { get; set; }
+
+    /// <summary>
+    /// Domains the operator vouches for. Naming a source is what makes it a named one, so content
+    /// fetched from these stops being part of the open web and stops raising the chat's doubt flag —
+    /// an internal wiki is not a stranger's page.
+    ///
+    /// <para>Matched on the host, with subdomains included: <c>corp.local</c> covers
+    /// <c>wiki.corp.local</c>. Accumulates across layers rather than being overridden, because a
+    /// project vouching for its own wiki must not silently drop what the machine layer vouched
+    /// for.</para>
+    /// </summary>
+    [YamlMember(Alias = "trusted_domains")]
+    public List<string>? TrustedDomains { get; set; }
 }
 
 /// <summary>

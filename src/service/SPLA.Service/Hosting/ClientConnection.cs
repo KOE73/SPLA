@@ -1,4 +1,4 @@
-using SPLA.Runtime;
+﻿using SPLA.Runtime;
 using System.Collections.Concurrent;
 using System.Net.WebSockets;
 using System.Text;
@@ -334,7 +334,8 @@ public sealed class ClientConnection : IClientSession
             Mode = chat.ModeName,
             ModelId = chat.ModelId,
             ActiveSkillId = chat.ActiveSkillId,
-            ToolSets = ChatHandlers.ToolSetDtos(_registry.Open(DefaultProjectId), chat)
+            ToolSets = ChatHandlers.ToolSetDtos(_registry.Open(DefaultProjectId), chat),
+            Doubt = ChatHandlers.DoubtDto(chat)
         }, chat.ChatId);
     }
 

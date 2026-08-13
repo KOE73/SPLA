@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Linq;
 using SPLA.Domain.Agent;
 using SPLA.Domain.Security;
@@ -161,6 +161,33 @@ public sealed class ChatDoubtTests
 
         Assert.Equal(DataOrigin.Internet, blobs.Describe(handle)!.Origin);
         Assert.Equal(DataOrigin.Internet, blobs.List().Single().Origin);
+    }
+
+    /// <summary>Vouching is per organisation, not per machine: naming <c>corp.local</c> names its
+    /// wiki too, because that is the unit a person actually thinks in.</summary>
+    [Theory]
+    [InlineData("corp.local", "corp.local", true)]
+    [InlineData("corp.local", "wiki.corp.local", true)]
+    [InlineData("corp.local", "deep.wiki.corp.local", true)]
+    [InlineData("corp.local", "corp.local.evil.com", false)]
+    [InlineData("corp.local", "notcorp.local", false)]
+    [InlineData("corp.local", "news.example.com", false)]
+    public void Vouching_for_a_domain_covers_its_subdomains_and_nothing_else(
+        string vouched, string host, bool expected)
+    {
+        var settings = new SPLA.Domain.Settings.ResolvedSettings { TrustedDomains = { vouched } };
+
+        Assert.Equal(expected, settings.IsTrustedDomain(host));
+    }
+
+    [Fact]
+    public void An_empty_list_vouches_for_nothing()
+    {
+        var settings = new SPLA.Domain.Settings.ResolvedSettings();
+
+        Assert.False(settings.IsTrustedDomain("corp.local"));
+        Assert.False(settings.IsTrustedDomain(""));
+        Assert.False(settings.IsTrustedDomain(null));
     }
 
     [Fact]
