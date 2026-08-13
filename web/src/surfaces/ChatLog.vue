@@ -1,3 +1,9 @@
+<!--
+  The chat log — now a pure view over the session's items. It subscribes to nothing: every server
+  event is placed into its chat's session by state/chatSessions, so a background chat's turn cannot
+  appear here however busy it is. Switching chats swaps which list is rendered; it no longer destroys
+  the other chat's streaming state.
+-->
 <template>
   <div style="display: contents">
     <component
@@ -5,7 +11,6 @@
       v-for="item in items"
       :key="item.key"
       v-bind="itemProps(item)"
-      :ref="item.kind === 'assistant' ? (el => setBubbleRef(item.msgIndex, el)) : undefined"
       @decide="onPermissionDecide"
       @choose="onClarifyChoose"
       @rewind="onRewind"
@@ -15,52 +20,27 @@
 </template>
 
 <script setup lang="ts">
-import { nextTick, onUnmounted, ref, watch } from "vue";
+import { computed, nextTick, onMounted, onUnmounted, watch } from "vue";
 import { client } from "../protocol/SplaClient";
-import { store } from "../state/store";
+import { useChat } from "../state/chatContext";
+import { dropItem, type LogItem } from "../state/chatSessions";
 import { uiBus } from "../state/uiBus";
 import UserBubble from "./UserBubble.vue";
 import AssistantBubble from "./AssistantBubble.vue";
 import ToolLine from "./ToolLine.vue";
-import ToolCard, { type ToolCallState } from "./ToolCard.vue";
+import ToolCard from "./ToolCard.vue";
 import PermissionAsk from "./PermissionAsk.vue";
 import ClarifyAsk from "./ClarifyAsk.vue";
 
-type Item =
-  | { kind: "user"; key: string; text: string; images?: string[]; msgId?: string; createdAt?: string | number }
-  | { kind: "assistant"; key: string; msgIndex: number; msgId?: string; createdAt?: string | number }
-  | { kind: "tool" | "notice"; key: string; text: string }
-  | { kind: "toolcall"; key: string; call: ToolCallState }
-  | { kind: "permission"; key: string; requestId: string; toolName: string; argumentsText?: string }
-  | { kind: "clarify"; key: string; requestId: string; question: string; options?: { label: string; description?: string }[] };
+const chat = useChat();
+const items = computed<LogItem[]>(() => chat.session.value?.items ?? []);
 
-interface AssistantBubbleHandle {
-  renderInto(text: string): Promise<void>;
-  setReasoning(text: string): void;
-  appendReasoning(chunk: string): void;
-}
-
-const items = ref<Item[]>([]);
-// This component renders directly into the #log slot owned by ChatSurface,
-// which already carries the flex/scroll CSS — `display:contents` on our own root keeps us out
-// of the box tree so .msg children become real flex items of #log, not of an extra inner div.
+// This component renders directly into the #log slot owned by ChatSurface, which already carries the
+// flex/scroll CSS — `display:contents` on our own root keeps us out of the box tree so .msg children
+// become real flex items of #log rather than of an extra inner div.
 const logEl = () => document.getElementById("log");
-let keySeq = 0;
-const nextKey = () => "i" + (keySeq++);
 
-// per-msgIndex streaming state — mirrors the old `B` object in app.js
-const streams = new Map<number, { raw: string; timer: number; sawReasoning?: boolean }>();
-// Bubbles opened by llm.turn.start that no assistant.message has closed yet. A turn that dies in the
-// provider call leaves one behind: it is the empty ASSISTANT box that used to be the only trace of a
-// failure, since turn.complete's error text was received and dropped.
-const pendingBubbles = new Set<number>();
-const bubbleRefs = new Map<number, AssistantBubbleHandle>();
-function setBubbleRef(msgIndex: number, el: unknown) {
-  if (el) bubbleRefs.set(msgIndex, el as AssistantBubbleHandle);
-  else bubbleRefs.delete(msgIndex);
-}
-
-function itemComponent(item: Item) {
+function itemComponent(item: LogItem) {
   switch (item.kind) {
     case "user": return UserBubble;
     case "assistant": return AssistantBubble;
@@ -70,234 +50,85 @@ function itemComponent(item: Item) {
     case "clarify": return ClarifyAsk;
   }
 }
-function itemProps(item: Item) {
+function itemProps(item: LogItem) {
   const { key, kind, ...rest } = item;
   return rest;
 }
 
-function scroll() {
-  nextTick(() => { const el = logEl(); if (el) el.scrollTop = el.scrollHeight; });
+// ── Scrolling ────────────────────────────────────────────────────────────────
+// Follow the stream only while the reader is already at the bottom. Scrolling up is a deliberate act
+// — reading what happened while the answer keeps coming — and yanking the view back down every time
+// a token arrives makes that impossible. Once they return to the bottom, following resumes on its own.
+const STICK_PX = 80;
+
+/** Whether the view is tied to the bottom. The reader owns this: scrolling away turns it off,
+ *  scrolling back turns it on. Nothing else may set it — the point is that the code never decides
+ *  to drag someone back down while they are reading. */
+let following = true;
+
+function atBottom(el: HTMLElement) {
+  return el.scrollHeight - el.scrollTop - el.clientHeight <= STICK_PX;
 }
 
-// Live/loaded tool calls by id — tool.progress and tool.result mutate the card in place.
-const toolCalls = new Map<string, ToolCallState>();
-function addToolCall(call: ToolCallState) {
-  const reactiveItem: Item = { kind: "toolcall", key: nextKey(), call };
-  items.value.push(reactiveItem);
-  // grab the reactive proxy back so later mutations trigger re-render
-  const stored = (items.value[items.value.length - 1] as { call: ToolCallState }).call;
-  if (call.callId) toolCalls.set(call.callId, stored);
-  return stored;
+function toBottom() {
+  const el = logEl();
+  if (el) el.scrollTop = el.scrollHeight;
 }
 
-function clearAll() {
-  renderedChatId = null;
-  items.value = [];
-  toolCalls.clear();
-  streams.forEach(s => clearTimeout(s.timer));
-  streams.clear();
-  pendingBubbles.clear();
-  bubbleRefs.clear();
+function follow() {
+  if (following) nextTick(toBottom);
 }
 
-function addAssistantItem(msgIndex: number, msgId?: string, createdAt?: string | number) {
-  items.value.push({ kind: "assistant", key: "asst" + msgIndex, msgIndex, msgId, createdAt });
+function onScroll() {
+  const el = logEl();
+  if (el) following = atBottom(el);
 }
 
-function startBubble(msgIndex: number) {
-  addAssistantItem(msgIndex, undefined, Date.now());
-  streams.set(msgIndex, { raw: "", timer: 0 });
-  pendingBubbles.add(msgIndex);
-}
+// New entries are one signal; text growing inside the bubble that is streaming is the other, and it
+// has no event of its own — so while a turn runs we look, cheaply, on a timer. A deep watch over the
+// whole log would walk every message on every token.
+let ticker = 0;
+watch(() => items.value.length, follow);
+watch(() => chat.session.value?.turnActive, active => {
+  clearInterval(ticker);
+  if (active) ticker = window.setInterval(follow, 120);
+}, { immediate: true });
 
-/// Drops a bubble that never received text or reasoning. Returns true if one was actually removed.
-function discardEmptyBubble(msgIndex: number): boolean {
-  const s = streams.get(msgIndex);
-  if (s && (s.raw || s.sawReasoning)) return false;
-  if (s) clearTimeout(s.timer);
-  streams.delete(msgIndex);
-  bubbleRefs.delete(msgIndex);
-  const before = items.value.length;
-  items.value = items.value.filter(i => !(i.kind === "assistant" && i.msgIndex === msgIndex));
-  return items.value.length < before;
-}
-function appendDelta(msgIndex: number, text: string) {
-  const s = streams.get(msgIndex);
-  if (!s) return;
-  s.raw += text;
-  clearTimeout(s.timer);
-  s.timer = window.setTimeout(() => { bubbleRefs.get(msgIndex)?.renderInto(s.raw).then(scroll); }, 70);
-}
-function finalizeBubble(msgIndex: number, message: { content?: string; reasoning?: string }) {
-  pendingBubbles.delete(msgIndex);
-  let s = streams.get(msgIndex);
-  if (!s) { addAssistantItem(msgIndex); s = { raw: "", timer: 0 }; streams.set(msgIndex, s); }
-  clearTimeout(s.timer);
-  // The finalized message carries the server-side MsgId — attach it so rewind/fork can anchor here.
-  const item = items.value.find(i => i.kind === "assistant" && i.msgIndex === msgIndex);
-  if (item && item.kind === "assistant") {
-    const m = message as { msgId?: string; createdAt?: string };
-    if (m.msgId) item.msgId = m.msgId;
-    if (m.createdAt) item.createdAt = m.createdAt;
-  }
-  if (message.reasoning) bubbleRefs.get(msgIndex)?.setReasoning(message.reasoning);
-  nextTick(() => bubbleRefs.get(msgIndex)?.renderInto(message.content || "").then(scroll));
-}
+// A chat that has just been opened starts at the bottom — that is where the conversation is — and
+// following starts on again, because this is a fresh look at a different chat.
+watch(() => chat.chatId.value, () => {
+  following = true;
+  nextTick(toBottom);
+}, { immediate: true });
 
-// The chat this log is actually rendering. Rewind/fork must anchor to THIS id, never to
-// store.currentChat — focus.changed from another window can retarget the store mid-click,
-// which would send a destructive rewind to a chat the user never looked at.
-let renderedChatId: string | null = null;
+onMounted(() => logEl()?.addEventListener("scroll", onScroll, { passive: true }));
+onUnmounted(() => {
+  clearInterval(ticker);
+  logEl()?.removeEventListener("scroll", onScroll);
+});
 
-function openChat(p: { chatId?: string; messages: { msgId?: string; role: string; content?: string; reasoning?: string;
-  createdAt?: string; images?: string[];
-  toolCalls?: { id: string; name: string; arguments: string }[]; toolCallId?: string }[] }) {
-  clearAll();
-  renderedChatId = p.chatId ?? null;
-  for (const m of p.messages) {
-    if (m.role === "user") items.value.push({ kind: "user", key: nextKey(), text: m.content || "",
-      images: m.images, msgId: m.msgId, createdAt: m.createdAt });
-    else if (m.role === "assistant") {
-      if (m.content || m.reasoning) {
-        const msgIndex = -1 - items.value.length; // synthetic stable index for historical messages
-        addAssistantItem(msgIndex, m.msgId, m.createdAt);
-        nextTick(() => {
-          const b = bubbleRefs.get(msgIndex);
-          b?.setReasoning(m.reasoning || "");
-          b?.renderInto(m.content || "");
-        });
-      }
-      // historical tool calls become collapsed done-cards; the matching tool message fills in the result
-      for (const tc of m.toolCalls || [])
-        addToolCall({ callId: tc.id, name: tc.name, argumentsText: tc.arguments, status: "done" });
-    } else if (m.role === "tool") {
-      const call = m.toolCallId ? toolCalls.get(m.toolCallId) : undefined;
-      if (call) call.result = m.content || "";
-      else items.value.push({ kind: "tool", key: nextKey(), text: "← tool result (" + (m.content || "").length + " chars)" });
-    }
-  }
-  scroll();
-}
-
-// Fallback matcher for events that arrive without a usable toolCallId.
-function lastRunningByName(name: string): ToolCallState | undefined {
-  for (let i = items.value.length - 1; i >= 0; i--) {
-    const it = items.value[i];
-    if (it.kind === "toolcall" && it.call.status === "running" && it.call.name === name) return it.call;
-  }
-  return undefined;
-}
-
+// ── Answering the chat's questions ───────────────────────────────────────────
 function onPermissionDecide(requestId: string, decision: string) {
   client.send("permission.decision", { decision }, { requestId });
-  items.value = items.value.filter(i => !(i.kind === "permission" && i.requestId === requestId));
+  const s = chat.session.value;
+  if (s) dropItem(s, i => i.kind === "permission" && i.requestId === requestId);
 }
 function onClarifyChoose(requestId: string, choice: string | null) {
   client.send("clarify.choice", { choice }, { requestId });
-  items.value = items.value.filter(i => !(i.kind === "clarify" && i.requestId === requestId));
+  const s = chat.session.value;
+  if (s) dropItem(s, i => i.kind === "clarify" && i.requestId === requestId);
 }
 
-// Rewind: a user bubble also passes its text (goes back to the composer and the message itself is
+// Rewind: a user bubble also passes its text (it goes back to the composer and the message itself is
 // removed); an assistant bubble is kept and only what follows it is discarded. The server answers
-// with chat.opened, which rebuilds the log.
+// with chat.opened, which rebuilds the log. The chat is the surface's, so no id is passed here — that
+// is exactly the mix-up this arrangement removes.
 function onRewind(msgId: string, text?: string) {
-  if (!renderedChatId || !msgId) return;
+  if (!msgId) return;
   if (text !== undefined) uiBus.emit("composer.set", { text });
-  client.send("chat.rewind", { chatId: renderedChatId, msgId, before: text !== undefined },
-    { projectId: store.currentProjectId ?? undefined });
+  chat.send("chat.rewind", { msgId, before: text !== undefined });
 }
 function onFork(msgId: string) {
-  if (!renderedChatId || !msgId) return;
-  client.send("chat.fork", { chatId: renderedChatId, msgId },
-    { projectId: store.currentProjectId ?? undefined });
+  if (msgId) chat.send("chat.fork", { msgId });
 }
-
-// ── Wiring ───────────────────────────────────────────────────────────────────
-const offs = [
-  client.on("chat.opened", openChat),
-  uiBus.on("local.userMsg", (p: unknown) => {
-    const { text, images } = p as { text: string; images?: string[] };
-    items.value.push({ kind: "user", key: nextKey(), text, images, createdAt: Date.now() });
-    scroll();
-  }),
-  // Attach the server MsgId to the composer's optimistic local echo. A server-initiated startup
-  // turn has no local echo, so its optional text becomes a real user bubble here.
-  client.on("user.message", (p, env) => {
-    if (env.chatId && env.chatId !== renderedChatId) return;
-    let attached = false;
-    for (let i = items.value.length - 1; i >= 0; i--) {
-      const it = items.value[i];
-      if (it.kind === "user" && !it.msgId) {
-        it.msgId = p.msgId;
-        if (p.createdAt) it.createdAt = p.createdAt;
-        attached = true;
-        break;
-      }
-    }
-    if (!attached && p.text !== undefined)
-      items.value.push({ kind: "user", key: nextKey(), text: p.text, msgId: p.msgId, createdAt: p.createdAt });
-    scroll();
-  }),
-  client.on("llm.turn.start", p => startBubble(p.msgIndex)),
-  client.on("delta", p => appendDelta(p.msgIndex, p.text)),
-  client.on("reasoning", p => {
-    const s = streams.get(p.msgIndex);
-    if (s) s.sawReasoning = true;
-    bubbleRefs.get(p.msgIndex)?.appendReasoning(p.text);
-    scroll();
-  }),
-  client.on("assistant.message", p => finalizeBubble(p.msgIndex, p.message)),
-  client.on("tool.started", p => {
-    addToolCall({ callId: p.toolCall.id, name: p.toolCall.name, argumentsText: p.toolCall.arguments,
-      status: "running", startedAt: Date.now() });
-    scroll();
-  }),
-  client.on("tool.progress", p => {
-    const call = (p.toolCallId && toolCalls.get(p.toolCallId)) || lastRunningByName(p.toolName);
-    if (call) call.progress = { fraction: p.fraction, message: p.message, details: p.details };
-  }),
-  client.on("tool.result", p => {
-    const call = toolCalls.get(p.toolCallId) || lastRunningByName(p.toolName);
-    if (call) { call.result = p.result || ""; call.status = "done"; call.finishedAt = Date.now(); }
-    else items.value.push({ kind: "tool", key: nextKey(), text: "← " + p.toolName + " (" + (p.result || "").length + " chars)" });
-    scroll();
-  }),
-  // End of turn is where a failure becomes visible. The server already reports why (it logs the
-  // exception and puts its message in this payload) — everything below is the client finally saying
-  // it out loud, in the log, next to the turn that failed.
-  client.on("turn.complete", (p, env) => {
-    if (env.chatId && renderedChatId && env.chatId !== renderedChatId) return;
-
-    // A cancelled/failed turn can strand cards in "running" — stop their spinners.
-    for (const it of items.value)
-      if (it.kind === "toolcall" && it.call.status === "running") { it.call.status = "done"; it.call.finishedAt = Date.now(); }
-
-    // A bubble opened for a turn that produced nothing is not an answer; it is the shape of a
-    // failure. Remove it and say what happened instead of leaving a blank box.
-    let discarded = false;
-    for (const msgIndex of pendingBubbles) discarded = discardEmptyBubble(msgIndex) || discarded;
-    pendingBubbles.clear();
-
-    if (p.error) items.value.push({ kind: "notice", key: nextKey(), text: "⚠ Turn failed: " + p.error });
-    else if (p.cancelled) items.value.push({ kind: "notice", key: nextKey(), text: "⏹ Turn cancelled." });
-    else if (discarded) items.value.push({ kind: "notice", key: nextKey(), text: "⚠ The model returned no output for this turn." });
-
-    if (p.error || p.cancelled || discarded) scroll();
-  }),
-  client.on("notice", p => { items.value.push({ kind: "notice", key: nextKey(), text: p.text }); scroll(); }),
-  client.on("error", p => { items.value.push({ kind: "notice", key: nextKey(), text: "⚠ " + p.message }); scroll(); }),
-];
-const offPermission = client.on("permission.request", (p, env) => {
-  items.value.push({ kind: "permission", key: nextKey(), requestId: env.requestId!, toolName: p.toolName, argumentsText: p.arguments });
-  scroll();
-});
-const offClarify = client.on("clarify.request", (p, env) => {
-  items.value.push({ kind: "clarify", key: nextKey(), requestId: env.requestId!, question: p.question, options: p.options });
-  scroll();
-});
-
-// Mirrors old chat.cleared handling — ChatList sets store.currentChat = null on delete.
-watch(() => store.currentChat, v => { if (v === null) clearAll(); });
-
-onUnmounted(() => { offs.forEach(o => o()); offPermission(); offClarify(); streams.forEach(s => clearTimeout(s.timer)); });
 </script>

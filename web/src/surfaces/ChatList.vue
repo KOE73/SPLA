@@ -1,8 +1,7 @@
 <template>
+  <!-- The project lives in ProjectBar at the foot of this column now, not in this header: it is
+       connection state, and repeating it here only stole width from the chat controls. -->
   <div class="sidebar-header">
-    <button class="app-title" title="Switch project" @click="store.projectPickerOpen = true">
-      📂 {{ store.currentProjectName || "SPLA" }}
-    </button>
     <div class="nav-tabs">
       <button
         class="nav-tab"
@@ -31,8 +30,8 @@
     />
   </div>
 
-  <!-- Server/user context slot, pinned under the chat list. -->
-  <Identity />
+  <!-- Project/server status bar, pinned under the chat list. Nothing chat-scoped goes in here. -->
+  <ProjectBar />
 
   <ProjectPicker v-if="store.projectPickerOpen" @close="store.projectPickerOpen = false" />
 </template>
@@ -44,8 +43,9 @@ import { store } from "../state/store";
 import type { ChatSummary } from "../protocol/types";
 import ChatListItem from "./ChatListItem.vue";
 import ProjectPicker from "./ProjectPicker.vue";
-import Identity from "./Identity.vue";
+import ProjectBar from "./ProjectBar.vue";
 import { openPanel } from "../dock/dockController";
+import { forgetSession } from "../state/chatSessions";
 
 const offList = client.on("chat.list.result", p => { store.chats = p.chats || []; });
 onUnmounted(offList);
@@ -71,6 +71,7 @@ function rename(chat: ChatSummary) {
 function remove(chatId: string) {
   if (!confirm("Delete this chat?")) return;
   client.send("chat.delete", { chatId }, projectExtra());
+  forgetSession(chatId);
   if (chatId === store.currentChat) store.currentChat = null;
 }
 </script>
@@ -86,24 +87,6 @@ function remove(chatId: string) {
   background: var(--panel);
   flex-shrink: 0;
 }
-
-.app-title {
-  font: inherit;
-  font-size: var(--fs-sm);
-  font-weight: 600;
-  color: var(--text);
-  white-space: nowrap;
-  margin-right: 2px;
-  background: transparent;
-  border: 1px solid transparent;
-  border-radius: var(--radius-sm);
-  padding: 3px 6px;
-  cursor: pointer;
-  max-width: 130px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-.app-title:hover { background: color-mix(in srgb, var(--text) 6%, transparent); border-color: var(--border); }
 
 /* ── Nav tabs (💬 / ◫) ───────────────────────────────────────────────────────── */
 .nav-tabs {

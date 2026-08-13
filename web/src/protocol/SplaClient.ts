@@ -33,17 +33,26 @@ export class SplaClient {
     this.ws.onmessage = ev => {
       let env: Envelope;
       try { env = JSON.parse(ev.data); } catch { return; } // malformed frame — drop, don't throw
-      this.emitWire({ dir: "in", type: env.type, payload: env.payload, chatId: env.chatId, projectId: env.projectId, requestId: env.requestId, ts: Date.now() });
-
-      if (env.requestId && this.pending.has(env.requestId)) {
-        const p = this.pending.get(env.requestId)!;
-        clearTimeout(p.timer);
-        this.pending.delete(env.requestId);
-        p.resolve(env.payload);
-      }
-      if (env.type === "welcome") this.emit("conn", { on: true, text: "connected" }, env);
-      this.emit(env.type as keyof ServerEvents, env.payload as never, env);
+      this.receive(env);
     };
+  }
+
+  /**
+   * Processes one inbound frame. Split out of the socket handler so the dispatch rules can be
+   * exercised without a socket — feeding two chats' interleaved frames is the only way to test that
+   * they stay apart.
+   */
+  receive(env: Envelope): void {
+    this.emitWire({ dir: "in", type: env.type, payload: env.payload, chatId: env.chatId, projectId: env.projectId, requestId: env.requestId, ts: Date.now() });
+
+    if (env.requestId && this.pending.has(env.requestId)) {
+      const p = this.pending.get(env.requestId)!;
+      clearTimeout(p.timer);
+      this.pending.delete(env.requestId);
+      p.resolve(env.payload);
+    }
+    if (env.type === "welcome") this.emit("conn", { on: true, text: "connected" }, env);
+    this.emit(env.type as keyof ServerEvents, env.payload as never, env);
   }
 
   disconnect(): void {

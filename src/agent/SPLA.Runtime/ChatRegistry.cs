@@ -102,4 +102,10 @@ public sealed class ChatRegistry
         _open.TryRemove(chatId, out _);
     }
 
+    /// <summary>The already-open runtime for a chat, or null — never loads from disk. For callers that
+    /// only want to ASK about live state (is a turn running?) and must not resurrect a closed chat to
+    /// find out: the chat list projects this for every chat on disk, and loading them all would turn
+    /// listing into a full read of the project's history.</summary>
+    public ChatRuntime? Peek(string chatId) => _open.TryGetValue(chatId, out var c) ? c : null;
+
 }

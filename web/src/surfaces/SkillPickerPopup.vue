@@ -59,7 +59,10 @@ import { computed, nextTick, onMounted, onBeforeUnmount, ref, watch } from "vue"
 import type { CSSProperties } from "vue";
 import { client } from "../protocol/SplaClient";
 import { store } from "../state/store";
+import { useChat } from "../state/chatContext";
 import type { CapabilityDto } from "../protocol/types";
+
+const chat = useChat();
 
 const props = defineProps<{ anchor: HTMLElement }>();
 const emit = defineEmits<{ close: [] }>();
@@ -114,10 +117,7 @@ function toggleTag(tag: string) {
 }
 
 function pick(skill: CapabilityDto) {
-  if (!store.currentChat) return;
-  client.send("chat.skill.activate",
-    { chatId: store.currentChat, skillId: skill.address || skill.id },
-    { projectId: store.currentProjectId ?? undefined });
+  chat.send("chat.skill.activate", { skillId: skill.address || skill.id });
   emit("close");
 }
 

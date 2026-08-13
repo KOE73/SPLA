@@ -63,6 +63,7 @@
     <File Path="docs/plans/PLAN_20260805_tools_call-contract.md" />
     <File Path="docs/plans/PLAN_20260807_host_sandbox.md" />
     <File Path="docs/plans/PLAN_20260811_core_security-zones.md" />
+    <File Path="docs/plans/PLAN_20260813_web_chat-session-model.md" />
   </Folder>
   <Folder Name="/docs/ideas/">
     <File Path="docs/ideas/IDEA_20260611_core_todo-general.md" />
@@ -77,6 +78,10 @@
     <File Path="docs/ideas/IDEA_20260715_core_misc.md" />
     <File Path="docs/ideas/IDEA_20260802_core_maf-directions.md" />
     <File Path="docs/ideas/IDEA_20260805_core_external-head.md" />
+    <File Path="docs/ideas/IDEA_20260813-2_core_digest-tool.md" />
+    <File Path="docs/ideas/IDEA_20260813-3_web_permission-colors.md" />
+    <File Path="docs/ideas/IDEA_20260813-4_apps_close-to-tray.md" />
+    <File Path="docs/ideas/IDEA_20260813_core_binary-storage.md" />
   </Folder>
   <Folder Name="/src/core/">
     <Project Path="src/core/SPLA.Domain/SPLA.Domain.csproj" />
@@ -148,8 +153,19 @@
     <File Path="web/src/main.ts" />
     <File Path="web/src/protocol/SplaClient.ts" />
     <File Path="web/src/protocol/types.ts" />
+    <File Path="web/vitest.config.ts" />
+    <File Path="web/src/test-setup.ts" />
     <File Path="web/src/state/store.ts" />
     <File Path="web/src/state/uiBus.ts" />
+    <File Path="web/src/state/chatSessions.ts" />
+    <File Path="web/src/state/chatSessions.test.ts" />
+    <File Path="web/src/state/chatContext.ts" />
+    <File Path="web/src/util/format.ts" />
+    <File Path="web/src/surfaces/ChatSurface.vue" />
+    <File Path="web/src/surfaces/ChatLog.vue" />
+    <File Path="web/src/surfaces/Composer.vue" />
+    <File Path="web/src/surfaces/StatusBar.vue" />
+    <File Path="web/src/surfaces/ProjectBar.vue" />
     <File Path="web/src/layouts/layouts.ts" />
     <File Path="web/src/layouts/LayoutHost.vue" />
     <File Path="web/src/layouts/LayoutNodeView.vue" />

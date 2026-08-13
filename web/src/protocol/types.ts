@@ -47,6 +47,8 @@ export interface ToolProgressDetail {
 export interface ChatSummary {
   id: string;
   title?: string;
+  /** A turn is running in this chat right now — including one started by another window. */
+  turnActive?: boolean;
 }
 
 export interface ChatOpenedPayload {
@@ -60,6 +62,9 @@ export interface ChatOpenedPayload {
   doubt?: ChatDoubt;
   /** Tool sets this chat can see, raised or merely announced. */
   toolSets?: ToolSetState[];
+  /** Whether a turn was already running when this chat was opened — so a window attaching mid-turn
+   *  (or a reload) shows Stop rather than an input that looks ready. */
+  turnActive?: boolean;
 }
 
 /** One tool set as a chat sees it. `level` is the standing permission, `by` is who raised it here

@@ -42,6 +42,10 @@ public sealed class ChatSummaryDto
     public string Id { get; set; } = string.Empty;
     public string Title { get; set; } = string.Empty;
     public string UpdatedAt { get; set; } = string.Empty;
+
+    /// <summary>Whether a turn is running in this chat right now — so the list can show where work is
+    /// happening, including work started by another window or another user.</summary>
+    public bool TurnActive { get; set; }
 }
 
 /// <summary>One selectable option in a clarify request.</summary>
@@ -695,6 +699,11 @@ public sealed class ChatOpenedPayload
     /// Sent on open because the flag survives a reload — a window attaching to a chat that went to
     /// the open web yesterday has to show it.</summary>
     public ChatDoubtDto Doubt { get; set; } = new();
+
+    /// <summary>Whether a turn is running in this chat at the moment it is opened. Without this the
+    /// composer had to guess from events it happened to witness, so a window that attached mid-turn
+    /// (or a reload) offered Send on a chat that was busy.</summary>
+    public bool TurnActive { get; set; }
 }
 
 /// <summary>

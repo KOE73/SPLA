@@ -5,8 +5,8 @@
   icon stays visually consistent regardless of how its file is authored.
 -->
 <template>
-  <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor"
-       stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+  <svg viewBox="0 0 24 24" :width="size" :height="size" fill="none" stroke="currentColor"
+       :stroke-width="weight" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
     <g v-html="inner" />
   </svg>
 </template>
@@ -14,7 +14,12 @@
 <script setup lang="ts">
 import { computed } from "vue";
 
-const props = defineProps<{ name: string }>();
+// size/weight exist for icons that carry meaning on their own rather than sitting in the tool strip
+// (the ⚙ in the project bar is the whole control, so it has to read at a glance — see ProjectBar).
+const props = withDefaults(defineProps<{ name: string; size?: number; weight?: number }>(), {
+  size: 16,
+  weight: 1.7
+});
 
 // Raw file contents, e.g. '<svg viewBox="0 0 24 24" ...>...markup...</svg>\n'.
 const rawIcons = import.meta.glob("../assets/icons/*.svg", { eager: true, query: "?raw", import: "default" }) as Record<string, string>;

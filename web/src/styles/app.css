@@ -56,7 +56,6 @@ button { font: inherit; cursor: pointer; }
 #status label { display: flex; gap: 5px; align-items: center; }
 #status select { background: var(--bg); color: var(--text); border: 1px solid var(--border);
   border-radius: var(--radius-sm); padding: 2px 4px; font: inherit; font-size: var(--fs-sm); }
-#dot { color: var(--danger); } #dot.on { color: var(--ok); }
 
 /* Context-budget pill: last call's occupancy as a fraction of the model's operative window (or just
    the raw count when the window is unknown). Quiet until it matters; exact in/out sits in the title. */
@@ -189,8 +188,12 @@ body.hide-reasoning .reasoning { display: none; }
 #attachments .thumb .rm { position: absolute; top: 0; right: 0; background: rgba(0,0,0,.55); color: #fff;
   border: 0; font-size: 11px; line-height: 1; padding: 2px 5px; border-radius: 0 0 0 var(--radius-sm); }
 #composer .row { display: flex; gap: 8px; align-items: flex-end; }
+/* Grows with the text, 2 rows to 16, then scrolls. `field-sizing` does it with no JS at all in
+   Chromium (which is what the native shell embeds); Composer.vue measures by hand elsewhere. */
 #input { flex: 1; resize: none; background: var(--bg); color: var(--text);
-  border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 9px 11px; font: inherit; }
+  border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 9px 11px; font: inherit;
+  line-height: 1.45; field-sizing: content; min-height: calc(2 * 1.45em + 20px);
+  max-height: calc(16 * 1.45em + 20px); overflow-y: auto; }
 #input:focus { outline: none; border-color: var(--accent); }
 .icon-btn { background: transparent; border: 1px solid var(--border); color: var(--muted);
   border-radius: var(--radius-sm); width: 38px; height: 38px; font-size: 18px; }

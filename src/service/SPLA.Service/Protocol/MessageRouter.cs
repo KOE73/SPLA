@@ -47,6 +47,10 @@ internal interface IClientSession
     void MarkProjectOpen(string projectId);
     void MarkChatOpen(string chatId);
 
+    /// <summary>Drops this connection's watch on a chat — it stops receiving that chat's turn events.
+    /// Only the client knows when this is right (see <see cref="MessageTypes.ChatUnwatch"/>).</summary>
+    void MarkChatClosed(string chatId);
+
     Task SendAsync(string type, object? payload, string? chatId = null, string? requestId = null);
 
     /// <summary>This connection's live SSH terminals (phase B). Per-connection state, torn down with

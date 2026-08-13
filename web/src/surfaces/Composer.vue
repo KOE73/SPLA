@@ -1,8 +1,13 @@
+<!--
+  The composer. Its text, its attachments and its Send/Stop state all belong to the chat it is
+  editing — kept in that chat's session, so switching away and back finds the draft where it was, and
+  an image attached in one chat can never be sent to another.
+-->
 <template>
   <div id="attachments">
-    <div v-for="(src, i) in store.attachments" :key="i" class="thumb">
+    <div v-for="(src, i) in attachments" :key="i" class="thumb">
       <img :src="src">
-      <button class="rm" @click="store.attachments.splice(i, 1)">✕</button>
+      <button class="rm" @click="attachments.splice(i, 1)">✕</button>
     </div>
   </div>
   <div class="row">
@@ -16,6 +21,7 @@
       placeholder="Message…  (Enter to send, Shift+Enter for newline, paste images)"
       :disabled="!ready"
       @keydown.enter.exact.prevent="send"
+      @input="autosize"
       @paste="onPaste"
     ></textarea>
     <button v-if="!turnActive" class="btn" :disabled="!ready" @click="send">Send</button>
@@ -24,23 +30,65 @@
 </template>
 
 <script setup lang="ts">
-import { computed, nextTick, onUnmounted, ref } from "vue";
+import { computed, nextTick, onUnmounted, ref, watch } from "vue";
 import { client } from "../protocol/SplaClient";
 import { store } from "../state/store";
 import { uiBus } from "../state/uiBus";
+import { useChat } from "../state/chatContext";
+import { addLocalUserMessage } from "../state/chatSessions";
 
-const text = ref("");
+const chat = useChat();
 const fileInput = ref<HTMLInputElement>();
 const textareaEl = ref<HTMLTextAreaElement>();
 
-const turnActive = computed(() => !!store.currentChat && !!store.turnActiveByChat[store.currentChat]);
-const ready = computed(() => store.connected && !!store.currentChat && !turnActive.value);
+/** Draft and attachments live in the session; an absent session simply has nothing to edit. */
+const text = computed({
+  get: () => chat.session.value?.draft ?? "",
+  set: v => { if (chat.session.value) chat.session.value.draft = v; }
+});
+const attachments = computed(() => chat.session.value?.attachments ?? []);
+
+// The server is the source of truth for "a turn is running": chat.opened carries it, so a window
+// attaching mid-turn shows Stop, and turns started elsewhere still disable this input.
+const turnActive = computed(() => !!chat.session.value?.turnActive);
+const ready = computed(() => store.connected && !!chat.session.value && !turnActive.value);
+
+// ── Growing input ────────────────────────────────────────────────────────────
+// Two rows for a one-liner, up to 16, then it scrolls. Chromium does this from CSS alone
+// (`field-sizing: content` + max-height in #input), so the manual path below only runs where that
+// property is missing — and only on input/paste/programmatic set, never on a timer.
+const MAX_ROWS = 16;
+const cssHandlesIt = typeof CSS !== "undefined" && CSS.supports?.("field-sizing", "content");
+
+function autosize() {
+  if (cssHandlesIt) return;
+  const el = textareaEl.value;
+  if (!el) return;
+  const cs = getComputedStyle(el);
+  const line = parseFloat(cs.lineHeight) || 20;
+  const chrome = el.offsetHeight - el.clientHeight            // borders
+    + parseFloat(cs.paddingTop) + parseFloat(cs.paddingBottom);
+  el.style.height = "auto";                                   // shrink first, or it only ever grows
+  el.style.height = Math.min(el.scrollHeight, line * MAX_ROWS + chrome) + "px";
+}
+
+/** Back to two rows — after a send, and whenever the text is replaced from outside. */
+function resetSize() {
+  const el = textareaEl.value;
+  if (el && !cssHandlesIt) el.style.height = "";
+}
+
+// A different chat means a different draft, and therefore a different height.
+watch(() => chat.chatId.value, () => nextTick(() => { resetSize(); autosize(); }));
 
 function addImageFiles(files: FileList | File[]) {
   for (const f of files) {
     if (!f.type.startsWith("image/")) continue;
     const reader = new FileReader();
-    reader.onload = () => { store.attachments.push(reader.result as string); };
+    // Resolve the target chat now, not in the callback: the read is async and the user may well have
+    // switched chats before it finishes.
+    const target = chat.session.value;
+    reader.onload = () => { target?.attachments.push(reader.result as string); };
     reader.readAsDataURL(f);
   }
 }
@@ -58,40 +106,33 @@ function onPaste(e: ClipboardEvent) {
 }
 
 function send() {
-  const t = text.value.trim();
-  if ((!t && !store.attachments.length) || !store.currentChat) return;
-  const images = store.attachments.slice();
-  uiBus.emit("local.userMsg", { text: t, images });
-  text.value = "";
-  store.turnActiveByChat[store.currentChat] = true;
-  client.send("chat.send", { chatId: store.currentChat, text: t, images }, { projectId: store.currentProjectId ?? undefined });
-  store.attachments = [];
-  nextTick(() => textareaEl.value?.focus());
+  const s = chat.session.value;
+  if (!s) return;
+  const t = s.draft.trim();
+  if (!t && !s.attachments.length) return;
+
+  const images = s.attachments.slice();
+  addLocalUserMessage(s, t, images);
+  s.draft = "";
+  s.attachments = [];
+  s.turnActive = true;
+  chat.send("chat.send", { text: t, images });
+  nextTick(() => { resetSize(); textareaEl.value?.focus(); });
 }
+
 function stop() {
-  if (store.currentChat) client.send("cancel", null, { chatId: store.currentChat });
+  const id = chat.chatId.value;
+  if (id) client.send("cancel", null, { chatId: id });
 }
 
 // Rewind pulls the removed user message back into the composer for editing.
 const offComposerSet = uiBus.on("composer.set", p => {
-  text.value = (p as { text: string }).text;
-  nextTick(() => textareaEl.value?.focus());
+  if (chat.session.value) chat.session.value.draft = (p as { text: string }).text;
+  nextTick(() => { resetSize(); autosize(); textareaEl.value?.focus(); });
 });
 
-// Server-side signals are the source of truth for the in-flight flag: turns started outside
-// this composer (auto-run demos, another window, reconnect mid-turn) must still show Stop.
-function markActive(env: { chatId?: string }) {
-  const chatId = env.chatId ?? store.currentChat;
-  if (chatId) store.turnActiveByChat[chatId] = true;
-}
-const offTurnStart = client.on("llm.turn.start", (_p, env) => markActive(env));
-const offToolStart = client.on("tool.started", (_p, env) => markActive(env));
+// The input becoming usable again is the moment to put the caret back in it.
+watch(ready, on => { if (on) nextTick(() => textareaEl.value?.focus()); });
 
-const offTurn = client.on("turn.complete", (_p, env) => {
-  const chatId = env.chatId;
-  if (chatId) store.turnActiveByChat[chatId] = false;
-  else if (store.currentChat) store.turnActiveByChat[store.currentChat] = false;
-  if (!chatId || chatId === store.currentChat) nextTick(() => textareaEl.value?.focus());
-});
-onUnmounted(() => { offTurn(); offTurnStart(); offToolStart(); offComposerSet(); });
+onUnmounted(offComposerSet);
 </script>

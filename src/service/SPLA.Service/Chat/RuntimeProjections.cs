@@ -25,14 +25,17 @@ public static class RuntimeProjections
             })
             .ToList();
 
-    /// <summary>All chats on disk, most-recent first, as wire summaries.</summary>
+    /// <summary>All chats on disk, most-recent first, as wire summaries. <c>TurnActive</c> is read via
+    /// <see cref="ChatRegistry.Peek"/>, which never loads a chat: a chat nobody has opened cannot be
+    /// running a turn, so "not open" and "not running" are the same answer here.</summary>
     public static List<ChatSummaryDto> List(this ChatRegistry chats)
         => chats.Runtime.ChatManager.ListChats()
             .Select(c => new ChatSummaryDto
             {
                 Id = c.Id,
                 Title = c.Title,
-                UpdatedAt = c.UpdatedAt.ToString("o")
+                UpdatedAt = c.UpdatedAt.ToString("o"),
+                TurnActive = chats.Peek(c.Id)?.IsTurnRunning ?? false
             })
             .ToList();
 }

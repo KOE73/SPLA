@@ -11,7 +11,8 @@ internal sealed class ChatHandlers : IMessageHandler
     public IEnumerable<string> HandledTypes =>
     [
         MessageTypes.ChatList, MessageTypes.ChatNew, MessageTypes.ChatRename, MessageTypes.ChatDelete,
-        MessageTypes.ChatOpen, MessageTypes.ChatWatch, MessageTypes.ChatSend, MessageTypes.ChatSettings,
+        MessageTypes.ChatOpen, MessageTypes.ChatWatch, MessageTypes.ChatUnwatch,
+        MessageTypes.ChatSend, MessageTypes.ChatSettings,
         MessageTypes.ChatRewind, MessageTypes.ChatFork,
         MessageTypes.ChatSkillActivate, MessageTypes.ChatSkillDeactivate,
         MessageTypes.ChatToolSetDeactivate, MessageTypes.ChatDoubtClear,
@@ -25,6 +26,7 @@ internal sealed class ChatHandlers : IMessageHandler
         MessageTypes.ChatDelete   => Delete(ctx),
         MessageTypes.ChatOpen     => Open(ctx),
         MessageTypes.ChatWatch    => Watch(ctx),
+        MessageTypes.ChatUnwatch  => Unwatch(ctx),
         MessageTypes.ChatSend     => Send(ctx),
         MessageTypes.ChatSettings => Settings(ctx),
         MessageTypes.ChatRewind   => Rewind(ctx),
@@ -62,7 +64,12 @@ internal sealed class ChatHandlers : IMessageHandler
     {
         var (entry, projectId) = ctx.Session.Resolve(ctx.Env);
         var p = ctx.Payload<ChatDeletePayload>();
-        if (p != null) { entry.Chats.Delete(p.ChatId); await BroadcastChatList(ctx, projectId, entry.Chats); }
+        if (p != null)
+        {
+            entry.Chats.Delete(p.ChatId);
+            ctx.Session.MarkChatClosed(p.ChatId);   // nothing left to watch
+            await BroadcastChatList(ctx, projectId, entry.Chats);
+        }
     }
 
     private static async Task Open(RequestContext ctx)
@@ -81,6 +88,21 @@ internal sealed class ChatHandlers : IMessageHandler
         ctx.Session.Resolve(ctx.Env);
         var p = ctx.Payload<ChatOpenPayload>();
         if (!string.IsNullOrEmpty(p?.ChatId)) ctx.Session.MarkChatOpen(p.ChatId);
+        return Task.CompletedTask;
+    }
+
+    /// <summary>
+    /// Stops sending this chat's turn events to this connection.
+    ///
+    /// <para>Deliberately explicit rather than implied by opening another chat: a chat whose turn is
+    /// still running keeps streaming into the client's background session for that chat, which is the
+    /// entire point of being able to switch away mid-answer. The client is the only side that knows
+    /// when it has stopped keeping that session — so the client says so, here.</para>
+    /// </summary>
+    private static Task Unwatch(RequestContext ctx)
+    {
+        var p = ctx.Payload<ChatOpenPayload>();
+        if (!string.IsNullOrEmpty(p?.ChatId)) ctx.Session.MarkChatClosed(p.ChatId);
         return Task.CompletedTask;
     }
 

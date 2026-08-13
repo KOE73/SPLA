@@ -120,8 +120,19 @@ const offOpen = uiBus.on("debug.open", () => {
   request("kv.session");
 });
 
+// A tear-off panel follows the focused chat, so it watches one chat at a time — and must drop the
+// previous one. Without that, a window left open all day accumulates watches and keeps receiving the
+// turn events of every chat it has ever followed.
+let watched: string | null = null;
+
 function watchAndReload() {
-  if (store.currentChat) client.send("chat.watch", { chatId: store.currentChat }, { projectId: store.currentProjectId ?? undefined });
+  const next = store.currentChat;
+  if (next !== watched) {
+    const extra = { projectId: store.currentProjectId ?? undefined };
+    if (watched) client.send("chat.unwatch", { chatId: watched }, extra);
+    if (next) client.send("chat.watch", { chatId: next }, extra);
+    watched = next;
+  }
   reload();
 }
 const offWelcome = solo ? client.on("welcome", watchAndReload) : () => {};

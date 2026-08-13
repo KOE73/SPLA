@@ -43,6 +43,26 @@ public sealed class ChatRuntime
     public ChatSession Session => _chat;
     public IReadOnlyList<ChatMessage> Messages => _conversation.Messages;
 
+    private int _turnsInFlight;
+
+    /// <summary>True while a turn is running (or queued) in this chat. Chat-level truth, deliberately:
+    /// a turn is gated by the CHAT, not by the connection that started it, so a window opening this
+    /// chat mid-turn (another window, a reload, a second user) can show Stop instead of an input that
+    /// looks ready. Counted rather than read off the gate so a turn still waiting for the gate also
+    /// reads as busy — to the person looking at the chat there is no difference.</summary>
+    public bool IsTurnRunning => Volatile.Read(ref _turnsInFlight) > 0;
+
+    private int _bubbleSeq;
+
+    /// <summary>
+    /// The next streaming-bubble index for this chat, monotonic for the chat's whole life.
+    /// <para>It lives here rather than in the caller's per-turn state because a per-turn counter
+    /// restarted at zero on every turn: the second turn's first bubble reused the first turn's key, so
+    /// two live bubbles in one chat shared an identity and the client's stream bookkeeping collided.
+    /// On the chat means it is also correct when two connections drive the same chat.</para>
+    /// </summary>
+    public int NextBubbleIndex() => Interlocked.Increment(ref _bubbleSeq);
+
     /// <summary>The skill running in this chat, or null when idle.</summary>
     public string? ActiveSkillId => _skillSession.ActiveSkillId;
 
@@ -286,7 +306,13 @@ public sealed class ChatRuntime
         IReadOnlyList<string>? images = null,
         Action<ChatMessage>? onUserMessage = null)
     {
-        await _turnGate.WaitAsync(cancellationToken);
+        // Counted here — synchronously, before the first await — so a caller that hands this task to a
+        // host can broadcast "this chat is busy" the instant it starts it, with no window in which the
+        // chat still claims to be idle.
+        Interlocked.Increment(ref _turnsInFlight);
+        try { await _turnGate.WaitAsync(cancellationToken); }
+        catch { Interlocked.Decrement(ref _turnsInFlight); throw; }
+
         try
         {
             var userMsg = new ChatMessage
@@ -333,6 +359,7 @@ public sealed class ChatRuntime
         finally
         {
             _turnGate.Release();
+            Interlocked.Decrement(ref _turnsInFlight);
         }
     }
 

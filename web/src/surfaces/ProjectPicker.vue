@@ -56,6 +56,7 @@ import { computed, onMounted, ref } from "vue";
 import { client } from "../protocol/SplaClient";
 import { store } from "../state/store";
 import { setCurrentProject } from "../state/project";
+import { forgetAllSessions } from "../state/chatSessions";
 import type { ProjectContextPayload, ProjectListResultPayload } from "../protocol/types";
 import ProjectListItem from "./ProjectListItem.vue";
 
@@ -130,6 +131,7 @@ function applyContext(ctx: ProjectContextPayload) {
   if (ctx.theme) store.theme = ctx.theme;
   store.currentChat = null;
   store.chats = [];
+  forgetAllSessions();   // the other project's chats are not reachable from here
   client.send("chat.list", null, { projectId: ctx.projectId });
   close();
 }

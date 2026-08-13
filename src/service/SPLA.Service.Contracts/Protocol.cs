@@ -73,6 +73,12 @@ public static class MessageTypes
     /// <see cref="ChatOpen"/> (no chat.opened echo) — used by solo windows (e.g. a tear-off debug
     /// panel) that follow the main window's focus and need turn/tool events but never "open" a chat.</summary>
     public const string ChatWatch = "chat.watch";
+    /// <summary>Drops this connection's watch on a chat: no more turn/tool/usage events for it.
+    /// <para>The client decides when — it is the only side that knows whether it still has somewhere
+    /// to put the events. Opening another chat is deliberately NOT enough: a chat with a turn in
+    /// flight keeps streaming into its own background session, and that is the whole point of being
+    /// able to switch away mid-answer. What ends a watch is the client dropping that session.</para></summary>
+    public const string ChatUnwatch = "chat.unwatch";
     public const string ChatNew = "chat.new";
     public const string ChatRename = "chat.rename";
     public const string ChatDelete = "chat.delete";
