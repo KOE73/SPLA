@@ -1,5 +1,7 @@
 <template>
   <div class="chat-item" :class="{ active }" @click="$emit('select', chat.id)">
+    <!-- Where work is happening — including a turn another window or another user started. -->
+    <span v-if="chat.turnActive" class="busy" title="A turn is running in this chat">●</span>
     <span class="t">{{ chat.title || chat.id }}</span>
     <span class="x" title="Rename" @click.stop="$emit('rename', chat)">✎</span>
     <span class="x" title="Delete" @click.stop="$emit('delete', chat.id)">✕</span>
@@ -28,6 +30,8 @@ defineEmits<{ select: [id: string]; rename: [chat: ChatSummary]; delete: [id: st
 .chat-item:hover { background: color-mix(in srgb, var(--text) 6%, transparent); }
 .chat-item.active { background: var(--accent-soft); color: var(--accent); }
 .chat-item .t { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.chat-item .busy { color: var(--accent); font-size: 8px; flex-shrink: 0; animation: chat-busy 1.4s ease-in-out infinite; }
+@keyframes chat-busy { 0%, 100% { opacity: .25; } 50% { opacity: 1; } }
 .chat-item .x { color: var(--muted); opacity: 0; font-size: var(--fs-xs); padding: 0 2px; flex-shrink: 0; }
 .chat-item:hover .x { opacity: .8; }
 .chat-item .x:hover { color: var(--danger); }

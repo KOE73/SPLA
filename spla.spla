@@ -1,6 +1,5 @@
 version: 1
 name: SPLA
-workspace: .
 agent:
   mode: Agent
   instructions:

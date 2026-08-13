@@ -1,4 +1,4 @@
-using SPLA.Domain.Models;
+﻿using SPLA.Domain.Models;
 using SPLA.Domain.Interfaces;
 using SPLA.Domain.Tools;
 using SPLA.MCP.Core.Interfaces;
@@ -33,10 +33,16 @@ public class McpHost : IToolHost
     /// </summary>
     private readonly ToolCallDelegate _pipeline;
 
+    /// <summary>What has moved between perimeters in this process, counted while nothing is being
+    /// refused. Read by the debug view; the source of the defaults enforcement will eventually be
+    /// chosen from.</summary>
+    public SPLA.MCP.Core.Security.EdgeLedger Edges { get; } = new();
+
     public McpHost(
         IPermissionManager permissionManager,
         SPLA.MCP.Core.Plugins.PluginManager? pluginManager = null,
-        ILogger<McpHost>? logger = null)
+        ILogger<McpHost>? logger = null,
+        Func<string?, SPLA.Domain.Security.Zone>? zoneOfPath = null)
     {
         _permissionManager = permissionManager;
         _pluginManager = pluginManager;
@@ -48,6 +54,13 @@ public class McpHost : IToolHost
             .Use(new ToolSetDisclosureStage(ToolSetRefusal, logger))
             .Use(new TelemetryStage(logger))
             .Use(new PermissionStage(permissionManager, logger))
+            // Beside the permission check, not inside it: both answer "may this happen" from
+            // different ends, and when the verdict eventually moves onto the edge it moves into a
+            // neighbour rather than into a stranger.
+            .Use(new ZoneShadowStage(
+                new SPLA.MCP.Core.Security.EdgeClassifier(
+                    zoneOfPath ?? (_ => SPLA.Domain.Security.Zone.Unknown)),
+                Edges, logger))
             .Use(new AmbientHostStage(this))
             .Use(new ProgressNodeStage())
             .Use(new FaultStage(logger))

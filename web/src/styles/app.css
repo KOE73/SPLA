@@ -56,7 +56,6 @@ button { font: inherit; cursor: pointer; }
 #status label { display: flex; gap: 5px; align-items: center; }
 #status select { background: var(--bg); color: var(--text); border: 1px solid var(--border);
   border-radius: var(--radius-sm); padding: 2px 4px; font: inherit; font-size: var(--fs-sm); }
-#dot { color: var(--danger); } #dot.on { color: var(--ok); }
 
 /* Context-budget pill: last call's occupancy as a fraction of the model's operative window (or just
    the raw count when the window is unknown). Quiet until it matters; exact in/out sits in the title. */
@@ -189,8 +188,12 @@ body.hide-reasoning .reasoning { display: none; }
 #attachments .thumb .rm { position: absolute; top: 0; right: 0; background: rgba(0,0,0,.55); color: #fff;
   border: 0; font-size: 11px; line-height: 1; padding: 2px 5px; border-radius: 0 0 0 var(--radius-sm); }
 #composer .row { display: flex; gap: 8px; align-items: flex-end; }
+/* Grows with the text, 2 rows to 16, then scrolls. `field-sizing` does it with no JS at all in
+   Chromium (which is what the native shell embeds); Composer.vue measures by hand elsewhere. */
 #input { flex: 1; resize: none; background: var(--bg); color: var(--text);
-  border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 9px 11px; font: inherit; }
+  border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 9px 11px; font: inherit;
+  line-height: 1.45; field-sizing: content; min-height: calc(2 * 1.45em + 20px);
+  max-height: calc(16 * 1.45em + 20px); overflow-y: auto; }
 #input:focus { outline: none; border-color: var(--accent); }
 .icon-btn { background: transparent; border: 1px solid var(--border); color: var(--muted);
   border-radius: var(--radius-sm); width: 38px; height: 38px; font-size: 18px; }
@@ -216,6 +219,12 @@ body.hide-reasoning .reasoning { display: none; }
 .kv-row { display: flex; gap: 8px; padding: 3px 0; border-bottom: 1px solid color-mix(in srgb, var(--border) 50%, transparent); }
 .kv-row .k { color: var(--accent); min-width: 140px; max-width: 200px; overflow: hidden; text-overflow: ellipsis; }
 .kv-row .v { color: var(--text); white-space: pre-wrap; overflow-wrap: anywhere; }
+/* Origin column. Muted by default because most rows have nothing to say; the doubtful ones are the
+   only thing here worth catching an eye, so they are the only thing coloured. */
+.kv-row .o, .kv-head .o { min-width: 110px; max-width: 150px; overflow: hidden; text-overflow: ellipsis; color: var(--muted); }
+.kv-row .o.doubtful { color: var(--danger, #d9534f); }
+.kv-head { display: flex; gap: 8px; padding: 3px 0; border-bottom: 1px solid var(--border); color: var(--muted); text-transform: lowercase; }
+.kv-head .k { min-width: 140px; max-width: 200px; }
 
 /* ── Composition manifest (debug → prompt) ────────────────────────────────────
    One row per contribution: who contributed it, which piece, where it goes, what
@@ -490,3 +499,21 @@ input.locked { opacity: 0.6; cursor: default; background: var(--bg); }
 ::-webkit-scrollbar { width: 10px; height: 10px; }
 ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 6px; }
 ::-webkit-scrollbar-track { background: transparent; }
+
+/* Chat doubt indicator. Absent entirely when there is nothing to say — a control that is always
+   there is a control nobody sees. Raised, it is deliberately louder than the tidy connection dot
+   beside it: the whole value of this mark is being noticed the one time it matters. */
+.doubt { display: inline-flex; align-items: center; gap: 6px; padding: 1px 8px; cursor: pointer;
+         border: 1px solid var(--danger, #d9534f); border-radius: 999px; background: transparent;
+         color: var(--danger, #d9534f); font: inherit; }
+.doubt:hover { background: color-mix(in srgb, var(--danger, #d9534f) 12%, transparent); }
+.doubt-mark { font-size: 1.15em; line-height: 1; }
+
+/* Edge ledger. The movement is the row's subject, so it gets the width; everything else is a
+   qualifier. Only outward rows are coloured — if the ordinary ones were too, nothing would stand
+   out and the colour would say nothing. */
+.kv-row .e-move, .kv-head .e-move { min-width: 240px; max-width: 300px; color: var(--text); }
+.kv-row .e-move.outward { color: var(--danger, #d9534f); }
+.kv-row .e-eff, .kv-head .e-eff { min-width: 60px; color: var(--muted); }
+.kv-row .e-n, .kv-head .e-n { min-width: 48px; text-align: right; color: var(--muted); }
+.edge-empty { color: var(--muted); padding: 6px 0; }

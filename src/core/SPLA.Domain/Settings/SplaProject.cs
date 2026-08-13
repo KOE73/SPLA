@@ -14,8 +14,10 @@ public class SplaProject
     [YamlMember(Alias = "name")]
     public string? Name { get; set; }
 
-    [YamlMember(Alias = "workspace")]
-    public string? Workspace { get; set; }
+    // No `workspace:` field. The project root IS the directory holding this manifest — there is one
+    // definition and it is not configurable, because a second one is a second answer to "where does
+    // the agent work", and every boundary drawn on the first is void the moment the second wins.
+    // Old manifests still carrying the key load fine: the deserializer ignores unmatched properties.
 
     [YamlMember(Alias = "agent")]
     public SplaAgentSection? Agent { get; set; }

@@ -1,10 +1,12 @@
-using SPLA.Domain.Agent;
+﻿using SPLA.Domain.Agent;
 using SPLA.Domain.Models;
 using SPLA.MCP.Core.Interfaces;
 using SPLA.MCP.Core.Json;
 using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
+
+using System.Linq;
 
 namespace SPLA.MCP.Core.Tools;
 
@@ -53,9 +55,15 @@ public sealed class AgentMemoryGetTool : IMcpTool
 
             var store = AgentMemoryHelpers.SelectStore(_project, scope);
             if (store is null) return Task.FromResult(ToolResult.Refuse("error: no active chat session", "no chat session"));
-            return Task.FromResult(ToolResult.Text(store.Get(key) is { } v
-                ? v
-                : $"not_found: [{store.Scope}] {key}"));
+            var entry = store.Entries().FirstOrDefault(e => e.Key == key);
+            if (entry is null) return Task.FromResult(ToolResult.Text($"not_found: [{store.Scope}] {key}"));
+
+            // Reading a labelled entry carries its label into this chat. Without it the project store
+            // launders: written in a chat that had been on the open web, read back in a fresh one.
+            if (entry.Origin is { } origin)
+                AgentSessionScope.Current?.Doubt.Observe(origin, $"memory:{key}");
+
+            return Task.FromResult(ToolResult.Text(entry.Value));
         }
         catch (JsonException) { return Task.FromResult(ToolResult.Fail("error: invalid_json", "invalid json")); }
     }

@@ -1,4 +1,5 @@
 using System.Text.Json;
+using SPLA.Domain.Host;
 using SPLA.Plugins.OneC.Graph;
 using SPLA.Plugins.OneC.Indexing;
 using SPLA.Plugins.OneC.Models;
@@ -159,16 +160,10 @@ public sealed class OneCWebActions(string databasePath, string workspacePath)
 
     private string ResolveWorkspacePath(string path)
     {
-        var candidate = Path.GetFullPath(Path.IsPathRooted(path) ? path : Path.Combine(_workspacePath, path));
-        var relative = Path.GetRelativePath(_workspacePath, candidate);
-        if (Path.IsPathRooted(relative)
-            || relative.Equals("..", StringComparison.Ordinal)
-            || relative.StartsWith($"..{Path.DirectorySeparatorChar}", StringComparison.Ordinal))
-        {
+        if (!new PathBoundary(_workspacePath).TryResolve(path, out var full, out _))
             throw new InvalidOperationException("The configuration dump must be inside the project workspace.");
-        }
 
-        return candidate;
+        return full;
     }
 
     private static object BuildTreeNode(

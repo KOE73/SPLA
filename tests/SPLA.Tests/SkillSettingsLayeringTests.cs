@@ -1,4 +1,4 @@
-using SPLA.Domain.Settings;
+﻿using SPLA.Domain.Settings;
 
 namespace SPLA.Tests;
 
@@ -114,7 +114,7 @@ public class SkillSettingsLayeringTests
                   path: /srv/shared-skills
                   trust: untrusted
                   label: Shared
-                - id: local
+                - id: repo
                   enabled: false
               items:
                 network.host-audit:
@@ -132,7 +132,7 @@ public class SkillSettingsLayeringTests
         Assert.Equal("Shared", project.Skills.Sources[0].Label);
 
         // Switching an inherited branch off is a complete statement on its own: no type, no path.
-        Assert.Equal("local", project.Skills.Sources[1].Id);
+        Assert.Equal("repo", project.Skills.Sources[1].Id);
         Assert.False(project.Skills.Sources[1].Enabled);
         Assert.Null(project.Skills.Sources[1].Path);
 

@@ -1,6 +1,10 @@
 # `.spla` Project File Format
 
-The `.spla` file is the entry point for a project. Double-click it (or pass it as an argument) to launch SPLA with full project context — workspace, mode, instructions, and permissions.
+The `.spla` file is the entry point for a project. Double-click it (or pass it as an argument) to launch SPLA with full project context — mode, instructions, and permissions.
+
+**The project root is the directory this file sits in.** It is not configurable and there is no
+field for it: a second definition of "where the agent works" would make every boundary drawn on the
+first one negotiable. Manifests still carrying the old `workspace:` key load fine — it is ignored.
 
 ## Example
 
@@ -8,8 +12,6 @@ The `.spla` file is the entry point for a project. Double-click it (or pass it a
 version: 1
 
 name: My Project
-
-workspace: .
 
 agent:
   mode: Edit
@@ -51,9 +53,8 @@ ignore:
 |-------|----------|-------------|
 | `version` | Yes | Format version. Currently `1`. |
 | `name` | No | Human-readable project name. |
-| `workspace` | No | Working directory, relative to the `.spla` file. Default: `.` |
 | `agent.mode` | No | Default mode: `Chat`, `Research`, `Inspect`, `Edit`, `Agent`. |
-| `agent.instructions` | No | Markdown files injected into the system prompt. Paths relative to workspace. |
+| `agent.instructions` | No | Markdown files injected into the system prompt. Paths relative to the project root. |
 | `agent.capabilities` | No | Enabled built-in `core.*` capabilities. Missing = all; `[]` = pure chat with no built-in tools. |
 | `llm.provider` | No | LLM provider. Currently only `lmstudio`. |
 | `llm.endpoint` | No | API base URL. |
@@ -77,7 +78,7 @@ Each layer only overrides the keys it explicitly sets. Missing keys inherit from
 
 ## Global Defaults
 
-Located at `~/.spla/defaults.yaml`. Same YAML format but without project-specific fields (`workspace`, `instructions`, `docs`, `ignore`).
+Located at `~/.spla/defaults.yaml`. Same YAML format but without project-specific fields (`instructions`, `docs`, `ignore`).
 
 ```yaml
 version: 1

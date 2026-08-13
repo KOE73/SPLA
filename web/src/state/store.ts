@@ -1,15 +1,19 @@
 import { reactive } from "vue";
 import type { ChatSummary, ProjectDescriptor } from "../protocol/types";
 
+/**
+ * Application state: what is true of this window and this connection, never of one chat.
+ *
+ * Per-chat state (log, draft, attachments, in-flight turn, context budget, active skill, tool sets,
+ * doubt) lives in state/chatSessions — one session per chat, so a background chat's traffic has
+ * somewhere of its own to land instead of overwriting whatever is on screen.
+ */
 export const store = reactive({
   connected: false,
   currentChat: null as string | null,
   chats: [] as ChatSummary[],
-  attachments: [] as string[],
-  /** chatId → turn in flight; drives per-chat Send/Stop and input enable state. */
-  turnActiveByChat: {} as Record<string, boolean>,
   workspacePath: null as string | null,
-  /** Authenticated user (server mode); null on local/embedded → identity badge hidden. */
+  /** Authenticated user (server mode); null on local/embedded → identity row hidden. */
   userName: null as string | null,
   theme: (localStorage.getItem("spla.theme") || "dark") as string,
 

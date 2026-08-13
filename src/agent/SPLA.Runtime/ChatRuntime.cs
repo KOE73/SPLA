@@ -1,4 +1,4 @@
-using Microsoft.Extensions.Logging;
+﻿using Microsoft.Extensions.Logging;
 using SPLA.Agent;
 using SPLA.Domain.Agent;
 using SPLA.Domain.Models;
@@ -42,6 +42,26 @@ public sealed class ChatRuntime
     public string Title => _chat.Title;
     public ChatSession Session => _chat;
     public IReadOnlyList<ChatMessage> Messages => _conversation.Messages;
+
+    private int _turnsInFlight;
+
+    /// <summary>True while a turn is running (or queued) in this chat. Chat-level truth, deliberately:
+    /// a turn is gated by the CHAT, not by the connection that started it, so a window opening this
+    /// chat mid-turn (another window, a reload, a second user) can show Stop instead of an input that
+    /// looks ready. Counted rather than read off the gate so a turn still waiting for the gate also
+    /// reads as busy — to the person looking at the chat there is no difference.</summary>
+    public bool IsTurnRunning => Volatile.Read(ref _turnsInFlight) > 0;
+
+    private int _bubbleSeq;
+
+    /// <summary>
+    /// The next streaming-bubble index for this chat, monotonic for the chat's whole life.
+    /// <para>It lives here rather than in the caller's per-turn state because a per-turn counter
+    /// restarted at zero on every turn: the second turn's first bubble reused the first turn's key, so
+    /// two live bubbles in one chat shared an identity and the client's stream bookkeeping collided.
+    /// On the chat means it is also correct when two connections drive the same chat.</para>
+    /// </summary>
+    public int NextBubbleIndex() => Interlocked.Increment(ref _bubbleSeq);
 
     /// <summary>The skill running in this chat, or null when idle.</summary>
     public string? ActiveSkillId => _skillSession.ActiveSkillId;
@@ -143,6 +163,12 @@ public sealed class ChatRuntime
     public IEnumerable<(string Key, string Value)> SessionKvEntries
         => _sessionKv.List().Select(e => (e.Key, e.Value));
 
+    /// <summary>This chat's session memory with origin labels (for the debug inspector).</summary>
+    public IReadOnlyList<SPLA.Domain.Agent.KvEntry> SessionKvOrigins => _sessionKv.Entries();
+
+    /// <summary>Whether this chat has taken in anything from a source nobody named.</summary>
+    public SPLA.Domain.Security.ChatDoubt Doubt => _agentSession.Doubt;
+
     /// <summary>This chat's data-channel blobs (for the debug inspector).</summary>
     public IReadOnlyList<BlobEntry> BlobEntries => _agentSession.Blobs.List();
 
@@ -208,7 +234,19 @@ public sealed class ChatRuntime
         // Restore this chat's session memory (survives restart) and feed live context:* each turn.
         _sessionKv.LoadFrom(chat.Kv);
 
-        _agentSession = new AgentSession(_sessionKv, _checkpoint, _skillSession, toolSets: _toolSetSession);
+        // The project's boundary, not a fresh passthrough: until now every chat got
+        // PassthroughSandbox.Default and the seam ran empty in production, so a sandbox existed in
+        // the type system and nowhere else.
+        _agentSession = new AgentSession(
+            _sessionKv, _checkpoint, _skillSession, sandbox: runtime.Sandbox, toolSets: _toolSetSession);
+
+        // A reopened chat is as doubtful as it was when it closed. Restored rather than recomputed:
+        // what raised the flag was an arrival, and arrivals do not happen again on load.
+        if (chat.Doubt.Count > 0)
+            _agentSession.Doubt.Restore(chat.Doubt.Select(d => new SPLA.Domain.Security.DoubtCause(
+                new SPLA.Domain.Security.DataOrigin(d.Zone, OperatorNamed: false),
+                d.What,
+                new DateTimeOffset(DateTime.SpecifyKind(d.At, DateTimeKind.Utc)))));
         _orchestrator = new ConversationOrchestrator(runtime.Llm, runtime.McpHost)
         {
             // Live context surface, recomposed on every iteration inside this turn's
@@ -268,7 +306,13 @@ public sealed class ChatRuntime
         IReadOnlyList<string>? images = null,
         Action<ChatMessage>? onUserMessage = null)
     {
-        await _turnGate.WaitAsync(cancellationToken);
+        // Counted here — synchronously, before the first await — so a caller that hands this task to a
+        // host can broadcast "this chat is busy" the instant it starts it, with no window in which the
+        // chat still claims to be idle.
+        Interlocked.Increment(ref _turnsInFlight);
+        try { await _turnGate.WaitAsync(cancellationToken); }
+        catch { Interlocked.Decrement(ref _turnsInFlight); throw; }
+
         try
         {
             var userMsg = new ChatMessage
@@ -315,6 +359,7 @@ public sealed class ChatRuntime
         finally
         {
             _turnGate.Release();
+            Interlocked.Decrement(ref _turnsInFlight);
         }
     }
 
@@ -376,6 +421,11 @@ public sealed class ChatRuntime
             });
         }
         _chat.Kv = _sessionKv.Snapshot();
+        // The flag rides with the history: it only ever goes up, and one that a reload clears is one
+        // anybody can clear by closing the window.
+        _chat.Doubt = _agentSession.Doubt.Causes
+            .Select(c => new ChatSessionDoubt { Zone = c.Origin.Zone, What = c.What, At = c.At.UtcDateTime })
+            .ToList();
         _runtime.ChatManager.SaveChat(_chat);
     }
 

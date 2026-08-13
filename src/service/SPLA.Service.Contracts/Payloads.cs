@@ -1,4 +1,4 @@
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using System.Text.Json;
 
 namespace SPLA.Service.Contracts;
@@ -42,6 +42,10 @@ public sealed class ChatSummaryDto
     public string Id { get; set; } = string.Empty;
     public string Title { get; set; } = string.Empty;
     public string UpdatedAt { get; set; } = string.Empty;
+
+    /// <summary>Whether a turn is running in this chat right now — so the list can show where work is
+    /// happening, including work started by another window or another user.</summary>
+    public bool TurnActive { get; set; }
 }
 
 /// <summary>One selectable option in a clarify request.</summary>
@@ -574,6 +578,10 @@ public static class DebugKinds
     public const string KvSession = "kv.session";
     public const string KvProject = "kv.project";
     public const string Blobs = "blobs";
+
+    /// <summary>What has moved between perimeters in this process, and how often. The visible half
+    /// of shadow mode — a mode you cannot see is a log file nobody reads.</summary>
+    public const string Edges = "edges";
     public const string LastContext = "context.last";
     public const string Prompt = "prompt";
 }
@@ -686,6 +694,38 @@ public sealed class ChatOpenedPayload
     /// <summary>Tool sets this chat can see, raised or merely announced. Same reason as the active
     /// skill: a window attaching mid-conversation has to show what the model can currently reach.</summary>
     public List<ToolSetStateDto> ToolSets { get; set; } = new();
+
+    /// <summary>Whether this chat has taken in anything from a source nobody named, and what did it.
+    /// Sent on open because the flag survives a reload — a window attaching to a chat that went to
+    /// the open web yesterday has to show it.</summary>
+    public ChatDoubtDto Doubt { get; set; } = new();
+
+    /// <summary>Whether a turn is running in this chat at the moment it is opened. Without this the
+    /// composer had to guess from events it happened to witness, so a window that attached mid-turn
+    /// (or a reload) offered Send on a chat that was busy.</summary>
+    public bool TurnActive { get; set; }
+}
+
+/// <summary>
+/// The chat's doubt flag and its causes. Causes travel with it because the person deciding whether
+/// to clear it needs to see what they are clearing — a bare red dot with no account of itself gets
+/// dismissed on reflex.
+/// </summary>
+public sealed class ChatDoubtDto
+{
+    public bool Raised { get; set; }
+    public List<ChatDoubtCauseDto> Causes { get; set; } = new();
+}
+
+public sealed class ChatDoubtCauseDto
+{
+    /// <summary>Zone it came from, e.g. <c>web:news.example.com</c>.</summary>
+    public string Zone { get; set; } = string.Empty;
+
+    /// <summary>What arrived — a URL, a handle, a memory key.</summary>
+    public string What { get; set; } = string.Empty;
+
+    public string At { get; set; } = string.Empty;
 }
 
 public sealed class DeltaPayload
@@ -831,6 +871,20 @@ public sealed class ChatSkillStatePayload
     public string? ActiveSkillId { get; set; }
 }
 
+/// <summary>A chat's doubt flag, broadcast to every window watching it — two windows on one chat
+/// must not disagree about whether it is marked.</summary>
+public sealed class ChatDoubtStatePayload
+{
+    public string ChatId { get; set; } = string.Empty;
+    public ChatDoubtDto Doubt { get; set; } = new();
+}
+
+/// <summary>Clears a chat's doubt flag.</summary>
+public sealed class ChatDoubtClearPayload
+{
+    public string ChatId { get; set; } = string.Empty;
+}
+
 /// <summary>
 /// One tool set as a chat currently sees it. Sets the user levelled off are never sent — for this
 /// chat they do not exist.
@@ -888,6 +942,9 @@ public sealed class ClarifyRequestPayload
 /// </summary>
 public sealed class DebugSnapshotPayload
 {
+    /// <summary>Traffic between perimeters, busiest first. Filled for <see cref="DebugKinds.Edges"/>.</summary>
+    public List<DebugEdgeDto>? Edges { get; set; }
+
     public string Kind { get; set; } = string.Empty;
     public List<DebugKvEntryDto>? Entries { get; set; }
     public List<DebugSegmentDto>? Segments { get; set; }
@@ -915,10 +972,35 @@ public sealed class ContextLineDto
     public bool InContext { get; set; }
 }
 
+/// <summary>One movement and how much has gone along it.</summary>
+public sealed class DebugEdgeDto
+{
+    public string Source { get; set; } = string.Empty;
+    public string Sink { get; set; } = string.Empty;
+    public string Effect { get; set; } = string.Empty;
+    public int Calls { get; set; }
+
+    /// <summary>Last tool that took this edge — what makes a surprising row explainable.</summary>
+    public string LastTool { get; set; } = string.Empty;
+
+    /// <summary>True when the movement crosses out of the project into somewhere else. Not a verdict:
+    /// nothing is being refused yet. It marks the rows a person should look at first.</summary>
+    public bool Outward { get; set; }
+}
+
 public sealed class DebugKvEntryDto
 {
     public string Key { get; set; } = string.Empty;
     public string Value { get; set; } = string.Empty;
+
+    /// <summary>Where the value came from, as a zone name — <c>internet</c>, <c>sql:&lt;fingerprint&gt;</c>.
+    /// Null when nothing was recorded. Its own column in the debug view rather than part of the
+    /// value: a label mixed into the text is a label nobody scans for.</summary>
+    public string? Origin { get; set; }
+
+    /// <summary>True when this entry's origin is one nobody named — the same bit that raises the
+    /// chat's flag. Carried separately so the view can mark it without re-deriving the rule.</summary>
+    public bool Doubtful { get; set; }
 }
 
 /// <summary>

@@ -2,8 +2,6 @@ version: 1
 
 name: Vision Agent Demo
 
-workspace: .
-
 agent:
   mode: Chat
   instructions:

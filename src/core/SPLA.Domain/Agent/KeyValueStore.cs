@@ -1,4 +1,4 @@
-namespace SPLA.Domain.Agent;
+﻿namespace SPLA.Domain.Agent;
 
 /// <summary>
 /// In-memory implementation of <see cref="IKeyValueStore"/>. Pure and dependency-free; persistence
@@ -8,6 +8,7 @@ namespace SPLA.Domain.Agent;
 public sealed class KeyValueStore : IKeyValueStore
 {
     private readonly Dictionary<string, string> _items = new(StringComparer.Ordinal);
+    private readonly Dictionary<string, Security.DataOrigin> _origins = new(StringComparer.Ordinal);
     private readonly object _lock = new();
 
     public KeyValueStore(string scope) => Scope = scope;
@@ -21,11 +22,18 @@ public sealed class KeyValueStore : IKeyValueStore
         lock (_lock) return _items.TryGetValue(key, out var v) ? v : null;
     }
 
-    public void Set(string key, string value)
+    public void Set(string key, string value) => Set(key, value, null);
+
+    public void Set(string key, string value, Security.DataOrigin? origin)
     {
         if (string.IsNullOrWhiteSpace(key))
             throw new ArgumentException("Key must not be empty.", nameof(key));
-        lock (_lock) _items[key] = value ?? string.Empty;
+        lock (_lock)
+        {
+            _items[key] = value ?? string.Empty;
+            // Overwriting relabels: the entry is the new value's, not a merge of both origins.
+            if (origin is null) _origins.Remove(key); else _origins[key] = origin;
+        }
         OnChanged();
     }
 
@@ -66,6 +74,15 @@ public sealed class KeyValueStore : IKeyValueStore
             return _items.OrderBy(kv => kv.Key, StringComparer.Ordinal).ToList();
     }
 
+    public IReadOnlyList<KvEntry> Entries()
+    {
+        lock (_lock)
+            return _items
+                .OrderBy(kv => kv.Key, StringComparer.Ordinal)
+                .Select(kv => new KvEntry(kv.Key, kv.Value, _origins.GetValueOrDefault(kv.Key)))
+                .ToList();
+    }
+
     /// <summary>Replaces all entries (used when loading from persistence). Fires <see cref="Changed"/> once.</summary>
     public void LoadFrom(IEnumerable<KeyValuePair<string, string>> entries)
     {
@@ -91,6 +108,26 @@ public sealed class KeyValueStore : IKeyValueStore
     public Dictionary<string, string> Snapshot()
     {
         lock (_lock) return new Dictionary<string, string>(_items, StringComparer.Ordinal);
+    }
+
+    /// <summary>Labels only, for persisting beside the values.
+    /// <para>Beside rather than inside: the values file is something a person reads and edits, and
+    /// folding a machine-written label into every line would spoil that for the sake of the few
+    /// entries that carry one. Same reasoning as grants living beside the list they extend.</para></summary>
+    public Dictionary<string, Security.DataOrigin> OriginSnapshot()
+    {
+        lock (_lock) return new Dictionary<string, Security.DataOrigin>(_origins, StringComparer.Ordinal);
+    }
+
+    /// <summary>Restores labels after the values have been loaded. Keys with no label stay unlabelled,
+    /// which is what a store written before labels existed looks like.</summary>
+    public void LoadOrigins(IEnumerable<KeyValuePair<string, Security.DataOrigin>> origins)
+    {
+        lock (_lock)
+        {
+            _origins.Clear();
+            foreach (var (key, origin) in origins) _origins[key] = origin;
+        }
     }
 
     private void OnChanged() => Changed?.Invoke(this, EventArgs.Empty);

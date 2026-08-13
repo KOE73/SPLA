@@ -2,8 +2,6 @@ version: 1
 
 name: Log Sentry Demo
 
-workspace: .
-
 agent:
   mode: Chat
   instructions:

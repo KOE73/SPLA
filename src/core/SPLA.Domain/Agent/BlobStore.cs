@@ -1,4 +1,4 @@
-namespace SPLA.Domain.Agent;
+﻿namespace SPLA.Domain.Agent;
 
 /// <summary>
 /// In-memory <see cref="IBlobStore"/>. Transient: blobs live only for the chat's runtime and are not
@@ -13,13 +13,13 @@ public sealed class BlobStore : IBlobStore
 
     public event EventHandler? Changed;
 
-    public string Put(BlobPayload payload, string? name = null)
+    public string Put(BlobPayload payload, string? name = null, Security.DataOrigin? origin = null)
     {
         if (payload is null) throw new ArgumentNullException(nameof(payload));
 
         var clean = string.IsNullOrWhiteSpace(name) ? null : Sanitize(name);
         var handle = HandlePrefix + (clean ?? Guid.NewGuid().ToString("N")[..8]);
-        var entry = new BlobEntry(handle, clean, payload.Kind, payload.Size, DateTimeOffset.UtcNow);
+        var entry = new BlobEntry(handle, clean, payload.Kind, payload.Size, DateTimeOffset.UtcNow, origin);
 
         lock (_lock) _items[handle] = (entry, payload);
         OnChanged();
@@ -30,6 +30,12 @@ public sealed class BlobStore : IBlobStore
     {
         var key = Normalize(handle);
         lock (_lock) return _items.TryGetValue(key, out var v) ? v.Payload : null;
+    }
+
+    public BlobEntry? Describe(string handle)
+    {
+        var key = Normalize(handle);
+        lock (_lock) return _items.TryGetValue(key, out var v) ? v.Entry : null;
     }
 
     public bool Delete(string handle)

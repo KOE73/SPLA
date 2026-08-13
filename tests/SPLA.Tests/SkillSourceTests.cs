@@ -1,4 +1,4 @@
-using SPLA.Domain.Settings;
+﻿using SPLA.Domain.Settings;
 using SPLA.Library;
 using SPLA.Library.Catalog;
 using SPLA.Library.Format;
@@ -295,7 +295,7 @@ public class SkillSourceTests : IDisposable
         var sources = SkillSourceRegistry.Build(null, context);
 
         // No builtin: an empty AppDirectory is how tests and embedded hosts drop the shipped branch.
-        Assert.Equal(["repo", "local", "machine"], sources.Select(s => s.Id));
+        Assert.Equal(["repo", "machine"], sources.Select(s => s.Id));
     }
 
     [Fact]
@@ -305,13 +305,13 @@ public class SkillSourceTests : IDisposable
         var context = new SkillSourceContext(_temp, Path.Combine(_temp, "home"), null, app);
 
         // It sits in the built-in set, in its declared position — not tacked on after the rest.
-        Assert.Equal(["repo", "local", "machine", "builtin"],
+        Assert.Equal(["repo", "machine", "builtin"],
             SkillSourceRegistry.Build(null, context).Select(s => s.Id));
 
         // And, being ordinary, it is switchable one at a time like any other branch.
         var withoutBuiltin = SkillSourceRegistry.Build(
             [new SplaSkillSourceSection { Id = "builtin", Enabled = false }], context);
-        Assert.Equal(["repo", "local", "machine"], withoutBuiltin.Select(s => s.Id));
+        Assert.Equal(["repo", "machine"], withoutBuiltin.Select(s => s.Id));
     }
 
     [Fact]
@@ -324,7 +324,7 @@ public class SkillSourceTests : IDisposable
             context);
 
         // The whole point of the change: adding a folder is one entry, and nothing was restated.
-        Assert.Equal(["repo", "local", "machine", "ops"], sources.Select(s => s.Id));
+        Assert.Equal(["repo", "machine", "ops"], sources.Select(s => s.Id));
     }
 
     [Fact]
@@ -333,9 +333,9 @@ public class SkillSourceTests : IDisposable
         var context = new SkillSourceContext(_temp, Path.Combine(_temp, "home"), null);
 
         var sources = SkillSourceRegistry.Build(
-            [new SplaSkillSourceSection { Id = "local", Enabled = false }], context);
+            [new SplaSkillSourceSection { Id = "repo", Enabled = false }], context);
 
-        Assert.Equal(["repo", "machine"], sources.Select(s => s.Id));
+        Assert.Equal(["machine"], sources.Select(s => s.Id));
     }
 
     [Fact]
@@ -364,7 +364,7 @@ public class SkillSourceTests : IDisposable
 
         // "machine" keeps its inherited position despite being touched last of the built-ins:
         // editing a label must not silently reorder the fond.
-        Assert.Equal(["repo", "local", "machine", "ops"], sources.Select(s => s.Id));
+        Assert.Equal(["repo", "machine", "ops"], sources.Select(s => s.Id));
         Assert.Equal("Renamed", sources.Single(s => s.Id == "machine").Label);
 
         // The overlay set only `level`; type, path and label survived from the entry underneath.
@@ -386,7 +386,7 @@ public class SkillSourceTests : IDisposable
             new SplaSkillSourceSection { Id = "ops", Type = "directory", Path = "ops-skills" }
         ], context);
 
-        Assert.Equal(["repo", "local", "machine", "ops"], sources.Select(s => s.Id));
+        Assert.Equal(["repo", "machine", "ops"], sources.Select(s => s.Id));
     }
 
     [Fact]
@@ -394,14 +394,14 @@ public class SkillSourceTests : IDisposable
     {
         var context = new SkillSourceContext(_temp, Path.Combine(_temp, "home"), null);
 
-        // Same folder as the built-in `local`, spelled the same way and named by nobody: the fallback
-        // resolves it to "local" and it overlays rather than arriving as a second branch.
+        // Same folder as the built-in `repo`, spelled the same way and named by nobody: the fallback
+        // resolves it to "repo" and it overlays rather than arriving as a second branch.
         var sources = SkillSourceRegistry.Build(
-            [new SplaSkillSourceSection { Type = "directory", Path = ".spla/skills", Label = "Drafts" }],
+            [new SplaSkillSourceSection { Type = "directory", Path = "skills", Label = "Drafts" }],
             context);
 
-        Assert.Equal(["repo", "local", "machine"], sources.Select(s => s.Id));
-        Assert.Equal("Drafts", sources.Single(s => s.Id == "local").Label);
+        Assert.Equal(["repo", "machine"], sources.Select(s => s.Id));
+        Assert.Equal("Drafts", sources.Single(s => s.Id == "repo").Label);
     }
 
     [Fact]
@@ -412,6 +412,6 @@ public class SkillSourceTests : IDisposable
 
         var sources = SkillSourceRegistry.Build(null, context, [pluginSource]);
 
-        Assert.Equal(["repo", "local", "machine", "plugin:network"], sources.Select(s => s.Id));
+        Assert.Equal(["repo", "machine", "plugin:network"], sources.Select(s => s.Id));
     }
 }

@@ -1,4 +1,4 @@
-using SPLA.MCP.Core.ToolSets;
+﻿using SPLA.MCP.Core.ToolSets;
 using SPLA.Runtime;
 using SPLA.Service.Contracts;
 
@@ -11,10 +11,11 @@ internal sealed class ChatHandlers : IMessageHandler
     public IEnumerable<string> HandledTypes =>
     [
         MessageTypes.ChatList, MessageTypes.ChatNew, MessageTypes.ChatRename, MessageTypes.ChatDelete,
-        MessageTypes.ChatOpen, MessageTypes.ChatWatch, MessageTypes.ChatSend, MessageTypes.ChatSettings,
+        MessageTypes.ChatOpen, MessageTypes.ChatWatch, MessageTypes.ChatUnwatch,
+        MessageTypes.ChatSend, MessageTypes.ChatSettings,
         MessageTypes.ChatRewind, MessageTypes.ChatFork,
         MessageTypes.ChatSkillActivate, MessageTypes.ChatSkillDeactivate,
-        MessageTypes.ChatToolSetDeactivate,
+        MessageTypes.ChatToolSetDeactivate, MessageTypes.ChatDoubtClear,
     ];
 
     public Task HandleAsync(RequestContext ctx) => ctx.Env.Type switch
@@ -25,6 +26,7 @@ internal sealed class ChatHandlers : IMessageHandler
         MessageTypes.ChatDelete   => Delete(ctx),
         MessageTypes.ChatOpen     => Open(ctx),
         MessageTypes.ChatWatch    => Watch(ctx),
+        MessageTypes.ChatUnwatch  => Unwatch(ctx),
         MessageTypes.ChatSend     => Send(ctx),
         MessageTypes.ChatSettings => Settings(ctx),
         MessageTypes.ChatRewind   => Rewind(ctx),
@@ -32,6 +34,7 @@ internal sealed class ChatHandlers : IMessageHandler
         MessageTypes.ChatSkillActivate => SkillActivate(ctx),
         MessageTypes.ChatSkillDeactivate => SkillDeactivate(ctx),
         MessageTypes.ChatToolSetDeactivate => ToolSetDeactivate(ctx),
+        MessageTypes.ChatDoubtClear => DoubtClear(ctx),
         _ => Task.CompletedTask
     };
 
@@ -61,7 +64,12 @@ internal sealed class ChatHandlers : IMessageHandler
     {
         var (entry, projectId) = ctx.Session.Resolve(ctx.Env);
         var p = ctx.Payload<ChatDeletePayload>();
-        if (p != null) { entry.Chats.Delete(p.ChatId); await BroadcastChatList(ctx, projectId, entry.Chats); }
+        if (p != null)
+        {
+            entry.Chats.Delete(p.ChatId);
+            ctx.Session.MarkChatClosed(p.ChatId);   // nothing left to watch
+            await BroadcastChatList(ctx, projectId, entry.Chats);
+        }
     }
 
     private static async Task Open(RequestContext ctx)
@@ -80,6 +88,21 @@ internal sealed class ChatHandlers : IMessageHandler
         ctx.Session.Resolve(ctx.Env);
         var p = ctx.Payload<ChatOpenPayload>();
         if (!string.IsNullOrEmpty(p?.ChatId)) ctx.Session.MarkChatOpen(p.ChatId);
+        return Task.CompletedTask;
+    }
+
+    /// <summary>
+    /// Stops sending this chat's turn events to this connection.
+    ///
+    /// <para>Deliberately explicit rather than implied by opening another chat: a chat whose turn is
+    /// still running keeps streaming into the client's background session for that chat, which is the
+    /// entire point of being able to switch away mid-answer. The client is the only side that knows
+    /// when it has stopped keeping that session — so the client says so, here.</para>
+    /// </summary>
+    private static Task Unwatch(RequestContext ctx)
+    {
+        var p = ctx.Payload<ChatOpenPayload>();
+        if (!string.IsNullOrEmpty(p?.ChatId)) ctx.Session.MarkChatClosed(p.ChatId);
         return Task.CompletedTask;
     }
 
@@ -187,6 +210,46 @@ internal sealed class ChatHandlers : IMessageHandler
         await ctx.Session.Hub.BroadcastToWatchersAsync(chat.ChatId, MessageTypes.ChatSkillState,
             new ChatSkillStatePayload { ChatId = chat.ChatId, ActiveSkillId = chat.ActiveSkillId });
     }
+
+    /// <summary>
+    /// Clears the chat's doubt flag on the person's say-so.
+    ///
+    /// <para>Only a person can: the model has no tool for this, and it must not get one, because a
+    /// mark that whatever it guards against can remove guards nothing. Clearing does not un-send
+    /// anything that already left — it only affects what gets asked from here on, which is what
+    /// bounds the cost of clearing it wrongly.</para>
+    /// </summary>
+    private static async Task DoubtClear(RequestContext ctx)
+    {
+        var (entry, _) = ctx.Session.Resolve(ctx.Env);
+        var p = ctx.Payload<ChatDoubtClearPayload>();
+        var chat = p != null ? entry.Chats.GetOrOpen(p.ChatId) : null;
+        if (chat == null) return;
+
+        chat.Doubt.Clear();
+
+        // Persisted immediately, not at the next turn: a person who cleared the flag and closed the
+        // window would otherwise find it back, and a decision that does not stick is not one.
+        chat.Save();
+
+        await ctx.Session.Hub.BroadcastToWatchersAsync(chat.ChatId, MessageTypes.ChatDoubtState,
+            new ChatDoubtStatePayload { ChatId = chat.ChatId, Doubt = DoubtDto(chat) });
+    }
+
+    /// <summary>The chat's flag as the wire carries it, causes included: a bare red dot with no
+    /// account of itself gets dismissed on reflex.</summary>
+    public static ChatDoubtDto DoubtDto(SPLA.Runtime.ChatRuntime chat) => new()
+    {
+        Raised = chat.Doubt.IsRaised,
+        Causes = chat.Doubt.Causes
+            .Select(c => new ChatDoubtCauseDto
+            {
+                Zone = c.Origin.Zone,
+                What = c.What,
+                At = c.At.ToString("o")
+            })
+            .ToList()
+    };
 
     /// <summary>
     /// Lowers a tool set the model (or a skill) raised in this chat. The person's control over what

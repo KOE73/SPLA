@@ -1,4 +1,4 @@
-using SPLA.Runtime;
+﻿using SPLA.Runtime;
 using System.Collections.Concurrent;
 using System.Net.WebSockets;
 using System.Text;
@@ -134,6 +134,7 @@ public sealed class ClientConnection : IClientSession
 
     void IClientSession.MarkProjectOpen(string projectId) => _openProjects[projectId] = 0;
     void IClientSession.MarkChatOpen(string chatId) => _openChats[chatId] = 0;
+    void IClientSession.MarkChatClosed(string chatId) => _openChats.TryRemove(chatId, out _);
 
     void IClientSession.StartTurn(
         AgentRuntime runtime, string projectId, ChatRuntime chat, string text, List<string>? images,
@@ -291,6 +292,12 @@ public sealed class ClientConnection : IClientSession
             Density = ctx.Density
         });
 
+        // Cached connection health, straight after the handshake: the project bar shows a health
+        // summary from its first frame, and no client has to ping anything to make dots appear.
+        var runtime = _registry.Open(projectId).Runtime;
+        await SendAsync(MessageTypes.ConnectionsHealth,
+            ConnectionDiagOps.GetCachedHealth(runtime.Settings.Connections, runtime.ConnectionHealth));
+
         await TryStartInitialChatAsync(hostStopping);
     }
 
@@ -334,7 +341,9 @@ public sealed class ClientConnection : IClientSession
             Mode = chat.ModeName,
             ModelId = chat.ModelId,
             ActiveSkillId = chat.ActiveSkillId,
-            ToolSets = ChatHandlers.ToolSetDtos(_registry.Open(DefaultProjectId), chat)
+            ToolSets = ChatHandlers.ToolSetDtos(_registry.Open(DefaultProjectId), chat),
+            Doubt = ChatHandlers.DoubtDto(chat),
+            TurnActive = chat.IsTurnRunning
         }, chat.ChatId);
     }
 
@@ -364,7 +373,7 @@ public sealed class ClientConnection : IClientSession
         string? error = null;
         try
         {
-            await chat.SendAsync(
+            var send = chat.SendAsync(
                 text,
                 callbacks,
                 (def, args) => RequestPermissionAsync(chat.ChatId, def, args, turnCts.Token),
@@ -378,6 +387,12 @@ public sealed class ClientConnection : IClientSession
                         CreatedAt = m.CreatedAt.ToString("o"),
                         Text = text
                     }));
+
+            // SendAsync counts the turn before its first await, so the chat already reports itself
+            // busy here — the sidebar marks where work is happening, including for clients that are
+            // not watching this chat and would otherwise never learn of it.
+            await BroadcastChatListAsync(projectId);
+            await send;
         }
         catch (OperationCanceledException) { /* cancelled turn — reported below */ }
         catch (Exception ex)
@@ -402,7 +417,13 @@ public sealed class ClientConnection : IClientSession
         // and for the same reason: end of turn is when the person can see, and act on, what is still up.
         await _hub.BroadcastToWatchersAsync(chat.ChatId, MessageTypes.ChatToolSetState,
             new ChatToolSetStatePayload { ChatId = chat.ChatId, Sets = ChatHandlers.ToolSetDtos(_registry.Open(projectId), chat) });
+
+        await BroadcastChatListAsync(projectId);   // the chat is idle again — clear its mark
     }
+
+    private Task BroadcastChatListAsync(string projectId)
+        => _hub.BroadcastToProjectAsync(projectId, MessageTypes.ChatListResult,
+            new ChatListResultPayload { Chats = _registry.Open(projectId).Chats.List() });
 
     /// <summary>
     /// Turn events fan out to every connection watching the chat (via the hub), not just the sender —
@@ -420,7 +441,8 @@ public sealed class ClientConnection : IClientSession
             OnLlmTurnStart = context =>
             {
                 chat.CaptureLastContext(context);   // for the context.last debug snapshot
-                ctx.CurrentMsgIndex = ctx.NextIndex++;
+                // Indices come from the CHAT, not from this turn: see ChatRuntime.NextBubbleIndex.
+                ctx.CurrentMsgIndex = chat.NextBubbleIndex();
                 return ToWatchers(MessageTypes.LlmTurnStart, new DeltaPayload { MsgIndex = ctx.CurrentMsgIndex, Text = "" });
             },
             OnDelta = chunk => ToWatchers(MessageTypes.Delta, new DeltaPayload { MsgIndex = ctx.CurrentMsgIndex, Text = chunk }),
@@ -524,10 +546,11 @@ public sealed class ClientConnection : IClientSession
         }
     }
 
-    /// <summary>Per-turn mutable index bookkeeping for streaming assistant messages.</summary>
+    /// <summary>Per-turn mutable bookkeeping for streaming assistant messages. The bubble index itself
+    /// is the chat's (<see cref="ChatRuntime.NextBubbleIndex"/>); only "which bubble is streaming right
+    /// now" is per turn.</summary>
     private sealed class TurnContext
     {
-        public int NextIndex;
         public int CurrentMsgIndex;
         /// <summary>The model's operative context window (tokens) resolved at turn start; null = unknown.</summary>
         public int? ContextLength;

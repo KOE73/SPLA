@@ -1,13 +1,23 @@
+<!--
+  The CHAT's status line. Everything here is a property of the open chat and dies with it; connection,
+  project, user, connection health totals, usage and settings live in ProjectBar (sidebar footer).
+
+  The one deliberate crossover is the health dot next to the model picker: health is a property of the
+  connection, but the model is chosen PER CHAT, so the warning has to sit where that choice is made.
+-->
 <template>
-  <span><span id="dot" :class="{ on: store.connected }">●</span> <span id="conn">{{ connText }}</span></span>
-  <span id="project">{{ project }}</span>
+  <!-- Invisible when there is nothing to say. Raised, it is a mark you cannot miss rather than a
+       tidy dot: the whole value of the thing is being noticed the one time it matters. -->
+  <button v-if="doubt?.raised" class="doubt" :title="doubtTitle" @click="clearDoubt">
+    <span class="doubt-mark">●</span> untrusted content
+  </button>
   <label>mode
-    <select v-model="mode" :disabled="!store.currentChat" @change="onModeChange">
+    <select v-model="mode" :disabled="!session" @change="onModeChange">
       <option v-for="m in modes" :key="m" :value="m">{{ m }}</option>
     </select>
   </label>
   <label>model
-    <select v-model="modelId" :disabled="!store.currentChat" @change="onModelChange">
+    <select v-model="modelId" :disabled="!session" @change="onModelChange">
       <optgroup v-for="g in groups" :key="g.connectionId" :label="connEmoji(g.connectionId) + g.connectionName">
         <option v-for="m in g.models" :key="m.id" :value="m.id">{{ modelLabel(m) }}</option>
       </optgroup>
@@ -22,8 +32,6 @@
       @click.stop="toggleInfo"
     >i</button>
   </label>
-  <button class="filter" @click="openSettings">⚙</button>
-  <button class="filter" @click="uiBus.emit('debug.open')">debug</button>
   <span v-if="activeSkill" id="activeSkill" :title="`Skill '${activeSkill}' is running in this chat`">
     <span class="skill-label">skill: {{ activeSkill }}</span>
     <button class="skill-unload" title="End this skill" @click="unloadSkill">✕</button>
@@ -31,7 +39,7 @@
   <!-- Hand a skill to this chat yourself. Offered only when none is running, because a second
        activation is refused anyway — and hidden without a chat, since there is nothing to hand it to. -->
   <button
-    v-else-if="store.currentChat"
+    v-else-if="session"
     ref="skillBtn"
     class="filter"
     title="Give this chat a skill — costs no catalog in the prompt"
@@ -74,28 +82,42 @@
 <script setup lang="ts">
 import { computed, onUnmounted, ref } from "vue";
 import { client } from "../protocol/SplaClient";
-import { store } from "../state/store";
-import { uiBus } from "../state/uiBus";
+import { formatCompact } from "../util/format";
+import { useChat } from "../state/chatContext";
 import type { ConnHealth, ModelPickDto, ToolSetState } from "../protocol/types";
 import ProviderInfoPopup from "./ProviderInfoPopup.vue";
 import SkillPickerPopup from "./SkillPickerPopup.vue";
 
-const connText = ref("connecting…");
-const project = ref("");
+const chat = useChat();
+
+// Everything chat-scoped is READ from this chat's session — the session is where the demultiplexer
+// puts it, so no event handler in this file can be aimed at the wrong chat any more.
+const session = computed(() => chat.session.value);
+const doubt = computed(() => session.value?.doubt ?? null);
+const activeSkill = computed(() => session.value?.activeSkill ?? null);
+const toolSets = computed<ToolSetState[]>(() => session.value?.toolSets ?? []);
+const lastPrompt = computed(() => session.value?.lastPrompt ?? null);
+const lastCompletion = computed(() => session.value?.lastCompletion ?? null);
+const ctxUsed = computed(() => session.value?.ctxUsed ?? null);
+const ctxWindow = computed(() => session.value?.ctxWindow ?? null);
+
+// The two selects write through to the session so the pickers show this chat's own choice the moment
+// it is switched to, without waiting for the server's echo.
+const mode = computed({
+  get: () => session.value?.mode ?? "",
+  set: v => { if (session.value) session.value.mode = v; }
+});
+const modelId = computed({
+  get: () => session.value?.modelId ?? "",
+  set: v => { if (session.value) session.value.modelId = v; }
+});
+
+// App-level data the chat's pickers need: the catalogue of connections and their health.
 const modes = ref<string[]>([]);
-const mode = ref("");
 const picks = ref<ModelPickDto[]>([]);
-const modelId = ref("");
 const connHealth = ref<Record<string, ConnHealth>>({});
-const lastPrompt = ref<number | null>(null);
-const lastCompletion = ref<number | null>(null);
-const ctxUsed = ref<number | null>(null);
-const ctxWindow = ref<number | null>(null);
-const activeSkill = ref<string | null>(null);
 const skillBtn = ref<HTMLElement>();
 const skillPickerOpen = ref(false);
-/** Tool sets raised in THIS chat — what the model can reach beyond its always-on tools. */
-const toolSets = ref<ToolSetState[]>([]);
 
 /**
  * Ends the running skill from the UI.
@@ -105,9 +127,7 @@ const toolSets = ref<ToolSetState[]>([]);
  * about another one, and a second activation is refused. This is the way out.
  */
 function unloadSkill() {
-  if (!store.currentChat) return;
-  client.send("chat.skill.deactivate", { chatId: store.currentChat },
-    { projectId: store.currentProjectId ?? undefined });
+  chat.send("chat.skill.deactivate");
 }
 
 /**
@@ -120,9 +140,8 @@ function unloadSkill() {
 function lowerToolSet(t: ToolSetState) {
   // An always-on set is a project setting, and a set a skill is running on belongs to that run —
   // neither is this control's to touch.
-  if (!store.currentChat || (t.by !== "agent" && t.by !== "user")) return;
-  client.send("chat.toolset.deactivate", { chatId: store.currentChat, setId: t.setId },
-    { projectId: store.currentProjectId ?? undefined });
+  if (t.by !== "agent" && t.by !== "user") return;
+  chat.send("chat.toolset.deactivate", { setId: t.setId });
 }
 
 /** Why this set is in the line, and what it costs — the whole point of showing it. */
@@ -142,16 +161,6 @@ const ctxPercent = computed(() => {
   if (ctxUsed.value == null || !ctxWindow.value) return null;
   return Math.min(100, Math.round((ctxUsed.value / ctxWindow.value) * 100));
 });
-
-/** Compact "18.5k" / "1.0M" form — the pill has no room for raw token counts. */
-function formatCompact(n: number): string {
-  if (n >= 1_000_000) return trimZero(n / 1_000_000) + "M";
-  if (n >= 1_000) return trimZero(n / 1_000) + "k";
-  return String(n);
-}
-function trimZero(v: number): string {
-  return v.toFixed(1).replace(/\.0$/, "");
-}
 
 /** "18.5k / 1.0M (2%)" when the window is known, else just the raw count — degrades gracefully
  *  for providers/runtimes GetContextLengthAsync can't resolve a window for. */
@@ -233,59 +242,39 @@ const alertClass = computed(() =>
   worstSeverity.value === "critical" ? "crit" : worstSeverity.value === "warn" ? "warn" : "");
 
 function onModeChange() {
-  if (store.currentChat) client.send("chat.settings", { chatId: store.currentChat, mode: mode.value }, { projectId: store.currentProjectId ?? undefined });
+  chat.send("chat.settings", { mode: mode.value });
 }
 function onModelChange() {
   // A different model may sit behind a different key, so the previous badge says nothing about it.
   worstSeverity.value = "normal";
   infoOpen.value = false;
-  if (store.currentChat) client.send("chat.settings", { chatId: store.currentChat, modelId: modelId.value }, { projectId: store.currentProjectId ?? undefined });
+  chat.send("chat.settings", { modelId: modelId.value });
 }
-function openSettings() {
-  window.open("/?surface=settings", "spla-settings", "width=640,height=720,resizable=yes");
+/** What raised it, oldest first — the person clearing the flag is entitled to see what they are
+ *  clearing, and the count on its own would just be a number to dismiss. */
+const doubtTitle = computed(() => {
+  const causes = doubt.value?.causes ?? [];
+  if (!causes.length) return "";
+  const lines = causes.map(c => `· ${c.what}  (${c.zone})`);
+  return [
+    "Took in content from a source nobody named:",
+    ...lines,
+    "",
+    "Clear it once you have looked."
+  ].join("\n");
+});
+
+function clearDoubt() {
+  if (!doubt.value?.raised) return;
+  if (!confirm(doubtTitle.value)) return;
+  chat.send("chat.doubt.clear");
 }
 
-const offConn = client.on("conn", p => { connText.value = p.text || (p.on ? "connected" : "disconnected"); });
+// Only app-level traffic is subscribed to here. Everything chat-scoped — mode, model, skill, tool
+// sets, doubt, token usage — arrives through state/chatSessions and is read off the session above.
 const offWelcome = client.on("welcome", p => {
-  project.value = p.projectName || p.workspacePath || "";
   modes.value = p.modes || [];
-  mode.value = p.defaultMode || "";
   picks.value = p.connections || [];
-});
-const offChatOpened = client.on("chat.opened", p => {
-  if (p.mode) mode.value = p.mode;
-  modelId.value = p.modelId || "";
-  // Another chat has a different history size — a stale percent is misleading until its first turn.
-  lastPrompt.value = null;
-  lastCompletion.value = null;
-  ctxUsed.value = null;
-  ctxWindow.value = null;
-  // Sent on open too: a window attaching to a chat that was left mid-skill has to show the exit
-  // straight away, not only after the next turn.
-  activeSkill.value = p.activeSkillId || null;
-  toolSets.value = p.toolSets || [];
-});
-// End of turn is when a skill the model forgot to close becomes visible and actionable.
-const offTurnSkill = client.on("turn.complete", p => { activeSkill.value = p.activeSkillId || null; });
-const offSkillState = client.on("chat.skill.state", p => {
-  if (p.chatId === store.currentChat) activeSkill.value = p.activeSkillId || null;
-});
-// Applied by chatId from the envelope, never to whatever chat happens to be open: raised sets are
-// per-chat state, and a background chat's turn must not rewrite the visible one's line.
-const offToolSetState = client.on("chat.toolset.state", p => {
-  if (p.chatId === store.currentChat) toolSets.value = p.sets || [];
-});
-const offTokens = client.on("token.usage", p => {
-  lastPrompt.value = p.promptTokens ?? null;
-  lastCompletion.value = p.completionTokens ?? null;
-  // Context occupancy: this call's prompt (+ completion, since it joins the history for the next
-  // call) vs the model's operative window (when the server knows it). Warn well before the provider
-  // would reject the request — local runtimes often fail with an opaque 500 instead of a clean
-  // "context exceeded" error.
-  if (p.promptTokens != null) {
-    ctxUsed.value = p.promptTokens + (p.completionTokens ?? 0);
-    ctxWindow.value = p.contextLength ?? null;
-  }
 });
 // The editor broadcasts the connection TREE; the picker needs it flattened. Done here rather than
 // asking the server for a second shape — the tree already carries everything the two levels need.
@@ -312,5 +301,5 @@ const offHealth = client.on("connections.health", p => {
   connHealth.value = {};
   for (const s of p.statuses || []) connHealth.value[s.id] = { ok: s.ok, error: s.error };
 });
-onUnmounted(() => { offConn(); offWelcome(); offChatOpened(); offTokens(); offResult(); offHealth(); offInfo(); offTurnSkill(); offSkillState(); offToolSetState(); });
+onUnmounted(() => { offWelcome(); offResult(); offHealth(); offInfo(); });
 </script>

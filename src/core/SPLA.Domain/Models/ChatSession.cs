@@ -1,4 +1,4 @@
-using SPLA.Domain.Settings;
+﻿using SPLA.Domain.Settings;
 using YamlDotNet.Serialization;
 
 namespace SPLA.Domain.Models;
@@ -49,6 +49,30 @@ public class ChatSession
     /// <summary>Session-scoped agent working memory (key/value). Persisted with the chat.</summary>
     [YamlMember(Alias = "kv")]
     public Dictionary<string, string> Kv { get; set; } = new();
+
+    /// <summary>
+    /// What raised this chat's doubt flag, if anything. Persisted because the flag only goes up and
+    /// nothing automatic takes it down — and a mark that a reload clears is a mark anyone can clear
+    /// by closing the window.
+    /// </summary>
+    [YamlMember(Alias = "doubt")]
+    public List<ChatSessionDoubt> Doubt { get; set; } = new();
+}
+
+/// <summary>One recorded arrival from a source nobody named.</summary>
+public class ChatSessionDoubt
+{
+    /// <summary>Zone name as recorded, e.g. <c>internet</c>.</summary>
+    [YamlMember(Alias = "zone")]
+    public string Zone { get; set; } = string.Empty;
+
+    /// <summary>What arrived — a URL, a tool name, a handle. Shown to the person deciding whether to
+    /// clear the flag, which is the only reason it is kept.</summary>
+    [YamlMember(Alias = "what")]
+    public string What { get; set; } = string.Empty;
+
+    [YamlMember(Alias = "at")]
+    public DateTime At { get; set; } = DateTime.UtcNow;
 }
 
 public class ChatSessionMessage

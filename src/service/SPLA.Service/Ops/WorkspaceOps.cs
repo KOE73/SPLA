@@ -2,6 +2,7 @@ using System;
 using System.IO;
 using System.Linq;
 using SPLA.Domain.Editor;
+using SPLA.Domain.Host;
 using SPLA.Service.Contracts;
 
 namespace SPLA.Service;
@@ -87,15 +88,22 @@ public static class WorkspaceOps
 
     /// <summary>Returns true when <paramref name="path"/> resolves to a location inside
     /// <paramref name="normalizedRoot"/> (canonical absolute path).</summary>
+    /// <summary>
+    /// Whether a client-supplied ref lands inside the workspace. Strictly inside: the root itself is
+    /// not a file anyone reads or writes, so browsing starts one level in and this keeps saying no to
+    /// a ref that is merely the root spelled out.
+    /// </summary>
     private static bool IsUnderRoot(string normalizedRoot, string path)
     {
         try
         {
-            var full = Path.GetFullPath(path);
-            var rootWithSep = normalizedRoot.TrimEnd(
-                Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar)
-                + Path.DirectorySeparatorChar;
-            return full.StartsWith(rootWithSep, StringComparison.OrdinalIgnoreCase);
+            var boundary = new PathBoundary(normalizedRoot);
+            if (!boundary.TryResolve(path, out var full, out _)) return false;
+
+            return !string.Equals(
+                full.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar),
+                boundary.Root,
+                StringComparison.OrdinalIgnoreCase);
         }
         catch
         {

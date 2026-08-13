@@ -53,6 +53,7 @@ client/types **and** this table.
 | `chat.list` | `ChatList` | — | Request the chat list. |
 | `chat.open` | `ChatOpen` | `ChatOpenPayload` | Open a chat; reply `chat.opened`. |
 | `chat.watch` | `ChatWatch` | `ChatOpenPayload` | Watch a chat (turn/tool events) without the `chat.opened` echo — for tear-off/aux windows. |
+| `chat.unwatch` | `ChatUnwatch` | `ChatOpenPayload` | Stop receiving a chat's turn events. Client-driven: opening another chat is NOT enough, because a chat mid-turn keeps streaming into its own background session. |
 | `chat.new` | `ChatNew` | `ChatNewPayload` | Create + open; also broadcasts `chat.list.result`. |
 | `chat.rename` | `ChatRename` | `ChatRenamePayload` | Broadcasts `chat.list.result`. |
 | `chat.delete` | `ChatDelete` | `ChatDeletePayload` | Broadcasts `chat.list.result`. |
@@ -63,6 +64,7 @@ client/types **and** this table.
 | `chat.skill.activate` | `ChatSkillActivate` | `ChatSkillActivatePayload` | Hand a skill to the chat because a person picked it; broadcasts `chat.skill.state` to watchers, or answers `error` with the reason. May name a skill the model was never told about — level hides from the model, not from its owner. |
 | `chat.skill.deactivate` | `ChatSkillDeactivate` | `ChatSkillDeactivatePayload` | End the chat's running skill; broadcasts `chat.skill.state` to watchers. The user's exit when the model never calls `skill_deactivate`. |
 | `chat.toolset.deactivate` | `ChatToolSetDeactivate` | `ChatToolSetDeactivatePayload` | Lower a tool set raised in a chat; broadcasts `chat.toolset.state` to watchers. The person's control — the model may release a set but is never told it must. |
+| `chat.doubt.clear` | `ChatDoubtClear` | `ChatDoubtClearPayload` | Clear the chat's doubt flag; broadcasts `chat.doubt.state` to watchers. A person's decision only — the model has no tool for this, because a mark removable by what it guards against guards nothing. |
 | `focus.set` | `FocusSet` | `FocusPayload` | Window focused a chat; echoes `focus.changed` to all. |
 | `cancel` | `Cancel` | — (uses `chatId`) | Cancel the active turn of `chatId`. |
 | `permission.decision` | `PermissionDecision` | `PermissionDecisionPayload` | Answer to `permission.request` (by `requestId`). |
@@ -129,6 +131,7 @@ client/types **and** this table.
 | `turn.complete` | `TurnComplete` | `TurnCompletePayload` | watchers | Turn ended; re-enable input. `activeSkillId` reports a skill still running — end of turn is when one the model forgot to close becomes actionable. |
 | `chat.skill.state` | `ChatSkillState` | `ChatSkillStatePayload` | watchers | The chat's active skill changed (an explicit hand-out or unload). |
 | `chat.toolset.state` | `ChatToolSetState` | `ChatToolSetStatePayload` | watchers | The chat's tool sets, raised or merely announced. Sent after every turn and after an explicit lowering; sets levelled off are never listed. |
+| `chat.doubt.state` | `ChatDoubtState` | `ChatDoubtStatePayload` | watchers | Whether the chat has taken in content from a source nobody named, with the causes. Sent on clearing; the flag also rides `chat.opened`, since it survives a reload. |
 | `permission.request` | `PermissionRequest` | `PermissionRequestPayload` | unicast | To the initiating client (by `requestId`). |
 | `clarify.request` | `ClarifyRequest` | `ClarifyRequestPayload` | unicast | To the initiating client (by `requestId`). |
 | `debug.snapshot` | `DebugSnapshot` | `DebugSnapshotPayload` | unicast | Answer to `debug.request`. |

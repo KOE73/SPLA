@@ -6,10 +6,40 @@
     </div>
     <div id="debugBody" :class="{ 'ctx-mode': !!snapshot?.contextLines }">
       <ContextTable v-if="snapshot?.contextLines" :snapshot="snapshot" />
+      <!-- What has actually moved between perimeters. Nothing here is refused: this is the record
+           the decision to start refusing will be made from, which is why it shows traffic and not
+           rules. -->
+      <template v-if="snapshot?.edges">
+        <div v-if="!snapshot.edges.length" class="edge-empty">
+          Nothing has crossed a perimeter yet in this process.
+        </div>
+        <template v-else>
+          <div class="kv-head">
+            <span class="e-move">movement</span><span class="e-eff">effect</span>
+            <span class="e-n">calls</span><span class="v">last tool</span>
+          </div>
+          <div v-for="(e, i) in snapshot.edges" :key="i" class="kv-row">
+            <span class="e-move" :class="{ outward: e.outward }">{{ e.source }} → {{ e.sink }}</span>
+            <span class="e-eff">{{ e.effect }}</span>
+            <span class="e-n">{{ e.calls }}</span>
+            <span class="v">{{ e.lastTool }}</span>
+          </div>
+        </template>
+      </template>
       <template v-else-if="snapshot?.entries">
         <div v-if="!snapshot.entries.length">(empty)</div>
+        <!-- Origin is its own column, never folded into the value: the question this view has to
+             answer at a glance is "which of these came from outside", and a label buried in text is
+             a label nobody scans for. -->
+        <div class="kv-head">
+          <span class="k">key</span><span class="o">origin</span><span class="v">value</span>
+        </div>
         <div v-for="(e, i) in snapshot.entries" :key="i" class="kv-row">
-          <span class="k">{{ e.key }}</span><span class="v">{{ e.value }}</span>
+          <span class="k">{{ e.key }}</span>
+          <span class="o" :class="{ doubtful: e.doubtful }" :title="e.doubtful ? 'from a source nobody named' : ''">
+            {{ e.origin ?? "—" }}
+          </span>
+          <span class="v">{{ e.value }}</span>
         </div>
       </template>
       <!-- Composition manifest: what the agent's context is made of, and who contributed each piece.
@@ -50,6 +80,7 @@ const TABS = [
   { kind: "kv.session", label: "session kv" },
   { kind: "kv.project", label: "project kv" },
   { kind: "blobs", label: "blobs" },
+  { kind: "edges", label: "edges" },
   { kind: "context.last", label: "context" },
   { kind: "prompt", label: "prompt" }
 ] as const;
@@ -89,8 +120,19 @@ const offOpen = uiBus.on("debug.open", () => {
   request("kv.session");
 });
 
+// A tear-off panel follows the focused chat, so it watches one chat at a time — and must drop the
+// previous one. Without that, a window left open all day accumulates watches and keeps receiving the
+// turn events of every chat it has ever followed.
+let watched: string | null = null;
+
 function watchAndReload() {
-  if (store.currentChat) client.send("chat.watch", { chatId: store.currentChat }, { projectId: store.currentProjectId ?? undefined });
+  const next = store.currentChat;
+  if (next !== watched) {
+    const extra = { projectId: store.currentProjectId ?? undefined };
+    if (watched) client.send("chat.unwatch", { chatId: watched }, extra);
+    if (next) client.send("chat.watch", { chatId: next }, extra);
+    watched = next;
+  }
   reload();
 }
 const offWelcome = solo ? client.on("welcome", watchAndReload) : () => {};

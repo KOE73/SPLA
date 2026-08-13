@@ -1,4 +1,4 @@
-using SPLA.Domain.Models;
+﻿using SPLA.Domain.Models;
 using SPLA.Domain.Secrets;
 
 namespace SPLA.Domain.Settings;
@@ -52,7 +52,17 @@ public class ResolvedSettings
 
     // Project
     public string? ProjectName { get; set; }
+
+    /// <summary>The project root: the directory holding the loaded manifest, always absolute.
+    /// Falls back to the current directory when running without a project — and that case has no
+    /// root at all, so nothing may be bounded by it.
+    /// <para>Not configurable. A manifest cannot point the root elsewhere: one definition, or every
+    /// boundary drawn on it is negotiable.</para></summary>
     public string WorkspacePath { get; set; } = ".";
+
+    /// <summary>Whether a manifest was actually found. <c>false</c> ⇒ there is no project and
+    /// <see cref="WorkspacePath"/> is merely where the process started, which is not a boundary.</summary>
+    public bool HasProject => ProjectFilePath is not null;
 
     /// <summary>Absolute path to the .spla file that was loaded, or null when running without a project.
     /// Plugins that need to persist their own settings use this.</summary>
@@ -97,6 +107,28 @@ public class ResolvedSettings
     {
         get => _project ??= Domain.Project.LocalProject.For(this);
         set => _project = value;
+    }
+
+    /// <summary>Domains the operator vouches for, accumulated across layers. Content from these is
+    /// named content and does not raise a chat's doubt flag.</summary>
+    public List<string> TrustedDomains { get; set; } = new();
+
+    /// <summary>Whether <paramref name="host"/> is one the operator vouched for. Subdomains are
+    /// included — vouching for <c>corp.local</c> vouches for its wiki — because the unit a person
+    /// thinks in is the organisation, not each machine in it.</summary>
+    public bool IsTrustedDomain(string? host)
+    {
+        if (string.IsNullOrWhiteSpace(host)) return false;
+        var h = host.Trim().TrimEnd('.');
+
+        foreach (var entry in TrustedDomains)
+        {
+            var d = entry.Trim().TrimEnd('.');
+            if (d.Length == 0) continue;
+            if (h.Equals(d, StringComparison.OrdinalIgnoreCase)) return true;
+            if (h.EndsWith("." + d, StringComparison.OrdinalIgnoreCase)) return true;
+        }
+        return false;
     }
 
     public List<string> Docs { get; set; } = new();
@@ -294,6 +326,7 @@ public static class SettingsResolver
                 r.LoopGuard = defaults.Agent.LoopGuard ?? r.LoopGuard;
                 r.LoopGuardRepeats = defaults.Agent.LoopGuardRepeats ?? r.LoopGuardRepeats;
                 r.Capabilities = defaults.Agent.Capabilities ?? r.Capabilities;
+                AddTrustedDomains(r, defaults.Agent.TrustedDomains);
             }
             if (defaults.Ui != null)
             {
@@ -308,7 +341,8 @@ public static class SettingsResolver
         if (project != null)
         {
             r.ProjectName = project.Name;
-            r.WorkspacePath = project.Workspace ?? ".";
+            // WorkspacePath is NOT resolved here: it derives from where the manifest was found, and
+            // only the loader knows that. See ConfigLoader.LoadAndResolve.
             r.Docs = project.Docs ?? new();
             r.Ignore = project.Ignore ?? new();
 
@@ -336,6 +370,7 @@ public static class SettingsResolver
                 r.LoopGuard = project.Agent.LoopGuard ?? r.LoopGuard;
                 r.LoopGuardRepeats = project.Agent.LoopGuardRepeats ?? r.LoopGuardRepeats;
                 r.Capabilities = project.Agent.Capabilities ?? r.Capabilities;
+                AddTrustedDomains(r, project.Agent.TrustedDomains);
             }
             if (project.Ui != null)
             {
@@ -424,6 +459,19 @@ public static class SettingsResolver
     /// be worked out. Appending rather than replacing is the whole point of the change: adding a
     /// folder is one entry in any layer, and dropping an inherited one is <c>enabled: false</c>.</para>
     /// </summary>
+    /// <summary>Layers accumulate rather than override: a project vouching for its own wiki must not
+    /// silently drop what the machine layer vouched for.</summary>
+    private static void AddTrustedDomains(ResolvedSettings r, List<string>? declared)
+    {
+        if (declared is null) return;
+        foreach (var d in declared)
+        {
+            if (string.IsNullOrWhiteSpace(d)) continue;
+            if (!r.TrustedDomains.Any(x => string.Equals(x, d.Trim(), StringComparison.OrdinalIgnoreCase)))
+                r.TrustedDomains.Add(d.Trim());
+        }
+    }
+
     private static void ApplySkills(ResolvedSettings r, SplaSkillsSection? skills, SourceOrigin origin)
     {
         if (skills == null) return;

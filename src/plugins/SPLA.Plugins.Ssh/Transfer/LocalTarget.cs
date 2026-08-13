@@ -1,3 +1,5 @@
+using SPLA.Domain.Host;
+
 namespace SPLA.Plugins.Ssh.Transfer;
 
 /// <summary>
@@ -24,8 +26,14 @@ internal static class LocalTarget
 
     /// <summary>
     /// Resolves <paramref name="logicalPath"/> under <paramref name="rootPath"/> and refuses anything
-    /// that leaves it. Rejects rooted paths, drive letters and UNC shares outright — an agent moving
-    /// server configuration has no business writing to <c>D:\</c> or <c>\\server\share</c>.
+    /// that leaves it.
+    ///
+    /// <para>Containment itself is <see cref="PathBoundary"/>'s job. What stays here is this
+    /// transfer's own rule on top of it: the model may not name an absolute path at all. It says
+    /// <c>staging/prod.tar</c> and the root is supplied by us — an agent moving server configuration
+    /// has no business naming <c>D:\</c>, even a <c>D:\</c> that happens to sit inside the project.
+    /// The distinction matters because the escape can arrive from the REMOTE side too, inside a
+    /// filename or a symlink target, and those are never allowed to be rooted either.</para>
     /// </summary>
     public static string Resolve(string rootPath, string logicalPath)
     {
@@ -39,17 +47,8 @@ internal static class LocalTarget
         if (Path.IsPathRooted(candidate))
             throw new InvalidOperationException($"local_path must be relative to the project, not an absolute path: {logicalPath}");
 
-        var root = Path.GetFullPath(rootPath);
-        var full = Path.GetFullPath(Path.Combine(root, candidate));
-
-        // Compare on the normalised full paths: this is what catches '..' regardless of how many
-        // segments it hides behind, and it is also what catches a remote-supplied name doing it.
-        var rootWithSeparator = root.EndsWith(Path.DirectorySeparatorChar)
-            ? root
-            : root + Path.DirectorySeparatorChar;
-        if (!full.StartsWith(rootWithSeparator, StringComparison.OrdinalIgnoreCase)
-            && !string.Equals(full, root, StringComparison.OrdinalIgnoreCase))
-            throw new InvalidOperationException($"local_path escapes the project directory: {logicalPath}");
+        if (!new PathBoundary(rootPath).TryResolve(candidate, out var full, out var error))
+            throw new InvalidOperationException($"local_path escapes the project directory ({error}): {logicalPath}");
 
         return full;
     }

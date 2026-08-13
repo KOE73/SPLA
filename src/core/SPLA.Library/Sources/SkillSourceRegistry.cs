@@ -1,8 +1,9 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using Microsoft.Extensions.Logging;
+using SPLA.Domain.Host;
 using SPLA.Domain.Settings;
 
 namespace SPLA.Library.Sources;
@@ -126,9 +127,6 @@ public sealed class DirectorySkillSourceFactory : ISkillSourceFactory
         // Shipped with the installation, beside plugins/.
         if (context.AppDirectory.Length > 0 && PathEquals(fullPath, Path.Combine(context.AppDirectory, "skills")))
             return ("builtin", "Built-in");
-        // .spla/ is local state and git-ignored in full, so anything here is a personal draft.
-        if (PathEquals(fullPath, Path.Combine(context.WorkspacePath, ".spla", "skills")))
-            return ("local", "Local drafts");
         if (PathEquals(fullPath, Path.Combine(context.MachineHomePath, "skills")))
             return ("machine", "Machine");
 
@@ -164,7 +162,7 @@ public static class SkillSourceRegistry
 
     /// <summary>
     /// The branches the product comes with, as ordinary named entries: the project's committed
-    /// <c>skills/</c>, personal drafts in the git-ignored <c>.spla/skills</c>, the user's machine-wide
+    /// <c>skills/</c>, the user's machine-wide
     /// folder (under the SPLA home, so SPLA_HOME redirects it along with everything else), and the
     /// skills shipped beside <c>plugins/</c>. Any of them may be missing on disk — that is not an
     /// error.
@@ -180,7 +178,11 @@ public static class SkillSourceRegistry
         var defaults = new List<SplaSkillSourceSection>
         {
             new() { Id = "repo",    Type = "directory", Path = "skills" },
-            new() { Id = "local",   Type = "directory", Path = ".spla/skills" },
+            // No `local` branch under .spla/: that folder is the runtime's own and is closed to the
+            // agent. It bought exactly one thing — a draft that stays out of the commit — because by
+            // trust it was identical to repo/: everything inside the workspace is forced down to
+            // untrusted regardless of which folder it sits in. A skill you want is a skill that
+            // lives in the project.
             new() { Id = "machine", Type = "directory", Path = Path.Combine(context.MachineHomePath, "skills") }
         };
 
@@ -348,8 +350,8 @@ public static class SkillSourceRegistry
     /// the text carries the standing, in both directions.</para>
     ///
     /// <para>And a path that RESOLVES to where the entry already pointed is not a repointing. Restating
-    /// a default is extremely common — this very repository's <c>.spla</c> lists <c>skills</c> and
-    /// <c>.spla/skills</c>, the same two folders the built-in entries name — and treating it as a
+    /// a default is extremely common — a project may list <c>skills</c>, the same folder a built-in
+    /// entry already names — and treating it as a
     /// choice of content would untrust every project that ever wrote its own list out in full. The
     /// comparison is on the resolved location, because <c>skills</c> and an absolute path to it are
     /// the same folder written two ways.</para>
@@ -465,17 +467,13 @@ public static class SkillSourceRegistry
         return IsUnder(fullPath, context.WorkspacePath);
     }
 
+    /// <summary>Whether <paramref name="path"/> lands inside <paramref name="root"/>. Trust is decided
+    /// by location, so "inside" has to mean the same thing here as everywhere else — including for a
+    /// folder reached through a link, which is why this is not a string comparison.</summary>
     private static bool IsUnder(string path, string root)
     {
-        try
-        {
-            var p = Path.GetFullPath(path).TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
-            var r = Path.GetFullPath(root).TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
-            if (r.Length == 0) return false;
-
-            return p.Equals(r, StringComparison.OrdinalIgnoreCase) ||
-                   p.StartsWith(r + Path.DirectorySeparatorChar, StringComparison.OrdinalIgnoreCase);
-        }
+        if (string.IsNullOrWhiteSpace(root)) return false;
+        try { return new PathBoundary(root).Contains(path); }
         catch { return false; }
     }
 

@@ -47,6 +47,8 @@ export interface ToolProgressDetail {
 export interface ChatSummary {
   id: string;
   title?: string;
+  /** A turn is running in this chat right now — including one started by another window. */
+  turnActive?: boolean;
 }
 
 export interface ChatOpenedPayload {
@@ -57,8 +59,12 @@ export interface ChatOpenedPayload {
   modelId?: string;
   /** The skill running in this chat, if any — the unload control keys off this. */
   activeSkillId?: string | null;
+  doubt?: ChatDoubt;
   /** Tool sets this chat can see, raised or merely announced. */
   toolSets?: ToolSetState[];
+  /** Whether a turn was already running when this chat was opened — so a window attaching mid-turn
+   *  (or a reload) shows Stop rather than an input that looks ready. */
+  turnActive?: boolean;
 }
 
 /** One tool set as a chat sees it. `level` is the standing permission, `by` is who raised it here
@@ -352,6 +358,34 @@ export interface ContextLine {
 /** debug.request "kind" determines which of these shapes comes back; only one set of fields is present. */
 /** One contribution to the assembled agent context: who produced it, which of its pieces it is,
  *  where it is delivered ("prompt" | "turn" | "failed"), and a local token estimate for attribution. */
+/** One row of a kv/blob debug view. `origin` is where the value came from; it gets its own column
+ *  rather than being folded into the value, because a label mixed into text is a label nobody
+ *  scans for. `doubtful` is the same bit that raises the chat's flag. */
+/** Whether a chat has taken in anything from a source nobody named, and what did it. The causes
+ *  travel with the flag because a bare red dot with no account of itself gets dismissed on reflex. */
+export interface ChatDoubt {
+  raised: boolean;
+  causes: { zone: string; what: string; at: string }[];
+}
+
+/** One movement between perimeters and how much has gone along it. `outward` is not a verdict —
+ *  nothing is refused yet — it marks the rows worth looking at first. */
+export interface DebugEdge {
+  source: string;
+  sink: string;
+  effect: string;
+  calls: number;
+  lastTool: string;
+  outward: boolean;
+}
+
+export interface DebugKvEntry {
+  key: string;
+  value: string;
+  origin?: string | null;
+  doubtful?: boolean;
+}
+
 export interface DebugSegment {
   title: string;
   body: string;
@@ -368,7 +402,8 @@ export interface DebugSnapshotPayload {
   contextCount?: number;
   approxTokens?: number;
   contextIsLive?: boolean;
-  entries?: { key: string; value: string }[];
+  entries?: DebugKvEntry[];
+  edges?: DebugEdge[];
   segments?: DebugSegment[];
   text?: string;
 }
@@ -511,6 +546,7 @@ export interface ServerEvents {
   "turn.complete": { cancelled?: boolean; error?: string; activeSkillId?: string | null };
   /** A chat's active skill changed — after an explicit unload. */
   "chat.skill.state": { chatId: string; activeSkillId?: string | null };
+  "chat.doubt.state": { chatId: string; doubt: ChatDoubt };
   /** A chat's raised tool sets changed — after a turn, or after an explicit lowering. */
   "chat.toolset.state": { chatId: string; sets?: ToolSetState[] };
   "tool.started": { toolCall: ToolCallDto };
