@@ -156,7 +156,7 @@ export interface AgentResultPayload {
   modes?: string[];
   permRead?: string; permWrite?: string; permShell?: string; permInternet?: string;
   customPrompt?: string;
-  loopGuard?: boolean; loopGuardRepeats?: number;
+  loopGuard?: boolean; loopGuardRepeats?: number; saveToolCalls?: boolean;
   theme?: string; density?: string;
   themes?: string[]; densities?: string[];
   canPersist?: boolean;
@@ -536,6 +536,8 @@ export interface ServerEvents {
     connections?: ModelPickDto[];
     /** Authenticated user (server mode). Empty on local/embedded — the identity badge stays hidden. */
     userKey?: string; userName?: string;
+    /** Set only when this build was published from a branch other than main — draws the warning banner. */
+    branch?: string;
   };
   "appearance.changed": { theme?: string; density?: string };
   "chat.opened": ChatOpenedPayload;

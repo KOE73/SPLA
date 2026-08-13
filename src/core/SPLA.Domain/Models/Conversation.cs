@@ -76,15 +76,18 @@ public sealed class Conversation
 
     /// <summary>
     /// True if <paramref name="msg"/> should be written to the persistent chat file.
-    /// System prompts (rebuilt from config on load) and Tool messages (transient call/result pairs)
-    /// are excluded; only the human-readable exchange is saved.
+    /// System prompts (rebuilt from config on load) are always excluded. Tool messages (transient
+    /// call/result pairs) are excluded unless <paramref name="saveToolCalls"/> asks to keep them —
+    /// off by default, since most of that trace is diagnostic noise nobody re-reads.
     /// </summary>
-    public static bool ShouldPersist(ChatMessage msg) =>
+    public static bool ShouldPersist(ChatMessage msg, bool saveToolCalls = false) =>
         !msg.IsEphemeral &&
         !msg.IsLabel &&
         msg.Role != ChatRole.System &&
-        msg.Role != ChatRole.Tool &&
-        !string.IsNullOrWhiteSpace(msg.Content);
+        (msg.Role != ChatRole.Tool || saveToolCalls) &&
+        (msg.Role == ChatRole.Tool
+            ? (msg.ToolCalls?.Count > 0 || !string.IsNullOrWhiteSpace(msg.Content))
+            : !string.IsNullOrWhiteSpace(msg.Content));
 
     /// <summary>
     /// Truncates the message history to <paramref name="messageCount"/> entries, removing everything after.
@@ -129,5 +132,10 @@ public sealed class Conversation
         _messages.LastOrDefault(m => m.IsLabel && m.Mark == markName);
 
     /// <summary>Messages that should be written to the persistent chat file.</summary>
-    public IEnumerable<ChatMessage> Persistable => _messages.Where(ShouldPersist);
+    public IEnumerable<ChatMessage> Persistable => _messages.Where(m => ShouldPersist(m));
+
+    /// <summary>Messages that should be written to the persistent chat file, given the project's
+    /// full-tool-trace preference.</summary>
+    public IEnumerable<ChatMessage> PersistableWith(bool saveToolCalls) =>
+        _messages.Where(m => ShouldPersist(m, saveToolCalls));
 }

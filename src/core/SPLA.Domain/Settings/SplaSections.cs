@@ -50,6 +50,13 @@ public class SplaAgentSection
     /// </summary>
     [YamlMember(Alias = "trusted_domains")]
     public List<string>? TrustedDomains { get; set; }
+
+    /// <summary>Persist the full tool-call/tool-result trace (arguments and outputs) alongside the
+    /// human-readable chat, not just the final text. Off by default — most of that trace is
+    /// diagnostic noise nobody re-reads, and it bloats the chat file. Turn on when you actually need
+    /// to reconstruct exactly what an agent did, not just what it said.</summary>
+    [YamlMember(Alias = "save_tool_calls")]
+    public bool? SaveToolCalls { get; set; }
 }
 
 /// <summary>

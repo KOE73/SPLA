@@ -106,6 +106,17 @@ Write-Host "  $skillCount skill file(s)"
 Write-Host 'Cleaning debug and documentation artifacts...'
 Get-ChildItem .publish\work -Recurse -Include *.pdb, *.xml | Remove-Item -Force
 
+# Stamped so the running build can tell the client which branch it was published from (ClientConnection
+# reads this next to the exe and puts it on the welcome frame) — and so registration below always points
+# Explorer at whichever folder was built last, not whichever was built first.
+$branch = (git rev-parse --abbrev-ref HEAD).Trim()
+Set-Content -Path '.publish\work\branch.txt' -Value $branch -NoNewline
+Write-Host "Branch stamp: $branch"
+
+Write-Host 'Registering .spla file association to this build...'
+& '.publish\work\SPLA.CLI.exe' system register-association
+if ($LASTEXITCODE -ne 0) { Write-Host '  (non-fatal: association not registered)' -ForegroundColor Yellow }
+
 Write-Host 'Creating ZIP package...'
 if (Test-Path .publish\zip) { Remove-Item .publish\zip -Recurse -Force }
 New-Item -ItemType Directory -Force .publish\zip | Out-Null

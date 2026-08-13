@@ -97,6 +97,16 @@ public class ChatSessionMessage
     /// payload never bloats it. Null/empty for text-only messages.</summary>
     [YamlMember(Alias = "images")]
     public List<string>? Images { get; set; }
+
+    /// <summary>Tool calls the assistant requested on this message. Only written when the
+    /// full tool trace is enabled — see <see cref="Settings.SplaAgentSection.SaveToolCalls"/>.</summary>
+    [YamlMember(Alias = "tool_calls")]
+    public List<ToolCall>? ToolCalls { get; set; }
+
+    /// <summary>For a tool-result message, the id of the <see cref="ToolCall"/> it answers. Only
+    /// written when the full tool trace is enabled.</summary>
+    [YamlMember(Alias = "tool_call_id")]
+    public string? ToolCallId { get; set; }
 }
 
 public class ChatSessionContext

@@ -11,6 +11,11 @@
 -->
 <template>
   <div class="project-bar">
+    <!-- Non-main build running: shout it before anything else, so it can't be mistaken for main. -->
+    <div v-if="store.branch" class="pb-branch" :title="`Running a build published from '${store.branch}', not main.`">
+      {{ store.branch }}
+    </div>
+
     <!-- Row 1 — where I am. -->
     <div class="pb-row">
       <button class="pb-project" :title="projectTitle" @click="store.projectPickerOpen = true">
@@ -223,4 +228,18 @@ onUnmounted(() => offs.forEach(o => o()));
 .pb-icon-btn:hover { color: var(--accent); }
 .pb-icon-btn.subtle { opacity: 0.6; }
 .pb-icon-btn.subtle:hover { opacity: 1; }
+
+.pb-branch {
+  flex-shrink: 0;
+  background: #c00;
+  color: #ff0;
+  font-weight: 700;
+  font-size: var(--fs-xs);
+  text-align: center;
+  padding: 2px 4px;
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
 </style>

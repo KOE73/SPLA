@@ -50,6 +50,28 @@ public static class SystemOps
         Shell32.NotifyAssociationsChanged();
     }
 
+    /// <summary>
+    /// The git branch this build was published from, or null for a dev build (no branch.txt) or when
+    /// it reads "main" — the banner is for "this is not what you think is running", so main is silence.
+    /// PublishAll.ps1 writes branch.txt next to the published exes; read once and cached, since the
+    /// value cannot change without a new process (a fresh publish replaces this exe, not this file).
+    /// </summary>
+    public static string? GetBuildBranch()
+    {
+        _buildBranch ??= ReadBuildBranch();
+        return _buildBranch is "" ? null : _buildBranch;
+    }
+
+    private static string? _buildBranch;
+
+    private static string ReadBuildBranch()
+    {
+        var path = Path.Combine(AppContext.BaseDirectory, "branch.txt");
+        if (!File.Exists(path)) return "";
+        var branch = File.ReadAllText(path).Trim();
+        return branch is "" or "main" ? "" : branch;
+    }
+
     /// <summary>Finds the desktop shell exe: published next to the service, or in the dev build tree.</summary>
     private static string? FindUiExecutable()
     {

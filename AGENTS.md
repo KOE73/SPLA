@@ -46,20 +46,41 @@ For comprehensive details on agent permission models, tool matrices, autonomy co
 - **[Wire Protocol & Event Registry](agents/protocol.md)**: STOP — read this before adding, renaming, or removing any WebSocket message type, payload, or client bus event. Message names are soft strings on the JS side; this is the registry of every `MessageTypes` constant, payload, fan-out semantics, domain events (`ServiceEvents`), and client-local bus events that keeps both sides in sync.
 
 
-## Git: one branch, and never commit unless asked
+## Git: a branch and a worktree per piece of work
 
-**This repository has exactly one branch: `main`. Work on it directly.** Do not create feature
-branches, do not offer to, and do not treat committing to the default branch as something that needs
-avoiding here — the owner has decided against branch workflows deliberately and does not want to
-maintain them. If a general rule you carry says "branch before committing to the default branch",
-this line overrides it for this repository.
+**The owner routinely runs several agents on this repo at once.** One shared working tree cannot
+hold that — uncommitted changes from one piece of work block another. So: a non-trivial piece of
+work gets its own branch `<area>/<short-name>` (e.g. `security/connection-secrets`) in its own
+`git worktree` under `.claude/worktrees/<name>`, not the shared checkout. `main` is a merge target,
+never edited directly by a branch's own work — this replaces the older "everything on main" rule
+that predates multi-agent use.
 
-If a piece of work genuinely cannot live on `main` — an experiment that must not touch working code —
-say so and ask. Do not decide it alone.
+A quick fix that touches one or two files and is going to be committed in the same turn does not
+need this ceremony — use judgement. When in doubt, branch; a spurious branch costs a merge, a
+missing one costs someone else's uncommitted work.
+
+**State the current branch near the start of a session — one of the first sentences, not buried.**
+With several worktrees around, "which checkout is this" is not obvious from the chat alone, and the
+cost of assuming wrong (editing on the wrong branch, merging the wrong thing) is high enough that a
+one-line `git branch --show-current` up front is cheap insurance. Re-state it if the session switches
+worktrees or branches mid-conversation — the same reasoning applies at that point, not just at
+session start.
+
+Alongside it, run `git worktree list` and `git branch --no-merged main` once and mention what they
+show — what else is checked out, and what else has unmerged work — so the user does not have to ask
+"what's out there" separately. Skip the mention only if both come back empty/trivial (just `main`,
+nothing unmerged); a one-liner beats silence, but two empty tables are noise.
+
+**On completion:** `git merge --no-ff <branch>` into `main`, then immediately `git worktree remove`
+and `git branch -d`. Do not leave a merged branch/worktree lying around — check `git branch
+--no-merged main` before assuming a branch is safe to drop, same as before.
 
 **Do not commit, amend, push, tag, or reset anything unless the user asks for it in the message you
 are answering.** Finishing a piece of work is not permission to record it. Neither is the work being
-correct, tested, and obviously ready.
+correct, tested, and obviously ready. This applies to work on a feature branch exactly as it applied
+to `main` before — a branch is not a lower-stakes place to commit unasked. **Merging into `main` is
+its own action and needs its own ask**, separate from the ask (if any) that authorized commits on
+the branch.
 
 - A commit requested earlier authorizes **that** commit only. It does not stand for the next one, or
   for "everything from now on". If in doubt, you were not asked.
@@ -90,6 +111,28 @@ is hard to review and easy to lose. Say something (one line, not a nag) when:
 - a self-contained piece of work just built and passed its tests — the natural place to draw a line.
 
 State what is uncommitted, in which areas, and offer to commit. Then wait.
+
+## Docs across parallel branches (`docs/ideas`, `docs/plans`, `docs/adr`)
+
+Branch-per-piece (above) solves code conflicts; these files fail differently — usually not a git
+conflict at all, which is the dangerous case, since nothing forces anyone to notice.
+
+- **Naming collisions.** `GENRE_YYYYMMDD_zone_short-name.md` (see
+  [agents/documentation.md](agents/documentation.md)) already carries a `-N` suffix for same-day
+  files (`IDEA_20260813-2_...`, `IDEA_20260813-4_...`) — use it. Before picking a slot, check the
+  next free `-N` across **`git log --all`**, not just the current branch: two branches started the
+  same day and merged later can otherwise both land on `-2` — git merges that cleanly as two
+  distinct files with near-identical names, so the collision is invisible until a human reads them.
+- **ADRs never get edited — including to resolve a conflict.** If a later ADR reaches a different
+  conclusion than an earlier one, it says so explicitly ("supersedes ADR_YYYYMMDD_..."); it does not
+  rewrite the old file's answer. This already follows from "ADR = record of how the thinking
+  evolved", but the parallel-branch case is where forgetting it actually bites: two branches can
+  each honestly believe their ADR is the current answer.
+- **STOP-marked files under `agents/`** (protocol.md, secrets.md, toolsets.md, composition.md,
+  skills.md, …) declare themselves authoritative over specific code. If your branch changed code a
+  STOP-file governs, updating that file is part of the same merge, not a follow-up — a docs/code
+  split that survives the merge is exactly the drift these files exist to prevent. Check this when
+  merging *any* branch into `main`, including one you did not author.
 
 ## Web UI: Chat-Scoped State (recurring bug — do not regress)
 

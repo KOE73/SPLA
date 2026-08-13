@@ -101,8 +101,10 @@ public class ConversationOrchestratorTests
 
         Assert.NotNull(notice);
         Assert.Contains("repeating", notice!);
-        // Stopped well before exhausting the 10 scripted responses.
-        Assert.True(host.Executed.Count <= 3);
+        // Stopped well before exhausting the 10 scripted responses. The guard is two-stage: the first
+        // streak of 3 only injects the "are you stuck?" challenge and resets the window, so the hard
+        // stop lands one full window later — 6 executions, never the whole script.
+        Assert.True(host.Executed.Count <= 6, $"ran {host.Executed.Count} tools");
     }
 
     // ── System prompt provider ───────────────────────────────────────────────

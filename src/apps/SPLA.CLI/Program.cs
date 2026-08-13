@@ -47,6 +47,13 @@ if (SecretCommands.IsSecretCommand(args))
     return;
 }
 
+// system: OS-level integration (file association), no agent stack needed.
+if (SystemCommands.IsSystemCommand(args))
+{
+    Environment.ExitCode = SystemCommands.Run(args);
+    return;
+}
+
 // Shared agent stack for the interactive REPL and chat sub-commands.
 using var runtime = new AgentRuntime(ctx.Settings, loggerFactory);
 Console.WriteLine($"Tools registered: {runtime.McpHost.GetToolDefinitions().Count()}");

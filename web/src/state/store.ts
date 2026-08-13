@@ -15,6 +15,8 @@ export const store = reactive({
   workspacePath: null as string | null,
   /** Authenticated user (server mode); null on local/embedded → identity row hidden. */
   userName: null as string | null,
+  /** Non-null only when this build was published from a branch other than main. */
+  branch: null as string | null,
   theme: (localStorage.getItem("spla.theme") || "dark") as string,
 
   // ── Project focus (Phase 2.2 protocol: ProjectId rides on every chat-scoped envelope) ──

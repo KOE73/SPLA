@@ -72,7 +72,9 @@ in addition to the root `AGENTS.md`.
 
 ## Non-code top-level folders
 
-- `web/`: The Vue 3 + TS + Vite browser client, embedded into `SPLA.Service` at build time.
+- `web/`: The Vue 3 + TS + Vite browser client, embedded into `SPLA.Service` at build time. Package
+  manager is `pnpm` (not `npm`) — its content-addressable store dedupes `node_modules` across the
+  worktrees the multi-agent workflow above produces, instead of a full reinstall per worktree.
 - `docs/`, `agents/`, `Images/`: Documentation and assets (unchanged by the layered `src/` layout).
 
 ## Root Files
@@ -177,9 +179,19 @@ Generated output is not source:
 
 - `.publish/work/`: Ready-to-run application folder.
 - `.publish/work/plugins/`: Published plugin folders.
+- `.publish/work/branch.txt`: The git branch `PublishAll.ps1` was run from (blank/absent for a
+  build off `main`). `SystemOps.GetBuildBranch()` reads it next to the exe and puts it on
+  `WelcomePayload.Branch`; the web client (`ProjectBar.vue`) shows a red/yellow banner whenever it
+  is set, so a non-main build in daily use cannot be mistaken for main.
 - `.publish/zip/SPLA.zip`: ZIP package created by `PublishAll.cmd`.
 
 Do not treat `.publish/` contents as authoritative source.
+
+**File association follows the last build.** `PublishAll.ps1` always ends by running
+`.publish\work\SPLA.CLI.exe system register-association` (`SystemCommands.cs` in `SPLA.CLI`,
+wrapping `SystemOps.RegisterFileAssociation` in `SPLA.Service`) — the `.spla` extension in Explorer
+is re-pointed at whichever build was published most recently, deliberately, even across worktrees.
+Publishing from a different worktree silently changes what double-clicking a `.spla` file opens.
 
 ## Out-of-Solution Notes
 

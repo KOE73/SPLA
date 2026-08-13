@@ -19,6 +19,7 @@ client.on("chat.opened", p => { store.currentChat = p.chatId; });
 client.on("welcome", p => {
   store.workspacePath = p.workspacePath ?? null;
   store.userName = p.userName || null;
+  store.branch = p.branch || null;
   // Tear-off windows carry their project in the URL (?project=…) — it must win over the server's
   // default, or a solo terminal/debug window from a non-default project would act on the wrong one.
   const urlProject = new URLSearchParams(location.search).get("project");

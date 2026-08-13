@@ -397,7 +397,7 @@ public sealed class ChatRuntime
     public int PersistedCountUpTo(string msgId)
     {
         var count = 0;
-        foreach (var m in _conversation.Persistable)
+        foreach (var m in _conversation.PersistableWith(_runtime.Settings.SaveToolCalls))
         {
             count++;
             if (m.MsgId == msgId) return count;
@@ -408,8 +408,9 @@ public sealed class ChatRuntime
     /// <summary>Persists the conversation and session KV back to the chat store.</summary>
     public void Save()
     {
+        var saveToolCalls = _runtime.Settings.SaveToolCalls;
         _chat.Messages.Clear();
-        foreach (var m in _conversation.Persistable)
+        foreach (var m in _conversation.PersistableWith(saveToolCalls))
         {
             _chat.Messages.Add(new ChatSessionMessage
             {
@@ -417,7 +418,9 @@ public sealed class ChatRuntime
                 Content = m.Content ?? "",
                 Reasoning = string.IsNullOrEmpty(m.Reasoning) ? null : m.Reasoning,
                 CreatedAt = m.CreatedAt,
-                Images = _imageFiles.TryGetValue(m, out var files) && files.Count > 0 ? new List<string>(files) : null
+                Images = _imageFiles.TryGetValue(m, out var files) && files.Count > 0 ? new List<string>(files) : null,
+                ToolCalls = saveToolCalls && m.ToolCalls?.Count > 0 ? m.ToolCalls : null,
+                ToolCallId = saveToolCalls ? m.ToolCallId : null
             });
         }
         _chat.Kv = _sessionKv.Snapshot();

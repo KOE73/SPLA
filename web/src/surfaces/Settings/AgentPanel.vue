@@ -19,6 +19,12 @@
       <label v-if="loopGuard" class="field"><span>Repeats to trigger</span>
         <input type="number" v-model.number="loopGuardRepeats" min="2" max="20" style="width: 6em" />
       </label>
+      <label class="field"><span>Save full tool trace</span>
+        <span style="display: flex; align-items: center; gap: 8px">
+          <input type="checkbox" v-model="saveToolCalls" />
+          <span class="hint">also save every tool call and its result to the chat file, not just the visible text — bigger files, full replay of what the agent did</span>
+        </span>
+      </label>
     </div>
     <div class="conn-card">
       <div class="conn-head"><span class="id">Permissions</span></div>
@@ -55,6 +61,7 @@ const mode = ref("");
 const customPrompt = ref("");
 const loopGuard = ref(false);
 const loopGuardRepeats = ref(3);
+const saveToolCalls = ref(false);
 const modes = ref<string[]>([]);
 const perms = reactive<Record<string, string>>({ permRead: "", permWrite: "", permShell: "", permInternet: "" });
 const hint = ref("");
@@ -71,6 +78,7 @@ const off = client.on("agent.result", p => {
   customPrompt.value = p.customPrompt || "";
   loopGuard.value = p.loopGuard === true;
   loopGuardRepeats.value = p.loopGuardRepeats ?? 3;
+  saveToolCalls.value = p.saveToolCalls === true;
   perms.permRead = p.permRead || "";
   perms.permWrite = p.permWrite || "";
   perms.permShell = p.permShell || "";
@@ -90,6 +98,7 @@ function save(): Promise<void> {
       customPrompt: customPrompt.value,
       loopGuard: loopGuard.value,
       loopGuardRepeats: loopGuardRepeats.value,
+      saveToolCalls: saveToolCalls.value,
       permRead: perms.permRead, permWrite: perms.permWrite, permShell: perms.permShell, permInternet: perms.permInternet,
       theme: lastTheme, density: lastDensity
     }, projectEnvelope());

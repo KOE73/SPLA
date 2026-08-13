@@ -113,7 +113,7 @@ client/types **and** this table.
 
 | Message | Const | Payload | Fan-out | Notes |
 |---------|-------|---------|---------|-------|
-| `welcome` | `Welcome` | `WelcomePayload` | unicast | Default project, connections, modes, theme/density, protocol version, identity. |
+| `welcome` | `Welcome` | `WelcomePayload` | unicast | Default project, connections, modes, theme/density, protocol version, identity, build branch. |
 | `project.list.result` | `ProjectListResult` | `ProjectListResultPayload` | unicast | Answer to `project.list`/`project.recent`. |
 | `project.context` | `ProjectContext` | `ProjectContextPayload` | unicast | Answer to `project.open`/`project.create`. |
 | `chat.list.result` | `ChatListResult` | `ChatListResultPayload` | broadcast (project) | Every sidebar in that project refreshes. |

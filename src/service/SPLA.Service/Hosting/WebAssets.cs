@@ -69,13 +69,18 @@ public static class WebAssets
 
     // Walk up from the binary directory to find the repo's web/dist/ folder.
     // Works both when the CLI runs from SPLA.CLI/bin/…/ and when SPLA.Service itself is the host.
+    //
+    // index.html is the marker, not the directory: plugins ship their own prebuilt web/dist/ (their
+    // settings module) and it lands in the host's output directory — which is the FIRST rung of this
+    // walk. Matching on the bare directory picks that one up and shadows the real client, so every
+    // page request 404s.
     private static string? FindDevWebClientDir()
     {
         var dir = new DirectoryInfo(AppContext.BaseDirectory);
         for (var i = 0; i < 8 && dir != null; i++, dir = dir.Parent)
         {
             var dist = Path.Combine(dir.FullName, "web", "dist");
-            if (Directory.Exists(dist)) return dist;
+            if (File.Exists(Path.Combine(dist, "index.html"))) return dist;
         }
         return null;
     }

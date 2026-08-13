@@ -285,6 +285,7 @@ public sealed class ClientConnection : IClientSession
             ProjectId = ctx.ProjectId,
             ProjectName = ctx.ProjectName,
             WorkspacePath = ctx.WorkspacePath,
+            Branch = SystemOps.GetBuildBranch(),
             Connections = ctx.Connections,
             Modes = ctx.Modes,
             DefaultMode = ctx.DefaultMode,

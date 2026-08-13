@@ -42,6 +42,10 @@ public class ResolvedSettings
     public bool LoopGuard { get; set; }
     public int LoopGuardRepeats { get; set; } = 3;
 
+    /// <summary>Persist the full tool-call/tool-result trace with the chat history. Default OFF —
+    /// see <see cref="SplaAgentSection.SaveToolCalls"/>.</summary>
+    public bool SaveToolCalls { get; set; }
+
     /// <summary>Enabled built-in agent capabilities. Null = all enabled (backward compatible);
     /// see <see cref="SplaAgentSection.Capabilities"/> for full semantics.</summary>
     public List<string>? Capabilities { get; set; }
@@ -325,6 +329,7 @@ public static class SettingsResolver
                     r.CustomPrompt = defaults.Agent.CustomPrompt;
                 r.LoopGuard = defaults.Agent.LoopGuard ?? r.LoopGuard;
                 r.LoopGuardRepeats = defaults.Agent.LoopGuardRepeats ?? r.LoopGuardRepeats;
+                r.SaveToolCalls = defaults.Agent.SaveToolCalls ?? r.SaveToolCalls;
                 r.Capabilities = defaults.Agent.Capabilities ?? r.Capabilities;
                 AddTrustedDomains(r, defaults.Agent.TrustedDomains);
             }
@@ -369,6 +374,7 @@ public static class SettingsResolver
                     r.CustomPrompt = project.Agent.CustomPrompt;
                 r.LoopGuard = project.Agent.LoopGuard ?? r.LoopGuard;
                 r.LoopGuardRepeats = project.Agent.LoopGuardRepeats ?? r.LoopGuardRepeats;
+                r.SaveToolCalls = project.Agent.SaveToolCalls ?? r.SaveToolCalls;
                 r.Capabilities = project.Agent.Capabilities ?? r.Capabilities;
                 AddTrustedDomains(r, project.Agent.TrustedDomains);
             }

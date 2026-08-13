@@ -355,6 +355,9 @@ public sealed class AgentSettingsPayload
     /// Stored in .spla agent: loop_guard / loop_guard_repeats. Default off.</summary>
     public bool? LoopGuard { get; set; }
     public int? LoopGuardRepeats { get; set; }
+    /// <summary>Persist the full tool-call/tool-result trace with the chat history, not just the
+    /// final text. Stored in .spla agent: save_tool_calls. Default off.</summary>
+    public bool? SaveToolCalls { get; set; }
     // UI appearance — stored in .spla ui: section
     public string Theme { get; set; } = "dark";
     public string Density { get; set; } = "norm";
@@ -673,6 +676,10 @@ public sealed class WelcomePayload
     public string ProjectId { get; set; } = string.Empty;
     public string? ProjectName { get; set; }
     public string? WorkspacePath { get; set; }
+
+    /// <summary>Non-null only when this build was published from a branch other than main — the
+    /// client shows a warning banner so a non-main build in daily use doesn't pass for main.</summary>
+    public string? Branch { get; set; }
 
     /// <summary>Project connections a chat can point at, and the available agent modes — so a client
     /// can offer per-chat model/mode pickers without hardcoding them.</summary>
