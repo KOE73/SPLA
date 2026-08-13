@@ -1,6 +1,7 @@
 using SPLA.MCP.Core.ToolSets;
 using SPLA.Runtime;
 using SPLA.Domain.Models;
+using SPLA.Domain.Secrets;
 using SPLA.Domain.Settings;
 using SPLA.Service.Contracts;
 
@@ -27,8 +28,13 @@ public static class SettingsOps
             Name = c.Name,
             Provider = c.Provider,
             Endpoint = c.Endpoint,
-            ApiKey = c.ApiKey,
-            AdminKey = c.AdminKey,
+            // References travel; key material does not. A project that still carries a pasted literal
+            // says so through the flag — enough for the editor to prompt for a move into the store,
+            // without the value making the trip to a browser to get there.
+            ApiKey = Reference(c.ApiKey),
+            AdminKey = Reference(c.AdminKey),
+            ApiKeyIsLiteral = IsLiteral(c.ApiKey),
+            AdminKeyIsLiteral = IsLiteral(c.AdminKey),
             SwapModel = c.SwapModel,
             Models = c.Models.Select(m => new ModelEditDto
             {
@@ -44,8 +50,15 @@ public static class SettingsOps
     /// the live settings so chats see the new set immediately. Returns the canonical list to broadcast.</summary>
     public static ConnectionsPayload SaveConnections(AgentRuntime runtime, IEnumerable<ConnectionEditDto> incoming)
     {
+        // What is on disk now, to fall back on per credential: the editor is never handed a literal,
+        // so a blank field means "unchanged", not "cleared". Without this, opening the panel and
+        // pressing Save on a project with pasted keys would wipe every one of them.
+        var stored = runtime.Settings.Connections
+            .GroupBy(c => c.Id, StringComparer.OrdinalIgnoreCase)
+            .ToDictionary(g => g.Key, g => g.First(), StringComparer.OrdinalIgnoreCase);
+
         var sections = incoming
-            .Select(ToSection)
+            .Select(d => ToSection(d, stored))
             .Where(c => !string.IsNullOrWhiteSpace(c.Id))
             .GroupBy(c => c.Id, StringComparer.OrdinalIgnoreCase)   // last write wins per id
             .Select(g => g.Last())
@@ -537,17 +550,19 @@ public static class SettingsOps
         return GetFeatures(runtime);
     }
 
-    private static SplaConnectionSection ToSection(ConnectionEditDto d)
+    private static SplaConnectionSection ToSection(
+        ConnectionEditDto d, IReadOnlyDictionary<string, SplaConnectionSection> stored)
     {
         var id = string.IsNullOrWhiteSpace(d.Id) ? Slug(d.Name ?? "") : d.Id.Trim();
+        var previous = stored.GetValueOrDefault(id);
         return new SplaConnectionSection
         {
             Id = id,
             Name = string.IsNullOrWhiteSpace(d.Name) ? null : d.Name.Trim(),
             Provider = Blank(d.Provider),
             Endpoint = Blank(d.Endpoint),
-            ApiKey = Blank(d.ApiKey),
-            AdminKey = Blank(d.AdminKey),
+            ApiKey = Credential(d.ApiKey, d.ApiKeyIsLiteral, previous?.ApiKey),
+            AdminKey = Credential(d.AdminKey, d.AdminKeyIsLiteral, previous?.AdminKey),
             SwapModel = d.SwapModel,
             Models = d.Models
                 .Select(m => ToModelSection(m, id))
@@ -574,6 +589,33 @@ public static class SettingsOps
     }
 
     private static string? Blank(string? s) => string.IsNullOrWhiteSpace(s) ? null : s.Trim();
+
+    /// <summary>The reference to publish for a stored credential: the pointer itself, or nothing at
+    /// all when the project holds a literal. Sending a literal to a client would defeat the point of
+    /// storing references at all — the editor gets a flag instead.</summary>
+    private static string? Reference(string? stored)
+        => SecretRef.IsReference(stored) ? stored : null;
+
+    /// <summary>True when something is stored and it is key material rather than a pointer.</summary>
+    private static bool IsLiteral(string? stored)
+        => !string.IsNullOrWhiteSpace(stored) && !SecretRef.IsReference(stored);
+
+    /// <summary>
+    /// Decides what one credential field becomes on save, given what the editor sent and what is on
+    /// disk. Three cases, and the middle one is the reason this is not a plain assignment:
+    /// <list type="bullet">
+    ///   <item>a reference (or any non-empty value) — the new value, as sent;</item>
+    ///   <item>blank with <paramref name="keepLiteral"/> — the untouched literal the editor was never
+    ///   shown; it stays exactly as it was, so merely opening the panel cannot erase a key;</item>
+    ///   <item>blank without it — an explicit clear, which is how the user removes a credential.</item>
+    /// </list>
+    /// </summary>
+    private static string? Credential(string? incoming, bool keepLiteral, string? stored)
+    {
+        var value = Blank(incoming);
+        if (value != null) return value;
+        return keepLiteral && IsLiteral(stored) ? stored : null;
+    }
 
     private static string Slug(string s)
     {

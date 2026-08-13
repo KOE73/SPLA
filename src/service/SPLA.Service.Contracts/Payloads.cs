@@ -165,17 +165,34 @@ public sealed class ClarifyChoicePayload
 }
 
 /// <summary>One editable LLM connection (full shape, unlike the id+name <see cref="ConnectionDto"/>
-/// used for pickers). Carried both ways: server→client for the editor, client→server on save.</summary>
+/// used for pickers). Carried both ways: server→client for the editor, client→server on save.
+/// <para>
+/// Both credentials are <b>references</b> on this DTO, never key material. Outbound the server sends
+/// a <c>secret:</c>/<c>env:</c> pointer or nothing at all; a project that still holds a pasted literal
+/// is reported through <see cref="ApiKeyIsLiteral"/> rather than by shipping the literal to a browser.
+/// Inbound the same field is what gets persisted, with a blank meaning "leave what is stored alone" —
+/// so an editor that was never told the literal cannot erase it by saving.
+/// </para></summary>
 public sealed class ConnectionEditDto
 {
     public string Id { get; set; } = string.Empty;
     public string? Name { get; set; }
     public string? Provider { get; set; }
     public string? Endpoint { get; set; }
+
+    /// <summary>The inference credential, as a reference. Blank on save = keep the stored value.</summary>
     public string? ApiKey { get; set; }
 
     /// <summary>Account-management credential (management / admin key). Never used for inference.</summary>
     public string? AdminKey { get; set; }
+
+    /// <summary>True when the project holds a plaintext api key that was withheld from this DTO. The
+    /// editor shows it as a credential still to be moved into the store; it is a fact about the
+    /// config, not the value.</summary>
+    public bool ApiKeyIsLiteral { get; set; }
+
+    /// <inheritdoc cref="ApiKeyIsLiteral"/>
+    public bool AdminKeyIsLiteral { get; set; }
 
     public bool SwapModel { get; set; }
 
@@ -291,6 +308,10 @@ public sealed class ConnectionDiagRequest
     public string? Id { get; set; }
     public string? Provider { get; set; }
     public string? Endpoint { get; set; }
+
+    /// <summary>The credential as a <c>secret:</c>/<c>env:</c> reference — the server materializes it
+    /// just before the probe. A literal still works (a local placeholder like <c>lm-studio</c> is one),
+    /// but a client is never required to hold key material to run a diagnostic.</summary>
     public string? ApiKey { get; set; }
     public string? Model { get; set; }
 }

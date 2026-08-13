@@ -85,9 +85,17 @@ export interface ConnectionDto {
   name?: string;
   provider?: string;
   endpoint?: string;
+  /** A `secret:`/`env:` REFERENCE, never key material — the browser holds pointers only. Blank on
+   *  save means "leave the stored credential alone" (see `apiKeyIsLiteral`). */
   apiKey?: string;
   /** Account-management credential (management / admin key). Never used for inference. */
   adminKey?: string;
+  /** Server→client: the project still holds a pasted plaintext key, which was withheld from us.
+   *  Client→server: we are not touching it — keep it. Clearing this while sending a blank `apiKey`
+   *  is how a credential gets removed. */
+  apiKeyIsLiteral?: boolean;
+  /** As `apiKeyIsLiteral`, for the admin key. */
+  adminKeyIsLiteral?: boolean;
   swapModel?: boolean;
   models: ModelEntryDto[];
 }

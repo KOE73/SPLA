@@ -2,6 +2,7 @@ using System.Collections.Concurrent;
 using System.Net.Http.Headers;
 using System.Text;
 using System.Text.Json;
+using SPLA.Domain.Secrets;
 using SPLA.Domain.Settings;
 using SPLA.Service.Contracts;
 
@@ -11,6 +12,13 @@ namespace SPLA.Service;
 /// Lightweight diagnostics for a connection config: reachability ping, model listing, and a
 /// one-shot test chat. All operations are directed at whatever endpoint+key the caller supplies —
 /// they do not require the connection to be saved into the project settings first.
+/// <para>
+/// The key arrives as a <b>reference</b> and is materialized here, one call before the request that
+/// needs it. That is what lets the browser run a probe without ever holding a credential, and it is
+/// also what makes a probe agree with a real turn: the config a connection stores is a pointer, and
+/// a diagnostic that put the pointer itself in the Authorization header would report every
+/// properly-stored connection as broken.
+/// </para>
 /// </summary>
 public static class ConnectionDiagOps
 {
@@ -27,6 +35,19 @@ public static class ConnectionDiagOps
     {
         if (!string.IsNullOrWhiteSpace(apiKey))
             req.Headers.Authorization = new AuthenticationHeaderValue("Bearer", apiKey);
+    }
+
+    /// <summary>Materializes the credential for one probe. A literal passes through untouched — that
+    /// is the resolver's contract, and it keeps a local <c>lm-studio</c> placeholder working. A
+    /// reference that cannot be resolved returns its own message so the dot's tooltip says
+    /// "this secret is missing" rather than "401".</summary>
+    private static async Task<(string? Key, string? Error)> ResolveKeyAsync(
+        ISecretResolver? resolver, string? value, CancellationToken ct)
+    {
+        if (!ISecretResolver.IsReference(value)) return (value, null);
+        if (resolver == null) return (null, $"Cannot resolve '{value}' — no secret store on this session.");
+        try { return (await resolver.ResolveAsync(value, ct), null); }
+        catch (Exception ex) { return (null, $"Credential '{value}': {ex.Message}"); }
     }
 
     // ── Bulk health check ─────────────────────────────────────────────────────
@@ -47,12 +68,13 @@ public static class ConnectionDiagOps
     /// Caller should fire-and-forget via Task.Run to avoid blocking the message loop.</summary>
     public static async Task<ConnectionsHealthPayload> PingAllAsync(
         IReadOnlyList<SplaConnectionSection> connections,
-        ConcurrentDictionary<string, (bool Ok, string? Error)> cache)
+        ConcurrentDictionary<string, (bool Ok, string? Error)> cache,
+        ISecretResolver? resolver = null)
     {
         var tasks = connections.Select(async c =>
         {
             var result = await PingAsync(new ConnectionDiagRequest
-                { Id = c.Id, Endpoint = c.Endpoint, ApiKey = c.ApiKey, Provider = c.Provider });
+                { Id = c.Id, Endpoint = c.Endpoint, ApiKey = c.ApiKey, Provider = c.Provider }, resolver);
             cache[c.Id] = (result.Ok, result.Error);
             return new ConnectionHealthDto { Id = c.Id, Ok = result.Ok, Error = result.Error };
         });
@@ -61,7 +83,8 @@ public static class ConnectionDiagOps
 
     // ── Ping ──────────────────────────────────────────────────────────────────
 
-    public static async Task<ConnectionPingResultPayload> PingAsync(ConnectionDiagRequest? req)
+    public static async Task<ConnectionPingResultPayload> PingAsync(
+        ConnectionDiagRequest? req, ISecretResolver? resolver = null)
     {
         var id = req?.Id;
         if (string.IsNullOrWhiteSpace(req?.Endpoint))
@@ -70,8 +93,11 @@ public static class ConnectionDiagOps
         using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(6));
         try
         {
+            var (key, keyError) = await ResolveKeyAsync(resolver, req.ApiKey, cts.Token);
+            if (keyError != null) return new() { Id = id, Ok = false, Error = keyError };
+
             using var request = new HttpRequestMessage(HttpMethod.Get, ModelsUrl(req.Endpoint));
-            AddAuth(request, req.ApiKey);
+            AddAuth(request, key);
             using var response = await Http.SendAsync(request, cts.Token);
             return new()
             {
@@ -92,7 +118,8 @@ public static class ConnectionDiagOps
 
     // ── Model list ────────────────────────────────────────────────────────────
 
-    public static async Task<ConnectionModelsResultPayload> GetModelsAsync(ConnectionDiagRequest? req)
+    public static async Task<ConnectionModelsResultPayload> GetModelsAsync(
+        ConnectionDiagRequest? req, ISecretResolver? resolver = null)
     {
         var id = req?.Id;
         if (string.IsNullOrWhiteSpace(req?.Endpoint))
@@ -101,8 +128,11 @@ public static class ConnectionDiagOps
         using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(10));
         try
         {
+            var (key, keyError) = await ResolveKeyAsync(resolver, req.ApiKey, cts.Token);
+            if (keyError != null) return new() { Id = id, Error = keyError };
+
             using var request = new HttpRequestMessage(HttpMethod.Get, ModelsUrl(req.Endpoint));
-            AddAuth(request, req.ApiKey);
+            AddAuth(request, key);
             using var response = await Http.SendAsync(request, cts.Token);
             if (!response.IsSuccessStatusCode)
                 return new() { Id = id, Error = $"{(int)response.StatusCode} {response.ReasonPhrase}" };
@@ -137,7 +167,8 @@ public static class ConnectionDiagOps
 
     // ── Test chat ─────────────────────────────────────────────────────────────
 
-    public static async Task<ConnectionTestResultPayload> TestChatAsync(ConnectionDiagRequest? req)
+    public static async Task<ConnectionTestResultPayload> TestChatAsync(
+        ConnectionDiagRequest? req, ISecretResolver? resolver = null)
     {
         var id = req?.Id;
         if (string.IsNullOrWhiteSpace(req?.Endpoint))
@@ -146,6 +177,9 @@ public static class ConnectionDiagOps
         using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(30));
         try
         {
+            var (key, keyError) = await ResolveKeyAsync(resolver, req.ApiKey, cts.Token);
+            if (keyError != null) return new() { Id = id, Error = keyError };
+
             var body = JsonSerializer.Serialize(new
             {
                 model = req.Model ?? "",
@@ -158,7 +192,7 @@ public static class ConnectionDiagOps
             {
                 Content = new StringContent(body, Encoding.UTF8, "application/json")
             };
-            AddAuth(request, req.ApiKey);
+            AddAuth(request, key);
 
             using var response = await Http.SendAsync(request, cts.Token);
             var responseJson = await response.Content.ReadAsStringAsync(cts.Token);

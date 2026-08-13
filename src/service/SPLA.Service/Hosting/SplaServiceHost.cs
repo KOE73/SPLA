@@ -380,7 +380,8 @@ public sealed class SplaServiceHost
                 try
                 {
                     var health = await ConnectionDiagOps.PingAllAsync(
-                        entry.Runtime.Settings.Connections, entry.Runtime.ConnectionHealth);
+                        entry.Runtime.Settings.Connections, entry.Runtime.ConnectionHealth,
+                        entry.Runtime.Settings.SecretResolver);
                     await hub.BroadcastToProjectAsync(projectId, Contracts.MessageTypes.ConnectionsHealth, health);
                 }
                 catch { }

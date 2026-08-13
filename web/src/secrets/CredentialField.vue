@@ -34,7 +34,7 @@
     </div>
 
     <SecretEntryEditor v-if="mode === 'create'" mode="create" :scope="createScope"
-                       @created="onCreated" @cancel="mode = ''" />
+                       :initial-field="createField" @created="onCreated" @cancel="mode = ''" />
     <SecretEntryEditor v-else-if="mode === 'edit' && selected" mode="edit" :scope="selected.scope"
                        :entry-key="selected.key" :fields="selected.fields" />
   </div>
@@ -53,7 +53,9 @@ const props = withDefaults(defineProps<{
   noneLabel?: string;
   /** Scope pre-selected when creating; "" makes the user choose. */
   createScope?: SecretScopeId | "";
-}>(), { modelValue: "", allowNone: true, noneLabel: "(none)", createScope: "" });
+  /** Field name a newly created entry starts on — the consumer says what it will read. */
+  createField?: string;
+}>(), { modelValue: "", allowNone: true, noneLabel: "(none)", createScope: "", createField: "" });
 
 const emit = defineEmits<{ (e: "update:modelValue", reference: string): void }>();
 
