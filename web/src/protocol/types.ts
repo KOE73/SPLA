@@ -363,6 +363,17 @@ export interface ChatDoubt {
   causes: { zone: string; what: string; at: string }[];
 }
 
+/** One movement between perimeters and how much has gone along it. `outward` is not a verdict —
+ *  nothing is refused yet — it marks the rows worth looking at first. */
+export interface DebugEdge {
+  source: string;
+  sink: string;
+  effect: string;
+  calls: number;
+  lastTool: string;
+  outward: boolean;
+}
+
 export interface DebugKvEntry {
   key: string;
   value: string;
@@ -387,6 +398,7 @@ export interface DebugSnapshotPayload {
   approxTokens?: number;
   contextIsLive?: boolean;
   entries?: DebugKvEntry[];
+  edges?: DebugEdge[];
   segments?: DebugSegment[];
   text?: string;
 }

@@ -574,6 +574,10 @@ public static class DebugKinds
     public const string KvSession = "kv.session";
     public const string KvProject = "kv.project";
     public const string Blobs = "blobs";
+
+    /// <summary>What has moved between perimeters in this process, and how often. The visible half
+    /// of shadow mode — a mode you cannot see is a log file nobody reads.</summary>
+    public const string Edges = "edges";
     public const string LastContext = "context.last";
     public const string Prompt = "prompt";
 }
@@ -929,6 +933,9 @@ public sealed class ClarifyRequestPayload
 /// </summary>
 public sealed class DebugSnapshotPayload
 {
+    /// <summary>Traffic between perimeters, busiest first. Filled for <see cref="DebugKinds.Edges"/>.</summary>
+    public List<DebugEdgeDto>? Edges { get; set; }
+
     public string Kind { get; set; } = string.Empty;
     public List<DebugKvEntryDto>? Entries { get; set; }
     public List<DebugSegmentDto>? Segments { get; set; }
@@ -954,6 +961,22 @@ public sealed class ContextLineDto
     public int ApproxTokens { get; set; }
     /// <summary>True = included in the context sent to LLM; false = exists in history but was not sent.</summary>
     public bool InContext { get; set; }
+}
+
+/// <summary>One movement and how much has gone along it.</summary>
+public sealed class DebugEdgeDto
+{
+    public string Source { get; set; } = string.Empty;
+    public string Sink { get; set; } = string.Empty;
+    public string Effect { get; set; } = string.Empty;
+    public int Calls { get; set; }
+
+    /// <summary>Last tool that took this edge — what makes a surprising row explainable.</summary>
+    public string LastTool { get; set; } = string.Empty;
+
+    /// <summary>True when the movement crosses out of the project into somewhere else. Not a verdict:
+    /// nothing is being refused yet. It marks the rows a person should look at first.</summary>
+    public bool Outward { get; set; }
 }
 
 public sealed class DebugKvEntryDto

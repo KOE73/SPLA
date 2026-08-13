@@ -100,6 +100,24 @@ public sealed class LiveAgentInspector : IAgentInspector
                     .ToList() ?? new();
                 break;
 
+            case DebugKinds.Edges:
+                snap.Edges = _runtime.McpHost.Edges.List()
+                    .Select(t => new DebugEdgeDto
+                    {
+                        Source = t.Edge.Source.ToString(),
+                        Sink = t.Edge.Sink.ToString(),
+                        Effect = t.Edge.Effect.ToString().ToLowerInvariant(),
+                        Calls = t.Calls,
+                        LastTool = t.LastTool,
+                        // What leaves the project, in either direction of trust: content going out,
+                        // and content coming in from somewhere nobody vouched for.
+                        Outward = t.Edge.Sink != SPLA.Domain.Security.Zone.Project
+                                  && t.Edge.Sink != SPLA.Domain.Security.Zone.Context
+                                  || t.Edge.Source == SPLA.Domain.Security.Zone.Web
+                    })
+                    .ToList();
+                break;
+
             case DebugKinds.LastContext:
                 if (chat is { } lc)
                 {

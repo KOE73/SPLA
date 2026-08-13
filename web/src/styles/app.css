@@ -505,3 +505,12 @@ input.locked { opacity: 0.6; cursor: default; background: var(--bg); }
          color: var(--danger, #d9534f); font: inherit; }
 .doubt:hover { background: color-mix(in srgb, var(--danger, #d9534f) 12%, transparent); }
 .doubt-mark { font-size: 1.15em; line-height: 1; }
+
+/* Edge ledger. The movement is the row's subject, so it gets the width; everything else is a
+   qualifier. Only outward rows are coloured — if the ordinary ones were too, nothing would stand
+   out and the colour would say nothing. */
+.kv-row .e-move, .kv-head .e-move { min-width: 240px; max-width: 300px; color: var(--text); }
+.kv-row .e-move.outward { color: var(--danger, #d9534f); }
+.kv-row .e-eff, .kv-head .e-eff { min-width: 60px; color: var(--muted); }
+.kv-row .e-n, .kv-head .e-n { min-width: 48px; text-align: right; color: var(--muted); }
+.edge-empty { color: var(--muted); padding: 6px 0; }

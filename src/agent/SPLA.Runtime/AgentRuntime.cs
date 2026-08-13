@@ -203,7 +203,8 @@ public sealed class AgentRuntime : IDisposable
             loggerFactory.CreateLogger<SPLA.Library.Librarians.AgentLibrarian>());
 
         McpHost = new McpHost(
-            new PermissionManager(settings: settings), PluginManager, loggerFactory.CreateLogger<McpHost>());
+            new PermissionManager(settings: settings), PluginManager, loggerFactory.CreateLogger<McpHost>(),
+            zoneOfPath: ZoneOfPath);
 
         // Tool sets: what exists and how far each may reach the model. Process-wide on purpose — a
         // level is the user's standing decision, while "raised right now" belongs to a chat and lives
@@ -342,6 +343,25 @@ public sealed class AgentRuntime : IDisposable
     /// and guessing the list is precisely what shadow mode exists to avoid. The cutout does not wait
     /// for that evidence — it was decided on its own merits.</para>
     /// </summary>
+    /// <summary>
+    /// Which side of the project boundary a path lands on. The same boundary the file tools work
+    /// behind, asked a different question — so a path the tools would refuse and one the map calls
+    /// outside are the same path, rather than two rules that will drift apart.
+    ///
+    /// <para>A call that names no path gets <see cref="SPLA.Domain.Security.Zone.Unknown"/>, not a
+    /// guess: an invented source becomes an invented verdict.</para>
+    /// </summary>
+    private SPLA.Domain.Security.Zone ZoneOfPath(string? path)
+    {
+        if (string.IsNullOrWhiteSpace(path)) return SPLA.Domain.Security.Zone.Unknown;
+        if (Sandbox.Workspace is not SPLA.Domain.Host.LocalWorkspace { Boundary.IsBounded: true } ws)
+            return SPLA.Domain.Security.Zone.Unknown;
+
+        return ws.Boundary.Contains(path)
+            ? SPLA.Domain.Security.Zone.Project
+            : SPLA.Domain.Security.Zone.Machine;
+    }
+
     private static SPLA.Domain.Host.ISandbox BuildSandbox(ResolvedSettings settings, ILoggerFactory loggers)
     {
         if (!settings.HasProject)

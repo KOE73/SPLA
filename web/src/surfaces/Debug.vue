@@ -6,6 +6,26 @@
     </div>
     <div id="debugBody" :class="{ 'ctx-mode': !!snapshot?.contextLines }">
       <ContextTable v-if="snapshot?.contextLines" :snapshot="snapshot" />
+      <!-- What has actually moved between perimeters. Nothing here is refused: this is the record
+           the decision to start refusing will be made from, which is why it shows traffic and not
+           rules. -->
+      <template v-if="snapshot?.edges">
+        <div v-if="!snapshot.edges.length" class="edge-empty">
+          Nothing has crossed a perimeter yet in this process.
+        </div>
+        <template v-else>
+          <div class="kv-head">
+            <span class="e-move">movement</span><span class="e-eff">effect</span>
+            <span class="e-n">calls</span><span class="v">last tool</span>
+          </div>
+          <div v-for="(e, i) in snapshot.edges" :key="i" class="kv-row">
+            <span class="e-move" :class="{ outward: e.outward }">{{ e.source }} → {{ e.sink }}</span>
+            <span class="e-eff">{{ e.effect }}</span>
+            <span class="e-n">{{ e.calls }}</span>
+            <span class="v">{{ e.lastTool }}</span>
+          </div>
+        </template>
+      </template>
       <template v-else-if="snapshot?.entries">
         <div v-if="!snapshot.entries.length">(empty)</div>
         <!-- Origin is its own column, never folded into the value: the question this view has to
@@ -60,6 +80,7 @@ const TABS = [
   { kind: "kv.session", label: "session kv" },
   { kind: "kv.project", label: "project kv" },
   { kind: "blobs", label: "blobs" },
+  { kind: "edges", label: "edges" },
   { kind: "context.last", label: "context" },
   { kind: "prompt", label: "prompt" }
 ] as const;
