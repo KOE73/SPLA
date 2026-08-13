@@ -110,5 +110,25 @@ public sealed class KeyValueStore : IKeyValueStore
         lock (_lock) return new Dictionary<string, string>(_items, StringComparer.Ordinal);
     }
 
+    /// <summary>Labels only, for persisting beside the values.
+    /// <para>Beside rather than inside: the values file is something a person reads and edits, and
+    /// folding a machine-written label into every line would spoil that for the sake of the few
+    /// entries that carry one. Same reasoning as grants living beside the list they extend.</para></summary>
+    public Dictionary<string, Security.DataOrigin> OriginSnapshot()
+    {
+        lock (_lock) return new Dictionary<string, Security.DataOrigin>(_origins, StringComparer.Ordinal);
+    }
+
+    /// <summary>Restores labels after the values have been loaded. Keys with no label stay unlabelled,
+    /// which is what a store written before labels existed looks like.</summary>
+    public void LoadOrigins(IEnumerable<KeyValuePair<string, Security.DataOrigin>> origins)
+    {
+        lock (_lock)
+        {
+            _origins.Clear();
+            foreach (var (key, origin) in origins) _origins[key] = origin;
+        }
+    }
+
     private void OnChanged() => Changed?.Invoke(this, EventArgs.Empty);
 }

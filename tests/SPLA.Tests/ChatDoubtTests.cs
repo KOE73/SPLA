@@ -141,6 +141,30 @@ public sealed class ChatDoubtTests
         }
     }
 
+    /// <summary>
+    /// The laundry closes across restarts too, or it does not close: a label that lives only in
+    /// memory means the next launch reads yesterday's web content back with a clean flag. Labels are
+    /// kept beside the values rather than inside them — the values file is one a person reads and
+    /// edits, and a machine-written origin on every line would spoil that for the few that carry one.
+    /// </summary>
+    [Fact]
+    public void A_label_survives_a_restart()
+    {
+        var bucket = new SPLA.Domain.Project.MemoryBucket("root");
+
+        var before = new SPLA.Domain.Settings.ProjectKvStore(bucket);
+        before.Store.Set("note:finding", "…text from that page…", DataOrigin.Internet);
+        before.Store.Set("note:mine", "typed by a person", null);
+
+        // A fresh process over the same storage.
+        var after = new SPLA.Domain.Settings.ProjectKvStore(bucket);
+        var entries = after.Store.Entries().ToDictionary(e => e.Key);
+
+        Assert.Equal("internet", entries["note:finding"].Origin!.Zone);
+        Assert.True(entries["note:finding"].Origin!.RaisesDoubt);
+        Assert.Null(entries["note:mine"].Origin);
+    }
+
     [Fact]
     public void Overwriting_an_entry_relabels_it_rather_than_merging()
     {

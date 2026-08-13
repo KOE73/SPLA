@@ -206,6 +206,10 @@ internal sealed class ChatHandlers : IMessageHandler
 
         chat.Doubt.Clear();
 
+        // Persisted immediately, not at the next turn: a person who cleared the flag and closed the
+        // window would otherwise find it back, and a decision that does not stick is not one.
+        chat.Save();
+
         await ctx.Session.Hub.BroadcastToWatchersAsync(chat.ChatId, MessageTypes.ChatDoubtState,
             new ChatDoubtStatePayload { ChatId = chat.ChatId, Doubt = DoubtDto(chat) });
     }
