@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.IO;
 using System.Linq;
 using System.Threading;
@@ -129,8 +129,39 @@ public sealed class ZoneShadowStageTests : IDisposable
         Assert.Equal(3, host.Edges.List().Single().Calls);
     }
 
-    /// <summary>A refused call still moved nothing, but it is still a thing that was attempted, and
-    /// the record is of attempts. Ordering in the pipeline is what decides this, so it is pinned.</summary>
+    /// <summary>
+    /// The reading has to outlive the process, or the week it is supposed to measure never
+    /// accumulates. Counts add up across runs rather than starting over — the question is what a
+    /// project needs over a week, not what it needed since breakfast.
+    /// </summary>
+    [Fact]
+    public async Task The_reading_survives_a_restart_and_keeps_counting()
+    {
+        var bucket = new SPLA.Domain.Project.MemoryBucket("root");
+        var args = ReadArgs(Path.Combine(_root, "inside.txt"));
+
+        var first = NewHost();
+        _ = new SPLA.Runtime.EdgeLedgerFile(bucket, first.Edges);
+        using (Scope())
+        {
+            await first.ExecuteToolAsync(AgentMode.Agent, "system_read_file", args, CancellationToken.None);
+            await first.ExecuteToolAsync(AgentMode.Agent, "system_read_file", args, CancellationToken.None);
+        }
+
+        // A fresh process over the same storage.
+        var second = NewHost();
+        _ = new SPLA.Runtime.EdgeLedgerFile(bucket, second.Edges);
+
+        Assert.Equal(2, second.Edges.List().Single().Calls);
+
+        using (Scope())
+            await second.ExecuteToolAsync(AgentMode.Agent, "system_read_file", args, CancellationToken.None);
+
+        Assert.Equal(3, second.Edges.List().Single().Calls);
+    }
+
+    /// <summary>Nothing was resolved, so there was no movement to classify. Pinned because it is the
+    /// pipeline's ordering that decides it: the shadow step sits behind resolution.</summary>
     [Fact]
     public async Task An_unknown_tool_records_nothing()
     {

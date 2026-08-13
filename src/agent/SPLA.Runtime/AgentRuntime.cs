@@ -41,6 +41,10 @@ public sealed class AgentRuntime : IDisposable
 {
     private readonly HttpClient _httpClient;
 
+    /// <summary>Holds the edge ledger's file alive for the runtime's lifetime; it subscribes to the
+    /// ledger and has no other caller.</summary>
+    private readonly EdgeLedgerFile? _edgeLedgerFile;
+
     public ResolvedSettings Settings { get; }
     public ILoggerFactory LoggerFactory { get; }
 
@@ -217,6 +221,15 @@ public sealed class AgentRuntime : IDisposable
         // Built before the feature catalog below — several features' tools (memory, spawn) need it.
         ProjectKv = new ProjectKvStore(
             settings.Project.GetBucket(SPLA.Domain.Project.IProjectBackend.RootBucket));
+
+        // The shadow reading has to outlive the process or it measures nothing — a week of ordinary
+        // work is the unit, and restarting the app was resetting the only evidence the enforcement
+        // defaults are meant to come from. Kept only for a real project: without a manifest there is
+        // no .spla/ to keep it in and no boundary for it to be about.
+        if (settings.HasProject)
+            _edgeLedgerFile = new EdgeLedgerFile(
+                settings.Project.GetBucket(SPLA.Domain.Project.IProjectBackend.RootBucket),
+                McpHost.Edges);
         SpawnedRunner = new SpawnedAgentRunner(Llm, McpHost, SkillLibrary, PluginManager, settings);
 
         // ── Modular built-in capabilities: one IAgentFeature per "core.*" id, in

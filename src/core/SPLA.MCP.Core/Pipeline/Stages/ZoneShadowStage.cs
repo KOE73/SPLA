@@ -1,4 +1,4 @@
-using System.Threading;
+﻿using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
 using SPLA.Domain.Models;
@@ -42,7 +42,10 @@ public sealed class ZoneShadowStage : IToolMiddleware
             var edge = _classifier.Classify(definition, call.ArgumentsJson);
             _ledger.Record(edge, call.Name);
 
-            _logger?.LogDebug("Zone edge (shadow). Tool={ToolName} Edge={Edge} Effect={Effect}",
+            // Information, not Debug: the file log starts at Information, so at Debug this line
+            // existed only in a debugger — which for a step whose entire product is a record is the
+            // same as not writing it. The ledger is the summary; this is the trail behind it.
+            _logger?.LogInformation("Zone edge (shadow). Tool={ToolName} Edge={Edge} Effect={Effect}",
                 call.Name, edge.ToString(), edge.Effect);
         }
 
