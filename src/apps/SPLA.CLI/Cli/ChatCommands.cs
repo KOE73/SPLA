@@ -1,52 +1,76 @@
+using Microsoft.Extensions.Logging;
+using Spectre.Console;
+using Spectre.Console.Cli;
+using SPLA.Domain.Settings;
 using SPLA.Runtime;
-using SPLA.Domain.Models;
-using SPLA.Service;
 
 namespace SPLA.CLI;
 
-/// <summary>The <c>spla chat …</c> sub-commands (list / fork / open) and the open-or-create fallback
-/// that yields the <see cref="ChatSession"/> the REPL runs against.</summary>
-internal static class ChatCommands
+/// <summary><c>spla chat list</c> — print every saved chat and exit.</summary>
+internal sealed class ChatListCommand(ResolvedSettings settings, ILoggerFactory loggerFactory)
+    : Command<EmptyCommandSettings>
 {
-    /// <summary>Handles a terminal <c>chat</c> sub-command (list / fork) that prints and exits.
-    /// Returns true when the process should stop after this call.</summary>
-    public static bool TryHandleTerminal(AgentRuntime runtime, string[] args)
+    protected override int Execute(CommandContext context, EmptyCommandSettings _, CancellationToken cancellationToken)
     {
-        if (args.Length < 2)
-        {
-            Console.WriteLine("Usage: spla chat <list|open|fork> [id] [--model name]");
-            return true;
-        }
+        using var runtime = RuntimeBootstrap.Build(settings, loggerFactory);
 
-        var cmd = args[1].ToLower();
-        if (cmd == "list")
-        {
-            Console.WriteLine("Saved chats:");
-            foreach (var c in runtime.ChatManager.ListChats())
-                Console.WriteLine($"- {c.Id} | {c.Title} | {c.UpdatedAt:dd.MM HH:mm}");
-            return true;
-        }
+        var chats = runtime.ChatManager.ListChats();
+        if (chats.Count == 0) { AnsiConsole.MarkupLine("[grey]No saved chats.[/]"); return 0; }
 
-        if (cmd == "fork" && args.Length > 2)
-        {
-            var model = args.Length > 4 && args[3] == "--model" ? args[4] : null;
-            var forked = runtime.ChatManager.DuplicateChat(args[2], model);
-            Console.WriteLine($"Forked to new chat: {forked.Id}");
-            return true;
-        }
-
-        return false;
+        var table = new Table().AddColumn("Id").AddColumn("Title").AddColumn("Updated");
+        foreach (var c in chats)
+            table.AddRow(c.Id, c.Title.EscapeMarkup(), c.UpdatedAt.ToString("dd.MM HH:mm"));
+        AnsiConsole.Write(table);
+        return 0;
     }
+}
 
-    /// <summary>Opens the chat named by <c>chat open &lt;id&gt;</c>, or creates a fresh one.</summary>
-    public static ChatSession OpenOrCreate(AgentRuntime runtime, string[] args, bool isChatCommand)
+internal sealed class ChatOpenSettings : CommandSettings
+{
+    [CommandArgument(0, "[id]")]
+    public string? Id { get; init; }
+}
+
+/// <summary><c>spla chat open [id]</c> — resumes a saved chat (or starts a new one if omitted/unknown)
+/// and drops into the interactive REPL.</summary>
+internal sealed class ChatOpenCommand(ResolvedSettings settings, ILoggerFactory loggerFactory)
+    : AsyncCommand<ChatOpenSettings>
+{
+    protected override async Task<int> ExecuteAsync(CommandContext context, ChatOpenSettings s, CancellationToken cancellationToken)
     {
-        if (isChatCommand && args.Length > 2 && args[1].ToLower() == "open")
-        {
-            var loaded = runtime.ChatManager.LoadChat(args[2]) ?? runtime.ChatManager.CreateNewChat();
-            Console.WriteLine($"Loaded chat: {loaded.Title}");
-            return loaded;
-        }
-        return runtime.ChatManager.CreateNewChat();
+        using var runtime = RuntimeBootstrap.Build(settings, loggerFactory);
+
+        var session = s.Id is { Length: > 0 } id
+            ? runtime.ChatManager.LoadChat(id) ?? runtime.ChatManager.CreateNewChat()
+            : runtime.ChatManager.CreateNewChat();
+        if (s.Id is { Length: > 0 }) Console.WriteLine($"Loaded chat: {session.Title}");
+
+        var chat = new ChatRuntime(runtime, session);
+        await InteractiveRepl.RunAsync(runtime, chat);
+        return 0;
+    }
+}
+
+internal sealed class ChatForkSettings : CommandSettings
+{
+    [CommandArgument(0, "<id>")]
+    public required string Id { get; init; }
+
+    [CommandOption("--model")]
+    public string? Model { get; init; }
+}
+
+/// <summary><c>spla chat fork &lt;id&gt; [--model]</c> — duplicates a saved chat, optionally onto a
+/// different model entry, and exits (the fork is not opened here — <c>chat open &lt;new-id&gt;</c>
+/// does that).</summary>
+internal sealed class ChatForkCommand(ResolvedSettings settings, ILoggerFactory loggerFactory)
+    : Command<ChatForkSettings>
+{
+    protected override int Execute(CommandContext context, ChatForkSettings s, CancellationToken cancellationToken)
+    {
+        using var runtime = RuntimeBootstrap.Build(settings, loggerFactory);
+        var forked = runtime.ChatManager.DuplicateChat(s.Id, s.Model);
+        Console.WriteLine($"Forked to new chat: {forked.Id}");
+        return 0;
     }
 }

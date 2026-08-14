@@ -10,11 +10,11 @@ namespace SPLA.CLI;
 /// against the same runtime a socket client would drive.</summary>
 internal static class ServeCommand
 {
-    public static async Task RunAsync(string[] args, ResolvedSettings settings, ILoggerFactory loggerFactory)
+    public static async Task RunAsync(
+        int port, string bind, string? token, bool repl, string? initialChatMessage,
+        ResolvedSettings settings, ILoggerFactory loggerFactory)
     {
         InstallCrashLogging(loggerFactory);
-
-        var (port, bind, token, repl, initialChatMessage) = ParseArgs(args);
 
         using var registry = new AgentRuntimeRegistry(loggerFactory)
         {
@@ -58,29 +58,6 @@ internal static class ServeCommand
         }
 
         await host.StopAsync();
-    }
-
-    private static (int Port, string Bind, string? Token, bool Repl, string? InitialChatMessage) ParseArgs(string[] args)
-    {
-        int port = 5050;
-        string bind = "127.0.0.1";
-        string? token = null;
-        bool repl = false;
-        string? initialChatMessage = null;
-
-        for (int i = 1; i < args.Length; i++)
-        {
-            switch (args[i].ToLowerInvariant())
-            {
-                case "--repl": repl = true; break;
-                case "--port": if (i + 1 < args.Length && int.TryParse(args[++i], out var p)) port = p; break;
-                case "--bind": if (i + 1 < args.Length) bind = args[++i]; break;
-                case "--token": if (i + 1 < args.Length) token = args[++i]; break;
-                case "--new-chat": if (i + 1 < args.Length) initialChatMessage = args[++i]; break;
-            }
-        }
-
-        return (port, bind, token, repl, initialChatMessage);
     }
 
     private static void InstallCrashLogging(ILoggerFactory loggerFactory)

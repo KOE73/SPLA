@@ -152,7 +152,14 @@ public sealed class AgentRuntime : IDisposable
     /// <summary>Schemas registered by plugins at startup (data + UI, resolved by name).</summary>
     public SPLA.Domain.Editor.SchemaRegistry SchemaRegistry { get; }
 
-    public AgentRuntime(ResolvedSettings settings, ILoggerFactory loggerFactory)
+    /// <param name="hostContributors">Context this host adds for this invocation (the CLI's
+    /// <c>--sys-prompt</c>, say). Handed to the composer at construction rather than pushed in later:
+    /// see the <c>hostExtras</c> parameter of <see cref="AgentContributors.Default"/> for where they
+    /// land and why the composer stays immutable.</param>
+    public AgentRuntime(
+        ResolvedSettings settings,
+        ILoggerFactory loggerFactory,
+        IEnumerable<IAgentContributor>? hostContributors = null)
     {
         Settings = settings;
         LoggerFactory = loggerFactory;
@@ -315,7 +322,8 @@ public sealed class AgentRuntime : IDisposable
         // decided which tools were registered above.
         var compositionLogger = loggerFactory.CreateLogger("SPLA.Agent.Composition");
         ContextComposer = new AgentContextComposer(
-            AgentContributors.Default(SkillLibrary, PluginManager, null, enabledFeatures, ProjectKv.Store, ToolSets),
+            AgentContributors.Default(SkillLibrary, PluginManager, null, enabledFeatures, ProjectKv.Store, ToolSets,
+                hostContributors),
             compositionLogger);
 
         // What this agent was assembled from, once, at startup. Per-composition logging is Debug and

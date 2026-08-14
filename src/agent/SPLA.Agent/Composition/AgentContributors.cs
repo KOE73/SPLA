@@ -18,9 +18,9 @@ namespace SPLA.Agent.Composition;
 /// prompt-building method.
 ///
 /// <para>Order is authority order, top-down: mode, built-in capabilities, instruction files, the
-/// user's prompt, skills, plugins. Two contributors are conditional, and on exactly the same
-/// decision that gates their tools — a capability that is off must not leave text behind describing
-/// tools that are not registered.</para>
+/// user's prompt, whatever the host added for this invocation, skills, plugins. Two contributors are
+/// conditional, and on exactly the same decision that gates their tools — a capability that is off
+/// must not leave text behind describing tools that are not registered.</para>
 /// </summary>
 public static class AgentContributors
 {
@@ -39,13 +39,22 @@ public static class AgentContributors
     /// <param name="projectKv">Project-scoped working memory. Null contributes session entries only.</param>
     /// <param name="toolSets">The set catalogue. Null means no set announcements — the state of a
     /// host that has no levelled sets to speak of (tests, a directly constructed sub-agent).</param>
+    /// <param name="hostExtras">Context the HOST adds for one invocation — the CLI's <c>--sys-prompt</c>
+    /// and friends. Supplied as "what", never as "where": the slot is decided here, immediately after
+    /// <see cref="CustomPromptContributor"/>, because a host addition speaks with the same authority as
+    /// the user's own prompt and must land after the project's word rather than replace it. Kept a
+    /// parameter of this method rather than a mutator on the composer so order stays owned by the one
+    /// place that owns it, and so the composer stays immutable after construction — it is shared by
+    /// every chat of a project and recomposed on every iteration of the agent loop, where a list
+    /// mutated mid-flight would surface as a torn enumeration in an unrelated chat.</param>
     public static IReadOnlyList<IAgentContributor> Default(
         SkillLibrary skills,
         PluginManager plugins,
         ISkillSession? session = null,
         IReadOnlyList<IAgentFeature>? enabledFeatures = null,
         IKeyValueStore? projectKv = null,
-        ToolSetRegistry? toolSets = null)
+        ToolSetRegistry? toolSets = null,
+        IEnumerable<IAgentContributor>? hostExtras = null)
     {
         var features = enabledFeatures ?? FullCatalog.Value;
         var enabledIds = new HashSet<string>(features.Select(f => f.Id), StringComparer.Ordinal);
@@ -57,6 +66,8 @@ public static class AgentContributors
             new InstructionsContributor(),
             new CustomPromptContributor()
         };
+
+        if (hostExtras != null) contributors.AddRange(hostExtras);
 
         if (enabledIds.Contains("core.skills"))
             contributors.Add(new SkillsContributor(skills, session));
