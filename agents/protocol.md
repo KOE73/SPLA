@@ -122,6 +122,7 @@ client/types **and** this table.
 | `llm.turn.start` | `LlmTurnStart` | `DeltaPayload` | watchers | New assistant message index. |
 | `delta` | `Delta` | `DeltaPayload` | watchers | Streamed assistant text chunk. |
 | `reasoning` | `Reasoning` | `ReasoningPayload` | watchers | Streamed reasoning chunk. |
+| `llm.attempt` | `Attempt` | `AttemptPayload` | watchers | A generation the repetition guard abandoned mid-stream; never sent for the successful attempt. Carries the abandoned Content/Reasoning so a reader can open it live; `chat.opened`'s `ChatMessageDto.attempts` (`AttemptDto[]`) carries the same fields for a reopened chat, when `agent.save_attempts` was on when it was saved. |
 | `assistant.message` | `AssistantMessage` | `AssistantMessagePayload` | watchers | Final assistant message. |
 | `tool.started` | `ToolStarted` | `ToolStartedPayload` | watchers | A tool call began. |
 | `tool.progress` | `ToolProgress` | `ToolProgressPayload` | watchers | Throttled progress ticks. |

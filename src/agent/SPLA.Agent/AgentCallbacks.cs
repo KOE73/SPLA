@@ -1,3 +1,4 @@
+using SPLA.Domain.Llm;
 using SPLA.Domain.Models;
 using System;
 using System.Collections.Generic;
@@ -26,6 +27,13 @@ public sealed class AgentCallbacks
 
     /// <summary>The fully assembled assistant message (text + reasoning + tool calls), once per LLM call.</summary>
     public Func<ChatMessage, Task>? OnAssistantMessage { get; init; }
+
+    /// <summary>
+    /// A generation the repetition guard abandoned mid-stream — never fired for the successful
+    /// attempt, which is what <see cref="OnAssistantMessage"/> already reports. Lets a host make an
+    /// otherwise-silent retry visible and countable instead of the user only ever seeing the notice.
+    /// </summary>
+    public Action<GenerationAttempt>? OnAttempt { get; init; }
 
     /// <summary>A tool is about to execute.</summary>
     public Func<ToolCall, Task>? OnToolCallStarted { get; init; }

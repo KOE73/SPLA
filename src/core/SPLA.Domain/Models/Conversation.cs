@@ -79,15 +79,23 @@ public sealed class Conversation
     /// System prompts (rebuilt from config on load) are always excluded. Tool messages (transient
     /// call/result pairs) are excluded unless <paramref name="saveToolCalls"/> asks to keep them —
     /// off by default, since most of that trace is diagnostic noise nobody re-reads.
+    /// <para>
+    /// A message with blank <see cref="ChatMessage.Content"/> normally does not survive either — that
+    /// is what makes the degenerate-turn placeholder (empty content, a non-empty
+    /// <see cref="ChatMessage.Attempts"/>) invisible by default. <paramref name="saveAttempts"/> is the
+    /// one thing that keeps it: with the setting off, dropping it is correct — a reload would otherwise
+    /// show an empty bubble that explains nothing, since the very thing it exists to explain was never
+    /// written down. With it on, the message is the only record of what happened and must stay.
+    /// </para>
     /// </summary>
-    public static bool ShouldPersist(ChatMessage msg, bool saveToolCalls = false) =>
+    public static bool ShouldPersist(ChatMessage msg, bool saveToolCalls = false, bool saveAttempts = false) =>
         !msg.IsEphemeral &&
         !msg.IsLabel &&
         msg.Role != ChatRole.System &&
         (msg.Role != ChatRole.Tool || saveToolCalls) &&
         (msg.Role == ChatRole.Tool
             ? (msg.ToolCalls?.Count > 0 || !string.IsNullOrWhiteSpace(msg.Content))
-            : !string.IsNullOrWhiteSpace(msg.Content));
+            : (!string.IsNullOrWhiteSpace(msg.Content) || (saveAttempts && msg.Attempts?.Count > 0)));
 
     /// <summary>
     /// Truncates the message history to <paramref name="messageCount"/> entries, removing everything after.
@@ -135,7 +143,7 @@ public sealed class Conversation
     public IEnumerable<ChatMessage> Persistable => _messages.Where(m => ShouldPersist(m));
 
     /// <summary>Messages that should be written to the persistent chat file, given the project's
-    /// full-tool-trace preference.</summary>
-    public IEnumerable<ChatMessage> PersistableWith(bool saveToolCalls) =>
-        _messages.Where(m => ShouldPersist(m, saveToolCalls));
+    /// full-tool-trace and save-attempts preferences.</summary>
+    public IEnumerable<ChatMessage> PersistableWith(bool saveToolCalls, bool saveAttempts = false) =>
+        _messages.Where(m => ShouldPersist(m, saveToolCalls, saveAttempts));
 }

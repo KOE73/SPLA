@@ -43,6 +43,41 @@ public sealed class LlmTurnContext
     public Func<string, Task>? OnReasoning { get; set; }
 
     /// <summary>
+    /// Called once per generation a guard ABANDONS — never for the successful one. The successful
+    /// attempt is already the message this call returns, so a record of it here would just be the same
+    /// answer twice; this sink exists for the attempts that never became the answer, which otherwise
+    /// leave no trace at all.
+    /// </summary>
+    public Action<GenerationAttempt>? OnAttempt { get; set; }
+
+    /// <summary>
+    /// Adds an observer to the text sink: <paramref name="observe"/> is called with every chunk, after
+    /// the existing sink has already been given it.
+    /// <para>
+    /// Order is the whole point. Forwarding first means the reader's latency is untouched no matter how
+    /// many observers are attached, and an observer that throws can never stop a chunk from reaching
+    /// the screen — its exception is swallowed here, because the caller of this sink is a socket read
+    /// loop that must not die over a bystander. An observer that needs to stop the turn does so by
+    /// cancelling, not by throwing.
+    /// </para>
+    /// <para>
+    /// Attaching works even when no sink exists: a run with no UI still gets its observers, which is
+    /// what keeps a guard effective in a headless host.
+    /// </para>
+    /// </summary>
+    public void ObserveDelta(Action<string> observe) => OnDelta = Wrap(OnDelta, observe);
+
+    /// <summary>Adds an observer to the reasoning sink. See <see cref="ObserveDelta"/>.</summary>
+    public void ObserveReasoning(Action<string> observe) => OnReasoning = Wrap(OnReasoning, observe);
+
+    private static Func<string, Task> Wrap(Func<string, Task>? inner, Action<string> observe)
+        => async chunk =>
+        {
+            if (inner != null) await inner(chunk);
+            try { observe(chunk); } catch { /* a bystander must not break the stream */ }
+        };
+
+    /// <summary>
     /// Free-form bag for middleware that needs to hand something to a later stage. Deliberately the
     /// exception, not the rule: anything that crosses more than one hop belongs on a typed property
     /// of this class. A middleware whose precondition is missing must fail loudly, never no-op.

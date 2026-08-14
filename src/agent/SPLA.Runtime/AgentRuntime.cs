@@ -169,6 +169,11 @@ public sealed class AgentRuntime : IDisposable
         Providers = BuildProviderRegistry(loggerFactory);
         Llm = new SPLA.Domain.Llm.LlmPipelineBlueprint()
             .Use(new SPLA.Domain.Llm.Middleware.TurnOutcomeMiddleware())
+            // Degenerate generation is a failure mode of every model we run, local and cloud alike, so
+            // the guard is part of the pipeline rather than of the agent loop: a spawned sub-agent and
+            // the librarian's direct queries are covered by the same layer, not by remembering to look.
+            .Use(new SPLA.Agent.Guards.RepetitionGuardMiddleware(
+                loggerFactory.CreateLogger<SPLA.Agent.Guards.RepetitionGuardMiddleware>()))
             // Records what the provider said about the key's standing, on both the success and the
             // failure path — a 429 is the response that reports the budget, and it throws.
             .Use(new SPLA.Domain.Llm.Middleware.ProviderStateMiddleware(ProviderState))

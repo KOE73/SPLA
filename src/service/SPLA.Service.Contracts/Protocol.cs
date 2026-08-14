@@ -236,6 +236,10 @@ public static class MessageTypes
     public const string LlmTurnStart = "llm.turn.start";
     public const string Delta = "delta";
     public const string Reasoning = "reasoning";
+    /// <summary>One generation the repetition guard abandoned mid-stream. Body is
+    /// <see cref="AttemptPayload"/>. Never sent for the successful attempt — that is
+    /// <see cref="AssistantMessage"/>.</summary>
+    public const string Attempt = "llm.attempt";
     public const string AssistantMessage = "assistant.message";
     /// <summary>Ack of the turn's user message with its assigned MsgId (<see cref="UserMessagePayload"/>).</summary>
     public const string UserMessage = "user.message";

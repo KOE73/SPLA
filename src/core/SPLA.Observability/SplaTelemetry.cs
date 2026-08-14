@@ -25,6 +25,14 @@ public static class SplaTelemetry
     public static readonly Histogram<double> ToolDurationMs = Meter.CreateHistogram<double>("spla.tool.duration.ms");
     public static readonly Counter<long> PromptTokens = Meter.CreateCounter<long>("spla.tokens.prompt");
     public static readonly Counter<long> CompletionTokens = Meter.CreateCounter<long>("spla.tokens.completion");
+    /// <summary>One generation the repetition guard abandoned mid-stream — tagged with model and
+    /// channel ("content"/"reasoning"). Note the in-process <c>TelemetryCollector</c> keys series by
+    /// instrument name only, so the local stats view shows totals across tags, not a per-model
+    /// breakdown; an OTLP backend sees the tags.</summary>
+    public static readonly Counter<long> DiscardedGenerations = Meter.CreateCounter<long>("spla.llm.generations.discarded");
+    /// <summary>Characters observed on an abandoned generation before the guard cut it off — the only
+    /// honest measure of what was burned, since a cancelled read never gets a token count.</summary>
+    public static readonly Counter<long> DiscardedChars = Meter.CreateCounter<long>("spla.llm.discarded.chars");
 
     private static readonly AsyncLocal<SplaTelemetryContext?> CurrentContextSlot = new();
     private static readonly SplaFileLoggerProvider FileLoggerProvider = new();

@@ -47,6 +47,11 @@ internal static class ConsoleHandlers
                 return Task.CompletedTask;
             },
             OnNotice = note => { Console.WriteLine($"\n{note}"); return Task.CompletedTask; },
+            // A generation thrown away mid-stream. Said out loud rather than left to the log: the text
+            // already on screen came from it, and without this line the retry's answer would appear to
+            // continue the loop the reader was just watching.
+            OnAttempt = a => Console.WriteLine(
+                $"\n   [attempt {a.Index} discarded] {a.Note} · {a.Chars:N0} chars in {a.Duration.TotalSeconds:F1}s"),
             OnTokenUsage = (prompt, completion) =>
             {
                 runtime.TokenUsageProject.Record(prompt, completion);
@@ -76,7 +81,8 @@ internal static class ConsoleHandlers
             Console.WriteLine($" -> {mark} ({result.TextContent.Length} chars)");
             return Task.CompletedTask;
         },
-        OnNotice = note => { Console.WriteLine($"\n{note}"); return Task.CompletedTask; }
+        OnNotice = note => { Console.WriteLine($"\n{note}"); return Task.CompletedTask; },
+        OnAttempt = a => Console.WriteLine($"\n [attempt {a.Index} discarded] {a.Note}")
     };
 
     /// <summary>Interactive permission prompt. <paramref name="colored"/> selects the richer

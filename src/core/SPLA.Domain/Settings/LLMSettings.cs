@@ -60,4 +60,27 @@ public class LLMSettings
     /// Works independently of presence/frequency penalties. Do not set all three high simultaneously.
     /// </summary>
     public double RepeatPenalty { get; set; } = 1.0;
+
+    /// <summary>
+    /// Hard ceiling on generated tokens for this turn. Null = do not send the field, so the server's
+    /// own default (or lack of one) applies — a runaway generation otherwise has no ceiling of ours
+    /// and can run until the provider's own limit, if any. Safe range: provider/model dependent;
+    /// a few thousand is typical for a single turn.
+    /// </summary>
+    public int? MaxTokens { get; set; }
+
+    /// <summary>
+    /// Nucleus sampling: keep only the smallest set of tokens whose cumulative probability reaches
+    /// this value. Null = do not send the field, server default applies. Safe range: 0.9–1.0;
+    /// lower values narrow the vocabulary and can push the model toward repetition.
+    /// </summary>
+    public double? TopP { get; set; }
+
+    /// <summary>
+    /// Minimum-probability sampling: discards tokens whose probability falls below this fraction of
+    /// the most likely token's probability. Null = do not send the field, server default applies.
+    /// Safe range: 0.0–0.1; it trims the improbable tail that a loop can otherwise wander into
+    /// without touching the head of the distribution the way top_p does.
+    /// </summary>
+    public double? MinP { get; set; }
 }

@@ -16,7 +16,16 @@ public enum LlmTurnStatus
     Error,
 
     /// <summary>Cancelled by the user or a guard. Tokens were still spent.</summary>
-    Canceled
+    Canceled,
+
+    /// <summary>
+    /// The model produced degenerate output — a repetition loop — and every attempt allowed for this
+    /// turn ended the same way. Distinct from <see cref="Error"/> because nothing failed: the provider
+    /// answered, the transport was fine, the tokens were spent. <see cref="LlmTurnResult.Message"/>
+    /// carries the last partial generation so a caller can show what happened, but it is not an
+    /// answer and must never be treated as one.
+    /// </summary>
+    Degenerate
 }
 
 /// <summary>

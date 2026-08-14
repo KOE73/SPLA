@@ -25,6 +25,12 @@
           <span class="hint">also save every tool call and its result to the chat file, not just the visible text — bigger files, full replay of what the agent did</span>
         </span>
       </label>
+      <label class="field"><span>Save abandoned generations</span>
+        <span style="display: flex; align-items: center; gap: 8px">
+          <input type="checkbox" v-model="saveAttempts" />
+          <span class="hint">also save the repetition guard's discarded attempts (full text) to the chat file — off by default, each one can run to several kB</span>
+        </span>
+      </label>
     </div>
     <div class="conn-card">
       <div class="conn-head"><span class="id">Permissions</span></div>
@@ -62,6 +68,7 @@ const customPrompt = ref("");
 const loopGuard = ref(false);
 const loopGuardRepeats = ref(3);
 const saveToolCalls = ref(false);
+const saveAttempts = ref(false);
 const modes = ref<string[]>([]);
 const perms = reactive<Record<string, string>>({ permRead: "", permWrite: "", permShell: "", permInternet: "" });
 const hint = ref("");
@@ -79,6 +86,7 @@ const off = client.on("agent.result", p => {
   loopGuard.value = p.loopGuard === true;
   loopGuardRepeats.value = p.loopGuardRepeats ?? 3;
   saveToolCalls.value = p.saveToolCalls === true;
+  saveAttempts.value = p.saveAttempts === true;
   perms.permRead = p.permRead || "";
   perms.permWrite = p.permWrite || "";
   perms.permShell = p.permShell || "";
@@ -99,6 +107,7 @@ function save(): Promise<void> {
       loopGuard: loopGuard.value,
       loopGuardRepeats: loopGuardRepeats.value,
       saveToolCalls: saveToolCalls.value,
+      saveAttempts: saveAttempts.value,
       permRead: perms.permRead, permWrite: perms.permWrite, permShell: perms.permShell, permInternet: perms.permInternet,
       theme: lastTheme, density: lastDensity
     }, projectEnvelope());

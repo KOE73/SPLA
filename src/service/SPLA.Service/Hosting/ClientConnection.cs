@@ -448,6 +448,17 @@ public sealed class ClientConnection : IClientSession
             },
             OnDelta = chunk => ToWatchers(MessageTypes.Delta, new DeltaPayload { MsgIndex = ctx.CurrentMsgIndex, Text = chunk }),
             OnReasoning = chunk => ToWatchers(MessageTypes.Reasoning, new ReasoningPayload { MsgIndex = ctx.CurrentMsgIndex, Text = chunk }),
+            OnAttempt = attempt => _ = ToWatchers(MessageTypes.Attempt, new AttemptPayload
+            {
+                MsgIndex = ctx.CurrentMsgIndex,
+                Index = attempt.Index,
+                Outcome = attempt.Outcome.ToString(),
+                Note = attempt.Note,
+                Chars = attempt.Chars,
+                DurationMs = (long)attempt.Duration.TotalMilliseconds,
+                Content = attempt.Content,
+                Reasoning = attempt.Reasoning
+            }),
             OnAssistantMessage = msg => ToWatchers(MessageTypes.AssistantMessage,
                 new AssistantMessagePayload { MsgIndex = ctx.CurrentMsgIndex, Message = ProtocolMapper.ToDto(msg) }),
             OnToolCallStarted = tc => ToWatchers(MessageTypes.ToolStarted, new ToolStartedPayload { ToolCall = ProtocolMapper.ToDto(tc) }),

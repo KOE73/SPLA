@@ -24,7 +24,12 @@ import type { ToolCallState } from "../surfaces/ToolCard.vue";
 export type LogItem =
   | { kind: "user"; key: string; text: string; images?: string[]; msgId?: string; createdAt?: string | number }
   | { kind: "assistant"; key: string; msgIndex: number; text: string; reasoning: string;
-      msgId?: string; createdAt?: string | number }
+      msgId?: string; createdAt?: string | number;
+      /** Generations the repetition guard threw away before this bubble got its real answer — the
+       *  streamed text visible up to that point belonged to one of these, not to the final message.
+       *  content/reasoning are the abandoned generation's own text, present live (from `llm.attempt`)
+       *  and after reopening a chat saved with `agent: save_attempts` on. */
+      attempts?: { index: number; note?: string; content?: string; reasoning?: string }[] }
   | { kind: "tool" | "notice"; key: string; text: string }
   | { kind: "toolcall"; key: string; call: ToolCallState }
   | { kind: "permission"; key: string; requestId: string; toolName: string; argumentsText?: string }
@@ -167,10 +172,13 @@ function bubble(s: ChatSession, msgIndex: number) {
     i.kind === "assistant" && i.msgIndex === msgIndex);
 }
 
-/** Drops a bubble that never received text or reasoning. True if one was actually removed. */
+/** Drops a bubble that never received text or reasoning. True if one was actually removed.
+ *  A bubble carrying attempt markers is NOT empty even though its text is: the guard cleared that
+ *  text on purpose, and the markers are the only remaining trace of the generations that were thrown
+ *  away. Dropping it would erase the explanation in exactly the case that needs one. */
 function discardEmptyBubble(s: ChatSession, msgIndex: number): boolean {
   const b = bubble(s, msgIndex);
-  if (!b || b.text || b.reasoning) return false;
+  if (!b || b.text || b.reasoning || b.attempts?.length) return false;
   s.items = s.items.filter(i => !(i.kind === "assistant" && i.msgIndex === msgIndex));
   return true;
 }
@@ -225,11 +233,14 @@ client.on("chat.opened", (p, env) => {
       s.items.push({ kind: "user", key: nextKey(), text: m.content || "",
         images: m.images, msgId: m.msgId, createdAt: m.createdAt });
     } else if (m.role === "assistant") {
-      if (m.content || m.reasoning)
+      // A degenerate-turn record has blank content/reasoning and exists purely for its attempts —
+      // still worth a bubble, since dropping it would erase the only trace of what happened.
+      if (m.content || m.reasoning || m.attempts?.length)
         // Historical bubbles get negative indices: the server's live indices are positive, so the two
         // can never collide inside one session.
         s.items.push({ kind: "assistant", key: nextKey(), msgIndex: -1 - s.items.length,
-          text: m.content || "", reasoning: m.reasoning || "", msgId: m.msgId, createdAt: m.createdAt });
+          text: m.content || "", reasoning: m.reasoning || "", msgId: m.msgId, createdAt: m.createdAt,
+          attempts: m.attempts?.map(a => ({ index: a.index, note: a.note, content: a.content, reasoning: a.reasoning })) });
       for (const tc of m.toolCalls || [])
         addCall(s, { callId: tc.id, name: tc.name, argumentsText: tc.arguments, status: "done" });
     } else if (m.role === "tool") {
@@ -271,6 +282,18 @@ on("delta", (s, p: { msgIndex: number; text: string }) => {
 on("reasoning", (s, p: { msgIndex: number; text: string }) => {
   const b = bubble(s, p.msgIndex);
   if (b) b.reasoning += p.text;
+});
+
+on("llm.attempt", (s, p: { msgIndex: number; index: number; note?: string; content?: string; reasoning?: string }) => {
+  const b = bubble(s, p.msgIndex);
+  if (!b) return;
+  // Everything streamed into this bubble so far belonged to the generation that just got thrown
+  // away — clear it so the retry (or the notice, if this was the last one) starts from empty instead
+  // of the reader seeing a loop's tail glued to the real answer. The text is not lost: it rides along
+  // on the marker itself (p.content/p.reasoning), which is what lets the reader open it back up.
+  b.text = "";
+  b.reasoning = "";
+  (b.attempts ??= []).push({ index: p.index, note: p.note, content: p.content, reasoning: p.reasoning });
 });
 
 on("assistant.message", (s, p: { msgIndex: number;

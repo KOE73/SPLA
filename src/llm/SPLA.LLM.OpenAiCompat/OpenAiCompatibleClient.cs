@@ -317,7 +317,7 @@ public sealed partial class OpenAiCompatibleClient : ILlmClient, ITokenUsageRepo
             ["presence_penalty"]  = settings.PresencePenalty,
             ["frequency_penalty"] = settings.FrequencyPenalty,
             ["repeat_penalty"]    = settings.RepeatPenalty,
-            ["messages"] = messages.Select(m => 
+            ["messages"] = messages.Select(m =>
             {
                 if (m.Role == ChatRole.Tool)
                 {
@@ -361,6 +361,12 @@ public sealed partial class OpenAiCompatibleClient : ILlmClient, ITokenUsageRepo
         // For non-streaming calls usage is returned in the single response body without this flag.
         if (stream)
             payload["stream_options"] = new Dictionary<string, object> { ["include_usage"] = true };
+
+        // Null means "let the server's own default win" — omit the field entirely rather than send
+        // a value that overrides a default we never chose.
+        if (settings.MaxTokens is { } maxTokens) payload["max_tokens"] = maxTokens;
+        if (settings.TopP is { } topP) payload["top_p"] = topP;
+        if (settings.MinP is { } minP) payload["min_p"] = minP;
 
         // Reasoning lever for the OpenAI-compatible endpoint. on/off maps to the chat-template
         // kwarg (Qwen3/Gemma-style); graded values map to reasoning_effort (gpt-oss-style).
