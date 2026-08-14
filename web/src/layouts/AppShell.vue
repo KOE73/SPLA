@@ -45,10 +45,13 @@ function startDrag(e: PointerEvent) {
 </script>
 
 <style scoped>
-.app-shell { display: flex; height: 100vh; min-height: 0; background: var(--bg); }
+.app-shell { display: flex; height: 100%; min-height: 0; background: var(--bg); }
 .left-nav { flex: 0 0 auto; height: 100%; min-height: 0; overflow: hidden; border-right: 1px solid var(--border); }
 .nav-resizer { flex: 0 0 4px; cursor: col-resize; background: transparent; }
 .nav-resizer:hover, .nav-resizer.dragging { background: var(--accent); }
-.right-area { flex: 1 1 auto; min-width: 0; min-height: 0; display: flex; }
+/* overflow:hidden makes this the clip boundary for the dock: min-width/min-height:0 lets the box
+   shrink, but only clipping stops a panel that is momentarily too big from pushing the shell wider
+   than the window. */
+.right-area { flex: 1 1 auto; min-width: 0; min-height: 0; overflow: hidden; display: flex; }
 .right-area > * { flex: 1; min-width: 0; }
 </style>
