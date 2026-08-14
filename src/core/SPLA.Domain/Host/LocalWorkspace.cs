@@ -84,6 +84,11 @@ public sealed class LocalWorkspace : IWorkspace
             // Unplugged, not missing. The two call for different reactions — plug the folder in
             // versus create the file — and collapsing them into "file not found" sends whoever reads
             // it looking for the wrong thing.
+            //
+            // The one refusal that names a host path, deliberately: "the target is not on this
+            // machine" is not actionable without saying which target, the person who can act on it is
+            // the one holding the machine, and there is nothing here for a model to feed back — the
+            // mount is unreachable either way. Everywhere else, the canonical form.
             if (!mount.IsAvailable)
                 throw new PathBoundaryException(PathRefusal.MountUnavailable,
                     $"mount '{mount.Name}' is declared but its target is not on this machine " +
