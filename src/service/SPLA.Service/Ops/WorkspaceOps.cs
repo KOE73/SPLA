@@ -21,7 +21,9 @@ public static class WorkspaceOps
 {
     public static FsBrowseResultPayload Browse(PathBoundary boundary, string? parentRef)
     {
-        var root = boundary.Root!;
+        // An unbounded boundary has no root to browse from. Callers hand in a bounded one (see
+        // WorkspaceHandlers.BoundaryOf); returning nothing beats dereferencing null if one ever does not.
+        if (boundary.Root is not { } root) return new FsBrowseResultPayload();
 
         if (parentRef is not null && !IsUnderRoot(boundary, parentRef))
             return new FsBrowseResultPayload();
@@ -71,6 +73,17 @@ public static class WorkspaceOps
     {
         if (!IsUnderRoot(boundary, contentRef))
             return new FsWriteResultPayload { Ref = contentRef, Ok = false, Error = "Access denied: path is outside workspace." };
+
+        // The mount's floor, enforced again here. This surface writes through FileContentSource and
+        // never passes LocalWorkspace.Guard, so the check that holds for every tool would not hold for
+        // the editor — and a mount declared read-only means the operator called that copy canonical.
+        if (boundary.Resolve(contentRef).Mount is { Access: MountAccess.Read } readOnly)
+            return new FsWriteResultPayload
+            {
+                Ref = contentRef,
+                Ok = false,
+                Error = $"Access denied: mount '{readOnly.Name}' is declared read-only."
+            };
 
         var source = new FileContentSource();
         if (!source.CanResolve(contentRef))
