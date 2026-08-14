@@ -394,7 +394,7 @@ public sealed class AgentRuntime : IDisposable
             return SPLA.Domain.Host.PassthroughSandbox.Default;
 
         var log = loggers.CreateLogger<SPLA.Domain.Host.PathBoundary>();
-        var boundary = new SPLA.Domain.Host.PathBoundary(settings.WorkspacePath, [".spla"]);
+        var boundary = new SPLA.Domain.Host.PathBoundary(settings.WorkspacePath, [".spla"], settings.Mounts);
 
         var workspace = new SPLA.Domain.Host.LocalWorkspace(
             boundary,

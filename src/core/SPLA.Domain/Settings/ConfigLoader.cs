@@ -277,6 +277,7 @@ public static class ConfigLoader
     private static object? GetSectionValue(SplaProject p, string key) => key switch
     {
         "name" => p.Name,
+        "mounts" => p.Mounts,
         "agent" => p.Agent,
         "llm" => p.Llm,
         "connections" => p.Connections,
@@ -360,6 +361,13 @@ public static class ConfigLoader
             ? Path.GetDirectoryName(resolved.ProjectFilePath)
             : null;
         resolved.WorkspacePath = workspace ?? Directory.GetCurrentDirectory();
+
+        // Mounts need the root, so they are resolved here rather than in SettingsResolver — and only
+        // when there is a project: with no manifest there is nothing to declare them in and no root to
+        // reserve a name in. Refusals throw; a manifest that cannot be honoured must not open half-way.
+        if (resolved.ProjectFilePath is { } manifestPath)
+            resolved.Mounts = MountResolver.Resolve(project?.Mounts, resolved.WorkspacePath, manifestPath);
+
         var store = ResolveSecretStore(defaults, workspace);
         resolved.Secrets = store;
         resolved.SecretResolver = new Secrets.SecretResolver(store);

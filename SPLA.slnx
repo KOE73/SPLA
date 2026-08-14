@@ -47,6 +47,7 @@
     <File Path="docs/adr/ADR_20260804_agent_skills-library.md" />
     <File Path="docs/adr/ADR_20260805_agent_skills-sources.md" />
     <File Path="docs/adr/ADR_20260811_core_security-zones.md" />
+    <File Path="docs/adr/ADR_20260814_core_project-mounts.md" />
     <File Path="docs/adr/ADR_20260814_llm_output-stage.md" />
   </Folder>
   <Folder Name="/docs/plans/">
@@ -65,6 +66,8 @@
     <File Path="docs/plans/PLAN_20260807_host_sandbox.md" />
     <File Path="docs/plans/PLAN_20260811_core_security-zones.md" />
     <File Path="docs/plans/PLAN_20260813_web_chat-session-model.md" />
+    <File Path="docs/plans/PLAN_20260814_core_project-mounts.md" />
+    <File Path="docs/plans/PLAN_20260814_core_workspace-streams.md" />
   </Folder>
   <Folder Name="/docs/ideas/">
     <File Path="docs/ideas/IDEA_20260611_core_todo-general.md" />

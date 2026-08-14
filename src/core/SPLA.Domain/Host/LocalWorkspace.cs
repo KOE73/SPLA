@@ -64,11 +64,40 @@ public sealed class LocalWorkspace : IWorkspace
     /// <summary>
     /// The one gate every method below goes through. Returns the real path to use, or throws when
     /// the boundary refuses — a decision, not a fault, which is why it has its own exception type.
+    ///
+    /// <para>This is also where a mount's own rules are <b>executed</b>. The boundary only reports
+    /// which mount a path fell into; whether an unplugged target is an error and whether this caller
+    /// may write there are policy, and the class that says "mechanism only, no policy" is not the
+    /// place for them. The role already exists here — the <c>.spla/</c> cutout is enforced on this
+    /// same seam.</para>
     /// </summary>
-    private string Guard(string path)
+    /// <param name="intent">What the caller is about to do. Only reads and writes are distinguished,
+    /// because that is the granularity of the floor: a mount is open for changes or it is not.</param>
+    private string Guard(string path, MountAccess intent = MountAccess.Read)
     {
-        if (_boundary.TryResolve(path, out var full, out var error, out var refusal))
-            return full;
+        var landing = _boundary.Resolve(path);
+
+        if (landing.Ok)
+        {
+            if (landing.Mount is not { } mount) return landing.FullPath;
+
+            // Unplugged, not missing. The two call for different reactions — plug the folder in
+            // versus create the file — and collapsing them into "file not found" sends whoever reads
+            // it looking for the wrong thing.
+            if (!mount.IsAvailable)
+                throw new PathBoundaryException(PathRefusal.MountUnavailable,
+                    $"mount '{mount.Name}' is declared but its target is not on this machine " +
+                    $"({mount.HostPath}); nothing under {mount.Address()}/ can be reached until it is.");
+
+            if (intent == MountAccess.Write && mount.Access == MountAccess.Read)
+                throw new PathBoundaryException(PathRefusal.MountReadOnly,
+                    $"mount '{mount.Name}' is declared read-only, so {mount.Address()}/ cannot be " +
+                    "written to. Change its access in the project manifest if that is wrong.");
+
+            return landing.FullPath;
+        }
+
+        var (error, refusal) = (landing.Error, landing.Refusal);
 
         switch (refusal)
         {
@@ -95,8 +124,11 @@ public sealed class LocalWorkspace : IWorkspace
     public string? MapPathToHost(string logicalPath)
         => _boundary.TryResolve(logicalPath, out var full, out _) ? full : null;
 
-    public string? MapPathToProject(string hostPath)
-        => _boundary.TryResolve(hostPath, out var full, out _) ? full : null;
+    /// <summary>The canonical address — <c>mnt/&lt;name&gt;/...</c> for a mount, otherwise relative
+    /// to the root. It used to hand back the absolute host path, which made it the inverse of nothing:
+    /// a host path returned to the model comes back as an argument, and a host path written into
+    /// saved state is what stops a project being portable.</summary>
+    public string? MapPathToProject(string hostPath) => _boundary.ToCanonical(hostPath);
 
     public bool FileExists(string path) => File.Exists(Guard(path));
     public bool DirectoryExists(string path) => Directory.Exists(Guard(path));
@@ -111,10 +143,10 @@ public sealed class LocalWorkspace : IWorkspace
         => File.ReadAllBytesAsync(Guard(path), ct);
 
     public Task WriteAllTextAsync(string path, string content, CancellationToken ct = default)
-        => File.WriteAllTextAsync(Guard(path), content, ct);
+        => File.WriteAllTextAsync(Guard(path, MountAccess.Write), content, ct);
 
-    public void DeleteFile(string path) => File.Delete(Guard(path));
-    public void CreateDirectory(string path) => Directory.CreateDirectory(Guard(path));
+    public void DeleteFile(string path) => File.Delete(Guard(path, MountAccess.Write));
+    public void CreateDirectory(string path) => Directory.CreateDirectory(Guard(path, MountAccess.Write));
     public IReadOnlyList<string> GetDirectories(string path) => Directory.GetDirectories(Guard(path));
     public IReadOnlyList<string> GetFiles(string path) => Directory.GetFiles(Guard(path));
 }
