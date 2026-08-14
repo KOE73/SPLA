@@ -1,8 +1,10 @@
+using SPLA.Domain.Host;
 using SPLA.Domain.Models;
 using SPLA.MCP.Core.Agent;
 using SPLA.MCP.Core.Composition;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 
 namespace SPLA.Agent.Composition;
 
@@ -63,6 +65,49 @@ public sealed class CoreFeatureContributor : IAgentContributor
             });
         }
         return AgentContribution.FromContext(items);
+    }
+}
+
+/// <summary>
+/// The folders this project mounted from outside its root, with what each is for.
+///
+/// <para>The description is the load-bearing part and is why the manifest refuses a mount without
+/// one: an address with no purpose beside it is an invitation to open the folder and find out. Access
+/// and availability are here for the same reason — a model that knows a mount is read-only does not
+/// spend a turn discovering it, and one that knows a mount is unplugged reports that instead of
+/// hunting for a missing file.</para>
+///
+/// <para>Contributes nothing when the project declared none, which is most projects.</para>
+/// </summary>
+public sealed class MountsContributor : IAgentContributor
+{
+    public string Id => "mounts";
+
+    public AgentContribution Contribute(AgentContributionContext context)
+    {
+        var mounts = context.Settings.Mounts;
+        if (mounts.Count == 0) return AgentContribution.FromContext([]);
+
+        var lines = mounts.Select(m =>
+        {
+            var notes = m.Access == MountAccess.Write ? "writable" : "read-only";
+            if (m.Trust == MountTrust.Untrusted) notes += ", untrusted — others write here";
+            if (!m.IsAvailable) notes += ", NOT CONNECTED on this machine";
+            return $"- {m.Address()}/ ({notes}) — {m.Description}";
+        });
+
+        return AgentContribution.FromContext([new ContextItem
+        {
+            Source = "mounts",
+            Title = "Mounted folders",
+            Prefix = "\n\n",
+            Body =
+                "Folders outside this project, declared in its manifest and addressed under " +
+                $"`{ProjectMount.Prefix}/`. Use these addresses with the file tools exactly as you use " +
+                "project paths; never substitute a path from this machine, because the address is what " +
+                "is portable and the machine path is not.\n\n" +
+                string.Join("\n", lines)
+        }]);
     }
 }
 
