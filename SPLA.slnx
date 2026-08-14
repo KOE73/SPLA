@@ -190,6 +190,7 @@
   <Folder Name="/demo/workers/">
     <Project Path="demo/workers/VisionAgent/VisionAgent.csproj" />
     <Project Path="demo/workers/LogSentry/LogSentry.csproj" />
+    <Project Path="demo/workers/Summarizer/Summarizer.csproj" />
   </Folder>
   <Folder Name="/demo/projects/">
     <File Path="demo/projects/RemoteWeb/README.md" />
