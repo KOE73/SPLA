@@ -26,7 +26,7 @@ public class OneCPlugin : ISplaPlugin, ISplaPluginAction
 
         _db = new OneCIndexDatabase(dbPath);
         _db.EnsureCreated();
-        _webActions = new(dbPath, settings.WorkspacePath);
+        _webActions = new(dbPath, settings.Project.GetBoundary());
 
         return
         [

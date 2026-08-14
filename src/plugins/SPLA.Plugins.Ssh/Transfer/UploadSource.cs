@@ -1,3 +1,4 @@
+using SPLA.Domain.Host;
 using System.Text.RegularExpressions;
 
 namespace SPLA.Plugins.Ssh.Transfer;
@@ -56,9 +57,9 @@ internal sealed record UploadSet(
 internal static class UploadSource
 {
     public static UploadSet Build(
-        string workspaceRoot, string localPath, bool recursive, Regex? include, Regex? exclude)
+        PathBoundary boundary, string localPath, bool recursive, Regex? include, Regex? exclude)
     {
-        var full = LocalTarget.Resolve(workspaceRoot, localPath);
+        var full = LocalTarget.Resolve(boundary, localPath);
 
         if (TarContainer.IsContainerPath(localPath))
             return FromContainer(full, localPath, include, exclude);
@@ -148,6 +149,16 @@ internal static class UploadSource
         }
     }
 
+    /// <summary>
+    /// Opens the file directly rather than through <c>IWorkspace</c>, and that is a known debt, not
+    /// an oversight: the contract has no lazy read stream, and <c>ReadAllBytesAsync</c> is not a
+    /// substitute — sending a config tree through it means the whole tree in memory. The deferral in
+    /// <c>UploadItem.Open</c> is right; only its addressee is. Same for the metadata this method
+    /// reads off <c>FileInfo</c> and for the reparse-point check in <see cref="Walk"/>.
+    ///
+    /// <para>Path safety does not depend on this: <paramref name="fullPath"/> came from the project's
+    /// boundary. See <c>docs/plans/PLAN_20260814_core_workspace-streams.md</c> before changing it.</para>
+    /// </summary>
     private static UploadItem FileItem(string fullPath, string relative)
     {
         var info = new FileInfo(fullPath);

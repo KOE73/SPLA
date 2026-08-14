@@ -11,10 +11,14 @@ namespace SPLA.Plugins.OneC.Web;
 /// Project-scoped backend for the human-facing Vue configuration browser. Each request opens its
 /// own SQLite connection so UI reads do not share a connection with model-facing tools.
 /// </summary>
-public sealed class OneCWebActions(string databasePath, string workspacePath)
+public sealed class OneCWebActions(string databasePath, PathBoundary boundary)
 {
     private readonly string _databasePath = databasePath;
-    private readonly string _workspacePath = Path.GetFullPath(workspacePath);
+
+    /// <summary>The project's boundary, handed in rather than rebuilt from a root string. Same object
+    /// the file tools work behind, so a dump reached through a declared mount resolves here too
+    /// instead of being told it is outside the workspace.</summary>
+    private readonly PathBoundary _boundary = boundary;
 
     public async Task<object?> InvokeAsync(string action, JsonElement payload, CancellationToken ct = default) =>
         action switch
@@ -160,7 +164,7 @@ public sealed class OneCWebActions(string databasePath, string workspacePath)
 
     private string ResolveWorkspacePath(string path)
     {
-        if (!new PathBoundary(_workspacePath).TryResolve(path, out var full, out _))
+        if (!_boundary.TryResolve(path, out var full, out _))
             throw new InvalidOperationException("The configuration dump must be inside the project workspace.");
 
         return full;

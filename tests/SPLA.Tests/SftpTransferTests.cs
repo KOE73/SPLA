@@ -1,4 +1,5 @@
 using System.Formats.Tar;
+using SPLA.Domain.Host;
 using SPLA.Plugins.Ssh.Transfer;
 using Xunit;
 
@@ -19,6 +20,11 @@ public sealed class SftpTransferTests : IDisposable
     {
         try { Directory.Delete(_root, recursive: true); } catch (IOException) { }
     }
+
+    /// <summary>The project's boundary, handed to the transfer instead of a root string. The transfer
+    /// used to build its own on every call — no cutouts, no mounts — which is how it became the one
+    /// way out of an area everything else respected.</summary>
+    private PathBoundary Boundary => new(_root);
 
     private TarContainer NewContainer() => new(Path.Combine(_root, "set.tar"));
 
@@ -149,7 +155,7 @@ public sealed class SftpTransferTests : IDisposable
     [InlineData("a/b/c.conf")]
     public void Local_paths_resolve_under_the_project(string path)
     {
-        var resolved = LocalTarget.Resolve(_root, path);
+        var resolved = LocalTarget.Resolve(Boundary, path);
         Assert.StartsWith(Path.GetFullPath(_root), resolved, StringComparison.OrdinalIgnoreCase);
     }
 
@@ -159,7 +165,7 @@ public sealed class SftpTransferTests : IDisposable
     [InlineData(@"C:\Windows\system32\drivers\etc\hosts")]
     [InlineData(@"\\server\share\x.tar")]
     public void Local_paths_that_leave_the_project_are_refused(string path)
-        => Assert.Throws<InvalidOperationException>(() => LocalTarget.Resolve(_root, path));
+        => Assert.Throws<InvalidOperationException>(() => LocalTarget.Resolve(Boundary, path));
 
     [Theory]
     [InlineData("etc/od:d", true)]
@@ -198,7 +204,7 @@ public sealed class SftpTransferTests : IDisposable
         WriteLocal("conf/sub/db.yml", "b");
         WriteLocal("conf/sub/deep/x.conf", "c");
 
-        var set = UploadSource.Build(_root, "conf", recursive: true, null, null);
+        var set = UploadSource.Build(Boundary, "conf", recursive: true, null, null);
 
         Assert.False(set.IsSingleFile);
         Assert.False(set.ModeIsRecorded);
@@ -215,7 +221,7 @@ public sealed class SftpTransferTests : IDisposable
         WriteLocal("conf/app.yml", "a");
         WriteLocal("conf/sub/db.yml", "b");
 
-        var set = UploadSource.Build(_root, "conf", recursive: false, null, null);
+        var set = UploadSource.Build(Boundary, "conf", recursive: false, null, null);
 
         Assert.Equal(new[] { "app.yml" }, set.Items.Where(i => i.Type == TransferEntryType.File).Select(i => i.Path));
     }
@@ -227,7 +233,7 @@ public sealed class SftpTransferTests : IDisposable
         WriteLocal("conf/app.log", "b");
         WriteLocal("conf/cache/tmp.yml", "c");
 
-        var set = UploadSource.Build(_root, "conf", recursive: true, Glob("*.yml"), Glob("**/cache/**"));
+        var set = UploadSource.Build(Boundary, "conf", recursive: true, Glob("*.yml"), Glob("**/cache/**"));
 
         Assert.Equal(new[] { "app.yml" }, set.Items.Where(i => i.Type == TransferEntryType.File).Select(i => i.Path));
     }
@@ -237,7 +243,7 @@ public sealed class SftpTransferTests : IDisposable
     {
         WriteLocal("conf/app.yml", "hello");
 
-        var set = UploadSource.Build(_root, "conf/app.yml", recursive: true, null, null);
+        var set = UploadSource.Build(Boundary, "conf/app.yml", recursive: true, null, null);
 
         Assert.True(set.IsSingleFile);
         var item = Assert.Single(set.Items);
@@ -259,7 +265,7 @@ public sealed class SftpTransferTests : IDisposable
                 UnixFileMode.UserRead, DateTimeOffset.UtcNow, "../sites-available/app"))
         }, append: false);
 
-        var set = UploadSource.Build(_root, "set.tar", recursive: true, null, null);
+        var set = UploadSource.Build(Boundary, "set.tar", recursive: true, null, null);
 
         // A Linux mode only means something when it CAME from Linux — that is the flag's whole job.
         Assert.True(set.ModeIsRecorded);
@@ -273,12 +279,79 @@ public sealed class SftpTransferTests : IDisposable
     public void A_missing_local_path_says_so_instead_of_sending_nothing_quietly()
     {
         var error = Assert.Throws<InvalidOperationException>(
-            () => UploadSource.Build(_root, "conf", recursive: true, null, null));
+            () => UploadSource.Build(Boundary, "conf", recursive: true, null, null));
         Assert.Contains("no such file or directory", error.Message);
     }
 
     [Fact]
     public void An_upload_cannot_reach_outside_the_project_either()
         => Assert.Throws<InvalidOperationException>(
-            () => UploadSource.Build(_root, "../../etc", recursive: true, null, null));
+            () => UploadSource.Build(Boundary, "../../etc", recursive: true, null, null));
+
+    // ── mounts ───────────────────────────────────────────────────────────────
+
+    /// <summary>
+    /// The scenario the whole mount design exists for: a folder of reference configuration that lives
+    /// beside the project rather than in it, sent to a server. Before mounts there was no way to name
+    /// it — a relative path had no base and an absolute one was refused by the rule right below.
+    /// </summary>
+    [Fact]
+    public void An_upload_can_name_a_declared_mount_and_reach_a_folder_outside_the_project()
+    {
+        var target = Path.Combine(_root + "-reference");
+        Directory.CreateDirectory(Path.Combine(target, "nginx"));
+        File.WriteAllText(Path.Combine(target, "nginx", "nginx.conf"), "worker_processes 4;");
+
+        try
+        {
+            var set = UploadSource.Build(MountedBoundary(target), "mnt/AAA/nginx", recursive: true, null, null);
+
+            var file = Assert.Single(set.Items, i => i.Type == TransferEntryType.File);
+            Assert.Equal("nginx.conf", file.Path);
+            using var content = file.Open!();
+            Assert.Equal("worker_processes 4;", new StreamReader(content).ReadToEnd());
+        }
+        finally
+        {
+            try { Directory.Delete(target, recursive: true); } catch (IOException) { }
+        }
+    }
+
+    /// <summary>The transfer's own rule survives mounts intact: the model still may not name a drive.
+    /// <c>mnt/AAA/x</c> gets through because it is an address, not an absolute path — which is exactly
+    /// the property that made a reserved prefix worth having.</summary>
+    [Fact]
+    public void A_mount_address_is_not_an_absolute_path_but_the_target_spelled_out_still_is()
+    {
+        var target = _root + "-reference";
+        Directory.CreateDirectory(target);
+
+        try
+        {
+            var boundary = MountedBoundary(target);
+
+            Assert.Equal(
+                Path.Combine(target, "f.conf"),
+                LocalTarget.Resolve(boundary, "mnt/AAA/f.conf"));
+
+            // Naming the same file by its host path is still refused — before the boundary is even asked.
+            Assert.Throws<InvalidOperationException>(
+                () => LocalTarget.Resolve(boundary, Path.Combine(target, "f.conf")));
+        }
+        finally
+        {
+            try { Directory.Delete(target, recursive: true); } catch (IOException) { }
+        }
+    }
+
+    [Fact]
+    public void An_upload_from_a_mount_that_is_not_declared_is_refused()
+        => Assert.Throws<InvalidOperationException>(
+            () => UploadSource.Build(Boundary, "mnt/AAA/nginx", recursive: true, null, null));
+
+    /// <summary>The project, plus one mount pointing at a sibling folder outside it — the shape a real
+    /// manifest produces.</summary>
+    private PathBoundary MountedBoundary(string target) =>
+        new(_root, null,
+            [new ProjectMount("AAA", target, MountAccess.Read, MountTrust.Trusted, "reference settings", true)]);
 }

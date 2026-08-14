@@ -12,20 +12,25 @@ namespace SPLA.Service;
 /// (project file browser + text/markdown editor). Thin service layer on top of
 /// <see cref="FileContentBrowser"/> and <see cref="FileContentSource"/> from SPLA.Domain.Editor.
 ///
-/// Security: every <c>contentRef</c> is resolved to a canonical absolute path and validated
-/// to be inside <c>workspaceRoot</c> before any read or write is performed.
+/// Security: every <c>contentRef</c> is resolved through the PROJECT's boundary — the same object
+/// the file tools and SFTP work behind — before any read or write is performed. It used to build its
+/// own boundary from a root string, which meant this surface and the agent's disagreed about what
+/// "inside" covered; the <c>.spla/</c> cutout is the case where they did.
 /// </summary>
 public static class WorkspaceOps
 {
-    public static FsBrowseResultPayload Browse(string workspaceRoot, string? parentRef)
+    public static FsBrowseResultPayload Browse(PathBoundary boundary, string? parentRef)
     {
-        var root = Path.GetFullPath(workspaceRoot);
+        var root = boundary.Root!;
 
-        if (parentRef is not null && !IsUnderRoot(root, parentRef))
+        if (parentRef is not null && !IsUnderRoot(boundary, parentRef))
             return new FsBrowseResultPayload();
 
         var browser = new FileContentBrowser(root);
-        var nodes = browser.GetChildren(parentRef);
+
+        // Filtered, not merely refused on entry: a folder listed but dead on click is worse than one
+        // that is not listed, and the cutout is the whole reason there is anything to hide.
+        var nodes = browser.GetChildren(parentRef).Where(n => IsUnderRoot(boundary, n.Ref));
 
         return new FsBrowseResultPayload
         {
@@ -41,10 +46,9 @@ public static class WorkspaceOps
         };
     }
 
-    public static FsReadResultPayload Read(string workspaceRoot, string contentRef)
+    public static FsReadResultPayload Read(PathBoundary boundary, string contentRef)
     {
-        var root = Path.GetFullPath(workspaceRoot);
-        if (!IsUnderRoot(root, contentRef))
+        if (!IsUnderRoot(boundary, contentRef))
             return new FsReadResultPayload { Ref = contentRef, Error = "Access denied: path is outside workspace." };
 
         var source = new FileContentSource();
@@ -63,10 +67,9 @@ public static class WorkspaceOps
         }
     }
 
-    public static FsWriteResultPayload Write(string workspaceRoot, string contentRef, string text)
+    public static FsWriteResultPayload Write(PathBoundary boundary, string contentRef, string text)
     {
-        var root = Path.GetFullPath(workspaceRoot);
-        if (!IsUnderRoot(root, contentRef))
+        if (!IsUnderRoot(boundary, contentRef))
             return new FsWriteResultPayload { Ref = contentRef, Ok = false, Error = "Access denied: path is outside workspace." };
 
         var source = new FileContentSource();
@@ -86,18 +89,15 @@ public static class WorkspaceOps
 
     // ── helpers ──────────────────────────────────────────────────────────────
 
-    /// <summary>Returns true when <paramref name="path"/> resolves to a location inside
-    /// <paramref name="normalizedRoot"/> (canonical absolute path).</summary>
     /// <summary>
-    /// Whether a client-supplied ref lands inside the workspace. Strictly inside: the root itself is
+    /// Whether a client-supplied ref lands inside the project. Strictly inside: the root itself is
     /// not a file anyone reads or writes, so browsing starts one level in and this keeps saying no to
     /// a ref that is merely the root spelled out.
     /// </summary>
-    private static bool IsUnderRoot(string normalizedRoot, string path)
+    private static bool IsUnderRoot(PathBoundary boundary, string path)
     {
         try
         {
-            var boundary = new PathBoundary(normalizedRoot);
             if (!boundary.TryResolve(path, out var full, out _)) return false;
 
             return !string.Equals(

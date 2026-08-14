@@ -394,7 +394,9 @@ public sealed class AgentRuntime : IDisposable
             return SPLA.Domain.Host.PassthroughSandbox.Default;
 
         var log = loggers.CreateLogger<SPLA.Domain.Host.PathBoundary>();
-        var boundary = new SPLA.Domain.Host.PathBoundary(settings.WorkspacePath, [".spla"], settings.Mounts);
+        // The project's boundary, not a second one built to the same recipe: SFTP and the web
+        // surfaces resolve paths against this same object, and a copy would drift from it.
+        var boundary = settings.Project.GetBoundary();
 
         var workspace = new SPLA.Domain.Host.LocalWorkspace(
             boundary,
