@@ -4,13 +4,19 @@
 
 > **This file must match the code.** It documents EVERY command and flag the CLI accepts. If you
 > change argument parsing under `src/apps/SPLA.CLI/` — `Program.cs`, `Cli/CliBootstrap.cs`,
-> `Cli/ServeCommand.cs`, `Cli/SecretCommands.cs`, `Cli/ChatCommands.cs`, `Cli/InteractiveRepl.cs` —
+> `Cli/ServeCommand.cs`/`Cli/ServeCliCommand.cs`, `Cli/SecretCommands.cs`/`Cli/SecretCliCommand.cs`,
+> `Cli/ChatCommands.cs`, `Cli/ReplCommand.cs`, `Batch/ChatRunCommand.cs`, `Cli/InteractiveRepl.cs` —
 > update both references (`docs/README_CLI.ru.md` and `docs/README_CLI.en.md`) in the same commit. A
 > reference that lies is worse than none: someone runs the documented command and gets
 > `Scope is required` instead of a result.
 
 The executable is **`SPLA.CLI.exe`**. Below it is written as `spla` for brevity — see
 [Aliasing on Windows](#aliasing-on-windows).
+
+Dispatch runs on [Spectre.Console.Cli](https://spectreconsole.net/cli/) — every command and every
+sub-command below also answers `--help`/`-h` on its own (`spla --help`, `spla chat --help`,
+`spla chat run --help`, …), generated from the same attributes that drive parsing, so it cannot drift
+from what is actually accepted the way a hand-written usage string can.
 
 ## How the project is chosen
 
@@ -97,20 +103,63 @@ Fields the SSH plugin understands: `user`, `password`, or `private_key` (+`passp
 
 Exit codes: `0` success, `1` not found (on `delete`), `2` bad arguments.
 
-### `chat` — saved chats
+### `chat` — saved chats and batch runs
 
 ```
 spla chat list
-spla chat open <id>
+spla chat open [id]
 spla chat fork <id> [--model <name>]
+spla chat run  [--prompt "<text>"]... [--prompt-file <path>]... [--model <id>|all]...
+               [--out <dir-or-file>] [--out-name <template>] [--overwrite]
+               [--sys-prompt "<text>"] [--md-clean] [--skill <id>]
+               [--show-prompt] [--show-prompt-file <path>]
+               [--stream] [--temp <n>] [--reasoning <level>]
+               [--timeout <seconds>] [--dry-run]
 ```
 
 - `list` — id, title, last-modified time.
-- `open <id>` — open a chat and enter the REPL. **An unknown id silently creates a new chat** —
-  expect that; there is no separate error.
-- `fork <id>` — a copy of the chat, optionally on a different model. `--model` is parsed positionally:
-  it must follow the id directly (`chat fork <id> --model <name>`) and is matched lowercase.
-- `spla chat` with no sub-command prints a usage line.
+- `open [id]` — open a chat and enter the REPL. No id, or an id that does not exist, starts a new chat.
+- `fork <id>` — a copy of the chat, optionally on a different model (`--model`).
+- `run` — headless batch mode: every `--prompt`/`--prompt-file` × every `--model` runs in its own
+  fresh chat, no tool-permission prompts (every tool call is denied — there is nobody at the keyboard
+  to ask) and no clarify. See below.
+
+#### `chat run` — batch mode
+
+One cell = one prompt × one model. `--model` is repeatable; `all` runs every entry in the project's
+`connections:`. `--prompt` is repeatable inline text (named `text1`, `text2`, … in output);
+`--prompt-file` is repeatable too and can be mixed with `--prompt` — its base file name becomes the
+label.
+
+Where results go:
+
+| `--out` | Behaviour |
+|---------|-----------|
+| omitted | each result prints to the screen in its own panel |
+| a directory (created if missing) | one file per cell, named from `--out-name` (default `{timestamp} {label}`; placeholders `{timestamp}` `{prompt}` `{model}` `{label}`), de-duplicated with `(2)`, `(3)`, … if two cells land in the same second |
+| `--overwrite` set | `--out` is one literal file path; **every cell overwrites it** — use this for "just the latest run", not for a matrix with more than one cell |
+
+`--sys-prompt "<text>"` and `--md-clean` never touch the project's own `agent.custom_prompt` — the
+system prompt is built from a fixed, named pipeline of contributors (`mode` → `core.*` → `instructions`
+→ `custom-prompt` → `skills`/`toolsets`/`plugins`/`memory` — see `spla chat run --show-prompt` below),
+and the CLI's additions ride a separate `cli` contributor inserted right after `custom-prompt`: the
+project's prompt is always present, unedited, with the run's own text added after it, never replacing
+it. `--md-clean` asks the model for one final clean-Markdown message with no chatty wrapping — the
+point is a file that needs no editing after it lands.
+
+`--skill <id>` hands that skill to every cell's chat before its prompt runs (the same "given to it by a
+person" path the UI's skill picker uses, not the REPL's `/skills load` message-injection shortcut) —
+fails the cell instead of running it if the skill is unknown, disabled, or missing prerequisites.
+
+`--show-prompt` prints the assembled system prompt's contributor table (who contributed what, and
+roughly how many tokens) before running — the same view as the "prompt" tab of the context debug
+inspector, so you can see exactly where `--sys-prompt`/`--md-clean` landed relative to `AGENTS.md` and
+the project's own prompt. `--show-prompt-file <path>` writes the full assembled system prompt text to
+a file instead (or as well). `--dry-run` prints the planned matrix and output names without calling
+any model.
+
+Exit code is `1` if any cell failed (timeout/error/empty/skill), `0` otherwise; `--out` writes are
+best-effort — a failed cell is skipped, not retried.
 
 ## Aliasing on Windows
 
