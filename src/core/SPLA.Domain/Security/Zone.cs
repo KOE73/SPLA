@@ -13,7 +13,7 @@ namespace SPLA.Domain.Security;
 /// by nothing).</para>
 /// </summary>
 /// <param name="Kind">Family: <c>project</c>, <c>machine</c>, <c>context</c>, <c>agent</c>,
-/// <c>web</c>, <c>sql</c>, <c>ssh</c>, <c>llm</c>, <c>any</c>.</param>
+/// <c>mount</c>, <c>web</c>, <c>sql</c>, <c>ssh</c>, <c>llm</c>, <c>any</c>.</param>
 /// <param name="Instance">Which one, for kinds that have more than one. Empty for the singletons.</param>
 public readonly record struct Zone(string Kind, string Instance = "")
 {
@@ -40,6 +40,19 @@ public readonly record struct Zone(string Kind, string Instance = "")
     /// <summary>Nothing could be determined. Recorded as itself rather than guessed at: a wrong
     /// guess here becomes a wrong verdict later.</summary>
     public static readonly Zone Unknown = new("unknown");
+
+    /// <summary>
+    /// One declared mount — a folder outside the root that the manifest named and gave an address
+    /// under <c>mnt/</c>.
+    ///
+    /// <para>An <b>instance</b>, like an island and for the same reason: <c>mount:AAA</c> and
+    /// <c>mount:BBB</c> are two zones, not two uses of one. A permission given for a folder of
+    /// reference settings must not silently cover the shared deployment directory next to it.</para>
+    ///
+    /// <para>Not part of <see cref="Project"/> either. Folding it in would make a mount simply a
+    /// second permitted root — the hole the whole zone model was written to close.</para>
+    /// </summary>
+    public static Zone Mount(string name) => new("mount", name);
 
     public static Zone Island(IslandIdentity island) => new(island.Kind, island.DisplayName);
 

@@ -42,7 +42,8 @@ public class McpHost : IToolHost
         IPermissionManager permissionManager,
         SPLA.MCP.Core.Plugins.PluginManager? pluginManager = null,
         ILogger<McpHost>? logger = null,
-        Func<string?, SPLA.Domain.Security.Zone>? zoneOfPath = null)
+        Func<string?, SPLA.Domain.Security.Zone>? zoneOfPath = null,
+        Func<SPLA.Domain.Security.Zone, SPLA.Domain.Security.DataOrigin?>? originOfZone = null)
     {
         _permissionManager = permissionManager;
         _pluginManager = pluginManager;
@@ -60,7 +61,7 @@ public class McpHost : IToolHost
             .Use(new ZoneShadowStage(
                 new SPLA.MCP.Core.Security.EdgeClassifier(
                     zoneOfPath ?? (_ => SPLA.Domain.Security.Zone.Unknown)),
-                Edges, logger))
+                Edges, logger, originOfZone))
             .Use(new AmbientHostStage(this))
             .Use(new ProgressNodeStage())
             .Use(new FaultStage(logger))

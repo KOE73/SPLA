@@ -220,7 +220,7 @@ public sealed class AgentRuntime : IDisposable
 
         McpHost = new McpHost(
             new PermissionManager(settings: settings), PluginManager, loggerFactory.CreateLogger<McpHost>(),
-            zoneOfPath: ZoneOfPath);
+            zoneOfPath: ZoneOfPath, originOfZone: OriginOfZone);
 
         // Tool sets: what exists and how far each may reach the model. Process-wide on purpose — a
         // level is the user's standing decision, while "raised right now" belongs to a chat and lives
@@ -383,9 +383,33 @@ public sealed class AgentRuntime : IDisposable
         if (Sandbox.Workspace is not SPLA.Domain.Host.LocalWorkspace { Boundary.IsBounded: true } ws)
             return SPLA.Domain.Security.Zone.Unknown;
 
-        return ws.Boundary.Contains(path)
-            ? SPLA.Domain.Security.Zone.Project
-            : SPLA.Domain.Security.Zone.Machine;
+        var landing = ws.Boundary.Resolve(path);
+        if (!landing.Ok) return SPLA.Domain.Security.Zone.Machine;
+
+        // A mount is its own zone, per instance. Reporting it as `project` would make it a second
+        // permitted root and undo the distinction; reporting it as `machine` would lose the fact that
+        // the operator named this particular folder and said what it is for.
+        return landing.Mount is { } mount
+            ? SPLA.Domain.Security.Zone.Mount(mount.Name)
+            : SPLA.Domain.Security.Zone.Project;
+    }
+
+    /// <summary>
+    /// How much a zone's content is to be believed, for the zones whose answer is not a constant.
+    /// Only mounts qualify: every other zone's standing follows from what it is, while a mount's is
+    /// written in the manifest one folder at a time.
+    /// </summary>
+    private SPLA.Domain.Security.DataOrigin? OriginOfZone(SPLA.Domain.Security.Zone zone)
+    {
+        if (zone.Kind != "mount") return null;
+
+        var mount = Settings.Mounts.FirstOrDefault(
+            m => m.Name.Equals(zone.Instance, StringComparison.OrdinalIgnoreCase));
+
+        return mount is null
+            ? null
+            : SPLA.Domain.Security.DataOrigin.Mount(
+                mount.Name, mount.Trust == SPLA.Domain.Host.MountTrust.Trusted);
     }
 
     private static SPLA.Domain.Host.ISandbox BuildSandbox(ResolvedSettings settings, ILoggerFactory loggers)
