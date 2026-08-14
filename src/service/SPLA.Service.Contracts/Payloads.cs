@@ -34,6 +34,27 @@ public sealed class ChatMessageDto
     /// <summary>URLs of attached images (e.g. /chat-image/&lt;chatId&gt;/&lt;file&gt; on reopen, or data URLs
     /// for a freshly sent message). Null when the message has no images.</summary>
     public List<string>? Images { get; set; }
+
+    /// <summary>Generations the repetition guard threw away before this message was produced. Only
+    /// present when the project had <c>agent: save_attempts</c> on at save time — see
+    /// <see cref="AgentSettingsPayload.SaveAttempts"/>. Null/empty for the overwhelming majority of
+    /// messages, which never had any.</summary>
+    public List<AttemptDto>? Attempts { get; set; }
+}
+
+/// <summary>One abandoned generation as stored on a message (<see cref="ChatMessageDto.Attempts"/>).
+/// A near-twin of <see cref="AttemptPayload"/> — the live wire event for the same domain record — but
+/// without <c>MsgIndex</c>: that field addresses a live streaming bubble by its turn-scoped index, which
+/// means nothing once the attempt is sitting on a stored message that already has its own identity.</summary>
+public sealed class AttemptDto
+{
+    public int Index { get; set; }
+    public string Outcome { get; set; } = string.Empty;
+    public string? Note { get; set; }
+    public int Chars { get; set; }
+    public long DurationMs { get; set; }
+    public string? Content { get; set; }
+    public string? Reasoning { get; set; }
 }
 
 /// <summary>A chat in the list view.</summary>
@@ -358,6 +379,9 @@ public sealed class AgentSettingsPayload
     /// <summary>Persist the full tool-call/tool-result trace with the chat history, not just the
     /// final text. Stored in .spla agent: save_tool_calls. Default off.</summary>
     public bool? SaveToolCalls { get; set; }
+    /// <summary>Persist abandoned-generation records (the repetition guard's discarded attempts) with
+    /// the chat history. Stored in .spla agent: save_attempts. Default off.</summary>
+    public bool? SaveAttempts { get; set; }
     // UI appearance — stored in .spla ui: section
     public string Theme { get; set; } = "dark";
     public string Density { get; set; } = "norm";
@@ -766,6 +790,38 @@ public sealed class ReasoningPayload
 {
     public int MsgIndex { get; set; }
     public string Text { get; set; } = string.Empty;
+}
+
+/// <summary>One generation the repetition guard abandoned mid-stream. <see cref="MessageTypes.Attempt"/>
+/// body.</summary>
+public sealed class AttemptPayload
+{
+    /// <summary>Which bubble this attempt belongs to — same source as <see cref="DeltaPayload.MsgIndex"/>.</summary>
+    public int MsgIndex { get; set; }
+
+    /// <summary>1-based position of this attempt within the call.</summary>
+    public int Index { get; set; }
+
+    /// <summary>Why it was abandoned — mirrors the domain's AttemptOutcome as a plain string, the same
+    /// reason <see cref="ToolResultPayload.Outcome"/> is a string: this assembly references nothing
+    /// from the engine.</summary>
+    public string Outcome { get; set; } = string.Empty;
+
+    /// <summary>Human-readable cause, e.g. "repetition in reasoning: period 137 chars, x24".</summary>
+    public string? Note { get; set; }
+
+    /// <summary>Characters the abandoned generation produced before it was cut off.</summary>
+    public int Chars { get; set; }
+
+    public long DurationMs { get; set; }
+
+    /// <summary>The abandoned answer text. Carried on the live event (not just on the stored message's
+    /// <see cref="AttemptDto"/>) so a reader can open it the moment the guard reports it, without
+    /// waiting for the chat to be saved and reopened.</summary>
+    public string? Content { get; set; }
+
+    /// <summary>The abandoned reasoning text, captured the same way as <see cref="Content"/>.</summary>
+    public string? Reasoning { get; set; }
 }
 
 /// <summary>Server event for the user message that started the current turn. <see cref="Text"/> lets

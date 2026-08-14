@@ -152,7 +152,14 @@ public sealed class AgentRuntime : IDisposable
     /// <summary>Schemas registered by plugins at startup (data + UI, resolved by name).</summary>
     public SPLA.Domain.Editor.SchemaRegistry SchemaRegistry { get; }
 
-    public AgentRuntime(ResolvedSettings settings, ILoggerFactory loggerFactory)
+    /// <param name="hostContributors">Context this host adds for this invocation (the CLI's
+    /// <c>--sys-prompt</c>, say). Handed to the composer at construction rather than pushed in later:
+    /// see the <c>hostExtras</c> parameter of <see cref="AgentContributors.Default"/> for where they
+    /// land and why the composer stays immutable.</param>
+    public AgentRuntime(
+        ResolvedSettings settings,
+        ILoggerFactory loggerFactory,
+        IEnumerable<IAgentContributor>? hostContributors = null)
     {
         Settings = settings;
         LoggerFactory = loggerFactory;
@@ -169,6 +176,11 @@ public sealed class AgentRuntime : IDisposable
         Providers = BuildProviderRegistry(loggerFactory);
         Llm = new SPLA.Domain.Llm.LlmPipelineBlueprint()
             .Use(new SPLA.Domain.Llm.Middleware.TurnOutcomeMiddleware())
+            // Degenerate generation is a failure mode of every model we run, local and cloud alike, so
+            // the guard is part of the pipeline rather than of the agent loop: a spawned sub-agent and
+            // the librarian's direct queries are covered by the same layer, not by remembering to look.
+            .Use(new SPLA.Agent.Guards.RepetitionGuardMiddleware(
+                loggerFactory.CreateLogger<SPLA.Agent.Guards.RepetitionGuardMiddleware>()))
             // Records what the provider said about the key's standing, on both the success and the
             // failure path — a 429 is the response that reports the budget, and it throws.
             .Use(new SPLA.Domain.Llm.Middleware.ProviderStateMiddleware(ProviderState))
@@ -310,7 +322,8 @@ public sealed class AgentRuntime : IDisposable
         // decided which tools were registered above.
         var compositionLogger = loggerFactory.CreateLogger("SPLA.Agent.Composition");
         ContextComposer = new AgentContextComposer(
-            AgentContributors.Default(SkillLibrary, PluginManager, null, enabledFeatures, ProjectKv.Store, ToolSets),
+            AgentContributors.Default(SkillLibrary, PluginManager, null, enabledFeatures, ProjectKv.Store, ToolSets,
+                hostContributors),
             compositionLogger);
 
         // What this agent was assembled from, once, at startup. Per-composition logging is Debug and

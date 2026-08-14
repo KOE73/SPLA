@@ -18,14 +18,28 @@ public class ConversationOrchestratorTests
     private sealed class FakeLlm : ILlmGateway
     {
         private readonly Queue<ChatMessage> _responses;
+        private readonly Queue<LlmTurnStatus> _statuses;
         public List<List<ChatMessage>> SeenContexts { get; } = new();
 
-        public FakeLlm(IEnumerable<ChatMessage> responses) => _responses = new(responses);
+        /// <summary>Attempts to report via ctx.OnAttempt before a call returns — one queue entry
+        /// consumed per call. A call with nothing queued reports none, so existing tests that never
+        /// touch this queue see no behavior change.</summary>
+        public Queue<List<GenerationAttempt>> AttemptsPerCall { get; } = new();
+
+        public FakeLlm(IEnumerable<ChatMessage> responses, IEnumerable<LlmTurnStatus>? statuses = null)
+        {
+            _responses = new(responses);
+            _statuses = new(statuses ?? Array.Empty<LlmTurnStatus>());
+        }
 
         public Task<LlmTurnResult> InvokeAsync(LlmTurnContext ctx, CancellationToken ct = default)
         {
             SeenContexts.Add(ctx.Messages.ToList());
-            return Task.FromResult(new LlmTurnResult { Message = _responses.Dequeue() });
+            if (AttemptsPerCall.Count > 0)
+                foreach (var attempt in AttemptsPerCall.Dequeue())
+                    ctx.OnAttempt?.Invoke(attempt);
+            var status = _statuses.Count > 0 ? _statuses.Dequeue() : LlmTurnStatus.Ok;
+            return Task.FromResult(new LlmTurnResult { Message = _responses.Dequeue(), Status = status });
         }
     }
 
@@ -105,6 +119,85 @@ public class ConversationOrchestratorTests
         // streak of 3 only injects the "are you stuck?" challenge and resets the window, so the hard
         // stop lands one full window later — 6 executions, never the whole script.
         Assert.True(host.Executed.Count <= 6, $"ran {host.Executed.Count} tools");
+    }
+
+    // ── Abandoned generations (repetition guard) ─────────────────────────────
+
+    [Fact]
+    public async Task Attempts_reported_during_a_call_end_up_on_the_message_it_produced()
+    {
+        var llm = new FakeLlm(new[] { new ChatMessage { Role = ChatRole.Assistant, Content = "done" } });
+        llm.AttemptsPerCall.Enqueue(new List<GenerationAttempt>
+        {
+            new() { Index = 1, Outcome = AttemptOutcome.Repetition, Content = "looped once",
+                Chars = 11, Duration = TimeSpan.FromMilliseconds(5) }
+        });
+        var host = new FakeToolHost();
+        var orch = new ConversationOrchestrator(llm, host) { ToolFilter = (t, _) => t };
+        var convo = new Conversation();
+        convo.Add(new ChatMessage { Role = ChatRole.User, Content = "hi" });
+
+        var forwarded = new List<GenerationAttempt>();
+        var cb = new AgentCallbacks { OnAttempt = a => forwarded.Add(a) };
+
+        await orch.RunAsync(convo, new LLMSettings(), AgentMode.Agent, cb);
+
+        var msg = convo.Messages.Last();
+        Assert.Equal("done", msg.Content);
+        Assert.NotNull(msg.Attempts);
+        var attempt = Assert.Single(msg.Attempts!);
+        Assert.Equal("looped once", attempt.Content);
+        // Collecting onto the message must not come at the cost of the caller's own sink.
+        Assert.Single(forwarded);
+    }
+
+    [Fact]
+    public async Task Degenerate_call_leaves_a_record_that_is_not_resent_next_turn()
+    {
+        // Call 1 loops on every attempt. The queued message's Content ("LOOPED-TEXT-MARKER") stands
+        // in for what RepetitionGuardMiddleware.Degenerate() actually returns — the last LOOPING
+        // generation's text — and the orchestrator must not let it anywhere near the conversation;
+        // only Status and the attempts reported through OnAttempt matter here.
+        var llm = new FakeLlm(
+            new[]
+            {
+                new ChatMessage { Role = ChatRole.Assistant, Content = "LOOPED-TEXT-MARKER" },
+                new ChatMessage { Role = ChatRole.Assistant, Content = "all better now" }
+            },
+            new[] { LlmTurnStatus.Degenerate, LlmTurnStatus.Ok });
+        llm.AttemptsPerCall.Enqueue(new List<GenerationAttempt>
+        {
+            new() { Index = 1, Outcome = AttemptOutcome.Repetition, Content = "LOOPED-TEXT-MARKER",
+                Chars = 18, Duration = TimeSpan.FromMilliseconds(5) },
+            new() { Index = 2, Outcome = AttemptOutcome.Repetition, Content = "LOOPED-TEXT-MARKER again",
+                Chars = 24, Duration = TimeSpan.FromMilliseconds(5) }
+        });
+        var host = new FakeToolHost();
+        var orch = new ConversationOrchestrator(llm, host) { ToolFilter = (t, _) => t };
+        var convo = new Conversation();
+        convo.Add(new ChatMessage { Role = ChatRole.User, Content = "hi" });
+
+        string? notice = null;
+        var cb = new AgentCallbacks { OnNotice = n => { notice = n; return Task.CompletedTask; } };
+
+        await orch.RunAsync(convo, new LLMSettings(), AgentMode.Agent, cb);
+
+        // The record survives in the conversation: empty content, the attempts riding on it.
+        var placeholder = convo.Messages.Last();
+        Assert.Equal(ChatRole.Assistant, placeholder.Role);
+        Assert.True(string.IsNullOrEmpty(placeholder.Content));
+        Assert.Equal(2, placeholder.Attempts?.Count);
+        Assert.NotNull(notice);
+
+        // The next turn must never see the abandoned text: ContextAssembler drops an empty-content,
+        // no-tool-calls message regardless of what it carries, so the placeholder never reaches the
+        // gateway — assert against what the fake gateway was actually handed, not just the guard's intent.
+        convo.Add(new ChatMessage { Role = ChatRole.User, Content = "try again" });
+        await orch.RunAsync(convo, new LLMSettings(), AgentMode.Agent, new AgentCallbacks());
+
+        Assert.Equal(2, llm.SeenContexts.Count);
+        Assert.DoesNotContain(llm.SeenContexts[1], m => (m.Content ?? "").Contains("LOOPED-TEXT-MARKER"));
+        Assert.Equal("all better now", convo.Messages.Last().Content);
     }
 
     // ── System prompt provider ───────────────────────────────────────────────

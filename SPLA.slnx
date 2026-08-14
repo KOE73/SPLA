@@ -47,6 +47,7 @@
     <File Path="docs/adr/ADR_20260804_agent_skills-library.md" />
     <File Path="docs/adr/ADR_20260805_agent_skills-sources.md" />
     <File Path="docs/adr/ADR_20260811_core_security-zones.md" />
+    <File Path="docs/adr/ADR_20260814_llm_output-stage.md" />
   </Folder>
   <Folder Name="/docs/plans/">
     <File Path="docs/plans/PLAN_20260619_agent_skills-lifecycle.md" />
@@ -189,6 +190,7 @@
   <Folder Name="/demo/workers/">
     <Project Path="demo/workers/VisionAgent/VisionAgent.csproj" />
     <Project Path="demo/workers/LogSentry/LogSentry.csproj" />
+    <Project Path="demo/workers/Summarizer/Summarizer.csproj" />
   </Folder>
   <Folder Name="/demo/projects/">
     <File Path="demo/projects/RemoteWeb/README.md" />

@@ -107,6 +107,44 @@ public class ChatSessionMessage
     /// written when the full tool trace is enabled.</summary>
     [YamlMember(Alias = "tool_call_id")]
     public string? ToolCallId { get; set; }
+
+    /// <summary>Generations the repetition guard threw away before this message was produced. Only
+    /// written when the full attempt trace is enabled — see
+    /// <see cref="Settings.SplaAgentSection.SaveAttempts"/>. Null/empty otherwise, including for every
+    /// message that never had any (the overwhelmingly common case).</summary>
+    [YamlMember(Alias = "attempts")]
+    public List<ChatSessionAttempt>? Attempts { get; set; }
+}
+
+/// <summary>
+/// Persisted shape of one abandoned generation — see <see cref="SPLA.Domain.Llm.GenerationAttempt"/> for the
+/// live/domain counterpart this mirrors. Kept as its own type rather than persisting the domain
+/// record directly: YAML has no native duration, so <see cref="DurationMs"/> stands in for the
+/// domain's <c>TimeSpan</c>, the same substitution the wire's <c>AttemptPayload</c> already makes.
+/// </summary>
+public class ChatSessionAttempt
+{
+    [YamlMember(Alias = "index")]
+    public int Index { get; set; }
+
+    [YamlMember(Alias = "outcome")]
+    public string Outcome { get; set; } = string.Empty;
+
+    /// <summary>The abandoned answer text — the whole point of saving this at all.</summary>
+    [YamlMember(Alias = "content")]
+    public string? Content { get; set; }
+
+    [YamlMember(Alias = "reasoning")]
+    public string? Reasoning { get; set; }
+
+    [YamlMember(Alias = "note")]
+    public string? Note { get; set; }
+
+    [YamlMember(Alias = "chars")]
+    public int Chars { get; set; }
+
+    [YamlMember(Alias = "duration_ms")]
+    public long DurationMs { get; set; }
 }
 
 public class ChatSessionContext

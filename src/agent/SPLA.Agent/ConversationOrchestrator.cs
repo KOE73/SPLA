@@ -10,7 +10,6 @@ using Microsoft.Extensions.Logging;
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -128,50 +127,59 @@ public sealed class ConversationOrchestrator
             if (callbacks.OnLlmTurnStart != null)
                 await callbacks.OnLlmTurnStart(coreMessages);
 
-            // Text-repeat guard: accumulate streamed text and cancel via a linked token if it loops.
-            using var textLoopCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
-            var streamed = new StringBuilder();
-            bool textLoopTripped = false;
-
-            // onDelta is always set: even with no UI sink we still need to watch for a text loop.
-            async Task OnDelta(string chunk)
-            {
-                streamed.Append(chunk);
-                if (callbacks.OnDelta != null) await callbacks.OnDelta(chunk);
-                if (!textLoopTripped && LoopGuards.HasTextLoop(streamed.ToString()))
-                {
-                    textLoopTripped = true;
-                    textLoopCts.Cancel();
-                }
-            }
-
             Logger?.LogInformation(
                 "LLM request → mode={Mode} messages={MessageCount} tools={ToolCount}",
                 mode, coreMessages.Count, tools.Count());
 
-            ChatMessage response;
-            try
-            {
-                // One gateway call = one network call to one model. The agent loop makes N of them
-                // per user turn and stays above the gateway — everything the pipeline needs to know
-                // about THIS call travels in the context, never in how the pipeline was composed.
-                var turn = new LlmTurnContext
-                {
-                    Messages    = coreMessages,
-                    Tools       = tools as IReadOnlyList<ToolDefinition> ?? tools.ToList(),
-                    Settings    = llmSettings,
-                    OnDelta     = OnDelta,
-                    OnReasoning = callbacks.OnReasoning
-                };
+            // Attempts this ONE gateway call abandons, collected alongside forwarding to the caller.
+            // Scoped to the call (redeclared every loop iteration) because that is the unit they end up
+            // attached to: whichever message this call produces — the successful one, or the empty
+            // placeholder when every attempt loops — carries exactly the attempts this call reported
+            // and none from a call before or after it.
+            var callAttempts = new List<GenerationAttempt>();
 
-                response = (await _llm.InvokeAsync(turn, textLoopCts.Token)).Message;
-            }
-            catch (OperationCanceledException) when (textLoopTripped && !cancellationToken.IsCancellationRequested)
+            // One gateway call = one network call to one model. The agent loop makes N of them
+            // per user turn and stays above the gateway — everything the pipeline needs to know
+            // about THIS call travels in the context, never in how the pipeline was composed.
+            var turn = new LlmTurnContext
             {
-                await Notify(callbacks, "⚠️ Generation stopped: Text repetition detected.");
+                Messages    = coreMessages,
+                Tools       = tools as IReadOnlyList<ToolDefinition> ?? tools.ToList(),
+                Settings    = llmSettings,
+                OnDelta     = callbacks.OnDelta,
+                OnReasoning = callbacks.OnReasoning,
+                OnAttempt   = attempt =>
+                {
+                    callAttempts.Add(attempt);
+                    callbacks.OnAttempt?.Invoke(attempt);
+                }
+            };
+
+            var outcome = await _llm.InvokeAsync(turn, cancellationToken);
+
+            // A generation that looped until every allowed attempt was spent. Not an error and not an
+            // answer, so it must never be sent to the model — but it still happened, and the abandoned
+            // attempts are the only surviving record of it. An empty-content assistant message carries
+            // them into the conversation for exactly that reason: ContextAssembler.ShouldSend already
+            // drops an empty-content message with no tool calls, so the model never sees it, but a
+            // reader still can. (Only the attempts ride along — outcome.Message.Content is the last
+            // LOOPING generation's text and must not go anywhere near what gets sent next turn.)
+            if (outcome.Status == Domain.Llm.LlmTurnStatus.Degenerate)
+            {
+                Logger?.LogWarning("LLM generation abandoned — the model repeated itself on every attempt.");
+                if (callAttempts.Count > 0)
+                    conversation.Add(new ChatMessage
+                    {
+                        Role = ChatRole.Assistant,
+                        Content = string.Empty,
+                        Attempts = callAttempts
+                    });
+                await Notify(callbacks, "⚠️ Generation stopped: the model kept repeating itself.");
                 return;
             }
 
+            var response = outcome.Message;
+            if (callAttempts.Count > 0) response.Attempts = callAttempts;
             conversation.Add(response);
 
             // Real token accounting lives in the core loop, not the UI: every turn — answer or

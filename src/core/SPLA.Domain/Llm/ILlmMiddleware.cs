@@ -26,6 +26,21 @@ public enum LlmPipelineStage
     /// </summary>
     Retry = 300,
 
+    /// <summary>
+    /// Judging what came back, with the right to reject an attempt and ask for another. The mirror of
+    /// <see cref="Content"/>: that stage shapes what is sent, this one weighs what was produced — a
+    /// generation that degenerated into a repetition loop, an answer truncated by the token ceiling,
+    /// a model that wrote a tool call as prose instead of calling it.
+    /// <para>
+    /// Placed <b>outside</b> <see cref="Accounting"/> for the same reason <see cref="Retry"/> is: a
+    /// regenerated answer is a second call to the model and must produce its own ledger row, or two
+    /// paid attempts would be recorded as one. Placed <b>inside</b> <see cref="Retry"/> so that the
+    /// network retry never sees a cancellation raised here and cannot mistake a rejected answer for a
+    /// dropped socket. Host-owned, sealed to plugins: a guard a plugin could unhook is not a guard.
+    /// </para>
+    /// </summary>
+    Output = 350,
+
     /// <summary>Recording what happened, once per network attempt. Host-owned, sealed to plugins.</summary>
     Accounting = 400,
 

@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using SPLA.Domain.Llm;
 
 namespace SPLA.Domain.Models;
 
@@ -78,4 +79,22 @@ public class ChatMessage
     /// message reaches the model is decided here, on the message itself, not by its render type.
     /// </summary>
     public bool IsEphemeral { get; set; }
+
+    /// <summary>
+    /// Generations the repetition guard threw away BEFORE this message was produced — the model saw
+    /// none of them; only the generation that finally succeeded became <see cref="Content"/>/
+    /// <see cref="Reasoning"/> here. They hang off the message that succeeded them rather than
+    /// becoming messages of their own on purpose: giving each abandoned attempt its own
+    /// <see cref="ChatRole.Assistant"/> entry would let a throwaway generation consume a <see cref="MsgId"/>
+    /// and sit inside rewind/fork's message-list walk as if it were something a person could return to.
+    /// As a list on the message that actually happened, neither problem exists and nothing downstream
+    /// needs to know to skip them.
+    /// <para>
+    /// Never sent to the model — not even indirectly: when every attempt in a call loops, the message
+    /// this list rides on is added with empty <see cref="Content"/> for exactly that reason (see the
+    /// orchestrator's degenerate-turn handling), and context assembly already drops an empty-content,
+    /// no-tool-calls message — see <c>ContextAssembler.ShouldSend</c> and <see cref="Conversation.ShouldPersist"/>.
+    /// </para>
+    /// </summary>
+    public List<GenerationAttempt>? Attempts { get; set; }
 }

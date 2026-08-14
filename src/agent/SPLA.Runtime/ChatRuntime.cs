@@ -224,7 +224,23 @@ public sealed class ChatRuntime
                 },
                 Content = m.Content,
                 Reasoning = string.IsNullOrEmpty(m.Reasoning) ? null : m.Reasoning,
-                CreatedAt = m.CreatedAt
+                CreatedAt = m.CreatedAt,
+                // Restored whenever they were written, independent of today's save_attempts value —
+                // a chat opened after the setting was turned off must still show what it recorded
+                // while it was on.
+                Attempts = m.Attempts is { Count: > 0 }
+                    ? m.Attempts.Select(a => new SPLA.Domain.Llm.GenerationAttempt
+                    {
+                        Index = a.Index,
+                        Outcome = Enum.TryParse<SPLA.Domain.Llm.AttemptOutcome>(a.Outcome, true, out var o)
+                            ? o : SPLA.Domain.Llm.AttemptOutcome.Repetition,
+                        Content = a.Content,
+                        Reasoning = a.Reasoning,
+                        Note = a.Note,
+                        Chars = a.Chars,
+                        Duration = TimeSpan.FromMilliseconds(a.DurationMs)
+                    }).ToList()
+                    : null
             };
             _conversation.Add(msg);
             // Re-link persisted sidecar image filenames so they survive re-saves and show on reopen.
@@ -397,7 +413,7 @@ public sealed class ChatRuntime
     public int PersistedCountUpTo(string msgId)
     {
         var count = 0;
-        foreach (var m in _conversation.PersistableWith(_runtime.Settings.SaveToolCalls))
+        foreach (var m in _conversation.PersistableWith(_runtime.Settings.SaveToolCalls, _runtime.Settings.SaveAttempts))
         {
             count++;
             if (m.MsgId == msgId) return count;
@@ -409,8 +425,9 @@ public sealed class ChatRuntime
     public void Save()
     {
         var saveToolCalls = _runtime.Settings.SaveToolCalls;
+        var saveAttempts = _runtime.Settings.SaveAttempts;
         _chat.Messages.Clear();
-        foreach (var m in _conversation.PersistableWith(saveToolCalls))
+        foreach (var m in _conversation.PersistableWith(saveToolCalls, saveAttempts))
         {
             _chat.Messages.Add(new ChatSessionMessage
             {
@@ -420,7 +437,19 @@ public sealed class ChatRuntime
                 CreatedAt = m.CreatedAt,
                 Images = _imageFiles.TryGetValue(m, out var files) && files.Count > 0 ? new List<string>(files) : null,
                 ToolCalls = saveToolCalls && m.ToolCalls?.Count > 0 ? m.ToolCalls : null,
-                ToolCallId = saveToolCalls ? m.ToolCallId : null
+                ToolCallId = saveToolCalls ? m.ToolCallId : null,
+                Attempts = saveAttempts && m.Attempts?.Count > 0
+                    ? m.Attempts.Select(a => new ChatSessionAttempt
+                    {
+                        Index = a.Index,
+                        Outcome = a.Outcome.ToString(),
+                        Content = a.Content,
+                        Reasoning = a.Reasoning,
+                        Note = a.Note,
+                        Chars = a.Chars,
+                        DurationMs = (long)a.Duration.TotalMilliseconds
+                    }).ToList()
+                    : null
             });
         }
         _chat.Kv = _sessionKv.Snapshot();
@@ -453,6 +482,9 @@ public sealed class ChatRuntime
         s.PresencePenalty  = chatModel?.PresencePenalty  ?? s.PresencePenalty;
         s.FrequencyPenalty = chatModel?.FrequencyPenalty ?? s.FrequencyPenalty;
         s.RepeatPenalty    = chatModel?.RepeatPenalty    ?? s.RepeatPenalty;
+        s.MaxTokens        = chatModel?.MaxTokens        ?? s.MaxTokens;
+        s.TopP             = chatModel?.TopP             ?? s.TopP;
+        s.MinP             = chatModel?.MinP             ?? s.MinP;
         return s;
     }
 

@@ -57,6 +57,15 @@ public class SplaAgentSection
     /// to reconstruct exactly what an agent did, not just what it said.</summary>
     [YamlMember(Alias = "save_tool_calls")]
     public bool? SaveToolCalls { get; set; }
+
+    /// <summary>Persist abandoned-generation records — the repetition guard's discarded attempts,
+    /// captured text included — alongside the chat. Off by default: each one can run to several kB,
+    /// and most chats never trip the guard at all. Deliberately a bool, not a set of levels: the
+    /// generation that succeeded IS the final message and is always stored regardless of this flag,
+    /// so there is no third thing to choose between — this only decides whether the ones that were
+    /// thrown away are kept too.</summary>
+    [YamlMember(Alias = "save_attempts")]
+    public bool? SaveAttempts { get; set; }
 }
 
 /// <summary>
@@ -90,6 +99,15 @@ public class SplaLlmSection
 
     [YamlMember(Alias = "repeat_penalty")]
     public double? RepeatPenalty { get; set; }
+
+    [YamlMember(Alias = "max_tokens")]
+    public int? MaxTokens { get; set; }
+
+    [YamlMember(Alias = "top_p")]
+    public double? TopP { get; set; }
+
+    [YamlMember(Alias = "min_p")]
+    public double? MinP { get; set; }
 }
 
 /// <summary>

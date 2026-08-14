@@ -10,9 +10,6 @@ namespace SPLA.CLI;
 /// </summary>
 internal static class SystemCommands
 {
-    public static bool IsSystemCommand(string[] args) =>
-        args.Length > 0 && args[0].Equals("system", StringComparison.OrdinalIgnoreCase);
-
     public static int Run(string[] args)
     {
         var sub = args.Length > 1 ? args[1].ToLowerInvariant() : "";

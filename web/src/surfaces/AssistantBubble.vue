@@ -15,6 +15,13 @@
       <summary>reasoning</summary>
       <div class="rbody">{{ reasoning }}</div>
     </details>
+    <div v-if="attempts && attempts.length" class="attempts">
+      <details v-for="a in attempts" :key="a.index" class="attempt-note">
+        <summary>попытка {{ a.index }} отброшена{{ a.note ? ": " + a.note : "" }}</summary>
+        <div v-if="a.reasoning" class="rbody">рассуждение: {{ a.reasoning }}</div>
+        <div v-if="a.content" class="rbody">ответ: {{ a.content }}</div>
+      </details>
+    </div>
     <div ref="bodyEl" class="body"></div>
   </div>
 </template>
@@ -30,6 +37,7 @@ const props = withDefaults(defineProps<{
   reasoning?: string;
   msgId?: string;
   createdAt?: string | number;
+  attempts?: { index: number; note?: string; content?: string; reasoning?: string }[];
 }>(), { text: "", reasoning: "" });
 
 defineEmits<{ (e: "rewind", msgId: string): void; (e: "fork", msgId: string): void }>();

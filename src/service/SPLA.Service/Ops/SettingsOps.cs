@@ -135,6 +135,7 @@ public static class SettingsOps
         LoopGuard = runtime.Settings.LoopGuard,
         LoopGuardRepeats = runtime.Settings.LoopGuardRepeats,
         SaveToolCalls = runtime.Settings.SaveToolCalls,
+        SaveAttempts = runtime.Settings.SaveAttempts,
         Theme = runtime.Settings.Theme,
         Density = runtime.Settings.Density,
         Themes = KnownThemes,
@@ -159,6 +160,8 @@ public static class SettingsOps
         runtime.Settings.LoopGuardRepeats = loopRepeats;
         var saveToolCalls = dto.SaveToolCalls ?? false;
         runtime.Settings.SaveToolCalls = saveToolCalls;
+        var saveAttempts = dto.SaveAttempts ?? false;
+        runtime.Settings.SaveAttempts = saveAttempts;
 
         var path = runtime.Settings.ProjectFilePath;
         if (path != null)
@@ -170,6 +173,7 @@ public static class SettingsOps
             project.Agent.LoopGuard = loopGuard ? true : null;
             project.Agent.LoopGuardRepeats = loopRepeats != 3 ? loopRepeats : null;
             project.Agent.SaveToolCalls = saveToolCalls ? true : null;
+            project.Agent.SaveAttempts = saveAttempts ? true : null;
             var anyPerm = read != null || write != null || shell != null || net != null;
             project.Permissions = anyPerm
                 ? new SplaPermissionsSection { Read = read, Write = write, Shell = shell, Internet = net }

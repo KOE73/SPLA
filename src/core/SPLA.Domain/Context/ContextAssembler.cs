@@ -24,6 +24,10 @@ public static class ContextAssembler
 
         // An assistant turn that only carries tool calls has empty content but must be sent.
         var hasToolCalls = message.ToolCalls != null && message.ToolCalls.Count > 0;
+        // Deliberately not an exception for ChatMessage.Attempts: the degenerate-turn placeholder
+        // (empty Content, a non-empty Attempts list) is meant to fall through this same check and be
+        // dropped. Those attempts already failed once; showing the model its own discarded loop would
+        // only invite it to pick the loop back up. The record survives for a READER, not for the model.
         if (string.IsNullOrWhiteSpace(message.Content) && !hasToolCalls) return false;
 
         // A tool result with no id cannot be correlated by the model.

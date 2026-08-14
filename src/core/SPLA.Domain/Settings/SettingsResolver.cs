@@ -15,6 +15,13 @@ public class ResolvedSettings
     public double FrequencyPenalty { get; set; } = 0.0;
     public double RepeatPenalty { get; set; } = 1.0;
 
+    /// <summary>Null = not sent, server default applies. See <see cref="LLMSettings.MaxTokens"/>.</summary>
+    public int? MaxTokens { get; set; }
+    /// <summary>Null = not sent, server default applies. See <see cref="LLMSettings.TopP"/>.</summary>
+    public double? TopP { get; set; }
+    /// <summary>Null = not sent, server default applies. See <see cref="LLMSettings.MinP"/>.</summary>
+    public double? MinP { get; set; }
+
     /// <summary>Connections available to this project, each owning its models. Never empty after
     /// resolution — a default is synthesized from the <c>llm:</c> section when none are configured.
     /// This is the <i>tree</i>, for the settings UI; consumers that need to run a turn want
@@ -45,6 +52,10 @@ public class ResolvedSettings
     /// <summary>Persist the full tool-call/tool-result trace with the chat history. Default OFF —
     /// see <see cref="SplaAgentSection.SaveToolCalls"/>.</summary>
     public bool SaveToolCalls { get; set; }
+
+    /// <summary>Persist abandoned-generation records with the chat history. Default OFF — see
+    /// <see cref="SplaAgentSection.SaveAttempts"/>.</summary>
+    public bool SaveAttempts { get; set; }
 
     /// <summary>Enabled built-in agent capabilities. Null = all enabled (backward compatible);
     /// see <see cref="SplaAgentSection.Capabilities"/> for full semantics.</summary>
@@ -251,7 +262,10 @@ public class ResolvedSettings
         ReasoningLevel   = ReasoningLevel,
         PresencePenalty  = PresencePenalty,
         FrequencyPenalty = FrequencyPenalty,
-        RepeatPenalty    = RepeatPenalty
+        RepeatPenalty    = RepeatPenalty,
+        MaxTokens        = MaxTokens,
+        TopP             = TopP,
+        MinP             = MinP
     };
 }
 
@@ -318,6 +332,9 @@ public static class SettingsResolver
                 r.PresencePenalty    = defaults.Llm.PresencePenalty  ?? r.PresencePenalty;
                 r.FrequencyPenalty   = defaults.Llm.FrequencyPenalty ?? r.FrequencyPenalty;
                 r.RepeatPenalty      = defaults.Llm.RepeatPenalty    ?? r.RepeatPenalty;
+                r.MaxTokens          = defaults.Llm.MaxTokens        ?? r.MaxTokens;
+                r.TopP               = defaults.Llm.TopP             ?? r.TopP;
+                r.MinP               = defaults.Llm.MinP             ?? r.MinP;
             }
             if (defaults.Agent != null)
             {
@@ -330,6 +347,7 @@ public static class SettingsResolver
                 r.LoopGuard = defaults.Agent.LoopGuard ?? r.LoopGuard;
                 r.LoopGuardRepeats = defaults.Agent.LoopGuardRepeats ?? r.LoopGuardRepeats;
                 r.SaveToolCalls = defaults.Agent.SaveToolCalls ?? r.SaveToolCalls;
+                r.SaveAttempts = defaults.Agent.SaveAttempts ?? r.SaveAttempts;
                 r.Capabilities = defaults.Agent.Capabilities ?? r.Capabilities;
                 AddTrustedDomains(r, defaults.Agent.TrustedDomains);
             }
@@ -362,6 +380,9 @@ public static class SettingsResolver
                 r.PresencePenalty    = project.Llm.PresencePenalty  ?? r.PresencePenalty;
                 r.FrequencyPenalty   = project.Llm.FrequencyPenalty ?? r.FrequencyPenalty;
                 r.RepeatPenalty      = project.Llm.RepeatPenalty    ?? r.RepeatPenalty;
+                r.MaxTokens          = project.Llm.MaxTokens        ?? r.MaxTokens;
+                r.TopP               = project.Llm.TopP             ?? r.TopP;
+                r.MinP               = project.Llm.MinP             ?? r.MinP;
             }
             if (project.Agent != null)
             {
@@ -375,6 +396,7 @@ public static class SettingsResolver
                 r.LoopGuard = project.Agent.LoopGuard ?? r.LoopGuard;
                 r.LoopGuardRepeats = project.Agent.LoopGuardRepeats ?? r.LoopGuardRepeats;
                 r.SaveToolCalls = project.Agent.SaveToolCalls ?? r.SaveToolCalls;
+                r.SaveAttempts = project.Agent.SaveAttempts ?? r.SaveAttempts;
                 r.Capabilities = project.Agent.Capabilities ?? r.Capabilities;
                 AddTrustedDomains(r, project.Agent.TrustedDomains);
             }

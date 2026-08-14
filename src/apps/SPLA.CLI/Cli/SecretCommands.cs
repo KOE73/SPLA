@@ -12,9 +12,6 @@ namespace SPLA.CLI;
 /// </summary>
 internal static class SecretCommands
 {
-    public static bool IsSecretCommand(string[] args) =>
-        args.Length > 0 && args[0].Equals("secret", StringComparison.OrdinalIgnoreCase);
-
     /// <summary>Runs the secret sub-command. Returns the process exit code.</summary>
     public static async Task<int> RunAsync(ResolvedSettings settings, string[] args)
     {

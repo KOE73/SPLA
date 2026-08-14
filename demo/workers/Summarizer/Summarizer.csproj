@@ -1,0 +1,28 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    Summarizer — a third standalone SPLA Runtime host. Takes one document out of a folder and
+    runs a matrix over it: every prompt variant × every model target, one fresh chat per cell,
+    each result written back into the same folder under a stamped name. No CLI, no service,
+    no UI — just the runtime.
+  -->
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <RootNamespace>SPLA.Demo.Summarizer</RootNamespace>
+    <AssemblyName>Summarizer</AssemblyName>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\..\src\agent\SPLA.Runtime\SPLA.Runtime.csproj" />
+    <!-- The project's connections point at secret: references (OpenRouter keys), and the DPAPI
+         backend has to be registered by the host before the resolver can read them. -->
+    <ProjectReference Include="..\..\..\src\core\SPLA.Secrets.Dpapi\SPLA.Secrets.Dpapi.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Extensions.Logging" Version="10.0.0" />
+    <PackageReference Include="YamlDotNet" Version="18.0.0" />
+  </ItemGroup>
+
+</Project>

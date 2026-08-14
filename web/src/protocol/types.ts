@@ -31,6 +31,20 @@ export interface ChatMessage {
   images?: string[];
   toolCalls?: ToolCallDto[];
   toolCallId?: string;
+  /** Generations the repetition guard threw away before this message was produced. Only present
+   *  when the project had `agent: save_attempts` on when the chat was saved. */
+  attempts?: AttemptDto[];
+}
+
+/** One abandoned generation as stored on a message — see server `AttemptDto`. */
+export interface AttemptDto {
+  index: number;
+  outcome: string;
+  note?: string;
+  chars: number;
+  durationMs: number;
+  content?: string;
+  reasoning?: string;
 }
 
 export interface ToolCallDto {
@@ -156,7 +170,7 @@ export interface AgentResultPayload {
   modes?: string[];
   permRead?: string; permWrite?: string; permShell?: string; permInternet?: string;
   customPrompt?: string;
-  loopGuard?: boolean; loopGuardRepeats?: number; saveToolCalls?: boolean;
+  loopGuard?: boolean; loopGuardRepeats?: number; saveToolCalls?: boolean; saveAttempts?: boolean;
   theme?: string; density?: string;
   themes?: string[]; densities?: string[];
   canPersist?: boolean;
@@ -549,6 +563,11 @@ export interface ServerEvents {
   "delta": { msgIndex: number; text: string };
   "reasoning": { msgIndex: number; text: string };
   "llm.turn.start": { msgIndex: number };
+  /** A generation the repetition guard abandoned mid-stream — never sent for the successful attempt.
+   *  Carries the abandoned content/reasoning so a reader can open it, not just the streamed text that
+   *  was already visible before the guard cut it off. */
+  "llm.attempt": { msgIndex: number; index: number; outcome: string; note?: string; chars: number;
+    durationMs: number; content?: string; reasoning?: string };
   "assistant.message": { msgIndex: number; message: ChatMessage };
   /** User message accepted by the server. Text is present so server-initiated turns can render
    * without a local echo; ordinary composer turns use it only as a fallback. */

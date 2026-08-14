@@ -136,6 +136,15 @@ button { font: inherit; cursor: pointer; }
 .reasoning summary { cursor: pointer; font-style: normal; font-weight: 600; color: var(--muted);
   font-size: var(--fs-sm); }
 
+/* Markers for generations the repetition guard threw away — same disclosure shape as .reasoning
+   (dashed rule, bold muted summary, pre-wrap body) so there is only one expand/collapse style in the
+   bubble, but its own class rather than reusing .reasoning: body.hide-reasoning hides the model's
+   chain-of-thought, and must not also hide the discarded ANSWER text these markers carry. */
+.attempt-note { color: var(--muted); font-size: var(--fs-xs); font-style: italic;
+  border-left: 2px dashed var(--border); padding-left: 8px; margin-bottom: 4px; white-space: pre-wrap; }
+.attempt-note summary { cursor: pointer; font-style: normal; font-weight: 600; color: var(--muted);
+  font-size: var(--fs-xs); }
+
 .tool { align-self: flex-start; font-family: var(--mono); font-size: var(--fs-sm);
   color: var(--muted); background: var(--tool-bg); border: 1px solid var(--border);
   border-radius: var(--radius-sm); padding: 5px 10px; }
