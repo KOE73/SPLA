@@ -27,10 +27,13 @@ New-Item -ItemType Directory -Force .publish\work | Out-Null
 
 Write-Host 'Rebuilding web client (Vue) so UI and CLI embed the fresh bundle...'
 if (Test-Path web\dist) { Remove-Item web\dist -Recurse -Force }
-if (-not (Test-Path web\node_modules)) {
-    npm --prefix web install
-    if ($LASTEXITCODE -ne 0) { Fail 'npm install failed.' }
-}
+# Unconditionally, not "only when node_modules is missing". That condition is true exactly once per
+# checkout, so a dependency added after someone's first install never reaches them: the build then
+# fails naming a package that IS in package.json, and the only cure is knowing to run npm install by
+# hand. A publish is not the place to save the couple of seconds this costs when nothing changed.
+npm --prefix web install
+if ($LASTEXITCODE -ne 0) { Fail 'npm install failed.' }
+
 npm --prefix web run build
 if ($LASTEXITCODE -ne 0) { Fail 'web client build failed.' }
 

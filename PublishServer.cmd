@@ -18,7 +18,9 @@ if exist %OUT% rmdir /s /q %OUT%
 mkdir %OUT%
 
 echo Rebuilding web client (Vue) so the server embeds the fresh bundle...
-if not exist web\node_modules call npm --prefix web install
+rem Always, not "only when node_modules is missing" — that is true once per checkout, so any
+rem dependency added later never arrives and the build fails naming a package that IS in package.json.
+call npm --prefix web install
 if errorlevel 1 ( echo Error installing web deps. & exit /b 1 )
 call npm --prefix web run build
 if errorlevel 1 ( echo Error building web client. & exit /b 1 )

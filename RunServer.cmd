@@ -12,13 +12,13 @@ taskkill /IM SPLA.UI.Avalonia.exe /F >nul 2>nul
 taskkill /IM SPLA.Server.exe /F >nul 2>nul
 taskkill /IM SPLA.CLI.exe /F >nul 2>nul
 
-if not exist web\node_modules (
-    echo Installing web client dependencies...
-    call npm --prefix web install
-    if errorlevel 1 (
-        echo Error installing web client dependencies.
-        exit /b 1
-    )
+rem Always, not "only when node_modules is missing" — that is true once per checkout, so any
+rem dependency added later never arrives and the build fails naming a package that IS in package.json.
+echo Installing web client dependencies...
+call npm --prefix web install
+if errorlevel 1 (
+    echo Error installing web client dependencies.
+    exit /b 1
 )
 
 echo Rebuilding web client (Vue) so the served bundle is fresh...

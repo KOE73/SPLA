@@ -18,19 +18,43 @@
     <ProjectReference Include="..\..\core\SPLA.Domain\SPLA.Domain.csproj" />
   </ItemGroup>
 
-  <!-- Build the JSON Forms schema-editor bundle (Node, build-time only) before compiling.
-       npm install is skipped when node_modules already exists to keep incremental builds fast. -->
+  <ItemGroup>
+    <!-- Wildcards, so a checkout without a lockfile yields no item rather than a missing input. -->
+    <EditorWebManifest Include="$(EditorWebDir)\package*.json" />
+    <TextWebManifest Include="$(TextWebDir)\package*.json" />
+  </ItemGroup>
+
+  <!-- Dependencies for both bundles, installed whenever the manifests are newer than the last
+       install. NOT "install if node_modules is missing": that is true exactly once per checkout, so
+       any dependency added later never arrives and the build fails naming a package that IS in
+       package.json. Inputs/Outputs keep incremental builds free, which is what the old condition was
+       reaching for. -->
+  <Target Name="RestoreEditorWeb"
+          BeforeTargets="BuildEditorWeb"
+          Inputs="@(EditorWebManifest)"
+          Outputs="$(EditorWebDir)\node_modules\.spla-install-stamp">
+    <Exec Command="npm install --no-audit --no-fund" WorkingDirectory="$(EditorWebDir)" />
+    <Touch Files="$(EditorWebDir)\node_modules\.spla-install-stamp" AlwaysCreate="true" />
+  </Target>
+
+  <Target Name="RestoreTextWeb"
+          BeforeTargets="BuildTextWeb"
+          Inputs="@(TextWebManifest)"
+          Outputs="$(TextWebDir)\node_modules\.spla-install-stamp">
+    <Exec Command="npm install --no-audit --no-fund" WorkingDirectory="$(TextWebDir)" />
+    <Touch Files="$(TextWebDir)\node_modules\.spla-install-stamp" AlwaysCreate="true" />
+  </Target>
+
+  <!-- Build the JSON Forms schema-editor bundle (Node, build-time only) before compiling. -->
   <Target Name="BuildEditorWeb"
           BeforeTargets="BeforeBuild"
+          DependsOnTargets="RestoreEditorWeb"
           Inputs="$(EditorWebDir)\package.json;$(EditorWebDir)\vite.config.ts;@(EditorWebSource)"
           Outputs="$(EditorWebBundle)">
     <ItemGroup>
       <EditorWebSource Include="$(EditorWebDir)\src\**\*.*" />
       <EditorWebSource Include="$(EditorWebDir)\index.html" />
     </ItemGroup>
-    <Exec Condition="!Exists('$(EditorWebDir)\node_modules')"
-          Command="npm install --no-audit --no-fund"
-          WorkingDirectory="$(EditorWebDir)" />
     <Exec Command="npm run build"
           WorkingDirectory="$(EditorWebDir)" />
   </Target>
@@ -38,15 +62,13 @@
   <!-- Build the CodeMirror text-editor bundle (Node, build-time only) before compiling. -->
   <Target Name="BuildTextWeb"
           BeforeTargets="BeforeBuild"
+          DependsOnTargets="RestoreTextWeb"
           Inputs="$(TextWebDir)\package.json;$(TextWebDir)\vite.config.ts;@(TextWebSource)"
           Outputs="$(TextWebBundle)">
     <ItemGroup>
       <TextWebSource Include="$(TextWebDir)\src\**\*.*" />
       <TextWebSource Include="$(TextWebDir)\index.html" />
     </ItemGroup>
-    <Exec Condition="!Exists('$(TextWebDir)\node_modules')"
-          Command="npm install --no-audit --no-fund"
-          WorkingDirectory="$(TextWebDir)" />
     <Exec Command="npm run build"
           WorkingDirectory="$(TextWebDir)" />
   </Target>

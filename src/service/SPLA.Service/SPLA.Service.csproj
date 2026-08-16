@@ -30,9 +30,34 @@
        ships embedded — the service stays self-contained with no content-root/wwwroot wiring at
        runtime. LogicalName is set explicitly so it still resolves to "SPLA.Service.WebClient.*",
        matching WebAssets.cs — files outside the project cone otherwise lose their directory path. -->
-  <Target Name="BuildWebClient" BeforeTargets="BeforeBuild" Condition="Exists('$(MSBuildThisFileDirectory)..\..\..\web\package.json')">
-    <Exec Command="npm install" WorkingDirectory="$(MSBuildThisFileDirectory)..\..\..\web" Condition="!Exists('$(MSBuildThisFileDirectory)..\..\..\web\node_modules')" />
-    <Exec Command="npm run build" WorkingDirectory="$(MSBuildThisFileDirectory)..\..\..\web" />
+  <PropertyGroup>
+    <WebClientDir>$(MSBuildThisFileDirectory)..\..\..\web</WebClientDir>
+    <!-- Written after a successful install; its age is what says whether the installed tree still
+         matches the manifests. -->
+    <WebClientInstallStamp>$(WebClientDir)\node_modules\.spla-install-stamp</WebClientInstallStamp>
+  </PropertyGroup>
+
+  <!-- Dependencies, installed whenever the manifests are newer than the last install.
+       NOT "install if node_modules is missing", which is what this used to say: that condition is
+       true exactly once per checkout, so every dependency added afterwards never arrives. Whoever
+       already had the folder got a type error naming the new package (vitest, in the case that
+       exposed this), and the only cure was knowing to run npm install by hand.
+       Inputs/Outputs make it incremental, so an up-to-date tree still costs nothing. -->
+  <Target Name="RestoreWebClient" BeforeTargets="BuildWebClient"
+          Condition="Exists('$(WebClientDir)\package.json')"
+          Inputs="@(WebClientManifest)" Outputs="$(WebClientInstallStamp)">
+    <Exec Command="npm install" WorkingDirectory="$(WebClientDir)" />
+    <Touch Files="$(WebClientInstallStamp)" AlwaysCreate="true" />
+  </Target>
+
+  <ItemGroup>
+    <!-- A wildcard, so a checkout without a lockfile yields no item rather than a missing input. -->
+    <WebClientManifest Include="$(WebClientDir)\package*.json" />
+  </ItemGroup>
+
+  <Target Name="BuildWebClient" BeforeTargets="BeforeBuild" DependsOnTargets="RestoreWebClient"
+          Condition="Exists('$(WebClientDir)\package.json')">
+    <Exec Command="npm run build" WorkingDirectory="$(WebClientDir)" />
   </Target>
 
   <!-- Glob the embedded resources INSIDE a target that runs after the web build, not as a static
