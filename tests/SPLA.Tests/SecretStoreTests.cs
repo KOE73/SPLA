@@ -137,33 +137,79 @@ public class SecretStoreTests : IDisposable
         Assert.Equal(new[] { "password" }, entry!.FieldNames);
     }
 
+    /// <summary>
+    /// Redirected through <see cref="MachineLayerScope"/> rather than by setting <c>SPLA_HOME</c> and
+    /// the static factory. Both of those are process-wide, and this test used to hold them for the
+    /// length of its body — during which every other class running in parallel resolved ITS machine
+    /// layer to this test's temp directory, one that is deleted on the way out. That was a real
+    /// intermittent failure, not a theoretical one.
+    /// </summary>
     [Fact]
     public void ConfigLoader_UsesFactory_ForDpapi_AndFallsBackToFile()
     {
-        var prevHome = Environment.GetEnvironmentVariable("SPLA_HOME");
-        var prevFactory = ConfigLoader.SecretStoreFactory;
-        try
-        {
-            // SPLA_HOME redirects the whole machine layer into our temp dir — proves the override AND
-            // keeps the test off the real ~/.spla.
-            Environment.SetEnvironmentVariable("SPLA_HOME", _dir);
-            File.WriteAllText(Path.Combine(_dir, "defaults.yaml"), "version: 1\nsecrets:\n  backend: dpapi\n");
+        File.WriteAllText(Path.Combine(_dir, "defaults.yaml"), "version: 1\nsecrets:\n  backend: dpapi\n");
 
-            // With a factory that supplies dpapi, the resolved store is the DPAPI one.
-            ConfigLoader.SecretStoreFactory = (backend, ws, machineDir) =>
-                backend == "dpapi" ? new DpapiFileSecretStore(ws, machineDir) : null;
-            var resolved = ConfigLoader.LoadAndResolve();
-            Assert.IsType<DpapiFileSecretStore>(resolved.Secrets);
-
-            // With no factory, the same config must fall back to the plaintext file store, not crash.
-            ConfigLoader.SecretStoreFactory = null;
-            var fallback = ConfigLoader.LoadAndResolve();
-            Assert.IsType<FileSecretStore>(fallback.Secrets);
-        }
-        finally
+        // With a factory that supplies dpapi, the resolved store is the DPAPI one.
+        using (MachineLayerScope.Begin(_dir, (backend, ws, machineDir) =>
+                   backend == "dpapi" ? new DpapiFileSecretStore(ws, machineDir) : null))
         {
-            Environment.SetEnvironmentVariable("SPLA_HOME", prevHome);
-            ConfigLoader.SecretStoreFactory = prevFactory;
+            Assert.IsType<DpapiFileSecretStore>(ConfigLoader.LoadAndResolve().Secrets);
         }
+
+        // With no factory, the same config must fall back to the plaintext file store, not crash.
+        using (MachineLayerScope.Begin(_dir, suppressSecretStoreFactory: true))
+        {
+            Assert.IsType<FileSecretStore>(ConfigLoader.LoadAndResolve().Secrets);
+        }
+    }
+
+    /// <summary>
+    /// The override rule itself, proved without moving a process-wide setting to prove it — which is
+    /// the whole point: a test that sets <c>SPLA_HOME</c> is a test every parallel test can see.
+    /// </summary>
+    [Fact]
+    public void An_override_home_replaces_the_machine_layer_and_a_blank_one_does_not()
+    {
+        Assert.Equal(Path.GetFullPath(_dir), ConfigLoader.ResolveDefaultsDir(_dir));
+        Assert.Equal(Path.GetFullPath(_dir), ConfigLoader.ResolveDefaultsDir("  " + _dir + "  "));
+
+        var machineOwn = Path.Combine(
+            Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), ".spla");
+
+        Assert.Equal(machineOwn, ConfigLoader.ResolveDefaultsDir(null));
+        Assert.Equal(machineOwn, ConfigLoader.ResolveDefaultsDir("   "));
+    }
+
+    /// <summary>
+    /// A scope answers for its own flow only. Without this the redirection above would be the same
+    /// process-wide leak wearing a different name.
+    ///
+    /// <para>The neighbour is started with the execution context suppressed, because that is what a
+    /// concurrently running test actually is: a flow this one did not start. An ordinary
+    /// <c>Task.Run</c> would inherit the scope and prove nothing — ambient state flows DOWN into work
+    /// this flow begins, which is the behaviour we want, and never sideways, which is the behaviour
+    /// the bug needed.</para>
+    /// </summary>
+    [Fact]
+    public void A_scope_is_invisible_to_work_running_beside_it()
+    {
+        var outside = ConfigLoader.GetDefaultsDir();
+
+        using (MachineLayerScope.Begin(_dir))
+        {
+            Assert.Equal(Path.GetFullPath(_dir), ConfigLoader.GetDefaultsDir());
+
+            var seenByNeighbour = "";
+            using (ExecutionContext.SuppressFlow())
+            {
+                var neighbour = new Thread(() => seenByNeighbour = ConfigLoader.GetDefaultsDir());
+                neighbour.Start();
+                neighbour.Join();
+            }
+
+            Assert.Equal(outside, seenByNeighbour);
+        }
+
+        Assert.Equal(outside, ConfigLoader.GetDefaultsDir());
     }
 }
