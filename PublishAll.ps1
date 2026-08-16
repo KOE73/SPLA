@@ -112,9 +112,25 @@ Get-ChildItem .publish\work -Recurse -Include *.pdb, *.xml | Remove-Item -Force
 # Stamped so the running build can tell the client which branch it was published from (ClientConnection
 # reads this next to the exe and puts it on the welcome frame) — and so registration below always points
 # Explorer at whichever folder was built last, not whichever was built first.
-$branch = (git rev-parse --abbrev-ref HEAD).Trim()
-Set-Content -Path '.publish\work\branch.txt' -Value $branch -NoNewline
-Write-Host "Branch stamp: $branch"
+# Best-effort, and it has to stay that way: git is not needed to BUILD anything here, so a publish
+# must not die because it is missing from PATH or because this tree is not a repository (an extracted
+# zip, a copied folder). The reader already treats a missing branch.txt as a dev build and shows no
+# banner — see SystemOps.ReadBuildBranch — so saying nothing is a state it understands.
+$branch = ''
+if (Get-Command git -ErrorAction SilentlyContinue) {
+    $branch = (& git rev-parse --abbrev-ref HEAD 2>$null | Out-String).Trim()
+    if ($LASTEXITCODE -ne 0) { $branch = '' }
+}
+
+if ($branch) {
+    Set-Content -Path '.publish\work\branch.txt' -Value $branch -NoNewline
+    Write-Host "Branch stamp: $branch"
+}
+else {
+    Write-Host '  (no branch stamp: git unavailable or not a repository)' -ForegroundColor Yellow
+    # Clear git's exit code so a failure we deliberately ignored cannot be read as the next step's.
+    $global:LASTEXITCODE = 0
+}
 
 Write-Host 'Registering .spla file association to this build...'
 & '.publish\work\SPLA.CLI.exe' system register-association
