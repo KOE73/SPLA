@@ -47,6 +47,7 @@
     <File Path="docs/adr/ADR_20260804_agent_skills-library.md" />
     <File Path="docs/adr/ADR_20260805_agent_skills-sources.md" />
     <File Path="docs/adr/ADR_20260811_core_security-zones.md" />
+    <File Path="docs/adr/ADR_20260813_build_branch-stamp.md" />
     <File Path="docs/adr/ADR_20260814_core_project-mounts.md" />
     <File Path="docs/adr/ADR_20260814_llm_output-stage.md" />
   </Folder>
