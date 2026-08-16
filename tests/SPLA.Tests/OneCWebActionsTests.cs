@@ -1,5 +1,6 @@
 using System.Text.Json;
 using Microsoft.Data.Sqlite;
+using SPLA.Domain.Host;
 using SPLA.Plugins.OneC.Models;
 using SPLA.Plugins.OneC.Storage;
 using SPLA.Plugins.OneC.Web;
@@ -43,7 +44,7 @@ public sealed class OneCWebActionsTests : IDisposable
             });
         }
 
-        var actions = new OneCWebActions(databasePath, _testDirectory);
+        var actions = new OneCWebActions(databasePath, new PathBoundary(_testDirectory));
 
         var overview = await InvokeAsync(actions, "overview");
         Assert.Equal(2, overview.GetProperty("objectCount").GetInt32());
@@ -72,7 +73,8 @@ public sealed class OneCWebActionsTests : IDisposable
     public async Task Rebuild_rejects_a_directory_outside_the_project_workspace()
     {
         Directory.CreateDirectory(_testDirectory);
-        var actions = new OneCWebActions(Path.Combine(_testDirectory, "onec.sqlite"), _testDirectory);
+        var actions = new OneCWebActions(
+            Path.Combine(_testDirectory, "onec.sqlite"), new PathBoundary(_testDirectory));
         using var payload = JsonDocument.Parse(JsonSerializer.Serialize(new { path = Path.GetTempPath() }));
 
         var error = await Assert.ThrowsAsync<InvalidOperationException>(

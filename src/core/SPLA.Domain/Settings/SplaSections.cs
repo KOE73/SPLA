@@ -200,6 +200,47 @@ public class SplaModelSection
 }
 
 /// <summary>
+/// One declared mount: a folder outside the project root, given a name and addressed under
+/// <c>mnt/&lt;name&gt;/...</c>. See <c>agents/spla-file.md</c> and
+/// <c>docs/adr/ADR_20260814_core_project-mounts.md</c>.
+///
+/// <para>Everything here is what the file said. Validation and resolution happen once, at load, in
+/// <see cref="MountResolver"/> — never in a tool and never at use.</para>
+/// </summary>
+public class SplaMountSection
+{
+    /// <summary>The address segment. Travels in git; it is what instructions and prompts name.</summary>
+    [YamlMember(Alias = "name")]
+    public string? Name { get; set; }
+
+    /// <summary>Mount kind. Only <c>file-system</c> exists; the key is here so a second one would be
+    /// an addition rather than a break.</summary>
+    [YamlMember(Alias = "type")]
+    public string? Type { get; set; }
+
+    /// <summary>Where it points on this machine. Relative paths are relative to the directory holding
+    /// the manifest — a property of the machine, which is exactly why it is the half that may differ
+    /// between two checkouts.</summary>
+    [YamlMember(Alias = "path")]
+    public string? Path { get; set; }
+
+    /// <summary><c>read</c> (default) or <c>write</c>. Read-only unless opted in, the same way an SSH
+    /// host is.</summary>
+    [YamlMember(Alias = "access")]
+    public string? Access { get; set; }
+
+    /// <summary><c>trusted</c> (default) or <c>untrusted</c>. A mount is a source the operator named,
+    /// so it is trusted like one; <c>untrusted</c> is for a folder other people write into.</summary>
+    [YamlMember(Alias = "trust")]
+    public string? Trust { get; set; }
+
+    /// <summary>Required. Goes into the system prompt — without a line saying what the folder is for,
+    /// the model opens it to find out.</summary>
+    [YamlMember(Alias = "description")]
+    public string? Description { get; set; }
+}
+
+/// <summary>
 /// Secret-store backend selection. Machine-level only (<c>~/.spla/defaults.yaml</c>) — the backend
 /// is a property of the machine, never of a committable project. To run a second instance on a
 /// different backend without editing this file, point it at an isolated home via <c>SPLA_HOME</c>.

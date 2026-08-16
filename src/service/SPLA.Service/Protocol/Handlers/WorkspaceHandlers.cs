@@ -44,8 +44,8 @@ internal sealed class WorkspaceHandlers : IMessageHandler
     {
         var (entry, _) = ctx.Session.Resolve(ctx.Env);
         var p = ctx.Payload<FsBrowsePayload>();
-        var root = entry.Runtime.Settings.WorkspacePath;
-        return ctx.Reply(MessageTypes.FsBrowseResult, WorkspaceOps.Browse(root, p?.ParentRef));
+        var boundary = BoundaryOf(entry);
+        return ctx.Reply(MessageTypes.FsBrowseResult, WorkspaceOps.Browse(boundary, p?.ParentRef));
     }
 
     private static Task FsRead(RequestContext ctx)
@@ -54,8 +54,8 @@ internal sealed class WorkspaceHandlers : IMessageHandler
         var p = ctx.Payload<FsReadPayload>();
         if (string.IsNullOrWhiteSpace(p?.Ref))
             return ctx.Reply(MessageTypes.FsReadResult, new FsReadResultPayload { Error = "Ref is required." });
-        var root = entry.Runtime.Settings.WorkspacePath;
-        return ctx.Reply(MessageTypes.FsReadResult, WorkspaceOps.Read(root, p.Ref));
+        var boundary = BoundaryOf(entry);
+        return ctx.Reply(MessageTypes.FsReadResult, WorkspaceOps.Read(boundary, p.Ref));
     }
 
     private static Task FsWrite(RequestContext ctx)
@@ -64,7 +64,17 @@ internal sealed class WorkspaceHandlers : IMessageHandler
         var p = ctx.Payload<FsWritePayload>();
         if (string.IsNullOrWhiteSpace(p?.Ref))
             return ctx.Reply(MessageTypes.FsWriteResult, new FsWriteResultPayload { Error = "Ref is required." });
-        var root = entry.Runtime.Settings.WorkspacePath;
-        return ctx.Reply(MessageTypes.FsWriteResult, WorkspaceOps.Write(root, p.Ref, p.Text ?? ""));
+        var boundary = BoundaryOf(entry);
+        return ctx.Reply(MessageTypes.FsWriteResult, WorkspaceOps.Write(boundary, p.Ref, p.Text ?? ""));
+    }
+
+    /// <summary>The project's own boundary. Without a manifest there is no project and no boundary to
+    /// ask for — but this surface has always been bounded by the launch directory, and taking that
+    /// away would open a human surface while closing an agent one.</summary>
+    private static SPLA.Domain.Host.PathBoundary BoundaryOf(SPLA.Runtime.RuntimeEntry entry)
+    {
+        var settings = entry.Runtime.Settings;
+        var boundary = settings.Project.GetBoundary();
+        return boundary.IsBounded ? boundary : new SPLA.Domain.Host.PathBoundary(settings.WorkspacePath);
     }
 }

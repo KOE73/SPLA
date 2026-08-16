@@ -16,12 +16,18 @@ public sealed class LocalProject : IProject
     private readonly ResolvedSettings _settings;
     private readonly IProjectBackend _backend;
     private readonly Lazy<ProjectKvStore> _kv;
+    private readonly Lazy<PathBoundary> _boundary;
     private readonly IWorkspace _workspace = new LocalWorkspace();
 
     public LocalProject(ResolvedSettings settings, IProjectBackend backend)
     {
         _settings = settings;
         _backend = backend;
+        // Built once and shared. Two boundaries over one project are two answers to the same
+        // question, and the four hand-rolled ones this replaced are what that looks like in practice.
+        _boundary = new(() => settings.HasProject
+            ? new PathBoundary(settings.WorkspacePath, [".spla"], settings.Mounts)
+            : PathBoundary.None);
         // Project KV rides the root bucket's key/value API — works over any backend, disk or not.
         _kv = new(() => new ProjectKvStore(backend.GetBucket(IProjectBackend.RootBucket)));
     }
@@ -33,6 +39,7 @@ public sealed class LocalProject : IProject
     public string? Name => _settings.ProjectName;
 
     public IWorkspace GetWorkspace() => _workspace;
+    public PathBoundary GetBoundary() => _boundary.Value;
     public IKeyValueStore GetKV() => _kv.Value.Store;
     public ISecretStore GetSecrets() => _settings.Secrets;
     public IBucket GetBucket(string name) => _backend.GetBucket(name);

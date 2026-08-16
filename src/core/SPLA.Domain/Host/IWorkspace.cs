@@ -13,6 +13,16 @@ namespace SPLA.Domain.Host;
 /// exposed to the model as system tools; a virtual or sandboxed workspace may return <c>null</c>
 /// for a path it refuses to reveal or that lives outside its bounds.
 /// </para>
+/// <para>
+/// <b>Before extending this contract, read
+/// <c>docs/plans/PLAN_20260814_core_workspace-streams.md</c>.</b> Five things the SFTP transport
+/// needs are deliberately absent — a lazy read stream, a write stream with atomic replace, an
+/// enumeration carrying metadata, a way to spot a link, and a <em>seekable</em> stream openable more
+/// than once. They are absent because two of the answers (does a stream promise seek, does the store
+/// promise atomic replace) cannot be given honestly without a non-file store to give them for, and
+/// getting them wrong means rewriting every implementation twice. The transport opens
+/// <c>FileStream</c> directly in the meantime, on a path this boundary handed it.
+/// </para>
 /// </summary>
 public interface IWorkspace
 {

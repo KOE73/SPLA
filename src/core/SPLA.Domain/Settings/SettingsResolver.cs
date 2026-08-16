@@ -79,6 +79,11 @@ public class ResolvedSettings
     /// <see cref="WorkspacePath"/> is merely where the process started, which is not a boundary.</summary>
     public bool HasProject => ProjectFilePath is not null;
 
+    /// <summary>Folders outside the root this project declared, resolved and validated at load —
+    /// see <c>MountResolver</c>. Empty when there is no project: without a manifest there is nothing
+    /// to declare them in.</summary>
+    public IReadOnlyList<Host.ProjectMount> Mounts { get; set; } = [];
+
     /// <summary>Absolute path to the .spla file that was loaded, or null when running without a project.
     /// Plugins that need to persist their own settings use this.</summary>
     public string? ProjectFilePath { get; set; }

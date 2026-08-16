@@ -25,17 +25,23 @@ internal static class LocalTarget
     private static readonly char[] IllegalChars = { '<', '>', ':', '"', '|', '?', '*' };
 
     /// <summary>
-    /// Resolves <paramref name="logicalPath"/> under <paramref name="rootPath"/> and refuses anything
-    /// that leaves it.
+    /// Resolves <paramref name="logicalPath"/> through the PROJECT's own <paramref name="boundary"/>
+    /// and refuses anything that leaves it.
     ///
-    /// <para>Containment itself is <see cref="PathBoundary"/>'s job. What stays here is this
-    /// transfer's own rule on top of it: the model may not name an absolute path at all. It says
-    /// <c>staging/prod.tar</c> and the root is supplied by us — an agent moving server configuration
-    /// has no business naming <c>D:\</c>, even a <c>D:\</c> that happens to sit inside the project.
-    /// The distinction matters because the escape can arrive from the REMOTE side too, inside a
-    /// filename or a symlink target, and those are never allowed to be rooted either.</para>
+    /// <para>The boundary is handed in rather than built here. It used to be
+    /// <c>new PathBoundary(rootPath)</c> on every call — a fourth private idea of what containment
+    /// means, with no cutouts and no mounts, which is precisely how a transfer ends up being the one
+    /// path out of an area everything else respects.</para>
+    ///
+    /// <para>What stays here is this transfer's own rule on top of it: the model may not name an
+    /// absolute path at all. It says <c>staging/prod.tar</c> and the root is supplied by us — an agent
+    /// moving server configuration has no business naming <c>D:\</c>, even a <c>D:\</c> that happens
+    /// to sit inside the project. The distinction matters because the escape can arrive from the
+    /// REMOTE side too, inside a filename or a symlink target, and those are never allowed to be
+    /// rooted either. <c>mnt/AAA/x</c> passes that rule unchanged: a declared mount is an address,
+    /// not an absolute path.</para>
     /// </summary>
-    public static string Resolve(string rootPath, string logicalPath)
+    public static string Resolve(PathBoundary boundary, string logicalPath)
     {
         if (string.IsNullOrWhiteSpace(logicalPath))
             throw new InvalidOperationException("local_path is empty.");
@@ -47,7 +53,7 @@ internal static class LocalTarget
         if (Path.IsPathRooted(candidate))
             throw new InvalidOperationException($"local_path must be relative to the project, not an absolute path: {logicalPath}");
 
-        if (!new PathBoundary(rootPath).TryResolve(candidate, out var full, out var error))
+        if (!boundary.TryResolve(candidate, out var full, out var error))
             throw new InvalidOperationException($"local_path escapes the project directory ({error}): {logicalPath}");
 
         return full;

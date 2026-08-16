@@ -42,8 +42,10 @@ public sealed class SshPlugin : ISplaPlugin, ISplaPluginAction
 
         // File transfer runs over SFTP, not the shell: separate connection, separate tool family, and
         // local paths resolved under the project rather than named absolutely by the model.
-        var transfer = new Transfer.SftpTransfer(Current, settings.SecretResolver, settings.WorkspacePath);
-        var workspaceRoot = settings.WorkspacePath;
+        // The project's boundary, so a declared mount is reachable from a transfer exactly as it is
+        // from a file tool — the scenario mounts were introduced for.
+        var boundary = settings.Project.GetBoundary();
+        var transfer = new Transfer.SftpTransfer(Current, settings.SecretResolver, boundary);
 
         return new IMcpTool[]
         {
@@ -53,9 +55,9 @@ public sealed class SshPlugin : ISplaPlugin, ISplaPluginAction
             new SftpDownloadTool(transfer),
             new SftpUploadTool(transfer),
             new SftpWriteFileTool(transfer),
-            new TarListTool(workspaceRoot),
-            new TarReadTool(workspaceRoot),
-            new TarWriteTool(workspaceRoot),
+            new TarListTool(boundary),
+            new TarReadTool(boundary),
+            new TarWriteTool(boundary),
             new SshSessionsListTool(hub),
             new SshSessionExecTool(hub, ctx),
             new SshSessionWaitTool(hub, ctx),

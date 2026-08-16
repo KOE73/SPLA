@@ -1,3 +1,4 @@
+using SPLA.Domain.Host;
 using System.Text.RegularExpressions;
 using Renci.SshNet;
 using Renci.SshNet.Sftp;
@@ -38,13 +39,15 @@ public sealed class SftpTransfer
 
     private readonly Func<SshSettings> _settings;
     private readonly ISecretResolver _resolver;
-    private readonly string _workspaceRoot;
+    /// <summary>The project's boundary, not a root string to build one from. A transfer that carried
+    /// its own idea of "inside" was the last place this seam held in three directions out of four.</summary>
+    private readonly PathBoundary _boundary;
 
-    public SftpTransfer(Func<SshSettings> settings, ISecretResolver resolver, string workspaceRoot)
+    public SftpTransfer(Func<SshSettings> settings, ISecretResolver resolver, PathBoundary boundary)
     {
         _settings = settings;
         _resolver = resolver;
-        _workspaceRoot = workspaceRoot;
+        _boundary = boundary;
     }
 
     public (string Name, SshHostConfig Config) ResolveHost(string? requested)
@@ -127,13 +130,17 @@ public sealed class SftpTransfer
         }
 
         var toContainer = TarContainer.IsContainerPath(localPath);
-        var destination = LocalTarget.Resolve(_workspaceRoot, localPath);
+        var destination = LocalTarget.Resolve(_boundary, localPath);
 
         Preflight(entries, destination, toContainer);
 
+        // Reported to the model as the address it can use again, not as this machine's layout: a host
+        // path handed back comes straight home as the next call's argument.
+        var reported = _boundary.ToCanonical(destination) ?? destination;
+
         return toContainer
-            ? WriteToContainer(sftp, entries, destination, append, problems)
-            : WriteToFolder(sftp, entries, destination, overwrite, problems, ct);
+            ? WriteToContainer(sftp, entries, destination, reported, append, problems)
+            : WriteToFolder(sftp, entries, destination, reported, overwrite, problems, ct);
     }
 
     /// <summary>
@@ -200,9 +207,12 @@ public sealed class SftpTransfer
                 "a plain folder cannot hold them. Use a .tar destination, which records them as links.");
     }
 
+    /// <param name="destination">Where the bytes actually go on this machine.</param>
+    /// <param name="reported">The same place as the model may name it again — canonical, never the
+    /// host layout.</param>
     private static TransferResult WriteToContainer(
-        SftpClient sftp, IReadOnlyList<TransferEntry> entries, string destination, bool append,
-        List<TransferProblem> problems)
+        SftpClient sftp, IReadOnlyList<TransferEntry> entries, string destination, string reported,
+        bool append, List<TransferProblem> problems)
     {
         var container = new TarContainer(destination);
 
@@ -227,13 +237,14 @@ public sealed class SftpTransfer
 
         var files = entries.Count(e => e.Type == TransferEntryType.File);
         return new TransferResult(
-            container.HostPath, files, entries.Count - files,
+            reported, files, entries.Count - files,
             entries.Where(e => e.Type == TransferEntryType.File).Sum(e => e.Size), problems);
     }
 
+    /// <inheritdoc cref="WriteToContainer"/>
     private static TransferResult WriteToFolder(
-        SftpClient sftp, IReadOnlyList<TransferEntry> entries, string destination, bool overwrite,
-        List<TransferProblem> problems, CancellationToken ct)
+        SftpClient sftp, IReadOnlyList<TransferEntry> entries, string destination, string reported,
+        bool overwrite, List<TransferProblem> problems, CancellationToken ct)
     {
         Directory.CreateDirectory(destination);
         int transferred = 0, skipped = 0;
@@ -274,7 +285,7 @@ public sealed class SftpTransfer
             }
         }
 
-        return new TransferResult(destination, transferred, skipped, bytes, problems);
+        return new TransferResult(reported, transferred, skipped, bytes, problems);
     }
 
     // ── upload ───────────────────────────────────────────────────────────────
@@ -324,7 +335,7 @@ public sealed class SftpTransfer
     {
         RequireWritable(cfg, hostName);
 
-        var set = UploadSource.Build(_workspaceRoot, localPath, recursive, BuildMatcher(include), BuildMatcher(exclude));
+        var set = UploadSource.Build(_boundary, localPath, recursive, BuildMatcher(include), BuildMatcher(exclude));
         PreflightUpload(set);
 
         using var sftp = await ConnectAsync(cfg, ct);

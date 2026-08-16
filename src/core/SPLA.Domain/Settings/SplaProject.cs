@@ -19,6 +19,12 @@ public class SplaProject
     // the agent work", and every boundary drawn on the first is void the moment the second wins.
     // Old manifests still carrying the key load fine: the deserializer ignores unmatched properties.
 
+    /// <summary>Folders outside the root, named here and addressed as <c>mnt/&lt;name&gt;/...</c>.
+    /// The name travels in git, the target is a property of the machine — which is the only split
+    /// under which an out-of-root path is both stable in an instruction and portable.</summary>
+    [YamlMember(Alias = "mounts")]
+    public List<SplaMountSection>? Mounts { get; set; }
+
     [YamlMember(Alias = "agent")]
     public SplaAgentSection? Agent { get; set; }
 

@@ -46,6 +46,14 @@ public sealed class TarContainer
     /// <summary>
     /// Every entry in the archive. Directories are included: an empty <c>conf.d</c> is a fact about
     /// the source host, not noise.
+    ///
+    /// <para><b>This and every other <c>File.OpenRead</c> here reopen the same archive from the
+    /// start</b>, because tar has no index. That is not "give me a stream" but "give me a seekable
+    /// stream I may open as often as I like" — a promise a virtual store may be unable to keep, which
+    /// is exactly why <c>IWorkspace</c> has not been extended to cover this yet. The fork is either
+    /// the contract declares seekability (and some implementations refuse) or this class becomes the
+    /// single streaming pass its own NAIVE comment already asks for. See
+    /// <c>docs/plans/PLAN_20260814_core_workspace-streams.md</c>.</para>
     /// </summary>
     public IReadOnlyList<TransferEntry> List()
     {

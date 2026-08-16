@@ -37,6 +37,17 @@ public sealed record DataOrigin(string Zone, bool OperatorNamed)
     /// <summary>The open web, and anything reached through it. The one unnamed zone.</summary>
     public static readonly DataOrigin Internet = new("internet", false);
 
+    /// <summary>
+    /// A declared mount. Named by default — the operator wrote the folder into the manifest and said
+    /// what it is for, which is the same act that names an SSH host.
+    ///
+    /// <para><paramref name="trusted"/> is false for the one case that genuinely differs: a folder
+    /// other people put files into — a shared drop, someone else's export, a downloads directory.
+    /// Making that the default instead would mean building a perimeter around your own
+    /// infrastructure, which burns the question budget and buys nothing.</para>
+    /// </summary>
+    public static DataOrigin Mount(string name, bool trusted) => new($"mount:{name}", trusted);
+
     /// <summary>A configured, credentialed system — named by definition, since somebody set it up.</summary>
     public static DataOrigin Island(IslandIdentity island) => new(island.Key, true);
 

@@ -1,3 +1,4 @@
+using SPLA.Domain.Host;
 using System.Text;
 using System.Text.Json;
 using SPLA.Domain.Agent;
@@ -17,20 +18,20 @@ namespace SPLA.Plugins.Ssh;
 /// </summary>
 internal static class TarToolSupport
 {
-    public static TarContainer Open(string workspaceRoot, string localPath)
+    public static TarContainer Open(PathBoundary boundary, string localPath)
     {
         if (!TarContainer.IsContainerPath(localPath))
             throw new InvalidOperationException($"'{localPath}' is not a container — the path must end in .tar");
-        return new TarContainer(LocalTarget.Resolve(workspaceRoot, localPath));
+        return new TarContainer(LocalTarget.Resolve(boundary, localPath));
     }
 }
 
 /// <summary><c>tar_list</c> — what is inside a container.</summary>
 public sealed class TarListTool : IMcpTool
 {
-    private readonly string _workspaceRoot;
+    private readonly PathBoundary _boundary;
 
-    public TarListTool(string workspaceRoot) => _workspaceRoot = workspaceRoot;
+    public TarListTool(PathBoundary boundary) => _boundary = boundary;
 
     public string Name => "tar_list";
 
@@ -78,7 +79,7 @@ public sealed class TarListTool : IMcpTool
 
         try
         {
-            var container = TarToolSupport.Open(_workspaceRoot, path);
+            var container = TarToolSupport.Open(_boundary, path);
             if (!container.Exists) return Task.FromResult(ToolResult.Fail($"Error: no container at {path}.", "no container"));
 
             var entries = container.List();
@@ -112,9 +113,9 @@ public sealed class TarListTool : IMcpTool
 /// <summary><c>tar_read</c> — one file out of a container.</summary>
 public sealed class TarReadTool : IMcpTool
 {
-    private readonly string _workspaceRoot;
+    private readonly PathBoundary _boundary;
 
-    public TarReadTool(string workspaceRoot) => _workspaceRoot = workspaceRoot;
+    public TarReadTool(PathBoundary boundary) => _boundary = boundary;
 
     public string Name => "tar_read";
 
@@ -167,7 +168,7 @@ public sealed class TarReadTool : IMcpTool
 
         try
         {
-            var container = TarToolSupport.Open(_workspaceRoot, path);
+            var container = TarToolSupport.Open(_boundary, path);
             var bytes = container.ReadBytes(entry);
             if (bytes is null) return Task.FromResult(ToolResult.Fail($"Error: {path} has no file entry '{entry}'.", "no such entry"));
 
@@ -203,9 +204,9 @@ public sealed class TarReadTool : IMcpTool
 /// </summary>
 public sealed class TarWriteTool : IMcpTool
 {
-    private readonly string _workspaceRoot;
+    private readonly PathBoundary _boundary;
 
-    public TarWriteTool(string workspaceRoot) => _workspaceRoot = workspaceRoot;
+    public TarWriteTool(PathBoundary boundary) => _boundary = boundary;
 
     public string Name => "tar_write";
 
@@ -263,7 +264,7 @@ public sealed class TarWriteTool : IMcpTool
 
         try
         {
-            var container = TarToolSupport.Open(_workspaceRoot, path);
+            var container = TarToolSupport.Open(_boundary, path);
 
             if (delete)
             {

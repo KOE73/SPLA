@@ -63,6 +63,9 @@ public static class AgentContributors
         {
             new ModeContributor(),
             new CoreFeatureContributor(features),
+            // Before the instruction files, because those may name a mount and the reader has to know
+            // what such an address is before meeting one.
+            new MountsContributor(),
             new InstructionsContributor(),
             new CustomPromptContributor()
         };

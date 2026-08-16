@@ -24,12 +24,23 @@ public static class ConfigLoader
     /// Returns the global defaults directory (~/.spla/).
     /// </summary>
     public static string GetDefaultsDir()
+        // A scope, when one is open, answers for this flow alone; otherwise the process-wide
+        // SPLA_HOME does, exactly as before. Narrowest answer first — see MachineLayerScope.
+        => ResolveDefaultsDir(
+            MachineLayerScope.Current?.HomeDir ?? Environment.GetEnvironmentVariable("SPLA_HOME"));
+
+    /// <summary>
+    /// The home directory for a given override, or the machine's own when there is none. Pure, and
+    /// separated out so the override rule can be proved without moving a process-wide setting to do
+    /// it — moving one is what makes a test visible to every test running beside it.
+    /// </summary>
+    /// <param name="overrideHome">A home to use instead of <c>~/.spla</c>. Empty/whitespace = not set.</param>
+    public static string ResolveDefaultsDir(string? overrideHome)
     {
-        // SPLA_HOME overrides the machine layer (~/.spla) wholesale — defaults.yaml, machine
+        // The override replaces the machine layer (~/.spla) wholesale — defaults.yaml, machine
         // secrets, token-usage, everything. Lets a second instance run against an isolated home
         // (e.g. a plaintext-secrets dev copy alongside the DPAPI-encrypted production one) without
-        // sharing or clobbering the real ~/.spla. Empty/whitespace = not set.
-        var overrideHome = Environment.GetEnvironmentVariable("SPLA_HOME");
+        // sharing or clobbering the real ~/.spla.
         if (!string.IsNullOrWhiteSpace(overrideHome))
             return Path.GetFullPath(overrideHome.Trim());
 
@@ -277,6 +288,7 @@ public static class ConfigLoader
     private static object? GetSectionValue(SplaProject p, string key) => key switch
     {
         "name" => p.Name,
+        "mounts" => p.Mounts,
         "agent" => p.Agent,
         "llm" => p.Llm,
         "connections" => p.Connections,
@@ -360,6 +372,13 @@ public static class ConfigLoader
             ? Path.GetDirectoryName(resolved.ProjectFilePath)
             : null;
         resolved.WorkspacePath = workspace ?? Directory.GetCurrentDirectory();
+
+        // Mounts need the root, so they are resolved here rather than in SettingsResolver — and only
+        // when there is a project: with no manifest there is nothing to declare them in and no root to
+        // reserve a name in. Refusals throw; a manifest that cannot be honoured must not open half-way.
+        if (resolved.ProjectFilePath is { } manifestPath)
+            resolved.Mounts = MountResolver.Resolve(project?.Mounts, resolved.WorkspacePath, manifestPath);
+
         var store = ResolveSecretStore(defaults, workspace);
         resolved.Secrets = store;
         resolved.SecretResolver = new Secrets.SecretResolver(store);
@@ -403,16 +422,27 @@ public static class ConfigLoader
     /// </summary>
     public static Func<string, string?, string, Secrets.ISecretStore?>? SecretStoreFactory { get; set; }
 
+    /// <summary>The factory to use on this flow: a scope's answer when one is open, otherwise the
+    /// registered one. A scope may also say "none", which is a different statement from having no
+    /// opinion — see <see cref="MachineLayerScope"/>.</summary>
+    private static Func<string, string?, string, Secrets.ISecretStore?>? EffectiveSecretStoreFactory()
+    {
+        if (MachineLayerScope.Current is not { } scope) return SecretStoreFactory;
+        if (scope.SuppressSecretStoreFactory) return null;
+        return scope.SecretStoreFactory ?? SecretStoreFactory;
+    }
+
     private static bool _secretBackendWarned;
 
     private static Secrets.ISecretStore ResolveSecretStore(SplaDefaults defaults, string? workspace)
     {
         var machineDir = GetDefaultsDir();
         var backend = (defaults.Secrets?.Backend ?? "file").Trim().ToLowerInvariant();
+        var factory = EffectiveSecretStoreFactory();
 
-        if (backend != "file" && SecretStoreFactory != null)
+        if (backend != "file" && factory != null)
         {
-            var store = SecretStoreFactory(backend, workspace, machineDir);
+            var store = factory(backend, workspace, machineDir);
             if (store != null) return store;
         }
 
