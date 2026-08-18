@@ -61,10 +61,19 @@ sentences are what `current-list.md` is built from, which is why they have to st
   a long prompt variant onto the command line; this reads the same way `--prompt-file` already does.
   Combines with `--sys-prompt` if both are given — file first, then the inline text.
 
-- **Fix: `PublishAll.ps1` failed on its first CI run, before reaching any real build step.**
-  `npm --prefix web install` used a relative `web` path; on the GitHub-hosted Windows runner
-  (checkout under a subst'd `D:\a\...` drive) it resolved against the repo root instead, and npm
-  reported it could not find `package.json` there. `--prefix` now takes an absolute path built from
-  `$PSScriptRoot`, which cannot be misresolved this way regardless of the exact mechanism. Confirmed
-  against the actual CI log, not reproduced locally — the same script ran clean in a plain local
-  checkout.
+- **Fix (incomplete): `PublishAll.ps1` failed on its first CI run, before reaching any real build
+  step.** `npm --prefix web install` used a relative `web` path; the working theory was that it
+  resolved against the repo root instead of `web/` on the GitHub-hosted Windows runner, and
+  `--prefix` was changed to an absolute path built from `$PSScriptRoot`. This did not fix it — see
+  the next entry.
+
+- **Fix (actual): `npm --prefix <dir> install` on npm 10.9.8 reads `package.json` from the process's
+  working directory, ignoring `--prefix`, absolute or not.** Confirmed by direct reproduction —
+  `npx npm@10.9.8 --prefix <web dir, absolute> install` from a directory with no `package.json`
+  fails exactly like the CI run did; the same command on this machine's npm 11.9.0 works. `npm ...
+  ci` and `npm run <script>` were not affected — which is why `ci.yml`'s `npm --prefix web ci`
+  step had been passing the whole time and gave no reason to suspect `--prefix` itself. Changed to a
+  real `Push-Location`/`Pop-Location` around a plain `npm install` / `npm run build`, which has no
+  npm-version dependency to get wrong. Also bumped `node-version` in both workflows from `22` to
+  `24`, matching the owner's machine (npm 11.9.0) — Node 22 is what actions/setup-node was pinned to
+  and is what carried npm 10.9.8 into CI in the first place.

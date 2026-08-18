@@ -43,16 +43,24 @@ if (Test-Path "$webDir\dist") { Remove-Item "$webDir\dist" -Recurse -Force }
 # fails naming a package that IS in package.json, and the only cure is knowing to run npm install by
 # hand. A publish is not the place to save the couple of seconds this costs when nothing changed.
 #
-# --prefix takes $webDir as an ABSOLUTE path, not the relative "web". A GitHub-hosted Windows
-# runner checks out to a subst'd drive (D:\a\...), and under that a relative --prefix resolved
-# against the wrong root: npm went looking for package.json at the repo root instead of web/,
-# even though the working directory was in fact correct. An absolute path removes the ambiguity
-# regardless of the exact mechanism.
-npm --prefix $webDir install
-if ($LASTEXITCODE -ne 0) { Fail 'npm install failed.' }
+# A real Push-Location, not --prefix. Confirmed by direct test (npx npm@10.9.8, run twice: once
+# with --prefix and an absolute path, once with a plain cd): on npm 10.9.8 -- the version the
+# GitHub-hosted runner's actions/setup-node installs for Node 22 -- `--prefix <dir> install` still
+# reads package.json from the process's CWD, not from the prefix directory. npm 11.9.0 (this
+# machine's default) does not have that behavior, which is why the earlier --prefix fix "worked"
+# locally and still failed in CI. Changing the actual working directory has no such version
+# dependency to get wrong.
+Push-Location $webDir
+try {
+    npm install
+    if ($LASTEXITCODE -ne 0) { Fail 'npm install failed.' }
 
-npm --prefix $webDir run build
-if ($LASTEXITCODE -ne 0) { Fail 'web client build failed.' }
+    npm run build
+    if ($LASTEXITCODE -ne 0) { Fail 'web client build failed.' }
+}
+finally {
+    Pop-Location
+}
 
 Write-Host 'Building solution (Release, single pass)...'
 dotnet build SPLA.slnx -c Release --nologo @versionArgs
