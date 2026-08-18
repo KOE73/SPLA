@@ -36,15 +36,22 @@ if (Test-Path .publish\work) { Remove-Item .publish\work -Recurse -Force }
 New-Item -ItemType Directory -Force .publish\work | Out-Null
 
 Write-Host 'Rebuilding web client (Vue) so UI and CLI embed the fresh bundle...'
-if (Test-Path web\dist) { Remove-Item web\dist -Recurse -Force }
+$webDir = Join-Path $PSScriptRoot 'web'
+if (Test-Path "$webDir\dist") { Remove-Item "$webDir\dist" -Recurse -Force }
 # Unconditionally, not "only when node_modules is missing". That condition is true exactly once per
 # checkout, so a dependency added after someone's first install never reaches them: the build then
 # fails naming a package that IS in package.json, and the only cure is knowing to run npm install by
 # hand. A publish is not the place to save the couple of seconds this costs when nothing changed.
-npm --prefix web install
+#
+# --prefix takes $webDir as an ABSOLUTE path, not the relative "web". A GitHub-hosted Windows
+# runner checks out to a subst'd drive (D:\a\...), and under that a relative --prefix resolved
+# against the wrong root: npm went looking for package.json at the repo root instead of web/,
+# even though the working directory was in fact correct. An absolute path removes the ambiguity
+# regardless of the exact mechanism.
+npm --prefix $webDir install
 if ($LASTEXITCODE -ne 0) { Fail 'npm install failed.' }
 
-npm --prefix web run build
+npm --prefix $webDir run build
 if ($LASTEXITCODE -ne 0) { Fail 'web client build failed.' }
 
 Write-Host 'Building solution (Release, single pass)...'
