@@ -57,6 +57,10 @@ sentences are what `current-list.md` is built from, which is why they have to st
   of guessing wrong is a release that silently does not happen. A manual run against any ref covers
   the same ground and still produces a correctly numbered tag.
 
+- **`spla chat run` gained `--sys-prompt-file <path>`.** `--sys-prompt` only took inline text, forcing
+  a long prompt variant onto the command line; this reads the same way `--prompt-file` already does.
+  Combines with `--sys-prompt` if both are given — file first, then the inline text.
+
 - **Fix: `PublishAll.ps1` failed on its first CI run, before reaching any real build step.**
   `npm --prefix web install` used a relative `web` path; on the GitHub-hosted Windows runner
   (checkout under a subst'd `D:\a\...` drive) it resolved against the repo root instead, and npm

@@ -27,6 +27,8 @@ repository and is linked from it.
 - Browser plugin: first wave of Playwright automation with a screencast panel.
 - OneC: Vue configuration browser.
 - Headless batch runner in the CLI, now on `Spectre.Console.Cli`.
+- `--sys-prompt-file` on `spla chat run`, reading a system-prompt addition from a file the way
+  `--prompt-file` already does for prompts.
 - Loop guard against degenerate LLM generation.
 - Reasoning lever driven by what the provider advertises.
 - Branch stamp on published builds.

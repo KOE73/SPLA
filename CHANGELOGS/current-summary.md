@@ -121,7 +121,8 @@ All plugin panels moved from Avalonia to the web client, so a plugin ships one U
 Domain identity over NTLM, per-user file areas, group sharing, and a pluggable identity provider.
 Projects can be created by name into the calling user's own area, and token/`Origin` authentication
 gaps in the service were closed. The CLI moved to `Spectre.Console.Cli` and gained a headless batch
-runner, so it can be driven by another program rather than only by a person.
+runner, so it can be driven by another program rather than only by a person. `spla chat run` also
+gained `--sys-prompt-file`, so a long system-prompt variant no longer has to be typed inline.
 
 ## Build and release
 
