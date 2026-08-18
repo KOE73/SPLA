@@ -1,0 +1,111 @@
+name: CI
+
+# Runs on pushes to the working branches and on pull requests into main. Builds the solution,
+# runs the .NET tests, and runs the web client's own test suite.
+#
+# On `work` this is a signal: it tells you whether what you just pushed is still green, and
+# nothing is blocked if it isn't. On a pull request into `main` it is the gate: `main` only
+# ever receives work that passed here.
+#
+# Note on the web client: `dotnet build` builds it as part of the solution. SPLA.Service.csproj
+# and SPLA.Editor.Schema.csproj run `npm install` + `npm run build` themselves through Exec
+# targets, and `npm run build` is `vue-tsc --noEmit && vite build` — so the type check and the
+# bundle are already covered by the build step. Only vitest has to be invoked separately.
+
+on:
+  push:
+    branches: [main, work]
+  pull_request:
+    branches: [main]
+
+jobs:
+  build-and-test:
+    runs-on: windows-latest
+
+    steps:
+      # Get the repository code onto the runner.
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # Install the .NET SDK version the solution needs.
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+          dotnet-quality: 'ga'
+
+      # Install Node.js — the solution build shells out to npm. Cache is keyed on every
+      # lockfile in the repo (there are six npm projects), so adding a dependency anywhere
+      # invalidates it correctly.
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+          cache-dependency-path: '**/package-lock.json'
+
+      # Install web dependencies from the lockfile, before the .NET build reaches its npm step.
+      # `ci` (unlike `install`) installs exactly what the lockfile pins and fails if package.json
+      # and the lockfile disagree — that strictness is the point of running it here.
+      - name: Install web dependencies
+        run: npm --prefix web ci
+
+      # Download all NuGet packages the solution needs.
+      - name: Restore solution
+        run: dotnet restore SPLA.slnx
+
+      # Compile everything in Release mode. This also type-checks and bundles the web client
+      # and the two editor web trees, via the Exec targets in their csproj files.
+      - name: Build solution (Release)
+        run: dotnet build SPLA.slnx -c Release --no-restore --nologo
+
+      # Run the .NET test suite. --logger writes a report file used by the next step.
+      - name: Run .NET tests
+        run: dotnet test tests/SPLA.Tests/SPLA.Tests.csproj -c Release --no-build --nologo --logger "trx;LogFileName=test-results.trx"
+
+      # Save the test report as a downloadable artifact, even if the tests above failed
+      # (always()), so a failure can be inspected without re-running the job.
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-results
+          path: tests/SPLA.Tests/TestResults/test-results.trx
+          if-no-files-found: ignore
+
+      # Run the web client's own test suite (vitest). The build above does not run it.
+      - name: Web tests
+        run: npm --prefix web run test
+
+      # A release can be cut at any moment, so CHANGELOGS/ has to be publishable at any moment.
+      # The rule is that the summary is rewritten before a push; this is what catches a push where
+      # that did not happen — from another machine, by another person, or simply forgotten.
+      #
+      # Warning, not failure: a stale summary costs a thinner release body (release.yml drops it
+      # rather than publishing something confidently wrong), and that is not worth blocking a build
+      # over. It shows up as an annotation on the run instead.
+      - name: Check the changelog summary is current
+        if: github.ref_name == 'work'
+        shell: pwsh
+        run: |
+          $summaryPath = 'CHANGELOGS/current-summary.md'
+          $logPath = 'CHANGELOGS/current-log.md'
+          if (-not (Test-Path $summaryPath) -or -not (Test-Path $logPath)) { return }
+
+          $m = Select-String -Path $summaryPath -Pattern '<!--\s*covers:\s*(\d{4}-\d{2}-\d{2})\s*-->' |
+               Select-Object -First 1
+          $covers = if ($m) { $m.Matches[0].Groups[1].Value } else { $null }
+
+          $dates = Select-String -Path $logPath -Pattern '^##\s+(\d{4}-\d{2}-\d{2})\s*$' |
+                   ForEach-Object { $_.Matches[0].Groups[1].Value }
+          $lastLog = if ($dates) { ($dates | Sort-Object | Select-Object -Last 1) } else { $null }
+
+          if (-not $covers) {
+            Write-Host "::warning file=$summaryPath::No 'covers:' marker — a release cannot tell whether this summary is current."
+          }
+          elseif ($lastLog -and $covers -lt $lastLog) {
+            Write-Host "::warning file=$summaryPath::Summary covers $covers but the log reaches $lastLog. Rewrite it, or a release now would ship without a summary."
+          }
+          else {
+            Write-Host "Summary is current (covers $covers, log reaches $lastLog)."
+          }

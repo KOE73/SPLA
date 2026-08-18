@@ -73,9 +73,21 @@ in addition to the root `AGENTS.md`.
 ## Non-code top-level folders
 
 - `web/`: The Vue 3 + TS + Vite browser client, embedded into `SPLA.Service` at build time. Package
-  manager is `pnpm` (not `npm`) — its content-addressable store dedupes `node_modules` across the
-  worktrees the multi-agent workflow above produces, instead of a full reinstall per worktree.
+  manager is `npm`, pinned by `web/package-lock.json` — as it is in all six web projects here.
+  `PublishAll.ps1`, the `Exec` steps in `SPLA.Service.csproj` / `SPLA.Editor.Schema.csproj`, and both
+  CI workflows all drive it through `npm`. pnpm was considered for its cross-worktree deduplication
+  and rejected on measurement — see
+  [ADR_20260818_build_package-manager](../docs/adr/ADR_20260818_build_package-manager.md), which also
+  names the condition for revisiting it.
 - `docs/`, `agents/`, `Images/`: Documentation and assets (unchanged by the layered `src/` layout).
+- `.github/workflows/`: GitHub Actions. `ci.yml` (build + tests on `main`/`work` and on pull
+  requests into `main`) and `release.yml` (tag or manual run → `PublishAll.ps1` → GitHub release).
+  See the CI and releases section of [AGENTS.md](../AGENTS.md).
+- `CHANGELOGS/`: Release notes, written by hand. Three working files — `current-log.md` (detailed,
+  dated), `current-list.md` (one line per change, derived from the log) and `current-summary.md`
+  (prose, rewritten before each push) — plus one frozen `<version>.md` per released version.
+  `release.yml` builds the release body from the summary and the list. Rules in
+  [AGENTS.md](../AGENTS.md).
 
 ## Root Files
 
@@ -83,7 +95,12 @@ in addition to the root `AGENTS.md`.
 - `README.md`: Main English user README.
 - `README_RU.md`: Main Russian user README.
 - `spla.spla`: Example/current SPLA project file for this workspace.
-- `PublishAll.cmd`: Release packaging script for UI, CLI, plugins, and ZIP output.
+- `PublishAll.cmd`: Release packaging script for UI, CLI, plugins, and ZIP output. The underlying
+  `PublishAll.ps1` accepts `-VersionBuild`, which `release.yml` passes in so a published ZIP carries
+  the version of the tag it was built from; `PublishAll.cmd` passes nothing, so a local run keeps
+  the committed defaults.
+- `Directory.Build.props`: Shared MSBuild properties, including the version parts —
+  `VersionMajor`/`VersionMinor` by hand, `VersionBuild` from CI.
 - `SPLA.slnx`: Solution file with project entries and solution folders for README, user docs, and agent docs.
 
 ## Documentation Layout

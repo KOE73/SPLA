@@ -1,0 +1,213 @@
+name: Release
+
+# Version shape: v0.<minor>.<build>
+#   - minor   moved by hand in Directory.Build.props, when a new chapter starts.
+#   - build   this workflow's run number. Never set by hand — it is what identifies a release.
+#
+# Tests gate the release: nothing is tagged or published from a commit that does not build and pass
+# its tests first (see "Run tests").
+#
+# The release body is assembled from CHANGELOGS/: the prose summary and the scannable list. The
+# detailed log stays in the repository and is linked. GitHub's own pull-request notes are appended
+# after all of it.
+
+on:
+  # Trigger 1: someone pushes a tag that already matches the version pattern.
+  push:
+    tags:
+      - 'v0.*.*'
+  # Trigger 2: someone runs this workflow by hand from the Actions tab, no tag needed yet.
+  workflow_dispatch: {}
+
+# The GITHUB_TOKEN needs write access to push a tag and create a release.
+permissions:
+  contents: write
+
+# Only one release job at a time, so two runs cannot publish two releases from the same push.
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    runs-on: windows-latest
+
+    steps:
+      # Full history: tag operations below need it.
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      # Manual runs have no tag yet. Work out what it *would* be, but do not create it until the
+      # tests below have passed — a tag must never point at a build that failed.
+      - name: Resolve version (manual run)
+        if: github.event_name == 'workflow_dispatch'
+        shell: pwsh
+        run: |
+          $props = Get-Content Directory.Build.props -Raw
+          if ($props -notmatch '<VersionMinor>(\d+)</VersionMinor>') {
+            Write-Host 'ERROR: could not read VersionMinor from Directory.Build.props' -ForegroundColor Red
+            exit 1
+          }
+          $minor = $Matches[1]
+          $build = '${{ github.run_number }}'
+          "TAG_NAME=v0.$minor.$build" >> $env:GITHUB_ENV
+          "VERSION_BUILD=$build" >> $env:GITHUB_ENV
+
+      # Tag push: the tag is the source of truth for the build number. The minor still has to agree
+      # with Directory.Build.props — a tag naming a chapter the build does not produce would ship a
+      # package whose own version contradicts the release it is attached to.
+      - name: Resolve version (tag push)
+        if: github.event_name != 'workflow_dispatch'
+        shell: pwsh
+        run: |
+          $tag = '${{ github.ref_name }}'
+          if ($tag -notmatch '^v0\.(\d+)\.(\d+)$') {
+            Write-Host "ERROR: tag '$tag' does not match v0.<minor>.<build>" -ForegroundColor Red
+            exit 1
+          }
+          $tagMinor = $Matches[1]
+          $build = $Matches[2]
+          $props = Get-Content Directory.Build.props -Raw
+          if ($props -notmatch '<VersionMinor>(\d+)</VersionMinor>') {
+            Write-Host 'ERROR: could not read VersionMinor from Directory.Build.props' -ForegroundColor Red
+            exit 1
+          }
+          if ($Matches[1] -ne $tagMinor) {
+            Write-Host "ERROR: tag says minor $tagMinor, Directory.Build.props says $($Matches[1])." -ForegroundColor Red
+            exit 1
+          }
+          "TAG_NAME=$tag" >> $env:GITHUB_ENV
+          "VERSION_BUILD=$build" >> $env:GITHUB_ENV
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+          dotnet-quality: 'ga'
+
+      # Node.js — the solution build shells out to npm. Cache is keyed on every lockfile in the
+      # repo (there are six npm projects).
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+          cache-dependency-path: '**/package-lock.json'
+
+      # The gate: the same checks as ci.yml, run again against the exact commit being released — a
+      # tag can point anywhere, including at something ci.yml never saw.
+      #
+      # `dotnet build` also type-checks and bundles the web trees (see the note in ci.yml), so only
+      # vitest needs its own line. PublishAll.ps1 later does its own clean build, deliberately: it
+      # must produce the same output whether or not anything ran before it.
+      - name: Run tests
+        shell: pwsh
+        run: |
+          npm --prefix web ci
+          dotnet restore SPLA.slnx
+          dotnet build SPLA.slnx -c Release --no-restore --nologo
+          dotnet test tests/SPLA.Tests/SPLA.Tests.csproj -c Release --no-build --nologo
+          npm --prefix web run test
+
+      # Assemble the release body from CHANGELOGS/. Each working file carries an explanatory
+      # preamble about how the file itself works; the publishable content is everything after the
+      # first `---` line, so that convention is what the split below relies on.
+      #
+      # The summary is included only if it is current. `current-summary.md` opens with a
+      # `<!-- covers: YYYY-MM-DD -->` marker naming the newest log date it accounts for; if the log
+      # has moved past it, the summary describes a state that no longer exists. A stale summary is
+      # worse than none — it is confidently wrong — so it is dropped rather than published.
+      - name: Assemble release notes
+        shell: pwsh
+        run: |
+          function Get-Body([string] $path) {
+            $lines = Get-Content $path
+            $sep = ($lines | Select-String -Pattern '^---\s*$' | Select-Object -First 1).LineNumber
+            if (-not $sep) { return ($lines -join "`n").Trim() }
+            return (($lines[$sep..($lines.Count - 1)]) -join "`n").Trim()
+          }
+
+          $parts = @()
+
+          $summaryPath = 'CHANGELOGS/current-summary.md'
+          $logPath     = 'CHANGELOGS/current-log.md'
+          $listPath    = 'CHANGELOGS/current-list.md'
+
+          # Freshness: compare the summary's marker with the newest date heading in the log.
+          $covers = $null
+          if (Test-Path $summaryPath) {
+            $m = Select-String -Path $summaryPath -Pattern '<!--\s*covers:\s*(\d{4}-\d{2}-\d{2})\s*-->' |
+                 Select-Object -First 1
+            if ($m) { $covers = $m.Matches[0].Groups[1].Value }
+          }
+          $lastLog = $null
+          if (Test-Path $logPath) {
+            $dates = Select-String -Path $logPath -Pattern '^##\s+(\d{4}-\d{2}-\d{2})\s*$' |
+                     ForEach-Object { $_.Matches[0].Groups[1].Value }
+            if ($dates) { $lastLog = ($dates | Sort-Object | Select-Object -Last 1) }
+          }
+
+          if ($covers -and (-not $lastLog -or $covers -ge $lastLog)) {
+            $parts += Get-Body $summaryPath
+          }
+          elseif (Test-Path $summaryPath) {
+            Write-Host "WARNING: summary covers $covers but the log reaches $lastLog — omitting it." -ForegroundColor Yellow
+            $parts += "_The written summary was out of date for this release and has been omitted._"
+          }
+
+          if (Test-Path $listPath) {
+            $parts += "## Changes`n`n" + (Get-Body $listPath)
+          }
+
+          $logUrl = "${{ github.server_url }}/${{ github.repository }}/blob/$env:TAG_NAME/CHANGELOGS/current-log.md"
+          $parts += "Full detailed log for this release: [``CHANGELOGS/current-log.md``]($logUrl)"
+
+          ($parts -join "`n`n") | Set-Content release-notes.md -Encoding utf8
+          Write-Host "Release notes: $((Get-Content release-notes.md).Count) line(s)."
+
+      # Only now, with the checks green, does a manual run's tag become real.
+      - name: Create and push tag (manual run)
+        id: create_tag
+        if: github.event_name == 'workflow_dispatch'
+        shell: pwsh
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email 'github-actions[bot]@users.noreply.github.com'
+          git tag $env:TAG_NAME
+          git push origin $env:TAG_NAME
+
+      # Build the solution, publish every plugin and both apps, and zip the result. The build number
+      # is passed in so every binary in the ZIP reports the version of the tag it belongs to.
+      - name: Publish all (build, plugins, apps, zip)
+        shell: pwsh
+        run: ./PublishAll.ps1 -VersionBuild $env:VERSION_BUILD
+
+      # Keep a copy of the ZIP as a workflow artifact, separate from the GitHub release below.
+      - name: Upload build artifact
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: SPLA-${{ env.TAG_NAME }}
+          path: .publish/zip/SPLA.zip
+
+      # Publish the release. body_path is what the previous step assembled from CHANGELOGS/;
+      # generate_release_notes appends GitHub's own pull-request summary and changelog link after it.
+      - name: Create GitHub release
+        if: success()
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ env.TAG_NAME }}
+          name: ${{ env.TAG_NAME }}
+          body_path: release-notes.md
+          files: .publish/zip/SPLA.zip
+          generate_release_notes: true
+
+      # Cleanup: only for a tag this workflow created itself, and only once that step actually
+      # succeeded — a failure during the checks happens before any tag exists. A tag pushed by a
+      # person is never deleted automatically; that is their deliberate act, not workflow litter.
+      - name: Remove tag if publish failed (manual run)
+        if: failure() && github.event_name == 'workflow_dispatch' && steps.create_tag.outcome == 'success'
+        shell: pwsh
+        run: git push origin --delete $env:TAG_NAME

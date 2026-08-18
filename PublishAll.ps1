@@ -5,9 +5,19 @@
 #      outside the solution build themselves, the rest reuse the solution build,
 #   3. UI/CLI publish sequentially into the shared .publish/work. Their single-file
 #      publishes require RID-specific outputs that the solution build does not produce.
+param(
+    # CI run number, becomes the last part of the product version (0.2.<n>). Left empty when run
+    # by hand — PublishAll.cmd passes no arguments at all — and the build then falls back to 0
+    # via Directory.Build.props, same as any other local build.
+    [string] $VersionBuild = ''
+)
+
 $ErrorActionPreference = 'Stop'
 Set-Location $PSScriptRoot
 $sw = [System.Diagnostics.Stopwatch]::StartNew()
+
+$versionArgs = @()
+if ($VersionBuild) { $versionArgs += "-p:VersionBuild=$VersionBuild" }
 
 function Fail($msg) { Write-Host "ERROR: $msg" -ForegroundColor Red; exit 1 }
 
@@ -38,7 +48,7 @@ npm --prefix web run build
 if ($LASTEXITCODE -ne 0) { Fail 'web client build failed.' }
 
 Write-Host 'Building solution (Release, single pass)...'
-dotnet build SPLA.slnx -c Release --nologo
+dotnet build SPLA.slnx -c Release --nologo @versionArgs
 if ($LASTEXITCODE -ne 0) { Fail 'solution build failed.' }
 
 # Plugin name -> project path + extra payload copied next to the dll.
@@ -56,11 +66,11 @@ $plugins = @(
 
 Write-Host "Publishing $($plugins.Count) plugins in parallel..."
 $jobs = foreach ($p in $plugins) {
-    Start-Job -Name $p.Name -ArgumentList $PSScriptRoot, $p -ScriptBlock {
-        param($root, $p)
+    Start-Job -Name $p.Name -ArgumentList $PSScriptRoot, $p, $versionArgs -ScriptBlock {
+        param($root, $p, $versionArgs)
         Set-Location $root
         $out = ".publish/work/plugins/$($p.Name)"
-        $publishArguments = @('publish', $p.Proj, '-c', 'Release', '-o', $out, '--nologo', '-v', 'q')
+        $publishArguments = @('publish', $p.Proj, '-c', 'Release', '-o', $out, '--nologo', '-v', 'q') + $versionArgs
         if (-not $p.Build) { $publishArguments += '--no-build' }
         dotnet @publishArguments 2>&1 | Out-String | Write-Output
         if ($LASTEXITCODE -ne 0) { throw "publish failed for $($p.Name)" }
@@ -79,11 +89,11 @@ $jobs = foreach ($p in $plugins) {
 
 # Apps publish while plugin jobs run: they write to the shared root, plugins to their own subfolders.
 Write-Host 'Publishing SPLA.UI.Avalonia (SingleFile profile)...'
-dotnet publish src/apps/SPLA.UI.Avalonia/SPLA.UI.Avalonia.csproj -p:PublishProfile=SingleFile -c Release -o .publish/work --nologo
+dotnet publish src/apps/SPLA.UI.Avalonia/SPLA.UI.Avalonia.csproj -p:PublishProfile=SingleFile -c Release -o .publish/work --nologo @versionArgs
 if ($LASTEXITCODE -ne 0) { Fail 'UI publish failed.' }
 
 Write-Host 'Publishing SPLA.CLI...'
-dotnet publish src/apps/SPLA.CLI/SPLA.CLI.csproj -c Release -o .publish/work --nologo
+dotnet publish src/apps/SPLA.CLI/SPLA.CLI.csproj -c Release -o .publish/work --nologo @versionArgs
 if ($LASTEXITCODE -ne 0) { Fail 'CLI publish failed.' }
 
 Write-Host 'Waiting for plugin jobs...'

@@ -145,6 +145,11 @@ skills: self-contained procedures an agent finds by subject and loads on demand.
 
 ## Quick Start and Building from Source
 
+Ready-to-run packages are published on the
+[Releases page](https://github.com/KOE73/SPLA/releases) as `SPLA.zip`, versioned
+`v0.<minor>.<build>`. Build from source if you want the current development state instead of the
+latest release.
+
 Requirements:
 
 - build: .NET 10 SDK;

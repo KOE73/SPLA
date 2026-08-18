@@ -5,6 +5,15 @@
     <File Path="README_RU.md" />
     <File Path="AGENTS.md" />
   </Folder>
+  <Folder Name="/.github/">
+    <File Path=".github/workflows/ci.yml" />
+    <File Path=".github/workflows/release.yml" />
+  </Folder>
+  <Folder Name="/CHANGELOGS/">
+    <File Path="CHANGELOGS/current-summary.md" />
+    <File Path="CHANGELOGS/current-list.md" />
+    <File Path="CHANGELOGS/current-log.md" />
+  </Folder>
   <Folder Name="/agents/">
     <File Path="agents/avalonia.md" />
     <File Path="agents/composition.md" />
@@ -51,6 +60,8 @@
     <File Path="docs/adr/ADR_20260814_core_project-mounts.md" />
     <File Path="docs/adr/ADR_20260814_llm_output-stage.md" />
     <File Path="docs/adr/ADR_20260817_llm_reasoning-lever.md" />
+    <File Path="docs/adr/ADR_20260818_build_package-manager.md" />
+    <File Path="docs/adr/ADR_20260818-2_build_versioning-and-changelog.md" />
   </Folder>
   <Folder Name="/docs/plans/">
     <File Path="docs/plans/PLAN_20260619_agent_skills-lifecycle.md" />
