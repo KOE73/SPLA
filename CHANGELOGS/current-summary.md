@@ -127,10 +127,13 @@ runner, so it can be driven by another program rather than only by a person.
 
 This cycle is the first with **continuous integration**: every push to `work` and every pull request
 into `main` builds the solution, runs the .NET tests, type-checks and bundles the web client, and
-runs its vitest suite. **Releases are automated** — merging a cycle into `main` re-runs those checks
-against the exact commit being released, publishes apps and plugins, and attaches `SPLA.zip` to a
-GitHub release, removing its own tag again if the publish fails. There is no separate "now release
-it" step: `main` receives nothing but releases, so the merge already is the decision.
+runs its vitest suite. **Releases are automated** — a push to `main` that touches source paths (or a
+manual run against any ref) re-runs those checks against the exact commit being released, publishes
+apps and plugins, and attaches `SPLA.zip` to a GitHub release, removing its own tag again if the
+publish fails. There is no separate "now release it" step: `main` receives nothing but releases, so
+the merge already is the decision. A tag-push trigger was considered and dropped — GitHub does not
+document whether a `paths` filter applies to tag pushes, and a release pipeline should not rest on
+that being guessed right.
 
 Alongside that, published builds stamp the branch they came from so an experimental build cannot be
 mistaken for a working one, web dependencies install when the manifests change rather than once per
