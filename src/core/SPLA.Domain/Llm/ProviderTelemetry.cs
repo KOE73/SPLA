@@ -117,3 +117,23 @@ public interface IModelCatalogInfo
     Task<int?> GetContextLengthAsync(
         string endpoint, string modelId, string? apiKey, CancellationToken ct = default);
 }
+
+/// <summary>
+/// Optional capability for a provider that describes, per model, what its reasoning channel will
+/// accept. Detected with a type check like the two above.
+/// <para>
+/// Separate from <see cref="IModelCatalogInfo"/> because the two answers come from different places
+/// for the same provider family: LM Studio reports reasoning options through its native management
+/// surface (<see cref="Interfaces.IModelManagementService"/>, which already carries them on
+/// <see cref="Models.ModelInfo"/>), while OpenRouter publishes them in the same catalog that carries
+/// its prices. A provider that says nothing simply does not implement this, and the lever stays
+/// unavailable rather than being guessed at.
+/// </para>
+/// </summary>
+public interface IReasoningCatalog
+{
+    /// <summary>What this model will let a caller do with its reasoning channel.
+    /// <see cref="Models.ReasoningCapability.Unknown"/> when the model is not in the catalog.</summary>
+    Task<Models.ReasoningCapability> GetReasoningAsync(
+        string endpoint, string modelId, string? apiKey, CancellationToken ct = default);
+}

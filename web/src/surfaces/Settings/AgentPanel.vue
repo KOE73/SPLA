@@ -10,7 +10,7 @@
       <label class="field col"><span>Custom prompt</span>
         <textarea v-model="customPrompt" rows="4" placeholder="Appended to the system prompt for every chat"></textarea>
       </label>
-      <label class="field"><span>Loop guard</span>
+      <label class="field"><span>Tool call loop guard</span>
         <span style="display: flex; align-items: center; gap: 8px">
           <input type="checkbox" v-model="loopGuard" />
           <span class="hint">on identical rapid-fire tool calls: first ask the model if it's stuck, then stop</span>

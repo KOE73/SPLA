@@ -39,6 +39,22 @@ public static class ProtocolMapper
         Reasoning = a.Reasoning
     };
 
+    /// <summary>The reasoning capability as the client sees it. A straight projection: the wire must
+    /// carry the provider's own vocabulary, because normalizing it to a fixed enum is exactly what
+    /// this design refuses to do.</summary>
+    public static ReasoningCapabilityDto ToDto(ReasoningCapability c) => new()
+    {
+        Known = c.Known,
+        Supported = c.Supported,
+        Mandatory = c.Mandatory,
+        DefaultEnabled = c.DefaultEnabled,
+        Efforts = c.Efforts.ToList(),
+        DefaultEffort = c.DefaultEffort,
+        SupportsTokenBudget = c.SupportsTokenBudget,
+        MinTokenBudget = c.MinTokenBudget,
+        MaxTokenBudget = c.MaxTokenBudget
+    };
+
     public static PermissionDecision ParseDecision(string? value) => value switch
     {
         "allowOnce" => PermissionDecision.AllowOnce,

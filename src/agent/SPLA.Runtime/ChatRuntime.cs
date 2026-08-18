@@ -193,7 +193,7 @@ public sealed class ChatRuntime
     public string? ModelId => _chat.ModelId;
 
     /// <summary>Changes the chat's mode and/or model entry (null = leave as-is) and persists it.</summary>
-    public void ApplySettings(string? mode, string? modelId)
+    public void ApplySettings(string? mode, string? modelId, double? temperature = null, string? reasoning = null)
     {
         if (!string.IsNullOrWhiteSpace(mode))
         {
@@ -201,6 +201,21 @@ public sealed class ChatRuntime
             _chat.Agent.Mode = mode;
         }
         if (modelId != null) _chat.ModelId = modelId;
+
+        // Both knobs live in the chat's own llm section, layered over the project's on every turn.
+        // An empty reasoning string is a real choice — "stop overriding, take the project default" —
+        // so it is written as null rather than skipped.
+        if (temperature is { } t)
+        {
+            _chat.Model ??= new SplaLlmSection();
+            _chat.Model.Temperature = t;
+        }
+        if (reasoning != null)
+        {
+            _chat.Model ??= new SplaLlmSection();
+            _chat.Model.ReasoningLevel = reasoning.Length == 0 ? null : reasoning;
+        }
+
         Save();
     }
 
@@ -360,8 +375,13 @@ public sealed class ChatRuntime
             // Per-chat resolution: each chat runs against its own connection (endpoint/model) and its
             // own mode, not the project default — mirrors the UI's BuildLlmSettings so the service
             // honours the per-chat autonomy model rather than forcing every chat onto project settings.
+            // The reasoning lever is provider-described, and describing it takes a (cached) call —
+            // so it is resolved here, once per turn, rather than inside the sync settings fold.
+            var llm = ResolveLlmSettings();
+            llm.ModelReasoning = await GetReasoningAsync(cancellationToken);
+
             await _orchestrator.RunAsync(
-                _conversation, ResolveLlmSettings(), ResolveMode(), callbacks, cancellationToken);
+                _conversation, llm, ResolveMode(), callbacks, cancellationToken);
 
             // A tool may have injected a synthetic image message mid-turn (see ConversationOrchestrator's
             // pending-image-sink drain). Persist its data URLs to sidecar files exactly like a
@@ -466,6 +486,21 @@ public sealed class ChatRuntime
     /// path report "prompt tokens vs window" so the UI can warn before the provider rejects.</summary>
     public Task<int?> GetContextLengthAsync(CancellationToken ct = default)
         => _runtime.GetContextLengthAsync(ResolveLlmSettings(), ct);
+
+    /// <summary>What this chat's model will let a caller do with its reasoning channel — what the
+    /// status bar draws its lever from, and what gates the wire mapping on a turn.</summary>
+    public Task<ReasoningCapability> GetReasoningAsync(CancellationToken ct = default)
+    {
+        var entry = _runtime.Settings.FindModel(_chat.ModelId) ?? _runtime.Settings.Models.FirstOrDefault();
+        return _runtime.GetReasoningAsync(ResolveLlmSettings(), entry?.DeclaredReasoning, ct);
+    }
+
+    /// <summary>The chat's effective temperature — its own override, else the project default.</summary>
+    public double Temperature => _chat.Model?.Temperature ?? _runtime.Settings.Temperature;
+
+    /// <summary>The chat's effective reasoning selection, in the scalar grammar. Empty = model default.</summary>
+    public string ReasoningLevel =>
+        string.IsNullOrEmpty(_chat.Model?.ReasoningLevel) ? _runtime.Settings.ReasoningLevel ?? "" : _chat.Model!.ReasoningLevel!;
 
     /// <summary>The chat's effective LLM settings: its model entry (endpoint/model) layered with its
     /// own behaviour knobs (temperature/reasoning/penalties), falling back to project defaults.</summary>

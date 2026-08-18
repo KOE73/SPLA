@@ -70,6 +70,10 @@ ignore:
 | `llm.model` | No | Model name. `auto` = use whatever is loaded. |
 | `connections` | No | Named connection list (merged over defaults by `id`); each entry: `id`, `name`, `provider`, `endpoint`, `api_key`, `model`, `context_length`, `lock_model`, `swap_model`. When absent, a default connection is synthesized from `llm.*`. |
 | `connections[].context_length` | No | Manual context-window override in tokens. Unset/0 = auto-detect from the provider (LM Studio native API reports the loaded instance's configured window; vLLM reports `max_model_len`). |
+| `connections[].models[].reasoning_options` | No | Manual declaration of the model's reasoning options, in the provider's own words (`[off, low, medium, xhigh, on]`). Same precedence as `context_length`: a declaration wins over whatever the provider advertises, and it is the only way to get the lever for a server that describes nothing — most OpenAI-compatible endpoints, LocalAI and plain vLLM among them. Unset = take the provider's word, or leave the lever unavailable. See [ADR_20260817](../docs/adr/ADR_20260817_llm_reasoning-lever.md). |
+| `connections[].models[].reasoning_default` | No | The option the model uses when asked for nothing. Read only alongside `reasoning_options`. |
+| `llm.temperature` | No | Sampling temperature (default `0.7`). Layered defaults → project → chat; a chat's own value is written into its YAML by the status bar. |
+| `llm.reasoning_level` | No | Reasoning selection: empty (model's own default), `off`, `on`, an effort word in the provider's vocabulary (`low`/`medium`/`xhigh`/…), or `budget:N` tokens. Nothing is sent to a provider that never described the model's reasoning channel — see the ADR above for why that matters. |
 | `ui.theme` | No | Color theme: `Dark`, `Light`, `Cream`, `Emerald`. |
 | `ui.density` | No | UI density: `norm`, `mini`, `nano`, `max`. |
 | `permissions.*` | No | Per-effect overrides: `allow`, `ask`, `deny`. Overrides the mode's default matrix. |

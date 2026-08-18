@@ -71,6 +71,10 @@ export interface ChatOpenedPayload {
   messages: ChatMessage[];
   mode?: string;
   modelId?: string;
+  /** The chat's effective sampling temperature (its own override, else the project default). */
+  temperature?: number;
+  /** The chat's effective reasoning selection: "" | "off" | "on" | an effort word | "budget:N". */
+  reasoning?: string;
   /** The skill running in this chat, if any — the unload control keys off this. */
   activeSkillId?: string | null;
   doubt?: ChatDoubt;
@@ -79,6 +83,39 @@ export interface ChatOpenedPayload {
   /** Whether a turn was already running when this chat was opened — so a window attaching mid-turn
    *  (or a reload) shows Stop rather than an input that looks ready. */
   turnActive?: boolean;
+}
+
+/**
+ * What a model will let a caller do with its reasoning channel, as its provider describes it.
+ *
+ * There is no cross-vendor standard, so this carries three independent axes rather than one kind:
+ * a switch (`mandatory` / `defaultEnabled`), a graded scale (`efforts`), and a token budget. A model
+ * may have several at once — LM Studio reports Qwen3.8 as `["off","low","medium","xhigh","on"]`, a
+ * switch and a scale in one list, with no `"high"` in it. The words are the provider's own and are
+ * shown verbatim; nothing here is normalized to a vocabulary the UI made up.
+ *
+ * `known: false` means nobody described this model — most OpenAI-compatible servers. That is not the
+ * same as "cannot reason", and it is why the lever is withheld rather than guessed: a LocalAI-hosted
+ * Gemma accepts `reasoning_effort` it does not implement and answers with an endless "0.5-0.5-0.5".
+ */
+export interface ReasoningCapabilityDto {
+  known: boolean;
+  supported: boolean;
+  /** The model always reasons; "off" is not on offer. */
+  mandatory: boolean;
+  defaultEnabled: boolean;
+  /** Graded effort words, in the provider's vocabulary and order. */
+  efforts: string[];
+  defaultEffort?: string | null;
+  supportsTokenBudget: boolean;
+  minTokenBudget?: number | null;
+  maxTokenBudget?: number | null;
+}
+
+export interface ChatReasoningResult {
+  chatId: string;
+  modelId?: string | null;
+  reasoning: ReasoningCapabilityDto;
 }
 
 /** One tool set as a chat sees it. `level` is the standing permission, `by` is who raised it here
@@ -555,6 +592,7 @@ export interface ServerEvents {
   };
   "appearance.changed": { theme?: string; density?: string };
   "chat.opened": ChatOpenedPayload;
+  "chat.reasoning.result": ChatReasoningResult;
   "chat.list.result": { chats: ChatSummary[] };
   "chat.cleared": Record<string, never>;
   "chat.current": ChatOpenedPayload;

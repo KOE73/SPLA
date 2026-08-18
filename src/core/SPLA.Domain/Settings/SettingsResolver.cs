@@ -301,6 +301,14 @@ public sealed class ResolvedModelEntry
     public string? ApiKey => Connection.ApiKey;
     public string? Model => Entry.Model;
     public int? ContextLength => Entry.ContextLength;
+
+    /// <summary>The reasoning options declared for this entry in config, or
+    /// <see cref="Models.ReasoningCapability.Unknown"/> when none were. A declaration wins over
+    /// whatever the provider says — same rule as <see cref="ContextLength"/>.</summary>
+    public Models.ReasoningCapability DeclaredReasoning =>
+        Entry.ReasoningOptions is { Count: > 0 }
+            ? Models.ReasoningCapability.FromOptions(Entry.ReasoningOptions, Entry.ReasoningDefault)
+            : Models.ReasoningCapability.Unknown;
 }
 
 /// <summary>

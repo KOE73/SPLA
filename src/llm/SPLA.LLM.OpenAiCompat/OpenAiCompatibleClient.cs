@@ -368,17 +368,9 @@ public sealed partial class OpenAiCompatibleClient : ILlmClient, ITokenUsageRepo
         if (settings.TopP is { } topP) payload["top_p"] = topP;
         if (settings.MinP is { } minP) payload["min_p"] = minP;
 
-        // Reasoning lever for the OpenAI-compatible endpoint. on/off maps to the chat-template
-        // kwarg (Qwen3/Gemma-style); graded values map to reasoning_effort (gpt-oss-style).
-        // Empty = leave the model's own default. Unknown fields are ignored by LM Studio.
-        var level = settings.ReasoningLevel?.Trim().ToLowerInvariant();
-        if (!string.IsNullOrEmpty(level))
-        {
-            if (level is "off" or "on")
-                payload["chat_template_kwargs"] = new Dictionary<string, object?> { ["enable_thinking"] = level == "on" };
-            else
-                payload["reasoning_effort"] = level;
-        }
+        // The reasoning lever, in this provider's dialect and only for a model that was described as
+        // having one. Empty choice = leave the model's own default alone.
+        _profile.ShapeReasoning(payload, ReasoningChoice.Parse(settings.ReasoningLevel), settings.ModelReasoning);
 
         if (tools?.Any() == true)
         {

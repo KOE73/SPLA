@@ -50,6 +50,7 @@
     <File Path="docs/adr/ADR_20260813_build_branch-stamp.md" />
     <File Path="docs/adr/ADR_20260814_core_project-mounts.md" />
     <File Path="docs/adr/ADR_20260814_llm_output-stage.md" />
+    <File Path="docs/adr/ADR_20260817_llm_reasoning-lever.md" />
   </Folder>
   <Folder Name="/docs/plans/">
     <File Path="docs/plans/PLAN_20260619_agent_skills-lifecycle.md" />
@@ -87,6 +88,7 @@
     <File Path="docs/ideas/IDEA_20260813-3_web_permission-colors.md" />
     <File Path="docs/ideas/IDEA_20260813-4_apps_close-to-tray.md" />
     <File Path="docs/ideas/IDEA_20260813_core_binary-storage.md" />
+    <File Path="docs/ideas/IDEA_20260817_llm_reasoning-lever-leftovers.md" />
   </Folder>
   <Folder Name="/src/core/">
     <Project Path="src/core/SPLA.Domain/SPLA.Domain.csproj" />

@@ -19,7 +19,7 @@ namespace SPLA.LLM.OpenRouter;
 /// change to the pipeline, no change to the settings protocol.
 /// </para>
 /// </summary>
-public sealed class OpenRouterProvider : ILlmProviderDescriptor, IProviderAccountInfo, IModelCatalogInfo
+public sealed class OpenRouterProvider : ILlmProviderDescriptor, IProviderAccountInfo, IModelCatalogInfo, IReasoningCatalog
 {
     public const string ProviderId = "openrouter";
 
@@ -60,6 +60,19 @@ public sealed class OpenRouterProvider : ILlmProviderDescriptor, IProviderAccoun
         var models = await Catalog.GetModelsAsync(endpoint, apiKey, ct);
         var match = models.FirstOrDefault(m => string.Equals(m.Id, modelId, StringComparison.OrdinalIgnoreCase));
         return match is { ContextLength: > 0 } ? match.ContextLength : null;
+    }
+
+    /// <summary>
+    /// The reasoning descriptor, from the same catalog call as the context window. OpenRouter is the
+    /// one provider here that publishes all three axes — switch, effort scale and token budget — so
+    /// its answer needs no reconstruction from a flat option list.
+    /// </summary>
+    public async Task<Domain.Models.ReasoningCapability> GetReasoningAsync(
+        string endpoint, string modelId, string? apiKey, CancellationToken ct = default)
+    {
+        var models = await Catalog.GetModelsAsync(endpoint, apiKey, ct);
+        var match = models.FirstOrDefault(m => string.Equals(m.Id, modelId, StringComparison.OrdinalIgnoreCase));
+        return match?.Reasoning ?? Domain.Models.ReasoningCapability.Unknown;
     }
 
     /// <param name="appTitle">Sent as <c>X-Title</c> so traffic is attributable on OpenRouter's side.</param>

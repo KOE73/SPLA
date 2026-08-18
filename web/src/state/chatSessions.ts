@@ -44,6 +44,11 @@ export interface ChatSession {
   turnActive: boolean;
   mode: string;
   modelId: string;
+  /** The two per-turn knobs, as this chat currently runs. `reasoning` is the scalar grammar
+   *  ("" | "off" | "on" | an effort word | "budget:N"); what the model will accept is a separate,
+   *  provider-described question the status bar asks for on its own. */
+  temperature: number | null;
+  reasoning: string;
   activeSkill: string | null;
   toolSets: ToolSetState[];
   doubt: ChatDoubt | null;
@@ -86,6 +91,8 @@ function blank(chatId: string): ChatSession {
     turnActive: false,
     mode: "",
     modelId: "",
+    temperature: null,
+    reasoning: "",
     activeSkill: null,
     toolSets: [],
     doubt: null,
@@ -221,6 +228,8 @@ client.on("chat.opened", (p, env) => {
   s.logLoaded = true;
   s.mode = p.mode || s.mode;
   s.modelId = p.modelId || "";
+  s.temperature = p.temperature ?? null;
+  s.reasoning = p.reasoning ?? "";
   s.activeSkill = p.activeSkillId || null;
   s.toolSets = p.toolSets || [];
   s.doubt = p.doubt ?? null;

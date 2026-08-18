@@ -12,7 +12,7 @@ internal sealed class ChatHandlers : IMessageHandler
     [
         MessageTypes.ChatList, MessageTypes.ChatNew, MessageTypes.ChatRename, MessageTypes.ChatDelete,
         MessageTypes.ChatOpen, MessageTypes.ChatWatch, MessageTypes.ChatUnwatch,
-        MessageTypes.ChatSend, MessageTypes.ChatSettings,
+        MessageTypes.ChatSend, MessageTypes.ChatSettings, MessageTypes.ChatReasoningGet,
         MessageTypes.ChatRewind, MessageTypes.ChatFork,
         MessageTypes.ChatSkillActivate, MessageTypes.ChatSkillDeactivate,
         MessageTypes.ChatToolSetDeactivate, MessageTypes.ChatDoubtClear,
@@ -29,6 +29,7 @@ internal sealed class ChatHandlers : IMessageHandler
         MessageTypes.ChatUnwatch  => Unwatch(ctx),
         MessageTypes.ChatSend     => Send(ctx),
         MessageTypes.ChatSettings => Settings(ctx),
+        MessageTypes.ChatReasoningGet => ReasoningGet(ctx),
         MessageTypes.ChatRewind   => Rewind(ctx),
         MessageTypes.ChatFork     => Fork(ctx),
         MessageTypes.ChatSkillActivate => SkillActivate(ctx),
@@ -127,8 +128,30 @@ internal sealed class ChatHandlers : IMessageHandler
         if (p == null) return;
         var chat = entry.Chats.GetOrOpen(p.ChatId);
         if (chat == null) return;
-        chat.ApplySettings(p.Mode, p.ModelId);
+        chat.ApplySettings(p.Mode, p.ModelId, p.Temperature, p.Reasoning);
         await ctx.Session.SendOpenedAsync(chat);   // echo back the applied settings
+    }
+
+    /// <summary>
+    /// Answers what this chat's model can do with its reasoning channel. Best-effort by construction:
+    /// a provider that is down, or one that describes nothing, yields an unknown capability rather
+    /// than an error — the status bar then says the lever is unavailable, which is the truth.
+    /// </summary>
+    private static async Task ReasoningGet(RequestContext ctx)
+    {
+        var (entry, _) = ctx.Session.Resolve(ctx.Env);
+        var p = ctx.Payload<ChatReasoningRequest>();
+        if (p == null) return;
+        var chat = entry.Chats.GetOrOpen(p.ChatId);
+        if (chat == null) return;
+
+        var caps = await chat.GetReasoningAsync(ctx.HostStopping);
+        await ctx.Reply(MessageTypes.ChatReasoningResult, new ChatReasoningResult
+        {
+            ChatId = p.ChatId,
+            ModelId = chat.ModelId,
+            Reasoning = ProtocolMapper.ToDto(caps)
+        });
     }
 
     private static async Task Rewind(RequestContext ctx)

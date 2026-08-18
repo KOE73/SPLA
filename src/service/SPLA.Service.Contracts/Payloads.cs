@@ -163,12 +163,69 @@ public sealed class FocusPayload
     public string ChatId { get; set; } = string.Empty;
 }
 
-/// <summary>Changes a chat's behaviour: its mode and/or which model entry it runs on. Null fields are left as-is.</summary>
+/// <summary>Changes a chat's behaviour: its mode, which model entry it runs on, and the two per-turn
+/// knobs. Null fields are left as-is.</summary>
 public sealed class ChatSettingsPayload
 {
     public string ChatId { get; set; } = string.Empty;
     public string? Mode { get; set; }
     public string? ModelId { get; set; }
+
+    /// <summary>Sampling temperature for this chat. Null = leave whatever the chat had.</summary>
+    public double? Temperature { get; set; }
+
+    /// <summary>Reasoning selection in the scalar grammar (<c>""</c> | <c>off</c> | <c>on</c> | an
+    /// effort word | <c>budget:N</c>). Empty string is a real value — "drop my override" — and is
+    /// distinct from null, which means "not part of this change".</summary>
+    public string? Reasoning { get; set; }
+}
+
+/// <summary>
+/// What a model will let a caller do with its reasoning channel, as the provider describes it.
+/// <para>
+/// Sent to the client so the status bar can offer the provider's own words rather than a vocabulary
+/// this codebase made up. There is no cross-vendor standard: LM Studio reports Qwen3.8 as
+/// <c>["off","low","medium","xhigh","on"]</c> — a switch and a scale at once, with no "high" —
+/// OpenRouter reports <c>{ efforts: ["high","medium"], supports_max_tokens: true }</c>, and most
+/// OpenAI-compatible servers report nothing at all.
+/// </para>
+/// </summary>
+public sealed class ReasoningCapabilityDto
+{
+    /// <summary>Whether anyone actually described this model. False = the lever is unavailable, and
+    /// the UI says so rather than pretending the model cannot think.</summary>
+    public bool Known { get; set; }
+
+    public bool Supported { get; set; }
+
+    /// <summary>The model always reasons; "off" is not on offer.</summary>
+    public bool Mandatory { get; set; }
+
+    public bool DefaultEnabled { get; set; }
+
+    /// <summary>Graded effort words, in the provider's vocabulary and order.</summary>
+    public List<string> Efforts { get; set; } = new();
+
+    public string? DefaultEffort { get; set; }
+
+    public bool SupportsTokenBudget { get; set; }
+    public int? MinTokenBudget { get; set; }
+    public int? MaxTokenBudget { get; set; }
+}
+
+/// <summary>Asks what the given chat's current model can do with its reasoning channel. Chat-scoped
+/// rather than model-scoped because the answer depends on the connection the chat runs on.</summary>
+public sealed class ChatReasoningRequest
+{
+    public string ChatId { get; set; } = string.Empty;
+}
+
+/// <summary>Answer to <see cref="ChatReasoningRequest"/>, correlated by chat id.</summary>
+public sealed class ChatReasoningResult
+{
+    public string ChatId { get; set; } = string.Empty;
+    public string? ModelId { get; set; }
+    public ReasoningCapabilityDto Reasoning { get; set; } = new();
 }
 
 /// <summary>Answer to a <see cref="PermissionRequestPayload"/>; correlated by envelope RequestId.</summary>
@@ -738,6 +795,16 @@ public sealed class ChatOpenedPayload
     public List<ChatMessageDto> Messages { get; set; } = new();
     public string Mode { get; set; } = string.Empty;
     public string? ModelId { get; set; }
+
+    /// <summary>The chat's effective temperature — its own override, else the project default. Sent on
+    /// open for the same reason as the mode: the status bar has to show what this chat actually runs
+    /// on, not what the project would have given a new one.</summary>
+    public double Temperature { get; set; }
+
+    /// <summary>The chat's effective reasoning selection, in the scalar grammar. Empty = the model's
+    /// own default. What the model will <i>accept</i> is a separate, provider-described question —
+    /// see <see cref="ChatReasoningRequest"/>.</summary>
+    public string Reasoning { get; set; } = string.Empty;
 
     /// <summary>The skill running in this chat, or null. Sent on open so a window attaching to a chat
     /// that was left mid-skill can offer the way out immediately.</summary>

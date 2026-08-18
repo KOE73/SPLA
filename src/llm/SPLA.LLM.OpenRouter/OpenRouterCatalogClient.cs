@@ -1,5 +1,6 @@
 using System.Net.Http.Headers;
 using System.Text.Json;
+using SPLA.Domain.Models;
 
 namespace SPLA.LLM.OpenRouter;
 
@@ -20,6 +21,9 @@ public sealed class OpenRouterModel
 
     public bool SupportsTools { get; init; }
     public bool SupportsReasoning { get; init; }
+
+    /// <summary>What the catalog says about this model's reasoning channel.</summary>
+    public ReasoningCapability Reasoning { get; init; } = ReasoningCapability.Unknown;
 
     /// <summary>
     /// True when the model costs nothing. Taken from the reported price rather than from the
@@ -95,12 +99,56 @@ public sealed class OpenRouterCatalogClient
                 ContextLength = item.TryGetProperty("context_length", out var cl) && cl.ValueKind == JsonValueKind.Number
                     ? cl.GetInt32() : 0,
                 SupportsTools = supported.Contains("tools"),
-                SupportsReasoning = supported.Contains("reasoning") || supported.Contains("include_reasoning")
+                SupportsReasoning = supported.Contains("reasoning") || supported.Contains("include_reasoning"),
+                Reasoning = ReadReasoning(item, supported)
             });
         }
 
         return models;
     }
+
+    /// <summary>
+    /// Reads OpenRouter's per-model <c>reasoning</c> descriptor — the richest one any provider in the
+    /// fleet publishes, and the shape <see cref="ReasoningCapability"/> is modelled on:
+    /// <c>{ mandatory, default_enabled, supports_max_tokens, supported_efforts, default_effort }</c>.
+    /// Falls back to <c>supported_parameters</c> for a model that lists <c>reasoning</c> but carries
+    /// no descriptor.
+    /// </summary>
+    private static ReasoningCapability ReadReasoning(JsonElement item, string[] supported)
+    {
+        if (item.TryGetProperty("reasoning", out var r) && r.ValueKind == JsonValueKind.Object)
+        {
+            var efforts = r.TryGetProperty("supported_efforts", out var se) && se.ValueKind == JsonValueKind.Array
+                ? se.EnumerateArray().Select(x => x.GetString() ?? "").Where(x => x.Length > 0).ToList()
+                : [];
+
+            return new ReasoningCapability
+            {
+                Known = true,
+                Supported = true,
+                Mandatory = Bool(r, "mandatory"),
+                DefaultEnabled = Bool(r, "default_enabled"),
+                Efforts = efforts,
+                DefaultEffort = Str(r, "default_effort") is { Length: > 0 } d ? d : null,
+                SupportsTokenBudget = Bool(r, "supports_max_tokens")
+            };
+        }
+
+        // No descriptor. The parameter list still tells us whether the lever exists at all; how deep
+        // it goes is then unknown, and the UI offers only the switch.
+        if (supported.Contains("reasoning") || supported.Contains("include_reasoning"))
+            return new ReasoningCapability
+            {
+                Known = true,
+                Supported = true,
+                SupportsTokenBudget = supported.Contains("reasoning_max_tokens")
+            };
+
+        return ReasoningCapability.None;
+    }
+
+    private static bool Bool(JsonElement el, string field)
+        => el.TryGetProperty(field, out var v) && v.ValueKind == JsonValueKind.True;
 
     private static string Str(JsonElement el, string field)
         => el.ValueKind == JsonValueKind.Object && el.TryGetProperty(field, out var v) && v.ValueKind == JsonValueKind.String

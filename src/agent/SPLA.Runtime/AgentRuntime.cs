@@ -149,6 +149,12 @@ public sealed class AgentRuntime : IDisposable
     private readonly ConcurrentDictionary<string, (int? Length, DateTimeOffset At)> _contextLengthCache = new();
     private static readonly TimeSpan ContextLengthTtl = TimeSpan.FromSeconds(60);
 
+    private readonly ConcurrentDictionary<string, (ReasoningCapability Caps, DateTimeOffset At)> _reasoningCache = new();
+
+    /// <summary>Longer than <see cref="ContextLengthTtl"/>: a model's context window changes when it
+    /// is reloaded, but what it can do with its reasoning channel is a property of the model itself.</summary>
+    private static readonly TimeSpan ReasoningTtl = TimeSpan.FromMinutes(10);
+
     /// <summary>Schemas registered by plugins at startup (data + UI, resolved by name).</summary>
     public SPLA.Domain.Editor.SchemaRegistry SchemaRegistry { get; }
 
@@ -515,6 +521,57 @@ public sealed class AgentRuntime : IDisposable
 
         _contextLengthCache[key] = (detected, DateTimeOffset.UtcNow);
         return detected;
+    }
+
+    /// <summary>
+    /// Resolves what the active model will let a caller do with its reasoning channel.
+    /// Priority: the model entry's manual <c>reasoning_options</c> declaration → the provider's own
+    /// catalog (<see cref="IReasoningCatalog"/>, OpenRouter) → the native management surface's model
+    /// details (LM Studio's <c>capabilities.reasoning</c>) → <see cref="ReasoningCapability.Unknown"/>.
+    /// <para>
+    /// Unknown is the honest answer for most OpenAI-compatible endpoints, and it is load-bearing:
+    /// callers must not pull a lever nobody advertised. Cached per endpoint+model for
+    /// <see cref="ReasoningTtl"/>.
+    /// </para>
+    /// </summary>
+    public async Task<ReasoningCapability> GetReasoningAsync(
+        LLMSettings llm, ReasoningCapability? declared = null, CancellationToken ct = default)
+    {
+        if (declared is { Known: true }) return declared;
+
+        var key = $"{llm.BaseUrl}|{llm.ModelName}";
+        if (_reasoningCache.TryGetValue(key, out var hit) && DateTimeOffset.UtcNow - hit.At < ReasoningTtl)
+            return hit.Caps;
+
+        var caps = ReasoningCapability.Unknown;
+        try
+        {
+            if (Providers.Resolve(llm.Provider) is SPLA.Domain.Llm.IReasoningCatalog catalog)
+            {
+                caps = await catalog.GetReasoningAsync(llm.BaseUrl, llm.ModelName, llm.ApiKey, ct);
+            }
+            else
+            {
+                var models = await ModelManagement.GetModelDetailsAsync(llm.BaseUrl, llm.ApiKey, ct);
+
+                // Same match rule as the context window: a named model by id, otherwise "whatever is
+                // loaded" — which is what an empty model name means to LM Studio.
+                var model = !string.IsNullOrEmpty(llm.ModelName)
+                    ? models.FirstOrDefault(m => string.Equals(m.Id, llm.ModelName, StringComparison.OrdinalIgnoreCase))
+                    : models.FirstOrDefault(m => m.IsLoaded && !string.Equals(m.Type, "embedding", StringComparison.OrdinalIgnoreCase))
+                      ?? (models.Count == 1 ? models[0] : null);
+
+                if (model != null) caps = model.Reasoning;
+            }
+        }
+        catch
+        {
+            // Provider offline or no catalog surface — stay Unknown, which suppresses the lever
+            // rather than guessing at one.
+        }
+
+        _reasoningCache[key] = (caps, DateTimeOffset.UtcNow);
+        return caps;
     }
 
     /// <summary>

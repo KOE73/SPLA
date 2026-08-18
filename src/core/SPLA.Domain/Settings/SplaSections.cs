@@ -192,6 +192,21 @@ public class SplaModelSection
     [YamlMember(Alias = "context_length")]
     public int? ContextLength { get; set; }
 
+    /// <summary>
+    /// Manual declaration of the model's reasoning options, in the provider's own words
+    /// (<c>["off","low","medium","high"]</c>). Same role as <see cref="ContextLength"/> and the same
+    /// precedence: when set it wins over anything the provider advertises, and it is the only way to
+    /// get the lever for a server that describes nothing — most OpenAI-compatible endpoints, LocalAI
+    /// and plain vLLM among them. Null = take the provider's word, or leave the lever unavailable.
+    /// </summary>
+    [YamlMember(Alias = "reasoning_options")]
+    public List<string>? ReasoningOptions { get; set; }
+
+    /// <summary>The option this model uses when asked for nothing. Only read alongside
+    /// <see cref="ReasoningOptions"/>.</summary>
+    [YamlMember(Alias = "reasoning_default")]
+    public string? ReasoningDefault { get; set; }
+
     /// <summary>Display label for the picker — falls back to the wire model string, then the id.</summary>
     [YamlIgnore]
     public string DisplayName => !string.IsNullOrWhiteSpace(Name) ? Name!

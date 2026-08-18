@@ -1,4 +1,6 @@
 using System.Net.Http.Headers;
+using SPLA.Domain.Llm;
+using SPLA.Domain.Models;
 using SPLA.LLM.OpenAiCompat;
 
 namespace SPLA.LLM.OpenRouter;
@@ -26,6 +28,39 @@ public sealed class OpenRouterProfile : IOpenAiCompatProfile
 
     public void ShapeBody(IDictionary<string, object> payload)
         => payload["usage"] = new Dictionary<string, object> { ["include"] = true };
+
+    /// <summary>
+    /// OpenRouter's <c>reasoning</c> block rather than the bare <c>reasoning_effort</c>. It is the one
+    /// place in the fleet where all three axes are expressible at once — <c>enabled</c>,
+    /// <c>effort</c> and <c>max_tokens</c> — and OpenRouter normalizes whichever the downstream model
+    /// actually understands, translating an effort into a budget or back as needed.
+    /// </summary>
+    public void ShapeReasoning(IDictionary<string, object> payload, ReasoningChoice choice, ReasoningCapability capability)
+    {
+        if (choice.IsDefault || !capability.Supported) return;
+
+        var block = new Dictionary<string, object?>();
+        switch (choice.Mode)
+        {
+            case ReasoningMode.Off when capability.CanDisable:
+                block["enabled"] = false;
+                break;
+
+            case ReasoningMode.On:
+                block["enabled"] = true;
+                break;
+
+            case ReasoningMode.Effort when choice.Effort is { Length: > 0 } e:
+                block["effort"] = e;
+                break;
+
+            case ReasoningMode.Budget when choice.TokenBudget is { } b && capability.SupportsTokenBudget:
+                block["max_tokens"] = b;
+                break;
+        }
+
+        if (block.Count > 0) payload["reasoning"] = block;
+    }
 
     public void ShapeHeaders(HttpRequestHeaders headers)
     {

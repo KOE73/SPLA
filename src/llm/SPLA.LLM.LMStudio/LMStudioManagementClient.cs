@@ -117,8 +117,14 @@ public sealed class LMStudioManagementClient : IModelManagementService
             bool vision = false, tools = false;
             var reasoningOptions = new List<string>();
             var reasoningDefault = "";
+
+            // A described model with no reasoning block is a statement, not a silence: this API names
+            // the block for every model that has one, so its absence here means "no reasoning channel"
+            // — unlike the bare /v1/models fallback, which describes nothing about anything.
+            var described = false;
             if (item.TryGetProperty("capabilities", out var caps) && caps.ValueKind == JsonValueKind.Object)
             {
+                described = true;
                 vision = GetBool(caps, "vision");
                 tools = GetBool(caps, "trained_for_tool_use") || GetBool(caps, "tool_use");
                 if (caps.TryGetProperty("reasoning", out var reason) && reason.ValueKind == JsonValueKind.Object)
@@ -169,8 +175,9 @@ public sealed class LMStudioManagementClient : IModelManagementService
                 LoadedInstanceId = loadedInstanceId,
                 SupportsVision = vision || string.Equals(type, "vlm", StringComparison.OrdinalIgnoreCase),
                 SupportsTools = tools,
-                ReasoningOptions = reasoningOptions,
-                ReasoningDefault = reasoningDefault,
+                Reasoning = reasoningOptions.Count > 0
+                    ? ReasoningCapability.FromOptions(reasoningOptions, reasoningDefault)
+                    : described ? ReasoningCapability.None : ReasoningCapability.Unknown,
                 HasDetails = true
             });
         }

@@ -64,6 +64,17 @@ button { font: inherit; cursor: pointer; }
 #status select { background: var(--bg); color: var(--text); border: 1px solid var(--border);
   border-radius: var(--radius-sm); padding: 2px 4px; font: inherit; font-size: var(--fs-sm); }
 
+/* The two per-turn knobs. Narrow on purpose: they sit between the model picker and the skill chip,
+   and a full-width number field would push the context pill off a small window. The reasoning select
+   is drawn from what the provider says the model takes, so it is disabled — not hidden — when nobody
+   described it: "we were not told" is information the person needs. */
+#status input.temp { width: 4.5em; background: var(--bg); color: var(--text);
+  border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 2px 4px;
+  font: inherit; font-size: var(--fs-sm); }
+#status input.temp.budget { width: 6em; }
+#status select.reasoning { min-width: 6em; }
+#status select.reasoning:disabled { opacity: .45; cursor: help; }
+
 /* Context-budget pill: last call's occupancy as a fraction of the model's operative window (or just
    the raw count when the window is unknown). Quiet until it matters; exact in/out sits in the title. */
 #ctxBudget { margin-left: auto; display: flex; align-items: center; gap: 6px;

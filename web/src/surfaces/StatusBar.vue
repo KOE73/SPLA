@@ -32,6 +32,45 @@
       @click.stop="toggleInfo"
     >i</button>
   </label>
+  <label>temp
+    <input
+      class="temp"
+      type="number"
+      min="0"
+      max="2"
+      step="0.05"
+      :value="temperature"
+      :disabled="!session"
+      title="Sampling temperature for this chat. Applies to the next turn."
+      @change="onTempChange"
+    />
+  </label>
+  <!-- The reasoning lever is drawn from what the PROVIDER says this model takes, never from a fixed
+       list: the words differ per model (Qwen3.8 has "xhigh" and no "high"). Three states, and the
+       middle one is the point — offered when the model was described as having a channel, DISABLED
+       (not hidden) when nobody described the model at all, and gone only when a provider positively
+       said this model does not reason. "We were not told" is information the person needs. -->
+  <label v-if="!reasoningCaps || !reasoningCaps.known || reasoningCaps.supported">think
+    <select
+      v-model="reasoning"
+      class="reasoning"
+      :disabled="!session || !reasoningKnown"
+      :title="reasoningTitle"
+      @change="onReasoningChange"
+    >
+      <option v-for="o in reasoningOptions" :key="o.value" :value="o.value">{{ o.label }}</option>
+    </select>
+    <input
+      v-if="isBudget"
+      class="temp budget"
+      type="number"
+      min="1"
+      step="256"
+      :value="budgetTokens"
+      title="Thinking budget in tokens"
+      @change="onBudgetChange"
+    />
+  </label>
   <span v-if="activeSkill" id="activeSkill" :title="`Skill '${activeSkill}' is running in this chat`">
     <span class="skill-label">skill: {{ activeSkill }}</span>
     <button class="skill-unload" title="End this skill" @click="unloadSkill">✕</button>
@@ -80,11 +119,11 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onUnmounted, ref } from "vue";
+import { computed, onUnmounted, ref, watch } from "vue";
 import { client } from "../protocol/SplaClient";
 import { formatCompact } from "../util/format";
 import { useChat } from "../state/chatContext";
-import type { ConnHealth, ModelPickDto, ToolSetState } from "../protocol/types";
+import type { ConnHealth, ModelPickDto, ReasoningCapabilityDto, ToolSetState } from "../protocol/types";
 import ProviderInfoPopup from "./ProviderInfoPopup.vue";
 import SkillPickerPopup from "./SkillPickerPopup.vue";
 
@@ -111,6 +150,93 @@ const modelId = computed({
   get: () => session.value?.modelId ?? "",
   set: v => { if (session.value) session.value.modelId = v; }
 });
+
+const temperature = computed(() => session.value?.temperature ?? null);
+const reasoning = computed({
+  get: () => session.value?.reasoning ?? "",
+  set: v => { if (session.value) session.value.reasoning = v; }
+});
+
+// ── The reasoning lever ──────────────────────────────────────────────────────
+// Asked for per chat, because the answer belongs to the model AND the connection it runs on. Null
+// while unanswered; an answer with known=false means nobody described the model, and the control
+// then says so instead of offering words that may corrupt the next turn.
+const reasoningCaps = ref<ReasoningCapabilityDto | null>(null);
+const reasoningKnown = computed(() => !!reasoningCaps.value?.known && !!reasoningCaps.value?.supported);
+
+/** The words this model actually takes, in the provider's own order, plus the two we always mean:
+ *  "leave it alone" and, where it is on offer, "off". */
+const reasoningOptions = computed(() => {
+  const caps = reasoningCaps.value;
+  const out = [{ value: "", label: caps && caps.known ? "default" : "—" }];
+  if (!caps || !caps.known || !caps.supported) return out;
+
+  if (!caps.mandatory) out.push({ value: "off", label: "off" });
+  out.push({ value: "on", label: "on" });
+  for (const e of caps.efforts) out.push({ value: e, label: e });
+  // The budget option carries the CURRENT budget as its value once one is set — otherwise the select
+  // would find no option matching "budget:4096" and silently fall back to showing "default" while
+  // the chat is in fact on a budget.
+  if (caps.supportsTokenBudget)
+    out.push({ value: isBudgetValue(reasoning.value) ? reasoning.value : BUDGET, label: "budget…" });
+
+  // A saved choice this model has never heard of (the chat moved to another model) still has to be
+  // visible — silently showing "default" would misreport what the next turn will send.
+  const cur = reasoning.value;
+  if (cur && !isBudgetValue(cur) && !out.some(o => o.value === cur)) out.push({ value: cur, label: `${cur} (?)` });
+  return out;
+});
+
+const BUDGET = "budget:";
+const isBudgetValue = (v: string) => v.startsWith(BUDGET);
+const isBudget = computed(() => isBudgetValue(reasoning.value));
+const budgetTokens = computed(() => {
+  const n = parseInt(reasoning.value.slice(BUDGET.length), 10);
+  return Number.isFinite(n) && n > 0 ? n : 4096;
+});
+
+const reasoningTitle = computed(() => {
+  const caps = reasoningCaps.value;
+  if (!caps) return "Asking the provider what this model takes…";
+  if (!caps.known)
+    return "This provider describes no reasoning options for the model, and a lever nobody advertised "
+      + "is not safe to pull — an endpoint that accepts a field it does not implement can answer with "
+      + "garbage.\nDeclare reasoning_options on the model entry in .spla if you know what your server takes.";
+  if (!caps.supported) return "This model has no reasoning channel.";
+
+  const parts = [`Options come from the provider: ${caps.efforts.length ? caps.efforts.join(", ") : "on/off only"}.`];
+  if (caps.mandatory) parts.push("This model always reasons — it cannot be switched off.");
+  if (caps.defaultEffort) parts.push(`Its own default is "${caps.defaultEffort}".`);
+  return parts.join("\n");
+});
+
+function requestReasoning() {
+  reasoningCaps.value = null;
+  if (session.value) chat.send("chat.reasoning.get");
+}
+
+// Both the chat and the model within it change what the lever should offer.
+watch(() => [chat.chatId.value, modelId.value], requestReasoning, { immediate: true });
+
+function onTempChange(e: Event) {
+  const v = parseFloat((e.target as HTMLInputElement).value);
+  if (!Number.isFinite(v)) return;
+  if (session.value) session.value.temperature = v;
+  chat.send("chat.settings", { temperature: v });
+}
+
+function onReasoningChange() {
+  // "budget…" is a mode, not a value — give it a starting number so what gets sent is well-formed.
+  if (reasoning.value === BUDGET) reasoning.value = BUDGET + (reasoningCaps.value?.maxTokenBudget ?? 4096);
+  chat.send("chat.settings", { reasoning: reasoning.value });
+}
+
+function onBudgetChange(e: Event) {
+  const n = parseInt((e.target as HTMLInputElement).value, 10);
+  if (!Number.isFinite(n) || n <= 0) return;
+  reasoning.value = BUDGET + n;
+  chat.send("chat.settings", { reasoning: reasoning.value });
+}
 
 // App-level data the chat's pickers need: the catalogue of connections and their health.
 const modes = ref<string[]>([]);
@@ -276,6 +402,14 @@ const offWelcome = client.on("welcome", p => {
   modes.value = p.modes || [];
   picks.value = p.connections || [];
 });
+// Switching projects replaces the catalogue wholesale. Without this the picker kept the previous
+// project's entries and showed a blank selection for a chat whose model it had never heard of —
+// welcome only ever describes the project the window started on.
+const offContext = client.on("project.context", p => {
+  picks.value = p.connections || [];
+  if (p.modes?.length) modes.value = p.modes;
+  requestReasoning();
+});
 // The editor broadcasts the connection TREE; the picker needs it flattened. Done here rather than
 // asking the server for a second shape — the tree already carries everything the two levels need.
 const offResult = client.on("connections.result", p => {
@@ -301,5 +435,11 @@ const offHealth = client.on("connections.health", p => {
   connHealth.value = {};
   for (const s of p.statuses || []) connHealth.value[s.id] = { ok: s.ok, error: s.error };
 });
-onUnmounted(() => { offWelcome(); offResult(); offHealth(); offInfo(); });
+// Chat-scoped, but it answers a question this component asked and nothing else keeps it — so it is
+// read here, guarded by the chat id like every other reply that can outlive its question.
+const offReasoning = client.on("chat.reasoning.result", (p, env) => {
+  if ((p.chatId || env.chatId) !== chat.chatId.value) return;
+  reasoningCaps.value = p.reasoning;
+});
+onUnmounted(() => { offWelcome(); offContext(); offResult(); offHealth(); offInfo(); offReasoning(); });
 </script>

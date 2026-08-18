@@ -341,6 +341,8 @@ public sealed class ClientConnection : IClientSession
             Messages = chat.SnapshotMessages(),
             Mode = chat.ModeName,
             ModelId = chat.ModelId,
+            Temperature = chat.Temperature,
+            Reasoning = chat.ReasoningLevel,
             ActiveSkillId = chat.ActiveSkillId,
             ToolSets = ChatHandlers.ToolSetDtos(_registry.Open(DefaultProjectId), chat),
             Doubt = ChatHandlers.DoubtDto(chat),

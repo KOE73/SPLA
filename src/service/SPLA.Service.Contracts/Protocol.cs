@@ -89,6 +89,13 @@ public static class MessageTypes
     /// <summary>Fork a chat at a message into a new chat. Body is <see cref="ChatForkPayload"/>.</summary>
     public const string ChatFork = "chat.fork";
     public const string ChatSettings = "chat.settings";
+    /// <summary>Ask what the chat's current model can do with its reasoning channel. Body is
+    /// <see cref="ChatReasoningRequest"/>; answered with <see cref="ChatReasoningResult"/>.
+    /// <para>A request rather than a field on <see cref="ChatOpened"/> because the answer comes from
+    /// the provider over the network, and opening a chat must not wait on a provider being up.</para></summary>
+    public const string ChatReasoningGet = "chat.reasoning.get";
+    /// <summary>Answer to <see cref="ChatReasoningGet"/>. Body is <see cref="ChatReasoningResult"/>.</summary>
+    public const string ChatReasoningResult = "chat.reasoning.result";
     /// <summary>Hand a skill to a chat on the user's say-so — the loan desk. Body is
     /// <see cref="ChatSkillActivatePayload"/>; the server broadcasts <see cref="ChatSkillState"/> to
     /// the chat's watchers.

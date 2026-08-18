@@ -58,7 +58,9 @@ client/types **and** this table.
 | `chat.rename` | `ChatRename` | `ChatRenamePayload` | Broadcasts `chat.list.result`. |
 | `chat.delete` | `ChatDelete` | `ChatDeletePayload` | Broadcasts `chat.list.result`. |
 | `chat.send` | `ChatSend` | `ChatSendPayload` | Runs a turn; streams to watchers. |
-| `chat.settings` | `ChatSettings` | `ChatSettingsPayload` | Change mode/model entry; echoes `chat.opened`. |
+| `chat.settings` | `ChatSettings` | `ChatSettingsPayload` | Change mode/model entry, temperature or reasoning selection; echoes `chat.opened`. An empty `reasoning` string means "drop my override", which is why it is distinct from null. |
+| `chat.reasoning.get` | `ChatReasoningGet` | `ChatReasoningRequest` | Ask what the chat's model takes on its reasoning channel; reply `chat.reasoning.result`. A request, not a field on `chat.opened`, because the answer comes from the provider over the network and opening a chat must not wait on one. |
+| `chat.reasoning.result` | `ChatReasoningResult` | `ChatReasoningResult` | The advertised capability: the provider's own effort words, whether "off" is on offer, whether a token budget is. `known: false` = nobody described this model, and the lever stays unavailable rather than guessed. |
 | `chat.rewind` | `ChatRewind` | `ChatRewindPayload` | Truncate a chat at/before a message; echoes `chat.opened`. |
 | `chat.fork` | `ChatFork` | `ChatForkPayload` | Copy a chat at a message boundary; opens the fork and broadcasts `chat.list.result`. |
 | `chat.skill.activate` | `ChatSkillActivate` | `ChatSkillActivatePayload` | Hand a skill to the chat because a person picked it; broadcasts `chat.skill.state` to watchers, or answers `error` with the reason. May name a skill the model was never told about — level hides from the model, not from its owner. |

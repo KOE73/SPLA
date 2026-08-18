@@ -34,11 +34,28 @@ public class LLMSettings
     public string Theme { get; set; } = "Dark";
 
     /// <summary>
-    /// Selected reasoning option for the active model. Interpreted per the model's advertised
-    /// options: "off"/"on" map to <c>chat_template_kwargs.enable_thinking</c>; graded values
-    /// (e.g. "low"/"medium"/"high") map to <c>reasoning_effort</c>. Empty/null = model default.
+    /// The reasoning selection for this turn, as the scalar <see cref="Llm.ReasoningChoice"/> grammar
+    /// (<c>""</c> | <c>off</c> | <c>on</c> | an effort word | <c>budget:N</c>). Empty/null = say
+    /// nothing and let the model's own default stand.
+    /// <para>
+    /// How it reaches the wire is the provider's business, not this type's: LM Studio and OpenAI take
+    /// <c>reasoning_effort</c>, OpenRouter a <c>reasoning</c> block, llama.cpp-style servers a chat
+    /// template kwarg. Each provider's <c>IOpenAiCompatProfile</c> does that translation.
+    /// </para>
     /// </summary>
     public string? ReasoningLevel { get; set; }
+
+    /// <summary>
+    /// What is known about the active model's reasoning channel — declared in config, else advertised
+    /// by the provider, else <see cref="ReasoningCapability.Unknown"/>. Filled in per turn.
+    /// <para>
+    /// It gates the wire mapping, and that is not defensive tidiness: sending
+    /// <c>reasoning_effort: "none"</c> to a LocalAI-hosted Gemma — a server that validates nothing and
+    /// accepts every field — makes it emit an endless run of "0.5-0.5-0.5" instead of an answer. A
+    /// lever nobody advertised does not get pulled.
+    /// </para>
+    /// </summary>
+    public ReasoningCapability ModelReasoning { get; set; } = ReasoningCapability.Unknown;
 
     /// <summary>
     /// Subtracts a fixed value from the logit of any token already seen (0 = off).

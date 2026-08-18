@@ -64,20 +64,13 @@ public class ModelInfo
     /// <summary>Whether the model advertises tool/function calling.</summary>
     public bool SupportsTools { get; set; }
 
-    /// <summary>Allowed reasoning options advertised by the model (e.g. ["off","on"] or ["low","medium","high"]). Empty when the model has no reasoning channel.</summary>
-    public List<string> ReasoningOptions { get; set; } = new();
+    /// <summary>What the provider says this model will let a caller do with its reasoning channel.
+    /// <see cref="ReasoningCapability.Unknown"/> when nothing was advertised — which is not the same
+    /// as a model that cannot reason.</summary>
+    public ReasoningCapability Reasoning { get; set; } = ReasoningCapability.Unknown;
 
-    /// <summary>The model's default reasoning option, when advertised.</summary>
-    public string ReasoningDefault { get; set; } = string.Empty;
-
-    /// <summary>Whether the model produces a separate reasoning/thinking channel.</summary>
-    public bool SupportsReasoning => ReasoningOptions.Count > 0;
-
-    /// <summary>True for on/off style reasoning (a simple toggle); false for graded effort levels.</summary>
-    public bool IsReasoningOnOff =>
-        ReasoningOptions.Count > 0 && ReasoningOptions.TrueForAll(o =>
-            string.Equals(o, "on", System.StringComparison.OrdinalIgnoreCase) ||
-            string.Equals(o, "off", System.StringComparison.OrdinalIgnoreCase));
+    /// <summary>Whether the model produces a separate reasoning/thinking channel, as far as we were told.</summary>
+    public bool SupportsReasoning => Reasoning.Supported;
 
     /// <summary>True when the rich native metadata was available; false for the bare /v1/models fallback.</summary>
     public bool HasDetails { get; set; }
