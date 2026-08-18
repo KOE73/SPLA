@@ -121,15 +121,20 @@ All plugin panels moved from Avalonia to the web client, so a plugin ships one U
 Domain identity over NTLM, per-user file areas, group sharing, and a pluggable identity provider.
 Projects can be created by name into the calling user's own area, and token/`Origin` authentication
 gaps in the service were closed. The CLI moved to `Spectre.Console.Cli` and gained a headless batch
-runner, so it can be driven by another program rather than only by a person.
+runner, so it can be driven by another program rather than only by a person. `spla chat run` also
+gained `--sys-prompt-file`, so a long system-prompt variant no longer has to be typed inline.
 
 ## Build and release
 
 This cycle is the first with **continuous integration**: every push to `work` and every pull request
 into `main` builds the solution, runs the .NET tests, type-checks and bundles the web client, and
-runs its vitest suite. **Releases are automated** — a tag or a manual run re-runs those checks
-against the exact commit being released, publishes apps and plugins, and attaches `SPLA.zip` to a
-GitHub release, removing its own tag again if the publish fails.
+runs its vitest suite. **Releases are automated** — a push to `main` that touches source paths (or a
+manual run against any ref) re-runs those checks against the exact commit being released, publishes
+apps and plugins, and attaches `SPLA.zip` to a GitHub release, removing its own tag again if the
+publish fails. There is no separate "now release it" step: `main` receives nothing but releases, so
+the merge already is the decision. A tag-push trigger was considered and dropped — GitHub does not
+document whether a `paths` filter applies to tag pushes, and a release pipeline should not rest on
+that being guessed right.
 
 Alongside that, published builds stamp the branch they came from so an experimental build cannot be
 mistaken for a working one, web dependencies install when the manifests change rather than once per

@@ -42,3 +42,29 @@ sentences are what `current-list.md` is built from, which is why they have to st
 - **Release notes come from `CHANGELOGS/`, not from commit messages.** GitHub's generated notes list
   merged pull requests, and under the `work → main` squash model there is exactly one per release,
   so a release covering months of work would otherwise read as a single line.
+
+- **A release is cut by merging into `main`, not by a second confirmation afterwards.** `main`
+  receives nothing but releases, so a push to it already *is* the decision — taken when the pull
+  request was merged. The workflow filters that push through an **allow-list of source paths**
+  rather than an ignore-list of documentation: documentation is an open set (`CHANGELOGS/`,
+  `docs/adr`, `docs/plans`, `agents/` all appeared over time) while source roots are closed and
+  documented, and a filter over an open set has to be extended every time the set grows. `tests/`
+  and `demo/` are outside the list on purpose — neither reaches `SPLA.zip`, and `ci.yml` has already
+  run them.
+
+- **The tag-push trigger was dropped rather than kept alongside the path filter.** GitHub's
+  documentation does not define whether a `paths` filter applies to tag pushes, and the failure mode
+  of guessing wrong is a release that silently does not happen. A manual run against any ref covers
+  the same ground and still produces a correctly numbered tag.
+
+- **`spla chat run` gained `--sys-prompt-file <path>`.** `--sys-prompt` only took inline text, forcing
+  a long prompt variant onto the command line; this reads the same way `--prompt-file` already does.
+  Combines with `--sys-prompt` if both are given — file first, then the inline text.
+
+- **Fix: `PublishAll.ps1` failed on its first CI run, before reaching any real build step.**
+  `npm --prefix web install` used a relative `web` path; on the GitHub-hosted Windows runner
+  (checkout under a subst'd `D:\a\...` drive) it resolved against the repo root instead, and npm
+  reported it could not find `package.json` there. `--prefix` now takes an absolute path built from
+  `$PSScriptRoot`, which cannot be misresolved this way regardless of the exact mechanism. Confirmed
+  against the actual CI log, not reproduced locally — the same script ran clean in a plain local
+  checkout.

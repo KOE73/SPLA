@@ -81,8 +81,13 @@ in addition to the root `AGENTS.md`.
   names the condition for revisiting it.
 - `docs/`, `agents/`, `Images/`: Documentation and assets (unchanged by the layered `src/` layout).
 - `.github/workflows/`: GitHub Actions. `ci.yml` (build + tests on `main`/`work` and on pull
-  requests into `main`) and `release.yml` (tag or manual run → `PublishAll.ps1` → GitHub release).
-  See the CI and releases section of [AGENTS.md](../AGENTS.md).
+  requests into `main`) and `release.yml` (a push to `main` that touches sources, or a manual run →
+  `PublishAll.ps1` → GitHub release). See the CI and releases section of [AGENTS.md](../AGENTS.md).
+
+  **Adding a source root means adding it to `release.yml`.** That workflow triggers on an
+  *allow-list* of source paths — the roots listed in this file — because documentation is an open
+  set and sources are a closed one. A new top-level source folder that is not in the list produces
+  no release, silently. The list lives under `on.push.paths`.
 - `CHANGELOGS/`: Release notes, written by hand. Three working files — `current-log.md` (detailed,
   dated), `current-list.md` (one line per change, derived from the log) and `current-summary.md`
   (prose, rewritten before each push) — plus one frozen `<version>.md` per released version.

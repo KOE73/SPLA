@@ -4,26 +4,49 @@ name: Release
 #   - minor   moved by hand in Directory.Build.props, when a new chapter starts.
 #   - build   this workflow's run number. Never set by hand — it is what identifies a release.
 #
-# Tests gate the release: nothing is tagged or published from a commit that does not build and pass
-# its tests first (see "Run tests").
-#
-# The release body is assembled from CHANGELOGS/: the prose summary and the scannable list. The
-# detailed log stays in the repository and is linked. GitHub's own pull-request notes are appended
-# after all of it.
+# The workflow always creates its own tag, after the checks pass. There is deliberately no
+# tag-push trigger: GitHub's documentation does not define whether a `paths` filter applies to tag
+# pushes, and a release pipeline must not rest on an undefined interaction whose failure mode is
+# silence. Releasing something other than the tip of `main` is done with a manual run against that
+# ref, which produces a properly numbered tag anyway.
 
 on:
-  # Trigger 1: someone pushes a tag that already matches the version pattern.
+  # Trigger 1: a squash-merge landed on `main`. Under this branching model `main` receives nothing
+  # but releases, so a push to it *is* the release decision — already taken when the pull request
+  # was merged. Asking for a second confirmation in the Actions tab would confirm the same thing
+  # twice.
+  #
+  # `paths` is an allow-list, not an ignore-list, because documentation is an open set and sources
+  # are a closed one: `CHANGELOGS/`, `docs/adr`, `docs/plans`, `docs/ideas` and `agents/` all
+  # appeared over time, and an ignore-list would have to be extended each time — which nobody
+  # remembers. The source roots below are the ones `agents/structure.md` documents; adding a new one
+  # means adding it here too.
+  #
+  # Not listed, deliberately: `tests/` and `demo/` (never reach SPLA.zip — a test-only change is not
+  # a product change, and ci.yml has already run it), `.github/` (changing this workflow does not
+  # change the product; test it with a manual run), and everything textual.
   push:
-    tags:
-      - 'v0.*.*'
-  # Trigger 2: someone runs this workflow by hand from the Actions tab, no tag needed yet.
+    branches: [main]
+    paths:
+      - 'src/**'
+      - 'web/**'
+      - 'skills/**'
+      - 'Directory.Build.props'
+      - 'SPLA.slnx'
+      - 'PublishAll.ps1'
+      - 'PublishAll.cmd'
+      - 'CopySkills.ps1'
+      - 'EnsureNodeJs.ps1'
+  # Trigger 2: a manual run from the Actions tab, against any ref. Ignores the path filter above, so
+  # it is also the escape hatch for when a release is wanted and the filter did not fire.
   workflow_dispatch: {}
 
 # The GITHUB_TOKEN needs write access to push a tag and create a release.
 permissions:
   contents: write
 
-# Only one release job at a time, so two runs cannot publish two releases from the same push.
+# Only one release job at a time, so an automatic run and a manual one cannot publish twice from
+# the same commit.
 concurrency:
   group: release
   cancel-in-progress: false
@@ -33,16 +56,15 @@ jobs:
     runs-on: windows-latest
 
     steps:
-      # Full history: tag operations below need it.
+      # Full history: the tag operations below need it.
       - name: Checkout
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
-      # Manual runs have no tag yet. Work out what it *would* be, but do not create it until the
-      # tests below have passed — a tag must never point at a build that failed.
-      - name: Resolve version (manual run)
-        if: github.event_name == 'workflow_dispatch'
+      # Work out the version this run will produce, but do not create the tag yet — the checks
+      # below have to pass first. A tag must never point at a build that failed.
+      - name: Resolve version
         shell: pwsh
         run: |
           $props = Get-Content Directory.Build.props -Raw
@@ -54,32 +76,7 @@ jobs:
           $build = '${{ github.run_number }}'
           "TAG_NAME=v0.$minor.$build" >> $env:GITHUB_ENV
           "VERSION_BUILD=$build" >> $env:GITHUB_ENV
-
-      # Tag push: the tag is the source of truth for the build number. The minor still has to agree
-      # with Directory.Build.props — a tag naming a chapter the build does not produce would ship a
-      # package whose own version contradicts the release it is attached to.
-      - name: Resolve version (tag push)
-        if: github.event_name != 'workflow_dispatch'
-        shell: pwsh
-        run: |
-          $tag = '${{ github.ref_name }}'
-          if ($tag -notmatch '^v0\.(\d+)\.(\d+)$') {
-            Write-Host "ERROR: tag '$tag' does not match v0.<minor>.<build>" -ForegroundColor Red
-            exit 1
-          }
-          $tagMinor = $Matches[1]
-          $build = $Matches[2]
-          $props = Get-Content Directory.Build.props -Raw
-          if ($props -notmatch '<VersionMinor>(\d+)</VersionMinor>') {
-            Write-Host 'ERROR: could not read VersionMinor from Directory.Build.props' -ForegroundColor Red
-            exit 1
-          }
-          if ($Matches[1] -ne $tagMinor) {
-            Write-Host "ERROR: tag says minor $tagMinor, Directory.Build.props says $($Matches[1])." -ForegroundColor Red
-            exit 1
-          }
-          "TAG_NAME=$tag" >> $env:GITHUB_ENV
-          "VERSION_BUILD=$build" >> $env:GITHUB_ENV
+          Write-Host "This run produces v0.$minor.$build"
 
       - name: Setup .NET
         uses: actions/setup-dotnet@v4
@@ -96,8 +93,8 @@ jobs:
           cache: 'npm'
           cache-dependency-path: '**/package-lock.json'
 
-      # The gate: the same checks as ci.yml, run again against the exact commit being released — a
-      # tag can point anywhere, including at something ci.yml never saw.
+      # The gate: the same checks as ci.yml, run again against the exact commit being released. A
+      # manual run can target any ref, including one ci.yml never saw.
       #
       # `dotnet build` also type-checks and bundles the web trees (see the note in ci.yml), so only
       # vitest needs its own line. PublishAll.ps1 later does its own clean build, deliberately: it
@@ -130,7 +127,6 @@ jobs:
           }
 
           $parts = @()
-
           $summaryPath = 'CHANGELOGS/current-summary.md'
           $logPath     = 'CHANGELOGS/current-log.md'
           $listPath    = 'CHANGELOGS/current-list.md'
@@ -167,10 +163,9 @@ jobs:
           ($parts -join "`n`n") | Set-Content release-notes.md -Encoding utf8
           Write-Host "Release notes: $((Get-Content release-notes.md).Count) line(s)."
 
-      # Only now, with the checks green, does a manual run's tag become real.
-      - name: Create and push tag (manual run)
+      # Only now, with the checks green, does the tag become real.
+      - name: Create and push tag
         id: create_tag
-        if: github.event_name == 'workflow_dispatch'
         shell: pwsh
         run: |
           git config user.name 'github-actions[bot]'
@@ -192,7 +187,7 @@ jobs:
           name: SPLA-${{ env.TAG_NAME }}
           path: .publish/zip/SPLA.zip
 
-      # Publish the release. body_path is what the previous step assembled from CHANGELOGS/;
+      # Publish the release. body_path is what the earlier step assembled from CHANGELOGS/;
       # generate_release_notes appends GitHub's own pull-request summary and changelog link after it.
       - name: Create GitHub release
         if: success()
@@ -204,10 +199,9 @@ jobs:
           files: .publish/zip/SPLA.zip
           generate_release_notes: true
 
-      # Cleanup: only for a tag this workflow created itself, and only once that step actually
-      # succeeded — a failure during the checks happens before any tag exists. A tag pushed by a
-      # person is never deleted automatically; that is their deliberate act, not workflow litter.
-      - name: Remove tag if publish failed (manual run)
-        if: failure() && github.event_name == 'workflow_dispatch' && steps.create_tag.outcome == 'success'
+      # A tag this workflow created must never outlive the build it names. Guarded on the tag step
+      # having actually succeeded, since a failure during the checks happens before any tag exists.
+      - name: Remove tag if publish failed
+        if: failure() && steps.create_tag.outcome == 'success'
         shell: pwsh
         run: git push origin --delete $env:TAG_NAME

@@ -221,6 +221,15 @@ longer exists is worse than no summary at all. `ci.yml` warns about the same con
 **Publishable content starts after the first `---`.** Everything above it in these files explains
 how the file itself works and is stripped out of the release body.
 
+**Coverage is checked against `git log main..work`, never against conversation memory.** Multiple
+people and multiple sessions commit to `work`; a session only knows what it did, not what landed
+alongside it. Before opening the `work → main` pull request, diff the two branches and confirm every
+`feat`/`fix`/`!` commit has a log entry — a commit that arrived from outside the current session is
+exactly as reportable as one written in it, and the log has no way to notice a missing entry on its
+own. This already happened once: a CLI flag landed in the same window as a CI change, from a
+different piece of work, and was merged into `main..work` with no entry until the gap was caught
+during PR review.
+
 ### Freezing a release
 
 After a release is published, the three working files are merged into `CHANGELOGS/<version>.md`

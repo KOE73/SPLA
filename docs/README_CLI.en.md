@@ -111,7 +111,7 @@ spla chat open [id]
 spla chat fork <id> [--model <name>]
 spla chat run  [--prompt "<text>"]... [--prompt-file <path>]... [--model <id>|all]...
                [--out <dir-or-file>] [--out-name <template>] [--overwrite]
-               [--sys-prompt "<text>"] [--md-clean] [--skill <id>]
+               [--sys-prompt "<text>"] [--sys-prompt-file <path>] [--md-clean] [--skill <id>]
                [--show-prompt] [--show-prompt-file <path>]
                [--stream] [--temp <n>] [--reasoning <level>]
                [--timeout <seconds>] [--dry-run]
@@ -129,7 +129,17 @@ spla chat run  [--prompt "<text>"]... [--prompt-file <path>]... [--model <id>|al
 One cell = one prompt × one model. `--model` is repeatable; `all` runs every entry in the project's
 `connections:`. `--prompt` is repeatable inline text (named `text1`, `text2`, … in output);
 `--prompt-file` is repeatable too and can be mixed with `--prompt` — its base file name becomes the
-label.
+label. **Each `--prompt`/`--prompt-file` is its own cell, not a piece of one message**: two
+`--prompt-file`s never merge into one user message carrying two documents — they are two independent
+chats, one document each.
+
+Cells run **sequentially, one after another, not in parallel** (a plain `foreach` over the cell list
+in `ChatRunCommand.ExecuteAsync`) — the second cell has no access to the first cell's result, they
+simply run one after the other in the same process. Each cell is exactly one call to the model
+(`chat.SendAsync` once); with no tools registered for the chat (`agent.capabilities: []`) that is
+literally one HTTP request and one response, no back-and-forth inside it. With tools available a cell
+can make several model calls (the ordinary agent loop), but it is still one cell — one user request
+going in.
 
 Where results go:
 
@@ -139,13 +149,16 @@ Where results go:
 | a directory (created if missing) | one file per cell, named from `--out-name` (default `{timestamp} {label}`; placeholders `{timestamp}` `{prompt}` `{model}` `{label}`), de-duplicated with `(2)`, `(3)`, … if two cells land in the same second |
 | `--overwrite` set | `--out` is one literal file path; **every cell overwrites it** — use this for "just the latest run", not for a matrix with more than one cell |
 
-`--sys-prompt "<text>"` and `--md-clean` never touch the project's own `agent.custom_prompt` — the
-system prompt is built from a fixed, named pipeline of contributors (`mode` → `core.*` → `instructions`
-→ `custom-prompt` → `skills`/`toolsets`/`plugins`/`memory` — see `spla chat run --show-prompt` below),
-and the CLI's additions ride a separate `cli` contributor inserted right after `custom-prompt`: the
-project's prompt is always present, unedited, with the run's own text added after it, never replacing
-it. `--md-clean` asks the model for one final clean-Markdown message with no chatty wrapping — the
-point is a file that needs no editing after it lands.
+`--sys-prompt "<text>"` / `--sys-prompt-file <path>` and `--md-clean` never touch the project's own
+`agent.custom_prompt` — the system prompt is built from a fixed, named pipeline of contributors
+(`mode` → `core.*` → `instructions` → `custom-prompt` → `skills`/`toolsets`/`plugins`/`memory` — see
+`spla chat run --show-prompt` below), and the CLI's additions ride a separate `cli` contributor
+inserted right after `custom-prompt`: the project's prompt is always present, unedited, with the run's
+own text added after it, never replacing it. `--sys-prompt-file` reads a file and adds it the same
+way `--sys-prompt` does — put a whole prompt variant in it (format, what not to do), not just a
+heading; if both are given, both land in the prompt, file first, then the inline text. `--md-clean`
+asks the model for one final clean-Markdown message with no chatty wrapping — the point is a file that
+needs no editing after it lands.
 
 `--skill <id>` hands that skill to every cell's chat before its prompt runs (the same "given to it by a
 person" path the UI's skill picker uses, not the REPL's `/skills load` message-injection shortcut) —

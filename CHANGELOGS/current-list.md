@@ -13,8 +13,8 @@ repository and is linked from it.
 
 - Continuous integration: solution build, .NET tests, web type-check, bundle and vitest, on every
   push to `work` and every pull request into `main`.
-- Release automation: tag or manual run re-runs the checks, publishes apps and plugins, and attaches
-  `SPLA.zip` to a GitHub release.
+- Release automation: merging into `main` re-runs the checks, publishes apps and plugins, and
+  attaches `SPLA.zip` to a GitHub release; a manual run does the same against any ref.
 - MCP: SPLA tools served over stdio, usable by an external agent.
 - Mounts: folders outside the project root, declared by name, each its own security zone.
 - Multi-project service: several projects at once, with a project picker in the client.
@@ -27,6 +27,8 @@ repository and is linked from it.
 - Browser plugin: first wave of Playwright automation with a screencast panel.
 - OneC: Vue configuration browser.
 - Headless batch runner in the CLI, now on `Spectre.Console.Cli`.
+- `--sys-prompt-file` on `spla chat run`, reading a system-prompt addition from a file the way
+  `--prompt-file` already does for prompts.
 - Loop guard against degenerate LLM generation.
 - Reasoning lever driven by what the provider advertises.
 - Branch stamp on published builds.
