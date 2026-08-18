@@ -40,6 +40,10 @@ internal sealed class ChatRunSettings : CommandSettings
     [Description("Extra system-prompt text for this run, added after the project's own custom prompt — never replaces it.")]
     public string? SysPrompt { get; init; }
 
+    [CommandOption("--sys-prompt-file")]
+    [Description("Same as --sys-prompt, but read from a file. Combines with --sys-prompt if both are given (file first, then the inline text).")]
+    public string? SysPromptFile { get; init; }
+
     [CommandOption("--skill")]
     [Description("Skill id handed to every cell's chat before its prompt runs.")]
     public string? Skill { get; init; }
@@ -99,6 +103,11 @@ internal sealed class ChatRunCommand(ResolvedSettings settings, ILoggerFactory l
         // Purely additive, and built BEFORE the runtime: the composer takes its contributors at
         // construction and is immutable afterwards. See CliContributor's own doc comment.
         var cli = new CliContributor();
+        if (s.SysPromptFile is { Length: > 0 } sysPromptFile)
+        {
+            if (!File.Exists(sysPromptFile)) { AnsiConsole.MarkupLine($"[red]sys-prompt file not found:[/] {sysPromptFile.EscapeMarkup()}"); return 2; }
+            cli.AddText("sys-prompt-file", "CLI system prompt", await File.ReadAllTextAsync(sysPromptFile));
+        }
         if (s.SysPrompt is { Length: > 0 } sysPrompt)
             cli.AddText("sys-prompt", "CLI system prompt", sysPrompt);
         if (s.MdClean)
