@@ -38,6 +38,21 @@ if (SPLA.CLI.StopCommand.IsStopCommand(args))
     return;
 }
 
+// A hub holds no project and runs no agent, so it must not go through the bootstrap that resolves
+// and locks one either. Same binary, different role — see HubCommand for why it is not its own exe.
+if (SPLA.CLI.HubCommand.IsHubCommand(args))
+{
+    SplaTelemetry.ConfigureGlobalLogs();
+    using var hubLoggers = LoggerFactory.Create(b =>
+    {
+        b.ClearProviders();
+        b.AddProvider(SplaTelemetry.CreateFileLoggerProvider());
+        b.SetMinimumLevel(LogLevel.Information);
+    });
+    Environment.ExitCode = await SPLA.CLI.HubCommand.RunAsync(args, hubLoggers);
+    return;
+}
+
 // `mcp` speaks a protocol on stdout, so it must be recognised before anything prints. The banner
 // below would be the first thing a client reads, and an unparsable first line kills the session.
 // It stays a raw args check ahead of Spectre for exactly that reason — nothing may run first.

@@ -1,6 +1,8 @@
 using SPLA.Runtime;
 using Microsoft.Extensions.Logging;
+using SPLA.Domain.Project;
 using SPLA.Domain.Settings;
+using SPLA.Instances;
 using SPLA.Service;
 
 namespace SPLA.CLI;
@@ -12,7 +14,7 @@ internal static class ServeCommand
 {
     public static async Task RunAsync(
         int port, string bind, string? token, bool repl, string? initialChatMessage,
-        int idleTimeoutMinutes,
+        int idleTimeoutMinutes, string? registryUrl, string? registryToken,
         ResolvedSettings settings, ILoggerFactory loggerFactory)
     {
         InstallCrashLogging(loggerFactory);
@@ -52,6 +54,15 @@ internal static class ServeCommand
         var stop = new TaskCompletionSource();
         Console.CancelKeyPress += (_, e) => { e.Cancel = true; stop.TrySetResult(); };
 
+        // Told about a hub, this instance announces itself to it and keeps saying what it is doing.
+        // Registration is a view, never a dependency: an unreachable hub costs this process nothing —
+        // the project is still locked, clients still dial the endpoint directly, and the registrar
+        // simply keeps retrying in the background.
+        await using var registrar = StartRegistrar(
+            registryUrl, settings.SecretResolver.Resolve(registryToken), registry, runtime, host, settings,
+            force => { if (force) runtime.Turns.CancelAll(); stop.TrySetResult(); return Task.CompletedTask; },
+            loggerFactory);
+
         // Nothing owns this instance; it holds a lease. When there is nobody connected and nothing
         // running for long enough, it lets go — see InstanceLease for why ownership was the wrong
         // model. Off by default; a window that spawned this process passes --idle-timeout.
@@ -90,6 +101,40 @@ internal static class ServeCommand
         }
 
         await host.StopAsync();
+    }
+
+    /// <summary>
+    /// Builds and starts the hub registrar, or returns null when no hub was named.
+    ///
+    /// <para>The status callback samples rather than caches: the registrar asks the runtime what it
+    /// is doing each tick, so nothing can leave a stale state behind by forgetting to publish one.</para>
+    /// </summary>
+    private static InstanceRegistrar? StartRegistrar(
+        string? registryUrl, string? token, AgentRuntimeRegistry registry, AgentRuntime runtime,
+        SplaServiceHost host, ResolvedSettings settings, Func<bool, Task> onStop, ILoggerFactory loggers)
+    {
+        if (string.IsNullOrWhiteSpace(registryUrl) || runtime.Instance?.Info is not { } info) return null;
+
+        var registrar = new InstanceRegistrar(
+            registryUrl,
+            token,
+            new RegisterFrame
+            {
+                ProjectId = settings.ProjectFilePath ?? AgentRuntimeRegistry.NoProjectId,
+                ProjectName = settings.ProjectName,
+                Info = info
+            },
+            () => new StatusFrame
+            {
+                State = InstanceStates.Name(registry.State(TimeSpan.FromMinutes(10))),
+                Clients = host.ClientCount
+            },
+            onStop,
+            loggers.CreateLogger("registry"));
+
+        registrar.Start();
+        Console.WriteLine($"Registering with hub {registryUrl}.");
+        return registrar;
     }
 
     private static void InstallCrashLogging(ILoggerFactory loggerFactory)

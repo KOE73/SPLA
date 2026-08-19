@@ -1,5 +1,5 @@
 using SPLA.Domain.Project;
-using SPLA.Registry;
+using SPLA.Instances;
 using SPLA.Service.Contracts;
 
 namespace SPLA.CLI.Wire;

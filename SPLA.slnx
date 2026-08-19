@@ -1,4 +1,4 @@
-﻿<Solution>
+<Solution>
   <Folder Name="/README/">
     <File Path="Directory.Build.props" />
     <File Path="README.md" />
@@ -110,7 +110,7 @@
     <Project Path="src/core/SPLA.Library/SPLA.Library.csproj" />
     <Project Path="src/core/SPLA.MCP.Core/SPLA.MCP.Core.csproj" />
     <Project Path="src/core/SPLA.Observability/SPLA.Observability.csproj" />
-    <Project Path="src/core/SPLA.Registry.Contracts/SPLA.Registry.Contracts.csproj" />
+    <Project Path="src/core/SPLA.Instances.Contracts/SPLA.Instances.Contracts.csproj" />
   </Folder>
   <Folder Name="/src/core/infrastructure/">
     <Project Path="src/core/SPLA.Secrets.Dpapi/SPLA.Secrets.Dpapi.csproj" />
@@ -132,7 +132,7 @@
   </Folder>
   <Folder Name="/src/service/">
     <Project Path="src/service/SPLA.Service/SPLA.Service.csproj" />
-    <Project Path="src/service/SPLA.Registry/SPLA.Registry.csproj" />
+    <Project Path="src/service/SPLA.Instances/SPLA.Instances.csproj" />
     <Project Path="src/service/SPLA.Service.Contracts/SPLA.Service.Contracts.csproj" />
     <Project Path="src/service/SPLA.Mcp/SPLA.Mcp.csproj" />
   </Folder>

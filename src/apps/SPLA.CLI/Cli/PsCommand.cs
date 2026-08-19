@@ -1,6 +1,7 @@
 using SPLA.CLI.Wire;
 using SPLA.Domain.Project;
-using SPLA.Registry;
+using SPLA.Domain.Settings;
+using SPLA.Instances;
 
 namespace SPLA.CLI;
 
@@ -26,8 +27,27 @@ internal static class PsCommand
             return 0;
         }
 
-        var registry = new FileInstanceRegistry(probe: new WireInstanceProbe(TimeSpan.FromSeconds(5)));
-        var running = await registry.ListAsync();
+        // Which registry answers is a launch-time choice, not a different code path: a hub when one
+        // was named, this machine's lock files otherwise.
+        var hub = Option(args, "--registry");
+        IInstanceRegistry registry = hub is { Length: > 0 }
+            ? new RemoteInstanceRegistry(hub, ConfigLoader.LoadAndResolve().SecretResolver.Resolve(Option(args, "--token")))
+            : new FileInstanceRegistry(probe: new WireInstanceProbe(TimeSpan.FromSeconds(5)));
+
+        IReadOnlyList<InstanceRecord> running;
+        try
+        {
+            running = await registry.ListAsync();
+        }
+        catch (Exception ex) when (hub is { Length: > 0 })
+        {
+            Console.Error.WriteLine($"Could not reach the hub at {hub}: {ex.Message}");
+            return 1;
+        }
+        finally
+        {
+            (registry as IDisposable)?.Dispose();
+        }
 
         if (running.Count == 0)
         {
@@ -51,11 +71,17 @@ internal static class PsCommand
         return 0;
     }
 
+    private static string? Option(string[] args, string name)
+    {
+        var i = Array.FindIndex(args, a => a.Equals(name, StringComparison.OrdinalIgnoreCase));
+        return i >= 0 && i + 1 < args.Length ? args[i + 1] : null;
+    }
+
     private static string Truncate(string s, int max) => s.Length <= max ? s : s[..(max - 1)] + "…";
 
     private static void PrintHelp()
     {
-        Console.WriteLine("Usage: spla ps");
+        Console.WriteLine("Usage: spla ps [--registry <url>] [--token <ref-or-literal>]");
         Console.WriteLine();
         Console.WriteLine("Lists every known project that currently has a live instance, with its mode,");
         Console.WriteLine("state (asked over the wire when the instance is serving), connected clients,");
@@ -64,5 +90,8 @@ internal static class PsCommand
         Console.WriteLine();
         Console.WriteLine("CLIENTS counts every client connected at the moment of asking, including this");
         Console.WriteLine("command's own connection — an otherwise unattended instance reads as 1 here.");
+        Console.WriteLine();
+        Console.WriteLine("With --registry, the list comes from a hub instead of this machine's lock files,");
+        Console.WriteLine("and the state each instance reports is what it pushed there — no probing needed.");
     }
 }

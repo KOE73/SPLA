@@ -5,7 +5,7 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using SPLA.Domain.Project;
-using SPLA.Registry;
+using SPLA.Instances;
 using Xunit;
 
 namespace SPLA.Tests;

@@ -1,7 +1,7 @@
 # PLAN_20260819-2_core — вход в проект и инстансы агента
 
-**Статус: в работе.** Ветка `core/project-entry-and-instances`. Этапы 0–5 сделаны и проверены
-вживую, 6 следующий. Статус каждого этапа — в его заголовке.
+**Статус: в работе.** Ветка `core/project-entry-and-instances`. Этапы 0–6 сделаны и проверены
+вживую, 7 следующий. Статус каждого этапа — в его заголовке.
 
 Реализует [`ADR_20260819_core_project-entry`](../adr/ADR_20260819_core_project-entry.md) и
 [`ADR_20260819-2_core_agent-instances`](../adr/ADR_20260819-2_core_agent-instances.md). Решения там,
@@ -82,7 +82,7 @@
 
 ## Этап 5 — реестр, файловый режим — **сделано**
 
-- `SPLA.Registry.Contracts` в `src/core/`: `InstanceRecord`, `IInstanceRegistry`, `IInstanceProbe`.
+- `SPLA.Instances.Contracts` в `src/core/`: `InstanceRecord`, `IInstanceRegistry`, `IInstanceProbe`.
 - `SPLA.Registry` в `src/service/`: `FileInstanceRegistry` — известные проекты от
   `IProjectProvider`, живость из замка каждого проекта.
 - Локальный список живых работает без всякого хаба.
@@ -99,13 +99,32 @@
 `spla ps` и `spla stop` переведены на реестр — до этого каждая команда обходила проекты и читала
 замки сама.
 
-## Этап 6 — хаб и удалённая регистрация
+## Этап 6 — хаб и удалённая регистрация — **сделано**
 
-- `RegistryHub`: держит каналы инстансов, отдаёт список, рассылает статусы, принимает `stop`.
-- `RemoteInstanceRegistry`: клиентская сторона, `spla serve --registry <url>`.
-- Хостинг: режим CLI и внутри `SPLA.Server`. Avalonia поднимает хаб дочерним процессом.
-- Токен — `secret:user:registry` (на сервере `shared`).
-- `/health` отдаёт `instanceId`, сверяется до подключения.
+- `RegistryHub`: держит каналы инстансов, отдаёт список, принимает статусы, релеит `stop`.
+- `InstanceRegistrar` (сторона инстанса) + `RemoteInstanceRegistry` (сторона наблюдателя).
+- `spla hub` — режим того же бинаря; `spla serve --registry <url>`; `spla ps --registry <url>`.
+- Токен — `secret:user:registry`, резолвится через машинный слой (проекта у хаба нет).
+
+**Переименование проектов, вынужденное.** `SPLA.Registry` перекрывал `Microsoft.Win32.Registry` и
+сразу сломал сборку `SystemOps`: внутри пространства имён `SPLA.*` голое `Registry` начинало
+резолвиться в новый namespace. Проекты называются `SPLA.Instances` и `SPLA.Instances.Contracts` —
+имя вдобавок перестало быть перегруженным, в коде уже есть `AgentRuntimeRegistry`, `ToolSetRegistry`
+и `registry.json`.
+
+**Хостинг лежит в `SPLA.Service`, а не в `SPLA.Instances`.** Иначе трей потянул бы ASP.NET — ровно
+то ограничение, ради которого разрез и делался. `RegistryEndpoints.MapRegistry` кладёт три маршрута
+на любой хост, `RegistryHubHost` — минимальный хост для `spla hub`, который не открывает проект
+вообще.
+
+Проверено вживую: хаб на 5061, `serve --registry` регистрируется, `ps --registry` показывает
+инстанс с состоянием, которое тот запушил (`idle`, 0 клиентов — в отличие от файлового режима,
+где само `ps` считается клиентом). Инстанс исчезает из хаба в момент закрытия сокета; `POST
+/registry/stop` доезжает до инстанса и гасит его.
+
+**Не сделано в этом этапе:** хостинг хаба внутри `SPLA.Server` и подъём хаба из Avalonia. Оба —
+одна строка `app.MapRegistry(...)` / запуск дочернего процесса, но у обоих нет сценария до этапа 7,
+и проверять их нечем. Перенесено в этап 7.
 
 ## Этап 7 — UI
 

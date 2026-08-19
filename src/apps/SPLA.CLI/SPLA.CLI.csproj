@@ -7,7 +7,7 @@
     <ProjectReference Include="..\..\core\SPLA.Observability\SPLA.Observability.csproj" />
     <ProjectReference Include="..\..\service\SPLA.Service\SPLA.Service.csproj" />
     <ProjectReference Include="..\..\service\SPLA.Mcp\SPLA.Mcp.csproj" />
-    <ProjectReference Include="..\..\service\SPLA.Registry\SPLA.Registry.csproj" />
+    <ProjectReference Include="..\..\service\SPLA.Instances\SPLA.Instances.csproj" />
   </ItemGroup>
 
   <ItemGroup>

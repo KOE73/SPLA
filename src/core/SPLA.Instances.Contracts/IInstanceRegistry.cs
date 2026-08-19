@@ -1,6 +1,6 @@
 using SPLA.Domain.Project;
 
-namespace SPLA.Registry;
+namespace SPLA.Instances;
 
 /// <summary>
 /// One live instance, as an observer sees it: what the lock file says plus whatever the observer

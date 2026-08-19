@@ -33,6 +33,14 @@ internal sealed class ServeSettings : CommandSettings
     // Off by default on purpose: nobody expects a daemon they started by hand to leave on its own.
     // A window that spawns this process passes a few minutes, so closing the window reclaims the
     // process eventually — without ever cutting a turn short or answering a pending question.
+    [CommandOption("--registry")]
+    [Description("Hub to register with, e.g. http://build-server:5060. Absent = this machine's lock files are the only registry.")]
+    public string? Registry { get; init; }
+
+    [CommandOption("--registry-token")]
+    [Description("Token for the hub. Takes a secret reference (secret:user:registry) or a literal.")]
+    public string? RegistryToken { get; init; }
+
     [CommandOption("--idle-timeout")]
     [Description("Minutes with no clients and nothing running before the instance stops itself. 0 (default) = never.")]
     public int IdleTimeoutMinutes { get; init; }
@@ -45,7 +53,8 @@ internal sealed class ServeCliCommand(ResolvedSettings settings, ILoggerFactory 
     protected override async Task<int> ExecuteAsync(CommandContext context, ServeSettings s, CancellationToken cancellationToken)
     {
         await ServeCommand.RunAsync(
-            s.Port, s.Bind, s.Token, s.Repl, s.NewChat, s.IdleTimeoutMinutes, settings, loggerFactory);
+            s.Port, s.Bind, s.Token, s.Repl, s.NewChat, s.IdleTimeoutMinutes,
+            s.Registry, s.RegistryToken, settings, loggerFactory);
         return 0;
     }
 }

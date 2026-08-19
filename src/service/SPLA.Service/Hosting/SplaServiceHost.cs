@@ -137,6 +137,7 @@ public sealed class SplaServiceHost
         ?? throw new InvalidOperationException($"{nameof(SplaServiceHost)}.{nameof(Url)} is only available after {nameof(StartAsync)}() completes.");
 
     private readonly InstanceLease _lease;
+    private readonly ConnectionHub _hub;
 
     /// <summary>Raised when the instance has had no clients and nothing running for the configured
     /// grace period. The host does not stop itself: whoever owns the process decides what else has to
@@ -151,11 +152,17 @@ public sealed class SplaServiceHost
     /// test. Without it an instance whose only user types at its own terminal looks unattended.</summary>
     public IDisposable HoldLease() => _lease.Hold();
 
+    /// <summary>How many clients are connected right now. Exposed for the registry channel, which
+    /// reports it upward: a hub showing "3 windows on this project" is the difference between an
+    /// instance somebody is using and one that is merely still alive.</summary>
+    public int ClientCount => _hub.Count;
+
     private SplaServiceHost(
-        WebApplication app, string scheme, string bind, InstanceLease lease,
+        WebApplication app, string scheme, string bind, InstanceLease lease, ConnectionHub hub,
         SPLA.Observability.Collection.TelemetryCollector? collector = null, IDisposable? gaugeTimer = null)
     {
         _app = app;
+        _hub = hub;
         _scheme = scheme;
         _bind = bind;
         _lease = lease;
@@ -330,7 +337,7 @@ public sealed class SplaServiceHost
             hub, registry, options.IdleTimeout, options.StallAfter,
             loggerFactory.CreateLogger<InstanceLease>());
 
-        return new SplaServiceHost(app, scheme, options.Bind, lease, collector, gaugeTimer);
+        return new SplaServiceHost(app, scheme, options.Bind, lease, hub, collector, gaugeTimer);
     }
 
     /// <summary>Configures the auth pipeline for the effective mode. Both server modes issue the same
@@ -619,7 +626,10 @@ public sealed class SplaServiceHost
     public Task RunAsync() => _app.RunAsync();
 
     /// <summary>Bridges ASP.NET's logging into the agent's existing <see cref="ILoggerFactory"/>.</summary>
-    private sealed class ForwardingLoggerProvider : ILoggerProvider
+    /// <summary>Internal rather than private: the registry-only host reuses it for the same reason
+    /// this one has it — the agent already logs through SplaTelemetry, and ASP.NET must not also
+    /// write to the console.</summary>
+    internal sealed class ForwardingLoggerProvider : ILoggerProvider
     {
         private readonly ILoggerFactory _factory;
         public ForwardingLoggerProvider(ILoggerFactory factory) => _factory = factory;

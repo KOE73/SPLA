@@ -1,6 +1,6 @@
 using SPLA.Domain.Project;
 
-namespace SPLA.Registry;
+namespace SPLA.Instances;
 
 /// <summary>
 /// The zero-configuration registry: the filesystem itself.

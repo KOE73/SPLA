@@ -204,6 +204,29 @@ Reference implementation: `AppearanceChanged` → `appearance.changed`.
 purely local UI events (e.g. `conn` for the connection dot). These are **not** protocol messages —
 keep them out of `MessageTypes`. Every in/out frame is also mirrored to `onWire(...)` listeners.
 
+## The registry channel is a different protocol
+
+Everything above is the chat protocol: `ProtocolEnvelope`, `MessageTypes`, one socket per client.
+The registry hub does **not** speak it. It has its own tiny vocabulary in
+`SPLA.Instances.Contracts/RegistryProtocol.cs` — `register`, `status`, `accepted`, `stop` — carried
+as `RegistryFrame` over `/registry/ws`, with `GET /registry/instances` and `POST /registry/stop`
+beside it.
+
+That separation is deliberate and worth keeping. An instance registering with a hub is saying three
+things — I exist, here is my address, here is what I am doing — and none of them need chats, tool
+calls, permissions or projects. Making registration speak the chat protocol would drag this entire
+contract into every instance and every observer, and would tie the hub's compatibility to a protocol
+that changes for unrelated reasons.
+
+So: **do not add registry messages to `MessageTypes`**, and do not route them through
+`MessageRouter`. They are listed in `RegistryFrames`, served by
+`SPLA.Service/Hosting/RegistryEndpoints.cs`, and consumed by `InstanceRegistrar` /
+`RemoteInstanceRegistry`.
+
+What *is* in the chat protocol is asking one instance directly what it is doing —
+`instance.status` / `instance.stop`, in the tables above. Same question, different asker: the hub
+learns it pushed over the registration channel, a client on the instance's own socket asks for it.
+
 ## Debugging the wire
 
 The Wire surface (`web/src/surfaces/Wire.vue`) is a passive tap: it subscribes to the client's wire
