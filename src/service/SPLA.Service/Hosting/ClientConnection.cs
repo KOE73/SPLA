@@ -490,14 +490,14 @@ public sealed class ClientConnection : IClientSession
                     Reason = result.Reason
                 }),
             OnNotice = note => ToWatchers(MessageTypes.Notice, new NoticePayload { Text = note }),
-            OnTokenUsage = (prompt, completion) =>
+            // Tells the windows what the call cost; recording it happened in the pipeline, so
+            // SettingsOps.GetUsage already reflects this turn by the time the broadcast is built.
+            OnLlmTurn = turn =>
             {
-                runtime.TokenUsageProject.Record(prompt, completion);
-                runtime.TokenUsageGlobal.Record(prompt, completion);
                 _ = ToWatchers(MessageTypes.TokenUsage, new TokenUsagePayload
                 {
-                    PromptTokens = prompt,
-                    CompletionTokens = completion,
+                    PromptTokens = turn.Message.PromptTokens,
+                    CompletionTokens = turn.Message.CompletionTokens,
                     ContextLength = ctx.ContextLength
                 });
                 _ = _hub.BroadcastToProjectAsync(projectId, MessageTypes.UsageResult, SettingsOps.GetUsage(runtime));

@@ -52,19 +52,20 @@ internal static class ConsoleHandlers
             // continue the loop the reader was just watching.
             OnAttempt = a => Console.WriteLine(
                 $"\n   [attempt {a.Index} discarded] {a.Note} · {a.Chars:N0} chars in {a.Duration.TotalSeconds:F1}s"),
-            OnTokenUsage = (prompt, completion) =>
+            // Reads the tallies, never writes them: the pipeline has already recorded this call by the
+            // time the hook fires, so the totals printed here are the ones on disk.
+            OnLlmTurn = turn =>
             {
-                runtime.TokenUsageProject.Record(prompt, completion);
-                runtime.TokenUsageGlobal.Record(prompt, completion);
-                if (prompt is int || completion is int)
-                {
-                    var t = runtime.TokenUsageProject.Total;
-                    var g = runtime.TokenUsageGlobal.Total;
-                    Console.WriteLine(
-                        $"   [tokens] turn in:{prompt?.ToString() ?? "?"} out:{completion?.ToString() ?? "?"}" +
-                        $"  ·  project Σ {t.TotalTokens:N0} (in {t.PromptTokens:N0}/out {t.CompletionTokens:N0})" +
-                        $"  ·  machine Σ {g.TotalTokens:N0}");
-                }
+                var (prompt, completion) = (turn.Message.PromptTokens, turn.Message.CompletionTokens);
+                if (prompt is null && completion is null) return;
+
+                var t = runtime.TokenUsageProject.Total;
+                var g = runtime.TokenUsageGlobal.Total;
+                Console.WriteLine(
+                    $"   [tokens] turn in:{prompt?.ToString() ?? "?"} out:{completion?.ToString() ?? "?"}" +
+                    $"  ·  {turn.ModelReported}" +
+                    $"  ·  project Σ {t.TotalTokens:N0} (in {t.PromptTokens:N0}/out {t.CompletionTokens:N0})" +
+                    $"  ·  machine Σ {g.TotalTokens:N0}");
             }
         };
     }

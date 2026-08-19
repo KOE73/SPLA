@@ -172,6 +172,18 @@ public sealed class AgentRuntime : IDisposable
         Sandbox = BuildSandbox(settings, loggerFactory);
 
         _httpClient = new HttpClient { Timeout = TimeSpan.FromMinutes(10) };
+        // Project tally goes through the broker only when a real project is open; the historical
+        // no-project path (cwd/.spla) is kept as-is so the tally never collides with the global file.
+        TokenUsageProject = new FileTokenUsageStore(
+            settings.ProjectFilePath != null
+                ? Path.Combine(
+                    settings.Project.GetBucket(SPLA.Domain.Project.IProjectBackend.RootBucket)
+                        .MapToHostDirectory()!,
+                    "token-usage.json")
+                : Path.Combine(settings.WorkspacePath, ".spla", "token-usage.json"));
+        TokenUsageGlobal = new FileTokenUsageStore(
+            Path.Combine(SPLA.Domain.Settings.ConfigLoader.GetDefaultsDir(), "token-usage.json"));
+
         // ── The LLM pipeline, baked once ──────────────────────────────────────────────────────────
         // The blueprint is what a host varies (CLI, worker and server each declare their own set).
         // Nothing is assembled per turn — per-turn variation travels in LlmTurnContext instead.
@@ -190,6 +202,10 @@ public sealed class AgentRuntime : IDisposable
             // Records what the provider said about the key's standing, on both the success and the
             // failure path — a 429 is the response that reports the budget, and it throws.
             .Use(new SPLA.Domain.Llm.Middleware.ProviderStateMiddleware(ProviderState))
+            // Real token figures reach the tallies and the meter here, once per network attempt,
+            // whoever made the call — the hosts used to each do this themselves, and the one that
+            // did not (spawned sub-agents) simply went uncounted.
+            .Use(new SPLA.Agent.Accounting.TokenAccountingMiddleware(TokenUsageProject, TokenUsageGlobal))
             // Credential materialization is the innermost layer: the key exists only for the provider
             // call itself, and never for accounting, which sits outside it.
             .Use(new SPLA.Domain.Llm.Middleware.CredentialsMiddleware(settings.SecretResolver))
@@ -338,17 +354,6 @@ public sealed class AgentRuntime : IDisposable
         compositionLogger.LogInformation("Agent surface at startup:\n{Manifest}",
             ComposeContext().Manifest.ToText());
 
-        // Project tally goes through the broker only when a real project is open; the historical
-        // no-project path (cwd/.spla) is kept as-is so the tally never collides with the global file.
-        TokenUsageProject = new FileTokenUsageStore(
-            settings.ProjectFilePath != null
-                ? Path.Combine(
-                    settings.Project.GetBucket(SPLA.Domain.Project.IProjectBackend.RootBucket)
-                        .MapToHostDirectory()!,
-                    "token-usage.json")
-                : Path.Combine(settings.WorkspacePath, ".spla", "token-usage.json"));
-        TokenUsageGlobal = new FileTokenUsageStore(
-            Path.Combine(SPLA.Domain.Settings.ConfigLoader.GetDefaultsDir(), "token-usage.json"));
     }
 
     /// <summary>

@@ -71,10 +71,17 @@ public sealed class AgentCallbacks
     public Func<string, Task>? OnNotice { get; init; }
 
     /// <summary>
-    /// Real provider-reported token usage for one LLM turn: (promptTokens, completionTokens), either
-    /// null when the provider does not expose that figure. Fired once per LLM response, for every turn
-    /// — including the ones whose only output is tool calls — so a host can keep an exact per-chat and
-    /// cumulative tally. Fire-and-forget: never blocks the loop. Null when the host does not care.
+    /// The whole provider-reported outcome of one LLM call — the model that actually answered, the
+    /// token counters, whatever the provider volunteered alongside, the wall-clock duration. Fired
+    /// once per LLM response, for every turn, including the ones whose only output is tool calls.
+    /// <para>
+    /// This replaced a narrower <c>OnTokenUsage(int?, int?)</c> that carried a strict subset of the
+    /// same event. Keeping both meant two hooks firing about one thing, and every host answering the
+    /// question "how many tokens" from a different one. Persisting those figures is no longer a host's
+    /// job at all — see <c>TokenAccountingMiddleware</c>; what arrives here is for showing and
+    /// reporting.
+    /// </para>
+    /// Fire-and-forget: never blocks the loop. Null when the host does not care.
     /// </summary>
-    public Action<int?, int?>? OnTokenUsage { get; init; }
+    public Action<LlmTurnResult>? OnLlmTurn { get; init; }
 }

@@ -69,6 +69,18 @@ internal sealed class ChatRunSettings : CommandSettings
     [CommandOption("--timeout")]
     public int? TimeoutSeconds { get; init; }
 
+    [CommandOption("--show-statistic")]
+    [Description("Print a per-cell run report — the model that actually answered, endpoint, settings, tokens, timing.")]
+    public bool ShowStatistic { get; init; }
+
+    [CommandOption("--show-statistic-file [FILE]")]
+    [Description("Write the run report next to each result as a companion file. Optionally takes a file-name template (same placeholders as --out-name) which then replaces the default 'same name as the result'.")]
+    public FlagValue<string> StatisticFile { get; init; } = new();
+
+    [CommandOption("--show-statistic-format")]
+    [Description("Comma-separated report formats, one companion file each: json, yaml, md. Default json.")]
+    public string? StatisticFormat { get; init; }
+
     [CommandOption("--dry-run")]
     [Description("Print the matrix and the planned output names, run nothing.")]
     public bool DryRun { get; init; }
@@ -77,6 +89,8 @@ internal sealed class ChatRunSettings : CommandSettings
     {
         if (Prompts.Length == 0 && PromptFiles.Length == 0)
             return ValidationResult.Error("give at least one --prompt or --prompt-file");
+        if (!StatFormats.TryParse(StatisticFormat, out _, out var formatError))
+            return ValidationResult.Error(formatError!);
         return ValidationResult.Success();
     }
 }
@@ -97,19 +111,24 @@ internal sealed class ChatRunCommand(ResolvedSettings settings, ILoggerFactory l
         foreach (var path in s.PromptFiles)
         {
             if (!File.Exists(path)) { AnsiConsole.MarkupLine($"[red]prompt file not found:[/] {path.EscapeMarkup()}"); return 2; }
-            prompts.Add(new PromptItem(Path.GetFileNameWithoutExtension(path), await File.ReadAllTextAsync(path)));
+            prompts.Add(new PromptItem(Path.GetFileNameWithoutExtension(path), await File.ReadAllTextAsync(path)) { Source = path });
         }
 
         // Purely additive, and built BEFORE the runtime: the composer takes its contributors at
         // construction and is immutable afterwards. See CliContributor's own doc comment.
         var cli = new CliContributor();
+        var sysPromptNote = new List<string>();
         if (s.SysPromptFile is { Length: > 0 } sysPromptFile)
         {
             if (!File.Exists(sysPromptFile)) { AnsiConsole.MarkupLine($"[red]sys-prompt file not found:[/] {sysPromptFile.EscapeMarkup()}"); return 2; }
             cli.AddText("sys-prompt-file", "CLI system prompt", await File.ReadAllTextAsync(sysPromptFile));
+            sysPromptNote.Add($"--sys-prompt-file {sysPromptFile}");
         }
         if (s.SysPrompt is { Length: > 0 } sysPrompt)
+        {
             cli.AddText("sys-prompt", "CLI system prompt", sysPrompt);
+            sysPromptNote.Add($"--sys-prompt ({sysPrompt.Length} chars)");
+        }
         if (s.MdClean)
             cli.AddText("md-clean", "Output formatting",
                 "Ответ дай одним финальным сообщением в чистом Markdown — без вступлений, " +
@@ -158,8 +177,25 @@ internal sealed class ChatRunCommand(ResolvedSettings settings, ILoggerFactory l
             ReasoningLevel = s.ReasoningLevel,
             TimeoutSeconds = s.TimeoutSeconds,
             SkillId = s.Skill,
-            Stream = s.Stream
+            Stream = s.Stream,
+            MdClean = s.MdClean,
+            SystemPromptExtra = sysPromptNote.Count > 0 ? string.Join("; ", sysPromptNote) : null
         };
+
+        if (!StatFormats.TryParse(s.StatisticFormat, out var statFormats, out var formatError))
+        {
+            AnsiConsole.MarkupLine($"[red]{formatError!.EscapeMarkup()}[/]");
+            return 2;
+        }
+
+        // Companion files need something to be a companion to. With results on the screen the only
+        // way to name one is to say so, and silently skipping the report would be worse than refusing.
+        var wantStatFiles = s.StatisticFile.IsSet;
+        if (wantStatFiles && s.Out == null && s.StatisticFile.Value is not { Length: > 0 })
+        {
+            AnsiConsole.MarkupLine("[red]--show-statistic-file needs somewhere to write:[/] give --out, or a file-name template after the flag");
+            return 2;
+        }
 
         var failures = 0;
         foreach (var cell in cells)
@@ -173,6 +209,10 @@ internal sealed class ChatRunCommand(ResolvedSettings settings, ILoggerFactory l
             {
                 failures++;
                 AnsiConsole.MarkupLine($"[red]✗[/] {cell.Prompt.Name} · {cell.Model.DisplayName} — {result.Status}: {result.Note?.EscapeMarkup()}");
+                // A failed cell still ran against a real model with real settings, and that is exactly
+                // what a reader of the report needs. Only the companion file is skipped: there is no
+                // result file for it to sit beside.
+                if (s.ShowStatistic) PrintStatistic(result.Stats);
                 continue;
             }
 
@@ -187,11 +227,57 @@ internal sealed class ChatRunCommand(ResolvedSettings settings, ILoggerFactory l
             {
                 Directory.CreateDirectory(Path.GetDirectoryName(outPath)!);
                 await File.WriteAllTextAsync(outPath, result.Text + "\n");
+                result.Stats.OutputFile = outPath;
                 AnsiConsole.MarkupLine($"[green]✓[/] {cell.Prompt.Name} · {cell.Model.DisplayName} → {outPath.EscapeMarkup()} ({result.Elapsed:mm\\:ss})");
             }
+
+            if (wantStatFiles)
+                foreach (var path in await WriteStatisticsAsync(s, cell, result.Stats, outPath, statFormats))
+                    AnsiConsole.MarkupLine($"  [grey]stats →[/] {path.EscapeMarkup()}");
+
+            if (s.ShowStatistic) PrintStatistic(result.Stats);
         }
 
         return failures == 0 ? 0 : 1;
+    }
+
+    /// <summary>Writes one companion file per requested format and returns what it wrote. The name
+    /// follows the result file so the two stay a visibly matched pair; an explicit template after
+    /// <c>--show-statistic-file</c> replaces that default, and is the only option when the results
+    /// themselves go to the screen.</summary>
+    private static async Task<List<string>> WriteStatisticsAsync(
+        ChatRunSettings s, BatchCell cell, RunStats stats, string? resultPath, IReadOnlyList<StatFormat> formats)
+    {
+        var written = new List<string>();
+        var template = s.StatisticFile.Value;
+
+        foreach (var format in formats)
+        {
+            string path;
+            if (template is { Length: > 0 })
+                path = s.Out == null
+                    ? Path.ChangeExtension(template, null) + format.Extension
+                    : OutputNaming.BuildPath(s.Out, template, DateTimeOffset.Now, cell.Prompt, cell.Model.Id, ".stats" + format.Extension);
+            else
+                path = OutputNaming.CompanionPath(resultPath!, format.Extension);
+
+            if (Path.GetDirectoryName(path) is { Length: > 0 } dir) Directory.CreateDirectory(dir);
+            await File.WriteAllTextAsync(path, format.Render(stats));
+            written.Add(path);
+        }
+        return written;
+    }
+
+    private static void PrintStatistic(RunStats stats)
+    {
+        var table = new Table().Border(TableBorder.Rounded).AddColumn(string.Empty).AddColumn(string.Empty);
+        foreach (var section in stats.ToSections())
+        {
+            table.AddRow($"[bold]{section.Title.EscapeMarkup()}[/]", string.Empty);
+            foreach (var (key, value) in section.Items)
+                table.AddRow($"  {key.EscapeMarkup()}", StatFormats.Text(value).EscapeMarkup());
+        }
+        AnsiConsole.Write(table);
     }
 
     /// <summary>Null means "screen" — the same rule <see cref="ResolveOutputPath"/> uses, kept separate

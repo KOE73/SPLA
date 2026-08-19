@@ -113,6 +113,7 @@ spla chat run  [--prompt "<text>"]... [--prompt-file <path>]... [--model <id>|al
                [--out <dir-or-file>] [--out-name <template>] [--overwrite]
                [--sys-prompt "<text>"] [--sys-prompt-file <path>] [--md-clean] [--skill <id>]
                [--show-prompt] [--show-prompt-file <path>]
+               [--show-statistic] [--show-statistic-file [<template>]] [--show-statistic-format json,yaml,md]
                [--stream] [--temp <n>] [--reasoning <level>]
                [--timeout <seconds>] [--dry-run]
 ```
@@ -163,6 +164,35 @@ needs no editing after it lands.
 `--skill <id>` hands that skill to every cell's chat before its prompt runs (the same "given to it by a
 person" path the UI's skill picker uses, not the REPL's `/skills load` message-injection shortcut) —
 fails the cell instead of running it if the skill is unknown, disabled, or missing prerequisites.
+
+#### `chat run` — the run report
+
+A file of results does not say who produced it. `--show-statistic` prints a per-cell report and
+`--show-statistic-file` writes it next to the result as a companion file:
+
+| Section | What it answers |
+|---------|-----------------|
+| `run` | status, start/finish, elapsed, how many LLM calls the cell took, SPLA version |
+| `prompt` | which prompt, from which file, how long |
+| `model` | the entry id, the name **requested**, the name the provider says **answered**, connection, provider, endpoint, context length |
+| `settings` | temperature, reasoning requested **and what it became on the wire**, sampling knobs, timeout, skill, `--md-clean`, extra system prompt |
+| `tokens` | prompt/completion/total, plus any counter the provider reported under its own wire name |
+| `output` | where the result went and how long it is |
+| `provider` | whatever the provider volunteered — rate-limit budget and the like — when it sent any |
+
+`model.reported` is the point of the whole thing: with `model: auto`, or a cloud that substitutes a
+dated build, the name you asked for is not the name that answered. Likewise `settings.reasoning_wire`
+is what actually went into the request body (`reasoning_effort=medium`) — and `(nothing sent)` is a
+real and common answer, because the lever is only sent for a model whose entry declares
+`reasoning_options`. A level asked for and never sent is exactly the kind of thing a report has to be
+able to say.
+
+`--show-statistic-file` with no value writes companions beside each result — `<result>.stats.json`
+for `<result>.md`, so the pair is visible at a glance. Give it a name template (same placeholders as
+`--out-name`) to override that, which is also the only way to get a report when results go to the
+screen. `--show-statistic-format` takes a comma-separated list — `json` (default), `yaml`, `md` — and
+writes one companion file per format. A cell that failed still prints its report: which model on which
+endpoint failed, and with what settings, is the case where the report is worth most.
 
 `--show-prompt` prints the assembled system prompt's contributor table (who contributed what, and
 roughly how many tokens) before running — the same view as the "prompt" tab of the context debug

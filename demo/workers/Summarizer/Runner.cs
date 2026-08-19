@@ -144,12 +144,11 @@ public sealed class Runner
             },
             OnAttempt = _ => abandoned++,
             OnNotice = n => { Console.WriteLine($"\n   [notice] {n}"); return Task.CompletedTask; },
-            OnTokenUsage = (p, c) =>
+            // Only this run's own subtotal: the project and machine tallies are kept by the pipeline.
+            OnLlmTurn = turn =>
             {
-                promptTokens += p ?? 0;
-                completionTokens += c ?? 0;
-                _runtime.TokenUsageProject.Record(p, c);
-                _runtime.TokenUsageGlobal.Record(p, c);
+                promptTokens += turn.Message.PromptTokens ?? 0;
+                completionTokens += turn.Message.CompletionTokens ?? 0;
             }
         };
 

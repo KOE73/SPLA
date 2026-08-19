@@ -182,16 +182,11 @@ public sealed class ConversationOrchestrator
             if (callAttempts.Count > 0) response.Attempts = callAttempts;
             conversation.Add(response);
 
-            // Real token accounting lives in the core loop, not the UI: every turn — answer or
-            // tool-call, success or not — reports the provider's figures exactly once. Hosts fold
-            // these into per-chat and persistent project-lifetime tallies; the same figures are
-            // recorded on the telemetry meter here so they reach both the local stats view and any
-            // OTLP backend from this single choke point.
-            callbacks.OnTokenUsage?.Invoke(response.PromptTokens, response.CompletionTokens);
-            if (response.PromptTokens is { } promptTokens and > 0)
-                Observability.SplaTelemetry.PromptTokens.Add(promptTokens);
-            if (response.CompletionTokens is { } completionTokens and > 0)
-                Observability.SplaTelemetry.CompletionTokens.Add(completionTokens);
+            // What happened on the wire, told once, whole. Recording it is not done here and not by
+            // the host: the tallies and the telemetry meter are fed by TokenAccountingMiddleware,
+            // which sits in the pipeline and therefore also covers the callers that never come
+            // through this loop. This hook is for showing and reporting.
+            callbacks.OnLlmTurn?.Invoke(outcome);
 
             Logger?.LogInformation(
                 "LLM response ← textChars={TextChars} toolCalls={ToolCalls} promptTokens={PromptTokens} completionTokens={CompletionTokens}",

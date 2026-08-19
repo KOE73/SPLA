@@ -31,13 +31,9 @@ public sealed class TurnOutcomeMiddleware : ILlmMiddleware
             ? LlmTurnStatus.UsageMissing
             : result.Status;
 
-        return new LlmTurnResult
-        {
-            Message       = result.Message,
-            ModelReported = result.ModelReported,
-            RawUsage      = result.RawUsage,
-            Status        = status,
-            Duration      = stopwatch.Elapsed
-        };
+        // Copied, not rebuilt: listing the fields by hand silently dropped every one this stage does
+        // not care about — which is how the provider's own observations (rate-limit budget, what the
+        // reasoning lever became on the wire) died here without anyone noticing they had been sent.
+        return result with { Status = status, Duration = stopwatch.Elapsed };
     }
 }

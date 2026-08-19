@@ -33,6 +33,11 @@ repository and is linked from it.
 - Reasoning lever driven by what the provider advertises.
 - Branch stamp on published builds.
 
+- `spla chat run --show-statistic` / `--show-statistic-file` / `--show-statistic-format`: a per-cell
+  run report (model that actually answered, endpoint, settings, tokens, timing) on screen or as a
+  companion file in json, yaml or md.
+- Run reports say what the reasoning lever became on the wire, next to what was requested.
+
 ### Changed
 
 - The agent runs as a service; windows, terminals and remote clients are its clients.
@@ -57,6 +62,19 @@ repository and is linked from it.
 - The SSH terminal follows the window instead of the size its pty was born with.
 - An SSH session can no longer wedge on a marker that never prints.
 - The project tree shows every file rather than an extension whitelist.
+- Provider observations survive the accounting stage, which rebuilt the turn result and dropped every
+  field it did not set itself; and a per-call fact can no longer overwrite the connection's last known
+  rate-limit budget.
+
+- Token usage is recorded by the LLM pipeline rather than by each host, so callers that wire no
+  callbacks — spawned sub-agents among them — are counted too.
+- A distributed build serves the browser client instead of 404 for every page: the web bundle was
+  never actually embedded, and a build made inside the repository hid it by finding `web/dist` on
+  disk. The build now fails if the bundle is missing from the assembly.
+- `SPLA.CLI.exe` ships self-contained like the desktop app, so an extracted zip no longer needs the
+  ASP.NET Core runtime installed for the service behind the window to start.
+- A service child that dies on startup reports its exit code and output instead of a bare health
+  timeout, and a slow first start from a zip gets 120 seconds rather than 30.
 
 ### Breaking
 
@@ -64,3 +82,5 @@ repository and is linked from it.
 - A project's root is its manifest's own directory and cannot be moved.
 - `.spla/skills` is gone; skills come from declared sources.
 - `.spla` is no longer readable through the sandbox.
+- `AgentCallbacks.OnTokenUsage` removed — `OnLlmTurn` carries the whole turn outcome, and recording
+  it is the pipeline's job now.

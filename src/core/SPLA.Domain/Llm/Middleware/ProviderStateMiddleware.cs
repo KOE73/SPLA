@@ -29,13 +29,23 @@ public sealed class ProviderStateMiddleware : ILlmMiddleware
         try
         {
             var result = await next(ctx, ct);
-            _store.Record(ctx.Settings.ConnectionId, result.Signals);
+            Record(ctx, result.Signals);
             return result;
         }
         catch (LlmRequestException ex)
         {
-            _store.Record(ctx.Settings.ConnectionId, ex.Signals);
+            Record(ctx, ex.Signals);
             throw;
         }
+    }
+
+    /// <summary>Stores the connection-scoped half and drops the rest. A fact about one call
+    /// (<see cref="ProviderFactScope.Call"/>) is not the key's standing, and letting one in would do
+    /// more than add a wrong row: the store keeps the latest list per connection, so a response
+    /// carrying only per-call facts would erase the last real budget reading.</summary>
+    private void Record(LlmTurnContext ctx, IReadOnlyList<ProviderFact> facts)
+    {
+        var standing = facts.Where(f => f.Scope == ProviderFactScope.Connection).ToList();
+        if (standing.Count > 0) _store.Record(ctx.Settings.ConnectionId, standing);
     }
 }
