@@ -36,8 +36,12 @@ public sealed class EmbeddedServiceLauncher : IDisposable
     /// <param name="noProject">True when the shell found no manifest to work in. The child is then
     /// launched with an explicit <c>--init=inherit</c>: a headless service cannot stop and ask what a
     /// manifest-less folder should become, and refusing to start would leave the window empty.</param>
+    /// <param name="hubUrl">Machine registry hub to register the spawned instance with, when there is
+    /// one. Purely additive: nothing about serving depends on it, and without it the child is simply
+    /// invisible to anything but its own lock file.</param>
     public async Task<string> StartAsync(
-        string? remoteUrl = null, string? workingDirectory = null, bool noProject = false, CancellationToken ct = default)
+        string? remoteUrl = null, string? workingDirectory = null, bool noProject = false,
+        string? hubUrl = null, CancellationToken ct = default)
     {
         if (!string.IsNullOrWhiteSpace(remoteUrl))
         {
@@ -57,7 +61,7 @@ public sealed class EmbeddedServiceLauncher : IDisposable
             return running;
         }
 
-        var (exe, args) = ResolveCliInvocation(noProject);
+        var (exe, args) = ResolveCliInvocation(noProject, hubUrl);
 
         var psi = new ProcessStartInfo
         {
@@ -161,7 +165,7 @@ public sealed class EmbeddedServiceLauncher : IDisposable
 
     /// <summary>Finds the CLI: a published SPLA.CLI.exe next to us, or the dll run via dotnet, or a
     /// dev-tree build output. Returns the executable and the argument list for <c>serve</c>.</summary>
-    private static (string Exe, string[] Args) ResolveCliInvocation(bool noProject = false)
+    private static (string Exe, string[] Args) ResolveCliInvocation(bool noProject = false, string? hubUrl = null)
     {
         var baseDir = AppContext.BaseDirectory;
         // No --port: the child binds an ephemeral port (the CLI's own default) and this launcher reads
@@ -171,9 +175,13 @@ public sealed class EmbeddedServiceLauncher : IDisposable
         // for itself when it has nothing left to stay for; five minutes is long enough that closing
         // and reopening the app is free (the next window simply joins it) and short enough that a
         // forgotten one does not sit there.
+        // --registry, when this machine has a hub: the child announces itself so a tray can show every
+        // project running, not only the one this window happens to be looking at. Absent, the child is
+        // still perfectly usable — it is just invisible to anything but its own lock file.
+        string[] registryArgs = hubUrl is { Length: > 0 } ? ["--registry", hubUrl] : [];
         string[] serveArgs = noProject
-            ? ["--init=inherit", "serve", "--bind", "127.0.0.1", "--idle-timeout", "5"]
-            : ["serve", "--bind", "127.0.0.1", "--idle-timeout", "5"];
+            ? ["--init=inherit", "serve", "--bind", "127.0.0.1", "--idle-timeout", "5", .. registryArgs]
+            : ["serve", "--bind", "127.0.0.1", "--idle-timeout", "5", .. registryArgs];
 
         // 1) Published: SPLA.CLI.exe sits next to the UI exe.
         var exe = Path.Combine(baseDir, "SPLA.CLI.exe");
@@ -190,6 +198,11 @@ public sealed class EmbeddedServiceLauncher : IDisposable
         throw new FileNotFoundException(
             "Could not locate SPLA.CLI (serve host). Looked next to the app and in the dev build tree.");
     }
+
+    /// <summary>The dev-tree CLI lookup, shared with <see cref="HubLauncher"/>: both run the same
+    /// binary in different roles, and a second copy of this walk would drift from the build-flavour
+    /// matching below — the exact bug it exists to prevent.</summary>
+    internal static string? FindCliDll(string fromDir) => FindDevCliDll(fromDir);
 
     private static string? FindDevCliDll(string fromDir)
     {

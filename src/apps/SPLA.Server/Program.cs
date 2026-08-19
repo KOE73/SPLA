@@ -30,7 +30,7 @@ var hostIdentity = identityProvider.Current();
 Console.WriteLine($"Server identity: {hostIdentity.DisplayName}  ({hostIdentity.UserKey}, {hostIdentity.Groups.Count} groups)");
 
 // args: [--port N] [--bind addr] [--token X] [--auth negotiate|local|none] [--no-auth]
-//       [--no-register] [--root DIR] [--https] [--cert file] [--cert-password pw]
+//       [--no-register] [--root DIR] [--https] [--cert file] [--cert-password pw] [--hub]
 // Binds all interfaces by default — this is the remote server host, meant to be reached from other
 // machines. Domain deployments gate access by Negotiate; home/workgroup deployments use --auth local
 // (username/password + admin panel). --no-auth is the same as --auth none.
@@ -45,6 +45,7 @@ bool useHttps = false;
 string? certPath = null;
 string certPassword = "spla";
 string? otlpEndpoint = null;
+bool runHub = false;
 for (int i = 0; i < args.Length; i++)
 {
     switch (args[i].ToLowerInvariant())
@@ -60,6 +61,7 @@ for (int i = 0; i < args.Length; i++)
         case "--cert":     if (i + 1 < args.Length) certPath = args[++i]; break;
         case "--cert-password": if (i + 1 < args.Length) certPassword = args[++i]; break;
         case "--otlp-endpoint": if (i + 1 < args.Length) otlpEndpoint = args[++i]; break;
+        case "--hub":      runHub = true; break;
     }
 }
 
@@ -135,7 +137,11 @@ var options = new ServiceOptions
     Auth = authMode, RequireAuthentication = authMode == AuthMode.Negotiate,
     AllowSelfRegistration = allowRegister,
     UseHttps = useHttps, CertPath = certPath, CertPassword = certPassword,
-    StatsPath = statsPath, OtlpEndpoint = otlpEndpoint
+    StatsPath = statsPath, OtlpEndpoint = otlpEndpoint,
+    // A server that is also the hub its machines' instances register with. Opt-in rather than
+    // automatic: mapping registration routes onto a production deployment is a decision, and the
+    // routes are the same ones `spla hub` runs alone — one implementation for both scenarios.
+    RegistryHub = runHub ? new SPLA.Instances.RegistryHub() : null
 };
 var host = SplaServiceHost.Build(registry, options, identityProvider, serverRoot, accounts);
 await host.StartAsync();
@@ -158,6 +164,10 @@ switch (authMode)
             Console.WriteLine("WARNING: --no-auth on a non-loopback bind without --token — anyone who can reach this port controls the agent.");
         break;
 }
+if (runHub)
+    Console.WriteLine(
+        $"Registry hub: instances register at {host.Url}{SPLA.Instances.RegistryRoutes.Channel}, " +
+        $"observers read {SPLA.Instances.RegistryRoutes.Instances}");
 Console.WriteLine($"Stats: local dashboard at {host.Url}/stats"
     + (string.IsNullOrWhiteSpace(otlpEndpoint) ? "  (OTLP export off — pass --otlp-endpoint to ship to Grafana/Jaeger/…)" : $"  ·  OTLP → {otlpEndpoint}"));
 Console.WriteLine("Press Ctrl+C to stop.");

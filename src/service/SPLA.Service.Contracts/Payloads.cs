@@ -67,6 +67,13 @@ public sealed class ChatSummaryDto
     /// <summary>Whether a turn is running in this chat right now — so the list can show where work is
     /// happening, including work started by another window or another user.</summary>
     public bool TurnActive { get; set; }
+
+    /// <summary>What this chat is doing, in the instance vocabulary: <c>idle</c>, <c>working</c>,
+    /// <c>waiting</c>, <c>stalled</c>. One set of words for the badge beside a chat, the badge on a
+    /// project and the rule that keeps an instance alive — a person should not have to learn two.
+    /// <para><see cref="TurnActive"/> stays because it answers a narrower question the log view
+    /// already asks; it is true for both <c>working</c> and <c>stalled</c>.</para></summary>
+    public string State { get; set; } = "idle";
 }
 
 /// <summary>One selectable option in a clarify request.</summary>
@@ -689,6 +696,10 @@ public static class DebugKinds
     public const string Edges = "edges";
     public const string LastContext = "context.last";
     public const string Prompt = "prompt";
+
+    /// <summary>Full live state of instance tracking for this process: overall state, lock file info,
+    /// outstanding asks, configured ask timeout, and per-chat turn activity.</summary>
+    public const string Instances = "instances";
 }
 
 /// <summary>One known project as the picker/tree sees it — enough to list and choose, no store opened.</summary>
@@ -860,6 +871,11 @@ public sealed class ChatOpenedPayload
     /// composer had to guess from events it happened to witness, so a window that attached mid-turn
     /// (or a reload) offered Send on a chat that was busy.</summary>
     public bool TurnActive { get; set; }
+    /// <summary>What this chat is doing, in the instance vocabulary — same values and same meaning as
+    /// <see cref="ChatSummaryDto.State"/>. Sent on open as well as in the list so a window that opens
+    /// a chat mid-question shows the badge immediately rather than waiting for the next list.</summary>
+    public string State { get; set; } = "idle";
+
 }
 
 /// <summary>

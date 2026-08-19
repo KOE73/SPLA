@@ -364,7 +364,9 @@ public sealed class ClientConnection : IClientSession
             ActiveSkillId = chat.ActiveSkillId,
             ToolSets = ChatHandlers.ToolSetDtos(_registry.Open(DefaultProjectId), chat),
             Doubt = ChatHandlers.DoubtDto(chat),
-            TurnActive = chat.IsTurnRunning
+            TurnActive = chat.IsTurnRunning,
+            State = SPLA.Domain.Project.InstanceStates.Name(
+                _registry.Open(DefaultProjectId).Runtime.StateOf(chat.ChatId, TimeSpan.FromMinutes(10)))
         }, chat.ChatId);
 
         await ReplayPendingAsksAsync(chat.ChatId);
@@ -479,7 +481,7 @@ public sealed class ClientConnection : IClientSession
             // Every turn event is also proof the turn is moving. A registered turn that has gone
             // silent for a long time is a model that stopped halfway — the state the instance must
             // never be evicted out of, and the one a person comes back to and pokes forward.
-            runtime.Turns.Touch();
+            runtime.Turns.Touch(chatId);
             return _hub.BroadcastToWatchersAsync(chatId, type, payload);
         }
 

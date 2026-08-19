@@ -42,7 +42,9 @@ internal static class HubCommand
         await host.StartAsync();
 
         Console.WriteLine($"\nSPLA registry hub listening on {host.Url}");
-        Console.WriteLine($"  instances register on {RegistryRoutes.Channel}, observers read {RegistryRoutes.Instances}");
+        Console.WriteLine(
+            $"  instances register on {RegistryRoutes.Channel}; observers read {RegistryRoutes.Instances} " +
+            $"or watch {RegistryRoutes.Watch}");
         if (token is null && bind != "127.0.0.1")
             Console.WriteLine(
                 "WARNING: bound beyond loopback without --token — anyone who can reach this port can " +

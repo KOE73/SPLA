@@ -188,6 +188,7 @@ public sealed class PendingAskStore
 public sealed class TurnRegistry
 {
     private readonly ConcurrentDictionary<string, CancellationTokenSource> _turns = new();
+    private readonly ConcurrentDictionary<string, long> _activity = new();
     private long _lastActivityTicks = DateTime.UtcNow.Ticks;
 
     /// <summary>When something last actually happened in a turn — a token, a tool call, a result.
@@ -196,21 +197,37 @@ public sealed class TurnRegistry
     /// may be evicted.</summary>
     public DateTime LastActivityUtc => new(Volatile.Read(ref _lastActivityTicks), DateTimeKind.Utc);
 
-    /// <summary>Records that the turn is still moving.</summary>
-    public void Touch() => Volatile.Write(ref _lastActivityTicks, DateTime.UtcNow.Ticks);
+    /// <summary>Records that a turn is still moving. Kept per chat as well as for the project,
+    /// because "stopped halfway" is a thing a person sees on one chat in a sidebar, not only a
+    /// property of the whole instance.</summary>
+    public void Touch(string? chatId = null)
+    {
+        var now = DateTime.UtcNow.Ticks;
+        Volatile.Write(ref _lastActivityTicks, now);
+        if (chatId is not null) _activity[chatId] = now;
+    }
+
+    /// <summary>When this chat's turn last did anything. Null when no turn is registered for it.</summary>
+    public DateTime? LastActivityFor(string chatId)
+        => _turns.ContainsKey(chatId) && _activity.TryGetValue(chatId, out var ticks)
+            ? new DateTime(ticks, DateTimeKind.Utc)
+            : _turns.ContainsKey(chatId) ? DateTime.UtcNow : null;
 
     /// <summary>Registers a turn's cancellation source. Replaces any stale entry for the chat — the
     /// chat's own gate already serialises turns, so a second entry means the first one is finished.</summary>
     public void Register(string chatId, CancellationTokenSource cts)
     {
         _turns[chatId] = cts;
-        Touch();
+        Touch(chatId);
     }
 
     public void Remove(string chatId, CancellationTokenSource cts)
     {
         if (_turns.TryGetValue(chatId, out var current) && ReferenceEquals(current, cts))
+        {
             _turns.TryRemove(chatId, out _);
+            _activity.TryRemove(chatId, out _);
+        }
     }
 
     /// <summary>Cancels the chat's running turn, whoever asked. False = nothing was running.</summary>

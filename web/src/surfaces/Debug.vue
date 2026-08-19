@@ -82,7 +82,11 @@ const TABS = [
   { kind: "blobs", label: "blobs" },
   { kind: "edges", label: "edges" },
   { kind: "context.last", label: "context" },
-  { kind: "prompt", label: "prompt" }
+  { kind: "prompt", label: "prompt" },
+  // The full instance-tracking dump: what this process thinks it is doing, what its lock file
+  // claims, and every question it is blocked on. A developer view, not a user one — it renders
+  // through the generic key/value branch above precisely because completeness beats presentation.
+  { kind: "instances", label: "instances" }
 ] as const;
 
 const activeKind = ref<string>("kv.session");

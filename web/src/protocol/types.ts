@@ -63,6 +63,12 @@ export interface ChatSummary {
   title?: string;
   /** A turn is running in this chat right now — including one started by another window. */
   turnActive?: boolean;
+  /** The chat's operational state: "idle" | "working" | "waiting" | "stalled".
+   *  - idle: nothing running
+   *  - working: a turn is running and making progress
+   *  - waiting: the agent is blocked on a person (permission or clarification request)
+   *  - stalled: a turn is registered but nothing has happened for ~10 minutes (model may have stopped halfway) */
+  state?: string;
 }
 
 export interface ChatOpenedPayload {
@@ -83,6 +89,8 @@ export interface ChatOpenedPayload {
   /** Whether a turn was already running when this chat was opened — so a window attaching mid-turn
    *  (or a reload) shows Stop rather than an input that looks ready. */
   turnActive?: boolean;
+  /** The chat's operational state: "idle" | "working" | "waiting" | "stalled". */
+  state?: string;
 }
 
 /**

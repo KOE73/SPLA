@@ -28,6 +28,11 @@ public static class RuntimeProjections
     /// <summary>All chats on disk, most-recent first, as wire summaries. <c>TurnActive</c> is read via
     /// <see cref="ChatRegistry.Peek"/>, which never loads a chat: a chat nobody has opened cannot be
     /// running a turn, so "not open" and "not running" are the same answer here.</summary>
+    /// <summary>The same threshold the instance handlers use. A judgement about how long silence
+    /// means "stuck", not something a deployment tunes — so a literal matching the default beats
+    /// threading an option through every projection.</summary>
+    private static readonly TimeSpan StallAfter = TimeSpan.FromMinutes(10);
+
     public static List<ChatSummaryDto> List(this ChatRegistry chats)
         => chats.Runtime.ChatManager.ListChats()
             .Select(c => new ChatSummaryDto
@@ -35,7 +40,9 @@ public static class RuntimeProjections
                 Id = c.Id,
                 Title = c.Title,
                 UpdatedAt = c.UpdatedAt.ToString("o"),
-                TurnActive = chats.Peek(c.Id)?.IsTurnRunning ?? false
+                TurnActive = chats.Peek(c.Id)?.IsTurnRunning ?? false,
+                State = SPLA.Domain.Project.InstanceStates.Name(
+                    chats.Runtime.StateOf(c.Id, StallAfter))
             })
             .ToList();
 }

@@ -38,6 +38,15 @@ public static class RegistryEndpoints
                     ? Results.Ok()
                     : Results.NotFound());
 
+        app.Map(RegistryRoutes.Watch, async (HttpContext ctx) =>
+        {
+            if (!ctx.WebSockets.IsWebSocketRequest) { ctx.Response.StatusCode = 400; return; }
+            if (!Authorized(ctx, token)) { ctx.Response.StatusCode = 401; return; }
+
+            using var socket = await ctx.WebSockets.AcceptWebSocketAsync();
+            await WatchAsync(hub, socket, ctx.RequestAborted);
+        });
+
         app.Map(RegistryRoutes.Channel, async (HttpContext ctx) =>
         {
             if (!ctx.WebSockets.IsWebSocketRequest) { ctx.Response.StatusCode = 400; return; }
@@ -96,6 +105,42 @@ public static class RegistryEndpoints
             // The only place an instance leaves the hub. However the socket ended — closed, dropped,
             // process killed — this runs, which is what makes the channel the liveness signal.
             registration?.Dispose();
+        }
+    }
+
+    /// <summary>
+    /// One observer's live view: the current listing immediately, then again on every change.
+    ///
+    /// <para>Sends the whole list rather than a delta. It is small, and an observer that has to
+    /// reconcile deltas is an observer that can end up showing something the hub does not hold —
+    /// which for a tray icon means an instance that looks alive after it left.</para>
+    /// </summary>
+    private static async Task WatchAsync(RegistryHub hub, WebSocket socket, CancellationToken ct)
+    {
+        // A gate rather than sending straight from the event: Changed fires on whichever thread
+        // caused it, and a socket may only have one send in flight. Coalescing is a feature here —
+        // three changes in a millisecond are one thing to look at.
+        var pending = new SemaphoreSlim(1, 1);
+        void OnChanged() { try { pending.Release(); } catch (SemaphoreFullException) { /* already due */ } }
+
+        hub.Changed += OnChanged;
+        try
+        {
+            while (socket.State == WebSocketState.Open && !ct.IsCancellationRequested)
+            {
+                var listing = new RegistryListResponse { Instances = [.. hub.List()] };
+                var bytes = Encoding.UTF8.GetBytes(JsonSerializer.Serialize(listing, RegistryJson.Options));
+                await socket.SendAsync(bytes, WebSocketMessageType.Text, true, ct);
+
+                await pending.WaitAsync(ct);
+            }
+        }
+        catch (OperationCanceledException) { /* observer went away, or the host is stopping */ }
+        catch (WebSocketException) { /* the same, less politely */ }
+        finally
+        {
+            hub.Changed -= OnChanged;
+            pending.Dispose();
         }
     }
 

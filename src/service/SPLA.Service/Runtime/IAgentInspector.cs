@@ -142,6 +142,122 @@ public sealed class LiveAgentInspector : IAgentInspector
                 }
                 break;
 
+            case DebugKinds.Instances:
+            {
+                var entries = new List<DebugKvEntryDto>();
+                var stallAfter = TimeSpan.FromMinutes(10);
+
+                // Overall runtime state
+                var state = _runtime.State(stallAfter);
+                entries.Add(new DebugKvEntryDto
+                {
+                    Key = "runtime.state",
+                    Value = SPLA.Domain.Project.InstanceStates.Name(state)
+                });
+
+                // Lock file information
+                if (_runtime.Instance?.Info is { } info)
+                {
+                    entries.Add(new DebugKvEntryDto
+                    {
+                        Key = "instance.id",
+                        Value = info.InstanceId
+                    });
+                    entries.Add(new DebugKvEntryDto
+                    {
+                        Key = "instance.endpoint",
+                        Value = info.Endpoint ?? "(not published)"
+                    });
+                    entries.Add(new DebugKvEntryDto
+                    {
+                        Key = "instance.mode",
+                        Value = info.Mode
+                    });
+                    entries.Add(new DebugKvEntryDto
+                    {
+                        Key = "instance.machine",
+                        Value = $"{info.Machine}{(info.IsLocal ? " (local)" : "")}"
+                    });
+                    entries.Add(new DebugKvEntryDto
+                    {
+                        Key = "instance.pid",
+                        Value = info.Pid.ToString()
+                    });
+                    entries.Add(new DebugKvEntryDto
+                    {
+                        Key = "instance.started_at",
+                        Value = info.StartedAt.ToLocalTime().ToString("O")
+                    });
+                }
+                else
+                {
+                    entries.Add(new DebugKvEntryDto
+                    {
+                        Key = "instance.lock",
+                        Value = "(no lock — project-less mode)"
+                    });
+                }
+
+                // Ask timeout configuration
+                entries.Add(new DebugKvEntryDto
+                {
+                    Key = "ask.timeout",
+                    Value = _runtime.Asks.Timeout > TimeSpan.Zero
+                        ? $"{_runtime.Asks.Timeout.TotalMinutes:F1} min"
+                        : "(indefinite)"
+                });
+
+                // Outstanding asks
+                var allAsks = _runtime.Asks.List();
+                entries.Add(new DebugKvEntryDto
+                {
+                    Key = "ask.count",
+                    Value = allAsks.Count.ToString()
+                });
+
+                foreach (var ask in allAsks)
+                {
+                    var waitTime = DateTimeOffset.UtcNow - ask.CreatedAt;
+                    var summary = ask.Kind switch
+                    {
+                        PendingAskKind.Permission => $"permission: {ask.ToolName}",
+                        PendingAskKind.Clarify => $"clarify: {ask.Question}",
+                        _ => ask.Kind.ToString()
+                    };
+                    entries.Add(new DebugKvEntryDto
+                    {
+                        Key = $"ask[{ask.RequestId[..8]}]",
+                        Value = $"{ask.ChatId[..8]} {summary} (waiting {waitTime.TotalSeconds:F0}s)"
+                    });
+                }
+
+                // Per-chat turn activity
+                var busyChatIds = _runtime.Turns.BusyChatIds;
+                entries.Add(new DebugKvEntryDto
+                {
+                    Key = "chat.busy_count",
+                    Value = busyChatIds.Count.ToString()
+                });
+
+                foreach (var chatId in busyChatIds)
+                {
+                    var chatState = _runtime.StateOf(chatId, stallAfter);
+                    var lastActivity = _runtime.Turns.LastActivityFor(chatId);
+                    var idleTime = lastActivity.HasValue
+                        ? DateTime.UtcNow - lastActivity.Value
+                        : TimeSpan.Zero;
+
+                    entries.Add(new DebugKvEntryDto
+                    {
+                        Key = $"chat[{chatId[..8]}]",
+                        Value = $"{SPLA.Domain.Project.InstanceStates.Name(chatState)} (idle {idleTime.TotalSeconds:F0}s)"
+                    });
+                }
+
+                snap.Entries = entries;
+                break;
+            }
+
             default:
                 snap.Text = $"(snapshot kind '{kind}' not implemented yet)";
                 break;

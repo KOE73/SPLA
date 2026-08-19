@@ -93,6 +93,23 @@ public sealed class AgentRuntime : IDisposable
             ? SPLA.Domain.Project.InstanceState.Stalled
             : SPLA.Domain.Project.InstanceState.Working;
     }
+
+    /// <summary>
+    /// The same question about one chat. Same vocabulary on purpose: the badge beside a chat in the
+    /// sidebar, the badge on the project, and the rule that keeps an instance alive are one set of
+    /// words, so a person never has to learn two.
+    /// </summary>
+    public SPLA.Domain.Project.InstanceState StateOf(string chatId, TimeSpan stallAfter)
+    {
+        if (Asks.List(chatId).Count > 0) return SPLA.Domain.Project.InstanceState.Waiting;
+
+        var activity = Turns.LastActivityFor(chatId);
+        if (activity is null) return SPLA.Domain.Project.InstanceState.Idle;
+
+        return DateTime.UtcNow - activity.Value > stallAfter
+            ? SPLA.Domain.Project.InstanceState.Stalled
+            : SPLA.Domain.Project.InstanceState.Working;
+    }
     /// <summary>
     /// The composed LLM pipeline — the only way anything in this runtime reaches a model. Provider
     /// clients are deliberately never exposed: if they were reachable, accounting, quotas and privacy

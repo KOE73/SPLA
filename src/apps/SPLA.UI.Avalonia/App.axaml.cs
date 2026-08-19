@@ -148,6 +148,19 @@ public partial class App : Application
     private static EmbeddedServiceLauncher? _serviceLauncher;
     private static Task<string>? _serviceUrlTask;
 
+    /// <summary>The machine's registry hub, started (or joined) once. Everything the shell knows about
+    /// projects other than its own comes through it — this process never hosts it, see
+    /// <see cref="HubLauncher"/>.</summary>
+    private static readonly HubLauncher HubLauncher = new();
+
+    /// <summary>Where the machine hub is, or null when none could be reached or started. Null is not
+    /// an error state: the shell works, it just has no view past its own project.</summary>
+    public static string? HubUrl { get; private set; }
+
+    /// <summary>The machine-wide tray icon, started once alongside the hub connection. Null when
+    /// there is no hub — see <see cref="TrayIconService.StartIfHubAvailable"/>.</summary>
+    private static TrayIconService? _trayIcon;
+
     /// <summary>Starts the embedded/remote service once and returns its base URL; subsequent calls
     /// reuse the same running service. All windows navigate WebViews against this URL.</summary>
     public static Task<string> ServiceUrlAsync()
@@ -157,16 +170,34 @@ public partial class App : Application
     {
         _serviceLauncher = new EmbeddedServiceLauncher();
         var remote = Environment.GetEnvironmentVariable("SPLA_SERVICE_URL");
+
+        // Resolved before the service starts so the child can be told where to register. Failure is
+        // silent on purpose: a machine without a hub still runs agents perfectly well.
+        HubUrl = await HubLauncher.ResolveAsync();
+        // The tray icon is a machine-wide view (every instance, not just this window's), so it lives
+        // once per hub, not per window. StartIfHubAvailable is a no-op when HubUrl is null.
+        _trayIcon = TrayIconService.StartIfHubAvailable(HubUrl);
         // The window already answered "is there a project here" during startup. The child service
         // must not ask again — it cannot, being headless — so when the answer was no, it is told to
         // run project-less explicitly. Same behaviour as before; no longer an accident.
         return await _serviceLauncher.StartAsync(
-            remote, ResolvedSettings.WorkspacePath, noProject: ProjectFilePath is null);
+            remote, ResolvedSettings.WorkspacePath, noProject: ProjectFilePath is null, hubUrl: HubUrl);
     }
 
     /// <summary>Stops the local child service (no-op for a remote target). Called when the main
     /// window closes.</summary>
-    public static void ShutdownService() => _serviceLauncher?.Dispose();
+    public static void ShutdownService()
+    {
+        _serviceLauncher?.Dispose();
+        // Lets go of the hub without stopping it: other windows and hand-started serve processes may
+        // still be registered with it. See HubLauncher.Dispose.
+        HubLauncher.Dispose();
+        if (_trayIcon is not null)
+        {
+            _ = _trayIcon.DisposeAsync();
+            _trayIcon = null;
+        }
+    }
 
     public static void ChangeDensity(string densityName)
     {

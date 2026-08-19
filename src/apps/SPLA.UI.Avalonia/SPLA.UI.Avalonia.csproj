@@ -32,5 +32,9 @@
     <ProjectReference Include="..\..\core\SPLA.Domain\SPLA.Domain.csproj" />
     <ProjectReference Include="..\..\core\SPLA.Secrets.Dpapi\SPLA.Secrets.Dpapi.csproj" />
     <ProjectReference Include="..\..\core\SPLA.Observability\SPLA.Observability.csproj" />
+    <!-- Instance registry client only — SPLA.Instances is deliberately free of ASP.NET (see its
+         own csproj comment), so the tray icon can watch the machine hub without dragging hosting
+         dependencies into the desktop shell. -->
+    <ProjectReference Include="..\..\service\SPLA.Instances\SPLA.Instances.csproj" />
   </ItemGroup>
 </Project>

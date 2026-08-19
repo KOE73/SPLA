@@ -72,4 +72,9 @@ public static class RegistryRoutes
     /// <summary>POST asking the hub to relay a stop to one instance, identified by query
     /// <c>?instance=&lt;id&gt;</c> with an optional <c>&amp;force=true</c>.</summary>
     public const string Stop = "/registry/stop";
+
+    /// <summary>WebSocket an observer opens to receive the whole listing whenever it changes. The
+    /// same JSON as <see cref="Instances"/>, pushed instead of asked for: the state worth watching
+    /// is somebody being waited for, and noticing that on a poll interval is not noticing it.</summary>
+    public const string Watch = "/registry/watch";
 }

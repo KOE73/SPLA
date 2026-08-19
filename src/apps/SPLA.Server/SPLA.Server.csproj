@@ -13,6 +13,7 @@
   <ItemGroup>
     <ProjectReference Include="..\..\core\SPLA.Domain\SPLA.Domain.csproj" />
     <ProjectReference Include="..\..\service\SPLA.Service\SPLA.Service.csproj" />
+    <ProjectReference Include="..\..\service\SPLA.Instances\SPLA.Instances.csproj" />
     <ProjectReference Include="..\..\core\SPLA.Observability\SPLA.Observability.csproj" />
   </ItemGroup>
 

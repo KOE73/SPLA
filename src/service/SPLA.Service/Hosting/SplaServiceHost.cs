@@ -106,6 +106,11 @@ public sealed record ServiceOptions
     /// an external observability backend. Null = no export (local stats only). A control-plane / egress
     /// setting — it determines where telemetry leaves the host.</summary>
     public string? OtlpEndpoint { get; init; }
+    /// <summary>When set, this host also serves the registry routes for the given hub. Lets one
+    /// process be both a service and the hub instances register with — what a small deployment wants,
+    /// and what the server does — without a second implementation of the routes for that case.</summary>
+    public SPLA.Instances.RegistryHub? RegistryHub { get; init; }
+
 }
 
 /// <summary>
@@ -231,6 +236,11 @@ public sealed class SplaServiceHost
         // Carries the instance id of the default project's claim, so a caller that found this address
         // in a lock file can prove the address still belongs to the instance that wrote it. A port
         // number alone proves nothing: the OS hands it to whoever asks next.
+        // Also a hub, when the deployment asked for it. The same routes `spla hub` runs alone —
+        // mapped, not reimplemented, because "with a server" and "without one" are two scenarios and
+        // only one implementation may exist for both.
+        if (options.RegistryHub is { } registryHub) app.MapRegistry(registryHub, options.Token);
+
         app.MapGet("/health", () => Results.Text(
                 $"SPLA service running. Connect a client to /ws.\ninstance: {defaultEntry.Runtime.Instance?.Info.InstanceId ?? "none"}",
                 "text/plain"))
@@ -430,15 +440,23 @@ public sealed class SplaServiceHost
             // the connection that started the turn, so it reaches every window watching the chat and
             // any of them may answer — including one that opened after the question was asked.
             entry.Runtime.Asks.Asked += ask =>
+            {
                 _ = hub.BroadcastToWatchersAsync(
                     ask.ChatId, ProtocolMapper.MessageTypeFor(ask), ProtocolMapper.PayloadFor(ask), ask.RequestId);
+                // The sidebar too, not just the open chat: "somebody is being waited for" is the one
+                // state a person needs to see from a chat they are not currently looking at.
+                _ = BroadcastChatsAsync(hub, projectId, entry);
+            };
 
             // ...and its counterpart: whoever closed it, every other window drops the dialog instead
             // of leaving a button that answers nothing.
             entry.Runtime.Asks.Resolved += (ask, reason) =>
+            {
                 _ = hub.BroadcastToWatchersAsync(
                     ask.ChatId, Contracts.MessageTypes.AskResolved,
                     new Contracts.AskResolvedPayload { Reason = ProtocolMapper.ReasonName(reason) }, ask.RequestId);
+                _ = BroadcastChatsAsync(hub, projectId, entry);
+            };
 
             // Live SSH sessions: create the project's hub eagerly and fan its open/close events out
             // as ssh.sessions.changed, so pickers refresh and terminals auto-attach the moment the
@@ -462,6 +480,13 @@ public sealed class SplaServiceHost
             });
         };
     }
+
+    /// <summary>The chat list, to everyone watching this project. Sent whenever a chat's state
+    /// changes rather than only at turn boundaries — the state is what the sidebar badges are made
+    /// of, and a badge that appears a turn late is not a badge.</summary>
+    private static Task BroadcastChatsAsync(ConnectionHub hub, string projectId, RuntimeEntry entry)
+        => hub.BroadcastToProjectAsync(projectId, Contracts.MessageTypes.ChatListResult,
+            new Contracts.ChatListResultPayload { Chats = entry.Chats.List() });
 
     /// <summary>Handles a <c>/ws</c> upgrade: the Origin gate (CSWSH defence in cookie deployments),
     /// resolving the connection's identity from the auth cookie (or the local sentinel), scoping it to
