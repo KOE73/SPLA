@@ -1,6 +1,7 @@
 <template>
   <div class="s-panel" data-tab="features">
-    <div class="s-head"><b>Built-in</b><span class="hint">{{ hint }}</span></div>
+    <div class="s-head"><b>Built-in tools</b><span class="hint">{{ hint }}</span></div>
+    <div class="s-sub">Core tool groups the agent can call directly (not plugins, not skills). Toggling one adds or removes its tools from the agent — and the matching piece of its system prompt.</div>
 
     <div class="ft-list">
       <div v-if="!features.length" class="notice">no capabilities reported</div>
@@ -54,7 +55,7 @@ const off = client.on("features.result", p => {
   features.value = p.features || [];
   const bits: string[] = [];
   if (p.canPersist === false) bits.push("no .spla project — session-only");
-  if (p.restartToApply) bits.push("applies on next launch");
+  if (p.restartToApply) bits.push("tools are registered once at startup — restart to apply");
   hint.value = bits.join(" · ");
 });
 onUnmounted(off);
@@ -72,5 +73,6 @@ defineExpose({ save });
 </script>
 
 <style scoped>
+.s-sub { font-size: var(--fs-xs); color: var(--muted); margin: -2px 0 8px; }
 .ft-list { display: flex; flex-direction: column; gap: var(--gap, 8px); }
 </style>

@@ -66,7 +66,7 @@ const TABS = [
   { id: "connections", label: "Connections", icon: "⇄", group: "General" },
   { id: "agent", label: "Agent", icon: "◎", group: "General" },
   { id: "appearance", label: "Appearance", icon: "◈", group: "General" },
-  { id: "features", label: "Built-in", icon: "⚙", group: "Capabilities" },
+  { id: "features", label: "Built-in tools", icon: "⚙", group: "Capabilities" },
   { id: "plugins", label: "Plugins", icon: "⬡", group: "Capabilities" },
   { id: "skills", label: "Skills", icon: "✦", group: "Capabilities" },
   { id: "secrets", label: "Secrets", icon: "🔑", group: "Data" },

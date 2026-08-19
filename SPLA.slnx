@@ -81,6 +81,7 @@
     <File Path="docs/plans/PLAN_20260813_web_chat-session-model.md" />
     <File Path="docs/plans/PLAN_20260814_core_project-mounts.md" />
     <File Path="docs/plans/PLAN_20260814_core_workspace-streams.md" />
+    <File Path="docs/plans/PLAN_20260819_core_dynamic-tool-registration.md" />
   </Folder>
   <Folder Name="/docs/ideas/">
     <File Path="docs/ideas/IDEA_20260611_core_todo-general.md" />

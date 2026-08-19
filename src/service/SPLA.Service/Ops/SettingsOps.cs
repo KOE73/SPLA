@@ -523,6 +523,7 @@ public static class SettingsOps
                 Id = id,
                 Kind = "builtin",
                 Name = id,
+                Description = SPLA.MCP.Core.Agent.AgentFeatureCatalog.DescriptionOf(id),
                 Enabled = enabled,
                 State = enabled ? "Enabled" : "DisabledByUser",
                 Requires = SPLA.MCP.Core.Agent.AgentFeatureCatalog.RequiresOf(id).ToList()

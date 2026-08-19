@@ -39,6 +39,29 @@ public static class AgentFeatureCatalog
     public static IReadOnlyList<string> RequiresOf(string id)
         => RequiresMap.TryGetValue(id, out var r) ? r : System.Array.Empty<string>();
 
+    /// <summary>Short A2-English blurb plus the literal tool names, for the settings panel. Kept here
+    /// next to <see cref="Order"/> so a new tool added to a feature is a one-line reminder to update
+    /// this too.</summary>
+    private static readonly Dictionary<string, string> DescriptionMap = new(System.StringComparer.Ordinal)
+    {
+        ["core.workspace"] = "Tells the agent about the project and the current date and time.\nget_context get_current_date_time",
+        ["core.discipline"] = "Ground rules for how the agent behaves. No tools of its own.",
+        ["core.files"] = "Read, search, and change files on disk.\nfs_list fs_read fs_search_text fs_find_files fs_create fs_patch fs_write fs_delete image_view",
+        ["core.shell"] = "Run a shell command.\nrun_command",
+        ["core.web"] = "Fetch a web page.\nweb_fetch",
+        ["core.memory"] = "Save, read, list, and delete small pieces of memory for this project.\nagent_memory_set agent_memory_get agent_memory_delete agent_memory_list agent_memory_clear",
+        ["core.checkpoints"] = "Save and restore a point in the conversation to go back to.\ncontext_checkpoint_set context_checkpoint_restore mark_set mark_rollback",
+        ["core.skills"] = "Turn skills on or off and read their files.\nskill_activate skill_deactivate skill_read_resource skill_find",
+        ["core.toolsets"] = "Turn a group of tools on or off.\ntoolset_activate toolset_deactivate",
+        ["core.spawn"] = "Start one or many sub-agents to do a task.\nagent_spawn agent_spawn_batch",
+        ["core.clarify"] = "Ask the user a question and wait for the answer.\nagent_clarify",
+        ["core.blobs"] = "Look at a piece of data stored outside the chat.\nblob_peek",
+    };
+
+    /// <summary>Human-readable blurb for a feature id, or null if none is defined.</summary>
+    public static string? DescriptionOf(string id)
+        => DescriptionMap.TryGetValue(id, out var d) ? d : null;
+
     /// <summary>
     /// Resolves the <c>agent.capabilities</c> project setting against the canonical catalog:
     /// <list type="bullet">
