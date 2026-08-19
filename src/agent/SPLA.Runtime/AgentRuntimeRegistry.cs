@@ -85,6 +85,42 @@ public sealed class AgentRuntimeRegistry : IDisposable
         return _entries.GetOrAdd(id, _ => Build(id, ConfigLoader.LoadAndResolve(id)));
     }
 
+    /// <summary>
+    /// Drops every project runtime that is idle and that nobody is looking at, and returns how many
+    /// went. Never touches one that is working, waiting on a person, or stalled.
+    ///
+    /// <para><b>Why this exists only on a server.</b> Locally one process holds one project, and the
+    /// instance lease already decides when the whole process may go — there is nothing to evict
+    /// inside it. A server holds N users times M projects in a single process and never exits, so a
+    /// runtime built for somebody who logged off in the morning would still be holding its plugins,
+    /// its skill fond and its connection cache at midnight. There the same rule stops being a
+    /// convenience and becomes the condition for the process surviving the day.</para>
+    ///
+    /// <para><paramref name="isInUse"/> is asked, not assumed: only the host knows whether a client
+    /// is still bound to a project, and a registry that guessed would eventually guess wrong on the
+    /// one that mattered.</para>
+    /// </summary>
+    /// <param name="isInUse">True when some connection is still bound to that project id.</param>
+    /// <param name="stallAfter">Silence after which a registered turn counts as stopped halfway —
+    /// and therefore as something that must survive, not something idle.</param>
+    public int EvictIdle(Func<string, bool> isInUse, TimeSpan stallAfter)
+    {
+        var evicted = 0;
+        foreach (var (id, entry) in _entries.ToArray())
+        {
+            if (isInUse(id)) continue;
+            if (!SPLA.Domain.Project.InstanceStates.MayEvict(entry.Runtime.State(stallAfter))) continue;
+
+            // Removed before disposing: a client arriving in the gap gets a freshly built runtime
+            // rather than a half-disposed one. Rebuilding is exactly what makes eviction safe —
+            // nothing unique lives in a runtime, only warmth.
+            if (!_entries.TryRemove(id, out var removed)) continue;
+            removed.Runtime.Dispose();
+            evicted++;
+        }
+        return evicted;
+    }
+
     /// <summary>What the process holding these runtimes is — recorded in each project's instance lock
     /// so a refused second writer is told what has it. Set once by the host at startup.</summary>
     public string InstanceMode { get; set; } = "app";

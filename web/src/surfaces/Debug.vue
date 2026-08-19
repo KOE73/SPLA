@@ -132,9 +132,8 @@ let watched: string | null = null;
 function watchAndReload() {
   const next = store.currentChat;
   if (next !== watched) {
-    const extra = { projectId: store.currentProjectId ?? undefined };
-    if (watched) client.send("chat.unwatch", { chatId: watched }, extra);
-    if (next) client.send("chat.watch", { chatId: next }, extra);
+    if (watched) client.send("chat.unwatch", { chatId: watched });
+    if (next) client.send("chat.watch", { chatId: next });
     watched = next;
   }
   reload();

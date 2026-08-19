@@ -18,7 +18,6 @@
 <script setup lang="ts">
 import { onUnmounted, ref } from "vue";
 import { client } from "../../protocol/SplaClient";
-import { projectEnvelope } from "../../state/project";
 import type { CapabilityDto } from "../../protocol/types";
 import CapabilityRow from "./CapabilityRow.vue";
 
@@ -64,7 +63,7 @@ function save(): Promise<void> {
   return new Promise((resolve, reject) => {
     const timer = window.setTimeout(() => { offRes(); reject(new Error("save timed out")); }, 8000);
     const offRes = client.on("features.result", () => { clearTimeout(timer); offRes(); resolve(); });
-    const ok = client.send("features.save", { features: features.value }, projectEnvelope());
+    const ok = client.send("features.save", { features: features.value });
     if (!ok) { clearTimeout(timer); offRes(); reject(new Error("socket closed")); }
   });
 }

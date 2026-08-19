@@ -64,16 +64,27 @@ public sealed class ClientConnection : IClientSession
     /// <see cref="HandleHelloAsync"/>).</summary>
     private bool _authenticated;
 
-    /// <summary>Every project id this connection has touched — the project-level analogue of
-    /// <see cref="_openChats"/>, used to scope broadcasts so a client only watching project A never
-    /// receives project B's settings/usage/chat-list results.</summary>
-    private readonly ConcurrentDictionary<string, byte> _openProjects = new();
+    /// <summary>
+    /// The project this connection is working in. Set when the socket is established and changed
+    /// only by <c>project.open</c> — never per message.
+    ///
+    /// <para>Messages used to carry their own ProjectId, which made "which project is this about"
+    /// answerable forty different ways and wrong whenever a sender forgot. It also made the local
+    /// invariant a fiction: a process has exactly one working directory, so a window that claimed to
+    /// hold several projects at once was telling the truth about its runtimes and a lie about
+    /// everything resolved relative to cwd. One connection, one project; a second project is a
+    /// second connection, which locally means a second window.</para>
+    /// </summary>
+    private string _projectId;
 
     /// <summary>True when this connection currently has <paramref name="chatId"/> open (a watcher of it).</summary>
     public bool IsWatching(string chatId) => _openChats.ContainsKey(chatId);
 
-    /// <summary>True when this connection has touched <paramref name="projectId"/> at least once.</summary>
-    public bool IsWatchingProject(string projectId) => _openProjects.ContainsKey(projectId);
+    /// <summary>True when this connection is working in <paramref name="projectId"/> — which is now
+    /// simply "is it the one", so a broadcast scoped to a project reaches exactly the connections
+    /// bound to it.</summary>
+    public bool IsWatchingProject(string projectId)
+        => string.Equals(Volatile.Read(ref _projectId), projectId, StringComparison.Ordinal);
 
     public ClientConnection(
         WebSocket socket, AgentRuntimeRegistry registry, ConnectionHub hub, AuthGate auth, ILogger log,
@@ -99,6 +110,7 @@ public sealed class ClientConnection : IClientSession
         _userDefaultProjectId = userDefaultProjectId;
         _userArea = userArea;
         _initialChat = initialChat;
+        _projectId = userDefaultProjectId ?? registry.DefaultProjectId;
         _router = MessageRouter.Default;
         _terminals = new SshTerminalManager((type, payload) => SendAsync(type, payload), log);
         _pluginPanels = new PluginPanelManager((type, payload) => SendAsync(type, payload));
@@ -119,19 +131,29 @@ public sealed class ClientConnection : IClientSession
     public IReadOnlyList<ProjectDescriptor> ListProjects() => _userProvider?.List() ?? _registry.List();
     public IReadOnlyList<ProjectDescriptor> RecentProjects() => _userProvider?.Recent() ?? _registry.Recent();
 
-    /// <summary>Resolves the runtime an envelope means: its explicit ProjectId, or the connection's
-    /// default when omitted. Marks the resolved project as "touched" so later broadcasts reach it.</summary>
+    /// <summary>The runtime this connection works in. The envelope is still the parameter so every
+    /// handler keeps one shape, but nothing in it selects a project any more — see
+    /// <see cref="_projectId"/> for why that stopped being a per-message decision.</summary>
     public (RuntimeEntry Entry, string ProjectId) Resolve(ProtocolEnvelope env)
     {
-        var projectId = string.IsNullOrEmpty(env.ProjectId) ? DefaultProjectId : env.ProjectId;
-        _openProjects[projectId] = 0;
+        var projectId = Volatile.Read(ref _projectId);
         return (_registry.Open(projectId), projectId);
     }
 
     SshTerminalManager IClientSession.Terminals => _terminals;
     PluginPanelManager IClientSession.PluginPanels => _pluginPanels;
 
-    void IClientSession.MarkProjectOpen(string projectId) => _openProjects[projectId] = 0;
+    /// <summary>Rebinds this connection to another project — the only thing that moves it. Locally a
+    /// window does this by reconnecting; on a server one socket may walk between the user's own
+    /// projects, which is why it is a rebind and not a fixed value.</summary>
+    void IClientSession.MarkProjectOpen(string projectId)
+    {
+        Volatile.Write(ref _projectId, projectId);
+        // The chats this connection was watching belong to the project it just left. Ids are guids so
+        // nothing could actually collide, but keeping them would leave the connection claiming to
+        // watch chats it can no longer reach — and "watcher" is what broadcast scoping runs on.
+        _openChats.Clear();
+    }
     void IClientSession.MarkChatOpen(string chatId) => _openChats[chatId] = 0;
     void IClientSession.MarkChatClosed(string chatId) => _openChats.TryRemove(chatId, out _);
 
@@ -143,33 +165,18 @@ public sealed class ClientConnection : IClientSession
         => _ = RunTurnAsync(runtime, projectId, chat, text, images, hostStopping);
 
     bool IClientSession.TryCancelTurn(string chatId)
-        => InAnyOpenRuntime(r => r.Turns.TryCancel(chatId));
+        => BoundRuntime.Turns.TryCancel(chatId);
 
     bool IClientSession.CompletePermission(string requestId, PermissionDecision decision)
-        => InAnyOpenRuntime(r => r.Asks.CompletePermission(requestId, decision));
+        => BoundRuntime.Asks.CompletePermission(requestId, decision);
 
     bool IClientSession.CompleteClarify(string requestId, string? choice)
-        => InAnyOpenRuntime(r => r.Asks.CompleteClarify(requestId, choice));
+        => BoundRuntime.Asks.CompleteClarify(requestId, choice);
 
-    /// <summary>
-    /// Applies <paramref name="action"/> to each project runtime this connection has touched, stopping
-    /// at the first that says it handled the call.
-    ///
-    /// <para>Answers and cancels arrive carrying only a request id or a chat id — the client has no
-    /// reason to know which project owns them, and requiring it would let a mistyped envelope answer
-    /// somebody else's question. The search is over the connection's own open projects, so it can
-    /// never reach a project this client never looked at.</para>
-    /// </summary>
-    private bool InAnyOpenRuntime(Func<AgentRuntime, bool> action)
-    {
-        if (action(_registry.Open(DefaultProjectId).Runtime)) return true;
-        foreach (var projectId in _openProjects.Keys)
-        {
-            if (projectId == DefaultProjectId) continue;
-            if (action(_registry.Open(projectId).Runtime)) return true;
-        }
-        return false;
-    }
+    /// <summary>The runtime this connection is bound to. Answers and cancels arrive carrying only a
+    /// request id or a chat id, and now they need nothing more: there is exactly one project they
+    /// could possibly be about.</summary>
+    private AgentRuntime BoundRuntime => _registry.Open(Volatile.Read(ref _projectId)).Runtime;
 
     // ── Connection lifecycle ─────────────────────────────────────────────────
 
@@ -283,8 +290,7 @@ public sealed class ClientConnection : IClientSession
         // The handshake always describes the connection's default project — a single-project client
         // never needs to know projects exist at all. In server mode this is the user's OWN default
         // project (in their area), so a domain user lands in their space, not the server's.
-        var projectId = DefaultProjectId;
-        _openProjects[projectId] = 0;
+        var projectId = Volatile.Read(ref _projectId);
         var ctx = ProtocolProjection.ToContext(projectId, _registry.Open(projectId).Runtime);
 
         _log.LogInformation("Client connected as {User} ({Key}, {Groups} groups).",
@@ -328,8 +334,7 @@ public sealed class ClientConnection : IClientSession
         var request = _initialChat?.Take();
         if (request == null) return;
 
-        var projectId = DefaultProjectId;
-        _openProjects[projectId] = 0;
+        var projectId = Volatile.Read(ref _projectId);
         var entry = _registry.Open(projectId);
         var chat = entry.Chats.CreateNew(request.Title);
 
@@ -362,11 +367,11 @@ public sealed class ClientConnection : IClientSession
             Temperature = chat.Temperature,
             Reasoning = chat.ReasoningLevel,
             ActiveSkillId = chat.ActiveSkillId,
-            ToolSets = ChatHandlers.ToolSetDtos(_registry.Open(DefaultProjectId), chat),
+            ToolSets = ChatHandlers.ToolSetDtos(_registry.Open(Volatile.Read(ref _projectId)), chat),
             Doubt = ChatHandlers.DoubtDto(chat),
             TurnActive = chat.IsTurnRunning,
             State = SPLA.Domain.Project.InstanceStates.Name(
-                _registry.Open(DefaultProjectId).Runtime.StateOf(chat.ChatId, TimeSpan.FromMinutes(10)))
+                BoundRuntime.StateOf(chat.ChatId, TimeSpan.FromMinutes(10)))
         }, chat.ChatId);
 
         await ReplayPendingAsksAsync(chat.ChatId);
@@ -382,7 +387,7 @@ public sealed class ClientConnection : IClientSession
     /// </summary>
     private async Task ReplayPendingAsksAsync(string chatId)
     {
-        var asks = _registry.Open(DefaultProjectId).Runtime.Asks.List(chatId);
+        var asks = BoundRuntime.Asks.List(chatId);
         foreach (var ask in asks)
             await SendAsync(ProtocolMapper.MessageTypeFor(ask), ProtocolMapper.PayloadFor(ask), chatId, ask.RequestId);
     }

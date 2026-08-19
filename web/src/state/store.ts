@@ -19,7 +19,7 @@ export const store = reactive({
   branch: null as string | null,
   theme: (localStorage.getItem("spla.theme") || "dark") as string,
 
-  // ── Project focus (Phase 2.2 protocol: ProjectId rides on every chat-scoped envelope) ──
+  // ── Project focus (the server binds the connection's project; project.open rebinds it) ──
   /** null = this connection's default project (single-project usage never sets this). */
   currentProjectId: null as string | null,
   currentProjectName: null as string | null,

@@ -2,8 +2,7 @@
  * Hands the credential control to code that cannot import it — plugin settings modules, which are
  * built and shipped separately with their own bundled Vue. The plugin supplies an element and a
  * callback and gets back a reference string; it never learns the `secret.*` protocol, never sees a
- * value, and cannot get the project envelope or a refused write wrong, because none of that code
- * lives on its side any more.
+ * value, and cannot get a refused write wrong, because none of that code lives on its side any more.
  *
  * Mounted with the HOST's Vue into the plugin's DOM node, so it shares this app's secret state and
  * CSS variables — one list, refreshed for everyone when anything writes an entry.

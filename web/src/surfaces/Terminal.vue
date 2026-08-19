@@ -26,7 +26,6 @@ import { Terminal } from "@xterm/xterm";
 import { FitAddon } from "@xterm/addon-fit";
 import "@xterm/xterm/css/xterm.css";
 import { client } from "../protocol/SplaClient";
-import { projectEnvelope } from "../state/project";
 import { store } from "../state/store";
 
 // Dock panel: dockview-vue mounts panels with ONE `params` prop; host/session ride inside
@@ -62,7 +61,7 @@ let lastCols = 0;
 let lastRows = 0;
 
 function killSession() {
-  if (liveSessionId.value) client.send("ssh.session.close", { sessionId: liveSessionId.value }, projectEnvelope());
+  if (liveSessionId.value) client.send("ssh.session.close", { sessionId: liveSessionId.value });
 }
 
 function setStatus(s: "connecting" | "open" | "closed", text: string) {
@@ -95,11 +94,8 @@ function refitAndPush() {
 // ws handshake is dropped, and opening at a zero/default size makes the remote pty the wrong shape.
 function tryOpen() {
   if (opened || !store.connected || !refit()) return;
-  // Project-scoped: hosts live in the focused project's plugins.ssh.settings — without the
-  // envelope the server resolves the connection's DEFAULT project and finds no hosts.
   if (client.send("terminal.open",
-      { terminalId, host: requestedHost, session: requestedSession, cols: lastCols, rows: lastRows },
-      projectEnvelope()))
+      { terminalId, host: requestedHost, session: requestedSession, cols: lastCols, rows: lastRows }))
     opened = true;
 }
 

@@ -126,7 +126,6 @@
 <script setup lang="ts">
 import { computed, onUnmounted, ref } from "vue";
 import { client } from "../../protocol/SplaClient";
-import { projectEnvelope } from "../../state/project";
 import type { CapabilityDto, SkillSourceDto, SkillSourceEditDto } from "../../protocol/types";
 import CapabilityRow from "./CapabilityRow.vue";
 
@@ -237,7 +236,7 @@ function originHint(s: SkillSourceDto) { return ORIGIN_HINTS[s.origin || ""] ?? 
  *  along on the panel's Save with the per-skill switches. */
 function saveMine() {
   addError.value = "";
-  const ok = client.send("skills.sources.save", { sources: mine.value }, projectEnvelope());
+  const ok = client.send("skills.sources.save", { sources: mine.value });
   if (!ok) addError.value = "socket closed";
 }
 
@@ -292,7 +291,7 @@ function confirmTrust(source: SkillSourceDto) {
 }
 
 function setTrust(source: SkillSourceDto, trusted: boolean) {
-  client.send("skills.source.trust", { sourceId: source.id, trusted }, projectEnvelope());
+  client.send("skills.source.trust", { sourceId: source.id, trusted });
 }
 
 const offMine = client.on("skills.sources.result", p => { mine.value = p.sources || []; });
@@ -310,7 +309,7 @@ onUnmounted(off);
 // Toggling a plugin changes which skills exist and which are blocked, and the server resolves that
 // while handling plugins.save — so re-ask rather than leave a stale list on screen.
 const offPlugins = client.on("plugins.result", () => {
-  client.send("skills.get", undefined, projectEnvelope());
+  client.send("skills.get", undefined);
 });
 onUnmounted(offPlugins);
 
@@ -318,7 +317,7 @@ function save(): Promise<void> {
   return new Promise((resolve, reject) => {
     const timer = window.setTimeout(() => { offRes(); reject(new Error("save timed out")); }, 8000);
     const offRes = client.on("skills.result", () => { clearTimeout(timer); offRes(); resolve(); });
-    const ok = client.send("skills.save", { skills: skills.value }, projectEnvelope());
+    const ok = client.send("skills.save", { skills: skills.value });
     if (!ok) { clearTimeout(timer); offRes(); reject(new Error("socket closed")); }
   });
 }

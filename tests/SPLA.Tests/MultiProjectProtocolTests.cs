@@ -40,8 +40,18 @@ public sealed class MultiProjectProtocolTests
         return port;
     }
 
+    /// <summary>
+    /// Two projects are two connections, and neither can see the other's chats.
+    ///
+    /// <para>This used to be "two projects over one socket stay isolated", and the isolation was
+    /// enforced by every message naming its own project. That put the burden on the sender: forget
+    /// the field once and a settings write landed in whichever project the connection defaulted to.
+    /// Binding the project to the connection removes the class of bug rather than testing for it —
+    /// so what is worth proving now is that a second connection really is a second project, and that
+    /// nothing about the first one leaks into it.</para>
+    /// </summary>
     [Fact]
-    public async Task Two_projects_over_one_socket_stay_isolated()
+    public async Task Two_connections_hold_two_projects_and_neither_sees_the_other()
     {
         var root = TempRoot();
         try
@@ -60,36 +70,43 @@ public sealed class MultiProjectProtocolTests
             await host.StartAsync();
             try
             {
-                using var socket = new ClientWebSocket();
-                await socket.ConnectAsync(new Uri($"ws://127.0.0.1:{port}/ws"), CancellationToken.None);
-
-                await SendAsync(socket, MessageTypes.Hello, new HelloPayload());
-                var welcome = await ReceiveAsync<WelcomePayload>(socket, MessageTypes.Welcome);
+                using var alpha = new ClientWebSocket();
+                await alpha.ConnectAsync(new Uri($"ws://127.0.0.1:{port}/ws"), CancellationToken.None);
+                await SendAsync(alpha, MessageTypes.Hello, new HelloPayload());
+                var welcome = await ReceiveAsync<WelcomePayload>(alpha, MessageTypes.Welcome);
                 Assert.Equal(alphaManifest, welcome.ProjectId);
                 Assert.Equal("Alpha", welcome.ProjectName);
 
-                // Create a chat explicitly in Beta (not the default project).
-                await SendAsync(socket, MessageTypes.ChatNew, new ChatNewPayload { Title = "Beta chat" }, projectId: betaManifest);
-                var opened = await ReceiveAsync<ChatOpenedPayload>(socket, MessageTypes.ChatOpened);
+                // A second socket, moved to Beta by project.open — the only thing that rebinds a
+                // connection. Locally this is a second window; on a server it is one user walking
+                // between their own projects.
+                using var beta = new ClientWebSocket();
+                await beta.ConnectAsync(new Uri($"ws://127.0.0.1:{port}/ws"), CancellationToken.None);
+                await SendAsync(beta, MessageTypes.Hello, new HelloPayload());
+                await ReceiveAsync<WelcomePayload>(beta, MessageTypes.Welcome);
+
+                await SendAsync(beta, MessageTypes.ProjectOpen, new ProjectOpenPayload { ProjectId = betaManifest });
+                var context = await ReceiveAsync<ProjectContextPayload>(beta, MessageTypes.ProjectContext);
+                Assert.Equal(betaManifest, context.ProjectId);
+
+                await SendAsync(beta, MessageTypes.ChatNew, new ChatNewPayload { Title = "Beta chat" });
+                var opened = await ReceiveAsync<ChatOpenedPayload>(beta, MessageTypes.ChatOpened);
                 Assert.Equal("Beta chat", opened.Title);
 
-                // chat.new also broadcasts an unsolicited chat.list.result to this project's watchers
-                // (sidebar auto-refresh) — correlate by RequestId so that broadcast noise can't be
-                // mistaken for the reply to an explicit query below.
-                const string betaReqId = "beta-list";
-                const string alphaReqId = "alpha-list";
-
-                // Beta's list shows the new chat.
-                await SendAsync(socket, MessageTypes.ChatList, null, projectId: betaManifest, requestId: betaReqId);
-                var betaList = await ReceiveAsync<ChatListResultPayload>(socket, MessageTypes.ChatListResult, betaReqId);
+                // chat.new also broadcasts an unsolicited chat.list.result to that project's watchers
+                // (sidebar auto-refresh) — correlate by RequestId so broadcast noise cannot be
+                // mistaken for the reply to an explicit query.
+                await SendAsync(beta, MessageTypes.ChatList, null, requestId: "beta-list");
+                var betaList = await ReceiveAsync<ChatListResultPayload>(beta, MessageTypes.ChatListResult, "beta-list");
                 Assert.Single(betaList.Chats);
 
-                // The default project (Alpha, ProjectId omitted) was never touched — still empty.
-                await SendAsync(socket, MessageTypes.ChatList, null, requestId: alphaReqId);
-                var alphaList = await ReceiveAsync<ChatListResultPayload>(socket, MessageTypes.ChatListResult, alphaReqId);
+                // The point of the test: Alpha's connection was never moved and sees nothing of Beta.
+                await SendAsync(alpha, MessageTypes.ChatList, null, requestId: "alpha-list");
+                var alphaList = await ReceiveAsync<ChatListResultPayload>(alpha, MessageTypes.ChatListResult, "alpha-list");
                 Assert.Empty(alphaList.Chats);
 
-                await socket.CloseAsync(WebSocketCloseStatus.NormalClosure, "done", CancellationToken.None);
+                await alpha.CloseAsync(WebSocketCloseStatus.NormalClosure, "done", CancellationToken.None);
+                await beta.CloseAsync(WebSocketCloseStatus.NormalClosure, "done", CancellationToken.None);
             }
             finally
             {
@@ -222,7 +239,9 @@ public sealed class MultiProjectProtocolTests
                 Assert.Contains(list.Projects, p => Path.GetFullPath(p.Id) == Path.GetFullPath(ctx.ProjectId));
 
                 // Its chats are ITS OWN (empty) — not another project's ("strange foreign chats" bug).
-                await SendAsync(socket, MessageTypes.ChatList, null, projectId: ctx.ProjectId, requestId: "h1");
+                // No project named on the message: project.create already moved this connection into
+                // the project it made, which is the whole point of binding it to the connection.
+                await SendAsync(socket, MessageTypes.ChatList, null, requestId: "h1");
                 var chats = await ReceiveAsync<ChatListResultPayload>(socket, MessageTypes.ChatListResult, "h1");
                 Assert.Empty(chats.Chats);
 
@@ -282,12 +301,11 @@ public sealed class MultiProjectProtocolTests
     }
 
     private static async Task SendAsync(
-        ClientWebSocket socket, string type, object? payload, string? projectId = null, string? requestId = null)
+        ClientWebSocket socket, string type, object? payload, string? requestId = null)
     {
         var env = new ProtocolEnvelope
         {
             Type = type,
-            ProjectId = projectId,
             RequestId = requestId,
             Payload = payload == null ? null : JsonSerializer.SerializeToElement(payload, Json)
         };

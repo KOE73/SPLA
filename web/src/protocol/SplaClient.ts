@@ -43,7 +43,7 @@ export class SplaClient {
    * they stay apart.
    */
   receive(env: Envelope): void {
-    this.emitWire({ dir: "in", type: env.type, payload: env.payload, chatId: env.chatId, projectId: env.projectId, requestId: env.requestId, ts: Date.now() });
+    this.emitWire({ dir: "in", type: env.type, payload: env.payload, chatId: env.chatId, requestId: env.requestId, ts: Date.now() });
 
     if (env.requestId && this.pending.has(env.requestId)) {
       const p = this.pending.get(env.requestId)!;
@@ -61,16 +61,16 @@ export class SplaClient {
   }
 
   /** Fire-and-forget send. Returns false (does not throw) if the socket isn't open. */
-  send(type: string, payload?: unknown, extra?: { chatId?: string; projectId?: string; requestId?: string }): boolean {
+  send(type: string, payload?: unknown, extra?: { chatId?: string; requestId?: string }): boolean {
     const ok = !!this.ws && this.ws.readyState === WebSocket.OPEN;
     if (ok) this.ws!.send(JSON.stringify({ type, payload, ...extra }));
     // Only claim "out" in the wire log if it was actually sent — never lie about delivery.
-    if (ok) this.emitWire({ dir: "out", type, payload, chatId: extra?.chatId, projectId: extra?.projectId, requestId: extra?.requestId, ts: Date.now() });
+    if (ok) this.emitWire({ dir: "out", type, payload, chatId: extra?.chatId, requestId: extra?.requestId, ts: Date.now() });
     return ok;
   }
 
   /** Command with a correlated response. Server must echo the same requestId. */
-  invoke<R = unknown>(type: string, payload?: unknown, extra?: { chatId?: string; projectId?: string }, timeoutMs = 15000): Promise<R> {
+  invoke<R = unknown>(type: string, payload?: unknown, extra?: { chatId?: string }, timeoutMs = 15000): Promise<R> {
     const requestId = uuid();
     return new Promise<R>((resolve, reject) => {
       const timer = window.setTimeout(() => {

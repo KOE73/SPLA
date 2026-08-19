@@ -36,8 +36,7 @@ provideChat({
   send(type: string, payload: Record<string, unknown> = {}) {
     const id = chatId.value;
     if (!id) return;
-    client.send(type, { chatId: id, ...payload },
-      store.currentProjectId ? { projectId: store.currentProjectId } : undefined);
+    client.send(type, { chatId: id, ...payload });
   }
 });
 </script>

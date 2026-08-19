@@ -30,12 +30,12 @@ public sealed class ProtocolEnvelope
     /// <summary>Which chat this message concerns, when applicable.</summary>
     public string? ChatId { get; set; }
 
-    /// <summary>Which project this message concerns. Null means "this connection's default
-    /// project" (the one the service was started against) — a single-project client never has to
-    /// set this. A multi-project client (project browser, several open project windows over the
-    /// same socket) sets it explicitly on every project- or chat-scoped message; the server never
-    /// remembers a "current project" for the connection, so there is no state to drift.</summary>
-    public string? ProjectId { get; set; }
+    // A ProjectId used to live here, on every single message, and it is gone on purpose. A project
+    // is a property of the CONNECTION: fixed when the socket is established, changed only by
+    // project.open. Per-message meant every sender had to remember it, and forgetting it silently
+    // wrote into whichever project the connection defaulted to — which the web client had to defend
+    // against in forty places. One place to be right beats forty places to be careful. It also makes
+    // the local invariant true rather than aspirational: one window, one project, one cwd.
 
     /// <summary>
     /// Correlation id for request/response pairs that need one — permission and clarify round-trips

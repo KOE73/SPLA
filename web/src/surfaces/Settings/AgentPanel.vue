@@ -54,7 +54,6 @@
 <script setup lang="ts">
 import { onUnmounted, reactive, ref } from "vue";
 import { client } from "../../protocol/SplaClient";
-import { projectEnvelope } from "../../state/project";
 
 const PERMS: { key: "permRead" | "permWrite" | "permShell" | "permInternet"; label: string }[] = [
   { key: "permRead", label: "Read files" },
@@ -110,7 +109,7 @@ function save(): Promise<void> {
       saveAttempts: saveAttempts.value,
       permRead: perms.permRead, permWrite: perms.permWrite, permShell: perms.permShell, permInternet: perms.permInternet,
       theme: lastTheme, density: lastDensity
-    }, projectEnvelope());
+    });
     if (!ok) { clearTimeout(timer); offRes(); reject(new Error("socket closed")); }
   });
 }

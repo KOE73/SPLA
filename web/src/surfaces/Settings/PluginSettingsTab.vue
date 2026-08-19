@@ -19,7 +19,6 @@
 <script setup lang="ts">
 import { ref, watch } from "vue";
 import { client } from "../../protocol/SplaClient";
-import { projectEnvelope } from "../../state/project";
 import type { PluginDto } from "../../protocol/types";
 import PluginWebSettings from "./PluginWebSettings.vue";
 
@@ -38,7 +37,7 @@ function save(): Promise<void> {
   return new Promise((resolve, reject) => {
     const timer = window.setTimeout(() => { offRes(); reject(new Error("save timed out")); }, 8000);
     const offRes = client.on("plugins.result", () => { clearTimeout(timer); offRes(); resolve(); });
-    if (!client.send("plugins.save", { plugins: [pl] }, projectEnvelope()))
+    if (!client.send("plugins.save", { plugins: [pl] }))
       { clearTimeout(timer); offRes(); reject(new Error("socket closed")); }
   });
 }

@@ -2,21 +2,19 @@
  * The browser half of the secret store — ONE place that talks `secret.*`, shared by the Secrets
  * settings panel, the credential picker and (through the plugin mount API) every plugin panel.
  * Nothing else in web/ may call `secret.list/set/delete` directly: a second caller is a second
- * chance to forget the project envelope or to mistake a rejection for success.
+ * chance to mistake a rejection for success.
  *
- * Two things the raw protocol makes easy to get wrong, fixed here once:
+ * One thing the raw protocol makes easy to get wrong, fixed here once:
  *  - `secret.*` never rejects. The server always answers `secret.result` and reports refusals in
  *    `error` (scope missing, no project open, ACL). `client.invoke` resolves on any answer, so a
  *    caller that only try/catches sees a failed write as a success. Every call below THROWS on
  *    `error` — callers get one honest failure path.
- *  - Every request carries the project envelope; without it the project scope resolves elsewhere.
  *
  * Values are write-only, exactly as the protocol promises: they go browser → server and the state
  * below only ever holds keys, scopes and field NAMES.
  */
 import { reactive } from "vue";
 import { client } from "../protocol/SplaClient";
-import { projectEnvelope } from "../state/project";
 import type { SecretEntryDto, SecretListResultPayload, SecretScopeId } from "../protocol/types";
 
 /** Conventional field names (mirrors SecretFields in the domain). Anything else via "custom…". */
@@ -72,9 +70,9 @@ function apply(p: SecretListResultPayload) {
   secrets.loaded = true;
 }
 
-/** Every `secret.*` call goes through here: envelope in, state refreshed, refusal turned into a throw. */
+/** Every `secret.*` call goes through here: state refreshed, refusal turned into a throw. */
 async function call(type: string, payload?: unknown): Promise<void> {
-  const p = await client.invoke<SecretListResultPayload>(type, payload, projectEnvelope());
+  const p = await client.invoke<SecretListResultPayload>(type, payload);
   apply(p);
   if (p.error) throw new Error(p.error);
 }

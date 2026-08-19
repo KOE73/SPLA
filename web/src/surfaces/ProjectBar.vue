@@ -120,7 +120,7 @@ function openSettings() {
 
 /** The tally is project-scoped, so it is re-read whenever the focused project changes. */
 function fetchUsage() {
-  client.send("usage.get", undefined, store.currentProjectId ? { projectId: store.currentProjectId } : undefined);
+  client.send("usage.get");
 }
 
 const offs = [

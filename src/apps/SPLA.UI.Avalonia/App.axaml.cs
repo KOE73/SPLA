@@ -103,7 +103,12 @@ public partial class App : Application
 
             if (splaFile != null)
             {
-                Directory.SetCurrentDirectory(ResolvedSettings.WorkspacePath);
+                // Deliberately no chdir. A process has exactly one working directory, so the moment
+                // this shell can hold two windows on two projects, a cwd set from whichever one
+                // started first is wrong for the other — and wrong silently, in whatever resolves a
+                // relative path. The working directory belongs to the serve instance, which holds
+                // exactly one project by construction; the shell passes the workspace explicitly to
+                // the child it spawns and otherwise never relies on where it was launched from.
                 ConfigLoader.AddRecentProject(splaFile);
                 WindowsShellIntegration.AddRecentProject(splaFile);
             }

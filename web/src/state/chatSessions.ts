@@ -38,7 +38,6 @@ export type LogItem =
 
 export interface ChatSession {
   chatId: string;
-  projectId: string | null;
 
   // ── Head: cheap, kept for every chat this window has touched ──────────────
   turnActive: boolean;
@@ -87,7 +86,6 @@ const nextKey = () => "i" + (keySeq++);
 function blank(chatId: string): ChatSession {
   return {
     chatId,
-    projectId: store.currentProjectId,
     turnActive: false,
     mode: "",
     modelId: "",
@@ -152,7 +150,7 @@ function dropLog(s: ChatSession) {
   s.items = [];
   s.pending = [];
   s.calls = {};
-  client.send("chat.unwatch", { chatId: s.chatId }, s.projectId ? { projectId: s.projectId } : undefined);
+  client.send("chat.unwatch", { chatId: s.chatId });
 }
 
 // ── Log helpers ──────────────────────────────────────────────────────────────
@@ -221,7 +219,6 @@ function on<P>(type: string, apply: (s: ChatSession, payload: P) => void) {
 
 client.on("chat.opened", (p, env) => {
   const s = sessionFor(p.chatId || env.chatId || "");
-  s.projectId = store.currentProjectId;
   s.items = [];
   s.pending = [];
   s.calls = {};

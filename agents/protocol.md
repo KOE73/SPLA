@@ -14,7 +14,7 @@ that keeps both sides honest.
 - **Wire message names**: `src/service/SPLA.Service.Contracts/Protocol.cs` → `MessageTypes`
   constants. These are authoritative. The C# side always references the constant, never a literal.
 - **Payload shapes**: `src/service/SPLA.Service.Contracts/Payloads.cs`.
-- **Envelope**: `ProtocolEnvelope` — `{ type, auth?, chatId?, projectId?, requestId?, payload? }`.
+- **Envelope**: `ProtocolEnvelope` — `{ type, auth?, chatId?, requestId?, payload? }`.
   `type` selects the payload shape; `payload` rides as raw JSON so a client deserializes only shapes
   it knows.
 - **Protocol version**: `ProtocolVersion.Current` (`"1"`), echoed in `WelcomePayload.ProtocolVersion`.
@@ -37,7 +37,7 @@ client/types **and** this table.
 | `type` | One of the `MessageTypes` below. |
 | `auth` | `AuthInfo` (token + reserved actor id). Only the token is checked, and only when a connect token is configured; on loopback it is ignored. |
 | `chatId` | Which chat the message concerns, when applicable. |
-| `projectId` | Which project the message concerns. Null = this connection's default project; the server keeps no "current project" state, so a multi-project client sets it per message. |
+| ~~`projectId`~~ | **Removed.** A project is a property of the CONNECTION, not of a message — see below. |
 | `requestId` | Correlates request/response pairs (permission, clarify, and any `invoke()` RPC). Same id out and back. |
 | `payload` | Typed body for `type`, as raw JSON. |
 
@@ -203,6 +203,26 @@ Reference implementation: `AppearanceChanged` → `appearance.changed`.
 `SplaClient` fans every inbound frame onto its typed bus (`on(type, handler)`); surfaces also emit
 purely local UI events (e.g. `conn` for the connection dot). These are **not** protocol messages —
 keep them out of `MessageTypes`. Every in/out frame is also mirrored to `onWire(...)` listeners.
+
+## A connection has one project
+
+There is no `projectId` on the envelope, and adding one back is not the fix for anything.
+
+The server binds a connection to a project when the socket is established (the user's own default in
+server mode, the process's project locally) and rebinds it **only** on `project.open`. Everything
+else — chats, settings, secrets, plugins, usage — is implicitly about that project.
+
+It used to be per message, and the cost was paid in two places. Clients had to remember the field on
+every send, and forgetting it wrote silently into whichever project the connection defaulted to; the
+web client carried a `projectEnvelope()` helper and a comment warning every settings surface to pass
+it. And it made a local invariant into a fiction: a process has exactly one working directory, so a
+window claiming to hold several projects at once was telling the truth about its runtimes and a lie
+about anything resolved relative to `cwd`.
+
+So: **a second project is a second connection.** Locally that means a second window; on a server it
+means one socket walking between the user's own projects via `project.open`. Broadcast scoping
+(`BroadcastToProjectAsync`) still exists and still works — `IsWatchingProject` is now simply "is this
+the connection's project".
 
 ## The registry channel is a different protocol
 

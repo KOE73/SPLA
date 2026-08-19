@@ -60,27 +60,21 @@ onUnmounted(offList);
 
 const chatsContainerRef = ref<HTMLElement>();
 
-/** The project this connection is currently focused on — undefined (omitted) means "the
- * connection's default project", exactly what a single-project client already wants. */
-function projectExtra() {
-  return store.currentProjectId ? { projectId: store.currentProjectId } : undefined;
-}
-
-function newChat() { client.send("chat.new", { title: null }, projectExtra()); }
+function newChat() { client.send("chat.new", { title: null }); }
 
 function onChatClick(chatId: string) {
-  client.send("chat.open", { chatId }, projectExtra());
+  client.send("chat.open", { chatId });
   openPanel("chat");
 }
 
 function rename(chat: ChatSummary) {
   const nt = prompt("Rename chat", chat.title || "");
-  if (nt) client.send("chat.rename", { chatId: chat.id, title: nt }, projectExtra());
+  if (nt) client.send("chat.rename", { chatId: chat.id, title: nt });
 }
 
 function remove(chatId: string) {
   if (!confirm("Delete this chat?")) return;
-  client.send("chat.delete", { chatId }, projectExtra());
+  client.send("chat.delete", { chatId });
   forgetSession(chatId);
   if (chatId === store.currentChat) store.currentChat = null;
 }

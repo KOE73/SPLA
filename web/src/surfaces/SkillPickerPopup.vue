@@ -58,7 +58,6 @@
 import { computed, nextTick, onMounted, onBeforeUnmount, ref, watch } from "vue";
 import type { CSSProperties } from "vue";
 import { client } from "../protocol/SplaClient";
-import { store } from "../state/store";
 import { useChat } from "../state/chatContext";
 import type { CapabilityDto } from "../protocol/types";
 
@@ -173,7 +172,7 @@ let ro: ResizeObserver | undefined;
 const onWindowResize = () => position();
 
 onMounted(() => {
-  client.send("skills.get", undefined, { projectId: store.currentProjectId ?? undefined });
+  client.send("skills.get");
   position();
   filterEl.value?.focus();
   ro = new ResizeObserver(() => position(false));

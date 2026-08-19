@@ -6,7 +6,6 @@ export interface WireFrame {
   type: string;
   payload: unknown;
   chatId?: string;
-  projectId?: string;
   requestId?: string;
   ts: number;
 }
@@ -15,9 +14,6 @@ export interface Envelope<P = unknown> {
   type: string;
   payload: P;
   chatId?: string;
-  /** Which project this message concerns; absent = the connection's default project. See
-   * AgentRuntimeRegistry.DefaultProjectId server-side — single-project usage never sets this. */
-  projectId?: string;
   requestId?: string;
 }
 

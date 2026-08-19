@@ -44,7 +44,6 @@
 <script setup lang="ts">
 import { computed, onUnmounted, ref, watch } from "vue";
 import { client } from "../../protocol/SplaClient";
-import { projectEnvelope } from "../../state/project";
 import type { PluginDto } from "../../protocol/types";
 import ConnectionsPanel from "./ConnectionsPanel.vue";
 import AgentPanel from "./AgentPanel.vue";
@@ -143,14 +142,14 @@ async function onSave() {
 }
 
 function fetchAll() {
-  client.send("connections.get", undefined, projectEnvelope());
-  client.send("agent.get", undefined, projectEnvelope());
-  client.send("plugins.get", undefined, projectEnvelope());
-  client.send("features.get", undefined, projectEnvelope());
-  client.send("skills.get", undefined, projectEnvelope());
+  client.send("connections.get", undefined);
+  client.send("agent.get", undefined);
+  client.send("plugins.get", undefined);
+  client.send("features.get", undefined);
+  client.send("skills.get", undefined);
   // The editable half of the fond travels separately: skills.get carries every branch for display,
   // this one carries only the branches the panel is allowed to rewrite.
-  client.send("skills.sources.get", undefined, projectEnvelope());
+  client.send("skills.sources.get", undefined);
 }
 client.on("welcome", fetchAll);
 fetchAll();

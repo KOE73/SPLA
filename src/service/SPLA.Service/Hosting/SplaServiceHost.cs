@@ -106,6 +106,12 @@ public sealed record ServiceOptions
     /// an external observability backend. Null = no export (local stats only). A control-plane / egress
     /// setting — it determines where telemetry leaves the host.</summary>
     public string? OtlpEndpoint { get; init; }
+    /// <summary>How long an unused project runtime is kept before it is dropped. Zero (the default)
+    /// keeps them forever, which is what a local single-project process wants — there the instance
+    /// lease already decides when the whole process may go. A server never exits and holds N users
+    /// times M projects, so there this is the condition for surviving the day.</summary>
+    public TimeSpan EvictIdleProjectsAfter { get; init; } = TimeSpan.Zero;
+
     /// <summary>When set, this host also serves the registry routes for the given hub. Lets one
     /// process be both a service and the hub instances register with — what a small deployment wants,
     /// and what the server does — without a second implementation of the routes for that case.</summary>
@@ -130,6 +136,7 @@ public sealed class SplaServiceHost
     private readonly WebApplication _app;
     private readonly SPLA.Observability.Collection.TelemetryCollector? _collector;
     private readonly IDisposable? _gaugeTimer;
+    private readonly IDisposable? _evictionTimer;
     private readonly string _scheme;
     private readonly string _bind;
     private string? _url;
@@ -164,7 +171,8 @@ public sealed class SplaServiceHost
 
     private SplaServiceHost(
         WebApplication app, string scheme, string bind, InstanceLease lease, ConnectionHub hub,
-        SPLA.Observability.Collection.TelemetryCollector? collector = null, IDisposable? gaugeTimer = null)
+        SPLA.Observability.Collection.TelemetryCollector? collector = null, IDisposable? gaugeTimer = null,
+        IDisposable? evictionTimer = null)
     {
         _app = app;
         _hub = hub;
@@ -173,6 +181,7 @@ public sealed class SplaServiceHost
         _lease = lease;
         _collector = collector;
         _gaugeTimer = gaugeTimer;
+        _evictionTimer = evictionTimer;
     }
 
     public static SplaServiceHost Build(
@@ -347,7 +356,21 @@ public sealed class SplaServiceHost
             hub, registry, options.IdleTimeout, options.StallAfter,
             loggerFactory.CreateLogger<InstanceLease>());
 
-        return new SplaServiceHost(app, scheme, options.Bind, lease, hub, collector, gaugeTimer);
+        // Unused project runtimes go on a slow sweep. Idle only, and only when nobody is bound to
+        // them — a runtime holds nothing unique (chats, KV and the tally are on disk), so dropping
+        // one costs the next warm-up and never any work. Off unless a deployment asks.
+        System.Threading.Timer? evictionTimer = null;
+        if (options.EvictIdleProjectsAfter > TimeSpan.Zero)
+        {
+            var sweep = options.EvictIdleProjectsAfter;
+            evictionTimer = new System.Threading.Timer(_ =>
+            {
+                try { registry.EvictIdle(id => hub.CountForProject(id) > 0, StallAfter); }
+                catch { /* a sweep that throws must not take the host down */ }
+            }, null, sweep, sweep);
+        }
+
+        return new SplaServiceHost(app, scheme, options.Bind, lease, hub, collector, gaugeTimer, evictionTimer);
     }
 
     /// <summary>Configures the auth pipeline for the effective mode. Both server modes issue the same
@@ -414,6 +437,11 @@ public sealed class SplaServiceHost
     /// into the hub, scoped to its own project id — fires for the eagerly-opened default project and
     /// for any project a client opens/creates later, so live updates are never limited to whichever
     /// project happened to exist at process startup.</summary>
+    /// <summary>Silence after which a registered turn counts as stopped halfway. The same judgement
+    /// the instance handlers and the chat projections make, and deliberately not a knob: it is a
+    /// statement about how long a model may go quiet before a person would call it stuck.</summary>
+    private static readonly TimeSpan StallAfter = TimeSpan.FromMinutes(10);
+
     private static void WireRuntimeEvents(AgentRuntimeRegistry registry, ConnectionHub hub)
     {
         registry.RuntimeCreated += (projectId, entry) =>
@@ -578,6 +606,7 @@ public sealed class SplaServiceHost
     {
         _lease.Dispose();
         _gaugeTimer?.Dispose();
+        _evictionTimer?.Dispose();
         _collector?.Dispose();   // flushes persisted stats
         await _app.StopAsync(ct);
     }

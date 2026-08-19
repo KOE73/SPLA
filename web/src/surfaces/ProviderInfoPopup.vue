@@ -35,7 +35,6 @@
 <script setup lang="ts">
 import { computed, nextTick, onMounted, onUnmounted, ref } from "vue";
 import { client } from "../protocol/SplaClient";
-import { projectEnvelope } from "../state/project";
 import type { ProviderFactDto, ProviderInfoResultPayload } from "../protocol/types";
 
 const props = defineProps<{ modelId: string; anchor: HTMLElement }>();
@@ -84,7 +83,7 @@ function shortTime(iso: string): string {
 async function load() {
   try {
     info.value = await client.invoke<ProviderInfoResultPayload>(
-      "provider.info", { modelId: props.modelId }, projectEnvelope());
+      "provider.info", { modelId: props.modelId });
   } catch (e) {
     info.value = { modelId: props.modelId, connectionId: "", connectionName: "", sections: [],
       error: e instanceof Error ? e.message : String(e) };

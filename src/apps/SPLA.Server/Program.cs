@@ -141,7 +141,11 @@ var options = new ServiceOptions
     // A server that is also the hub its machines' instances register with. Opt-in rather than
     // automatic: mapping registration routes onto a production deployment is a decision, and the
     // routes are the same ones `spla hub` runs alone — one implementation for both scenarios.
-    RegistryHub = runHub ? new SPLA.Instances.RegistryHub() : null
+    RegistryHub = runHub ? new SPLA.Instances.RegistryHub() : null,
+    // A server never exits, so nothing else would ever let go of a runtime built for somebody who
+    // logged off this morning. Twenty minutes is long enough that walking away from a project and
+    // coming back costs nothing visible, short enough that a day's worth of users does not stack up.
+    EvictIdleProjectsAfter = TimeSpan.FromMinutes(20)
 };
 var host = SplaServiceHost.Build(registry, options, identityProvider, serverRoot, accounts);
 await host.StartAsync();
