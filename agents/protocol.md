@@ -50,6 +50,8 @@ client/types **and** this table.
 | `project.recent` | `ProjectRecent` | — | Reply `project.list.result`, ordered by recency. |
 | `project.open` | `ProjectOpen` | `ProjectOpenPayload` | Open a project by id; reply `project.context`. |
 | `project.create` | `ProjectCreate` | `ProjectCreatePayload` | Create + open; reply `project.context`. Server mode: created by name inside the user's area. |
+| `instance.status` | `InstanceStatus` | — | Ask this process what it is doing right now; reply `instance.status.result`. |
+| `instance.stop` | `InstanceStop` | `InstanceStopPayload` | Ask this process to shut down; reply `instance.status.result` (`Stopping: true` once underway, or a refusal naming why). `Force: true` cancels every running turn first. |
 | `chat.list` | `ChatList` | — | Request the chat list. |
 | `chat.open` | `ChatOpen` | `ChatOpenPayload` | Open a chat; reply `chat.opened`. |
 | `chat.watch` | `ChatWatch` | `ChatOpenPayload` | Watch a chat (turn/tool events) without the `chat.opened` echo — for tear-off/aux windows. |
@@ -118,6 +120,7 @@ client/types **and** this table.
 | `welcome` | `Welcome` | `WelcomePayload` | unicast | Default project, connections, modes, theme/density, protocol version, identity, build branch. |
 | `project.list.result` | `ProjectListResult` | `ProjectListResultPayload` | unicast | Answer to `project.list`/`project.recent`. |
 | `project.context` | `ProjectContext` | `ProjectContextPayload` | unicast | Answer to `project.open`/`project.create`. |
+| `instance.status.result` | `InstanceStatusResult` | `InstanceStatusPayload` | unicast | Answer to `instance.status`/`instance.stop` — a unicast reply to whoever asked, never fanned out to other clients. |
 | `chat.list.result` | `ChatListResult` | `ChatListResultPayload` | broadcast (project) | Every sidebar in that project refreshes. |
 | `chat.opened` | `ChatOpened` | `ChatOpenedPayload` | unicast | Full chat state on open. |
 | `user.message` | `UserMessage` | `UserMessagePayload` | watchers | Accepted user message id/time; optional text renders server-initiated turns. |

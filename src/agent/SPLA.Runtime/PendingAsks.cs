@@ -188,10 +188,24 @@ public sealed class PendingAskStore
 public sealed class TurnRegistry
 {
     private readonly ConcurrentDictionary<string, CancellationTokenSource> _turns = new();
+    private long _lastActivityTicks = DateTime.UtcNow.Ticks;
+
+    /// <summary>When something last actually happened in a turn — a token, a tool call, a result.
+    /// A turn that is registered but silent for a long time is a model that stopped halfway, which
+    /// is a different thing from a turn doing work, and the difference decides whether the instance
+    /// may be evicted.</summary>
+    public DateTime LastActivityUtc => new(Volatile.Read(ref _lastActivityTicks), DateTimeKind.Utc);
+
+    /// <summary>Records that the turn is still moving.</summary>
+    public void Touch() => Volatile.Write(ref _lastActivityTicks, DateTime.UtcNow.Ticks);
 
     /// <summary>Registers a turn's cancellation source. Replaces any stale entry for the chat — the
     /// chat's own gate already serialises turns, so a second entry means the first one is finished.</summary>
-    public void Register(string chatId, CancellationTokenSource cts) => _turns[chatId] = cts;
+    public void Register(string chatId, CancellationTokenSource cts)
+    {
+        _turns[chatId] = cts;
+        Touch();
+    }
 
     public void Remove(string chatId, CancellationTokenSource cts)
     {
@@ -205,6 +219,14 @@ public sealed class TurnRegistry
         if (!_turns.TryGetValue(chatId, out var cts)) return false;
         cts.Cancel();
         return true;
+    }
+
+    /// <summary>Cancels every running turn in this project. Only for a forced instance stop: the normal
+    /// refusal path (<see cref="Any"/> plus <c>SPLA.Domain.Project.InstanceStates.MayEvict</c>) exists
+    /// precisely so this is never reached by accident.</summary>
+    public void CancelAll()
+    {
+        foreach (var cts in _turns.Values) cts.Cancel();
     }
 
     /// <summary>True while any turn of this project is in flight — the <c>working</c> state.</summary>

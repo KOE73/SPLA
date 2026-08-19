@@ -23,6 +23,21 @@ if (SPLA.CLI.InitCommand.IsInitCommand(args))
     return;
 }
 
+// `ps` and `stop` are about instances, not about the directory the shell happens to be in, and
+// neither may become a writer of any project just to look at (or ask about) one. So they run ahead
+// of the bootstrap that resolves and locks a project — they read lock files and talk over sockets.
+if (SPLA.CLI.PsCommand.IsPsCommand(args))
+{
+    Environment.ExitCode = await SPLA.CLI.PsCommand.RunAsync(args);
+    return;
+}
+
+if (SPLA.CLI.StopCommand.IsStopCommand(args))
+{
+    Environment.ExitCode = await SPLA.CLI.StopCommand.RunAsync(args);
+    return;
+}
+
 // `mcp` speaks a protocol on stdout, so it must be recognised before anything prints. The banner
 // below would be the first thing a client reads, and an unparsable first line kills the session.
 // It stays a raw args check ahead of Spectre for exactly that reason — nothing may run first.

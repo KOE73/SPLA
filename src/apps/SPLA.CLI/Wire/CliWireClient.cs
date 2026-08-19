@@ -49,6 +49,19 @@ internal sealed class CliWireClient : IAsyncDisposable
         return client;
     }
 
+    /// <summary>
+    /// Sends a request and waits for the correlated <see cref="MessageTypes.InstanceStatusResult"/>
+    /// answer — the shape both <see cref="MessageTypes.InstanceStatus"/> and
+    /// <see cref="MessageTypes.InstanceStop"/> reply with. General over the two on purpose: `spla ps`
+    /// and `spla stop` differ only in what they send, not in how they read the answer back.
+    /// </summary>
+    public async Task<InstanceStatusPayload?> RequestInstanceStatusAsync(string type, object? payload, CancellationToken ct)
+    {
+        await SendAsync(type, payload, ct: ct);
+        var reply = await WaitForAsync(MessageTypes.InstanceStatusResult, ct);
+        return Payload<InstanceStatusPayload>(reply);
+    }
+
     /// <summary>Starts a chat and returns its id.</summary>
     public async Task<string> NewChatAsync(string? title, CancellationToken ct)
     {

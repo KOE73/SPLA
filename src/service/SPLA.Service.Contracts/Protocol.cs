@@ -220,6 +220,15 @@ public static class MessageTypes
     /// <summary>Creates a new project (writes its manifest) and opens it.</summary>
     public const string ProjectCreate = "project.create";
 
+    // ── Instance lifecycle (client → server) ──────────────────────────────
+    /// <summary>Asks this process what it is doing right now — the CLI's <c>spla ps</c> and any status
+    /// badge use it instead of trusting a stale lock-file snapshot. Reply <see cref="InstanceStatusResult"/>.</summary>
+    public const string InstanceStatus = "instance.status";
+    /// <summary>Asks this process to shut down. Body <see cref="InstanceStopPayload"/>; reply
+    /// <see cref="InstanceStatusResult"/> — either <c>Stopping = true</c> once shutdown is underway, or
+    /// a refusal naming why (a turn running, a question outstanding) when not forced.</summary>
+    public const string InstanceStop = "instance.stop";
+
     // ── Workspace filesystem browser (client → server) ───────────────────
     /// <summary>List children of a directory (null parentRef = workspace root).</summary>
     public const string FsBrowse = "fs.browse";
@@ -332,6 +341,11 @@ public static class MessageTypes
     /// <see cref="WelcomePayload"/> carries for the connection's default project, but for any
     /// project id, so a client can render a new project window without a second round trip.</summary>
     public const string ProjectContext = "project.context";
+
+    /// <summary>Answer to <see cref="InstanceStatus"/> and <see cref="InstanceStop"/> alike — one shape
+    /// for "what is this instance doing" and "did the stop go through", since a refused stop IS a
+    /// status answer with a reason attached.</summary>
+    public const string InstanceStatusResult = "instance.status.result";
 
     /// <summary>Answer to <see cref="FsBrowse"/>.</summary>
     public const string FsBrowseResult = "fs.browse.result";

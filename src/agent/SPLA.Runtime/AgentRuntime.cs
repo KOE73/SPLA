@@ -75,6 +75,24 @@ public sealed class AgentRuntime : IDisposable
     /// processes are redirected to. Null when running without a manifest, which claims nothing.
     /// See <see cref="SPLA.Domain.Project.InstanceLock"/>.</summary>
     public SPLA.Domain.Project.InstanceLock? Instance { get; }
+
+    /// <summary>
+    /// What this project is doing right now — the badge a person sees and the rule that decides
+    /// whether the instance may be shut down for being unused, in one answer.
+    /// </summary>
+    /// <param name="stallAfter">Silence after which a registered turn counts as stopped halfway
+    /// rather than working.</param>
+    public SPLA.Domain.Project.InstanceState State(TimeSpan stallAfter)
+    {
+        // Waiting outranks working: a turn blocked on a person is still a registered turn, and the
+        // thing worth showing — and worth never evicting — is that somebody is being waited for.
+        if (Asks.Any) return SPLA.Domain.Project.InstanceState.Waiting;
+        if (!Turns.Any) return SPLA.Domain.Project.InstanceState.Idle;
+
+        return DateTime.UtcNow - Turns.LastActivityUtc > stallAfter
+            ? SPLA.Domain.Project.InstanceState.Stalled
+            : SPLA.Domain.Project.InstanceState.Working;
+    }
     /// <summary>
     /// The composed LLM pipeline — the only way anything in this runtime reaches a model. Provider
     /// clients are deliberately never exposed: if they were reachable, accounting, quotas and privacy

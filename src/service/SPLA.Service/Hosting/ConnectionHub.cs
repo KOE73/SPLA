@@ -1,4 +1,5 @@
 using System.Collections.Concurrent;
+using System.Linq;
 
 namespace SPLA.Service;
 
@@ -16,6 +17,11 @@ public sealed class ConnectionHub
 
     /// <summary>Number of currently connected clients — surfaced as a live gauge on the stats plane.</summary>
     public int Count => _connections.Count;
+
+    /// <summary>Number of connections that have touched <paramref name="projectId"/> — what
+    /// <c>instance.status</c> reports as "how many clients", since a socket that never mentioned this
+    /// project is not one of its clients even though it shares the process.</summary>
+    public int CountForProject(string projectId) => _connections.Keys.Count(c => c.IsWatchingProject(projectId));
 
     /// <summary>Sends one message to every connected client. Failures to a single client are ignored.
     /// Reserved for truly connection-level events (e.g. <see cref="Contracts.MessageTypes.FocusChanged"/>)

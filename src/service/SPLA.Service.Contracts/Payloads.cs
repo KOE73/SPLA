@@ -718,9 +718,41 @@ public sealed class ProjectCreatePayload
     public string? Profile { get; set; }
 }
 
+/// <summary>Asks a running instance to shut down (<see cref="MessageTypes.InstanceStop"/>).</summary>
+public sealed class InstanceStopPayload
+{
+    /// <summary>When true, cancel every running turn first rather than refusing because one is in
+    /// flight — the caller is choosing to lose in-progress work, not asking the instance to guess
+    /// whether that is acceptable.</summary>
+    public bool Force { get; set; }
+}
+
 // ──────────────────────────────────────────────────────────────────────────
 //  Server → Client
 // ──────────────────────────────────────────────────────────────────────────
+
+/// <summary>
+/// What one instance is doing right now — answer to <see cref="MessageTypes.InstanceStatus"/>, and
+/// the shape <see cref="MessageTypes.InstanceStop"/> answers with when it refuses. <see cref="State"/>
+/// is the wire name from <c>SPLA.Domain.Project.InstanceStates.Name</c>, not the raw enum, so a CLI
+/// and a browser client read the exact same vocabulary a person would see in a badge.
+/// </summary>
+public sealed class InstanceStatusPayload
+{
+    public string InstanceId { get; set; } = string.Empty;
+    public string Mode { get; set; } = string.Empty;
+    public string State { get; set; } = string.Empty;
+    public string? ProjectName { get; set; }
+    public int Clients { get; set; }
+
+    /// <summary>Only meaningful on the answer to <see cref="MessageTypes.InstanceStop"/>: true once the
+    /// shutdown was accepted and is underway. Absent (false) on a plain status answer.</summary>
+    public bool Stopping { get; set; }
+
+    /// <summary>Why a non-forced stop was refused — naming the state ("a turn is running") rather than
+    /// leaving the caller to infer it from <see cref="State"/> alone. Null when not refused.</summary>
+    public string? Refusal { get; set; }
+}
 
 /// <summary>Answer to <see cref="MessageTypes.ProjectList"/>/<see cref="MessageTypes.ProjectRecent"/>.</summary>
 public sealed class ProjectListResultPayload

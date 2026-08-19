@@ -47,6 +47,16 @@ public sealed class EmbeddedServiceLauncher : IDisposable
             return normalized;
         }
 
+        // Somebody may already be serving this project — the previous window, closed a minute ago and
+        // still inside its idle grace, or a `spla serve` the person started themselves. Only one
+        // process may write a project, so spawning a second here would simply be refused; joining is
+        // both the correct behaviour and the fast one (no warm-up at all).
+        if (await TryJoinRunningInstanceAsync(workingDirectory, ct) is { } running)
+        {
+            Url = running;
+            return running;
+        }
+
         var (exe, args) = ResolveCliInvocation(noProject);
 
         var psi = new ProcessStartInfo
@@ -82,6 +92,35 @@ public sealed class EmbeddedServiceLauncher : IDisposable
         await WaitForHealthAsync(url, ct, _process, exe, output);
         Url = url;
         return url;
+    }
+
+    /// <summary>
+    /// The address of a live instance already holding this project, or null when there is none.
+    ///
+    /// <para>Health-checked before being returned, and only accepted when <c>/health</c> answers with
+    /// the same instance id the lock claims: a published port outlives nothing, but a port number can
+    /// be reused by something else entirely, and dialling a stranger is worse than starting fresh.</para>
+    /// </summary>
+    private static async Task<string?> TryJoinRunningInstanceAsync(string? workingDirectory, CancellationToken ct)
+    {
+        try
+        {
+            var root = workingDirectory ?? Directory.GetCurrentDirectory();
+            var info = SPLA.Domain.Project.InstanceLock.Read(Path.Combine(root, ".spla"));
+            if (info?.Endpoint is not { Length: > 0 } endpoint || !info.IsLocal) return null;
+
+            using var http = new HttpClient { Timeout = TimeSpan.FromSeconds(2) };
+            var response = await http.GetAsync(endpoint.TrimEnd('/') + "/health", ct);
+            if (!response.IsSuccessStatusCode) return null;
+
+            var body = await response.Content.ReadAsStringAsync(ct);
+            return body.Contains(info.InstanceId, StringComparison.OrdinalIgnoreCase) ? endpoint.TrimEnd('/') : null;
+        }
+        catch
+        {
+            // Unreadable lock, unreachable port, malformed anything: fall through and start our own.
+            return null;
+        }
     }
 
     private static readonly Regex ListeningUrlPattern =
@@ -127,9 +166,14 @@ public sealed class EmbeddedServiceLauncher : IDisposable
         var baseDir = AppContext.BaseDirectory;
         // No --port: the child binds an ephemeral port (the CLI's own default) and this launcher reads
         // the actual address back off its stdout — see StartAsync.
+        // --idle-timeout is what replaces killing the child on shutdown. Closing a window must not
+        // cut a turn short or answer a pending question on the person's behalf, so the child decides
+        // for itself when it has nothing left to stay for; five minutes is long enough that closing
+        // and reopening the app is free (the next window simply joins it) and short enough that a
+        // forgotten one does not sit there.
         string[] serveArgs = noProject
-            ? ["--init=inherit", "serve", "--bind", "127.0.0.1"]
-            : ["serve", "--bind", "127.0.0.1"];
+            ? ["--init=inherit", "serve", "--bind", "127.0.0.1", "--idle-timeout", "5"]
+            : ["serve", "--bind", "127.0.0.1", "--idle-timeout", "5"];
 
         // 1) Published: SPLA.CLI.exe sits next to the UI exe.
         var exe = Path.Combine(baseDir, "SPLA.CLI.exe");
@@ -263,17 +307,20 @@ public sealed class EmbeddedServiceLauncher : IDisposable
         }
     }
 
+    /// <summary>
+    /// Lets go of the child without killing it.
+    ///
+    /// <para>This used to <c>Kill(entireProcessTree: true)</c>, which is the ownership model the
+    /// instance design replaced: closing a window would cut a turn short mid-generation and answer
+    /// every question the agent was waiting on as "denied". The child holds a lease instead — it was
+    /// started with <c>--idle-timeout</c> and leaves once it has no clients and nothing running, so
+    /// the process is still reclaimed, just never at the cost of work that was under way.</para>
+    ///
+    /// <para>Reopening the app before that timeout is not a leak either: the next window finds the
+    /// instance through the project's lock file and joins it.</para>
+    /// </summary>
     public void Dispose()
     {
-        try
-        {
-            if (_process is { HasExited: false })
-            {
-                _process.Kill(entireProcessTree: true);
-                _process.WaitForExit(2000);
-            }
-        }
-        catch { /* best effort */ }
         _process?.Dispose();
         _process = null;
     }

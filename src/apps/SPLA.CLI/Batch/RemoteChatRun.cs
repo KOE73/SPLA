@@ -67,6 +67,16 @@ internal static class RemoteChatRun
     {
         AnsiConsole.MarkupLine($"[grey]Attached to[/] {holder.Describe().EscapeMarkup()}");
 
+        // A dry run must not run anything, and that has to be true on this path too — otherwise
+        // asking "what would this do" against a busy project would do it.
+        if (s.DryRun)
+        {
+            foreach (var prompt in prompts)
+                AnsiConsole.MarkupLine(
+                    $"  {prompt.Name.EscapeMarkup()} → {(OutputPath(s, prompt, holder) ?? "(screen)").EscapeMarkup()}");
+            return 0;
+        }
+
         // The instance's own token, if it wants one. A loopback service ignores it; a remote one does
         // not, and the reference form keeps it out of this process's command line.
         var token = settings.SecretResolver.Resolve(Environment.GetEnvironmentVariable("SPLA_SERVICE_TOKEN"));

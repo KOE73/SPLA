@@ -474,7 +474,14 @@ public sealed class ClientConnection : IClientSession
     {
         var chatId = chat.ChatId;
         DateTime lastProgress = DateTime.MinValue;
-        Task ToWatchers(string type, object payload) => _hub.BroadcastToWatchersAsync(chatId, type, payload);
+        Task ToWatchers(string type, object payload)
+        {
+            // Every turn event is also proof the turn is moving. A registered turn that has gone
+            // silent for a long time is a model that stopped halfway — the state the instance must
+            // never be evicted out of, and the one a person comes back to and pokes forward.
+            runtime.Turns.Touch();
+            return _hub.BroadcastToWatchersAsync(chatId, type, payload);
+        }
 
         return new AgentCallbacks
         {

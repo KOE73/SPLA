@@ -131,6 +131,7 @@ internal sealed class MessageRouter
     public static MessageRouter Default { get; } = new(
     [
         new ProjectHandlers(),
+        new InstanceHandlers(),
         new ChatHandlers(),
         new CorrelationHandlers(),
         new ConnectionHandlers(),

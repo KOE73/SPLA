@@ -29,6 +29,13 @@ internal sealed class ServeSettings : CommandSettings
     [CommandOption("--new-chat")]
     [Description("Message to send on a fresh chat as soon as the service starts.")]
     public string? NewChat { get; init; }
+
+    // Off by default on purpose: nobody expects a daemon they started by hand to leave on its own.
+    // A window that spawns this process passes a few minutes, so closing the window reclaims the
+    // process eventually — without ever cutting a turn short or answering a pending question.
+    [CommandOption("--idle-timeout")]
+    [Description("Minutes with no clients and nothing running before the instance stops itself. 0 (default) = never.")]
+    public int IdleTimeoutMinutes { get; init; }
 }
 
 /// <summary><c>spla serve</c> — thin Spectre wrapper over the existing <see cref="ServeCommand"/>.</summary>
@@ -37,7 +44,8 @@ internal sealed class ServeCliCommand(ResolvedSettings settings, ILoggerFactory 
 {
     protected override async Task<int> ExecuteAsync(CommandContext context, ServeSettings s, CancellationToken cancellationToken)
     {
-        await ServeCommand.RunAsync(s.Port, s.Bind, s.Token, s.Repl, s.NewChat, settings, loggerFactory);
+        await ServeCommand.RunAsync(
+            s.Port, s.Bind, s.Token, s.Repl, s.NewChat, s.IdleTimeoutMinutes, settings, loggerFactory);
         return 0;
     }
 }

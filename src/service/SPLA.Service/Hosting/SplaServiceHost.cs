@@ -38,6 +38,16 @@ public sealed record ServiceOptions
     /// <summary>Connect secret required for non-loopback clients. Null = no token (loopback use).</summary>
     public string? Token { get; init; }
 
+    /// <summary>How long the instance must have no clients AND nothing running before it shuts itself
+    /// down. Zero (the default) disables it: nobody expects a daemon they started by hand to leave on
+    /// its own. A service spawned by a window passes a few minutes, so closing the window eventually
+    /// reclaims the process without ever killing work in flight. See <c>InstanceLease</c>.</summary>
+    public TimeSpan IdleTimeout { get; init; } = TimeSpan.Zero;
+
+    /// <summary>Silence after which a registered turn counts as stopped halfway rather than working.
+    /// Both states forbid eviction; they differ in what a person is shown.</summary>
+    public TimeSpan StallAfter { get; init; } = TimeSpan.FromMinutes(10);
+
     /// <summary>Optional one-shot startup message. The first WebSocket client that completes the
     /// handshake gets a newly-created chat and sends this message through the normal interactive
     /// turn path, so streaming, permission prompts, and clarification prompts stay in the UI.</summary>
@@ -126,13 +136,29 @@ public sealed class SplaServiceHost
     public string Url => _url
         ?? throw new InvalidOperationException($"{nameof(SplaServiceHost)}.{nameof(Url)} is only available after {nameof(StartAsync)}() completes.");
 
+    private readonly InstanceLease _lease;
+
+    /// <summary>Raised when the instance has had no clients and nothing running for the configured
+    /// grace period. The host does not stop itself: whoever owns the process decides what else has to
+    /// wind down first. Never raised when <see cref="ServiceOptions.IdleTimeout"/> is zero.</summary>
+    public event Action? LeaseExpired
+    {
+        add => _lease.Expired += value;
+        remove => _lease.Expired -= value;
+    }
+
+    /// <summary>Counts a holder that is not a socket — a console REPL running beside the service, a
+    /// test. Without it an instance whose only user types at its own terminal looks unattended.</summary>
+    public IDisposable HoldLease() => _lease.Hold();
+
     private SplaServiceHost(
-        WebApplication app, string scheme, string bind,
+        WebApplication app, string scheme, string bind, InstanceLease lease,
         SPLA.Observability.Collection.TelemetryCollector? collector = null, IDisposable? gaugeTimer = null)
     {
         _app = app;
         _scheme = scheme;
         _bind = bind;
+        _lease = lease;
         _collector = collector;
         _gaugeTimer = gaugeTimer;
     }
@@ -195,7 +221,12 @@ public sealed class SplaServiceHost
             app.UseAuthorization();
         }
 
-        app.MapGet("/health", () => Results.Text("SPLA service running. Connect a client to /ws.", "text/plain"))
+        // Carries the instance id of the default project's claim, so a caller that found this address
+        // in a lock file can prove the address still belongs to the instance that wrote it. A port
+        // number alone proves nothing: the OS hands it to whoever asks next.
+        app.MapGet("/health", () => Results.Text(
+                $"SPLA service running. Connect a client to /ws.\ninstance: {defaultEntry.Runtime.Instance?.Info.InstanceId ?? "none"}",
+                "text/plain"))
             .AllowAnonymous();
 
         if (options.EffectiveAuthMode == AuthMode.Negotiate)
@@ -295,7 +326,11 @@ public sealed class SplaServiceHost
         app.Map("/ws", (HttpContext context) =>
             HandleWebSocketAsync(context, registry, options, serverRoot, hub, auth, initialChat, loggerFactory));
 
-        return new SplaServiceHost(app, scheme, options.Bind, collector, gaugeTimer);
+        var lease = new InstanceLease(
+            hub, registry, options.IdleTimeout, options.StallAfter,
+            loggerFactory.CreateLogger<InstanceLease>());
+
+        return new SplaServiceHost(app, scheme, options.Bind, lease, collector, gaugeTimer);
     }
 
     /// <summary>Configures the auth pipeline for the effective mode. Both server modes issue the same
@@ -509,6 +544,7 @@ public sealed class SplaServiceHost
 
     public async Task StopAsync(CancellationToken ct = default)
     {
+        _lease.Dispose();
         _gaugeTimer?.Dispose();
         _collector?.Dispose();   // flushes persisted stats
         await _app.StopAsync(ct);

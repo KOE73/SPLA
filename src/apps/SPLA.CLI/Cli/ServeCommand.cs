@@ -12,6 +12,7 @@ internal static class ServeCommand
 {
     public static async Task RunAsync(
         int port, string bind, string? token, bool repl, string? initialChatMessage,
+        int idleTimeoutMinutes,
         ResolvedSettings settings, ILoggerFactory loggerFactory)
     {
         InstallCrashLogging(loggerFactory);
@@ -32,7 +33,8 @@ internal static class ServeCommand
             // taken literally, so an existing --token on a command line keeps working. The reference
             // form exists because a literal is readable in the process list by anyone on the machine.
             Token = settings.SecretResolver.Resolve(token),
-            InitialChatMessage = initialChatMessage
+            InitialChatMessage = initialChatMessage,
+            IdleTimeout = idleTimeoutMinutes > 0 ? TimeSpan.FromMinutes(idleTimeoutMinutes) : TimeSpan.Zero
         };
         var host = SplaServiceHost.Build(registry, options);
         await host.StartAsync();
@@ -50,9 +52,30 @@ internal static class ServeCommand
         var stop = new TaskCompletionSource();
         Console.CancelKeyPress += (_, e) => { e.Cancel = true; stop.TrySetResult(); };
 
+        // Nothing owns this instance; it holds a lease. When there is nobody connected and nothing
+        // running for long enough, it lets go — see InstanceLease for why ownership was the wrong
+        // model. Off by default; a window that spawned this process passes --idle-timeout.
+        host.LeaseExpired += () =>
+        {
+            Console.WriteLine($"\nIdle for {idleTimeoutMinutes} min with no clients — stopping.");
+            stop.TrySetResult();
+        };
+
+        // A client asked this instance to stop (spla stop) and the request was accepted or forced —
+        // same stop signal the idle lease uses, so an explicit shutdown and an idle one wind down the
+        // same way.
+        registry.ShutdownRequested += () =>
+        {
+            Console.WriteLine("\nShutdown requested over the wire — stopping.");
+            stop.TrySetResult();
+        };
+
         if (repl)
         {
             Console.WriteLine("Parallel console REPL active. Type a message, or 'exit' to stop the service.");
+            // A person typing at this terminal is a user of the instance even though they are not a
+            // socket; without the hold the lease would count the instance as unattended.
+            using var consoleHold = host.HoldLease();
             var explicitExit = await RunReplAsync(chats);
             if (!explicitExit)
             {
