@@ -85,7 +85,27 @@ public class ChatManager
         }
 
         var yaml = Serializer.Serialize(session);
-        File.WriteAllText(GetChatFilePath(session.Id), yaml);
+        WriteAtomic(GetChatFilePath(session.Id), yaml);
+    }
+
+    /// <summary>
+    /// Writes through a temporary file and renames it into place, so a reader never sees a partial
+    /// one.
+    ///
+    /// <para>A plain <see cref="File.WriteAllText(string,string)"/> truncates first: for as long as
+    /// the write takes, anyone reading gets an empty or half-written file. <see cref="ListChats"/>
+    /// skips whatever it cannot parse, so the visible symptom is a chat missing from the sidebar for
+    /// one refresh — rare, silent, and impossible to reproduce on demand. Turns save while windows
+    /// list, so this is an ordinary interleaving rather than an unlucky one.</para>
+    ///
+    /// <para>The rename is atomic on both Windows and POSIX; a crash mid-write leaves the previous
+    /// version intact and a stray <c>.tmp</c>, which nothing reads.</para>
+    /// </summary>
+    private static void WriteAtomic(string path, string content)
+    {
+        var temp = path + ".tmp";
+        File.WriteAllText(temp, content);
+        File.Move(temp, path, overwrite: true);
     }
 
     public ChatSession? LoadChat(string id)
