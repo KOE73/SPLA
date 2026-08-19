@@ -13,11 +13,14 @@ using System.Threading.Tasks;
 namespace SPLA.Agent;
 
 /// <summary>
-/// Runs a skill headlessly in a fresh agent instance (new Conversation, new SkillSession).
+/// Runs a task headlessly in a fresh agent instance (new Conversation, new SkillSession).
 /// Same code as the interactive agent — different entry point only.
-/// The spawned agent follows the skill body to completion without UI or clarify interaction.
-/// skill_activate / skill_deactivate are bypassed: the skill is activated directly and the
-/// run ends when the orchestrator loop finishes (no more tool calls from the model).
+/// <para>Two shapes, one loop. With a skill id the procedure is pinned up front — skill_activate /
+/// skill_deactivate are bypassed, the sub-agent runs that one procedure, and the run ends when the
+/// orchestrator loop finishes. Without one it is a plain delegated task: the base prompt, the seed
+/// message, and the same tools. Delegation is the point of a sub-agent and a curated procedure is
+/// only one way to describe the work, so requiring a skill for every spawn meant every ad-hoc
+/// sub-task needed a file written for it first.</para>
 /// </summary>
 public sealed class SpawnedAgentRunner : Domain.Interfaces.IAgentSpawner
 {
@@ -56,12 +59,12 @@ public sealed class SpawnedAgentRunner : Domain.Interfaces.IAgentSpawner
     }
 
     /// <summary>
-    /// Runs <paramref name="skillId"/> against <paramref name="input"/> in a fresh conversation.
-    /// Returns the last assistant message produced by the run.
-    /// Throws <see cref="System.ArgumentException"/> if the skill is not found.
+    /// Runs <paramref name="input"/> in a fresh conversation, optionally pinned to
+    /// <paramref name="skillId"/>. Returns the last assistant message produced by the run.
+    /// Throws <see cref="System.ArgumentException"/> if a named skill is not found.
     /// </summary>
-    public async Task<string> RunSkillAsync(
-        string skillId,
+    public async Task<string> RunAsync(
+        string? skillId,
         string input,
         AgentMode mode,
         CancellationToken cancellationToken = default)
@@ -72,28 +75,36 @@ public sealed class SpawnedAgentRunner : Domain.Interfaces.IAgentSpawner
             return $"error: spawn depth limit reached ({MaxDepth}). " +
                    "A spawned agent cannot keep spawning; do the remaining work in this run.";
 
-        var lookup = _skills.Resolve(skillId);
-        if (lookup.IsAmbiguous)
-            throw new System.ArgumentException(
-                $"Skill '{skillId}' is held by more than one source — name one of: " +
-                string.Join(", ", lookup.Candidates.Select(c => c.Address)), nameof(skillId));
-
-        var meta = lookup.Card;
-        if (meta is null)
-            throw new System.ArgumentException($"Skill '{skillId}' not found.", nameof(skillId));
-
         // Fresh isolated agent state — own skill session, working memory, and checkpoint manager.
         // Opening an AgentSessionScope keeps the sub-agent's tool calls (memory, marks, skills) off
         // the parent chat's state, even though the spawn happens inside the parent's async flow.
-        var body = _skills.LoadBody(meta.Address);
-        if (string.IsNullOrWhiteSpace(body))
-            throw new System.ArgumentException(
-                $"Skill '{skillId}' has no readable procedure.", nameof(skillId));
-
         var skillSession = new SkillSession();
-        // Same loan slip as an in-chat activation: a sub-agent running a skill needs that skill's
-        // references as much as the parent would, and its own session is the only place to hold them.
-        skillSession.Activate(meta.DisplayId, body, meta.SourceId, meta.Ref, _skills.ListResources(meta.Address));
+
+        // A free-form spawn leaves the session idle rather than pinned. That is not the same as an
+        // agent without skills: the session is the sub-agent's own, so if the work turns out to match
+        // one, it can find and activate it for itself without touching the parent's.
+        if (!string.IsNullOrWhiteSpace(skillId))
+        {
+            var lookup = _skills.Resolve(skillId!);
+            if (lookup.IsAmbiguous)
+                throw new System.ArgumentException(
+                    $"Skill '{skillId}' is held by more than one source — name one of: " +
+                    string.Join(", ", lookup.Candidates.Select(c => c.Address)), nameof(skillId));
+
+            var meta = lookup.Card;
+            if (meta is null)
+                throw new System.ArgumentException($"Skill '{skillId}' not found.", nameof(skillId));
+
+            var body = _skills.LoadBody(meta.Address);
+            if (string.IsNullOrWhiteSpace(body))
+                throw new System.ArgumentException(
+                    $"Skill '{skillId}' has no readable procedure.", nameof(skillId));
+
+            // Same loan slip as an in-chat activation: a sub-agent running a skill needs that skill's
+            // references as much as the parent would, and its own session is the only place to hold them.
+            skillSession.Activate(meta.DisplayId, body, meta.SourceId, meta.Ref, _skills.ListResources(meta.Address));
+        }
+
         var checkpoint = new CheckpointManager();
         // Everything else here is deliberately fresh, but the sandbox is inherited: it is the host's
         // boundary, not the agent's state. Left to its default a sub-agent would come out of its
@@ -103,10 +114,8 @@ public sealed class SpawnedAgentRunner : Domain.Interfaces.IAgentSpawner
             new KeyValueStore("session"), checkpoint, skillSession,
             sandbox: AgentSessionScope.Current?.Sandbox);
 
-        // Composed once, up front: a sub-agent runs one pinned procedure and cannot activate another,
-        // so there is nothing for a per-iteration recomposition to pick up. The session is passed
-        // explicitly rather than resolved ambiently — the spawn happens inside the parent's async
-        // flow, and the sub-agent must describe its own skill, not the parent's.
+        // The session is passed explicitly rather than resolved ambiently — the spawn happens inside
+        // the parent's async flow, and the sub-agent must describe its own skill, not the parent's.
         var composer = new AgentContextComposer(
             AgentContributors.Default(_skills, _plugins, skillSession));
         var systemPrompt = composer.Compose(_settings, _settings.WorkspacePath).SystemPrompt;
@@ -117,8 +126,22 @@ public sealed class SpawnedAgentRunner : Domain.Interfaces.IAgentSpawner
 
         string lastAssistantMessage = string.Empty;
 
+        // A pinned run keeps the prompt frozen: it has one procedure, cannot activate another, and a
+        // stray skill_deactivate must not be able to delete the very instructions it was spawned to
+        // follow. A free-form run gets the chat's per-iteration recomposition instead — with no skill
+        // pinned, activating one mid-run is a legitimate move, and it is worth nothing if the
+        // procedure never reaches the prompt.
+        var context = skillSession.ActiveSkillId is null
+            ? () => composer.Compose(_settings, _settings.WorkspacePath)
+            : (Func<ComposedContext>?)null;
+
         // Spawned sub-agents are the most prone to tool-call loops; guard them too (tool-call only).
-        var orchestrator = new ConversationOrchestrator(_llm, _tools) { Checkpoint = checkpoint, EnableLoopGuard = true };
+        var orchestrator = new ConversationOrchestrator(_llm, _tools)
+        {
+            Checkpoint = checkpoint,
+            EnableLoopGuard = true,
+            Context = context
+        };
         var callbacks = new AgentCallbacks
         {
             OnAssistantMessage = msg =>

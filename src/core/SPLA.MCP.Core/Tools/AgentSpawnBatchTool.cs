@@ -13,7 +13,7 @@ namespace SPLA.MCP.Core.Tools;
 
 /// <summary>
 /// Spawns multiple headless agents in parallel (bounded concurrency) and collects their results.
-/// Each task runs the same skill with a different input. Results are returned in input order.
+/// Each task carries its own input, and its own optional skill. Results are returned in input order.
 /// </summary>
 public sealed class AgentSpawnBatchTool : IMcpTool
 {
@@ -29,7 +29,7 @@ public sealed class AgentSpawnBatchTool : IMcpTool
         Function = new ToolFunctionDefinition
         {
             Name = Name,
-            Description = "Spawns multiple headless agents in parallel (bounded concurrency) and returns all results. Each task runs a skill with a different input. Use for bulk operations like scanning many hosts.",
+            Description = "Spawns multiple headless agents in parallel (bounded concurrency) and returns all results. Each task is a plain 'input' brief, optionally pinned to a 'skill'. Use for bulk operations like checking many hosts.",
             Scope = ToolScope.Skill,
             Effect = ToolEffect.Execute,
             Risk = ToolRisk.Medium,
@@ -48,8 +48,12 @@ public sealed class AgentSpawnBatchTool : IMcpTool
                             type = "object",
                             properties = new
                             {
-                                skill = new { type = "string", description = "Skill id to run." },
-                                input = new { type = "string", description = "Seed message for the spawned agent." },
+                                input = new { type = "string", description = "The task for this spawned agent — the whole brief." },
+                                skill = new
+                                {
+                                    type = new[] { "string", "null" },
+                                    description = "Skill id to pin for this task. Null for a free-form task described in 'input'."
+                                },
                                 mode = new
                                 {
                                     type = new[] { "string", "null" },
@@ -57,7 +61,7 @@ public sealed class AgentSpawnBatchTool : IMcpTool
                                     description = "Agent mode. Null = Edit."
                                 }
                             },
-                            required = new[] { "skill", "input", "mode" }
+                            required = new[] { "input", "skill", "mode" }
                         }
                     },
                     max_concurrency = new
@@ -73,7 +77,7 @@ public sealed class AgentSpawnBatchTool : IMcpTool
 
     public async Task<ToolResult> ExecuteAsync(string argumentsJson, CancellationToken cancellationToken = default)
     {
-        List<(string skill, string input, AgentMode mode)> tasks;
+        List<(string? skill, string input, AgentMode mode)> tasks;
         int maxConcurrency;
 
         try
@@ -87,16 +91,18 @@ public sealed class AgentSpawnBatchTool : IMcpTool
             tasks = new();
             foreach (var item in tasksEl.EnumerateArray())
             {
-                var skill = ToolJson.GetStringTrimmed(item, "skill");
                 var input = ToolJson.GetStringTrimmed(item, "input");
-                if (string.IsNullOrEmpty(skill) || string.IsNullOrEmpty(input))
-                    return ToolResult.Fail("error: each task requires 'skill' and 'input'", "incomplete task");
+                if (string.IsNullOrEmpty(input))
+                    return ToolResult.Fail("error: each task requires 'input'", "incomplete task");
+
+                // Optional, per task: a batch may mix pinned procedures and free-form briefs.
+                var skill = ToolJson.GetStringTrimmed(item, "skill");
 
                 var mode = AgentMode.Edit;
                 var modeStr = ToolJson.GetStringTrimmed(item, "mode");
                 if (modeStr != null) Enum.TryParse<AgentMode>(modeStr, ignoreCase: true, out mode);
 
-                tasks.Add((skill!, input!, mode));
+                tasks.Add((skill, input!, mode));
             }
 
             maxConcurrency = 3;
@@ -124,7 +130,7 @@ public sealed class AgentSpawnBatchTool : IMcpTool
                 await semaphore.WaitAsync(cancellationToken);
                 try
                 {
-                    var result = await _runner.RunSkillAsync(skill, input, mode, cancellationToken);
+                    var result = await _runner.RunAsync(skill, input, mode, cancellationToken);
                     results[idx] = string.IsNullOrWhiteSpace(result)
                         ? $"task {idx + 1}: completed (no output)"
                         : $"task {idx + 1}: {result}";

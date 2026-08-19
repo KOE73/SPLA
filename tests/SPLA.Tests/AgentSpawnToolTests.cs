@@ -65,11 +65,21 @@ public class AgentSpawnToolTests
     }
 
     [Fact]
-    public async Task Spawn_missing_skill_param_returns_error()
+    public async Task Spawn_without_skill_runs_the_input_as_a_free_form_task()
     {
-        var tool = new AgentSpawnTool(BuildRunner());
-        var result = (await tool.ExecuteAsync("""{"input":"go"}""")).TextContent;
-        Assert.StartsWith("error: 'skill'", result);
+        var tool = new AgentSpawnTool(BuildRunner("host is Ubuntu 24.04"));
+        var result = (await tool.ExecuteAsync("""{"input":"report the OS of host X"}""")).TextContent;
+        Assert.Contains("host is Ubuntu 24.04", result);
+    }
+
+    [Fact]
+    public async Task Spawn_with_null_skill_runs_the_input_as_a_free_form_task()
+    {
+        // Strict schema keeps 'skill' in required, so a model with nothing to pin sends an explicit
+        // null. It has to mean the same as leaving the property out.
+        var tool = new AgentSpawnTool(BuildRunner("done"));
+        var result = (await tool.ExecuteAsync("""{"input":"do a thing","skill":null,"mode":null}""")).TextContent;
+        Assert.Contains("done", result);
     }
 
     [Fact]
@@ -94,6 +104,16 @@ public class AgentSpawnToolTests
         var tool = new AgentSpawnTool(BuildRunner("skill completed successfully"));
         var result = (await tool.ExecuteAsync("""{"skill":"test.skill","input":"run it","mode":"Research"}""")).TextContent;
         Assert.Contains("skill completed successfully", result);
+    }
+
+    [Fact]
+    public async Task Spawn_without_skill_still_refuses_an_empty_input()
+    {
+        // The one thing a free-form spawn cannot do without: with no skill and no brief there is
+        // nothing to run at all.
+        var tool = new AgentSpawnTool(BuildRunner());
+        var result = (await tool.ExecuteAsync("""{"skill":null,"input":"  "}""")).TextContent;
+        Assert.StartsWith("error: 'input'", result);
     }
 
     [Fact]

@@ -167,3 +167,27 @@ sentences are what `current-list.md` is built from, which is why they have to st
   to 120 seconds: 30 was measured against a warm dev tree, and a first run from a zip has to unpack a
   self-extracting exe, be scanned by an antivirus while it does, and load the plugin folder before
   the listener opens.
+
+---
+
+## 2026-08-19
+
+- **A sub-agent can be given a plain task, not only a skill.** `agent_spawn` and `agent_spawn_batch`
+  now take `input` as the required argument and `skill` as an optional one. Delegation is the point
+  of a sub-agent, and a written procedure is only one way to describe work — requiring a skill for
+  every spawn meant every ad-hoc sub-task needed a file written for it first, so in practice nothing
+  got delegated unless someone had planned for it in advance. A pinned run is unchanged: the
+  procedure is activated directly and its prompt stays frozen, so a stray `skill_deactivate` cannot
+  delete the instructions the sub-agent was spawned to follow. A free-form run gets the chat's
+  per-iteration recomposition instead, which is what lets it find and activate a skill for itself if
+  one turns out to fit — in its own session, never the parent's.
+
+- **`SPLA.CLI.exe --help-mcp` explains how to drive this build over MCP.** The text is
+  `MCP_USAGE.md`, embedded in the exe and also shipped as a plain file beside it in the zip. It
+  documents the things a foreign head otherwise has to discover by trial and error: that `mcp` must
+  be `args[0]` and takes no project path, so the project is selected by the process's working
+  directory; that the server is one long-lived process per session; that the tool list is the
+  project's and varies; that credentials are configured ahead of time in the project and never
+  passed by the caller; and that "ask" permission verdicts refuse rather than prompt, there being no
+  window to prompt in. It also says what SPLA *is* — a project-scoped agent runtime rather than a
+  tool bag — so the connecting head can suggest project-level fixes instead of working around them.

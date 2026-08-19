@@ -37,6 +37,8 @@ repository and is linked from it.
   run report (model that actually answered, endpoint, settings, tokens, timing) on screen or as a
   companion file in json, yaml or md.
 - Run reports say what the reasoning lever became on the wire, next to what was requested.
+- `SPLA.CLI.exe --help-mcp`: how to drive this build over MCP, embedded in the exe and shipped as
+  `MCP_USAGE.md` beside it.
 
 ### Changed
 
@@ -52,6 +54,7 @@ repository and is linked from it.
 - Projects reorganized into a layered `src/` tree; `SPLA.Runtime` extracted.
 - `docs/` split by lifetime into ADR, PLAN and IDEA.
 - Version scheme is now `0.<minor>.<build>`, with the build number assigned by CI.
+- `agent_spawn` takes a plain task; a skill is now optional rather than the only way to spawn.
 
 ### Fixed
 

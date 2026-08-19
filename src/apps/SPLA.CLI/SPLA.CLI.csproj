@@ -10,6 +10,14 @@
   </ItemGroup>
 
   <ItemGroup>
+    <!-- Embedded so the help_mcp flag works from anywhere without reading a sibling file, and also
+         copied next to the exe (both in bin\ and every publish output) so it ships as a plain,
+         greppable MCP_USAGE.md in the product zip. -->
+    <EmbeddedResource Include="Assets\MCP_USAGE.md" LogicalName="SPLA.CLI.MCP_USAGE.md" />
+    <Content Include="Assets\MCP_USAGE.md" CopyToOutputDirectory="PreserveNewest" Link="MCP_USAGE.md" />
+  </ItemGroup>
+
+  <ItemGroup>
     <PackageReference Include="Microsoft.Extensions.Logging" Version="10.0.0" />
     <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="10.0.0" />
     <PackageReference Include="Spectre.Console" Version="0.55.0" />

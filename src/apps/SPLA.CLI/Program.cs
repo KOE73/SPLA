@@ -7,6 +7,14 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.DependencyInjection;
 using Spectre.Console.Cli;
 
+// Same reasoning as the `mcp` check below: a raw args check ahead of everything else, so a foreign
+// head can read usage without first standing up a runtime or tripping the project-file search.
+if (args.Length > 0 && args[0].Equals("--help-mcp", StringComparison.OrdinalIgnoreCase))
+{
+    SPLA.CLI.McpCommand.PrintHelpMcp();
+    return;
+}
+
 // `mcp` speaks a protocol on stdout, so it must be recognised before anything prints. The banner
 // below would be the first thing a client reads, and an unparsable first line kills the session.
 // It stays a raw args check ahead of Spectre for exactly that reason — nothing may run first.
