@@ -93,4 +93,14 @@ app.Configure(config =>
 
 // ctx.Args, not args: the launch-profile flag was answered during bootstrap and the command parser
 // has never heard of it.
-Environment.ExitCode = await app.RunAsync(ctx.Args);
+try
+{
+    Environment.ExitCode = await app.RunAsync(ctx.Args);
+}
+catch (SPLA.Domain.Project.ProjectBusyException ex)
+{
+    // Somebody already has this project open. The message carries where they are, which is the only
+    // useful thing to say — a stack trace would bury it.
+    Console.Error.WriteLine(ex.Message);
+    Environment.ExitCode = 1;
+}

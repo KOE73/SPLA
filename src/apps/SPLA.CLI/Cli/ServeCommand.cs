@@ -18,20 +18,29 @@ internal static class ServeCommand
 
         using var registry = new AgentRuntimeRegistry(loggerFactory)
         {
-            DefaultProjectId = settings.ProjectFilePath ?? AgentRuntimeRegistry.NoProjectId
+            DefaultProjectId = settings.ProjectFilePath ?? AgentRuntimeRegistry.NoProjectId,
+            InstanceMode = "serve"
         };
         // Same cached entry Build() resolves internally — opening it here first just lets the parallel
         // REPL (below) drive the identical runtime/chats a socket client would.
-        var (_, chats) = registry.Open(registry.DefaultProjectId);
+        var (runtime, chats) = registry.Open(registry.DefaultProjectId);
         var options = new ServiceOptions
         {
             Port = port,
             Bind = bind,
-            Token = token,
+            // A reference (secret:user:...) resolves through the project's store; anything else is
+            // taken literally, so an existing --token on a command line keeps working. The reference
+            // form exists because a literal is readable in the process list by anyone on the machine.
+            Token = settings.SecretResolver.Resolve(token),
             InitialChatMessage = initialChatMessage
         };
         var host = SplaServiceHost.Build(registry, options);
         await host.StartAsync();
+
+        // Published only now: an address written before the listener accepts connections is a lie for
+        // however long startup takes, and the whole point of publishing it is that somebody else will
+        // dial it instead of opening a second writer.
+        runtime.Instance?.Publish(host.Url);
 
         var wsUrl = host.Url.Replace("http://", "ws://") + "/ws";
         Console.WriteLine($"\nSPLA service listening on {host.Url}  (WebSocket: {wsUrl})");

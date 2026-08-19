@@ -5,6 +5,8 @@ using Microsoft.AspNetCore.Authentication.Negotiate;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
+using Microsoft.AspNetCore.Hosting.Server;
+using Microsoft.AspNetCore.Hosting.Server.Features;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Server.Kestrel.Core;
 using Microsoft.Extensions.DependencyInjection;
@@ -26,7 +28,12 @@ public sealed record ServiceOptions
     /// <summary>Address to bind. Loopback by default — no auth needed; the OS gates access.</summary>
     public string Bind { get; init; } = "127.0.0.1";
 
-    public int Port { get; init; } = 5050;
+    /// <summary>0 = ephemeral: let the OS pick a free loopback port. Two independent <c>spla serve</c>
+    /// invocations (different projects) used to both default to a fixed port and the second would fail
+    /// to bind; nothing needs a well-known port any more since the actual bound address is published to
+    /// the project's instance lock file (see <c>ProjectInstance.Publish</c>). Pass a nonzero value for
+    /// an explicit, fixed address.</summary>
+    public int Port { get; init; } = 0;
 
     /// <summary>Connect secret required for non-loopback clients. Null = no token (loopback use).</summary>
     public string? Token { get; init; }
@@ -108,16 +115,26 @@ public sealed class SplaServiceHost
     private readonly WebApplication _app;
     private readonly SPLA.Observability.Collection.TelemetryCollector? _collector;
     private readonly IDisposable? _gaugeTimer;
-    public string Url { get; }
+    private readonly string _scheme;
+    private readonly string _bind;
+    private string? _url;
+
+    /// <summary>The address the service is actually listening on. Only meaningful after
+    /// <see cref="StartAsync"/> has completed: with an ephemeral (<c>Port == 0</c>) binding the real
+    /// port is not known until Kestrel has bound the socket, so this throws rather than returning a
+    /// guess for a caller that reads it too early.</summary>
+    public string Url => _url
+        ?? throw new InvalidOperationException($"{nameof(SplaServiceHost)}.{nameof(Url)} is only available after {nameof(StartAsync)}() completes.");
 
     private SplaServiceHost(
-        WebApplication app, string url,
+        WebApplication app, string scheme, string bind,
         SPLA.Observability.Collection.TelemetryCollector? collector = null, IDisposable? gaugeTimer = null)
     {
         _app = app;
+        _scheme = scheme;
+        _bind = bind;
         _collector = collector;
         _gaugeTimer = gaugeTimer;
-        Url = url;
     }
 
     public static SplaServiceHost Build(
@@ -165,10 +182,11 @@ public sealed class SplaServiceHost
         {
             scheme = "http";
         }
-        var url = $"{scheme}://{options.Bind}:{options.Port}";
-
         var app = builder.Build();
-        if (!options.UseHttps) app.Urls.Add(url);
+        // Port 0 here (the default) means "ephemeral" — ASP.NET/Kestrel understands a :0 port in the
+        // URL the same way it understands one passed to ConfigureKestrel above, and binds a free port.
+        // The actual bound port isn't known until StartAsync() runs; see ResolveUrl().
+        if (!options.UseHttps) app.Urls.Add($"{scheme}://{options.Bind}:{options.Port}");
         app.UseWebSockets();
 
         if (options.AuthEnabled)
@@ -277,7 +295,7 @@ public sealed class SplaServiceHost
         app.Map("/ws", (HttpContext context) =>
             HandleWebSocketAsync(context, registry, options, serverRoot, hub, auth, initialChat, loggerFactory));
 
-        return new SplaServiceHost(app, url, collector, gaugeTimer);
+        return new SplaServiceHost(app, scheme, options.Bind, collector, gaugeTimer);
     }
 
     /// <summary>Configures the auth pipeline for the effective mode. Both server modes issue the same
@@ -467,7 +485,27 @@ public sealed class SplaServiceHost
         await conn.RunAsync(context.RequestAborted);
     }
 
-    public Task StartAsync(CancellationToken ct = default) => _app.StartAsync(ct);
+    public async Task StartAsync(CancellationToken ct = default)
+    {
+        await _app.StartAsync(ct);
+        _url = ResolveUrl();
+    }
+
+    /// <summary>Reads back whatever Kestrel actually bound (via <see cref="IServerAddressesFeature"/>),
+    /// which is the only place the real port lives when <see cref="ServiceOptions.Port"/> was 0. The
+    /// feature's address uses Kestrel's own formatting (e.g. "*" for a wildcard host), so only the port
+    /// is taken from it; scheme and host are the ones this host was actually configured with.</summary>
+    private string ResolveUrl()
+    {
+        var feature = _app.Services.GetRequiredService<IServer>().Features.Get<IServerAddressesFeature>();
+        var bound = feature?.Addresses.FirstOrDefault();
+        if (bound != null && Uri.TryCreate(bound, UriKind.Absolute, out var uri))
+            return $"{_scheme}://{_bind}:{uri.Port}";
+
+        // Should not happen — Kestrel always populates this feature once started — but fail soft
+        // rather than throw out of StartAsync for a cosmetic URL string.
+        return $"{_scheme}://{_bind}";
+    }
 
     public async Task StopAsync(CancellationToken ct = default)
     {

@@ -134,7 +134,7 @@ internal sealed class ChatRunCommand(ResolvedSettings settings, ILoggerFactory l
                 "Ответ дай одним финальным сообщением в чистом Markdown — без вступлений, " +
                 "заключений и разговорных оговорок. Это сообщение будет сохранено в файл как есть.");
 
-        using var runtime = RuntimeBootstrap.Build(settings, loggerFactory, [cli]);
+        using var runtime = RuntimeBootstrap.Build(settings, loggerFactory, [cli], instanceMode: "chat-run");
 
         if (s.ShowPrompt || s.ShowPromptFile != null)
         {

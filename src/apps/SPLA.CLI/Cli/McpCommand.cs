@@ -46,7 +46,7 @@ public static class McpCommand
     {
         // Nothing may reach stdout but the protocol. The runtime's own chatter goes to the file log
         // and to stderr; this is also why Program.cs must route here before printing its banner.
-        using var runtime = new AgentRuntime(settings, loggerFactory);
+        using var runtime = new AgentRuntime(settings, loggerFactory, instanceMode: "mcp");
 
         var exposure = ToolExposure.Default;
         var offered = runtime.McpHost.GetToolDefinitionsFor(exposure).ToList();

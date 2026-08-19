@@ -8,13 +8,6 @@ using SPLA.Service.Contracts;
 
 namespace SPLA.Service;
 
-/// <summary>Shared JSON options for the wire protocol (web defaults). One instance so every
-/// serialize/deserialize on a connection uses identical settings.</summary>
-internal static class ServiceJson
-{
-    public static readonly JsonSerializerOptions Options = new(JsonSerializerDefaults.Web);
-}
-
 /// <summary>
 /// The surface a <see cref="ClientConnection"/> exposes to message handlers. Handlers act on this
 /// facade rather than on the connection directly, so adding, moving, or removing a message type

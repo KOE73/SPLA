@@ -48,6 +48,17 @@ public sealed class ProtocolEnvelope
 }
 
 /// <summary>
+/// JSON settings for the wire, next to the types that ride it. Lived inside the service host until a
+/// second first-party client appeared (the CLI, when it connects to an instance that already holds a
+/// project) — and a wire format only one assembly can spell is not a contract.
+/// </summary>
+public static class ServiceJson
+{
+    public static readonly System.Text.Json.JsonSerializerOptions Options =
+        new(System.Text.Json.JsonSerializerDefaults.Web);
+}
+
+/// <summary>
 /// Identity/authorization carried on every message. At this stage only <see cref="Token"/> may be
 /// checked, and only when the server is bound to a non-loopback address. <see cref="ActorId"/> and
 /// capability negotiation are reserved for later stages — the fields exist now so the protocol does

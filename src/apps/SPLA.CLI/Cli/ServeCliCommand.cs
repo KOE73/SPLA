@@ -7,8 +7,13 @@ namespace SPLA.CLI;
 
 internal sealed class ServeSettings : CommandSettings
 {
+    // Ephemeral by default: two "spla serve" invocations for two different projects used to both
+    // grab the fixed 5050 and the second one failed to bind. Nothing needs a well-known port any
+    // more — the project's instance lock file (.spla/instance.json) publishes whatever port was
+    // actually bound, so callers discover it instead of guessing. Pass --port for a fixed address.
     [CommandOption("--port")]
-    public int Port { get; init; } = 5050;
+    [Description("Port to bind. Defaults to 0 (OS-assigned ephemeral port); pass a nonzero value for a fixed address.")]
+    public int Port { get; init; } = 0;
 
     [CommandOption("--bind")]
     public string Bind { get; init; } = "127.0.0.1";

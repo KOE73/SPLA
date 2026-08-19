@@ -107,7 +107,8 @@ AppDomain.CurrentDomain.UnhandledException += (_, e) =>
 
 using var registry = new AgentRuntimeRegistry(loggerFactory)
 {
-    DefaultProjectId = AgentRuntimeRegistry.NoProjectId
+    DefaultProjectId = AgentRuntimeRegistry.NoProjectId,
+    InstanceMode = "server"
 };
 
 // Local-credentials mode: a JSON user store lives in the server root (so it sits with the per-user

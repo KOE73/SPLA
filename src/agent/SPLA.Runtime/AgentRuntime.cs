@@ -70,6 +70,11 @@ public sealed class AgentRuntime : IDisposable
     /// <summary>The turns in flight in this project, keyed by chat. Here for the same reason as
     /// <see cref="Asks"/>: work outlives the client that started it, and any client may cancel it.</summary>
     public TurnRegistry Turns { get; } = new();
+
+    /// <summary>This process's claim on the project — the one-writer invariant, and the address other
+    /// processes are redirected to. Null when running without a manifest, which claims nothing.
+    /// See <see cref="SPLA.Domain.Project.InstanceLock"/>.</summary>
+    public SPLA.Domain.Project.InstanceLock? Instance { get; }
     /// <summary>
     /// The composed LLM pipeline — the only way anything in this runtime reaches a model. Provider
     /// clients are deliberately never exposed: if they were reachable, accounting, quotas and privacy
@@ -172,10 +177,14 @@ public sealed class AgentRuntime : IDisposable
     /// <c>--sys-prompt</c>, say). Handed to the composer at construction rather than pushed in later:
     /// see the <c>hostExtras</c> parameter of <see cref="AgentContributors.Default"/> for where they
     /// land and why the composer stays immutable.</param>
+    /// <param name="instanceMode">What this process is doing with the project — <c>serve</c>,
+    /// <c>repl</c>, <c>mcp</c>, <c>chat-run</c>, <c>ui</c>. Recorded in the instance lock so a second
+    /// writer is refused by name rather than by "something has it".</param>
     public AgentRuntime(
         ResolvedSettings settings,
         ILoggerFactory loggerFactory,
-        IEnumerable<IAgentContributor>? hostContributors = null)
+        IEnumerable<IAgentContributor>? hostContributors = null,
+        string instanceMode = "app")
     {
         Settings = settings;
         LoggerFactory = loggerFactory;
@@ -183,6 +192,14 @@ public sealed class AgentRuntime : IDisposable
         Asks = new PendingAskStore(settings.AskTimeoutMinutes > 0
             ? TimeSpan.FromMinutes(settings.AskTimeoutMinutes)
             : TimeSpan.Zero);
+
+        // Claimed here rather than in any one command, because every command that builds a runtime is
+        // a writer: serve, the REPL, `chat run` and `mcp` all reach the same .spla/. Taking it in one
+        // of them would leave the other three racing. No manifest ⇒ no claim: the runtime area is
+        // then the shared home, which is nobody's project to hold.
+        if (settings.HasProject)
+            Instance = SPLA.Domain.Project.InstanceLock.Acquire(
+                Path.Combine(settings.WorkspacePath, ".spla"), instanceMode);
 
         _httpClient = new HttpClient { Timeout = TimeSpan.FromMinutes(10) };
         // Project tally goes through the broker only when a real project is open; the historical
@@ -623,6 +640,7 @@ public sealed class AgentRuntime : IDisposable
     {
         // Nothing may be left blocked on a person who will never be asked again.
         Asks.AbandonAll(AskResolution.Cancelled);
+        Instance?.Dispose();
         _httpClient.Dispose();
     }
 }

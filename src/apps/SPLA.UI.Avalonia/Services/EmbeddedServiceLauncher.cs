@@ -1,10 +1,9 @@
 using System;
 using System.Diagnostics;
 using System.IO;
-using System.Net;
 using System.Net.Http;
-using System.Net.Sockets;
 using System.Text;
+using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -31,8 +30,8 @@ public sealed class EmbeddedServiceLauncher : IDisposable
     /// Resolves a service to talk to and returns its base URL. Universal local-or-remote:
     /// when <paramref name="remoteUrl"/> is given, connects to that existing (possibly remote) service
     /// after verifying it is healthy — no child process is spawned. Otherwise starts a local child
-    /// <c>SPLA.CLI serve</c> on a free loopback port. Either way the client then talks the same
-    /// WebSocket protocol against the returned URL.
+    /// <c>SPLA.CLI serve</c>, which binds an ephemeral loopback port itself and reports it back on
+    /// stdout. Either way the client then talks the same WebSocket protocol against the returned URL.
     /// </summary>
     /// <param name="noProject">True when the shell found no manifest to work in. The child is then
     /// launched with an explicit <c>--init=inherit</c>: a headless service cannot stop and ask what a
@@ -48,8 +47,7 @@ public sealed class EmbeddedServiceLauncher : IDisposable
             return normalized;
         }
 
-        var port = FreeLoopbackPort();
-        var (exe, args) = ResolveCliInvocation(port, noProject);
+        var (exe, args) = ResolveCliInvocation(noProject);
 
         var psi = new ProcessStartInfo
         {
@@ -69,34 +67,69 @@ public sealed class EmbeddedServiceLauncher : IDisposable
         _process = Process.Start(psi) ?? throw new InvalidOperationException("Failed to start SPLA.CLI serve.");
 
         var output = new StringBuilder();
-        _process.OutputDataReceived += (_, e) => Append(output, e.Data);
+        // The child now binds an ephemeral port (no more --port from here — see ResolveCliInvocation),
+        // so the port it actually got is only known once Kestrel has bound it, which the child reports
+        // on its own stdout ("SPLA service listening on <url>  (WebSocket: ...)"). Watch for that line
+        // instead of probing a port we picked ourselves — the old pre-flight probe-then-launch approach
+        // was inherently racy (something else could grab the port between the probe and the bind).
+        var listeningUrl = new TaskCompletionSource<string>(TaskCreationOptions.RunContinuationsAsynchronously);
+        _process.OutputDataReceived += (_, e) => { Append(output, e.Data); TryCaptureUrl(e.Data, listeningUrl); };
         _process.ErrorDataReceived += (_, e) => Append(output, e.Data);
         _process.BeginOutputReadLine();
         _process.BeginErrorReadLine();
 
-        var url = $"http://127.0.0.1:{port}";
+        var url = await WaitForListeningUrlAsync(listeningUrl.Task, _process, exe, output, ct);
         await WaitForHealthAsync(url, ct, _process, exe, output);
         Url = url;
         return url;
     }
 
-    private static int FreeLoopbackPort()
+    private static readonly Regex ListeningUrlPattern =
+        new(@"listening on (?<url>\S+)", RegexOptions.Compiled);
+
+    private static void TryCaptureUrl(string? line, TaskCompletionSource<string> sink)
     {
-        var listener = new TcpListener(IPAddress.Loopback, 0);
-        listener.Start();
-        var port = ((IPEndPoint)listener.LocalEndpoint).Port;
-        listener.Stop();
-        return port;
+        if (string.IsNullOrWhiteSpace(line) || sink.Task.IsCompleted) return;
+        var match = ListeningUrlPattern.Match(line);
+        if (match.Success) sink.TrySetResult(match.Groups["url"].Value);
+    }
+
+    /// <summary>Waits for the child to announce its bound URL on stdout, or reports why it can't: the
+    /// child exited before printing one, or the wait timed out. Same 120s budget as the health check
+    /// below, since both are waiting out the same worst-case cold start (self-contained exe unpacking
+    /// under antivirus scanning, plugin folder load, etc).</summary>
+    private static async Task<string> WaitForListeningUrlAsync(
+        Task<string> listeningUrl, Process child, string exe, StringBuilder output, CancellationToken ct)
+    {
+        var timeout = Task.Delay(TimeSpan.FromSeconds(120), ct);
+        var exited = WaitForExitAsync(child, ct);
+        var completed = await Task.WhenAny(listeningUrl, timeout, exited);
+
+        if (completed == listeningUrl) return await listeningUrl;
+        if (completed == exited) throw new InvalidOperationException(DescribeDeadChild(child, exe, output));
+        throw new TimeoutException(
+            $"SPLA service did not report its listening URL within 120s, and its process is still running." + Tail(output));
+    }
+
+    private static async Task WaitForExitAsync(Process child, CancellationToken ct)
+    {
+        while (!child.HasExited)
+        {
+            ct.ThrowIfCancellationRequested();
+            await Task.Delay(300, ct);
+        }
     }
 
     /// <summary>Finds the CLI: a published SPLA.CLI.exe next to us, or the dll run via dotnet, or a
     /// dev-tree build output. Returns the executable and the argument list for <c>serve</c>.</summary>
-    private static (string Exe, string[] Args) ResolveCliInvocation(int port, bool noProject = false)
+    private static (string Exe, string[] Args) ResolveCliInvocation(bool noProject = false)
     {
         var baseDir = AppContext.BaseDirectory;
+        // No --port: the child binds an ephemeral port (the CLI's own default) and this launcher reads
+        // the actual address back off its stdout — see StartAsync.
         string[] serveArgs = noProject
-            ? ["--init=inherit", "serve", "--port", port.ToString(), "--bind", "127.0.0.1"]
-            : ["serve", "--port", port.ToString(), "--bind", "127.0.0.1"];
+            ? ["--init=inherit", "serve", "--bind", "127.0.0.1"]
+            : ["serve", "--bind", "127.0.0.1"];
 
         // 1) Published: SPLA.CLI.exe sits next to the UI exe.
         var exe = Path.Combine(baseDir, "SPLA.CLI.exe");

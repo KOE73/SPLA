@@ -85,9 +85,13 @@ public sealed class AgentRuntimeRegistry : IDisposable
         return _entries.GetOrAdd(id, _ => Build(id, ConfigLoader.LoadAndResolve(id)));
     }
 
+    /// <summary>What the process holding these runtimes is — recorded in each project's instance lock
+    /// so a refused second writer is told what has it. Set once by the host at startup.</summary>
+    public string InstanceMode { get; set; } = "app";
+
     private RuntimeEntry Build(string id, ResolvedSettings settings)
     {
-        var runtime = new AgentRuntime(settings, _loggerFactory);
+        var runtime = new AgentRuntime(settings, _loggerFactory, instanceMode: InstanceMode);
         var entry = new RuntimeEntry(runtime, new ChatRegistry(runtime));
         RuntimeCreated?.Invoke(id, entry);
         return entry;
