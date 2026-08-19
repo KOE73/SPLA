@@ -114,6 +114,18 @@ internal sealed class ChatRunCommand(ResolvedSettings settings, ILoggerFactory l
             prompts.Add(new PromptItem(Path.GetFileNameWithoutExtension(path), await File.ReadAllTextAsync(path)) { Source = path });
         }
 
+        // Somebody already has this project open. Hand the run to them rather than opening a second
+        // writer over the same .spla/ — see RemoteChatRun for what can and cannot cross the wire.
+        if (RemoteChatRun.LiveInstance(settings) is { } holder)
+        {
+            if (RemoteChatRun.Unsupported(s) is { } blocker)
+            {
+                AnsiConsole.MarkupLine($"[red]{RemoteChatRun.Refusal(holder, blocker).EscapeMarkup()}[/]");
+                return 2;
+            }
+            return await RemoteChatRun.RunAsync(holder, s, prompts, settings, cancellationToken);
+        }
+
         // Purely additive, and built BEFORE the runtime: the composer takes its contributors at
         // construction and is immutable afterwards. See CliContributor's own doc comment.
         var cli = new CliContributor();
