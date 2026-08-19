@@ -1,0 +1,12 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- Deliberately thin, and deliberately free of any hosting dependency. Every client of the
+       registry references this: the CLI, the server, and the desktop shell — and the desktop shell
+       must never acquire ASP.NET just to draw a tray icon. The only project reference is
+       SPLA.Domain, for InstanceInfo/InstanceState: those describe a project's own lock file, so a
+       second definition here would be a second truth. -->
+  <ItemGroup>
+    <ProjectReference Include="..\SPLA.Domain\SPLA.Domain.csproj" />
+  </ItemGroup>
+
+</Project>

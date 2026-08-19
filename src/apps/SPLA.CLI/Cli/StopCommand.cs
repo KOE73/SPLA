@@ -1,5 +1,6 @@
 using SPLA.CLI.Wire;
 using SPLA.Domain.Project;
+using SPLA.Registry;
 using SPLA.Service.Contracts;
 
 namespace SPLA.CLI;
@@ -32,7 +33,7 @@ internal static class StopCommand
         var force = args.Any(a => a.Equals("--force", StringComparison.OrdinalIgnoreCase));
         var target = args.Skip(1).FirstOrDefault(a => !a.StartsWith('-'));
 
-        var resolved = Resolve(target);
+        var resolved = await ResolveAsync(target);
         if (resolved is null)
         {
             Console.Error.WriteLine(target is null
@@ -41,15 +42,15 @@ internal static class StopCommand
             return 1;
         }
 
-        var (name, info) = resolved.Value;
-        if (info.Endpoint is not { Length: > 0 } endpoint)
+        var name = resolved.ProjectName ?? target ?? "the project";
+        if (resolved.Info.Endpoint is not { Length: > 0 } endpoint)
         {
             // A REPL or an `mcp` session holds the project without offering an address. There is
             // nothing to ask politely, and killing the pid would be exactly the ownership model this
             // design removed — so say who is holding it and let the person decide.
             Console.Error.WriteLine(
-                $"'{name}' is held by pid {info.Pid} ({info.Mode}), which is not serving — nothing to ask. " +
-                "Stop it where it runs.");
+                $"'{name}' is held by pid {resolved.Info.Pid} ({resolved.Info.Mode}), which is not " +
+                "serving — nothing to ask. Stop it where it runs.");
             return 1;
         }
 
@@ -85,36 +86,28 @@ internal static class StopCommand
 
     /// <summary>
     /// Finds the instance to stop: the one holding the current directory when no target is named,
-    /// otherwise a known project matching by name or by manifest path. Only ever reads lock files —
-    /// see the class remarks.
+    /// otherwise a known project matched by name or manifest path. Reads lock files only — see the
+    /// class remarks — and does not probe, because a stop is about to ask the instance anyway.
     /// </summary>
-    private static (string Name, InstanceInfo Info)? Resolve(string? target)
+    private static async Task<InstanceRecord?> ResolveAsync(string? target)
     {
+        var registry = new FileInstanceRegistry();
+
         if (target is null)
         {
-            var here = InstanceLock.Read(Path.Combine(Directory.GetCurrentDirectory(), ".spla"));
-            return here is null ? null : (Path.GetFileName(Directory.GetCurrentDirectory()), here);
+            var cwd = Directory.GetCurrentDirectory();
+            var manifest = Directory.GetFiles(cwd, "*.spla").FirstOrDefault();
+            return manifest is null ? null : await registry.FindAsync(manifest);
         }
 
-        foreach (var project in new LocalProjectProvider().List())
-        {
-            if (project.ManifestPath is not { } manifest) continue;
+        // A path names the project directly; anything else is matched against the known list by name.
+        if (target.EndsWith(".spla", StringComparison.OrdinalIgnoreCase) && File.Exists(target))
+            return await registry.FindAsync(Path.GetFullPath(target));
 
-            var name = project.Name ?? Path.GetFileNameWithoutExtension(manifest);
-            var matches =
-                name.Equals(target, StringComparison.OrdinalIgnoreCase) ||
-                manifest.Equals(target, StringComparison.OrdinalIgnoreCase) ||
-                Path.GetFileNameWithoutExtension(manifest).Equals(target, StringComparison.OrdinalIgnoreCase);
-            if (!matches) continue;
-
-            var dir = Path.GetDirectoryName(manifest);
-            if (dir is null) continue;
-
-            var info = InstanceLock.Read(Path.Combine(dir, ".spla"));
-            if (info is not null) return (name, info);
-        }
-
-        return null;
+        var all = await registry.ListAsync();
+        return all.FirstOrDefault(r =>
+            string.Equals(r.ProjectName, target, StringComparison.OrdinalIgnoreCase) ||
+            string.Equals(Path.GetFileNameWithoutExtension(r.ProjectId), target, StringComparison.OrdinalIgnoreCase));
     }
 
     private static void PrintHelp()
