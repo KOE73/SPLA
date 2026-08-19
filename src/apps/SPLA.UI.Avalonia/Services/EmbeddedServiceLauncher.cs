@@ -4,6 +4,7 @@ using System.IO;
 using System.Net;
 using System.Net.Http;
 using System.Net.Sockets;
+using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -51,14 +52,26 @@ public sealed class EmbeddedServiceLauncher : IDisposable
             FileName = exe,
             UseShellExecute = false,
             CreateNoWindow = true,
+            // Captured only so a child that dies on startup can say why. Without this its output goes
+            // to a console the desktop app does not have, and the single most common failure on a
+            // fresh machine — SPLA.CLI.exe is framework-dependent, so "You must install .NET" — reached
+            // the user as a bare 30-second health timeout with no cause attached.
+            RedirectStandardOutput = true,
+            RedirectStandardError = true,
             WorkingDirectory = workingDirectory ?? Directory.GetCurrentDirectory()
         };
         foreach (var a in args) psi.ArgumentList.Add(a);
 
         _process = Process.Start(psi) ?? throw new InvalidOperationException("Failed to start SPLA.CLI serve.");
 
+        var output = new StringBuilder();
+        _process.OutputDataReceived += (_, e) => Append(output, e.Data);
+        _process.ErrorDataReceived += (_, e) => Append(output, e.Data);
+        _process.BeginOutputReadLine();
+        _process.BeginErrorReadLine();
+
         var url = $"http://127.0.0.1:{port}";
-        await WaitForHealthAsync(url, ct);
+        await WaitForHealthAsync(url, ct, _process, exe, output);
         Url = url;
         return url;
     }
@@ -140,10 +153,33 @@ public sealed class EmbeddedServiceLauncher : IDisposable
         return arr;
     }
 
-    private static async Task WaitForHealthAsync(string url, CancellationToken ct)
+    private static void Append(StringBuilder sink, string? line)
     {
+        if (string.IsNullOrWhiteSpace(line)) return;
+        lock (sink)
+        {
+            // Enough to carry a host error; not enough for a chatty service to grow without bound.
+            if (sink.Length < 4000) sink.AppendLine(line.Trim());
+        }
+    }
+
+    /// <summary>
+    /// Polls /health until it answers. <paramref name="child"/>, when given, turns "the service is not
+    /// up yet" into "the service is gone": a child that has already exited will never answer, so waiting
+    /// out the remaining timeout only delays the report and throws away the reason, which is sitting in
+    /// its exit code and its output.
+    /// </summary>
+    private static async Task WaitForHealthAsync(
+        string url, CancellationToken ct, Process? child = null, string? exe = null, StringBuilder? output = null)
+    {
+        // 30s was chosen against a warm dev tree and is not a safe budget for a first run from a zip:
+        // a self-contained single-file exe unpacks itself, an antivirus scans every byte of it while it
+        // does, and the plugin folder is loaded before the listener opens. Waiting longer costs nothing
+        // now that a child which has actually died is reported the moment it dies, instead of being
+        // indistinguishable from one that is merely slow.
+        var budget = child is null ? TimeSpan.FromSeconds(30) : TimeSpan.FromSeconds(120);
         using var http = new HttpClient { Timeout = TimeSpan.FromSeconds(2) };
-        var deadline = DateTime.UtcNow.AddSeconds(30);
+        var deadline = DateTime.UtcNow + budget;
         while (DateTime.UtcNow < deadline)
         {
             ct.ThrowIfCancellationRequested();
@@ -153,9 +189,39 @@ public sealed class EmbeddedServiceLauncher : IDisposable
                 if (resp.IsSuccessStatusCode) return;
             }
             catch { /* not up yet */ }
+
+            if (child is { HasExited: true })
+                throw new InvalidOperationException(DescribeDeadChild(child, exe, output));
+
             await Task.Delay(300, ct);
         }
-        throw new TimeoutException($"SPLA service did not become healthy at {url} within 30s.");
+        throw new TimeoutException(
+            $"SPLA service did not become healthy at {url} within {budget.TotalSeconds:0}s, and its process is still running." + Tail(output));
+    }
+
+    private static string DescribeDeadChild(Process child, string? exe, StringBuilder? output)
+    {
+        var name = Path.GetFileName(exe) ?? "the SPLA service";
+        var code = child.ExitCode;
+        var text = $"{name} exited with code {code} ({unchecked((uint)code):X8}) before the service came up.";
+
+        // 0x80008096 = FrameworkMissingFailure from the apphost. The desktop app is published
+        // self-contained and the CLI is not, so this is exactly the machine where the app window opens
+        // and nothing behind it works — worth naming the missing piece rather than the number.
+        if (unchecked((uint)code) == 0x80008096)
+            text += " The .NET 10 runtime it needs is not installed — SPLA needs the ASP.NET Core Runtime 10.0 (x64), not only the .NET Desktop Runtime.";
+
+        return text + Tail(output);
+    }
+
+    private static string Tail(StringBuilder? output)
+    {
+        if (output is null) return string.Empty;
+        lock (output)
+        {
+            var text = output.ToString().Trim();
+            return text.Length == 0 ? string.Empty : $"\n\n{text}";
+        }
     }
 
     public void Dispose()

@@ -18,8 +18,10 @@
 
   <PropertyGroup>
     <OutputType>Exe</OutputType>
-    <PublishSingleFile>true</PublishSingleFile>
-    <SelfContained>false</SelfContained>
+    <!-- Single-file/self-contained live in Properties\PublishProfiles\SingleFile.pubxml, not here, so
+         that only a publish is RID-specific. Setting them in the project body made every `dotnet build`
+         carry them too, and a hard-coded SelfContained=false here is exactly the thing that shipped a
+         zip needing a runtime the machine did not have. -->
   </PropertyGroup>
 
 </Project>

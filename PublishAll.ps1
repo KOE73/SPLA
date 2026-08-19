@@ -107,8 +107,12 @@ Write-Host 'Publishing SPLA.UI.Avalonia (SingleFile profile)...'
 dotnet publish src/apps/SPLA.UI.Avalonia/SPLA.UI.Avalonia.csproj -p:PublishProfile=SingleFile -c Release -o .publish/work --nologo @versionArgs
 if ($LASTEXITCODE -ne 0) { Fail 'UI publish failed.' }
 
-Write-Host 'Publishing SPLA.CLI...'
-dotnet publish src/apps/SPLA.CLI/SPLA.CLI.csproj -c Release -o .publish/work --nologo @versionArgs
+# Same SingleFile profile shape as the UI, and for the same reason: the UI spawns this exe as its
+# service child, so the two must have the same runtime requirements. A self-contained shell over a
+# framework-dependent child means the window opens on a machine without the runtime and nothing behind
+# it works.
+Write-Host 'Publishing SPLA.CLI (SingleFile profile)...'
+dotnet publish src/apps/SPLA.CLI/SPLA.CLI.csproj -p:PublishProfile=SingleFile -c Release -o .publish/work --nologo @versionArgs
 if ($LASTEXITCODE -ne 0) { Fail 'CLI publish failed.' }
 
 Write-Host 'Waiting for plugin jobs...'
