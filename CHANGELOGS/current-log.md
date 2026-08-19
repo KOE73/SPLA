@@ -191,3 +191,77 @@ sentences are what `current-list.md` is built from, which is why they have to st
   passed by the caller; and that "ask" permission verdicts refuse rather than prompt, there being no
   window to prompt in. It also says what SPLA *is* — a project-scoped agent runtime rather than a
   tool bag — so the connecting head can suggest project-level fixes instead of working around them.
+
+- **A folder is entered on purpose, and a launch profile says with what.** Running SPLA where there
+  is no `*.spla` used to hand it *more* than a project would: no boundary, a passthrough sandbox, no
+  edge accounting, and its chats and KV written into the shared `~/.spla` alongside every other
+  project-less session — while its settings, connections and capabilities were inherited wholesale
+  from the machine defaults. `spla init` now creates the manifest with an explicit profile:
+  `minimal` (the default — no built-in features, no plugins, only the LLM connection is inherited),
+  `standard`, or `inherit` for the old behaviour, which is still reachable but no longer what
+  happens when nobody chose. A profile is a parameter and a template, never a field in the manifest:
+  the file ends up holding the result, so an existing project means exactly what it always did. A
+  non-interactive run in a folder with no manifest now fails with a message naming `--init` instead
+  of silently deciding. The manifest search deliberately does not walk up the tree — a command acts
+  where you are standing.
+
+- **One process writes a project, and the lock says where the live one listens.** Nothing previously
+  stopped `serve`, `chat run` and `mcp` from opening the same `.spla/` at once and racing over its
+  chats, KV and token tally. A live instance now holds `<project>/.spla/instance.json` open with
+  writes denied, and that one file answers both questions: who has it, and what address to use
+  instead. Liveness is the OS's answer rather than a pid check — the handle closes on any death,
+  including a kill or a crash, and the same deny-write is honoured over SMB, so a project on a share
+  is protected from two machines and not just two processes. `chat run` on a busy project now
+  attaches to the live instance as a client, which is why a scripted run shows up in the window that
+  already has that project open.
+
+- **A question outlives the window that triggered it.** Permission and clarification requests used
+  to live on the client connection: closing a window answered every outstanding one with "deny", and
+  the turn finished by refusing everything it had been about to do. They now belong to the chat, so
+  any window watching it can answer, a window opened later is shown what is still pending, and a
+  closed window means "nobody is looking right now" rather than "no". The wait is bounded by
+  `agent.ask_timeout_minutes` (60 by default, 0 for no limit) and timing out says so instead of
+  pretending a person decided.
+
+- **An instance holds a lease instead of an owner.** Open project A, open project B, go back to A,
+  close the window, then remember B — under "whoever spawned it kills it", that killed B mid-turn.
+  Nothing owns an instance now: it lives while somebody is connected or work is in flight, and lets
+  go after a grace period when neither is true. Only a genuinely idle one is ever dropped; a running
+  turn, a question waiting on a person, and a turn that stopped halfway are exactly the states
+  somebody walks back to their desk for. Leaving is cheap because an instance holds nothing unique —
+  chats, KV and the tally are on disk — so eviction costs the next warm-up and never any work.
+  `spla ps` lists what is running and asks each one what it is doing; `spla stop` asks one to go and
+  is refused while it is busy, `--force` cancels first. The desktop shell no longer kills its
+  service child on exit; it passes `--idle-timeout` and lets the child decide, and the next window
+  finds and joins it through the project's lock.
+
+- **`spla hub` gives a machine, or a network, one place to see what is running.** The lock files
+  answer "what is running here" and nothing more — a `serve` on another host cannot be discovered
+  that way at all, since there is no shared filesystem and a pid means nothing across machines. So
+  an instance can instead register itself with a hub whose address it was given
+  (`spla serve --registry http://host:5060`), and the registration channel *is* the liveness signal:
+  the socket closing is the instance leaving, however it left. Nothing to prune, no heartbeat to
+  tune, identical on one machine and twelve. `spla ps --registry <url>` reads it; the hub relays a
+  stop but never performs one, because only the instance knows whether it may go. It is a mode of
+  the same binary, not a second program, and `SPLA.Server --hub` maps the same routes rather than
+  reimplementing them.
+
+- **You can see, from across the room, that an agent is waiting for you.** Chats carry a state on
+  the wire — idle, working, waiting, stalled — in the same vocabulary the instance and the eviction
+  rule use, so there is one set of words rather than three. The sidebar badges each chat and
+  aggregates above the list, and the chat list is re-sent the moment a question appears or clears,
+  because a badge that arrives a turn late is not a badge. A tray icon lists every instance on the
+  machine, opens or unloads one, and blinks while any of them is waiting; it reads a push channel on
+  the hub rather than polling, for the same reason. The Debug surface gained an `instances` tab: the
+  full dump of what the process thinks it is doing, what its lock claims, and every question it is
+  blocked on.
+
+- **A project is now a property of the connection, not of every message.** `projectId` is gone from
+  the wire envelope. It made every sender responsible for remembering it, and forgetting it once
+  wrote settings into whichever project the connection happened to default to — the web client
+  carried a helper and a warning comment for exactly this, in some forty places. It also made a
+  local claim untrue: a process has one working directory, so a window "holding" several projects
+  was telling the truth about its runtimes and a lie about anything resolved relative to it. A
+  second project is a second connection: locally a second window, on a server one socket moved by
+  `project.open`. The desktop shell no longer changes the working directory at all — that belongs to
+  the serve instance, which holds exactly one project by construction.

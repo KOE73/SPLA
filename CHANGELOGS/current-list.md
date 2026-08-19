@@ -18,6 +18,13 @@ repository and is linked from it.
 - MCP: SPLA tools served over stdio, usable by an external agent.
 - Mounts: folders outside the project root, declared by name, each its own security zone.
 - Multi-project service: several projects at once, with a project picker in the client.
+- Launch profiles: `spla init` enters a folder with `minimal` (default), `standard` or `inherit`.
+- One writer per project, enforced by a lock file that also publishes the live instance's address.
+- `spla ps` and `spla stop`: see what is running on this machine, and ask one of them to go.
+- `spla hub`: instances register themselves with it, including from other machines; `spla ps
+  --registry <url>` reads it, and `SPLA.Server --hub` hosts the same routes.
+- Chat and instance states — idle, working, waiting, stalled — as sidebar badges, a tray icon that
+  blinks while an agent is waiting for you, and an `instances` tab in the Debug surface.
 - Server deployment: domain identity over NTLM, per-user file areas, group sharing.
 - DPAPI secret store with explicit scopes and per-entry ACLs.
 - Skill library as a project of its own, fed by declared sources, with a librarian that answers by
@@ -55,6 +62,9 @@ repository and is linked from it.
 - `docs/` split by lifetime into ADR, PLAN and IDEA.
 - Version scheme is now `0.<minor>.<build>`, with the build number assigned by CI.
 - `agent_spawn` takes a plain task; a skill is now optional rather than the only way to spawn.
+- An instance holds a lease instead of an owner: it lives while somebody is connected or work is in
+  flight, and only an idle one is ever dropped.
+- A question outlives the window that triggered it; closing a window no longer answers "deny".
 
 ### Fixed
 
@@ -87,3 +97,7 @@ repository and is linked from it.
 - `.spla` is no longer readable through the sandbox.
 - `AgentCallbacks.OnTokenUsage` removed — `OnLlmTurn` carries the whole turn outcome, and recording
   it is the pipeline's job now.
+- `projectId` removed from the wire envelope: a project belongs to the connection, and a second
+  project is a second connection.
+- A folder without a manifest is no longer entered silently — profiles are chosen, not inherited by
+  default, and a non-interactive run there fails instead of guessing.
