@@ -135,8 +135,9 @@ client/types **and** this table.
 | `chat.skill.state` | `ChatSkillState` | `ChatSkillStatePayload` | watchers | The chat's active skill changed (an explicit hand-out or unload). |
 | `chat.toolset.state` | `ChatToolSetState` | `ChatToolSetStatePayload` | watchers | The chat's tool sets, raised or merely announced. Sent after every turn and after an explicit lowering; sets levelled off are never listed. |
 | `chat.doubt.state` | `ChatDoubtState` | `ChatDoubtStatePayload` | watchers | Whether the chat has taken in content from a source nobody named, with the causes. Sent on clearing; the flag also rides `chat.opened`, since it survives a reload. |
-| `permission.request` | `PermissionRequest` | `PermissionRequestPayload` | unicast | To the initiating client (by `requestId`). |
-| `clarify.request` | `ClarifyRequest` | `ClarifyRequestPayload` | unicast | To the initiating client (by `requestId`). |
+| `permission.request` | `PermissionRequest` | `PermissionRequestPayload` | watchers | Outstanding permission question. Replayed to a client opening the chat while a question is still pending. |
+| `clarify.request` | `ClarifyRequest` | `ClarifyRequestPayload` | watchers | Outstanding clarification question. Replayed to a client opening the chat while a question is still pending. |
+| `ask.resolved` | `AskResolved` | `AskResolvedPayload` | watchers | An outstanding permission or clarify question was resolved (answered, cancelled, or timed out). Payload carries `Reason`. |
 | `debug.snapshot` | `DebugSnapshot` | `DebugSnapshotPayload` | unicast | Answer to `debug.request`. |
 | `focus.changed` | `FocusChanged` | `FocusPayload` | broadcast | Tear-off windows follow the active chat. |
 | `connections.result` | `ConnectionsResult` | `ConnectionsPayload` | unicast/broadcast | Answer to get; broadcast after save. |

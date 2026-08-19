@@ -73,8 +73,17 @@ public partial class App : Application
                 }
             }
 
-            // Auto-detect in CWD
-            splaFile ??= ConfigLoader.FindProjectFile(Directory.GetCurrentDirectory());
+            // Auto-detect in CWD. Two manifests in one folder is now a refusal rather than an
+            // arbitrary pick — but a window that fails to open says nothing to anybody, so the app
+            // starts project-less and the person can pick the one they meant from the project menu.
+            try
+            {
+                splaFile ??= ConfigLoader.FindProjectFile(Directory.GetCurrentDirectory());
+            }
+            catch (InvalidOperationException)
+            {
+                splaFile = null;
+            }
 
             // Scaffold new/empty project files before resolving so the first resolve
             // already sees the project name and ignore patterns.
@@ -148,7 +157,11 @@ public partial class App : Application
     {
         _serviceLauncher = new EmbeddedServiceLauncher();
         var remote = Environment.GetEnvironmentVariable("SPLA_SERVICE_URL");
-        return await _serviceLauncher.StartAsync(remote, ResolvedSettings.WorkspacePath);
+        // The window already answered "is there a project here" during startup. The child service
+        // must not ask again — it cannot, being headless — so when the answer was no, it is told to
+        // run project-less explicitly. Same behaviour as before; no longer an accident.
+        return await _serviceLauncher.StartAsync(
+            remote, ResolvedSettings.WorkspacePath, noProject: ProjectFilePath is null);
     }
 
     /// <summary>Stops the local child service (no-op for a remote target). Called when the main

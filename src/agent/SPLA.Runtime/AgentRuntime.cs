@@ -1,4 +1,4 @@
-﻿using System.Collections.Concurrent;
+using System.Collections.Concurrent;
 using Microsoft.Extensions.Logging;
 using SPLA.Agent;
 using SPLA.Agent.Composition;
@@ -60,6 +60,16 @@ public sealed class AgentRuntime : IDisposable
     /// <summary>Process-wide domain-event hub. Mutators publish state changes here; the host fans them
     /// out to clients. The single "say what changed once" point — see <see cref="ServiceEvents"/>.</summary>
     public ServiceEvents Events { get; } = new();
+
+    /// <summary>The questions this project's running turns are waiting on. Held here, not on the
+    /// connection that started the turn: a question belongs to its chat, any client watching that
+    /// chat may answer it, and a client that arrives later must still see it. See
+    /// <see cref="PendingAskStore"/> for why closing a window must not answer anything.</summary>
+    public PendingAskStore Asks { get; }
+
+    /// <summary>The turns in flight in this project, keyed by chat. Here for the same reason as
+    /// <see cref="Asks"/>: work outlives the client that started it, and any client may cancel it.</summary>
+    public TurnRegistry Turns { get; } = new();
     /// <summary>
     /// The composed LLM pipeline — the only way anything in this runtime reaches a model. Provider
     /// clients are deliberately never exposed: if they were reachable, accounting, quotas and privacy
@@ -170,6 +180,9 @@ public sealed class AgentRuntime : IDisposable
         Settings = settings;
         LoggerFactory = loggerFactory;
         Sandbox = BuildSandbox(settings, loggerFactory);
+        Asks = new PendingAskStore(settings.AskTimeoutMinutes > 0
+            ? TimeSpan.FromMinutes(settings.AskTimeoutMinutes)
+            : TimeSpan.Zero);
 
         _httpClient = new HttpClient { Timeout = TimeSpan.FromMinutes(10) };
         // Project tally goes through the broker only when a real project is open; the historical
@@ -606,5 +619,10 @@ public sealed class AgentRuntime : IDisposable
         return registry;
     }
 
-    public void Dispose() => _httpClient.Dispose();
+    public void Dispose()
+    {
+        // Nothing may be left blocked on a person who will never be asked again.
+        Asks.AbandonAll(AskResolution.Cancelled);
+        _httpClient.Dispose();
+    }
 }

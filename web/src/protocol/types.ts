@@ -623,6 +623,9 @@ export interface ServerEvents {
   "error": { message: string };
   "permission.request": { toolName: string; arguments?: string };
   "clarify.request": { question: string; options?: { label: string; description?: string }[] };
+  /** An outstanding permission or clarify question is no longer outstanding — answered elsewhere,
+   *  cancelled, or timed out. The envelope carries the requestId; this payload explains why. */
+  "ask.resolved": { reason: string };
   "connections.result": ConnectionsResultPayload;
   "connections.health": ConnectionsHealthPayload;
   "connection.models.result": ConnectionModelsResultPayload;

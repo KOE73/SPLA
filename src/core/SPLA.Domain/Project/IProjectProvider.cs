@@ -14,6 +14,11 @@ public sealed record ProjectDescriptor
     public string? ManifestPath { get; init; }
 
     public DateTimeOffset? LastOpened { get; init; }
+
+    /// <summary>What a brand-new project is allowed to do; ignored when the manifest already exists.
+    /// Null means <see cref="ProjectProfiles.Default"/> — most callers never think about profiles, so
+    /// leaving it unset should not read as "inherit".</summary>
+    public ProjectProfile? Profile { get; init; }
 }
 
 /// <summary>

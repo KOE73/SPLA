@@ -34,7 +34,11 @@ public sealed class EmbeddedServiceLauncher : IDisposable
     /// <c>SPLA.CLI serve</c> on a free loopback port. Either way the client then talks the same
     /// WebSocket protocol against the returned URL.
     /// </summary>
-    public async Task<string> StartAsync(string? remoteUrl = null, string? workingDirectory = null, CancellationToken ct = default)
+    /// <param name="noProject">True when the shell found no manifest to work in. The child is then
+    /// launched with an explicit <c>--init=inherit</c>: a headless service cannot stop and ask what a
+    /// manifest-less folder should become, and refusing to start would leave the window empty.</param>
+    public async Task<string> StartAsync(
+        string? remoteUrl = null, string? workingDirectory = null, bool noProject = false, CancellationToken ct = default)
     {
         if (!string.IsNullOrWhiteSpace(remoteUrl))
         {
@@ -45,7 +49,7 @@ public sealed class EmbeddedServiceLauncher : IDisposable
         }
 
         var port = FreeLoopbackPort();
-        var (exe, args) = ResolveCliInvocation(port);
+        var (exe, args) = ResolveCliInvocation(port, noProject);
 
         var psi = new ProcessStartInfo
         {
@@ -87,10 +91,12 @@ public sealed class EmbeddedServiceLauncher : IDisposable
 
     /// <summary>Finds the CLI: a published SPLA.CLI.exe next to us, or the dll run via dotnet, or a
     /// dev-tree build output. Returns the executable and the argument list for <c>serve</c>.</summary>
-    private static (string Exe, string[] Args) ResolveCliInvocation(int port)
+    private static (string Exe, string[] Args) ResolveCliInvocation(int port, bool noProject = false)
     {
         var baseDir = AppContext.BaseDirectory;
-        string[] serveArgs = { "serve", "--port", port.ToString(), "--bind", "127.0.0.1" };
+        string[] serveArgs = noProject
+            ? ["--init=inherit", "serve", "--port", port.ToString(), "--bind", "127.0.0.1"]
+            : ["serve", "--port", port.ToString(), "--bind", "127.0.0.1"];
 
         // 1) Published: SPLA.CLI.exe sits next to the UI exe.
         var exe = Path.Combine(baseDir, "SPLA.CLI.exe");

@@ -111,4 +111,30 @@ describe("chat sessions", () => {
     expect(items.some(i => i.kind === "assistant")).toBe(false);
     expect(items.some(i => i.kind === "notice" && i.text.includes("provider refused"))).toBe(true);
   });
+
+  it("removes a permission request when ask.resolved arrives", () => {
+    open("A");
+    feed("permission.request", "A", { toolName: "shell", arguments: "whoami" }, "req-perm");
+
+    let items = peekSession("A")!.items;
+    expect(items.some(i => i.kind === "permission" && i.requestId === "req-perm")).toBe(true);
+
+    feed("ask.resolved", "A", { reason: "answered" }, "req-perm");
+
+    items = peekSession("A")!.items;
+    expect(items.some(i => i.kind === "permission" && i.requestId === "req-perm")).toBe(false);
+  });
+
+  it("removes a clarify request when ask.resolved arrives", () => {
+    open("A");
+    feed("clarify.request", "A", { question: "pick one?", options: [] }, "req-clarify");
+
+    let items = peekSession("A")!.items;
+    expect(items.some(i => i.kind === "clarify" && i.requestId === "req-clarify")).toBe(true);
+
+    feed("ask.resolved", "A", { reason: "answered" }, "req-clarify");
+
+    items = peekSession("A")!.items;
+    expect(items.some(i => i.kind === "clarify" && i.requestId === "req-clarify")).toBe(false);
+  });
 });

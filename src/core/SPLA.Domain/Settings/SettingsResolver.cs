@@ -1,4 +1,4 @@
-﻿using SPLA.Domain.Models;
+using SPLA.Domain.Models;
 using SPLA.Domain.Secrets;
 
 namespace SPLA.Domain.Settings;
@@ -48,6 +48,11 @@ public class ResolvedSettings
     /// <see cref="SplaAgentSection.LoopGuard"/>.</summary>
     public bool LoopGuard { get; set; }
     public int LoopGuardRepeats { get; set; } = 3;
+
+    /// <summary>Minutes a permission/clarify question waits for a person before it is denied; 0 = no
+    /// limit. The wait is deliberately long: the question outlives the window that triggered it, so
+    /// the bound exists only to stop an unattended instance blocking forever.</summary>
+    public int AskTimeoutMinutes { get; set; } = 60;
 
     /// <summary>Persist the full tool-call/tool-result trace with the chat history. Default OFF —
     /// see <see cref="SplaAgentSection.SaveToolCalls"/>.</summary>
@@ -359,6 +364,7 @@ public static class SettingsResolver
                     r.CustomPrompt = defaults.Agent.CustomPrompt;
                 r.LoopGuard = defaults.Agent.LoopGuard ?? r.LoopGuard;
                 r.LoopGuardRepeats = defaults.Agent.LoopGuardRepeats ?? r.LoopGuardRepeats;
+                r.AskTimeoutMinutes = defaults.Agent.AskTimeoutMinutes ?? r.AskTimeoutMinutes;
                 r.SaveToolCalls = defaults.Agent.SaveToolCalls ?? r.SaveToolCalls;
                 r.SaveAttempts = defaults.Agent.SaveAttempts ?? r.SaveAttempts;
                 r.Capabilities = defaults.Agent.Capabilities ?? r.Capabilities;
@@ -408,6 +414,7 @@ public static class SettingsResolver
                     r.CustomPrompt = project.Agent.CustomPrompt;
                 r.LoopGuard = project.Agent.LoopGuard ?? r.LoopGuard;
                 r.LoopGuardRepeats = project.Agent.LoopGuardRepeats ?? r.LoopGuardRepeats;
+                r.AskTimeoutMinutes = project.Agent.AskTimeoutMinutes ?? r.AskTimeoutMinutes;
                 r.SaveToolCalls = project.Agent.SaveToolCalls ?? r.SaveToolCalls;
                 r.SaveAttempts = project.Agent.SaveAttempts ?? r.SaveAttempts;
                 r.Capabilities = project.Agent.Capabilities ?? r.Capabilities;

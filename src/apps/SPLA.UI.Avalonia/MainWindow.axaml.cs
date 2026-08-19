@@ -7,6 +7,7 @@ using Avalonia.Controls;
 using Avalonia.Input;
 using Avalonia.Interactivity;
 using Avalonia.Platform.Storage;
+using SPLA.Domain.Project;
 using SPLA.Domain.Settings;
 using SPLA.UI.Avalonia.Helpers;
 
@@ -98,15 +99,26 @@ public partial class MainWindow : Window
         var dir = folders.FirstOrDefault()?.TryGetLocalPath();
         if (dir == null) return;
 
+        // Folder name doubles as project name; a proper "name this project" dialog is a separate
+        // piece of work — this just stops hand-writing the manifest that ProjectFactory now owns.
         var name = Path.GetFileName(dir.TrimEnd(Path.DirectorySeparatorChar));
-        var manifestPath = Path.Combine(dir, name + ".spla");
-        if (!File.Exists(manifestPath))
+
+        try
         {
-            ConfigLoader.SaveProject(
-                new SplaProject { Name = name, Ignore = [.. ConfigLoader.DefaultIgnorePatterns] },
-                manifestPath);
+            // Picking a folder that already holds exactly one project is not a mistake worth an
+            // error — it is how people open one, so honour the obvious intent. Two manifests stays
+            // an error: the factory refuses to add a third, and choosing between the two would be
+            // the arbitrary pick that FindProjectFile just stopped making.
+            var existing = Directory.GetFiles(dir, "*.spla");
+            var manifestPath = existing.Length == 1
+                ? existing[0]
+                : ProjectFactory.Create(dir, name, ProjectProfiles.Default);
+            LaunchProject(manifestPath);
         }
-        LaunchProject(manifestPath);
+        catch (Exception ex)
+        {
+            TitleText.Text = "— " + ex.Message;
+        }
     }
 
     private async Task OpenProjectAsync()

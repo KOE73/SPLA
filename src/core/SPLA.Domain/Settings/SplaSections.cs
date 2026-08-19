@@ -1,4 +1,4 @@
-﻿using YamlDotNet.Serialization;
+using YamlDotNet.Serialization;
 
 namespace SPLA.Domain.Settings;
 
@@ -29,6 +29,12 @@ public class SplaAgentSection
     /// <summary>How many suspicious consecutive repeats trigger each stage (default 3).</summary>
     [YamlMember(Alias = "loop_guard_repeats")]
     public int? LoopGuardRepeats { get; set; }
+
+    /// <summary>Minutes an unanswered permission/clarify question is kept before it is denied.
+    /// Generous on purpose — a person who walked away should be able to come back and answer —
+    /// and 0 means no limit at all. See <c>PendingAskStore</c>.</summary>
+    [YamlMember(Alias = "ask_timeout_minutes")]
+    public int? AskTimeoutMinutes { get; set; }
 
     /// <summary>Enabled built-in agent capabilities (dotted "core.*" feature ids — see
     /// <c>SPLA.MCP.Core.Agent.AgentFeatureCatalog</c>). Null (key absent) = every feature enabled,

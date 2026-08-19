@@ -366,6 +366,20 @@ public sealed class SplaServiceHost
                 }
             });
 
+            // A question a running turn is waiting on. Raised by the project's runtime rather than by
+            // the connection that started the turn, so it reaches every window watching the chat and
+            // any of them may answer — including one that opened after the question was asked.
+            entry.Runtime.Asks.Asked += ask =>
+                _ = hub.BroadcastToWatchersAsync(
+                    ask.ChatId, ProtocolMapper.MessageTypeFor(ask), ProtocolMapper.PayloadFor(ask), ask.RequestId);
+
+            // ...and its counterpart: whoever closed it, every other window drops the dialog instead
+            // of leaving a button that answers nothing.
+            entry.Runtime.Asks.Resolved += (ask, reason) =>
+                _ = hub.BroadcastToWatchersAsync(
+                    ask.ChatId, Contracts.MessageTypes.AskResolved,
+                    new Contracts.AskResolvedPayload { Reason = ProtocolMapper.ReasonName(reason) }, ask.RequestId);
+
             // Live SSH sessions: create the project's hub eagerly and fan its open/close events out
             // as ssh.sessions.changed, so pickers refresh and terminals auto-attach the moment the
             // AGENT opens a session — the human sees it happen instead of discovering it later.

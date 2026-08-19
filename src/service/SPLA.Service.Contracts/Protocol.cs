@@ -1,4 +1,4 @@
-﻿using System.Text.Json;
+using System.Text.Json;
 
 namespace SPLA.Service.Contracts;
 
@@ -266,6 +266,11 @@ public static class MessageTypes
     public const string ChatDoubtState = "chat.doubt.state";
     public const string PermissionRequest = "permission.request";
     public const string ClarifyRequest = "clarify.request";
+
+    /// <summary>An outstanding permission/clarify question is no longer outstanding — somebody
+    /// answered it, the turn was cancelled, or it timed out. Broadcast to every watcher of the chat
+    /// so a dialog another window already dealt with disappears here too.</summary>
+    public const string AskResolved = "ask.resolved";
     public const string DebugSnapshot = "debug.snapshot";
     /// <summary>Broadcast to all connections when a window changes the focused chat (see <see cref="FocusSet"/>).</summary>
     public const string FocusChanged = "focus.changed";

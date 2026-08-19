@@ -60,12 +60,11 @@ public sealed class LocalProjectProvider : IProjectProvider
             descriptor.ManifestPath
             ?? throw new ArgumentException("A local project needs a manifest path.", nameof(descriptor)));
 
+        // Idempotent: a caller that already has a manifest (re-registering, an import) just opens it —
+        // creation only happens the first time the path is seen.
         if (!File.Exists(manifestPath))
-        {
-            Directory.CreateDirectory(Path.GetDirectoryName(manifestPath)!);
-            ConfigLoader.SaveProject(new SplaProject { Name = descriptor.Name }, manifestPath);
-        }
-        ConfigLoader.ScaffoldIfNew(manifestPath);
+            ProjectFactory.CreateAt(manifestPath, descriptor.Name, descriptor.Profile ?? ProjectProfiles.Default);
+
         return Open(manifestPath);
     }
 

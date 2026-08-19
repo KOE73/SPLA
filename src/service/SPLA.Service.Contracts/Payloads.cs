@@ -1,4 +1,4 @@
-﻿using System.Collections.Generic;
+using System.Collections.Generic;
 using System.Text.Json;
 
 namespace SPLA.Service.Contracts;
@@ -711,6 +711,11 @@ public sealed class ProjectCreatePayload
 {
     public string ManifestPath { get; set; } = string.Empty;
     public string? Name { get; set; }
+
+    /// <summary>Profile name (see ProjectProfiles.AllNames); absent or unrecognized falls back to
+    /// ProjectProfiles.Default. A string on the wire, not the enum, so an old client sending nothing
+    /// still parses cleanly and a typo degrades to the default instead of a protocol error.</summary>
+    public string? Profile { get; set; }
 }
 
 // ──────────────────────────────────────────────────────────────────────────
@@ -1083,6 +1088,17 @@ public sealed class ClarifyRequestPayload
 {
     public string Question { get; set; } = string.Empty;
     public List<ClarifyOptionDto> Options { get; set; } = new();
+}
+
+/// <summary>
+/// Closes an outstanding permission/clarify question on every client. The envelope carries the
+/// <c>requestId</c> and the <c>chatId</c>; this payload says only why it closed, so a client can
+/// distinguish "somebody answered" from "nobody did" without guessing.
+/// </summary>
+public sealed class AskResolvedPayload
+{
+    /// <summary>One of <c>answered</c>, <c>cancelled</c>, <c>timedOut</c>.</summary>
+    public string Reason { get; set; } = string.Empty;
 }
 
 /// <summary>

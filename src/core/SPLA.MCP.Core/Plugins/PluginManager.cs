@@ -262,7 +262,19 @@ public class PluginManager
     /// plugins.save), so disabling a plugin takes effect without a restart.</summary>
     /// <summary>Live enabled flag for a plugin id (settings mutated in place by plugins.save).</summary>
     public bool IsPluginEnabled(string pluginId)
-        => !_settings.Plugins.TryGetValue(pluginId, out var section) || section.Enabled != false;
+    {
+        // An entry naming this plugin decides, always.
+        if (_settings.Plugins.TryGetValue(pluginId, out var section) && section.Enabled.HasValue)
+            return section.Enabled.Value;
+
+        // Otherwise a project may switch the whole class off with a single "*" entry — what the
+        // `minimal` launch profile writes. Naming every plugin installed today would bake one
+        // machine's state into a manifest that travels in git; a wildcard does not.
+        if (_settings.Plugins.TryGetValue("*", out var all) && all.Enabled.HasValue)
+            return all.Enabled.Value;
+
+        return true;
+    }
 
     public bool IsToolAvailable(IMcpTool tool)
     {

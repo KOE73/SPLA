@@ -363,6 +363,18 @@ client.on("clarify.request", (p, env) => {
     question: p.question, options: p.options });
 });
 
+client.on("ask.resolved", (p, env) => {
+  // An outstanding question is gone — either answered elsewhere, cancelled, or timed out. Remove its item
+  // from the session. The local removal that happens immediately when the user answers is already gone; this
+  // is for cases where another window answered it first. Removing an already-removed item is a no-op.
+  if (!env.chatId || !env.requestId) return;
+  const s = peekSession(env.chatId);
+  if (s) {
+    s.items = s.items.filter(i =>
+      !(((i.kind === "permission" || i.kind === "clarify") && i.requestId === env.requestId)));
+  }
+});
+
 on("chat.skill.state", (s, p: { activeSkillId?: string | null }) => { s.activeSkill = p.activeSkillId || null; });
 on("chat.toolset.state", (s, p: { sets?: ToolSetState[] }) => { s.toolSets = p.sets || []; });
 on("chat.doubt.state", (s, p: { doubt: ChatDoubt }) => { s.doubt = p.doubt; });

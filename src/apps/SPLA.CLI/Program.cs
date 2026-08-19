@@ -15,6 +15,14 @@ if (args.Length > 0 && args[0].Equals("--help-mcp", StringComparison.OrdinalIgno
     return;
 }
 
+// `init` creates the manifest, so it cannot run behind the bootstrap that refuses to continue
+// without one. See InitCommand.
+if (SPLA.CLI.InitCommand.IsInitCommand(args))
+{
+    Environment.ExitCode = SPLA.CLI.InitCommand.Run(args);
+    return;
+}
+
 // `mcp` speaks a protocol on stdout, so it must be recognised before anything prints. The banner
 // below would be the first thing a client reads, and an unparsable first line kills the session.
 // It stays a raw args check ahead of Spectre for exactly that reason — nothing may run first.
@@ -37,7 +45,20 @@ SPLA.Secrets.Dpapi.DpapiSecrets.Register(msg => logger.LogWarning("{Message}", m
 // For `mcp` the startup summary goes to stderr: stdout is the protocol from the first byte. This also
 // resolves the project file, including an explicit "<path>.spla" positional argument — done once,
 // here, so no command below has to re-sniff the argument vector for it.
-var ctx = CliBootstrap.Resolve(args, logger, isMcp ? Console.Error : Console.Out);
+CliContext ctx;
+try
+{
+    ctx = CliBootstrap.Resolve(args, logger, isMcp ? Console.Error : Console.Out);
+}
+catch (InvalidOperationException ex)
+{
+    // "no project here and I cannot ask", "two manifests in one folder", "unknown profile" — all
+    // decisions the person has to make, and all useless as a stack trace. `mcp` gets it on stderr
+    // because stdout is its protocol.
+    Console.Error.WriteLine(ex.Message);
+    Environment.ExitCode = 1;
+    return;
+}
 
 // mcp: serve this project's tools to a foreign head over stdio. Before every other command, and
 // before the tool count a chat command would print below — stdout belongs to the protocol from here on.
@@ -70,4 +91,6 @@ app.Configure(config =>
     config.AddCommand<SystemCliCommand>("system").WithDescription("OS-level integration (file association).");
 });
 
-Environment.ExitCode = await app.RunAsync(args);
+// ctx.Args, not args: the launch-profile flag was answered during bootstrap and the command parser
+// has never heard of it.
+Environment.ExitCode = await app.RunAsync(ctx.Args);

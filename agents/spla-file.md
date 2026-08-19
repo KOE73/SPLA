@@ -78,6 +78,8 @@ ignore:
 | `ui.density` | No | UI density: `norm`, `mini`, `nano`, `max`. |
 | `permissions.*` | No | Per-effect overrides: `allow`, `ask`, `deny`. Overrides the mode's default matrix. |
 | `toolsets.<id>` | No | How far a tool set may reach the model: `disabled`, `skill_demand`, `agent_demand`, `enabled`. Absent = derived from the supplier's `plugins.<id>.enabled` flag, so projects written before tool sets are unaffected. `on`/`off` are refused — YAML reads them as booleans. See [Tool Sets](toolsets.md). |
+| `plugins.<id>.enabled` | No | Enables/disables one plugin by id. An entry naming the plugin always wins. |
+| `plugins."*".enabled` | No | Enables/disables every plugin that has no entry of its own. See [The `*` plugin entry](#the--plugin-entry). |
 | `docs` | No | Documentation directories to index. |
 | `ignore` | No | Directories/files the agent will never touch. |
 
@@ -149,6 +151,67 @@ pull` lands a folder with a colliding name.
 
 Design: [`ADR_20260814_core_project-mounts`](../docs/adr/ADR_20260814_core_project-mounts.md).
 
+## Launch Profiles
+
+A profile is a **CLI parameter and a template applied once, at creation.** It is not a field of the
+manifest and nothing at load time reads it back — an existing project's behavior comes entirely from
+the ordinary settings the profile wrote (`agent.capabilities`, `plugins:`), never from "which profile
+made this". Storing the profile too would put a second source of truth beside those settings and
+raise the question of which one wins; storing only its result cannot.
+
+| Profile | Default | Writes | Meaning |
+|---|---|---|---|
+| `minimal` | Yes | `agent.capabilities: []` and a `plugins: { "*": { enabled: false } }` wildcard entry | No built-in `core.*` features and no plugins. The LLM connection still comes through — it is not a capability, and without it there is nothing to run. |
+| `standard` | No | Nothing | Deliberately empty: an absent `agent.capabilities` key already means "everything", and an absent `plugins:` section already means every plugin runs. Spelling that out would freeze today's feature list into the manifest. |
+| `inherit` | No | No manifest at all | Runs against `~/.spla/defaults.yaml` with no project and no path boundary — the historical behavior, reachable but never the default. |
+
+Set a profile with `spla init --profile <name> [--name <name>] [directory]`, or with `--init[=<name>]`
+in front of any other command to create-then-continue in one step (`spla --init chat run "..."`,
+`spla --init=standard serve`). `--init` alone means `minimal`.
+
+Running in a folder with no manifest no longer silently inherits machine defaults. An interactive
+session (the REPL with no command, or `chat open`) asks the person what to do. A scripted or headless
+invocation — `chat run`, `mcp`, `serve` — refuses and names `--init`, because a prompt in a process
+nobody is watching just hangs.
+
+Manifests written before profiles existed are unaffected: the absence of a profile marker means
+exactly what it always meant, since there never was one to begin with.
+
+### `minimal` result
+
+```yaml
+version: 1
+
+name: My Project
+
+agent:
+  capabilities: []
+
+plugins:
+  "*":
+    enabled: false
+```
+
+## The `*` plugin entry
+
+`IsPluginEnabled` resolves in this order: an entry naming the plugin wins if it sets `enabled`;
+otherwise an entry under the key `"*"` wins if it sets `enabled`; otherwise the plugin is enabled.
+
+```yaml
+plugins:
+  "*":
+    enabled: false      # every plugin without its own entry is off
+  network:
+    enabled: true        # named entry still wins over the wildcard
+```
+
+The wildcard exists instead of a generated list of every installed plugin because a manifest travels
+in git and a list of one machine's plugins does not — a second machine with a different plugin set
+would either be missing entries (silently inheriting "enabled") or carry stale ones for plugins it
+never had. `"*"` says "off unless named" without naming anything, which is exactly what the `minimal`
+launch profile writes. `standard` writes nothing here for the same reason it writes nothing under
+`agent.capabilities`: an absent `plugins:` section already means every plugin runs.
+
 ## Settings Cascade
 
 ```
@@ -207,7 +270,8 @@ inherited branch off without touching the project file.
 # Explicit
 spla run my-project.spla
 
-# Auto-detect (looks for *.spla in CWD)
+# Auto-detect (looks for *.spla in CWD only — no walk up to parent directories,
+# and two manifests in one directory is a refusal, not a coin toss)
 spla
 
 # Web service; create a chat and send its first message when the first client connects

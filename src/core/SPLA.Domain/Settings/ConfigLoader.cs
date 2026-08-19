@@ -336,12 +336,27 @@ public static class ConfigLoader
     }
 
     /// <summary>
-    /// Searches for a *.spla file in the given directory.
-    /// Returns the first one found, or null.
+    /// The project manifest in <paramref name="directory"/>, or null when there is none.
+    ///
+    /// <para>Only this directory is searched. There is deliberately no walk up the tree: a command
+    /// acts where it was started, and climbing would silently pick a root nobody named — the
+    /// difference between "no project here" and "you are inside someone else's project" is exactly
+    /// what the person needs to be told, not have guessed for them.</para>
+    ///
+    /// <para>Two manifests in one directory is an error, not a coin toss. This used to return
+    /// <c>files[0]</c>, whose value depended on filesystem enumeration order.</para>
     /// </summary>
+    /// <exception cref="InvalidOperationException">More than one <c>*.spla</c> in the directory.</exception>
     public static string? FindProjectFile(string directory)
     {
         var files = Directory.GetFiles(directory, "*.spla");
+        if (files.Length > 1)
+        {
+            Array.Sort(files, StringComparer.OrdinalIgnoreCase);
+            throw new InvalidOperationException(
+                $"{directory} holds {files.Length} project files ({string.Join(", ", files.Select(Path.GetFileName))}). " +
+                "Name the one you mean on the command line.");
+        }
         return files.Length > 0 ? files[0] : null;
     }
 
