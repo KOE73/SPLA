@@ -9,6 +9,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using SPLA.Domain.Settings;
 using SPLA.Observability;
+using SPLA.Platform;
 using SPLA.UI.Avalonia.Services;
 
 namespace SPLA.UI.Avalonia;

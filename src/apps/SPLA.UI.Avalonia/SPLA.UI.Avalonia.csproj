@@ -30,6 +30,9 @@
          (Domain) and logging (Observability); the agent stack, LLM, MCP tools and plugins all live in
          the service process and are not referenced here. -->
     <ProjectReference Include="..\..\core\SPLA.Domain\SPLA.Domain.csproj" />
+    <!-- OS-specific desktop code (shell integration, browser launch, self-relaunch) with no UI
+         dependencies of its own, so the CLI and any future host can use the same implementations. -->
+    <ProjectReference Include="..\..\core\SPLA.Platform\SPLA.Platform.csproj" />
     <ProjectReference Include="..\..\core\SPLA.Secrets.Dpapi\SPLA.Secrets.Dpapi.csproj" />
     <ProjectReference Include="..\..\core\SPLA.Observability\SPLA.Observability.csproj" />
     <!-- Instance registry client only — SPLA.Instances is deliberately free of ASP.NET (see its

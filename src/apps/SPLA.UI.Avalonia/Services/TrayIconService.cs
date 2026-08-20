@@ -1,5 +1,4 @@
 using System;
-using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Net.Http;
@@ -11,6 +10,7 @@ using Avalonia.Platform;
 using Avalonia.Threading;
 using SPLA.Domain.Project;
 using SPLA.Instances;
+using SPLA.Platform;
 
 namespace SPLA.UI.Avalonia.Services;
 
@@ -136,33 +136,12 @@ public sealed class TrayIconService : IAsyncDisposable
     }
 
     /// <summary>Opens a project the same way the project menu does: a fresh window process pointed at
-    /// its manifest. Duplicated in miniature from <c>MainWindow.LaunchProject</c> rather than shared,
-    /// because the tray has no window to report a launch failure into.</summary>
+    /// its manifest. Uses the swallowing overload because the tray has nowhere to put an error message
+    /// without stealing focus — which is a gap, not a design: "clicked Open and nothing happened" is
+    /// exactly what it looks like from outside. Reporting it belongs with the same work that gives the
+    /// tray somewhere to speak.</summary>
     private static void LaunchProject(string manifestPath)
-    {
-        try
-        {
-            var (exe, args) = ResolveSelfInvocation();
-            var psi = new ProcessStartInfo { FileName = exe, UseShellExecute = false };
-            foreach (var a in args) psi.ArgumentList.Add(a);
-            psi.ArgumentList.Add(manifestPath);
-            Process.Start(psi);
-        }
-        catch { /* nothing to report a failure into from the tray */ }
-    }
-
-    private static (string Exe, string[] Args) ResolveSelfInvocation()
-    {
-        var baseDir = AppContext.BaseDirectory;
-
-        var exe = Path.Combine(baseDir, "SPLA.UI.Avalonia.exe");
-        if (File.Exists(exe)) return (exe, []);
-
-        var dll = Path.Combine(baseDir, "SPLA.UI.Avalonia.dll");
-        if (File.Exists(dll)) return ("dotnet", [dll]);
-
-        throw new FileNotFoundException("Could not locate SPLA.UI.Avalonia to relaunch.");
-    }
+        => SelfInvocationLauncher.TryLaunch("SPLA.UI.Avalonia.exe", manifestPath);
 
     /// <summary>Asks the hub to relay a stop. A refusal is normal — the instance may be mid-turn —
     /// and is not surfaced as an error, only silently dropped: the tray has no place to put a message

@@ -1,5 +1,6 @@
 using Avalonia;
 using System;
+using SPLA.Platform;
 
 namespace SPLA.UI.Avalonia;
 
