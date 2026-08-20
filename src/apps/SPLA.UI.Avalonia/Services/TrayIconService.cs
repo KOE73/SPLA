@@ -100,6 +100,19 @@ public sealed class TrayIconService : IAsyncDisposable
             foreach (var project in projects) menu.Items.Add(BuildProjectItem(project.ToList()));
         }
 
+        // The manager, in a frame and in a browser. Both because they are genuinely different tools:
+        // the window is at hand, and the browser survives this shell being restarted — and a hub bound
+        // beyond loopback can be opened from another machine entirely, where no tray exists at all.
+        menu.Items.Add(new NativeMenuItemSeparator());
+
+        var manage = new NativeMenuItem("Manage projects…");
+        manage.Click += (_, _) => new SurfaceWindow("hub", "Projects", baseUrl: _hubUrl).Show();
+        menu.Items.Add(manage);
+
+        var inBrowser = new NativeMenuItem("Manage in browser");
+        inBrowser.Click += (_, _) => BrowserLauncher.Open($"{_hubUrl}/?surface=hub");
+        menu.Items.Add(inBrowser);
+
         _tray.Menu = menu;
         _tray.ToolTipText = Summarize(instances);
 

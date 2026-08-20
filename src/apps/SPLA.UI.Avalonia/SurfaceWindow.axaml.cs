@@ -16,6 +16,7 @@ public partial class SurfaceWindow : Window
     private string _surface = "debug";
     private string? _query;
     private string? _url;
+    private string? _baseUrl;
 
     public SurfaceWindow()
     {
@@ -25,10 +26,16 @@ public partial class SurfaceWindow : Window
 
     /// <param name="query">Extra pre-encoded query params for the surface (e.g. "host=x&amp;project=y"),
     /// used by tear-offs that need context — an SSH terminal's host, the focused project.</param>
-    public SurfaceWindow(string surface, string? title = null, string? query = null) : this()
+    /// <param name="baseUrl">Which host serves the surface. Defaults to this process's agent service,
+    /// which is right for every surface that shows a project. The hub surface is the exception and the
+    /// reason this exists: it is served by the registry hub, and the tray shell that opens it holds no
+    /// project and never starts a service at all.</param>
+    public SurfaceWindow(string surface, string? title = null, string? query = null, string? baseUrl = null)
+        : this()
     {
         _surface = surface;
         _query = query;
+        _baseUrl = baseUrl;
         var label = title ?? surface;
         Title = "SPLA — " + label;
         TitleText.Text = "— " + label;
@@ -39,7 +46,7 @@ public partial class SurfaceWindow : Window
         try
         {
             Helpers.WebViewBridge.Attach(Browser);
-            var baseUrl = await App.ServiceUrlAsync();
+            var baseUrl = _baseUrl ?? await App.ServiceUrlAsync();
             _url = baseUrl.TrimEnd('/') + "/?surface=" + Uri.EscapeDataString(_surface)
                  + (string.IsNullOrEmpty(_query) ? "" : "&" + _query);
             Browser.Navigate(new Uri(_url));
