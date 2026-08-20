@@ -44,9 +44,18 @@ public class ResolvedSettings
     public List<string> Instructions { get; set; } = new();
     public int CompactTailMessages { get; set; } = 2;
     public string? CustomPrompt { get; set; }
-    /// <summary>Stop the turn when the model repeats the same tool call. Default OFF — see
-    /// <see cref="SplaAgentSection.LoopGuard"/>.</summary>
-    public bool LoopGuard { get; set; }
+    /// <summary>
+    /// Challenge, then stop, a turn that keeps making the same tool call. **On** — a chat without it
+    /// was the odd one out, since a spawned run has had it unconditionally for as long as spawning has
+    /// existed, and the chat is the one with a person paying for the tokens.
+    /// <para>Off by default originally, on the reasonable worry that a guard fires on work that is
+    /// merely repetitive. It cannot: <c>ToolRepeatTracker</c> wants the same tool, the same arguments,
+    /// the same result, no accompanying text, and a round faster than ten seconds — all of them, in a
+    /// row. Deliberate polling changes at least one, and the first trip only asks the model whether it
+    /// is stuck. Turn it off per project with <see cref="SplaAgentSection.LoopGuard"/> if some workload
+    /// proves otherwise.</para>
+    /// </summary>
+    public bool LoopGuard { get; set; } = true;
     public int LoopGuardRepeats { get; set; } = 3;
 
     /// <summary>Minutes a permission/clarify question waits for a person before it is denied; 0 = no

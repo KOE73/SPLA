@@ -21,8 +21,9 @@ public class SplaAgentSection
 
     /// <summary>Guard against machine-gun tool loops (a small-local-model failure mode). Only
     /// rapid identical calls with identical results and no commentary count; the first trip asks
-    /// the model in-band whether it is stuck, a rebuilt streak stops the turn. Off by default —
-    /// deliberate polling (ssh_session_wait etc.) is a legitimate repeat pattern.</summary>
+    /// the model in-band whether it is stuck, a rebuilt streak stops the turn. **On by default** —
+    /// deliberate polling (ssh_session_wait etc.) changes the result or takes longer than the ten-second
+    /// window, so it does not trip. Set false here for a project where it proves otherwise.</summary>
     [YamlMember(Alias = "loop_guard")]
     public bool? LoopGuard { get; set; }
 
