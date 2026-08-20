@@ -22,7 +22,7 @@ if (args.Length > 0 && args[0].Equals("--help-mcp", StringComparison.OrdinalIgno
 if (args.Length > 0)
 {
     var cmdName = args[0].ToLowerInvariant();
-    if (cmdName is "init" or "ps" or "stop" or "hub")
+    if (cmdName is "init" or "ps" or "start" or "stop" or "hub")
     {
         Environment.ExitCode = await RunPreBootstrapCommandAsync(cmdName, args);
         return;
@@ -135,6 +135,8 @@ async Task<int> RunPreBootstrapCommandAsync(string cmd, string[] args)
             .WithDescription("Make a folder a project.");
         config.AddCommand<SPLA.CLI.PsCommand>("ps")
             .WithDescription("List currently running SPLA instances.");
+        config.AddCommand<SPLA.CLI.StartCommand>("start")
+            .WithDescription("Bring an agent up on a project and leave it running.");
         config.AddCommand<SPLA.CLI.StopCommand>("stop")
             .WithDescription("Ask a running instance to shut down.");
         config.AddCommand<SPLA.CLI.HubCommand>("hub")

@@ -22,7 +22,11 @@ public static class RegistryEndpoints
     /// <param name="token">Required of every caller when set. An open registration endpoint is not
     /// "no encryption": it lets anyone who can reach the port enumerate somebody's agents and ask
     /// them to stop. Loopback-only deployments are the one place leaving it null is defensible.</param>
-    public static void MapRegistry(this WebApplication app, RegistryHub hub, string? token)
+    /// <param name="spawner">How this deployment starts agents, or null when it may not. Null is a
+    /// real configuration, not a missing one: the route then answers 501, and a hub that only watches
+    /// stays a hub that only watches.</param>
+    public static void MapRegistry(
+        this WebApplication app, RegistryHub hub, string? token, IInstanceSpawner? spawner = null)
     {
         app.MapGet(RegistryRoutes.Instances, (HttpContext ctx) =>
             Authorized(ctx, token)
@@ -46,6 +50,22 @@ public static class RegistryEndpoints
             if (!Authorized(ctx, token)) return Results.Unauthorized();
             var asked = await hub.RequestStopProjectAsync(project, force);
             return asked > 0 ? Results.Ok(new { asked }) : Results.NotFound();
+        });
+
+        // The one place the hub acts on its own rather than passing a request along. Stopping has an
+        // owner to ask; starting does not, and refusing to start would mean a machine with no desktop
+        // could not bring a project up at all. See ADR_20260820_apps_project-hub §4.
+        app.MapPost(RegistryRoutes.Start, async (HttpContext ctx, string project) =>
+        {
+            if (!Authorized(ctx, token)) return Results.Unauthorized();
+            if (spawner is null)
+                return Results.Json(new { error = "This hub does not start instances." }, statusCode: 501);
+
+            var result = await spawner.StartAsync(project, ctx.RequestAborted);
+            if (result.AlreadyRunning) return Results.Json(new { started = false, alreadyRunning = true });
+            return result.Started
+                ? Results.Json(new { started = true })
+                : Results.Json(new { started = false, error = result.Error }, statusCode: 400);
         });
 
         app.MapPost(RegistryRoutes.Focus, async (HttpContext ctx, string instance) =>

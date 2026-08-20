@@ -79,6 +79,11 @@ public static class RegistryRoutes
     /// <c>?instance=&lt;id&gt;</c>. What "Open" uses when a window for the project already exists.</summary>
     public const string Focus = "/registry/focus";
 
+    /// <summary>POST asking the hub to start an agent on a project, identified by query
+    /// <c>?project=&lt;id&gt;</c>. The one route where the hub acts rather than relays — answers 501
+    /// when the deployment was given no spawner.</summary>
+    public const string Start = "/registry/start";
+
     /// <summary>WebSocket an observer opens to receive the whole listing whenever it changes. The
     /// same JSON as <see cref="Instances"/>, pushed instead of asked for: the state worth watching
     /// is somebody being waited for, and noticing that on a poll interval is not noticing it.</summary>

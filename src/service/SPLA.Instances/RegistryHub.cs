@@ -104,8 +104,15 @@ public sealed class RegistryHub
     /// Asks one instance to stop, through its own channel. False = no such instance here.
     ///
     /// <para>The hub never decides whether the stop happens: an instance mid-turn refuses, and it is
-    /// the only party that knows that. Relaying keeps the hub an index rather than an authority over
-    /// processes it does not own.</para>
+    /// the only party that knows that.</para>
+    ///
+    /// <para><b>Stopping is relayed; starting is not.</b> This class stayed an index — it holds no
+    /// process handles and cannot end anything — but the hub as a deployment has since gained the
+    /// power to <i>start</i> agents (<see cref="IInstanceSpawner"/>, mapped by the host, off by
+    /// default). The asymmetry is the point: a stop has an owner who may refuse, while a start has
+    /// nobody to ask, and refusing to start would leave a machine with no desktop unable to bring a
+    /// project up at all. Recorded in ADR_20260820_apps_project-hub §4, which deliberately reverses
+    /// the earlier "index, never an authority" rule rather than quietly widening it.</para>
     /// </summary>
     public async Task<bool> RequestStopAsync(string instanceId, bool force)
     {

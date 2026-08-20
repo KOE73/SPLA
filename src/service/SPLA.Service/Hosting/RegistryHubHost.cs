@@ -33,7 +33,11 @@ public sealed class RegistryHubHost
     /// Kestrel binds.</summary>
     public string Url { get; private set; } = "";
 
-    public static RegistryHubHost Build(string bind, int port, string? token, ILoggerFactory loggers)
+    /// <param name="spawner">How this hub starts agents, or null when it may not — see
+    /// <see cref="RegistryEndpoints.MapRegistry"/>. Built by the caller rather than here because it
+    /// needs the hub's own address, which is not known until the port is chosen.</param>
+    public static RegistryHubHost Build(
+        string bind, int port, string? token, ILoggerFactory loggers, IInstanceSpawner? spawner = null)
     {
         var builder = WebApplication.CreateBuilder();
         builder.Logging.ClearProviders();
@@ -45,7 +49,7 @@ public sealed class RegistryHubHost
 
         var hub = new RegistryHub();
         app.MapGet("/health", () => Results.Text("SPLA registry hub running.", "text/plain"));
-        app.MapRegistry(hub, token);
+        app.MapRegistry(hub, token, spawner);
 
         return new RegistryHubHost(app, hub);
     }

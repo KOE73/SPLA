@@ -1,6 +1,8 @@
 using System.ComponentModel;
+using System.Net.Http.Json;
 using SPLA.CLI.Wire;
 using SPLA.Domain.Project;
+using SPLA.Domain.Settings;
 using SPLA.Instances;
 using SPLA.Service.Contracts;
 using Spectre.Console.Cli;
@@ -16,6 +18,18 @@ internal sealed class StopSettings : CommandSettings
     [CommandOption("--force")]
     [Description("Cancel a running turn instead of refusing. Loses work in progress.")]
     public bool Force { get; init; }
+
+    [CommandOption("--registry")]
+    [Description("Hub URL to relay the stop through, for a project this machine cannot see.")]
+    public string? Registry { get; init; }
+
+    [CommandOption("--token")]
+    [Description("Bearer token for the hub (takes a secret reference or literal).")]
+    public string? Token { get; init; }
+
+    [CommandOption("--all")]
+    [Description("Close the whole project: the agent and every window on it. Needs --registry.")]
+    public bool All { get; init; }
 }
 
 /// <summary>
@@ -37,6 +51,14 @@ internal sealed class StopCommand : AsyncCommand<StopSettings>
 
     protected override async Task<int> ExecuteAsync(CommandContext context, StopSettings settings, CancellationToken cancellationToken)
     {
+        if (settings.All)
+        {
+            return settings.Registry is { Length: > 0 } hub
+                ? await CloseProjectAsync(hub, settings, cancellationToken)
+                : Fail("--all closes a project through a hub, which is the only thing that knows " +
+                       "about its windows. Add --registry <url>.");
+        }
+
         var resolved = await ResolveAsync(settings.Project);
         if (resolved is null)
         {
@@ -86,6 +108,72 @@ internal sealed class StopCommand : AsyncCommand<StopSettings>
             Console.Error.WriteLine($"Could not reach '{name}' at {endpoint}: {ex.Message}");
             return 1;
         }
+    }
+
+    private static int Fail(string message)
+    {
+        Console.Error.WriteLine(message);
+        return 1;
+    }
+
+    /// <summary>
+    /// Closes a whole project through the hub: the agent and every window on it, asked together.
+    ///
+    /// <para>Only the hub can do this, and that is not an implementation detail — a window is not
+    /// written into any lock file, so a purely local stop has no way to learn one exists. Stopping the
+    /// agent alone is exactly what used to leave a window talking to a service that would never
+    /// answer, which is the whole reason this option is here.</para>
+    ///
+    /// <para>Each participant still decides for itself; the count reported is how many were asked.</para>
+    /// </summary>
+    private static async Task<int> CloseProjectAsync(string hub, StopSettings settings, CancellationToken ct)
+    {
+        var manifest = settings.Project;
+        if (string.IsNullOrWhiteSpace(manifest))
+        {
+            var here = Directory.GetFiles(Directory.GetCurrentDirectory(), "*.spla");
+            if (here.Length != 1) return Fail("Name the project to close — this directory holds no single one.");
+            manifest = here[0];
+        }
+        else if (manifest.EndsWith(".spla", StringComparison.OrdinalIgnoreCase) && File.Exists(manifest))
+        {
+            manifest = Path.GetFullPath(manifest);
+        }
+
+        var token = ConfigLoader.LoadAndResolve().SecretResolver.Resolve(settings.Token);
+
+        try
+        {
+            using var http = new HttpClient { Timeout = TimeSpan.FromSeconds(20) };
+            if (token is { Length: > 0 })
+                http.DefaultRequestHeaders.Authorization = new("Bearer", token);
+
+            var url = $"{hub.TrimEnd('/')}{RegistryRoutes.StopProject}" +
+                      $"?project={Uri.EscapeDataString(manifest)}&force={(settings.Force ? "true" : "false")}";
+            var response = await http.PostAsync(url, content: null, ct);
+
+            if (response.StatusCode == System.Net.HttpStatusCode.NotFound)
+            {
+                Console.Error.WriteLine($"Nothing is registered against '{manifest}' at {hub}.");
+                return 1;
+            }
+            if (!response.IsSuccessStatusCode)
+                return Fail($"The hub refused: {(int)response.StatusCode}.");
+
+            var body = await response.Content.ReadFromJsonAsync<StopProjectResponse>(ct);
+            Console.WriteLine($"Asked {body?.Asked ?? 0} participant(s) on '{Path.GetFileNameWithoutExtension(manifest)}' to close.");
+            return 0;
+        }
+        catch (Exception ex)
+        {
+            Console.Error.WriteLine($"Could not reach the hub at {hub}: {ex.Message}");
+            return 1;
+        }
+    }
+
+    private sealed class StopProjectResponse
+    {
+        public int Asked { get; set; }
     }
 
     /// <summary>

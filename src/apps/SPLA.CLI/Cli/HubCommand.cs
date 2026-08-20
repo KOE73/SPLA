@@ -53,7 +53,14 @@ internal sealed class HubCommand : AsyncCommand<HubSettings>
         // against — which is exactly why the ADR put this token in the user scope.
         var token = ConfigLoader.LoadAndResolve().SecretResolver.Resolve(settings.Token);
 
-        var host = RegistryHubHost.Build(settings.Bind, settings.Port, token, _loggers);
+        // Built against the address about to be bound rather than the one reported afterwards: those
+        // differ only for port 0, which a hub never uses — being findable without being told is its
+        // whole job. The children it starts are handed this address so they register back here.
+        var spawner = new CliInstanceSpawner(
+            $"http://{(settings.Bind == "0.0.0.0" ? "127.0.0.1" : settings.Bind)}:{settings.Port}",
+            _loggers.CreateLogger<CliInstanceSpawner>());
+
+        var host = RegistryHubHost.Build(settings.Bind, settings.Port, token, _loggers, spawner);
         await host.StartAsync();
 
         Console.WriteLine($"\nSPLA registry hub listening on {host.Url}");
@@ -63,7 +70,7 @@ internal sealed class HubCommand : AsyncCommand<HubSettings>
         if (token is null && settings.Bind != "127.0.0.1")
             Console.WriteLine(
                 "WARNING: bound beyond loopback without --token — anyone who can reach this port can " +
-                "list your agents and ask them to stop.");
+                "list your agents, ask them to stop, and start new ones.");
 
         host.Hub.Changed += () => Console.WriteLine($"[hub] {host.Hub.List().Count} instance(s) registered.");
 
