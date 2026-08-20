@@ -134,10 +134,16 @@ public sealed class ConversationOrchestrator
 
         if (ambientTree is null)
         {
+            // The single-bar view: whatever moved last, attributed to the top-level call it happened
+            // under. Deliberately not roots only, which is what this was and which had become wrong the
+            // moment anything reported below the root — a spawned run and a script's children both do,
+            // and both left the bar showing a call that had gone silent for minutes. A host with one
+            // line is asking "what is happening now", and the answer to that is the newest tick at any
+            // depth; hosts that want the shape subscribe to the tree.
             progressTree.NodeChanged += node =>
             {
                 var tc = activeTopLevel;
-                if (tc != null && node.ParentId == null && node.Latest != null)
+                if (tc != null && node.Latest != null)
                     callbacks.OnToolProgress?.Invoke(tc, node.Latest);
             };
             callbacks.OnProgressTree?.Invoke(progressTree);

@@ -20,13 +20,22 @@ file sealed class StubLlmService : SPLA.Domain.Llm.ILlmGateway
     private readonly string _response;
     public StubLlmService(string response = "stub result") => _response = response;
 
+    /// <summary>What the "provider" reports having been sent. Null is the honest default — plenty of
+    /// endpoints report nothing, and the progress tick has to cope with that.</summary>
+    public int? PromptTokens { get; init; }
+
     public Task<SPLA.Domain.Llm.LlmTurnResult> InvokeAsync(
         SPLA.Domain.Llm.LlmTurnContext ctx, CancellationToken ct = default)
     {
         ctx.OnDelta?.Invoke(_response);
         return Task.FromResult(new SPLA.Domain.Llm.LlmTurnResult
         {
-            Message = new ChatMessage { Role = ChatRole.Assistant, Content = _response }
+            Message = new ChatMessage
+            {
+                Role = ChatRole.Assistant,
+                Content = _response,
+                PromptTokens = PromptTokens
+            }
         });
     }
 }
@@ -153,6 +162,58 @@ public class AgentSpawnToolTests
         var caller = Assert.Single(tree.Nodes, n => n.ParentId == null);
         var run = Assert.Single(tree.Nodes, n => n.ParentId == caller.Id);
         Assert.Equal(expected, run.Label);
+    }
+
+    /// <summary>
+    /// How full the run's context is, on the tick. This is the number that makes a runaway sub-agent
+    /// legible before it is expensive: there is no "percent done" for an agent, but there is a ceiling
+    /// it is walking towards, and nothing else about a long run distinguishes working from filling up.
+    /// </summary>
+    [Fact]
+    public async Task A_tick_carries_how_much_context_the_run_has_used()
+    {
+        var tree = new ProgressTree();
+        var settings = new ResolvedSettings { Mode = AgentMode.Edit };
+        var runner = new SpawnedAgentRunner(
+            new StubLlmService("done") { PromptTokens = 1234 },
+            new StubToolHost(),
+            new SkillLibrary([new SPLA.Tests.Fakes.FakeSkillSource()]),
+            new PluginManager(settings),
+            settings);
+
+        using (ProgressScope.BeginTree(tree))
+        using (ProgressScope.BeginNode("agent_spawn"))
+        {
+            // Two turns: the first reports the count, the second is where it can appear — the figure
+            // arrives with the call that has already been made.
+            await runner.RunAsync(null, "go", AgentMode.Edit);
+        }
+
+        var run = Assert.Single(tree.Nodes, n => n.Label == "go");
+        Assert.Equal(1234, run.Latest!.Current);
+
+        // No window declared in these settings, so no percentage — a bar drawn against a guessed
+        // denominator would be a confident number nobody could act on.
+        Assert.Null(run.Latest.Total);
+        Assert.Contains("ctx 1.2k", run.Latest.Message);
+    }
+
+    /// <summary>Nothing to say before the first call comes back, and nothing invented when the provider
+    /// stays silent about it — which many endpoints do.</summary>
+    [Fact]
+    public async Task No_context_figure_when_the_provider_reports_none()
+    {
+        var tree = new ProgressTree();
+
+        using (ProgressScope.BeginTree(tree))
+        using (ProgressScope.BeginNode("agent_spawn"))
+        {
+            await BuildRunner("done").RunAsync(null, "go", AgentMode.Edit);
+        }
+
+        var run = Assert.Single(tree.Nodes, n => n.Label == "go");
+        Assert.Null(run.Latest!.Current);
+        Assert.DoesNotContain("ctx", run.Latest.Message);
     }
 
     /// <summary>Concurrent runs must not collide: each opens its node on its own flow, and AsyncLocal

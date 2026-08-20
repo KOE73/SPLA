@@ -155,20 +155,51 @@ public sealed class SpawnedAgentRunner : Domain.Interfaces.IAgentSpawner
         // *between* the tools — that the run is on its fourth turn, that the model is thinking, what it
         // last concluded — and without it a sub-agent spending a minute inside the model looks exactly
         // like one that has hung.
+        var llmSettings = _settings.ToLLMSettings();
+        llmSettings.Mode = mode;
+
+        // How full the run's context is, as the last call reported it. Carried on **every** tick rather
+        // than announced in one of its own, for two reasons. It is the only quantity in an agent run
+        // that means anything on a bar — there is no "percent done" for an agent, but there is a
+        // ceiling it is walking towards. And a tick that carried it alone would be gone seconds later:
+        // ticks are coalesced and the freshest message wins, so anything that must persist has to ride
+        // along with whatever is being said now.
+        //
+        // This is also the number that makes a runaway run legible before it is expensive. A sub-agent
+        // filling its window is doing something different from one working; until now neither was
+        // visible, and there is still nothing that stops either (see the plan's turn-budget note).
+        var promptTokens = 0;
+        var contextWindow = llmSettings.ContextLength ?? 0;
+
         var turn = 0;
+        ToolProgress Tick(string message) => new()
+        {
+            Message = message + Context(promptTokens, contextWindow),
+            // Absent until the first call comes back, and absent for good when the model's window is
+            // not declared — a bar drawn against a guessed denominator is worse than no bar.
+            Current = promptTokens > 0 ? promptTokens : null,
+            Total   = promptTokens > 0 && contextWindow > 0 ? contextWindow : null
+        };
+
         var callbacks = new AgentCallbacks
         {
             OnLlmTurnStart = _ =>
             {
-                ProgressScope.Report(new ToolProgress { Message = $"turn {++turn}, thinking" });
+                ProgressScope.Report(Tick($"turn {++turn}, thinking"));
                 return Task.CompletedTask;
+            },
+            // Fires once per model call, after it returns. PromptTokens is what the provider counted
+            // for the context it was sent — the honest figure, not our estimate of it.
+            OnLlmTurn = result =>
+            {
+                if (result.Message.PromptTokens is int used and > 0) promptTokens = used;
             },
             OnAssistantMessage = msg =>
             {
                 lastAssistantMessage = msg.Content ?? string.Empty;
                 var said = Excerpt(msg.Content, 56);
                 if (said is not null)
-                    ProgressScope.Report(new ToolProgress { Message = $"turn {turn}: {said}" });
+                    ProgressScope.Report(Tick($"turn {turn}: {said}"));
                 return Task.CompletedTask;
             }
         };
@@ -176,9 +207,6 @@ public sealed class SpawnedAgentRunner : Domain.Interfaces.IAgentSpawner
         // What the run will be called in the tree. The tool's own node says "agent_spawn" — the same
         // line for every delegation — so this is the only place the task can be named.
         var label = skillSession.ActiveSkillId ?? Excerpt(input, 40) ?? "task";
-
-        var llmSettings = _settings.ToLLMSettings();
-        llmSettings.Mode = mode;
 
         // Counted around the run itself, and restored rather than decremented — the same shape the
         // ambient scopes in this codebase use, so an exception cannot leave the depth raised.
@@ -208,6 +236,34 @@ public sealed class SpawnedAgentRunner : Domain.Interfaces.IAgentSpawner
 
         return lastAssistantMessage;
     }
+
+    /// <summary>
+    /// How much of the window the run is using, as a suffix — or nothing at all before the first call
+    /// has reported. The percentage appears only when the model's context length is known: guessing a
+    /// denominator would put a confident number on the screen that nobody could act on.
+    /// </summary>
+    private static string Context(int promptTokens, int contextWindow)
+    {
+        if (promptTokens <= 0) return string.Empty;
+
+        return contextWindow > 0
+            ? $" · ctx {Tokens(promptTokens)}/{Tokens(contextWindow)} ({100L * promptTokens / contextWindow}%)"
+            : $" · ctx {Tokens(promptTokens)}";
+    }
+
+    /// <summary>
+    /// Token counts as a person reads them: 850, 12.4k, 128k.
+    /// <para>Invariant on purpose. The line this lands in is English, and on a machine with a comma
+    /// decimal separator the count came out "1,2k" — the same half-translated screen the CLI help had,
+    /// and worse here because the string also goes out over MCP to a reader whose locale is not this
+    /// machine's.</para>
+    /// </summary>
+    private static string Tokens(int count) => count switch
+    {
+        < 1000 => count.ToString(System.Globalization.CultureInfo.InvariantCulture),
+        < 100_000 => (count / 1000.0).ToString("0.#", System.Globalization.CultureInfo.InvariantCulture) + "k",
+        _ => (count / 1000).ToString(System.Globalization.CultureInfo.InvariantCulture) + "k"
+    };
 
     /// <summary>
     /// The first line of <paramref name="text"/>, no longer than <paramref name="limit"/>. Null when
