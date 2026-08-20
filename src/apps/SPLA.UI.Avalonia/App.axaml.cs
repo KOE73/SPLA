@@ -167,6 +167,10 @@ public partial class App : Application
     /// there is no hub — see <see cref="TrayIconService.StartIfHubAvailable"/>.</summary>
     private static TrayIconService? _trayIcon;
 
+    /// <summary>This window's registration with the machine hub, so the hub can raise or close it.
+    /// Null when there is no hub — see <see cref="WindowRegistration"/>.</summary>
+    private static WindowRegistration? _windowRegistration;
+
     /// <summary>Starts the embedded/remote service once and returns its base URL; subsequent calls
     /// reuse the same running service. All windows navigate WebViews against this URL.</summary>
     public static Task<string> ServiceUrlAsync()
@@ -186,8 +190,17 @@ public partial class App : Application
         // The window already answered "is there a project here" during startup. The child service
         // must not ask again — it cannot, being headless — so when the answer was no, it is told to
         // run project-less explicitly. Same behaviour as before; no longer an accident.
-        return await _serviceLauncher.StartAsync(
+        var serviceUrl = await _serviceLauncher.StartAsync(
             remote, ResolvedSettings.WorkspacePath, noProject: ProjectFilePath is null, hubUrl: HubUrl);
+
+        // Registered after the service is up so the record carries the address this window is actually
+        // looking at. The agent behind it registers itself separately — one participant per thing that
+        // exists, rather than one speaking for another.
+        _windowRegistration = WindowRegistration.StartIfHubAvailable(
+            HubUrl, ProjectFilePath, ResolvedSettings.ProjectName, serviceUrl,
+            Services.GetRequiredService<ILogger<App>>());
+
+        return serviceUrl;
     }
 
     /// <summary>Stops the local child service (no-op for a remote target). Called when the main
@@ -202,6 +215,13 @@ public partial class App : Application
         {
             _ = _trayIcon.DisposeAsync();
             _trayIcon = null;
+        }
+        // Dropping the registration is how the hub learns this window is gone — the socket closing is
+        // the signal, exactly as it is for an agent.
+        if (_windowRegistration is not null)
+        {
+            _ = _windowRegistration.DisposeAsync();
+            _windowRegistration = null;
         }
     }
 

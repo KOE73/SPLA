@@ -14,12 +14,16 @@ namespace SPLA.Instances;
 /// <param name="State">What it said it was doing, or <see cref="InstanceState.Unreachable"/> when
 /// nobody answered. Never invented: an instance with no endpoint is not asked at all.</param>
 /// <param name="Clients">How many clients it reported, or null when it was not asked.</param>
+/// <param name="Role">What this participant is; one of <see cref="ParticipantRoles"/>. Defaults to
+/// <see cref="ParticipantRoles.Agent"/> because the file backend can only ever see agents — a lock
+/// file is written by whoever holds the project, and a window holds nothing.</param>
 public sealed record InstanceRecord(
     string ProjectId,
     string? ProjectName,
     InstanceInfo Info,
     InstanceState State,
-    int? Clients)
+    int? Clients,
+    string Role = ParticipantRoles.Agent)
 {
     /// <summary>True when the instance offers an address to connect to. A REPL or an <c>mcp</c>
     /// session holds a project without serving, and there is nothing to ask it.</summary>

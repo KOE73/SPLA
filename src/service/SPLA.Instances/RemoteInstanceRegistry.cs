@@ -47,11 +47,7 @@ public sealed class RemoteInstanceRegistry : IInstanceRegistry, IDisposable
         return all.FirstOrDefault(r => string.Equals(r.ProjectId, projectId, StringComparison.OrdinalIgnoreCase));
     }
 
-    private static InstanceRecord ToRecord(RegisteredInstanceDto dto)
-    {
-        InstanceStates.TryParse(dto.State, out var state);
-        return new InstanceRecord(dto.ProjectId, dto.ProjectName, dto.Info, state, dto.Clients);
-    }
+    private static InstanceRecord ToRecord(RegisteredInstanceDto dto) => dto.ToRecord();
 
     public void Dispose()
     {
@@ -72,6 +68,16 @@ public static class RegistryRoutes
     /// <summary>POST asking the hub to relay a stop to one instance, identified by query
     /// <c>?instance=&lt;id&gt;</c> with an optional <c>&amp;force=true</c>.</summary>
     public const string Stop = "/registry/stop";
+
+    /// <summary>POST asking the hub to relay a stop to <b>everything</b> registered against one
+    /// project, identified by query <c>?project=&lt;id&gt;</c> with an optional <c>&amp;force=true</c>.
+    /// This is "close the project" — the agent and its windows together, which is the only form of it
+    /// that does not leave something behind.</summary>
+    public const string StopProject = "/registry/stop-project";
+
+    /// <summary>POST asking the hub to relay a focus request to one participant, identified by query
+    /// <c>?instance=&lt;id&gt;</c>. What "Open" uses when a window for the project already exists.</summary>
+    public const string Focus = "/registry/focus";
 
     /// <summary>WebSocket an observer opens to receive the whole listing whenever it changes. The
     /// same JSON as <see cref="Instances"/>, pushed instead of asked for: the state worth watching

@@ -28,6 +28,7 @@ public sealed class InstanceRegistrar : IAsyncDisposable
     private readonly RegisterFrame _registration;
     private readonly Func<StatusFrame> _readStatus;
     private readonly Func<bool, Task> _onStopRequested;
+    private readonly Func<Task>? _onFocusRequested;
     private readonly ILogger _log;
     private readonly CancellationTokenSource _cts = new();
     private Task? _loop;
@@ -36,13 +37,17 @@ public sealed class InstanceRegistrar : IAsyncDisposable
     /// push so the registrar cannot hold a stale copy of state somebody forgot to update.</param>
     /// <param name="onStopRequested">Invoked when the hub relays a stop. The instance decides whether
     /// it may go — the hub only passes the request on.</param>
+    /// <param name="onFocusRequested">Invoked when the hub relays a request to come to the front.
+    /// Null for anything with nothing to raise, which is most participants — an agent has no window,
+    /// and the frame is then dropped rather than treated as an error.</param>
     public InstanceRegistrar(
         string hubUrl,
         string? token,
         RegisterFrame registration,
         Func<StatusFrame> readStatus,
         Func<bool, Task> onStopRequested,
-        ILogger log)
+        ILogger log,
+        Func<Task>? onFocusRequested = null)
     {
         var baseUri = new Uri(hubUrl.TrimEnd('/') + RegistryRoutes.Channel);
         _channel = new Uri(baseUri.ToString().Replace("http://", "ws://").Replace("https://", "wss://"));
@@ -50,6 +55,7 @@ public sealed class InstanceRegistrar : IAsyncDisposable
         _registration = registration;
         _readStatus = readStatus;
         _onStopRequested = onStopRequested;
+        _onFocusRequested = onFocusRequested;
         _log = log;
     }
 
@@ -132,10 +138,21 @@ public sealed class InstanceRegistrar : IAsyncDisposable
             var frame = JsonSerializer.Deserialize<RegistryFrame>(
                 buffer.AsSpan(0, result.Count), RegistryJson.Options);
 
-            if (frame?.Type != RegistryFrames.Stop) continue;
+            switch (frame?.Type)
+            {
+                case RegistryFrames.Stop:
+                    var body = frame.Body?.Deserialize<StopFrame>(RegistryJson.Options) ?? new StopFrame();
+                    await _onStopRequested(body.Force);
+                    break;
 
-            var body = frame.Body?.Deserialize<StopFrame>(RegistryJson.Options) ?? new StopFrame();
-            await _onStopRequested(body.Force);
+                // A participant that cannot be raised — an agent, a headless anything — simply has no
+                // handler, and the frame is dropped. Unknown frame types fall through the same way, on
+                // purpose: a hub of a later vintage must be able to say something this build has never
+                // heard of without ending the registration over it.
+                case RegistryFrames.Focus when _onFocusRequested is not null:
+                    await _onFocusRequested();
+                    break;
+            }
         }
     }
 

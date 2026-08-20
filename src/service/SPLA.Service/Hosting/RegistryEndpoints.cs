@@ -38,6 +38,23 @@ public static class RegistryEndpoints
                     ? Results.Ok()
                     : Results.NotFound());
 
+        // "Close the project": the agent and every window on it, asked together. Relayed exactly like
+        // a single stop — each participant still decides — but addressed by project, because closing
+        // only the agent is what left windows pointed at a service that would never answer.
+        app.MapPost(RegistryRoutes.StopProject, async (HttpContext ctx, string project, bool force = false) =>
+        {
+            if (!Authorized(ctx, token)) return Results.Unauthorized();
+            var asked = await hub.RequestStopProjectAsync(project, force);
+            return asked > 0 ? Results.Ok(new { asked }) : Results.NotFound();
+        });
+
+        app.MapPost(RegistryRoutes.Focus, async (HttpContext ctx, string instance) =>
+            !Authorized(ctx, token)
+                ? Results.Unauthorized()
+                : await hub.RequestFocusAsync(instance)
+                    ? Results.Ok()
+                    : Results.NotFound());
+
         app.Map(RegistryRoutes.Watch, async (HttpContext ctx) =>
         {
             if (!ctx.WebSockets.IsWebSocketRequest) { ctx.Response.StatusCode = 400; return; }

@@ -99,11 +99,7 @@ public sealed class RegistryWatcher : IAsyncDisposable
         }
     }
 
-    private static InstanceRecord ToRecord(RegisteredInstanceDto dto)
-    {
-        InstanceStates.TryParse(dto.State, out var state);
-        return new InstanceRecord(dto.ProjectId, dto.ProjectName, dto.Info, state, dto.Clients);
-    }
+    private static InstanceRecord ToRecord(RegisteredInstanceDto dto) => dto.ToRecord();
 
     public async ValueTask DisposeAsync()
     {
