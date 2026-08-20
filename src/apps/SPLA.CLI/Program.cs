@@ -106,6 +106,7 @@ var app = new CommandApp<ReplCommand>(new TypeRegistrar(services));
 app.Configure(config =>
 {
     config.SetApplicationName("spla");
+    config.UseStrictParsing();
 
     config.AddBranch("chat", chat =>
     {
