@@ -982,6 +982,38 @@ public sealed class ToolProgressDetailDto
     public string Value { get; set; } = string.Empty;
 }
 
+/// <summary>
+/// One node of the turn's progress tree, whole, on every change. Sent as a flat stream rather than a
+/// snapshot of the tree: a turn's tree is append-only and a node's identity is stable, so a client
+/// rebuilds the shape by keeping what it has been told and attaching each node to
+/// <see cref="ParentId"/>. Sending the tree each time would carry the same nodes over and over for the
+/// sake of one that moved.
+/// <para><see cref="ParentId"/> is null for a top-level tool call. A node whose parent the client has
+/// not seen should be held, not dropped — nothing guarantees a parent's frame won reaches first when
+/// parallel work is reporting.</para>
+/// </summary>
+public sealed class ProgressNodePayload
+{
+    /// <summary>Stable within the turn. The key a client updates in place.</summary>
+    public string NodeId { get; set; } = string.Empty;
+
+    /// <summary>Enclosing node, or null for a top-level call.</summary>
+    public string? ParentId { get; set; }
+
+    /// <summary>The model-facing tool name, or — for a spawned run — the task it was given.</summary>
+    public string Label { get; set; } = string.Empty;
+
+    /// <summary>`running`, `completed` or `failed`.</summary>
+    public string State { get; set; } = string.Empty;
+
+    /// <summary>The node's latest tick, when it has reported one. Null while it has said nothing.</summary>
+    public long? Current { get; set; }
+    public long? Total { get; set; }
+    public double? Fraction { get; set; }
+    public string? Message { get; set; }
+    public List<ToolProgressDetailDto>? Details { get; set; }
+}
+
 public sealed class ToolResultPayload
 {
     public string ToolCallId { get; set; } = string.Empty;

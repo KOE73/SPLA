@@ -18,7 +18,7 @@
 import { reactive } from "vue";
 import { client } from "../protocol/SplaClient";
 import { store } from "./store";
-import type { ChatDoubt, ToolSetState } from "../protocol/types";
+import type { ChatDoubt, ToolProgressDetail, ToolSetState } from "../protocol/types";
 import type { ToolCallState } from "../surfaces/ToolCard.vue";
 
 export type LogItem =
@@ -69,6 +69,23 @@ export interface ChatSession {
   pending: number[];
   /** Live tool calls by id, so tool.progress/result can mutate the card in place. */
   calls: Record<string, ToolCallState>;
+  /** The turn's progress tree, flat and keyed by node id — see the `progress.node` handler. Rebuilt
+   *  each turn: the nodes describe what is happening now, and a finished turn's tree is the tool
+   *  cards' own history. */
+  nodes: Record<string, ProgressNodeState>;
+}
+
+/** One node of the turn's progress tree as the client holds it: the payload plus the children that
+ *  have named it as their parent. */
+export interface ProgressNodeState {
+  nodeId: string;
+  parentId: string | null;
+  label: string;
+  state: "running" | "completed" | "failed";
+  fraction?: number | null;
+  message?: string | null;
+  details?: ToolProgressDetail[] | null;
+  childIds: string[];
 }
 
 /** How many chats keep their log. A weak client keeps fewer; a chat mid-turn is never counted out. */
@@ -103,7 +120,8 @@ function blank(chatId: string): ChatSession {
     logLoaded: false,
     items: [],
     pending: [],
-    calls: {}
+    calls: {},
+    nodes: {}
   };
 }
 
@@ -274,6 +292,9 @@ on("user.message", (s, p: { msgId: string; text?: string; createdAt?: string }) 
 });
 
 on("llm.turn.start", (s, p: { msgIndex: number }) => {
+  // The server opens one progress tree per user turn, and this event fires once per LLM call inside
+  // it — so the boundary to clear on is entering a turn, not this event as such.
+  if (!s.turnActive) s.nodes = {};
   s.turnActive = true;
   s.items.push({ kind: "assistant", key: "a" + p.msgIndex, msgIndex: p.msgIndex, text: "", reasoning: "",
     createdAt: Date.now() });
@@ -326,6 +347,52 @@ on("tool.progress", (s, p: { toolCallId?: string; toolName: string;
   fraction?: number; message?: string; details?: { label: string; value: string }[] }) => {
   const call = (p.toolCallId && s.calls[p.toolCallId]) || lastRunningByName(s, p.toolName);
   if (call) call.progress = { fraction: p.fraction, message: p.message, details: p.details };
+});
+
+/** A node, creating a stub if it has only been named so far — see the handler below. */
+function nodeFor(s: ChatSession, id: string): ProgressNodeState {
+  let n = s.nodes[id];
+  if (!n) {
+    n = { nodeId: id, parentId: null, label: "", state: "running", childIds: [] };
+    s.nodes[id] = n;
+  }
+  return n;
+}
+
+/**
+ * The nested picture, which `tool.progress` cannot carry: it reports the top-level call only, so a
+ * script's parallel children and a spawned sub-agent's whole run were invisible here while a foreign
+ * head over MCP could see them.
+ *
+ * The stream is flat and append-only; the shape is rebuilt by attaching each node to its parent. A
+ * child whose parent has not arrived yet gets it as a stub rather than being dropped — parallel work
+ * gives no ordering guarantee, and a dropped node is a branch that never appears.
+ */
+on("progress.node", (s, p: { nodeId: string; parentId?: string | null; label: string;
+  state: "running" | "completed" | "failed"; fraction?: number | null; message?: string | null;
+  details?: ToolProgressDetail[] | null }) => {
+  const node = nodeFor(s, p.nodeId);
+  const isNew = node.label === "";
+
+  node.parentId = p.parentId ?? null;
+  node.label = p.label;
+  node.state = p.state;
+  node.fraction = p.fraction;
+  node.message = p.message;
+  node.details = p.details;
+
+  if (!isNew) return;
+
+  if (p.parentId) {
+    const parent = nodeFor(s, p.parentId);
+    if (!parent.childIds.includes(p.nodeId)) parent.childIds.push(p.nodeId);
+    return;
+  }
+
+  // A root is one tool call. Matched by name, the same fallback tool.progress already uses: the node
+  // is opened inside ExecuteToolAsync, so tool.started has always been sent by the time it arrives.
+  const call = lastRunningByName(s, p.label);
+  if (call) call.rootNodeId = p.nodeId;
 });
 
 on("tool.result", (s, p: { toolCallId: string; toolName: string; result?: string }) => {

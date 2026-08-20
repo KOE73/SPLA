@@ -27,6 +27,12 @@
       </div>
     </div>
 
+    <!-- What the single line above cannot say: nested and parallel work under this call. Only while
+         running — a finished call's tree is its result, and the card already carries that. -->
+    <div v-if="call.status === 'running' && hasBranch" class="tc-branch">
+      <ProgressBranch :nodes="nodes" :parent-id="call.rootNodeId!" />
+    </div>
+
     <div v-if="expanded" class="tc-body">
       <div class="tc-section">
         <div class="tc-section-title">параметры</div>
@@ -53,15 +59,30 @@ export interface ToolCallState {
   startedAt?: number;
   finishedAt?: number;
   progress?: { fraction?: number | null; message?: string | null; details?: ToolProgressDetail[] | null };
+  /** The `progress.node` root this call opened, when the turn reported a tree. What hangs beneath it
+   *  is everything the flat `progress` field above cannot express: a script's parallel children, a
+   *  spawned sub-agent's whole run. */
+  rootNodeId?: string;
   result?: string;
 }
 </script>
 
 <script setup lang="ts">
 import { computed, onUnmounted, ref, watch } from "vue";
+import { useChat } from "../state/chatContext";
+import ProgressBranch from "./ProgressBranch.vue";
 
 const props = defineProps<{ call: ToolCallState }>();
 const expanded = ref(false);
+
+// Taken from the surface rather than passed down: the chat is ambient here (see chatContext), and
+// threading the node map through ChatLog's generic v-bind would put it on every other item type too.
+const chat = useChat();
+const nodes = computed(() => chat.session.value?.nodes ?? {});
+const hasBranch = computed(() => {
+  const id = props.call.rootNodeId;
+  return id != null && (nodes.value[id]?.childIds.length ?? 0) > 0;
+});
 
 const prettyArgs = computed(() => {
   const raw = props.call.argumentsText || "";
@@ -111,6 +132,8 @@ function formatSize(chars: number) {
 .tc-progress-msg { font-size: var(--fs-xs); color: var(--muted); white-space: pre-wrap; }
 .tc-details { display: flex; flex-wrap: wrap; gap: 4px 12px; font-size: var(--fs-xs); color: var(--muted); margin-top: 2px; }
 .tc-detail b { font-weight: 600; color: var(--text); }
+
+.tc-branch { padding: 0 10px 6px 14px; }
 
 .tc-body { border-top: 1px solid var(--border); padding: 6px 10px 8px; display: flex; flex-direction: column; gap: 8px; }
 .tc-section-title { font-size: var(--fs-xs); font-weight: 700; text-transform: uppercase;

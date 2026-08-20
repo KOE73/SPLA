@@ -130,7 +130,8 @@ client/types **and** this table.
 | `llm.attempt` | `Attempt` | `AttemptPayload` | watchers | A generation the repetition guard abandoned mid-stream; never sent for the successful attempt. Carries the abandoned Content/Reasoning so a reader can open it live; `chat.opened`'s `ChatMessageDto.attempts` (`AttemptDto[]`) carries the same fields for a reopened chat, when `agent.save_attempts` was on when it was saved. |
 | `assistant.message` | `AssistantMessage` | `AssistantMessagePayload` | watchers | Final assistant message. |
 | `tool.started` | `ToolStarted` | `ToolStartedPayload` | watchers | A tool call began. |
-| `tool.progress` | `ToolProgress` | `ToolProgressPayload` | watchers | Throttled progress ticks. |
+| `tool.progress` | `ToolProgress` | `ToolProgressPayload` | watchers | Throttled progress ticks for the top-level call only. One bar, no nesting. |
+| `progress.node` | `ProgressNode` | `ProgressNodePayload` | watchers | One node of the turn's progress tree, whole, on each change — the nested counterpart to `tool.progress`, carrying a script's parallel children and a spawned sub-agent's whole run. A flat append-only stream, not a snapshot: keep what you are told and attach each node to `parentId` (null = top level). Hold a node whose parent has not arrived rather than dropping it — parallel work gives no ordering guarantee. Structural frames (a node's first appearance and its finish) are never throttled; the ticks between them are, per node. Both this and `tool.progress` are sent; a client that wants one bar can ignore this. |
 | `tool.result` | `ToolResult` | `ToolResultPayload` | watchers | A tool call finished. |
 | `notice` | `Notice` | `NoticePayload` | watchers | Inline notice. |
 | `token.usage` | `TokenUsage` | `TokenUsagePayload` | watchers | Per-turn token counts; `contextLength` (nullable) carries the model's operative window for the client's context-budget display. |

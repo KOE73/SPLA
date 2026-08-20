@@ -627,6 +627,15 @@ export interface ServerEvents {
   "chat.toolset.state": { chatId: string; sets?: ToolSetState[] };
   "tool.started": { toolCall: ToolCallDto };
   "tool.progress": { toolCallId?: string; toolName: string; current: number; total: number; fraction?: number | null; message?: string | null; details?: ToolProgressDetail[] | null };
+  /** One node of the turn's progress tree, whole, on each change — the nested counterpart to
+   *  `tool.progress`, which reports the top-level call only and so cannot show a script's parallel
+   *  children or a spawned sub-agent's run at all.
+   *
+   *  A flat append-only stream, not a snapshot: keep what you are told, keyed by `nodeId`, and attach
+   *  each node to `parentId` (null = top level). Hold a node whose parent has not arrived rather than
+   *  dropping it — parallel work gives no ordering guarantee. Structural frames (a node's first
+   *  appearance and its finish) are never throttled; the ticks between them are, per node. */
+  "progress.node": { nodeId: string; parentId?: string | null; label: string; state: "running" | "completed" | "failed"; current?: number | null; total?: number | null; fraction?: number | null; message?: string | null; details?: ToolProgressDetail[] | null };
   "tool.result": { toolCallId: string; toolName: string; result: string };
   "notice": { text: string };
   "error": { message: string };

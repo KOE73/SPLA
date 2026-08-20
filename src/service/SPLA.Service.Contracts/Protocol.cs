@@ -272,6 +272,16 @@ public static class MessageTypes
     public const string UserMessage = "user.message";
     public const string ToolStarted = "tool.started";
     public const string ToolProgress = "tool.progress";
+
+    /// <summary>
+    /// One node of the turn's progress tree was added, ticked, or finished. The nested counterpart to
+    /// <see cref="ToolProgress"/>, which reports only the top-level call and therefore cannot show a
+    /// script's parallel children or a sub-agent's work at all.
+    /// <para>Both are sent. A client that wants one bar keeps reading <c>tool.progress</c>; the tree is
+    /// strictly more information and strictly more work to render, so which to use is the client's
+    /// decision and not one this side should make for it.</para>
+    /// </summary>
+    public const string ProgressNode = "progress.node";
     public const string ToolResult = "tool.result";
     public const string Notice = "notice";
     public const string TokenUsage = "token.usage";

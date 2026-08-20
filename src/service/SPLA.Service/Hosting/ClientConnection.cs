@@ -531,6 +531,45 @@ public sealed class ClientConnection : IClientSession
                     Details = progress.Details?.Select(d => new ToolProgressDetailDto { Label = d.Label, Value = d.Value }).ToList()
                 });
             },
+            // The nested picture, alongside the flat one above. The tree has existed since progress was
+            // built and nothing had ever subscribed to it, which left the native clients seeing less
+            // than a foreign head over MCP does — a script's parallel children and a sub-agent's whole
+            // run were reported to nobody.
+            OnProgressTree = tree =>
+            {
+                // First sight of a node id, and its finish, are structural: they are what the client
+                // builds the shape out of, and one dropped frame is a branch that never appears or one
+                // that spins forever. Only the ticks in between are throttled, and per node — a scan
+                // reporting per host must not silence the tool that started underneath it.
+                var lastSent = new System.Collections.Concurrent.ConcurrentDictionary<string, DateTime>();
+
+                tree.NodeChanged += node =>
+                {
+                    var now = DateTime.UtcNow;
+                    var known = lastSent.TryGetValue(node.Id, out var last);
+
+                    if (known && node.State == SPLA.Domain.Models.ProgressState.Running
+                              && (now - last).TotalMilliseconds < 120) return;
+
+                    lastSent[node.Id] = now;
+
+                    var latest = node.Latest;
+                    _ = ToWatchers(MessageTypes.ProgressNode, new ProgressNodePayload
+                    {
+                        NodeId = node.Id,
+                        ParentId = node.ParentId,
+                        Label = node.Label,
+                        State = node.State.ToString().ToLowerInvariant(),
+                        Current = latest?.Current,
+                        Total = latest?.Total,
+                        Fraction = latest?.Fraction,
+                        Message = latest?.Message,
+                        Details = latest?.Details?
+                            .Select(d => new ToolProgressDetailDto { Label = d.Label, Value = d.Value })
+                            .ToList()
+                    });
+                };
+            },
             OnToolResult = (tc, result) => ToWatchers(MessageTypes.ToolResult,
                 new ToolResultPayload
                 {

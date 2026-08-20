@@ -159,4 +159,69 @@ describe("chat sessions", () => {
     // This test documents that state is a presentation field, not session mechanics.
     expect(peekSession("A")).toBeDefined();
   });
+
+  // ── progress.node ───────────────────────────────────────────────────────────
+  //
+  // The stream is flat and the shape is the client's to rebuild, so the assembly is the part with
+  // something to get wrong.
+
+  it("rebuilds the progress tree and hangs its root off the running call", () => {
+    open("A");
+    feed("llm.turn.start", "A", { msgIndex: 1 });
+    feed("tool.started", "A", { toolCall: { id: "t1", name: "agent_spawn", arguments: "{}" } });
+
+    feed("progress.node", "A", { nodeId: "n1", parentId: null, label: "agent_spawn", state: "running" });
+    feed("progress.node", "A", { nodeId: "n2", parentId: "n1", label: "count the files", state: "running",
+      message: "turn 2, thinking" });
+    feed("progress.node", "A", { nodeId: "n3", parentId: "n2", label: "fs_read", state: "completed" });
+
+    const s = peekSession("A")!;
+    expect(s.calls["t1"].rootNodeId).toBe("n1");
+    expect(s.nodes["n1"].childIds).toEqual(["n2"]);
+    expect(s.nodes["n2"].childIds).toEqual(["n3"]);
+    expect(s.nodes["n2"].message).toBe("turn 2, thinking");
+    expect(s.nodes["n3"].state).toBe("completed");
+  });
+
+  it("holds a node whose parent has not arrived yet", () => {
+    // Parents are always generated first, but parallel work gives no ordering guarantee on the wire,
+    // and a dropped node is a branch that never appears.
+    open("A");
+    feed("llm.turn.start", "A", { msgIndex: 1 });
+
+    feed("progress.node", "A", { nodeId: "child", parentId: "parent", label: "port_scan", state: "running" });
+    feed("progress.node", "A", { nodeId: "parent", parentId: null, label: "roslyn_script_run", state: "running" });
+
+    const s = peekSession("A")!;
+    expect(s.nodes["parent"].label).toBe("roslyn_script_run");
+    expect(s.nodes["parent"].childIds).toEqual(["child"]);
+  });
+
+  it("keeps each chat's tree to itself and clears it when a new turn begins", () => {
+    open("A");
+    open("B");
+
+    feed("llm.turn.start", "A", { msgIndex: 1 });
+    feed("progress.node", "A", { nodeId: "n1", parentId: null, label: "fs_read", state: "running" });
+    feed("progress.node", "B", { nodeId: "n1", parentId: null, label: "ssh_run", state: "running" });
+
+    expect(peekSession("A")!.nodes["n1"].label).toBe("fs_read");
+    expect(peekSession("B")!.nodes["n1"]?.label).toBe("ssh_run");
+
+    // Ids are unique within a turn, not across turns — a stale tree would graft the next turn's nodes
+    // onto the last one's.
+    feed("turn.complete", "A", {});
+    feed("llm.turn.start", "A", { msgIndex: 2 });
+    expect(peekSession("A")!.nodes).toEqual({});
+  });
+
+  it("does not clear the tree between LLM calls inside one turn", () => {
+    // llm.turn.start fires once per model call; the server opens one tree per user turn.
+    open("A");
+    feed("llm.turn.start", "A", { msgIndex: 1 });
+    feed("progress.node", "A", { nodeId: "n1", parentId: null, label: "fs_read", state: "running" });
+    feed("llm.turn.start", "A", { msgIndex: 2 });
+
+    expect(peekSession("A")!.nodes["n1"]).toBeDefined();
+  });
 });
