@@ -9,11 +9,11 @@ namespace SPLA.CLI;
 
 internal sealed class HubSettings : CommandSettings
 {
+    // Nullable so "not given" stays distinguishable from "given, and it happens to equal the default"
+    // — HubAddress needs that to know whether the environment variable gets a say.
     [CommandOption("--port")]
-    // Kept in step with HubLauncher.DefaultPort, which carries the reasoning — in particular why this
-    // must stay off the browsers' blocked-port list now that the hub serves the project manager.
-    [Description("Port to bind. Default 5077.")]
-    public int Port { get; init; } = 5077;
+    [Description("Port to bind. Default 5077, or $SPLA_HUB_PORT when set.")]
+    public int? Port { get; init; }
 
     [CommandOption("--bind")]
     [Description("Address to bind. Default 127.0.0.1. Binding wider needs --token.")]
@@ -55,14 +55,17 @@ internal sealed class HubCommand : AsyncCommand<HubSettings>
         // against — which is exactly why the ADR put this token in the user scope.
         var token = ConfigLoader.LoadAndResolve().SecretResolver.Resolve(settings.Token);
 
+        var port = HubAddress.ResolvePort(settings.Port, out var portWarning);
+        if (portWarning is not null) Console.WriteLine($"WARNING: {portWarning}");
+
         // Built against the address about to be bound rather than the one reported afterwards: those
         // differ only for port 0, which a hub never uses — being findable without being told is its
         // whole job. The children it starts are handed this address so they register back here.
         var spawner = new CliInstanceSpawner(
-            $"http://{(settings.Bind == "0.0.0.0" ? "127.0.0.1" : settings.Bind)}:{settings.Port}",
+            $"http://{(settings.Bind == "0.0.0.0" ? "127.0.0.1" : settings.Bind)}:{port}",
             _loggers.CreateLogger<CliInstanceSpawner>());
 
-        var host = RegistryHubHost.Build(settings.Bind, settings.Port, token, _loggers, spawner);
+        var host = RegistryHubHost.Build(settings.Bind, port, token, _loggers, spawner);
         await host.StartAsync();
 
         Console.WriteLine($"\nSPLA registry hub listening on {host.Url}");

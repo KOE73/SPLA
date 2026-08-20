@@ -4,6 +4,7 @@ using System.IO;
 using System.Net.Http;
 using System.Threading;
 using System.Threading.Tasks;
+using SPLA.Instances;
 
 namespace SPLA.UI.Avalonia.Services;
 
@@ -23,18 +24,6 @@ namespace SPLA.UI.Avalonia.Services;
 /// </summary>
 public sealed class HubLauncher : IDisposable
 {
-    /// <summary>
-    /// The machine hub's conventional port. Matches <c>spla hub</c>'s own default.
-    ///
-    /// <para><b>Not 5060, and never put it back.</b> That was the original choice and it is SIP's
-    /// port, which sits on the blocked list of every Chromium browser and Firefox: any attempt to open
-    /// a page there fails outright with ERR_UNSAFE_PORT. It cost nothing while the hub only answered
-    /// machines, and broke the moment it began serving the project manager to a browser. Whatever this
-    /// number becomes, it has to stay off that list — the hub serves a page now, so "can a browser
-    /// reach it" is part of the requirement and not an afterthought.</para>
-    /// </summary>
-    public const int DefaultPort = 5077;
-
     private Process? _process;
 
     /// <summary>Where the hub is, once resolved. Null when none could be reached or started — which
@@ -43,10 +32,15 @@ public sealed class HubLauncher : IDisposable
 
     public async Task<string?> ResolveAsync(CancellationToken ct = default)
     {
-        var url = $"http://127.0.0.1:{DefaultPort}";
+        // Resolved once and then passed to the child explicitly. Letting the child read the variable
+        // for itself would leave two readings of it — and if it ever changed between them, the shell
+        // would start a hub and then look for it somewhere else, which fails as silence rather than
+        // as an error.
+        var port = HubAddress.ResolvePort(explicitPort: null, out _);
+        var url = $"http://127.0.0.1:{port}";
 
         if (await IsHealthyAsync(url, ct)) return Url = url;
-        if (!TryStart()) return null;
+        if (!TryStart(port)) return null;
 
         // Give the child a short budget: a hub opens a socket and nothing else, so if it is not up in
         // a few seconds it is not coming up. Failing quietly is correct — the shell works without it.
@@ -73,11 +67,11 @@ public sealed class HubLauncher : IDisposable
         catch { return false; }
     }
 
-    private bool TryStart()
+    private bool TryStart(int port)
     {
         try
         {
-            var (exe, args) = ResolveCliInvocation();
+            var (exe, args) = ResolveCliInvocation(port);
             var psi = new ProcessStartInfo
             {
                 FileName = exe,
@@ -97,9 +91,9 @@ public sealed class HubLauncher : IDisposable
     /// <summary>Finds the CLI in its hub role. The dev-tree walk itself is shared with
     /// <see cref="EmbeddedServiceLauncher.FindCliDll"/>, because that one matches build flavour and a
     /// second copy would eventually launch a stale Debug binary from a Release shell.</summary>
-    private static (string Exe, string[] Args) ResolveCliInvocation()
+    private static (string Exe, string[] Args) ResolveCliInvocation(int port)
     {
-        string[] hubArgs = ["hub", "--port", DefaultPort.ToString(), "--bind", "127.0.0.1"];
+        string[] hubArgs = ["hub", "--port", port.ToString(), "--bind", "127.0.0.1"];
         var baseDir = AppContext.BaseDirectory;
 
         var exe = Path.Combine(baseDir, "SPLA.CLI.exe");
