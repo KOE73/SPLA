@@ -26,17 +26,22 @@ export class SplaClient {
   /**
    * How long to wait before each retry. Rises so a service that is genuinely gone is not hammered
    * once a second forever — the old fixed 1.5s did exactly that, and because it never gave up it also
-   * never let anyone say the agent had stopped. Capped, because an agent CAN come back (it may simply
-   * be restarting) and a client that has backed off to minutes would look dead long after it wasn't.
+   * never let anyone say the agent had stopped. Capped at ten seconds, because an agent CAN come back
+   * and a client that had backed off to minutes would look dead long after it wasn't.
    */
-  private static readonly BACKOFF_MS = [500, 1000, 2000, 4000, 8000, 15000];
+  private static readonly BACKOFF_MS = [400, 800, 1500, 3000, 6000, 10000];
 
   /**
-   * Retries before the connection is called lost rather than slow. Deliberately several: a restarting
-   * service reconnects within one or two, so declaring loss earlier would cry wolf during an ordinary
-   * bounce. Past this the window says so and offers a way out instead of spinning in silence.
+   * Retries before the connection is called lost rather than slow — about three seconds.
+   *
+   * A few rather than one, so a momentary blip does not raise an alarm. But only a few: the first
+   * version waited nearly ten seconds on the theory that a restarting service would reconnect before
+   * then, and that theory was wrong — a real restart takes longer than any threshold worth using, so
+   * the wait bought nothing and simply left the person staring at a dead window. What actually makes
+   * an early call safe is that being wrong is cheap: the banner blocks nothing and clears itself the
+   * moment the socket comes back.
    */
-  private static readonly LOST_AFTER = 4;
+  private static readonly LOST_AFTER = 3;
 
   connect(): void {
     const proto = location.protocol === "https:" ? "wss://" : "ws://";
