@@ -84,6 +84,16 @@ public static class RegistryRoutes
     /// when the deployment was given no spawner.</summary>
     public const string Start = "/registry/start";
 
+    /// <summary>Plain GET returning <see cref="KnownProjectsResponse"/>: the projects this machine
+    /// remembers, each with whatever is currently running on it. Distinct from
+    /// <see cref="Instances"/>, which can only show what is up — a manager has to be able to start
+    /// something that is not.</summary>
+    public const string Projects = "/registry/projects";
+
+    /// <summary>POST dropping a project from the remembered list, by query <c>?project=&lt;id&gt;</c>.
+    /// Removes the memory of it and never the project itself.</summary>
+    public const string Forget = "/registry/forget";
+
     /// <summary>WebSocket an observer opens to receive the whole listing whenever it changes. The
     /// same JSON as <see cref="Instances"/>, pushed instead of asked for: the state worth watching
     /// is somebody being waited for, and noticing that on a poll interval is not noticing it.</summary>

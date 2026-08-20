@@ -51,6 +51,25 @@ public sealed class RegistryHubHost
         app.MapGet("/health", () => Results.Text("SPLA registry hub running.", "text/plain"));
         app.MapRegistry(hub, token, spawner);
 
+        // The hub serves the same web bundle every other host does, so the project manager is just
+        // another surface of the one client rather than a second UI to keep in step. This was briefly
+        // thought to need a separate host; it does not — WebAssets lives in this very assembly, and
+        // the mapping below is the same two lines SplaServiceHost uses.
+        //
+        // "/" goes straight to the hub surface: a process whose entire job is the registry has no
+        // chat to show, and landing on an empty one would be a worse answer than the right page.
+        static IResult ServeAsset(string path)
+        {
+            var asset = WebAssets.Get(path);
+            return asset is { } a ? Results.Bytes(a.Bytes, a.ContentType) : Results.NotFound();
+        }
+
+        app.MapGet("/", (HttpContext ctx) =>
+            ctx.Request.Query.ContainsKey("surface")
+                ? ServeAsset("/index.html")
+                : Results.Redirect("/?surface=hub"));
+        app.MapGet("/{**path}", (string path) => ServeAsset("/" + path));
+
         return new RegistryHubHost(app, hub);
     }
 

@@ -52,6 +52,22 @@ public static class RegistryEndpoints
             return asked > 0 ? Results.Ok(new { asked }) : Results.NotFound();
         });
 
+        // What a manager opens with: everything this machine remembers, running or not. The instance
+        // listing cannot answer this — it only knows what is up, and a project with nothing running is
+        // precisely the row somebody came to press Start on.
+        app.MapGet(RegistryRoutes.Projects, (HttpContext ctx) =>
+            Authorized(ctx, token)
+                ? Results.Json(new KnownProjectsResponse { Projects = KnownProjects(hub) }, RegistryJson.Options)
+                : Results.Unauthorized());
+
+        // Forgets the memory of a project, never the project. See ConfigLoader.RemoveRecentProject.
+        app.MapPost(RegistryRoutes.Forget, (HttpContext ctx, string project) =>
+            !Authorized(ctx, token)
+                ? Results.Unauthorized()
+                : SPLA.Domain.Settings.ConfigLoader.RemoveRecentProject(project)
+                    ? Results.Ok()
+                    : Results.NotFound());
+
         // The one place the hub acts on its own rather than passing a request along. Stopping has an
         // owner to ask; starting does not, and refusing to start would mean a machine with no desktop
         // could not bring a project up at all. See ADR_20260820_apps_project-hub §4.
@@ -92,6 +108,49 @@ public static class RegistryEndpoints
             using var socket = await ctx.WebSockets.AcceptWebSocketAsync();
             await ServeChannelAsync(hub, socket, ctx.RequestAborted);
         });
+    }
+
+    /// <summary>
+    /// The machine's remembered projects, each merged with whatever is registered against it.
+    ///
+    /// <para>Two sources because they answer different halves: the recent list knows what exists and
+    /// survives everything being shut down, while the hub knows what is up right now and survives
+    /// nothing. Neither alone is a project manager.</para>
+    ///
+    /// <para>A project that is running but not remembered is still listed. It would otherwise be
+    /// invisible here while plainly visible in <c>spla ps</c> — and something started by hand in a
+    /// folder nobody has opened in the desktop app is a perfectly ordinary way to work.</para>
+    /// </summary>
+    private static List<KnownProjectDto> KnownProjects(RegistryHub hub)
+    {
+        var live = hub.List();
+        var remembered = SPLA.Domain.Settings.ConfigLoader.LoadRecentProjects();
+
+        var ids = new List<string>(remembered);
+        foreach (var entry in live)
+        {
+            if (!ids.Any(id => string.Equals(id, entry.ProjectId, StringComparison.OrdinalIgnoreCase)))
+                ids.Add(entry.ProjectId);
+        }
+
+        return ids.Select(id =>
+        {
+            var participants = live
+                .Where(e => string.Equals(e.ProjectId, id, StringComparison.OrdinalIgnoreCase))
+                .ToList();
+            var agent = participants.FirstOrDefault(e => e.Role == ParticipantRoles.Agent);
+
+            return new KnownProjectDto
+            {
+                ProjectId = id,
+                Name = participants.FirstOrDefault()?.ProjectName
+                       ?? Path.GetFileNameWithoutExtension(id),
+                Exists = File.Exists(id),
+                State = agent?.State,
+                InstanceId = agent?.Info.InstanceId,
+                Windows = participants.Count(e => e.Role == ParticipantRoles.Window)
+            };
+        }).ToList();
     }
 
     /// <summary>

@@ -171,6 +171,37 @@ public static class ConfigLoader
     }
 
     /// <summary>
+    /// Drops a project from the recent list. Returns false when it was not there.
+    ///
+    /// <para>Forgetting is the only way an entry ever leaves other than falling off the end, and it
+    /// touches nothing but this list — the project, its manifest and its whole workspace stay exactly
+    /// where they are. That distinction has to survive into the UI wording too: a manager offering
+    /// "remove" next to a list of projects must never read as "delete".</para>
+    /// </summary>
+    public static bool RemoveRecentProject(string projectFilePath)
+    {
+        if (string.IsNullOrEmpty(projectFilePath)) return false;
+
+        var recent = LoadRecentProjects();
+        // Compared unrooted as well: an entry can predate the switch to storing full paths, and the
+        // person trying to forget it should not have to know that.
+        var removed = recent.RemoveAll(x =>
+            string.Equals(x, projectFilePath, StringComparison.OrdinalIgnoreCase) ||
+            string.Equals(Path.GetFullPath(x), Path.GetFullPath(projectFilePath), StringComparison.OrdinalIgnoreCase));
+        if (removed == 0) return false;
+
+        try
+        {
+            var dir = GetDefaultsDir();
+            Directory.CreateDirectory(dir);
+            TryHideDirectory(dir);
+            File.WriteAllLines(GetRecentProjectsPath(), recent);
+            return true;
+        }
+        catch { return false; }
+    }
+
+    /// <summary>
     /// Loads a .spla project file.
     /// </summary>
     public static SplaProject LoadProject(string splaFilePath) => LoadProjectRaw(splaFilePath);

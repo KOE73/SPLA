@@ -141,6 +141,42 @@ public sealed class RegistryListResponse
     public List<RegisteredInstanceDto> Instances { get; set; } = new();
 }
 
+/// <summary>
+/// One project a manager can act on — remembered by the machine, running or not.
+///
+/// <para>Deliberately not the same shape as <see cref="RegisteredInstanceDto"/>. That one answers
+/// "what is up"; this answers "what could be", which is the question a manager opens with. A project
+/// with nothing running is the interesting case, and the instance listing cannot represent it at
+/// all.</para>
+/// </summary>
+public sealed class KnownProjectDto
+{
+    /// <summary>Manifest path — the same id everything else keys on.</summary>
+    public string ProjectId { get; set; } = "";
+
+    public string? Name { get; set; }
+
+    /// <summary>False when the manifest is no longer on disk. Shown rather than hidden: a remembered
+    /// project that has been moved or deleted is worth seeing so it can be forgotten on purpose.</summary>
+    public bool Exists { get; set; }
+
+    /// <summary>The agent's state, or null when nothing is holding this project.</summary>
+    public string? State { get; set; }
+
+    /// <summary>The agent's instance id, when one is running — what a stop is addressed to.</summary>
+    public string? InstanceId { get; set; }
+
+    /// <summary>How many windows are looking at it. Zero with a live agent is the headless case: work
+    /// going on with nobody watching, which is exactly what the instance model set out to allow.</summary>
+    public int Windows { get; set; }
+}
+
+/// <summary>The listing a manager gets from <c>GET {hub}/registry/projects</c>.</summary>
+public sealed class KnownProjectsResponse
+{
+    public List<KnownProjectDto> Projects { get; set; } = new();
+}
+
 /// <summary>Serialization settings shared by both ends of the registration channel. Kept here rather
 /// than duplicated: a hub and an instance disagreeing about casing is the kind of bug that only
 /// appears between two builds.</summary>
