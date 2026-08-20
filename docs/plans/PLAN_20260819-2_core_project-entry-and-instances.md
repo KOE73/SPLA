@@ -83,7 +83,7 @@
 ## Этап 5 — реестр, файловый режим — **сделано**
 
 - `SPLA.Instances.Contracts` в `src/core/`: `InstanceRecord`, `IInstanceRegistry`, `IInstanceProbe`.
-- `SPLA.Registry` в `src/service/`: `FileInstanceRegistry` — известные проекты от
+- `SPLA.Instances` в `src/service/`: `FileInstanceRegistry` — известные проекты от
   `IProjectProvider`, живость из замка каждого проекта.
 - Локальный список живых работает без всякого хаба.
 
