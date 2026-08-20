@@ -104,6 +104,7 @@
     <File Path="docs/ideas/IDEA_20260813-4_apps_close-to-tray.md" />
     <File Path="docs/ideas/IDEA_20260813_core_binary-storage.md" />
     <File Path="docs/ideas/IDEA_20260817_llm_reasoning-lever-leftovers.md" />
+    <File Path="docs/ideas/IDEA_20260819_web_sidebar-layouts.md" />
   </Folder>
   <Folder Name="/src/core/">
     <Project Path="src/core/SPLA.Domain/SPLA.Domain.csproj" />
