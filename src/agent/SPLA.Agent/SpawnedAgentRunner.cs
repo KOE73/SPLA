@@ -154,21 +154,13 @@ public sealed class SpawnedAgentRunner : Domain.Interfaces.IAgentSpawner
         // Tool activity arrives on its own as child nodes. What only the runner can say is what happens
         // *between* the tools — that the run is on its fourth turn, that the model is thinking, what it
         // last concluded — and without it a sub-agent spending a minute inside the model looks exactly
-        // like one that has hung. These land on the agent_spawn node itself: the callbacks fire on the
-        // loop's own flow, where the current node is still the caller's.
-        //
-        // Every tick carries which task it is about, not just the first. The node's label is
-        // "agent_spawn" — the same line for every delegation — so without the tag a batch of five is
-        // five identical rows, and a single spawn is a run of anonymous turns. It cannot be said once
-        // and left to stand either: ticks are coalesced, and an opening line is exactly the one a
-        // faster-arriving neighbour overwrites.
-        var tag = skillSession.ActiveSkillId ?? Excerpt(input, 32) ?? "task";
+        // like one that has hung.
         var turn = 0;
         var callbacks = new AgentCallbacks
         {
             OnLlmTurnStart = _ =>
             {
-                ProgressScope.Report(new ToolProgress { Message = $"{tag} · turn {++turn}, thinking" });
+                ProgressScope.Report(new ToolProgress { Message = $"turn {++turn}, thinking" });
                 return Task.CompletedTask;
             },
             OnAssistantMessage = msg =>
@@ -176,12 +168,14 @@ public sealed class SpawnedAgentRunner : Domain.Interfaces.IAgentSpawner
                 lastAssistantMessage = msg.Content ?? string.Empty;
                 var said = Excerpt(msg.Content, 56);
                 if (said is not null)
-                    ProgressScope.Report(new ToolProgress { Message = $"{tag} · turn {turn}: {said}" });
+                    ProgressScope.Report(new ToolProgress { Message = $"turn {turn}: {said}" });
                 return Task.CompletedTask;
             }
         };
 
-        ProgressScope.Report(new ToolProgress { Message = $"{tag} · starting" });
+        // What the run will be called in the tree. The tool's own node says "agent_spawn" — the same
+        // line for every delegation — so this is the only place the task can be named.
+        var label = skillSession.ActiveSkillId ?? Excerpt(input, 40) ?? "task";
 
         var llmSettings = _settings.ToLLMSettings();
         llmSettings.Mode = mode;
@@ -190,10 +184,22 @@ public sealed class SpawnedAgentRunner : Domain.Interfaces.IAgentSpawner
         // ambient scopes in this codebase use, so an exception cannot leave the depth raised.
         var previousDepth = _depth.Value;
         _depth.Value = previousDepth + 1;
+
+        // A node of the run's own, under the tool's. Without it a batch is a lie: agent_spawn_batch
+        // runs its tasks on parallel flows that all inherit the same current node, so three sub-agents
+        // would hang their tool calls off the batch as one undifferentiated row of siblings — the tree
+        // would show what was done and lose who did it. With it each run is a branch that says which
+        // task it is, and the flattened line reads agent_spawn_batch › audit ports › port_scan.
+        using var runNode = ProgressScope.BeginNode(label);
         try
         {
             using (AgentSessionScope.Begin(agentSession))
                 await orchestrator.RunAsync(conversation, llmSettings, mode, callbacks, cancellationToken);
+        }
+        catch
+        {
+            runNode.Fail();
+            throw;
         }
         finally
         {

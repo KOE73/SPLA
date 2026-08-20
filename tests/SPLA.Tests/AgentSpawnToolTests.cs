@@ -129,4 +129,51 @@ public class AgentSpawnToolTests
 
         Assert.Null(parentSession.ActiveSkillId); // unchanged
     }
+
+    /// <summary>
+    /// A run gets a branch of its own, named after the task. Without one a batch is a lie: its tasks
+    /// run on parallel flows that all inherit the same current node, so several sub-agents would hang
+    /// their tool calls off the batch as one undifferentiated row — the tree would show what was done
+    /// and lose who did it. A pinned skill names the branch after itself.
+    /// </summary>
+    [Theory]
+    [InlineData("""{"skill":null,"input":"count the adr files"}""", "count the adr files")]
+    [InlineData("""{"skill":"test.skill","input":"go"}""", "test.skill")]
+    public async Task A_spawned_run_gets_a_branch_named_after_its_task(string arguments, string expected)
+    {
+        var tree = new ProgressTree();
+        var tool = new AgentSpawnTool(BuildRunner("ok"));
+
+        using (ProgressScope.BeginTree(tree))
+        using (ProgressScope.BeginNode("agent_spawn"))
+        {
+            await tool.ExecuteAsync(arguments);
+        }
+
+        var caller = Assert.Single(tree.Nodes, n => n.ParentId == null);
+        var run = Assert.Single(tree.Nodes, n => n.ParentId == caller.Id);
+        Assert.Equal(expected, run.Label);
+    }
+
+    /// <summary>Concurrent runs must not collide: each opens its node on its own flow, and AsyncLocal
+    /// forking is what keeps them siblings rather than a chain.</summary>
+    [Fact]
+    public async Task Concurrent_spawns_each_get_their_own_branch()
+    {
+        var tree = new ProgressTree();
+        var tool = new AgentSpawnTool(BuildRunner("ok"));
+
+        using (ProgressScope.BeginTree(tree))
+        using (ProgressScope.BeginNode("agent_spawn_batch"))
+        {
+            await Task.WhenAll(Enumerable.Range(0, 5).Select(i =>
+                tool.ExecuteAsync($$"""{"skill":null,"input":"task number {{i}}"}""")));
+        }
+
+        var batch = Assert.Single(tree.Nodes, n => n.ParentId == null);
+        var runs = tree.Nodes.Where(n => n.ParentId == batch.Id).Select(n => n.Label).ToList();
+
+        Assert.Equal(5, runs.Count);
+        Assert.Equal(5, runs.Distinct().Count());
+    }
 }
