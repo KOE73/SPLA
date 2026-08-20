@@ -21,14 +21,47 @@ export class SplaClient {
   private pending = new Map<string, Pending>();
   private wireListeners = new Set<WireListener>();
   private reconnectTimer = 0;
+  private attempts = 0;
+
+  /**
+   * How long to wait before each retry. Rises so a service that is genuinely gone is not hammered
+   * once a second forever — the old fixed 1.5s did exactly that, and because it never gave up it also
+   * never let anyone say the agent had stopped. Capped, because an agent CAN come back (it may simply
+   * be restarting) and a client that has backed off to minutes would look dead long after it wasn't.
+   */
+  private static readonly BACKOFF_MS = [500, 1000, 2000, 4000, 8000, 15000];
+
+  /**
+   * Retries before the connection is called lost rather than slow. Deliberately several: a restarting
+   * service reconnects within one or two, so declaring loss earlier would cry wolf during an ordinary
+   * bounce. Past this the window says so and offers a way out instead of spinning in silence.
+   */
+  private static readonly LOST_AFTER = 4;
 
   connect(): void {
     const proto = location.protocol === "https:" ? "wss://" : "ws://";
     this.ws = new WebSocket(proto + location.host + "/ws");
-    this.ws.onopen = () => this.send("hello", { clientName: "web", protocolVersion: "1" });
+    this.ws.onopen = () => {
+      this.attempts = 0;
+      this.send("hello", { clientName: "web", protocolVersion: "1" });
+    };
     this.ws.onclose = () => {
-      this.emit("conn", { on: false, text: "disconnected — retrying" }, { type: "conn", payload: {} });
-      this.reconnectTimer = window.setTimeout(() => this.connect(), 1500);
+      const attempt = ++this.attempts;
+      const lost = attempt > SplaClient.LOST_AFTER;
+      const delay = SplaClient.BACKOFF_MS[Math.min(attempt - 1, SplaClient.BACKOFF_MS.length - 1)];
+
+      this.emit(
+        "conn",
+        {
+          on: false,
+          lost,
+          attempts: attempt,
+          text: lost ? "agent unreachable" : "disconnected — retrying",
+        },
+        { type: "conn", payload: {} });
+
+      clearTimeout(this.reconnectTimer);
+      this.reconnectTimer = window.setTimeout(() => this.connect(), delay);
     };
     this.ws.onmessage = ev => {
       let env: Envelope;
@@ -51,13 +84,25 @@ export class SplaClient {
       this.pending.delete(env.requestId);
       p.resolve(env.payload);
     }
-    if (env.type === "welcome") this.emit("conn", { on: true, text: "connected" }, env);
+    if (env.type === "welcome")
+      this.emit("conn", { on: true, lost: false, attempts: 0, text: "connected" }, env);
     this.emit(env.type as keyof ServerEvents, env.payload as never, env);
   }
 
   disconnect(): void {
     clearTimeout(this.reconnectTimer);
     this.ws?.close();
+  }
+
+  /**
+   * Retries at once, from the top of the backoff. What the "try again" button calls: a person who has
+   * just restarted the agent should not have to wait out a fifteen-second timer that exists only to
+   * be polite to a service nobody was talking to.
+   */
+  reconnectNow(): void {
+    clearTimeout(this.reconnectTimer);
+    this.attempts = 0;
+    this.connect();
   }
 
   /** Fire-and-forget send. Returns false (does not throw) if the socket isn't open. */

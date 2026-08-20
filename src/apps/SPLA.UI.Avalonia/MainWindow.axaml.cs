@@ -47,6 +47,10 @@ public partial class MainWindow : Window
         try
         {
             Helpers.WebViewBridge.Attach(Browser, ApplyProjectTitle);
+            // A restarted service binds a fresh ephemeral port, so the old URL is dead. Following the
+            // event is what turns "the agent came back" into a window that works again rather than one
+            // still pointed at a port nobody is listening on.
+            App.ServiceUrlChanged += OnServiceUrlChanged;
             _url = await App.ServiceUrlAsync();
             Browser.Navigate(new Uri(_url));
         }
@@ -209,8 +213,15 @@ public partial class MainWindow : Window
 
     private void CloseButton_Click(object? sender, RoutedEventArgs e) => Close();
 
+    private void OnServiceUrlChanged(object? sender, string url)
+    {
+        _url = url;
+        global::Avalonia.Threading.Dispatcher.UIThread.Post(() => Browser.Navigate(new Uri(url)));
+    }
+
     protected override void OnClosed(EventArgs e)
     {
+        App.ServiceUrlChanged -= OnServiceUrlChanged;
         App.ShutdownService();
         base.OnClosed(e);
     }

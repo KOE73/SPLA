@@ -583,8 +583,13 @@ export interface SshSessionsResultPayload {
 
 // ── Events the server pushes unprompted (subscribe via client.on) ──────────────
 export interface ServerEvents {
-  /** Local-only: emitted by SplaClient itself on socket open/close, never sent by the server. */
-  "conn": { on: boolean; text?: string };
+  /**
+   * Local-only: emitted by SplaClient itself on socket open/close, never sent by the server.
+   * `lost` separates "the agent has stopped" from "the socket dropped and we are retrying" — the
+   * client cannot tell them apart in one event, so it says so after several failed attempts.
+   * `attempts` is the consecutive failure count, zero once connected.
+   */
+  "conn": { on: boolean; text?: string; lost?: boolean; attempts?: number };
   "welcome": {
     theme?: string; density?: string; projectId?: string; projectName?: string; workspacePath?: string;
     modes?: string[]; defaultMode?: string;

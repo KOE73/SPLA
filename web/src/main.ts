@@ -10,7 +10,7 @@ import "./state/chatSessions";
 
 bootAppearance();
 client.connect();
-client.on("conn", p => { store.connected = p.on; });
+client.on("conn", p => { store.connected = p.on; store.connectionLost = !!p.lost; });
 client.on("chat.opened", p => { store.currentChat = p.chatId; });
 // focus.changed is deliberately NOT applied here. It is broadcast to every connection, so honouring
 // it in the main window let any other window retarget this one's chat — including between reading the

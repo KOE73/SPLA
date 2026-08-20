@@ -250,6 +250,45 @@ public partial class App : Application
         return serviceUrl;
     }
 
+    /// <summary>
+    /// Brings a service back after the one this window used has gone, and re-points every window at it.
+    ///
+    /// <para><b>Reattach or start, never "always start".</b> The launcher first looks for a live
+    /// instance through the project's lock file, so if the agent is actually fine and only this
+    /// socket broke, this rejoins it instead of racing a second writer at the same project.</para>
+    ///
+    /// <para>Raised as an event rather than the window polling: <see cref="ServiceUrlAsync"/> caches
+    /// its task by design (one service per process), so windows have to be told the cached answer has
+    /// been replaced.</para>
+    /// </summary>
+    public static async Task RestartServiceAsync()
+    {
+        _serviceLauncher?.Dispose();
+        _serviceLauncher = null;
+        _serviceUrlTask = null;
+
+        if (_windowRegistration is not null)
+        {
+            await _windowRegistration.DisposeAsync();
+            _windowRegistration = null;
+        }
+
+        try
+        {
+            var url = await ServiceUrlAsync();
+            ServiceUrlChanged?.Invoke(null, url);
+        }
+        catch (Exception ex)
+        {
+            Services.GetRequiredService<ILogger<App>>()
+                .LogError(ex, "Could not bring the service back up on request.");
+        }
+    }
+
+    /// <summary>Raised with the new base URL once the service has been restarted, so open windows can
+    /// re-navigate. Windows subscribe; nothing here knows how many there are.</summary>
+    public static event EventHandler<string>? ServiceUrlChanged;
+
     /// <summary>Stops the local child service (no-op for a remote target). Called when the main
     /// window closes.</summary>
     public static void ShutdownService()

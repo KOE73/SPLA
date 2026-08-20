@@ -10,6 +10,13 @@ import type { ChatSummary, ProjectDescriptor } from "../protocol/types";
  */
 export const store = reactive({
   connected: false,
+  /**
+   * True once retrying has failed often enough that the agent is presumed gone rather than briefly
+   * away. Kept apart from `connected` because they call for different things on screen: a blip is
+   * worth a quiet indicator, a stopped agent is worth saying out loud — a window that silently
+   * retried forever was the whole "orphan window" complaint.
+   */
+  connectionLost: false,
   currentChat: null as string | null,
   chats: [] as ChatSummary[],
   workspacePath: null as string | null,

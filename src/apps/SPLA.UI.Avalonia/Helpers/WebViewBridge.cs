@@ -71,6 +71,13 @@ public static class WebViewBridge
             case "openWindow" when !string.IsNullOrWhiteSpace(surface):
                 Dispatcher.UIThread.Post(() => new SurfaceWindow(surface!, title, query).Show());
                 break;
+
+            // The agent this window was talking to has gone and the person asked for it back. Only
+            // the shell can do this — a browser tab can wait for a service to return but never start
+            // one — which is why the web client only offers the button when it is embedded.
+            case "restartService":
+                Dispatcher.UIThread.Post(() => _ = App.RestartServiceAsync());
+                break;
         }
     }
 }
