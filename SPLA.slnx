@@ -87,6 +87,7 @@
     <File Path="docs/plans/PLAN_20260819_core_dynamic-tool-registration.md" />
     <File Path="docs/plans/PLAN_20260819-2_core_project-entry-and-instances.md" />
     <File Path="docs/plans/PLAN_20260820_apps_project-hub.md" />
+    <File Path="docs/plans/PLAN_20260820-2_agent_subagent-feedback.md" />
   </Folder>
   <Folder Name="/docs/ideas/">
     <File Path="docs/ideas/IDEA_20260611_core_todo-general.md" />
