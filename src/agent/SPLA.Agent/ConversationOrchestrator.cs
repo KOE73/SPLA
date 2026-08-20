@@ -71,6 +71,26 @@ public sealed class ConversationOrchestrator
     /// <summary>Optional logger. When set, the loop logs each LLM turn and tool call (start/end).</summary>
     public ILogger? Logger { get; init; }
 
+    /// <summary>
+    /// When true, the loop reports into whatever <see cref="ProgressTree"/> is already open on the
+    /// calling flow instead of starting one of its own. Set by <c>SpawnedAgentRunner</c>; false for
+    /// every chat, where a turn is the unit and a fresh tree per turn is the whole point.
+    ///
+    /// <para>This is the difference between a sub-agent being observable and being a black box, and it
+    /// is one branch rather than an event bus because the tree is already ambient and already nests.
+    /// A spawn happens inside the parent's <c>agent_spawn</c> node; left to itself the loop opens a
+    /// new tree, which detaches everything below it — the sub-agent's tool calls land somewhere nobody
+    /// is subscribed to, and the parent's node sits there saying nothing for minutes. Reusing the
+    /// ambient tree makes them children of that node instead, and every surface that already renders
+    /// the tree — the CLI status line, the Avalonia and web tool trees, <c>tool.progress</c> over the
+    /// service socket, <c>notifications/progress</c> over MCP — shows the sub-agent's work with no
+    /// further wiring at all.</para>
+    ///
+    /// <para>What it does not do is make the sub-agent a chat: nothing here is persisted, and the
+    /// nodes live as long as the parent's turn. Retaining the run is a separate question.</para>
+    /// </summary>
+    public bool NestInAmbientProgress { get; init; }
+
     public ConversationOrchestrator(ILlmGateway llm, IToolHost tools)
     {
         _llm = llm;
@@ -102,16 +122,29 @@ public sealed class ConversationOrchestrator
         // calls and tools invoked inside a script both land in here. For backward-compatible single-bar
         // hosts we forward the currently executing top-level call's root progress to OnToolProgress;
         // richer hosts subscribe to the tree itself via OnProgressTree.
-        var progressTree = new ProgressTree();
+        //
+        // Unless we were told to nest — see NestInAmbientProgress. Then the tree belongs to whoever is
+        // above us and we only add to it: no scope of our own (which would detach the branch we were
+        // asked to join), no OnToolProgress forwarding (the roots are that caller's, not ours), and no
+        // OnProgressTree (a tree we did not open is not ours to hand out).
+        var ambientTree = NestInAmbientProgress ? ProgressScope.CurrentTree : null;
+        var progressTree = ambientTree ?? new ProgressTree();
         ToolCall? activeTopLevel = null;
-        progressTree.NodeChanged += node =>
+        IDisposable? progressTreeScope = null;
+
+        if (ambientTree is null)
         {
-            var tc = activeTopLevel;
-            if (tc != null && node.ParentId == null && node.Latest != null)
-                callbacks.OnToolProgress?.Invoke(tc, node.Latest);
-        };
-        callbacks.OnProgressTree?.Invoke(progressTree);
-        using var _progressTreeScope = ProgressScope.BeginTree(progressTree);
+            progressTree.NodeChanged += node =>
+            {
+                var tc = activeTopLevel;
+                if (tc != null && node.ParentId == null && node.Latest != null)
+                    callbacks.OnToolProgress?.Invoke(tc, node.Latest);
+            };
+            callbacks.OnProgressTree?.Invoke(progressTree);
+            progressTreeScope = ProgressScope.BeginTree(progressTree);
+        }
+
+        using var _progressTreeScope = progressTreeScope;
 
         bool needToCallLLM = true;
         while (needToCallLLM)

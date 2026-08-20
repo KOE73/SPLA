@@ -274,4 +274,108 @@ public class ConversationOrchestratorTests
 
         Assert.Equal("built once", llm.SeenContexts[0].First(m => m.Role == ChatRole.System).Content);
     }
+
+    // ── Nesting a spawned run into the caller's progress ─────────────────────────────────────────
+
+    /// <summary>Stands in for the pipeline's ProgressNodeStage, which is what actually opens a node per
+    /// call — the plain fake host above cannot show where nodes land because it never makes any.</summary>
+    private sealed class ReportingToolHost : IToolHost
+    {
+        public IEnumerable<ToolDefinition> GetToolDefinitions() => System.Array.Empty<ToolDefinition>();
+
+        public Task<ToolResult> ExecuteToolAsync(AgentMode mode, string name, string argumentsJson,
+            CancellationToken cancellationToken = default, ToolCallContext? context = null)
+        {
+            using var node = ProgressScope.BeginNode(name);
+            return Task.FromResult(ToolResult.Text($"result of {name}"));
+        }
+    }
+
+    private static ConversationOrchestrator Spawned(FakeLlm llm, bool nest) =>
+        new(llm, new ReportingToolHost()) { ToolFilter = (t, _) => t, NestInAmbientProgress = nest };
+
+    private static FakeLlm OneToolThenAnswer() => new(new[]
+    {
+        new ChatMessage { Role = ChatRole.Assistant, ToolCalls = new List<ToolCall> { Call("1", "fs_read") } },
+        new ChatMessage { Role = ChatRole.Assistant, Content = "done" }
+    });
+
+    private static Conversation Seeded()
+    {
+        var convo = new Conversation();
+        convo.Add(new ChatMessage { Role = ChatRole.User, Content = "go" });
+        return convo;
+    }
+
+    /// <summary>
+    /// The whole of sub-agent visibility, and the reason it needed no event bus: a spawn runs inside the
+    /// caller's <c>agent_spawn</c> node, so a loop that does not open a tree of its own leaves the
+    /// ambient one in place and its tool calls become children of that node. Every surface already
+    /// rendering the tree then shows the sub-agent's work with no further wiring.
+    /// </summary>
+    [Fact]
+    public async Task A_nested_run_puts_its_tool_calls_under_the_callers_node()
+    {
+        var tree = new ProgressTree();
+
+        using (ProgressScope.BeginTree(tree))
+        using (ProgressScope.BeginNode("agent_spawn"))
+        {
+            await Spawned(OneToolThenAnswer(), nest: true)
+                .RunAsync(Seeded(), new LLMSettings(), AgentMode.Agent, new AgentCallbacks());
+        }
+
+        var root = Assert.Single(tree.Nodes, n => n.ParentId == null);
+        Assert.Equal("agent_spawn", root.Label);
+
+        var child = Assert.Single(tree.Nodes, n => n.ParentId == root.Id);
+        Assert.Equal("fs_read", child.Label);
+        Assert.Equal(ProgressState.Completed, child.State);
+    }
+
+    /// <summary>The default, and what every chat wants: a turn is the unit, and its tree is its own.</summary>
+    [Fact]
+    public async Task Without_nesting_the_run_reports_into_a_tree_of_its_own()
+    {
+        var tree = new ProgressTree();
+
+        using (ProgressScope.BeginTree(tree))
+        using (ProgressScope.BeginNode("agent_spawn"))
+        {
+            await Spawned(OneToolThenAnswer(), nest: false)
+                .RunAsync(Seeded(), new LLMSettings(), AgentMode.Agent, new AgentCallbacks());
+        }
+
+        // Only the caller's own node — everything the run did went somewhere else entirely, which is
+        // exactly the black box the flag exists to open.
+        var only = Assert.Single(tree.Nodes);
+        Assert.Equal("agent_spawn", only.Label);
+    }
+
+    /// <summary>A tree we did not open is not ours to hand out, and its roots are not our tool calls —
+    /// forwarding either would report the caller's work as the nested run's.</summary>
+    [Fact]
+    public async Task A_nested_run_claims_neither_the_tree_nor_its_roots()
+    {
+        var tree = new ProgressTree();
+        var handedOut = 0;
+        var forwarded = 0;
+
+        var callbacks = new AgentCallbacks
+        {
+            OnProgressTree = _ => handedOut++,
+            OnToolProgress = (_, _) => forwarded++
+        };
+
+        using (ProgressScope.BeginTree(tree))
+        using (ProgressScope.BeginNode("agent_spawn"))
+        {
+            ProgressScope.Report(1, 1, "caller is busy");
+            await Spawned(OneToolThenAnswer(), nest: true)
+                .RunAsync(Seeded(), new LLMSettings(), AgentMode.Agent, callbacks);
+        }
+
+        Assert.Equal(0, handedOut);
+        Assert.Equal(0, forwarded);
+    }
 }

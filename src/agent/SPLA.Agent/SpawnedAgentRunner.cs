@@ -2,6 +2,7 @@ using SPLA.Domain.Agent;
 using SPLA.Domain.Interfaces;
 using SPLA.Domain.Models;
 using SPLA.Domain.Settings;
+using SPLA.Domain.Tools;
 using SPLA.Agent.Composition;
 using SPLA.MCP.Core.Composition;
 using SPLA.MCP.Core.Plugins;
@@ -136,20 +137,52 @@ public sealed class SpawnedAgentRunner : Domain.Interfaces.IAgentSpawner
             : (Func<ComposedContext>?)null;
 
         // Spawned sub-agents are the most prone to tool-call loops; guard them too (tool-call only).
+        //
+        // NestInAmbientProgress is what stops the run being a black box. The spawn is happening inside
+        // the caller's agent_spawn node; joining that node's tree rather than opening a new one makes
+        // every tool the sub-agent runs a child of it, visible wherever the caller's progress already
+        // is. Nothing is forwarded, subscribed or relayed — the tree is ambient, so not detaching from
+        // it is the whole mechanism.
         var orchestrator = new ConversationOrchestrator(_llm, _tools)
         {
             Checkpoint = checkpoint,
             EnableLoopGuard = true,
-            Context = context
+            Context = context,
+            NestInAmbientProgress = true
         };
+
+        // Tool activity arrives on its own as child nodes. What only the runner can say is what happens
+        // *between* the tools — that the run is on its fourth turn, that the model is thinking, what it
+        // last concluded — and without it a sub-agent spending a minute inside the model looks exactly
+        // like one that has hung. These land on the agent_spawn node itself: the callbacks fire on the
+        // loop's own flow, where the current node is still the caller's.
+        var turn = 0;
         var callbacks = new AgentCallbacks
         {
+            OnLlmTurnStart = _ =>
+            {
+                ProgressScope.Report(new ToolProgress { Message = $"turn {++turn} — thinking" });
+                return Task.CompletedTask;
+            },
             OnAssistantMessage = msg =>
             {
                 lastAssistantMessage = msg.Content ?? string.Empty;
+                var said = Excerpt(msg.Content);
+                if (said is not null)
+                    ProgressScope.Report(new ToolProgress { Message = $"turn {turn} — {said}" });
                 return Task.CompletedTask;
             }
         };
+
+        // Said once, before the model is even called, so the node names the work rather than only the
+        // tool: "agent_spawn" is the same line for every delegation, and which one is running is the
+        // thing a person watching actually wants to know.
+        ProgressScope.Report(new ToolProgress
+        {
+            Message = skillSession.ActiveSkillId is { } pinned
+                ? $"skill {pinned} — starting"
+                : $"{Excerpt(input) ?? "task"} — starting"
+        });
 
         var llmSettings = _settings.ToLLMSettings();
         llmSettings.Mode = mode;
@@ -169,5 +202,23 @@ public sealed class SpawnedAgentRunner : Domain.Interfaces.IAgentSpawner
         }
 
         return lastAssistantMessage;
+    }
+
+    /// <summary>
+    /// The first line of <paramref name="text"/>, short enough for a status line. Null when there is
+    /// nothing to show — a turn whose only output was tool calls has no narrative, and repeating the
+    /// previous one would be worse than saying nothing.
+    /// </summary>
+    private static string? Excerpt(string? text)
+    {
+        if (string.IsNullOrWhiteSpace(text)) return null;
+
+        var line = text.AsSpan().Trim();
+        var br = line.IndexOfAny('\r', '\n');
+        if (br >= 0) line = line[..br].TrimEnd();
+        if (line.IsEmpty) return null;
+
+        const int Limit = 72;
+        return line.Length <= Limit ? line.ToString() : string.Concat(line[..Limit].TrimEnd(), "…");
     }
 }
