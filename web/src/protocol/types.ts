@@ -554,6 +554,24 @@ export interface ProjectContextPayload {
   density?: string;
 }
 
+// ── Spawned sub-agent runs (subagent.get → subagent.result) ───────────────────
+export interface SubagentResultPayload {
+  /** False when the id fell out of the bounded in-memory ring, or never existed — a normal answer,
+   *  not an error; every other field is left at its default in that case. */
+  found: boolean;
+  runId: string;
+  label: string;
+  skillId?: string;
+  mode: string;
+  startedAt: string;
+  finishedAt: string;
+  /** "completed" | "failed" | "cancelled". */
+  outcome: string;
+  error?: string;
+  result: string;
+  messages: ChatMessage[];
+}
+
 // ── Live SSH picker (ssh.sessions.get → ssh.sessions.result) ──────────────────
 export interface SshHostDto {
   name: string;
@@ -672,4 +690,5 @@ export interface ServerEvents {
   "ssh.sessions.changed": Record<string, never>;
   "plugin.panel.opened": { panelId: string };
   "plugin.panel.event": { panelId: string; eventType: string; data?: { base64?: string; mimeType?: string; url?: string; message?: string } };
+  "subagent.result": SubagentResultPayload;
 }

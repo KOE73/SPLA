@@ -224,4 +224,55 @@ describe("chat sessions", () => {
 
     expect(peekSession("A")!.nodes["n1"]).toBeDefined();
   });
+
+  it("captures a spawned run's id onto the call, from a nested node's run detail", () => {
+    open("A");
+    feed("llm.turn.start", "A", { msgIndex: 1 });
+    feed("tool.started", "A", { toolCall: { id: "t1", name: "agent_spawn", arguments: "{}" } });
+
+    feed("progress.node", "A", { nodeId: "n1", parentId: null, label: "agent_spawn", state: "running" });
+    feed("progress.node", "A", { nodeId: "n2", parentId: "n1", label: "count the files", state: "running",
+      details: [{ label: "run", value: "r-abc123" }] });
+
+    expect(peekSession("A")!.calls["t1"].runIds).toEqual(["r-abc123"]);
+  });
+
+  it("keeps the run id on the finished tool card after the tree is cleared for the next turn", () => {
+    // s.nodes is rebuilt from scratch at the next llm.turn.start (see the test above this one in the
+    // file), so if the id lived only in the node map it would be unrecoverable by the time anyone
+    // wants to open the finished card — it has to be copied onto the call itself.
+    open("A");
+    feed("llm.turn.start", "A", { msgIndex: 1 });
+    feed("tool.started", "A", { toolCall: { id: "t1", name: "agent_spawn", arguments: "{}" } });
+    feed("progress.node", "A", { nodeId: "n1", parentId: null, label: "agent_spawn", state: "running" });
+    feed("progress.node", "A", { nodeId: "n2", parentId: "n1", label: "count the files", state: "running",
+      details: [{ label: "run", value: "r-abc123" }] });
+    feed("tool.result", "A", { toolCallId: "t1", toolName: "agent_spawn", result: "done" });
+
+    feed("turn.complete", "A", {});
+    feed("llm.turn.start", "A", { msgIndex: 2 });
+
+    expect(peekSession("A")!.nodes).toEqual({});
+    expect(peekSession("A")!.calls["t1"].runIds).toEqual(["r-abc123"]);
+  });
+
+  it("keeps every run of a batch, not just the first", () => {
+    // agent_spawn_batch is one tool call with several runs beneath it, each its own conversation with
+    // its own outcome. Keeping one would present it as the call's, which is exactly the confusion the
+    // per-run branches in the tree exist to prevent.
+    open("A");
+    feed("llm.turn.start", "A", { msgIndex: 1 });
+    feed("tool.started", "A", { toolCall: { id: "t1", name: "agent_spawn_batch", arguments: "{}" } });
+    feed("progress.node", "A", { nodeId: "n1", parentId: null, label: "agent_spawn_batch", state: "running" });
+
+    feed("progress.node", "A", { nodeId: "n2", parentId: "n1", label: "audit ports", state: "running",
+      details: [{ label: "run", value: "r-aaa" }] });
+    feed("progress.node", "A", { nodeId: "n3", parentId: "n1", label: "read the docs", state: "running",
+      details: [{ label: "run", value: "r-bbb" }] });
+    // The same run ticking again must not add itself twice — the id rides every tick by design.
+    feed("progress.node", "A", { nodeId: "n2", parentId: "n1", label: "audit ports", state: "completed",
+      details: [{ label: "run", value: "r-aaa" }] });
+
+    expect(peekSession("A")!.calls["t1"].runIds).toEqual(["r-aaa", "r-bbb"]);
+  });
 });

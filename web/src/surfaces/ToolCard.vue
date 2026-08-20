@@ -43,6 +43,31 @@
         <pre class="tc-pre">{{ call.result }}</pre>
       </div>
       <div v-else-if="call.status === 'running'" class="tc-section tc-waiting">выполняется…</div>
+
+      <!-- One section per run. A plain agent_spawn has exactly one; agent_spawn_batch has as many as
+           it was given tasks, and each is a separate conversation with its own outcome. -->
+      <div v-for="(id, i) in call.runIds ?? []" :key="id" class="tc-section">
+        <button v-if="!runs[id]" class="tc-section-title tc-link" :disabled="loading[id]"
+                @click="loadRun(id)">
+          {{ loading[id] ? "загрузка…" : runLabel(i) }}
+        </button>
+        <template v-else>
+          <div v-if="!runs[id]!.found" class="tc-waiting">
+            переписка недоступна — в журнале хранятся только последние запуски
+          </div>
+          <template v-else>
+            <div class="tc-section-title">
+              {{ runLabel(i) }} · {{ runs[id]!.outcome }} · {{ durationText(runs[id]!) }}
+            </div>
+            <div v-if="runs[id]!.error" class="tc-waiting">{{ runs[id]!.error }}</div>
+            <div class="tc-pre tc-subagent-log">
+              <div v-for="(m, n) in runs[id]!.messages" :key="n" class="tc-subagent-msg">
+                <b>{{ m.role }}:</b> {{ m.content }}
+              </div>
+            </div>
+          </template>
+        </template>
+      </div>
     </div>
   </div>
 </template>
@@ -64,12 +89,22 @@ export interface ToolCallState {
    *  spawned sub-agent's whole run. */
   rootNodeId?: string;
   result?: string;
+  /** Spawned runs this call produced, when it spawned any. Carried on the call rather than looked up
+   *  from the node tree because the tree is cleared at the start of the next turn (see
+   *  chatSessions.ts's progress.node handler) while the finished card stays in the log indefinitely.
+   *
+   *  A list because agent_spawn_batch is one call with several runs under it — each its own
+   *  conversation with its own outcome, and presenting one of them as the call's would be the same
+   *  confusion the per-run branches in the progress tree exist to prevent. */
+  runIds?: string[];
 }
 </script>
 
 <script setup lang="ts">
 import { computed, onUnmounted, ref, watch } from "vue";
 import { useChat } from "../state/chatContext";
+import { client } from "../protocol/SplaClient";
+import type { SubagentResultPayload } from "../protocol/types";
 import ProgressBranch from "./ProgressBranch.vue";
 
 const props = defineProps<{ call: ToolCallState }>();
@@ -111,6 +146,41 @@ const elapsedText = computed(() => {
 function formatSize(chars: number) {
   return chars >= 10000 ? (chars / 1000).toFixed(1) + "k chars" : chars + " chars";
 }
+
+// ── Sub-agent transcripts: fetched on demand, cached per run ──────────────────
+// Nothing streams here. The run is over and sitting in the server's ring by the time anyone asks, so
+// it is one request/response round trip — the same idiom fs.read uses in useFsBrowser.ts.
+//
+// On demand rather than with the card, because a transcript is the whole conversation a sub-agent
+// had: opening every one of them alongside the result would spend a lot to answer a question hardly
+// anybody asks. Keyed by run id so a batch's several runs are fetched and kept independently.
+const runs = ref<Record<string, SubagentResultPayload>>({});
+const loading = ref<Record<string, boolean>>({});
+
+async function loadRun(id: string) {
+  if (runs.value[id] || loading.value[id]) return;
+  loading.value = { ...loading.value, [id]: true };
+  try {
+    const result = await client.invoke<SubagentResultPayload>("subagent.get", { runId: id });
+    runs.value = { ...runs.value, [id]: result };
+  } finally {
+    loading.value = { ...loading.value, [id]: false };
+  }
+}
+
+/** "показать переписку суб-агента" for a lone run; numbered once there is more than one to tell apart. */
+function runLabel(index: number) {
+  const total = props.call.runIds?.length ?? 0;
+  return total > 1 ? `переписка суб-агента ${index + 1} из ${total}` : "показать переписку суб-агента";
+}
+
+function durationText(run: SubagentResultPayload) {
+  if (!run.startedAt || !run.finishedAt) return "";
+  const ms = Date.parse(run.finishedAt) - Date.parse(run.startedAt);
+  if (!Number.isFinite(ms) || ms < 0) return "";
+  const s = Math.round(ms / 1000);
+  return s < 60 ? s + "s" : Math.floor(s / 60) + "m " + (s % 60) + "s";
+}
 </script>
 
 <style scoped>
@@ -142,4 +212,9 @@ function formatSize(chars: number) {
   background: var(--code-bg, transparent); border: 1px solid var(--border); border-radius: var(--radius-sm);
   padding: 6px 8px; font-size: var(--fs-xs); }
 .tc-waiting { color: var(--muted); font-style: italic; font-size: var(--fs-xs); }
+.tc-link { background: none; border: none; padding: 0; cursor: pointer; color: var(--muted); }
+.tc-link:hover { color: var(--accent); }
+.tc-subagent-log { display: flex; flex-direction: column; gap: 6px; }
+.tc-subagent-msg { white-space: pre-wrap; overflow-wrap: anywhere; }
+.tc-subagent-msg b { text-transform: uppercase; font-size: var(--fs-xs); color: var(--muted); margin-right: 4px; }
 </style>

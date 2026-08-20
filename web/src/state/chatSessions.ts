@@ -381,6 +381,29 @@ on("progress.node", (s, p: { nodeId: string; parentId?: string | null; label: st
   node.message = p.message;
   node.details = p.details;
 
+  // A spawned run's id rides on its node's details, wherever in the tree that node sits (agent_spawn
+  // may itself run nested under a script). Stash it on the call rather than leaving it in the node
+  // map: s.nodes is rebuilt from scratch at the next llm.turn.start, but the tool card this belongs to
+  // stays in the log for as long as the conversation does, and it is the only thing still around to
+  // ask "which run was that" once the turn is over.
+  //
+  // A list, not one id: agent_spawn_batch is a single tool call with several runs beneath it, and
+  // keeping only the first would present one of them as though it were the whole call — the very
+  // confusion the per-run branches in the tree exist to prevent.
+  const runDetail = p.details?.find(d => d.label === "run");
+  if (runDetail) {
+    const root = rootOf(s, p.nodeId);
+    if (root) {
+      // By node id first. Matching on the tool's name is the fallback, and only that: with a batch
+      // there is one root and many runs, so the precise answer must win wherever it exists.
+      const call = findCallByRootNodeId(s, root.nodeId) ?? lastRunningByName(s, root.label);
+      if (call) {
+        call.runIds ??= [];
+        if (!call.runIds.includes(runDetail.value)) call.runIds.push(runDetail.value);
+      }
+    }
+  }
+
   if (!isNew) return;
 
   if (p.parentId) {
@@ -394,6 +417,20 @@ on("progress.node", (s, p: { nodeId: string; parentId?: string | null; label: st
   const call = lastRunningByName(s, p.label);
   if (call) call.rootNodeId = p.nodeId;
 });
+
+/** Walks a node's parentId chain up to the root (parentId === null). */
+function rootOf(s: ChatSession, nodeId: string): ProgressNodeState | undefined {
+  let n = s.nodes[nodeId];
+  while (n?.parentId) n = s.nodes[n.parentId];
+  return n;
+}
+
+/** Fallback for when the root's tool call has already finished by the time a nested `run` detail
+ *  arrives — lastRunningByName only sees calls still in flight. */
+function findCallByRootNodeId(s: ChatSession, rootNodeId: string): ToolCallState | undefined {
+  for (const it of s.items) if (it.kind === "toolcall" && it.call.rootNodeId === rootNodeId) return it.call;
+  return undefined;
+}
 
 on("tool.result", (s, p: { toolCallId: string; toolName: string; result?: string }) => {
   const call = s.calls[p.toolCallId] || lastRunningByName(s, p.toolName);
