@@ -329,7 +329,12 @@ public sealed class AgentRuntime : IDisposable
             _edgeLedgerFile = new EdgeLedgerFile(
                 settings.Project.GetBucket(SPLA.Domain.Project.IProjectBackend.RootBucket),
                 McpHost.Edges);
-        SpawnedRunner = new SpawnedAgentRunner(Llm, McpHost, SkillLibrary, PluginManager, settings);
+        // The window lookup is handed over rather than resolved here: a sub-agent's progress reports
+        // how full its context is, and config usually does not declare the window — a local runtime
+        // simply loads whatever it loads. GetContextLengthAsync is the same cached detection a chat
+        // uses, so a batch of spawns asks the provider once between them.
+        SpawnedRunner = new SpawnedAgentRunner(
+            Llm, McpHost, SkillLibrary, PluginManager, settings, GetContextLengthAsync);
 
         // ── Modular built-in capabilities: one IAgentFeature per "core.*" id, in
         // AgentFeatureCatalog.Order. Each feature carries its tools AND its prompt fragment

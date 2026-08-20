@@ -32,6 +32,13 @@ public sealed class SpawnedAgentRunner : Domain.Interfaces.IAgentSpawner
     private readonly ResolvedSettings _settings;
 
     /// <summary>
+    /// Asks what window the model actually has, when config did not say. Optional because the runner
+    /// is constructible without a runtime (tests, a worker entry point) and a missing window costs
+    /// only the percentage, not the figure.
+    /// </summary>
+    private readonly Func<LLMSettings, CancellationToken, Task<int?>>? _contextWindow;
+
+    /// <summary>
     /// How many spawns deep the current async flow already is. A sub-agent reaches tools through the
     /// same <see cref="Domain.Interfaces.IToolHost"/> as its parent, so nothing stops it from calling
     /// agent_spawn again; the orchestrator's loop guard watches repeated tool calls, which is a
@@ -45,18 +52,26 @@ public sealed class SpawnedAgentRunner : Domain.Interfaces.IAgentSpawner
     /// limit refuses runaway recursion without changing how existing skills behave.</summary>
     private const int MaxDepth = 3;
 
+    /// <summary>How long a run will wait to learn the model's context window before starting without
+    /// it. Short because this is a status figure, not the work: the run is worth more than the
+    /// percentage on its label. Paid at most once a minute — the runtime caches the answer, and caches
+    /// a failure as one too.</summary>
+    private static readonly TimeSpan WindowLookupBudget = TimeSpan.FromSeconds(2);
+
     public SpawnedAgentRunner(
         Domain.Llm.ILlmGateway llm,
         Domain.Interfaces.IToolHost tools,
         SkillLibrary skills,
         PluginManager plugins,
-        ResolvedSettings settings)
+        ResolvedSettings settings,
+        Func<LLMSettings, CancellationToken, Task<int?>>? contextWindow = null)
     {
         _llm = llm;
         _tools = tools;
         _skills = skills;
         _plugins = plugins;
         _settings = settings;
+        _contextWindow = contextWindow;
     }
 
     /// <summary>
@@ -171,13 +186,34 @@ public sealed class SpawnedAgentRunner : Domain.Interfaces.IAgentSpawner
         var promptTokens = 0;
         var contextWindow = llmSettings.ContextLength ?? 0;
 
+        // Config rarely declares the window — a local runtime just loads whatever it loads — so ask
+        // the provider when it did not.
+        //
+        // Waited for, briefly, rather than left to land on its own. Fire-and-forget was the first
+        // attempt and it was wrong in a way a test caught: a short run finishes before the answer
+        // arrives, so the percentage was missing precisely when the run was cheap and present when it
+        // was slow — the opposite of a figure you can rely on. The bound is what keeps that honest: a
+        // provider that is slow or gone costs this much once and no more, because the runtime caches
+        // the answer either way, failures included.
+        if (contextWindow <= 0 && _contextWindow is not null)
+        {
+            try
+            {
+                contextWindow = await _contextWindow(llmSettings, cancellationToken)
+                    .WaitAsync(WindowLookupBudget, cancellationToken) ?? 0;
+            }
+            catch (TimeoutException) { /* unknown; the count still travels without a percentage */ }
+            catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested) { }
+        }
+
         var turn = 0;
         ToolProgress Tick(string message) => new()
         {
             Message = message + Context(promptTokens, contextWindow),
-            // Absent until the first call comes back, and absent for good when the model's window is
-            // not declared — a bar drawn against a guessed denominator is worse than no bar.
-            Current = promptTokens > 0 ? promptTokens : null,
+            // Only as a pair, and only for the bar. Current on its own draws nothing — there is no
+            // fraction without a denominator — and would put the same number on the line twice, since
+            // the message already carries it in a form a person reads.
+            Current = promptTokens > 0 && contextWindow > 0 ? promptTokens : null,
             Total   = promptTokens > 0 && contextWindow > 0 ? contextWindow : null
         };
 
@@ -239,15 +275,21 @@ public sealed class SpawnedAgentRunner : Domain.Interfaces.IAgentSpawner
 
     /// <summary>
     /// How much of the window the run is using, as a suffix — or nothing at all before the first call
-    /// has reported. The percentage appears only when the model's context length is known: guessing a
-    /// denominator would put a confident number on the screen that nobody could act on.
+    /// has reported.
+    /// <para>
+    /// The sentence says only what the numbers <b>mean</b>, because when the window is known the
+    /// numbers themselves travel in <see cref="ToolProgress.Current"/> and <c>Total</c>, and every
+    /// renderer that has those appends them in its own way. Saying them here as well printed the same
+    /// figure twice on one line — visible the moment this went out over MCP. With no window there are
+    /// no fields to set, so the count has nowhere else to be and the sentence carries it.
+    /// </para>
     /// </summary>
     private static string Context(int promptTokens, int contextWindow)
     {
         if (promptTokens <= 0) return string.Empty;
 
         return contextWindow > 0
-            ? $" · ctx {Tokens(promptTokens)}/{Tokens(contextWindow)} ({100L * promptTokens / contextWindow}%)"
+            ? $" · ctx {100L * promptTokens / contextWindow}%"
             : $" · ctx {Tokens(promptTokens)}";
     }
 

@@ -190,12 +190,47 @@ public class AgentSpawnToolTests
         }
 
         var run = Assert.Single(tree.Nodes, n => n.Label == "go");
-        Assert.Equal(1234, run.Latest!.Current);
 
-        // No window declared in these settings, so no percentage — a bar drawn against a guessed
-        // denominator would be a confident number nobody could act on.
+        // No window declared and nothing to ask, so the figure travels in the message and nothing is
+        // set for a bar: there is no fraction without a denominator, and Current alone would only put
+        // the same number on the line twice. Invariant formatting — the line is English and also goes
+        // out over MCP, so a machine with a comma separator must not turn it into "1,2k".
+        Assert.Contains("ctx 1.2k", run.Latest!.Message);
+        Assert.Null(run.Latest.Current);
         Assert.Null(run.Latest.Total);
-        Assert.Contains("ctx 1.2k", run.Latest.Message);
+    }
+
+    /// <summary>With a window to compare against, the figure becomes a percentage and a bar. The
+    /// lookup is off the critical path — a run must not wait on a provider that may be slow or gone —
+    /// so the test lets it land before reading.</summary>
+    [Fact]
+    public async Task A_known_window_turns_the_figure_into_a_percentage()
+    {
+        var tree = new ProgressTree();
+        var settings = new ResolvedSettings { Mode = AgentMode.Edit };
+        var runner = new SpawnedAgentRunner(
+            new StubLlmService("done") { PromptTokens = 4096 },
+            new StubToolHost(),
+            new SkillLibrary([new SPLA.Tests.Fakes.FakeSkillSource()]),
+            new PluginManager(settings),
+            settings,
+            contextWindow: (_, _) => Task.FromResult<int?>(16384));
+
+        using (ProgressScope.BeginTree(tree))
+        using (ProgressScope.BeginNode("agent_spawn"))
+        {
+            await runner.RunAsync(null, "go", AgentMode.Edit);
+        }
+
+        var run = Assert.Single(tree.Nodes, n => n.Label == "go");
+
+        // The sentence says what the numbers mean; the numbers themselves are in the fields, where
+        // every renderer already knows how to show them. Saying both printed the figure twice.
+        Assert.Contains("ctx 25%", run.Latest!.Message);
+        Assert.DoesNotContain("4.1k", run.Latest.Message);
+        Assert.Equal(4096, run.Latest.Current);
+        Assert.Equal(16384, run.Latest.Total);
+        Assert.Equal(0.25, run.Latest.Fraction);
     }
 
     /// <summary>Nothing to say before the first call comes back, and nothing invented when the provider
