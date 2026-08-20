@@ -156,33 +156,32 @@ public sealed class SpawnedAgentRunner : Domain.Interfaces.IAgentSpawner
         // last concluded — and without it a sub-agent spending a minute inside the model looks exactly
         // like one that has hung. These land on the agent_spawn node itself: the callbacks fire on the
         // loop's own flow, where the current node is still the caller's.
+        //
+        // Every tick carries which task it is about, not just the first. The node's label is
+        // "agent_spawn" — the same line for every delegation — so without the tag a batch of five is
+        // five identical rows, and a single spawn is a run of anonymous turns. It cannot be said once
+        // and left to stand either: ticks are coalesced, and an opening line is exactly the one a
+        // faster-arriving neighbour overwrites.
+        var tag = skillSession.ActiveSkillId ?? Excerpt(input, 32) ?? "task";
         var turn = 0;
         var callbacks = new AgentCallbacks
         {
             OnLlmTurnStart = _ =>
             {
-                ProgressScope.Report(new ToolProgress { Message = $"turn {++turn} — thinking" });
+                ProgressScope.Report(new ToolProgress { Message = $"{tag} · turn {++turn}, thinking" });
                 return Task.CompletedTask;
             },
             OnAssistantMessage = msg =>
             {
                 lastAssistantMessage = msg.Content ?? string.Empty;
-                var said = Excerpt(msg.Content);
+                var said = Excerpt(msg.Content, 56);
                 if (said is not null)
-                    ProgressScope.Report(new ToolProgress { Message = $"turn {turn} — {said}" });
+                    ProgressScope.Report(new ToolProgress { Message = $"{tag} · turn {turn}: {said}" });
                 return Task.CompletedTask;
             }
         };
 
-        // Said once, before the model is even called, so the node names the work rather than only the
-        // tool: "agent_spawn" is the same line for every delegation, and which one is running is the
-        // thing a person watching actually wants to know.
-        ProgressScope.Report(new ToolProgress
-        {
-            Message = skillSession.ActiveSkillId is { } pinned
-                ? $"skill {pinned} — starting"
-                : $"{Excerpt(input) ?? "task"} — starting"
-        });
+        ProgressScope.Report(new ToolProgress { Message = $"{tag} · starting" });
 
         var llmSettings = _settings.ToLLMSettings();
         llmSettings.Mode = mode;
@@ -205,11 +204,11 @@ public sealed class SpawnedAgentRunner : Domain.Interfaces.IAgentSpawner
     }
 
     /// <summary>
-    /// The first line of <paramref name="text"/>, short enough for a status line. Null when there is
-    /// nothing to show — a turn whose only output was tool calls has no narrative, and repeating the
-    /// previous one would be worse than saying nothing.
+    /// The first line of <paramref name="text"/>, no longer than <paramref name="limit"/>. Null when
+    /// there is nothing to show — a turn whose only output was tool calls has no narrative, and
+    /// repeating the previous one would be worse than saying nothing.
     /// </summary>
-    private static string? Excerpt(string? text)
+    private static string? Excerpt(string? text, int limit)
     {
         if (string.IsNullOrWhiteSpace(text)) return null;
 
@@ -218,7 +217,6 @@ public sealed class SpawnedAgentRunner : Domain.Interfaces.IAgentSpawner
         if (br >= 0) line = line[..br].TrimEnd();
         if (line.IsEmpty) return null;
 
-        const int Limit = 72;
-        return line.Length <= Limit ? line.ToString() : string.Concat(line[..Limit].TrimEnd(), "…");
+        return line.Length <= limit ? line.ToString() : string.Concat(line[..limit].TrimEnd(), "…");
     }
 }
