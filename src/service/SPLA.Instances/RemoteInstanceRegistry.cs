@@ -21,7 +21,7 @@ public sealed class RemoteInstanceRegistry : IInstanceRegistry, IDisposable
     private readonly string _listUrl;
     private readonly bool _ownsClient;
 
-    /// <param name="hubUrl">Base address of the hub, e.g. <c>http://build-server:5060</c>.</param>
+    /// <param name="hubUrl">Base address of the hub, e.g. <c>http://build-server:5077</c>.</param>
     /// <param name="token">Registry token. Absent means the hub is unauthenticated, which is only
     /// reasonable on loopback — see the ADR: an open registration endpoint lets anyone on the network
     /// enumerate and stop somebody's agents.</param>

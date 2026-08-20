@@ -23,8 +23,17 @@ namespace SPLA.UI.Avalonia.Services;
 /// </summary>
 public sealed class HubLauncher : IDisposable
 {
-    /// <summary>The machine hub's conventional port. Matches <c>spla hub</c>'s own default.</summary>
-    public const int DefaultPort = 5060;
+    /// <summary>
+    /// The machine hub's conventional port. Matches <c>spla hub</c>'s own default.
+    ///
+    /// <para><b>Not 5060, and never put it back.</b> That was the original choice and it is SIP's
+    /// port, which sits on the blocked list of every Chromium browser and Firefox: any attempt to open
+    /// a page there fails outright with ERR_UNSAFE_PORT. It cost nothing while the hub only answered
+    /// machines, and broke the moment it began serving the project manager to a browser. Whatever this
+    /// number becomes, it has to stay off that list — the hub serves a page now, so "can a browser
+    /// reach it" is part of the requirement and not an afterthought.</para>
+    /// </summary>
+    public const int DefaultPort = 5077;
 
     private Process? _process;
 

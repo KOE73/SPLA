@@ -10,8 +10,10 @@ namespace SPLA.CLI;
 internal sealed class HubSettings : CommandSettings
 {
     [CommandOption("--port")]
-    [Description("Port to bind. Default 5060.")]
-    public int Port { get; init; } = 5060;
+    // Kept in step with HubLauncher.DefaultPort, which carries the reasoning — in particular why this
+    // must stay off the browsers' blocked-port list now that the hub serves the project manager.
+    [Description("Port to bind. Default 5077.")]
+    public int Port { get; init; } = 5077;
 
     [CommandOption("--bind")]
     [Description("Address to bind. Default 127.0.0.1. Binding wider needs --token.")]

@@ -34,7 +34,7 @@ internal sealed class ServeSettings : CommandSettings
     // A window that spawns this process passes a few minutes, so closing the window reclaims the
     // process eventually — without ever cutting a turn short or answering a pending question.
     [CommandOption("--registry")]
-    [Description("Hub to register with, e.g. http://build-server:5060. Absent = this machine's lock files are the only registry.")]
+    [Description("Hub to register with, e.g. http://build-server:5077. Absent = this machine's lock files are the only registry.")]
     public string? Registry { get; init; }
 
     [CommandOption("--registry-token")]
