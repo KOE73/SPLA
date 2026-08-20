@@ -1,9 +1,22 @@
+using System.ComponentModel;
 using SPLA.CLI.Wire;
 using SPLA.Domain.Project;
 using SPLA.Domain.Settings;
 using SPLA.Instances;
+using Spectre.Console.Cli;
 
 namespace SPLA.CLI;
+
+internal sealed class PsSettings : CommandSettings
+{
+    [CommandOption("--registry")]
+    [Description("Hub URL to query instead of this machine's lock files.")]
+    public string? Registry { get; init; }
+
+    [CommandOption("--token")]
+    [Description("Bearer token for the hub (takes a secret reference or literal).")]
+    public string? Token { get; init; }
+}
 
 /// <summary>
 /// <c>spla ps</c> — list the SPLA instances currently running, across every project this machine
@@ -14,24 +27,17 @@ namespace SPLA.CLI;
 /// lock any project — it only reads lock files and asks over the wire, both safe to do without
 /// becoming a writer.</para>
 /// </summary>
-internal static class PsCommand
+internal sealed class PsCommand : AsyncCommand<PsSettings>
 {
     public static bool IsPsCommand(string[] args)
         => args.Length > 0 && args[0].Equals("ps", StringComparison.OrdinalIgnoreCase);
 
-    public static async Task<int> RunAsync(string[] args)
+    protected override async Task<int> ExecuteAsync(CommandContext context, PsSettings settings, CancellationToken cancellationToken)
     {
-        if (args.Any(a => a is "--help" or "-h"))
-        {
-            PrintHelp();
-            return 0;
-        }
-
         // Which registry answers is a launch-time choice, not a different code path: a hub when one
         // was named, this machine's lock files otherwise.
-        var hub = Option(args, "--registry");
-        IInstanceRegistry registry = hub is { Length: > 0 }
-            ? new RemoteInstanceRegistry(hub, ConfigLoader.LoadAndResolve().SecretResolver.Resolve(Option(args, "--token")))
+        IInstanceRegistry registry = settings.Registry is { Length: > 0 }
+            ? new RemoteInstanceRegistry(settings.Registry, ConfigLoader.LoadAndResolve().SecretResolver.Resolve(settings.Token))
             : new FileInstanceRegistry(probe: new WireInstanceProbe(TimeSpan.FromSeconds(5)));
 
         IReadOnlyList<InstanceRecord> running;
@@ -39,9 +45,9 @@ internal static class PsCommand
         {
             running = await registry.ListAsync();
         }
-        catch (Exception ex) when (hub is { Length: > 0 })
+        catch (Exception ex) when (settings.Registry is { Length: > 0 })
         {
-            Console.Error.WriteLine($"Could not reach the hub at {hub}: {ex.Message}");
+            Console.Error.WriteLine($"Could not reach the hub at {settings.Registry}: {ex.Message}");
             return 1;
         }
         finally
@@ -71,27 +77,5 @@ internal static class PsCommand
         return 0;
     }
 
-    private static string? Option(string[] args, string name)
-    {
-        var i = Array.FindIndex(args, a => a.Equals(name, StringComparison.OrdinalIgnoreCase));
-        return i >= 0 && i + 1 < args.Length ? args[i + 1] : null;
-    }
-
     private static string Truncate(string s, int max) => s.Length <= max ? s : s[..(max - 1)] + "…";
-
-    private static void PrintHelp()
-    {
-        Console.WriteLine("Usage: spla ps [--registry <url>] [--token <ref-or-literal>]");
-        Console.WriteLine();
-        Console.WriteLine("Lists every known project that currently has a live instance, with its mode,");
-        Console.WriteLine("state (asked over the wire when the instance is serving), connected clients,");
-        Console.WriteLine("pid, endpoint and start time. An instance holding a project without serving");
-        Console.WriteLine("(a REPL or an mcp session) shows '-': there is no address to ask.");
-        Console.WriteLine();
-        Console.WriteLine("CLIENTS counts every client connected at the moment of asking, including this");
-        Console.WriteLine("command's own connection — an otherwise unattended instance reads as 1 here.");
-        Console.WriteLine();
-        Console.WriteLine("With --registry, the list comes from a hub instead of this machine's lock files,");
-        Console.WriteLine("and the state each instance reports is what it pushed there — no probing needed.");
-    }
 }

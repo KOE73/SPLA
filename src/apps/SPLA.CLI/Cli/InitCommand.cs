@@ -1,6 +1,23 @@
+using System.ComponentModel;
 using SPLA.Domain.Project;
+using Spectre.Console.Cli;
 
 namespace SPLA.CLI;
+
+internal sealed class InitSettings : CommandSettings
+{
+    [CommandArgument(0, "[directory]")]
+    [Description("Directory to initialize. Defaults to the current directory.")]
+    public string? Directory { get; init; }
+
+    [CommandOption("--profile")]
+    [Description("Project profile (e.g., minimal, standard, inherit).")]
+    public string? Profile { get; init; }
+
+    [CommandOption("--name")]
+    [Description("Project name (defaults to directory name).")]
+    public string? Name { get; init; }
+}
 
 /// <summary>
 /// <c>spla init [--profile P] [--name N] [directory]</c> — make a folder a project and stop.
@@ -10,65 +27,34 @@ namespace SPLA.CLI;
 /// continue in a folder with no manifest. A command whose entire job is to create the manifest cannot
 /// be gated on the manifest existing.</para>
 /// </summary>
-internal static class InitCommand
+internal sealed class InitCommand : AsyncCommand<InitSettings>
 {
     public static bool IsInitCommand(string[] args)
         => args.Length > 0 && args[0].Equals("init", StringComparison.OrdinalIgnoreCase);
 
-    /// <returns>Process exit code.</returns>
-    public static int Run(string[] args)
+    protected override Task<int> ExecuteAsync(CommandContext context, InitSettings settings, CancellationToken cancellationToken)
     {
-        string? name = null;
-        string? directory = null;
         var profile = ProjectProfiles.Default;
-
-        for (var i = 1; i < args.Length; i++)
+        if (settings.Profile is { Length: > 0 })
         {
-            var arg = args[i];
-            switch (arg.ToLowerInvariant())
-            {
-                case "--profile" when i + 1 < args.Length:
-                    if (!ProjectProfiles.TryParse(args[++i], out profile))
-                        return Fail($"Unknown profile '{args[i]}'. Expected one of: {string.Join(", ", ProjectProfiles.AllNames)}.");
-                    break;
-                case "--name" when i + 1 < args.Length:
-                    name = args[++i];
-                    break;
-                case "--help" or "-h":
-                    PrintHelp();
-                    return 0;
-                default:
-                    if (arg.StartsWith('-')) return Fail($"Unknown option '{arg}'.");
-                    directory = arg;
-                    break;
-            }
+            if (!ProjectProfiles.TryParse(settings.Profile, out profile))
+                return Task.FromResult(Fail($"Unknown profile '{settings.Profile}'. Expected one of: {string.Join(", ", ProjectProfiles.AllNames)}."));
         }
 
         if (profile == ProjectProfile.Inherit)
-            return Fail("'inherit' means running without a project — there is nothing for `init` to create.");
+            return Task.FromResult(Fail("'inherit' means running without a project — there is nothing for `init` to create."));
 
         try
         {
-            var manifest = ProjectFactory.Create(directory ?? Directory.GetCurrentDirectory(), name, profile);
+            var directory = settings.Directory ?? System.IO.Directory.GetCurrentDirectory();
+            var manifest = ProjectFactory.Create(directory, settings.Name, profile);
             Console.WriteLine($"Created {manifest} ({ProjectProfiles.Name(profile)}: {ProjectProfiles.Describe(profile)})");
-            return 0;
+            return Task.FromResult(0);
         }
         catch (Exception ex)
         {
-            return Fail(ex.Message);
+            return Task.FromResult(Fail(ex.Message));
         }
-    }
-
-    private static void PrintHelp()
-    {
-        Console.WriteLine("Usage: spla init [--profile <profile>] [--name <name>] [directory]");
-        Console.WriteLine();
-        Console.WriteLine("Profiles:");
-        foreach (var n in ProjectProfiles.AllNames)
-            if (ProjectProfiles.TryParse(n, out var p))
-                Console.WriteLine($"  {n,-9} {ProjectProfiles.Describe(p)}");
-        Console.WriteLine();
-        Console.WriteLine($"Default profile: {ProjectProfiles.Name(ProjectProfiles.Default)}.");
     }
 
     private static int Fail(string message)

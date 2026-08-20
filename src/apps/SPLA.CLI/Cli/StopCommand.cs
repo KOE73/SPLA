@@ -1,9 +1,22 @@
+using System.ComponentModel;
 using SPLA.CLI.Wire;
 using SPLA.Domain.Project;
 using SPLA.Instances;
 using SPLA.Service.Contracts;
+using Spectre.Console.Cli;
 
 namespace SPLA.CLI;
+
+internal sealed class StopSettings : CommandSettings
+{
+    [CommandArgument(0, "[project]")]
+    [Description("Project name, manifest path, or nothing for the current directory.")]
+    public string? Project { get; init; }
+
+    [CommandOption("--force")]
+    [Description("Cancel a running turn instead of refusing. Loses work in progress.")]
+    public bool Force { get; init; }
+}
 
 /// <summary>
 /// <c>spla stop</c> — asks a running instance to shut down.
@@ -17,32 +30,23 @@ namespace SPLA.CLI;
 /// stopped halfway — the states somebody walks back to their desk for. <c>--force</c> cancels the
 /// work instead of asking, which is a choice the caller makes explicitly and never a default.</para>
 /// </summary>
-internal static class StopCommand
+internal sealed class StopCommand : AsyncCommand<StopSettings>
 {
     public static bool IsStopCommand(string[] args)
         => args.Length > 0 && args[0].Equals("stop", StringComparison.OrdinalIgnoreCase);
 
-    public static async Task<int> RunAsync(string[] args)
+    protected override async Task<int> ExecuteAsync(CommandContext context, StopSettings settings, CancellationToken cancellationToken)
     {
-        if (args.Any(a => a is "--help" or "-h"))
-        {
-            PrintHelp();
-            return 0;
-        }
-
-        var force = args.Any(a => a.Equals("--force", StringComparison.OrdinalIgnoreCase));
-        var target = args.Skip(1).FirstOrDefault(a => !a.StartsWith('-'));
-
-        var resolved = await ResolveAsync(target);
+        var resolved = await ResolveAsync(settings.Project);
         if (resolved is null)
         {
-            Console.Error.WriteLine(target is null
+            Console.Error.WriteLine(settings.Project is null
                 ? "No SPLA instance is running for this directory."
-                : $"No running instance matches '{target}'. Try `spla ps`.");
+                : $"No running instance matches '{settings.Project}'. Try `spla ps`.");
             return 1;
         }
 
-        var name = resolved.ProjectName ?? target ?? "the project";
+        var name = resolved.ProjectName ?? settings.Project ?? "the project";
         if (resolved.Info.Endpoint is not { Length: > 0 } endpoint)
         {
             // A REPL or an `mcp` session holds the project without offering an address. There is
@@ -59,7 +63,7 @@ internal static class StopCommand
             using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(10));
             await using var client = await CliWireClient.ConnectAsync(endpoint, null, cts.Token);
             var status = await client.RequestInstanceStatusAsync(
-                MessageTypes.InstanceStop, new InstanceStopPayload { Force = force }, cts.Token);
+                MessageTypes.InstanceStop, new InstanceStopPayload { Force = settings.Force }, cts.Token);
 
             if (status is null)
             {
@@ -108,18 +112,5 @@ internal static class StopCommand
         return all.FirstOrDefault(r =>
             string.Equals(r.ProjectName, target, StringComparison.OrdinalIgnoreCase) ||
             string.Equals(Path.GetFileNameWithoutExtension(r.ProjectId), target, StringComparison.OrdinalIgnoreCase));
-    }
-
-    private static void PrintHelp()
-    {
-        Console.WriteLine("Usage: spla stop [project] [--force]");
-        Console.WriteLine();
-        Console.WriteLine("Asks a running instance to shut down. With no argument, the instance holding");
-        Console.WriteLine("the current directory; otherwise a known project matched by name or manifest path.");
-        Console.WriteLine();
-        Console.WriteLine("  --force   Cancel a running turn instead of refusing. Loses work in progress.");
-        Console.WriteLine();
-        Console.WriteLine("A stop is refused while a turn is running, a question is waiting for an answer,");
-        Console.WriteLine("or a turn stopped halfway. Use `spla ps` to see what is running.");
     }
 }

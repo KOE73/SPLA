@@ -15,42 +15,17 @@ if (args.Length > 0 && args[0].Equals("--help-mcp", StringComparison.OrdinalIgno
     return;
 }
 
-// `init` creates the manifest, so it cannot run behind the bootstrap that refuses to continue
-// without one. See InitCommand.
-if (SPLA.CLI.InitCommand.IsInitCommand(args))
+// Recognise pre-bootstrap commands (init, ps, stop, hub) and run them through a minimal
+// Spectre parser that doesn't require project resolution. These commands have their own good reasons
+// not to lock a project (init creates one, ps/stop read lock files, hub holds none).
+if (args.Length > 0)
 {
-    Environment.ExitCode = SPLA.CLI.InitCommand.Run(args);
-    return;
-}
-
-// `ps` and `stop` are about instances, not about the directory the shell happens to be in, and
-// neither may become a writer of any project just to look at (or ask about) one. So they run ahead
-// of the bootstrap that resolves and locks a project — they read lock files and talk over sockets.
-if (SPLA.CLI.PsCommand.IsPsCommand(args))
-{
-    Environment.ExitCode = await SPLA.CLI.PsCommand.RunAsync(args);
-    return;
-}
-
-if (SPLA.CLI.StopCommand.IsStopCommand(args))
-{
-    Environment.ExitCode = await SPLA.CLI.StopCommand.RunAsync(args);
-    return;
-}
-
-// A hub holds no project and runs no agent, so it must not go through the bootstrap that resolves
-// and locks one either. Same binary, different role — see HubCommand for why it is not its own exe.
-if (SPLA.CLI.HubCommand.IsHubCommand(args))
-{
-    SplaTelemetry.ConfigureGlobalLogs();
-    using var hubLoggers = LoggerFactory.Create(b =>
+    var cmdName = args[0].ToLowerInvariant();
+    if (cmdName is "init" or "ps" or "stop" or "hub")
     {
-        b.ClearProviders();
-        b.AddProvider(SplaTelemetry.CreateFileLoggerProvider());
-        b.SetMinimumLevel(LogLevel.Information);
-    });
-    Environment.ExitCode = await SPLA.CLI.HubCommand.RunAsync(args, hubLoggers);
-    return;
+        Environment.ExitCode = await RunPreBootstrapCommandAsync(cmdName, args);
+        return;
+    }
 }
 
 // `mcp` speaks a protocol on stdout, so it must be recognised before anything prints. The banner
@@ -134,4 +109,38 @@ catch (SPLA.Domain.Project.ProjectBusyException ex)
     // useful thing to say — a stack trace would bury it.
     Console.Error.WriteLine(ex.Message);
     Environment.ExitCode = 1;
+}
+
+// Helper: run a pre-bootstrap command (init, ps, stop, hub) through a minimal Spectre CommandApp
+// that doesn't require project resolution. These commands have legitimate reasons not to lock
+// a project file.
+async Task<int> RunPreBootstrapCommandAsync(string cmd, string[] args)
+{
+    SplaTelemetry.ConfigureGlobalLogs();
+    using var cmdLoggers = LoggerFactory.Create(b =>
+    {
+        b.ClearProviders();
+        b.AddProvider(SplaTelemetry.CreateFileLoggerProvider());
+        b.SetMinimumLevel(LogLevel.Information);
+    });
+
+    var services = new ServiceCollection();
+    services.AddSingleton(cmdLoggers);
+    var app = new CommandApp(new TypeRegistrar(services));
+    app.Configure(config =>
+    {
+        config.SetApplicationName("spla");
+        config.UseStrictParsing();
+
+        config.AddCommand<SPLA.CLI.InitCommand>("init")
+            .WithDescription("Make a folder a project.");
+        config.AddCommand<SPLA.CLI.PsCommand>("ps")
+            .WithDescription("List currently running SPLA instances.");
+        config.AddCommand<SPLA.CLI.StopCommand>("stop")
+            .WithDescription("Ask a running instance to shut down.");
+        config.AddCommand<SPLA.CLI.HubCommand>("hub")
+            .WithDescription("Run a registry hub.");
+    });
+
+    return await app.RunAsync(args);
 }
