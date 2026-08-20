@@ -6,6 +6,7 @@ using SPLA.Service;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.DependencyInjection;
 using Spectre.Console.Cli;
+using System.Globalization;
 
 // Same reasoning as the `mcp` check below: a raw args check ahead of everything else, so a foreign
 // head can read usage without first standing up a runtime or tripping the project-file search.
@@ -80,8 +81,7 @@ services.AddSingleton(ctx.Settings);
 var app = new CommandApp<ReplCommand>(new TypeRegistrar(services));
 app.Configure(config =>
 {
-    config.SetApplicationName("spla");
-    config.UseStrictParsing();
+    ApplyCommonCliConventions(config);
 
     config.AddBranch("chat", chat =>
     {
@@ -129,8 +129,7 @@ async Task<int> RunPreBootstrapCommandAsync(string cmd, string[] args)
     var app = new CommandApp(new TypeRegistrar(services));
     app.Configure(config =>
     {
-        config.SetApplicationName("spla");
-        config.UseStrictParsing();
+        ApplyCommonCliConventions(config);
 
         config.AddCommand<SPLA.CLI.InitCommand>("init")
             .WithDescription("Make a folder a project.");
@@ -143,4 +142,30 @@ async Task<int> RunPreBootstrapCommandAsync(string cmd, string[] args)
     });
 
     return await app.RunAsync(args);
+}
+
+/// <summary>
+/// The conventions every SPLA command parser shares. Both <c>CommandApp</c>s here — the full one and
+/// the minimal pre-bootstrap one — go through this, so a command cannot behave differently depending
+/// on which side of the bootstrap it happens to live on.
+/// </summary>
+void ApplyCommonCliConventions(IConfigurator config)
+{
+    config.SetApplicationName("spla");
+
+    // Without this, an unknown option is accepted and quietly parked in Remaining.Parsed, so
+    // `spla serve --idle-timout 5` runs with the default timeout and says nothing.
+    config.UseStrictParsing();
+
+    // ── Help language ────────────────────────────────────────────────────────────────────────────
+    // Spectre's own help chrome ("DESCRIPTION", "USAGE", "OPTIONS") is localised, and with no culture
+    // set its resource manager follows CurrentUICulture — so the same binary printed Russian headings
+    // on a Russian Windows and English ones elsewhere. Our own text (command and option descriptions)
+    // is English either way, which made the output a mix of two languages rather than a translation.
+    //
+    // Pinned to English deliberately, and pinned in ONE place so it stays easy to undo: SPLA is
+    // positioned as an international project and is not localised today. If that changes, this is the
+    // line to change — pass the desired CultureInfo, or drop the call entirely to follow the machine
+    // locale again. Nothing else in the CLI depends on it.
+    config.SetApplicationCulture(CultureInfo.GetCultureInfo("en"));
 }
