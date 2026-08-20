@@ -83,14 +83,21 @@ public sealed class TrayIconService : IAsyncDisposable
     {
         var menu = new NativeMenu();
 
-        if (instances.Count == 0)
+        // One row per PROJECT, not per participant. Windows register too now, so a project you have
+        // open would otherwise appear twice — the thing being managed is the project, and its agent
+        // and windows are how it is currently manifested.
+        var projects = instances
+            .GroupBy(r => r.ProjectId, StringComparer.OrdinalIgnoreCase)
+            .OrderBy(g => g.First().ProjectName ?? g.Key)
+            .ToList();
+
+        if (projects.Count == 0)
         {
-            menu.Items.Add(new NativeMenuItem("No instances running") { IsEnabled = false });
+            menu.Items.Add(new NativeMenuItem("No projects running") { IsEnabled = false });
         }
         else
         {
-            foreach (var record in instances.OrderBy(r => r.ProjectName ?? r.ProjectId))
-                menu.Items.Add(BuildInstanceItem(record));
+            foreach (var project in projects) menu.Items.Add(BuildProjectItem(project.ToList()));
         }
 
         _tray.Menu = menu;
@@ -100,27 +107,37 @@ public sealed class TrayIconService : IAsyncDisposable
         SetBlinking(waiting);
     }
 
-    private NativeMenuItem BuildInstanceItem(InstanceRecord record)
+    private NativeMenuItem BuildProjectItem(IReadOnlyList<InstanceRecord> participants)
     {
-        var name = record.ProjectName ?? Path.GetFileNameWithoutExtension(record.ProjectId);
-        var state = record.IsServing ? InstanceStates.Name(record.State) : "not serving";
-        var clients = record.Clients?.ToString() ?? "-";
+        var agent = participants.FirstOrDefault(r => r.Role == ParticipantRoles.Agent);
+        var windows = participants.Count(r => r.Role == ParticipantRoles.Window);
+        var first = participants[0];
 
-        var item = new NativeMenuItem($"{name} — {state} ({clients} clients)");
+        var name = first.ProjectName ?? Path.GetFileNameWithoutExtension(first.ProjectId);
+        var state = agent is null ? "no agent"
+            : agent.IsServing ? InstanceStates.Name(agent.State)
+            : "not serving";
+        var windowNote = windows switch { 0 => "no window", 1 => "1 window", _ => $"{windows} windows" };
+
+        var item = new NativeMenuItem($"{name} — {state}, {windowNote}");
         var submenu = new NativeMenu();
 
         var open = new NativeMenuItem("Open");
-        open.Click += (_, _) => LaunchProject(record.ProjectId);
+        open.Click += (_, _) => _ = OpenAsync(first.ProjectId);
         submenu.Items.Add(open);
 
-        // Unload only makes sense for something actually serving — a REPL/mcp holder has no wire to
-        // ask, and the hub's stop route needs an instance id to relay to.
-        if (record.IsServing)
-        {
-            var unload = new NativeMenuItem("Unload");
-            unload.Click += (_, _) => _ = UnloadAsync(record.Info.InstanceId);
-            submenu.Items.Add(unload);
-        }
+        submenu.Items.Add(new NativeMenuItemSeparator());
+
+        // Close asks; the agent refuses mid-turn and windows go regardless. Kill is the same request
+        // with the refusal waived — a separate item rather than a modifier, because losing a turn in
+        // progress should take a deliberate second choice and never a mis-click on the first.
+        var close = new NativeMenuItem("Close");
+        close.Click += (_, _) => _ = CloseProjectAsync(first.ProjectId, force: false);
+        submenu.Items.Add(close);
+
+        var kill = new NativeMenuItem("Kill (discards running work)");
+        kill.Click += (_, _) => _ = CloseProjectAsync(first.ProjectId, force: true);
+        submenu.Items.Add(kill);
 
         item.Menu = submenu;
         return item;
@@ -128,32 +145,77 @@ public sealed class TrayIconService : IAsyncDisposable
 
     private static string Summarize(System.Collections.Generic.IReadOnlyList<InstanceRecord> instances)
     {
-        if (instances.Count == 0) return "SPLA — no instances running";
+        // Counted by project for the same reason the menu is grouped by it: "3 running" must not mean
+        // "one project with an agent and two windows".
+        var projects = instances
+            .Select(r => r.ProjectId)
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .Count();
+        if (projects == 0) return "SPLA — nothing running";
+
         var waiting = instances.Count(r => r.State == InstanceState.Waiting);
         return waiting > 0
-            ? $"SPLA — {instances.Count} running, {waiting} waiting"
-            : $"SPLA — {instances.Count} running";
+            ? $"SPLA — {projects} project(s), {waiting} waiting"
+            : $"SPLA — {projects} project(s)";
     }
 
-    /// <summary>Opens a project the same way the project menu does: a fresh window process pointed at
-    /// its manifest. Uses the swallowing overload because the tray has nowhere to put an error message
-    /// without stealing focus — which is a gap, not a design: "clicked Open and nothing happened" is
-    /// exactly what it looks like from outside. Reporting it belongs with the same work that gives the
-    /// tray somewhere to speak.</summary>
-    private static void LaunchProject(string manifestPath)
-        => SelfInvocationLauncher.TryLaunch("SPLA.UI.Avalonia.exe", manifestPath);
+    /// <summary>
+    /// Opens a project: raises the window that already has it, or starts one when none does.
+    ///
+    /// <para>Asking the hub first is the entire point of registering windows. Before that, Open could
+    /// only ever start another process, so the second click on a project you already had open gave you
+    /// a duplicate — the registry knew about agents and had no idea a window existed.</para>
+    ///
+    /// <para>Falling through to a launch when the focus request fails is deliberate: the window may
+    /// have closed between the listing and the click, and ending up with a window is what was asked
+    /// for either way.</para>
+    /// </summary>
+    private async Task OpenAsync(string manifestPath)
+    {
+        if (_watcher.Current.FirstOrDefault(r =>
+                r.Role == ParticipantRoles.Window &&
+                string.Equals(r.ProjectId, manifestPath, StringComparison.OrdinalIgnoreCase))
+            is { } window && await FocusAsync(window.Info.InstanceId))
+        {
+            return;
+        }
 
-    /// <summary>Asks the hub to relay a stop. A refusal is normal — the instance may be mid-turn —
-    /// and is not surfaced as an error, only silently dropped: the tray has no place to put a message
-    /// box without stealing focus, and the person can just try again once it settles.</summary>
-    private async Task UnloadAsync(string instanceId)
+        SelfInvocationLauncher.TryLaunch("SPLA.UI.Avalonia.exe", manifestPath);
+    }
+
+    /// <summary>Asks the hub to raise one window. False when it is gone or the hub could not be
+    /// reached, which the caller answers by opening a new one.</summary>
+    private async Task<bool> FocusAsync(string instanceId)
     {
         try
         {
-            var url = $"{_hubUrl}{RegistryRoutes.Stop}?instance={Uri.EscapeDataString(instanceId)}";
+            var url = $"{_hubUrl}{RegistryRoutes.Focus}?instance={Uri.EscapeDataString(instanceId)}";
+            var response = await _http.PostAsync(url, content: null);
+            return response.IsSuccessStatusCode;
+        }
+        catch { return false; }
+    }
+
+    /// <summary>
+    /// Closes a whole project — its agent and every window on it, asked together.
+    ///
+    /// <para>This replaces the old "Unload", which never said what it was unloading and, worse, only
+    /// ever addressed the agent: the windows stayed, pointed at a service that would never answer
+    /// again. Addressing the project instead of one instance is what registering windows bought.</para>
+    ///
+    /// <para>A refusal is still normal — the agent may be mid-turn — and still goes unreported here.
+    /// The tray has nowhere to say so without stealing focus; the person sees the project simply stay
+    /// in the list, and Kill is right underneath. Saying it properly needs the hub window.</para>
+    /// </summary>
+    private async Task CloseProjectAsync(string projectId, bool force)
+    {
+        try
+        {
+            var url = $"{_hubUrl}{RegistryRoutes.StopProject}" +
+                      $"?project={Uri.EscapeDataString(projectId)}&force={(force ? "true" : "false")}";
             await _http.PostAsync(url, content: null);
         }
-        catch { /* hub down or instance already gone — nothing actionable */ }
+        catch { /* hub down or project already gone — nothing actionable */ }
     }
 
     private void SetBlinking(bool shouldBlink)

@@ -63,15 +63,24 @@ public partial class App : Application
 
         if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
         {
-            // Check for .spla file in command-line args
-            string? splaFile = null;
-            if (desktop.Args != null && desktop.Args.Length > 0)
+            // The tray shell is a different program wearing the same binary: no project, no window,
+            // no service — just the machine's notification-area presence. Taken before any project
+            // resolution, because it must not touch one.
+            if (Program.Launch.Hub)
             {
-                var candidate = desktop.Args[0];
-                if (candidate.EndsWith(".spla", StringComparison.OrdinalIgnoreCase) && File.Exists(candidate))
-                {
-                    splaFile = candidate;
-                }
+                RunAsHubShell(desktop);
+                base.OnFrameworkInitializationCompleted();
+                return;
+            }
+
+            // The manifest now arrives parsed (see Program.LaunchSettings) rather than being fished
+            // out of a raw argument array here.
+            string? splaFile = null;
+            if (Program.Launch.Project is { Length: > 0 } candidate &&
+                candidate.EndsWith(".spla", StringComparison.OrdinalIgnoreCase) &&
+                File.Exists(candidate))
+            {
+                splaFile = candidate;
             }
 
             // Auto-detect in CWD. Two manifests in one folder is now a refusal rather than an
@@ -121,6 +130,41 @@ public partial class App : Application
         }
 
         base.OnFrameworkInitializationCompleted();
+    }
+
+    /// <summary>The tray shell's own lifetime, held for as long as this process is the session's.</summary>
+    private static HubShell? _hubShell;
+
+    /// <summary>
+    /// Runs this process as the session's tray shell: claim the role, find or start the hub, show the
+    /// tray, and hold no window at all.
+    ///
+    /// <para>Losing the claim is the ordinary outcome — every project window tries to start one of
+    /// these, and all but the first find it already there — so it exits without a word rather than
+    /// reporting a failure nobody asked about.</para>
+    /// </summary>
+    private static async void RunAsHubShell(IClassicDesktopStyleApplicationLifetime desktop)
+    {
+        _hubShell = HubShell.Claim();
+        if (_hubShell is null)
+        {
+            desktop.Shutdown();
+            return;
+        }
+
+        // Never quit just because no window is open — there is deliberately never one here.
+        desktop.ShutdownMode = global::Avalonia.Controls.ShutdownMode.OnExplicitShutdown;
+
+        HubUrl = await HubLauncher.ResolveAsync();
+        if (HubUrl is null)
+        {
+            // Without a hub there is nothing for a tray to show. Better to leave than to sit there
+            // drawing an empty menu that will never fill.
+            desktop.Shutdown();
+            return;
+        }
+
+        _trayIcon = TrayIconService.StartIfHubAvailable(HubUrl);
     }
 
     private static readonly HashSet<string> KnownThemes    = ["Dark", "Light", "Cream", "Emerald"];
@@ -184,9 +228,12 @@ public partial class App : Application
         // Resolved before the service starts so the child can be told where to register. Failure is
         // silent on purpose: a machine without a hub still runs agents perfectly well.
         HubUrl = await HubLauncher.ResolveAsync();
-        // The tray icon is a machine-wide view (every instance, not just this window's), so it lives
-        // once per hub, not per window. StartIfHubAvailable is a no-op when HubUrl is null.
-        _trayIcon = TrayIconService.StartIfHubAvailable(HubUrl);
+
+        // A window no longer draws a tray icon. The tray is a machine-wide view, so it belongs to one
+        // process per session — otherwise three open projects meant three identical icons, which is
+        // what this replaces. Every window asks for that shell; the session's mutex means only the
+        // first launch becomes it and the rest exit at once, so asking is free.
+        if (HubUrl is not null) SelfInvocationLauncher.TryLaunch("SPLA.UI.Avalonia.exe", "--hub");
         // The window already answered "is there a project here" during startup. The child service
         // must not ask again — it cannot, being headless — so when the answer was no, it is told to
         // run project-less explicitly. Same behaviour as before; no longer an accident.
