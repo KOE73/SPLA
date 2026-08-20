@@ -164,6 +164,11 @@ public sealed class AgentRuntime : IDisposable
 
     public SpawnedAgentRunner SpawnedRunner { get; }
 
+    /// <summary>Finished spawned runs this process has produced, kept in memory for as long as the ring
+    /// has room. One log per runtime, not per spawn — a run started under one chat and one found again
+    /// later through <c>subagent.get</c> have to be the same store.</summary>
+    public SPLA.Agent.SpawnedRunLog SpawnedRuns { get; } = new();
+
     /// <summary>The <c>agent.capabilities</c> setting resolved against <see cref="AgentFeatureCatalog"/>:
     /// unknown ids dropped, Requires auto-included, null configured = every feature. Drives which
     /// features' tools were registered into <see cref="McpHost"/> and which Core prompt segments
@@ -334,7 +339,7 @@ public sealed class AgentRuntime : IDisposable
         // simply loads whatever it loads. GetContextLengthAsync is the same cached detection a chat
         // uses, so a batch of spawns asks the provider once between them.
         SpawnedRunner = new SpawnedAgentRunner(
-            Llm, McpHost, SkillLibrary, PluginManager, settings, GetContextLengthAsync);
+            Llm, McpHost, SkillLibrary, PluginManager, settings, GetContextLengthAsync, SpawnedRuns);
 
         // ── Modular built-in capabilities: one IAgentFeature per "core.*" id, in
         // AgentFeatureCatalog.Order. Each feature carries its tools AND its prompt fragment

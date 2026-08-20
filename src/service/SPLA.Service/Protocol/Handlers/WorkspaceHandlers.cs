@@ -1,15 +1,18 @@
+using System.Linq;
 using SPLA.Service.Contracts;
 
 namespace SPLA.Service;
 
 /// <summary>Read-side surfaces over a project's workspace and live agent: the debug snapshot, schema
-/// lookup, and the file browser/editor (browse/read/write, each path-guarded in <see cref="WorkspaceOps"/>).</summary>
+/// lookup, the file browser/editor (browse/read/write, each path-guarded in <see cref="WorkspaceOps"/>),
+/// and reading back one finished spawned run.</summary>
 internal sealed class WorkspaceHandlers : IMessageHandler
 {
     public IEnumerable<string> HandledTypes =>
     [
         MessageTypes.DebugRequest, MessageTypes.SchemaGet,
         MessageTypes.FsBrowse, MessageTypes.FsRead, MessageTypes.FsWrite,
+        MessageTypes.SubagentGet,
     ];
 
     public Task HandleAsync(RequestContext ctx) => ctx.Env.Type switch
@@ -19,6 +22,7 @@ internal sealed class WorkspaceHandlers : IMessageHandler
         MessageTypes.FsBrowse     => FsBrowse(ctx),
         MessageTypes.FsRead       => FsRead(ctx),
         MessageTypes.FsWrite      => FsWrite(ctx),
+        MessageTypes.SubagentGet  => SubagentGet(ctx),
         _ => Task.CompletedTask
     };
 
@@ -66,6 +70,35 @@ internal sealed class WorkspaceHandlers : IMessageHandler
             return ctx.Reply(MessageTypes.FsWriteResult, new FsWriteResultPayload { Error = "Ref is required." });
         var boundary = BoundaryOf(entry);
         return ctx.Reply(MessageTypes.FsWriteResult, WorkspaceOps.Write(boundary, p.Ref, p.Text ?? ""));
+    }
+
+    /// <summary>Reads one finished spawned run back out of the runtime's <see cref="SPLA.Runtime.AgentRuntime.SpawnedRuns"/>
+    /// log by id. A miss is a normal answer (<c>found: false</c>), not an error — the ring is bounded
+    /// on purpose and an old or overflowed id is exactly what "bounded" means.</summary>
+    private static Task SubagentGet(RequestContext ctx)
+    {
+        var (entry, _) = ctx.Session.Resolve(ctx.Env);
+        var p = ctx.Payload<SubagentGetPayload>();
+        var run = string.IsNullOrWhiteSpace(p?.RunId) ? null : entry.Runtime.SpawnedRuns.Get(p.RunId);
+
+        var result = run is null
+            ? new SubagentResultPayload { Found = false }
+            : new SubagentResultPayload
+            {
+                Found = true,
+                RunId = run.Id,
+                Label = run.Label,
+                SkillId = run.SkillId,
+                Mode = run.Mode,
+                StartedAt = run.StartedAt.ToString("o"),
+                FinishedAt = run.FinishedAt.ToString("o"),
+                Outcome = run.Outcome,
+                Error = run.Error,
+                Result = run.Result,
+                Messages = run.Messages.Select(ProtocolMapper.ToDto).ToList()
+            };
+
+        return ctx.Reply(MessageTypes.SubagentResult, result);
     }
 
     /// <summary>The project's own boundary. Without a manifest there is no project and no boundary to

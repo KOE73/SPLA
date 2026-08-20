@@ -272,4 +272,141 @@ public class AgentSpawnToolTests
         Assert.Equal(5, runs.Count);
         Assert.Equal(5, runs.Distinct().Count());
     }
+
+    /// <summary>The whole point of the log: a run that finishes cleanly is not thrown away. Its
+    /// messages, result and outcome all have to be readable back after the tool call has returned.</summary>
+    [Fact]
+    public async Task A_completed_run_is_recorded_with_its_messages()
+    {
+        var log = new SpawnedRunLog();
+        var settings = new ResolvedSettings { Mode = AgentMode.Edit };
+        var runner = new SpawnedAgentRunner(
+            new StubLlmService("done"), new StubToolHost(),
+            new SkillLibrary([new SPLA.Tests.Fakes.FakeSkillSource()]),
+            new PluginManager(settings), settings,
+            runLog: log);
+
+        await runner.RunAsync(null, "record me", AgentMode.Edit);
+
+        var run = Assert.Single(log.List());
+        Assert.Equal("completed", run.Outcome);
+        Assert.Equal("record me", run.Label);
+        Assert.Contains("done", run.Result);
+        Assert.Null(run.Error);
+        // System + user + assistant, at least — the transcript the tool result used to throw away.
+        Assert.True(run.Messages.Count >= 3);
+        Assert.Contains(run.Messages, m => m.Role == ChatRole.Assistant && m.Content == "done");
+    }
+
+    /// <summary>A ring, not a growing list: past capacity the oldest run falls off so a long session
+    /// does not accumulate transcripts without bound.</summary>
+    [Fact]
+    public async Task The_log_evicts_past_capacity()
+    {
+        var log = new SpawnedRunLog(capacity: 2);
+        var settings = new ResolvedSettings { Mode = AgentMode.Edit };
+        var runner = new SpawnedAgentRunner(
+            new StubLlmService("done"), new StubToolHost(),
+            new SkillLibrary([new SPLA.Tests.Fakes.FakeSkillSource()]),
+            new PluginManager(settings), settings,
+            runLog: log);
+
+        await runner.RunAsync(null, "first", AgentMode.Edit);
+        await runner.RunAsync(null, "second", AgentMode.Edit);
+        await runner.RunAsync(null, "third", AgentMode.Edit);
+
+        var labels = log.List().Select(r => r.Label).ToList();
+        Assert.Equal(2, labels.Count);
+        Assert.DoesNotContain("first", labels);
+        Assert.Contains("second", labels);
+        Assert.Contains("third", labels);
+    }
+
+    /// <summary>Stub gateway that always throws, so a run can be recorded as failed rather than
+    /// completed or cancelled.</summary>
+    private sealed class ThrowingLlmService : SPLA.Domain.Llm.ILlmGateway
+    {
+        public Task<SPLA.Domain.Llm.LlmTurnResult> InvokeAsync(
+            SPLA.Domain.Llm.LlmTurnContext ctx, CancellationToken ct = default)
+            => throw new InvalidOperationException("provider is down");
+    }
+
+    [Fact]
+    public async Task A_failed_run_records_the_outcome_and_error()
+    {
+        var log = new SpawnedRunLog();
+        var settings = new ResolvedSettings { Mode = AgentMode.Edit };
+        var runner = new SpawnedAgentRunner(
+            new ThrowingLlmService(), new StubToolHost(),
+            new SkillLibrary([new SPLA.Tests.Fakes.FakeSkillSource()]),
+            new PluginManager(settings), settings,
+            runLog: log);
+
+        await Assert.ThrowsAsync<InvalidOperationException>(
+            () => runner.RunAsync(null, "boom", AgentMode.Edit));
+
+        var run = Assert.Single(log.List());
+        Assert.Equal("failed", run.Outcome);
+        Assert.Equal("provider is down", run.Error);
+    }
+
+    /// <summary>Stub gateway that blocks until the turn is cancelled — the Stop button's path.</summary>
+    private sealed class BlockingLlmService : SPLA.Domain.Llm.ILlmGateway
+    {
+        public Task<SPLA.Domain.Llm.LlmTurnResult> InvokeAsync(
+            SPLA.Domain.Llm.LlmTurnContext ctx, CancellationToken ct = default)
+            => Task.Delay(Timeout.Infinite, ct).ContinueWith<SPLA.Domain.Llm.LlmTurnResult>(
+                _ => throw new InvalidOperationException("unreachable"), ct);
+    }
+
+    /// <summary>
+    /// A run somebody stopped is not a failure, and the log has to say which it was. This is the path
+    /// the Stop button takes, so it is the one most likely to be looked at afterwards — "why did this
+    /// end" has a different answer when the answer is "you ended it".
+    /// </summary>
+    [Fact]
+    public async Task A_cancelled_run_is_recorded_as_cancelled_not_failed()
+    {
+        var log = new SpawnedRunLog();
+        var settings = new ResolvedSettings { Mode = AgentMode.Edit };
+        var runner = new SpawnedAgentRunner(
+            new BlockingLlmService(), new StubToolHost(),
+            new SkillLibrary([new SPLA.Tests.Fakes.FakeSkillSource()]),
+            new PluginManager(settings), settings,
+            runLog: log);
+
+        using var stopping = new CancellationTokenSource();
+        var run = runner.RunAsync(null, "stop me", AgentMode.Edit, stopping.Token);
+        stopping.CancelAfter(TimeSpan.FromMilliseconds(50));
+
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(() => run);
+
+        var recorded = Assert.Single(log.List());
+        Assert.Equal("cancelled", recorded.Outcome);
+        Assert.Null(recorded.Error);
+    }
+
+    /// <summary>The run id has to reach a reader while the run is still live, not only after — it
+    /// rides every tick precisely because ticks are coalesced and only the freshest one survives.</summary>
+    [Fact]
+    public async Task The_run_id_appears_in_the_progress_ticks_details()
+    {
+        var tree = new ProgressTree();
+        var settings = new ResolvedSettings { Mode = AgentMode.Edit };
+        var runner = new SpawnedAgentRunner(
+            new StubLlmService("done") { PromptTokens = 10 }, new StubToolHost(),
+            new SkillLibrary([new SPLA.Tests.Fakes.FakeSkillSource()]),
+            new PluginManager(settings), settings);
+
+        using (ProgressScope.BeginTree(tree))
+        using (ProgressScope.BeginNode("agent_spawn"))
+        {
+            await runner.RunAsync(null, "tick check", AgentMode.Edit);
+        }
+
+        var run = Assert.Single(tree.Nodes, n => n.Label == "tick check");
+        var detail = Assert.Single(run.Latest!.Details!, d => d.Label == "run");
+        Assert.StartsWith("r-", detail.Value);
+        Assert.Equal(10, detail.Value.Length);
+    }
 }

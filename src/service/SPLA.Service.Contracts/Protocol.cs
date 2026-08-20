@@ -256,6 +256,12 @@ public static class MessageTypes
     public const string PluginPanelInput = "plugin.panel.input";
     public const string PluginPanelClose = "plugin.panel.close";
 
+    /// <summary>Ask for one finished spawned run by id — the transcript a sub-agent used to produce
+    /// before it was thrown away. Body <see cref="SubagentGetPayload"/>; reply <see cref="SubagentResult"/>.
+    /// A run that fell out of the log's ring answers <c>found: false</c>, not an error — it is a
+    /// perfectly normal outcome for anything old enough or for a batch big enough to overflow it.</summary>
+    public const string SubagentGet = "subagent.get";
+
     // ── Server → Client ──────────────────────────────────────────────────
     public const string Welcome = "welcome";
     public const string ChatListResult = "chat.list.result";
@@ -377,6 +383,9 @@ public static class MessageTypes
     public const string SshSessionsChanged = "ssh.sessions.changed";
     public const string PluginPanelOpened = "plugin.panel.opened";
     public const string PluginPanelEvent = "plugin.panel.event";
+
+    /// <summary>Answer to <see cref="SubagentGet"/>. Body <see cref="SubagentResultPayload"/>.</summary>
+    public const string SubagentResult = "subagent.result";
 
     public const string Error = "error";
 }

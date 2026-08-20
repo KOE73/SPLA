@@ -112,6 +112,7 @@ client/types **and** this table.
 | `plugin.panel.open` | `PluginPanelOpen` | `PluginPanelOpenPayload` | Open an interactive session supplied by an enabled plugin panel provider. |
 | `plugin.panel.input` | `PluginPanelInput` | `PluginPanelInputPayload` | Send opaque typed input to a plugin-owned panel session. |
 | `plugin.panel.close` | `PluginPanelClose` | `PluginPanelClosePayload` | Close a plugin-owned panel session. |
+| `subagent.get` | `SubagentGet` | `SubagentGetPayload` | Ask for one finished spawned run by id — the same id the run's progress ticks carried while it was live. Reply `subagent.result`. An unknown id (fallen out of the ring, or never existed) answers `found: false`, not an error. |
 
 ## Server → Client
 
@@ -133,6 +134,7 @@ client/types **and** this table.
 | `tool.progress` | `ToolProgress` | `ToolProgressPayload` | watchers | Throttled progress ticks for the top-level call only. One bar, no nesting. |
 | `progress.node` | `ProgressNode` | `ProgressNodePayload` | watchers | One node of the turn's progress tree, whole, on each change — the nested counterpart to `tool.progress`, carrying a script's parallel children and a spawned sub-agent's whole run. A flat append-only stream, not a snapshot: keep what you are told and attach each node to `parentId` (null = top level). Hold a node whose parent has not arrived rather than dropping it — parallel work gives no ordering guarantee. Structural frames (a node's first appearance and its finish) are never throttled; the ticks between them are, per node. Both this and `tool.progress` are sent; a client that wants one bar can ignore this. |
 | `tool.result` | `ToolResult` | `ToolResultPayload` | watchers | A tool call finished. |
+| `subagent.result` | `SubagentResult` | `SubagentResultPayload` | unicast | Answer to `subagent.get`: the finished run's transcript (`messages` reuses `ChatMessageDto`) plus its label, mode, outcome and timing. `found: false` when the id is not in the log. |
 | `notice` | `Notice` | `NoticePayload` | watchers | Inline notice. |
 | `token.usage` | `TokenUsage` | `TokenUsagePayload` | watchers | Per-turn token counts; `contextLength` (nullable) carries the model's operative window for the client's context-budget display. |
 | `turn.complete` | `TurnComplete` | `TurnCompletePayload` | watchers | Turn ended; re-enable input. `activeSkillId` reports a skill still running — end of turn is when one the model forgot to close becomes actionable. |

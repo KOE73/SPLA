@@ -58,13 +58,19 @@ public sealed class SpawnedAgentRunner : Domain.Interfaces.IAgentSpawner
     /// a failure as one too.</summary>
     private static readonly TimeSpan WindowLookupBudget = TimeSpan.FromSeconds(2);
 
+    /// <summary>Where a finished run's conversation goes. Optional for the same reason
+    /// <see cref="_contextWindow"/> is — the runner is constructible without a runtime, and a run
+    /// nobody can read back is still a run that happened.</summary>
+    private readonly SpawnedRunLog? _runLog;
+
     public SpawnedAgentRunner(
         Domain.Llm.ILlmGateway llm,
         Domain.Interfaces.IToolHost tools,
         SkillLibrary skills,
         PluginManager plugins,
         ResolvedSettings settings,
-        Func<LLMSettings, CancellationToken, Task<int?>>? contextWindow = null)
+        Func<LLMSettings, CancellationToken, Task<int?>>? contextWindow = null,
+        SpawnedRunLog? runLog = null)
     {
         _llm = llm;
         _tools = tools;
@@ -72,6 +78,7 @@ public sealed class SpawnedAgentRunner : Domain.Interfaces.IAgentSpawner
         _plugins = plugins;
         _settings = settings;
         _contextWindow = contextWindow;
+        _runLog = runLog;
     }
 
     /// <summary>
@@ -90,6 +97,12 @@ public sealed class SpawnedAgentRunner : Domain.Interfaces.IAgentSpawner
         if (_depth.Value >= MaxDepth)
             return $"error: spawn depth limit reached ({MaxDepth}). " +
                    "A spawned agent cannot keep spawning; do the remaining work in this run.";
+
+        // Identifies this run wherever it travels — on every progress tick, and as the key a reader
+        // later hands back to find it in the log. Generated up front, before anything can fail, so a
+        // run recorded in the finally block always has the same id its ticks already carried.
+        var runId = "r-" + System.Guid.NewGuid().ToString("N")[..8];
+        var startedAt = DateTimeOffset.UtcNow;
 
         // Fresh isolated agent state — own skill session, working memory, and checkpoint manager.
         // Opening an AgentSessionScope keeps the sub-agent's tool calls (memory, marks, skills) off
@@ -214,7 +227,12 @@ public sealed class SpawnedAgentRunner : Domain.Interfaces.IAgentSpawner
             // fraction without a denominator — and would put the same number on the line twice, since
             // the message already carries it in a form a person reads.
             Current = promptTokens > 0 && contextWindow > 0 ? promptTokens : null,
-            Total   = promptTokens > 0 && contextWindow > 0 ? contextWindow : null
+            Total   = promptTokens > 0 && contextWindow > 0 ? contextWindow : null,
+            // On every tick, not just the first: ticks are coalesced and the freshest one wins (see
+            // promptTokens above), so anything that must survive to the last tick has to ride along
+            // with whatever is being said now. The run id is how a reader later points at this branch
+            // in the log — it has nowhere else to live once the tree has moved past the first tick.
+            Details = new[] { new ToolProgressDetail("run", runId) }
         };
 
         var callbacks = new AgentCallbacks
@@ -255,19 +273,50 @@ public sealed class SpawnedAgentRunner : Domain.Interfaces.IAgentSpawner
         // would show what was done and lose who did it. With it each run is a branch that says which
         // task it is, and the flattened line reads agent_spawn_batch › audit ports › port_scan.
         using var runNode = ProgressScope.BeginNode(label);
+        // Defaults to "failed" rather than left unassigned: an exception the two catches below do not
+        // name (a StackOverflowException, say) still has to leave the log with an honest outcome, not
+        // whatever the compiler would have to invent to let this compile.
+        var outcome = "failed";
+        string? error = null;
         try
         {
             using (AgentSessionScope.Begin(agentSession))
                 await orchestrator.RunAsync(conversation, llmSettings, mode, callbacks, cancellationToken);
+            outcome = "completed";
         }
-        catch
+        catch (OperationCanceledException)
         {
             runNode.Fail();
+            outcome = "cancelled";
+            throw;
+        }
+        catch (Exception ex)
+        {
+            runNode.Fail();
+            outcome = "failed";
+            error = ex.Message;
             throw;
         }
         finally
         {
             _depth.Value = previousDepth;
+
+            // Skipped without a log rather than falling back to some other store: a runner built for
+            // a worker or a test has nowhere honest to put a transcript, and pretending otherwise would
+            // mean inventing a second retention policy nobody asked for.
+            _runLog?.Record(new SpawnedRun
+            {
+                Id = runId,
+                Label = label,
+                SkillId = skillSession.ActiveSkillId,
+                Mode = mode.ToString(),
+                StartedAt = startedAt,
+                FinishedAt = DateTimeOffset.UtcNow,
+                Outcome = outcome,
+                Error = error,
+                Result = lastAssistantMessage,
+                Messages = conversation.Messages.ToList()
+            });
         }
 
         return lastAssistantMessage;

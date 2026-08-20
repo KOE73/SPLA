@@ -1498,6 +1498,42 @@ public sealed class PluginPanelEventPayload
     public object? Data { get; set; }
 }
 
+// ── Spawned sub-agent runs ────────────────────────────────────────────────────
+/// <summary>Asks for one finished spawned run by id (<see cref="MessageTypes.SubagentGet"/>). The id
+/// is the same one that rode every progress tick of the run — a client that watched the run has it
+/// already, it never needs to be looked up.</summary>
+public sealed class SubagentGetPayload
+{
+    public string RunId { get; set; } = string.Empty;
+}
+
+/// <summary>The transcript of one finished spawned run — answer to <see cref="MessageTypes.SubagentGet"/>.
+/// <see cref="Messages"/> reuses <see cref="ChatMessageDto"/> rather than a run-specific shape: a
+/// spawned run's conversation is a conversation, and a client that can already render one chat can
+/// render this without new code.</summary>
+public sealed class SubagentResultPayload
+{
+    /// <summary>False when the id is unknown — fallen out of the log's ring, or never existed. A
+    /// normal answer, not an error: every other field is left at its default in that case.</summary>
+    public bool Found { get; set; }
+
+    public string RunId { get; set; } = string.Empty;
+    public string Label { get; set; } = string.Empty;
+    public string? SkillId { get; set; }
+    public string Mode { get; set; } = string.Empty;
+
+    /// <summary>ISO-8601 ("O" format).</summary>
+    public string StartedAt { get; set; } = string.Empty;
+    /// <summary>ISO-8601 ("O" format).</summary>
+    public string FinishedAt { get; set; } = string.Empty;
+
+    /// <summary>"completed" | "failed" | "cancelled".</summary>
+    public string Outcome { get; set; } = string.Empty;
+    public string? Error { get; set; }
+    public string Result { get; set; } = string.Empty;
+    public List<ChatMessageDto> Messages { get; set; } = new();
+}
+
 // ── Secret store ─────────────────────────────────────────────────────────────
 /// <summary><see cref="MessageTypes.SecretSet"/> — store fields of an entry (merged over existing
 /// fields; an entry is a named record like user+password or a lone token). Field values travel
