@@ -107,6 +107,7 @@
     <File Path="docs/ideas/IDEA_20260813_core_binary-storage.md" />
     <File Path="docs/ideas/IDEA_20260817_llm_reasoning-lever-leftovers.md" />
     <File Path="docs/ideas/IDEA_20260819_web_sidebar-layouts.md" />
+    <File Path="docs/ideas/IDEA_20260820_agent_subagent-feedback-mcp-hub.md" />
   </Folder>
   <Folder Name="/src/core/">
     <Project Path="src/core/SPLA.Domain/SPLA.Domain.csproj" />
