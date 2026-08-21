@@ -25,10 +25,6 @@ public interface IAgentSession
     /// project setting; this is what is armed here and now.</summary>
     IToolSetSession ToolSets { get; }
 
-    /// <summary>This chat's queue of images a tool wants injected into the model's context on the
-    /// next turn (e.g. a browser screenshot). See <see cref="IPendingImageSink"/>.</summary>
-    IPendingImageSink Images { get; }
-
     /// <summary>The host boundary (files, shell, capability gate) this chat's tools act through.
     /// See <see cref="ISandbox"/>. Local chats share a passthrough sandbox; server chats get a
     /// scoped, sandboxed one — tools never know the difference.</summary>
@@ -45,7 +41,7 @@ public interface IAgentSession
 public sealed class AgentSession : IAgentSession
 {
     public AgentSession(IKeyValueStore sessionKv, MarkManager checkpoint, ISkillSession skills,
-        IBlobStore? blobs = null, IPendingImageSink? images = null, ISandbox? sandbox = null,
+        IBlobStore? blobs = null, ISandbox? sandbox = null,
         IToolSetSession? toolSets = null, Security.ChatDoubt? doubt = null)
     {
         Doubt = doubt ?? new Security.ChatDoubt();
@@ -54,7 +50,6 @@ public sealed class AgentSession : IAgentSession
         Skills = skills;
         ToolSets = toolSets ?? new ToolSetSession();
         Blobs = blobs ?? new BlobStore();
-        Images = images ?? new PendingImageSink();
         Sandbox = sandbox ?? PassthroughSandbox.Default;
     }
 
@@ -63,7 +58,6 @@ public sealed class AgentSession : IAgentSession
     public MarkManager Checkpoint { get; }
     public ISkillSession Skills { get; }
     public IToolSetSession ToolSets { get; }
-    public IPendingImageSink Images { get; }
     public ISandbox Sandbox { get; }
     public Security.ChatDoubt Doubt { get; }
 }

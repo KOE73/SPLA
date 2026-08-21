@@ -1,4 +1,4 @@
-using System.Text;
+﻿using System.Text;
 using SPLA.Domain.Agent;
 using SPLA.MCP.Core.Tools;
 
@@ -174,7 +174,6 @@ public sealed class BlobStoreTests
 
         Assert.Contains("not a viewable image", result);
         Assert.Contains("blob_peek", result);
-        Assert.Empty(AgentSessionScope.Current!.Images.DrainAll());
     }
 
     // ── blob_peek ────────────────────────────────────────────────────────────

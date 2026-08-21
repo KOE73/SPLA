@@ -1,4 +1,4 @@
-using SPLA.Domain.Context;
+﻿using SPLA.Domain.Context;
 using SPLA.Domain.Interfaces;
 using SPLA.Domain.Llm;
 using SPLA.Domain.Models;
@@ -286,16 +286,13 @@ public sealed class ConversationOrchestrator
                 if (callbacks.OnToolResult != null)
                     await callbacks.OnToolResult(tc, toolResult);
 
-                // Images the tool declared in its result, plus anything still arriving through the
-                // pending sink. Deciding how a picture reaches a given model belongs here, not in the
-                // tool: tool-result messages cannot reliably carry images to every vision API, so both
-                // sources drain into a synthetic user-role message and the model sees them next turn.
-                var images = toolResult.Content.OfType<ToolImage>()
+                // Images the tool declared in its result. Deciding how a picture reaches a given
+                // model belongs here, not in the tool: tool-result messages cannot reliably carry
+                // images to every vision API, so they go out as a synthetic user-role message and
+                // the model sees them on its next turn.
+                var pendingImages = toolResult.Content.OfType<ToolImage>()
                     .Select(i => $"data:{i.MimeType};base64,{i.Data}")
                     .ToList();
-                var sunkImages = Domain.Agent.AgentSessionScope.Current?.Images.DrainAll();
-                if (sunkImages is { Count: > 0 }) images.AddRange(sunkImages);
-                var pendingImages = images;
                 if (pendingImages is { Count: > 0 })
                 {
                     conversation.Add(new ChatMessage
