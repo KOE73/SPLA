@@ -31,6 +31,23 @@
           <span class="hint">also save the repetition guard's discarded attempts (full text) to the chat file — off by default, each one can run to several kB</span>
         </span>
       </label>
+      <label class="field"><span>Resource addresses</span>
+        <span style="display: flex; align-items: center; gap: 8px">
+          <input type="checkbox" v-model="unifiedResources" />
+          <span class="hint">announce scheme:// addresses (file://, sftp://, …) to the model, on top of ordinary project files — off by default so it can be measured with and without</span>
+        </span>
+      </label>
+    </div>
+    <div v-if="resourceSchemes.length" class="conn-card">
+      <div class="conn-head"><span class="id">Resource schemes</span></div>
+      <div class="s-sub">Per-scheme switches under the master toggle above. A scheme still registers when switched off here; it is only left out of the model's addresses and refuses any call.</div>
+      <div class="ft-list">
+        <CapabilityRow
+          v-for="s in resourceSchemes" :key="s.scheme"
+          :item="schemeAsCapability(s)"
+          :disabled="!unifiedResources"
+          @toggle="enabled => (s.enabled = enabled)" />
+      </div>
     </div>
     <div class="conn-card">
       <div class="conn-head"><span class="id">Permissions</span></div>
@@ -54,6 +71,8 @@
 <script setup lang="ts">
 import { onUnmounted, reactive, ref } from "vue";
 import { client } from "../../protocol/SplaClient";
+import type { CapabilityDto, ResourceSchemeDto } from "../../protocol/types";
+import CapabilityRow from "./CapabilityRow.vue";
 
 const PERMS: { key: "permRead" | "permWrite" | "permShell" | "permInternet"; label: string }[] = [
   { key: "permRead", label: "Read files" },
@@ -68,6 +87,8 @@ const loopGuard = ref(false);
 const loopGuardRepeats = ref(3);
 const saveToolCalls = ref(false);
 const saveAttempts = ref(false);
+const unifiedResources = ref(false);
+const resourceSchemes = ref<ResourceSchemeDto[]>([]);
 const modes = ref<string[]>([]);
 const perms = reactive<Record<string, string>>({ permRead: "", permWrite: "", permShell: "", permInternet: "" });
 const hint = ref("");
@@ -86,6 +107,8 @@ const off = client.on("agent.result", p => {
   loopGuardRepeats.value = p.loopGuardRepeats ?? 3;
   saveToolCalls.value = p.saveToolCalls === true;
   saveAttempts.value = p.saveAttempts === true;
+  unifiedResources.value = p.unifiedResources === true;
+  resourceSchemes.value = p.resourceSchemes || [];
   perms.permRead = p.permRead || "";
   perms.permWrite = p.permWrite || "";
   perms.permShell = p.permShell || "";
@@ -95,6 +118,18 @@ const off = client.on("agent.result", p => {
   lastDensity = p.density || "";
 });
 onUnmounted(off);
+
+/** Renders a scheme row through the shared CapabilityRow component — same row grammar as the
+ * Built-in/Skills capability lists, so the panel reads as one thing rather than three. */
+function schemeAsCapability(s: ResourceSchemeDto): CapabilityDto {
+  return {
+    id: s.scheme,
+    kind: "builtin",
+    name: `${s.scheme}://`,
+    description: `${s.summary}\nverbs: ${s.verbs.join(", ")}`,
+    enabled: s.enabled
+  };
+}
 
 function save(): Promise<void> {
   return new Promise((resolve, reject) => {
@@ -107,6 +142,8 @@ function save(): Promise<void> {
       loopGuardRepeats: loopGuardRepeats.value,
       saveToolCalls: saveToolCalls.value,
       saveAttempts: saveAttempts.value,
+      unifiedResources: unifiedResources.value,
+      resourceSchemeSwitches: resourceSchemes.value.map(s => ({ scheme: s.scheme, enabled: s.enabled })),
       permRead: perms.permRead, permWrite: perms.permWrite, permShell: perms.permShell, permInternet: perms.permInternet,
       theme: lastTheme, density: lastDensity
     });
@@ -129,3 +166,8 @@ async function registerAssociation() {
 
 defineExpose({ save });
 </script>
+
+<style scoped>
+.s-sub { font-size: var(--fs-xs); color: var(--muted); margin: -2px 0 8px; }
+.ft-list { display: flex; flex-direction: column; gap: var(--gap, 8px); }
+</style>

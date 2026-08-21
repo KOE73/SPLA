@@ -212,9 +212,24 @@ export interface AgentResultPayload {
   permRead?: string; permWrite?: string; permShell?: string; permInternet?: string;
   customPrompt?: string;
   loopGuard?: boolean; loopGuardRepeats?: number; saveToolCalls?: boolean; saveAttempts?: boolean;
+  /** Master switch for the resource-address abstraction (file://, sftp://, …). Default false —
+   *  the foundation ships inert so the model can be measured with and without it. */
+  unifiedResources?: boolean;
+  /** Every registered scheme, on and off alike — the per-scheme rows under the master switch. */
+  resourceSchemes?: ResourceSchemeDto[];
   theme?: string; density?: string;
   themes?: string[]; densities?: string[];
   canPersist?: boolean;
+}
+
+/** One registered resource scheme, as the Agent panel shows it: what it is, what verbs it supports,
+ *  and whether it is currently switched on. */
+export interface ResourceSchemeDto {
+  scheme: string;
+  summary: string;
+  /** Wire verb words ("read", "write", …) — the same vocabulary the system prompt uses. */
+  verbs: string[];
+  enabled: boolean;
 }
 
 export interface PluginDto {

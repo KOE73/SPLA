@@ -5,7 +5,11 @@ using SPLA.Agent.Composition;
 using SPLA.Domain.Agent;
 using SPLA.MCP.Core.Composition;
 using SPLA.Domain.Interfaces;
+using SPLA.Domain.Host;
 using SPLA.Domain.Models;
+using SPLA.Domain.Formats;
+using SPLA.Domain.Resources;
+using SPLA.Domain.Resources.Providers;
 using SPLA.Domain.Settings;
 using SPLA.LLM.LMStudio;
 using SPLA.LLM.LocalAI;
@@ -15,6 +19,7 @@ using SPLA.MCP.BasicTools.FileSystem;
 using SPLA.MCP.BasicTools.SystemTools;
 using SPLA.MCP.Core;
 using SPLA.MCP.Core.Agent;
+using SPLA.MCP.Core.Formats;
 using SPLA.MCP.Core.Permissions;
 using SPLA.MCP.Core.Plugins;
 using SPLA.Library;
@@ -365,7 +370,7 @@ public sealed class AgentRuntime : IDisposable
                 new FsPatchTool(),
                 new FsWriteTool(),
                 new FsDeleteTool(),
-                new SPLA.MCP.Core.Tools.ImageViewTool()),
+                new SPLA.MCP.Core.Tools.ImageViewTool(FormatConverterRegistry.For(settings))),
             Feature("core.shell",
                 new RunCommandTool()),
             Feature("core.web",
@@ -407,6 +412,59 @@ public sealed class AgentRuntime : IDisposable
         foreach (var feature in enabledFeatures)
             foreach (var tool in feature.Tools)
                 McpHost.RegisterTool(tool);
+
+        // The project's address space. Registered here rather than beside the file tools because the
+        // registry is a property of the running project, not of any one tool set — and because
+        // plugins register into the very same instance from their own load contexts, through
+        // ResolvedSettings.SharedServices, so whoever is constructed first must not be the only one
+        // who gets a registry.
+        //
+        // The workspace is passed as a factory, never as an instance: HostServices.Sandbox resolves
+        // per chat session, and capturing one here would pin every later session to the sandbox that
+        // happened to be current while the runtime was being built.
+        ResourceRegistry.For(settings).Register(
+            new FileResourceProvider(() => HostServices.Sandbox.Workspace));
+
+        // The operator's per-scheme switches, applied at startup and not only when the settings panel
+        // saves them — otherwise a scheme switched off in the project file would come back on at
+        // every launch, and a switch that forgets is worse than no switch. Independent of
+        // registration order: this marks schemes, it does not create them, so a plugin that
+        // registered earlier or registers later is covered either way.
+        ResourceRegistry.For(settings).ApplySwitches(settings.ResourceSchemes);
+
+        // The project's format projections, registered beside the address space and for the same
+        // reason: the registry belongs to the running project rather than to any one tool, and a
+        // plugin registering a docx → markdown converter from its own load context must land in this
+        // very instance. Order is irrelevant — the tools above already hold the same object, because
+        // FormatConverterRegistry.For creates it once per ResolvedSettings and hands it out.
+        BuiltInConverters.RegisterInto(FormatConverterRegistry.For(settings));
+
+        // The verbs, exposed to the model — one tool per verb, because the permission verdict is a
+        // pure function of a tool's declared Scope/Effect/Risk and those differ per verb (see
+        // ResourceToolBase).
+        //
+        // Gated on a settings bool rather than on an AgentFeatureCatalog id, for the same reason
+        // ResourceSchemesContributor's gate lives inside the contributor: whether resources speak is
+        // agent.unified_resources, not a catalog capability, and inventing a catalog id for it would
+        // give the operator two switches for one thing that could disagree. Off means NOT REGISTERED
+        // — not registered-and-refusing — so the arm of the experiment with the switch off is the
+        // agent exactly as it was before any of this existed.
+        if (settings.UnifiedResources)
+        {
+            var resources = ResourceRegistry.For(settings);
+            var converters = FormatConverterRegistry.For(settings);
+
+            foreach (var tool in new SPLA.MCP.Core.Interfaces.IMcpTool[]
+                     {
+                         new SPLA.MCP.Core.Tools.Resources.ResourceReadTool(resources, converters),
+                         new SPLA.MCP.Core.Tools.Resources.ResourceExistsTool(resources),
+                         new SPLA.MCP.Core.Tools.Resources.ResourceListTool(resources),
+                         new SPLA.MCP.Core.Tools.Resources.ResourceWriteTool(resources),
+                         new SPLA.MCP.Core.Tools.Resources.ResourceDeleteTool(resources),
+                         new SPLA.MCP.Core.Tools.Resources.ResourceMakeDirTool(resources),
+                     })
+                McpHost.RegisterTool(tool);
+        }
 
         ChatManager = new ChatManager(settings);
 

@@ -122,7 +122,7 @@ public sealed class BrowserPluginTests
     [Fact]
     public async Task Image_view_without_active_session_reports_clear_error()
     {
-        var tool = new ImageViewTool();
+        var tool = new ImageViewTool(TestConverters.Registry());
         var result = (await tool.ExecuteAsync("""{"handle":"blob:abc"}""")).TextContent;
         Assert.Contains("no active chat session", result, StringComparison.OrdinalIgnoreCase);
     }
@@ -131,7 +131,7 @@ public sealed class BrowserPluginTests
     public async Task Image_view_missing_blob_reports_clear_error()
     {
         using var _ = Scope();
-        var tool = new ImageViewTool();
+        var tool = new ImageViewTool(TestConverters.Registry());
         var result = (await tool.ExecuteAsync("""{"handle":"blob:does-not-exist"}""")).TextContent;
         Assert.Contains("no blob found", result, StringComparison.OrdinalIgnoreCase);
     }
@@ -149,7 +149,7 @@ public sealed class BrowserPluginTests
         var bytes = new byte[] { 1, 2, 3, 4 };
         var handle = session.Blobs.Put(BlobPayload.OfBytes(bytes, "image/png"));
 
-        var tool = new ImageViewTool();
+        var tool = new ImageViewTool(TestConverters.Registry());
         var result = await tool.ExecuteAsync($$"""{"handle":"{{handle}}"}""");
 
         Assert.Equal(ToolOutcome.Ok, result.Outcome);

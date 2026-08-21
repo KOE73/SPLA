@@ -31,6 +31,17 @@ public class SplaAgentSection
     [YamlMember(Alias = "loop_guard_repeats")]
     public int? LoopGuardRepeats { get; set; }
 
+    /// <summary>
+    /// Whether the resource-address abstraction (<c>file://</c>, <c>sftp://</c>, …) is announced to
+    /// the model at all. **Off by default, deliberately** — the whole point of a switch here is to be
+    /// able to run the project with and without the feature and compare, and a default of true would
+    /// make that comparison impossible to reproduce months later when "off" quietly became the
+    /// unusual case. See <c>ResourceSchemesContributor</c> and <c>SplaSections.SplaProject.Resources</c>
+    /// for the per-scheme switches this master flag gates.
+    /// </summary>
+    [YamlMember(Alias = "unified_resources")]
+    public bool? UnifiedResources { get; set; }
+
     /// <summary>Minutes an unanswered permission/clarify question is kept before it is denied.
     /// Generous on purpose — a person who walked away should be able to come back and answer —
     /// and 0 means no limit at all. See <c>PendingAskStore</c>.</summary>

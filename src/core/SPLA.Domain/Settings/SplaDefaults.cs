@@ -37,4 +37,9 @@ public class SplaDefaults
     /// overrides an entry it mentions and inherits the rest.</summary>
     [YamlMember(Alias = "toolsets")]
     public Dictionary<string, string>? ToolSets { get; set; }
+
+    /// <summary>Per-scheme resource switches that apply to every project. A project's own
+    /// <c>resources:</c> block overrides an entry it mentions and inherits the rest.</summary>
+    [YamlMember(Alias = "resources")]
+    public Dictionary<string, bool>? Resources { get; set; }
 }

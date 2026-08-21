@@ -1,4 +1,5 @@
 ﻿using SPLA.Domain.Agent;
+using SPLA.Domain.Resources;
 using System.Text;
 
 namespace SPLA.MCP.Core.Tools;
@@ -64,7 +65,7 @@ public static class DataChannel
         // exactly how a binary config file once reached the model as a picture.
         payload = payload with
         {
-            ContentType = BlobContentType.Resolve(
+            ContentType = ContentTypes.Resolve(
                 payload.ContentType, payload.Bytes, name, payload.Kind == BlobKind.Text)
         };
 
@@ -139,7 +140,7 @@ public static class DataChannel
         var type = payload.ContentType;
         if (payload.Kind == BlobKind.Text)
             return string.IsNullOrEmpty(type) || type == "text/plain" ? "text" : $"text, {type}";
-        return $"binary {(string.IsNullOrEmpty(type) ? BlobContentType.Unknown : type)}";
+        return $"binary {(string.IsNullOrEmpty(type) ? ContentTypes.Unknown : type)}";
     }
 
     private static string Inline(BlobPayload payload, string summary)

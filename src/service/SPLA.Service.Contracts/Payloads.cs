@@ -446,6 +446,18 @@ public sealed class AgentSettingsPayload
     /// <summary>Persist abandoned-generation records (the repetition guard's discarded attempts) with
     /// the chat history. Stored in .spla agent: save_attempts. Default off.</summary>
     public bool? SaveAttempts { get; set; }
+    /// <summary>Master switch for the resource-address abstraction (<c>file://</c>, <c>sftp://</c>,
+    /// …). Stored in .spla agent: unified_resources. <b>Default false</b> — see
+    /// <c>ResolvedSettings.UnifiedResources</c> for why the default itself is load-bearing.</summary>
+    public bool? UnifiedResources { get; set; }
+    /// <summary>Every registered scheme, on and off alike, so the panel can render the full list with
+    /// its switches — not just the ones currently enabled. Ignored on save; per-scheme switches travel
+    /// back through <see cref="ResourceSchemeSaveDto.Enabled"/> keyed by <see cref="ResourceSchemeDto.Scheme"/>.</summary>
+    public List<ResourceSchemeDto> ResourceSchemes { get; set; } = new();
+    /// <summary>Per-scheme enable/disable, as sent by the panel on save. Only read on
+    /// <see cref="MessageTypes.AgentSave"/>; a scheme this list omits keeps whatever the project file
+    /// already said for it (absent = enabled).</summary>
+    public List<ResourceSchemeSaveDto>? ResourceSchemeSwitches { get; set; }
     // UI appearance — stored in .spla ui: section
     public string Theme { get; set; } = "dark";
     public string Density { get; set; } = "norm";
@@ -453,6 +465,28 @@ public sealed class AgentSettingsPayload
     public List<string> Densities { get; set; } = new();
     /// <summary>False when there is no .spla project to persist into (server-set; ignored on save).</summary>
     public bool CanPersist { get; set; }
+}
+
+/// <summary>One registered resource scheme as the settings panel sees it: what it is, what it
+/// supports, and whether it is currently switched on. Mirrors <c>SPLA.Domain.Resources.SchemeCard</c>
+/// but as a plain wire DTO — this assembly references nothing from the engine.</summary>
+public sealed class ResourceSchemeDto
+{
+    public string Scheme { get; set; } = string.Empty;
+    public string Summary { get; set; } = string.Empty;
+
+    /// <summary>Wire verb words ("read", "write", …), lower-case — the same vocabulary the system
+    /// prompt uses, so a person reading the panel and the prompt sees one language.</summary>
+    public List<string> Verbs { get; set; } = new();
+
+    public bool Enabled { get; set; } = true;
+}
+
+/// <summary>One row of the per-scheme switch the panel sends back on save.</summary>
+public sealed class ResourceSchemeSaveDto
+{
+    public string Scheme { get; set; } = string.Empty;
+    public bool Enabled { get; set; } = true;
 }
 
 /// <summary>Result of registering the .spla file association — answer to <see cref="MessageTypes.SystemRegisterAssociation"/>.</summary>

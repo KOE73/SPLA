@@ -1,5 +1,6 @@
 using System.Text;
 using SPLA.Domain.Agent;
+using SPLA.Domain.Resources;
 using SPLA.MCP.Core.Tools;
 
 namespace SPLA.Tests;
@@ -156,11 +157,11 @@ public sealed class BlobStoreTests
     public void Content_type_prefers_declared_then_signature_then_name()
     {
         var jpeg = new byte[] { 0xFF, 0xD8, 0xFF, 0xE0 };
-        Assert.Equal("image/webp", BlobContentType.Resolve("image/webp", jpeg, "a.png", isText: false));
-        Assert.Equal("image/jpeg", BlobContentType.Resolve(null, jpeg, "a.png", isText: false));
-        Assert.Equal("image/png", BlobContentType.Resolve(null, new byte[] { 1, 2, 3, 4 }, "a.png", isText: false));
-        Assert.Equal("application/octet-stream", BlobContentType.Resolve(null, new byte[] { 1, 2, 3, 4 }, "a.mrs", isText: false));
-        Assert.Equal("text/plain", BlobContentType.Resolve(null, null, null, isText: true));
+        Assert.Equal("image/webp", ContentTypes.Resolve("image/webp", jpeg, "a.png", isText: false));
+        Assert.Equal("image/jpeg", ContentTypes.Resolve(null, jpeg, "a.png", isText: false));
+        Assert.Equal("image/png", ContentTypes.Resolve(null, new byte[] { 1, 2, 3, 4 }, "a.png", isText: false));
+        Assert.Equal("application/octet-stream", ContentTypes.Resolve(null, new byte[] { 1, 2, 3, 4 }, "a.mrs", isText: false));
+        Assert.Equal("text/plain", ContentTypes.Resolve(null, null, null, isText: true));
     }
 
     [Fact]
@@ -170,9 +171,12 @@ public sealed class BlobStoreTests
         using var _ = Scope(store);
         var handle = store.Put(BlobPayload.OfBytes(new byte[] { 0x4D, 0x52, 0x53, 0x00 }));
 
-        var result = (await new ImageViewTool().ExecuteAsync($$"""{"handle":"{{handle}}"}""")).TextContent;
+        var result = (await new ImageViewTool(TestConverters.Registry()).ExecuteAsync($$"""{"handle":"{{handle}}"}""")).TextContent;
 
-        Assert.Contains("not a viewable image", result);
+        // The refusal now comes from the conversion registry, so it names what this source type CAN
+        // become instead of dead-ending at "not a viewable image".
+        Assert.Contains("cannot be shown as a picture", result);
+        Assert.Contains("No conversion is registered from 'application/octet-stream' to 'image/png'", result);
         Assert.Contains("blob_peek", result);
         Assert.Empty(AgentSessionScope.Current!.Images.DrainAll());
     }

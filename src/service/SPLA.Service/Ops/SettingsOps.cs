@@ -1,6 +1,7 @@
 using SPLA.MCP.Core.ToolSets;
 using SPLA.Runtime;
 using SPLA.Domain.Models;
+using SPLA.Domain.Resources;
 using SPLA.Domain.Secrets;
 using SPLA.Domain.Settings;
 using SPLA.Service.Contracts;
@@ -136,10 +137,32 @@ public static class SettingsOps
         LoopGuardRepeats = runtime.Settings.LoopGuardRepeats,
         SaveToolCalls = runtime.Settings.SaveToolCalls,
         SaveAttempts = runtime.Settings.SaveAttempts,
+        UnifiedResources = runtime.Settings.UnifiedResources,
+        ResourceSchemes = ResourceRegistry.For(runtime.Settings).Cards().Select(c => new ResourceSchemeDto
+        {
+            Scheme = c.Scheme,
+            Summary = c.Summary,
+            Verbs = c.Verbs.Select(VerbWord).ToList(),
+            Enabled = c.Enabled
+        }).ToList(),
         Theme = runtime.Settings.Theme,
         Density = runtime.Settings.Density,
         Themes = KnownThemes,
         Densities = KnownDensities
+    };
+
+    /// <summary>Lower-case wire word for a verb — kept identical to
+    /// <c>SPLA.Agent.Composition.ResourceSchemesContributor.VerbWord</c> so the settings panel and the
+    /// system prompt never disagree on what to call the same thing.</summary>
+    private static string VerbWord(ResourceVerb verb) => verb switch
+    {
+        ResourceVerb.Read => "read",
+        ResourceVerb.Exists => "exists",
+        ResourceVerb.List => "list",
+        ResourceVerb.Write => "write",
+        ResourceVerb.Delete => "delete",
+        ResourceVerb.MakeDir => "mkdir",
+        _ => verb.ToString().ToLowerInvariant()
     };
 
     /// <summary>Persists agent mode + permission overrides to the .spla project (when present) and
@@ -162,6 +185,23 @@ public static class SettingsOps
         runtime.Settings.SaveToolCalls = saveToolCalls;
         var saveAttempts = dto.SaveAttempts ?? false;
         runtime.Settings.SaveAttempts = saveAttempts;
+        var unifiedResources = dto.UnifiedResources ?? false;
+        runtime.Settings.UnifiedResources = unifiedResources;
+
+        // Per-scheme switches. Only what the panel actually sent is touched — a scheme this project
+        // never mentioned stays absent (enabled), rather than every known scheme getting written the
+        // instant anyone saves the Agent tab.
+        var registry = ResourceRegistry.For(runtime.Settings);
+        if (dto.ResourceSchemeSwitches != null)
+            foreach (var s in dto.ResourceSchemeSwitches)
+            {
+                if (string.IsNullOrWhiteSpace(s.Scheme)) continue;
+                if (s.Enabled) runtime.Settings.ResourceSchemes.Remove(s.Scheme);
+                else runtime.Settings.ResourceSchemes[s.Scheme] = false;
+            }
+        // Live: takes effect immediately, the same way a plugin's enable/disable does, without
+        // waiting for the next turn to re-read settings.
+        registry.ApplySwitches(runtime.Settings.ResourceSchemes);
 
         var path = runtime.Settings.ProjectFilePath;
         if (path != null)
@@ -174,11 +214,15 @@ public static class SettingsOps
             project.Agent.LoopGuardRepeats = loopRepeats != 3 ? loopRepeats : null;
             project.Agent.SaveToolCalls = saveToolCalls ? true : null;
             project.Agent.SaveAttempts = saveAttempts ? true : null;
+            project.Agent.UnifiedResources = unifiedResources ? true : null;
             var anyPerm = read != null || write != null || shell != null || net != null;
             project.Permissions = anyPerm
                 ? new SplaPermissionsSection { Read = read, Write = write, Shell = shell, Internet = net }
                 : null;
-            ConfigLoader.SaveProjectSections(project, path, "agent", "permissions");
+            project.Resources = runtime.Settings.ResourceSchemes.Count > 0
+                ? new Dictionary<string, bool>(runtime.Settings.ResourceSchemes, StringComparer.OrdinalIgnoreCase)
+                : null;
+            ConfigLoader.SaveProjectSections(project, path, "agent", "permissions", "resources");
         }
 
         return GetAgent(runtime);

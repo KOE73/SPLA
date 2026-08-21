@@ -2,6 +2,7 @@ using SPLA.Domain.Host;
 using System.Text;
 using System.Text.Json;
 using SPLA.Domain.Agent;
+using SPLA.Domain.Resources;
 using SPLA.Domain.Models;
 using SPLA.MCP.Core.Interfaces;
 using SPLA.MCP.Core.Json;
@@ -178,7 +179,7 @@ public sealed class TarReadTool : IMcpTool
             var isBinary = text.Contains('\0');
             // The entry name is the best type evidence this tool has; recording it here is what keeps a
             // consumer downstream from having to guess what the bytes are.
-            var contentType = BlobContentType.Resolve(null, bytes, entry, isText: !isBinary);
+            var contentType = ContentTypes.Resolve(null, bytes, entry, isText: !isBinary);
             var payload = isBinary
                 ? BlobPayload.OfBytes(bytes, contentType)
                 : BlobPayload.OfText(text, contentType);

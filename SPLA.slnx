@@ -88,6 +88,7 @@
     <File Path="docs/plans/PLAN_20260819-2_core_project-entry-and-instances.md" />
     <File Path="docs/plans/PLAN_20260820_apps_project-hub.md" />
     <File Path="docs/plans/PLAN_20260820-2_agent_subagent-feedback.md" />
+    <File Path="docs/plans/PLAN_20260820_core_unified-uri-resources.md" />
   </Folder>
   <Folder Name="/docs/ideas/">
     <File Path="docs/ideas/IDEA_20260611_core_todo-general.md" />
@@ -110,6 +111,7 @@
     <File Path="docs/ideas/IDEA_20260819_web_sidebar-layouts.md" />
     <File Path="docs/ideas/IDEA_20260820_agent_subagent-feedback-mcp-hub.md" />
     <File Path="docs/ideas/IDEA_20260820-2_service_mcp-resources.md" />
+    <File Path="docs/ideas/IDEA_20260820-3_core_unified-uri-tools.md" />
   </Folder>
   <Folder Name="/src/core/">
     <Project Path="src/core/SPLA.Domain/SPLA.Domain.csproj" />

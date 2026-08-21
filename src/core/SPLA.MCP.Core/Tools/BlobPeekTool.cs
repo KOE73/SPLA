@@ -1,4 +1,5 @@
 using SPLA.Domain.Agent;
+using SPLA.Domain.Resources;
 using SPLA.Domain.Models;
 using SPLA.MCP.Core.Interfaces;
 using SPLA.MCP.Core.Json;
@@ -75,7 +76,7 @@ public sealed class BlobPeekTool : IMcpTool
         var payload = session.Blobs.Get(handle);
         if (payload is null) return Task.FromResult(ToolResult.Fail($"error: no blob found for handle '{handle}'", "unknown handle"));
 
-        var type = string.IsNullOrWhiteSpace(payload.ContentType) ? BlobContentType.Unknown : payload.ContentType;
+        var type = string.IsNullOrWhiteSpace(payload.ContentType) ? ContentTypes.Unknown : payload.ContentType;
         var head = $"{handle} — {(payload.Kind == BlobKind.Text ? "text" : "binary")} {type}, {payload.Size} bytes total";
 
         if (payload.Kind == BlobKind.Text)
