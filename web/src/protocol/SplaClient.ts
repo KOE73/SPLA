@@ -21,14 +21,52 @@ export class SplaClient {
   private pending = new Map<string, Pending>();
   private wireListeners = new Set<WireListener>();
   private reconnectTimer = 0;
+  private attempts = 0;
+
+  /**
+   * How long to wait before each retry. Rises so a service that is genuinely gone is not hammered
+   * once a second forever — the old fixed 1.5s did exactly that, and because it never gave up it also
+   * never let anyone say the agent had stopped. Capped at ten seconds, because an agent CAN come back
+   * and a client that had backed off to minutes would look dead long after it wasn't.
+   */
+  private static readonly BACKOFF_MS = [400, 800, 1500, 3000, 6000, 10000];
+
+  /**
+   * Retries before the connection is called lost rather than slow — about three seconds.
+   *
+   * A few rather than one, so a momentary blip does not raise an alarm. But only a few: the first
+   * version waited nearly ten seconds on the theory that a restarting service would reconnect before
+   * then, and that theory was wrong — a real restart takes longer than any threshold worth using, so
+   * the wait bought nothing and simply left the person staring at a dead window. What actually makes
+   * an early call safe is that being wrong is cheap: the banner blocks nothing and clears itself the
+   * moment the socket comes back.
+   */
+  private static readonly LOST_AFTER = 3;
 
   connect(): void {
     const proto = location.protocol === "https:" ? "wss://" : "ws://";
     this.ws = new WebSocket(proto + location.host + "/ws");
-    this.ws.onopen = () => this.send("hello", { clientName: "web", protocolVersion: "1" });
+    this.ws.onopen = () => {
+      this.attempts = 0;
+      this.send("hello", { clientName: "web", protocolVersion: "1" });
+    };
     this.ws.onclose = () => {
-      this.emit("conn", { on: false, text: "disconnected — retrying" }, { type: "conn", payload: {} });
-      this.reconnectTimer = window.setTimeout(() => this.connect(), 1500);
+      const attempt = ++this.attempts;
+      const lost = attempt > SplaClient.LOST_AFTER;
+      const delay = SplaClient.BACKOFF_MS[Math.min(attempt - 1, SplaClient.BACKOFF_MS.length - 1)];
+
+      this.emit(
+        "conn",
+        {
+          on: false,
+          lost,
+          attempts: attempt,
+          text: lost ? "agent unreachable" : "disconnected — retrying",
+        },
+        { type: "conn", payload: {} });
+
+      clearTimeout(this.reconnectTimer);
+      this.reconnectTimer = window.setTimeout(() => this.connect(), delay);
     };
     this.ws.onmessage = ev => {
       let env: Envelope;
@@ -43,7 +81,7 @@ export class SplaClient {
    * they stay apart.
    */
   receive(env: Envelope): void {
-    this.emitWire({ dir: "in", type: env.type, payload: env.payload, chatId: env.chatId, projectId: env.projectId, requestId: env.requestId, ts: Date.now() });
+    this.emitWire({ dir: "in", type: env.type, payload: env.payload, chatId: env.chatId, requestId: env.requestId, ts: Date.now() });
 
     if (env.requestId && this.pending.has(env.requestId)) {
       const p = this.pending.get(env.requestId)!;
@@ -51,7 +89,8 @@ export class SplaClient {
       this.pending.delete(env.requestId);
       p.resolve(env.payload);
     }
-    if (env.type === "welcome") this.emit("conn", { on: true, text: "connected" }, env);
+    if (env.type === "welcome")
+      this.emit("conn", { on: true, lost: false, attempts: 0, text: "connected" }, env);
     this.emit(env.type as keyof ServerEvents, env.payload as never, env);
   }
 
@@ -60,17 +99,28 @@ export class SplaClient {
     this.ws?.close();
   }
 
+  /**
+   * Retries at once, from the top of the backoff. What the "try again" button calls: a person who has
+   * just restarted the agent should not have to wait out a fifteen-second timer that exists only to
+   * be polite to a service nobody was talking to.
+   */
+  reconnectNow(): void {
+    clearTimeout(this.reconnectTimer);
+    this.attempts = 0;
+    this.connect();
+  }
+
   /** Fire-and-forget send. Returns false (does not throw) if the socket isn't open. */
-  send(type: string, payload?: unknown, extra?: { chatId?: string; projectId?: string; requestId?: string }): boolean {
+  send(type: string, payload?: unknown, extra?: { chatId?: string; requestId?: string }): boolean {
     const ok = !!this.ws && this.ws.readyState === WebSocket.OPEN;
     if (ok) this.ws!.send(JSON.stringify({ type, payload, ...extra }));
     // Only claim "out" in the wire log if it was actually sent — never lie about delivery.
-    if (ok) this.emitWire({ dir: "out", type, payload, chatId: extra?.chatId, projectId: extra?.projectId, requestId: extra?.requestId, ts: Date.now() });
+    if (ok) this.emitWire({ dir: "out", type, payload, chatId: extra?.chatId, requestId: extra?.requestId, ts: Date.now() });
     return ok;
   }
 
   /** Command with a correlated response. Server must echo the same requestId. */
-  invoke<R = unknown>(type: string, payload?: unknown, extra?: { chatId?: string; projectId?: string }, timeoutMs = 15000): Promise<R> {
+  invoke<R = unknown>(type: string, payload?: unknown, extra?: { chatId?: string }, timeoutMs = 15000): Promise<R> {
     const requestId = uuid();
     return new Promise<R>((resolve, reject) => {
       const timer = window.setTimeout(() => {

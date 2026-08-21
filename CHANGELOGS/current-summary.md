@@ -1,4 +1,4 @@
-<!-- covers: 2026-08-18 -->
+<!-- covers: 2026-08-21 -->
 
 # Summary — unreleased
 
@@ -150,8 +150,9 @@ automation over the LAN.
 
 ## Breaking changes
 
-- **A tool result is a `ToolResult`, not a string.** Plugins returning strings must be updated.
-- **A project's root is its manifest's own directory,** and nothing can move it. Use mounts to reach
-  outside.
-- **`.spla/skills` is gone.** Skills come from declared sources.
-- **`.spla` is not readable through the sandbox** the way it used to be.
+- **`AgentCallbacks.OnTokenUsage` is gone.** `OnLlmTurn` carries the whole turn outcome; recording
+  usage is the pipeline's job now.
+- **`projectId` is gone from the wire envelope.** A project belongs to the connection; a second
+  project is a second connection.
+- **A folder without a manifest is no longer entered silently.** A non-interactive run there now
+  fails and names `--init` instead of guessing a profile.

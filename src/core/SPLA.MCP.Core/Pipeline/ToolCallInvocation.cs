@@ -16,11 +16,12 @@ namespace SPLA.MCP.Core.Pipeline;
 /// </summary>
 public sealed class ToolCallInvocation
 {
-    public ToolCallInvocation(AgentMode mode, string name, string argumentsJson)
+    public ToolCallInvocation(AgentMode mode, string name, string argumentsJson, string? source = null)
     {
         Mode = mode;
         Name = name;
         ArgumentsJson = argumentsJson;
+        Source = source;
     }
 
     /// <summary>The mode the call runs under — the ceiling on what it may do.</summary>
@@ -29,6 +30,10 @@ public sealed class ToolCallInvocation
     public string Name { get; }
 
     public string ArgumentsJson { get; }
+
+    /// <summary>Where this call came from — see <see cref="SPLA.Domain.Tools.ToolCallContext.Source"/>.
+    /// Null for a call from the agent's own loop.</summary>
+    public string? Source { get; }
 
     /// <summary>Set by the resolution link; non-null everywhere downstream of it.</summary>
     public IMcpTool? Tool { get; set; }

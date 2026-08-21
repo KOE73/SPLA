@@ -59,6 +59,21 @@ If a feature (skill, plugin, tool flag) is only accessible from the UI because i
 - Implement `GetEnabledSkillContents()` that is called from outside to build the prompt
 - Parse frontmatter
 
+### 6. Which instances are running is domain data too
+
+A live instance publishes itself in `<project>/.spla/instance.json`, held open by the process for as
+long as it lives (`SPLA.Domain.Project.InstanceLock`). That file answers two questions at once — "may
+I open this project?" and "where is the one that already has it?" — and both are asked by the CLI,
+the service and the desktop shell alike.
+
+So the same rule as everything above applies, and it decides a question that comes up naturally: the
+tray icon does not own the list of running instances. It displays one. A headless server keeps the
+invariant with no UI in the process at all, and `spla chat run` must respect a lock without a window
+ever existing, so ownership in a tray would make both of those impossible.
+
+Liveness is not a stored flag and must never become one: it is whether the OS still holds the file
+handle. Anything that writes "alive: true" into a file has invented a fact that outlives its subject.
+
 ## Checklist before adding any new capability type
 
 1. Is there a manager/service in `SPLA.MCP.Core` or `SPLA.Domain` that owns it? If not, create one first.

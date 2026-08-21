@@ -1,3 +1,4 @@
+using System.Reflection;
 using Microsoft.Extensions.Logging;
 using SPLA.Domain.Settings;
 using SPLA.Mcp;
@@ -27,11 +28,25 @@ public static class McpCommand
     public static bool IsMcpCommand(string[] args) =>
         args.Length > 0 && args[0].Equals("mcp", StringComparison.OrdinalIgnoreCase);
 
+    /// <summary>Prints the embedded MCP usage doc (Assets/MCP_USAGE.md) to stdout. Reads it from the
+    /// assembly, not from disk, so it works run from any directory and survives the single-file publish.</summary>
+    public static void PrintHelpMcp()
+    {
+        using var stream = Assembly.GetExecutingAssembly().GetManifestResourceStream("SPLA.CLI.MCP_USAGE.md");
+        if (stream is null)
+        {
+            Console.Error.WriteLine("(MCP_USAGE.md was not embedded in this build)");
+            return;
+        }
+        using var reader = new StreamReader(stream);
+        Console.WriteLine(reader.ReadToEnd());
+    }
+
     public static async Task RunAsync(ResolvedSettings settings, ILoggerFactory loggerFactory)
     {
         // Nothing may reach stdout but the protocol. The runtime's own chatter goes to the file log
         // and to stderr; this is also why Program.cs must route here before printing its banner.
-        using var runtime = new AgentRuntime(settings, loggerFactory);
+        using var runtime = new AgentRuntime(settings, loggerFactory, instanceMode: "mcp");
 
         var exposure = ToolExposure.Default;
         var offered = runtime.McpHost.GetToolDefinitionsFor(exposure).ToList();

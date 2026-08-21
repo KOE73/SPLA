@@ -85,9 +85,91 @@ public sealed class AgentRuntimeRegistry : IDisposable
         return _entries.GetOrAdd(id, _ => Build(id, ConfigLoader.LoadAndResolve(id)));
     }
 
+    /// <summary>
+    /// Drops every project runtime that is idle and that nobody is looking at, and returns how many
+    /// went. Never touches one that is working, waiting on a person, or stalled.
+    ///
+    /// <para><b>Why this exists only on a server.</b> Locally one process holds one project, and the
+    /// instance lease already decides when the whole process may go — there is nothing to evict
+    /// inside it. A server holds N users times M projects in a single process and never exits, so a
+    /// runtime built for somebody who logged off in the morning would still be holding its plugins,
+    /// its skill fond and its connection cache at midnight. There the same rule stops being a
+    /// convenience and becomes the condition for the process surviving the day.</para>
+    ///
+    /// <para><paramref name="isInUse"/> is asked, not assumed: only the host knows whether a client
+    /// is still bound to a project, and a registry that guessed would eventually guess wrong on the
+    /// one that mattered.</para>
+    /// </summary>
+    /// <param name="isInUse">True when some connection is still bound to that project id.</param>
+    /// <param name="stallAfter">Silence after which a registered turn counts as stopped halfway —
+    /// and therefore as something that must survive, not something idle.</param>
+    public int EvictIdle(Func<string, bool> isInUse, TimeSpan stallAfter)
+    {
+        var evicted = 0;
+        foreach (var (id, entry) in _entries.ToArray())
+        {
+            if (isInUse(id)) continue;
+            if (!SPLA.Domain.Project.InstanceStates.MayEvict(entry.Runtime.State(stallAfter))) continue;
+
+            // Removed before disposing: a client arriving in the gap gets a freshly built runtime
+            // rather than a half-disposed one. Rebuilding is exactly what makes eviction safe —
+            // nothing unique lives in a runtime, only warmth.
+            if (!_entries.TryRemove(id, out var removed)) continue;
+            removed.Runtime.Dispose();
+            evicted++;
+        }
+        return evicted;
+    }
+
+    /// <summary>What the process holding these runtimes is — recorded in each project's instance lock
+    /// so a refused second writer is told what has it. Set once by the host at startup.</summary>
+    public string InstanceMode { get; set; } = "app";
+
+    /// <summary>
+    /// Raised when something decides this whole process should end — today, only a forced or accepted
+    /// <c>instance.stop</c>. Lives here rather than on <c>SplaServiceHost</c> because this registry is
+    /// the one process-wide object every message handler can already reach (through
+    /// <c>IClientSession.Registry</c>); the handler that decides to stop must not be given a reference
+    /// to the web host just to raise one event, and the host that ties this to <c>Environment.Exit</c>
+    /// (or, in <c>ServeCommand</c>, the same stop signal <c>LeaseExpired</c> already uses) is free to
+    /// subscribe without the registry knowing anything about how it is hosted.
+    /// </summary>
+    public event Action? ShutdownRequested;
+
+    /// <summary>Raises <see cref="ShutdownRequested"/>. A method rather than a public event-raise
+    /// pattern quirk — handlers reach this through the registry, never by invoking the event field
+    /// directly (C# forbids that outside the declaring type anyway).</summary>
+    public void RequestShutdown() => ShutdownRequested?.Invoke();
+
+    /// <summary>
+    /// The busiest state across every project this process holds. A process is only free to go away
+    /// when none of its projects is doing anything — one busy project speaks for the whole process,
+    /// which is why the aggregate is the maximum and not an average.
+    /// </summary>
+    public SPLA.Domain.Project.InstanceState State(TimeSpan stallAfter)
+    {
+        var worst = SPLA.Domain.Project.InstanceState.Idle;
+        foreach (var entry in _entries.Values)
+        {
+            var state = entry.Runtime.State(stallAfter);
+            if (Rank(state) > Rank(worst)) worst = state;
+        }
+        return worst;
+    }
+
+    /// <summary>Ordering by "how strongly this forbids going away", not by anything the enum implies.</summary>
+    private static int Rank(SPLA.Domain.Project.InstanceState state) => state switch
+    {
+        SPLA.Domain.Project.InstanceState.Idle => 0,
+        SPLA.Domain.Project.InstanceState.Working => 1,
+        SPLA.Domain.Project.InstanceState.Stalled => 2,
+        SPLA.Domain.Project.InstanceState.Waiting => 3,
+        _ => 0
+    };
+
     private RuntimeEntry Build(string id, ResolvedSettings settings)
     {
-        var runtime = new AgentRuntime(settings, _loggerFactory);
+        var runtime = new AgentRuntime(settings, _loggerFactory, instanceMode: InstanceMode);
         var entry = new RuntimeEntry(runtime, new ChatRegistry(runtime));
         RuntimeCreated?.Invoke(id, entry);
         return entry;

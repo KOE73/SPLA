@@ -1,4 +1,4 @@
-﻿using System.Collections.Generic;
+using System.Collections.Generic;
 using System.Text.Json;
 
 namespace SPLA.Service.Contracts;
@@ -67,6 +67,13 @@ public sealed class ChatSummaryDto
     /// <summary>Whether a turn is running in this chat right now — so the list can show where work is
     /// happening, including work started by another window or another user.</summary>
     public bool TurnActive { get; set; }
+
+    /// <summary>What this chat is doing, in the instance vocabulary: <c>idle</c>, <c>working</c>,
+    /// <c>waiting</c>, <c>stalled</c>. One set of words for the badge beside a chat, the badge on a
+    /// project and the rule that keeps an instance alive — a person should not have to learn two.
+    /// <para><see cref="TurnActive"/> stays because it answers a narrower question the log view
+    /// already asks; it is true for both <c>working</c> and <c>stalled</c>.</para></summary>
+    public string State { get; set; } = "idle";
 }
 
 /// <summary>One selectable option in a clarify request.</summary>
@@ -439,6 +446,18 @@ public sealed class AgentSettingsPayload
     /// <summary>Persist abandoned-generation records (the repetition guard's discarded attempts) with
     /// the chat history. Stored in .spla agent: save_attempts. Default off.</summary>
     public bool? SaveAttempts { get; set; }
+    /// <summary>Master switch for the resource-address abstraction (<c>file://</c>, <c>sftp://</c>,
+    /// …). Stored in .spla agent: unified_resources. <b>Default false</b> — see
+    /// <c>ResolvedSettings.UnifiedResources</c> for why the default itself is load-bearing.</summary>
+    public bool? UnifiedResources { get; set; }
+    /// <summary>Every registered scheme, on and off alike, so the panel can render the full list with
+    /// its switches — not just the ones currently enabled. Ignored on save; per-scheme switches travel
+    /// back through <see cref="ResourceSchemeSaveDto.Enabled"/> keyed by <see cref="ResourceSchemeDto.Scheme"/>.</summary>
+    public List<ResourceSchemeDto> ResourceSchemes { get; set; } = new();
+    /// <summary>Per-scheme enable/disable, as sent by the panel on save. Only read on
+    /// <see cref="MessageTypes.AgentSave"/>; a scheme this list omits keeps whatever the project file
+    /// already said for it (absent = enabled).</summary>
+    public List<ResourceSchemeSaveDto>? ResourceSchemeSwitches { get; set; }
     // UI appearance — stored in .spla ui: section
     public string Theme { get; set; } = "dark";
     public string Density { get; set; } = "norm";
@@ -446,6 +465,45 @@ public sealed class AgentSettingsPayload
     public List<string> Densities { get; set; } = new();
     /// <summary>False when there is no .spla project to persist into (server-set; ignored on save).</summary>
     public bool CanPersist { get; set; }
+}
+
+/// <summary>The <c>mcp:</c> section — whether <c>spla serve</c> maps <c>POST /mcp</c>, and a fixed
+/// port for it. Stored in .spla mcp: enabled / port. Takes effect on the next <c>spla serve</c>
+/// start, same as a plugin enable flag — the listener is bound once, at startup.</summary>
+public sealed class McpSettingsPayload
+{
+    /// <summary>Whether <c>POST /mcp</c> is offered at all. Default false (off).</summary>
+    public bool Enabled { get; set; }
+    /// <summary>Fixed port to bind, or null for the usual ephemeral one. An explicit <c>--port</c> on
+    /// the <c>spla serve</c> command line still wins over this.</summary>
+    public int? Port { get; set; }
+    /// <summary>False when there is no .spla project to persist into (server-set; ignored on save).</summary>
+    public bool CanPersist { get; set; }
+    /// <summary>Server-set; ignored on save. True always — surfaced so the panel can say plainly that
+    /// a running <c>spla serve</c> must be restarted for a change here to take effect.</summary>
+    public bool RestartToApply { get; set; } = true;
+}
+
+/// <summary>One registered resource scheme as the settings panel sees it: what it is, what it
+/// supports, and whether it is currently switched on. Mirrors <c>SPLA.Domain.Resources.SchemeCard</c>
+/// but as a plain wire DTO — this assembly references nothing from the engine.</summary>
+public sealed class ResourceSchemeDto
+{
+    public string Scheme { get; set; } = string.Empty;
+    public string Summary { get; set; } = string.Empty;
+
+    /// <summary>Wire verb words ("read", "write", …), lower-case — the same vocabulary the system
+    /// prompt uses, so a person reading the panel and the prompt sees one language.</summary>
+    public List<string> Verbs { get; set; } = new();
+
+    public bool Enabled { get; set; } = true;
+}
+
+/// <summary>One row of the per-scheme switch the panel sends back on save.</summary>
+public sealed class ResourceSchemeSaveDto
+{
+    public string Scheme { get; set; } = string.Empty;
+    public bool Enabled { get; set; } = true;
 }
 
 /// <summary>Result of registering the .spla file association — answer to <see cref="MessageTypes.SystemRegisterAssociation"/>.</summary>
@@ -689,6 +747,10 @@ public static class DebugKinds
     public const string Edges = "edges";
     public const string LastContext = "context.last";
     public const string Prompt = "prompt";
+
+    /// <summary>Full live state of instance tracking for this process: overall state, lock file info,
+    /// outstanding asks, configured ask timeout, and per-chat turn activity.</summary>
+    public const string Instances = "instances";
 }
 
 /// <summary>One known project as the picker/tree sees it — enough to list and choose, no store opened.</summary>
@@ -711,11 +773,48 @@ public sealed class ProjectCreatePayload
 {
     public string ManifestPath { get; set; } = string.Empty;
     public string? Name { get; set; }
+
+    /// <summary>Profile name (see ProjectProfiles.AllNames); absent or unrecognized falls back to
+    /// ProjectProfiles.Default. A string on the wire, not the enum, so an old client sending nothing
+    /// still parses cleanly and a typo degrades to the default instead of a protocol error.</summary>
+    public string? Profile { get; set; }
+}
+
+/// <summary>Asks a running instance to shut down (<see cref="MessageTypes.InstanceStop"/>).</summary>
+public sealed class InstanceStopPayload
+{
+    /// <summary>When true, cancel every running turn first rather than refusing because one is in
+    /// flight — the caller is choosing to lose in-progress work, not asking the instance to guess
+    /// whether that is acceptable.</summary>
+    public bool Force { get; set; }
 }
 
 // ──────────────────────────────────────────────────────────────────────────
 //  Server → Client
 // ──────────────────────────────────────────────────────────────────────────
+
+/// <summary>
+/// What one instance is doing right now — answer to <see cref="MessageTypes.InstanceStatus"/>, and
+/// the shape <see cref="MessageTypes.InstanceStop"/> answers with when it refuses. <see cref="State"/>
+/// is the wire name from <c>SPLA.Domain.Project.InstanceStates.Name</c>, not the raw enum, so a CLI
+/// and a browser client read the exact same vocabulary a person would see in a badge.
+/// </summary>
+public sealed class InstanceStatusPayload
+{
+    public string InstanceId { get; set; } = string.Empty;
+    public string Mode { get; set; } = string.Empty;
+    public string State { get; set; } = string.Empty;
+    public string? ProjectName { get; set; }
+    public int Clients { get; set; }
+
+    /// <summary>Only meaningful on the answer to <see cref="MessageTypes.InstanceStop"/>: true once the
+    /// shutdown was accepted and is underway. Absent (false) on a plain status answer.</summary>
+    public bool Stopping { get; set; }
+
+    /// <summary>Why a non-forced stop was refused — naming the state ("a turn is running") rather than
+    /// leaving the caller to infer it from <see cref="State"/> alone. Null when not refused.</summary>
+    public string? Refusal { get; set; }
+}
 
 /// <summary>Answer to <see cref="MessageTypes.ProjectList"/>/<see cref="MessageTypes.ProjectRecent"/>.</summary>
 public sealed class ProjectListResultPayload
@@ -823,6 +922,11 @@ public sealed class ChatOpenedPayload
     /// composer had to guess from events it happened to witness, so a window that attached mid-turn
     /// (or a reload) offered Send on a chat that was busy.</summary>
     public bool TurnActive { get; set; }
+    /// <summary>What this chat is doing, in the instance vocabulary — same values and same meaning as
+    /// <see cref="ChatSummaryDto.State"/>. Sent on open as well as in the list so a window that opens
+    /// a chat mid-question shows the badge immediately rather than waiting for the next list.</summary>
+    public string State { get; set; } = "idle";
+
 }
 
 /// <summary>
@@ -927,6 +1031,38 @@ public sealed class ToolProgressDetailDto
 {
     public string Label { get; set; } = string.Empty;
     public string Value { get; set; } = string.Empty;
+}
+
+/// <summary>
+/// One node of the turn's progress tree, whole, on every change. Sent as a flat stream rather than a
+/// snapshot of the tree: a turn's tree is append-only and a node's identity is stable, so a client
+/// rebuilds the shape by keeping what it has been told and attaching each node to
+/// <see cref="ParentId"/>. Sending the tree each time would carry the same nodes over and over for the
+/// sake of one that moved.
+/// <para><see cref="ParentId"/> is null for a top-level tool call. A node whose parent the client has
+/// not seen should be held, not dropped — nothing guarantees a parent's frame won reaches first when
+/// parallel work is reporting.</para>
+/// </summary>
+public sealed class ProgressNodePayload
+{
+    /// <summary>Stable within the turn. The key a client updates in place.</summary>
+    public string NodeId { get; set; } = string.Empty;
+
+    /// <summary>Enclosing node, or null for a top-level call.</summary>
+    public string? ParentId { get; set; }
+
+    /// <summary>The model-facing tool name, or — for a spawned run — the task it was given.</summary>
+    public string Label { get; set; } = string.Empty;
+
+    /// <summary>`running`, `completed` or `failed`.</summary>
+    public string State { get; set; } = string.Empty;
+
+    /// <summary>The node's latest tick, when it has reported one. Null while it has said nothing.</summary>
+    public long? Current { get; set; }
+    public long? Total { get; set; }
+    public double? Fraction { get; set; }
+    public string? Message { get; set; }
+    public List<ToolProgressDetailDto>? Details { get; set; }
 }
 
 public sealed class ToolResultPayload
@@ -1083,6 +1219,17 @@ public sealed class ClarifyRequestPayload
 {
     public string Question { get; set; } = string.Empty;
     public List<ClarifyOptionDto> Options { get; set; } = new();
+}
+
+/// <summary>
+/// Closes an outstanding permission/clarify question on every client. The envelope carries the
+/// <c>requestId</c> and the <c>chatId</c>; this payload says only why it closed, so a client can
+/// distinguish "somebody answered" from "nobody did" without guessing.
+/// </summary>
+public sealed class AskResolvedPayload
+{
+    /// <summary>One of <c>answered</c>, <c>cancelled</c>, <c>timedOut</c>.</summary>
+    public string Reason { get; set; } = string.Empty;
 }
 
 /// <summary>
@@ -1400,6 +1547,42 @@ public sealed class PluginPanelEventPayload
     public string PanelId { get; set; } = string.Empty;
     public string EventType { get; set; } = string.Empty;
     public object? Data { get; set; }
+}
+
+// ── Spawned sub-agent runs ────────────────────────────────────────────────────
+/// <summary>Asks for one finished spawned run by id (<see cref="MessageTypes.SubagentGet"/>). The id
+/// is the same one that rode every progress tick of the run — a client that watched the run has it
+/// already, it never needs to be looked up.</summary>
+public sealed class SubagentGetPayload
+{
+    public string RunId { get; set; } = string.Empty;
+}
+
+/// <summary>The transcript of one finished spawned run — answer to <see cref="MessageTypes.SubagentGet"/>.
+/// <see cref="Messages"/> reuses <see cref="ChatMessageDto"/> rather than a run-specific shape: a
+/// spawned run's conversation is a conversation, and a client that can already render one chat can
+/// render this without new code.</summary>
+public sealed class SubagentResultPayload
+{
+    /// <summary>False when the id is unknown — fallen out of the log's ring, or never existed. A
+    /// normal answer, not an error: every other field is left at its default in that case.</summary>
+    public bool Found { get; set; }
+
+    public string RunId { get; set; } = string.Empty;
+    public string Label { get; set; } = string.Empty;
+    public string? SkillId { get; set; }
+    public string Mode { get; set; } = string.Empty;
+
+    /// <summary>ISO-8601 ("O" format).</summary>
+    public string StartedAt { get; set; } = string.Empty;
+    /// <summary>ISO-8601 ("O" format).</summary>
+    public string FinishedAt { get; set; } = string.Empty;
+
+    /// <summary>"completed" | "failed" | "cancelled".</summary>
+    public string Outcome { get; set; } = string.Empty;
+    public string? Error { get; set; }
+    public string Result { get; set; } = string.Empty;
+    public List<ChatMessageDto> Messages { get; set; } = new();
 }
 
 // ── Secret store ─────────────────────────────────────────────────────────────

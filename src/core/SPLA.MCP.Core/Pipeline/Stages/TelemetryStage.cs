@@ -32,12 +32,19 @@ public sealed class TelemetryStage : IToolMiddleware
         using var activity = SplaTelemetry.StartActivity("mcp.tool.execute");
         activity?.SetTag("spla.tool.name", call.Name);
         activity?.SetTag("spla.agent.mode", call.Mode.ToString());
+        activity?.SetTag("spla.tool.source", call.Source ?? "agent");
 
         call.Activity = activity;
         call.StartedTimestamp = Stopwatch.GetTimestamp();
 
+        // Source is null for a call from the agent's own loop (a chat, or a nested ctx.Run) and set
+        // to a transport label ("mcp-stdio", "mcp-http <ip>") for a call that entered from outside the
+        // process — see ToolCallContext.Source. Logging both that and the raw arguments here, at the
+        // one point every call (chat-originated or foreign) passes through, is what lets an audit trail
+        // answer "who asked for this, over what channel, with what parameters" without guessing.
         _logger?.LogInformation(
-            "Tool execution started. Tool={ToolName} Mode={Mode}", call.Name, call.Mode);
+            "Tool execution started. Tool={ToolName} Mode={Mode} Source={Source} Arguments={Arguments}",
+            call.Name, call.Mode, call.Source ?? "agent", call.ArgumentsJson);
 
         return await next(call, ct);
     }

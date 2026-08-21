@@ -5,6 +5,8 @@ using Microsoft.AspNetCore.Authentication.Negotiate;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
+using Microsoft.AspNetCore.Hosting.Server;
+using Microsoft.AspNetCore.Hosting.Server.Features;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Server.Kestrel.Core;
 using Microsoft.Extensions.DependencyInjection;
@@ -26,10 +28,25 @@ public sealed record ServiceOptions
     /// <summary>Address to bind. Loopback by default — no auth needed; the OS gates access.</summary>
     public string Bind { get; init; } = "127.0.0.1";
 
-    public int Port { get; init; } = 5050;
+    /// <summary>0 = ephemeral: let the OS pick a free loopback port. Two independent <c>spla serve</c>
+    /// invocations (different projects) used to both default to a fixed port and the second would fail
+    /// to bind; nothing needs a well-known port any more since the actual bound address is published to
+    /// the project's instance lock file (see <c>ProjectInstance.Publish</c>). Pass a nonzero value for
+    /// an explicit, fixed address.</summary>
+    public int Port { get; init; } = 0;
 
     /// <summary>Connect secret required for non-loopback clients. Null = no token (loopback use).</summary>
     public string? Token { get; init; }
+
+    /// <summary>How long the instance must have no clients AND nothing running before it shuts itself
+    /// down. Zero (the default) disables it: nobody expects a daemon they started by hand to leave on
+    /// its own. A service spawned by a window passes a few minutes, so closing the window eventually
+    /// reclaims the process without ever killing work in flight. See <c>InstanceLease</c>.</summary>
+    public TimeSpan IdleTimeout { get; init; } = TimeSpan.Zero;
+
+    /// <summary>Silence after which a registered turn counts as stopped halfway rather than working.
+    /// Both states forbid eviction; they differ in what a person is shown.</summary>
+    public TimeSpan StallAfter { get; init; } = TimeSpan.FromMinutes(10);
 
     /// <summary>Optional one-shot startup message. The first WebSocket client that completes the
     /// handshake gets a newly-created chat and sends this message through the normal interactive
@@ -89,6 +106,22 @@ public sealed record ServiceOptions
     /// an external observability backend. Null = no export (local stats only). A control-plane / egress
     /// setting — it determines where telemetry leaves the host.</summary>
     public string? OtlpEndpoint { get; init; }
+    /// <summary>How long an unused project runtime is kept before it is dropped. Zero (the default)
+    /// keeps them forever, which is what a local single-project process wants — there the instance
+    /// lease already decides when the whole process may go. A server never exits and holds N users
+    /// times M projects, so there this is the condition for surviving the day.</summary>
+    public TimeSpan EvictIdleProjectsAfter { get; init; } = TimeSpan.Zero;
+
+    /// <summary>Whether <c>POST /mcp</c> is mapped at all. Off by default — see
+    /// <see cref="SplaMcpSection"/>/<see cref="SPLA.Domain.Settings.ResolvedSettings.McpEnabled"/> for
+    /// the project-file switch a person actually turns on.</summary>
+    public bool McpEnabled { get; init; } = false;
+
+    /// <summary>When set, this host also serves the registry routes for the given hub. Lets one
+    /// process be both a service and the hub instances register with — what a small deployment wants,
+    /// and what the server does — without a second implementation of the routes for that case.</summary>
+    public SPLA.Instances.RegistryHub? RegistryHub { get; init; }
+
 }
 
 /// <summary>
@@ -108,16 +141,52 @@ public sealed class SplaServiceHost
     private readonly WebApplication _app;
     private readonly SPLA.Observability.Collection.TelemetryCollector? _collector;
     private readonly IDisposable? _gaugeTimer;
-    public string Url { get; }
+    private readonly IDisposable? _evictionTimer;
+    private readonly string _scheme;
+    private readonly string _bind;
+    private string? _url;
+
+    /// <summary>The address the service is actually listening on. Only meaningful after
+    /// <see cref="StartAsync"/> has completed: with an ephemeral (<c>Port == 0</c>) binding the real
+    /// port is not known until Kestrel has bound the socket, so this throws rather than returning a
+    /// guess for a caller that reads it too early.</summary>
+    public string Url => _url
+        ?? throw new InvalidOperationException($"{nameof(SplaServiceHost)}.{nameof(Url)} is only available after {nameof(StartAsync)}() completes.");
+
+    private readonly InstanceLease _lease;
+    private readonly ConnectionHub _hub;
+
+    /// <summary>Raised when the instance has had no clients and nothing running for the configured
+    /// grace period. The host does not stop itself: whoever owns the process decides what else has to
+    /// wind down first. Never raised when <see cref="ServiceOptions.IdleTimeout"/> is zero.</summary>
+    public event Action? LeaseExpired
+    {
+        add => _lease.Expired += value;
+        remove => _lease.Expired -= value;
+    }
+
+    /// <summary>Counts a holder that is not a socket — a console REPL running beside the service, a
+    /// test. Without it an instance whose only user types at its own terminal looks unattended.</summary>
+    public IDisposable HoldLease() => _lease.Hold();
+
+    /// <summary>How many clients are connected right now. Exposed for the registry channel, which
+    /// reports it upward: a hub showing "3 windows on this project" is the difference between an
+    /// instance somebody is using and one that is merely still alive.</summary>
+    public int ClientCount => _hub.Count;
 
     private SplaServiceHost(
-        WebApplication app, string url,
-        SPLA.Observability.Collection.TelemetryCollector? collector = null, IDisposable? gaugeTimer = null)
+        WebApplication app, string scheme, string bind, InstanceLease lease, ConnectionHub hub,
+        SPLA.Observability.Collection.TelemetryCollector? collector = null, IDisposable? gaugeTimer = null,
+        IDisposable? evictionTimer = null)
     {
         _app = app;
+        _hub = hub;
+        _scheme = scheme;
+        _bind = bind;
+        _lease = lease;
         _collector = collector;
         _gaugeTimer = gaugeTimer;
-        Url = url;
+        _evictionTimer = evictionTimer;
     }
 
     public static SplaServiceHost Build(
@@ -165,10 +234,11 @@ public sealed class SplaServiceHost
         {
             scheme = "http";
         }
-        var url = $"{scheme}://{options.Bind}:{options.Port}";
-
         var app = builder.Build();
-        if (!options.UseHttps) app.Urls.Add(url);
+        // Port 0 here (the default) means "ephemeral" — ASP.NET/Kestrel understands a :0 port in the
+        // URL the same way it understands one passed to ConfigureKestrel above, and binds a free port.
+        // The actual bound port isn't known until StartAsync() runs; see ResolveUrl().
+        if (!options.UseHttps) app.Urls.Add($"{scheme}://{options.Bind}:{options.Port}");
         app.UseWebSockets();
 
         if (options.AuthEnabled)
@@ -177,8 +247,27 @@ public sealed class SplaServiceHost
             app.UseAuthorization();
         }
 
-        app.MapGet("/health", () => Results.Text("SPLA service running. Connect a client to /ws.", "text/plain"))
+        // Carries the instance id of the default project's claim, so a caller that found this address
+        // in a lock file can prove the address still belongs to the instance that wrote it. A port
+        // number alone proves nothing: the OS hands it to whoever asks next.
+        // Also a hub, when the deployment asked for it. The same routes `spla hub` runs alone —
+        // mapped, not reimplemented, because "with a server" and "without one" are two scenarios and
+        // only one implementation may exist for both.
+        if (options.RegistryHub is { } registryHub) app.MapRegistry(registryHub, options.Token);
+
+        app.MapGet("/health", () => Results.Text(
+                $"SPLA service running. Connect a client to /ws.\ninstance: {defaultEntry.Runtime.Instance?.Info.InstanceId ?? "none"}",
+                "text/plain"))
             .AllowAnonymous();
+
+        // MCP over HTTP: a foreign head that wants tools without taking the writer lease `spla mcp`
+        // takes (that command builds its own AgentRuntime — see McpCommand's remarks). This endpoint
+        // dispatches against the runtime this host already has open, so any number of MCP clients can
+        // share it the same way any number of browser windows already share /ws. One request, one
+        // JSON-RPC line in, one line out — McpStdioServer needs nothing more than a reader that hits
+        // EOF after that line, which a request body naturally does.
+        if (options.McpEnabled)
+            app.MapPost("/mcp", (Func<HttpContext, Task<IResult>>)(ctx => HandleMcpAsync(ctx, registry)));
 
         if (options.EffectiveAuthMode == AuthMode.Negotiate)
         {
@@ -277,7 +366,25 @@ public sealed class SplaServiceHost
         app.Map("/ws", (HttpContext context) =>
             HandleWebSocketAsync(context, registry, options, serverRoot, hub, auth, initialChat, loggerFactory));
 
-        return new SplaServiceHost(app, url, collector, gaugeTimer);
+        var lease = new InstanceLease(
+            hub, registry, options.IdleTimeout, options.StallAfter,
+            loggerFactory.CreateLogger<InstanceLease>());
+
+        // Unused project runtimes go on a slow sweep. Idle only, and only when nobody is bound to
+        // them — a runtime holds nothing unique (chats, KV and the tally are on disk), so dropping
+        // one costs the next warm-up and never any work. Off unless a deployment asks.
+        System.Threading.Timer? evictionTimer = null;
+        if (options.EvictIdleProjectsAfter > TimeSpan.Zero)
+        {
+            var sweep = options.EvictIdleProjectsAfter;
+            evictionTimer = new System.Threading.Timer(_ =>
+            {
+                try { registry.EvictIdle(id => hub.CountForProject(id) > 0, StallAfter); }
+                catch { /* a sweep that throws must not take the host down */ }
+            }, null, sweep, sweep);
+        }
+
+        return new SplaServiceHost(app, scheme, options.Bind, lease, hub, collector, gaugeTimer, evictionTimer);
     }
 
     /// <summary>Configures the auth pipeline for the effective mode. Both server modes issue the same
@@ -344,6 +451,11 @@ public sealed class SplaServiceHost
     /// into the hub, scoped to its own project id — fires for the eagerly-opened default project and
     /// for any project a client opens/creates later, so live updates are never limited to whichever
     /// project happened to exist at process startup.</summary>
+    /// <summary>Silence after which a registered turn counts as stopped halfway. The same judgement
+    /// the instance handlers and the chat projections make, and deliberately not a knob: it is a
+    /// statement about how long a model may go quiet before a person would call it stuck.</summary>
+    private static readonly TimeSpan StallAfter = TimeSpan.FromMinutes(10);
+
     private static void WireRuntimeEvents(AgentRuntimeRegistry registry, ConnectionHub hub)
     {
         registry.RuntimeCreated += (projectId, entry) =>
@@ -365,6 +477,28 @@ public sealed class SplaServiceHost
                         break;
                 }
             });
+
+            // A question a running turn is waiting on. Raised by the project's runtime rather than by
+            // the connection that started the turn, so it reaches every window watching the chat and
+            // any of them may answer — including one that opened after the question was asked.
+            entry.Runtime.Asks.Asked += ask =>
+            {
+                _ = hub.BroadcastToWatchersAsync(
+                    ask.ChatId, ProtocolMapper.MessageTypeFor(ask), ProtocolMapper.PayloadFor(ask), ask.RequestId);
+                // The sidebar too, not just the open chat: "somebody is being waited for" is the one
+                // state a person needs to see from a chat they are not currently looking at.
+                _ = BroadcastChatsAsync(hub, projectId, entry);
+            };
+
+            // ...and its counterpart: whoever closed it, every other window drops the dialog instead
+            // of leaving a button that answers nothing.
+            entry.Runtime.Asks.Resolved += (ask, reason) =>
+            {
+                _ = hub.BroadcastToWatchersAsync(
+                    ask.ChatId, Contracts.MessageTypes.AskResolved,
+                    new Contracts.AskResolvedPayload { Reason = ProtocolMapper.ReasonName(reason) }, ask.RequestId);
+                _ = BroadcastChatsAsync(hub, projectId, entry);
+            };
 
             // Live SSH sessions: create the project's hub eagerly and fan its open/close events out
             // as ssh.sessions.changed, so pickers refresh and terminals auto-attach the moment the
@@ -388,6 +522,13 @@ public sealed class SplaServiceHost
             });
         };
     }
+
+    /// <summary>The chat list, to everyone watching this project. Sent whenever a chat's state
+    /// changes rather than only at turn boundaries — the state is what the sidebar badges are made
+    /// of, and a badge that appears a turn late is not a badge.</summary>
+    private static Task BroadcastChatsAsync(ConnectionHub hub, string projectId, RuntimeEntry entry)
+        => hub.BroadcastToProjectAsync(projectId, Contracts.MessageTypes.ChatListResult,
+            new Contracts.ChatListResultPayload { Chats = entry.Chats.List() });
 
     /// <summary>Handles a <c>/ws</c> upgrade: the Origin gate (CSWSH defence in cookie deployments),
     /// resolving the connection's identity from the auth cookie (or the local sentinel), scoping it to
@@ -453,11 +594,245 @@ public sealed class SplaServiceHost
         await conn.RunAsync(context.RequestAborted);
     }
 
-    public Task StartAsync(CancellationToken ct = default) => _app.StartAsync(ct);
+    /// <summary>One JSON-RPC request over HTTP, in one of two shapes depending on what the client
+    /// asked for:
+    /// <list type="bullet">
+    /// <item><b>Plain</b> (no <c>Accept: text/event-stream</c>) — one request, one response, same as
+    /// before: a call that opts into progress (<c>_meta.progressToken</c>) still runs to completion,
+    /// its progress frames simply have nowhere to go and are dropped.</item>
+    /// <item><b>SSE</b> (<c>Accept: text/event-stream</c>, MCP's "streamable HTTP" transport) — the
+    /// connection stays open and every frame <c>McpStdioServer</c> writes, progress notifications
+    /// included, is pushed as its own <c>data:</c> event the moment it is produced. This is the network
+    /// equivalent of stdio: the same live ticks a stdio client gets down the pipe while a slow call
+    /// (<c>ssh_run</c>, a long <c>agent_spawn</c>) is still running.</item>
+    /// </list>
+    /// <para><c>?project=</c> picks the runtime the same way <c>/chat-image</c> does; omitted defaults
+    /// to this host's default project.</para>
+    /// <para><b>Why not a plain <see cref="StringReader"/>.</b> The first cut fed the request line
+    /// through one and let it hit EOF on the very next read — which is exactly the signal
+    /// <c>McpStdioServer.RunAsync</c> treats as "the pipe closed", so it cancelled every call still
+    /// in flight before returning. That is invisible for an instant call like <c>tools/list</c> but
+    /// silently killed anything doing real I/O — <c>ssh_run</c> connecting to a host, mid-TCP-handshake,
+    /// came back as an empty response because the cancellation raced its own completion and won.
+    /// <see cref="PendingLineReader"/> holds EOF back until the call is actually done (signalled by
+    /// either writer below), so the call's own cancellation token is never touched before it is done
+    /// with it.</para></summary>
+    private static async Task<IResult> HandleMcpAsync(HttpContext ctx, AgentRuntimeRegistry registry)
+    {
+        string line;
+        using (var bodyReader = new StreamReader(ctx.Request.Body))
+        {
+            line = await bodyReader.ReadToEndAsync(ctx.RequestAborted);
+        }
+        if (string.IsNullOrWhiteSpace(line)) return Results.BadRequest();
+
+        System.Text.Json.Nodes.JsonNode? request;
+        try { request = System.Text.Json.Nodes.JsonNode.Parse(line); }
+        catch (System.Text.Json.JsonException) { return Results.BadRequest(); }
+
+        // A notification (e.g. notifications/initialized) has no id and gets no reply per JSON-RPC —
+        // waiting on a response line for one would hang until the client gives up.
+        var requestId = request?["id"];
+        var expectsReply = requestId is not null;
+
+        var project = ctx.Request.Query["project"].FirstOrDefault();
+        var runtime = registry.Open(project).Runtime;
+        var exposure = SPLA.MCP.Core.ToolExposure.Default;
+
+        var reader = new PendingLineReader(line);
+        var server = new SPLA.Mcp.McpStdioServer(
+            runtime.McpHost,
+            () => runtime.McpHost.GetToolDefinitionsFor(exposure),
+            log: TextWriter.Null,
+            source: $"mcp-http {ctx.Connection.RemoteIpAddress}");
+
+        var wantsSse = expectsReply &&
+            ctx.Request.Headers.Accept.Any(a => a?.Contains("text/event-stream", StringComparison.OrdinalIgnoreCase) == true);
+
+        if (wantsSse)
+        {
+            // Headers first, then every frame as its own event as soon as it exists — nothing here
+            // buffers, which is the entire point over the plain-JSON path.
+            ctx.Response.ContentType = "text/event-stream";
+            ctx.Response.Headers.CacheControl = "no-cache";
+
+            var sse = new SseWriter(ctx.Response.Body, requestId);
+            var runningSse = server.RunAsync(reader, sse, ctx.RequestAborted);
+
+            var finishedSse = await Task.WhenAny(sse.FinalResponseWritten, runningSse);
+            if (finishedSse != runningSse) await sse.FinalResponseWritten;
+
+            reader.SignalEof();
+            await runningSse;
+            return Results.Empty; // the response was already streamed directly to ctx.Response.Body
+        }
+
+        var writer = new CapturingWriter(requestId);
+        var running = server.RunAsync(reader, writer, ctx.RequestAborted);
+
+        string? responseLine = null;
+        if (expectsReply)
+        {
+            var finished = await Task.WhenAny(writer.ResponseWritten, running);
+            if (finished == running)
+            {
+                // The server's loop ended (client aborted, or an unexpected fault) before it ever
+                // wrote a reply — there is nothing to wait for any more.
+                await running; // surfaces the fault, if any, instead of swallowing it
+            }
+            else
+            {
+                responseLine = await writer.ResponseWritten;
+            }
+        }
+
+        reader.SignalEof();
+        await running;
+
+        return responseLine is null ? Results.NoContent() : Results.Text(responseLine, "application/json");
+    }
+
+    /// <summary>True when <paramref name="jsonLine"/> is the reply to the request that carried
+    /// <paramref name="requestId"/> — as opposed to a <c>notifications/progress</c> frame, which has no
+    /// <c>id</c> at all. Shared by both writers below so "which line is the actual answer" is decided
+    /// once, the same way, regardless of transport.</summary>
+    private static bool IsFinalResponse(string? jsonLine, System.Text.Json.Nodes.JsonNode? requestId)
+    {
+        if (string.IsNullOrEmpty(jsonLine)) return false;
+        try
+        {
+            var id = System.Text.Json.Nodes.JsonNode.Parse(jsonLine)?["id"];
+            return requestId is null
+                ? id is null
+                : System.Text.Json.Nodes.JsonNode.DeepEquals(id, requestId);
+        }
+        catch (System.Text.Json.JsonException) { return false; }
+    }
+
+    /// <summary>Yields one line, then blocks — never hands <c>McpStdioServer.RunAsync</c> an EOF until
+    /// <see cref="SignalEof"/> is called. See <see cref="HandleMcpAsync"/> for why that matters.</summary>
+    private sealed class PendingLineReader : TextReader
+    {
+        private readonly string _line;
+        private bool _sent;
+        private readonly TaskCompletionSource _eof = new(TaskCreationOptions.RunContinuationsAsynchronously);
+
+        public PendingLineReader(string line) => _line = line;
+
+        public void SignalEof() => _eof.TrySetResult();
+
+        public override async ValueTask<string?> ReadLineAsync(CancellationToken cancellationToken)
+        {
+            if (!_sent) { _sent = true; return _line; }
+            await _eof.Task.WaitAsync(cancellationToken).ConfigureAwait(false);
+            return null;
+        }
+    }
+
+    /// <summary>Captures the reply matching the request's own id and nothing else — a progress
+    /// notification arriving on this path (a client that sent <c>_meta.progressToken</c> without
+    /// asking for SSE) is silently dropped rather than mistaken for the answer.
+    /// <see cref="ResponseWritten"/> completes the moment the real reply is written, which is the
+    /// signal <see cref="HandleMcpAsync"/> waits on before it lets the reader see EOF.</summary>
+    private sealed class CapturingWriter : TextWriter
+    {
+        private readonly System.Text.Json.Nodes.JsonNode? _requestId;
+        private readonly TaskCompletionSource<string?> _written =
+            new(TaskCreationOptions.RunContinuationsAsynchronously);
+
+        public CapturingWriter(System.Text.Json.Nodes.JsonNode? requestId) => _requestId = requestId;
+
+        public override System.Text.Encoding Encoding => System.Text.Encoding.UTF8;
+
+        public Task<string?> ResponseWritten => _written.Task;
+
+        public override Task WriteLineAsync(string? value)
+        {
+            if (IsFinalResponse(value, _requestId)) _written.TrySetResult(value);
+            return Task.CompletedTask;
+        }
+
+        public override Task FlushAsync() => Task.CompletedTask;
+    }
+
+    /// <summary>Streams every frame straight to the response body as an SSE <c>data:</c> event —
+    /// progress notifications and the final reply alike, in the order <c>McpStdioServer</c> produces
+    /// them. This is the piece that makes <c>/mcp</c> a real network analogue of stdio: a client that
+    /// asked for progress actually sees it arrive while the call is still running, not bundled into one
+    /// response at the end.</summary>
+    private sealed class SseWriter : TextWriter
+    {
+        private readonly Stream _body;
+        private readonly System.Text.Json.Nodes.JsonNode? _requestId;
+        private readonly TaskCompletionSource _finalResponseWritten =
+            new(TaskCreationOptions.RunContinuationsAsynchronously);
+        private readonly SemaphoreSlim _writeGate = new(1, 1);
+
+        public SseWriter(Stream body, System.Text.Json.Nodes.JsonNode? requestId)
+        {
+            _body = body;
+            _requestId = requestId;
+        }
+
+        public override System.Text.Encoding Encoding => System.Text.Encoding.UTF8;
+
+        /// <summary>Completes once the frame answering the request (not a progress notification) has
+        /// been written and flushed.</summary>
+        public Task FinalResponseWritten => _finalResponseWritten.Task;
+
+        public override async Task WriteLineAsync(string? value)
+        {
+            if (string.IsNullOrEmpty(value)) return;
+
+            var bytes = System.Text.Encoding.UTF8.GetBytes($"data: {value}\n\n");
+            await _writeGate.WaitAsync().ConfigureAwait(false);
+            try
+            {
+                await _body.WriteAsync(bytes).ConfigureAwait(false);
+                await _body.FlushAsync().ConfigureAwait(false);
+            }
+            catch (Exception)
+            {
+                // The client disconnected mid-stream — normal end of an SSE session, not a fault for
+                // the tool call that was still writing to it. HandleMcpAsync's own CancellationToken
+                // (ctx.RequestAborted) is what actually stops the call; this just stops pretending the
+                // write succeeded.
+            }
+            finally { _writeGate.Release(); }
+
+            if (IsFinalResponse(value, _requestId)) _finalResponseWritten.TrySetResult();
+        }
+
+        public override Task FlushAsync() => Task.CompletedTask;
+    }
+
+    public async Task StartAsync(CancellationToken ct = default)
+    {
+        await _app.StartAsync(ct);
+        _url = ResolveUrl();
+    }
+
+    /// <summary>Reads back whatever Kestrel actually bound (via <see cref="IServerAddressesFeature"/>),
+    /// which is the only place the real port lives when <see cref="ServiceOptions.Port"/> was 0. The
+    /// feature's address uses Kestrel's own formatting (e.g. "*" for a wildcard host), so only the port
+    /// is taken from it; scheme and host are the ones this host was actually configured with.</summary>
+    private string ResolveUrl()
+    {
+        var feature = _app.Services.GetRequiredService<IServer>().Features.Get<IServerAddressesFeature>();
+        var bound = feature?.Addresses.FirstOrDefault();
+        if (bound != null && Uri.TryCreate(bound, UriKind.Absolute, out var uri))
+            return $"{_scheme}://{_bind}:{uri.Port}";
+
+        // Should not happen — Kestrel always populates this feature once started — but fail soft
+        // rather than throw out of StartAsync for a cosmetic URL string.
+        return $"{_scheme}://{_bind}";
+    }
 
     public async Task StopAsync(CancellationToken ct = default)
     {
+        _lease.Dispose();
         _gaugeTimer?.Dispose();
+        _evictionTimer?.Dispose();
         _collector?.Dispose();   // flushes persisted stats
         await _app.StopAsync(ct);
     }
@@ -531,7 +906,10 @@ public sealed class SplaServiceHost
     public Task RunAsync() => _app.RunAsync();
 
     /// <summary>Bridges ASP.NET's logging into the agent's existing <see cref="ILoggerFactory"/>.</summary>
-    private sealed class ForwardingLoggerProvider : ILoggerProvider
+    /// <summary>Internal rather than private: the registry-only host reuses it for the same reason
+    /// this one has it — the agent already logs through SplaTelemetry, and ASP.NET must not also
+    /// write to the console.</summary>
+    internal sealed class ForwardingLoggerProvider : ILoggerProvider
     {
         private readonly ILoggerFactory _factory;
         public ForwardingLoggerProvider(ILoggerFactory factory) => _factory = factory;

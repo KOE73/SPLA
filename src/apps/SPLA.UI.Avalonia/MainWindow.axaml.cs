@@ -7,7 +7,9 @@ using Avalonia.Controls;
 using Avalonia.Input;
 using Avalonia.Interactivity;
 using Avalonia.Platform.Storage;
+using SPLA.Domain.Project;
 using SPLA.Domain.Settings;
+using SPLA.Platform;
 using SPLA.UI.Avalonia.Helpers;
 
 namespace SPLA.UI.Avalonia;
@@ -45,6 +47,10 @@ public partial class MainWindow : Window
         try
         {
             Helpers.WebViewBridge.Attach(Browser, ApplyProjectTitle);
+            // A restarted service binds a fresh ephemeral port, so the old URL is dead. Following the
+            // event is what turns "the agent came back" into a window that works again rather than one
+            // still pointed at a port nobody is listening on.
+            App.ServiceUrlChanged += OnServiceUrlChanged;
             _url = await App.ServiceUrlAsync();
             Browser.Navigate(new Uri(_url));
         }
@@ -98,15 +104,26 @@ public partial class MainWindow : Window
         var dir = folders.FirstOrDefault()?.TryGetLocalPath();
         if (dir == null) return;
 
+        // Folder name doubles as project name; a proper "name this project" dialog is a separate
+        // piece of work — this just stops hand-writing the manifest that ProjectFactory now owns.
         var name = Path.GetFileName(dir.TrimEnd(Path.DirectorySeparatorChar));
-        var manifestPath = Path.Combine(dir, name + ".spla");
-        if (!File.Exists(manifestPath))
+
+        try
         {
-            ConfigLoader.SaveProject(
-                new SplaProject { Name = name, Ignore = [.. ConfigLoader.DefaultIgnorePatterns] },
-                manifestPath);
+            // Picking a folder that already holds exactly one project is not a mistake worth an
+            // error — it is how people open one, so honour the obvious intent. Two manifests stays
+            // an error: the factory refuses to add a third, and choosing between the two would be
+            // the arbitrary pick that FindProjectFile just stopped making.
+            var existing = Directory.GetFiles(dir, "*.spla");
+            var manifestPath = existing.Length == 1
+                ? existing[0]
+                : ProjectFactory.Create(dir, name, ProjectProfiles.Default);
+            LaunchProject(manifestPath);
         }
-        LaunchProject(manifestPath);
+        catch (Exception ex)
+        {
+            TitleText.Text = "— " + ex.Message;
+        }
     }
 
     private async Task OpenProjectAsync()
@@ -128,7 +145,9 @@ public partial class MainWindow : Window
     {
         try
         {
-            var (exe, args) = ResolveSelfInvocation();
+            // Resolve rather than TryLaunch: this window has a title bar to report a failure in, and
+            // silently doing nothing when a project will not open is the worst of the options.
+            var (exe, args) = SelfInvocationLauncher.Resolve("SPLA.UI.Avalonia.exe");
             var psi = new ProcessStartInfo { FileName = exe, UseShellExecute = false };
             foreach (var a in args) psi.ArgumentList.Add(a);
             psi.ArgumentList.Add(manifestPath);
@@ -138,21 +157,6 @@ public partial class MainWindow : Window
         {
             TitleText.Text = "— launch failed: " + ex.Message;
         }
-    }
-
-    /// <summary>Finds this same app to relaunch: a published SPLA.UI.Avalonia.exe next to us, or the
-    /// dll run via dotnet (dev tree) — mirrors <c>EmbeddedServiceLauncher.ResolveCliInvocation</c>.</summary>
-    private static (string Exe, string[] Args) ResolveSelfInvocation()
-    {
-        var baseDir = AppContext.BaseDirectory;
-
-        var exe = Path.Combine(baseDir, "SPLA.UI.Avalonia.exe");
-        if (File.Exists(exe)) return (exe, []);
-
-        var dll = Path.Combine(baseDir, "SPLA.UI.Avalonia.dll");
-        if (File.Exists(dll)) return ("dotnet", [dll]);
-
-        throw new FileNotFoundException("Could not locate SPLA.UI.Avalonia to relaunch.");
     }
 
     private void OpenDebugSurface_Click(object? sender, RoutedEventArgs e)
@@ -169,14 +173,10 @@ public partial class MainWindow : Window
         var currentUrl = Browser.Source?.AbsoluteUri ?? _url;
         if (currentUrl is null) return;
 
-        try
-        {
-            Process.Start(new ProcessStartInfo(currentUrl) { UseShellExecute = true });
-        }
-        catch (Exception ex)
-        {
-            TitleText.Text = "— browser launch failed: " + ex.Message;
-        }
+        // A headless host has no browser and no desktop session to launch one into, so this is a
+        // reportable "no" rather than an exception — see BrowserLauncher.
+        if (!BrowserLauncher.Open(currentUrl))
+            TitleText.Text = "— could not open a browser";
     }
 
     /// <summary>Sets BOTH the OS window title (taskbar/Alt+Tab) and the custom in-window title bar
@@ -213,8 +213,15 @@ public partial class MainWindow : Window
 
     private void CloseButton_Click(object? sender, RoutedEventArgs e) => Close();
 
+    private void OnServiceUrlChanged(object? sender, string url)
+    {
+        _url = url;
+        global::Avalonia.Threading.Dispatcher.UIThread.Post(() => Browser.Navigate(new Uri(url)));
+    }
+
     protected override void OnClosed(EventArgs e)
     {
+        App.ServiceUrlChanged -= OnServiceUrlChanged;
         App.ShutdownService();
         base.OnClosed(e);
     }

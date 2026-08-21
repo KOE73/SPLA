@@ -85,8 +85,8 @@ onMounted(async () => {
 function close() { emit("close"); }
 
 /** Opens the project (building its runtime on first touch — cheap to repeat) and re-focuses the
- * whole sidebar/chat area on it. No new connection needed — same socket, just a different
- * ProjectId on every subsequent envelope (see AgentRuntimeRegistry/ClientConnection.Resolve). */
+ * whole sidebar/chat area on it. No new connection needed — same socket, the server just rebinds
+ * the connection's current project (see AgentRuntimeRegistry/ClientConnection.Resolve). */
 async function select(projectId: string) {
   try {
     const ctx = await client.invoke<ProjectContextPayload>("project.open", { projectId });
@@ -132,7 +132,7 @@ function applyContext(ctx: ProjectContextPayload) {
   store.currentChat = null;
   store.chats = [];
   forgetAllSessions();   // the other project's chats are not reachable from here
-  client.send("chat.list", null, { projectId: ctx.projectId });
+  client.send("chat.list", null);
   close();
 }
 </script>

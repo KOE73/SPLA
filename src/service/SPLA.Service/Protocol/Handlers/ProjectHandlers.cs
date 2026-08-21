@@ -40,6 +40,10 @@ internal sealed class ProjectHandlers : IMessageHandler
     private static Task Create(RequestContext ctx)
     {
         var p = ctx.Payload<ProjectCreatePayload>();
+        // Unknown/absent name parses to the default profile rather than erroring — a profile is a
+        // nicety on this call, not something a caller must get right to create a project.
+        ProjectProfiles.TryParse(p?.Profile, out var profile);
+
         string manifestPath;
         if (ctx.Session.UserProvider is { } userProvider && ctx.Session.UserArea is { } userArea)
         {
@@ -50,7 +54,7 @@ internal sealed class ProjectHandlers : IMessageHandler
 
             var safe = ProtocolProjection.SanitizeName(p.Name);
             manifestPath = System.IO.Path.Combine(userArea, safe, safe + ".spla");
-            userProvider.Create(new ProjectDescriptor { Id = manifestPath, ManifestPath = manifestPath, Name = p.Name });
+            userProvider.Create(new ProjectDescriptor { Id = manifestPath, ManifestPath = manifestPath, Name = p.Name, Profile = profile });
         }
         else
         {
@@ -58,7 +62,7 @@ internal sealed class ProjectHandlers : IMessageHandler
                 return ctx.Error("ManifestPath is required.");
 
             manifestPath = p.ManifestPath;
-            ctx.Session.Registry.Create(new ProjectDescriptor { Id = manifestPath, ManifestPath = manifestPath, Name = p.Name });
+            ctx.Session.Registry.Create(new ProjectDescriptor { Id = manifestPath, ManifestPath = manifestPath, Name = p.Name, Profile = profile });
         }
 
         ctx.Session.MarkProjectOpen(manifestPath);

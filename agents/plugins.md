@@ -109,6 +109,21 @@ plugins:
       test_ping_host: false # Disables just this specific tool
 ```
 
+### The `"*"` entry
+
+`IsPluginEnabled` resolves in this order: an entry naming the plugin wins if it sets `enabled`;
+otherwise an entry under the key `"*"` wins if it sets `enabled`; otherwise the plugin is enabled.
+
+```yaml
+plugins:
+  "*":
+    enabled: false   # every plugin without its own entry is off
+```
+
+This is what a `minimal` launch profile (see [`spla-file.md`](spla-file.md#the--plugin-entry)) writes
+instead of naming every plugin installed on the machine that created the project: the manifest travels
+in git, and a list of one machine's plugins does not belong in a file another machine will check out.
+
 ## Skills
 
 Skills are instruction documents (`.md` files), not compiled code. They live in `SPLA.Skills.<PluginId>/`, separate from the plugin project.

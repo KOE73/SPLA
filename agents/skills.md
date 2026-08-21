@@ -495,8 +495,9 @@ and only when `skills.librarian.enabled` is on — it is off by default because 
 any work begins.
 
 `AgentLibrarian` is **not** built on `agent_spawn`, despite the plan's wording: a spawn is a full
-agent loop and it runs a *skill*, which a lookup is not. One `ILlmGateway` call is the whole thing,
-with accounting and quotas already in that path.
+agent loop with tools and a session, which a lookup does not need and cannot afford. (Spawn takes a
+free-form task as well as a skill now, so the shape would fit — the cost still does not.) One
+`ILlmGateway` call is the whole thing, with accounting and quotas already in that path.
 
 **Its answer is never trusted as text.** The model returns ids; every one is looked up in the holdings
 and anything that does not resolve is dropped. A hallucinated id is the obvious failure of this

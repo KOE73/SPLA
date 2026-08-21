@@ -1,7 +1,6 @@
 using System.IO;
 using SPLA.Domain.Identity;
 using SPLA.Domain.Models;
-using SPLA.Domain.Settings;
 
 namespace SPLA.Domain.Project;
 
@@ -39,11 +38,10 @@ public sealed class ServerProjectRoot
     {
         var area = EnsureUserArea(identity.UserKey);
         var manifest = Path.Combine(area, "default.spla");
+        // Standard, not Minimal: this is the user's own area, not a folder they wandered into — the
+        // caution a bare-directory project needs (see ProjectProfile.Minimal) does not apply here.
         if (!File.Exists(manifest))
-        {
-            ConfigLoader.SaveProject(new SplaProject { Name = $"{identity.DisplayName} — default" }, manifest);
-            ConfigLoader.ScaffoldIfNew(manifest);
-        }
+            ProjectFactory.CreateAt(manifest, $"{identity.DisplayName} — default", ProjectProfile.Standard);
         return manifest;
     }
 

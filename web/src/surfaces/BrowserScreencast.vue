@@ -29,9 +29,8 @@ const state = ref("connecting");
 const error = ref("");
 const disposers: Array<() => void> = [];
 
-function projectExtra() { return store.currentProjectId ? { projectId: store.currentProjectId } : undefined; }
 function sendInput(inputType: string, data: object) {
-  client.send("plugin.panel.input", { panelId, inputType, data }, projectExtra());
+  client.send("plugin.panel.input", { panelId, inputType, data });
 }
 function navigate() { sendInput("navigate", { url: address.value }); }
 
@@ -65,7 +64,7 @@ function wheelFrame(event: WheelEvent) {
 onMounted(() => {
   let opened = false;
   const open = () => {
-    if (opened || !client.send("plugin.panel.open", { panelId, panelType: "browser.screencast", parameters: {} }, projectExtra())) return;
+    if (opened || !client.send("plugin.panel.open", { panelId, panelType: "browser.screencast", parameters: {} })) return;
     opened = true;
   };
   if (store.connected) open();
@@ -93,7 +92,7 @@ onMounted(() => {
 });
 
 onBeforeUnmount(() => {
-  client.send("plugin.panel.close", { panelId }, projectExtra());
+  client.send("plugin.panel.close", { panelId });
   disposers.forEach(dispose => dispose());
 });
 </script>

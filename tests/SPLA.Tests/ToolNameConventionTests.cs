@@ -35,7 +35,7 @@ public sealed class ToolNameConventionTests
             new GetCurrentDateTimeTool(),
             new WebFetchTool(),
             new WebSearchTool(),
-            new ImageViewTool(),
+            new ImageViewTool(TestConverters.Registry()),
         };
 
         tools.AddRange(new NetworkPlugin().Initialize(new ResolvedSettings { WorkspacePath = "." }));

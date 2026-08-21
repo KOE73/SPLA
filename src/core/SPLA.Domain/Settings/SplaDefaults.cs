@@ -24,6 +24,10 @@ public class SplaDefaults
     [YamlMember(Alias = "ui")]
     public SplaUiSection? Ui { get; set; }
 
+    /// <summary>Machine-wide MCP-over-HTTP default; a project's own <c>mcp:</c> section overrides it.</summary>
+    [YamlMember(Alias = "mcp")]
+    public SplaMcpSection? Mcp { get; set; }
+
     /// <summary>Secret-store backend selection. Machine-only; absent = plaintext file store.</summary>
     [YamlMember(Alias = "secrets")]
     public SplaSecretsSection? Secrets { get; set; }
@@ -37,4 +41,9 @@ public class SplaDefaults
     /// overrides an entry it mentions and inherits the rest.</summary>
     [YamlMember(Alias = "toolsets")]
     public Dictionary<string, string>? ToolSets { get; set; }
+
+    /// <summary>Per-scheme resource switches that apply to every project. A project's own
+    /// <c>resources:</c> block overrides an entry it mentions and inherits the rest.</summary>
+    [YamlMember(Alias = "resources")]
+    public Dictionary<string, bool>? Resources { get; set; }
 }

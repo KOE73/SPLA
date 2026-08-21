@@ -7,6 +7,8 @@ The scannable list: one line per change, no dates, no detail. Derived from the e
 This list and the summary are what CI puts into the release body; the full log stays in the
 repository and is linked from it.
 
+**Covers work since `v0.2.3`**, frozen in [`CHANGELOGS/v0.2.3.md`](v0.2.3.md).
+
 ---
 
 ### Added
@@ -35,32 +37,42 @@ repository and is linked from it.
 
 ### Changed
 
-- The agent runs as a service; windows, terminals and remote clients are its clients.
-- Avalonia became a window manager over one web renderer; the parallel native chat was deleted.
-- All settings moved into the web client as one tabbed surface.
-- Projects became storage brokers handing out named buckets instead of holding files.
-- Four hand-rolled path checks became one boundary; a call is a movement between zones.
-- Connection keys became secret references the settings editor never sees.
-- Tool calls went through a pipeline instead of eight hand-wired concerns.
-- `ILLMService` became a middleware pipeline behind one gateway; providers dispatch by `provider`.
-- Plugin panels moved from Avalonia to the web client.
-- Projects reorganized into a layered `src/` tree; `SPLA.Runtime` extracted.
-- `docs/` split by lifetime into ADR, PLAN and IDEA.
-- Version scheme is now `0.<minor>.<build>`, with the build number assigned by CI.
+- OS-specific desktop code (shell integration, self-relaunch, browser launcher) moved into its own
+  `SPLA.Platform` library, out of `SPLA.UI.Avalonia`.
+
+- `agent_spawn` takes a plain task; a skill is now optional rather than the only way to spawn.
+- An instance holds a lease instead of an owner: it lives while somebody is connected or work is in
+  flight, and only an idle one is ever dropped.
+- A question outlives the window that triggered it; closing a window no longer answers "deny".
 
 ### Fixed
 
-- A running turn in one chat no longer locks the composer in another.
-- A trust flag survives a reload instead of resetting at exit.
-- Web dependencies install when the manifests change, not once per checkout.
-- A publish no longer fails because `git` is missing.
-- The SSH terminal follows the window instead of the size its pty was born with.
-- An SSH session can no longer wedge on a marker that never prints.
-- The project tree shows every file rather than an extension whitelist.
+- Provider observations survive the accounting stage, which rebuilt the turn result and dropped every
+  field it did not set itself; and a per-call fact can no longer overwrite the connection's last known
+  rate-limit budget.
+
+- Token usage is recorded by the LLM pipeline rather than by each host, so callers that wire no
+  callbacks — spawned sub-agents among them — are counted too.
+- A distributed build serves the browser client instead of 404 for every page: the web bundle was
+  never actually embedded, and a build made inside the repository hid it by finding `web/dist` on
+  disk. The build now fails if the bundle is missing from the assembly.
+- `SPLA.CLI.exe` ships self-contained like the desktop app, so an extracted zip no longer needs the
+  ASP.NET Core runtime installed for the service behind the window to start.
+- A service child that dies on startup reports its exit code and output instead of a bare health
+  timeout, and a slow first start from a zip gets 120 seconds rather than 30.
+- The Built-in tools panel explains what each `core.*` toggle registers and why it needs a restart.
+- A chat save writes to a temp file and renames it into place, so a concurrent read can no longer see
+  a truncated file.
+- CLI help text stays English regardless of the machine's UI culture.
+- The hub's default port moved off 5060 (browsers block it) to 5077; `SPLA_HUB_PORT` overrides it.
+- A window whose agent went away shows a lost-connection banner (after several failed retries, backed
+  off, in about three seconds) with a way out, instead of retrying forever in silence.
 
 ### Breaking
 
-- A tool result is a `ToolResult`, not a string.
-- A project's root is its manifest's own directory and cannot be moved.
-- `.spla/skills` is gone; skills come from declared sources.
-- `.spla` is no longer readable through the sandbox.
+- `AgentCallbacks.OnTokenUsage` removed — `OnLlmTurn` carries the whole turn outcome, and recording
+  it is the pipeline's job now.
+- `projectId` removed from the wire envelope: a project belongs to the connection, and a second
+  project is a second connection.
+- A folder without a manifest is no longer entered silently — profiles are chosen, not inherited by
+  default, and a non-interactive run there fails instead of guessing.

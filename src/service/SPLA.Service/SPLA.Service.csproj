@@ -67,17 +67,49 @@
        `dotnet build` after editing any web source failed with CS1566 ("could not find
        index-<hash>.css") and only a second run, re-evaluated against the fresh dist, succeeded.
        Running the glob at BeforeCompile (after BuildWebClient) always sees the just-produced files. -->
-  <!-- Single hook (BeforeTargets="CoreCompile") + DependsOnTargets="BuildWebClient" so the target
-       runs exactly ONCE, after the web build and before compile. Hooking both AfterTargets and
-       BeforeTargets makes MSBuild execute the body at BOTH injection points, adding the same items
-       twice → CS1508 (duplicate resource identifier). -->
-  <Target Name="EmbedWebClient" BeforeTargets="CoreCompile" DependsOnTargets="BuildWebClient"
+  <!-- Single hook + DependsOnTargets="BuildWebClient" so the target runs exactly ONCE, after the web
+       build and before the resources are prepared. Hooking both AfterTargets and BeforeTargets makes
+       MSBuild execute the body at BOTH injection points, adding the same items twice → CS1508
+       (duplicate resource identifier).
+
+       BeforeTargets="AssignTargetPaths", NOT "CoreCompile". CoreCompile never reads @(EmbeddedResource):
+       PrepareResources (AssignTargetPaths → CreateManifestResourceNames → SplitResourcesByCulture →
+       ResGen) turns that list into @(_CoreCompileResourceInputs), and THAT is what the compiler is
+       handed. Hooking CoreCompile ran this target long after the list had been read, so the items went
+       into a collection nobody looks at again — SPLA.Service.dll shipped with ZERO manifest resources.
+       "BeforeTargets=PrepareResources" is not enough either, and looks like it should be: BeforeTargets
+       appends to the target's DependsOnTargets, so it runs after PrepareResources' own dependencies —
+       which is where all the resource processing lives. AssignTargetPaths is the first of them.
+
+       This survived unnoticed because the embedded copy is only ever read when WebAssets finds no
+       web/dist on disk, and a publish made INTO the repo (.publish\work) still walks up and finds the
+       repo's own. Only a zip extracted somewhere else had nothing to fall back to — and answered 404 to
+       every page request. AssignTargetPaths still runs well after BuildWebClient (forced below via
+       DependsOnTargets), so the glob keeps seeing the bundle this build just produced, which is the
+       whole reason it is a target and not a static ItemGroup. -->
+  <Target Name="EmbedWebClient" BeforeTargets="AssignTargetPaths" DependsOnTargets="BuildWebClient"
           Condition="Exists('$(MSBuildThisFileDirectory)..\..\..\web\dist')">
     <ItemGroup>
-      <EmbeddedResource Include="..\..\..\web\dist\**\*.*">
-        <LogicalName>SPLA.Service.WebClient.$([System.String]::new('%(RecursiveDir)%(Filename)%(Extension)').Replace('\', '.'))</LogicalName>
+      <!-- Two steps, and it has to be two. Reading %(RecursiveDir) inside a property function on the
+           SAME item being declared yields an empty string — every file then got the identical logical
+           name "SPLA.Service.WebClient." and the compiler rejected the set with CS1508. (That is the
+           duplicate-identifier error this file's history blamed on double target hooks.) Metadata
+           qualified by another item's name — %(WebClientFile.RecursiveDir) — batches correctly. -->
+      <WebClientFile Include="..\..\..\web\dist\**\*.*" />
+      <EmbeddedResource Include="@(WebClientFile)">
+        <LogicalName>SPLA.Service.WebClient.$([System.String]::new('%(WebClientFile.RecursiveDir)%(WebClientFile.Filename)%(WebClientFile.Extension)').Replace('\', '.'))</LogicalName>
       </EmbeddedResource>
     </ItemGroup>
+  </Target>
+
+  <!-- The build must not be able to succeed without the client inside it again. A distribution has no
+       web/dist to read from, so a missing index.html resource is not a degraded build — it is a build
+       that answers 404 to its own home page, and it looks perfectly healthy right up until someone
+       unzips it on a machine that is not this one. -->
+  <Target Name="VerifyWebClientEmbedded" AfterTargets="PrepareResources"
+          Condition="Exists('$(WebClientDir)\package.json')">
+    <Error Condition="'@(EmbeddedResource->WithMetadataValue('LogicalName', 'SPLA.Service.WebClient.index.html'))' == ''"
+           Text="The web client was not embedded: no resource named SPLA.Service.WebClient.index.html. A published build serves the browser client from that resource and would answer 404 to every page. Check that web/dist/index.html exists and that EmbedWebClient still runs before PrepareResources." />
   </Target>
 
   <ItemGroup>
@@ -90,6 +122,8 @@
     <ProjectReference Include="..\..\agent\SPLA.MCP.BasicTools\SPLA.MCP.BasicTools.csproj" />
     <ProjectReference Include="..\..\core\SPLA.MCP.Core\SPLA.MCP.Core.csproj" />
     <ProjectReference Include="..\..\core\SPLA.Observability\SPLA.Observability.csproj" />
+    <ProjectReference Include="..\..\service\SPLA.Instances\SPLA.Instances.csproj" />
+    <ProjectReference Include="..\..\service\SPLA.Mcp\SPLA.Mcp.csproj" />
     <!-- SSH mechanics for the live xterm terminal bridge (phase B), shared with the SSH plugin. -->
     <ProjectReference Include="..\..\core\SPLA.Ssh.Core\SPLA.Ssh.Core.csproj" />
   </ItemGroup>

@@ -11,6 +11,7 @@ internal sealed class SettingsHandlers : IMessageHandler
     public IEnumerable<string> HandledTypes =>
     [
         MessageTypes.AgentGet, MessageTypes.AgentSave,
+        MessageTypes.McpGet, MessageTypes.McpSave,
         MessageTypes.PluginsGet, MessageTypes.PluginsSave, MessageTypes.PluginAction,
         MessageTypes.SkillsGet, MessageTypes.SkillsSave,
         MessageTypes.SkillSourcesGet, MessageTypes.SkillSourcesSave, MessageTypes.SkillSourceTrust,
@@ -22,6 +23,8 @@ internal sealed class SettingsHandlers : IMessageHandler
     {
         MessageTypes.AgentGet                  => AgentGet(ctx),
         MessageTypes.AgentSave                 => AgentSave(ctx),
+        MessageTypes.McpGet                    => McpGet(ctx),
+        MessageTypes.McpSave                   => McpSave(ctx),
         MessageTypes.PluginsGet                => PluginsGet(ctx),
         MessageTypes.PluginsSave               => PluginsSave(ctx),
         MessageTypes.PluginAction              => PluginAction(ctx),
@@ -50,6 +53,20 @@ internal sealed class SettingsHandlers : IMessageHandler
         var p = ctx.Payload<AgentSettingsPayload>();
         if (p != null)
             await ctx.Session.Hub.BroadcastToProjectAsync(projectId, MessageTypes.AgentResult, SettingsOps.SaveAgent(entry.Runtime, p));
+    }
+
+    private static Task McpGet(RequestContext ctx)
+    {
+        var (entry, _) = ctx.Session.Resolve(ctx.Env);
+        return ctx.Reply(MessageTypes.McpResult, SettingsOps.GetMcp(entry.Runtime));
+    }
+
+    private static async Task McpSave(RequestContext ctx)
+    {
+        var (entry, projectId) = ctx.Session.Resolve(ctx.Env);
+        var p = ctx.Payload<McpSettingsPayload>();
+        if (p != null)
+            await ctx.Session.Hub.BroadcastToProjectAsync(projectId, MessageTypes.McpResult, SettingsOps.SaveMcp(entry.Runtime, p));
     }
 
     private static Task PluginsGet(RequestContext ctx)

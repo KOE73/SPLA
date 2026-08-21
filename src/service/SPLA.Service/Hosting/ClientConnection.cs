@@ -1,4 +1,4 @@
-﻿using SPLA.Runtime;
+using SPLA.Runtime;
 using System.Collections.Concurrent;
 using System.Net.WebSockets;
 using System.Text;
@@ -14,9 +14,11 @@ namespace SPLA.Service;
 
 /// <summary>
 /// One connected client over a WebSocket. Owns only the connection's own concerns: transport
-/// (framing, the receive loop, the send lock), the cross-cutting auth gate, and the correlation
-/// tables that let a running turn ask the initiating client a permission/clarify question and await
-/// the answer without blocking the socket. Business logic for each message type lives in a
+/// (framing, the receive loop, the send lock) and the cross-cutting auth gate. What a running turn
+/// is waiting on is deliberately NOT here: pending permission/clarify questions and the turn's own
+/// cancellation live on the project runtime (<c>AgentRuntime.Asks</c> / <c>AgentRuntime.Turns</c>),
+/// so closing a window neither answers a question nor cancels the work. Business logic for each
+/// message type lives in a
 /// per-module <see cref="IMessageHandler"/> reached through <see cref="MessageRouter"/>; the
 /// connection exposes exactly what handlers need via <see cref="IClientSession"/>, so a new message
 /// type is a new handler and never edits this class.
@@ -53,9 +55,6 @@ public sealed class ClientConnection : IClientSession
 
     private readonly SemaphoreSlim _sendLock = new(1, 1);
 
-    private readonly ConcurrentDictionary<string, TaskCompletionSource<PermissionDecision>> _pendingPermissions = new();
-    private readonly ConcurrentDictionary<string, TaskCompletionSource<string?>> _pendingClarifies = new();
-    private readonly ConcurrentDictionary<string, CancellationTokenSource> _activeTurns = new();
     private readonly ConcurrentDictionary<string, byte> _openChats = new();
 
     /// <summary>Set once a successful <see cref="MessageTypes.Hello"/> handshake has run. When the
@@ -65,16 +64,27 @@ public sealed class ClientConnection : IClientSession
     /// <see cref="HandleHelloAsync"/>).</summary>
     private bool _authenticated;
 
-    /// <summary>Every project id this connection has touched — the project-level analogue of
-    /// <see cref="_openChats"/>, used to scope broadcasts so a client only watching project A never
-    /// receives project B's settings/usage/chat-list results.</summary>
-    private readonly ConcurrentDictionary<string, byte> _openProjects = new();
+    /// <summary>
+    /// The project this connection is working in. Set when the socket is established and changed
+    /// only by <c>project.open</c> — never per message.
+    ///
+    /// <para>Messages used to carry their own ProjectId, which made "which project is this about"
+    /// answerable forty different ways and wrong whenever a sender forgot. It also made the local
+    /// invariant a fiction: a process has exactly one working directory, so a window that claimed to
+    /// hold several projects at once was telling the truth about its runtimes and a lie about
+    /// everything resolved relative to cwd. One connection, one project; a second project is a
+    /// second connection, which locally means a second window.</para>
+    /// </summary>
+    private string _projectId;
 
     /// <summary>True when this connection currently has <paramref name="chatId"/> open (a watcher of it).</summary>
     public bool IsWatching(string chatId) => _openChats.ContainsKey(chatId);
 
-    /// <summary>True when this connection has touched <paramref name="projectId"/> at least once.</summary>
-    public bool IsWatchingProject(string projectId) => _openProjects.ContainsKey(projectId);
+    /// <summary>True when this connection is working in <paramref name="projectId"/> — which is now
+    /// simply "is it the one", so a broadcast scoped to a project reaches exactly the connections
+    /// bound to it.</summary>
+    public bool IsWatchingProject(string projectId)
+        => string.Equals(Volatile.Read(ref _projectId), projectId, StringComparison.Ordinal);
 
     public ClientConnection(
         WebSocket socket, AgentRuntimeRegistry registry, ConnectionHub hub, AuthGate auth, ILogger log,
@@ -100,6 +110,7 @@ public sealed class ClientConnection : IClientSession
         _userDefaultProjectId = userDefaultProjectId;
         _userArea = userArea;
         _initialChat = initialChat;
+        _projectId = userDefaultProjectId ?? registry.DefaultProjectId;
         _router = MessageRouter.Default;
         _terminals = new SshTerminalManager((type, payload) => SendAsync(type, payload), log);
         _pluginPanels = new PluginPanelManager((type, payload) => SendAsync(type, payload));
@@ -120,19 +131,29 @@ public sealed class ClientConnection : IClientSession
     public IReadOnlyList<ProjectDescriptor> ListProjects() => _userProvider?.List() ?? _registry.List();
     public IReadOnlyList<ProjectDescriptor> RecentProjects() => _userProvider?.Recent() ?? _registry.Recent();
 
-    /// <summary>Resolves the runtime an envelope means: its explicit ProjectId, or the connection's
-    /// default when omitted. Marks the resolved project as "touched" so later broadcasts reach it.</summary>
+    /// <summary>The runtime this connection works in. The envelope is still the parameter so every
+    /// handler keeps one shape, but nothing in it selects a project any more — see
+    /// <see cref="_projectId"/> for why that stopped being a per-message decision.</summary>
     public (RuntimeEntry Entry, string ProjectId) Resolve(ProtocolEnvelope env)
     {
-        var projectId = string.IsNullOrEmpty(env.ProjectId) ? DefaultProjectId : env.ProjectId;
-        _openProjects[projectId] = 0;
+        var projectId = Volatile.Read(ref _projectId);
         return (_registry.Open(projectId), projectId);
     }
 
     SshTerminalManager IClientSession.Terminals => _terminals;
     PluginPanelManager IClientSession.PluginPanels => _pluginPanels;
 
-    void IClientSession.MarkProjectOpen(string projectId) => _openProjects[projectId] = 0;
+    /// <summary>Rebinds this connection to another project — the only thing that moves it. Locally a
+    /// window does this by reconnecting; on a server one socket may walk between the user's own
+    /// projects, which is why it is a rebind and not a fixed value.</summary>
+    void IClientSession.MarkProjectOpen(string projectId)
+    {
+        Volatile.Write(ref _projectId, projectId);
+        // The chats this connection was watching belong to the project it just left. Ids are guids so
+        // nothing could actually collide, but keeping them would leave the connection claiming to
+        // watch chats it can no longer reach — and "watcher" is what broadcast scoping runs on.
+        _openChats.Clear();
+    }
     void IClientSession.MarkChatOpen(string chatId) => _openChats[chatId] = 0;
     void IClientSession.MarkChatClosed(string chatId) => _openChats.TryRemove(chatId, out _);
 
@@ -144,16 +165,18 @@ public sealed class ClientConnection : IClientSession
         => _ = RunTurnAsync(runtime, projectId, chat, text, images, hostStopping);
 
     bool IClientSession.TryCancelTurn(string chatId)
-    {
-        if (_activeTurns.TryGetValue(chatId, out var cts)) { cts.Cancel(); return true; }
-        return false;
-    }
+        => BoundRuntime.Turns.TryCancel(chatId);
 
     bool IClientSession.CompletePermission(string requestId, PermissionDecision decision)
-        => _pendingPermissions.TryRemove(requestId, out var tcs) && tcs.TrySetResult(decision);
+        => BoundRuntime.Asks.CompletePermission(requestId, decision);
 
     bool IClientSession.CompleteClarify(string requestId, string? choice)
-        => _pendingClarifies.TryRemove(requestId, out var tcs) && tcs.TrySetResult(choice);
+        => BoundRuntime.Asks.CompleteClarify(requestId, choice);
+
+    /// <summary>The runtime this connection is bound to. Answers and cancels arrive carrying only a
+    /// request id or a chat id, and now they need nothing more: there is exactly one project they
+    /// could possibly be about.</summary>
+    private AgentRuntime BoundRuntime => _registry.Open(Volatile.Read(ref _projectId)).Runtime;
 
     // ── Connection lifecycle ─────────────────────────────────────────────────
 
@@ -168,10 +191,12 @@ public sealed class ClientConnection : IClientSession
         finally
         {
             _hub.Remove(this);
-            // Unblock any handlers waiting on this client.
-            foreach (var tcs in _pendingPermissions.Values) tcs.TrySetResult(PermissionDecision.Deny);
-            foreach (var tcs in _pendingClarifies.Values) tcs.TrySetResult(null);
-            foreach (var cts in _activeTurns.Values) cts.Cancel();
+            // Deliberately NOT unblocking anything here. A turn in flight and the questions it is
+            // waiting on belong to the chat, not to this socket: a closed window means "nobody is
+            // looking right now", and answering Deny on its behalf is how closing a window used to
+            // make the agent refuse every remaining tool call. Both live on the project's runtime
+            // (AgentRuntime.Asks / AgentRuntime.Turns) and are picked up again by the next client
+            // that opens the chat.
             // Tear down any live SSH terminals this connection opened.
             await _terminals.DisposeAsync();
             await _pluginPanels.DisposeAsync();
@@ -265,8 +290,7 @@ public sealed class ClientConnection : IClientSession
         // The handshake always describes the connection's default project — a single-project client
         // never needs to know projects exist at all. In server mode this is the user's OWN default
         // project (in their area), so a domain user lands in their space, not the server's.
-        var projectId = DefaultProjectId;
-        _openProjects[projectId] = 0;
+        var projectId = Volatile.Read(ref _projectId);
         var ctx = ProtocolProjection.ToContext(projectId, _registry.Open(projectId).Runtime);
 
         _log.LogInformation("Client connected as {User} ({Key}, {Groups} groups).",
@@ -310,8 +334,7 @@ public sealed class ClientConnection : IClientSession
         var request = _initialChat?.Take();
         if (request == null) return;
 
-        var projectId = DefaultProjectId;
-        _openProjects[projectId] = 0;
+        var projectId = Volatile.Read(ref _projectId);
         var entry = _registry.Open(projectId);
         var chat = entry.Chats.CreateNew(request.Title);
 
@@ -325,9 +348,9 @@ public sealed class ClientConnection : IClientSession
     // ── Turn execution + outbound streaming ───────────────────────────────────
 
     /// <summary>Hub-facing send that never throws — used for broadcasts to all/watching connections.</summary>
-    public async Task TrySendAsync(string type, object? payload, string? chatId = null)
+    public async Task TrySendAsync(string type, object? payload, string? chatId = null, string? requestId = null)
     {
-        try { await SendAsync(type, payload, chatId); }
+        try { await SendAsync(type, payload, chatId, requestId); }
         catch { /* a single dead client must not break a broadcast */ }
     }
 
@@ -344,10 +367,29 @@ public sealed class ClientConnection : IClientSession
             Temperature = chat.Temperature,
             Reasoning = chat.ReasoningLevel,
             ActiveSkillId = chat.ActiveSkillId,
-            ToolSets = ChatHandlers.ToolSetDtos(_registry.Open(DefaultProjectId), chat),
+            ToolSets = ChatHandlers.ToolSetDtos(_registry.Open(Volatile.Read(ref _projectId)), chat),
             Doubt = ChatHandlers.DoubtDto(chat),
-            TurnActive = chat.IsTurnRunning
+            TurnActive = chat.IsTurnRunning,
+            State = SPLA.Domain.Project.InstanceStates.Name(
+                BoundRuntime.StateOf(chat.ChatId, TimeSpan.FromMinutes(10)))
         }, chat.ChatId);
+
+        await ReplayPendingAsksAsync(chat.ChatId);
+    }
+
+    /// <summary>
+    /// Re-sends the questions this chat is already blocked on to a client that just opened it.
+    ///
+    /// <para>Without this, a question asked while nobody was watching would be invisible forever: the
+    /// turn sits waiting, the window shows a chat that merely looks stuck, and the only way out is the
+    /// timeout. The questions live on the project's runtime precisely so a later arrival can still
+    /// answer them.</para>
+    /// </summary>
+    private async Task ReplayPendingAsksAsync(string chatId)
+    {
+        var asks = BoundRuntime.Asks.List(chatId);
+        foreach (var ask in asks)
+            await SendAsync(ProtocolMapper.MessageTypeFor(ask), ProtocolMapper.PayloadFor(ask), chatId, ask.RequestId);
     }
 
     private async Task RunTurnAsync(
@@ -355,7 +397,7 @@ public sealed class ClientConnection : IClientSession
         CancellationToken hostStopping)
     {
         using var turnCts = CancellationTokenSource.CreateLinkedTokenSource(hostStopping);
-        _activeTurns[chat.ChatId] = turnCts;
+        runtime.Turns.Register(chat.ChatId, turnCts);
 
         // Make the acting user (and chat/project) ambient for this turn's telemetry, so tool-call and
         // token measurements the collector taps can be attributed to this user for the per-user stats
@@ -379,8 +421,8 @@ public sealed class ClientConnection : IClientSession
             var send = chat.SendAsync(
                 text,
                 callbacks,
-                (def, args) => RequestPermissionAsync(chat.ChatId, def, args, turnCts.Token),
-                req => RequestClarifyAsync(chat.ChatId, req, turnCts.Token),
+                (def, args) => runtime.Asks.AskPermissionAsync(chat.ChatId, def, args, turnCts.Token),
+                req => runtime.Asks.AskClarifyAsync(chat.ChatId, req, turnCts.Token),
                 turnCts.Token,
                 images,
                 onUserMessage: m => _ = _hub.BroadcastToWatchersAsync(chat.ChatId, MessageTypes.UserMessage,
@@ -405,7 +447,7 @@ public sealed class ClientConnection : IClientSession
         }
         finally
         {
-            _activeTurns.TryRemove(chat.ChatId, out _);
+            runtime.Turns.Remove(chat.ChatId, turnCts);
         }
 
         await _hub.BroadcastToWatchersAsync(chat.ChatId, MessageTypes.TurnComplete,
@@ -430,14 +472,23 @@ public sealed class ClientConnection : IClientSession
 
     /// <summary>
     /// Turn events fan out to every connection watching the chat (via the hub), not just the sender —
-    /// so two windows on one chat both see the live stream. Permission/clarify are NOT here: those go
-    /// only to the initiating connection (see RequestPermissionAsync/RequestClarifyAsync).
+    /// so two windows on one chat both see the live stream. Permission/clarify are not here either,
+    /// but for a different reason: they are raised by the project runtime's <c>PendingAskStore</c> and
+    /// fanned out by the host (see <c>SplaServiceHost.WireRuntimeEvents</c>), so they survive this
+    /// connection going away.
     /// </summary>
     private AgentCallbacks BuildCallbacks(AgentRuntime runtime, string projectId, ChatRuntime chat, TurnContext ctx)
     {
         var chatId = chat.ChatId;
         DateTime lastProgress = DateTime.MinValue;
-        Task ToWatchers(string type, object payload) => _hub.BroadcastToWatchersAsync(chatId, type, payload);
+        Task ToWatchers(string type, object payload)
+        {
+            // Every turn event is also proof the turn is moving. A registered turn that has gone
+            // silent for a long time is a model that stopped halfway — the state the instance must
+            // never be evicted out of, and the one a person comes back to and pokes forward.
+            runtime.Turns.Touch(chatId);
+            return _hub.BroadcastToWatchersAsync(chatId, type, payload);
+        }
 
         return new AgentCallbacks
         {
@@ -480,6 +531,45 @@ public sealed class ClientConnection : IClientSession
                     Details = progress.Details?.Select(d => new ToolProgressDetailDto { Label = d.Label, Value = d.Value }).ToList()
                 });
             },
+            // The nested picture, alongside the flat one above. The tree has existed since progress was
+            // built and nothing had ever subscribed to it, which left the native clients seeing less
+            // than a foreign head over MCP does — a script's parallel children and a sub-agent's whole
+            // run were reported to nobody.
+            OnProgressTree = tree =>
+            {
+                // First sight of a node id, and its finish, are structural: they are what the client
+                // builds the shape out of, and one dropped frame is a branch that never appears or one
+                // that spins forever. Only the ticks in between are throttled, and per node — a scan
+                // reporting per host must not silence the tool that started underneath it.
+                var lastSent = new System.Collections.Concurrent.ConcurrentDictionary<string, DateTime>();
+
+                tree.NodeChanged += node =>
+                {
+                    var now = DateTime.UtcNow;
+                    var known = lastSent.TryGetValue(node.Id, out var last);
+
+                    if (known && node.State == SPLA.Domain.Models.ProgressState.Running
+                              && (now - last).TotalMilliseconds < 120) return;
+
+                    lastSent[node.Id] = now;
+
+                    var latest = node.Latest;
+                    _ = ToWatchers(MessageTypes.ProgressNode, new ProgressNodePayload
+                    {
+                        NodeId = node.Id,
+                        ParentId = node.ParentId,
+                        Label = node.Label,
+                        State = node.State.ToString().ToLowerInvariant(),
+                        Current = latest?.Current,
+                        Total = latest?.Total,
+                        Fraction = latest?.Fraction,
+                        Message = latest?.Message,
+                        Details = latest?.Details?
+                            .Select(d => new ToolProgressDetailDto { Label = d.Label, Value = d.Value })
+                            .ToList()
+                    });
+                };
+            },
             OnToolResult = (tc, result) => ToWatchers(MessageTypes.ToolResult,
                 new ToolResultPayload
                 {
@@ -490,49 +580,19 @@ public sealed class ClientConnection : IClientSession
                     Reason = result.Reason
                 }),
             OnNotice = note => ToWatchers(MessageTypes.Notice, new NoticePayload { Text = note }),
-            OnTokenUsage = (prompt, completion) =>
+            // Tells the windows what the call cost; recording it happened in the pipeline, so
+            // SettingsOps.GetUsage already reflects this turn by the time the broadcast is built.
+            OnLlmTurn = turn =>
             {
-                runtime.TokenUsageProject.Record(prompt, completion);
-                runtime.TokenUsageGlobal.Record(prompt, completion);
                 _ = ToWatchers(MessageTypes.TokenUsage, new TokenUsagePayload
                 {
-                    PromptTokens = prompt,
-                    CompletionTokens = completion,
+                    PromptTokens = turn.Message.PromptTokens,
+                    CompletionTokens = turn.Message.CompletionTokens,
                     ContextLength = ctx.ContextLength
                 });
                 _ = _hub.BroadcastToProjectAsync(projectId, MessageTypes.UsageResult, SettingsOps.GetUsage(runtime));
             }
         };
-    }
-
-    private async Task<PermissionDecision> RequestPermissionAsync(
-        string chatId, ToolFunctionDefinition def, string args, CancellationToken ct)
-    {
-        var reqId = Guid.NewGuid().ToString("N");
-        var tcs = new TaskCompletionSource<PermissionDecision>(TaskCreationOptions.RunContinuationsAsynchronously);
-        _pendingPermissions[reqId] = tcs;
-
-        await SendAsync(MessageTypes.PermissionRequest,
-            new PermissionRequestPayload { ToolName = def.Name, Arguments = args }, chatId, reqId);
-
-        using (ct.Register(() => { if (_pendingPermissions.TryRemove(reqId, out var t)) t.TrySetResult(PermissionDecision.Deny); }))
-            return await tcs.Task;
-    }
-
-    private async Task<string?> RequestClarifyAsync(string chatId, ClarifyRequest req, CancellationToken ct)
-    {
-        var reqId = Guid.NewGuid().ToString("N");
-        var tcs = new TaskCompletionSource<string?>(TaskCreationOptions.RunContinuationsAsynchronously);
-        _pendingClarifies[reqId] = tcs;
-
-        await SendAsync(MessageTypes.ClarifyRequest, new ClarifyRequestPayload
-        {
-            Question = req.Question,
-            Options = req.Options.Select(o => new ClarifyOptionDto { Label = o.Label, Description = o.Description }).ToList()
-        }, chatId, reqId);
-
-        using (ct.Register(() => { if (_pendingClarifies.TryRemove(reqId, out var t)) t.TrySetResult(null); }))
-            return await tcs.Task;
     }
 
     // ── Framing ────────────────────────────────────────────────────────────────

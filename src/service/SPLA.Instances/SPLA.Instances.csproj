@@ -1,0 +1,12 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\core\SPLA.Instances.Contracts\SPLA.Instances.Contracts.csproj" />
+    <!-- For the one shared "find this binary again" resolver the spawner needs. SPLA.Platform is
+         UI-free and package-free, so this stays as light as the rest of this project (see the
+         csproj comment in SPLA.UI.Avalonia about why that matters here). -->
+    <ProjectReference Include="..\..\core\SPLA.Platform\SPLA.Platform.csproj" />
+    <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="10.0.0" />
+  </ItemGroup>
+
+</Project>

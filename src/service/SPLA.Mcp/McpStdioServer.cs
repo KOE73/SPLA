@@ -1,6 +1,7 @@
 using SPLA.Domain.Interfaces;
 using SPLA.Domain.Models;
 using SPLA.Domain.Tools;
+using System.Collections.Concurrent;
 using System.Text.Json;
 using System.Text.Json.Nodes;
 
@@ -20,6 +21,12 @@ namespace SPLA.Mcp;
 /// <c>Console.WriteLine</c> anywhere in the process corrupts the stream and the connection dies.
 /// Diagnostics go to stderr, which the client ignores.
 /// </para>
+/// <para>
+/// <b>A call does not hold the reader.</b> <c>tools/call</c> runs on its own task; everything else is
+/// answered inline, being instant. That is not about throughput — a foreign head issues one call at a
+/// time. It is that the two things a client may send *during* a long call, a cancellation and a
+/// keepalive ping, are unreachable if the loop is sitting inside the call they are about.
+/// </para>
 /// </summary>
 public sealed class McpStdioServer
 {
@@ -31,30 +38,54 @@ public sealed class McpStdioServer
     private readonly ToolCallContext? _context;
     private readonly TextWriter _log;
 
+    /// <summary>Serialises the pipe. Progress notifications are written from tool threads while a call
+    /// is still running, so "one JSON object per line" stops being free the moment anything but the
+    /// read loop can write.</summary>
+    private readonly SemaphoreSlim _writeGate = new(1, 1);
+
+    /// <summary>Calls still running, by request id, so <c>notifications/cancelled</c> has something to
+    /// cancel. Keyed on the id's JSON text because JSON-RPC ids may be a string or a number and the
+    /// client is entitled to either.</summary>
+    private readonly ConcurrentDictionary<string, CancellationTokenSource> _inFlight = new();
+
+    /// <summary>The pipe, for the duration of <see cref="RunAsync"/>.</summary>
+    private TextWriter? _output;
+
     /// <param name="host">Executes the calls. Given, not constructed — see the class remarks.</param>
     /// <param name="listTools">What this caller may be offered. The exposure decision belongs to
     /// whoever hosts this server, not to the protocol.</param>
     /// <param name="mode">The ceiling on what a call may do, fixed for the connection.</param>
-    /// <param name="context">Whose calls these are. Null lets the host read the ambient scopes,
-    /// which is right for a stdio child that is the only thing running.</param>
+    /// <param name="context">Whose calls these are. Null lets the host read the ambient scopes
+    /// (Session, Identity) — right for a stdio child sitting on a runtime that already has a chat
+    /// open. Either way, <paramref name="source"/> is stamped over whatever <see cref="ToolCallContext.Source"/>
+    /// it carries, so an audit log always sees where this transport's calls actually came from.</param>
     /// <param name="log">Diagnostics sink. Must not be stdout.</param>
+    /// <param name="source">The label an audit log sees for every call this instance makes — e.g.
+    /// the HTTP <c>/mcp</c> endpoint passes <c>"mcp-http &lt;ip&gt;"</c>. Defaults to
+    /// <c>"mcp-stdio"</c>, since that is what this class actually is.</param>
     public McpStdioServer(
         IToolHost host,
         Func<IEnumerable<ToolDefinition>> listTools,
         AgentMode mode = AgentMode.Agent,
         ToolCallContext? context = null,
-        TextWriter? log = null)
+        TextWriter? log = null,
+        string source = "mcp-stdio")
     {
         _host = host;
         _listTools = listTools;
         _mode = mode;
-        _context = context;
+        _context = (context ?? ToolCallContext.FromAmbient()) with { Source = source };
         _log = log ?? Console.Error;
     }
 
     public async Task RunAsync(TextReader input, TextWriter output, CancellationToken ct = default)
     {
+        _output = output;
         _log.WriteLine("[spla-mcp] ready");
+
+        // What we still owe the client. Awaited on the way out so a call that was in flight when the
+        // pipe closed gets to finish writing rather than being torn off mid-frame.
+        var running = new ConcurrentDictionary<Task, byte>();
 
         while (!ct.IsCancellationRequested)
         {
@@ -75,17 +106,67 @@ public sealed class McpStdioServer
 
             if (request is null) continue;
 
+            // The one method that may take minutes goes off the loop; everything else is a lookup and
+            // is cheaper to answer here than to schedule.
+            if (request["method"]?.GetValue<string>() == "tools/call")
+            {
+                // Registered here rather than inside the task: a client is entitled to send the
+                // cancellation on the very next line, and a call that is not yet findable when it
+                // arrives would run to completion having been told to stop.
+                var key = request["id"]?.ToJsonString();
+                var cts = CancellationTokenSource.CreateLinkedTokenSource(ct);
+                if (key is not null) _inFlight[key] = cts;
+
+                Task? call = null;
+                call = Task.Run(async () =>
+                {
+                    try { await DispatchCallAsync(request, key, cts); }
+                    finally { if (call is not null) running.TryRemove(call, out _); }
+                }, CancellationToken.None);
+                running[call] = 0;
+                continue;
+            }
+
             var response = await HandleAsync(request, ct);
 
             // A notification has no id and must get no reply — answering one is a protocol error,
             // not merely noise.
             if (response is null) continue;
 
-            await output.WriteLineAsync(response.ToJsonString());
-            await output.FlushAsync(ct);
+            await SendAsync(response, ct);
         }
 
+        // Cancellation first, then the wait: a call still inside the model or a sub-agent would
+        // otherwise hold the shutdown for as long as it felt like.
+        foreach (var cts in _inFlight.Values) { try { cts.Cancel(); } catch (ObjectDisposedException) { } }
+        try { await Task.WhenAll(running.Keys); } catch { /* each task already reported for itself */ }
+
         _log.WriteLine("[spla-mcp] stopped");
+    }
+
+    /// <summary>
+    /// Runs one <c>tools/call</c> to completion and writes its answer. Owns the request's cancellation
+    /// source for exactly as long as the call lives, which is what makes
+    /// <c>notifications/cancelled</c> mean something.
+    /// </summary>
+    private async Task DispatchCallAsync(JsonNode request, string? key, CancellationTokenSource cts)
+    {
+        using var lifetime = cts;
+        try
+        {
+            var response = await HandleAsync(request, cts.Token);
+            if (response is not null) await SendAsync(response, CancellationToken.None);
+        }
+        catch (OperationCanceledException)
+        {
+            // The client asked for this and, per the spec, must not be answered for a request it has
+            // withdrawn. Recorded on stderr so a cancelled call is not indistinguishable from a lost one.
+            _log.WriteLine($"[spla-mcp] tools/call {key ?? "(no id)"} cancelled");
+        }
+        finally
+        {
+            if (key is not null) _inFlight.TryRemove(key, out _);
+        }
     }
 
     private async Task<JsonNode?> HandleAsync(JsonNode request, CancellationToken ct)
@@ -103,7 +184,10 @@ public sealed class McpStdioServer
                     return Ok(id, Initialize(request));
 
                 case "notifications/initialized":
+                    return null;
+
                 case "notifications/cancelled":
+                    Cancel(request);
                     return null;
 
                 case "ping":
@@ -122,10 +206,48 @@ public sealed class McpStdioServer
                     return Error(id, -32601, $"Method '{method}' is not supported.");
             }
         }
+        catch (OperationCanceledException)
+        {
+            throw;                                   // withdrawn, not failed — see DispatchCallAsync
+        }
         catch (Exception ex)
         {
             _log.WriteLine($"[spla-mcp] {method} failed: {ex}");
             return Error(id, -32603, ex.Message);
+        }
+    }
+
+    /// <summary>Withdraws a running call. Silent when the id names nothing: a cancellation that lost the
+    /// race against completion is normal traffic, not an error worth answering.</summary>
+    private void Cancel(JsonNode request)
+    {
+        var key = request["params"]?["requestId"]?.ToJsonString();
+        if (key is null || !_inFlight.TryGetValue(key, out var cts)) return;
+
+        try { cts.Cancel(); } catch (ObjectDisposedException) { }
+    }
+
+    /// <summary>One frame out. The only writer to the pipe — see <see cref="_writeGate"/>.</summary>
+    private async Task SendAsync(JsonNode frame, CancellationToken ct)
+    {
+        var output = _output;
+        if (output is null) return;
+
+        await _writeGate.WaitAsync(CancellationToken.None);
+        try
+        {
+            await output.WriteLineAsync(frame.ToJsonString());
+            await output.FlushAsync(ct);
+        }
+        catch (Exception ex)
+        {
+            // A dead pipe is the normal end of a session; it must not surface as a tool failure on a
+            // thread that has nothing to do with the client going away.
+            _log.WriteLine($"[spla-mcp] write failed: {ex.Message}");
+        }
+        finally
+        {
+            _writeGate.Release();
         }
     }
 
@@ -199,16 +321,51 @@ public sealed class McpStdioServer
             };
         }
 
-        var result = await _host.ExecuteToolAsync(_mode, name, args, ct, _context);
+        // Progress is opt-in, per call, by the client: a token in _meta means "tell me how this is
+        // going". Without one nothing is opened and the tool's ticks fall on the floor exactly as
+        // before — which is the correct answer to a client that never asked and would not know what
+        // to do with the frames.
+        //
+        // Nothing below this line is tool-specific, and that is the point. Every tool in the project
+        // already reports through ProgressScope, and every stage of the pipeline already opens a node
+        // per call at any depth; the only thing missing over MCP was a tree for them to land in,
+        // because the tree is normally opened by the agent loop and there is no agent loop here.
+        var token = request["params"]?["_meta"]?["progressToken"];
 
-        return new JsonObject
+        if (token is null)
         {
-            ["content"] = Project(result),
-            // MCP carries a flag where SPLA carries three outcomes. Refused and Failed both fold
-            // into it: the distinction matters to an audit log, not to the model reading the answer.
-            ["isError"] = result.IsError
-        };
+            var plain = await _host.ExecuteToolAsync(_mode, name, args, ct, _context);
+            return Answer(plain);
+        }
+
+        var tree = new ProgressTree();
+
+        // CancellationToken.None deliberately: a withdrawn call still gets its frames written rather
+        // than torn off half-way, and the pipe is shared — a partial line ends the session for
+        // everything, not just for this call.
+        var reporter = new McpProgressReporter(tree, token, frame => SendAsync(frame, CancellationToken.None));
+        try
+        {
+            using var treeScope = ProgressScope.BeginTree(tree);
+            var result = await _host.ExecuteToolAsync(_mode, name, args, ct, _context);
+            return Answer(result);
+        }
+        finally
+        {
+            // Before the answer, always: progress that arrived after the result it was about would be
+            // a puzzle for the client and a lie about the order things happened in.
+            await reporter.FinishAsync();
+        }
     }
+
+    /// <summary>The result frame. MCP carries a flag where SPLA carries three outcomes: refused and
+    /// failed both fold into it, because the distinction matters to an audit log, not to the model
+    /// reading the answer.</summary>
+    private static JsonObject Answer(ToolResult result) => new()
+    {
+        ["content"] = Project(result),
+        ["isError"] = result.IsError
+    };
 
     /// <summary>Content blocks, one for one. The list already exists on our side — this only renames
     /// the fields.</summary>

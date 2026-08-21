@@ -13,7 +13,6 @@ import DockToolbar from "./DockToolbar.vue";
 import { initializeDock, openPanel, openSshTerminal } from "./dockController";
 import { dockComponents, dockTabComponents } from "./panelCatalog";
 import { client } from "../protocol/SplaClient";
-import { projectEnvelope } from "../state/project";
 
 function ready(event: { api: Parameters<typeof initializeDock>[0] }) {
   initializeDock(event.api);
@@ -26,7 +25,7 @@ function ready(event: { api: Parameters<typeof initializeDock>[0] }) {
 // session once (tracked by id); if the operator closes the panel it does not pop back.
 const autoOpened = new Set<string>();
 const offChanged = client.on("ssh.sessions.changed", () => {
-  client.send("ssh.sessions.get", undefined, projectEnvelope());
+  client.send("ssh.sessions.get", undefined);
 });
 const offSessions = client.on("ssh.sessions.result", p => {
   for (const s of p.sessions) {
@@ -37,8 +36,8 @@ const offSessions = client.on("ssh.sessions.result", p => {
 });
 onUnmounted(() => { offChanged(); offSessions(); });
 // Catch a session the agent opened before this mounted, and re-sync after a reconnect.
-client.send("ssh.sessions.get", undefined, projectEnvelope());
-const offConn = client.on("conn", c => { if (c.on) client.send("ssh.sessions.get", undefined, projectEnvelope()); });
+client.send("ssh.sessions.get", undefined);
+const offConn = client.on("conn", c => { if (c.on) client.send("ssh.sessions.get", undefined); });
 onUnmounted(offConn);
 </script>
 

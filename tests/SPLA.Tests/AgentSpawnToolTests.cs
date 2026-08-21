@@ -20,13 +20,22 @@ file sealed class StubLlmService : SPLA.Domain.Llm.ILlmGateway
     private readonly string _response;
     public StubLlmService(string response = "stub result") => _response = response;
 
+    /// <summary>What the "provider" reports having been sent. Null is the honest default — plenty of
+    /// endpoints report nothing, and the progress tick has to cope with that.</summary>
+    public int? PromptTokens { get; init; }
+
     public Task<SPLA.Domain.Llm.LlmTurnResult> InvokeAsync(
         SPLA.Domain.Llm.LlmTurnContext ctx, CancellationToken ct = default)
     {
         ctx.OnDelta?.Invoke(_response);
         return Task.FromResult(new SPLA.Domain.Llm.LlmTurnResult
         {
-            Message = new ChatMessage { Role = ChatRole.Assistant, Content = _response }
+            Message = new ChatMessage
+            {
+                Role = ChatRole.Assistant,
+                Content = _response,
+                PromptTokens = PromptTokens
+            }
         });
     }
 }
@@ -65,11 +74,21 @@ public class AgentSpawnToolTests
     }
 
     [Fact]
-    public async Task Spawn_missing_skill_param_returns_error()
+    public async Task Spawn_without_skill_runs_the_input_as_a_free_form_task()
     {
-        var tool = new AgentSpawnTool(BuildRunner());
-        var result = (await tool.ExecuteAsync("""{"input":"go"}""")).TextContent;
-        Assert.StartsWith("error: 'skill'", result);
+        var tool = new AgentSpawnTool(BuildRunner("host is Ubuntu 24.04"));
+        var result = (await tool.ExecuteAsync("""{"input":"report the OS of host X"}""")).TextContent;
+        Assert.Contains("host is Ubuntu 24.04", result);
+    }
+
+    [Fact]
+    public async Task Spawn_with_null_skill_runs_the_input_as_a_free_form_task()
+    {
+        // Strict schema keeps 'skill' in required, so a model with nothing to pin sends an explicit
+        // null. It has to mean the same as leaving the property out.
+        var tool = new AgentSpawnTool(BuildRunner("done"));
+        var result = (await tool.ExecuteAsync("""{"input":"do a thing","skill":null,"mode":null}""")).TextContent;
+        Assert.Contains("done", result);
     }
 
     [Fact]
@@ -97,6 +116,16 @@ public class AgentSpawnToolTests
     }
 
     [Fact]
+    public async Task Spawn_without_skill_still_refuses_an_empty_input()
+    {
+        // The one thing a free-form spawn cannot do without: with no skill and no brief there is
+        // nothing to run at all.
+        var tool = new AgentSpawnTool(BuildRunner());
+        var result = (await tool.ExecuteAsync("""{"skill":null,"input":"  "}""")).TextContent;
+        Assert.StartsWith("error: 'input'", result);
+    }
+
+    [Fact]
     public async Task Spawn_does_not_affect_parent_skill_session()
     {
         // SpawnedAgentRunner creates its own SkillSession — parent has none.
@@ -108,5 +137,276 @@ public class AgentSpawnToolTests
         await tool.ExecuteAsync("""{"skill":"test.skill","input":"go"}""");
 
         Assert.Null(parentSession.ActiveSkillId); // unchanged
+    }
+
+    /// <summary>
+    /// A run gets a branch of its own, named after the task. Without one a batch is a lie: its tasks
+    /// run on parallel flows that all inherit the same current node, so several sub-agents would hang
+    /// their tool calls off the batch as one undifferentiated row — the tree would show what was done
+    /// and lose who did it. A pinned skill names the branch after itself.
+    /// </summary>
+    [Theory]
+    [InlineData("""{"skill":null,"input":"count the adr files"}""", "count the adr files")]
+    [InlineData("""{"skill":"test.skill","input":"go"}""", "test.skill")]
+    public async Task A_spawned_run_gets_a_branch_named_after_its_task(string arguments, string expected)
+    {
+        var tree = new ProgressTree();
+        var tool = new AgentSpawnTool(BuildRunner("ok"));
+
+        using (ProgressScope.BeginTree(tree))
+        using (ProgressScope.BeginNode("agent_spawn"))
+        {
+            await tool.ExecuteAsync(arguments);
+        }
+
+        var caller = Assert.Single(tree.Nodes, n => n.ParentId == null);
+        var run = Assert.Single(tree.Nodes, n => n.ParentId == caller.Id);
+        Assert.Equal(expected, run.Label);
+    }
+
+    /// <summary>
+    /// How full the run's context is, on the tick. This is the number that makes a runaway sub-agent
+    /// legible before it is expensive: there is no "percent done" for an agent, but there is a ceiling
+    /// it is walking towards, and nothing else about a long run distinguishes working from filling up.
+    /// </summary>
+    [Fact]
+    public async Task A_tick_carries_how_much_context_the_run_has_used()
+    {
+        var tree = new ProgressTree();
+        var settings = new ResolvedSettings { Mode = AgentMode.Edit };
+        var runner = new SpawnedAgentRunner(
+            new StubLlmService("done") { PromptTokens = 1234 },
+            new StubToolHost(),
+            new SkillLibrary([new SPLA.Tests.Fakes.FakeSkillSource()]),
+            new PluginManager(settings),
+            settings);
+
+        using (ProgressScope.BeginTree(tree))
+        using (ProgressScope.BeginNode("agent_spawn"))
+        {
+            // Two turns: the first reports the count, the second is where it can appear — the figure
+            // arrives with the call that has already been made.
+            await runner.RunAsync(null, "go", AgentMode.Edit);
+        }
+
+        var run = Assert.Single(tree.Nodes, n => n.Label == "go");
+
+        // No window declared and nothing to ask, so the figure travels in the message and nothing is
+        // set for a bar: there is no fraction without a denominator, and Current alone would only put
+        // the same number on the line twice. Invariant formatting — the line is English and also goes
+        // out over MCP, so a machine with a comma separator must not turn it into "1,2k".
+        Assert.Contains("ctx 1.2k", run.Latest!.Message);
+        Assert.Null(run.Latest.Current);
+        Assert.Null(run.Latest.Total);
+    }
+
+    /// <summary>With a window to compare against, the figure becomes a percentage and a bar. The
+    /// lookup is off the critical path — a run must not wait on a provider that may be slow or gone —
+    /// so the test lets it land before reading.</summary>
+    [Fact]
+    public async Task A_known_window_turns_the_figure_into_a_percentage()
+    {
+        var tree = new ProgressTree();
+        var settings = new ResolvedSettings { Mode = AgentMode.Edit };
+        var runner = new SpawnedAgentRunner(
+            new StubLlmService("done") { PromptTokens = 4096 },
+            new StubToolHost(),
+            new SkillLibrary([new SPLA.Tests.Fakes.FakeSkillSource()]),
+            new PluginManager(settings),
+            settings,
+            contextWindow: (_, _) => Task.FromResult<int?>(16384));
+
+        using (ProgressScope.BeginTree(tree))
+        using (ProgressScope.BeginNode("agent_spawn"))
+        {
+            await runner.RunAsync(null, "go", AgentMode.Edit);
+        }
+
+        var run = Assert.Single(tree.Nodes, n => n.Label == "go");
+
+        // The sentence says what the numbers mean; the numbers themselves are in the fields, where
+        // every renderer already knows how to show them. Saying both printed the figure twice.
+        Assert.Contains("ctx 25%", run.Latest!.Message);
+        Assert.DoesNotContain("4.1k", run.Latest.Message);
+        Assert.Equal(4096, run.Latest.Current);
+        Assert.Equal(16384, run.Latest.Total);
+        Assert.Equal(0.25, run.Latest.Fraction);
+    }
+
+    /// <summary>Nothing to say before the first call comes back, and nothing invented when the provider
+    /// stays silent about it — which many endpoints do.</summary>
+    [Fact]
+    public async Task No_context_figure_when_the_provider_reports_none()
+    {
+        var tree = new ProgressTree();
+
+        using (ProgressScope.BeginTree(tree))
+        using (ProgressScope.BeginNode("agent_spawn"))
+        {
+            await BuildRunner("done").RunAsync(null, "go", AgentMode.Edit);
+        }
+
+        var run = Assert.Single(tree.Nodes, n => n.Label == "go");
+        Assert.Null(run.Latest!.Current);
+        Assert.DoesNotContain("ctx", run.Latest.Message);
+    }
+
+    /// <summary>Concurrent runs must not collide: each opens its node on its own flow, and AsyncLocal
+    /// forking is what keeps them siblings rather than a chain.</summary>
+    [Fact]
+    public async Task Concurrent_spawns_each_get_their_own_branch()
+    {
+        var tree = new ProgressTree();
+        var tool = new AgentSpawnTool(BuildRunner("ok"));
+
+        using (ProgressScope.BeginTree(tree))
+        using (ProgressScope.BeginNode("agent_spawn_batch"))
+        {
+            await Task.WhenAll(Enumerable.Range(0, 5).Select(i =>
+                tool.ExecuteAsync($$"""{"skill":null,"input":"task number {{i}}"}""")));
+        }
+
+        var batch = Assert.Single(tree.Nodes, n => n.ParentId == null);
+        var runs = tree.Nodes.Where(n => n.ParentId == batch.Id).Select(n => n.Label).ToList();
+
+        Assert.Equal(5, runs.Count);
+        Assert.Equal(5, runs.Distinct().Count());
+    }
+
+    /// <summary>The whole point of the log: a run that finishes cleanly is not thrown away. Its
+    /// messages, result and outcome all have to be readable back after the tool call has returned.</summary>
+    [Fact]
+    public async Task A_completed_run_is_recorded_with_its_messages()
+    {
+        var log = new SpawnedRunLog();
+        var settings = new ResolvedSettings { Mode = AgentMode.Edit };
+        var runner = new SpawnedAgentRunner(
+            new StubLlmService("done"), new StubToolHost(),
+            new SkillLibrary([new SPLA.Tests.Fakes.FakeSkillSource()]),
+            new PluginManager(settings), settings,
+            runLog: log);
+
+        await runner.RunAsync(null, "record me", AgentMode.Edit);
+
+        var run = Assert.Single(log.List());
+        Assert.Equal("completed", run.Outcome);
+        Assert.Equal("record me", run.Label);
+        Assert.Contains("done", run.Result);
+        Assert.Null(run.Error);
+        // System + user + assistant, at least — the transcript the tool result used to throw away.
+        Assert.True(run.Messages.Count >= 3);
+        Assert.Contains(run.Messages, m => m.Role == ChatRole.Assistant && m.Content == "done");
+    }
+
+    /// <summary>A ring, not a growing list: past capacity the oldest run falls off so a long session
+    /// does not accumulate transcripts without bound.</summary>
+    [Fact]
+    public async Task The_log_evicts_past_capacity()
+    {
+        var log = new SpawnedRunLog(capacity: 2);
+        var settings = new ResolvedSettings { Mode = AgentMode.Edit };
+        var runner = new SpawnedAgentRunner(
+            new StubLlmService("done"), new StubToolHost(),
+            new SkillLibrary([new SPLA.Tests.Fakes.FakeSkillSource()]),
+            new PluginManager(settings), settings,
+            runLog: log);
+
+        await runner.RunAsync(null, "first", AgentMode.Edit);
+        await runner.RunAsync(null, "second", AgentMode.Edit);
+        await runner.RunAsync(null, "third", AgentMode.Edit);
+
+        var labels = log.List().Select(r => r.Label).ToList();
+        Assert.Equal(2, labels.Count);
+        Assert.DoesNotContain("first", labels);
+        Assert.Contains("second", labels);
+        Assert.Contains("third", labels);
+    }
+
+    /// <summary>Stub gateway that always throws, so a run can be recorded as failed rather than
+    /// completed or cancelled.</summary>
+    private sealed class ThrowingLlmService : SPLA.Domain.Llm.ILlmGateway
+    {
+        public Task<SPLA.Domain.Llm.LlmTurnResult> InvokeAsync(
+            SPLA.Domain.Llm.LlmTurnContext ctx, CancellationToken ct = default)
+            => throw new InvalidOperationException("provider is down");
+    }
+
+    [Fact]
+    public async Task A_failed_run_records_the_outcome_and_error()
+    {
+        var log = new SpawnedRunLog();
+        var settings = new ResolvedSettings { Mode = AgentMode.Edit };
+        var runner = new SpawnedAgentRunner(
+            new ThrowingLlmService(), new StubToolHost(),
+            new SkillLibrary([new SPLA.Tests.Fakes.FakeSkillSource()]),
+            new PluginManager(settings), settings,
+            runLog: log);
+
+        await Assert.ThrowsAsync<InvalidOperationException>(
+            () => runner.RunAsync(null, "boom", AgentMode.Edit));
+
+        var run = Assert.Single(log.List());
+        Assert.Equal("failed", run.Outcome);
+        Assert.Equal("provider is down", run.Error);
+    }
+
+    /// <summary>Stub gateway that blocks until the turn is cancelled — the Stop button's path.</summary>
+    private sealed class BlockingLlmService : SPLA.Domain.Llm.ILlmGateway
+    {
+        public Task<SPLA.Domain.Llm.LlmTurnResult> InvokeAsync(
+            SPLA.Domain.Llm.LlmTurnContext ctx, CancellationToken ct = default)
+            => Task.Delay(Timeout.Infinite, ct).ContinueWith<SPLA.Domain.Llm.LlmTurnResult>(
+                _ => throw new InvalidOperationException("unreachable"), ct);
+    }
+
+    /// <summary>
+    /// A run somebody stopped is not a failure, and the log has to say which it was. This is the path
+    /// the Stop button takes, so it is the one most likely to be looked at afterwards — "why did this
+    /// end" has a different answer when the answer is "you ended it".
+    /// </summary>
+    [Fact]
+    public async Task A_cancelled_run_is_recorded_as_cancelled_not_failed()
+    {
+        var log = new SpawnedRunLog();
+        var settings = new ResolvedSettings { Mode = AgentMode.Edit };
+        var runner = new SpawnedAgentRunner(
+            new BlockingLlmService(), new StubToolHost(),
+            new SkillLibrary([new SPLA.Tests.Fakes.FakeSkillSource()]),
+            new PluginManager(settings), settings,
+            runLog: log);
+
+        using var stopping = new CancellationTokenSource();
+        var run = runner.RunAsync(null, "stop me", AgentMode.Edit, stopping.Token);
+        stopping.CancelAfter(TimeSpan.FromMilliseconds(50));
+
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(() => run);
+
+        var recorded = Assert.Single(log.List());
+        Assert.Equal("cancelled", recorded.Outcome);
+        Assert.Null(recorded.Error);
+    }
+
+    /// <summary>The run id has to reach a reader while the run is still live, not only after — it
+    /// rides every tick precisely because ticks are coalesced and only the freshest one survives.</summary>
+    [Fact]
+    public async Task The_run_id_appears_in_the_progress_ticks_details()
+    {
+        var tree = new ProgressTree();
+        var settings = new ResolvedSettings { Mode = AgentMode.Edit };
+        var runner = new SpawnedAgentRunner(
+            new StubLlmService("done") { PromptTokens = 10 }, new StubToolHost(),
+            new SkillLibrary([new SPLA.Tests.Fakes.FakeSkillSource()]),
+            new PluginManager(settings), settings);
+
+        using (ProgressScope.BeginTree(tree))
+        using (ProgressScope.BeginNode("agent_spawn"))
+        {
+            await runner.RunAsync(null, "tick check", AgentMode.Edit);
+        }
+
+        var run = Assert.Single(tree.Nodes, n => n.Label == "tick check");
+        var detail = Assert.Single(run.Latest!.Details!, d => d.Label == "run");
+        Assert.StartsWith("r-", detail.Value);
+        Assert.Equal(10, detail.Value.Length);
     }
 }

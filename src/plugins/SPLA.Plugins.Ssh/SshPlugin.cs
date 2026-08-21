@@ -1,7 +1,9 @@
 using System.Text.Json;
+using SPLA.Domain.Resources;
 using SPLA.Domain.Secrets;
 using SPLA.Domain.Settings;
 using SPLA.MCP.Core.Interfaces;
+using SPLA.Plugins.Ssh.Resources;
 
 namespace SPLA.Plugins.Ssh;
 
@@ -46,6 +48,21 @@ public sealed class SshPlugin : ISplaPlugin, ISplaPluginAction
         // from a file tool — the scenario mounts were introduced for.
         var boundary = settings.Project.GetBoundary();
         var transfer = new Transfer.SftpTransfer(Current, settings.SecretResolver, boundary);
+
+        // Registration goes through the shared registry (ResolvedSettings.SharedServices, the same
+        // rendezvous SshSessionHub.For uses) so sftp:// addresses resolve without a dedicated tool.
+        // Wrapped and swallowed rather than left to propagate: a reload that finds the scheme already
+        // taken (or any other registration hiccup) must not cost the whole plugin its tools — the
+        // failure is scoped to "no sftp:// resources this run", not "no SSH plugin this run".
+        try
+        {
+            ResourceRegistry.For(settings).Register(new SftpResourceProvider(transfer));
+        }
+        catch (Exception)
+        {
+            // Duplicate scheme on a settings reload, or a registry not yet ready — either way the
+            // sftp_* tools below still work; only the resource address form is unavailable.
+        }
 
         return new IMcpTool[]
         {

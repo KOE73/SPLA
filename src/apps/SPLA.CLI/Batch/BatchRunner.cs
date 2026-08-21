@@ -10,12 +10,18 @@ namespace SPLA.CLI.Batch;
 
 /// <summary>One prompt to run, named for output files/labels — inline text gets <c>text1</c>,
 /// <c>text2</c>, …, a <c>--prompt-file</c> gets its own base name.</summary>
-public sealed record PromptItem(string Name, string Text);
+public sealed record PromptItem(string Name, string Text)
+{
+    /// <summary>Where the prompt came from — the file path, or null for <c>--prompt</c> text. Reported
+    /// in the run statistics: "which prompt produced this" is unanswerable from a name like
+    /// <c>text1</c> once the output has left the machine that ran it.</summary>
+    public string? Source { get; init; }
+}
 
 /// <summary>One matrix cell: a prompt against one model entry.</summary>
 public sealed record BatchCell(PromptItem Prompt, ResolvedModelEntry Model);
 
-public sealed record CellResult(string Status, string? Text, string? Note, TimeSpan Elapsed);
+public sealed record CellResult(string Status, string? Text, string? Note, TimeSpan Elapsed, RunStats Stats);
 
 /// <summary>
 /// Runs a prompt-by-model matrix headlessly: one fresh chat per cell, no permission prompts (every
@@ -41,6 +47,15 @@ public sealed class BatchRunner(AgentRuntime runtime, ResolvedSettings settings)
     /// REPL's <c>/skills load</c> message-injection shortcut.</summary>
     public string? SkillId { get; init; }
 
+    /// <summary>Reported in the statistics, not acted upon — the flags themselves are already applied
+    /// by the caller through the prompt composer. A report that omits them cannot explain why two runs
+    /// of the same prompt against the same model differ.</summary>
+    public bool MdClean { get; init; }
+
+    /// <summary>Human-readable note of the extra system prompt this run carried ("--sys-prompt-file
+    /// x.md"), or null when it carried none.</summary>
+    public string? SystemPromptExtra { get; init; }
+
     public async Task<CellResult> RunOneAsync(BatchCell cell, CancellationToken ct)
     {
         var clock = System.Diagnostics.Stopwatch.StartNew();
@@ -48,11 +63,15 @@ public sealed class BatchRunner(AgentRuntime runtime, ResolvedSettings settings)
         if (Temperature is { } t) settings.Temperature = t;
         if (ReasoningLevel is { } r) settings.ReasoningLevel = r;
 
+        // Built before the run so that even a failure reports which model, endpoint and settings the
+        // failure belongs to — the case where a report is worth most.
+        var stats = RunStats.For(cell, settings, this);
+
         var chat = new ChatRegistry(runtime).CreateNew($"{cell.Prompt.Name} · {cell.Model.DisplayName}");
         chat.ApplySettings(mode: null, modelId: cell.Model.Id);
 
         if (SkillId is { Length: > 0 } skillId && chat.ActivateSkill(skillId) is { } skillError)
-            return new CellResult("error", null, $"skill '{skillId}': {skillError}", clock.Elapsed);
+            return Finish(stats, clock, "error", null, $"skill '{skillId}': {skillError}");
 
         var answer = new StringBuilder();
         var stream = new StringBuilder();
@@ -70,11 +89,7 @@ public sealed class BatchRunner(AgentRuntime runtime, ResolvedSettings settings)
                 if (!string.IsNullOrWhiteSpace(m.Content)) answer.Append(m.Content);
                 return Task.CompletedTask;
             },
-            OnTokenUsage = (p, c) =>
-            {
-                runtime.TokenUsageProject.Record(p, c);
-                runtime.TokenUsageGlobal.Record(p, c);
-            }
+            OnLlmTurn = stats.Record
         };
 
         Func<ToolFunctionDefinition, string, Task<PermissionDecision>> denyAll =
@@ -90,17 +105,29 @@ public sealed class BatchRunner(AgentRuntime runtime, ResolvedSettings settings)
         }
         catch (OperationCanceledException) when (!ct.IsCancellationRequested)
         {
-            return new CellResult("timeout", null, $"no response in {TimeoutSeconds}s", clock.Elapsed);
+            return Finish(stats, clock, "timeout", null, $"no response in {TimeoutSeconds}s");
         }
         catch (Exception ex)
         {
-            return new CellResult("error", null, ex.Message, clock.Elapsed);
+            return Finish(stats, clock, "error", null, ex.Message);
         }
 
         var text = (answer.Length > 0 ? answer : stream).ToString().Trim();
-        clock.Stop();
         return text.Length == 0
-            ? new CellResult("empty", null, "model returned no text", clock.Elapsed)
-            : new CellResult("ok", text, null, clock.Elapsed);
+            ? Finish(stats, clock, "empty", null, "model returned no text")
+            : Finish(stats, clock, "ok", text, null);
+    }
+
+    /// <summary>Stops the clock once, in one place, and seals the statistics with the outcome — so a
+    /// timeout and a success are timed and reported on identical terms.</summary>
+    private static CellResult Finish(RunStats stats, System.Diagnostics.Stopwatch clock, string status, string? text, string? note)
+    {
+        clock.Stop();
+        stats.Status = status;
+        stats.Note = note;
+        stats.Elapsed = clock.Elapsed;
+        stats.FinishedAt = DateTimeOffset.Now;
+        stats.OutputChars = text?.Length ?? 0;
+        return new CellResult(status, text, note, clock.Elapsed, stats);
     }
 }

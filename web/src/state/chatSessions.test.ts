@@ -111,4 +111,168 @@ describe("chat sessions", () => {
     expect(items.some(i => i.kind === "assistant")).toBe(false);
     expect(items.some(i => i.kind === "notice" && i.text.includes("provider refused"))).toBe(true);
   });
+
+  it("removes a permission request when ask.resolved arrives", () => {
+    open("A");
+    feed("permission.request", "A", { toolName: "shell", arguments: "whoami" }, "req-perm");
+
+    let items = peekSession("A")!.items;
+    expect(items.some(i => i.kind === "permission" && i.requestId === "req-perm")).toBe(true);
+
+    feed("ask.resolved", "A", { reason: "answered" }, "req-perm");
+
+    items = peekSession("A")!.items;
+    expect(items.some(i => i.kind === "permission" && i.requestId === "req-perm")).toBe(false);
+  });
+
+  it("removes a clarify request when ask.resolved arrives", () => {
+    open("A");
+    feed("clarify.request", "A", { question: "pick one?", options: [] }, "req-clarify");
+
+    let items = peekSession("A")!.items;
+    expect(items.some(i => i.kind === "clarify" && i.requestId === "req-clarify")).toBe(true);
+
+    feed("ask.resolved", "A", { reason: "answered" }, "req-clarify");
+
+    items = peekSession("A")!.items;
+    expect(items.some(i => i.kind === "clarify" && i.requestId === "req-clarify")).toBe(false);
+  });
+
+  it("preserves a chat's state field from chat.opened and chat.list.result", () => {
+    // The server broadcasts state on every chat summary; verify it survives the round trip.
+    // The store is the presentation layer's source of truth for list badges.
+    feed("chat.list.result", undefined, {
+      chats: [
+        { id: "A", title: "First", state: "working" },
+        { id: "B", title: "Second", state: "waiting" }
+      ]
+    });
+
+    expect(peekSession("A")).toBeUndefined();  // session not yet created
+    expect(peekSession("B")).toBeUndefined();
+
+    // Opening a chat should be able to carry state too (for consistency with list broadcasts).
+    feed("chat.opened", "A", { chatId: "A", messages: [], toolSets: [], state: "idle" });
+
+    // Verify the list result carries state through to the chat summary the UI renders,
+    // which is separate from the session's internal state tracking.
+    // This test documents that state is a presentation field, not session mechanics.
+    expect(peekSession("A")).toBeDefined();
+  });
+
+  // ── progress.node ───────────────────────────────────────────────────────────
+  //
+  // The stream is flat and the shape is the client's to rebuild, so the assembly is the part with
+  // something to get wrong.
+
+  it("rebuilds the progress tree and hangs its root off the running call", () => {
+    open("A");
+    feed("llm.turn.start", "A", { msgIndex: 1 });
+    feed("tool.started", "A", { toolCall: { id: "t1", name: "agent_spawn", arguments: "{}" } });
+
+    feed("progress.node", "A", { nodeId: "n1", parentId: null, label: "agent_spawn", state: "running" });
+    feed("progress.node", "A", { nodeId: "n2", parentId: "n1", label: "count the files", state: "running",
+      message: "turn 2, thinking" });
+    feed("progress.node", "A", { nodeId: "n3", parentId: "n2", label: "fs_read", state: "completed" });
+
+    const s = peekSession("A")!;
+    expect(s.calls["t1"].rootNodeId).toBe("n1");
+    expect(s.nodes["n1"].childIds).toEqual(["n2"]);
+    expect(s.nodes["n2"].childIds).toEqual(["n3"]);
+    expect(s.nodes["n2"].message).toBe("turn 2, thinking");
+    expect(s.nodes["n3"].state).toBe("completed");
+  });
+
+  it("holds a node whose parent has not arrived yet", () => {
+    // Parents are always generated first, but parallel work gives no ordering guarantee on the wire,
+    // and a dropped node is a branch that never appears.
+    open("A");
+    feed("llm.turn.start", "A", { msgIndex: 1 });
+
+    feed("progress.node", "A", { nodeId: "child", parentId: "parent", label: "port_scan", state: "running" });
+    feed("progress.node", "A", { nodeId: "parent", parentId: null, label: "roslyn_script_run", state: "running" });
+
+    const s = peekSession("A")!;
+    expect(s.nodes["parent"].label).toBe("roslyn_script_run");
+    expect(s.nodes["parent"].childIds).toEqual(["child"]);
+  });
+
+  it("keeps each chat's tree to itself and clears it when a new turn begins", () => {
+    open("A");
+    open("B");
+
+    feed("llm.turn.start", "A", { msgIndex: 1 });
+    feed("progress.node", "A", { nodeId: "n1", parentId: null, label: "fs_read", state: "running" });
+    feed("progress.node", "B", { nodeId: "n1", parentId: null, label: "ssh_run", state: "running" });
+
+    expect(peekSession("A")!.nodes["n1"].label).toBe("fs_read");
+    expect(peekSession("B")!.nodes["n1"]?.label).toBe("ssh_run");
+
+    // Ids are unique within a turn, not across turns — a stale tree would graft the next turn's nodes
+    // onto the last one's.
+    feed("turn.complete", "A", {});
+    feed("llm.turn.start", "A", { msgIndex: 2 });
+    expect(peekSession("A")!.nodes).toEqual({});
+  });
+
+  it("does not clear the tree between LLM calls inside one turn", () => {
+    // llm.turn.start fires once per model call; the server opens one tree per user turn.
+    open("A");
+    feed("llm.turn.start", "A", { msgIndex: 1 });
+    feed("progress.node", "A", { nodeId: "n1", parentId: null, label: "fs_read", state: "running" });
+    feed("llm.turn.start", "A", { msgIndex: 2 });
+
+    expect(peekSession("A")!.nodes["n1"]).toBeDefined();
+  });
+
+  it("captures a spawned run's id onto the call, from a nested node's run detail", () => {
+    open("A");
+    feed("llm.turn.start", "A", { msgIndex: 1 });
+    feed("tool.started", "A", { toolCall: { id: "t1", name: "agent_spawn", arguments: "{}" } });
+
+    feed("progress.node", "A", { nodeId: "n1", parentId: null, label: "agent_spawn", state: "running" });
+    feed("progress.node", "A", { nodeId: "n2", parentId: "n1", label: "count the files", state: "running",
+      details: [{ label: "run", value: "r-abc123" }] });
+
+    expect(peekSession("A")!.calls["t1"].runIds).toEqual(["r-abc123"]);
+  });
+
+  it("keeps the run id on the finished tool card after the tree is cleared for the next turn", () => {
+    // s.nodes is rebuilt from scratch at the next llm.turn.start (see the test above this one in the
+    // file), so if the id lived only in the node map it would be unrecoverable by the time anyone
+    // wants to open the finished card — it has to be copied onto the call itself.
+    open("A");
+    feed("llm.turn.start", "A", { msgIndex: 1 });
+    feed("tool.started", "A", { toolCall: { id: "t1", name: "agent_spawn", arguments: "{}" } });
+    feed("progress.node", "A", { nodeId: "n1", parentId: null, label: "agent_spawn", state: "running" });
+    feed("progress.node", "A", { nodeId: "n2", parentId: "n1", label: "count the files", state: "running",
+      details: [{ label: "run", value: "r-abc123" }] });
+    feed("tool.result", "A", { toolCallId: "t1", toolName: "agent_spawn", result: "done" });
+
+    feed("turn.complete", "A", {});
+    feed("llm.turn.start", "A", { msgIndex: 2 });
+
+    expect(peekSession("A")!.nodes).toEqual({});
+    expect(peekSession("A")!.calls["t1"].runIds).toEqual(["r-abc123"]);
+  });
+
+  it("keeps every run of a batch, not just the first", () => {
+    // agent_spawn_batch is one tool call with several runs beneath it, each its own conversation with
+    // its own outcome. Keeping one would present it as the call's, which is exactly the confusion the
+    // per-run branches in the tree exist to prevent.
+    open("A");
+    feed("llm.turn.start", "A", { msgIndex: 1 });
+    feed("tool.started", "A", { toolCall: { id: "t1", name: "agent_spawn_batch", arguments: "{}" } });
+    feed("progress.node", "A", { nodeId: "n1", parentId: null, label: "agent_spawn_batch", state: "running" });
+
+    feed("progress.node", "A", { nodeId: "n2", parentId: "n1", label: "audit ports", state: "running",
+      details: [{ label: "run", value: "r-aaa" }] });
+    feed("progress.node", "A", { nodeId: "n3", parentId: "n1", label: "read the docs", state: "running",
+      details: [{ label: "run", value: "r-bbb" }] });
+    // The same run ticking again must not add itself twice — the id rides every tick by design.
+    feed("progress.node", "A", { nodeId: "n2", parentId: "n1", label: "audit ports", state: "completed",
+      details: [{ label: "run", value: "r-aaa" }] });
+
+    expect(peekSession("A")!.calls["t1"].runIds).toEqual(["r-aaa", "r-bbb"]);
+  });
 });

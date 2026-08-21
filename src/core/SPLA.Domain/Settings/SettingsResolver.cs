@@ -1,4 +1,4 @@
-﻿using SPLA.Domain.Models;
+using SPLA.Domain.Models;
 using SPLA.Domain.Secrets;
 
 namespace SPLA.Domain.Settings;
@@ -44,10 +44,30 @@ public class ResolvedSettings
     public List<string> Instructions { get; set; } = new();
     public int CompactTailMessages { get; set; } = 2;
     public string? CustomPrompt { get; set; }
-    /// <summary>Stop the turn when the model repeats the same tool call. Default OFF — see
-    /// <see cref="SplaAgentSection.LoopGuard"/>.</summary>
-    public bool LoopGuard { get; set; }
+    /// <summary>
+    /// Challenge, then stop, a turn that keeps making the same tool call. **On** — a chat without it
+    /// was the odd one out, since a spawned run has had it unconditionally for as long as spawning has
+    /// existed, and the chat is the one with a person paying for the tokens.
+    /// <para>Off by default originally, on the reasonable worry that a guard fires on work that is
+    /// merely repetitive. It cannot: <c>ToolRepeatTracker</c> wants the same tool, the same arguments,
+    /// the same result, no accompanying text, and a round faster than ten seconds — all of them, in a
+    /// row. Deliberate polling changes at least one, and the first trip only asks the model whether it
+    /// is stuck. Turn it off per project with <see cref="SplaAgentSection.LoopGuard"/> if some workload
+    /// proves otherwise.</para>
+    /// </summary>
+    public bool LoopGuard { get; set; } = true;
     public int LoopGuardRepeats { get; set; } = 3;
+
+    /// <summary>Master switch for the resource-address abstraction (<c>file://</c>, <c>sftp://</c>,
+    /// …). <b>Default false</b>, and that default is load-bearing: the foundation is meant to ship
+    /// inert so the model can be measured with and without it, and a switch that defaults on erases
+    /// the "without" arm of that comparison. See <see cref="SplaAgentSection.UnifiedResources"/>.</summary>
+    public bool UnifiedResources { get; set; }
+
+    /// <summary>Minutes a permission/clarify question waits for a person before it is denied; 0 = no
+    /// limit. The wait is deliberately long: the question outlives the window that triggered it, so
+    /// the bound exists only to stop an unattended instance blocking forever.</summary>
+    public int AskTimeoutMinutes { get; set; } = 60;
 
     /// <summary>Persist the full tool-call/tool-result trace with the chat history. Default OFF —
     /// see <see cref="SplaAgentSection.SaveToolCalls"/>.</summary>
@@ -60,6 +80,14 @@ public class ResolvedSettings
     /// <summary>Enabled built-in agent capabilities. Null = all enabled (backward compatible);
     /// see <see cref="SplaAgentSection.Capabilities"/> for full semantics.</summary>
     public List<string>? Capabilities { get; set; }
+
+    /// <summary>Whether <c>spla serve</c> maps <c>POST /mcp</c> at all. Off by default — the strict
+    /// case, no second head over HTTP. See <see cref="SplaMcpSection.Enabled"/>.</summary>
+    public bool McpEnabled { get; set; } = false;
+
+    /// <summary>Fixed port for <c>spla serve</c> to bind, or null for the usual ephemeral one. See
+    /// <see cref="SplaMcpSection.Port"/>.</summary>
+    public int? McpPort { get; set; }
 
     // UI
     public string Theme { get; set; } = "Dark";
@@ -168,6 +196,11 @@ public class ResolvedSettings
     /// supplier's flag belong to <c>ToolSetRegistry</c>: settings stay a transport for what the file
     /// said, and an unknown level word must not silently become a different level here.</summary>
     public Dictionary<string, string> ToolSets { get; set; } = new(StringComparer.OrdinalIgnoreCase);
+
+    /// <summary>Per-scheme resource switches, as written. A scheme with no entry is enabled — see
+    /// <c>ResourceRegistry.IsEnabled</c>, which applies the same absent-means-on rule at the point
+    /// where it actually matters. This dictionary is only the transport for what the file said.</summary>
+    public Dictionary<string, bool> ResourceSchemes { get; set; } = new(StringComparer.OrdinalIgnoreCase);
 
     // Skills — per-skill overrides (skills.items), keyed by skill id.
     public Dictionary<string, SplaSkillSection> Skills { get; set; } = new();
@@ -359,10 +392,17 @@ public static class SettingsResolver
                     r.CustomPrompt = defaults.Agent.CustomPrompt;
                 r.LoopGuard = defaults.Agent.LoopGuard ?? r.LoopGuard;
                 r.LoopGuardRepeats = defaults.Agent.LoopGuardRepeats ?? r.LoopGuardRepeats;
+                r.AskTimeoutMinutes = defaults.Agent.AskTimeoutMinutes ?? r.AskTimeoutMinutes;
                 r.SaveToolCalls = defaults.Agent.SaveToolCalls ?? r.SaveToolCalls;
                 r.SaveAttempts = defaults.Agent.SaveAttempts ?? r.SaveAttempts;
                 r.Capabilities = defaults.Agent.Capabilities ?? r.Capabilities;
+                r.UnifiedResources = defaults.Agent.UnifiedResources ?? r.UnifiedResources;
                 AddTrustedDomains(r, defaults.Agent.TrustedDomains);
+            }
+            if (defaults.Mcp != null)
+            {
+                r.McpEnabled = defaults.Mcp.Enabled ?? r.McpEnabled;
+                r.McpPort = defaults.Mcp.Port ?? r.McpPort;
             }
             if (defaults.Ui != null)
             {
@@ -371,6 +411,7 @@ public static class SettingsResolver
             }
             ApplySkills(r, defaults.Skills, SourceOrigin.Machine);
             ApplyToolSets(r, defaults.ToolSets);
+            ApplyResourceSchemes(r, defaults.Resources);
         }
 
         // Layer 2: project overrides
@@ -408,10 +449,17 @@ public static class SettingsResolver
                     r.CustomPrompt = project.Agent.CustomPrompt;
                 r.LoopGuard = project.Agent.LoopGuard ?? r.LoopGuard;
                 r.LoopGuardRepeats = project.Agent.LoopGuardRepeats ?? r.LoopGuardRepeats;
+                r.AskTimeoutMinutes = project.Agent.AskTimeoutMinutes ?? r.AskTimeoutMinutes;
                 r.SaveToolCalls = project.Agent.SaveToolCalls ?? r.SaveToolCalls;
                 r.SaveAttempts = project.Agent.SaveAttempts ?? r.SaveAttempts;
                 r.Capabilities = project.Agent.Capabilities ?? r.Capabilities;
+                r.UnifiedResources = project.Agent.UnifiedResources ?? r.UnifiedResources;
                 AddTrustedDomains(r, project.Agent.TrustedDomains);
+            }
+            if (project.Mcp != null)
+            {
+                r.McpEnabled = project.Mcp.Enabled ?? r.McpEnabled;
+                r.McpPort = project.Mcp.Port ?? r.McpPort;
             }
             if (project.Ui != null)
             {
@@ -432,6 +480,7 @@ public static class SettingsResolver
                     r.Plugins[kvp.Key] = kvp.Value;
             }
             ApplyToolSets(r, project.ToolSets);
+            ApplyResourceSchemes(r, project.Resources);
             ApplySkills(r, project.Skills, SourceOrigin.Project);
         }
 
@@ -488,6 +537,17 @@ public static class SettingsResolver
 
         foreach (var kvp in toolSets)
             r.ToolSets[kvp.Key] = kvp.Value;
+    }
+
+    /// <summary>Merges one layer's <c>resources:</c> entries key by key, same rule as
+    /// <see cref="ApplyToolSets"/>: the more specific layer overrides a scheme it mentions and leaves
+    /// every other scheme's inherited switch alone.</summary>
+    private static void ApplyResourceSchemes(ResolvedSettings r, Dictionary<string, bool>? resources)
+    {
+        if (resources == null) return;
+
+        foreach (var kvp in resources)
+            r.ResourceSchemes[kvp.Key] = kvp.Value;
     }
 
     /// <summary>

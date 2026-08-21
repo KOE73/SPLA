@@ -83,6 +83,12 @@ public static class AgentContributors
         contributors.Add(new PluginPromptContributor(plugins));
         contributors.Add(new PluginCommandContributor(plugins));
 
+        // Unlike core.toolsets/core.memory, whether resources speak is a settings bool
+        // (agent.unified_resources), not a catalog feature id known at list-assembly time — so the
+        // gate lives inside the contributor itself, checked fresh on every Contribute() the same way
+        // it checks EnabledCards(). Always in the list, silent whenever the switch is off.
+        contributors.Add(new ResourceSchemesContributor());
+
         // core.memory owns both the agent_memory_* tools AND the auto-injected "context:*" snapshot,
         // so a disabled core.memory cannot leave a live-memory block with no tools behind it.
         if (enabledIds.Contains("core.memory"))

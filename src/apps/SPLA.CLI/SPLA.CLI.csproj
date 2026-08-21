@@ -7,6 +7,15 @@
     <ProjectReference Include="..\..\core\SPLA.Observability\SPLA.Observability.csproj" />
     <ProjectReference Include="..\..\service\SPLA.Service\SPLA.Service.csproj" />
     <ProjectReference Include="..\..\service\SPLA.Mcp\SPLA.Mcp.csproj" />
+    <ProjectReference Include="..\..\service\SPLA.Instances\SPLA.Instances.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Embedded so the help_mcp flag works from anywhere without reading a sibling file, and also
+         copied next to the exe (both in bin\ and every publish output) so it ships as a plain,
+         greppable MCP_USAGE.md in the product zip. -->
+    <EmbeddedResource Include="Assets\MCP_USAGE.md" LogicalName="SPLA.CLI.MCP_USAGE.md" />
+    <Content Include="Assets\MCP_USAGE.md" CopyToOutputDirectory="PreserveNewest" Link="MCP_USAGE.md" />
   </ItemGroup>
 
   <ItemGroup>
@@ -18,8 +27,10 @@
 
   <PropertyGroup>
     <OutputType>Exe</OutputType>
-    <PublishSingleFile>true</PublishSingleFile>
-    <SelfContained>false</SelfContained>
+    <!-- Single-file/self-contained live in Properties\PublishProfiles\SingleFile.pubxml, not here, so
+         that only a publish is RID-specific. Setting them in the project body made every `dotnet build`
+         carry them too, and a hard-coded SelfContained=false here is exactly the thing that shipped a
+         zip needing a runtime the machine did not have. -->
   </PropertyGroup>
 
 </Project>

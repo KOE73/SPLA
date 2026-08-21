@@ -6,7 +6,6 @@ export interface WireFrame {
   type: string;
   payload: unknown;
   chatId?: string;
-  projectId?: string;
   requestId?: string;
   ts: number;
 }
@@ -15,9 +14,6 @@ export interface Envelope<P = unknown> {
   type: string;
   payload: P;
   chatId?: string;
-  /** Which project this message concerns; absent = the connection's default project. See
-   * AgentRuntimeRegistry.DefaultProjectId server-side — single-project usage never sets this. */
-  projectId?: string;
   requestId?: string;
 }
 
@@ -63,6 +59,12 @@ export interface ChatSummary {
   title?: string;
   /** A turn is running in this chat right now — including one started by another window. */
   turnActive?: boolean;
+  /** The chat's operational state: "idle" | "working" | "waiting" | "stalled".
+   *  - idle: nothing running
+   *  - working: a turn is running and making progress
+   *  - waiting: the agent is blocked on a person (permission or clarification request)
+   *  - stalled: a turn is registered but nothing has happened for ~10 minutes (model may have stopped halfway) */
+  state?: string;
 }
 
 export interface ChatOpenedPayload {
@@ -83,6 +85,8 @@ export interface ChatOpenedPayload {
   /** Whether a turn was already running when this chat was opened — so a window attaching mid-turn
    *  (or a reload) shows Stop rather than an input that looks ready. */
   turnActive?: boolean;
+  /** The chat's operational state: "idle" | "working" | "waiting" | "stalled". */
+  state?: string;
 }
 
 /**
@@ -208,9 +212,34 @@ export interface AgentResultPayload {
   permRead?: string; permWrite?: string; permShell?: string; permInternet?: string;
   customPrompt?: string;
   loopGuard?: boolean; loopGuardRepeats?: number; saveToolCalls?: boolean; saveAttempts?: boolean;
+  /** Master switch for the resource-address abstraction (file://, sftp://, …). Default false —
+   *  the foundation ships inert so the model can be measured with and without it. */
+  unifiedResources?: boolean;
+  /** Every registered scheme, on and off alike — the per-scheme rows under the master switch. */
+  resourceSchemes?: ResourceSchemeDto[];
   theme?: string; density?: string;
   themes?: string[]; densities?: string[];
   canPersist?: boolean;
+}
+
+/** One registered resource scheme, as the Agent panel shows it: what it is, what verbs it supports,
+ *  and whether it is currently switched on. */
+export interface ResourceSchemeDto {
+  scheme: string;
+  summary: string;
+  /** Wire verb words ("read", "write", …) — the same vocabulary the system prompt uses. */
+  verbs: string[];
+  enabled: boolean;
+}
+
+/** mcp.get / mcp.save round trip: whether `spla serve` maps POST /mcp, and a fixed port for it. */
+export interface McpSettingsPayload {
+  enabled: boolean;
+  /** Fixed port, or undefined for the usual ephemeral one. */
+  port?: number | null;
+  canPersist?: boolean;
+  /** Always true — a running `spla serve` must be restarted to pick up a change here. */
+  restartToApply?: boolean;
 }
 
 export interface PluginDto {
@@ -550,6 +579,24 @@ export interface ProjectContextPayload {
   density?: string;
 }
 
+// ── Spawned sub-agent runs (subagent.get → subagent.result) ───────────────────
+export interface SubagentResultPayload {
+  /** False when the id fell out of the bounded in-memory ring, or never existed — a normal answer,
+   *  not an error; every other field is left at its default in that case. */
+  found: boolean;
+  runId: string;
+  label: string;
+  skillId?: string;
+  mode: string;
+  startedAt: string;
+  finishedAt: string;
+  /** "completed" | "failed" | "cancelled". */
+  outcome: string;
+  error?: string;
+  result: string;
+  messages: ChatMessage[];
+}
+
 // ── Live SSH picker (ssh.sessions.get → ssh.sessions.result) ──────────────────
 export interface SshHostDto {
   name: string;
@@ -579,8 +626,13 @@ export interface SshSessionsResultPayload {
 
 // ── Events the server pushes unprompted (subscribe via client.on) ──────────────
 export interface ServerEvents {
-  /** Local-only: emitted by SplaClient itself on socket open/close, never sent by the server. */
-  "conn": { on: boolean; text?: string };
+  /**
+   * Local-only: emitted by SplaClient itself on socket open/close, never sent by the server.
+   * `lost` separates "the agent has stopped" from "the socket dropped and we are retrying" — the
+   * client cannot tell them apart in one event, so it says so after several failed attempts.
+   * `attempts` is the consecutive failure count, zero once connected.
+   */
+  "conn": { on: boolean; text?: string; lost?: boolean; attempts?: number };
   "welcome": {
     theme?: string; density?: string; projectId?: string; projectName?: string; workspacePath?: string;
     modes?: string[]; defaultMode?: string;
@@ -618,11 +670,23 @@ export interface ServerEvents {
   "chat.toolset.state": { chatId: string; sets?: ToolSetState[] };
   "tool.started": { toolCall: ToolCallDto };
   "tool.progress": { toolCallId?: string; toolName: string; current: number; total: number; fraction?: number | null; message?: string | null; details?: ToolProgressDetail[] | null };
+  /** One node of the turn's progress tree, whole, on each change — the nested counterpart to
+   *  `tool.progress`, which reports the top-level call only and so cannot show a script's parallel
+   *  children or a spawned sub-agent's run at all.
+   *
+   *  A flat append-only stream, not a snapshot: keep what you are told, keyed by `nodeId`, and attach
+   *  each node to `parentId` (null = top level). Hold a node whose parent has not arrived rather than
+   *  dropping it — parallel work gives no ordering guarantee. Structural frames (a node's first
+   *  appearance and its finish) are never throttled; the ticks between them are, per node. */
+  "progress.node": { nodeId: string; parentId?: string | null; label: string; state: "running" | "completed" | "failed"; current?: number | null; total?: number | null; fraction?: number | null; message?: string | null; details?: ToolProgressDetail[] | null };
   "tool.result": { toolCallId: string; toolName: string; result: string };
   "notice": { text: string };
   "error": { message: string };
   "permission.request": { toolName: string; arguments?: string };
   "clarify.request": { question: string; options?: { label: string; description?: string }[] };
+  /** An outstanding permission or clarify question is no longer outstanding — answered elsewhere,
+   *  cancelled, or timed out. The envelope carries the requestId; this payload explains why. */
+  "ask.resolved": { reason: string };
   "connections.result": ConnectionsResultPayload;
   "connections.health": ConnectionsHealthPayload;
   "connection.models.result": ConnectionModelsResultPayload;
@@ -631,6 +695,7 @@ export interface ServerEvents {
   "connection.swap_model.result": ConnectionSwapModelResultPayload;
   "provider.info.result": ProviderInfoResultPayload;
   "agent.result": AgentResultPayload;
+  "mcp.result": McpSettingsPayload;
   "plugins.result": PluginsResultPayload;
   "skills.result": SkillsResultPayload;
   "skills.sources.result": SkillSourcesResultPayload;
@@ -651,4 +716,5 @@ export interface ServerEvents {
   "ssh.sessions.changed": Record<string, never>;
   "plugin.panel.opened": { panelId: string };
   "plugin.panel.event": { panelId: string; eventType: string; data?: { base64?: string; mimeType?: string; url?: string; message?: string } };
+  "subagent.result": SubagentResultPayload;
 }

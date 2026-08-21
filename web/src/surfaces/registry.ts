@@ -9,6 +9,7 @@ import Wire from "./Wire.vue";
 import ChatLog from "./ChatLog.vue";
 import WorkspaceShell from "./Workspace/WorkspaceShell.vue";
 import Terminal from "./Terminal.vue";
+import Hub from "./Hub.vue";
 
 // name → Vue component. Populated incrementally as each surface is migrated (Phases 3-7).
 export const surfaces: Record<string, Component> = {
@@ -22,4 +23,7 @@ export const surfaces: Record<string, Component> = {
   chatLog: ChatLog,
   workspace: WorkspaceShell,
   terminal: Terminal,
+  // Served by the registry hub rather than an agent, and speaks the registry protocol instead of the
+  // chat one — see main.ts, which skips the chat socket entirely for this surface.
+  hub: Hub,
 };

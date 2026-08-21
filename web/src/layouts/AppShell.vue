@@ -6,13 +6,18 @@
       and therefore spans only this region.
 -->
 <template>
-  <div class="app-shell">
-    <aside class="left-nav" :style="{ width: navWidth + 'px' }">
-      <NavigationSurface />
-    </aside>
-    <div class="nav-resizer" :class="{ dragging }" @pointerdown="startDrag" title="Drag to resize"></div>
-    <div class="right-area">
-      <DockWorkspace />
+  <!-- Column wrapper so the banner takes its own height instead of pushing the full-height shell
+       past the viewport. Absent the banner it collapses to nothing and the layout is unchanged. -->
+  <div class="app-root">
+    <ConnectionLost />
+    <div class="app-shell">
+      <aside class="left-nav" :style="{ width: navWidth + 'px' }">
+        <NavigationSurface />
+      </aside>
+      <div class="nav-resizer" :class="{ dragging }" @pointerdown="startDrag" title="Drag to resize"></div>
+      <div class="right-area">
+        <DockWorkspace />
+      </div>
     </div>
   </div>
 </template>
@@ -21,6 +26,7 @@
 import { ref } from "vue";
 import NavigationSurface from "../surfaces/NavigationSurface.vue";
 import DockWorkspace from "../dock/DockWorkspace.vue";
+import ConnectionLost from "../surfaces/ConnectionLost.vue";
 
 const MIN = 170, MAX = 480, KEY = "spla.leftnav.width";
 
@@ -45,7 +51,8 @@ function startDrag(e: PointerEvent) {
 </script>
 
 <style scoped>
-.app-shell { display: flex; height: 100%; min-height: 0; background: var(--bg); }
+.app-root { display: flex; flex-direction: column; height: 100%; min-height: 0; }
+.app-shell { display: flex; flex: 1 1 auto; min-height: 0; background: var(--bg); }
 .left-nav { flex: 0 0 auto; height: 100%; min-height: 0; overflow: hidden; border-right: 1px solid var(--border); }
 .nav-resizer { flex: 0 0 4px; cursor: col-resize; background: transparent; }
 .nav-resizer:hover, .nav-resizer.dragging { background: var(--accent); }

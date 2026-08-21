@@ -319,6 +319,45 @@ public sealed class SftpTransfer
     }
 
     /// <summary>
+    /// Reads one remote file into memory — the read side of <see cref="WriteFileAsync"/>, and what
+    /// the <c>sftp://</c> resource provider calls for <c>ResourceVerb.Read</c>.
+    /// <para>
+    /// <see cref="SftpClient.OpenRead"/> streams lazily, so without a size check first a multi-gigabyte
+    /// remote file would still end up whole in the returned <c>byte[]</c> — the same unbounded-slurp
+    /// risk <see cref="Preflight"/> exists to catch on the multi-file path, here collapsed to the one
+    /// file this call is about. The size comes from the attributes lookup that already has to happen
+    /// to reject a directory, so the guard costs nothing extra on the wire.
+    /// </para>
+    /// </summary>
+    public async Task<byte[]> ReadFileAsync(SshHostConfig cfg, string remotePath, CancellationToken ct)
+    {
+        using var sftp = await ConnectAsync(cfg, ct);
+        var target = ResolveRemotePath(sftp, remotePath);
+
+        var attributes = sftp.GetAttributes(target);
+        if (attributes.IsDirectory)
+            throw new InvalidOperationException($"{target} is a directory, not a file — use sftp_ls or a list read instead.");
+        if (attributes.Size > MaxFileBytes)
+            throw new InvalidOperationException(
+                $"{target} is {attributes.Size / (1024 * 1024)} MB, over the {MaxFileBytes / (1024 * 1024)} MB " +
+                "limit for reading a remote file whole into memory. Use sftp_download for a file this size.");
+
+        using var source = sftp.OpenRead(target);
+        using var buffer = new MemoryStream();
+        await source.CopyToAsync(buffer, ct);
+        return buffer.ToArray();
+    }
+
+    /// <summary>Whether anything is at this path — the cheap probe behind the resource provider's
+    /// <c>ExistsAsync</c>, an attributes lookup rather than a listing or a read.</summary>
+    public async Task<bool> ExistsAsync(SshHostConfig cfg, string remotePath, CancellationToken ct)
+    {
+        using var sftp = await ConnectAsync(cfg, ct);
+        var target = ResolveRemotePath(sftp, remotePath);
+        return sftp.Exists(target);
+    }
+
+    /// <summary>
     /// Sends a file, a folder or a container from the project to the remote host — the mirror of
     /// <see cref="DownloadAsync"/>.
     /// <para>

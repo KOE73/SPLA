@@ -61,4 +61,30 @@ public static class ProtocolMapper
         "allowRemember" => PermissionDecision.AllowRemember,
         _ => PermissionDecision.Deny
     };
+
+    /// <summary>The wire message that carries an outstanding question of this kind.</summary>
+    public static string MessageTypeFor(SPLA.Runtime.PendingAsk ask)
+        => ask.Kind == SPLA.Runtime.PendingAskKind.Permission
+            ? MessageTypes.PermissionRequest
+            : MessageTypes.ClarifyRequest;
+
+    /// <summary>The payload for an outstanding question. One mapper for both the moment it is asked
+    /// and the replay a later client gets, so a question never looks different depending on when the
+    /// window happened to open.</summary>
+    public static object PayloadFor(SPLA.Runtime.PendingAsk ask)
+        => ask.Kind == SPLA.Runtime.PendingAskKind.Permission
+            ? new PermissionRequestPayload { ToolName = ask.ToolName ?? "", Arguments = ask.Arguments ?? "" }
+            : new ClarifyRequestPayload
+            {
+                Question = ask.Question ?? "",
+                Options = (ask.Options ?? []).Select(o => new ClarifyOptionDto { Label = o.Label, Description = o.Description }).ToList()
+            };
+
+    /// <summary>Wire name of a resolution reason. Lowercase-camel to match every other enum on the wire.</summary>
+    public static string ReasonName(SPLA.Runtime.AskResolution reason) => reason switch
+    {
+        SPLA.Runtime.AskResolution.Answered => "answered",
+        SPLA.Runtime.AskResolution.TimedOut => "timedOut",
+        _ => "cancelled"
+    };
 }

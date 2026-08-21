@@ -1,9 +1,9 @@
 using System;
 using System.Diagnostics;
 using System.IO;
-using System.Net;
 using System.Net.Http;
-using System.Net.Sockets;
+using System.Text;
+using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -30,10 +30,18 @@ public sealed class EmbeddedServiceLauncher : IDisposable
     /// Resolves a service to talk to and returns its base URL. Universal local-or-remote:
     /// when <paramref name="remoteUrl"/> is given, connects to that existing (possibly remote) service
     /// after verifying it is healthy — no child process is spawned. Otherwise starts a local child
-    /// <c>SPLA.CLI serve</c> on a free loopback port. Either way the client then talks the same
-    /// WebSocket protocol against the returned URL.
+    /// <c>SPLA.CLI serve</c>, which binds an ephemeral loopback port itself and reports it back on
+    /// stdout. Either way the client then talks the same WebSocket protocol against the returned URL.
     /// </summary>
-    public async Task<string> StartAsync(string? remoteUrl = null, string? workingDirectory = null, CancellationToken ct = default)
+    /// <param name="noProject">True when the shell found no manifest to work in. The child is then
+    /// launched with an explicit <c>--init=inherit</c>: a headless service cannot stop and ask what a
+    /// manifest-less folder should become, and refusing to start would leave the window empty.</param>
+    /// <param name="hubUrl">Machine registry hub to register the spawned instance with, when there is
+    /// one. Purely additive: nothing about serving depends on it, and without it the child is simply
+    /// invisible to anything but its own lock file.</param>
+    public async Task<string> StartAsync(
+        string? remoteUrl = null, string? workingDirectory = null, bool noProject = false,
+        string? hubUrl = null, CancellationToken ct = default)
     {
         if (!string.IsNullOrWhiteSpace(remoteUrl))
         {
@@ -43,41 +51,137 @@ public sealed class EmbeddedServiceLauncher : IDisposable
             return normalized;
         }
 
-        var port = FreeLoopbackPort();
-        var (exe, args) = ResolveCliInvocation(port);
+        // Somebody may already be serving this project — the previous window, closed a minute ago and
+        // still inside its idle grace, or a `spla serve` the person started themselves. Only one
+        // process may write a project, so spawning a second here would simply be refused; joining is
+        // both the correct behaviour and the fast one (no warm-up at all).
+        if (await TryJoinRunningInstanceAsync(workingDirectory, ct) is { } running)
+        {
+            Url = running;
+            return running;
+        }
+
+        var (exe, args) = ResolveCliInvocation(noProject, hubUrl);
 
         var psi = new ProcessStartInfo
         {
             FileName = exe,
             UseShellExecute = false,
             CreateNoWindow = true,
+            // Captured only so a child that dies on startup can say why. Without this its output goes
+            // to a console the desktop app does not have, and the single most common failure on a
+            // fresh machine — SPLA.CLI.exe is framework-dependent, so "You must install .NET" — reached
+            // the user as a bare 30-second health timeout with no cause attached.
+            RedirectStandardOutput = true,
+            RedirectStandardError = true,
             WorkingDirectory = workingDirectory ?? Directory.GetCurrentDirectory()
         };
         foreach (var a in args) psi.ArgumentList.Add(a);
 
         _process = Process.Start(psi) ?? throw new InvalidOperationException("Failed to start SPLA.CLI serve.");
 
-        var url = $"http://127.0.0.1:{port}";
-        await WaitForHealthAsync(url, ct);
+        var output = new StringBuilder();
+        // The child now binds an ephemeral port (no more --port from here — see ResolveCliInvocation),
+        // so the port it actually got is only known once Kestrel has bound it, which the child reports
+        // on its own stdout ("SPLA service listening on <url>  (WebSocket: ...)"). Watch for that line
+        // instead of probing a port we picked ourselves — the old pre-flight probe-then-launch approach
+        // was inherently racy (something else could grab the port between the probe and the bind).
+        var listeningUrl = new TaskCompletionSource<string>(TaskCreationOptions.RunContinuationsAsynchronously);
+        _process.OutputDataReceived += (_, e) => { Append(output, e.Data); TryCaptureUrl(e.Data, listeningUrl); };
+        _process.ErrorDataReceived += (_, e) => Append(output, e.Data);
+        _process.BeginOutputReadLine();
+        _process.BeginErrorReadLine();
+
+        var url = await WaitForListeningUrlAsync(listeningUrl.Task, _process, exe, output, ct);
+        await WaitForHealthAsync(url, ct, _process, exe, output);
         Url = url;
         return url;
     }
 
-    private static int FreeLoopbackPort()
+    /// <summary>
+    /// The address of a live instance already holding this project, or null when there is none.
+    ///
+    /// <para>Health-checked before being returned, and only accepted when <c>/health</c> answers with
+    /// the same instance id the lock claims: a published port outlives nothing, but a port number can
+    /// be reused by something else entirely, and dialling a stranger is worse than starting fresh.</para>
+    /// </summary>
+    private static async Task<string?> TryJoinRunningInstanceAsync(string? workingDirectory, CancellationToken ct)
     {
-        var listener = new TcpListener(IPAddress.Loopback, 0);
-        listener.Start();
-        var port = ((IPEndPoint)listener.LocalEndpoint).Port;
-        listener.Stop();
-        return port;
+        try
+        {
+            var root = workingDirectory ?? Directory.GetCurrentDirectory();
+            var info = SPLA.Domain.Project.InstanceLock.Read(Path.Combine(root, ".spla"));
+            if (info?.Endpoint is not { Length: > 0 } endpoint || !info.IsLocal) return null;
+
+            using var http = new HttpClient { Timeout = TimeSpan.FromSeconds(2) };
+            var response = await http.GetAsync(endpoint.TrimEnd('/') + "/health", ct);
+            if (!response.IsSuccessStatusCode) return null;
+
+            var body = await response.Content.ReadAsStringAsync(ct);
+            return body.Contains(info.InstanceId, StringComparison.OrdinalIgnoreCase) ? endpoint.TrimEnd('/') : null;
+        }
+        catch
+        {
+            // Unreadable lock, unreachable port, malformed anything: fall through and start our own.
+            return null;
+        }
+    }
+
+    private static readonly Regex ListeningUrlPattern =
+        new(@"listening on (?<url>\S+)", RegexOptions.Compiled);
+
+    private static void TryCaptureUrl(string? line, TaskCompletionSource<string> sink)
+    {
+        if (string.IsNullOrWhiteSpace(line) || sink.Task.IsCompleted) return;
+        var match = ListeningUrlPattern.Match(line);
+        if (match.Success) sink.TrySetResult(match.Groups["url"].Value);
+    }
+
+    /// <summary>Waits for the child to announce its bound URL on stdout, or reports why it can't: the
+    /// child exited before printing one, or the wait timed out. Same 120s budget as the health check
+    /// below, since both are waiting out the same worst-case cold start (self-contained exe unpacking
+    /// under antivirus scanning, plugin folder load, etc).</summary>
+    private static async Task<string> WaitForListeningUrlAsync(
+        Task<string> listeningUrl, Process child, string exe, StringBuilder output, CancellationToken ct)
+    {
+        var timeout = Task.Delay(TimeSpan.FromSeconds(120), ct);
+        var exited = WaitForExitAsync(child, ct);
+        var completed = await Task.WhenAny(listeningUrl, timeout, exited);
+
+        if (completed == listeningUrl) return await listeningUrl;
+        if (completed == exited) throw new InvalidOperationException(DescribeDeadChild(child, exe, output));
+        throw new TimeoutException(
+            $"SPLA service did not report its listening URL within 120s, and its process is still running." + Tail(output));
+    }
+
+    private static async Task WaitForExitAsync(Process child, CancellationToken ct)
+    {
+        while (!child.HasExited)
+        {
+            ct.ThrowIfCancellationRequested();
+            await Task.Delay(300, ct);
+        }
     }
 
     /// <summary>Finds the CLI: a published SPLA.CLI.exe next to us, or the dll run via dotnet, or a
     /// dev-tree build output. Returns the executable and the argument list for <c>serve</c>.</summary>
-    private static (string Exe, string[] Args) ResolveCliInvocation(int port)
+    private static (string Exe, string[] Args) ResolveCliInvocation(bool noProject = false, string? hubUrl = null)
     {
         var baseDir = AppContext.BaseDirectory;
-        string[] serveArgs = { "serve", "--port", port.ToString(), "--bind", "127.0.0.1" };
+        // No --port: the child binds an ephemeral port (the CLI's own default) and this launcher reads
+        // the actual address back off its stdout — see StartAsync.
+        // --idle-timeout is what replaces killing the child on shutdown. Closing a window must not
+        // cut a turn short or answer a pending question on the person's behalf, so the child decides
+        // for itself when it has nothing left to stay for; five minutes is long enough that closing
+        // and reopening the app is free (the next window simply joins it) and short enough that a
+        // forgotten one does not sit there.
+        // --registry, when this machine has a hub: the child announces itself so a tray can show every
+        // project running, not only the one this window happens to be looking at. Absent, the child is
+        // still perfectly usable — it is just invisible to anything but its own lock file.
+        string[] registryArgs = hubUrl is { Length: > 0 } ? ["--registry", hubUrl] : [];
+        string[] serveArgs = noProject
+            ? ["--init=inherit", "serve", "--bind", "127.0.0.1", "--idle-timeout", "5", .. registryArgs]
+            : ["serve", "--bind", "127.0.0.1", "--idle-timeout", "5", .. registryArgs];
 
         // 1) Published: SPLA.CLI.exe sits next to the UI exe.
         var exe = Path.Combine(baseDir, "SPLA.CLI.exe");
@@ -94,6 +198,11 @@ public sealed class EmbeddedServiceLauncher : IDisposable
         throw new FileNotFoundException(
             "Could not locate SPLA.CLI (serve host). Looked next to the app and in the dev build tree.");
     }
+
+    /// <summary>The dev-tree CLI lookup, shared with <see cref="HubLauncher"/>: both run the same
+    /// binary in different roles, and a second copy of this walk would drift from the build-flavour
+    /// matching below — the exact bug it exists to prevent.</summary>
+    internal static string? FindCliDll(string fromDir) => FindDevCliDll(fromDir);
 
     private static string? FindDevCliDll(string fromDir)
     {
@@ -140,10 +249,33 @@ public sealed class EmbeddedServiceLauncher : IDisposable
         return arr;
     }
 
-    private static async Task WaitForHealthAsync(string url, CancellationToken ct)
+    private static void Append(StringBuilder sink, string? line)
     {
+        if (string.IsNullOrWhiteSpace(line)) return;
+        lock (sink)
+        {
+            // Enough to carry a host error; not enough for a chatty service to grow without bound.
+            if (sink.Length < 4000) sink.AppendLine(line.Trim());
+        }
+    }
+
+    /// <summary>
+    /// Polls /health until it answers. <paramref name="child"/>, when given, turns "the service is not
+    /// up yet" into "the service is gone": a child that has already exited will never answer, so waiting
+    /// out the remaining timeout only delays the report and throws away the reason, which is sitting in
+    /// its exit code and its output.
+    /// </summary>
+    private static async Task WaitForHealthAsync(
+        string url, CancellationToken ct, Process? child = null, string? exe = null, StringBuilder? output = null)
+    {
+        // 30s was chosen against a warm dev tree and is not a safe budget for a first run from a zip:
+        // a self-contained single-file exe unpacks itself, an antivirus scans every byte of it while it
+        // does, and the plugin folder is loaded before the listener opens. Waiting longer costs nothing
+        // now that a child which has actually died is reported the moment it dies, instead of being
+        // indistinguishable from one that is merely slow.
+        var budget = child is null ? TimeSpan.FromSeconds(30) : TimeSpan.FromSeconds(120);
         using var http = new HttpClient { Timeout = TimeSpan.FromSeconds(2) };
-        var deadline = DateTime.UtcNow.AddSeconds(30);
+        var deadline = DateTime.UtcNow + budget;
         while (DateTime.UtcNow < deadline)
         {
             ct.ThrowIfCancellationRequested();
@@ -153,22 +285,55 @@ public sealed class EmbeddedServiceLauncher : IDisposable
                 if (resp.IsSuccessStatusCode) return;
             }
             catch { /* not up yet */ }
+
+            if (child is { HasExited: true })
+                throw new InvalidOperationException(DescribeDeadChild(child, exe, output));
+
             await Task.Delay(300, ct);
         }
-        throw new TimeoutException($"SPLA service did not become healthy at {url} within 30s.");
+        throw new TimeoutException(
+            $"SPLA service did not become healthy at {url} within {budget.TotalSeconds:0}s, and its process is still running." + Tail(output));
     }
 
+    private static string DescribeDeadChild(Process child, string? exe, StringBuilder? output)
+    {
+        var name = Path.GetFileName(exe) ?? "the SPLA service";
+        var code = child.ExitCode;
+        var text = $"{name} exited with code {code} ({unchecked((uint)code):X8}) before the service came up.";
+
+        // 0x80008096 = FrameworkMissingFailure from the apphost. The desktop app is published
+        // self-contained and the CLI is not, so this is exactly the machine where the app window opens
+        // and nothing behind it works — worth naming the missing piece rather than the number.
+        if (unchecked((uint)code) == 0x80008096)
+            text += " The .NET 10 runtime it needs is not installed — SPLA needs the ASP.NET Core Runtime 10.0 (x64), not only the .NET Desktop Runtime.";
+
+        return text + Tail(output);
+    }
+
+    private static string Tail(StringBuilder? output)
+    {
+        if (output is null) return string.Empty;
+        lock (output)
+        {
+            var text = output.ToString().Trim();
+            return text.Length == 0 ? string.Empty : $"\n\n{text}";
+        }
+    }
+
+    /// <summary>
+    /// Lets go of the child without killing it.
+    ///
+    /// <para>This used to <c>Kill(entireProcessTree: true)</c>, which is the ownership model the
+    /// instance design replaced: closing a window would cut a turn short mid-generation and answer
+    /// every question the agent was waiting on as "denied". The child holds a lease instead — it was
+    /// started with <c>--idle-timeout</c> and leaves once it has no clients and nothing running, so
+    /// the process is still reclaimed, just never at the cost of work that was under way.</para>
+    ///
+    /// <para>Reopening the app before that timeout is not a leak either: the next window finds the
+    /// instance through the project's lock file and joins it.</para>
+    /// </summary>
     public void Dispose()
     {
-        try
-        {
-            if (_process is { HasExited: false })
-            {
-                _process.Kill(entireProcessTree: true);
-                _process.WaitForExit(2000);
-            }
-        }
-        catch { /* best effort */ }
         _process?.Dispose();
         _process = null;
     }

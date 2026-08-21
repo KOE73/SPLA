@@ -14,7 +14,7 @@ that keeps both sides honest.
 - **Wire message names**: `src/service/SPLA.Service.Contracts/Protocol.cs` → `MessageTypes`
   constants. These are authoritative. The C# side always references the constant, never a literal.
 - **Payload shapes**: `src/service/SPLA.Service.Contracts/Payloads.cs`.
-- **Envelope**: `ProtocolEnvelope` — `{ type, auth?, chatId?, projectId?, requestId?, payload? }`.
+- **Envelope**: `ProtocolEnvelope` — `{ type, auth?, chatId?, requestId?, payload? }`.
   `type` selects the payload shape; `payload` rides as raw JSON so a client deserializes only shapes
   it knows.
 - **Protocol version**: `ProtocolVersion.Current` (`"1"`), echoed in `WelcomePayload.ProtocolVersion`.
@@ -37,7 +37,7 @@ client/types **and** this table.
 | `type` | One of the `MessageTypes` below. |
 | `auth` | `AuthInfo` (token + reserved actor id). Only the token is checked, and only when a connect token is configured; on loopback it is ignored. |
 | `chatId` | Which chat the message concerns, when applicable. |
-| `projectId` | Which project the message concerns. Null = this connection's default project; the server keeps no "current project" state, so a multi-project client sets it per message. |
+| ~~`projectId`~~ | **Removed.** A project is a property of the CONNECTION, not of a message — see below. |
 | `requestId` | Correlates request/response pairs (permission, clarify, and any `invoke()` RPC). Same id out and back. |
 | `payload` | Typed body for `type`, as raw JSON. |
 
@@ -50,6 +50,8 @@ client/types **and** this table.
 | `project.recent` | `ProjectRecent` | — | Reply `project.list.result`, ordered by recency. |
 | `project.open` | `ProjectOpen` | `ProjectOpenPayload` | Open a project by id; reply `project.context`. |
 | `project.create` | `ProjectCreate` | `ProjectCreatePayload` | Create + open; reply `project.context`. Server mode: created by name inside the user's area. |
+| `instance.status` | `InstanceStatus` | — | Ask this process what it is doing right now; reply `instance.status.result`. |
+| `instance.stop` | `InstanceStop` | `InstanceStopPayload` | Ask this process to shut down; reply `instance.status.result` (`Stopping: true` once underway, or a refusal naming why). `Force: true` cancels every running turn first. |
 | `chat.list` | `ChatList` | — | Request the chat list. |
 | `chat.open` | `ChatOpen` | `ChatOpenPayload` | Open a chat; reply `chat.opened`. |
 | `chat.watch` | `ChatWatch` | `ChatOpenPayload` | Watch a chat (turn/tool events) without the `chat.opened` echo — for tear-off/aux windows. |
@@ -110,6 +112,7 @@ client/types **and** this table.
 | `plugin.panel.open` | `PluginPanelOpen` | `PluginPanelOpenPayload` | Open an interactive session supplied by an enabled plugin panel provider. |
 | `plugin.panel.input` | `PluginPanelInput` | `PluginPanelInputPayload` | Send opaque typed input to a plugin-owned panel session. |
 | `plugin.panel.close` | `PluginPanelClose` | `PluginPanelClosePayload` | Close a plugin-owned panel session. |
+| `subagent.get` | `SubagentGet` | `SubagentGetPayload` | Ask for one finished spawned run by id — the same id the run's progress ticks carried while it was live. Reply `subagent.result`. An unknown id (fallen out of the ring, or never existed) answers `found: false`, not an error. |
 
 ## Server → Client
 
@@ -118,6 +121,7 @@ client/types **and** this table.
 | `welcome` | `Welcome` | `WelcomePayload` | unicast | Default project, connections, modes, theme/density, protocol version, identity, build branch. |
 | `project.list.result` | `ProjectListResult` | `ProjectListResultPayload` | unicast | Answer to `project.list`/`project.recent`. |
 | `project.context` | `ProjectContext` | `ProjectContextPayload` | unicast | Answer to `project.open`/`project.create`. |
+| `instance.status.result` | `InstanceStatusResult` | `InstanceStatusPayload` | unicast | Answer to `instance.status`/`instance.stop` — a unicast reply to whoever asked, never fanned out to other clients. |
 | `chat.list.result` | `ChatListResult` | `ChatListResultPayload` | broadcast (project) | Every sidebar in that project refreshes. |
 | `chat.opened` | `ChatOpened` | `ChatOpenedPayload` | unicast | Full chat state on open. |
 | `user.message` | `UserMessage` | `UserMessagePayload` | watchers | Accepted user message id/time; optional text renders server-initiated turns. |
@@ -127,16 +131,19 @@ client/types **and** this table.
 | `llm.attempt` | `Attempt` | `AttemptPayload` | watchers | A generation the repetition guard abandoned mid-stream; never sent for the successful attempt. Carries the abandoned Content/Reasoning so a reader can open it live; `chat.opened`'s `ChatMessageDto.attempts` (`AttemptDto[]`) carries the same fields for a reopened chat, when `agent.save_attempts` was on when it was saved. |
 | `assistant.message` | `AssistantMessage` | `AssistantMessagePayload` | watchers | Final assistant message. |
 | `tool.started` | `ToolStarted` | `ToolStartedPayload` | watchers | A tool call began. |
-| `tool.progress` | `ToolProgress` | `ToolProgressPayload` | watchers | Throttled progress ticks. |
+| `tool.progress` | `ToolProgress` | `ToolProgressPayload` | watchers | Throttled progress ticks for the top-level call only. One bar, no nesting. |
+| `progress.node` | `ProgressNode` | `ProgressNodePayload` | watchers | One node of the turn's progress tree, whole, on each change — the nested counterpart to `tool.progress`, carrying a script's parallel children and a spawned sub-agent's whole run. A flat append-only stream, not a snapshot: keep what you are told and attach each node to `parentId` (null = top level). Hold a node whose parent has not arrived rather than dropping it — parallel work gives no ordering guarantee. Structural frames (a node's first appearance and its finish) are never throttled; the ticks between them are, per node. Both this and `tool.progress` are sent; a client that wants one bar can ignore this. |
 | `tool.result` | `ToolResult` | `ToolResultPayload` | watchers | A tool call finished. |
+| `subagent.result` | `SubagentResult` | `SubagentResultPayload` | unicast | Answer to `subagent.get`: the finished run's transcript (`messages` reuses `ChatMessageDto`) plus its label, mode, outcome and timing. `found: false` when the id is not in the log. |
 | `notice` | `Notice` | `NoticePayload` | watchers | Inline notice. |
 | `token.usage` | `TokenUsage` | `TokenUsagePayload` | watchers | Per-turn token counts; `contextLength` (nullable) carries the model's operative window for the client's context-budget display. |
 | `turn.complete` | `TurnComplete` | `TurnCompletePayload` | watchers | Turn ended; re-enable input. `activeSkillId` reports a skill still running — end of turn is when one the model forgot to close becomes actionable. |
 | `chat.skill.state` | `ChatSkillState` | `ChatSkillStatePayload` | watchers | The chat's active skill changed (an explicit hand-out or unload). |
 | `chat.toolset.state` | `ChatToolSetState` | `ChatToolSetStatePayload` | watchers | The chat's tool sets, raised or merely announced. Sent after every turn and after an explicit lowering; sets levelled off are never listed. |
 | `chat.doubt.state` | `ChatDoubtState` | `ChatDoubtStatePayload` | watchers | Whether the chat has taken in content from a source nobody named, with the causes. Sent on clearing; the flag also rides `chat.opened`, since it survives a reload. |
-| `permission.request` | `PermissionRequest` | `PermissionRequestPayload` | unicast | To the initiating client (by `requestId`). |
-| `clarify.request` | `ClarifyRequest` | `ClarifyRequestPayload` | unicast | To the initiating client (by `requestId`). |
+| `permission.request` | `PermissionRequest` | `PermissionRequestPayload` | watchers | Outstanding permission question. Replayed to a client opening the chat while a question is still pending. |
+| `clarify.request` | `ClarifyRequest` | `ClarifyRequestPayload` | watchers | Outstanding clarification question. Replayed to a client opening the chat while a question is still pending. |
+| `ask.resolved` | `AskResolved` | `AskResolvedPayload` | watchers | An outstanding permission or clarify question was resolved (answered, cancelled, or timed out). Payload carries `Reason`. |
 | `debug.snapshot` | `DebugSnapshot` | `DebugSnapshotPayload` | unicast | Answer to `debug.request`. |
 | `focus.changed` | `FocusChanged` | `FocusPayload` | broadcast | Tear-off windows follow the active chat. |
 | `connections.result` | `ConnectionsResult` | `ConnectionsPayload` | unicast/broadcast | Answer to get; broadcast after save. |
@@ -199,6 +206,49 @@ Reference implementation: `AppearanceChanged` → `appearance.changed`.
 `SplaClient` fans every inbound frame onto its typed bus (`on(type, handler)`); surfaces also emit
 purely local UI events (e.g. `conn` for the connection dot). These are **not** protocol messages —
 keep them out of `MessageTypes`. Every in/out frame is also mirrored to `onWire(...)` listeners.
+
+## A connection has one project
+
+There is no `projectId` on the envelope, and adding one back is not the fix for anything.
+
+The server binds a connection to a project when the socket is established (the user's own default in
+server mode, the process's project locally) and rebinds it **only** on `project.open`. Everything
+else — chats, settings, secrets, plugins, usage — is implicitly about that project.
+
+It used to be per message, and the cost was paid in two places. Clients had to remember the field on
+every send, and forgetting it wrote silently into whichever project the connection defaulted to; the
+web client carried a `projectEnvelope()` helper and a comment warning every settings surface to pass
+it. And it made a local invariant into a fiction: a process has exactly one working directory, so a
+window claiming to hold several projects at once was telling the truth about its runtimes and a lie
+about anything resolved relative to `cwd`.
+
+So: **a second project is a second connection.** Locally that means a second window; on a server it
+means one socket walking between the user's own projects via `project.open`. Broadcast scoping
+(`BroadcastToProjectAsync`) still exists and still works — `IsWatchingProject` is now simply "is this
+the connection's project".
+
+## The registry channel is a different protocol
+
+Everything above is the chat protocol: `ProtocolEnvelope`, `MessageTypes`, one socket per client.
+The registry hub does **not** speak it. It has its own tiny vocabulary in
+`SPLA.Instances.Contracts/RegistryProtocol.cs` — `register`, `status`, `accepted`, `stop` — carried
+as `RegistryFrame` over `/registry/ws`, with `GET /registry/instances` and `POST /registry/stop`
+beside it.
+
+That separation is deliberate and worth keeping. An instance registering with a hub is saying three
+things — I exist, here is my address, here is what I am doing — and none of them need chats, tool
+calls, permissions or projects. Making registration speak the chat protocol would drag this entire
+contract into every instance and every observer, and would tie the hub's compatibility to a protocol
+that changes for unrelated reasons.
+
+So: **do not add registry messages to `MessageTypes`**, and do not route them through
+`MessageRouter`. They are listed in `RegistryFrames`, served by
+`SPLA.Service/Hosting/RegistryEndpoints.cs`, and consumed by `InstanceRegistrar` /
+`RemoteInstanceRegistry`.
+
+What *is* in the chat protocol is asking one instance directly what it is doing —
+`instance.status` / `instance.stop`, in the tables above. Same question, different asker: the hub
+learns it pushed over the registration channel, a client on the instance's own socket asks for it.
 
 ## Debugging the wire
 

@@ -1,21 +1,26 @@
 using System;
 using System.Collections.Generic;
+using System.Text;
 
-namespace SPLA.MCP.Core.Tools;
+namespace SPLA.Domain.Resources;
 
 /// <summary>
-/// Works out what a blob actually holds. A blob handle is an address, not a type — the type belongs
-/// on the payload (<see cref="SPLA.Domain.Agent.BlobPayload.ContentType"/>), and this is the single
-/// place that fills it in when a producing tool did not.
+/// Works out what a payload actually holds. An address is an address, not a type — the type belongs
+/// on the payload (<see cref="SPLA.Domain.Agent.BlobPayload.ContentType"/>,
+/// <see cref="ResourceContent.ContentType"/>), and this is the single place that fills it in when a
+/// producing tool or provider did not.
 /// <para>
 /// The order matters: a producer that knows the type wins, then the bytes themselves (a signature
 /// cannot lie about what was actually downloaded), then the file name. Guessing at read time rather
 /// than baking a guess into the handle means a wrong guess stays correctable.
 /// </para>
 /// </summary>
-public static class BlobContentType
+public static class ContentTypes
 {
     public const string Unknown = "application/octet-stream";
+
+    /// <summary>What a byte run that survives a UTF-8 round-trip is called.</summary>
+    public const string Text = "text/plain; charset=utf-8";
 
     private static readonly Dictionary<string, string> ByExtension = new(StringComparer.OrdinalIgnoreCase)
     {
@@ -79,13 +84,61 @@ public static class BlobContentType
     }
 
     /// <summary>
+    /// True when the bytes are plausibly UTF-8 text: a strict encode/decode round-trip, plus the one
+    /// rule the round-trip alone cannot express — a NUL byte near the start means binary, even though
+    /// NUL is a perfectly valid UTF-8 character.
+    /// <para>
+    /// This is knowledge, not a verdict. It answers "what is this", and a caller that has to refuse
+    /// binary content for a reason of its own is free to use the answer to say so plainly.
+    /// </para>
+    /// </summary>
+    public static bool LooksLikeUtf8Text(byte[]? bytes)
+    {
+        if (bytes is null) return false;
+        if (bytes.Length == 0) return true;
+
+        // A NUL in the leading kilobyte is the oldest and cheapest binary tell there is: real text
+        // files do not carry one, and container formats almost always do within their header. The
+        // other C0 controls are the same tell one step weaker — a run like 01 02 03 04 round-trips
+        // through UTF-8 perfectly and is still nobody's idea of text — so they disqualify too, with
+        // the four that genuinely occur in text (tab, LF, CR, form feed) spared.
+        var window = Math.Min(bytes.Length, 1024);
+        for (var i = 0; i < window; i++)
+        {
+            var b = bytes[i];
+            if (b < 0x20 && b is not (0x09 or 0x0A or 0x0C or 0x0D)) return false;
+        }
+
+        var body = bytes;
+        // A BOM is text announcing itself as text; it survives the round-trip either way, but strip
+        // it so the check is about the content rather than about the marker.
+        if (body.Length >= 3 && body[0] == 0xEF && body[1] == 0xBB && body[2] == 0xBF)
+            body = body[3..];
+
+        try
+        {
+            var text = Encoding.UTF8.GetString(body);
+            return Encoding.UTF8.GetBytes(text).AsSpan().SequenceEqual(body);
+        }
+        catch
+        {
+            return false;
+        }
+    }
+
+    /// <summary>
     /// The type to record for a payload: <paramref name="declared"/> if the producer knew it, else the
-    /// byte signature, else the file name, else <see cref="Unknown"/> for bytes / <c>text/plain</c> for text.
+    /// byte signature, else the file name, else <c>text/plain</c> when the caller already knows it is
+    /// text, else <see cref="Text"/> when the bytes themselves read as UTF-8 text, else
+    /// <see cref="Unknown"/>.
     /// </summary>
     public static string Resolve(string? declared, byte[]? bytes, string? fileName, bool isText)
     {
         if (!string.IsNullOrWhiteSpace(declared)) return declared!;
-        return Sniff(bytes) ?? FromFileName(fileName) ?? (isText ? "text/plain" : Unknown);
+        return Sniff(bytes)
+               ?? FromFileName(fileName)
+               ?? (isText ? "text/plain" : null)
+               ?? (LooksLikeUtf8Text(bytes) ? Text : Unknown);
     }
 
     /// <summary>True for a content type a vision model can actually be shown (SVG excluded — not raster).</summary>

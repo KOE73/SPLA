@@ -4,16 +4,22 @@
        should look and behave identically. Plugins keep their own richer card because they also carry
        a settings editor, but the row grammar here matches it. -->
   <div class="cap-row" :class="{ off: !item.enabled, blocked: isBlocked }">
-    <input type="checkbox" :checked="item.enabled" :disabled="disabled" @change="onToggle">
+    <div class="cap-head">
+      <input type="checkbox" :checked="item.enabled" :disabled="disabled" @change="onToggle">
 
-    <b class="cap-name">{{ item.name }}</b>
-    <span v-if="badge" class="cap-badge">{{ badge }}</span>
-    <span v-if="item.description" class="cap-desc">{{ item.description }}</span>
+      <b class="cap-name">{{ item.name }}</b>
+      <span v-if="badge" class="cap-badge">{{ badge }}</span>
 
-    <span class="grow"></span>
+      <span class="grow"></span>
 
-    <span v-if="item.stateReason" class="cap-reason" :class="{ warn: isBlocked }">{{ item.stateReason }}</span>
-    <slot name="actions" />
+      <span v-if="item.stateReason" class="cap-reason" :class="{ warn: isBlocked }">{{ item.stateReason }}</span>
+      <slot name="actions" />
+    </div>
+    <span v-if="item.description" class="cap-desc">
+      <template v-for="(line, i) in item.description.split('\n')" :key="i">
+        <span :class="{ 'cap-desc-tools': i > 0 }">{{ line }}</span><br v-if="i < item.description.split('\n').length - 1">
+      </template>
+    </span>
   </div>
 </template>
 
@@ -41,15 +47,17 @@ function onToggle(e: Event) {
 </script>
 
 <style scoped>
-.cap-row { display: flex; align-items: center; gap: 8px; padding: 4px 8px; min-height: 26px;
+.cap-row { display: flex; flex-direction: column; gap: 2px; padding: 4px 8px;
   border: 1px solid var(--border); border-radius: var(--radius, 7px); background: var(--elevated); }
 .cap-row:hover { background: color-mix(in srgb, var(--text) 4%, transparent); }
 .cap-row.off .cap-name { color: var(--muted); }
+.cap-head { display: flex; align-items: center; gap: 8px; min-height: 18px; }
 .cap-name { font-size: var(--fs-sm); white-space: nowrap; }
 .cap-badge { font-family: var(--mono); font-size: var(--fs-xs); color: var(--muted);
   border: 1px solid var(--border); border-radius: 4px; padding: 0 4px; white-space: nowrap; }
-.cap-desc { font-size: var(--fs-xs); color: var(--muted);
-  overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.cap-desc { font-size: var(--fs-xs); color: var(--muted); white-space: normal;
+  padding-left: 24px; display: block; }
+.cap-desc-tools { font-family: var(--mono); }
 .grow { flex: 1; min-width: 8px; }
 .cap-reason { font-size: var(--fs-xs); color: var(--muted); white-space: nowrap;
   overflow: hidden; text-overflow: ellipsis; max-width: 45%; }

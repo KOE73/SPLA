@@ -9,8 +9,13 @@ import { setCurrentProject } from "./state/project";
 import "./state/chatSessions";
 
 bootAppearance();
-client.connect();
-client.on("conn", p => { store.connected = p.on; });
+
+// The hub surface is served BY the registry hub, which holds no project and has no /ws at all. Opening
+// the chat socket there would fail forever and, worse, raise the "the agent stopped answering" banner
+// about an agent that was never supposed to exist. It talks to the hub through RegistryClient instead.
+const isHubSurface = new URLSearchParams(location.search).get("surface") === "hub";
+if (!isHubSurface) client.connect();
+client.on("conn", p => { store.connected = p.on; store.connectionLost = !!p.lost; });
 client.on("chat.opened", p => { store.currentChat = p.chatId; });
 // focus.changed is deliberately NOT applied here. It is broadcast to every connection, so honouring
 // it in the main window let any other window retarget this one's chat — including between reading the

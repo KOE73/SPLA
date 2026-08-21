@@ -1,11 +1,15 @@
-﻿using System.Collections.Concurrent;
+using System.Collections.Concurrent;
 using Microsoft.Extensions.Logging;
 using SPLA.Agent;
 using SPLA.Agent.Composition;
 using SPLA.Domain.Agent;
 using SPLA.MCP.Core.Composition;
 using SPLA.Domain.Interfaces;
+using SPLA.Domain.Host;
 using SPLA.Domain.Models;
+using SPLA.Domain.Formats;
+using SPLA.Domain.Resources;
+using SPLA.Domain.Resources.Providers;
 using SPLA.Domain.Settings;
 using SPLA.LLM.LMStudio;
 using SPLA.LLM.LocalAI;
@@ -15,6 +19,7 @@ using SPLA.MCP.BasicTools.FileSystem;
 using SPLA.MCP.BasicTools.SystemTools;
 using SPLA.MCP.Core;
 using SPLA.MCP.Core.Agent;
+using SPLA.MCP.Core.Formats;
 using SPLA.MCP.Core.Permissions;
 using SPLA.MCP.Core.Plugins;
 using SPLA.Library;
@@ -60,6 +65,56 @@ public sealed class AgentRuntime : IDisposable
     /// <summary>Process-wide domain-event hub. Mutators publish state changes here; the host fans them
     /// out to clients. The single "say what changed once" point — see <see cref="ServiceEvents"/>.</summary>
     public ServiceEvents Events { get; } = new();
+
+    /// <summary>The questions this project's running turns are waiting on. Held here, not on the
+    /// connection that started the turn: a question belongs to its chat, any client watching that
+    /// chat may answer it, and a client that arrives later must still see it. See
+    /// <see cref="PendingAskStore"/> for why closing a window must not answer anything.</summary>
+    public PendingAskStore Asks { get; }
+
+    /// <summary>The turns in flight in this project, keyed by chat. Here for the same reason as
+    /// <see cref="Asks"/>: work outlives the client that started it, and any client may cancel it.</summary>
+    public TurnRegistry Turns { get; } = new();
+
+    /// <summary>This process's claim on the project — the one-writer invariant, and the address other
+    /// processes are redirected to. Null when running without a manifest, which claims nothing.
+    /// See <see cref="SPLA.Domain.Project.InstanceLock"/>.</summary>
+    public SPLA.Domain.Project.InstanceLock? Instance { get; }
+
+    /// <summary>
+    /// What this project is doing right now — the badge a person sees and the rule that decides
+    /// whether the instance may be shut down for being unused, in one answer.
+    /// </summary>
+    /// <param name="stallAfter">Silence after which a registered turn counts as stopped halfway
+    /// rather than working.</param>
+    public SPLA.Domain.Project.InstanceState State(TimeSpan stallAfter)
+    {
+        // Waiting outranks working: a turn blocked on a person is still a registered turn, and the
+        // thing worth showing — and worth never evicting — is that somebody is being waited for.
+        if (Asks.Any) return SPLA.Domain.Project.InstanceState.Waiting;
+        if (!Turns.Any) return SPLA.Domain.Project.InstanceState.Idle;
+
+        return DateTime.UtcNow - Turns.LastActivityUtc > stallAfter
+            ? SPLA.Domain.Project.InstanceState.Stalled
+            : SPLA.Domain.Project.InstanceState.Working;
+    }
+
+    /// <summary>
+    /// The same question about one chat. Same vocabulary on purpose: the badge beside a chat in the
+    /// sidebar, the badge on the project, and the rule that keeps an instance alive are one set of
+    /// words, so a person never has to learn two.
+    /// </summary>
+    public SPLA.Domain.Project.InstanceState StateOf(string chatId, TimeSpan stallAfter)
+    {
+        if (Asks.List(chatId).Count > 0) return SPLA.Domain.Project.InstanceState.Waiting;
+
+        var activity = Turns.LastActivityFor(chatId);
+        if (activity is null) return SPLA.Domain.Project.InstanceState.Idle;
+
+        return DateTime.UtcNow - activity.Value > stallAfter
+            ? SPLA.Domain.Project.InstanceState.Stalled
+            : SPLA.Domain.Project.InstanceState.Working;
+    }
     /// <summary>
     /// The composed LLM pipeline — the only way anything in this runtime reaches a model. Provider
     /// clients are deliberately never exposed: if they were reachable, accounting, quotas and privacy
@@ -114,6 +169,11 @@ public sealed class AgentRuntime : IDisposable
 
     public SpawnedAgentRunner SpawnedRunner { get; }
 
+    /// <summary>Finished spawned runs this process has produced, kept in memory for as long as the ring
+    /// has room. One log per runtime, not per spawn — a run started under one chat and one found again
+    /// later through <c>subagent.get</c> have to be the same store.</summary>
+    public SPLA.Agent.SpawnedRunLog SpawnedRuns { get; } = new();
+
     /// <summary>The <c>agent.capabilities</c> setting resolved against <see cref="AgentFeatureCatalog"/>:
     /// unknown ids dropped, Requires auto-included, null configured = every feature. Drives which
     /// features' tools were registered into <see cref="McpHost"/> and which Core prompt segments
@@ -162,16 +222,43 @@ public sealed class AgentRuntime : IDisposable
     /// <c>--sys-prompt</c>, say). Handed to the composer at construction rather than pushed in later:
     /// see the <c>hostExtras</c> parameter of <see cref="AgentContributors.Default"/> for where they
     /// land and why the composer stays immutable.</param>
+    /// <param name="instanceMode">What this process is doing with the project — <c>serve</c>,
+    /// <c>repl</c>, <c>mcp</c>, <c>chat-run</c>, <c>ui</c>. Recorded in the instance lock so a second
+    /// writer is refused by name rather than by "something has it".</param>
     public AgentRuntime(
         ResolvedSettings settings,
         ILoggerFactory loggerFactory,
-        IEnumerable<IAgentContributor>? hostContributors = null)
+        IEnumerable<IAgentContributor>? hostContributors = null,
+        string instanceMode = "app")
     {
         Settings = settings;
         LoggerFactory = loggerFactory;
         Sandbox = BuildSandbox(settings, loggerFactory);
+        Asks = new PendingAskStore(settings.AskTimeoutMinutes > 0
+            ? TimeSpan.FromMinutes(settings.AskTimeoutMinutes)
+            : TimeSpan.Zero);
+
+        // Claimed here rather than in any one command, because every command that builds a runtime is
+        // a writer: serve, the REPL, `chat run` and `mcp` all reach the same .spla/. Taking it in one
+        // of them would leave the other three racing. No manifest ⇒ no claim: the runtime area is
+        // then the shared home, which is nobody's project to hold.
+        if (settings.HasProject)
+            Instance = SPLA.Domain.Project.InstanceLock.Acquire(
+                Path.Combine(settings.WorkspacePath, ".spla"), instanceMode);
 
         _httpClient = new HttpClient { Timeout = TimeSpan.FromMinutes(10) };
+        // Project tally goes through the broker only when a real project is open; the historical
+        // no-project path (cwd/.spla) is kept as-is so the tally never collides with the global file.
+        TokenUsageProject = new FileTokenUsageStore(
+            settings.ProjectFilePath != null
+                ? Path.Combine(
+                    settings.Project.GetBucket(SPLA.Domain.Project.IProjectBackend.RootBucket)
+                        .MapToHostDirectory()!,
+                    "token-usage.json")
+                : Path.Combine(settings.WorkspacePath, ".spla", "token-usage.json"));
+        TokenUsageGlobal = new FileTokenUsageStore(
+            Path.Combine(SPLA.Domain.Settings.ConfigLoader.GetDefaultsDir(), "token-usage.json"));
+
         // ── The LLM pipeline, baked once ──────────────────────────────────────────────────────────
         // The blueprint is what a host varies (CLI, worker and server each declare their own set).
         // Nothing is assembled per turn — per-turn variation travels in LlmTurnContext instead.
@@ -190,6 +277,10 @@ public sealed class AgentRuntime : IDisposable
             // Records what the provider said about the key's standing, on both the success and the
             // failure path — a 429 is the response that reports the budget, and it throws.
             .Use(new SPLA.Domain.Llm.Middleware.ProviderStateMiddleware(ProviderState))
+            // Real token figures reach the tallies and the meter here, once per network attempt,
+            // whoever made the call — the hosts used to each do this themselves, and the one that
+            // did not (spawned sub-agents) simply went uncounted.
+            .Use(new SPLA.Agent.Accounting.TokenAccountingMiddleware(TokenUsageProject, TokenUsageGlobal))
             // Credential materialization is the innermost layer: the key exists only for the provider
             // call itself, and never for accounting, which sits outside it.
             .Use(new SPLA.Domain.Llm.Middleware.CredentialsMiddleware(settings.SecretResolver))
@@ -248,7 +339,12 @@ public sealed class AgentRuntime : IDisposable
             _edgeLedgerFile = new EdgeLedgerFile(
                 settings.Project.GetBucket(SPLA.Domain.Project.IProjectBackend.RootBucket),
                 McpHost.Edges);
-        SpawnedRunner = new SpawnedAgentRunner(Llm, McpHost, SkillLibrary, PluginManager, settings);
+        // The window lookup is handed over rather than resolved here: a sub-agent's progress reports
+        // how full its context is, and config usually does not declare the window — a local runtime
+        // simply loads whatever it loads. GetContextLengthAsync is the same cached detection a chat
+        // uses, so a batch of spawns asks the provider once between them.
+        SpawnedRunner = new SpawnedAgentRunner(
+            Llm, McpHost, SkillLibrary, PluginManager, settings, GetContextLengthAsync, SpawnedRuns);
 
         // ── Modular built-in capabilities: one IAgentFeature per "core.*" id, in
         // AgentFeatureCatalog.Order. Each feature carries its tools AND its prompt fragment
@@ -274,7 +370,7 @@ public sealed class AgentRuntime : IDisposable
                 new FsPatchTool(),
                 new FsWriteTool(),
                 new FsDeleteTool(),
-                new SPLA.MCP.Core.Tools.ImageViewTool()),
+                new SPLA.MCP.Core.Tools.ImageViewTool(FormatConverterRegistry.For(settings))),
             Feature("core.shell",
                 new RunCommandTool()),
             Feature("core.web",
@@ -317,6 +413,59 @@ public sealed class AgentRuntime : IDisposable
             foreach (var tool in feature.Tools)
                 McpHost.RegisterTool(tool);
 
+        // The project's address space. Registered here rather than beside the file tools because the
+        // registry is a property of the running project, not of any one tool set — and because
+        // plugins register into the very same instance from their own load contexts, through
+        // ResolvedSettings.SharedServices, so whoever is constructed first must not be the only one
+        // who gets a registry.
+        //
+        // The workspace is passed as a factory, never as an instance: HostServices.Sandbox resolves
+        // per chat session, and capturing one here would pin every later session to the sandbox that
+        // happened to be current while the runtime was being built.
+        ResourceRegistry.For(settings).Register(
+            new FileResourceProvider(() => HostServices.Sandbox.Workspace));
+
+        // The operator's per-scheme switches, applied at startup and not only when the settings panel
+        // saves them — otherwise a scheme switched off in the project file would come back on at
+        // every launch, and a switch that forgets is worse than no switch. Independent of
+        // registration order: this marks schemes, it does not create them, so a plugin that
+        // registered earlier or registers later is covered either way.
+        ResourceRegistry.For(settings).ApplySwitches(settings.ResourceSchemes);
+
+        // The project's format projections, registered beside the address space and for the same
+        // reason: the registry belongs to the running project rather than to any one tool, and a
+        // plugin registering a docx → markdown converter from its own load context must land in this
+        // very instance. Order is irrelevant — the tools above already hold the same object, because
+        // FormatConverterRegistry.For creates it once per ResolvedSettings and hands it out.
+        BuiltInConverters.RegisterInto(FormatConverterRegistry.For(settings));
+
+        // The verbs, exposed to the model — one tool per verb, because the permission verdict is a
+        // pure function of a tool's declared Scope/Effect/Risk and those differ per verb (see
+        // ResourceToolBase).
+        //
+        // Gated on a settings bool rather than on an AgentFeatureCatalog id, for the same reason
+        // ResourceSchemesContributor's gate lives inside the contributor: whether resources speak is
+        // agent.unified_resources, not a catalog capability, and inventing a catalog id for it would
+        // give the operator two switches for one thing that could disagree. Off means NOT REGISTERED
+        // — not registered-and-refusing — so the arm of the experiment with the switch off is the
+        // agent exactly as it was before any of this existed.
+        if (settings.UnifiedResources)
+        {
+            var resources = ResourceRegistry.For(settings);
+            var converters = FormatConverterRegistry.For(settings);
+
+            foreach (var tool in new SPLA.MCP.Core.Interfaces.IMcpTool[]
+                     {
+                         new SPLA.MCP.Core.Tools.Resources.ResourceReadTool(resources, converters),
+                         new SPLA.MCP.Core.Tools.Resources.ResourceExistsTool(resources),
+                         new SPLA.MCP.Core.Tools.Resources.ResourceListTool(resources),
+                         new SPLA.MCP.Core.Tools.Resources.ResourceWriteTool(resources),
+                         new SPLA.MCP.Core.Tools.Resources.ResourceDeleteTool(resources),
+                         new SPLA.MCP.Core.Tools.Resources.ResourceMakeDirTool(resources),
+                     })
+                McpHost.RegisterTool(tool);
+        }
+
         ChatManager = new ChatManager(settings);
 
         // Now that every tool is registered and the feature set is known, skills can be told what
@@ -338,17 +487,6 @@ public sealed class AgentRuntime : IDisposable
         compositionLogger.LogInformation("Agent surface at startup:\n{Manifest}",
             ComposeContext().Manifest.ToText());
 
-        // Project tally goes through the broker only when a real project is open; the historical
-        // no-project path (cwd/.spla) is kept as-is so the tally never collides with the global file.
-        TokenUsageProject = new FileTokenUsageStore(
-            settings.ProjectFilePath != null
-                ? Path.Combine(
-                    settings.Project.GetBucket(SPLA.Domain.Project.IProjectBackend.RootBucket)
-                        .MapToHostDirectory()!,
-                    "token-usage.json")
-                : Path.Combine(settings.WorkspacePath, ".spla", "token-usage.json"));
-        TokenUsageGlobal = new FileTokenUsageStore(
-            Path.Combine(SPLA.Domain.Settings.ConfigLoader.GetDefaultsDir(), "token-usage.json"));
     }
 
     /// <summary>
@@ -601,5 +739,11 @@ public sealed class AgentRuntime : IDisposable
         return registry;
     }
 
-    public void Dispose() => _httpClient.Dispose();
+    public void Dispose()
+    {
+        // Nothing may be left blocked on a person who will never be asked again.
+        Asks.AbandonAll(AskResolution.Cancelled);
+        Instance?.Dispose();
+        _httpClient.Dispose();
+    }
 }

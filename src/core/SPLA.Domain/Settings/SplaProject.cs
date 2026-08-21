@@ -38,6 +38,11 @@ public class SplaProject
     [YamlMember(Alias = "ui")]
     public SplaUiSection? Ui { get; set; }
 
+    /// <summary>Whether <c>spla serve</c> maps <c>POST /mcp</c>, and a fixed port for it. Absent =
+    /// on, ephemeral port — today's default, unchanged.</summary>
+    [YamlMember(Alias = "mcp")]
+    public SplaMcpSection? Mcp { get; set; }
+
     [YamlMember(Alias = "permissions")]
     public SplaPermissionsSection? Permissions { get; set; }
 
@@ -50,6 +55,12 @@ public class SplaProject
     /// See <c>agents/toolsets.md</c>.</summary>
     [YamlMember(Alias = "toolsets")]
     public Dictionary<string, string>? ToolSets { get; set; }
+
+    /// <summary>Scheme id → enabled, for the resource-address abstraction (<see cref="SplaAgentSection.UnifiedResources"/>
+    /// is the master switch; this is the per-scheme override underneath it). A scheme absent from the
+    /// map is enabled — the map exists to record exceptions, not to enumerate everything registered.</summary>
+    [YamlMember(Alias = "resources")]
+    public Dictionary<string, bool>? Resources { get; set; }
 
     [YamlMember(Alias = "skills")]
     public SplaSkillsSection? Skills { get; set; }

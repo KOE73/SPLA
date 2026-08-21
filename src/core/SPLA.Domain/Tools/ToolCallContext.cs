@@ -36,6 +36,16 @@ public sealed record ToolCallContext
     public IIdentity? Identity { get; init; }
 
     /// <summary>
+    /// Who is asking and over what transport — e.g. <c>"mcp-stdio"</c>, <c>"mcp-http 203.0.113.4"</c>.
+    /// Null means the call came from the agent's own loop (a chat, or a nested <c>ctx.Run</c>), which
+    /// is not a foreign call and needs no label. Set only at the two places a call actually enters
+    /// from outside the process: <see cref="SPLA.Mcp.McpStdioServer"/> and the service's <c>/mcp</c>
+    /// endpoint. Logged verbatim by <see cref="SPLA.MCP.Core.Pipeline.Stages.TelemetryStage"/> so an
+    /// audit trail never has to guess where a call came from.
+    /// </summary>
+    public string? Source { get; init; }
+
+    /// <summary>
     /// Reads the context out of the ambient scopes: what an existing caller means when it passes
     /// nothing. The compatibility path, and the one that keeps this change behaviour-preserving.
     /// </summary>

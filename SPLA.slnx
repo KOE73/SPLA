@@ -1,4 +1,4 @@
-﻿<Solution>
+<Solution>
   <Folder Name="/README/">
     <File Path="Directory.Build.props" />
     <File Path="README.md" />
@@ -62,6 +62,9 @@
     <File Path="docs/adr/ADR_20260817_llm_reasoning-lever.md" />
     <File Path="docs/adr/ADR_20260818_build_package-manager.md" />
     <File Path="docs/adr/ADR_20260818-2_build_versioning-and-changelog.md" />
+    <File Path="docs/adr/ADR_20260819_core_project-entry.md" />
+    <File Path="docs/adr/ADR_20260819-2_core_agent-instances.md" />
+    <File Path="docs/adr/ADR_20260820_apps_project-hub.md" />
   </Folder>
   <Folder Name="/docs/plans/">
     <File Path="docs/plans/PLAN_20260619_agent_skills-lifecycle.md" />
@@ -81,6 +84,11 @@
     <File Path="docs/plans/PLAN_20260813_web_chat-session-model.md" />
     <File Path="docs/plans/PLAN_20260814_core_project-mounts.md" />
     <File Path="docs/plans/PLAN_20260814_core_workspace-streams.md" />
+    <File Path="docs/plans/PLAN_20260819_core_dynamic-tool-registration.md" />
+    <File Path="docs/plans/PLAN_20260819-2_core_project-entry-and-instances.md" />
+    <File Path="docs/plans/PLAN_20260820_apps_project-hub.md" />
+    <File Path="docs/plans/PLAN_20260820-2_agent_subagent-feedback.md" />
+    <File Path="docs/plans/PLAN_20260820_core_unified-uri-resources.md" />
   </Folder>
   <Folder Name="/docs/ideas/">
     <File Path="docs/ideas/IDEA_20260611_core_todo-general.md" />
@@ -100,12 +108,18 @@
     <File Path="docs/ideas/IDEA_20260813-4_apps_close-to-tray.md" />
     <File Path="docs/ideas/IDEA_20260813_core_binary-storage.md" />
     <File Path="docs/ideas/IDEA_20260817_llm_reasoning-lever-leftovers.md" />
+    <File Path="docs/ideas/IDEA_20260819_web_sidebar-layouts.md" />
+    <File Path="docs/ideas/IDEA_20260820_agent_subagent-feedback-mcp-hub.md" />
+    <File Path="docs/ideas/IDEA_20260820-2_service_mcp-resources.md" />
+    <File Path="docs/ideas/IDEA_20260820-3_core_unified-uri-tools.md" />
   </Folder>
   <Folder Name="/src/core/">
     <Project Path="src/core/SPLA.Domain/SPLA.Domain.csproj" />
     <Project Path="src/core/SPLA.Library/SPLA.Library.csproj" />
     <Project Path="src/core/SPLA.MCP.Core/SPLA.MCP.Core.csproj" />
     <Project Path="src/core/SPLA.Observability/SPLA.Observability.csproj" />
+    <Project Path="src/core/SPLA.Instances.Contracts/SPLA.Instances.Contracts.csproj" />
+    <Project Path="src/core/SPLA.Platform/SPLA.Platform.csproj" />
   </Folder>
   <Folder Name="/src/core/infrastructure/">
     <Project Path="src/core/SPLA.Secrets.Dpapi/SPLA.Secrets.Dpapi.csproj" />
@@ -127,6 +141,7 @@
   </Folder>
   <Folder Name="/src/service/">
     <Project Path="src/service/SPLA.Service/SPLA.Service.csproj" />
+    <Project Path="src/service/SPLA.Instances/SPLA.Instances.csproj" />
     <Project Path="src/service/SPLA.Service.Contracts/SPLA.Service.Contracts.csproj" />
     <Project Path="src/service/SPLA.Mcp/SPLA.Mcp.csproj" />
   </Folder>

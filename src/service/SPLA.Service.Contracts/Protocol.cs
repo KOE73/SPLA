@@ -1,4 +1,4 @@
-﻿using System.Text.Json;
+using System.Text.Json;
 
 namespace SPLA.Service.Contracts;
 
@@ -30,12 +30,12 @@ public sealed class ProtocolEnvelope
     /// <summary>Which chat this message concerns, when applicable.</summary>
     public string? ChatId { get; set; }
 
-    /// <summary>Which project this message concerns. Null means "this connection's default
-    /// project" (the one the service was started against) — a single-project client never has to
-    /// set this. A multi-project client (project browser, several open project windows over the
-    /// same socket) sets it explicitly on every project- or chat-scoped message; the server never
-    /// remembers a "current project" for the connection, so there is no state to drift.</summary>
-    public string? ProjectId { get; set; }
+    // A ProjectId used to live here, on every single message, and it is gone on purpose. A project
+    // is a property of the CONNECTION: fixed when the socket is established, changed only by
+    // project.open. Per-message meant every sender had to remember it, and forgetting it silently
+    // wrote into whichever project the connection defaulted to — which the web client had to defend
+    // against in forty places. One place to be right beats forty places to be careful. It also makes
+    // the local invariant true rather than aspirational: one window, one project, one cwd.
 
     /// <summary>
     /// Correlation id for request/response pairs that need one — permission and clarify round-trips
@@ -45,6 +45,17 @@ public sealed class ProtocolEnvelope
 
     /// <summary>The typed body for <see cref="Type"/>, as raw JSON.</summary>
     public JsonElement? Payload { get; set; }
+}
+
+/// <summary>
+/// JSON settings for the wire, next to the types that ride it. Lived inside the service host until a
+/// second first-party client appeared (the CLI, when it connects to an instance that already holds a
+/// project) — and a wire format only one assembly can spell is not a contract.
+/// </summary>
+public static class ServiceJson
+{
+    public static readonly System.Text.Json.JsonSerializerOptions Options =
+        new(System.Text.Json.JsonSerializerDefaults.Web);
 }
 
 /// <summary>
@@ -174,6 +185,11 @@ public static class MessageTypes
     public const string FeaturesGet = "features.get";
     /// <summary>Save the enabled built-in capability set (persisted to <c>agent.capabilities</c>).</summary>
     public const string FeaturesSave = "features.save";
+    /// <summary>Ask for the MCP-over-HTTP settings (enabled + fixed port).</summary>
+    public const string McpGet = "mcp.get";
+    /// <summary>Save MCP-over-HTTP settings (persisted to .spla mcp: section). Takes effect on the
+    /// next <c>spla serve</c> start.</summary>
+    public const string McpSave = "mcp.save";
     /// <summary>Persist UI appearance (theme/density). Auto-sent on change — appearance has no Save step.
     /// Body is <see cref="AppearanceChangedPayload"/>; the server persists and broadcasts <see cref="AppearanceChanged"/>.</summary>
     public const string AppearanceSave = "appearance.save";
@@ -209,6 +225,15 @@ public static class MessageTypes
     /// <summary>Creates a new project (writes its manifest) and opens it.</summary>
     public const string ProjectCreate = "project.create";
 
+    // ── Instance lifecycle (client → server) ──────────────────────────────
+    /// <summary>Asks this process what it is doing right now — the CLI's <c>spla ps</c> and any status
+    /// badge use it instead of trusting a stale lock-file snapshot. Reply <see cref="InstanceStatusResult"/>.</summary>
+    public const string InstanceStatus = "instance.status";
+    /// <summary>Asks this process to shut down. Body <see cref="InstanceStopPayload"/>; reply
+    /// <see cref="InstanceStatusResult"/> — either <c>Stopping = true</c> once shutdown is underway, or
+    /// a refusal naming why (a turn running, a question outstanding) when not forced.</summary>
+    public const string InstanceStop = "instance.stop";
+
     // ── Workspace filesystem browser (client → server) ───────────────────
     /// <summary>List children of a directory (null parentRef = workspace root).</summary>
     public const string FsBrowse = "fs.browse";
@@ -236,6 +261,12 @@ public static class MessageTypes
     public const string PluginPanelInput = "plugin.panel.input";
     public const string PluginPanelClose = "plugin.panel.close";
 
+    /// <summary>Ask for one finished spawned run by id — the transcript a sub-agent used to produce
+    /// before it was thrown away. Body <see cref="SubagentGetPayload"/>; reply <see cref="SubagentResult"/>.
+    /// A run that fell out of the log's ring answers <c>found: false</c>, not an error — it is a
+    /// perfectly normal outcome for anything old enough or for a batch big enough to overflow it.</summary>
+    public const string SubagentGet = "subagent.get";
+
     // ── Server → Client ──────────────────────────────────────────────────
     public const string Welcome = "welcome";
     public const string ChatListResult = "chat.list.result";
@@ -252,6 +283,16 @@ public static class MessageTypes
     public const string UserMessage = "user.message";
     public const string ToolStarted = "tool.started";
     public const string ToolProgress = "tool.progress";
+
+    /// <summary>
+    /// One node of the turn's progress tree was added, ticked, or finished. The nested counterpart to
+    /// <see cref="ToolProgress"/>, which reports only the top-level call and therefore cannot show a
+    /// script's parallel children or a sub-agent's work at all.
+    /// <para>Both are sent. A client that wants one bar keeps reading <c>tool.progress</c>; the tree is
+    /// strictly more information and strictly more work to render, so which to use is the client's
+    /// decision and not one this side should make for it.</para>
+    /// </summary>
+    public const string ProgressNode = "progress.node";
     public const string ToolResult = "tool.result";
     public const string Notice = "notice";
     public const string TokenUsage = "token.usage";
@@ -266,6 +307,11 @@ public static class MessageTypes
     public const string ChatDoubtState = "chat.doubt.state";
     public const string PermissionRequest = "permission.request";
     public const string ClarifyRequest = "clarify.request";
+
+    /// <summary>An outstanding permission/clarify question is no longer outstanding — somebody
+    /// answered it, the turn was cancelled, or it timed out. Broadcast to every watcher of the chat
+    /// so a dialog another window already dealt with disappears here too.</summary>
+    public const string AskResolved = "ask.resolved";
     public const string DebugSnapshot = "debug.snapshot";
     /// <summary>Broadcast to all connections when a window changes the focused chat (see <see cref="FocusSet"/>).</summary>
     public const string FocusChanged = "focus.changed";
@@ -283,6 +329,9 @@ public static class MessageTypes
     public const string ConnectionsHealth = "connections.health";
     /// <summary>The current agent settings — answer to <see cref="AgentGet"/> and broadcast after <see cref="AgentSave"/>.</summary>
     public const string AgentResult = "agent.result";
+    /// <summary>The current MCP-over-HTTP settings — answer to <see cref="McpGet"/> and broadcast
+    /// after <see cref="McpSave"/>.</summary>
+    public const string McpResult = "mcp.result";
     /// <summary>The current plugin list/state — answer to <see cref="PluginsGet"/> and broadcast after <see cref="PluginsSave"/>.</summary>
     public const string PluginsResult = "plugins.result";
     /// <summary>Answer to <see cref="PluginAction"/>.</summary>
@@ -317,6 +366,11 @@ public static class MessageTypes
     /// project id, so a client can render a new project window without a second round trip.</summary>
     public const string ProjectContext = "project.context";
 
+    /// <summary>Answer to <see cref="InstanceStatus"/> and <see cref="InstanceStop"/> alike — one shape
+    /// for "what is this instance doing" and "did the stop go through", since a refused stop IS a
+    /// status answer with a reason attached.</summary>
+    public const string InstanceStatusResult = "instance.status.result";
+
     /// <summary>Answer to <see cref="FsBrowse"/>.</summary>
     public const string FsBrowseResult = "fs.browse.result";
     /// <summary>Answer to <see cref="FsRead"/>.</summary>
@@ -337,6 +391,9 @@ public static class MessageTypes
     public const string SshSessionsChanged = "ssh.sessions.changed";
     public const string PluginPanelOpened = "plugin.panel.opened";
     public const string PluginPanelEvent = "plugin.panel.event";
+
+    /// <summary>Answer to <see cref="SubagentGet"/>. Body <see cref="SubagentResultPayload"/>.</summary>
+    public const string SubagentResult = "subagent.result";
 
     public const string Error = "error";
 }

@@ -26,6 +26,24 @@ public enum ProviderFactKind
 public enum ProviderFactSeverity { Normal, Warn, Critical }
 
 /// <summary>
+/// What a fact is a statement <i>about</i> — and therefore how long it stays true and who may store
+/// it. This is the routing rule, not a display hint: the same <see cref="ProviderFact"/> shape travels
+/// one channel, and the scope is how a consumer tells "this key has 40 requests left" from "this call
+/// sent reasoning_effort=medium". Without it the two mix, and the second overwrites the first.
+/// </summary>
+public enum ProviderFactScope
+{
+    /// <summary>The credential's standing — rate-limit budget, balance. Survives the call it arrived
+    /// on and is worth storing, because the next call has to know it. The default: every fact read
+    /// off a response header is one of these.</summary>
+    Connection,
+
+    /// <summary>True of this one call and nothing else. Reported so a run can be explained after the
+    /// fact, never stored as the connection's state.</summary>
+    Call
+}
+
+/// <summary>
 /// One provider-reported fact, in the shape every provider must produce even for counters this build
 /// has never heard of.
 /// <para>
@@ -52,6 +70,10 @@ public sealed class ProviderFact
     public ProviderFactKind Kind { get; init; } = ProviderFactKind.Text;
 
     public ProviderFactSeverity Severity { get; init; } = ProviderFactSeverity.Normal;
+
+    /// <summary>What this is a fact about — see <see cref="ProviderFactScope"/>. Defaults to
+    /// <see cref="ProviderFactScope.Connection"/>, which is what a header-derived fact is.</summary>
+    public ProviderFactScope Scope { get; init; } = ProviderFactScope.Connection;
 
     /// <summary>
     /// When this was observed. Mandatory because most of these are <i>last seen</i> rather than

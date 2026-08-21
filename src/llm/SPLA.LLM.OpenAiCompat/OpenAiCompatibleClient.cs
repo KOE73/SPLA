@@ -106,12 +106,12 @@ public sealed partial class OpenAiCompatibleClient : ILlmClient, ITokenUsageRepo
         CancellationToken cancellationToken = default,
         Func<string, Task>? onReasoning = null)
     {
-        var request = CreateRequestMessage(messages, settings, tools, stream: true);
+        var (request, reasoningFact) = CreateRequestMessage(messages, settings, tools, stream: true);
         using var response = await SendWithConnectivityAsync(request, settings.BaseUrl, cancellationToken);
         await EnsureSuccessWithBodyAsync(response, cancellationToken);
 
         // Read before the body: headers are available immediately, and this costs nothing.
-        var signals = RateLimitSignals.From(response.Headers);
+        var signals = RateLimitSignals.From(response.Headers).Append(reasoningFact).ToList();
 
         using var stream = await response.Content.ReadAsStreamAsync(cancellationToken);
         using var reader = new StreamReader(stream);
@@ -307,7 +307,17 @@ public sealed partial class OpenAiCompatibleClient : ILlmClient, ITokenUsageRepo
         return (content, reasoning);
     }
 
-    private HttpRequestMessage CreateRequestMessage(IEnumerable<ChatMessage> messages, LLMSettings settings, IEnumerable<ToolDefinition>? tools, bool stream)
+    /// <summary>
+    /// Builds the request, and reports what the reasoning lever actually became on the wire.
+    /// <para>
+    /// The second half exists because the requested level and the sent level are different facts:
+    /// <see cref="IOpenAiCompatProfile.ShapeReasoning"/> is free to send nothing at all for a model
+    /// that never declared a lever, and a run report that echoed the request back would be claiming
+    /// something that did not happen. Observed as a payload diff rather than by asking the profile,
+    /// so a dialect this build has never seen is still reported correctly.
+    /// </para>
+    /// </summary>
+    private (HttpRequestMessage Request, ProviderFact Reasoning) CreateRequestMessage(IEnumerable<ChatMessage> messages, LLMSettings settings, IEnumerable<ToolDefinition>? tools, bool stream)
     {
         var payload = new Dictionary<string, object>
         {
@@ -370,7 +380,9 @@ public sealed partial class OpenAiCompatibleClient : ILlmClient, ITokenUsageRepo
 
         // The reasoning lever, in this provider's dialect and only for a model that was described as
         // having one. Empty choice = leave the model's own default alone.
+        var beforeReasoning = new HashSet<string>(payload.Keys, StringComparer.Ordinal);
         _profile.ShapeReasoning(payload, ReasoningChoice.Parse(settings.ReasoningLevel), settings.ModelReasoning);
+        var reasoningFact = DescribeReasoning(payload, beforeReasoning, settings);
 
         if (tools?.Any() == true)
         {
@@ -397,7 +409,39 @@ public sealed partial class OpenAiCompatibleClient : ILlmClient, ITokenUsageRepo
         request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", settings.ApiKey);
         _profile.ShapeHeaders(request.Headers);
         request.Content = JsonContent.Create(payload, null, _jsonOptions);
-        return request;
+        return (request, reasoningFact);
+    }
+
+    /// <summary>What the reasoning lever became on the wire, as a fact for the turn result: the keys
+    /// <see cref="IOpenAiCompatProfile.ShapeReasoning"/> added to the payload, or an explicit "nothing
+    /// sent" — which is the answer whenever the model declared no lever, however the level was set.</summary>
+    /// <summary>Renders a payload value for the reasoning fact. Written out by hand rather than
+    /// serialized: the client's serializer options are the ones that go on the wire, and a diagnostic
+    /// string has no business borrowing them.</summary>
+    private static string DescribeValue(object? value) => value switch
+    {
+        null => "null",
+        IDictionary<string, object?> map => "{" + string.Join(", ", map.Select(kv => $"{kv.Key}={DescribeValue(kv.Value)}")) + "}",
+        bool b => b ? "true" : "false",
+        IFormattable f => f.ToString(null, System.Globalization.CultureInfo.InvariantCulture),
+        _ => value.ToString() ?? string.Empty
+    };
+
+    private ProviderFact DescribeReasoning(IDictionary<string, object> payload, ISet<string> before, LLMSettings settings)
+    {
+        var added = payload.Keys.Where(k => !before.Contains(k)).OrderBy(k => k, StringComparer.Ordinal).ToList();
+        var requested = string.IsNullOrWhiteSpace(settings.ReasoningLevel) ? "(default)" : settings.ReasoningLevel!;
+        var sent = added.Count == 0
+            ? "(nothing sent)"
+            : string.Join(", ", added.Select(k => $"{k}={DescribeValue(payload[k])}"));
+
+        return new ProviderFact
+        {
+            Key   = "reasoning.wire",
+            Label = $"Reasoning (requested {requested})",
+            Value = sent,
+            Scope = ProviderFactScope.Call
+        };
     }
 
     /// <summary>Builds the OpenAI vision "content parts" array: a text part (if any) followed by one

@@ -33,6 +33,7 @@
     <ProjectReference Include="..\..\src\plugins\SPLA.Plugins.Roslyn\SPLA.Plugins.Roslyn.csproj" />
     <ProjectReference Include="..\..\src\plugins\SPLA.Plugins.Sql\SPLA.Plugins.Sql.csproj" />
     <ProjectReference Include="..\..\src\service\SPLA.Service\SPLA.Service.csproj" />
+    <ProjectReference Include="..\..\src\service\SPLA.Instances\SPLA.Instances.csproj" />
     <ProjectReference Include="..\..\src\identity\SPLA.Identity.Windows\SPLA.Identity.Windows.csproj" />
   </ItemGroup>
 

@@ -85,12 +85,11 @@ var callbacks = new AgentCallbacks
         return Task.CompletedTask;
     },
     OnNotice = n => { EndReasoning(); Console.WriteLine($"\n[notice] {n}"); return Task.CompletedTask; },
-    OnTokenUsage = (p, c) =>
+    // Only this turn's own subtotal: the project and machine tallies are kept by the pipeline.
+    OnLlmTurn = turn =>
     {
-        runtime.TokenUsageProject.Record(p, c);
-        runtime.TokenUsageGlobal.Record(p, c);
-        if (p is int pi) turnPrompt = (turnPrompt ?? 0) + pi;
-        if (c is int ci) turnCompletion = (turnCompletion ?? 0) + ci;
+        if (turn.Message.PromptTokens is int pi) turnPrompt = (turnPrompt ?? 0) + pi;
+        if (turn.Message.CompletionTokens is int ci) turnCompletion = (turnCompletion ?? 0) + ci;
     }
 };
 // Headless-режим: инструментам разрешений не даём, уточняющих вопросов не ждём.

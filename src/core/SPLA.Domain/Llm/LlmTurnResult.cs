@@ -31,7 +31,7 @@ public enum LlmTurnStatus
 /// <summary>
 /// The outcome of one network call to one model.
 /// </summary>
-public sealed class LlmTurnResult
+public sealed record LlmTurnResult
 {
     /// <summary>The assembled assistant message — content, reasoning and tool calls.</summary>
     public required ChatMessage Message { get; init; }

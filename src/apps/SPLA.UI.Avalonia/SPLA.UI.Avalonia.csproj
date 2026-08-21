@@ -19,6 +19,11 @@
     </PackageReference>
     <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="10.0.0" />
     <PackageReference Include="Microsoft.Extensions.Logging" Version="10.0.0" />
+    <!-- Same parser as the CLI, on purpose: one way to declare and validate arguments across the
+         binaries. Measured before adopting — in a WinExe with no console Spectre parses and binds
+         correctly and never throws; only its help and error TEXT goes nowhere, which Program.cs
+         handles by attaching the parent console when there is one. -->
+    <PackageReference Include="Spectre.Console.Cli" Version="0.55.0" />
   </ItemGroup>
 
   <ItemGroup>
@@ -30,7 +35,14 @@
          (Domain) and logging (Observability); the agent stack, LLM, MCP tools and plugins all live in
          the service process and are not referenced here. -->
     <ProjectReference Include="..\..\core\SPLA.Domain\SPLA.Domain.csproj" />
+    <!-- OS-specific desktop code (shell integration, browser launch, self-relaunch) with no UI
+         dependencies of its own, so the CLI and any future host can use the same implementations. -->
+    <ProjectReference Include="..\..\core\SPLA.Platform\SPLA.Platform.csproj" />
     <ProjectReference Include="..\..\core\SPLA.Secrets.Dpapi\SPLA.Secrets.Dpapi.csproj" />
     <ProjectReference Include="..\..\core\SPLA.Observability\SPLA.Observability.csproj" />
+    <!-- Instance registry client only — SPLA.Instances is deliberately free of ASP.NET (see its
+         own csproj comment), so the tray icon can watch the machine hub without dragging hosting
+         dependencies into the desktop shell. -->
+    <ProjectReference Include="..\..\service\SPLA.Instances\SPLA.Instances.csproj" />
   </ItemGroup>
 </Project>

@@ -1,6 +1,7 @@
 using SPLA.MCP.Core.ToolSets;
 using SPLA.Runtime;
 using SPLA.Domain.Models;
+using SPLA.Domain.Resources;
 using SPLA.Domain.Secrets;
 using SPLA.Domain.Settings;
 using SPLA.Service.Contracts;
@@ -136,10 +137,32 @@ public static class SettingsOps
         LoopGuardRepeats = runtime.Settings.LoopGuardRepeats,
         SaveToolCalls = runtime.Settings.SaveToolCalls,
         SaveAttempts = runtime.Settings.SaveAttempts,
+        UnifiedResources = runtime.Settings.UnifiedResources,
+        ResourceSchemes = ResourceRegistry.For(runtime.Settings).Cards().Select(c => new ResourceSchemeDto
+        {
+            Scheme = c.Scheme,
+            Summary = c.Summary,
+            Verbs = c.Verbs.Select(VerbWord).ToList(),
+            Enabled = c.Enabled
+        }).ToList(),
         Theme = runtime.Settings.Theme,
         Density = runtime.Settings.Density,
         Themes = KnownThemes,
         Densities = KnownDensities
+    };
+
+    /// <summary>Lower-case wire word for a verb — kept identical to
+    /// <c>SPLA.Agent.Composition.ResourceSchemesContributor.VerbWord</c> so the settings panel and the
+    /// system prompt never disagree on what to call the same thing.</summary>
+    private static string VerbWord(ResourceVerb verb) => verb switch
+    {
+        ResourceVerb.Read => "read",
+        ResourceVerb.Exists => "exists",
+        ResourceVerb.List => "list",
+        ResourceVerb.Write => "write",
+        ResourceVerb.Delete => "delete",
+        ResourceVerb.MakeDir => "mkdir",
+        _ => verb.ToString().ToLowerInvariant()
     };
 
     /// <summary>Persists agent mode + permission overrides to the .spla project (when present) and
@@ -162,6 +185,23 @@ public static class SettingsOps
         runtime.Settings.SaveToolCalls = saveToolCalls;
         var saveAttempts = dto.SaveAttempts ?? false;
         runtime.Settings.SaveAttempts = saveAttempts;
+        var unifiedResources = dto.UnifiedResources ?? false;
+        runtime.Settings.UnifiedResources = unifiedResources;
+
+        // Per-scheme switches. Only what the panel actually sent is touched — a scheme this project
+        // never mentioned stays absent (enabled), rather than every known scheme getting written the
+        // instant anyone saves the Agent tab.
+        var registry = ResourceRegistry.For(runtime.Settings);
+        if (dto.ResourceSchemeSwitches != null)
+            foreach (var s in dto.ResourceSchemeSwitches)
+            {
+                if (string.IsNullOrWhiteSpace(s.Scheme)) continue;
+                if (s.Enabled) runtime.Settings.ResourceSchemes.Remove(s.Scheme);
+                else runtime.Settings.ResourceSchemes[s.Scheme] = false;
+            }
+        // Live: takes effect immediately, the same way a plugin's enable/disable does, without
+        // waiting for the next turn to re-read settings.
+        registry.ApplySwitches(runtime.Settings.ResourceSchemes);
 
         var path = runtime.Settings.ProjectFilePath;
         if (path != null)
@@ -174,11 +214,15 @@ public static class SettingsOps
             project.Agent.LoopGuardRepeats = loopRepeats != 3 ? loopRepeats : null;
             project.Agent.SaveToolCalls = saveToolCalls ? true : null;
             project.Agent.SaveAttempts = saveAttempts ? true : null;
+            project.Agent.UnifiedResources = unifiedResources ? true : null;
             var anyPerm = read != null || write != null || shell != null || net != null;
             project.Permissions = anyPerm
                 ? new SplaPermissionsSection { Read = read, Write = write, Shell = shell, Internet = net }
                 : null;
-            ConfigLoader.SaveProjectSections(project, path, "agent", "permissions");
+            project.Resources = runtime.Settings.ResourceSchemes.Count > 0
+                ? new Dictionary<string, bool>(runtime.Settings.ResourceSchemes, StringComparer.OrdinalIgnoreCase)
+                : null;
+            ConfigLoader.SaveProjectSections(project, path, "agent", "permissions", "resources");
         }
 
         return GetAgent(runtime);
@@ -205,6 +249,43 @@ public static class SettingsOps
         }
 
         runtime.Events.Publish(new AppearanceChanged(theme, density));
+    }
+
+    // ── MCP over HTTP: whether POST /mcp is offered, and a fixed port for it ─
+
+    public static McpSettingsPayload GetMcp(AgentRuntime runtime) => new()
+    {
+        CanPersist = runtime.Settings.ProjectFilePath != null,
+        Enabled = runtime.Settings.McpEnabled,
+        Port = runtime.Settings.McpPort
+    };
+
+    /// <summary>Persists to the .spla project (when present) and mutates the live
+    /// <see cref="ResolvedSettings"/> so the next read (and the next <c>spla serve</c> start) sees it.
+    /// Does NOT touch a currently running listener — Kestrel binds its port once, at startup, the same
+    /// way a plugin enable flag needs a restart to load an assembly.</summary>
+    public static McpSettingsPayload SaveMcp(AgentRuntime runtime, McpSettingsPayload dto)
+    {
+        runtime.Settings.McpEnabled = dto.Enabled;
+        runtime.Settings.McpPort = dto.Port is > 0 ? dto.Port : null;
+
+        var path = runtime.Settings.ProjectFilePath;
+        if (path != null)
+        {
+            var project = ConfigLoader.LoadProjectRaw(path);
+            // Write only when it departs from the default, so a project that never touched this stays
+            // free of an "mcp:" section — same convention SaveAgent follows for its own flags.
+            project.Mcp = runtime.Settings.McpEnabled || runtime.Settings.McpPort is > 0
+                ? new SplaMcpSection
+                {
+                    Enabled = runtime.Settings.McpEnabled ? true : null,
+                    Port = runtime.Settings.McpPort
+                }
+                : null;
+            ConfigLoader.SaveProjectSections(project, path, "mcp");
+        }
+
+        return GetMcp(runtime);
     }
 
     // ── Plugins: enable/disable + custom prompt + opaque settings blob ───────
@@ -523,6 +604,7 @@ public static class SettingsOps
                 Id = id,
                 Kind = "builtin",
                 Name = id,
+                Description = SPLA.MCP.Core.Agent.AgentFeatureCatalog.DescriptionOf(id),
                 Enabled = enabled,
                 State = enabled ? "Enabled" : "DisabledByUser",
                 Requires = SPLA.MCP.Core.Agent.AgentFeatureCatalog.RequiresOf(id).ToList()

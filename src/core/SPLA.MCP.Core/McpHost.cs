@@ -221,12 +221,14 @@ public class McpHost : IToolHost
         // Entering is what makes the context the source: from here down, the ambient scopes tools
         // read are the ones this context named. When it came from ambient state in the first place,
         // entering re-establishes the values already in effect and changes nothing.
-        using var callScope = (context ?? ToolCallContext.FromAmbient()).Enter();
+        var effectiveContext = context ?? ToolCallContext.FromAmbient();
+        using var callScope = effectiveContext.Enter();
 
         // Nothing is assembled per call — only the invocation, which is what the links write their
         // findings on. That is what makes a nested ctx.Run safe: it walks the same chain with its own
         // invocation and cannot disturb the call waiting above it.
-        return await _pipeline(new ToolCallInvocation(mode, name, argumentsJson), cancellationToken);
+        return await _pipeline(
+            new ToolCallInvocation(mode, name, argumentsJson, effectiveContext.Source), cancellationToken);
     }
 
     private static string? GetPluginId(string toolName)

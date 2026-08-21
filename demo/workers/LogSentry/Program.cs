@@ -53,8 +53,7 @@ var callbacks = new AgentCallbacks
 {
     OnDelta = chunk => { Console.Write(chunk); return Task.CompletedTask; },
     OnAssistantMessage = _ => { Console.WriteLine(); return Task.CompletedTask; },
-    OnNotice = n => { Console.WriteLine($"\n[notice] {n}"); return Task.CompletedTask; },
-    OnTokenUsage = (p, c) => { runtime.TokenUsageProject.Record(p, c); runtime.TokenUsageGlobal.Record(p, c); }
+    OnNotice = n => { Console.WriteLine($"\n[notice] {n}"); return Task.CompletedTask; }
 };
 Func<ToolFunctionDefinition, string, Task<PermissionDecision>> deny =
     (def, _) => Task.FromResult(PermissionDecision.Deny);

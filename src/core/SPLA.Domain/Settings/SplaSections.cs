@@ -1,4 +1,4 @@
-﻿using YamlDotNet.Serialization;
+using YamlDotNet.Serialization;
 
 namespace SPLA.Domain.Settings;
 
@@ -21,14 +21,32 @@ public class SplaAgentSection
 
     /// <summary>Guard against machine-gun tool loops (a small-local-model failure mode). Only
     /// rapid identical calls with identical results and no commentary count; the first trip asks
-    /// the model in-band whether it is stuck, a rebuilt streak stops the turn. Off by default —
-    /// deliberate polling (ssh_session_wait etc.) is a legitimate repeat pattern.</summary>
+    /// the model in-band whether it is stuck, a rebuilt streak stops the turn. **On by default** —
+    /// deliberate polling (ssh_session_wait etc.) changes the result or takes longer than the ten-second
+    /// window, so it does not trip. Set false here for a project where it proves otherwise.</summary>
     [YamlMember(Alias = "loop_guard")]
     public bool? LoopGuard { get; set; }
 
     /// <summary>How many suspicious consecutive repeats trigger each stage (default 3).</summary>
     [YamlMember(Alias = "loop_guard_repeats")]
     public int? LoopGuardRepeats { get; set; }
+
+    /// <summary>
+    /// Whether the resource-address abstraction (<c>file://</c>, <c>sftp://</c>, …) is announced to
+    /// the model at all. **Off by default, deliberately** — the whole point of a switch here is to be
+    /// able to run the project with and without the feature and compare, and a default of true would
+    /// make that comparison impossible to reproduce months later when "off" quietly became the
+    /// unusual case. See <c>ResourceSchemesContributor</c> and <c>SplaSections.SplaProject.Resources</c>
+    /// for the per-scheme switches this master flag gates.
+    /// </summary>
+    [YamlMember(Alias = "unified_resources")]
+    public bool? UnifiedResources { get; set; }
+
+    /// <summary>Minutes an unanswered permission/clarify question is kept before it is denied.
+    /// Generous on purpose — a person who walked away should be able to come back and answer —
+    /// and 0 means no limit at all. See <c>PendingAskStore</c>.</summary>
+    [YamlMember(Alias = "ask_timeout_minutes")]
+    public int? AskTimeoutMinutes { get; set; }
 
     /// <summary>Enabled built-in agent capabilities (dotted "core.*" feature ids — see
     /// <c>SPLA.MCP.Core.Agent.AgentFeatureCatalog</c>). Null (key absent) = every feature enabled,
@@ -265,6 +283,27 @@ public class SplaSecretsSection
     /// <summary><c>file</c> (default, plaintext) or <c>dpapi</c> (Windows-encrypted). Unknown/empty = file.</summary>
     [YamlMember(Alias = "backend")]
     public string? Backend { get; set; }
+}
+
+/// <summary>
+/// MCP-over-HTTP section: whether <c>spla serve</c> maps <c>POST /mcp</c> at all, and what fixed
+/// port to bind so the address is predictable instead of the usual ephemeral one. See
+/// <c>SplaServiceHost.HandleMcpAsync</c> for what the endpoint does.
+/// </summary>
+public class SplaMcpSection
+{
+    /// <summary>Null/absent = off (the default) — the project's writer-lease model stays strict, no
+    /// second head over HTTP or otherwise. Set true to opt in and offer <c>POST /mcp</c>.</summary>
+    [YamlMember(Alias = "enabled")]
+    public bool? Enabled { get; set; }
+
+    /// <summary>A fixed port for <c>spla serve</c> to bind, so a client (or a person configuring one)
+    /// can hardcode <c>http://127.0.0.1:&lt;port&gt;/mcp</c> instead of reading the ephemeral one out
+    /// of the instance lock file each time. Null = ephemeral, as before this section existed. An
+    /// explicit <c>--port</c> on the command line still wins over this — a CLI flag typed for this run
+    /// is a stronger statement than whatever the project remembers.</summary>
+    [YamlMember(Alias = "port")]
+    public int? Port { get; set; }
 }
 
 /// <summary>

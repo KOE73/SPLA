@@ -1,4 +1,5 @@
 using System.Collections.Concurrent;
+using System.Linq;
 
 namespace SPLA.Service;
 
@@ -16,6 +17,11 @@ public sealed class ConnectionHub
 
     /// <summary>Number of currently connected clients — surfaced as a live gauge on the stats plane.</summary>
     public int Count => _connections.Count;
+
+    /// <summary>Number of connections that have touched <paramref name="projectId"/> — what
+    /// <c>instance.status</c> reports as "how many clients", since a socket that never mentioned this
+    /// project is not one of its clients even though it shares the process.</summary>
+    public int CountForProject(string projectId) => _connections.Keys.Count(c => c.IsWatchingProject(projectId));
 
     /// <summary>Sends one message to every connected client. Failures to a single client are ignored.
     /// Reserved for truly connection-level events (e.g. <see cref="Contracts.MessageTypes.FocusChanged"/>)
@@ -37,8 +43,10 @@ public sealed class ConnectionHub
     /// <summary>Sends a message to every client currently watching <paramref name="chatId"/> (i.e. that
     /// has it open). This is how a turn's live stream reaches all windows on the same chat, not just
     /// the one that sent it — completing the "many windows, one agent" model.</summary>
-    public Task BroadcastToWatchersAsync(string chatId, string type, object? payload)
+    /// <param name="requestId">Correlation id, for messages a client must be able to answer or match
+    /// to something it already showed — a permission/clarify question and its resolution.</param>
+    public Task BroadcastToWatchersAsync(string chatId, string type, object? payload, string? requestId = null)
         => Task.WhenAll(_connections.Keys
             .Where(c => c.IsWatching(chatId))
-            .Select(c => c.TrySendAsync(type, payload, chatId)));
+            .Select(c => c.TrySendAsync(type, payload, chatId, requestId)));
 }

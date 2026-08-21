@@ -18,7 +18,7 @@
 import { reactive } from "vue";
 import { client } from "../protocol/SplaClient";
 import { store } from "./store";
-import type { ChatDoubt, ToolSetState } from "../protocol/types";
+import type { ChatDoubt, ToolProgressDetail, ToolSetState } from "../protocol/types";
 import type { ToolCallState } from "../surfaces/ToolCard.vue";
 
 export type LogItem =
@@ -38,7 +38,6 @@ export type LogItem =
 
 export interface ChatSession {
   chatId: string;
-  projectId: string | null;
 
   // ── Head: cheap, kept for every chat this window has touched ──────────────
   turnActive: boolean;
@@ -70,6 +69,23 @@ export interface ChatSession {
   pending: number[];
   /** Live tool calls by id, so tool.progress/result can mutate the card in place. */
   calls: Record<string, ToolCallState>;
+  /** The turn's progress tree, flat and keyed by node id — see the `progress.node` handler. Rebuilt
+   *  each turn: the nodes describe what is happening now, and a finished turn's tree is the tool
+   *  cards' own history. */
+  nodes: Record<string, ProgressNodeState>;
+}
+
+/** One node of the turn's progress tree as the client holds it: the payload plus the children that
+ *  have named it as their parent. */
+export interface ProgressNodeState {
+  nodeId: string;
+  parentId: string | null;
+  label: string;
+  state: "running" | "completed" | "failed";
+  fraction?: number | null;
+  message?: string | null;
+  details?: ToolProgressDetail[] | null;
+  childIds: string[];
 }
 
 /** How many chats keep their log. A weak client keeps fewer; a chat mid-turn is never counted out. */
@@ -87,7 +103,6 @@ const nextKey = () => "i" + (keySeq++);
 function blank(chatId: string): ChatSession {
   return {
     chatId,
-    projectId: store.currentProjectId,
     turnActive: false,
     mode: "",
     modelId: "",
@@ -105,7 +120,8 @@ function blank(chatId: string): ChatSession {
     logLoaded: false,
     items: [],
     pending: [],
-    calls: {}
+    calls: {},
+    nodes: {}
   };
 }
 
@@ -152,7 +168,7 @@ function dropLog(s: ChatSession) {
   s.items = [];
   s.pending = [];
   s.calls = {};
-  client.send("chat.unwatch", { chatId: s.chatId }, s.projectId ? { projectId: s.projectId } : undefined);
+  client.send("chat.unwatch", { chatId: s.chatId });
 }
 
 // ── Log helpers ──────────────────────────────────────────────────────────────
@@ -221,7 +237,6 @@ function on<P>(type: string, apply: (s: ChatSession, payload: P) => void) {
 
 client.on("chat.opened", (p, env) => {
   const s = sessionFor(p.chatId || env.chatId || "");
-  s.projectId = store.currentProjectId;
   s.items = [];
   s.pending = [];
   s.calls = {};
@@ -277,6 +292,9 @@ on("user.message", (s, p: { msgId: string; text?: string; createdAt?: string }) 
 });
 
 on("llm.turn.start", (s, p: { msgIndex: number }) => {
+  // The server opens one progress tree per user turn, and this event fires once per LLM call inside
+  // it — so the boundary to clear on is entering a turn, not this event as such.
+  if (!s.turnActive) s.nodes = {};
   s.turnActive = true;
   s.items.push({ kind: "assistant", key: "a" + p.msgIndex, msgIndex: p.msgIndex, text: "", reasoning: "",
     createdAt: Date.now() });
@@ -331,6 +349,89 @@ on("tool.progress", (s, p: { toolCallId?: string; toolName: string;
   if (call) call.progress = { fraction: p.fraction, message: p.message, details: p.details };
 });
 
+/** A node, creating a stub if it has only been named so far — see the handler below. */
+function nodeFor(s: ChatSession, id: string): ProgressNodeState {
+  let n = s.nodes[id];
+  if (!n) {
+    n = { nodeId: id, parentId: null, label: "", state: "running", childIds: [] };
+    s.nodes[id] = n;
+  }
+  return n;
+}
+
+/**
+ * The nested picture, which `tool.progress` cannot carry: it reports the top-level call only, so a
+ * script's parallel children and a spawned sub-agent's whole run were invisible here while a foreign
+ * head over MCP could see them.
+ *
+ * The stream is flat and append-only; the shape is rebuilt by attaching each node to its parent. A
+ * child whose parent has not arrived yet gets it as a stub rather than being dropped — parallel work
+ * gives no ordering guarantee, and a dropped node is a branch that never appears.
+ */
+on("progress.node", (s, p: { nodeId: string; parentId?: string | null; label: string;
+  state: "running" | "completed" | "failed"; fraction?: number | null; message?: string | null;
+  details?: ToolProgressDetail[] | null }) => {
+  const node = nodeFor(s, p.nodeId);
+  const isNew = node.label === "";
+
+  node.parentId = p.parentId ?? null;
+  node.label = p.label;
+  node.state = p.state;
+  node.fraction = p.fraction;
+  node.message = p.message;
+  node.details = p.details;
+
+  // A spawned run's id rides on its node's details, wherever in the tree that node sits (agent_spawn
+  // may itself run nested under a script). Stash it on the call rather than leaving it in the node
+  // map: s.nodes is rebuilt from scratch at the next llm.turn.start, but the tool card this belongs to
+  // stays in the log for as long as the conversation does, and it is the only thing still around to
+  // ask "which run was that" once the turn is over.
+  //
+  // A list, not one id: agent_spawn_batch is a single tool call with several runs beneath it, and
+  // keeping only the first would present one of them as though it were the whole call — the very
+  // confusion the per-run branches in the tree exist to prevent.
+  const runDetail = p.details?.find(d => d.label === "run");
+  if (runDetail) {
+    const root = rootOf(s, p.nodeId);
+    if (root) {
+      // By node id first. Matching on the tool's name is the fallback, and only that: with a batch
+      // there is one root and many runs, so the precise answer must win wherever it exists.
+      const call = findCallByRootNodeId(s, root.nodeId) ?? lastRunningByName(s, root.label);
+      if (call) {
+        call.runIds ??= [];
+        if (!call.runIds.includes(runDetail.value)) call.runIds.push(runDetail.value);
+      }
+    }
+  }
+
+  if (!isNew) return;
+
+  if (p.parentId) {
+    const parent = nodeFor(s, p.parentId);
+    if (!parent.childIds.includes(p.nodeId)) parent.childIds.push(p.nodeId);
+    return;
+  }
+
+  // A root is one tool call. Matched by name, the same fallback tool.progress already uses: the node
+  // is opened inside ExecuteToolAsync, so tool.started has always been sent by the time it arrives.
+  const call = lastRunningByName(s, p.label);
+  if (call) call.rootNodeId = p.nodeId;
+});
+
+/** Walks a node's parentId chain up to the root (parentId === null). */
+function rootOf(s: ChatSession, nodeId: string): ProgressNodeState | undefined {
+  let n = s.nodes[nodeId];
+  while (n?.parentId) n = s.nodes[n.parentId];
+  return n;
+}
+
+/** Fallback for when the root's tool call has already finished by the time a nested `run` detail
+ *  arrives — lastRunningByName only sees calls still in flight. */
+function findCallByRootNodeId(s: ChatSession, rootNodeId: string): ToolCallState | undefined {
+  for (const it of s.items) if (it.kind === "toolcall" && it.call.rootNodeId === rootNodeId) return it.call;
+  return undefined;
+}
+
 on("tool.result", (s, p: { toolCallId: string; toolName: string; result?: string }) => {
   const call = s.calls[p.toolCallId] || lastRunningByName(s, p.toolName);
   if (call) { call.result = p.result || ""; call.status = "done"; call.finishedAt = Date.now(); }
@@ -361,6 +462,18 @@ client.on("clarify.request", (p, env) => {
   if (!env.chatId || !env.requestId) return;
   sessionFor(env.chatId).items.push({ kind: "clarify", key: nextKey(), requestId: env.requestId,
     question: p.question, options: p.options });
+});
+
+client.on("ask.resolved", (p, env) => {
+  // An outstanding question is gone — either answered elsewhere, cancelled, or timed out. Remove its item
+  // from the session. The local removal that happens immediately when the user answers is already gone; this
+  // is for cases where another window answered it first. Removing an already-removed item is a no-op.
+  if (!env.chatId || !env.requestId) return;
+  const s = peekSession(env.chatId);
+  if (s) {
+    s.items = s.items.filter(i =>
+      !(((i.kind === "permission" || i.kind === "clarify") && i.requestId === env.requestId)));
+  }
 });
 
 on("chat.skill.state", (s, p: { activeSkillId?: string | null }) => { s.activeSkill = p.activeSkillId || null; });

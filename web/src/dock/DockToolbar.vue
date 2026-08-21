@@ -81,7 +81,6 @@
 import { computed, onUnmounted, ref } from "vue";
 import Icon from "./Icon.vue";
 import { client } from "../protocol/SplaClient";
-import { projectEnvelope } from "../state/project";
 import type { SshSessionsResultPayload } from "../protocol/types";
 import { panelCatalog, toolKinds, type PanelKind } from "./panelCatalog";
 import {
@@ -112,7 +111,7 @@ const activeProtected = computed(() => {
 const sshMenu = ref(false);
 const ssh = ref<SshSessionsResultPayload | null>(null);
 
-function fetchSessions() { client.send("ssh.sessions.get", undefined, projectEnvelope()); }
+function fetchSessions() { client.send("ssh.sessions.get", undefined); }
 
 const offSessions = client.on("ssh.sessions.result", p => { ssh.value = p; });
 // The server pushes ssh.sessions.changed when the agent opens/closes a session — refresh the open
@@ -138,7 +137,7 @@ function openNew(host: string) {
 // which only detaches this viewer and leaves the pty running (that part is correct: other viewers
 // or the agent may still want it). This is the only way to actually kill a session from the picker.
 function killSession(sessionId: string) {
-  client.send("ssh.session.close", { sessionId }, projectEnvelope());
+  client.send("ssh.session.close", { sessionId });
   fetchSessions();
 }
 

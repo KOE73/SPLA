@@ -171,6 +171,37 @@ public static class ConfigLoader
     }
 
     /// <summary>
+    /// Drops a project from the recent list. Returns false when it was not there.
+    ///
+    /// <para>Forgetting is the only way an entry ever leaves other than falling off the end, and it
+    /// touches nothing but this list — the project, its manifest and its whole workspace stay exactly
+    /// where they are. That distinction has to survive into the UI wording too: a manager offering
+    /// "remove" next to a list of projects must never read as "delete".</para>
+    /// </summary>
+    public static bool RemoveRecentProject(string projectFilePath)
+    {
+        if (string.IsNullOrEmpty(projectFilePath)) return false;
+
+        var recent = LoadRecentProjects();
+        // Compared unrooted as well: an entry can predate the switch to storing full paths, and the
+        // person trying to forget it should not have to know that.
+        var removed = recent.RemoveAll(x =>
+            string.Equals(x, projectFilePath, StringComparison.OrdinalIgnoreCase) ||
+            string.Equals(Path.GetFullPath(x), Path.GetFullPath(projectFilePath), StringComparison.OrdinalIgnoreCase));
+        if (removed == 0) return false;
+
+        try
+        {
+            var dir = GetDefaultsDir();
+            Directory.CreateDirectory(dir);
+            TryHideDirectory(dir);
+            File.WriteAllLines(GetRecentProjectsPath(), recent);
+            return true;
+        }
+        catch { return false; }
+    }
+
+    /// <summary>
     /// Loads a .spla project file.
     /// </summary>
     public static SplaProject LoadProject(string splaFilePath) => LoadProjectRaw(splaFilePath);
@@ -293,9 +324,11 @@ public static class ConfigLoader
         "llm" => p.Llm,
         "connections" => p.Connections,
         "ui" => p.Ui,
+        "mcp" => p.Mcp,
         "permissions" => p.Permissions,
         "plugins" => p.Plugins,
         "toolsets" => p.ToolSets,
+        "resources" => p.Resources,
         "skills" => p.Skills,
         "docs" => p.Docs,
         "ignore" => p.Ignore,
@@ -336,12 +369,27 @@ public static class ConfigLoader
     }
 
     /// <summary>
-    /// Searches for a *.spla file in the given directory.
-    /// Returns the first one found, or null.
+    /// The project manifest in <paramref name="directory"/>, or null when there is none.
+    ///
+    /// <para>Only this directory is searched. There is deliberately no walk up the tree: a command
+    /// acts where it was started, and climbing would silently pick a root nobody named — the
+    /// difference between "no project here" and "you are inside someone else's project" is exactly
+    /// what the person needs to be told, not have guessed for them.</para>
+    ///
+    /// <para>Two manifests in one directory is an error, not a coin toss. This used to return
+    /// <c>files[0]</c>, whose value depended on filesystem enumeration order.</para>
     /// </summary>
+    /// <exception cref="InvalidOperationException">More than one <c>*.spla</c> in the directory.</exception>
     public static string? FindProjectFile(string directory)
     {
         var files = Directory.GetFiles(directory, "*.spla");
+        if (files.Length > 1)
+        {
+            Array.Sort(files, StringComparer.OrdinalIgnoreCase);
+            throw new InvalidOperationException(
+                $"{directory} holds {files.Length} project files ({string.Join(", ", files.Select(Path.GetFileName))}). " +
+                "Name the one you mean on the command line.");
+        }
         return files.Length > 0 ? files[0] : null;
     }
 

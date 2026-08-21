@@ -1,4 +1,4 @@
-using SPLA.Domain.Context;
+﻿using SPLA.Domain.Context;
 using SPLA.Domain.Interfaces;
 using SPLA.Domain.Llm;
 using SPLA.Domain.Models;
@@ -71,6 +71,26 @@ public sealed class ConversationOrchestrator
     /// <summary>Optional logger. When set, the loop logs each LLM turn and tool call (start/end).</summary>
     public ILogger? Logger { get; init; }
 
+    /// <summary>
+    /// When true, the loop reports into whatever <see cref="ProgressTree"/> is already open on the
+    /// calling flow instead of starting one of its own. Set by <c>SpawnedAgentRunner</c>; false for
+    /// every chat, where a turn is the unit and a fresh tree per turn is the whole point.
+    ///
+    /// <para>This is the difference between a sub-agent being observable and being a black box, and it
+    /// is one branch rather than an event bus because the tree is already ambient and already nests.
+    /// A spawn happens inside the parent's <c>agent_spawn</c> node; left to itself the loop opens a
+    /// new tree, which detaches everything below it — the sub-agent's tool calls land somewhere nobody
+    /// is subscribed to, and the parent's node sits there saying nothing for minutes. Reusing the
+    /// ambient tree makes them children of that node instead, and every surface that already renders
+    /// the tree — the CLI status line, the Avalonia and web tool trees, <c>tool.progress</c> over the
+    /// service socket, <c>notifications/progress</c> over MCP — shows the sub-agent's work with no
+    /// further wiring at all.</para>
+    ///
+    /// <para>What it does not do is make the sub-agent a chat: nothing here is persisted, and the
+    /// nodes live as long as the parent's turn. Retaining the run is a separate question.</para>
+    /// </summary>
+    public bool NestInAmbientProgress { get; init; }
+
     public ConversationOrchestrator(ILlmGateway llm, IToolHost tools)
     {
         _llm = llm;
@@ -102,16 +122,35 @@ public sealed class ConversationOrchestrator
         // calls and tools invoked inside a script both land in here. For backward-compatible single-bar
         // hosts we forward the currently executing top-level call's root progress to OnToolProgress;
         // richer hosts subscribe to the tree itself via OnProgressTree.
-        var progressTree = new ProgressTree();
+        //
+        // Unless we were told to nest — see NestInAmbientProgress. Then the tree belongs to whoever is
+        // above us and we only add to it: no scope of our own (which would detach the branch we were
+        // asked to join), no OnToolProgress forwarding (the roots are that caller's, not ours), and no
+        // OnProgressTree (a tree we did not open is not ours to hand out).
+        var ambientTree = NestInAmbientProgress ? ProgressScope.CurrentTree : null;
+        var progressTree = ambientTree ?? new ProgressTree();
         ToolCall? activeTopLevel = null;
-        progressTree.NodeChanged += node =>
+        IDisposable? progressTreeScope = null;
+
+        if (ambientTree is null)
         {
-            var tc = activeTopLevel;
-            if (tc != null && node.ParentId == null && node.Latest != null)
-                callbacks.OnToolProgress?.Invoke(tc, node.Latest);
-        };
-        callbacks.OnProgressTree?.Invoke(progressTree);
-        using var _progressTreeScope = ProgressScope.BeginTree(progressTree);
+            // The single-bar view: whatever moved last, attributed to the top-level call it happened
+            // under. Deliberately not roots only, which is what this was and which had become wrong the
+            // moment anything reported below the root — a spawned run and a script's children both do,
+            // and both left the bar showing a call that had gone silent for minutes. A host with one
+            // line is asking "what is happening now", and the answer to that is the newest tick at any
+            // depth; hosts that want the shape subscribe to the tree.
+            progressTree.NodeChanged += node =>
+            {
+                var tc = activeTopLevel;
+                if (tc != null && node.Latest != null)
+                    callbacks.OnToolProgress?.Invoke(tc, node.Latest);
+            };
+            callbacks.OnProgressTree?.Invoke(progressTree);
+            progressTreeScope = ProgressScope.BeginTree(progressTree);
+        }
+
+        using var _progressTreeScope = progressTreeScope;
 
         bool needToCallLLM = true;
         while (needToCallLLM)
@@ -182,16 +221,11 @@ public sealed class ConversationOrchestrator
             if (callAttempts.Count > 0) response.Attempts = callAttempts;
             conversation.Add(response);
 
-            // Real token accounting lives in the core loop, not the UI: every turn — answer or
-            // tool-call, success or not — reports the provider's figures exactly once. Hosts fold
-            // these into per-chat and persistent project-lifetime tallies; the same figures are
-            // recorded on the telemetry meter here so they reach both the local stats view and any
-            // OTLP backend from this single choke point.
-            callbacks.OnTokenUsage?.Invoke(response.PromptTokens, response.CompletionTokens);
-            if (response.PromptTokens is { } promptTokens and > 0)
-                Observability.SplaTelemetry.PromptTokens.Add(promptTokens);
-            if (response.CompletionTokens is { } completionTokens and > 0)
-                Observability.SplaTelemetry.CompletionTokens.Add(completionTokens);
+            // What happened on the wire, told once, whole. Recording it is not done here and not by
+            // the host: the tallies and the telemetry meter are fed by TokenAccountingMiddleware,
+            // which sits in the pipeline and therefore also covers the callers that never come
+            // through this loop. This hook is for showing and reporting.
+            callbacks.OnLlmTurn?.Invoke(outcome);
 
             Logger?.LogInformation(
                 "LLM response ← textChars={TextChars} toolCalls={ToolCalls} promptTokens={PromptTokens} completionTokens={CompletionTokens}",
@@ -252,16 +286,13 @@ public sealed class ConversationOrchestrator
                 if (callbacks.OnToolResult != null)
                     await callbacks.OnToolResult(tc, toolResult);
 
-                // Images the tool declared in its result, plus anything still arriving through the
-                // pending sink. Deciding how a picture reaches a given model belongs here, not in the
-                // tool: tool-result messages cannot reliably carry images to every vision API, so both
-                // sources drain into a synthetic user-role message and the model sees them next turn.
-                var images = toolResult.Content.OfType<ToolImage>()
+                // Images the tool declared in its result. Deciding how a picture reaches a given
+                // model belongs here, not in the tool: tool-result messages cannot reliably carry
+                // images to every vision API, so they go out as a synthetic user-role message and
+                // the model sees them on its next turn.
+                var pendingImages = toolResult.Content.OfType<ToolImage>()
                     .Select(i => $"data:{i.MimeType};base64,{i.Data}")
                     .ToList();
-                var sunkImages = Domain.Agent.AgentSessionScope.Current?.Images.DrainAll();
-                if (sunkImages is { Count: > 0 }) images.AddRange(sunkImages);
-                var pendingImages = images;
                 if (pendingImages is { Count: > 0 })
                 {
                     conversation.Add(new ChatMessage

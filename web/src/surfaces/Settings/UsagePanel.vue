@@ -18,7 +18,6 @@
 <script setup lang="ts">
 import { computed, ref } from "vue";
 import { client } from "../../protocol/SplaClient";
-import { projectEnvelope } from "../../state/project";
 import type { TokenUsageScope } from "../../protocol/types";
 
 const empty = (): TokenUsageScope => ({ promptTokens: 0, completionTokens: 0, turns: 0, totalTokens: 0 });
@@ -43,7 +42,7 @@ client.on("usage.result", p => {
   machine.value = p.machine;
 });
 
-function fetchUsage() { client.send("usage.get", undefined, projectEnvelope()); }
+function fetchUsage() { client.send("usage.get", undefined); }
 defineExpose({ fetchUsage });
 client.on("welcome", fetchUsage);
 fetchUsage();

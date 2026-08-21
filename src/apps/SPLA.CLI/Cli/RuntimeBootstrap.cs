@@ -13,12 +13,15 @@ internal static class RuntimeBootstrap
     /// <param name="hostContributors">Prompt additions this invocation makes (see
     /// <c>Batch/CliContributor.cs</c>). Passed at construction because the composer is immutable once
     /// built — a runtime is shared by every chat of the project and recomposed per loop iteration.</param>
+    /// <param name="instanceMode">What this invocation is doing with the project, for the instance
+    /// lock — see <see cref="SPLA.Domain.Project.InstanceLock"/>.</param>
     public static AgentRuntime Build(
         ResolvedSettings settings,
         ILoggerFactory loggerFactory,
-        IEnumerable<IAgentContributor>? hostContributors = null)
+        IEnumerable<IAgentContributor>? hostContributors = null,
+        string instanceMode = "repl")
     {
-        var runtime = new AgentRuntime(settings, loggerFactory, hostContributors);
+        var runtime = new AgentRuntime(settings, loggerFactory, hostContributors, instanceMode);
         Console.WriteLine($"Tools registered: {runtime.McpHost.GetToolDefinitions().Count()}");
         return runtime;
     }
