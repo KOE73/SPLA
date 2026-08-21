@@ -232,6 +232,16 @@ export interface ResourceSchemeDto {
   enabled: boolean;
 }
 
+/** mcp.get / mcp.save round trip: whether `spla serve` maps POST /mcp, and a fixed port for it. */
+export interface McpSettingsPayload {
+  enabled: boolean;
+  /** Fixed port, or undefined for the usual ephemeral one. */
+  port?: number | null;
+  canPersist?: boolean;
+  /** Always true — a running `spla serve` must be restarted to pick up a change here. */
+  restartToApply?: boolean;
+}
+
 export interface PluginDto {
   id: string;
   name?: string;
@@ -685,6 +695,7 @@ export interface ServerEvents {
   "connection.swap_model.result": ConnectionSwapModelResultPayload;
   "provider.info.result": ProviderInfoResultPayload;
   "agent.result": AgentResultPayload;
+  "mcp.result": McpSettingsPayload;
   "plugins.result": PluginsResultPayload;
   "skills.result": SkillsResultPayload;
   "skills.sources.result": SkillSourcesResultPayload;

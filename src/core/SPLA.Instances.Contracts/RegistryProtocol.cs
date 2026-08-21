@@ -169,6 +169,12 @@ public sealed class KnownProjectDto
     /// <summary>How many windows are looking at it. Zero with a live agent is the headless case: work
     /// going on with nobody watching, which is exactly what the instance model set out to allow.</summary>
     public int Windows { get; set; }
+
+    /// <summary>True when the agent published an address (<see cref="InstanceInfo.Endpoint"/>) — every
+    /// such host maps <c>POST /mcp</c> unconditionally, so an endpoint existing at all is the whole
+    /// test. False for a stdio-only instance (<c>spla mcp</c>'s "own body" mode, a bare REPL): it holds
+    /// the project but offers nothing a second MCP client could dial.</summary>
+    public bool McpAvailable { get; set; }
 }
 
 /// <summary>The listing a manager gets from <c>GET {hub}/registry/projects</c>.</summary>

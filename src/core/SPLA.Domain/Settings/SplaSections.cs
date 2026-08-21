@@ -286,6 +286,27 @@ public class SplaSecretsSection
 }
 
 /// <summary>
+/// MCP-over-HTTP section: whether <c>spla serve</c> maps <c>POST /mcp</c> at all, and what fixed
+/// port to bind so the address is predictable instead of the usual ephemeral one. See
+/// <c>SplaServiceHost.HandleMcpAsync</c> for what the endpoint does.
+/// </summary>
+public class SplaMcpSection
+{
+    /// <summary>Null/absent = off (the default) — the project's writer-lease model stays strict, no
+    /// second head over HTTP or otherwise. Set true to opt in and offer <c>POST /mcp</c>.</summary>
+    [YamlMember(Alias = "enabled")]
+    public bool? Enabled { get; set; }
+
+    /// <summary>A fixed port for <c>spla serve</c> to bind, so a client (or a person configuring one)
+    /// can hardcode <c>http://127.0.0.1:&lt;port&gt;/mcp</c> instead of reading the ephemeral one out
+    /// of the instance lock file each time. Null = ephemeral, as before this section existed. An
+    /// explicit <c>--port</c> on the command line still wins over this — a CLI flag typed for this run
+    /// is a stronger statement than whatever the project remembers.</summary>
+    [YamlMember(Alias = "port")]
+    public int? Port { get; set; }
+}
+
+/// <summary>
 /// UI preferences section.
 /// </summary>
 public class SplaUiSection

@@ -29,14 +29,17 @@ internal static class ServeCommand
         var (runtime, chats) = registry.Open(registry.DefaultProjectId);
         var options = new ServiceOptions
         {
-            Port = port,
+            // An explicit --port beats the project's remembered one — a flag typed for this run is a
+            // stronger statement than what the project asks for by default.
+            Port = port != 0 ? port : (settings.McpPort ?? 0),
             Bind = bind,
             // A reference (secret:user:...) resolves through the project's store; anything else is
             // taken literally, so an existing --token on a command line keeps working. The reference
             // form exists because a literal is readable in the process list by anyone on the machine.
             Token = settings.SecretResolver.Resolve(token),
             InitialChatMessage = initialChatMessage,
-            IdleTimeout = idleTimeoutMinutes > 0 ? TimeSpan.FromMinutes(idleTimeoutMinutes) : TimeSpan.Zero
+            IdleTimeout = idleTimeoutMinutes > 0 ? TimeSpan.FromMinutes(idleTimeoutMinutes) : TimeSpan.Zero,
+            McpEnabled = settings.McpEnabled
         };
         var host = SplaServiceHost.Build(registry, options);
         await host.StartAsync();

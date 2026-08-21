@@ -251,6 +251,43 @@ public static class SettingsOps
         runtime.Events.Publish(new AppearanceChanged(theme, density));
     }
 
+    // ── MCP over HTTP: whether POST /mcp is offered, and a fixed port for it ─
+
+    public static McpSettingsPayload GetMcp(AgentRuntime runtime) => new()
+    {
+        CanPersist = runtime.Settings.ProjectFilePath != null,
+        Enabled = runtime.Settings.McpEnabled,
+        Port = runtime.Settings.McpPort
+    };
+
+    /// <summary>Persists to the .spla project (when present) and mutates the live
+    /// <see cref="ResolvedSettings"/> so the next read (and the next <c>spla serve</c> start) sees it.
+    /// Does NOT touch a currently running listener — Kestrel binds its port once, at startup, the same
+    /// way a plugin enable flag needs a restart to load an assembly.</summary>
+    public static McpSettingsPayload SaveMcp(AgentRuntime runtime, McpSettingsPayload dto)
+    {
+        runtime.Settings.McpEnabled = dto.Enabled;
+        runtime.Settings.McpPort = dto.Port is > 0 ? dto.Port : null;
+
+        var path = runtime.Settings.ProjectFilePath;
+        if (path != null)
+        {
+            var project = ConfigLoader.LoadProjectRaw(path);
+            // Write only when it departs from the default, so a project that never touched this stays
+            // free of an "mcp:" section — same convention SaveAgent follows for its own flags.
+            project.Mcp = runtime.Settings.McpEnabled || runtime.Settings.McpPort is > 0
+                ? new SplaMcpSection
+                {
+                    Enabled = runtime.Settings.McpEnabled ? true : null,
+                    Port = runtime.Settings.McpPort
+                }
+                : null;
+            ConfigLoader.SaveProjectSections(project, path, "mcp");
+        }
+
+        return GetMcp(runtime);
+    }
+
     // ── Plugins: enable/disable + custom prompt + opaque settings blob ───────
 
     public static PluginsPayload GetPlugins(AgentRuntime runtime)

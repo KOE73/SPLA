@@ -467,6 +467,23 @@ public sealed class AgentSettingsPayload
     public bool CanPersist { get; set; }
 }
 
+/// <summary>The <c>mcp:</c> section — whether <c>spla serve</c> maps <c>POST /mcp</c>, and a fixed
+/// port for it. Stored in .spla mcp: enabled / port. Takes effect on the next <c>spla serve</c>
+/// start, same as a plugin enable flag — the listener is bound once, at startup.</summary>
+public sealed class McpSettingsPayload
+{
+    /// <summary>Whether <c>POST /mcp</c> is offered at all. Default false (off).</summary>
+    public bool Enabled { get; set; }
+    /// <summary>Fixed port to bind, or null for the usual ephemeral one. An explicit <c>--port</c> on
+    /// the <c>spla serve</c> command line still wins over this.</summary>
+    public int? Port { get; set; }
+    /// <summary>False when there is no .spla project to persist into (server-set; ignored on save).</summary>
+    public bool CanPersist { get; set; }
+    /// <summary>Server-set; ignored on save. True always — surfaced so the panel can say plainly that
+    /// a running <c>spla serve</c> must be restarted for a change here to take effect.</summary>
+    public bool RestartToApply { get; set; } = true;
+}
+
 /// <summary>One registered resource scheme as the settings panel sees it: what it is, what it
 /// supports, and whether it is currently switched on. Mirrors <c>SPLA.Domain.Resources.SchemeCard</c>
 /// but as a plain wire DTO — this assembly references nothing from the engine.</summary>

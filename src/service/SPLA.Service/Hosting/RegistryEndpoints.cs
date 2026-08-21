@@ -148,7 +148,8 @@ public static class RegistryEndpoints
                 Exists = File.Exists(id),
                 State = agent?.State,
                 InstanceId = agent?.Info.InstanceId,
-                Windows = participants.Count(e => e.Role == ParticipantRoles.Window)
+                Windows = participants.Count(e => e.Role == ParticipantRoles.Window),
+                McpAvailable = !string.IsNullOrEmpty(agent?.Info.Endpoint)
             };
         }).ToList();
     }

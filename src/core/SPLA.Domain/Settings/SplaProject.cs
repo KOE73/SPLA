@@ -38,6 +38,11 @@ public class SplaProject
     [YamlMember(Alias = "ui")]
     public SplaUiSection? Ui { get; set; }
 
+    /// <summary>Whether <c>spla serve</c> maps <c>POST /mcp</c>, and a fixed port for it. Absent =
+    /// on, ephemeral port — today's default, unchanged.</summary>
+    [YamlMember(Alias = "mcp")]
+    public SplaMcpSection? Mcp { get; set; }
+
     [YamlMember(Alias = "permissions")]
     public SplaPermissionsSection? Permissions { get; set; }
 

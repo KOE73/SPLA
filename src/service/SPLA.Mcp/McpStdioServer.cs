@@ -55,20 +55,26 @@ public sealed class McpStdioServer
     /// <param name="listTools">What this caller may be offered. The exposure decision belongs to
     /// whoever hosts this server, not to the protocol.</param>
     /// <param name="mode">The ceiling on what a call may do, fixed for the connection.</param>
-    /// <param name="context">Whose calls these are. Null lets the host read the ambient scopes,
-    /// which is right for a stdio child that is the only thing running.</param>
+    /// <param name="context">Whose calls these are. Null lets the host read the ambient scopes
+    /// (Session, Identity) — right for a stdio child sitting on a runtime that already has a chat
+    /// open. Either way, <paramref name="source"/> is stamped over whatever <see cref="ToolCallContext.Source"/>
+    /// it carries, so an audit log always sees where this transport's calls actually came from.</param>
     /// <param name="log">Diagnostics sink. Must not be stdout.</param>
+    /// <param name="source">The label an audit log sees for every call this instance makes — e.g.
+    /// the HTTP <c>/mcp</c> endpoint passes <c>"mcp-http &lt;ip&gt;"</c>. Defaults to
+    /// <c>"mcp-stdio"</c>, since that is what this class actually is.</param>
     public McpStdioServer(
         IToolHost host,
         Func<IEnumerable<ToolDefinition>> listTools,
         AgentMode mode = AgentMode.Agent,
         ToolCallContext? context = null,
-        TextWriter? log = null)
+        TextWriter? log = null,
+        string source = "mcp-stdio")
     {
         _host = host;
         _listTools = listTools;
         _mode = mode;
-        _context = context;
+        _context = (context ?? ToolCallContext.FromAmbient()) with { Source = source };
         _log = log ?? Console.Error;
     }
 

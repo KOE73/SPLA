@@ -24,6 +24,7 @@
       <div class="settings-main">
         <ConnectionsPanel :class="{ on: tab === 'connections' }" ref="connectionsRef" />
         <AgentPanel :class="{ on: tab === 'agent' }" ref="agentRef" />
+        <McpPanel :class="{ on: tab === 'mcp' }" ref="mcpRef" />
         <FeaturesPanel :class="{ on: tab === 'features' }" ref="featuresRef" />
         <PluginsPanel :class="{ on: tab === 'plugins' }" ref="pluginsRef" />
         <SkillsPanel :class="{ on: tab === 'skills' }" ref="skillsRef" @open-plugin="focusPlugin" />
@@ -47,6 +48,7 @@ import { client } from "../../protocol/SplaClient";
 import type { PluginDto } from "../../protocol/types";
 import ConnectionsPanel from "./ConnectionsPanel.vue";
 import AgentPanel from "./AgentPanel.vue";
+import McpPanel from "./McpPanel.vue";
 import PluginsPanel from "./PluginsPanel.vue";
 import FeaturesPanel from "./FeaturesPanel.vue";
 import SkillsPanel from "./SkillsPanel.vue";
@@ -64,6 +66,7 @@ import UsagePanel from "./UsagePanel.vue";
 const TABS = [
   { id: "connections", label: "Connections", icon: "⇄", group: "General" },
   { id: "agent", label: "Agent", icon: "◎", group: "General" },
+  { id: "mcp", label: "MCP", icon: "⇌", group: "General" },
   { id: "appearance", label: "Appearance", icon: "◈", group: "General" },
   { id: "features", label: "Built-in tools", icon: "⚙", group: "Capabilities" },
   { id: "plugins", label: "Plugins", icon: "⬡", group: "Capabilities" },
@@ -96,6 +99,7 @@ watch(pluginTabs, tabs => {
 
 const connectionsRef = ref<InstanceType<typeof ConnectionsPanel>>();
 const agentRef = ref<InstanceType<typeof AgentPanel>>();
+const mcpRef = ref<InstanceType<typeof McpPanel>>();
 const pluginsRef = ref<InstanceType<typeof PluginsPanel>>();
 const featuresRef = ref<InstanceType<typeof FeaturesPanel>>();
 const skillsRef = ref<InstanceType<typeof SkillsPanel>>();
@@ -121,7 +125,7 @@ const saveable = computed(() =>
 
 async function onSave() {
   const panels: Record<string, { save: () => Promise<void> } | undefined> = {
-    connections: connectionsRef.value, agent: agentRef.value, plugins: pluginsRef.value,
+    connections: connectionsRef.value, agent: agentRef.value, mcp: mcpRef.value, plugins: pluginsRef.value,
     features: featuresRef.value, skills: skillsRef.value
   };
   const panel = tab.value.startsWith("plugin:")
@@ -144,6 +148,7 @@ async function onSave() {
 function fetchAll() {
   client.send("connections.get", undefined);
   client.send("agent.get", undefined);
+  client.send("mcp.get", undefined);
   client.send("plugins.get", undefined);
   client.send("features.get", undefined);
   client.send("skills.get", undefined);

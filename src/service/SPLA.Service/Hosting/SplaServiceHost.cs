@@ -112,6 +112,11 @@ public sealed record ServiceOptions
     /// times M projects, so there this is the condition for surviving the day.</summary>
     public TimeSpan EvictIdleProjectsAfter { get; init; } = TimeSpan.Zero;
 
+    /// <summary>Whether <c>POST /mcp</c> is mapped at all. Off by default — see
+    /// <see cref="SplaMcpSection"/>/<see cref="SPLA.Domain.Settings.ResolvedSettings.McpEnabled"/> for
+    /// the project-file switch a person actually turns on.</summary>
+    public bool McpEnabled { get; init; } = false;
+
     /// <summary>When set, this host also serves the registry routes for the given hub. Lets one
     /// process be both a service and the hub instances register with — what a small deployment wants,
     /// and what the server does — without a second implementation of the routes for that case.</summary>
@@ -254,6 +259,15 @@ public sealed class SplaServiceHost
                 $"SPLA service running. Connect a client to /ws.\ninstance: {defaultEntry.Runtime.Instance?.Info.InstanceId ?? "none"}",
                 "text/plain"))
             .AllowAnonymous();
+
+        // MCP over HTTP: a foreign head that wants tools without taking the writer lease `spla mcp`
+        // takes (that command builds its own AgentRuntime — see McpCommand's remarks). This endpoint
+        // dispatches against the runtime this host already has open, so any number of MCP clients can
+        // share it the same way any number of browser windows already share /ws. One request, one
+        // JSON-RPC line in, one line out — McpStdioServer needs nothing more than a reader that hits
+        // EOF after that line, which a request body naturally does.
+        if (options.McpEnabled)
+            app.MapPost("/mcp", (Func<HttpContext, Task<IResult>>)(ctx => HandleMcpAsync(ctx, registry)));
 
         if (options.EffectiveAuthMode == AuthMode.Negotiate)
         {
@@ -578,6 +592,218 @@ public sealed class SplaServiceHost
         var conn = new ClientConnection(
             socket, registry, hub, auth, log, identity, userProvider, userDefault, userArea, initialChat);
         await conn.RunAsync(context.RequestAborted);
+    }
+
+    /// <summary>One JSON-RPC request over HTTP, in one of two shapes depending on what the client
+    /// asked for:
+    /// <list type="bullet">
+    /// <item><b>Plain</b> (no <c>Accept: text/event-stream</c>) — one request, one response, same as
+    /// before: a call that opts into progress (<c>_meta.progressToken</c>) still runs to completion,
+    /// its progress frames simply have nowhere to go and are dropped.</item>
+    /// <item><b>SSE</b> (<c>Accept: text/event-stream</c>, MCP's "streamable HTTP" transport) — the
+    /// connection stays open and every frame <c>McpStdioServer</c> writes, progress notifications
+    /// included, is pushed as its own <c>data:</c> event the moment it is produced. This is the network
+    /// equivalent of stdio: the same live ticks a stdio client gets down the pipe while a slow call
+    /// (<c>ssh_run</c>, a long <c>agent_spawn</c>) is still running.</item>
+    /// </list>
+    /// <para><c>?project=</c> picks the runtime the same way <c>/chat-image</c> does; omitted defaults
+    /// to this host's default project.</para>
+    /// <para><b>Why not a plain <see cref="StringReader"/>.</b> The first cut fed the request line
+    /// through one and let it hit EOF on the very next read — which is exactly the signal
+    /// <c>McpStdioServer.RunAsync</c> treats as "the pipe closed", so it cancelled every call still
+    /// in flight before returning. That is invisible for an instant call like <c>tools/list</c> but
+    /// silently killed anything doing real I/O — <c>ssh_run</c> connecting to a host, mid-TCP-handshake,
+    /// came back as an empty response because the cancellation raced its own completion and won.
+    /// <see cref="PendingLineReader"/> holds EOF back until the call is actually done (signalled by
+    /// either writer below), so the call's own cancellation token is never touched before it is done
+    /// with it.</para></summary>
+    private static async Task<IResult> HandleMcpAsync(HttpContext ctx, AgentRuntimeRegistry registry)
+    {
+        string line;
+        using (var bodyReader = new StreamReader(ctx.Request.Body))
+        {
+            line = await bodyReader.ReadToEndAsync(ctx.RequestAborted);
+        }
+        if (string.IsNullOrWhiteSpace(line)) return Results.BadRequest();
+
+        System.Text.Json.Nodes.JsonNode? request;
+        try { request = System.Text.Json.Nodes.JsonNode.Parse(line); }
+        catch (System.Text.Json.JsonException) { return Results.BadRequest(); }
+
+        // A notification (e.g. notifications/initialized) has no id and gets no reply per JSON-RPC —
+        // waiting on a response line for one would hang until the client gives up.
+        var requestId = request?["id"];
+        var expectsReply = requestId is not null;
+
+        var project = ctx.Request.Query["project"].FirstOrDefault();
+        var runtime = registry.Open(project).Runtime;
+        var exposure = SPLA.MCP.Core.ToolExposure.Default;
+
+        var reader = new PendingLineReader(line);
+        var server = new SPLA.Mcp.McpStdioServer(
+            runtime.McpHost,
+            () => runtime.McpHost.GetToolDefinitionsFor(exposure),
+            log: TextWriter.Null,
+            source: $"mcp-http {ctx.Connection.RemoteIpAddress}");
+
+        var wantsSse = expectsReply &&
+            ctx.Request.Headers.Accept.Any(a => a?.Contains("text/event-stream", StringComparison.OrdinalIgnoreCase) == true);
+
+        if (wantsSse)
+        {
+            // Headers first, then every frame as its own event as soon as it exists — nothing here
+            // buffers, which is the entire point over the plain-JSON path.
+            ctx.Response.ContentType = "text/event-stream";
+            ctx.Response.Headers.CacheControl = "no-cache";
+
+            var sse = new SseWriter(ctx.Response.Body, requestId);
+            var runningSse = server.RunAsync(reader, sse, ctx.RequestAborted);
+
+            var finishedSse = await Task.WhenAny(sse.FinalResponseWritten, runningSse);
+            if (finishedSse != runningSse) await sse.FinalResponseWritten;
+
+            reader.SignalEof();
+            await runningSse;
+            return Results.Empty; // the response was already streamed directly to ctx.Response.Body
+        }
+
+        var writer = new CapturingWriter(requestId);
+        var running = server.RunAsync(reader, writer, ctx.RequestAborted);
+
+        string? responseLine = null;
+        if (expectsReply)
+        {
+            var finished = await Task.WhenAny(writer.ResponseWritten, running);
+            if (finished == running)
+            {
+                // The server's loop ended (client aborted, or an unexpected fault) before it ever
+                // wrote a reply — there is nothing to wait for any more.
+                await running; // surfaces the fault, if any, instead of swallowing it
+            }
+            else
+            {
+                responseLine = await writer.ResponseWritten;
+            }
+        }
+
+        reader.SignalEof();
+        await running;
+
+        return responseLine is null ? Results.NoContent() : Results.Text(responseLine, "application/json");
+    }
+
+    /// <summary>True when <paramref name="jsonLine"/> is the reply to the request that carried
+    /// <paramref name="requestId"/> — as opposed to a <c>notifications/progress</c> frame, which has no
+    /// <c>id</c> at all. Shared by both writers below so "which line is the actual answer" is decided
+    /// once, the same way, regardless of transport.</summary>
+    private static bool IsFinalResponse(string? jsonLine, System.Text.Json.Nodes.JsonNode? requestId)
+    {
+        if (string.IsNullOrEmpty(jsonLine)) return false;
+        try
+        {
+            var id = System.Text.Json.Nodes.JsonNode.Parse(jsonLine)?["id"];
+            return requestId is null
+                ? id is null
+                : System.Text.Json.Nodes.JsonNode.DeepEquals(id, requestId);
+        }
+        catch (System.Text.Json.JsonException) { return false; }
+    }
+
+    /// <summary>Yields one line, then blocks — never hands <c>McpStdioServer.RunAsync</c> an EOF until
+    /// <see cref="SignalEof"/> is called. See <see cref="HandleMcpAsync"/> for why that matters.</summary>
+    private sealed class PendingLineReader : TextReader
+    {
+        private readonly string _line;
+        private bool _sent;
+        private readonly TaskCompletionSource _eof = new(TaskCreationOptions.RunContinuationsAsynchronously);
+
+        public PendingLineReader(string line) => _line = line;
+
+        public void SignalEof() => _eof.TrySetResult();
+
+        public override async ValueTask<string?> ReadLineAsync(CancellationToken cancellationToken)
+        {
+            if (!_sent) { _sent = true; return _line; }
+            await _eof.Task.WaitAsync(cancellationToken).ConfigureAwait(false);
+            return null;
+        }
+    }
+
+    /// <summary>Captures the reply matching the request's own id and nothing else — a progress
+    /// notification arriving on this path (a client that sent <c>_meta.progressToken</c> without
+    /// asking for SSE) is silently dropped rather than mistaken for the answer.
+    /// <see cref="ResponseWritten"/> completes the moment the real reply is written, which is the
+    /// signal <see cref="HandleMcpAsync"/> waits on before it lets the reader see EOF.</summary>
+    private sealed class CapturingWriter : TextWriter
+    {
+        private readonly System.Text.Json.Nodes.JsonNode? _requestId;
+        private readonly TaskCompletionSource<string?> _written =
+            new(TaskCreationOptions.RunContinuationsAsynchronously);
+
+        public CapturingWriter(System.Text.Json.Nodes.JsonNode? requestId) => _requestId = requestId;
+
+        public override System.Text.Encoding Encoding => System.Text.Encoding.UTF8;
+
+        public Task<string?> ResponseWritten => _written.Task;
+
+        public override Task WriteLineAsync(string? value)
+        {
+            if (IsFinalResponse(value, _requestId)) _written.TrySetResult(value);
+            return Task.CompletedTask;
+        }
+
+        public override Task FlushAsync() => Task.CompletedTask;
+    }
+
+    /// <summary>Streams every frame straight to the response body as an SSE <c>data:</c> event —
+    /// progress notifications and the final reply alike, in the order <c>McpStdioServer</c> produces
+    /// them. This is the piece that makes <c>/mcp</c> a real network analogue of stdio: a client that
+    /// asked for progress actually sees it arrive while the call is still running, not bundled into one
+    /// response at the end.</summary>
+    private sealed class SseWriter : TextWriter
+    {
+        private readonly Stream _body;
+        private readonly System.Text.Json.Nodes.JsonNode? _requestId;
+        private readonly TaskCompletionSource _finalResponseWritten =
+            new(TaskCreationOptions.RunContinuationsAsynchronously);
+        private readonly SemaphoreSlim _writeGate = new(1, 1);
+
+        public SseWriter(Stream body, System.Text.Json.Nodes.JsonNode? requestId)
+        {
+            _body = body;
+            _requestId = requestId;
+        }
+
+        public override System.Text.Encoding Encoding => System.Text.Encoding.UTF8;
+
+        /// <summary>Completes once the frame answering the request (not a progress notification) has
+        /// been written and flushed.</summary>
+        public Task FinalResponseWritten => _finalResponseWritten.Task;
+
+        public override async Task WriteLineAsync(string? value)
+        {
+            if (string.IsNullOrEmpty(value)) return;
+
+            var bytes = System.Text.Encoding.UTF8.GetBytes($"data: {value}\n\n");
+            await _writeGate.WaitAsync().ConfigureAwait(false);
+            try
+            {
+                await _body.WriteAsync(bytes).ConfigureAwait(false);
+                await _body.FlushAsync().ConfigureAwait(false);
+            }
+            catch (Exception)
+            {
+                // The client disconnected mid-stream — normal end of an SSE session, not a fault for
+                // the tool call that was still writing to it. HandleMcpAsync's own CancellationToken
+                // (ctx.RequestAborted) is what actually stops the call; this just stops pretending the
+                // write succeeded.
+            }
+            finally { _writeGate.Release(); }
+
+            if (IsFinalResponse(value, _requestId)) _finalResponseWritten.TrySetResult();
+        }
+
+        public override Task FlushAsync() => Task.CompletedTask;
     }
 
     public async Task StartAsync(CancellationToken ct = default)

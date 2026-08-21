@@ -81,6 +81,14 @@ public class ResolvedSettings
     /// see <see cref="SplaAgentSection.Capabilities"/> for full semantics.</summary>
     public List<string>? Capabilities { get; set; }
 
+    /// <summary>Whether <c>spla serve</c> maps <c>POST /mcp</c> at all. Off by default — the strict
+    /// case, no second head over HTTP. See <see cref="SplaMcpSection.Enabled"/>.</summary>
+    public bool McpEnabled { get; set; } = false;
+
+    /// <summary>Fixed port for <c>spla serve</c> to bind, or null for the usual ephemeral one. See
+    /// <see cref="SplaMcpSection.Port"/>.</summary>
+    public int? McpPort { get; set; }
+
     // UI
     public string Theme { get; set; } = "Dark";
     public string Density { get; set; } = "norm";
@@ -391,6 +399,11 @@ public static class SettingsResolver
                 r.UnifiedResources = defaults.Agent.UnifiedResources ?? r.UnifiedResources;
                 AddTrustedDomains(r, defaults.Agent.TrustedDomains);
             }
+            if (defaults.Mcp != null)
+            {
+                r.McpEnabled = defaults.Mcp.Enabled ?? r.McpEnabled;
+                r.McpPort = defaults.Mcp.Port ?? r.McpPort;
+            }
             if (defaults.Ui != null)
             {
                 r.Theme = defaults.Ui.Theme ?? r.Theme;
@@ -442,6 +455,11 @@ public static class SettingsResolver
                 r.Capabilities = project.Agent.Capabilities ?? r.Capabilities;
                 r.UnifiedResources = project.Agent.UnifiedResources ?? r.UnifiedResources;
                 AddTrustedDomains(r, project.Agent.TrustedDomains);
+            }
+            if (project.Mcp != null)
+            {
+                r.McpEnabled = project.Mcp.Enabled ?? r.McpEnabled;
+                r.McpPort = project.Mcp.Port ?? r.McpPort;
             }
             if (project.Ui != null)
             {

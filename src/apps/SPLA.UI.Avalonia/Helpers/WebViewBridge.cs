@@ -1,7 +1,9 @@
 using System;
+using System.Diagnostics;
 using System.Text.Json;
 using Avalonia.Controls;
 using Avalonia.Threading;
+using SPLA.Platform;
 
 namespace SPLA.UI.Avalonia.Helpers;
 
@@ -34,7 +36,7 @@ public static class WebViewBridge
         if (string.IsNullOrWhiteSpace(message)) return;
 
         string? theme = null, density = null, kind = null, projectName = null;
-        string? surface = null, query = null, title = null;
+        string? surface = null, query = null, title = null, projectId = null;
         try
         {
             using var doc = JsonDocument.Parse(message);
@@ -47,6 +49,7 @@ public static class WebViewBridge
             if (root.TryGetProperty("surface", out var s)) surface = s.GetString();
             if (root.TryGetProperty("query", out var q)) query = q.GetString();
             if (root.TryGetProperty("title", out var w)) title = w.GetString();
+            if (root.TryGetProperty("projectId", out var pi)) projectId = pi.GetString();
         }
         catch { return; }   // not our message — ignore
 
@@ -77,6 +80,22 @@ public static class WebViewBridge
             // one — which is why the web client only offers the button when it is embedded.
             case "restartService":
                 Dispatcher.UIThread.Post(() => _ = App.RestartServiceAsync());
+                break;
+
+            // The hub surface's "Open" button: the web client already asked the hub to focus a live
+            // window over plain HTTP and only reaches here when that failed (none exists, or none
+            // answered). Spawning the actual process is the one part a browser tab could never do —
+            // only the shell that hosts this webview can, which is why the hub only posts this when
+            // it is embedded (see web/src/surfaces/Hub.vue).
+            case "openProject" when !string.IsNullOrWhiteSpace(projectId):
+                Dispatcher.UIThread.Post(() =>
+                {
+                    var (exe, args) = SelfInvocationLauncher.Resolve("SPLA.UI.Avalonia.exe");
+                    var psi = new ProcessStartInfo { FileName = exe, UseShellExecute = false };
+                    foreach (var a in args) psi.ArgumentList.Add(a);
+                    psi.ArgumentList.Add(projectId!);
+                    Process.Start(psi);
+                });
                 break;
         }
     }

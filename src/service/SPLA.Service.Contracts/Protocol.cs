@@ -185,6 +185,11 @@ public static class MessageTypes
     public const string FeaturesGet = "features.get";
     /// <summary>Save the enabled built-in capability set (persisted to <c>agent.capabilities</c>).</summary>
     public const string FeaturesSave = "features.save";
+    /// <summary>Ask for the MCP-over-HTTP settings (enabled + fixed port).</summary>
+    public const string McpGet = "mcp.get";
+    /// <summary>Save MCP-over-HTTP settings (persisted to .spla mcp: section). Takes effect on the
+    /// next <c>spla serve</c> start.</summary>
+    public const string McpSave = "mcp.save";
     /// <summary>Persist UI appearance (theme/density). Auto-sent on change — appearance has no Save step.
     /// Body is <see cref="AppearanceChangedPayload"/>; the server persists and broadcasts <see cref="AppearanceChanged"/>.</summary>
     public const string AppearanceSave = "appearance.save";
@@ -324,6 +329,9 @@ public static class MessageTypes
     public const string ConnectionsHealth = "connections.health";
     /// <summary>The current agent settings — answer to <see cref="AgentGet"/> and broadcast after <see cref="AgentSave"/>.</summary>
     public const string AgentResult = "agent.result";
+    /// <summary>The current MCP-over-HTTP settings — answer to <see cref="McpGet"/> and broadcast
+    /// after <see cref="McpSave"/>.</summary>
+    public const string McpResult = "mcp.result";
     /// <summary>The current plugin list/state — answer to <see cref="PluginsGet"/> and broadcast after <see cref="PluginsSave"/>.</summary>
     public const string PluginsResult = "plugins.result";
     /// <summary>Answer to <see cref="PluginAction"/>.</summary>

@@ -324,6 +324,7 @@ public static class ConfigLoader
         "llm" => p.Llm,
         "connections" => p.Connections,
         "ui" => p.Ui,
+        "mcp" => p.Mcp,
         "permissions" => p.Permissions,
         "plugins" => p.Plugins,
         "toolsets" => p.ToolSets,

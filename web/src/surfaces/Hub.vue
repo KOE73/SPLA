@@ -38,6 +38,12 @@
         <div class="hub-state">
           <span class="dot" :class="p.state ? 'on' : 'off'"></span>
           <span>{{ describe(p) }}</span>
+          <span
+            v-if="p.state"
+            class="dot mcp"
+            :class="p.mcpAvailable ? 'on' : 'off'"
+            :title="p.mcpAvailable ? 'MCP reachable over HTTP (/mcp)' : 'No MCP endpoint — stdio-only holder (spla mcp, a bare REPL)'"
+          ></span>
         </div>
 
         <div class="hub-actions">
@@ -119,6 +125,8 @@ async function start(p: KnownProject) {
   busy.value = null;
 }
 
+const embedded = typeof window !== "undefined" && !!window.chrome?.webview;
+
 /**
  * Open and Show are the same button because they are the same intent — "put this project in front of
  * me" — and only the hub can tell which one that means today. Showing an existing window beats opening
@@ -131,11 +139,18 @@ async function open(p: KnownProject) {
 
   const windowOnIt = p.windows > 0 && p.instanceId ? await registryClient.focus(p.instanceId) : false;
   if (!windowOnIt) {
-    // The hub cannot open a window itself — it has no desktop and, on a server, no screen to open one
-    // onto. Starting the agent is the part it can do; the window follows from wherever the person is.
-    const error = await registryClient.start(p.projectId);
-    if (error) say(error, true);
-    else say("Started. Open a window on it from the tray or the desktop app.");
+    if (embedded) {
+      // This hub surface is running inside the desktop shell, which does have a screen — hand the
+      // launch to it instead of only starting the agent headless and pointing the person at the tray.
+      try { window.chrome!.webview!.postMessage({ kind: "openProject", projectId: p.projectId }); }
+      catch { /* not embedded after all — fall through below */ }
+    } else {
+      // A plain browser tab (or a hub with no desktop shell at all) cannot open a window itself.
+      // Starting the agent is the part it can do; the window follows from wherever the person is.
+      const error = await registryClient.start(p.projectId);
+      if (error) say(error, true);
+      else say("Started. Open a window on it from the tray or the desktop app.");
+    }
   }
 
   await registryClient.refresh();
@@ -216,6 +231,9 @@ async function forget(p: KnownProject) {
 .hub-state { display: flex; align-items: center; gap: 6px; font-size: var(--fs-sm); color: var(--muted); flex-shrink: 0; }
 .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--muted); }
 .dot.on { background: var(--ok, #10b981); }
+.dot.mcp { margin-left: 2px; }
+.dot.mcp.on { background: var(--accent); }
+.dot.mcp.off { background: transparent; border: 1px solid var(--border); }
 
 .hub-actions { display: flex; gap: 5px; flex-shrink: 0; }
 .hub-actions button {

@@ -19,6 +19,10 @@ export interface KnownProject {
   state?: string | null;
   instanceId?: string | null;
   windows: number;
+  /** True when the agent published an address — /mcp is dialable. False for a stdio-only holder
+   *  (`spla mcp`'s own-body mode, a bare REPL): it has the project but nothing to point a second
+   *  MCP client at. */
+  mcpAvailable?: boolean;
 }
 
 type ProjectsListener = (projects: KnownProject[]) => void;

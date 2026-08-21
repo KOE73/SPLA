@@ -4,6 +4,75 @@
 other MCP client) over stdio. This file exists so a foreign head does not have to
 rediscover any of the following by trial and error.
 
+## stdio vs HTTP — pick based on whether you need to share
+
+`SPLA.CLI.exe mcp` (stdio) builds its **own** `AgentRuntime` and takes the
+project's single writer lease for as long as the pipe is open (see
+[Starting the server](#starting-the-server) below). That is correct for the
+common case — one foreign head, one project — but it means a **second** MCP
+client cannot also attach: the project is already leased, and there is no
+network address for it to attach to (`endpoint: none`).
+
+If more than one MCP client needs the same project at the same time (e.g. two
+different agent tools both pointed at it), run `spla serve` for that project
+instead and point every MCP client at its `POST /mcp` endpoint
+(`http://127.0.0.1:<port>/mcp`, port from the instance's lock file or from
+`spla ps` — or a fixed one you set yourself, see [Config](#config-mcp-section)
+below). All requests to `/mcp` dispatch against the one runtime that `serve`
+already has open — the same way any number of browser windows already share
+its `/ws` — so multiple heads share one writer instead of each grabbing their
+own lease.
+
+`/mcp` speaks in one of two shapes, and which one you get is entirely up to
+the request you send — the server does not need telling ahead of time:
+
+- **Plain** (default — no special header) — one JSON-RPC line in, one line
+  out. A call that opts into `_meta.progressToken` still *runs to completion
+  correctly* (a slow tool like `ssh_run` or a long `agent_spawn` is not cut
+  off — the request just stays open until it finishes), it just has nowhere
+  to push intermediate ticks, so they are dropped.
+- **SSE** (send `Accept: text/event-stream` on the request) — MCP's
+  "streamable HTTP" transport. The connection stays open and every frame is
+  pushed the moment it exists — progress notifications as the call runs, then
+  the final reply — each as its own `data: <json-rpc>\n\n` event. This is the
+  real network equivalent of stdio's progress channel: the same live ticks,
+  just over HTTP instead of a pipe.
+
+  ```bash
+  curl -N -X POST http://127.0.0.1:<port>/mcp \
+    -H "Content-Type: application/json" -H "Accept: text/event-stream" \
+    -d '{"jsonrpc":"2.0","id":1,"method":"tools/call",
+         "params":{"name":"ssh_run","arguments":{...},
+                    "_meta":{"progressToken":"t1"}}}'
+  ```
+
+So: stdio and SSE-over-`/mcp` are the two ways a foreign MCP head sees live
+progress. **`/ws` is a third, different thing and is not an MCP transport at
+all** — it is SPLA's own protocol (chat turns, tool broadcasts, permission
+asks), spoken only by SPLA's own clients (the web UI, the Avalonia app). A
+person can open the project there and watch the chat/turn while MCP-triggered
+work runs, which is observing from the other side — not something a foreign
+MCP head can itself subscribe to.
+
+## Config: `mcp:` section
+
+A project's `.spla` file (or the machine's `defaults.yaml`) can carry:
+
+```yaml
+mcp:
+  enabled: true   # false = spla serve never maps POST /mcp at all
+  port: 15077     # fixed port instead of the usual ephemeral one
+```
+
+Also editable from the SPLA web UI's Settings → MCP tab. Takes effect on the
+**next** `spla serve` start — Kestrel binds its listener once, at startup,
+the same as a plugin enable flag needing a restart to load. An explicit
+`--port` on the `spla serve` command line still wins over `mcp.port`.
+
+There is currently no bridge that lets a **stdio-only** client (one that
+cannot be pointed at a URL) share an already-running instance — that is
+tracked separately, not implemented yet.
+
 ## What you are connecting to
 
 SPLA is not a tool bag. It is an agent runtime whose unit of everything is the
