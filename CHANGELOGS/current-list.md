@@ -7,17 +7,12 @@ The scannable list: one line per change, no dates, no detail. Derived from the e
 This list and the summary are what CI puts into the release body; the full log stays in the
 repository and is linked from it.
 
+**Covers work since `v0.2.3`**, frozen in [`CHANGELOGS/v0.2.3.md`](v0.2.3.md).
+
 ---
 
 ### Added
 
-- Continuous integration: solution build, .NET tests, web type-check, bundle and vitest, on every
-  push to `work` and every pull request into `main`.
-- Release automation: merging into `main` re-runs the checks, publishes apps and plugins, and
-  attaches `SPLA.zip` to a GitHub release; a manual run does the same against any ref.
-- MCP: SPLA tools served over stdio, usable by an external agent.
-- Mounts: folders outside the project root, declared by name, each its own security zone.
-- Multi-project service: several projects at once, with a project picker in the client.
 - Launch profiles: `spla init` enters a folder with `minimal` (default), `standard` or `inherit`.
 - One writer per project, enforced by a lock file that also publishes the live instance's address.
 - `spla ps` and `spla stop`: see what is running on this machine, and ask one of them to go.
@@ -25,21 +20,6 @@ repository and is linked from it.
   --registry <url>` reads it, and `SPLA.Server --hub` hosts the same routes.
 - Chat and instance states — idle, working, waiting, stalled — as sidebar badges, a tray icon that
   blinks while an agent is waiting for you, and an `instances` tab in the Debug surface.
-- Server deployment: domain identity over NTLM, per-user file areas, group sharing.
-- DPAPI secret store with explicit scopes and per-entry ACLs.
-- Skill library as a project of its own, fed by declared sources, with a librarian that answers by
-  subject and one that reads the question.
-- SSH: live pty sessions, SFTP transfer, upload as the mirror of download.
-- Roslyn plugin: build, run and test .NET projects as tools.
-- Browser plugin: first wave of Playwright automation with a screencast panel.
-- OneC: Vue configuration browser.
-- Headless batch runner in the CLI, now on `Spectre.Console.Cli`.
-- `--sys-prompt-file` on `spla chat run`, reading a system-prompt addition from a file the way
-  `--prompt-file` already does for prompts.
-- Loop guard against degenerate LLM generation.
-- Reasoning lever driven by what the provider advertises.
-- Branch stamp on published builds.
-
 - `spla chat run --show-statistic` / `--show-statistic-file` / `--show-statistic-format`: a per-cell
   run report (model that actually answered, endpoint, settings, tokens, timing) on screen or as a
   companion file in json, yaml or md.
@@ -64,21 +44,13 @@ repository and is linked from it.
   (behind `agent.unified_resources`, default off).
 - An HTTP endpoint (`POST /mcp`, off by default) lets stdio-proxy MCP clients share one running
   instance.
+- Strict CLI argument parsing: a misspelled option now exits non-zero instead of being ignored.
 
 ### Changed
 
-- The agent runs as a service; windows, terminals and remote clients are its clients.
-- Avalonia became a window manager over one web renderer; the parallel native chat was deleted.
-- All settings moved into the web client as one tabbed surface.
-- Projects became storage brokers handing out named buckets instead of holding files.
-- Four hand-rolled path checks became one boundary; a call is a movement between zones.
-- Connection keys became secret references the settings editor never sees.
-- Tool calls went through a pipeline instead of eight hand-wired concerns.
-- `ILLMService` became a middleware pipeline behind one gateway; providers dispatch by `provider`.
-- Plugin panels moved from Avalonia to the web client.
-- Projects reorganized into a layered `src/` tree; `SPLA.Runtime` extracted.
-- `docs/` split by lifetime into ADR, PLAN and IDEA.
-- Version scheme is now `0.<minor>.<build>`, with the build number assigned by CI.
+- OS-specific desktop code (shell integration, self-relaunch, browser launcher) moved into its own
+  `SPLA.Platform` library, out of `SPLA.UI.Avalonia`.
+
 - `agent_spawn` takes a plain task; a skill is now optional rather than the only way to spawn.
 - An instance holds a lease instead of an owner: it lives while somebody is connected or work is in
   flight, and only an idle one is ever dropped.
@@ -86,13 +58,6 @@ repository and is linked from it.
 
 ### Fixed
 
-- A running turn in one chat no longer locks the composer in another.
-- A trust flag survives a reload instead of resetting at exit.
-- Web dependencies install when the manifests change, not once per checkout.
-- A publish no longer fails because `git` is missing.
-- The SSH terminal follows the window instead of the size its pty was born with.
-- An SSH session can no longer wedge on a marker that never prints.
-- The project tree shows every file rather than an extension whitelist.
 - Provider observations survive the accounting stage, which rebuilt the turn result and dropped every
   field it did not set itself; and a per-call fact can no longer overwrite the connection's last known
   rate-limit budget.
@@ -116,10 +81,6 @@ repository and is linked from it.
 
 ### Breaking
 
-- A tool result is a `ToolResult`, not a string.
-- A project's root is its manifest's own directory and cannot be moved.
-- `.spla/skills` is gone; skills come from declared sources.
-- `.spla` is no longer readable through the sandbox.
 - `AgentCallbacks.OnTokenUsage` removed — `OnLlmTurn` carries the whole turn outcome, and recording
   it is the pipeline's job now.
 - `projectId` removed from the wire envelope: a project belongs to the connection, and a second
