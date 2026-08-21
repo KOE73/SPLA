@@ -1,4 +1,4 @@
-using SPLA.Domain.Agent;
+﻿using SPLA.Domain.Agent;
 using SPLA.Domain.Formats;
 using SPLA.Domain.Resources;
 using SPLA.Domain.Models;
@@ -15,9 +15,9 @@ namespace SPLA.MCP.Core.Tools;
 /// Lets the model pull a previously stored blob image into its own context as a real picture.
 /// Any tool that stores image bytes in the chat's <see cref="IBlobStore"/> (content type
 /// <c>image/*</c>) makes that picture viewable this way — not just the producing tool's own
-/// turn. Pushes a data URL into the chat's <see cref="IPendingImageSink"/>; the conversation
-/// loop injects it as a synthetic user-image message on the next turn (same mechanism a
-/// screenshot tool uses directly). Agent-scoped: works the same in every mode.
+/// turn. The picture rides out in the result as a <see cref="ToolImage"/>; the conversation loop
+/// injects it as a synthetic user-image message on the next turn (same mechanism a screenshot
+/// tool uses). Agent-scoped: works the same in every mode.
 /// </summary>
 public sealed class ImageViewTool : IMcpTool
 {

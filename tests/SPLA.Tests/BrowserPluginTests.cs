@@ -1,4 +1,4 @@
-using SPLA.Domain.Agent;
+﻿using SPLA.Domain.Agent;
 using SPLA.Domain.Models;
 using SPLA.Domain.Settings;
 using SPLA.MCP.Core.Interfaces;
@@ -158,8 +158,5 @@ public sealed class BrowserPluginTests
         var image = Assert.Single(result.Content.OfType<ToolImage>());
         Assert.Equal("image/png", image.MimeType);
         Assert.Equal(Convert.ToBase64String(bytes), image.Data);
-
-        // Nothing was pushed sideways: the sink is no longer this tool's business.
-        Assert.Empty(session.Images.DrainAll());
     }
 }

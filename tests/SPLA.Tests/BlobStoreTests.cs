@@ -1,4 +1,4 @@
-using System.Text;
+﻿using System.Text;
 using SPLA.Domain.Agent;
 using SPLA.Domain.Resources;
 using SPLA.MCP.Core.Tools;
@@ -178,7 +178,6 @@ public sealed class BlobStoreTests
         Assert.Contains("cannot be shown as a picture", result);
         Assert.Contains("No conversion is registered from 'application/octet-stream' to 'image/png'", result);
         Assert.Contains("blob_peek", result);
-        Assert.Empty(AgentSessionScope.Current!.Images.DrainAll());
     }
 
     // ── blob_peek ────────────────────────────────────────────────────────────

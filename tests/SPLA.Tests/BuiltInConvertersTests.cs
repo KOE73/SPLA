@@ -150,7 +150,6 @@ public sealed class BuiltInConvertersTests
         Assert.Contains("No conversion is registered from 'application/pdf' to 'image/png'", result.TextContent);
         Assert.Contains("Nothing can be produced from 'application/pdf' at all", result.TextContent);
         Assert.DoesNotContain("not a viewable image", result.TextContent);
-        Assert.Empty(session.Images.DrainAll());
     }
 
     /// <summary>The regression that matters most: an ordinary screenshot goes through the registry and
