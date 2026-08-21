@@ -13,44 +13,27 @@ repository and is linked from it.
 
 ### Added
 
-- Launch profiles: `spla init` enters a folder with `minimal` (default), `standard` or `inherit`.
-- One writer per project, enforced by a lock file that also publishes the live instance's address.
-- `spla ps` and `spla stop`: see what is running on this machine, and ask one of them to go.
-- `spla hub`: instances register themselves with it, including from other machines; `spla ps
-  --registry <url>` reads it, and `SPLA.Server --hub` hosts the same routes.
-- Chat and instance states — idle, working, waiting, stalled — as sidebar badges, a tray icon that
-  blinks while an agent is waiting for you, and an `instances` tab in the Debug surface.
-- `spla chat run --show-statistic` / `--show-statistic-file` / `--show-statistic-format`: a per-cell
-  run report (model that actually answered, endpoint, settings, tokens, timing) on screen or as a
-  companion file in json, yaml or md.
-- Run reports say what the reasoning lever became on the wire, next to what was requested.
-- `SPLA.CLI.exe --help-mcp`: how to drive this build over MCP, embedded in the exe and shipped as
-  `MCP_USAGE.md` beside it.
-- The registry holds participants (agent, window, hub), addressable by `focus` and `stop-project`.
-- `spla start [project] [--registry]` and `spla stop --all --registry`, and `spla hub` may now start
-  agents through a host-provided spawner.
-- One tray shell per session (`--hub`), with Open raising an existing window instead of duplicating
-  it; Unload split into Close and Kill, both addressing the project.
-- A project manager web page served by the hub, reachable from the tray, listing every project the
-  machine remembers alongside what is currently running.
-- MCP reports progress for every tool call (`_meta.progressToken`), and a call can be cancelled or
-  kept alive mid-call.
-- A spawned agent's tool activity reports into its caller's progress tree instead of a detached one,
-  and reaches native clients over a new `progress.node` stream.
-- A spawned run's context-fill percentage and full transcript are visible, including in the web
-  client's `agent_spawn` tool card.
-- The loop guard is on by default for chats, not only for spawned runs.
-- A unified resource address space (`scheme://authority/path`, plus opaque `blob:` addresses):
-  `ResourceRegistry` maps scheme to provider, `file://` and `sftp://` ship as the first two, and a
-  base read/exists/list verb set is mandatory to register at all. Six `resource_*` tools
-  (read/exists/list/write/delete/mkdir) expose it to the model, entirely behind
-  `agent.unified_resources` (default off, verified byte-for-byte inert when off).
-- Resource reads carry a content type (`ResourceContent(Bytes, ContentType)`), not just bytes, backed
-  by a one-hop format-converter registry (`(source, target)` MIME pairs); `resource_read`'s optional
-  `as` picks the outbound type, defaulting to text-inline-or-blob-handle when omitted.
-- An HTTP endpoint (`POST /mcp`, off by default) lets stdio-proxy MCP clients share one running
-  instance.
-- Strict CLI argument parsing: a misspelled option now exits non-zero instead of being ignored.
+- Continuous integration: solution build, .NET tests, web type-check, bundle and vitest, on every
+  push to `work` and every pull request into `main`.
+- Release automation: merging into `main` re-runs the checks, publishes apps and plugins, and
+  attaches `SPLA.zip` to a GitHub release; a manual run does the same against any ref.
+- MCP: SPLA tools served over stdio, usable by an external agent.
+- Mounts: folders outside the project root, declared by name, each its own security zone.
+- Multi-project service: several projects at once, with a project picker in the client.
+- Server deployment: domain identity over NTLM, per-user file areas, group sharing.
+- DPAPI secret store with explicit scopes and per-entry ACLs.
+- Skill library as a project of its own, fed by declared sources, with a librarian that answers by
+  subject and one that reads the question.
+- SSH: live pty sessions, SFTP transfer, upload as the mirror of download.
+- Roslyn plugin: build, run and test .NET projects as tools.
+- Browser plugin: first wave of Playwright automation with a screencast panel.
+- OneC: Vue configuration browser.
+- Headless batch runner in the CLI, now on `Spectre.Console.Cli`.
+- `--sys-prompt-file` on `spla chat run`, reading a system-prompt addition from a file the way
+  `--prompt-file` already does for prompts.
+- Loop guard against degenerate LLM generation.
+- Reasoning lever driven by what the provider advertises.
+- Branch stamp on published builds.
 
 ### Changed
 
