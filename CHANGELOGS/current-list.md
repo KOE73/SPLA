@@ -40,8 +40,14 @@ repository and is linked from it.
 - A spawned run's context-fill percentage and full transcript are visible, including in the web
   client's `agent_spawn` tool card.
 - The loop guard is on by default for chats, not only for spawned runs.
-- Resource reads carry a content type, backed by a format-converter registry; six `resource_*` tools
-  (behind `agent.unified_resources`, default off).
+- A unified resource address space (`scheme://authority/path`, plus opaque `blob:` addresses):
+  `ResourceRegistry` maps scheme to provider, `file://` and `sftp://` ship as the first two, and a
+  base read/exists/list verb set is mandatory to register at all. Six `resource_*` tools
+  (read/exists/list/write/delete/mkdir) expose it to the model, entirely behind
+  `agent.unified_resources` (default off, verified byte-for-byte inert when off).
+- Resource reads carry a content type (`ResourceContent(Bytes, ContentType)`), not just bytes, backed
+  by a one-hop format-converter registry (`(source, target)` MIME pairs); `resource_read`'s optional
+  `as` picks the outbound type, defaulting to text-inline-or-blob-handle when omitted.
 - An HTTP endpoint (`POST /mcp`, off by default) lets stdio-proxy MCP clients share one running
   instance.
 - Strict CLI argument parsing: a misspelled option now exits non-zero instead of being ignored.

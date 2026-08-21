@@ -67,14 +67,95 @@ a call can be cancelled mid-flight instead of blocking the read loop. The **loop
 repeat detection — is on by default for chats now, not only for spawned runs, closing a gap that had
 it backwards from the start.
 
-## Resources get a type, and MCP gets an HTTP door
+## A unified address space for resources — one address, one verb set, any scheme
 
-A resource read now returns its content **and** its type (`ResourceContent(Bytes, ContentType)`), not
-a bare byte array — paired with a format-converter registry that turns one MIME type into another in
-a single hop, deliberately not a path search. Six `resource_*` tools expose the address space to the
-model one verb at a time, sitting behind `agent.unified_resources` (default off, verified inert when
-so). Separately, `spla serve` can now expose MCP over HTTP (`POST /mcp`, off by default) so multiple
-stdio-proxy clients can share one running instance instead of each taking its own writer lease.
+This is the largest piece of this cycle and the least visible from the outside, because it ships
+**inert**: with `agent.unified_resources` off (the default), the system prompt is byte-for-byte what
+it was before, and none of the model's existing tools change shape. Everything below exists so that
+switching it on is a single flag, not a redesign.
+
+**The problem it replaces.** Every scheme SPLA already talks to — the workspace filesystem, an SFTP
+host, eventually a browser tab, a memory store — had grown its own one-off tool family (`fs_read`,
+`ssh_download`, …), each with its own idea of what "read" and "list" mean. A model has to learn each
+family separately, and a new backend means a new tool family rather than a new row in a table.
+
+**The address.** `ResourceUri` (`scheme://authority/path`) is parsed by hand rather than through
+`System.Uri`, because the BCL type normalizes as it parses — collapses `..`, lowercases the host,
+rewrites percent-encoding — and a silently rewritten path is exactly the mechanism a path escapes its
+boundary through. The type hands back the three parts as given; the provider is where getting that
+judgment wrong would actually cost something. An opaque form (`blob:handle123`, no `//`) is supported
+by the same parser for content with no path at all.
+
+**The verbs, and the rule for adding one.** A base set — `Read`, `Exists`, `List` — is mandatory: a
+provider that cannot do all three does not register at all, rather than registering and failing verb
+calls at runtime (which just moves the discovery problem from "ask the registry" to "find out by
+erroring"). An extended set — `Write`, `Delete`, `MakeDir` — is each its own interface
+(`IResourceWriter`, `IResourceRemover`, `IResourceContainerMaker`), and support is read off the
+provider's actual type (`provider is IResourceWriter`) rather than a self-reported flag, so a
+declared capability cannot drift from a real one. The written acceptance rule for any future verb:
+*if using it needs caveats, per-scheme exceptions, or a bag of options, it's a bad verb or a bad
+schema, and it doesn't get added* — which is why there is no `Query` or `Search`: "name what's at
+this address" is a verb, "find what matches this condition" is a query language, and `List` stays a
+flat `ls` and nothing more.
+
+**The registry is a lookup table, not a gate.** `ResourceRegistry` maps scheme to provider, one per
+project, and classifies nothing — whether a call is an allowed movement between security zones stays
+entirely the permission pipeline's job, the same one every other tool answers to. A second place that
+can say "no" would be a second place that can disagree with the first.
+
+**Two schemes ship:** `file://` over the existing `IWorkspace`, and `sftp://` over `SftpTransfer`
+(which gained the ability to read a remote file into memory — it previously could not). Mounts
+deliberately do not get their own scheme: the workspace's path space already routes `mnt/<name>/…`
+before any path joining happens, so `file:///mnt/AAA/nginx.conf` already **is** the mount's logical
+path, and inventing a second address for the same file is exactly what the mount resolver already
+forbids at load time. `file://` lets a `PathBoundaryException` through uncaught, the same way the
+existing `Fs*` tools do, so the pipeline turns it into a structured refusal rather than a raw error.
+
+**Content type is not a scheme.** The instinct to add an `image://` scheme died on the browser case:
+a tab can hand back a screenshot or its HTML, so a type-as-scheme design would need `image://tab1`
+*and* `text://tab1` — two addresses for one source, and overlapping sets in `list()`. The address
+would stop being an address. The web solved exactly this with a `Content-Type` header instead of a
+URL scheme, so a read now returns `ResourceContent(byte[] Bytes, string ContentType)`. Three
+different pieces know three different things and none of them is a universal sniffer in the middle:
+the provider knows what it actually produced (a `browser://` provider doesn't guess — it made the
+PNG itself), a static `ContentTypes.Resolve` guesses from what's available (a library, not a pipeline
+stage), and the calling *tool* decides the byte's fate, since only it has the chat's context. The
+registry itself never touches bytes — `TryResolve` hands back a provider and steps out of the way.
+
+**A format-converter registry sits beside the scheme registry, same shape.** Register by `(source,
+target)` MIME pair; one hop only, deliberately no path search across registered pairs — that
+open-ended search is the exact mistake that rotted ImageMagick's delegate chain. `SPLA.Domain` reads
+labels, never content: signatures and MIME types live in `Domain`, decoders and demuxers stay outside
+it, so an eleven-project-deep shared assembly never grows a dependency for the sake of telling `rar`
+from `7z`. `resource_read` takes an optional `as` — the *requested* type, distinct from the
+*determined* one: the same `.docx` read as bytes gets a blob handle and stays out of context, read as
+text gets decoded whole, and only the model choosing `as` knows which it needs right now. Omit it and
+the default has to be safe on its own: text if it's text, a handle if it's binary, so the first `read`
+on a large `.mp4` doesn't fill the window by accident. Three converters carry real traffic from day
+one rather than leaving the registry empty: identity for `image/*` (what `image_view` already did,
+now reached through the registry instead of dead-ending on "not a viewable image"), a UTF-8 decoder
+that fails loudly on non-text bytes, and JSON→YAML — picked specifically because identity and a raw
+decode don't exercise what a real transform has to get right (parsing, a different size, its own
+failure mode).
+
+**What earned its own verb-and-tool cost:** six `resource_*` tools (`read/exists/list/write/delete/
+mkdir`), one per verb rather than one tool with a mode argument, because Effect/Risk differ per verb
+and a single tool would have to declare the worst case across all six.
+
+**What's written down but not built.** `memory://` is the strongest remaining candidate — routing the
+memory tools' `scope` argument into the address itself would delete five copies of that flag — but it
+touches five existing tools and is its own piece of work. A `blob:` *provider* has no code behind it
+yet, only the address form. Video/audio addressing ("continuum" resources — a frame is a fragment
+like `#t=12.5`, a window is a `from/step/count` triplet) is deliberately deferred: which frames are
+needed depends on what the model already saw, which is a feedback loop, and a one-shot converter
+cannot bake one in. A live measurement against LM Studio (`qwen3-vl-8b`) confirms today's actual
+constraint: `video_url` gets a flat 400, only `text` and `image_url` are accepted, and a batch of
+several `image_url` parts in one message does work.
+
+## MCP gets an HTTP door
+
+`spla serve` can now expose MCP over HTTP (`POST /mcp`, off by default) so multiple stdio-proxy
+clients can share one running instance instead of each taking its own writer lease.
 
 ## Smaller fixes and polish
 
