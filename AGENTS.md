@@ -75,6 +75,17 @@ A quick fix that touches one or two files and is going to be committed in the sa
 need the branch/worktree ceremony — commit it on `work` and use judgement. When in doubt, branch; a
 spurious branch costs a merge, a missing one costs someone else's uncommitted work.
 
+**A push to `work` can be rejected as diverged even when nothing is actually lost.** The owner
+merges pull requests on GitHub (including squash-merges) between sessions, which gives `origin/work`
+commits your local branch never saw under those hashes — a normal, expected outcome of this
+workflow, not a sign of conflicting work. Before asking the owner how to reconcile, check it
+yourself: diff the subjects/content of the commits `origin/work` has that you don't
+(`git log HEAD..origin/work`) against your own local history (`git log --all --grep=<key phrase>`,
+or just read the diffs). If the content already exists locally under different hashes (rebase,
+squash, or a same-change commit from elsewhere), say so and proceed to reconcile — merge or
+force-push as the situation calls for — without making the owner re-derive what you can already see.
+Only ask when the remote-only commits contain something genuinely not present locally.
+
 **State the current branch near the start of a session — one of the first sentences, not buried.**
 With several worktrees around, "which checkout is this" is not obvious from the chat alone, and the
 cost of assuming wrong (editing on the wrong branch, merging the wrong thing) is high enough that a

@@ -1,4 +1,4 @@
-<!-- covers: 2026-08-18 -->
+<!-- covers: 2026-08-21 -->
 
 # Summary — unreleased
 
@@ -140,6 +140,49 @@ Alongside that, published builds stamp the branch they came from so an experimen
 mistaken for a working one, web dependencies install when the manifests change rather than once per
 checkout, and a publish no longer fails just because `git` is missing.
 
+## One writer per project, and a hub that finds it
+
+A project is now owned by exactly one live instance: `.spla/instance.json` is held open with writes
+denied, which answers both "who has it" and "what address to talk to instead" — over SMB as well as
+locally, so a share protects against two machines, not only two processes. An instance holds a
+**lease**, not ownership: it lives while somebody is connected or work is in flight, and only lets go
+once neither is true, so switching between projects no longer kills whichever one you left. A
+question — permission or clarification — now outlives the window that asked it, so closing a window
+no longer auto-denies whatever it was waiting on. A folder entered without a manifest fails instead
+of silently inheriting machine defaults; `spla init` now asks for a launch profile explicitly.
+
+**`spla hub`** gives a machine, or a network, one place to see what is running, since a lock file
+alone cannot answer that across machines. It now knows about **participants**, not only agents — a
+registration carries a role (agent, window, or hub) — which is what lets Open raise an existing
+window instead of opening a duplicate, and lets closing a project reach its windows as well as its
+agent. The hub can start agents too, through a host-provided spawner, closing the gap where a machine
+with no desktop had no way to bring a project up. A **project manager web page**, served by the hub
+itself, lists every project the machine remembers next to what is currently running, reachable from a
+tray that now lives one-per-session rather than one-per-window. A window whose agent disappears shows
+a banner instead of retrying forever in silence.
+
+## Progress becomes a tree, and a spawn is no longer a black box
+
+Tool progress used to be a single flat line per top-level call. It is now a **tree**: a spawned
+sub-agent's tool calls land as children of the node that spawned them, reaching every existing
+surface — CLI status line, native and web tool trees, and MCP's own `notifications/progress` — with
+no per-tool wiring. Alongside it, a spawned run keeps its transcript (bounded, in memory) so a run
+that came back with something odd can still be inspected, and a context-fill percentage rides every
+tick so a long-running sub-agent reads as "filling up" rather than "hung". MCP callers get the same
+visibility a native client has: `tools/call` opens a progress tree when the client asks for one, and
+a call can be cancelled mid-flight instead of blocking the read loop. The **loop guard** — degenerate
+repeat detection — is on by default for chats now, not only for spawned runs, closing a gap that had
+it backwards from the start.
+
+## Resources get a type, and MCP gets an HTTP door
+
+A resource read now returns its content **and** its type (`ResourceContent(Bytes, ContentType)`), not
+a bare byte array — paired with a format-converter registry that turns one MIME type into another in
+a single hop, deliberately not a path search. Six `resource_*` tools expose the address space to the
+model one verb at a time, sitting behind `agent.unified_resources` (default off, verified inert when
+so). Separately, `spla serve` can now expose MCP over HTTP (`POST /mcp`, off by default) so multiple
+stdio-proxy clients can share one running instance instead of each taking its own writer lease.
+
 ## Structure and documentation
 
 Projects were reorganized into a layered `src/` tree, `SPLA.Runtime` was extracted so a headless
@@ -155,3 +198,9 @@ automation over the LAN.
   outside.
 - **`.spla/skills` is gone.** Skills come from declared sources.
 - **`.spla` is not readable through the sandbox** the way it used to be.
+- **`AgentCallbacks.OnTokenUsage` is gone.** `OnLlmTurn` carries the whole turn outcome; recording
+  usage is the pipeline's job now.
+- **`projectId` is gone from the wire envelope.** A project belongs to the connection; a second
+  project is a second connection.
+- **A folder without a manifest is no longer entered silently.** A non-interactive run there now
+  fails and names `--init` instead of guessing a profile.

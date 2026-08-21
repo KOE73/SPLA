@@ -46,6 +46,24 @@ repository and is linked from it.
 - Run reports say what the reasoning lever became on the wire, next to what was requested.
 - `SPLA.CLI.exe --help-mcp`: how to drive this build over MCP, embedded in the exe and shipped as
   `MCP_USAGE.md` beside it.
+- The registry holds participants (agent, window, hub), addressable by `focus` and `stop-project`.
+- `spla start [project] [--registry]` and `spla stop --all --registry`, and `spla hub` may now start
+  agents through a host-provided spawner.
+- One tray shell per session (`--hub`), with Open raising an existing window instead of duplicating
+  it; Unload split into Close and Kill, both addressing the project.
+- A project manager web page served by the hub, reachable from the tray, listing every project the
+  machine remembers alongside what is currently running.
+- MCP reports progress for every tool call (`_meta.progressToken`), and a call can be cancelled or
+  kept alive mid-call.
+- A spawned agent's tool activity reports into its caller's progress tree instead of a detached one,
+  and reaches native clients over a new `progress.node` stream.
+- A spawned run's context-fill percentage and full transcript are visible, including in the web
+  client's `agent_spawn` tool card.
+- The loop guard is on by default for chats, not only for spawned runs.
+- Resource reads carry a content type, backed by a format-converter registry; six `resource_*` tools
+  (behind `agent.unified_resources`, default off).
+- An HTTP endpoint (`POST /mcp`, off by default) lets stdio-proxy MCP clients share one running
+  instance.
 
 ### Changed
 
@@ -88,6 +106,13 @@ repository and is linked from it.
   ASP.NET Core runtime installed for the service behind the window to start.
 - A service child that dies on startup reports its exit code and output instead of a bare health
   timeout, and a slow first start from a zip gets 120 seconds rather than 30.
+- The Built-in tools panel explains what each `core.*` toggle registers and why it needs a restart.
+- A chat save writes to a temp file and renames it into place, so a concurrent read can no longer see
+  a truncated file.
+- CLI help text stays English regardless of the machine's UI culture.
+- The hub's default port moved off 5060 (browsers block it) to 5077; `SPLA_HUB_PORT` overrides it.
+- A window whose agent went away shows a lost-connection banner (after several failed retries, backed
+  off, in about three seconds) with a way out, instead of retrying forever in silence.
 
 ### Breaking
 

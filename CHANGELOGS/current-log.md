@@ -265,3 +265,185 @@ sentences are what `current-list.md` is built from, which is why they have to st
   second project is a second connection: locally a second window, on a server one socket moved by
   `project.open`. The desktop shell no longer changes the working directory at all — that belongs to
   the serve instance, which holds exactly one project by construction.
+
+- **The Built-in tools panel explains what each `core.*` toggle actually does.** Every row now
+  carries a short blurb and the literal tool names it registers, plus a note that turning one off
+  removes tools from `McpHost` rather than just trimming the prompt — which is why it needs a
+  restart. The open question about making tool registration hot-reloadable is recorded in a plan doc
+  rather than solved here.
+
+- **Fix: a chat save no longer empties the file readers can see.** `SaveChat` used
+  `File.WriteAllText`, which truncates before writing — anyone reading mid-write got an empty or
+  half-written file, and `ListChats` silently skips whatever it cannot parse, so the symptom was a
+  chat missing from the sidebar for one refresh. The race was already there; the instance work just
+  shifted timing enough to provoke it roughly one run in three. Writes now go to a temporary file and
+  are renamed into place — atomic on both Windows and POSIX — so a crash mid-write leaves the
+  previous version intact instead of a partial one.
+
+---
+
+## 2026-08-20
+
+- **`SPLA.Platform` holds the OS-specific desktop code.** `WindowsShellIntegration` moved out of
+  `SPLA.UI.Avalonia`, the duplicated self-relaunch resolution logic was consolidated into this
+  shared, UI-free library, and a cross-platform browser launcher replaced the inline `Process.Start`
+  behind "open in browser".
+
+- **CLI argument parsing is strict now.** `config.UseStrictParsing()` on the main command parser
+  means a misspelled option like `--idle-timout` produces a non-zero exit instead of being silently
+  ignored, across every command that goes through the Spectre parser.
+
+- **Fix: CLI help text stays English regardless of the machine's UI culture.** Spectre localises its
+  own help chrome and, with no culture pinned, followed `CurrentUICulture` — so a Russian Windows
+  printed Russian headings around English command and option descriptions. `SetApplicationCulture` is
+  now a single shared helper both `CommandApp`s go through.
+
+- **The registry holds participants, not only agents.** A registration now carries a role — agent,
+  window, or hub — which is the one missing concept behind three symptoms at once: nothing could
+  raise a window that already existed, and closing a project stopped its agent while leaving its
+  windows pointed at a service that would never answer again. Two new relays ride on top of the
+  existing per-instance stop: `focus`, addressed to one participant (what Open uses instead of
+  starting a second window), and `stop-project`, addressed to everything on one project. Both are
+  relays, not actions — a window decides by closing unconditionally, an agent may refuse mid-turn
+  because it holds work nobody else has. A registration naming no role is still an agent, so nothing
+  built before this breaks.
+
+- **The hub may start agents, and the CLI can drive it.** `IInstanceSpawner` hands the hub a
+  capability to start (off unless passed — a deployment that must not spawn gets 501, never a silent
+  power nobody granted), while `RegistryHub` stays an index with no handles and no way to end
+  anything. Refusing to start left a machine with no desktop unable to bring a project up at all,
+  which is the case this exists for. New CLI: `spla start [project] [--registry]` brings an agent up
+  and walks away — already-running counts as success; `spla stop --all --registry` closes the
+  project, agent and windows together.
+
+- **One tray shell per session, and Open raises the window you already have.** The tray was always a
+  machine-wide view but existed per-process, so three open projects meant three identical icons. It
+  now lives in its own process (`--hub`); every window asks for that shell and all but the first lose
+  a session-scoped mutex and exit. Open now asks the hub whether a window already has the project and
+  raises it instead of launching a duplicate. Unload became Close and Kill, both addressing the
+  project (agent and windows together) instead of only the agent.
+
+- **Fix: a window whose agent went away says so, instead of retrying in silence.** Closing an agent
+  left its window retrying every 1.5s forever with nothing on screen — from the outside the window
+  had simply stopped working. The client now backs off (0.5s to 15s) and, after several consecutive
+  failures, shows a banner that the connection is lost and offers a way out, without hiding the
+  conversation underneath it. "Restart the agent" appears only in the native shell, which is the only
+  one that can start one.
+
+- **Fix: the lost-connection banner fires in about three seconds, not nine.** The original threshold
+  assumed a restarting service would reconnect before it fired; a real restart takes longer than any
+  threshold worth waiting for, so the extra six seconds bought nothing. Being wrong early is cheap —
+  the banner clears itself the moment the socket returns.
+
+- **A project manager, served by the hub.** The hub now serves the same web bundle every other host
+  does, with `/` redirecting to the manager surface. `/registry/projects` merges the machine's
+  remembered project list with what is currently registered, so a project with nothing running — the
+  row somebody came to press Start on — is visible too; `/registry/forget` drops a remembered entry
+  without touching the project itself. This is also where a refused Close is finally reported, since
+  the tray has nowhere to put a message without stealing focus.
+
+- **The project manager is reachable from the tray, in a frame or a browser.** `SurfaceWindow` gained
+  an explicit base URL, since the hub surface is served by the registry hub rather than by a
+  project's own agent service and the tray shell that opens it never starts one. Offered both ways
+  because a browser tab outlives the tray shell being restarted and can be opened from another
+  machine, where there is no tray at all.
+
+- **Fix: the hub moved off port 5060, which browsers refuse to open.** 5060 is SIP's port and sits on
+  the blocked list of every Chromium browser and Firefox, so the project manager failed outright with
+  `ERR_UNSAFE_PORT`. Default is now 5077.
+
+- **`SPLA_HUB_PORT` overrides the hub port, with one shared resolver.** Order is `--port`, then the
+  variable, then the built-in default. Resolved in one place because the CLI running `spla hub` and
+  the shell looking for one have to agree on this number without talking to each other; the browsers'
+  blocked-port list lives there as data, so picking one of them now produces a named warning instead
+  of a bare `ERR_UNSAFE_PORT`.
+
+- **MCP reports progress for every tool, and a call can be withdrawn.** A foreign head calling a SPLA
+  tool over MCP saw nothing until the result. `tools/call` now opens a progress tree when the client
+  sends `_meta.progressToken`, since every tool already reports through `ProgressScope` — nothing
+  tool-specific was needed. Progress writes are serialised so a second writer on the pipe cannot
+  produce a stray line, and the call no longer holds the read loop, which also means a cancellation
+  or keepalive sent mid-call is now reachable instead of stuck behind it.
+
+- **A spawned agent reports into its caller's progress tree.** A spawn used to open a progress tree
+  of its own, detaching everything below it — the sub-agent's tool calls landed nowhere anyone was
+  subscribed to while the caller's node sat silent. The fix leaves the caller's tree in place so the
+  sub-agent's calls become children of its node, which every existing renderer (CLI status line,
+  Avalonia and web tool trees, MCP `notifications/progress`) then shows with no further wiring.
+
+- **Fix: every spawn tick says which task it is about.** The node's label was the literal string
+  `"agent_spawn"` for every delegation, so a batch of five read as five identical rows. Naming the
+  task once at the start did not survive tick coalescing, since an opening line is exactly what a
+  faster-arriving neighbour overwrites.
+
+- **Fix: each spawned run in a batch gets a branch of its own, named after its task.** A batch ran its
+  tasks on parallel flows that all inherited the same current node, so three sub-agents hung their
+  tool calls off `agent_spawn_batch` as one undifferentiated row of siblings — showing what had been
+  done but not who did it. The tree now reads `agent_spawn_batch › audit ports › port_scan`.
+
+- **The progress tree reaches clients, and is rendered.** `OnProgressTree` had existed since progress
+  was built with no subscriber; native clients saw less than a foreign head over MCP, since
+  `tool.progress` only reports the top-level call. `progress.node` now carries one node per change,
+  flat and append-only rather than a snapshot, alongside `tool.progress` — structural frames (a
+  node's first appearance and its finish) are never throttled, only the ticks between them are, and
+  per node, so a scan reporting per host cannot silence a tool running underneath it.
+
+- **Fix: a sub-agent's activity reaches the flat progress bar, and shows how full its context is.**
+  The single-bar view forwarded root nodes only, so once a spawned run got a node of its own the CLI
+  status line and the service's flat progress showed a spinning `agent_spawn` saying nothing for
+  minutes. The bar now follows the newest tick at any depth. Alongside it, a context-fill figure rides
+  every tick — there is no percent-done for an agent, but there is a ceiling it is walking towards,
+  which is what makes a runaway legible before it gets expensive. No percentage is shown when the
+  model's window is undeclared, since a bar against a guessed denominator is a number nobody can act
+  on.
+
+- **The loop guard is on by default for chats, and the rotted 2026-07-10 review is gone.** A chat had
+  no repeat guard unless a config turned it on, while a spawned run has had one unconditionally since
+  spawning existed — backwards, since the chat is the one with a person paying for the tokens. The
+  guard cannot fire on merely-repetitive work: it needs the same tool, same arguments, same result, no
+  accompanying text, and a round under ten seconds, all consecutively, and the first trip only asks
+  the model whether it is stuck. Still switchable per project. Also records the turn-budget decision:
+  no automatic cutoff, since no number is legitimate for every long run — visibility (turn, narrative,
+  context fill, a working Stop button) is what replaces it.
+
+- **The context-fill percentage is now a real percentage.** Config almost never declares a context
+  length, so the figure added by the previous entry was in practice a bare token count with nothing to
+  compare against. The runner now asks the provider for the window the same way chats already do,
+  waiting up to two seconds rather than leaving it to arrive on its own — fire-and-forget made the
+  figure appear only when a run was slow. A provider that is gone is cached as gone.
+
+- **A spawned run keeps its transcript, and a client can read it back.** A sub-agent's whole
+  conversation used to be thrown away the moment the tool returned, so a run that came back with
+  something odd had nothing left to ask. Kept in memory, bounded to fifty most-recent runs per
+  process — a batch of twenty spawns is twenty transcripts and nineteen are never read, so the default
+  has to be cheap. A miss on read is `found: false`, not an error, since the ring is bounded on
+  purpose.
+
+- **A spawned run's transcript is visible in the web client.** Wires the `subagent.get`/
+  `subagent.result` readback into the `agent_spawn` tool card: a "show sub-agent transcript" toggle
+  fetches and renders the run's system/user/assistant turns.
+
+---
+
+## 2026-08-21
+
+- **Resource reads carry a type, not just bytes, and a converter registry sits behind them.**
+  `ReadAsync` returns `ResourceContent(Bytes, ContentType)` instead of a bare `byte[]` — the address
+  says where something lives, the type says what came back. A converter registry
+  (`SPLA.Domain/Formats`) registers by `(source, target)` MIME pair, one hop only, no path search
+  across registered pairs. Three converters carry real traffic from day one: identity for `image/*`, a
+  UTF-8 decoder that fails loudly on non-text bytes, and JSON→YAML; `image_view` now resolves through
+  the registry instead of dead-ending on "not a viewable image". Six `resource_*` tools
+  (read/exists/list/write/delete/mkdir) expose the address space to the model, one tool per verb since
+  Effect/Risk differ per verb. `resource_read` takes an optional `as` target type — omitted, a safe
+  default applies (text inline, binary to a blob handle, so an unlabelled video cannot fill the
+  context window); given, it routes through the converter registry. Everything sits behind
+  `agent.unified_resources` (default false), verified inert in the system prompt when off.
+
+- **MCP gets an HTTP endpoint, off by default, plus two bugs found wiring up its settings.** `spla
+  serve` can now map `POST /mcp` for stdio-proxy clients to share one running instance instead of each
+  taking its own writer lease, gated by the `mcp:` project section (`enabled`/`port`) and off by
+  default. Also fixes `ConfigLoader.GetSectionValue` missing the `"mcp"` case (saving MCP settings
+  threw and silently failed to persist), and the Projects hub's "Open" button, which in the desktop
+  shell only started the agent headless and pointed at the tray — it now asks the native host to open
+  a window directly through a new `openProject` bridge message.
