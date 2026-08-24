@@ -65,6 +65,7 @@
     <File Path="docs/adr/ADR_20260819_core_project-entry.md" />
     <File Path="docs/adr/ADR_20260819-2_core_agent-instances.md" />
     <File Path="docs/adr/ADR_20260820_apps_project-hub.md" />
+    <File Path="docs/adr/ADR_20260824_plugins_document-context.md" />
   </Folder>
   <Folder Name="/docs/plans/">
     <File Path="docs/plans/PLAN_20260619_agent_skills-lifecycle.md" />
@@ -89,6 +90,7 @@
     <File Path="docs/plans/PLAN_20260820_apps_project-hub.md" />
     <File Path="docs/plans/PLAN_20260820-2_agent_subagent-feedback.md" />
     <File Path="docs/plans/PLAN_20260820_core_unified-uri-resources.md" />
+    <File Path="docs/plans/PLAN_20260824_plugins_document-context.md" />
   </Folder>
   <Folder Name="/docs/ideas/">
     <File Path="docs/ideas/IDEA_20260611_core_todo-general.md" />
@@ -112,6 +114,7 @@
     <File Path="docs/ideas/IDEA_20260820_agent_subagent-feedback-mcp-hub.md" />
     <File Path="docs/ideas/IDEA_20260820-2_service_mcp-resources.md" />
     <File Path="docs/ideas/IDEA_20260820-3_core_unified-uri-tools.md" />
+    <File Path="docs/ideas/IDEA_20260824_plugins_document-context.md" />
   </Folder>
   <Folder Name="/src/core/">
     <Project Path="src/core/SPLA.Domain/SPLA.Domain.csproj" />
@@ -145,6 +148,9 @@
     <Project Path="src/service/SPLA.Service.Contracts/SPLA.Service.Contracts.csproj" />
     <Project Path="src/service/SPLA.Mcp/SPLA.Mcp.csproj" />
   </Folder>
+  <Folder Name="/src/documents/">
+    <Project Path="src/documents/SPLA.Documents.Model/SPLA.Documents.Model.csproj" />
+  </Folder>
   <Folder Name="/src/editor/">
     <Project Path="src/editor/SPLA.Editor.Schema/SPLA.Editor.Schema.csproj" />
   </Folder>
@@ -160,6 +166,7 @@
   <Folder Name="/src/plugins/data/">
     <Project Path="src/plugins/SPLA.Plugins.Sql/SPLA.Plugins.Sql.csproj" />
     <Project Path="src/plugins/SPLA.Plugins.OneC/SPLA.Plugins.OneC.csproj" />
+    <Project Path="src/plugins/SPLA.Plugins.Documents/SPLA.Plugins.Documents.csproj" />
   </Folder>
   <Folder Name="/src/plugins/dev/">
     <Project Path="src/plugins/SPLA.Plugins.Roslyn/SPLA.Plugins.Roslyn.csproj" />
@@ -168,6 +175,10 @@
   <Folder Name="/src/plugins/infra/">
     <Project Path="src/plugins/SPLA.Plugins.Network/SPLA.Plugins.Network.csproj" />
     <Project Path="src/plugins/SPLA.Plugins.Ssh/SPLA.Plugins.Ssh.csproj" />
+  </Folder>
+  <Folder Name="/src/plugins/data/skills-documents/">
+    <Project Path="src/plugins/SPLA.Skills.Documents/SPLA.Skills.Documents.csproj" />
+    <File Path="src/plugins/SPLA.Skills.Documents/skills/docx-to-registry.md" />
   </Folder>
   <Folder Name="/src/plugins/infra/skills-network/">
     <Project Path="src/plugins/SPLA.Skills.Network/SPLA.Skills.Network.csproj" />

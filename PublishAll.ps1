@@ -73,6 +73,8 @@ $plugins = @(
     @{ Name = 'test';               Proj = 'src/plugins/SPLA.Plugins.Test/SPLA.Plugins.Test.csproj'; Build = $true }
     @{ Name = 'onec';               Proj = 'src/plugins/SPLA.Plugins.OneC/SPLA.Plugins.OneC.csproj' }
     @{ Name = 'sql';                Proj = 'src/plugins/SPLA.Plugins.Sql/SPLA.Plugins.Sql.csproj' }
+    @{ Name = 'documents';          Proj = 'src/plugins/SPLA.Plugins.Documents/SPLA.Plugins.Documents.csproj';
+       Extras = @(@{ From = 'src\plugins\SPLA.Skills.Documents\skills'; To = 'skills' }) }
     @{ Name = 'roslyn';             Proj = 'src/plugins/SPLA.Plugins.Roslyn/SPLA.Plugins.Roslyn.csproj' }
     @{ Name = 'browser';            Proj = 'src/plugins/SPLA.Plugins.Browser/SPLA.Plugins.Browser.csproj' }
     @{ Name = 'ssh';                Proj = 'src/plugins/SPLA.Plugins.Ssh/SPLA.Plugins.Ssh.csproj' }

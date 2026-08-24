@@ -391,3 +391,25 @@ sentences are what `current-list.md` is built from, which is why they have to st
   threw and silently failed to persist), and the Projects hub's "Open" button, which in the desktop
   shell only started the agent headless and pointed at the tray — it now asks the native host to open
   a window directly through a new `openProject` bridge message.
+
+---
+
+## 2026-08-24
+
+- **Word documents can be read for their meaning, and rows can be appended to a spreadsheet by
+  column name.** A new `documents` plugin (native backend: Open XML SDK + ClosedXML, both MIT, no
+  Office on the machine) adds `document_extract`, which turns a `.docx` into markdown, plain text or
+  a typed JSON block tree — headings, paragraphs, list nesting, tables, page breaks and image
+  references, with fonts, colours and tracked changes dropped — and three spreadsheet tools,
+  `spreadsheet_inspect` / `spreadsheet_read_rows` / `spreadsheet_append_rows`, that address `.xlsx`
+  and `.csv` by COLUMN HEADER rather than by cell address. An append writes under the last used row
+  and leaves every other cell, format and formula as it was; an unknown column is refused with the
+  sheet's real columns listed rather than silently added, a `.csv`'s delimiter and encoding are
+  preserved, and numbers stay numbers. The same extraction is registered into the core converter
+  registry as three `(docx → markdown | text | json)` pairs, so `resource_read … as: text/markdown`
+  works on a `.docx` address wherever `agent.unified_resources` is on. Which document backend serves
+  those pairs is a plugin folder, not a host decision — the semantic tree
+  (`SPLA.Documents.Model`) travels inside each backend, and only bytes plus a MIME type cross the
+  plugin boundary. A skill, `documents.docx-to-registry`, writes the procedure down: inspect
+  the target sheet first, extract, map facts to columns without inventing any, append in one call,
+  read the tail back.

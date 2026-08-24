@@ -51,6 +51,11 @@ repository and is linked from it.
 - An HTTP endpoint (`POST /mcp`, off by default) lets stdio-proxy MCP clients share one running
   instance.
 - Strict CLI argument parsing: a misspelled option now exits non-zero instead of being ignored.
+- A `documents` plugin: `document_extract` reads a Word `.docx` for its meaning (markdown, plain text
+  or a typed JSON block tree), and `spreadsheet_inspect` / `spreadsheet_read_rows` /
+  `spreadsheet_append_rows` read and extend `.xlsx`/`.csv` by column header rather than by cell
+  address. The same extraction registers as `docx → markdown | text | json` pairs in the core
+  converter registry.
 
 ### Changed
 
