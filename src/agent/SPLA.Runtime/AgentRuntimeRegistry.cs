@@ -45,6 +45,16 @@ public sealed class AgentRuntimeRegistry : IDisposable
     /// <see cref="Create"/> gets the same live wiring the startup-time default did.</summary>
     public event Action<string, RuntimeEntry>? RuntimeCreated;
 
+    /// <summary>
+    /// Every runtime built so far, so a subscriber that attached late can catch up on what it missed.
+    /// <see cref="RuntimeCreated"/> alone is not enough: a caller may legitimately open a project
+    /// before handing the registry to whoever wires it — <c>ServeCommand</c> opens the default project
+    /// fifteen lines before <c>SplaServiceHost.Build</c> — and that entry's event fired into an empty
+    /// handler list. Wiring "future ones, plus the ones already here" is what makes the wiring true
+    /// regardless of construction order, instead of making every caller get the order right.
+    /// </summary>
+    public IReadOnlyCollection<KeyValuePair<string, RuntimeEntry>> Existing => _entries.ToArray();
+
     public AgentRuntimeRegistry(ILoggerFactory loggerFactory, IProjectProvider? provider = null)
     {
         _loggerFactory = loggerFactory;

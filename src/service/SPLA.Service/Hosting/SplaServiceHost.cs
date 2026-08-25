@@ -519,7 +519,21 @@ public sealed class SplaServiceHost
 
     private static void WireRuntimeEvents(AgentRuntimeRegistry registry, ConnectionHub hub)
     {
-        registry.RuntimeCreated += (projectId, entry) =>
+        registry.RuntimeCreated += (projectId, entry) => WireOneRuntime(registry, hub, projectId, entry);
+
+        // Catch up on projects opened before this subscription existed. ServeCommand opens the default
+        // project fifteen lines before it calls Build, so under `spla serve` that entry's
+        // RuntimeCreated fired into nobody — and everything hanging off its ChatRegistry.RuntimeOpened
+        // (the chat pump, and live progress fan-out before it) silently never ran. Found by live
+        // testing after wave B; no unit test noticed, because they all wire the registry themselves in
+        // the right order.
+        foreach (var (projectId, entry) in registry.Existing)
+            WireOneRuntime(registry, hub, projectId, entry);
+    }
+
+    private static void WireOneRuntime(
+        AgentRuntimeRegistry registry, ConnectionHub hub, string projectId, RuntimeEntry entry)
+    {
         {
             entry.Runtime.Events.Subscribe(evt =>
             {
@@ -623,7 +637,7 @@ public sealed class SplaServiceHost
                 }
                 catch { }
             });
-        };
+        }
     }
 
     /// <summary>The chat list, to everyone watching this project. Sent whenever a chat's state
