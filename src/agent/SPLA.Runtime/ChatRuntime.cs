@@ -122,6 +122,30 @@ public sealed class ChatRuntime : IDisposable, SPLA.Domain.Agent.IBackgroundTask
     /// <summary>Disarms the pump until the next human turn. See <see cref="AutoWakeSuppressed"/>.</summary>
     public void SuppressAutoWake() => Volatile.Write(ref _autoWakeSuppressed, 1);
 
+    /// <summary>Marks that a human's own words are about to enter this chat — called by whoever enqueues
+    /// a <see cref="SPLA.Domain.Tools.InboxItemKind.Human"/> item, before enqueueing it, so the pump wakes
+    /// unconditionally for it (ADR §2.1: "wakes immediately and always") and any auto-wake pause a Stop or
+    /// the self-feeding guard left behind ends right here — same state, same clearing this chat's own
+    /// SendAsync text-path already does for a direct send (see below); this is the queued-path's copy of
+    /// that exact bookkeeping.</summary>
+    public void NoteHumanMessage()
+    {
+        Interlocked.Increment(ref _humanTurnCount);
+        Volatile.Write(ref _autoWakeSuppressed, 0);
+    }
+
+    /// <summary>The current turn's own onUserMessage callback, stashed here so the DrainInbox closure
+    /// below (built once in the constructor, but invoked from inside whichever turn is live) can echo a
+    /// Human-kind drained message back to watchers exactly like a directly-sent one. Only one turn ever
+    /// runs at a time (guarded by _turnGate), so there is no re-entrancy to worry about.</summary>
+    private Action<ChatMessage>? _activeOnUserMessage;
+
+    /// <summary>Human-kind messages this turn's DrainInbox has pulled off the queue but which have not
+    /// yet been added to the conversation (and so have no MsgId yet) — see the constructor's
+    /// DrainInbox/OnMessageDelivered pair for why the echo has to wait that long. Reference-keyed:
+    /// two messages are never "the same" here unless they are literally the same instance.</summary>
+    private readonly HashSet<ChatMessage> _pendingHumanEchoes = new(ReferenceEqualityComparer.Instance);
+
     private int _bubbleSeq;
 
     /// <summary>
@@ -369,7 +393,24 @@ public sealed class ChatRuntime : IDisposable, SPLA.Domain.Agent.IBackgroundTask
             // mid-turn has its procedure in the prompt for the very next LLM call rather than for the
             // next user message.
             Context = runtime.ComposeContext,
-            DrainInbox = Inbox.DrainAll,
+            // Split in two because MsgId does not exist yet at drain time — Conversation.Add is what
+            // assigns it (see ConversationOrchestrator.OnMessageDelivered's own comment). DrainInbox
+            // only remembers WHICH drained messages are a person's own words (by reference — ChatMessage
+            // has no value equality, so a HashSet keyed on the instance is exactly "this specific one");
+            // OnMessageDelivered fires per message right after conversation.Add has given it a real id,
+            // and that is where the echo a directly-sent human message always got finally happens for a
+            // queued one too.
+            DrainInbox = () =>
+            {
+                var drained = Inbox.DrainAllWithKinds();
+                foreach (var (message, kind) in drained)
+                    if (kind == SPLA.Domain.Tools.InboxItemKind.Human) _pendingHumanEchoes.Add(message);
+                return drained.Select(d => d.Message).ToList();
+            },
+            OnMessageDelivered = message =>
+            {
+                if (_pendingHumanEchoes.Remove(message)) _activeOnUserMessage?.Invoke(message);
+            },
             Checkpoint = _checkpoint,
             // Anti-repeat guard is a per-project setting (agent: loop_guard, default off) — it targets
             // small local models that loop forever, but false-fires on legitimate poll/wait patterns.
@@ -429,6 +470,8 @@ public sealed class ChatRuntime : IDisposable, SPLA.Domain.Agent.IBackgroundTask
 
         try
         {
+            _activeOnUserMessage = onUserMessage;
+
             // Registers the turn's tree into the chat-wide hub the moment the orchestrator creates
             // it, without disturbing whatever the caller's own OnProgressTree does with it — both
             // fire on the same handout. A subscriber that only knows this chat's hub (a background
@@ -506,6 +549,7 @@ public sealed class ChatRuntime : IDisposable, SPLA.Domain.Agent.IBackgroundTask
         }
         finally
         {
+            _activeOnUserMessage = null;
             _turnGate.Release();
             Interlocked.Decrement(ref _turnsInFlight);
         }

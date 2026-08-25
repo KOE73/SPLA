@@ -39,7 +39,7 @@ public enum InboxItemKind { Human, TaskResult, Notice }
 /// </summary>
 public sealed class ChatInbox
 {
-    private readonly ConcurrentQueue<ChatMessage> _queue = new();
+    private readonly ConcurrentQueue<(ChatMessage Message, InboxItemKind Kind)> _queue = new();
 
     /// <summary>True while at least one item sits undrained — the pump's trap-B.6 check: a signal
     /// that arrives after a turn already drained everything must find nothing here and do nothing.</summary>
@@ -57,7 +57,7 @@ public sealed class ChatInbox
     /// back bare <see cref="ChatMessage"/>s — it exists purely for the pump's wake decision.</summary>
     public void Enqueue(ChatMessage message, InboxItemKind kind)
     {
-        _queue.Enqueue(message);
+        _queue.Enqueue((message, kind));
         Enqueued?.Invoke(kind);
     }
 
@@ -73,7 +73,20 @@ public sealed class ChatInbox
         if (_queue.IsEmpty) return [];
 
         var drained = new List<ChatMessage>();
-        while (_queue.TryDequeue(out var message)) drained.Add(message);
+        while (_queue.TryDequeue(out var item)) drained.Add(item.Message);
+        return drained;
+    }
+
+    /// <summary>Same drain as <see cref="DrainAll"/>, but also hands back each item's kind — needed by
+    /// <c>ChatRuntime</c> to notice a drained <see cref="InboxItemKind.Human"/> message and echo it back
+    /// to watchers exactly as a directly-sent one always has, even though this one arrived through the
+    /// queue instead of a live call. <see cref="DrainAll"/> stays as the plain form the orchestrator uses,
+    /// since it has no business knowing kinds at all.</summary>
+    public IReadOnlyList<(ChatMessage Message, InboxItemKind Kind)> DrainAllWithKinds()
+    {
+        if (_queue.IsEmpty) return [];
+        var drained = new List<(ChatMessage, InboxItemKind)>();
+        while (_queue.TryDequeue(out var item)) drained.Add(item);
         return drained;
     }
 }

@@ -1,4 +1,6 @@
-﻿using SPLA.MCP.Core.ToolSets;
+﻿using SPLA.Domain.Models;
+using SPLA.Domain.Tools;
+using SPLA.MCP.Core.ToolSets;
 using SPLA.Runtime;
 using SPLA.Service.Contracts;
 
@@ -122,7 +124,20 @@ internal sealed class ChatHandlers : IMessageHandler
         // The sender must watch this chat, otherwise the turn's stream (which fans out to watchers
         // only) would never reach the very client that started it.
         ctx.Session.MarkChatOpen(p.ChatId);
-        ctx.Session.StartTurn(entry.Runtime, projectId, chat, p.Text, p.Images, ctx.HostStopping);
+
+        // PLAN_20260825 wave D: a human message is queued like anything else the chat did not ask for at
+        // the moment it asked — the pump (wave B) wakes for it immediately and unconditionally, whether the
+        // chat was idle (starts a turn right away) or a turn was already running (the running turn's own
+        // drain picks it up on its next loop iteration, or the pump starts the next turn the instant this
+        // one's gate frees up). No more direct StartTurn call — that made "who begins a turn" a fact only a
+        // live connection could produce, which is exactly the coupling this wave removes.
+        chat.NoteHumanMessage();
+        chat.Inbox.Enqueue(new ChatMessage
+        {
+            Role = ChatRole.User,
+            Content = p.Text,
+            Images = p.Images is { Count: > 0 } ? p.Images.ToList() : null
+        }, InboxItemKind.Human);
     }
 
     private static async Task Settings(RequestContext ctx)

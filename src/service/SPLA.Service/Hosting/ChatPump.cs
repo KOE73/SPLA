@@ -15,8 +15,8 @@ namespace SPLA.Service;
 /// Subscribes to <see cref="ChatInbox.Enqueued"/>. A <see cref="InboxItemKind.TaskResult"/> signal
 /// arms a 500ms debounce timer rather than waking immediately — three tasks finishing within a
 /// second must produce ONE turn carrying all three results, not three (ADR §2.1, plan step B.3).
-/// <see cref="InboxItemKind.Human"/> is ignored here: nothing produces it yet (that is wave D), and
-/// when it does, it will wake immediately rather than through this debounce. <see cref="InboxItemKind.Notice"/>
+/// <see cref="InboxItemKind.Human"/> (PLAN_20260825 wave D — <c>ChatHandlers.Send</c> enqueues it)
+/// wakes immediately instead, skipping the debounce entirely. <see cref="InboxItemKind.Notice"/>
 /// never arrives here at all — see <see cref="BroadcastNotice"/> below.
 /// </para>
 ///
@@ -154,13 +154,18 @@ internal sealed class ChatPump : IDisposable
 
     private void OnEnqueued(InboxItemKind kind)
     {
-        // Human is wave D's trigger (immediate wake, no debounce) — nothing wires it yet, so treating
-        // it as a no-op here is correct today and stays obviously incomplete rather than pretending to
-        // handle a case it does not. Notice never arrives: see the constructor's broadcastNotice comment.
-        if (kind != InboxItemKind.TaskResult) return;
+        // Notice never arrives here at all — see the constructor's broadcastNotice comment.
+        if (kind == InboxItemKind.Notice) return;
         if (Volatile.Read(ref _disposed) != 0) return;
 
-        try { _timer.Change(DebounceWindow, Timeout.InfiniteTimeSpan); }
+        // A person's own words (PLAN_20260825 wave D) skip the debounce entirely — TimeSpan.Zero fires
+        // on the next scheduler tick instead of waiting out the 500ms window three background results
+        // coalesce over. ChatHandlers.Send already cleared AutoWakeSuppressed and bumped HumanTurnCount
+        // before this enqueue (NoteHumanMessage), and the sender is by definition watching (it just
+        // came from a live connection), so DecideWake's ordinary checks fall through to Wake on their
+        // own — nothing here needs to bypass them, only the wait.
+        var due = kind == InboxItemKind.Human ? TimeSpan.Zero : DebounceWindow;
+        try { _timer.Change(due, Timeout.InfiniteTimeSpan); }
         catch (ObjectDisposedException) { /* raced with Dispose — nothing left to wake */ }
     }
 

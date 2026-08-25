@@ -102,6 +102,13 @@ public sealed class ConversationOrchestrator
     /// </summary>
     public Func<IReadOnlyList<ChatMessage>>? DrainInbox { get; init; }
 
+    /// <summary>Fired right after each drained message is added to the conversation — the earliest
+    /// point <see cref="ChatMessage.MsgId"/> exists, since <c>Conversation.Add</c> is what assigns it.
+    /// A caller that wants to echo one of these back to a client (PLAN_20260825 wave D: a queued human
+    /// message still needs the same "here is its real id" broadcast a directly-sent one gets) cannot
+    /// do that from inside <see cref="DrainInbox"/> itself — the id does not exist yet there.</summary>
+    public Action<ChatMessage>? OnMessageDelivered { get; init; }
+
     public ConversationOrchestrator(ILlmGateway llm, IToolHost tools)
     {
         _llm = llm;
@@ -174,7 +181,11 @@ public sealed class ConversationOrchestrator
             // tool_result pairing could be mid-flight.
             var delivered = DrainInbox?.Invoke();
             if (delivered is { Count: > 0 })
-                foreach (var message in delivered) conversation.Add(message);
+                foreach (var message in delivered)
+                {
+                    conversation.Add(message);
+                    OnMessageDelivered?.Invoke(message);
+                }
 
             var coreMessages = ContextAssembler.Assemble(conversation.Messages);
             ApplyComposedContext(coreMessages);

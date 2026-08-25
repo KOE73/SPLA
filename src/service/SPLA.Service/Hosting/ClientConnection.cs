@@ -157,18 +157,6 @@ public sealed class ClientConnection : IClientSession
     void IClientSession.MarkChatOpen(string chatId) => _openChats[chatId] = 0;
     void IClientSession.MarkChatClosed(string chatId) => _openChats.TryRemove(chatId, out _);
 
-    void IClientSession.StartTurn(
-        AgentRuntime runtime, string projectId, ChatRuntime chat, string text, List<string>? images,
-        CancellationToken hostStopping)
-    {
-        // The chat's own driver runs the turn now (see ChatTurnDriver) — this connection's only job is
-        // to hand over the message plus the one thing that really was ours to give: which user is
-        // asking, for telemetry attribution. Fire-and-forget as before, so the receive loop keeps
-        // serving this turn's permission/clarify answers and its cancel request.
-        var driver = new ChatTurnDriver(_hub, _registry, runtime, projectId, chat, _log);
-        _ = driver.RunTurnAsync(text, images, _identity.UserKey, hostStopping);
-    }
-
     bool IClientSession.TryCancelTurn(string chatId)
         => BoundRuntime.Turns.TryCancel(chatId);
 
