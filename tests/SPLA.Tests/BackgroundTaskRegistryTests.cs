@@ -183,4 +183,29 @@ public class BackgroundTaskRegistryTests
 
         Assert.Equal(1, registry.LiveCount);
     }
+
+    [Fact]
+    public void CancelAll_cancels_only_running_tasks_and_reports_them()
+    {
+        var registry = new BackgroundTaskRegistry();
+        var (a, _) = registry.TryStart("system_run_shell", "{}");
+        var (b, _) = registry.TryStart("web_fetch", "{}");
+        var (c, _) = registry.TryStart("t", "{}");
+        registry.Finish(c!.Id, BackgroundTaskState.Completed, ToolResult.Text("done"));
+
+        var cancelled = registry.CancelAll();
+
+        Assert.Equal(new[] { a!.Id, b!.Id }, cancelled.Select(t => t.Id));
+        Assert.True(a.Cts.IsCancellationRequested);
+        Assert.True(b.Cts.IsCancellationRequested);
+        // The already-finished task must not be touched — its own token never fires from this call.
+        Assert.False(c.Cts.IsCancellationRequested);
+    }
+
+    [Fact]
+    public void CancelAll_on_an_empty_registry_returns_nothing()
+    {
+        var registry = new BackgroundTaskRegistry();
+        Assert.Empty(registry.CancelAll());
+    }
 }

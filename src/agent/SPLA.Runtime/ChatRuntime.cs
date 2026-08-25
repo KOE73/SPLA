@@ -106,6 +106,22 @@ public sealed class ChatRuntime : IDisposable, SPLA.Domain.Agent.IBackgroundTask
     /// needing any coupling back into the chat beyond this one number.</summary>
     public int HumanTurnCount => Volatile.Read(ref _humanTurnCount);
 
+    private int _autoWakeSuppressed;
+
+    /// <summary>
+    /// True after Stop has disarmed the pump (PLAN_20260825 wave C, ADR §2.4) — no auto-wake until the
+    /// next real human message. Set by <c>CorrelationHandlers.Cancel</c>, read by <see cref="ChatPump"/>'s
+    /// injected <c>autoWakeSuppressed</c> delegate, cleared in the same place <see cref="_humanTurnCount"/>
+    /// is bumped: "stop" and the pump's own self-feeding pause are the same state reached by different
+    /// roads, and a person speaking is what ends both. <c>Volatile</c> rather than a lock — a single
+    /// flag read/written from different threads (the cancel handler, the pump's timer callback, a
+    /// turn's own start) needs visibility, not mutual exclusion.
+    /// </summary>
+    public bool AutoWakeSuppressed => Volatile.Read(ref _autoWakeSuppressed) != 0;
+
+    /// <summary>Disarms the pump until the next human turn. See <see cref="AutoWakeSuppressed"/>.</summary>
+    public void SuppressAutoWake() => Volatile.Write(ref _autoWakeSuppressed, 1);
+
     private int _bubbleSeq;
 
     /// <summary>
@@ -436,6 +452,10 @@ public sealed class ChatRuntime : IDisposable, SPLA.Domain.Agent.IBackgroundTask
             if (text != null)
             {
                 Interlocked.Increment(ref _humanTurnCount);
+                // A person spoke — whatever silenced the pump (Stop, or its own self-feeding guard)
+                // is over. Same state, different roads in (ADR §2.4): both exist to stop auto-turns
+                // until someone is back at the wheel, and a real message is exactly that.
+                Volatile.Write(ref _autoWakeSuppressed, 0);
 
                 var userMsg = new ChatMessage
                 {

@@ -60,6 +60,27 @@ public class ChatPumpTests
         Assert.Equal(ChatPump.WakeDecision.SelfFeedingCapReached, d);
     }
 
+    [Fact]
+    public void DecideWake_suppressed_wins_over_a_running_turn()
+    {
+        // Order matters (plan step C.2): Suppressed must be checked BEFORE TurnAlreadyRunning, because
+        // that branch re-arms the debounce timer — a suppressed pump must go quiet instead, or Stop
+        // degrades into a half-second pause rather than a stop.
+        var d = ChatPump.DecideWake(hasPending: true, isTurnRunning: true, hasWatchers: true,
+            consecutiveAutoWakes: 0, cap: 3, autoWakeSuppressed: true);
+        Assert.Equal(ChatPump.WakeDecision.Suppressed, d);
+    }
+
+    [Fact]
+    public void DecideWake_suppressed_with_nothing_pending_still_reports_nothing_pending()
+    {
+        // NothingPending is checked first regardless — an empty inbox is an empty inbox whether or
+        // not the pump happens to be suppressed.
+        var d = ChatPump.DecideWake(hasPending: false, isTurnRunning: false, hasWatchers: true,
+            consecutiveAutoWakes: 0, cap: 3, autoWakeSuppressed: true);
+        Assert.Equal(ChatPump.WakeDecision.NothingPending, d);
+    }
+
     // ---- end-to-end coalescing / policy via a real ChatPump --------------------------------------
 
     private static ChatMessage TaskResultMessage(string text) => new() { Role = ChatRole.User, Content = text };
@@ -68,6 +89,7 @@ public class ChatPumpTests
     {
         public bool Watchers = true;
         public bool TurnRunning;
+        public bool AutoWakeSuppressed;
         public int HumanTurnCount;
         public int RunTurnCalls;
         public readonly List<string> Notices = new();
@@ -85,7 +107,8 @@ public class ChatPumpTests
                 RanOnce.Release();
                 return Task.CompletedTask;
             },
-            broadcastNotice: text => { lock (Notices) Notices.Add(text); });
+            broadcastNotice: text => { lock (Notices) Notices.Add(text); },
+            autoWakeSuppressed: () => AutoWakeSuppressed);
     }
 
     /// <summary>Polls a condition instead of a fixed sleep, since the thing under test is itself a
@@ -209,5 +232,59 @@ public class ChatPumpTests
         inbox.Enqueue(TaskResultMessage("after-human"), InboxItemKind.TaskResult);
         await WaitUntilAsync(() => env.RunTurnCalls > ChatPump.SelfFeedingCap, timeoutMs: 3000);
         Assert.Equal(ChatPump.SelfFeedingCap + 1, env.RunTurnCalls);
+    }
+
+    // ---- wave C: Stop disarms the pump --------------------------------------------------------
+
+    [Fact]
+    public async Task Suppressed_pump_does_not_wake_even_with_pending_items_and_watchers()
+    {
+        var inbox = new ChatInbox();
+        var env = new Env { AutoWakeSuppressed = true };
+        using var pump = env.MakePump(inbox);
+
+        inbox.Enqueue(TaskResultMessage("x"), InboxItemKind.TaskResult);
+
+        await Task.Delay(700); // comfortably longer than the 500ms debounce
+        Assert.Equal(0, env.RunTurnCalls);
+        Assert.True(inbox.HasPending); // Stop never clears the inbox — ADR §2.4
+    }
+
+    [Fact]
+    public async Task Suppression_survives_a_task_cancellation_delivery_landing_in_the_inbox()
+    {
+        // A cancelled background task still delivers its cancellation result into the inbox
+        // (CorrelationHandlers.Cancel/BackgroundTaskRegistry.CancelAll leave delivery to whatever
+        // already handles a finished task). That delivery itself raises ChatInbox.Enqueued — exactly
+        // the signal that would normally arm the debounce timer — and suppression must survive it.
+        var inbox = new ChatInbox();
+        var env = new Env { AutoWakeSuppressed = true };
+        using var pump = env.MakePump(inbox);
+
+        inbox.Enqueue(TaskResultMessage("cancelled: bg_1 (system_run_shell)"), InboxItemKind.TaskResult);
+
+        await Task.Delay(700);
+        Assert.Equal(0, env.RunTurnCalls);
+    }
+
+    [Fact]
+    public async Task A_human_turn_clears_suppression_and_the_pump_wakes_again()
+    {
+        var inbox = new ChatInbox();
+        var env = new Env { AutoWakeSuppressed = true };
+        using var pump = env.MakePump(inbox);
+
+        inbox.Enqueue(TaskResultMessage("during-stop"), InboxItemKind.TaskResult);
+        await Task.Delay(700);
+        Assert.Equal(0, env.RunTurnCalls);
+
+        // A person speaks: in the real system ChatRuntime.SendAsync clears AutoWakeSuppressed the
+        // same place it bumps HumanTurnCount — mirrored here on the fake env.
+        env.AutoWakeSuppressed = false;
+        env.HumanTurnCount++;
+
+        inbox.Enqueue(TaskResultMessage("after-human"), InboxItemKind.TaskResult);
+        await WaitUntilAsync(() => env.RunTurnCalls >= 1, timeoutMs: 3000);
+        Assert.Equal(1, env.RunTurnCalls);
     }
 }

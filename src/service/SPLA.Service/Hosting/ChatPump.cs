@@ -42,6 +42,11 @@ internal sealed class ChatPump : IDisposable
         /// <summary>Trap B.6: a turn that was already running drained the inbox itself before this
         /// signal was even handled. Waking now would start an empty turn.</summary>
         NothingPending,
+        /// <summary>Stop disarmed the pump (wave C, ADR §2.4) and no human message has arrived since.
+        /// Ordered before <see cref="TurnAlreadyRunning"/> deliberately: that branch re-arms the timer
+        /// to check again later, and a suppressed pump must go quiet instead — re-arming forever would
+        /// turn "stop" into a half-second pause rather than a stop.</summary>
+        Suppressed,
         /// <summary>A turn is already running (or queued on the gate) — <c>ChatRuntime._turnGate</c>
         /// would serialise a second one anyway, but starting it now would just make it wait; re-arm
         /// and check again once the running turn is done.</summary>
@@ -61,9 +66,11 @@ internal sealed class ChatPump : IDisposable
     /// <c>ChatRuntime</c>, no clock. Order matches plan step B.2's numbered policy exactly.
     /// </summary>
     internal static WakeDecision DecideWake(
-        bool hasPending, bool isTurnRunning, bool hasWatchers, int consecutiveAutoWakes, int cap)
+        bool hasPending, bool isTurnRunning, bool hasWatchers, int consecutiveAutoWakes, int cap,
+        bool autoWakeSuppressed = false)
     {
         if (!hasPending) return WakeDecision.NothingPending;
+        if (autoWakeSuppressed) return WakeDecision.Suppressed;
         if (isTurnRunning) return WakeDecision.TurnAlreadyRunning;
         if (!hasWatchers) return WakeDecision.NoWatchers;
         if (consecutiveAutoWakes >= cap) return WakeDecision.SelfFeedingCapReached;
@@ -73,6 +80,7 @@ internal sealed class ChatPump : IDisposable
     private readonly ChatInbox _inbox;
     private readonly Func<bool> _hasWatchers;
     private readonly Func<bool> _isTurnRunning;
+    private readonly Func<bool> _autoWakeSuppressed;
     private readonly Func<int> _humanTurnCount;
     private readonly Func<CancellationToken, Task> _runTurn;
     private readonly Action<string> _broadcastNotice;
@@ -96,6 +104,12 @@ internal sealed class ChatPump : IDisposable
     /// <param name="hasWatchers">True when somebody has the chat open. Injected rather than a direct
     /// <c>ConnectionHub</c> reference so the decision path stays testable without one.</param>
     /// <param name="isTurnRunning">True while a turn is running or queued on the gate.</param>
+    /// <param name="autoWakeSuppressed">Required rather than optional, unlike <paramref name="log"/>:
+    /// a missing logger costs a diagnostic, whereas a pump silently defaulting to "never suppressed"
+    /// would quietly break Stop's promise that it stops everything. True after Stop has disarmed this
+    /// chat's pump — see
+    /// <see cref="ChatRuntime.AutoWakeSuppressed"/>. Injected the same way as <paramref name="hasWatchers"/>
+    /// so the decision path stays testable without a real <c>ChatRuntime</c>.</param>
     /// <param name="humanTurnCount">Rising count of turns started by an actual human message — see
     /// <see cref="ChatRuntime.HumanTurnCount"/>. Used only to detect "did a person speak since my last
     /// wake", never compared across chats or persisted.</param>
@@ -112,11 +126,13 @@ internal sealed class ChatPump : IDisposable
         Func<int> humanTurnCount,
         Func<CancellationToken, Task> runTurn,
         Action<string> broadcastNotice,
+        Func<bool> autoWakeSuppressed,
         ILogger? log = null)
     {
         _inbox = inbox;
         _hasWatchers = hasWatchers;
         _isTurnRunning = isTurnRunning;
+        _autoWakeSuppressed = autoWakeSuppressed;
         _humanTurnCount = humanTurnCount;
         _runTurn = runTurn;
         _broadcastNotice = broadcastNotice;
@@ -166,12 +182,19 @@ internal sealed class ChatPump : IDisposable
                 }
 
                 var decision = DecideWake(
-                    _inbox.HasPending, _isTurnRunning(), _hasWatchers(), _consecutiveAutoWakes, SelfFeedingCap);
+                    _inbox.HasPending, _isTurnRunning(), _hasWatchers(), _consecutiveAutoWakes, SelfFeedingCap,
+                    _autoWakeSuppressed());
 
                 switch (decision)
                 {
                     case WakeDecision.NothingPending:
                     case WakeDecision.NoWatchers:
+                        return;
+
+                    case WakeDecision.Suppressed:
+                        // Go quiet, not re-arm: Stop's whole point is that the pump does not keep
+                        // trying. The pending item stays queued (ADR §2.4, the inbox is never cleared)
+                        // and rides the next human turn, which also clears the suppression.
                         return;
 
                     case WakeDecision.TurnAlreadyRunning:

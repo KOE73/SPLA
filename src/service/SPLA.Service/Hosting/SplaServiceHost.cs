@@ -582,6 +582,7 @@ public sealed class SplaServiceHost
                     hasWatchers: () => hub.HasWatchers(chat.ChatId),
                     isTurnRunning: () => chat.IsTurnRunning,
                     humanTurnCount: () => chat.HumanTurnCount,
+                    autoWakeSuppressed: () => chat.AutoWakeSuppressed,
                     // text: null — a woken turn adds no message of its own; its content is whatever
                     // DrainInbox picks up at the top of the orchestrator's loop.
                     runTurn: ct => new ChatTurnDriver(

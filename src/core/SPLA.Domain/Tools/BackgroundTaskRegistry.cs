@@ -144,4 +144,25 @@ public sealed class BackgroundTaskRegistry
     /// <summary>Drops a finished task's record so <see cref="All"/> does not grow for the life of the
     /// chat. Never called on a running task — cancel it first.</summary>
     public void Forget(string id) => _tasks.TryRemove(id, out _);
+
+    /// <summary>
+    /// Cancels every currently-running task and returns what it actually cancelled — the caller (Stop,
+    /// PLAN_20260825 wave C) has to be able to say what it stopped, not just that it stopped something.
+    /// <para>
+    /// Unlike <see cref="Cancel"/>'s single-id boolean, this snapshots <see cref="BackgroundTaskState.Running"/>
+    /// tasks before signalling any of them: a task's own completion can race this call and flip its
+    /// state between the check and the signal, and the returned list must reflect what was true at the
+    /// moment cancellation was requested, not a half-updated view a concurrent Finish() left behind.
+    /// </para>
+    /// </summary>
+    public IReadOnlyList<BackgroundTaskRecord> CancelAll()
+    {
+        // Oldest first — same ordering as All, so a report built from this list ("stopped bg_1, bg_2")
+        // reads in the order the tasks were started rather than whatever the concurrent dictionary's
+        // internal bucket order happens to be.
+        var running = _tasks.Values.Where(t => t.State == BackgroundTaskState.Running)
+            .OrderBy(t => t.StartedAt).ToList();
+        foreach (var record in running) record.Cts.Cancel();
+        return running;
+    }
 }
