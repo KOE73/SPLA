@@ -81,3 +81,18 @@ sentences are what `current-list.md` is built from, which is why they have to st
   it clears only that prefix from its node map on the next turn, not every node it's holding, so a
   background task's tree stays on screen across a turn boundary instead of vanishing and
   reappearing from nothing.
+
+---
+
+## 2026-08-25
+
+- **`v0.2.4`'s release notes were wrong, and are now corrected in the repository.** The merge that
+  reconciled `work` with `origin/work` resolved a conflict in `CHANGELOGS/` in favour of `main` —
+  i.e. in favour of the files already emptied by the `v0.2.3` freeze — which silently dropped the
+  log's 2026-08-19..21 entries before `v0.2.4` was squashed from that state. The published summary
+  claimed to cover 2026-08-21 over a log that in fact stopped on the 18th, and `v0.2.4` was never
+  frozen into `CHANGELOGS/` at all — the working files kept claiming to cover work since `v0.2.3`
+  after `v0.2.4` had already shipped. `CHANGELOGS/v0.2.4.md` now exists, built from what the release
+  actually contained (up to commit `d671ab9`, before the bad merge), and the working files carry only
+  what has landed since. The GitHub release page itself was left as published — this fixes the
+  repository's own record, not history.

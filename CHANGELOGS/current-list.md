@@ -29,3 +29,5 @@ repository and is linked from it.
 - A shell command that asks a question (`Overwrite? [y/N]`, credentials, `Do you want to continue?`)
   no longer hangs forever: the run comes back with the question, a session id and
   `Status: waiting_for_input`, and `system_resume_shell` / `system_kill_shell` answer it or end it.
+
+- `v0.2.4`'s release notes were wrong, and are now corrected in the repository.
