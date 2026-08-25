@@ -1,4 +1,9 @@
 import { DiagramCanvas, type Selection } from "../canvas/DiagramCanvas.js";
+import {
+  CenterPortAssigner,
+  DiscretePortAssigner,
+  UniformPortAssigner,
+} from "../canvas/ports/assigners.js";
 import { DiagramDocument } from "../model/document.js";
 import { parseDocument, serializeDocument } from "../model/wire.js";
 import type { WireDocument } from "../model/wire-types.js";
@@ -24,6 +29,9 @@ export interface DiagramEditorOptions {
   store?: ModelStore;
 }
 
+/** How long a text field must be quiet before its edits become a history step. */
+const FIELD_EDIT_QUIET_MS = 600;
+
 type Slot =
   | "canvas" | "views" | "catalog" | "custom-catalog" | "custom-catalog-section"
   | "inspector-badge" | "inspector-body" | "title" | "dirty" | "zoom"
@@ -48,6 +56,10 @@ export class DiagramEditor implements InspectorHost {
   private catalog: readonly CatalogEntry[];
   private currentEntry: CatalogEntry | null = null;
   private dirty = false;
+
+  /** State before the current burst of typing, held until the burst settles. */
+  private fieldEditSnapshot: string | null = null;
+  private fieldEditTimer: number | null = null;
 
   constructor(root: HTMLElement, options: DiagramEditorOptions = {}) {
     this.root = root;
@@ -87,11 +99,15 @@ export class DiagramEditor implements InspectorHost {
 
   private bindCanvas(): void {
     this.canvas.events.on("select", (selection) => {
+      // Moving on commits whatever was being typed, so the step belongs to the
+      // element it was typed into.
+      this.flushFieldEdit();
       this.inspector.render(selection);
       this.syncToolbar(selection);
     });
 
     this.canvas.events.on("gesturestart", () => {
+      this.flushFieldEdit();
       this.history.begin(this.snapshot());
     });
 
@@ -126,10 +142,14 @@ export class DiagramEditor implements InspectorHost {
 
     this.root.addEventListener("change", (e) => {
       const target = e.target;
-      if (!(target instanceof HTMLInputElement)) return;
-      const toggle = target.dataset.toggle;
-      if (toggle === undefined) return;
-      this.applyToggle(toggle, target.checked);
+      if (target instanceof HTMLInputElement) {
+        const toggle = target.dataset.toggle;
+        if (toggle !== undefined) this.applyToggle(toggle, target.checked);
+        return;
+      }
+      if (target instanceof HTMLSelectElement && target.dataset.select === "ports") {
+        this.applyPortAssigner(target.value);
+      }
     });
   }
 
@@ -167,6 +187,31 @@ export class DiagramEditor implements InspectorHost {
         this.canvas.containerDrag = on;
         return;
       default:
+        return;
+    }
+  }
+
+  /**
+   * Swap how edge ends are placed along a side.
+   *
+   * "center" is the default and reproduces the original renderer: every end
+   * sits in the middle of the facing side, so several edges between the same
+   * pair overlap. The others spread them out, ordering both ends by the same
+   * key so the lines stay parallel instead of crossing.
+   *
+   * Nothing is stored in the model — placement is a pure function of it, which
+   * is why this can be switched freely and why the JSON never learns about it.
+   */
+  private applyPortAssigner(id: string): void {
+    switch (id) {
+      case "uniform":
+        this.canvas.setPortAssigner(new UniformPortAssigner());
+        return;
+      case "discrete":
+        this.canvas.setPortAssigner(new DiscretePortAssigner());
+        return;
+      default:
+        this.canvas.setPortAssigner(new CenterPortAssigner());
         return;
     }
   }
@@ -253,6 +298,11 @@ export class DiagramEditor implements InspectorHost {
   }
 
   private loadWire(wire: WireDocument, title: string): void {
+    // Anything half-typed belongs to the model being replaced, not the new one.
+    if (this.fieldEditTimer !== null) window.clearTimeout(this.fieldEditTimer);
+    this.fieldEditTimer = null;
+    this.fieldEditSnapshot = null;
+
     const doc = parseDocument(wire);
     this.canvas.setModel(doc);
     this.history.reset(this.snapshot());
@@ -480,18 +530,52 @@ export class DiagramEditor implements InspectorHost {
   /**
    * Apply an inspector field edit.
    *
-   * D-02: text edits mark the document dirty but do not commit a history step,
-   * so undo skips past them. Preserved for now because pass 1 freezes
-   * behaviour; the fix belongs here and nowhere else.
+   * Typing produces one history step per burst, not one per keystroke: the
+   * state before the first change is held, and committed once the field has
+   * been quiet for a moment or something else needs the history. Before this,
+   * text edits mutated the model without recording anything, so undo jumped
+   * straight past them and silently discarded the typing (D-02).
    */
   editField(apply: () => void, options: { rerender?: boolean; reselect?: boolean } = {}): void {
+    if (this.fieldEditSnapshot === null) {
+      this.fieldEditSnapshot = this.snapshot();
+    }
+
     apply();
     this.markDirty();
     if (options.rerender === true) this.canvas.render();
     if (options.reselect === true) this.inspector.render(this.canvas.selected);
+
+    if (this.fieldEditTimer !== null) window.clearTimeout(this.fieldEditTimer);
+    this.fieldEditTimer = window.setTimeout(() => this.flushFieldEdit(), FIELD_EDIT_QUIET_MS);
+  }
+
+  /**
+   * Turn a burst of typing into one history step.
+   *
+   * Called whenever something else is about to touch the history, so that a
+   * half-finished edit can never end up straddling another action.
+   */
+  private flushFieldEdit(): void {
+    if (this.fieldEditTimer !== null) {
+      window.clearTimeout(this.fieldEditTimer);
+      this.fieldEditTimer = null;
+    }
+    const before = this.fieldEditSnapshot;
+    this.fieldEditSnapshot = null;
+    if (before === null) return;
+
+    const now = this.snapshot();
+    if (before === now) return;
+
+    // Seed the stack with the pre-edit state when this is the first change
+    // after a load, so undo has somewhere to go back to.
+    this.history.begin(before);
+    if (this.history.end(now)) this.syncToolbar(this.canvas.selected);
   }
 
   private commit(reason: string): void {
+    this.flushFieldEdit();
     this.canvas.notifyModelChanged(reason);
     this.history.push(this.snapshot());
     this.markDirty();
@@ -499,11 +583,13 @@ export class DiagramEditor implements InspectorHost {
   }
 
   private undo(): void {
+    this.flushFieldEdit();
     const snapshot = this.history.undo();
     if (snapshot !== null) this.restore(snapshot);
   }
 
   private redo(): void {
+    this.flushFieldEdit();
     const snapshot = this.history.redo();
     if (snapshot !== null) this.restore(snapshot);
   }
@@ -511,6 +597,7 @@ export class DiagramEditor implements InspectorHost {
   // ------------------------------------------------------------------- i/o
 
   private async save(): Promise<void> {
+    this.flushFieldEdit();
     const doc = this.canvas.model;
     if (doc === null) return;
     if (this.currentEntry === null) {

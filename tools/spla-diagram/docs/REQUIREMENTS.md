@@ -751,10 +751,13 @@ DOM nodes, inline handlers are gone, the catalog is fetched from
 XML attribute escaping was added to the Draw.io export at the same time, since
 it was the same defect class as D-03 in a different output.
 
-**Deliberately still broken**, to be fixed in pass 2: D-02 (inspector text edits
-bypass history), D-08 (escaped newline), D-09 (no-op tooltip). D-05 (stale
-selection after edge delete) was fixed because the new deletion path had to make
-an explicit choice either way.
+D-05 (stale selection after edge delete) was fixed because the new deletion path
+had to make an explicit choice either way. D-08 and D-09 had no expression in
+the new code either — the message is a template literal and no tooltip is
+assigned to an SVG element.
+
+**Every defect in section 16 is now closed.** D-02 was the only one that needed
+a deliberate second pass; see R-HIST-10.
 
 ### Structure
 
@@ -824,6 +827,28 @@ outlined with a dashed border. Dragging one maps every element from the old box
 into the new one, scaling positions and sizes proportionally — the arrangement
 is stretched, not re-laid-out. Containers carry their contents through the
 scale.
+
+### R-HIST-10 — Typing is one history step (closes D-02)
+
+An inspector text edit holds the state from before the first keystroke and
+commits it once the field has been quiet for 600 ms, or sooner if anything else
+needs the history — a selection change, a gesture, a save, an undo, or loading
+another model. Five keystrokes produce one undo step, not five and not none.
+
+### R-REND-16 — Edge attachment is swappable
+
+Three placements ship, chosen from the toolbar and never stored in the model:
+
+| mode | behaviour |
+| --- | --- |
+| `center` (default) | every end at the middle of the facing side — the original behaviour, and several edges between one pair overlap exactly |
+| `uniform` | ends sharing a side spread evenly along it |
+| `discrete` | ends sit on a fixed grid along the side, group centred |
+
+The distributing modes order both ends of an edge by the same key — position of
+the opposite endpoint, then type, then id — so lines stay parallel rather than
+crossing. Placement is a pure function of the model, which is why no anchor
+field exists in the JSON and why switching modes is free.
 
 ### R-CRUD-08 — Delete removes the whole selection
 

@@ -4,7 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>SPLA Diagram — Visualizer &amp; Editor</title>
-    <script type="module" crossorigin src="./assets/index-TZecQn7a.js"></script>
+    <script type="module" crossorigin src="./assets/index-mIVAKGwj.js"></script>
     <link rel="stylesheet" crossorigin href="./assets/index-CeQ86FnJ.css">
   </head>
   <body>
@@ -31,6 +31,15 @@
           <label class="check" title="Перемещать вложенные элементы вместе с зоной">
             <input type="checkbox" data-toggle="container-drag" checked />
             <span>📦 Зона-контейнер</span>
+          </label>
+
+          <label class="check" title="Как связи причаливают к сторонам блоков">
+            <span>Причаливание</span>
+            <select data-select="ports">
+              <option value="center">в центр стороны</option>
+              <option value="uniform">равномерно</option>
+              <option value="discrete">по сетке</option>
+            </select>
           </label>
 
           <div class="toolbar-group">
