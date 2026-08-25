@@ -1,6 +1,25 @@
 ﻿using SPLA.Domain.Host;
+using SPLA.Domain.Tools;
 
 namespace SPLA.Domain.Agent;
+
+/// <summary>
+/// What a chat offers a call that wants to detach from its turn — see
+/// <c>docs/adr/ADR_20260824-2_core_background-tool-calls.md</c>.
+/// <para>
+/// A capability, not a given: only <c>ChatRuntime</c> implements this today. A spawned sub-agent's
+/// <see cref="AgentSession"/> leaves <see cref="IAgentSession.Background"/> null on purpose — its
+/// run has no chat to deliver a detached result to and no boundary between calls, so a call asking
+/// to background there degrades to running in place rather than launching into a void nothing reads.
+/// See ADR §4 open question 1 / plan pitfall 12: "фон — способность хоста".
+/// </para>
+/// </summary>
+public interface IBackgroundTaskHost
+{
+    BackgroundTaskRegistry Tasks { get; }
+    ProgressHub Progress { get; }
+    ChatInbox Inbox { get; }
+}
 
 /// <summary>
 /// The per-chat agent state that tools resolve at execution time: working memory, the
@@ -34,6 +53,9 @@ public interface IAgentSession
     /// by arrivals from the open web and never lowered by anything automatic — see
     /// <see cref="Security.ChatDoubt"/>.</summary>
     Security.ChatDoubt Doubt { get; }
+
+    /// <summary>Null when this session cannot host a detached call — see <see cref="IBackgroundTaskHost"/>.</summary>
+    IBackgroundTaskHost? Background { get; }
 }
 
 /// <summary>Plain bundle of the per-chat agent dependencies. Used by the UI chat VM and by
@@ -42,7 +64,8 @@ public sealed class AgentSession : IAgentSession
 {
     public AgentSession(IKeyValueStore sessionKv, MarkManager checkpoint, ISkillSession skills,
         IBlobStore? blobs = null, ISandbox? sandbox = null,
-        IToolSetSession? toolSets = null, Security.ChatDoubt? doubt = null)
+        IToolSetSession? toolSets = null, Security.ChatDoubt? doubt = null,
+        IBackgroundTaskHost? background = null)
     {
         Doubt = doubt ?? new Security.ChatDoubt();
         SessionKv = sessionKv;
@@ -51,6 +74,7 @@ public sealed class AgentSession : IAgentSession
         ToolSets = toolSets ?? new ToolSetSession();
         Blobs = blobs ?? new BlobStore();
         Sandbox = sandbox ?? PassthroughSandbox.Default;
+        Background = background;
     }
 
     public IKeyValueStore SessionKv { get; }
@@ -60,6 +84,7 @@ public sealed class AgentSession : IAgentSession
     public IToolSetSession ToolSets { get; }
     public ISandbox Sandbox { get; }
     public Security.ChatDoubt Doubt { get; }
+    public IBackgroundTaskHost? Background { get; }
 }
 
 /// <summary>

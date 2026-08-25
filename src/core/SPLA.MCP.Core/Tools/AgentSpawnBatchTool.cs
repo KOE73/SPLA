@@ -34,6 +34,9 @@ public sealed class AgentSpawnBatchTool : IMcpTool
             Effect = ToolEffect.Execute,
             Risk = ToolRisk.Medium,
             StrictSchema = true,
+            // A batch of sub-agent runs can take as long as the slowest task does. See
+            // PLAN_20260824-2 step 1.7.
+            SupportsBackground = true,
             Parameters = new
             {
                 type = "object",

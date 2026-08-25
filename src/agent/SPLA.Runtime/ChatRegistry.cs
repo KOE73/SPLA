@@ -6,7 +6,7 @@ namespace SPLA.Runtime;
 /// shared across every client connection, so the agent that "sits on the project" has one consistent
 /// state regardless of how many windows (or machines) are looking at it. Clients are just views.
 /// </summary>
-public sealed class ChatRegistry
+public sealed class ChatRegistry : IDisposable
 {
     private readonly AgentRuntime _runtime;
     private readonly ConcurrentDictionary<string, ChatRuntime> _open = new();
@@ -27,6 +27,14 @@ public sealed class ChatRegistry
     /// <summary>The project runtime these chats belong to.</summary>
     public AgentRuntime Runtime => _runtime;
 
+    /// <summary>
+    /// Fires exactly once per <see cref="ChatRuntime"/>, the moment it is constructed — never on a
+    /// cache hit. This is the one place that can wire something to a chat's whole life rather than to
+    /// one turn or one connection: a per-chat progress subscription (live delivery of a background
+    /// task's ticks, not just its final result) is the reason this exists.
+    /// </summary>
+    public event Action<ChatRuntime>? RuntimeOpened;
+
     /// <summary>Opens (or returns the already-open) runtime for an existing chat; null if not found.</summary>
     public ChatRuntime? GetOrOpen(string chatId)
     {
@@ -35,7 +43,10 @@ public sealed class ChatRegistry
         var session = _runtime.ChatManager.LoadChat(chatId);
         if (session == null) return null;
 
-        return _open.GetOrAdd(chatId, _ => new ChatRuntime(_runtime, session));
+        var created = false;
+        var runtime = _open.GetOrAdd(chatId, _ => { created = true; return new ChatRuntime(_runtime, session); });
+        if (created) RuntimeOpened?.Invoke(runtime);
+        return runtime;
     }
 
     /// <summary>Creates a new chat, opens its runtime, and returns it.</summary>
@@ -44,6 +55,7 @@ public sealed class ChatRegistry
         var session = _runtime.ChatManager.CreateNewChat(title);
         var runtime = new ChatRuntime(_runtime, session);
         _open[session.Id] = runtime;
+        RuntimeOpened?.Invoke(runtime);
         return runtime;
     }
 
@@ -85,6 +97,7 @@ public sealed class ChatRegistry
 
         var runtime = new ChatRuntime(_runtime, copy);
         _open[copy.Id] = runtime;
+        RuntimeOpened?.Invoke(runtime);
         return runtime;
     }
 
@@ -95,11 +108,24 @@ public sealed class ChatRegistry
         if (_open.TryGetValue(chatId, out var open)) open.Session.Title = title;
     }
 
-    /// <summary>Deletes a chat from disk and drops any open runtime.</summary>
+    /// <summary>Deletes a chat from disk and closes any open runtime.</summary>
     public void Delete(string chatId)
     {
         _runtime.ChatManager.DeleteChat(chatId);
-        _open.TryRemove(chatId, out _);
+        // Dropping the runtime out of the dictionary ends nothing that it holds open — that is the
+        // whole shape of the observed leak: no chat, and its shell session still running.
+        if (_open.TryRemove(chatId, out var closed)) closed.Dispose();
+    }
+
+    /// <summary>
+    /// Closes every open chat. Called when the host stops, so that a shutdown does not leave live
+    /// child processes behind for the OS to reap — or not.
+    /// </summary>
+    public void Dispose()
+    {
+        foreach (var chatId in _open.Keys.ToList())
+            if (_open.TryRemove(chatId, out var open))
+                open.Dispose();
     }
 
     /// <summary>The already-open runtime for a chat, or null — never loads from disk. For callers that

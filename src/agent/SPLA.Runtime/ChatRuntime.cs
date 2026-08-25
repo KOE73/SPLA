@@ -21,9 +21,54 @@ namespace SPLA.Runtime;
 /// its run, so tool calls from concurrent chats never collide.
 /// </para>
 /// </summary>
-public sealed class ChatRuntime
+public sealed class ChatRuntime : IDisposable, SPLA.Domain.Agent.IBackgroundTaskHost
 {
     private readonly AgentRuntime _runtime;
+
+    /// <summary>This chat's own boundary — the project's workspace and gate, its own shell. Owned,
+    /// and therefore ended in <see cref="Dispose"/>.</summary>
+    private readonly SPLA.Domain.Host.ISandbox _sandbox;
+
+    private int _disposed;
+
+    /// <summary>Cancelled exactly once, in <see cref="Dispose"/>. Every background task's own
+    /// cancellation source (see <see cref="BackgroundTaskRegistry"/>) is linked to this token, which
+    /// is what lets closing the chat end every live task without the registry having to be told to
+    /// walk its own list — the same "one cancel, whole chat" property <see cref="_sandbox"/> gets
+    /// from owning its own shell.</summary>
+    private readonly CancellationTokenSource _chatLifetime = new();
+
+    /// <summary>
+    /// Every progress root live in this chat, turn or background task alike. Populated in
+    /// <see cref="SendAsync"/> by registering the turn's own tree the moment the orchestrator hands
+    /// it out — additive to whatever <c>OnProgressTree</c> the caller supplied, so a caller that
+    /// never looks at this still gets exactly the behaviour it had before.
+    /// </summary>
+    public SPLA.Domain.Tools.ProgressHub Progress { get; } = new();
+
+    /// <summary>What this chat has queued for delivery with no turn of its own to arrive on — see
+    /// <see cref="SPLA.Domain.Tools.ChatInbox"/>. Drained at the top of every loop iteration inside
+    /// <see cref="SendAsync"/>; fed by a background task's completion (<see cref="DeliverBackgroundResult"/>).</summary>
+    public SPLA.Domain.Tools.ChatInbox Inbox { get; } = new();
+
+    /// <summary>This chat's live and recently-finished detached calls. Reachable from inside a
+    /// running tool call only through <see cref="SPLA.Domain.Agent.AgentSessionScope.Current"/>'s
+    /// <see cref="SPLA.Domain.Agent.IAgentSession.Background"/> — <c>ChatRuntime</c> implements
+    /// <see cref="SPLA.Domain.Agent.IBackgroundTaskHost"/> itself and is handed to its own
+    /// <see cref="AgentSession"/> as that capability, so <c>BackgroundStage</c> (which knows nothing
+    /// about chats) reaches it the same ambient way it reaches everything else per-chat.</summary>
+    public SPLA.Domain.Tools.BackgroundTaskRegistry Tasks { get; }
+
+    /// <summary>
+    /// The hub id (<c>ProgressHub.Register</c>'s return) of the tree the CURRENTLY running turn is
+    /// using — set the moment the orchestrator hands the tree out, before the first LLM call of the
+    /// turn. Lets a caller (see <c>ClientConnection</c>'s <c>OnLlmTurnStart</c>) tell the client which
+    /// wire-namespaced node ids (<c>"{treeId}:{nodeId}"</c> — see <c>SplaServiceHost.WireChatProgress</c>)
+    /// belong to the turn that is starting, as opposed to a background task's own tree, which must
+    /// survive the client's per-turn reset.
+    /// </summary>
+    public string? CurrentTurnTreeId { get; private set; }
+
     private readonly ChatSession _chat;
     private readonly Conversation _conversation = new();
     private readonly KeyValueStore _sessionKv = new("session");
@@ -268,8 +313,20 @@ public sealed class ChatRuntime
         // The project's boundary, not a fresh passthrough: until now every chat got
         // PassthroughSandbox.Default and the seam ran empty in production, so a sandbox existed in
         // the type system and nowhere else.
+        //
+        // Per chat, not the runtime's own: the workspace boundary and the gate are still the
+        // project's and still shared, but the shell is this chat's. LocalShell keeps its interactive
+        // sessions in the instance, so while every chat pointed at one shell, a process started here
+        // outlived the chat that started it with nothing able to say otherwise — and the cap on live
+        // sessions was quietly shared out between chats that knew nothing of each other.
+        _sandbox = runtime.Sandbox.ForChat();
+        Tasks = new SPLA.Domain.Tools.BackgroundTaskRegistry(_chatLifetime.Token);
         _agentSession = new AgentSession(
-            _sessionKv, _checkpoint, _skillSession, sandbox: runtime.Sandbox, toolSets: _toolSetSession);
+            _sessionKv, _checkpoint, _skillSession, sandbox: _sandbox, toolSets: _toolSetSession,
+            // ChatRuntime implements IBackgroundTaskHost itself (Tasks/Progress/Inbox above) — a
+            // background call reaches all three the same ambient way it already reaches everything
+            // else per-chat, through AgentSessionScope.Current.Background.
+            background: this);
 
         // A reopened chat is as doubtful as it was when it closed. Restored rather than recomputed:
         // what raised the flag was an arrival, and arrivals do not happen again on load.
@@ -287,6 +344,7 @@ public sealed class ChatRuntime
             // mid-turn has its procedure in the prompt for the very next LLM call rather than for the
             // next user message.
             Context = runtime.ComposeContext,
+            DrainInbox = Inbox.DrainAll,
             Checkpoint = _checkpoint,
             // Anti-repeat guard is a per-project setting (agent: loop_guard, default off) — it targets
             // small local models that loop forever, but false-fires on legitimate poll/wait patterns.
@@ -346,6 +404,20 @@ public sealed class ChatRuntime
 
         try
         {
+            // Registers the turn's tree into the chat-wide hub the moment the orchestrator creates
+            // it, without disturbing whatever the caller's own OnProgressTree does with it — both
+            // fire on the same handout. A subscriber that only knows this chat's hub (a background
+            // task's future sibling) sees the turn's root alongside any other live one.
+            var callerOnProgressTree = callbacks.OnProgressTree;
+            callbacks = callbacks with
+            {
+                OnProgressTree = tree =>
+                {
+                    CurrentTurnTreeId = Progress.Register(tree);
+                    callerOnProgressTree?.Invoke(tree);
+                }
+            };
+
             var userMsg = new ChatMessage
             {
                 Role = ChatRole.User,
@@ -527,4 +599,33 @@ public sealed class ChatRuntime
     private AgentMode ResolveMode()
         => _chat.Agent?.Mode != null && Enum.TryParse<AgentMode>(_chat.Agent.Mode, true, out var m)
             ? m : _runtime.Settings.Mode;
+
+    /// <summary>
+    /// Ends everything this chat holds open. Called when the chat is deleted or the host stops.
+    /// <para>
+    /// The leak it exists to close was observed rather than imagined: a chat could be gone from the
+    /// registry while a shell session it had started was still running, because dropping the runtime
+    /// out of a dictionary ends nothing. Today the only such thing is the shell; the frame is here
+    /// because the background-task registry is about to be the second, and a chat that could not be
+    /// closed had no place to put it.
+    /// </para>
+    /// <para>Idempotent — a chat may be deleted while a client that had it open is going away too,
+    /// and neither caller should have to know about the other.</para>
+    /// </summary>
+    public void Dispose()
+    {
+        if (Interlocked.Exchange(ref _disposed, 1) != 0) return;
+
+        // Every live background task's own token is linked to this one (BackgroundTaskRegistry) —
+        // one cancel here reaches all of them without the registry having to be asked to walk its
+        // list. Before the sandbox: a running task may still be mid-shell-command, and its own
+        // cancellation is what lets it unwind instead of the shell being pulled out from under it.
+        _chatLifetime.Cancel();
+        _chatLifetime.Dispose();
+
+        // The chat's own sandbox, and with it the shell sessions this chat started. Never the
+        // runtime's: the workspace and gate inside it belong to the project and outlive every chat.
+        (_sandbox as IDisposable)?.Dispose();
+        _turnGate.Dispose();
+    }
 }

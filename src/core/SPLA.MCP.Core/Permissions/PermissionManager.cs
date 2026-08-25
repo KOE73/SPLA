@@ -1,3 +1,4 @@
+using Microsoft.Extensions.Logging;
 using SPLA.Domain.Models;
 using SPLA.Domain.Settings;
 
@@ -12,6 +13,23 @@ public interface IPermissionManager
     /// the host applying it at execution is the one that counts.
     /// </summary>
     PermissionVerdict CheckPermission(AgentMode mode, ToolFunctionDefinition toolMetadata, string argumentsJson);
+
+    /// <summary>
+    /// Whether this tool can do <i>anything at all</i> in this mode — the question disclosure asks,
+    /// which is not the question a call asks.
+    /// <para>
+    /// The two were one method, told apart by passing <c>"{}"</c> for "there are no arguments yet".
+    /// That worked only while nothing read the arguments: the moment an
+    /// <see cref="IToolArgumentPolicy"/> does, a module handed an empty object has no statement to
+    /// judge, and a denial from it would delete the tool from the model's list in every mode — a
+    /// failure that looks like "the tool vanished", not like "policy worked".
+    /// </para>
+    /// <para>
+    /// So this one never consults argument modules. It answers from mode, metadata and the project's
+    /// standing policy alone.
+    /// </para>
+    /// </summary>
+    PermissionVerdict CheckToolCeiling(AgentMode mode, ToolFunctionDefinition toolMetadata);
 }
 
 public class PermissionManager : IPermissionManager
@@ -23,11 +41,22 @@ public class PermissionManager : IPermissionManager
     /// very next tool call, the same way <see cref="ResolvedSettings.Mode"/> already does.</summary>
     private readonly ResolvedSettings? _settings;
 
+    /// <summary>Domain checks on the arguments, consulted last and only to narrow. Empty by default:
+    /// this is a seat, and every module that will sit in it arrives with its own decision.</summary>
+    private readonly List<IToolArgumentPolicy> _argumentPolicies;
+
+    private readonly ILogger? _logger;
+
     public PermissionManager(
-        IEnumerable<RememberedToolPermission>? rememberedPermissions = null, ResolvedSettings? settings = null)
+        IEnumerable<RememberedToolPermission>? rememberedPermissions = null,
+        ResolvedSettings? settings = null,
+        IEnumerable<IToolArgumentPolicy>? argumentPolicies = null,
+        ILogger? logger = null)
     {
         _rememberedPermissions = rememberedPermissions?.ToList() ?? new List<RememberedToolPermission>();
         _settings = settings;
+        _argumentPolicies = argumentPolicies?.ToList() ?? new List<IToolArgumentPolicy>();
+        _logger = logger;
     }
 
     public void Remember(RememberedToolPermission permission)
@@ -70,7 +99,75 @@ public class PermissionManager : IPermissionManager
         _ => null
     };
 
+    public PermissionVerdict CheckToolCeiling(AgentMode mode, ToolFunctionDefinition toolMetadata)
+        => Decide(mode, toolMetadata, "{}");
+
     public PermissionVerdict CheckPermission(AgentMode mode, ToolFunctionDefinition toolMetadata, string argumentsJson)
+        => Narrow(Decide(mode, toolMetadata, argumentsJson), toolMetadata, argumentsJson);
+
+    /// <summary>How much a verdict forbids. The ordering is what lets modules combine without
+    /// registration order deciding anything — the strictest wins, whoever said it.</summary>
+    private static int Severity(PermissionResult result) => result switch
+    {
+        PermissionResult.Allow => 0,
+        PermissionResult.Ask => 1,
+        _ => 2
+    };
+
+    /// <summary>
+    /// Lets the domain modules tighten the verdict — and only tighten it.
+    /// <para>
+    /// Last, after the project's standing policy and after the mode rules, because a module is the
+    /// narrowest authority and not the first: a plugin's opinion must not be able to reach past a
+    /// policy the project set. And since a module can only raise
+    /// <see cref="Severity"/>, "may only narrow" is a property of this loop rather than a rule
+    /// modules are asked to respect.
+    /// </para>
+    /// </summary>
+    private PermissionVerdict Narrow(
+        PermissionVerdict verdict, ToolFunctionDefinition toolMetadata, string argumentsJson)
+    {
+        if (_argumentPolicies.Count == 0) return verdict;
+
+        // Agent-scoped capabilities are fundamental and argument-free by nature; asking a domain
+        // module about agent_memory_get is asking a question that has no subject.
+        if (toolMetadata.Scope == ToolScope.Agent) return verdict;
+
+        // Already the strictest answer there is — nothing a module says could make it stricter, and
+        // running a parser to confirm that is work with no possible outcome.
+        if (verdict.Result == PermissionResult.Deny) return verdict;
+
+        var strictest = verdict;
+
+        foreach (var policy in _argumentPolicies)
+        {
+            PermissionVerdict? opinion;
+            try
+            {
+                if (!policy.AppliesTo(toolMetadata)) continue;
+                opinion = policy.Evaluate(toolMetadata, argumentsJson);
+            }
+            catch (Exception ex)
+            {
+                // A broken module abstains; it does not deny. Denying here would make any bug in any
+                // policy a silent way to switch a tool off, and it would present as "the tool stopped
+                // working" rather than as the fault it is.
+                _logger?.LogError(
+                    ex, "Argument policy threw and was skipped. Policy={Policy} Tool={ToolName}",
+                    policy.GetType().Name, toolMetadata.Name);
+                continue;
+            }
+
+            if (opinion is null) continue;
+
+            if (Severity(opinion.Result) > Severity(strictest.Result))
+                strictest = opinion with { Category = opinion.Category ?? verdict.Category };
+        }
+
+        return strictest;
+    }
+
+    private PermissionVerdict Decide(AgentMode mode, ToolFunctionDefinition toolMetadata, string argumentsJson)
     {
         // Agent-scoped capabilities (memory, info, datetime, context) are fundamental: always
         // allowed, in every mode, regardless of remembered rules. They never touch project/system.

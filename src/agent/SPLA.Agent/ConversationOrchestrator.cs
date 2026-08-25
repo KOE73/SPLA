@@ -91,6 +91,17 @@ public sealed class ConversationOrchestrator
     /// </summary>
     public bool NestInAmbientProgress { get; init; }
 
+    /// <summary>
+    /// Drains whatever a chat queued for delivery that has no turn of its own to arrive on — a
+    /// background task's result, first and so far only producer (plan step 1.4). Called at the very
+    /// top of the loop, before the next LLM call is assembled: the one point where inserting a
+    /// message cannot land between a <c>tool_calls</c> and its matching <c>tool_result</c>s. See
+    /// <see cref="SPLA.Domain.Tools.ChatInbox"/> for why nowhere inside a running turn will do.
+    /// <para>Null for every caller that has no inbox — <c>SpawnedAgentRunner</c>, tests, anything
+    /// that is not a chat — the same shape as <see cref="Context"/>.</para>
+    /// </summary>
+    public Func<IReadOnlyList<ChatMessage>>? DrainInbox { get; init; }
+
     public ConversationOrchestrator(ILlmGateway llm, IToolHost tools)
     {
         _llm = llm;
@@ -156,6 +167,14 @@ public sealed class ConversationOrchestrator
         while (needToCallLLM)
         {
             cancellationToken.ThrowIfCancellationRequested();
+
+            // Whatever arrived with nothing of its own to arrive on — see DrainInbox. Ahead of
+            // ContextAssembler.Assemble so it rides the very next LLM call rather than waiting an
+            // extra round trip, and never inside the tool-call handling below, where a tool_calls/
+            // tool_result pairing could be mid-flight.
+            var delivered = DrainInbox?.Invoke();
+            if (delivered is { Count: > 0 })
+                foreach (var message in delivered) conversation.Add(message);
 
             var coreMessages = ContextAssembler.Assemble(conversation.Messages);
             ApplyComposedContext(coreMessages);

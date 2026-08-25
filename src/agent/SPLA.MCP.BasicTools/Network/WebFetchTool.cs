@@ -40,6 +40,9 @@ public class WebFetchTool : IMcpTool
             Effect = ToolEffect.Read,
             Risk = ToolRisk.Low,
             StrictSchema = true,
+            // Verified live end-to-end during PLAN_20260824-2 step 1.7: a slow host is exactly the
+            // case worth not blocking a turn for.
+            SupportsBackground = true,
             Parameters = new
             {
                 type = "object",

@@ -29,7 +29,7 @@ public sealed class AgentCapabilitiesTests
         "agent_get_context", "agent_get_current_time",
         "system_list_files", "system_read_file", "system_search_text", "system_find_files",
         "system_create_file", "system_patch_file", "system_write_file", "system_delete_file", "image_view",
-        "system_run_shell",
+        "system_run_shell", "system_resume_shell", "system_kill_shell",
         "web_fetch",
         "agent_memory_set", "agent_memory_get", "agent_memory_delete", "agent_memory_list", "agent_memory_clear",
         "checkpoint_save", "context_rollback", "mark_set", "mark_rollback",
@@ -38,6 +38,7 @@ public sealed class AgentCapabilitiesTests
         "agent_spawn", "agent_spawn_batch",
         "agent_clarify",
         "blob_peek",
+        "task_list", "task_output", "task_cancel",
     };
 
     private static string TempRoot() =>

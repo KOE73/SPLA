@@ -42,6 +42,29 @@ public class ToolFunctionDefinition
     public bool ConversationBound { get; set; }
 
     /// <summary>
+    /// True when this tool may keep running after the turn that called it ends: the caller gets a
+    /// task id back immediately, and the result arrives on a later turn boundary. See
+    /// <c>docs/adr/ADR_20260824-2_core_background-tool-calls.md</c>.
+    /// <para>
+    /// Read by nobody yet — the pipeline stage that acts on it (<c>ToolPipelineStage.Background</c>)
+    /// is declared but not implemented. Declared here first, ahead of the stage, so the flag exists
+    /// on every tool's metadata (default <c>false</c>) before anything is asked to set it, the same
+    /// order <see cref="ConversationBound"/> was introduced in.
+    /// </para>
+    /// <para>
+    /// <b>The two axes are exclusive by definition, not by a rule someone has to remember:</b> a
+    /// <see cref="ConversationBound"/> call means something only inside the conversation of the head
+    /// that issued it, and a call detached from its turn has, at the moment it would report back, no
+    /// conversation left to mean anything inside — the referent a <see cref="ConversationBound"/>
+    /// tool depends on is gone. A tool that sets both is declaring a call that can outlive the one
+    /// place its result would make sense.
+    /// </para>
+    /// <para>Not serialized to every tool's schema — only a tool with this set to <c>true</c> gets
+    /// the <c>background</c> parameter added, so the common case costs nothing in every request.</para>
+    /// </summary>
+    public bool SupportsBackground { get; set; }
+
+    /// <summary>
     /// When true the serializer adds "strict": true to the function payload (OpenAI strict
     /// function calling). Only set this for tools where every parameter is either listed in
     /// <c>required</c> or declared with a nullable type — the provider enforces this contract.

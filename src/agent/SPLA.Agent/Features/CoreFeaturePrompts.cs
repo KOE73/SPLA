@@ -16,7 +16,7 @@ namespace SPLA.Agent;
 public static class CoreFeaturePrompts
 {
     /// <summary>Embedded-resource logical name per feature id. Ids absent from this map
-    /// (core.files, core.shell, core.web, core.spawn, core.clarify) are tools-only features —
+    /// (core.files, core.web, core.spawn, core.clarify) are tools-only features —
     /// <see cref="Load"/> returns null for them.</summary>
     private static readonly IReadOnlyDictionary<string, string> ResourceNames =
         new Dictionary<string, string>(StringComparer.Ordinal)
@@ -28,6 +28,8 @@ public static class CoreFeaturePrompts
             ["core.skills"] = "SPLA.Agent.Features.CoreSkills.prompt.md",
             ["core.blobs"] = "SPLA.Agent.Features.CoreBlobs.prompt.md",
             ["core.toolsets"] = "SPLA.Agent.Features.CoreToolSets.prompt.md",
+            ["core.shell"] = "SPLA.Agent.Features.CoreShell.prompt.md",
+            ["core.background_tasks"] = "SPLA.Agent.Features.CoreBackgroundTasks.prompt.md",
         };
 
     private static readonly ConcurrentDictionary<string, string?> Cache = new();

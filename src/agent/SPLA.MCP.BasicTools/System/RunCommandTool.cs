@@ -23,10 +23,21 @@ public class RunCommandTool : IMcpTool
             Name = Name,
             Description = "Executes a shell command on the host system. " +
                           "Set output='blob' to capture large stdout without flooding context.",
+            Details = "The command may come back before it has finished. If the result shows "
+                      + "'Status: waiting_for_input', the command is alive and asking you something — "
+                      + "its question is in Output. Answer it with system_resume_shell using the "
+                      + "Session id shown, or end the command with system_kill_shell. "
+                      + "'Status: running' means it is merely quiet, not asking. "
+                      + "Never re-issue a command that is still running: start it once, then drive the session.",
             Scope = ToolScope.Shell,
             Effect = ToolEffect.Execute,
             Risk = ToolRisk.High,
             StrictSchema = true,
+            // Long builds, installs and scans are exactly the "runs longer than a turn should wait"
+            // case ADR §2's criterion names — and the tool already has its own way to say "I need to
+            // ask something" (waiting_for_input), which a background run answers with an automatic
+            // refusal rather than a hang. See PLAN_20260824-2 step 1.7.
+            SupportsBackground = true,
             Parameters = new
             {
                 type = "object",
@@ -74,8 +85,13 @@ public class RunCommandTool : IMcpTool
                 new ShellCommand(cmd, string.IsNullOrEmpty(cwd) ? null : cwd, codePage),
                 cancellationToken);
 
-            var result = $"ExitCode: {run.ExitCode}\nCodePage: {codePage}\nOutput:\n{run.StandardOutput}\nError:\n{run.StandardError}";
-            var target = DataChannel.ParseTarget(ToolJson.GetStringTrimmed(doc.RootElement, "output"));
+            var result = ShellResultText.Render(run, codePage);
+
+            // An unfinished run goes to context whatever was asked: the session id and the question
+            // are the whole point of this reply, and stashing them in a blob hides both.
+            var target = run.Status == ShellStatus.Exited
+                ? DataChannel.ParseTarget(ToolJson.GetStringTrimmed(doc.RootElement, "output"))
+                : OutputTarget.Context;
             if (target == OutputTarget.Context)
                 return ToolResult.Text(result);
             var blobName = ToolJson.GetStringTrimmed(doc.RootElement, "output_name");

@@ -65,6 +65,9 @@
     <File Path="docs/adr/ADR_20260819_core_project-entry.md" />
     <File Path="docs/adr/ADR_20260819-2_core_agent-instances.md" />
     <File Path="docs/adr/ADR_20260820_apps_project-hub.md" />
+    <File Path="docs/adr/ADR_20260824-2_core_background-tool-calls.md" />
+    <File Path="docs/adr/ADR_20260824-3_core_tool-call-pipeline.md" />
+    <File Path="docs/adr/ADR_20260824_core_interactive-shell.md" />
     <File Path="docs/adr/ADR_20260824_plugins_document-context.md" />
   </Folder>
   <Folder Name="/docs/plans/">
@@ -90,7 +93,11 @@
     <File Path="docs/plans/PLAN_20260820_apps_project-hub.md" />
     <File Path="docs/plans/PLAN_20260820-2_agent_subagent-feedback.md" />
     <File Path="docs/plans/PLAN_20260820_core_unified-uri-resources.md" />
+    <File Path="docs/plans/PLAN_20260824-2_core_background-tool-calls.md" />
+    <File Path="docs/plans/PLAN_20260824-3_core_tool-call-pipeline.md" />
+    <File Path="docs/plans/PLAN_20260824_core_interactive-shell.md" />
     <File Path="docs/plans/PLAN_20260824_plugins_document-context.md" />
+    <File Path="docs/plans/HANDOFF_20260825_background-tasks-wave1.md" />
   </Folder>
   <Folder Name="/docs/ideas/">
     <File Path="docs/ideas/IDEA_20260611_core_todo-general.md" />
@@ -114,6 +121,12 @@
     <File Path="docs/ideas/IDEA_20260820_agent_subagent-feedback-mcp-hub.md" />
     <File Path="docs/ideas/IDEA_20260820-2_service_mcp-resources.md" />
     <File Path="docs/ideas/IDEA_20260820-3_core_unified-uri-tools.md" />
+    <File Path="docs/ideas/IDEA_20260824-2_core_tool-policy-middleware.md" />
+    <File Path="docs/ideas/IDEA_20260824-3_core_opentelemetry.md" />
+    <File Path="docs/ideas/IDEA_20260824-4_core_token-budget-gateway.md" />
+    <File Path="docs/ideas/IDEA_20260824-5_core_session-unification.md" />
+    <File Path="docs/ideas/IDEA_20260824-6_agent_subagent-profiles.md" />
+    <File Path="docs/ideas/IDEA_20260824-7_core_leftovers-lower-priority.md" />
     <File Path="docs/ideas/IDEA_20260824_plugins_document-context.md" />
   </Folder>
   <Folder Name="/src/core/">

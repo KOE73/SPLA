@@ -19,6 +19,14 @@ public sealed class ToolPipelineBlueprint
 {
     private readonly List<IToolMiddleware> _links = new();
 
+    /// <summary>
+    /// What was declared, in the order it will be folded. Exposed so that the composition can be
+    /// asserted rather than trusted: without it a test can only check fakes it registered itself, and
+    /// the one arrangement that actually matters — the chain the host builds — stays unverified. A
+    /// debug view of "which links are standing" reads the same list.
+    /// </summary>
+    public IReadOnlyList<IToolMiddleware> Links => _links.OrderBy(l => l.Stage).ToList();
+
     public ToolPipelineBlueprint Use(IToolMiddleware link)
     {
         ArgumentNullException.ThrowIfNull(link);

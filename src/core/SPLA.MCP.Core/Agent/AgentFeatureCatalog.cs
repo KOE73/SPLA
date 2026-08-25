@@ -28,6 +28,7 @@ public static class AgentFeatureCatalog
         "core.spawn",
         "core.clarify",
         "core.blobs",
+        "core.background_tasks",
     };
 
     private static readonly Dictionary<string, string[]> RequiresMap = new(System.StringComparer.Ordinal)
@@ -47,7 +48,7 @@ public static class AgentFeatureCatalog
         ["core.workspace"] = "Tells the agent about the project and the current date and time.\nget_context get_current_date_time",
         ["core.discipline"] = "Ground rules for how the agent behaves. No tools of its own.",
         ["core.files"] = "Read, search, and change files on disk.\nfs_list fs_read fs_search_text fs_find_files fs_create fs_patch fs_write fs_delete image_view",
-        ["core.shell"] = "Run a shell command.\nrun_command",
+        ["core.shell"] = "Run a shell command, and answer it if it asks something.\nsystem_run_shell system_resume_shell system_kill_shell",
         ["core.web"] = "Fetch a web page.\nweb_fetch",
         ["core.memory"] = "Save, read, list, and delete small pieces of memory for this project.\nagent_memory_set agent_memory_get agent_memory_delete agent_memory_list agent_memory_clear",
         ["core.checkpoints"] = "Save and restore a point in the conversation to go back to.\ncontext_checkpoint_set context_checkpoint_restore mark_set mark_rollback",
@@ -56,6 +57,7 @@ public static class AgentFeatureCatalog
         ["core.spawn"] = "Start one or many sub-agents to do a task.\nagent_spawn agent_spawn_batch",
         ["core.clarify"] = "Ask the user a question and wait for the answer.\nagent_clarify",
         ["core.blobs"] = "Look at a piece of data stored outside the chat.\nblob_peek",
+        ["core.background_tasks"] = "See, read, and cancel calls running detached from the turn (background: true).\ntask_list task_output task_cancel",
     };
 
     /// <summary>Human-readable blurb for a feature id, or null if none is defined.</summary>

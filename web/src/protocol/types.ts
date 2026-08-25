@@ -652,7 +652,10 @@ export interface ServerEvents {
   "token.usage": { promptTokens?: number; completionTokens?: number; contextLength?: number };
   "delta": { msgIndex: number; text: string };
   "reasoning": { msgIndex: number; text: string };
-  "llm.turn.start": { msgIndex: number };
+  /** progressTreeId: the wire treeId prefix (see chatSessions.ts) of THIS turn's own progress
+   *  nodes — used to sweep only the previous turn's nodes on the next boundary, never a background
+   *  task's tree, which carries a different prefix and keeps updating across turns. */
+  "llm.turn.start": { msgIndex: number; progressTreeId?: string | null };
   /** A generation the repetition guard abandoned mid-stream — never sent for the successful attempt.
    *  Carries the abandoned content/reasoning so a reader can open it, not just the streamed text that
    *  was already visible before the guard cut it off. */

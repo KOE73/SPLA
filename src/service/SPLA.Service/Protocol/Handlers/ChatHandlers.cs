@@ -16,6 +16,7 @@ internal sealed class ChatHandlers : IMessageHandler
         MessageTypes.ChatRewind, MessageTypes.ChatFork,
         MessageTypes.ChatSkillActivate, MessageTypes.ChatSkillDeactivate,
         MessageTypes.ChatToolSetDeactivate, MessageTypes.ChatDoubtClear,
+        MessageTypes.TaskList, MessageTypes.TaskState, MessageTypes.TaskCancel,
     ];
 
     public Task HandleAsync(RequestContext ctx) => ctx.Env.Type switch
@@ -36,6 +37,9 @@ internal sealed class ChatHandlers : IMessageHandler
         MessageTypes.ChatSkillDeactivate => SkillDeactivate(ctx),
         MessageTypes.ChatToolSetDeactivate => ToolSetDeactivate(ctx),
         MessageTypes.ChatDoubtClear => DoubtClear(ctx),
+        MessageTypes.TaskList  => TaskList(ctx),
+        MessageTypes.TaskState => TaskState(ctx),
+        MessageTypes.TaskCancel => TaskCancel(ctx),
         _ => Task.CompletedTask
     };
 
@@ -323,6 +327,62 @@ internal sealed class ChatHandlers : IMessageHandler
             .Where(dto => dto.Disclosed || dto.Level == ToolSetRegistry.Format(ToolSetLevel.AgentDemand))
             .ToList();
     }
+
+    /// <summary>
+    /// Answers from the chat's real <c>BackgroundTaskRegistry</c> (plan step 1.1) — wired ahead of it
+    /// in step 0.7 so a client could build a task panel before there was anything to show; this is the
+    /// day-one read that comment promised, no second protocol round trip.
+    /// </summary>
+    private static Task TaskList(RequestContext ctx)
+    {
+        var (entry, _) = ctx.Session.Resolve(ctx.Env);
+        var p = ctx.Payload<TaskListPayload>();
+        var chat = p != null ? entry.Chats.GetOrOpen(p.ChatId) : null;
+        var tasks = chat?.Tasks.All.Select(ToSummary).ToList() ?? new List<TaskSummaryDto>();
+
+        return ctx.Reply(MessageTypes.TaskListResult,
+            new TaskListResult { ChatId = p?.ChatId ?? string.Empty, Tasks = tasks });
+    }
+
+    private static Task TaskState(RequestContext ctx)
+    {
+        var (entry, _) = ctx.Session.Resolve(ctx.Env);
+        var p = ctx.Payload<TaskStatePayload>();
+        var chat = p != null ? entry.Chats.GetOrOpen(p.ChatId) : null;
+
+        // No task with that id — not an error. A task that raced past its own completion between
+        // list and state, or was never real, gets the same honest answer: nothing to show.
+        if (chat == null || p == null || !chat.Tasks.TryGet(p.TaskId, out var record))
+            return ctx.Reply(MessageTypes.TaskStateResult,
+                new TaskStateResult { ChatId = p?.ChatId ?? string.Empty, Task = null, Result = null });
+
+        return ctx.Reply(MessageTypes.TaskStateResult, new TaskStateResult
+        {
+            ChatId = p.ChatId,
+            Task = ToSummary(record),
+            Result = record.State == SPLA.Domain.Tools.BackgroundTaskState.Running ? null : record.Result?.TextContent
+        });
+    }
+
+    private static Task TaskCancel(RequestContext ctx)
+    {
+        var (entry, _) = ctx.Session.Resolve(ctx.Env);
+        var p = ctx.Payload<TaskCancelPayload>();
+        var chat = p != null ? entry.Chats.GetOrOpen(p.ChatId) : null;
+
+        // No reply, matching task.cancel's documented shape: cancelling is observed through the next
+        // task.list/task.state a client asks for, not echoed back on this round trip.
+        chat?.Tasks.Cancel(p!.TaskId);
+        return Task.CompletedTask;
+    }
+
+    private static TaskSummaryDto ToSummary(SPLA.Domain.Tools.BackgroundTaskRecord record) => new()
+    {
+        TaskId = record.Id,
+        ToolName = record.ToolName,
+        State = record.State.ToString(),
+        StartedAt = record.StartedAt.ToString("o")
+    };
 
     private static Task BroadcastChatList(RequestContext ctx, string projectId, ChatRegistry chats)
         => ctx.Session.Hub.BroadcastToProjectAsync(projectId, MessageTypes.ChatListResult,

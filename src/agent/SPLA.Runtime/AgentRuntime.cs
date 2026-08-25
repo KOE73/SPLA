@@ -372,7 +372,9 @@ public sealed class AgentRuntime : IDisposable
                 new FsDeleteTool(),
                 new SPLA.MCP.Core.Tools.ImageViewTool(FormatConverterRegistry.For(settings))),
             Feature("core.shell",
-                new RunCommandTool()),
+                new RunCommandTool(),
+                new ResumeShellTool(),
+                new KillShellTool()),
             Feature("core.web",
                 new SPLA.MCP.BasicTools.Network.WebFetchTool(settings.IsTrustedDomain)),
             Feature("core.memory",
@@ -401,6 +403,10 @@ public sealed class AgentRuntime : IDisposable
                 new SPLA.MCP.Core.Tools.AgentClarifyTool()),
             Feature("core.blobs",
                 new SPLA.MCP.Core.Tools.BlobPeekTool()),
+            Feature("core.background_tasks",
+                new SPLA.MCP.Core.Tools.TaskListTool(),
+                new SPLA.MCP.Core.Tools.TaskOutputTool(),
+                new SPLA.MCP.Core.Tools.TaskCancelTool()),
         };
 
         var enabledIds = AgentFeatureCatalog.Resolve(settings.Capabilities, loggerFactory.CreateLogger("SPLA.Agent.Capabilities"));

@@ -955,6 +955,16 @@ public sealed class DeltaPayload
 {
     public int MsgIndex { get; set; }
     public string Text { get; set; } = string.Empty;
+
+    /// <summary>
+    /// Set only on <c>llm.turn.start</c> (null on plain <c>delta</c> frames, where it means
+    /// nothing): the wire-namespaced prefix (see <c>SplaServiceHost.WireChatProgress</c>) of the
+    /// progress-tree nodes that belong to the turn that is starting. The client resets its node map
+    /// on a new turn boundary, and needs this to know which nodes are the old turn's own — and,
+    /// crucially, which are NOT: a background task's tree carries a different prefix and must
+    /// survive the reset the way its still-arriving <c>progress.node</c> updates already assume.
+    /// </summary>
+    public string? ProgressTreeId { get; set; }
 }
 
 public sealed class ReasoningPayload
@@ -1207,6 +1217,57 @@ public sealed class ChatToolSetStatePayload
 {
     public string ChatId { get; set; } = string.Empty;
     public List<ToolSetStateDto> Sets { get; set; } = new();
+}
+
+// ── Background tasks ─────────────────────────────────────────────────────
+// See docs/adr/ADR_20260824-2_core_background-tool-calls.md. The shapes below exist ahead of the
+// registry that fills them (plan step 0.7) so a client can render an always-empty panel today and
+// only wire it up when wave 1 makes tasks real, instead of shipping a second protocol change later.
+
+public sealed class TaskListPayload
+{
+    public string ChatId { get; set; } = string.Empty;
+}
+
+/// <summary>One background task as a client needs it for a panel row: enough to show and to ask
+/// <see cref="TaskState"/>/<see cref="TaskCancel"/> about, never the tool's raw arguments in full —
+/// those may be long, and a summary is what a row has room for.</summary>
+public sealed class TaskSummaryDto
+{
+    public string TaskId { get; set; } = string.Empty;
+    public string ToolName { get; set; } = string.Empty;
+    /// <summary>"Running" / "Completed" / "Failed" / "Cancelled" — mirrors the task's own state enum
+    /// by name, not by a second vocabulary the client would have to keep in sync with the server's.</summary>
+    public string State { get; set; } = string.Empty;
+    public string StartedAt { get; set; } = string.Empty;
+}
+
+public sealed class TaskListResult
+{
+    public string ChatId { get; set; } = string.Empty;
+    public List<TaskSummaryDto> Tasks { get; set; } = new();
+}
+
+public sealed class TaskStatePayload
+{
+    public string ChatId { get; set; } = string.Empty;
+    public string TaskId { get; set; } = string.Empty;
+}
+
+/// <summary>A finished task's result rides the same shape a live <see cref="TaskListResult"/> row
+/// does, plus the text a completed task produced — null while <see cref="TaskSummaryDto.State"/> is
+/// still "Running", where there is nothing finished to show yet.</summary>
+public sealed class TaskStateResult
+{
+    public string ChatId { get; set; } = string.Empty;
+    public TaskSummaryDto? Task { get; set; }
+    public string? Result { get; set; }
+}
+
+public sealed class TaskCancelPayload
+{
+    public string ChatId { get; set; } = string.Empty;
+    public string TaskId { get; set; } = string.Empty;
 }
 
 public sealed class PermissionRequestPayload

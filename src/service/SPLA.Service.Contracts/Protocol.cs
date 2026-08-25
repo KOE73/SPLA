@@ -267,6 +267,19 @@ public static class MessageTypes
     /// perfectly normal outcome for anything old enough or for a batch big enough to overflow it.</summary>
     public const string SubagentGet = "subagent.get";
 
+    // ── Background tasks (client → server) ────────────────────────────────
+    // See docs/adr/ADR_20260824-2_core_background-tool-calls.md and plan step 0.7: the registry these
+    // answer from is empty until wave 1 — the three messages exist first so a client can build and
+    // ship an always-empty panel without a second protocol change once tasks are real.
+    /// <summary>List a chat's live background tasks. Body <see cref="TaskListPayload"/>; reply
+    /// <see cref="TaskListResult"/>.</summary>
+    public const string TaskList = "task.list";
+    /// <summary>Ask one task's current state — its finished result if done, or the tail of its
+    /// progress if still running. Body <see cref="TaskStatePayload"/>; reply <see cref="TaskStateResult"/>.</summary>
+    public const string TaskState = "task.state";
+    /// <summary>Cancel a live background task. Body <see cref="TaskCancelPayload"/>.</summary>
+    public const string TaskCancel = "task.cancel";
+
     // ── Server → Client ──────────────────────────────────────────────────
     public const string Welcome = "welcome";
     public const string ChatListResult = "chat.list.result";
@@ -305,6 +318,11 @@ public static class MessageTypes
 
     /// <summary>A chat's doubt flag changed. Body is <see cref="ChatDoubtStatePayload"/>.</summary>
     public const string ChatDoubtState = "chat.doubt.state";
+
+    /// <summary>Answer to <see cref="TaskList"/>. Body <see cref="TaskListResult"/>.</summary>
+    public const string TaskListResult = "task.list.result";
+    /// <summary>Answer to <see cref="TaskState"/>. Body <see cref="TaskStateResult"/>.</summary>
+    public const string TaskStateResult = "task.state.result";
     public const string PermissionRequest = "permission.request";
     public const string ClarifyRequest = "clarify.request";
 

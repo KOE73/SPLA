@@ -56,6 +56,11 @@ repository and is linked from it.
   `spreadsheet_append_rows` read and extend `.xlsx`/`.csv` by column header rather than by cell
   address. The same extraction registers as `docx → markdown | text | json` pairs in the core
   converter registry.
+- A tool call can run detached from its turn (`background: true`) and deliver its result as a
+  message on the chat's next turn; `task_list` / `task_output` / `task_cancel` manage what is
+  running. `system_run_shell`, `agent_spawn`, `agent_spawn_batch`, `web_fetch` and
+  `ssh_session_exec` opt in; a background task's live progress reaches the chat window and survives
+  the human's next turn instead of being cleared with it.
 
 ### Changed
 
@@ -68,6 +73,10 @@ repository and is linked from it.
 - A question outlives the window that triggered it; closing a window no longer answers "deny".
 
 ### Fixed
+
+- A shell command that asks a question (`Overwrite? [y/N]`, credentials, `Do you want to continue?`)
+  no longer hangs forever: the run comes back with the question, a session id and
+  `Status: waiting_for_input`, and `system_resume_shell` / `system_kill_shell` answer it or end it.
 
 - Provider observations survive the accounting stage, which rebuilt the turn result and dropped every
   field it did not set itself; and a per-call fact can no longer overwrite the connection's last known

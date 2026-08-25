@@ -456,6 +456,67 @@ public sealed class SplaServiceHost
     /// statement about how long a model may go quiet before a person would call it stuck.</summary>
     private static readonly TimeSpan StallAfter = TimeSpan.FromMinutes(10);
 
+    /// <summary>
+    /// Forwards every node change in a chat's whole progress forest — the turn's own tree and any
+    /// background task's, present or future — to every watcher of that chat. One subscription for the
+    /// chat's entire life (wired once, from <see cref="ChatRegistry.RuntimeOpened"/>), which is what
+    /// makes a background task's live ticks visible at all: they have no turn of their own for a
+    /// per-turn subscription to attach to.
+    /// <para>
+    /// Throttling state (last-sent-at per node, 120ms) lives here rather than per-turn for the same
+    /// reason — a node born under one tree and a node born under another must not share a clock, but
+    /// both must survive across however many turns and tasks this chat runs.
+    /// </para>
+    /// </summary>
+    private static void WireChatProgress(
+        SPLA.Runtime.ChatRuntime chat, AgentRuntime runtime, ConnectionHub hub)
+    {
+        var lastSent = new System.Collections.Concurrent.ConcurrentDictionary<string, DateTime>();
+
+        chat.Progress.NodeChanged += (treeId, node) =>
+        {
+            runtime.Turns.Touch(chat.ChatId);
+
+            // Each ProgressTree numbers its own nodes from "n1" — fine while exactly one tree was
+            // ever live per chat (a turn's own). Now a background task's tree can be live alongside
+            // the current turn's, and their local ids collide on the wire with no tree of their own
+            // to disambiguate them in the flat `progress.node` stream. Namespacing by the hub's tree
+            // id ("t2:n1") is the fix, done here rather than in ProgressNodePayload/ProgressTree
+            // themselves — those stay tree-local (correct for every other consumer, MCP included),
+            // and only the point that merges several trees into one stream needs to know they exist.
+            var wireId = $"{treeId}:{node.Id}";
+            var wireParentId = node.ParentId is null ? null : $"{treeId}:{node.ParentId}";
+
+            var now = DateTime.UtcNow;
+            var known = lastSent.TryGetValue(wireId, out var last);
+
+            // Structural frames — a node's first appearance and its finish — are never throttled:
+            // they are what a client builds the tree's shape out of, and one dropped frame is a
+            // branch that never appears or one that spins forever. Only the ticks between are
+            // throttled, and per node, so one host's scan cannot silence what started under it.
+            if (known && node.State == SPLA.Domain.Models.ProgressState.Running
+                      && (now - last).TotalMilliseconds < 120) return;
+
+            lastSent[wireId] = now;
+
+            var latest = node.Latest;
+            _ = hub.BroadcastToWatchersAsync(chat.ChatId, Contracts.MessageTypes.ProgressNode, new Contracts.ProgressNodePayload
+            {
+                NodeId = wireId,
+                ParentId = wireParentId,
+                Label = node.Label,
+                State = node.State.ToString().ToLowerInvariant(),
+                Current = latest?.Current,
+                Total = latest?.Total,
+                Fraction = latest?.Fraction,
+                Message = latest?.Message,
+                Details = latest?.Details?
+                    .Select(d => new Contracts.ToolProgressDetailDto { Label = d.Label, Value = d.Value })
+                    .ToList()
+            });
+        };
+    }
+
     private static void WireRuntimeEvents(AgentRuntimeRegistry registry, ConnectionHub hub)
     {
         registry.RuntimeCreated += (projectId, entry) =>
@@ -499,6 +560,15 @@ public sealed class SplaServiceHost
                     new Contracts.AskResolvedPayload { Reason = ProtocolMapper.ReasonName(reason) }, ask.RequestId);
                 _ = BroadcastChatsAsync(hub, projectId, entry);
             };
+
+            // Chat-level progress: one subscription for the chat's whole life, not one per turn and
+            // not one per connection. Replaces the old per-turn subscription in
+            // ClientConnection.BuildCallbacks, which only ever saw the turn's own tree — a background
+            // task's ticks (plan step 0.4, closed properly here rather than deferred again) had no
+            // subscription to ride at all, only its final result via the inbox. ChatRuntime.Progress
+            // already collects every root, turn and background task alike (built in wave 0's
+            // ProgressHub), so wiring it once here reaches both automatically.
+            entry.Chats.RuntimeOpened += chat => WireChatProgress(chat, entry.Runtime, hub);
 
             // Live SSH sessions: create the project's hub eagerly and fan its open/close events out
             // as ssh.sessions.changed, so pickers refresh and terminals auto-attach the moment the
