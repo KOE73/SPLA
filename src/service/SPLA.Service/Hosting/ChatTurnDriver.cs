@@ -51,7 +51,7 @@ internal sealed class ChatTurnDriver
     /// <see cref="MessageTypes.ChatToolSetState"/> pair. Behaviour is unchanged from the old
     /// <c>ClientConnection.RunTurnAsync</c> — only who owns the call moved.
     /// </summary>
-    public async Task RunTurnAsync(string text, IReadOnlyList<string>? images, string userKey, CancellationToken hostStopping)
+    public async Task RunTurnAsync(string? text, IReadOnlyList<string>? images, string userKey, CancellationToken hostStopping)
     {
         var chat = _chat;
         var runtime = _runtime;

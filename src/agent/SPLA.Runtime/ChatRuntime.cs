@@ -97,6 +97,15 @@ public sealed class ChatRuntime : IDisposable, SPLA.Domain.Agent.IBackgroundTask
     /// reads as busy — to the person looking at the chat there is no difference.</summary>
     public bool IsTurnRunning => Volatile.Read(ref _turnsInFlight) > 0;
 
+    private int _humanTurnCount;
+
+    /// <summary>How many turns in this chat's life were started with an actual human message (as
+    /// opposed to a pump-woken turn started with <c>text: null</c>, see <see cref="SendAsync"/>).
+    /// The pump's self-feeding guard (ADR §2.6) watches this rise to tell "a person spoke since my
+    /// last auto-wake" — reading a count rather than subscribing to an event keeps that guard from
+    /// needing any coupling back into the chat beyond this one number.</summary>
+    public int HumanTurnCount => Volatile.Read(ref _humanTurnCount);
+
     private int _bubbleSeq;
 
     /// <summary>
@@ -387,7 +396,7 @@ public sealed class ChatRuntime : IDisposable, SPLA.Domain.Agent.IBackgroundTask
     /// client's UI; <paramref name="callbacks"/> stream the turn's events back to it.
     /// </summary>
     public async Task SendAsync(
-        string text,
+        string? text,
         AgentCallbacks callbacks,
         Func<ToolFunctionDefinition, string, Task<PermissionDecision>> permissionHandler,
         Func<ClarifyRequest, Task<string?>> clarifyHandler,
@@ -418,18 +427,29 @@ public sealed class ChatRuntime : IDisposable, SPLA.Domain.Agent.IBackgroundTask
                 }
             };
 
-            var userMsg = new ChatMessage
+            // A woken turn (the pump, wave B) adds no user message of its own — its content is
+            // whatever SITS in the inbox already, appended by the orchestrator's own drain at the top
+            // of its loop (ConversationOrchestrator.cs, DrainInbox). Skipping this whole block for
+            // text == null is deliberate: there is nothing here to add, echo, persist as an image, or
+            // save early — the turn's own end-of-loop Save() below still runs and picks up whatever
+            // the drain appended.
+            if (text != null)
             {
-                Role = ChatRole.User,
-                Content = text,
-                // Data URLs stay in memory for the LLM this turn; the sidecar files below are what persist.
-                Images = images is { Count: > 0 } ? images.ToList() : null
-            };
-            _conversation.Add(userMsg);
-            // MsgId exists only after Add — echo it so the client can anchor rewind/fork on this message.
-            onUserMessage?.Invoke(userMsg);
-            if (images is { Count: > 0 }) PersistImages(userMsg, images);
-            Save();
+                Interlocked.Increment(ref _humanTurnCount);
+
+                var userMsg = new ChatMessage
+                {
+                    Role = ChatRole.User,
+                    Content = text,
+                    // Data URLs stay in memory for the LLM this turn; the sidecar files below are what persist.
+                    Images = images is { Count: > 0 } ? images.ToList() : null
+                };
+                _conversation.Add(userMsg);
+                // MsgId exists only after Add — echo it so the client can anchor rewind/fork on this message.
+                onUserMessage?.Invoke(userMsg);
+                if (images is { Count: > 0 }) PersistImages(userMsg, images);
+                Save();
+            }
 
             // The seeded system message is a placeholder from here on: the orchestrator's SystemPrompt
             // provider re-renders it on every iteration, inside the session scope. Refreshing it here

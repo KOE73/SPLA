@@ -570,6 +570,37 @@ public sealed class SplaServiceHost
             // ProgressHub), so wiring it once here reaches both automatically.
             entry.Chats.RuntimeOpened += chat => WireChatProgress(chat, entry.Runtime, hub);
 
+            // The pump (PLAN_20260825 wave B): wakes this chat's own turn when a background task's
+            // result lands and nobody has sent a message since. Same shape as WireChatProgress right
+            // above — one subscription for the chat's whole life — and disposed on the new
+            // RuntimeClosed rather than left to leak, which is exactly the debt wave A recorded
+            // ("nothing could hang its own life on a chat's death").
+            entry.Chats.RuntimeOpened += chat =>
+            {
+                var pump = new ChatPump(
+                    chat.Inbox,
+                    hasWatchers: () => hub.HasWatchers(chat.ChatId),
+                    isTurnRunning: () => chat.IsTurnRunning,
+                    humanTurnCount: () => chat.HumanTurnCount,
+                    // text: null — a woken turn adds no message of its own; its content is whatever
+                    // DrainInbox picks up at the top of the orchestrator's loop.
+                    runTurn: ct => new ChatTurnDriver(
+                        hub, registry, entry.Runtime, projectId, chat,
+                        entry.Runtime.LoggerFactory.CreateLogger("SPLA.Service.ChatPump")
+                    ).RunTurnAsync(null, null, userKey: "pump", ct),
+                    broadcastNotice: text => _ = hub.BroadcastToWatchersAsync(
+                        chat.ChatId, Contracts.MessageTypes.Notice, new Contracts.NoticePayload { Text = text }),
+                    log: entry.Runtime.LoggerFactory.CreateLogger<ChatPump>());
+
+                void OnClosed(SPLA.Runtime.ChatRuntime closed)
+                {
+                    if (closed != chat) return;
+                    pump.Dispose();
+                    entry.Chats.RuntimeClosed -= OnClosed;
+                }
+                entry.Chats.RuntimeClosed += OnClosed;
+            };
+
 
             // Live SSH sessions: create the project's hub eagerly and fan its open/close events out
             // as ssh.sessions.changed, so pickers refresh and terminals auto-attach the moment the

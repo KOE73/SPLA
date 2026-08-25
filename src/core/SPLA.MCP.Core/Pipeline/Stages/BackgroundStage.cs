@@ -173,7 +173,7 @@ public sealed class BackgroundStage : IToolMiddleware
             Role = ChatRole.User,
             Content = $"[Background task {record.Id} — {call.Name} — {verb} in {FormatElapsed(elapsed)}]\n{result.TextContent}",
             IsEphemeral = false
-        });
+        }, InboxItemKind.TaskResult);
     }
 
     /// <summary>

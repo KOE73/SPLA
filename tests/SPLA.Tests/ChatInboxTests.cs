@@ -14,8 +14,8 @@ public class ChatInboxTests
         var first = new ChatMessage { Role = ChatRole.User, Content = "first" };
         var second = new ChatMessage { Role = ChatRole.User, Content = "second" };
 
-        inbox.Enqueue(first);
-        inbox.Enqueue(second);
+        inbox.Enqueue(first, InboxItemKind.TaskResult);
+        inbox.Enqueue(second, InboxItemKind.TaskResult);
 
         var drained = inbox.DrainAll();
 
@@ -34,7 +34,7 @@ public class ChatInboxTests
     public void A_message_is_delivered_once()
     {
         var inbox = new ChatInbox();
-        inbox.Enqueue(new ChatMessage { Role = ChatRole.User, Content = "once" });
+        inbox.Enqueue(new ChatMessage { Role = ChatRole.User, Content = "once" }, InboxItemKind.TaskResult);
 
         inbox.DrainAll();
         var second = inbox.DrainAll();
@@ -50,7 +50,7 @@ public class ChatInboxTests
         var producer = Task.Run(() =>
         {
             for (var i = 0; i < 100; i++)
-                inbox.Enqueue(new ChatMessage { Role = ChatRole.User, Content = i.ToString() });
+                inbox.Enqueue(new ChatMessage { Role = ChatRole.User, Content = i.ToString() }, InboxItemKind.TaskResult);
         });
 
         await producer;

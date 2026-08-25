@@ -112,6 +112,13 @@
            Text="The web client was not embedded: no resource named SPLA.Service.WebClient.index.html. A published build serves the browser client from that resource and would answer 404 to every page. Check that web/dist/index.html exists and that EmbedWebClient still runs before PrepareResources." />
   </Target>
 
+  <!-- Lets tests reach internal types (ChatTurnDriver, ChatPump) directly rather than only through the
+       WebSocket wire — ChatPump's wake decision in particular is meant to be unit-tested as a pure
+       method without standing up a ConnectionHub or a socket. -->
+  <ItemGroup>
+    <InternalsVisibleTo Include="SPLA.Tests" />
+  </ItemGroup>
+
   <ItemGroup>
     <ProjectReference Include="..\..\service\SPLA.Service.Contracts\SPLA.Service.Contracts.csproj" />
     <ProjectReference Include="..\..\agent\SPLA.Agent\SPLA.Agent.csproj" />

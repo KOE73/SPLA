@@ -35,6 +35,15 @@ public sealed class ChatRegistry : IDisposable
     /// </summary>
     public event Action<ChatRuntime>? RuntimeOpened;
 
+    /// <summary>
+    /// Fires exactly once per <see cref="ChatRuntime"/>, right before it is disposed — the symmetric
+    /// counterpart to <see cref="RuntimeOpened"/>. Recorded as a debt at the end of wave A: nothing
+    /// could hang its own life on a chat's death, and the wave B pump needs exactly that (it must not
+    /// outlive the chat it wakes). Fired before <c>Dispose()</c> so a subscriber's own cleanup can still
+    /// touch the runtime (e.g. unsubscribe from <c>Inbox.Enqueued</c>) while it is still valid.
+    /// </summary>
+    public event Action<ChatRuntime>? RuntimeClosed;
+
     /// <summary>Opens (or returns the already-open) runtime for an existing chat; null if not found.</summary>
     public ChatRuntime? GetOrOpen(string chatId)
     {
@@ -114,7 +123,11 @@ public sealed class ChatRegistry : IDisposable
         _runtime.ChatManager.DeleteChat(chatId);
         // Dropping the runtime out of the dictionary ends nothing that it holds open — that is the
         // whole shape of the observed leak: no chat, and its shell session still running.
-        if (_open.TryRemove(chatId, out var closed)) closed.Dispose();
+        if (_open.TryRemove(chatId, out var closed))
+        {
+            RuntimeClosed?.Invoke(closed);
+            closed.Dispose();
+        }
     }
 
     /// <summary>
@@ -125,7 +138,10 @@ public sealed class ChatRegistry : IDisposable
     {
         foreach (var chatId in _open.Keys.ToList())
             if (_open.TryRemove(chatId, out var open))
+            {
+                RuntimeClosed?.Invoke(open);
                 open.Dispose();
+            }
     }
 
     /// <summary>The already-open runtime for a chat, or null — never loads from disk. For callers that
