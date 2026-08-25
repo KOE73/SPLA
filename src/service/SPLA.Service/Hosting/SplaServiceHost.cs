@@ -616,6 +616,24 @@ public sealed class SplaServiceHost
                 entry.Chats.RuntimeClosed += OnClosed;
             };
 
+            // The task panel's live feed (PLAN_20260825 wave E): one subscription for the chat's whole life,
+            // same shape as WireChatProgress/ChatPump right above — a task can start and finish across many
+            // turns, so a per-turn subscription would miss most of what it needs to report.
+            entry.Chats.RuntimeOpened += chat =>
+            {
+                chat.Tasks.Changed += record => _ = hub.BroadcastToWatchersAsync(chat.ChatId, Contracts.MessageTypes.TaskStateChanged,
+                    new Contracts.TaskStateChangedPayload
+                    {
+                        ChatId = chat.ChatId,
+                        Task = new Contracts.TaskSummaryDto
+                        {
+                            TaskId = record.Id,
+                            ToolName = record.ToolName,
+                            State = record.State.ToString(),
+                            StartedAt = record.StartedAt.ToString("o")
+                        }
+                    });
+            };
 
             // Live SSH sessions: create the project's hub eagerly and fan its open/close events out
             // as ssh.sessions.changed, so pickers refresh and terminals auto-attach the moment the

@@ -6,6 +6,7 @@
 <template>
   <div id="main" class="chat-surface">
     <div id="log"><ChatLog /></div>
+    <TaskPanel />
     <div id="composer"><Composer /></div>
     <div id="status"><StatusBar /></div>
     <div id="filters"><Filters /></div>
@@ -18,6 +19,10 @@ import ChatLog from "./ChatLog.vue";
 import Composer from "./Composer.vue";
 import StatusBar from "./StatusBar.vue";
 import Filters from "./Filters.vue";
+// Mounted inline, not only registered in registry.ts — registry.ts alone only reaches a tear-off
+// window opened at ?surface=taskPanel, and PLAN_20260825 wave E's whole point ("видно, что гасишь")
+// needs the panel visible in the ordinary chat window, not behind a URL nobody would guess.
+import TaskPanel from "./TaskPanel.vue";
 import { store } from "../state/store";
 import { focusSession, peekSession } from "../state/chatSessions";
 import { provideChat } from "../state/chatContext";

@@ -208,4 +208,74 @@ public class BackgroundTaskRegistryTests
         var registry = new BackgroundTaskRegistry();
         Assert.Empty(registry.CancelAll());
     }
+
+    [Fact]
+    public void Changed_fires_exactly_once_when_TryStart_succeeds()
+    {
+        var registry = new BackgroundTaskRegistry();
+        var fired = new List<BackgroundTaskRecord>();
+
+        registry.Changed += record => fired.Add(record);
+
+        var (record, _) = registry.TryStart("t", "{}");
+
+        Assert.Single(fired);
+        Assert.Same(record, fired[0]);
+    }
+
+    [Fact]
+    public void Changed_does_not_fire_when_TryStart_refuses()
+    {
+        var registry = new BackgroundTaskRegistry();
+        var fired = new List<BackgroundTaskRecord>();
+
+        registry.Changed += record => fired.Add(record);
+
+        // Fill the cap
+        for (var i = 0; i < BackgroundTaskRegistry.MaxLiveTasks; i++)
+            registry.TryStart("t", "{}");
+
+        // The ninth refusal
+        var (refused, _) = registry.TryStart("t", "{}");
+
+        Assert.Null(refused);
+        Assert.Equal(BackgroundTaskRegistry.MaxLiveTasks, fired.Count); // Only the successful starts
+    }
+
+    [Fact]
+    public void Changed_fires_when_Finish_is_called()
+    {
+        var registry = new BackgroundTaskRegistry();
+        var fired = new List<BackgroundTaskRecord>();
+
+        registry.Changed += record => fired.Add(record);
+
+        var (record, _) = registry.TryStart("t", "{}");
+        registry.Finish(record!.Id, BackgroundTaskState.Completed, ToolResult.Text("done"));
+
+        Assert.Equal(2, fired.Count);
+        Assert.Same(record, fired[0]); // The TryStart event
+        Assert.Same(record, fired[1]); // The Finish event
+    }
+
+    [Fact]
+    public void Changed_handler_observes_post_finish_state()
+    {
+        var registry = new BackgroundTaskRegistry();
+        BackgroundTaskRecord? finishedRecord = null;
+
+        registry.Changed += record =>
+        {
+            if (record.State == BackgroundTaskState.Running) return; // Skip the start event
+            finishedRecord = record;
+        };
+
+        var (record, _) = registry.TryStart("t", "{}");
+        registry.Finish(record!.Id, BackgroundTaskState.Failed, ToolResult.Fail("boom"));
+
+        Assert.NotNull(finishedRecord);
+        Assert.Equal(BackgroundTaskState.Failed, finishedRecord.State);
+        Assert.Equal("boom", finishedRecord.Result!.TextContent);
+        Assert.NotNull(finishedRecord.FinishedAt);
+    }
 }

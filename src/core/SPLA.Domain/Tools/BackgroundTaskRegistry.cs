@@ -90,6 +90,12 @@ public sealed class BackgroundTaskRegistry
     /// a single cancel instead of having to know their ids.</param>
     public BackgroundTaskRegistry(CancellationToken chatLifetime = default) => _chatLifetime = chatLifetime;
 
+    /// <summary>Fires whenever a task's own state changes — reserved (Running, from TryStart) or finished
+    /// (Completed/Failed/Cancelled, from Finish). The service layer turns this into a push to watchers
+    /// (PLAN_20260825 wave E) exactly the way ChatInbox.Enqueued already turns queue arrivals into the
+    /// pump's wake signal — this file stays ignorant of ConnectionHub, same as that one does.</summary>
+    public event Action<BackgroundTaskRecord>? Changed;
+
     /// <summary>
     /// Reserves a slot and returns a fresh record, or a refusal reason when the chat already has
     /// <see cref="MaxLiveTasks"/> running. The returned record's <see cref="BackgroundTaskRecord.Cts"/>
@@ -106,6 +112,7 @@ public sealed class BackgroundTaskRegistry
         var cts = CancellationTokenSource.CreateLinkedTokenSource(_chatLifetime);
         var record = new BackgroundTaskRecord(id, toolName, argumentsJson, cts);
         _tasks[id] = record;
+        Changed?.Invoke(record);
         return (record, null);
     }
 
@@ -118,6 +125,7 @@ public sealed class BackgroundTaskRegistry
         record.State = state;
         record.Result = result;
         record.FinishedAt = DateTimeOffset.UtcNow;
+        Changed?.Invoke(record);
     }
 
     public bool TryGet(string id, out BackgroundTaskRecord record) => _tasks.TryGetValue(id, out record!);

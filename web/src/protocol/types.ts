@@ -624,6 +624,34 @@ export interface SshSessionsResultPayload {
   terminals: { terminalId: string; host: string; sessionId: string }[];
 }
 
+// ── Background tasks (task.list/task.cancel/task.state.changed) ────────────────
+export interface TaskSummaryDto {
+  taskId: string;
+  toolName: string;
+  /** "Running" | "Completed" | "Failed" | "Cancelled" */
+  state: string;
+  startedAt: string; // ISO 8601
+}
+
+export interface TaskListPayload {
+  chatId: string;
+}
+
+export interface TaskListResult {
+  chatId: string;
+  tasks: TaskSummaryDto[];
+}
+
+export interface TaskCancelPayload {
+  chatId: string;
+  taskId: string;
+}
+
+export interface TaskStateChangedPayload {
+  chatId: string;
+  task: TaskSummaryDto;
+}
+
 // ── Events the server pushes unprompted (subscribe via client.on) ──────────────
 export interface ServerEvents {
   /**
@@ -682,6 +710,7 @@ export interface ServerEvents {
    *  dropping it — parallel work gives no ordering guarantee. Structural frames (a node's first
    *  appearance and its finish) are never throttled; the ticks between them are, per node. */
   "progress.node": { nodeId: string; parentId?: string | null; label: string; state: "running" | "completed" | "failed"; current?: number | null; total?: number | null; fraction?: number | null; message?: string | null; details?: ToolProgressDetail[] | null };
+  "task.state.changed": TaskStateChangedPayload; // A background task started or finished — published to all watchers of this chat.
   "tool.result": { toolCallId: string; toolName: string; result: string };
   "notice": { text: string };
   "error": { message: string };

@@ -323,6 +323,10 @@ public static class MessageTypes
     public const string TaskListResult = "task.list.result";
     /// <summary>Answer to <see cref="TaskState"/>. Body <see cref="TaskStateResult"/>.</summary>
     public const string TaskStateResult = "task.state.result";
+    /// <summary>Pushed to a chat's watchers whenever a task's state changes — started, or finished
+    /// (successfully, with a failure, or cancelled). Body <see cref="TaskStateChangedPayload"/>. Lets a
+    /// task panel stay live without polling task.list/task.state.</summary>
+    public const string TaskStateChanged = "task.state.changed";
     public const string PermissionRequest = "permission.request";
     public const string ClarifyRequest = "clarify.request";
 

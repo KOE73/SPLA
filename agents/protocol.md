@@ -142,6 +142,7 @@ client/types **and** this table.
 | `subagent.result` | `SubagentResult` | `SubagentResultPayload` | unicast | Answer to `subagent.get`: the finished run's transcript (`messages` reuses `ChatMessageDto`) plus its label, mode, outcome and timing. `found: false` when the id is not in the log. |
 | `task.list.result` | `TaskListResult` | `TaskListResult` | unicast | Answer to `task.list`: this chat's background tasks as summary rows (id, tool, state, started-at). |
 | `task.state.result` | `TaskStateResult` | `TaskStateResult` | unicast | Answer to `task.state`: the task's summary plus its result text once finished (`Result` null while running). `Task: null` for an unknown id. |
+| `task.state.changed` | `TaskStateChanged` | `TaskStateChangedPayload` | watchers | Pushed to a chat's watchers whenever a task's state changes — started (Running) or finished (Completed/Failed/Cancelled). Lets a task panel stay live without polling. |
 | `notice` | `Notice` | `NoticePayload` | watchers | Inline notice. |
 | `token.usage` | `TokenUsage` | `TokenUsagePayload` | watchers | Per-turn token counts; `contextLength` (nullable) carries the model's operative window for the client's context-budget display. |
 | `turn.complete` | `TurnComplete` | `TurnCompletePayload` | watchers | Turn ended; re-enable input. `activeSkillId` reports a skill still running — end of turn is when one the model forgot to close becomes actionable. |

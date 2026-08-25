@@ -1270,6 +1270,12 @@ public sealed class TaskCancelPayload
     public string TaskId { get; set; } = string.Empty;
 }
 
+public sealed class TaskStateChangedPayload
+{
+    public string ChatId { get; set; } = string.Empty;
+    public TaskSummaryDto Task { get; set; } = new();
+}
+
 public sealed class PermissionRequestPayload
 {
     public string ToolName { get; set; } = string.Empty;
