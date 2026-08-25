@@ -2,43 +2,27 @@ name: Release
 
 # Version shape: v0.<minor>.<build>
 #   - minor   moved by hand in Directory.Build.props, when a new chapter starts.
-#   - build   this workflow's run number. Never set by hand — it is what identifies a release.
+#   - build   also moved by hand in Directory.Build.props, in the release commit — see below.
 #
-# The workflow always creates its own tag, after the checks pass. There is deliberately no
-# tag-push trigger: GitHub's documentation does not define whether a `paths` filter applies to tag
-# pushes, and a release pipeline must not rest on an undefined interaction whose failure mode is
-# silence. Releasing something other than the tip of `main` is done with a manual run against that
-# ref, which produces a properly numbered tag anyway.
+# This workflow decides nothing about the release. Every decision — the version, the frozen
+# changelog, the release body — is made locally, by hand, in one commit before the push that
+# triggers this run (see AGENTS.md, "CI and releases"). This workflow's only job is to check that
+# decision is actually there, run the same tests as ci.yml against it, and publish exactly what
+# was prepared. It fails rather than improvising if anything is missing.
+#
+# This replaces an earlier version that computed the build number from its own run count and
+# assembled the release body from CHANGELOGS/current-*.md at publish time. Both meant the release
+# nobody could reproduce locally and nobody had actually reviewed before it went out — see
+# ADR_20260818-3_deterministic-release-commit, which records what that produced.
 
 on:
-  # Trigger 1: a squash-merge landed on `main`. Under this branching model `main` receives nothing
-  # but releases, so a push to it *is* the release decision — already taken when the pull request
-  # was merged. Asking for a second confirmation in the Actions tab would confirm the same thing
-  # twice.
-  #
-  # `paths` is an allow-list, not an ignore-list, because documentation is an open set and sources
-  # are a closed one: `CHANGELOGS/`, `docs/adr`, `docs/plans`, `docs/ideas` and `agents/` all
-  # appeared over time, and an ignore-list would have to be extended each time — which nobody
-  # remembers. The source roots below are the ones `agents/structure.md` documents; adding a new one
-  # means adding it here too.
-  #
-  # Not listed, deliberately: `tests/` and `demo/` (never reach SPLA.zip — a test-only change is not
-  # a product change, and ci.yml has already run it), `.github/` (changing this workflow does not
-  # change the product; test it with a manual run), and everything textual.
+  # Any push to `main` is the release decision — main receives nothing else under this branching
+  # model (see AGENTS.md). No `paths` filter: whether this run has anything to publish is decided
+  # by the "Verify release commit" step below, not by which files changed.
   push:
     branches: [main]
-    paths:
-      - 'src/**'
-      - 'web/**'
-      - 'skills/**'
-      - 'Directory.Build.props'
-      - 'SPLA.slnx'
-      - 'PublishAll.ps1'
-      - 'PublishAll.cmd'
-      - 'CopySkills.ps1'
-      - 'EnsureNodeJs.ps1'
-  # Trigger 2: a manual run from the Actions tab, against any ref. Ignores the path filter above, so
-  # it is also the escape hatch for when a release is wanted and the filter did not fire.
+  # Manual run from the Actions tab, against any ref — the escape hatch for re-running a release
+  # that failed for an infrastructure reason after its commit already exists.
   workflow_dispatch: {}
 
 # The GITHUB_TOKEN needs write access to push a tag and create a release.
@@ -56,27 +40,70 @@ jobs:
     runs-on: windows-latest
 
     steps:
-      # Full history: the tag operations below need it.
+      # Full history: the tag operations below need it, and so does checking whether the version's
+      # tag already exists.
       - name: Checkout
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
-      # Work out the version this run will produce, but do not create the tag yet — the checks
-      # below have to pass first. A tag must never point at a build that failed.
-      - name: Resolve version
+      # Read the version verbatim from Directory.Build.props — this run does not compute any part
+      # of it. Fails if the file doesn't parse; that's a broken commit, not a missing release.
+      - name: Read version
         shell: pwsh
         run: |
           $props = Get-Content Directory.Build.props -Raw
-          if ($props -notmatch '<VersionMinor>(\d+)</VersionMinor>') {
-            Write-Host 'ERROR: could not read VersionMinor from Directory.Build.props' -ForegroundColor Red
+          if ($props -notmatch '<VersionMajor>(\d+)</VersionMajor>' -or
+              $props -notmatch '<VersionMinor>(\d+)</VersionMinor>' -or
+              $props -notmatch '<VersionBuild Condition="[^"]*">(\d+)</VersionBuild>') {
+            Write-Host 'ERROR: could not read Major/Minor/Build from Directory.Build.props' -ForegroundColor Red
             exit 1
           }
-          $minor = $Matches[1]
-          $build = '${{ github.run_number }}'
-          "TAG_NAME=v0.$minor.$build" >> $env:GITHUB_ENV
+          $major = [regex]::Match($props, '<VersionMajor>(\d+)</VersionMajor>').Groups[1].Value
+          $minor = [regex]::Match($props, '<VersionMinor>(\d+)</VersionMinor>').Groups[1].Value
+          $build = [regex]::Match($props, '<VersionBuild Condition="[^"]*">(\d+)</VersionBuild>').Groups[1].Value
+          "TAG_NAME=v$major.$minor.$build" >> $env:GITHUB_ENV
           "VERSION_BUILD=$build" >> $env:GITHUB_ENV
-          Write-Host "This run produces v0.$minor.$build"
+          Write-Host "Committed version: v$major.$minor.$build"
+
+      # The gate: is the release commit actually complete? Every check here mirrors a row in
+      # AGENTS.md's "CI and releases" table. Nothing downstream may compensate for a failure here —
+      # a missing file means the release was not prepared, not that this workflow should prepare it.
+      - name: Verify release commit
+        shell: pwsh
+        run: |
+          $fail = $false
+
+          if (git rev-parse "$env:TAG_NAME" -- 2>$null) {
+            Write-Host "ERROR: tag $env:TAG_NAME already exists — Directory.Build.props was not bumped." -ForegroundColor Red
+            $fail = $true
+          }
+
+          $frozen = "CHANGELOGS/$env:TAG_NAME.md"
+          if (-not (Test-Path $frozen)) {
+            Write-Host "ERROR: $frozen is missing — the changelog was not frozen for this release." -ForegroundColor Red
+            $fail = $true
+          }
+
+          $notes = "CHANGELOGS/$env:TAG_NAME-notes.md"
+          if (-not (Test-Path $notes)) {
+            Write-Host "ERROR: $notes is missing — no release body was written." -ForegroundColor Red
+            $fail = $true
+          }
+
+          foreach ($f in 'current-log.md', 'current-list.md', 'current-summary.md') {
+            $path = "CHANGELOGS/$f"
+            $lines = Get-Content $path
+            $sep = ($lines | Select-String -Pattern '^---\s*$' | Select-Object -First 1).LineNumber
+            $body = if ($sep) { ($lines[$sep..($lines.Count - 1)] -join "`n").Trim() } else { '' }
+            if ($body) {
+              Write-Host "ERROR: $path still has content after the release — it was not emptied." -ForegroundColor Red
+              $fail = $true
+            }
+          }
+
+          if ($fail) { exit 1 }
+          Write-Host "Release commit for $env:TAG_NAME is complete."
 
       - name: Setup .NET
         uses: actions/setup-dotnet@v4
@@ -93,8 +120,8 @@ jobs:
           cache: 'npm'
           cache-dependency-path: '**/package-lock.json'
 
-      # The gate: the same checks as ci.yml, run again against the exact commit being released. A
-      # manual run can target any ref, including one ci.yml never saw.
+      # The same checks as ci.yml, run again against the exact commit being released. A manual run
+      # can target any ref, including one ci.yml never saw.
       #
       # `dotnet build` also type-checks and bundles the web trees (see the note in ci.yml), so only
       # vitest needs its own line. PublishAll.ps1 later does its own clean build, deliberately: it
@@ -108,62 +135,8 @@ jobs:
           dotnet test tests/SPLA.Tests/SPLA.Tests.csproj -c Release --no-build --nologo
           npm --prefix web run test
 
-      # Assemble the release body from CHANGELOGS/. Each working file carries an explanatory
-      # preamble about how the file itself works; the publishable content is everything after the
-      # first `---` line, so that convention is what the split below relies on.
-      #
-      # The summary is included only if it is current. `current-summary.md` opens with a
-      # `<!-- covers: YYYY-MM-DD -->` marker naming the newest log date it accounts for; if the log
-      # has moved past it, the summary describes a state that no longer exists. A stale summary is
-      # worse than none — it is confidently wrong — so it is dropped rather than published.
-      - name: Assemble release notes
-        shell: pwsh
-        run: |
-          function Get-Body([string] $path) {
-            $lines = Get-Content $path
-            $sep = ($lines | Select-String -Pattern '^---\s*$' | Select-Object -First 1).LineNumber
-            if (-not $sep) { return ($lines -join "`n").Trim() }
-            return (($lines[$sep..($lines.Count - 1)]) -join "`n").Trim()
-          }
-
-          $parts = @()
-          $summaryPath = 'CHANGELOGS/current-summary.md'
-          $logPath     = 'CHANGELOGS/current-log.md'
-          $listPath    = 'CHANGELOGS/current-list.md'
-
-          # Freshness: compare the summary's marker with the newest date heading in the log.
-          $covers = $null
-          if (Test-Path $summaryPath) {
-            $m = Select-String -Path $summaryPath -Pattern '<!--\s*covers:\s*(\d{4}-\d{2}-\d{2})\s*-->' |
-                 Select-Object -First 1
-            if ($m) { $covers = $m.Matches[0].Groups[1].Value }
-          }
-          $lastLog = $null
-          if (Test-Path $logPath) {
-            $dates = Select-String -Path $logPath -Pattern '^##\s+(\d{4}-\d{2}-\d{2})\s*$' |
-                     ForEach-Object { $_.Matches[0].Groups[1].Value }
-            if ($dates) { $lastLog = ($dates | Sort-Object | Select-Object -Last 1) }
-          }
-
-          if ($covers -and (-not $lastLog -or $covers -ge $lastLog)) {
-            $parts += Get-Body $summaryPath
-          }
-          elseif (Test-Path $summaryPath) {
-            Write-Host "WARNING: summary covers $covers but the log reaches $lastLog — omitting it." -ForegroundColor Yellow
-            $parts += "_The written summary was out of date for this release and has been omitted._"
-          }
-
-          if (Test-Path $listPath) {
-            $parts += "## Changes`n`n" + (Get-Body $listPath)
-          }
-
-          $logUrl = "${{ github.server_url }}/${{ github.repository }}/blob/$env:TAG_NAME/CHANGELOGS/current-log.md"
-          $parts += "Full detailed log for this release: [``CHANGELOGS/current-log.md``]($logUrl)"
-
-          ($parts -join "`n`n") | Set-Content release-notes.md -Encoding utf8
-          Write-Host "Release notes: $((Get-Content release-notes.md).Count) line(s)."
-
-      # Only now, with the checks green, does the tag become real.
+      # Only now, with the checks green, does the tag become real — on the commit this run is
+      # actually building from.
       - name: Create and push tag
         id: create_tag
         shell: pwsh
@@ -174,7 +147,7 @@ jobs:
           git push origin $env:TAG_NAME
 
       # Build the solution, publish every plugin and both apps, and zip the result. The build number
-      # is passed in so every binary in the ZIP reports the version of the tag it belongs to.
+      # is passed in so every binary in the ZIP reports the version it was committed as.
       - name: Publish all (build, plugins, apps, zip)
         shell: pwsh
         run: ./PublishAll.ps1 -VersionBuild $env:VERSION_BUILD
@@ -187,17 +160,19 @@ jobs:
           name: SPLA-${{ env.TAG_NAME }}
           path: .publish/zip/SPLA.zip
 
-      # Publish the release. body_path is what the earlier step assembled from CHANGELOGS/;
-      # generate_release_notes appends GitHub's own pull-request summary and changelog link after it.
+      # Publish the release. body_path is the notes file written by hand in the release commit,
+      # attached verbatim. generate_release_notes is off — GitHub's auto-generated notes list merged
+      # pull requests, and under this branching model there is exactly one per release (the squash),
+      # so its output is a single uninformative line stapled onto a body that already said everything.
       - name: Create GitHub release
         if: success()
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ env.TAG_NAME }}
           name: ${{ env.TAG_NAME }}
-          body_path: release-notes.md
+          body_path: CHANGELOGS/${{ env.TAG_NAME }}-notes.md
           files: .publish/zip/SPLA.zip
-          generate_release_notes: true
+          generate_release_notes: false
 
       # A tag this workflow created must never outlive the build it names. Guarded on the tag step
       # having actually succeeded, since a failure during the checks happens before any tag exists.

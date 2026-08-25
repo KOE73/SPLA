@@ -160,7 +160,7 @@ missing from a release rather than merely how a log looks untidy. Scope is the a
 
 Subjects are English, like branch and pull-request titles. Prose documentation stays Russian.
 
-## CI and releases: `v0.<minor>.<build>` off `main`
+## CI and releases: the release is decided in a commit, not by CI
 
 Two workflows under `.github/workflows/`, both on `windows-latest` (`SPLA.Tests` targets
 `net10.0-windows` and proves itself against a real `WindowsIdentity`; `PublishAll.ps1` is
@@ -171,32 +171,67 @@ PowerShell and registers a file association):
   current. The web type-check and bundle come free with the solution build, which already shells out
   to npm through `Exec` targets. On `work` this is a signal; on a pull request into `main` it is the
   gate.
-- **`release.yml`** — a tag push `v0.*.*`, or a manual run from the Actions tab. It re-runs the same
-  checks against the exact commit being released (a tag can point anywhere, including at something
-  `ci.yml` never saw), assembles the release body from `CHANGELOGS/`, runs `PublishAll.ps1`, and
-  attaches `SPLA.zip` to a GitHub release.
+- **`release.yml`** — any push to `main`, or a manual run from the Actions tab. Under this
+  branching model `main` receives nothing but releases (see above), so a push to it *is* the release
+  decision, already taken when the pull request was squash-merged. There is no `paths` filter and no
+  other trigger deciding whether "this counts" — every push to `main` is a release by definition.
 
-**The version has three parts, and the last one identifies the release.**
+**CI does not decide the version, does not write the changelog, and does not compose the release
+body. All three are decided locally, before the push that makes them real, and CI only checks that
+what was decided is actually there:**
 
-| Part | Set by | When |
+| What | Decided where | CI's job |
 | --- | --- | --- |
-| `0.<minor>` | the owner, by hand in `Directory.Build.props` | when a new chapter starts — rarely |
-| `<build>` | GitHub — `run_number` of `release.yml` | automatically, every release run |
+| Version number | `Directory.Build.props`, by hand, in the release commit | read it, refuse if that tag already exists |
+| Frozen changelog | `CHANGELOGS/v<version>.md`, written in the release commit | refuse if it is missing |
+| Release body | `CHANGELOGS/v<version>-notes.md`, written in the release commit | attach it verbatim (`generate_release_notes: false`) — CI does not assemble prose from `current-*.md` |
+| Working changelog reset | `current-log.md` / `current-list.md` / `current-summary.md` emptied in the release commit | refuse if any still holds content past its preamble |
 
-There is deliberately no fourth component. The scheme this replaced had a third part the owner
-moved only sometimes, which meant it carried no decision while still having to be read to identify a
-release — see [`ADR_20260818-2_build_versioning-and-changelog`](docs/adr/ADR_20260818-2_build_versioning-and-changelog.md).
+CI's role is a gate that either finds all four already true, or fails without touching anything.
+Nothing it computes is allowed to change what gets published — that was exactly the failure mode
+behind [`v0.2.4`](CHANGELOGS/v0.2.4.md): a `run_number` nobody could reproduce locally, and a release
+body assembled from working files whose staleness check the actual damage slipped past (see
+`ADR_20260818-3_deterministic-release-commit`, which supersedes
+[`ADR_20260818-2_build_versioning-and-changelog`](docs/adr/ADR_20260818-2_build_versioning-and-changelog.md)
+on this point).
 
-`PublishAll.ps1` takes `-VersionBuild` and forwards it to every `dotnet build`/`publish` in the run,
-so everything inside one ZIP carries one version. `PublishAll.cmd` passes nothing, so a local build
-falls back to `0.<minor>.0` — the build number only means something for a package that came out of
-CI.
+**The version still has three parts**, `0.<minor>.<build>`, and Major/Minor are still moved by hand,
+rarely, to mark a new chapter. What changed is `<build>`: it is now a plain number set by hand in the
+same release commit as everything else in the table above, not `release.yml`'s `run_number`. A local
+build with `PublishAll.cmd` still falls back to `0.<minor>.0` — the build number only means something
+once it has been chosen for an actual release.
 
-A manual release run creates its tag **after** the checks pass, and deletes that tag again if the
-publish then fails: a tag the workflow created must never outlive the build it names. A tag pushed
-by a human is never deleted automatically — that is someone's deliberate act, not workflow litter.
+**Making a release, end to end:**
 
-**Do not tag and do not trigger a release** — same rule, and same reason, as not pushing to `main`.
+1. **Ask first — see "Before pushing to `work`" below.** Everything after this point only happens
+   once the owner has said yes.
+2. In one commit on `work`: bump `<build>` in `Directory.Build.props`; freeze `current-log.md` /
+   `current-list.md` / `current-summary.md` into `CHANGELOGS/v<version>.md` and empty the three
+   working files; write `CHANGELOGS/v<version>-notes.md` — the literal release body, not assembled by
+   CI. Push.
+3. The owner opens the `work → main` pull request and squash-merges it on GitHub, same as any other
+   release — see "Git: a branch per piece of work" above. Nothing about this step changed.
+4. The push to `main` runs `release.yml`. It checks the table above, runs the same tests as `ci.yml`,
+   tags the `main` commit it is running against with the version from `Directory.Build.props`, runs
+   `PublishAll.ps1 -VersionBuild <build>`, and creates the GitHub release from
+   `CHANGELOGS/v<version>-notes.md` with `SPLA.zip` attached. If any check in the table fails, nothing
+   is tagged or published.
+
+The tag is created by the workflow, on the `main` commit it just built and tested — never by hand,
+and never before that commit exists. This is different from step 2's local commit: that commit lives
+on `work`, and a squash-merge gives it a new hash on `main`, so tagging it before the merge would tag
+an object the release was never actually built from. **Do not tag and do not trigger a release**
+yourself — same rule, and same reason, as not pushing to `main`.
+
+### Before pushing to `work`: ask whether this is a release
+
+**Every push to `work` — always, no exceptions for "just this once" — ask the owner in the same turn
+whether this batch should become a release, before running `git push`.** Accumulating on `work`
+without releasing is the normal state most of the time; the point of asking is that the owner decides
+*when*, and a push is the last moment that decision is still open before the next session might not
+think to raise it. A short one-line question is enough — "Push to `work`. Release this batch, or
+keep accumulating?" — but it must be asked, not assumed either way. If the answer is yes, do step 2
+above in the same push rather than a separate one; if the answer is no, push as normal and move on.
 
 ## Changelog: three working files under `CHANGELOGS/`
 
@@ -220,17 +255,18 @@ cannot.
 
 **Rewrite `current-summary.md` before pushing to `work`.** Not on every log entry — nine rewrites out
 of ten would have no reader, and the summary costs roughly fifty log entries to produce. The push is
-the right moment because it is the boundary where a release becomes possible at all: before it,
-nothing can be released; after it, anything can. Update the `<!-- covers: YYYY-MM-DD -->` marker to
-the newest date in the log when you do.
+the right moment to consider it because it is the boundary where a release becomes possible at all:
+before it, nothing can be released; after it, anything can. Update the `<!-- covers: YYYY-MM-DD -->`
+marker to the newest date in the log when you do.
 
-That marker is what makes staleness safe. `release.yml` compares it with the log and **omits a stale
-summary** instead of publishing it, because a summary that confidently describes a state that no
-longer exists is worse than no summary at all. `ci.yml` warns about the same condition on a push to
-`work`.
+That marker is what makes staleness checkable: `ci.yml` warns when it trails the log on a push to
+`work`, so a stale summary is visible long before it could end up composed into anything. It is no
+longer `release.yml`'s problem — the release body is a file written by hand in the release commit
+(see "CI and releases" above), never assembled from `current-*.md` at publish time.
 
 **Publishable content starts after the first `---`.** Everything above it in these files explains
-how the file itself works and is stripped out of the release body.
+how the file itself works. This still matters for readability, but nothing reads it out mechanically
+any more — `CHANGELOGS/v<version>-notes.md` is written directly, by hand, in the release commit.
 
 **Coverage is checked against `git log main..work`, never against conversation memory.** Multiple
 people and multiple sessions commit to `work`; a session only knows what it did, not what landed
@@ -243,13 +279,18 @@ during PR review.
 
 ### Freezing a release
 
-After a release is published, the three working files are merged into `CHANGELOGS/<version>.md`
-(sections `Summary`, `Changes`, `Log`) and started empty again. This is done in a session, by hand —
-not by CI, which deliberately never writes to `work`.
+Freezing — merging the three working files into `CHANGELOGS/<version>.md` (sections `Summary`,
+`Changes`, `Log`), emptying them again, and writing `CHANGELOGS/v<version>-notes.md` — is not a
+follow-up step after the release. It **is** step 2 of "Making a release, end to end" above: it
+happens locally, in the same commit that bumps the version, *before* the push that becomes the
+release. CI checks that it happened; it never does it and never writes to `work`.
 
-**Check whether it is due at the start of a session, mechanically:** if `git tag` holds a release
-tag with no matching `CHANGELOGS/<version>.md`, freezing has not happened. Say so. This is a
-comparison, not a recollection — do not rely on having noticed the release, or on being reminded.
+**Check whether a past release is missing its freeze at the start of a session, mechanically:** if
+`git tag` holds a release tag with no matching `CHANGELOGS/<version>.md`, something was published
+without this step — under the current algorithm that should be impossible (CI refuses to publish
+without it), so treat it as a sign the release predates this rule, or that a manual run bypassed it.
+Say so. This is a comparison, not a recollection — do not rely on having noticed the release, or on
+being reminded.
 
 ## Docs across parallel branches (`docs/ideas`, `docs/plans`, `docs/adr`)
 
