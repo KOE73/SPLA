@@ -1,4 +1,4 @@
-using SPLA.Runtime;
+﻿using SPLA.Runtime;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Authentication.Negotiate;
@@ -569,6 +569,7 @@ public sealed class SplaServiceHost
             // already collects every root, turn and background task alike (built in wave 0's
             // ProgressHub), so wiring it once here reaches both automatically.
             entry.Chats.RuntimeOpened += chat => WireChatProgress(chat, entry.Runtime, hub);
+
 
             // Live SSH sessions: create the project's hub eagerly and fan its open/close events out
             // as ssh.sessions.changed, so pickers refresh and terminals auto-attach the moment the

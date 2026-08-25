@@ -160,9 +160,14 @@ public sealed class ClientConnection : IClientSession
     void IClientSession.StartTurn(
         AgentRuntime runtime, string projectId, ChatRuntime chat, string text, List<string>? images,
         CancellationToken hostStopping)
-        // Run the turn in the background so the receive loop keeps serving this turn's
-        // permission/clarify answers and its cancel request.
-        => _ = RunTurnAsync(runtime, projectId, chat, text, images, hostStopping);
+    {
+        // The chat's own driver runs the turn now (see ChatTurnDriver) — this connection's only job is
+        // to hand over the message plus the one thing that really was ours to give: which user is
+        // asking, for telemetry attribution. Fire-and-forget as before, so the receive loop keeps
+        // serving this turn's permission/clarify answers and its cancel request.
+        var driver = new ChatTurnDriver(_hub, _registry, runtime, projectId, chat, _log);
+        _ = driver.RunTurnAsync(text, images, _identity.UserKey, hostStopping);
+    }
 
     bool IClientSession.TryCancelTurn(string chatId)
         => BoundRuntime.Turns.TryCancel(chatId);
@@ -342,7 +347,8 @@ public sealed class ClientConnection : IClientSession
         await _hub.BroadcastToProjectAsync(projectId, MessageTypes.ChatListResult,
             new ChatListResultPayload { Chats = entry.Chats.List() });
 
-        _ = RunTurnAsync(entry.Runtime, projectId, chat, request.Message, null, hostStopping);
+        var driver = new ChatTurnDriver(_hub, _registry, entry.Runtime, projectId, chat, _log);
+        _ = driver.RunTurnAsync(request.Message, null, _identity.UserKey, hostStopping);
     }
 
     // ── Turn execution + outbound streaming ───────────────────────────────────
@@ -392,180 +398,6 @@ public sealed class ClientConnection : IClientSession
             await SendAsync(ProtocolMapper.MessageTypeFor(ask), ProtocolMapper.PayloadFor(ask), chatId, ask.RequestId);
     }
 
-    private async Task RunTurnAsync(
-        AgentRuntime runtime, string projectId, ChatRuntime chat, string text, List<string>? images,
-        CancellationToken hostStopping)
-    {
-        using var turnCts = CancellationTokenSource.CreateLinkedTokenSource(hostStopping);
-        runtime.Turns.Register(chat.ChatId, turnCts);
-
-        // Make the acting user (and chat/project) ambient for this turn's telemetry, so tool-call and
-        // token measurements the collector taps can be attributed to this user for the per-user stats
-        // slice. AsyncLocal flows into the orchestrator/McpHost on this same async path.
-        using var telemetryScope = SPLA.Observability.SplaTelemetry.PushContext(
-            new SPLA.Observability.SplaTelemetryContext(
-                ConversationId: chat.ChatId, ProjectId: projectId, UserKey: _identity.UserKey));
-
-        var ctx = new TurnContext();
-
-        // Resolve the model's operative context window up front (cached; one cheap local call) so
-        // every token.usage broadcast this turn can carry "prompt vs window" for the UI's budget bar.
-        try { ctx.ContextLength = await chat.GetContextLengthAsync(turnCts.Token); }
-        catch { /* unknown window — usage still reports raw counts */ }
-
-        var callbacks = BuildCallbacks(runtime, projectId, chat, ctx);
-
-        string? error = null;
-        try
-        {
-            var send = chat.SendAsync(
-                text,
-                callbacks,
-                (def, args) => runtime.Asks.AskPermissionAsync(chat.ChatId, def, args, turnCts.Token),
-                req => runtime.Asks.AskClarifyAsync(chat.ChatId, req, turnCts.Token),
-                turnCts.Token,
-                images,
-                onUserMessage: m => _ = _hub.BroadcastToWatchersAsync(chat.ChatId, MessageTypes.UserMessage,
-                    new UserMessagePayload
-                    {
-                        MsgId = m.MsgId,
-                        CreatedAt = m.CreatedAt.ToString("o"),
-                        Text = text
-                    }));
-
-            // SendAsync counts the turn before its first await, so the chat already reports itself
-            // busy here — the sidebar marks where work is happening, including for clients that are
-            // not watching this chat and would otherwise never learn of it.
-            await BroadcastChatListAsync(projectId);
-            await send;
-        }
-        catch (OperationCanceledException) { /* cancelled turn — reported below */ }
-        catch (Exception ex)
-        {
-            error = ex.Message;
-            _log.LogError(ex, "Turn failed for chat {ChatId}.", chat.ChatId);
-        }
-        finally
-        {
-            runtime.Turns.Remove(chat.ChatId, turnCts);
-        }
-
-        await _hub.BroadcastToWatchersAsync(chat.ChatId, MessageTypes.TurnComplete,
-            new TurnCompletePayload
-            {
-                Cancelled = turnCts.IsCancellationRequested,
-                Error = error,
-                ActiveSkillId = chat.ActiveSkillId
-            });
-
-        // The sets the model reached for during the turn. Sent at the same moment as the active skill
-        // and for the same reason: end of turn is when the person can see, and act on, what is still up.
-        await _hub.BroadcastToWatchersAsync(chat.ChatId, MessageTypes.ChatToolSetState,
-            new ChatToolSetStatePayload { ChatId = chat.ChatId, Sets = ChatHandlers.ToolSetDtos(_registry.Open(projectId), chat) });
-
-        await BroadcastChatListAsync(projectId);   // the chat is idle again — clear its mark
-    }
-
-    private Task BroadcastChatListAsync(string projectId)
-        => _hub.BroadcastToProjectAsync(projectId, MessageTypes.ChatListResult,
-            new ChatListResultPayload { Chats = _registry.Open(projectId).Chats.List() });
-
-    /// <summary>
-    /// Turn events fan out to every connection watching the chat (via the hub), not just the sender —
-    /// so two windows on one chat both see the live stream. Permission/clarify are not here either,
-    /// but for a different reason: they are raised by the project runtime's <c>PendingAskStore</c> and
-    /// fanned out by the host (see <c>SplaServiceHost.WireRuntimeEvents</c>), so they survive this
-    /// connection going away.
-    /// </summary>
-    private AgentCallbacks BuildCallbacks(AgentRuntime runtime, string projectId, ChatRuntime chat, TurnContext ctx)
-    {
-        var chatId = chat.ChatId;
-        DateTime lastProgress = DateTime.MinValue;
-        Task ToWatchers(string type, object payload)
-        {
-            // Every turn event is also proof the turn is moving. A registered turn that has gone
-            // silent for a long time is a model that stopped halfway — the state the instance must
-            // never be evicted out of, and the one a person comes back to and pokes forward.
-            runtime.Turns.Touch(chatId);
-            return _hub.BroadcastToWatchersAsync(chatId, type, payload);
-        }
-
-        return new AgentCallbacks
-        {
-            OnLlmTurnStart = context =>
-            {
-                chat.CaptureLastContext(context);   // for the context.last debug snapshot
-                // Indices come from the CHAT, not from this turn: see ChatRuntime.NextBubbleIndex.
-                ctx.CurrentMsgIndex = chat.NextBubbleIndex();
-                return ToWatchers(MessageTypes.LlmTurnStart, new DeltaPayload
-                {
-                    MsgIndex = ctx.CurrentMsgIndex, Text = "", ProgressTreeId = chat.CurrentTurnTreeId
-                });
-            },
-            OnDelta = chunk => ToWatchers(MessageTypes.Delta, new DeltaPayload { MsgIndex = ctx.CurrentMsgIndex, Text = chunk }),
-            OnReasoning = chunk => ToWatchers(MessageTypes.Reasoning, new ReasoningPayload { MsgIndex = ctx.CurrentMsgIndex, Text = chunk }),
-            OnAttempt = attempt => _ = ToWatchers(MessageTypes.Attempt, new AttemptPayload
-            {
-                MsgIndex = ctx.CurrentMsgIndex,
-                Index = attempt.Index,
-                Outcome = attempt.Outcome.ToString(),
-                Note = attempt.Note,
-                Chars = attempt.Chars,
-                DurationMs = (long)attempt.Duration.TotalMilliseconds,
-                Content = attempt.Content,
-                Reasoning = attempt.Reasoning
-            }),
-            OnAssistantMessage = msg => ToWatchers(MessageTypes.AssistantMessage,
-                new AssistantMessagePayload { MsgIndex = ctx.CurrentMsgIndex, Message = ProtocolMapper.ToDto(msg) }),
-            OnToolCallStarted = tc => ToWatchers(MessageTypes.ToolStarted, new ToolStartedPayload { ToolCall = ProtocolMapper.ToDto(tc) }),
-            OnToolProgress = (tc, progress) =>
-            {
-                var now = DateTime.UtcNow;
-                if ((now - lastProgress).TotalMilliseconds < 120 && (progress.Fraction ?? 0) < 1.0) return;
-                lastProgress = now;
-                _ = ToWatchers(MessageTypes.ToolProgress, new ToolProgressPayload
-                {
-                    ToolCallId = tc.Id,
-                    ToolName = tc.Function.Name,
-                    Current = progress.Current ?? 0,
-                    Total = progress.Total ?? 0,
-                    Fraction = progress.Fraction,
-                    Message = progress.Message,
-                    Details = progress.Details?.Select(d => new ToolProgressDetailDto { Label = d.Label, Value = d.Value }).ToList()
-                });
-            },
-            // No OnProgressTree here anymore: the nested picture (script children, a sub-agent's
-            // whole run, and — since PLAN_20260824-2 wave 1 — a background task's ticks) is delivered
-            // by a chat-level subscription now, wired once for the chat's whole life in
-            // SplaServiceHost.WireChatProgress. A per-turn subscription here would see only the
-            // turn's own tree and, worse, double-deliver every node this same tree already reports
-            // through that chat-level path (ChatRuntime.SendAsync registers the turn's tree into
-            // ChatRuntime.Progress additively — see its own comment).
-            OnToolResult = (tc, result) => ToWatchers(MessageTypes.ToolResult,
-                new ToolResultPayload
-                {
-                    ToolCallId = tc.Id,
-                    ToolName = tc.Function.Name,
-                    Result = result.TextContent,
-                    Outcome = result.Outcome.ToString(),
-                    Reason = result.Reason
-                }),
-            OnNotice = note => ToWatchers(MessageTypes.Notice, new NoticePayload { Text = note }),
-            // Tells the windows what the call cost; recording it happened in the pipeline, so
-            // SettingsOps.GetUsage already reflects this turn by the time the broadcast is built.
-            OnLlmTurn = turn =>
-            {
-                _ = ToWatchers(MessageTypes.TokenUsage, new TokenUsagePayload
-                {
-                    PromptTokens = turn.Message.PromptTokens,
-                    CompletionTokens = turn.Message.CompletionTokens,
-                    ContextLength = ctx.ContextLength
-                });
-                _ = _hub.BroadcastToProjectAsync(projectId, MessageTypes.UsageResult, SettingsOps.GetUsage(runtime));
-            }
-        };
-    }
-
     // ── Framing ────────────────────────────────────────────────────────────────
 
     public async Task SendAsync(string type, object? payload, string? chatId = null, string? requestId = null)
@@ -589,15 +421,5 @@ public sealed class ClientConnection : IClientSession
         {
             _sendLock.Release();
         }
-    }
-
-    /// <summary>Per-turn mutable bookkeeping for streaming assistant messages. The bubble index itself
-    /// is the chat's (<see cref="ChatRuntime.NextBubbleIndex"/>); only "which bubble is streaming right
-    /// now" is per turn.</summary>
-    private sealed class TurnContext
-    {
-        public int CurrentMsgIndex;
-        /// <summary>The model's operative context window (tokens) resolved at turn start; null = unknown.</summary>
-        public int? ContextLength;
     }
 }
