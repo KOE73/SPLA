@@ -14,6 +14,8 @@
 export const ROLE_ATTR = "data-role";
 export const ELEMENT_ATTR = "data-element";
 export const EDGE_ATTR = "data-edge";
+/** Which side or corner a resize grip drags: "n", "se", … */
+export const HANDLE_ATTR = "data-handle";
 
 export const Role = {
   /** Selects the element when clicked; does not start a drag. */
@@ -32,6 +34,8 @@ export interface RoleHit {
   readonly role: RoleName;
   readonly elementId: string | null;
   readonly edgeId: string | null;
+  /** Set on a resize grip: which side or corner it drags. */
+  readonly handle: string | null;
 }
 
 /** Resolve a DOM event target to the role and element it belongs to. */
@@ -49,5 +53,6 @@ export function hitTest(target: EventTarget | null): RoleHit | null {
     role,
     elementId: ownerEl?.getAttribute(ELEMENT_ATTR) ?? null,
     edgeId: edgeEl?.getAttribute(EDGE_ATTR) ?? null,
+    handle: target.closest(`[${HANDLE_ATTR}]`)?.getAttribute(HANDLE_ATTR) ?? null,
   };
 }

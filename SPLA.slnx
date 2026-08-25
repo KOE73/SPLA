@@ -103,6 +103,7 @@
     <File Path="tools/spla-diagram/src/canvas/render/ContainerRenderer.ts" />
     <File Path="tools/spla-diagram/src/canvas/render/styles.ts" />
     <File Path="tools/spla-diagram/src/canvas/render/edgeStyles.ts" />
+    <File Path="tools/spla-diagram/src/canvas/render/handles.ts" />
     <File Path="tools/spla-diagram/src/canvas/ports/PortAssigner.ts" />
     <File Path="tools/spla-diagram/src/canvas/ports/assigners.ts" />
     <File Path="tools/spla-diagram/src/canvas/routing/EdgeRouter.ts" />

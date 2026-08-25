@@ -23,7 +23,7 @@ export class ContainerRenderer implements ElementRenderer {
 
   update(g: SVGGElement, el: DiagramElement, ctx: RenderContext): void {
     const collapsed = ctx.isCollapsed(el);
-    const selected = ctx.selectedId === el.id;
+    const selected = ctx.isSelected(el);
     const dropTarget = ctx.dropTargetId === el.id;
     const style = { ...ZONE_DEFAULTS, ...(el.style ?? {}) };
     const height = collapsed ? HEADER_HEIGHT : el.height;
@@ -104,25 +104,6 @@ export class ContainerRenderer implements ElementRenderer {
       );
     }
 
-  }
-
-  /**
-   * The resize grip lives in the overlay layer, above every element, so that a
-   * child sitting on the container's bottom-right corner cannot cover it.
-   */
-  overlay(el: DiagramElement, ctx: RenderContext): SVGGElement | null {
-    if (ctx.selectedId !== el.id || ctx.isCollapsed(el)) return null;
-    return svg("g", { [ELEMENT_ATTR]: el.id }, [
-      svg("rect", {
-        [ROLE_ATTR]: Role.ResizeHandle,
-        class: "spla-zone-resize",
-        x: el.x + el.width - 10,
-        y: el.y + el.height - 10,
-        width: 12,
-        height: 12,
-        rx: 2,
-      }),
-    ]);
   }
 
   private collapseToggle(el: DiagramElement, collapsed: boolean): SVGGElement {

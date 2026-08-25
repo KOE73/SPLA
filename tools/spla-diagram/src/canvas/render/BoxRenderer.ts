@@ -25,7 +25,7 @@ export class BoxRenderer implements ElementRenderer {
 
   update(g: SVGGElement, el: DiagramElement, ctx: RenderContext): void {
     const style = nodeStyle(el.type);
-    const selected = ctx.selectedId === el.id;
+    const selected = ctx.isSelected(el);
 
     setAttrs(g, {
       class: `spla-node${selected ? " is-selected" : ""}`,
@@ -79,17 +79,9 @@ export class BoxRenderer implements ElementRenderer {
       ),
     );
 
-    g.appendChild(
-      svg("rect", {
-        [ROLE_ATTR]: Role.ResizeHandle,
-        class: "spla-node-resize",
-        x: el.x + el.width - 8,
-        y: el.y + el.height - 8,
-        width: 8,
-        height: 8,
-        fill: "transparent",
-      }),
-    );
+    // Resize grips are drawn by the canvas around the current selection, not
+    // here: with several elements selected they belong to the selection's
+    // bounding box rather than to any one element.
   }
 
   visibleRect(el: DiagramElement): Rect {

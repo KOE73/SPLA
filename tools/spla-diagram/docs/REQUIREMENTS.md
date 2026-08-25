@@ -783,7 +783,68 @@ Everything is editable at all times, including generated models where hand edits
 will be overwritten by the next generator run. A viewer mode may belong here, or
 may belong to a separate consumer of the same canvas.
 
-## 18. Out of scope
+## 18. Added after the port
+
+New capabilities, not present in the original. Recorded here with the same id
+scheme so later work has something to check against.
+
+### R-EDIT-12 — Resize from any side or corner
+
+A selected element shows eight grips: four corners and four edge midpoints.
+Dragging a north or west grip moves the origin as well as the size, so the
+opposite edge stays where it was. Minimums (160 × 100 for containers, 100 × 40
+for leaves) and grid snapping apply to every direction.
+
+Grips are drawn at a constant screen size, dividing by the current zoom, so they
+stay grabbable when zoomed out and unobtrusive when zoomed in.
+
+### R-EDIT-13 — Multi-selection
+
+`Ctrl`/`Cmd`/`Shift` + click adds an element to the selection or removes it.
+`Shift` + drag on empty canvas sweeps a rubber band, which selects every element
+**fully enclosed** by it — brushing past an element does not catch it. A plain
+click on empty canvas clears the selection and pans as before.
+
+Clicking an element that is already part of a multi-selection keeps the group,
+so that dragging it moves everything rather than collapsing the selection to one.
+
+### R-EDIT-14 — Group move
+
+Dragging any selected element moves the whole selection by the same delta, with
+containers still carrying their subtrees. Snapping is computed once from the
+element under the pointer and applied to all, so relative positions are exact.
+
+Reparenting stays a single-element operation: dropping a group into a container
+does not re-parent anything.
+
+### R-EDIT-15 — Group resize
+
+With more than one element selected, the grips sit on the union of their boxes,
+outlined with a dashed border. Dragging one maps every element from the old box
+into the new one, scaling positions and sizes proportionally — the arrangement
+is stretched, not re-laid-out. Containers carry their contents through the
+scale.
+
+### R-CRUD-08 — Delete removes the whole selection
+
+Deleting with several elements selected removes all of them, each with the edges
+that referenced it.
+
+### R-INSP-11 — Multi-selection readout
+
+With several elements selected the badge shows the count, and the panel states
+that geometry operations apply to the group while the fields below edit the
+primary element only.
+
+### Deviation — grips require selection
+
+The original gave every node an invisible resize grip that worked without
+selecting it first. Grips are now drawn only around the current selection,
+because with several elements selected they belong to the selection's box rather
+than to any one element. Selecting an element is one click, and it is what every
+other editor requires.
+
+## 19. Out of scope
 
 Deliberately absent, and to remain absent through the migration:
 

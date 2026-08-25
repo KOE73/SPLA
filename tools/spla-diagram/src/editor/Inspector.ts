@@ -104,7 +104,12 @@ export class Inspector {
 
   private renderElement(element: DiagramElement): void {
     const container = isContainer(element);
-    this.badge.textContent = `${container ? "CONTAINER" : "NODE"}: ${element.type}`;
+    const count = this.host.canvas.selectedIds.size;
+
+    this.badge.textContent =
+      count > 1
+        ? `ВЫБРАНО: ${count}`
+        : `${container ? "CONTAINER" : "NODE"}: ${element.type}`;
     this.badge.className = `badge ${container ? "badge-zone" : "badge-node"}`;
 
     const coords = el("span", { class: "mono coords", text: formatGeometry(element) });
@@ -112,6 +117,14 @@ export class Inspector {
 
     replaceChildren(
       this.body,
+      count > 1
+        ? el("div", {
+            class: "panel panel-info",
+            text:
+              `Выбрано элементов: ${count}. Перемещение и изменение размера ` +
+              `работают на всю группу; поля ниже правят только «${element.label}».`,
+          })
+        : null,
       el("div", { class: "field-row" }, [
         el("span", { class: "mono muted", text: `ID: ${element.id}` }),
         coords,

@@ -440,9 +440,10 @@ export class DiagramEditor implements InspectorHost {
     if (selection.kind === "edge") {
       doc.removeEdge(selection.id);
     } else {
-      const element = doc.element(selection.id);
-      if (element === undefined) return;
-      doc.remove(element);
+      // Everything selected goes, not just the primary.
+      for (const element of this.canvas.selectedElements()) {
+        doc.remove(element);
+      }
     }
 
     this.canvas.select(null);

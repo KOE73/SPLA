@@ -118,15 +118,31 @@
   fill: #fff;
 }
 
-.spla-zone-resize {
-  cursor: nwse-resize;
+/* ------------------------------------------------------- selection overlay */
+
+.spla-handle {
   fill: #3b82f6;
   stroke: #fff;
   stroke-width: 1.5px;
+  vector-effect: non-scaling-stroke;
 }
 
-.spla-zone-resize:hover {
+.spla-handle:hover {
   fill: #1d4ed8;
+}
+
+.spla-selection-outline {
+  fill: none;
+  stroke: #2563eb;
+  pointer-events: none;
+  vector-effect: non-scaling-stroke;
+}
+
+.spla-marquee {
+  fill: rgb(37 99 235 / 10%);
+  stroke: #2563eb;
+  pointer-events: none;
+  vector-effect: non-scaling-stroke;
 }
 
 /* ------------------------------------------------------------------ edges */

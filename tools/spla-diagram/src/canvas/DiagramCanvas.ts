@@ -12,6 +12,7 @@ import type { ElementRenderer, RenderContext } from "./render/ElementRenderer.js
 import { TypeRegistry } from "./render/TypeRegistry.js";
 import { DIM } from "./render/styles.js";
 import { edgeStyle } from "./render/edgeStyles.js";
+import { marquee, resizeHandles, selectionOutline } from "./render/handles.js";
 import { CenterPortAssigner } from "./ports/assigners.js";
 import { portKey, type PortAssigner, type PortRequest } from "./ports/PortAssigner.js";
 import { BezierRouter, type EdgeRouter } from "./routing/EdgeRouter.js";
@@ -76,8 +77,17 @@ export class DiagramCanvas {
 
   private doc: DiagramDocument | null = null;
   private selection: Selection | null = null;
+  /**
+   * Everything currently selected, including the primary. Group move and group
+   * resize operate on this set; the inspector still follows `selection`, since
+   * editing many elements at once is a different feature.
+   */
+  private selectionIds = new Set<string>();
   private collapsed = new Set<string>();
   private activeViewId: string | null = null;
+
+  /** Rubber band in model coordinates while a selection sweep is running. */
+  marqueeRect: Rect | null = null;
 
   private portAssigner: PortAssigner;
   private router: EdgeRouter;
@@ -123,6 +133,7 @@ export class DiagramCanvas {
   setModel(doc: DiagramDocument): void {
     this.doc = doc;
     this.selection = null;
+    this.selectionIds.clear();
     this.collapsed = new Set();
     this.activeViewId = doc.views[0]?.id ?? null;
     this.render();
@@ -140,10 +151,14 @@ export class DiagramCanvas {
    */
   replaceModel(doc: DiagramDocument): void {
     this.doc = doc;
-    if (this.selection !== null) {
-      const stillThere =
-        doc.element(this.selection.id) !== undefined || doc.edge(this.selection.id) !== undefined;
-      if (!stillThere) this.selection = null;
+    const alive = (id: string): boolean =>
+      doc.element(id) !== undefined || doc.edge(id) !== undefined;
+
+    for (const id of [...this.selectionIds]) {
+      if (!alive(id)) this.selectionIds.delete(id);
+    }
+    if (this.selection !== null && !alive(this.selection.id)) {
+      this.selection = this.resolveSelection([...this.selectionIds].at(-1) ?? null);
     }
     this.render();
     this.events.emit("select", this.selection);
@@ -163,24 +178,82 @@ export class DiagramCanvas {
   }
 
   select(id: string | null): void {
-    if (id === null) {
-      this.selection = null;
-    } else {
-      const el = this.doc?.element(id);
-      if (el !== undefined) {
-        this.selection = { id, kind: el.kind };
-      } else if (this.doc?.edge(id) !== undefined) {
-        this.selection = { id, kind: "edge" };
-      } else {
-        this.selection = null;
+    this.selection = this.resolveSelection(id);
+    this.selectionIds = this.selection === null ? new Set() : new Set([this.selection.id]);
+    this.render();
+    this.events.emit("select", this.selection);
+  }
+
+  /**
+   * Add or remove one element from the selection, keeping the rest.
+   *
+   * The last element added becomes primary, so the inspector follows what the
+   * user just touched.
+   */
+  toggleSelected(id: string): void {
+    if (this.selectionIds.has(id)) {
+      this.selectionIds.delete(id);
+      if (this.selection?.id === id) {
+        const next = [...this.selectionIds].at(-1) ?? null;
+        this.selection = this.resolveSelection(next);
       }
+    } else {
+      this.selectionIds.add(id);
+      this.selection = this.resolveSelection(id);
     }
     this.render();
     this.events.emit("select", this.selection);
   }
 
+  /** Replace the whole selection at once, as a marquee sweep does. */
+  selectMany(ids: readonly string[]): void {
+    this.selectionIds = new Set(ids);
+    this.selection = this.resolveSelection(ids.at(-1) ?? null);
+    this.render();
+    this.events.emit("select", this.selection);
+  }
+
+  private resolveSelection(id: string | null): Selection | null {
+    if (id === null || this.doc === null) return null;
+    const el = this.doc.element(id);
+    if (el !== undefined) return { id, kind: el.kind };
+    if (this.doc.edge(id) !== undefined) return { id, kind: "edge" };
+    return null;
+  }
+
   get selected(): Selection | null {
     return this.selection;
+  }
+
+  /** Ids of every selected element, primary included. */
+  get selectedIds(): ReadonlySet<string> {
+    return this.selectionIds;
+  }
+
+  /** The selected elements, skipping edges and anything already gone. */
+  selectedElements(): DiagramElement[] {
+    const doc = this.doc;
+    if (doc === null) return [];
+    const out: DiagramElement[] = [];
+    for (const id of this.selectionIds) {
+      const el = doc.element(id);
+      if (el !== undefined) out.push(el);
+    }
+    return out;
+  }
+
+  /** Union of the visible rectangles of the selected elements. */
+  selectionBounds(): Rect | null {
+    const elements = this.selectedElements();
+    if (elements.length === 0 || this.doc === null) return null;
+    const ctx = this.context();
+    let out: Rect | null = null;
+    for (const el of elements) {
+      if (ctx.isHidden(el)) continue;
+      const r = this.registry.resolve(el).visibleRect(el, ctx);
+      out = out === null ? r : unionRect(out, r);
+    }
+    return out;
   }
 
   selectedElement(): DiagramElement | null {
@@ -281,6 +354,38 @@ export class DiagramCanvas {
     }
 
     this.renderEdges(ctx);
+    this.renderSelectionOverlay();
+  }
+
+  /**
+   * Grips and outlines, drawn above everything.
+   *
+   * One element selected: grips sit on the element. Several: they sit on the
+   * union of their boxes, with a dashed outline, and dragging one scales the
+   * whole group.
+   */
+  private renderSelectionOverlay(): void {
+    const scale = this.viewport.zoom;
+
+    if (this.marqueeRect !== null) {
+      this.overlayLayer.appendChild(marquee(this.marqueeRect, scale));
+    }
+
+    const elements = this.selectedElements();
+    if (elements.length === 0) return;
+
+    const bounds = this.selectionBounds();
+    if (bounds === null) return;
+
+    if (elements.length > 1) {
+      this.overlayLayer.appendChild(selectionOutline(bounds, scale));
+    } else if (this.collapsed.has(elements[0]!.id)) {
+      // A collapsed container shows no grips: resizing it would change a height
+      // that is not currently visible.
+      return;
+    }
+
+    this.overlayLayer.appendChild(resizeHandles(bounds, scale));
   }
 
   private context(): RenderContext {
@@ -294,6 +399,7 @@ export class DiagramCanvas {
       doc,
       selectedId: this.selection?.id ?? null,
       dropTargetId: this.dropTargetId,
+      isSelected: (el) => this.selectionIds.has(el.id),
       isCollapsed: (el) => this.collapsed.has(el.id),
       isHidden: (el) => this.collapsedAncestor(el) !== null,
       opacity: (el) => {

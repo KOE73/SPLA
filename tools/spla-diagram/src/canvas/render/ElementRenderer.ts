@@ -8,8 +8,10 @@ import type { DiagramElement } from "../../model/types.js";
  */
 export interface RenderContext {
   readonly doc: DiagramDocument;
+  /** The element that drives the inspector when several are selected. */
   readonly selectedId: string | null;
   readonly dropTargetId: string | null;
+  isSelected(el: DiagramElement): boolean;
   isCollapsed(el: DiagramElement): boolean;
   /** View highlighting, 0..1 (R-VIEW-03/04). */
   opacity(el: DiagramElement): number;
