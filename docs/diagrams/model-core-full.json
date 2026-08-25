@@ -1,0 +1,7367 @@
+{
+  "metadata": {
+    "title": "SPLA Core — смысловой атлас",
+    "description": "421 entities from src/core",
+    "version": "2.0.0",
+    "layout": "semantic-atlas",
+    "mapping": "core.map.json",
+    "generated": true
+  },
+  "views": [
+    {
+      "id": "all",
+      "name": "Полный атлас",
+      "icon": "🧠"
+    }
+  ],
+  "zones": [
+    {
+      "id": "z_llm",
+      "name": "LLM: провайдеры и ход (37)",
+      "type": "boundary",
+      "semanticId": "block.llm",
+      "x": 36,
+      "y": 36,
+      "width": 962,
+      "height": 806,
+      "style": {
+        "fill": "#f0fdf4",
+        "stroke": "#86efac",
+        "strokeWidth": 2,
+        "headerBg": "#dcfce7"
+      },
+      "metadata": {
+        "depth": 0
+      }
+    },
+    {
+      "id": "z_llm_providers",
+      "name": "Провайдеры и шлюз (10)",
+      "type": "component",
+      "semanticId": "block.llm_providers",
+      "x": 50,
+      "y": 66,
+      "width": 750,
+      "height": 222,
+      "style": {
+        "fill": "#f0fdf4",
+        "stroke": "#86efac",
+        "strokeWidth": 1.5,
+        "headerBg": "#dcfce7"
+      },
+      "metadata": {
+        "depth": 1
+      }
+    },
+    {
+      "id": "z_llm_middleware",
+      "name": "Цепочка middleware (7)",
+      "type": "component",
+      "semanticId": "block.llm_middleware",
+      "x": 50,
+      "y": 304,
+      "width": 566,
+      "height": 222,
+      "style": {
+        "fill": "#f0fdf4",
+        "stroke": "#86efac",
+        "strokeWidth": 1.5,
+        "headerBg": "#dcfce7"
+      },
+      "metadata": {
+        "depth": 1
+      }
+    },
+    {
+      "id": "z_llm_turn",
+      "name": "Модель хода (20)",
+      "type": "component",
+      "semanticId": "block.llm_turn",
+      "x": 50,
+      "y": 542,
+      "width": 934,
+      "height": 286,
+      "style": {
+        "fill": "#f0fdf4",
+        "stroke": "#86efac",
+        "strokeWidth": 1.5,
+        "headerBg": "#dcfce7"
+      },
+      "metadata": {
+        "depth": 1
+      }
+    },
+    {
+      "id": "z_toolpipe",
+      "name": "Конвейер инструментов (MCP) (77)",
+      "type": "boundary",
+      "semanticId": "block.toolpipe",
+      "x": 1034,
+      "y": 36,
+      "width": 1360,
+      "height": 1474,
+      "style": {
+        "fill": "#eff6ff",
+        "stroke": "#93c5fd",
+        "strokeWidth": 2,
+        "headerBg": "#dbeafe"
+      },
+      "metadata": {
+        "depth": 0
+      }
+    },
+    {
+      "id": "z_tool_contracts",
+      "name": "Контракты конвейера (15)",
+      "type": "component",
+      "semanticId": "block.tool_contracts",
+      "x": 1048,
+      "y": 66,
+      "width": 750,
+      "height": 286,
+      "style": {
+        "fill": "#eff6ff",
+        "stroke": "#93c5fd",
+        "strokeWidth": 1.5,
+        "headerBg": "#dbeafe"
+      },
+      "metadata": {
+        "depth": 1
+      }
+    },
+    {
+      "id": "z_tool_stages",
+      "name": "Стадии конвейера (11)",
+      "type": "component",
+      "semanticId": "block.tool_stages",
+      "x": 1048,
+      "y": 368,
+      "width": 750,
+      "height": 222,
+      "style": {
+        "fill": "#eff6ff",
+        "stroke": "#93c5fd",
+        "strokeWidth": 1.5,
+        "headerBg": "#dbeafe"
+      },
+      "metadata": {
+        "depth": 1
+      }
+    },
+    {
+      "id": "z_tool_host",
+      "name": "Хост и выставление наружу (16)",
+      "type": "component",
+      "semanticId": "block.tool_host",
+      "x": 1048,
+      "y": 606,
+      "width": 750,
+      "height": 286,
+      "style": {
+        "fill": "#eff6ff",
+        "stroke": "#93c5fd",
+        "strokeWidth": 1.5,
+        "headerBg": "#dbeafe"
+      },
+      "metadata": {
+        "depth": 1
+      }
+    },
+    {
+      "id": "z_tool_progress",
+      "name": "Прогресс и фон (14)",
+      "type": "component",
+      "semanticId": "block.tool_progress",
+      "x": 1048,
+      "y": 908,
+      "width": 750,
+      "height": 286,
+      "style": {
+        "fill": "#eff6ff",
+        "stroke": "#93c5fd",
+        "strokeWidth": 1.5,
+        "headerBg": "#dbeafe"
+      },
+      "metadata": {
+        "depth": 1
+      }
+    },
+    {
+      "id": "z_agent_comp",
+      "name": "Композиция агента (14)",
+      "type": "component",
+      "semanticId": "block.agent_comp",
+      "x": 1048,
+      "y": 1210,
+      "width": 750,
+      "height": 286,
+      "style": {
+        "fill": "#eff6ff",
+        "stroke": "#93c5fd",
+        "strokeWidth": 1.5,
+        "headerBg": "#dbeafe"
+      },
+      "metadata": {
+        "depth": 1
+      }
+    },
+    {
+      "id": "z_formats",
+      "name": "Конвертеры форматов (7)",
+      "type": "component",
+      "semanticId": "block.formats",
+      "x": 1814,
+      "y": 1210,
+      "width": 566,
+      "height": 222,
+      "style": {
+        "fill": "#eff6ff",
+        "stroke": "#93c5fd",
+        "strokeWidth": 1.5,
+        "headerBg": "#dbeafe"
+      },
+      "metadata": {
+        "depth": 1
+      }
+    },
+    {
+      "id": "z_plugins",
+      "name": "Плагины и наборы инструментов (23)",
+      "type": "boundary",
+      "semanticId": "block.plugins",
+      "x": 36,
+      "y": 1546,
+      "width": 778,
+      "height": 678,
+      "style": {
+        "fill": "#fdf4ff",
+        "stroke": "#f0abfc",
+        "strokeWidth": 2,
+        "headerBg": "#fae8ff"
+      },
+      "metadata": {
+        "depth": 0
+      }
+    },
+    {
+      "id": "z_plugin_contracts",
+      "name": "Контракты плагина (5)",
+      "type": "component",
+      "semanticId": "block.plugin_contracts",
+      "x": 50,
+      "y": 1576,
+      "width": 566,
+      "height": 158,
+      "style": {
+        "fill": "#fdf4ff",
+        "stroke": "#f0abfc",
+        "strokeWidth": 1.5,
+        "headerBg": "#fae8ff"
+      },
+      "metadata": {
+        "depth": 1
+      }
+    },
+    {
+      "id": "z_plugin_loading",
+      "name": "Загрузка и обнаружение (9)",
+      "type": "component",
+      "semanticId": "block.plugin_loading",
+      "x": 50,
+      "y": 1750,
+      "width": 750,
+      "height": 222,
+      "style": {
+        "fill": "#fdf4ff",
+        "stroke": "#f0abfc",
+        "strokeWidth": 1.5,
+        "headerBg": "#fae8ff"
+      },
+      "metadata": {
+        "depth": 1
+      }
+    },
+    {
+      "id": "z_toolsets",
+      "name": "ToolSets (9)",
+      "type": "component",
+      "semanticId": "block.toolsets",
+      "x": 50,
+      "y": 1988,
+      "width": 750,
+      "height": 222,
+      "style": {
+        "fill": "#fdf4ff",
+        "stroke": "#f0abfc",
+        "strokeWidth": 1.5,
+        "headerBg": "#fae8ff"
+      },
+      "metadata": {
+        "depth": 1
+      }
+    },
+    {
+      "id": "z_chat",
+      "name": "Чат и сессия (17)",
+      "type": "boundary",
+      "semanticId": "block.chat",
+      "x": 850,
+      "y": 1546,
+      "width": 934,
+      "height": 286,
+      "style": {
+        "fill": "#fffbeb",
+        "stroke": "#fde68a",
+        "strokeWidth": 2,
+        "headerBg": "#fef3c7"
+      },
+      "metadata": {
+        "depth": 0
+      }
+    },
+    {
+      "id": "z_security",
+      "name": "Безопасность и полномочия (73)",
+      "type": "boundary",
+      "semanticId": "block.security",
+      "x": 36,
+      "y": 2260,
+      "width": 990,
+      "height": 1564,
+      "style": {
+        "fill": "#fff1f2",
+        "stroke": "#fca5a5",
+        "strokeWidth": 2,
+        "headerBg": "#ffe4e6"
+      },
+      "metadata": {
+        "depth": 0
+      }
+    },
+    {
+      "id": "z_sec_permissions",
+      "name": "Разрешения (12)",
+      "type": "component",
+      "semanticId": "block.sec_permissions",
+      "x": 50,
+      "y": 2290,
+      "width": 750,
+      "height": 222,
+      "style": {
+        "fill": "#fff1f2",
+        "stroke": "#fca5a5",
+        "strokeWidth": 1.5,
+        "headerBg": "#ffe4e6"
+      },
+      "metadata": {
+        "depth": 1
+      }
+    },
+    {
+      "id": "z_sec_zones",
+      "name": "Зоны и рёбра (11)",
+      "type": "component",
+      "semanticId": "block.sec_zones",
+      "x": 50,
+      "y": 2528,
+      "width": 750,
+      "height": 222,
+      "style": {
+        "fill": "#fff1f2",
+        "stroke": "#fca5a5",
+        "strokeWidth": 1.5,
+        "headerBg": "#ffe4e6"
+      },
+      "metadata": {
+        "depth": 1
+      }
+    },
+    {
+      "id": "z_sec_sandbox",
+      "name": "Песочница и возможности хоста (21)",
+      "type": "component",
+      "semanticId": "block.sec_sandbox",
+      "x": 50,
+      "y": 2766,
+      "width": 934,
+      "height": 350,
+      "style": {
+        "fill": "#fff1f2",
+        "stroke": "#fca5a5",
+        "strokeWidth": 1.5,
+        "headerBg": "#ffe4e6"
+      },
+      "metadata": {
+        "depth": 1
+      }
+    },
+    {
+      "id": "z_sec_secrets",
+      "name": "Секреты (21)",
+      "type": "component",
+      "semanticId": "block.sec_secrets",
+      "x": 50,
+      "y": 3132,
+      "width": 962,
+      "height": 440,
+      "style": {
+        "fill": "#fff1f2",
+        "stroke": "#fca5a5",
+        "strokeWidth": 1.5,
+        "headerBg": "#ffe4e6"
+      },
+      "metadata": {
+        "depth": 1
+      }
+    },
+    {
+      "id": "z_sec_secrets_domain",
+      "name": "Хранилище и политика (19)",
+      "type": "component",
+      "semanticId": "block.sec_secrets_domain",
+      "x": 64,
+      "y": 3162,
+      "width": 934,
+      "height": 286,
+      "style": {
+        "fill": "#fff1f2",
+        "stroke": "#fca5a5",
+        "strokeWidth": 1,
+        "headerBg": "#ffe4e6"
+      },
+      "metadata": {
+        "depth": 2
+      }
+    },
+    {
+      "id": "z_sec_secrets_dpapi",
+      "name": "DPAPI (2)",
+      "type": "component",
+      "semanticId": "block.sec_secrets_dpapi",
+      "x": 64,
+      "y": 3464,
+      "width": 382,
+      "height": 94,
+      "style": {
+        "fill": "#fff1f2",
+        "stroke": "#fca5a5",
+        "strokeWidth": 1,
+        "headerBg": "#ffe4e6"
+      },
+      "metadata": {
+        "depth": 2
+      }
+    },
+    {
+      "id": "z_sec_identity",
+      "name": "Идентичность (8)",
+      "type": "component",
+      "semanticId": "block.sec_identity",
+      "x": 50,
+      "y": 3588,
+      "width": 566,
+      "height": 222,
+      "style": {
+        "fill": "#fff1f2",
+        "stroke": "#fca5a5",
+        "strokeWidth": 1.5,
+        "headerBg": "#ffe4e6"
+      },
+      "metadata": {
+        "depth": 1
+      }
+    },
+    {
+      "id": "z_memory",
+      "name": "Память агента и контекст (32)",
+      "type": "boundary",
+      "semanticId": "block.memory",
+      "x": 1062,
+      "y": 2260,
+      "width": 992,
+      "height": 742,
+      "style": {
+        "fill": "#f0f9ff",
+        "stroke": "#7dd3fc",
+        "strokeWidth": 2,
+        "headerBg": "#e0f2fe"
+      },
+      "metadata": {
+        "depth": 0
+      }
+    },
+    {
+      "id": "z_mem_kv",
+      "name": "KV и блобы (14)",
+      "type": "component",
+      "semanticId": "block.mem_kv",
+      "x": 1076,
+      "y": 2290,
+      "width": 750,
+      "height": 286,
+      "style": {
+        "fill": "#f0f9ff",
+        "stroke": "#7dd3fc",
+        "strokeWidth": 1.5,
+        "headerBg": "#e0f2fe"
+      },
+      "metadata": {
+        "depth": 1
+      }
+    },
+    {
+      "id": "z_mem_context",
+      "name": "Сборка контекста и метки (2)",
+      "type": "component",
+      "semanticId": "block.mem_context",
+      "x": 1076,
+      "y": 2592,
+      "width": 382,
+      "height": 94,
+      "style": {
+        "fill": "#f0f9ff",
+        "stroke": "#7dd3fc",
+        "strokeWidth": 1.5,
+        "headerBg": "#e0f2fe"
+      },
+      "metadata": {
+        "depth": 1
+      }
+    },
+    {
+      "id": "z_mem_accounting",
+      "name": "Учёт токенов (4)",
+      "type": "component",
+      "semanticId": "block.mem_accounting",
+      "x": 1474,
+      "y": 2592,
+      "width": 566,
+      "height": 158,
+      "style": {
+        "fill": "#f0f9ff",
+        "stroke": "#7dd3fc",
+        "strokeWidth": 1.5,
+        "headerBg": "#e0f2fe"
+      },
+      "metadata": {
+        "depth": 1
+      }
+    },
+    {
+      "id": "z_mem_tools",
+      "name": "Инструменты памяти (12)",
+      "type": "component",
+      "semanticId": "block.mem_tools",
+      "x": 1076,
+      "y": 2766,
+      "width": 750,
+      "height": 222,
+      "style": {
+        "fill": "#f0f9ff",
+        "stroke": "#7dd3fc",
+        "strokeWidth": 1.5,
+        "headerBg": "#e0f2fe"
+      },
+      "metadata": {
+        "depth": 1
+      }
+    },
+    {
+      "id": "z_content",
+      "name": "Содержимое, редактор и ресурсы (30)",
+      "type": "boundary",
+      "semanticId": "block.content",
+      "x": 36,
+      "y": 3860,
+      "width": 806,
+      "height": 786,
+      "style": {
+        "fill": "#fefce8",
+        "stroke": "#fde047",
+        "strokeWidth": 2,
+        "headerBg": "#fef9c3"
+      },
+      "metadata": {
+        "depth": 0
+      }
+    },
+    {
+      "id": "z_editor",
+      "name": "Редактор и схемы (11)",
+      "type": "component",
+      "semanticId": "block.editor",
+      "x": 50,
+      "y": 3890,
+      "width": 750,
+      "height": 222,
+      "style": {
+        "fill": "#fefce8",
+        "stroke": "#fde047",
+        "strokeWidth": 1.5,
+        "headerBg": "#fef9c3"
+      },
+      "metadata": {
+        "depth": 1
+      }
+    },
+    {
+      "id": "z_resources",
+      "name": "Ресурсы (19)",
+      "type": "component",
+      "semanticId": "block.resources",
+      "x": 50,
+      "y": 4128,
+      "width": 778,
+      "height": 504,
+      "style": {
+        "fill": "#fefce8",
+        "stroke": "#fde047",
+        "strokeWidth": 1.5,
+        "headerBg": "#fef9c3"
+      },
+      "metadata": {
+        "depth": 1
+      }
+    },
+    {
+      "id": "z_res_core",
+      "name": "Реестр и провайдеры (12)",
+      "type": "component",
+      "semanticId": "block.res_core",
+      "x": 64,
+      "y": 4158,
+      "width": 750,
+      "height": 222,
+      "style": {
+        "fill": "#fefce8",
+        "stroke": "#fde047",
+        "strokeWidth": 1,
+        "headerBg": "#fef9c3"
+      },
+      "metadata": {
+        "depth": 2
+      }
+    },
+    {
+      "id": "z_res_tools",
+      "name": "Инструменты ресурсов (7)",
+      "type": "component",
+      "semanticId": "block.res_tools",
+      "x": 64,
+      "y": 4396,
+      "width": 566,
+      "height": 222,
+      "style": {
+        "fill": "#fefce8",
+        "stroke": "#fde047",
+        "strokeWidth": 1,
+        "headerBg": "#fef9c3"
+      },
+      "metadata": {
+        "depth": 2
+      }
+    },
+    {
+      "id": "z_skills",
+      "name": "Навыки и библиотека (40)",
+      "type": "boundary",
+      "semanticId": "block.skills",
+      "x": 878,
+      "y": 3860,
+      "width": 962,
+      "height": 806,
+      "style": {
+        "fill": "#f5f3ff",
+        "stroke": "#c4b5fd",
+        "strokeWidth": 2,
+        "headerBg": "#ede9fe"
+      },
+      "metadata": {
+        "depth": 0
+      }
+    },
+    {
+      "id": "z_skills_library",
+      "name": "Библиотека и каталог (17)",
+      "type": "component",
+      "semanticId": "block.skills_library",
+      "x": 892,
+      "y": 3890,
+      "width": 934,
+      "height": 286,
+      "style": {
+        "fill": "#f5f3ff",
+        "stroke": "#c4b5fd",
+        "strokeWidth": 1.5,
+        "headerBg": "#ede9fe"
+      },
+      "metadata": {
+        "depth": 1
+      }
+    },
+    {
+      "id": "z_skills_sources",
+      "name": "Источники и доверие (17)",
+      "type": "component",
+      "semanticId": "block.skills_sources",
+      "x": 892,
+      "y": 4192,
+      "width": 934,
+      "height": 286,
+      "style": {
+        "fill": "#f5f3ff",
+        "stroke": "#c4b5fd",
+        "strokeWidth": 1.5,
+        "headerBg": "#ede9fe"
+      },
+      "metadata": {
+        "depth": 1
+      }
+    },
+    {
+      "id": "z_skills_session",
+      "name": "Сессия и инструменты (6)",
+      "type": "component",
+      "semanticId": "block.skills_session",
+      "x": 892,
+      "y": 4494,
+      "width": 566,
+      "height": 158,
+      "style": {
+        "fill": "#f5f3ff",
+        "stroke": "#c4b5fd",
+        "strokeWidth": 1.5,
+        "headerBg": "#ede9fe"
+      },
+      "metadata": {
+        "depth": 1
+      }
+    },
+    {
+      "id": "z_project",
+      "name": "Проект и конфигурация (66)",
+      "type": "boundary",
+      "semanticId": "block.project",
+      "x": 36,
+      "y": 4702,
+      "width": 962,
+      "height": 1126,
+      "style": {
+        "fill": "#f8fafc",
+        "stroke": "#cbd5e1",
+        "strokeWidth": 2,
+        "headerBg": "#e2e8f0"
+      },
+      "metadata": {
+        "depth": 0
+      }
+    },
+    {
+      "id": "z_proj_core",
+      "name": "Проект и хранилища (15)",
+      "type": "component",
+      "semanticId": "block.proj_core",
+      "x": 50,
+      "y": 4732,
+      "width": 750,
+      "height": 286,
+      "style": {
+        "fill": "#f8fafc",
+        "stroke": "#cbd5e1",
+        "strokeWidth": 1.5,
+        "headerBg": "#e2e8f0"
+      },
+      "metadata": {
+        "depth": 1
+      }
+    },
+    {
+      "id": "z_proj_instances",
+      "name": "Инстансы (21)",
+      "type": "component",
+      "semanticId": "block.proj_instances",
+      "x": 50,
+      "y": 5034,
+      "width": 934,
+      "height": 350,
+      "style": {
+        "fill": "#f8fafc",
+        "stroke": "#cbd5e1",
+        "strokeWidth": 1.5,
+        "headerBg": "#e2e8f0"
+      },
+      "metadata": {
+        "depth": 1
+      }
+    },
+    {
+      "id": "z_proj_settings",
+      "name": "Настройки (30)",
+      "type": "component",
+      "semanticId": "block.proj_settings",
+      "x": 50,
+      "y": 5400,
+      "width": 934,
+      "height": 414,
+      "style": {
+        "fill": "#f8fafc",
+        "stroke": "#cbd5e1",
+        "strokeWidth": 1.5,
+        "headerBg": "#e2e8f0"
+      },
+      "metadata": {
+        "depth": 1
+      }
+    },
+    {
+      "id": "z_agentlife",
+      "name": "Жизненный цикл агента (3)",
+      "type": "boundary",
+      "semanticId": "block.agentlife",
+      "x": 1034,
+      "y": 4702,
+      "width": 566,
+      "height": 94,
+      "style": {
+        "fill": "#ecfeff",
+        "stroke": "#67e8f9",
+        "strokeWidth": 2,
+        "headerBg": "#cffafe"
+      },
+      "metadata": {
+        "depth": 0
+      }
+    },
+    {
+      "id": "z_observability",
+      "name": "Наблюдаемость (12)",
+      "type": "boundary",
+      "semanticId": "block.observability",
+      "x": 1636,
+      "y": 4702,
+      "width": 750,
+      "height": 222,
+      "style": {
+        "fill": "#f7fee7",
+        "stroke": "#bef264",
+        "strokeWidth": 2,
+        "headerBg": "#ecfccb"
+      },
+      "metadata": {
+        "depth": 0
+      }
+    },
+    {
+      "id": "z_platform",
+      "name": "Платформа / ОС (4)",
+      "type": "boundary",
+      "semanticId": "block.platform",
+      "x": 36,
+      "y": 5864,
+      "width": 566,
+      "height": 158,
+      "style": {
+        "fill": "#fdf2f8",
+        "stroke": "#f9a8d4",
+        "strokeWidth": 2,
+        "headerBg": "#fce7f3"
+      },
+      "metadata": {
+        "depth": 0
+      }
+    },
+    {
+      "id": "z_ssh",
+      "name": "SSH (7)",
+      "type": "boundary",
+      "semanticId": "block.ssh",
+      "x": 638,
+      "y": 5864,
+      "width": 566,
+      "height": 222,
+      "style": {
+        "fill": "#f1f5f9",
+        "stroke": "#94a3b8",
+        "strokeWidth": 2,
+        "headerBg": "#e2e8f0"
+      },
+      "metadata": {
+        "depth": 0
+      }
+    }
+  ],
+  "nodes": [
+    {
+      "id": "n_accountingstage",
+      "label": "AccountingStage",
+      "type": "component",
+      "zone": "z_tool_stages",
+      "x": 1062,
+      "y": 398,
+      "width": 170,
+      "height": 50,
+      "metadata": {
+        "codeRef": "src/core/SPLA.MCP.Core/Pipeline/Stages/AccountingStage.cs",
+        "type": "Class"
+      }
+    },
+    {
+      "id": "n_aclsecretaccesspolicy",
+      "label": "AclSecretAccessPolicy",
+      "type": "component",
+      "zone": "z_sec_secrets_domain",
+      "x": 78,
+      "y": 3192,
+      "width": 170,
+      "height": 50,
+      "metadata": {
+        "codeRef": "src/core/SPLA.Domain/Secrets/ISecretAccessPolicy.cs",
+        "type": "Class"
+      }
+    },
+    {
+      "id": "n_agentclarifytool",
+      "label": "AgentClarifyTool",
+      "type": "component",
+      "zone": "z_chat",
+      "x": 864,
+      "y": 1576,
+      "width": 170,
+      "height": 50,
+      "metadata": {
+        "codeRef": "src/core/SPLA.MCP.Core/Tools/AgentClarifyTool.cs",
+        "type": "Class"
+      }
+    },
+    {
+      "id": "n_agentcontextcomposer",
+      "label": "AgentContextComposer",
+      "type": "component",
+      "zone": "z_agent_comp",
+      "x": 1062,
+      "y": 1240,
+      "width": 170,
+      "height": 50,
+      "metadata": {
+        "codeRef": "src/core/SPLA.MCP.Core/Composition/AgentContextComposer.cs",
+        "type": "Class"
+      }
+    },
+    {
+      "id": "n_agentcontribution",
+      "label": "AgentContribution",
+      "type": "component",
+      "zone": "z_agent_comp",
+      "x": 1246,
+      "y": 1240,
+      "width": 170,
+      "height": 50,
+      "metadata": {
+        "codeRef": "src/core/SPLA.MCP.Core/Composition/AgentContribution.cs",
+        "type": "Record"
+      }
+    },
+    {
+      "id": "n_agentcontributioncontext",
+      "label": "AgentContributionContext",
+      "type": "component",
+      "zone": "z_agent_comp",
+      "x": 1430,
+      "y": 1240,
+      "width": 170,
+      "height": 50,
+      "metadata": {
+        "codeRef": "src/core/SPLA.MCP.Core/Composition/IAgentContributor.cs",
+        "type": "Record"
+      }
+    },
+    {
+      "id": "n_agentfeature",
+      "label": "AgentFeature",
+      "type": "component",
+      "zone": "z_agent_comp",
+      "x": 1614,
+      "y": 1240,
+      "width": 170,
+      "height": 50,
+      "metadata": {
+        "codeRef": "src/core/SPLA.MCP.Core/Agent/AgentFeature.cs",
+        "type": "Class"
+      }
+    },
+    {
+      "id": "n_agentfeaturecatalog",
+      "label": "AgentFeatureCatalog",
+      "type": "component",
+      "zone": "z_agent_comp",
+      "x": 1062,
+      "y": 1304,
+      "width": 170,
+      "height": 50,
+      "metadata": {
+        "codeRef": "src/core/SPLA.MCP.Core/Agent/AgentFeatureCatalog.cs",
+        "type": "Class"
+      }
+    },
+    {
+      "id": "n_agentlibrarian",
+      "label": "AgentLibrarian",
+      "type": "component",
+      "zone": "z_skills_library",
+      "x": 906,
+      "y": 3920,
+      "width": 170,
+      "height": 50,
+      "metadata": {
+        "codeRef": "src/core/SPLA.Library/Librarians/AgentLibrarian.cs",
+        "type": "Class"
+      }
+    },
+    {
+      "id": "n_agentmemorycleartool",
+      "label": "AgentMemoryClearTool",
+      "type": "component",
+      "zone": "z_mem_tools",
+      "x": 1090,
+      "y": 2796,
+      "width": 170,
+      "height": 50,
+      "metadata": {
+        "codeRef": "src/core/SPLA.MCP.Core/Tools/AgentMemoryClearTool.cs",
+        "type": "Class"
+      }
+    },
+    {
+      "id": "n_agentmemorydeletetool",
+      "label": "AgentMemoryDeleteTool",
+      "type": "component",
+      "zone": "z_mem_tools",
+      "x": 1274,
+      "y": 2796,
+      "width": 170,
+      "height": 50,
+      "metadata": {
+        "codeRef": "src/core/SPLA.MCP.Core/Tools/AgentMemoryDeleteTool.cs",
+        "type": "Class"
+      }
+    },
+    {
+      "id": "n_agentmemorygettool",
+      "label": "AgentMemoryGetTool",
+      "type": "component",
+      "zone": "z_mem_tools",
+      "x": 1458,
+      "y": 2796,
+      "width": 170,
+      "height": 50,
+      "metadata": {
+        "codeRef": "src/core/SPLA.MCP.Core/Tools/AgentMemoryGetTool.cs",
+        "type": "Class"
+      }
+    },
+    {
+      "id": "n_agentmemoryhelpers",
+      "label": "AgentMemoryHelpers",
+      "type": "component",
+      "zone": "z_mem_tools",
+      "x": 1642,
+      "y": 2796,
+      "width": 170,
+      "height": 50,
+      "metadata": {
+        "codeRef": "src/core/SPLA.MCP.Core/Tools/AgentMemoryHelpers.cs",
+        "type": "Class"
+      }
+    },
+    {
+      "id": "n_agentmemorylisttool",
+      "label": "AgentMemoryListTool",
+      "type": "component",
+      "zone": "z_mem_tools",
+      "x": 1090,
+      "y": 2860,
+      "width": 170,
+      "height": 50,
+      "metadata": {
+        "codeRef": "src/core/SPLA.MCP.Core/Tools/AgentMemoryListTool.cs",
+        "type": "Class"
+      }
+    },
+    {
+      "id": "n_agentmemorysettool",
+      "label": "AgentMemorySetTool",
+      "type": "component",
+      "zone": "z_mem_tools",
+      "x": 1274,
+      "y": 2860,
+      "width": 170,
+      "height": 50,
+      "metadata": {
+        "codeRef": "src/core/SPLA.MCP.Core/Tools/AgentMemorySetTool.cs",
+        "type": "Class"
+      }
+    },
+    {
+      "id": "n_agentmode",
+      "label": "AgentMode",
+      "type": "concept",
+      "zone": "z_sec_permissions",
+      "x": 64,
+      "y": 2320,
+      "width": 170,
+      "height": 50,
+      "metadata": {
+        "codeRef": "src/core/SPLA.Domain/Models/PermissionEnums.cs",
+        "type": "Enum"
+      }
+    },
+    {
+      "id": "n_agentrunresult",
+      "label": "AgentRunResult",
+      "type": "component",
+      "zone": "z_ssh",
+      "x": 652,
+      "y": 5894,
+      "width": 170,
+      "height": 50,
+      "metadata": {
+        "codeRef": "src/core/SPLA.Ssh.Core/Session/SshLiveSession.cs",
+        "type": "Record"
+      }
+    },
+    {
+      "id": "n_agentsession",
+      "label": "AgentSession",
+      "type": "component",
+      "zone": "z_mem_kv",
+      "x": 1090,
+      "y": 2320,
+      "width": 170,
+      "height": 50,
+      "metadata": {
+        "codeRef": "src/core/SPLA.Domain/Agent/AgentSessionScope.cs",
+        "type": "Class"
+      }
+    },
+    {
+      "id": "n_agentsessionscope",
+      "label": "AgentSessionScope",
+      "type": "component",
+      "zone": "z_mem_kv",
+      "x": 1274,
+      "y": 2320,
+      "width": 170,
+      "height": 50,
+      "metadata": {
+        "codeRef": "src/core/SPLA.Domain/Agent/AgentSessionScope.cs",
+        "type": "Class"
+      }
+    },
+    {
+      "id": "n_agentspawnbatchtool",
+      "label": "AgentSpawnBatchTool",
+      "type": "component",
+      "zone": "z_agentlife",
+      "x": 1048,
+      "y": 4732,
+      "width": 170,
+      "height": 50,
+      "metadata": {
+        "codeRef": "src/core/SPLA.MCP.Core/Tools/AgentSpawnBatchTool.cs",
+        "type": "Class"
+      }
+    },
+    {
+      "id": "n_agentspawntool",
+      "label": "AgentSpawnTool",
+      "type": "component",
+      "zone": "z_agentlife",
+      "x": 1232,
+      "y": 4732,
+      "width": 170,
+      "height": 50,
+      "metadata": {
+        "codeRef": "src/core/SPLA.MCP.Core/Tools/AgentSpawnTool.cs",
+        "type": "Class"
+      }
+    },
+    {
+      "id": "n_allowallgate",
+      "label": "AllowAllGate",
+      "type": "component",
+      "zone": "z_sec_sandbox",
+      "x": 64,
+      "y": 2796,
+      "width": 170,
+      "height": 50,
+      "metadata": {
+        "codeRef": "src/core/SPLA.Domain/Host/AllowAllGate.cs",
+        "type": "Class"
+      }
+    },
+    {
+      "id": "n_ambienthoststage",
+      "label": "AmbientHostStage",
+      "type": "component",
+      "zone": "z_tool_stages",
+      "x": 1246,
+      "y": 398,
+      "width": 170,
+      "height": 50,
+      "metadata": {
+        "codeRef": "src/core/SPLA.MCP.Core/Pipeline/Stages/AmbientHostStage.cs",
+        "type": "Class"
+      }
+    },
+    {
+      "id": "n_attemptoutcome",
+      "label": "AttemptOutcome",
+      "type": "concept",
+      "zone": "z_llm_turn",
+      "x": 64,
+      "y": 572,
+      "width": 170,
+      "height": 50,
+      "metadata": {
+        "codeRef": "src/core/SPLA.Domain/Llm/GenerationAttempt.cs",
+        "type": "Enum"
+      }
+    },
+    {
+      "id": "n_backgroundstage",
+      "label": "BackgroundStage",
+      "type": "component",
+      "zone": "z_tool_stages",
+      "x": 1430,
+      "y": 398,
+      "width": 170,
+      "height": 50,
+      "metadata": {
+        "codeRef": "src/core/SPLA.MCP.Core/Pipeline/Stages/BackgroundStage.cs",
+        "type": "Class"
+      }
+    },
+    {
+      "id": "n_backgroundtaskrecord",
+      "label": "BackgroundTaskRecord",
+      "type": "component",
+      "zone": "z_tool_progress",
+      "x": 1062,
+      "y": 938,
+      "width": 170,
+      "height": 50,
+      "metadata": {
+        "codeRef": "src/core/SPLA.Domain/Tools/BackgroundTaskRegistry.cs",
+        "type": "Class"
+      }
+    },
+    {
+      "id": "n_backgroundtaskregistry",
+      "label": "BackgroundTaskRegistry",
+      "type": "component",
+      "zone": "z_tool_progress",
+      "x": 1246,
+      "y": 938,
+      "width": 170,
+      "height": 50,
+      "metadata": {
+        "codeRef": "src/core/SPLA.Domain/Tools/BackgroundTaskRegistry.cs",
+        "type": "Class"
+      }
+    },
+    {
+      "id": "n_backgroundtaskstate",
+      "label": "BackgroundTaskState",
+      "type": "concept",
+      "zone": "z_tool_progress",
+      "x": 1430,
+      "y": 938,
+      "width": 170,
+      "height": 50,
+      "metadata": {
+        "codeRef": "src/core/SPLA.Domain/Tools/BackgroundTaskRegistry.cs",
+        "type": "Enum"
+      }
+    },
+    {
+      "id": "n_blobentry",
+      "label": "BlobEntry",
+      "type": "component",
+      "zone": "z_mem_kv",
+      "x": 1458,
+      "y": 2320,
+      "width": 170,
+      "height": 50,
+      "metadata": {
+        "codeRef": "src/core/SPLA.Domain/Agent/IBlobStore.cs",
+        "type": "Record"
+      }
+    },
+    {
+      "id": "n_blobkind",
+      "label": "BlobKind",
+      "type": "concept",
+      "zone": "z_mem_kv",
+      "x": 1642,
+      "y": 2320,
+      "width": 170,
+      "height": 50,
+      "metadata": {
+        "codeRef": "src/core/SPLA.Domain/Agent/IBlobStore.cs",
+        "type": "Enum"
+      }
+    },
+    {
+      "id": "n_blobpayload",
+      "label": "BlobPayload",
+      "type": "component",
+      "zone": "z_mem_kv",
+      "x": 1090,
+      "y": 2384,
+      "width": 170,
+      "height": 50,
+      "metadata": {
+        "codeRef": "src/core/SPLA.Domain/Agent/IBlobStore.cs",
+        "type": "Record"
+      }
+    },
+    {
+      "id": "n_blobpeektool",
+      "label": "BlobPeekTool",
+      "type": "component",
+      "zone": "z_mem_tools",
+      "x": 1458,
+      "y": 2860,
+      "width": 170,
+      "height": 50,
+      "metadata": {
+        "codeRef": "src/core/SPLA.MCP.Core/Tools/BlobPeekTool.cs",
+        "type": "Class"
+      }
+    },
+    {
+      "id": "n_blobstore",
+      "label": "BlobStore",
+      "type": "component",
+      "zone": "z_mem_kv",
+      "x": 1274,
+      "y": 2384,
+      "width": 170,
+      "height": 50,
+      "metadata": {
+        "codeRef": "src/core/SPLA.Domain/Agent/BlobStore.cs",
+        "type": "Class"
+      }
+    },
+    {
+      "id": "n_boundarymode",
+      "label": "BoundaryMode",
+      "type": "concept",
+      "zone": "z_sec_sandbox",
+      "x": 248,
+      "y": 2796,
+      "width": 170,
+      "height": 50,
+      "metadata": {
+        "codeRef": "src/core/SPLA.Domain/Host/LocalWorkspace.cs",
+        "type": "Enum"
+      }
+    },
+    {
+      "id": "n_boundaryobservation",
+      "label": "BoundaryObservation",
+      "type": "component",
+      "zone": "z_sec_sandbox",
+      "x": 432,
+      "y": 2796,
+      "width": 170,
+      "height": 50,
+      "metadata": {
+        "codeRef": "src/core/SPLA.Domain/Host/LocalWorkspace.cs",
+        "type": "Record"
+      }
+    },
+    {
+      "id": "n_browserlauncher",
+      "label": "BrowserLauncher",
+      "type": "component",
+      "zone": "z_platform",
+      "x": 50,
+      "y": 5894,
+      "width": 170,
+      "height": 50,
+      "metadata": {
+        "codeRef": "src/core/SPLA.Platform/BrowserLauncher.cs",
+        "type": "Class"
+      }
+    },
+    {
+      "id": "n_browsertarget",
+      "label": "BrowserTarget",
+      "type": "concept",
+      "zone": "z_platform",
+      "x": 234,
+      "y": 5894,
+      "width": 170,
+      "height": 50,
+      "metadata": {
+        "codeRef": "src/core/SPLA.Platform/BrowserLauncher.cs",
+        "type": "Enum"
+      }
+    },
+    {
+      "id": "n_bucket",
+      "label": "Bucket",
+      "type": "component",
+      "zone": "z_observability",
+      "x": 1650,
+      "y": 4732,
+      "width": 170,
+      "height": 50,
+      "metadata": {
+        "codeRef": "src/core/SPLA.Observability/Collection/MetricSeries.cs",
+        "type": "Class"
+      }
+    },
+    {
+      "id": "n_bucketpoint",
+      "label": "BucketPoint",
+      "type": "component",
+      "zone": "z_observability",
+      "x": 1834,
+      "y": 4732,
+      "width": 170,
+      "height": 50,
+      "metadata": {
+        "codeRef": "src/core/SPLA.Observability/Collection/MetricSeries.cs",
+        "type": "Record"
+      }
+    },
+    {
+      "id": "n_builtinconverters",
+      "label": "BuiltInConverters",
+      "type": "component",
+      "zone": "z_formats",
+      "x": 1828,
+      "y": 1240,
+      "width": 170,
+      "height": 50,
+      "metadata": {
+        "codeRef": "src/core/SPLA.MCP.Core/Formats/BuiltInConverters.cs",
+        "type": "Class"
+      }
+    },
+    {
+      "id": "n_catalogview",
+      "label": "CatalogView",
+      "type": "component",
+      "zone": "z_skills_library",
+      "x": 1090,
+      "y": 3920,
+      "width": 170,
+      "height": 50,
+      "metadata": {
+        "codeRef": "src/core/SPLA.Library/Catalog/CatalogView.cs",
+        "type": "Class"
+      }
+    },
+    {
+      "id": "n_chatdoubt",
+      "label": "ChatDoubt",
+      "type": "component",
+      "zone": "z_sec_zones",
+      "x": 64,
+      "y": 2558,
+      "width": 170,
+      "height": 50,
+      "metadata": {
+        "codeRef": "src/core/SPLA.Domain/Security/DataOrigin.cs",
+        "type": "Class"
+      }
+    },
+    {
+      "id": "n_chatinbox",
+      "label": "ChatInbox",
+      "type": "component",
+      "zone": "z_chat",
+      "x": 1048,
+      "y": 1576,
+      "width": 170,
+      "height": 50,
+      "metadata": {
+        "codeRef": "src/core/SPLA.Domain/Tools/ChatInbox.cs",
+        "type": "Class"
+      }
+    },
+    {
+      "id": "n_chatmanager",
+      "label": "ChatManager",
+      "type": "component",
+      "zone": "z_chat",
+      "x": 1232,
+      "y": 1576,
+      "width": 170,
+      "height": 50,
+      "metadata": {
+        "codeRef": "src/core/SPLA.Domain/Settings/ChatManager.cs",
+        "type": "Class"
+      }
+    },
+    {
+      "id": "n_chatmessage",
+      "label": "ChatMessage",
+      "type": "component",
+      "zone": "z_chat",
+      "x": 1416,
+      "y": 1576,
+      "width": 170,
+      "height": 50,
+      "metadata": {
+        "codeRef": "src/core/SPLA.Domain/Models/ChatMessage.cs",
+        "type": "Class"
+      }
+    },
+    {
+      "id": "n_chatrole",
+      "label": "ChatRole",
+      "type": "concept",
+      "zone": "z_chat",
+      "x": 1600,
+      "y": 1576,
+      "width": 170,
+      "height": 50,
+      "metadata": {
+        "codeRef": "src/core/SPLA.Domain/Models/ChatRole.cs",
+        "type": "Enum"
+      }
+    },
+    {
+      "id": "n_chatsession",
+      "label": "ChatSession",
+      "type": "component",
+      "zone": "z_chat",
+      "x": 864,
+      "y": 1640,
+      "width": 170,
+      "height": 50,
+      "metadata": {
+        "codeRef": "src/core/SPLA.Domain/Models/ChatSession.cs",
+        "type": "Class"
+      }
+    },
+    {
+      "id": "n_chatsessionattempt",
+      "label": "ChatSessionAttempt",
+      "type": "component",
+      "zone": "z_chat",
+      "x": 1048,
+      "y": 1640,
+      "width": 170,
+      "height": 50,
+      "metadata": {
+        "codeRef": "src/core/SPLA.Domain/Models/ChatSession.cs",
+        "type": "Class"
+      }
+    },
+    {
+      "id": "n_chatsessioncontext",
+      "label": "ChatSessionContext",
+      "type": "component",
+      "zone": "z_chat",
+      "x": 1232,
+      "y": 1640,
+      "width": 170,
+      "height": 50,
+      "metadata": {
+        "codeRef": "src/core/SPLA.Domain/Models/ChatSession.cs",
+        "type": "Class"
+      }
+    },
+    {
+      "id": "n_chatsessiondoubt",
+      "label": "ChatSessionDoubt",
+      "type": "component",
+      "zone": "z_chat",
+      "x": 1416,
+      "y": 1640,
+      "width": 170,
+      "height": 50,
+      "metadata": {
+        "codeRef": "src/core/SPLA.Domain/Models/ChatSession.cs",
+        "type": "Class"
+      }
+    },
+    {
+      "id": "n_chatsessionmessage",
+      "label": "ChatSessionMessage",
+      "type": "component",
+      "zone": "z_chat",
+      "x": 1600,
+      "y": 1640,
+      "width": 170,
+      "height": 50,
+      "metadata": {
+        "codeRef": "src/core/SPLA.Domain/Models/ChatSession.cs",
+        "type": "Class"
+      }
+    },
+    {
+      "id": "n_claimidentity",
+      "label": "ClaimIdentity",
+      "type": "component",
+      "zone": "z_sec_identity",
+      "x": 64,
+      "y": 3618,
+      "width": 170,
+      "height": 50,
+      "metadata": {
+        "codeRef": "src/core/SPLA.Domain/Identity/IIdentity.cs",
+        "type": "Record"
+      }
+    },
+    {
+      "id": "n_claimsidentityprovider",
+      "label": "ClaimsIdentityProvider",
+      "type": "component",
+      "zone": "z_sec_identity",
+      "x": 248,
+      "y": 3618,
+      "width": 170,
+      "height": 50,
+      "metadata": {
+        "codeRef": "src/core/SPLA.Domain/Identity/IIdentityProvider.cs",
+        "type": "Class"
+      }
+    },
+    {
+      "id": "n_claimsidentityresolver",
+      "label": "ClaimsIdentityResolver",
+      "type": "component",
+      "zone": "z_sec_identity",
+      "x": 432,
+      "y": 3618,
+      "width": 170,
+      "height": 50,
+      "metadata": {
+        "codeRef": "src/core/SPLA.Domain/Identity/ClaimsIdentityResolver.cs",
+        "type": "Class"
+      }
+    },
+    {
+      "id": "n_clarifyoption",
+      "label": "ClarifyOption",
+      "type": "component",
+      "zone": "z_chat",
+      "x": 864,
+      "y": 1704,
+      "width": 170,
+      "height": 50,
+      "metadata": {
+        "codeRef": "src/core/SPLA.Domain/Models/ClarifyRequest.cs",
+        "type": "Class"
+      }
+    },
+    {
+      "id": "n_clarifyrequest",
+      "label": "ClarifyRequest",
+      "type": "component",
+      "zone": "z_chat",
+      "x": 1048,
+      "y": 1704,
+      "width": 170,
+      "height": 50,
+      "metadata": {
+        "codeRef": "src/core/SPLA.Domain/Models/ClarifyRequest.cs",
+        "type": "Class"
+      }
+    },
+    {
+      "id": "n_clarifyscope",
+      "label": "ClarifyScope",
+      "type": "component",
+      "zone": "z_chat",
+      "x": 1232,
+      "y": 1704,
+      "width": 170,
+      "height": 50,
+      "metadata": {
+        "codeRef": "src/core/SPLA.Domain/Tools/ClarifyScope.cs",
+        "type": "Class"
+      }
+    },
+    {
+      "id": "n_composedcontext",
+      "label": "ComposedContext",
+      "type": "component",
+      "zone": "z_agent_comp",
+      "x": 1246,
+      "y": 1304,
+      "width": 170,
+      "height": 50,
+      "metadata": {
+        "codeRef": "src/core/SPLA.MCP.Core/Composition/AgentContextComposer.cs",
+        "type": "Record"
+      }
+    },
+    {
+      "id": "n_compositionmanifest",
+      "label": "CompositionManifest",
+      "type": "component",
+      "zone": "z_agent_comp",
+      "x": 1430,
+      "y": 1304,
+      "width": 170,
+      "height": 50,
+      "metadata": {
+        "codeRef": "src/core/SPLA.MCP.Core/Composition/CompositionManifest.cs",
+        "type": "Record"
+      }
+    },
+    {
+      "id": "n_configloader",
+      "label": "ConfigLoader",
+      "type": "component",
+      "zone": "z_proj_settings",
+      "x": 64,
+      "y": 5430,
+      "width": 170,
+      "height": 50,
+      "metadata": {
+        "codeRef": "src/core/SPLA.Domain/Settings/ConfigLoader.cs",
+        "type": "Class"
+      }
+    },
+    {
+      "id": "n_contentnode",
+      "label": "ContentNode",
+      "type": "component",
+      "zone": "z_editor",
+      "x": 64,
+      "y": 3920,
+      "width": 170,
+      "height": 50,
+      "metadata": {
+        "codeRef": "src/core/SPLA.Domain/Editor/ContentNode.cs",
+        "type": "Record"
+      }
+    },
+    {
+      "id": "n_contentnodekind",
+      "label": "ContentNodeKind",
+      "type": "concept",
+      "zone": "z_editor",
+      "x": 248,
+      "y": 3920,
+      "width": 170,
+      "height": 50,
+      "metadata": {
+        "codeRef": "src/core/SPLA.Domain/Editor/ContentNode.cs",
+        "type": "Enum"
+      }
+    },
+    {
+      "id": "n_contenttypes",
+      "label": "ContentTypes",
+      "type": "component",
+      "zone": "z_res_core",
+      "x": 78,
+      "y": 4188,
+      "width": 170,
+      "height": 50,
+      "metadata": {
+        "codeRef": "src/core/SPLA.Domain/Resources/ContentTypes.cs",
+        "type": "Class"
+      }
+    },
+    {
+      "id": "n_contextassembler",
+      "label": "ContextAssembler",
+      "type": "component",
+      "zone": "z_mem_context",
+      "x": 1090,
+      "y": 2622,
+      "width": 170,
+      "height": 50,
+      "metadata": {
+        "codeRef": "src/core/SPLA.Domain/Context/ContextAssembler.cs",
+        "type": "Class"
+      }
+    },
+    {
+      "id": "n_contextcheckpointrestoretool",
+      "label": "ContextCheckpointRestoreTool",
+      "type": "component",
+      "zone": "z_mem_tools",
+      "x": 1642,
+      "y": 2860,
+      "width": 170,
+      "height": 50,
+      "metadata": {
+        "codeRef": "src/core/SPLA.MCP.Core/Tools/ContextCheckpointRestoreTool.cs",
+        "type": "Class"
+      }
+    },
+    {
+      "id": "n_contextcheckpointsettool",
+      "label": "ContextCheckpointSetTool",
+      "type": "component",
+      "zone": "z_mem_tools",
+      "x": 1090,
+      "y": 2924,
+      "width": 170,
+      "height": 50,
+      "metadata": {
+        "codeRef": "src/core/SPLA.MCP.Core/Tools/ContextCheckpointSetTool.cs",
+        "type": "Class"
+      }
+    },
+    {
+      "id": "n_contextitem",
+      "label": "ContextItem",
+      "type": "component",
+      "zone": "z_agent_comp",
+      "x": 1614,
+      "y": 1304,
+      "width": 170,
+      "height": 50,
+      "metadata": {
+        "codeRef": "src/core/SPLA.MCP.Core/Composition/ContextItem.cs",
+        "type": "Record"
+      }
+    },
+    {
+      "id": "n_contextplacement",
+      "label": "ContextPlacement",
+      "type": "concept",
+      "zone": "z_agent_comp",
+      "x": 1062,
+      "y": 1368,
+      "width": 170,
+      "height": 50,
+      "metadata": {
+        "codeRef": "src/core/SPLA.MCP.Core/Composition/ContextItem.cs",
+        "type": "Enum"
+      }
+    },
+    {
+      "id": "n_contextretention",
+      "label": "ContextRetention",
+      "type": "concept",
+      "zone": "z_chat",
+      "x": 1416,
+      "y": 1704,
+      "width": 170,
+      "height": 50,
+      "metadata": {
+        "codeRef": "src/core/SPLA.Domain/Models/ChatMessage.cs",
+        "type": "Enum"
+      }
+    },
+    {
+      "id": "n_contributortotal",
+      "label": "ContributorTotal",
+      "type": "component",
+      "zone": "z_agent_comp",
+      "x": 1246,
+      "y": 1368,
+      "width": 170,
+      "height": 50,
+      "metadata": {
+        "codeRef": "src/core/SPLA.MCP.Core/Composition/CompositionManifest.cs",
+        "type": "Record"
+      }
+    },
+    {
+      "id": "n_conversation",
+      "label": "Conversation",
+      "type": "component",
+      "zone": "z_chat",
+      "x": 1600,
+      "y": 1704,
+      "width": 170,
+      "height": 50,
+      "metadata": {
+        "codeRef": "src/core/SPLA.Domain/Models/Conversation.cs",
+        "type": "Class"
+      }
+    },
+    {
+      "id": "n_conversioncard",
+      "label": "ConversionCard",
+      "type": "component",
+      "zone": "z_formats",
+      "x": 2012,
+      "y": 1240,
+      "width": 170,
+      "height": 50,
+      "metadata": {
+        "codeRef": "src/core/SPLA.Domain/Formats/FormatConverterRegistry.cs",
+        "type": "Record"
+      }
+    },
+    {
+      "id": "n_credentialsmiddleware",
+      "label": "CredentialsMiddleware",
+      "type": "component",
+      "zone": "z_llm_middleware",
+      "x": 64,
+      "y": 334,
+      "width": 170,
+      "height": 50,
+      "metadata": {
+        "codeRef": "src/core/SPLA.Domain/Llm/Middleware/CredentialsMiddleware.cs",
+        "type": "Class"
+      }
+    },
+    {
+      "id": "n_datachannel",
+      "label": "DataChannel",
+      "type": "component",
+      "zone": "z_mem_kv",
+      "x": 1458,
+      "y": 2384,
+      "width": 170,
+      "height": 50,
+      "metadata": {
+        "codeRef": "src/core/SPLA.MCP.Core/Tools/DataChannel.cs",
+        "type": "Class"
+      }
+    },
+    {
+      "id": "n_dataorigin",
+      "label": "DataOrigin",
+      "type": "component",
+      "zone": "z_sec_zones",
+      "x": 248,
+      "y": 2558,
+      "width": 170,
+      "height": 50,
+      "metadata": {
+        "codeRef": "src/core/SPLA.Domain/Security/DataOrigin.cs",
+        "type": "Record"
+      }
+    },
+    {
+      "id": "n_directoryskillsource",
+      "label": "DirectorySkillSource",
+      "type": "component",
+      "zone": "z_skills_sources",
+      "x": 906,
+      "y": 4222,
+      "width": 170,
+      "height": 50,
+      "metadata": {
+        "codeRef": "src/core/SPLA.Library/Sources/DirectorySkillSource.cs",
+        "type": "Class"
+      }
+    },
+    {
+      "id": "n_directoryskillsourcefactory",
+      "label": "DirectorySkillSourceFactory",
+      "type": "component",
+      "zone": "z_skills_sources",
+      "x": 1090,
+      "y": 4222,
+      "width": 170,
+      "height": 50,
+      "metadata": {
+        "codeRef": "src/core/SPLA.Library/Sources/SkillSourceRegistry.cs",
+        "type": "Class"
+      }
+    },
+    {
+      "id": "n_doubtcause",
+      "label": "DoubtCause",
+      "type": "component",
+      "zone": "z_sec_zones",
+      "x": 432,
+      "y": 2558,
+      "width": 170,
+      "height": 50,
+      "metadata": {
+        "codeRef": "src/core/SPLA.Domain/Security/DataOrigin.cs",
+        "type": "Record"
+      }
+    },
+    {
+      "id": "n_dpapifilesecretstore",
+      "label": "DpapiFileSecretStore",
+      "type": "component",
+      "zone": "z_sec_secrets_dpapi",
+      "x": 78,
+      "y": 3494,
+      "width": 170,
+      "height": 50,
+      "metadata": {
+        "codeRef": "src/core/SPLA.Secrets.Dpapi/DpapiFileSecretStore.cs",
+        "type": "Class"
+      }
+    },
+    {
+      "id": "n_dpapisecrets",
+      "label": "DpapiSecrets",
+      "type": "component",
+      "zone": "z_sec_secrets_dpapi",
+      "x": 262,
+      "y": 3494,
+      "width": 170,
+      "height": 50,
+      "metadata": {
+        "codeRef": "src/core/SPLA.Secrets.Dpapi/DpapiSecrets.cs",
+        "type": "Class"
+      }
+    },
+    {
+      "id": "n_edgeclassifier",
+      "label": "EdgeClassifier",
+      "type": "component",
+      "zone": "z_sec_zones",
+      "x": 616,
+      "y": 2558,
+      "width": 170,
+      "height": 50,
+      "metadata": {
+        "codeRef": "src/core/SPLA.MCP.Core/Security/EdgeClassifier.cs",
+        "type": "Class"
+      }
+    },
+    {
+      "id": "n_edgeledger",
+      "label": "EdgeLedger",
+      "type": "component",
+      "zone": "z_sec_zones",
+      "x": 64,
+      "y": 2622,
+      "width": 170,
+      "height": 50,
+      "metadata": {
+        "codeRef": "src/core/SPLA.MCP.Core/Security/EdgeLedger.cs",
+        "type": "Class"
+      }
+    },
+    {
+      "id": "n_edgetraffic",
+      "label": "EdgeTraffic",
+      "type": "component",
+      "zone": "z_sec_zones",
+      "x": 248,
+      "y": 2622,
+      "width": 170,
+      "height": 50,
+      "metadata": {
+        "codeRef": "src/core/SPLA.MCP.Core/Security/EdgeLedger.cs",
+        "type": "Record"
+      }
+    },
+    {
+      "id": "n_embeddedjsonschemaprovider",
+      "label": "EmbeddedJsonSchemaProvider",
+      "type": "component",
+      "zone": "z_editor",
+      "x": 432,
+      "y": 3920,
+      "width": 170,
+      "height": 50,
+      "metadata": {
+        "codeRef": "src/core/SPLA.Domain/Editor/EmbeddedJsonSchemaProvider.cs",
+        "type": "Class"
+      }
+    },
+    {
+      "id": "n_faultstage",
+      "label": "FaultStage",
+      "type": "component",
+      "zone": "z_tool_stages",
+      "x": 1614,
+      "y": 398,
+      "width": 170,
+      "height": 50,
+      "metadata": {
+        "codeRef": "src/core/SPLA.MCP.Core/Pipeline/Stages/FaultStage.cs",
+        "type": "Class"
+      }
+    },
+    {
+      "id": "n_filebucket",
+      "label": "FileBucket",
+      "type": "component",
+      "zone": "z_proj_core",
+      "x": 64,
+      "y": 4762,
+      "width": 170,
+      "height": 50,
+      "metadata": {
+        "codeRef": "src/core/SPLA.Domain/Project/FileBucket.cs",
+        "type": "Class"
+      }
+    },
+    {
+      "id": "n_filecontentbrowser",
+      "label": "FileContentBrowser",
+      "type": "component",
+      "zone": "z_editor",
+      "x": 616,
+      "y": 3920,
+      "width": 170,
+      "height": 50,
+      "metadata": {
+        "codeRef": "src/core/SPLA.Domain/Editor/FileContentBrowser.cs",
+        "type": "Class"
+      }
+    },
+    {
+      "id": "n_filecontentsource",
+      "label": "FileContentSource",
+      "type": "component",
+      "zone": "z_editor",
+      "x": 64,
+      "y": 3984,
+      "width": 170,
+      "height": 50,
+      "metadata": {
+        "codeRef": "src/core/SPLA.Domain/Editor/FileContentSource.cs",
+        "type": "Class"
+      }
+    },
+    {
+      "id": "n_fileresourceprovider",
+      "label": "FileResourceProvider",
+      "type": "component",
+      "zone": "z_res_core",
+      "x": 262,
+      "y": 4188,
+      "width": 170,
+      "height": 50,
+      "metadata": {
+        "codeRef": "src/core/SPLA.Domain/Resources/Providers/FileResourceProvider.cs",
+        "type": "Class"
+      }
+    },
+    {
+      "id": "n_filesecretaclstore",
+      "label": "FileSecretAclStore",
+      "type": "component",
+      "zone": "z_sec_secrets_domain",
+      "x": 262,
+      "y": 3192,
+      "width": 170,
+      "height": 50,
+      "metadata": {
+        "codeRef": "src/core/SPLA.Domain/Secrets/FileSecretAclStore.cs",
+        "type": "Class"
+      }
+    },
+    {
+      "id": "n_filesecretstore",
+      "label": "FileSecretStore",
+      "type": "component",
+      "zone": "z_sec_secrets_domain",
+      "x": 446,
+      "y": 3192,
+      "width": 170,
+      "height": 50,
+      "metadata": {
+        "codeRef": "src/core/SPLA.Domain/Secrets/FileSecretStore.cs",
+        "type": "Class"
+      }
+    },
+    {
+      "id": "n_fileskillsourcestore",
+      "label": "FileSkillSourceStore",
+      "type": "component",
+      "zone": "z_skills_sources",
+      "x": 1274,
+      "y": 4222,
+      "width": 170,
+      "height": 50,
+      "metadata": {
+        "codeRef": "src/core/SPLA.Domain/Settings/SkillSourceStore.cs",
+        "type": "Class"
+      }
+    },
+    {
+      "id": "n_fileskilltruststore",
+      "label": "FileSkillTrustStore",
+      "type": "component",
+      "zone": "z_skills_sources",
+      "x": 1458,
+      "y": 4222,
+      "width": 170,
+      "height": 50,
+      "metadata": {
+        "codeRef": "src/core/SPLA.Domain/Settings/SkillTrustStore.cs",
+        "type": "Class"
+      }
+    },
+    {
+      "id": "n_filetokenusagestore",
+      "label": "FileTokenUsageStore",
+      "type": "component",
+      "zone": "z_mem_accounting",
+      "x": 1488,
+      "y": 2622,
+      "width": 170,
+      "height": 50,
+      "metadata": {
+        "codeRef": "src/core/SPLA.Domain/Agent/FileTokenUsageStore.cs",
+        "type": "Class"
+      }
+    },
+    {
+      "id": "n_formatconverterregistry",
+      "label": "FormatConverterRegistry",
+      "type": "component",
+      "zone": "z_formats",
+      "x": 2196,
+      "y": 1240,
+      "width": 170,
+      "height": 50,
+      "metadata": {
+        "codeRef": "src/core/SPLA.Domain/Formats/FormatConverterRegistry.cs",
+        "type": "Class"
+      }
+    },
+    {
+      "id": "n_functioncall",
+      "label": "FunctionCall",
+      "type": "component",
+      "zone": "z_tool_contracts",
+      "x": 1062,
+      "y": 96,
+      "width": 170,
+      "height": 50,
+      "metadata": {
+        "codeRef": "src/core/SPLA.Domain/Models/ToolCall.cs",
+        "type": "Class"
+      }
+    },
+    {
+      "id": "n_generationattempt",
+      "label": "GenerationAttempt",
+      "type": "component",
+      "zone": "z_llm_turn",
+      "x": 248,
+      "y": 572,
+      "width": 170,
+      "height": 50,
+      "metadata": {
+        "codeRef": "src/core/SPLA.Domain/Llm/GenerationAttempt.cs",
+        "type": "Record"
+      }
+    },
+    {
+      "id": "n_hostservices",
+      "label": "HostServices",
+      "type": "component",
+      "zone": "z_sec_sandbox",
+      "x": 616,
+      "y": 2796,
+      "width": 170,
+      "height": 50,
+      "metadata": {
+        "codeRef": "src/core/SPLA.Domain/Host/HostServices.cs",
+        "type": "Class"
+      }
+    },
+    {
+      "id": "n_iagentcontributor",
+      "label": "IAgentContributor",
+      "type": "service",
+      "zone": "z_agent_comp",
+      "x": 1430,
+      "y": 1368,
+      "width": 170,
+      "height": 50,
+      "metadata": {
+        "codeRef": "src/core/SPLA.MCP.Core/Composition/IAgentContributor.cs",
+        "type": "Interface"
+      }
+    },
+    {
+      "id": "n_iagentfeature",
+      "label": "IAgentFeature",
+      "type": "service",
+      "zone": "z_agent_comp",
+      "x": 1614,
+      "y": 1368,
+      "width": 170,
+      "height": 50,
+      "metadata": {
+        "codeRef": "src/core/SPLA.MCP.Core/Agent/IAgentFeature.cs",
+        "type": "Interface"
+      }
+    },
+    {
+      "id": "n_iagentlibrarian",
+      "label": "IAgentLibrarian",
+      "type": "service",
+      "zone": "z_skills_library",
+      "x": 1274,
+      "y": 3920,
+      "width": 170,
+      "height": 50,
+      "metadata": {
+        "codeRef": "src/core/SPLA.Library/Librarians/IAgentLibrarian.cs",
+        "type": "Interface"
+      }
+    },
+    {
+      "id": "n_iagentsession",
+      "label": "IAgentSession",
+      "type": "service",
+      "zone": "z_mem_kv",
+      "x": 1642,
+      "y": 2384,
+      "width": 170,
+      "height": 50,
+      "metadata": {
+        "codeRef": "src/core/SPLA.Domain/Agent/AgentSessionScope.cs",
+        "type": "Interface"
+      }
+    },
+    {
+      "id": "n_iagentspawner",
+      "label": "IAgentSpawner",
+      "type": "service",
+      "zone": "z_agentlife",
+      "x": 1416,
+      "y": 4732,
+      "width": 170,
+      "height": 50,
+      "metadata": {
+        "codeRef": "src/core/SPLA.Domain/Interfaces/IAgentSpawner.cs",
+        "type": "Interface"
+      }
+    },
+    {
+      "id": "n_ibackgroundtaskhost",
+      "label": "IBackgroundTaskHost",
+      "type": "service",
+      "zone": "z_mem_kv",
+      "x": 1090,
+      "y": 2448,
+      "width": 170,
+      "height": 50,
+      "metadata": {
+        "codeRef": "src/core/SPLA.Domain/Agent/AgentSessionScope.cs",
+        "type": "Interface"
+      }
+    },
+    {
+      "id": "n_iblobstore",
+      "label": "IBlobStore",
+      "type": "service",
+      "zone": "z_mem_kv",
+      "x": 1274,
+      "y": 2448,
+      "width": 170,
+      "height": 50,
+      "metadata": {
+        "codeRef": "src/core/SPLA.Domain/Agent/IBlobStore.cs",
+        "type": "Interface"
+      }
+    },
+    {
+      "id": "n_ibucket",
+      "label": "IBucket",
+      "type": "service",
+      "zone": "z_proj_core",
+      "x": 248,
+      "y": 4762,
+      "width": 170,
+      "height": 50,
+      "metadata": {
+        "codeRef": "src/core/SPLA.Domain/Project/IBucket.cs",
+        "type": "Interface"
+      }
+    },
+    {
+      "id": "n_icapabilitygate",
+      "label": "ICapabilityGate",
+      "type": "service",
+      "zone": "z_sec_sandbox",
+      "x": 800,
+      "y": 2796,
+      "width": 170,
+      "height": 50,
+      "metadata": {
+        "codeRef": "src/core/SPLA.Domain/Host/ICapabilityGate.cs",
+        "type": "Interface"
+      }
+    },
+    {
+      "id": "n_ichatstore",
+      "label": "IChatStore",
+      "type": "service",
+      "zone": "z_chat",
+      "x": 864,
+      "y": 1768,
+      "width": 170,
+      "height": 50,
+      "metadata": {
+        "codeRef": "src/core/SPLA.Domain/Project/IChatStore.cs",
+        "type": "Interface"
+      }
+    },
+    {
+      "id": "n_icontentbrowser",
+      "label": "IContentBrowser",
+      "type": "service",
+      "zone": "z_editor",
+      "x": 248,
+      "y": 3984,
+      "width": 170,
+      "height": 50,
+      "metadata": {
+        "codeRef": "src/core/SPLA.Domain/Editor/IContentBrowser.cs",
+        "type": "Interface"
+      }
+    },
+    {
+      "id": "n_icontentsource",
+      "label": "IContentSource",
+      "type": "service",
+      "zone": "z_editor",
+      "x": 432,
+      "y": 3984,
+      "width": 170,
+      "height": 50,
+      "metadata": {
+        "codeRef": "src/core/SPLA.Domain/Editor/IContentSource.cs",
+        "type": "Interface"
+      }
+    },
+    {
+      "id": "n_ieditableskillsource",
+      "label": "IEditableSkillSource",
+      "type": "service",
+      "zone": "z_skills_sources",
+      "x": 1642,
+      "y": 4222,
+      "width": 170,
+      "height": 50,
+      "metadata": {
+        "codeRef": "src/core/SPLA.Library/Sources/ISkillSource.cs",
+        "type": "Interface"
+      }
+    },
+    {
+      "id": "n_iformatconverter",
+      "label": "IFormatConverter",
+      "type": "service",
+      "zone": "z_formats",
+      "x": 1828,
+      "y": 1304,
+      "width": 170,
+      "height": 50,
+      "metadata": {
+        "codeRef": "src/core/SPLA.Domain/Formats/IFormatConverter.cs",
+        "type": "Interface"
+      }
+    },
+    {
+      "id": "n_iidentity",
+      "label": "IIdentity",
+      "type": "service",
+      "zone": "z_sec_identity",
+      "x": 64,
+      "y": 3682,
+      "width": 170,
+      "height": 50,
+      "metadata": {
+        "codeRef": "src/core/SPLA.Domain/Identity/IIdentity.cs",
+        "type": "Interface"
+      }
+    },
+    {
+      "id": "n_iidentityprovider",
+      "label": "IIdentityProvider",
+      "type": "service",
+      "zone": "z_sec_identity",
+      "x": 248,
+      "y": 3682,
+      "width": 170,
+      "height": 50,
+      "metadata": {
+        "codeRef": "src/core/SPLA.Domain/Identity/IIdentityProvider.cs",
+        "type": "Interface"
+      }
+    },
+    {
+      "id": "n_iinstanceprobe",
+      "label": "IInstanceProbe",
+      "type": "service",
+      "zone": "z_proj_instances",
+      "x": 64,
+      "y": 5064,
+      "width": 170,
+      "height": 50,
+      "metadata": {
+        "codeRef": "src/core/SPLA.Instances.Contracts/IInstanceRegistry.cs",
+        "type": "Interface"
+      }
+    },
+    {
+      "id": "n_iinstanceregistry",
+      "label": "IInstanceRegistry",
+      "type": "service",
+      "zone": "z_proj_instances",
+      "x": 248,
+      "y": 5064,
+      "width": 170,
+      "height": 50,
+      "metadata": {
+        "codeRef": "src/core/SPLA.Instances.Contracts/IInstanceRegistry.cs",
+        "type": "Interface"
+      }
+    },
+    {
+      "id": "n_iinstancespawner",
+      "label": "IInstanceSpawner",
+      "type": "service",
+      "zone": "z_proj_instances",
+      "x": 432,
+      "y": 5064,
+      "width": 170,
+      "height": 50,
+      "metadata": {
+        "codeRef": "src/core/SPLA.Instances.Contracts/IInstanceSpawner.cs",
+        "type": "Interface"
+      }
+    },
+    {
+      "id": "n_ijsonschemaprovider",
+      "label": "IJsonSchemaProvider",
+      "type": "service",
+      "zone": "z_editor",
+      "x": 616,
+      "y": 3984,
+      "width": 170,
+      "height": 50,
+      "metadata": {
+        "codeRef": "src/core/SPLA.Domain/Editor/IJsonSchemaProvider.cs",
+        "type": "Interface"
+      }
+    },
+    {
+      "id": "n_ikeyvaluestore",
+      "label": "IKeyValueStore",
+      "type": "service",
+      "zone": "z_mem_kv",
+      "x": 1458,
+      "y": 2448,
+      "width": 170,
+      "height": 50,
+      "metadata": {
+        "codeRef": "src/core/SPLA.Domain/Agent/IKeyValueStore.cs",
+        "type": "Interface"
+      }
+    },
+    {
+      "id": "n_illmclient",
+      "label": "ILlmClient",
+      "type": "service",
+      "zone": "z_llm_providers",
+      "x": 64,
+      "y": 96,
+      "width": 170,
+      "height": 50,
+      "metadata": {
+        "codeRef": "src/core/SPLA.Domain/Llm/ILlmClient.cs",
+        "type": "Interface"
+      }
+    },
+    {
+      "id": "n_illmclientresolver",
+      "label": "ILlmClientResolver",
+      "type": "service",
+      "zone": "z_llm_providers",
+      "x": 248,
+      "y": 96,
+      "width": 170,
+      "height": 50,
+      "metadata": {
+        "codeRef": "src/core/SPLA.Domain/Llm/ILlmClient.cs",
+        "type": "Interface"
+      }
+    },
+    {
+      "id": "n_illmgateway",
+      "label": "ILlmGateway",
+      "type": "service",
+      "zone": "z_llm_providers",
+      "x": 432,
+      "y": 96,
+      "width": 170,
+      "height": 50,
+      "metadata": {
+        "codeRef": "src/core/SPLA.Domain/Llm/ILlmGateway.cs",
+        "type": "Interface"
+      }
+    },
+    {
+      "id": "n_illmmiddleware",
+      "label": "ILlmMiddleware",
+      "type": "service",
+      "zone": "z_llm_middleware",
+      "x": 248,
+      "y": 334,
+      "width": 170,
+      "height": 50,
+      "metadata": {
+        "codeRef": "src/core/SPLA.Domain/Llm/ILlmMiddleware.cs",
+        "type": "Interface"
+      }
+    },
+    {
+      "id": "n_illmproviderdescriptor",
+      "label": "ILlmProviderDescriptor",
+      "type": "service",
+      "zone": "z_llm_providers",
+      "x": 616,
+      "y": 96,
+      "width": 170,
+      "height": 50,
+      "metadata": {
+        "codeRef": "src/core/SPLA.Domain/Llm/LlmProviderRegistry.cs",
+        "type": "Interface"
+      }
+    },
+    {
+      "id": "n_imcptool",
+      "label": "IMcpTool",
+      "type": "service",
+      "zone": "z_tool_host",
+      "x": 1062,
+      "y": 636,
+      "width": 170,
+      "height": 50,
+      "metadata": {
+        "codeRef": "src/core/SPLA.MCP.Core/Interfaces/IMcpTool.cs",
+        "type": "Interface"
+      }
+    },
+    {
+      "id": "n_imodelcataloginfo",
+      "label": "IModelCatalogInfo",
+      "type": "service",
+      "zone": "z_llm_turn",
+      "x": 432,
+      "y": 572,
+      "width": 170,
+      "height": 50,
+      "metadata": {
+        "codeRef": "src/core/SPLA.Domain/Llm/ProviderTelemetry.cs",
+        "type": "Interface"
+      }
+    },
+    {
+      "id": "n_imodelmanagementservice",
+      "label": "IModelManagementService",
+      "type": "service",
+      "zone": "z_llm_providers",
+      "x": 64,
+      "y": 160,
+      "width": 170,
+      "height": 50,
+      "metadata": {
+        "codeRef": "src/core/SPLA.Domain/Interfaces/IModelManagementService.cs",
+        "type": "Interface"
+      }
+    },
+    {
+      "id": "n_inodescope",
+      "label": "INodeScope",
+      "type": "service",
+      "zone": "z_tool_progress",
+      "x": 1614,
+      "y": 938,
+      "width": 170,
+      "height": 50,
+      "metadata": {
+        "codeRef": "src/core/SPLA.Domain/Tools/ProgressScope.cs",
+        "type": "Interface"
+      }
+    },
+    {
+      "id": "n_ipermissionmanager",
+      "label": "IPermissionManager",
+      "type": "service",
+      "zone": "z_sec_permissions",
+      "x": 248,
+      "y": 2320,
+      "width": 170,
+      "height": 50,
+      "metadata": {
+        "codeRef": "src/core/SPLA.MCP.Core/Permissions/PermissionManager.cs",
+        "type": "Interface"
+      }
+    },
+    {
+      "id": "n_iproject",
+      "label": "IProject",
+      "type": "service",
+      "zone": "z_proj_core",
+      "x": 432,
+      "y": 4762,
+      "width": 170,
+      "height": 50,
+      "metadata": {
+        "codeRef": "src/core/SPLA.Domain/Project/IProject.cs",
+        "type": "Interface"
+      }
+    },
+    {
+      "id": "n_iprojectbackend",
+      "label": "IProjectBackend",
+      "type": "service",
+      "zone": "z_proj_core",
+      "x": 616,
+      "y": 4762,
+      "width": 170,
+      "height": 50,
+      "metadata": {
+        "codeRef": "src/core/SPLA.Domain/Project/IProjectBackend.cs",
+        "type": "Interface"
+      }
+    },
+    {
+      "id": "n_iprojectprovider",
+      "label": "IProjectProvider",
+      "type": "service",
+      "zone": "z_proj_core",
+      "x": 64,
+      "y": 4826,
+      "width": 170,
+      "height": 50,
+      "metadata": {
+        "codeRef": "src/core/SPLA.Domain/Project/IProjectProvider.cs",
+        "type": "Interface"
+      }
+    },
+    {
+      "id": "n_iprovideraccountinfo",
+      "label": "IProviderAccountInfo",
+      "type": "service",
+      "zone": "z_llm_turn",
+      "x": 616,
+      "y": 572,
+      "width": 170,
+      "height": 50,
+      "metadata": {
+        "codeRef": "src/core/SPLA.Domain/Llm/ProviderTelemetry.cs",
+        "type": "Interface"
+      }
+    },
+    {
+      "id": "n_ireasoningcatalog",
+      "label": "IReasoningCatalog",
+      "type": "service",
+      "zone": "z_llm_turn",
+      "x": 800,
+      "y": 572,
+      "width": 170,
+      "height": 50,
+      "metadata": {
+        "codeRef": "src/core/SPLA.Domain/Llm/ProviderTelemetry.cs",
+        "type": "Interface"
+      }
+    },
+    {
+      "id": "n_iresourcecontainermaker",
+      "label": "IResourceContainerMaker",
+      "type": "service",
+      "zone": "z_res_core",
+      "x": 446,
+      "y": 4188,
+      "width": 170,
+      "height": 50,
+      "metadata": {
+        "codeRef": "src/core/SPLA.Domain/Resources/IResourceProvider.cs",
+        "type": "Interface"
+      }
+    },
+    {
+      "id": "n_iresourceprovider",
+      "label": "IResourceProvider",
+      "type": "service",
+      "zone": "z_res_core",
+      "x": 630,
+      "y": 4188,
+      "width": 170,
+      "height": 50,
+      "metadata": {
+        "codeRef": "src/core/SPLA.Domain/Resources/IResourceProvider.cs",
+        "type": "Interface"
+      }
+    },
+    {
+      "id": "n_iresourceremover",
+      "label": "IResourceRemover",
+      "type": "service",
+      "zone": "z_res_core",
+      "x": 78,
+      "y": 4252,
+      "width": 170,
+      "height": 50,
+      "metadata": {
+        "codeRef": "src/core/SPLA.Domain/Resources/IResourceProvider.cs",
+        "type": "Interface"
+      }
+    },
+    {
+      "id": "n_iresourcewriter",
+      "label": "IResourceWriter",
+      "type": "service",
+      "zone": "z_res_core",
+      "x": 262,
+      "y": 4252,
+      "width": 170,
+      "height": 50,
+      "metadata": {
+        "codeRef": "src/core/SPLA.Domain/Resources/IResourceProvider.cs",
+        "type": "Interface"
+      }
+    },
+    {
+      "id": "n_isandbox",
+      "label": "ISandbox",
+      "type": "service",
+      "zone": "z_sec_sandbox",
+      "x": 64,
+      "y": 2860,
+      "width": 170,
+      "height": 50,
+      "metadata": {
+        "codeRef": "src/core/SPLA.Domain/Host/ISandbox.cs",
+        "type": "Interface"
+      }
+    },
+    {
+      "id": "n_ischemacontributor",
+      "label": "ISchemaContributor",
+      "type": "service",
+      "zone": "z_editor",
+      "x": 64,
+      "y": 4048,
+      "width": 170,
+      "height": 50,
+      "metadata": {
+        "codeRef": "src/core/SPLA.Domain/Editor/ISchemaContributor.cs",
+        "type": "Interface"
+      }
+    },
+    {
+      "id": "n_isecretaccesspolicy",
+      "label": "ISecretAccessPolicy",
+      "type": "service",
+      "zone": "z_sec_secrets_domain",
+      "x": 630,
+      "y": 3192,
+      "width": 170,
+      "height": 50,
+      "metadata": {
+        "codeRef": "src/core/SPLA.Domain/Secrets/ISecretAccessPolicy.cs",
+        "type": "Interface"
+      }
+    },
+    {
+      "id": "n_isecretaclstore",
+      "label": "ISecretAclStore",
+      "type": "service",
+      "zone": "z_sec_secrets_domain",
+      "x": 814,
+      "y": 3192,
+      "width": 170,
+      "height": 50,
+      "metadata": {
+        "codeRef": "src/core/SPLA.Domain/Secrets/SecretAcl.cs",
+        "type": "Interface"
+      }
+    },
+    {
+      "id": "n_isecretresolver",
+      "label": "ISecretResolver",
+      "type": "service",
+      "zone": "z_sec_secrets_domain",
+      "x": 78,
+      "y": 3256,
+      "width": 170,
+      "height": 50,
+      "metadata": {
+        "codeRef": "src/core/SPLA.Domain/Secrets/ISecretResolver.cs",
+        "type": "Interface"
+      }
+    },
+    {
+      "id": "n_isecretstore",
+      "label": "ISecretStore",
+      "type": "service",
+      "zone": "z_sec_secrets_domain",
+      "x": 262,
+      "y": 3256,
+      "width": 170,
+      "height": 50,
+      "metadata": {
+        "codeRef": "src/core/SPLA.Domain/Secrets/ISecretStore.cs",
+        "type": "Interface"
+      }
+    },
+    {
+      "id": "n_ishell",
+      "label": "IShell",
+      "type": "service",
+      "zone": "z_sec_sandbox",
+      "x": 248,
+      "y": 2860,
+      "width": 170,
+      "height": 50,
+      "metadata": {
+        "codeRef": "src/core/SPLA.Domain/Host/IShell.cs",
+        "type": "Interface"
+      }
+    },
+    {
+      "id": "n_iskillcapabilityprobe",
+      "label": "ISkillCapabilityProbe",
+      "type": "service",
+      "zone": "z_skills_library",
+      "x": 1458,
+      "y": 3920,
+      "width": 170,
+      "height": 50,
+      "metadata": {
+        "codeRef": "src/core/SPLA.Library/ISkillCapabilityProbe.cs",
+        "type": "Interface"
+      }
+    },
+    {
+      "id": "n_iskillsession",
+      "label": "ISkillSession",
+      "type": "service",
+      "zone": "z_skills_session",
+      "x": 906,
+      "y": 4524,
+      "width": 170,
+      "height": 50,
+      "metadata": {
+        "codeRef": "src/core/SPLA.Domain/Agent/ISkillSession.cs",
+        "type": "Interface"
+      }
+    },
+    {
+      "id": "n_iskillsource",
+      "label": "ISkillSource",
+      "type": "service",
+      "zone": "z_skills_sources",
+      "x": 906,
+      "y": 4286,
+      "width": 170,
+      "height": 50,
+      "metadata": {
+        "codeRef": "src/core/SPLA.Library/Sources/ISkillSource.cs",
+        "type": "Interface"
+      }
+    },
+    {
+      "id": "n_iskillsourcefactory",
+      "label": "ISkillSourceFactory",
+      "type": "service",
+      "zone": "z_skills_sources",
+      "x": 1090,
+      "y": 4286,
+      "width": 170,
+      "height": 50,
+      "metadata": {
+        "codeRef": "src/core/SPLA.Library/Sources/SkillSourceRegistry.cs",
+        "type": "Interface"
+      }
+    },
+    {
+      "id": "n_iskillsourcestore",
+      "label": "ISkillSourceStore",
+      "type": "service",
+      "zone": "z_skills_sources",
+      "x": 1274,
+      "y": 4286,
+      "width": 170,
+      "height": 50,
+      "metadata": {
+        "codeRef": "src/core/SPLA.Domain/Settings/SkillSourceStore.cs",
+        "type": "Interface"
+      }
+    },
+    {
+      "id": "n_iskilltruststore",
+      "label": "ISkillTrustStore",
+      "type": "service",
+      "zone": "z_skills_sources",
+      "x": 1458,
+      "y": 4286,
+      "width": 170,
+      "height": 50,
+      "metadata": {
+        "codeRef": "src/core/SPLA.Domain/Settings/SkillTrustStore.cs",
+        "type": "Interface"
+      }
+    },
+    {
+      "id": "n_isplaplugin",
+      "label": "ISplaPlugin",
+      "type": "service",
+      "zone": "z_plugin_contracts",
+      "x": 64,
+      "y": 1606,
+      "width": 170,
+      "height": 50,
+      "metadata": {
+        "codeRef": "src/core/SPLA.MCP.Core/Interfaces/ISplaPlugin.cs",
+        "type": "Interface"
+      }
+    },
+    {
+      "id": "n_isplapluginaction",
+      "label": "ISplaPluginAction",
+      "type": "service",
+      "zone": "z_plugin_contracts",
+      "x": 248,
+      "y": 1606,
+      "width": 170,
+      "height": 50,
+      "metadata": {
+        "codeRef": "src/core/SPLA.MCP.Core/Interfaces/ISplaPluginAction.cs",
+        "type": "Interface"
+      }
+    },
+    {
+      "id": "n_isplapluginpanelprovider",
+      "label": "ISplaPluginPanelProvider",
+      "type": "service",
+      "zone": "z_plugin_contracts",
+      "x": 432,
+      "y": 1606,
+      "width": 170,
+      "height": 50,
+      "metadata": {
+        "codeRef": "src/core/SPLA.MCP.Core/Interfaces/ISplaPluginPanelProvider.cs",
+        "type": "Interface"
+      }
+    },
+    {
+      "id": "n_isplapluginpanelsession",
+      "label": "ISplaPluginPanelSession",
+      "type": "service",
+      "zone": "z_tool_host",
+      "x": 1246,
+      "y": 636,
+      "width": 170,
+      "height": 50,
+      "metadata": {
+        "codeRef": "src/core/SPLA.MCP.Core/Interfaces/ISplaPluginPanelProvider.cs",
+        "type": "Interface"
+      }
+    },
+    {
+      "id": "n_isplapluginselfcheck",
+      "label": "ISplaPluginSelfCheck",
+      "type": "service",
+      "zone": "z_plugin_contracts",
+      "x": 64,
+      "y": 1670,
+      "width": 170,
+      "height": 50,
+      "metadata": {
+        "codeRef": "src/core/SPLA.MCP.Core/Interfaces/ISplaPluginSelfCheck.cs",
+        "type": "Interface"
+      }
+    },
+    {
+      "id": "n_isplapluginuicommands",
+      "label": "ISplaPluginUiCommands",
+      "type": "service",
+      "zone": "z_plugin_contracts",
+      "x": 248,
+      "y": 1670,
+      "width": 170,
+      "height": 50,
+      "metadata": {
+        "codeRef": "src/core/SPLA.MCP.Core/Interfaces/ISplaPluginUiCommands.cs",
+        "type": "Interface"
+      }
+    },
+    {
+      "id": "n_itaglibrarian",
+      "label": "ITagLibrarian",
+      "type": "service",
+      "zone": "z_skills_library",
+      "x": 1642,
+      "y": 3920,
+      "width": 170,
+      "height": 50,
+      "metadata": {
+        "codeRef": "src/core/SPLA.Library/Librarians/ITagLibrarian.cs",
+        "type": "Interface"
+      }
+    },
+    {
+      "id": "n_itokenusagereporter",
+      "label": "ITokenUsageReporter",
+      "type": "service",
+      "zone": "z_mem_accounting",
+      "x": 1672,
+      "y": 2622,
+      "width": 170,
+      "height": 50,
+      "metadata": {
+        "codeRef": "src/core/SPLA.Domain/Interfaces/ITokenUsageReporter.cs",
+        "type": "Interface"
+      }
+    },
+    {
+      "id": "n_itokenusagestore",
+      "label": "ITokenUsageStore",
+      "type": "service",
+      "zone": "z_mem_accounting",
+      "x": 1856,
+      "y": 2622,
+      "width": 170,
+      "height": 50,
+      "metadata": {
+        "codeRef": "src/core/SPLA.Domain/Interfaces/ITokenUsageStore.cs",
+        "type": "Interface"
+      }
+    },
+    {
+      "id": "n_itoolargumentpolicy",
+      "label": "IToolArgumentPolicy",
+      "type": "service",
+      "zone": "z_sec_permissions",
+      "x": 432,
+      "y": 2320,
+      "width": 170,
+      "height": 50,
+      "metadata": {
+        "codeRef": "src/core/SPLA.MCP.Core/Permissions/IToolArgumentPolicy.cs",
+        "type": "Interface"
+      }
+    },
+    {
+      "id": "n_itoolhost",
+      "label": "IToolHost",
+      "type": "service",
+      "zone": "z_tool_host",
+      "x": 1430,
+      "y": 636,
+      "width": 170,
+      "height": 50,
+      "metadata": {
+        "codeRef": "src/core/SPLA.Domain/Interfaces/IToolHost.cs",
+        "type": "Interface"
+      }
+    },
+    {
+      "id": "n_itoolmiddleware",
+      "label": "IToolMiddleware",
+      "type": "service",
+      "zone": "z_tool_contracts",
+      "x": 1246,
+      "y": 96,
+      "width": 170,
+      "height": 50,
+      "metadata": {
+        "codeRef": "src/core/SPLA.MCP.Core/Pipeline/IToolMiddleware.cs",
+        "type": "Interface"
+      }
+    },
+    {
+      "id": "n_itoolsetsession",
+      "label": "IToolSetSession",
+      "type": "service",
+      "zone": "z_toolsets",
+      "x": 64,
+      "y": 2018,
+      "width": 170,
+      "height": 50,
+      "metadata": {
+        "codeRef": "src/core/SPLA.Domain/Agent/ToolSetSession.cs",
+        "type": "Interface"
+      }
+    },
+    {
+      "id": "n_iworkspace",
+      "label": "IWorkspace",
+      "type": "service",
+      "zone": "z_sec_sandbox",
+      "x": 432,
+      "y": 2860,
+      "width": 170,
+      "height": 50,
+      "metadata": {
+        "codeRef": "src/core/SPLA.Domain/Host/IWorkspace.cs",
+        "type": "Interface"
+      }
+    },
+    {
+      "id": "n_identityconverter",
+      "label": "IdentityConverter",
+      "type": "component",
+      "zone": "z_formats",
+      "x": 2012,
+      "y": 1304,
+      "width": 170,
+      "height": 50,
+      "metadata": {
+        "codeRef": "src/core/SPLA.MCP.Core/Formats/IdentityConverter.cs",
+        "type": "Class"
+      }
+    },
+    {
+      "id": "n_identityproviderconfig",
+      "label": "IdentityProviderConfig",
+      "type": "component",
+      "zone": "z_sec_identity",
+      "x": 432,
+      "y": 3682,
+      "width": 170,
+      "height": 50,
+      "metadata": {
+        "codeRef": "src/core/SPLA.Domain/Identity/IdentityProviderLoader.cs",
+        "type": "Class"
+      }
+    },
+    {
+      "id": "n_identityproviderloader",
+      "label": "IdentityProviderLoader",
+      "type": "component",
+      "zone": "z_sec_identity",
+      "x": 64,
+      "y": 3746,
+      "width": 170,
+      "height": 50,
+      "metadata": {
+        "codeRef": "src/core/SPLA.Domain/Identity/IdentityProviderLoader.cs",
+        "type": "Class"
+      }
+    },
+    {
+      "id": "n_imageviewtool",
+      "label": "ImageViewTool",
+      "type": "component",
+      "zone": "z_mem_tools",
+      "x": 1274,
+      "y": 2924,
+      "width": 170,
+      "height": 50,
+      "metadata": {
+        "codeRef": "src/core/SPLA.MCP.Core/Tools/ImageViewTool.cs",
+        "type": "Class"
+      }
+    },
+    {
+      "id": "n_inboxitemkind",
+      "label": "InboxItemKind",
+      "type": "concept",
+      "zone": "z_chat",
+      "x": 1048,
+      "y": 1768,
+      "width": 170,
+      "height": 50,
+      "metadata": {
+        "codeRef": "src/core/SPLA.Domain/Tools/ChatInbox.cs",
+        "type": "Enum"
+      }
+    },
+    {
+      "id": "n_instanceinfo",
+      "label": "InstanceInfo",
+      "type": "component",
+      "zone": "z_proj_instances",
+      "x": 616,
+      "y": 5064,
+      "width": 170,
+      "height": 50,
+      "metadata": {
+        "codeRef": "src/core/SPLA.Domain/Project/InstanceLock.cs",
+        "type": "Class"
+      }
+    },
+    {
+      "id": "n_instancelock",
+      "label": "InstanceLock",
+      "type": "component",
+      "zone": "z_proj_instances",
+      "x": 800,
+      "y": 5064,
+      "width": 170,
+      "height": 50,
+      "metadata": {
+        "codeRef": "src/core/SPLA.Domain/Project/InstanceLock.cs",
+        "type": "Class"
+      }
+    },
+    {
+      "id": "n_instancerecord",
+      "label": "InstanceRecord",
+      "type": "component",
+      "zone": "z_proj_instances",
+      "x": 64,
+      "y": 5128,
+      "width": 170,
+      "height": 50,
+      "metadata": {
+        "codeRef": "src/core/SPLA.Instances.Contracts/IInstanceRegistry.cs",
+        "type": "Record"
+      }
+    },
+    {
+      "id": "n_instancestate",
+      "label": "InstanceState",
+      "type": "concept",
+      "zone": "z_proj_instances",
+      "x": 248,
+      "y": 5128,
+      "width": 170,
+      "height": 50,
+      "metadata": {
+        "codeRef": "src/core/SPLA.Domain/Project/InstanceState.cs",
+        "type": "Enum"
+      }
+    },
+    {
+      "id": "n_instancestates",
+      "label": "InstanceStates",
+      "type": "component",
+      "zone": "z_proj_instances",
+      "x": 432,
+      "y": 5128,
+      "width": 170,
+      "height": 50,
+      "metadata": {
+        "codeRef": "src/core/SPLA.Domain/Project/InstanceState.cs",
+        "type": "Class"
+      }
+    },
+    {
+      "id": "n_islandidentity",
+      "label": "IslandIdentity",
+      "type": "component",
+      "zone": "z_sec_zones",
+      "x": 432,
+      "y": 2622,
+      "width": 170,
+      "height": 50,
+      "metadata": {
+        "codeRef": "src/core/SPLA.Domain/Security/IslandIdentity.cs",
+        "type": "Record"
+      }
+    },
+    {
+      "id": "n_jsonschema",
+      "label": "JsonSchema",
+      "type": "component",
+      "zone": "z_editor",
+      "x": 248,
+      "y": 4048,
+      "width": 170,
+      "height": 50,
+      "metadata": {
+        "codeRef": "src/core/SPLA.Domain/Editor/JsonSchema.cs",
+        "type": "Class"
+      }
+    },
+    {
+      "id": "n_jsontoyamlconverter",
+      "label": "JsonToYamlConverter",
+      "type": "component",
+      "zone": "z_formats",
+      "x": 2196,
+      "y": 1304,
+      "width": 170,
+      "height": 50,
+      "metadata": {
+        "codeRef": "src/core/SPLA.MCP.Core/Formats/JsonToYamlConverter.cs",
+        "type": "Class"
+      }
+    },
+    {
+      "id": "n_keyvaluestore",
+      "label": "KeyValueStore",
+      "type": "component",
+      "zone": "z_mem_kv",
+      "x": 1642,
+      "y": 2448,
+      "width": 170,
+      "height": 50,
+      "metadata": {
+        "codeRef": "src/core/SPLA.Domain/Agent/KeyValueStore.cs",
+        "type": "Class"
+      }
+    },
+    {
+      "id": "n_knownprojectdto",
+      "label": "KnownProjectDto",
+      "type": "component",
+      "zone": "z_proj_instances",
+      "x": 616,
+      "y": 5128,
+      "width": 170,
+      "height": 50,
+      "metadata": {
+        "codeRef": "src/core/SPLA.Instances.Contracts/RegistryProtocol.cs",
+        "type": "Class"
+      }
+    },
+    {
+      "id": "n_knownprojectsresponse",
+      "label": "KnownProjectsResponse",
+      "type": "component",
+      "zone": "z_proj_instances",
+      "x": 800,
+      "y": 5128,
+      "width": 170,
+      "height": 50,
+      "metadata": {
+        "codeRef": "src/core/SPLA.Instances.Contracts/RegistryProtocol.cs",
+        "type": "Class"
+      }
+    },
+    {
+      "id": "n_kventry",
+      "label": "KvEntry",
+      "type": "component",
+      "zone": "z_mem_kv",
+      "x": 1090,
+      "y": 2512,
+      "width": 170,
+      "height": 50,
+      "metadata": {
+        "codeRef": "src/core/SPLA.Domain/Agent/IKeyValueStore.cs",
+        "type": "Record"
+      }
+    },
+    {
+      "id": "n_kvglob",
+      "label": "KvGlob",
+      "type": "component",
+      "zone": "z_mem_kv",
+      "x": 1274,
+      "y": 2512,
+      "width": 170,
+      "height": 50,
+      "metadata": {
+        "codeRef": "src/core/SPLA.MCP.Core/Tools/KvGlob.cs",
+        "type": "Class"
+      }
+    },
+    {
+      "id": "n_llmsettings",
+      "label": "LLMSettings",
+      "type": "component",
+      "zone": "z_llm_providers",
+      "x": 248,
+      "y": 160,
+      "width": 170,
+      "height": 50,
+      "metadata": {
+        "codeRef": "src/core/SPLA.Domain/Settings/LLMSettings.cs",
+        "type": "Class"
+      }
+    },
+    {
+      "id": "n_llmerrorkind",
+      "label": "LlmErrorKind",
+      "type": "concept",
+      "zone": "z_llm_turn",
+      "x": 64,
+      "y": 636,
+      "width": 170,
+      "height": 50,
+      "metadata": {
+        "codeRef": "src/core/SPLA.Domain/Interfaces/LlmRequestException.cs",
+        "type": "Enum"
+      }
+    },
+    {
+      "id": "n_llmpipelineblueprint",
+      "label": "LlmPipelineBlueprint",
+      "type": "component",
+      "zone": "z_llm_middleware",
+      "x": 432,
+      "y": 334,
+      "width": 170,
+      "height": 50,
+      "metadata": {
+        "codeRef": "src/core/SPLA.Domain/Llm/LlmPipelineBlueprint.cs",
+        "type": "Class"
+      }
+    },
+    {
+      "id": "n_llmpipelinestage",
+      "label": "LlmPipelineStage",
+      "type": "concept",
+      "zone": "z_llm_middleware",
+      "x": 64,
+      "y": 398,
+      "width": 170,
+      "height": 50,
+      "metadata": {
+        "codeRef": "src/core/SPLA.Domain/Llm/ILlmMiddleware.cs",
+        "type": "Enum"
+      }
+    },
+    {
+      "id": "n_llmproviderdescriptor",
+      "label": "LlmProviderDescriptor",
+      "type": "component",
+      "zone": "z_llm_providers",
+      "x": 432,
+      "y": 160,
+      "width": 170,
+      "height": 50,
+      "metadata": {
+        "codeRef": "src/core/SPLA.Domain/Llm/LlmProviderRegistry.cs",
+        "type": "Class"
+      }
+    },
+    {
+      "id": "n_llmproviderregistry",
+      "label": "LlmProviderRegistry",
+      "type": "component",
+      "zone": "z_llm_providers",
+      "x": 616,
+      "y": 160,
+      "width": 170,
+      "height": 50,
+      "metadata": {
+        "codeRef": "src/core/SPLA.Domain/Llm/LlmProviderRegistry.cs",
+        "type": "Class"
+      }
+    },
+    {
+      "id": "n_llmrequestexception",
+      "label": "LlmRequestException",
+      "type": "component",
+      "zone": "z_llm_turn",
+      "x": 248,
+      "y": 636,
+      "width": 170,
+      "height": 50,
+      "metadata": {
+        "codeRef": "src/core/SPLA.Domain/Interfaces/LlmRequestException.cs",
+        "type": "Class"
+      }
+    },
+    {
+      "id": "n_llmturncontext",
+      "label": "LlmTurnContext",
+      "type": "component",
+      "zone": "z_llm_turn",
+      "x": 432,
+      "y": 636,
+      "width": 170,
+      "height": 50,
+      "metadata": {
+        "codeRef": "src/core/SPLA.Domain/Llm/LlmTurnContext.cs",
+        "type": "Class"
+      }
+    },
+    {
+      "id": "n_llmturnresult",
+      "label": "LlmTurnResult",
+      "type": "component",
+      "zone": "z_llm_turn",
+      "x": 616,
+      "y": 636,
+      "width": 170,
+      "height": 50,
+      "metadata": {
+        "codeRef": "src/core/SPLA.Domain/Llm/LlmTurnResult.cs",
+        "type": "Record"
+      }
+    },
+    {
+      "id": "n_llmturnstatus",
+      "label": "LlmTurnStatus",
+      "type": "concept",
+      "zone": "z_llm_turn",
+      "x": 800,
+      "y": 636,
+      "width": 170,
+      "height": 50,
+      "metadata": {
+        "codeRef": "src/core/SPLA.Domain/Llm/LlmTurnResult.cs",
+        "type": "Enum"
+      }
+    },
+    {
+      "id": "n_loadedplugin",
+      "label": "LoadedPlugin",
+      "type": "component",
+      "zone": "z_plugin_loading",
+      "x": 64,
+      "y": 1780,
+      "width": 170,
+      "height": 50,
+      "metadata": {
+        "codeRef": "src/core/SPLA.MCP.Core/Plugins/PluginAssemblyLoader.cs",
+        "type": "Record"
+      }
+    },
+    {
+      "id": "n_localidentity",
+      "label": "LocalIdentity",
+      "type": "component",
+      "zone": "z_sec_identity",
+      "x": 248,
+      "y": 3746,
+      "width": 170,
+      "height": 50,
+      "metadata": {
+        "codeRef": "src/core/SPLA.Domain/Identity/IIdentity.cs",
+        "type": "Class"
+      }
+    },
+    {
+      "id": "n_localproject",
+      "label": "LocalProject",
+      "type": "component",
+      "zone": "z_proj_core",
+      "x": 248,
+      "y": 4826,
+      "width": 170,
+      "height": 50,
+      "metadata": {
+        "codeRef": "src/core/SPLA.Domain/Project/LocalProject.cs",
+        "type": "Class"
+      }
+    },
+    {
+      "id": "n_localprojectbackend",
+      "label": "LocalProjectBackend",
+      "type": "component",
+      "zone": "z_proj_core",
+      "x": 432,
+      "y": 4826,
+      "width": 170,
+      "height": 50,
+      "metadata": {
+        "codeRef": "src/core/SPLA.Domain/Project/LocalProjectBackend.cs",
+        "type": "Class"
+      }
+    },
+    {
+      "id": "n_localprojectprovider",
+      "label": "LocalProjectProvider",
+      "type": "component",
+      "zone": "z_proj_core",
+      "x": 616,
+      "y": 4826,
+      "width": 170,
+      "height": 50,
+      "metadata": {
+        "codeRef": "src/core/SPLA.Domain/Project/LocalProjectProvider.cs",
+        "type": "Class"
+      }
+    },
+    {
+      "id": "n_localshell",
+      "label": "LocalShell",
+      "type": "component",
+      "zone": "z_sec_sandbox",
+      "x": 616,
+      "y": 2860,
+      "width": 170,
+      "height": 50,
+      "metadata": {
+        "codeRef": "src/core/SPLA.Domain/Host/LocalShell.cs",
+        "type": "Class"
+      }
+    },
+    {
+      "id": "n_localworkspace",
+      "label": "LocalWorkspace",
+      "type": "component",
+      "zone": "z_sec_sandbox",
+      "x": 800,
+      "y": 2860,
+      "width": 170,
+      "height": 50,
+      "metadata": {
+        "codeRef": "src/core/SPLA.Domain/Host/LocalWorkspace.cs",
+        "type": "Class"
+      }
+    },
+    {
+      "id": "n_machinelayer",
+      "label": "MachineLayer",
+      "type": "component",
+      "zone": "z_proj_settings",
+      "x": 248,
+      "y": 5430,
+      "width": 170,
+      "height": 50,
+      "metadata": {
+        "codeRef": "src/core/SPLA.Domain/Settings/MachineLayerScope.cs",
+        "type": "Record"
+      }
+    },
+    {
+      "id": "n_machinelayerscope",
+      "label": "MachineLayerScope",
+      "type": "component",
+      "zone": "z_proj_settings",
+      "x": 432,
+      "y": 5430,
+      "width": 170,
+      "height": 50,
+      "metadata": {
+        "codeRef": "src/core/SPLA.Domain/Settings/MachineLayerScope.cs",
+        "type": "Class"
+      }
+    },
+    {
+      "id": "n_manifestentry",
+      "label": "ManifestEntry",
+      "type": "component",
+      "zone": "z_agent_comp",
+      "x": 1062,
+      "y": 1432,
+      "width": 170,
+      "height": 50,
+      "metadata": {
+        "codeRef": "src/core/SPLA.MCP.Core/Composition/CompositionManifest.cs",
+        "type": "Record"
+      }
+    },
+    {
+      "id": "n_markmanager",
+      "label": "MarkManager",
+      "type": "component",
+      "zone": "z_mem_context",
+      "x": 1274,
+      "y": 2622,
+      "width": 170,
+      "height": 50,
+      "metadata": {
+        "codeRef": "src/core/SPLA.Domain/Agent/MarkManager.cs",
+        "type": "Class"
+      }
+    },
+    {
+      "id": "n_markrollbacktool",
+      "label": "MarkRollbackTool",
+      "type": "component",
+      "zone": "z_mem_tools",
+      "x": 1458,
+      "y": 2924,
+      "width": 170,
+      "height": 50,
+      "metadata": {
+        "codeRef": "src/core/SPLA.MCP.Core/Tools/MarkRollbackTool.cs",
+        "type": "Class"
+      }
+    },
+    {
+      "id": "n_marksettool",
+      "label": "MarkSetTool",
+      "type": "component",
+      "zone": "z_mem_tools",
+      "x": 1642,
+      "y": 2924,
+      "width": 170,
+      "height": 50,
+      "metadata": {
+        "codeRef": "src/core/SPLA.MCP.Core/Tools/MarkSetTool.cs",
+        "type": "Class"
+      }
+    },
+    {
+      "id": "n_mcphost",
+      "label": "McpHost",
+      "type": "component",
+      "zone": "z_tool_host",
+      "x": 1614,
+      "y": 636,
+      "width": 170,
+      "height": 50,
+      "metadata": {
+        "codeRef": "src/core/SPLA.MCP.Core/McpHost.cs",
+        "type": "Class"
+      }
+    },
+    {
+      "id": "n_memorybucket",
+      "label": "MemoryBucket",
+      "type": "component",
+      "zone": "z_proj_core",
+      "x": 64,
+      "y": 4890,
+      "width": 170,
+      "height": 50,
+      "metadata": {
+        "codeRef": "src/core/SPLA.Domain/Project/MemoryBucket.cs",
+        "type": "Class"
+      }
+    },
+    {
+      "id": "n_memoryprojectbackend",
+      "label": "MemoryProjectBackend",
+      "type": "component",
+      "zone": "z_proj_core",
+      "x": 248,
+      "y": 4890,
+      "width": 170,
+      "height": 50,
+      "metadata": {
+        "codeRef": "src/core/SPLA.Domain/Project/MemoryProjectBackend.cs",
+        "type": "Class"
+      }
+    },
+    {
+      "id": "n_metricseries",
+      "label": "MetricSeries",
+      "type": "component",
+      "zone": "z_observability",
+      "x": 2018,
+      "y": 4732,
+      "width": 170,
+      "height": 50,
+      "metadata": {
+        "codeRef": "src/core/SPLA.Observability/Collection/MetricSeries.cs",
+        "type": "Class"
+      }
+    },
+    {
+      "id": "n_modelinfo",
+      "label": "ModelInfo",
+      "type": "component",
+      "zone": "z_llm_providers",
+      "x": 64,
+      "y": 224,
+      "width": 170,
+      "height": 50,
+      "metadata": {
+        "codeRef": "src/core/SPLA.Domain/Models/ModelInfo.cs",
+        "type": "Class"
+      }
+    },
+    {
+      "id": "n_mountaccess",
+      "label": "MountAccess",
+      "type": "concept",
+      "zone": "z_sec_sandbox",
+      "x": 64,
+      "y": 2924,
+      "width": 170,
+      "height": 50,
+      "metadata": {
+        "codeRef": "src/core/SPLA.Domain/Host/ProjectMount.cs",
+        "type": "Enum"
+      }
+    },
+    {
+      "id": "n_mountresolver",
+      "label": "MountResolver",
+      "type": "component",
+      "zone": "z_proj_settings",
+      "x": 616,
+      "y": 5430,
+      "width": 170,
+      "height": 50,
+      "metadata": {
+        "codeRef": "src/core/SPLA.Domain/Settings/MountResolver.cs",
+        "type": "Class"
+      }
+    },
+    {
+      "id": "n_mounttrust",
+      "label": "MountTrust",
+      "type": "concept",
+      "zone": "z_sec_sandbox",
+      "x": 248,
+      "y": 2924,
+      "width": 170,
+      "height": 50,
+      "metadata": {
+        "codeRef": "src/core/SPLA.Domain/Host/ProjectMount.cs",
+        "type": "Enum"
+      }
+    },
+    {
+      "id": "n_nullscope",
+      "label": "NullScope",
+      "type": "component",
+      "zone": "z_observability",
+      "x": 2202,
+      "y": 4732,
+      "width": 170,
+      "height": 50,
+      "metadata": {
+        "codeRef": "src/core/SPLA.Observability/SplaTelemetry.cs",
+        "type": "Class"
+      }
+    },
+    {
+      "id": "n_outputtarget",
+      "label": "OutputTarget",
+      "type": "concept",
+      "zone": "z_tool_host",
+      "x": 1062,
+      "y": 700,
+      "width": 170,
+      "height": 50,
+      "metadata": {
+        "codeRef": "src/core/SPLA.MCP.Core/Tools/DataChannel.cs",
+        "type": "Enum"
+      }
+    },
+    {
+      "id": "n_participantroles",
+      "label": "ParticipantRoles",
+      "type": "component",
+      "zone": "z_proj_instances",
+      "x": 64,
+      "y": 5192,
+      "width": 170,
+      "height": 50,
+      "metadata": {
+        "codeRef": "src/core/SPLA.Instances.Contracts/RegistryProtocol.cs",
+        "type": "Class"
+      }
+    },
+    {
+      "id": "n_passthroughsandbox",
+      "label": "PassthroughSandbox",
+      "type": "component",
+      "zone": "z_sec_sandbox",
+      "x": 432,
+      "y": 2924,
+      "width": 170,
+      "height": 50,
+      "metadata": {
+        "codeRef": "src/core/SPLA.Domain/Host/PassthroughSandbox.cs",
+        "type": "Class"
+      }
+    },
+    {
+      "id": "n_pathboundary",
+      "label": "PathBoundary",
+      "type": "component",
+      "zone": "z_sec_sandbox",
+      "x": 616,
+      "y": 2924,
+      "width": 170,
+      "height": 50,
+      "metadata": {
+        "codeRef": "src/core/SPLA.Domain/Host/PathBoundary.cs",
+        "type": "Class"
+      }
+    },
+    {
+      "id": "n_pathboundaryexception",
+      "label": "PathBoundaryException",
+      "type": "component",
+      "zone": "z_sec_sandbox",
+      "x": 800,
+      "y": 2924,
+      "width": 170,
+      "height": 50,
+      "metadata": {
+        "codeRef": "src/core/SPLA.Domain/Host/PathBoundary.cs",
+        "type": "Class"
+      }
+    },
+    {
+      "id": "n_pathlanding",
+      "label": "PathLanding",
+      "type": "component",
+      "zone": "z_sec_sandbox",
+      "x": 64,
+      "y": 2988,
+      "width": 170,
+      "height": 50,
+      "metadata": {
+        "codeRef": "src/core/SPLA.Domain/Host/PathBoundary.cs",
+        "type": "Record"
+      }
+    },
+    {
+      "id": "n_pathrefusal",
+      "label": "PathRefusal",
+      "type": "concept",
+      "zone": "z_sec_sandbox",
+      "x": 248,
+      "y": 2988,
+      "width": 170,
+      "height": 50,
+      "metadata": {
+        "codeRef": "src/core/SPLA.Domain/Host/PathBoundary.cs",
+        "type": "Enum"
+      }
+    },
+    {
+      "id": "n_permissiondecision",
+      "label": "PermissionDecision",
+      "type": "concept",
+      "zone": "z_sec_permissions",
+      "x": 616,
+      "y": 2320,
+      "width": 170,
+      "height": 50,
+      "metadata": {
+        "codeRef": "src/core/SPLA.Domain/Models/PermissionEnums.cs",
+        "type": "Enum"
+      }
+    },
+    {
+      "id": "n_permissionmanager",
+      "label": "PermissionManager",
+      "type": "component",
+      "zone": "z_sec_permissions",
+      "x": 64,
+      "y": 2384,
+      "width": 170,
+      "height": 50,
+      "metadata": {
+        "codeRef": "src/core/SPLA.MCP.Core/Permissions/PermissionManager.cs",
+        "type": "Class"
+      }
+    },
+    {
+      "id": "n_permissionresult",
+      "label": "PermissionResult",
+      "type": "concept",
+      "zone": "z_sec_permissions",
+      "x": 248,
+      "y": 2384,
+      "width": 170,
+      "height": 50,
+      "metadata": {
+        "codeRef": "src/core/SPLA.Domain/Models/PermissionEnums.cs",
+        "type": "Enum"
+      }
+    },
+    {
+      "id": "n_permissionscope",
+      "label": "PermissionScope",
+      "type": "component",
+      "zone": "z_sec_permissions",
+      "x": 432,
+      "y": 2384,
+      "width": 170,
+      "height": 50,
+      "metadata": {
+        "codeRef": "src/core/SPLA.MCP.Core/Permissions/PermissionScope.cs",
+        "type": "Class"
+      }
+    },
+    {
+      "id": "n_permissionstage",
+      "label": "PermissionStage",
+      "type": "component",
+      "zone": "z_tool_stages",
+      "x": 1062,
+      "y": 462,
+      "width": 170,
+      "height": 50,
+      "metadata": {
+        "codeRef": "src/core/SPLA.MCP.Core/Pipeline/Stages/PermissionStage.cs",
+        "type": "Class"
+      }
+    },
+    {
+      "id": "n_permissionverdict",
+      "label": "PermissionVerdict",
+      "type": "component",
+      "zone": "z_sec_permissions",
+      "x": 616,
+      "y": 2384,
+      "width": 170,
+      "height": 50,
+      "metadata": {
+        "codeRef": "src/core/SPLA.Domain/Models/PermissionEnums.cs",
+        "type": "Record"
+      }
+    },
+    {
+      "id": "n_permissivesecretaccesspolicy",
+      "label": "PermissiveSecretAccessPolicy",
+      "type": "component",
+      "zone": "z_sec_secrets_domain",
+      "x": 446,
+      "y": 3256,
+      "width": 170,
+      "height": 50,
+      "metadata": {
+        "codeRef": "src/core/SPLA.Domain/Secrets/ISecretAccessPolicy.cs",
+        "type": "Class"
+      }
+    },
+    {
+      "id": "n_persistedorigin",
+      "label": "PersistedOrigin",
+      "type": "component",
+      "zone": "z_proj_settings",
+      "x": 800,
+      "y": 5430,
+      "width": 170,
+      "height": 50,
+      "metadata": {
+        "codeRef": "src/core/SPLA.Domain/Settings/ProjectKvStore.cs",
+        "type": "Class"
+      }
+    },
+    {
+      "id": "n_pluginassemblyloader",
+      "label": "PluginAssemblyLoader",
+      "type": "component",
+      "zone": "z_plugin_loading",
+      "x": 248,
+      "y": 1780,
+      "width": 170,
+      "height": 50,
+      "metadata": {
+        "codeRef": "src/core/SPLA.MCP.Core/Plugins/PluginAssemblyLoader.cs",
+        "type": "Class"
+      }
+    },
+    {
+      "id": "n_pluginavailabilitystage",
+      "label": "PluginAvailabilityStage",
+      "type": "component",
+      "zone": "z_tool_stages",
+      "x": 1246,
+      "y": 462,
+      "width": 170,
+      "height": 50,
+      "metadata": {
+        "codeRef": "src/core/SPLA.MCP.Core/Pipeline/Stages/PluginAvailabilityStage.cs",
+        "type": "Class"
+      }
+    },
+    {
+      "id": "n_plugindescriptor",
+      "label": "PluginDescriptor",
+      "type": "component",
+      "zone": "z_plugin_loading",
+      "x": 432,
+      "y": 1780,
+      "width": 170,
+      "height": 50,
+      "metadata": {
+        "codeRef": "src/core/SPLA.MCP.Core/Plugins/PluginDescriptor.cs",
+        "type": "Class"
+      }
+    },
+    {
+      "id": "n_plugindiscovery",
+      "label": "PluginDiscovery",
+      "type": "component",
+      "zone": "z_plugin_loading",
+      "x": 616,
+      "y": 1780,
+      "width": 170,
+      "height": 50,
+      "metadata": {
+        "codeRef": "src/core/SPLA.MCP.Core/Plugins/PluginDiscovery.cs",
+        "type": "Class"
+      }
+    },
+    {
+      "id": "n_plugineffectivestate",
+      "label": "PluginEffectiveState",
+      "type": "concept",
+      "zone": "z_plugin_loading",
+      "x": 64,
+      "y": 1844,
+      "width": 170,
+      "height": 50,
+      "metadata": {
+        "codeRef": "src/core/SPLA.MCP.Core/Plugins/PluginDescriptor.cs",
+        "type": "Enum"
+      }
+    },
+    {
+      "id": "n_pluginhealth",
+      "label": "PluginHealth",
+      "type": "component",
+      "zone": "z_tool_host",
+      "x": 1246,
+      "y": 700,
+      "width": 170,
+      "height": 50,
+      "metadata": {
+        "codeRef": "src/core/SPLA.MCP.Core/Interfaces/ISplaPluginSelfCheck.cs",
+        "type": "Record"
+      }
+    },
+    {
+      "id": "n_pluginhealthstatus",
+      "label": "PluginHealthStatus",
+      "type": "concept",
+      "zone": "z_tool_host",
+      "x": 1430,
+      "y": 700,
+      "width": 170,
+      "height": 50,
+      "metadata": {
+        "codeRef": "src/core/SPLA.MCP.Core/Interfaces/ISplaPluginSelfCheck.cs",
+        "type": "Enum"
+      }
+    },
+    {
+      "id": "n_plugininstance",
+      "label": "PluginInstance",
+      "type": "component",
+      "zone": "z_plugin_loading",
+      "x": 248,
+      "y": 1844,
+      "width": 170,
+      "height": 50,
+      "metadata": {
+        "codeRef": "src/core/SPLA.MCP.Core/Plugins/PluginManager.cs",
+        "type": "Class"
+      }
+    },
+    {
+      "id": "n_pluginloadcontext",
+      "label": "PluginLoadContext",
+      "type": "component",
+      "zone": "z_plugin_loading",
+      "x": 432,
+      "y": 1844,
+      "width": 170,
+      "height": 50,
+      "metadata": {
+        "codeRef": "src/core/SPLA.MCP.Core/Plugins/PluginLoadContext.cs",
+        "type": "Class"
+      }
+    },
+    {
+      "id": "n_pluginmanager",
+      "label": "PluginManager",
+      "type": "component",
+      "zone": "z_plugin_loading",
+      "x": 616,
+      "y": 1844,
+      "width": 170,
+      "height": 50,
+      "metadata": {
+        "codeRef": "src/core/SPLA.MCP.Core/Plugins/PluginManager.cs",
+        "type": "Class"
+      }
+    },
+    {
+      "id": "n_pluginmeta",
+      "label": "PluginMeta",
+      "type": "component",
+      "zone": "z_plugin_loading",
+      "x": 64,
+      "y": 1908,
+      "width": 170,
+      "height": 50,
+      "metadata": {
+        "codeRef": "src/core/SPLA.MCP.Core/Plugins/PluginMeta.cs",
+        "type": "Class"
+      }
+    },
+    {
+      "id": "n_pluginskillsource",
+      "label": "PluginSkillSource",
+      "type": "component",
+      "zone": "z_skills_sources",
+      "x": 1642,
+      "y": 4286,
+      "width": 170,
+      "height": 50,
+      "metadata": {
+        "codeRef": "src/core/SPLA.Library/Sources/PluginSkillSource.cs",
+        "type": "Class"
+      }
+    },
+    {
+      "id": "n_progresshub",
+      "label": "ProgressHub",
+      "type": "component",
+      "zone": "z_tool_progress",
+      "x": 1062,
+      "y": 1002,
+      "width": 170,
+      "height": 50,
+      "metadata": {
+        "codeRef": "src/core/SPLA.Domain/Tools/ProgressHub.cs",
+        "type": "Class"
+      }
+    },
+    {
+      "id": "n_progressnode",
+      "label": "ProgressNode",
+      "type": "component",
+      "zone": "z_tool_progress",
+      "x": 1246,
+      "y": 1002,
+      "width": 170,
+      "height": 50,
+      "metadata": {
+        "codeRef": "src/core/SPLA.Domain/Models/ProgressNode.cs",
+        "type": "Class"
+      }
+    },
+    {
+      "id": "n_progressnodestage",
+      "label": "ProgressNodeStage",
+      "type": "component",
+      "zone": "z_tool_stages",
+      "x": 1430,
+      "y": 462,
+      "width": 170,
+      "height": 50,
+      "metadata": {
+        "codeRef": "src/core/SPLA.MCP.Core/Pipeline/Stages/ProgressNodeStage.cs",
+        "type": "Class"
+      }
+    },
+    {
+      "id": "n_progressscope",
+      "label": "ProgressScope",
+      "type": "component",
+      "zone": "z_tool_progress",
+      "x": 1430,
+      "y": 1002,
+      "width": 170,
+      "height": 50,
+      "metadata": {
+        "codeRef": "src/core/SPLA.Domain/Tools/ProgressScope.cs",
+        "type": "Class"
+      }
+    },
+    {
+      "id": "n_progressstate",
+      "label": "ProgressState",
+      "type": "concept",
+      "zone": "z_tool_progress",
+      "x": 1614,
+      "y": 1002,
+      "width": 170,
+      "height": 50,
+      "metadata": {
+        "codeRef": "src/core/SPLA.Domain/Models/ProgressNode.cs",
+        "type": "Enum"
+      }
+    },
+    {
+      "id": "n_progresstree",
+      "label": "ProgressTree",
+      "type": "component",
+      "zone": "z_tool_progress",
+      "x": 1062,
+      "y": 1066,
+      "width": 170,
+      "height": 50,
+      "metadata": {
+        "codeRef": "src/core/SPLA.Domain/Tools/ProgressTree.cs",
+        "type": "Class"
+      }
+    },
+    {
+      "id": "n_projectbusyexception",
+      "label": "ProjectBusyException",
+      "type": "component",
+      "zone": "z_proj_instances",
+      "x": 248,
+      "y": 5192,
+      "width": 170,
+      "height": 50,
+      "metadata": {
+        "codeRef": "src/core/SPLA.Domain/Project/InstanceLock.cs",
+        "type": "Class"
+      }
+    },
+    {
+      "id": "n_projectdescriptor",
+      "label": "ProjectDescriptor",
+      "type": "component",
+      "zone": "z_proj_core",
+      "x": 432,
+      "y": 4890,
+      "width": 170,
+      "height": 50,
+      "metadata": {
+        "codeRef": "src/core/SPLA.Domain/Project/IProjectProvider.cs",
+        "type": "Record"
+      }
+    },
+    {
+      "id": "n_projectfactory",
+      "label": "ProjectFactory",
+      "type": "component",
+      "zone": "z_proj_core",
+      "x": 616,
+      "y": 4890,
+      "width": 170,
+      "height": 50,
+      "metadata": {
+        "codeRef": "src/core/SPLA.Domain/Project/ProjectFactory.cs",
+        "type": "Class"
+      }
+    },
+    {
+      "id": "n_projectkvstore",
+      "label": "ProjectKvStore",
+      "type": "component",
+      "zone": "z_proj_settings",
+      "x": 64,
+      "y": 5494,
+      "width": 170,
+      "height": 50,
+      "metadata": {
+        "codeRef": "src/core/SPLA.Domain/Settings/ProjectKvStore.cs",
+        "type": "Class"
+      }
+    },
+    {
+      "id": "n_projectmanifestexception",
+      "label": "ProjectManifestException",
+      "type": "component",
+      "zone": "z_proj_settings",
+      "x": 248,
+      "y": 5494,
+      "width": 170,
+      "height": 50,
+      "metadata": {
+        "codeRef": "src/core/SPLA.Domain/Settings/ProjectManifestException.cs",
+        "type": "Class"
+      }
+    },
+    {
+      "id": "n_projectmount",
+      "label": "ProjectMount",
+      "type": "component",
+      "zone": "z_sec_sandbox",
+      "x": 432,
+      "y": 2988,
+      "width": 170,
+      "height": 50,
+      "metadata": {
+        "codeRef": "src/core/SPLA.Domain/Host/ProjectMount.cs",
+        "type": "Record"
+      }
+    },
+    {
+      "id": "n_projectprofile",
+      "label": "ProjectProfile",
+      "type": "concept",
+      "zone": "z_proj_core",
+      "x": 64,
+      "y": 4954,
+      "width": 170,
+      "height": 50,
+      "metadata": {
+        "codeRef": "src/core/SPLA.Domain/Project/ProjectProfile.cs",
+        "type": "Enum"
+      }
+    },
+    {
+      "id": "n_projectprofiles",
+      "label": "ProjectProfiles",
+      "type": "component",
+      "zone": "z_proj_core",
+      "x": 248,
+      "y": 4954,
+      "width": 170,
+      "height": 50,
+      "metadata": {
+        "codeRef": "src/core/SPLA.Domain/Project/ProjectProfile.cs",
+        "type": "Class"
+      }
+    },
+    {
+      "id": "n_providerclientresolver",
+      "label": "ProviderClientResolver",
+      "type": "component",
+      "zone": "z_llm_providers",
+      "x": 248,
+      "y": 224,
+      "width": 170,
+      "height": 50,
+      "metadata": {
+        "codeRef": "src/core/SPLA.Domain/Llm/LlmProviderRegistry.cs",
+        "type": "Class"
+      }
+    },
+    {
+      "id": "n_providerfact",
+      "label": "ProviderFact",
+      "type": "component",
+      "zone": "z_llm_turn",
+      "x": 64,
+      "y": 700,
+      "width": 170,
+      "height": 50,
+      "metadata": {
+        "codeRef": "src/core/SPLA.Domain/Llm/ProviderTelemetry.cs",
+        "type": "Class"
+      }
+    },
+    {
+      "id": "n_providerfactkind",
+      "label": "ProviderFactKind",
+      "type": "concept",
+      "zone": "z_llm_turn",
+      "x": 248,
+      "y": 700,
+      "width": 170,
+      "height": 50,
+      "metadata": {
+        "codeRef": "src/core/SPLA.Domain/Llm/ProviderTelemetry.cs",
+        "type": "Enum"
+      }
+    },
+    {
+      "id": "n_providerfactscope",
+      "label": "ProviderFactScope",
+      "type": "concept",
+      "zone": "z_llm_turn",
+      "x": 432,
+      "y": 700,
+      "width": 170,
+      "height": 50,
+      "metadata": {
+        "codeRef": "src/core/SPLA.Domain/Llm/ProviderTelemetry.cs",
+        "type": "Enum"
+      }
+    },
+    {
+      "id": "n_providerfactsection",
+      "label": "ProviderFactSection",
+      "type": "component",
+      "zone": "z_llm_turn",
+      "x": 616,
+      "y": 700,
+      "width": 170,
+      "height": 50,
+      "metadata": {
+        "codeRef": "src/core/SPLA.Domain/Llm/ProviderTelemetry.cs",
+        "type": "Class"
+      }
+    },
+    {
+      "id": "n_providerfactseverity",
+      "label": "ProviderFactSeverity",
+      "type": "concept",
+      "zone": "z_llm_turn",
+      "x": 800,
+      "y": 700,
+      "width": 170,
+      "height": 50,
+      "metadata": {
+        "codeRef": "src/core/SPLA.Domain/Llm/ProviderTelemetry.cs",
+        "type": "Enum"
+      }
+    },
+    {
+      "id": "n_providerstatemiddleware",
+      "label": "ProviderStateMiddleware",
+      "type": "component",
+      "zone": "z_llm_middleware",
+      "x": 248,
+      "y": 398,
+      "width": 170,
+      "height": 50,
+      "metadata": {
+        "codeRef": "src/core/SPLA.Domain/Llm/Middleware/ProviderStateMiddleware.cs",
+        "type": "Class"
+      }
+    },
+    {
+      "id": "n_providerstatestore",
+      "label": "ProviderStateStore",
+      "type": "component",
+      "zone": "z_llm_turn",
+      "x": 64,
+      "y": 764,
+      "width": 170,
+      "height": 50,
+      "metadata": {
+        "codeRef": "src/core/SPLA.Domain/Llm/ProviderStateStore.cs",
+        "type": "Class"
+      }
+    },
+    {
+      "id": "n_readonlyguard",
+      "label": "ReadOnlyGuard",
+      "type": "component",
+      "zone": "z_ssh",
+      "x": 836,
+      "y": 5894,
+      "width": 170,
+      "height": 50,
+      "metadata": {
+        "codeRef": "src/core/SPLA.Ssh.Core/ReadOnlyGuard.cs",
+        "type": "Class"
+      }
+    },
+    {
+      "id": "n_reasoningcapability",
+      "label": "ReasoningCapability",
+      "type": "component",
+      "zone": "z_llm_turn",
+      "x": 248,
+      "y": 764,
+      "width": 170,
+      "height": 50,
+      "metadata": {
+        "codeRef": "src/core/SPLA.Domain/Models/ReasoningCapability.cs",
+        "type": "Class"
+      }
+    },
+    {
+      "id": "n_reasoningchoice",
+      "label": "ReasoningChoice",
+      "type": "component",
+      "zone": "z_llm_turn",
+      "x": 432,
+      "y": 764,
+      "width": 170,
+      "height": 50,
+      "metadata": {
+        "codeRef": "src/core/SPLA.Domain/Llm/ReasoningChoice.cs",
+        "type": "Record"
+      }
+    },
+    {
+      "id": "n_reasoningmode",
+      "label": "ReasoningMode",
+      "type": "concept",
+      "zone": "z_llm_turn",
+      "x": 616,
+      "y": 764,
+      "width": 170,
+      "height": 50,
+      "metadata": {
+        "codeRef": "src/core/SPLA.Domain/Llm/ReasoningChoice.cs",
+        "type": "Enum"
+      }
+    },
+    {
+      "id": "n_recentevent",
+      "label": "RecentEvent",
+      "type": "component",
+      "zone": "z_observability",
+      "x": 1650,
+      "y": 4796,
+      "width": 170,
+      "height": 50,
+      "metadata": {
+        "codeRef": "src/core/SPLA.Observability/Collection/TelemetryCollector.cs",
+        "type": "Record"
+      }
+    },
+    {
+      "id": "n_registerframe",
+      "label": "RegisterFrame",
+      "type": "component",
+      "zone": "z_proj_instances",
+      "x": 432,
+      "y": 5192,
+      "width": 170,
+      "height": 50,
+      "metadata": {
+        "codeRef": "src/core/SPLA.Instances.Contracts/RegistryProtocol.cs",
+        "type": "Class"
+      }
+    },
+    {
+      "id": "n_registeredinstancedto",
+      "label": "RegisteredInstanceDto",
+      "type": "component",
+      "zone": "z_proj_instances",
+      "x": 616,
+      "y": 5192,
+      "width": 170,
+      "height": 50,
+      "metadata": {
+        "codeRef": "src/core/SPLA.Instances.Contracts/RegistryProtocol.cs",
+        "type": "Class"
+      }
+    },
+    {
+      "id": "n_registryframe",
+      "label": "RegistryFrame",
+      "type": "component",
+      "zone": "z_proj_instances",
+      "x": 800,
+      "y": 5192,
+      "width": 170,
+      "height": 50,
+      "metadata": {
+        "codeRef": "src/core/SPLA.Instances.Contracts/RegistryProtocol.cs",
+        "type": "Class"
+      }
+    },
+    {
+      "id": "n_registryframes",
+      "label": "RegistryFrames",
+      "type": "component",
+      "zone": "z_proj_instances",
+      "x": 64,
+      "y": 5256,
+      "width": 170,
+      "height": 50,
+      "metadata": {
+        "codeRef": "src/core/SPLA.Instances.Contracts/RegistryProtocol.cs",
+        "type": "Class"
+      }
+    },
+    {
+      "id": "n_registryjson",
+      "label": "RegistryJson",
+      "type": "component",
+      "zone": "z_proj_instances",
+      "x": 248,
+      "y": 5256,
+      "width": 170,
+      "height": 50,
+      "metadata": {
+        "codeRef": "src/core/SPLA.Instances.Contracts/RegistryProtocol.cs",
+        "type": "Class"
+      }
+    },
+    {
+      "id": "n_registrylistresponse",
+      "label": "RegistryListResponse",
+      "type": "component",
+      "zone": "z_proj_instances",
+      "x": 432,
+      "y": 5256,
+      "width": 170,
+      "height": 50,
+      "metadata": {
+        "codeRef": "src/core/SPLA.Instances.Contracts/RegistryProtocol.cs",
+        "type": "Class"
+      }
+    },
+    {
+      "id": "n_rememberedtoolpermission",
+      "label": "RememberedToolPermission",
+      "type": "component",
+      "zone": "z_sec_permissions",
+      "x": 64,
+      "y": 2448,
+      "width": 170,
+      "height": 50,
+      "metadata": {
+        "codeRef": "src/core/SPLA.MCP.Core/Permissions/PermissionManager.cs",
+        "type": "Class"
+      }
+    },
+    {
+      "id": "n_resolvedmodelentry",
+      "label": "ResolvedModelEntry",
+      "type": "component",
+      "zone": "z_proj_settings",
+      "x": 432,
+      "y": 5494,
+      "width": 170,
+      "height": 50,
+      "metadata": {
+        "codeRef": "src/core/SPLA.Domain/Settings/SettingsResolver.cs",
+        "type": "Class"
+      }
+    },
+    {
+      "id": "n_resolvedsettings",
+      "label": "ResolvedSettings",
+      "type": "component",
+      "zone": "z_proj_settings",
+      "x": 616,
+      "y": 5494,
+      "width": 170,
+      "height": 50,
+      "metadata": {
+        "codeRef": "src/core/SPLA.Domain/Settings/SettingsResolver.cs",
+        "type": "Class"
+      }
+    },
+    {
+      "id": "n_resourcecontent",
+      "label": "ResourceContent",
+      "type": "component",
+      "zone": "z_res_core",
+      "x": 446,
+      "y": 4252,
+      "width": 170,
+      "height": 50,
+      "metadata": {
+        "codeRef": "src/core/SPLA.Domain/Resources/IResourceProvider.cs",
+        "type": "Record"
+      }
+    },
+    {
+      "id": "n_resourcedeletetool",
+      "label": "ResourceDeleteTool",
+      "type": "component",
+      "zone": "z_res_tools",
+      "x": 78,
+      "y": 4426,
+      "width": 170,
+      "height": 50,
+      "metadata": {
+        "codeRef": "src/core/SPLA.MCP.Core/Tools/Resources/ResourceDeleteTool.cs",
+        "type": "Class"
+      }
+    },
+    {
+      "id": "n_resourceentry",
+      "label": "ResourceEntry",
+      "type": "component",
+      "zone": "z_res_core",
+      "x": 630,
+      "y": 4252,
+      "width": 170,
+      "height": 50,
+      "metadata": {
+        "codeRef": "src/core/SPLA.Domain/Resources/IResourceProvider.cs",
+        "type": "Record"
+      }
+    },
+    {
+      "id": "n_resourceexiststool",
+      "label": "ResourceExistsTool",
+      "type": "component",
+      "zone": "z_res_tools",
+      "x": 262,
+      "y": 4426,
+      "width": 170,
+      "height": 50,
+      "metadata": {
+        "codeRef": "src/core/SPLA.MCP.Core/Tools/Resources/ResourceExistsTool.cs",
+        "type": "Class"
+      }
+    },
+    {
+      "id": "n_resourcelisttool",
+      "label": "ResourceListTool",
+      "type": "component",
+      "zone": "z_res_tools",
+      "x": 446,
+      "y": 4426,
+      "width": 170,
+      "height": 50,
+      "metadata": {
+        "codeRef": "src/core/SPLA.MCP.Core/Tools/Resources/ResourceListTool.cs",
+        "type": "Class"
+      }
+    },
+    {
+      "id": "n_resourcemakedirtool",
+      "label": "ResourceMakeDirTool",
+      "type": "component",
+      "zone": "z_res_tools",
+      "x": 78,
+      "y": 4490,
+      "width": 170,
+      "height": 50,
+      "metadata": {
+        "codeRef": "src/core/SPLA.MCP.Core/Tools/Resources/ResourceMakeDirTool.cs",
+        "type": "Class"
+      }
+    },
+    {
+      "id": "n_resourcereadtool",
+      "label": "ResourceReadTool",
+      "type": "component",
+      "zone": "z_res_tools",
+      "x": 262,
+      "y": 4490,
+      "width": 170,
+      "height": 50,
+      "metadata": {
+        "codeRef": "src/core/SPLA.MCP.Core/Tools/Resources/ResourceReadTool.cs",
+        "type": "Class"
+      }
+    },
+    {
+      "id": "n_resourceregistry",
+      "label": "ResourceRegistry",
+      "type": "component",
+      "zone": "z_res_core",
+      "x": 78,
+      "y": 4316,
+      "width": 170,
+      "height": 50,
+      "metadata": {
+        "codeRef": "src/core/SPLA.Domain/Resources/ResourceRegistry.cs",
+        "type": "Class"
+      }
+    },
+    {
+      "id": "n_resourcetoolbase",
+      "label": "ResourceToolBase",
+      "type": "component",
+      "zone": "z_res_tools",
+      "x": 446,
+      "y": 4490,
+      "width": 170,
+      "height": 50,
+      "metadata": {
+        "codeRef": "src/core/SPLA.MCP.Core/Tools/Resources/ResourceToolBase.cs",
+        "type": "Class"
+      }
+    },
+    {
+      "id": "n_resourceuri",
+      "label": "ResourceUri",
+      "type": "component",
+      "zone": "z_res_core",
+      "x": 262,
+      "y": 4316,
+      "width": 170,
+      "height": 50,
+      "metadata": {
+        "codeRef": "src/core/SPLA.Domain/Resources/ResourceUri.cs",
+        "type": "Record"
+      }
+    },
+    {
+      "id": "n_resourceverb",
+      "label": "ResourceVerb",
+      "type": "concept",
+      "zone": "z_res_core",
+      "x": 446,
+      "y": 4316,
+      "width": 170,
+      "height": 50,
+      "metadata": {
+        "codeRef": "src/core/SPLA.Domain/Resources/IResourceProvider.cs",
+        "type": "Enum"
+      }
+    },
+    {
+      "id": "n_resourcewritetool",
+      "label": "ResourceWriteTool",
+      "type": "component",
+      "zone": "z_res_tools",
+      "x": 78,
+      "y": 4554,
+      "width": 170,
+      "height": 50,
+      "metadata": {
+        "codeRef": "src/core/SPLA.MCP.Core/Tools/Resources/ResourceWriteTool.cs",
+        "type": "Class"
+      }
+    },
+    {
+      "id": "n_schemaparts",
+      "label": "SchemaParts",
+      "type": "component",
+      "zone": "z_tool_host",
+      "x": 1614,
+      "y": 700,
+      "width": 170,
+      "height": 50,
+      "metadata": {
+        "codeRef": "src/core/SPLA.MCP.Core/Tools/DataChannel.cs",
+        "type": "Class"
+      }
+    },
+    {
+      "id": "n_schemaregistry",
+      "label": "SchemaRegistry",
+      "type": "component",
+      "zone": "z_editor",
+      "x": 432,
+      "y": 4048,
+      "width": 170,
+      "height": 50,
+      "metadata": {
+        "codeRef": "src/core/SPLA.Domain/Editor/SchemaRegistry.cs",
+        "type": "Class"
+      }
+    },
+    {
+      "id": "n_schemecard",
+      "label": "SchemeCard",
+      "type": "component",
+      "zone": "z_res_core",
+      "x": 630,
+      "y": 4316,
+      "width": 170,
+      "height": 50,
+      "metadata": {
+        "codeRef": "src/core/SPLA.Domain/Resources/ResourceRegistry.cs",
+        "type": "Record"
+      }
+    },
+    {
+      "id": "n_secretaccessdeniedexception",
+      "label": "SecretAccessDeniedException",
+      "type": "component",
+      "zone": "z_sec_secrets_domain",
+      "x": 630,
+      "y": 3256,
+      "width": 170,
+      "height": 50,
+      "metadata": {
+        "codeRef": "src/core/SPLA.Domain/Secrets/SecretCallerScope.cs",
+        "type": "Class"
+      }
+    },
+    {
+      "id": "n_secretacl",
+      "label": "SecretAcl",
+      "type": "component",
+      "zone": "z_sec_secrets_domain",
+      "x": 814,
+      "y": 3256,
+      "width": 170,
+      "height": 50,
+      "metadata": {
+        "codeRef": "src/core/SPLA.Domain/Secrets/SecretAcl.cs",
+        "type": "Record"
+      }
+    },
+    {
+      "id": "n_secretcallerscope",
+      "label": "SecretCallerScope",
+      "type": "component",
+      "zone": "z_sec_secrets_domain",
+      "x": 78,
+      "y": 3320,
+      "width": 170,
+      "height": 50,
+      "metadata": {
+        "codeRef": "src/core/SPLA.Domain/Secrets/SecretCallerScope.cs",
+        "type": "Class"
+      }
+    },
+    {
+      "id": "n_secretentry",
+      "label": "SecretEntry",
+      "type": "component",
+      "zone": "z_sec_secrets_domain",
+      "x": 262,
+      "y": 3320,
+      "width": 170,
+      "height": 50,
+      "metadata": {
+        "codeRef": "src/core/SPLA.Domain/Secrets/SecretEntry.cs",
+        "type": "Class"
+      }
+    },
+    {
+      "id": "n_secretentryinfo",
+      "label": "SecretEntryInfo",
+      "type": "component",
+      "zone": "z_sec_secrets_domain",
+      "x": 446,
+      "y": 3320,
+      "width": 170,
+      "height": 50,
+      "metadata": {
+        "codeRef": "src/core/SPLA.Domain/Secrets/SecretEntry.cs",
+        "type": "Record"
+      }
+    },
+    {
+      "id": "n_secretfields",
+      "label": "SecretFields",
+      "type": "component",
+      "zone": "z_sec_secrets_domain",
+      "x": 630,
+      "y": 3320,
+      "width": 170,
+      "height": 50,
+      "metadata": {
+        "codeRef": "src/core/SPLA.Domain/Secrets/SecretEntry.cs",
+        "type": "Class"
+      }
+    },
+    {
+      "id": "n_secretref",
+      "label": "SecretRef",
+      "type": "component",
+      "zone": "z_sec_secrets_domain",
+      "x": 814,
+      "y": 3320,
+      "width": 170,
+      "height": 50,
+      "metadata": {
+        "codeRef": "src/core/SPLA.Domain/Secrets/SecretRef.cs",
+        "type": "Class"
+      }
+    },
+    {
+      "id": "n_secretresolver",
+      "label": "SecretResolver",
+      "type": "component",
+      "zone": "z_sec_secrets_domain",
+      "x": 78,
+      "y": 3384,
+      "width": 170,
+      "height": 50,
+      "metadata": {
+        "codeRef": "src/core/SPLA.Domain/Secrets/SecretResolver.cs",
+        "type": "Class"
+      }
+    },
+    {
+      "id": "n_secretright",
+      "label": "SecretRight",
+      "type": "concept",
+      "zone": "z_sec_secrets_domain",
+      "x": 262,
+      "y": 3384,
+      "width": 170,
+      "height": 50,
+      "metadata": {
+        "codeRef": "src/core/SPLA.Domain/Secrets/SecretAcl.cs",
+        "type": "Enum"
+      }
+    },
+    {
+      "id": "n_secretscope",
+      "label": "SecretScope",
+      "type": "concept",
+      "zone": "z_sec_secrets_domain",
+      "x": 446,
+      "y": 3384,
+      "width": 170,
+      "height": 50,
+      "metadata": {
+        "codeRef": "src/core/SPLA.Domain/Secrets/SecretRef.cs",
+        "type": "Enum"
+      }
+    },
+    {
+      "id": "n_secretyamlfile",
+      "label": "SecretYamlFile",
+      "type": "component",
+      "zone": "z_sec_secrets_domain",
+      "x": 630,
+      "y": 3384,
+      "width": 170,
+      "height": 50,
+      "metadata": {
+        "codeRef": "src/core/SPLA.Domain/Secrets/SecretYamlFile.cs",
+        "type": "Class"
+      }
+    },
+    {
+      "id": "n_selfinvocationlauncher",
+      "label": "SelfInvocationLauncher",
+      "type": "component",
+      "zone": "z_platform",
+      "x": 418,
+      "y": 5894,
+      "width": 170,
+      "height": 50,
+      "metadata": {
+        "codeRef": "src/core/SPLA.Platform/SelfInvocationLauncher.cs",
+        "type": "Class"
+      }
+    },
+    {
+      "id": "n_serverprojectroot",
+      "label": "ServerProjectRoot",
+      "type": "component",
+      "zone": "z_proj_core",
+      "x": 432,
+      "y": 4954,
+      "width": 170,
+      "height": 50,
+      "metadata": {
+        "codeRef": "src/core/SPLA.Domain/Project/ServerProjectRoot.cs",
+        "type": "Class"
+      }
+    },
+    {
+      "id": "n_settingsresolver",
+      "label": "SettingsResolver",
+      "type": "component",
+      "zone": "z_proj_settings",
+      "x": 800,
+      "y": 5494,
+      "width": 170,
+      "height": 50,
+      "metadata": {
+        "codeRef": "src/core/SPLA.Domain/Settings/SettingsResolver.cs",
+        "type": "Class"
+      }
+    },
+    {
+      "id": "n_shellcommand",
+      "label": "ShellCommand",
+      "type": "component",
+      "zone": "z_sec_sandbox",
+      "x": 616,
+      "y": 2988,
+      "width": 170,
+      "height": 50,
+      "metadata": {
+        "codeRef": "src/core/SPLA.Domain/Host/IShell.cs",
+        "type": "Record"
+      }
+    },
+    {
+      "id": "n_shellresult",
+      "label": "ShellResult",
+      "type": "component",
+      "zone": "z_sec_sandbox",
+      "x": 800,
+      "y": 2988,
+      "width": 170,
+      "height": 50,
+      "metadata": {
+        "codeRef": "src/core/SPLA.Domain/Host/IShell.cs",
+        "type": "Record"
+      }
+    },
+    {
+      "id": "n_shellstatus",
+      "label": "ShellStatus",
+      "type": "concept",
+      "zone": "z_sec_sandbox",
+      "x": 64,
+      "y": 3052,
+      "width": 170,
+      "height": 50,
+      "metadata": {
+        "codeRef": "src/core/SPLA.Domain/Host/IShell.cs",
+        "type": "Enum"
+      }
+    },
+    {
+      "id": "n_singleclientresolver",
+      "label": "SingleClientResolver",
+      "type": "component",
+      "zone": "z_llm_middleware",
+      "x": 432,
+      "y": 398,
+      "width": 170,
+      "height": 50,
+      "metadata": {
+        "codeRef": "src/core/SPLA.Domain/Llm/LlmPipelineBlueprint.cs",
+        "type": "Class"
+      }
+    },
+    {
+      "id": "n_skillactivatetool",
+      "label": "SkillActivateTool",
+      "type": "component",
+      "zone": "z_skills_session",
+      "x": 1090,
+      "y": 4524,
+      "width": 170,
+      "height": 50,
+      "metadata": {
+        "codeRef": "src/core/SPLA.MCP.Core/Tools/SkillActivateTool.cs",
+        "type": "Class"
+      }
+    },
+    {
+      "id": "n_skillcapabilityprobe",
+      "label": "SkillCapabilityProbe",
+      "type": "component",
+      "zone": "z_skills_library",
+      "x": 906,
+      "y": 3984,
+      "width": 170,
+      "height": 50,
+      "metadata": {
+        "codeRef": "src/core/SPLA.Library/ISkillCapabilityProbe.cs",
+        "type": "Class"
+      }
+    },
+    {
+      "id": "n_skillcard",
+      "label": "SkillCard",
+      "type": "component",
+      "zone": "z_skills_library",
+      "x": 1090,
+      "y": 3984,
+      "width": 170,
+      "height": 50,
+      "metadata": {
+        "codeRef": "src/core/SPLA.Library/Catalog/SkillCard.cs",
+        "type": "Class"
+      }
+    },
+    {
+      "id": "n_skilldeactivatetool",
+      "label": "SkillDeactivateTool",
+      "type": "component",
+      "zone": "z_skills_session",
+      "x": 1274,
+      "y": 4524,
+      "width": 170,
+      "height": 50,
+      "metadata": {
+        "codeRef": "src/core/SPLA.MCP.Core/Tools/SkillDeactivateTool.cs",
+        "type": "Class"
+      }
+    },
+    {
+      "id": "n_skillentry",
+      "label": "SkillEntry",
+      "type": "component",
+      "zone": "z_skills_sources",
+      "x": 906,
+      "y": 4350,
+      "width": 170,
+      "height": 50,
+      "metadata": {
+        "codeRef": "src/core/SPLA.Library/Sources/ISkillSource.cs",
+        "type": "Record"
+      }
+    },
+    {
+      "id": "n_skillfindtool",
+      "label": "SkillFindTool",
+      "type": "component",
+      "zone": "z_skills_session",
+      "x": 906,
+      "y": 4588,
+      "width": 170,
+      "height": 50,
+      "metadata": {
+        "codeRef": "src/core/SPLA.MCP.Core/Tools/SkillFindTool.cs",
+        "type": "Class"
+      }
+    },
+    {
+      "id": "n_skillfrontmatter",
+      "label": "SkillFrontmatter",
+      "type": "component",
+      "zone": "z_skills_library",
+      "x": 1274,
+      "y": 3984,
+      "width": 170,
+      "height": 50,
+      "metadata": {
+        "codeRef": "src/core/SPLA.Library/Format/SkillFrontmatter.cs",
+        "type": "Class"
+      }
+    },
+    {
+      "id": "n_skilllibrary",
+      "label": "SkillLibrary",
+      "type": "component",
+      "zone": "z_skills_library",
+      "x": 1458,
+      "y": 3984,
+      "width": 170,
+      "height": 50,
+      "metadata": {
+        "codeRef": "src/core/SPLA.Library/SkillLibrary.cs",
+        "type": "Class"
+      }
+    },
+    {
+      "id": "n_skilllookup",
+      "label": "SkillLookup",
+      "type": "component",
+      "zone": "z_skills_library",
+      "x": 1642,
+      "y": 3984,
+      "width": 170,
+      "height": 50,
+      "metadata": {
+        "codeRef": "src/core/SPLA.Library/Catalog/SkillLookup.cs",
+        "type": "Class"
+      }
+    },
+    {
+      "id": "n_skillmatch",
+      "label": "SkillMatch",
+      "type": "component",
+      "zone": "z_skills_library",
+      "x": 906,
+      "y": 4048,
+      "width": 170,
+      "height": 50,
+      "metadata": {
+        "codeRef": "src/core/SPLA.Library/Librarians/ITagLibrarian.cs",
+        "type": "Record"
+      }
+    },
+    {
+      "id": "n_skillquery",
+      "label": "SkillQuery",
+      "type": "component",
+      "zone": "z_skills_library",
+      "x": 1090,
+      "y": 4048,
+      "width": 170,
+      "height": 50,
+      "metadata": {
+        "codeRef": "src/core/SPLA.Library/Librarians/ITagLibrarian.cs",
+        "type": "Record"
+      }
+    },
+    {
+      "id": "n_skillreadresourcetool",
+      "label": "SkillReadResourceTool",
+      "type": "component",
+      "zone": "z_skills_session",
+      "x": 1090,
+      "y": 4588,
+      "width": 170,
+      "height": 50,
+      "metadata": {
+        "codeRef": "src/core/SPLA.MCP.Core/Tools/SkillReadResourceTool.cs",
+        "type": "Class"
+      }
+    },
+    {
+      "id": "n_skillrequirements",
+      "label": "SkillRequirements",
+      "type": "component",
+      "zone": "z_skills_sources",
+      "x": 1090,
+      "y": 4350,
+      "width": 170,
+      "height": 50,
+      "metadata": {
+        "codeRef": "src/core/SPLA.Library/Sources/ISkillSource.cs",
+        "type": "Record"
+      }
+    },
+    {
+      "id": "n_skillsession",
+      "label": "SkillSession",
+      "type": "component",
+      "zone": "z_skills_session",
+      "x": 1274,
+      "y": 4588,
+      "width": 170,
+      "height": 50,
+      "metadata": {
+        "codeRef": "src/core/SPLA.Domain/Agent/SkillSession.cs",
+        "type": "Class"
+      }
+    },
+    {
+      "id": "n_skillsourcecontext",
+      "label": "SkillSourceContext",
+      "type": "component",
+      "zone": "z_skills_sources",
+      "x": 1274,
+      "y": 4350,
+      "width": 170,
+      "height": 50,
+      "metadata": {
+        "codeRef": "src/core/SPLA.Library/Sources/SkillSourceRegistry.cs",
+        "type": "Record"
+      }
+    },
+    {
+      "id": "n_skillsourceregistry",
+      "label": "SkillSourceRegistry",
+      "type": "component",
+      "zone": "z_skills_sources",
+      "x": 1458,
+      "y": 4350,
+      "width": 170,
+      "height": 50,
+      "metadata": {
+        "codeRef": "src/core/SPLA.Library/Sources/SkillSourceRegistry.cs",
+        "type": "Class"
+      }
+    },
+    {
+      "id": "n_skillstate",
+      "label": "SkillState",
+      "type": "concept",
+      "zone": "z_skills_library",
+      "x": 1274,
+      "y": 4048,
+      "width": 170,
+      "height": 50,
+      "metadata": {
+        "codeRef": "src/core/SPLA.Library/Catalog/SkillCard.cs",
+        "type": "Enum"
+      }
+    },
+    {
+      "id": "n_skilltag",
+      "label": "SkillTag",
+      "type": "component",
+      "zone": "z_skills_library",
+      "x": 1458,
+      "y": 4048,
+      "width": 170,
+      "height": 50,
+      "metadata": {
+        "codeRef": "src/core/SPLA.Library/Catalog/SkillTag.cs",
+        "type": "Class"
+      }
+    },
+    {
+      "id": "n_skilltrust",
+      "label": "SkillTrust",
+      "type": "concept",
+      "zone": "z_skills_sources",
+      "x": 1642,
+      "y": 4350,
+      "width": 170,
+      "height": 50,
+      "metadata": {
+        "codeRef": "src/core/SPLA.Library/Sources/ISkillSource.cs",
+        "type": "Enum"
+      }
+    },
+    {
+      "id": "n_skilltrustgrant",
+      "label": "SkillTrustGrant",
+      "type": "component",
+      "zone": "z_skills_sources",
+      "x": 906,
+      "y": 4414,
+      "width": 170,
+      "height": 50,
+      "metadata": {
+        "codeRef": "src/core/SPLA.Domain/Settings/SkillTrustStore.cs",
+        "type": "Record"
+      }
+    },
+    {
+      "id": "n_sourcelevel",
+      "label": "SourceLevel",
+      "type": "concept",
+      "zone": "z_skills_sources",
+      "x": 1090,
+      "y": 4414,
+      "width": 170,
+      "height": 50,
+      "metadata": {
+        "codeRef": "src/core/SPLA.Library/Sources/SourceLevel.cs",
+        "type": "Enum"
+      }
+    },
+    {
+      "id": "n_sourceorigin",
+      "label": "SourceOrigin",
+      "type": "concept",
+      "zone": "z_proj_settings",
+      "x": 64,
+      "y": 5558,
+      "width": 170,
+      "height": 50,
+      "metadata": {
+        "codeRef": "src/core/SPLA.Domain/Settings/SourceOrigin.cs",
+        "type": "Enum"
+      }
+    },
+    {
+      "id": "n_spawnresult",
+      "label": "SpawnResult",
+      "type": "component",
+      "zone": "z_proj_instances",
+      "x": 616,
+      "y": 5256,
+      "width": 170,
+      "height": 50,
+      "metadata": {
+        "codeRef": "src/core/SPLA.Instances.Contracts/IInstanceSpawner.cs",
+        "type": "Record"
+      }
+    },
+    {
+      "id": "n_splaagentsection",
+      "label": "SplaAgentSection",
+      "type": "component",
+      "zone": "z_proj_settings",
+      "x": 248,
+      "y": 5558,
+      "width": 170,
+      "height": 50,
+      "metadata": {
+        "codeRef": "src/core/SPLA.Domain/Settings/SplaSections.cs",
+        "type": "Class"
+      }
+    },
+    {
+      "id": "n_splaconnectionsection",
+      "label": "SplaConnectionSection",
+      "type": "component",
+      "zone": "z_proj_settings",
+      "x": 432,
+      "y": 5558,
+      "width": 170,
+      "height": 50,
+      "metadata": {
+        "codeRef": "src/core/SPLA.Domain/Settings/SplaSections.cs",
+        "type": "Class"
+      }
+    },
+    {
+      "id": "n_spladefaults",
+      "label": "SplaDefaults",
+      "type": "component",
+      "zone": "z_proj_settings",
+      "x": 616,
+      "y": 5558,
+      "width": 170,
+      "height": 50,
+      "metadata": {
+        "codeRef": "src/core/SPLA.Domain/Settings/SplaDefaults.cs",
+        "type": "Class"
+      }
+    },
+    {
+      "id": "n_splafilelogger",
+      "label": "SplaFileLogger",
+      "type": "component",
+      "zone": "z_observability",
+      "x": 1834,
+      "y": 4796,
+      "width": 170,
+      "height": 50,
+      "metadata": {
+        "codeRef": "src/core/SPLA.Observability/SplaTelemetry.cs",
+        "type": "Class"
+      }
+    },
+    {
+      "id": "n_splafileloggerprovider",
+      "label": "SplaFileLoggerProvider",
+      "type": "component",
+      "zone": "z_observability",
+      "x": 2018,
+      "y": 4796,
+      "width": 170,
+      "height": 50,
+      "metadata": {
+        "codeRef": "src/core/SPLA.Observability/SplaTelemetry.cs",
+        "type": "Class"
+      }
+    },
+    {
+      "id": "n_splalibrariansection",
+      "label": "SplaLibrarianSection",
+      "type": "component",
+      "zone": "z_proj_settings",
+      "x": 800,
+      "y": 5558,
+      "width": 170,
+      "height": 50,
+      "metadata": {
+        "codeRef": "src/core/SPLA.Domain/Settings/SplaSkillSection.cs",
+        "type": "Class"
+      }
+    },
+    {
+      "id": "n_splallmsection",
+      "label": "SplaLlmSection",
+      "type": "component",
+      "zone": "z_proj_settings",
+      "x": 64,
+      "y": 5622,
+      "width": 170,
+      "height": 50,
+      "metadata": {
+        "codeRef": "src/core/SPLA.Domain/Settings/SplaSections.cs",
+        "type": "Class"
+      }
+    },
+    {
+      "id": "n_splamcpsection",
+      "label": "SplaMcpSection",
+      "type": "component",
+      "zone": "z_proj_settings",
+      "x": 248,
+      "y": 5622,
+      "width": 170,
+      "height": 50,
+      "metadata": {
+        "codeRef": "src/core/SPLA.Domain/Settings/SplaSections.cs",
+        "type": "Class"
+      }
+    },
+    {
+      "id": "n_splamodelsection",
+      "label": "SplaModelSection",
+      "type": "component",
+      "zone": "z_proj_settings",
+      "x": 432,
+      "y": 5622,
+      "width": 170,
+      "height": 50,
+      "metadata": {
+        "codeRef": "src/core/SPLA.Domain/Settings/SplaSections.cs",
+        "type": "Class"
+      }
+    },
+    {
+      "id": "n_splamountsection",
+      "label": "SplaMountSection",
+      "type": "component",
+      "zone": "z_proj_settings",
+      "x": 616,
+      "y": 5622,
+      "width": 170,
+      "height": 50,
+      "metadata": {
+        "codeRef": "src/core/SPLA.Domain/Settings/SplaSections.cs",
+        "type": "Class"
+      }
+    },
+    {
+      "id": "n_splapermissionssection",
+      "label": "SplaPermissionsSection",
+      "type": "component",
+      "zone": "z_proj_settings",
+      "x": 800,
+      "y": 5622,
+      "width": 170,
+      "height": 50,
+      "metadata": {
+        "codeRef": "src/core/SPLA.Domain/Settings/SplaSections.cs",
+        "type": "Class"
+      }
+    },
+    {
+      "id": "n_splapluginpanelevent",
+      "label": "SplaPluginPanelEvent",
+      "type": "component",
+      "zone": "z_tool_host",
+      "x": 1062,
+      "y": 764,
+      "width": 170,
+      "height": 50,
+      "metadata": {
+        "codeRef": "src/core/SPLA.MCP.Core/Interfaces/ISplaPluginPanelProvider.cs",
+        "type": "Record"
+      }
+    },
+    {
+      "id": "n_splapluginsection",
+      "label": "SplaPluginSection",
+      "type": "component",
+      "zone": "z_proj_settings",
+      "x": 64,
+      "y": 5686,
+      "width": 170,
+      "height": 50,
+      "metadata": {
+        "codeRef": "src/core/SPLA.Domain/Settings/SplaPluginSection.cs",
+        "type": "Class"
+      }
+    },
+    {
+      "id": "n_splapluginuicommand",
+      "label": "SplaPluginUiCommand",
+      "type": "component",
+      "zone": "z_tool_host",
+      "x": 1246,
+      "y": 764,
+      "width": 170,
+      "height": 50,
+      "metadata": {
+        "codeRef": "src/core/SPLA.MCP.Core/Interfaces/ISplaPluginUiCommands.cs",
+        "type": "Class"
+      }
+    },
+    {
+      "id": "n_splapluginuicommandkind",
+      "label": "SplaPluginUiCommandKind",
+      "type": "concept",
+      "zone": "z_tool_host",
+      "x": 1430,
+      "y": 764,
+      "width": 170,
+      "height": 50,
+      "metadata": {
+        "codeRef": "src/core/SPLA.MCP.Core/Interfaces/ISplaPluginUiCommands.cs",
+        "type": "Enum"
+      }
+    },
+    {
+      "id": "n_splaproject",
+      "label": "SplaProject",
+      "type": "component",
+      "zone": "z_proj_settings",
+      "x": 248,
+      "y": 5686,
+      "width": 170,
+      "height": 50,
+      "metadata": {
+        "codeRef": "src/core/SPLA.Domain/Settings/SplaProject.cs",
+        "type": "Class"
+      }
+    },
+    {
+      "id": "n_splasecretssection",
+      "label": "SplaSecretsSection",
+      "type": "component",
+      "zone": "z_proj_settings",
+      "x": 432,
+      "y": 5686,
+      "width": 170,
+      "height": 50,
+      "metadata": {
+        "codeRef": "src/core/SPLA.Domain/Settings/SplaSections.cs",
+        "type": "Class"
+      }
+    },
+    {
+      "id": "n_splaskillsection",
+      "label": "SplaSkillSection",
+      "type": "component",
+      "zone": "z_proj_settings",
+      "x": 616,
+      "y": 5686,
+      "width": 170,
+      "height": 50,
+      "metadata": {
+        "codeRef": "src/core/SPLA.Domain/Settings/SplaSkillSection.cs",
+        "type": "Class"
+      }
+    },
+    {
+      "id": "n_splaskillsourcesection",
+      "label": "SplaSkillSourceSection",
+      "type": "component",
+      "zone": "z_proj_settings",
+      "x": 800,
+      "y": 5686,
+      "width": 170,
+      "height": 50,
+      "metadata": {
+        "codeRef": "src/core/SPLA.Domain/Settings/SplaSkillSection.cs",
+        "type": "Class"
+      }
+    },
+    {
+      "id": "n_splaskillspolicysection",
+      "label": "SplaSkillsPolicySection",
+      "type": "component",
+      "zone": "z_proj_settings",
+      "x": 64,
+      "y": 5750,
+      "width": 170,
+      "height": 50,
+      "metadata": {
+        "codeRef": "src/core/SPLA.Domain/Settings/SplaSkillSection.cs",
+        "type": "Class"
+      }
+    },
+    {
+      "id": "n_splaskillssection",
+      "label": "SplaSkillsSection",
+      "type": "component",
+      "zone": "z_proj_settings",
+      "x": 248,
+      "y": 5750,
+      "width": 170,
+      "height": 50,
+      "metadata": {
+        "codeRef": "src/core/SPLA.Domain/Settings/SplaSkillSection.cs",
+        "type": "Class"
+      }
+    },
+    {
+      "id": "n_splatelemetry",
+      "label": "SplaTelemetry",
+      "type": "component",
+      "zone": "z_observability",
+      "x": 2202,
+      "y": 4796,
+      "width": 170,
+      "height": 50,
+      "metadata": {
+        "codeRef": "src/core/SPLA.Observability/SplaTelemetry.cs",
+        "type": "Class"
+      }
+    },
+    {
+      "id": "n_splatelemetrycontext",
+      "label": "SplaTelemetryContext",
+      "type": "component",
+      "zone": "z_observability",
+      "x": 1650,
+      "y": 4860,
+      "width": 170,
+      "height": 50,
+      "metadata": {
+        "codeRef": "src/core/SPLA.Observability/SplaTelemetry.cs",
+        "type": "Record"
+      }
+    },
+    {
+      "id": "n_splatelemetrycontextextensions",
+      "label": "SplaTelemetryContextExtensions",
+      "type": "component",
+      "zone": "z_observability",
+      "x": 1834,
+      "y": 4860,
+      "width": 170,
+      "height": 50,
+      "metadata": {
+        "codeRef": "src/core/SPLA.Observability/SplaTelemetryContextExtensions.cs",
+        "type": "Class"
+      }
+    },
+    {
+      "id": "n_splatoolpermissionrule",
+      "label": "SplaToolPermissionRule",
+      "type": "component",
+      "zone": "z_proj_settings",
+      "x": 432,
+      "y": 5750,
+      "width": 170,
+      "height": 50,
+      "metadata": {
+        "codeRef": "src/core/SPLA.Domain/Settings/SplaSections.cs",
+        "type": "Class"
+      }
+    },
+    {
+      "id": "n_splauisection",
+      "label": "SplaUiSection",
+      "type": "component",
+      "zone": "z_proj_settings",
+      "x": 616,
+      "y": 5750,
+      "width": 170,
+      "height": 50,
+      "metadata": {
+        "codeRef": "src/core/SPLA.Domain/Settings/SplaSections.cs",
+        "type": "Class"
+      }
+    },
+    {
+      "id": "n_sshconnectionfactory",
+      "label": "SshConnectionFactory",
+      "type": "component",
+      "zone": "z_ssh",
+      "x": 1020,
+      "y": 5894,
+      "width": 170,
+      "height": 50,
+      "metadata": {
+        "codeRef": "src/core/SPLA.Ssh.Core/SshConnectionFactory.cs",
+        "type": "Class"
+      }
+    },
+    {
+      "id": "n_sshhostconfig",
+      "label": "SshHostConfig",
+      "type": "component",
+      "zone": "z_ssh",
+      "x": 652,
+      "y": 5958,
+      "width": 170,
+      "height": 50,
+      "metadata": {
+        "codeRef": "src/core/SPLA.Ssh.Core/SshSettings.cs",
+        "type": "Class"
+      }
+    },
+    {
+      "id": "n_sshlivesession",
+      "label": "SshLiveSession",
+      "type": "component",
+      "zone": "z_ssh",
+      "x": 836,
+      "y": 5958,
+      "width": 170,
+      "height": 50,
+      "metadata": {
+        "codeRef": "src/core/SPLA.Ssh.Core/Session/SshLiveSession.cs",
+        "type": "Class"
+      }
+    },
+    {
+      "id": "n_sshsessionhub",
+      "label": "SshSessionHub",
+      "type": "component",
+      "zone": "z_ssh",
+      "x": 1020,
+      "y": 5958,
+      "width": 170,
+      "height": 50,
+      "metadata": {
+        "codeRef": "src/core/SPLA.Ssh.Core/Session/SshSessionHub.cs",
+        "type": "Class"
+      }
+    },
+    {
+      "id": "n_sshsettings",
+      "label": "SshSettings",
+      "type": "component",
+      "zone": "z_ssh",
+      "x": 652,
+      "y": 6022,
+      "width": 170,
+      "height": 50,
+      "metadata": {
+        "codeRef": "src/core/SPLA.Ssh.Core/SshSettings.cs",
+        "type": "Class"
+      }
+    },
+    {
+      "id": "n_state",
+      "label": "State",
+      "type": "component",
+      "zone": "z_tool_host",
+      "x": 1614,
+      "y": 764,
+      "width": 170,
+      "height": 50,
+      "metadata": {
+        "codeRef": "src/core/SPLA.Domain/Tools/ToolHostScope.cs",
+        "type": "Record"
+      }
+    },
+    {
+      "id": "n_statssnapshot",
+      "label": "StatsSnapshot",
+      "type": "component",
+      "zone": "z_observability",
+      "x": 2018,
+      "y": 4860,
+      "width": 170,
+      "height": 50,
+      "metadata": {
+        "codeRef": "src/core/SPLA.Observability/Collection/TelemetryCollector.cs",
+        "type": "Record"
+      }
+    },
+    {
+      "id": "n_statusframe",
+      "label": "StatusFrame",
+      "type": "component",
+      "zone": "z_proj_instances",
+      "x": 800,
+      "y": 5256,
+      "width": 170,
+      "height": 50,
+      "metadata": {
+        "codeRef": "src/core/SPLA.Instances.Contracts/RegistryProtocol.cs",
+        "type": "Class"
+      }
+    },
+    {
+      "id": "n_stopframe",
+      "label": "StopFrame",
+      "type": "component",
+      "zone": "z_proj_instances",
+      "x": 64,
+      "y": 5320,
+      "width": 170,
+      "height": 50,
+      "metadata": {
+        "codeRef": "src/core/SPLA.Instances.Contracts/RegistryProtocol.cs",
+        "type": "Class"
+      }
+    },
+    {
+      "id": "n_substance",
+      "label": "Substance",
+      "type": "component",
+      "zone": "z_sec_zones",
+      "x": 616,
+      "y": 2622,
+      "width": 170,
+      "height": 50,
+      "metadata": {
+        "codeRef": "src/core/SPLA.Domain/Security/IslandIdentity.cs",
+        "type": "Class"
+      }
+    },
+    {
+      "id": "n_tagcount",
+      "label": "TagCount",
+      "type": "component",
+      "zone": "z_skills_library",
+      "x": 1642,
+      "y": 4048,
+      "width": 170,
+      "height": 50,
+      "metadata": {
+        "codeRef": "src/core/SPLA.Library/Catalog/TagVocabulary.cs",
+        "type": "Record"
+      }
+    },
+    {
+      "id": "n_taglibrarian",
+      "label": "TagLibrarian",
+      "type": "component",
+      "zone": "z_skills_library",
+      "x": 906,
+      "y": 4112,
+      "width": 170,
+      "height": 50,
+      "metadata": {
+        "codeRef": "src/core/SPLA.Library/Librarians/TagLibrarian.cs",
+        "type": "Class"
+      }
+    },
+    {
+      "id": "n_tagvocabulary",
+      "label": "TagVocabulary",
+      "type": "component",
+      "zone": "z_skills_library",
+      "x": 1090,
+      "y": 4112,
+      "width": 170,
+      "height": 50,
+      "metadata": {
+        "codeRef": "src/core/SPLA.Library/Catalog/TagVocabulary.cs",
+        "type": "Class"
+      }
+    },
+    {
+      "id": "n_taskcanceltool",
+      "label": "TaskCancelTool",
+      "type": "component",
+      "zone": "z_tool_progress",
+      "x": 1246,
+      "y": 1066,
+      "width": 170,
+      "height": 50,
+      "metadata": {
+        "codeRef": "src/core/SPLA.MCP.Core/Tools/BackgroundTaskTools.cs",
+        "type": "Class"
+      }
+    },
+    {
+      "id": "n_tasklisttool",
+      "label": "TaskListTool",
+      "type": "component",
+      "zone": "z_tool_progress",
+      "x": 1430,
+      "y": 1066,
+      "width": 170,
+      "height": 50,
+      "metadata": {
+        "codeRef": "src/core/SPLA.MCP.Core/Tools/BackgroundTaskTools.cs",
+        "type": "Class"
+      }
+    },
+    {
+      "id": "n_taskoutputtool",
+      "label": "TaskOutputTool",
+      "type": "component",
+      "zone": "z_tool_progress",
+      "x": 1614,
+      "y": 1066,
+      "width": 170,
+      "height": 50,
+      "metadata": {
+        "codeRef": "src/core/SPLA.MCP.Core/Tools/BackgroundTaskTools.cs",
+        "type": "Class"
+      }
+    },
+    {
+      "id": "n_telemetrycollector",
+      "label": "TelemetryCollector",
+      "type": "component",
+      "zone": "z_observability",
+      "x": 2202,
+      "y": 4860,
+      "width": 170,
+      "height": 50,
+      "metadata": {
+        "codeRef": "src/core/SPLA.Observability/Collection/TelemetryCollector.cs",
+        "type": "Class"
+      }
+    },
+    {
+      "id": "n_telemetrystage",
+      "label": "TelemetryStage",
+      "type": "component",
+      "zone": "z_tool_stages",
+      "x": 1614,
+      "y": 462,
+      "width": 170,
+      "height": 50,
+      "metadata": {
+        "codeRef": "src/core/SPLA.MCP.Core/Pipeline/Stages/TelemetryStage.cs",
+        "type": "Class"
+      }
+    },
+    {
+      "id": "n_tokenestimate",
+      "label": "TokenEstimate",
+      "type": "component",
+      "zone": "z_agent_comp",
+      "x": 1246,
+      "y": 1432,
+      "width": 170,
+      "height": 50,
+      "metadata": {
+        "codeRef": "src/core/SPLA.MCP.Core/Composition/ContextItem.cs",
+        "type": "Class"
+      }
+    },
+    {
+      "id": "n_tokenusagetotals",
+      "label": "TokenUsageTotals",
+      "type": "component",
+      "zone": "z_mem_accounting",
+      "x": 1488,
+      "y": 2686,
+      "width": 170,
+      "height": 50,
+      "metadata": {
+        "codeRef": "src/core/SPLA.Domain/Models/TokenUsageTotals.cs",
+        "type": "Class"
+      }
+    },
+    {
+      "id": "n_toolcall",
+      "label": "ToolCall",
+      "type": "component",
+      "zone": "z_tool_contracts",
+      "x": 1430,
+      "y": 96,
+      "width": 170,
+      "height": 50,
+      "metadata": {
+        "codeRef": "src/core/SPLA.Domain/Models/ToolCall.cs",
+        "type": "Class"
+      }
+    },
+    {
+      "id": "n_toolcallcontext",
+      "label": "ToolCallContext",
+      "type": "component",
+      "zone": "z_tool_contracts",
+      "x": 1614,
+      "y": 96,
+      "width": 170,
+      "height": 50,
+      "metadata": {
+        "codeRef": "src/core/SPLA.Domain/Tools/ToolCallContext.cs",
+        "type": "Record"
+      }
+    },
+    {
+      "id": "n_toolcallinvocation",
+      "label": "ToolCallInvocation",
+      "type": "component",
+      "zone": "z_tool_contracts",
+      "x": 1062,
+      "y": 160,
+      "width": 170,
+      "height": 50,
+      "metadata": {
+        "codeRef": "src/core/SPLA.MCP.Core/Pipeline/ToolCallInvocation.cs",
+        "type": "Class"
+      }
+    },
+    {
+      "id": "n_toolcontent",
+      "label": "ToolContent",
+      "type": "component",
+      "zone": "z_tool_contracts",
+      "x": 1246,
+      "y": 160,
+      "width": 170,
+      "height": 50,
+      "metadata": {
+        "codeRef": "src/core/SPLA.Domain/Models/ToolResult.cs",
+        "type": "Record"
+      }
+    },
+    {
+      "id": "n_tooldefinition",
+      "label": "ToolDefinition",
+      "type": "component",
+      "zone": "z_tool_contracts",
+      "x": 1430,
+      "y": 160,
+      "width": 170,
+      "height": 50,
+      "metadata": {
+        "codeRef": "src/core/SPLA.Domain/Models/ToolDefinition.cs",
+        "type": "Class"
+      }
+    },
+    {
+      "id": "n_tooleffect",
+      "label": "ToolEffect",
+      "type": "concept",
+      "zone": "z_sec_permissions",
+      "x": 248,
+      "y": 2448,
+      "width": 170,
+      "height": 50,
+      "metadata": {
+        "codeRef": "src/core/SPLA.Domain/Models/PermissionEnums.cs",
+        "type": "Enum"
+      }
+    },
+    {
+      "id": "n_toolexposure",
+      "label": "ToolExposure",
+      "type": "component",
+      "zone": "z_tool_host",
+      "x": 1062,
+      "y": 828,
+      "width": 170,
+      "height": 50,
+      "metadata": {
+        "codeRef": "src/core/SPLA.MCP.Core/ToolExposure.cs",
+        "type": "Record"
+      }
+    },
+    {
+      "id": "n_toolfunctiondefinition",
+      "label": "ToolFunctionDefinition",
+      "type": "component",
+      "zone": "z_tool_contracts",
+      "x": 1614,
+      "y": 160,
+      "width": 170,
+      "height": 50,
+      "metadata": {
+        "codeRef": "src/core/SPLA.Domain/Models/ToolDefinition.cs",
+        "type": "Class"
+      }
+    },
+    {
+      "id": "n_toolhostscope",
+      "label": "ToolHostScope",
+      "type": "component",
+      "zone": "z_tool_host",
+      "x": 1246,
+      "y": 828,
+      "width": 170,
+      "height": 50,
+      "metadata": {
+        "codeRef": "src/core/SPLA.Domain/Tools/ToolHostScope.cs",
+        "type": "Class"
+      }
+    },
+    {
+      "id": "n_toolimage",
+      "label": "ToolImage",
+      "type": "component",
+      "zone": "z_tool_contracts",
+      "x": 1062,
+      "y": 224,
+      "width": 170,
+      "height": 50,
+      "metadata": {
+        "codeRef": "src/core/SPLA.Domain/Models/ToolResult.cs",
+        "type": "Record"
+      }
+    },
+    {
+      "id": "n_tooljson",
+      "label": "ToolJson",
+      "type": "component",
+      "zone": "z_tool_host",
+      "x": 1430,
+      "y": 828,
+      "width": 170,
+      "height": 50,
+      "metadata": {
+        "codeRef": "src/core/SPLA.MCP.Core/Json/ToolJson.cs",
+        "type": "Class"
+      }
+    },
+    {
+      "id": "n_tooloutcome",
+      "label": "ToolOutcome",
+      "type": "concept",
+      "zone": "z_tool_contracts",
+      "x": 1246,
+      "y": 224,
+      "width": 170,
+      "height": 50,
+      "metadata": {
+        "codeRef": "src/core/SPLA.Domain/Models/ToolResult.cs",
+        "type": "Enum"
+      }
+    },
+    {
+      "id": "n_toolpipelineblueprint",
+      "label": "ToolPipelineBlueprint",
+      "type": "component",
+      "zone": "z_tool_contracts",
+      "x": 1430,
+      "y": 224,
+      "width": 170,
+      "height": 50,
+      "metadata": {
+        "codeRef": "src/core/SPLA.MCP.Core/Pipeline/ToolPipelineBlueprint.cs",
+        "type": "Class"
+      }
+    },
+    {
+      "id": "n_toolpipelinestage",
+      "label": "ToolPipelineStage",
+      "type": "concept",
+      "zone": "z_tool_contracts",
+      "x": 1614,
+      "y": 224,
+      "width": 170,
+      "height": 50,
+      "metadata": {
+        "codeRef": "src/core/SPLA.MCP.Core/Pipeline/IToolMiddleware.cs",
+        "type": "Enum"
+      }
+    },
+    {
+      "id": "n_toolprogress",
+      "label": "ToolProgress",
+      "type": "component",
+      "zone": "z_tool_progress",
+      "x": 1062,
+      "y": 1130,
+      "width": 170,
+      "height": 50,
+      "metadata": {
+        "codeRef": "src/core/SPLA.Domain/Models/ToolProgress.cs",
+        "type": "Class"
+      }
+    },
+    {
+      "id": "n_toolprogressdetail",
+      "label": "ToolProgressDetail",
+      "type": "component",
+      "zone": "z_tool_progress",
+      "x": 1246,
+      "y": 1130,
+      "width": 170,
+      "height": 50,
+      "metadata": {
+        "codeRef": "src/core/SPLA.Domain/Models/ToolProgress.cs",
+        "type": "Record"
+      }
+    },
+    {
+      "id": "n_toolresolutionstage",
+      "label": "ToolResolutionStage",
+      "type": "component",
+      "zone": "z_tool_stages",
+      "x": 1062,
+      "y": 526,
+      "width": 170,
+      "height": 50,
+      "metadata": {
+        "codeRef": "src/core/SPLA.MCP.Core/Pipeline/Stages/ToolResolutionStage.cs",
+        "type": "Class"
+      }
+    },
+    {
+      "id": "n_toolresource",
+      "label": "ToolResource",
+      "type": "component",
+      "zone": "z_tool_contracts",
+      "x": 1062,
+      "y": 288,
+      "width": 170,
+      "height": 50,
+      "metadata": {
+        "codeRef": "src/core/SPLA.Domain/Models/ToolResult.cs",
+        "type": "Record"
+      }
+    },
+    {
+      "id": "n_toolresult",
+      "label": "ToolResult",
+      "type": "component",
+      "zone": "z_tool_contracts",
+      "x": 1246,
+      "y": 288,
+      "width": 170,
+      "height": 50,
+      "metadata": {
+        "codeRef": "src/core/SPLA.Domain/Models/ToolResult.cs",
+        "type": "Class"
+      }
+    },
+    {
+      "id": "n_toolrisk",
+      "label": "ToolRisk",
+      "type": "concept",
+      "zone": "z_sec_permissions",
+      "x": 432,
+      "y": 2448,
+      "width": 170,
+      "height": 50,
+      "metadata": {
+        "codeRef": "src/core/SPLA.Domain/Models/PermissionEnums.cs",
+        "type": "Enum"
+      }
+    },
+    {
+      "id": "n_toolscope",
+      "label": "ToolScope",
+      "type": "concept",
+      "zone": "z_sec_permissions",
+      "x": 616,
+      "y": 2448,
+      "width": 170,
+      "height": 50,
+      "metadata": {
+        "codeRef": "src/core/SPLA.Domain/Models/PermissionEnums.cs",
+        "type": "Enum"
+      }
+    },
+    {
+      "id": "n_toolsetactivatetool",
+      "label": "ToolSetActivateTool",
+      "type": "component",
+      "zone": "z_toolsets",
+      "x": 248,
+      "y": 2018,
+      "width": 170,
+      "height": 50,
+      "metadata": {
+        "codeRef": "src/core/SPLA.MCP.Core/Tools/ToolSetActivateTool.cs",
+        "type": "Class"
+      }
+    },
+    {
+      "id": "n_toolsetactivation",
+      "label": "ToolSetActivation",
+      "type": "component",
+      "zone": "z_toolsets",
+      "x": 432,
+      "y": 2018,
+      "width": 170,
+      "height": 50,
+      "metadata": {
+        "codeRef": "src/core/SPLA.Domain/Agent/ToolSetSession.cs",
+        "type": "Record"
+      }
+    },
+    {
+      "id": "n_toolsetactivationby",
+      "label": "ToolSetActivationBy",
+      "type": "concept",
+      "zone": "z_toolsets",
+      "x": 616,
+      "y": 2018,
+      "width": 170,
+      "height": 50,
+      "metadata": {
+        "codeRef": "src/core/SPLA.Domain/Agent/ToolSetSession.cs",
+        "type": "Enum"
+      }
+    },
+    {
+      "id": "n_toolsetdeactivatetool",
+      "label": "ToolSetDeactivateTool",
+      "type": "component",
+      "zone": "z_tool_host",
+      "x": 1614,
+      "y": 828,
+      "width": 170,
+      "height": 50,
+      "metadata": {
+        "codeRef": "src/core/SPLA.MCP.Core/Tools/ToolSetActivateTool.cs",
+        "type": "Class"
+      }
+    },
+    {
+      "id": "n_toolsetdescriptor",
+      "label": "ToolSetDescriptor",
+      "type": "component",
+      "zone": "z_toolsets",
+      "x": 64,
+      "y": 2082,
+      "width": 170,
+      "height": 50,
+      "metadata": {
+        "codeRef": "src/core/SPLA.MCP.Core/ToolSets/ToolSetDescriptor.cs",
+        "type": "Class"
+      }
+    },
+    {
+      "id": "n_toolsetdisclosurestage",
+      "label": "ToolSetDisclosureStage",
+      "type": "component",
+      "zone": "z_tool_stages",
+      "x": 1246,
+      "y": 526,
+      "width": 170,
+      "height": 50,
+      "metadata": {
+        "codeRef": "src/core/SPLA.MCP.Core/Pipeline/Stages/ToolSetDisclosureStage.cs",
+        "type": "Class"
+      }
+    },
+    {
+      "id": "n_toolsetlevel",
+      "label": "ToolSetLevel",
+      "type": "concept",
+      "zone": "z_toolsets",
+      "x": 248,
+      "y": 2082,
+      "width": 170,
+      "height": 50,
+      "metadata": {
+        "codeRef": "src/core/SPLA.MCP.Core/ToolSets/ToolSetLevel.cs",
+        "type": "Enum"
+      }
+    },
+    {
+      "id": "n_toolsetorigin",
+      "label": "ToolSetOrigin",
+      "type": "concept",
+      "zone": "z_toolsets",
+      "x": 432,
+      "y": 2082,
+      "width": 170,
+      "height": 50,
+      "metadata": {
+        "codeRef": "src/core/SPLA.MCP.Core/ToolSets/ToolSetLevel.cs",
+        "type": "Enum"
+      }
+    },
+    {
+      "id": "n_toolsetregistry",
+      "label": "ToolSetRegistry",
+      "type": "component",
+      "zone": "z_toolsets",
+      "x": 616,
+      "y": 2082,
+      "width": 170,
+      "height": 50,
+      "metadata": {
+        "codeRef": "src/core/SPLA.MCP.Core/ToolSets/ToolSetRegistry.cs",
+        "type": "Class"
+      }
+    },
+    {
+      "id": "n_toolsetsession",
+      "label": "ToolSetSession",
+      "type": "component",
+      "zone": "z_toolsets",
+      "x": 64,
+      "y": 2146,
+      "width": 170,
+      "height": 50,
+      "metadata": {
+        "codeRef": "src/core/SPLA.Domain/Agent/ToolSetSession.cs",
+        "type": "Class"
+      }
+    },
+    {
+      "id": "n_tooltext",
+      "label": "ToolText",
+      "type": "component",
+      "zone": "z_tool_contracts",
+      "x": 1430,
+      "y": 288,
+      "width": 170,
+      "height": 50,
+      "metadata": {
+        "codeRef": "src/core/SPLA.Domain/Models/ToolResult.cs",
+        "type": "Record"
+      }
+    },
+    {
+      "id": "n_turnattempt",
+      "label": "TurnAttempt",
+      "type": "component",
+      "zone": "z_llm_turn",
+      "x": 800,
+      "y": 764,
+      "width": 170,
+      "height": 50,
+      "metadata": {
+        "codeRef": "src/core/SPLA.Domain/Llm/TurnAttempt.cs",
+        "type": "Class"
+      }
+    },
+    {
+      "id": "n_turnoutcomemiddleware",
+      "label": "TurnOutcomeMiddleware",
+      "type": "component",
+      "zone": "z_llm_middleware",
+      "x": 64,
+      "y": 462,
+      "width": 170,
+      "height": 50,
+      "metadata": {
+        "codeRef": "src/core/SPLA.Domain/Llm/Middleware/TurnOutcomeMiddleware.cs",
+        "type": "Class"
+      }
+    },
+    {
+      "id": "n_utf8textconverter",
+      "label": "Utf8TextConverter",
+      "type": "component",
+      "zone": "z_formats",
+      "x": 1828,
+      "y": 1368,
+      "width": 170,
+      "height": 50,
+      "metadata": {
+        "codeRef": "src/core/SPLA.MCP.Core/Formats/Utf8TextConverter.cs",
+        "type": "Class"
+      }
+    },
+    {
+      "id": "n_windowsshellintegration",
+      "label": "WindowsShellIntegration",
+      "type": "component",
+      "zone": "z_platform",
+      "x": 50,
+      "y": 5958,
+      "width": 170,
+      "height": 50,
+      "metadata": {
+        "codeRef": "src/core/SPLA.Platform/WindowsShellIntegration.cs",
+        "type": "Class"
+      }
+    },
+    {
+      "id": "n_yamlsectionsplicer",
+      "label": "YamlSectionSplicer",
+      "type": "component",
+      "zone": "z_proj_settings",
+      "x": 800,
+      "y": 5750,
+      "width": 170,
+      "height": 50,
+      "metadata": {
+        "codeRef": "src/core/SPLA.Domain/Settings/YamlSectionSplicer.cs",
+        "type": "Class"
+      }
+    },
+    {
+      "id": "n_zone",
+      "label": "Zone",
+      "type": "component",
+      "zone": "z_sec_zones",
+      "x": 64,
+      "y": 2686,
+      "width": 170,
+      "height": 50,
+      "metadata": {
+        "codeRef": "src/core/SPLA.Domain/Security/Zone.cs",
+        "type": "Record"
+      }
+    },
+    {
+      "id": "n_zoneedge",
+      "label": "ZoneEdge",
+      "type": "component",
+      "zone": "z_sec_zones",
+      "x": 248,
+      "y": 2686,
+      "width": 170,
+      "height": 50,
+      "metadata": {
+        "codeRef": "src/core/SPLA.Domain/Security/Zone.cs",
+        "type": "Record"
+      }
+    },
+    {
+      "id": "n_zoneeffect",
+      "label": "ZoneEffect",
+      "type": "concept",
+      "zone": "z_sec_zones",
+      "x": 432,
+      "y": 2686,
+      "width": 170,
+      "height": 50,
+      "metadata": {
+        "codeRef": "src/core/SPLA.Domain/Security/Zone.cs",
+        "type": "Enum"
+      }
+    },
+    {
+      "id": "n_zoneshadowstage",
+      "label": "ZoneShadowStage",
+      "type": "component",
+      "zone": "z_tool_stages",
+      "x": 1430,
+      "y": 526,
+      "width": 170,
+      "height": 50,
+      "metadata": {
+        "codeRef": "src/core/SPLA.MCP.Core/Pipeline/Stages/ZoneShadowStage.cs",
+        "type": "Class"
+      }
+    }
+  ],
+  "edges": [
+    {
+      "id": "s_accountingstage_itoolmiddleware",
+      "from": "n_accountingstage",
+      "to": "n_itoolmiddleware",
+      "type": "implements"
+    },
+    {
+      "id": "s_aclsecretaccesspolicy_isecretaccesspolicy",
+      "from": "n_aclsecretaccesspolicy",
+      "to": "n_isecretaccesspolicy",
+      "type": "implements"
+    },
+    {
+      "id": "s_agentclarifytool_imcptool",
+      "from": "n_agentclarifytool",
+      "to": "n_imcptool",
+      "type": "implements"
+    },
+    {
+      "id": "s_agentfeature_iagentfeature",
+      "from": "n_agentfeature",
+      "to": "n_iagentfeature",
+      "type": "implements"
+    },
+    {
+      "id": "s_agentlibrarian_iagentlibrarian",
+      "from": "n_agentlibrarian",
+      "to": "n_iagentlibrarian",
+      "type": "implements"
+    },
+    {
+      "id": "s_agentmemorycleartool_imcptool",
+      "from": "n_agentmemorycleartool",
+      "to": "n_imcptool",
+      "type": "implements"
+    },
+    {
+      "id": "s_agentmemorydeletetool_imcptool",
+      "from": "n_agentmemorydeletetool",
+      "to": "n_imcptool",
+      "type": "implements"
+    },
+    {
+      "id": "s_agentmemorygettool_imcptool",
+      "from": "n_agentmemorygettool",
+      "to": "n_imcptool",
+      "type": "implements"
+    },
+    {
+      "id": "s_agentmemorylisttool_imcptool",
+      "from": "n_agentmemorylisttool",
+      "to": "n_imcptool",
+      "type": "implements"
+    },
+    {
+      "id": "s_agentmemorysettool_imcptool",
+      "from": "n_agentmemorysettool",
+      "to": "n_imcptool",
+      "type": "implements"
+    },
+    {
+      "id": "s_agentsession_iagentsession",
+      "from": "n_agentsession",
+      "to": "n_iagentsession",
+      "type": "implements"
+    },
+    {
+      "id": "s_agentspawnbatchtool_imcptool",
+      "from": "n_agentspawnbatchtool",
+      "to": "n_imcptool",
+      "type": "implements"
+    },
+    {
+      "id": "s_agentspawntool_imcptool",
+      "from": "n_agentspawntool",
+      "to": "n_imcptool",
+      "type": "implements"
+    },
+    {
+      "id": "s_allowallgate_icapabilitygate",
+      "from": "n_allowallgate",
+      "to": "n_icapabilitygate",
+      "type": "implements"
+    },
+    {
+      "id": "s_ambienthoststage_itoolmiddleware",
+      "from": "n_ambienthoststage",
+      "to": "n_itoolmiddleware",
+      "type": "implements"
+    },
+    {
+      "id": "s_backgroundstage_itoolmiddleware",
+      "from": "n_backgroundstage",
+      "to": "n_itoolmiddleware",
+      "type": "implements"
+    },
+    {
+      "id": "s_blobpeektool_imcptool",
+      "from": "n_blobpeektool",
+      "to": "n_imcptool",
+      "type": "implements"
+    },
+    {
+      "id": "s_blobstore_iblobstore",
+      "from": "n_blobstore",
+      "to": "n_iblobstore",
+      "type": "implements"
+    },
+    {
+      "id": "s_claimidentity_iidentity",
+      "from": "n_claimidentity",
+      "to": "n_iidentity",
+      "type": "implements"
+    },
+    {
+      "id": "s_claimsidentityprovider_iidentityprovider",
+      "from": "n_claimsidentityprovider",
+      "to": "n_iidentityprovider",
+      "type": "implements"
+    },
+    {
+      "id": "s_contextcheckpointrestoretool_imcptool",
+      "from": "n_contextcheckpointrestoretool",
+      "to": "n_imcptool",
+      "type": "implements"
+    },
+    {
+      "id": "s_contextcheckpointsettool_imcptool",
+      "from": "n_contextcheckpointsettool",
+      "to": "n_imcptool",
+      "type": "implements"
+    },
+    {
+      "id": "s_credentialsmiddleware_illmmiddleware",
+      "from": "n_credentialsmiddleware",
+      "to": "n_illmmiddleware",
+      "type": "implements"
+    },
+    {
+      "id": "s_directoryskillsource_ieditableskillsource",
+      "from": "n_directoryskillsource",
+      "to": "n_ieditableskillsource",
+      "type": "implements"
+    },
+    {
+      "id": "s_directoryskillsourcefactory_iskillsourcefactory",
+      "from": "n_directoryskillsourcefactory",
+      "to": "n_iskillsourcefactory",
+      "type": "implements"
+    },
+    {
+      "id": "s_dpapifilesecretstore_isecretstore",
+      "from": "n_dpapifilesecretstore",
+      "to": "n_isecretstore",
+      "type": "implements"
+    },
+    {
+      "id": "s_embeddedjsonschemaprovider_ijsonschemaprovider",
+      "from": "n_embeddedjsonschemaprovider",
+      "to": "n_ijsonschemaprovider",
+      "type": "implements"
+    },
+    {
+      "id": "s_faultstage_itoolmiddleware",
+      "from": "n_faultstage",
+      "to": "n_itoolmiddleware",
+      "type": "implements"
+    },
+    {
+      "id": "s_filebucket_ibucket",
+      "from": "n_filebucket",
+      "to": "n_ibucket",
+      "type": "implements"
+    },
+    {
+      "id": "s_filecontentbrowser_icontentbrowser",
+      "from": "n_filecontentbrowser",
+      "to": "n_icontentbrowser",
+      "type": "implements"
+    },
+    {
+      "id": "s_filecontentsource_icontentsource",
+      "from": "n_filecontentsource",
+      "to": "n_icontentsource",
+      "type": "implements"
+    },
+    {
+      "id": "s_fileresourceprovider_iresourcecontainermaker",
+      "from": "n_fileresourceprovider",
+      "to": "n_iresourcecontainermaker",
+      "type": "implements"
+    },
+    {
+      "id": "s_fileresourceprovider_iresourceprovider",
+      "from": "n_fileresourceprovider",
+      "to": "n_iresourceprovider",
+      "type": "implements"
+    },
+    {
+      "id": "s_fileresourceprovider_iresourceremover",
+      "from": "n_fileresourceprovider",
+      "to": "n_iresourceremover",
+      "type": "implements"
+    },
+    {
+      "id": "s_fileresourceprovider_iresourcewriter",
+      "from": "n_fileresourceprovider",
+      "to": "n_iresourcewriter",
+      "type": "implements"
+    },
+    {
+      "id": "s_filesecretaclstore_isecretaclstore",
+      "from": "n_filesecretaclstore",
+      "to": "n_isecretaclstore",
+      "type": "implements"
+    },
+    {
+      "id": "s_filesecretstore_isecretstore",
+      "from": "n_filesecretstore",
+      "to": "n_isecretstore",
+      "type": "implements"
+    },
+    {
+      "id": "s_fileskillsourcestore_iskillsourcestore",
+      "from": "n_fileskillsourcestore",
+      "to": "n_iskillsourcestore",
+      "type": "implements"
+    },
+    {
+      "id": "s_fileskilltruststore_iskilltruststore",
+      "from": "n_fileskilltruststore",
+      "to": "n_iskilltruststore",
+      "type": "implements"
+    },
+    {
+      "id": "s_filetokenusagestore_itokenusagestore",
+      "from": "n_filetokenusagestore",
+      "to": "n_itokenusagestore",
+      "type": "implements"
+    },
+    {
+      "id": "s_identityconverter_iformatconverter",
+      "from": "n_identityconverter",
+      "to": "n_iformatconverter",
+      "type": "implements"
+    },
+    {
+      "id": "s_ieditableskillsource_iskillsource",
+      "from": "n_ieditableskillsource",
+      "to": "n_iskillsource",
+      "type": "implements"
+    },
+    {
+      "id": "s_imageviewtool_imcptool",
+      "from": "n_imageviewtool",
+      "to": "n_imcptool",
+      "type": "implements"
+    },
+    {
+      "id": "s_jsontoyamlconverter_iformatconverter",
+      "from": "n_jsontoyamlconverter",
+      "to": "n_iformatconverter",
+      "type": "implements"
+    },
+    {
+      "id": "s_keyvaluestore_ikeyvaluestore",
+      "from": "n_keyvaluestore",
+      "to": "n_ikeyvaluestore",
+      "type": "implements"
+    },
+    {
+      "id": "s_llmproviderdescriptor_illmproviderdescriptor",
+      "from": "n_llmproviderdescriptor",
+      "to": "n_illmproviderdescriptor",
+      "type": "implements"
+    },
+    {
+      "id": "s_localproject_iproject",
+      "from": "n_localproject",
+      "to": "n_iproject",
+      "type": "implements"
+    },
+    {
+      "id": "s_localprojectbackend_iprojectbackend",
+      "from": "n_localprojectbackend",
+      "to": "n_iprojectbackend",
+      "type": "implements"
+    },
+    {
+      "id": "s_localprojectprovider_iprojectprovider",
+      "from": "n_localprojectprovider",
+      "to": "n_iprojectprovider",
+      "type": "implements"
+    },
+    {
+      "id": "s_localshell_ishell",
+      "from": "n_localshell",
+      "to": "n_ishell",
+      "type": "implements"
+    },
+    {
+      "id": "s_localworkspace_iworkspace",
+      "from": "n_localworkspace",
+      "to": "n_iworkspace",
+      "type": "implements"
+    },
+    {
+      "id": "s_markrollbacktool_imcptool",
+      "from": "n_markrollbacktool",
+      "to": "n_imcptool",
+      "type": "implements"
+    },
+    {
+      "id": "s_marksettool_imcptool",
+      "from": "n_marksettool",
+      "to": "n_imcptool",
+      "type": "implements"
+    },
+    {
+      "id": "s_mcphost_itoolhost",
+      "from": "n_mcphost",
+      "to": "n_itoolhost",
+      "type": "implements"
+    },
+    {
+      "id": "s_memorybucket_ibucket",
+      "from": "n_memorybucket",
+      "to": "n_ibucket",
+      "type": "implements"
+    },
+    {
+      "id": "s_memoryprojectbackend_iprojectbackend",
+      "from": "n_memoryprojectbackend",
+      "to": "n_iprojectbackend",
+      "type": "implements"
+    },
+    {
+      "id": "s_passthroughsandbox_isandbox",
+      "from": "n_passthroughsandbox",
+      "to": "n_isandbox",
+      "type": "implements"
+    },
+    {
+      "id": "s_permissionmanager_ipermissionmanager",
+      "from": "n_permissionmanager",
+      "to": "n_ipermissionmanager",
+      "type": "implements"
+    },
+    {
+      "id": "s_permissionstage_itoolmiddleware",
+      "from": "n_permissionstage",
+      "to": "n_itoolmiddleware",
+      "type": "implements"
+    },
+    {
+      "id": "s_permissivesecretaccesspolicy_isecretaccesspolicy",
+      "from": "n_permissivesecretaccesspolicy",
+      "to": "n_isecretaccesspolicy",
+      "type": "implements"
+    },
+    {
+      "id": "s_pluginavailabilitystage_itoolmiddleware",
+      "from": "n_pluginavailabilitystage",
+      "to": "n_itoolmiddleware",
+      "type": "implements"
+    },
+    {
+      "id": "s_pluginskillsource_iskillsource",
+      "from": "n_pluginskillsource",
+      "to": "n_iskillsource",
+      "type": "implements"
+    },
+    {
+      "id": "s_progressnodestage_itoolmiddleware",
+      "from": "n_progressnodestage",
+      "to": "n_itoolmiddleware",
+      "type": "implements"
+    },
+    {
+      "id": "s_providerclientresolver_illmclientresolver",
+      "from": "n_providerclientresolver",
+      "to": "n_illmclientresolver",
+      "type": "implements"
+    },
+    {
+      "id": "s_providerstatemiddleware_illmmiddleware",
+      "from": "n_providerstatemiddleware",
+      "to": "n_illmmiddleware",
+      "type": "implements"
+    },
+    {
+      "id": "s_resourcedeletetool_resourcetoolbase",
+      "from": "n_resourcedeletetool",
+      "to": "n_resourcetoolbase",
+      "type": "extends"
+    },
+    {
+      "id": "s_resourceexiststool_resourcetoolbase",
+      "from": "n_resourceexiststool",
+      "to": "n_resourcetoolbase",
+      "type": "extends"
+    },
+    {
+      "id": "s_resourcelisttool_resourcetoolbase",
+      "from": "n_resourcelisttool",
+      "to": "n_resourcetoolbase",
+      "type": "extends"
+    },
+    {
+      "id": "s_resourcemakedirtool_resourcetoolbase",
+      "from": "n_resourcemakedirtool",
+      "to": "n_resourcetoolbase",
+      "type": "extends"
+    },
+    {
+      "id": "s_resourcereadtool_resourcetoolbase",
+      "from": "n_resourcereadtool",
+      "to": "n_resourcetoolbase",
+      "type": "extends"
+    },
+    {
+      "id": "s_resourcetoolbase_imcptool",
+      "from": "n_resourcetoolbase",
+      "to": "n_imcptool",
+      "type": "implements"
+    },
+    {
+      "id": "s_resourcewritetool_resourcetoolbase",
+      "from": "n_resourcewritetool",
+      "to": "n_resourcetoolbase",
+      "type": "extends"
+    },
+    {
+      "id": "s_secretresolver_isecretresolver",
+      "from": "n_secretresolver",
+      "to": "n_isecretresolver",
+      "type": "implements"
+    },
+    {
+      "id": "s_singleclientresolver_illmclientresolver",
+      "from": "n_singleclientresolver",
+      "to": "n_illmclientresolver",
+      "type": "implements"
+    },
+    {
+      "id": "s_skillactivatetool_imcptool",
+      "from": "n_skillactivatetool",
+      "to": "n_imcptool",
+      "type": "implements"
+    },
+    {
+      "id": "s_skillcapabilityprobe_iskillcapabilityprobe",
+      "from": "n_skillcapabilityprobe",
+      "to": "n_iskillcapabilityprobe",
+      "type": "implements"
+    },
+    {
+      "id": "s_skilldeactivatetool_imcptool",
+      "from": "n_skilldeactivatetool",
+      "to": "n_imcptool",
+      "type": "implements"
+    },
+    {
+      "id": "s_skillfindtool_imcptool",
+      "from": "n_skillfindtool",
+      "to": "n_imcptool",
+      "type": "implements"
+    },
+    {
+      "id": "s_skillreadresourcetool_imcptool",
+      "from": "n_skillreadresourcetool",
+      "to": "n_imcptool",
+      "type": "implements"
+    },
+    {
+      "id": "s_skillsession_iskillsession",
+      "from": "n_skillsession",
+      "to": "n_iskillsession",
+      "type": "implements"
+    },
+    {
+      "id": "s_taglibrarian_itaglibrarian",
+      "from": "n_taglibrarian",
+      "to": "n_itaglibrarian",
+      "type": "implements"
+    },
+    {
+      "id": "s_taskcanceltool_imcptool",
+      "from": "n_taskcanceltool",
+      "to": "n_imcptool",
+      "type": "implements"
+    },
+    {
+      "id": "s_tasklisttool_imcptool",
+      "from": "n_tasklisttool",
+      "to": "n_imcptool",
+      "type": "implements"
+    },
+    {
+      "id": "s_taskoutputtool_imcptool",
+      "from": "n_taskoutputtool",
+      "to": "n_imcptool",
+      "type": "implements"
+    },
+    {
+      "id": "s_telemetrystage_itoolmiddleware",
+      "from": "n_telemetrystage",
+      "to": "n_itoolmiddleware",
+      "type": "implements"
+    },
+    {
+      "id": "s_toolimage_toolcontent",
+      "from": "n_toolimage",
+      "to": "n_toolcontent",
+      "type": "extends"
+    },
+    {
+      "id": "s_toolresolutionstage_itoolmiddleware",
+      "from": "n_toolresolutionstage",
+      "to": "n_itoolmiddleware",
+      "type": "implements"
+    },
+    {
+      "id": "s_toolresource_toolcontent",
+      "from": "n_toolresource",
+      "to": "n_toolcontent",
+      "type": "extends"
+    },
+    {
+      "id": "s_toolsetactivatetool_imcptool",
+      "from": "n_toolsetactivatetool",
+      "to": "n_imcptool",
+      "type": "implements"
+    },
+    {
+      "id": "s_toolsetdeactivatetool_imcptool",
+      "from": "n_toolsetdeactivatetool",
+      "to": "n_imcptool",
+      "type": "implements"
+    },
+    {
+      "id": "s_toolsetdisclosurestage_itoolmiddleware",
+      "from": "n_toolsetdisclosurestage",
+      "to": "n_itoolmiddleware",
+      "type": "implements"
+    },
+    {
+      "id": "s_toolsetsession_itoolsetsession",
+      "from": "n_toolsetsession",
+      "to": "n_itoolsetsession",
+      "type": "implements"
+    },
+    {
+      "id": "s_tooltext_toolcontent",
+      "from": "n_tooltext",
+      "to": "n_toolcontent",
+      "type": "extends"
+    },
+    {
+      "id": "s_turnoutcomemiddleware_illmmiddleware",
+      "from": "n_turnoutcomemiddleware",
+      "to": "n_illmmiddleware",
+      "type": "implements"
+    },
+    {
+      "id": "s_utf8textconverter_iformatconverter",
+      "from": "n_utf8textconverter",
+      "to": "n_iformatconverter",
+      "type": "implements"
+    },
+    {
+      "id": "s_zoneshadowstage_itoolmiddleware",
+      "from": "n_zoneshadowstage",
+      "to": "n_itoolmiddleware",
+      "type": "implements"
+    }
+  ]
+}

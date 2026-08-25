@@ -1,0 +1,543 @@
+{
+  "id": "core",
+  "title": "SPLA Core — смысловой атлас",
+  "layout": "semantic-atlas",
+  "sources": [
+    "src/core"
+  ],
+  "blocks": [
+    {
+      "id": "llm",
+      "name": "LLM: провайдеры и ход",
+      "theme": "green",
+      "children": [
+        {
+          "id": "llm_providers",
+          "name": "Провайдеры и шлюз",
+          "match": {
+            "name": [
+              "ILlmClient",
+              "ILlmGateway",
+              "IModelManagementService",
+              "LLMSettings",
+              "LlmProviderRegistry",
+              "ModelInfo"
+            ]
+          }
+        },
+        {
+          "id": "llm_middleware",
+          "name": "Цепочка middleware",
+          "match": {
+            "name": [
+              "ILlmMiddleware",
+              "LlmPipelineBlueprint"
+            ],
+            "path": [
+              "src/core/SPLA.Domain/Llm/Middleware/"
+            ]
+          }
+        },
+        {
+          "id": "llm_turn",
+          "name": "Модель хода",
+          "match": {
+            "name": [
+              "GenerationAttempt",
+              "LlmRequestException",
+              "LlmTurnContext",
+              "LlmTurnResult",
+              "ProviderFact",
+              "ProviderStateStore",
+              "ReasoningCapability",
+              "ReasoningChoice",
+              "TurnAttempt"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "id": "toolpipe",
+      "name": "Конвейер инструментов (MCP)",
+      "theme": "blue",
+      "children": [
+        {
+          "id": "tool_contracts",
+          "name": "Контракты конвейера",
+          "match": {
+            "name": [
+              "ToolCall",
+              "ToolCallContext",
+              "ToolDefinition",
+              "ToolResult"
+            ],
+            "path": [
+              "src/core/SPLA.MCP.Core/Pipeline/"
+            ]
+          }
+        },
+        {
+          "id": "tool_stages",
+          "name": "Стадии конвейера",
+          "match": {
+            "path": [
+              "src/core/SPLA.MCP.Core/Pipeline/Stages/"
+            ]
+          }
+        },
+        {
+          "id": "tool_host",
+          "name": "Хост и выставление наружу",
+          "match": {
+            "name": [
+              "IMcpTool",
+              "IToolHost",
+              "ToolHostScope"
+            ],
+            "path": [
+              "src/core/SPLA.MCP.Core/",
+              "src/core/SPLA.MCP.Core/Json/"
+            ]
+          }
+        },
+        {
+          "id": "tool_progress",
+          "name": "Прогресс и фон",
+          "match": {
+            "name": [
+              "BackgroundTaskRegistry",
+              "ProgressHub",
+              "ProgressNode",
+              "ProgressScope",
+              "ProgressTree",
+              "TaskCancelTool",
+              "TaskListTool",
+              "TaskOutputTool",
+              "ToolProgress"
+            ]
+          }
+        },
+        {
+          "id": "agent_comp",
+          "name": "Композиция агента",
+          "match": {
+            "path": [
+              "src/core/SPLA.MCP.Core/Agent/",
+              "src/core/SPLA.MCP.Core/Composition/"
+            ]
+          }
+        },
+        {
+          "id": "formats",
+          "name": "Конвертеры форматов",
+          "match": {
+            "path": [
+              "src/core/SPLA.Domain/Formats/",
+              "src/core/SPLA.MCP.Core/Formats/"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "id": "plugins",
+      "name": "Плагины и наборы инструментов",
+      "theme": "fuchsia",
+      "children": [
+        {
+          "id": "plugin_contracts",
+          "name": "Контракты плагина",
+          "match": {
+            "name": [
+              "ISplaPlugin",
+              "ISplaPluginAction",
+              "ISplaPluginPanelProvider",
+              "ISplaPluginSelfCheck",
+              "ISplaPluginUiCommands"
+            ]
+          }
+        },
+        {
+          "id": "plugin_loading",
+          "name": "Загрузка и обнаружение",
+          "match": {
+            "path": [
+              "src/core/SPLA.MCP.Core/Plugins/"
+            ]
+          }
+        },
+        {
+          "id": "toolsets",
+          "name": "ToolSets",
+          "match": {
+            "name": [
+              "ToolSetActivateTool",
+              "ToolSetSession"
+            ],
+            "path": [
+              "src/core/SPLA.MCP.Core/ToolSets/"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "id": "chat",
+      "name": "Чат и сессия",
+      "match": {
+        "name": [
+          "AgentClarifyTool",
+          "ChatInbox",
+          "ChatManager",
+          "ChatMessage",
+          "ChatRole",
+          "ChatSession",
+          "ClarifyRequest",
+          "ClarifyScope",
+          "Conversation",
+          "IChatStore"
+        ]
+      },
+      "theme": "amber"
+    },
+    {
+      "id": "security",
+      "name": "Безопасность и полномочия",
+      "theme": "red",
+      "children": [
+        {
+          "id": "sec_permissions",
+          "name": "Разрешения",
+          "match": {
+            "name": [
+              "AgentMode",
+              "PermissionDecision",
+              "PermissionResult",
+              "PermissionVerdict",
+              "ToolEffect",
+              "ToolRisk",
+              "ToolScope"
+            ],
+            "path": [
+              "src/core/SPLA.MCP.Core/Permissions/"
+            ]
+          }
+        },
+        {
+          "id": "sec_zones",
+          "name": "Зоны и рёбра",
+          "match": {
+            "path": [
+              "src/core/SPLA.Domain/Security/",
+              "src/core/SPLA.MCP.Core/Security/"
+            ]
+          }
+        },
+        {
+          "id": "sec_sandbox",
+          "name": "Песочница и возможности хоста",
+          "match": {
+            "path": [
+              "src/core/SPLA.Domain/Host/"
+            ]
+          }
+        },
+        {
+          "id": "sec_secrets",
+          "name": "Секреты",
+          "theme": "red",
+          "children": [
+            {
+              "id": "sec_secrets_domain",
+              "name": "Хранилище и политика",
+              "match": {
+                "path": [
+                  "src/core/SPLA.Domain/Secrets/"
+                ]
+              }
+            },
+            {
+              "id": "sec_secrets_dpapi",
+              "name": "DPAPI",
+              "match": {
+                "path": [
+                  "src/core/SPLA.Secrets.Dpapi/"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "id": "sec_identity",
+          "name": "Идентичность",
+          "match": {
+            "path": [
+              "src/core/SPLA.Domain/Identity/"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "id": "memory",
+      "name": "Память агента и контекст",
+      "theme": "sky",
+      "children": [
+        {
+          "id": "mem_kv",
+          "name": "KV и блобы",
+          "match": {
+            "name": [
+              "AgentSessionScope",
+              "BlobStore",
+              "DataChannel",
+              "IBlobStore",
+              "IKeyValueStore",
+              "KeyValueStore",
+              "KvGlob"
+            ]
+          }
+        },
+        {
+          "id": "mem_context",
+          "name": "Сборка контекста и метки",
+          "match": {
+            "name": [
+              "MarkManager"
+            ],
+            "path": [
+              "src/core/SPLA.Domain/Context/"
+            ]
+          }
+        },
+        {
+          "id": "mem_accounting",
+          "name": "Учёт токенов",
+          "match": {
+            "name": [
+              "FileTokenUsageStore",
+              "ITokenUsageReporter",
+              "ITokenUsageStore",
+              "TokenUsageTotals"
+            ]
+          }
+        },
+        {
+          "id": "mem_tools",
+          "name": "Инструменты памяти",
+          "match": {
+            "name": [
+              "AgentMemoryClearTool",
+              "AgentMemoryDeleteTool",
+              "AgentMemoryGetTool",
+              "AgentMemoryHelpers",
+              "AgentMemoryListTool",
+              "AgentMemorySetTool",
+              "BlobPeekTool",
+              "ContextCheckpointRestoreTool",
+              "ContextCheckpointSetTool",
+              "ImageViewTool",
+              "MarkRollbackTool",
+              "MarkSetTool"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "id": "content",
+      "name": "Содержимое, редактор и ресурсы",
+      "theme": "yellow",
+      "children": [
+        {
+          "id": "editor",
+          "name": "Редактор и схемы",
+          "match": {
+            "path": [
+              "src/core/SPLA.Domain/Editor/"
+            ]
+          }
+        },
+        {
+          "id": "resources",
+          "name": "Ресурсы",
+          "theme": "yellow",
+          "children": [
+            {
+              "id": "res_core",
+              "name": "Реестр и провайдеры",
+              "match": {
+                "path": [
+                  "src/core/SPLA.Domain/Resources/",
+                  "src/core/SPLA.Domain/Resources/Providers/"
+                ]
+              }
+            },
+            {
+              "id": "res_tools",
+              "name": "Инструменты ресурсов",
+              "match": {
+                "path": [
+                  "src/core/SPLA.MCP.Core/Tools/Resources/"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "skills",
+      "name": "Навыки и библиотека",
+      "theme": "violet",
+      "children": [
+        {
+          "id": "skills_library",
+          "name": "Библиотека и каталог",
+          "match": {
+            "path": [
+              "src/core/SPLA.Library/",
+              "src/core/SPLA.Library/Catalog/",
+              "src/core/SPLA.Library/Format/",
+              "src/core/SPLA.Library/Librarians/"
+            ]
+          }
+        },
+        {
+          "id": "skills_sources",
+          "name": "Источники и доверие",
+          "match": {
+            "name": [
+              "ISkillSourceStore",
+              "ISkillTrustStore"
+            ],
+            "path": [
+              "src/core/SPLA.Library/Sources/"
+            ]
+          }
+        },
+        {
+          "id": "skills_session",
+          "name": "Сессия и инструменты",
+          "match": {
+            "name": [
+              "ISkillSession",
+              "SkillActivateTool",
+              "SkillDeactivateTool",
+              "SkillFindTool",
+              "SkillReadResourceTool",
+              "SkillSession"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "id": "project",
+      "name": "Проект и конфигурация",
+      "theme": "slate",
+      "children": [
+        {
+          "id": "proj_core",
+          "name": "Проект и хранилища",
+          "match": {
+            "name": [
+              "FileBucket",
+              "IBucket",
+              "IProject",
+              "IProjectBackend",
+              "IProjectProvider",
+              "LocalProject",
+              "LocalProjectBackend",
+              "LocalProjectProvider",
+              "MemoryBucket",
+              "MemoryProjectBackend",
+              "ProjectFactory",
+              "ProjectProfile",
+              "ServerProjectRoot"
+            ]
+          }
+        },
+        {
+          "id": "proj_instances",
+          "name": "Инстансы",
+          "match": {
+            "name": [
+              "InstanceLock",
+              "InstanceState"
+            ],
+            "path": [
+              "src/core/SPLA.Instances.Contracts/"
+            ]
+          }
+        },
+        {
+          "id": "proj_settings",
+          "name": "Настройки",
+          "match": {
+            "name": [
+              "ConfigLoader",
+              "MachineLayerScope",
+              "MountResolver",
+              "ProjectKvStore",
+              "ProjectManifestException",
+              "SettingsResolver",
+              "SourceOrigin",
+              "SplaDefaults",
+              "SplaLlmSection",
+              "SplaPluginSection",
+              "SplaProject",
+              "SplaSkillSection",
+              "YamlSectionSplicer"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "id": "agentlife",
+      "name": "Жизненный цикл агента",
+      "match": {
+        "name": [
+          "AgentSpawnBatchTool",
+          "AgentSpawnTool",
+          "IAgentSpawner"
+        ]
+      },
+      "theme": "cyan"
+    },
+    {
+      "id": "observability",
+      "name": "Наблюдаемость",
+      "match": {
+        "path": [
+          "src/core/SPLA.Observability/",
+          "src/core/SPLA.Observability/Collection/"
+        ]
+      },
+      "theme": "lime"
+    },
+    {
+      "id": "platform",
+      "name": "Платформа / ОС",
+      "match": {
+        "path": [
+          "src/core/SPLA.Platform/"
+        ]
+      },
+      "theme": "pink"
+    },
+    {
+      "id": "ssh",
+      "name": "SSH",
+      "match": {
+        "path": [
+          "src/core/SPLA.Ssh.Core/",
+          "src/core/SPLA.Ssh.Core/Session/"
+        ]
+      },
+      "theme": "gray"
+    }
+  ]
+}

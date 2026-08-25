@@ -1,0 +1,1953 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SPLA Architecture Visualizer & Container Editor</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    body {
+      user-select: none;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    }
+    .canvas-bg-dots {
+      background-color: #f8fafc;
+      background-image: 
+        radial-gradient(#cbd5e1 1.2px, transparent 1.2px), 
+        radial-gradient(#e2e8f0 1.2px, #f8fafc 1.2px);
+      background-size: 20px 20px;
+      background-position: 0 0, 10px 10px;
+    }
+    .canvas-bg-plain {
+      background-color: #f8fafc;
+      background-image: none;
+    }
+    .node-box {
+      cursor: grab;
+      transition: filter 0.15s ease, opacity 0.2s ease;
+    }
+    .node-box:active {
+      cursor: grabbing;
+    }
+    .node-box:hover {
+      filter: drop-shadow(0 4px 10px rgba(0, 0, 0, 0.12));
+    }
+    .node-box.selected rect {
+      stroke: #2563eb !important;
+      stroke-width: 2.5px !important;
+    }
+    .zone-box {
+      cursor: default;
+    }
+    .zone-header-drag {
+      cursor: grab;
+    }
+    .zone-header-drag:active {
+      cursor: grabbing;
+    }
+    .zone-box.drop-target > rect:first-child {
+      stroke: #2563eb !important;
+      stroke-width: 3px !important;
+      filter: drop-shadow(0 0 8px rgba(37, 99, 235, 0.3));
+    }
+    .zone-box.selected > rect:first-child {
+      stroke: #2563eb !important;
+      stroke-width: 2.5px !important;
+    }
+    .zone-btn-collapse {
+      cursor: pointer !important;
+      pointer-events: all !important;
+    }
+    .zone-btn-collapse rect {
+      fill: #ffffff;
+      stroke: #94a3b8;
+      stroke-width: 1.2px;
+      transition: fill 0.15s ease, stroke 0.15s ease;
+    }
+    .zone-btn-collapse:hover rect {
+      fill: #2563eb;
+      stroke: #1d4ed8;
+    }
+    .zone-btn-collapse text {
+      fill: #334155;
+      font-weight: bold;
+      pointer-events: none;
+      transition: fill 0.15s ease;
+    }
+    .zone-btn-collapse:hover text {
+      fill: #ffffff;
+    }
+    .zone-resize-handle {
+      cursor: nwse-resize;
+      fill: #3b82f6;
+      stroke: #ffffff;
+      stroke-width: 1.5px;
+      transition: opacity 0.1s ease;
+    }
+    .zone-resize-handle:hover {
+      fill: #1d4ed8;
+    }
+    .edge-group {
+      transition: opacity 0.2s ease;
+    }
+    .edge-line {
+      transition: stroke 0.15s ease, stroke-width 0.15s ease;
+    }
+    .edge-group:hover .edge-line {
+      stroke: #2563eb;
+      stroke-width: 2.5px;
+    }
+    .edge-label {
+      font-size: 11px;
+      font-weight: 500;
+      fill: #475569;
+      pointer-events: none;
+    }
+    /* Custom Scrollbars */
+    ::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    ::-webkit-scrollbar-track {
+      background: rgba(15, 23, 42, 0.6);
+    }
+    ::-webkit-scrollbar-thumb {
+      background: #334155;
+      border-radius: 3px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: #475569;
+    }
+  
+    .selected-edge path { stroke: #3b82f6 !important; stroke-width: 3px !important; filter: drop-shadow(0 0 4px #60a5fa); }
+    .selected-edge text { fill: #3b82f6 !important; font-weight: bold; }
+  </style>
+</head>
+<body class="h-screen w-screen flex flex-col bg-slate-900 text-slate-100 overflow-hidden">
+
+  <!-- Header -->
+  <header class="h-14 bg-slate-800 border-b border-slate-700 px-4 flex items-center justify-between shrink-0 z-20 shadow-sm gap-3">
+    
+    <!-- Left: App Brand & Active Scheme Badge -->
+    <div class="flex items-center space-x-3">
+      <div class="w-8 h-8 rounded bg-gradient-to-tr from-blue-600 to-indigo-500 flex items-center justify-center font-bold text-white shadow">
+        ⬡
+      </div>
+      <div class="flex items-center gap-2">
+        <h1 class="text-sm font-semibold text-white tracking-wide">SPLA Visualizer & Editor</h1>
+        <span id="header-diagram-name" class="text-xs text-blue-300 font-medium bg-blue-500/10 px-2 py-0.5 rounded border border-blue-500/20 truncate max-w-xs">
+          SPLA System Architecture
+        </span>
+        <span id="dirty-indicator" class="hidden text-[10px] bg-amber-500/20 text-amber-300 px-1.5 py-0.5 rounded border border-amber-500/30 font-mono">
+          изменено
+        </span>
+      </div>
+    </div>
+
+    <!-- Center: Dynamic View Presets -->
+    <div id="views-container" class="flex items-center bg-slate-900/90 rounded-lg p-1 border border-slate-700 space-x-1 overflow-x-auto max-w-xl shadow-inner">
+      <!-- Dynamic view buttons inserted here -->
+    </div>
+
+    <!-- Right: Actions, Grid Controls & Export -->
+    <div class="flex items-center space-x-2">
+      <!-- Show/Hide Grid Dots -->
+      <label class="flex items-center gap-1.5 text-xs text-slate-300 bg-slate-900/60 px-2 py-1.5 rounded border border-slate-700 cursor-pointer" title="Показать или скрыть точки координатной сетки на холсте">
+        <input type="checkbox" id="show-grid-chk" checked onchange="toggleGridVisibility(this.checked)" class="rounded bg-slate-800 text-blue-500 focus:ring-0 w-3.5 h-3.5">
+        <span class="text-[11px]">Точки сетки</span>
+      </label>
+
+      <!-- Snap to Grid Toggle -->
+      <label class="flex items-center gap-1.5 text-xs text-slate-300 bg-slate-900/60 px-2 py-1.5 rounded border border-slate-700 cursor-pointer" title="Привязка координат к шагу в 10px при перетаскивании">
+        <input type="checkbox" id="snap-grid-chk" checked class="rounded bg-slate-800 text-blue-500 focus:ring-0 w-3.5 h-3.5">
+        <span class="text-[11px] font-medium text-blue-300">🧲 Привязка (10px)</span>
+      </label>
+
+      <!-- Group Drag Mode Option -->
+      <label class="flex items-center gap-1.5 text-xs text-slate-300 bg-slate-900/60 px-2 py-1.5 rounded border border-slate-700 cursor-pointer" title="При перемещении зоны перемещать все вложенные элементы вместе с ней">
+        <input type="checkbox" id="container-drag-chk" checked class="rounded bg-slate-800 text-blue-500 focus:ring-0 w-3.5 h-3.5">
+        <span class="text-[11px] font-medium text-emerald-300">📦 Зона-Контейнер</span>
+      </label>
+
+      <!-- Creation & Editing Toolbar -->
+      <div class="flex items-center space-x-1 bg-slate-900/60 p-1 rounded border border-slate-700">
+        <button onclick="createNewNode()" class="px-2 py-1 bg-blue-600/80 hover:bg-blue-500 text-white text-xs font-medium rounded flex items-center gap-1 transition" title="Добавить новый блок или концепт">
+          <span>➕</span>
+          <span>Блок</span>
+        </button>
+        <button onclick="createNewZone()" class="px-2 py-1 bg-indigo-600/80 hover:bg-indigo-500 text-white text-xs font-medium rounded flex items-center gap-1 transition" title="Добавить новую зону-контейнер">
+          <span>➕</span>
+          <span>Зона</span>
+        </button>
+        <button onclick="deleteSelectedItem()" id="btn-delete-item" class="p-1 text-red-400 hover:text-red-300 hover:bg-red-500/10 rounded disabled:opacity-30 disabled:hover:bg-transparent transition" title="Удалить выбранный элемент (Delete)" disabled>
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
+        </button>
+      </div>
+
+      <!-- Undo / Redo Buttons -->
+      <div class="flex items-center space-x-1 bg-slate-900/60 p-1 rounded border border-slate-700">
+        <button onclick="undo()" id="btn-undo" class="p-1 text-slate-400 hover:text-white disabled:opacity-30 disabled:hover:text-slate-400 transition" title="Отменить (Ctrl+Z)" disabled>
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h10a5 5 0 015 5v2a5 5 0 01-5 5H6m0 0l4-4m-4 4l4 4"></path></svg>
+        </button>
+        <button onclick="redo()" id="btn-redo" class="p-1 text-slate-400 hover:text-white disabled:opacity-30 disabled:hover:text-slate-400 transition" title="Повторить (Ctrl+Y)" disabled>
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 10H11a5 5 0 00-5 5v2a5 5 0 005 5h7m0 0l-4-4m4 4l-4 4"></path></svg>
+        </button>
+      </div>
+
+      <!-- Save / Download JSON -->
+      <button onclick="downloadUpdatedJson()" class="px-3 py-1.5 bg-blue-600 hover:bg-blue-500 text-white text-xs font-medium rounded shadow flex items-center gap-1.5 transition" title="Скачать обновленный JSON файл с текущими координатами">
+        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4"></path></svg>
+        Сохранить JSON
+      </button>
+
+      <!-- Export to Draw.io -->
+      <button onclick="exportDrawio()" class="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-medium rounded shadow flex items-center gap-1.5 transition" title="Экспорт в .drawio">
+        .drawio
+      </button>
+
+      <!-- Raw JSON Modal -->
+      <button onclick="toggleJsonModal()" class="px-2.5 py-1.5 bg-slate-700 hover:bg-slate-600 text-slate-200 text-xs font-medium rounded border border-slate-600 transition" title="Открыть JSON">
+        Код
+      </button>
+      
+      <button onclick="fitView()" class="px-2.5 py-1.5 bg-slate-700 hover:bg-slate-600 text-slate-200 text-xs font-medium rounded border border-slate-600 transition" title="Вписать в экран">
+        Вписать
+      </button>
+    </div>
+  </header>
+
+  <!-- Main Work Area with Sidebars -->
+  <div class="flex-1 flex overflow-hidden relative">
+
+    <!-- Left Sidebar: Modern Collapsible Schema Navigator -->
+    <aside id="left-sidebar" class="w-64 bg-slate-800/95 border-r border-slate-700 flex flex-col shrink-0 z-10 transition-all duration-200 select-none">
+      
+      <!-- Sidebar Header & Toggle -->
+      <div class="p-3 border-b border-slate-700 flex items-center justify-between">
+        <div id="sidebar-header-title" class="flex items-center space-x-2 text-xs font-semibold text-slate-300 uppercase tracking-wider">
+          <svg class="w-4 h-4 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h7"></path></svg>
+          <span>Схемы архитектуры</span>
+        </div>
+        <button onclick="toggleSidebar()" class="p-1 hover:bg-slate-700 rounded text-slate-400 hover:text-white transition" title="Свернуть / Развернуть панель">
+          <svg id="sidebar-toggle-icon" class="w-4 h-4 transform transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 19l-7-7 7-7m8 14l-7-7 7-7"></path>
+          </svg>
+        </button>
+      </div>
+
+      <!-- Schemas List -->
+      <div class="flex-1 overflow-y-auto p-2 space-y-1" id="sidebar-schemas-list">
+        
+        <div class="px-2 py-1.5 text-[11px] font-semibold text-slate-400 uppercase tracking-wider sidebar-label">Каталог проекта</div>
+        
+        <!-- Dynamic schemas loaded from catalog.json will be inserted here -->
+        <div id="dynamic-catalog-list" class="space-y-1"></div>
+
+        <!-- Custom loaded schemas section -->
+        <div id="custom-schemas-container" class="pt-2 space-y-1 hidden">
+          <div class="px-2 py-1 text-[11px] font-semibold text-slate-400 uppercase tracking-wider sidebar-label">Пользовательские</div>
+          <div id="custom-schemas-list" class="space-y-1"></div>
+        </div>
+      </div>
+
+      <!-- Instructions hint in sidebar -->
+      <div class="p-2.5 mx-2 my-2 rounded bg-slate-900/60 border border-slate-700/60 text-[11px] text-slate-400 sidebar-label space-y-1.5">
+        <div class="text-emerald-300 font-medium flex items-center gap-1">📦 Свойства контейнера:</div>
+        <div>• <b>Перемещение зоны</b> тащит все вложенные ноды</div>
+        <div>• <b>Перетаскивание ноды</b> в другую зону меняет её родителя (reparenting)</div>
+        <div>• Кнопка <b>[ − / + ]</b> в шапке зоны сворачивает/разворачивает её</div>
+      </div>
+
+      <!-- Sidebar Footer -->
+      <div class="p-2 border-t border-slate-700 bg-slate-900/40">
+        <button onclick="document.getElementById('file-input').click()" class="w-full py-2 px-2.5 bg-slate-700/60 hover:bg-slate-700 hover:text-white text-slate-300 text-xs font-medium rounded-lg border border-slate-600 transition flex items-center justify-center gap-2 group">
+          <span class="text-base">📂</span>
+          <span class="sidebar-label">Загрузить свой JSON...</span>
+        </button>
+        <input type="file" id="file-input" class="hidden" accept=".json" onchange="loadCustomJsonFile(event)">
+      </div>
+    </aside>
+
+    <!-- Center: Interactive SVG Canvas -->
+    <div id="canvas-container" class="flex-1 canvas-bg-dots relative overflow-hidden cursor-default">
+      <svg id="diagram-svg" class="w-full h-full" xmlns="http://www.w3.org/2000/svg">
+        <defs>
+          <!-- Arrow Markers -->
+          <marker id="arrow-call" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+            <path d="M 0 1.5 L 10 5 L 0 8.5 z" fill="#475569" />
+          </marker>
+        <marker id="triangle" markerWidth="12" markerHeight="12" refX="11" refY="6" orient="auto-start-reverse">
+          <path d="M 0 1 L 11 6 L 0 11 z" fill="none" stroke="currentColor" stroke-width="1.5" />
+        </marker>
+          <marker id="arrow-data" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+            <path d="M 0 1.5 L 10 5 L 0 8.5 z" fill="#2563eb" />
+          </marker>
+          <marker id="arrow-security" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+            <path d="M 0 1.5 L 10 5 L 0 8.5 z" fill="#dc2626" />
+          </marker>
+          <marker id="arrow-storage" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+            <path d="M 0 1.5 L 10 5 L 0 8.5 z" fill="#9333ea" />
+          </marker>
+          <!-- Generic fallback (was referenced as #arrow but never defined) -->
+          <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+            <path d="M 0 1.5 L 10 5 L 0 8.5 z" fill="#94a3b8" />
+          </marker>
+          <!-- Inheritance: hollow triangle (extends) vs filled triangle (implements) -->
+          <marker id="triangle-hollow" viewBox="0 0 12 12" refX="11" refY="6" markerWidth="11" markerHeight="11" orient="auto-start-reverse">
+            <path d="M 0 1 L 11 6 L 0 11 z" fill="#ffffff" stroke="#475569" stroke-width="1.5" />
+          </marker>
+          <marker id="triangle-solid" viewBox="0 0 12 12" refX="11" refY="6" markerWidth="11" markerHeight="11" orient="auto-start-reverse">
+            <path d="M 0 1 L 11 6 L 0 11 z" fill="#475569" />
+          </marker>
+          <!-- Event: open chevron -->
+          <marker id="arrow-open" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+            <path d="M 0 1 L 9 5 L 0 9" fill="none" stroke="#ea580c" stroke-width="1.6" />
+          </marker>
+          <!-- Composition: filled diamond at the owner end -->
+          <marker id="diamond-solid" viewBox="0 0 12 12" refX="1" refY="6" markerWidth="12" markerHeight="12" orient="auto-start-reverse">
+            <path d="M 0 6 L 6 2 L 12 6 L 6 10 z" fill="#0f766e" />
+          </marker>
+          <!-- Drop Shadows -->
+          <filter id="shadow" x="-5%" y="-5%" width="115%" height="115%">
+            <feDropShadow dx="0" dy="2" stdDeviation="3" flood-opacity="0.08"/>
+          </filter>
+        </defs>
+        <g id="viewport-group">
+          <g id="zones-layer"></g>
+          <g id="edges-layer"></g>
+          <g id="nodes-layer"></g>
+          <g id="resizers-layer"></g>
+        </g>
+      </svg>
+
+      <!-- Zoom / Pan Overlay Controls -->
+      <div class="absolute bottom-4 left-4 bg-white/95 backdrop-blur border border-slate-200 shadow-lg rounded-lg p-1.5 flex items-center space-x-1 text-slate-700 z-10">
+        <button onclick="zoomBy(1.2)" class="w-7 h-7 hover:bg-slate-100 rounded flex items-center justify-center font-bold text-sm" title="Приблизить">+</button>
+        <button onclick="zoomBy(0.8)" class="w-7 h-7 hover:bg-slate-100 rounded flex items-center justify-center font-bold text-sm" title="Отдалить">−</button>
+        <div class="h-4 w-px bg-slate-200 mx-1"></div>
+        <button onclick="resetZoom()" class="px-2 h-7 hover:bg-slate-100 rounded text-xs font-medium" title="100% масштаб">100%</button>
+        <button onclick="fitView()" class="px-2 h-7 hover:bg-slate-100 rounded text-xs font-medium" title="Вписать в экран">Вписать</button>
+        <span id="zoom-level" class="text-[11px] text-slate-400 w-12 text-center font-mono">100%</span>
+      </div>
+
+      <!-- Drag & Drop Hint Overlay -->
+      <div id="drop-zone" class="absolute inset-0 bg-blue-600/10 border-4 border-dashed border-blue-500 rounded-xl m-4 flex items-center justify-center pointer-events-none hidden z-30">
+        <div class="bg-slate-900/90 text-white px-6 py-4 rounded-xl shadow-2xl text-center border border-slate-700">
+          <p class="text-3xl mb-1">📥</p>
+          <p class="font-semibold text-sm">Перетащите сюда JSON-файл схемы</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Right Sidebar: Inspector Drawer -->
+    <aside id="inspector-panel" class="w-96 bg-slate-800 border-l border-slate-700 flex flex-col shrink-0 z-10 transition-all duration-200">
+      <div class="p-4 border-b border-slate-700 flex items-center justify-between">
+        <div class="flex items-center space-x-2">
+          <span class="w-2.5 h-2.5 rounded-full bg-blue-400"></span>
+          <h2 class="text-sm font-semibold text-white tracking-wide">Инспектор объекта</h2>
+        </div>
+        <span id="item-badge" class="text-[10px] uppercase font-mono px-2 py-0.5 rounded bg-slate-700 text-slate-300">Ничего не выбрано</span>
+      </div>
+
+      <!-- Inspector Body -->
+      <div id="inspector-content" class="flex-1 p-4 overflow-y-auto space-y-5 text-sm">
+        <div class="text-center py-12 text-slate-400 text-xs">
+          <p class="text-2xl mb-2">👆</p>
+          <p>Кликните на любой компонент или зону. При перетаскивании зоны все вложенные ноды двигаются вместе с ней.</p>
+        </div>
+      </div>
+
+      <!-- Sidebar Footer -->
+      <div class="p-3 bg-slate-900/60 border-t border-slate-700 text-[11px] text-slate-400 flex items-center justify-between">
+        <span id="active-diagram-footer" class="truncate max-w-[200px]">Схема активна</span>
+        <button onclick="editSelectedMetadata()" id="btn-edit-props" class="text-blue-400 hover:text-blue-300 disabled:opacity-30 shrink-0" disabled>Свойства &rarr;</button>
+      </div>
+    </aside>
+  </div>
+
+  <!-- JSON Modal -->
+  <div id="json-modal" class="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 hidden flex items-center justify-center p-6">
+    <div class="bg-slate-800 border border-slate-700 rounded-xl w-full max-w-4xl max-h-[85vh] flex flex-col shadow-2xl overflow-hidden">
+      <div class="p-4 border-b border-slate-700 flex items-center justify-between">
+        <h3 class="text-sm font-semibold text-white">Модель диаграммы (JSON Contract)</h3>
+        <button onclick="toggleJsonModal()" class="text-slate-400 hover:text-white text-lg">&times;</button>
+      </div>
+      <div class="flex-1 p-4 overflow-auto">
+        <p class="text-xs text-slate-400 mb-2">Зоны выступают родительскими контейнерами. При изменении их положения координаты дочерних элементов обновляются.</p>
+        <textarea id="json-editor" class="w-full h-96 bg-slate-900 font-mono text-xs text-emerald-400 p-3 rounded border border-slate-700 focus:outline-none focus:border-blue-500" spellcheck="false"></textarea>
+      </div>
+      <div class="p-3 border-t border-slate-700 bg-slate-900/50 flex justify-between">
+        <button onclick="copyJson()" class="px-3 py-1.5 bg-slate-700 hover:bg-slate-600 text-xs rounded text-slate-200">Копировать JSON</button>
+        <div class="space-x-2">
+          <button onclick="applyJsonChanges()" class="px-4 py-1.5 bg-blue-600 hover:bg-blue-500 text-xs font-semibold rounded text-white shadow">Применить к холсту</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="catalog.js"></script>
+  <script>
+    // --- Dynamic Catalog ---
+    const DEFAULT_CATALOG = {
+      schemas: [
+        {
+          id: "spla_core",
+          file: "model.json",
+          title: "SPLA System Architecture",
+          subtitle: "Core, runtime, tools & storage",
+          icon: "🏛",
+          theme: "blue"
+        },
+        {
+          id: "src_core",
+          file: "model-core.json",
+          title: "Core Layer (src/core)",
+          subtitle: "Domain, MCP, Security, Host",
+          icon: "🧠",
+          theme: "emerald"
+        },
+        {
+          id: "src_core_full",
+          file: "model-core-full.json",
+          title: "FULL Core (All Classes)",
+          subtitle: "240+ classes, interfaces, middlewares",
+          icon: "🌌",
+          theme: "indigo"
+        },
+        {
+          id: "llm_pipeline",
+          file: "model-llm-pipeline.json",
+          title: "LLM Pipeline & Context",
+          subtitle: "Prompt assembly & output stage",
+          icon: "🔄",
+          theme: "indigo"
+        },
+        {
+          id: "plugins_ecosystem",
+          file: "model-plugins.json",
+          title: "Plugins & Tools Ecosystem",
+          subtitle: "Network, SSH, Documents & MCP",
+          icon: "🔌",
+          theme: "amber"
+        }
+      ]
+    };
+
+    let schemasCatalog = {};
+
+    function initCatalog() {
+      const data = window.SPLA_CATALOG || DEFAULT_CATALOG;
+      const list = document.getElementById('dynamic-catalog-list');
+      
+      if (list) {
+        list.innerHTML = '';
+        data.schemas.forEach(s => {
+          schemasCatalog[s.id] = s;
+          
+          const btn = document.createElement('button');
+          btn.id = `schema-nav-${s.id}`;
+          btn.onclick = () => selectSchema(s.id);
+          btn.className = "w-full text-left p-2 rounded-lg flex items-center gap-3 transition group relative hover:bg-slate-700/50 text-slate-300 hover:text-white border border-transparent";
+          
+          let hoverColor = "group-hover:bg-blue-600/40";
+          if (s.theme === "emerald") hoverColor = "group-hover:bg-emerald-600/40";
+          if (s.theme === "indigo") hoverColor = "group-hover:bg-indigo-600/40";
+          if (s.theme === "amber") hoverColor = "group-hover:bg-amber-600/40";
+
+          btn.innerHTML = `
+            <div class="w-8 h-8 rounded bg-slate-700/80 ${hoverColor} flex items-center justify-center text-lg shrink-0 transition">
+              ${s.icon}
+            </div>
+            <div class="overflow-hidden sidebar-label">
+              <div class="text-xs font-semibold truncate">${s.title}</div>
+              <div class="text-[10px] text-slate-400 truncate">${s.subtitle || ''}</div>
+            </div>
+          `;
+          list.appendChild(btn);
+        });
+      }
+
+      if (data.schemas.length > 0) {
+        selectSchema(data.schemas[0].id);
+      }
+    }
+
+    // State
+    let isSidebarCollapsed = false;
+    let currentSchemaKey = 'spla_core';
+    let diagramData = null;
+    let selectedElement = null;
+    let currentViewId = null;
+    let isDirty = false;
+    let hoveredZoneId = null;
+
+    // Undo / Redo History Stack
+    let historyStack = [];
+    let historyIndex = -1;
+    let dragStartSnapshot = null;
+
+    function pushHistorySnapshot() {
+      if (!diagramData) return;
+      // Truncate future redo stack if we made a new action
+      if (historyIndex < historyStack.length - 1) {
+        historyStack = historyStack.slice(0, historyIndex + 1);
+      }
+      historyStack.push(JSON.stringify(diagramData));
+      if (historyStack.length > 50) historyStack.shift(); // keep last 50 steps
+      historyIndex = historyStack.length - 1;
+      updateUndoRedoButtons();
+    }
+
+    function updateUndoRedoButtons() {
+      const btnUndo = document.getElementById('btn-undo');
+      const btnRedo = document.getElementById('btn-redo');
+      if (btnUndo) btnUndo.disabled = (historyIndex <= 0);
+      if (btnRedo) btnRedo.disabled = (historyIndex >= historyStack.length - 1);
+    }
+
+    function undo() {
+      if (historyIndex > 0) {
+        historyIndex--;
+        diagramData = JSON.parse(historyStack[historyIndex]);
+        markDirty();
+        renderDiagram();
+        if (selectedElement) {
+          const fresh = [...(diagramData.zones || []), ...(diagramData.nodes || [])].find(x => x.id === selectedElement.id);
+          if (fresh) selectItem(fresh, selectedElement.kind);
+        }
+        updateUndoRedoButtons();
+      }
+    }
+
+    function redo() {
+      if (historyIndex < historyStack.length - 1) {
+        historyIndex++;
+        diagramData = JSON.parse(historyStack[historyIndex]);
+        markDirty();
+        renderDiagram();
+        if (selectedElement) {
+          const fresh = [...(diagramData.zones || []), ...(diagramData.nodes || [])].find(x => x.id === selectedElement.id);
+          if (fresh) selectItem(fresh, selectedElement.kind);
+        }
+        updateUndoRedoButtons();
+      }
+    }
+
+    // Keyboard Shortcuts (Ctrl+Z, Ctrl+Y, Delete)
+    window.addEventListener('keydown', (e) => {
+      if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z') {
+        e.preventDefault();
+        if (e.shiftKey) {
+          redo();
+        } else {
+          undo();
+        }
+      } else if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'y') {
+        e.preventDefault();
+        redo();
+      } else if (e.key === 'Delete' || e.key === 'Backspace') {
+        if (selectedElement) {
+          e.preventDefault();
+          deleteSelectedItem();
+        }
+      }
+    });
+
+    // Collapsed zones tracking (zone.id -> true/false)
+    let collapsedZones = {};
+
+    // Viewport & Zoom/Pan State
+    let zoom = 0.9;
+    let panX = 40;
+    let panY = 20;
+    let isPanningCanvas = false;
+    let startPanX, startPanY;
+
+    // Interactive Dragging State
+    let isDraggingItem = false;
+    let isResizingZone = false;
+    let isResizingItem = false;
+    let dragTarget = null; 
+
+    const svg = document.getElementById('diagram-svg');
+    const viewportGroup = document.getElementById('viewport-group');
+    const container = document.getElementById('canvas-container');
+
+    function markDirty() {
+      isDirty = true;
+      document.getElementById('dirty-indicator').classList.remove('hidden');
+    }
+
+    function toggleGridVisibility(show) {
+      if (show) {
+        container.className = "flex-1 canvas-bg-dots relative overflow-hidden cursor-default";
+      } else {
+        container.className = "flex-1 canvas-bg-plain relative overflow-hidden cursor-default";
+      }
+    }
+
+    // --- Sidebar Collapsing ---
+    function toggleSidebar() {
+      isSidebarCollapsed = !isSidebarCollapsed;
+      const sidebar = document.getElementById('left-sidebar');
+      const toggleIcon = document.getElementById('sidebar-toggle-icon');
+      const labels = document.querySelectorAll('.sidebar-label');
+
+      if (isSidebarCollapsed) {
+        sidebar.classList.remove('w-64');
+        sidebar.classList.add('w-16');
+        toggleIcon.classList.add('rotate-180');
+        labels.forEach(l => l.classList.add('hidden'));
+        document.getElementById('sidebar-header-title').classList.add('hidden');
+      } else {
+        sidebar.classList.remove('w-16');
+        sidebar.classList.add('w-64');
+        toggleIcon.classList.remove('rotate-180');
+        labels.forEach(l => l.classList.remove('hidden'));
+        document.getElementById('sidebar-header-title').classList.remove('hidden');
+      }
+    }
+
+    // --- Transform & Navigation ---
+    function applyTransform() {
+      viewportGroup.setAttribute('transform', `translate(${panX}, ${panY}) scale(${zoom})`);
+      document.getElementById('zoom-level').innerText = `${Math.round(zoom * 100)}%`;
+    }
+
+    function zoomBy(factor) {
+      zoom = Math.min(Math.max(0.2, zoom * factor), 3.0);
+      applyTransform();
+    }
+
+    function resetZoom() {
+      zoom = 1;
+      panX = 40;
+      panY = 20;
+      applyTransform();
+    }
+
+    function fitView() {
+      if (!diagramData || (!diagramData.zones?.length && !diagramData.nodes?.length)) return;
+      
+      let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+      const allItems = [...(diagramData.zones || []), ...(diagramData.nodes || [])];
+      
+      allItems.forEach(item => {
+        minX = Math.min(minX, item.x);
+        minY = Math.min(minY, item.y);
+        maxX = Math.max(maxX, item.x + item.width);
+        maxY = Math.max(maxY, item.y + (collapsedZones[item.id] ? 36 : item.height));
+      });
+
+      const padding = 60;
+      const contentW = maxX - minX + padding * 2;
+      const contentH = maxY - minY + padding * 2;
+      const viewW = container.clientWidth;
+      const viewH = container.clientHeight;
+
+      zoom = Math.min(viewW / contentW, viewH / contentH, 1.2);
+      panX = (viewW - contentW * zoom) / 2 - minX * zoom + padding * zoom;
+      panY = (viewH - contentH * zoom) / 2 - minY * zoom + padding * zoom;
+      applyTransform();
+    }
+
+    // --- Container Helpers ---
+    function isNodeInZone(node, zone) {
+      if (node.zone === zone.id) return true;
+      // Geometric containment fallback
+      const nodeCenterX = node.x + node.width / 2;
+      const nodeCenterY = node.y + node.height / 2;
+      return (
+        nodeCenterX >= zone.x &&
+        nodeCenterX <= zone.x + zone.width &&
+        nodeCenterY >= zone.y &&
+        nodeCenterY <= zone.y + (zone.height || 400)
+      );
+    }
+
+    function getNodesInZone(zoneId) {
+      if (!diagramData || !diagramData.nodes || !diagramData.zones) return [];
+      const zone = diagramData.zones.find(z => z.id === zoneId);
+      if (!zone) return [];
+      return diagramData.nodes.filter(n => isNodeInZone(n, zone));
+    }
+
+    // Зоны, вложенные в данную. Строгое геометрическое включение: зона не
+    // считается вложенной сама в себя и не «захватывает» соседа, который
+    // просто задевает её краем.
+    function getZonesInZone(zoneId) {
+      if (!diagramData || !diagramData.zones) return [];
+      const outer = diagramData.zones.find(z => z.id === zoneId);
+      if (!outer) return [];
+      return diagramData.zones.filter(z =>
+        z.id !== outer.id &&
+        z.x >= outer.x &&
+        z.y >= outer.y &&
+        z.x + z.width <= outer.x + outer.width &&
+        z.y + z.height <= outer.y + outer.height
+      );
+    }
+
+    function findZoneUnderPoint(x, y) {
+      if (!diagramData || !diagramData.zones) return null;
+      for (let i = diagramData.zones.length - 1; i >= 0; i--) {
+        const z = diagramData.zones[i];
+        const h = collapsedZones[z.id] ? 36 : z.height;
+        if (x >= z.x && x <= z.x + z.width && y >= z.y && y <= z.y + h) {
+          return z;
+        }
+      }
+      return null;
+    }
+
+    function toggleZoneCollapse(zoneId) {
+      collapsedZones[zoneId] = !collapsedZones[zoneId];
+      renderDiagram();
+      if (selectedElement && selectedElement.item.id === zoneId) {
+        selectItem(selectedElement.item, 'zone');
+      }
+    }
+
+    // --- Mouse Events (Pan vs Container Drag vs Node Drag) ---
+    container.addEventListener('mousedown', (e) => {
+      if (e.target === svg || e.target === container || e.target.id === 'viewport-group') {
+        isPanningCanvas = true;
+        startPanX = e.clientX - panX;
+        startPanY = e.clientY - panY;
+        container.style.cursor = 'grabbing';
+      }
+    });
+
+    window.addEventListener('mousemove', (e) => {
+      if (isPanningCanvas) {
+        panX = e.clientX - startPanX;
+        panY = e.clientY - startPanY;
+        applyTransform();
+        return;
+      }
+
+      const snap = document.getElementById('snap-grid-chk').checked;
+      const gridSize = 10;
+
+      // 2. Dragging a Zone Container
+      if (isDraggingItem && dragTarget?.type === 'zone') {
+        const dx = (e.clientX - dragTarget.startX) / zoom;
+        const dy = (e.clientY - dragTarget.startY) / zoom;
+
+        let deltaX = dx;
+        let deltaY = dy;
+
+        if (snap) {
+          deltaX = Math.round((dragTarget.origZoneX + dx) / gridSize) * gridSize - dragTarget.origZoneX;
+          deltaY = Math.round((dragTarget.origZoneY + dy) / gridSize) * gridSize - dragTarget.origZoneY;
+        }
+
+        dragTarget.zone.x = dragTarget.origZoneX + deltaX;
+        dragTarget.zone.y = dragTarget.origZoneY + deltaY;
+
+        const isContainerDrag = document.getElementById('container-drag-chk').checked;
+        if (isContainerDrag) {
+          (dragTarget.childZones || []).forEach(child => {
+            child.zone.x = child.origX + deltaX;
+            child.zone.y = child.origY + deltaY;
+          });
+          (dragTarget.childNodes || []).forEach(child => {
+            child.node.x = child.origX + deltaX;
+            child.node.y = child.origY + deltaY;
+          });
+        }
+
+        markDirty();
+        renderDiagram();
+        if (selectedElement && selectedElement.item.id === dragTarget.zone.id) {
+          updateInspectorCoordinates(dragTarget.zone);
+        }
+        return;
+      }
+
+      
+      if (isResizingItem && dragTarget?.type === "node-resize") {
+        const dx = (e.clientX - dragTarget.startX) / zoom;
+        const dy = (e.clientY - dragTarget.startY) / zoom;
+        let newW = Math.max(100, dragTarget.origW + dx);
+        let newH = Math.max(40, dragTarget.origH + dy);
+
+        if (snap) {
+          newW = Math.round(newW / gridSize) * gridSize;
+          newH = Math.round(newH / gridSize) * gridSize;
+        }
+
+        dragTarget.item.width = newW;
+        dragTarget.item.height = newH;
+        markDirty(); renderDiagram();
+        if (selectedElement && selectedElement.item.id === dragTarget.item.id) {
+          updateInspectorCoordinates(dragTarget.item);
+        }
+        return;
+      }
+
+      // 3. Dragging a Node
+      if (isDraggingItem && dragTarget?.type === 'node') {
+        const dx = (e.clientX - dragTarget.startX) / zoom;
+        const dy = (e.clientY - dragTarget.startY) / zoom;
+
+        let newX = dragTarget.origItemX + dx;
+        let newY = dragTarget.origItemY + dy;
+
+        if (snap) {
+          newX = Math.round(newX / gridSize) * gridSize;
+          newY = Math.round(newY / gridSize) * gridSize;
+        }
+
+        dragTarget.item.x = newX;
+        dragTarget.item.y = newY;
+
+        const targetZone = findZoneUnderPoint(newX + dragTarget.item.width / 2, newY + dragTarget.item.height / 2);
+        hoveredZoneId = targetZone ? targetZone.id : null;
+
+        markDirty();
+        renderDiagram();
+        if (selectedElement && selectedElement.item.id === dragTarget.item.id) {
+          updateInspectorCoordinates(dragTarget.item);
+        }
+        return;
+      }
+
+      // 4. Resizing a Zone
+      if (isResizingZone && dragTarget) {
+        const dw = (e.clientX - dragTarget.startX) / zoom;
+        const dh = (e.clientY - dragTarget.startY) / zoom;
+
+        let newW = Math.max(160, dragTarget.origW + dw);
+        let newH = Math.max(100, dragTarget.origH + dh);
+
+        if (snap) {
+          newW = Math.round(newW / gridSize) * gridSize;
+          newH = Math.round(newH / gridSize) * gridSize;
+        }
+
+        dragTarget.item.width = newW;
+        dragTarget.item.height = newH;
+
+        markDirty();
+        renderDiagram();
+        if (selectedElement && selectedElement.item.id === dragTarget.item.id) {
+          updateInspectorCoordinates(dragTarget.item);
+        }
+        return;
+      }
+    });
+
+    window.addEventListener('mouseup', () => {
+      if (isDraggingItem || isResizingZone || isResizingItem) {
+        if (dragStartSnapshot && dragStartSnapshot !== JSON.stringify(diagramData)) {
+          pushHistorySnapshot();
+        }
+        dragStartSnapshot = null;
+      }
+
+      if (isDraggingItem && dragTarget?.type === 'node' && hoveredZoneId) {
+        dragTarget.item.zone = hoveredZoneId;
+        if (selectedElement?.item.id === dragTarget.item.id) {
+          selectItem(dragTarget.item, 'node');
+        }
+        pushHistorySnapshot();
+      }
+
+      hoveredZoneId = null;
+      isPanningCanvas = false;
+      isDraggingItem = false;
+      isResizingZone = false;
+      isResizingItem = false;
+      dragTarget = null;
+      container.style.cursor = 'default';
+      renderDiagram();
+    });
+
+    container.addEventListener('wheel', (e) => {
+      e.preventDefault();
+      const factor = e.deltaY < 0 ? 1.1 : 0.9;
+      zoomBy(factor);
+    }, { passive: false });
+
+    // Drag & Drop handling for JSON files
+    window.addEventListener('dragover', (e) => {
+      e.preventDefault();
+      document.getElementById('drop-zone').classList.remove('hidden');
+    });
+
+    window.addEventListener('dragleave', (e) => {
+      if (e.relatedTarget === null) {
+        document.getElementById('drop-zone').classList.add('hidden');
+      }
+    });
+
+    window.addEventListener('drop', (e) => {
+      e.preventDefault();
+      document.getElementById('drop-zone').classList.add('hidden');
+      if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+        const file = e.dataTransfer.files[0];
+        if (file.name.endsWith('.json')) {
+          readJsonFile(file);
+        } else {
+          alert('Пожалуйста, перетащите файл с расширением .json');
+        }
+      }
+    });
+
+    function loadCustomJsonFile(event) {
+      const file = event.target.files[0];
+      if (file) {
+        readJsonFile(file);
+      }
+    }
+
+    function readJsonFile(file) {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        try {
+          const parsed = JSON.parse(e.target.result);
+          const customKey = 'custom_' + Date.now();
+          
+          const container = document.getElementById('custom-schemas-container');
+          const list = document.getElementById('custom-schemas-list');
+          container.classList.remove('hidden');
+
+          const btn = document.createElement('button');
+          btn.id = `schema-nav-${customKey}`;
+          btn.className = "w-full text-left p-2 rounded-lg flex items-center gap-3 transition group relative hover:bg-slate-700/50 text-slate-300 hover:text-white border border-transparent";
+          btn.onclick = () => {
+            loadDiagramModel(parsed, file.name);
+            highlightSidebarItem(customKey);
+          };
+          btn.innerHTML = `
+            <div class="w-8 h-8 rounded bg-slate-700/80 flex items-center justify-center text-lg shrink-0">📄</div>
+            <div class="overflow-hidden sidebar-label">
+              <div class="text-xs font-semibold truncate">${file.name}</div>
+              <div class="text-[10px] text-slate-400 truncate">Пользовательский файл</div>
+            </div>
+          `;
+          list.appendChild(btn);
+
+          loadDiagramModel(parsed, file.name);
+          highlightSidebarItem(customKey);
+        } catch (err) {
+          alert('Ошибка парсинга JSON: ' + err.message);
+        }
+      };
+      reader.readAsText(file);
+    }
+
+    // --- Schema Selection ---
+    async function selectSchema(key) {
+      currentSchemaKey = key;
+      highlightSidebarItem(key);
+
+      const schemaConfig = schemasCatalog[key];
+      if (!schemaConfig) return;
+
+      try {
+        const res = await fetch(schemaConfig.file);
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const data = await res.json();
+        loadDiagramModel(data, schemaConfig.title);
+      } catch (err) {
+        console.warn("Fetch failed, using fallback embedded data", err);
+        fallbackLoad(key);
+      }
+    }
+
+    function highlightSidebarItem(key) {
+      document.querySelectorAll('#left-sidebar button[id^="schema-nav-"]').forEach(btn => {
+        btn.className = "w-full text-left p-2 rounded-lg flex items-center gap-3 transition group relative hover:bg-slate-700/50 text-slate-300 hover:text-white border border-transparent";
+      });
+      const activeBtn = document.getElementById(`schema-nav-${key}`);
+      if (activeBtn) {
+        activeBtn.className = "w-full text-left p-2 rounded-lg flex items-center gap-3 transition group relative bg-blue-600/20 text-blue-200 border border-blue-500/30";
+      }
+    }
+
+    function loadDiagramModel(data, title) {
+      diagramData = data;
+      selectedElement = null;
+      collapsedZones = {};
+      isDirty = false;
+      document.getElementById('dirty-indicator').classList.add('hidden');
+      
+      // Initialize history stack with the initial model
+      historyStack = [JSON.stringify(diagramData)];
+      historyIndex = 0;
+      updateUndoRedoButtons();
+      
+      const displayTitle = title || data.metadata?.title || 'Схема загружена';
+      document.getElementById('header-diagram-name').innerText = displayTitle;
+      document.getElementById('active-diagram-footer').innerText = displayTitle;
+      
+      renderViewsBar();
+      currentViewId = (data.views && data.views.length > 0) ? data.views[0].id : 'all';
+      updateViewButtonsUI();
+
+      renderDiagram();
+      fitView();
+    }
+
+    function renderViewsBar() {
+      const container = document.getElementById('views-container');
+      container.innerHTML = '';
+
+      const views = diagramData.views || [
+        { id: 'all', name: 'Все элементы', icon: '🏛' }
+      ];
+
+      views.forEach(v => {
+        const btn = document.createElement('button');
+        btn.id = `view-btn-${v.id}`;
+        btn.setAttribute('class', 'px-3 py-1 text-xs rounded font-medium text-slate-300 hover:text-white hover:bg-slate-800 transition flex items-center gap-1 shrink-0');
+        btn.innerHTML = `${v.icon || '🔹'} <span>${v.name}</span>`;
+        btn.title = v.description || '';
+        btn.onclick = () => switchView(v.id);
+        container.appendChild(btn);
+      });
+    }
+
+    function switchView(viewId) {
+      currentViewId = viewId;
+      updateViewButtonsUI();
+      renderDiagram();
+    }
+
+    function updateViewButtonsUI() {
+      if (!diagramData.views) return;
+      diagramData.views.forEach(v => {
+        const btn = document.getElementById(`view-btn-${v.id}`);
+        if (!btn) return;
+        if (v.id === currentViewId) {
+          btn.className = "px-3 py-1 text-xs rounded font-medium bg-blue-600 text-white shadow-sm transition flex items-center gap-1 shrink-0";
+        } else {
+          btn.className = "px-3 py-1 text-xs rounded font-medium text-slate-300 hover:text-white hover:bg-slate-800 transition flex items-center gap-1 shrink-0";
+        }
+      });
+    }
+
+    // --- Type Helpers for Styling ---
+    function getNodeStyle(type) {
+      switch(type) {
+        case 'concept':
+          return { fill: '#fefce8', stroke: '#fef08a', strokeWidth: 1.8, badgeBg: '#fef9c3', badgeText: '#854d0e', icon: '💡' };
+        case 'note':
+          return { fill: '#fef9c3', stroke: '#fde047', strokeWidth: 1.5, badgeBg: '#fef08a', badgeText: '#713f12', icon: '📝' };
+        case 'component':
+          return { fill: '#ffffff', stroke: '#cbd5e1', strokeWidth: 1.5, badgeBg: '#f1f5f9', badgeText: '#475569', icon: '📦' };
+        case 'service':
+          return { fill: '#ffffff', stroke: '#93c5fd', strokeWidth: 1.5, badgeBg: '#eff6ff', badgeText: '#1d4ed8', icon: '⚙️' };
+        case 'security-component':
+          return { fill: '#fff1f2', stroke: '#fca5a5', strokeWidth: 2, badgeBg: '#ffe4e6', badgeText: '#be123c', icon: '🛡️' };
+        case 'tool':
+          return { fill: '#ffffff', stroke: '#bfdbfe', strokeWidth: 1.5, badgeBg: '#f0f9ff', badgeText: '#0369a1', icon: '🔧' };
+        case 'database':
+          return { fill: '#ffffff', stroke: '#d8b4fe', strokeWidth: 1.5, badgeBg: '#faf5ff', badgeText: '#7e22ce', icon: '💾' };
+        case 'external-system':
+          return { fill: '#fffbeb', stroke: '#fde68a', strokeWidth: 1.5, badgeBg: '#fef3c7', badgeText: '#b45309', icon: '🌐' };
+        default:
+          return { fill: '#ffffff', stroke: '#cbd5e1', strokeWidth: 1.5, badgeBg: '#f8fafc', badgeText: '#64748b', icon: '📄' };
+      }
+    }
+    // --- Edge Styles Dictionary ---
+    // Два семейства связей, различимых с одного взгляда:
+    //   СТРУКТУРА (как код собран)  — серые линии, треугольные наконечники, статика.
+    //   ПОТОК     (что происходит в рантайме) — цветные линии, обычные стрелки.
+    // stroke — цвет линии, dash — пунктир, marker — наконечник из <defs>.
+    const EDGE_STYLES = {
+      // --- Структура (извлекается автоматически парсером) ---
+      'extends':    { stroke: '#475569', strokeWidth: 1.5, dash: 'none',  marker: 'url(#triangle-hollow)', family: 'structure', title: 'Наследование класса' },
+      'implements': { stroke: '#64748b', strokeWidth: 1.5, dash: '8,4',   marker: 'url(#triangle-solid)',  family: 'structure', title: 'Реализация интерфейса' },
+      'realizes':   { stroke: '#64748b', strokeWidth: 1.5, dash: '8,4',   marker: 'url(#triangle-solid)',  family: 'structure', title: 'Реализация интерфейса' },
+      'composes':   { stroke: '#0f766e', strokeWidth: 1.8, dash: 'none',  marker: 'url(#diamond-solid)',   family: 'structure', title: 'Владение / композиция' },
+
+      // --- Потоки (описываются вручную в edges-файле) ---
+      'call':       { stroke: '#94a3b8', strokeWidth: 1.5, dash: '4,4',   marker: 'url(#arrow)',           family: 'flow', title: 'Вызов' },
+      'data-flow':  { stroke: '#3b82f6', strokeWidth: 2,   dash: 'none',  marker: 'url(#arrow-data)',      family: 'flow', title: 'Поток данных' },
+      'event':      { stroke: '#ea580c', strokeWidth: 1.8, dash: '2,3',   marker: 'url(#arrow-open)',      family: 'flow', title: 'Событие / уведомление' },
+      'security':   { stroke: '#f43f5e', strokeWidth: 1.5, dash: '3,3',   marker: 'url(#arrow-security)',  family: 'flow', title: 'Проверка прав / аудит' },
+      'storage':    { stroke: '#a855f7', strokeWidth: 2,   dash: 'none',  marker: 'url(#arrow-storage)',   family: 'flow', title: 'Запись / чтение хранилища' },
+    };
+    const EDGE_STYLE_DEFAULT = { stroke: '#cbd5e1', strokeWidth: 1.5, dash: 'none', marker: 'url(#arrow)', family: 'flow', title: 'Связь' };
+
+    function getEdgeStyle(type) {
+      return EDGE_STYLES[type] || EDGE_STYLE_DEFAULT;
+    }
+
+    // --- Render Pipeline ---
+    function renderDiagram() {
+      if (!diagramData) return;
+
+      const zonesLayer = document.getElementById('zones-layer');
+      const nodesLayer = document.getElementById('nodes-layer');
+      const edgesLayer = document.getElementById('edges-layer');
+      const resizersLayer = document.getElementById('resizers-layer');
+
+      zonesLayer.innerHTML = '';
+      nodesLayer.innerHTML = '';
+      edgesLayer.innerHTML = '';
+      resizersLayer.innerHTML = '';
+
+      const activeView = (diagramData.views || []).find(v => v.id === currentViewId);
+
+      // 1. Render Zones (Containers)
+      (diagramData.zones || []).forEach(zone => {
+        let isHighlighted = true;
+        if (activeView && activeView.highlightZones && activeView.highlightZones.length > 0) {
+          isHighlighted = activeView.highlightZones.includes(zone.id);
+        }
+
+        const isCollapsed = !!collapsedZones[zone.id];
+        const zoneHeight = isCollapsed ? 34 : zone.height;
+        const opacity = isHighlighted ? '1' : '0.25';
+        const isDropTarget = (hoveredZoneId === zone.id);
+
+        const g = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+        g.setAttribute('class', `zone-box ${selectedElement?.id === zone.id ? 'selected' : ''} ${isDropTarget ? 'drop-target' : ''}`);
+        g.setAttribute('id', `zone-elem-${zone.id}`);
+        g.setAttribute('opacity', opacity);
+
+        // Zone Body Rect
+        const rect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+        rect.setAttribute('x', zone.x);
+        rect.setAttribute('y', zone.y);
+        rect.setAttribute('width', zone.width);
+        rect.setAttribute('height', zoneHeight);
+        rect.setAttribute('rx', '12');
+        rect.setAttribute('fill', zone.style?.fill || '#f8fafc');
+        rect.setAttribute('stroke', isDropTarget ? '#2563eb' : (zone.style?.stroke || '#cbd5e1'));
+        rect.setAttribute('stroke-width', isDropTarget ? '3' : (zone.style?.strokeWidth || 2));
+        rect.setAttribute('stroke-dasharray', isCollapsed ? 'none' : (zone.style?.strokeDasharray || 'none'));
+        rect.onclick = (e) => { e.stopPropagation(); selectItem(zone, 'zone'); };
+
+        // Header Background (Container Drag Handle)
+        const header = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+        header.setAttribute('x', zone.x);
+        header.setAttribute('y', zone.y);
+        header.setAttribute('width', zone.width);
+        header.setAttribute('height', '34');
+        header.setAttribute('rx', '12');
+        header.setAttribute('fill', zone.style?.headerBg || '#e2e8f0');
+        header.setAttribute('class', 'zone-header-drag');
+        
+        // Start dragging zone container + all children!
+        header.onmousedown = (e) => {
+          e.stopPropagation();
+          selectItem(zone, 'zone');
+          isDraggingItem = true;
+          dragStartSnapshot = JSON.stringify(diagramData);
+
+          // Контейнер тащит за собой ВСЁ своё содержимое: и узлы, и вложенные
+          // зоны. Без второго списка дочерние контейнеры оставались на месте,
+          // и схема визуально разваливалась.
+          const childNodes = getNodesInZone(zone.id).map(node => ({
+            node,
+            origX: node.x,
+            origY: node.y
+          }));
+          const childZones = getZonesInZone(zone.id).map(z => ({
+            zone: z,
+            origX: z.x,
+            origY: z.y
+          }));
+
+          dragTarget = {
+            type: 'zone',
+            zone: zone,
+            childNodes: childNodes,
+            childZones: childZones,
+            startX: e.clientX,
+            startY: e.clientY,
+            origZoneX: zone.x,
+            origZoneY: zone.y
+          };
+        };
+
+        // Collapse / Expand Button on Header
+        const collapseBtn = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+        collapseBtn.setAttribute('class', 'zone-btn-collapse');
+        
+        const btnRect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+        btnRect.setAttribute('x', zone.x + 8);
+        btnRect.setAttribute('y', zone.y + 7);
+        btnRect.setAttribute('width', '20');
+        btnRect.setAttribute('height', '20');
+        btnRect.setAttribute('rx', '5');
+
+        const btnText = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+        btnText.setAttribute('x', zone.x + 18);
+        btnText.setAttribute('y', zone.y + 22);
+        btnText.setAttribute('font-size', '14');
+        btnText.setAttribute('text-anchor', 'middle');
+        btnText.textContent = isCollapsed ? '+' : '−';
+
+        collapseBtn.appendChild(btnRect);
+        collapseBtn.appendChild(btnText);
+
+        // Click on button triggers collapse toggle cleanly
+        collapseBtn.addEventListener('mousedown', (e) => {
+          e.stopPropagation(); // prevent dragging zone
+        });
+        collapseBtn.addEventListener('mouseup', (e) => {
+          e.stopPropagation();
+          toggleZoneCollapse(zone.id);
+        });
+
+        // Header Title
+        const title = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+        title.setAttribute('x', zone.x + 36);
+        title.setAttribute('y', zone.y + 22);
+        title.setAttribute('font-size', '13');
+        title.setAttribute('font-weight', '700');
+        title.setAttribute('fill', '#334155');
+        title.setAttribute('class', 'pointer-events-none');
+        title.textContent = zone.name + (isCollapsed ? ` (${getNodesInZone(zone.id).length} компонентов)` : '');
+
+        // Semantic ID Tag
+        const semId = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+        semId.setAttribute('x', zone.x + zone.width - 14);
+        semId.setAttribute('y', zone.y + 21);
+        semId.setAttribute('font-size', '10');
+        semId.setAttribute('font-family', 'monospace');
+        semId.setAttribute('text-anchor', 'end');
+        semId.setAttribute('fill', '#64748b');
+        semId.setAttribute('class', 'pointer-events-none');
+        semId.textContent = zone.semanticId || '';
+
+        g.appendChild(rect);
+        g.appendChild(header);
+        g.appendChild(collapseBtn);
+        g.appendChild(title);
+        g.appendChild(semId);
+        zonesLayer.appendChild(g);
+
+        // Zone Resize Handle (Bottom-Right corner)
+        if (selectedElement?.id === zone.id && !isCollapsed) {
+          const resizer = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+          resizer.setAttribute('x', zone.x + zone.width - 10);
+          resizer.setAttribute('y', zone.y + zone.height - 10);
+          resizer.setAttribute('width', '12');
+          resizer.setAttribute('height', '12');
+          resizer.setAttribute('rx', '2');
+          resizer.setAttribute('class', 'zone-resize-handle');
+          resizer.title = "Потяните для изменения размера зоны";
+          resizer.onmousedown = (e) => {
+            e.stopPropagation();
+            isResizingZone = true;
+            dragStartSnapshot = JSON.stringify(diagramData);
+            dragTarget = {
+              type: 'zone-resize',
+              item: zone,
+              startX: e.clientX,
+              startY: e.clientY,
+              origW: zone.width,
+              origH: zone.height
+            };
+          };
+          resizersLayer.appendChild(resizer);
+        }
+      });
+
+      // 2. Render Nodes (Hide nodes if their parent zone is collapsed)
+      const nodeMap = {};
+      (diagramData.nodes || []).forEach(node => {
+        nodeMap[node.id] = node;
+
+        // Check if node is inside a collapsed zone (by property or by geometry)
+        const parentZone = (diagramData.zones || []).find(z => isNodeInZone(node, z));
+        if (parentZone && collapsedZones[parentZone.id]) {
+          return; // hidden when collapsed
+        }
+
+        let isHighlighted = true;
+        if (activeView && activeView.highlightNodes && activeView.highlightNodes.length > 0) {
+          isHighlighted = activeView.highlightNodes.includes(node.id);
+        } else if (activeView && activeView.highlightZones && activeView.highlightZones.length > 0) {
+          isHighlighted = parentZone && activeView.highlightZones.includes(parentZone.id);
+        }
+
+        const opacity = isHighlighted ? '1' : '0.2';
+        const style = getNodeStyle(node.type);
+
+        const g = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+        g.setAttribute('class', `node-box ${selectedElement?.id === node.id ? 'selected' : ''}`);
+        g.setAttribute('id', `node-elem-${node.id}`);
+        g.setAttribute('opacity', opacity);
+        g.setAttribute('filter', 'url(#shadow)');
+
+        // Node Drag
+        g.onmousedown = (e) => {
+          e.stopPropagation();
+          selectItem(node, 'node');
+          isDraggingItem = true;
+          dragStartSnapshot = JSON.stringify(diagramData);
+          dragTarget = {
+            type: 'node',
+            item: node,
+            startX: e.clientX,
+            startY: e.clientY,
+            origItemX: node.x,
+            origItemY: node.y
+          };
+        };
+
+        const rect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+        rect.setAttribute('x', node.x);
+        rect.setAttribute('y', node.y);
+        rect.setAttribute('width', node.width);
+        rect.setAttribute('height', node.height);
+        rect.setAttribute('rx', '8');
+        rect.setAttribute('fill', style.fill);
+        rect.setAttribute('stroke', style.stroke);
+        rect.setAttribute('stroke-width', style.strokeWidth);
+
+        const text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+        text.setAttribute('x', node.x + 12);
+        text.setAttribute('y', node.y + (node.height > 60 ? 26 : 24));
+        text.setAttribute('font-size', '12.5');
+        text.setAttribute('font-weight', '600');
+        text.setAttribute('fill', '#1e293b');
+        text.setAttribute('class', 'pointer-events-none');
+        text.textContent = `${style.icon} ${node.label}`;
+
+        const subtext = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+        subtext.setAttribute('x', node.x + 12);
+        subtext.setAttribute('y', node.y + (node.height > 60 ? 46 : 42));
+        subtext.setAttribute('font-size', '10.5');
+        subtext.setAttribute('font-family', 'monospace');
+        subtext.setAttribute('fill', '#64748b');
+        subtext.setAttribute('class', 'pointer-events-none');
+        subtext.textContent = node.metadata?.type || node.type;
+
+        
+        // Node Resizer
+        const nodeResizer = document.createElementNS("http://www.w3.org/2000/svg", "rect");
+        nodeResizer.setAttribute("x", node.x + node.width - 8);
+        nodeResizer.setAttribute("y", node.y + node.height - 8);
+        nodeResizer.setAttribute("width", 8);
+        nodeResizer.setAttribute("height", 8);
+        nodeResizer.setAttribute("fill", "transparent");
+        nodeResizer.setAttribute("class", "cursor-se-resize");
+        nodeResizer.onmousedown = (e) => {
+          e.stopPropagation();
+          isResizingItem = true;
+          dragStartSnapshot = JSON.stringify(diagramData);
+          dragTarget = { type: "node-resize", item: node, startX: e.clientX, startY: e.clientY, origW: node.width, origH: node.height };
+        };
+        nodeResizer.ondblclick = (e) => {
+          e.stopPropagation();
+          const estW = Math.max(120, (node.label || node.name || "").length * 8 + 40);
+          const oldW = node.width;
+          node.width = estW;
+          if (oldW !== estW) { pushHistorySnapshot(); markDirty(); renderDiagram(); }
+        };
+        
+        g.appendChild(rect);
+        g.appendChild(text);
+        g.appendChild(subtext);
+        g.appendChild(nodeResizer);
+
+        nodesLayer.appendChild(g);
+      });
+
+      // 3. Render Edges
+      (diagramData.edges || []).forEach(edge => {
+        let fromNode = nodeMap[edge.from];
+        let toNode = nodeMap[edge.to];
+        if (!fromNode || !toNode) return;
+
+        const fromZone = (diagramData.zones || []).find(z => isNodeInZone(fromNode, z));
+        const toZone = (diagramData.zones || []).find(z => isNodeInZone(toNode, z));
+
+        // Hide edge if both ends belong to the same collapsed zone
+        if (fromZone && toZone && fromZone.id === toZone.id && collapsedZones[fromZone.id]) {
+          return;
+        }
+
+        let fromX = fromNode.x + fromNode.width / 2;
+        let fromY = fromNode.y + fromNode.height / 2;
+        let fromW = fromNode.width;
+        let fromH = fromNode.height;
+
+        if (fromZone && collapsedZones[fromZone.id]) {
+          fromX = fromZone.x + fromZone.width / 2;
+          fromY = fromZone.y + 17;
+          fromW = fromZone.width;
+          fromH = 34;
+        }
+
+        let toX = toNode.x + toNode.width / 2;
+        let toY = toNode.y + toNode.height / 2;
+        let toW = toNode.width;
+        let toH = toNode.height;
+
+        if (toZone && collapsedZones[toZone.id]) {
+          toX = toZone.x + toZone.width / 2;
+          toY = toZone.y + 17;
+          toW = toZone.width;
+          toH = 34;
+        }
+
+        let isHighlighted = true;
+        if (activeView && activeView.highlightNodes && activeView.highlightNodes.length > 0) {
+          isHighlighted = activeView.highlightNodes.includes(edge.from) && activeView.highlightNodes.includes(edge.to);
+        }
+
+        const opacity = isHighlighted ? '1' : '0.15';
+        const style = getEdgeStyle(edge.type);
+
+        const g = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+        g.setAttribute("class", "edge-group " + (selectedElement?.id === edge.id ? "selected-edge" : ""));
+        g.setAttribute("opacity", opacity);
+        g.style.cursor = "pointer";
+        g.onmousedown = (e) => {
+          e.stopPropagation();
+          selectItem(edge, "edge");
+        };
+
+        let pathData = '';
+        let labelX = (fromX + toX) / 2;
+        let labelY = (fromY + toY) / 2 - 6;
+
+        if (Math.abs(toX - fromX) > Math.abs(toY - fromY)) {
+          const startX = (toX > fromX) ? (fromX + fromW / 2) : (fromX - fromW / 2);
+          const endX = (toX > fromX) ? (toX - toW / 2) : (toX + toW / 2);
+          const midX = (startX + endX) / 2;
+          pathData = `M ${startX} ${fromY} C ${midX} ${fromY}, ${midX} ${toY}, ${endX} ${toY}`;
+          labelX = midX;
+          labelY = (fromY + toY) / 2 - 6;
+        } else {
+          const startY = (toY > fromY) ? (fromY + fromH / 2) : (fromY - fromH / 2);
+          const endY = (toY > fromY) ? (toY - toH / 2) : (toY + toH / 2);
+          const midY = (startY + endY) / 2;
+          pathData = `M ${fromX} ${startY} C ${fromX} ${midY}, ${toX} ${midY}, ${toX} ${endY}`;
+          labelX = (fromX + toX) / 2 + 8;
+          labelY = midY;
+        }
+
+        const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+        path.setAttribute('d', pathData);
+        path.setAttribute('fill', 'none');
+        path.setAttribute('class', 'edge-line');
+        path.setAttribute('stroke', style.stroke);
+        path.setAttribute('stroke-width', style.strokeWidth);
+        path.setAttribute('stroke-dasharray', style.dash);
+        path.setAttribute('marker-end', style.marker);
+
+        g.appendChild(path);
+
+        if (edge.label) {
+          const text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+          text.setAttribute('x', labelX);
+          text.setAttribute('y', labelY);
+          text.setAttribute('class', 'edge-label');
+          text.setAttribute('text-anchor', 'middle');
+          text.textContent = edge.label;
+          g.appendChild(text);
+        }
+
+        edgesLayer.appendChild(g);
+      });
+    }
+
+    // --- Create / Delete Operations ---
+    function getCanvasCenter() {
+      const viewW = container.clientWidth;
+      const viewH = container.clientHeight;
+      return {
+        x: Math.round((-panX + viewW / 2) / zoom / 10) * 10,
+        y: Math.round((-panY + viewH / 2) / zoom / 10) * 10
+      };
+    }
+
+    function createNewNode() {
+      if (!diagramData) return;
+      if (!diagramData.nodes) diagramData.nodes = [];
+      const center = getCanvasCenter();
+      const newId = 'node_' + Date.now().toString(36);
+      
+      // Auto-assign to zone if dropped over a zone
+      const targetZone = findZoneUnderPoint(center.x + 90, center.y + 30);
+
+      const newNode = {
+        id: newId,
+        label: 'Новый блок',
+        type: 'concept',
+        zone: targetZone ? targetZone.id : null,
+        x: center.x,
+        y: center.y,
+        width: 190,
+        height: 60,
+        metadata: {
+          type: 'Concept / Блок',
+          description: 'Пользовательский блок архитектуры.'
+        }
+      };
+
+      diagramData.nodes.push(newNode);
+      markDirty();
+      pushHistorySnapshot();
+      renderDiagram();
+      selectItem(newNode, 'node');
+    }
+
+    function createNewZone() {
+      if (!diagramData) return;
+      if (!diagramData.zones) diagramData.zones = [];
+      const center = getCanvasCenter();
+      const newId = 'zone_' + Date.now().toString(36);
+
+      const newZone = {
+        id: newId,
+        name: 'Новая область / Слой',
+        type: 'boundary',
+        semanticId: `zone.${newId}`,
+        x: center.x,
+        y: center.y,
+        width: 420,
+        height: 300,
+        style: {
+          fill: '#f8fafc',
+          stroke: '#94a3b8',
+          strokeWidth: 2,
+          strokeDasharray: 'none',
+          headerBg: '#e2e8f0'
+        },
+        metadata: {
+          description: 'Пользовательский логический контейнер.'
+        }
+      };
+
+      diagramData.zones.push(newZone);
+      markDirty();
+      pushHistorySnapshot();
+      renderDiagram();
+      selectItem(newZone, 'zone');
+    }
+
+    function deleteSelectedItem() {
+      if (!selectedElement || !diagramData) return;
+      const { id, kind } = selectedElement;
+
+      if (kind === 'node') {
+        diagramData.nodes = (diagramData.nodes || []).filter(n => n.id !== id);
+        // Remove connected edges
+        diagramData.edges = (diagramData.edges || []).filter(e => e.from !== id && e.to !== id);
+      } else if (kind === 'zone') {
+        diagramData.zones = (diagramData.zones || []).filter(z => z.id !== id);
+        // Reset parent zone of child nodes
+        (diagramData.nodes || []).forEach(n => {
+          if (n.zone === id) n.zone = null;
+        });
+      }
+
+      selectedElement = null;
+      document.getElementById('item-badge').innerText = 'Ничего не выбрано';
+      document.getElementById('item-badge').className = 'text-[10px] uppercase font-mono px-2 py-0.5 rounded bg-slate-700 text-slate-300';
+      document.getElementById('inspector-content').innerHTML = `
+        <div class="text-center py-12 text-slate-400 text-xs">
+          <p class="text-2xl mb-2">👆</p>
+          <p>Кликните на любой компонент или зону. Вы можете менять названия, типы, описания и добавлять связи прямо здесь.</p>
+        </div>
+      `;
+      document.getElementById('btn-delete-item').disabled = true;
+
+      markDirty();
+      pushHistorySnapshot();
+      renderDiagram();
+    }
+
+    function deleteEdge(edgeId) {
+      if (!diagramData || !diagramData.edges) return;
+      diagramData.edges = diagramData.edges.filter(e => e.id !== edgeId);
+      markDirty();
+      pushHistorySnapshot();
+      renderDiagram();
+      if (selectedElement) selectItem(selectedElement.item, selectedElement.kind);
+    }
+
+    function addEdgeFromCurrent(targetNodeId, edgeType, label) {
+      if (!selectedElement || selectedElement.kind !== 'node' || !targetNodeId) return;
+      if (!diagramData.edges) diagramData.edges = [];
+
+      const newEdge = {
+        id: 'edge_' + Date.now().toString(36),
+        from: selectedElement.item.id,
+        to: targetNodeId,
+        label: label || '',
+        type: edgeType || 'call'
+      };
+
+      diagramData.edges.push(newEdge);
+      markDirty();
+      pushHistorySnapshot();
+      renderDiagram();
+      selectItem(selectedElement.item, 'node');
+    }
+
+    // --- Live Inspector Field Updates ---
+    function updateCurrentItemLabel(val) {
+      if (!selectedElement) return;
+      if (selectedElement.kind === 'node') {
+        selectedElement.item.label = val;
+      } else {
+        selectedElement.item.name = val;
+      }
+      markDirty();
+      renderDiagram();
+    }
+
+    function updateCurrentItemType(val) {
+      if (!selectedElement) return;
+      selectedElement.item.type = val;
+      if (!selectedElement.item.metadata) selectedElement.item.metadata = {};
+      selectedElement.item.metadata.type = val;
+      markDirty();
+      renderDiagram();
+      selectItem(selectedElement.item, selectedElement.kind);
+    }
+
+    function updateCurrentItemDesc(val) {
+      if (!selectedElement) return;
+      if (!selectedElement.item.metadata) selectedElement.item.metadata = {};
+      selectedElement.item.metadata.description = val;
+      markDirty();
+    }
+
+    function updateCurrentItemCodeRef(val) {
+      if (!selectedElement) return;
+      if (!selectedElement.item.metadata) selectedElement.item.metadata = {};
+      selectedElement.item.metadata.codeRef = val;
+      markDirty();
+    }
+
+    // --- Inspector Selection & Coordinate Live Updates ---
+    function updateInspectorCoordinates(item) {
+      const coordsElem = document.getElementById('inspector-coords-val');
+      if (coordsElem) {
+        coordsElem.innerText = `X:${Math.round(item.x)} Y:${Math.round(item.y)} (${Math.round(item.width)}×${Math.round(item.height)})`;
+      }
+    }
+
+    function selectItem(item, kind) {
+      selectedElement = { item, kind, id: item.id };
+      renderDiagram();
+
+      const badge = document.getElementById('item-badge');
+      const content = document.getElementById('inspector-content');
+      const btnDelete = document.getElementById('btn-delete-item');
+      if (btnDelete) btnDelete.disabled = false;
+
+      badge.innerText = kind === 'zone' ? `CONTAINER: ${item.type}` : (kind === 'edge' ? `EDGE: ${item.type}` : `NODE: ${item.type}`);
+      badge.className = `text-[10px] uppercase font-mono px-2 py-0.5 rounded ${kind === 'zone' ? 'bg-indigo-900 text-indigo-300' : (kind === 'edge' ? 'bg-slate-700 text-slate-300' : 'bg-blue-900 text-blue-300')}`;
+
+      let html = `
+        <!-- Title & Live Edit -->
+        <div class="space-y-1.5">
+          <div class="flex items-center justify-between">
+            <span class="text-[10px] text-slate-400 font-mono">ID: ${item.id}</span>
+            <span id="inspector-coords-val" class="font-mono text-[11px] text-blue-300">${item.x!==undefined ? `X:${Math.round(item.x)} Y:${Math.round(item.y)} (${Math.round(item.width)}×${Math.round(item.height)})` : `FROM: ${item.from} TO: ${item.to}`}</span>
+          </div>
+          <div>
+            <label class="block text-[11px] font-semibold text-slate-400 uppercase tracking-wider mb-1">Название / Заголовок</label>
+            <input type="text" value="${item.label || item.name || ''}" oninput="updateCurrentItemLabel(this.value)" 
+              class="w-full bg-slate-900 border border-slate-700 focus:border-blue-500 rounded px-2.5 py-1.5 text-sm font-semibold text-white focus:outline-none transition">
+          </div>
+        </div>
+
+        <!-- Semantic Type & Parent Container -->
+        <div class="grid grid-cols-2 gap-2 text-xs">
+          <div>
+            <label class="block text-[10px] uppercase font-semibold text-slate-400 mb-1">Тип элемента</label>
+            <select onchange="updateCurrentItemType(this.value)" class="w-full bg-slate-900 border border-slate-700 rounded px-2 py-1.5 text-xs text-slate-200 focus:outline-none focus:border-blue-500">
+              <option value="concept" ${item.type === 'concept' ? 'selected' : ''}>💡 Concept (Концепт)</option>
+              <option value="component" ${item.type === 'component' ? 'selected' : ''}>📦 Component</option>
+              <option value="service" ${item.type === 'service' ? 'selected' : ''}>⚙️ Service</option>
+              <option value="security-component" ${item.type === 'security-component' ? 'selected' : ''}>🛡️ Security</option>
+              <option value="tool" ${item.type === 'tool' ? 'selected' : ''}>🔧 Tool</option>
+              <option value="database" ${item.type === 'database' ? 'selected' : ''}>💾 Storage / DB</option>
+              <option value="external-system" ${item.type === 'external-system' ? 'selected' : ''}>🌐 External</option>
+              <option value="note" ${item.type === 'note' ? 'selected' : ''}>📝 Note / Текст</option>
+              <option value="boundary" ${item.type === 'boundary' ? 'selected' : ''}>🔲 Boundary</option>
+              <option value="subsystem" ${item.type === 'subsystem' ? 'selected' : ''}>🏛 Subsystem</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-[10px] uppercase font-semibold text-slate-400 mb-1">Контейнер (Зона)</label>
+            <div class="bg-slate-900 border border-slate-700 rounded px-2 py-1.5 text-xs text-slate-300 truncate">
+              ${kind === 'zone' ? 'Является зоной' : ((diagramData.zones || []).find(z => isNodeInZone(item, z))?.name || 'Вне зон')}
+            </div>
+          </div>
+        </div>
+      `;
+
+      if (kind === 'zone') {
+        const childCount = getNodesInZone(item.id).length;
+        html += `
+          <div class="bg-blue-950/40 border border-blue-800/50 p-2.5 rounded text-xs text-blue-200 flex items-center justify-between">
+            <span>📦 Вложенных компонентов: <b>${childCount}</b></span>
+            <button onclick="toggleZoneCollapse('${item.id}')" class="px-2.5 py-1 bg-blue-700 hover:bg-blue-600 rounded text-xs text-white font-medium">
+              ${collapsedZones[item.id] ? 'Развернуть' : 'Свернуть'}
+            </button>
+          </div>
+        `;
+      }
+
+      // Description / Essence (Editable)
+      html += `
+        <div>
+          <label class="block text-[11px] font-semibold text-slate-400 uppercase tracking-wider mb-1">Суть / Описание</label>
+          <textarea rows="2" oninput="updateCurrentItemDesc(this.value)" placeholder="Опишите назначение или архитектурную роль..."
+            class="w-full bg-slate-900 border border-slate-700 focus:border-blue-500 rounded p-2 text-xs text-slate-300 focus:outline-none transition resize-none">${item.metadata?.description || ''}</textarea>
+        </div>
+      `;
+
+      // Code Reference (Optional)
+      html += `
+        <div>
+          <label class="block text-[11px] font-semibold text-slate-400 uppercase tracking-wider mb-1">Файл / Класс (Code Ref)</label>
+          <input type="text" value="${item.metadata?.codeRef || ''}" oninput="updateCurrentItemCodeRef(this.value)" placeholder="src/core/... (необязательно)"
+            class="w-full bg-slate-900 border border-slate-700 focus:border-blue-500 rounded px-2.5 py-1 text-xs font-mono text-emerald-300 focus:outline-none transition">
+        </div>
+      `;
+
+      // Node Connections Management (Outgoing edges)
+      if (kind === 'node') {
+        const outgoingEdges = (diagramData.edges || []).filter(e => e.from === item.id);
+        const otherNodes = (diagramData.nodes || []).filter(n => n.id !== item.id);
+
+        html += `
+          <div class="pt-2 border-t border-slate-700 space-y-2">
+            <div class="flex items-center justify-between">
+              <label class="text-[11px] font-semibold text-slate-400 uppercase tracking-wider">Связи блока (Исходящие)</label>
+              <span class="text-[10px] text-slate-400 font-mono">${outgoingEdges.length}</span>
+            </div>
+
+            <!-- List of existing outgoing edges -->
+            <div class="space-y-1 max-h-32 overflow-y-auto">
+              ${outgoingEdges.length === 0 ? '<div class="text-xs text-slate-500 italic py-1">Нет исходящих связей</div>' : ''}
+              ${outgoingEdges.map(edge => {
+                const targetNode = (diagramData.nodes || []).find(n => n.id === edge.to);
+                return `
+                  <div class="flex items-center justify-between bg-slate-900/80 px-2 py-1 rounded border border-slate-700 text-xs">
+                    <span class="text-slate-300 truncate max-w-[170px]">➔ <b>${targetNode ? targetNode.label : edge.to}</b> <span class="text-[10px] text-slate-400">(${edge.type})</span></span>
+                    <button onclick="deleteEdge('${edge.id}')" class="text-red-400 hover:text-red-300 px-1 py-0.5 text-xs" title="Удалить связь">✕</button>
+                  </div>
+                `;
+              }).join('')}
+            </div>
+
+            <!-- Add new connection form -->
+            <div class="bg-slate-900/60 p-2 rounded border border-slate-700/80 space-y-1.5 mt-2">
+              <div class="text-[10px] font-semibold text-blue-300 uppercase">Добавить новую связь:</div>
+              <div class="grid grid-cols-2 gap-1.5">
+                <select id="new-edge-target" class="bg-slate-900 border border-slate-700 rounded px-1.5 py-1 text-xs text-slate-200">
+                  <option value="">-- Куда вести --</option>
+                  ${otherNodes.map(n => `<option value="${n.id}">${n.label}</option>`).join('')}
+                </select>
+                <select id="new-edge-type" class="bg-slate-900 border border-slate-700 rounded px-1.5 py-1 text-xs text-slate-200">
+                  <option value="call">Вызов (Call)</option>
+                  <option value="data-flow">Данные (Data)</option>
+                  <option value="security">Доступ (Security)</option>
+                  <option value="storage">Хранилище (Storage)</option>
+                </select>
+              </div>
+              <div class="flex gap-1.5">
+                <input type="text" id="new-edge-label" placeholder="Подпись (опция)" class="flex-1 bg-slate-900 border border-slate-700 rounded px-2 py-1 text-xs text-slate-200">
+                <button onclick="addEdgeFromCurrent(document.getElementById('new-edge-target').value, document.getElementById('new-edge-type').value, document.getElementById('new-edge-label').value)"
+                  class="px-2.5 py-1 bg-blue-600 hover:bg-blue-500 text-white rounded text-xs font-semibold shadow">
+                  Связать
+                </button>
+              </div>
+            </div>
+          </div>
+        `;
+      }
+
+      // Delete Button at bottom
+      html += `
+        <div class="pt-3 border-t border-slate-700">
+          <button onclick="deleteSelectedItem()" class="w-full py-1.5 bg-red-950/40 hover:bg-red-900/60 text-red-300 border border-red-800/60 rounded text-xs font-semibold transition flex items-center justify-center gap-1.5">
+            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
+            Удалить этот ${kind === 'zone' ? 'контейнер' : 'блок'}
+          </button>
+        </div>
+      `;
+
+      content.innerHTML = html;
+    }
+
+    function editSelectedMetadata() {
+      if (!selectedElement) return;
+      alert(`Свойства "${selectedElement.item.label || selectedElement.item.name}":\n\nКоординаты: X=${selectedElement.item.x}, Y=${selectedElement.item.y}\nРазмер: ${selectedElement.item.width}x${selectedElement.item.height}`);
+    }
+
+    // --- Save / Download Updated JSON ---
+    function downloadUpdatedJson() {
+      if (!diagramData) return;
+      const jsonStr = JSON.stringify(diagramData, null, 2);
+
+      const schema = schemasCatalog[currentSchemaKey];
+      if (!schema || !schema.file) {
+        alert("Не удалось определить исходный файл (возможно, это кастомный файл загруженный вручную).");
+        return;
+      }
+
+      fetch(`/api/save?file=${encodeURIComponent(schema.file)}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: jsonStr
+      })
+      .then(res => {
+        if (!res.ok) throw new Error("Server error");
+        isDirty = false;
+        document.getElementById('dirty-indicator').classList.add('hidden');
+        const btn = document.querySelector('button[onclick="downloadUpdatedJson()"]');
+        if (btn) {
+          const oldText = btn.innerHTML;
+          btn.innerHTML = '✅ Сохранено!';
+          setTimeout(() => btn.innerHTML = oldText, 2000);
+        }
+      })
+      .catch(err => {
+        alert("Ошибка сохранения на сервер: " + err.message + "\\nПроверьте, запущен ли Go-сервер.");
+      });
+    }
+
+    // --- Draw.io Native Container XML Export ---
+    function exportDrawio() {
+      if (!diagramData) return;
+      let xml = `<?xml version="1.0" encoding="UTF-8"?>\n<mxfile host="app.diagrams.net" modified="2026-08-25T10:00:00.000Z" agent="SPLA Visualizer" version="21.0.0" type="device">\n  <diagram id="spla-arch" name="${diagramData.metadata?.title || 'SPLA Diagram'}">\n    <mxGraphModel dx="1200" dy="800" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1600" pageHeight="1000">\n      <root>\n        <mxCell id="0" />\n        <mxCell id="1" parent="0" />\n`;
+
+      (diagramData.zones || []).forEach(z => {
+        const style = `swimlane;startSize=34;rounded=1;whiteSpace=wrap;html=1;fillColor=${z.style?.fill || '#f8fafc'};strokeColor=${z.style?.stroke || '#cbd5e1'};strokeWidth=${z.style?.strokeWidth || 2};dashed=${z.style?.strokeDasharray !== 'none' ? '1' : '0'};collapsible=1;container=1;fontStyle=1;spacingLeft=10;`;
+        xml += `        <!-- Container Zone: ${z.name} -->\n`;
+        xml += `        <mxCell id="${z.id}" value="${z.name}" style="${style}" vertex="1" parent="1">\n`;
+        xml += `          <mxGeometry x="${Math.round(z.x)}" y="${Math.round(z.y)}" width="${Math.round(z.width)}" height="${Math.round(z.height)}" as="geometry" />\n`;
+        xml += `          <Object type="${z.type}" semanticId="${z.semanticId || ''}" tags="${(z.tags || []).join(',')}" as="data" />\n`;
+        xml += `        </mxCell>\n`;
+      });
+
+      (diagramData.nodes || []).forEach(n => {
+        const style = `rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#64748b;strokeWidth=1.5;fontStyle=1;`;
+        const parentId = n.zone || "1";
+        
+        const parentZone = (diagramData.zones || []).find(z => z.id === n.zone);
+        const relX = parentZone ? (n.x - parentZone.x) : n.x;
+        const relY = parentZone ? (n.y - parentZone.y) : n.y;
+
+        xml += `        <!-- Child Node: ${n.label} in ${parentId} -->\n`;
+        xml += `        <mxCell id="${n.id}" value="${n.label}" style="${style}" vertex="1" parent="${parentId}">\n`;
+        xml += `          <mxGeometry x="${Math.round(relX)}" y="${Math.round(relY)}" width="${Math.round(n.width)}" height="${Math.round(n.height)}" as="geometry" />\n`;
+        xml += `          <Object type="${n.type}" codeRef="${n.metadata?.codeRef || ''}" tags="${(n.tags || []).join(',')}" as="data" />\n`;
+        xml += `        </mxCell>\n`;
+      });
+
+      (diagramData.edges || []).forEach(e => {
+        const style = `edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#475569;strokeWidth=1.5;`;
+        xml += `        <mxCell id="${e.id}" value="${e.label || ''}" style="${style}" edge="1" parent="1" source="${e.from}" target="${e.to}">\n`;
+        xml += `          <mxGeometry relative="1" as="geometry" />\n`;
+        xml += `          <Object type="${e.type}" as="data" />\n`;
+        xml += `        </mxCell>\n`;
+      });
+
+      xml += `      </root>\n    </mxGraphModel>\n  </diagram>\n</mxfile>`;
+
+      const blob = new Blob([xml], { type: 'application/xml' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `${(diagramData.metadata?.title || 'diagram').toLowerCase().replace(/[^a-z0-9]/g, '_')}.drawio`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    }
+
+    // --- JSON Modal Handlers ---
+    function toggleJsonModal() {
+      const modal = document.getElementById('json-modal');
+      const isHidden = modal.classList.contains('hidden');
+      if (isHidden) {
+        document.getElementById('json-editor').value = JSON.stringify(diagramData, null, 2);
+        modal.classList.remove('hidden');
+      } else {
+        modal.classList.add('hidden');
+      }
+    }
+
+    function copyJson() {
+      const text = document.getElementById('json-editor').value;
+      navigator.clipboard.writeText(text);
+      alert("JSON скопирован в буфер обмена!");
+    }
+
+    function applyJsonChanges() {
+      try {
+        const parsed = JSON.parse(document.getElementById('json-editor').value);
+        loadDiagramModel(parsed, parsed.metadata?.title || 'Пользовательская схема');
+        toggleJsonModal();
+      } catch (err) {
+        alert("Ошибка в формате JSON: " + err.message);
+      }
+    }
+
+    // Embedded Fallback Data
+    const embeddedCore = {
+      metadata: { title: "SPLA System Architecture" },
+      views: [
+        { id: "overview", name: "Все зоны (Overview)", icon: "🏛", description: "Полная карта системы" },
+        { id: "runtime_flow", name: "Runtime Flow", icon: "⚡", description: "Поток выполнения от Chat до Tools", highlightNodes: ["chat_ui", "turn_pump", "agent_runtime", "context_composer", "llm_client", "permission_guard", "tool_host", "tool_network", "tool_ssh", "tool_doc"] },
+        { id: "security", name: "Безопасность (Security)", icon: "🛡", description: "Изолированные зоны и хранилище секретов", highlightZones: ["zone_runtime", "zone_storage"], highlightNodes: ["permission_guard", "secrets_store", "tool_host"] }
+      ],
+      zones: [
+        { id: "zone_client", name: "Client Layer (Web & UI)", type: "boundary", semanticId: "zone.client", tags: ["ui"], x: 40, y: 40, width: 260, height: 520, style: { fill: "#f8fafc", stroke: "#94a3b8", strokeWidth: 2, strokeDasharray: "6,4", headerBg: "#e2e8f0" }, metadata: { description: "Web client based on Vue 3.", responsibilities: ["Chat interface", "Tool call inspection", "Chat-scoped store"] } },
+        { id: "zone_runtime", name: "Agent Core & Runtime", type: "security-zone", semanticId: "zone.core.runtime", tags: ["core"], x: 340, y: 40, width: 480, height: 520, style: { fill: "#f0fdf4", stroke: "#86efac", strokeWidth: 2, strokeDasharray: "none", headerBg: "#dcfce7" }, metadata: { description: "Host orchestrator & LLM gateway.", responsibilities: ["Turn pump", "Context composer", "LLM calls"] } },
+        { id: "zone_tools", name: "Tool Dispatch & MCP", type: "subsystem", semanticId: "zone.tools", tags: ["tools"], x: 860, y: 40, width: 380, height: 520, style: { fill: "#eff6ff", stroke: "#93c5fd", strokeWidth: 2, strokeDasharray: "none", headerBg: "#dbeafe" }, metadata: { description: "Tool dispatch and level filtering.", responsibilities: ["Tool level gating", "Execution"] } },
+        { id: "zone_storage", name: "Storage & Persistence", type: "storage-zone", semanticId: "zone.storage", tags: ["storage"], x: 340, y: 590, width: 900, height: 180, style: { fill: "#faf5ff", stroke: "#d8b4fe", strokeWidth: 2, strokeDasharray: "4,4", headerBg: "#f3e8ff" }, metadata: { description: "Databases & secrets vault.", responsibilities: ["SQLite logs DB", "Artifacts", "Isolated secrets"] } }
+      ],
+      nodes: [
+        { id: "chat_ui", label: "Chat & ViewModels", type: "component", zone: "zone_client", x: 70, y: 100, width: 200, height: 65, metadata: { codeRef: "web/src/store.ts", type: "Vue 3 Component", responsibilities: ["Chat-scoped state", "Send/Stop buttons"] } },
+        { id: "ws_client", label: "WebSocket Client", type: "service", zone: "zone_client", x: 70, y: 440, width: 200, height: 60, metadata: { codeRef: "web/src/protocol/ws.ts", type: "Transport", responsibilities: ["Message framing"] } },
+        { id: "turn_pump", label: "ChatTurnPump", type: "service", zone: "zone_runtime", x: 370, y: 100, width: 190, height: 65, metadata: { codeRef: "src/SPLA.Core/Runtime/ChatTurnPump.cs", type: "Turn Orchestrator", responsibilities: ["Step queue", "Cancellation tokens"] } },
+        { id: "agent_runtime", label: "Runtime Session", type: "service", zone: "zone_runtime", x: 600, y: 100, width: 190, height: 65, metadata: { codeRef: "src/SPLA.Agent/Runtime/RuntimeSession.cs", type: "Session Controller", responsibilities: ["Checkpoints", "History tracking"] } },
+        { id: "context_composer", label: "AgentContextComposer", type: "component", zone: "zone_runtime", x: 370, y: 220, width: 420, height: 70, metadata: { codeRef: "src/SPLA.Agent/Composition/AgentContextComposer.cs", type: "Pipeline", responsibilities: ["Typed contributors aggregation"] } },
+        { id: "llm_client", label: "LLM Gateway", type: "external-system", zone: "zone_runtime", x: 370, y: 350, width: 200, height: 65, metadata: { codeRef: "src/SPLA.Core/Llm/LlmClient.cs", type: "Model Gateway", responsibilities: ["Streaming tokens consumption"] } },
+        { id: "permission_guard", label: "Permission Guard", type: "security-component", zone: "zone_runtime", x: 600, y: 350, width: 190, height: 65, metadata: { codeRef: "src/SPLA.Core/Security/PermissionGuard.cs", type: "Security Guard", responsibilities: ["5-mode matrix check"] } },
+        { id: "tool_host", label: "McpHost & Registry", type: "service", zone: "zone_tools", x: 890, y: 100, width: 320, height: 75, metadata: { codeRef: "src/SPLA.Agent/Tools/McpHost.cs", type: "Tool Dispatcher", responsibilities: ["Deterministic execution", "Digest summaries"] } },
+        { id: "tool_network", label: "Network Tools", type: "tool", zone: "zone_tools", x: 890, y: 210, width: 320, height: 50, metadata: { codeRef: "src/SPLA.Plugins.Network/", type: "Plugin Tools" } },
+        { id: "tool_ssh", label: "SSH / SFTP Tools", type: "tool", zone: "zone_tools", x: 890, y: 280, width: 320, height: 50, metadata: { codeRef: "src/SPLA.Plugins.Ssh/", type: "Plugin Tools" } },
+        { id: "tool_doc", label: "Document Tools", type: "tool", zone: "zone_tools", x: 890, y: 350, width: 320, height: 50, metadata: { codeRef: "src/SPLA.Plugins.Document/", type: "Plugin Tools" } },
+        { id: "sqlite_db", label: "SQLite History DB", type: "database", zone: "zone_storage", x: 370, y: 650, width: 260, height: 60, metadata: { codeRef: "src/SPLA.Core/Storage/SqliteStorage.cs", type: "Database" } },
+        { id: "secrets_store", label: "Isolated Secrets Store", type: "database", zone: "zone_storage", x: 670, y: 650, width: 260, height: 60, metadata: { codeRef: "src/SPLA.Core/Security/SecretsStore.cs", type: "Secure Vault" } },
+        { id: "blob_store", label: "Blob & Handle Store", type: "database", zone: "zone_storage", x: 960, y: 650, width: 250, height: 60, metadata: { codeRef: "src/SPLA.Core/Storage/BlobStorage.cs", type: "Storage" } }
+      ],
+      edges: [
+        { id: "e1", from: "chat_ui", to: "ws_client", label: "send action", type: "data-flow" },
+        { id: "e2", from: "ws_client", to: "turn_pump", label: "WebSocket RPC", type: "call" },
+        { id: "e3", from: "turn_pump", to: "agent_runtime", label: "drive turn", type: "call" },
+        { id: "e4", from: "agent_runtime", to: "context_composer", label: "assemble context", type: "call" },
+        { id: "e5", from: "context_composer", to: "llm_client", label: "prompt stream", type: "data-flow" },
+        { id: "e6", from: "llm_client", to: "permission_guard", label: "tool call request", type: "call" },
+        { id: "e7", from: "permission_guard", to: "tool_host", label: "authorized dispatch", type: "call" },
+        { id: "e8", from: "tool_host", to: "tool_network", label: "execute", type: "call" },
+        { id: "e9", from: "tool_host", to: "tool_ssh", label: "execute", type: "call" },
+        { id: "e10", from: "tool_host", to: "tool_doc", label: "execute", type: "call" },
+        { id: "e11", from: "agent_runtime", to: "sqlite_db", label: "persist history", type: "storage" },
+        { id: "e12", from: "permission_guard", to: "secrets_store", label: "resolve credentials", type: "security" }
+      ]
+    };
+
+    function fallbackLoad(key) {
+      loadDiagramModel(embeddedCore, "SPLA System Architecture");
+    }
+
+    // Initial Load
+    initCatalog();
+  </script>
+</body>
+</html>

@@ -1,0 +1,618 @@
+{
+  "$schema": "https://spla.local/schemas/diagram-v1.json",
+  "version": "1.0.0",
+  "metadata": {
+    "title": "SPLA System Architecture & Agent Runtime",
+    "description": "Interactive architectural map of SPLA with semantic zones, tool pipeline, and runtime flow",
+    "author": "SPLA Agent",
+    "created": "2026-08-25",
+    "layout": "subsystem-overview"
+  },
+  "views": [
+    {
+      "id": "overview",
+      "name": "Architecture Overview",
+      "description": "Full system map with all subsystems, zones, and connections"
+    },
+    {
+      "id": "runtime_flow",
+      "name": "Runtime Flow",
+      "description": "Message pump, agent context composition, and tool execution pipeline",
+      "highlightNodes": [
+        "chat_ui",
+        "turn_pump",
+        "agent_runtime",
+        "context_composer",
+        "tool_host",
+        "tool_network",
+        "tool_ssh",
+        "tool_doc"
+      ]
+    },
+    {
+      "id": "security",
+      "name": "Security & Permissions",
+      "description": "Security zones, permission matrix, and secret store isolation",
+      "highlightZones": [
+        "zone_client",
+        "zone_runtime",
+        "zone_tools",
+        "zone_storage"
+      ],
+      "highlightNodes": [
+        "permission_guard",
+        "secrets_store",
+        "tool_host"
+      ]
+    }
+  ],
+  "zones": [
+    {
+      "id": "zone_client",
+      "name": "Client Layer (Web & UI)",
+      "type": "boundary",
+      "semanticId": "zone.client",
+      "tags": [
+        "ui",
+        "frontend",
+        "chat"
+      ],
+      "x": 40,
+      "y": 40,
+      "width": 260,
+      "height": 520,
+      "style": {
+        "fill": "#f8fafc",
+        "stroke": "#94a3b8",
+        "strokeWidth": 2,
+        "strokeDasharray": "6,4",
+        "headerBg": "#e2e8f0"
+      },
+      "metadata": {
+        "description": "Web client based on Vue 3 + Tailwind. Communicates via WebSocket protocol.",
+        "responsibilities": [
+          "Chat interface",
+          "Tool call inspection",
+          "Artifact rendering",
+          "Local chat store"
+        ]
+      }
+    },
+    {
+      "id": "zone_runtime",
+      "name": "Agent Core & Runtime Subsystem",
+      "type": "security-zone",
+      "semanticId": "zone.core.runtime",
+      "tags": [
+        "core",
+        "runtime",
+        "agent",
+        "llm"
+      ],
+      "x": 340,
+      "y": 40,
+      "width": 480,
+      "height": 520,
+      "style": {
+        "fill": "#f0fdf4",
+        "stroke": "#86efac",
+        "strokeWidth": 2,
+        "strokeDasharray": "none",
+        "headerBg": "#dcfce7"
+      },
+      "metadata": {
+        "description": "Host-side agent session orchestrator, message turn pump, context composition and LLM gateway.",
+        "responsibilities": [
+          "Turn lifecycle pump",
+          "Context composition from contributors",
+          "LLM communication",
+          "Checkpoint & history tracking"
+        ]
+      }
+    },
+    {
+      "id": "zone_tools",
+      "name": "Tool Dispatch & MCP Host",
+      "type": "subsystem",
+      "semanticId": "zone.tools",
+      "tags": [
+        "tools",
+        "mcp",
+        "dispatch"
+      ],
+      "x": 860,
+      "y": 40,
+      "width": 380,
+      "height": 520,
+      "style": {
+        "fill": "#eff6ff",
+        "stroke": "#93c5fd",
+        "strokeWidth": 2,
+        "strokeDasharray": "none",
+        "headerBg": "#dbeafe"
+      },
+      "metadata": {
+        "description": "Deterministic narrow tool dispatch layer, permission filtering, MCP server bridges.",
+        "responsibilities": [
+          "Tool set resolution & activation",
+          "Permission gating",
+          "Background tool task management",
+          "Tool execution"
+        ]
+      }
+    },
+    {
+      "id": "zone_storage",
+      "name": "Storage & Persistence",
+      "type": "storage-zone",
+      "semanticId": "zone.storage",
+      "tags": [
+        "storage",
+        "sqlite",
+        "secrets"
+      ],
+      "x": 340,
+      "y": 590,
+      "width": 900,
+      "height": 220,
+      "style": {
+        "fill": "#faf5ff",
+        "stroke": "#d8b4fe",
+        "strokeWidth": 2,
+        "strokeDasharray": "4,4",
+        "headerBg": "#f3e8ff"
+      },
+      "metadata": {
+        "description": "Local project databases, binary storage, and secure credential storage.",
+        "responsibilities": [
+          "Conversations & logs DB",
+          "Artifact storage",
+          "Secure credentials"
+        ]
+      }
+    }
+  ],
+  "nodes": [
+    {
+      "id": "chat_ui",
+      "label": "Chat & ViewModels",
+      "type": "component",
+      "zone": "zone_client",
+      "x": 70,
+      "y": 100,
+      "width": 200,
+      "height": 70,
+      "tags": [
+        "frontend",
+        "vue"
+      ],
+      "metadata": {
+        "codeRef": "web/src/store.ts",
+        "type": "Vue3 Component / Store",
+        "responsibilities": [
+          "Chat-scoped state management",
+          "Turn status indicators (Send / Stop)",
+          "Event stream handling"
+        ]
+      }
+    },
+    {
+      "id": "inspector_ui",
+      "label": "Inspector & Tool Log",
+      "type": "component",
+      "zone": "zone_client",
+      "x": 70,
+      "y": 200,
+      "width": 200,
+      "height": 70,
+      "tags": [
+        "frontend",
+        "inspector"
+      ],
+      "metadata": {
+        "codeRef": "web/src/components/Inspector.vue",
+        "type": "Inspector View",
+        "responsibilities": [
+          "Tool execution details",
+          "Raw JSON payload inspection",
+          "Trace & latency viewer"
+        ]
+      }
+    },
+    {
+      "id": "ws_client",
+      "label": "WebSocket Transport",
+      "type": "service",
+      "zone": "zone_client",
+      "x": 70,
+      "y": 440,
+      "width": 200,
+      "height": 60,
+      "tags": [
+        "wire",
+        "protocol"
+      ],
+      "metadata": {
+        "codeRef": "web/src/protocol/ws.ts",
+        "type": "Client Transport",
+        "responsibilities": [
+          "JSON-RPC / Message envelope framing",
+          "Reconnection logic",
+          "Client bus dispatch"
+        ]
+      }
+    },
+    {
+      "id": "turn_pump",
+      "label": "ChatTurnPump",
+      "type": "service",
+      "zone": "zone_runtime",
+      "x": 370,
+      "y": 100,
+      "width": 190,
+      "height": 70,
+      "tags": [
+        "core",
+        "pump",
+        "async"
+      ],
+      "metadata": {
+        "codeRef": "src/SPLA.Core/Runtime/ChatTurnPump.cs",
+        "type": "Turn Orchestrator",
+        "responsibilities": [
+          "Turn step execution queue",
+          "Async reactive wakeups",
+          "Cancellation token handling"
+        ]
+      }
+    },
+    {
+      "id": "agent_runtime",
+      "label": "Agent Runtime Session",
+      "type": "service",
+      "zone": "zone_runtime",
+      "x": 600,
+      "y": 100,
+      "width": 190,
+      "height": 70,
+      "tags": [
+        "core",
+        "session"
+      ],
+      "metadata": {
+        "codeRef": "src/SPLA.Agent/Runtime/RuntimeSession.cs",
+        "type": "Session Controller",
+        "responsibilities": [
+          "Conversation state management",
+          "Turn memory checkpoints",
+          "Event broadcasting"
+        ]
+      }
+    },
+    {
+      "id": "context_composer",
+      "label": "AgentContextComposer",
+      "type": "component",
+      "zone": "zone_runtime",
+      "x": 370,
+      "y": 230,
+      "width": 420,
+      "height": 75,
+      "tags": [
+        "llm",
+        "composition"
+      ],
+      "metadata": {
+        "codeRef": "src/SPLA.Agent/Composition/AgentContextComposer.cs",
+        "type": "Context Assembly Pipeline",
+        "responsibilities": [
+          "Typed contribution aggregation",
+          "System prompt structuring (English contract)",
+          "Active tool manifest injection"
+        ]
+      }
+    },
+    {
+      "id": "llm_client",
+      "label": "LLM Gateway / Client",
+      "type": "external-system",
+      "zone": "zone_runtime",
+      "x": 370,
+      "y": 360,
+      "width": 200,
+      "height": 70,
+      "tags": [
+        "llm",
+        "api"
+      ],
+      "metadata": {
+        "codeRef": "src/SPLA.Core/Llm/LlmClient.cs",
+        "type": "Model Provider Gateway",
+        "responsibilities": [
+          "Streaming token consumption",
+          "Tool call schema parsing",
+          "Retry & error fallback"
+        ]
+      }
+    },
+    {
+      "id": "permission_guard",
+      "label": "Permission Guard",
+      "type": "security-component",
+      "zone": "zone_runtime",
+      "x": 600,
+      "y": 360,
+      "width": 190,
+      "height": 70,
+      "tags": [
+        "security",
+        "guard"
+      ],
+      "metadata": {
+        "codeRef": "src/SPLA.Core/Security/PermissionGuard.cs",
+        "type": "Security Interceptor",
+        "responsibilities": [
+          "5-mode permission matrix check (Chat..Agent)",
+          "Execution risk assessment",
+          "User confirmation prompts"
+        ]
+      }
+    },
+    {
+      "id": "tool_host",
+      "label": "McpHost & Tool Registry",
+      "type": "service",
+      "zone": "zone_tools",
+      "x": 890,
+      "y": 100,
+      "width": 320,
+      "height": 80,
+      "tags": [
+        "tools",
+        "registry",
+        "mcp"
+      ],
+      "metadata": {
+        "codeRef": "src/SPLA.Agent/Tools/McpHost.cs",
+        "type": "Tool Dispatch Controller",
+        "responsibilities": [
+          "Deterministic tool execution",
+          "Tool set level resolution (L0-L3)",
+          "Tool output digestion & handle generation"
+        ]
+      }
+    },
+    {
+      "id": "tool_network",
+      "label": "Network Tools (Ping/DNS/HTTP)",
+      "type": "tool",
+      "zone": "zone_tools",
+      "x": 890,
+      "y": 220,
+      "width": 320,
+      "height": 55,
+      "tags": [
+        "tools",
+        "plugin"
+      ],
+      "metadata": {
+        "codeRef": "src/SPLA.Plugins.Network/",
+        "type": "Plugin Tools",
+        "responsibilities": [
+          "network_ping_host",
+          "network_resolve_host",
+          "network_http_get"
+        ]
+      }
+    },
+    {
+      "id": "tool_ssh",
+      "label": "SSH & SFTP Tools",
+      "type": "tool",
+      "zone": "zone_tools",
+      "x": 890,
+      "y": 300,
+      "width": 320,
+      "height": 55,
+      "tags": [
+        "tools",
+        "plugin"
+      ],
+      "metadata": {
+        "codeRef": "src/SPLA.Plugins.Ssh/",
+        "type": "Plugin Tools",
+        "responsibilities": [
+          "ssh_run",
+          "sftp_download",
+          "sftp_upload",
+          "ssh_session_exec"
+        ]
+      }
+    },
+    {
+      "id": "tool_doc",
+      "label": "Document & Sheet Tools",
+      "type": "tool",
+      "zone": "zone_tools",
+      "x": 890,
+      "y": 380,
+      "width": 320,
+      "height": 55,
+      "tags": [
+        "tools",
+        "plugin"
+      ],
+      "metadata": {
+        "codeRef": "src/SPLA.Plugins.Document/",
+        "type": "Plugin Tools",
+        "responsibilities": [
+          "document_extract",
+          "spreadsheet_inspect",
+          "spreadsheet_read_rows"
+        ]
+      }
+    },
+    {
+      "id": "sqlite_db",
+      "label": "SQLite Store (Turns & Sessions)",
+      "type": "database",
+      "zone": "zone_storage",
+      "x": 370,
+      "y": 660,
+      "width": 260,
+      "height": 70,
+      "tags": [
+        "storage",
+        "sqlite"
+      ],
+      "metadata": {
+        "codeRef": "src/SPLA.Core/Storage/SqliteStorage.cs",
+        "type": "Embedded Database",
+        "responsibilities": [
+          "Chat message history",
+          "Tool execution logs",
+          "Session checkpoints"
+        ]
+      }
+    },
+    {
+      "id": "secrets_store",
+      "label": "Isolated Secrets Store",
+      "type": "database",
+      "zone": "zone_storage",
+      "x": 670,
+      "y": 660,
+      "width": 260,
+      "height": 70,
+      "tags": [
+        "security",
+        "secrets"
+      ],
+      "metadata": {
+        "codeRef": "src/SPLA.Core/Security/SecretsStore.cs",
+        "type": "Secure Key Vault",
+        "responsibilities": [
+          "SSH keys & API tokens",
+          "Never exposed to LLM context",
+          "Resolved just-in-time at execution"
+        ]
+      }
+    },
+    {
+      "id": "blob_store",
+      "label": "Artifact & Blob Storage",
+      "type": "database",
+      "zone": "zone_storage",
+      "x": 960,
+      "y": 660,
+      "width": 250,
+      "height": 70,
+      "tags": [
+        "storage",
+        "blob"
+      ],
+      "metadata": {
+        "codeRef": "src/SPLA.Core/Storage/BlobStorage.cs",
+        "type": "File & Artifact Store",
+        "responsibilities": [
+          "Large tool outputs (Handle routing)",
+          "User downloads and attachments",
+          "Digest summaries"
+        ]
+      }
+    }
+  ],
+  "edges": [
+    {
+      "id": "e1",
+      "from": "chat_ui",
+      "to": "ws_client",
+      "label": "send action",
+      "type": "data-flow"
+    },
+    {
+      "id": "e2",
+      "from": "ws_client",
+      "to": "turn_pump",
+      "label": "WebSocket JSON-RPC",
+      "type": "call"
+    },
+    {
+      "id": "e3",
+      "from": "turn_pump",
+      "to": "agent_runtime",
+      "label": "drive turn",
+      "type": "call"
+    },
+    {
+      "id": "e4",
+      "from": "agent_runtime",
+      "to": "context_composer",
+      "label": "assemble context",
+      "type": "call"
+    },
+    {
+      "id": "e5",
+      "from": "context_composer",
+      "to": "llm_client",
+      "label": "prompt stream",
+      "type": "data-flow"
+    },
+    {
+      "id": "e6",
+      "from": "llm_client",
+      "to": "permission_guard",
+      "label": "tool call request",
+      "type": "call"
+    },
+    {
+      "id": "e7",
+      "from": "permission_guard",
+      "to": "tool_host",
+      "label": "authorized dispatch",
+      "type": "call"
+    },
+    {
+      "id": "e8",
+      "from": "tool_host",
+      "to": "tool_network",
+      "label": "execute",
+      "type": "call"
+    },
+    {
+      "id": "e9",
+      "from": "tool_host",
+      "to": "tool_ssh",
+      "label": "execute",
+      "type": "call"
+    },
+    {
+      "id": "e10",
+      "from": "tool_host",
+      "to": "tool_doc",
+      "label": "execute",
+      "type": "call"
+    },
+    {
+      "id": "e11",
+      "from": "agent_runtime",
+      "to": "sqlite_db",
+      "label": "persist history",
+      "type": "storage"
+    },
+    {
+      "id": "e12",
+      "from": "permission_guard",
+      "to": "secrets_store",
+      "label": "resolve secrets",
+      "type": "security"
+    },
+    {
+      "id": "e13",
+      "from": "tool_host",
+      "to": "blob_store",
+      "label": "store large output (> handle)",
+      "type": "storage"
+    }
+  ]
+}

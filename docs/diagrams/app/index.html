@@ -1,0 +1,129 @@
+<!doctype html>
+<html lang="ru">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>SPLA Diagram — Visualizer &amp; Editor</title>
+    <script type="module" crossorigin src="./assets/index-CCmXbr8G.js"></script>
+    <link rel="stylesheet" crossorigin href="./assets/index-DW8V4dqY.css">
+  </head>
+  <body>
+    <div id="app">
+      <header class="app-header">
+        <div class="brand">
+          <div class="brand-mark">⬡</div>
+          <h1>SPLA Diagram</h1>
+          <span class="chip" data-slot="title">Загрузка…</span>
+          <span class="chip chip-warn" data-slot="dirty" hidden>изменено</span>
+        </div>
+
+        <div class="views" data-slot="views"></div>
+
+        <div class="toolbar">
+          <label class="check" title="Показать или скрыть точки координатной сетки">
+            <input type="checkbox" data-toggle="grid" checked />
+            <span>Точки сетки</span>
+          </label>
+          <label class="check" title="Привязка координат к шагу 10px при перетаскивании">
+            <input type="checkbox" data-toggle="snap" checked />
+            <span>🧲 Привязка</span>
+          </label>
+          <label class="check" title="Перемещать вложенные элементы вместе с зоной">
+            <input type="checkbox" data-toggle="container-drag" checked />
+            <span>📦 Зона-контейнер</span>
+          </label>
+
+          <div class="toolbar-group">
+            <button class="btn btn-primary btn-small" data-action="create-node" title="Добавить блок">➕ Блок</button>
+            <button class="btn btn-small" data-action="create-zone" title="Добавить зону-контейнер">➕ Зона</button>
+            <button class="btn-icon danger" data-action="delete" title="Удалить выбранный элемент (Delete)" disabled>🗑</button>
+          </div>
+
+          <div class="toolbar-group">
+            <button class="btn-icon" data-action="undo" title="Отменить (Ctrl+Z)" disabled>↶</button>
+            <button class="btn-icon" data-action="redo" title="Повторить (Ctrl+Y)" disabled>↷</button>
+          </div>
+
+          <button class="btn btn-primary" data-action="save" title="Сохранить модель на сервер">Сохранить</button>
+          <button class="btn btn-accent" data-action="export-drawio" title="Экспорт в .drawio">.drawio</button>
+          <button class="btn" data-action="toggle-json" title="Показать JSON">Код</button>
+          <button class="btn" data-action="fit" title="Вписать в экран">Вписать</button>
+        </div>
+      </header>
+
+      <div class="app-body">
+        <aside class="sidebar" data-slot="sidebar">
+          <div class="sidebar-head">
+            <span class="sidebar-title">Схемы архитектуры</span>
+            <button class="btn-icon" data-action="toggle-sidebar" title="Свернуть панель">⇤</button>
+          </div>
+
+          <div class="sidebar-scroll">
+            <div class="section-label sidebar-label">Каталог проекта</div>
+            <div data-slot="catalog"></div>
+
+            <div data-slot="custom-catalog-section" hidden>
+              <div class="section-label sidebar-label">Пользовательские</div>
+              <div data-slot="custom-catalog"></div>
+            </div>
+          </div>
+
+          <div class="hint sidebar-label">
+            <div>• <b>Зона</b> тащится за шапку и несёт вложенное</div>
+            <div>• <b>Блок</b> при переносе в зону меняет родителя</div>
+            <div>• <b>[ − / + ]</b> в шапке сворачивает зону</div>
+          </div>
+
+          <div class="sidebar-foot">
+            <button class="btn full" data-action="open-file">📂 <span class="sidebar-label">Открыть JSON…</span></button>
+            <input type="file" accept=".json" data-slot="file-input" hidden />
+          </div>
+        </aside>
+
+        <div class="canvas-area">
+          <div class="with-grid" data-slot="canvas" style="width: 100%; height: 100%"></div>
+
+          <div class="zoom-bar">
+            <button data-action="zoom-in" title="Приблизить">+</button>
+            <button data-action="zoom-out" title="Отдалить">−</button>
+            <button data-action="zoom-reset" title="100%">100%</button>
+            <button data-action="fit" title="Вписать в экран">Вписать</button>
+            <span class="zoom-readout" data-slot="zoom">100%</span>
+          </div>
+
+          <div class="drop-hint" data-slot="drop-hint" hidden>
+            <div class="drop-hint-card">
+              <p style="font-size: 28px; margin: 0 0 4px">📥</p>
+              <p style="margin: 0; font-weight: 600">Перетащите сюда JSON-файл схемы</p>
+            </div>
+          </div>
+        </div>
+
+        <aside class="inspector">
+          <div class="inspector-head">
+            <h2>Инспектор объекта</h2>
+            <span class="badge" data-slot="inspector-badge">Ничего не выбрано</span>
+          </div>
+          <div class="inspector-body" data-slot="inspector-body"></div>
+        </aside>
+      </div>
+
+      <div class="modal" data-slot="json-modal" hidden>
+        <div class="modal-card">
+          <div class="modal-head">
+            <h3>Модель диаграммы (JSON)</h3>
+            <button class="btn-icon" data-action="toggle-json" title="Закрыть">✕</button>
+          </div>
+          <div class="modal-body">
+            <textarea data-slot="json-text" spellcheck="false"></textarea>
+          </div>
+          <div class="modal-foot">
+            <button class="btn" data-action="copy-json">Копировать</button>
+            <button class="btn btn-primary" data-action="apply-json">Применить к холсту</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </body>
+</html>

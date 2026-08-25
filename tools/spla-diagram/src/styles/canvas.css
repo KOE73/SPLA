@@ -1,0 +1,164 @@
+/*
+ * Canvas styling — everything drawn inside the SVG surface.
+ *
+ * Shipped with the library: a host embedding only DiagramCanvas imports this
+ * and nothing else. Application chrome lives in editor.css.
+ */
+
+.spla-canvas-host {
+  position: relative;
+  overflow: hidden;
+  cursor: default;
+  background-color: var(--spla-canvas-bg, #f8fafc);
+}
+
+.spla-canvas-host.is-panning {
+  cursor: grabbing;
+}
+
+.spla-canvas-host.with-grid {
+  background-image:
+    radial-gradient(#cbd5e1 1.2px, transparent 1.2px),
+    radial-gradient(#e2e8f0 1.2px, var(--spla-canvas-bg, #f8fafc) 1.2px);
+  background-size: 20px 20px;
+  background-position: 0 0, 10px 10px;
+}
+
+.spla-canvas {
+  width: 100%;
+  height: 100%;
+  display: block;
+  user-select: none;
+}
+
+/* ------------------------------------------------------------------ nodes */
+
+.spla-node {
+  cursor: grab;
+  transition: filter 0.15s ease, opacity 0.2s ease;
+}
+
+.spla-node:active {
+  cursor: grabbing;
+}
+
+.spla-node:hover {
+  filter: drop-shadow(0 4px 10px rgb(0 0 0 / 12%));
+}
+
+.spla-node.is-selected rect[data-role="drag-handle"] {
+  stroke: #2563eb;
+  stroke-width: 2.5px;
+}
+
+.spla-node-label,
+.spla-node-subtitle {
+  pointer-events: none;
+}
+
+.spla-node-resize {
+  cursor: se-resize;
+}
+
+/* ------------------------------------------------------------------ zones */
+
+.spla-zone {
+  cursor: default;
+  transition: opacity 0.2s ease;
+}
+
+.spla-zone-header {
+  cursor: grab;
+}
+
+.spla-zone-header:active {
+  cursor: grabbing;
+}
+
+.spla-zone-title,
+.spla-zone-semantic {
+  pointer-events: none;
+}
+
+.spla-zone.is-selected .spla-zone-body {
+  stroke: #2563eb;
+  stroke-width: 2.5px;
+}
+
+.spla-zone.is-drop-target .spla-zone-body {
+  stroke: #2563eb;
+  stroke-width: 3px;
+  filter: drop-shadow(0 0 8px rgb(37 99 235 / 30%));
+}
+
+.spla-zone-collapse {
+  cursor: pointer;
+}
+
+.spla-zone-collapse rect {
+  fill: #fff;
+  stroke: #94a3b8;
+  stroke-width: 1.2px;
+  transition: fill 0.15s ease, stroke 0.15s ease;
+}
+
+.spla-zone-collapse:hover rect {
+  fill: #2563eb;
+  stroke: #1d4ed8;
+}
+
+.spla-zone-collapse text {
+  fill: #334155;
+  font-weight: 700;
+  pointer-events: none;
+  transition: fill 0.15s ease;
+}
+
+.spla-zone-collapse:hover text {
+  fill: #fff;
+}
+
+.spla-zone-resize {
+  cursor: nwse-resize;
+  fill: #3b82f6;
+  stroke: #fff;
+  stroke-width: 1.5px;
+}
+
+.spla-zone-resize:hover {
+  fill: #1d4ed8;
+}
+
+/* ------------------------------------------------------------------ edges */
+
+.spla-edge {
+  cursor: pointer;
+  transition: opacity 0.2s ease;
+}
+
+.spla-edge-line {
+  transition: stroke 0.15s ease, stroke-width 0.15s ease;
+}
+
+.spla-edge:hover .spla-edge-line {
+  stroke: #2563eb;
+  stroke-width: 2.5px;
+}
+
+.spla-edge-label {
+  font-size: 11px;
+  font-weight: 500;
+  fill: #475569;
+  pointer-events: none;
+}
+
+.spla-edge.is-selected .spla-edge-line {
+  stroke: #3b82f6;
+  stroke-width: 3px;
+  filter: drop-shadow(0 0 4px #60a5fa);
+}
+
+.spla-edge.is-selected .spla-edge-label {
+  fill: #3b82f6;
+  font-weight: 700;
+}

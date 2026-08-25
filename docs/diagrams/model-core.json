@@ -1,0 +1,410 @@
+{
+  "metadata": {
+    "title": "SPLA Core Architecture (src/core)",
+    "description": "Comprehensive map of the core foundation layers in SPLA.",
+    "version": "1.0",
+    "layout": "subsystem-overview"
+  },
+  "views": [
+    {
+      "id": "overview",
+      "name": "Все модули",
+      "icon": "🏛",
+      "description": "Полная архитектура src/core"
+    },
+    {
+      "id": "security_data",
+      "name": "Security & Storage",
+      "icon": "🛡",
+      "description": "Хранение секретов и состояние",
+      "highlightZones": [
+        "zone_security",
+        "zone_storage"
+      ]
+    },
+    {
+      "id": "mcp_tools",
+      "name": "Tools & MCP",
+      "icon": "🔌",
+      "description": "Инфраструктура плагинов и инструментов",
+      "highlightZones": [
+        "zone_mcp",
+        "zone_domain_plugins"
+      ]
+    }
+  ],
+  "zones": [
+    {
+      "id": "zone_domain",
+      "name": "Domain Core (SPLA.Domain)",
+      "type": "subsystem",
+      "semanticId": "core.domain",
+      "tags": [
+        "domain",
+        "interfaces"
+      ],
+      "x": 40,
+      "y": 40,
+      "width": 640,
+      "height": 420,
+      "style": {
+        "fill": "#f8fafc",
+        "stroke": "#cbd5e1",
+        "strokeWidth": 2,
+        "strokeDasharray": "none",
+        "headerBg": "#e2e8f0"
+      },
+      "metadata": {
+        "description": "Pure domain abstractions and core rules."
+      }
+    },
+    {
+      "id": "zone_mcp",
+      "name": "Tool Dispatch (SPLA.MCP.Core)",
+      "type": "subsystem",
+      "semanticId": "core.mcp",
+      "tags": [
+        "mcp",
+        "tools"
+      ],
+      "x": 720,
+      "y": 40,
+      "width": 380,
+      "height": 420,
+      "style": {
+        "fill": "#eff6ff",
+        "stroke": "#93c5fd",
+        "strokeWidth": 2,
+        "strokeDasharray": "none",
+        "headerBg": "#dbeafe"
+      }
+    },
+    {
+      "id": "zone_security",
+      "name": "Security & Secrets (SPLA.Secrets.Dpapi)",
+      "type": "security-zone",
+      "semanticId": "core.security",
+      "tags": [
+        "security",
+        "dpapi"
+      ],
+      "x": 40,
+      "y": 500,
+      "width": 300,
+      "height": 260,
+      "style": {
+        "fill": "#fff1f2",
+        "stroke": "#fca5a5",
+        "strokeWidth": 2,
+        "strokeDasharray": "none",
+        "headerBg": "#ffe4e6"
+      }
+    },
+    {
+      "id": "zone_host",
+      "name": "Platform & Host (SPLA.Platform)",
+      "type": "subsystem",
+      "semanticId": "core.platform",
+      "tags": [
+        "platform",
+        "host"
+      ],
+      "x": 380,
+      "y": 500,
+      "width": 300,
+      "height": 260,
+      "style": {
+        "fill": "#f0fdf4",
+        "stroke": "#86efac",
+        "strokeWidth": 2,
+        "strokeDasharray": "none",
+        "headerBg": "#dcfce7"
+      }
+    },
+    {
+      "id": "zone_observability",
+      "name": "Observability (SPLA.Observability)",
+      "type": "subsystem",
+      "semanticId": "core.obs",
+      "tags": [
+        "telemetry"
+      ],
+      "x": 720,
+      "y": 500,
+      "width": 380,
+      "height": 260,
+      "style": {
+        "fill": "#faf5ff",
+        "stroke": "#d8b4fe",
+        "strokeWidth": 2,
+        "strokeDasharray": "4,4",
+        "headerBg": "#f3e8ff"
+      }
+    }
+  ],
+  "nodes": [
+    {
+      "id": "domain_llm",
+      "label": "LlmGateway & Pipeline",
+      "type": "service",
+      "zone": "zone_domain",
+      "x": 70,
+      "y": 100,
+      "width": 260,
+      "height": 60,
+      "metadata": {
+        "codeRef": "src/core/SPLA.Domain/Llm/ILlmGateway.cs",
+        "type": "Domain Interface",
+        "description": "Blueprint and abstractions for LLM communication."
+      }
+    },
+    {
+      "id": "domain_agent",
+      "label": "Agent Store & Memory",
+      "type": "database",
+      "zone": "zone_domain",
+      "x": 370,
+      "y": 100,
+      "width": 260,
+      "height": 60,
+      "metadata": {
+        "codeRef": "src/core/SPLA.Domain/Agent/BlobStore.cs",
+        "type": "State Management",
+        "responsibilities": [
+          "KeyValueStore",
+          "BlobStore",
+          "MarkManager"
+        ]
+      }
+    },
+    {
+      "id": "domain_plugins",
+      "label": "PluginManager",
+      "type": "component",
+      "zone": "zone_domain",
+      "x": 70,
+      "y": 210,
+      "width": 260,
+      "height": 60,
+      "metadata": {
+        "codeRef": "src/core/SPLA.Domain/Plugin/PluginManager.cs",
+        "type": "Extensibility",
+        "description": "Loads external DLLs and registers extensions."
+      }
+    },
+    {
+      "id": "domain_skills",
+      "label": "Skill & ToolSet Session",
+      "type": "component",
+      "zone": "zone_domain",
+      "x": 370,
+      "y": 210,
+      "width": 260,
+      "height": 60,
+      "metadata": {
+        "codeRef": "src/core/SPLA.Domain/Agent/ToolSetSession.cs",
+        "type": "State Management",
+        "description": "Tracks active toolsets and skill lifecycles."
+      }
+    },
+    {
+      "id": "domain_eventbus",
+      "label": "AgentEventBus",
+      "type": "service",
+      "zone": "zone_domain",
+      "x": 70,
+      "y": 320,
+      "width": 560,
+      "height": 60,
+      "metadata": {
+        "codeRef": "src/core/SPLA.Domain/Wire/AgentEventBus.cs",
+        "type": "Pub/Sub",
+        "description": "Internal event routing."
+      }
+    },
+    {
+      "id": "mcp_host",
+      "label": "McpHost",
+      "type": "service",
+      "zone": "zone_mcp",
+      "x": 760,
+      "y": 100,
+      "width": 300,
+      "height": 70,
+      "metadata": {
+        "codeRef": "src/core/SPLA.MCP.Core/McpHost.cs",
+        "type": "Tool Dispatcher",
+        "description": "Standardizes tool execution via MCP."
+      }
+    },
+    {
+      "id": "mcp_tool_exposure",
+      "label": "ToolExposure (Levels)",
+      "type": "security-component",
+      "zone": "zone_mcp",
+      "x": 760,
+      "y": 210,
+      "width": 300,
+      "height": 60,
+      "metadata": {
+        "codeRef": "src/core/SPLA.MCP.Core/ToolExposure.cs",
+        "type": "Gating Mechanism",
+        "responsibilities": [
+          "Tool Level Filtering",
+          "Security Guardrails"
+        ]
+      }
+    },
+    {
+      "id": "mcp_registry",
+      "label": "ToolSetRegistry",
+      "type": "component",
+      "zone": "zone_mcp",
+      "x": 760,
+      "y": 310,
+      "width": 300,
+      "height": 60,
+      "metadata": {
+        "codeRef": "src/core/SPLA.MCP.Core/ToolSetRegistry.cs",
+        "type": "Registry",
+        "description": "Maps loaded tool sets to available commands."
+      }
+    },
+    {
+      "id": "sec_dpapi",
+      "label": "DpapiFileSecretStore",
+      "type": "security-component",
+      "zone": "zone_security",
+      "x": 70,
+      "y": 560,
+      "width": 240,
+      "height": 60,
+      "metadata": {
+        "codeRef": "src/core/SPLA.Secrets.Dpapi/DpapiFileSecretStore.cs",
+        "type": "Secure Storage",
+        "description": "Windows DPAPI encrypted secrets."
+      }
+    },
+    {
+      "id": "sec_identity",
+      "label": "IdentityProvider",
+      "type": "security-component",
+      "zone": "zone_security",
+      "x": 70,
+      "y": 660,
+      "width": 240,
+      "height": 60,
+      "metadata": {
+        "codeRef": "src/core/SPLA.Domain/Identity/IdentityProviderLoader.cs",
+        "type": "Auth",
+        "description": "Resolves user claims."
+      }
+    },
+    {
+      "id": "host_sandbox",
+      "label": "LocalShell & Sandbox",
+      "type": "component",
+      "zone": "zone_host",
+      "x": 410,
+      "y": 560,
+      "width": 240,
+      "height": 60,
+      "metadata": {
+        "codeRef": "src/core/SPLA.Domain/Host/LocalShell.cs",
+        "type": "OS Bridge",
+        "responsibilities": [
+          "Command Execution",
+          "Process Isolation"
+        ]
+      }
+    },
+    {
+      "id": "host_workspace",
+      "label": "LocalWorkspace",
+      "type": "component",
+      "zone": "zone_host",
+      "x": 410,
+      "y": 660,
+      "width": 240,
+      "height": 60,
+      "metadata": {
+        "codeRef": "src/core/SPLA.Domain/Host/LocalWorkspace.cs",
+        "type": "VFS",
+        "description": "Project mounting and file I/O."
+      }
+    },
+    {
+      "id": "obs_otel",
+      "label": "OpenTelemetry Setup",
+      "type": "service",
+      "zone": "zone_observability",
+      "x": 760,
+      "y": 560,
+      "width": 300,
+      "height": 60,
+      "metadata": {
+        "codeRef": "src/core/SPLA.Observability/OtelBuilder.cs",
+        "type": "Instrumentation",
+        "description": "Hooks metrics and tracing into the pipeline."
+      }
+    }
+  ],
+  "edges": [
+    {
+      "id": "e1",
+      "from": "domain_llm",
+      "to": "domain_plugins",
+      "label": "discovers",
+      "type": "call"
+    },
+    {
+      "id": "e2",
+      "from": "domain_plugins",
+      "to": "mcp_host",
+      "label": "registers tools",
+      "type": "data-flow"
+    },
+    {
+      "id": "e3",
+      "from": "mcp_host",
+      "to": "mcp_tool_exposure",
+      "label": "checks level",
+      "type": "security"
+    },
+    {
+      "id": "e4",
+      "from": "mcp_host",
+      "to": "mcp_registry",
+      "label": "resolves",
+      "type": "call"
+    },
+    {
+      "id": "e5",
+      "from": "domain_eventbus",
+      "to": "obs_otel",
+      "label": "emits telemetry",
+      "type": "data-flow"
+    },
+    {
+      "id": "e6",
+      "from": "domain_skills",
+      "to": "domain_agent",
+      "label": "state",
+      "type": "storage"
+    },
+    {
+      "id": "e7",
+      "from": "sec_dpapi",
+      "to": "sec_identity",
+      "label": "secure keys",
+      "type": "security"
+    },
+    {
+      "id": "e8",
+      "from": "host_sandbox",
+      "to": "host_workspace",
+      "label": "I/O",
+      "type": "storage"
+    }
+  ]
+}

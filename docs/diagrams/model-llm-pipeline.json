@@ -1,0 +1,425 @@
+{
+  "$schema": "https://spla.local/schemas/diagram-v1.json",
+  "version": "1.0.0",
+  "metadata": {
+    "title": "LLM Pipeline & Context Composition",
+    "description": "Lifecycle of prompt assembly, typed contributors, token streaming, and output stage processing",
+    "author": "SPLA Agent",
+    "created": "2026-08-25",
+    "layout": "message-flow"
+  },
+  "views": [
+    {
+      "id": "full_pipeline",
+      "name": "Весь конвейер (Full Pipeline)",
+      "icon": "🔄",
+      "description": "Complete flow from user prompt through contributors to model and output parser"
+    },
+    {
+      "id": "contributors_view",
+      "name": "Сборка контекста (Contributors)",
+      "icon": "🧩",
+      "description": "Typed context contributors producing system prompt slices",
+      "highlightZones": [
+        "zone_contributors"
+      ],
+      "highlightNodes": [
+        "composer",
+        "contrib_system",
+        "contrib_skills",
+        "contrib_tools",
+        "contrib_history"
+      ]
+    },
+    {
+      "id": "output_view",
+      "name": "Обработка ответа (Output Stage)",
+      "icon": "⚡",
+      "description": "Streaming token parser, tool call detection, and thinking block extraction",
+      "highlightZones": [
+        "zone_output"
+      ],
+      "highlightNodes": [
+        "model_stream",
+        "token_parser",
+        "tool_call_extractor",
+        "thinking_extractor"
+      ]
+    }
+  ],
+  "zones": [
+    {
+      "id": "zone_input",
+      "name": "1. Input & Trigger",
+      "type": "boundary",
+      "semanticId": "zone.llm.input",
+      "tags": [
+        "input",
+        "chat"
+      ],
+      "x": 40,
+      "y": 40,
+      "width": 240,
+      "height": 480,
+      "style": {
+        "fill": "#f8fafc",
+        "stroke": "#94a3b8",
+        "strokeWidth": 2,
+        "strokeDasharray": "4,4",
+        "headerBg": "#e2e8f0"
+      },
+      "metadata": {
+        "description": "User turn trigger, active conversation context, and attachments."
+      }
+    },
+    {
+      "id": "zone_contributors",
+      "name": "2. Typed Context Assembly (Contributors)",
+      "type": "subsystem",
+      "semanticId": "zone.llm.composition",
+      "tags": [
+        "composition",
+        "contributors",
+        "prompt"
+      ],
+      "x": 310,
+      "y": 40,
+      "width": 460,
+      "height": 480,
+      "style": {
+        "fill": "#f0fdf4",
+        "stroke": "#86efac",
+        "strokeWidth": 2,
+        "strokeDasharray": "none",
+        "headerBg": "#dcfce7"
+      },
+      "metadata": {
+        "description": "Ordered typed contributors combining system instructions, skills, active tools, and memory."
+      }
+    },
+    {
+      "id": "zone_model",
+      "name": "3. Model Execution",
+      "type": "external-system",
+      "semanticId": "zone.llm.gateway",
+      "tags": [
+        "model",
+        "gateway"
+      ],
+      "x": 800,
+      "y": 40,
+      "width": 240,
+      "height": 480,
+      "style": {
+        "fill": "#fffbeb",
+        "stroke": "#fde68a",
+        "strokeWidth": 2,
+        "strokeDasharray": "none",
+        "headerBg": "#fef3c7"
+      },
+      "metadata": {
+        "description": "Unified streaming connection to local (Ollama/LMStudio) or cloud (Anthropic/Gemini/OpenAI) models."
+      }
+    },
+    {
+      "id": "zone_output",
+      "name": "4. Output Stage & Parsing",
+      "type": "subsystem",
+      "semanticId": "zone.llm.output",
+      "tags": [
+        "output",
+        "streaming",
+        "parser"
+      ],
+      "x": 1070,
+      "y": 40,
+      "width": 320,
+      "height": 480,
+      "style": {
+        "fill": "#eff6ff",
+        "stroke": "#93c5fd",
+        "strokeWidth": 2,
+        "strokeDasharray": "none",
+        "headerBg": "#dbeafe"
+      },
+      "metadata": {
+        "description": "Token stream demuxing: thinking tags, text chunks, and structured tool calls."
+      }
+    }
+  ],
+  "nodes": [
+    {
+      "id": "user_turn",
+      "label": "User Input Envelope",
+      "type": "component",
+      "zone": "zone_input",
+      "x": 60,
+      "y": 100,
+      "width": 200,
+      "height": 60,
+      "tags": [
+        "input"
+      ],
+      "metadata": {
+        "codeRef": "src/SPLA.Core/Protocol/MessageEnvelope.cs",
+        "type": "Input Request",
+        "responsibilities": [
+          "Holds user prompt text",
+          "ChatId correlation"
+        ]
+      }
+    },
+    {
+      "id": "composer",
+      "label": "AgentContextComposer",
+      "type": "service",
+      "zone": "zone_contributors",
+      "x": 330,
+      "y": 100,
+      "width": 420,
+      "height": 60,
+      "tags": [
+        "composition"
+      ],
+      "metadata": {
+        "codeRef": "src/SPLA.Agent/Composition/AgentContextComposer.cs",
+        "type": "Composer Pipeline",
+        "responsibilities": [
+          "Iterates over registered IAgentContributor instances",
+          "Enforces English contract",
+          "Applies token budgeting"
+        ]
+      }
+    },
+    {
+      "id": "contrib_system",
+      "label": "SystemDoctrineContributor",
+      "type": "component",
+      "zone": "zone_contributors",
+      "x": 330,
+      "y": 180,
+      "width": 200,
+      "height": 55,
+      "tags": [
+        "contributor"
+      ],
+      "metadata": {
+        "codeRef": "src/SPLA.Agent/Composition/SystemDoctrineContributor.cs",
+        "type": "Prompt Slice",
+        "responsibilities": [
+          "Core doctrine rules",
+          "Operational mode rules (Chat..Agent)"
+        ]
+      }
+    },
+    {
+      "id": "contrib_skills",
+      "label": "SkillsContributor",
+      "type": "component",
+      "zone": "zone_contributors",
+      "x": 550,
+      "y": 180,
+      "width": 200,
+      "height": 55,
+      "tags": [
+        "contributor"
+      ],
+      "metadata": {
+        "codeRef": "src/SPLA.Agent/Composition/SkillsContributor.cs",
+        "type": "Prompt Slice",
+        "responsibilities": [
+          "Active skill prompts",
+          "Discovered available skills list"
+        ]
+      }
+    },
+    {
+      "id": "contrib_tools",
+      "label": "ActiveToolsContributor",
+      "type": "component",
+      "zone": "zone_contributors",
+      "x": 330,
+      "y": 255,
+      "width": 200,
+      "height": 55,
+      "tags": [
+        "contributor"
+      ],
+      "metadata": {
+        "codeRef": "src/SPLA.Agent/Composition/ActiveToolsContributor.cs",
+        "type": "Prompt Slice",
+        "responsibilities": [
+          "JSON-schema definitions for active toolset"
+        ]
+      }
+    },
+    {
+      "id": "contrib_history",
+      "label": "ConversationHistoryContributor",
+      "type": "component",
+      "zone": "zone_contributors",
+      "x": 550,
+      "y": 255,
+      "width": 200,
+      "height": 55,
+      "tags": [
+        "contributor"
+      ],
+      "metadata": {
+        "codeRef": "src/SPLA.Agent/Composition/ConversationHistoryContributor.cs",
+        "type": "Prompt Slice",
+        "responsibilities": [
+          "Previous turn steps",
+          "Tool execution results digests"
+        ]
+      }
+    },
+    {
+      "id": "model_stream",
+      "label": "LlmClient Gateway",
+      "type": "external-system",
+      "zone": "zone_model",
+      "x": 820,
+      "y": 100,
+      "width": 200,
+      "height": 70,
+      "tags": [
+        "llm",
+        "stream"
+      ],
+      "metadata": {
+        "codeRef": "src/SPLA.Core/Llm/LlmClient.cs",
+        "type": "Streaming Client",
+        "responsibilities": [
+          "Sends assembled messages",
+          "Consumes SSE stream"
+        ]
+      }
+    },
+    {
+      "id": "token_parser",
+      "label": "TokenStreamDemuxer",
+      "type": "service",
+      "zone": "zone_output",
+      "x": 1090,
+      "y": 100,
+      "width": 280,
+      "height": 60,
+      "tags": [
+        "parser"
+      ],
+      "metadata": {
+        "codeRef": "src/SPLA.Core/Llm/TokenStreamDemuxer.cs",
+        "type": "Stream Demuxer",
+        "responsibilities": [
+          "Parses incremental tokens in real-time"
+        ]
+      }
+    },
+    {
+      "id": "thinking_extractor",
+      "label": "Thinking Block Extractor",
+      "type": "component",
+      "zone": "zone_output",
+      "x": 1090,
+      "y": 190,
+      "width": 280,
+      "height": 55,
+      "tags": [
+        "parser"
+      ],
+      "metadata": {
+        "codeRef": "src/SPLA.Core/Llm/ThinkingExtractor.cs",
+        "type": "Thought Processor",
+        "responsibilities": [
+          "Extracts <thought> tags without polluting main text"
+        ]
+      }
+    },
+    {
+      "id": "tool_call_extractor",
+      "label": "ToolCall Accumulator",
+      "type": "component",
+      "zone": "zone_output",
+      "x": 1090,
+      "y": 270,
+      "width": 280,
+      "height": 60,
+      "tags": [
+        "parser"
+      ],
+      "metadata": {
+        "codeRef": "src/SPLA.Core/Llm/ToolCallExtractor.cs",
+        "type": "Call Parser",
+        "responsibilities": [
+          "Assembles complete JSON arguments for tool calls"
+        ]
+      }
+    }
+  ],
+  "edges": [
+    {
+      "id": "p1",
+      "from": "user_turn",
+      "to": "composer",
+      "label": "initiate turn",
+      "type": "call"
+    },
+    {
+      "id": "p2",
+      "from": "composer",
+      "to": "contrib_system",
+      "label": "pull slice",
+      "type": "data-flow"
+    },
+    {
+      "id": "p3",
+      "from": "composer",
+      "to": "contrib_skills",
+      "label": "pull slice",
+      "type": "data-flow"
+    },
+    {
+      "id": "p4",
+      "from": "composer",
+      "to": "contrib_tools",
+      "label": "pull slice",
+      "type": "data-flow"
+    },
+    {
+      "id": "p5",
+      "from": "composer",
+      "to": "contrib_history",
+      "label": "pull slice",
+      "type": "data-flow"
+    },
+    {
+      "id": "p6",
+      "from": "composer",
+      "to": "model_stream",
+      "label": "submit payload",
+      "type": "call"
+    },
+    {
+      "id": "p7",
+      "from": "model_stream",
+      "to": "token_parser",
+      "label": "SSE tokens",
+      "type": "data-flow"
+    },
+    {
+      "id": "p8",
+      "from": "token_parser",
+      "to": "thinking_extractor",
+      "label": "thought chunks",
+      "type": "data-flow"
+    },
+    {
+      "id": "p9",
+      "from": "token_parser",
+      "to": "tool_call_extractor",
+      "label": "tool call chunks",
+      "type": "data-flow"
+    }
+  ]
+}

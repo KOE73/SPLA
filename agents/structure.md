@@ -105,6 +105,13 @@ in addition to the root `AGENTS.md`.
   and rejected on measurement — see
   [ADR_20260818_build_package-manager](../docs/adr/ADR_20260818_build_package-manager.md), which also
   names the condition for revisiting it.
+- `tools/`: Standalone helper tools and utilities.
+  - `tools/spla-arch`: Dedicated Go CLI tool for parsing C# codebase architecture, extracting components/interfaces, and managing diagram JSON models.
+  - `tools/spla-diagram`: `@spla/diagram` — a local TypeScript/Vite package holding the diagram
+    canvas and editor. `DiagramCanvas` is reusable on its own; `DiagramEditor` adds catalog,
+    inspector, history and persistence. Requirements and the contract-v2 analysis live in
+    `tools/spla-diagram/docs/`. Builds to `docs/diagrams/app/`, which `docs/diagrams/server.go`
+    serves.
 - `docs/`, `agents/`, `Images/`: Documentation and assets (unchanged by the layered `src/` layout).
 - `.github/workflows/`: GitHub Actions. `ci.yml` (build + tests on `main`/`work` and on pull
   requests into `main`) and `release.yml` (a push to `main` that touches sources, or a manual run →

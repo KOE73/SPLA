@@ -1,0 +1,52 @@
+{
+  "schemas": [
+    {
+      "id": "spla_core",
+      "file": "model.json",
+      "title": "SPLA System Architecture",
+      "subtitle": "Core, runtime, tools & storage",
+      "icon": "🏛",
+      "theme": "blue"
+    },
+    {
+      "id": "src_core",
+      "file": "model-core.json",
+      "title": "Core Layer (src/core)",
+      "subtitle": "Domain, MCP, Security, Host",
+      "icon": "🧠",
+      "theme": "emerald"
+    },
+    {
+      "id": "src_core_full",
+      "file": "model-core-full.json",
+      "title": "FULL Core (All Classes)",
+      "subtitle": "240+ classes, interfaces, middlewares",
+      "icon": "🌌",
+      "theme": "indigo"
+    },
+    {
+      "id": "llm_pipeline",
+      "file": "model-llm-pipeline.json",
+      "title": "LLM Pipeline & Context",
+      "subtitle": "Prompt assembly & output stage",
+      "icon": "🔄",
+      "theme": "indigo"
+    },
+    {
+      "id": "plugins_ecosystem",
+      "file": "model-plugins.json",
+      "title": "Plugins & Tools Ecosystem",
+      "subtitle": "Network, SSH, Documents & MCP",
+      "icon": "🔌",
+      "theme": "amber"
+    },
+    {
+      "id": "feature_bench",
+      "file": "model-features.json",
+      "title": "Feature Bench",
+      "subtitle": "Стенд проверки: все фичи рендера",
+      "icon": "🧪",
+      "theme": "emerald"
+    }
+  ]
+}
