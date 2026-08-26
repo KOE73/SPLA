@@ -273,19 +273,123 @@ public static class SettingsOps
         if (path != null)
         {
             var project = ConfigLoader.LoadProjectRaw(path);
-            // Write only when it departs from the default, so a project that never touched this stays
-            // free of an "mcp:" section — same convention SaveAgent follows for its own flags.
-            project.Mcp = runtime.Settings.McpEnabled || runtime.Settings.McpPort is > 0
-                ? new SplaMcpSection
-                {
-                    Enabled = runtime.Settings.McpEnabled ? true : null,
-                    Port = runtime.Settings.McpPort
-                }
-                : null;
+            // Both halves of mcp: (outward Enabled/Port, inward Servers) are written together here —
+            // this save touched only the outward half, so the inward half carries through unchanged
+            // from the live ResolvedSettings rather than being dropped. See BuildMcpSection.
+            project.Mcp = BuildMcpSection(runtime.Settings.McpEnabled, runtime.Settings.McpPort, runtime.Settings.McpServers);
             ConfigLoader.SaveProjectSections(project, path, "mcp");
         }
 
         return GetMcp(runtime);
+    }
+
+    // ── MCP servers: foreign servers this project consumes, and their live status ─
+
+    /// <summary>Builds the configured server list merged with live status from
+    /// <see cref="McpClientManager.Servers"/> by id. A configured server with no matching live entry
+    /// yet (still connecting, or added to config after this process started) gets
+    /// <see cref="McpServerDto.State"/> = null rather than a thrown exception — it is a perfectly
+    /// ordinary state, not an error.</summary>
+    public static McpServersPayload GetMcpServers(AgentRuntime runtime)
+    {
+        var live = runtime.McpClients.Servers.ToDictionary(s => s.Id, StringComparer.OrdinalIgnoreCase);
+
+        return new McpServersPayload
+        {
+            CanPersist = runtime.Settings.ProjectFilePath != null,
+            Servers = runtime.Settings.McpServers.Select(s =>
+            {
+                live.TryGetValue(s.Id ?? "", out var status);
+                return new McpServerDto
+                {
+                    Id = s.Id ?? "",
+                    Name = s.Name,
+                    Enabled = s.Enabled != false,
+                    Transport = s.Transport ?? "stdio",
+                    Command = s.Command,
+                    Args = s.Args,
+                    Cwd = s.Cwd,
+                    // References only, never resolved values — agents/secrets.md. Nothing here calls
+                    // SecretResolver; resolution happens once, at connect time, in McpClientManager.
+                    Env = s.Env,
+                    Url = s.Url,
+                    Headers = s.Headers,
+                    Description = s.Description,
+                    Origin = string.Equals(s.Origin, "named", StringComparison.OrdinalIgnoreCase) ? "named" : "unnamed",
+                    Level = s.Level,
+                    State = status?.State.ToString(),
+                    LastError = status?.LastError,
+                    ToolCount = status?.ToolCount ?? 0
+                };
+            }).ToList()
+        };
+    }
+
+    /// <summary>Replaces the configured server list and persists it. Does no naming/collision
+    /// validation — <c>McpToolNaming</c>/<c>McpHost</c> already do that at connect time, and duplicating
+    /// it here would be a second, possibly disagreeing, answer to the same question. Returns
+    /// <see cref="GetMcpServers"/> so the reply carries live status immediately, not just what was
+    /// just written (a server this process already connected keeps showing its real state).</summary>
+    public static McpServersPayload SaveMcpServers(AgentRuntime runtime, McpServersPayload dto)
+    {
+        var sections = dto.Servers
+            .Where(d => !string.IsNullOrWhiteSpace(d.Id))
+            .Select(d => new SplaMcpServerSection
+            {
+                Id = d.Id,
+                Name = d.Name,
+                Enabled = d.Enabled ? null : false,
+                Transport = d.Transport,
+                Command = d.Command,
+                Args = d.Args,
+                Cwd = d.Cwd,
+                Env = d.Env,
+                Url = d.Url,
+                Headers = d.Headers,
+                Description = d.Description,
+                Origin = string.Equals(d.Origin, "named", StringComparison.OrdinalIgnoreCase) ? "named" : null,
+                Level = d.Level
+            })
+            .ToList();
+
+        runtime.Settings.McpServers = sections;
+
+        var path = runtime.Settings.ProjectFilePath;
+        if (path != null)
+        {
+            var project = ConfigLoader.LoadProjectRaw(path);
+            // Symmetric to SaveMcp: this save touched only the server list, so the outward
+            // Enabled/Port half carries through unchanged from the live ResolvedSettings.
+            project.Mcp = BuildMcpSection(runtime.Settings.McpEnabled, runtime.Settings.McpPort, sections);
+            ConfigLoader.SaveProjectSections(project, path, "mcp");
+        }
+
+        return GetMcpServers(runtime);
+    }
+
+    /// <summary>Retries one already-tracked server's connection (<see cref="McpClientManager.ReconnectAsync"/>)
+    /// and returns the refreshed status regardless of whether the retry succeeded — the status list
+    /// itself is what shows the outcome, there is nothing else worth returning.</summary>
+    public static async Task<McpServersPayload> ReconnectMcpServer(AgentRuntime runtime, string serverId, CancellationToken ct = default)
+    {
+        await runtime.McpClients.ReconnectAsync(serverId, ct);
+        return GetMcpServers(runtime);
+    }
+
+    /// <summary>The single place that builds <c>project.Mcp</c> from both halves of the section —
+    /// outward (Enabled/Port) and inward (Servers) — so neither <see cref="SaveMcp"/> nor
+    /// <see cref="SaveMcpServers"/> can construct a section that silently drops the half it did not
+    /// touch. Null only when every field is at its default, so an untouched project stays free of an
+    /// "mcp:" section, same convention as <see cref="SaveAgent"/>.</summary>
+    private static SplaMcpSection? BuildMcpSection(bool enabled, int? port, List<SplaMcpServerSection> servers)
+    {
+        if (!enabled && port is not > 0 && servers.Count == 0) return null;
+        return new SplaMcpSection
+        {
+            Enabled = enabled ? true : null,
+            Port = port,
+            Servers = servers.Count > 0 ? servers : null
+        };
     }
 
     // ── Plugins: enable/disable + custom prompt + opaque settings blob ───────

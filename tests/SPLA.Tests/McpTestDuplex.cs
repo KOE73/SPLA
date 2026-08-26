@@ -113,7 +113,12 @@ internal static class McpTestDuplex
 
         var spec = new McpServerSpec(serverId, McpTransportKind.Stdio)
         {
-            Timeout = timeout ?? TimeSpan.FromSeconds(10)
+            // Generous on purpose: these pipes are in-memory and normally answer in milliseconds, but
+            // under a full-suite run this project's own 500-iteration concurrency test
+            // (DynamicToolRegistrationTests) shares the same thread pool, and a starved reader thread
+            // has been observed to miss a 10s deadline under that load (never in isolation) — a false
+            // TaskCanceledException from test scheduling, not from anything McpServerSession does.
+            Timeout = timeout ?? TimeSpan.FromSeconds(30)
         };
 
         var session = new McpServerSession(
