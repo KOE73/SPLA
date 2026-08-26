@@ -216,6 +216,15 @@ public sealed class SplaServiceHost
         builder.Logging.ClearProviders();
         builder.Logging.AddProvider(new ForwardingLoggerProvider(loggerFactory));
 
+        // Built here rather than in its old spot below the route table: /mcp (mapped further down)
+        // needs to hold it for the life of every request, and a route delegate can only close over a
+        // local that already exists. Nothing between here and StartAsync touches the lease, so moving
+        // the construction earlier changes no behaviour — it just makes the variable reachable where
+        // it is needed.
+        var lease = new InstanceLease(
+            hub, registry, options.IdleTimeout, options.StallAfter,
+            loggerFactory.CreateLogger<InstanceLease>());
+
         string scheme;
         if (options.UseHttps)
         {
@@ -267,7 +276,7 @@ public sealed class SplaServiceHost
         // JSON-RPC line in, one line out — McpStdioServer needs nothing more than a reader that hits
         // EOF after that line, which a request body naturally does.
         if (options.McpEnabled)
-            app.MapPost("/mcp", (Func<HttpContext, Task<IResult>>)(ctx => HandleMcpAsync(ctx, registry)));
+            app.MapPost("/mcp", (Func<HttpContext, Task<IResult>>)(ctx => HandleMcpAsync(ctx, registry, lease)));
 
         if (options.EffectiveAuthMode == AuthMode.Negotiate)
         {
@@ -365,10 +374,6 @@ public sealed class SplaServiceHost
 
         app.Map("/ws", (HttpContext context) =>
             HandleWebSocketAsync(context, registry, options, serverRoot, hub, auth, initialChat, loggerFactory));
-
-        var lease = new InstanceLease(
-            hub, registry, options.IdleTimeout, options.StallAfter,
-            loggerFactory.CreateLogger<InstanceLease>());
 
         // Unused project runtimes go on a slow sweep. Idle only, and only when nobody is bound to
         // them — a runtime holds nothing unique (chats, KV and the tally are on disk), so dropping
@@ -749,11 +754,21 @@ public sealed class SplaServiceHost
     /// in flight before returning. That is invisible for an instant call like <c>tools/list</c> but
     /// silently killed anything doing real I/O — <c>ssh_run</c> connecting to a host, mid-TCP-handshake,
     /// came back as an empty response because the cancellation raced its own completion and won.
-    /// <see cref="PendingLineReader"/> holds EOF back until the call is actually done (signalled by
+    /// <see cref="McpHttpFraming.PendingLineReader"/> holds EOF back until the call is actually done (signalled by
     /// either writer below), so the call's own cancellation token is never touched before it is done
-    /// with it.</para></summary>
-    private static async Task<IResult> HandleMcpAsync(HttpContext ctx, AgentRuntimeRegistry registry)
+    /// with it.</para>
+    /// <para><b>Why this holds the lease.</b> This path never touches <see cref="ConnectionHub"/> (it
+    /// is one request/response, not a socket) and registers no <see cref="TurnRegistry"/> entry of its
+    /// own — so without an explicit hold, <see cref="InstanceLease.WatchAsync"/> sees zero clients,
+    /// zero holders and an <c>Idle</c> state and is free to evict mid-call, including partway through
+    /// an hour-long tool call still streaming over SSE. <c>lease.Hold()</c> for the whole method body
+    /// (a <c>using</c>, so every return path and every exception releases it, including
+    /// <see cref="HttpContext.RequestAborted"/> unwinding through <c>await running</c>) is what makes
+    /// an MCP call as eviction-safe as a turn started from <c>/ws</c>.</para></summary>
+    private static async Task<IResult> HandleMcpAsync(HttpContext ctx, AgentRuntimeRegistry registry, InstanceLease lease)
     {
+        using var hold = lease.Hold();
+
         string line;
         using (var bodyReader = new StreamReader(ctx.Request.Body))
         {
@@ -774,7 +789,13 @@ public sealed class SplaServiceHost
         var runtime = registry.Open(project).Runtime;
         var exposure = SPLA.MCP.Core.ToolExposure.Default;
 
-        var reader = new PendingLineReader(line);
+        // Marks the instance active the moment the call arrives. Cheap insurance alongside the lease
+        // hold above: the hold keeps eviction off entirely, but touching activity too means
+        // registry.State() (used elsewhere — health, the hub's "3 windows" style summaries) doesn't
+        // report a project that is mid-MCP-call as flatly Idle.
+        runtime.Turns.Touch();
+
+        var reader = new McpHttpFraming.PendingLineReader(line);
         var server = new SPLA.Mcp.McpStdioServer(
             runtime.McpHost,
             () => runtime.McpHost.GetToolDefinitionsFor(exposure),
@@ -791,7 +812,7 @@ public sealed class SplaServiceHost
             ctx.Response.ContentType = "text/event-stream";
             ctx.Response.Headers.CacheControl = "no-cache";
 
-            var sse = new SseWriter(ctx.Response.Body, requestId);
+            var sse = new SseWriter(ctx.Response.Body, requestId, onFrame: () => runtime.Turns.Touch());
             var runningSse = server.RunAsync(reader, sse, ctx.RequestAborted);
 
             var finishedSse = await Task.WhenAny(sse.FinalResponseWritten, runningSse);
@@ -802,7 +823,7 @@ public sealed class SplaServiceHost
             return Results.Empty; // the response was already streamed directly to ctx.Response.Body
         }
 
-        var writer = new CapturingWriter(requestId);
+        var writer = new McpHttpFraming.CapturingWriter(requestId);
         var running = server.RunAsync(reader, writer, ctx.RequestAborted);
 
         string? responseLine = null;
@@ -827,69 +848,6 @@ public sealed class SplaServiceHost
         return responseLine is null ? Results.NoContent() : Results.Text(responseLine, "application/json");
     }
 
-    /// <summary>True when <paramref name="jsonLine"/> is the reply to the request that carried
-    /// <paramref name="requestId"/> — as opposed to a <c>notifications/progress</c> frame, which has no
-    /// <c>id</c> at all. Shared by both writers below so "which line is the actual answer" is decided
-    /// once, the same way, regardless of transport.</summary>
-    private static bool IsFinalResponse(string? jsonLine, System.Text.Json.Nodes.JsonNode? requestId)
-    {
-        if (string.IsNullOrEmpty(jsonLine)) return false;
-        try
-        {
-            var id = System.Text.Json.Nodes.JsonNode.Parse(jsonLine)?["id"];
-            return requestId is null
-                ? id is null
-                : System.Text.Json.Nodes.JsonNode.DeepEquals(id, requestId);
-        }
-        catch (System.Text.Json.JsonException) { return false; }
-    }
-
-    /// <summary>Yields one line, then blocks — never hands <c>McpStdioServer.RunAsync</c> an EOF until
-    /// <see cref="SignalEof"/> is called. See <see cref="HandleMcpAsync"/> for why that matters.</summary>
-    private sealed class PendingLineReader : TextReader
-    {
-        private readonly string _line;
-        private bool _sent;
-        private readonly TaskCompletionSource _eof = new(TaskCreationOptions.RunContinuationsAsynchronously);
-
-        public PendingLineReader(string line) => _line = line;
-
-        public void SignalEof() => _eof.TrySetResult();
-
-        public override async ValueTask<string?> ReadLineAsync(CancellationToken cancellationToken)
-        {
-            if (!_sent) { _sent = true; return _line; }
-            await _eof.Task.WaitAsync(cancellationToken).ConfigureAwait(false);
-            return null;
-        }
-    }
-
-    /// <summary>Captures the reply matching the request's own id and nothing else — a progress
-    /// notification arriving on this path (a client that sent <c>_meta.progressToken</c> without
-    /// asking for SSE) is silently dropped rather than mistaken for the answer.
-    /// <see cref="ResponseWritten"/> completes the moment the real reply is written, which is the
-    /// signal <see cref="HandleMcpAsync"/> waits on before it lets the reader see EOF.</summary>
-    private sealed class CapturingWriter : TextWriter
-    {
-        private readonly System.Text.Json.Nodes.JsonNode? _requestId;
-        private readonly TaskCompletionSource<string?> _written =
-            new(TaskCreationOptions.RunContinuationsAsynchronously);
-
-        public CapturingWriter(System.Text.Json.Nodes.JsonNode? requestId) => _requestId = requestId;
-
-        public override System.Text.Encoding Encoding => System.Text.Encoding.UTF8;
-
-        public Task<string?> ResponseWritten => _written.Task;
-
-        public override Task WriteLineAsync(string? value)
-        {
-            if (IsFinalResponse(value, _requestId)) _written.TrySetResult(value);
-            return Task.CompletedTask;
-        }
-
-        public override Task FlushAsync() => Task.CompletedTask;
-    }
-
     /// <summary>Streams every frame straight to the response body as an SSE <c>data:</c> event —
     /// progress notifications and the final reply alike, in the order <c>McpStdioServer</c> produces
     /// them. This is the piece that makes <c>/mcp</c> a real network analogue of stdio: a client that
@@ -899,14 +857,19 @@ public sealed class SplaServiceHost
     {
         private readonly Stream _body;
         private readonly System.Text.Json.Nodes.JsonNode? _requestId;
+        private readonly Action? _onFrame;
         private readonly TaskCompletionSource _finalResponseWritten =
             new(TaskCreationOptions.RunContinuationsAsynchronously);
         private readonly SemaphoreSlim _writeGate = new(1, 1);
 
-        public SseWriter(Stream body, System.Text.Json.Nodes.JsonNode? requestId)
+        /// <param name="onFrame">Called for every frame written, progress ticks included — the
+        /// cheapest place to keep <see cref="TurnRegistry.Touch"/> current for a long SSE call, since
+        /// every progress notification McpStdioServer emits already passes through here.</param>
+        public SseWriter(Stream body, System.Text.Json.Nodes.JsonNode? requestId, Action? onFrame = null)
         {
             _body = body;
             _requestId = requestId;
+            _onFrame = onFrame;
         }
 
         public override System.Text.Encoding Encoding => System.Text.Encoding.UTF8;
@@ -918,6 +881,8 @@ public sealed class SplaServiceHost
         public override async Task WriteLineAsync(string? value)
         {
             if (string.IsNullOrEmpty(value)) return;
+
+            _onFrame?.Invoke();
 
             var bytes = System.Text.Encoding.UTF8.GetBytes($"data: {value}\n\n");
             await _writeGate.WaitAsync().ConfigureAwait(false);
@@ -935,7 +900,7 @@ public sealed class SplaServiceHost
             }
             finally { _writeGate.Release(); }
 
-            if (IsFinalResponse(value, _requestId)) _finalResponseWritten.TrySetResult();
+            if (McpHttpFraming.IsFinalResponse(value, _requestId)) _finalResponseWritten.TrySetResult();
         }
 
         public override Task FlushAsync() => Task.CompletedTask;
