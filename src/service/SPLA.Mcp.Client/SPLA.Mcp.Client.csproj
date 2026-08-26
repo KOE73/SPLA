@@ -1,0 +1,26 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    Consuming somebody else's tools over the Model Context Protocol — the opposite direction from
+    SPLA.Mcp, which serves ours outward.
+
+    It knows nothing about tools, permissions or settings on purpose. This project speaks the wire
+    and hands back what the wire said; turning a foreign tool into an IMcpTool, deciding what it is
+    allowed to do, and reading it out of a .spla file all happen above it (steps 3-5 of
+    PLAN_20260826_service_mcp-client). That is why there is no reference to SPLA.MCP.Core here, and
+    why what to connect to arrives as McpServerSpec rather than as a config section: a change to the
+    YAML must not be able to reach the transport.
+
+    The protocol subset is hand-written, for the same reason it is on the serving side: it is small,
+    and writing it keeps both halves of the conversation under our own control.
+  -->
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\core\SPLA.Domain\SPLA.Domain.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="10.0.0" />
+  </ItemGroup>
+
+</Project>

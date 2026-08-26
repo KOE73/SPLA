@@ -1,6 +1,6 @@
 # PLAN 2026-08-26 — MCP-клиент: потребление чужих серверов, волна 1
 
-**Статус: в работе. Шаги 0 и 1 сделаны (ветка mcp/client), 1125 тестов зелёные.** Решения — [`ADR_20260826_service_mcp-client`](../adr/ADR_20260826_service_mcp-client.md).
+**Статус: в работе. Шаги 0, 1, 2, 4 сделаны (ветка mcp/client), 1138 тестов зелёные. Остались 3 (проекция), 5 (рантайм), 6 (UI), 7 (живые прогоны).** Решения — [`ADR_20260826_service_mcp-client`](../adr/ADR_20260826_service_mcp-client.md).
 Всё, что ниже, — как их построить, а не почему они такие.
 
 ## Что строим одной фразой
@@ -76,29 +76,44 @@
 
 ---
 
-## Шаг 2 — транспорт и сессия
+## Шаг 2 — транспорт и сессия — **СДЕЛАНО**
 
-Новый проект `src/service/SPLA.Mcp.Client/` (ссылки: `SPLA.Domain`, `SPLA.MCP.Core`, `SPLA.Observability`).
-Никто на него не ссылается, кроме `SPLA.Runtime` — цикла нет.
+Новый проект `src/service/SPLA.Mcp.Client/`. **Поправка к плану:** ссылка одна — `SPLA.Domain`.
+`SPLA.MCP.Core` не нужен и не должен быть нужен: проект говорит по проводу и возвращает то, что
+сказал провод, а превращение чужого инструмента в `IMcpTool` — шаг 3. По той же причине «куда
+подключаться» приезжает своим `McpServerSpec`, а не секцией конфига: правка YAML не должна доставать
+до транспорта, и шаг 2 не ждал шага 4.
 
-- [ ] `IMcpTransport` — `Task<JsonNode?> SendAsync(JsonNode request, CancellationToken)`,
-      `event Action<JsonNode> Notification`, `Task<JsonNode> RequestFromServer` (входящие запросы
-      сервера — нужны, чтобы отвечать `-32601`), `DisposeAsync`.
-- [ ] `StdioTransport` — `Process` с redirect stdin/stdout/stderr.
-      **Ловушки:** stderr обязательно вычитывать (иначе буфер забьётся и сервер встанет);
-      кодировка UTF-8 без BOM в обе стороны; убийство **дерева** процессов на Windows при Dispose
-      (`Process.Kill(entireProcessTree: true)`); `env`/`cwd` из конфига.
-- [ ] `HttpTransport` — `POST` с `Accept: application/json, text/event-stream`; если ответ
-      `text/event-stream` — разбор кадров `data: ...`, финальным считается кадр с тем же `id`
-      (та же логика, что уже в `SplaServiceHost.IsFinalResponse` — **посмотреть на неё, не
-      изобретать**: там уже поймали баг «первая записанная строка ≠ ответ»).
-- [ ] `McpServerSession` — handshake (`initialize` → `notifications/initialized`),
-      `ListToolsAsync`, `CallToolAsync`, состояние (`Disconnected/Connecting/Ready/Failed`),
-      реконнект с backoff, `notifications/tools/list_changed` → перечитать и перерегистрировать.
-- [ ] Объявляемые при handshake capabilities: **пусто**. Не объявляем `sampling`, `elicitation`,
-      `roots`. `clientInfo` — `spla` + версия.
-- [ ] Входящий запрос сервера любого метода → ответ `{"error":{"code":-32601,...}}`.
-      Логировать на Warning: это единственный способ узнать, что сервер чего-то от нас хотел.
+- [x] `IMcpTransport` — **не** request/response, как было записано в плане, а полнодуплексный поток
+      кадров: `SendAsync`, `event FrameReceived`, `event Closed`. Причина в том же, ради чего
+      шаг 2 вообще отделён от протокола: сервер шлёт уведомления когда захочет и **запросы** тоже
+      (`elicitation`, `sampling`), а форму «отправил — жду ответ» пришлось бы ломать в волне 2.
+      Сопоставление ответа с запросом — забота `McpServerSession`.
+- [x] `StreamTransport` — **новый, планом не предусмотренный**: кадрирование «один JSON на строку»
+      над `TextReader`/`TextWriter`. Вынесен из `StdioTransport`, потому что процесс и строковый
+      протокол — две разные заботы, и только одной нужна операционная система, чтобы её проверить.
+      Он же — то, на чём стоит петля из шага 7.
+- [x] `StdioTransport` — `Process` поверх `StreamTransport`. Все три ловушки закрыты: stderr
+      вычитывается непрерывно, UTF-8 без BOM объявлен явно (на не-английской Windows консольная
+      кодировка не UTF-8), `Kill(entireProcessTree: true)` — иначе `npx` умирает, а поднятый им node
+      живёт до перезагрузки.
+- [x] `HttpTransport` — `POST`, `Accept: application/json, text/event-stream`, разбор SSE по мере
+      прихода (буферизация до конца потока вернула бы прогресс одним комом — ровно то, ради чего SSE
+      и нужен). Плюс `Mcp-Session-Id` и `MCP-Protocol-Version`, которых в плане не было и без которых
+      часть удалённых серверов отвечает 400.
+      **Поправка:** `IsFinalResponse` копировать не пришлось — корреляция по `id` живёт в сессии, где
+      она и должна быть, а не в транспорте.
+- [x] `McpServerSession` — handshake, `RefreshToolsAsync`, `CallToolAsync`, состояние, backoff,
+      `notifications/tools/list_changed` → перечитать (в отдельной задаче: перечитывание — это
+      круговой рейс, и делать его на потоке читателя означает дедлок, а не задержку).
+- [x] Capabilities при handshake — **пустой объект**, не отсутствующий ключ: «не поддерживаю ничего»
+      это утверждение, а «не сказал» приглашает сервер угадывать.
+- [x] Любой запрос сервера → `-32601` + **Warning в лог**. Эта строка — единственное свидетельство,
+      что сервер чего-то от нас хотел, и именно по ней решится, нужна ли волна 2.
+
+**Известное ограничение, записанное в коде.** По HTTP сервер достучится до нас только пока мы держим
+ответ, то есть во время собственного вызова. Отдельный `GET` с постоянным SSE-потоком волна 1 не
+открывает: практическая потеря — `tools/list_changed` приходит на следующем вызове, а не сразу.
 
 ---
 
@@ -128,7 +143,7 @@
 
 ---
 
-## Шаг 4 — конфигурация
+## Шаг 4 — конфигурация — **СДЕЛАНО**
 
 `SplaMcpSection` (существующая секция `mcp:` — обе стороны провода в одном месте):
 
@@ -153,17 +168,17 @@ mcp:
       level: enabled              # необязательно; иначе через toolsets:
 ```
 
-- [ ] `SplaMcpServerSection` + `List<SplaMcpServerSection>? Servers` в `SplaMcpSection`
+- [x] `SplaMcpServerSection` + `List<SplaMcpServerSection>? Servers` в `SplaMcpSection`
       (`SplaSections.cs:302`).
-- [ ] Слияние по `id` через слои — **дословно по образцу `MergeConnections`**
+- [x] Слияние по `id` через слои — **дословно по образцу `MergeConnections`**
       (`SettingsResolver.cs:615`): словарь заводится в начале `Resolve` (стр. 363), вызывается
       дважды (стр. 375 — defaults, стр. 432 — project), раскладывается в `r.<Prop>` в конце
       (стр. 496). Второй код слияния не писать.
-- [ ] `ResolvedSettings.McpServers` — рядом с `McpEnabled`/`McpPort` (`SettingsResolver.cs:83-96`).
-- [ ] Сохранение: `ConfigLoader.SaveProjectSections(project, path, "mcp")` — `GetSectionValue`
+- [x] `ResolvedSettings.McpServers` — рядом с `McpEnabled`/`McpPort` (`SettingsResolver.cs:83-96`).
+- [x] Сохранение: `ConfigLoader.SaveProjectSections(project, path, "mcp")` — `GetSectionValue`
       (`ConfigLoader.cs:327`) уже знает ключ `"mcp"`, править нечего. Сплайсер переписывает **только**
       эту секцию, комментарии в остальном файле выживают.
-- [ ] Токены только `secret:`/`env:`; резолв в момент коннекта через
+- [x] Токены только `secret:`/`env:`; резолв в момент коннекта через
       `Settings.SecretResolver.ResolveAsync` (образец вызова —
       `ConnectionHandlers.cs:124`), не при загрузке настроек
       ([`agents/secrets.md`](../../agents/secrets.md)). В `ResolvedSettings` кладём ссылку, не

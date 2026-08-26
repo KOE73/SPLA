@@ -89,6 +89,12 @@ public class ResolvedSettings
     /// <see cref="SplaMcpSection.Port"/>.</summary>
     public int? McpPort { get; set; }
 
+    /// <summary>Foreign MCP servers this project consumes, merged across layers by
+    /// <see cref="SplaMcpServerSection.Id"/> — a project entry replaces a machine entry of the same id
+    /// wholesale, the same rule <see cref="Connections"/> uses. Nothing here connects to anything;
+    /// this is only the declaration. See <see cref="SplaMcpSection.Servers"/>.</summary>
+    public List<SplaMcpServerSection> McpServers { get; set; } = new();
+
     // UI
     public string Theme { get; set; } = "Dark";
     public string Density { get; set; } = "norm";
@@ -360,6 +366,9 @@ public static class SettingsResolver
         // Connections merge across layers by id (project overrides/extends defaults).
         var connections = new Dictionary<string, SplaConnectionSection>(StringComparer.OrdinalIgnoreCase);
 
+        // mcp.servers merges across layers by id, same rule as connections above.
+        var mcpServers = new Dictionary<string, SplaMcpServerSection>(StringComparer.OrdinalIgnoreCase);
+
         // llm: section fields — tracked locally and used only to synthesize the fallback default
         // connection when no connections are declared. Endpoint/ApiKey/Model no longer live on
         // ResolvedSettings; Connections is the single source of truth for those.
@@ -406,6 +415,7 @@ public static class SettingsResolver
             {
                 r.McpEnabled = defaults.Mcp.Enabled ?? r.McpEnabled;
                 r.McpPort = defaults.Mcp.Port ?? r.McpPort;
+                MergeMcpServers(mcpServers, defaults.Mcp.Servers);
             }
             if (defaults.Ui != null)
             {
@@ -463,6 +473,7 @@ public static class SettingsResolver
             {
                 r.McpEnabled = project.Mcp.Enabled ?? r.McpEnabled;
                 r.McpPort = project.Mcp.Port ?? r.McpPort;
+                MergeMcpServers(mcpServers, project.Mcp.Servers);
             }
             if (project.Ui != null)
             {
@@ -500,6 +511,7 @@ public static class SettingsResolver
             });
 
         r.Models = FlattenModels(r.Connections);
+        r.McpServers = mcpServers.Values.ToList();
         return r;
     }
 
@@ -617,5 +629,20 @@ public static class SettingsResolver
         foreach (var c in from)
             if (!string.IsNullOrWhiteSpace(c.Id))
                 into[c.Id] = c;
+    }
+
+    /// <summary>Adds/overrides mcp.servers entries by id, skipping entries without an id — same idiom
+    /// as <see cref="MergeConnections"/>. A project entry replaces a machine entry of the same id
+    /// wholesale rather than merging field by field: a server definition assembled from half-machine,
+    /// half-project fields (an env var from one layer, a command from the other) would be very hard to
+    /// reason about, so "the more specific layer wins, entirely" is the same call <c>connections:</c>
+    /// already made and this follows it rather than inventing a second answer.</summary>
+    private static void MergeMcpServers(
+        Dictionary<string, SplaMcpServerSection> into, List<SplaMcpServerSection>? from)
+    {
+        if (from == null) return;
+        foreach (var s in from)
+            if (!string.IsNullOrWhiteSpace(s.Id))
+                into[s.Id!] = s;
     }
 }

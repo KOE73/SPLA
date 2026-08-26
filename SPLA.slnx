@@ -238,6 +238,7 @@
     <Project Path="src/service/SPLA.Instances/SPLA.Instances.csproj" />
     <Project Path="src/service/SPLA.Service.Contracts/SPLA.Service.Contracts.csproj" />
     <Project Path="src/service/SPLA.Mcp/SPLA.Mcp.csproj" />
+    <Project Path="src/service/SPLA.Mcp.Client/SPLA.Mcp.Client.csproj" />
   </Folder>
   <Folder Name="/src/documents/">
     <Project Path="src/documents/SPLA.Documents.Model/SPLA.Documents.Model.csproj" />
