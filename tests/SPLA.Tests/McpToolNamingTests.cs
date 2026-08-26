@@ -42,6 +42,7 @@ public sealed class McpToolNamingTests
     public void No_dots_or_colons_survive_into_the_prefixed_name()
     {
         var name = McpToolNaming.Prefixed("ghmcp", "create_issue", out _);
+        Assert.NotNull(name);
         Assert.DoesNotContain(':', name);
         Assert.DoesNotContain('.', name);
     }
