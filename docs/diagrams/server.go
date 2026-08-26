@@ -14,7 +14,7 @@ import (
 
 func main() {
 	port := "8777"
-	url := fmt.Sprintf("http://localhost:%s", port)
+	url := fmt.Sprintf("http://localhost:%s/app/", port)
 
 	fmt.Printf("🚀 Starting SPLA Visualizer server on %s\n", url)
 	fmt.Println("Press Ctrl+C to stop.")
@@ -32,7 +32,7 @@ func main() {
 		}
 		
 		fileName := r.URL.Query().Get("file")
-		if fileName == "" || fileName == "catalog.js" {
+		if fileName == "" || fileName == "catalog.json" {
 			http.Error(w, "Invalid file name", http.StatusBadRequest)
 			return
 		}

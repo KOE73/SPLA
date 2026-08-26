@@ -2,10 +2,10 @@
 
 An interactive architecture diagram visualizer and editor without unpredictable auto-layout, based on the **Semantic Diagram JSON → SVG/HTML Canvas + Draw.io XML Export** workflow.
 
-## 📁 Prototype Files
-1. **[`index.html`](file:///C:/GitKOE/SPLA/docs/diagram-mvp/index.html)** — Standalone interactive visualizer web application. Open directly in any modern browser (double click or drag-and-drop).
-2. **[`model.json`](file:///C:/GitKOE/SPLA/docs/diagram-mvp/model.json)** (and `schemas/*.json`) — Semantic JSON models representing system architecture, subsystems, metadata, and spatial coordinates.
-3. **[`README_RU.md`](file:///C:/GitKOE/SPLA/docs/diagram-mvp/README_RU.md)** — Russian version of this documentation.
+## 📁 Files
+1. **[`app/`](app/index.html)** — The built visualizer/editor application, served by `server.go` (`run.cmd`) at `/app/`. Built from source in [`tools/spla-diagram`](../../tools/spla-diagram); run `npm run build:app` there to rebuild it after a source change.
+2. **[`model.json`](model.json)** (and the other `model-*.json` files) — Semantic JSON models representing system architecture, subsystems, metadata, and spatial coordinates. `catalog.json` lists which ones appear in the app's sidebar.
+3. **[`README_RU.md`](README_RU.md)** — Russian version of this documentation.
 
 ---
 

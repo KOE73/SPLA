@@ -49,7 +49,6 @@
   <Folder Name="/docs/diagrams/">
     <File Path="docs/diagrams/README.md" />
     <File Path="docs/diagrams/README_RU.md" />
-    <File Path="docs/diagrams/catalog.js" />
     <File Path="docs/diagrams/catalog.json" />
     <File Path="docs/diagrams/model.json" />
     <File Path="docs/diagrams/model-core.json" />

@@ -2,10 +2,10 @@
 
 Интерактивный MVP визуализатора архитектурных диаграмм без использования auto-layout, на основе модели **Semantic Diagram JSON → SVG/HTML Canvas + Draw.io XML Export**.
 
-## 📁 Файлы прототипа
-1. **[`index.html`](file:///C:/GitKOE/SPLA/docs/diagram-mvp/index.html)** — Автономное интерактивное веб-приложение визуализатора. Можно открыть прямо в браузере (двойной клик или перетаскивание).
-2. **[`model.json`](file:///C:/GitKOE/SPLA/docs/diagram-mvp/model.json)** (и `schemas/*.json`) — Семантические JSON-модели архитектуры (компоненты, зоны, метаданные, координаты).
-3. **[`README.md`](file:///C:/GitKOE/SPLA/docs/diagram-mvp/README.md)** — Английская версия документации.
+## 📁 Файлы
+1. **[`app/`](app/index.html)** — Собранное приложение визуализатора/редактора, отдаётся `server.go` (`run.cmd`) по адресу `/app/`. Собирается из исходников в [`tools/spla-diagram`](../../tools/spla-diagram); после правки исходников пересобрать командой `npm run build:app` там же.
+2. **[`model.json`](model.json)** (и остальные `model-*.json`) — Семантические JSON-модели архитектуры (компоненты, зоны, метаданные, координаты). `catalog.json` определяет, какие из них показаны в боковой панели приложения.
+3. **[`README.md`](README.md)** — Английская версия документации.
 
 ---
 
