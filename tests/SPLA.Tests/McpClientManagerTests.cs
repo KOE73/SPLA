@@ -291,6 +291,40 @@ public sealed class McpClientManagerTests
         Assert.Contains(host.GetToolDefinitions(), d => d.Function.Name == "gh_create_issue");
     }
 
+    [Fact]
+    public async Task Reconnecting_an_unknown_server_id_returns_false_without_throwing()
+    {
+        var (manager, _, _, _) = Build();
+
+        var result = await manager.ReconnectAsync("never-configured");
+
+        Assert.False(result);
+    }
+
+    [Fact]
+    public async Task Reconnecting_an_already_ready_server_is_a_safe_no_op()
+    {
+        // The whole point of exposing ReconnectAsync as a thin pass-through to
+        // McpServerSession.ConnectAsync: a "Reconnect" button clicked on a row that is already Ready
+        // must not tear down and rebuild a working connection, and must never produce a second live
+        // session for the same server. McpServerSession.ConnectAsync already guarantees this by
+        // returning immediately when State is Ready; this test is what would catch a future change
+        // to ReconnectAsync that stopped delegating to it.
+        var rig = Rig("gh");
+        var (manager, host, _, _) = Build(rig);
+
+        var connect = manager.ConnectAllAsync();
+        await rig.Scripted.HandshakeAsync(OneTool("create_issue"));
+        await connect;
+        await WaitUntilAsync(() => manager.Servers.Single().State == McpSessionState.Ready);
+
+        var result = await manager.ReconnectAsync("gh");
+
+        Assert.True(result);
+        Assert.Equal(McpSessionState.Ready, manager.Servers.Single().State);
+        Assert.Contains(host.GetToolDefinitions(), d => d.Function.Name == "gh_create_issue");
+    }
+
     /// <summary>Reaches the private per-server <c>McpServerSession</c> the manager built, for the two
     /// tests that need to drive a second round trip (list-changed) or force a disconnect on it
     /// directly. <see cref="McpClientManager"/> deliberately does not expose sessions publicly — status

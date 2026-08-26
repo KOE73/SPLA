@@ -102,6 +102,36 @@ public sealed class McpClientManager : IAsyncDisposable
     public IReadOnlyList<McpServerStatus> Servers =>
         _servers.Values.Select(ToStatus).ToList();
 
+    /// <summary>
+    /// Retries an already-tracked server's connection — what a person clicking "Reconnect" on a
+    /// <see cref="McpSessionState.Failed"/> row asks for. Returns false when <paramref name="serverId"/>
+    /// names no server this manager attempted at startup (a server added to config afterward needs a
+    /// restart in wave one — see <c>ADR_20260826_service_mcp-client</c> step 5's background-connect
+    /// note; this method does not create sessions, only retries one that already exists).
+    ///
+    /// <para>Safe to call on a server that is already <see cref="McpSessionState.Ready"/>:
+    /// <see cref="McpServerSession.ConnectAsync"/> is a documented no-op in that case, so this can
+    /// never produce a second live session for the same server or leak the transport underneath one
+    /// that is already connected.</para>
+    /// </summary>
+    public async Task<bool> ReconnectAsync(string serverId, CancellationToken ct = default)
+    {
+        if (!_servers.TryGetValue(serverId, out var entry)) return false;
+
+        try
+        {
+            await entry.Session.ConnectAsync(ct);
+        }
+        catch (Exception ex)
+        {
+            // Mirrors ConnectOneAsync's own catch: the session already logged and left itself Failed;
+            // this call must report false rather than throw into a request handler.
+            _logger.LogWarning(ex, "Reconnect failed. Server={ServerId}", serverId);
+        }
+
+        return true;
+    }
+
     private static McpServerStatus ToStatus(ServerEntry entry)
     {
         int toolCount;
