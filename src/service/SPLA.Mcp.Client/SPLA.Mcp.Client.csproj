@@ -4,12 +4,16 @@
     Consuming somebody else's tools over the Model Context Protocol — the opposite direction from
     SPLA.Mcp, which serves ours outward.
 
-    It knows nothing about tools, permissions or settings on purpose. This project speaks the wire
-    and hands back what the wire said; turning a foreign tool into an IMcpTool, deciding what it is
-    allowed to do, and reading it out of a .spla file all happen above it (steps 3-5 of
-    PLAN_20260826_service_mcp-client). That is why there is no reference to SPLA.MCP.Core here, and
-    why what to connect to arrives as McpServerSpec rather than as a config section: a change to the
-    YAML must not be able to reach the transport.
+    Two layers, split deliberately. The transport (IMcpTransport, StreamTransport, StdioTransport,
+    HttpTransport, McpServerSession) knows nothing about tools, permissions or settings: it speaks
+    the wire and hands back what the wire said. What to connect to arrives as McpServerSpec rather
+    than as a config section, so a change to the YAML shape (step 4, SPLA.Domain) can never reach it.
+
+    McpProxyTool is the layer above: it is what makes a foreign tool an IMcpTool, which is why this
+    project references SPLA.MCP.Core — but only that one file does, and it depends downward on the
+    transport layer, never the other way. Deciding what a server may connect to at all, and reading
+    the servers: section out of a .spla file, still happen above this project (step 5,
+    PLAN_20260826_service_mcp-client).
 
     The protocol subset is hand-written, for the same reason it is on the serving side: it is small,
     and writing it keeps both halves of the conversation under our own control.
@@ -17,6 +21,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\core\SPLA.Domain\SPLA.Domain.csproj" />
+    <ProjectReference Include="..\..\core\SPLA.MCP.Core\SPLA.MCP.Core.csproj" />
   </ItemGroup>
 
   <ItemGroup>
