@@ -335,6 +335,10 @@ public class SplaPermissionsSection
     [YamlMember(Alias = "internet")]
     public string? Internet { get; set; }
 
+    /// <summary>Override for foreign MCP-server tools (ToolScope.Foreign).</summary>
+    [YamlMember(Alias = "foreign")]
+    public string? Foreign { get; set; }
+
     [YamlMember(Alias = "tools")]
     public List<SplaToolPermissionRule>? Tools { get; set; }
 }

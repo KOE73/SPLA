@@ -187,6 +187,9 @@ public class ResolvedSettings
     public string? PermWrite { get; set; }
     public string? PermShell { get; set; }
     public string? PermInternet { get; set; }
+    /// <summary>Override for foreign MCP-server tools (ToolScope.Foreign) — see
+    /// <see cref="SplaPermissionsSection.Foreign"/>.</summary>
+    public string? PermForeign { get; set; }
     public List<SplaToolPermissionRule> ToolPermissionRules { get; set; } = new();
 
     // Plugins
@@ -472,6 +475,7 @@ public static class SettingsResolver
                 r.PermWrite = project.Permissions.Write;
                 r.PermShell = project.Permissions.Shell;
                 r.PermInternet = project.Permissions.Internet;
+                r.PermForeign = project.Permissions.Foreign;
                 r.ToolPermissionRules = project.Permissions.Tools ?? new();
             }
             if (project.Plugins != null)

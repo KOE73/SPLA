@@ -72,6 +72,9 @@ public class PermissionManager : IPermissionManager
     /// onto exactly the categories a project can actually configure (read/write/shell/internet).</summary>
     private static string? ClassifyCategory(ToolFunctionDefinition toolMetadata) => toolMetadata switch
     {
+        // Scope discrimination must win before anything else can claim a Foreign tool — a foreign
+        // tool that happens to report Effect.Write must not be classified as "write".
+        { Scope: ToolScope.Foreign } => "foreign",
         { Scope: ToolScope.Shell } => "shell",
         { Scope: ToolScope.Internet } => "internet",
         { Effect: ToolEffect.Write } => "write",
@@ -96,6 +99,7 @@ public class PermissionManager : IPermissionManager
         "write" => ParseOverride(_settings?.PermWrite),
         "shell" => ParseOverride(_settings?.PermShell),
         "internet" => ParseOverride(_settings?.PermInternet),
+        "foreign" => ParseOverride(_settings?.PermForeign),
         _ => null
     };
 
@@ -209,7 +213,13 @@ public class PermissionManager : IPermissionManager
 
         // Agent mode: mode-based rules are authoritative; remembered denies must not override them.
         // Remembered allows are also redundant here (everything is already allowed), so skip entirely.
-        if (mode != AgentMode.Agent)
+        //
+        // Foreign is the one scope that premise does not cover, and the exception is load-bearing
+        // rather than tidy: a foreign tool is Ask in Agent mode too (see the branch below), so
+        // skipping the lookup would mean asking again on every single call — "confirm the first call
+        // to each tool" would never take effect in the mode people actually work in, and a prompt
+        // that fires every time is a prompt nobody reads.
+        if (mode != AgentMode.Agent || toolMetadata.Scope == ToolScope.Foreign)
         {
             var remembered = _rememberedPermissions.FirstOrDefault(x =>
                 string.Equals(x.Tool, toolMetadata.Name, StringComparison.OrdinalIgnoreCase) &&
@@ -221,6 +231,21 @@ public class PermissionManager : IPermissionManager
                     ? PermissionVerdict.Allow("remembered from an earlier confirmation in this session", category)
                     : PermissionVerdict.Deny("remembered denial from an earlier confirmation in this session", category);
             }
+        }
+
+        // Foreign-scoped tools (executed by a foreign MCP server) declared none of our axes — there
+        // is no Effect/Risk to reason from. Guessing them from a description written by a stranger
+        // would make the safety boundary negotiable by that stranger, so the verdict is naive on
+        // purpose instead of derived: deny in Chat (no tool calls at all), ask everywhere else.
+        // See ADR_20260826_service_mcp-client §2/§3. This sits after the remembered-permissions
+        // check above — which the condition on that block deliberately keeps reachable for Foreign
+        // in Agent mode — so "ask once, remember" (arguments: "*") turns the second call into Allow
+        // in every mode, without any code of its own.
+        if (toolMetadata.Scope == ToolScope.Foreign)
+        {
+            return mode == AgentMode.Chat
+                ? PermissionVerdict.Deny("chat mode allows no tool calls", category)
+                : PermissionVerdict.Ask("foreign tool server; confirm the first call to each tool", category);
         }
 
         if (mode == AgentMode.Chat)

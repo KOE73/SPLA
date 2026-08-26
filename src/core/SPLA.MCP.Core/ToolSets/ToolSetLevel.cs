@@ -38,5 +38,9 @@ public enum ToolSetOrigin
     Core,
 
     /// <summary>Shipped by a plugin assembly.</summary>
-    Plugin
+    Plugin,
+
+    /// <summary>Contributed by a connected foreign MCP server — one set per server, id equal to the
+    /// server's id, tool names carrying that server's prefix (ADR_20260826_service_mcp-client).</summary>
+    Mcp
 }
