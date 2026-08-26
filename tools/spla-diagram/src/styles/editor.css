@@ -30,14 +30,27 @@ body {
 }
 
 body {
-  display: flex;
-  flex-direction: column;
   overflow: hidden;
   background: var(--bg);
   color: var(--text);
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
   font-size: 13px;
   user-select: none;
+}
+
+/*
+ * #app is the actual flex column (header + body). It needs its own height,
+ * not just a flex-grow from body — body has no other children to grow
+ * against, so an item's main-axis size still defaults to its content height
+ * unless the item itself is a sized flex container. Without this, #app
+ * (and everything under it, including .app-body's flex:1) sized itself to
+ * its content instead of the viewport, and the canvas stopped wherever the
+ * sidebar's text happened to end.
+ */
+#app {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
 }
 
 ::-webkit-scrollbar {
