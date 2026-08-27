@@ -190,3 +190,53 @@ Don't approve branch creation, PRs, comments, or other write operations through 
 `repositories` domain in `-d core search repositories` includes the package's write methods too, it
 is not a read-only allowlist by itself; the real boundary is what the PAT is allowed to do in Azure
 DevOps.
+
+## Potential feature: multiple collections
+
+Not implemented, but it fits the existing model with no changes to SPLA — noting it here as a
+starting point.
+
+The package accepts exactly one collection per process: `organization` is a required positional
+argument, and there's no list within a single run (`node .../index.js --help`). A second collection
+(another TFS server, or `dev.azure.com/<another-org>`) doesn't need a second package — it needs a
+second entry in `mcp.servers`, a second node process alongside the first, with its own `id`:
+
+```yaml
+mcp:
+  servers:
+    - id: azdevops                 # first collection, as in step 2
+      args: [..., <collection-URL-1>, ...]
+      env:
+        AZURE_DEVOPS_PAT: secret:user:devops:azdevops-pat#token
+
+    - id: azdevops2                # second — its own id = its own tool prefix (azdevops2_*)
+      name: Azure DevOps Code Search (second collection)
+      transport: stdio
+      command: node
+      cwd: <same-project-folder>
+      args:
+        - node_modules/@ahouben/azure-devops-mcp/dist/index.js
+        - <collection-URL-2>
+        - '-a'
+        - env
+        - '-d'
+        - core
+        - search
+        - repositories
+      env:
+        AZURE_DEVOPS_PAT: secret:user:devops:azdevops2-pat#token   # same secret if one PAT covers both
+      level: enabled
+```
+
+Details:
+
+- `id` must be unique — it's also the tool prefix; two entries sharing an `id` breaks naming rather
+  than one simply overwriting the other.
+- One `package.json`/`node_modules` for the whole project — no need to install the package twice; the
+  second entry just points at the same `command`/`cwd`.
+- The PAT can be the same secret if the account is valid in both collections — both entries then
+  reference the same `secret:...` reference; if the logins differ, run a separate `spla secret set`
+  under a separate key — step 4 repeats verbatim for the second key.
+- Step 5 (restart) and step 6 (verification via log/`tools/list`) don't change — the log just gets a
+  second pair of `MCP server started/ready. Server=azdevops2` lines, and `tools/list` returns a second
+  set of `azdevops2_*` entries.
