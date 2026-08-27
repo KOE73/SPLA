@@ -555,6 +555,13 @@ public sealed class SplaServiceHost
                         _ = hub.BroadcastToProjectAsync(projectId, Contracts.MessageTypes.SkillsResult,
                             SettingsOps.GetSkills(entry.Runtime));
                         break;
+
+                    // A server connected, disconnected, or its tool list changed — in the background,
+                    // without any client asking. See agents/protocol.md "Domain events".
+                    case McpServersChanged:
+                        _ = hub.BroadcastToProjectAsync(projectId, Contracts.MessageTypes.McpServersResult,
+                            SettingsOps.GetMcpServers(entry.Runtime));
+                        break;
                 }
             });
 

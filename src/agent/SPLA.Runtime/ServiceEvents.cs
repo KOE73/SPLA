@@ -27,6 +27,15 @@ public sealed record AppearanceChanged(string Theme, string Density) : ServiceEv
 public sealed record SkillsChanged : ServiceEvent;
 
 /// <summary>
+/// A connected MCP server's status changed — it connected, disconnected, or its tool list changed.
+/// Nobody asked for this one, the same way nobody asks for <see cref="SkillsChanged"/>: a background
+/// connection thread (<see cref="McpClientManager"/>) mutates <see cref="SPLA.MCP.Core.McpHost"/> and
+/// <see cref="SPLA.MCP.Core.ToolSets.ToolSetRegistry"/> on its own schedule, and every open panel
+/// should re-read rather than poll.
+/// </summary>
+public sealed record McpServersChanged : ServiceEvent;
+
+/// <summary>
 /// The in-process event hub: components <see cref="Publish"/> domain events, subscribers react.
 /// Lives on <see cref="AgentRuntime"/> (process-wide, chat-agnostic). Handlers run synchronously on
 /// the publisher's thread and must not block — the broadcast subscriber fires its async sends and

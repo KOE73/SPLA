@@ -10,6 +10,7 @@ using SPLA.MCP.Core.ToolSets;
 using SPLA.Observability;
 using Microsoft.Extensions.Logging;
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
@@ -22,7 +23,10 @@ namespace SPLA.MCP.Core;
 
 public class McpHost : IToolHost
 {
-    private readonly Dictionary<string, IMcpTool> _tools = new(StringComparer.OrdinalIgnoreCase);
+    // A background MCP-connection thread now registers and unregisters entries here while calls are
+    // in flight (PLAN_20260826_service_mcp-client, step 1) — the constructor is no longer the only
+    // writer, so this can no longer be a plain Dictionary.
+    private readonly ConcurrentDictionary<string, IMcpTool> _tools = new(StringComparer.OrdinalIgnoreCase);
     private readonly IPermissionManager _permissionManager;
     private readonly SPLA.MCP.Core.Plugins.PluginManager? _pluginManager;
     private readonly ILogger<McpHost>? _logger;
@@ -115,6 +119,27 @@ public class McpHost : IToolHost
         _logger?.LogInformation("Tool registered. Tool={ToolName}", tool.Name);
     }
 
+    /// <summary>
+    /// Removes a tool from the live set — the other half of dynamic registration
+    /// (PLAN_20260826_service_mcp-client, step 1), needed once an MCP server can disconnect and take
+    /// its tools back with it. Returns whether anything was actually removed.
+    ///
+    /// <para><b>Concurrency contract, deliberately without a lock:</b> <c>_tools</c> is read once, at
+    /// the start of each call, by <see cref="Pipeline.Stages.ToolResolutionStage"/>. A call that has
+    /// already passed that stage holds its own <see cref="IMcpTool"/> reference and runs to
+    /// completion on it — unregistering here does not reach in and does not try to abort it. The only
+    /// race is a call that started a moment before the tool was unregistered; it finishes as if it had
+    /// started a moment earlier still, which is the correct and cheapest answer to "the server hung up
+    /// mid-call".</para>
+    /// </summary>
+    public bool UnregisterTool(string name)
+    {
+        var removed = _tools.TryRemove(name, out _);
+        if (removed)
+            _logger?.LogInformation("Tool unregistered. Tool={ToolName}", name);
+        return removed;
+    }
+
     /// <summary>True when the tool was loaded from a plugin (as opposed to a built-in core/agent
     /// tool). Plugin tools are exactly those the <see cref="Plugins.PluginManager"/> discovered.</summary>
     private bool IsPluginTool(IMcpTool tool)
@@ -131,6 +156,9 @@ public class McpHost : IToolHost
     {
         // Live plugin gating: a disabled plugin's tools drop out of the offered list immediately
         // (no restart) — the assemblies stay loaded, only exposure is gated.
+        // _tools.Values over a ConcurrentDictionary is a moving snapshot: a tool registered or
+        // unregistered mid-enumeration by a background MCP connection may or may not appear in this
+        // particular call. That is fine here — the list is rebuilt on every request anyway.
         return _tools.Values
             .Where(t => _pluginManager == null || _pluginManager.IsToolAvailable(t))
             .Where(t => IsDisclosed(t.Name))

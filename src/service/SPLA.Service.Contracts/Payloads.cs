@@ -502,6 +502,64 @@ public sealed class McpSettingsPayload
     public bool RestartToApply { get; set; } = true;
 }
 
+/// <summary>One foreign MCP server as the settings panel edits and observes it: the declaration the
+/// operator wrote (mirrors <see cref="SPLA.Domain.Settings"/>'s <c>SplaMcpServerSection</c> field for
+/// field) plus, once a connect attempt has happened, the live status <c>McpClientManager</c> tracks
+/// for it. <see cref="Env"/>/<see cref="Headers"/> carry <c>secret:</c>/<c>env:</c> references only,
+/// never resolved values — see <c>agents/secrets.md</c>; nothing on this wire path calls
+/// <c>SecretResolver</c>.</summary>
+public sealed class McpServerDto
+{
+    public string Id { get; set; } = string.Empty;
+    /// <summary>Display label; falls back to <see cref="Id"/> in the UI, never persisted as a fallback.</summary>
+    public string? Name { get; set; }
+    public bool Enabled { get; set; } = true;
+    /// <summary><c>stdio</c> or <c>http</c>.</summary>
+    public string Transport { get; set; } = "stdio";
+    public string? Command { get; set; }
+    public List<string>? Args { get; set; }
+    public string? Cwd { get; set; }
+    public Dictionary<string, string>? Env { get; set; }
+    public string? Url { get; set; }
+    public Dictionary<string, string>? Headers { get; set; }
+    public string? Description { get; set; }
+    /// <summary><c>unnamed</c> (default) or <c>named</c> — see <c>SplaMcpServerSection.Origin</c>.</summary>
+    public string Origin { get; set; } = "unnamed";
+    /// <summary>Optional disclosure level, mirroring this server's <c>toolsets:</c> entry.</summary>
+    public string? Level { get; set; }
+
+    /// <summary>Server-set, ignored on save. <c>McpSessionState</c> as a string (<c>Connecting</c>,
+    /// <c>Ready</c>, <c>Failed</c>, …), or null when this server has never been attempted this
+    /// process's lifetime — a configured entry with no matching live status yet, not an error.</summary>
+    public string? State { get; set; }
+    /// <summary>Server-set, ignored on save. What the last connect attempt failed with, or null.</summary>
+    public string? LastError { get; set; }
+    /// <summary>Server-set, ignored on save. Tools actually registered — after naming refusals and
+    /// collisions, not the server's own raw count.</summary>
+    public int ToolCount { get; set; }
+}
+
+/// <summary>The configured foreign MCP servers plus their live status — answer to
+/// <see cref="MessageTypes.McpServersGet"/>, body/answer of <see cref="MessageTypes.McpServersSave"/>,
+/// and broadcast whenever <c>McpServersChanged</c> fires (a background connect/disconnect/tool-list
+/// change, not just a save).</summary>
+public sealed class McpServersPayload
+{
+    public List<McpServerDto> Servers { get; set; } = new();
+    /// <summary>False when there is no .spla project to persist into (server-set; ignored on save).</summary>
+    public bool CanPersist { get; set; }
+    /// <summary>Server-set; ignored on save. True always — connecting/disconnecting a server only
+    /// happens at startup in this wave, same rule <see cref="McpSettingsPayload"/> already documents.</summary>
+    public bool RestartToApply { get; set; } = true;
+}
+
+/// <summary>Ask one server to retry its connection now. <see cref="MessageTypes.McpServersReconnect"/>
+/// body.</summary>
+public sealed class McpServerActionPayload
+{
+    public string ServerId { get; set; } = string.Empty;
+}
+
 /// <summary>One registered resource scheme as the settings panel sees it: what it is, what it
 /// supports, and whether it is currently switched on. Mirrors <c>SPLA.Domain.Resources.SchemeCard</c>
 /// but as a plain wire DTO — this assembly references nothing from the engine.</summary>

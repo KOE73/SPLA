@@ -149,6 +149,7 @@ function fetchAll() {
   client.send("connections.get", undefined);
   client.send("agent.get", undefined);
   client.send("mcp.get", undefined);
+  client.send("mcp.servers.get", undefined);
   client.send("plugins.get", undefined);
   client.send("features.get", undefined);
   client.send("skills.get", undefined);

@@ -196,6 +196,18 @@ public static class MessageTypes
     /// <summary>Save MCP-over-HTTP settings (persisted to .spla mcp: section). Takes effect on the
     /// next <c>spla serve</c> start.</summary>
     public const string McpSave = "mcp.save";
+    /// <summary>Ask for the configured foreign MCP servers merged with their live connect status.
+    /// Reply <see cref="McpServersResult"/>.</summary>
+    public const string McpServersGet = "mcp.servers.get";
+    /// <summary>Save the foreign MCP server list (persisted to .spla mcp: servers section). Body
+    /// <see cref="McpServersPayload"/>; connecting/disconnecting takes effect on the next
+    /// <c>spla serve</c> start, the same as <see cref="McpSave"/>. Broadcasts <see cref="McpServersResult"/>.</summary>
+    public const string McpServersSave = "mcp.servers.save";
+    /// <summary>Retry an already-tracked server's connection now — what a person clicking "Reconnect"
+    /// on a failed row asks for. Body <see cref="McpServerActionPayload"/>; reply <see cref="McpServersResult"/>.
+    /// A server added since the last connect attempt (not yet tracked) answers with its unchanged
+    /// status, not an error — see <c>McpClientManager.ReconnectAsync</c>.</summary>
+    public const string McpServersReconnect = "mcp.servers.reconnect";
     /// <summary>Persist UI appearance (theme/density). Auto-sent on change — appearance has no Save step.
     /// Body is <see cref="AppearanceChangedPayload"/>; the server persists and broadcasts <see cref="AppearanceChanged"/>.</summary>
     public const string AppearanceSave = "appearance.save";
@@ -362,6 +374,11 @@ public static class MessageTypes
     /// <summary>The current MCP-over-HTTP settings — answer to <see cref="McpGet"/> and broadcast
     /// after <see cref="McpSave"/>.</summary>
     public const string McpResult = "mcp.result";
+    /// <summary>The configured foreign MCP servers with live status — answer to
+    /// <see cref="McpServersGet"/> and <see cref="McpServersReconnect"/>; broadcast after
+    /// <see cref="McpServersSave"/> and whenever a server connects, disconnects, or its tool list
+    /// changes in the background (<c>McpServersChanged</c>).</summary>
+    public const string McpServersResult = "mcp.servers.result";
     /// <summary>The current plugin list/state — answer to <see cref="PluginsGet"/> and broadcast after <see cref="PluginsSave"/>.</summary>
     public const string PluginsResult = "plugins.result";
     /// <summary>Answer to <see cref="PluginAction"/>.</summary>

@@ -95,6 +95,9 @@ client/types **and** this table.
 | `features.save` | `FeaturesSave` | `FeaturesPayload` | Built-in `core.*` set → `agent.capabilities`. Broadcasts `features.result`. |
 | `mcp.get` | `McpGet` | — | Reply `mcp.result`. |
 | `mcp.save` | `McpSave` | `McpSettingsPayload` | MCP-over-HTTP settings → `.spla` `mcp:` section. Broadcasts `mcp.result`. Takes effect on the next `spla serve` start. |
+| `mcp.servers.get` | `McpServersGet` | — | Reply `mcp.servers.result`: configured foreign MCP servers merged with live connect status. |
+| `mcp.servers.save` | `McpServersSave` | `McpServersPayload` | Foreign MCP server list → `.spla` `mcp:` `servers:` section. Broadcasts `mcp.servers.result`. Connecting/disconnecting takes effect on the next `spla serve` start, same as `mcp.save`. |
+| `mcp.servers.reconnect` | `McpServersReconnect` | `McpServerActionPayload` | Retry one already-tracked server's connection now. Reply `mcp.servers.result` (unicast — see the table below for why). A server not yet tracked (added since the last connect attempt) answers with its unchanged status, not an error. |
 | `usage.get` | `UsageGet` | — | Reply `usage.result`. |
 | `appearance.save` | `AppearanceSave` | `AppearanceChangedPayload` | Auto-sent on change (no Save step). Persists `ui:` + broadcasts `appearance.changed`. |
 | `system.register_association` | `SystemRegisterAssociation` | — | Register the `.spla` extension (Windows, per-user). Reply `system.register_association.result`. |
@@ -168,6 +171,7 @@ client/types **and** this table.
 | `skills.sources.result` | `SkillSourcesResult` | `SkillSourcesPayload` | unicast | Answer to `skills.sources.get`. The editable half of the fond only. |
 | `features.result` | `FeaturesResult` | `FeaturesPayload` | unicast/broadcast | Answer to get; broadcast after save. `restartToApply` is always true — feature tools register once at startup. |
 | `mcp.result` | `McpResult` | `McpSettingsPayload` | unicast/broadcast | Answer to `mcp.get`; broadcast after `mcp.save`. |
+| `mcp.servers.result` | `McpServersResult` | `McpServersPayload` | unicast/broadcast | Answer to `mcp.servers.get`; broadcast after `mcp.servers.save`; broadcast (project) whenever `McpServersChanged` fires — a server connects, disconnects, or its tool list changes in the background, with no client asking. `mcp.servers.reconnect`'s own reply is unicast (see the table above): the retry's actual effect, if any, arrives for free via this same broadcast the moment the session's state changes, so a second broadcast from the handler would just resend the same frame. |
 | `usage.result` | `UsageResult` | usage totals | unicast/broadcast (project) | Answer to `usage.get`; also broadcast after each turn's token accounting. |
 | `appearance.changed` | `AppearanceChanged` | `AppearanceChangedPayload` | broadcast | Theme/density; every window applies it. See [Domain events](#domain-events-server-side). |
 | `system.register_association.result` | `SystemRegisterAssociationResult` | result | unicast | Answer to `system.register_association`. |
@@ -208,7 +212,10 @@ add one:
 4. Add the `MessageTypes` constant + payload + a row in the table above.
 5. Register a client reactor via `client.on("…", …)`.
 
-Reference implementation: `AppearanceChanged` → `appearance.changed`.
+Reference implementation: `AppearanceChanged` → `appearance.changed`. A second reference, for a case
+where the state changes in the background with no client request at all: `McpServersChanged` →
+`mcp.servers.result` — a connect attempt finishing seconds after `spla serve` started is exactly the
+kind of change nobody polled for.
 
 ## Client-local events (never hit the wire)
 

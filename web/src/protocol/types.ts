@@ -245,6 +245,43 @@ export interface McpSettingsPayload {
   restartToApply?: boolean;
 }
 
+/** One foreign MCP server as the settings panel edits and observes it: the declaration plus, once a
+ *  connect attempt has happened, live status merged in by id. `env`/`headers` values are
+ *  `secret:`/`env:` references only, never resolved credentials — see agents/secrets.md. */
+export interface McpServerDto {
+  id: string;
+  name?: string;
+  enabled: boolean;
+  /** "stdio" | "http". */
+  transport: string;
+  command?: string;
+  args?: string[];
+  cwd?: string;
+  env?: Record<string, string>;
+  url?: string;
+  headers?: Record<string, string>;
+  description?: string;
+  /** "unnamed" (default) | "named" — see ADR_20260826_service_mcp-client §2. */
+  origin: string;
+  level?: string;
+
+  /** Server-set, ignored on save. McpSessionState as a string ("Connecting", "Ready", "Failed", …),
+   *  or absent when this server has never been attempted this process's lifetime — a configured
+   *  entry with no live status yet, not an error. */
+  state?: string | null;
+  lastError?: string | null;
+  /** Tools actually registered — after naming refusals and collisions, not the server's raw count. */
+  toolCount?: number;
+}
+
+/** mcp.servers.get / mcp.servers.save round trip, and the broadcast on background status change. */
+export interface McpServersPayload {
+  servers: McpServerDto[];
+  canPersist?: boolean;
+  /** Always true — connecting/disconnecting a server only happens at startup in this wave. */
+  restartToApply?: boolean;
+}
+
 export interface PluginDto {
   id: string;
   name?: string;
@@ -732,6 +769,7 @@ export interface ServerEvents {
   "provider.info.result": ProviderInfoResultPayload;
   "agent.result": AgentResultPayload;
   "mcp.result": McpSettingsPayload;
+  "mcp.servers.result": McpServersPayload;
   "plugins.result": PluginsResultPayload;
   "skills.result": SkillsResultPayload;
   "skills.sources.result": SkillSourcesResultPayload;

@@ -12,6 +12,7 @@ internal sealed class SettingsHandlers : IMessageHandler
     [
         MessageTypes.AgentGet, MessageTypes.AgentSave,
         MessageTypes.McpGet, MessageTypes.McpSave,
+        MessageTypes.McpServersGet, MessageTypes.McpServersSave, MessageTypes.McpServersReconnect,
         MessageTypes.PluginsGet, MessageTypes.PluginsSave, MessageTypes.PluginAction,
         MessageTypes.SkillsGet, MessageTypes.SkillsSave,
         MessageTypes.SkillSourcesGet, MessageTypes.SkillSourcesSave, MessageTypes.SkillSourceTrust,
@@ -25,6 +26,9 @@ internal sealed class SettingsHandlers : IMessageHandler
         MessageTypes.AgentSave                 => AgentSave(ctx),
         MessageTypes.McpGet                    => McpGet(ctx),
         MessageTypes.McpSave                   => McpSave(ctx),
+        MessageTypes.McpServersGet              => McpServersGet(ctx),
+        MessageTypes.McpServersSave             => McpServersSave(ctx),
+        MessageTypes.McpServersReconnect        => McpServersReconnect(ctx),
         MessageTypes.PluginsGet                => PluginsGet(ctx),
         MessageTypes.PluginsSave               => PluginsSave(ctx),
         MessageTypes.PluginAction              => PluginAction(ctx),
@@ -67,6 +71,33 @@ internal sealed class SettingsHandlers : IMessageHandler
         var p = ctx.Payload<McpSettingsPayload>();
         if (p != null)
             await ctx.Session.Hub.BroadcastToProjectAsync(projectId, MessageTypes.McpResult, SettingsOps.SaveMcp(entry.Runtime, p));
+    }
+
+    private static Task McpServersGet(RequestContext ctx)
+    {
+        var (entry, _) = ctx.Session.Resolve(ctx.Env);
+        return ctx.Reply(MessageTypes.McpServersResult, SettingsOps.GetMcpServers(entry.Runtime));
+    }
+
+    private static async Task McpServersSave(RequestContext ctx)
+    {
+        var (entry, projectId) = ctx.Session.Resolve(ctx.Env);
+        var p = ctx.Payload<McpServersPayload>();
+        if (p != null)
+            await ctx.Session.Hub.BroadcastToProjectAsync(projectId, MessageTypes.McpServersResult, SettingsOps.SaveMcpServers(entry.Runtime, p));
+    }
+
+    // Unicast, like PluginAction: this answers the one click that asked for it. A state change from a
+    // successful retry already reaches every window on its own — McpClientManager publishes
+    // McpServersChanged on every connect/disconnect, which the host's domain-event subscriber (see
+    // agents/protocol.md, "Domain events") broadcasts as this same mcp.servers.result to the whole
+    // project. Broadcasting here too would just be the same frame sent twice.
+    private static async Task McpServersReconnect(RequestContext ctx)
+    {
+        var (entry, _) = ctx.Session.Resolve(ctx.Env);
+        var p = ctx.Payload<McpServerActionPayload>();
+        var result = await SettingsOps.ReconnectMcpServer(entry.Runtime, p?.ServerId ?? "");
+        await ctx.Reply(MessageTypes.McpServersResult, result);
     }
 
     private static Task PluginsGet(RequestContext ctx)
