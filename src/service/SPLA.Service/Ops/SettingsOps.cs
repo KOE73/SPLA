@@ -135,6 +135,7 @@ public static class SettingsOps
         CustomPrompt = runtime.Settings.CustomPrompt,
         LoopGuard = runtime.Settings.LoopGuard,
         LoopGuardRepeats = runtime.Settings.LoopGuardRepeats,
+        ShellTimeoutSeconds = runtime.Settings.ShellTimeoutSeconds,
         SaveToolCalls = runtime.Settings.SaveToolCalls,
         SaveAttempts = runtime.Settings.SaveAttempts,
         UnifiedResources = runtime.Settings.UnifiedResources,
@@ -181,6 +182,16 @@ public static class SettingsOps
         var loopRepeats = Math.Clamp(dto.LoopGuardRepeats ?? runtime.Settings.LoopGuardRepeats, 2, 20);
         runtime.Settings.LoopGuard = loopGuard;
         runtime.Settings.LoopGuardRepeats = loopRepeats;
+        // 0 = disabled, same convention as AskTimeoutMinutes; anything else is clamped to a sane
+        // floor so a typo can't turn every command effectively synchronous.
+        var shellTimeout = Math.Max(0, dto.ShellTimeoutSeconds);
+        if (shellTimeout is 0 or >= 5) runtime.Settings.ShellTimeoutSeconds = shellTimeout;
+        shellTimeout = runtime.Settings.ShellTimeoutSeconds;
+        if (runtime.Sandbox is SPLA.Domain.Host.PassthroughSandbox sandbox)
+        {
+            sandbox.SetShellSilentIdle(
+                shellTimeout > 0 ? TimeSpan.FromSeconds(shellTimeout) : Timeout.InfiniteTimeSpan);
+        }
         var saveToolCalls = dto.SaveToolCalls ?? false;
         runtime.Settings.SaveToolCalls = saveToolCalls;
         var saveAttempts = dto.SaveAttempts ?? false;
@@ -212,6 +223,7 @@ public static class SettingsOps
             // Write only non-default values so untouched projects keep a clean file.
             project.Agent.LoopGuard = loopGuard ? true : null;
             project.Agent.LoopGuardRepeats = loopRepeats != 3 ? loopRepeats : null;
+            project.Agent.ShellTimeoutSeconds = shellTimeout != 120 ? shellTimeout : null;
             project.Agent.SaveToolCalls = saveToolCalls ? true : null;
             project.Agent.SaveAttempts = saveAttempts ? true : null;
             project.Agent.UnifiedResources = unifiedResources ? true : null;

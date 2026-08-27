@@ -11,23 +11,33 @@ public sealed class PassthroughSandbox : ISandbox, IDisposable
     /// <summary>Process-wide fallback used when no chat scope is open (CLI, tests).</summary>
     public static readonly PassthroughSandbox Default = new();
 
+    /// <summary>The default shell's configured silent-idle timeout, applied whenever this sandbox (or
+    /// a chat's own copy of it, via <see cref="ForChat"/>) has to build its own <see cref="LocalShell"/>
+    /// rather than being handed one. Null keeps <see cref="LocalShell"/>'s own 120s default. Not
+    /// readonly: <see cref="SetShellSilentIdle"/> lets a live settings change take effect immediately
+    /// rather than only on the next restart.</summary>
+    private TimeSpan? _shellSilentIdle;
+
     /// <summary>
     /// Builds a sandbox, filling in the local implementations for whatever is not supplied. Note the
     /// asymmetry this creates and why <see cref="WithShell"/> exists: passing <c>null</c> here means
     /// "give me the default shell", so there is no way to say "no shell at all" through this door.
     /// </summary>
-    public PassthroughSandbox(IWorkspace? workspace = null, IShell? shell = null, ICapabilityGate? gate = null)
-        : this(workspace ?? new LocalWorkspace(), gate ?? AllowAllGate.Instance, shell ?? new LocalShell())
+    public PassthroughSandbox(
+        IWorkspace? workspace = null, IShell? shell = null, ICapabilityGate? gate = null, TimeSpan? shellSilentIdle = null)
+        : this(workspace ?? new LocalWorkspace(), gate ?? AllowAllGate.Instance, shell ?? new LocalShell(shellSilentIdle))
     {
+        _shellSilentIdle = shellSilentIdle;
     }
 
     /// <summary>The one that takes the parts as given, absent shell included. Argument order differs
     /// from the public constructor only so the two signatures do not collide.</summary>
-    private PassthroughSandbox(IWorkspace workspace, ICapabilityGate gate, IShell? shell)
+    private PassthroughSandbox(IWorkspace workspace, ICapabilityGate gate, IShell? shell, TimeSpan? shellSilentIdle = null)
     {
         Workspace = workspace;
         Shell = shell;
         Gate = gate;
+        _shellSilentIdle = shellSilentIdle;
     }
 
     /// <summary>The one way to build a sandbox with an explicitly absent shell — the case the public
@@ -53,7 +63,18 @@ public sealed class PassthroughSandbox : ISandbox, IDisposable
     public ISandbox ForChat() => new PassthroughSandbox(
         Workspace,
         Gate,
-        Shell is null ? null : new LocalShell());
+        Shell is null ? null : new LocalShell(_shellSilentIdle),
+        _shellSilentIdle);
+
+    /// <summary>Applies a changed <c>ShellTimeoutSeconds</c> setting immediately — to this sandbox's
+    /// own shell if it has one, and to whatever a future <see cref="ForChat"/> builds. Existing
+    /// per-chat shells already handed out keep whatever they started with, the same "next chat/turn,
+    /// not retroactive" rule other settings here follow.</summary>
+    public void SetShellSilentIdle(TimeSpan idle)
+    {
+        _shellSilentIdle = idle;
+        if (Shell is LocalShell localShell) localShell.DefaultSilentIdle = idle;
+    }
 
     /// <summary>Ends what this sandbox owns. Only the shell has anything to end — the workspace is a
     /// boundary, not a resource, and the gate is a rule.</summary>

@@ -610,8 +610,14 @@ public sealed class AgentRuntime : IDisposable
 
     private static SPLA.Domain.Host.ISandbox BuildSandbox(ResolvedSettings settings, ILoggerFactory loggers)
     {
+        // 0 = disabled per ShellTimeoutSeconds's own convention (see AskTimeoutMinutes for the same
+        // pattern elsewhere) — InfiniteTimeSpan is LocalShell's actual "never" value.
+        var shellSilentIdle = settings.ShellTimeoutSeconds > 0
+            ? TimeSpan.FromSeconds(settings.ShellTimeoutSeconds)
+            : System.Threading.Timeout.InfiniteTimeSpan;
+
         if (!settings.HasProject)
-            return SPLA.Domain.Host.PassthroughSandbox.Default;
+            return new SPLA.Domain.Host.PassthroughSandbox(shellSilentIdle: shellSilentIdle);
 
         var log = loggers.CreateLogger<SPLA.Domain.Host.PathBoundary>();
         // The project's boundary, not a second one built to the same recipe: SFTP and the web
@@ -625,7 +631,7 @@ public sealed class AgentRuntime : IDisposable
                 "Path boundary (shadow): would refuse. Path={Path} Reason={Reason} Root={Root}",
                 observation.Path, observation.Reason, boundary.Root));
 
-        return new SPLA.Domain.Host.PassthroughSandbox(workspace);
+        return new SPLA.Domain.Host.PassthroughSandbox(workspace, shellSilentIdle: shellSilentIdle);
     }
 
     private IReadOnlyList<ISkillSource> BuildSkillSources() =>

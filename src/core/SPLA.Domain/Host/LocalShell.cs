@@ -25,14 +25,27 @@ public sealed class LocalShell : IShell, IDisposable
     /// <summary>A prompt-shaped tail this old means the command is asking, not working.</summary>
     private static readonly TimeSpan DefaultPromptIdle = TimeSpan.FromSeconds(2);
 
-    /// <summary>Total silence this long returns control so a long command is not a black box.</summary>
-    private static readonly TimeSpan DefaultSilentIdle = TimeSpan.FromSeconds(120);
+    /// <summary>Total silence this long returns control so a long command is not a black box, unless
+    /// overridden — see <see cref="DefaultSilentIdle"/> and <c>ResolvedSettings.ShellTimeoutSeconds</c>,
+    /// which is how a project configures this.</summary>
+    private static readonly TimeSpan HardcodedSilentIdle = TimeSpan.FromSeconds(120);
 
     /// <summary>Guard against a model that never closes what it opens; each live session is a process.</summary>
     private const int MaxLiveSessions = 16;
 
     private readonly ConcurrentDictionary<string, Session> _sessions = new(StringComparer.Ordinal);
     private int _nextSessionId;
+
+    /// <summary>Falls back to this instead of the hardcoded 120s default when a
+    /// <see cref="ShellCommand"/> doesn't specify its own — the configured project timeout. Settable
+    /// (not just constructor-supplied) so a live settings change applies to commands started after
+    /// it, without needing a fresh <see cref="LocalShell"/> instance. Set to
+    /// <see cref="Timeout.InfiniteTimeSpan"/> to disable the check entirely.</summary>
+    public TimeSpan DefaultSilentIdle { get; set; }
+
+    public LocalShell() : this(null) { }
+
+    public LocalShell(TimeSpan? defaultSilentIdle) => DefaultSilentIdle = defaultSilentIdle ?? HardcodedSilentIdle;
 
     public async Task<ShellResult> RunAsync(ShellCommand command, CancellationToken ct = default)
     {

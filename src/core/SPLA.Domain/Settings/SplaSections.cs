@@ -48,6 +48,15 @@ public class SplaAgentSection
     [YamlMember(Alias = "ask_timeout_minutes")]
     public int? AskTimeoutMinutes { get; set; }
 
+    /// <summary>Seconds a shell command run via <c>system_run_shell</c> may sit completely silent
+    /// before the tool returns control with <c>Status: running</c> instead of continuing to wait
+    /// (default 120 — see <c>LocalShell.DefaultSilentIdle</c>). This is not a hard cutoff: the
+    /// command itself is untouched and can be resumed with <c>system_resume_shell</c>, but a caller
+    /// that never resumes sees it as a stall. 0 disables the check entirely — the tool call waits
+    /// until the command exits or asks a question, however long that takes.</summary>
+    [YamlMember(Alias = "shell_timeout_seconds")]
+    public int? ShellTimeoutSeconds { get; set; }
+
     /// <summary>Enabled built-in agent capabilities (dotted "core.*" feature ids — see
     /// <c>SPLA.MCP.Core.Agent.AgentFeatureCatalog</c>). Null (key absent) = every feature enabled,
     /// the historical behaviour. Empty list = no built-in feature (only the mode preamble,
