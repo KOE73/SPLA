@@ -154,6 +154,20 @@ public sealed class ChatDeletePayload
     public string ChatId { get; set; } = string.Empty;
 }
 
+/// <summary>Body of both <see cref="MessageTypes.ChatArchive"/> and <see cref="MessageTypes.ChatUnarchive"/> —
+/// same shape as <see cref="ChatDeletePayload"/>, kept as its own type since the two are conceptually
+/// distinct actions.</summary>
+public sealed class ChatArchivePayload
+{
+    public string ChatId { get; set; } = string.Empty;
+}
+
+/// <summary>Answer to <see cref="MessageTypes.ChatArchivedList"/>.</summary>
+public sealed class ChatArchivedListResultPayload
+{
+    public List<ChatSummaryDto> Chats { get; set; } = new();
+}
+
 public sealed class ChatSendPayload
 {
     public string ChatId { get; set; } = string.Empty;
@@ -440,6 +454,10 @@ public sealed class AgentSettingsPayload
     /// Stored in .spla agent: loop_guard / loop_guard_repeats. Default off.</summary>
     public bool? LoopGuard { get; set; }
     public int? LoopGuardRepeats { get; set; }
+    /// <summary>Seconds a <c>system_run_shell</c> command may sit silent before the tool returns
+    /// control instead of continuing to wait. Stored in .spla agent: shell_timeout_seconds.
+    /// 0 = disabled (wait indefinitely). Default 120.</summary>
+    public int ShellTimeoutSeconds { get; set; } = 120;
     /// <summary>Persist the full tool-call/tool-result trace with the chat history, not just the
     /// final text. Stored in .spla agent: save_tool_calls. Default off.</summary>
     public bool? SaveToolCalls { get; set; }

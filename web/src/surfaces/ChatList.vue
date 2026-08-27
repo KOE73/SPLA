@@ -35,7 +35,26 @@
       @select="onChatClick"
       @rename="rename"
       @delete="remove"
+      @archive="archive"
     />
+
+    <!-- Archived chats — toggled from the status bar (ProjectBar), session-only. Rendered below the
+         normal list rather than interleaved, so an active chat's position never shifts as things get
+         archived/restored. -->
+    <template v-if="store.showArchivedChats">
+      <div class="archived-header">Archived</div>
+      <ChatListItem
+        v-for="chat in store.archivedChats"
+        :key="chat.id"
+        :chat="chat"
+        :active="chat.id === store.currentChat"
+        archived
+        @select="onChatClick"
+        @restore="restore"
+        @delete-permanently="removePermanently"
+      />
+      <div v-if="!store.archivedChats.length" class="archived-empty">No archived chats.</div>
+    </template>
   </div>
 
   <!-- Project/server status bar, pinned under the chat list. Nothing chat-scoped goes in here. -->
@@ -45,7 +64,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onUnmounted, ref } from "vue";
+import { computed, onUnmounted, ref, watch } from "vue";
 import { client } from "../protocol/SplaClient";
 import { store } from "../state/store";
 import type { ChatSummary } from "../protocol/types";
@@ -56,7 +75,13 @@ import { openPanel } from "../dock/dockController";
 import { forgetSession } from "../state/chatSessions";
 
 const offList = client.on("chat.list.result", p => { store.chats = p.chats || []; });
+const offArchivedList = client.on("chat.archived.list.result", p => { store.archivedChats = p.chats || []; });
 onUnmounted(offList);
+onUnmounted(offArchivedList);
+
+// The toggle lives in ProjectBar (bottom status bar), but only ChatList knows when to actually fetch
+// the archived list — no point asking while the section is collapsed. Fetch once on every rising edge.
+watch(() => store.showArchivedChats, shown => { if (shown) client.send("chat.archived.list"); });
 
 const chatsContainerRef = ref<HTMLElement>();
 
@@ -74,6 +99,23 @@ function rename(chat: ChatSummary) {
 
 function remove(chatId: string) {
   if (!confirm("Delete this chat?")) return;
+  client.send("chat.delete", { chatId });
+  forgetSession(chatId);
+  if (chatId === store.currentChat) store.currentChat = null;
+}
+
+function archive(chatId: string) {
+  client.send("chat.archive", { chatId });
+  forgetSession(chatId);   // the runtime is closed server-side; drop any local session for it too
+  if (chatId === store.currentChat) store.currentChat = null;
+}
+
+function restore(chatId: string) {
+  client.send("chat.unarchive", { chatId });
+}
+
+function removePermanently(chatId: string) {
+  if (!confirm("Permanently delete this archived chat? This cannot be undone.")) return;
   client.send("chat.delete", { chatId });
   forgetSession(chatId);
   if (chatId === store.currentChat) store.currentChat = null;
@@ -191,4 +233,20 @@ function scrollToState() {
 @keyframes status-working-pulse { 0%, 100% { opacity: .35; } 50% { opacity: 1; } }
 .status-line.aggregate-working .label { color: var(--accent); }
 .status-line .label { flex: 1; }
+
+/* ── Archived chats section ──────────────────────────────────────────────────── */
+.archived-header {
+  padding: 6px 10px 2px;
+  font-size: var(--fs-xs);
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  opacity: 0.7;
+}
+.archived-empty {
+  padding: 4px 10px 8px;
+  font-size: var(--fs-xs);
+  color: var(--muted);
+  opacity: 0.6;
+}
 </style>

@@ -114,6 +114,21 @@ export class RegistryClient {
     return res.ok;
   }
 
+  /** The Projects window's own saved scheme, or null when nothing has been picked yet. Kept in a
+   *  file next to the registry rather than the browser's storage — see HubAppearanceStore. */
+  async getAppearance(): Promise<string | null> {
+    try {
+      const res = await fetch("/registry/appearance");
+      if (!res.ok) return null;
+      const body = await res.json();
+      return body.theme ?? null;
+    } catch { return null; }
+  }
+
+  saveAppearance(theme: string): void {
+    void fetch(`/registry/appearance?theme=${encodeURIComponent(theme)}`, { method: "POST" }).catch(() => {});
+  }
+
   dispose(): void {
     clearTimeout(this.reconnectTimer);
     this.ws?.close();

@@ -130,6 +130,21 @@ public sealed class ChatRegistry : IDisposable
         }
     }
 
+    /// <summary>Archives a chat: closes any open runtime for it (an archived chat must not have a
+    /// live one, same as <see cref="Delete"/>), then moves its yaml aside on disk.</summary>
+    public void Archive(string chatId)
+    {
+        if (_open.TryRemove(chatId, out var closed))
+        {
+            RuntimeClosed?.Invoke(closed);
+            closed.Dispose();
+        }
+        _runtime.ChatManager.Archive(chatId);
+    }
+
+    /// <summary>Unarchives a chat: just moves its yaml back — nothing was open to reopen.</summary>
+    public void Unarchive(string chatId) => _runtime.ChatManager.Unarchive(chatId);
+
     /// <summary>
     /// Closes every open chat. Called when the host stops, so that a shutdown does not leave live
     /// child processes behind for the OS to reap — or not.

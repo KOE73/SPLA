@@ -93,6 +93,12 @@ public static class MessageTypes
     public const string ChatNew = "chat.new";
     public const string ChatRename = "chat.rename";
     public const string ChatDelete = "chat.delete";
+    /// <summary>Moves a chat aside without deleting it. Body is <see cref="ChatArchivePayload"/>.</summary>
+    public const string ChatArchive = "chat.archive";
+    /// <summary>Moves an archived chat back. Body is <see cref="ChatArchivePayload"/>.</summary>
+    public const string ChatUnarchive = "chat.unarchive";
+    /// <summary>Lists archived chats. Answered with <see cref="ChatArchivedListResult"/>.</summary>
+    public const string ChatArchivedList = "chat.archived.list";
     public const string ChatSend = "chat.send";
     /// <summary>Discard messages after (optionally including) an anchor message. Body is
     /// <see cref="ChatRewindPayload"/>; the server re-sends <see cref="ChatOpened"/>.</summary>
@@ -283,6 +289,8 @@ public static class MessageTypes
     // ── Server → Client ──────────────────────────────────────────────────
     public const string Welcome = "welcome";
     public const string ChatListResult = "chat.list.result";
+    /// <summary>Answer to <see cref="ChatArchivedList"/>. Body <see cref="ChatArchivedListResult"/>.</summary>
+    public const string ChatArchivedListResult = "chat.archived.list.result";
     public const string ChatOpened = "chat.opened";
     public const string LlmTurnStart = "llm.turn.start";
     public const string Delta = "delta";

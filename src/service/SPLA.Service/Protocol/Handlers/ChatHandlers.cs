@@ -13,6 +13,7 @@ internal sealed class ChatHandlers : IMessageHandler
     public IEnumerable<string> HandledTypes =>
     [
         MessageTypes.ChatList, MessageTypes.ChatNew, MessageTypes.ChatRename, MessageTypes.ChatDelete,
+        MessageTypes.ChatArchive, MessageTypes.ChatUnarchive, MessageTypes.ChatArchivedList,
         MessageTypes.ChatOpen, MessageTypes.ChatWatch, MessageTypes.ChatUnwatch,
         MessageTypes.ChatSend, MessageTypes.ChatSettings, MessageTypes.ChatReasoningGet,
         MessageTypes.ChatRewind, MessageTypes.ChatFork,
@@ -27,6 +28,9 @@ internal sealed class ChatHandlers : IMessageHandler
         MessageTypes.ChatNew      => New(ctx),
         MessageTypes.ChatRename   => Rename(ctx),
         MessageTypes.ChatDelete   => Delete(ctx),
+        MessageTypes.ChatArchive  => Archive(ctx),
+        MessageTypes.ChatUnarchive => Unarchive(ctx),
+        MessageTypes.ChatArchivedList => ListArchived(ctx),
         MessageTypes.ChatOpen     => Open(ctx),
         MessageTypes.ChatWatch    => Watch(ctx),
         MessageTypes.ChatUnwatch  => Unwatch(ctx),
@@ -75,8 +79,43 @@ internal sealed class ChatHandlers : IMessageHandler
         {
             entry.Chats.Delete(p.ChatId);
             ctx.Session.MarkChatClosed(p.ChatId);   // nothing left to watch
+            // The deleted chat may have been active or archived — broadcast both lists rather than
+            // asking the caller which one it came from.
             await BroadcastChatList(ctx, projectId, entry.Chats);
+            await BroadcastArchivedList(ctx, projectId, entry.Chats);
         }
+    }
+
+    private static async Task Archive(RequestContext ctx)
+    {
+        var (entry, projectId) = ctx.Session.Resolve(ctx.Env);
+        var p = ctx.Payload<ChatArchivePayload>();
+        if (p != null)
+        {
+            entry.Chats.Archive(p.ChatId);
+            ctx.Session.MarkChatClosed(p.ChatId);   // archived chats have no runtime to watch
+            await BroadcastChatList(ctx, projectId, entry.Chats);
+            await BroadcastArchivedList(ctx, projectId, entry.Chats);
+        }
+    }
+
+    private static async Task Unarchive(RequestContext ctx)
+    {
+        var (entry, projectId) = ctx.Session.Resolve(ctx.Env);
+        var p = ctx.Payload<ChatArchivePayload>();
+        if (p != null)
+        {
+            entry.Chats.Unarchive(p.ChatId);
+            await BroadcastChatList(ctx, projectId, entry.Chats);
+            await BroadcastArchivedList(ctx, projectId, entry.Chats);
+        }
+    }
+
+    private static Task ListArchived(RequestContext ctx)
+    {
+        var (entry, _) = ctx.Session.Resolve(ctx.Env);
+        return ctx.Reply(MessageTypes.ChatArchivedListResult,
+            new ChatArchivedListResultPayload { Chats = entry.Chats.ListArchived() });
     }
 
     private static async Task Open(RequestContext ctx)
@@ -402,4 +441,8 @@ internal sealed class ChatHandlers : IMessageHandler
     private static Task BroadcastChatList(RequestContext ctx, string projectId, ChatRegistry chats)
         => ctx.Session.Hub.BroadcastToProjectAsync(projectId, MessageTypes.ChatListResult,
             new ChatListResultPayload { Chats = chats.List() });
+
+    private static Task BroadcastArchivedList(RequestContext ctx, string projectId, ChatRegistry chats)
+        => ctx.Session.Hub.BroadcastToProjectAsync(projectId, MessageTypes.ChatArchivedListResult,
+            new ChatArchivedListResultPayload { Chats = chats.ListArchived() });
 }

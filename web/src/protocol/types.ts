@@ -212,6 +212,9 @@ export interface AgentResultPayload {
   permRead?: string; permWrite?: string; permShell?: string; permInternet?: string;
   customPrompt?: string;
   loopGuard?: boolean; loopGuardRepeats?: number; saveToolCalls?: boolean; saveAttempts?: boolean;
+  /** Seconds system_run_shell may sit silent before the tool returns "still running" instead of
+   *  continuing to wait. 0 = disabled (wait indefinitely). Default 120. */
+  shellTimeoutSeconds?: number;
   /** Master switch for the resource-address abstraction (file://, sftp://, …). Default false —
    *  the foundation ships inert so the model can be measured with and without it. */
   unifiedResources?: boolean;
@@ -674,6 +677,7 @@ export interface ServerEvents {
   "chat.opened": ChatOpenedPayload;
   "chat.reasoning.result": ChatReasoningResult;
   "chat.list.result": { chats: ChatSummary[] };
+  "chat.archived.list.result": { chats: ChatSummary[] };
   "chat.cleared": Record<string, never>;
   "chat.current": ChatOpenedPayload;
   "focus.changed": { chatId: string };

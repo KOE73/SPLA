@@ -44,6 +44,24 @@ public sealed class RegistryHub
 
     private readonly ConcurrentDictionary<string, Entry> _entries = new(StringComparer.OrdinalIgnoreCase);
 
+    /// <summary>
+    /// Every project id (manifest path) this hub has ever accepted a registration for, with the name
+    /// that registration gave it. Kept separately from <see cref="_entries"/> — and, unlike it,
+    /// <b>never</b> pruned when an instance disconnects — because the whole reason a caller looks a
+    /// project up by name instead of by path is that the path is exactly what they do not want to
+    /// carry around; if this forgot a name the moment its instance went idle and stopped, name lookup
+    /// would only ever work for projects that happen to be running at that exact moment, which is not
+    /// a lookup a client could build anything on top of.
+    ///
+    /// <para><b>Still not storage.</b> This dies with the hub process precisely like <see
+    /// cref="_entries"/> does — it is process memory, not a file — so a project this hub has never once
+    /// seen register (a fresh checkout nobody has run <c>spla serve</c> in yet, or one only ever started
+    /// against a different hub) cannot be found by name here. Only by its manifest path, which needs no
+    /// lookup at all. That gap is a deliberate non-feature: scanning the disk for manifests to fill it
+    /// would turn a cheap index into a filesystem crawler, for a case a path already answers.</para>
+    /// </summary>
+    private readonly ConcurrentDictionary<string, string?> _knownNames = new(StringComparer.OrdinalIgnoreCase);
+
     /// <summary>Raised whenever the set or any member's state changes — one signal for observers to
     /// re-read. Coarse on purpose: the list is small, and a diff an observer has to reconcile is a
     /// list an observer can get wrong.</summary>
@@ -67,6 +85,14 @@ public sealed class RegistryHub
         // Last registration wins. A reconnecting instance keeps its id, so the natural outcome of a
         // dropped-and-restored channel is one entry replaced, never two claiming the same project.
         _entries[id] = entry;
+
+        // Written on every registration, never removed on disconnect — see the field's own remarks on
+        // why this outlives _entries. Only agents hold a project worth finding this way; a window
+        // registering under the same project id would otherwise overwrite a real name with null the
+        // moment it opened, which is a worse answer than simply not recording it.
+        if (role == ParticipantRoles.Agent)
+            _knownNames[frame.ProjectId] = frame.ProjectName;
+
         Changed?.Invoke();
         return new Registration(this, id);
     }
@@ -166,6 +192,33 @@ public sealed class RegistryHub
         => List().FirstOrDefault(e =>
             e.Role == ParticipantRoles.Window &&
             string.Equals(e.ProjectId, projectId, StringComparison.OrdinalIgnoreCase));
+
+    /// <summary>The live agent for one project id (manifest path), or null when nothing is currently
+    /// registered for it — which covers both "never started" and "started, then evicted or stopped".
+    /// Callers that need to start it on a miss go through <see cref="IInstanceSpawner"/> themselves;
+    /// this only answers what is up right now, the same promise every other read on this class
+    /// makes.</summary>
+    public RegisteredInstanceDto? FindAgent(string projectId)
+        => List().FirstOrDefault(e =>
+            e.Role == ParticipantRoles.Agent &&
+            string.Equals(e.ProjectId, projectId, StringComparison.OrdinalIgnoreCase));
+
+    /// <summary>One candidate a name search turned up: the project id a caller would need in order to
+    /// address it directly, paired with the name that matched.</summary>
+    public readonly record struct ProjectMatch(string ProjectId, string? ProjectName);
+
+    /// <summary>
+    /// Every project id this hub has ever seen register under <paramref name="name"/> — see
+    /// <see cref="_knownNames"/> for what "seen" does and does not mean. Ordinarily this returns at
+    /// most one match; more than one means two different manifests happen to share a display name, and
+    /// it is deliberately left to the caller to refuse the guess rather than pick one (an HTTP 409
+    /// listing both is the point of returning a list here instead of a single nullable result).
+    /// </summary>
+    public IReadOnlyList<ProjectMatch> FindByName(string name)
+        => _knownNames
+            .Where(kv => string.Equals(kv.Value, name, StringComparison.OrdinalIgnoreCase))
+            .Select(kv => new ProjectMatch(kv.Key, kv.Value))
+            .ToList();
 
     private void Remove(string instanceId)
     {
