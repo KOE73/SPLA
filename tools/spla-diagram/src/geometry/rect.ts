@@ -52,19 +52,44 @@ export function expand(r: Rect, by: number): Rect {
 /**
  * Which side of `from` faces `to`.
  *
- * The rule is the one the original renderer used (R-REND-10): whichever axis
- * has the larger separation wins. It is deliberately crude — it produces
- * stable, predictable results, which matters more here than optimal routing.
+ * Decided by how the two rectangles' *extents* relate, not by where their
+ * centres happen to fall. The original rule (R-REND-10) compared centre
+ * deltas, which misreads any pair whose sizes differ: a 570-wide interface
+ * with a narrow class sitting directly beneath it has a large horizontal
+ * centre delta purely because the interface is wide, so the crude rule picked
+ * a vertical side and drove the edge into the interface's left edge. Worse,
+ * pairs sitting near the |dx| == |dy| diagonal flipped sides on a one-pixel
+ * drag, which is the "it depends on the distance" flapping.
+ *
+ * Ranges are stable under that: overlapping on exactly one axis means the
+ * boxes genuinely face each other across the other axis, and stays true no
+ * matter how far apart they are or how lopsided their sizes.
  */
 export function facingSide(from: Rect, to: Rect): Side {
+  const xOverlap = Math.min(right(from), right(to)) - Math.max(from.x, to.x);
+  const yOverlap = Math.min(bottom(from), bottom(to)) - Math.max(from.y, to.y);
+
   const a = center(from);
   const b = center(to);
   const dx = b.x - a.x;
   const dy = b.y - a.y;
 
-  if (Math.abs(dx) > Math.abs(dy)) {
-    return dx >= 0 ? "east" : "west";
+  // Sharing a column but not a row: they face each other vertically.
+  if (xOverlap >= 0 && yOverlap < 0) return dy >= 0 ? "south" : "north";
+  // Sharing a row but not a column: horizontally.
+  if (yOverlap >= 0 && xOverlap < 0) return dx >= 0 ? "east" : "west";
+
+  // Diagonal (neither axis shares): the axis with the wider gap is the one the
+  // eye reads as the direction of travel. Gaps, unlike centres, do not depend
+  // on how big either box is.
+  if (xOverlap < 0 && yOverlap < 0) {
+    if (xOverlap < yOverlap) return dx >= 0 ? "east" : "west";
+    return dy >= 0 ? "south" : "north";
   }
+
+  // Overlapping on both axes — the rectangles intersect, so no side truly
+  // "faces" the other. Centres are as good an answer as any here.
+  if (Math.abs(dx) > Math.abs(dy)) return dx >= 0 ? "east" : "west";
   return dy >= 0 ? "south" : "north";
 }
 

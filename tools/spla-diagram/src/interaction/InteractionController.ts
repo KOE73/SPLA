@@ -308,9 +308,11 @@ export class InteractionController {
       el.y = from.y + dy;
     }
 
-    // Reparenting targets a single dragged leaf; moving a group into a
-    // container is a different operation and is left alone.
-    if (gesture.moved.length === 1 && !isContainer(gesture.lead)) {
+    // Reparenting targets a single dragged element, leaf or container alike;
+    // moving a multi-selection into a container is a different operation and
+    // is left alone. `containerAt` excludes the dragged element's own subtree,
+    // so a container can never be dropped into itself or a descendant.
+    if (gesture.moved.length === 1) {
       const doc = this.canvas.model;
       const target = doc?.containerAt(center(elementRect(gesture.lead)), gesture.lead) ?? null;
       this.canvas.setDropTarget(target?.id ?? null);
@@ -325,7 +327,7 @@ export class InteractionController {
     this.canvas.setDropTarget(null);
 
     if (doc === null) return;
-    if (gesture.moved.length !== 1 || isContainer(gesture.lead)) return;
+    if (gesture.moved.length !== 1) return;
 
     const target = dropTargetId === null ? null : doc.element(dropTargetId) ?? null;
     if (target !== gesture.lead.parent) {

@@ -15,7 +15,7 @@ import { edgeStyle } from "./render/edgeStyles.js";
 import { marquee, resizeHandles, selectionOutline } from "./render/handles.js";
 import { CenterPortAssigner } from "./ports/assigners.js";
 import { portKey, type PortAssigner, type PortRequest } from "./ports/PortAssigner.js";
-import { StraightRouter, type EdgeRouter } from "./routing/EdgeRouter.js";
+import { BezierRouter, type EdgeRouter } from "./routing/EdgeRouter.js";
 import { EDGE_ATTR } from "../interaction/roles.js";
 import { InteractionController } from "../interaction/InteractionController.js";
 
@@ -99,7 +99,7 @@ export class DiagramCanvas {
     this.host = host;
     this.gridStep = options.gridStep ?? 10;
     this.portAssigner = options.portAssigner ?? new CenterPortAssigner();
-    this.router = options.router ?? new StraightRouter();
+    this.router = options.router ?? new BezierRouter();
     this.registry = options.registry ?? defaultRegistry();
 
     this.zonesLayer = svg("g", { class: "spla-layer-zones" });
