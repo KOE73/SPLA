@@ -58,6 +58,7 @@
                     @click.stop="reconnect(s)">
               {{ reconnecting === s.id ? "reconnecting…" : "Reconnect" }}
             </button>
+            <button class="btn ghost" type="button" @click.stop="remove(s._key)">✕ Remove</button>
             <span class="chev">{{ isOpen(s._key) ? "▾" : "▸" }}</span>
           </div>
 
@@ -123,10 +124,6 @@
 
             <p v-if="s.lastError" class="hint" style="color: var(--danger, #f85149)">Last error: {{ s.lastError }}</p>
             <p class="hint">Tools registered: {{ s.toolCount ?? 0 }}</p>
-
-            <div class="field col">
-              <button class="btn ghost danger" type="button" @click="remove(s._key)">✕ remove server</button>
-            </div>
           </div>
         </div>
       </div>
@@ -314,5 +311,4 @@ defineExpose({ save });
 .state-word.ok { color: var(--ok, #3fb950); }
 .state-word.danger { color: var(--danger, #f85149); }
 .state-word.muted { color: var(--muted); }
-.btn.danger { color: var(--danger, #f85149); }
 </style>
