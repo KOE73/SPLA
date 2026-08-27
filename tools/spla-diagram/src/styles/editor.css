@@ -587,6 +587,34 @@ body {
   gap: 8px;
 }
 
+.color-field-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.color-field-row input[type="text"] {
+  flex: 1;
+}
+
+.color-swatch {
+  flex: 0 0 auto;
+  width: 32px;
+  height: 32px;
+  padding: 2px;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+.color-swatch::-webkit-color-swatch-wrapper {
+  padding: 0;
+}
+
+.color-swatch::-webkit-color-swatch {
+  border: none;
+  border-radius: 4px;
+}
+
 input,
 select,
 textarea {

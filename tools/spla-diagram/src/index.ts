@@ -51,7 +51,7 @@ export {
 } from "./canvas/ports/assigners.js";
 export type { PortAssigner, PortRequest } from "./canvas/ports/PortAssigner.js";
 
-export { BezierRouter } from "./canvas/routing/EdgeRouter.js";
+export { BezierRouter, StraightRouter } from "./canvas/routing/EdgeRouter.js";
 export type { EdgeRouter, Route, RouteRequest } from "./canvas/routing/EdgeRouter.js";
 
 export { exportDrawio } from "./editor/io/drawio.js";

@@ -57,3 +57,28 @@ export class BezierRouter implements EdgeRouter {
     };
   }
 }
+
+/**
+ * A direct chord between the two attachment points, no detour.
+ *
+ * The default. `BezierRouter`'s S-curve assumes the pair sits roughly
+ * opposite each other along the chosen axis; when the boxes are closer to
+ * diagonal, its control points can swing the curve's tail across the target
+ * box before it reaches the boundary, burying the arrowhead under the node's
+ * own fill (nodes paint over the edge layer — see R-REND-10 history). A
+ * straight line never backtracks past its own endpoint, so it cannot recreate
+ * that failure, and for a fixed-coordinate diagram straight connectors read
+ * fine: there is no auto-layout here to produce overlapping geometry a curve
+ * would need to route around.
+ */
+export class StraightRouter implements EdgeRouter {
+  readonly id = "straight";
+
+  route(req: RouteRequest): Route {
+    const { from, to } = req;
+    return {
+      path: `M ${from.x} ${from.y} L ${to.x} ${to.y}`,
+      labelAt: { x: (from.x + to.x) / 2, y: (from.y + to.y) / 2 - 6 },
+    };
+  }
+}

@@ -61,6 +61,26 @@ export class Viewport {
     this.set({ zoom });
   }
 
+  /**
+   * Zoom while holding one screen point fixed under the cursor, instead of
+   * the plane's origin. Reads pan/zoom together rather than going through
+   * `set` so there is no frame where the new zoom is applied against the old
+   * pan — that would flash the anchor out of place before the corrected pan
+   * lands.
+   */
+  zoomAt(screen: Point, factor: number): void {
+    const zoom = clampZoom(this.state.zoom * factor);
+    if (zoom === this.state.zoom) return;
+
+    const model = this.toModel(screen);
+    this.state = {
+      zoom,
+      panX: screen.x - model.x * zoom,
+      panY: screen.y - model.y * zoom,
+    };
+    this.apply();
+  }
+
   reset(): void {
     this.state = RESET;
     this.apply();

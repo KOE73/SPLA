@@ -247,7 +247,7 @@ export class InteractionController {
 
   private readonly onWheel = (e: WheelEvent): void => {
     e.preventDefault();
-    this.canvas.zoomBy(e.deltaY < 0 ? 1.1 : 0.9);
+    this.canvas.zoomAtClient(e.deltaY < 0 ? 1.1 : 0.9, e.clientX, e.clientY);
   };
 
   // --------------------------------------------------------------- gestures

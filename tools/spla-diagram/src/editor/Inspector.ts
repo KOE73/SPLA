@@ -135,6 +135,7 @@ export class Inspector {
         this.parentField(element),
       ]),
       container ? this.containerPanel(element) : null,
+      container ? this.stylePanel(element) : null,
       this.descriptionField(element),
       this.codeRefField(element),
       container ? null : this.connectionsPanel(element),
@@ -249,6 +250,66 @@ export class Inspector {
         text: collapsed ? "Развернуть" : "Свернуть",
         on: { click: () => this.host.canvas.toggleCollapse(element.id) },
       }),
+    ]);
+  }
+
+  private stylePanel(element: DiagramElement): HTMLElement {
+    const style = element.style ?? {};
+    return el("div", { class: "panel-section" }, [
+      el("div", { class: "field-label accent", text: "Стили контейнера (цвета):" }),
+      this.colorField("Фон (fill)", style.fill ?? "", (val) => {
+        this.host.editField(() => {
+          if (!element.style) element.style = {};
+          element.style.fill = val === "" ? undefined : val;
+        }, { rerender: true });
+      }),
+      this.colorField("Рамка (stroke)", style.stroke ?? "", (val) => {
+        this.host.editField(() => {
+          if (!element.style) element.style = {};
+          element.style.stroke = val === "" ? undefined : val;
+        }, { rerender: true });
+      }),
+      this.colorField("Заголовок (headerBg)", style.headerBg ?? "", (val) => {
+        this.host.editField(() => {
+          if (!element.style) element.style = {};
+          element.style.headerBg = val === "" ? undefined : val;
+        }, { rerender: true });
+      }),
+    ]);
+  }
+
+  private colorField(label: string, value: string, onChange: (val: string) => void): HTMLElement {
+    const text = el("input", {
+      class: "mono",
+      type: "text",
+      value,
+      placeholder: "hex, rgb, или пусто",
+      on: {
+        input: (e) => {
+          const next = (e.target as HTMLInputElement).value;
+          swatch.value = toSwatchValue(next);
+          onChange(next);
+        },
+      },
+    }) as HTMLInputElement;
+
+    const swatch = el("input", {
+      class: "color-swatch",
+      type: "color",
+      title: "Выбрать цвет",
+      value: toSwatchValue(value),
+      on: {
+        input: (e) => {
+          const next = (e.target as HTMLInputElement).value;
+          text.value = next;
+          onChange(next);
+        },
+      },
+    }) as HTMLInputElement;
+
+    return el("label", { class: "field" }, [
+      el("span", { class: "field-label", text: label }),
+      el("div", { class: "color-field-row" }, [swatch, text]),
     ]);
   }
 
@@ -392,6 +453,37 @@ export class Inspector {
 
 function edgeTypeOptions(): ReadonlyArray<readonly [string, string]> {
   return edgeTypes().map((type) => [type, EDGE_TYPE_LABELS[type] ?? type] as const);
+}
+
+/**
+ * `<input type="color">` only ever holds a 6-digit hex, and rejects anything
+ * else outright rather than falling back — so a named color, an rgb(), or an
+ * empty "use the theme default" value all need translating into something it
+ * can display. The canvas resolves the real color via CSS, so this normalized
+ * value only has to be visually close enough for the swatch to be useful as a
+ * picker; the authoritative value stays in the text field next to it.
+ */
+function toSwatchValue(value: string): string {
+  const trimmed = value.trim();
+  if (/^#[0-9a-fA-F]{6}$/.test(trimmed)) return trimmed;
+  if (/^#[0-9a-fA-F]{3}$/.test(trimmed)) {
+    const [, r, g, b] = trimmed;
+    return `#${r}${r}${g}${g}${b}${b}`;
+  }
+  if (trimmed === "") return "#cbd5e1";
+
+  const probe = document.createElement("span");
+  probe.style.color = "";
+  probe.style.color = trimmed;
+  if (probe.style.color === "") return "#cbd5e1";
+  probe.style.display = "none";
+  document.body.appendChild(probe);
+  const rgb = getComputedStyle(probe).color;
+  document.body.removeChild(probe);
+  const match = rgb.match(/\d+/g);
+  if (match === null || match.length < 3) return "#cbd5e1";
+  const [r, g, b] = match.map((n) => Number(n).toString(16).padStart(2, "0"));
+  return `#${r}${g}${b}`;
 }
 
 function formatGeometry(element: DiagramElement): string {
