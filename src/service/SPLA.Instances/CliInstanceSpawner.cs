@@ -40,7 +40,7 @@ public sealed class CliInstanceSpawner : IInstanceSpawner
         _idleTimeout = idleTimeout ?? TimeSpan.FromMinutes(15);
     }
 
-    public Task<SpawnResult> StartAsync(string projectId, CancellationToken ct = default)
+    public Task<SpawnResult> StartAsync(string projectId, bool enableMcp = false, CancellationToken ct = default)
     {
         if (string.IsNullOrWhiteSpace(projectId))
             return Task.FromResult(new SpawnResult(false, "No project given."));
@@ -74,6 +74,7 @@ public sealed class CliInstanceSpawner : IInstanceSpawner
             [
                 "serve", "--bind", "127.0.0.1",
                 "--idle-timeout", ((int)_idleTimeout.TotalMinutes).ToString(),
+                .. enableMcp ? ["--mcp"] : Array.Empty<string>(),
                 .. _hubUrl is null ? Array.Empty<string>() : ["--registry", _hubUrl]
             ];
             foreach (var a in serveArgs) psi.ArgumentList.Add(a);

@@ -72,7 +72,7 @@ internal sealed class StartCommand : AsyncCommand<StartSettings>
         // No hub named: the child is told about none either, so it is visible through its lock file
         // and `spla ps` rather than through a hub. Same agent, narrower view.
         var spawner = new CliInstanceSpawner(hubUrl: null, _loggers.CreateLogger<CliInstanceSpawner>());
-        var result = await spawner.StartAsync(manifest, ct);
+        var result = await spawner.StartAsync(manifest, ct: ct);
         return Report(result.Started, result.AlreadyRunning, result.Error, name);
     }
 

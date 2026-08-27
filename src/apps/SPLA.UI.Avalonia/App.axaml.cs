@@ -164,7 +164,7 @@ public partial class App : Application
             return;
         }
 
-        _trayIcon = TrayIconService.StartIfHubAvailable(HubUrl);
+        _trayIcon = TrayIconService.StartIfHubAvailable(HubUrl, exit: () => desktop.Shutdown());
     }
 
     private static readonly HashSet<string> KnownThemes    = ["Dark", "Light", "Cream", "Emerald"];

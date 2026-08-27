@@ -44,6 +44,14 @@ internal sealed class ServeSettings : CommandSettings
     [CommandOption("--idle-timeout")]
     [Description("Minutes with no clients and nothing running before the instance stops itself. 0 (default) = never.")]
     public int IdleTimeoutMinutes { get; init; }
+
+    // Forces POST /mcp on regardless of this project's mcp.enabled setting. Exists for `spla mcp`'s
+    // own join-or-start path: a child it spawns for itself exists for no other reason than to answer
+    // /mcp, so refusing that route because the project left mcp.enabled at its default would defeat
+    // the spawn. An ordinary `spla serve` typed by a person still goes by the project setting alone.
+    [CommandOption("--mcp")]
+    [Description("Force POST /mcp on for this instance, regardless of the project's mcp.enabled setting.")]
+    public bool ForceMcp { get; init; }
 }
 
 /// <summary><c>spla serve</c> — thin Spectre wrapper over the existing <see cref="ServeCommand"/>.</summary>
@@ -54,7 +62,7 @@ internal sealed class ServeCliCommand(ResolvedSettings settings, ILoggerFactory 
     {
         await ServeCommand.RunAsync(
             s.Port, s.Bind, s.Token, s.Repl, s.NewChat, s.IdleTimeoutMinutes,
-            s.Registry, s.RegistryToken, settings, loggerFactory);
+            s.Registry, s.RegistryToken, settings, loggerFactory, s.ForceMcp);
         return 0;
     }
 }

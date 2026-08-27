@@ -70,7 +70,7 @@ catch (InvalidOperationException ex)
 // before the tool count a chat command would print below — stdout belongs to the protocol from here on.
 if (isMcp)
 {
-    await SPLA.CLI.McpCommand.RunAsync(ctx.Settings, loggerFactory);
+    await SPLA.CLI.McpCommand.RunAsync(ctx.Settings, loggerFactory, args);
     return;
 }
 

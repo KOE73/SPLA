@@ -15,7 +15,7 @@ internal static class ServeCommand
     public static async Task RunAsync(
         int port, string bind, string? token, bool repl, string? initialChatMessage,
         int idleTimeoutMinutes, string? registryUrl, string? registryToken,
-        ResolvedSettings settings, ILoggerFactory loggerFactory)
+        ResolvedSettings settings, ILoggerFactory loggerFactory, bool forceMcp = false)
     {
         InstallCrashLogging(loggerFactory);
 
@@ -39,7 +39,10 @@ internal static class ServeCommand
             Token = settings.SecretResolver.Resolve(token),
             InitialChatMessage = initialChatMessage,
             IdleTimeout = idleTimeoutMinutes > 0 ? TimeSpan.FromMinutes(idleTimeoutMinutes) : TimeSpan.Zero,
-            McpEnabled = settings.McpEnabled
+            // forceMcp is `--mcp` from the command line (see ServeSettings.ForceMcp) — an OR, never an
+            // override that could turn MCP off: a project that already opted in keeps that whether or
+            // not this particular launch asked for it too.
+            McpEnabled = settings.McpEnabled || forceMcp
         };
         var host = SplaServiceHost.Build(registry, options);
         await host.StartAsync();
@@ -55,7 +58,12 @@ internal static class ServeCommand
             Console.WriteLine("WARNING: bound to a non-loopback address without --token — anyone who can reach this port controls the agent.");
 
         var stop = new TaskCompletionSource();
-        Console.CancelKeyPress += (_, e) => { e.Cancel = true; stop.TrySetResult(); };
+        Console.CancelKeyPress += (_, e) =>
+        {
+            e.Cancel = true;
+            Console.WriteLine("\nShutting down: Ctrl+C.");
+            stop.TrySetResult();
+        };
 
         // Told about a hub, this instance announces itself to it and keeps saying what it is doing.
         // Registration is a view, never a dependency: an unreachable hub costs this process nothing —
@@ -71,7 +79,7 @@ internal static class ServeCommand
         // model. Off by default; a window that spawned this process passes --idle-timeout.
         host.LeaseExpired += () =>
         {
-            Console.WriteLine($"\nIdle for {idleTimeoutMinutes} min with no clients — stopping.");
+            Console.WriteLine($"\nShutting down: idle for {idleTimeoutMinutes} min with no clients.");
             stop.TrySetResult();
         };
 
@@ -80,7 +88,7 @@ internal static class ServeCommand
         // same way.
         registry.ShutdownRequested += () =>
         {
-            Console.WriteLine("\nShutdown requested over the wire — stopping.");
+            Console.WriteLine("\nShutting down: requested over the wire.");
             stop.TrySetResult();
         };
 
