@@ -144,6 +144,8 @@
     <File Path="docs/adr/ADR_20260825_core_chat-turn-pump.md" />
     <File Path="docs/adr/ADR_20260824_core_interactive-shell.md" />
     <File Path="docs/adr/ADR_20260824_plugins_document-context.md" />
+    <File Path="docs/adr/ADR_20260827-2_core_roles.md" />
+    <File Path="docs/adr/ADR_20260827_core_config-versioning.md" />
   </Folder>
   <Folder Name="/docs/plans/">
     <File Path="docs/plans/PLAN_20260619_agent_skills-lifecycle.md" />
@@ -174,6 +176,7 @@
     <File Path="docs/plans/PLAN_20260824_plugins_document-context.md" />
     <File Path="docs/plans/HANDOFF_20260825_background-tasks-wave1.md" />
     <File Path="docs/plans/PLAN_20260825_core_chat-turn-pump.md" />
+    <File Path="docs/plans/PLAN_20260827_core_context-retention.md" />
   </Folder>
   <Folder Name="/docs/ideas/">
     <File Path="docs/ideas/IDEA_20260611_core_todo-general.md" />
