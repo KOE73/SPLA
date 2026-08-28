@@ -1,6 +1,8 @@
 import type { BoundarySlot, Point, Rect } from "../../geometry/types.js";
 import type { DiagramDocument } from "../../model/document.js";
+import type { ResolvedBlockStyle } from "../../model/StyleLibrary.js";
 import type { DiagramElement } from "../../model/types.js";
+import type { PaintRegistry } from "./PaintRegistry.js";
 
 /**
  * What a renderer is told about the world outside the element it draws.
@@ -17,6 +19,22 @@ export interface RenderContext {
   opacity(el: DiagramElement): number;
   /** Whether the element is hidden because an ancestor is collapsed. */
   isHidden(el: DiagramElement): boolean;
+
+  /**
+   * The element's look, fully resolved: no optional fields, no inheritance
+   * left to chase, no lookup for the renderer to get wrong.
+   *
+   * A renderer must not reach for the style library itself. Resolution is one
+   * decision — styleId, then type, then the per-kind default — and it lives in
+   * one place so that "why is this box grey" has one answer.
+   */
+  styleOf(el: DiagramElement): ResolvedBlockStyle;
+
+  /**
+   * Turns a resolved paint or arrow head into something an SVG attribute can
+   * hold, materialising gradients and markers into `<defs>` on the way.
+   */
+  readonly paints: PaintRegistry;
 }
 
 /**

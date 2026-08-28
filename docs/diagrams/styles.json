@@ -1,0 +1,982 @@
+{
+  "version": 1,
+  "description": "Библиотека стилей SPLA-диаграмм. Стиль применяется ко всем элементам, чей type совпадает с его id, либо к тем, кто назвал его в styleId.",
+  "styles": [
+    {
+      "id": "default.node",
+      "name": "Блок по умолчанию",
+      "appliesTo": "block",
+      "description": "Последняя инстанция для узла, тип которого не назвал стиль.",
+      "fill": "#ffffff",
+      "border": {
+        "color": "#cbd5e1",
+        "width": 1.5
+      },
+      "radius": 8,
+      "shadow": true,
+      "icon": {
+        "glyph": "📄"
+      }
+    },
+    {
+      "id": "default.zone",
+      "name": "Зона по умолчанию",
+      "appliesTo": "block",
+      "description": "Последняя инстанция для контейнера.",
+      "fill": "#f8fafc",
+      "border": {
+        "color": "#cbd5e1",
+        "width": 2
+      },
+      "radius": 12,
+      "shadow": false,
+      "header": {
+        "fill": "#e2e8f0",
+        "height": 34
+      },
+      "icon": {
+        "show": false
+      },
+      "subtitle": {
+        "align": "end"
+      }
+    },
+    {
+      "id": "class",
+      "name": "Класс",
+      "appliesTo": "block",
+      "description": "Обычный класс: поведение, реализация.",
+      "fill": "#ffffff",
+      "border": {
+        "color": "#cbd5e1",
+        "width": 1.5
+      },
+      "radius": 8,
+      "shadow": true,
+      "icon": {
+        "glyph": "📦"
+      }
+    },
+    {
+      "id": "record",
+      "name": "Record",
+      "appliesTo": "block",
+      "description": "Неизменяемые данные. Отличается от класса заливкой и иконкой.",
+      "basedOn": "class",
+      "fill": "#f0fdfa",
+      "border": {
+        "color": "#5eead4",
+        "width": 1.5
+      },
+      "radius": 14,
+      "shadow": false,
+      "icon": {
+        "glyph": "🧾"
+      }
+    },
+    {
+      "id": "struct",
+      "name": "Struct",
+      "appliesTo": "block",
+      "description": "Значимый тип.",
+      "basedOn": "record",
+      "fill": "#f5f3ff",
+      "border": {
+        "color": "#c4b5fd"
+      },
+      "radius": 4,
+      "icon": {
+        "glyph": "🧱"
+      }
+    },
+    {
+      "id": "interface",
+      "name": "Интерфейс",
+      "appliesTo": "block",
+      "description": "Контракт. Пунктирная рамка — как в UML.",
+      "fill": "#ffffff",
+      "border": {
+        "color": "#60a5fa",
+        "width": 1.6,
+        "dash": "5,3"
+      },
+      "radius": 8,
+      "shadow": true,
+      "icon": {
+        "glyph": "🔌"
+      },
+      "title": {
+        "italic": true
+      }
+    },
+    {
+      "id": "enum",
+      "name": "Enum",
+      "appliesTo": "block",
+      "description": "Перечисление.",
+      "fill": "#fefce8",
+      "border": {
+        "color": "#fde047",
+        "width": 1.6
+      },
+      "radius": 8,
+      "shadow": true,
+      "icon": {
+        "glyph": "🔢"
+      }
+    },
+    {
+      "id": "component",
+      "name": "Component (устар.)",
+      "appliesTo": "block",
+      "description": "Старый обобщённый тип: класс и record до перегенерации моделей.",
+      "basedOn": "class"
+    },
+    {
+      "id": "service",
+      "name": "Service (устар.)",
+      "appliesTo": "block",
+      "description": "Старый тип для интерфейсов.",
+      "basedOn": "interface",
+      "icon": {
+        "glyph": "⚙️"
+      }
+    },
+    {
+      "id": "concept",
+      "name": "Concept (устар.)",
+      "appliesTo": "block",
+      "description": "Старый тип для enum и ручных концептов.",
+      "basedOn": "enum",
+      "icon": {
+        "glyph": "💡"
+      }
+    },
+    {
+      "id": "note",
+      "name": "Заметка",
+      "appliesTo": "block",
+      "fill": "#fef9c3",
+      "border": {
+        "color": "#fde047",
+        "width": 1.5
+      },
+      "radius": 6,
+      "shadow": false,
+      "icon": {
+        "glyph": "📝"
+      },
+      "title": {
+        "weight": 500
+      }
+    },
+    {
+      "id": "security-component",
+      "name": "Безопасность",
+      "appliesTo": "block",
+      "fill": "#fff1f2",
+      "border": {
+        "color": "#fca5a5",
+        "width": 2
+      },
+      "icon": {
+        "glyph": "🛡️"
+      }
+    },
+    {
+      "id": "tool",
+      "name": "Инструмент",
+      "appliesTo": "block",
+      "fill": "#ffffff",
+      "border": {
+        "color": "#bfdbfe",
+        "width": 1.5
+      },
+      "icon": {
+        "glyph": "🔧"
+      }
+    },
+    {
+      "id": "database",
+      "name": "Хранилище",
+      "appliesTo": "block",
+      "fill": "#ffffff",
+      "border": {
+        "color": "#d8b4fe",
+        "width": 1.5
+      },
+      "icon": {
+        "glyph": "💾"
+      }
+    },
+    {
+      "id": "external-system",
+      "name": "Внешняя система",
+      "appliesTo": "block",
+      "fill": "#fffbeb",
+      "border": {
+        "color": "#fde68a",
+        "width": 1.5
+      },
+      "icon": {
+        "glyph": "🌐"
+      }
+    },
+    {
+      "id": "zone.green",
+      "name": "Зона · green",
+      "appliesTo": "block",
+      "basedOn": "default.zone",
+      "fill": "#f0fdf4",
+      "border": {
+        "color": "#86efac",
+        "width": 2
+      },
+      "header": {
+        "fill": "#dcfce7"
+      }
+    },
+    {
+      "id": "zone.blue",
+      "name": "Зона · blue",
+      "appliesTo": "block",
+      "basedOn": "default.zone",
+      "fill": "#eff6ff",
+      "border": {
+        "color": "#93c5fd",
+        "width": 2
+      },
+      "header": {
+        "fill": "#dbeafe"
+      }
+    },
+    {
+      "id": "zone.fuchsia",
+      "name": "Зона · fuchsia",
+      "appliesTo": "block",
+      "basedOn": "default.zone",
+      "fill": "#fdf4ff",
+      "border": {
+        "color": "#f0abfc",
+        "width": 2
+      },
+      "header": {
+        "fill": "#fae8ff"
+      }
+    },
+    {
+      "id": "zone.red",
+      "name": "Зона · red",
+      "appliesTo": "block",
+      "basedOn": "default.zone",
+      "fill": "#fff1f2",
+      "border": {
+        "color": "#fca5a5",
+        "width": 2
+      },
+      "header": {
+        "fill": "#ffe4e6"
+      }
+    },
+    {
+      "id": "zone.yellow",
+      "name": "Зона · yellow",
+      "appliesTo": "block",
+      "basedOn": "default.zone",
+      "fill": "#fefce8",
+      "border": {
+        "color": "#fde047",
+        "width": 2
+      },
+      "header": {
+        "fill": "#fef9c3"
+      }
+    },
+    {
+      "id": "zone.slate",
+      "name": "Зона · slate",
+      "appliesTo": "block",
+      "basedOn": "default.zone",
+      "fill": "#f8fafc",
+      "border": {
+        "color": "#cbd5e1",
+        "width": 2
+      },
+      "header": {
+        "fill": "#e2e8f0"
+      }
+    },
+    {
+      "id": "zone.violet",
+      "name": "Зона · violet",
+      "appliesTo": "block",
+      "basedOn": "default.zone",
+      "fill": "#f5f3ff",
+      "border": {
+        "color": "#c4b5fd",
+        "width": 2
+      },
+      "header": {
+        "fill": "#ede9fe"
+      }
+    },
+    {
+      "id": "zone.amber",
+      "name": "Зона · amber",
+      "appliesTo": "block",
+      "basedOn": "default.zone",
+      "fill": "#fffbeb",
+      "border": {
+        "color": "#fde68a",
+        "width": 2
+      },
+      "header": {
+        "fill": "#fef3c7"
+      }
+    },
+    {
+      "id": "zone.sky",
+      "name": "Зона · sky",
+      "appliesTo": "block",
+      "basedOn": "default.zone",
+      "fill": "#f0f9ff",
+      "border": {
+        "color": "#7dd3fc",
+        "width": 2
+      },
+      "header": {
+        "fill": "#e0f2fe"
+      }
+    },
+    {
+      "id": "zone.cyan",
+      "name": "Зона · cyan",
+      "appliesTo": "block",
+      "basedOn": "default.zone",
+      "fill": "#ecfeff",
+      "border": {
+        "color": "#67e8f9",
+        "width": 2
+      },
+      "header": {
+        "fill": "#cffafe"
+      }
+    },
+    {
+      "id": "zone.lime",
+      "name": "Зона · lime",
+      "appliesTo": "block",
+      "basedOn": "default.zone",
+      "fill": "#f7fee7",
+      "border": {
+        "color": "#bef264",
+        "width": 2
+      },
+      "header": {
+        "fill": "#ecfccb"
+      }
+    },
+    {
+      "id": "zone.pink",
+      "name": "Зона · pink",
+      "appliesTo": "block",
+      "basedOn": "default.zone",
+      "fill": "#fdf2f8",
+      "border": {
+        "color": "#f9a8d4",
+        "width": 2
+      },
+      "header": {
+        "fill": "#fce7f3"
+      }
+    },
+    {
+      "id": "zone.gray",
+      "name": "Зона · gray",
+      "appliesTo": "block",
+      "basedOn": "default.zone",
+      "fill": "#f1f5f9",
+      "border": {
+        "color": "#94a3b8",
+        "width": 2
+      },
+      "header": {
+        "fill": "#e2e8f0"
+      }
+    },
+    {
+      "id": "zone.unplaced",
+      "name": "Зона · нераспределённое",
+      "appliesTo": "block",
+      "description": "Парковка для типов, которым не нашлось места. Намеренно кричащая.",
+      "basedOn": "default.zone",
+      "fill": "#fff7ed",
+      "border": {
+        "color": "#fb923c",
+        "width": 3,
+        "dash": "8 4"
+      },
+      "header": {
+        "fill": "#ffedd5"
+      }
+    },
+    {
+      "id": "boundary",
+      "name": "Граница (по типу зоны)",
+      "appliesTo": "block",
+      "description": "Стиль по умолчанию для зон типа boundary, если styleId не задан.",
+      "basedOn": "default.zone"
+    },
+    {
+      "id": "subsystem",
+      "name": "Подсистема",
+      "appliesTo": "block",
+      "basedOn": "zone.blue"
+    },
+    {
+      "id": "default.edge",
+      "name": "Связь по умолчанию",
+      "appliesTo": "edge",
+      "line": {
+        "color": "#cbd5e1",
+        "width": 1.5
+      },
+      "target": {
+        "shape": "arrow",
+        "size": 6
+      }
+    },
+    {
+      "id": "implements",
+      "name": "Реализация интерфейса",
+      "appliesTo": "edge",
+      "description": "Класс реализует контракт. Самая частая связь — держим тихой.",
+      "family": "structure",
+      "line": {
+        "color": "#cbd5e1",
+        "width": 1.2,
+        "dash": "6,4"
+      },
+      "target": {
+        "shape": "triangle-hollow",
+        "size": 9
+      }
+    },
+    {
+      "id": "realizes",
+      "name": "Реализация (realizes)",
+      "appliesTo": "edge",
+      "basedOn": "implements"
+    },
+    {
+      "id": "extends",
+      "name": "Наследование класса",
+      "appliesTo": "edge",
+      "family": "structure",
+      "line": {
+        "color": "#94a3b8",
+        "width": 1.4
+      },
+      "target": {
+        "shape": "triangle-hollow",
+        "size": 10
+      }
+    },
+    {
+      "id": "composes",
+      "name": "Владение / композиция",
+      "appliesTo": "edge",
+      "description": "Ромб на стороне владельца, как в UML.",
+      "family": "structure",
+      "line": {
+        "color": "#0f766e",
+        "width": 1.8
+      },
+      "source": {
+        "shape": "diamond",
+        "size": 12
+      },
+      "target": {
+        "shape": "none"
+      }
+    },
+    {
+      "id": "call",
+      "name": "Вызов",
+      "appliesTo": "edge",
+      "family": "flow",
+      "line": {
+        "color": "#64748b",
+        "width": 1.6,
+        "dash": "4,4"
+      },
+      "target": {
+        "shape": "arrow",
+        "size": 7
+      }
+    },
+    {
+      "id": "data-flow",
+      "name": "Поток данных",
+      "appliesTo": "edge",
+      "family": "flow",
+      "line": {
+        "color": "#3b82f6",
+        "width": 2.2
+      },
+      "target": {
+        "shape": "arrow",
+        "size": 8
+      },
+      "label": {
+        "color": "#1d4ed8",
+        "weight": 600
+      }
+    },
+    {
+      "id": "event",
+      "name": "Событие / уведомление",
+      "appliesTo": "edge",
+      "family": "flow",
+      "line": {
+        "color": "#ea580c",
+        "width": 2,
+        "dash": "2,3"
+      },
+      "target": {
+        "shape": "arrow-open",
+        "size": 9
+      },
+      "label": {
+        "color": "#c2410c",
+        "weight": 600
+      }
+    },
+    {
+      "id": "security",
+      "name": "Проверка прав / аудит",
+      "appliesTo": "edge",
+      "family": "flow",
+      "line": {
+        "color": "#f43f5e",
+        "width": 1.8,
+        "dash": "3,3"
+      },
+      "target": {
+        "shape": "arrow",
+        "size": 7
+      },
+      "label": {
+        "color": "#be123c",
+        "weight": 600
+      }
+    },
+    {
+      "id": "storage",
+      "name": "Запись / чтение хранилища",
+      "appliesTo": "edge",
+      "description": "Головки с обеих сторон: чтение и запись — одно ребро.",
+      "family": "flow",
+      "line": {
+        "color": "#a855f7",
+        "width": 2.2
+      },
+      "source": {
+        "shape": "circle-hollow",
+        "size": 7
+      },
+      "target": {
+        "shape": "arrow",
+        "size": 8
+      },
+      "label": {
+        "color": "#7e22ce",
+        "weight": 600
+      }
+    },
+    {
+      "id": "domain.llm",
+      "name": "Домен · llm",
+      "appliesTo": "block",
+      "description": "Поддомен «LLM: провайдеры и ход (41)». Наследует вид от «zone.green» — правьте цвет здесь, не в базовом стиле.",
+      "basedOn": "zone.green",
+      "tags": [
+        "llm"
+      ]
+    },
+    {
+      "id": "domain.toolpipe",
+      "name": "Домен · toolpipe",
+      "appliesTo": "block",
+      "description": "Поддомен «Конвейер инструментов (MCP) (78)». Наследует вид от «zone.blue» — правьте цвет здесь, не в базовом стиле.",
+      "basedOn": "zone.blue",
+      "tags": [
+        "toolpipe"
+      ]
+    },
+    {
+      "id": "domain.plugins",
+      "name": "Домен · plugins",
+      "appliesTo": "block",
+      "description": "Поддомен «Плагины и наборы инструментов (23)». Наследует вид от «zone.fuchsia» — правьте цвет здесь, не в базовом стиле.",
+      "basedOn": "zone.fuchsia",
+      "tags": [
+        "plugins"
+      ]
+    },
+    {
+      "id": "domain.chat",
+      "name": "Домен · chat",
+      "appliesTo": "block",
+      "description": "Поддомен «Чат и сессия (17)». Наследует вид от «zone.amber» — правьте цвет здесь, не в базовом стиле.",
+      "basedOn": "zone.amber",
+      "tags": [
+        "chat"
+      ]
+    },
+    {
+      "id": "domain.security",
+      "name": "Домен · security",
+      "appliesTo": "block",
+      "description": "Поддомен «Безопасность и полномочия (73)». Наследует вид от «zone.red» — правьте цвет здесь, не в базовом стиле.",
+      "basedOn": "zone.red",
+      "tags": [
+        "security"
+      ]
+    },
+    {
+      "id": "domain.memory",
+      "name": "Домен · memory",
+      "appliesTo": "block",
+      "description": "Поддомен «Память агента и контекст (32)». Наследует вид от «zone.sky» — правьте цвет здесь, не в базовом стиле.",
+      "basedOn": "zone.sky",
+      "tags": [
+        "memory"
+      ]
+    },
+    {
+      "id": "domain.content",
+      "name": "Домен · content",
+      "appliesTo": "block",
+      "description": "Поддомен «Содержимое, редактор и ресурсы (30)». Наследует вид от «zone.yellow» — правьте цвет здесь, не в базовом стиле.",
+      "basedOn": "zone.yellow",
+      "tags": [
+        "content"
+      ]
+    },
+    {
+      "id": "domain.skills",
+      "name": "Домен · skills",
+      "appliesTo": "block",
+      "description": "Поддомен «Навыки и библиотека (40)». Наследует вид от «zone.violet» — правьте цвет здесь, не в базовом стиле.",
+      "basedOn": "zone.violet",
+      "tags": [
+        "skills"
+      ]
+    },
+    {
+      "id": "domain.project",
+      "name": "Домен · project",
+      "appliesTo": "block",
+      "description": "Поддомен «Проект и конфигурация (68)». Наследует вид от «zone.slate» — правьте цвет здесь, не в базовом стиле.",
+      "basedOn": "zone.slate",
+      "tags": [
+        "project"
+      ]
+    },
+    {
+      "id": "domain.agentlife",
+      "name": "Домен · agentlife",
+      "appliesTo": "block",
+      "description": "Поддомен «Жизненный цикл агента (3)». Наследует вид от «zone.cyan» — правьте цвет здесь, не в базовом стиле.",
+      "basedOn": "zone.cyan",
+      "tags": [
+        "agentlife"
+      ]
+    },
+    {
+      "id": "domain.observability",
+      "name": "Домен · observability",
+      "appliesTo": "block",
+      "description": "Поддомен «Наблюдаемость (12)». Наследует вид от «zone.lime» — правьте цвет здесь, не в базовом стиле.",
+      "basedOn": "zone.lime",
+      "tags": [
+        "observability"
+      ]
+    },
+    {
+      "id": "domain.platform",
+      "name": "Домен · platform",
+      "appliesTo": "block",
+      "description": "Поддомен «Платформа / ОС (4)». Наследует вид от «zone.pink» — правьте цвет здесь, не в базовом стиле.",
+      "basedOn": "zone.pink",
+      "tags": [
+        "platform"
+      ]
+    },
+    {
+      "id": "domain.ssh",
+      "name": "Домен · ssh",
+      "appliesTo": "block",
+      "description": "Поддомен «SSH (7)». Наследует вид от «zone.gray» — правьте цвет здесь, не в базовом стиле.",
+      "basedOn": "zone.gray",
+      "tags": [
+        "ssh"
+      ]
+    },
+    {
+      "id": "zone.observability",
+      "name": "Зона · Observability (SPLA.Observability)",
+      "appliesTo": "block",
+      "basedOn": "default.zone",
+      "description": "Создан автоматически из inline-цветов зоны «Observability (SPLA.Observability)» при переносе раскраски в библиотеку стилей. Переименуйте, если он описывает не одну зону, а роль.",
+      "tags": [
+        "импорт"
+      ],
+      "fill": "#faf5ff",
+      "border": {
+        "color": "#d8b4fe",
+        "width": 2,
+        "dash": "4,4"
+      },
+      "header": {
+        "fill": "#f3e8ff"
+      }
+    },
+    {
+      "id": "domain.domain",
+      "name": "Домен · domain",
+      "appliesTo": "block",
+      "description": "Поддомен «Domain Core (SPLA.Domain)». Наследует вид от «zone.slate» — правьте цвет здесь, не в базовом стиле.",
+      "basedOn": "zone.slate",
+      "tags": [
+        "domain"
+      ]
+    },
+    {
+      "id": "domain.mcp",
+      "name": "Домен · mcp",
+      "appliesTo": "block",
+      "description": "Поддомен «Tool Dispatch (SPLA.MCP.Core)». Наследует вид от «zone.blue» — правьте цвет здесь, не в базовом стиле.",
+      "basedOn": "zone.blue",
+      "tags": [
+        "mcp"
+      ]
+    },
+    {
+      "id": "domain.obs",
+      "name": "Домен · obs",
+      "appliesTo": "block",
+      "description": "Поддомен «Observability (SPLA.Observability)». Наследует вид от «zone.observability» — правьте цвет здесь, не в базовом стиле.",
+      "basedOn": "zone.observability",
+      "tags": [
+        "obs"
+      ]
+    },
+    {
+      "id": "zone.внешняя-граница",
+      "name": "Зона · Внешняя граница",
+      "appliesTo": "block",
+      "basedOn": "default.zone",
+      "description": "Создан автоматически из inline-цветов зоны «Внешняя граница» при переносе раскраски в библиотеку стилей. Переименуйте, если он описывает не одну зону, а роль.",
+      "tags": [
+        "импорт"
+      ],
+      "fill": "#f8fafc",
+      "border": {
+        "color": "#94a3b8",
+        "width": 2,
+        "dash": "none"
+      },
+      "header": {
+        "fill": "#e2e8f0"
+      }
+    },
+    {
+      "id": "zone.вложенная-под-роль",
+      "name": "Зона · Вложенная под-роль",
+      "appliesTo": "block",
+      "basedOn": "default.zone",
+      "description": "Создан автоматически из inline-цветов зоны «Вложенная под-роль» при переносе раскраски в библиотеку стилей. Переименуйте, если он описывает не одну зону, а роль.",
+      "tags": [
+        "импорт"
+      ],
+      "fill": "#eef2ff",
+      "border": {
+        "color": "#a5b4fc",
+        "width": 2,
+        "dash": "none"
+      },
+      "header": {
+        "fill": "#e0e7ff"
+      }
+    },
+    {
+      "id": "zone.red.dashed",
+      "name": "Зона · red · пунктир",
+      "appliesTo": "block",
+      "basedOn": "zone.red",
+      "border": {
+        "dash": "6,4"
+      }
+    },
+    {
+      "id": "domain.outer",
+      "name": "Домен · outer",
+      "appliesTo": "block",
+      "description": "Поддомен «Внешняя граница». Наследует вид от «zone.внешняя-граница» — правьте цвет здесь, не в базовом стиле.",
+      "basedOn": "zone.внешняя-граница",
+      "tags": [
+        "outer"
+      ]
+    },
+    {
+      "id": "domain.collapse",
+      "name": "Домен · collapse",
+      "appliesTo": "block",
+      "description": "Поддомен «Стенд сворачивания». Наследует вид от «zone.green» — правьте цвет здесь, не в базовом стиле.",
+      "basedOn": "zone.green",
+      "tags": [
+        "collapse"
+      ]
+    },
+    {
+      "id": "domain.dashed",
+      "name": "Домен · dashed",
+      "appliesTo": "block",
+      "description": "Поддомен «Пунктирная зона». Наследует вид от «zone.red.dashed» — правьте цвет здесь, не в базовом стиле.",
+      "basedOn": "zone.red.dashed",
+      "tags": [
+        "dashed"
+      ]
+    },
+    {
+      "id": "zone.внешняя-граница.dashed",
+      "name": "Зона · Внешняя граница · пунктир",
+      "appliesTo": "block",
+      "basedOn": "zone.внешняя-граница",
+      "border": {
+        "dash": "4,4"
+      }
+    },
+    {
+      "id": "domain.llm.input",
+      "name": "Домен · llm.input",
+      "appliesTo": "block",
+      "description": "Поддомен «1. Input & Trigger». Наследует вид от «zone.внешняя-граница.dashed» — правьте цвет здесь, не в базовом стиле.",
+      "basedOn": "zone.внешняя-граница.dashed",
+      "tags": [
+        "llm.input"
+      ]
+    },
+    {
+      "id": "domain.llm.composition",
+      "name": "Домен · llm.composition",
+      "appliesTo": "block",
+      "description": "Поддомен «2. Typed Context Assembly (Contributors)». Наследует вид от «zone.green» — правьте цвет здесь, не в базовом стиле.",
+      "basedOn": "zone.green",
+      "tags": [
+        "llm.composition"
+      ]
+    },
+    {
+      "id": "domain.llm.gateway",
+      "name": "Домен · llm.gateway",
+      "appliesTo": "block",
+      "description": "Поддомен «3. Model Execution». Наследует вид от «zone.amber» — правьте цвет здесь, не в базовом стиле.",
+      "basedOn": "zone.amber",
+      "tags": [
+        "llm.gateway"
+      ]
+    },
+    {
+      "id": "domain.llm.output",
+      "name": "Домен · llm.output",
+      "appliesTo": "block",
+      "description": "Поддомен «4. Output Stage & Parsing». Наследует вид от «zone.blue» — правьте цвет здесь, не в базовом стиле.",
+      "basedOn": "zone.blue",
+      "tags": [
+        "llm.output"
+      ]
+    },
+    {
+      "id": "zone.observability.dashed",
+      "name": "Зона · Observability (SPLA.Observability) · пунктир",
+      "appliesTo": "block",
+      "basedOn": "zone.observability",
+      "border": {
+        "dash": "none"
+      }
+    },
+    {
+      "id": "domain.tools.host",
+      "name": "Домен · tools.host",
+      "appliesTo": "block",
+      "description": "Поддомен «Tool Dispatcher & Host». Наследует вид от «zone.blue» — правьте цвет здесь, не в базовом стиле.",
+      "basedOn": "zone.blue",
+      "tags": [
+        "tools.host"
+      ]
+    },
+    {
+      "id": "domain.network",
+      "name": "Домен · network",
+      "appliesTo": "block",
+      "description": "Поддомен «Plugin: Network Diagnostics». Наследует вид от «zone.green» — правьте цвет здесь, не в базовом стиле.",
+      "basedOn": "zone.green",
+      "tags": [
+        "network"
+      ]
+    },
+    {
+      "id": "domain.document",
+      "name": "Домен · document",
+      "appliesTo": "block",
+      "description": "Поддомен «Plugin: Document & Sheets». Наследует вид от «zone.amber» — правьте цвет здесь, не в базовом стиле.",
+      "basedOn": "zone.amber",
+      "tags": [
+        "document"
+      ]
+    },
+    {
+      "id": "domain.client",
+      "name": "Домен · client",
+      "appliesTo": "block",
+      "description": "Поддомен «Client Layer (Web & UI)». Наследует вид от «zone.внешняя-граница.dashed» — правьте цвет здесь, не в базовом стиле.",
+      "basedOn": "zone.внешняя-граница.dashed",
+      "tags": [
+        "client"
+      ]
+    },
+    {
+      "id": "domain.core.runtime",
+      "name": "Домен · core.runtime",
+      "appliesTo": "block",
+      "description": "Поддомен «Agent Core & Runtime Subsystem». Наследует вид от «zone.green» — правьте цвет здесь, не в базовом стиле.",
+      "basedOn": "zone.green",
+      "tags": [
+        "core.runtime"
+      ]
+    },
+    {
+      "id": "domain.tools",
+      "name": "Домен · tools",
+      "appliesTo": "block",
+      "description": "Поддомен «Tool Dispatch & MCP Host». Наследует вид от «zone.blue» — правьте цвет здесь, не в базовом стиле.",
+      "basedOn": "zone.blue",
+      "tags": [
+        "tools"
+      ]
+    },
+    {
+      "id": "domain.storage",
+      "name": "Домен · storage",
+      "appliesTo": "block",
+      "description": "Поддомен «Storage & Persistence». Наследует вид от «zone.observability» — правьте цвет здесь, не в базовом стиле.",
+      "basedOn": "zone.observability",
+      "tags": [
+        "storage"
+      ]
+    }
+  ]
+}

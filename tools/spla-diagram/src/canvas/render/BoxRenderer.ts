@@ -5,31 +5,34 @@ import { elementRect } from "../../model/types.js";
 import { ELEMENT_ATTR, ROLE_ATTR, Role } from "../../interaction/roles.js";
 import { setAttrs, svg, text } from "../svg.js";
 import type { ElementRenderer, RenderContext } from "./ElementRenderer.js";
-import { nodeStyle } from "./styles.js";
+import { alignX, dashArray, textAttrs } from "./textAttrs.js";
 
 /**
- * The default leaf renderer: a rounded rectangle with a caption, a monospace
- * subtitle and a resize grip. Covers every node type in the current models —
- * they differ only in fill, stroke and icon, which come from the style table.
+ * The default leaf renderer: a rounded rectangle with a caption, a subtitle and
+ * nothing else. Covers every node type in the current models — they differ only
+ * in the style they resolve to, which this renderer reads and does not choose.
  */
 export class BoxRenderer implements ElementRenderer {
   create(el: DiagramElement, ctx: RenderContext): SVGGElement {
     const g = svg("g", {
       class: "spla-node",
       [ELEMENT_ATTR]: el.id,
-      filter: "url(#spla-shadow)",
     });
     this.update(g, el, ctx);
     return g;
   }
 
   update(g: SVGGElement, el: DiagramElement, ctx: RenderContext): void {
-    const style = nodeStyle(el.type);
+    const style = ctx.styleOf(el);
     const selected = ctx.isSelected(el);
+    const rect = elementRect(el);
 
     setAttrs(g, {
       class: `spla-node${selected ? " is-selected" : ""}`,
       opacity: ctx.opacity(el),
+      // Per style, not per renderer: a flat "note" and a raised "service" are
+      // the same shape and differ only in whether they cast a shadow.
+      filter: style.shadow ? "url(#spla-shadow)" : null,
     });
     g.replaceChildren();
 
@@ -42,42 +45,49 @@ export class BoxRenderer implements ElementRenderer {
         y: el.y,
         width: el.width,
         height: el.height,
-        rx: 8,
-        fill: style.fill,
-        stroke: style.stroke,
-        "stroke-width": style.strokeWidth,
+        rx: style.radius,
+        fill: ctx.paints.fill(style.fill),
+        stroke: style.border.color,
+        "stroke-width": style.border.width,
+        "stroke-dasharray": dashArray(style.border.dash),
+        "stroke-opacity": style.border.opacity === 1 ? null : style.border.opacity,
       }),
     );
 
+    // Two captions in a short box crowd each other; a tall one has room to
+    // breathe. Kept from the original — it is layout, not look, so no style
+    // says anything about it.
     const tall = el.height > 60;
-    g.appendChild(
-      text(
-        {
-          x: el.x + 12,
-          y: el.y + (tall ? 26 : 24),
-          "font-size": 12.5,
-          "font-weight": 600,
-          fill: "#1e293b",
-          class: "spla-node-label",
-        },
-        `${style.icon} ${el.label}`,
-      ),
-    );
 
-    const subtitle = typeof el.metadata.type === "string" ? el.metadata.type : el.type;
-    g.appendChild(
-      text(
-        {
-          x: el.x + 12,
-          y: el.y + (tall ? 46 : 42),
-          "font-size": 10.5,
-          "font-family": "monospace",
-          fill: "#64748b",
-          class: "spla-node-subtitle",
-        },
-        subtitle,
-      ),
-    );
+    if (style.title.show) {
+      const icon = style.icon.show ? `${style.icon.glyph} ` : "";
+      g.appendChild(
+        text(
+          {
+            ...textAttrs(style.title),
+            ...alignX(style.title, rect),
+            y: el.y + (tall ? 26 : 24),
+            class: "spla-node-label",
+          },
+          `${icon}${el.label}`,
+        ),
+      );
+    }
+
+    if (style.subtitle.show) {
+      const subtitle = typeof el.metadata.type === "string" ? el.metadata.type : el.type;
+      g.appendChild(
+        text(
+          {
+            ...textAttrs(style.subtitle),
+            ...alignX(style.subtitle, rect),
+            y: el.y + (tall ? 46 : 42),
+            class: "spla-node-subtitle",
+          },
+          subtitle,
+        ),
+      );
+    }
 
     // Resize grips are drawn by the canvas around the current selection, not
     // here: with several elements selected they belong to the selection's

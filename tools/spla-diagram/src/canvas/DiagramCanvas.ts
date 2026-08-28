@@ -1,6 +1,9 @@
 import { elementRect, isContainer } from "../model/types.js";
 import type { DiagramEdge, DiagramElement } from "../model/types.js";
 import type { DiagramDocument } from "../model/document.js";
+import { StyleLibrary } from "../model/StyleLibrary.js";
+import { builtinStyleSheet } from "../model/style-defaults.js";
+import { PaintRegistry } from "./render/PaintRegistry.js";
 import type { Point, Rect } from "../geometry/types.js";
 import { Emitter } from "../util/emitter.js";
 import { createDefs } from "./defs.js";
@@ -11,7 +14,7 @@ import { ContainerRenderer } from "./render/ContainerRenderer.js";
 import type { ElementRenderer, RenderContext } from "./render/ElementRenderer.js";
 import { TypeRegistry } from "./render/TypeRegistry.js";
 import { DIM } from "./render/styles.js";
-import { edgeStyle } from "./render/edgeStyles.js";
+import { dashArray, textAttrs } from "./render/textAttrs.js";
 import { marquee, resizeHandles, selectionOutline } from "./render/handles.js";
 import { CenterPortAssigner } from "./ports/assigners.js";
 import { portKey, type PortAssigner, type PortRequest } from "./ports/PortAssigner.js";
@@ -20,6 +23,9 @@ import { EDGE_ATTR } from "../interaction/roles.js";
 import { InteractionController } from "../interaction/InteractionController.js";
 
 export type SelectionKind = "zone" | "node" | "edge";
+
+/** Named here so a host can build a toggle without importing the style module. */
+export type EdgeFamily = "structure" | "flow";
 
 export interface Selection {
   readonly id: string;
@@ -45,6 +51,8 @@ export interface DiagramCanvasOptions {
   router?: EdgeRouter;
   /** Grid step for snapping, 0 disables. */
   gridStep?: number;
+  /** The look of everything. Defaults to the built-in library. */
+  styles?: StyleLibrary;
 }
 
 /**
@@ -65,6 +73,16 @@ export class DiagramCanvas {
   /** Whether dragging a container carries its contents (R-EDIT-03). */
   containerDrag = true;
 
+  /**
+   * Families of edge currently *not* drawn. Empty means everything shows.
+   *
+   * In `model-core-full.json` 98 of 119 edges are `implements`/`extends`. That
+   * thicket makes the canvas unreadable no matter how the lines are coloured —
+   * the only thing that helps is being able to switch the structural family off
+   * and look at what happens at runtime.
+   */
+  hiddenEdgeFamilies = new Set<EdgeFamily>();
+
   private readonly host: HTMLElement;
   private readonly svgEl: SVGSVGElement;
   private readonly viewportGroup: SVGGElement;
@@ -76,6 +94,8 @@ export class DiagramCanvas {
   private readonly interaction: InteractionController;
 
   private doc: DiagramDocument | null = null;
+  private styleLibrary: StyleLibrary;
+  private paintRegistry!: PaintRegistry;
   private selection: Selection | null = null;
   /**
    * Everything currently selected, including the primary. Group move and group
@@ -85,6 +105,23 @@ export class DiagramCanvas {
   private selectionIds = new Set<string>();
   private collapsed = new Set<string>();
   private activeViewId: string | null = null;
+  /**
+   * Style tags currently isolated. Empty means no isolation.
+   *
+   * Not a second highlighting system: a view's `highlightZones`/`highlightNodes`
+   * name elements one by one, by hand. A tag names a *domain* — it lives on the
+   * style the elements already wear (`WireStyle.tags`), so isolating "llm" dims
+   * everything except what a style already colours as belonging to it. No
+   * separate per-element tag field exists or is needed; the style a thing wears
+   * already says what it is.
+   *
+   * A set, not one tag: a style can carry several tags at once (`WireStyle.tags`
+   * always was an array), because the same subdomain often belongs to more than
+   * one classification worth isolating separately — a security-relevant zone
+   * inside the LLM domain is both "llm" and "security". Selecting several tags
+   * shows the union: anything wearing *any* of them.
+   */
+  private activeTags = new Set<string>();
 
   /** Rubber band in model coordinates while a selection sweep is running. */
   marqueeRect: Rect | null = null;
@@ -114,8 +151,15 @@ export class DiagramCanvas {
       this.overlayLayer,
     ]);
 
+    // Held rather than inlined: gradients and arrow heads are created on demand
+    // as styles ask for them, so something has to own the block they land in.
+    const defs = createDefs();
+    this.paintRegistry = new PaintRegistry(defs);
+    this.styleLibrary =
+      options.styles ?? StyleLibrary.parse(builtinStyleSheet());
+
     this.svgEl = svg("svg", { class: "spla-canvas", xmlns: "http://www.w3.org/2000/svg" }, [
-      createDefs(),
+      defs,
       this.viewportGroup,
     ]);
 
@@ -168,6 +212,30 @@ export class DiagramCanvas {
     return this.doc;
   }
 
+  /** The library every element's look is resolved through. */
+  get styles(): StyleLibrary {
+    return this.styleLibrary;
+  }
+
+  /**
+   * Swap the library, or redraw after editing a style inside it.
+   *
+   * Call this after any style edit: a style is shared by everything wearing it,
+   * so there is no such thing as repainting one element — which is exactly the
+   * property that made styles worth building.
+   */
+  setStyles(library?: StyleLibrary): void {
+    if (library !== undefined) this.styleLibrary = library;
+    this.render();
+  }
+
+  /** Show or hide a whole family of connections, and redraw. */
+  setEdgeFamilyHidden(family: EdgeFamily, hidden: boolean): void {
+    if (hidden) this.hiddenEdgeFamilies.add(family);
+    else this.hiddenEdgeFamilies.delete(family);
+    this.render();
+  }
+
   get activeView(): string | null {
     return this.activeViewId;
   }
@@ -175,6 +243,43 @@ export class DiagramCanvas {
   setView(viewId: string | null): void {
     this.activeViewId = viewId;
     this.render();
+  }
+
+  /** Tags currently isolated. Empty means no isolation. */
+  get highlightTags(): ReadonlySet<string> {
+    return this.activeTags;
+  }
+
+  /** Add or remove one tag from the isolated set, keeping the rest. */
+  toggleHighlightTag(tag: string): void {
+    if (this.activeTags.has(tag)) this.activeTags.delete(tag);
+    else this.activeTags.add(tag);
+    this.render();
+  }
+
+  clearHighlightTags(): void {
+    if (this.activeTags.size === 0) return;
+    this.activeTags.clear();
+    this.render();
+  }
+
+  /**
+   * Every tag worn by a style currently in use, sorted.
+   *
+   * "In use" — not every tag in the library — because a hundred styles will
+   * carry tags for domains this particular diagram never touches, and a picker
+   * offering those is a picker offering dead ends.
+   */
+  tagsInUse(): string[] {
+    if (this.doc === null) return [];
+    const tags = new Set<string>();
+    for (const el of this.doc.elements()) {
+      for (const t of this.styleLibrary.tagsOf(this.styleLibrary.blockStyleIdFor(el))) tags.add(t);
+    }
+    for (const edge of this.doc.edges) {
+      for (const t of this.styleLibrary.tagsOf(this.styleLibrary.edgeStyleIdFor(edge))) tags.add(t);
+    }
+    return [...tags].sort((a, b) => a.localeCompare(b, "ru"));
   }
 
   select(id: string | null): void {
@@ -409,23 +514,58 @@ export class DiagramCanvas {
       isCollapsed: (el) => this.collapsed.has(el.id),
       isHidden: (el) => this.collapsedAncestor(el) !== null,
       opacity: (el) => {
-        if (view === undefined) return 1;
-        if (isContainer(el)) {
-          if (view.highlightZones.length === 0) return 1;
-          return view.highlightZones.includes(el.id) ? 1 : DIM.zone;
-        }
-        if (view.highlightNodes.length > 0) {
-          return view.highlightNodes.includes(el.id) ? 1 : DIM.node;
-        }
-        if (view.highlightZones.length > 0) {
-          const inHighlighted = doc
-            .ancestors(el)
-            .some((a) => view.highlightZones.includes(a.id));
-          return inHighlighted ? 1 : DIM.node;
-        }
-        return 1;
+        const viewOpacity = ((): number => {
+          if (view === undefined) return 1;
+          if (isContainer(el)) {
+            if (view.highlightZones.length === 0) return 1;
+            return view.highlightZones.includes(el.id) ? 1 : DIM.zone;
+          }
+          if (view.highlightNodes.length > 0) {
+            return view.highlightNodes.includes(el.id) ? 1 : DIM.node;
+          }
+          if (view.highlightZones.length > 0) {
+            const inHighlighted = doc
+              .ancestors(el)
+              .some((a) => view.highlightZones.includes(a.id));
+            return inHighlighted ? 1 : DIM.node;
+          }
+          return 1;
+        })();
+
+        const tagOpacity = ((): number => {
+          if (this.activeTags.size === 0) return 1;
+          return this.hasAnyDomainTag(el, this.activeTags) ? 1 : isContainer(el) ? DIM.zone : DIM.node;
+        })();
+
+        // The dimmer of the two axes wins: a view and a tag can be active at
+        // once, and either one asking for "not this" should be enough to grey
+        // an element out.
+        return Math.min(viewOpacity, tagOpacity);
       },
+      styleOf: (el) => this.styleLibrary.blockStyle(el),
+      paints: this.paintRegistry,
     };
+  }
+
+  /**
+   * Whether an element belongs to a tagged domain — its own style, or any
+   * ancestor zone's.
+   *
+   * A domain tag lives on one zone's style, not on every element inside it: a
+   * node three levels deep does not carry its own copy of "llm", it belongs to
+   * `block.llm` by containment, the same way it belongs to `block.llm`'s
+   * colour without carrying that colour itself. Without the ancestor walk, the
+   * root zone of a tagged domain would light up and everything nested inside
+   * it — its own child zones, every node — would stay dimmed, which is the
+   * opposite of what isolating a domain is for.
+   */
+  private hasAnyDomainTag(el: DiagramElement, tags: ReadonlySet<string>): boolean {
+    const own = this.styleLibrary.tagsOf(this.styleLibrary.blockStyleIdFor(el));
+    if (own.some((t) => tags.has(t))) return true;
+    if (this.doc === null) return false;
+    return this.doc.ancestors(el).some((a) =>
+      this.styleLibrary.tagsOf(this.styleLibrary.blockStyleIdFor(a)).some((t) => tags.has(t)),
+    );
   }
 
   /**
@@ -465,6 +605,11 @@ export class DiagramCanvas {
 
     const resolved: Resolved[] = [];
     for (const edge of doc.edges) {
+      // Filtered before ports are assigned, not while drawing: a hidden edge
+      // that still claimed a port would push the visible ones off centre for
+      // no reason anyone could see.
+      if (this.hiddenEdgeFamilies.has(this.styleLibrary.edgeStyle(edge).family)) continue;
+
       const fromEl = doc.element(edge.from);
       const toEl = doc.element(edge.to);
       // An edge naming a missing element is silently skipped (R-MODEL-05).
@@ -505,16 +650,23 @@ export class DiagramCanvas {
         fromRect: r.from.rect, toRect: r.to.rect,
       });
 
-      const style = edgeStyle(r.edge.type);
-      const highlighted =
+      const style = this.styleLibrary.edgeStyle(r.edge);
+      const viewHighlighted =
         view === undefined || view.highlightNodes.length === 0
           ? true
           : view.highlightNodes.includes(r.edge.from) && view.highlightNodes.includes(r.edge.to);
+      // Either end, not both: unlike a view's "focus on this closed subsystem",
+      // a tag is a flashlight on one domain — a call crossing its boundary is
+      // exactly the kind of thing worth still seeing, not hiding.
+      const tagHighlighted =
+        this.activeTags.size === 0 ||
+        this.hasAnyDomainTag(r.from.owner, this.activeTags) ||
+        this.hasAnyDomainTag(r.to.owner, this.activeTags);
 
       const g = svg("g", {
         class: `spla-edge${this.selection?.id === r.edge.id ? " is-selected" : ""}`,
         [EDGE_ATTR]: r.edge.id,
-        opacity: highlighted ? 1 : DIM.edge,
+        opacity: viewHighlighted && tagHighlighted ? 1 : DIM.edge,
       });
 
       g.appendChild(
@@ -522,21 +674,27 @@ export class DiagramCanvas {
           class: "spla-edge-line",
           d: route.path,
           fill: "none",
-          stroke: style.stroke,
-          "stroke-width": style.strokeWidth,
-          "stroke-dasharray": style.dash,
-          "marker-end": style.marker,
+          stroke: style.line.color,
+          "stroke-width": style.line.width,
+          "stroke-dasharray": dashArray(style.line.dash),
+          "stroke-opacity": style.line.opacity === 1 ? null : style.line.opacity,
+          // The head follows the line's colour unless the style overrides it,
+          // which is the whole reason markers are built on demand instead of
+          // picked from a fixed list with colours baked in.
+          "marker-start": ctx.paints.marker(style.source, style.line.color),
+          "marker-end": ctx.paints.marker(style.target, style.line.color),
         }),
       );
 
-      if (r.edge.label !== "") {
+      if (r.edge.label !== "" && style.label.show) {
         g.appendChild(
           text(
             {
+              ...textAttrs(style.label),
               class: "spla-edge-label",
               x: route.labelAt.x,
               y: route.labelAt.y,
-              "text-anchor": "middle",
+              "text-anchor": style.label.align,
             },
             r.edge.label,
           ),
@@ -545,8 +703,6 @@ export class DiagramCanvas {
 
       this.edgesLayer.appendChild(g);
     }
-
-    void ctx;
   }
 
   /** Bounds of everything, using visible rectangles so collapsed containers count small. */

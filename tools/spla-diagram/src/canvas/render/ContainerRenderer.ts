@@ -1,18 +1,27 @@
 import { pointOnSide } from "../../geometry/rect.js";
 import type { BoundarySlot, Point, Rect } from "../../geometry/types.js";
+import type { TextStyle } from "../../model/StyleLibrary.js";
 import type { DiagramElement } from "../../model/types.js";
 import { ELEMENT_ATTR, ROLE_ATTR, Role } from "../../interaction/roles.js";
 import { setAttrs, svg, text } from "../svg.js";
 import type { ElementRenderer, RenderContext } from "./ElementRenderer.js";
-import { HEADER_HEIGHT, ZONE_DEFAULTS } from "./styles.js";
+import { alignX, dashArray, textAttrs } from "./textAttrs.js";
+
+/** Left inset of the header caption: clear of the collapse toggle at x+8..x+28. */
+const TITLE_PAD = 36;
 
 /**
  * The default container renderer: a titled box with a header that doubles as
- * the drag handle, a collapse toggle, and a right-aligned semantic id.
+ * the drag handle, a collapse toggle, and a semantic id.
  *
  * The body is deliberately inert — only the header drags (R-EDIT-02) — so that
  * the space inside a zone stays available for panning and for grabbing the
  * elements that live in it.
+ *
+ * Zones used to carry their own colours inline, written into every model by the
+ * Go generator; the renderer merged them over a constant table. Both are gone:
+ * a zone wears a named style like everything else, and the header's height is
+ * part of that style rather than a constant this file owns.
  */
 export class ContainerRenderer implements ElementRenderer {
   create(el: DiagramElement, ctx: RenderContext): SVGGElement {
@@ -22,11 +31,13 @@ export class ContainerRenderer implements ElementRenderer {
   }
 
   update(g: SVGGElement, el: DiagramElement, ctx: RenderContext): void {
+    const style = ctx.styleOf(el);
     const collapsed = ctx.isCollapsed(el);
     const selected = ctx.isSelected(el);
     const dropTarget = ctx.dropTargetId === el.id;
-    const style = { ...ZONE_DEFAULTS, ...(el.style ?? {}) };
-    const height = collapsed ? HEADER_HEIGHT : el.height;
+    const headerHeight = style.header.height;
+    const height = collapsed ? headerHeight : el.height;
+    const rect: Rect = { x: el.x, y: el.y, width: el.width, height };
 
     setAttrs(g, {
       class: [
@@ -38,6 +49,7 @@ export class ContainerRenderer implements ElementRenderer {
         .filter(Boolean)
         .join(" "),
       opacity: ctx.opacity(el),
+      filter: style.shadow ? "url(#spla-shadow)" : null,
     });
     g.replaceChildren();
 
@@ -49,11 +61,14 @@ export class ContainerRenderer implements ElementRenderer {
         y: el.y,
         width: el.width,
         height,
-        rx: 12,
-        fill: style.fill,
-        stroke: style.stroke,
-        "stroke-width": style.strokeWidth,
-        "stroke-dasharray": collapsed ? "none" : style.strokeDasharray,
+        rx: style.radius,
+        fill: ctx.paints.fill(style.fill),
+        stroke: style.border.color,
+        "stroke-width": style.border.width,
+        // Collapsed, the box *is* the header: a dashed outline round a title
+        // bar reads as a placeholder rather than as a folded zone.
+        "stroke-dasharray": collapsed ? null : dashArray(style.border.dash),
+        "stroke-opacity": style.border.opacity === 1 ? null : style.border.opacity,
       }),
     );
 
@@ -64,46 +79,46 @@ export class ContainerRenderer implements ElementRenderer {
         x: el.x,
         y: el.y,
         width: el.width,
-        height: HEADER_HEIGHT,
-        rx: 12,
-        fill: style.headerBg,
+        height: headerHeight,
+        rx: style.radius,
+        fill: ctx.paints.fill(style.header.fill),
       }),
     );
 
     g.appendChild(this.collapseToggle(el, collapsed));
 
-    const childCount = el.children.filter((c) => c.kind === "node").length;
-    g.appendChild(
-      text(
-        {
-          x: el.x + 36,
-          y: el.y + 22,
-          "font-size": 13,
-          "font-weight": 700,
-          fill: "#334155",
-          class: "spla-zone-title",
-        },
-        collapsed ? `${el.label} (${childCount} компонентов)` : el.label,
-      ),
-    );
-
-    if (el.semanticId !== undefined && el.semanticId !== "") {
+    const titleStyle = style.header.text;
+    if (titleStyle.show) {
+      const childCount = el.children.filter((c) => c.kind === "node").length;
+      const icon = style.icon.show ? `${style.icon.glyph} ` : "";
       g.appendChild(
         text(
           {
-            x: el.x + el.width - 14,
-            y: el.y + 21,
-            "font-size": 10,
-            "font-family": "monospace",
-            "text-anchor": "end",
-            fill: "#64748b",
+            ...textAttrs(titleStyle),
+            ...alignX(titleStyle, rect, TITLE_PAD),
+            y: baseline(el.y, headerHeight, titleStyle),
+            class: "spla-zone-title",
+          },
+          collapsed
+            ? `${icon}${el.label} (${childCount} компонентов)`
+            : `${icon}${el.label}`,
+        ),
+      );
+    }
+
+    if (style.subtitle.show && el.semanticId !== undefined && el.semanticId !== "") {
+      g.appendChild(
+        text(
+          {
+            ...textAttrs(style.subtitle),
+            ...alignX(style.subtitle, rect, 14),
+            y: baseline(el.y, headerHeight, style.subtitle),
             class: "spla-zone-semantic",
           },
           el.semanticId,
         ),
       );
     }
-
   }
 
   private collapseToggle(el: DiagramElement, collapsed: boolean): SVGGElement {
@@ -130,11 +145,25 @@ export class ContainerRenderer implements ElementRenderer {
       x: el.x,
       y: el.y,
       width: el.width,
-      height: ctx.isCollapsed(el) ? HEADER_HEIGHT : el.height,
+      // A collapsed container occupies exactly its header, so this has to be
+      // the same number the header is drawn with — hence the style, not the
+      // fallback constant (D-01 all over again if they disagree).
+      height: ctx.isCollapsed(el) ? ctx.styleOf(el).header.height : el.height,
     };
   }
 
   pointAt(rect: Rect, slot: BoundarySlot): Point {
     return pointOnSide(rect, slot.side, slot.t);
   }
+}
+
+/**
+ * Baseline that keeps a caption optically centred in the header band.
+ *
+ * Derived rather than hardcoded so that a style raising `header.height` moves
+ * the title with it; the old constants (22 for the title, 21 for the id) were
+ * only correct for a 34-high header.
+ */
+function baseline(top: number, headerHeight: number, style: TextStyle): number {
+  return top + headerHeight / 2 + style.size * 0.35;
 }
