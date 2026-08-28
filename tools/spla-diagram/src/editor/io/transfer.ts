@@ -25,7 +25,48 @@ export class HttpModelStore implements ModelStore {
   async load(file: string): Promise<WireDocument> {
     const res = await fetch(new URL(file, new URL(this.baseUrl, location.href)));
     if (!res.ok) throw new Error(`Не удалось загрузить ${file}: HTTP ${res.status}`);
-    return (await res.json()) as WireDocument;
+    const data = await res.json();
+    if (data.contractVersion === 2) {
+      return this.loadV2(file, data);
+    }
+    return data as WireDocument;
+  }
+
+  private async loadV2(viewFile: string, viewData: any): Promise<WireDocument> {
+    const isView = !!viewData.project;
+    let projectManifest = viewData;
+    let dir = viewFile.substring(0, viewFile.lastIndexOf("/") + 1);
+
+    if (isView) {
+      dir = dir + "../";
+      projectManifest = await fetch(new URL(dir + "project.json", new URL(this.baseUrl, location.href))).then(r => r.json());
+    }
+    
+    const [entitiesRes, relationsRes, containersRes, textRes] = await Promise.all([
+      fetch(new URL(dir + "entities.json", new URL(this.baseUrl, location.href))).then(r => r.json()).catch(() => ({ entities: [] })),
+      fetch(new URL(dir + "relations.json", new URL(this.baseUrl, location.href))).then(r => r.json()).catch(() => ({ relations: [] })),
+      fetch(new URL(dir + "containers.json", new URL(this.baseUrl, location.href))).then(r => r.json()).catch(() => ({ containers: [] })),
+      fetch(new URL(dir + "text.ru.json", new URL(this.baseUrl, location.href))).then(r => r.json()).catch(() => ({ entries: {} }))
+    ]);
+
+    const wire: WireDocument = {
+      metadata: { title: projectManifest.title, contractVersion: 2 },
+      zones: [],
+      nodes: [],
+      edges: [],
+      views: [],
+    };
+    
+    (wire as any).v2Bundle = {
+      project: projectManifest,
+      entities: entitiesRes,
+      relations: relationsRes,
+      containers: containersRes,
+      text: textRes,
+      view: isView ? viewData : null
+    };
+
+    return wire;
   }
 
   async save(target: SaveTarget, wire: WireDocument): Promise<void> {
