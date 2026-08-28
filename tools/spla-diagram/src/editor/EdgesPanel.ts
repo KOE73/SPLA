@@ -1,21 +1,14 @@
 import type { DiagramEdge, DiagramElement } from "../model/types.js";
 import { el, replaceChildren } from "../util/dom.js";
-import { select, type Option } from "./fields.js";
+import { select } from "./fields.js";
+import { SearchableSelect, type SearchableOption } from "./SearchableSelect.js";
+import { resolveElementRelations, type ResolvedRelation } from "../model/relations-resolver.js";
 import type { DiagramEditor } from "./DiagramEditor.js";
-
-export interface KnownRelation {
-  id: string;
-  from: string;
-  to: string;
-  type: string;
-  label: string;
-  visible: boolean;
-  edge?: DiagramEdge;
-}
 
 export class EdgesPanel {
   private filter = "";
   private editingId: string | null = null;
+  private confirmingDeleteId: string | null = null;
 
   constructor(
     private readonly body: HTMLElement,
@@ -81,6 +74,23 @@ export class EdgesPanel {
       },
     );
 
+    const edgeStyles = this.host.canvas.styles.list("edge").map((s) => ({
+      value: s.id,
+      label: s.name || s.id,
+      subtitle: s.id,
+    }));
+
+    const styleSelect = new SearchableSelect({
+      options: [["", "По умолчанию (по типу)"], ...edgeStyles.map((s) => [s.value, s.label] as [string, string])],
+      value: edge.styleId ?? "",
+      searchPlaceholder: "Поиск стиля связи…",
+      onChange: (val) => {
+        edge.styleId = val || undefined;
+        (this.host as any).commit("edit-edge-style");
+        this.host.canvas.render();
+      },
+    });
+
     const labelInput = el("input", {
       type: "text",
       value: edge.label || "",
@@ -114,6 +124,10 @@ export class EdgesPanel {
           typeSelect,
         ]),
         el("label", { class: "field" }, [
+          el("span", { class: "field-label", text: "Стиль связи" }),
+          styleSelect.root,
+        ]),
+        el("label", { class: "field" }, [
           el("span", { class: "field-label", text: "Подпись" }),
           labelInput,
         ]),
@@ -136,56 +150,10 @@ export class EdgesPanel {
     const doc = this.host.canvas.model;
     if (!doc) return;
 
-    const canvasEdges = doc.edges.filter((e) => e.from === element.id || e.to === element.id);
-    const v2Relations =
-      (doc.raw as any)?.v2Bundle?.relations?.relations ||
-      (doc.raw as any)?.v2Bundle?.relations ||
-      [];
-    const rawEntityId = (element.raw as any)?._entity?.id;
-
-    const allKnown = new Map<string, KnownRelation>();
-
-    for (const edge of canvasEdges) {
-      allKnown.set(edge.id, {
-        id: edge.id,
-        from: edge.from,
-        to: edge.to,
-        type: edge.type,
-        label: edge.label || "",
-        visible: true,
-        edge,
-      });
-    }
-
-    if (Array.isArray(v2Relations)) {
-      for (const rel of v2Relations) {
-        const fromMatch = rel.from === element.id || (rawEntityId && rel.from === rawEntityId);
-        const toMatch = rel.to === element.id || (rawEntityId && rel.to === rawEntityId);
-        if (fromMatch || toMatch) {
-          const canvasFrom = fromMatch ? element.id : rel.from;
-          const canvasTo = toMatch ? element.id : rel.to;
-
-          const existing = [...allKnown.values()].find(
-            (k) => k.from === canvasFrom && k.to === canvasTo && k.type === (rel.type || rel.relation),
-          );
-          if (!existing) {
-            const relId = rel.id || `rel_${canvasFrom}_${canvasTo}_${rel.type || "rel"}`;
-            allKnown.set(relId, {
-              id: relId,
-              from: canvasFrom,
-              to: canvasTo,
-              type: rel.type || rel.relation || "relates",
-              label: rel.label || "",
-              visible: false,
-            });
-          }
-        }
-      }
-    }
-
-    const relationsList = [...allKnown.values()];
-    const visibleCount = relationsList.filter((r) => r.visible).length;
-    const totalCount = relationsList.length;
+    const summary = resolveElementRelations(doc, element);
+    const relationsList = summary.items;
+    const visibleCount = summary.visible;
+    const totalCount = summary.total;
 
     const needle = this.filter.trim().toLowerCase();
     const filtered = relationsList.filter((r) => {
@@ -196,7 +164,8 @@ export class EdgesPanel {
       return (
         otherName.toLowerCase().includes(needle) ||
         r.type.toLowerCase().includes(needle) ||
-        r.label.toLowerCase().includes(needle)
+        r.label.toLowerCase().includes(needle) ||
+        (r.styleId && r.styleId.toLowerCase().includes(needle))
       );
     });
 
@@ -204,7 +173,7 @@ export class EdgesPanel {
 
     const filterInput = el("input", {
       type: "text",
-      placeholder: "Поиск связей…",
+      placeholder: "Поиск связей (like)…",
       value: this.filter,
       on: {
         input: (e) => {
@@ -214,19 +183,29 @@ export class EdgesPanel {
       },
     });
 
+    const header = el("div", { class: "edge-table-header" }, [
+      el("span", { text: "Связь / Партнёр" }),
+      el("span", { text: "Тип" }),
+      el("span", { text: "Стиль" }),
+      el("span", { text: "Вкл", attrs: { style: "text-align: center;" } }),
+      el("span", { text: "" }),
+      el("span", { text: "" }),
+    ]);
+
     const addSection = this.renderAddSection(element);
 
     replaceChildren(
       this.body,
       el("div", { class: "panel-section" }, [
         el("div", { class: "field-row" }, [
-          el("span", { class: "field-label accent", text: "Связи блока" }),
+          el("span", { class: "field-label accent", text: `Связи: ${element.label}` }),
           el("span", { class: "mono chip", text: `${totalCount} доступно / ${visibleCount} на схеме` }),
         ]),
         filterInput,
+        header,
         el(
           "div",
-          { class: "edge-list", attrs: { style: "max-height: 280px; gap: 6px;" } },
+          { class: "edge-list", attrs: { style: "max-height: 320px; gap: 3px;" } },
           rows.length === 0
             ? [el("div", { class: "muted italic", text: "Связи не найдены" })]
             : rows,
@@ -236,7 +215,7 @@ export class EdgesPanel {
     );
   }
 
-  private renderRelationRow(element: DiagramElement, item: KnownRelation): HTMLElement {
+  private renderRelationRow(element: DiagramElement, item: ResolvedRelation): HTMLElement {
     const doc = this.host.canvas.model;
     if (!doc) return el("div");
 
@@ -246,6 +225,7 @@ export class EdgesPanel {
     const otherName = otherEl?.label || otherId;
 
     const isEditing = this.editingId === item.id;
+    const isConfirmingDelete = this.confirmingDeleteId === item.id;
 
     const checkbox = el("input", {
       type: "checkbox",
@@ -260,6 +240,7 @@ export class EdgesPanel {
               to: item.to,
               type: item.type,
               label: item.label,
+              styleId: item.styleId,
             });
             (this.host as any).commit("show-edge");
           } else {
@@ -272,9 +253,9 @@ export class EdgesPanel {
     });
     (checkbox as HTMLInputElement).checked = item.visible;
 
-    const labelSpan = el("span", {
-      class: "edge-row-label",
-      attrs: { style: "cursor: pointer; display: flex; align-items: center; gap: 4px;" },
+    const labelSpan = el("div", {
+      class: "edge-col-target",
+      title: `${isOutgoing ? "Исходящая к" : "Входящая от"} ${otherName} (кликните для перехода)`,
       on: {
         click: () => {
           if (otherEl) {
@@ -283,16 +264,28 @@ export class EdgesPanel {
         },
       },
     }, [
-      el("span", { class: "mono", text: isOutgoing ? "➔" : "⬅" }),
+      el("span", { class: "mono", text: isOutgoing ? "➔" : "⬅", attrs: { style: "opacity: 0.7; font-size: 10px;" } }),
       el("span", { class: "input-strong", text: otherName }),
-      item.label ? el("span", { class: "muted", text: `«${item.label}»` }) : null,
+      item.label ? el("span", { class: "muted mono", text: `«${item.label}»`, attrs: { style: "font-size: 10px;" } }) : null,
     ]);
 
-    const typeBadge = el("span", {
-      class: "badge",
-      text: item.type,
-      title: "Тип связи",
-    });
+    const typeCol = el("div", { class: "edge-col-type" }, [
+      el("span", {
+        class: "badge chip",
+        text: item.type,
+        title: `Тип связи: ${item.type}`,
+        attrs: { style: "font-size: 9.5px; padding: 1px 4px;" },
+      }),
+    ]);
+
+    const styleCol = el("div", { class: "edge-col-style" }, [
+      el("span", {
+        class: "mono muted",
+        text: item.styleId ? item.styleId.replace(/^relation\./, "") : "auto",
+        title: `Стиль связи: ${item.styleId ?? "по типу"}`,
+        attrs: { style: "font-size: 9.5px;" },
+      }),
+    ]);
 
     const editBtn = el("button", {
       class: "btn-icon",
@@ -301,17 +294,23 @@ export class EdgesPanel {
       on: {
         click: () => {
           this.editingId = isEditing ? null : item.id;
+          this.confirmingDeleteId = null;
           this.render();
         },
       },
     });
 
     const deleteBtn = el("button", {
-      class: "btn-icon danger",
-      text: "✕",
-      title: "Удалить связь",
+      class: `btn-icon${isConfirmingDelete ? " is-confirm" : " danger"}`,
+      text: isConfirmingDelete ? "Да?" : "✕",
+      title: isConfirmingDelete ? "Нажмите для подтверждения удаления" : "Удалить связь",
       on: {
         click: () => {
+          if (!isConfirmingDelete) {
+            this.confirmingDeleteId = item.id;
+            this.render();
+            return;
+          }
           if (item.visible) {
             doc.removeEdge(item.id);
           }
@@ -320,6 +319,7 @@ export class EdgesPanel {
             const idx = v2Rels.findIndex((r: any) => r.id === item.id);
             if (idx >= 0) v2Rels.splice(idx, 1);
           }
+          this.confirmingDeleteId = null;
           (this.host as any).commit("delete-relation");
           this.render();
         },
@@ -329,15 +329,15 @@ export class EdgesPanel {
     const row = el(
       "div",
       {
-        class: `edge-row${item.visible ? "" : " is-hidden-edge"}`,
-        attrs: { style: `opacity: ${item.visible ? "1" : "0.6"}; background: var(--panel-alt); padding: 6px 8px; border-radius: 6px;` },
+        class: `edge-table-row${item.visible ? "" : " is-hidden-edge"}`,
       },
       [
-        checkbox,
         labelSpan,
-        typeBadge,
-        editBtn,
-        deleteBtn,
+        typeCol,
+        styleCol,
+        el("div", { class: "edge-col-check" }, [checkbox]),
+        el("div", { class: "edge-col-action" }, [editBtn]),
+        el("div", { class: "edge-col-action" }, [deleteBtn]),
       ],
     );
 
@@ -355,12 +355,27 @@ export class EdgesPanel {
         item.type,
         () => undefined,
       );
-      const lblInput = el("input", { type: "text", value: item.label, placeholder: "Подпись…" });
+
+      const edgeStyles = this.host.canvas.styles.list("edge").map((s) => ({
+        value: s.id,
+        label: s.name || s.id,
+        subtitle: s.id,
+      }));
+
+      const styleSel = new SearchableSelect({
+        options: [["", "По умолчанию (по типу)"], ...edgeStyles.map((s) => [s.value, s.label] as [string, string])],
+        value: item.styleId ?? "",
+        searchPlaceholder: "Поиск стиля связи…",
+        onChange: () => undefined,
+      });
+
+      const lblInput = el("input", { type: "text", value: item.label, placeholder: "Подпись связи…" });
 
       const editBox = el("div", {
-        attrs: { style: "display: flex; flex-direction: column; gap: 6px; padding: 8px; margin-top: 4px; background: var(--panel); border: 1px solid var(--line); border-radius: 6px;" },
+        attrs: { style: "display: flex; flex-direction: column; gap: 6px; padding: 8px; margin-top: 2px; margin-bottom: 4px; background: var(--panel); border: 1px solid var(--line); border-radius: 6px;" },
       }, [
-        el("div", { class: "grid-2" }, [typeSel, lblInput]),
+        el("div", { class: "grid-2" }, [typeSel, styleSel.root]),
+        lblInput,
         el("div", { attrs: { style: "display: flex; gap: 6px; justify-content: flex-end;" } }, [
           el("button", {
             class: "btn btn-small",
@@ -379,9 +394,19 @@ export class EdgesPanel {
               click: () => {
                 item.type = typeSel.value;
                 item.label = lblInput.value;
+                const pickedStyle = (styleSel as any).currentValue;
+                item.styleId = pickedStyle || undefined;
+
                 if (item.edge) {
                   item.edge.type = item.type;
                   item.edge.label = item.label;
+                  item.edge.styleId = item.styleId;
+                }
+                if (item.raw) {
+                  item.raw.type = item.type;
+                  item.raw.relation = item.type;
+                  item.raw.label = item.label;
+                  item.raw.styleId = item.styleId;
                 }
                 this.editingId = null;
                 (this.host as any).commit("update-relation");
@@ -402,12 +427,28 @@ export class EdgesPanel {
     const doc = this.host.canvas.model;
     if (!doc) return el("div");
 
-    const others = doc.leaves().filter((n) => n.id !== element.id);
-    const targetSelect = select(
-      [["", "— Куда вести —"], ...others.map((n) => [n.id, n.label] as Option)],
-      "",
-      () => undefined,
-    );
+    const allLeaves = doc.leaves().filter((n) => n.id !== element.id);
+    const targetOptions: SearchableOption[] = allLeaves.map((n) => {
+      const parentZone = n.parent ? doc.element(n.parent.id)?.label : undefined;
+      return {
+        value: n.id,
+        label: n.label,
+        subtitle: parentZone ? `в ${parentZone}` : n.id,
+        badge: n.type,
+      };
+    });
+
+    let selectedTarget = "";
+    const targetSelect = new SearchableSelect({
+      options: targetOptions,
+      value: "",
+      searchPlaceholder: "Поиск целевого блока (like)…",
+      placeholder: "— Куда вести —",
+      onChange: (val) => {
+        selectedTarget = val;
+      },
+    });
+
     const typeSelect = select(
       [
         ["call", "Вызов (call)"],
@@ -421,11 +462,30 @@ export class EdgesPanel {
       "call",
       () => undefined,
     );
+
+    const edgeStyles = this.host.canvas.styles.list("edge").map((s) => ({
+      value: s.id,
+      label: s.name || s.id,
+      subtitle: s.id,
+    }));
+
+    let selectedStyle = "";
+    const styleSelect = new SearchableSelect({
+      options: [["", "Стиль: по типу"], ...edgeStyles.map((s) => [s.value, s.label] as [string, string])],
+      value: "",
+      searchPlaceholder: "Поиск стиля связи…",
+      placeholder: "Стиль: по типу",
+      onChange: (val) => {
+        selectedStyle = val;
+      },
+    });
+
     const labelInput = el("input", { type: "text", placeholder: "Подпись (опция)" });
 
-    return el("div", { class: "panel", attrs: { style: "flex-direction: column; align-items: stretch; gap: 8px; margin-top: 8px;" } }, [
+    return el("div", { class: "panel", attrs: { style: "flex-direction: column; align-items: stretch; gap: 6px; margin-top: 8px;" } }, [
       el("div", { class: "field-label accent", text: "Добавить новую связь:" }),
-      el("div", { class: "grid-2" }, [targetSelect, typeSelect]),
+      targetSelect.root,
+      el("div", { class: "grid-2" }, [typeSelect, styleSelect.root]),
       el("div", { class: "field-row gap" }, [
         labelInput,
         el("button", {
@@ -433,14 +493,17 @@ export class EdgesPanel {
           text: "Связать",
           on: {
             click: () => {
-              if (targetSelect.value === "") return;
-              this.host.addEdgeFromSelection(
-                targetSelect.value,
-                typeSelect.value,
-                labelInput.value,
-              );
-              targetSelect.value = "";
-              labelInput.value = "";
+              if (!selectedTarget) return;
+              const edgeId = `edge_${Date.now()}`;
+              doc.addEdge({
+                id: edgeId,
+                from: element.id,
+                to: selectedTarget,
+                type: typeSelect.value,
+                label: labelInput.value,
+                styleId: selectedStyle || undefined,
+              });
+              (this.host as any).commit("add-edge");
               this.render();
             },
           },

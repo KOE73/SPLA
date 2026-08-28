@@ -51,12 +51,49 @@ export class Inspector {
     }
 
     if (selection.kind === "edge") {
-      const edge = doc.edge(selection.id);
+      let edge = doc.edge(selection.id);
+      let isVisibleOnCanvas = true;
+
+      if (edge === undefined) {
+        // Look up in v2Bundle.relations
+        const v2Relations =
+          (doc.raw as any)?.v2Bundle?.relations?.relations ||
+          (doc.raw as any)?.v2Bundle?.relations ||
+          [];
+        const rel = Array.isArray(v2Relations)
+          ? v2Relations.find((r: any) => r.id === selection.id)
+          : undefined;
+
+        if (rel) {
+          isVisibleOnCanvas = false;
+          edge = {
+            id: rel.id,
+            from: rel.from,
+            to: rel.to,
+            type: rel.type || rel.relation || "relates",
+            label: rel.label || "",
+            styleId: rel.styleId,
+          };
+        } else if (selection.id.startsWith("ghost_")) {
+          const parts = selection.id.split("_");
+          if (parts.length >= 3 && parts[1] && parts[2]) {
+            isVisibleOnCanvas = false;
+            edge = {
+              id: selection.id,
+              from: parts[1],
+              to: parts[2],
+              type: "call",
+              label: "",
+            };
+          }
+        }
+      }
+
       if (edge === undefined) {
         this.renderEmpty();
         return;
       }
-      this.renderEdge(edge);
+      this.renderEdge(edge, isVisibleOnCanvas);
       return;
     }
 
@@ -137,27 +174,91 @@ export class Inspector {
     );
   }
 
-  private renderEdge(edge: DiagramEdge): void {
-    this.badge.textContent = `EDGE: ${edge.type}`;
-    this.badge.className = "badge badge-edge";
+  private renderEdge(edge: DiagramEdge, isVisibleOnCanvas = true): void {
+    const doc = this.host.canvas.model;
+    const fromEl = doc?.element(edge.from);
+    const toEl = doc?.element(edge.to);
+
+    this.badge.textContent = isVisibleOnCanvas ? `EDGE: ${edge.type}` : `GHOST EDGE: ${edge.type}`;
+    this.badge.className = `badge ${isVisibleOnCanvas ? "badge-edge" : "badge-node"}`;
+
+    const statusToggle = el("div", {
+      class: "field-row",
+      attrs: {
+        style:
+          "background: var(--panel-alt); padding: 8px 12px; border-radius: 8px; border: 1px solid var(--line); margin-bottom: 8px; justify-content: space-between; align-items: center;",
+      },
+    }, [
+      el("span", { text: "Отображение на схеме:", attrs: { style: "font-weight: 600; font-size: 12px;" } }),
+      el("div", {
+        class: "pill-group",
+        attrs: { style: "display: flex; gap: 4px;" },
+      }, [
+        el("button", {
+          class: `btn btn-small ${isVisibleOnCanvas ? "btn-primary" : ""}`,
+          text: "● Включена",
+          attrs: { style: isVisibleOnCanvas ? "font-weight: 700;" : "opacity: 0.7;" },
+          on: {
+            click: () => {
+              if (!isVisibleOnCanvas && doc) {
+                doc.addEdge({
+                  id: edge.id,
+                  from: edge.from,
+                  to: edge.to,
+                  type: edge.type,
+                  label: edge.label,
+                  styleId: edge.styleId,
+                });
+                (this.host as any).commit("show-edge");
+                this.renderEdge(edge, true);
+              }
+            },
+          },
+        }),
+        el("button", {
+          class: `btn btn-small ${!isVisibleOnCanvas ? "btn-secondary" : ""}`,
+          text: "○ Скрыта (теневая)",
+          attrs: { style: !isVisibleOnCanvas ? "font-weight: 700; border-color: var(--accent); color: var(--accent);" : "opacity: 0.7;" },
+          on: {
+            click: () => {
+              if (isVisibleOnCanvas && doc) {
+                doc.removeEdge(edge.id);
+                (this.host as any).commit("hide-edge");
+                this.renderEdge(edge, false);
+              }
+            },
+          },
+        }),
+      ]),
+    ]);
 
     replaceChildren(
       this.body,
+      statusToggle,
       el("div", { class: "field-row" }, [
         el("span", { class: "mono muted", text: `ID: ${edge.id}` }),
-        el("span", { class: "mono coords", text: `FROM: ${edge.from} TO: ${edge.to}` }),
+        el("span", { class: "mono coords", text: `${fromEl?.label || edge.from} ➔ ${toEl?.label || edge.to}` }),
       ]),
       el("label", { class: "field" }, [
         el("span", { class: "field-label", text: "Подпись связи" }),
         el("input", {
           type: "text",
           value: edge.label,
+          placeholder: "Подпись связи…",
           on: {
             input: (e) => {
               const value = (e.target as HTMLInputElement).value;
-              this.host.editField(() => {
-                edge.label = value;
-              }, { rerender: true });
+              edge.label = value;
+              if (isVisibleOnCanvas) {
+                this.host.editField(() => {
+                  edge.label = value;
+                }, { rerender: true });
+              } else {
+                const v2Rels = (doc?.raw as any)?.v2Bundle?.relations?.relations;
+                const r = Array.isArray(v2Rels) ? v2Rels.find((x: any) => x.id === edge.id) : null;
+                if (r) r.label = value;
+                this.host.canvas.render();
+              }
             },
           },
         }),
@@ -165,9 +266,20 @@ export class Inspector {
       el("label", { class: "field" }, [
         el("span", { class: "field-label", text: "Тип связи" }),
         select(this.edgeTypeOptions(edge.type), edge.type, (value) => {
-          this.host.editField(() => {
-            edge.type = value;
-          }, { rerender: true, reselect: true });
+          edge.type = value;
+          if (isVisibleOnCanvas) {
+            this.host.editField(() => {
+              edge.type = value;
+            }, { rerender: true, reselect: true });
+          } else {
+            const v2Rels = (doc?.raw as any)?.v2Bundle?.relations?.relations;
+            const r = Array.isArray(v2Rels) ? v2Rels.find((x: any) => x.id === edge.id) : null;
+            if (r) {
+              r.type = value;
+              r.relation = value;
+            }
+            this.host.canvas.render();
+          }
         }),
       ]),
       this.edgeStylePicker(edge),
@@ -175,7 +287,20 @@ export class Inspector {
         el("button", {
           class: "btn btn-danger full",
           text: "Удалить связь",
-          on: { click: () => this.host.deleteEdge(edge.id) },
+          on: {
+            click: () => {
+              if (isVisibleOnCanvas) {
+                this.host.deleteEdge(edge.id);
+              }
+              const v2Rels = (doc?.raw as any)?.v2Bundle?.relations?.relations;
+              if (Array.isArray(v2Rels)) {
+                const idx = v2Rels.findIndex((x: any) => x.id === edge.id);
+                if (idx >= 0) v2Rels.splice(idx, 1);
+              }
+              (this.host as any).commit("delete-edge");
+              this.host.canvas.select(null);
+            },
+          },
         }),
       ]),
     );

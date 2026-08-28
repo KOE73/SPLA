@@ -6,6 +6,7 @@ import { ELEMENT_ATTR, ROLE_ATTR, Role } from "../../interaction/roles.js";
 import { setAttrs, svg, text } from "../svg.js";
 import type { ElementRenderer, RenderContext } from "./ElementRenderer.js";
 import { alignX, dashArray, textAttrs } from "./textAttrs.js";
+import { resolveElementRelations } from "../../model/relations-resolver.js";
 
 /**
  * The default leaf renderer: a rounded rectangle with a caption, a subtitle and
@@ -90,13 +91,9 @@ export class BoxRenderer implements ElementRenderer {
     }
 
     // Link count badge in the top-right corner
-    const visibleCount = ctx.doc.edges.filter((e) => e.from === el.id || e.to === el.id).length;
-    const v2Relations = (ctx.doc.raw as any)?.v2Bundle?.relations?.relations || (ctx.doc.raw as any)?.v2Bundle?.relations;
-    const rawEntity = (el.raw as any)?._entity;
-    const totalRelations = Array.isArray(v2Relations)
-      ? v2Relations.filter((r: any) => r.from === el.id || r.to === el.id || (rawEntity && (r.from === rawEntity.id || r.to === rawEntity.id))).length
-      : visibleCount;
-    const total = Math.max(visibleCount, totalRelations);
+    const relSummary = resolveElementRelations(ctx.doc, el);
+    const visibleCount = relSummary.visible;
+    const total = relSummary.total;
 
     if (total > 0) {
       const isGhost = ctx.ghostNodeId === el.id;

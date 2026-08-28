@@ -340,6 +340,18 @@ export class DiagramCanvas {
     const el = this.doc.element(id);
     if (el !== undefined) return { id, kind: el.kind };
     if (this.doc.edge(id) !== undefined) return { id, kind: "edge" };
+
+    const v2Relations =
+      (this.doc.raw as any)?.v2Bundle?.relations?.relations ||
+      (this.doc.raw as any)?.v2Bundle?.relations ||
+      [];
+    if (Array.isArray(v2Relations)) {
+      const rel = v2Relations.find((r: any) => r.id === id);
+      if (rel) return { id, kind: "edge" };
+    }
+    if (id.startsWith("ghost_")) {
+      return { id, kind: "edge" };
+    }
     return null;
   }
 
@@ -767,9 +779,9 @@ export class DiagramCanvas {
         }
       }
 
-      const strokeColor = (isGhostEdge || r.isPotential) ? "var(--accent)" : style.line.color;
-      const strokeWidth = r.isPotential ? 1.8 : isGhostEdge ? Math.max(style.line.width * 1.5, 2.5) : style.line.width;
-      const strokeDash = r.isPotential ? "4 3" : dashArray(style.line.dash);
+      const strokeColor = r.isPotential ? "var(--accent)" : style.line.color;
+      const strokeWidth = r.isPotential ? 1.6 : style.line.width;
+      const strokeDash = r.isPotential ? "5 4" : dashArray(style.line.dash);
 
       const g = svg("g", {
         class: `spla-edge${this.selection?.id === r.edge.id ? " is-selected" : ""}${isGhostEdge && !r.isPotential ? " is-ghost-focus" : ""}${r.isPotential ? " is-ghost-potential" : ""}`,
@@ -777,6 +789,19 @@ export class DiagramCanvas {
         opacity: edgeOpacity,
         style: r.isPotential ? "cursor: pointer;" : undefined,
       });
+
+      // Invisible fat hit area (18px wide) for easy click/hover on thin or dotted lines
+      g.appendChild(
+        svg("path", {
+          class: "spla-edge-hit",
+          d: route.path,
+          fill: "none",
+          stroke: "transparent",
+          "stroke-width": 18,
+          "stroke-linecap": "round",
+          "stroke-linejoin": "round",
+        }),
+      );
 
       g.appendChild(
         svg("path", {

@@ -152,12 +152,17 @@
   transition: opacity 0.2s ease;
 }
 
+.spla-edge-hit {
+  cursor: pointer;
+  pointer-events: stroke;
+}
+
 .spla-edge-line {
   transition: stroke 0.15s ease, stroke-width 0.15s ease;
 }
 
 .spla-edge:hover .spla-edge-line {
-  stroke: #2563eb;
+  stroke: var(--accent, #2563eb);
   stroke-width: 2.5px;
 }
 
@@ -179,15 +184,21 @@
   font-weight: 700;
 }
 
-.spla-edge.is-ghost-focus .spla-edge-line {
-  stroke: var(--accent, #2563eb) !important;
-  stroke-width: 2.5px !important;
-  filter: drop-shadow(0 0 3px var(--accent, #2563eb));
+.spla-edge.is-ghost-focus {
+  opacity: 1 !important;
 }
 
-.spla-edge.is-ghost-focus .spla-edge-label {
-  fill: var(--accent, #2563eb);
-  font-weight: 700;
+.spla-edge.is-ghost-potential .spla-edge-line {
+  stroke: var(--accent, #2563eb) !important;
+  stroke-width: 1.6px !important;
+  stroke-dasharray: 5 4 !important;
+  opacity: 0.65;
+}
+
+.spla-edge.is-ghost-potential:hover .spla-edge-line {
+  opacity: 1;
+  stroke-width: 2px !important;
+  filter: drop-shadow(0 0 4px var(--accent, #2563eb));
 }
 
 .spla-node-badge {

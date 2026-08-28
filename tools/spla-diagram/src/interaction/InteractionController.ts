@@ -24,6 +24,8 @@ interface PanGesture {
   readonly startY: number;
   readonly panX: number;
   readonly panY: number;
+  readonly elementOnClick?: string | null;
+  hasMoved?: boolean;
 }
 
 interface MoveGesture {
@@ -130,6 +132,32 @@ export class InteractionController {
         return;
 
       case Role.Body:
+        if (isContainer(el)) {
+          const additive = e.ctrlKey || e.metaKey || e.shiftKey;
+          if (additive) {
+            this.gesture = {
+              kind: "marquee",
+              startX: e.clientX,
+              startY: e.clientY,
+              additive: true,
+              base: [...this.canvas.selectedIds],
+            };
+            return;
+          }
+
+          // Dragging container body pans the canvas view!
+          this.gesture = {
+            kind: "pan",
+            startX: e.clientX,
+            startY: e.clientY,
+            panX: this.canvas.viewport.panX,
+            panY: this.canvas.viewport.panY,
+            elementOnClick: el.id,
+            hasMoved: false,
+          };
+          this.host.classList.add("is-panning");
+          return;
+        }
         this.applyClickSelection(el, e);
         return;
 
@@ -195,12 +223,18 @@ export class InteractionController {
     if (gesture === null) return;
 
     switch (gesture.kind) {
-      case "pan":
+      case "pan": {
+        const dx = Math.abs(e.clientX - gesture.startX);
+        const dy = Math.abs(e.clientY - gesture.startY);
+        if (dx > 3 || dy > 3) {
+          gesture.hasMoved = true;
+        }
         this.canvas.viewport.set({
           panX: gesture.panX + (e.clientX - gesture.startX),
           panY: gesture.panY + (e.clientY - gesture.startY),
         });
         return;
+      }
       case "move":
         this.applyMove(gesture, e);
         return;
@@ -219,7 +253,12 @@ export class InteractionController {
     this.host.classList.remove("is-panning");
     if (gesture === null) return;
 
-    if (gesture.kind === "pan") return;
+    if (gesture.kind === "pan") {
+      if (!gesture.hasMoved && gesture.elementOnClick) {
+        this.canvas.select(gesture.elementOnClick);
+      }
+      return;
+    }
 
     if (gesture.kind === "marquee") {
       this.canvas.marqueeRect = null;
