@@ -535,6 +535,7 @@ export class DiagramEditor implements InspectorHost, StylePanelHost {
     this.syncToolbar(null);
     // Migration may have minted styles; the list must show them.
     this.styleList.render();
+    this.basePanel.render();
   }
 
   private snapshot(): string {
@@ -966,6 +967,7 @@ export class DiagramEditor implements InspectorHost, StylePanelHost {
     this.history.push(this.snapshot());
     this.markDirty();
     this.syncToolbar(this.canvas.selected);
+    this.basePanel.render();
   }
 
   private undo(): void {
