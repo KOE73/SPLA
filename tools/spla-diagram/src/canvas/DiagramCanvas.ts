@@ -122,6 +122,7 @@ export class DiagramCanvas {
    * shows the union: anything wearing *any* of them.
    */
   private activeTags = new Set<string>();
+  private ghostNodeId: string | null = null;
 
   /** Rubber band in model coordinates while a selection sweep is running. */
   marqueeRect: Rect | null = null;
@@ -261,6 +262,22 @@ export class DiagramCanvas {
     if (this.activeTags.size === 0) return;
     this.activeTags.clear();
     this.render();
+  }
+
+  get currentGhostNodeId(): string | null {
+    return this.ghostNodeId;
+  }
+
+  toggleGhostNode(id: string): void {
+    this.ghostNodeId = this.ghostNodeId === id ? null : id;
+    this.render();
+  }
+
+  clearGhostNode(): void {
+    if (this.ghostNodeId !== null) {
+      this.ghostNodeId = null;
+      this.render();
+    }
   }
 
   /**
@@ -506,14 +523,36 @@ export class DiagramCanvas {
       ? undefined
       : doc.views.find((v) => v.id === this.activeViewId);
 
+    const ghostConnectedIds = new Set<string>();
+    if (this.ghostNodeId !== null && doc !== null) {
+      ghostConnectedIds.add(this.ghostNodeId);
+      for (const e of doc.edges) {
+        if (e.from === this.ghostNodeId || e.to === this.ghostNodeId) {
+          ghostConnectedIds.add(e.from);
+          ghostConnectedIds.add(e.to);
+        }
+      }
+    }
+
     return {
       doc,
       selectedId: this.selection?.id ?? null,
       dropTargetId: this.dropTargetId,
+      ghostNodeId: this.ghostNodeId,
       isSelected: (el) => this.selectionIds.has(el.id),
       isCollapsed: (el) => this.collapsed.has(el.id),
       isHidden: (el) => this.collapsedAncestor(el) !== null,
       opacity: (el) => {
+        if (this.ghostNodeId !== null) {
+          if (isContainer(el)) {
+            const desc = doc.descendants(el);
+            const containsConnected = ghostConnectedIds.has(el.id) || desc.some((d) => ghostConnectedIds.has(d.id));
+            if (!containsConnected) return DIM.zone;
+          } else {
+            if (!ghostConnectedIds.has(el.id)) return DIM.node;
+          }
+        }
+
         const viewOpacity = ((): number => {
           if (view === undefined) return 1;
           if (isContainer(el)) {
@@ -663,10 +702,21 @@ export class DiagramCanvas {
         this.hasAnyDomainTag(r.from.owner, this.activeTags) ||
         this.hasAnyDomainTag(r.to.owner, this.activeTags);
 
+      const isGhostEdge = this.ghostNodeId !== null && (r.edge.from === this.ghostNodeId || r.edge.to === this.ghostNodeId);
+      const isGhostActive = this.ghostNodeId !== null;
+
+      let edgeOpacity = viewHighlighted && tagHighlighted ? 1 : DIM.edge;
+      if (isGhostActive) {
+        edgeOpacity = isGhostEdge ? 1 : 0.12;
+      }
+
+      const strokeColor = isGhostEdge ? "var(--accent)" : style.line.color;
+      const strokeWidth = isGhostEdge ? Math.max(style.line.width * 1.5, 2.5) : style.line.width;
+
       const g = svg("g", {
-        class: `spla-edge${this.selection?.id === r.edge.id ? " is-selected" : ""}`,
+        class: `spla-edge${this.selection?.id === r.edge.id ? " is-selected" : ""}${isGhostEdge ? " is-ghost-focus" : ""}`,
         [EDGE_ATTR]: r.edge.id,
-        opacity: viewHighlighted && tagHighlighted ? 1 : DIM.edge,
+        opacity: edgeOpacity,
       });
 
       g.appendChild(
@@ -674,15 +724,15 @@ export class DiagramCanvas {
           class: "spla-edge-line",
           d: route.path,
           fill: "none",
-          stroke: style.line.color,
-          "stroke-width": style.line.width,
+          stroke: strokeColor,
+          "stroke-width": strokeWidth,
           "stroke-dasharray": dashArray(style.line.dash),
           "stroke-opacity": style.line.opacity === 1 ? null : style.line.opacity,
           // The head follows the line's colour unless the style overrides it,
           // which is the whole reason markers are built on demand instead of
           // picked from a fixed list with colours baked in.
-          "marker-start": ctx.paints.marker(style.source, style.line.color),
-          "marker-end": ctx.paints.marker(style.target, style.line.color),
+          "marker-start": ctx.paints.marker(style.source, strokeColor),
+          "marker-end": ctx.paints.marker(style.target, strokeColor),
         }),
       );
 

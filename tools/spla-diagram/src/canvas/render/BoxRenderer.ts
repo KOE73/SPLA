@@ -89,6 +89,53 @@ export class BoxRenderer implements ElementRenderer {
       );
     }
 
+    // Link count badge in the top-right corner
+    const edgeCount = ctx.doc.edges.filter((e) => e.from === el.id || e.to === el.id).length;
+    const v2Relations = (ctx.doc.raw as any)?.v2Bundle?.relations?.relations || (ctx.doc.raw as any)?.v2Bundle?.relations;
+    const rawEntity = (el.raw as any)?._entity;
+    const totalRelations = Array.isArray(v2Relations)
+      ? v2Relations.filter((r: any) => r.from === el.id || r.to === el.id || (rawEntity && (r.from === rawEntity.id || r.to === rawEntity.id))).length
+      : edgeCount;
+    const count = Math.max(edgeCount, totalRelations);
+
+    if (count > 0) {
+      const isGhost = ctx.ghostNodeId === el.id;
+      const bw = count >= 10 ? 22 : 18;
+      const bx = el.x + el.width - bw - 5;
+      const by = el.y + 5;
+
+      const badgeGroup = svg("g", {
+        class: `spla-node-badge${isGhost ? " is-active" : ""}`,
+        [ROLE_ATTR]: Role.GhostToggle,
+        style: "cursor: pointer;",
+      }, [
+        svg("rect", {
+          x: bx,
+          y: by,
+          width: bw,
+          height: 14,
+          rx: 7,
+          fill: isGhost ? "var(--accent)" : "var(--panel-alt)",
+          stroke: isGhost ? "var(--accent)" : "var(--line)",
+          "stroke-width": 1,
+        }),
+        text(
+          {
+            x: bx + bw / 2,
+            y: by + 10,
+            "text-anchor": "middle",
+            "font-size": "9px",
+            "font-family": "monospace",
+            "font-weight": "700",
+            fill: isGhost ? "#ffffff" : "var(--muted)",
+            "pointer-events": "none",
+          },
+          String(count),
+        ),
+      ]);
+      g.appendChild(badgeGroup);
+    }
+
     // Resize grips are drawn by the canvas around the current selection, not
     // here: with several elements selected they belong to the selection's
     // bounding box rather than to any one element.

@@ -178,3 +178,35 @@
   fill: #3b82f6;
   font-weight: 700;
 }
+
+.spla-edge.is-ghost-focus .spla-edge-line {
+  stroke: var(--accent, #2563eb) !important;
+  stroke-width: 2.5px !important;
+  filter: drop-shadow(0 0 3px var(--accent, #2563eb));
+}
+
+.spla-edge.is-ghost-focus .spla-edge-label {
+  fill: var(--accent, #2563eb);
+  font-weight: 700;
+}
+
+.spla-node-badge {
+  cursor: pointer;
+}
+
+.spla-node-badge rect {
+  transition: fill 0.15s ease, stroke 0.15s ease;
+}
+
+.spla-node-badge text {
+  transition: fill 0.15s ease;
+}
+
+.spla-node-badge:hover rect {
+  fill: var(--accent, #2563eb);
+  stroke: var(--accent, #2563eb);
+}
+
+.spla-node-badge:hover text {
+  fill: #ffffff;
+}

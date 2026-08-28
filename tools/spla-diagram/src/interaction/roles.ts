@@ -26,6 +26,8 @@ export const Role = {
   ResizeHandle: "resize-handle",
   /** Releasing here toggles collapse. */
   CollapseToggle: "collapse-toggle",
+  /** Releasing here toggles ghost links. */
+  GhostToggle: "ghost-toggle",
 } as const;
 
 export type RoleName = (typeof Role)[keyof typeof Role];

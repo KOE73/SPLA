@@ -116,6 +116,7 @@ export class InteractionController {
 
     switch (hit.role) {
       case Role.CollapseToggle:
+      case Role.GhostToggle:
         // Handled on mouse-up so that pressing the button never starts a drag.
         e.stopPropagation();
         return;
@@ -167,6 +168,7 @@ export class InteractionController {
     }
 
     this.canvas.select(null);
+    this.canvas.clearGhostNode();
     this.gesture = {
       kind: "pan",
       startX: e.clientX,
@@ -182,6 +184,9 @@ export class InteractionController {
     if (hit?.role === Role.CollapseToggle && hit.elementId !== null) {
       e.stopPropagation();
       this.canvas.toggleCollapse(hit.elementId);
+    } else if (hit?.role === Role.GhostToggle && hit.elementId !== null) {
+      e.stopPropagation();
+      this.canvas.toggleGhostNode(hit.elementId);
     }
   };
 

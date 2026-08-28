@@ -13,6 +13,7 @@ export interface RenderContext {
   /** The element that drives the inspector when several are selected. */
   readonly selectedId: string | null;
   readonly dropTargetId: string | null;
+  readonly ghostNodeId?: string | null;
   isSelected(el: DiagramElement): boolean;
   isCollapsed(el: DiagramElement): boolean;
   /** View highlighting, 0..1 (R-VIEW-03/04). */
