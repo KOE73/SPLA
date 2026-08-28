@@ -41,7 +41,14 @@ func runBuild(cmd, mapPath, repoRoot, outPath, edgesPath string) {
 	semantic := loadEdges(edgesPath)
 	prev, hadLock := mapping.LoadKnown(lockPath)
 
-	res, err := buildAtlas(m, repoRoot, prev, semantic)
+	// The diagram this same command wrote last time. Its geometry, zone
+	// style/metadata and any node description are curated content — build
+	// carries them forward instead of recomputing them; see
+	// layout.ApplyPreserving. A missing or unreadable file just means
+	// everything is placed fresh, same as a first run.
+	prevDiagram, _ := readDiagram(outPath)
+
+	res, err := buildAtlas(m, repoRoot, prev, semantic, prevDiagram)
 	if err != nil {
 		fmt.Printf("❌ %v\n", err)
 		os.Exit(1)
@@ -54,7 +61,7 @@ func runBuild(cmd, mapPath, repoRoot, outPath, edgesPath string) {
 	}
 	report(res)
 
-	needsAttention := res.Unplaced > 0 || len(res.Problems) > 0 || !res.Drift.Clean()
+	needsAttention := res.Unplaced > 0 || len(res.Problems) > 0 || !res.Drift.Clean() || len(res.LayoutNotes) > 0
 
 	if cmd == "check" {
 		if needsAttention {

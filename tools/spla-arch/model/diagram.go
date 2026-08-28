@@ -47,8 +47,15 @@ type Zone struct {
 	Y          float64                `json:"y"`
 	Width      float64                `json:"width"`
 	Height     float64                `json:"height"`
-	Style      ZoneStyle              `json:"style"`
-	Metadata   map[string]interface{} `json:"metadata,omitempty"`
+	// StyleID names an entry in the editor's style library. Appearance is
+	// edited there, once, instead of being copied into every zone.
+	StyleID string `json:"styleId,omitempty"`
+	// Style is the old inline colouring. Deprecated: still read so older
+	// files keep rendering, never written by the generator any more. It is a
+	// pointer because a struct value is never omitted by encoding/json —
+	// without one, every zone would carry an empty style object for ever.
+	Style    *ZoneStyle             `json:"style,omitempty"`
+	Metadata map[string]interface{} `json:"metadata,omitempty"`
 }
 
 type Node struct {

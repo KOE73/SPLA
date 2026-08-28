@@ -1,0 +1,523 @@
+{
+  "contractVersion": 2,
+  "containers": [
+    {
+      "id": "c_llm",
+      "parent": null,
+      "theme": "green"
+    },
+    {
+      "id": "c_llm_providers",
+      "parent": "c_llm",
+      "match": {
+        "name": [
+          "ILlmClient",
+          "ILlmGateway",
+          "IModelManagementService",
+          "LLMSettings",
+          "LlmProviderRegistry",
+          "ModelInfo"
+        ]
+      }
+    },
+    {
+      "id": "c_llm_middleware",
+      "parent": "c_llm",
+      "match": {
+        "name": [
+          "ILlmMiddleware",
+          "LlmPipelineBlueprint",
+          "RepetitionDetector",
+          "RepetitionGuardMiddleware",
+          "TokenAccountingMiddleware"
+        ],
+        "path": [
+          "src/core/SPLA.Domain/Llm/Middleware/"
+        ]
+      }
+    },
+    {
+      "id": "c_llm_turn",
+      "parent": "c_llm",
+      "match": {
+        "name": [
+          "GenerationAttempt",
+          "LlmRequestException",
+          "LlmTurnContext",
+          "LlmTurnResult",
+          "ProviderFact",
+          "ProviderStateStore",
+          "ReasoningCapability",
+          "ReasoningChoice",
+          "TurnAttempt"
+        ]
+      }
+    },
+    {
+      "id": "c_toolpipe",
+      "parent": null,
+      "theme": "blue"
+    },
+    {
+      "id": "c_tool_contracts",
+      "parent": "c_toolpipe",
+      "match": {
+        "name": [
+          "ToolCall",
+          "ToolCallContext",
+          "ToolDefinition",
+          "ToolResult"
+        ],
+        "path": [
+          "src/core/SPLA.MCP.Core/Pipeline/"
+        ]
+      }
+    },
+    {
+      "id": "c_tool_stages",
+      "parent": "c_toolpipe",
+      "match": {
+        "path": [
+          "src/core/SPLA.MCP.Core/Pipeline/Stages/"
+        ]
+      }
+    },
+    {
+      "id": "c_tool_host",
+      "parent": "c_toolpipe",
+      "match": {
+        "name": [
+          "IMcpTool",
+          "IToolHost",
+          "ToolHostScope",
+          "ToolRepeatTracker"
+        ],
+        "path": [
+          "src/core/SPLA.MCP.Core/",
+          "src/core/SPLA.MCP.Core/Json/"
+        ]
+      }
+    },
+    {
+      "id": "c_tool_progress",
+      "parent": "c_toolpipe",
+      "match": {
+        "name": [
+          "BackgroundTaskRegistry",
+          "ProgressHub",
+          "ProgressNode",
+          "ProgressScope",
+          "ProgressTree",
+          "TaskCancelTool",
+          "TaskListTool",
+          "TaskOutputTool",
+          "ToolProgress"
+        ]
+      }
+    },
+    {
+      "id": "c_agent_comp",
+      "parent": "c_toolpipe",
+      "match": {
+        "path": [
+          "src/core/SPLA.MCP.Core/Agent/",
+          "src/core/SPLA.MCP.Core/Composition/"
+        ]
+      }
+    },
+    {
+      "id": "c_formats",
+      "parent": "c_toolpipe",
+      "match": {
+        "path": [
+          "src/core/SPLA.Domain/Formats/",
+          "src/core/SPLA.MCP.Core/Formats/"
+        ]
+      }
+    },
+    {
+      "id": "c_plugins",
+      "parent": null,
+      "theme": "fuchsia"
+    },
+    {
+      "id": "c_plugin_contracts",
+      "parent": "c_plugins",
+      "match": {
+        "name": [
+          "ISplaPlugin",
+          "ISplaPluginAction",
+          "ISplaPluginPanelProvider",
+          "ISplaPluginSelfCheck",
+          "ISplaPluginUiCommands"
+        ]
+      }
+    },
+    {
+      "id": "c_plugin_loading",
+      "parent": "c_plugins",
+      "match": {
+        "path": [
+          "src/core/SPLA.MCP.Core/Plugins/"
+        ]
+      }
+    },
+    {
+      "id": "c_toolsets",
+      "parent": "c_plugins",
+      "match": {
+        "name": [
+          "ToolSetActivateTool",
+          "ToolSetSession"
+        ],
+        "path": [
+          "src/core/SPLA.MCP.Core/ToolSets/"
+        ]
+      }
+    },
+    {
+      "id": "c_chat",
+      "parent": null,
+      "theme": "amber",
+      "match": {
+        "name": [
+          "AgentClarifyTool",
+          "ChatInbox",
+          "ChatManager",
+          "ChatMessage",
+          "ChatRole",
+          "ChatSession",
+          "ClarifyRequest",
+          "ClarifyScope",
+          "Conversation",
+          "IChatStore"
+        ]
+      }
+    },
+    {
+      "id": "c_security",
+      "parent": null,
+      "theme": "red"
+    },
+    {
+      "id": "c_sec_permissions",
+      "parent": "c_security",
+      "match": {
+        "name": [
+          "AgentMode",
+          "PermissionDecision",
+          "PermissionResult",
+          "PermissionVerdict",
+          "ToolEffect",
+          "ToolRisk",
+          "ToolScope"
+        ],
+        "path": [
+          "src/core/SPLA.MCP.Core/Permissions/"
+        ]
+      }
+    },
+    {
+      "id": "c_sec_zones",
+      "parent": "c_security",
+      "match": {
+        "path": [
+          "src/core/SPLA.Domain/Security/",
+          "src/core/SPLA.MCP.Core/Security/"
+        ]
+      }
+    },
+    {
+      "id": "c_sec_sandbox",
+      "parent": "c_security",
+      "match": {
+        "path": [
+          "src/core/SPLA.Domain/Host/"
+        ]
+      }
+    },
+    {
+      "id": "c_sec_secrets",
+      "parent": "c_security",
+      "theme": "red"
+    },
+    {
+      "id": "c_sec_secrets_domain",
+      "parent": "c_sec_secrets",
+      "match": {
+        "path": [
+          "src/core/SPLA.Domain/Secrets/"
+        ]
+      }
+    },
+    {
+      "id": "c_sec_secrets_dpapi",
+      "parent": "c_sec_secrets",
+      "match": {
+        "path": [
+          "src/core/SPLA.Secrets.Dpapi/"
+        ]
+      }
+    },
+    {
+      "id": "c_sec_identity",
+      "parent": "c_security",
+      "match": {
+        "path": [
+          "src/core/SPLA.Domain/Identity/"
+        ]
+      }
+    },
+    {
+      "id": "c_memory",
+      "parent": null,
+      "theme": "sky"
+    },
+    {
+      "id": "c_mem_kv",
+      "parent": "c_memory",
+      "match": {
+        "name": [
+          "AgentSessionScope",
+          "BlobStore",
+          "DataChannel",
+          "IBlobStore",
+          "IKeyValueStore",
+          "KeyValueStore",
+          "KvGlob"
+        ]
+      }
+    },
+    {
+      "id": "c_mem_context",
+      "parent": "c_memory",
+      "match": {
+        "name": [
+          "MarkManager"
+        ],
+        "path": [
+          "src/core/SPLA.Domain/Context/"
+        ]
+      }
+    },
+    {
+      "id": "c_mem_accounting",
+      "parent": "c_memory",
+      "match": {
+        "name": [
+          "FileTokenUsageStore",
+          "ITokenUsageReporter",
+          "ITokenUsageStore",
+          "TokenUsageTotals"
+        ]
+      }
+    },
+    {
+      "id": "c_mem_tools",
+      "parent": "c_memory",
+      "match": {
+        "name": [
+          "AgentMemoryClearTool",
+          "AgentMemoryDeleteTool",
+          "AgentMemoryGetTool",
+          "AgentMemoryHelpers",
+          "AgentMemoryListTool",
+          "AgentMemorySetTool",
+          "BlobPeekTool",
+          "ContextCheckpointRestoreTool",
+          "ContextCheckpointSetTool",
+          "ImageViewTool",
+          "MarkRollbackTool",
+          "MarkSetTool"
+        ]
+      }
+    },
+    {
+      "id": "c_content",
+      "parent": null,
+      "theme": "yellow"
+    },
+    {
+      "id": "c_editor",
+      "parent": "c_content",
+      "match": {
+        "path": [
+          "src/core/SPLA.Domain/Editor/"
+        ]
+      }
+    },
+    {
+      "id": "c_resources",
+      "parent": "c_content",
+      "theme": "yellow"
+    },
+    {
+      "id": "c_res_core",
+      "parent": "c_resources",
+      "match": {
+        "path": [
+          "src/core/SPLA.Domain/Resources/",
+          "src/core/SPLA.Domain/Resources/Providers/"
+        ]
+      }
+    },
+    {
+      "id": "c_res_tools",
+      "parent": "c_resources",
+      "match": {
+        "path": [
+          "src/core/SPLA.MCP.Core/Tools/Resources/"
+        ]
+      }
+    },
+    {
+      "id": "c_skills",
+      "parent": null,
+      "theme": "violet"
+    },
+    {
+      "id": "c_skills_library",
+      "parent": "c_skills",
+      "match": {
+        "path": [
+          "src/core/SPLA.Library/",
+          "src/core/SPLA.Library/Catalog/",
+          "src/core/SPLA.Library/Format/",
+          "src/core/SPLA.Library/Librarians/"
+        ]
+      }
+    },
+    {
+      "id": "c_skills_sources",
+      "parent": "c_skills",
+      "match": {
+        "name": [
+          "ISkillSourceStore",
+          "ISkillTrustStore"
+        ],
+        "path": [
+          "src/core/SPLA.Library/Sources/"
+        ]
+      }
+    },
+    {
+      "id": "c_skills_session",
+      "parent": "c_skills",
+      "match": {
+        "name": [
+          "ISkillSession",
+          "SkillActivateTool",
+          "SkillDeactivateTool",
+          "SkillFindTool",
+          "SkillReadResourceTool",
+          "SkillSession"
+        ]
+      }
+    },
+    {
+      "id": "c_project",
+      "parent": null,
+      "theme": "slate"
+    },
+    {
+      "id": "c_proj_core",
+      "parent": "c_project",
+      "match": {
+        "name": [
+          "FileBucket",
+          "IBucket",
+          "IProject",
+          "IProjectBackend",
+          "IProjectProvider",
+          "LocalProject",
+          "LocalProjectBackend",
+          "LocalProjectProvider",
+          "MemoryBucket",
+          "MemoryProjectBackend",
+          "ProjectFactory",
+          "ProjectProfile",
+          "ServerProjectRoot"
+        ]
+      }
+    },
+    {
+      "id": "c_proj_instances",
+      "parent": "c_project",
+      "match": {
+        "name": [
+          "InstanceLock",
+          "InstanceState"
+        ],
+        "path": [
+          "src/core/SPLA.Instances.Contracts/"
+        ]
+      }
+    },
+    {
+      "id": "c_proj_settings",
+      "parent": "c_project",
+      "match": {
+        "name": [
+          "ConfigLoader",
+          "HubAppearanceStore",
+          "MachineLayerScope",
+          "MountResolver",
+          "ProjectKvStore",
+          "ProjectManifestException",
+          "SettingsResolver",
+          "SourceOrigin",
+          "SplaDefaults",
+          "SplaLlmSection",
+          "SplaPluginSection",
+          "SplaProject",
+          "SplaSkillSection",
+          "YamlSectionSplicer"
+        ]
+      }
+    },
+    {
+      "id": "c_agentlife",
+      "parent": null,
+      "theme": "cyan",
+      "match": {
+        "name": [
+          "AgentSpawnBatchTool",
+          "AgentSpawnTool",
+          "IAgentSpawner"
+        ]
+      }
+    },
+    {
+      "id": "c_observability",
+      "parent": null,
+      "theme": "lime",
+      "match": {
+        "path": [
+          "src/core/SPLA.Observability/",
+          "src/core/SPLA.Observability/Collection/"
+        ]
+      }
+    },
+    {
+      "id": "c_platform",
+      "parent": null,
+      "theme": "pink",
+      "match": {
+        "path": [
+          "src/core/SPLA.Platform/"
+        ]
+      }
+    },
+    {
+      "id": "c_ssh",
+      "parent": null,
+      "theme": "gray",
+      "match": {
+        "path": [
+          "src/core/SPLA.Ssh.Core/",
+          "src/core/SPLA.Ssh.Core/Session/"
+        ]
+      }
+    }
+  ]
+}

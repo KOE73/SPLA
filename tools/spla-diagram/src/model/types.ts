@@ -1,5 +1,5 @@
 import type { Rect } from "../geometry/types.js";
-import type { WireMetadata, WireZoneStyle } from "./wire-types.js";
+import type { WireMetadata } from "./wire-types.js";
 
 /**
  * The in-memory model: one element shape, one containment tree.
@@ -11,8 +11,6 @@ import type { WireMetadata, WireZoneStyle } from "./wire-types.js";
  */
 
 export type ElementKind = "zone" | "node";
-
-export interface ElementStyle extends WireZoneStyle {}
 
 export interface DiagramElement {
   readonly id: string;
@@ -29,7 +27,19 @@ export interface DiagramElement {
   semanticId?: string;
   tags: string[];
   metadata: WireMetadata;
-  style?: ElementStyle;
+  /**
+   * Pin this element to one named style, overriding the match by `type`.
+   *
+   * Absent is the normal case and the one to prefer: an element that says only
+   * what it *is* keeps looking right when the look changes. This field is for
+   * the exception — one box that must stand out, or a zone whose colour carries
+   * meaning that no type expresses.
+   *
+   * There is deliberately no per-element colour: the old inline `style` on
+   * zones is migrated into named styles on load (see `wire.ts`), because a
+   * hundred one-off palettes is exactly the state this replaced.
+   */
+  styleId?: string;
 
   /** Absolute model coordinates. Contract v1 stores these directly. */
   x: number;
@@ -73,6 +83,8 @@ export interface DiagramEdge {
   to: string;
   label: string;
   type: string;
+  /** Pin to one named style; otherwise the style named after `type` wins. */
+  styleId?: string;
 }
 
 export interface DiagramView {

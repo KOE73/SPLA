@@ -2,7 +2,7 @@ import "../styles/editor.css";
 import "../styles/canvas.css";
 
 import { DiagramEditor, type CatalogEntry } from "../editor/DiagramEditor.js";
-import { HttpModelStore } from "../editor/io/transfer.js";
+import { HttpModelStore, HttpStyleStore } from "../editor/io/transfer.js";
 
 /**
  * Application entry point.
@@ -38,6 +38,8 @@ async function main(): Promise<void> {
   const editor = new DiagramEditor(root, {
     catalog: await loadCatalog(),
     store: new HttpModelStore(MODELS_BASE),
+    // styles.json sits with the models, not with the app bundle.
+    styleStore: new HttpStyleStore(MODELS_BASE),
   });
 
   // Handy while working on the library: swap port assignment or routing from

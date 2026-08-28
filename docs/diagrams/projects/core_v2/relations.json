@@ -1,0 +1,3792 @@
+{
+  "contractVersion": 2,
+  "relations": [
+    {
+      "id": "r_accountingstage_itoolmiddleware_implements",
+      "from": "e_accountingstage",
+      "to": "e_itoolmiddleware",
+      "type": "implements",
+      "origin": "code",
+      "status": "present",
+      "evidence": [
+        {
+          "codeRef": "src/core/SPLA.MCP.Core/Pipeline/Stages/AccountingStage.cs"
+        }
+      ]
+    },
+    {
+      "id": "r_accountingstage_toolpipelinestage_composes",
+      "from": "e_accountingstage",
+      "to": "e_toolpipelinestage",
+      "type": "composes",
+      "origin": "code",
+      "status": "present",
+      "evidence": [
+        {
+          "codeRef": "src/core/SPLA.MCP.Core/Pipeline/Stages/AccountingStage.cs",
+          "symbol": "Stage"
+        }
+      ]
+    },
+    {
+      "id": "r_aclsecretaccesspolicy_isecretaccesspolicy_implements",
+      "from": "e_aclsecretaccesspolicy",
+      "to": "e_isecretaccesspolicy",
+      "type": "implements",
+      "origin": "code",
+      "status": "present",
+      "evidence": [
+        {
+          "codeRef": "src/core/SPLA.Domain/Secrets/ISecretAccessPolicy.cs"
+        }
+      ]
+    },
+    {
+      "id": "r_agentclarifytool_imcptool_implements",
+      "from": "e_agentclarifytool",
+      "to": "e_imcptool",
+      "type": "implements",
+      "origin": "code",
+      "status": "present",
+      "evidence": [
+        {
+          "codeRef": "src/core/SPLA.MCP.Core/Tools/AgentClarifyTool.cs"
+        }
+      ]
+    },
+    {
+      "id": "r_agentfeature_iagentfeature_implements",
+      "from": "e_agentfeature",
+      "to": "e_iagentfeature",
+      "type": "implements",
+      "origin": "code",
+      "status": "present",
+      "evidence": [
+        {
+          "codeRef": "src/core/SPLA.MCP.Core/Agent/AgentFeature.cs"
+        }
+      ]
+    },
+    {
+      "id": "r_agentlibrarian_iagentlibrarian_implements",
+      "from": "e_agentlibrarian",
+      "to": "e_iagentlibrarian",
+      "type": "implements",
+      "origin": "code",
+      "status": "present",
+      "evidence": [
+        {
+          "codeRef": "src/core/SPLA.Library/Librarians/AgentLibrarian.cs"
+        }
+      ]
+    },
+    {
+      "id": "r_agentmemorycleartool_imcptool_implements",
+      "from": "e_agentmemorycleartool",
+      "to": "e_imcptool",
+      "type": "implements",
+      "origin": "code",
+      "status": "present",
+      "evidence": [
+        {
+          "codeRef": "src/core/SPLA.MCP.Core/Tools/AgentMemoryClearTool.cs"
+        }
+      ]
+    },
+    {
+      "id": "r_agentmemorydeletetool_imcptool_implements",
+      "from": "e_agentmemorydeletetool",
+      "to": "e_imcptool",
+      "type": "implements",
+      "origin": "code",
+      "status": "present",
+      "evidence": [
+        {
+          "codeRef": "src/core/SPLA.MCP.Core/Tools/AgentMemoryDeleteTool.cs"
+        }
+      ]
+    },
+    {
+      "id": "r_agentmemorygettool_imcptool_implements",
+      "from": "e_agentmemorygettool",
+      "to": "e_imcptool",
+      "type": "implements",
+      "origin": "code",
+      "status": "present",
+      "evidence": [
+        {
+          "codeRef": "src/core/SPLA.MCP.Core/Tools/AgentMemoryGetTool.cs"
+        }
+      ]
+    },
+    {
+      "id": "r_agentmemorylisttool_imcptool_implements",
+      "from": "e_agentmemorylisttool",
+      "to": "e_imcptool",
+      "type": "implements",
+      "origin": "code",
+      "status": "present",
+      "evidence": [
+        {
+          "codeRef": "src/core/SPLA.MCP.Core/Tools/AgentMemoryListTool.cs"
+        }
+      ]
+    },
+    {
+      "id": "r_agentmemorysettool_imcptool_implements",
+      "from": "e_agentmemorysettool",
+      "to": "e_imcptool",
+      "type": "implements",
+      "origin": "code",
+      "status": "present",
+      "evidence": [
+        {
+          "codeRef": "src/core/SPLA.MCP.Core/Tools/AgentMemorySetTool.cs"
+        }
+      ]
+    },
+    {
+      "id": "r_agentsession_chatdoubt_composes",
+      "from": "e_agentsession",
+      "to": "e_chatdoubt",
+      "type": "composes",
+      "origin": "code",
+      "status": "present",
+      "evidence": [
+        {
+          "codeRef": "src/core/SPLA.Domain/Agent/AgentSessionScope.cs",
+          "symbol": "Doubt"
+        }
+      ]
+    },
+    {
+      "id": "r_agentsession_iagentsession_implements",
+      "from": "e_agentsession",
+      "to": "e_iagentsession",
+      "type": "implements",
+      "origin": "code",
+      "status": "present",
+      "evidence": [
+        {
+          "codeRef": "src/core/SPLA.Domain/Agent/AgentSessionScope.cs"
+        }
+      ]
+    },
+    {
+      "id": "r_agentsession_ibackgroundtaskhost_composes",
+      "from": "e_agentsession",
+      "to": "e_ibackgroundtaskhost",
+      "type": "composes",
+      "origin": "code",
+      "status": "present",
+      "evidence": [
+        {
+          "codeRef": "src/core/SPLA.Domain/Agent/AgentSessionScope.cs",
+          "symbol": "Background"
+        }
+      ]
+    },
+    {
+      "id": "r_agentsession_iblobstore_composes",
+      "from": "e_agentsession",
+      "to": "e_iblobstore",
+      "type": "composes",
+      "origin": "code",
+      "status": "present",
+      "evidence": [
+        {
+          "codeRef": "src/core/SPLA.Domain/Agent/AgentSessionScope.cs",
+          "symbol": "Blobs"
+        }
+      ]
+    },
+    {
+      "id": "r_agentsession_ikeyvaluestore_composes",
+      "from": "e_agentsession",
+      "to": "e_ikeyvaluestore",
+      "type": "composes",
+      "origin": "code",
+      "status": "present",
+      "evidence": [
+        {
+          "codeRef": "src/core/SPLA.Domain/Agent/AgentSessionScope.cs",
+          "symbol": "SessionKv"
+        }
+      ]
+    },
+    {
+      "id": "r_agentsession_isandbox_composes",
+      "from": "e_agentsession",
+      "to": "e_isandbox",
+      "type": "composes",
+      "origin": "code",
+      "status": "present",
+      "evidence": [
+        {
+          "codeRef": "src/core/SPLA.Domain/Agent/AgentSessionScope.cs",
+          "symbol": "Sandbox"
+        }
+      ]
+    },
+    {
+      "id": "r_agentsession_iskillsession_composes",
+      "from": "e_agentsession",
+      "to": "e_iskillsession",
+      "type": "composes",
+      "origin": "code",
+      "status": "present",
+      "evidence": [
+        {
+          "codeRef": "src/core/SPLA.Domain/Agent/AgentSessionScope.cs",
+          "symbol": "Skills"
+        }
+      ]
+    },
+    {
+      "id": "r_agentsession_itoolsetsession_composes",
+      "from": "e_agentsession",
+      "to": "e_itoolsetsession",
+      "type": "composes",
+      "origin": "code",
+      "status": "present",
+      "evidence": [
+        {
+          "codeRef": "src/core/SPLA.Domain/Agent/AgentSessionScope.cs",
+          "symbol": "ToolSets"
+        }
+      ]
+    },
+    {
+      "id": "r_agentsession_markmanager_composes",
+      "from": "e_agentsession",
+      "to": "e_markmanager",
+      "type": "composes",
+      "origin": "code",
+      "status": "present",
+      "evidence": [
+        {
+          "codeRef": "src/core/SPLA.Domain/Agent/AgentSessionScope.cs",
+          "symbol": "Checkpoint"
+        }
+      ]
+    },
+    {
+      "id": "r_agentsessionscope_iagentsession_composes",
+      "from": "e_agentsessionscope",
+      "to": "e_iagentsession",
+      "type": "composes",
+      "origin": "code",
+      "status": "present",
+      "evidence": [
+        {
+          "codeRef": "src/core/SPLA.Domain/Agent/AgentSessionScope.cs",
+          "symbol": "Current"
+        }
+      ]
+    },
+    {
+      "id": "r_agentspawnbatchtool_imcptool_implements",
+      "from": "e_agentspawnbatchtool",
+      "to": "e_imcptool",
+      "type": "implements",
+      "origin": "code",
+      "status": "present",
+      "evidence": [
+        {
+          "codeRef": "src/core/SPLA.MCP.Core/Tools/AgentSpawnBatchTool.cs"
+        }
+      ]
+    },
+    {
+      "id": "r_agentspawntool_imcptool_implements",
+      "from": "e_agentspawntool",
+      "to": "e_imcptool",
+      "type": "implements",
+      "origin": "code",
+      "status": "present",
+      "evidence": [
+        {
+          "codeRef": "src/core/SPLA.MCP.Core/Tools/AgentSpawnTool.cs"
+        }
+      ]
+    },
+    {
+      "id": "r_allowallgate_icapabilitygate_implements",
+      "from": "e_allowallgate",
+      "to": "e_icapabilitygate",
+      "type": "implements",
+      "origin": "code",
+      "status": "present",
+      "evidence": [
+        {
+          "codeRef": "src/core/SPLA.Domain/Host/AllowAllGate.cs"
+        }
+      ]
+    },
+    {
+      "id": "r_ambienthoststage_itoolmiddleware_implements",
+      "from": "e_ambienthoststage",
+      "to": "e_itoolmiddleware",
+      "type": "implements",
+      "origin": "code",
+      "status": "present",
+      "evidence": [
+        {
+          "codeRef": "src/core/SPLA.MCP.Core/Pipeline/Stages/AmbientHostStage.cs"
+        }
+      ]
+    },
+    {
+      "id": "r_ambienthoststage_toolpipelinestage_composes",
+      "from": "e_ambienthoststage",
+      "to": "e_toolpipelinestage",
+      "type": "composes",
+      "origin": "code",
+      "status": "present",
+      "evidence": [
+        {
+          "codeRef": "src/core/SPLA.MCP.Core/Pipeline/Stages/AmbientHostStage.cs",
+          "symbol": "Stage"
+        }
+      ]
+    },
+    {
+      "id": "r_backgroundstage_itoolmiddleware_implements",
+      "from": "e_backgroundstage",
+      "to": "e_itoolmiddleware",
+      "type": "implements",
+      "origin": "code",
+      "status": "present",
+      "evidence": [
+        {
+          "codeRef": "src/core/SPLA.MCP.Core/Pipeline/Stages/BackgroundStage.cs"
+        }
+      ]
+    },
+    {
+      "id": "r_backgroundstage_toolpipelinestage_composes",
+      "from": "e_backgroundstage",
+      "to": "e_toolpipelinestage",
+      "type": "composes",
+      "origin": "code",
+      "status": "present",
+      "evidence": [
+        {
+          "codeRef": "src/core/SPLA.MCP.Core/Pipeline/Stages/BackgroundStage.cs",
+          "symbol": "Stage"
+        }
+      ]
+    },
+    {
+      "id": "r_backgroundtaskrecord_backgroundtaskstate_composes",
+      "from": "e_backgroundtaskrecord",
+      "to": "e_backgroundtaskstate",
+      "type": "composes",
+      "origin": "code",
+      "status": "present",
+      "evidence": [
+        {
+          "codeRef": "src/core/SPLA.Domain/Tools/BackgroundTaskRegistry.cs",
+          "symbol": "State"
+        }
+      ]
+    },
+    {
+      "id": "r_backgroundtaskrecord_toolresult_composes",
+      "from": "e_backgroundtaskrecord",
+      "to": "e_toolresult",
+      "type": "composes",
+      "origin": "code",
+      "status": "present",
+      "evidence": [
+        {
+          "codeRef": "src/core/SPLA.Domain/Tools/BackgroundTaskRegistry.cs",
+          "symbol": "Result"
+        }
+      ]
+    },
+    {
+      "id": "r_blobentry_blobkind_composes",
+      "from": "e_blobentry",
+      "to": "e_blobkind",
+      "type": "composes",
+      "origin": "code",
+      "status": "present",
+      "evidence": [
+        {
+          "codeRef": "src/core/SPLA.Domain/Agent/IBlobStore.cs",
+          "symbol": "Kind"
+        }
+      ]
+    },
+    {
+      "id": "r_blobentry_dataorigin_composes",
+      "from": "e_blobentry",
+      "to": "e_dataorigin",
+      "type": "composes",
+      "origin": "code",
+      "status": "present",
+      "evidence": [
+        {
+          "codeRef": "src/core/SPLA.Domain/Agent/IBlobStore.cs",
+          "symbol": "Origin"
+        }
+      ]
+    },
+    {
+      "id": "r_blobpayload_blobkind_composes",
+      "from": "e_blobpayload",
+      "to": "e_blobkind",
+      "type": "composes",
+      "origin": "code",
+      "status": "present",
+      "evidence": [
+        {
+          "codeRef": "src/core/SPLA.Domain/Agent/IBlobStore.cs",
+          "symbol": "Kind"
+        }
+      ]
+    },
+    {
+      "id": "r_blobpeektool_imcptool_implements",
+      "from": "e_blobpeektool",
+      "to": "e_imcptool",
+      "type": "implements",
+      "origin": "code",
+      "status": "present",
+      "evidence": [
+        {
+          "codeRef": "src/core/SPLA.MCP.Core/Tools/BlobPeekTool.cs"
+        }
+      ]
+    },
+    {
+      "id": "r_blobstore_iblobstore_implements",
+      "from": "e_blobstore",
+      "to": "e_iblobstore",
+      "type": "implements",
+      "origin": "code",
+      "status": "present",
+      "evidence": [
+        {
+          "codeRef": "src/core/SPLA.Domain/Agent/BlobStore.cs"
+        }
+      ]
+    },
+    {
+      "id": "r_boundaryobservation_pathrefusal_composes",
+      "from": "e_boundaryobservation",
+      "to": "e_pathrefusal",
+      "type": "composes",
+      "origin": "code",
+      "status": "present",
+      "evidence": [
+        {
+          "codeRef": "src/core/SPLA.Domain/Host/LocalWorkspace.cs",
+          "symbol": "Refusal"
+        }
+      ]
+    },
+    {
+      "id": "r_catalogview_tagvocabulary_composes",
+      "from": "e_catalogview",
+      "to": "e_tagvocabulary",
+      "type": "composes",
+      "origin": "code",
+      "status": "present",
+      "evidence": [
+        {
+          "codeRef": "src/core/SPLA.Library/Catalog/CatalogView.cs",
+          "symbol": "Cloud"
+        }
+      ]
+    },
+    {
+      "id": "r_chatmessage_chatrole_composes",
+      "from": "e_chatmessage",
+      "to": "e_chatrole",
+      "type": "composes",
+      "origin": "code",
+      "status": "present",
+      "evidence": [
+        {
+          "codeRef": "src/core/SPLA.Domain/Models/ChatMessage.cs",
+          "symbol": "Role"
+        }
+      ]
+    },
+    {
+      "id": "r_chatmessage_contextretention_composes",
+      "from": "e_chatmessage",
+      "to": "e_contextretention",
+      "type": "composes",
+      "origin": "code",
+      "status": "present",
+      "evidence": [
+        {
+          "codeRef": "src/core/SPLA.Domain/Models/ChatMessage.cs",
+          "symbol": "RetentionPolicy"
+        }
+      ]
+    },
+    {
+      "id": "r_chatsession_chatsessioncontext_composes",
+      "from": "e_chatsession",
+      "to": "e_chatsessioncontext",
+      "type": "composes",
+      "origin": "code",
+      "status": "present",
+      "evidence": [
+        {
+          "codeRef": "src/core/SPLA.Domain/Models/ChatSession.cs",
+          "symbol": "Context"
+        }
+      ]
+    },
+    {
+      "id": "r_chatsession_splaagentsection_composes",
+      "from": "e_chatsession",
+      "to": "e_splaagentsection",
+      "type": "composes",
+      "origin": "code",
+      "status": "present",
+      "evidence": [
+        {
+          "codeRef": "src/core/SPLA.Domain/Models/ChatSession.cs",
+          "symbol": "Agent"
+        }
+      ]
+    },
+    {
+      "id": "r_chatsession_splallmsection_composes",
+      "from": "e_chatsession",
+      "to": "e_splallmsection",
+      "type": "composes",
+      "origin": "code",
+      "status": "present",
+      "evidence": [
+        {
+          "codeRef": "src/core/SPLA.Domain/Models/ChatSession.cs",
+          "symbol": "Model"
+        }
+      ]
+    },
+    {
+      "id": "r_claimidentity_iidentity_implements",
+      "from": "e_claimidentity",
+      "to": "e_iidentity",
+      "type": "implements",
+      "origin": "code",
+      "status": "present",
+      "evidence": [
+        {
+          "codeRef": "src/core/SPLA.Domain/Identity/IIdentity.cs"
+        }
+      ]
+    },
+    {
+      "id": "r_claimsidentityprovider_iidentityprovider_implements",
+      "from": "e_claimsidentityprovider",
+      "to": "e_iidentityprovider",
+      "type": "implements",
+      "origin": "code",
+      "status": "present",
+      "evidence": [
+        {
+          "codeRef": "src/core/SPLA.Domain/Identity/IIdentityProvider.cs"
+        }
+      ]
+    },
+    {
+      "id": "r_composedcontext_compositionmanifest_composes",
+      "from": "e_composedcontext",
+      "to": "e_compositionmanifest",
+      "type": "composes",
+      "origin": "code",
+      "status": "present",
+      "evidence": [
+        {
+          "codeRef": "src/core/SPLA.MCP.Core/Composition/AgentContextComposer.cs",
+          "symbol": "Manifest"
+        }
+      ]
+    },
+    {
+      "id": "r_contentnode_contentnodekind_composes",
+      "from": "e_contentnode",
+      "to": "e_contentnodekind",
+      "type": "composes",
+      "origin": "code",
+      "status": "present",
+      "evidence": [
+        {
+          "codeRef": "src/core/SPLA.Domain/Editor/ContentNode.cs",
+          "symbol": "Kind"
+        }
+      ]
+    },
+    {
+      "id": "r_contextcheckpointrestoretool_imcptool_implements",
+      "from": "e_contextcheckpointrestoretool",
+      "to": "e_imcptool",
+      "type": "implements",
+      "origin": "code",
+      "status": "present",
+      "evidence": [
+        {
+          "codeRef": "src/core/SPLA.MCP.Core/Tools/ContextCheckpointRestoreTool.cs"
+        }
+      ]
+    },
+    {
+      "id": "r_contextcheckpointsettool_imcptool_implements",
+      "from": "e_contextcheckpointsettool",
+      "to": "e_imcptool",
+      "type": "implements",
+      "origin": "code",
+      "status": "present",
+      "evidence": [
+        {
+          "codeRef": "src/core/SPLA.MCP.Core/Tools/ContextCheckpointSetTool.cs"
+        }
+      ]
+    },
+    {
+      "id": "r_contextitem_contextplacement_composes",
+      "from": "e_contextitem",
+      "to": "e_contextplacement",
+      "type": "composes",
+      "origin": "code",
+      "status": "present",
+      "evidence": [
+        {
+          "codeRef": "src/core/SPLA.MCP.Core/Composition/ContextItem.cs",
+          "symbol": "Placement"
+        }
+      ]
+    },
+    {
+      "id": "r_credentialsmiddleware_illmmiddleware_implements",
+      "from": "e_credentialsmiddleware",
+      "to": "e_illmmiddleware",
+      "type": "implements",
+      "origin": "code",
+      "status": "present",
+      "evidence": [
+        {
+          "codeRef": "src/core/SPLA.Domain/Llm/Middleware/CredentialsMiddleware.cs"
+        }
+      ]
+    },
+    {
+      "id": "r_credentialsmiddleware_llmpipelinestage_composes",
+      "from": "e_credentialsmiddleware",
+      "to": "e_llmpipelinestage",
+      "type": "composes",
+      "origin": "code",
+      "status": "present",
+      "evidence": [
+        {
+          "codeRef": "src/core/SPLA.Domain/Llm/Middleware/CredentialsMiddleware.cs",
+          "symbol": "Stage"
+        }
+      ]
+    },
+    {
+      "id": "r_directoryskillsource_ieditableskillsource_implements",
+      "from": "e_directoryskillsource",
+      "to": "e_ieditableskillsource",
+      "type": "implements",
+      "origin": "code",
+      "status": "present",
+      "evidence": [
+        {
+          "codeRef": "src/core/SPLA.Library/Sources/DirectorySkillSource.cs"
+        }
+      ]
+    },
+    {
+      "id": "r_directoryskillsource_skilltrust_composes",
+      "from": "e_directoryskillsource",
+      "to": "e_skilltrust",
+      "type": "composes",
+      "origin": "code",
+      "status": "present",
+      "evidence": [
+        {
+          "codeRef": "src/core/SPLA.Library/Sources/DirectorySkillSource.cs",
+          "symbol": "Trust"
+        }
+      ]
+    },
+    {
+      "id": "r_directoryskillsource_sourcelevel_composes",
+      "from": "e_directoryskillsource",
+      "to": "e_sourcelevel",
+      "type": "composes",
+      "origin": "code",
+      "status": "present",
+      "evidence": [
+        {
+          "codeRef": "src/core/SPLA.Library/Sources/DirectorySkillSource.cs",
+          "symbol": "Level"
+        }
+      ]
+    },
+    {
+      "id": "r_directoryskillsourcefactory_iskillsourcefactory_implements",
+      "from": "e_directoryskillsourcefactory",
+      "to": "e_iskillsourcefactory",
+      "type": "implements",
+      "origin": "code",
+      "status": "present",
+      "evidence": [
+        {
+          "codeRef": "src/core/SPLA.Library/Sources/SkillSourceRegistry.cs"
+        }
+      ]
+    },
+    {
+      "id": "r_doubtcause_dataorigin_composes",
+      "from": "e_doubtcause",
+      "to": "e_dataorigin",
+      "type": "composes",
+      "origin": "code",
+      "status": "present",
+      "evidence": [
+        {
+          "codeRef": "src/core/SPLA.Domain/Security/DataOrigin.cs",
+          "symbol": "Origin"
+        }
+      ]
+    },
+    {
+      "id": "r_embeddedjsonschemaprovider_ijsonschemaprovider_implements",
+      "from": "e_embeddedjsonschemaprovider",
+      "to": "e_ijsonschemaprovider",
+      "type": "implements",
+      "origin": "code",
+      "status": "present",
+      "evidence": [
+        {
+          "codeRef": "src/core/SPLA.Domain/Editor/EmbeddedJsonSchemaProvider.cs"
+        }
+      ]
+    },
+    {
+      "id": "r_faultstage_itoolmiddleware_implements",
+      "from": "e_faultstage",
+      "to": "e_itoolmiddleware",
+      "type": "implements",
+      "origin": "code",
+      "status": "present",
+      "evidence": [
+        {
+          "codeRef": "src/core/SPLA.MCP.Core/Pipeline/Stages/FaultStage.cs"
+        }
+      ]
+    },
+    {
+      "id": "r_faultstage_toolpipelinestage_composes",
+      "from": "e_faultstage",
+      "to": "e_toolpipelinestage",
+      "type": "composes",
+      "origin": "code",
+      "status": "present",
+      "evidence": [
+        {
+          "codeRef": "src/core/SPLA.MCP.Core/Pipeline/Stages/FaultStage.cs",
+          "symbol": "Stage"
+        }
+      ]
+    },
+    {
+      "id": "r_filebucket_ibucket_implements",
+      "from": "e_filebucket",
+      "to": "e_ibucket",
+      "type": "implements",
+      "origin": "code",
+      "status": "present",
+      "evidence": [
+        {
+          "codeRef": "src/core/SPLA.Domain/Project/FileBucket.cs"
+        }
+      ]
+    },
+    {
+      "id": "r_filecontentbrowser_icontentbrowser_implements",
+      "from": "e_filecontentbrowser",
+      "to": "e_icontentbrowser",
+      "type": "implements",
+      "origin": "code",
+      "status": "present",
+      "evidence": [
+        {
+          "codeRef": "src/core/SPLA.Domain/Editor/FileContentBrowser.cs"
+        }
+      ]
+    },
+    {
+      "id": "r_filecontentsource_icontentsource_implements",
+      "from": "e_filecontentsource",
+      "to": "e_icontentsource",
+      "type": "implements",
+      "origin": "code",
+      "status": "present",
+      "evidence": [
+        {
+          "codeRef": "src/core/SPLA.Domain/Editor/FileContentSource.cs"
+        }
+      ]
+    },
+    {
+      "id": "r_fileresourceprovider_iresourcecontainermaker_implements",
+      "from": "e_fileresourceprovider",
+      "to": "e_iresourcecontainermaker",
+      "type": "implements",
+      "origin": "code",
+      "status": "present",
+      "evidence": [
+        {
+          "codeRef": "src/core/SPLA.Domain/Resources/Providers/FileResourceProvider.cs"
+        }
+      ]
+    },
+    {
+      "id": "r_fileresourceprovider_iresourceprovider_implements",
+      "from": "e_fileresourceprovider",
+      "to": "e_iresourceprovider",
+      "type": "implements",
+      "origin": "code",
+      "status": "present",
+      "evidence": [
+        {
+          "codeRef": "src/core/SPLA.Domain/Resources/Providers/FileResourceProvider.cs"
+        }
+      ]
+    },
+    {
+      "id": "r_fileresourceprovider_iresourceremover_implements",
+      "from": "e_fileresourceprovider",
+      "to": "e_iresourceremover",
+      "type": "implements",
+      "origin": "code",
+      "status": "present",
+      "evidence": [
+        {
+          "codeRef": "src/core/SPLA.Domain/Resources/Providers/FileResourceProvider.cs"
+        }
+      ]
+    },
+    {
+      "id": "r_fileresourceprovider_iresourcewriter_implements",
+      "from": "e_fileresourceprovider",
+      "to": "e_iresourcewriter",
+      "type": "implements",
+      "origin": "code",
+      "status": "present",
+      "evidence": [
+        {
+          "codeRef": "src/core/SPLA.Domain/Resources/Providers/FileResourceProvider.cs"
+        }
+      ]
+    },
+    {
+      "id": "r_filesecretaclstore_isecretaclstore_implements",
+      "from": "e_filesecretaclstore",
+      "to": "e_isecretaclstore",
+      "type": "implements",
+      "origin": "code",
+      "status": "present",
+      "evidence": [
+        {
+          "codeRef": "src/core/SPLA.Domain/Secrets/FileSecretAclStore.cs"
+        }
+      ]
+    },
+    {
+      "id": "r_filesecretstore_isecretaclstore_composes",
+      "from": "e_filesecretstore",
+      "to": "e_isecretaclstore",
+      "type": "composes",
+      "origin": "code",
+      "status": "present",
+      "evidence": [
+        {
+          "codeRef": "src/core/SPLA.Domain/Secrets/FileSecretStore.cs",
+          "symbol": "Acl"
+        }
+      ]
+    },
+    {
+      "id": "r_filesecretstore_isecretstore_implements",
+      "from": "e_filesecretstore",
+      "to": "e_isecretstore",
+      "type": "implements",
+      "origin": "code",
+      "status": "present",
+      "evidence": [
+        {
+          "codeRef": "src/core/SPLA.Domain/Secrets/FileSecretStore.cs"
+        }
+      ]
+    },
+    {
+      "id": "r_fileskillsourcestore_iskillsourcestore_implements",
+      "from": "e_fileskillsourcestore",
+      "to": "e_iskillsourcestore",
+      "type": "implements",
+      "origin": "code",
+      "status": "present",
+      "evidence": [
+        {
+          "codeRef": "src/core/SPLA.Domain/Settings/SkillSourceStore.cs"
+        }
+      ]
+    },
+    {
+      "id": "r_fileskilltruststore_iskilltruststore_implements",
+      "from": "e_fileskilltruststore",
+      "to": "e_iskilltruststore",
+      "type": "implements",
+      "origin": "code",
+      "status": "present",
+      "evidence": [
+        {
+          "codeRef": "src/core/SPLA.Domain/Settings/SkillTrustStore.cs"
+        }
+      ]
+    },
+    {
+      "id": "r_filetokenusagestore_itokenusagestore_implements",
+      "from": "e_filetokenusagestore",
+      "to": "e_itokenusagestore",
+      "type": "implements",
+      "origin": "code",
+      "status": "present",
+      "evidence": [
+        {
+          "codeRef": "src/core/SPLA.Domain/Agent/FileTokenUsageStore.cs"
+        }
+      ]
+    },
+    {
+      "id": "r_filetokenusagestore_tokenusagetotals_composes",
+      "from": "e_filetokenusagestore",
+      "to": "e_tokenusagetotals",
+      "type": "composes",
+      "origin": "code",
+      "status": "present",
+      "evidence": [
+        {
+          "codeRef": "src/core/SPLA.Domain/Agent/FileTokenUsageStore.cs",
+          "symbol": "Total"
+        }
+      ]
+    },
+    {
+      "id": "r_filetokenusagestore_tokenusagetotals_composes",
+      "from": "e_filetokenusagestore",
+      "to": "e_tokenusagetotals",
+      "type": "composes",
+      "origin": "code",
+      "status": "present",
+      "evidence": [
+        {
+          "codeRef": "src/core/SPLA.Domain/Agent/FileTokenUsageStore.cs",
+          "symbol": "Session"
+        }
+      ]
+    },
+    {
+      "id": "r_generationattempt_attemptoutcome_composes",
+      "from": "e_generationattempt",
+      "to": "e_attemptoutcome",
+      "type": "composes",
+      "origin": "code",
+      "status": "present",
+      "evidence": [
+        {
+          "codeRef": "src/core/SPLA.Domain/Llm/GenerationAttempt.cs",
+          "symbol": "Outcome"
+        }
+      ]
+    },
+    {
+      "id": "r_hostservices_isandbox_composes",
+      "from": "e_hostservices",
+      "to": "e_isandbox",
+      "type": "composes",
+      "origin": "code",
+      "status": "present",
+      "evidence": [
+        {
+          "codeRef": "src/core/SPLA.Domain/Host/HostServices.cs",
+          "symbol": "Sandbox"
+        }
+      ]
+    },
+    {
+      "id": "r_iagentsession_chatdoubt_composes",
+      "from": "e_iagentsession",
+      "to": "e_chatdoubt",
+      "type": "composes",
+      "origin": "code",
+      "status": "present",
+      "evidence": [
+        {
+          "codeRef": "src/core/SPLA.Domain/Agent/AgentSessionScope.cs",
+          "symbol": "Doubt"
+        }
+      ]
+    },
+    {
+      "id": "r_iagentsession_ibackgroundtaskhost_composes",
+      "from": "e_iagentsession",
+      "to": "e_ibackgroundtaskhost",
+      "type": "composes",
+      "origin": "code",
+      "status": "present",
+      "evidence": [
+        {
+          "codeRef": "src/core/SPLA.Domain/Agent/AgentSessionScope.cs",
+          "symbol": "Background"
+        }
+      ]
+    },
+    {
+      "id": "r_iagentsession_iblobstore_composes",
+      "from": "e_iagentsession",
+      "to": "e_iblobstore",
+      "type": "composes",
+      "origin": "code",
+      "status": "present",
+      "evidence": [
+        {
+          "codeRef": "src/core/SPLA.Domain/Agent/AgentSessionScope.cs",
+          "symbol": "Blobs"
+        }
+      ]
+    },
+    {
+      "id": "r_iagentsession_ikeyvaluestore_composes",
+      "from": "e_iagentsession",
+      "to": "e_ikeyvaluestore",
+      "type": "composes",
+      "origin": "code",
+      "status": "present",
+      "evidence": [
+        {
+          "codeRef": "src/core/SPLA.Domain/Agent/AgentSessionScope.cs",
+          "symbol": "SessionKv"
+        }
+      ]
+    },
+    {
+      "id": "r_iagentsession_isandbox_composes",
+      "from": "e_iagentsession",
+      "to": "e_isandbox",
+      "type": "composes",
+      "origin": "code",
+      "status": "present",
+      "evidence": [
+        {
+          "codeRef": "src/core/SPLA.Domain/Agent/AgentSessionScope.cs",
+          "symbol": "Sandbox"
+        }
+      ]
+    },
+    {
+      "id": "r_iagentsession_iskillsession_composes",
+      "from": "e_iagentsession",
+      "to": "e_iskillsession",
+      "type": "composes",
+      "origin": "code",
+      "status": "present",
+      "evidence": [
+        {
+          "codeRef": "src/core/SPLA.Domain/Agent/AgentSessionScope.cs",
+          "symbol": "Skills"
+        }
+      ]
+    },
+    {
+      "id": "r_iagentsession_itoolsetsession_composes",
+      "from": "e_iagentsession",
+      "to": "e_itoolsetsession",
+      "type": "composes",
+      "origin": "code",
+      "status": "present",
+      "evidence": [
+        {
+          "codeRef": "src/core/SPLA.Domain/Agent/AgentSessionScope.cs",
+          "symbol": "ToolSets"
+        }
+      ]
+    },
+    {
+      "id": "r_iagentsession_markmanager_composes",
+      "from": "e_iagentsession",
+      "to": "e_markmanager",
+      "type": "composes",
+      "origin": "code",
+      "status": "present",
+      "evidence": [
+        {
+          "codeRef": "src/core/SPLA.Domain/Agent/AgentSessionScope.cs",
+          "symbol": "Checkpoint"
+        }
+      ]
+    },
+    {
+      "id": "r_ibackgroundtaskhost_backgroundtaskregistry_composes",
+      "from": "e_ibackgroundtaskhost",
+      "to": "e_backgroundtaskregistry",
+      "type": "composes",
+      "origin": "code",
+      "status": "present",
+      "evidence": [
+        {
+          "codeRef": "src/core/SPLA.Domain/Agent/AgentSessionScope.cs",
+          "symbol": "Tasks"
+        }
+      ]
+    },
+    {
+      "id": "r_ibackgroundtaskhost_chatinbox_composes",
+      "from": "e_ibackgroundtaskhost",
+      "to": "e_chatinbox",
+      "type": "composes",
+      "origin": "code",
+      "status": "present",
+      "evidence": [
+        {
+          "codeRef": "src/core/SPLA.Domain/Agent/AgentSessionScope.cs",
+          "symbol": "Inbox"
+        }
+      ]
+    },
+    {
+      "id": "r_ibackgroundtaskhost_progresshub_composes",
+      "from": "e_ibackgroundtaskhost",
+      "to": "e_progresshub",
+      "type": "composes",
+      "origin": "code",
+      "status": "present",
+      "evidence": [
+        {
+          "codeRef": "src/core/SPLA.Domain/Agent/AgentSessionScope.cs",
+          "symbol": "Progress"
+        }
+      ]
+    },
+    {
+      "id": "r_ieditableskillsource_iskillsource_implements",
+      "from": "e_ieditableskillsource",
+      "to": "e_iskillsource",
+      "type": "implements",
+      "origin": "code",
+      "status": "present",
+      "evidence": [
+        {
+          "codeRef": "src/core/SPLA.Library/Sources/ISkillSource.cs"
+        }
+      ]
+    },
+    {
+      "id": "r_illmmiddleware_llmpipelinestage_composes",
+      "from": "e_illmmiddleware",
+      "to": "e_llmpipelinestage",
+      "type": "composes",
+      "origin": "code",
+      "status": "present",
+      "evidence": [
+        {
+          "codeRef": "src/core/SPLA.Domain/Llm/ILlmMiddleware.cs",
+          "symbol": "Stage"
+        }
+      ]
+    },
+    {
+      "id": "r_illmproviderdescriptor_illmclient_composes",
+      "from": "e_illmproviderdescriptor",
+      "to": "e_illmclient",
+      "type": "composes",
+      "origin": "code",
+      "status": "present",
+      "evidence": [
+        {
+          "codeRef": "src/core/SPLA.Domain/Llm/LlmProviderRegistry.cs",
+          "symbol": "Client"
+        }
+      ]
+    },
+    {
+      "id": "r_imageviewtool_imcptool_implements",
+      "from": "e_imageviewtool",
+      "to": "e_imcptool",
+      "type": "implements",
+      "origin": "code",
+      "status": "present",
+      "evidence": [
+        {
+          "codeRef": "src/core/SPLA.MCP.Core/Tools/ImageViewTool.cs"
+        }
+      ]
+    },
+    {
+      "id": "r_instancelock_instanceinfo_composes",
+      "from": "e_instancelock",
+      "to": "e_instanceinfo",
+      "type": "composes",
+      "origin": "code",
+      "status": "present",
+      "evidence": [
+        {
+          "codeRef": "src/core/SPLA.Domain/Project/InstanceLock.cs",
+          "symbol": "Info"
+        }
+      ]
+    },
+    {
+      "id": "r_isandbox_icapabilitygate_composes",
+      "from": "e_isandbox",
+      "to": "e_icapabilitygate",
+      "type": "composes",
+      "origin": "code",
+      "status": "present",
+      "evidence": [
+        {
+          "codeRef": "src/core/SPLA.Domain/Host/ISandbox.cs",
+          "symbol": "Gate"
+        }
+      ]
+    },
+    {
+      "id": "r_isandbox_ishell_composes",
+      "from": "e_isandbox",
+      "to": "e_ishell",
+      "type": "composes",
+      "origin": "code",
+      "status": "present",
+      "evidence": [
+        {
+          "codeRef": "src/core/SPLA.Domain/Host/ISandbox.cs",
+          "symbol": "Shell"
+        }
+      ]
+    },
+    {
+      "id": "r_isandbox_iworkspace_composes",
+      "from": "e_isandbox",
+      "to": "e_iworkspace",
+      "type": "composes",
+      "origin": "code",
+      "status": "present",
+      "evidence": [
+        {
+          "codeRef": "src/core/SPLA.Domain/Host/ISandbox.cs",
+          "symbol": "Workspace"
+        }
+      ]
+    },
+    {
+      "id": "r_isecretstore_isecretaclstore_composes",
+      "from": "e_isecretstore",
+      "to": "e_isecretaclstore",
+      "type": "composes",
+      "origin": "code",
+      "status": "present",
+      "evidence": [
+        {
+          "codeRef": "src/core/SPLA.Domain/Secrets/ISecretStore.cs",
+          "symbol": "Acl"
+        }
+      ]
+    },
+    {
+      "id": "r_iskillsource_skilltrust_composes",
+      "from": "e_iskillsource",
+      "to": "e_skilltrust",
+      "type": "composes",
+      "origin": "code",
+      "status": "present",
+      "evidence": [
+        {
+          "codeRef": "src/core/SPLA.Library/Sources/ISkillSource.cs",
+          "symbol": "Trust"
+        }
+      ]
+    },
+    {
+      "id": "r_iskillsource_sourcelevel_composes",
+      "from": "e_iskillsource",
+      "to": "e_sourcelevel",
+      "type": "composes",
+      "origin": "code",
+      "status": "present",
+      "evidence": [
+        {
+          "codeRef": "src/core/SPLA.Library/Sources/ISkillSource.cs",
+          "symbol": "Level"
+        }
+      ]
+    },
+    {
+      "id": "r_itaglibrarian_tagvocabulary_composes",
+      "from": "e_itaglibrarian",
+      "to": "e_tagvocabulary",
+      "type": "composes",
+      "origin": "code",
+      "status": "present",
+      "evidence": [
+        {
+          "codeRef": "src/core/SPLA.Library/Librarians/ITagLibrarian.cs",
+          "symbol": "Vocabulary"
+        }
+      ]
+    },
+    {
+      "id": "r_itokenusagestore_tokenusagetotals_composes",
+      "from": "e_itokenusagestore",
+      "to": "e_tokenusagetotals",
+      "type": "composes",
+      "origin": "code",
+      "status": "present",
+      "evidence": [
+        {
+          "codeRef": "src/core/SPLA.Domain/Interfaces/ITokenUsageStore.cs",
+          "symbol": "Total"
+        }
+      ]
+    },
+    {
+      "id": "r_itokenusagestore_tokenusagetotals_composes",
+      "from": "e_itokenusagestore",
+      "to": "e_tokenusagetotals",
+      "type": "composes",
+      "origin": "code",
+      "status": "present",
+      "evidence": [
+        {
+          "codeRef": "src/core/SPLA.Domain/Interfaces/ITokenUsageStore.cs",
+          "symbol": "Session"
+        }
+      ]
+    },
+    {
+      "id": "r_itoolmiddleware_toolpipelinestage_composes",
+      "from": "e_itoolmiddleware",
+      "to": "e_toolpipelinestage",
+      "type": "composes",
+      "origin": "code",
+      "status": "present",
+      "evidence": [
+        {
+          "codeRef": "src/core/SPLA.MCP.Core/Pipeline/IToolMiddleware.cs",
+          "symbol": "Stage"
+        }
+      ]
+    },
+    {
+      "id": "r_keyvaluestore_ikeyvaluestore_implements",
+      "from": "e_keyvaluestore",
+      "to": "e_ikeyvaluestore",
+      "type": "implements",
+      "origin": "code",
+      "status": "present",
+      "evidence": [
+        {
+          "codeRef": "src/core/SPLA.Domain/Agent/KeyValueStore.cs"
+        }
+      ]
+    },
+    {
+      "id": "r_kventry_dataorigin_composes",
+      "from": "e_kventry",
+      "to": "e_dataorigin",
+      "type": "composes",
+      "origin": "code",
+      "status": "present",
+      "evidence": [
+        {
+          "codeRef": "src/core/SPLA.Domain/Agent/IKeyValueStore.cs",
+          "symbol": "Origin"
+        }
+      ]
+    },
+    {
+      "id": "r_llmproviderdescriptor_illmclient_composes",
+      "from": "e_llmproviderdescriptor",
+      "to": "e_illmclient",
+      "type": "composes",
+      "origin": "code",
+      "status": "present",
+      "evidence": [
+        {
+          "codeRef": "src/core/SPLA.Domain/Llm/LlmProviderRegistry.cs",
+          "symbol": "Client"
+        }
+      ]
+    },
+    {
+      "id": "r_llmproviderdescriptor_illmproviderdescriptor_implements",
+      "from": "e_llmproviderdescriptor",
+      "to": "e_illmproviderdescriptor",
+      "type": "implements",
+      "origin": "code",
+      "status": "present",
+      "evidence": [
+        {
+          "codeRef": "src/core/SPLA.Domain/Llm/LlmProviderRegistry.cs"
+        }
+      ]
+    },
+    {
+      "id": "r_llmrequestexception_llmerrorkind_composes",
+      "from": "e_llmrequestexception",
+      "to": "e_llmerrorkind",
+      "type": "composes",
+      "origin": "code",
+      "status": "present",
+      "evidence": [
+        {
+          "codeRef": "src/core/SPLA.Domain/Interfaces/LlmRequestException.cs",
+          "symbol": "Kind"
+        }
+      ]
+    },
+    {
+      "id": "r_llmsettings_agentmode_composes",
+      "from": "e_llmsettings",
+      "to": "e_agentmode",
+      "type": "composes",
+      "origin": "code",
+      "status": "present",
+      "evidence": [
+        {
+          "codeRef": "src/core/SPLA.Domain/Settings/LLMSettings.cs",
+          "symbol": "Mode"
+        }
+      ]
+    },
+    {
+      "id": "r_llmsettings_reasoningcapability_composes",
+      "from": "e_llmsettings",
+      "to": "e_reasoningcapability",
+      "type": "composes",
+      "origin": "code",
+      "status": "present",
+      "evidence": [
+        {
+          "codeRef": "src/core/SPLA.Domain/Settings/LLMSettings.cs",
+          "symbol": "ModelReasoning"
+        }
+      ]
+    },
+    {
+      "id": "r_llmturncontext_llmsettings_composes",
+      "from": "e_llmturncontext",
+      "to": "e_llmsettings",
+      "type": "composes",
+      "origin": "code",
+      "status": "present",
+      "evidence": [
+        {
+          "codeRef": "src/core/SPLA.Domain/Llm/LlmTurnContext.cs",
+          "symbol": "Settings"
+        }
+      ]
+    },
+    {
+      "id": "r_llmturnresult_chatmessage_composes",
+      "from": "e_llmturnresult",
+      "to": "e_chatmessage",
+      "type": "composes",
+      "origin": "code",
+      "status": "present",
+      "evidence": [
+        {
+          "codeRef": "src/core/SPLA.Domain/Llm/LlmTurnResult.cs",
+          "symbol": "Message"
+        }
+      ]
+    },
+    {
+      "id": "r_llmturnresult_llmturnstatus_composes",
+      "from": "e_llmturnresult",
+      "to": "e_llmturnstatus",
+      "type": "composes",
+      "origin": "code",
+      "status": "present",
+      "evidence": [
+        {
+          "codeRef": "src/core/SPLA.Domain/Llm/LlmTurnResult.cs",
+          "symbol": "Status"
+        }
+      ]
+    },
+    {
+      "id": "r_loadedplugin_isplapluginaction_composes",
+      "from": "e_loadedplugin",
+      "to": "e_isplapluginaction",
+      "type": "composes",
+      "origin": "code",
+      "status": "present",
+      "evidence": [
+        {
+          "codeRef": "src/core/SPLA.MCP.Core/Plugins/PluginAssemblyLoader.cs",
+          "symbol": "ActionHandler"
+        }
+      ]
+    },
+    {
+      "id": "r_loadedplugin_pluginhealth_composes",
+      "from": "e_loadedplugin",
+      "to": "e_pluginhealth",
+      "type": "composes",
+      "origin": "code",
+      "status": "present",
+      "evidence": [
+        {
+          "codeRef": "src/core/SPLA.MCP.Core/Plugins/PluginAssemblyLoader.cs",
+          "symbol": "Health"
+        }
+      ]
+    },
+    {
+      "id": "r_localproject_iproject_implements",
+      "from": "e_localproject",
+      "to": "e_iproject",
+      "type": "implements",
+      "origin": "code",
+      "status": "present",
+      "evidence": [
+        {
+          "codeRef": "src/core/SPLA.Domain/Project/LocalProject.cs"
+        }
+      ]
+    },
+    {
+      "id": "r_localprojectbackend_iprojectbackend_implements",
+      "from": "e_localprojectbackend",
+      "to": "e_iprojectbackend",
+      "type": "implements",
+      "origin": "code",
+      "status": "present",
+      "evidence": [
+        {
+          "codeRef": "src/core/SPLA.Domain/Project/LocalProjectBackend.cs"
+        }
+      ]
+    },
+    {
+      "id": "r_localprojectprovider_iprojectprovider_implements",
+      "from": "e_localprojectprovider",
+      "to": "e_iprojectprovider",
+      "type": "implements",
+      "origin": "code",
+      "status": "present",
+      "evidence": [
+        {
+          "codeRef": "src/core/SPLA.Domain/Project/LocalProjectProvider.cs"
+        }
+      ]
+    },
+    {
+      "id": "r_localshell_ishell_implements",
+      "from": "e_localshell",
+      "to": "e_ishell",
+      "type": "implements",
+      "origin": "code",
+      "status": "present",
+      "evidence": [
+        {
+          "codeRef": "src/core/SPLA.Domain/Host/LocalShell.cs"
+        }
+      ]
+    },
+    {
+      "id": "r_localworkspace_boundarymode_composes",
+      "from": "e_localworkspace",
+      "to": "e_boundarymode",
+      "type": "composes",
+      "origin": "code",
+      "status": "present",
+      "evidence": [
+        {
+          "codeRef": "src/core/SPLA.Domain/Host/LocalWorkspace.cs",
+          "symbol": "Mode"
+        }
+      ]
+    },
+    {
+      "id": "r_localworkspace_iworkspace_implements",
+      "from": "e_localworkspace",
+      "to": "e_iworkspace",
+      "type": "implements",
+      "origin": "code",
+      "status": "present",
+      "evidence": [
+        {
+          "codeRef": "src/core/SPLA.Domain/Host/LocalWorkspace.cs"
+        }
+      ]
+    },
+    {
+      "id": "r_localworkspace_pathboundary_composes",
+      "from": "e_localworkspace",
+      "to": "e_pathboundary",
+      "type": "composes",
+      "origin": "code",
+      "status": "present",
+      "evidence": [
+        {
+          "codeRef": "src/core/SPLA.Domain/Host/LocalWorkspace.cs",
+          "symbol": "Boundary"
+        }
+      ]
+    },
+    {
+      "id": "r_machinelayerscope_machinelayer_composes",
+      "from": "e_machinelayerscope",
+      "to": "e_machinelayer",
+      "type": "composes",
+      "origin": "code",
+      "status": "present",
+      "evidence": [
+        {
+          "codeRef": "src/core/SPLA.Domain/Settings/MachineLayerScope.cs",
+          "symbol": "Current"
+        }
+      ]
+    },
+    {
+      "id": "r_manifestentry_contextplacement_composes",
+      "from": "e_manifestentry",
+      "to": "e_contextplacement",
+      "type": "composes",
+      "origin": "code",
+      "status": "present",
+      "evidence": [
+        {
+          "codeRef": "src/core/SPLA.MCP.Core/Composition/CompositionManifest.cs",
+          "symbol": "Placement"
+        }
+      ]
+    },
+    {
+      "id": "r_markmanager_chatmessage_composes",
+      "from": "e_markmanager",
+      "to": "e_chatmessage",
+      "type": "composes",
+      "origin": "code",
+      "status": "present",
+      "evidence": [
+        {
+          "codeRef": "src/core/SPLA.Domain/Agent/MarkManager.cs",
+          "symbol": "CurrentAssistantMsg"
+        }
+      ]
+    },
+    {
+      "id": "r_markmanager_conversation_composes",
+      "from": "e_markmanager",
+      "to": "e_conversation",
+      "type": "composes",
+      "origin": "code",
+      "status": "present",
+      "evidence": [
+        {
+          "codeRef": "src/core/SPLA.Domain/Agent/MarkManager.cs",
+          "symbol": "Target"
+        }
+      ]
+    },
+    {
+      "id": "r_markrollbacktool_imcptool_implements",
+      "from": "e_markrollbacktool",
+      "to": "e_imcptool",
+      "type": "implements",
+      "origin": "code",
+      "status": "present",
+      "evidence": [
+        {
+          "codeRef": "src/core/SPLA.MCP.Core/Tools/MarkRollbackTool.cs"
+        }
+      ]
+    },
+    {
+      "id": "r_marksettool_imcptool_implements",
+      "from": "e_marksettool",
+      "to": "e_imcptool",
+      "type": "implements",
+      "origin": "code",
+      "status": "present",
+      "evidence": [
+        {
+          "codeRef": "src/core/SPLA.MCP.Core/Tools/MarkSetTool.cs"
+        }
+      ]
+    },
+    {
+      "id": "r_mcphost_edgeledger_composes",
+      "from": "e_mcphost",
+      "to": "e_edgeledger",
+      "type": "composes",
+      "origin": "code",
+      "status": "present",
+      "evidence": [
+        {
+          "codeRef": "src/core/SPLA.MCP.Core/McpHost.cs",
+          "symbol": "Edges"
+        }
+      ]
+    },
+    {
+      "id": "r_mcphost_toolpipelineblueprint_composes",
+      "from": "e_mcphost",
+      "to": "e_toolpipelineblueprint",
+      "type": "composes",
+      "origin": "code",
+      "status": "present",
+      "evidence": [
+        {
+          "codeRef": "src/core/SPLA.MCP.Core/McpHost.cs",
+          "symbol": "Pipeline"
+        }
+      ]
+    },
+    {
+      "id": "r_mcphost_toolsetregistry_composes",
+      "from": "e_mcphost",
+      "to": "e_toolsetregistry",
+      "type": "composes",
+      "origin": "code",
+      "status": "present",
+      "evidence": [
+        {
+          "codeRef": "src/core/SPLA.MCP.Core/McpHost.cs",
+          "symbol": "ToolSets"
+        }
+      ]
+    },
+    {
+      "id": "r_memorybucket_ibucket_implements",
+      "from": "e_memorybucket",
+      "to": "e_ibucket",
+      "type": "implements",
+      "origin": "code",
+      "status": "present",
+      "evidence": [
+        {
+          "codeRef": "src/core/SPLA.Domain/Project/MemoryBucket.cs"
+        }
+      ]
+    },
+    {
+      "id": "r_memoryprojectbackend_iprojectbackend_implements",
+      "from": "e_memoryprojectbackend",
+      "to": "e_iprojectbackend",
+      "type": "implements",
+      "origin": "code",
+      "status": "present",
+      "evidence": [
+        {
+          "codeRef": "src/core/SPLA.Domain/Project/MemoryProjectBackend.cs"
+        }
+      ]
+    },
+    {
+      "id": "r_modelinfo_reasoningcapability_composes",
+      "from": "e_modelinfo",
+      "to": "e_reasoningcapability",
+      "type": "composes",
+      "origin": "code",
+      "status": "present",
+      "evidence": [
+        {
+          "codeRef": "src/core/SPLA.Domain/Models/ModelInfo.cs",
+          "symbol": "Reasoning"
+        }
+      ]
+    },
+    {
+      "id": "r_passthroughsandbox_icapabilitygate_composes",
+      "from": "e_passthroughsandbox",
+      "to": "e_icapabilitygate",
+      "type": "composes",
+      "origin": "code",
+      "status": "present",
+      "evidence": [
+        {
+          "codeRef": "src/core/SPLA.Domain/Host/PassthroughSandbox.cs",
+          "symbol": "Gate"
+        }
+      ]
+    },
+    {
+      "id": "r_passthroughsandbox_isandbox_implements",
+      "from": "e_passthroughsandbox",
+      "to": "e_isandbox",
+      "type": "implements",
+      "origin": "code",
+      "status": "present",
+      "evidence": [
+        {
+          "codeRef": "src/core/SPLA.Domain/Host/PassthroughSandbox.cs"
+        }
+      ]
+    },
+    {
+      "id": "r_passthroughsandbox_ishell_composes",
+      "from": "e_passthroughsandbox",
+      "to": "e_ishell",
+      "type": "composes",
+      "origin": "code",
+      "status": "present",
+      "evidence": [
+        {
+          "codeRef": "src/core/SPLA.Domain/Host/PassthroughSandbox.cs",
+          "symbol": "Shell"
+        }
+      ]
+    },
+    {
+      "id": "r_passthroughsandbox_iworkspace_composes",
+      "from": "e_passthroughsandbox",
+      "to": "e_iworkspace",
+      "type": "composes",
+      "origin": "code",
+      "status": "present",
+      "evidence": [
+        {
+          "codeRef": "src/core/SPLA.Domain/Host/PassthroughSandbox.cs",
+          "symbol": "Workspace"
+        }
+      ]
+    },
+    {
+      "id": "r_pathboundaryexception_pathrefusal_composes",
+      "from": "e_pathboundaryexception",
+      "to": "e_pathrefusal",
+      "type": "composes",
+      "origin": "code",
+      "status": "present",
+      "evidence": [
+        {
+          "codeRef": "src/core/SPLA.Domain/Host/PathBoundary.cs",
+          "symbol": "Refusal"
+        }
+      ]
+    },
+    {
+      "id": "r_pathlanding_pathrefusal_composes",
+      "from": "e_pathlanding",
+      "to": "e_pathrefusal",
+      "type": "composes",
+      "origin": "code",
+      "status": "present",
+      "evidence": [
+        {
+          "codeRef": "src/core/SPLA.Domain/Host/PathBoundary.cs",
+          "symbol": "Refusal"
+        }
+      ]
+    },
+    {
+      "id": "r_pathlanding_projectmount_composes",
+      "from": "e_pathlanding",
+      "to": "e_projectmount",
+      "type": "composes",
+      "origin": "code",
+      "status": "present",
+      "evidence": [
+        {
+          "codeRef": "src/core/SPLA.Domain/Host/PathBoundary.cs",
+          "symbol": "Mount"
+        }
+      ]
+    },
+    {
+      "id": "r_permissionmanager_ipermissionmanager_implements",
+      "from": "e_permissionmanager",
+      "to": "e_ipermissionmanager",
+      "type": "implements",
+      "origin": "code",
+      "status": "present",
+      "evidence": [
+        {
+          "codeRef": "src/core/SPLA.MCP.Core/Permissions/PermissionManager.cs"
+        }
+      ]
+    },
+    {
+      "id": "r_permissionstage_itoolmiddleware_implements",
+      "from": "e_permissionstage",
+      "to": "e_itoolmiddleware",
+      "type": "implements",
+      "origin": "code",
+      "status": "present",
+      "evidence": [
+        {
+          "codeRef": "src/core/SPLA.MCP.Core/Pipeline/Stages/PermissionStage.cs"
+        }
+      ]
+    },
+    {
+      "id": "r_permissionstage_toolpipelinestage_composes",
+      "from": "e_permissionstage",
+      "to": "e_toolpipelinestage",
+      "type": "composes",
+      "origin": "code",
+      "status": "present",
+      "evidence": [
+        {
+          "codeRef": "src/core/SPLA.MCP.Core/Pipeline/Stages/PermissionStage.cs",
+          "symbol": "Stage"
+        }
+      ]
+    },
+    {
+      "id": "r_permissionverdict_permissionresult_composes",
+      "from": "e_permissionverdict",
+      "to": "e_permissionresult",
+      "type": "composes",
+      "origin": "code",
+      "status": "present",
+      "evidence": [
+        {
+          "codeRef": "src/core/SPLA.Domain/Models/PermissionEnums.cs",
+          "symbol": "Result"
+        }
+      ]
+    },
+    {
+      "id": "r_permissivesecretaccesspolicy_isecretaccesspolicy_implements",
+      "from": "e_permissivesecretaccesspolicy",
+      "to": "e_isecretaccesspolicy",
+      "type": "implements",
+      "origin": "code",
+      "status": "present",
+      "evidence": [
+        {
+          "codeRef": "src/core/SPLA.Domain/Secrets/ISecretAccessPolicy.cs"
+        }
+      ]
+    },
+    {
+      "id": "r_pluginavailabilitystage_itoolmiddleware_implements",
+      "from": "e_pluginavailabilitystage",
+      "to": "e_itoolmiddleware",
+      "type": "implements",
+      "origin": "code",
+      "status": "present",
+      "evidence": [
+        {
+          "codeRef": "src/core/SPLA.MCP.Core/Pipeline/Stages/PluginAvailabilityStage.cs"
+        }
+      ]
+    },
+    {
+      "id": "r_pluginavailabilitystage_toolpipelinestage_composes",
+      "from": "e_pluginavailabilitystage",
+      "to": "e_toolpipelinestage",
+      "type": "composes",
+      "origin": "code",
+      "status": "present",
+      "evidence": [
+        {
+          "codeRef": "src/core/SPLA.MCP.Core/Pipeline/Stages/PluginAvailabilityStage.cs",
+          "symbol": "Stage"
+        }
+      ]
+    },
+    {
+      "id": "r_plugindescriptor_plugineffectivestate_composes",
+      "from": "e_plugindescriptor",
+      "to": "e_plugineffectivestate",
+      "type": "composes",
+      "origin": "code",
+      "status": "present",
+      "evidence": [
+        {
+          "codeRef": "src/core/SPLA.MCP.Core/Plugins/PluginDescriptor.cs",
+          "symbol": "EffectiveState"
+        }
+      ]
+    },
+    {
+      "id": "r_plugindescriptor_pluginmeta_composes",
+      "from": "e_plugindescriptor",
+      "to": "e_pluginmeta",
+      "type": "composes",
+      "origin": "code",
+      "status": "present",
+      "evidence": [
+        {
+          "codeRef": "src/core/SPLA.MCP.Core/Plugins/PluginDescriptor.cs",
+          "symbol": "Meta"
+        }
+      ]
+    },
+    {
+      "id": "r_pluginhealth_pluginhealthstatus_composes",
+      "from": "e_pluginhealth",
+      "to": "e_pluginhealthstatus",
+      "type": "composes",
+      "origin": "code",
+      "status": "present",
+      "evidence": [
+        {
+          "codeRef": "src/core/SPLA.MCP.Core/Interfaces/ISplaPluginSelfCheck.cs",
+          "symbol": "Status"
+        }
+      ]
+    },
+    {
+      "id": "r_plugininstance_pluginmeta_composes",
+      "from": "e_plugininstance",
+      "to": "e_pluginmeta",
+      "type": "composes",
+      "origin": "code",
+      "status": "present",
+      "evidence": [
+        {
+          "codeRef": "src/core/SPLA.MCP.Core/Plugins/PluginManager.cs",
+          "symbol": "Meta"
+        }
+      ]
+    },
+    {
+      "id": "r_pluginskillsource_iskillsource_implements",
+      "from": "e_pluginskillsource",
+      "to": "e_iskillsource",
+      "type": "implements",
+      "origin": "code",
+      "status": "present",
+      "evidence": [
+        {
+          "codeRef": "src/core/SPLA.Library/Sources/PluginSkillSource.cs"
+        }
+      ]
+    },
+    {
+      "id": "r_pluginskillsource_skilltrust_composes",
+      "from": "e_pluginskillsource",
+      "to": "e_skilltrust",
+      "type": "composes",
+      "origin": "code",
+      "status": "present",
+      "evidence": [
+        {
+          "codeRef": "src/core/SPLA.Library/Sources/PluginSkillSource.cs",
+          "symbol": "Trust"
+        }
+      ]
+    },
+    {
+      "id": "r_pluginskillsource_sourcelevel_composes",
+      "from": "e_pluginskillsource",
+      "to": "e_sourcelevel",
+      "type": "composes",
+      "origin": "code",
+      "status": "present",
+      "evidence": [
+        {
+          "codeRef": "src/core/SPLA.Library/Sources/PluginSkillSource.cs",
+          "symbol": "Level"
+        }
+      ]
+    },
+    {
+      "id": "r_progressnode_progressstate_composes",
+      "from": "e_progressnode",
+      "to": "e_progressstate",
+      "type": "composes",
+      "origin": "code",
+      "status": "present",
+      "evidence": [
+        {
+          "codeRef": "src/core/SPLA.Domain/Models/ProgressNode.cs",
+          "symbol": "State"
+        }
+      ]
+    },
+    {
+      "id": "r_progressnode_toolprogress_composes",
+      "from": "e_progressnode",
+      "to": "e_toolprogress",
+      "type": "composes",
+      "origin": "code",
+      "status": "present",
+      "evidence": [
+        {
+          "codeRef": "src/core/SPLA.Domain/Models/ProgressNode.cs",
+          "symbol": "Latest"
+        }
+      ]
+    },
+    {
+      "id": "r_progressnodestage_itoolmiddleware_implements",
+      "from": "e_progressnodestage",
+      "to": "e_itoolmiddleware",
+      "type": "implements",
+      "origin": "code",
+      "status": "present",
+      "evidence": [
+        {
+          "codeRef": "src/core/SPLA.MCP.Core/Pipeline/Stages/ProgressNodeStage.cs"
+        }
+      ]
+    },
+    {
+      "id": "r_progressnodestage_toolpipelinestage_composes",
+      "from": "e_progressnodestage",
+      "to": "e_toolpipelinestage",
+      "type": "composes",
+      "origin": "code",
+      "status": "present",
+      "evidence": [
+        {
+          "codeRef": "src/core/SPLA.MCP.Core/Pipeline/Stages/ProgressNodeStage.cs",
+          "symbol": "Stage"
+        }
+      ]
+    },
+    {
+      "id": "r_progressscope_progresstree_composes",
+      "from": "e_progressscope",
+      "to": "e_progresstree",
+      "type": "composes",
+      "origin": "code",
+      "status": "present",
+      "evidence": [
+        {
+          "codeRef": "src/core/SPLA.Domain/Tools/ProgressScope.cs",
+          "symbol": "CurrentTree"
+        }
+      ]
+    },
+    {
+      "id": "r_projectbusyexception_instanceinfo_composes",
+      "from": "e_projectbusyexception",
+      "to": "e_instanceinfo",
+      "type": "composes",
+      "origin": "code",
+      "status": "present",
+      "evidence": [
+        {
+          "codeRef": "src/core/SPLA.Domain/Project/InstanceLock.cs",
+          "symbol": "Holder"
+        }
+      ]
+    },
+    {
+      "id": "r_projectkvstore_ikeyvaluestore_composes",
+      "from": "e_projectkvstore",
+      "to": "e_ikeyvaluestore",
+      "type": "composes",
+      "origin": "code",
+      "status": "present",
+      "evidence": [
+        {
+          "codeRef": "src/core/SPLA.Domain/Settings/ProjectKvStore.cs",
+          "symbol": "Store"
+        }
+      ]
+    },
+    {
+      "id": "r_projectmount_mountaccess_composes",
+      "from": "e_projectmount",
+      "to": "e_mountaccess",
+      "type": "composes",
+      "origin": "code",
+      "status": "present",
+      "evidence": [
+        {
+          "codeRef": "src/core/SPLA.Domain/Host/ProjectMount.cs",
+          "symbol": "Access"
+        }
+      ]
+    },
+    {
+      "id": "r_projectmount_mounttrust_composes",
+      "from": "e_projectmount",
+      "to": "e_mounttrust",
+      "type": "composes",
+      "origin": "code",
+      "status": "present",
+      "evidence": [
+        {
+          "codeRef": "src/core/SPLA.Domain/Host/ProjectMount.cs",
+          "symbol": "Trust"
+        }
+      ]
+    },
+    {
+      "id": "r_providerclientresolver_illmclientresolver_implements",
+      "from": "e_providerclientresolver",
+      "to": "e_illmclientresolver",
+      "type": "implements",
+      "origin": "code",
+      "status": "present",
+      "evidence": [
+        {
+          "codeRef": "src/core/SPLA.Domain/Llm/LlmProviderRegistry.cs"
+        }
+      ]
+    },
+    {
+      "id": "r_providerfact_providerfactkind_composes",
+      "from": "e_providerfact",
+      "to": "e_providerfactkind",
+      "type": "composes",
+      "origin": "code",
+      "status": "present",
+      "evidence": [
+        {
+          "codeRef": "src/core/SPLA.Domain/Llm/ProviderTelemetry.cs",
+          "symbol": "Kind"
+        }
+      ]
+    },
+    {
+      "id": "r_providerfact_providerfactscope_composes",
+      "from": "e_providerfact",
+      "to": "e_providerfactscope",
+      "type": "composes",
+      "origin": "code",
+      "status": "present",
+      "evidence": [
+        {
+          "codeRef": "src/core/SPLA.Domain/Llm/ProviderTelemetry.cs",
+          "symbol": "Scope"
+        }
+      ]
+    },
+    {
+      "id": "r_providerfact_providerfactseverity_composes",
+      "from": "e_providerfact",
+      "to": "e_providerfactseverity",
+      "type": "composes",
+      "origin": "code",
+      "status": "present",
+      "evidence": [
+        {
+          "codeRef": "src/core/SPLA.Domain/Llm/ProviderTelemetry.cs",
+          "symbol": "Severity"
+        }
+      ]
+    },
+    {
+      "id": "r_providerstatemiddleware_illmmiddleware_implements",
+      "from": "e_providerstatemiddleware",
+      "to": "e_illmmiddleware",
+      "type": "implements",
+      "origin": "code",
+      "status": "present",
+      "evidence": [
+        {
+          "codeRef": "src/core/SPLA.Domain/Llm/Middleware/ProviderStateMiddleware.cs"
+        }
+      ]
+    },
+    {
+      "id": "r_providerstatemiddleware_llmpipelinestage_composes",
+      "from": "e_providerstatemiddleware",
+      "to": "e_llmpipelinestage",
+      "type": "composes",
+      "origin": "code",
+      "status": "present",
+      "evidence": [
+        {
+          "codeRef": "src/core/SPLA.Domain/Llm/Middleware/ProviderStateMiddleware.cs",
+          "symbol": "Stage"
+        }
+      ]
+    },
+    {
+      "id": "r_reasoningchoice_reasoningmode_composes",
+      "from": "e_reasoningchoice",
+      "to": "e_reasoningmode",
+      "type": "composes",
+      "origin": "code",
+      "status": "present",
+      "evidence": [
+        {
+          "codeRef": "src/core/SPLA.Domain/Llm/ReasoningChoice.cs",
+          "symbol": "Mode"
+        }
+      ]
+    },
+    {
+      "id": "r_resolvedmodelentry_reasoningcapability_composes",
+      "from": "e_resolvedmodelentry",
+      "to": "e_reasoningcapability",
+      "type": "composes",
+      "origin": "code",
+      "status": "present",
+      "evidence": [
+        {
+          "codeRef": "src/core/SPLA.Domain/Settings/SettingsResolver.cs",
+          "symbol": "DeclaredReasoning"
+        }
+      ]
+    },
+    {
+      "id": "r_resolvedmodelentry_splaconnectionsection_composes",
+      "from": "e_resolvedmodelentry",
+      "to": "e_splaconnectionsection",
+      "type": "composes",
+      "origin": "code",
+      "status": "present",
+      "evidence": [
+        {
+          "codeRef": "src/core/SPLA.Domain/Settings/SettingsResolver.cs",
+          "symbol": "Connection"
+        }
+      ]
+    },
+    {
+      "id": "r_resolvedmodelentry_splamodelsection_composes",
+      "from": "e_resolvedmodelentry",
+      "to": "e_splamodelsection",
+      "type": "composes",
+      "origin": "code",
+      "status": "present",
+      "evidence": [
+        {
+          "codeRef": "src/core/SPLA.Domain/Settings/SettingsResolver.cs",
+          "symbol": "Entry"
+        }
+      ]
+    },
+    {
+      "id": "r_resolvedsettings_agentmode_composes",
+      "from": "e_resolvedsettings",
+      "to": "e_agentmode",
+      "type": "composes",
+      "origin": "code",
+      "status": "present",
+      "evidence": [
+        {
+          "codeRef": "src/core/SPLA.Domain/Settings/SettingsResolver.cs",
+          "symbol": "Mode"
+        }
+      ]
+    },
+    {
+      "id": "r_resolvedsettings_iproject_composes",
+      "from": "e_resolvedsettings",
+      "to": "e_iproject",
+      "type": "composes",
+      "origin": "code",
+      "status": "present",
+      "evidence": [
+        {
+          "codeRef": "src/core/SPLA.Domain/Settings/SettingsResolver.cs",
+          "symbol": "Project"
+        }
+      ]
+    },
+    {
+      "id": "r_resolvedsettings_isecretaccesspolicy_composes",
+      "from": "e_resolvedsettings",
+      "to": "e_isecretaccesspolicy",
+      "type": "composes",
+      "origin": "code",
+      "status": "present",
+      "evidence": [
+        {
+          "codeRef": "src/core/SPLA.Domain/Settings/SettingsResolver.cs",
+          "symbol": "SecretAccessPolicy"
+        }
+      ]
+    },
+    {
+      "id": "r_resolvedsettings_isecretresolver_composes",
+      "from": "e_resolvedsettings",
+      "to": "e_isecretresolver",
+      "type": "composes",
+      "origin": "code",
+      "status": "present",
+      "evidence": [
+        {
+          "codeRef": "src/core/SPLA.Domain/Settings/SettingsResolver.cs",
+          "symbol": "SecretResolver"
+        }
+      ]
+    },
+    {
+      "id": "r_resolvedsettings_isecretstore_composes",
+      "from": "e_resolvedsettings",
+      "to": "e_isecretstore",
+      "type": "composes",
+      "origin": "code",
+      "status": "present",
+      "evidence": [
+        {
+          "codeRef": "src/core/SPLA.Domain/Settings/SettingsResolver.cs",
+          "symbol": "Secrets"
+        }
+      ]
+    },
+    {
+      "id": "r_resolvedsettings_iskillsourcestore_composes",
+      "from": "e_resolvedsettings",
+      "to": "e_iskillsourcestore",
+      "type": "composes",
+      "origin": "code",
+      "status": "present",
+      "evidence": [
+        {
+          "codeRef": "src/core/SPLA.Domain/Settings/SettingsResolver.cs",
+          "symbol": "SkillSourceStore"
+        }
+      ]
+    },
+    {
+      "id": "r_resolvedsettings_iskilltruststore_composes",
+      "from": "e_resolvedsettings",
+      "to": "e_iskilltruststore",
+      "type": "composes",
+      "origin": "code",
+      "status": "present",
+      "evidence": [
+        {
+          "codeRef": "src/core/SPLA.Domain/Settings/SettingsResolver.cs",
+          "symbol": "SkillTrustStore"
+        }
+      ]
+    },
+    {
+      "id": "r_resolvedsettings_splalibrariansection_composes",
+      "from": "e_resolvedsettings",
+      "to": "e_splalibrariansection",
+      "type": "composes",
+      "origin": "code",
+      "status": "present",
+      "evidence": [
+        {
+          "codeRef": "src/core/SPLA.Domain/Settings/SettingsResolver.cs",
+          "symbol": "SkillLibrarian"
+        }
+      ]
+    },
+    {
+      "id": "r_resourcedeletetool_resourcetoolbase_extends",
+      "from": "e_resourcedeletetool",
+      "to": "e_resourcetoolbase",
+      "type": "extends",
+      "origin": "code",
+      "status": "present",
+      "evidence": [
+        {
+          "codeRef": "src/core/SPLA.MCP.Core/Tools/Resources/ResourceDeleteTool.cs"
+        }
+      ]
+    },
+    {
+      "id": "r_resourceexiststool_resourcetoolbase_extends",
+      "from": "e_resourceexiststool",
+      "to": "e_resourcetoolbase",
+      "type": "extends",
+      "origin": "code",
+      "status": "present",
+      "evidence": [
+        {
+          "codeRef": "src/core/SPLA.MCP.Core/Tools/Resources/ResourceExistsTool.cs"
+        }
+      ]
+    },
+    {
+      "id": "r_resourcelisttool_resourcetoolbase_extends",
+      "from": "e_resourcelisttool",
+      "to": "e_resourcetoolbase",
+      "type": "extends",
+      "origin": "code",
+      "status": "present",
+      "evidence": [
+        {
+          "codeRef": "src/core/SPLA.MCP.Core/Tools/Resources/ResourceListTool.cs"
+        }
+      ]
+    },
+    {
+      "id": "r_resourcemakedirtool_resourcetoolbase_extends",
+      "from": "e_resourcemakedirtool",
+      "to": "e_resourcetoolbase",
+      "type": "extends",
+      "origin": "code",
+      "status": "present",
+      "evidence": [
+        {
+          "codeRef": "src/core/SPLA.MCP.Core/Tools/Resources/ResourceMakeDirTool.cs"
+        }
+      ]
+    },
+    {
+      "id": "r_resourcereadtool_resourcetoolbase_extends",
+      "from": "e_resourcereadtool",
+      "to": "e_resourcetoolbase",
+      "type": "extends",
+      "origin": "code",
+      "status": "present",
+      "evidence": [
+        {
+          "codeRef": "src/core/SPLA.MCP.Core/Tools/Resources/ResourceReadTool.cs"
+        }
+      ]
+    },
+    {
+      "id": "r_resourcetoolbase_imcptool_implements",
+      "from": "e_resourcetoolbase",
+      "to": "e_imcptool",
+      "type": "implements",
+      "origin": "code",
+      "status": "present",
+      "evidence": [
+        {
+          "codeRef": "src/core/SPLA.MCP.Core/Tools/Resources/ResourceToolBase.cs"
+        }
+      ]
+    },
+    {
+      "id": "r_resourcewritetool_resourcetoolbase_extends",
+      "from": "e_resourcewritetool",
+      "to": "e_resourcetoolbase",
+      "type": "extends",
+      "origin": "code",
+      "status": "present",
+      "evidence": [
+        {
+          "codeRef": "src/core/SPLA.MCP.Core/Tools/Resources/ResourceWriteTool.cs"
+        }
+      ]
+    },
+    {
+      "id": "r_secretaccessdeniedexception_secretscope_composes",
+      "from": "e_secretaccessdeniedexception",
+      "to": "e_secretscope",
+      "type": "composes",
+      "origin": "code",
+      "status": "present",
+      "evidence": [
+        {
+          "codeRef": "src/core/SPLA.Domain/Secrets/SecretCallerScope.cs",
+          "symbol": "Scope"
+        }
+      ]
+    },
+    {
+      "id": "r_secretcallerscope_iidentity_composes",
+      "from": "e_secretcallerscope",
+      "to": "e_iidentity",
+      "type": "composes",
+      "origin": "code",
+      "status": "present",
+      "evidence": [
+        {
+          "codeRef": "src/core/SPLA.Domain/Secrets/SecretCallerScope.cs",
+          "symbol": "Identity"
+        }
+      ]
+    },
+    {
+      "id": "r_secretresolver_isecretresolver_implements",
+      "from": "e_secretresolver",
+      "to": "e_isecretresolver",
+      "type": "implements",
+      "origin": "code",
+      "status": "present",
+      "evidence": [
+        {
+          "codeRef": "src/core/SPLA.Domain/Secrets/SecretResolver.cs"
+        }
+      ]
+    },
+    {
+      "id": "r_shellresult_shellstatus_composes",
+      "from": "e_shellresult",
+      "to": "e_shellstatus",
+      "type": "composes",
+      "origin": "code",
+      "status": "present",
+      "evidence": [
+        {
+          "codeRef": "src/core/SPLA.Domain/Host/IShell.cs",
+          "symbol": "Status"
+        }
+      ]
+    },
+    {
+      "id": "r_singleclientresolver_illmclientresolver_implements",
+      "from": "e_singleclientresolver",
+      "to": "e_illmclientresolver",
+      "type": "implements",
+      "origin": "code",
+      "status": "present",
+      "evidence": [
+        {
+          "codeRef": "src/core/SPLA.Domain/Llm/LlmPipelineBlueprint.cs"
+        }
+      ]
+    },
+    {
+      "id": "r_skillactivatetool_imcptool_implements",
+      "from": "e_skillactivatetool",
+      "to": "e_imcptool",
+      "type": "implements",
+      "origin": "code",
+      "status": "present",
+      "evidence": [
+        {
+          "codeRef": "src/core/SPLA.MCP.Core/Tools/SkillActivateTool.cs"
+        }
+      ]
+    },
+    {
+      "id": "r_skillcapabilityprobe_iskillcapabilityprobe_implements",
+      "from": "e_skillcapabilityprobe",
+      "to": "e_iskillcapabilityprobe",
+      "type": "implements",
+      "origin": "code",
+      "status": "present",
+      "evidence": [
+        {
+          "codeRef": "src/core/SPLA.Library/ISkillCapabilityProbe.cs"
+        }
+      ]
+    },
+    {
+      "id": "r_skillcapabilityprobe_skillcapabilityprobe_composes",
+      "from": "e_skillcapabilityprobe",
+      "to": "e_skillcapabilityprobe",
+      "type": "composes",
+      "origin": "code",
+      "status": "present",
+      "evidence": [
+        {
+          "codeRef": "src/core/SPLA.Library/ISkillCapabilityProbe.cs",
+          "symbol": "AllAvailable"
+        }
+      ]
+    },
+    {
+      "id": "r_skillcard_skillrequirements_composes",
+      "from": "e_skillcard",
+      "to": "e_skillrequirements",
+      "type": "composes",
+      "origin": "code",
+      "status": "present",
+      "evidence": [
+        {
+          "codeRef": "src/core/SPLA.Library/Catalog/SkillCard.cs",
+          "symbol": "Requires"
+        }
+      ]
+    },
+    {
+      "id": "r_skillcard_skillrequirements_composes",
+      "from": "e_skillcard",
+      "to": "e_skillrequirements",
+      "type": "composes",
+      "origin": "code",
+      "status": "present",
+      "evidence": [
+        {
+          "codeRef": "src/core/SPLA.Library/Catalog/SkillCard.cs",
+          "symbol": "Uses"
+        }
+      ]
+    },
+    {
+      "id": "r_skillcard_skillstate_composes",
+      "from": "e_skillcard",
+      "to": "e_skillstate",
+      "type": "composes",
+      "origin": "code",
+      "status": "present",
+      "evidence": [
+        {
+          "codeRef": "src/core/SPLA.Library/Catalog/SkillCard.cs",
+          "symbol": "State"
+        }
+      ]
+    },
+    {
+      "id": "r_skillcard_skilltrust_composes",
+      "from": "e_skillcard",
+      "to": "e_skilltrust",
+      "type": "composes",
+      "origin": "code",
+      "status": "present",
+      "evidence": [
+        {
+          "codeRef": "src/core/SPLA.Library/Catalog/SkillCard.cs",
+          "symbol": "Trust"
+        }
+      ]
+    },
+    {
+      "id": "r_skillcard_sourcelevel_composes",
+      "from": "e_skillcard",
+      "to": "e_sourcelevel",
+      "type": "composes",
+      "origin": "code",
+      "status": "present",
+      "evidence": [
+        {
+          "codeRef": "src/core/SPLA.Library/Catalog/SkillCard.cs",
+          "symbol": "Level"
+        }
+      ]
+    },
+    {
+      "id": "r_skilldeactivatetool_imcptool_implements",
+      "from": "e_skilldeactivatetool",
+      "to": "e_imcptool",
+      "type": "implements",
+      "origin": "code",
+      "status": "present",
+      "evidence": [
+        {
+          "codeRef": "src/core/SPLA.MCP.Core/Tools/SkillDeactivateTool.cs"
+        }
+      ]
+    },
+    {
+      "id": "r_skillentry_skillrequirements_composes",
+      "from": "e_skillentry",
+      "to": "e_skillrequirements",
+      "type": "composes",
+      "origin": "code",
+      "status": "present",
+      "evidence": [
+        {
+          "codeRef": "src/core/SPLA.Library/Sources/ISkillSource.cs",
+          "symbol": "Requires"
+        }
+      ]
+    },
+    {
+      "id": "r_skillentry_skillrequirements_composes",
+      "from": "e_skillentry",
+      "to": "e_skillrequirements",
+      "type": "composes",
+      "origin": "code",
+      "status": "present",
+      "evidence": [
+        {
+          "codeRef": "src/core/SPLA.Library/Sources/ISkillSource.cs",
+          "symbol": "Uses"
+        }
+      ]
+    },
+    {
+      "id": "r_skillfindtool_imcptool_implements",
+      "from": "e_skillfindtool",
+      "to": "e_imcptool",
+      "type": "implements",
+      "origin": "code",
+      "status": "present",
+      "evidence": [
+        {
+          "codeRef": "src/core/SPLA.MCP.Core/Tools/SkillFindTool.cs"
+        }
+      ]
+    },
+    {
+      "id": "r_skilllookup_skillcard_composes",
+      "from": "e_skilllookup",
+      "to": "e_skillcard",
+      "type": "composes",
+      "origin": "code",
+      "status": "present",
+      "evidence": [
+        {
+          "codeRef": "src/core/SPLA.Library/Catalog/SkillLookup.cs",
+          "symbol": "Card"
+        }
+      ]
+    },
+    {
+      "id": "r_skillmatch_skillcard_composes",
+      "from": "e_skillmatch",
+      "to": "e_skillcard",
+      "type": "composes",
+      "origin": "code",
+      "status": "present",
+      "evidence": [
+        {
+          "codeRef": "src/core/SPLA.Library/Librarians/ITagLibrarian.cs",
+          "symbol": "Card"
+        }
+      ]
+    },
+    {
+      "id": "r_skillreadresourcetool_imcptool_implements",
+      "from": "e_skillreadresourcetool",
+      "to": "e_imcptool",
+      "type": "implements",
+      "origin": "code",
+      "status": "present",
+      "evidence": [
+        {
+          "codeRef": "src/core/SPLA.MCP.Core/Tools/SkillReadResourceTool.cs"
+        }
+      ]
+    },
+    {
+      "id": "r_skillsession_iskillsession_implements",
+      "from": "e_skillsession",
+      "to": "e_iskillsession",
+      "type": "implements",
+      "origin": "code",
+      "status": "present",
+      "evidence": [
+        {
+          "codeRef": "src/core/SPLA.Domain/Agent/SkillSession.cs"
+        }
+      ]
+    },
+    {
+      "id": "r_spladefaults_splaagentsection_composes",
+      "from": "e_spladefaults",
+      "to": "e_splaagentsection",
+      "type": "composes",
+      "origin": "code",
+      "status": "present",
+      "evidence": [
+        {
+          "codeRef": "src/core/SPLA.Domain/Settings/SplaDefaults.cs",
+          "symbol": "Agent"
+        }
+      ]
+    },
+    {
+      "id": "r_spladefaults_splallmsection_composes",
+      "from": "e_spladefaults",
+      "to": "e_splallmsection",
+      "type": "composes",
+      "origin": "code",
+      "status": "present",
+      "evidence": [
+        {
+          "codeRef": "src/core/SPLA.Domain/Settings/SplaDefaults.cs",
+          "symbol": "Llm"
+        }
+      ]
+    },
+    {
+      "id": "r_spladefaults_splamcpsection_composes",
+      "from": "e_spladefaults",
+      "to": "e_splamcpsection",
+      "type": "composes",
+      "origin": "code",
+      "status": "present",
+      "evidence": [
+        {
+          "codeRef": "src/core/SPLA.Domain/Settings/SplaDefaults.cs",
+          "symbol": "Mcp"
+        }
+      ]
+    },
+    {
+      "id": "r_spladefaults_splasecretssection_composes",
+      "from": "e_spladefaults",
+      "to": "e_splasecretssection",
+      "type": "composes",
+      "origin": "code",
+      "status": "present",
+      "evidence": [
+        {
+          "codeRef": "src/core/SPLA.Domain/Settings/SplaDefaults.cs",
+          "symbol": "Secrets"
+        }
+      ]
+    },
+    {
+      "id": "r_spladefaults_splaskillssection_composes",
+      "from": "e_spladefaults",
+      "to": "e_splaskillssection",
+      "type": "composes",
+      "origin": "code",
+      "status": "present",
+      "evidence": [
+        {
+          "codeRef": "src/core/SPLA.Domain/Settings/SplaDefaults.cs",
+          "symbol": "Skills"
+        }
+      ]
+    },
+    {
+      "id": "r_spladefaults_splauisection_composes",
+      "from": "e_spladefaults",
+      "to": "e_splauisection",
+      "type": "composes",
+      "origin": "code",
+      "status": "present",
+      "evidence": [
+        {
+          "codeRef": "src/core/SPLA.Domain/Settings/SplaDefaults.cs",
+          "symbol": "Ui"
+        }
+      ]
+    },
+    {
+      "id": "r_splapluginuicommand_splapluginuicommandkind_composes",
+      "from": "e_splapluginuicommand",
+      "to": "e_splapluginuicommandkind",
+      "type": "composes",
+      "origin": "code",
+      "status": "present",
+      "evidence": [
+        {
+          "codeRef": "src/core/SPLA.MCP.Core/Interfaces/ISplaPluginUiCommands.cs",
+          "symbol": "Kind"
+        }
+      ]
+    },
+    {
+      "id": "r_splaproject_splaagentsection_composes",
+      "from": "e_splaproject",
+      "to": "e_splaagentsection",
+      "type": "composes",
+      "origin": "code",
+      "status": "present",
+      "evidence": [
+        {
+          "codeRef": "src/core/SPLA.Domain/Settings/SplaProject.cs",
+          "symbol": "Agent"
+        }
+      ]
+    },
+    {
+      "id": "r_splaproject_splallmsection_composes",
+      "from": "e_splaproject",
+      "to": "e_splallmsection",
+      "type": "composes",
+      "origin": "code",
+      "status": "present",
+      "evidence": [
+        {
+          "codeRef": "src/core/SPLA.Domain/Settings/SplaProject.cs",
+          "symbol": "Llm"
+        }
+      ]
+    },
+    {
+      "id": "r_splaproject_splamcpsection_composes",
+      "from": "e_splaproject",
+      "to": "e_splamcpsection",
+      "type": "composes",
+      "origin": "code",
+      "status": "present",
+      "evidence": [
+        {
+          "codeRef": "src/core/SPLA.Domain/Settings/SplaProject.cs",
+          "symbol": "Mcp"
+        }
+      ]
+    },
+    {
+      "id": "r_splaproject_splapermissionssection_composes",
+      "from": "e_splaproject",
+      "to": "e_splapermissionssection",
+      "type": "composes",
+      "origin": "code",
+      "status": "present",
+      "evidence": [
+        {
+          "codeRef": "src/core/SPLA.Domain/Settings/SplaProject.cs",
+          "symbol": "Permissions"
+        }
+      ]
+    },
+    {
+      "id": "r_splaproject_splaskillssection_composes",
+      "from": "e_splaproject",
+      "to": "e_splaskillssection",
+      "type": "composes",
+      "origin": "code",
+      "status": "present",
+      "evidence": [
+        {
+          "codeRef": "src/core/SPLA.Domain/Settings/SplaProject.cs",
+          "symbol": "Skills"
+        }
+      ]
+    },
+    {
+      "id": "r_splaproject_splauisection_composes",
+      "from": "e_splaproject",
+      "to": "e_splauisection",
+      "type": "composes",
+      "origin": "code",
+      "status": "present",
+      "evidence": [
+        {
+          "codeRef": "src/core/SPLA.Domain/Settings/SplaProject.cs",
+          "symbol": "Ui"
+        }
+      ]
+    },
+    {
+      "id": "r_splaskillsourcesection_sourceorigin_composes",
+      "from": "e_splaskillsourcesection",
+      "to": "e_sourceorigin",
+      "type": "composes",
+      "origin": "code",
+      "status": "present",
+      "evidence": [
+        {
+          "codeRef": "src/core/SPLA.Domain/Settings/SplaSkillSection.cs",
+          "symbol": "Origin"
+        }
+      ]
+    },
+    {
+      "id": "r_splaskillssection_splalibrariansection_composes",
+      "from": "e_splaskillssection",
+      "to": "e_splalibrariansection",
+      "type": "composes",
+      "origin": "code",
+      "status": "present",
+      "evidence": [
+        {
+          "codeRef": "src/core/SPLA.Domain/Settings/SplaSkillSection.cs",
+          "symbol": "Librarian"
+        }
+      ]
+    },
+    {
+      "id": "r_splaskillssection_splaskillspolicysection_composes",
+      "from": "e_splaskillssection",
+      "to": "e_splaskillspolicysection",
+      "type": "composes",
+      "origin": "code",
+      "status": "present",
+      "evidence": [
+        {
+          "codeRef": "src/core/SPLA.Domain/Settings/SplaSkillSection.cs",
+          "symbol": "Policy"
+        }
+      ]
+    },
+    {
+      "id": "r_splatelemetry_splatelemetrycontext_composes",
+      "from": "e_splatelemetry",
+      "to": "e_splatelemetrycontext",
+      "type": "composes",
+      "origin": "code",
+      "status": "present",
+      "evidence": [
+        {
+          "codeRef": "src/core/SPLA.Observability/SplaTelemetry.cs",
+          "symbol": "CurrentContext"
+        }
+      ]
+    },
+    {
+      "id": "r_state_agentmode_composes",
+      "from": "e_state",
+      "to": "e_agentmode",
+      "type": "composes",
+      "origin": "code",
+      "status": "present",
+      "evidence": [
+        {
+          "codeRef": "src/core/SPLA.Domain/Tools/ToolHostScope.cs",
+          "symbol": "Mode"
+        }
+      ]
+    },
+    {
+      "id": "r_state_itoolhost_composes",
+      "from": "e_state",
+      "to": "e_itoolhost",
+      "type": "composes",
+      "origin": "code",
+      "status": "present",
+      "evidence": [
+        {
+          "codeRef": "src/core/SPLA.Domain/Tools/ToolHostScope.cs",
+          "symbol": "Host"
+        }
+      ]
+    },
+    {
+      "id": "r_taglibrarian_itaglibrarian_implements",
+      "from": "e_taglibrarian",
+      "to": "e_itaglibrarian",
+      "type": "implements",
+      "origin": "code",
+      "status": "present",
+      "evidence": [
+        {
+          "codeRef": "src/core/SPLA.Library/Librarians/TagLibrarian.cs"
+        }
+      ]
+    },
+    {
+      "id": "r_taglibrarian_tagvocabulary_composes",
+      "from": "e_taglibrarian",
+      "to": "e_tagvocabulary",
+      "type": "composes",
+      "origin": "code",
+      "status": "present",
+      "evidence": [
+        {
+          "codeRef": "src/core/SPLA.Library/Librarians/TagLibrarian.cs",
+          "symbol": "Vocabulary"
+        }
+      ]
+    },
+    {
+      "id": "r_taskcanceltool_imcptool_implements",
+      "from": "e_taskcanceltool",
+      "to": "e_imcptool",
+      "type": "implements",
+      "origin": "code",
+      "status": "present",
+      "evidence": [
+        {
+          "codeRef": "src/core/SPLA.MCP.Core/Tools/BackgroundTaskTools.cs"
+        }
+      ]
+    },
+    {
+      "id": "r_tasklisttool_imcptool_implements",
+      "from": "e_tasklisttool",
+      "to": "e_imcptool",
+      "type": "implements",
+      "origin": "code",
+      "status": "present",
+      "evidence": [
+        {
+          "codeRef": "src/core/SPLA.MCP.Core/Tools/BackgroundTaskTools.cs"
+        }
+      ]
+    },
+    {
+      "id": "r_taskoutputtool_imcptool_implements",
+      "from": "e_taskoutputtool",
+      "to": "e_imcptool",
+      "type": "implements",
+      "origin": "code",
+      "status": "present",
+      "evidence": [
+        {
+          "codeRef": "src/core/SPLA.MCP.Core/Tools/BackgroundTaskTools.cs"
+        }
+      ]
+    },
+    {
+      "id": "r_telemetrycollector_telemetrycollector_composes",
+      "from": "e_telemetrycollector",
+      "to": "e_telemetrycollector",
+      "type": "composes",
+      "origin": "code",
+      "status": "present",
+      "evidence": [
+        {
+          "codeRef": "src/core/SPLA.Observability/Collection/TelemetryCollector.cs",
+          "symbol": "Current"
+        }
+      ]
+    },
+    {
+      "id": "r_telemetrystage_itoolmiddleware_implements",
+      "from": "e_telemetrystage",
+      "to": "e_itoolmiddleware",
+      "type": "implements",
+      "origin": "code",
+      "status": "present",
+      "evidence": [
+        {
+          "codeRef": "src/core/SPLA.MCP.Core/Pipeline/Stages/TelemetryStage.cs"
+        }
+      ]
+    },
+    {
+      "id": "r_telemetrystage_toolpipelinestage_composes",
+      "from": "e_telemetrystage",
+      "to": "e_toolpipelinestage",
+      "type": "composes",
+      "origin": "code",
+      "status": "present",
+      "evidence": [
+        {
+          "codeRef": "src/core/SPLA.MCP.Core/Pipeline/Stages/TelemetryStage.cs",
+          "symbol": "Stage"
+        }
+      ]
+    },
+    {
+      "id": "r_toolcall_functioncall_composes",
+      "from": "e_toolcall",
+      "to": "e_functioncall",
+      "type": "composes",
+      "origin": "code",
+      "status": "present",
+      "evidence": [
+        {
+          "codeRef": "src/core/SPLA.Domain/Models/ToolCall.cs",
+          "symbol": "Function"
+        }
+      ]
+    },
+    {
+      "id": "r_toolcallcontext_iagentsession_composes",
+      "from": "e_toolcallcontext",
+      "to": "e_iagentsession",
+      "type": "composes",
+      "origin": "code",
+      "status": "present",
+      "evidence": [
+        {
+          "codeRef": "src/core/SPLA.Domain/Tools/ToolCallContext.cs",
+          "symbol": "Session"
+        }
+      ]
+    },
+    {
+      "id": "r_toolcallcontext_iidentity_composes",
+      "from": "e_toolcallcontext",
+      "to": "e_iidentity",
+      "type": "composes",
+      "origin": "code",
+      "status": "present",
+      "evidence": [
+        {
+          "codeRef": "src/core/SPLA.Domain/Tools/ToolCallContext.cs",
+          "symbol": "Identity"
+        }
+      ]
+    },
+    {
+      "id": "r_toolcallinvocation_imcptool_composes",
+      "from": "e_toolcallinvocation",
+      "to": "e_imcptool",
+      "type": "composes",
+      "origin": "code",
+      "status": "present",
+      "evidence": [
+        {
+          "codeRef": "src/core/SPLA.MCP.Core/Pipeline/ToolCallInvocation.cs",
+          "symbol": "Tool"
+        }
+      ]
+    },
+    {
+      "id": "r_tooldefinition_toolfunctiondefinition_composes",
+      "from": "e_tooldefinition",
+      "to": "e_toolfunctiondefinition",
+      "type": "composes",
+      "origin": "code",
+      "status": "present",
+      "evidence": [
+        {
+          "codeRef": "src/core/SPLA.Domain/Models/ToolDefinition.cs",
+          "symbol": "Function"
+        }
+      ]
+    },
+    {
+      "id": "r_toolfunctiondefinition_tooleffect_composes",
+      "from": "e_toolfunctiondefinition",
+      "to": "e_tooleffect",
+      "type": "composes",
+      "origin": "code",
+      "status": "present",
+      "evidence": [
+        {
+          "codeRef": "src/core/SPLA.Domain/Models/ToolDefinition.cs",
+          "symbol": "Effect"
+        }
+      ]
+    },
+    {
+      "id": "r_toolfunctiondefinition_toolrisk_composes",
+      "from": "e_toolfunctiondefinition",
+      "to": "e_toolrisk",
+      "type": "composes",
+      "origin": "code",
+      "status": "present",
+      "evidence": [
+        {
+          "codeRef": "src/core/SPLA.Domain/Models/ToolDefinition.cs",
+          "symbol": "Risk"
+        }
+      ]
+    },
+    {
+      "id": "r_toolfunctiondefinition_toolscope_composes",
+      "from": "e_toolfunctiondefinition",
+      "to": "e_toolscope",
+      "type": "composes",
+      "origin": "code",
+      "status": "present",
+      "evidence": [
+        {
+          "codeRef": "src/core/SPLA.Domain/Models/ToolDefinition.cs",
+          "symbol": "Scope"
+        }
+      ]
+    },
+    {
+      "id": "r_toolhostscope_state_composes",
+      "from": "e_toolhostscope",
+      "to": "e_state",
+      "type": "composes",
+      "origin": "code",
+      "status": "present",
+      "evidence": [
+        {
+          "codeRef": "src/core/SPLA.Domain/Tools/ToolHostScope.cs",
+          "symbol": "Current"
+        }
+      ]
+    },
+    {
+      "id": "r_toolimage_toolcontent_extends",
+      "from": "e_toolimage",
+      "to": "e_toolcontent",
+      "type": "extends",
+      "origin": "code",
+      "status": "present",
+      "evidence": [
+        {
+          "codeRef": "src/core/SPLA.Domain/Models/ToolResult.cs"
+        }
+      ]
+    },
+    {
+      "id": "r_toolresolutionstage_itoolmiddleware_implements",
+      "from": "e_toolresolutionstage",
+      "to": "e_itoolmiddleware",
+      "type": "implements",
+      "origin": "code",
+      "status": "present",
+      "evidence": [
+        {
+          "codeRef": "src/core/SPLA.MCP.Core/Pipeline/Stages/ToolResolutionStage.cs"
+        }
+      ]
+    },
+    {
+      "id": "r_toolresolutionstage_toolpipelinestage_composes",
+      "from": "e_toolresolutionstage",
+      "to": "e_toolpipelinestage",
+      "type": "composes",
+      "origin": "code",
+      "status": "present",
+      "evidence": [
+        {
+          "codeRef": "src/core/SPLA.MCP.Core/Pipeline/Stages/ToolResolutionStage.cs",
+          "symbol": "Stage"
+        }
+      ]
+    },
+    {
+      "id": "r_toolresource_toolcontent_extends",
+      "from": "e_toolresource",
+      "to": "e_toolcontent",
+      "type": "extends",
+      "origin": "code",
+      "status": "present",
+      "evidence": [
+        {
+          "codeRef": "src/core/SPLA.Domain/Models/ToolResult.cs"
+        }
+      ]
+    },
+    {
+      "id": "r_toolresult_tooloutcome_composes",
+      "from": "e_toolresult",
+      "to": "e_tooloutcome",
+      "type": "composes",
+      "origin": "code",
+      "status": "present",
+      "evidence": [
+        {
+          "codeRef": "src/core/SPLA.Domain/Models/ToolResult.cs",
+          "symbol": "Outcome"
+        }
+      ]
+    },
+    {
+      "id": "r_toolsetactivatetool_imcptool_implements",
+      "from": "e_toolsetactivatetool",
+      "to": "e_imcptool",
+      "type": "implements",
+      "origin": "code",
+      "status": "present",
+      "evidence": [
+        {
+          "codeRef": "src/core/SPLA.MCP.Core/Tools/ToolSetActivateTool.cs"
+        }
+      ]
+    },
+    {
+      "id": "r_toolsetactivation_toolsetactivationby_composes",
+      "from": "e_toolsetactivation",
+      "to": "e_toolsetactivationby",
+      "type": "composes",
+      "origin": "code",
+      "status": "present",
+      "evidence": [
+        {
+          "codeRef": "src/core/SPLA.Domain/Agent/ToolSetSession.cs",
+          "symbol": "By"
+        }
+      ]
+    },
+    {
+      "id": "r_toolsetdeactivatetool_imcptool_implements",
+      "from": "e_toolsetdeactivatetool",
+      "to": "e_imcptool",
+      "type": "implements",
+      "origin": "code",
+      "status": "present",
+      "evidence": [
+        {
+          "codeRef": "src/core/SPLA.MCP.Core/Tools/ToolSetActivateTool.cs"
+        }
+      ]
+    },
+    {
+      "id": "r_toolsetdescriptor_toolsetorigin_composes",
+      "from": "e_toolsetdescriptor",
+      "to": "e_toolsetorigin",
+      "type": "composes",
+      "origin": "code",
+      "status": "present",
+      "evidence": [
+        {
+          "codeRef": "src/core/SPLA.MCP.Core/ToolSets/ToolSetDescriptor.cs",
+          "symbol": "Origin"
+        }
+      ]
+    },
+    {
+      "id": "r_toolsetdisclosurestage_itoolmiddleware_implements",
+      "from": "e_toolsetdisclosurestage",
+      "to": "e_itoolmiddleware",
+      "type": "implements",
+      "origin": "code",
+      "status": "present",
+      "evidence": [
+        {
+          "codeRef": "src/core/SPLA.MCP.Core/Pipeline/Stages/ToolSetDisclosureStage.cs"
+        }
+      ]
+    },
+    {
+      "id": "r_toolsetdisclosurestage_toolpipelinestage_composes",
+      "from": "e_toolsetdisclosurestage",
+      "to": "e_toolpipelinestage",
+      "type": "composes",
+      "origin": "code",
+      "status": "present",
+      "evidence": [
+        {
+          "codeRef": "src/core/SPLA.MCP.Core/Pipeline/Stages/ToolSetDisclosureStage.cs",
+          "symbol": "Stage"
+        }
+      ]
+    },
+    {
+      "id": "r_toolsetsession_itoolsetsession_implements",
+      "from": "e_toolsetsession",
+      "to": "e_itoolsetsession",
+      "type": "implements",
+      "origin": "code",
+      "status": "present",
+      "evidence": [
+        {
+          "codeRef": "src/core/SPLA.Domain/Agent/ToolSetSession.cs"
+        }
+      ]
+    },
+    {
+      "id": "r_tooltext_toolcontent_extends",
+      "from": "e_tooltext",
+      "to": "e_toolcontent",
+      "type": "extends",
+      "origin": "code",
+      "status": "present",
+      "evidence": [
+        {
+          "codeRef": "src/core/SPLA.Domain/Models/ToolResult.cs"
+        }
+      ]
+    },
+    {
+      "id": "r_turnoutcomemiddleware_illmmiddleware_implements",
+      "from": "e_turnoutcomemiddleware",
+      "to": "e_illmmiddleware",
+      "type": "implements",
+      "origin": "code",
+      "status": "present",
+      "evidence": [
+        {
+          "codeRef": "src/core/SPLA.Domain/Llm/Middleware/TurnOutcomeMiddleware.cs"
+        }
+      ]
+    },
+    {
+      "id": "r_turnoutcomemiddleware_llmpipelinestage_composes",
+      "from": "e_turnoutcomemiddleware",
+      "to": "e_llmpipelinestage",
+      "type": "composes",
+      "origin": "code",
+      "status": "present",
+      "evidence": [
+        {
+          "codeRef": "src/core/SPLA.Domain/Llm/Middleware/TurnOutcomeMiddleware.cs",
+          "symbol": "Stage"
+        }
+      ]
+    },
+    {
+      "id": "r_zoneedge_zone_composes",
+      "from": "e_zoneedge",
+      "to": "e_zone",
+      "type": "composes",
+      "origin": "code",
+      "status": "present",
+      "evidence": [
+        {
+          "codeRef": "src/core/SPLA.Domain/Security/Zone.cs",
+          "symbol": "Source"
+        }
+      ]
+    },
+    {
+      "id": "r_zoneedge_zone_composes",
+      "from": "e_zoneedge",
+      "to": "e_zone",
+      "type": "composes",
+      "origin": "code",
+      "status": "present",
+      "evidence": [
+        {
+          "codeRef": "src/core/SPLA.Domain/Security/Zone.cs",
+          "symbol": "Sink"
+        }
+      ]
+    },
+    {
+      "id": "r_zoneedge_zoneeffect_composes",
+      "from": "e_zoneedge",
+      "to": "e_zoneeffect",
+      "type": "composes",
+      "origin": "code",
+      "status": "present",
+      "evidence": [
+        {
+          "codeRef": "src/core/SPLA.Domain/Security/Zone.cs",
+          "symbol": "Effect"
+        }
+      ]
+    },
+    {
+      "id": "r_zoneshadowstage_itoolmiddleware_implements",
+      "from": "e_zoneshadowstage",
+      "to": "e_itoolmiddleware",
+      "type": "implements",
+      "origin": "code",
+      "status": "present",
+      "evidence": [
+        {
+          "codeRef": "src/core/SPLA.MCP.Core/Pipeline/Stages/ZoneShadowStage.cs"
+        }
+      ]
+    },
+    {
+      "id": "r_zoneshadowstage_toolpipelinestage_composes",
+      "from": "e_zoneshadowstage",
+      "to": "e_toolpipelinestage",
+      "type": "composes",
+      "origin": "code",
+      "status": "present",
+      "evidence": [
+        {
+          "codeRef": "src/core/SPLA.MCP.Core/Pipeline/Stages/ZoneShadowStage.cs",
+          "symbol": "Stage"
+        }
+      ]
+    },
+    {
+      "id": "f_blueprint_entry",
+      "from": "e_llmpipelineblueprint",
+      "to": "e_repetitionguardmiddleware",
+      "type": "composes",
+      "origin": "manual",
+      "status": "present"
+    },
+    {
+      "id": "f_blueprint_gateway",
+      "from": "e_llmpipelineblueprint",
+      "to": "e_illmgateway",
+      "type": "composes",
+      "origin": "manual",
+      "status": "present"
+    },
+    {
+      "id": "f_blueprint_stage",
+      "from": "e_llmpipelineblueprint",
+      "to": "e_llmpipelinestage",
+      "type": "call",
+      "origin": "manual",
+      "status": "present"
+    },
+    {
+      "id": "f_client_credentials",
+      "from": "e_illmclient",
+      "to": "e_credentialsmiddleware",
+      "type": "data-flow",
+      "origin": "manual",
+      "status": "present"
+    },
+    {
+      "id": "f_credentials_client",
+      "from": "e_illmclientresolver",
+      "to": "e_illmclient",
+      "type": "call",
+      "origin": "manual",
+      "status": "present"
+    },
+    {
+      "id": "f_credentials_resolver",
+      "from": "e_credentialsmiddleware",
+      "to": "e_illmclientresolver",
+      "type": "call",
+      "origin": "manual",
+      "status": "present"
+    },
+    {
+      "id": "f_credentials_secrets",
+      "from": "e_credentialsmiddleware",
+      "to": "e_isecretresolver",
+      "type": "security",
+      "origin": "manual",
+      "status": "present"
+    },
+    {
+      "id": "f_credentials_settings",
+      "from": "e_credentialsmiddleware",
+      "to": "e_llmsettings",
+      "type": "data-flow",
+      "origin": "manual",
+      "status": "present"
+    },
+    {
+      "id": "f_exception_providerstate",
+      "from": "e_llmrequestexception",
+      "to": "e_providerstatemiddleware",
+      "type": "event",
+      "origin": "manual",
+      "status": "present"
+    },
+    {
+      "id": "f_gateway_repetitionguard",
+      "from": "e_illmgateway",
+      "to": "e_repetitionguardmiddleware",
+      "type": "data-flow",
+      "origin": "manual",
+      "status": "present"
+    },
+    {
+      "id": "f_guard_attempt",
+      "from": "e_repetitionguardmiddleware",
+      "to": "e_turnattempt",
+      "type": "event",
+      "origin": "manual",
+      "status": "present"
+    },
+    {
+      "id": "f_guard_generationattempt",
+      "from": "e_repetitionguardmiddleware",
+      "to": "e_generationattempt",
+      "type": "event",
+      "origin": "manual",
+      "status": "present"
+    },
+    {
+      "id": "f_hop_guard_outcome",
+      "from": "e_repetitionguardmiddleware",
+      "to": "e_turnoutcomemiddleware",
+      "type": "call",
+      "origin": "manual",
+      "status": "present"
+    },
+    {
+      "id": "f_hop_outcome_state",
+      "from": "e_turnoutcomemiddleware",
+      "to": "e_providerstatemiddleware",
+      "type": "call",
+      "origin": "manual",
+      "status": "present"
+    },
+    {
+      "id": "f_hop_state_tokens",
+      "from": "e_providerstatemiddleware",
+      "to": "e_tokenaccountingmiddleware",
+      "type": "call",
+      "origin": "manual",
+      "status": "present"
+    },
+    {
+      "id": "f_hop_tokens_credentials",
+      "from": "e_tokenaccountingmiddleware",
+      "to": "e_credentialsmiddleware",
+      "type": "call",
+      "origin": "manual",
+      "status": "present"
+    },
+    {
+      "id": "f_outcome_result",
+      "from": "e_turnoutcomemiddleware",
+      "to": "e_llmturnresult",
+      "type": "data-flow",
+      "origin": "manual",
+      "status": "present"
+    },
+    {
+      "id": "f_registry_descriptor",
+      "from": "e_llmproviderregistry",
+      "to": "e_llmproviderdescriptor",
+      "type": "call",
+      "origin": "manual",
+      "status": "present"
+    },
+    {
+      "id": "f_resolver_registry",
+      "from": "e_providerclientresolver",
+      "to": "e_llmproviderregistry",
+      "type": "call",
+      "origin": "manual",
+      "status": "present"
+    },
+    {
+      "id": "f_state_statestore",
+      "from": "e_providerstatemiddleware",
+      "to": "e_providerstatestore",
+      "type": "storage",
+      "origin": "manual",
+      "status": "present"
+    },
+    {
+      "id": "f_tokens_usagestore",
+      "from": "e_tokenaccountingmiddleware",
+      "to": "e_itokenusagestore",
+      "type": "storage",
+      "origin": "manual",
+      "status": "present"
+    }
+  ]
+}

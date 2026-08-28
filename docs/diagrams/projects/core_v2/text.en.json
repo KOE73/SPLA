@@ -1,0 +1,75 @@
+{
+  "contractVersion": 2,
+  "language": "en",
+  "entries": {
+    "e_repetitionguardmiddleware": {
+      "description": "Stage Output. Observes the streamed generation, cancels a degenerate one and asks for another attempt; gives up as LlmTurnStatus.Degenerate. Lives in SPLA.Agent, runs here."
+    },
+    "e_tokenaccountingmiddleware": {
+      "description": "Stage Accounting. Folds the provider token figures into the project and machine tallies and the telemetry meter, once per network attempt. Lives in SPLA.Agent, runs here."
+    },
+    "f_blueprint_gateway": {
+      "label": "Build(resolver) \u2192"
+    },
+    "f_credentials_client": {
+      "label": "Resolve(ctx)"
+    },
+    "f_exception_providerstate": {
+      "label": "catch \u2192 .Signals"
+    },
+    "f_registry_descriptor": {
+      "label": "returns .Client"
+    },
+    "f_resolver_registry": {
+      "label": "Resolve(ctx.Settings.Provider)"
+    },
+    "f_gateway_repetitionguard": {
+      "label": "LlmTurnContext \u2193"
+    },
+    "f_hop_guard_outcome": {
+      "label": "next(ctx) \u2193 \u00B7 result \u2191"
+    },
+    "f_hop_outcome_state": {
+      "label": "next(ctx) \u2193 \u00B7 result \u2191"
+    },
+    "f_hop_state_tokens": {
+      "label": "next(ctx) \u2193 \u00B7 result \u2191"
+    },
+    "f_hop_tokens_credentials": {
+      "label": "next(ctx) \u2193 \u00B7 result \u2191"
+    },
+    "f_credentials_resolver": {
+      "label": "Resolve(ctx) \u2193"
+    },
+    "f_client_credentials": {
+      "label": "LlmTurnResult \u2191"
+    },
+    "f_credentials_secrets": {
+      "label": "secret:\u003Cscope\u003E:\u003Ckey\u003E \u2192 plaintext"
+    },
+    "f_credentials_settings": {
+      "label": "ApiKey (this turn only)"
+    },
+    "f_tokens_usagestore": {
+      "label": "prompt/completion tokens"
+    },
+    "f_state_statestore": {
+      "label": "ProviderFact (Connection)"
+    },
+    "f_outcome_result": {
+      "label": "Status \u002B Duration"
+    },
+    "f_guard_attempt": {
+      "label": "Abort() \u2192 cancel"
+    },
+    "f_guard_generationattempt": {
+      "label": "OnAttempt (abandoned)"
+    },
+    "f_blueprint_entry": {
+      "label": "Build() \u2192 entry"
+    },
+    "f_blueprint_stage": {
+      "label": "OrderBy(Stage)"
+    }
+  }
+}

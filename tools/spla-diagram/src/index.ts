@@ -12,6 +12,7 @@ export { DiagramCanvas, defaultRegistry } from "./canvas/DiagramCanvas.js";
 export type {
   CanvasEvents,
   DiagramCanvasOptions,
+  EdgeFamily,
   Selection,
   SelectionKind,
 } from "./canvas/DiagramCanvas.js";
@@ -27,7 +28,6 @@ export type {
   DiagramMetadata,
   DiagramView,
   ElementKind,
-  ElementStyle,
 } from "./model/types.js";
 export type {
   WireDocument,
@@ -36,6 +36,27 @@ export type {
   WireView,
   WireZone,
 } from "./model/wire-types.js";
+
+// Looks. An element no longer carries colours of its own, so anything that
+// wants to change how a diagram appears goes through the library rather than
+// through the model — see `model/style-types.ts` for why.
+export { StyleLibrary } from "./model/StyleLibrary.js";
+export type {
+  Endpoint,
+  Paint,
+  ResolvedBlockStyle,
+  ResolvedEdgeStyle,
+  Stroke,
+  TextStyle,
+} from "./model/StyleLibrary.js";
+export { builtinStyleSheet } from "./model/style-defaults.js";
+export type {
+  EndShape,
+  StyleTarget,
+  WireStyle,
+  WireStyleSheet,
+} from "./model/style-types.js";
+export { PaintRegistry } from "./canvas/render/PaintRegistry.js";
 
 // Extension points. Registering a renderer or swapping an algorithm is the
 // supported way to change how a diagram looks, without forking the canvas.
@@ -55,7 +76,7 @@ export { BezierRouter } from "./canvas/routing/EdgeRouter.js";
 export type { EdgeRouter, Route, RouteRequest } from "./canvas/routing/EdgeRouter.js";
 
 export { exportDrawio } from "./editor/io/drawio.js";
-export { HttpModelStore } from "./editor/io/transfer.js";
-export type { ModelStore, SaveTarget } from "./editor/io/transfer.js";
+export { HttpModelStore, HttpStyleStore } from "./editor/io/transfer.js";
+export type { ModelStore, SaveTarget, StyleStore } from "./editor/io/transfer.js";
 
 export type { BoundarySlot, Point, Rect, Side } from "./geometry/types.js";

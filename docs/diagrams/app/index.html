@@ -4,8 +4,8 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>SPLA Diagram — Visualizer &amp; Editor</title>
-    <script type="module" crossorigin src="./assets/index-7DAsxkX7.js"></script>
-    <link rel="stylesheet" crossorigin href="./assets/index-DLaMYcv5.css">
+    <script type="module" crossorigin src="./assets/index-yxAM81kW.js"></script>
+    <link rel="stylesheet" crossorigin href="./assets/index-DZMGxTJz.css">
   </head>
   <body>
     <div id="app">
@@ -18,6 +18,7 @@
         </div>
 
         <div class="views" data-slot="views"></div>
+        <div class="views tags-bar" data-slot="tags" title="Подсветить домен: гаснет всё, что не носит этот тег стиля"></div>
 
         <div class="toolbar">
           <label class="check" title="Показать или скрыть точки координатной сетки">
@@ -31,6 +32,14 @@
           <label class="check" title="Перемещать вложенные элементы вместе с зоной">
             <input type="checkbox" data-toggle="container-drag" checked />
             <span>📦 Зона-контейнер</span>
+          </label>
+
+          <label
+            class="check"
+            title="Связи-порождение (implements, extends, composes). В полной модели ядра их 100 из 119 — снимите галку, чтобы увидеть потоки"
+          >
+            <input type="checkbox" data-toggle="structure-edges" checked />
+            <span>🔗 Порождение</span>
           </label>
 
           <label class="check" title="Как связи причаливают к сторонам блоков">
@@ -108,12 +117,34 @@
           </div>
         </div>
 
-        <aside class="inspector">
+        <div class="inspector-resizer" data-slot="inspector-resizer" title="Потяните, чтобы изменить ширину панели"></div>
+
+        <aside class="inspector" data-slot="inspector">
           <div class="inspector-head">
-            <h2>Инспектор объекта</h2>
+            <h2>Инспектор</h2>
             <span class="badge" data-slot="inspector-badge">Ничего не выбрано</span>
           </div>
+
+          <div class="tab-row inspector-tabs">
+            <button class="tab is-active" data-action="tab-properties" data-tab="properties">Свойства</button>
+            <button class="tab" data-action="tab-styles" data-tab="styles">Стили</button>
+            <button class="tab" data-action="tab-base" data-tab="base">База</button>
+          </div>
+
           <div class="inspector-body" data-slot="inspector-body"></div>
+
+          <div class="inspector-body styles-pane" data-slot="styles-body" hidden>
+            <div class="style-list" data-slot="style-list"></div>
+            <div class="style-pane-resizer" data-slot="style-pane-resizer" title="Потяните, чтобы изменить ширину списка"></div>
+            <div class="style-editor" data-slot="style-editor"></div>
+          </div>
+          
+          <div class="inspector-body base-pane" data-slot="base-body" hidden style="display: flex; flex-direction: column; overflow: hidden; padding: 0;">
+            <div class="base-panel-head" style="padding: 10px; border-bottom: 1px solid var(--border); flex-shrink: 0;">
+              <input type="text" data-slot="base-search" class="input-strong" style="width:100%" placeholder="Поиск сущностей..." />
+            </div>
+            <div class="base-panel-list" data-slot="base-list" style="flex: 1; overflow-y: auto;"></div>
+          </div>
         </aside>
       </div>
 
@@ -133,6 +164,6 @@
         </div>
       </div>
     </div>
-
+
   </body>
 </html>

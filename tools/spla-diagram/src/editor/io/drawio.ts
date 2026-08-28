@@ -1,6 +1,12 @@
 import type { DiagramDocument } from "../../model/document.js";
 import type { DiagramElement } from "../../model/types.js";
-import { HEADER_HEIGHT, ZONE_DEFAULTS } from "../../canvas/render/styles.js";
+import { FALLBACK_BLOCK, FALLBACK_EDGE } from "../../model/StyleLibrary.js";
+import type {
+  Paint,
+  ResolvedBlockStyle,
+  ResolvedEdgeStyle,
+  StyleLibrary,
+} from "../../model/StyleLibrary.js";
 
 /**
  * Export to Diagrams.net (mxGraph) XML.
@@ -9,8 +15,13 @@ import { HEADER_HEIGHT, ZONE_DEFAULTS } from "../../canvas/render/styles.js";
  * and semantics travel in an `<Object as="data">` child so that meaning — type,
  * semantic id, tags, code reference — survives the round trip rather than being
  * flattened into colours.
+ *
+ * @param styles Colours come from here. Without it the export falls back to the
+ *   library's floor rather than to a second hardcoded palette — there used to be
+ *   one here (`ZONE_DEFAULTS`, a white node fill), which meant an exported file
+ *   looked nothing like the canvas it came from.
  */
-export function exportDrawio(doc: DiagramDocument): string {
+export function exportDrawio(doc: DiagramDocument, styles?: StyleLibrary): string {
   const title = doc.metadata.title;
   const parts: string[] = [];
 
@@ -29,11 +40,11 @@ export function exportDrawio(doc: DiagramDocument): string {
 
   for (const el of doc.elements()) {
     if (el.kind !== "zone") continue;
-    const style = { ...ZONE_DEFAULTS, ...(el.style ?? {}) };
-    const dashed = style.strokeDasharray !== "none" ? "1" : "0";
+    const style = blockStyleOf(el, styles);
+    const dashed = style.border.dash !== "none" ? "1" : "0";
     const cellStyle =
-      `swimlane;startSize=${HEADER_HEIGHT};rounded=1;whiteSpace=wrap;html=1;` +
-      `fillColor=${style.fill};strokeColor=${style.stroke};strokeWidth=${style.strokeWidth};` +
+      `swimlane;startSize=${Math.round(style.header.height)};rounded=1;whiteSpace=wrap;html=1;` +
+      `fillColor=${solid(style.fill)};strokeColor=${style.border.color};strokeWidth=${style.border.width};` +
       `dashed=${dashed};collapsible=1;container=1;fontStyle=1;spacingLeft=10;`;
 
     parts.push(
@@ -54,8 +65,10 @@ export function exportDrawio(doc: DiagramDocument): string {
     // Children of a swimlane are positioned relative to it.
     const x = parent === null ? el.x : el.x - parent.x;
     const y = parent === null ? el.y : el.y - parent.y;
+    const style = blockStyleOf(el, styles);
     const cellStyle =
-      "rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#64748b;strokeWidth=1.5;fontStyle=1;";
+      `rounded=1;whiteSpace=wrap;html=1;fillColor=${solid(style.fill)};` +
+      `strokeColor=${style.border.color};strokeWidth=${style.border.width};fontStyle=1;`;
 
     parts.push(
       `        <mxCell id="${attr(el.id)}" value="${attr(el.label)}" style="${attr(cellStyle)}" vertex="1" parent="${attr(parentId)}">`,
@@ -69,8 +82,11 @@ export function exportDrawio(doc: DiagramDocument): string {
   }
 
   for (const edge of doc.edges) {
+    const style: ResolvedEdgeStyle = styles === undefined ? FALLBACK_EDGE : styles.edgeStyle(edge);
     const cellStyle =
-      "edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#475569;strokeWidth=1.5;";
+      "edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;" +
+      `strokeColor=${style.line.color};strokeWidth=${style.line.width};` +
+      (style.line.dash === "none" ? "" : "dashed=1;");
     parts.push(
       `        <mxCell id="${attr(edge.id)}" value="${attr(edge.label)}" style="${attr(cellStyle)}"` +
         ` edge="1" parent="1" source="${attr(edge.from)}" target="${attr(edge.to)}">`,
@@ -97,6 +113,19 @@ function geometry(x: number, y: number, width: number, height: number): string {
     `          <mxGeometry x="${Math.round(x)}" y="${Math.round(y)}"` +
     ` width="${Math.round(width)}" height="${Math.round(height)}" as="geometry" />`
   );
+}
+
+function blockStyleOf(el: DiagramElement, styles: StyleLibrary | undefined): ResolvedBlockStyle {
+  return styles === undefined ? FALLBACK_BLOCK : styles.blockStyle(el);
+}
+
+/**
+ * mxGraph has no gradient in a cell style string worth reproducing, so a
+ * gradient exports as its first stop: recognisably the same style, rather than
+ * a colour picked out of nowhere.
+ */
+function solid(p: Paint): string {
+  return p.kind === "solid" ? p.color : p.stops[0]?.color ?? "#ffffff";
 }
 
 function codeRef(el: DiagramElement): string {

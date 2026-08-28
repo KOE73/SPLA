@@ -117,14 +117,22 @@ func ScanSources(repoRoot string, roots []string) (ScanResult, error) {
 	return ScanResult{Entities: out, Collisions: collisions, MissingRoots: missingRoots}, nil
 }
 
-// NodeType maps a declaration to a visual node type.
+// NodeType reports the kind of declaration as it was written: class,
+// interface, record, struct, enum.
+//
+// It deliberately makes no visual decision. Colours and shapes live in the
+// editor's style library, which looks a style up by this very value, so
+// collapsing "record" and "class" into one visual bucket here would destroy
+// the distinction before anything could ever draw it. The generator's job is
+// to record what it knows for certain; what that means on screen is decided
+// elsewhere and can be changed without regenerating.
 func NodeType(e Entity) string {
 	switch e.Kind {
-	case "interface":
-		return "service"
-	case "enum":
-		return "concept"
+	case "class", "interface", "record", "struct", "enum":
+		return e.Kind
 	default:
+		// An unparsed or unknown declaration: fall back to the neutral type
+		// so the node still gets a style rather than rendering unstyled.
 		return "component"
 	}
 }

@@ -12,6 +12,16 @@
  * than to the whole codebase.
  */
 
+/**
+ * Inline zone colours — the pre-styles format.
+ *
+ * Read, never written. On load each of these is matched against the style
+ * library and replaced by a `styleId`; see `migrateInlineZoneStyle` in
+ * `wire.ts`. Kept in the contract because five committed models still carry it
+ * and must keep opening correctly.
+ *
+ * @deprecated Use `styleId` and a style in `styles.json`.
+ */
 export interface WireZoneStyle {
   fill?: string;
   stroke?: string;
@@ -38,7 +48,10 @@ export interface WireZone {
   y: number;
   width: number;
   height: number;
+  /** @deprecated Migrated to `styleId` on load. */
   style?: WireZoneStyle;
+  /** Named style from `styles.json`, overriding the match by `type`. */
+  styleId?: string;
   metadata?: WireMetadata;
 }
 
@@ -53,6 +66,8 @@ export interface WireNode {
   width: number;
   height: number;
   tags?: string[];
+  /** Named style from `styles.json`, overriding the match by `type`. */
+  styleId?: string;
   metadata?: WireMetadata;
 }
 
@@ -62,6 +77,8 @@ export interface WireEdge {
   to: string;
   label?: string;
   type?: string;
+  /** Named style from `styles.json`, overriding the match by `type`. */
+  styleId?: string;
 }
 
 export interface WireView {

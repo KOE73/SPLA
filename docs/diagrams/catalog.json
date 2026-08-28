@@ -9,6 +9,14 @@
       "theme": "blue"
     },
     {
+      "id": "core_v2",
+      "file": "projects/core_v2/views/v_semantic_atlas.view.json",
+      "title": "Core Layer (src/core)",
+      "subtitle": "Domain, MCP, Security, Host",
+      "icon": "🧠",
+      "theme": "emerald"
+    },
+    {
       "id": "src_core",
       "file": "model-core.json",
       "title": "Core Layer (src/core)",

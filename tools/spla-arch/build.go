@@ -14,18 +14,28 @@ import (
 const unplacedID = "__unplaced"
 
 type buildResult struct {
-	Diagram   *model.Diagram
-	Drift     mapping.Drift
-	Placement map[string]string
-	Problems  []string
-	Unplaced  int
-	Inherited int
+	Diagram      *model.Diagram
+	Drift        mapping.Drift
+	Placement    map[string]string
+	Problems     []string
+	Unplaced     int
+	Inherited    int
+	LayoutNotes  []string
 }
 
 // buildAtlas regenerates a semantic-atlas diagram from a mapping file.
 // Everything the mapping does not claim is parked in a loud zone on the canvas
 // instead of being silently dropped — that parking lot is the work queue.
-func buildAtlas(m *mapping.Mapping, repoRoot string, prev *mapping.Known, semantic []model.Edge) (*buildResult, error) {
+//
+// prevDiagram is the atlas this same command wrote last time, if any. Its
+// geometry (zone/node X/Y/Width/Height), its zone Style and Metadata, and
+// any node Metadata.description a human or a prior session wrote are
+// authored content, not derived data — build never recomputes them. Only
+// genuinely new entities and zones get a fresh position; see
+// layout.ApplyPreserving.
+func buildAtlas(
+	m *mapping.Mapping, repoRoot string, prev *mapping.Known, semantic []model.Edge, prevDiagram *model.Diagram,
+) (*buildResult, error) {
 	res, problems := mapping.NewResolver(m)
 
 	scan, err := parser.ScanSources(repoRoot, m.Sources)
@@ -73,6 +83,13 @@ func buildAtlas(m *mapping.Mapping, repoRoot string, prev *mapping.Known, semant
 		}
 	}
 
+	prevNodes := map[string]model.Node{}
+	if prevDiagram != nil {
+		for _, n := range prevDiagram.Nodes {
+			prevNodes[n.ID] = n
+		}
+	}
+
 	for i, e := range entities {
 		target := unplacedID
 		if resolved[i] != "" {
@@ -84,14 +101,25 @@ func buildAtlas(m *mapping.Mapping, repoRoot string, prev *mapping.Known, semant
 		id := nodeID(e.Name)
 		members[target] = append(members[target], id)
 		label[id] = e.Name
+
+		meta := map[string]interface{}{
+			"codeRef": e.CodeRef,
+			"type":    strings.ToUpper(e.Kind[:1]) + e.Kind[1:],
+		}
+		// A description is never derived from the code — nothing here writes
+		// one. If a human (or an earlier session) already put one on this
+		// node, carry it forward instead of dropping it on every rebuild.
+		if pn, ok := prevNodes[id]; ok {
+			if desc, ok := pn.Metadata["description"]; ok {
+				meta["description"] = desc
+			}
+		}
+
 		nodes = append(nodes, model.Node{
-			ID:    id,
-			Label: e.Name,
-			Type:  parser.NodeType(e),
-			Metadata: map[string]interface{}{
-				"codeRef": e.CodeRef,
-				"type":    strings.ToUpper(e.Kind[:1]) + e.Kind[1:],
-			},
+			ID:       id,
+			Label:    e.Name,
+			Type:     parser.NodeType(e),
+			Metadata: meta,
 		})
 	}
 
@@ -147,7 +175,7 @@ func buildAtlas(m *mapping.Mapping, repoRoot string, prev *mapping.Known, semant
 		Views: []model.View{{ID: "all", Name: "Полный атлас", Icon: "🧠"}},
 		Nodes: nodes,
 	}
-	layout.ApplyNested(diag, roots)
+	layoutNotes := layout.ApplyPreserving(diag, roots, layout.LoadPrevLayout(prevDiagram))
 
 	// --- edges: structure extracted from code, flows curated by hand ---
 	present := map[string]bool{}
@@ -193,12 +221,13 @@ func buildAtlas(m *mapping.Mapping, repoRoot string, prev *mapping.Known, semant
 	diag.Edges = filtered
 
 	return &buildResult{
-		Diagram:   diag,
-		Drift:     mapping.Compare(prev, placement),
-		Placement: placement,
-		Problems:  problems,
-		Unplaced:  len(unplaced),
-		Inherited: inherited,
+		Diagram:     diag,
+		Drift:       mapping.Compare(prev, placement),
+		Placement:   placement,
+		Problems:    problems,
+		Unplaced:    len(unplaced),
+		Inherited:   inherited,
+		LayoutNotes: layoutNotes,
 	}, nil
 }
 
@@ -244,7 +273,13 @@ func report(r *buildResult) {
 	if len(d.Removed) > 0 {
 		fmt.Printf("  🗑 удалены из кода (%d): %s\n", len(d.Removed), strings.Join(d.Removed, ", "))
 	}
-	if d.Clean() && r.Unplaced == 0 && len(r.Problems) == 0 {
+	if len(r.LayoutNotes) > 0 {
+		fmt.Printf("  📐 новая геометрия — не тронута кураторская, но требует взгляда (%d):\n", len(r.LayoutNotes))
+		for _, note := range r.LayoutNotes {
+			fmt.Printf("      %s\n", note)
+		}
+	}
+	if d.Clean() && r.Unplaced == 0 && len(r.Problems) == 0 && len(r.LayoutNotes) == 0 {
 		fmt.Println("  ✓ всё разложено, изменений с прошлого прогона нет")
 	}
 }

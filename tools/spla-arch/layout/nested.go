@@ -12,8 +12,12 @@ import (
 // its shelf-packed children), then placed top-down. Containers never overlap
 // and every node lies fully inside its own container.
 //
-// Coordinates here are derived, not authored. The durable artifact is the
-// mapping file; this function is free to move everything on every run.
+// This is the from-scratch layout: every element gets a fresh position, as
+// if nothing existed before. It is what a first run uses, and what
+// ApplyPreserving (preserve.go) falls back to for a genuinely new subtree.
+// It is NOT what a rebuild of an existing diagram uses — see
+// ApplyPreserving, which keeps a human's placement for everything that
+// already had one and only calls into this file for what is actually new.
 const (
 	nodeW    = 170.0
 	nodeH    = 50.0
@@ -45,35 +49,27 @@ type Box struct {
 	childRowsH []float64
 }
 
-// Palette maps a theme name to zone colours.
-var Palette = map[string]model.ZoneStyle{
-	"green":   {Fill: "#f0fdf4", Stroke: "#86efac", StrokeWidth: 2, HeaderBg: "#dcfce7"},
-	"blue":    {Fill: "#eff6ff", Stroke: "#93c5fd", StrokeWidth: 2, HeaderBg: "#dbeafe"},
-	"fuchsia": {Fill: "#fdf4ff", Stroke: "#f0abfc", StrokeWidth: 2, HeaderBg: "#fae8ff"},
-	"red":     {Fill: "#fff1f2", Stroke: "#fca5a5", StrokeWidth: 2, HeaderBg: "#ffe4e6"},
-	"yellow":  {Fill: "#fefce8", Stroke: "#fde047", StrokeWidth: 2, HeaderBg: "#fef9c3"},
-	"slate":   {Fill: "#f8fafc", Stroke: "#cbd5e1", StrokeWidth: 2, HeaderBg: "#e2e8f0"},
-	"violet":  {Fill: "#f5f3ff", Stroke: "#c4b5fd", StrokeWidth: 2, HeaderBg: "#ede9fe"},
-	"amber":   {Fill: "#fffbeb", Stroke: "#fde68a", StrokeWidth: 2, HeaderBg: "#fef3c7"},
-	"sky":     {Fill: "#f0f9ff", Stroke: "#7dd3fc", StrokeWidth: 2, HeaderBg: "#e0f2fe"},
-	"cyan":    {Fill: "#ecfeff", Stroke: "#67e8f9", StrokeWidth: 2, HeaderBg: "#cffafe"},
-	"lime":    {Fill: "#f7fee7", Stroke: "#bef264", StrokeWidth: 2, HeaderBg: "#ecfccb"},
-	"pink":    {Fill: "#fdf2f8", Stroke: "#f9a8d4", StrokeWidth: 2, HeaderBg: "#fce7f3"},
-	"gray":    {Fill: "#f1f5f9", Stroke: "#94a3b8", StrokeWidth: 2, HeaderBg: "#e2e8f0"},
+// Themes are the zone theme names a mapping may declare. The colours behind
+// them are no longer here: they live in docs/diagrams/styles.json under the
+// id "zone.<theme>" and are edited in the diagram editor. This set exists
+// only to catch a theme name that does not exist, so a typo falls back to
+// "slate" instead of producing a zone the editor cannot style.
+var Themes = map[string]bool{
+	"green": true, "blue": true, "fuchsia": true, "red": true,
+	"yellow": true, "slate": true, "violet": true, "amber": true,
+	"sky": true, "cyan": true, "lime": true, "pink": true, "gray": true,
 	// Reserved for the parking lot — deliberately loud.
-	"unplaced": {Fill: "#fff7ed", Stroke: "#fb923c", StrokeWidth: 3, StrokeDasharray: "8 4", HeaderBg: "#ffedd5"},
+	"unplaced": true,
 }
 
-func styleFor(theme string, depth int) model.ZoneStyle {
-	s, ok := Palette[theme]
-	if !ok {
-		s = Palette["slate"]
+// styleIDFor names the style library entry for a zone's theme. Depth plays no
+// part: nesting is already legible from the geometry, and one id per theme
+// keeps the library small enough to edit by hand.
+func styleIDFor(theme string) string {
+	if !Themes[theme] {
+		theme = "slate"
 	}
-	if depth > 0 {
-		// nested containers read as sub-divisions, not as separate regions
-		s.StrokeWidth = math.Max(1, s.StrokeWidth-0.5*float64(depth))
-	}
-	return s
+	return "zone." + theme
 }
 
 func colsFor(n int) int {
@@ -172,7 +168,7 @@ func place(b *Box, x, y float64, depth int, out *[]model.Zone, nodeByID map[stri
 		Type:       zType,
 		SemanticID: "block." + b.ID,
 		X:          x, Y: y, Width: b.w, Height: b.h,
-		Style:    styleFor(b.Theme, depth),
+		StyleID:  styleIDFor(b.Theme),
 		Metadata: map[string]interface{}{"depth": depth},
 	})
 

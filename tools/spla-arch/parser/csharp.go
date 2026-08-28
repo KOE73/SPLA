@@ -140,7 +140,7 @@ func ParseCSharpFolder(rootDir string, title string) (*model.Diagram, error) {
 				Y:          curY,
 				Width:      600.0,
 				Height:     400.0,
-				Style: model.ZoneStyle{
+				Style: &model.ZoneStyle{
 					Fill:        "#f8fafc",
 					Stroke:      "#cbd5e1",
 					StrokeWidth: 2,
