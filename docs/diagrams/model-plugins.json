@@ -50,13 +50,7 @@
       "y": 40,
       "width": 300,
       "height": 450,
-      "style": {
-        "fill": "#eff6ff",
-        "stroke": "#93c5fd",
-        "strokeWidth": 2,
-        "strokeDasharray": "none",
-        "headerBg": "#dbeafe"
-      },
+      "styleId": "domain.tools.host",
       "metadata": {
         "description": "Core tool dispatcher with level gating and handle routing."
       }
@@ -74,13 +68,7 @@
       "y": 40,
       "width": 320,
       "height": 450,
-      "style": {
-        "fill": "#f0fdf4",
-        "stroke": "#86efac",
-        "strokeWidth": 2,
-        "strokeDasharray": "none",
-        "headerBg": "#dcfce7"
-      },
+      "styleId": "domain.network",
       "metadata": {
         "description": "Pure C# network probing tools."
       }
@@ -99,13 +87,7 @@
       "y": 40,
       "width": 320,
       "height": 450,
-      "style": {
-        "fill": "#faf5ff",
-        "stroke": "#d8b4fe",
-        "strokeWidth": 2,
-        "strokeDasharray": "none",
-        "headerBg": "#f3e8ff"
-      },
+      "styleId": "domain.ssh",
       "metadata": {
         "description": "Interactive SSH sessions and secure file transfers."
       }
@@ -123,13 +105,7 @@
       "y": 40,
       "width": 300,
       "height": 450,
-      "style": {
-        "fill": "#fffbeb",
-        "stroke": "#fde68a",
-        "strokeWidth": 2,
-        "strokeDasharray": "none",
-        "headerBg": "#fef3c7"
-      },
+      "styleId": "domain.document",
       "metadata": {
         "description": "PDF text extraction and spreadsheet analysis."
       }

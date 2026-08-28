@@ -55,13 +55,7 @@
       "y": 40,
       "width": 620,
       "height": 460,
-      "style": {
-        "fill": "#f8fafc",
-        "stroke": "#94a3b8",
-        "strokeWidth": 2,
-        "strokeDasharray": "none",
-        "headerBg": "#e2e8f0"
-      },
+      "styleId": "domain.outer",
       "metadata": {
         "description": "Содержит вложенную зону и четыре узла. Проверяет перетаскивание контейнером.",
         "responsibilities": ["Вложенность зон", "Групповое перетаскивание"]
@@ -99,13 +93,7 @@
       "y": 40,
       "width": 320,
       "height": 240,
-      "style": {
-        "fill": "#f0fdf4",
-        "stroke": "#86efac",
-        "strokeWidth": 2,
-        "strokeDasharray": "none",
-        "headerBg": "#dcfce7"
-      },
+      "styleId": "domain.collapse",
       "metadata": {
         "description": "Сверни: внутренняя связь пропадёт, внешние переедут на шапку.",
         "responsibilities": ["Проверка R-REND-06", "Проверка R-REND-12"]
@@ -121,13 +109,7 @@
       "y": 320,
       "width": 320,
       "height": 200,
-      "style": {
-        "fill": "#fff1f2",
-        "stroke": "#fca5a5",
-        "strokeWidth": 2,
-        "strokeDasharray": "6,4",
-        "headerBg": "#ffe4e6"
-      },
+      "styleId": "domain.dashed",
       "metadata": {
         "description": "Пунктирная обводка и своя заливка шапки. При сворачивании пунктир должен подавляться.",
         "responsibilities": ["Проверка zone.style"]

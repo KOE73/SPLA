@@ -17,19 +17,14 @@
   "zones": [
     {
       "id": "z_llm",
-      "name": "LLM: провайдеры и ход (37)",
+      "name": "LLM: провайдеры и ход (41)",
       "type": "boundary",
       "semanticId": "block.llm",
-      "x": 36,
-      "y": 36,
-      "width": 962,
-      "height": 806,
-      "style": {
-        "fill": "#f0fdf4",
-        "stroke": "#86efac",
-        "strokeWidth": 2,
-        "headerBg": "#dcfce7"
-      },
+      "x": -1950,
+      "y": 1380,
+      "width": 2852,
+      "height": 1290,
+      "styleId": "domain.llm",
       "metadata": {
         "depth": 0
       }
@@ -39,73 +34,54 @@
       "name": "Провайдеры и шлюз (10)",
       "type": "component",
       "semanticId": "block.llm_providers",
-      "x": 50,
-      "y": 66,
+      "x": -1930,
+      "y": 1560,
       "width": 750,
-      "height": 222,
-      "style": {
-        "fill": "#f0fdf4",
-        "stroke": "#86efac",
-        "strokeWidth": 1.5,
-        "headerBg": "#dcfce7"
-      },
+      "height": 690,
       "metadata": {
         "depth": 1
-      }
+      },
+      "styleId": "zone.green"
     },
     {
       "id": "z_llm_middleware",
-      "name": "Цепочка middleware (7)",
+      "name": "Цепочка middleware (11)",
       "type": "component",
       "semanticId": "block.llm_middleware",
-      "x": 50,
-      "y": 304,
-      "width": 566,
-      "height": 222,
-      "style": {
-        "fill": "#f0fdf4",
-        "stroke": "#86efac",
-        "strokeWidth": 1.5,
-        "headerBg": "#dcfce7"
-      },
+      "x": -1120,
+      "y": 1480,
+      "width": 900,
+      "height": 1040,
       "metadata": {
-        "depth": 1
-      }
+        "depth": 1,
+        "description": "Ordered interceptors wrapped around one model call: output guard, accounting, provider state and credential materialization. Stage decides nesting, not registration order."
+      },
+      "styleId": "zone.green"
     },
     {
       "id": "z_llm_turn",
       "name": "Модель хода (20)",
       "type": "component",
       "semanticId": "block.llm_turn",
-      "x": 50,
-      "y": 542,
+      "x": -46,
+      "y": 1450,
       "width": 934,
-      "height": 286,
-      "style": {
-        "fill": "#f0fdf4",
-        "stroke": "#86efac",
-        "strokeWidth": 1.5,
-        "headerBg": "#dcfce7"
-      },
+      "height": 600,
       "metadata": {
         "depth": 1
-      }
+      },
+      "styleId": "zone.green"
     },
     {
       "id": "z_toolpipe",
-      "name": "Конвейер инструментов (MCP) (77)",
+      "name": "Конвейер инструментов (MCP) (78)",
       "type": "boundary",
       "semanticId": "block.toolpipe",
-      "x": 1034,
-      "y": 36,
+      "x": 2336,
+      "y": 1046,
       "width": 1360,
       "height": 1474,
-      "style": {
-        "fill": "#eff6ff",
-        "stroke": "#93c5fd",
-        "strokeWidth": 2,
-        "headerBg": "#dbeafe"
-      },
+      "styleId": "domain.toolpipe",
       "metadata": {
         "depth": 0
       }
@@ -115,130 +91,95 @@
       "name": "Контракты конвейера (15)",
       "type": "component",
       "semanticId": "block.tool_contracts",
-      "x": 1048,
-      "y": 66,
+      "x": 2350,
+      "y": 1076,
       "width": 750,
       "height": 286,
-      "style": {
-        "fill": "#eff6ff",
-        "stroke": "#93c5fd",
-        "strokeWidth": 1.5,
-        "headerBg": "#dbeafe"
-      },
       "metadata": {
         "depth": 1
-      }
+      },
+      "styleId": "zone.blue"
     },
     {
       "id": "z_tool_stages",
       "name": "Стадии конвейера (11)",
       "type": "component",
       "semanticId": "block.tool_stages",
-      "x": 1048,
-      "y": 368,
+      "x": 2350,
+      "y": 1378,
       "width": 750,
       "height": 222,
-      "style": {
-        "fill": "#eff6ff",
-        "stroke": "#93c5fd",
-        "strokeWidth": 1.5,
-        "headerBg": "#dbeafe"
-      },
       "metadata": {
         "depth": 1
-      }
+      },
+      "styleId": "zone.blue"
     },
     {
       "id": "z_tool_host",
-      "name": "Хост и выставление наружу (16)",
+      "name": "Хост и выставление наружу (17)",
       "type": "component",
       "semanticId": "block.tool_host",
-      "x": 1048,
-      "y": 606,
-      "width": 750,
+      "x": 2350,
+      "y": 1616,
+      "width": 934,
       "height": 286,
-      "style": {
-        "fill": "#eff6ff",
-        "stroke": "#93c5fd",
-        "strokeWidth": 1.5,
-        "headerBg": "#dbeafe"
-      },
       "metadata": {
         "depth": 1
-      }
+      },
+      "styleId": "zone.blue"
     },
     {
       "id": "z_tool_progress",
       "name": "Прогресс и фон (14)",
       "type": "component",
       "semanticId": "block.tool_progress",
-      "x": 1048,
-      "y": 908,
+      "x": 2350,
+      "y": 1918,
       "width": 750,
       "height": 286,
-      "style": {
-        "fill": "#eff6ff",
-        "stroke": "#93c5fd",
-        "strokeWidth": 1.5,
-        "headerBg": "#dbeafe"
-      },
       "metadata": {
         "depth": 1
-      }
+      },
+      "styleId": "zone.blue"
     },
     {
       "id": "z_agent_comp",
       "name": "Композиция агента (14)",
       "type": "component",
       "semanticId": "block.agent_comp",
-      "x": 1048,
-      "y": 1210,
+      "x": 2350,
+      "y": 2220,
       "width": 750,
       "height": 286,
-      "style": {
-        "fill": "#eff6ff",
-        "stroke": "#93c5fd",
-        "strokeWidth": 1.5,
-        "headerBg": "#dbeafe"
-      },
       "metadata": {
         "depth": 1
-      }
+      },
+      "styleId": "zone.blue"
     },
     {
       "id": "z_formats",
       "name": "Конвертеры форматов (7)",
       "type": "component",
       "semanticId": "block.formats",
-      "x": 1814,
-      "y": 1210,
+      "x": 3116,
+      "y": 2220,
       "width": 566,
       "height": 222,
-      "style": {
-        "fill": "#eff6ff",
-        "stroke": "#93c5fd",
-        "strokeWidth": 1.5,
-        "headerBg": "#dbeafe"
-      },
       "metadata": {
         "depth": 1
-      }
+      },
+      "styleId": "zone.blue"
     },
     {
       "id": "z_plugins",
       "name": "Плагины и наборы инструментов (23)",
       "type": "boundary",
       "semanticId": "block.plugins",
-      "x": 36,
-      "y": 1546,
+      "x": 2336,
+      "y": 2720,
       "width": 778,
       "height": 678,
-      "style": {
-        "fill": "#fdf4ff",
-        "stroke": "#f0abfc",
-        "strokeWidth": 2,
-        "headerBg": "#fae8ff"
-      },
+      "styleId": "domain.plugins",
       "metadata": {
         "depth": 0
       }
@@ -248,73 +189,53 @@
       "name": "Контракты плагина (5)",
       "type": "component",
       "semanticId": "block.plugin_contracts",
-      "x": 50,
-      "y": 1576,
+      "x": 2350,
+      "y": 2750,
       "width": 566,
       "height": 158,
-      "style": {
-        "fill": "#fdf4ff",
-        "stroke": "#f0abfc",
-        "strokeWidth": 1.5,
-        "headerBg": "#fae8ff"
-      },
       "metadata": {
         "depth": 1
-      }
+      },
+      "styleId": "zone.fuchsia"
     },
     {
       "id": "z_plugin_loading",
       "name": "Загрузка и обнаружение (9)",
       "type": "component",
       "semanticId": "block.plugin_loading",
-      "x": 50,
-      "y": 1750,
+      "x": 2350,
+      "y": 2924,
       "width": 750,
       "height": 222,
-      "style": {
-        "fill": "#fdf4ff",
-        "stroke": "#f0abfc",
-        "strokeWidth": 1.5,
-        "headerBg": "#fae8ff"
-      },
       "metadata": {
         "depth": 1
-      }
+      },
+      "styleId": "zone.fuchsia"
     },
     {
       "id": "z_toolsets",
       "name": "ToolSets (9)",
       "type": "component",
       "semanticId": "block.toolsets",
-      "x": 50,
-      "y": 1988,
+      "x": 2350,
+      "y": 3162,
       "width": 750,
       "height": 222,
-      "style": {
-        "fill": "#fdf4ff",
-        "stroke": "#f0abfc",
-        "strokeWidth": 1.5,
-        "headerBg": "#fae8ff"
-      },
       "metadata": {
         "depth": 1
-      }
+      },
+      "styleId": "zone.fuchsia"
     },
     {
       "id": "z_chat",
       "name": "Чат и сессия (17)",
       "type": "boundary",
       "semanticId": "block.chat",
-      "x": 850,
-      "y": 1546,
+      "x": 1202,
+      "y": 1046,
       "width": 934,
       "height": 286,
-      "style": {
-        "fill": "#fffbeb",
-        "stroke": "#fde68a",
-        "strokeWidth": 2,
-        "headerBg": "#fef3c7"
-      },
+      "styleId": "domain.chat",
       "metadata": {
         "depth": 0
       }
@@ -324,16 +245,11 @@
       "name": "Безопасность и полномочия (73)",
       "type": "boundary",
       "semanticId": "block.security",
-      "x": 36,
-      "y": 2260,
+      "x": 40,
+      "y": 3598,
       "width": 990,
       "height": 1564,
-      "style": {
-        "fill": "#fff1f2",
-        "stroke": "#fca5a5",
-        "strokeWidth": 2,
-        "headerBg": "#ffe4e6"
-      },
+      "styleId": "domain.security",
       "metadata": {
         "depth": 0
       }
@@ -343,149 +259,109 @@
       "name": "Разрешения (12)",
       "type": "component",
       "semanticId": "block.sec_permissions",
-      "x": 50,
-      "y": 2290,
+      "x": 54,
+      "y": 3628,
       "width": 750,
       "height": 222,
-      "style": {
-        "fill": "#fff1f2",
-        "stroke": "#fca5a5",
-        "strokeWidth": 1.5,
-        "headerBg": "#ffe4e6"
-      },
       "metadata": {
         "depth": 1
-      }
+      },
+      "styleId": "zone.red"
     },
     {
       "id": "z_sec_zones",
       "name": "Зоны и рёбра (11)",
       "type": "component",
       "semanticId": "block.sec_zones",
-      "x": 50,
-      "y": 2528,
+      "x": 54,
+      "y": 3866,
       "width": 750,
       "height": 222,
-      "style": {
-        "fill": "#fff1f2",
-        "stroke": "#fca5a5",
-        "strokeWidth": 1.5,
-        "headerBg": "#ffe4e6"
-      },
       "metadata": {
         "depth": 1
-      }
+      },
+      "styleId": "zone.red"
     },
     {
       "id": "z_sec_sandbox",
       "name": "Песочница и возможности хоста (21)",
       "type": "component",
       "semanticId": "block.sec_sandbox",
-      "x": 50,
-      "y": 2766,
+      "x": 54,
+      "y": 4104,
       "width": 934,
       "height": 350,
-      "style": {
-        "fill": "#fff1f2",
-        "stroke": "#fca5a5",
-        "strokeWidth": 1.5,
-        "headerBg": "#ffe4e6"
-      },
       "metadata": {
         "depth": 1
-      }
+      },
+      "styleId": "zone.red"
     },
     {
       "id": "z_sec_secrets",
       "name": "Секреты (21)",
       "type": "component",
       "semanticId": "block.sec_secrets",
-      "x": 50,
-      "y": 3132,
+      "x": 54,
+      "y": 4470,
       "width": 962,
       "height": 440,
-      "style": {
-        "fill": "#fff1f2",
-        "stroke": "#fca5a5",
-        "strokeWidth": 1.5,
-        "headerBg": "#ffe4e6"
-      },
       "metadata": {
         "depth": 1
-      }
+      },
+      "styleId": "zone.red"
     },
     {
       "id": "z_sec_secrets_domain",
       "name": "Хранилище и политика (19)",
       "type": "component",
       "semanticId": "block.sec_secrets_domain",
-      "x": 64,
-      "y": 3162,
+      "x": 68,
+      "y": 4500,
       "width": 934,
       "height": 286,
-      "style": {
-        "fill": "#fff1f2",
-        "stroke": "#fca5a5",
-        "strokeWidth": 1,
-        "headerBg": "#ffe4e6"
-      },
       "metadata": {
         "depth": 2
-      }
+      },
+      "styleId": "zone.red"
     },
     {
       "id": "z_sec_secrets_dpapi",
       "name": "DPAPI (2)",
       "type": "component",
       "semanticId": "block.sec_secrets_dpapi",
-      "x": 64,
-      "y": 3464,
+      "x": 68,
+      "y": 4802,
       "width": 382,
       "height": 94,
-      "style": {
-        "fill": "#fff1f2",
-        "stroke": "#fca5a5",
-        "strokeWidth": 1,
-        "headerBg": "#ffe4e6"
-      },
       "metadata": {
         "depth": 2
-      }
+      },
+      "styleId": "zone.red"
     },
     {
       "id": "z_sec_identity",
       "name": "Идентичность (8)",
       "type": "component",
       "semanticId": "block.sec_identity",
-      "x": 50,
-      "y": 3588,
+      "x": 54,
+      "y": 4926,
       "width": 566,
       "height": 222,
-      "style": {
-        "fill": "#fff1f2",
-        "stroke": "#fca5a5",
-        "strokeWidth": 1.5,
-        "headerBg": "#ffe4e6"
-      },
       "metadata": {
         "depth": 1
-      }
+      },
+      "styleId": "zone.red"
     },
     {
       "id": "z_memory",
       "name": "Память агента и контекст (32)",
       "type": "boundary",
       "semanticId": "block.memory",
-      "x": 1062,
-      "y": 2260,
+      "x": 40,
+      "y": 40,
       "width": 992,
       "height": 742,
-      "style": {
-        "fill": "#f0f9ff",
-        "stroke": "#7dd3fc",
-        "strokeWidth": 2,
-        "headerBg": "#e0f2fe"
-      },
+      "styleId": "domain.memory",
       "metadata": {
         "depth": 0
       }
@@ -495,92 +371,67 @@
       "name": "KV и блобы (14)",
       "type": "component",
       "semanticId": "block.mem_kv",
-      "x": 1076,
-      "y": 2290,
+      "x": 54,
+      "y": 70,
       "width": 750,
       "height": 286,
-      "style": {
-        "fill": "#f0f9ff",
-        "stroke": "#7dd3fc",
-        "strokeWidth": 1.5,
-        "headerBg": "#e0f2fe"
-      },
       "metadata": {
         "depth": 1
-      }
+      },
+      "styleId": "zone.sky"
     },
     {
       "id": "z_mem_context",
       "name": "Сборка контекста и метки (2)",
       "type": "component",
       "semanticId": "block.mem_context",
-      "x": 1076,
-      "y": 2592,
+      "x": 60,
+      "y": 410,
       "width": 382,
       "height": 94,
-      "style": {
-        "fill": "#f0f9ff",
-        "stroke": "#7dd3fc",
-        "strokeWidth": 1.5,
-        "headerBg": "#e0f2fe"
-      },
       "metadata": {
         "depth": 1
-      }
+      },
+      "styleId": "zone.sky"
     },
     {
       "id": "z_mem_accounting",
       "name": "Учёт токенов (4)",
       "type": "component",
       "semanticId": "block.mem_accounting",
-      "x": 1474,
-      "y": 2592,
+      "x": -50,
+      "y": 2110,
       "width": 566,
-      "height": 158,
-      "style": {
-        "fill": "#f0f9ff",
-        "stroke": "#7dd3fc",
-        "strokeWidth": 1.5,
-        "headerBg": "#e0f2fe"
-      },
+      "height": 350,
       "metadata": {
         "depth": 1
-      }
+      },
+      "styleId": "zone.sky"
     },
     {
       "id": "z_mem_tools",
       "name": "Инструменты памяти (12)",
       "type": "component",
       "semanticId": "block.mem_tools",
-      "x": 1076,
-      "y": 2766,
+      "x": 54,
+      "y": 546,
       "width": 750,
       "height": 222,
-      "style": {
-        "fill": "#f0f9ff",
-        "stroke": "#7dd3fc",
-        "strokeWidth": 1.5,
-        "headerBg": "#e0f2fe"
-      },
       "metadata": {
         "depth": 1
-      }
+      },
+      "styleId": "zone.sky"
     },
     {
       "id": "z_content",
       "name": "Содержимое, редактор и ресурсы (30)",
       "type": "boundary",
       "semanticId": "block.content",
-      "x": 36,
-      "y": 3860,
+      "x": 1232,
+      "y": 40,
       "width": 806,
       "height": 786,
-      "style": {
-        "fill": "#fefce8",
-        "stroke": "#fde047",
-        "strokeWidth": 2,
-        "headerBg": "#fef9c3"
-      },
+      "styleId": "domain.content",
       "metadata": {
         "depth": 0
       }
@@ -590,92 +441,67 @@
       "name": "Редактор и схемы (11)",
       "type": "component",
       "semanticId": "block.editor",
-      "x": 50,
-      "y": 3890,
+      "x": 1246,
+      "y": 70,
       "width": 750,
       "height": 222,
-      "style": {
-        "fill": "#fefce8",
-        "stroke": "#fde047",
-        "strokeWidth": 1.5,
-        "headerBg": "#fef9c3"
-      },
       "metadata": {
         "depth": 1
-      }
+      },
+      "styleId": "zone.yellow"
     },
     {
       "id": "z_resources",
       "name": "Ресурсы (19)",
       "type": "component",
       "semanticId": "block.resources",
-      "x": 50,
-      "y": 4128,
+      "x": 1246,
+      "y": 308,
       "width": 778,
       "height": 504,
-      "style": {
-        "fill": "#fefce8",
-        "stroke": "#fde047",
-        "strokeWidth": 1.5,
-        "headerBg": "#fef9c3"
-      },
       "metadata": {
         "depth": 1
-      }
+      },
+      "styleId": "zone.yellow"
     },
     {
       "id": "z_res_core",
       "name": "Реестр и провайдеры (12)",
       "type": "component",
       "semanticId": "block.res_core",
-      "x": 64,
-      "y": 4158,
+      "x": 1260,
+      "y": 338,
       "width": 750,
       "height": 222,
-      "style": {
-        "fill": "#fefce8",
-        "stroke": "#fde047",
-        "strokeWidth": 1,
-        "headerBg": "#fef9c3"
-      },
       "metadata": {
         "depth": 2
-      }
+      },
+      "styleId": "zone.yellow"
     },
     {
       "id": "z_res_tools",
       "name": "Инструменты ресурсов (7)",
       "type": "component",
       "semanticId": "block.res_tools",
-      "x": 64,
-      "y": 4396,
+      "x": 1260,
+      "y": 576,
       "width": 566,
       "height": 222,
-      "style": {
-        "fill": "#fefce8",
-        "stroke": "#fde047",
-        "strokeWidth": 1,
-        "headerBg": "#fef9c3"
-      },
       "metadata": {
         "depth": 2
-      }
+      },
+      "styleId": "zone.yellow"
     },
     {
       "id": "z_skills",
       "name": "Навыки и библиотека (40)",
       "type": "boundary",
       "semanticId": "block.skills",
-      "x": 878,
-      "y": 3860,
+      "x": 2238,
+      "y": 40,
       "width": 962,
       "height": 806,
-      "style": {
-        "fill": "#f5f3ff",
-        "stroke": "#c4b5fd",
-        "strokeWidth": 2,
-        "headerBg": "#ede9fe"
-      },
+      "styleId": "domain.skills",
       "metadata": {
         "depth": 0
       }
@@ -685,73 +511,53 @@
       "name": "Библиотека и каталог (17)",
       "type": "component",
       "semanticId": "block.skills_library",
-      "x": 892,
-      "y": 3890,
+      "x": 2252,
+      "y": 70,
       "width": 934,
       "height": 286,
-      "style": {
-        "fill": "#f5f3ff",
-        "stroke": "#c4b5fd",
-        "strokeWidth": 1.5,
-        "headerBg": "#ede9fe"
-      },
       "metadata": {
         "depth": 1
-      }
+      },
+      "styleId": "zone.violet"
     },
     {
       "id": "z_skills_sources",
       "name": "Источники и доверие (17)",
       "type": "component",
       "semanticId": "block.skills_sources",
-      "x": 892,
-      "y": 4192,
+      "x": 2252,
+      "y": 372,
       "width": 934,
       "height": 286,
-      "style": {
-        "fill": "#f5f3ff",
-        "stroke": "#c4b5fd",
-        "strokeWidth": 1.5,
-        "headerBg": "#ede9fe"
-      },
       "metadata": {
         "depth": 1
-      }
+      },
+      "styleId": "zone.violet"
     },
     {
       "id": "z_skills_session",
       "name": "Сессия и инструменты (6)",
       "type": "component",
       "semanticId": "block.skills_session",
-      "x": 892,
-      "y": 4494,
+      "x": 2252,
+      "y": 674,
       "width": 566,
       "height": 158,
-      "style": {
-        "fill": "#f5f3ff",
-        "stroke": "#c4b5fd",
-        "strokeWidth": 1.5,
-        "headerBg": "#ede9fe"
-      },
       "metadata": {
         "depth": 1
-      }
+      },
+      "styleId": "zone.violet"
     },
     {
       "id": "z_project",
-      "name": "Проект и конфигурация (66)",
+      "name": "Проект и конфигурация (68)",
       "type": "boundary",
       "semanticId": "block.project",
-      "x": 36,
-      "y": 4702,
+      "x": 1230,
+      "y": 3598,
       "width": 962,
-      "height": 1126,
-      "style": {
-        "fill": "#f8fafc",
-        "stroke": "#cbd5e1",
-        "strokeWidth": 2,
-        "headerBg": "#e2e8f0"
-      },
+      "height": 1190,
+      "styleId": "domain.project",
       "metadata": {
         "depth": 0
       }
@@ -761,73 +567,53 @@
       "name": "Проект и хранилища (15)",
       "type": "component",
       "semanticId": "block.proj_core",
-      "x": 50,
-      "y": 4732,
+      "x": 1244,
+      "y": 3628,
       "width": 750,
       "height": 286,
-      "style": {
-        "fill": "#f8fafc",
-        "stroke": "#cbd5e1",
-        "strokeWidth": 1.5,
-        "headerBg": "#e2e8f0"
-      },
       "metadata": {
         "depth": 1
-      }
+      },
+      "styleId": "zone.slate"
     },
     {
       "id": "z_proj_instances",
       "name": "Инстансы (21)",
       "type": "component",
       "semanticId": "block.proj_instances",
-      "x": 50,
-      "y": 5034,
+      "x": 1244,
+      "y": 3930,
       "width": 934,
       "height": 350,
-      "style": {
-        "fill": "#f8fafc",
-        "stroke": "#cbd5e1",
-        "strokeWidth": 1.5,
-        "headerBg": "#e2e8f0"
-      },
       "metadata": {
         "depth": 1
-      }
+      },
+      "styleId": "zone.slate"
     },
     {
       "id": "z_proj_settings",
-      "name": "Настройки (30)",
+      "name": "Настройки (32)",
       "type": "component",
       "semanticId": "block.proj_settings",
-      "x": 50,
-      "y": 5400,
+      "x": 1244,
+      "y": 4296,
       "width": 934,
-      "height": 414,
-      "style": {
-        "fill": "#f8fafc",
-        "stroke": "#cbd5e1",
-        "strokeWidth": 1.5,
-        "headerBg": "#e2e8f0"
-      },
+      "height": 478,
       "metadata": {
         "depth": 1
-      }
+      },
+      "styleId": "zone.slate"
     },
     {
       "id": "z_agentlife",
       "name": "Жизненный цикл агента (3)",
       "type": "boundary",
       "semanticId": "block.agentlife",
-      "x": 1034,
-      "y": 4702,
+      "x": 1202,
+      "y": 1532,
       "width": 566,
       "height": 94,
-      "style": {
-        "fill": "#ecfeff",
-        "stroke": "#67e8f9",
-        "strokeWidth": 2,
-        "headerBg": "#cffafe"
-      },
+      "styleId": "domain.agentlife",
       "metadata": {
         "depth": 0
       }
@@ -837,16 +623,11 @@
       "name": "Наблюдаемость (12)",
       "type": "boundary",
       "semanticId": "block.observability",
-      "x": 1636,
-      "y": 4702,
+      "x": 1202,
+      "y": 1826,
       "width": 750,
       "height": 222,
-      "style": {
-        "fill": "#f7fee7",
-        "stroke": "#bef264",
-        "strokeWidth": 2,
-        "headerBg": "#ecfccb"
-      },
+      "styleId": "domain.observability",
       "metadata": {
         "depth": 0
       }
@@ -856,16 +637,11 @@
       "name": "Платформа / ОС (4)",
       "type": "boundary",
       "semanticId": "block.platform",
-      "x": 36,
-      "y": 5864,
+      "x": 1202,
+      "y": 2248,
       "width": 566,
       "height": 158,
-      "style": {
-        "fill": "#fdf2f8",
-        "stroke": "#f9a8d4",
-        "strokeWidth": 2,
-        "headerBg": "#fce7f3"
-      },
+      "styleId": "domain.platform",
       "metadata": {
         "depth": 0
       }
@@ -875,16 +651,11 @@
       "name": "SSH (7)",
       "type": "boundary",
       "semanticId": "block.ssh",
-      "x": 638,
-      "y": 5864,
+      "x": 2392,
+      "y": 3598,
       "width": 566,
       "height": 222,
-      "style": {
-        "fill": "#f1f5f9",
-        "stroke": "#94a3b8",
-        "strokeWidth": 2,
-        "headerBg": "#e2e8f0"
-      },
+      "styleId": "domain.ssh",
       "metadata": {
         "depth": 0
       }
@@ -894,10 +665,10 @@
     {
       "id": "n_accountingstage",
       "label": "AccountingStage",
-      "type": "component",
+      "type": "class",
       "zone": "z_tool_stages",
-      "x": 1062,
-      "y": 398,
+      "x": 2364,
+      "y": 1408,
       "width": 170,
       "height": 50,
       "metadata": {
@@ -908,10 +679,10 @@
     {
       "id": "n_aclsecretaccesspolicy",
       "label": "AclSecretAccessPolicy",
-      "type": "component",
+      "type": "class",
       "zone": "z_sec_secrets_domain",
-      "x": 78,
-      "y": 3192,
+      "x": 82,
+      "y": 4530,
       "width": 170,
       "height": 50,
       "metadata": {
@@ -922,10 +693,10 @@
     {
       "id": "n_agentclarifytool",
       "label": "AgentClarifyTool",
-      "type": "component",
+      "type": "class",
       "zone": "z_chat",
-      "x": 864,
-      "y": 1576,
+      "x": 1216,
+      "y": 1076,
       "width": 170,
       "height": 50,
       "metadata": {
@@ -936,10 +707,10 @@
     {
       "id": "n_agentcontextcomposer",
       "label": "AgentContextComposer",
-      "type": "component",
+      "type": "class",
       "zone": "z_agent_comp",
-      "x": 1062,
-      "y": 1240,
+      "x": 2364,
+      "y": 2250,
       "width": 170,
       "height": 50,
       "metadata": {
@@ -950,10 +721,10 @@
     {
       "id": "n_agentcontribution",
       "label": "AgentContribution",
-      "type": "component",
+      "type": "record",
       "zone": "z_agent_comp",
-      "x": 1246,
-      "y": 1240,
+      "x": 2548,
+      "y": 2250,
       "width": 170,
       "height": 50,
       "metadata": {
@@ -964,10 +735,10 @@
     {
       "id": "n_agentcontributioncontext",
       "label": "AgentContributionContext",
-      "type": "component",
+      "type": "record",
       "zone": "z_agent_comp",
-      "x": 1430,
-      "y": 1240,
+      "x": 2732,
+      "y": 2250,
       "width": 170,
       "height": 50,
       "metadata": {
@@ -978,10 +749,10 @@
     {
       "id": "n_agentfeature",
       "label": "AgentFeature",
-      "type": "component",
+      "type": "class",
       "zone": "z_agent_comp",
-      "x": 1614,
-      "y": 1240,
+      "x": 2916,
+      "y": 2250,
       "width": 170,
       "height": 50,
       "metadata": {
@@ -992,10 +763,10 @@
     {
       "id": "n_agentfeaturecatalog",
       "label": "AgentFeatureCatalog",
-      "type": "component",
+      "type": "class",
       "zone": "z_agent_comp",
-      "x": 1062,
-      "y": 1304,
+      "x": 2364,
+      "y": 2314,
       "width": 170,
       "height": 50,
       "metadata": {
@@ -1006,10 +777,10 @@
     {
       "id": "n_agentlibrarian",
       "label": "AgentLibrarian",
-      "type": "component",
+      "type": "class",
       "zone": "z_skills_library",
-      "x": 906,
-      "y": 3920,
+      "x": 2266,
+      "y": 100,
       "width": 170,
       "height": 50,
       "metadata": {
@@ -1020,10 +791,10 @@
     {
       "id": "n_agentmemorycleartool",
       "label": "AgentMemoryClearTool",
-      "type": "component",
+      "type": "class",
       "zone": "z_mem_tools",
-      "x": 1090,
-      "y": 2796,
+      "x": 68,
+      "y": 576,
       "width": 170,
       "height": 50,
       "metadata": {
@@ -1034,10 +805,10 @@
     {
       "id": "n_agentmemorydeletetool",
       "label": "AgentMemoryDeleteTool",
-      "type": "component",
+      "type": "class",
       "zone": "z_mem_tools",
-      "x": 1274,
-      "y": 2796,
+      "x": 252,
+      "y": 576,
       "width": 170,
       "height": 50,
       "metadata": {
@@ -1048,10 +819,10 @@
     {
       "id": "n_agentmemorygettool",
       "label": "AgentMemoryGetTool",
-      "type": "component",
+      "type": "class",
       "zone": "z_mem_tools",
-      "x": 1458,
-      "y": 2796,
+      "x": 436,
+      "y": 576,
       "width": 170,
       "height": 50,
       "metadata": {
@@ -1062,10 +833,10 @@
     {
       "id": "n_agentmemoryhelpers",
       "label": "AgentMemoryHelpers",
-      "type": "component",
+      "type": "class",
       "zone": "z_mem_tools",
-      "x": 1642,
-      "y": 2796,
+      "x": 620,
+      "y": 576,
       "width": 170,
       "height": 50,
       "metadata": {
@@ -1076,10 +847,10 @@
     {
       "id": "n_agentmemorylisttool",
       "label": "AgentMemoryListTool",
-      "type": "component",
+      "type": "class",
       "zone": "z_mem_tools",
-      "x": 1090,
-      "y": 2860,
+      "x": 68,
+      "y": 640,
       "width": 170,
       "height": 50,
       "metadata": {
@@ -1090,10 +861,10 @@
     {
       "id": "n_agentmemorysettool",
       "label": "AgentMemorySetTool",
-      "type": "component",
+      "type": "class",
       "zone": "z_mem_tools",
-      "x": 1274,
-      "y": 2860,
+      "x": 252,
+      "y": 640,
       "width": 170,
       "height": 50,
       "metadata": {
@@ -1104,10 +875,10 @@
     {
       "id": "n_agentmode",
       "label": "AgentMode",
-      "type": "concept",
+      "type": "enum",
       "zone": "z_sec_permissions",
-      "x": 64,
-      "y": 2320,
+      "x": 68,
+      "y": 3658,
       "width": 170,
       "height": 50,
       "metadata": {
@@ -1118,10 +889,10 @@
     {
       "id": "n_agentrunresult",
       "label": "AgentRunResult",
-      "type": "component",
+      "type": "record",
       "zone": "z_ssh",
-      "x": 652,
-      "y": 5894,
+      "x": 2406,
+      "y": 3628,
       "width": 170,
       "height": 50,
       "metadata": {
@@ -1132,10 +903,10 @@
     {
       "id": "n_agentsession",
       "label": "AgentSession",
-      "type": "component",
+      "type": "class",
       "zone": "z_mem_kv",
-      "x": 1090,
-      "y": 2320,
+      "x": 68,
+      "y": 100,
       "width": 170,
       "height": 50,
       "metadata": {
@@ -1146,10 +917,10 @@
     {
       "id": "n_agentsessionscope",
       "label": "AgentSessionScope",
-      "type": "component",
+      "type": "class",
       "zone": "z_mem_kv",
-      "x": 1274,
-      "y": 2320,
+      "x": 252,
+      "y": 100,
       "width": 170,
       "height": 50,
       "metadata": {
@@ -1160,10 +931,10 @@
     {
       "id": "n_agentspawnbatchtool",
       "label": "AgentSpawnBatchTool",
-      "type": "component",
+      "type": "class",
       "zone": "z_agentlife",
-      "x": 1048,
-      "y": 4732,
+      "x": 1216,
+      "y": 1562,
       "width": 170,
       "height": 50,
       "metadata": {
@@ -1174,10 +945,10 @@
     {
       "id": "n_agentspawntool",
       "label": "AgentSpawnTool",
-      "type": "component",
+      "type": "class",
       "zone": "z_agentlife",
-      "x": 1232,
-      "y": 4732,
+      "x": 1400,
+      "y": 1562,
       "width": 170,
       "height": 50,
       "metadata": {
@@ -1188,10 +959,10 @@
     {
       "id": "n_allowallgate",
       "label": "AllowAllGate",
-      "type": "component",
+      "type": "class",
       "zone": "z_sec_sandbox",
-      "x": 64,
-      "y": 2796,
+      "x": 68,
+      "y": 4134,
       "width": 170,
       "height": 50,
       "metadata": {
@@ -1202,10 +973,10 @@
     {
       "id": "n_ambienthoststage",
       "label": "AmbientHostStage",
-      "type": "component",
+      "type": "class",
       "zone": "z_tool_stages",
-      "x": 1246,
-      "y": 398,
+      "x": 2548,
+      "y": 1408,
       "width": 170,
       "height": 50,
       "metadata": {
@@ -1216,10 +987,10 @@
     {
       "id": "n_attemptoutcome",
       "label": "AttemptOutcome",
-      "type": "concept",
+      "type": "enum",
       "zone": "z_llm_turn",
-      "x": 64,
-      "y": 572,
+      "x": 270,
+      "y": 1650,
       "width": 170,
       "height": 50,
       "metadata": {
@@ -1230,10 +1001,10 @@
     {
       "id": "n_backgroundstage",
       "label": "BackgroundStage",
-      "type": "component",
+      "type": "class",
       "zone": "z_tool_stages",
-      "x": 1430,
-      "y": 398,
+      "x": 2732,
+      "y": 1408,
       "width": 170,
       "height": 50,
       "metadata": {
@@ -1244,10 +1015,10 @@
     {
       "id": "n_backgroundtaskrecord",
       "label": "BackgroundTaskRecord",
-      "type": "component",
+      "type": "class",
       "zone": "z_tool_progress",
-      "x": 1062,
-      "y": 938,
+      "x": 2364,
+      "y": 1948,
       "width": 170,
       "height": 50,
       "metadata": {
@@ -1258,10 +1029,10 @@
     {
       "id": "n_backgroundtaskregistry",
       "label": "BackgroundTaskRegistry",
-      "type": "component",
+      "type": "class",
       "zone": "z_tool_progress",
-      "x": 1246,
-      "y": 938,
+      "x": 2548,
+      "y": 1948,
       "width": 170,
       "height": 50,
       "metadata": {
@@ -1272,10 +1043,10 @@
     {
       "id": "n_backgroundtaskstate",
       "label": "BackgroundTaskState",
-      "type": "concept",
+      "type": "enum",
       "zone": "z_tool_progress",
-      "x": 1430,
-      "y": 938,
+      "x": 2732,
+      "y": 1948,
       "width": 170,
       "height": 50,
       "metadata": {
@@ -1286,10 +1057,10 @@
     {
       "id": "n_blobentry",
       "label": "BlobEntry",
-      "type": "component",
+      "type": "record",
       "zone": "z_mem_kv",
-      "x": 1458,
-      "y": 2320,
+      "x": 436,
+      "y": 100,
       "width": 170,
       "height": 50,
       "metadata": {
@@ -1300,10 +1071,10 @@
     {
       "id": "n_blobkind",
       "label": "BlobKind",
-      "type": "concept",
+      "type": "enum",
       "zone": "z_mem_kv",
-      "x": 1642,
-      "y": 2320,
+      "x": 620,
+      "y": 100,
       "width": 170,
       "height": 50,
       "metadata": {
@@ -1314,10 +1085,10 @@
     {
       "id": "n_blobpayload",
       "label": "BlobPayload",
-      "type": "component",
+      "type": "record",
       "zone": "z_mem_kv",
-      "x": 1090,
-      "y": 2384,
+      "x": 68,
+      "y": 164,
       "width": 170,
       "height": 50,
       "metadata": {
@@ -1328,10 +1099,10 @@
     {
       "id": "n_blobpeektool",
       "label": "BlobPeekTool",
-      "type": "component",
+      "type": "class",
       "zone": "z_mem_tools",
-      "x": 1458,
-      "y": 2860,
+      "x": 436,
+      "y": 640,
       "width": 170,
       "height": 50,
       "metadata": {
@@ -1342,10 +1113,10 @@
     {
       "id": "n_blobstore",
       "label": "BlobStore",
-      "type": "component",
+      "type": "class",
       "zone": "z_mem_kv",
-      "x": 1274,
-      "y": 2384,
+      "x": 252,
+      "y": 164,
       "width": 170,
       "height": 50,
       "metadata": {
@@ -1356,10 +1127,10 @@
     {
       "id": "n_boundarymode",
       "label": "BoundaryMode",
-      "type": "concept",
+      "type": "enum",
       "zone": "z_sec_sandbox",
-      "x": 248,
-      "y": 2796,
+      "x": 252,
+      "y": 4134,
       "width": 170,
       "height": 50,
       "metadata": {
@@ -1370,10 +1141,10 @@
     {
       "id": "n_boundaryobservation",
       "label": "BoundaryObservation",
-      "type": "component",
+      "type": "record",
       "zone": "z_sec_sandbox",
-      "x": 432,
-      "y": 2796,
+      "x": 436,
+      "y": 4134,
       "width": 170,
       "height": 50,
       "metadata": {
@@ -1384,10 +1155,10 @@
     {
       "id": "n_browserlauncher",
       "label": "BrowserLauncher",
-      "type": "component",
+      "type": "class",
       "zone": "z_platform",
-      "x": 50,
-      "y": 5894,
+      "x": 1216,
+      "y": 2278,
       "width": 170,
       "height": 50,
       "metadata": {
@@ -1398,10 +1169,10 @@
     {
       "id": "n_browsertarget",
       "label": "BrowserTarget",
-      "type": "concept",
+      "type": "enum",
       "zone": "z_platform",
-      "x": 234,
-      "y": 5894,
+      "x": 1400,
+      "y": 2278,
       "width": 170,
       "height": 50,
       "metadata": {
@@ -1412,10 +1183,10 @@
     {
       "id": "n_bucket",
       "label": "Bucket",
-      "type": "component",
+      "type": "class",
       "zone": "z_observability",
-      "x": 1650,
-      "y": 4732,
+      "x": 1216,
+      "y": 1856,
       "width": 170,
       "height": 50,
       "metadata": {
@@ -1426,10 +1197,10 @@
     {
       "id": "n_bucketpoint",
       "label": "BucketPoint",
-      "type": "component",
+      "type": "record",
       "zone": "z_observability",
-      "x": 1834,
-      "y": 4732,
+      "x": 1400,
+      "y": 1856,
       "width": 170,
       "height": 50,
       "metadata": {
@@ -1440,10 +1211,10 @@
     {
       "id": "n_builtinconverters",
       "label": "BuiltInConverters",
-      "type": "component",
+      "type": "class",
       "zone": "z_formats",
-      "x": 1828,
-      "y": 1240,
+      "x": 3130,
+      "y": 2250,
       "width": 170,
       "height": 50,
       "metadata": {
@@ -1454,10 +1225,10 @@
     {
       "id": "n_catalogview",
       "label": "CatalogView",
-      "type": "component",
+      "type": "class",
       "zone": "z_skills_library",
-      "x": 1090,
-      "y": 3920,
+      "x": 2450,
+      "y": 100,
       "width": 170,
       "height": 50,
       "metadata": {
@@ -1468,10 +1239,10 @@
     {
       "id": "n_chatdoubt",
       "label": "ChatDoubt",
-      "type": "component",
+      "type": "class",
       "zone": "z_sec_zones",
-      "x": 64,
-      "y": 2558,
+      "x": 68,
+      "y": 3896,
       "width": 170,
       "height": 50,
       "metadata": {
@@ -1482,10 +1253,10 @@
     {
       "id": "n_chatinbox",
       "label": "ChatInbox",
-      "type": "component",
+      "type": "class",
       "zone": "z_chat",
-      "x": 1048,
-      "y": 1576,
+      "x": 1400,
+      "y": 1076,
       "width": 170,
       "height": 50,
       "metadata": {
@@ -1496,10 +1267,10 @@
     {
       "id": "n_chatmanager",
       "label": "ChatManager",
-      "type": "component",
+      "type": "class",
       "zone": "z_chat",
-      "x": 1232,
-      "y": 1576,
+      "x": 1584,
+      "y": 1076,
       "width": 170,
       "height": 50,
       "metadata": {
@@ -1510,10 +1281,10 @@
     {
       "id": "n_chatmessage",
       "label": "ChatMessage",
-      "type": "component",
+      "type": "class",
       "zone": "z_chat",
-      "x": 1416,
-      "y": 1576,
+      "x": 1768,
+      "y": 1076,
       "width": 170,
       "height": 50,
       "metadata": {
@@ -1524,10 +1295,10 @@
     {
       "id": "n_chatrole",
       "label": "ChatRole",
-      "type": "concept",
+      "type": "enum",
       "zone": "z_chat",
-      "x": 1600,
-      "y": 1576,
+      "x": 1952,
+      "y": 1076,
       "width": 170,
       "height": 50,
       "metadata": {
@@ -1538,10 +1309,10 @@
     {
       "id": "n_chatsession",
       "label": "ChatSession",
-      "type": "component",
+      "type": "class",
       "zone": "z_chat",
-      "x": 864,
-      "y": 1640,
+      "x": 1216,
+      "y": 1140,
       "width": 170,
       "height": 50,
       "metadata": {
@@ -1552,10 +1323,10 @@
     {
       "id": "n_chatsessionattempt",
       "label": "ChatSessionAttempt",
-      "type": "component",
+      "type": "class",
       "zone": "z_chat",
-      "x": 1048,
-      "y": 1640,
+      "x": 1400,
+      "y": 1140,
       "width": 170,
       "height": 50,
       "metadata": {
@@ -1566,10 +1337,10 @@
     {
       "id": "n_chatsessioncontext",
       "label": "ChatSessionContext",
-      "type": "component",
+      "type": "class",
       "zone": "z_chat",
-      "x": 1232,
-      "y": 1640,
+      "x": 1584,
+      "y": 1140,
       "width": 170,
       "height": 50,
       "metadata": {
@@ -1580,10 +1351,10 @@
     {
       "id": "n_chatsessiondoubt",
       "label": "ChatSessionDoubt",
-      "type": "component",
+      "type": "class",
       "zone": "z_chat",
-      "x": 1416,
-      "y": 1640,
+      "x": 1768,
+      "y": 1140,
       "width": 170,
       "height": 50,
       "metadata": {
@@ -1594,10 +1365,10 @@
     {
       "id": "n_chatsessionmessage",
       "label": "ChatSessionMessage",
-      "type": "component",
+      "type": "class",
       "zone": "z_chat",
-      "x": 1600,
-      "y": 1640,
+      "x": 1952,
+      "y": 1140,
       "width": 170,
       "height": 50,
       "metadata": {
@@ -1608,10 +1379,10 @@
     {
       "id": "n_claimidentity",
       "label": "ClaimIdentity",
-      "type": "component",
+      "type": "record",
       "zone": "z_sec_identity",
-      "x": 64,
-      "y": 3618,
+      "x": 68,
+      "y": 4956,
       "width": 170,
       "height": 50,
       "metadata": {
@@ -1622,10 +1393,10 @@
     {
       "id": "n_claimsidentityprovider",
       "label": "ClaimsIdentityProvider",
-      "type": "component",
+      "type": "class",
       "zone": "z_sec_identity",
-      "x": 248,
-      "y": 3618,
+      "x": 252,
+      "y": 4956,
       "width": 170,
       "height": 50,
       "metadata": {
@@ -1636,10 +1407,10 @@
     {
       "id": "n_claimsidentityresolver",
       "label": "ClaimsIdentityResolver",
-      "type": "component",
+      "type": "class",
       "zone": "z_sec_identity",
-      "x": 432,
-      "y": 3618,
+      "x": 436,
+      "y": 4956,
       "width": 170,
       "height": 50,
       "metadata": {
@@ -1650,10 +1421,10 @@
     {
       "id": "n_clarifyoption",
       "label": "ClarifyOption",
-      "type": "component",
+      "type": "class",
       "zone": "z_chat",
-      "x": 864,
-      "y": 1704,
+      "x": 1216,
+      "y": 1204,
       "width": 170,
       "height": 50,
       "metadata": {
@@ -1664,10 +1435,10 @@
     {
       "id": "n_clarifyrequest",
       "label": "ClarifyRequest",
-      "type": "component",
+      "type": "class",
       "zone": "z_chat",
-      "x": 1048,
-      "y": 1704,
+      "x": 1400,
+      "y": 1204,
       "width": 170,
       "height": 50,
       "metadata": {
@@ -1678,10 +1449,10 @@
     {
       "id": "n_clarifyscope",
       "label": "ClarifyScope",
-      "type": "component",
+      "type": "class",
       "zone": "z_chat",
-      "x": 1232,
-      "y": 1704,
+      "x": 1584,
+      "y": 1204,
       "width": 170,
       "height": 50,
       "metadata": {
@@ -1692,10 +1463,10 @@
     {
       "id": "n_composedcontext",
       "label": "ComposedContext",
-      "type": "component",
+      "type": "record",
       "zone": "z_agent_comp",
-      "x": 1246,
-      "y": 1304,
+      "x": 2548,
+      "y": 2314,
       "width": 170,
       "height": 50,
       "metadata": {
@@ -1706,10 +1477,10 @@
     {
       "id": "n_compositionmanifest",
       "label": "CompositionManifest",
-      "type": "component",
+      "type": "record",
       "zone": "z_agent_comp",
-      "x": 1430,
-      "y": 1304,
+      "x": 2732,
+      "y": 2314,
       "width": 170,
       "height": 50,
       "metadata": {
@@ -1720,10 +1491,10 @@
     {
       "id": "n_configloader",
       "label": "ConfigLoader",
-      "type": "component",
+      "type": "class",
       "zone": "z_proj_settings",
-      "x": 64,
-      "y": 5430,
+      "x": 1258,
+      "y": 4326,
       "width": 170,
       "height": 50,
       "metadata": {
@@ -1734,10 +1505,10 @@
     {
       "id": "n_contentnode",
       "label": "ContentNode",
-      "type": "component",
+      "type": "record",
       "zone": "z_editor",
-      "x": 64,
-      "y": 3920,
+      "x": 1260,
+      "y": 100,
       "width": 170,
       "height": 50,
       "metadata": {
@@ -1748,10 +1519,10 @@
     {
       "id": "n_contentnodekind",
       "label": "ContentNodeKind",
-      "type": "concept",
+      "type": "enum",
       "zone": "z_editor",
-      "x": 248,
-      "y": 3920,
+      "x": 1444,
+      "y": 100,
       "width": 170,
       "height": 50,
       "metadata": {
@@ -1762,10 +1533,10 @@
     {
       "id": "n_contenttypes",
       "label": "ContentTypes",
-      "type": "component",
+      "type": "class",
       "zone": "z_res_core",
-      "x": 78,
-      "y": 4188,
+      "x": 1274,
+      "y": 368,
       "width": 170,
       "height": 50,
       "metadata": {
@@ -1776,10 +1547,10 @@
     {
       "id": "n_contextassembler",
       "label": "ContextAssembler",
-      "type": "component",
+      "type": "class",
       "zone": "z_mem_context",
-      "x": 1090,
-      "y": 2622,
+      "x": 74,
+      "y": 440,
       "width": 170,
       "height": 50,
       "metadata": {
@@ -1790,10 +1561,10 @@
     {
       "id": "n_contextcheckpointrestoretool",
       "label": "ContextCheckpointRestoreTool",
-      "type": "component",
+      "type": "class",
       "zone": "z_mem_tools",
-      "x": 1642,
-      "y": 2860,
+      "x": 620,
+      "y": 640,
       "width": 170,
       "height": 50,
       "metadata": {
@@ -1804,10 +1575,10 @@
     {
       "id": "n_contextcheckpointsettool",
       "label": "ContextCheckpointSetTool",
-      "type": "component",
+      "type": "class",
       "zone": "z_mem_tools",
-      "x": 1090,
-      "y": 2924,
+      "x": 68,
+      "y": 704,
       "width": 170,
       "height": 50,
       "metadata": {
@@ -1818,10 +1589,10 @@
     {
       "id": "n_contextitem",
       "label": "ContextItem",
-      "type": "component",
+      "type": "record",
       "zone": "z_agent_comp",
-      "x": 1614,
-      "y": 1304,
+      "x": 2916,
+      "y": 2314,
       "width": 170,
       "height": 50,
       "metadata": {
@@ -1832,10 +1603,10 @@
     {
       "id": "n_contextplacement",
       "label": "ContextPlacement",
-      "type": "concept",
+      "type": "enum",
       "zone": "z_agent_comp",
-      "x": 1062,
-      "y": 1368,
+      "x": 2364,
+      "y": 2378,
       "width": 170,
       "height": 50,
       "metadata": {
@@ -1846,10 +1617,10 @@
     {
       "id": "n_contextretention",
       "label": "ContextRetention",
-      "type": "concept",
+      "type": "enum",
       "zone": "z_chat",
-      "x": 1416,
-      "y": 1704,
+      "x": 1768,
+      "y": 1204,
       "width": 170,
       "height": 50,
       "metadata": {
@@ -1860,10 +1631,10 @@
     {
       "id": "n_contributortotal",
       "label": "ContributorTotal",
-      "type": "component",
+      "type": "record",
       "zone": "z_agent_comp",
-      "x": 1246,
-      "y": 1368,
+      "x": 2548,
+      "y": 2378,
       "width": 170,
       "height": 50,
       "metadata": {
@@ -1874,10 +1645,10 @@
     {
       "id": "n_conversation",
       "label": "Conversation",
-      "type": "component",
+      "type": "class",
       "zone": "z_chat",
-      "x": 1600,
-      "y": 1704,
+      "x": 1952,
+      "y": 1204,
       "width": 170,
       "height": 50,
       "metadata": {
@@ -1888,10 +1659,10 @@
     {
       "id": "n_conversioncard",
       "label": "ConversionCard",
-      "type": "component",
+      "type": "record",
       "zone": "z_formats",
-      "x": 2012,
-      "y": 1240,
+      "x": 3314,
+      "y": 2250,
       "width": 170,
       "height": 50,
       "metadata": {
@@ -1902,11 +1673,11 @@
     {
       "id": "n_credentialsmiddleware",
       "label": "CredentialsMiddleware",
-      "type": "component",
+      "type": "class",
       "zone": "z_llm_middleware",
-      "x": 64,
-      "y": 334,
-      "width": 170,
+      "x": -750,
+      "y": 2300,
+      "width": 220,
       "height": 50,
       "metadata": {
         "codeRef": "src/core/SPLA.Domain/Llm/Middleware/CredentialsMiddleware.cs",
@@ -1916,10 +1687,10 @@
     {
       "id": "n_datachannel",
       "label": "DataChannel",
-      "type": "component",
+      "type": "class",
       "zone": "z_mem_kv",
-      "x": 1458,
-      "y": 2384,
+      "x": 436,
+      "y": 164,
       "width": 170,
       "height": 50,
       "metadata": {
@@ -1930,10 +1701,10 @@
     {
       "id": "n_dataorigin",
       "label": "DataOrigin",
-      "type": "component",
+      "type": "record",
       "zone": "z_sec_zones",
-      "x": 248,
-      "y": 2558,
+      "x": 252,
+      "y": 3896,
       "width": 170,
       "height": 50,
       "metadata": {
@@ -1944,10 +1715,10 @@
     {
       "id": "n_directoryskillsource",
       "label": "DirectorySkillSource",
-      "type": "component",
+      "type": "class",
       "zone": "z_skills_sources",
-      "x": 906,
-      "y": 4222,
+      "x": 2266,
+      "y": 402,
       "width": 170,
       "height": 50,
       "metadata": {
@@ -1958,10 +1729,10 @@
     {
       "id": "n_directoryskillsourcefactory",
       "label": "DirectorySkillSourceFactory",
-      "type": "component",
+      "type": "class",
       "zone": "z_skills_sources",
-      "x": 1090,
-      "y": 4222,
+      "x": 2450,
+      "y": 402,
       "width": 170,
       "height": 50,
       "metadata": {
@@ -1972,10 +1743,10 @@
     {
       "id": "n_doubtcause",
       "label": "DoubtCause",
-      "type": "component",
+      "type": "record",
       "zone": "z_sec_zones",
-      "x": 432,
-      "y": 2558,
+      "x": 436,
+      "y": 3896,
       "width": 170,
       "height": 50,
       "metadata": {
@@ -1986,10 +1757,10 @@
     {
       "id": "n_dpapifilesecretstore",
       "label": "DpapiFileSecretStore",
-      "type": "component",
+      "type": "class",
       "zone": "z_sec_secrets_dpapi",
-      "x": 78,
-      "y": 3494,
+      "x": 82,
+      "y": 4832,
       "width": 170,
       "height": 50,
       "metadata": {
@@ -2000,10 +1771,10 @@
     {
       "id": "n_dpapisecrets",
       "label": "DpapiSecrets",
-      "type": "component",
+      "type": "class",
       "zone": "z_sec_secrets_dpapi",
-      "x": 262,
-      "y": 3494,
+      "x": 266,
+      "y": 4832,
       "width": 170,
       "height": 50,
       "metadata": {
@@ -2014,10 +1785,10 @@
     {
       "id": "n_edgeclassifier",
       "label": "EdgeClassifier",
-      "type": "component",
+      "type": "class",
       "zone": "z_sec_zones",
-      "x": 616,
-      "y": 2558,
+      "x": 620,
+      "y": 3896,
       "width": 170,
       "height": 50,
       "metadata": {
@@ -2028,10 +1799,10 @@
     {
       "id": "n_edgeledger",
       "label": "EdgeLedger",
-      "type": "component",
+      "type": "class",
       "zone": "z_sec_zones",
-      "x": 64,
-      "y": 2622,
+      "x": 68,
+      "y": 3960,
       "width": 170,
       "height": 50,
       "metadata": {
@@ -2042,10 +1813,10 @@
     {
       "id": "n_edgetraffic",
       "label": "EdgeTraffic",
-      "type": "component",
+      "type": "record",
       "zone": "z_sec_zones",
-      "x": 248,
-      "y": 2622,
+      "x": 252,
+      "y": 3960,
       "width": 170,
       "height": 50,
       "metadata": {
@@ -2056,10 +1827,10 @@
     {
       "id": "n_embeddedjsonschemaprovider",
       "label": "EmbeddedJsonSchemaProvider",
-      "type": "component",
+      "type": "class",
       "zone": "z_editor",
-      "x": 432,
-      "y": 3920,
+      "x": 1628,
+      "y": 100,
       "width": 170,
       "height": 50,
       "metadata": {
@@ -2070,10 +1841,10 @@
     {
       "id": "n_faultstage",
       "label": "FaultStage",
-      "type": "component",
+      "type": "class",
       "zone": "z_tool_stages",
-      "x": 1614,
-      "y": 398,
+      "x": 2916,
+      "y": 1408,
       "width": 170,
       "height": 50,
       "metadata": {
@@ -2084,10 +1855,10 @@
     {
       "id": "n_filebucket",
       "label": "FileBucket",
-      "type": "component",
+      "type": "class",
       "zone": "z_proj_core",
-      "x": 64,
-      "y": 4762,
+      "x": 1258,
+      "y": 3658,
       "width": 170,
       "height": 50,
       "metadata": {
@@ -2098,10 +1869,10 @@
     {
       "id": "n_filecontentbrowser",
       "label": "FileContentBrowser",
-      "type": "component",
+      "type": "class",
       "zone": "z_editor",
-      "x": 616,
-      "y": 3920,
+      "x": 1812,
+      "y": 100,
       "width": 170,
       "height": 50,
       "metadata": {
@@ -2112,10 +1883,10 @@
     {
       "id": "n_filecontentsource",
       "label": "FileContentSource",
-      "type": "component",
+      "type": "class",
       "zone": "z_editor",
-      "x": 64,
-      "y": 3984,
+      "x": 1260,
+      "y": 164,
       "width": 170,
       "height": 50,
       "metadata": {
@@ -2126,10 +1897,10 @@
     {
       "id": "n_fileresourceprovider",
       "label": "FileResourceProvider",
-      "type": "component",
+      "type": "class",
       "zone": "z_res_core",
-      "x": 262,
-      "y": 4188,
+      "x": 1458,
+      "y": 368,
       "width": 170,
       "height": 50,
       "metadata": {
@@ -2140,10 +1911,10 @@
     {
       "id": "n_filesecretaclstore",
       "label": "FileSecretAclStore",
-      "type": "component",
+      "type": "class",
       "zone": "z_sec_secrets_domain",
-      "x": 262,
-      "y": 3192,
+      "x": 266,
+      "y": 4530,
       "width": 170,
       "height": 50,
       "metadata": {
@@ -2154,10 +1925,10 @@
     {
       "id": "n_filesecretstore",
       "label": "FileSecretStore",
-      "type": "component",
+      "type": "class",
       "zone": "z_sec_secrets_domain",
-      "x": 446,
-      "y": 3192,
+      "x": 450,
+      "y": 4530,
       "width": 170,
       "height": 50,
       "metadata": {
@@ -2168,10 +1939,10 @@
     {
       "id": "n_fileskillsourcestore",
       "label": "FileSkillSourceStore",
-      "type": "component",
+      "type": "class",
       "zone": "z_skills_sources",
-      "x": 1274,
-      "y": 4222,
+      "x": 2634,
+      "y": 402,
       "width": 170,
       "height": 50,
       "metadata": {
@@ -2182,10 +1953,10 @@
     {
       "id": "n_fileskilltruststore",
       "label": "FileSkillTrustStore",
-      "type": "component",
+      "type": "class",
       "zone": "z_skills_sources",
-      "x": 1458,
-      "y": 4222,
+      "x": 2818,
+      "y": 402,
       "width": 170,
       "height": 50,
       "metadata": {
@@ -2196,10 +1967,10 @@
     {
       "id": "n_filetokenusagestore",
       "label": "FileTokenUsageStore",
-      "type": "component",
+      "type": "class",
       "zone": "z_mem_accounting",
-      "x": 1488,
-      "y": 2622,
+      "x": -20,
+      "y": 2250,
       "width": 170,
       "height": 50,
       "metadata": {
@@ -2210,10 +1981,10 @@
     {
       "id": "n_formatconverterregistry",
       "label": "FormatConverterRegistry",
-      "type": "component",
+      "type": "class",
       "zone": "z_formats",
-      "x": 2196,
-      "y": 1240,
+      "x": 3498,
+      "y": 2250,
       "width": 170,
       "height": 50,
       "metadata": {
@@ -2224,10 +1995,10 @@
     {
       "id": "n_functioncall",
       "label": "FunctionCall",
-      "type": "component",
+      "type": "class",
       "zone": "z_tool_contracts",
-      "x": 1062,
-      "y": 96,
+      "x": 2364,
+      "y": 1106,
       "width": 170,
       "height": 50,
       "metadata": {
@@ -2238,10 +2009,10 @@
     {
       "id": "n_generationattempt",
       "label": "GenerationAttempt",
-      "type": "component",
+      "type": "record",
       "zone": "z_llm_turn",
-      "x": 248,
-      "y": 572,
+      "x": 0,
+      "y": 1700,
       "width": 170,
       "height": 50,
       "metadata": {
@@ -2252,10 +2023,10 @@
     {
       "id": "n_hostservices",
       "label": "HostServices",
-      "type": "component",
+      "type": "class",
       "zone": "z_sec_sandbox",
-      "x": 616,
-      "y": 2796,
+      "x": 620,
+      "y": 4134,
       "width": 170,
       "height": 50,
       "metadata": {
@@ -2264,12 +2035,26 @@
       }
     },
     {
+      "id": "n_hubappearancestore",
+      "label": "HubAppearanceStore",
+      "type": "class",
+      "zone": "z_proj_settings",
+      "x": 1442,
+      "y": 4326,
+      "width": 170,
+      "height": 50,
+      "metadata": {
+        "codeRef": "src/core/SPLA.Domain/Settings/HubAppearanceStore.cs",
+        "type": "Class"
+      }
+    },
+    {
       "id": "n_iagentcontributor",
       "label": "IAgentContributor",
-      "type": "service",
+      "type": "interface",
       "zone": "z_agent_comp",
-      "x": 1430,
-      "y": 1368,
+      "x": 2732,
+      "y": 2378,
       "width": 170,
       "height": 50,
       "metadata": {
@@ -2280,10 +2065,10 @@
     {
       "id": "n_iagentfeature",
       "label": "IAgentFeature",
-      "type": "service",
+      "type": "interface",
       "zone": "z_agent_comp",
-      "x": 1614,
-      "y": 1368,
+      "x": 2916,
+      "y": 2378,
       "width": 170,
       "height": 50,
       "metadata": {
@@ -2294,10 +2079,10 @@
     {
       "id": "n_iagentlibrarian",
       "label": "IAgentLibrarian",
-      "type": "service",
+      "type": "interface",
       "zone": "z_skills_library",
-      "x": 1274,
-      "y": 3920,
+      "x": 2634,
+      "y": 100,
       "width": 170,
       "height": 50,
       "metadata": {
@@ -2308,10 +2093,10 @@
     {
       "id": "n_iagentsession",
       "label": "IAgentSession",
-      "type": "service",
+      "type": "interface",
       "zone": "z_mem_kv",
-      "x": 1642,
-      "y": 2384,
+      "x": 620,
+      "y": 164,
       "width": 170,
       "height": 50,
       "metadata": {
@@ -2322,10 +2107,10 @@
     {
       "id": "n_iagentspawner",
       "label": "IAgentSpawner",
-      "type": "service",
+      "type": "interface",
       "zone": "z_agentlife",
-      "x": 1416,
-      "y": 4732,
+      "x": 1584,
+      "y": 1562,
       "width": 170,
       "height": 50,
       "metadata": {
@@ -2336,10 +2121,10 @@
     {
       "id": "n_ibackgroundtaskhost",
       "label": "IBackgroundTaskHost",
-      "type": "service",
+      "type": "interface",
       "zone": "z_mem_kv",
-      "x": 1090,
-      "y": 2448,
+      "x": 68,
+      "y": 228,
       "width": 170,
       "height": 50,
       "metadata": {
@@ -2350,10 +2135,10 @@
     {
       "id": "n_iblobstore",
       "label": "IBlobStore",
-      "type": "service",
+      "type": "interface",
       "zone": "z_mem_kv",
-      "x": 1274,
-      "y": 2448,
+      "x": 252,
+      "y": 228,
       "width": 170,
       "height": 50,
       "metadata": {
@@ -2364,10 +2149,10 @@
     {
       "id": "n_ibucket",
       "label": "IBucket",
-      "type": "service",
+      "type": "interface",
       "zone": "z_proj_core",
-      "x": 248,
-      "y": 4762,
+      "x": 1442,
+      "y": 3658,
       "width": 170,
       "height": 50,
       "metadata": {
@@ -2378,10 +2163,10 @@
     {
       "id": "n_icapabilitygate",
       "label": "ICapabilityGate",
-      "type": "service",
+      "type": "interface",
       "zone": "z_sec_sandbox",
-      "x": 800,
-      "y": 2796,
+      "x": 804,
+      "y": 4134,
       "width": 170,
       "height": 50,
       "metadata": {
@@ -2392,10 +2177,10 @@
     {
       "id": "n_ichatstore",
       "label": "IChatStore",
-      "type": "service",
+      "type": "interface",
       "zone": "z_chat",
-      "x": 864,
-      "y": 1768,
+      "x": 1216,
+      "y": 1268,
       "width": 170,
       "height": 50,
       "metadata": {
@@ -2406,10 +2191,10 @@
     {
       "id": "n_icontentbrowser",
       "label": "IContentBrowser",
-      "type": "service",
+      "type": "interface",
       "zone": "z_editor",
-      "x": 248,
-      "y": 3984,
+      "x": 1444,
+      "y": 164,
       "width": 170,
       "height": 50,
       "metadata": {
@@ -2420,10 +2205,10 @@
     {
       "id": "n_icontentsource",
       "label": "IContentSource",
-      "type": "service",
+      "type": "interface",
       "zone": "z_editor",
-      "x": 432,
-      "y": 3984,
+      "x": 1628,
+      "y": 164,
       "width": 170,
       "height": 50,
       "metadata": {
@@ -2434,10 +2219,10 @@
     {
       "id": "n_ieditableskillsource",
       "label": "IEditableSkillSource",
-      "type": "service",
+      "type": "interface",
       "zone": "z_skills_sources",
-      "x": 1642,
-      "y": 4222,
+      "x": 3002,
+      "y": 402,
       "width": 170,
       "height": 50,
       "metadata": {
@@ -2448,10 +2233,10 @@
     {
       "id": "n_iformatconverter",
       "label": "IFormatConverter",
-      "type": "service",
+      "type": "interface",
       "zone": "z_formats",
-      "x": 1828,
-      "y": 1304,
+      "x": 3130,
+      "y": 2314,
       "width": 170,
       "height": 50,
       "metadata": {
@@ -2462,10 +2247,10 @@
     {
       "id": "n_iidentity",
       "label": "IIdentity",
-      "type": "service",
+      "type": "interface",
       "zone": "z_sec_identity",
-      "x": 64,
-      "y": 3682,
+      "x": 68,
+      "y": 5020,
       "width": 170,
       "height": 50,
       "metadata": {
@@ -2476,10 +2261,10 @@
     {
       "id": "n_iidentityprovider",
       "label": "IIdentityProvider",
-      "type": "service",
+      "type": "interface",
       "zone": "z_sec_identity",
-      "x": 248,
-      "y": 3682,
+      "x": 252,
+      "y": 5020,
       "width": 170,
       "height": 50,
       "metadata": {
@@ -2490,10 +2275,10 @@
     {
       "id": "n_iinstanceprobe",
       "label": "IInstanceProbe",
-      "type": "service",
+      "type": "interface",
       "zone": "z_proj_instances",
-      "x": 64,
-      "y": 5064,
+      "x": 1258,
+      "y": 3960,
       "width": 170,
       "height": 50,
       "metadata": {
@@ -2504,10 +2289,10 @@
     {
       "id": "n_iinstanceregistry",
       "label": "IInstanceRegistry",
-      "type": "service",
+      "type": "interface",
       "zone": "z_proj_instances",
-      "x": 248,
-      "y": 5064,
+      "x": 1442,
+      "y": 3960,
       "width": 170,
       "height": 50,
       "metadata": {
@@ -2518,10 +2303,10 @@
     {
       "id": "n_iinstancespawner",
       "label": "IInstanceSpawner",
-      "type": "service",
+      "type": "interface",
       "zone": "z_proj_instances",
-      "x": 432,
-      "y": 5064,
+      "x": 1626,
+      "y": 3960,
       "width": 170,
       "height": 50,
       "metadata": {
@@ -2532,10 +2317,10 @@
     {
       "id": "n_ijsonschemaprovider",
       "label": "IJsonSchemaProvider",
-      "type": "service",
+      "type": "interface",
       "zone": "z_editor",
-      "x": 616,
-      "y": 3984,
+      "x": 1812,
+      "y": 164,
       "width": 170,
       "height": 50,
       "metadata": {
@@ -2546,10 +2331,10 @@
     {
       "id": "n_ikeyvaluestore",
       "label": "IKeyValueStore",
-      "type": "service",
+      "type": "interface",
       "zone": "z_mem_kv",
-      "x": 1458,
-      "y": 2448,
+      "x": 436,
+      "y": 228,
       "width": 170,
       "height": 50,
       "metadata": {
@@ -2560,10 +2345,10 @@
     {
       "id": "n_illmclient",
       "label": "ILlmClient",
-      "type": "service",
+      "type": "interface",
       "zone": "z_llm_providers",
-      "x": 64,
-      "y": 96,
+      "x": -1420,
+      "y": 2090,
       "width": 170,
       "height": 50,
       "metadata": {
@@ -2574,10 +2359,10 @@
     {
       "id": "n_illmclientresolver",
       "label": "ILlmClientResolver",
-      "type": "service",
+      "type": "interface",
       "zone": "z_llm_providers",
-      "x": 248,
-      "y": 96,
+      "x": -1420,
+      "y": 1980,
       "width": 170,
       "height": 50,
       "metadata": {
@@ -2588,10 +2373,10 @@
     {
       "id": "n_illmgateway",
       "label": "ILlmGateway",
-      "type": "service",
+      "type": "interface",
       "zone": "z_llm_providers",
-      "x": 432,
-      "y": 96,
+      "x": -1390,
+      "y": 1620,
       "width": 170,
       "height": 50,
       "metadata": {
@@ -2602,11 +2387,11 @@
     {
       "id": "n_illmmiddleware",
       "label": "ILlmMiddleware",
-      "type": "service",
-      "zone": "z_llm_middleware",
-      "x": 248,
-      "y": 334,
-      "width": 170,
+      "type": "interface",
+      "zone": null,
+      "x": -1170,
+      "y": 1290,
+      "width": 200,
       "height": 50,
       "metadata": {
         "codeRef": "src/core/SPLA.Domain/Llm/ILlmMiddleware.cs",
@@ -2616,10 +2401,10 @@
     {
       "id": "n_illmproviderdescriptor",
       "label": "ILlmProviderDescriptor",
-      "type": "service",
+      "type": "interface",
       "zone": "z_llm_providers",
-      "x": 616,
-      "y": 96,
+      "x": -1940,
+      "y": 1920,
       "width": 170,
       "height": 50,
       "metadata": {
@@ -2630,10 +2415,10 @@
     {
       "id": "n_imcptool",
       "label": "IMcpTool",
-      "type": "service",
+      "type": "interface",
       "zone": "z_tool_host",
-      "x": 1062,
-      "y": 636,
+      "x": 2364,
+      "y": 1646,
       "width": 170,
       "height": 50,
       "metadata": {
@@ -2644,10 +2429,10 @@
     {
       "id": "n_imodelcataloginfo",
       "label": "IModelCatalogInfo",
-      "type": "service",
+      "type": "interface",
       "zone": "z_llm_turn",
-      "x": 432,
-      "y": 572,
+      "x": 710,
+      "y": 1650,
       "width": 170,
       "height": 50,
       "metadata": {
@@ -2658,10 +2443,10 @@
     {
       "id": "n_imodelmanagementservice",
       "label": "IModelManagementService",
-      "type": "service",
+      "type": "interface",
       "zone": "z_llm_providers",
-      "x": 64,
-      "y": 160,
+      "x": -1916,
+      "y": 1654,
       "width": 170,
       "height": 50,
       "metadata": {
@@ -2672,10 +2457,10 @@
     {
       "id": "n_inodescope",
       "label": "INodeScope",
-      "type": "service",
+      "type": "interface",
       "zone": "z_tool_progress",
-      "x": 1614,
-      "y": 938,
+      "x": 2916,
+      "y": 1948,
       "width": 170,
       "height": 50,
       "metadata": {
@@ -2686,10 +2471,10 @@
     {
       "id": "n_ipermissionmanager",
       "label": "IPermissionManager",
-      "type": "service",
+      "type": "interface",
       "zone": "z_sec_permissions",
-      "x": 248,
-      "y": 2320,
+      "x": 252,
+      "y": 3658,
       "width": 170,
       "height": 50,
       "metadata": {
@@ -2700,10 +2485,10 @@
     {
       "id": "n_iproject",
       "label": "IProject",
-      "type": "service",
+      "type": "interface",
       "zone": "z_proj_core",
-      "x": 432,
-      "y": 4762,
+      "x": 1626,
+      "y": 3658,
       "width": 170,
       "height": 50,
       "metadata": {
@@ -2714,10 +2499,10 @@
     {
       "id": "n_iprojectbackend",
       "label": "IProjectBackend",
-      "type": "service",
+      "type": "interface",
       "zone": "z_proj_core",
-      "x": 616,
-      "y": 4762,
+      "x": 1810,
+      "y": 3658,
       "width": 170,
       "height": 50,
       "metadata": {
@@ -2728,10 +2513,10 @@
     {
       "id": "n_iprojectprovider",
       "label": "IProjectProvider",
-      "type": "service",
+      "type": "interface",
       "zone": "z_proj_core",
-      "x": 64,
-      "y": 4826,
+      "x": 1258,
+      "y": 3722,
       "width": 170,
       "height": 50,
       "metadata": {
@@ -2742,10 +2527,10 @@
     {
       "id": "n_iprovideraccountinfo",
       "label": "IProviderAccountInfo",
-      "type": "service",
+      "type": "interface",
       "zone": "z_llm_turn",
-      "x": 616,
-      "y": 572,
+      "x": 520,
+      "y": 1480,
       "width": 170,
       "height": 50,
       "metadata": {
@@ -2756,10 +2541,10 @@
     {
       "id": "n_ireasoningcatalog",
       "label": "IReasoningCatalog",
-      "type": "service",
+      "type": "interface",
       "zone": "z_llm_turn",
-      "x": 800,
-      "y": 572,
+      "x": 704,
+      "y": 1480,
       "width": 170,
       "height": 50,
       "metadata": {
@@ -2770,10 +2555,10 @@
     {
       "id": "n_iresourcecontainermaker",
       "label": "IResourceContainerMaker",
-      "type": "service",
+      "type": "interface",
       "zone": "z_res_core",
-      "x": 446,
-      "y": 4188,
+      "x": 1642,
+      "y": 368,
       "width": 170,
       "height": 50,
       "metadata": {
@@ -2784,10 +2569,10 @@
     {
       "id": "n_iresourceprovider",
       "label": "IResourceProvider",
-      "type": "service",
+      "type": "interface",
       "zone": "z_res_core",
-      "x": 630,
-      "y": 4188,
+      "x": 1826,
+      "y": 368,
       "width": 170,
       "height": 50,
       "metadata": {
@@ -2798,10 +2583,10 @@
     {
       "id": "n_iresourceremover",
       "label": "IResourceRemover",
-      "type": "service",
+      "type": "interface",
       "zone": "z_res_core",
-      "x": 78,
-      "y": 4252,
+      "x": 1274,
+      "y": 432,
       "width": 170,
       "height": 50,
       "metadata": {
@@ -2812,10 +2597,10 @@
     {
       "id": "n_iresourcewriter",
       "label": "IResourceWriter",
-      "type": "service",
+      "type": "interface",
       "zone": "z_res_core",
-      "x": 262,
-      "y": 4252,
+      "x": 1458,
+      "y": 432,
       "width": 170,
       "height": 50,
       "metadata": {
@@ -2826,10 +2611,10 @@
     {
       "id": "n_isandbox",
       "label": "ISandbox",
-      "type": "service",
+      "type": "interface",
       "zone": "z_sec_sandbox",
-      "x": 64,
-      "y": 2860,
+      "x": 68,
+      "y": 4198,
       "width": 170,
       "height": 50,
       "metadata": {
@@ -2840,10 +2625,10 @@
     {
       "id": "n_ischemacontributor",
       "label": "ISchemaContributor",
-      "type": "service",
+      "type": "interface",
       "zone": "z_editor",
-      "x": 64,
-      "y": 4048,
+      "x": 1260,
+      "y": 228,
       "width": 170,
       "height": 50,
       "metadata": {
@@ -2854,10 +2639,10 @@
     {
       "id": "n_isecretaccesspolicy",
       "label": "ISecretAccessPolicy",
-      "type": "service",
+      "type": "interface",
       "zone": "z_sec_secrets_domain",
-      "x": 630,
-      "y": 3192,
+      "x": 634,
+      "y": 4530,
       "width": 170,
       "height": 50,
       "metadata": {
@@ -2868,10 +2653,10 @@
     {
       "id": "n_isecretaclstore",
       "label": "ISecretAclStore",
-      "type": "service",
+      "type": "interface",
       "zone": "z_sec_secrets_domain",
-      "x": 814,
-      "y": 3192,
+      "x": 818,
+      "y": 4530,
       "width": 170,
       "height": 50,
       "metadata": {
@@ -2882,10 +2667,10 @@
     {
       "id": "n_isecretresolver",
       "label": "ISecretResolver",
-      "type": "service",
+      "type": "interface",
       "zone": "z_sec_secrets_domain",
-      "x": 78,
-      "y": 3256,
+      "x": 82,
+      "y": 4594,
       "width": 170,
       "height": 50,
       "metadata": {
@@ -2896,10 +2681,10 @@
     {
       "id": "n_isecretstore",
       "label": "ISecretStore",
-      "type": "service",
+      "type": "interface",
       "zone": "z_sec_secrets_domain",
-      "x": 262,
-      "y": 3256,
+      "x": 266,
+      "y": 4594,
       "width": 170,
       "height": 50,
       "metadata": {
@@ -2910,10 +2695,10 @@
     {
       "id": "n_ishell",
       "label": "IShell",
-      "type": "service",
+      "type": "interface",
       "zone": "z_sec_sandbox",
-      "x": 248,
-      "y": 2860,
+      "x": 252,
+      "y": 4198,
       "width": 170,
       "height": 50,
       "metadata": {
@@ -2924,10 +2709,10 @@
     {
       "id": "n_iskillcapabilityprobe",
       "label": "ISkillCapabilityProbe",
-      "type": "service",
+      "type": "interface",
       "zone": "z_skills_library",
-      "x": 1458,
-      "y": 3920,
+      "x": 2818,
+      "y": 100,
       "width": 170,
       "height": 50,
       "metadata": {
@@ -2938,10 +2723,10 @@
     {
       "id": "n_iskillsession",
       "label": "ISkillSession",
-      "type": "service",
+      "type": "interface",
       "zone": "z_skills_session",
-      "x": 906,
-      "y": 4524,
+      "x": 2266,
+      "y": 704,
       "width": 170,
       "height": 50,
       "metadata": {
@@ -2952,10 +2737,10 @@
     {
       "id": "n_iskillsource",
       "label": "ISkillSource",
-      "type": "service",
+      "type": "interface",
       "zone": "z_skills_sources",
-      "x": 906,
-      "y": 4286,
+      "x": 2266,
+      "y": 466,
       "width": 170,
       "height": 50,
       "metadata": {
@@ -2966,10 +2751,10 @@
     {
       "id": "n_iskillsourcefactory",
       "label": "ISkillSourceFactory",
-      "type": "service",
+      "type": "interface",
       "zone": "z_skills_sources",
-      "x": 1090,
-      "y": 4286,
+      "x": 2450,
+      "y": 466,
       "width": 170,
       "height": 50,
       "metadata": {
@@ -2980,10 +2765,10 @@
     {
       "id": "n_iskillsourcestore",
       "label": "ISkillSourceStore",
-      "type": "service",
+      "type": "interface",
       "zone": "z_skills_sources",
-      "x": 1274,
-      "y": 4286,
+      "x": 2634,
+      "y": 466,
       "width": 170,
       "height": 50,
       "metadata": {
@@ -2994,10 +2779,10 @@
     {
       "id": "n_iskilltruststore",
       "label": "ISkillTrustStore",
-      "type": "service",
+      "type": "interface",
       "zone": "z_skills_sources",
-      "x": 1458,
-      "y": 4286,
+      "x": 2818,
+      "y": 466,
       "width": 170,
       "height": 50,
       "metadata": {
@@ -3008,10 +2793,10 @@
     {
       "id": "n_isplaplugin",
       "label": "ISplaPlugin",
-      "type": "service",
+      "type": "interface",
       "zone": "z_plugin_contracts",
-      "x": 64,
-      "y": 1606,
+      "x": 2364,
+      "y": 2780,
       "width": 170,
       "height": 50,
       "metadata": {
@@ -3022,10 +2807,10 @@
     {
       "id": "n_isplapluginaction",
       "label": "ISplaPluginAction",
-      "type": "service",
+      "type": "interface",
       "zone": "z_plugin_contracts",
-      "x": 248,
-      "y": 1606,
+      "x": 2548,
+      "y": 2780,
       "width": 170,
       "height": 50,
       "metadata": {
@@ -3036,10 +2821,10 @@
     {
       "id": "n_isplapluginpanelprovider",
       "label": "ISplaPluginPanelProvider",
-      "type": "service",
+      "type": "interface",
       "zone": "z_plugin_contracts",
-      "x": 432,
-      "y": 1606,
+      "x": 2732,
+      "y": 2780,
       "width": 170,
       "height": 50,
       "metadata": {
@@ -3050,10 +2835,10 @@
     {
       "id": "n_isplapluginpanelsession",
       "label": "ISplaPluginPanelSession",
-      "type": "service",
+      "type": "interface",
       "zone": "z_tool_host",
-      "x": 1246,
-      "y": 636,
+      "x": 2548,
+      "y": 1646,
       "width": 170,
       "height": 50,
       "metadata": {
@@ -3064,10 +2849,10 @@
     {
       "id": "n_isplapluginselfcheck",
       "label": "ISplaPluginSelfCheck",
-      "type": "service",
+      "type": "interface",
       "zone": "z_plugin_contracts",
-      "x": 64,
-      "y": 1670,
+      "x": 2364,
+      "y": 2844,
       "width": 170,
       "height": 50,
       "metadata": {
@@ -3078,10 +2863,10 @@
     {
       "id": "n_isplapluginuicommands",
       "label": "ISplaPluginUiCommands",
-      "type": "service",
+      "type": "interface",
       "zone": "z_plugin_contracts",
-      "x": 248,
-      "y": 1670,
+      "x": 2548,
+      "y": 2844,
       "width": 170,
       "height": 50,
       "metadata": {
@@ -3092,10 +2877,10 @@
     {
       "id": "n_itaglibrarian",
       "label": "ITagLibrarian",
-      "type": "service",
+      "type": "interface",
       "zone": "z_skills_library",
-      "x": 1642,
-      "y": 3920,
+      "x": 3002,
+      "y": 100,
       "width": 170,
       "height": 50,
       "metadata": {
@@ -3106,10 +2891,10 @@
     {
       "id": "n_itokenusagereporter",
       "label": "ITokenUsageReporter",
-      "type": "service",
+      "type": "interface",
       "zone": "z_mem_accounting",
-      "x": 1672,
-      "y": 2622,
+      "x": 210,
+      "y": 2160,
       "width": 170,
       "height": 50,
       "metadata": {
@@ -3120,10 +2905,10 @@
     {
       "id": "n_itokenusagestore",
       "label": "ITokenUsageStore",
-      "type": "service",
+      "type": "interface",
       "zone": "z_mem_accounting",
-      "x": 1856,
-      "y": 2622,
+      "x": -20,
+      "y": 2160,
       "width": 170,
       "height": 50,
       "metadata": {
@@ -3134,10 +2919,10 @@
     {
       "id": "n_itoolargumentpolicy",
       "label": "IToolArgumentPolicy",
-      "type": "service",
+      "type": "interface",
       "zone": "z_sec_permissions",
-      "x": 432,
-      "y": 2320,
+      "x": 436,
+      "y": 3658,
       "width": 170,
       "height": 50,
       "metadata": {
@@ -3148,10 +2933,10 @@
     {
       "id": "n_itoolhost",
       "label": "IToolHost",
-      "type": "service",
+      "type": "interface",
       "zone": "z_tool_host",
-      "x": 1430,
-      "y": 636,
+      "x": 2732,
+      "y": 1646,
       "width": 170,
       "height": 50,
       "metadata": {
@@ -3162,10 +2947,10 @@
     {
       "id": "n_itoolmiddleware",
       "label": "IToolMiddleware",
-      "type": "service",
+      "type": "interface",
       "zone": "z_tool_contracts",
-      "x": 1246,
-      "y": 96,
+      "x": 2548,
+      "y": 1106,
       "width": 170,
       "height": 50,
       "metadata": {
@@ -3176,10 +2961,10 @@
     {
       "id": "n_itoolsetsession",
       "label": "IToolSetSession",
-      "type": "service",
+      "type": "interface",
       "zone": "z_toolsets",
-      "x": 64,
-      "y": 2018,
+      "x": 2364,
+      "y": 3192,
       "width": 170,
       "height": 50,
       "metadata": {
@@ -3190,10 +2975,10 @@
     {
       "id": "n_iworkspace",
       "label": "IWorkspace",
-      "type": "service",
+      "type": "interface",
       "zone": "z_sec_sandbox",
-      "x": 432,
-      "y": 2860,
+      "x": 436,
+      "y": 4198,
       "width": 170,
       "height": 50,
       "metadata": {
@@ -3204,10 +2989,10 @@
     {
       "id": "n_identityconverter",
       "label": "IdentityConverter",
-      "type": "component",
+      "type": "class",
       "zone": "z_formats",
-      "x": 2012,
-      "y": 1304,
+      "x": 3314,
+      "y": 2314,
       "width": 170,
       "height": 50,
       "metadata": {
@@ -3218,10 +3003,10 @@
     {
       "id": "n_identityproviderconfig",
       "label": "IdentityProviderConfig",
-      "type": "component",
+      "type": "class",
       "zone": "z_sec_identity",
-      "x": 432,
-      "y": 3682,
+      "x": 436,
+      "y": 5020,
       "width": 170,
       "height": 50,
       "metadata": {
@@ -3232,10 +3017,10 @@
     {
       "id": "n_identityproviderloader",
       "label": "IdentityProviderLoader",
-      "type": "component",
+      "type": "class",
       "zone": "z_sec_identity",
-      "x": 64,
-      "y": 3746,
+      "x": 68,
+      "y": 5084,
       "width": 170,
       "height": 50,
       "metadata": {
@@ -3246,10 +3031,10 @@
     {
       "id": "n_imageviewtool",
       "label": "ImageViewTool",
-      "type": "component",
+      "type": "class",
       "zone": "z_mem_tools",
-      "x": 1274,
-      "y": 2924,
+      "x": 252,
+      "y": 704,
       "width": 170,
       "height": 50,
       "metadata": {
@@ -3260,10 +3045,10 @@
     {
       "id": "n_inboxitemkind",
       "label": "InboxItemKind",
-      "type": "concept",
+      "type": "enum",
       "zone": "z_chat",
-      "x": 1048,
-      "y": 1768,
+      "x": 1400,
+      "y": 1268,
       "width": 170,
       "height": 50,
       "metadata": {
@@ -3274,10 +3059,10 @@
     {
       "id": "n_instanceinfo",
       "label": "InstanceInfo",
-      "type": "component",
+      "type": "class",
       "zone": "z_proj_instances",
-      "x": 616,
-      "y": 5064,
+      "x": 1810,
+      "y": 3960,
       "width": 170,
       "height": 50,
       "metadata": {
@@ -3288,10 +3073,10 @@
     {
       "id": "n_instancelock",
       "label": "InstanceLock",
-      "type": "component",
+      "type": "class",
       "zone": "z_proj_instances",
-      "x": 800,
-      "y": 5064,
+      "x": 1994,
+      "y": 3960,
       "width": 170,
       "height": 50,
       "metadata": {
@@ -3302,10 +3087,10 @@
     {
       "id": "n_instancerecord",
       "label": "InstanceRecord",
-      "type": "component",
+      "type": "record",
       "zone": "z_proj_instances",
-      "x": 64,
-      "y": 5128,
+      "x": 1258,
+      "y": 4024,
       "width": 170,
       "height": 50,
       "metadata": {
@@ -3316,10 +3101,10 @@
     {
       "id": "n_instancestate",
       "label": "InstanceState",
-      "type": "concept",
+      "type": "enum",
       "zone": "z_proj_instances",
-      "x": 248,
-      "y": 5128,
+      "x": 1442,
+      "y": 4024,
       "width": 170,
       "height": 50,
       "metadata": {
@@ -3330,10 +3115,10 @@
     {
       "id": "n_instancestates",
       "label": "InstanceStates",
-      "type": "component",
+      "type": "class",
       "zone": "z_proj_instances",
-      "x": 432,
-      "y": 5128,
+      "x": 1626,
+      "y": 4024,
       "width": 170,
       "height": 50,
       "metadata": {
@@ -3344,10 +3129,10 @@
     {
       "id": "n_islandidentity",
       "label": "IslandIdentity",
-      "type": "component",
+      "type": "record",
       "zone": "z_sec_zones",
-      "x": 432,
-      "y": 2622,
+      "x": 436,
+      "y": 3960,
       "width": 170,
       "height": 50,
       "metadata": {
@@ -3358,10 +3143,10 @@
     {
       "id": "n_jsonschema",
       "label": "JsonSchema",
-      "type": "component",
+      "type": "class",
       "zone": "z_editor",
-      "x": 248,
-      "y": 4048,
+      "x": 1444,
+      "y": 228,
       "width": 170,
       "height": 50,
       "metadata": {
@@ -3372,10 +3157,10 @@
     {
       "id": "n_jsontoyamlconverter",
       "label": "JsonToYamlConverter",
-      "type": "component",
+      "type": "class",
       "zone": "z_formats",
-      "x": 2196,
-      "y": 1304,
+      "x": 3498,
+      "y": 2314,
       "width": 170,
       "height": 50,
       "metadata": {
@@ -3386,10 +3171,10 @@
     {
       "id": "n_keyvaluestore",
       "label": "KeyValueStore",
-      "type": "component",
+      "type": "class",
       "zone": "z_mem_kv",
-      "x": 1642,
-      "y": 2448,
+      "x": 620,
+      "y": 228,
       "width": 170,
       "height": 50,
       "metadata": {
@@ -3400,10 +3185,10 @@
     {
       "id": "n_knownprojectdto",
       "label": "KnownProjectDto",
-      "type": "component",
+      "type": "class",
       "zone": "z_proj_instances",
-      "x": 616,
-      "y": 5128,
+      "x": 1810,
+      "y": 4024,
       "width": 170,
       "height": 50,
       "metadata": {
@@ -3414,10 +3199,10 @@
     {
       "id": "n_knownprojectsresponse",
       "label": "KnownProjectsResponse",
-      "type": "component",
+      "type": "class",
       "zone": "z_proj_instances",
-      "x": 800,
-      "y": 5128,
+      "x": 1994,
+      "y": 4024,
       "width": 170,
       "height": 50,
       "metadata": {
@@ -3428,10 +3213,10 @@
     {
       "id": "n_kventry",
       "label": "KvEntry",
-      "type": "component",
+      "type": "record",
       "zone": "z_mem_kv",
-      "x": 1090,
-      "y": 2512,
+      "x": 68,
+      "y": 292,
       "width": 170,
       "height": 50,
       "metadata": {
@@ -3442,10 +3227,10 @@
     {
       "id": "n_kvglob",
       "label": "KvGlob",
-      "type": "component",
+      "type": "class",
       "zone": "z_mem_kv",
-      "x": 1274,
-      "y": 2512,
+      "x": 252,
+      "y": 292,
       "width": 170,
       "height": 50,
       "metadata": {
@@ -3456,10 +3241,10 @@
     {
       "id": "n_llmsettings",
       "label": "LLMSettings",
-      "type": "component",
+      "type": "class",
       "zone": "z_llm_providers",
-      "x": 248,
-      "y": 160,
+      "x": -1410,
+      "y": 2170,
       "width": 170,
       "height": 50,
       "metadata": {
@@ -3470,10 +3255,10 @@
     {
       "id": "n_llmerrorkind",
       "label": "LlmErrorKind",
-      "type": "concept",
+      "type": "enum",
       "zone": "z_llm_turn",
-      "x": 64,
-      "y": 636,
+      "x": 270,
+      "y": 1730,
       "width": 170,
       "height": 50,
       "metadata": {
@@ -3484,11 +3269,11 @@
     {
       "id": "n_llmpipelineblueprint",
       "label": "LlmPipelineBlueprint",
-      "type": "component",
-      "zone": "z_llm_middleware",
-      "x": 432,
-      "y": 334,
-      "width": 170,
+      "type": "class",
+      "zone": null,
+      "x": -750,
+      "y": 1560,
+      "width": 220,
       "height": 50,
       "metadata": {
         "codeRef": "src/core/SPLA.Domain/Llm/LlmPipelineBlueprint.cs",
@@ -3498,11 +3283,11 @@
     {
       "id": "n_llmpipelinestage",
       "label": "LlmPipelineStage",
-      "type": "concept",
+      "type": "enum",
       "zone": "z_llm_middleware",
-      "x": 64,
-      "y": 398,
-      "width": 170,
+      "x": -470,
+      "y": 1550,
+      "width": 200,
       "height": 50,
       "metadata": {
         "codeRef": "src/core/SPLA.Domain/Llm/ILlmMiddleware.cs",
@@ -3512,10 +3297,10 @@
     {
       "id": "n_llmproviderdescriptor",
       "label": "LlmProviderDescriptor",
-      "type": "component",
+      "type": "class",
       "zone": "z_llm_providers",
-      "x": 432,
-      "y": 160,
+      "x": -1670,
+      "y": 1920,
       "width": 170,
       "height": 50,
       "metadata": {
@@ -3526,10 +3311,10 @@
     {
       "id": "n_llmproviderregistry",
       "label": "LlmProviderRegistry",
-      "type": "component",
+      "type": "class",
       "zone": "z_llm_providers",
-      "x": 616,
-      "y": 160,
+      "x": -1670,
+      "y": 1820,
       "width": 170,
       "height": 50,
       "metadata": {
@@ -3540,10 +3325,10 @@
     {
       "id": "n_llmrequestexception",
       "label": "LlmRequestException",
-      "type": "component",
+      "type": "class",
       "zone": "z_llm_turn",
-      "x": 248,
-      "y": 636,
+      "x": 20,
+      "y": 1960,
       "width": 170,
       "height": 50,
       "metadata": {
@@ -3554,10 +3339,10 @@
     {
       "id": "n_llmturncontext",
       "label": "LlmTurnContext",
-      "type": "component",
+      "type": "class",
       "zone": "z_llm_turn",
-      "x": 432,
-      "y": 636,
+      "x": 490,
+      "y": 1560,
       "width": 170,
       "height": 50,
       "metadata": {
@@ -3568,10 +3353,10 @@
     {
       "id": "n_llmturnresult",
       "label": "LlmTurnResult",
-      "type": "component",
+      "type": "record",
       "zone": "z_llm_turn",
-      "x": 616,
-      "y": 636,
+      "x": 20,
+      "y": 1800,
       "width": 170,
       "height": 50,
       "metadata": {
@@ -3582,10 +3367,10 @@
     {
       "id": "n_llmturnstatus",
       "label": "LlmTurnStatus",
-      "type": "concept",
+      "type": "enum",
       "zone": "z_llm_turn",
-      "x": 800,
-      "y": 636,
+      "x": 270,
+      "y": 1500,
       "width": 170,
       "height": 50,
       "metadata": {
@@ -3596,10 +3381,10 @@
     {
       "id": "n_loadedplugin",
       "label": "LoadedPlugin",
-      "type": "component",
+      "type": "record",
       "zone": "z_plugin_loading",
-      "x": 64,
-      "y": 1780,
+      "x": 2364,
+      "y": 2954,
       "width": 170,
       "height": 50,
       "metadata": {
@@ -3610,10 +3395,10 @@
     {
       "id": "n_localidentity",
       "label": "LocalIdentity",
-      "type": "component",
+      "type": "class",
       "zone": "z_sec_identity",
-      "x": 248,
-      "y": 3746,
+      "x": 252,
+      "y": 5084,
       "width": 170,
       "height": 50,
       "metadata": {
@@ -3624,10 +3409,10 @@
     {
       "id": "n_localproject",
       "label": "LocalProject",
-      "type": "component",
+      "type": "class",
       "zone": "z_proj_core",
-      "x": 248,
-      "y": 4826,
+      "x": 1442,
+      "y": 3722,
       "width": 170,
       "height": 50,
       "metadata": {
@@ -3638,10 +3423,10 @@
     {
       "id": "n_localprojectbackend",
       "label": "LocalProjectBackend",
-      "type": "component",
+      "type": "class",
       "zone": "z_proj_core",
-      "x": 432,
-      "y": 4826,
+      "x": 1626,
+      "y": 3722,
       "width": 170,
       "height": 50,
       "metadata": {
@@ -3652,10 +3437,10 @@
     {
       "id": "n_localprojectprovider",
       "label": "LocalProjectProvider",
-      "type": "component",
+      "type": "class",
       "zone": "z_proj_core",
-      "x": 616,
-      "y": 4826,
+      "x": 1810,
+      "y": 3722,
       "width": 170,
       "height": 50,
       "metadata": {
@@ -3666,10 +3451,10 @@
     {
       "id": "n_localshell",
       "label": "LocalShell",
-      "type": "component",
+      "type": "class",
       "zone": "z_sec_sandbox",
-      "x": 616,
-      "y": 2860,
+      "x": 620,
+      "y": 4198,
       "width": 170,
       "height": 50,
       "metadata": {
@@ -3680,10 +3465,10 @@
     {
       "id": "n_localworkspace",
       "label": "LocalWorkspace",
-      "type": "component",
+      "type": "class",
       "zone": "z_sec_sandbox",
-      "x": 800,
-      "y": 2860,
+      "x": 804,
+      "y": 4198,
       "width": 170,
       "height": 50,
       "metadata": {
@@ -3694,10 +3479,10 @@
     {
       "id": "n_machinelayer",
       "label": "MachineLayer",
-      "type": "component",
+      "type": "record",
       "zone": "z_proj_settings",
-      "x": 248,
-      "y": 5430,
+      "x": 1626,
+      "y": 4326,
       "width": 170,
       "height": 50,
       "metadata": {
@@ -3708,10 +3493,10 @@
     {
       "id": "n_machinelayerscope",
       "label": "MachineLayerScope",
-      "type": "component",
+      "type": "class",
       "zone": "z_proj_settings",
-      "x": 432,
-      "y": 5430,
+      "x": 1810,
+      "y": 4326,
       "width": 170,
       "height": 50,
       "metadata": {
@@ -3722,10 +3507,10 @@
     {
       "id": "n_manifestentry",
       "label": "ManifestEntry",
-      "type": "component",
+      "type": "record",
       "zone": "z_agent_comp",
-      "x": 1062,
-      "y": 1432,
+      "x": 2364,
+      "y": 2442,
       "width": 170,
       "height": 50,
       "metadata": {
@@ -3736,10 +3521,10 @@
     {
       "id": "n_markmanager",
       "label": "MarkManager",
-      "type": "component",
+      "type": "class",
       "zone": "z_mem_context",
-      "x": 1274,
-      "y": 2622,
+      "x": 258,
+      "y": 440,
       "width": 170,
       "height": 50,
       "metadata": {
@@ -3750,10 +3535,10 @@
     {
       "id": "n_markrollbacktool",
       "label": "MarkRollbackTool",
-      "type": "component",
+      "type": "class",
       "zone": "z_mem_tools",
-      "x": 1458,
-      "y": 2924,
+      "x": 436,
+      "y": 704,
       "width": 170,
       "height": 50,
       "metadata": {
@@ -3764,10 +3549,10 @@
     {
       "id": "n_marksettool",
       "label": "MarkSetTool",
-      "type": "component",
+      "type": "class",
       "zone": "z_mem_tools",
-      "x": 1642,
-      "y": 2924,
+      "x": 620,
+      "y": 704,
       "width": 170,
       "height": 50,
       "metadata": {
@@ -3778,10 +3563,10 @@
     {
       "id": "n_mcphost",
       "label": "McpHost",
-      "type": "component",
+      "type": "class",
       "zone": "z_tool_host",
-      "x": 1614,
-      "y": 636,
+      "x": 2916,
+      "y": 1646,
       "width": 170,
       "height": 50,
       "metadata": {
@@ -3792,10 +3577,10 @@
     {
       "id": "n_memorybucket",
       "label": "MemoryBucket",
-      "type": "component",
+      "type": "class",
       "zone": "z_proj_core",
-      "x": 64,
-      "y": 4890,
+      "x": 1258,
+      "y": 3786,
       "width": 170,
       "height": 50,
       "metadata": {
@@ -3806,10 +3591,10 @@
     {
       "id": "n_memoryprojectbackend",
       "label": "MemoryProjectBackend",
-      "type": "component",
+      "type": "class",
       "zone": "z_proj_core",
-      "x": 248,
-      "y": 4890,
+      "x": 1442,
+      "y": 3786,
       "width": 170,
       "height": 50,
       "metadata": {
@@ -3820,10 +3605,10 @@
     {
       "id": "n_metricseries",
       "label": "MetricSeries",
-      "type": "component",
+      "type": "class",
       "zone": "z_observability",
-      "x": 2018,
-      "y": 4732,
+      "x": 1584,
+      "y": 1856,
       "width": 170,
       "height": 50,
       "metadata": {
@@ -3834,10 +3619,10 @@
     {
       "id": "n_modelinfo",
       "label": "ModelInfo",
-      "type": "component",
+      "type": "class",
       "zone": "z_llm_providers",
-      "x": 64,
-      "y": 224,
+      "x": -1916,
+      "y": 1718,
       "width": 170,
       "height": 50,
       "metadata": {
@@ -3848,10 +3633,10 @@
     {
       "id": "n_mountaccess",
       "label": "MountAccess",
-      "type": "concept",
+      "type": "enum",
       "zone": "z_sec_sandbox",
-      "x": 64,
-      "y": 2924,
+      "x": 68,
+      "y": 4262,
       "width": 170,
       "height": 50,
       "metadata": {
@@ -3862,10 +3647,10 @@
     {
       "id": "n_mountresolver",
       "label": "MountResolver",
-      "type": "component",
+      "type": "class",
       "zone": "z_proj_settings",
-      "x": 616,
-      "y": 5430,
+      "x": 1994,
+      "y": 4326,
       "width": 170,
       "height": 50,
       "metadata": {
@@ -3876,10 +3661,10 @@
     {
       "id": "n_mounttrust",
       "label": "MountTrust",
-      "type": "concept",
+      "type": "enum",
       "zone": "z_sec_sandbox",
-      "x": 248,
-      "y": 2924,
+      "x": 252,
+      "y": 4262,
       "width": 170,
       "height": 50,
       "metadata": {
@@ -3890,10 +3675,10 @@
     {
       "id": "n_nullscope",
       "label": "NullScope",
-      "type": "component",
+      "type": "class",
       "zone": "z_observability",
-      "x": 2202,
-      "y": 4732,
+      "x": 1768,
+      "y": 1856,
       "width": 170,
       "height": 50,
       "metadata": {
@@ -3904,10 +3689,10 @@
     {
       "id": "n_outputtarget",
       "label": "OutputTarget",
-      "type": "concept",
+      "type": "enum",
       "zone": "z_tool_host",
-      "x": 1062,
-      "y": 700,
+      "x": 3100,
+      "y": 1646,
       "width": 170,
       "height": 50,
       "metadata": {
@@ -3918,10 +3703,10 @@
     {
       "id": "n_participantroles",
       "label": "ParticipantRoles",
-      "type": "component",
+      "type": "class",
       "zone": "z_proj_instances",
-      "x": 64,
-      "y": 5192,
+      "x": 1258,
+      "y": 4088,
       "width": 170,
       "height": 50,
       "metadata": {
@@ -3932,10 +3717,10 @@
     {
       "id": "n_passthroughsandbox",
       "label": "PassthroughSandbox",
-      "type": "component",
+      "type": "class",
       "zone": "z_sec_sandbox",
-      "x": 432,
-      "y": 2924,
+      "x": 436,
+      "y": 4262,
       "width": 170,
       "height": 50,
       "metadata": {
@@ -3946,10 +3731,10 @@
     {
       "id": "n_pathboundary",
       "label": "PathBoundary",
-      "type": "component",
+      "type": "class",
       "zone": "z_sec_sandbox",
-      "x": 616,
-      "y": 2924,
+      "x": 620,
+      "y": 4262,
       "width": 170,
       "height": 50,
       "metadata": {
@@ -3960,10 +3745,10 @@
     {
       "id": "n_pathboundaryexception",
       "label": "PathBoundaryException",
-      "type": "component",
+      "type": "class",
       "zone": "z_sec_sandbox",
-      "x": 800,
-      "y": 2924,
+      "x": 804,
+      "y": 4262,
       "width": 170,
       "height": 50,
       "metadata": {
@@ -3974,10 +3759,10 @@
     {
       "id": "n_pathlanding",
       "label": "PathLanding",
-      "type": "component",
+      "type": "record",
       "zone": "z_sec_sandbox",
-      "x": 64,
-      "y": 2988,
+      "x": 68,
+      "y": 4326,
       "width": 170,
       "height": 50,
       "metadata": {
@@ -3988,10 +3773,10 @@
     {
       "id": "n_pathrefusal",
       "label": "PathRefusal",
-      "type": "concept",
+      "type": "enum",
       "zone": "z_sec_sandbox",
-      "x": 248,
-      "y": 2988,
+      "x": 252,
+      "y": 4326,
       "width": 170,
       "height": 50,
       "metadata": {
@@ -4002,10 +3787,10 @@
     {
       "id": "n_permissiondecision",
       "label": "PermissionDecision",
-      "type": "concept",
+      "type": "enum",
       "zone": "z_sec_permissions",
-      "x": 616,
-      "y": 2320,
+      "x": 620,
+      "y": 3658,
       "width": 170,
       "height": 50,
       "metadata": {
@@ -4016,10 +3801,10 @@
     {
       "id": "n_permissionmanager",
       "label": "PermissionManager",
-      "type": "component",
+      "type": "class",
       "zone": "z_sec_permissions",
-      "x": 64,
-      "y": 2384,
+      "x": 68,
+      "y": 3722,
       "width": 170,
       "height": 50,
       "metadata": {
@@ -4030,10 +3815,10 @@
     {
       "id": "n_permissionresult",
       "label": "PermissionResult",
-      "type": "concept",
+      "type": "enum",
       "zone": "z_sec_permissions",
-      "x": 248,
-      "y": 2384,
+      "x": 252,
+      "y": 3722,
       "width": 170,
       "height": 50,
       "metadata": {
@@ -4044,10 +3829,10 @@
     {
       "id": "n_permissionscope",
       "label": "PermissionScope",
-      "type": "component",
+      "type": "class",
       "zone": "z_sec_permissions",
-      "x": 432,
-      "y": 2384,
+      "x": 436,
+      "y": 3722,
       "width": 170,
       "height": 50,
       "metadata": {
@@ -4058,10 +3843,10 @@
     {
       "id": "n_permissionstage",
       "label": "PermissionStage",
-      "type": "component",
+      "type": "class",
       "zone": "z_tool_stages",
-      "x": 1062,
-      "y": 462,
+      "x": 2364,
+      "y": 1472,
       "width": 170,
       "height": 50,
       "metadata": {
@@ -4072,10 +3857,10 @@
     {
       "id": "n_permissionverdict",
       "label": "PermissionVerdict",
-      "type": "component",
+      "type": "record",
       "zone": "z_sec_permissions",
-      "x": 616,
-      "y": 2384,
+      "x": 620,
+      "y": 3722,
       "width": 170,
       "height": 50,
       "metadata": {
@@ -4086,10 +3871,10 @@
     {
       "id": "n_permissivesecretaccesspolicy",
       "label": "PermissiveSecretAccessPolicy",
-      "type": "component",
+      "type": "class",
       "zone": "z_sec_secrets_domain",
-      "x": 446,
-      "y": 3256,
+      "x": 450,
+      "y": 4594,
       "width": 170,
       "height": 50,
       "metadata": {
@@ -4100,10 +3885,10 @@
     {
       "id": "n_persistedorigin",
       "label": "PersistedOrigin",
-      "type": "component",
+      "type": "class",
       "zone": "z_proj_settings",
-      "x": 800,
-      "y": 5430,
+      "x": 1258,
+      "y": 4390,
       "width": 170,
       "height": 50,
       "metadata": {
@@ -4114,10 +3899,10 @@
     {
       "id": "n_pluginassemblyloader",
       "label": "PluginAssemblyLoader",
-      "type": "component",
+      "type": "class",
       "zone": "z_plugin_loading",
-      "x": 248,
-      "y": 1780,
+      "x": 2548,
+      "y": 2954,
       "width": 170,
       "height": 50,
       "metadata": {
@@ -4128,10 +3913,10 @@
     {
       "id": "n_pluginavailabilitystage",
       "label": "PluginAvailabilityStage",
-      "type": "component",
+      "type": "class",
       "zone": "z_tool_stages",
-      "x": 1246,
-      "y": 462,
+      "x": 2548,
+      "y": 1472,
       "width": 170,
       "height": 50,
       "metadata": {
@@ -4142,10 +3927,10 @@
     {
       "id": "n_plugindescriptor",
       "label": "PluginDescriptor",
-      "type": "component",
+      "type": "class",
       "zone": "z_plugin_loading",
-      "x": 432,
-      "y": 1780,
+      "x": 2732,
+      "y": 2954,
       "width": 170,
       "height": 50,
       "metadata": {
@@ -4156,10 +3941,10 @@
     {
       "id": "n_plugindiscovery",
       "label": "PluginDiscovery",
-      "type": "component",
+      "type": "class",
       "zone": "z_plugin_loading",
-      "x": 616,
-      "y": 1780,
+      "x": 2916,
+      "y": 2954,
       "width": 170,
       "height": 50,
       "metadata": {
@@ -4170,10 +3955,10 @@
     {
       "id": "n_plugineffectivestate",
       "label": "PluginEffectiveState",
-      "type": "concept",
+      "type": "enum",
       "zone": "z_plugin_loading",
-      "x": 64,
-      "y": 1844,
+      "x": 2364,
+      "y": 3018,
       "width": 170,
       "height": 50,
       "metadata": {
@@ -4184,10 +3969,10 @@
     {
       "id": "n_pluginhealth",
       "label": "PluginHealth",
-      "type": "component",
+      "type": "record",
       "zone": "z_tool_host",
-      "x": 1246,
-      "y": 700,
+      "x": 2364,
+      "y": 1710,
       "width": 170,
       "height": 50,
       "metadata": {
@@ -4198,10 +3983,10 @@
     {
       "id": "n_pluginhealthstatus",
       "label": "PluginHealthStatus",
-      "type": "concept",
+      "type": "enum",
       "zone": "z_tool_host",
-      "x": 1430,
-      "y": 700,
+      "x": 2548,
+      "y": 1710,
       "width": 170,
       "height": 50,
       "metadata": {
@@ -4212,10 +3997,10 @@
     {
       "id": "n_plugininstance",
       "label": "PluginInstance",
-      "type": "component",
+      "type": "class",
       "zone": "z_plugin_loading",
-      "x": 248,
-      "y": 1844,
+      "x": 2548,
+      "y": 3018,
       "width": 170,
       "height": 50,
       "metadata": {
@@ -4226,10 +4011,10 @@
     {
       "id": "n_pluginloadcontext",
       "label": "PluginLoadContext",
-      "type": "component",
+      "type": "class",
       "zone": "z_plugin_loading",
-      "x": 432,
-      "y": 1844,
+      "x": 2732,
+      "y": 3018,
       "width": 170,
       "height": 50,
       "metadata": {
@@ -4240,10 +4025,10 @@
     {
       "id": "n_pluginmanager",
       "label": "PluginManager",
-      "type": "component",
+      "type": "class",
       "zone": "z_plugin_loading",
-      "x": 616,
-      "y": 1844,
+      "x": 2916,
+      "y": 3018,
       "width": 170,
       "height": 50,
       "metadata": {
@@ -4254,10 +4039,10 @@
     {
       "id": "n_pluginmeta",
       "label": "PluginMeta",
-      "type": "component",
+      "type": "class",
       "zone": "z_plugin_loading",
-      "x": 64,
-      "y": 1908,
+      "x": 2364,
+      "y": 3082,
       "width": 170,
       "height": 50,
       "metadata": {
@@ -4268,10 +4053,10 @@
     {
       "id": "n_pluginskillsource",
       "label": "PluginSkillSource",
-      "type": "component",
+      "type": "class",
       "zone": "z_skills_sources",
-      "x": 1642,
-      "y": 4286,
+      "x": 3002,
+      "y": 466,
       "width": 170,
       "height": 50,
       "metadata": {
@@ -4282,10 +4067,10 @@
     {
       "id": "n_progresshub",
       "label": "ProgressHub",
-      "type": "component",
+      "type": "class",
       "zone": "z_tool_progress",
-      "x": 1062,
-      "y": 1002,
+      "x": 2364,
+      "y": 2012,
       "width": 170,
       "height": 50,
       "metadata": {
@@ -4296,10 +4081,10 @@
     {
       "id": "n_progressnode",
       "label": "ProgressNode",
-      "type": "component",
+      "type": "class",
       "zone": "z_tool_progress",
-      "x": 1246,
-      "y": 1002,
+      "x": 2548,
+      "y": 2012,
       "width": 170,
       "height": 50,
       "metadata": {
@@ -4310,10 +4095,10 @@
     {
       "id": "n_progressnodestage",
       "label": "ProgressNodeStage",
-      "type": "component",
+      "type": "class",
       "zone": "z_tool_stages",
-      "x": 1430,
-      "y": 462,
+      "x": 2732,
+      "y": 1472,
       "width": 170,
       "height": 50,
       "metadata": {
@@ -4324,10 +4109,10 @@
     {
       "id": "n_progressscope",
       "label": "ProgressScope",
-      "type": "component",
+      "type": "class",
       "zone": "z_tool_progress",
-      "x": 1430,
-      "y": 1002,
+      "x": 2732,
+      "y": 2012,
       "width": 170,
       "height": 50,
       "metadata": {
@@ -4338,10 +4123,10 @@
     {
       "id": "n_progressstate",
       "label": "ProgressState",
-      "type": "concept",
+      "type": "enum",
       "zone": "z_tool_progress",
-      "x": 1614,
-      "y": 1002,
+      "x": 2916,
+      "y": 2012,
       "width": 170,
       "height": 50,
       "metadata": {
@@ -4352,10 +4137,10 @@
     {
       "id": "n_progresstree",
       "label": "ProgressTree",
-      "type": "component",
+      "type": "class",
       "zone": "z_tool_progress",
-      "x": 1062,
-      "y": 1066,
+      "x": 2364,
+      "y": 2076,
       "width": 170,
       "height": 50,
       "metadata": {
@@ -4366,10 +4151,10 @@
     {
       "id": "n_projectbusyexception",
       "label": "ProjectBusyException",
-      "type": "component",
+      "type": "class",
       "zone": "z_proj_instances",
-      "x": 248,
-      "y": 5192,
+      "x": 1442,
+      "y": 4088,
       "width": 170,
       "height": 50,
       "metadata": {
@@ -4380,10 +4165,10 @@
     {
       "id": "n_projectdescriptor",
       "label": "ProjectDescriptor",
-      "type": "component",
+      "type": "record",
       "zone": "z_proj_core",
-      "x": 432,
-      "y": 4890,
+      "x": 1626,
+      "y": 3786,
       "width": 170,
       "height": 50,
       "metadata": {
@@ -4394,10 +4179,10 @@
     {
       "id": "n_projectfactory",
       "label": "ProjectFactory",
-      "type": "component",
+      "type": "class",
       "zone": "z_proj_core",
-      "x": 616,
-      "y": 4890,
+      "x": 1810,
+      "y": 3786,
       "width": 170,
       "height": 50,
       "metadata": {
@@ -4408,10 +4193,10 @@
     {
       "id": "n_projectkvstore",
       "label": "ProjectKvStore",
-      "type": "component",
+      "type": "class",
       "zone": "z_proj_settings",
-      "x": 64,
-      "y": 5494,
+      "x": 1442,
+      "y": 4390,
       "width": 170,
       "height": 50,
       "metadata": {
@@ -4422,10 +4207,10 @@
     {
       "id": "n_projectmanifestexception",
       "label": "ProjectManifestException",
-      "type": "component",
+      "type": "class",
       "zone": "z_proj_settings",
-      "x": 248,
-      "y": 5494,
+      "x": 1626,
+      "y": 4390,
       "width": 170,
       "height": 50,
       "metadata": {
@@ -4436,10 +4221,10 @@
     {
       "id": "n_projectmount",
       "label": "ProjectMount",
-      "type": "component",
+      "type": "record",
       "zone": "z_sec_sandbox",
-      "x": 432,
-      "y": 2988,
+      "x": 436,
+      "y": 4326,
       "width": 170,
       "height": 50,
       "metadata": {
@@ -4450,10 +4235,10 @@
     {
       "id": "n_projectprofile",
       "label": "ProjectProfile",
-      "type": "concept",
+      "type": "enum",
       "zone": "z_proj_core",
-      "x": 64,
-      "y": 4954,
+      "x": 1258,
+      "y": 3850,
       "width": 170,
       "height": 50,
       "metadata": {
@@ -4464,10 +4249,10 @@
     {
       "id": "n_projectprofiles",
       "label": "ProjectProfiles",
-      "type": "component",
+      "type": "class",
       "zone": "z_proj_core",
-      "x": 248,
-      "y": 4954,
+      "x": 1442,
+      "y": 3850,
       "width": 170,
       "height": 50,
       "metadata": {
@@ -4478,10 +4263,10 @@
     {
       "id": "n_providerclientresolver",
       "label": "ProviderClientResolver",
-      "type": "component",
+      "type": "class",
       "zone": "z_llm_providers",
-      "x": 248,
-      "y": 224,
+      "x": -1420,
+      "y": 1820,
       "width": 170,
       "height": 50,
       "metadata": {
@@ -4492,10 +4277,10 @@
     {
       "id": "n_providerfact",
       "label": "ProviderFact",
-      "type": "component",
+      "type": "class",
       "zone": "z_llm_turn",
-      "x": 64,
-      "y": 700,
+      "x": 500,
+      "y": 1780,
       "width": 170,
       "height": 50,
       "metadata": {
@@ -4506,10 +4291,10 @@
     {
       "id": "n_providerfactkind",
       "label": "ProviderFactKind",
-      "type": "concept",
+      "type": "enum",
       "zone": "z_llm_turn",
-      "x": 248,
-      "y": 700,
+      "x": 270,
+      "y": 1800,
       "width": 170,
       "height": 50,
       "metadata": {
@@ -4520,10 +4305,10 @@
     {
       "id": "n_providerfactscope",
       "label": "ProviderFactScope",
-      "type": "concept",
+      "type": "enum",
       "zone": "z_llm_turn",
-      "x": 432,
-      "y": 700,
+      "x": 270,
+      "y": 1870,
       "width": 170,
       "height": 50,
       "metadata": {
@@ -4534,10 +4319,10 @@
     {
       "id": "n_providerfactsection",
       "label": "ProviderFactSection",
-      "type": "component",
+      "type": "class",
       "zone": "z_llm_turn",
-      "x": 616,
-      "y": 700,
+      "x": 500,
+      "y": 1690,
       "width": 170,
       "height": 50,
       "metadata": {
@@ -4548,10 +4333,10 @@
     {
       "id": "n_providerfactseverity",
       "label": "ProviderFactSeverity",
-      "type": "concept",
+      "type": "enum",
       "zone": "z_llm_turn",
-      "x": 800,
-      "y": 700,
+      "x": 270,
+      "y": 1570,
       "width": 170,
       "height": 50,
       "metadata": {
@@ -4562,11 +4347,11 @@
     {
       "id": "n_providerstatemiddleware",
       "label": "ProviderStateMiddleware",
-      "type": "component",
+      "type": "class",
       "zone": "z_llm_middleware",
-      "x": 248,
-      "y": 398,
-      "width": 170,
+      "x": -750,
+      "y": 1910,
+      "width": 220,
       "height": 50,
       "metadata": {
         "codeRef": "src/core/SPLA.Domain/Llm/Middleware/ProviderStateMiddleware.cs",
@@ -4576,10 +4361,10 @@
     {
       "id": "n_providerstatestore",
       "label": "ProviderStateStore",
-      "type": "component",
+      "type": "class",
       "zone": "z_llm_turn",
-      "x": 64,
-      "y": 764,
+      "x": 20,
+      "y": 1900,
       "width": 170,
       "height": 50,
       "metadata": {
@@ -4590,10 +4375,10 @@
     {
       "id": "n_readonlyguard",
       "label": "ReadOnlyGuard",
-      "type": "component",
+      "type": "class",
       "zone": "z_ssh",
-      "x": 836,
-      "y": 5894,
+      "x": 2590,
+      "y": 3628,
       "width": 170,
       "height": 50,
       "metadata": {
@@ -4604,10 +4389,10 @@
     {
       "id": "n_reasoningcapability",
       "label": "ReasoningCapability",
-      "type": "component",
+      "type": "class",
       "zone": "z_llm_turn",
-      "x": 248,
-      "y": 764,
+      "x": 500,
+      "y": 1950,
       "width": 170,
       "height": 50,
       "metadata": {
@@ -4618,10 +4403,10 @@
     {
       "id": "n_reasoningchoice",
       "label": "ReasoningChoice",
-      "type": "component",
+      "type": "record",
       "zone": "z_llm_turn",
-      "x": 432,
-      "y": 764,
+      "x": 500,
+      "y": 1870,
       "width": 170,
       "height": 50,
       "metadata": {
@@ -4632,10 +4417,10 @@
     {
       "id": "n_reasoningmode",
       "label": "ReasoningMode",
-      "type": "concept",
+      "type": "enum",
       "zone": "z_llm_turn",
-      "x": 616,
-      "y": 764,
+      "x": 270,
+      "y": 1950,
       "width": 170,
       "height": 50,
       "metadata": {
@@ -4646,10 +4431,10 @@
     {
       "id": "n_recentevent",
       "label": "RecentEvent",
-      "type": "component",
+      "type": "record",
       "zone": "z_observability",
-      "x": 1650,
-      "y": 4796,
+      "x": 1216,
+      "y": 1920,
       "width": 170,
       "height": 50,
       "metadata": {
@@ -4660,10 +4445,10 @@
     {
       "id": "n_registerframe",
       "label": "RegisterFrame",
-      "type": "component",
+      "type": "class",
       "zone": "z_proj_instances",
-      "x": 432,
-      "y": 5192,
+      "x": 1626,
+      "y": 4088,
       "width": 170,
       "height": 50,
       "metadata": {
@@ -4674,10 +4459,10 @@
     {
       "id": "n_registeredinstancedto",
       "label": "RegisteredInstanceDto",
-      "type": "component",
+      "type": "class",
       "zone": "z_proj_instances",
-      "x": 616,
-      "y": 5192,
+      "x": 1810,
+      "y": 4088,
       "width": 170,
       "height": 50,
       "metadata": {
@@ -4688,10 +4473,10 @@
     {
       "id": "n_registryframe",
       "label": "RegistryFrame",
-      "type": "component",
+      "type": "class",
       "zone": "z_proj_instances",
-      "x": 800,
-      "y": 5192,
+      "x": 1994,
+      "y": 4088,
       "width": 170,
       "height": 50,
       "metadata": {
@@ -4702,10 +4487,10 @@
     {
       "id": "n_registryframes",
       "label": "RegistryFrames",
-      "type": "component",
+      "type": "class",
       "zone": "z_proj_instances",
-      "x": 64,
-      "y": 5256,
+      "x": 1258,
+      "y": 4152,
       "width": 170,
       "height": 50,
       "metadata": {
@@ -4716,10 +4501,10 @@
     {
       "id": "n_registryjson",
       "label": "RegistryJson",
-      "type": "component",
+      "type": "class",
       "zone": "z_proj_instances",
-      "x": 248,
-      "y": 5256,
+      "x": 1442,
+      "y": 4152,
       "width": 170,
       "height": 50,
       "metadata": {
@@ -4730,10 +4515,10 @@
     {
       "id": "n_registrylistresponse",
       "label": "RegistryListResponse",
-      "type": "component",
+      "type": "class",
       "zone": "z_proj_instances",
-      "x": 432,
-      "y": 5256,
+      "x": 1626,
+      "y": 4152,
       "width": 170,
       "height": 50,
       "metadata": {
@@ -4744,10 +4529,10 @@
     {
       "id": "n_rememberedtoolpermission",
       "label": "RememberedToolPermission",
-      "type": "component",
+      "type": "class",
       "zone": "z_sec_permissions",
-      "x": 64,
-      "y": 2448,
+      "x": 68,
+      "y": 3786,
       "width": 170,
       "height": 50,
       "metadata": {
@@ -4756,12 +4541,55 @@
       }
     },
     {
+      "id": "n_repetitiondetector",
+      "label": "RepetitionDetector",
+      "type": "class",
+      "zone": "z_llm_middleware",
+      "x": -1000,
+      "y": 1800,
+      "width": 200,
+      "height": 50,
+      "metadata": {
+        "codeRef": "src/agent/SPLA.Agent/Guards/RepetitionDetector.cs",
+        "type": "Class"
+      }
+    },
+    {
+      "id": "n_repetitionguardmiddleware",
+      "label": "RepetitionGuardMiddleware",
+      "type": "class",
+      "zone": "z_llm_middleware",
+      "x": -750,
+      "y": 1650,
+      "width": 220,
+      "height": 90,
+      "metadata": {
+        "codeRef": "src/agent/SPLA.Agent/Guards/RepetitionGuardMiddleware.cs",
+        "type": "Class",
+        "description": "Stage Output. Observes the streamed generation, cancels a degenerate one and asks for another attempt; gives up as LlmTurnStatus.Degenerate. Lives in SPLA.Agent, runs here."
+      }
+    },
+    {
+      "id": "n_repetitioninfo",
+      "label": "RepetitionInfo",
+      "type": "record",
+      "zone": "z_llm_middleware",
+      "x": -460,
+      "y": 2050,
+      "width": 200,
+      "height": 50,
+      "metadata": {
+        "codeRef": "src/agent/SPLA.Agent/Guards/RepetitionDetector.cs",
+        "type": "Record"
+      }
+    },
+    {
       "id": "n_resolvedmodelentry",
       "label": "ResolvedModelEntry",
-      "type": "component",
+      "type": "class",
       "zone": "z_proj_settings",
-      "x": 432,
-      "y": 5494,
+      "x": 1810,
+      "y": 4390,
       "width": 170,
       "height": 50,
       "metadata": {
@@ -4772,10 +4600,10 @@
     {
       "id": "n_resolvedsettings",
       "label": "ResolvedSettings",
-      "type": "component",
+      "type": "class",
       "zone": "z_proj_settings",
-      "x": 616,
-      "y": 5494,
+      "x": 1994,
+      "y": 4390,
       "width": 170,
       "height": 50,
       "metadata": {
@@ -4786,10 +4614,10 @@
     {
       "id": "n_resourcecontent",
       "label": "ResourceContent",
-      "type": "component",
+      "type": "record",
       "zone": "z_res_core",
-      "x": 446,
-      "y": 4252,
+      "x": 1642,
+      "y": 432,
       "width": 170,
       "height": 50,
       "metadata": {
@@ -4800,10 +4628,10 @@
     {
       "id": "n_resourcedeletetool",
       "label": "ResourceDeleteTool",
-      "type": "component",
+      "type": "class",
       "zone": "z_res_tools",
-      "x": 78,
-      "y": 4426,
+      "x": 1274,
+      "y": 606,
       "width": 170,
       "height": 50,
       "metadata": {
@@ -4814,10 +4642,10 @@
     {
       "id": "n_resourceentry",
       "label": "ResourceEntry",
-      "type": "component",
+      "type": "record",
       "zone": "z_res_core",
-      "x": 630,
-      "y": 4252,
+      "x": 1826,
+      "y": 432,
       "width": 170,
       "height": 50,
       "metadata": {
@@ -4828,10 +4656,10 @@
     {
       "id": "n_resourceexiststool",
       "label": "ResourceExistsTool",
-      "type": "component",
+      "type": "class",
       "zone": "z_res_tools",
-      "x": 262,
-      "y": 4426,
+      "x": 1458,
+      "y": 606,
       "width": 170,
       "height": 50,
       "metadata": {
@@ -4842,10 +4670,10 @@
     {
       "id": "n_resourcelisttool",
       "label": "ResourceListTool",
-      "type": "component",
+      "type": "class",
       "zone": "z_res_tools",
-      "x": 446,
-      "y": 4426,
+      "x": 1642,
+      "y": 606,
       "width": 170,
       "height": 50,
       "metadata": {
@@ -4856,10 +4684,10 @@
     {
       "id": "n_resourcemakedirtool",
       "label": "ResourceMakeDirTool",
-      "type": "component",
+      "type": "class",
       "zone": "z_res_tools",
-      "x": 78,
-      "y": 4490,
+      "x": 1274,
+      "y": 670,
       "width": 170,
       "height": 50,
       "metadata": {
@@ -4870,10 +4698,10 @@
     {
       "id": "n_resourcereadtool",
       "label": "ResourceReadTool",
-      "type": "component",
+      "type": "class",
       "zone": "z_res_tools",
-      "x": 262,
-      "y": 4490,
+      "x": 1458,
+      "y": 670,
       "width": 170,
       "height": 50,
       "metadata": {
@@ -4884,10 +4712,10 @@
     {
       "id": "n_resourceregistry",
       "label": "ResourceRegistry",
-      "type": "component",
+      "type": "class",
       "zone": "z_res_core",
-      "x": 78,
-      "y": 4316,
+      "x": 1274,
+      "y": 496,
       "width": 170,
       "height": 50,
       "metadata": {
@@ -4898,10 +4726,10 @@
     {
       "id": "n_resourcetoolbase",
       "label": "ResourceToolBase",
-      "type": "component",
+      "type": "class",
       "zone": "z_res_tools",
-      "x": 446,
-      "y": 4490,
+      "x": 1642,
+      "y": 670,
       "width": 170,
       "height": 50,
       "metadata": {
@@ -4912,10 +4740,10 @@
     {
       "id": "n_resourceuri",
       "label": "ResourceUri",
-      "type": "component",
+      "type": "record",
       "zone": "z_res_core",
-      "x": 262,
-      "y": 4316,
+      "x": 1458,
+      "y": 496,
       "width": 170,
       "height": 50,
       "metadata": {
@@ -4926,10 +4754,10 @@
     {
       "id": "n_resourceverb",
       "label": "ResourceVerb",
-      "type": "concept",
+      "type": "enum",
       "zone": "z_res_core",
-      "x": 446,
-      "y": 4316,
+      "x": 1642,
+      "y": 496,
       "width": 170,
       "height": 50,
       "metadata": {
@@ -4940,10 +4768,10 @@
     {
       "id": "n_resourcewritetool",
       "label": "ResourceWriteTool",
-      "type": "component",
+      "type": "class",
       "zone": "z_res_tools",
-      "x": 78,
-      "y": 4554,
+      "x": 1274,
+      "y": 734,
       "width": 170,
       "height": 50,
       "metadata": {
@@ -4954,10 +4782,10 @@
     {
       "id": "n_schemaparts",
       "label": "SchemaParts",
-      "type": "component",
+      "type": "class",
       "zone": "z_tool_host",
-      "x": 1614,
-      "y": 700,
+      "x": 2732,
+      "y": 1710,
       "width": 170,
       "height": 50,
       "metadata": {
@@ -4968,10 +4796,10 @@
     {
       "id": "n_schemaregistry",
       "label": "SchemaRegistry",
-      "type": "component",
+      "type": "class",
       "zone": "z_editor",
-      "x": 432,
-      "y": 4048,
+      "x": 1628,
+      "y": 228,
       "width": 170,
       "height": 50,
       "metadata": {
@@ -4982,10 +4810,10 @@
     {
       "id": "n_schemecard",
       "label": "SchemeCard",
-      "type": "component",
+      "type": "record",
       "zone": "z_res_core",
-      "x": 630,
-      "y": 4316,
+      "x": 1826,
+      "y": 496,
       "width": 170,
       "height": 50,
       "metadata": {
@@ -4996,10 +4824,10 @@
     {
       "id": "n_secretaccessdeniedexception",
       "label": "SecretAccessDeniedException",
-      "type": "component",
+      "type": "class",
       "zone": "z_sec_secrets_domain",
-      "x": 630,
-      "y": 3256,
+      "x": 634,
+      "y": 4594,
       "width": 170,
       "height": 50,
       "metadata": {
@@ -5010,10 +4838,10 @@
     {
       "id": "n_secretacl",
       "label": "SecretAcl",
-      "type": "component",
+      "type": "record",
       "zone": "z_sec_secrets_domain",
-      "x": 814,
-      "y": 3256,
+      "x": 818,
+      "y": 4594,
       "width": 170,
       "height": 50,
       "metadata": {
@@ -5024,10 +4852,10 @@
     {
       "id": "n_secretcallerscope",
       "label": "SecretCallerScope",
-      "type": "component",
+      "type": "class",
       "zone": "z_sec_secrets_domain",
-      "x": 78,
-      "y": 3320,
+      "x": 82,
+      "y": 4658,
       "width": 170,
       "height": 50,
       "metadata": {
@@ -5038,10 +4866,10 @@
     {
       "id": "n_secretentry",
       "label": "SecretEntry",
-      "type": "component",
+      "type": "class",
       "zone": "z_sec_secrets_domain",
-      "x": 262,
-      "y": 3320,
+      "x": 266,
+      "y": 4658,
       "width": 170,
       "height": 50,
       "metadata": {
@@ -5052,10 +4880,10 @@
     {
       "id": "n_secretentryinfo",
       "label": "SecretEntryInfo",
-      "type": "component",
+      "type": "record",
       "zone": "z_sec_secrets_domain",
-      "x": 446,
-      "y": 3320,
+      "x": 450,
+      "y": 4658,
       "width": 170,
       "height": 50,
       "metadata": {
@@ -5066,10 +4894,10 @@
     {
       "id": "n_secretfields",
       "label": "SecretFields",
-      "type": "component",
+      "type": "class",
       "zone": "z_sec_secrets_domain",
-      "x": 630,
-      "y": 3320,
+      "x": 634,
+      "y": 4658,
       "width": 170,
       "height": 50,
       "metadata": {
@@ -5080,10 +4908,10 @@
     {
       "id": "n_secretref",
       "label": "SecretRef",
-      "type": "component",
+      "type": "class",
       "zone": "z_sec_secrets_domain",
-      "x": 814,
-      "y": 3320,
+      "x": 818,
+      "y": 4658,
       "width": 170,
       "height": 50,
       "metadata": {
@@ -5094,10 +4922,10 @@
     {
       "id": "n_secretresolver",
       "label": "SecretResolver",
-      "type": "component",
+      "type": "class",
       "zone": "z_sec_secrets_domain",
-      "x": 78,
-      "y": 3384,
+      "x": 82,
+      "y": 4722,
       "width": 170,
       "height": 50,
       "metadata": {
@@ -5108,10 +4936,10 @@
     {
       "id": "n_secretright",
       "label": "SecretRight",
-      "type": "concept",
+      "type": "enum",
       "zone": "z_sec_secrets_domain",
-      "x": 262,
-      "y": 3384,
+      "x": 266,
+      "y": 4722,
       "width": 170,
       "height": 50,
       "metadata": {
@@ -5122,10 +4950,10 @@
     {
       "id": "n_secretscope",
       "label": "SecretScope",
-      "type": "concept",
+      "type": "enum",
       "zone": "z_sec_secrets_domain",
-      "x": 446,
-      "y": 3384,
+      "x": 450,
+      "y": 4722,
       "width": 170,
       "height": 50,
       "metadata": {
@@ -5136,10 +4964,10 @@
     {
       "id": "n_secretyamlfile",
       "label": "SecretYamlFile",
-      "type": "component",
+      "type": "class",
       "zone": "z_sec_secrets_domain",
-      "x": 630,
-      "y": 3384,
+      "x": 634,
+      "y": 4722,
       "width": 170,
       "height": 50,
       "metadata": {
@@ -5150,10 +4978,10 @@
     {
       "id": "n_selfinvocationlauncher",
       "label": "SelfInvocationLauncher",
-      "type": "component",
+      "type": "class",
       "zone": "z_platform",
-      "x": 418,
-      "y": 5894,
+      "x": 1584,
+      "y": 2278,
       "width": 170,
       "height": 50,
       "metadata": {
@@ -5164,10 +4992,10 @@
     {
       "id": "n_serverprojectroot",
       "label": "ServerProjectRoot",
-      "type": "component",
+      "type": "class",
       "zone": "z_proj_core",
-      "x": 432,
-      "y": 4954,
+      "x": 1626,
+      "y": 3850,
       "width": 170,
       "height": 50,
       "metadata": {
@@ -5178,10 +5006,10 @@
     {
       "id": "n_settingsresolver",
       "label": "SettingsResolver",
-      "type": "component",
+      "type": "class",
       "zone": "z_proj_settings",
-      "x": 800,
-      "y": 5494,
+      "x": 1258,
+      "y": 4454,
       "width": 170,
       "height": 50,
       "metadata": {
@@ -5192,10 +5020,10 @@
     {
       "id": "n_shellcommand",
       "label": "ShellCommand",
-      "type": "component",
+      "type": "record",
       "zone": "z_sec_sandbox",
-      "x": 616,
-      "y": 2988,
+      "x": 620,
+      "y": 4326,
       "width": 170,
       "height": 50,
       "metadata": {
@@ -5206,10 +5034,10 @@
     {
       "id": "n_shellresult",
       "label": "ShellResult",
-      "type": "component",
+      "type": "record",
       "zone": "z_sec_sandbox",
-      "x": 800,
-      "y": 2988,
+      "x": 804,
+      "y": 4326,
       "width": 170,
       "height": 50,
       "metadata": {
@@ -5220,10 +5048,10 @@
     {
       "id": "n_shellstatus",
       "label": "ShellStatus",
-      "type": "concept",
+      "type": "enum",
       "zone": "z_sec_sandbox",
-      "x": 64,
-      "y": 3052,
+      "x": 68,
+      "y": 4390,
       "width": 170,
       "height": 50,
       "metadata": {
@@ -5234,11 +5062,11 @@
     {
       "id": "n_singleclientresolver",
       "label": "SingleClientResolver",
-      "type": "component",
+      "type": "class",
       "zone": "z_llm_middleware",
-      "x": 432,
-      "y": 398,
-      "width": 170,
+      "x": -1060,
+      "y": 1960,
+      "width": 200,
       "height": 50,
       "metadata": {
         "codeRef": "src/core/SPLA.Domain/Llm/LlmPipelineBlueprint.cs",
@@ -5248,10 +5076,10 @@
     {
       "id": "n_skillactivatetool",
       "label": "SkillActivateTool",
-      "type": "component",
+      "type": "class",
       "zone": "z_skills_session",
-      "x": 1090,
-      "y": 4524,
+      "x": 2450,
+      "y": 704,
       "width": 170,
       "height": 50,
       "metadata": {
@@ -5262,10 +5090,10 @@
     {
       "id": "n_skillcapabilityprobe",
       "label": "SkillCapabilityProbe",
-      "type": "component",
+      "type": "class",
       "zone": "z_skills_library",
-      "x": 906,
-      "y": 3984,
+      "x": 2266,
+      "y": 164,
       "width": 170,
       "height": 50,
       "metadata": {
@@ -5276,10 +5104,10 @@
     {
       "id": "n_skillcard",
       "label": "SkillCard",
-      "type": "component",
+      "type": "class",
       "zone": "z_skills_library",
-      "x": 1090,
-      "y": 3984,
+      "x": 2450,
+      "y": 164,
       "width": 170,
       "height": 50,
       "metadata": {
@@ -5290,10 +5118,10 @@
     {
       "id": "n_skilldeactivatetool",
       "label": "SkillDeactivateTool",
-      "type": "component",
+      "type": "class",
       "zone": "z_skills_session",
-      "x": 1274,
-      "y": 4524,
+      "x": 2634,
+      "y": 704,
       "width": 170,
       "height": 50,
       "metadata": {
@@ -5304,10 +5132,10 @@
     {
       "id": "n_skillentry",
       "label": "SkillEntry",
-      "type": "component",
+      "type": "record",
       "zone": "z_skills_sources",
-      "x": 906,
-      "y": 4350,
+      "x": 2266,
+      "y": 530,
       "width": 170,
       "height": 50,
       "metadata": {
@@ -5318,10 +5146,10 @@
     {
       "id": "n_skillfindtool",
       "label": "SkillFindTool",
-      "type": "component",
+      "type": "class",
       "zone": "z_skills_session",
-      "x": 906,
-      "y": 4588,
+      "x": 2266,
+      "y": 768,
       "width": 170,
       "height": 50,
       "metadata": {
@@ -5332,10 +5160,10 @@
     {
       "id": "n_skillfrontmatter",
       "label": "SkillFrontmatter",
-      "type": "component",
+      "type": "class",
       "zone": "z_skills_library",
-      "x": 1274,
-      "y": 3984,
+      "x": 2634,
+      "y": 164,
       "width": 170,
       "height": 50,
       "metadata": {
@@ -5346,10 +5174,10 @@
     {
       "id": "n_skilllibrary",
       "label": "SkillLibrary",
-      "type": "component",
+      "type": "class",
       "zone": "z_skills_library",
-      "x": 1458,
-      "y": 3984,
+      "x": 2818,
+      "y": 164,
       "width": 170,
       "height": 50,
       "metadata": {
@@ -5360,10 +5188,10 @@
     {
       "id": "n_skilllookup",
       "label": "SkillLookup",
-      "type": "component",
+      "type": "class",
       "zone": "z_skills_library",
-      "x": 1642,
-      "y": 3984,
+      "x": 3002,
+      "y": 164,
       "width": 170,
       "height": 50,
       "metadata": {
@@ -5374,10 +5202,10 @@
     {
       "id": "n_skillmatch",
       "label": "SkillMatch",
-      "type": "component",
+      "type": "record",
       "zone": "z_skills_library",
-      "x": 906,
-      "y": 4048,
+      "x": 2266,
+      "y": 228,
       "width": 170,
       "height": 50,
       "metadata": {
@@ -5388,10 +5216,10 @@
     {
       "id": "n_skillquery",
       "label": "SkillQuery",
-      "type": "component",
+      "type": "record",
       "zone": "z_skills_library",
-      "x": 1090,
-      "y": 4048,
+      "x": 2450,
+      "y": 228,
       "width": 170,
       "height": 50,
       "metadata": {
@@ -5402,10 +5230,10 @@
     {
       "id": "n_skillreadresourcetool",
       "label": "SkillReadResourceTool",
-      "type": "component",
+      "type": "class",
       "zone": "z_skills_session",
-      "x": 1090,
-      "y": 4588,
+      "x": 2450,
+      "y": 768,
       "width": 170,
       "height": 50,
       "metadata": {
@@ -5416,10 +5244,10 @@
     {
       "id": "n_skillrequirements",
       "label": "SkillRequirements",
-      "type": "component",
+      "type": "record",
       "zone": "z_skills_sources",
-      "x": 1090,
-      "y": 4350,
+      "x": 2450,
+      "y": 530,
       "width": 170,
       "height": 50,
       "metadata": {
@@ -5430,10 +5258,10 @@
     {
       "id": "n_skillsession",
       "label": "SkillSession",
-      "type": "component",
+      "type": "class",
       "zone": "z_skills_session",
-      "x": 1274,
-      "y": 4588,
+      "x": 2634,
+      "y": 768,
       "width": 170,
       "height": 50,
       "metadata": {
@@ -5444,10 +5272,10 @@
     {
       "id": "n_skillsourcecontext",
       "label": "SkillSourceContext",
-      "type": "component",
+      "type": "record",
       "zone": "z_skills_sources",
-      "x": 1274,
-      "y": 4350,
+      "x": 2634,
+      "y": 530,
       "width": 170,
       "height": 50,
       "metadata": {
@@ -5458,10 +5286,10 @@
     {
       "id": "n_skillsourceregistry",
       "label": "SkillSourceRegistry",
-      "type": "component",
+      "type": "class",
       "zone": "z_skills_sources",
-      "x": 1458,
-      "y": 4350,
+      "x": 2818,
+      "y": 530,
       "width": 170,
       "height": 50,
       "metadata": {
@@ -5472,10 +5300,10 @@
     {
       "id": "n_skillstate",
       "label": "SkillState",
-      "type": "concept",
+      "type": "enum",
       "zone": "z_skills_library",
-      "x": 1274,
-      "y": 4048,
+      "x": 2634,
+      "y": 228,
       "width": 170,
       "height": 50,
       "metadata": {
@@ -5486,10 +5314,10 @@
     {
       "id": "n_skilltag",
       "label": "SkillTag",
-      "type": "component",
+      "type": "class",
       "zone": "z_skills_library",
-      "x": 1458,
-      "y": 4048,
+      "x": 2818,
+      "y": 228,
       "width": 170,
       "height": 50,
       "metadata": {
@@ -5500,10 +5328,10 @@
     {
       "id": "n_skilltrust",
       "label": "SkillTrust",
-      "type": "concept",
+      "type": "enum",
       "zone": "z_skills_sources",
-      "x": 1642,
-      "y": 4350,
+      "x": 3002,
+      "y": 530,
       "width": 170,
       "height": 50,
       "metadata": {
@@ -5514,10 +5342,10 @@
     {
       "id": "n_skilltrustgrant",
       "label": "SkillTrustGrant",
-      "type": "component",
+      "type": "record",
       "zone": "z_skills_sources",
-      "x": 906,
-      "y": 4414,
+      "x": 2266,
+      "y": 594,
       "width": 170,
       "height": 50,
       "metadata": {
@@ -5528,10 +5356,10 @@
     {
       "id": "n_sourcelevel",
       "label": "SourceLevel",
-      "type": "concept",
+      "type": "enum",
       "zone": "z_skills_sources",
-      "x": 1090,
-      "y": 4414,
+      "x": 2450,
+      "y": 594,
       "width": 170,
       "height": 50,
       "metadata": {
@@ -5542,10 +5370,10 @@
     {
       "id": "n_sourceorigin",
       "label": "SourceOrigin",
-      "type": "concept",
+      "type": "enum",
       "zone": "z_proj_settings",
-      "x": 64,
-      "y": 5558,
+      "x": 1442,
+      "y": 4454,
       "width": 170,
       "height": 50,
       "metadata": {
@@ -5556,10 +5384,10 @@
     {
       "id": "n_spawnresult",
       "label": "SpawnResult",
-      "type": "component",
+      "type": "record",
       "zone": "z_proj_instances",
-      "x": 616,
-      "y": 5256,
+      "x": 1810,
+      "y": 4152,
       "width": 170,
       "height": 50,
       "metadata": {
@@ -5570,10 +5398,10 @@
     {
       "id": "n_splaagentsection",
       "label": "SplaAgentSection",
-      "type": "component",
+      "type": "class",
       "zone": "z_proj_settings",
-      "x": 248,
-      "y": 5558,
+      "x": 1626,
+      "y": 4454,
       "width": 170,
       "height": 50,
       "metadata": {
@@ -5584,10 +5412,10 @@
     {
       "id": "n_splaconnectionsection",
       "label": "SplaConnectionSection",
-      "type": "component",
+      "type": "class",
       "zone": "z_proj_settings",
-      "x": 432,
-      "y": 5558,
+      "x": 1810,
+      "y": 4454,
       "width": 170,
       "height": 50,
       "metadata": {
@@ -5598,10 +5426,10 @@
     {
       "id": "n_spladefaults",
       "label": "SplaDefaults",
-      "type": "component",
+      "type": "class",
       "zone": "z_proj_settings",
-      "x": 616,
-      "y": 5558,
+      "x": 1994,
+      "y": 4454,
       "width": 170,
       "height": 50,
       "metadata": {
@@ -5612,10 +5440,10 @@
     {
       "id": "n_splafilelogger",
       "label": "SplaFileLogger",
-      "type": "component",
+      "type": "class",
       "zone": "z_observability",
-      "x": 1834,
-      "y": 4796,
+      "x": 1400,
+      "y": 1920,
       "width": 170,
       "height": 50,
       "metadata": {
@@ -5626,10 +5454,10 @@
     {
       "id": "n_splafileloggerprovider",
       "label": "SplaFileLoggerProvider",
-      "type": "component",
+      "type": "class",
       "zone": "z_observability",
-      "x": 2018,
-      "y": 4796,
+      "x": 1584,
+      "y": 1920,
       "width": 170,
       "height": 50,
       "metadata": {
@@ -5640,10 +5468,10 @@
     {
       "id": "n_splalibrariansection",
       "label": "SplaLibrarianSection",
-      "type": "component",
+      "type": "class",
       "zone": "z_proj_settings",
-      "x": 800,
-      "y": 5558,
+      "x": 1258,
+      "y": 4518,
       "width": 170,
       "height": 50,
       "metadata": {
@@ -5654,10 +5482,10 @@
     {
       "id": "n_splallmsection",
       "label": "SplaLlmSection",
-      "type": "component",
+      "type": "class",
       "zone": "z_proj_settings",
-      "x": 64,
-      "y": 5622,
+      "x": 1442,
+      "y": 4518,
       "width": 170,
       "height": 50,
       "metadata": {
@@ -5668,10 +5496,24 @@
     {
       "id": "n_splamcpsection",
       "label": "SplaMcpSection",
-      "type": "component",
+      "type": "class",
       "zone": "z_proj_settings",
-      "x": 248,
-      "y": 5622,
+      "x": 1626,
+      "y": 4518,
+      "width": 170,
+      "height": 50,
+      "metadata": {
+        "codeRef": "src/core/SPLA.Domain/Settings/SplaSections.cs",
+        "type": "Class"
+      }
+    },
+    {
+      "id": "n_splamcpserversection",
+      "label": "SplaMcpServerSection",
+      "type": "class",
+      "zone": "z_proj_settings",
+      "x": 1810,
+      "y": 4518,
       "width": 170,
       "height": 50,
       "metadata": {
@@ -5682,10 +5524,10 @@
     {
       "id": "n_splamodelsection",
       "label": "SplaModelSection",
-      "type": "component",
+      "type": "class",
       "zone": "z_proj_settings",
-      "x": 432,
-      "y": 5622,
+      "x": 1994,
+      "y": 4518,
       "width": 170,
       "height": 50,
       "metadata": {
@@ -5696,10 +5538,10 @@
     {
       "id": "n_splamountsection",
       "label": "SplaMountSection",
-      "type": "component",
+      "type": "class",
       "zone": "z_proj_settings",
-      "x": 616,
-      "y": 5622,
+      "x": 1258,
+      "y": 4582,
       "width": 170,
       "height": 50,
       "metadata": {
@@ -5710,10 +5552,10 @@
     {
       "id": "n_splapermissionssection",
       "label": "SplaPermissionsSection",
-      "type": "component",
+      "type": "class",
       "zone": "z_proj_settings",
-      "x": 800,
-      "y": 5622,
+      "x": 1442,
+      "y": 4582,
       "width": 170,
       "height": 50,
       "metadata": {
@@ -5724,10 +5566,10 @@
     {
       "id": "n_splapluginpanelevent",
       "label": "SplaPluginPanelEvent",
-      "type": "component",
+      "type": "record",
       "zone": "z_tool_host",
-      "x": 1062,
-      "y": 764,
+      "x": 2916,
+      "y": 1710,
       "width": 170,
       "height": 50,
       "metadata": {
@@ -5738,10 +5580,10 @@
     {
       "id": "n_splapluginsection",
       "label": "SplaPluginSection",
-      "type": "component",
+      "type": "class",
       "zone": "z_proj_settings",
-      "x": 64,
-      "y": 5686,
+      "x": 1626,
+      "y": 4582,
       "width": 170,
       "height": 50,
       "metadata": {
@@ -5752,10 +5594,10 @@
     {
       "id": "n_splapluginuicommand",
       "label": "SplaPluginUiCommand",
-      "type": "component",
+      "type": "class",
       "zone": "z_tool_host",
-      "x": 1246,
-      "y": 764,
+      "x": 3100,
+      "y": 1710,
       "width": 170,
       "height": 50,
       "metadata": {
@@ -5766,10 +5608,10 @@
     {
       "id": "n_splapluginuicommandkind",
       "label": "SplaPluginUiCommandKind",
-      "type": "concept",
+      "type": "enum",
       "zone": "z_tool_host",
-      "x": 1430,
-      "y": 764,
+      "x": 2364,
+      "y": 1774,
       "width": 170,
       "height": 50,
       "metadata": {
@@ -5780,10 +5622,10 @@
     {
       "id": "n_splaproject",
       "label": "SplaProject",
-      "type": "component",
+      "type": "class",
       "zone": "z_proj_settings",
-      "x": 248,
-      "y": 5686,
+      "x": 1810,
+      "y": 4582,
       "width": 170,
       "height": 50,
       "metadata": {
@@ -5794,10 +5636,10 @@
     {
       "id": "n_splasecretssection",
       "label": "SplaSecretsSection",
-      "type": "component",
+      "type": "class",
       "zone": "z_proj_settings",
-      "x": 432,
-      "y": 5686,
+      "x": 1994,
+      "y": 4582,
       "width": 170,
       "height": 50,
       "metadata": {
@@ -5808,10 +5650,10 @@
     {
       "id": "n_splaskillsection",
       "label": "SplaSkillSection",
-      "type": "component",
+      "type": "class",
       "zone": "z_proj_settings",
-      "x": 616,
-      "y": 5686,
+      "x": 1258,
+      "y": 4646,
       "width": 170,
       "height": 50,
       "metadata": {
@@ -5822,10 +5664,10 @@
     {
       "id": "n_splaskillsourcesection",
       "label": "SplaSkillSourceSection",
-      "type": "component",
+      "type": "class",
       "zone": "z_proj_settings",
-      "x": 800,
-      "y": 5686,
+      "x": 1442,
+      "y": 4646,
       "width": 170,
       "height": 50,
       "metadata": {
@@ -5836,10 +5678,10 @@
     {
       "id": "n_splaskillspolicysection",
       "label": "SplaSkillsPolicySection",
-      "type": "component",
+      "type": "class",
       "zone": "z_proj_settings",
-      "x": 64,
-      "y": 5750,
+      "x": 1626,
+      "y": 4646,
       "width": 170,
       "height": 50,
       "metadata": {
@@ -5850,10 +5692,10 @@
     {
       "id": "n_splaskillssection",
       "label": "SplaSkillsSection",
-      "type": "component",
+      "type": "class",
       "zone": "z_proj_settings",
-      "x": 248,
-      "y": 5750,
+      "x": 1810,
+      "y": 4646,
       "width": 170,
       "height": 50,
       "metadata": {
@@ -5864,10 +5706,10 @@
     {
       "id": "n_splatelemetry",
       "label": "SplaTelemetry",
-      "type": "component",
+      "type": "class",
       "zone": "z_observability",
-      "x": 2202,
-      "y": 4796,
+      "x": 1768,
+      "y": 1920,
       "width": 170,
       "height": 50,
       "metadata": {
@@ -5878,10 +5720,10 @@
     {
       "id": "n_splatelemetrycontext",
       "label": "SplaTelemetryContext",
-      "type": "component",
+      "type": "record",
       "zone": "z_observability",
-      "x": 1650,
-      "y": 4860,
+      "x": 1216,
+      "y": 1984,
       "width": 170,
       "height": 50,
       "metadata": {
@@ -5892,10 +5734,10 @@
     {
       "id": "n_splatelemetrycontextextensions",
       "label": "SplaTelemetryContextExtensions",
-      "type": "component",
+      "type": "class",
       "zone": "z_observability",
-      "x": 1834,
-      "y": 4860,
+      "x": 1400,
+      "y": 1984,
       "width": 170,
       "height": 50,
       "metadata": {
@@ -5906,10 +5748,10 @@
     {
       "id": "n_splatoolpermissionrule",
       "label": "SplaToolPermissionRule",
-      "type": "component",
+      "type": "class",
       "zone": "z_proj_settings",
-      "x": 432,
-      "y": 5750,
+      "x": 1994,
+      "y": 4646,
       "width": 170,
       "height": 50,
       "metadata": {
@@ -5920,10 +5762,10 @@
     {
       "id": "n_splauisection",
       "label": "SplaUiSection",
-      "type": "component",
+      "type": "class",
       "zone": "z_proj_settings",
-      "x": 616,
-      "y": 5750,
+      "x": 1258,
+      "y": 4710,
       "width": 170,
       "height": 50,
       "metadata": {
@@ -5934,10 +5776,10 @@
     {
       "id": "n_sshconnectionfactory",
       "label": "SshConnectionFactory",
-      "type": "component",
+      "type": "class",
       "zone": "z_ssh",
-      "x": 1020,
-      "y": 5894,
+      "x": 2774,
+      "y": 3628,
       "width": 170,
       "height": 50,
       "metadata": {
@@ -5948,10 +5790,10 @@
     {
       "id": "n_sshhostconfig",
       "label": "SshHostConfig",
-      "type": "component",
+      "type": "class",
       "zone": "z_ssh",
-      "x": 652,
-      "y": 5958,
+      "x": 2406,
+      "y": 3692,
       "width": 170,
       "height": 50,
       "metadata": {
@@ -5962,10 +5804,10 @@
     {
       "id": "n_sshlivesession",
       "label": "SshLiveSession",
-      "type": "component",
+      "type": "class",
       "zone": "z_ssh",
-      "x": 836,
-      "y": 5958,
+      "x": 2590,
+      "y": 3692,
       "width": 170,
       "height": 50,
       "metadata": {
@@ -5976,10 +5818,10 @@
     {
       "id": "n_sshsessionhub",
       "label": "SshSessionHub",
-      "type": "component",
+      "type": "class",
       "zone": "z_ssh",
-      "x": 1020,
-      "y": 5958,
+      "x": 2774,
+      "y": 3692,
       "width": 170,
       "height": 50,
       "metadata": {
@@ -5990,10 +5832,10 @@
     {
       "id": "n_sshsettings",
       "label": "SshSettings",
-      "type": "component",
+      "type": "class",
       "zone": "z_ssh",
-      "x": 652,
-      "y": 6022,
+      "x": 2406,
+      "y": 3756,
       "width": 170,
       "height": 50,
       "metadata": {
@@ -6004,10 +5846,10 @@
     {
       "id": "n_state",
       "label": "State",
-      "type": "component",
+      "type": "record",
       "zone": "z_tool_host",
-      "x": 1614,
-      "y": 764,
+      "x": 2548,
+      "y": 1774,
       "width": 170,
       "height": 50,
       "metadata": {
@@ -6018,10 +5860,10 @@
     {
       "id": "n_statssnapshot",
       "label": "StatsSnapshot",
-      "type": "component",
+      "type": "record",
       "zone": "z_observability",
-      "x": 2018,
-      "y": 4860,
+      "x": 1584,
+      "y": 1984,
       "width": 170,
       "height": 50,
       "metadata": {
@@ -6032,10 +5874,10 @@
     {
       "id": "n_statusframe",
       "label": "StatusFrame",
-      "type": "component",
+      "type": "class",
       "zone": "z_proj_instances",
-      "x": 800,
-      "y": 5256,
+      "x": 1994,
+      "y": 4152,
       "width": 170,
       "height": 50,
       "metadata": {
@@ -6046,10 +5888,10 @@
     {
       "id": "n_stopframe",
       "label": "StopFrame",
-      "type": "component",
+      "type": "class",
       "zone": "z_proj_instances",
-      "x": 64,
-      "y": 5320,
+      "x": 1258,
+      "y": 4216,
       "width": 170,
       "height": 50,
       "metadata": {
@@ -6060,10 +5902,10 @@
     {
       "id": "n_substance",
       "label": "Substance",
-      "type": "component",
+      "type": "class",
       "zone": "z_sec_zones",
-      "x": 616,
-      "y": 2622,
+      "x": 620,
+      "y": 3960,
       "width": 170,
       "height": 50,
       "metadata": {
@@ -6074,10 +5916,10 @@
     {
       "id": "n_tagcount",
       "label": "TagCount",
-      "type": "component",
+      "type": "record",
       "zone": "z_skills_library",
-      "x": 1642,
-      "y": 4048,
+      "x": 3002,
+      "y": 228,
       "width": 170,
       "height": 50,
       "metadata": {
@@ -6088,10 +5930,10 @@
     {
       "id": "n_taglibrarian",
       "label": "TagLibrarian",
-      "type": "component",
+      "type": "class",
       "zone": "z_skills_library",
-      "x": 906,
-      "y": 4112,
+      "x": 2266,
+      "y": 292,
       "width": 170,
       "height": 50,
       "metadata": {
@@ -6102,10 +5944,10 @@
     {
       "id": "n_tagvocabulary",
       "label": "TagVocabulary",
-      "type": "component",
+      "type": "class",
       "zone": "z_skills_library",
-      "x": 1090,
-      "y": 4112,
+      "x": 2450,
+      "y": 292,
       "width": 170,
       "height": 50,
       "metadata": {
@@ -6116,10 +5958,10 @@
     {
       "id": "n_taskcanceltool",
       "label": "TaskCancelTool",
-      "type": "component",
+      "type": "class",
       "zone": "z_tool_progress",
-      "x": 1246,
-      "y": 1066,
+      "x": 2548,
+      "y": 2076,
       "width": 170,
       "height": 50,
       "metadata": {
@@ -6130,10 +5972,10 @@
     {
       "id": "n_tasklisttool",
       "label": "TaskListTool",
-      "type": "component",
+      "type": "class",
       "zone": "z_tool_progress",
-      "x": 1430,
-      "y": 1066,
+      "x": 2732,
+      "y": 2076,
       "width": 170,
       "height": 50,
       "metadata": {
@@ -6144,10 +5986,10 @@
     {
       "id": "n_taskoutputtool",
       "label": "TaskOutputTool",
-      "type": "component",
+      "type": "class",
       "zone": "z_tool_progress",
-      "x": 1614,
-      "y": 1066,
+      "x": 2916,
+      "y": 2076,
       "width": 170,
       "height": 50,
       "metadata": {
@@ -6158,10 +6000,10 @@
     {
       "id": "n_telemetrycollector",
       "label": "TelemetryCollector",
-      "type": "component",
+      "type": "class",
       "zone": "z_observability",
-      "x": 2202,
-      "y": 4860,
+      "x": 1768,
+      "y": 1984,
       "width": 170,
       "height": 50,
       "metadata": {
@@ -6172,10 +6014,10 @@
     {
       "id": "n_telemetrystage",
       "label": "TelemetryStage",
-      "type": "component",
+      "type": "class",
       "zone": "z_tool_stages",
-      "x": 1614,
-      "y": 462,
+      "x": 2916,
+      "y": 1472,
       "width": 170,
       "height": 50,
       "metadata": {
@@ -6184,12 +6026,27 @@
       }
     },
     {
+      "id": "n_tokenaccountingmiddleware",
+      "label": "TokenAccountingMiddleware",
+      "type": "class",
+      "zone": null,
+      "x": -750,
+      "y": 2110,
+      "width": 220,
+      "height": 110,
+      "metadata": {
+        "codeRef": "src/agent/SPLA.Agent/Accounting/TokenAccountingMiddleware.cs",
+        "type": "Class",
+        "description": "Stage Accounting. Folds the provider token figures into the project and machine tallies and the telemetry meter, once per network attempt. Lives in SPLA.Agent, runs here."
+      }
+    },
+    {
       "id": "n_tokenestimate",
       "label": "TokenEstimate",
-      "type": "component",
+      "type": "class",
       "zone": "z_agent_comp",
-      "x": 1246,
-      "y": 1432,
+      "x": 2548,
+      "y": 2442,
       "width": 170,
       "height": 50,
       "metadata": {
@@ -6200,10 +6057,10 @@
     {
       "id": "n_tokenusagetotals",
       "label": "TokenUsageTotals",
-      "type": "component",
+      "type": "class",
       "zone": "z_mem_accounting",
-      "x": 1488,
-      "y": 2686,
+      "x": 210,
+      "y": 2250,
       "width": 170,
       "height": 50,
       "metadata": {
@@ -6214,10 +6071,10 @@
     {
       "id": "n_toolcall",
       "label": "ToolCall",
-      "type": "component",
+      "type": "class",
       "zone": "z_tool_contracts",
-      "x": 1430,
-      "y": 96,
+      "x": 2732,
+      "y": 1106,
       "width": 170,
       "height": 50,
       "metadata": {
@@ -6228,10 +6085,10 @@
     {
       "id": "n_toolcallcontext",
       "label": "ToolCallContext",
-      "type": "component",
+      "type": "record",
       "zone": "z_tool_contracts",
-      "x": 1614,
-      "y": 96,
+      "x": 2916,
+      "y": 1106,
       "width": 170,
       "height": 50,
       "metadata": {
@@ -6242,10 +6099,10 @@
     {
       "id": "n_toolcallinvocation",
       "label": "ToolCallInvocation",
-      "type": "component",
+      "type": "class",
       "zone": "z_tool_contracts",
-      "x": 1062,
-      "y": 160,
+      "x": 2364,
+      "y": 1170,
       "width": 170,
       "height": 50,
       "metadata": {
@@ -6256,10 +6113,10 @@
     {
       "id": "n_toolcontent",
       "label": "ToolContent",
-      "type": "component",
+      "type": "record",
       "zone": "z_tool_contracts",
-      "x": 1246,
-      "y": 160,
+      "x": 2548,
+      "y": 1170,
       "width": 170,
       "height": 50,
       "metadata": {
@@ -6270,10 +6127,10 @@
     {
       "id": "n_tooldefinition",
       "label": "ToolDefinition",
-      "type": "component",
+      "type": "class",
       "zone": "z_tool_contracts",
-      "x": 1430,
-      "y": 160,
+      "x": 2732,
+      "y": 1170,
       "width": 170,
       "height": 50,
       "metadata": {
@@ -6284,10 +6141,10 @@
     {
       "id": "n_tooleffect",
       "label": "ToolEffect",
-      "type": "concept",
+      "type": "enum",
       "zone": "z_sec_permissions",
-      "x": 248,
-      "y": 2448,
+      "x": 252,
+      "y": 3786,
       "width": 170,
       "height": 50,
       "metadata": {
@@ -6298,10 +6155,10 @@
     {
       "id": "n_toolexposure",
       "label": "ToolExposure",
-      "type": "component",
+      "type": "record",
       "zone": "z_tool_host",
-      "x": 1062,
-      "y": 828,
+      "x": 2732,
+      "y": 1774,
       "width": 170,
       "height": 50,
       "metadata": {
@@ -6312,10 +6169,10 @@
     {
       "id": "n_toolfunctiondefinition",
       "label": "ToolFunctionDefinition",
-      "type": "component",
+      "type": "class",
       "zone": "z_tool_contracts",
-      "x": 1614,
-      "y": 160,
+      "x": 2916,
+      "y": 1170,
       "width": 170,
       "height": 50,
       "metadata": {
@@ -6326,10 +6183,10 @@
     {
       "id": "n_toolhostscope",
       "label": "ToolHostScope",
-      "type": "component",
+      "type": "class",
       "zone": "z_tool_host",
-      "x": 1246,
-      "y": 828,
+      "x": 2916,
+      "y": 1774,
       "width": 170,
       "height": 50,
       "metadata": {
@@ -6340,10 +6197,10 @@
     {
       "id": "n_toolimage",
       "label": "ToolImage",
-      "type": "component",
+      "type": "record",
       "zone": "z_tool_contracts",
-      "x": 1062,
-      "y": 224,
+      "x": 2364,
+      "y": 1234,
       "width": 170,
       "height": 50,
       "metadata": {
@@ -6354,10 +6211,10 @@
     {
       "id": "n_tooljson",
       "label": "ToolJson",
-      "type": "component",
+      "type": "class",
       "zone": "z_tool_host",
-      "x": 1430,
-      "y": 828,
+      "x": 3100,
+      "y": 1774,
       "width": 170,
       "height": 50,
       "metadata": {
@@ -6368,10 +6225,10 @@
     {
       "id": "n_tooloutcome",
       "label": "ToolOutcome",
-      "type": "concept",
+      "type": "enum",
       "zone": "z_tool_contracts",
-      "x": 1246,
-      "y": 224,
+      "x": 2548,
+      "y": 1234,
       "width": 170,
       "height": 50,
       "metadata": {
@@ -6382,10 +6239,10 @@
     {
       "id": "n_toolpipelineblueprint",
       "label": "ToolPipelineBlueprint",
-      "type": "component",
+      "type": "class",
       "zone": "z_tool_contracts",
-      "x": 1430,
-      "y": 224,
+      "x": 2732,
+      "y": 1234,
       "width": 170,
       "height": 50,
       "metadata": {
@@ -6396,10 +6253,10 @@
     {
       "id": "n_toolpipelinestage",
       "label": "ToolPipelineStage",
-      "type": "concept",
+      "type": "enum",
       "zone": "z_tool_contracts",
-      "x": 1614,
-      "y": 224,
+      "x": 2916,
+      "y": 1234,
       "width": 170,
       "height": 50,
       "metadata": {
@@ -6410,10 +6267,10 @@
     {
       "id": "n_toolprogress",
       "label": "ToolProgress",
-      "type": "component",
+      "type": "class",
       "zone": "z_tool_progress",
-      "x": 1062,
-      "y": 1130,
+      "x": 2364,
+      "y": 2140,
       "width": 170,
       "height": 50,
       "metadata": {
@@ -6424,10 +6281,10 @@
     {
       "id": "n_toolprogressdetail",
       "label": "ToolProgressDetail",
-      "type": "component",
+      "type": "record",
       "zone": "z_tool_progress",
-      "x": 1246,
-      "y": 1130,
+      "x": 2548,
+      "y": 2140,
       "width": 170,
       "height": 50,
       "metadata": {
@@ -6436,12 +6293,26 @@
       }
     },
     {
+      "id": "n_toolrepeattracker",
+      "label": "ToolRepeatTracker",
+      "type": "class",
+      "zone": "z_tool_host",
+      "x": 2364,
+      "y": 1838,
+      "width": 170,
+      "height": 50,
+      "metadata": {
+        "codeRef": "src/agent/SPLA.Agent/Guards/ToolRepeatTracker.cs",
+        "type": "Class"
+      }
+    },
+    {
       "id": "n_toolresolutionstage",
       "label": "ToolResolutionStage",
-      "type": "component",
+      "type": "class",
       "zone": "z_tool_stages",
-      "x": 1062,
-      "y": 526,
+      "x": 2364,
+      "y": 1536,
       "width": 170,
       "height": 50,
       "metadata": {
@@ -6452,10 +6323,10 @@
     {
       "id": "n_toolresource",
       "label": "ToolResource",
-      "type": "component",
+      "type": "record",
       "zone": "z_tool_contracts",
-      "x": 1062,
-      "y": 288,
+      "x": 2364,
+      "y": 1298,
       "width": 170,
       "height": 50,
       "metadata": {
@@ -6466,10 +6337,10 @@
     {
       "id": "n_toolresult",
       "label": "ToolResult",
-      "type": "component",
+      "type": "class",
       "zone": "z_tool_contracts",
-      "x": 1246,
-      "y": 288,
+      "x": 2548,
+      "y": 1298,
       "width": 170,
       "height": 50,
       "metadata": {
@@ -6480,10 +6351,10 @@
     {
       "id": "n_toolrisk",
       "label": "ToolRisk",
-      "type": "concept",
+      "type": "enum",
       "zone": "z_sec_permissions",
-      "x": 432,
-      "y": 2448,
+      "x": 436,
+      "y": 3786,
       "width": 170,
       "height": 50,
       "metadata": {
@@ -6494,10 +6365,10 @@
     {
       "id": "n_toolscope",
       "label": "ToolScope",
-      "type": "concept",
+      "type": "enum",
       "zone": "z_sec_permissions",
-      "x": 616,
-      "y": 2448,
+      "x": 620,
+      "y": 3786,
       "width": 170,
       "height": 50,
       "metadata": {
@@ -6508,10 +6379,10 @@
     {
       "id": "n_toolsetactivatetool",
       "label": "ToolSetActivateTool",
-      "type": "component",
+      "type": "class",
       "zone": "z_toolsets",
-      "x": 248,
-      "y": 2018,
+      "x": 2548,
+      "y": 3192,
       "width": 170,
       "height": 50,
       "metadata": {
@@ -6522,10 +6393,10 @@
     {
       "id": "n_toolsetactivation",
       "label": "ToolSetActivation",
-      "type": "component",
+      "type": "record",
       "zone": "z_toolsets",
-      "x": 432,
-      "y": 2018,
+      "x": 2732,
+      "y": 3192,
       "width": 170,
       "height": 50,
       "metadata": {
@@ -6536,10 +6407,10 @@
     {
       "id": "n_toolsetactivationby",
       "label": "ToolSetActivationBy",
-      "type": "concept",
+      "type": "enum",
       "zone": "z_toolsets",
-      "x": 616,
-      "y": 2018,
+      "x": 2916,
+      "y": 3192,
       "width": 170,
       "height": 50,
       "metadata": {
@@ -6550,10 +6421,10 @@
     {
       "id": "n_toolsetdeactivatetool",
       "label": "ToolSetDeactivateTool",
-      "type": "component",
+      "type": "class",
       "zone": "z_tool_host",
-      "x": 1614,
-      "y": 828,
+      "x": 2548,
+      "y": 1838,
       "width": 170,
       "height": 50,
       "metadata": {
@@ -6564,10 +6435,10 @@
     {
       "id": "n_toolsetdescriptor",
       "label": "ToolSetDescriptor",
-      "type": "component",
+      "type": "class",
       "zone": "z_toolsets",
-      "x": 64,
-      "y": 2082,
+      "x": 2364,
+      "y": 3256,
       "width": 170,
       "height": 50,
       "metadata": {
@@ -6578,10 +6449,10 @@
     {
       "id": "n_toolsetdisclosurestage",
       "label": "ToolSetDisclosureStage",
-      "type": "component",
+      "type": "class",
       "zone": "z_tool_stages",
-      "x": 1246,
-      "y": 526,
+      "x": 2548,
+      "y": 1536,
       "width": 170,
       "height": 50,
       "metadata": {
@@ -6592,10 +6463,10 @@
     {
       "id": "n_toolsetlevel",
       "label": "ToolSetLevel",
-      "type": "concept",
+      "type": "enum",
       "zone": "z_toolsets",
-      "x": 248,
-      "y": 2082,
+      "x": 2548,
+      "y": 3256,
       "width": 170,
       "height": 50,
       "metadata": {
@@ -6606,10 +6477,10 @@
     {
       "id": "n_toolsetorigin",
       "label": "ToolSetOrigin",
-      "type": "concept",
+      "type": "enum",
       "zone": "z_toolsets",
-      "x": 432,
-      "y": 2082,
+      "x": 2732,
+      "y": 3256,
       "width": 170,
       "height": 50,
       "metadata": {
@@ -6620,10 +6491,10 @@
     {
       "id": "n_toolsetregistry",
       "label": "ToolSetRegistry",
-      "type": "component",
+      "type": "class",
       "zone": "z_toolsets",
-      "x": 616,
-      "y": 2082,
+      "x": 2916,
+      "y": 3256,
       "width": 170,
       "height": 50,
       "metadata": {
@@ -6634,10 +6505,10 @@
     {
       "id": "n_toolsetsession",
       "label": "ToolSetSession",
-      "type": "component",
+      "type": "class",
       "zone": "z_toolsets",
-      "x": 64,
-      "y": 2146,
+      "x": 2364,
+      "y": 3320,
       "width": 170,
       "height": 50,
       "metadata": {
@@ -6648,10 +6519,10 @@
     {
       "id": "n_tooltext",
       "label": "ToolText",
-      "type": "component",
+      "type": "record",
       "zone": "z_tool_contracts",
-      "x": 1430,
-      "y": 288,
+      "x": 2732,
+      "y": 1298,
       "width": 170,
       "height": 50,
       "metadata": {
@@ -6662,10 +6533,10 @@
     {
       "id": "n_turnattempt",
       "label": "TurnAttempt",
-      "type": "component",
+      "type": "class",
       "zone": "z_llm_turn",
-      "x": 800,
-      "y": 764,
+      "x": 0,
+      "y": 1640,
       "width": 170,
       "height": 50,
       "metadata": {
@@ -6676,11 +6547,11 @@
     {
       "id": "n_turnoutcomemiddleware",
       "label": "TurnOutcomeMiddleware",
-      "type": "component",
+      "type": "class",
       "zone": "z_llm_middleware",
-      "x": 64,
-      "y": 462,
-      "width": 170,
+      "x": -750,
+      "y": 1800,
+      "width": 220,
       "height": 50,
       "metadata": {
         "codeRef": "src/core/SPLA.Domain/Llm/Middleware/TurnOutcomeMiddleware.cs",
@@ -6690,10 +6561,10 @@
     {
       "id": "n_utf8textconverter",
       "label": "Utf8TextConverter",
-      "type": "component",
+      "type": "class",
       "zone": "z_formats",
-      "x": 1828,
-      "y": 1368,
+      "x": 3130,
+      "y": 2378,
       "width": 170,
       "height": 50,
       "metadata": {
@@ -6704,10 +6575,10 @@
     {
       "id": "n_windowsshellintegration",
       "label": "WindowsShellIntegration",
-      "type": "component",
+      "type": "class",
       "zone": "z_platform",
-      "x": 50,
-      "y": 5958,
+      "x": 1216,
+      "y": 2342,
       "width": 170,
       "height": 50,
       "metadata": {
@@ -6718,10 +6589,10 @@
     {
       "id": "n_yamlsectionsplicer",
       "label": "YamlSectionSplicer",
-      "type": "component",
+      "type": "class",
       "zone": "z_proj_settings",
-      "x": 800,
-      "y": 5750,
+      "x": 1442,
+      "y": 4710,
       "width": 170,
       "height": 50,
       "metadata": {
@@ -6732,10 +6603,10 @@
     {
       "id": "n_zone",
       "label": "Zone",
-      "type": "component",
+      "type": "record",
       "zone": "z_sec_zones",
-      "x": 64,
-      "y": 2686,
+      "x": 68,
+      "y": 4024,
       "width": 170,
       "height": 50,
       "metadata": {
@@ -6746,10 +6617,10 @@
     {
       "id": "n_zoneedge",
       "label": "ZoneEdge",
-      "type": "component",
+      "type": "record",
       "zone": "z_sec_zones",
-      "x": 248,
-      "y": 2686,
+      "x": 252,
+      "y": 4024,
       "width": 170,
       "height": 50,
       "metadata": {
@@ -6760,10 +6631,10 @@
     {
       "id": "n_zoneeffect",
       "label": "ZoneEffect",
-      "type": "concept",
+      "type": "enum",
       "zone": "z_sec_zones",
-      "x": 432,
-      "y": 2686,
+      "x": 436,
+      "y": 4024,
       "width": 170,
       "height": 50,
       "metadata": {
@@ -6774,10 +6645,10 @@
     {
       "id": "n_zoneshadowstage",
       "label": "ZoneShadowStage",
-      "type": "component",
+      "type": "class",
       "zone": "z_tool_stages",
-      "x": 1430,
-      "y": 526,
+      "x": 2732,
+      "y": 1536,
       "width": 170,
       "height": 50,
       "metadata": {
@@ -6787,6 +6658,41 @@
     }
   ],
   "edges": [
+    {
+      "id": "f_blueprint_gateway",
+      "from": "n_llmpipelineblueprint",
+      "to": "n_illmgateway",
+      "label": "Build(resolver) →",
+      "type": "composes"
+    },
+    {
+      "id": "f_credentials_client",
+      "from": "n_illmclientresolver",
+      "to": "n_illmclient",
+      "label": "Resolve(ctx)",
+      "type": "call"
+    },
+    {
+      "id": "f_exception_providerstate",
+      "from": "n_llmrequestexception",
+      "to": "n_providerstatemiddleware",
+      "label": "catch → .Signals",
+      "type": "event"
+    },
+    {
+      "id": "f_registry_descriptor",
+      "from": "n_llmproviderregistry",
+      "to": "n_llmproviderdescriptor",
+      "label": "returns .Client",
+      "type": "call"
+    },
+    {
+      "id": "f_resolver_registry",
+      "from": "n_providerclientresolver",
+      "to": "n_llmproviderregistry",
+      "label": "Resolve(ctx.Settings.Provider)",
+      "type": "call"
+    },
     {
       "id": "s_accountingstage_itoolmiddleware",
       "from": "n_accountingstage",
@@ -7178,6 +7084,12 @@
       "type": "implements"
     },
     {
+      "id": "s_repetitionguardmiddleware_illmmiddleware",
+      "from": "n_repetitionguardmiddleware",
+      "to": "n_illmmiddleware",
+      "type": "implements"
+    },
+    {
       "id": "s_resourcedeletetool_resourcetoolbase",
       "from": "n_resourcedeletetool",
       "to": "n_resourcetoolbase",
@@ -7298,6 +7210,12 @@
       "type": "implements"
     },
     {
+      "id": "s_tokenaccountingmiddleware_illmmiddleware",
+      "from": "n_tokenaccountingmiddleware",
+      "to": "n_illmmiddleware",
+      "type": "implements"
+    },
+    {
       "id": "s_toolimage_toolcontent",
       "from": "n_toolimage",
       "to": "n_toolcontent",
@@ -7362,6 +7280,118 @@
       "from": "n_zoneshadowstage",
       "to": "n_itoolmiddleware",
       "type": "implements"
+    },
+    {
+      "id": "f_gateway_repetitionguard",
+      "from": "n_illmgateway",
+      "to": "n_repetitionguardmiddleware",
+      "label": "LlmTurnContext ↓",
+      "type": "data-flow"
+    },
+    {
+      "id": "f_hop_guard_outcome",
+      "from": "n_repetitionguardmiddleware",
+      "to": "n_turnoutcomemiddleware",
+      "label": "next(ctx) ↓ · result ↑",
+      "type": "call"
+    },
+    {
+      "id": "f_hop_outcome_state",
+      "from": "n_turnoutcomemiddleware",
+      "to": "n_providerstatemiddleware",
+      "label": "next(ctx) ↓ · result ↑",
+      "type": "call"
+    },
+    {
+      "id": "f_hop_state_tokens",
+      "from": "n_providerstatemiddleware",
+      "to": "n_tokenaccountingmiddleware",
+      "label": "next(ctx) ↓ · result ↑",
+      "type": "call"
+    },
+    {
+      "id": "f_hop_tokens_credentials",
+      "from": "n_tokenaccountingmiddleware",
+      "to": "n_credentialsmiddleware",
+      "label": "next(ctx) ↓ · result ↑",
+      "type": "call"
+    },
+    {
+      "id": "f_credentials_resolver",
+      "from": "n_credentialsmiddleware",
+      "to": "n_illmclientresolver",
+      "label": "Resolve(ctx) ↓",
+      "type": "call"
+    },
+    {
+      "id": "f_client_credentials",
+      "from": "n_illmclient",
+      "to": "n_credentialsmiddleware",
+      "label": "LlmTurnResult ↑",
+      "type": "data-flow"
+    },
+    {
+      "id": "f_credentials_secrets",
+      "from": "n_credentialsmiddleware",
+      "to": "n_isecretresolver",
+      "label": "secret:<scope>:<key> → plaintext",
+      "type": "security"
+    },
+    {
+      "id": "f_credentials_settings",
+      "from": "n_credentialsmiddleware",
+      "to": "n_llmsettings",
+      "label": "ApiKey (this turn only)",
+      "type": "data-flow"
+    },
+    {
+      "id": "f_tokens_usagestore",
+      "from": "n_tokenaccountingmiddleware",
+      "to": "n_itokenusagestore",
+      "label": "prompt/completion tokens",
+      "type": "storage"
+    },
+    {
+      "id": "f_state_statestore",
+      "from": "n_providerstatemiddleware",
+      "to": "n_providerstatestore",
+      "label": "ProviderFact (Connection)",
+      "type": "storage"
+    },
+    {
+      "id": "f_outcome_result",
+      "from": "n_turnoutcomemiddleware",
+      "to": "n_llmturnresult",
+      "label": "Status + Duration",
+      "type": "data-flow"
+    },
+    {
+      "id": "f_guard_attempt",
+      "from": "n_repetitionguardmiddleware",
+      "to": "n_turnattempt",
+      "label": "Abort() → cancel",
+      "type": "event"
+    },
+    {
+      "id": "f_guard_generationattempt",
+      "from": "n_repetitionguardmiddleware",
+      "to": "n_generationattempt",
+      "label": "OnAttempt (abandoned)",
+      "type": "event"
+    },
+    {
+      "id": "f_blueprint_entry",
+      "from": "n_llmpipelineblueprint",
+      "to": "n_repetitionguardmiddleware",
+      "label": "Build() → entry",
+      "type": "composes"
+    },
+    {
+      "id": "f_blueprint_stage",
+      "from": "n_llmpipelineblueprint",
+      "to": "n_llmpipelinestage",
+      "label": "OrderBy(Stage)",
+      "type": "call"
     }
   ]
 }

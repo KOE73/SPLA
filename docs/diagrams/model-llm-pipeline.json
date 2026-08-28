@@ -61,13 +61,7 @@
       "y": 40,
       "width": 240,
       "height": 480,
-      "style": {
-        "fill": "#f8fafc",
-        "stroke": "#94a3b8",
-        "strokeWidth": 2,
-        "strokeDasharray": "4,4",
-        "headerBg": "#e2e8f0"
-      },
+      "styleId": "domain.llm.input",
       "metadata": {
         "description": "User turn trigger, active conversation context, and attachments."
       }
@@ -86,13 +80,7 @@
       "y": 40,
       "width": 460,
       "height": 480,
-      "style": {
-        "fill": "#f0fdf4",
-        "stroke": "#86efac",
-        "strokeWidth": 2,
-        "strokeDasharray": "none",
-        "headerBg": "#dcfce7"
-      },
+      "styleId": "domain.llm.composition",
       "metadata": {
         "description": "Ordered typed contributors combining system instructions, skills, active tools, and memory."
       }
@@ -110,13 +98,7 @@
       "y": 40,
       "width": 240,
       "height": 480,
-      "style": {
-        "fill": "#fffbeb",
-        "stroke": "#fde68a",
-        "strokeWidth": 2,
-        "strokeDasharray": "none",
-        "headerBg": "#fef3c7"
-      },
+      "styleId": "domain.llm.gateway",
       "metadata": {
         "description": "Unified streaming connection to local (Ollama/LMStudio) or cloud (Anthropic/Gemini/OpenAI) models."
       }
@@ -135,13 +117,7 @@
       "y": 40,
       "width": 320,
       "height": 480,
-      "style": {
-        "fill": "#eff6ff",
-        "stroke": "#93c5fd",
-        "strokeWidth": 2,
-        "strokeDasharray": "none",
-        "headerBg": "#dbeafe"
-      },
+      "styleId": "domain.llm.output",
       "metadata": {
         "description": "Token stream demuxing: thinking tags, text chunks, and structured tool calls."
       }

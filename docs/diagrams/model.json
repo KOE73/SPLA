@@ -61,13 +61,7 @@
       "y": 40,
       "width": 260,
       "height": 520,
-      "style": {
-        "fill": "#f8fafc",
-        "stroke": "#94a3b8",
-        "strokeWidth": 2,
-        "strokeDasharray": "6,4",
-        "headerBg": "#e2e8f0"
-      },
+      "styleId": "domain.client",
       "metadata": {
         "description": "Web client based on Vue 3 + Tailwind. Communicates via WebSocket protocol.",
         "responsibilities": [
@@ -93,13 +87,7 @@
       "y": 40,
       "width": 480,
       "height": 520,
-      "style": {
-        "fill": "#f0fdf4",
-        "stroke": "#86efac",
-        "strokeWidth": 2,
-        "strokeDasharray": "none",
-        "headerBg": "#dcfce7"
-      },
+      "styleId": "domain.core.runtime",
       "metadata": {
         "description": "Host-side agent session orchestrator, message turn pump, context composition and LLM gateway.",
         "responsibilities": [
@@ -122,15 +110,9 @@
       ],
       "x": 860,
       "y": 40,
-      "width": 380,
+      "width": 850,
       "height": 520,
-      "style": {
-        "fill": "#eff6ff",
-        "stroke": "#93c5fd",
-        "strokeWidth": 2,
-        "strokeDasharray": "none",
-        "headerBg": "#dbeafe"
-      },
+      "styleId": "domain.tools",
       "metadata": {
         "description": "Deterministic narrow tool dispatch layer, permission filtering, MCP server bridges.",
         "responsibilities": [
@@ -155,13 +137,7 @@
       "y": 590,
       "width": 900,
       "height": 220,
-      "style": {
-        "fill": "#faf5ff",
-        "stroke": "#d8b4fe",
-        "strokeWidth": 2,
-        "strokeDasharray": "4,4",
-        "headerBg": "#f3e8ff"
-      },
+      "styleId": "domain.storage",
       "metadata": {
         "description": "Local project databases, binary storage, and secure credential storage.",
         "responsibilities": [
@@ -363,9 +339,9 @@
       "label": "McpHost & Tool Registry",
       "type": "service",
       "zone": "zone_tools",
-      "x": 890,
-      "y": 100,
-      "width": 320,
+      "x": 960,
+      "y": 350,
+      "width": 690,
       "height": 80,
       "tags": [
         "tools",
@@ -387,8 +363,8 @@
       "label": "Network Tools (Ping/DNS/HTTP)",
       "type": "tool",
       "zone": "zone_tools",
-      "x": 890,
-      "y": 220,
+      "x": 1090,
+      "y": 160,
       "width": 320,
       "height": 55,
       "tags": [
@@ -410,9 +386,9 @@
       "label": "SSH & SFTP Tools",
       "type": "tool",
       "zone": "zone_tools",
-      "x": 890,
-      "y": 300,
-      "width": 320,
+      "x": 1460,
+      "y": 130,
+      "width": 160,
       "height": 55,
       "tags": [
         "tools",
@@ -434,9 +410,9 @@
       "label": "Document & Sheet Tools",
       "type": "tool",
       "zone": "zone_tools",
-      "x": 890,
-      "y": 380,
-      "width": 320,
+      "x": 960,
+      "y": 260,
+      "width": 210,
       "height": 55,
       "tags": [
         "tools",

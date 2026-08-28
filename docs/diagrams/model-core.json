@@ -47,13 +47,7 @@
       "y": 40,
       "width": 640,
       "height": 420,
-      "style": {
-        "fill": "#f8fafc",
-        "stroke": "#cbd5e1",
-        "strokeWidth": 2,
-        "strokeDasharray": "none",
-        "headerBg": "#e2e8f0"
-      },
+      "styleId": "domain.domain",
       "metadata": {
         "description": "Pure domain abstractions and core rules."
       }
@@ -71,13 +65,7 @@
       "y": 40,
       "width": 380,
       "height": 420,
-      "style": {
-        "fill": "#eff6ff",
-        "stroke": "#93c5fd",
-        "strokeWidth": 2,
-        "strokeDasharray": "none",
-        "headerBg": "#dbeafe"
-      }
+      "styleId": "domain.mcp"
     },
     {
       "id": "zone_security",
@@ -92,13 +80,7 @@
       "y": 500,
       "width": 300,
       "height": 260,
-      "style": {
-        "fill": "#fff1f2",
-        "stroke": "#fca5a5",
-        "strokeWidth": 2,
-        "strokeDasharray": "none",
-        "headerBg": "#ffe4e6"
-      }
+      "styleId": "domain.security"
     },
     {
       "id": "zone_host",
@@ -113,13 +95,7 @@
       "y": 500,
       "width": 300,
       "height": 260,
-      "style": {
-        "fill": "#f0fdf4",
-        "stroke": "#86efac",
-        "strokeWidth": 2,
-        "strokeDasharray": "none",
-        "headerBg": "#dcfce7"
-      }
+      "styleId": "domain.platform"
     },
     {
       "id": "zone_observability",
@@ -133,13 +109,7 @@
       "y": 500,
       "width": 380,
       "height": 260,
-      "style": {
-        "fill": "#faf5ff",
-        "stroke": "#d8b4fe",
-        "strokeWidth": 2,
-        "strokeDasharray": "4,4",
-        "headerBg": "#f3e8ff"
-      }
+      "styleId": "domain.obs"
     }
   ],
   "nodes": [

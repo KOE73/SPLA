@@ -3,7 +3,9 @@
   "title": "SPLA Core — смысловой атлас",
   "layout": "semantic-atlas",
   "sources": [
-    "src/core"
+    "src/core",
+    "src/agent/SPLA.Agent/Guards",
+    "src/agent/SPLA.Agent/Accounting"
   ],
   "blocks": [
     {
@@ -31,7 +33,10 @@
           "match": {
             "name": [
               "ILlmMiddleware",
-              "LlmPipelineBlueprint"
+              "LlmPipelineBlueprint",
+              "RepetitionDetector",
+              "RepetitionGuardMiddleware",
+              "TokenAccountingMiddleware"
             ],
             "path": [
               "src/core/SPLA.Domain/Llm/Middleware/"
@@ -93,7 +98,8 @@
             "name": [
               "IMcpTool",
               "IToolHost",
-              "ToolHostScope"
+              "ToolHostScope",
+              "ToolRepeatTracker"
             ],
             "path": [
               "src/core/SPLA.MCP.Core/",
@@ -478,6 +484,7 @@
           "match": {
             "name": [
               "ConfigLoader",
+              "HubAppearanceStore",
               "MachineLayerScope",
               "MountResolver",
               "ProjectKvStore",
