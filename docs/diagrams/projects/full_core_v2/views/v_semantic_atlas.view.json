@@ -4321,5 +4321,840 @@
       "height": 50,
       "render": "compact"
     }
+  ],
+  "edges": [
+    {
+      "id": "f_blueprint_gateway",
+      "from": "n_llmpipelineblueprint",
+      "to": "n_illmgateway",
+      "type": "composes",
+      "label": "Build(resolver) →"
+    },
+    {
+      "id": "f_credentials_client",
+      "from": "n_illmclientresolver",
+      "to": "n_illmclient",
+      "type": "call",
+      "label": "Resolve(ctx)"
+    },
+    {
+      "id": "f_exception_providerstate",
+      "from": "n_llmrequestexception",
+      "to": "n_providerstatemiddleware",
+      "type": "event",
+      "label": "catch → .Signals"
+    },
+    {
+      "id": "f_registry_descriptor",
+      "from": "n_llmproviderregistry",
+      "to": "n_llmproviderdescriptor",
+      "type": "call",
+      "label": "returns .Client"
+    },
+    {
+      "id": "f_resolver_registry",
+      "from": "n_providerclientresolver",
+      "to": "n_llmproviderregistry",
+      "type": "call",
+      "label": "Resolve(ctx.Settings.Provider)"
+    },
+    {
+      "id": "s_accountingstage_itoolmiddleware",
+      "from": "n_accountingstage",
+      "to": "n_itoolmiddleware",
+      "type": "implements",
+      "label": ""
+    },
+    {
+      "id": "s_aclsecretaccesspolicy_isecretaccesspolicy",
+      "from": "n_aclsecretaccesspolicy",
+      "to": "n_isecretaccesspolicy",
+      "type": "implements",
+      "label": ""
+    },
+    {
+      "id": "s_agentclarifytool_imcptool",
+      "from": "n_agentclarifytool",
+      "to": "n_imcptool",
+      "type": "implements",
+      "label": ""
+    },
+    {
+      "id": "s_agentfeature_iagentfeature",
+      "from": "n_agentfeature",
+      "to": "n_iagentfeature",
+      "type": "implements",
+      "label": ""
+    },
+    {
+      "id": "s_agentlibrarian_iagentlibrarian",
+      "from": "n_agentlibrarian",
+      "to": "n_iagentlibrarian",
+      "type": "implements",
+      "label": ""
+    },
+    {
+      "id": "s_agentmemorycleartool_imcptool",
+      "from": "n_agentmemorycleartool",
+      "to": "n_imcptool",
+      "type": "implements",
+      "label": ""
+    },
+    {
+      "id": "s_agentmemorydeletetool_imcptool",
+      "from": "n_agentmemorydeletetool",
+      "to": "n_imcptool",
+      "type": "implements",
+      "label": ""
+    },
+    {
+      "id": "s_agentmemorygettool_imcptool",
+      "from": "n_agentmemorygettool",
+      "to": "n_imcptool",
+      "type": "implements",
+      "label": ""
+    },
+    {
+      "id": "s_agentmemorylisttool_imcptool",
+      "from": "n_agentmemorylisttool",
+      "to": "n_imcptool",
+      "type": "implements",
+      "label": ""
+    },
+    {
+      "id": "s_agentmemorysettool_imcptool",
+      "from": "n_agentmemorysettool",
+      "to": "n_imcptool",
+      "type": "implements",
+      "label": ""
+    },
+    {
+      "id": "s_agentsession_iagentsession",
+      "from": "n_agentsession",
+      "to": "n_iagentsession",
+      "type": "implements",
+      "label": ""
+    },
+    {
+      "id": "s_agentspawnbatchtool_imcptool",
+      "from": "n_agentspawnbatchtool",
+      "to": "n_imcptool",
+      "type": "implements",
+      "label": ""
+    },
+    {
+      "id": "s_agentspawntool_imcptool",
+      "from": "n_agentspawntool",
+      "to": "n_imcptool",
+      "type": "implements",
+      "label": ""
+    },
+    {
+      "id": "s_allowallgate_icapabilitygate",
+      "from": "n_allowallgate",
+      "to": "n_icapabilitygate",
+      "type": "implements",
+      "label": ""
+    },
+    {
+      "id": "s_ambienthoststage_itoolmiddleware",
+      "from": "n_ambienthoststage",
+      "to": "n_itoolmiddleware",
+      "type": "implements",
+      "label": ""
+    },
+    {
+      "id": "s_backgroundstage_itoolmiddleware",
+      "from": "n_backgroundstage",
+      "to": "n_itoolmiddleware",
+      "type": "implements",
+      "label": ""
+    },
+    {
+      "id": "s_blobpeektool_imcptool",
+      "from": "n_blobpeektool",
+      "to": "n_imcptool",
+      "type": "implements",
+      "label": ""
+    },
+    {
+      "id": "s_blobstore_iblobstore",
+      "from": "n_blobstore",
+      "to": "n_iblobstore",
+      "type": "implements",
+      "label": ""
+    },
+    {
+      "id": "s_claimidentity_iidentity",
+      "from": "n_claimidentity",
+      "to": "n_iidentity",
+      "type": "implements",
+      "label": ""
+    },
+    {
+      "id": "s_claimsidentityprovider_iidentityprovider",
+      "from": "n_claimsidentityprovider",
+      "to": "n_iidentityprovider",
+      "type": "implements",
+      "label": ""
+    },
+    {
+      "id": "s_contextcheckpointrestoretool_imcptool",
+      "from": "n_contextcheckpointrestoretool",
+      "to": "n_imcptool",
+      "type": "implements",
+      "label": ""
+    },
+    {
+      "id": "s_contextcheckpointsettool_imcptool",
+      "from": "n_contextcheckpointsettool",
+      "to": "n_imcptool",
+      "type": "implements",
+      "label": ""
+    },
+    {
+      "id": "s_credentialsmiddleware_illmmiddleware",
+      "from": "n_credentialsmiddleware",
+      "to": "n_illmmiddleware",
+      "type": "implements",
+      "label": ""
+    },
+    {
+      "id": "s_directoryskillsource_ieditableskillsource",
+      "from": "n_directoryskillsource",
+      "to": "n_ieditableskillsource",
+      "type": "implements",
+      "label": ""
+    },
+    {
+      "id": "s_directoryskillsourcefactory_iskillsourcefactory",
+      "from": "n_directoryskillsourcefactory",
+      "to": "n_iskillsourcefactory",
+      "type": "implements",
+      "label": ""
+    },
+    {
+      "id": "s_dpapifilesecretstore_isecretstore",
+      "from": "n_dpapifilesecretstore",
+      "to": "n_isecretstore",
+      "type": "implements",
+      "label": ""
+    },
+    {
+      "id": "s_embeddedjsonschemaprovider_ijsonschemaprovider",
+      "from": "n_embeddedjsonschemaprovider",
+      "to": "n_ijsonschemaprovider",
+      "type": "implements",
+      "label": ""
+    },
+    {
+      "id": "s_faultstage_itoolmiddleware",
+      "from": "n_faultstage",
+      "to": "n_itoolmiddleware",
+      "type": "implements",
+      "label": ""
+    },
+    {
+      "id": "s_filebucket_ibucket",
+      "from": "n_filebucket",
+      "to": "n_ibucket",
+      "type": "implements",
+      "label": ""
+    },
+    {
+      "id": "s_filecontentbrowser_icontentbrowser",
+      "from": "n_filecontentbrowser",
+      "to": "n_icontentbrowser",
+      "type": "implements",
+      "label": ""
+    },
+    {
+      "id": "s_filecontentsource_icontentsource",
+      "from": "n_filecontentsource",
+      "to": "n_icontentsource",
+      "type": "implements",
+      "label": ""
+    },
+    {
+      "id": "s_fileresourceprovider_iresourcecontainermaker",
+      "from": "n_fileresourceprovider",
+      "to": "n_iresourcecontainermaker",
+      "type": "implements",
+      "label": ""
+    },
+    {
+      "id": "s_fileresourceprovider_iresourceprovider",
+      "from": "n_fileresourceprovider",
+      "to": "n_iresourceprovider",
+      "type": "implements",
+      "label": ""
+    },
+    {
+      "id": "s_fileresourceprovider_iresourceremover",
+      "from": "n_fileresourceprovider",
+      "to": "n_iresourceremover",
+      "type": "implements",
+      "label": ""
+    },
+    {
+      "id": "s_fileresourceprovider_iresourcewriter",
+      "from": "n_fileresourceprovider",
+      "to": "n_iresourcewriter",
+      "type": "implements",
+      "label": ""
+    },
+    {
+      "id": "s_filesecretaclstore_isecretaclstore",
+      "from": "n_filesecretaclstore",
+      "to": "n_isecretaclstore",
+      "type": "implements",
+      "label": ""
+    },
+    {
+      "id": "s_filesecretstore_isecretstore",
+      "from": "n_filesecretstore",
+      "to": "n_isecretstore",
+      "type": "implements",
+      "label": ""
+    },
+    {
+      "id": "s_fileskillsourcestore_iskillsourcestore",
+      "from": "n_fileskillsourcestore",
+      "to": "n_iskillsourcestore",
+      "type": "implements",
+      "label": ""
+    },
+    {
+      "id": "s_fileskilltruststore_iskilltruststore",
+      "from": "n_fileskilltruststore",
+      "to": "n_iskilltruststore",
+      "type": "implements",
+      "label": ""
+    },
+    {
+      "id": "s_filetokenusagestore_itokenusagestore",
+      "from": "n_filetokenusagestore",
+      "to": "n_itokenusagestore",
+      "type": "implements",
+      "label": ""
+    },
+    {
+      "id": "s_identityconverter_iformatconverter",
+      "from": "n_identityconverter",
+      "to": "n_iformatconverter",
+      "type": "implements",
+      "label": ""
+    },
+    {
+      "id": "s_ieditableskillsource_iskillsource",
+      "from": "n_ieditableskillsource",
+      "to": "n_iskillsource",
+      "type": "implements",
+      "label": ""
+    },
+    {
+      "id": "s_imageviewtool_imcptool",
+      "from": "n_imageviewtool",
+      "to": "n_imcptool",
+      "type": "implements",
+      "label": ""
+    },
+    {
+      "id": "s_jsontoyamlconverter_iformatconverter",
+      "from": "n_jsontoyamlconverter",
+      "to": "n_iformatconverter",
+      "type": "implements",
+      "label": ""
+    },
+    {
+      "id": "s_keyvaluestore_ikeyvaluestore",
+      "from": "n_keyvaluestore",
+      "to": "n_ikeyvaluestore",
+      "type": "implements",
+      "label": ""
+    },
+    {
+      "id": "s_llmproviderdescriptor_illmproviderdescriptor",
+      "from": "n_llmproviderdescriptor",
+      "to": "n_illmproviderdescriptor",
+      "type": "implements",
+      "label": ""
+    },
+    {
+      "id": "s_localproject_iproject",
+      "from": "n_localproject",
+      "to": "n_iproject",
+      "type": "implements",
+      "label": ""
+    },
+    {
+      "id": "s_localprojectbackend_iprojectbackend",
+      "from": "n_localprojectbackend",
+      "to": "n_iprojectbackend",
+      "type": "implements",
+      "label": ""
+    },
+    {
+      "id": "s_localprojectprovider_iprojectprovider",
+      "from": "n_localprojectprovider",
+      "to": "n_iprojectprovider",
+      "type": "implements",
+      "label": ""
+    },
+    {
+      "id": "s_localshell_ishell",
+      "from": "n_localshell",
+      "to": "n_ishell",
+      "type": "implements",
+      "label": ""
+    },
+    {
+      "id": "s_localworkspace_iworkspace",
+      "from": "n_localworkspace",
+      "to": "n_iworkspace",
+      "type": "implements",
+      "label": ""
+    },
+    {
+      "id": "s_markrollbacktool_imcptool",
+      "from": "n_markrollbacktool",
+      "to": "n_imcptool",
+      "type": "implements",
+      "label": ""
+    },
+    {
+      "id": "s_marksettool_imcptool",
+      "from": "n_marksettool",
+      "to": "n_imcptool",
+      "type": "implements",
+      "label": ""
+    },
+    {
+      "id": "s_mcphost_itoolhost",
+      "from": "n_mcphost",
+      "to": "n_itoolhost",
+      "type": "implements",
+      "label": ""
+    },
+    {
+      "id": "s_memorybucket_ibucket",
+      "from": "n_memorybucket",
+      "to": "n_ibucket",
+      "type": "implements",
+      "label": ""
+    },
+    {
+      "id": "s_memoryprojectbackend_iprojectbackend",
+      "from": "n_memoryprojectbackend",
+      "to": "n_iprojectbackend",
+      "type": "implements",
+      "label": ""
+    },
+    {
+      "id": "s_passthroughsandbox_isandbox",
+      "from": "n_passthroughsandbox",
+      "to": "n_isandbox",
+      "type": "implements",
+      "label": ""
+    },
+    {
+      "id": "s_permissionmanager_ipermissionmanager",
+      "from": "n_permissionmanager",
+      "to": "n_ipermissionmanager",
+      "type": "implements",
+      "label": ""
+    },
+    {
+      "id": "s_permissionstage_itoolmiddleware",
+      "from": "n_permissionstage",
+      "to": "n_itoolmiddleware",
+      "type": "implements",
+      "label": ""
+    },
+    {
+      "id": "s_permissivesecretaccesspolicy_isecretaccesspolicy",
+      "from": "n_permissivesecretaccesspolicy",
+      "to": "n_isecretaccesspolicy",
+      "type": "implements",
+      "label": ""
+    },
+    {
+      "id": "s_pluginavailabilitystage_itoolmiddleware",
+      "from": "n_pluginavailabilitystage",
+      "to": "n_itoolmiddleware",
+      "type": "implements",
+      "label": ""
+    },
+    {
+      "id": "s_pluginskillsource_iskillsource",
+      "from": "n_pluginskillsource",
+      "to": "n_iskillsource",
+      "type": "implements",
+      "label": ""
+    },
+    {
+      "id": "s_progressnodestage_itoolmiddleware",
+      "from": "n_progressnodestage",
+      "to": "n_itoolmiddleware",
+      "type": "implements",
+      "label": ""
+    },
+    {
+      "id": "s_providerclientresolver_illmclientresolver",
+      "from": "n_providerclientresolver",
+      "to": "n_illmclientresolver",
+      "type": "implements",
+      "label": ""
+    },
+    {
+      "id": "s_providerstatemiddleware_illmmiddleware",
+      "from": "n_providerstatemiddleware",
+      "to": "n_illmmiddleware",
+      "type": "implements",
+      "label": ""
+    },
+    {
+      "id": "s_repetitionguardmiddleware_illmmiddleware",
+      "from": "n_repetitionguardmiddleware",
+      "to": "n_illmmiddleware",
+      "type": "implements",
+      "label": ""
+    },
+    {
+      "id": "s_resourcedeletetool_resourcetoolbase",
+      "from": "n_resourcedeletetool",
+      "to": "n_resourcetoolbase",
+      "type": "extends",
+      "label": ""
+    },
+    {
+      "id": "s_resourceexiststool_resourcetoolbase",
+      "from": "n_resourceexiststool",
+      "to": "n_resourcetoolbase",
+      "type": "extends",
+      "label": ""
+    },
+    {
+      "id": "s_resourcelisttool_resourcetoolbase",
+      "from": "n_resourcelisttool",
+      "to": "n_resourcetoolbase",
+      "type": "extends",
+      "label": ""
+    },
+    {
+      "id": "s_resourcemakedirtool_resourcetoolbase",
+      "from": "n_resourcemakedirtool",
+      "to": "n_resourcetoolbase",
+      "type": "extends",
+      "label": ""
+    },
+    {
+      "id": "s_resourcereadtool_resourcetoolbase",
+      "from": "n_resourcereadtool",
+      "to": "n_resourcetoolbase",
+      "type": "extends",
+      "label": ""
+    },
+    {
+      "id": "s_resourcetoolbase_imcptool",
+      "from": "n_resourcetoolbase",
+      "to": "n_imcptool",
+      "type": "implements",
+      "label": ""
+    },
+    {
+      "id": "s_resourcewritetool_resourcetoolbase",
+      "from": "n_resourcewritetool",
+      "to": "n_resourcetoolbase",
+      "type": "extends",
+      "label": ""
+    },
+    {
+      "id": "s_secretresolver_isecretresolver",
+      "from": "n_secretresolver",
+      "to": "n_isecretresolver",
+      "type": "implements",
+      "label": ""
+    },
+    {
+      "id": "s_singleclientresolver_illmclientresolver",
+      "from": "n_singleclientresolver",
+      "to": "n_illmclientresolver",
+      "type": "implements",
+      "label": ""
+    },
+    {
+      "id": "s_skillactivatetool_imcptool",
+      "from": "n_skillactivatetool",
+      "to": "n_imcptool",
+      "type": "implements",
+      "label": ""
+    },
+    {
+      "id": "s_skillcapabilityprobe_iskillcapabilityprobe",
+      "from": "n_skillcapabilityprobe",
+      "to": "n_iskillcapabilityprobe",
+      "type": "implements",
+      "label": ""
+    },
+    {
+      "id": "s_skilldeactivatetool_imcptool",
+      "from": "n_skilldeactivatetool",
+      "to": "n_imcptool",
+      "type": "implements",
+      "label": ""
+    },
+    {
+      "id": "s_skillfindtool_imcptool",
+      "from": "n_skillfindtool",
+      "to": "n_imcptool",
+      "type": "implements",
+      "label": ""
+    },
+    {
+      "id": "s_skillreadresourcetool_imcptool",
+      "from": "n_skillreadresourcetool",
+      "to": "n_imcptool",
+      "type": "implements",
+      "label": ""
+    },
+    {
+      "id": "s_skillsession_iskillsession",
+      "from": "n_skillsession",
+      "to": "n_iskillsession",
+      "type": "implements",
+      "label": ""
+    },
+    {
+      "id": "s_taglibrarian_itaglibrarian",
+      "from": "n_taglibrarian",
+      "to": "n_itaglibrarian",
+      "type": "implements",
+      "label": ""
+    },
+    {
+      "id": "s_taskcanceltool_imcptool",
+      "from": "n_taskcanceltool",
+      "to": "n_imcptool",
+      "type": "implements",
+      "label": ""
+    },
+    {
+      "id": "s_tasklisttool_imcptool",
+      "from": "n_tasklisttool",
+      "to": "n_imcptool",
+      "type": "implements",
+      "label": ""
+    },
+    {
+      "id": "s_taskoutputtool_imcptool",
+      "from": "n_taskoutputtool",
+      "to": "n_imcptool",
+      "type": "implements",
+      "label": ""
+    },
+    {
+      "id": "s_telemetrystage_itoolmiddleware",
+      "from": "n_telemetrystage",
+      "to": "n_itoolmiddleware",
+      "type": "implements",
+      "label": ""
+    },
+    {
+      "id": "s_tokenaccountingmiddleware_illmmiddleware",
+      "from": "n_tokenaccountingmiddleware",
+      "to": "n_illmmiddleware",
+      "type": "implements",
+      "label": ""
+    },
+    {
+      "id": "s_toolimage_toolcontent",
+      "from": "n_toolimage",
+      "to": "n_toolcontent",
+      "type": "extends",
+      "label": ""
+    },
+    {
+      "id": "s_toolresolutionstage_itoolmiddleware",
+      "from": "n_toolresolutionstage",
+      "to": "n_itoolmiddleware",
+      "type": "implements",
+      "label": ""
+    },
+    {
+      "id": "s_toolresource_toolcontent",
+      "from": "n_toolresource",
+      "to": "n_toolcontent",
+      "type": "extends",
+      "label": ""
+    },
+    {
+      "id": "s_toolsetactivatetool_imcptool",
+      "from": "n_toolsetactivatetool",
+      "to": "n_imcptool",
+      "type": "implements",
+      "label": ""
+    },
+    {
+      "id": "s_toolsetdeactivatetool_imcptool",
+      "from": "n_toolsetdeactivatetool",
+      "to": "n_imcptool",
+      "type": "implements",
+      "label": ""
+    },
+    {
+      "id": "s_toolsetdisclosurestage_itoolmiddleware",
+      "from": "n_toolsetdisclosurestage",
+      "to": "n_itoolmiddleware",
+      "type": "implements",
+      "label": ""
+    },
+    {
+      "id": "s_toolsetsession_itoolsetsession",
+      "from": "n_toolsetsession",
+      "to": "n_itoolsetsession",
+      "type": "implements",
+      "label": ""
+    },
+    {
+      "id": "s_tooltext_toolcontent",
+      "from": "n_tooltext",
+      "to": "n_toolcontent",
+      "type": "extends",
+      "label": ""
+    },
+    {
+      "id": "s_turnoutcomemiddleware_illmmiddleware",
+      "from": "n_turnoutcomemiddleware",
+      "to": "n_illmmiddleware",
+      "type": "implements",
+      "label": ""
+    },
+    {
+      "id": "s_utf8textconverter_iformatconverter",
+      "from": "n_utf8textconverter",
+      "to": "n_iformatconverter",
+      "type": "implements",
+      "label": ""
+    },
+    {
+      "id": "s_zoneshadowstage_itoolmiddleware",
+      "from": "n_zoneshadowstage",
+      "to": "n_itoolmiddleware",
+      "type": "implements",
+      "label": ""
+    },
+    {
+      "id": "f_gateway_repetitionguard",
+      "from": "n_illmgateway",
+      "to": "n_repetitionguardmiddleware",
+      "type": "data-flow",
+      "label": "LlmTurnContext ↓"
+    },
+    {
+      "id": "f_hop_guard_outcome",
+      "from": "n_repetitionguardmiddleware",
+      "to": "n_turnoutcomemiddleware",
+      "type": "call",
+      "label": "next(ctx) ↓ · result ↑"
+    },
+    {
+      "id": "f_hop_outcome_state",
+      "from": "n_turnoutcomemiddleware",
+      "to": "n_providerstatemiddleware",
+      "type": "call",
+      "label": "next(ctx) ↓ · result ↑"
+    },
+    {
+      "id": "f_hop_state_tokens",
+      "from": "n_providerstatemiddleware",
+      "to": "n_tokenaccountingmiddleware",
+      "type": "call",
+      "label": "next(ctx) ↓ · result ↑"
+    },
+    {
+      "id": "f_hop_tokens_credentials",
+      "from": "n_tokenaccountingmiddleware",
+      "to": "n_credentialsmiddleware",
+      "type": "call",
+      "label": "next(ctx) ↓ · result ↑"
+    },
+    {
+      "id": "f_credentials_resolver",
+      "from": "n_credentialsmiddleware",
+      "to": "n_illmclientresolver",
+      "type": "call",
+      "label": "Resolve(ctx) ↓"
+    },
+    {
+      "id": "f_client_credentials",
+      "from": "n_illmclient",
+      "to": "n_credentialsmiddleware",
+      "type": "data-flow",
+      "label": "LlmTurnResult ↑"
+    },
+    {
+      "id": "f_credentials_secrets",
+      "from": "n_credentialsmiddleware",
+      "to": "n_isecretresolver",
+      "type": "security",
+      "label": "secret:<scope>:<key> → plaintext"
+    },
+    {
+      "id": "f_credentials_settings",
+      "from": "n_credentialsmiddleware",
+      "to": "n_llmsettings",
+      "type": "data-flow",
+      "label": "ApiKey (this turn only)"
+    },
+    {
+      "id": "f_tokens_usagestore",
+      "from": "n_tokenaccountingmiddleware",
+      "to": "n_itokenusagestore",
+      "type": "storage",
+      "label": "prompt/completion tokens"
+    },
+    {
+      "id": "f_state_statestore",
+      "from": "n_providerstatemiddleware",
+      "to": "n_providerstatestore",
+      "type": "storage",
+      "label": "ProviderFact (Connection)"
+    },
+    {
+      "id": "f_outcome_result",
+      "from": "n_turnoutcomemiddleware",
+      "to": "n_llmturnresult",
+      "type": "data-flow",
+      "label": "Status + Duration"
+    },
+    {
+      "id": "f_guard_attempt",
+      "from": "n_repetitionguardmiddleware",
+      "to": "n_turnattempt",
+      "type": "event",
+      "label": "Abort() → cancel"
+    },
+    {
+      "id": "f_guard_generationattempt",
+      "from": "n_repetitionguardmiddleware",
+      "to": "n_generationattempt",
+      "type": "event",
+      "label": "OnAttempt (abandoned)"
+    },
+    {
+      "id": "f_blueprint_entry",
+      "from": "n_llmpipelineblueprint",
+      "to": "n_repetitionguardmiddleware",
+      "type": "composes",
+      "label": "Build() → entry"
+    },
+    {
+      "id": "f_blueprint_stage",
+      "from": "n_llmpipelineblueprint",
+      "to": "n_llmpipelinestage",
+      "type": "call",
+      "label": "OrderBy(Stage)"
+    }
   ]
 }

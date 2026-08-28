@@ -4280,6 +4280,6516 @@
       "namespace": "",
       "codeRef": "src/core/SPLA.MCP.Core/Pipeline/Stages/ZoneShadowStage.cs",
       "members": []
+    },
+    {
+      "id": "n_agentcallbacks",
+      "name": "AgentCallbacks",
+      "kind": "Record",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/agent/SPLA.Agent/AgentCallbacks.cs",
+      "members": []
+    },
+    {
+      "id": "n_checkpointmanager",
+      "name": "CheckpointManager",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/agent/SPLA.Agent/CheckpointManager.cs",
+      "members": []
+    },
+    {
+      "id": "n_agentcontributors",
+      "name": "AgentContributors",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/agent/SPLA.Agent/Composition/AgentContributors.cs",
+      "members": []
+    },
+    {
+      "id": "n_modecontributor",
+      "name": "ModeContributor",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/agent/SPLA.Agent/Composition/CoreContributors.cs",
+      "members": []
+    },
+    {
+      "id": "n_corefeaturecontributor",
+      "name": "CoreFeatureContributor",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/agent/SPLA.Agent/Composition/CoreContributors.cs",
+      "members": []
+    },
+    {
+      "id": "n_mountscontributor",
+      "name": "MountsContributor",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/agent/SPLA.Agent/Composition/CoreContributors.cs",
+      "members": []
+    },
+    {
+      "id": "n_instructionscontributor",
+      "name": "InstructionsContributor",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/agent/SPLA.Agent/Composition/CoreContributors.cs",
+      "members": []
+    },
+    {
+      "id": "n_custompromptcontributor",
+      "name": "CustomPromptContributor",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/agent/SPLA.Agent/Composition/CoreContributors.cs",
+      "members": []
+    },
+    {
+      "id": "n_pluginpromptcontributor",
+      "name": "PluginPromptContributor",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/agent/SPLA.Agent/Composition/PluginContributors.cs",
+      "members": []
+    },
+    {
+      "id": "n_plugincommandcontributor",
+      "name": "PluginCommandContributor",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/agent/SPLA.Agent/Composition/PluginContributors.cs",
+      "members": []
+    },
+    {
+      "id": "n_resourceschemescontributor",
+      "name": "ResourceSchemesContributor",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/agent/SPLA.Agent/Composition/ResourceSchemesContributor.cs",
+      "members": []
+    },
+    {
+      "id": "n_skillscontributor",
+      "name": "SkillsContributor",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/agent/SPLA.Agent/Composition/SkillsContributor.cs",
+      "members": []
+    },
+    {
+      "id": "n_toolsetscontributor",
+      "name": "ToolSetsContributor",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/agent/SPLA.Agent/Composition/ToolSetsContributor.cs",
+      "members": []
+    },
+    {
+      "id": "n_workingmemorycontributor",
+      "name": "WorkingMemoryContributor",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/agent/SPLA.Agent/Composition/WorkingMemoryContributor.cs",
+      "members": []
+    },
+    {
+      "id": "n_conversationorchestrator",
+      "name": "ConversationOrchestrator",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/agent/SPLA.Agent/ConversationOrchestrator.cs",
+      "members": []
+    },
+    {
+      "id": "n_corefeatureprompts",
+      "name": "CoreFeaturePrompts",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/agent/SPLA.Agent/Features/CoreFeaturePrompts.cs",
+      "members": []
+    },
+    {
+      "id": "n_channel",
+      "name": "Channel",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/agent/SPLA.Agent/Guards/RepetitionGuardMiddleware.cs",
+      "members": []
+    },
+    {
+      "id": "n_spawnedagentrunner",
+      "name": "SpawnedAgentRunner",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/agent/SPLA.Agent/SpawnedAgentRunner.cs",
+      "members": []
+    },
+    {
+      "id": "n_spawnedrun",
+      "name": "SpawnedRun",
+      "kind": "Record",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/agent/SPLA.Agent/SpawnedRun.cs",
+      "members": []
+    },
+    {
+      "id": "n_spawnedrunlog",
+      "name": "SpawnedRunLog",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/agent/SPLA.Agent/SpawnedRunLog.cs",
+      "members": []
+    },
+    {
+      "id": "n_toolmodefilter",
+      "name": "ToolModeFilter",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/agent/SPLA.Agent/ToolModeFilter.cs",
+      "members": []
+    },
+    {
+      "id": "n_workingmemoryinjector",
+      "name": "WorkingMemoryInjector",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/agent/SPLA.Agent/WorkingMemoryInjector.cs",
+      "members": []
+    },
+    {
+      "id": "n_fscreatetool",
+      "name": "FsCreateTool",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/agent/SPLA.MCP.BasicTools/FileSystem/FsCreateTool.cs",
+      "members": []
+    },
+    {
+      "id": "n_fsdeletetool",
+      "name": "FsDeleteTool",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/agent/SPLA.MCP.BasicTools/FileSystem/FsDeleteTool.cs",
+      "members": []
+    },
+    {
+      "id": "n_fsfindfilestool",
+      "name": "FsFindFilesTool",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/agent/SPLA.MCP.BasicTools/FileSystem/FsFindFilesTool.cs",
+      "members": []
+    },
+    {
+      "id": "n_findfilesresult",
+      "name": "FindFilesResult",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/agent/SPLA.MCP.BasicTools/FileSystem/FsFindFilesTool.cs",
+      "members": []
+    },
+    {
+      "id": "n_fslisttool",
+      "name": "FsListTool",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/agent/SPLA.MCP.BasicTools/FileSystem/FsListTool.cs",
+      "members": []
+    },
+    {
+      "id": "n_fspatchtool",
+      "name": "FsPatchTool",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/agent/SPLA.MCP.BasicTools/FileSystem/FsPatchTool.cs",
+      "members": []
+    },
+    {
+      "id": "n_fsreadtool",
+      "name": "FsReadTool",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/agent/SPLA.MCP.BasicTools/FileSystem/FsReadTool.cs",
+      "members": []
+    },
+    {
+      "id": "n_fssearchtexttool",
+      "name": "FsSearchTextTool",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/agent/SPLA.MCP.BasicTools/FileSystem/FsSearchTextTool.cs",
+      "members": []
+    },
+    {
+      "id": "n_searchtextresult",
+      "name": "SearchTextResult",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/agent/SPLA.MCP.BasicTools/FileSystem/FsSearchTextTool.cs",
+      "members": []
+    },
+    {
+      "id": "n_searchmatch",
+      "name": "SearchMatch",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/agent/SPLA.MCP.BasicTools/FileSystem/FsSearchTextTool.cs",
+      "members": []
+    },
+    {
+      "id": "n_fswritetool",
+      "name": "FsWriteTool",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/agent/SPLA.MCP.BasicTools/FileSystem/FsWriteTool.cs",
+      "members": []
+    },
+    {
+      "id": "n_dotnetsearchengine",
+      "name": "DotnetSearchEngine",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/agent/SPLA.MCP.BasicTools/FileSystem/Search/DotnetSearchEngine.cs",
+      "members": []
+    },
+    {
+      "id": "n_isearchengine",
+      "name": "ISearchEngine",
+      "kind": "Interface",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/agent/SPLA.MCP.BasicTools/Network/SearchEngines/ISearchEngine.cs",
+      "members": []
+    },
+    {
+      "id": "n_ripgrepsearchengine",
+      "name": "RipgrepSearchEngine",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/agent/SPLA.MCP.BasicTools/FileSystem/Search/RipgrepSearchEngine.cs",
+      "members": []
+    },
+    {
+      "id": "n_searchpatterns",
+      "name": "SearchPatterns",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/agent/SPLA.MCP.BasicTools/FileSystem/Search/SearchPatterns.cs",
+      "members": []
+    },
+    {
+      "id": "n_searchranking",
+      "name": "SearchRanking",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/agent/SPLA.MCP.BasicTools/FileSystem/Search/SearchRanking.cs",
+      "members": []
+    },
+    {
+      "id": "n_workspacesearchengine",
+      "name": "WorkspaceSearchEngine",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/agent/SPLA.MCP.BasicTools/FileSystem/Search/WorkspaceSearchEngine.cs",
+      "members": []
+    },
+    {
+      "id": "n_bingengine",
+      "name": "BingEngine",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/agent/SPLA.MCP.BasicTools/Network/SearchEngines/BingEngine.cs",
+      "members": []
+    },
+    {
+      "id": "n_duckduckgoengine",
+      "name": "DuckDuckGoEngine",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/agent/SPLA.MCP.BasicTools/Network/SearchEngines/DuckDuckGoEngine.cs",
+      "members": []
+    },
+    {
+      "id": "n_googleengine",
+      "name": "GoogleEngine",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/agent/SPLA.MCP.BasicTools/Network/SearchEngines/GoogleEngine.cs",
+      "members": []
+    },
+    {
+      "id": "n_searchresult",
+      "name": "SearchResult",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/agent/SPLA.MCP.BasicTools/Network/SearchEngines/ISearchEngine.cs",
+      "members": []
+    },
+    {
+      "id": "n_yahooengine",
+      "name": "YahooEngine",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/agent/SPLA.MCP.BasicTools/Network/SearchEngines/YahooEngine.cs",
+      "members": []
+    },
+    {
+      "id": "n_webfetchtool",
+      "name": "WebFetchTool",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/agent/SPLA.MCP.BasicTools/Network/WebFetchTool.cs",
+      "members": []
+    },
+    {
+      "id": "n_websearchtool",
+      "name": "WebSearchTool",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/agent/SPLA.MCP.BasicTools/Network/WebSearchTool.cs",
+      "members": []
+    },
+    {
+      "id": "n_dotnetbuildtool",
+      "name": "DotnetBuildTool",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/agent/SPLA.MCP.BasicTools/System/DotnetBuildTool.cs",
+      "members": []
+    },
+    {
+      "id": "n_dotnettesttool",
+      "name": "DotnetTestTool",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/agent/SPLA.MCP.BasicTools/System/DotnetTestTool.cs",
+      "members": []
+    },
+    {
+      "id": "n_getcontexttool",
+      "name": "GetContextTool",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/agent/SPLA.MCP.BasicTools/System/GetContextTool.cs",
+      "members": []
+    },
+    {
+      "id": "n_getcurrentdatetimetool",
+      "name": "GetCurrentDateTimeTool",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/agent/SPLA.MCP.BasicTools/System/GetCurrentDateTimeTool.cs",
+      "members": []
+    },
+    {
+      "id": "n_killshelltool",
+      "name": "KillShellTool",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/agent/SPLA.MCP.BasicTools/System/KillShellTool.cs",
+      "members": []
+    },
+    {
+      "id": "n_resumeshelltool",
+      "name": "ResumeShellTool",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/agent/SPLA.MCP.BasicTools/System/ResumeShellTool.cs",
+      "members": []
+    },
+    {
+      "id": "n_runcommandtool",
+      "name": "RunCommandTool",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/agent/SPLA.MCP.BasicTools/System/RunCommandTool.cs",
+      "members": []
+    },
+    {
+      "id": "n_shellresulttext",
+      "name": "ShellResultText",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/agent/SPLA.MCP.BasicTools/System/ShellResultText.cs",
+      "members": []
+    },
+    {
+      "id": "n_agentruntime",
+      "name": "AgentRuntime",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/agent/SPLA.Runtime/AgentRuntime.cs",
+      "members": []
+    },
+    {
+      "id": "n_runtimeentry",
+      "name": "RuntimeEntry",
+      "kind": "Record",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/agent/SPLA.Runtime/AgentRuntimeRegistry.cs",
+      "members": []
+    },
+    {
+      "id": "n_agentruntimeregistry",
+      "name": "AgentRuntimeRegistry",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/agent/SPLA.Runtime/AgentRuntimeRegistry.cs",
+      "members": []
+    },
+    {
+      "id": "n_chatimages",
+      "name": "ChatImages",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/agent/SPLA.Runtime/ChatImages.cs",
+      "members": []
+    },
+    {
+      "id": "n_chatregistry",
+      "name": "ChatRegistry",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/agent/SPLA.Runtime/ChatRegistry.cs",
+      "members": []
+    },
+    {
+      "id": "n_chatruntime",
+      "name": "ChatRuntime",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/agent/SPLA.Runtime/ChatRuntime.cs",
+      "members": []
+    },
+    {
+      "id": "n_edgeledgerfile",
+      "name": "EdgeLedgerFile",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/agent/SPLA.Runtime/EdgeLedgerFile.cs",
+      "members": []
+    },
+    {
+      "id": "n_persistededge",
+      "name": "PersistedEdge",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/agent/SPLA.Runtime/EdgeLedgerFile.cs",
+      "members": []
+    },
+    {
+      "id": "n_mcpserverstatus",
+      "name": "McpServerStatus",
+      "kind": "Record",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/agent/SPLA.Runtime/McpClientManager.cs",
+      "members": []
+    },
+    {
+      "id": "n_mcpclientmanager",
+      "name": "McpClientManager",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/agent/SPLA.Runtime/McpClientManager.cs",
+      "members": []
+    },
+    {
+      "id": "n_serverentry",
+      "name": "ServerEntry",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/agent/SPLA.Runtime/McpClientManager.cs",
+      "members": []
+    },
+    {
+      "id": "n_pendingaskkind",
+      "name": "PendingAskKind",
+      "kind": "Enum",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/agent/SPLA.Runtime/PendingAsks.cs",
+      "members": []
+    },
+    {
+      "id": "n_pendingask",
+      "name": "PendingAsk",
+      "kind": "Record",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/agent/SPLA.Runtime/PendingAsks.cs",
+      "members": []
+    },
+    {
+      "id": "n_askresolution",
+      "name": "AskResolution",
+      "kind": "Enum",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/agent/SPLA.Runtime/PendingAsks.cs",
+      "members": []
+    },
+    {
+      "id": "n_pendingaskstore",
+      "name": "PendingAskStore",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/agent/SPLA.Runtime/PendingAsks.cs",
+      "members": []
+    },
+    {
+      "id": "n_entry",
+      "name": "Entry",
+      "kind": "Record",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/service/SPLA.Service/Terminals/SshTerminalManager.cs",
+      "members": []
+    },
+    {
+      "id": "n_turnregistry",
+      "name": "TurnRegistry",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/agent/SPLA.Runtime/PendingAsks.cs",
+      "members": []
+    },
+    {
+      "id": "n_serviceevent",
+      "name": "ServiceEvent",
+      "kind": "Record",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/agent/SPLA.Runtime/ServiceEvents.cs",
+      "members": []
+    },
+    {
+      "id": "n_appearancechanged",
+      "name": "AppearanceChanged",
+      "kind": "Record",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/agent/SPLA.Runtime/ServiceEvents.cs",
+      "members": []
+    },
+    {
+      "id": "n_skillschanged",
+      "name": "SkillsChanged",
+      "kind": "Record",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/agent/SPLA.Runtime/ServiceEvents.cs",
+      "members": []
+    },
+    {
+      "id": "n_mcpserverschanged",
+      "name": "McpServersChanged",
+      "kind": "Record",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/agent/SPLA.Runtime/ServiceEvents.cs",
+      "members": []
+    },
+    {
+      "id": "n_serviceevents",
+      "name": "ServiceEvents",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/agent/SPLA.Runtime/ServiceEvents.cs",
+      "members": []
+    },
+    {
+      "id": "n_promptitem",
+      "name": "PromptItem",
+      "kind": "Record",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/apps/SPLA.CLI/Batch/BatchRunner.cs",
+      "members": []
+    },
+    {
+      "id": "n_batchcell",
+      "name": "BatchCell",
+      "kind": "Record",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/apps/SPLA.CLI/Batch/BatchRunner.cs",
+      "members": []
+    },
+    {
+      "id": "n_cellresult",
+      "name": "CellResult",
+      "kind": "Record",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/apps/SPLA.CLI/Batch/BatchRunner.cs",
+      "members": []
+    },
+    {
+      "id": "n_batchrunner",
+      "name": "BatchRunner",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/apps/SPLA.CLI/Batch/BatchRunner.cs",
+      "members": []
+    },
+    {
+      "id": "n_chatrunsettings",
+      "name": "ChatRunSettings",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/apps/SPLA.CLI/Batch/ChatRunCommand.cs",
+      "members": []
+    },
+    {
+      "id": "n_chatruncommand",
+      "name": "ChatRunCommand",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/apps/SPLA.CLI/Batch/ChatRunCommand.cs",
+      "members": []
+    },
+    {
+      "id": "n_clicontributor",
+      "name": "CliContributor",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/apps/SPLA.CLI/Batch/CliContributor.cs",
+      "members": []
+    },
+    {
+      "id": "n_outputnaming",
+      "name": "OutputNaming",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/apps/SPLA.CLI/Batch/OutputNaming.cs",
+      "members": []
+    },
+    {
+      "id": "n_remotechatrun",
+      "name": "RemoteChatRun",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/apps/SPLA.CLI/Batch/RemoteChatRun.cs",
+      "members": []
+    },
+    {
+      "id": "n_statsection",
+      "name": "StatSection",
+      "kind": "Record",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/apps/SPLA.CLI/Batch/RunStats.cs",
+      "members": []
+    },
+    {
+      "id": "n_runstats",
+      "name": "RunStats",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/apps/SPLA.CLI/Batch/RunStats.cs",
+      "members": []
+    },
+    {
+      "id": "n_statformat",
+      "name": "StatFormat",
+      "kind": "Record",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/apps/SPLA.CLI/Batch/StatFormats.cs",
+      "members": []
+    },
+    {
+      "id": "n_statformats",
+      "name": "StatFormats",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/apps/SPLA.CLI/Batch/StatFormats.cs",
+      "members": []
+    },
+    {
+      "id": "n_chatlistcommand",
+      "name": "ChatListCommand",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/apps/SPLA.CLI/Cli/ChatCommands.cs",
+      "members": []
+    },
+    {
+      "id": "n_chatopensettings",
+      "name": "ChatOpenSettings",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/apps/SPLA.CLI/Cli/ChatCommands.cs",
+      "members": []
+    },
+    {
+      "id": "n_chatopencommand",
+      "name": "ChatOpenCommand",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/apps/SPLA.CLI/Cli/ChatCommands.cs",
+      "members": []
+    },
+    {
+      "id": "n_chatforksettings",
+      "name": "ChatForkSettings",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/apps/SPLA.CLI/Cli/ChatCommands.cs",
+      "members": []
+    },
+    {
+      "id": "n_chatforkcommand",
+      "name": "ChatForkCommand",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/apps/SPLA.CLI/Cli/ChatCommands.cs",
+      "members": []
+    },
+    {
+      "id": "n_clicontext",
+      "name": "CliContext",
+      "kind": "Record",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/apps/SPLA.CLI/Cli/CliBootstrap.cs",
+      "members": []
+    },
+    {
+      "id": "n_clibootstrap",
+      "name": "CliBootstrap",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/apps/SPLA.CLI/Cli/CliBootstrap.cs",
+      "members": []
+    },
+    {
+      "id": "n_consolehandlers",
+      "name": "ConsoleHandlers",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/apps/SPLA.CLI/Cli/ConsoleHandlers.cs",
+      "members": []
+    },
+    {
+      "id": "n_hubsettings",
+      "name": "HubSettings",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/apps/SPLA.CLI/Cli/HubCommand.cs",
+      "members": []
+    },
+    {
+      "id": "n_hubcommand",
+      "name": "HubCommand",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/apps/SPLA.CLI/Cli/HubCommand.cs",
+      "members": []
+    },
+    {
+      "id": "n_initsettings",
+      "name": "InitSettings",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/apps/SPLA.CLI/Cli/InitCommand.cs",
+      "members": []
+    },
+    {
+      "id": "n_initcommand",
+      "name": "InitCommand",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/apps/SPLA.CLI/Cli/InitCommand.cs",
+      "members": []
+    },
+    {
+      "id": "n_interactiverepl",
+      "name": "InteractiveRepl",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/apps/SPLA.CLI/Cli/InteractiveRepl.cs",
+      "members": []
+    },
+    {
+      "id": "n_mcpcommand",
+      "name": "McpCommand",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/apps/SPLA.CLI/Cli/McpCommand.cs",
+      "members": []
+    },
+    {
+      "id": "n_nohold",
+      "name": "NoHold",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/apps/SPLA.CLI/Cli/McpCommand.cs",
+      "members": []
+    },
+    {
+      "id": "n_mcphttpproxy",
+      "name": "McpHttpProxy",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/apps/SPLA.CLI/Cli/McpHttpProxy.cs",
+      "members": []
+    },
+    {
+      "id": "n_projectentryrequest",
+      "name": "ProjectEntryRequest",
+      "kind": "Record",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/apps/SPLA.CLI/Cli/ProjectEntry.cs",
+      "members": []
+    },
+    {
+      "id": "n_pssettings",
+      "name": "PsSettings",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/apps/SPLA.CLI/Cli/PsCommand.cs",
+      "members": []
+    },
+    {
+      "id": "n_pscommand",
+      "name": "PsCommand",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/apps/SPLA.CLI/Cli/PsCommand.cs",
+      "members": []
+    },
+    {
+      "id": "n_replsettings",
+      "name": "ReplSettings",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/apps/SPLA.CLI/Cli/ReplCommand.cs",
+      "members": []
+    },
+    {
+      "id": "n_replcommand",
+      "name": "ReplCommand",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/apps/SPLA.CLI/Cli/ReplCommand.cs",
+      "members": []
+    },
+    {
+      "id": "n_runtimebootstrap",
+      "name": "RuntimeBootstrap",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/apps/SPLA.CLI/Cli/RuntimeBootstrap.cs",
+      "members": []
+    },
+    {
+      "id": "n_secretsettings",
+      "name": "SecretSettings",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/apps/SPLA.CLI/Cli/SecretCliCommand.cs",
+      "members": []
+    },
+    {
+      "id": "n_secretclicommand",
+      "name": "SecretCliCommand",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/apps/SPLA.CLI/Cli/SecretCliCommand.cs",
+      "members": []
+    },
+    {
+      "id": "n_secretcommands",
+      "name": "SecretCommands",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/apps/SPLA.CLI/Cli/SecretCommands.cs",
+      "members": []
+    },
+    {
+      "id": "n_servesettings",
+      "name": "ServeSettings",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/apps/SPLA.CLI/Cli/ServeCliCommand.cs",
+      "members": []
+    },
+    {
+      "id": "n_serveclicommand",
+      "name": "ServeCliCommand",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/apps/SPLA.CLI/Cli/ServeCliCommand.cs",
+      "members": []
+    },
+    {
+      "id": "n_servecommand",
+      "name": "ServeCommand",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/apps/SPLA.CLI/Cli/ServeCommand.cs",
+      "members": []
+    },
+    {
+      "id": "n_startsettings",
+      "name": "StartSettings",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/apps/SPLA.CLI/Cli/StartCommand.cs",
+      "members": []
+    },
+    {
+      "id": "n_startcommand",
+      "name": "StartCommand",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/apps/SPLA.CLI/Cli/StartCommand.cs",
+      "members": []
+    },
+    {
+      "id": "n_startresponse",
+      "name": "StartResponse",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/apps/SPLA.CLI/Cli/StartCommand.cs",
+      "members": []
+    },
+    {
+      "id": "n_stopsettings",
+      "name": "StopSettings",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/apps/SPLA.CLI/Cli/StopCommand.cs",
+      "members": []
+    },
+    {
+      "id": "n_stopcommand",
+      "name": "StopCommand",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/apps/SPLA.CLI/Cli/StopCommand.cs",
+      "members": []
+    },
+    {
+      "id": "n_stopprojectresponse",
+      "name": "StopProjectResponse",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/apps/SPLA.CLI/Cli/StopCommand.cs",
+      "members": []
+    },
+    {
+      "id": "n_systemsettings",
+      "name": "SystemSettings",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/apps/SPLA.CLI/Cli/SystemCliCommand.cs",
+      "members": []
+    },
+    {
+      "id": "n_systemclicommand",
+      "name": "SystemCliCommand",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/apps/SPLA.CLI/Cli/SystemCliCommand.cs",
+      "members": []
+    },
+    {
+      "id": "n_systemcommands",
+      "name": "SystemCommands",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/apps/SPLA.CLI/Cli/SystemCommands.cs",
+      "members": []
+    },
+    {
+      "id": "n_typeregistrar",
+      "name": "TypeRegistrar",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/apps/SPLA.CLI/Cli/TypeRegistrar.cs",
+      "members": []
+    },
+    {
+      "id": "n_typeresolver",
+      "name": "TypeResolver",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/apps/SPLA.CLI/Cli/TypeRegistrar.cs",
+      "members": []
+    },
+    {
+      "id": "n_cliwireclient",
+      "name": "CliWireClient",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/apps/SPLA.CLI/Wire/CliWireClient.cs",
+      "members": []
+    },
+    {
+      "id": "n_wireinstanceprobe",
+      "name": "WireInstanceProbe",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/apps/SPLA.CLI/Wire/WireInstanceProbe.cs",
+      "members": []
+    },
+    {
+      "id": "n_app",
+      "name": "App",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/apps/SPLA.UI.Avalonia/App.axaml.cs",
+      "members": []
+    },
+    {
+      "id": "n_icongenerator",
+      "name": "IconGenerator",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/apps/SPLA.UI.Avalonia/Helpers/IconGenerator.cs",
+      "members": []
+    },
+    {
+      "id": "n_webviewbridge",
+      "name": "WebViewBridge",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/apps/SPLA.UI.Avalonia/Helpers/WebViewBridge.cs",
+      "members": []
+    },
+    {
+      "id": "n_mainwindow",
+      "name": "MainWindow",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/apps/SPLA.UI.Avalonia/MainWindow.axaml.cs",
+      "members": []
+    },
+    {
+      "id": "n_launchsettings",
+      "name": "LaunchSettings",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/apps/SPLA.UI.Avalonia/Program.cs",
+      "members": []
+    },
+    {
+      "id": "n_program",
+      "name": "Program",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/apps/SPLA.UI.Avalonia/Program.cs",
+      "members": []
+    },
+    {
+      "id": "n_launchcommand",
+      "name": "LaunchCommand",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/apps/SPLA.UI.Avalonia/Program.cs",
+      "members": []
+    },
+    {
+      "id": "n_embeddedservicelauncher",
+      "name": "EmbeddedServiceLauncher",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/apps/SPLA.UI.Avalonia/Services/EmbeddedServiceLauncher.cs",
+      "members": []
+    },
+    {
+      "id": "n_hublauncher",
+      "name": "HubLauncher",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/apps/SPLA.UI.Avalonia/Services/HubLauncher.cs",
+      "members": []
+    },
+    {
+      "id": "n_hubshell",
+      "name": "HubShell",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/apps/SPLA.UI.Avalonia/Services/HubShell.cs",
+      "members": []
+    },
+    {
+      "id": "n_trayiconservice",
+      "name": "TrayIconService",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/apps/SPLA.UI.Avalonia/Services/TrayIconService.cs",
+      "members": []
+    },
+    {
+      "id": "n_trayiconart",
+      "name": "TrayIconArt",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/apps/SPLA.UI.Avalonia/Services/TrayIconService.cs",
+      "members": []
+    },
+    {
+      "id": "n_windowregistration",
+      "name": "WindowRegistration",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/apps/SPLA.UI.Avalonia/Services/WindowRegistration.cs",
+      "members": []
+    },
+    {
+      "id": "n_surfacewindow",
+      "name": "SurfaceWindow",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/apps/SPLA.UI.Avalonia/SurfaceWindow.axaml.cs",
+      "members": []
+    },
+    {
+      "id": "n_restore",
+      "name": "Restore",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/core/SPLA.MCP.Core/Permissions/PermissionScope.cs",
+      "members": []
+    },
+    {
+      "id": "n_dto",
+      "name": "Dto",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/core/SPLA.Domain/Agent/FileTokenUsageStore.cs",
+      "members": []
+    },
+    {
+      "id": "n_session",
+      "name": "Session",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/core/SPLA.Domain/Host/LocalShell.cs",
+      "members": []
+    },
+    {
+      "id": "n_llmpipeline",
+      "name": "LlmPipeline",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/core/SPLA.Domain/Llm/LlmPipelineBlueprint.cs",
+      "members": []
+    },
+    {
+      "id": "n_registryentry",
+      "name": "RegistryEntry",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/core/SPLA.Domain/Project/LocalProjectProvider.cs",
+      "members": []
+    },
+    {
+      "id": "n_acldto",
+      "name": "AclDto",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/core/SPLA.Domain/Secrets/FileSecretAclStore.cs",
+      "members": []
+    },
+    {
+      "id": "n_hubui",
+      "name": "HubUi",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/core/SPLA.Domain/Settings/HubAppearanceStore.cs",
+      "members": []
+    },
+    {
+      "id": "n_document",
+      "name": "Document",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/core/SPLA.Domain/Settings/SkillSourceStore.cs",
+      "members": []
+    },
+    {
+      "id": "n_record",
+      "name": "Record",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/core/SPLA.Domain/Settings/SkillTrustStore.cs",
+      "members": []
+    },
+    {
+      "id": "n_nodescope",
+      "name": "NodeScope",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/core/SPLA.Domain/Tools/ProgressScope.cs",
+      "members": []
+    },
+    {
+      "id": "n_noopnodescope",
+      "name": "NoopNodeScope",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/core/SPLA.Domain/Tools/ProgressScope.cs",
+      "members": []
+    },
+    {
+      "id": "n_handles",
+      "name": "Handles",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/core/SPLA.Domain/Tools/ToolCallContext.cs",
+      "members": []
+    },
+    {
+      "id": "n_raw",
+      "name": "Raw",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/core/SPLA.Library/Format/SkillFrontmatter.cs",
+      "members": []
+    },
+    {
+      "id": "n_rawrequirements",
+      "name": "RawRequirements",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/core/SPLA.Library/Format/SkillFrontmatter.cs",
+      "members": []
+    },
+    {
+      "id": "n_useraggregate",
+      "name": "UserAggregate",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/core/SPLA.Observability/Collection/TelemetryCollector.cs",
+      "members": []
+    },
+    {
+      "id": "n_persistmodel",
+      "name": "PersistModel",
+      "kind": "Record",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/core/SPLA.Observability/Collection/TelemetryCollector.cs",
+      "members": []
+    },
+    {
+      "id": "n_popcontext",
+      "name": "PopContext",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/core/SPLA.Observability/SplaTelemetry.cs",
+      "members": []
+    },
+    {
+      "id": "n_unsubscriber",
+      "name": "Unsubscriber",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/core/SPLA.Ssh.Core/Session/SshLiveSession.cs",
+      "members": []
+    },
+    {
+      "id": "n_agentrun",
+      "name": "AgentRun",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/core/SPLA.Ssh.Core/Session/SshLiveSession.cs",
+      "members": []
+    },
+    {
+      "id": "n_contextblock",
+      "name": "ContextBlock",
+      "kind": "Record",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/documents/SPLA.Documents.Model/ContextBlocks.cs",
+      "members": []
+    },
+    {
+      "id": "n_headingblock",
+      "name": "HeadingBlock",
+      "kind": "Record",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/documents/SPLA.Documents.Model/ContextBlocks.cs",
+      "members": []
+    },
+    {
+      "id": "n_paragraphblock",
+      "name": "ParagraphBlock",
+      "kind": "Record",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/documents/SPLA.Documents.Model/ContextBlocks.cs",
+      "members": []
+    },
+    {
+      "id": "n_listitemline",
+      "name": "ListItemLine",
+      "kind": "Record",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/documents/SPLA.Documents.Model/ContextBlocks.cs",
+      "members": []
+    },
+    {
+      "id": "n_listblock",
+      "name": "ListBlock",
+      "kind": "Record",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/documents/SPLA.Documents.Model/ContextBlocks.cs",
+      "members": []
+    },
+    {
+      "id": "n_tableblock",
+      "name": "TableBlock",
+      "kind": "Record",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/documents/SPLA.Documents.Model/ContextBlocks.cs",
+      "members": []
+    },
+    {
+      "id": "n_codeblock",
+      "name": "CodeBlock",
+      "kind": "Record",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/documents/SPLA.Documents.Model/ContextBlocks.cs",
+      "members": []
+    },
+    {
+      "id": "n_imageblock",
+      "name": "ImageBlock",
+      "kind": "Record",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/documents/SPLA.Documents.Model/ContextBlocks.cs",
+      "members": []
+    },
+    {
+      "id": "n_sectionbreak",
+      "name": "SectionBreak",
+      "kind": "Record",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/documents/SPLA.Documents.Model/ContextBlocks.cs",
+      "members": []
+    },
+    {
+      "id": "n_contextdocument",
+      "name": "ContextDocument",
+      "kind": "Record",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/documents/SPLA.Documents.Model/ContextDocument.cs",
+      "members": []
+    },
+    {
+      "id": "n_documentmetadata",
+      "name": "DocumentMetadata",
+      "kind": "Record",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/documents/SPLA.Documents.Model/ContextDocument.cs",
+      "members": []
+    },
+    {
+      "id": "n_idocumentextractor",
+      "name": "IDocumentExtractor",
+      "kind": "Interface",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/documents/SPLA.Documents.Model/IDocumentExtractor.cs",
+      "members": []
+    },
+    {
+      "id": "n_documentcontenttypes",
+      "name": "DocumentContentTypes",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/documents/SPLA.Documents.Model/IDocumentExtractor.cs",
+      "members": []
+    },
+    {
+      "id": "n_icontextrenderer",
+      "name": "IContextRenderer",
+      "kind": "Interface",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/documents/SPLA.Documents.Model/Rendering/IContextRenderer.cs",
+      "members": []
+    },
+    {
+      "id": "n_jsoncontextrenderer",
+      "name": "JsonContextRenderer",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/documents/SPLA.Documents.Model/Rendering/JsonContextRenderer.cs",
+      "members": []
+    },
+    {
+      "id": "n_markdowncontextrenderer",
+      "name": "MarkdownContextRenderer",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/documents/SPLA.Documents.Model/Rendering/MarkdownContextRenderer.cs",
+      "members": []
+    },
+    {
+      "id": "n_plaintextcontextrenderer",
+      "name": "PlainTextContextRenderer",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/documents/SPLA.Documents.Model/Rendering/PlainTextContextRenderer.cs",
+      "members": []
+    },
+    {
+      "id": "n_schemasaverequest",
+      "name": "SchemaSaveRequest",
+      "kind": "Record",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/editor/SPLA.Editor.Schema/SchemaEditorView.axaml.cs",
+      "members": []
+    },
+    {
+      "id": "n_schemaeditorview",
+      "name": "SchemaEditorView",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/editor/SPLA.Editor.Schema/SchemaEditorView.axaml.cs",
+      "members": []
+    },
+    {
+      "id": "n_textsaverequest",
+      "name": "TextSaveRequest",
+      "kind": "Record",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/editor/SPLA.Editor.Schema/TextEditorView.axaml.cs",
+      "members": []
+    },
+    {
+      "id": "n_texteditorview",
+      "name": "TextEditorView",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/editor/SPLA.Editor.Schema/TextEditorView.axaml.cs",
+      "members": []
+    },
+    {
+      "id": "n_webeditorbase",
+      "name": "WebEditorBase",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/editor/SPLA.Editor.Schema/WebEditorBase.cs",
+      "members": []
+    },
+    {
+      "id": "n_workspaceshellview",
+      "name": "WorkspaceShellView",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/editor/SPLA.Editor.Schema/WorkspaceShellView.axaml.cs",
+      "members": []
+    },
+    {
+      "id": "n_browsernode",
+      "name": "BrowserNode",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/editor/SPLA.Editor.Schema/WorkspaceShellView.axaml.cs",
+      "members": []
+    },
+    {
+      "id": "n_windowsidentityprovider",
+      "name": "WindowsIdentityProvider",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/identity/SPLA.Identity.Windows/WindowsIdentityProvider.cs",
+      "members": []
+    },
+    {
+      "id": "n_windowsidentityresolver",
+      "name": "WindowsIdentityResolver",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/identity/SPLA.Identity.Windows/WindowsIdentityResolver.cs",
+      "members": []
+    },
+    {
+      "id": "n_lmstudiomanagementclient",
+      "name": "LMStudioManagementClient",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/llm/SPLA.LLM.LMStudio/LMStudioManagementClient.cs",
+      "members": []
+    },
+    {
+      "id": "n_lmstudioprovider",
+      "name": "LmStudioProvider",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/llm/SPLA.LLM.LMStudio/LmStudioProvider.cs",
+      "members": []
+    },
+    {
+      "id": "n_localaicatalogclient",
+      "name": "LocalAICatalogClient",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/llm/SPLA.LLM.LocalAI/LocalAICatalogClient.cs",
+      "members": []
+    },
+    {
+      "id": "n_localaiprovider",
+      "name": "LocalAIProvider",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/llm/SPLA.LLM.LocalAI/LocalAIProvider.cs",
+      "members": []
+    },
+    {
+      "id": "n_iopenaicompatprofile",
+      "name": "IOpenAiCompatProfile",
+      "kind": "Interface",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/llm/SPLA.LLM.OpenAiCompat/IOpenAiCompatProfile.cs",
+      "members": []
+    },
+    {
+      "id": "n_openaireasoningdialect",
+      "name": "OpenAiReasoningDialect",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/llm/SPLA.LLM.OpenAiCompat/IOpenAiCompatProfile.cs",
+      "members": []
+    },
+    {
+      "id": "n_plainopenaicompatprofile",
+      "name": "PlainOpenAiCompatProfile",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/llm/SPLA.LLM.OpenAiCompat/IOpenAiCompatProfile.cs",
+      "members": []
+    },
+    {
+      "id": "n_openaicompatibleclient",
+      "name": "OpenAiCompatibleClient",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/llm/SPLA.LLM.OpenAiCompat/OpenAiCompatibleClient.Dtos.cs",
+      "members": []
+    },
+    {
+      "id": "n_toolcallaccumulator",
+      "name": "ToolCallAccumulator",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/llm/SPLA.LLM.OpenAiCompat/OpenAiCompatibleClient.cs",
+      "members": []
+    },
+    {
+      "id": "n_openairesponse",
+      "name": "OpenAIResponse",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/llm/SPLA.LLM.OpenAiCompat/OpenAiCompatibleClient.Dtos.cs",
+      "members": []
+    },
+    {
+      "id": "n_openaiusage",
+      "name": "OpenAIUsage",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/llm/SPLA.LLM.OpenAiCompat/OpenAiCompatibleClient.Dtos.cs",
+      "members": []
+    },
+    {
+      "id": "n_openaichoice",
+      "name": "OpenAIChoice",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/llm/SPLA.LLM.OpenAiCompat/OpenAiCompatibleClient.Dtos.cs",
+      "members": []
+    },
+    {
+      "id": "n_openaimessage",
+      "name": "OpenAIMessage",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/llm/SPLA.LLM.OpenAiCompat/OpenAiCompatibleClient.Dtos.cs",
+      "members": []
+    },
+    {
+      "id": "n_openaitoolcall",
+      "name": "OpenAIToolCall",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/llm/SPLA.LLM.OpenAiCompat/OpenAiCompatibleClient.Dtos.cs",
+      "members": []
+    },
+    {
+      "id": "n_openaifunctioncall",
+      "name": "OpenAIFunctionCall",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/llm/SPLA.LLM.OpenAiCompat/OpenAiCompatibleClient.Dtos.cs",
+      "members": []
+    },
+    {
+      "id": "n_openaistreamresponse",
+      "name": "OpenAIStreamResponse",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/llm/SPLA.LLM.OpenAiCompat/OpenAiCompatibleClient.Dtos.cs",
+      "members": []
+    },
+    {
+      "id": "n_openaistreamchoice",
+      "name": "OpenAIStreamChoice",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/llm/SPLA.LLM.OpenAiCompat/OpenAiCompatibleClient.Dtos.cs",
+      "members": []
+    },
+    {
+      "id": "n_openaistreamdelta",
+      "name": "OpenAIStreamDelta",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/llm/SPLA.LLM.OpenAiCompat/OpenAiCompatibleClient.Dtos.cs",
+      "members": []
+    },
+    {
+      "id": "n_openaistreamtoolcalldelta",
+      "name": "OpenAIStreamToolCallDelta",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/llm/SPLA.LLM.OpenAiCompat/OpenAiCompatibleClient.Dtos.cs",
+      "members": []
+    },
+    {
+      "id": "n_openaistreamfunctiondelta",
+      "name": "OpenAIStreamFunctionDelta",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/llm/SPLA.LLM.OpenAiCompat/OpenAiCompatibleClient.Dtos.cs",
+      "members": []
+    },
+    {
+      "id": "n_ratelimitsignals",
+      "name": "RateLimitSignals",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/llm/SPLA.LLM.OpenAiCompat/RateLimitSignals.cs",
+      "members": []
+    },
+    {
+      "id": "n_toolschemaserializer",
+      "name": "ToolSchemaSerializer",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/llm/SPLA.LLM.OpenAiCompat/ToolSchemaSerializer.cs",
+      "members": []
+    },
+    {
+      "id": "n_openrouteraccountclient",
+      "name": "OpenRouterAccountClient",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/llm/SPLA.LLM.OpenRouter/OpenRouterAccountClient.cs",
+      "members": []
+    },
+    {
+      "id": "n_openroutermodel",
+      "name": "OpenRouterModel",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/llm/SPLA.LLM.OpenRouter/OpenRouterCatalogClient.cs",
+      "members": []
+    },
+    {
+      "id": "n_openroutercatalogclient",
+      "name": "OpenRouterCatalogClient",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/llm/SPLA.LLM.OpenRouter/OpenRouterCatalogClient.cs",
+      "members": []
+    },
+    {
+      "id": "n_openrouterprofile",
+      "name": "OpenRouterProfile",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/llm/SPLA.LLM.OpenRouter/OpenRouterProfile.cs",
+      "members": []
+    },
+    {
+      "id": "n_openrouterprovider",
+      "name": "OpenRouterProvider",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/llm/SPLA.LLM.OpenRouter/OpenRouterProvider.cs",
+      "members": []
+    },
+    {
+      "id": "n_browserpageregistry",
+      "name": "BrowserPageRegistry",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/plugins/SPLA.Plugins.Browser/BrowserPageRegistry.cs",
+      "members": []
+    },
+    {
+      "id": "n_browserplugin",
+      "name": "BrowserPlugin",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/plugins/SPLA.Plugins.Browser/BrowserPlugin.cs",
+      "members": []
+    },
+    {
+      "id": "n_detectedbrowserprofile",
+      "name": "DetectedBrowserProfile",
+      "kind": "Record",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/plugins/SPLA.Plugins.Browser/BrowserProfileDiscovery.cs",
+      "members": []
+    },
+    {
+      "id": "n_browserprofilediscovery",
+      "name": "BrowserProfileDiscovery",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/plugins/SPLA.Plugins.Browser/BrowserProfileDiscovery.cs",
+      "members": []
+    },
+    {
+      "id": "n_browserprofilepaths",
+      "name": "BrowserProfilePaths",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/plugins/SPLA.Plugins.Browser/BrowserProfilePaths.cs",
+      "members": []
+    },
+    {
+      "id": "n_browsersessionmanager",
+      "name": "BrowserSessionManager",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/plugins/SPLA.Plugins.Browser/BrowserSessionManager.cs",
+      "members": []
+    },
+    {
+      "id": "n_browsersessionregistry",
+      "name": "BrowserSessionRegistry",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/plugins/SPLA.Plugins.Browser/BrowserSessionRegistry.cs",
+      "members": []
+    },
+    {
+      "id": "n_browsersettings",
+      "name": "BrowserSettings",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/plugins/SPLA.Plugins.Browser/BrowserSettings.cs",
+      "members": []
+    },
+    {
+      "id": "n_browsersnapshotservice",
+      "name": "BrowserSnapshotService",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/plugins/SPLA.Plugins.Browser/BrowserSnapshotService.cs",
+      "members": []
+    },
+    {
+      "id": "n_elementrefregistry",
+      "name": "ElementRefRegistry",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/plugins/SPLA.Plugins.Browser/ElementRefRegistry.cs",
+      "members": []
+    },
+    {
+      "id": "n_pagediagnostics",
+      "name": "PageDiagnostics",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/plugins/SPLA.Plugins.Browser/PageDiagnostics.cs",
+      "members": []
+    },
+    {
+      "id": "n_browserclicktool",
+      "name": "BrowserClickTool",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/plugins/SPLA.Plugins.Browser/Tools/BrowserClickTool.cs",
+      "members": []
+    },
+    {
+      "id": "n_browserclosetabtool",
+      "name": "BrowserCloseTabTool",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/plugins/SPLA.Plugins.Browser/Tools/BrowserCloseTabTool.cs",
+      "members": []
+    },
+    {
+      "id": "n_browserconsoletool",
+      "name": "BrowserConsoleTool",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/plugins/SPLA.Plugins.Browser/Tools/BrowserConsoleTool.cs",
+      "members": []
+    },
+    {
+      "id": "n_browserfilltool",
+      "name": "BrowserFillTool",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/plugins/SPLA.Plugins.Browser/Tools/BrowserFillTool.cs",
+      "members": []
+    },
+    {
+      "id": "n_browsergettexttool",
+      "name": "BrowserGetTextTool",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/plugins/SPLA.Plugins.Browser/Tools/BrowserGetTextTool.cs",
+      "members": []
+    },
+    {
+      "id": "n_browserinspecttool",
+      "name": "BrowserInspectTool",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/plugins/SPLA.Plugins.Browser/Tools/BrowserInspectTool.cs",
+      "members": []
+    },
+    {
+      "id": "n_browserlistprofilestool",
+      "name": "BrowserListProfilesTool",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/plugins/SPLA.Plugins.Browser/Tools/BrowserListProfilesTool.cs",
+      "members": []
+    },
+    {
+      "id": "n_browsernavigatetool",
+      "name": "BrowserNavigateTool",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/plugins/SPLA.Plugins.Browser/Tools/BrowserNavigateTool.cs",
+      "members": []
+    },
+    {
+      "id": "n_browsernewtabtool",
+      "name": "BrowserNewTabTool",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/plugins/SPLA.Plugins.Browser/Tools/BrowserNewTabTool.cs",
+      "members": []
+    },
+    {
+      "id": "n_browserpageerrorstool",
+      "name": "BrowserPageErrorsTool",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/plugins/SPLA.Plugins.Browser/Tools/BrowserPageErrorsTool.cs",
+      "members": []
+    },
+    {
+      "id": "n_browserpresstool",
+      "name": "BrowserPressTool",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/plugins/SPLA.Plugins.Browser/Tools/BrowserPressTool.cs",
+      "members": []
+    },
+    {
+      "id": "n_browserscreenshottool",
+      "name": "BrowserScreenshotTool",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/plugins/SPLA.Plugins.Browser/Tools/BrowserScreenshotTool.cs",
+      "members": []
+    },
+    {
+      "id": "n_browserscrolltool",
+      "name": "BrowserScrollTool",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/plugins/SPLA.Plugins.Browser/Tools/BrowserScrollTool.cs",
+      "members": []
+    },
+    {
+      "id": "n_browserselecttool",
+      "name": "BrowserSelectTool",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/plugins/SPLA.Plugins.Browser/Tools/BrowserSelectTool.cs",
+      "members": []
+    },
+    {
+      "id": "n_browsersnapshottool",
+      "name": "BrowserSnapshotTool",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/plugins/SPLA.Plugins.Browser/Tools/BrowserSnapshotTool.cs",
+      "members": []
+    },
+    {
+      "id": "n_browserstarttool",
+      "name": "BrowserStartTool",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/plugins/SPLA.Plugins.Browser/Tools/BrowserStartTool.cs",
+      "members": []
+    },
+    {
+      "id": "n_resolvedprofile",
+      "name": "ResolvedProfile",
+      "kind": "Record",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/plugins/SPLA.Plugins.Browser/Tools/BrowserStartTool.cs",
+      "members": []
+    },
+    {
+      "id": "n_browserstatustool",
+      "name": "BrowserStatusTool",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/plugins/SPLA.Plugins.Browser/Tools/BrowserStatusTool.cs",
+      "members": []
+    },
+    {
+      "id": "n_browserstoptool",
+      "name": "BrowserStopTool",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/plugins/SPLA.Plugins.Browser/Tools/BrowserStopTool.cs",
+      "members": []
+    },
+    {
+      "id": "n_browserswitchtabtool",
+      "name": "BrowserSwitchTabTool",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/plugins/SPLA.Plugins.Browser/Tools/BrowserSwitchTabTool.cs",
+      "members": []
+    },
+    {
+      "id": "n_browsertabstool",
+      "name": "BrowserTabsTool",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/plugins/SPLA.Plugins.Browser/Tools/BrowserTabsTool.cs",
+      "members": []
+    },
+    {
+      "id": "n_browsertoolbase",
+      "name": "BrowserToolBase",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/plugins/SPLA.Plugins.Browser/Tools/BrowserToolBase.cs",
+      "members": []
+    },
+    {
+      "id": "n_browseruploadtool",
+      "name": "BrowserUploadTool",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/plugins/SPLA.Plugins.Browser/Tools/BrowserUploadTool.cs",
+      "members": []
+    },
+    {
+      "id": "n_browserwaitelementtool",
+      "name": "BrowserWaitElementTool",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/plugins/SPLA.Plugins.Browser/Tools/BrowserWaitElementTool.cs",
+      "members": []
+    },
+    {
+      "id": "n_browserwaitnavigationtool",
+      "name": "BrowserWaitNavigationTool",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/plugins/SPLA.Plugins.Browser/Tools/BrowserWaitNavigationTool.cs",
+      "members": []
+    },
+    {
+      "id": "n_browserscreencastplugin",
+      "name": "BrowserScreencastPlugin",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/plugins/SPLA.Plugins.Browser.Screencast/BrowserScreencastPlugin.cs",
+      "members": []
+    },
+    {
+      "id": "n_browserscreencastruntime",
+      "name": "BrowserScreencastRuntime",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/plugins/SPLA.Plugins.Browser.Screencast/BrowserScreencastPlugin.cs",
+      "members": []
+    },
+    {
+      "id": "n_browserscreencastviewersession",
+      "name": "BrowserScreencastViewerSession",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/plugins/SPLA.Plugins.Browser.Screencast/BrowserScreencastPlugin.cs",
+      "members": []
+    },
+    {
+      "id": "n_browserscreencasttool",
+      "name": "BrowserScreencastTool",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/plugins/SPLA.Plugins.Browser.Screencast/BrowserScreencastPlugin.cs",
+      "members": []
+    },
+    {
+      "id": "n_documentsplugin",
+      "name": "DocumentsPlugin",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/plugins/SPLA.Plugins.Documents/DocumentsPlugin.cs",
+      "members": []
+    },
+    {
+      "id": "n_docxextractor",
+      "name": "DocxExtractor",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/plugins/SPLA.Plugins.Documents/Docx/DocxExtractor.cs",
+      "members": []
+    },
+    {
+      "id": "n_docxnumbering",
+      "name": "DocxNumbering",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/plugins/SPLA.Plugins.Documents/Docx/DocxNumbering.cs",
+      "members": []
+    },
+    {
+      "id": "n_docxstyles",
+      "name": "DocxStyles",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/plugins/SPLA.Plugins.Documents/Docx/DocxStyles.cs",
+      "members": []
+    },
+    {
+      "id": "n_documentrenderconverter",
+      "name": "DocumentRenderConverter",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/plugins/SPLA.Plugins.Documents/Formats/DocumentRenderConverter.cs",
+      "members": []
+    },
+    {
+      "id": "n_csvstore",
+      "name": "CsvStore",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/plugins/SPLA.Plugins.Documents/Spreadsheet/CsvStore.cs",
+      "members": []
+    },
+    {
+      "id": "n_csvfile",
+      "name": "CsvFile",
+      "kind": "Record",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/plugins/SPLA.Plugins.Documents/Spreadsheet/CsvStore.cs",
+      "members": []
+    },
+    {
+      "id": "n_spreadsheetsheet",
+      "name": "SpreadsheetSheet",
+      "kind": "Record",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/plugins/SPLA.Plugins.Documents/Spreadsheet/SpreadsheetStore.cs",
+      "members": []
+    },
+    {
+      "id": "n_spreadsheetrows",
+      "name": "SpreadsheetRows",
+      "kind": "Record",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/plugins/SPLA.Plugins.Documents/Spreadsheet/SpreadsheetStore.cs",
+      "members": []
+    },
+    {
+      "id": "n_ispreadsheetstore",
+      "name": "ISpreadsheetStore",
+      "kind": "Interface",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/plugins/SPLA.Plugins.Documents/Spreadsheet/SpreadsheetStore.cs",
+      "members": []
+    },
+    {
+      "id": "n_spreadsheetstores",
+      "name": "SpreadsheetStores",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/plugins/SPLA.Plugins.Documents/Spreadsheet/SpreadsheetStore.cs",
+      "members": []
+    },
+    {
+      "id": "n_headerkey",
+      "name": "HeaderKey",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/plugins/SPLA.Plugins.Documents/Spreadsheet/SpreadsheetStore.cs",
+      "members": []
+    },
+    {
+      "id": "n_celltext",
+      "name": "CellText",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/plugins/SPLA.Plugins.Documents/Spreadsheet/SpreadsheetStore.cs",
+      "members": []
+    },
+    {
+      "id": "n_xlsxstore",
+      "name": "XlsxStore",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/plugins/SPLA.Plugins.Documents/Spreadsheet/XlsxStore.cs",
+      "members": []
+    },
+    {
+      "id": "n_documentextracttool",
+      "name": "DocumentExtractTool",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/plugins/SPLA.Plugins.Documents/Tools/DocumentExtractTool.cs",
+      "members": []
+    },
+    {
+      "id": "n_documentstoolpaths",
+      "name": "DocumentsToolPaths",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/plugins/SPLA.Plugins.Documents/Tools/DocumentsToolPaths.cs",
+      "members": []
+    },
+    {
+      "id": "n_spreadsheetappendrowstool",
+      "name": "SpreadsheetAppendRowsTool",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/plugins/SPLA.Plugins.Documents/Tools/SpreadsheetAppendRowsTool.cs",
+      "members": []
+    },
+    {
+      "id": "n_spreadsheetinspecttool",
+      "name": "SpreadsheetInspectTool",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/plugins/SPLA.Plugins.Documents/Tools/SpreadsheetInspectTool.cs",
+      "members": []
+    },
+    {
+      "id": "n_spreadsheetreadrowstool",
+      "name": "SpreadsheetReadRowsTool",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/plugins/SPLA.Plugins.Documents/Tools/SpreadsheetReadRowsTool.cs",
+      "members": []
+    },
+    {
+      "id": "n_networkplugin",
+      "name": "NetworkPlugin",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/plugins/SPLA.Plugins.Network/NetworkPlugin.cs",
+      "members": []
+    },
+    {
+      "id": "n_arptool",
+      "name": "ArpTool",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/plugins/SPLA.Plugins.Network/Tools/ArpTool.cs",
+      "members": []
+    },
+    {
+      "id": "n_arpentry",
+      "name": "ArpEntry",
+      "kind": "Record",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/plugins/SPLA.Plugins.Network/Tools/ArpTool.cs",
+      "members": []
+    },
+    {
+      "id": "n_dnspropagationtool",
+      "name": "DnsPropagationTool",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/plugins/SPLA.Plugins.Network/Tools/DnsPropagationTool.cs",
+      "members": []
+    },
+    {
+      "id": "n_dnsquerytool",
+      "name": "DnsQueryTool",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/plugins/SPLA.Plugins.Network/Tools/DnsQueryTool.cs",
+      "members": []
+    },
+    {
+      "id": "n_hostnetworkinfotool",
+      "name": "HostNetworkInfoTool",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/plugins/SPLA.Plugins.Network/Tools/HostNetworkInfoTool.cs",
+      "members": []
+    },
+    {
+      "id": "n_httpgettool",
+      "name": "HttpGetTool",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/plugins/SPLA.Plugins.Network/Tools/HttpGetTool.cs",
+      "members": []
+    },
+    {
+      "id": "n_httpheadtool",
+      "name": "HttpHeadTool",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/plugins/SPLA.Plugins.Network/Tools/HttpHeadTool.cs",
+      "members": []
+    },
+    {
+      "id": "n_httpposttool",
+      "name": "HttpPostTool",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/plugins/SPLA.Plugins.Network/Tools/HttpPostTool.cs",
+      "members": []
+    },
+    {
+      "id": "n_httpredirectstool",
+      "name": "HttpRedirectsTool",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/plugins/SPLA.Plugins.Network/Tools/HttpRedirectsTool.cs",
+      "members": []
+    },
+    {
+      "id": "n_lanscantool",
+      "name": "LanScanTool",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/plugins/SPLA.Plugins.Network/Tools/LanScanTool.cs",
+      "members": []
+    },
+    {
+      "id": "n_hostscanresult",
+      "name": "HostScanResult",
+      "kind": "Record",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/plugins/SPLA.Plugins.Network/Tools/LanScanTool.cs",
+      "members": []
+    },
+    {
+      "id": "n_networkscanhelpers",
+      "name": "NetworkScanHelpers",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/plugins/SPLA.Plugins.Network/Tools/NetworkScanHelpers.cs",
+      "members": []
+    },
+    {
+      "id": "n_nslookuptool",
+      "name": "NsLookupTool",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/plugins/SPLA.Plugins.Network/Tools/NsLookupTool.cs",
+      "members": []
+    },
+    {
+      "id": "n_pingstatstool",
+      "name": "PingStatsTool",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/plugins/SPLA.Plugins.Network/Tools/PingStatsTool.cs",
+      "members": []
+    },
+    {
+      "id": "n_pingtool",
+      "name": "PingTool",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/plugins/SPLA.Plugins.Network/Tools/PingTool.cs",
+      "members": []
+    },
+    {
+      "id": "n_portchecktool",
+      "name": "PortCheckTool",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/plugins/SPLA.Plugins.Network/Tools/PortCheckTool.cs",
+      "members": []
+    },
+    {
+      "id": "n_portscantool",
+      "name": "PortScanTool",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/plugins/SPLA.Plugins.Network/Tools/PortScanTool.cs",
+      "members": []
+    },
+    {
+      "id": "n_reversednstool",
+      "name": "ReverseDnsTool",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/plugins/SPLA.Plugins.Network/Tools/ReverseDnsTool.cs",
+      "members": []
+    },
+    {
+      "id": "n_routetool",
+      "name": "RouteTool",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/plugins/SPLA.Plugins.Network/Tools/RouteTool.cs",
+      "members": []
+    },
+    {
+      "id": "n_smtpprobetool",
+      "name": "SmtpProbeTool",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/plugins/SPLA.Plugins.Network/Tools/SmtpProbeTool.cs",
+      "members": []
+    },
+    {
+      "id": "n_smtpresponse",
+      "name": "SmtpResponse",
+      "kind": "Record",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/plugins/SPLA.Plugins.Network/Tools/SmtpProbeTool.cs",
+      "members": []
+    },
+    {
+      "id": "n_sslchecktool",
+      "name": "SslCheckTool",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/plugins/SPLA.Plugins.Network/Tools/SslCheckTool.cs",
+      "members": []
+    },
+    {
+      "id": "n_tcpprobetool",
+      "name": "TcpProbeTool",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/plugins/SPLA.Plugins.Network/Tools/TcpProbeTool.cs",
+      "members": []
+    },
+    {
+      "id": "n_traceroutetool",
+      "name": "TraceRouteTool",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/plugins/SPLA.Plugins.Network/Tools/TraceRouteTool.cs",
+      "members": []
+    },
+    {
+      "id": "n_udpprobetool",
+      "name": "UdpProbeTool",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/plugins/SPLA.Plugins.Network/Tools/UdpProbeTool.cs",
+      "members": []
+    },
+    {
+      "id": "n_waketool",
+      "name": "WakeTool",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/plugins/SPLA.Plugins.Network/Tools/WakeTool.cs",
+      "members": []
+    },
+    {
+      "id": "n_whoistool",
+      "name": "WhoisTool",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/plugins/SPLA.Plugins.Network/Tools/WhoisTool.cs",
+      "members": []
+    },
+    {
+      "id": "n_onecgraph",
+      "name": "OneCGraph",
+      "kind": "Record",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/plugins/SPLA.Plugins.OneC/Graph/OneCGraph.cs",
+      "members": []
+    },
+    {
+      "id": "n_onecgraphnode",
+      "name": "OneCGraphNode",
+      "kind": "Record",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/plugins/SPLA.Plugins.OneC/Graph/OneCGraph.cs",
+      "members": []
+    },
+    {
+      "id": "n_onecgraphedge",
+      "name": "OneCGraphEdge",
+      "kind": "Record",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/plugins/SPLA.Plugins.OneC/Graph/OneCGraph.cs",
+      "members": []
+    },
+    {
+      "id": "n_onecgraphsummary",
+      "name": "OneCGraphSummary",
+      "kind": "Record",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/plugins/SPLA.Plugins.OneC/Graph/OneCGraph.cs",
+      "members": []
+    },
+    {
+      "id": "n_onecgraphrequest",
+      "name": "OneCGraphRequest",
+      "kind": "Record",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/plugins/SPLA.Plugins.OneC/Graph/OneCGraph.cs",
+      "members": []
+    },
+    {
+      "id": "n_onecgraphmode",
+      "name": "OneCGraphMode",
+      "kind": "Enum",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/plugins/SPLA.Plugins.OneC/Graph/OneCGraph.cs",
+      "members": []
+    },
+    {
+      "id": "n_onecgraphbuilder",
+      "name": "OneCGraphBuilder",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/plugins/SPLA.Plugins.OneC/Graph/OneCGraphBuilder.cs",
+      "members": []
+    },
+    {
+      "id": "n_oneccodeanalyzer",
+      "name": "OneCCodeAnalyzer",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/plugins/SPLA.Plugins.OneC/Indexing/OneCCodeAnalyzer.cs",
+      "members": []
+    },
+    {
+      "id": "n_coderelation",
+      "name": "CodeRelation",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/plugins/SPLA.Plugins.OneC/Indexing/OneCCodeAnalyzer.cs",
+      "members": []
+    },
+    {
+      "id": "n_filecontenttype",
+      "name": "FileContentType",
+      "kind": "Enum",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/plugins/SPLA.Plugins.OneC/Indexing/OneCFileScanner.cs",
+      "members": []
+    },
+    {
+      "id": "n_scannedfile",
+      "name": "ScannedFile",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/plugins/SPLA.Plugins.OneC/Indexing/OneCFileScanner.cs",
+      "members": []
+    },
+    {
+      "id": "n_onecfilescanner",
+      "name": "OneCFileScanner",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/plugins/SPLA.Plugins.OneC/Indexing/OneCFileScanner.cs",
+      "members": []
+    },
+    {
+      "id": "n_onecindexer",
+      "name": "OneCIndexer",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/plugins/SPLA.Plugins.OneC/Indexing/OneCIndexer.cs",
+      "members": []
+    },
+    {
+      "id": "n_onecmetadataparser",
+      "name": "OneCMetadataParser",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/plugins/SPLA.Plugins.OneC/Indexing/OneCMetadataParser.cs",
+      "members": []
+    },
+    {
+      "id": "n_parsedmetadata",
+      "name": "ParsedMetadata",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/plugins/SPLA.Plugins.OneC/Indexing/OneCMetadataParser.cs",
+      "members": []
+    },
+    {
+      "id": "n_ownedchild",
+      "name": "OwnedChild",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/plugins/SPLA.Plugins.OneC/Indexing/OneCMetadataParser.cs",
+      "members": []
+    },
+    {
+      "id": "n_onecqueryanalyzer",
+      "name": "OneCQueryAnalyzer",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/plugins/SPLA.Plugins.OneC/Indexing/OneCQueryAnalyzer.cs",
+      "members": []
+    },
+    {
+      "id": "n_indexingreport",
+      "name": "IndexingReport",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/plugins/SPLA.Plugins.OneC/Models/IndexingReport.cs",
+      "members": []
+    },
+    {
+      "id": "n_onecfileentry",
+      "name": "OneCFileEntry",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/plugins/SPLA.Plugins.OneC/Models/OneCFileEntry.cs",
+      "members": []
+    },
+    {
+      "id": "n_onecobject",
+      "name": "OneCObject",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/plugins/SPLA.Plugins.OneC/Models/OneCObject.cs",
+      "members": []
+    },
+    {
+      "id": "n_onecrelation",
+      "name": "OneCRelation",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/plugins/SPLA.Plugins.OneC/Models/OneCRelation.cs",
+      "members": []
+    },
+    {
+      "id": "n_relationtype",
+      "name": "RelationType",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/plugins/SPLA.Plugins.OneC/Models/OneCRelation.cs",
+      "members": []
+    },
+    {
+      "id": "n_relationconfidence",
+      "name": "RelationConfidence",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/plugins/SPLA.Plugins.OneC/Models/OneCRelation.cs",
+      "members": []
+    },
+    {
+      "id": "n_onecplugin",
+      "name": "OneCPlugin",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/plugins/SPLA.Plugins.OneC/OneCPlugin.cs",
+      "members": []
+    },
+    {
+      "id": "n_onecindexdatabase",
+      "name": "OneCIndexDatabase",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/plugins/SPLA.Plugins.OneC/Storage/OneCIndexDatabase.cs",
+      "members": []
+    },
+    {
+      "id": "n_relationrow",
+      "name": "RelationRow",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/plugins/SPLA.Plugins.OneC/Storage/OneCIndexDatabase.cs",
+      "members": []
+    },
+    {
+      "id": "n_onecindexschema",
+      "name": "OneCIndexSchema",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/plugins/SPLA.Plugins.OneC/Storage/OneCIndexSchema.cs",
+      "members": []
+    },
+    {
+      "id": "n_explainobjecttool",
+      "name": "ExplainObjectTool",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/plugins/SPLA.Plugins.OneC/Tools/ExplainObjectTool.cs",
+      "members": []
+    },
+    {
+      "id": "n_findobjecttool",
+      "name": "FindObjectTool",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/plugins/SPLA.Plugins.OneC/Tools/FindObjectTool.cs",
+      "members": []
+    },
+    {
+      "id": "n_findreaderstool",
+      "name": "FindReadersTool",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/plugins/SPLA.Plugins.OneC/Tools/FindReadersTool.cs",
+      "members": []
+    },
+    {
+      "id": "n_findreferencestool",
+      "name": "FindReferencesTool",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/plugins/SPLA.Plugins.OneC/Tools/FindReferencesTool.cs",
+      "members": []
+    },
+    {
+      "id": "n_findwriterstool",
+      "name": "FindWritersTool",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/plugins/SPLA.Plugins.OneC/Tools/FindWritersTool.cs",
+      "members": []
+    },
+    {
+      "id": "n_getdependenciestool",
+      "name": "GetDependenciesTool",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/plugins/SPLA.Plugins.OneC/Tools/GetDependenciesTool.cs",
+      "members": []
+    },
+    {
+      "id": "n_getobjecttool",
+      "name": "GetObjectTool",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/plugins/SPLA.Plugins.OneC/Tools/GetObjectTool.cs",
+      "members": []
+    },
+    {
+      "id": "n_getreversedependenciestool",
+      "name": "GetReverseDependenciesTool",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/plugins/SPLA.Plugins.OneC/Tools/GetReverseDependenciesTool.cs",
+      "members": []
+    },
+    {
+      "id": "n_indexconfigurationtool",
+      "name": "IndexConfigurationTool",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/plugins/SPLA.Plugins.OneC/Tools/IndexConfigurationTool.cs",
+      "members": []
+    },
+    {
+      "id": "n_yamlresponse",
+      "name": "YamlResponse",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/plugins/SPLA.Plugins.OneC/Tools/YamlResponse.cs",
+      "members": []
+    },
+    {
+      "id": "n_yamlbuilder",
+      "name": "YamlBuilder",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/plugins/SPLA.Plugins.OneC/Tools/YamlResponse.cs",
+      "members": []
+    },
+    {
+      "id": "n_onecwebactions",
+      "name": "OneCWebActions",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/plugins/SPLA.Plugins.OneC/Web/OneCWebActions.cs",
+      "members": []
+    },
+    {
+      "id": "n_compilechecktool",
+      "name": "CompileCheckTool",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/plugins/SPLA.Plugins.Roslyn/CompileCheckTool.cs",
+      "members": []
+    },
+    {
+      "id": "n_dotnetcli",
+      "name": "DotnetCli",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/plugins/SPLA.Plugins.Roslyn/DotnetCli.cs",
+      "members": []
+    },
+    {
+      "id": "n_result",
+      "name": "Result",
+      "kind": "Record",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/plugins/SPLA.Plugins.Sql/SqlConnectionTester.cs",
+      "members": []
+    },
+    {
+      "id": "n_dotnetprojecttool",
+      "name": "DotnetProjectTool",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/plugins/SPLA.Plugins.Roslyn/DotnetProjectTool.cs",
+      "members": []
+    },
+    {
+      "id": "n_projectbuildtool",
+      "name": "ProjectBuildTool",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/plugins/SPLA.Plugins.Roslyn/ProjectBuildTool.cs",
+      "members": []
+    },
+    {
+      "id": "n_projectruntool",
+      "name": "ProjectRunTool",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/plugins/SPLA.Plugins.Roslyn/ProjectRunTool.cs",
+      "members": []
+    },
+    {
+      "id": "n_projecttesttool",
+      "name": "ProjectTestTool",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/plugins/SPLA.Plugins.Roslyn/ProjectTestTool.cs",
+      "members": []
+    },
+    {
+      "id": "n_referenceassemblies",
+      "name": "ReferenceAssemblies",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/plugins/SPLA.Plugins.Roslyn/ReferenceAssemblies.cs",
+      "members": []
+    },
+    {
+      "id": "n_roslynplugin",
+      "name": "RoslynPlugin",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/plugins/SPLA.Plugins.Roslyn/RoslynPlugin.cs",
+      "members": []
+    },
+    {
+      "id": "n_nooptoolhost",
+      "name": "NoOpToolHost",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/plugins/SPLA.Plugins.Roslyn/RoslynPlugin.cs",
+      "members": []
+    },
+    {
+      "id": "n_scriptcontext",
+      "name": "ScriptContext",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/plugins/SPLA.Plugins.Roslyn/ScriptContext.cs",
+      "members": []
+    },
+    {
+      "id": "n_scriptruntool",
+      "name": "ScriptRunTool",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/plugins/SPLA.Plugins.Roslyn/ScriptRunTool.cs",
+      "members": []
+    },
+    {
+      "id": "n_sqlconnectionfactory",
+      "name": "SqlConnectionFactory",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/plugins/SPLA.Plugins.Sql/Factory/SqlConnectionFactory.cs",
+      "members": []
+    },
+    {
+      "id": "n_sqlrisklevel",
+      "name": "SqlRiskLevel",
+      "kind": "Enum",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/plugins/SPLA.Plugins.Sql/Safety/SqlSafetyAnalyzer.cs",
+      "members": []
+    },
+    {
+      "id": "n_sqlriskassessment",
+      "name": "SqlRiskAssessment",
+      "kind": "Record",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/plugins/SPLA.Plugins.Sql/Safety/SqlSafetyAnalyzer.cs",
+      "members": []
+    },
+    {
+      "id": "n_sqlsafetyanalyzer",
+      "name": "SqlSafetyAnalyzer",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/plugins/SPLA.Plugins.Sql/Safety/SqlSafetyAnalyzer.cs",
+      "members": []
+    },
+    {
+      "id": "n_sqlconnectionregistry",
+      "name": "SqlConnectionRegistry",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/plugins/SPLA.Plugins.Sql/SqlConnectionRegistry.cs",
+      "members": []
+    },
+    {
+      "id": "n_sqlconnectiontester",
+      "name": "SqlConnectionTester",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/plugins/SPLA.Plugins.Sql/SqlConnectionTester.cs",
+      "members": []
+    },
+    {
+      "id": "n_sqlplugin",
+      "name": "SqlPlugin",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/plugins/SPLA.Plugins.Sql/SqlPlugin.cs",
+      "members": []
+    },
+    {
+      "id": "n_sqlschemaprovider",
+      "name": "SqlSchemaProvider",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/plugins/SPLA.Plugins.Sql/SqlSchemaProvider.cs",
+      "members": []
+    },
+    {
+      "id": "n_sqlconnectionconfig",
+      "name": "SqlConnectionConfig",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/plugins/SPLA.Plugins.Sql/SqlSettings.cs",
+      "members": []
+    },
+    {
+      "id": "n_sqlsettings",
+      "name": "SqlSettings",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/plugins/SPLA.Plugins.Sql/SqlSettings.cs",
+      "members": []
+    },
+    {
+      "id": "n_sqlconnectionstool",
+      "name": "SqlConnectionsTool",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/plugins/SPLA.Plugins.Sql/Tools/SqlConnectionsTool.cs",
+      "members": []
+    },
+    {
+      "id": "n_sqlexecutetool",
+      "name": "SqlExecuteTool",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/plugins/SPLA.Plugins.Sql/Tools/SqlExecuteTool.cs",
+      "members": []
+    },
+    {
+      "id": "n_sqlqueryplantool",
+      "name": "SqlQueryPlanTool",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/plugins/SPLA.Plugins.Sql/Tools/SqlQueryPlanTool.cs",
+      "members": []
+    },
+    {
+      "id": "n_sqlquerytool",
+      "name": "SqlQueryTool",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/plugins/SPLA.Plugins.Sql/Tools/SqlQueryTool.cs",
+      "members": []
+    },
+    {
+      "id": "n_sqlschematool",
+      "name": "SqlSchemaTool",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/plugins/SPLA.Plugins.Sql/Tools/SqlSchemaTool.cs",
+      "members": []
+    },
+    {
+      "id": "n_sqltestconnectiontool",
+      "name": "SqlTestConnectionTool",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/plugins/SPLA.Plugins.Sql/Tools/SqlTestConnectionTool.cs",
+      "members": []
+    },
+    {
+      "id": "n_sqltoolbase",
+      "name": "SqlToolBase",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/plugins/SPLA.Plugins.Sql/Tools/SqlToolBase.cs",
+      "members": []
+    },
+    {
+      "id": "n_sqlverifycontexttool",
+      "name": "SqlVerifyContextTool",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/plugins/SPLA.Plugins.Sql/Tools/SqlVerifyContextTool.cs",
+      "members": []
+    },
+    {
+      "id": "n_sftpresourceprovider",
+      "name": "SftpResourceProvider",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/plugins/SPLA.Plugins.Ssh/Resources/SftpResourceProvider.cs",
+      "members": []
+    },
+    {
+      "id": "n_sshplugin",
+      "name": "SshPlugin",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/plugins/SPLA.Plugins.Ssh/SshPlugin.cs",
+      "members": []
+    },
+    {
+      "id": "n_testhostrequest",
+      "name": "TestHostRequest",
+      "kind": "Record",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/plugins/SPLA.Plugins.Ssh/SshPlugin.cs",
+      "members": []
+    },
+    {
+      "id": "n_sessiontoolcontext",
+      "name": "SessionToolContext",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/plugins/SPLA.Plugins.Ssh/Tools/SessionToolContext.cs",
+      "members": []
+    },
+    {
+      "id": "n_sftpdownloadtool",
+      "name": "SftpDownloadTool",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/plugins/SPLA.Plugins.Ssh/Tools/SftpDownloadTool.cs",
+      "members": []
+    },
+    {
+      "id": "n_sftplstool",
+      "name": "SftpLsTool",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/plugins/SPLA.Plugins.Ssh/Tools/SftpLsTool.cs",
+      "members": []
+    },
+    {
+      "id": "n_sftpuploadtool",
+      "name": "SftpUploadTool",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/plugins/SPLA.Plugins.Ssh/Tools/SftpUploadTool.cs",
+      "members": []
+    },
+    {
+      "id": "n_sftpwritefiletool",
+      "name": "SftpWriteFileTool",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/plugins/SPLA.Plugins.Ssh/Tools/SftpWriteFileTool.cs",
+      "members": []
+    },
+    {
+      "id": "n_sshlisthoststool",
+      "name": "SshListHostsTool",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/plugins/SPLA.Plugins.Ssh/Tools/SshListHostsTool.cs",
+      "members": []
+    },
+    {
+      "id": "n_sshruntool",
+      "name": "SshRunTool",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/plugins/SPLA.Plugins.Ssh/Tools/SshRunTool.cs",
+      "members": []
+    },
+    {
+      "id": "n_sshsessionclosetool",
+      "name": "SshSessionCloseTool",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/plugins/SPLA.Plugins.Ssh/Tools/SshSessionCloseTool.cs",
+      "members": []
+    },
+    {
+      "id": "n_sshsessionexectool",
+      "name": "SshSessionExecTool",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/plugins/SPLA.Plugins.Ssh/Tools/SshSessionExecTool.cs",
+      "members": []
+    },
+    {
+      "id": "n_sshsessionsendtool",
+      "name": "SshSessionSendTool",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/plugins/SPLA.Plugins.Ssh/Tools/SshSessionSendTool.cs",
+      "members": []
+    },
+    {
+      "id": "n_sshsessionslisttool",
+      "name": "SshSessionsListTool",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/plugins/SPLA.Plugins.Ssh/Tools/SshSessionsListTool.cs",
+      "members": []
+    },
+    {
+      "id": "n_sshsessionwaittool",
+      "name": "SshSessionWaitTool",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/plugins/SPLA.Plugins.Ssh/Tools/SshSessionWaitTool.cs",
+      "members": []
+    },
+    {
+      "id": "n_tartoolsupport",
+      "name": "TarToolSupport",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/plugins/SPLA.Plugins.Ssh/Tools/TarTools.cs",
+      "members": []
+    },
+    {
+      "id": "n_tarlisttool",
+      "name": "TarListTool",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/plugins/SPLA.Plugins.Ssh/Tools/TarTools.cs",
+      "members": []
+    },
+    {
+      "id": "n_tarreadtool",
+      "name": "TarReadTool",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/plugins/SPLA.Plugins.Ssh/Tools/TarTools.cs",
+      "members": []
+    },
+    {
+      "id": "n_tarwritetool",
+      "name": "TarWriteTool",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/plugins/SPLA.Plugins.Ssh/Tools/TarTools.cs",
+      "members": []
+    },
+    {
+      "id": "n_localtarget",
+      "name": "LocalTarget",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/plugins/SPLA.Plugins.Ssh/Transfer/LocalTarget.cs",
+      "members": []
+    },
+    {
+      "id": "n_transferproblem",
+      "name": "TransferProblem",
+      "kind": "Record",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/plugins/SPLA.Plugins.Ssh/Transfer/SftpTransfer.cs",
+      "members": []
+    },
+    {
+      "id": "n_transferresult",
+      "name": "TransferResult",
+      "kind": "Record",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/plugins/SPLA.Plugins.Ssh/Transfer/SftpTransfer.cs",
+      "members": []
+    },
+    {
+      "id": "n_sftptransfer",
+      "name": "SftpTransfer",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/plugins/SPLA.Plugins.Ssh/Transfer/SftpTransfer.cs",
+      "members": []
+    },
+    {
+      "id": "n_tarcontainer",
+      "name": "TarContainer",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/plugins/SPLA.Plugins.Ssh/Transfer/TarContainer.cs",
+      "members": []
+    },
+    {
+      "id": "n_transferentrytype",
+      "name": "TransferEntryType",
+      "kind": "Enum",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/plugins/SPLA.Plugins.Ssh/Transfer/TransferEntry.cs",
+      "members": []
+    },
+    {
+      "id": "n_transferentry",
+      "name": "TransferEntry",
+      "kind": "Record",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/plugins/SPLA.Plugins.Ssh/Transfer/TransferEntry.cs",
+      "members": []
+    },
+    {
+      "id": "n_pendingentry",
+      "name": "PendingEntry",
+      "kind": "Record",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/plugins/SPLA.Plugins.Ssh/Transfer/TransferEntry.cs",
+      "members": []
+    },
+    {
+      "id": "n_uploadconflict",
+      "name": "UploadConflict",
+      "kind": "Enum",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/plugins/SPLA.Plugins.Ssh/Transfer/UploadSource.cs",
+      "members": []
+    },
+    {
+      "id": "n_uploaditem",
+      "name": "UploadItem",
+      "kind": "Record",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/plugins/SPLA.Plugins.Ssh/Transfer/UploadSource.cs",
+      "members": []
+    },
+    {
+      "id": "n_uploadset",
+      "name": "UploadSet",
+      "kind": "Record",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/plugins/SPLA.Plugins.Ssh/Transfer/UploadSource.cs",
+      "members": []
+    },
+    {
+      "id": "n_uploadsource",
+      "name": "UploadSource",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/plugins/SPLA.Plugins.Ssh/Transfer/UploadSource.cs",
+      "members": []
+    },
+    {
+      "id": "n_cliinstancespawner",
+      "name": "CliInstanceSpawner",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/service/SPLA.Instances/CliInstanceSpawner.cs",
+      "members": []
+    },
+    {
+      "id": "n_fileinstanceregistry",
+      "name": "FileInstanceRegistry",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/service/SPLA.Instances/FileInstanceRegistry.cs",
+      "members": []
+    },
+    {
+      "id": "n_hubaddress",
+      "name": "HubAddress",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/service/SPLA.Instances/HubAddress.cs",
+      "members": []
+    },
+    {
+      "id": "n_instanceregistrar",
+      "name": "InstanceRegistrar",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/service/SPLA.Instances/InstanceRegistrar.cs",
+      "members": []
+    },
+    {
+      "id": "n_localserviceconnector",
+      "name": "LocalServiceConnector",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/service/SPLA.Instances/LocalServiceConnector.cs",
+      "members": []
+    },
+    {
+      "id": "n_registryhub",
+      "name": "RegistryHub",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/service/SPLA.Instances/RegistryHub.cs",
+      "members": []
+    },
+    {
+      "id": "n_projectmatch",
+      "name": "ProjectMatch",
+      "kind": "Record",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/service/SPLA.Instances/RegistryHub.cs",
+      "members": []
+    },
+    {
+      "id": "n_registration",
+      "name": "Registration",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/service/SPLA.Instances/RegistryHub.cs",
+      "members": []
+    },
+    {
+      "id": "n_registrywatcher",
+      "name": "RegistryWatcher",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/service/SPLA.Instances/RegistryWatcher.cs",
+      "members": []
+    },
+    {
+      "id": "n_remoteinstanceregistry",
+      "name": "RemoteInstanceRegistry",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/service/SPLA.Instances/RemoteInstanceRegistry.cs",
+      "members": []
+    },
+    {
+      "id": "n_registryroutes",
+      "name": "RegistryRoutes",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/service/SPLA.Instances/RemoteInstanceRegistry.cs",
+      "members": []
+    },
+    {
+      "id": "n_mcpprogressreporter",
+      "name": "McpProgressReporter",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/service/SPLA.Mcp/McpProgressReporter.cs",
+      "members": []
+    },
+    {
+      "id": "n_mcpstdioserver",
+      "name": "McpStdioServer",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/service/SPLA.Mcp/McpStdioServer.cs",
+      "members": []
+    },
+    {
+      "id": "n_httptransport",
+      "name": "HttpTransport",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/service/SPLA.Mcp.Client/HttpTransport.cs",
+      "members": []
+    },
+    {
+      "id": "n_imcptransport",
+      "name": "IMcpTransport",
+      "kind": "Interface",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/service/SPLA.Mcp.Client/IMcpTransport.cs",
+      "members": []
+    },
+    {
+      "id": "n_jsonrpc",
+      "name": "JsonRpc",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/service/SPLA.Mcp.Client/JsonRpc.cs",
+      "members": []
+    },
+    {
+      "id": "n_mcpserverexception",
+      "name": "McpServerException",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/service/SPLA.Mcp.Client/JsonRpc.cs",
+      "members": []
+    },
+    {
+      "id": "n_mcpproxytool",
+      "name": "McpProxyTool",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/service/SPLA.Mcp.Client/McpProxyTool.cs",
+      "members": []
+    },
+    {
+      "id": "n_mcpsessionstate",
+      "name": "McpSessionState",
+      "kind": "Enum",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/service/SPLA.Mcp.Client/McpServerSession.cs",
+      "members": []
+    },
+    {
+      "id": "n_mcpserversession",
+      "name": "McpServerSession",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/service/SPLA.Mcp.Client/McpServerSession.cs",
+      "members": []
+    },
+    {
+      "id": "n_mcptransportkind",
+      "name": "McpTransportKind",
+      "kind": "Enum",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/service/SPLA.Mcp.Client/McpServerSpec.cs",
+      "members": []
+    },
+    {
+      "id": "n_mcpserverspec",
+      "name": "McpServerSpec",
+      "kind": "Record",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/service/SPLA.Mcp.Client/McpServerSpec.cs",
+      "members": []
+    },
+    {
+      "id": "n_mcptoolinfo",
+      "name": "McpToolInfo",
+      "kind": "Record",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/service/SPLA.Mcp.Client/McpToolInfo.cs",
+      "members": []
+    },
+    {
+      "id": "n_mcpprogress",
+      "name": "McpProgress",
+      "kind": "Record",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/service/SPLA.Mcp.Client/McpToolInfo.cs",
+      "members": []
+    },
+    {
+      "id": "n_mcptoolnaming",
+      "name": "McpToolNaming",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/service/SPLA.Mcp.Client/McpToolNaming.cs",
+      "members": []
+    },
+    {
+      "id": "n_stdiotransport",
+      "name": "StdioTransport",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/service/SPLA.Mcp.Client/StdioTransport.cs",
+      "members": []
+    },
+    {
+      "id": "n_streamtransport",
+      "name": "StreamTransport",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/service/SPLA.Mcp.Client/StreamTransport.cs",
+      "members": []
+    },
+    {
+      "id": "n_adminendpoints",
+      "name": "AdminEndpoints",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/service/SPLA.Service/Auth/AdminEndpoints.cs",
+      "members": []
+    },
+    {
+      "id": "n_usercreatedto",
+      "name": "UserCreateDto",
+      "kind": "Record",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/service/SPLA.Service/Auth/AdminEndpoints.cs",
+      "members": []
+    },
+    {
+      "id": "n_userupdatedto",
+      "name": "UserUpdateDto",
+      "kind": "Record",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/service/SPLA.Service/Auth/AdminEndpoints.cs",
+      "members": []
+    },
+    {
+      "id": "n_enableddto",
+      "name": "EnabledDto",
+      "kind": "Record",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/service/SPLA.Service/Auth/AdminEndpoints.cs",
+      "members": []
+    },
+    {
+      "id": "n_authendpoints",
+      "name": "AuthEndpoints",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/service/SPLA.Service/Auth/AuthEndpoints.cs",
+      "members": []
+    },
+    {
+      "id": "n_authmode",
+      "name": "AuthMode",
+      "kind": "Enum",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/service/SPLA.Service/Auth/AuthMode.cs",
+      "members": []
+    },
+    {
+      "id": "n_authclaims",
+      "name": "AuthClaims",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/service/SPLA.Service/Auth/AuthMode.cs",
+      "members": []
+    },
+    {
+      "id": "n_authpages",
+      "name": "AuthPages",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/service/SPLA.Service/Auth/AuthPages.cs",
+      "members": []
+    },
+    {
+      "id": "n_iuserstore",
+      "name": "IUserStore",
+      "kind": "Interface",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/service/SPLA.Service/Auth/JsonUserStore.cs",
+      "members": []
+    },
+    {
+      "id": "n_jsonuserstore",
+      "name": "JsonUserStore",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/service/SPLA.Service/Auth/JsonUserStore.cs",
+      "members": []
+    },
+    {
+      "id": "n_accountresult",
+      "name": "AccountResult",
+      "kind": "Record",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/service/SPLA.Service/Auth/LocalAccountService.cs",
+      "members": []
+    },
+    {
+      "id": "n_localaccountservice",
+      "name": "LocalAccountService",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/service/SPLA.Service/Auth/LocalAccountService.cs",
+      "members": []
+    },
+    {
+      "id": "n_localuser",
+      "name": "LocalUser",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/service/SPLA.Service/Auth/LocalUser.cs",
+      "members": []
+    },
+    {
+      "id": "n_protocolmapper",
+      "name": "ProtocolMapper",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/service/SPLA.Service/Chat/ProtocolMapper.cs",
+      "members": []
+    },
+    {
+      "id": "n_runtimeprojections",
+      "name": "RuntimeProjections",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/service/SPLA.Service/Chat/RuntimeProjections.cs",
+      "members": []
+    },
+    {
+      "id": "n_authgate",
+      "name": "AuthGate",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/service/SPLA.Service/Hosting/AuthGate.cs",
+      "members": []
+    },
+    {
+      "id": "n_authresult",
+      "name": "AuthResult",
+      "kind": "Record",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/service/SPLA.Service/Hosting/AuthGate.cs",
+      "members": []
+    },
+    {
+      "id": "n_chatpump",
+      "name": "ChatPump",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/service/SPLA.Service/Hosting/ChatPump.cs",
+      "members": []
+    },
+    {
+      "id": "n_wakedecision",
+      "name": "WakeDecision",
+      "kind": "Enum",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/service/SPLA.Service/Hosting/ChatPump.cs",
+      "members": []
+    },
+    {
+      "id": "n_chatturndriver",
+      "name": "ChatTurnDriver",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/service/SPLA.Service/Hosting/ChatTurnDriver.cs",
+      "members": []
+    },
+    {
+      "id": "n_turncontext",
+      "name": "TurnContext",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/service/SPLA.Service/Hosting/ChatTurnDriver.cs",
+      "members": []
+    },
+    {
+      "id": "n_clientconnection",
+      "name": "ClientConnection",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/service/SPLA.Service/Hosting/ClientConnection.cs",
+      "members": []
+    },
+    {
+      "id": "n_connectionhub",
+      "name": "ConnectionHub",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/service/SPLA.Service/Hosting/ConnectionHub.cs",
+      "members": []
+    },
+    {
+      "id": "n_hubtoolhost",
+      "name": "HubToolHost",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/service/SPLA.Service/Hosting/HubToolHost.cs",
+      "members": []
+    },
+    {
+      "id": "n_hubprojectslisttool",
+      "name": "HubProjectsListTool",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/service/SPLA.Service/Hosting/HubToolHost.cs",
+      "members": []
+    },
+    {
+      "id": "n_initialchatrequest",
+      "name": "InitialChatRequest",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/service/SPLA.Service/Hosting/InitialChatRequest.cs",
+      "members": []
+    },
+    {
+      "id": "n_initialchat",
+      "name": "InitialChat",
+      "kind": "Record",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/service/SPLA.Service/Hosting/InitialChatRequest.cs",
+      "members": []
+    },
+    {
+      "id": "n_instancelease",
+      "name": "InstanceLease",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/service/SPLA.Service/Hosting/InstanceLease.cs",
+      "members": []
+    },
+    {
+      "id": "n_holder",
+      "name": "Holder",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/service/SPLA.Service/Hosting/InstanceLease.cs",
+      "members": []
+    },
+    {
+      "id": "n_mcphttpframing",
+      "name": "McpHttpFraming",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/service/SPLA.Service/Hosting/McpHttpFraming.cs",
+      "members": []
+    },
+    {
+      "id": "n_pendinglinereader",
+      "name": "PendingLineReader",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/service/SPLA.Service/Hosting/McpHttpFraming.cs",
+      "members": []
+    },
+    {
+      "id": "n_capturingwriter",
+      "name": "CapturingWriter",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/service/SPLA.Service/Hosting/McpHttpFraming.cs",
+      "members": []
+    },
+    {
+      "id": "n_registryendpoints",
+      "name": "RegistryEndpoints",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/service/SPLA.Service/Hosting/RegistryEndpoints.cs",
+      "members": []
+    },
+    {
+      "id": "n_resolvekind",
+      "name": "ResolveKind",
+      "kind": "Enum",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/service/SPLA.Service/Hosting/RegistryEndpoints.cs",
+      "members": []
+    },
+    {
+      "id": "n_resolvedproject",
+      "name": "ResolvedProject",
+      "kind": "Record",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/service/SPLA.Service/Hosting/RegistryEndpoints.cs",
+      "members": []
+    },
+    {
+      "id": "n_registryhubhost",
+      "name": "RegistryHubHost",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/service/SPLA.Service/Hosting/RegistryHubHost.cs",
+      "members": []
+    },
+    {
+      "id": "n_serviceoptions",
+      "name": "ServiceOptions",
+      "kind": "Record",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/service/SPLA.Service/Hosting/SplaServiceHost.cs",
+      "members": []
+    },
+    {
+      "id": "n_splaservicehost",
+      "name": "SplaServiceHost",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/service/SPLA.Service/Hosting/SplaServiceHost.cs",
+      "members": []
+    },
+    {
+      "id": "n_ssewriter",
+      "name": "SseWriter",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/service/SPLA.Service/Hosting/SplaServiceHost.cs",
+      "members": []
+    },
+    {
+      "id": "n_forwardingloggerprovider",
+      "name": "ForwardingLoggerProvider",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/service/SPLA.Service/Hosting/SplaServiceHost.cs",
+      "members": []
+    },
+    {
+      "id": "n_webassets",
+      "name": "WebAssets",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/service/SPLA.Service/Hosting/WebAssets.cs",
+      "members": []
+    },
+    {
+      "id": "n_otlpexport",
+      "name": "OtlpExport",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/service/SPLA.Service/Observability/OtlpExport.cs",
+      "members": []
+    },
+    {
+      "id": "n_statsendpoints",
+      "name": "StatsEndpoints",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/service/SPLA.Service/Observability/StatsEndpoints.cs",
+      "members": []
+    },
+    {
+      "id": "n_statssubscriber",
+      "name": "StatsSubscriber",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/service/SPLA.Service/Observability/StatsHub.cs",
+      "members": []
+    },
+    {
+      "id": "n_statshub",
+      "name": "StatsHub",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/service/SPLA.Service/Observability/StatsHub.cs",
+      "members": []
+    },
+    {
+      "id": "n_statspage",
+      "name": "StatsPage",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/service/SPLA.Service/Observability/StatsPage.cs",
+      "members": []
+    },
+    {
+      "id": "n_connectiondiagops",
+      "name": "ConnectionDiagOps",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/service/SPLA.Service/Ops/ConnectionDiagOps.cs",
+      "members": []
+    },
+    {
+      "id": "n_providerinfoops",
+      "name": "ProviderInfoOps",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/service/SPLA.Service/Ops/ProviderInfoOps.cs",
+      "members": []
+    },
+    {
+      "id": "n_schemaops",
+      "name": "SchemaOps",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/service/SPLA.Service/Ops/SchemaOps.cs",
+      "members": []
+    },
+    {
+      "id": "n_settingsops",
+      "name": "SettingsOps",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/service/SPLA.Service/Ops/SettingsOps.cs",
+      "members": []
+    },
+    {
+      "id": "n_systemops",
+      "name": "SystemOps",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/service/SPLA.Service/Ops/SystemOps.cs",
+      "members": []
+    },
+    {
+      "id": "n_shell32",
+      "name": "Shell32",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/service/SPLA.Service/Ops/SystemOps.cs",
+      "members": []
+    },
+    {
+      "id": "n_workspaceops",
+      "name": "WorkspaceOps",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/service/SPLA.Service/Ops/WorkspaceOps.cs",
+      "members": []
+    },
+    {
+      "id": "n_chathandlers",
+      "name": "ChatHandlers",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/service/SPLA.Service/Protocol/Handlers/ChatHandlers.cs",
+      "members": []
+    },
+    {
+      "id": "n_connectionhandlers",
+      "name": "ConnectionHandlers",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/service/SPLA.Service/Protocol/Handlers/ConnectionHandlers.cs",
+      "members": []
+    },
+    {
+      "id": "n_correlationhandlers",
+      "name": "CorrelationHandlers",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/service/SPLA.Service/Protocol/Handlers/CorrelationHandlers.cs",
+      "members": []
+    },
+    {
+      "id": "n_instancehandlers",
+      "name": "InstanceHandlers",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/service/SPLA.Service/Protocol/Handlers/InstanceHandlers.cs",
+      "members": []
+    },
+    {
+      "id": "n_pluginpanelhandlers",
+      "name": "PluginPanelHandlers",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/service/SPLA.Service/Protocol/Handlers/PluginPanelHandlers.cs",
+      "members": []
+    },
+    {
+      "id": "n_projecthandlers",
+      "name": "ProjectHandlers",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/service/SPLA.Service/Protocol/Handlers/ProjectHandlers.cs",
+      "members": []
+    },
+    {
+      "id": "n_secrethandlers",
+      "name": "SecretHandlers",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/service/SPLA.Service/Protocol/Handlers/SecretHandlers.cs",
+      "members": []
+    },
+    {
+      "id": "n_settingshandlers",
+      "name": "SettingsHandlers",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/service/SPLA.Service/Protocol/Handlers/SettingsHandlers.cs",
+      "members": []
+    },
+    {
+      "id": "n_terminalhandlers",
+      "name": "TerminalHandlers",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/service/SPLA.Service/Protocol/Handlers/TerminalHandlers.cs",
+      "members": []
+    },
+    {
+      "id": "n_workspacehandlers",
+      "name": "WorkspaceHandlers",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/service/SPLA.Service/Protocol/Handlers/WorkspaceHandlers.cs",
+      "members": []
+    },
+    {
+      "id": "n_iclientsession",
+      "name": "IClientSession",
+      "kind": "Interface",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/service/SPLA.Service/Protocol/MessageRouter.cs",
+      "members": []
+    },
+    {
+      "id": "n_requestcontext",
+      "name": "RequestContext",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/service/SPLA.Service/Protocol/MessageRouter.cs",
+      "members": []
+    },
+    {
+      "id": "n_imessagehandler",
+      "name": "IMessageHandler",
+      "kind": "Interface",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/service/SPLA.Service/Protocol/MessageRouter.cs",
+      "members": []
+    },
+    {
+      "id": "n_messagerouter",
+      "name": "MessageRouter",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/service/SPLA.Service/Protocol/MessageRouter.cs",
+      "members": []
+    },
+    {
+      "id": "n_protocolprojection",
+      "name": "ProtocolProjection",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/service/SPLA.Service/Protocol/MessageRouter.cs",
+      "members": []
+    },
+    {
+      "id": "n_iagentinspector",
+      "name": "IAgentInspector",
+      "kind": "Interface",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/service/SPLA.Service/Runtime/IAgentInspector.cs",
+      "members": []
+    },
+    {
+      "id": "n_liveagentinspector",
+      "name": "LiveAgentInspector",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/service/SPLA.Service/Runtime/IAgentInspector.cs",
+      "members": []
+    },
+    {
+      "id": "n_pluginpanelmanager",
+      "name": "PluginPanelManager",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/service/SPLA.Service/Runtime/PluginPanelManager.cs",
+      "members": []
+    },
+    {
+      "id": "n_sshterminalmanager",
+      "name": "SshTerminalManager",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/service/SPLA.Service/Terminals/SshTerminalManager.cs",
+      "members": []
+    },
+    {
+      "id": "n_toolcalldto",
+      "name": "ToolCallDto",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/service/SPLA.Service.Contracts/Payloads.cs",
+      "members": []
+    },
+    {
+      "id": "n_chatmessagedto",
+      "name": "ChatMessageDto",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/service/SPLA.Service.Contracts/Payloads.cs",
+      "members": []
+    },
+    {
+      "id": "n_attemptdto",
+      "name": "AttemptDto",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/service/SPLA.Service.Contracts/Payloads.cs",
+      "members": []
+    },
+    {
+      "id": "n_chatsummarydto",
+      "name": "ChatSummaryDto",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/service/SPLA.Service.Contracts/Payloads.cs",
+      "members": []
+    },
+    {
+      "id": "n_clarifyoptiondto",
+      "name": "ClarifyOptionDto",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/service/SPLA.Service.Contracts/Payloads.cs",
+      "members": []
+    },
+    {
+      "id": "n_connectiondto",
+      "name": "ConnectionDto",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/service/SPLA.Service.Contracts/Payloads.cs",
+      "members": []
+    },
+    {
+      "id": "n_hellopayload",
+      "name": "HelloPayload",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/service/SPLA.Service.Contracts/Payloads.cs",
+      "members": []
+    },
+    {
+      "id": "n_chatopenpayload",
+      "name": "ChatOpenPayload",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/service/SPLA.Service.Contracts/Payloads.cs",
+      "members": []
+    },
+    {
+      "id": "n_chatnewpayload",
+      "name": "ChatNewPayload",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/service/SPLA.Service.Contracts/Payloads.cs",
+      "members": []
+    },
+    {
+      "id": "n_chatrewindpayload",
+      "name": "ChatRewindPayload",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/service/SPLA.Service.Contracts/Payloads.cs",
+      "members": []
+    },
+    {
+      "id": "n_chatforkpayload",
+      "name": "ChatForkPayload",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/service/SPLA.Service.Contracts/Payloads.cs",
+      "members": []
+    },
+    {
+      "id": "n_chatrenamepayload",
+      "name": "ChatRenamePayload",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/service/SPLA.Service.Contracts/Payloads.cs",
+      "members": []
+    },
+    {
+      "id": "n_chatdeletepayload",
+      "name": "ChatDeletePayload",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/service/SPLA.Service.Contracts/Payloads.cs",
+      "members": []
+    },
+    {
+      "id": "n_chatarchivepayload",
+      "name": "ChatArchivePayload",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/service/SPLA.Service.Contracts/Payloads.cs",
+      "members": []
+    },
+    {
+      "id": "n_chatarchivedlistresultpayload",
+      "name": "ChatArchivedListResultPayload",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/service/SPLA.Service.Contracts/Payloads.cs",
+      "members": []
+    },
+    {
+      "id": "n_chatsendpayload",
+      "name": "ChatSendPayload",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/service/SPLA.Service.Contracts/Payloads.cs",
+      "members": []
+    },
+    {
+      "id": "n_focuspayload",
+      "name": "FocusPayload",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/service/SPLA.Service.Contracts/Payloads.cs",
+      "members": []
+    },
+    {
+      "id": "n_chatsettingspayload",
+      "name": "ChatSettingsPayload",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/service/SPLA.Service.Contracts/Payloads.cs",
+      "members": []
+    },
+    {
+      "id": "n_reasoningcapabilitydto",
+      "name": "ReasoningCapabilityDto",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/service/SPLA.Service.Contracts/Payloads.cs",
+      "members": []
+    },
+    {
+      "id": "n_chatreasoningrequest",
+      "name": "ChatReasoningRequest",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/service/SPLA.Service.Contracts/Payloads.cs",
+      "members": []
+    },
+    {
+      "id": "n_chatreasoningresult",
+      "name": "ChatReasoningResult",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/service/SPLA.Service.Contracts/Payloads.cs",
+      "members": []
+    },
+    {
+      "id": "n_permissiondecisionpayload",
+      "name": "PermissionDecisionPayload",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/service/SPLA.Service.Contracts/Payloads.cs",
+      "members": []
+    },
+    {
+      "id": "n_clarifychoicepayload",
+      "name": "ClarifyChoicePayload",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/service/SPLA.Service.Contracts/Payloads.cs",
+      "members": []
+    },
+    {
+      "id": "n_connectioneditdto",
+      "name": "ConnectionEditDto",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/service/SPLA.Service.Contracts/Payloads.cs",
+      "members": []
+    },
+    {
+      "id": "n_modeleditdto",
+      "name": "ModelEditDto",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/service/SPLA.Service.Contracts/Payloads.cs",
+      "members": []
+    },
+    {
+      "id": "n_connectionswapmodelrequest",
+      "name": "ConnectionSwapModelRequest",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/service/SPLA.Service.Contracts/Payloads.cs",
+      "members": []
+    },
+    {
+      "id": "n_connectionswapmodelresult",
+      "name": "ConnectionSwapModelResult",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/service/SPLA.Service.Contracts/Payloads.cs",
+      "members": []
+    },
+    {
+      "id": "n_connectionspayload",
+      "name": "ConnectionsPayload",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/service/SPLA.Service.Contracts/Payloads.cs",
+      "members": []
+    },
+    {
+      "id": "n_providerinforequest",
+      "name": "ProviderInfoRequest",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/service/SPLA.Service.Contracts/Payloads.cs",
+      "members": []
+    },
+    {
+      "id": "n_providerfactdto",
+      "name": "ProviderFactDto",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/service/SPLA.Service.Contracts/Payloads.cs",
+      "members": []
+    },
+    {
+      "id": "n_providerfactsectiondto",
+      "name": "ProviderFactSectionDto",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/service/SPLA.Service.Contracts/Payloads.cs",
+      "members": []
+    },
+    {
+      "id": "n_providerinforesult",
+      "name": "ProviderInfoResult",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/service/SPLA.Service.Contracts/Payloads.cs",
+      "members": []
+    },
+    {
+      "id": "n_connectionhealthdto",
+      "name": "ConnectionHealthDto",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/service/SPLA.Service.Contracts/Payloads.cs",
+      "members": []
+    },
+    {
+      "id": "n_connectionshealthpayload",
+      "name": "ConnectionsHealthPayload",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/service/SPLA.Service.Contracts/Payloads.cs",
+      "members": []
+    },
+    {
+      "id": "n_connectiondiagrequest",
+      "name": "ConnectionDiagRequest",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/service/SPLA.Service.Contracts/Payloads.cs",
+      "members": []
+    },
+    {
+      "id": "n_connectionpingresultpayload",
+      "name": "ConnectionPingResultPayload",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/service/SPLA.Service.Contracts/Payloads.cs",
+      "members": []
+    },
+    {
+      "id": "n_connectionmodelsresultpayload",
+      "name": "ConnectionModelsResultPayload",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/service/SPLA.Service.Contracts/Payloads.cs",
+      "members": []
+    },
+    {
+      "id": "n_connectiontestresultpayload",
+      "name": "ConnectionTestResultPayload",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/service/SPLA.Service.Contracts/Payloads.cs",
+      "members": []
+    },
+    {
+      "id": "n_agentsettingspayload",
+      "name": "AgentSettingsPayload",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/service/SPLA.Service.Contracts/Payloads.cs",
+      "members": []
+    },
+    {
+      "id": "n_mcpsettingspayload",
+      "name": "McpSettingsPayload",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/service/SPLA.Service.Contracts/Payloads.cs",
+      "members": []
+    },
+    {
+      "id": "n_mcpserverdto",
+      "name": "McpServerDto",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/service/SPLA.Service.Contracts/Payloads.cs",
+      "members": []
+    },
+    {
+      "id": "n_mcpserverspayload",
+      "name": "McpServersPayload",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/service/SPLA.Service.Contracts/Payloads.cs",
+      "members": []
+    },
+    {
+      "id": "n_mcpserveractionpayload",
+      "name": "McpServerActionPayload",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/service/SPLA.Service.Contracts/Payloads.cs",
+      "members": []
+    },
+    {
+      "id": "n_resourceschemedto",
+      "name": "ResourceSchemeDto",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/service/SPLA.Service.Contracts/Payloads.cs",
+      "members": []
+    },
+    {
+      "id": "n_resourceschemesavedto",
+      "name": "ResourceSchemeSaveDto",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/service/SPLA.Service.Contracts/Payloads.cs",
+      "members": []
+    },
+    {
+      "id": "n_systemregisterassociationresultpayload",
+      "name": "SystemRegisterAssociationResultPayload",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/service/SPLA.Service.Contracts/Payloads.cs",
+      "members": []
+    },
+    {
+      "id": "n_plugineditdto",
+      "name": "PluginEditDto",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/service/SPLA.Service.Contracts/Payloads.cs",
+      "members": []
+    },
+    {
+      "id": "n_pluginactionpayload",
+      "name": "PluginActionPayload",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/service/SPLA.Service.Contracts/Payloads.cs",
+      "members": []
+    },
+    {
+      "id": "n_pluginactionresultpayload",
+      "name": "PluginActionResultPayload",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/service/SPLA.Service.Contracts/Payloads.cs",
+      "members": []
+    },
+    {
+      "id": "n_pluginspayload",
+      "name": "PluginsPayload",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/service/SPLA.Service.Contracts/Payloads.cs",
+      "members": []
+    },
+    {
+      "id": "n_capabilitydto",
+      "name": "CapabilityDto",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/service/SPLA.Service.Contracts/Payloads.cs",
+      "members": []
+    },
+    {
+      "id": "n_skillsourcedto",
+      "name": "SkillSourceDto",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/service/SPLA.Service.Contracts/Payloads.cs",
+      "members": []
+    },
+    {
+      "id": "n_skillspayload",
+      "name": "SkillsPayload",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/service/SPLA.Service.Contracts/Payloads.cs",
+      "members": []
+    },
+    {
+      "id": "n_skillsourcespayload",
+      "name": "SkillSourcesPayload",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/service/SPLA.Service.Contracts/Payloads.cs",
+      "members": []
+    },
+    {
+      "id": "n_skillsourceeditdto",
+      "name": "SkillSourceEditDto",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/service/SPLA.Service.Contracts/Payloads.cs",
+      "members": []
+    },
+    {
+      "id": "n_skillsourcetrustpayload",
+      "name": "SkillSourceTrustPayload",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/service/SPLA.Service.Contracts/Payloads.cs",
+      "members": []
+    },
+    {
+      "id": "n_featurespayload",
+      "name": "FeaturesPayload",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/service/SPLA.Service.Contracts/Payloads.cs",
+      "members": []
+    },
+    {
+      "id": "n_debugrequestpayload",
+      "name": "DebugRequestPayload",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/service/SPLA.Service.Contracts/Payloads.cs",
+      "members": []
+    },
+    {
+      "id": "n_debugkinds",
+      "name": "DebugKinds",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/service/SPLA.Service.Contracts/Payloads.cs",
+      "members": []
+    },
+    {
+      "id": "n_projectdescriptordto",
+      "name": "ProjectDescriptorDto",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/service/SPLA.Service.Contracts/Payloads.cs",
+      "members": []
+    },
+    {
+      "id": "n_projectopenpayload",
+      "name": "ProjectOpenPayload",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/service/SPLA.Service.Contracts/Payloads.cs",
+      "members": []
+    },
+    {
+      "id": "n_projectcreatepayload",
+      "name": "ProjectCreatePayload",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/service/SPLA.Service.Contracts/Payloads.cs",
+      "members": []
+    },
+    {
+      "id": "n_instancestoppayload",
+      "name": "InstanceStopPayload",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/service/SPLA.Service.Contracts/Payloads.cs",
+      "members": []
+    },
+    {
+      "id": "n_instancestatuspayload",
+      "name": "InstanceStatusPayload",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/service/SPLA.Service.Contracts/Payloads.cs",
+      "members": []
+    },
+    {
+      "id": "n_projectlistresultpayload",
+      "name": "ProjectListResultPayload",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/service/SPLA.Service.Contracts/Payloads.cs",
+      "members": []
+    },
+    {
+      "id": "n_projectcontextpayload",
+      "name": "ProjectContextPayload",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/service/SPLA.Service.Contracts/Payloads.cs",
+      "members": []
+    },
+    {
+      "id": "n_welcomepayload",
+      "name": "WelcomePayload",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/service/SPLA.Service.Contracts/Payloads.cs",
+      "members": []
+    },
+    {
+      "id": "n_chatlistresultpayload",
+      "name": "ChatListResultPayload",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/service/SPLA.Service.Contracts/Payloads.cs",
+      "members": []
+    },
+    {
+      "id": "n_appearancechangedpayload",
+      "name": "AppearanceChangedPayload",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/service/SPLA.Service.Contracts/Payloads.cs",
+      "members": []
+    },
+    {
+      "id": "n_chatopenedpayload",
+      "name": "ChatOpenedPayload",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/service/SPLA.Service.Contracts/Payloads.cs",
+      "members": []
+    },
+    {
+      "id": "n_chatdoubtdto",
+      "name": "ChatDoubtDto",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/service/SPLA.Service.Contracts/Payloads.cs",
+      "members": []
+    },
+    {
+      "id": "n_chatdoubtcausedto",
+      "name": "ChatDoubtCauseDto",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/service/SPLA.Service.Contracts/Payloads.cs",
+      "members": []
+    },
+    {
+      "id": "n_deltapayload",
+      "name": "DeltaPayload",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/service/SPLA.Service.Contracts/Payloads.cs",
+      "members": []
+    },
+    {
+      "id": "n_reasoningpayload",
+      "name": "ReasoningPayload",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/service/SPLA.Service.Contracts/Payloads.cs",
+      "members": []
+    },
+    {
+      "id": "n_attemptpayload",
+      "name": "AttemptPayload",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/service/SPLA.Service.Contracts/Payloads.cs",
+      "members": []
+    },
+    {
+      "id": "n_usermessagepayload",
+      "name": "UserMessagePayload",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/service/SPLA.Service.Contracts/Payloads.cs",
+      "members": []
+    },
+    {
+      "id": "n_assistantmessagepayload",
+      "name": "AssistantMessagePayload",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/service/SPLA.Service.Contracts/Payloads.cs",
+      "members": []
+    },
+    {
+      "id": "n_toolstartedpayload",
+      "name": "ToolStartedPayload",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/service/SPLA.Service.Contracts/Payloads.cs",
+      "members": []
+    },
+    {
+      "id": "n_toolprogresspayload",
+      "name": "ToolProgressPayload",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/service/SPLA.Service.Contracts/Payloads.cs",
+      "members": []
+    },
+    {
+      "id": "n_toolprogressdetaildto",
+      "name": "ToolProgressDetailDto",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/service/SPLA.Service.Contracts/Payloads.cs",
+      "members": []
+    },
+    {
+      "id": "n_progressnodepayload",
+      "name": "ProgressNodePayload",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/service/SPLA.Service.Contracts/Payloads.cs",
+      "members": []
+    },
+    {
+      "id": "n_toolresultpayload",
+      "name": "ToolResultPayload",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/service/SPLA.Service.Contracts/Payloads.cs",
+      "members": []
+    },
+    {
+      "id": "n_noticepayload",
+      "name": "NoticePayload",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/service/SPLA.Service.Contracts/Payloads.cs",
+      "members": []
+    },
+    {
+      "id": "n_tokenusagepayload",
+      "name": "TokenUsagePayload",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/service/SPLA.Service.Contracts/Payloads.cs",
+      "members": []
+    },
+    {
+      "id": "n_tokenusagescopepayload",
+      "name": "TokenUsageScopePayload",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/service/SPLA.Service.Contracts/Payloads.cs",
+      "members": []
+    },
+    {
+      "id": "n_usageresultpayload",
+      "name": "UsageResultPayload",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/service/SPLA.Service.Contracts/Payloads.cs",
+      "members": []
+    },
+    {
+      "id": "n_turncompletepayload",
+      "name": "TurnCompletePayload",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/service/SPLA.Service.Contracts/Payloads.cs",
+      "members": []
+    },
+    {
+      "id": "n_chatskillactivatepayload",
+      "name": "ChatSkillActivatePayload",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/service/SPLA.Service.Contracts/Payloads.cs",
+      "members": []
+    },
+    {
+      "id": "n_chatskilldeactivatepayload",
+      "name": "ChatSkillDeactivatePayload",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/service/SPLA.Service.Contracts/Payloads.cs",
+      "members": []
+    },
+    {
+      "id": "n_chatskillstatepayload",
+      "name": "ChatSkillStatePayload",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/service/SPLA.Service.Contracts/Payloads.cs",
+      "members": []
+    },
+    {
+      "id": "n_chatdoubtstatepayload",
+      "name": "ChatDoubtStatePayload",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/service/SPLA.Service.Contracts/Payloads.cs",
+      "members": []
+    },
+    {
+      "id": "n_chatdoubtclearpayload",
+      "name": "ChatDoubtClearPayload",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/service/SPLA.Service.Contracts/Payloads.cs",
+      "members": []
+    },
+    {
+      "id": "n_toolsetstatedto",
+      "name": "ToolSetStateDto",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/service/SPLA.Service.Contracts/Payloads.cs",
+      "members": []
+    },
+    {
+      "id": "n_chattoolsetdeactivatepayload",
+      "name": "ChatToolSetDeactivatePayload",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/service/SPLA.Service.Contracts/Payloads.cs",
+      "members": []
+    },
+    {
+      "id": "n_chattoolsetstatepayload",
+      "name": "ChatToolSetStatePayload",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/service/SPLA.Service.Contracts/Payloads.cs",
+      "members": []
+    },
+    {
+      "id": "n_tasklistpayload",
+      "name": "TaskListPayload",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/service/SPLA.Service.Contracts/Payloads.cs",
+      "members": []
+    },
+    {
+      "id": "n_tasksummarydto",
+      "name": "TaskSummaryDto",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/service/SPLA.Service.Contracts/Payloads.cs",
+      "members": []
+    },
+    {
+      "id": "n_tasklistresult",
+      "name": "TaskListResult",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/service/SPLA.Service.Contracts/Payloads.cs",
+      "members": []
+    },
+    {
+      "id": "n_taskstatepayload",
+      "name": "TaskStatePayload",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/service/SPLA.Service.Contracts/Payloads.cs",
+      "members": []
+    },
+    {
+      "id": "n_taskstateresult",
+      "name": "TaskStateResult",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/service/SPLA.Service.Contracts/Payloads.cs",
+      "members": []
+    },
+    {
+      "id": "n_taskcancelpayload",
+      "name": "TaskCancelPayload",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/service/SPLA.Service.Contracts/Payloads.cs",
+      "members": []
+    },
+    {
+      "id": "n_taskstatechangedpayload",
+      "name": "TaskStateChangedPayload",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/service/SPLA.Service.Contracts/Payloads.cs",
+      "members": []
+    },
+    {
+      "id": "n_permissionrequestpayload",
+      "name": "PermissionRequestPayload",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/service/SPLA.Service.Contracts/Payloads.cs",
+      "members": []
+    },
+    {
+      "id": "n_clarifyrequestpayload",
+      "name": "ClarifyRequestPayload",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/service/SPLA.Service.Contracts/Payloads.cs",
+      "members": []
+    },
+    {
+      "id": "n_askresolvedpayload",
+      "name": "AskResolvedPayload",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/service/SPLA.Service.Contracts/Payloads.cs",
+      "members": []
+    },
+    {
+      "id": "n_debugsnapshotpayload",
+      "name": "DebugSnapshotPayload",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/service/SPLA.Service.Contracts/Payloads.cs",
+      "members": []
+    },
+    {
+      "id": "n_contextlinedto",
+      "name": "ContextLineDto",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/service/SPLA.Service.Contracts/Payloads.cs",
+      "members": []
+    },
+    {
+      "id": "n_debugedgedto",
+      "name": "DebugEdgeDto",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/service/SPLA.Service.Contracts/Payloads.cs",
+      "members": []
+    },
+    {
+      "id": "n_debugkventrydto",
+      "name": "DebugKvEntryDto",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/service/SPLA.Service.Contracts/Payloads.cs",
+      "members": []
+    },
+    {
+      "id": "n_debugsegmentdto",
+      "name": "DebugSegmentDto",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/service/SPLA.Service.Contracts/Payloads.cs",
+      "members": []
+    },
+    {
+      "id": "n_errorpayload",
+      "name": "ErrorPayload",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/service/SPLA.Service.Contracts/Payloads.cs",
+      "members": []
+    },
+    {
+      "id": "n_schemagetpayload",
+      "name": "SchemaGetPayload",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/service/SPLA.Service.Contracts/Payloads.cs",
+      "members": []
+    },
+    {
+      "id": "n_schemaresultpayload",
+      "name": "SchemaResultPayload",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/service/SPLA.Service.Contracts/Payloads.cs",
+      "members": []
+    },
+    {
+      "id": "n_fsbrowsepayload",
+      "name": "FsBrowsePayload",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/service/SPLA.Service.Contracts/Payloads.cs",
+      "members": []
+    },
+    {
+      "id": "n_fsreadpayload",
+      "name": "FsReadPayload",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/service/SPLA.Service.Contracts/Payloads.cs",
+      "members": []
+    },
+    {
+      "id": "n_fswritepayload",
+      "name": "FsWritePayload",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/service/SPLA.Service.Contracts/Payloads.cs",
+      "members": []
+    },
+    {
+      "id": "n_fsnodedto",
+      "name": "FsNodeDto",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/service/SPLA.Service.Contracts/Payloads.cs",
+      "members": []
+    },
+    {
+      "id": "n_fsbrowseresultpayload",
+      "name": "FsBrowseResultPayload",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/service/SPLA.Service.Contracts/Payloads.cs",
+      "members": []
+    },
+    {
+      "id": "n_fsreadresultpayload",
+      "name": "FsReadResultPayload",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/service/SPLA.Service.Contracts/Payloads.cs",
+      "members": []
+    },
+    {
+      "id": "n_fswriteresultpayload",
+      "name": "FsWriteResultPayload",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/service/SPLA.Service.Contracts/Payloads.cs",
+      "members": []
+    },
+    {
+      "id": "n_terminalopenpayload",
+      "name": "TerminalOpenPayload",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/service/SPLA.Service.Contracts/Payloads.cs",
+      "members": []
+    },
+    {
+      "id": "n_terminalinputpayload",
+      "name": "TerminalInputPayload",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/service/SPLA.Service.Contracts/Payloads.cs",
+      "members": []
+    },
+    {
+      "id": "n_terminalresizepayload",
+      "name": "TerminalResizePayload",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/service/SPLA.Service.Contracts/Payloads.cs",
+      "members": []
+    },
+    {
+      "id": "n_terminalclosepayload",
+      "name": "TerminalClosePayload",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/service/SPLA.Service.Contracts/Payloads.cs",
+      "members": []
+    },
+    {
+      "id": "n_terminalopenedpayload",
+      "name": "TerminalOpenedPayload",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/service/SPLA.Service.Contracts/Payloads.cs",
+      "members": []
+    },
+    {
+      "id": "n_terminaldatapayload",
+      "name": "TerminalDataPayload",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/service/SPLA.Service.Contracts/Payloads.cs",
+      "members": []
+    },
+    {
+      "id": "n_terminalclosedpayload",
+      "name": "TerminalClosedPayload",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/service/SPLA.Service.Contracts/Payloads.cs",
+      "members": []
+    },
+    {
+      "id": "n_sshsessionsresultpayload",
+      "name": "SshSessionsResultPayload",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/service/SPLA.Service.Contracts/Payloads.cs",
+      "members": []
+    },
+    {
+      "id": "n_sshsessiondto",
+      "name": "SshSessionDto",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/service/SPLA.Service.Contracts/Payloads.cs",
+      "members": []
+    },
+    {
+      "id": "n_sshsessionclosepayload",
+      "name": "SshSessionClosePayload",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/service/SPLA.Service.Contracts/Payloads.cs",
+      "members": []
+    },
+    {
+      "id": "n_sshhostdto",
+      "name": "SshHostDto",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/service/SPLA.Service.Contracts/Payloads.cs",
+      "members": []
+    },
+    {
+      "id": "n_sshterminaldto",
+      "name": "SshTerminalDto",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/service/SPLA.Service.Contracts/Payloads.cs",
+      "members": []
+    },
+    {
+      "id": "n_pluginpanelopenpayload",
+      "name": "PluginPanelOpenPayload",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/service/SPLA.Service.Contracts/Payloads.cs",
+      "members": []
+    },
+    {
+      "id": "n_pluginpanelinputpayload",
+      "name": "PluginPanelInputPayload",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/service/SPLA.Service.Contracts/Payloads.cs",
+      "members": []
+    },
+    {
+      "id": "n_pluginpanelclosepayload",
+      "name": "PluginPanelClosePayload",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/service/SPLA.Service.Contracts/Payloads.cs",
+      "members": []
+    },
+    {
+      "id": "n_pluginpanelopenedpayload",
+      "name": "PluginPanelOpenedPayload",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/service/SPLA.Service.Contracts/Payloads.cs",
+      "members": []
+    },
+    {
+      "id": "n_pluginpaneleventpayload",
+      "name": "PluginPanelEventPayload",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/service/SPLA.Service.Contracts/Payloads.cs",
+      "members": []
+    },
+    {
+      "id": "n_subagentgetpayload",
+      "name": "SubagentGetPayload",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/service/SPLA.Service.Contracts/Payloads.cs",
+      "members": []
+    },
+    {
+      "id": "n_subagentresultpayload",
+      "name": "SubagentResultPayload",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/service/SPLA.Service.Contracts/Payloads.cs",
+      "members": []
+    },
+    {
+      "id": "n_secretsetpayload",
+      "name": "SecretSetPayload",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/service/SPLA.Service.Contracts/Payloads.cs",
+      "members": []
+    },
+    {
+      "id": "n_secretdeletepayload",
+      "name": "SecretDeletePayload",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/service/SPLA.Service.Contracts/Payloads.cs",
+      "members": []
+    },
+    {
+      "id": "n_secretentrydto",
+      "name": "SecretEntryDto",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/service/SPLA.Service.Contracts/Payloads.cs",
+      "members": []
+    },
+    {
+      "id": "n_secretlistresultpayload",
+      "name": "SecretListResultPayload",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/service/SPLA.Service.Contracts/Payloads.cs",
+      "members": []
+    },
+    {
+      "id": "n_protocolversion",
+      "name": "ProtocolVersion",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/service/SPLA.Service.Contracts/Protocol.cs",
+      "members": []
+    },
+    {
+      "id": "n_protocolenvelope",
+      "name": "ProtocolEnvelope",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/service/SPLA.Service.Contracts/Protocol.cs",
+      "members": []
+    },
+    {
+      "id": "n_servicejson",
+      "name": "ServiceJson",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/service/SPLA.Service.Contracts/Protocol.cs",
+      "members": []
+    },
+    {
+      "id": "n_authinfo",
+      "name": "AuthInfo",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/service/SPLA.Service.Contracts/Protocol.cs",
+      "members": []
+    },
+    {
+      "id": "n_messagetypes",
+      "name": "MessageTypes",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/service/SPLA.Service.Contracts/Protocol.cs",
+      "members": []
+    },
+    {
+      "id": "n_capabilities",
+      "name": "Capabilities",
+      "kind": "Class",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/service/SPLA.Service.Contracts/Protocol.cs",
+      "members": []
     }
   ]
 }

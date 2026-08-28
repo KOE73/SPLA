@@ -83,7 +83,7 @@ export class HttpModelStore implements ModelStore {
       };
     });
 
-    const rawEdges = (viewData.edges && viewData.edges.length > 0)
+    const rawEdges = Array.isArray(viewData.edges)
       ? viewData.edges
       : (relationsRes.relations || (Array.isArray(relationsRes) ? relationsRes : []));
 
