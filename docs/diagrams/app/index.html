@@ -4,7 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>SPLA Diagram — Visualizer &amp; Editor</title>
-    <script type="module" crossorigin src="./assets/index-BIbT8BsA.js"></script>
+    <script type="module" crossorigin src="./assets/index-ZYCFVej1.js"></script>
     <link rel="stylesheet" crossorigin href="./assets/index-BMn6KHlO.css">
   </head>
   <body>
@@ -137,11 +137,14 @@
 
           <div class="tab-row inspector-tabs">
             <button class="tab is-active" data-action="tab-properties" data-tab="properties">Свойства</button>
+            <button class="tab" data-action="tab-edges" data-tab="edges">Связи</button>
             <button class="tab" data-action="tab-styles" data-tab="styles">Стили</button>
             <button class="tab" data-action="tab-base" data-tab="base">База</button>
           </div>
 
           <div class="inspector-body" data-slot="inspector-body"></div>
+
+          <div class="inspector-body edges-pane" data-slot="edges-body" hidden></div>
 
           <div class="inspector-body styles-pane" data-slot="styles-body" hidden>
             <div class="style-list" data-slot="style-list"></div>

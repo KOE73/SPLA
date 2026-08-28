@@ -18,6 +18,7 @@ export interface InspectorHost {
   deleteEdge(edgeId: string): void;
   /** Switch the right-hand panel to the Styles tab with this style open. */
   openStyleTab(styleId: string): void;
+  openTab(tab: "properties" | "edges" | "styles" | "base"): void;
 }
 
 /**
@@ -124,7 +125,14 @@ export class Inspector {
       this.blockStylePicker(element),
       this.descriptionField(element),
       this.codeRefField(element),
-      container ? null : this.connectionsPanel(element),
+      container ? null : el("div", { class: "panel-section" }, [
+        el("button", {
+          class: "btn full",
+          text: `Связи блока (${this.host.canvas.model?.outgoingEdges(element.id).length ?? 0}) →`,
+          title: "Перейти на вкладку «Связи» для детальной настройки",
+          on: { click: () => this.host.openTab("edges") },
+        }),
+      ]),
       this.deleteButton(container),
     );
   }
@@ -473,71 +481,6 @@ export class Inspector {
           },
         },
       }),
-    ]);
-  }
-
-  private connectionsPanel(element: DiagramElement): HTMLElement {
-    const doc = this.host.canvas.model;
-    if (doc === null) return el("div");
-
-    const outgoing = doc.outgoingEdges(element.id);
-    const others = doc.leaves().filter((n) => n.id !== element.id);
-
-    const list = el(
-      "div",
-      { class: "edge-list" },
-      outgoing.length === 0
-        ? [el("div", { class: "muted italic", text: "Нет исходящих связей" })]
-        : outgoing.map((edge) => {
-            const target = doc.element(edge.to);
-            return el("div", { class: "edge-row" }, [
-              el("span", { class: "edge-row-label", text: `➔ ${target?.label ?? edge.to}` }),
-              el("span", { class: "mono muted", text: `(${edge.type})` }),
-              el("button", {
-                class: "btn-icon danger",
-                text: "✕",
-                title: "Удалить связь",
-                on: { click: () => this.host.deleteEdge(edge.id) },
-              }),
-            ]);
-          }),
-    );
-
-    const targetSelect = select(
-      [["", "— Куда вести —"], ...others.map((n) => [n.id, n.label] as Option)],
-      "",
-      () => undefined,
-    );
-    const typeSelect = select(this.edgeTypeOptions("call"), "call", () => undefined);
-    const labelInput = el("input", { type: "text", placeholder: "Подпись (опция)" });
-
-    return el("div", { class: "panel-section" }, [
-      el("div", { class: "field-row" }, [
-        el("span", { class: "field-label", text: "Связи блока (исходящие)" }),
-        el("span", { class: "mono muted", text: String(outgoing.length) }),
-      ]),
-      list,
-      el("div", { class: "panel" }, [
-        el("div", { class: "field-label accent", text: "Добавить новую связь:" }),
-        el("div", { class: "grid-2" }, [targetSelect, typeSelect]),
-        el("div", { class: "field-row gap" }, [
-          labelInput,
-          el("button", {
-            class: "btn btn-primary",
-            text: "Связать",
-            on: {
-              click: () => {
-                if (targetSelect.value === "") return;
-                this.host.addEdgeFromSelection(
-                  targetSelect.value,
-                  typeSelect.value,
-                  labelInput.value,
-                );
-              },
-            },
-          }),
-        ]),
-      ]),
     ]);
   }
 

@@ -135,11 +135,14 @@
 
           <div class="tab-row inspector-tabs">
             <button class="tab is-active" data-action="tab-properties" data-tab="properties">Свойства</button>
+            <button class="tab" data-action="tab-edges" data-tab="edges">Связи</button>
             <button class="tab" data-action="tab-styles" data-tab="styles">Стили</button>
             <button class="tab" data-action="tab-base" data-tab="base">База</button>
           </div>
 
           <div class="inspector-body" data-slot="inspector-body"></div>
+
+          <div class="inspector-body edges-pane" data-slot="edges-body" hidden></div>
 
           <div class="inspector-body styles-pane" data-slot="styles-body" hidden>
             <div class="style-list" data-slot="style-list"></div>

@@ -14,6 +14,7 @@ import type { DiagramElement } from "../model/types.js";
 import { snap } from "../geometry/rect.js";
 import { History } from "./History.js";
 import { Inspector, type InspectorHost } from "./Inspector.js";
+import { EdgesPanel } from "./EdgesPanel.js";
 import { StyleEditor } from "./StyleEditor.js";
 import { StyleList, type StylePanelHost } from "./StyleList.js";
 import { BasePanel } from "./BasePanel.js";
@@ -58,13 +59,13 @@ function clamp(value: number, min: number, max: number): number {
 
 type Slot =
   | "canvas" | "views" | "tags" | "catalog" | "custom-catalog" | "custom-catalog-section"
-  | "inspector-badge" | "inspector-body" | "title" | "dirty" | "zoom"
+  | "inspector-badge" | "inspector-body" | "edges-body" | "title" | "dirty" | "zoom"
   | "json-modal" | "json-text" | "file-input" | "drop-hint" | "sidebar"
   | "styles-body" | "style-list" | "style-editor" | "style-pane-resizer"
   | "inspector" | "inspector-resizer"
   | "tab-base" | "base-search" | "base-body" | "base-list";
 
-type Tab = "properties" | "styles" | "base";
+type Tab = "properties" | "edges" | "styles" | "base";
 
 /**
  * One history entry.
@@ -93,6 +94,7 @@ export class DiagramEditor implements InspectorHost, StylePanelHost {
   private readonly slots = new Map<Slot, HTMLElement>();
   private readonly history = new History();
   private readonly inspector: Inspector;
+  private readonly edgesPanel: EdgesPanel;
   private readonly styleList: StyleList;
   private readonly styleEditor: StyleEditor;
   private readonly basePanel: BasePanel;
@@ -138,6 +140,7 @@ export class DiagramEditor implements InspectorHost, StylePanelHost {
       this.slot("inspector-body"),
       this,
     );
+    this.edgesPanel = new EdgesPanel(this.slot("edges-body"), this);
     this.styleList = new StyleList(this.slot("style-list"), this);
     this.styleEditor = new StyleEditor(this.slot("style-editor"), this);
     this.basePanel = new BasePanel(
@@ -157,6 +160,10 @@ export class DiagramEditor implements InspectorHost, StylePanelHost {
     this.setTab("properties");
 
     void this.start();
+  }
+
+  openTab(tab: Tab): void {
+    this.setTab(tab);
   }
 
   /**
@@ -197,6 +204,7 @@ export class DiagramEditor implements InspectorHost, StylePanelHost {
       // element it was typed into.
       this.flushFieldEdit();
       this.inspector.render(selection);
+      this.edgesPanel.render();
       this.syncToolbar(selection);
     });
 
@@ -217,6 +225,7 @@ export class DiagramEditor implements InspectorHost, StylePanelHost {
 
     this.canvas.events.on("collapse", () => {
       this.inspector.render(this.canvas.selected);
+      this.edgesPanel.render();
     });
 
     this.canvas.events.on("viewport", (state) => {
@@ -285,6 +294,7 @@ export class DiagramEditor implements InspectorHost, StylePanelHost {
       case "copy-json": return this.copyJson();
       case "apply-json": return this.applyJson();
       case "tab-properties": return this.setTab("properties");
+      case "tab-edges": return this.setTab("edges");
       case "tab-styles": return this.setTab("styles");
       case "tab-base": return this.setTab("base");
       default: return;
@@ -300,15 +310,17 @@ export class DiagramEditor implements InspectorHost, StylePanelHost {
    */
   private setTab(tab: Tab): void {
     this.slot("inspector-body").hidden = tab !== "properties";
+    this.slot("edges-body").hidden = tab !== "edges";
     this.slot("styles-body").hidden = tab !== "styles";
     this.slot("base-body").hidden = tab !== "base";
-    this.slot("inspector-badge").hidden = tab !== "properties";
+    this.slot("inspector-badge").hidden = tab !== "properties" && tab !== "edges";
 
     for (const node of this.root.querySelectorAll<HTMLElement>("[data-tab]")) {
       node.classList.toggle("is-active", node.dataset.tab === tab);
     }
 
     if (tab === "properties") this.inspector.render(this.canvas.selected);
+    else if (tab === "edges") this.edgesPanel.render();
     else if (tab === "styles") this.styleList.render();
     else if (tab === "base") this.basePanel.render();
   }
@@ -1026,6 +1038,7 @@ export class DiagramEditor implements InspectorHost, StylePanelHost {
     this.markDirty();
     this.syncToolbar(this.canvas.selected);
     this.basePanel.render();
+    this.edgesPanel.render();
   }
 
   private undo(): void {

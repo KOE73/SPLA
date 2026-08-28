@@ -90,17 +90,18 @@ export class BoxRenderer implements ElementRenderer {
     }
 
     // Link count badge in the top-right corner
-    const edgeCount = ctx.doc.edges.filter((e) => e.from === el.id || e.to === el.id).length;
+    const visibleCount = ctx.doc.edges.filter((e) => e.from === el.id || e.to === el.id).length;
     const v2Relations = (ctx.doc.raw as any)?.v2Bundle?.relations?.relations || (ctx.doc.raw as any)?.v2Bundle?.relations;
     const rawEntity = (el.raw as any)?._entity;
     const totalRelations = Array.isArray(v2Relations)
       ? v2Relations.filter((r: any) => r.from === el.id || r.to === el.id || (rawEntity && (r.from === rawEntity.id || r.to === rawEntity.id))).length
-      : edgeCount;
-    const count = Math.max(edgeCount, totalRelations);
+      : visibleCount;
+    const total = Math.max(visibleCount, totalRelations);
 
-    if (count > 0) {
+    if (total > 0) {
       const isGhost = ctx.ghostNodeId === el.id;
-      const bw = count >= 10 ? 22 : 18;
+      const badgeText = `${total}/${visibleCount}`;
+      const bw = Math.max(22, badgeText.length * 6 + 8);
       const bx = el.x + el.width - bw - 5;
       const by = el.y + 5;
 
@@ -130,7 +131,7 @@ export class BoxRenderer implements ElementRenderer {
             fill: isGhost ? "#ffffff" : "var(--muted)",
             "pointer-events": "none",
           },
-          String(count),
+          badgeText,
         ),
       ]);
       g.appendChild(badgeGroup);

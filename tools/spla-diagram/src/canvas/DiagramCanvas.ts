@@ -532,6 +532,21 @@ export class DiagramCanvas {
           ghostConnectedIds.add(e.to);
         }
       }
+      const ghostEl = doc.element(this.ghostNodeId);
+      const rawGhostEntityId = ghostEl ? (ghostEl.raw as any)?._entity?.id : null;
+      const v2Relations = (doc.raw as any)?.v2Bundle?.relations?.relations || (doc.raw as any)?.v2Bundle?.relations || [];
+      if (Array.isArray(v2Relations)) {
+        for (const rel of v2Relations) {
+          const fromMatch = rel.from === this.ghostNodeId || (rawGhostEntityId && rel.from === rawGhostEntityId);
+          const toMatch = rel.to === this.ghostNodeId || (rawGhostEntityId && rel.to === rawGhostEntityId);
+          if (fromMatch || toMatch) {
+            const canvasFrom = fromMatch ? this.ghostNodeId : rel.from;
+            const canvasTo = toMatch ? this.ghostNodeId : rel.to;
+            if (doc.element(canvasFrom)) ghostConnectedIds.add(canvasFrom);
+            if (doc.element(canvasTo)) ghostConnectedIds.add(canvasTo);
+          }
+        }
+      }
     }
 
     return {
@@ -640,6 +655,7 @@ export class DiagramCanvas {
       edge: DiagramEdge;
       from: { owner: DiagramElement; rect: Rect };
       to: { owner: DiagramElement; rect: Rect };
+      isPotential?: boolean;
     }
 
     const resolved: Resolved[] = [];
@@ -659,7 +675,47 @@ export class DiagramCanvas {
       // Both ends collapsed into the same container: nothing to show.
       if (from.owner === to.owner) continue;
 
-      resolved.push({ edge, from, to });
+      resolved.push({ edge, from, to, isPotential: false });
+    }
+
+    // When ghost focus is active on a node, also resolve its hidden/potential relations
+    if (this.ghostNodeId !== null) {
+      const ghostEl = doc.element(this.ghostNodeId);
+      const rawGhostEntityId = ghostEl ? (ghostEl.raw as any)?._entity?.id : null;
+      const v2Relations = (doc.raw as any)?.v2Bundle?.relations?.relations || (doc.raw as any)?.v2Bundle?.relations || [];
+      if (Array.isArray(v2Relations)) {
+        for (const rel of v2Relations) {
+          const fromMatch = rel.from === this.ghostNodeId || (rawGhostEntityId && rel.from === rawGhostEntityId);
+          const toMatch = rel.to === this.ghostNodeId || (rawGhostEntityId && rel.to === rawGhostEntityId);
+          if (fromMatch || toMatch) {
+            const canvasFrom = fromMatch ? this.ghostNodeId : rel.from;
+            const canvasTo = toMatch ? this.ghostNodeId : rel.to;
+            if (canvasFrom === canvasTo) continue;
+
+            const fromEl = doc.element(canvasFrom);
+            const toEl = doc.element(canvasTo);
+            if (fromEl === undefined || toEl === undefined) continue;
+
+            const alreadyPresent = resolved.some(
+              (r) => (r.edge.from === canvasFrom && r.edge.to === canvasTo) || r.edge.id === rel.id,
+            );
+            if (!alreadyPresent) {
+              const from = this.anchorFor(fromEl);
+              const to = this.anchorFor(toEl);
+              if (from.owner !== to.owner) {
+                const potentialEdge: DiagramEdge = {
+                  id: rel.id || `ghost_${canvasFrom}_${canvasTo}`,
+                  from: canvasFrom,
+                  to: canvasTo,
+                  type: rel.type || rel.relation || "relates",
+                  label: rel.label || "",
+                };
+                resolved.push({ edge: potentialEdge, from, to, isPotential: true });
+              }
+            }
+          }
+        }
+      }
     }
 
     const requests: PortRequest[] = [];
@@ -694,9 +750,6 @@ export class DiagramCanvas {
         view === undefined || view.highlightNodes.length === 0
           ? true
           : view.highlightNodes.includes(r.edge.from) && view.highlightNodes.includes(r.edge.to);
-      // Either end, not both: unlike a view's "focus on this closed subsystem",
-      // a tag is a flashlight on one domain — a call crossing its boundary is
-      // exactly the kind of thing worth still seeing, not hiding.
       const tagHighlighted =
         this.activeTags.size === 0 ||
         this.hasAnyDomainTag(r.from.owner, this.activeTags) ||
@@ -707,16 +760,22 @@ export class DiagramCanvas {
 
       let edgeOpacity = viewHighlighted && tagHighlighted ? 1 : DIM.edge;
       if (isGhostActive) {
-        edgeOpacity = isGhostEdge ? 1 : 0.12;
+        if (r.isPotential) {
+          edgeOpacity = 0.6;
+        } else {
+          edgeOpacity = isGhostEdge ? 1 : 0.12;
+        }
       }
 
-      const strokeColor = isGhostEdge ? "var(--accent)" : style.line.color;
-      const strokeWidth = isGhostEdge ? Math.max(style.line.width * 1.5, 2.5) : style.line.width;
+      const strokeColor = (isGhostEdge || r.isPotential) ? "var(--accent)" : style.line.color;
+      const strokeWidth = r.isPotential ? 1.8 : isGhostEdge ? Math.max(style.line.width * 1.5, 2.5) : style.line.width;
+      const strokeDash = r.isPotential ? "4 3" : dashArray(style.line.dash);
 
       const g = svg("g", {
-        class: `spla-edge${this.selection?.id === r.edge.id ? " is-selected" : ""}${isGhostEdge ? " is-ghost-focus" : ""}`,
+        class: `spla-edge${this.selection?.id === r.edge.id ? " is-selected" : ""}${isGhostEdge && !r.isPotential ? " is-ghost-focus" : ""}${r.isPotential ? " is-ghost-potential" : ""}`,
         [EDGE_ATTR]: r.edge.id,
         opacity: edgeOpacity,
+        style: r.isPotential ? "cursor: pointer;" : undefined,
       });
 
       g.appendChild(
@@ -726,11 +785,8 @@ export class DiagramCanvas {
           fill: "none",
           stroke: strokeColor,
           "stroke-width": strokeWidth,
-          "stroke-dasharray": dashArray(style.line.dash),
+          "stroke-dasharray": strokeDash,
           "stroke-opacity": style.line.opacity === 1 ? null : style.line.opacity,
-          // The head follows the line's colour unless the style overrides it,
-          // which is the whole reason markers are built on demand instead of
-          // picked from a fixed list with colours baked in.
           "marker-start": ctx.paints.marker(style.source, strokeColor),
           "marker-end": ctx.paints.marker(style.target, strokeColor),
         }),
