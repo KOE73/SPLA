@@ -1,0 +1,104 @@
+{
+  "entities": [
+    {
+      "id": "user_turn",
+      "name": "User Input Envelope",
+      "kind": "Input Request",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/SPLA.Core/Protocol/MessageEnvelope.cs",
+      "members": []
+    },
+    {
+      "id": "composer",
+      "name": "AgentContextComposer",
+      "kind": "Composer Pipeline",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/SPLA.Agent/Composition/AgentContextComposer.cs",
+      "members": []
+    },
+    {
+      "id": "contrib_system",
+      "name": "SystemDoctrineContributor",
+      "kind": "Prompt Slice",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/SPLA.Agent/Composition/SystemDoctrineContributor.cs",
+      "members": []
+    },
+    {
+      "id": "contrib_skills",
+      "name": "SkillsContributor",
+      "kind": "Prompt Slice",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/SPLA.Agent/Composition/SkillsContributor.cs",
+      "members": []
+    },
+    {
+      "id": "contrib_tools",
+      "name": "ActiveToolsContributor",
+      "kind": "Prompt Slice",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/SPLA.Agent/Composition/ActiveToolsContributor.cs",
+      "members": []
+    },
+    {
+      "id": "contrib_history",
+      "name": "ConversationHistoryContributor",
+      "kind": "Prompt Slice",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/SPLA.Agent/Composition/ConversationHistoryContributor.cs",
+      "members": []
+    },
+    {
+      "id": "model_stream",
+      "name": "LlmClient Gateway",
+      "kind": "Streaming Client",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/SPLA.Core/Llm/LlmClient.cs",
+      "members": []
+    },
+    {
+      "id": "token_parser",
+      "name": "TokenStreamDemuxer",
+      "kind": "Stream Demuxer",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/SPLA.Core/Llm/TokenStreamDemuxer.cs",
+      "members": []
+    },
+    {
+      "id": "thinking_extractor",
+      "name": "Thinking Block Extractor",
+      "kind": "Thought Processor",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/SPLA.Core/Llm/ThinkingExtractor.cs",
+      "members": []
+    },
+    {
+      "id": "tool_call_extractor",
+      "name": "ToolCall Accumulator",
+      "kind": "Call Parser",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/SPLA.Core/Llm/ToolCallExtractor.cs",
+      "members": []
+    }
+  ]
+}

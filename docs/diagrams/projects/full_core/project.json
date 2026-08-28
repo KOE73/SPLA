@@ -1,0 +1,9 @@
+{
+  "id": "full_core",
+  "title": "FULL Core (All Classes)",
+  "baseLanguage": "ru",
+  "languages": [
+    "ru"
+  ],
+  "styles": "../../styles.json"
+}

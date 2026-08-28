@@ -18,25 +18,21 @@ import { EdgesPanel } from "./EdgesPanel.js";
 import { StyleEditor } from "./StyleEditor.js";
 import { StyleList, type StylePanelHost } from "./StyleList.js";
 import { BasePanel } from "./BasePanel.js";
-import { drawioFileName, exportDrawio } from "./io/drawio.js";
+import { FiltersPanel } from "./FiltersPanel.js";
 import {
-  HttpModelStore,
+  drawioFileName,
+  exportDrawio,
+  HttpProjectStore,
   HttpStyleStore,
   download,
   readJsonFile,
+  type CatalogEntry,
   type ModelStore,
   type StyleStore,
-} from "./io/transfer.js";
+} from "./io/index.js";
 import { el, replaceChildren } from "../util/dom.js";
 
-export interface CatalogEntry {
-  readonly id: string;
-  readonly file: string;
-  readonly title: string;
-  readonly subtitle?: string;
-  readonly icon?: string;
-  readonly theme?: string;
-}
+export { type CatalogEntry };
 
 export interface DiagramEditorOptions {
   catalog?: readonly CatalogEntry[];
@@ -58,14 +54,14 @@ function clamp(value: number, min: number, max: number): number {
 }
 
 type Slot =
-  | "canvas" | "views" | "tags" | "catalog" | "custom-catalog" | "custom-catalog-section"
-  | "inspector-badge" | "inspector-body" | "edges-body" | "title" | "dirty" | "zoom"
+  | "canvas" | "catalog" | "custom-catalog" | "custom-catalog-section"
+  | "inspector-badge" | "inspector-body" | "edges-body" | "filters-body" | "title" | "zoom"
   | "json-modal" | "json-text" | "file-input" | "drop-hint" | "sidebar"
   | "styles-body" | "style-list" | "style-editor" | "style-pane-resizer"
   | "inspector" | "inspector-resizer"
   | "tab-base" | "base-search" | "base-body" | "base-list";
 
-type Tab = "properties" | "edges" | "styles" | "base";
+type Tab = "properties" | "edges" | "filters" | "styles" | "base";
 
 /**
  * One history entry.
@@ -95,6 +91,7 @@ export class DiagramEditor implements InspectorHost, StylePanelHost {
   private readonly history = new History();
   private readonly inspector: Inspector;
   private readonly edgesPanel: EdgesPanel;
+  private readonly filtersPanel: FiltersPanel;
   private readonly styleList: StyleList;
   private readonly styleEditor: StyleEditor;
   private readonly basePanel: BasePanel;
@@ -121,12 +118,11 @@ export class DiagramEditor implements InspectorHost, StylePanelHost {
   constructor(root: HTMLElement, options: DiagramEditorOptions = {}) {
     this.root = root;
     this.catalog = options.catalog ?? [];
-    this.store = options.store ?? new HttpModelStore("./");
+    this.store = options.store ?? new HttpProjectStore("./");
     this.styleStore = options.styleStore ?? new HttpStyleStore("./");
 
     for (const node of root.querySelectorAll<HTMLElement>("[data-slot]")) {
-      const name = node.dataset.slot as Slot | undefined;
-      if (name !== undefined) this.slots.set(name, node);
+      this.slots.set(node.dataset.slot as Slot, node);
     }
 
     // The built-in sheet stands in until the real one arrives: the canvas is
@@ -141,6 +137,7 @@ export class DiagramEditor implements InspectorHost, StylePanelHost {
       this,
     );
     this.edgesPanel = new EdgesPanel(this.slot("edges-body"), this);
+    this.filtersPanel = new FiltersPanel(this.slot("filters-body"), this);
     this.styleList = new StyleList(this.slot("style-list"), this);
     this.styleEditor = new StyleEditor(this.slot("style-editor"), this);
     this.basePanel = new BasePanel(
@@ -238,9 +235,23 @@ export class DiagramEditor implements InspectorHost, StylePanelHost {
       const target = e.target;
       if (!(target instanceof Element)) return;
       const actionNode = target.closest<HTMLElement>("[data-action]");
-      if (actionNode === null) return;
+      if (actionNode === null || actionNode.getAttribute("disabled") !== null) return;
       const action = actionNode.dataset.action;
-      if (action !== undefined) void this.runAction(action);
+      if (action !== undefined) {
+        if (action === "open-file") {
+          const rect = actionNode.getBoundingClientRect();
+          const pos = { clientX: rect.left + rect.width / 2, clientY: rect.top + rect.height / 2 };
+          if (this.hasUnsavedChanges) {
+            this.confirmDiscardOrSave(pos, () => {
+              (this.slot("file-input") as HTMLInputElement).click();
+            });
+          } else {
+            (this.slot("file-input") as HTMLInputElement).click();
+          }
+          return;
+        }
+        void this.runAction(action);
+      }
     });
 
     this.root.addEventListener("change", (e) => {
@@ -295,6 +306,7 @@ export class DiagramEditor implements InspectorHost, StylePanelHost {
       case "apply-json": return this.applyJson();
       case "tab-properties": return this.setTab("properties");
       case "tab-edges": return this.setTab("edges");
+      case "tab-filters": return this.setTab("filters");
       case "tab-styles": return this.setTab("styles");
       case "tab-base": return this.setTab("base");
       default: return;
@@ -311,6 +323,7 @@ export class DiagramEditor implements InspectorHost, StylePanelHost {
   private setTab(tab: Tab): void {
     this.slot("inspector-body").hidden = tab !== "properties";
     this.slot("edges-body").hidden = tab !== "edges";
+    this.slot("filters-body").hidden = tab !== "filters";
     this.slot("styles-body").hidden = tab !== "styles";
     this.slot("base-body").hidden = tab !== "base";
     this.slot("inspector-badge").hidden = tab !== "properties" && tab !== "edges";
@@ -321,6 +334,7 @@ export class DiagramEditor implements InspectorHost, StylePanelHost {
 
     if (tab === "properties") this.inspector.render(this.canvas.selected);
     else if (tab === "edges") this.edgesPanel.render();
+    else if (tab === "filters") this.filtersPanel.render();
     else if (tab === "styles") this.styleList.render();
     else if (tab === "base") this.basePanel.render();
   }
@@ -332,9 +346,6 @@ export class DiagramEditor implements InspectorHost, StylePanelHost {
         return;
       case "snap":
         this.canvas.gridStep = on ? 10 : 0;
-        return;
-      case "container-drag":
-        this.canvas.containerDrag = on;
         return;
       case "structure-edges":
         // Not a style question, which is why no style can answer it: in
@@ -462,7 +473,13 @@ export class DiagramEditor implements InspectorHost, StylePanelHost {
         this.notify("Перетащите файл с расширением .json");
         return;
       }
-      void this.loadFile(file);
+      if (this.hasUnsavedChanges) {
+        this.confirmDiscardOrSave({ clientX: e.clientX, clientY: e.clientY }, () => {
+          void this.loadFile(file);
+        });
+      } else {
+        void this.loadFile(file);
+      }
     });
   }
 
@@ -598,7 +615,7 @@ export class DiagramEditor implements InspectorHost, StylePanelHost {
     this.canvas.setModel(doc);
     this.history.reset(this.snapshot());
     this.dirty = false;
-    this.syncDirtyChip();
+    this.syncSaveButton();
     this.slot("title").textContent = title;
     this.renderViews(doc);
     this.renderTags();
@@ -656,7 +673,18 @@ export class DiagramEditor implements InspectorHost, StylePanelHost {
           {
             class: "catalog-item",
             dataset: { catalogId: entry.id },
-            on: { click: () => void this.openCatalogEntry(entry) },
+            on: {
+              click: (e: MouseEvent) => {
+                if (this.currentEntry?.id === entry.id) return;
+                if (this.hasUnsavedChanges) {
+                  this.confirmDiscardOrSave({ clientX: e.clientX, clientY: e.clientY }, () => {
+                    void this.openCatalogEntry(entry);
+                  });
+                } else {
+                  void this.openCatalogEntry(entry);
+                }
+              },
+            },
           },
           [
             el("span", { class: `catalog-icon theme-${entry.theme ?? "blue"}`, text: entry.icon ?? "📄" }),
@@ -688,9 +716,16 @@ export class DiagramEditor implements InspectorHost, StylePanelHost {
         {
           class: "catalog-item",
           on: {
-            click: () => {
-              this.currentEntry = null;
-              this.loadWire(wire, name);
+            click: (e: MouseEvent) => {
+              if (this.hasUnsavedChanges) {
+                this.confirmDiscardOrSave({ clientX: e.clientX, clientY: e.clientY }, () => {
+                  this.currentEntry = null;
+                  this.loadWire(wire, name);
+                });
+              } else {
+                this.currentEntry = null;
+                this.loadWire(wire, name);
+              }
             },
           },
         },
@@ -711,95 +746,16 @@ export class DiagramEditor implements InspectorHost, StylePanelHost {
     }
   }
 
-  private renderViews(doc: DiagramDocument): void {
-    const host = this.slot("views");
-    const views = doc.views.length > 0
-      ? doc.views
-      : [{ id: "all", name: "Все элементы", icon: "🏛", description: "", highlightZones: [], highlightNodes: [] }];
-
-    replaceChildren(
-      host,
-      ...views.map((view) =>
-        el("button", {
-          class: `view-btn${view.id === this.canvas.activeView ? " is-active" : ""}`,
-          title: view.description,
-          text: `${view.icon} ${view.name}`,
-          dataset: { viewId: view.id },
-          on: {
-            click: () => {
-              this.canvas.setView(view.id);
-              this.syncViews();
-            },
-          },
-        }),
-      ),
-    );
-    this.syncViews();
+  private renderViews(_doc: DiagramDocument): void {
+    this.filtersPanel.render();
   }
 
   /**
-   * The tag bar: one pill per domain tag currently worn by something on the
-   * canvas, sourced entirely from style tags — there is no separate per-element
-   * tag to maintain. Rebuilt whenever the set of tags in use can have changed:
+   * Re-renders the filters panel when tags in use can have changed:
    * on model load and after any style edit (a rename, a retag, a new style).
-   *
-   * Several pills can be active at once — a style can carry more than one tag
-   * (a zone can be both "llm" and "security"), so isolating "one angle" and
-   * "another angle" together and seeing their union is a real thing to want,
-   * not just "pick one".
    */
   renderTags(): void {
-    const host = this.slot("tags");
-    const tags = this.canvas.tagsInUse();
-
-    if (tags.length === 0) {
-      replaceChildren(host);
-      return;
-    }
-
-    replaceChildren(
-      host,
-      ...tags.map((tag) =>
-        el("button", {
-          class: "view-btn tag-btn",
-          text: `#${tag}`,
-          dataset: { tagId: tag },
-          on: {
-            click: () => {
-              this.canvas.toggleHighlightTag(tag);
-              this.syncTags();
-            },
-          },
-        }),
-      ),
-      tags.length > 0
-        ? el("button", {
-            class: "btn-icon",
-            title: "Снять всю подсветку по тегам",
-            text: "✕",
-            on: {
-              click: () => {
-                this.canvas.clearHighlightTags();
-                this.syncTags();
-              },
-            },
-          })
-        : null,
-    );
-    this.syncTags();
-  }
-
-  private syncTags(): void {
-    const active = this.canvas.highlightTags;
-    for (const node of this.slot("tags").querySelectorAll<HTMLElement>("[data-tag-id]")) {
-      node.classList.toggle("is-active", active.has(node.dataset.tagId ?? ""));
-    }
-  }
-
-  private syncViews(): void {
-    for (const node of this.slot("views").querySelectorAll<HTMLElement>("[data-view-id]")) {
-      node.classList.toggle("is-active", node.dataset.viewId === this.canvas.activeView);
-    }
+    this.filtersPanel.render();
   }
 
   // ---------------------------------------------------------------- editing
@@ -1094,7 +1050,7 @@ export class DiagramEditor implements InspectorHost, StylePanelHost {
       }
     }
 
-    this.syncDirtyChip();
+    this.syncSaveButton();
 
     if (problems.length === 0) {
       this.flashSaved();
@@ -1114,10 +1070,10 @@ export class DiagramEditor implements InspectorHost, StylePanelHost {
   private flashSaved(): void {
     const button = this.root.querySelector<HTMLElement>('[data-action="save"]');
     if (button === null) return;
-    const previous = button.textContent;
     button.textContent = "✅ Сохранено";
     window.setTimeout(() => {
-      button.textContent = previous;
+      button.textContent = "💾 Сохранить";
+      this.syncSaveButton();
     }, 2000);
   }
 
@@ -1171,16 +1127,122 @@ export class DiagramEditor implements InspectorHost, StylePanelHost {
 
   private markDirty(): void {
     this.dirty = true;
-    this.syncDirtyChip();
+    this.syncSaveButton();
   }
 
   private markStylesDirty(): void {
     this.stylesDirty = true;
-    this.syncDirtyChip();
+    this.syncSaveButton();
   }
 
-  private syncDirtyChip(): void {
-    this.slot("dirty").hidden = !this.dirty && !this.stylesDirty;
+  private syncSaveButton(): void {
+    const isDirty = this.dirty || this.stylesDirty;
+    const saveBtn = this.root.querySelector<HTMLButtonElement>('[data-action="save"]');
+    if (saveBtn !== null) {
+      saveBtn.disabled = !isDirty;
+      saveBtn.classList.toggle("btn-save-dirty", isDirty);
+      saveBtn.title = isDirty
+        ? "Сохранить изменения на сервер (Ctrl+S)"
+        : "Все изменения сохранены";
+    }
+  }
+
+  /**
+   * Shows a custom confirmation popup positioned so that the "Отменить" button
+   * is placed directly under the mouse pointer coordinates (clientX, clientY).
+   */
+  private confirmDiscardOrSave(
+    pos: { clientX: number; clientY: number },
+    onProceed: (saveFirst: boolean) => Promise<void> | void,
+  ): void {
+    const backdrop = el("div", { class: "confirm-popover-backdrop" });
+
+    const saveBtn = el("button", {
+      class: "btn btn-success full",
+      attrs: { style: "padding: 8px 12px; font-size: 12px; font-weight: 600;" },
+      text: "💾 Сохранить и открыть",
+      on: {
+        click: async (ev: MouseEvent) => {
+          ev.stopPropagation();
+          cleanup();
+          await this.save();
+          await onProceed(true);
+        },
+      },
+    });
+
+    const cancelBtn = el("button", {
+      class: "btn full",
+      attrs: { style: "padding: 8px 12px; font-size: 12px; font-weight: 600; background: var(--panel-alt); border: 1px solid var(--line);" },
+      text: "↩ Отменить",
+      on: {
+        click: (ev: MouseEvent) => {
+          ev.stopPropagation();
+          cleanup();
+        },
+      },
+    });
+
+    const discardBtn = el("button", {
+      class: "btn btn-danger full",
+      attrs: { style: "padding: 7px 12px; font-size: 12px; font-weight: 500;" },
+      text: "🗑 Загрузить без сохранения",
+      on: {
+        click: async (ev: MouseEvent) => {
+          ev.stopPropagation();
+          cleanup();
+          await onProceed(false);
+        },
+      },
+    });
+
+    const card = el("div", { class: "confirm-popover-card" }, [
+      el("div", { class: "confirm-popover-title" }, [
+        el("span", { text: "⚠️" }),
+        el("span", { text: "Несохранённые изменения" }),
+      ]),
+      el("p", { class: "confirm-popover-msg", text: "В текущей схеме есть несохранённые правки. Что сделать перед переключением?" }),
+      el("div", { class: "confirm-popover-actions" }, [
+        saveBtn,
+        cancelBtn,
+        discardBtn,
+      ]),
+    ]);
+
+    backdrop.appendChild(card);
+    document.body.appendChild(backdrop);
+
+    // Measure and position so cancelBtn is exactly centered on (pos.clientX, pos.clientY)
+    const cardRect = card.getBoundingClientRect();
+    const cancelRect = cancelBtn.getBoundingClientRect();
+    const cancelOffsetY = cancelRect.top - cardRect.top + cancelRect.height / 2;
+    const cancelOffsetX = cancelRect.left - cardRect.left + cancelRect.width / 2;
+
+    let left = pos.clientX - cancelOffsetX;
+    let top = pos.clientY - cancelOffsetY;
+
+    left = Math.max(10, Math.min(window.innerWidth - cardRect.width - 10, left));
+    top = Math.max(10, Math.min(window.innerHeight - cardRect.height - 10, top));
+
+    card.style.left = `${left}px`;
+    card.style.top = `${top}px`;
+
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        cleanup();
+      }
+    };
+
+    const cleanup = () => {
+      window.removeEventListener("keydown", onKeyDown);
+      backdrop.remove();
+    };
+
+    backdrop.addEventListener("click", (e) => {
+      if (e.target === backdrop) cleanup();
+    });
+
+    window.addEventListener("keydown", onKeyDown);
   }
 
   private syncToolbar(selection: Selection | null): void {

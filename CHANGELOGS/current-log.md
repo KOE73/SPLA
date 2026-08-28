@@ -96,3 +96,15 @@ sentences are what `current-list.md` is built from, which is why they have to st
   actually contained (up to commit `d671ab9`, before the bad merge), and the working files carry only
   what has landed since. The GitHub release page itself was left as published — this fixes the
   repository's own record, not history.
+
+---
+
+## 2026-08-28
+
+- **Architecture diagram visualizer unified to modular project format, filters panel added, and unsaved changes protected.**
+  The diagram subsystem retired legacy monolithic and v2 formats in favor of a single authoritative multi-file structure
+  (`project.json`, `entities.json`, `relations.json`, `text.<lang>.json`, and `views/<id>.view.json`).
+  The inspector received a dedicated **Filters** tab consolidating perspective views, searchable multi-select tag pills with live
+  element counts, and relationship family toggles. The UI header was streamlined by moving save status into an interactive button
+  next to the title and removing redundant controls, while diagram switching is now guarded with a contextual in-place confirmation
+  dialog ensuring unsaved work is never accidentally overwritten.

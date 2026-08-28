@@ -316,7 +316,7 @@ export class InteractionController {
 
     for (const el of targets) {
       remember(el);
-      if (isContainer(el) && this.canvas.containerDrag && doc !== null) {
+      if (isContainer(el) && doc !== null) {
         for (const child of doc.descendants(el)) remember(child);
       }
     }

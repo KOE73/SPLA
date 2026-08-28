@@ -55,8 +55,8 @@ for (const filePath of csFiles) {
 console.log(`Extracted ${declaredTypes.size} declared types from C# source`);
 
 // Update entities.json
-const existingEntitiesPath = 'docs/diagrams/projects/full_core_v2/entities.json';
-let entitiesObj = { contractVersion: 2, entities: [] };
+const existingEntitiesPath = 'docs/diagrams/projects/full_core/entities.json';
+let entitiesObj = { entities: [] };
 if (fs.existsSync(existingEntitiesPath)) {
   entitiesObj = JSON.parse(fs.readFileSync(existingEntitiesPath, 'utf8'));
 }
@@ -162,9 +162,8 @@ for (const filePath of csFiles) {
 
 console.log(`Generated ${relations.length} relationships from C# codebase!`);
 
-const fullCoreRelationsPath = 'docs/diagrams/projects/full_core_v2/relations.json';
+const fullCoreRelationsPath = 'docs/diagrams/projects/full_core/relations.json';
 fs.writeFileSync(fullCoreRelationsPath, JSON.stringify({
-  contractVersion: 2,
   relations: relations
 }, null, 2), 'utf8');
 

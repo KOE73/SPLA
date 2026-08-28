@@ -1,0 +1,16 @@
+{
+  "entries": {
+    "zone_host": {
+      "doc": "Core tool dispatcher with level gating and handle routing."
+    },
+    "zone_network": {
+      "doc": "Pure C# network probing tools."
+    },
+    "zone_ssh": {
+      "doc": "Interactive SSH sessions and secure file transfers."
+    },
+    "zone_doc": {
+      "doc": "PDF text extraction and spreadsheet analysis."
+    }
+  }
+}

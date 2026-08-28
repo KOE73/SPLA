@@ -55,13 +55,9 @@ export class Inspector {
       let isVisibleOnCanvas = true;
 
       if (edge === undefined) {
-        // Look up in v2Bundle.relations
-        const v2Relations =
-          (doc.raw as any)?.v2Bundle?.relations?.relations ||
-          (doc.raw as any)?.v2Bundle?.relations ||
-          [];
-        const rel = Array.isArray(v2Relations)
-          ? v2Relations.find((r: any) => r.id === selection.id)
+        const relations = doc.relations;
+        const rel = Array.isArray(relations)
+          ? relations.find((r) => r.id === selection.id)
           : undefined;
 
         if (rel) {
@@ -254,8 +250,8 @@ export class Inspector {
                   edge.label = value;
                 }, { rerender: true });
               } else {
-                const v2Rels = (doc?.raw as any)?.v2Bundle?.relations?.relations;
-                const r = Array.isArray(v2Rels) ? v2Rels.find((x: any) => x.id === edge.id) : null;
+                const rels = doc?.relations;
+                const r = Array.isArray(rels) ? rels.find((x) => x.id === edge.id) : null;
                 if (r) r.label = value;
                 this.host.canvas.render();
               }
@@ -272,8 +268,8 @@ export class Inspector {
               edge.type = value;
             }, { rerender: true, reselect: true });
           } else {
-            const v2Rels = (doc?.raw as any)?.v2Bundle?.relations?.relations;
-            const r = Array.isArray(v2Rels) ? v2Rels.find((x: any) => x.id === edge.id) : null;
+            const rels = doc?.relations;
+            const r = Array.isArray(rels) ? rels.find((x) => x.id === edge.id) : null;
             if (r) {
               r.type = value;
               r.relation = value;
@@ -292,10 +288,10 @@ export class Inspector {
               if (isVisibleOnCanvas) {
                 this.host.deleteEdge(edge.id);
               }
-              const v2Rels = (doc?.raw as any)?.v2Bundle?.relations?.relations;
-              if (Array.isArray(v2Rels)) {
-                const idx = v2Rels.findIndex((x: any) => x.id === edge.id);
-                if (idx >= 0) v2Rels.splice(idx, 1);
+              const rels = doc?.relations;
+              if (Array.isArray(rels)) {
+                const idx = rels.findIndex((x) => x.id === edge.id);
+                if (idx >= 0) rels.splice(idx, 1);
               }
               (this.host as any).commit("delete-edge");
               this.host.canvas.select(null);

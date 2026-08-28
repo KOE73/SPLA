@@ -1,0 +1,12 @@
+{
+  "id": "plugins",
+  "title": "Plugins & Tools Ecosystem",
+  "subtitle": "Network, SSH, Documents & MCP",
+  "defaultView": "v_main",
+  "languages": [
+    "ru"
+  ],
+  "views": [
+    "v_main"
+  ]
+}

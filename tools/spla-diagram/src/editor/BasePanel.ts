@@ -17,15 +17,14 @@ export class BasePanel {
       return;
     }
 
-    const v2Bundle = (doc.raw as any)?.v2Bundle;
-    if (!v2Bundle || !v2Bundle.entities) {
-      replaceChildren(this.body, el("div", { class: "inspector-empty", text: "Доступно только для V2" }));
+    const entities = doc.entities;
+    if (entities.length === 0) {
+      replaceChildren(this.body, el("div", { class: "inspector-empty", text: "В базе проекта нет сущностей" }));
       return;
     }
 
     const query = this.searchInput.value.toLowerCase().trim();
-    const entities = v2Bundle.entities.entities || v2Bundle.entities || [];
-    const texts = v2Bundle.text?.entries || {};
+    const texts = doc.bundle?.text?.entries || {};
     
     const placedIds = new Set(Array.from(doc.elements()).map((e: any) => e.id));
 

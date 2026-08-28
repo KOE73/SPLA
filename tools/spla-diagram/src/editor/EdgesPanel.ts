@@ -314,10 +314,10 @@ export class EdgesPanel {
           if (item.visible) {
             doc.removeEdge(item.id);
           }
-          const v2Rels = (doc.raw as any)?.v2Bundle?.relations?.relations;
-          if (Array.isArray(v2Rels)) {
-            const idx = v2Rels.findIndex((r: any) => r.id === item.id);
-            if (idx >= 0) v2Rels.splice(idx, 1);
+          const rels = doc.relations;
+          if (Array.isArray(rels)) {
+            const idx = rels.findIndex((r) => r.id === item.id);
+            if (idx >= 0) rels.splice(idx, 1);
           }
           this.confirmingDeleteId = null;
           (this.host as any).commit("delete-relation");

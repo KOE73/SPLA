@@ -1,0 +1,154 @@
+{
+  "entities": [
+    {
+      "id": "chat_ui",
+      "name": "Chat & ViewModels",
+      "kind": "Vue3 Component / Store",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "web/src/store.ts",
+      "members": []
+    },
+    {
+      "id": "inspector_ui",
+      "name": "Inspector & Tool Log",
+      "kind": "Inspector View",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "web/src/components/Inspector.vue",
+      "members": []
+    },
+    {
+      "id": "ws_client",
+      "name": "WebSocket Transport",
+      "kind": "Client Transport",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "web/src/protocol/ws.ts",
+      "members": []
+    },
+    {
+      "id": "turn_pump",
+      "name": "ChatTurnPump",
+      "kind": "Turn Orchestrator",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/SPLA.Core/Runtime/ChatTurnPump.cs",
+      "members": []
+    },
+    {
+      "id": "agent_runtime",
+      "name": "Agent Runtime Session",
+      "kind": "Session Controller",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/SPLA.Agent/Runtime/RuntimeSession.cs",
+      "members": []
+    },
+    {
+      "id": "context_composer",
+      "name": "AgentContextComposer",
+      "kind": "Context Assembly Pipeline",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/SPLA.Agent/Composition/AgentContextComposer.cs",
+      "members": []
+    },
+    {
+      "id": "llm_client",
+      "name": "LLM Gateway / Client",
+      "kind": "Model Provider Gateway",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/SPLA.Core/Llm/LlmClient.cs",
+      "members": []
+    },
+    {
+      "id": "permission_guard",
+      "name": "Permission Guard",
+      "kind": "Security Interceptor",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/SPLA.Core/Security/PermissionGuard.cs",
+      "members": []
+    },
+    {
+      "id": "tool_host",
+      "name": "McpHost & Tool Registry",
+      "kind": "Tool Dispatch Controller",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/SPLA.Agent/Tools/McpHost.cs",
+      "members": []
+    },
+    {
+      "id": "tool_network",
+      "name": "Network Tools (Ping/DNS/HTTP)",
+      "kind": "Plugin Tools",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/SPLA.Plugins.Network/",
+      "members": []
+    },
+    {
+      "id": "tool_ssh",
+      "name": "SSH & SFTP Tools",
+      "kind": "Plugin Tools",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/SPLA.Plugins.Ssh/",
+      "members": []
+    },
+    {
+      "id": "tool_doc",
+      "name": "Document & Sheet Tools",
+      "kind": "Plugin Tools",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/SPLA.Plugins.Document/",
+      "members": []
+    },
+    {
+      "id": "sqlite_db",
+      "name": "SQLite Store (Turns & Sessions)",
+      "kind": "Embedded Database",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/SPLA.Core/Storage/SqliteStorage.cs",
+      "members": []
+    },
+    {
+      "id": "secrets_store",
+      "name": "Isolated Secrets Store",
+      "kind": "Secure Key Vault",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/SPLA.Core/Security/SecretsStore.cs",
+      "members": []
+    },
+    {
+      "id": "blob_store",
+      "name": "Artifact & Blob Storage",
+      "kind": "File & Artifact Store",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/SPLA.Core/Storage/BlobStorage.cs",
+      "members": []
+    }
+  ]
+}

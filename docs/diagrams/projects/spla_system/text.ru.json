@@ -1,0 +1,80 @@
+{
+  "entries": {
+    "zone_client": {
+      "doc": "Web client based on Vue 3 + Tailwind. Communicates via WebSocket protocol.",
+      "name": "zone_client"
+    },
+    "zone_runtime": {
+      "doc": "Host-side agent session orchestrator, message turn pump, context composition and LLM gateway.",
+      "name": "zone_runtime"
+    },
+    "zone_tools": {
+      "doc": "Deterministic narrow tool dispatch layer, permission filtering, MCP server bridges.",
+      "name": "zone_tools"
+    },
+    "zone_storage": {
+      "doc": "Local project databases, binary storage, and secure credential storage.",
+      "name": "zone_storage"
+    },
+    "chat_ui": {
+      "name": "Chat & ViewModels",
+      "doc": ""
+    },
+    "inspector_ui": {
+      "name": "Inspector & Tool Log",
+      "doc": ""
+    },
+    "ws_client": {
+      "name": "WebSocket Transport",
+      "doc": ""
+    },
+    "turn_pump": {
+      "name": "ChatTurnPump",
+      "doc": ""
+    },
+    "agent_runtime": {
+      "name": "Agent Runtime Session",
+      "doc": ""
+    },
+    "context_composer": {
+      "name": "AgentContextComposer",
+      "doc": ""
+    },
+    "llm_client": {
+      "name": "LLM Gateway / Client",
+      "doc": ""
+    },
+    "permission_guard": {
+      "name": "Permission Guard",
+      "doc": ""
+    },
+    "tool_host": {
+      "name": "McpHost & Tool Registry",
+      "doc": ""
+    },
+    "tool_network": {
+      "name": "Network Tools (Ping/DNS/HTTP)",
+      "doc": ""
+    },
+    "tool_ssh": {
+      "name": "SSH & SFTP Tools",
+      "doc": ""
+    },
+    "tool_doc": {
+      "name": "Document & Sheet Tools",
+      "doc": ""
+    },
+    "sqlite_db": {
+      "name": "SQLite Store (Turns & Sessions)",
+      "doc": ""
+    },
+    "secrets_store": {
+      "name": "Isolated Secrets Store",
+      "doc": ""
+    },
+    "blob_store": {
+      "name": "Artifact & Blob Storage",
+      "doc": ""
+    }
+  }
+}

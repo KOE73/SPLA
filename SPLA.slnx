@@ -45,6 +45,7 @@
     <File Path="docs/schema-editor-doc-b-tokens.md" />
     <File Path="docs/sys_prompt_rules_ru.md" />
     <File Path="docs/IDEA_20260825_ui_architecture-diagrams.md" />
+    <File Path="docs/KNOWN_ISSUES.md" />
   </Folder>
   <Folder Name="/docs/diagrams/">
     <File Path="docs/diagrams/README.md" />

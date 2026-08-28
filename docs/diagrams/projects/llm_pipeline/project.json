@@ -1,0 +1,12 @@
+{
+  "id": "llm_pipeline",
+  "title": "LLM Pipeline & Context",
+  "subtitle": "Prompt assembly & output stage",
+  "defaultView": "v_main",
+  "languages": [
+    "ru"
+  ],
+  "views": [
+    "v_main"
+  ]
+}

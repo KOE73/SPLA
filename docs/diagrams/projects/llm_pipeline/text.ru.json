@@ -1,0 +1,60 @@
+{
+  "entries": {
+    "zone_input": {
+      "doc": "User turn trigger, active conversation context, and attachments.",
+      "name": "zone_input"
+    },
+    "zone_contributors": {
+      "doc": "Ordered typed contributors combining system instructions, skills, active tools, and memory.",
+      "name": "zone_contributors"
+    },
+    "zone_model": {
+      "doc": "Unified streaming connection to local (Ollama/LMStudio) or cloud (Anthropic/Gemini/OpenAI) models.",
+      "name": "zone_model"
+    },
+    "zone_output": {
+      "doc": "Token stream demuxing: thinking tags, text chunks, and structured tool calls.",
+      "name": "zone_output"
+    },
+    "user_turn": {
+      "name": "User Input Envelope",
+      "doc": ""
+    },
+    "composer": {
+      "name": "AgentContextComposer",
+      "doc": ""
+    },
+    "contrib_system": {
+      "name": "SystemDoctrineContributor",
+      "doc": ""
+    },
+    "contrib_skills": {
+      "name": "SkillsContributor",
+      "doc": ""
+    },
+    "contrib_tools": {
+      "name": "ActiveToolsContributor",
+      "doc": ""
+    },
+    "contrib_history": {
+      "name": "ConversationHistoryContributor",
+      "doc": ""
+    },
+    "model_stream": {
+      "name": "LlmClient Gateway",
+      "doc": ""
+    },
+    "token_parser": {
+      "name": "TokenStreamDemuxer",
+      "doc": ""
+    },
+    "thinking_extractor": {
+      "name": "Thinking Block Extractor",
+      "doc": ""
+    },
+    "tool_call_extractor": {
+      "name": "ToolCall Accumulator",
+      "doc": ""
+    }
+  }
+}

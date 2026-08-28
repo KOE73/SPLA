@@ -1,0 +1,147 @@
+{
+  "relations": [
+    {
+      "id": "e1",
+      "from": "chat_ui",
+      "to": "ws_client",
+      "type": "data-flow",
+      "relation": "data-flow",
+      "label": "send action",
+      "origin": "authored",
+      "status": "present",
+      "points": []
+    },
+    {
+      "id": "e2",
+      "from": "ws_client",
+      "to": "turn_pump",
+      "type": "call",
+      "relation": "call",
+      "label": "WebSocket JSON-RPC",
+      "origin": "authored",
+      "status": "present",
+      "points": []
+    },
+    {
+      "id": "e3",
+      "from": "turn_pump",
+      "to": "agent_runtime",
+      "type": "call",
+      "relation": "call",
+      "label": "drive turn",
+      "origin": "authored",
+      "status": "present",
+      "points": []
+    },
+    {
+      "id": "e4",
+      "from": "agent_runtime",
+      "to": "context_composer",
+      "type": "call",
+      "relation": "call",
+      "label": "assemble context",
+      "origin": "authored",
+      "status": "present",
+      "points": []
+    },
+    {
+      "id": "e5",
+      "from": "context_composer",
+      "to": "llm_client",
+      "type": "data-flow",
+      "relation": "data-flow",
+      "label": "prompt stream",
+      "origin": "authored",
+      "status": "present",
+      "points": []
+    },
+    {
+      "id": "e6",
+      "from": "llm_client",
+      "to": "permission_guard",
+      "type": "call",
+      "relation": "call",
+      "label": "tool call request",
+      "origin": "authored",
+      "status": "present",
+      "points": []
+    },
+    {
+      "id": "e7",
+      "from": "permission_guard",
+      "to": "tool_host",
+      "type": "call",
+      "relation": "call",
+      "label": "authorized dispatch",
+      "origin": "authored",
+      "status": "present",
+      "points": []
+    },
+    {
+      "id": "e8",
+      "from": "tool_host",
+      "to": "tool_network",
+      "type": "call",
+      "relation": "call",
+      "label": "execute",
+      "origin": "authored",
+      "status": "present",
+      "points": []
+    },
+    {
+      "id": "e9",
+      "from": "tool_host",
+      "to": "tool_ssh",
+      "type": "call",
+      "relation": "call",
+      "label": "execute",
+      "origin": "authored",
+      "status": "present",
+      "points": []
+    },
+    {
+      "id": "e10",
+      "from": "tool_host",
+      "to": "tool_doc",
+      "type": "call",
+      "relation": "call",
+      "label": "execute",
+      "origin": "authored",
+      "status": "present",
+      "points": []
+    },
+    {
+      "id": "e11",
+      "from": "agent_runtime",
+      "to": "sqlite_db",
+      "type": "storage",
+      "relation": "storage",
+      "label": "persist history",
+      "origin": "authored",
+      "status": "present",
+      "points": []
+    },
+    {
+      "id": "e12",
+      "from": "permission_guard",
+      "to": "secrets_store",
+      "type": "security",
+      "relation": "security",
+      "label": "resolve secrets",
+      "origin": "authored",
+      "status": "present",
+      "points": []
+    },
+    {
+      "id": "e13",
+      "from": "tool_host",
+      "to": "blob_store",
+      "type": "storage",
+      "relation": "storage",
+      "label": "store large output (> handle)",
+      "origin": "authored",
+      "status": "present",
+      "points": []
+    }
+  ]
+}

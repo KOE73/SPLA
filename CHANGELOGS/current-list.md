@@ -23,6 +23,7 @@ repository and is linked from it.
   running. `system_run_shell`, `agent_spawn`, `agent_spawn_batch`, `web_fetch` and
   `ssh_session_exec` opt in; a background task's live progress reaches the chat window and survives
   the human's next turn instead of being cleared with it.
+- Architecture diagram visualizer unified to modular project format, filters panel added, and unsaved changes protected.
 
 ### Fixed
 

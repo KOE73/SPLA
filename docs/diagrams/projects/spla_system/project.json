@@ -1,0 +1,12 @@
+{
+  "id": "spla_system",
+  "title": "SPLA System Architecture",
+  "subtitle": "Core, runtime, tools & storage",
+  "defaultView": "v_main",
+  "languages": [
+    "ru"
+  ],
+  "views": [
+    "v_main"
+  ]
+}

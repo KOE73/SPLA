@@ -1,0 +1,5159 @@
+{
+  "id": "v_semantic_atlas",
+  "project": "full_core",
+  "relations": {
+    "default": "visible",
+    "except": []
+  },
+  "zones": [
+    {
+      "id": "z_llm",
+      "container": null,
+      "parent": null,
+      "x": -1950,
+      "y": 1380,
+      "width": 2852,
+      "height": 1290,
+      "styleId": "domain.llm"
+    },
+    {
+      "id": "z_llm_providers",
+      "container": null,
+      "parent": null,
+      "x": -1930,
+      "y": 1560,
+      "width": 750,
+      "height": 690,
+      "styleId": "zone.green"
+    },
+    {
+      "id": "z_llm_middleware",
+      "container": null,
+      "parent": null,
+      "x": -1120,
+      "y": 1480,
+      "width": 900,
+      "height": 1040,
+      "styleId": "zone.green"
+    },
+    {
+      "id": "z_llm_turn",
+      "container": null,
+      "parent": null,
+      "x": -46,
+      "y": 1450,
+      "width": 934,
+      "height": 600,
+      "styleId": "zone.green"
+    },
+    {
+      "id": "z_toolpipe",
+      "container": null,
+      "parent": null,
+      "x": 2336,
+      "y": 1046,
+      "width": 1360,
+      "height": 1474,
+      "styleId": "domain.toolpipe"
+    },
+    {
+      "id": "z_tool_contracts",
+      "container": null,
+      "parent": null,
+      "x": 2350,
+      "y": 1076,
+      "width": 750,
+      "height": 286,
+      "styleId": "zone.blue"
+    },
+    {
+      "id": "z_tool_stages",
+      "container": null,
+      "parent": null,
+      "x": 2350,
+      "y": 1378,
+      "width": 750,
+      "height": 222,
+      "styleId": "zone.blue"
+    },
+    {
+      "id": "z_tool_host",
+      "container": null,
+      "parent": null,
+      "x": 2350,
+      "y": 1616,
+      "width": 934,
+      "height": 286,
+      "styleId": "zone.blue"
+    },
+    {
+      "id": "z_tool_progress",
+      "container": null,
+      "parent": null,
+      "x": 2350,
+      "y": 1918,
+      "width": 750,
+      "height": 286,
+      "styleId": "zone.blue"
+    },
+    {
+      "id": "z_agent_comp",
+      "container": null,
+      "parent": null,
+      "x": 2350,
+      "y": 2220,
+      "width": 750,
+      "height": 286,
+      "styleId": "zone.blue"
+    },
+    {
+      "id": "z_formats",
+      "container": null,
+      "parent": null,
+      "x": 3116,
+      "y": 2220,
+      "width": 566,
+      "height": 222,
+      "styleId": "zone.blue"
+    },
+    {
+      "id": "z_plugins",
+      "container": null,
+      "parent": null,
+      "x": 2336,
+      "y": 2720,
+      "width": 778,
+      "height": 678,
+      "styleId": "domain.plugins"
+    },
+    {
+      "id": "z_plugin_contracts",
+      "container": null,
+      "parent": null,
+      "x": 2350,
+      "y": 2750,
+      "width": 566,
+      "height": 158,
+      "styleId": "zone.fuchsia"
+    },
+    {
+      "id": "z_plugin_loading",
+      "container": null,
+      "parent": null,
+      "x": 2350,
+      "y": 2924,
+      "width": 750,
+      "height": 222,
+      "styleId": "zone.fuchsia"
+    },
+    {
+      "id": "z_toolsets",
+      "container": null,
+      "parent": null,
+      "x": 2350,
+      "y": 3162,
+      "width": 750,
+      "height": 222,
+      "styleId": "zone.fuchsia"
+    },
+    {
+      "id": "z_chat",
+      "container": null,
+      "parent": null,
+      "x": 1202,
+      "y": 1046,
+      "width": 934,
+      "height": 286,
+      "styleId": "domain.chat"
+    },
+    {
+      "id": "z_security",
+      "container": null,
+      "parent": null,
+      "x": 40,
+      "y": 3598,
+      "width": 990,
+      "height": 1564,
+      "styleId": "domain.security"
+    },
+    {
+      "id": "z_sec_permissions",
+      "container": null,
+      "parent": null,
+      "x": 54,
+      "y": 3628,
+      "width": 750,
+      "height": 222,
+      "styleId": "zone.red"
+    },
+    {
+      "id": "z_sec_zones",
+      "container": null,
+      "parent": null,
+      "x": 54,
+      "y": 3866,
+      "width": 750,
+      "height": 222,
+      "styleId": "zone.red"
+    },
+    {
+      "id": "z_sec_sandbox",
+      "container": null,
+      "parent": null,
+      "x": 54,
+      "y": 4104,
+      "width": 934,
+      "height": 350,
+      "styleId": "zone.red"
+    },
+    {
+      "id": "z_sec_secrets",
+      "container": null,
+      "parent": null,
+      "x": 54,
+      "y": 4470,
+      "width": 962,
+      "height": 440,
+      "styleId": "zone.red"
+    },
+    {
+      "id": "z_sec_secrets_domain",
+      "container": null,
+      "parent": null,
+      "x": 68,
+      "y": 4500,
+      "width": 934,
+      "height": 286,
+      "styleId": "zone.red"
+    },
+    {
+      "id": "z_sec_secrets_dpapi",
+      "container": null,
+      "parent": null,
+      "x": 68,
+      "y": 4802,
+      "width": 382,
+      "height": 94,
+      "styleId": "zone.red"
+    },
+    {
+      "id": "z_sec_identity",
+      "container": null,
+      "parent": null,
+      "x": 54,
+      "y": 4926,
+      "width": 566,
+      "height": 222,
+      "styleId": "zone.red"
+    },
+    {
+      "id": "z_memory",
+      "container": null,
+      "parent": null,
+      "x": 40,
+      "y": 40,
+      "width": 992,
+      "height": 742,
+      "styleId": "domain.memory"
+    },
+    {
+      "id": "z_mem_kv",
+      "container": null,
+      "parent": null,
+      "x": 54,
+      "y": 70,
+      "width": 750,
+      "height": 286,
+      "styleId": "zone.sky"
+    },
+    {
+      "id": "z_mem_context",
+      "container": null,
+      "parent": null,
+      "x": 60,
+      "y": 410,
+      "width": 382,
+      "height": 94,
+      "styleId": "zone.sky"
+    },
+    {
+      "id": "z_mem_accounting",
+      "container": null,
+      "parent": null,
+      "x": -50,
+      "y": 2110,
+      "width": 566,
+      "height": 350,
+      "styleId": "zone.sky"
+    },
+    {
+      "id": "z_mem_tools",
+      "container": null,
+      "parent": null,
+      "x": 54,
+      "y": 546,
+      "width": 750,
+      "height": 222,
+      "styleId": "zone.sky"
+    },
+    {
+      "id": "z_content",
+      "container": null,
+      "parent": null,
+      "x": 1232,
+      "y": 40,
+      "width": 806,
+      "height": 786,
+      "styleId": "domain.content"
+    },
+    {
+      "id": "z_editor",
+      "container": null,
+      "parent": null,
+      "x": 1246,
+      "y": 70,
+      "width": 750,
+      "height": 222,
+      "styleId": "zone.yellow"
+    },
+    {
+      "id": "z_resources",
+      "container": null,
+      "parent": null,
+      "x": 1246,
+      "y": 308,
+      "width": 778,
+      "height": 504,
+      "styleId": "zone.yellow"
+    },
+    {
+      "id": "z_res_core",
+      "container": null,
+      "parent": null,
+      "x": 1260,
+      "y": 338,
+      "width": 750,
+      "height": 222,
+      "styleId": "zone.yellow"
+    },
+    {
+      "id": "z_res_tools",
+      "container": null,
+      "parent": null,
+      "x": 1260,
+      "y": 576,
+      "width": 566,
+      "height": 222,
+      "styleId": "zone.yellow"
+    },
+    {
+      "id": "z_skills",
+      "container": null,
+      "parent": null,
+      "x": 2238,
+      "y": 40,
+      "width": 962,
+      "height": 806,
+      "styleId": "domain.skills"
+    },
+    {
+      "id": "z_skills_library",
+      "container": null,
+      "parent": null,
+      "x": 2252,
+      "y": 70,
+      "width": 934,
+      "height": 286,
+      "styleId": "zone.violet"
+    },
+    {
+      "id": "z_skills_sources",
+      "container": null,
+      "parent": null,
+      "x": 2252,
+      "y": 372,
+      "width": 934,
+      "height": 286,
+      "styleId": "zone.violet"
+    },
+    {
+      "id": "z_skills_session",
+      "container": null,
+      "parent": null,
+      "x": 2252,
+      "y": 674,
+      "width": 566,
+      "height": 158,
+      "styleId": "zone.violet"
+    },
+    {
+      "id": "z_project",
+      "container": null,
+      "parent": null,
+      "x": 1230,
+      "y": 3598,
+      "width": 962,
+      "height": 1190,
+      "styleId": "domain.project"
+    },
+    {
+      "id": "z_proj_core",
+      "container": null,
+      "parent": null,
+      "x": 1244,
+      "y": 3628,
+      "width": 750,
+      "height": 286,
+      "styleId": "zone.slate"
+    },
+    {
+      "id": "z_proj_instances",
+      "container": null,
+      "parent": null,
+      "x": 1244,
+      "y": 3930,
+      "width": 934,
+      "height": 350,
+      "styleId": "zone.slate"
+    },
+    {
+      "id": "z_proj_settings",
+      "container": null,
+      "parent": null,
+      "x": 1244,
+      "y": 4296,
+      "width": 934,
+      "height": 478,
+      "styleId": "zone.slate"
+    },
+    {
+      "id": "z_agentlife",
+      "container": null,
+      "parent": null,
+      "x": 1202,
+      "y": 1532,
+      "width": 566,
+      "height": 94,
+      "styleId": "domain.agentlife"
+    },
+    {
+      "id": "z_observability",
+      "container": null,
+      "parent": null,
+      "x": 1202,
+      "y": 1826,
+      "width": 750,
+      "height": 222,
+      "styleId": "domain.observability"
+    },
+    {
+      "id": "z_platform",
+      "container": null,
+      "parent": null,
+      "x": 1202,
+      "y": 2248,
+      "width": 566,
+      "height": 158,
+      "styleId": "domain.platform"
+    },
+    {
+      "id": "z_ssh",
+      "container": null,
+      "parent": null,
+      "x": 2392,
+      "y": 3598,
+      "width": 566,
+      "height": 222,
+      "styleId": "domain.ssh"
+    }
+  ],
+  "placements": [
+    {
+      "entity": "n_accountingstage",
+      "zone": "z_tool_stages",
+      "x": 2364,
+      "y": 1408,
+      "width": 170,
+      "height": 50,
+      "render": "compact"
+    },
+    {
+      "entity": "n_aclsecretaccesspolicy",
+      "zone": "z_sec_secrets_domain",
+      "x": 82,
+      "y": 4530,
+      "width": 170,
+      "height": 50,
+      "render": "compact"
+    },
+    {
+      "entity": "n_agentclarifytool",
+      "zone": "z_chat",
+      "x": 1216,
+      "y": 1076,
+      "width": 170,
+      "height": 50,
+      "render": "compact"
+    },
+    {
+      "entity": "n_agentcontextcomposer",
+      "zone": "z_agent_comp",
+      "x": 2364,
+      "y": 2250,
+      "width": 170,
+      "height": 50,
+      "render": "compact"
+    },
+    {
+      "entity": "n_agentcontribution",
+      "zone": "z_agent_comp",
+      "x": 2548,
+      "y": 2250,
+      "width": 170,
+      "height": 50,
+      "render": "compact"
+    },
+    {
+      "entity": "n_agentcontributioncontext",
+      "zone": "z_agent_comp",
+      "x": 2732,
+      "y": 2250,
+      "width": 170,
+      "height": 50,
+      "render": "compact"
+    },
+    {
+      "entity": "n_agentfeature",
+      "zone": "z_agent_comp",
+      "x": 2916,
+      "y": 2250,
+      "width": 170,
+      "height": 50,
+      "render": "compact"
+    },
+    {
+      "entity": "n_agentfeaturecatalog",
+      "zone": "z_agent_comp",
+      "x": 2364,
+      "y": 2314,
+      "width": 170,
+      "height": 50,
+      "render": "compact"
+    },
+    {
+      "entity": "n_agentlibrarian",
+      "zone": "z_skills_library",
+      "x": 2266,
+      "y": 100,
+      "width": 170,
+      "height": 50,
+      "render": "compact"
+    },
+    {
+      "entity": "n_agentmemorycleartool",
+      "zone": "z_mem_tools",
+      "x": 68,
+      "y": 576,
+      "width": 170,
+      "height": 50,
+      "render": "compact"
+    },
+    {
+      "entity": "n_agentmemorydeletetool",
+      "zone": "z_mem_tools",
+      "x": 252,
+      "y": 576,
+      "width": 170,
+      "height": 50,
+      "render": "compact"
+    },
+    {
+      "entity": "n_agentmemorygettool",
+      "zone": "z_mem_tools",
+      "x": 436,
+      "y": 576,
+      "width": 170,
+      "height": 50,
+      "render": "compact"
+    },
+    {
+      "entity": "n_agentmemoryhelpers",
+      "zone": "z_mem_tools",
+      "x": 620,
+      "y": 576,
+      "width": 170,
+      "height": 50,
+      "render": "compact"
+    },
+    {
+      "entity": "n_agentmemorylisttool",
+      "zone": "z_mem_tools",
+      "x": 68,
+      "y": 640,
+      "width": 170,
+      "height": 50,
+      "render": "compact"
+    },
+    {
+      "entity": "n_agentmemorysettool",
+      "zone": "z_mem_tools",
+      "x": 252,
+      "y": 640,
+      "width": 170,
+      "height": 50,
+      "render": "compact"
+    },
+    {
+      "entity": "n_agentmode",
+      "zone": "z_sec_permissions",
+      "x": 68,
+      "y": 3658,
+      "width": 170,
+      "height": 50,
+      "render": "compact"
+    },
+    {
+      "entity": "n_agentrunresult",
+      "zone": "z_ssh",
+      "x": 2406,
+      "y": 3628,
+      "width": 170,
+      "height": 50,
+      "render": "compact"
+    },
+    {
+      "entity": "n_agentsession",
+      "zone": "z_mem_kv",
+      "x": 68,
+      "y": 100,
+      "width": 170,
+      "height": 50,
+      "render": "compact"
+    },
+    {
+      "entity": "n_agentsessionscope",
+      "zone": "z_mem_kv",
+      "x": 252,
+      "y": 100,
+      "width": 170,
+      "height": 50,
+      "render": "compact"
+    },
+    {
+      "entity": "n_agentspawnbatchtool",
+      "zone": "z_agentlife",
+      "x": 1216,
+      "y": 1562,
+      "width": 170,
+      "height": 50,
+      "render": "compact"
+    },
+    {
+      "entity": "n_agentspawntool",
+      "zone": "z_agentlife",
+      "x": 1400,
+      "y": 1562,
+      "width": 170,
+      "height": 50,
+      "render": "compact"
+    },
+    {
+      "entity": "n_allowallgate",
+      "zone": "z_sec_sandbox",
+      "x": 68,
+      "y": 4134,
+      "width": 170,
+      "height": 50,
+      "render": "compact"
+    },
+    {
+      "entity": "n_ambienthoststage",
+      "zone": "z_tool_stages",
+      "x": 2548,
+      "y": 1408,
+      "width": 170,
+      "height": 50,
+      "render": "compact"
+    },
+    {
+      "entity": "n_attemptoutcome",
+      "zone": "z_llm_turn",
+      "x": 270,
+      "y": 1650,
+      "width": 170,
+      "height": 50,
+      "render": "compact"
+    },
+    {
+      "entity": "n_backgroundstage",
+      "zone": "z_tool_stages",
+      "x": 2732,
+      "y": 1408,
+      "width": 170,
+      "height": 50,
+      "render": "compact"
+    },
+    {
+      "entity": "n_backgroundtaskrecord",
+      "zone": "z_tool_progress",
+      "x": 2364,
+      "y": 1948,
+      "width": 170,
+      "height": 50,
+      "render": "compact"
+    },
+    {
+      "entity": "n_backgroundtaskregistry",
+      "zone": "z_tool_progress",
+      "x": 2548,
+      "y": 1948,
+      "width": 170,
+      "height": 50,
+      "render": "compact"
+    },
+    {
+      "entity": "n_backgroundtaskstate",
+      "zone": "z_tool_progress",
+      "x": 2732,
+      "y": 1948,
+      "width": 170,
+      "height": 50,
+      "render": "compact"
+    },
+    {
+      "entity": "n_blobentry",
+      "zone": "z_mem_kv",
+      "x": 436,
+      "y": 100,
+      "width": 170,
+      "height": 50,
+      "render": "compact"
+    },
+    {
+      "entity": "n_blobkind",
+      "zone": "z_mem_kv",
+      "x": 620,
+      "y": 100,
+      "width": 170,
+      "height": 50,
+      "render": "compact"
+    },
+    {
+      "entity": "n_blobpayload",
+      "zone": "z_mem_kv",
+      "x": 68,
+      "y": 164,
+      "width": 170,
+      "height": 50,
+      "render": "compact"
+    },
+    {
+      "entity": "n_blobpeektool",
+      "zone": "z_mem_tools",
+      "x": 436,
+      "y": 640,
+      "width": 170,
+      "height": 50,
+      "render": "compact"
+    },
+    {
+      "entity": "n_blobstore",
+      "zone": "z_mem_kv",
+      "x": 252,
+      "y": 164,
+      "width": 170,
+      "height": 50,
+      "render": "compact"
+    },
+    {
+      "entity": "n_boundarymode",
+      "zone": "z_sec_sandbox",
+      "x": 252,
+      "y": 4134,
+      "width": 170,
+      "height": 50,
+      "render": "compact"
+    },
+    {
+      "entity": "n_boundaryobservation",
+      "zone": "z_sec_sandbox",
+      "x": 436,
+      "y": 4134,
+      "width": 170,
+      "height": 50,
+      "render": "compact"
+    },
+    {
+      "entity": "n_browserlauncher",
+      "zone": "z_platform",
+      "x": 1216,
+      "y": 2278,
+      "width": 170,
+      "height": 50,
+      "render": "compact"
+    },
+    {
+      "entity": "n_browsertarget",
+      "zone": "z_platform",
+      "x": 1400,
+      "y": 2278,
+      "width": 170,
+      "height": 50,
+      "render": "compact"
+    },
+    {
+      "entity": "n_bucket",
+      "zone": "z_observability",
+      "x": 1216,
+      "y": 1856,
+      "width": 170,
+      "height": 50,
+      "render": "compact"
+    },
+    {
+      "entity": "n_bucketpoint",
+      "zone": "z_observability",
+      "x": 1400,
+      "y": 1856,
+      "width": 170,
+      "height": 50,
+      "render": "compact"
+    },
+    {
+      "entity": "n_builtinconverters",
+      "zone": "z_formats",
+      "x": 3130,
+      "y": 2250,
+      "width": 170,
+      "height": 50,
+      "render": "compact"
+    },
+    {
+      "entity": "n_catalogview",
+      "zone": "z_skills_library",
+      "x": 2450,
+      "y": 100,
+      "width": 170,
+      "height": 50,
+      "render": "compact"
+    },
+    {
+      "entity": "n_chatdoubt",
+      "zone": "z_sec_zones",
+      "x": 68,
+      "y": 3896,
+      "width": 170,
+      "height": 50,
+      "render": "compact"
+    },
+    {
+      "entity": "n_chatinbox",
+      "zone": "z_chat",
+      "x": 1400,
+      "y": 1076,
+      "width": 170,
+      "height": 50,
+      "render": "compact"
+    },
+    {
+      "entity": "n_chatmanager",
+      "zone": "z_chat",
+      "x": 1584,
+      "y": 1076,
+      "width": 170,
+      "height": 50,
+      "render": "compact"
+    },
+    {
+      "entity": "n_chatmessage",
+      "zone": "z_chat",
+      "x": 1768,
+      "y": 1076,
+      "width": 170,
+      "height": 50,
+      "render": "compact"
+    },
+    {
+      "entity": "n_chatrole",
+      "zone": "z_chat",
+      "x": 1952,
+      "y": 1076,
+      "width": 170,
+      "height": 50,
+      "render": "compact"
+    },
+    {
+      "entity": "n_chatsession",
+      "zone": "z_chat",
+      "x": 1216,
+      "y": 1140,
+      "width": 170,
+      "height": 50,
+      "render": "compact"
+    },
+    {
+      "entity": "n_chatsessionattempt",
+      "zone": "z_chat",
+      "x": 1400,
+      "y": 1140,
+      "width": 170,
+      "height": 50,
+      "render": "compact"
+    },
+    {
+      "entity": "n_chatsessioncontext",
+      "zone": "z_chat",
+      "x": 1584,
+      "y": 1140,
+      "width": 170,
+      "height": 50,
+      "render": "compact"
+    },
+    {
+      "entity": "n_chatsessiondoubt",
+      "zone": "z_chat",
+      "x": 1768,
+      "y": 1140,
+      "width": 170,
+      "height": 50,
+      "render": "compact"
+    },
+    {
+      "entity": "n_chatsessionmessage",
+      "zone": "z_chat",
+      "x": 1952,
+      "y": 1140,
+      "width": 170,
+      "height": 50,
+      "render": "compact"
+    },
+    {
+      "entity": "n_claimidentity",
+      "zone": "z_sec_identity",
+      "x": 68,
+      "y": 4956,
+      "width": 170,
+      "height": 50,
+      "render": "compact"
+    },
+    {
+      "entity": "n_claimsidentityprovider",
+      "zone": "z_sec_identity",
+      "x": 252,
+      "y": 4956,
+      "width": 170,
+      "height": 50,
+      "render": "compact"
+    },
+    {
+      "entity": "n_claimsidentityresolver",
+      "zone": "z_sec_identity",
+      "x": 436,
+      "y": 4956,
+      "width": 170,
+      "height": 50,
+      "render": "compact"
+    },
+    {
+      "entity": "n_clarifyoption",
+      "zone": "z_chat",
+      "x": 1216,
+      "y": 1204,
+      "width": 170,
+      "height": 50,
+      "render": "compact"
+    },
+    {
+      "entity": "n_clarifyrequest",
+      "zone": "z_chat",
+      "x": 1400,
+      "y": 1204,
+      "width": 170,
+      "height": 50,
+      "render": "compact"
+    },
+    {
+      "entity": "n_clarifyscope",
+      "zone": "z_chat",
+      "x": 1584,
+      "y": 1204,
+      "width": 170,
+      "height": 50,
+      "render": "compact"
+    },
+    {
+      "entity": "n_composedcontext",
+      "zone": "z_agent_comp",
+      "x": 2548,
+      "y": 2314,
+      "width": 170,
+      "height": 50,
+      "render": "compact"
+    },
+    {
+      "entity": "n_compositionmanifest",
+      "zone": "z_agent_comp",
+      "x": 2732,
+      "y": 2314,
+      "width": 170,
+      "height": 50,
+      "render": "compact"
+    },
+    {
+      "entity": "n_configloader",
+      "zone": "z_proj_settings",
+      "x": 1258,
+      "y": 4326,
+      "width": 170,
+      "height": 50,
+      "render": "compact"
+    },
+    {
+      "entity": "n_contentnode",
+      "zone": "z_editor",
+      "x": 1260,
+      "y": 100,
+      "width": 170,
+      "height": 50,
+      "render": "compact"
+    },
+    {
+      "entity": "n_contentnodekind",
+      "zone": "z_editor",
+      "x": 1444,
+      "y": 100,
+      "width": 170,
+      "height": 50,
+      "render": "compact"
+    },
+    {
+      "entity": "n_contenttypes",
+      "zone": "z_res_core",
+      "x": 1274,
+      "y": 368,
+      "width": 170,
+      "height": 50,
+      "render": "compact"
+    },
+    {
+      "entity": "n_contextassembler",
+      "zone": "z_mem_context",
+      "x": 74,
+      "y": 440,
+      "width": 170,
+      "height": 50,
+      "render": "compact"
+    },
+    {
+      "entity": "n_contextcheckpointrestoretool",
+      "zone": "z_mem_tools",
+      "x": 620,
+      "y": 640,
+      "width": 170,
+      "height": 50,
+      "render": "compact"
+    },
+    {
+      "entity": "n_contextcheckpointsettool",
+      "zone": "z_mem_tools",
+      "x": 68,
+      "y": 704,
+      "width": 170,
+      "height": 50,
+      "render": "compact"
+    },
+    {
+      "entity": "n_contextitem",
+      "zone": "z_agent_comp",
+      "x": 2916,
+      "y": 2314,
+      "width": 170,
+      "height": 50,
+      "render": "compact"
+    },
+    {
+      "entity": "n_contextplacement",
+      "zone": "z_agent_comp",
+      "x": 2364,
+      "y": 2378,
+      "width": 170,
+      "height": 50,
+      "render": "compact"
+    },
+    {
+      "entity": "n_contextretention",
+      "zone": "z_chat",
+      "x": 1768,
+      "y": 1204,
+      "width": 170,
+      "height": 50,
+      "render": "compact"
+    },
+    {
+      "entity": "n_contributortotal",
+      "zone": "z_agent_comp",
+      "x": 2548,
+      "y": 2378,
+      "width": 170,
+      "height": 50,
+      "render": "compact"
+    },
+    {
+      "entity": "n_conversation",
+      "zone": "z_chat",
+      "x": 1952,
+      "y": 1204,
+      "width": 170,
+      "height": 50,
+      "render": "compact"
+    },
+    {
+      "entity": "n_conversioncard",
+      "zone": "z_formats",
+      "x": 3314,
+      "y": 2250,
+      "width": 170,
+      "height": 50,
+      "render": "compact"
+    },
+    {
+      "entity": "n_credentialsmiddleware",
+      "zone": "z_llm_middleware",
+      "x": -750,
+      "y": 2300,
+      "width": 220,
+      "height": 50,
+      "render": "compact"
+    },
+    {
+      "entity": "n_datachannel",
+      "zone": "z_mem_kv",
+      "x": 436,
+      "y": 164,
+      "width": 170,
+      "height": 50,
+      "render": "compact"
+    },
+    {
+      "entity": "n_dataorigin",
+      "zone": "z_sec_zones",
+      "x": 252,
+      "y": 3896,
+      "width": 170,
+      "height": 50,
+      "render": "compact"
+    },
+    {
+      "entity": "n_directoryskillsource",
+      "zone": "z_skills_sources",
+      "x": 2266,
+      "y": 402,
+      "width": 170,
+      "height": 50,
+      "render": "compact"
+    },
+    {
+      "entity": "n_directoryskillsourcefactory",
+      "zone": "z_skills_sources",
+      "x": 2450,
+      "y": 402,
+      "width": 170,
+      "height": 50,
+      "render": "compact"
+    },
+    {
+      "entity": "n_doubtcause",
+      "zone": "z_sec_zones",
+      "x": 436,
+      "y": 3896,
+      "width": 170,
+      "height": 50,
+      "render": "compact"
+    },
+    {
+      "entity": "n_dpapifilesecretstore",
+      "zone": "z_sec_secrets_dpapi",
+      "x": 82,
+      "y": 4832,
+      "width": 170,
+      "height": 50,
+      "render": "compact"
+    },
+    {
+      "entity": "n_dpapisecrets",
+      "zone": "z_sec_secrets_dpapi",
+      "x": 266,
+      "y": 4832,
+      "width": 170,
+      "height": 50,
+      "render": "compact"
+    },
+    {
+      "entity": "n_edgeclassifier",
+      "zone": "z_sec_zones",
+      "x": 620,
+      "y": 3896,
+      "width": 170,
+      "height": 50,
+      "render": "compact"
+    },
+    {
+      "entity": "n_edgeledger",
+      "zone": "z_sec_zones",
+      "x": 68,
+      "y": 3960,
+      "width": 170,
+      "height": 50,
+      "render": "compact"
+    },
+    {
+      "entity": "n_edgetraffic",
+      "zone": "z_sec_zones",
+      "x": 252,
+      "y": 3960,
+      "width": 170,
+      "height": 50,
+      "render": "compact"
+    },
+    {
+      "entity": "n_embeddedjsonschemaprovider",
+      "zone": "z_editor",
+      "x": 1628,
+      "y": 100,
+      "width": 170,
+      "height": 50,
+      "render": "compact"
+    },
+    {
+      "entity": "n_faultstage",
+      "zone": "z_tool_stages",
+      "x": 2916,
+      "y": 1408,
+      "width": 170,
+      "height": 50,
+      "render": "compact"
+    },
+    {
+      "entity": "n_filebucket",
+      "zone": "z_proj_core",
+      "x": 1258,
+      "y": 3658,
+      "width": 170,
+      "height": 50,
+      "render": "compact"
+    },
+    {
+      "entity": "n_filecontentbrowser",
+      "zone": "z_editor",
+      "x": 1812,
+      "y": 100,
+      "width": 170,
+      "height": 50,
+      "render": "compact"
+    },
+    {
+      "entity": "n_filecontentsource",
+      "zone": "z_editor",
+      "x": 1260,
+      "y": 164,
+      "width": 170,
+      "height": 50,
+      "render": "compact"
+    },
+    {
+      "entity": "n_fileresourceprovider",
+      "zone": "z_res_core",
+      "x": 1458,
+      "y": 368,
+      "width": 170,
+      "height": 50,
+      "render": "compact"
+    },
+    {
+      "entity": "n_filesecretaclstore",
+      "zone": "z_sec_secrets_domain",
+      "x": 266,
+      "y": 4530,
+      "width": 170,
+      "height": 50,
+      "render": "compact"
+    },
+    {
+      "entity": "n_filesecretstore",
+      "zone": "z_sec_secrets_domain",
+      "x": 450,
+      "y": 4530,
+      "width": 170,
+      "height": 50,
+      "render": "compact"
+    },
+    {
+      "entity": "n_fileskillsourcestore",
+      "zone": "z_skills_sources",
+      "x": 2634,
+      "y": 402,
+      "width": 170,
+      "height": 50,
+      "render": "compact"
+    },
+    {
+      "entity": "n_fileskilltruststore",
+      "zone": "z_skills_sources",
+      "x": 2818,
+      "y": 402,
+      "width": 170,
+      "height": 50,
+      "render": "compact"
+    },
+    {
+      "entity": "n_filetokenusagestore",
+      "zone": "z_mem_accounting",
+      "x": -20,
+      "y": 2250,
+      "width": 170,
+      "height": 50,
+      "render": "compact"
+    },
+    {
+      "entity": "n_formatconverterregistry",
+      "zone": "z_formats",
+      "x": 3498,
+      "y": 2250,
+      "width": 170,
+      "height": 50,
+      "render": "compact"
+    },
+    {
+      "entity": "n_functioncall",
+      "zone": "z_tool_contracts",
+      "x": 2364,
+      "y": 1106,
+      "width": 170,
+      "height": 50,
+      "render": "compact"
+    },
+    {
+      "entity": "n_generationattempt",
+      "zone": "z_llm_turn",
+      "x": 0,
+      "y": 1700,
+      "width": 170,
+      "height": 50,
+      "render": "compact"
+    },
+    {
+      "entity": "n_hostservices",
+      "zone": "z_sec_sandbox",
+      "x": 620,
+      "y": 4134,
+      "width": 170,
+      "height": 50,
+      "render": "compact"
+    },
+    {
+      "entity": "n_hubappearancestore",
+      "zone": "z_proj_settings",
+      "x": 1442,
+      "y": 4326,
+      "width": 170,
+      "height": 50,
+      "render": "compact"
+    },
+    {
+      "entity": "n_iagentcontributor",
+      "zone": "z_agent_comp",
+      "x": 2732,
+      "y": 2378,
+      "width": 170,
+      "height": 50,
+      "render": "compact"
+    },
+    {
+      "entity": "n_iagentfeature",
+      "zone": "z_agent_comp",
+      "x": 2916,
+      "y": 2378,
+      "width": 170,
+      "height": 50,
+      "render": "compact"
+    },
+    {
+      "entity": "n_iagentlibrarian",
+      "zone": "z_skills_library",
+      "x": 2634,
+      "y": 100,
+      "width": 170,
+      "height": 50,
+      "render": "compact"
+    },
+    {
+      "entity": "n_iagentsession",
+      "zone": "z_mem_kv",
+      "x": 620,
+      "y": 164,
+      "width": 170,
+      "height": 50,
+      "render": "compact"
+    },
+    {
+      "entity": "n_iagentspawner",
+      "zone": "z_agentlife",
+      "x": 1584,
+      "y": 1562,
+      "width": 170,
+      "height": 50,
+      "render": "compact"
+    },
+    {
+      "entity": "n_ibackgroundtaskhost",
+      "zone": "z_mem_kv",
+      "x": 68,
+      "y": 228,
+      "width": 170,
+      "height": 50,
+      "render": "compact"
+    },
+    {
+      "entity": "n_iblobstore",
+      "zone": "z_mem_kv",
+      "x": 252,
+      "y": 228,
+      "width": 170,
+      "height": 50,
+      "render": "compact"
+    },
+    {
+      "entity": "n_ibucket",
+      "zone": "z_proj_core",
+      "x": 1442,
+      "y": 3658,
+      "width": 170,
+      "height": 50,
+      "render": "compact"
+    },
+    {
+      "entity": "n_icapabilitygate",
+      "zone": "z_sec_sandbox",
+      "x": 804,
+      "y": 4134,
+      "width": 170,
+      "height": 50,
+      "render": "compact"
+    },
+    {
+      "entity": "n_ichatstore",
+      "zone": "z_chat",
+      "x": 1216,
+      "y": 1268,
+      "width": 170,
+      "height": 50,
+      "render": "compact"
+    },
+    {
+      "entity": "n_icontentbrowser",
+      "zone": "z_editor",
+      "x": 1444,
+      "y": 164,
+      "width": 170,
+      "height": 50,
+      "render": "compact"
+    },
+    {
+      "entity": "n_icontentsource",
+      "zone": "z_editor",
+      "x": 1628,
+      "y": 164,
+      "width": 170,
+      "height": 50,
+      "render": "compact"
+    },
+    {
+      "entity": "n_ieditableskillsource",
+      "zone": "z_skills_sources",
+      "x": 3002,
+      "y": 402,
+      "width": 170,
+      "height": 50,
+      "render": "compact"
+    },
+    {
+      "entity": "n_iformatconverter",
+      "zone": "z_formats",
+      "x": 3130,
+      "y": 2314,
+      "width": 170,
+      "height": 50,
+      "render": "compact"
+    },
+    {
+      "entity": "n_iidentity",
+      "zone": "z_sec_identity",
+      "x": 68,
+      "y": 5020,
+      "width": 170,
+      "height": 50,
+      "render": "compact"
+    },
+    {
+      "entity": "n_iidentityprovider",
+      "zone": "z_sec_identity",
+      "x": 252,
+      "y": 5020,
+      "width": 170,
+      "height": 50,
+      "render": "compact"
+    },
+    {
+      "entity": "n_iinstanceprobe",
+      "zone": "z_proj_instances",
+      "x": 1258,
+      "y": 3960,
+      "width": 170,
+      "height": 50,
+      "render": "compact"
+    },
+    {
+      "entity": "n_iinstanceregistry",
+      "zone": "z_proj_instances",
+      "x": 1442,
+      "y": 3960,
+      "width": 170,
+      "height": 50,
+      "render": "compact"
+    },
+    {
+      "entity": "n_iinstancespawner",
+      "zone": "z_proj_instances",
+      "x": 1626,
+      "y": 3960,
+      "width": 170,
+      "height": 50,
+      "render": "compact"
+    },
+    {
+      "entity": "n_ijsonschemaprovider",
+      "zone": "z_editor",
+      "x": 1812,
+      "y": 164,
+      "width": 170,
+      "height": 50,
+      "render": "compact"
+    },
+    {
+      "entity": "n_ikeyvaluestore",
+      "zone": "z_mem_kv",
+      "x": 436,
+      "y": 228,
+      "width": 170,
+      "height": 50,
+      "render": "compact"
+    },
+    {
+      "entity": "n_illmclient",
+      "zone": "z_llm_providers",
+      "x": -1420,
+      "y": 2090,
+      "width": 170,
+      "height": 50,
+      "render": "compact"
+    },
+    {
+      "entity": "n_illmclientresolver",
+      "zone": "z_llm_providers",
+      "x": -1420,
+      "y": 1980,
+      "width": 170,
+      "height": 50,
+      "render": "compact"
+    },
+    {
+      "entity": "n_illmgateway",
+      "zone": "z_llm_providers",
+      "x": -1390,
+      "y": 1620,
+      "width": 170,
+      "height": 50,
+      "render": "compact"
+    },
+    {
+      "entity": "n_illmmiddleware",
+      "zone": null,
+      "x": -1170,
+      "y": 1290,
+      "width": 200,
+      "height": 50,
+      "render": "compact"
+    },
+    {
+      "entity": "n_illmproviderdescriptor",
+      "zone": "z_llm_providers",
+      "x": -1940,
+      "y": 1920,
+      "width": 170,
+      "height": 50,
+      "render": "compact"
+    },
+    {
+      "entity": "n_imcptool",
+      "zone": "z_tool_host",
+      "x": 2364,
+      "y": 1646,
+      "width": 170,
+      "height": 50,
+      "render": "compact"
+    },
+    {
+      "entity": "n_imodelcataloginfo",
+      "zone": "z_llm_turn",
+      "x": 710,
+      "y": 1650,
+      "width": 170,
+      "height": 50,
+      "render": "compact"
+    },
+    {
+      "entity": "n_imodelmanagementservice",
+      "zone": "z_llm_providers",
+      "x": -1916,
+      "y": 1654,
+      "width": 170,
+      "height": 50,
+      "render": "compact"
+    },
+    {
+      "entity": "n_inodescope",
+      "zone": "z_tool_progress",
+      "x": 2916,
+      "y": 1948,
+      "width": 170,
+      "height": 50,
+      "render": "compact"
+    },
+    {
+      "entity": "n_ipermissionmanager",
+      "zone": "z_sec_permissions",
+      "x": 252,
+      "y": 3658,
+      "width": 170,
+      "height": 50,
+      "render": "compact"
+    },
+    {
+      "entity": "n_iproject",
+      "zone": "z_proj_core",
+      "x": 1626,
+      "y": 3658,
+      "width": 170,
+      "height": 50,
+      "render": "compact"
+    },
+    {
+      "entity": "n_iprojectbackend",
+      "zone": "z_proj_core",
+      "x": 1810,
+      "y": 3658,
+      "width": 170,
+      "height": 50,
+      "render": "compact"
+    },
+    {
+      "entity": "n_iprojectprovider",
+      "zone": "z_proj_core",
+      "x": 1258,
+      "y": 3722,
+      "width": 170,
+      "height": 50,
+      "render": "compact"
+    },
+    {
+      "entity": "n_iprovideraccountinfo",
+      "zone": "z_llm_turn",
+      "x": 520,
+      "y": 1480,
+      "width": 170,
+      "height": 50,
+      "render": "compact"
+    },
+    {
+      "entity": "n_ireasoningcatalog",
+      "zone": "z_llm_turn",
+      "x": 704,
+      "y": 1480,
+      "width": 170,
+      "height": 50,
+      "render": "compact"
+    },
+    {
+      "entity": "n_iresourcecontainermaker",
+      "zone": "z_res_core",
+      "x": 1642,
+      "y": 368,
+      "width": 170,
+      "height": 50,
+      "render": "compact"
+    },
+    {
+      "entity": "n_iresourceprovider",
+      "zone": "z_res_core",
+      "x": 1826,
+      "y": 368,
+      "width": 170,
+      "height": 50,
+      "render": "compact"
+    },
+    {
+      "entity": "n_iresourceremover",
+      "zone": "z_res_core",
+      "x": 1274,
+      "y": 432,
+      "width": 170,
+      "height": 50,
+      "render": "compact"
+    },
+    {
+      "entity": "n_iresourcewriter",
+      "zone": "z_res_core",
+      "x": 1458,
+      "y": 432,
+      "width": 170,
+      "height": 50,
+      "render": "compact"
+    },
+    {
+      "entity": "n_isandbox",
+      "zone": "z_sec_sandbox",
+      "x": 68,
+      "y": 4198,
+      "width": 170,
+      "height": 50,
+      "render": "compact"
+    },
+    {
+      "entity": "n_ischemacontributor",
+      "zone": "z_editor",
+      "x": 1260,
+      "y": 228,
+      "width": 170,
+      "height": 50,
+      "render": "compact"
+    },
+    {
+      "entity": "n_isecretaccesspolicy",
+      "zone": "z_sec_secrets_domain",
+      "x": 634,
+      "y": 4530,
+      "width": 170,
+      "height": 50,
+      "render": "compact"
+    },
+    {
+      "entity": "n_isecretaclstore",
+      "zone": "z_sec_secrets_domain",
+      "x": 818,
+      "y": 4530,
+      "width": 170,
+      "height": 50,
+      "render": "compact"
+    },
+    {
+      "entity": "n_isecretresolver",
+      "zone": "z_sec_secrets_domain",
+      "x": 82,
+      "y": 4594,
+      "width": 170,
+      "height": 50,
+      "render": "compact"
+    },
+    {
+      "entity": "n_isecretstore",
+      "zone": "z_sec_secrets_domain",
+      "x": 266,
+      "y": 4594,
+      "width": 170,
+      "height": 50,
+      "render": "compact"
+    },
+    {
+      "entity": "n_ishell",
+      "zone": "z_sec_sandbox",
+      "x": 252,
+      "y": 4198,
+      "width": 170,
+      "height": 50,
+      "render": "compact"
+    },
+    {
+      "entity": "n_iskillcapabilityprobe",
+      "zone": "z_skills_library",
+      "x": 2818,
+      "y": 100,
+      "width": 170,
+      "height": 50,
+      "render": "compact"
+    },
+    {
+      "entity": "n_iskillsession",
+      "zone": "z_skills_session",
+      "x": 2266,
+      "y": 704,
+      "width": 170,
+      "height": 50,
+      "render": "compact"
+    },
+    {
+      "entity": "n_iskillsource",
+      "zone": "z_skills_sources",
+      "x": 2266,
+      "y": 466,
+      "width": 170,
+      "height": 50,
+      "render": "compact"
+    },
+    {
+      "entity": "n_iskillsourcefactory",
+      "zone": "z_skills_sources",
+      "x": 2450,
+      "y": 466,
+      "width": 170,
+      "height": 50,
+      "render": "compact"
+    },
+    {
+      "entity": "n_iskillsourcestore",
+      "zone": "z_skills_sources",
+      "x": 2634,
+      "y": 466,
+      "width": 170,
+      "height": 50,
+      "render": "compact"
+    },
+    {
+      "entity": "n_iskilltruststore",
+      "zone": "z_skills_sources",
+      "x": 2818,
+      "y": 466,
+      "width": 170,
+      "height": 50,
+      "render": "compact"
+    },
+    {
+      "entity": "n_isplaplugin",
+      "zone": "z_plugin_contracts",
+      "x": 2364,
+      "y": 2780,
+      "width": 170,
+      "height": 50,
+      "render": "compact"
+    },
+    {
+      "entity": "n_isplapluginaction",
+      "zone": "z_plugin_contracts",
+      "x": 2548,
+      "y": 2780,
+      "width": 170,
+      "height": 50,
+      "render": "compact"
+    },
+    {
+      "entity": "n_isplapluginpanelprovider",
+      "zone": "z_plugin_contracts",
+      "x": 2732,
+      "y": 2780,
+      "width": 170,
+      "height": 50,
+      "render": "compact"
+    },
+    {
+      "entity": "n_isplapluginpanelsession",
+      "zone": "z_tool_host",
+      "x": 2548,
+      "y": 1646,
+      "width": 170,
+      "height": 50,
+      "render": "compact"
+    },
+    {
+      "entity": "n_isplapluginselfcheck",
+      "zone": "z_plugin_contracts",
+      "x": 2364,
+      "y": 2844,
+      "width": 170,
+      "height": 50,
+      "render": "compact"
+    },
+    {
+      "entity": "n_isplapluginuicommands",
+      "zone": "z_plugin_contracts",
+      "x": 2548,
+      "y": 2844,
+      "width": 170,
+      "height": 50,
+      "render": "compact"
+    },
+    {
+      "entity": "n_itaglibrarian",
+      "zone": "z_skills_library",
+      "x": 3002,
+      "y": 100,
+      "width": 170,
+      "height": 50,
+      "render": "compact"
+    },
+    {
+      "entity": "n_itokenusagereporter",
+      "zone": "z_mem_accounting",
+      "x": 210,
+      "y": 2160,
+      "width": 170,
+      "height": 50,
+      "render": "compact"
+    },
+    {
+      "entity": "n_itokenusagestore",
+      "zone": "z_mem_accounting",
+      "x": -20,
+      "y": 2160,
+      "width": 170,
+      "height": 50,
+      "render": "compact"
+    },
+    {
+      "entity": "n_itoolargumentpolicy",
+      "zone": "z_sec_permissions",
+      "x": 436,
+      "y": 3658,
+      "width": 170,
+      "height": 50,
+      "render": "compact"
+    },
+    {
+      "entity": "n_itoolhost",
+      "zone": "z_tool_host",
+      "x": 2732,
+      "y": 1646,
+      "width": 170,
+      "height": 50,
+      "render": "compact"
+    },
+    {
+      "entity": "n_itoolmiddleware",
+      "zone": "z_tool_contracts",
+      "x": 2548,
+      "y": 1106,
+      "width": 170,
+      "height": 50,
+      "render": "compact"
+    },
+    {
+      "entity": "n_itoolsetsession",
+      "zone": "z_toolsets",
+      "x": 2364,
+      "y": 3192,
+      "width": 170,
+      "height": 50,
+      "render": "compact"
+    },
+    {
+      "entity": "n_iworkspace",
+      "zone": "z_sec_sandbox",
+      "x": 436,
+      "y": 4198,
+      "width": 170,
+      "height": 50,
+      "render": "compact"
+    },
+    {
+      "entity": "n_identityconverter",
+      "zone": "z_formats",
+      "x": 3314,
+      "y": 2314,
+      "width": 170,
+      "height": 50,
+      "render": "compact"
+    },
+    {
+      "entity": "n_identityproviderconfig",
+      "zone": "z_sec_identity",
+      "x": 436,
+      "y": 5020,
+      "width": 170,
+      "height": 50,
+      "render": "compact"
+    },
+    {
+      "entity": "n_identityproviderloader",
+      "zone": "z_sec_identity",
+      "x": 68,
+      "y": 5084,
+      "width": 170,
+      "height": 50,
+      "render": "compact"
+    },
+    {
+      "entity": "n_imageviewtool",
+      "zone": "z_mem_tools",
+      "x": 252,
+      "y": 704,
+      "width": 170,
+      "height": 50,
+      "render": "compact"
+    },
+    {
+      "entity": "n_inboxitemkind",
+      "zone": "z_chat",
+      "x": 1400,
+      "y": 1268,
+      "width": 170,
+      "height": 50,
+      "render": "compact"
+    },
+    {
+      "entity": "n_instanceinfo",
+      "zone": "z_proj_instances",
+      "x": 1810,
+      "y": 3960,
+      "width": 170,
+      "height": 50,
+      "render": "compact"
+    },
+    {
+      "entity": "n_instancelock",
+      "zone": "z_proj_instances",
+      "x": 1994,
+      "y": 3960,
+      "width": 170,
+      "height": 50,
+      "render": "compact"
+    },
+    {
+      "entity": "n_instancerecord",
+      "zone": "z_proj_instances",
+      "x": 1258,
+      "y": 4024,
+      "width": 170,
+      "height": 50,
+      "render": "compact"
+    },
+    {
+      "entity": "n_instancestate",
+      "zone": "z_proj_instances",
+      "x": 1442,
+      "y": 4024,
+      "width": 170,
+      "height": 50,
+      "render": "compact"
+    },
+    {
+      "entity": "n_instancestates",
+      "zone": "z_proj_instances",
+      "x": 1626,
+      "y": 4024,
+      "width": 170,
+      "height": 50,
+      "render": "compact"
+    },
+    {
+      "entity": "n_islandidentity",
+      "zone": "z_sec_zones",
+      "x": 436,
+      "y": 3960,
+      "width": 170,
+      "height": 50,
+      "render": "compact"
+    },
+    {
+      "entity": "n_jsonschema",
+      "zone": "z_editor",
+      "x": 1444,
+      "y": 228,
+      "width": 170,
+      "height": 50,
+      "render": "compact"
+    },
+    {
+      "entity": "n_jsontoyamlconverter",
+      "zone": "z_formats",
+      "x": 3498,
+      "y": 2314,
+      "width": 170,
+      "height": 50,
+      "render": "compact"
+    },
+    {
+      "entity": "n_keyvaluestore",
+      "zone": "z_mem_kv",
+      "x": 620,
+      "y": 228,
+      "width": 170,
+      "height": 50,
+      "render": "compact"
+    },
+    {
+      "entity": "n_knownprojectdto",
+      "zone": "z_proj_instances",
+      "x": 1810,
+      "y": 4024,
+      "width": 170,
+      "height": 50,
+      "render": "compact"
+    },
+    {
+      "entity": "n_knownprojectsresponse",
+      "zone": "z_proj_instances",
+      "x": 1994,
+      "y": 4024,
+      "width": 170,
+      "height": 50,
+      "render": "compact"
+    },
+    {
+      "entity": "n_kventry",
+      "zone": "z_mem_kv",
+      "x": 68,
+      "y": 292,
+      "width": 170,
+      "height": 50,
+      "render": "compact"
+    },
+    {
+      "entity": "n_kvglob",
+      "zone": "z_mem_kv",
+      "x": 252,
+      "y": 292,
+      "width": 170,
+      "height": 50,
+      "render": "compact"
+    },
+    {
+      "entity": "n_llmsettings",
+      "zone": "z_llm_providers",
+      "x": -1410,
+      "y": 2170,
+      "width": 170,
+      "height": 50,
+      "render": "compact"
+    },
+    {
+      "entity": "n_llmerrorkind",
+      "zone": "z_llm_turn",
+      "x": 270,
+      "y": 1730,
+      "width": 170,
+      "height": 50,
+      "render": "compact"
+    },
+    {
+      "entity": "n_llmpipelineblueprint",
+      "zone": null,
+      "x": -750,
+      "y": 1560,
+      "width": 220,
+      "height": 50,
+      "render": "compact"
+    },
+    {
+      "entity": "n_llmpipelinestage",
+      "zone": "z_llm_middleware",
+      "x": -470,
+      "y": 1550,
+      "width": 200,
+      "height": 50,
+      "render": "compact"
+    },
+    {
+      "entity": "n_llmproviderdescriptor",
+      "zone": "z_llm_providers",
+      "x": -1670,
+      "y": 1920,
+      "width": 170,
+      "height": 50,
+      "render": "compact"
+    },
+    {
+      "entity": "n_llmproviderregistry",
+      "zone": "z_llm_providers",
+      "x": -1670,
+      "y": 1820,
+      "width": 170,
+      "height": 50,
+      "render": "compact"
+    },
+    {
+      "entity": "n_llmrequestexception",
+      "zone": "z_llm_turn",
+      "x": 20,
+      "y": 1960,
+      "width": 170,
+      "height": 50,
+      "render": "compact"
+    },
+    {
+      "entity": "n_llmturncontext",
+      "zone": "z_llm_turn",
+      "x": 490,
+      "y": 1560,
+      "width": 170,
+      "height": 50,
+      "render": "compact"
+    },
+    {
+      "entity": "n_llmturnresult",
+      "zone": "z_llm_turn",
+      "x": 20,
+      "y": 1800,
+      "width": 170,
+      "height": 50,
+      "render": "compact"
+    },
+    {
+      "entity": "n_llmturnstatus",
+      "zone": "z_llm_turn",
+      "x": 270,
+      "y": 1500,
+      "width": 170,
+      "height": 50,
+      "render": "compact"
+    },
+    {
+      "entity": "n_loadedplugin",
+      "zone": "z_plugin_loading",
+      "x": 2364,
+      "y": 2954,
+      "width": 170,
+      "height": 50,
+      "render": "compact"
+    },
+    {
+      "entity": "n_localidentity",
+      "zone": "z_sec_identity",
+      "x": 252,
+      "y": 5084,
+      "width": 170,
+      "height": 50,
+      "render": "compact"
+    },
+    {
+      "entity": "n_localproject",
+      "zone": "z_proj_core",
+      "x": 1442,
+      "y": 3722,
+      "width": 170,
+      "height": 50,
+      "render": "compact"
+    },
+    {
+      "entity": "n_localprojectbackend",
+      "zone": "z_proj_core",
+      "x": 1626,
+      "y": 3722,
+      "width": 170,
+      "height": 50,
+      "render": "compact"
+    },
+    {
+      "entity": "n_localprojectprovider",
+      "zone": "z_proj_core",
+      "x": 1810,
+      "y": 3722,
+      "width": 170,
+      "height": 50,
+      "render": "compact"
+    },
+    {
+      "entity": "n_localshell",
+      "zone": "z_sec_sandbox",
+      "x": 620,
+      "y": 4198,
+      "width": 170,
+      "height": 50,
+      "render": "compact"
+    },
+    {
+      "entity": "n_localworkspace",
+      "zone": "z_sec_sandbox",
+      "x": 804,
+      "y": 4198,
+      "width": 170,
+      "height": 50,
+      "render": "compact"
+    },
+    {
+      "entity": "n_machinelayer",
+      "zone": "z_proj_settings",
+      "x": 1626,
+      "y": 4326,
+      "width": 170,
+      "height": 50,
+      "render": "compact"
+    },
+    {
+      "entity": "n_machinelayerscope",
+      "zone": "z_proj_settings",
+      "x": 1810,
+      "y": 4326,
+      "width": 170,
+      "height": 50,
+      "render": "compact"
+    },
+    {
+      "entity": "n_manifestentry",
+      "zone": "z_agent_comp",
+      "x": 2364,
+      "y": 2442,
+      "width": 170,
+      "height": 50,
+      "render": "compact"
+    },
+    {
+      "entity": "n_markmanager",
+      "zone": "z_mem_context",
+      "x": 258,
+      "y": 440,
+      "width": 170,
+      "height": 50,
+      "render": "compact"
+    },
+    {
+      "entity": "n_markrollbacktool",
+      "zone": "z_mem_tools",
+      "x": 436,
+      "y": 704,
+      "width": 170,
+      "height": 50,
+      "render": "compact"
+    },
+    {
+      "entity": "n_marksettool",
+      "zone": "z_mem_tools",
+      "x": 620,
+      "y": 704,
+      "width": 170,
+      "height": 50,
+      "render": "compact"
+    },
+    {
+      "entity": "n_mcphost",
+      "zone": "z_tool_host",
+      "x": 2916,
+      "y": 1646,
+      "width": 170,
+      "height": 50,
+      "render": "compact"
+    },
+    {
+      "entity": "n_memorybucket",
+      "zone": "z_proj_core",
+      "x": 1258,
+      "y": 3786,
+      "width": 170,
+      "height": 50,
+      "render": "compact"
+    },
+    {
+      "entity": "n_memoryprojectbackend",
+      "zone": "z_proj_core",
+      "x": 1442,
+      "y": 3786,
+      "width": 170,
+      "height": 50,
+      "render": "compact"
+    },
+    {
+      "entity": "n_metricseries",
+      "zone": "z_observability",
+      "x": 1584,
+      "y": 1856,
+      "width": 170,
+      "height": 50,
+      "render": "compact"
+    },
+    {
+      "entity": "n_modelinfo",
+      "zone": "z_llm_providers",
+      "x": -1916,
+      "y": 1718,
+      "width": 170,
+      "height": 50,
+      "render": "compact"
+    },
+    {
+      "entity": "n_mountaccess",
+      "zone": "z_sec_sandbox",
+      "x": 68,
+      "y": 4262,
+      "width": 170,
+      "height": 50,
+      "render": "compact"
+    },
+    {
+      "entity": "n_mountresolver",
+      "zone": "z_proj_settings",
+      "x": 1994,
+      "y": 4326,
+      "width": 170,
+      "height": 50,
+      "render": "compact"
+    },
+    {
+      "entity": "n_mounttrust",
+      "zone": "z_sec_sandbox",
+      "x": 252,
+      "y": 4262,
+      "width": 170,
+      "height": 50,
+      "render": "compact"
+    },
+    {
+      "entity": "n_nullscope",
+      "zone": "z_observability",
+      "x": 1768,
+      "y": 1856,
+      "width": 170,
+      "height": 50,
+      "render": "compact"
+    },
+    {
+      "entity": "n_outputtarget",
+      "zone": "z_tool_host",
+      "x": 3100,
+      "y": 1646,
+      "width": 170,
+      "height": 50,
+      "render": "compact"
+    },
+    {
+      "entity": "n_participantroles",
+      "zone": "z_proj_instances",
+      "x": 1258,
+      "y": 4088,
+      "width": 170,
+      "height": 50,
+      "render": "compact"
+    },
+    {
+      "entity": "n_passthroughsandbox",
+      "zone": "z_sec_sandbox",
+      "x": 436,
+      "y": 4262,
+      "width": 170,
+      "height": 50,
+      "render": "compact"
+    },
+    {
+      "entity": "n_pathboundary",
+      "zone": "z_sec_sandbox",
+      "x": 620,
+      "y": 4262,
+      "width": 170,
+      "height": 50,
+      "render": "compact"
+    },
+    {
+      "entity": "n_pathboundaryexception",
+      "zone": "z_sec_sandbox",
+      "x": 804,
+      "y": 4262,
+      "width": 170,
+      "height": 50,
+      "render": "compact"
+    },
+    {
+      "entity": "n_pathlanding",
+      "zone": "z_sec_sandbox",
+      "x": 68,
+      "y": 4326,
+      "width": 170,
+      "height": 50,
+      "render": "compact"
+    },
+    {
+      "entity": "n_pathrefusal",
+      "zone": "z_sec_sandbox",
+      "x": 252,
+      "y": 4326,
+      "width": 170,
+      "height": 50,
+      "render": "compact"
+    },
+    {
+      "entity": "n_permissiondecision",
+      "zone": "z_sec_permissions",
+      "x": 620,
+      "y": 3658,
+      "width": 170,
+      "height": 50,
+      "render": "compact"
+    },
+    {
+      "entity": "n_permissionmanager",
+      "zone": "z_sec_permissions",
+      "x": 68,
+      "y": 3722,
+      "width": 170,
+      "height": 50,
+      "render": "compact"
+    },
+    {
+      "entity": "n_permissionresult",
+      "zone": "z_sec_permissions",
+      "x": 252,
+      "y": 3722,
+      "width": 170,
+      "height": 50,
+      "render": "compact"
+    },
+    {
+      "entity": "n_permissionscope",
+      "zone": "z_sec_permissions",
+      "x": 436,
+      "y": 3722,
+      "width": 170,
+      "height": 50,
+      "render": "compact"
+    },
+    {
+      "entity": "n_permissionstage",
+      "zone": "z_tool_stages",
+      "x": 2364,
+      "y": 1472,
+      "width": 170,
+      "height": 50,
+      "render": "compact"
+    },
+    {
+      "entity": "n_permissionverdict",
+      "zone": "z_sec_permissions",
+      "x": 620,
+      "y": 3722,
+      "width": 170,
+      "height": 50,
+      "render": "compact"
+    },
+    {
+      "entity": "n_permissivesecretaccesspolicy",
+      "zone": "z_sec_secrets_domain",
+      "x": 450,
+      "y": 4594,
+      "width": 170,
+      "height": 50,
+      "render": "compact"
+    },
+    {
+      "entity": "n_persistedorigin",
+      "zone": "z_proj_settings",
+      "x": 1258,
+      "y": 4390,
+      "width": 170,
+      "height": 50,
+      "render": "compact"
+    },
+    {
+      "entity": "n_pluginassemblyloader",
+      "zone": "z_plugin_loading",
+      "x": 2548,
+      "y": 2954,
+      "width": 170,
+      "height": 50,
+      "render": "compact"
+    },
+    {
+      "entity": "n_pluginavailabilitystage",
+      "zone": "z_tool_stages",
+      "x": 2548,
+      "y": 1472,
+      "width": 170,
+      "height": 50,
+      "render": "compact"
+    },
+    {
+      "entity": "n_plugindescriptor",
+      "zone": "z_plugin_loading",
+      "x": 2732,
+      "y": 2954,
+      "width": 170,
+      "height": 50,
+      "render": "compact"
+    },
+    {
+      "entity": "n_plugindiscovery",
+      "zone": "z_plugin_loading",
+      "x": 2916,
+      "y": 2954,
+      "width": 170,
+      "height": 50,
+      "render": "compact"
+    },
+    {
+      "entity": "n_plugineffectivestate",
+      "zone": "z_plugin_loading",
+      "x": 2364,
+      "y": 3018,
+      "width": 170,
+      "height": 50,
+      "render": "compact"
+    },
+    {
+      "entity": "n_pluginhealth",
+      "zone": "z_tool_host",
+      "x": 2364,
+      "y": 1710,
+      "width": 170,
+      "height": 50,
+      "render": "compact"
+    },
+    {
+      "entity": "n_pluginhealthstatus",
+      "zone": "z_tool_host",
+      "x": 2548,
+      "y": 1710,
+      "width": 170,
+      "height": 50,
+      "render": "compact"
+    },
+    {
+      "entity": "n_plugininstance",
+      "zone": "z_plugin_loading",
+      "x": 2548,
+      "y": 3018,
+      "width": 170,
+      "height": 50,
+      "render": "compact"
+    },
+    {
+      "entity": "n_pluginloadcontext",
+      "zone": "z_plugin_loading",
+      "x": 2732,
+      "y": 3018,
+      "width": 170,
+      "height": 50,
+      "render": "compact"
+    },
+    {
+      "entity": "n_pluginmanager",
+      "zone": "z_plugin_loading",
+      "x": 2916,
+      "y": 3018,
+      "width": 170,
+      "height": 50,
+      "render": "compact"
+    },
+    {
+      "entity": "n_pluginmeta",
+      "zone": "z_plugin_loading",
+      "x": 2364,
+      "y": 3082,
+      "width": 170,
+      "height": 50,
+      "render": "compact"
+    },
+    {
+      "entity": "n_pluginskillsource",
+      "zone": "z_skills_sources",
+      "x": 3002,
+      "y": 466,
+      "width": 170,
+      "height": 50,
+      "render": "compact"
+    },
+    {
+      "entity": "n_progresshub",
+      "zone": "z_tool_progress",
+      "x": 2364,
+      "y": 2012,
+      "width": 170,
+      "height": 50,
+      "render": "compact"
+    },
+    {
+      "entity": "n_progressnode",
+      "zone": "z_tool_progress",
+      "x": 2548,
+      "y": 2012,
+      "width": 170,
+      "height": 50,
+      "render": "compact"
+    },
+    {
+      "entity": "n_progressnodestage",
+      "zone": "z_tool_stages",
+      "x": 2732,
+      "y": 1472,
+      "width": 170,
+      "height": 50,
+      "render": "compact"
+    },
+    {
+      "entity": "n_progressscope",
+      "zone": "z_tool_progress",
+      "x": 2732,
+      "y": 2012,
+      "width": 170,
+      "height": 50,
+      "render": "compact"
+    },
+    {
+      "entity": "n_progressstate",
+      "zone": "z_tool_progress",
+      "x": 2916,
+      "y": 2012,
+      "width": 170,
+      "height": 50,
+      "render": "compact"
+    },
+    {
+      "entity": "n_progresstree",
+      "zone": "z_tool_progress",
+      "x": 2364,
+      "y": 2076,
+      "width": 170,
+      "height": 50,
+      "render": "compact"
+    },
+    {
+      "entity": "n_projectbusyexception",
+      "zone": "z_proj_instances",
+      "x": 1442,
+      "y": 4088,
+      "width": 170,
+      "height": 50,
+      "render": "compact"
+    },
+    {
+      "entity": "n_projectdescriptor",
+      "zone": "z_proj_core",
+      "x": 1626,
+      "y": 3786,
+      "width": 170,
+      "height": 50,
+      "render": "compact"
+    },
+    {
+      "entity": "n_projectfactory",
+      "zone": "z_proj_core",
+      "x": 1810,
+      "y": 3786,
+      "width": 170,
+      "height": 50,
+      "render": "compact"
+    },
+    {
+      "entity": "n_projectkvstore",
+      "zone": "z_proj_settings",
+      "x": 1442,
+      "y": 4390,
+      "width": 170,
+      "height": 50,
+      "render": "compact"
+    },
+    {
+      "entity": "n_projectmanifestexception",
+      "zone": "z_proj_settings",
+      "x": 1626,
+      "y": 4390,
+      "width": 170,
+      "height": 50,
+      "render": "compact"
+    },
+    {
+      "entity": "n_projectmount",
+      "zone": "z_sec_sandbox",
+      "x": 436,
+      "y": 4326,
+      "width": 170,
+      "height": 50,
+      "render": "compact"
+    },
+    {
+      "entity": "n_projectprofile",
+      "zone": "z_proj_core",
+      "x": 1258,
+      "y": 3850,
+      "width": 170,
+      "height": 50,
+      "render": "compact"
+    },
+    {
+      "entity": "n_projectprofiles",
+      "zone": "z_proj_core",
+      "x": 1442,
+      "y": 3850,
+      "width": 170,
+      "height": 50,
+      "render": "compact"
+    },
+    {
+      "entity": "n_providerclientresolver",
+      "zone": "z_llm_providers",
+      "x": -1420,
+      "y": 1820,
+      "width": 170,
+      "height": 50,
+      "render": "compact"
+    },
+    {
+      "entity": "n_providerfact",
+      "zone": "z_llm_turn",
+      "x": 500,
+      "y": 1780,
+      "width": 170,
+      "height": 50,
+      "render": "compact"
+    },
+    {
+      "entity": "n_providerfactkind",
+      "zone": "z_llm_turn",
+      "x": 270,
+      "y": 1800,
+      "width": 170,
+      "height": 50,
+      "render": "compact"
+    },
+    {
+      "entity": "n_providerfactscope",
+      "zone": "z_llm_turn",
+      "x": 270,
+      "y": 1870,
+      "width": 170,
+      "height": 50,
+      "render": "compact"
+    },
+    {
+      "entity": "n_providerfactsection",
+      "zone": "z_llm_turn",
+      "x": 500,
+      "y": 1690,
+      "width": 170,
+      "height": 50,
+      "render": "compact"
+    },
+    {
+      "entity": "n_providerfactseverity",
+      "zone": "z_llm_turn",
+      "x": 270,
+      "y": 1570,
+      "width": 170,
+      "height": 50,
+      "render": "compact"
+    },
+    {
+      "entity": "n_providerstatemiddleware",
+      "zone": "z_llm_middleware",
+      "x": -750,
+      "y": 1910,
+      "width": 220,
+      "height": 50,
+      "render": "compact"
+    },
+    {
+      "entity": "n_providerstatestore",
+      "zone": "z_llm_turn",
+      "x": 20,
+      "y": 1900,
+      "width": 170,
+      "height": 50,
+      "render": "compact"
+    },
+    {
+      "entity": "n_readonlyguard",
+      "zone": "z_ssh",
+      "x": 2590,
+      "y": 3628,
+      "width": 170,
+      "height": 50,
+      "render": "compact"
+    },
+    {
+      "entity": "n_reasoningcapability",
+      "zone": "z_llm_turn",
+      "x": 500,
+      "y": 1950,
+      "width": 170,
+      "height": 50,
+      "render": "compact"
+    },
+    {
+      "entity": "n_reasoningchoice",
+      "zone": "z_llm_turn",
+      "x": 500,
+      "y": 1870,
+      "width": 170,
+      "height": 50,
+      "render": "compact"
+    },
+    {
+      "entity": "n_reasoningmode",
+      "zone": "z_llm_turn",
+      "x": 270,
+      "y": 1950,
+      "width": 170,
+      "height": 50,
+      "render": "compact"
+    },
+    {
+      "entity": "n_recentevent",
+      "zone": "z_observability",
+      "x": 1216,
+      "y": 1920,
+      "width": 170,
+      "height": 50,
+      "render": "compact"
+    },
+    {
+      "entity": "n_registerframe",
+      "zone": "z_proj_instances",
+      "x": 1626,
+      "y": 4088,
+      "width": 170,
+      "height": 50,
+      "render": "compact"
+    },
+    {
+      "entity": "n_registeredinstancedto",
+      "zone": "z_proj_instances",
+      "x": 1810,
+      "y": 4088,
+      "width": 170,
+      "height": 50,
+      "render": "compact"
+    },
+    {
+      "entity": "n_registryframe",
+      "zone": "z_proj_instances",
+      "x": 1994,
+      "y": 4088,
+      "width": 170,
+      "height": 50,
+      "render": "compact"
+    },
+    {
+      "entity": "n_registryframes",
+      "zone": "z_proj_instances",
+      "x": 1258,
+      "y": 4152,
+      "width": 170,
+      "height": 50,
+      "render": "compact"
+    },
+    {
+      "entity": "n_registryjson",
+      "zone": "z_proj_instances",
+      "x": 1442,
+      "y": 4152,
+      "width": 170,
+      "height": 50,
+      "render": "compact"
+    },
+    {
+      "entity": "n_registrylistresponse",
+      "zone": "z_proj_instances",
+      "x": 1626,
+      "y": 4152,
+      "width": 170,
+      "height": 50,
+      "render": "compact"
+    },
+    {
+      "entity": "n_rememberedtoolpermission",
+      "zone": "z_sec_permissions",
+      "x": 68,
+      "y": 3786,
+      "width": 170,
+      "height": 50,
+      "render": "compact"
+    },
+    {
+      "entity": "n_repetitiondetector",
+      "zone": "z_llm_middleware",
+      "x": -1000,
+      "y": 1800,
+      "width": 200,
+      "height": 50,
+      "render": "compact"
+    },
+    {
+      "entity": "n_repetitionguardmiddleware",
+      "zone": "z_llm_middleware",
+      "x": -750,
+      "y": 1650,
+      "width": 220,
+      "height": 90,
+      "render": "compact"
+    },
+    {
+      "entity": "n_repetitioninfo",
+      "zone": "z_llm_middleware",
+      "x": -460,
+      "y": 2050,
+      "width": 200,
+      "height": 50,
+      "render": "compact"
+    },
+    {
+      "entity": "n_resolvedmodelentry",
+      "zone": "z_proj_settings",
+      "x": 1810,
+      "y": 4390,
+      "width": 170,
+      "height": 50,
+      "render": "compact"
+    },
+    {
+      "entity": "n_resolvedsettings",
+      "zone": "z_proj_settings",
+      "x": 1994,
+      "y": 4390,
+      "width": 170,
+      "height": 50,
+      "render": "compact"
+    },
+    {
+      "entity": "n_resourcecontent",
+      "zone": "z_res_core",
+      "x": 1642,
+      "y": 432,
+      "width": 170,
+      "height": 50,
+      "render": "compact"
+    },
+    {
+      "entity": "n_resourcedeletetool",
+      "zone": "z_res_tools",
+      "x": 1274,
+      "y": 606,
+      "width": 170,
+      "height": 50,
+      "render": "compact"
+    },
+    {
+      "entity": "n_resourceentry",
+      "zone": "z_res_core",
+      "x": 1826,
+      "y": 432,
+      "width": 170,
+      "height": 50,
+      "render": "compact"
+    },
+    {
+      "entity": "n_resourceexiststool",
+      "zone": "z_res_tools",
+      "x": 1458,
+      "y": 606,
+      "width": 170,
+      "height": 50,
+      "render": "compact"
+    },
+    {
+      "entity": "n_resourcelisttool",
+      "zone": "z_res_tools",
+      "x": 1642,
+      "y": 606,
+      "width": 170,
+      "height": 50,
+      "render": "compact"
+    },
+    {
+      "entity": "n_resourcemakedirtool",
+      "zone": "z_res_tools",
+      "x": 1274,
+      "y": 670,
+      "width": 170,
+      "height": 50,
+      "render": "compact"
+    },
+    {
+      "entity": "n_resourcereadtool",
+      "zone": "z_res_tools",
+      "x": 1458,
+      "y": 670,
+      "width": 170,
+      "height": 50,
+      "render": "compact"
+    },
+    {
+      "entity": "n_resourceregistry",
+      "zone": "z_res_core",
+      "x": 1274,
+      "y": 496,
+      "width": 170,
+      "height": 50,
+      "render": "compact"
+    },
+    {
+      "entity": "n_resourcetoolbase",
+      "zone": "z_res_tools",
+      "x": 1642,
+      "y": 670,
+      "width": 170,
+      "height": 50,
+      "render": "compact"
+    },
+    {
+      "entity": "n_resourceuri",
+      "zone": "z_res_core",
+      "x": 1458,
+      "y": 496,
+      "width": 170,
+      "height": 50,
+      "render": "compact"
+    },
+    {
+      "entity": "n_resourceverb",
+      "zone": "z_res_core",
+      "x": 1642,
+      "y": 496,
+      "width": 170,
+      "height": 50,
+      "render": "compact"
+    },
+    {
+      "entity": "n_resourcewritetool",
+      "zone": "z_res_tools",
+      "x": 1274,
+      "y": 734,
+      "width": 170,
+      "height": 50,
+      "render": "compact"
+    },
+    {
+      "entity": "n_schemaparts",
+      "zone": "z_tool_host",
+      "x": 2732,
+      "y": 1710,
+      "width": 170,
+      "height": 50,
+      "render": "compact"
+    },
+    {
+      "entity": "n_schemaregistry",
+      "zone": "z_editor",
+      "x": 1628,
+      "y": 228,
+      "width": 170,
+      "height": 50,
+      "render": "compact"
+    },
+    {
+      "entity": "n_schemecard",
+      "zone": "z_res_core",
+      "x": 1826,
+      "y": 496,
+      "width": 170,
+      "height": 50,
+      "render": "compact"
+    },
+    {
+      "entity": "n_secretaccessdeniedexception",
+      "zone": "z_sec_secrets_domain",
+      "x": 634,
+      "y": 4594,
+      "width": 170,
+      "height": 50,
+      "render": "compact"
+    },
+    {
+      "entity": "n_secretacl",
+      "zone": "z_sec_secrets_domain",
+      "x": 818,
+      "y": 4594,
+      "width": 170,
+      "height": 50,
+      "render": "compact"
+    },
+    {
+      "entity": "n_secretcallerscope",
+      "zone": "z_sec_secrets_domain",
+      "x": 82,
+      "y": 4658,
+      "width": 170,
+      "height": 50,
+      "render": "compact"
+    },
+    {
+      "entity": "n_secretentry",
+      "zone": "z_sec_secrets_domain",
+      "x": 266,
+      "y": 4658,
+      "width": 170,
+      "height": 50,
+      "render": "compact"
+    },
+    {
+      "entity": "n_secretentryinfo",
+      "zone": "z_sec_secrets_domain",
+      "x": 450,
+      "y": 4658,
+      "width": 170,
+      "height": 50,
+      "render": "compact"
+    },
+    {
+      "entity": "n_secretfields",
+      "zone": "z_sec_secrets_domain",
+      "x": 634,
+      "y": 4658,
+      "width": 170,
+      "height": 50,
+      "render": "compact"
+    },
+    {
+      "entity": "n_secretref",
+      "zone": "z_sec_secrets_domain",
+      "x": 818,
+      "y": 4658,
+      "width": 170,
+      "height": 50,
+      "render": "compact"
+    },
+    {
+      "entity": "n_secretresolver",
+      "zone": "z_sec_secrets_domain",
+      "x": 82,
+      "y": 4722,
+      "width": 170,
+      "height": 50,
+      "render": "compact"
+    },
+    {
+      "entity": "n_secretright",
+      "zone": "z_sec_secrets_domain",
+      "x": 266,
+      "y": 4722,
+      "width": 170,
+      "height": 50,
+      "render": "compact"
+    },
+    {
+      "entity": "n_secretscope",
+      "zone": "z_sec_secrets_domain",
+      "x": 450,
+      "y": 4722,
+      "width": 170,
+      "height": 50,
+      "render": "compact"
+    },
+    {
+      "entity": "n_secretyamlfile",
+      "zone": "z_sec_secrets_domain",
+      "x": 634,
+      "y": 4722,
+      "width": 170,
+      "height": 50,
+      "render": "compact"
+    },
+    {
+      "entity": "n_selfinvocationlauncher",
+      "zone": "z_platform",
+      "x": 1584,
+      "y": 2278,
+      "width": 170,
+      "height": 50,
+      "render": "compact"
+    },
+    {
+      "entity": "n_serverprojectroot",
+      "zone": "z_proj_core",
+      "x": 1626,
+      "y": 3850,
+      "width": 170,
+      "height": 50,
+      "render": "compact"
+    },
+    {
+      "entity": "n_settingsresolver",
+      "zone": "z_proj_settings",
+      "x": 1258,
+      "y": 4454,
+      "width": 170,
+      "height": 50,
+      "render": "compact"
+    },
+    {
+      "entity": "n_shellcommand",
+      "zone": "z_sec_sandbox",
+      "x": 620,
+      "y": 4326,
+      "width": 170,
+      "height": 50,
+      "render": "compact"
+    },
+    {
+      "entity": "n_shellresult",
+      "zone": "z_sec_sandbox",
+      "x": 804,
+      "y": 4326,
+      "width": 170,
+      "height": 50,
+      "render": "compact"
+    },
+    {
+      "entity": "n_shellstatus",
+      "zone": "z_sec_sandbox",
+      "x": 68,
+      "y": 4390,
+      "width": 170,
+      "height": 50,
+      "render": "compact"
+    },
+    {
+      "entity": "n_singleclientresolver",
+      "zone": "z_llm_middleware",
+      "x": -1060,
+      "y": 1960,
+      "width": 200,
+      "height": 50,
+      "render": "compact"
+    },
+    {
+      "entity": "n_skillactivatetool",
+      "zone": "z_skills_session",
+      "x": 2450,
+      "y": 704,
+      "width": 170,
+      "height": 50,
+      "render": "compact"
+    },
+    {
+      "entity": "n_skillcapabilityprobe",
+      "zone": "z_skills_library",
+      "x": 2266,
+      "y": 164,
+      "width": 170,
+      "height": 50,
+      "render": "compact"
+    },
+    {
+      "entity": "n_skillcard",
+      "zone": "z_skills_library",
+      "x": 2450,
+      "y": 164,
+      "width": 170,
+      "height": 50,
+      "render": "compact"
+    },
+    {
+      "entity": "n_skilldeactivatetool",
+      "zone": "z_skills_session",
+      "x": 2634,
+      "y": 704,
+      "width": 170,
+      "height": 50,
+      "render": "compact"
+    },
+    {
+      "entity": "n_skillentry",
+      "zone": "z_skills_sources",
+      "x": 2266,
+      "y": 530,
+      "width": 170,
+      "height": 50,
+      "render": "compact"
+    },
+    {
+      "entity": "n_skillfindtool",
+      "zone": "z_skills_session",
+      "x": 2266,
+      "y": 768,
+      "width": 170,
+      "height": 50,
+      "render": "compact"
+    },
+    {
+      "entity": "n_skillfrontmatter",
+      "zone": "z_skills_library",
+      "x": 2634,
+      "y": 164,
+      "width": 170,
+      "height": 50,
+      "render": "compact"
+    },
+    {
+      "entity": "n_skilllibrary",
+      "zone": "z_skills_library",
+      "x": 2818,
+      "y": 164,
+      "width": 170,
+      "height": 50,
+      "render": "compact"
+    },
+    {
+      "entity": "n_skilllookup",
+      "zone": "z_skills_library",
+      "x": 3002,
+      "y": 164,
+      "width": 170,
+      "height": 50,
+      "render": "compact"
+    },
+    {
+      "entity": "n_skillmatch",
+      "zone": "z_skills_library",
+      "x": 2266,
+      "y": 228,
+      "width": 170,
+      "height": 50,
+      "render": "compact"
+    },
+    {
+      "entity": "n_skillquery",
+      "zone": "z_skills_library",
+      "x": 2450,
+      "y": 228,
+      "width": 170,
+      "height": 50,
+      "render": "compact"
+    },
+    {
+      "entity": "n_skillreadresourcetool",
+      "zone": "z_skills_session",
+      "x": 2450,
+      "y": 768,
+      "width": 170,
+      "height": 50,
+      "render": "compact"
+    },
+    {
+      "entity": "n_skillrequirements",
+      "zone": "z_skills_sources",
+      "x": 2450,
+      "y": 530,
+      "width": 170,
+      "height": 50,
+      "render": "compact"
+    },
+    {
+      "entity": "n_skillsession",
+      "zone": "z_skills_session",
+      "x": 2634,
+      "y": 768,
+      "width": 170,
+      "height": 50,
+      "render": "compact"
+    },
+    {
+      "entity": "n_skillsourcecontext",
+      "zone": "z_skills_sources",
+      "x": 2634,
+      "y": 530,
+      "width": 170,
+      "height": 50,
+      "render": "compact"
+    },
+    {
+      "entity": "n_skillsourceregistry",
+      "zone": "z_skills_sources",
+      "x": 2818,
+      "y": 530,
+      "width": 170,
+      "height": 50,
+      "render": "compact"
+    },
+    {
+      "entity": "n_skillstate",
+      "zone": "z_skills_library",
+      "x": 2634,
+      "y": 228,
+      "width": 170,
+      "height": 50,
+      "render": "compact"
+    },
+    {
+      "entity": "n_skilltag",
+      "zone": "z_skills_library",
+      "x": 2818,
+      "y": 228,
+      "width": 170,
+      "height": 50,
+      "render": "compact"
+    },
+    {
+      "entity": "n_skilltrust",
+      "zone": "z_skills_sources",
+      "x": 3002,
+      "y": 530,
+      "width": 170,
+      "height": 50,
+      "render": "compact"
+    },
+    {
+      "entity": "n_skilltrustgrant",
+      "zone": "z_skills_sources",
+      "x": 2266,
+      "y": 594,
+      "width": 170,
+      "height": 50,
+      "render": "compact"
+    },
+    {
+      "entity": "n_sourcelevel",
+      "zone": "z_skills_sources",
+      "x": 2450,
+      "y": 594,
+      "width": 170,
+      "height": 50,
+      "render": "compact"
+    },
+    {
+      "entity": "n_sourceorigin",
+      "zone": "z_proj_settings",
+      "x": 1442,
+      "y": 4454,
+      "width": 170,
+      "height": 50,
+      "render": "compact"
+    },
+    {
+      "entity": "n_spawnresult",
+      "zone": "z_proj_instances",
+      "x": 1810,
+      "y": 4152,
+      "width": 170,
+      "height": 50,
+      "render": "compact"
+    },
+    {
+      "entity": "n_splaagentsection",
+      "zone": "z_proj_settings",
+      "x": 1626,
+      "y": 4454,
+      "width": 170,
+      "height": 50,
+      "render": "compact"
+    },
+    {
+      "entity": "n_splaconnectionsection",
+      "zone": "z_proj_settings",
+      "x": 1810,
+      "y": 4454,
+      "width": 170,
+      "height": 50,
+      "render": "compact"
+    },
+    {
+      "entity": "n_spladefaults",
+      "zone": "z_proj_settings",
+      "x": 1994,
+      "y": 4454,
+      "width": 170,
+      "height": 50,
+      "render": "compact"
+    },
+    {
+      "entity": "n_splafilelogger",
+      "zone": "z_observability",
+      "x": 1400,
+      "y": 1920,
+      "width": 170,
+      "height": 50,
+      "render": "compact"
+    },
+    {
+      "entity": "n_splafileloggerprovider",
+      "zone": "z_observability",
+      "x": 1584,
+      "y": 1920,
+      "width": 170,
+      "height": 50,
+      "render": "compact"
+    },
+    {
+      "entity": "n_splalibrariansection",
+      "zone": "z_proj_settings",
+      "x": 1258,
+      "y": 4518,
+      "width": 170,
+      "height": 50,
+      "render": "compact"
+    },
+    {
+      "entity": "n_splallmsection",
+      "zone": "z_proj_settings",
+      "x": 1442,
+      "y": 4518,
+      "width": 170,
+      "height": 50,
+      "render": "compact"
+    },
+    {
+      "entity": "n_splamcpsection",
+      "zone": "z_proj_settings",
+      "x": 1626,
+      "y": 4518,
+      "width": 170,
+      "height": 50,
+      "render": "compact"
+    },
+    {
+      "entity": "n_splamcpserversection",
+      "zone": "z_proj_settings",
+      "x": 1810,
+      "y": 4518,
+      "width": 170,
+      "height": 50,
+      "render": "compact"
+    },
+    {
+      "entity": "n_splamodelsection",
+      "zone": "z_proj_settings",
+      "x": 1994,
+      "y": 4518,
+      "width": 170,
+      "height": 50,
+      "render": "compact"
+    },
+    {
+      "entity": "n_splamountsection",
+      "zone": "z_proj_settings",
+      "x": 1258,
+      "y": 4582,
+      "width": 170,
+      "height": 50,
+      "render": "compact"
+    },
+    {
+      "entity": "n_splapermissionssection",
+      "zone": "z_proj_settings",
+      "x": 1442,
+      "y": 4582,
+      "width": 170,
+      "height": 50,
+      "render": "compact"
+    },
+    {
+      "entity": "n_splapluginpanelevent",
+      "zone": "z_tool_host",
+      "x": 2916,
+      "y": 1710,
+      "width": 170,
+      "height": 50,
+      "render": "compact"
+    },
+    {
+      "entity": "n_splapluginsection",
+      "zone": "z_proj_settings",
+      "x": 1626,
+      "y": 4582,
+      "width": 170,
+      "height": 50,
+      "render": "compact"
+    },
+    {
+      "entity": "n_splapluginuicommand",
+      "zone": "z_tool_host",
+      "x": 3100,
+      "y": 1710,
+      "width": 170,
+      "height": 50,
+      "render": "compact"
+    },
+    {
+      "entity": "n_splapluginuicommandkind",
+      "zone": "z_tool_host",
+      "x": 2364,
+      "y": 1774,
+      "width": 170,
+      "height": 50,
+      "render": "compact"
+    },
+    {
+      "entity": "n_splaproject",
+      "zone": "z_proj_settings",
+      "x": 1810,
+      "y": 4582,
+      "width": 170,
+      "height": 50,
+      "render": "compact"
+    },
+    {
+      "entity": "n_splasecretssection",
+      "zone": "z_proj_settings",
+      "x": 1994,
+      "y": 4582,
+      "width": 170,
+      "height": 50,
+      "render": "compact"
+    },
+    {
+      "entity": "n_splaskillsection",
+      "zone": "z_proj_settings",
+      "x": 1258,
+      "y": 4646,
+      "width": 170,
+      "height": 50,
+      "render": "compact"
+    },
+    {
+      "entity": "n_splaskillsourcesection",
+      "zone": "z_proj_settings",
+      "x": 1442,
+      "y": 4646,
+      "width": 170,
+      "height": 50,
+      "render": "compact"
+    },
+    {
+      "entity": "n_splaskillspolicysection",
+      "zone": "z_proj_settings",
+      "x": 1626,
+      "y": 4646,
+      "width": 170,
+      "height": 50,
+      "render": "compact"
+    },
+    {
+      "entity": "n_splaskillssection",
+      "zone": "z_proj_settings",
+      "x": 1810,
+      "y": 4646,
+      "width": 170,
+      "height": 50,
+      "render": "compact"
+    },
+    {
+      "entity": "n_splatelemetry",
+      "zone": "z_observability",
+      "x": 1768,
+      "y": 1920,
+      "width": 170,
+      "height": 50,
+      "render": "compact"
+    },
+    {
+      "entity": "n_splatelemetrycontext",
+      "zone": "z_observability",
+      "x": 1216,
+      "y": 1984,
+      "width": 170,
+      "height": 50,
+      "render": "compact"
+    },
+    {
+      "entity": "n_splatelemetrycontextextensions",
+      "zone": "z_observability",
+      "x": 1400,
+      "y": 1984,
+      "width": 170,
+      "height": 50,
+      "render": "compact"
+    },
+    {
+      "entity": "n_splatoolpermissionrule",
+      "zone": "z_proj_settings",
+      "x": 1994,
+      "y": 4646,
+      "width": 170,
+      "height": 50,
+      "render": "compact"
+    },
+    {
+      "entity": "n_splauisection",
+      "zone": "z_proj_settings",
+      "x": 1258,
+      "y": 4710,
+      "width": 170,
+      "height": 50,
+      "render": "compact"
+    },
+    {
+      "entity": "n_sshconnectionfactory",
+      "zone": "z_ssh",
+      "x": 2774,
+      "y": 3628,
+      "width": 170,
+      "height": 50,
+      "render": "compact"
+    },
+    {
+      "entity": "n_sshhostconfig",
+      "zone": "z_ssh",
+      "x": 2406,
+      "y": 3692,
+      "width": 170,
+      "height": 50,
+      "render": "compact"
+    },
+    {
+      "entity": "n_sshlivesession",
+      "zone": "z_ssh",
+      "x": 2590,
+      "y": 3692,
+      "width": 170,
+      "height": 50,
+      "render": "compact"
+    },
+    {
+      "entity": "n_sshsessionhub",
+      "zone": "z_ssh",
+      "x": 2774,
+      "y": 3692,
+      "width": 170,
+      "height": 50,
+      "render": "compact"
+    },
+    {
+      "entity": "n_sshsettings",
+      "zone": "z_ssh",
+      "x": 2406,
+      "y": 3756,
+      "width": 170,
+      "height": 50,
+      "render": "compact"
+    },
+    {
+      "entity": "n_state",
+      "zone": "z_tool_host",
+      "x": 2548,
+      "y": 1774,
+      "width": 170,
+      "height": 50,
+      "render": "compact"
+    },
+    {
+      "entity": "n_statssnapshot",
+      "zone": "z_observability",
+      "x": 1584,
+      "y": 1984,
+      "width": 170,
+      "height": 50,
+      "render": "compact"
+    },
+    {
+      "entity": "n_statusframe",
+      "zone": "z_proj_instances",
+      "x": 1994,
+      "y": 4152,
+      "width": 170,
+      "height": 50,
+      "render": "compact"
+    },
+    {
+      "entity": "n_stopframe",
+      "zone": "z_proj_instances",
+      "x": 1258,
+      "y": 4216,
+      "width": 170,
+      "height": 50,
+      "render": "compact"
+    },
+    {
+      "entity": "n_substance",
+      "zone": "z_sec_zones",
+      "x": 620,
+      "y": 3960,
+      "width": 170,
+      "height": 50,
+      "render": "compact"
+    },
+    {
+      "entity": "n_tagcount",
+      "zone": "z_skills_library",
+      "x": 3002,
+      "y": 228,
+      "width": 170,
+      "height": 50,
+      "render": "compact"
+    },
+    {
+      "entity": "n_taglibrarian",
+      "zone": "z_skills_library",
+      "x": 2266,
+      "y": 292,
+      "width": 170,
+      "height": 50,
+      "render": "compact"
+    },
+    {
+      "entity": "n_tagvocabulary",
+      "zone": "z_skills_library",
+      "x": 2450,
+      "y": 292,
+      "width": 170,
+      "height": 50,
+      "render": "compact"
+    },
+    {
+      "entity": "n_taskcanceltool",
+      "zone": "z_tool_progress",
+      "x": 2548,
+      "y": 2076,
+      "width": 170,
+      "height": 50,
+      "render": "compact"
+    },
+    {
+      "entity": "n_tasklisttool",
+      "zone": "z_tool_progress",
+      "x": 2732,
+      "y": 2076,
+      "width": 170,
+      "height": 50,
+      "render": "compact"
+    },
+    {
+      "entity": "n_taskoutputtool",
+      "zone": "z_tool_progress",
+      "x": 2916,
+      "y": 2076,
+      "width": 170,
+      "height": 50,
+      "render": "compact"
+    },
+    {
+      "entity": "n_telemetrycollector",
+      "zone": "z_observability",
+      "x": 1768,
+      "y": 1984,
+      "width": 170,
+      "height": 50,
+      "render": "compact"
+    },
+    {
+      "entity": "n_telemetrystage",
+      "zone": "z_tool_stages",
+      "x": 2916,
+      "y": 1472,
+      "width": 170,
+      "height": 50,
+      "render": "compact"
+    },
+    {
+      "entity": "n_tokenaccountingmiddleware",
+      "zone": null,
+      "x": -750,
+      "y": 2110,
+      "width": 220,
+      "height": 110,
+      "render": "compact"
+    },
+    {
+      "entity": "n_tokenestimate",
+      "zone": "z_agent_comp",
+      "x": 2548,
+      "y": 2442,
+      "width": 170,
+      "height": 50,
+      "render": "compact"
+    },
+    {
+      "entity": "n_tokenusagetotals",
+      "zone": "z_mem_accounting",
+      "x": 210,
+      "y": 2250,
+      "width": 170,
+      "height": 50,
+      "render": "compact"
+    },
+    {
+      "entity": "n_toolcall",
+      "zone": "z_tool_contracts",
+      "x": 2732,
+      "y": 1106,
+      "width": 170,
+      "height": 50,
+      "render": "compact"
+    },
+    {
+      "entity": "n_toolcallcontext",
+      "zone": "z_tool_contracts",
+      "x": 2916,
+      "y": 1106,
+      "width": 170,
+      "height": 50,
+      "render": "compact"
+    },
+    {
+      "entity": "n_toolcallinvocation",
+      "zone": "z_tool_contracts",
+      "x": 2364,
+      "y": 1170,
+      "width": 170,
+      "height": 50,
+      "render": "compact"
+    },
+    {
+      "entity": "n_toolcontent",
+      "zone": "z_tool_contracts",
+      "x": 2548,
+      "y": 1170,
+      "width": 170,
+      "height": 50,
+      "render": "compact"
+    },
+    {
+      "entity": "n_tooldefinition",
+      "zone": "z_tool_contracts",
+      "x": 2732,
+      "y": 1170,
+      "width": 170,
+      "height": 50,
+      "render": "compact"
+    },
+    {
+      "entity": "n_tooleffect",
+      "zone": "z_sec_permissions",
+      "x": 252,
+      "y": 3786,
+      "width": 170,
+      "height": 50,
+      "render": "compact"
+    },
+    {
+      "entity": "n_toolexposure",
+      "zone": "z_tool_host",
+      "x": 2732,
+      "y": 1774,
+      "width": 170,
+      "height": 50,
+      "render": "compact"
+    },
+    {
+      "entity": "n_toolfunctiondefinition",
+      "zone": "z_tool_contracts",
+      "x": 2916,
+      "y": 1170,
+      "width": 170,
+      "height": 50,
+      "render": "compact"
+    },
+    {
+      "entity": "n_toolhostscope",
+      "zone": "z_tool_host",
+      "x": 2916,
+      "y": 1774,
+      "width": 170,
+      "height": 50,
+      "render": "compact"
+    },
+    {
+      "entity": "n_toolimage",
+      "zone": "z_tool_contracts",
+      "x": 2364,
+      "y": 1234,
+      "width": 170,
+      "height": 50,
+      "render": "compact"
+    },
+    {
+      "entity": "n_tooljson",
+      "zone": "z_tool_host",
+      "x": 3100,
+      "y": 1774,
+      "width": 170,
+      "height": 50,
+      "render": "compact"
+    },
+    {
+      "entity": "n_tooloutcome",
+      "zone": "z_tool_contracts",
+      "x": 2548,
+      "y": 1234,
+      "width": 170,
+      "height": 50,
+      "render": "compact"
+    },
+    {
+      "entity": "n_toolpipelineblueprint",
+      "zone": "z_tool_contracts",
+      "x": 2732,
+      "y": 1234,
+      "width": 170,
+      "height": 50,
+      "render": "compact"
+    },
+    {
+      "entity": "n_toolpipelinestage",
+      "zone": "z_tool_contracts",
+      "x": 2916,
+      "y": 1234,
+      "width": 170,
+      "height": 50,
+      "render": "compact"
+    },
+    {
+      "entity": "n_toolprogress",
+      "zone": "z_tool_progress",
+      "x": 2364,
+      "y": 2140,
+      "width": 170,
+      "height": 50,
+      "render": "compact"
+    },
+    {
+      "entity": "n_toolprogressdetail",
+      "zone": "z_tool_progress",
+      "x": 2548,
+      "y": 2140,
+      "width": 170,
+      "height": 50,
+      "render": "compact"
+    },
+    {
+      "entity": "n_toolrepeattracker",
+      "zone": "z_tool_host",
+      "x": 2364,
+      "y": 1838,
+      "width": 170,
+      "height": 50,
+      "render": "compact"
+    },
+    {
+      "entity": "n_toolresolutionstage",
+      "zone": "z_tool_stages",
+      "x": 2364,
+      "y": 1536,
+      "width": 170,
+      "height": 50,
+      "render": "compact"
+    },
+    {
+      "entity": "n_toolresource",
+      "zone": "z_tool_contracts",
+      "x": 2364,
+      "y": 1298,
+      "width": 170,
+      "height": 50,
+      "render": "compact"
+    },
+    {
+      "entity": "n_toolresult",
+      "zone": "z_tool_contracts",
+      "x": 2548,
+      "y": 1298,
+      "width": 170,
+      "height": 50,
+      "render": "compact"
+    },
+    {
+      "entity": "n_toolrisk",
+      "zone": "z_sec_permissions",
+      "x": 436,
+      "y": 3786,
+      "width": 170,
+      "height": 50,
+      "render": "compact"
+    },
+    {
+      "entity": "n_toolscope",
+      "zone": "z_sec_permissions",
+      "x": 620,
+      "y": 3786,
+      "width": 170,
+      "height": 50,
+      "render": "compact"
+    },
+    {
+      "entity": "n_toolsetactivatetool",
+      "zone": "z_toolsets",
+      "x": 2548,
+      "y": 3192,
+      "width": 170,
+      "height": 50,
+      "render": "compact"
+    },
+    {
+      "entity": "n_toolsetactivation",
+      "zone": "z_toolsets",
+      "x": 2732,
+      "y": 3192,
+      "width": 170,
+      "height": 50,
+      "render": "compact"
+    },
+    {
+      "entity": "n_toolsetactivationby",
+      "zone": "z_toolsets",
+      "x": 2916,
+      "y": 3192,
+      "width": 170,
+      "height": 50,
+      "render": "compact"
+    },
+    {
+      "entity": "n_toolsetdeactivatetool",
+      "zone": "z_tool_host",
+      "x": 2548,
+      "y": 1838,
+      "width": 170,
+      "height": 50,
+      "render": "compact"
+    },
+    {
+      "entity": "n_toolsetdescriptor",
+      "zone": "z_toolsets",
+      "x": 2364,
+      "y": 3256,
+      "width": 170,
+      "height": 50,
+      "render": "compact"
+    },
+    {
+      "entity": "n_toolsetdisclosurestage",
+      "zone": "z_tool_stages",
+      "x": 2548,
+      "y": 1536,
+      "width": 170,
+      "height": 50,
+      "render": "compact"
+    },
+    {
+      "entity": "n_toolsetlevel",
+      "zone": "z_toolsets",
+      "x": 2548,
+      "y": 3256,
+      "width": 170,
+      "height": 50,
+      "render": "compact"
+    },
+    {
+      "entity": "n_toolsetorigin",
+      "zone": "z_toolsets",
+      "x": 2732,
+      "y": 3256,
+      "width": 170,
+      "height": 50,
+      "render": "compact"
+    },
+    {
+      "entity": "n_toolsetregistry",
+      "zone": "z_toolsets",
+      "x": 2916,
+      "y": 3256,
+      "width": 170,
+      "height": 50,
+      "render": "compact"
+    },
+    {
+      "entity": "n_toolsetsession",
+      "zone": "z_toolsets",
+      "x": 2364,
+      "y": 3320,
+      "width": 170,
+      "height": 50,
+      "render": "compact"
+    },
+    {
+      "entity": "n_tooltext",
+      "zone": "z_tool_contracts",
+      "x": 2732,
+      "y": 1298,
+      "width": 170,
+      "height": 50,
+      "render": "compact"
+    },
+    {
+      "entity": "n_turnattempt",
+      "zone": "z_llm_turn",
+      "x": 0,
+      "y": 1640,
+      "width": 170,
+      "height": 50,
+      "render": "compact"
+    },
+    {
+      "entity": "n_turnoutcomemiddleware",
+      "zone": "z_llm_middleware",
+      "x": -750,
+      "y": 1800,
+      "width": 220,
+      "height": 50,
+      "render": "compact"
+    },
+    {
+      "entity": "n_utf8textconverter",
+      "zone": "z_formats",
+      "x": 3130,
+      "y": 2378,
+      "width": 170,
+      "height": 50,
+      "render": "compact"
+    },
+    {
+      "entity": "n_windowsshellintegration",
+      "zone": "z_platform",
+      "x": 1216,
+      "y": 2342,
+      "width": 170,
+      "height": 50,
+      "render": "compact"
+    },
+    {
+      "entity": "n_yamlsectionsplicer",
+      "zone": "z_proj_settings",
+      "x": 1442,
+      "y": 4710,
+      "width": 170,
+      "height": 50,
+      "render": "compact"
+    },
+    {
+      "entity": "n_zone",
+      "zone": "z_sec_zones",
+      "x": 68,
+      "y": 4024,
+      "width": 170,
+      "height": 50,
+      "render": "compact"
+    },
+    {
+      "entity": "n_zoneedge",
+      "zone": "z_sec_zones",
+      "x": 252,
+      "y": 4024,
+      "width": 170,
+      "height": 50,
+      "render": "compact"
+    },
+    {
+      "entity": "n_zoneeffect",
+      "zone": "z_sec_zones",
+      "x": 436,
+      "y": 4024,
+      "width": 170,
+      "height": 50,
+      "render": "compact"
+    },
+    {
+      "entity": "n_zoneshadowstage",
+      "zone": "z_tool_stages",
+      "x": 2732,
+      "y": 1536,
+      "width": 170,
+      "height": 50,
+      "render": "compact"
+    }
+  ],
+  "edges": [
+    {
+      "id": "f_blueprint_gateway",
+      "from": "n_llmpipelineblueprint",
+      "to": "n_illmgateway",
+      "type": "composes",
+      "label": "Build(resolver) →"
+    },
+    {
+      "id": "f_credentials_client",
+      "from": "n_illmclientresolver",
+      "to": "n_illmclient",
+      "type": "call",
+      "label": "Resolve(ctx)"
+    },
+    {
+      "id": "f_exception_providerstate",
+      "from": "n_llmrequestexception",
+      "to": "n_providerstatemiddleware",
+      "type": "event",
+      "label": "catch → .Signals"
+    },
+    {
+      "id": "f_registry_descriptor",
+      "from": "n_llmproviderregistry",
+      "to": "n_llmproviderdescriptor",
+      "type": "call",
+      "label": "returns .Client"
+    },
+    {
+      "id": "f_resolver_registry",
+      "from": "n_providerclientresolver",
+      "to": "n_llmproviderregistry",
+      "type": "call",
+      "label": "Resolve(ctx.Settings.Provider)"
+    },
+    {
+      "id": "s_accountingstage_itoolmiddleware",
+      "from": "n_accountingstage",
+      "to": "n_itoolmiddleware",
+      "type": "implements",
+      "label": ""
+    },
+    {
+      "id": "s_aclsecretaccesspolicy_isecretaccesspolicy",
+      "from": "n_aclsecretaccesspolicy",
+      "to": "n_isecretaccesspolicy",
+      "type": "implements",
+      "label": ""
+    },
+    {
+      "id": "s_agentclarifytool_imcptool",
+      "from": "n_agentclarifytool",
+      "to": "n_imcptool",
+      "type": "implements",
+      "label": ""
+    },
+    {
+      "id": "s_agentfeature_iagentfeature",
+      "from": "n_agentfeature",
+      "to": "n_iagentfeature",
+      "type": "implements",
+      "label": ""
+    },
+    {
+      "id": "s_agentlibrarian_iagentlibrarian",
+      "from": "n_agentlibrarian",
+      "to": "n_iagentlibrarian",
+      "type": "implements",
+      "label": ""
+    },
+    {
+      "id": "s_agentmemorycleartool_imcptool",
+      "from": "n_agentmemorycleartool",
+      "to": "n_imcptool",
+      "type": "implements",
+      "label": ""
+    },
+    {
+      "id": "s_agentmemorydeletetool_imcptool",
+      "from": "n_agentmemorydeletetool",
+      "to": "n_imcptool",
+      "type": "implements",
+      "label": ""
+    },
+    {
+      "id": "s_agentmemorygettool_imcptool",
+      "from": "n_agentmemorygettool",
+      "to": "n_imcptool",
+      "type": "implements",
+      "label": ""
+    },
+    {
+      "id": "s_agentmemorylisttool_imcptool",
+      "from": "n_agentmemorylisttool",
+      "to": "n_imcptool",
+      "type": "implements",
+      "label": ""
+    },
+    {
+      "id": "s_agentmemorysettool_imcptool",
+      "from": "n_agentmemorysettool",
+      "to": "n_imcptool",
+      "type": "implements",
+      "label": ""
+    },
+    {
+      "id": "s_agentsession_iagentsession",
+      "from": "n_agentsession",
+      "to": "n_iagentsession",
+      "type": "implements",
+      "label": ""
+    },
+    {
+      "id": "s_agentspawnbatchtool_imcptool",
+      "from": "n_agentspawnbatchtool",
+      "to": "n_imcptool",
+      "type": "implements",
+      "label": ""
+    },
+    {
+      "id": "s_agentspawntool_imcptool",
+      "from": "n_agentspawntool",
+      "to": "n_imcptool",
+      "type": "implements",
+      "label": ""
+    },
+    {
+      "id": "s_allowallgate_icapabilitygate",
+      "from": "n_allowallgate",
+      "to": "n_icapabilitygate",
+      "type": "implements",
+      "label": ""
+    },
+    {
+      "id": "s_ambienthoststage_itoolmiddleware",
+      "from": "n_ambienthoststage",
+      "to": "n_itoolmiddleware",
+      "type": "implements",
+      "label": ""
+    },
+    {
+      "id": "s_backgroundstage_itoolmiddleware",
+      "from": "n_backgroundstage",
+      "to": "n_itoolmiddleware",
+      "type": "implements",
+      "label": ""
+    },
+    {
+      "id": "s_blobpeektool_imcptool",
+      "from": "n_blobpeektool",
+      "to": "n_imcptool",
+      "type": "implements",
+      "label": ""
+    },
+    {
+      "id": "s_blobstore_iblobstore",
+      "from": "n_blobstore",
+      "to": "n_iblobstore",
+      "type": "implements",
+      "label": ""
+    },
+    {
+      "id": "s_claimidentity_iidentity",
+      "from": "n_claimidentity",
+      "to": "n_iidentity",
+      "type": "implements",
+      "label": ""
+    },
+    {
+      "id": "s_claimsidentityprovider_iidentityprovider",
+      "from": "n_claimsidentityprovider",
+      "to": "n_iidentityprovider",
+      "type": "implements",
+      "label": ""
+    },
+    {
+      "id": "s_contextcheckpointrestoretool_imcptool",
+      "from": "n_contextcheckpointrestoretool",
+      "to": "n_imcptool",
+      "type": "implements",
+      "label": ""
+    },
+    {
+      "id": "s_contextcheckpointsettool_imcptool",
+      "from": "n_contextcheckpointsettool",
+      "to": "n_imcptool",
+      "type": "implements",
+      "label": ""
+    },
+    {
+      "id": "s_credentialsmiddleware_illmmiddleware",
+      "from": "n_credentialsmiddleware",
+      "to": "n_illmmiddleware",
+      "type": "implements",
+      "label": ""
+    },
+    {
+      "id": "s_directoryskillsource_ieditableskillsource",
+      "from": "n_directoryskillsource",
+      "to": "n_ieditableskillsource",
+      "type": "implements",
+      "label": ""
+    },
+    {
+      "id": "s_directoryskillsourcefactory_iskillsourcefactory",
+      "from": "n_directoryskillsourcefactory",
+      "to": "n_iskillsourcefactory",
+      "type": "implements",
+      "label": ""
+    },
+    {
+      "id": "s_dpapifilesecretstore_isecretstore",
+      "from": "n_dpapifilesecretstore",
+      "to": "n_isecretstore",
+      "type": "implements",
+      "label": ""
+    },
+    {
+      "id": "s_embeddedjsonschemaprovider_ijsonschemaprovider",
+      "from": "n_embeddedjsonschemaprovider",
+      "to": "n_ijsonschemaprovider",
+      "type": "implements",
+      "label": ""
+    },
+    {
+      "id": "s_faultstage_itoolmiddleware",
+      "from": "n_faultstage",
+      "to": "n_itoolmiddleware",
+      "type": "implements",
+      "label": ""
+    },
+    {
+      "id": "s_filebucket_ibucket",
+      "from": "n_filebucket",
+      "to": "n_ibucket",
+      "type": "implements",
+      "label": ""
+    },
+    {
+      "id": "s_filecontentbrowser_icontentbrowser",
+      "from": "n_filecontentbrowser",
+      "to": "n_icontentbrowser",
+      "type": "implements",
+      "label": ""
+    },
+    {
+      "id": "s_filecontentsource_icontentsource",
+      "from": "n_filecontentsource",
+      "to": "n_icontentsource",
+      "type": "implements",
+      "label": ""
+    },
+    {
+      "id": "s_fileresourceprovider_iresourcecontainermaker",
+      "from": "n_fileresourceprovider",
+      "to": "n_iresourcecontainermaker",
+      "type": "implements",
+      "label": ""
+    },
+    {
+      "id": "s_fileresourceprovider_iresourceprovider",
+      "from": "n_fileresourceprovider",
+      "to": "n_iresourceprovider",
+      "type": "implements",
+      "label": ""
+    },
+    {
+      "id": "s_fileresourceprovider_iresourceremover",
+      "from": "n_fileresourceprovider",
+      "to": "n_iresourceremover",
+      "type": "implements",
+      "label": ""
+    },
+    {
+      "id": "s_fileresourceprovider_iresourcewriter",
+      "from": "n_fileresourceprovider",
+      "to": "n_iresourcewriter",
+      "type": "implements",
+      "label": ""
+    },
+    {
+      "id": "s_filesecretaclstore_isecretaclstore",
+      "from": "n_filesecretaclstore",
+      "to": "n_isecretaclstore",
+      "type": "implements",
+      "label": ""
+    },
+    {
+      "id": "s_filesecretstore_isecretstore",
+      "from": "n_filesecretstore",
+      "to": "n_isecretstore",
+      "type": "implements",
+      "label": ""
+    },
+    {
+      "id": "s_fileskillsourcestore_iskillsourcestore",
+      "from": "n_fileskillsourcestore",
+      "to": "n_iskillsourcestore",
+      "type": "implements",
+      "label": ""
+    },
+    {
+      "id": "s_fileskilltruststore_iskilltruststore",
+      "from": "n_fileskilltruststore",
+      "to": "n_iskilltruststore",
+      "type": "implements",
+      "label": ""
+    },
+    {
+      "id": "s_filetokenusagestore_itokenusagestore",
+      "from": "n_filetokenusagestore",
+      "to": "n_itokenusagestore",
+      "type": "implements",
+      "label": ""
+    },
+    {
+      "id": "s_identityconverter_iformatconverter",
+      "from": "n_identityconverter",
+      "to": "n_iformatconverter",
+      "type": "implements",
+      "label": ""
+    },
+    {
+      "id": "s_ieditableskillsource_iskillsource",
+      "from": "n_ieditableskillsource",
+      "to": "n_iskillsource",
+      "type": "implements",
+      "label": ""
+    },
+    {
+      "id": "s_imageviewtool_imcptool",
+      "from": "n_imageviewtool",
+      "to": "n_imcptool",
+      "type": "implements",
+      "label": ""
+    },
+    {
+      "id": "s_jsontoyamlconverter_iformatconverter",
+      "from": "n_jsontoyamlconverter",
+      "to": "n_iformatconverter",
+      "type": "implements",
+      "label": ""
+    },
+    {
+      "id": "s_keyvaluestore_ikeyvaluestore",
+      "from": "n_keyvaluestore",
+      "to": "n_ikeyvaluestore",
+      "type": "implements",
+      "label": ""
+    },
+    {
+      "id": "s_llmproviderdescriptor_illmproviderdescriptor",
+      "from": "n_llmproviderdescriptor",
+      "to": "n_illmproviderdescriptor",
+      "type": "implements",
+      "label": ""
+    },
+    {
+      "id": "s_localproject_iproject",
+      "from": "n_localproject",
+      "to": "n_iproject",
+      "type": "implements",
+      "label": ""
+    },
+    {
+      "id": "s_localprojectbackend_iprojectbackend",
+      "from": "n_localprojectbackend",
+      "to": "n_iprojectbackend",
+      "type": "implements",
+      "label": ""
+    },
+    {
+      "id": "s_localprojectprovider_iprojectprovider",
+      "from": "n_localprojectprovider",
+      "to": "n_iprojectprovider",
+      "type": "implements",
+      "label": ""
+    },
+    {
+      "id": "s_localshell_ishell",
+      "from": "n_localshell",
+      "to": "n_ishell",
+      "type": "implements",
+      "label": ""
+    },
+    {
+      "id": "s_localworkspace_iworkspace",
+      "from": "n_localworkspace",
+      "to": "n_iworkspace",
+      "type": "implements",
+      "label": ""
+    },
+    {
+      "id": "s_markrollbacktool_imcptool",
+      "from": "n_markrollbacktool",
+      "to": "n_imcptool",
+      "type": "implements",
+      "label": ""
+    },
+    {
+      "id": "s_marksettool_imcptool",
+      "from": "n_marksettool",
+      "to": "n_imcptool",
+      "type": "implements",
+      "label": ""
+    },
+    {
+      "id": "s_mcphost_itoolhost",
+      "from": "n_mcphost",
+      "to": "n_itoolhost",
+      "type": "implements",
+      "label": ""
+    },
+    {
+      "id": "s_memorybucket_ibucket",
+      "from": "n_memorybucket",
+      "to": "n_ibucket",
+      "type": "implements",
+      "label": ""
+    },
+    {
+      "id": "s_memoryprojectbackend_iprojectbackend",
+      "from": "n_memoryprojectbackend",
+      "to": "n_iprojectbackend",
+      "type": "implements",
+      "label": ""
+    },
+    {
+      "id": "s_passthroughsandbox_isandbox",
+      "from": "n_passthroughsandbox",
+      "to": "n_isandbox",
+      "type": "implements",
+      "label": ""
+    },
+    {
+      "id": "s_permissionmanager_ipermissionmanager",
+      "from": "n_permissionmanager",
+      "to": "n_ipermissionmanager",
+      "type": "implements",
+      "label": ""
+    },
+    {
+      "id": "s_permissionstage_itoolmiddleware",
+      "from": "n_permissionstage",
+      "to": "n_itoolmiddleware",
+      "type": "implements",
+      "label": ""
+    },
+    {
+      "id": "s_permissivesecretaccesspolicy_isecretaccesspolicy",
+      "from": "n_permissivesecretaccesspolicy",
+      "to": "n_isecretaccesspolicy",
+      "type": "implements",
+      "label": ""
+    },
+    {
+      "id": "s_pluginavailabilitystage_itoolmiddleware",
+      "from": "n_pluginavailabilitystage",
+      "to": "n_itoolmiddleware",
+      "type": "implements",
+      "label": ""
+    },
+    {
+      "id": "s_pluginskillsource_iskillsource",
+      "from": "n_pluginskillsource",
+      "to": "n_iskillsource",
+      "type": "implements",
+      "label": ""
+    },
+    {
+      "id": "s_progressnodestage_itoolmiddleware",
+      "from": "n_progressnodestage",
+      "to": "n_itoolmiddleware",
+      "type": "implements",
+      "label": ""
+    },
+    {
+      "id": "s_providerclientresolver_illmclientresolver",
+      "from": "n_providerclientresolver",
+      "to": "n_illmclientresolver",
+      "type": "implements",
+      "label": ""
+    },
+    {
+      "id": "s_providerstatemiddleware_illmmiddleware",
+      "from": "n_providerstatemiddleware",
+      "to": "n_illmmiddleware",
+      "type": "implements",
+      "label": ""
+    },
+    {
+      "id": "s_repetitionguardmiddleware_illmmiddleware",
+      "from": "n_repetitionguardmiddleware",
+      "to": "n_illmmiddleware",
+      "type": "implements",
+      "label": ""
+    },
+    {
+      "id": "s_resourcedeletetool_resourcetoolbase",
+      "from": "n_resourcedeletetool",
+      "to": "n_resourcetoolbase",
+      "type": "extends",
+      "label": ""
+    },
+    {
+      "id": "s_resourceexiststool_resourcetoolbase",
+      "from": "n_resourceexiststool",
+      "to": "n_resourcetoolbase",
+      "type": "extends",
+      "label": ""
+    },
+    {
+      "id": "s_resourcelisttool_resourcetoolbase",
+      "from": "n_resourcelisttool",
+      "to": "n_resourcetoolbase",
+      "type": "extends",
+      "label": ""
+    },
+    {
+      "id": "s_resourcemakedirtool_resourcetoolbase",
+      "from": "n_resourcemakedirtool",
+      "to": "n_resourcetoolbase",
+      "type": "extends",
+      "label": ""
+    },
+    {
+      "id": "s_resourcereadtool_resourcetoolbase",
+      "from": "n_resourcereadtool",
+      "to": "n_resourcetoolbase",
+      "type": "extends",
+      "label": ""
+    },
+    {
+      "id": "s_resourcetoolbase_imcptool",
+      "from": "n_resourcetoolbase",
+      "to": "n_imcptool",
+      "type": "implements",
+      "label": ""
+    },
+    {
+      "id": "s_resourcewritetool_resourcetoolbase",
+      "from": "n_resourcewritetool",
+      "to": "n_resourcetoolbase",
+      "type": "extends",
+      "label": ""
+    },
+    {
+      "id": "s_secretresolver_isecretresolver",
+      "from": "n_secretresolver",
+      "to": "n_isecretresolver",
+      "type": "implements",
+      "label": ""
+    },
+    {
+      "id": "s_singleclientresolver_illmclientresolver",
+      "from": "n_singleclientresolver",
+      "to": "n_illmclientresolver",
+      "type": "implements",
+      "label": ""
+    },
+    {
+      "id": "s_skillactivatetool_imcptool",
+      "from": "n_skillactivatetool",
+      "to": "n_imcptool",
+      "type": "implements",
+      "label": ""
+    },
+    {
+      "id": "s_skillcapabilityprobe_iskillcapabilityprobe",
+      "from": "n_skillcapabilityprobe",
+      "to": "n_iskillcapabilityprobe",
+      "type": "implements",
+      "label": ""
+    },
+    {
+      "id": "s_skilldeactivatetool_imcptool",
+      "from": "n_skilldeactivatetool",
+      "to": "n_imcptool",
+      "type": "implements",
+      "label": ""
+    },
+    {
+      "id": "s_skillfindtool_imcptool",
+      "from": "n_skillfindtool",
+      "to": "n_imcptool",
+      "type": "implements",
+      "label": ""
+    },
+    {
+      "id": "s_skillreadresourcetool_imcptool",
+      "from": "n_skillreadresourcetool",
+      "to": "n_imcptool",
+      "type": "implements",
+      "label": ""
+    },
+    {
+      "id": "s_skillsession_iskillsession",
+      "from": "n_skillsession",
+      "to": "n_iskillsession",
+      "type": "implements",
+      "label": ""
+    },
+    {
+      "id": "s_taglibrarian_itaglibrarian",
+      "from": "n_taglibrarian",
+      "to": "n_itaglibrarian",
+      "type": "implements",
+      "label": ""
+    },
+    {
+      "id": "s_taskcanceltool_imcptool",
+      "from": "n_taskcanceltool",
+      "to": "n_imcptool",
+      "type": "implements",
+      "label": ""
+    },
+    {
+      "id": "s_tasklisttool_imcptool",
+      "from": "n_tasklisttool",
+      "to": "n_imcptool",
+      "type": "implements",
+      "label": ""
+    },
+    {
+      "id": "s_taskoutputtool_imcptool",
+      "from": "n_taskoutputtool",
+      "to": "n_imcptool",
+      "type": "implements",
+      "label": ""
+    },
+    {
+      "id": "s_telemetrystage_itoolmiddleware",
+      "from": "n_telemetrystage",
+      "to": "n_itoolmiddleware",
+      "type": "implements",
+      "label": ""
+    },
+    {
+      "id": "s_tokenaccountingmiddleware_illmmiddleware",
+      "from": "n_tokenaccountingmiddleware",
+      "to": "n_illmmiddleware",
+      "type": "implements",
+      "label": ""
+    },
+    {
+      "id": "s_toolimage_toolcontent",
+      "from": "n_toolimage",
+      "to": "n_toolcontent",
+      "type": "extends",
+      "label": ""
+    },
+    {
+      "id": "s_toolresolutionstage_itoolmiddleware",
+      "from": "n_toolresolutionstage",
+      "to": "n_itoolmiddleware",
+      "type": "implements",
+      "label": ""
+    },
+    {
+      "id": "s_toolresource_toolcontent",
+      "from": "n_toolresource",
+      "to": "n_toolcontent",
+      "type": "extends",
+      "label": ""
+    },
+    {
+      "id": "s_toolsetactivatetool_imcptool",
+      "from": "n_toolsetactivatetool",
+      "to": "n_imcptool",
+      "type": "implements",
+      "label": ""
+    },
+    {
+      "id": "s_toolsetdeactivatetool_imcptool",
+      "from": "n_toolsetdeactivatetool",
+      "to": "n_imcptool",
+      "type": "implements",
+      "label": ""
+    },
+    {
+      "id": "s_toolsetdisclosurestage_itoolmiddleware",
+      "from": "n_toolsetdisclosurestage",
+      "to": "n_itoolmiddleware",
+      "type": "implements",
+      "label": ""
+    },
+    {
+      "id": "s_toolsetsession_itoolsetsession",
+      "from": "n_toolsetsession",
+      "to": "n_itoolsetsession",
+      "type": "implements",
+      "label": ""
+    },
+    {
+      "id": "s_tooltext_toolcontent",
+      "from": "n_tooltext",
+      "to": "n_toolcontent",
+      "type": "extends",
+      "label": ""
+    },
+    {
+      "id": "s_turnoutcomemiddleware_illmmiddleware",
+      "from": "n_turnoutcomemiddleware",
+      "to": "n_illmmiddleware",
+      "type": "implements",
+      "label": ""
+    },
+    {
+      "id": "s_utf8textconverter_iformatconverter",
+      "from": "n_utf8textconverter",
+      "to": "n_iformatconverter",
+      "type": "implements",
+      "label": ""
+    },
+    {
+      "id": "s_zoneshadowstage_itoolmiddleware",
+      "from": "n_zoneshadowstage",
+      "to": "n_itoolmiddleware",
+      "type": "implements",
+      "label": ""
+    },
+    {
+      "id": "f_gateway_repetitionguard",
+      "from": "n_illmgateway",
+      "to": "n_repetitionguardmiddleware",
+      "type": "data-flow",
+      "label": "LlmTurnContext ↓"
+    },
+    {
+      "id": "f_hop_guard_outcome",
+      "from": "n_repetitionguardmiddleware",
+      "to": "n_turnoutcomemiddleware",
+      "type": "call",
+      "label": "next(ctx) ↓ · result ↑"
+    },
+    {
+      "id": "f_hop_outcome_state",
+      "from": "n_turnoutcomemiddleware",
+      "to": "n_providerstatemiddleware",
+      "type": "call",
+      "label": "next(ctx) ↓ · result ↑"
+    },
+    {
+      "id": "f_hop_state_tokens",
+      "from": "n_providerstatemiddleware",
+      "to": "n_tokenaccountingmiddleware",
+      "type": "call",
+      "label": "next(ctx) ↓ · result ↑"
+    },
+    {
+      "id": "f_hop_tokens_credentials",
+      "from": "n_tokenaccountingmiddleware",
+      "to": "n_credentialsmiddleware",
+      "type": "call",
+      "label": "next(ctx) ↓ · result ↑"
+    },
+    {
+      "id": "f_credentials_resolver",
+      "from": "n_credentialsmiddleware",
+      "to": "n_illmclientresolver",
+      "type": "call",
+      "label": "Resolve(ctx) ↓"
+    },
+    {
+      "id": "f_client_credentials",
+      "from": "n_illmclient",
+      "to": "n_credentialsmiddleware",
+      "type": "data-flow",
+      "label": "LlmTurnResult ↑"
+    },
+    {
+      "id": "f_credentials_secrets",
+      "from": "n_credentialsmiddleware",
+      "to": "n_isecretresolver",
+      "type": "security",
+      "label": "secret:<scope>:<key> → plaintext"
+    },
+    {
+      "id": "f_credentials_settings",
+      "from": "n_credentialsmiddleware",
+      "to": "n_llmsettings",
+      "type": "data-flow",
+      "label": "ApiKey (this turn only)"
+    },
+    {
+      "id": "f_tokens_usagestore",
+      "from": "n_tokenaccountingmiddleware",
+      "to": "n_itokenusagestore",
+      "type": "storage",
+      "label": "prompt/completion tokens"
+    },
+    {
+      "id": "f_state_statestore",
+      "from": "n_providerstatemiddleware",
+      "to": "n_providerstatestore",
+      "type": "storage",
+      "label": "ProviderFact (Connection)"
+    },
+    {
+      "id": "f_outcome_result",
+      "from": "n_turnoutcomemiddleware",
+      "to": "n_llmturnresult",
+      "type": "data-flow",
+      "label": "Status + Duration"
+    },
+    {
+      "id": "f_guard_attempt",
+      "from": "n_repetitionguardmiddleware",
+      "to": "n_turnattempt",
+      "type": "event",
+      "label": "Abort() → cancel"
+    },
+    {
+      "id": "f_guard_generationattempt",
+      "from": "n_repetitionguardmiddleware",
+      "to": "n_generationattempt",
+      "type": "event",
+      "label": "OnAttempt (abandoned)"
+    },
+    {
+      "id": "f_blueprint_entry",
+      "from": "n_llmpipelineblueprint",
+      "to": "n_repetitionguardmiddleware",
+      "type": "composes",
+      "label": "Build() → entry"
+    },
+    {
+      "id": "f_blueprint_stage",
+      "from": "n_llmpipelineblueprint",
+      "to": "n_llmpipelinestage",
+      "type": "call",
+      "label": "OrderBy(Stage)"
+    }
+  ]
+}

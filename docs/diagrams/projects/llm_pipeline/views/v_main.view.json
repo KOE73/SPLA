@@ -1,0 +1,202 @@
+{
+  "id": "v_main",
+  "project": "llm_pipeline",
+  "zones": [
+    {
+      "id": "zone_input",
+      "container": null,
+      "parent": null,
+      "x": 40,
+      "y": 40,
+      "width": 240,
+      "height": 480,
+      "styleId": "domain.llm.input"
+    },
+    {
+      "id": "zone_contributors",
+      "container": null,
+      "parent": null,
+      "x": 310,
+      "y": 40,
+      "width": 460,
+      "height": 480,
+      "styleId": "domain.llm.composition"
+    },
+    {
+      "id": "zone_model",
+      "container": null,
+      "parent": null,
+      "x": 800,
+      "y": 40,
+      "width": 240,
+      "height": 480,
+      "styleId": "domain.llm.gateway"
+    },
+    {
+      "id": "zone_output",
+      "container": null,
+      "parent": null,
+      "x": 1070,
+      "y": 40,
+      "width": 320,
+      "height": 480,
+      "styleId": "domain.llm.output"
+    }
+  ],
+  "nodes": [
+    {
+      "id": "user_turn",
+      "container": "zone_input",
+      "x": 60,
+      "y": 100,
+      "width": 200,
+      "height": 60
+    },
+    {
+      "id": "composer",
+      "container": "zone_contributors",
+      "x": 330,
+      "y": 100,
+      "width": 420,
+      "height": 60
+    },
+    {
+      "id": "contrib_system",
+      "container": "zone_contributors",
+      "x": 330,
+      "y": 180,
+      "width": 200,
+      "height": 55
+    },
+    {
+      "id": "contrib_skills",
+      "container": "zone_contributors",
+      "x": 550,
+      "y": 180,
+      "width": 200,
+      "height": 55
+    },
+    {
+      "id": "contrib_tools",
+      "container": "zone_contributors",
+      "x": 330,
+      "y": 390,
+      "width": 200,
+      "height": 55
+    },
+    {
+      "id": "contrib_history",
+      "container": "zone_contributors",
+      "x": 550,
+      "y": 255,
+      "width": 200,
+      "height": 55
+    },
+    {
+      "id": "model_stream",
+      "container": "zone_model",
+      "x": 820,
+      "y": 100,
+      "width": 200,
+      "height": 70
+    },
+    {
+      "id": "token_parser",
+      "container": "zone_output",
+      "x": 1090,
+      "y": 100,
+      "width": 280,
+      "height": 60
+    },
+    {
+      "id": "thinking_extractor",
+      "container": "zone_output",
+      "x": 1090,
+      "y": 190,
+      "width": 280,
+      "height": 55
+    },
+    {
+      "id": "tool_call_extractor",
+      "container": "zone_output",
+      "x": 1090,
+      "y": 270,
+      "width": 280,
+      "height": 60
+    }
+  ],
+  "edges": [
+    {
+      "id": "p1",
+      "from": "user_turn",
+      "to": "composer",
+      "type": "call",
+      "label": "initiate turn",
+      "points": []
+    },
+    {
+      "id": "p2",
+      "from": "composer",
+      "to": "contrib_system",
+      "type": "data-flow",
+      "label": "pull slice",
+      "points": []
+    },
+    {
+      "id": "p3",
+      "from": "composer",
+      "to": "contrib_skills",
+      "type": "data-flow",
+      "label": "pull slice",
+      "points": []
+    },
+    {
+      "id": "p4",
+      "from": "composer",
+      "to": "contrib_tools",
+      "type": "data-flow",
+      "label": "pull slice",
+      "points": []
+    },
+    {
+      "id": "p5",
+      "from": "composer",
+      "to": "contrib_history",
+      "type": "data-flow",
+      "label": "pull slice",
+      "points": []
+    },
+    {
+      "id": "p6",
+      "from": "composer",
+      "to": "model_stream",
+      "type": "call",
+      "label": "submit payload",
+      "points": []
+    },
+    {
+      "id": "p7",
+      "from": "model_stream",
+      "to": "token_parser",
+      "type": "data-flow",
+      "label": "SSE tokens",
+      "points": []
+    },
+    {
+      "id": "p8",
+      "from": "token_parser",
+      "to": "thinking_extractor",
+      "type": "data-flow",
+      "label": "thought chunks",
+      "points": []
+    },
+    {
+      "id": "p9",
+      "from": "token_parser",
+      "to": "tool_call_extractor",
+      "type": "data-flow",
+      "label": "tool call chunks",
+      "points": []
+    }
+  ]
+}

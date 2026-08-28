@@ -1,8 +1,7 @@
 import { area, center, containsPoint, containsRect } from "../geometry/rect.js";
 import type { Rect } from "../geometry/types.js";
 import { DiagramDocument } from "./document.js";
-import { DEFAULT_STYLE_IDS, type StyleLibrary } from "./StyleLibrary.js";
-import type { WireStyle } from "./style-types.js";
+import type { StyleLibrary } from "./StyleLibrary.js";
 import type {
   DiagramEdge,
   DiagramElement,
@@ -16,7 +15,6 @@ import type {
   WireNode,
   WireView,
   WireZone,
-  WireZoneStyle,
 } from "./wire-types.js";
 
 /**
@@ -86,12 +84,8 @@ function parseEdge(w: WireEdge): DiagramEdge {
   };
 }
 
-function zoneToElement(z: WireZone, order: number, styles?: StyleLibrary): DiagramElement {
-  const styleId =
-    z.styleId ??
-    (z.style === undefined || styles === undefined
-      ? undefined
-      : migrateInlineZoneStyle(z.style, styles, z.name ?? z.id));
+function zoneToElement(z: WireZone, order: number, _styles?: StyleLibrary): DiagramElement {
+  const styleId = z.styleId;
 
   return {
     id: z.id,
@@ -113,131 +107,7 @@ function zoneToElement(z: WireZone, order: number, styles?: StyleLibrary): Diagr
   };
 }
 
-/**
- * Turn one zone's inline colours into a reference to a named style.
- *
- * Colours identify the style; border width does not. `spla-arch` used to thin a
- * nested zone's border by 0.5 per level, so matching on width too would mint a
- * near-duplicate style for every depth of every theme — on
- * `model-core-full.json` that was 23 styles where 14 are meant. The generator
- * has since stopped varying width by depth (nesting reads from the geometry
- * anyway), so preserving that variance here would only carry the old artefact
- * forward under a new name.
- *
- * A dash pattern does survive, because unlike a half-pixel of border it is a
- * deliberate signal — `zone.unplaced` is dashed precisely to be noticed.
- *
- * Anything matching nothing gets its own style rather than being rounded to the
- * nearest one: a hand-picked colour in a committed model is a decision someone
- * made, and losing it silently on first open is not a migration.
- */
-function migrateInlineZoneStyle(
-  inline: WireZoneStyle,
-  styles: StyleLibrary,
-  zoneLabel: string,
-): string | undefined {
-  const fill = inline.fill;
-  const stroke = inline.stroke;
-  const headerBg = inline.headerBg;
-  if (fill === undefined && stroke === undefined && headerBg === undefined) return undefined;
 
-  const themeId = findByColors(styles, fill, stroke, headerBg);
-  const width = inline.strokeWidth;
-  const dash = inline.strokeDasharray;
-
-  if (themeId !== null) {
-    const theme = styles.resolveBlock(themeId);
-    const dashDiffers = dash !== undefined && dash !== "" && dash !== theme.border.dash;
-    if (!dashDiffers) return themeId;
-
-    const variantId = `${themeId}.dashed`;
-    if (!styles.has(variantId)) {
-      styles.put({
-        id: variantId,
-        name: `${styles.get(themeId)?.name ?? themeId} · пунктир`,
-        appliesTo: "block",
-        basedOn: themeId,
-        border: { dash },
-      });
-    }
-    return variantId;
-  }
-
-  // Named after the zone that carried the colours, not after a hex value: this
-  // style is about to sit in a list of fifty, and "Импортирован (#faf5ff)"
-  // tells the reader nothing about when to reach for it.
-  const id = styles.freeId(`zone.${slug(zoneLabel)}`);
-  const style: WireStyle = {
-    id,
-    name: `Зона · ${zoneLabel}`,
-    appliesTo: "block",
-    // Inherits the container look — radius, no shadow, header height — and
-    // overrides only the colours it came for. Without this the migrated zone
-    // would fall through to the block fallback instead and quietly turn into a
-    // node-shaped box: the same three colours, but the wrong corner radius and
-    // a drop shadow no zone has ever had.
-    basedOn: DEFAULT_STYLE_IDS.zone,
-    description:
-      `Создан автоматически из inline-цветов зоны «${zoneLabel}» при переносе ` +
-      `раскраски в библиотеку стилей. Переименуйте, если он описывает не одну зону, а роль.`,
-    tags: ["импорт"],
-    ...(fill === undefined ? {} : { fill }),
-    border: {
-      ...(stroke === undefined ? {} : { color: stroke }),
-      ...(width === undefined ? {} : { width }),
-      ...(dash === undefined || dash === "" ? {} : { dash }),
-    },
-    ...(headerBg === undefined ? {} : { header: { fill: headerBg } }),
-  };
-  styles.put(style);
-  return id;
-}
-
-/**
- * The block style whose resolved solid colours match all three given ones.
- *
- * Several styles can share a palette — `default.zone` and `zone.slate` are the
- * same three colours by design — so a plain first-match would migrate a slate
- * zone onto the fallback style and quietly couple it to whatever the fallback
- * later becomes. A named style always wins over a `default.*` one; only if
- * nothing named matches does the fallback answer.
- */
-function findByColors(
-  styles: StyleLibrary,
-  fill: string | undefined,
-  stroke: string | undefined,
-  headerBg: string | undefined,
-): string | null {
-  let fallback: string | null = null;
-  for (const entry of styles.list("block")) {
-    const r = styles.resolveBlock(entry.id);
-    if (r.fill.kind !== "solid" || r.header.fill.kind !== "solid") continue;
-    if (fill !== undefined && !sameColor(r.fill.color, fill)) continue;
-    if (stroke !== undefined && !sameColor(r.border.color, stroke)) continue;
-    if (headerBg !== undefined && !sameColor(r.header.fill.color, headerBg)) continue;
-    if (entry.id.startsWith("default.")) {
-      fallback ??= entry.id;
-      continue;
-    }
-    return entry.id;
-  }
-  return fallback;
-}
-
-function sameColor(a: string, b: string): boolean {
-  return a.trim().toLowerCase() === b.trim().toLowerCase();
-}
-
-/** A short ascii-ish id fragment from a zone caption, which is usually Russian. */
-function slug(label: string): string {
-  const cleaned = label
-    .toLowerCase()
-    .replace(/\(.*?\)/g, "")
-    .replace(/[^a-z0-9а-яё]+/gi, "-")
-    .replace(/^-+|-+$/g, "")
-    .slice(0, 28);
-  return cleaned === "" ? "imported" : cleaned;
-}
 
 function nodeToElement(n: WireNode, order: number): DiagramElement {
   return {
@@ -400,13 +270,8 @@ function elementToZone(el: DiagramElement): WireZone {
   if (el.tags.length > 0) out.tags = el.tags;
   else delete out.tags;
 
-  // Once a zone names a style, its inline colours are gone for good — keeping
-  // both would recreate the two-sources-of-truth problem that styles exist to
-  // end. A zone that was never migrated (no library at parse time) keeps
-  // whatever `raw` carried, so a save is still lossless in that case.
   if (el.styleId !== undefined) {
     out.styleId = el.styleId;
-    delete out.style;
   }
 
   // An element that never carried metadata does not acquire an empty object

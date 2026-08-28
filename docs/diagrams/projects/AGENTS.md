@@ -1,10 +1,7 @@
-# Проекты архитектурной модели — контракт v2
+# Проекты архитектурной модели SPLA
 
 Здесь лежат **проекты**: наборы сущностей, связей, контейнеров, текстов и видов.
-Пока пусто — папка подготовлена под переезд.
-
-**Решение и обоснование:** [`ADR_20260828_diagrams_model-contract-v2`](../../adr/ADR_20260828_diagrams_model-contract-v2.md).
-**Инструкция утилите:** [`tools/spla-atlas/AGENTS.md`](../../../tools/spla-atlas/AGENTS.md).
+Спецификация формата: [`CONTRACT.md`](../../../tools/spla-diagram/docs/CONTRACT.md).
 
 ---
 
@@ -46,7 +43,6 @@ docs/diagrams/projects/<project-id>/
 
 ```json
 {
-  "contractVersion": 2,
   "id": "core",
   "title": "SPLA Core",
   "baseLanguage": "en",
@@ -66,7 +62,6 @@ docs/diagrams/projects/<project-id>/
 
 ```json
 {
-  "contractVersion": 2,
   "entities": [
     {
       "id": "e_repetitionguardmiddleware",

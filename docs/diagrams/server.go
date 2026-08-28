@@ -9,6 +9,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"runtime"
+	"strings"
 	"time"
 )
 
@@ -30,16 +31,22 @@ func main() {
 			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
 			return
 		}
-		
-		fileName := r.URL.Query().Get("file")
-		if fileName == "" || fileName == "catalog.json" {
-			http.Error(w, "Invalid file name", http.StatusBadRequest)
+
+		fileName := strings.TrimSpace(r.URL.Query().Get("file"))
+		if fileName == "" {
+			http.Error(w, "Missing file parameter", http.StatusBadRequest)
 			return
 		}
 
-		// Security: Only allow json files in the current dir
-		if filepath.Ext(fileName) != ".json" || filepath.Base(fileName) != fileName {
-			http.Error(w, "Invalid file path", http.StatusBadRequest)
+		// Normalize and validate path
+		cleanPath := filepath.Clean(filepath.FromSlash(fileName))
+
+		// Security: Only allow relative paths inside workspace root and requiring .json extension
+		if filepath.IsAbs(cleanPath) ||
+			cleanPath == ".." ||
+			strings.HasPrefix(cleanPath, ".."+string(filepath.Separator)) ||
+			filepath.Ext(cleanPath) != ".json" {
+			http.Error(w, "Invalid file path (must be a relative .json path within workspace)", http.StatusBadRequest)
 			return
 		}
 
@@ -49,13 +56,22 @@ func main() {
 			return
 		}
 
-		err = os.WriteFile(fileName, body, 0644)
+		// Ensure parent directory exists
+		parentDir := filepath.Dir(cleanPath)
+		if parentDir != "." && parentDir != "" {
+			if err := os.MkdirAll(parentDir, 0755); err != nil {
+				http.Error(w, "Failed to create directory: "+err.Error(), http.StatusInternalServerError)
+				return
+			}
+		}
+
+		err = os.WriteFile(cleanPath, body, 0644)
 		if err != nil {
-			http.Error(w, "Failed to write file", http.StatusInternalServerError)
+			http.Error(w, "Failed to write file: "+err.Error(), http.StatusInternalServerError)
 			return
 		}
-		
-		fmt.Printf("✅ Saved %s\n", fileName)
+
+		fmt.Printf("✅ Saved %s (%d bytes)\n", cleanPath, len(body))
 		w.WriteHeader(http.StatusOK)
 		w.Write([]byte("OK"))
 	})

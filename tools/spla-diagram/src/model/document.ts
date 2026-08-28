@@ -6,6 +6,7 @@ import type {
   DiagramMetadata,
   DiagramView,
 } from "./types.js";
+import type { EntityEntry, ProjectBundle, RelationEntry } from "./wire-types.js";
 import { elementRect, isContainer } from "./types.js";
 
 /**
@@ -49,6 +50,18 @@ export class DiagramDocument {
     for (const el of this.elements()) {
       this.byId.set(el.id, el);
     }
+  }
+
+  get bundle(): ProjectBundle | null {
+    return ((this.raw as any)?.bundle ?? null) as ProjectBundle | null;
+  }
+
+  get entities(): EntityEntry[] {
+    return this.bundle?.entities?.entities ?? [];
+  }
+
+  get relations(): RelationEntry[] {
+    return this.bundle?.relations?.relations ?? [];
   }
 
   // ---------------------------------------------------------------- queries

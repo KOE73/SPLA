@@ -70,8 +70,6 @@ export class DiagramCanvas {
 
   /** Snapping step used by interactions, in model units. */
   gridStep: number;
-  /** Whether dragging a container carries its contents (R-EDIT-03). */
-  containerDrag = true;
 
   /**
    * Families of edge currently *not* drawn. Empty means everything shows.
@@ -237,6 +235,10 @@ export class DiagramCanvas {
     this.render();
   }
 
+  isEdgeFamilyHidden(family: EdgeFamily): boolean {
+    return this.hiddenEdgeFamilies.has(family);
+  }
+
   get activeView(): string | null {
     return this.activeViewId;
   }
@@ -341,12 +343,9 @@ export class DiagramCanvas {
     if (el !== undefined) return { id, kind: el.kind };
     if (this.doc.edge(id) !== undefined) return { id, kind: "edge" };
 
-    const v2Relations =
-      (this.doc.raw as any)?.v2Bundle?.relations?.relations ||
-      (this.doc.raw as any)?.v2Bundle?.relations ||
-      [];
-    if (Array.isArray(v2Relations)) {
-      const rel = v2Relations.find((r: any) => r.id === id);
+    const relations = this.doc.relations;
+    if (Array.isArray(relations)) {
+      const rel = relations.find((r) => r.id === id);
       if (rel) return { id, kind: "edge" };
     }
     if (id.startsWith("ghost_")) {
@@ -546,9 +545,9 @@ export class DiagramCanvas {
       }
       const ghostEl = doc.element(this.ghostNodeId);
       const rawGhostEntityId = ghostEl ? (ghostEl.raw as any)?._entity?.id : null;
-      const v2Relations = (doc.raw as any)?.v2Bundle?.relations?.relations || (doc.raw as any)?.v2Bundle?.relations || [];
-      if (Array.isArray(v2Relations)) {
-        for (const rel of v2Relations) {
+      const relations = doc.relations;
+      if (Array.isArray(relations)) {
+        for (const rel of relations) {
           const fromMatch = rel.from === this.ghostNodeId || (rawGhostEntityId && rel.from === rawGhostEntityId);
           const toMatch = rel.to === this.ghostNodeId || (rawGhostEntityId && rel.to === rawGhostEntityId);
           if (fromMatch || toMatch) {
@@ -694,9 +693,9 @@ export class DiagramCanvas {
     if (this.ghostNodeId !== null) {
       const ghostEl = doc.element(this.ghostNodeId);
       const rawGhostEntityId = ghostEl ? (ghostEl.raw as any)?._entity?.id : null;
-      const v2Relations = (doc.raw as any)?.v2Bundle?.relations?.relations || (doc.raw as any)?.v2Bundle?.relations || [];
-      if (Array.isArray(v2Relations)) {
-        for (const rel of v2Relations) {
+      const relations = doc.relations;
+      if (Array.isArray(relations)) {
+        for (const rel of relations) {
           const fromMatch = rel.from === this.ghostNodeId || (rawGhostEntityId && rel.from === rawGhostEntityId);
           const toMatch = rel.to === this.ghostNodeId || (rawGhostEntityId && rel.to === rawGhostEntityId);
           if (fromMatch || toMatch) {

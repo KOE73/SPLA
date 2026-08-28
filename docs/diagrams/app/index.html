@@ -4,8 +4,8 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>SPLA Diagram — Visualizer &amp; Editor</title>
-    <script type="module" crossorigin src="./assets/index-Ckl8ncnc.js"></script>
-    <link rel="stylesheet" crossorigin href="./assets/index-Di441Ydz.css">
+    <script type="module" crossorigin src="./assets/index-BJtpyMxS.js"></script>
+    <link rel="stylesheet" crossorigin href="./assets/index-CQp2IoqY.css">
   </head>
   <body>
     <div id="app">
@@ -14,11 +14,8 @@
           <div class="brand-mark">⬡</div>
           <h1>SPLA Diagram</h1>
           <span class="chip" data-slot="title">Загрузка…</span>
-          <span class="chip chip-warn" data-slot="dirty" hidden>изменено</span>
+          <button class="btn btn-save-brand" data-action="save" data-slot="save-btn" title="Все изменения сохранены" disabled>💾 Сохранить</button>
         </div>
-
-        <div class="views" data-slot="views"></div>
-        <div class="views tags-bar" data-slot="tags" title="Подсветить домен: гаснет всё, что не носит этот тег стиля"></div>
 
         <div class="toolbar">
           <label class="check" title="Показать или скрыть точки координатной сетки">
@@ -28,18 +25,6 @@
           <label class="check" title="Привязка координат к шагу 10px при перетаскивании">
             <input type="checkbox" data-toggle="snap" checked />
             <span>🧲 Привязка</span>
-          </label>
-          <label class="check" title="Перемещать вложенные элементы вместе с зоной">
-            <input type="checkbox" data-toggle="container-drag" checked />
-            <span>📦 Зона-контейнер</span>
-          </label>
-
-          <label
-            class="check"
-            title="Связи-порождение (implements, extends, composes). В полной модели ядра их 100 из 119 — снимите галку, чтобы увидеть потоки"
-          >
-            <input type="checkbox" data-toggle="structure-edges" checked />
-            <span>🔗 Порождение</span>
           </label>
 
           <label class="check" title="Как связи причаливают к сторонам блоков">
@@ -72,10 +57,8 @@
             <button class="btn-icon" data-action="redo" title="Повторить (Ctrl+Y)" disabled>↷</button>
           </div>
 
-          <button class="btn btn-primary" data-action="save" title="Сохранить модель на сервер">Сохранить</button>
           <button class="btn btn-accent" data-action="export-drawio" title="Экспорт в .drawio">.drawio</button>
           <button class="btn" data-action="toggle-json" title="Показать JSON">Код</button>
-          <button class="btn" data-action="fit" title="Вписать в экран">Вписать</button>
         </div>
       </header>
 
@@ -138,6 +121,7 @@
           <div class="tab-row inspector-tabs">
             <button class="tab is-active" data-action="tab-properties" data-tab="properties">Свойства</button>
             <button class="tab" data-action="tab-edges" data-tab="edges">Связи</button>
+            <button class="tab" data-action="tab-filters" data-tab="filters">Фильтры</button>
             <button class="tab" data-action="tab-styles" data-tab="styles">Стили</button>
             <button class="tab" data-action="tab-base" data-tab="base">База</button>
           </div>
@@ -145,6 +129,8 @@
           <div class="inspector-body" data-slot="inspector-body"></div>
 
           <div class="inspector-body edges-pane" data-slot="edges-body" hidden></div>
+
+          <div class="inspector-body filters-pane" data-slot="filters-body" hidden style="display: flex; flex-direction: column; overflow: hidden; padding: 0;"></div>
 
           <div class="inspector-body styles-pane" data-slot="styles-body" hidden>
             <div class="style-list" data-slot="style-list"></div>

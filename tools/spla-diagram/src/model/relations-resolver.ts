@@ -26,10 +26,7 @@ export function resolveElementRelations(
   if (!doc) return { total: 0, visible: 0, items: [] };
 
   const canvasEdges = doc.edges.filter((e) => e.from === element.id || e.to === element.id);
-  const v2Relations =
-    (doc.raw as any)?.v2Bundle?.relations?.relations ||
-    (doc.raw as any)?.v2Bundle?.relations ||
-    [];
+  const relations = doc.relations;
   const rawEntityId = (element.raw as any)?._entity?.id;
 
   const map = new Map<string, ResolvedRelation>();
@@ -49,8 +46,8 @@ export function resolveElementRelations(
   }
 
   // 2. Then merge relations from the registry/code
-  if (Array.isArray(v2Relations)) {
-    for (const rel of v2Relations) {
+  if (Array.isArray(relations)) {
+    for (const rel of relations) {
       const fromMatch = rel.from === element.id || (rawEntityId && rel.from === rawEntityId);
       const toMatch = rel.to === element.id || (rawEntityId && rel.to === rawEntityId);
       if (fromMatch || toMatch) {

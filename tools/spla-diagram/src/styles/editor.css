@@ -18,6 +18,7 @@
   --faint: #6b7178;
   --accent: #4ea1ff;
   --accent-soft: rgba(78, 161, 255, 0.14);
+  --success: #22c55e;
   --danger: #e05555;
   --hover: #333336;
   --input-bg: #1a1a1a;
@@ -35,6 +36,7 @@
   --faint: #5f786c;
   --accent: #10b981;
   --accent-soft: rgba(16, 185, 129, 0.14);
+  --success: #10b981;
   --danger: #e05555;
   --hover: #22382f;
   --input-bg: #0d1411;
@@ -52,6 +54,7 @@
   --faint: #b3a695;
   --accent: #e18f2f;
   --accent-soft: rgba(225, 143, 47, 0.14);
+  --success: #2e7d32;
   --danger: #c0392b;
   --hover: #e5decb;
   --input-bg: #f3eee2;
@@ -69,6 +72,7 @@
   --faint: #9aa0a6;
   --accent: #2563eb;
   --accent-soft: rgba(37, 99, 235, 0.12);
+  --success: #16a34a;
   --danger: #c0392b;
   --hover: #ebebeb;
   --input-bg: #f6f8fa;
@@ -294,6 +298,19 @@ body {
   color: #fff;
 }
 
+.btn-success {
+  background: var(--success, #16a34a);
+  border-color: var(--success, #16a34a);
+  color: #ffffff;
+  font-weight: 600;
+}
+
+.btn-success:hover:not(:disabled) {
+  filter: brightness(1.08);
+  background: var(--success, #16a34a);
+  color: #ffffff;
+}
+
 .btn-danger {
   background: var(--danger);
   border-color: var(--danger);
@@ -302,9 +319,109 @@ body {
 }
 
 .btn-danger:hover:not(:disabled) {
-  opacity: 0.9;
+  filter: brightness(1.08);
   background: var(--danger);
   color: #ffffff;
+}
+
+.btn-save-brand {
+  padding: 4px 10px;
+  font-size: 11px;
+  font-weight: 600;
+  border-radius: 6px;
+  transition: all 0.15s ease;
+  white-space: nowrap;
+}
+
+.btn-save-brand:disabled {
+  opacity: 0.45;
+  cursor: default;
+  background: var(--panel-alt);
+  border-color: var(--line);
+  color: var(--muted);
+}
+
+.btn-save-brand.btn-save-dirty {
+  opacity: 1;
+  background: var(--success, #16a34a);
+  border-color: var(--success, #16a34a);
+  color: #ffffff;
+  cursor: pointer;
+  box-shadow: 0 0 8px rgba(0, 0, 0, 0.25);
+  animation: save-pulse 2s infinite ease-in-out;
+}
+
+.btn-save-brand.btn-save-dirty:hover {
+  filter: brightness(1.12);
+}
+
+@keyframes save-pulse {
+  0%, 100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.03);
+  }
+}
+
+/* -------------------------------------------------------- confirm-popover */
+
+.confirm-popover-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  background: rgba(0, 0, 0, 0.35);
+  backdrop-filter: blur(1px);
+}
+
+.confirm-popover-card {
+  position: fixed;
+  z-index: 1001;
+  width: 290px;
+  background: var(--panel);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  box-shadow: 0 14px 35px rgba(0, 0, 0, 0.45);
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  animation: popover-fade-in 0.12s ease-out;
+}
+
+@keyframes popover-fade-in {
+  from {
+    opacity: 0;
+    transform: scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.confirm-popover-title {
+  font-size: 13px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--text);
+}
+
+.confirm-popover-msg {
+  font-size: 11px;
+  color: var(--muted);
+  line-height: 1.4;
+  margin: 0;
+}
+
+.confirm-popover-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 4px;
 }
 
 .btn-small {
