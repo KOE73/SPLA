@@ -378,7 +378,9 @@ export class DiagramEditor implements InspectorHost, StylePanelHost {
     const hint = this.slot("drop-hint");
     window.addEventListener("dragover", (e) => {
       e.preventDefault();
-      hint.hidden = false;
+      if (!e.dataTransfer?.types.includes("application/spla-entity")) {
+        hint.hidden = false;
+      }
     });
     window.addEventListener("dragleave", (e) => {
       if (e.relatedTarget === null) hint.hidden = true;
@@ -386,6 +388,42 @@ export class DiagramEditor implements InspectorHost, StylePanelHost {
     window.addEventListener("drop", (e) => {
       e.preventDefault();
       hint.hidden = true;
+
+      const entityData = e.dataTransfer?.getData("application/spla-entity");
+      if (entityData) {
+        try {
+          const payload = JSON.parse(entityData);
+          if (payload && payload.id) {
+            const at = this.canvas.toModel(e.clientX, e.clientY);
+            const doc = this.canvas.model;
+            if (!doc) return;
+            const id = payload.id;
+            const name = payload.textEntry?.name || payload.entity.name || id;
+            const elToAdd = {
+              id,
+              kind: "node" as const,
+              type: payload.entity.kind,
+              label: name,
+              tags: [],
+              metadata: { description: payload.textEntry?.description, codeRef: payload.entity.codeRef },
+              x: at.x,
+              y: at.y,
+              width: 180,
+              height: 60,
+              parent: null as any,
+              children: [],
+              wireOrder: Infinity,
+              raw: {}
+            };
+            const target = doc.containerAt({ x: at.x + 90, y: at.y + 30 });
+            doc.add(elToAdd, target);
+            this.commit("place-entity");
+            this.canvas.select(id);
+            this.basePanel.render();
+          }
+        } catch (err) {}
+        return;
+      }
       const file = e.dataTransfer?.files[0];
       if (file === undefined) return;
       if (!file.name.endsWith(".json")) {

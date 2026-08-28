@@ -1,0 +1,719 @@
+{
+  "contractVersion": 2,
+  "relations": [
+    {
+      "id": "f_blueprint_gateway",
+      "relation": "r_owns",
+      "styleId": "relation.strong",
+      "points": []
+    },
+    {
+      "id": "f_credentials_client",
+      "relation": "r_owns",
+      "styleId": "relation.strong",
+      "points": []
+    },
+    {
+      "id": "f_exception_providerstate",
+      "relation": "r_owns",
+      "styleId": "relation.strong",
+      "points": []
+    },
+    {
+      "id": "f_registry_descriptor",
+      "relation": "r_owns",
+      "styleId": "relation.strong",
+      "points": []
+    },
+    {
+      "id": "f_resolver_registry",
+      "relation": "r_owns",
+      "styleId": "relation.strong",
+      "points": []
+    },
+    {
+      "id": "s_accountingstage_itoolmiddleware",
+      "relation": "r_owns",
+      "styleId": "relation.strong",
+      "points": []
+    },
+    {
+      "id": "s_aclsecretaccesspolicy_isecretaccesspolicy",
+      "relation": "r_owns",
+      "styleId": "relation.strong",
+      "points": []
+    },
+    {
+      "id": "s_agentclarifytool_imcptool",
+      "relation": "r_owns",
+      "styleId": "relation.strong",
+      "points": []
+    },
+    {
+      "id": "s_agentfeature_iagentfeature",
+      "relation": "r_owns",
+      "styleId": "relation.strong",
+      "points": []
+    },
+    {
+      "id": "s_agentlibrarian_iagentlibrarian",
+      "relation": "r_owns",
+      "styleId": "relation.strong",
+      "points": []
+    },
+    {
+      "id": "s_agentmemorycleartool_imcptool",
+      "relation": "r_owns",
+      "styleId": "relation.strong",
+      "points": []
+    },
+    {
+      "id": "s_agentmemorydeletetool_imcptool",
+      "relation": "r_owns",
+      "styleId": "relation.strong",
+      "points": []
+    },
+    {
+      "id": "s_agentmemorygettool_imcptool",
+      "relation": "r_owns",
+      "styleId": "relation.strong",
+      "points": []
+    },
+    {
+      "id": "s_agentmemorylisttool_imcptool",
+      "relation": "r_owns",
+      "styleId": "relation.strong",
+      "points": []
+    },
+    {
+      "id": "s_agentmemorysettool_imcptool",
+      "relation": "r_owns",
+      "styleId": "relation.strong",
+      "points": []
+    },
+    {
+      "id": "s_agentsession_iagentsession",
+      "relation": "r_owns",
+      "styleId": "relation.strong",
+      "points": []
+    },
+    {
+      "id": "s_agentspawnbatchtool_imcptool",
+      "relation": "r_owns",
+      "styleId": "relation.strong",
+      "points": []
+    },
+    {
+      "id": "s_agentspawntool_imcptool",
+      "relation": "r_owns",
+      "styleId": "relation.strong",
+      "points": []
+    },
+    {
+      "id": "s_allowallgate_icapabilitygate",
+      "relation": "r_owns",
+      "styleId": "relation.strong",
+      "points": []
+    },
+    {
+      "id": "s_ambienthoststage_itoolmiddleware",
+      "relation": "r_owns",
+      "styleId": "relation.strong",
+      "points": []
+    },
+    {
+      "id": "s_backgroundstage_itoolmiddleware",
+      "relation": "r_owns",
+      "styleId": "relation.strong",
+      "points": []
+    },
+    {
+      "id": "s_blobpeektool_imcptool",
+      "relation": "r_owns",
+      "styleId": "relation.strong",
+      "points": []
+    },
+    {
+      "id": "s_blobstore_iblobstore",
+      "relation": "r_owns",
+      "styleId": "relation.strong",
+      "points": []
+    },
+    {
+      "id": "s_claimidentity_iidentity",
+      "relation": "r_owns",
+      "styleId": "relation.strong",
+      "points": []
+    },
+    {
+      "id": "s_claimsidentityprovider_iidentityprovider",
+      "relation": "r_owns",
+      "styleId": "relation.strong",
+      "points": []
+    },
+    {
+      "id": "s_contextcheckpointrestoretool_imcptool",
+      "relation": "r_owns",
+      "styleId": "relation.strong",
+      "points": []
+    },
+    {
+      "id": "s_contextcheckpointsettool_imcptool",
+      "relation": "r_owns",
+      "styleId": "relation.strong",
+      "points": []
+    },
+    {
+      "id": "s_credentialsmiddleware_illmmiddleware",
+      "relation": "r_owns",
+      "styleId": "relation.strong",
+      "points": []
+    },
+    {
+      "id": "s_directoryskillsource_ieditableskillsource",
+      "relation": "r_owns",
+      "styleId": "relation.strong",
+      "points": []
+    },
+    {
+      "id": "s_directoryskillsourcefactory_iskillsourcefactory",
+      "relation": "r_owns",
+      "styleId": "relation.strong",
+      "points": []
+    },
+    {
+      "id": "s_dpapifilesecretstore_isecretstore",
+      "relation": "r_owns",
+      "styleId": "relation.strong",
+      "points": []
+    },
+    {
+      "id": "s_embeddedjsonschemaprovider_ijsonschemaprovider",
+      "relation": "r_owns",
+      "styleId": "relation.strong",
+      "points": []
+    },
+    {
+      "id": "s_faultstage_itoolmiddleware",
+      "relation": "r_owns",
+      "styleId": "relation.strong",
+      "points": []
+    },
+    {
+      "id": "s_filebucket_ibucket",
+      "relation": "r_owns",
+      "styleId": "relation.strong",
+      "points": []
+    },
+    {
+      "id": "s_filecontentbrowser_icontentbrowser",
+      "relation": "r_owns",
+      "styleId": "relation.strong",
+      "points": []
+    },
+    {
+      "id": "s_filecontentsource_icontentsource",
+      "relation": "r_owns",
+      "styleId": "relation.strong",
+      "points": []
+    },
+    {
+      "id": "s_fileresourceprovider_iresourcecontainermaker",
+      "relation": "r_owns",
+      "styleId": "relation.strong",
+      "points": []
+    },
+    {
+      "id": "s_fileresourceprovider_iresourceprovider",
+      "relation": "r_owns",
+      "styleId": "relation.strong",
+      "points": []
+    },
+    {
+      "id": "s_fileresourceprovider_iresourceremover",
+      "relation": "r_owns",
+      "styleId": "relation.strong",
+      "points": []
+    },
+    {
+      "id": "s_fileresourceprovider_iresourcewriter",
+      "relation": "r_owns",
+      "styleId": "relation.strong",
+      "points": []
+    },
+    {
+      "id": "s_filesecretaclstore_isecretaclstore",
+      "relation": "r_owns",
+      "styleId": "relation.strong",
+      "points": []
+    },
+    {
+      "id": "s_filesecretstore_isecretstore",
+      "relation": "r_owns",
+      "styleId": "relation.strong",
+      "points": []
+    },
+    {
+      "id": "s_fileskillsourcestore_iskillsourcestore",
+      "relation": "r_owns",
+      "styleId": "relation.strong",
+      "points": []
+    },
+    {
+      "id": "s_fileskilltruststore_iskilltruststore",
+      "relation": "r_owns",
+      "styleId": "relation.strong",
+      "points": []
+    },
+    {
+      "id": "s_filetokenusagestore_itokenusagestore",
+      "relation": "r_owns",
+      "styleId": "relation.strong",
+      "points": []
+    },
+    {
+      "id": "s_identityconverter_iformatconverter",
+      "relation": "r_owns",
+      "styleId": "relation.strong",
+      "points": []
+    },
+    {
+      "id": "s_ieditableskillsource_iskillsource",
+      "relation": "r_owns",
+      "styleId": "relation.strong",
+      "points": []
+    },
+    {
+      "id": "s_imageviewtool_imcptool",
+      "relation": "r_owns",
+      "styleId": "relation.strong",
+      "points": []
+    },
+    {
+      "id": "s_jsontoyamlconverter_iformatconverter",
+      "relation": "r_owns",
+      "styleId": "relation.strong",
+      "points": []
+    },
+    {
+      "id": "s_keyvaluestore_ikeyvaluestore",
+      "relation": "r_owns",
+      "styleId": "relation.strong",
+      "points": []
+    },
+    {
+      "id": "s_llmproviderdescriptor_illmproviderdescriptor",
+      "relation": "r_owns",
+      "styleId": "relation.strong",
+      "points": []
+    },
+    {
+      "id": "s_localproject_iproject",
+      "relation": "r_owns",
+      "styleId": "relation.strong",
+      "points": []
+    },
+    {
+      "id": "s_localprojectbackend_iprojectbackend",
+      "relation": "r_owns",
+      "styleId": "relation.strong",
+      "points": []
+    },
+    {
+      "id": "s_localprojectprovider_iprojectprovider",
+      "relation": "r_owns",
+      "styleId": "relation.strong",
+      "points": []
+    },
+    {
+      "id": "s_localshell_ishell",
+      "relation": "r_owns",
+      "styleId": "relation.strong",
+      "points": []
+    },
+    {
+      "id": "s_localworkspace_iworkspace",
+      "relation": "r_owns",
+      "styleId": "relation.strong",
+      "points": []
+    },
+    {
+      "id": "s_markrollbacktool_imcptool",
+      "relation": "r_owns",
+      "styleId": "relation.strong",
+      "points": []
+    },
+    {
+      "id": "s_marksettool_imcptool",
+      "relation": "r_owns",
+      "styleId": "relation.strong",
+      "points": []
+    },
+    {
+      "id": "s_mcphost_itoolhost",
+      "relation": "r_owns",
+      "styleId": "relation.strong",
+      "points": []
+    },
+    {
+      "id": "s_memorybucket_ibucket",
+      "relation": "r_owns",
+      "styleId": "relation.strong",
+      "points": []
+    },
+    {
+      "id": "s_memoryprojectbackend_iprojectbackend",
+      "relation": "r_owns",
+      "styleId": "relation.strong",
+      "points": []
+    },
+    {
+      "id": "s_passthroughsandbox_isandbox",
+      "relation": "r_owns",
+      "styleId": "relation.strong",
+      "points": []
+    },
+    {
+      "id": "s_permissionmanager_ipermissionmanager",
+      "relation": "r_owns",
+      "styleId": "relation.strong",
+      "points": []
+    },
+    {
+      "id": "s_permissionstage_itoolmiddleware",
+      "relation": "r_owns",
+      "styleId": "relation.strong",
+      "points": []
+    },
+    {
+      "id": "s_permissivesecretaccesspolicy_isecretaccesspolicy",
+      "relation": "r_owns",
+      "styleId": "relation.strong",
+      "points": []
+    },
+    {
+      "id": "s_pluginavailabilitystage_itoolmiddleware",
+      "relation": "r_owns",
+      "styleId": "relation.strong",
+      "points": []
+    },
+    {
+      "id": "s_pluginskillsource_iskillsource",
+      "relation": "r_owns",
+      "styleId": "relation.strong",
+      "points": []
+    },
+    {
+      "id": "s_progressnodestage_itoolmiddleware",
+      "relation": "r_owns",
+      "styleId": "relation.strong",
+      "points": []
+    },
+    {
+      "id": "s_providerclientresolver_illmclientresolver",
+      "relation": "r_owns",
+      "styleId": "relation.strong",
+      "points": []
+    },
+    {
+      "id": "s_providerstatemiddleware_illmmiddleware",
+      "relation": "r_owns",
+      "styleId": "relation.strong",
+      "points": []
+    },
+    {
+      "id": "s_repetitionguardmiddleware_illmmiddleware",
+      "relation": "r_owns",
+      "styleId": "relation.strong",
+      "points": []
+    },
+    {
+      "id": "s_resourcedeletetool_resourcetoolbase",
+      "relation": "r_owns",
+      "styleId": "relation.strong",
+      "points": []
+    },
+    {
+      "id": "s_resourceexiststool_resourcetoolbase",
+      "relation": "r_owns",
+      "styleId": "relation.strong",
+      "points": []
+    },
+    {
+      "id": "s_resourcelisttool_resourcetoolbase",
+      "relation": "r_owns",
+      "styleId": "relation.strong",
+      "points": []
+    },
+    {
+      "id": "s_resourcemakedirtool_resourcetoolbase",
+      "relation": "r_owns",
+      "styleId": "relation.strong",
+      "points": []
+    },
+    {
+      "id": "s_resourcereadtool_resourcetoolbase",
+      "relation": "r_owns",
+      "styleId": "relation.strong",
+      "points": []
+    },
+    {
+      "id": "s_resourcetoolbase_imcptool",
+      "relation": "r_owns",
+      "styleId": "relation.strong",
+      "points": []
+    },
+    {
+      "id": "s_resourcewritetool_resourcetoolbase",
+      "relation": "r_owns",
+      "styleId": "relation.strong",
+      "points": []
+    },
+    {
+      "id": "s_secretresolver_isecretresolver",
+      "relation": "r_owns",
+      "styleId": "relation.strong",
+      "points": []
+    },
+    {
+      "id": "s_singleclientresolver_illmclientresolver",
+      "relation": "r_owns",
+      "styleId": "relation.strong",
+      "points": []
+    },
+    {
+      "id": "s_skillactivatetool_imcptool",
+      "relation": "r_owns",
+      "styleId": "relation.strong",
+      "points": []
+    },
+    {
+      "id": "s_skillcapabilityprobe_iskillcapabilityprobe",
+      "relation": "r_owns",
+      "styleId": "relation.strong",
+      "points": []
+    },
+    {
+      "id": "s_skilldeactivatetool_imcptool",
+      "relation": "r_owns",
+      "styleId": "relation.strong",
+      "points": []
+    },
+    {
+      "id": "s_skillfindtool_imcptool",
+      "relation": "r_owns",
+      "styleId": "relation.strong",
+      "points": []
+    },
+    {
+      "id": "s_skillreadresourcetool_imcptool",
+      "relation": "r_owns",
+      "styleId": "relation.strong",
+      "points": []
+    },
+    {
+      "id": "s_skillsession_iskillsession",
+      "relation": "r_owns",
+      "styleId": "relation.strong",
+      "points": []
+    },
+    {
+      "id": "s_taglibrarian_itaglibrarian",
+      "relation": "r_owns",
+      "styleId": "relation.strong",
+      "points": []
+    },
+    {
+      "id": "s_taskcanceltool_imcptool",
+      "relation": "r_owns",
+      "styleId": "relation.strong",
+      "points": []
+    },
+    {
+      "id": "s_tasklisttool_imcptool",
+      "relation": "r_owns",
+      "styleId": "relation.strong",
+      "points": []
+    },
+    {
+      "id": "s_taskoutputtool_imcptool",
+      "relation": "r_owns",
+      "styleId": "relation.strong",
+      "points": []
+    },
+    {
+      "id": "s_telemetrystage_itoolmiddleware",
+      "relation": "r_owns",
+      "styleId": "relation.strong",
+      "points": []
+    },
+    {
+      "id": "s_tokenaccountingmiddleware_illmmiddleware",
+      "relation": "r_owns",
+      "styleId": "relation.strong",
+      "points": []
+    },
+    {
+      "id": "s_toolimage_toolcontent",
+      "relation": "r_owns",
+      "styleId": "relation.strong",
+      "points": []
+    },
+    {
+      "id": "s_toolresolutionstage_itoolmiddleware",
+      "relation": "r_owns",
+      "styleId": "relation.strong",
+      "points": []
+    },
+    {
+      "id": "s_toolresource_toolcontent",
+      "relation": "r_owns",
+      "styleId": "relation.strong",
+      "points": []
+    },
+    {
+      "id": "s_toolsetactivatetool_imcptool",
+      "relation": "r_owns",
+      "styleId": "relation.strong",
+      "points": []
+    },
+    {
+      "id": "s_toolsetdeactivatetool_imcptool",
+      "relation": "r_owns",
+      "styleId": "relation.strong",
+      "points": []
+    },
+    {
+      "id": "s_toolsetdisclosurestage_itoolmiddleware",
+      "relation": "r_owns",
+      "styleId": "relation.strong",
+      "points": []
+    },
+    {
+      "id": "s_toolsetsession_itoolsetsession",
+      "relation": "r_owns",
+      "styleId": "relation.strong",
+      "points": []
+    },
+    {
+      "id": "s_tooltext_toolcontent",
+      "relation": "r_owns",
+      "styleId": "relation.strong",
+      "points": []
+    },
+    {
+      "id": "s_turnoutcomemiddleware_illmmiddleware",
+      "relation": "r_owns",
+      "styleId": "relation.strong",
+      "points": []
+    },
+    {
+      "id": "s_utf8textconverter_iformatconverter",
+      "relation": "r_owns",
+      "styleId": "relation.strong",
+      "points": []
+    },
+    {
+      "id": "s_zoneshadowstage_itoolmiddleware",
+      "relation": "r_owns",
+      "styleId": "relation.strong",
+      "points": []
+    },
+    {
+      "id": "f_gateway_repetitionguard",
+      "relation": "r_owns",
+      "styleId": "relation.strong",
+      "points": []
+    },
+    {
+      "id": "f_hop_guard_outcome",
+      "relation": "r_owns",
+      "styleId": "relation.strong",
+      "points": []
+    },
+    {
+      "id": "f_hop_outcome_state",
+      "relation": "r_owns",
+      "styleId": "relation.strong",
+      "points": []
+    },
+    {
+      "id": "f_hop_state_tokens",
+      "relation": "r_owns",
+      "styleId": "relation.strong",
+      "points": []
+    },
+    {
+      "id": "f_hop_tokens_credentials",
+      "relation": "r_owns",
+      "styleId": "relation.strong",
+      "points": []
+    },
+    {
+      "id": "f_credentials_resolver",
+      "relation": "r_owns",
+      "styleId": "relation.strong",
+      "points": []
+    },
+    {
+      "id": "f_client_credentials",
+      "relation": "r_owns",
+      "styleId": "relation.strong",
+      "points": []
+    },
+    {
+      "id": "f_credentials_secrets",
+      "relation": "r_owns",
+      "styleId": "relation.strong",
+      "points": []
+    },
+    {
+      "id": "f_credentials_settings",
+      "relation": "r_owns",
+      "styleId": "relation.strong",
+      "points": []
+    },
+    {
+      "id": "f_tokens_usagestore",
+      "relation": "r_owns",
+      "styleId": "relation.strong",
+      "points": []
+    },
+    {
+      "id": "f_state_statestore",
+      "relation": "r_owns",
+      "styleId": "relation.strong",
+      "points": []
+    },
+    {
+      "id": "f_outcome_result",
+      "relation": "r_owns",
+      "styleId": "relation.strong",
+      "points": []
+    },
+    {
+      "id": "f_guard_attempt",
+      "relation": "r_owns",
+      "styleId": "relation.strong",
+      "points": []
+    },
+    {
+      "id": "f_guard_generationattempt",
+      "relation": "r_owns",
+      "styleId": "relation.strong",
+      "points": []
+    },
+    {
+      "id": "f_blueprint_entry",
+      "relation": "r_owns",
+      "styleId": "relation.strong",
+      "points": []
+    },
+    {
+      "id": "f_blueprint_stage",
+      "relation": "r_owns",
+      "styleId": "relation.strong",
+      "points": []
+    }
+  ]
+}

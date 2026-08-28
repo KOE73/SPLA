@@ -25,6 +25,14 @@
       "theme": "emerald"
     },
     {
+      "id": "full_core_v2",
+      "file": "projects/full_core_v2/views/v_semantic_atlas.view.json",
+      "title": "[V2] FULL Core",
+      "subtitle": "Generated with all classes",
+      "icon": "🚀",
+      "theme": "indigo"
+    },
+    {
       "id": "src_core_full",
       "file": "model-core-full.json",
       "title": "FULL Core (All Classes)",

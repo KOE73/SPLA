@@ -47,6 +47,14 @@ export class BasePanel {
         row.style.padding = "4px 8px";
         row.style.borderBottom = "1px solid var(--line)";
         row.style.gap = "8px";
+        row.draggable = true;
+        row.addEventListener("dragstart", (ev) => {
+          ev.dataTransfer?.setData("application/spla-entity", JSON.stringify({
+            id: e.id,
+            entity: e,
+            textEntry: texts[e.id]
+          }));
+        });
         
         const labelCol = document.createElement("div");
         labelCol.style.overflow = "hidden";

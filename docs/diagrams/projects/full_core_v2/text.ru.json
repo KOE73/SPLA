@@ -1,0 +1,1718 @@
+{
+  "contractVersion": 2,
+  "language": "ru",
+  "entries": {
+    "n_accountingstage": {
+      "name": "AccountingStage",
+      "description": ""
+    },
+    "n_aclsecretaccesspolicy": {
+      "name": "AclSecretAccessPolicy",
+      "description": ""
+    },
+    "n_agentclarifytool": {
+      "name": "AgentClarifyTool",
+      "description": ""
+    },
+    "n_agentcontextcomposer": {
+      "name": "AgentContextComposer",
+      "description": ""
+    },
+    "n_agentcontribution": {
+      "name": "AgentContribution",
+      "description": ""
+    },
+    "n_agentcontributioncontext": {
+      "name": "AgentContributionContext",
+      "description": ""
+    },
+    "n_agentfeature": {
+      "name": "AgentFeature",
+      "description": ""
+    },
+    "n_agentfeaturecatalog": {
+      "name": "AgentFeatureCatalog",
+      "description": ""
+    },
+    "n_agentlibrarian": {
+      "name": "AgentLibrarian",
+      "description": ""
+    },
+    "n_agentmemorycleartool": {
+      "name": "AgentMemoryClearTool",
+      "description": ""
+    },
+    "n_agentmemorydeletetool": {
+      "name": "AgentMemoryDeleteTool",
+      "description": ""
+    },
+    "n_agentmemorygettool": {
+      "name": "AgentMemoryGetTool",
+      "description": ""
+    },
+    "n_agentmemoryhelpers": {
+      "name": "AgentMemoryHelpers",
+      "description": ""
+    },
+    "n_agentmemorylisttool": {
+      "name": "AgentMemoryListTool",
+      "description": ""
+    },
+    "n_agentmemorysettool": {
+      "name": "AgentMemorySetTool",
+      "description": ""
+    },
+    "n_agentmode": {
+      "name": "AgentMode",
+      "description": ""
+    },
+    "n_agentrunresult": {
+      "name": "AgentRunResult",
+      "description": ""
+    },
+    "n_agentsession": {
+      "name": "AgentSession",
+      "description": ""
+    },
+    "n_agentsessionscope": {
+      "name": "AgentSessionScope",
+      "description": ""
+    },
+    "n_agentspawnbatchtool": {
+      "name": "AgentSpawnBatchTool",
+      "description": ""
+    },
+    "n_agentspawntool": {
+      "name": "AgentSpawnTool",
+      "description": ""
+    },
+    "n_allowallgate": {
+      "name": "AllowAllGate",
+      "description": ""
+    },
+    "n_ambienthoststage": {
+      "name": "AmbientHostStage",
+      "description": ""
+    },
+    "n_attemptoutcome": {
+      "name": "AttemptOutcome",
+      "description": ""
+    },
+    "n_backgroundstage": {
+      "name": "BackgroundStage",
+      "description": ""
+    },
+    "n_backgroundtaskrecord": {
+      "name": "BackgroundTaskRecord",
+      "description": ""
+    },
+    "n_backgroundtaskregistry": {
+      "name": "BackgroundTaskRegistry",
+      "description": ""
+    },
+    "n_backgroundtaskstate": {
+      "name": "BackgroundTaskState",
+      "description": ""
+    },
+    "n_blobentry": {
+      "name": "BlobEntry",
+      "description": ""
+    },
+    "n_blobkind": {
+      "name": "BlobKind",
+      "description": ""
+    },
+    "n_blobpayload": {
+      "name": "BlobPayload",
+      "description": ""
+    },
+    "n_blobpeektool": {
+      "name": "BlobPeekTool",
+      "description": ""
+    },
+    "n_blobstore": {
+      "name": "BlobStore",
+      "description": ""
+    },
+    "n_boundarymode": {
+      "name": "BoundaryMode",
+      "description": ""
+    },
+    "n_boundaryobservation": {
+      "name": "BoundaryObservation",
+      "description": ""
+    },
+    "n_browserlauncher": {
+      "name": "BrowserLauncher",
+      "description": ""
+    },
+    "n_browsertarget": {
+      "name": "BrowserTarget",
+      "description": ""
+    },
+    "n_bucket": {
+      "name": "Bucket",
+      "description": ""
+    },
+    "n_bucketpoint": {
+      "name": "BucketPoint",
+      "description": ""
+    },
+    "n_builtinconverters": {
+      "name": "BuiltInConverters",
+      "description": ""
+    },
+    "n_catalogview": {
+      "name": "CatalogView",
+      "description": ""
+    },
+    "n_chatdoubt": {
+      "name": "ChatDoubt",
+      "description": ""
+    },
+    "n_chatinbox": {
+      "name": "ChatInbox",
+      "description": ""
+    },
+    "n_chatmanager": {
+      "name": "ChatManager",
+      "description": ""
+    },
+    "n_chatmessage": {
+      "name": "ChatMessage",
+      "description": ""
+    },
+    "n_chatrole": {
+      "name": "ChatRole",
+      "description": ""
+    },
+    "n_chatsession": {
+      "name": "ChatSession",
+      "description": ""
+    },
+    "n_chatsessionattempt": {
+      "name": "ChatSessionAttempt",
+      "description": ""
+    },
+    "n_chatsessioncontext": {
+      "name": "ChatSessionContext",
+      "description": ""
+    },
+    "n_chatsessiondoubt": {
+      "name": "ChatSessionDoubt",
+      "description": ""
+    },
+    "n_chatsessionmessage": {
+      "name": "ChatSessionMessage",
+      "description": ""
+    },
+    "n_claimidentity": {
+      "name": "ClaimIdentity",
+      "description": ""
+    },
+    "n_claimsidentityprovider": {
+      "name": "ClaimsIdentityProvider",
+      "description": ""
+    },
+    "n_claimsidentityresolver": {
+      "name": "ClaimsIdentityResolver",
+      "description": ""
+    },
+    "n_clarifyoption": {
+      "name": "ClarifyOption",
+      "description": ""
+    },
+    "n_clarifyrequest": {
+      "name": "ClarifyRequest",
+      "description": ""
+    },
+    "n_clarifyscope": {
+      "name": "ClarifyScope",
+      "description": ""
+    },
+    "n_composedcontext": {
+      "name": "ComposedContext",
+      "description": ""
+    },
+    "n_compositionmanifest": {
+      "name": "CompositionManifest",
+      "description": ""
+    },
+    "n_configloader": {
+      "name": "ConfigLoader",
+      "description": ""
+    },
+    "n_contentnode": {
+      "name": "ContentNode",
+      "description": ""
+    },
+    "n_contentnodekind": {
+      "name": "ContentNodeKind",
+      "description": ""
+    },
+    "n_contenttypes": {
+      "name": "ContentTypes",
+      "description": ""
+    },
+    "n_contextassembler": {
+      "name": "ContextAssembler",
+      "description": ""
+    },
+    "n_contextcheckpointrestoretool": {
+      "name": "ContextCheckpointRestoreTool",
+      "description": ""
+    },
+    "n_contextcheckpointsettool": {
+      "name": "ContextCheckpointSetTool",
+      "description": ""
+    },
+    "n_contextitem": {
+      "name": "ContextItem",
+      "description": ""
+    },
+    "n_contextplacement": {
+      "name": "ContextPlacement",
+      "description": ""
+    },
+    "n_contextretention": {
+      "name": "ContextRetention",
+      "description": ""
+    },
+    "n_contributortotal": {
+      "name": "ContributorTotal",
+      "description": ""
+    },
+    "n_conversation": {
+      "name": "Conversation",
+      "description": ""
+    },
+    "n_conversioncard": {
+      "name": "ConversionCard",
+      "description": ""
+    },
+    "n_credentialsmiddleware": {
+      "name": "CredentialsMiddleware",
+      "description": ""
+    },
+    "n_datachannel": {
+      "name": "DataChannel",
+      "description": ""
+    },
+    "n_dataorigin": {
+      "name": "DataOrigin",
+      "description": ""
+    },
+    "n_directoryskillsource": {
+      "name": "DirectorySkillSource",
+      "description": ""
+    },
+    "n_directoryskillsourcefactory": {
+      "name": "DirectorySkillSourceFactory",
+      "description": ""
+    },
+    "n_doubtcause": {
+      "name": "DoubtCause",
+      "description": ""
+    },
+    "n_dpapifilesecretstore": {
+      "name": "DpapiFileSecretStore",
+      "description": ""
+    },
+    "n_dpapisecrets": {
+      "name": "DpapiSecrets",
+      "description": ""
+    },
+    "n_edgeclassifier": {
+      "name": "EdgeClassifier",
+      "description": ""
+    },
+    "n_edgeledger": {
+      "name": "EdgeLedger",
+      "description": ""
+    },
+    "n_edgetraffic": {
+      "name": "EdgeTraffic",
+      "description": ""
+    },
+    "n_embeddedjsonschemaprovider": {
+      "name": "EmbeddedJsonSchemaProvider",
+      "description": ""
+    },
+    "n_faultstage": {
+      "name": "FaultStage",
+      "description": ""
+    },
+    "n_filebucket": {
+      "name": "FileBucket",
+      "description": ""
+    },
+    "n_filecontentbrowser": {
+      "name": "FileContentBrowser",
+      "description": ""
+    },
+    "n_filecontentsource": {
+      "name": "FileContentSource",
+      "description": ""
+    },
+    "n_fileresourceprovider": {
+      "name": "FileResourceProvider",
+      "description": ""
+    },
+    "n_filesecretaclstore": {
+      "name": "FileSecretAclStore",
+      "description": ""
+    },
+    "n_filesecretstore": {
+      "name": "FileSecretStore",
+      "description": ""
+    },
+    "n_fileskillsourcestore": {
+      "name": "FileSkillSourceStore",
+      "description": ""
+    },
+    "n_fileskilltruststore": {
+      "name": "FileSkillTrustStore",
+      "description": ""
+    },
+    "n_filetokenusagestore": {
+      "name": "FileTokenUsageStore",
+      "description": ""
+    },
+    "n_formatconverterregistry": {
+      "name": "FormatConverterRegistry",
+      "description": ""
+    },
+    "n_functioncall": {
+      "name": "FunctionCall",
+      "description": ""
+    },
+    "n_generationattempt": {
+      "name": "GenerationAttempt",
+      "description": ""
+    },
+    "n_hostservices": {
+      "name": "HostServices",
+      "description": ""
+    },
+    "n_hubappearancestore": {
+      "name": "HubAppearanceStore",
+      "description": ""
+    },
+    "n_iagentcontributor": {
+      "name": "IAgentContributor",
+      "description": ""
+    },
+    "n_iagentfeature": {
+      "name": "IAgentFeature",
+      "description": ""
+    },
+    "n_iagentlibrarian": {
+      "name": "IAgentLibrarian",
+      "description": ""
+    },
+    "n_iagentsession": {
+      "name": "IAgentSession",
+      "description": ""
+    },
+    "n_iagentspawner": {
+      "name": "IAgentSpawner",
+      "description": ""
+    },
+    "n_ibackgroundtaskhost": {
+      "name": "IBackgroundTaskHost",
+      "description": ""
+    },
+    "n_iblobstore": {
+      "name": "IBlobStore",
+      "description": ""
+    },
+    "n_ibucket": {
+      "name": "IBucket",
+      "description": ""
+    },
+    "n_icapabilitygate": {
+      "name": "ICapabilityGate",
+      "description": ""
+    },
+    "n_ichatstore": {
+      "name": "IChatStore",
+      "description": ""
+    },
+    "n_icontentbrowser": {
+      "name": "IContentBrowser",
+      "description": ""
+    },
+    "n_icontentsource": {
+      "name": "IContentSource",
+      "description": ""
+    },
+    "n_ieditableskillsource": {
+      "name": "IEditableSkillSource",
+      "description": ""
+    },
+    "n_iformatconverter": {
+      "name": "IFormatConverter",
+      "description": ""
+    },
+    "n_iidentity": {
+      "name": "IIdentity",
+      "description": ""
+    },
+    "n_iidentityprovider": {
+      "name": "IIdentityProvider",
+      "description": ""
+    },
+    "n_iinstanceprobe": {
+      "name": "IInstanceProbe",
+      "description": ""
+    },
+    "n_iinstanceregistry": {
+      "name": "IInstanceRegistry",
+      "description": ""
+    },
+    "n_iinstancespawner": {
+      "name": "IInstanceSpawner",
+      "description": ""
+    },
+    "n_ijsonschemaprovider": {
+      "name": "IJsonSchemaProvider",
+      "description": ""
+    },
+    "n_ikeyvaluestore": {
+      "name": "IKeyValueStore",
+      "description": ""
+    },
+    "n_illmclient": {
+      "name": "ILlmClient",
+      "description": ""
+    },
+    "n_illmclientresolver": {
+      "name": "ILlmClientResolver",
+      "description": ""
+    },
+    "n_illmgateway": {
+      "name": "ILlmGateway",
+      "description": ""
+    },
+    "n_illmmiddleware": {
+      "name": "ILlmMiddleware",
+      "description": ""
+    },
+    "n_illmproviderdescriptor": {
+      "name": "ILlmProviderDescriptor",
+      "description": ""
+    },
+    "n_imcptool": {
+      "name": "IMcpTool",
+      "description": ""
+    },
+    "n_imodelcataloginfo": {
+      "name": "IModelCatalogInfo",
+      "description": ""
+    },
+    "n_imodelmanagementservice": {
+      "name": "IModelManagementService",
+      "description": ""
+    },
+    "n_inodescope": {
+      "name": "INodeScope",
+      "description": ""
+    },
+    "n_ipermissionmanager": {
+      "name": "IPermissionManager",
+      "description": ""
+    },
+    "n_iproject": {
+      "name": "IProject",
+      "description": ""
+    },
+    "n_iprojectbackend": {
+      "name": "IProjectBackend",
+      "description": ""
+    },
+    "n_iprojectprovider": {
+      "name": "IProjectProvider",
+      "description": ""
+    },
+    "n_iprovideraccountinfo": {
+      "name": "IProviderAccountInfo",
+      "description": ""
+    },
+    "n_ireasoningcatalog": {
+      "name": "IReasoningCatalog",
+      "description": ""
+    },
+    "n_iresourcecontainermaker": {
+      "name": "IResourceContainerMaker",
+      "description": ""
+    },
+    "n_iresourceprovider": {
+      "name": "IResourceProvider",
+      "description": ""
+    },
+    "n_iresourceremover": {
+      "name": "IResourceRemover",
+      "description": ""
+    },
+    "n_iresourcewriter": {
+      "name": "IResourceWriter",
+      "description": ""
+    },
+    "n_isandbox": {
+      "name": "ISandbox",
+      "description": ""
+    },
+    "n_ischemacontributor": {
+      "name": "ISchemaContributor",
+      "description": ""
+    },
+    "n_isecretaccesspolicy": {
+      "name": "ISecretAccessPolicy",
+      "description": ""
+    },
+    "n_isecretaclstore": {
+      "name": "ISecretAclStore",
+      "description": ""
+    },
+    "n_isecretresolver": {
+      "name": "ISecretResolver",
+      "description": ""
+    },
+    "n_isecretstore": {
+      "name": "ISecretStore",
+      "description": ""
+    },
+    "n_ishell": {
+      "name": "IShell",
+      "description": ""
+    },
+    "n_iskillcapabilityprobe": {
+      "name": "ISkillCapabilityProbe",
+      "description": ""
+    },
+    "n_iskillsession": {
+      "name": "ISkillSession",
+      "description": ""
+    },
+    "n_iskillsource": {
+      "name": "ISkillSource",
+      "description": ""
+    },
+    "n_iskillsourcefactory": {
+      "name": "ISkillSourceFactory",
+      "description": ""
+    },
+    "n_iskillsourcestore": {
+      "name": "ISkillSourceStore",
+      "description": ""
+    },
+    "n_iskilltruststore": {
+      "name": "ISkillTrustStore",
+      "description": ""
+    },
+    "n_isplaplugin": {
+      "name": "ISplaPlugin",
+      "description": ""
+    },
+    "n_isplapluginaction": {
+      "name": "ISplaPluginAction",
+      "description": ""
+    },
+    "n_isplapluginpanelprovider": {
+      "name": "ISplaPluginPanelProvider",
+      "description": ""
+    },
+    "n_isplapluginpanelsession": {
+      "name": "ISplaPluginPanelSession",
+      "description": ""
+    },
+    "n_isplapluginselfcheck": {
+      "name": "ISplaPluginSelfCheck",
+      "description": ""
+    },
+    "n_isplapluginuicommands": {
+      "name": "ISplaPluginUiCommands",
+      "description": ""
+    },
+    "n_itaglibrarian": {
+      "name": "ITagLibrarian",
+      "description": ""
+    },
+    "n_itokenusagereporter": {
+      "name": "ITokenUsageReporter",
+      "description": ""
+    },
+    "n_itokenusagestore": {
+      "name": "ITokenUsageStore",
+      "description": ""
+    },
+    "n_itoolargumentpolicy": {
+      "name": "IToolArgumentPolicy",
+      "description": ""
+    },
+    "n_itoolhost": {
+      "name": "IToolHost",
+      "description": ""
+    },
+    "n_itoolmiddleware": {
+      "name": "IToolMiddleware",
+      "description": ""
+    },
+    "n_itoolsetsession": {
+      "name": "IToolSetSession",
+      "description": ""
+    },
+    "n_iworkspace": {
+      "name": "IWorkspace",
+      "description": ""
+    },
+    "n_identityconverter": {
+      "name": "IdentityConverter",
+      "description": ""
+    },
+    "n_identityproviderconfig": {
+      "name": "IdentityProviderConfig",
+      "description": ""
+    },
+    "n_identityproviderloader": {
+      "name": "IdentityProviderLoader",
+      "description": ""
+    },
+    "n_imageviewtool": {
+      "name": "ImageViewTool",
+      "description": ""
+    },
+    "n_inboxitemkind": {
+      "name": "InboxItemKind",
+      "description": ""
+    },
+    "n_instanceinfo": {
+      "name": "InstanceInfo",
+      "description": ""
+    },
+    "n_instancelock": {
+      "name": "InstanceLock",
+      "description": ""
+    },
+    "n_instancerecord": {
+      "name": "InstanceRecord",
+      "description": ""
+    },
+    "n_instancestate": {
+      "name": "InstanceState",
+      "description": ""
+    },
+    "n_instancestates": {
+      "name": "InstanceStates",
+      "description": ""
+    },
+    "n_islandidentity": {
+      "name": "IslandIdentity",
+      "description": ""
+    },
+    "n_jsonschema": {
+      "name": "JsonSchema",
+      "description": ""
+    },
+    "n_jsontoyamlconverter": {
+      "name": "JsonToYamlConverter",
+      "description": ""
+    },
+    "n_keyvaluestore": {
+      "name": "KeyValueStore",
+      "description": ""
+    },
+    "n_knownprojectdto": {
+      "name": "KnownProjectDto",
+      "description": ""
+    },
+    "n_knownprojectsresponse": {
+      "name": "KnownProjectsResponse",
+      "description": ""
+    },
+    "n_kventry": {
+      "name": "KvEntry",
+      "description": ""
+    },
+    "n_kvglob": {
+      "name": "KvGlob",
+      "description": ""
+    },
+    "n_llmsettings": {
+      "name": "LLMSettings",
+      "description": ""
+    },
+    "n_llmerrorkind": {
+      "name": "LlmErrorKind",
+      "description": ""
+    },
+    "n_llmpipelineblueprint": {
+      "name": "LlmPipelineBlueprint",
+      "description": ""
+    },
+    "n_llmpipelinestage": {
+      "name": "LlmPipelineStage",
+      "description": ""
+    },
+    "n_llmproviderdescriptor": {
+      "name": "LlmProviderDescriptor",
+      "description": ""
+    },
+    "n_llmproviderregistry": {
+      "name": "LlmProviderRegistry",
+      "description": ""
+    },
+    "n_llmrequestexception": {
+      "name": "LlmRequestException",
+      "description": ""
+    },
+    "n_llmturncontext": {
+      "name": "LlmTurnContext",
+      "description": ""
+    },
+    "n_llmturnresult": {
+      "name": "LlmTurnResult",
+      "description": ""
+    },
+    "n_llmturnstatus": {
+      "name": "LlmTurnStatus",
+      "description": ""
+    },
+    "n_loadedplugin": {
+      "name": "LoadedPlugin",
+      "description": ""
+    },
+    "n_localidentity": {
+      "name": "LocalIdentity",
+      "description": ""
+    },
+    "n_localproject": {
+      "name": "LocalProject",
+      "description": ""
+    },
+    "n_localprojectbackend": {
+      "name": "LocalProjectBackend",
+      "description": ""
+    },
+    "n_localprojectprovider": {
+      "name": "LocalProjectProvider",
+      "description": ""
+    },
+    "n_localshell": {
+      "name": "LocalShell",
+      "description": ""
+    },
+    "n_localworkspace": {
+      "name": "LocalWorkspace",
+      "description": ""
+    },
+    "n_machinelayer": {
+      "name": "MachineLayer",
+      "description": ""
+    },
+    "n_machinelayerscope": {
+      "name": "MachineLayerScope",
+      "description": ""
+    },
+    "n_manifestentry": {
+      "name": "ManifestEntry",
+      "description": ""
+    },
+    "n_markmanager": {
+      "name": "MarkManager",
+      "description": ""
+    },
+    "n_markrollbacktool": {
+      "name": "MarkRollbackTool",
+      "description": ""
+    },
+    "n_marksettool": {
+      "name": "MarkSetTool",
+      "description": ""
+    },
+    "n_mcphost": {
+      "name": "McpHost",
+      "description": ""
+    },
+    "n_memorybucket": {
+      "name": "MemoryBucket",
+      "description": ""
+    },
+    "n_memoryprojectbackend": {
+      "name": "MemoryProjectBackend",
+      "description": ""
+    },
+    "n_metricseries": {
+      "name": "MetricSeries",
+      "description": ""
+    },
+    "n_modelinfo": {
+      "name": "ModelInfo",
+      "description": ""
+    },
+    "n_mountaccess": {
+      "name": "MountAccess",
+      "description": ""
+    },
+    "n_mountresolver": {
+      "name": "MountResolver",
+      "description": ""
+    },
+    "n_mounttrust": {
+      "name": "MountTrust",
+      "description": ""
+    },
+    "n_nullscope": {
+      "name": "NullScope",
+      "description": ""
+    },
+    "n_outputtarget": {
+      "name": "OutputTarget",
+      "description": ""
+    },
+    "n_participantroles": {
+      "name": "ParticipantRoles",
+      "description": ""
+    },
+    "n_passthroughsandbox": {
+      "name": "PassthroughSandbox",
+      "description": ""
+    },
+    "n_pathboundary": {
+      "name": "PathBoundary",
+      "description": ""
+    },
+    "n_pathboundaryexception": {
+      "name": "PathBoundaryException",
+      "description": ""
+    },
+    "n_pathlanding": {
+      "name": "PathLanding",
+      "description": ""
+    },
+    "n_pathrefusal": {
+      "name": "PathRefusal",
+      "description": ""
+    },
+    "n_permissiondecision": {
+      "name": "PermissionDecision",
+      "description": ""
+    },
+    "n_permissionmanager": {
+      "name": "PermissionManager",
+      "description": ""
+    },
+    "n_permissionresult": {
+      "name": "PermissionResult",
+      "description": ""
+    },
+    "n_permissionscope": {
+      "name": "PermissionScope",
+      "description": ""
+    },
+    "n_permissionstage": {
+      "name": "PermissionStage",
+      "description": ""
+    },
+    "n_permissionverdict": {
+      "name": "PermissionVerdict",
+      "description": ""
+    },
+    "n_permissivesecretaccesspolicy": {
+      "name": "PermissiveSecretAccessPolicy",
+      "description": ""
+    },
+    "n_persistedorigin": {
+      "name": "PersistedOrigin",
+      "description": ""
+    },
+    "n_pluginassemblyloader": {
+      "name": "PluginAssemblyLoader",
+      "description": ""
+    },
+    "n_pluginavailabilitystage": {
+      "name": "PluginAvailabilityStage",
+      "description": ""
+    },
+    "n_plugindescriptor": {
+      "name": "PluginDescriptor",
+      "description": ""
+    },
+    "n_plugindiscovery": {
+      "name": "PluginDiscovery",
+      "description": ""
+    },
+    "n_plugineffectivestate": {
+      "name": "PluginEffectiveState",
+      "description": ""
+    },
+    "n_pluginhealth": {
+      "name": "PluginHealth",
+      "description": ""
+    },
+    "n_pluginhealthstatus": {
+      "name": "PluginHealthStatus",
+      "description": ""
+    },
+    "n_plugininstance": {
+      "name": "PluginInstance",
+      "description": ""
+    },
+    "n_pluginloadcontext": {
+      "name": "PluginLoadContext",
+      "description": ""
+    },
+    "n_pluginmanager": {
+      "name": "PluginManager",
+      "description": ""
+    },
+    "n_pluginmeta": {
+      "name": "PluginMeta",
+      "description": ""
+    },
+    "n_pluginskillsource": {
+      "name": "PluginSkillSource",
+      "description": ""
+    },
+    "n_progresshub": {
+      "name": "ProgressHub",
+      "description": ""
+    },
+    "n_progressnode": {
+      "name": "ProgressNode",
+      "description": ""
+    },
+    "n_progressnodestage": {
+      "name": "ProgressNodeStage",
+      "description": ""
+    },
+    "n_progressscope": {
+      "name": "ProgressScope",
+      "description": ""
+    },
+    "n_progressstate": {
+      "name": "ProgressState",
+      "description": ""
+    },
+    "n_progresstree": {
+      "name": "ProgressTree",
+      "description": ""
+    },
+    "n_projectbusyexception": {
+      "name": "ProjectBusyException",
+      "description": ""
+    },
+    "n_projectdescriptor": {
+      "name": "ProjectDescriptor",
+      "description": ""
+    },
+    "n_projectfactory": {
+      "name": "ProjectFactory",
+      "description": ""
+    },
+    "n_projectkvstore": {
+      "name": "ProjectKvStore",
+      "description": ""
+    },
+    "n_projectmanifestexception": {
+      "name": "ProjectManifestException",
+      "description": ""
+    },
+    "n_projectmount": {
+      "name": "ProjectMount",
+      "description": ""
+    },
+    "n_projectprofile": {
+      "name": "ProjectProfile",
+      "description": ""
+    },
+    "n_projectprofiles": {
+      "name": "ProjectProfiles",
+      "description": ""
+    },
+    "n_providerclientresolver": {
+      "name": "ProviderClientResolver",
+      "description": ""
+    },
+    "n_providerfact": {
+      "name": "ProviderFact",
+      "description": ""
+    },
+    "n_providerfactkind": {
+      "name": "ProviderFactKind",
+      "description": ""
+    },
+    "n_providerfactscope": {
+      "name": "ProviderFactScope",
+      "description": ""
+    },
+    "n_providerfactsection": {
+      "name": "ProviderFactSection",
+      "description": ""
+    },
+    "n_providerfactseverity": {
+      "name": "ProviderFactSeverity",
+      "description": ""
+    },
+    "n_providerstatemiddleware": {
+      "name": "ProviderStateMiddleware",
+      "description": ""
+    },
+    "n_providerstatestore": {
+      "name": "ProviderStateStore",
+      "description": ""
+    },
+    "n_readonlyguard": {
+      "name": "ReadOnlyGuard",
+      "description": ""
+    },
+    "n_reasoningcapability": {
+      "name": "ReasoningCapability",
+      "description": ""
+    },
+    "n_reasoningchoice": {
+      "name": "ReasoningChoice",
+      "description": ""
+    },
+    "n_reasoningmode": {
+      "name": "ReasoningMode",
+      "description": ""
+    },
+    "n_recentevent": {
+      "name": "RecentEvent",
+      "description": ""
+    },
+    "n_registerframe": {
+      "name": "RegisterFrame",
+      "description": ""
+    },
+    "n_registeredinstancedto": {
+      "name": "RegisteredInstanceDto",
+      "description": ""
+    },
+    "n_registryframe": {
+      "name": "RegistryFrame",
+      "description": ""
+    },
+    "n_registryframes": {
+      "name": "RegistryFrames",
+      "description": ""
+    },
+    "n_registryjson": {
+      "name": "RegistryJson",
+      "description": ""
+    },
+    "n_registrylistresponse": {
+      "name": "RegistryListResponse",
+      "description": ""
+    },
+    "n_rememberedtoolpermission": {
+      "name": "RememberedToolPermission",
+      "description": ""
+    },
+    "n_repetitiondetector": {
+      "name": "RepetitionDetector",
+      "description": ""
+    },
+    "n_repetitionguardmiddleware": {
+      "name": "RepetitionGuardMiddleware",
+      "description": "Stage Output. Observes the streamed generation, cancels a degenerate one and asks for another attempt; gives up as LlmTurnStatus.Degenerate. Lives in SPLA.Agent, runs here."
+    },
+    "n_repetitioninfo": {
+      "name": "RepetitionInfo",
+      "description": ""
+    },
+    "n_resolvedmodelentry": {
+      "name": "ResolvedModelEntry",
+      "description": ""
+    },
+    "n_resolvedsettings": {
+      "name": "ResolvedSettings",
+      "description": ""
+    },
+    "n_resourcecontent": {
+      "name": "ResourceContent",
+      "description": ""
+    },
+    "n_resourcedeletetool": {
+      "name": "ResourceDeleteTool",
+      "description": ""
+    },
+    "n_resourceentry": {
+      "name": "ResourceEntry",
+      "description": ""
+    },
+    "n_resourceexiststool": {
+      "name": "ResourceExistsTool",
+      "description": ""
+    },
+    "n_resourcelisttool": {
+      "name": "ResourceListTool",
+      "description": ""
+    },
+    "n_resourcemakedirtool": {
+      "name": "ResourceMakeDirTool",
+      "description": ""
+    },
+    "n_resourcereadtool": {
+      "name": "ResourceReadTool",
+      "description": ""
+    },
+    "n_resourceregistry": {
+      "name": "ResourceRegistry",
+      "description": ""
+    },
+    "n_resourcetoolbase": {
+      "name": "ResourceToolBase",
+      "description": ""
+    },
+    "n_resourceuri": {
+      "name": "ResourceUri",
+      "description": ""
+    },
+    "n_resourceverb": {
+      "name": "ResourceVerb",
+      "description": ""
+    },
+    "n_resourcewritetool": {
+      "name": "ResourceWriteTool",
+      "description": ""
+    },
+    "n_schemaparts": {
+      "name": "SchemaParts",
+      "description": ""
+    },
+    "n_schemaregistry": {
+      "name": "SchemaRegistry",
+      "description": ""
+    },
+    "n_schemecard": {
+      "name": "SchemeCard",
+      "description": ""
+    },
+    "n_secretaccessdeniedexception": {
+      "name": "SecretAccessDeniedException",
+      "description": ""
+    },
+    "n_secretacl": {
+      "name": "SecretAcl",
+      "description": ""
+    },
+    "n_secretcallerscope": {
+      "name": "SecretCallerScope",
+      "description": ""
+    },
+    "n_secretentry": {
+      "name": "SecretEntry",
+      "description": ""
+    },
+    "n_secretentryinfo": {
+      "name": "SecretEntryInfo",
+      "description": ""
+    },
+    "n_secretfields": {
+      "name": "SecretFields",
+      "description": ""
+    },
+    "n_secretref": {
+      "name": "SecretRef",
+      "description": ""
+    },
+    "n_secretresolver": {
+      "name": "SecretResolver",
+      "description": ""
+    },
+    "n_secretright": {
+      "name": "SecretRight",
+      "description": ""
+    },
+    "n_secretscope": {
+      "name": "SecretScope",
+      "description": ""
+    },
+    "n_secretyamlfile": {
+      "name": "SecretYamlFile",
+      "description": ""
+    },
+    "n_selfinvocationlauncher": {
+      "name": "SelfInvocationLauncher",
+      "description": ""
+    },
+    "n_serverprojectroot": {
+      "name": "ServerProjectRoot",
+      "description": ""
+    },
+    "n_settingsresolver": {
+      "name": "SettingsResolver",
+      "description": ""
+    },
+    "n_shellcommand": {
+      "name": "ShellCommand",
+      "description": ""
+    },
+    "n_shellresult": {
+      "name": "ShellResult",
+      "description": ""
+    },
+    "n_shellstatus": {
+      "name": "ShellStatus",
+      "description": ""
+    },
+    "n_singleclientresolver": {
+      "name": "SingleClientResolver",
+      "description": ""
+    },
+    "n_skillactivatetool": {
+      "name": "SkillActivateTool",
+      "description": ""
+    },
+    "n_skillcapabilityprobe": {
+      "name": "SkillCapabilityProbe",
+      "description": ""
+    },
+    "n_skillcard": {
+      "name": "SkillCard",
+      "description": ""
+    },
+    "n_skilldeactivatetool": {
+      "name": "SkillDeactivateTool",
+      "description": ""
+    },
+    "n_skillentry": {
+      "name": "SkillEntry",
+      "description": ""
+    },
+    "n_skillfindtool": {
+      "name": "SkillFindTool",
+      "description": ""
+    },
+    "n_skillfrontmatter": {
+      "name": "SkillFrontmatter",
+      "description": ""
+    },
+    "n_skilllibrary": {
+      "name": "SkillLibrary",
+      "description": ""
+    },
+    "n_skilllookup": {
+      "name": "SkillLookup",
+      "description": ""
+    },
+    "n_skillmatch": {
+      "name": "SkillMatch",
+      "description": ""
+    },
+    "n_skillquery": {
+      "name": "SkillQuery",
+      "description": ""
+    },
+    "n_skillreadresourcetool": {
+      "name": "SkillReadResourceTool",
+      "description": ""
+    },
+    "n_skillrequirements": {
+      "name": "SkillRequirements",
+      "description": ""
+    },
+    "n_skillsession": {
+      "name": "SkillSession",
+      "description": ""
+    },
+    "n_skillsourcecontext": {
+      "name": "SkillSourceContext",
+      "description": ""
+    },
+    "n_skillsourceregistry": {
+      "name": "SkillSourceRegistry",
+      "description": ""
+    },
+    "n_skillstate": {
+      "name": "SkillState",
+      "description": ""
+    },
+    "n_skilltag": {
+      "name": "SkillTag",
+      "description": ""
+    },
+    "n_skilltrust": {
+      "name": "SkillTrust",
+      "description": ""
+    },
+    "n_skilltrustgrant": {
+      "name": "SkillTrustGrant",
+      "description": ""
+    },
+    "n_sourcelevel": {
+      "name": "SourceLevel",
+      "description": ""
+    },
+    "n_sourceorigin": {
+      "name": "SourceOrigin",
+      "description": ""
+    },
+    "n_spawnresult": {
+      "name": "SpawnResult",
+      "description": ""
+    },
+    "n_splaagentsection": {
+      "name": "SplaAgentSection",
+      "description": ""
+    },
+    "n_splaconnectionsection": {
+      "name": "SplaConnectionSection",
+      "description": ""
+    },
+    "n_spladefaults": {
+      "name": "SplaDefaults",
+      "description": ""
+    },
+    "n_splafilelogger": {
+      "name": "SplaFileLogger",
+      "description": ""
+    },
+    "n_splafileloggerprovider": {
+      "name": "SplaFileLoggerProvider",
+      "description": ""
+    },
+    "n_splalibrariansection": {
+      "name": "SplaLibrarianSection",
+      "description": ""
+    },
+    "n_splallmsection": {
+      "name": "SplaLlmSection",
+      "description": ""
+    },
+    "n_splamcpsection": {
+      "name": "SplaMcpSection",
+      "description": ""
+    },
+    "n_splamcpserversection": {
+      "name": "SplaMcpServerSection",
+      "description": ""
+    },
+    "n_splamodelsection": {
+      "name": "SplaModelSection",
+      "description": ""
+    },
+    "n_splamountsection": {
+      "name": "SplaMountSection",
+      "description": ""
+    },
+    "n_splapermissionssection": {
+      "name": "SplaPermissionsSection",
+      "description": ""
+    },
+    "n_splapluginpanelevent": {
+      "name": "SplaPluginPanelEvent",
+      "description": ""
+    },
+    "n_splapluginsection": {
+      "name": "SplaPluginSection",
+      "description": ""
+    },
+    "n_splapluginuicommand": {
+      "name": "SplaPluginUiCommand",
+      "description": ""
+    },
+    "n_splapluginuicommandkind": {
+      "name": "SplaPluginUiCommandKind",
+      "description": ""
+    },
+    "n_splaproject": {
+      "name": "SplaProject",
+      "description": ""
+    },
+    "n_splasecretssection": {
+      "name": "SplaSecretsSection",
+      "description": ""
+    },
+    "n_splaskillsection": {
+      "name": "SplaSkillSection",
+      "description": ""
+    },
+    "n_splaskillsourcesection": {
+      "name": "SplaSkillSourceSection",
+      "description": ""
+    },
+    "n_splaskillspolicysection": {
+      "name": "SplaSkillsPolicySection",
+      "description": ""
+    },
+    "n_splaskillssection": {
+      "name": "SplaSkillsSection",
+      "description": ""
+    },
+    "n_splatelemetry": {
+      "name": "SplaTelemetry",
+      "description": ""
+    },
+    "n_splatelemetrycontext": {
+      "name": "SplaTelemetryContext",
+      "description": ""
+    },
+    "n_splatelemetrycontextextensions": {
+      "name": "SplaTelemetryContextExtensions",
+      "description": ""
+    },
+    "n_splatoolpermissionrule": {
+      "name": "SplaToolPermissionRule",
+      "description": ""
+    },
+    "n_splauisection": {
+      "name": "SplaUiSection",
+      "description": ""
+    },
+    "n_sshconnectionfactory": {
+      "name": "SshConnectionFactory",
+      "description": ""
+    },
+    "n_sshhostconfig": {
+      "name": "SshHostConfig",
+      "description": ""
+    },
+    "n_sshlivesession": {
+      "name": "SshLiveSession",
+      "description": ""
+    },
+    "n_sshsessionhub": {
+      "name": "SshSessionHub",
+      "description": ""
+    },
+    "n_sshsettings": {
+      "name": "SshSettings",
+      "description": ""
+    },
+    "n_state": {
+      "name": "State",
+      "description": ""
+    },
+    "n_statssnapshot": {
+      "name": "StatsSnapshot",
+      "description": ""
+    },
+    "n_statusframe": {
+      "name": "StatusFrame",
+      "description": ""
+    },
+    "n_stopframe": {
+      "name": "StopFrame",
+      "description": ""
+    },
+    "n_substance": {
+      "name": "Substance",
+      "description": ""
+    },
+    "n_tagcount": {
+      "name": "TagCount",
+      "description": ""
+    },
+    "n_taglibrarian": {
+      "name": "TagLibrarian",
+      "description": ""
+    },
+    "n_tagvocabulary": {
+      "name": "TagVocabulary",
+      "description": ""
+    },
+    "n_taskcanceltool": {
+      "name": "TaskCancelTool",
+      "description": ""
+    },
+    "n_tasklisttool": {
+      "name": "TaskListTool",
+      "description": ""
+    },
+    "n_taskoutputtool": {
+      "name": "TaskOutputTool",
+      "description": ""
+    },
+    "n_telemetrycollector": {
+      "name": "TelemetryCollector",
+      "description": ""
+    },
+    "n_telemetrystage": {
+      "name": "TelemetryStage",
+      "description": ""
+    },
+    "n_tokenaccountingmiddleware": {
+      "name": "TokenAccountingMiddleware",
+      "description": "Stage Accounting. Folds the provider token figures into the project and machine tallies and the telemetry meter, once per network attempt. Lives in SPLA.Agent, runs here."
+    },
+    "n_tokenestimate": {
+      "name": "TokenEstimate",
+      "description": ""
+    },
+    "n_tokenusagetotals": {
+      "name": "TokenUsageTotals",
+      "description": ""
+    },
+    "n_toolcall": {
+      "name": "ToolCall",
+      "description": ""
+    },
+    "n_toolcallcontext": {
+      "name": "ToolCallContext",
+      "description": ""
+    },
+    "n_toolcallinvocation": {
+      "name": "ToolCallInvocation",
+      "description": ""
+    },
+    "n_toolcontent": {
+      "name": "ToolContent",
+      "description": ""
+    },
+    "n_tooldefinition": {
+      "name": "ToolDefinition",
+      "description": ""
+    },
+    "n_tooleffect": {
+      "name": "ToolEffect",
+      "description": ""
+    },
+    "n_toolexposure": {
+      "name": "ToolExposure",
+      "description": ""
+    },
+    "n_toolfunctiondefinition": {
+      "name": "ToolFunctionDefinition",
+      "description": ""
+    },
+    "n_toolhostscope": {
+      "name": "ToolHostScope",
+      "description": ""
+    },
+    "n_toolimage": {
+      "name": "ToolImage",
+      "description": ""
+    },
+    "n_tooljson": {
+      "name": "ToolJson",
+      "description": ""
+    },
+    "n_tooloutcome": {
+      "name": "ToolOutcome",
+      "description": ""
+    },
+    "n_toolpipelineblueprint": {
+      "name": "ToolPipelineBlueprint",
+      "description": ""
+    },
+    "n_toolpipelinestage": {
+      "name": "ToolPipelineStage",
+      "description": ""
+    },
+    "n_toolprogress": {
+      "name": "ToolProgress",
+      "description": ""
+    },
+    "n_toolprogressdetail": {
+      "name": "ToolProgressDetail",
+      "description": ""
+    },
+    "n_toolrepeattracker": {
+      "name": "ToolRepeatTracker",
+      "description": ""
+    },
+    "n_toolresolutionstage": {
+      "name": "ToolResolutionStage",
+      "description": ""
+    },
+    "n_toolresource": {
+      "name": "ToolResource",
+      "description": ""
+    },
+    "n_toolresult": {
+      "name": "ToolResult",
+      "description": ""
+    },
+    "n_toolrisk": {
+      "name": "ToolRisk",
+      "description": ""
+    },
+    "n_toolscope": {
+      "name": "ToolScope",
+      "description": ""
+    },
+    "n_toolsetactivatetool": {
+      "name": "ToolSetActivateTool",
+      "description": ""
+    },
+    "n_toolsetactivation": {
+      "name": "ToolSetActivation",
+      "description": ""
+    },
+    "n_toolsetactivationby": {
+      "name": "ToolSetActivationBy",
+      "description": ""
+    },
+    "n_toolsetdeactivatetool": {
+      "name": "ToolSetDeactivateTool",
+      "description": ""
+    },
+    "n_toolsetdescriptor": {
+      "name": "ToolSetDescriptor",
+      "description": ""
+    },
+    "n_toolsetdisclosurestage": {
+      "name": "ToolSetDisclosureStage",
+      "description": ""
+    },
+    "n_toolsetlevel": {
+      "name": "ToolSetLevel",
+      "description": ""
+    },
+    "n_toolsetorigin": {
+      "name": "ToolSetOrigin",
+      "description": ""
+    },
+    "n_toolsetregistry": {
+      "name": "ToolSetRegistry",
+      "description": ""
+    },
+    "n_toolsetsession": {
+      "name": "ToolSetSession",
+      "description": ""
+    },
+    "n_tooltext": {
+      "name": "ToolText",
+      "description": ""
+    },
+    "n_turnattempt": {
+      "name": "TurnAttempt",
+      "description": ""
+    },
+    "n_turnoutcomemiddleware": {
+      "name": "TurnOutcomeMiddleware",
+      "description": ""
+    },
+    "n_utf8textconverter": {
+      "name": "Utf8TextConverter",
+      "description": ""
+    },
+    "n_windowsshellintegration": {
+      "name": "WindowsShellIntegration",
+      "description": ""
+    },
+    "n_yamlsectionsplicer": {
+      "name": "YamlSectionSplicer",
+      "description": ""
+    },
+    "n_zone": {
+      "name": "Zone",
+      "description": ""
+    },
+    "n_zoneedge": {
+      "name": "ZoneEdge",
+      "description": ""
+    },
+    "n_zoneeffect": {
+      "name": "ZoneEffect",
+      "description": ""
+    },
+    "n_zoneshadowstage": {
+      "name": "ZoneShadowStage",
+      "description": ""
+    }
+  }
+}
