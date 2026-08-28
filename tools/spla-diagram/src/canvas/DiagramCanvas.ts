@@ -16,7 +16,7 @@ import { TypeRegistry } from "./render/TypeRegistry.js";
 import { DIM } from "./render/styles.js";
 import { dashArray, textAttrs } from "./render/textAttrs.js";
 import { marquee, resizeHandles, selectionOutline } from "./render/handles.js";
-import { CenterPortAssigner } from "./ports/assigners.js";
+import { UniformPortAssigner } from "./ports/assigners.js";
 import { portKey, type PortAssigner, type PortRequest } from "./ports/PortAssigner.js";
 import { BezierRouter, type EdgeRouter } from "./routing/EdgeRouter.js";
 import { EDGE_ATTR } from "../interaction/roles.js";
@@ -134,7 +134,7 @@ export class DiagramCanvas {
   constructor(host: HTMLElement, options: DiagramCanvasOptions = {}) {
     this.host = host;
     this.gridStep = options.gridStep ?? 10;
-    this.portAssigner = options.portAssigner ?? new CenterPortAssigner();
+    this.portAssigner = options.portAssigner ?? new UniformPortAssigner();
     this.router = options.router ?? new BezierRouter();
     this.registry = options.registry ?? defaultRegistry();
 

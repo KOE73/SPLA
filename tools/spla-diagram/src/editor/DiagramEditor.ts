@@ -153,6 +153,7 @@ export class DiagramEditor implements InspectorHost, StylePanelHost {
     this.bindInspectorResize();
     this.bindStyleListResize();
     this.initTheme();
+    this.initPorts();
     this.renderCatalog();
     this.setTab("properties");
 
@@ -370,16 +371,27 @@ export class DiagramEditor implements InspectorHost, StylePanelHost {
    * Nothing is stored in the model — placement is a pure function of it, which
    * is why this can be switched freely and why the JSON never learns about it.
    */
+  private initPorts(): void {
+    const saved = localStorage.getItem("spla.ports") || "uniform";
+    this.applyPortAssigner(saved);
+  }
+
   private applyPortAssigner(id: string): void {
+    localStorage.setItem("spla.ports", id);
+    const select = this.root.querySelector<HTMLSelectElement>("[data-select='ports']");
+    if (select && select.value !== id) {
+      select.value = id;
+    }
     switch (id) {
-      case "uniform":
-        this.canvas.setPortAssigner(new UniformPortAssigner());
+      case "center":
+        this.canvas.setPortAssigner(new CenterPortAssigner());
         return;
       case "discrete":
         this.canvas.setPortAssigner(new DiscretePortAssigner());
         return;
+      case "uniform":
       default:
-        this.canvas.setPortAssigner(new CenterPortAssigner());
+        this.canvas.setPortAssigner(new UniformPortAssigner());
         return;
     }
   }

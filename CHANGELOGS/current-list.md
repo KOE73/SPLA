@@ -32,3 +32,4 @@ repository and is linked from it.
   `Status: waiting_for_input`, and `system_resume_shell` / `system_kill_shell` answer it or end it.
 
 - `v0.2.4`'s release notes were wrong, and are now corrected in the repository.
+- Parallel diagram connections no longer overlap into indistinguishable single lines.

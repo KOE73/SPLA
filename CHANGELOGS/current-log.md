@@ -108,3 +108,7 @@ sentences are what `current-list.md` is built from, which is why they have to st
   element counts, and relationship family toggles. The UI header was streamlined by moving save status into an interactive button
   next to the title and removing redundant controls, while diagram switching is now guarded with a contextual in-place confirmation
   dialog ensuring unsaved work is never accidentally overwritten.
+
+- **Parallel diagram connections no longer overlap into indistinguishable single lines.**
+  The visualizer defaults connection port attachment to uniform distribution (`UniformPortAssigner`), spacing multiple inputs and outputs
+  evenly along node perimeters and ordering endpoints deterministically by target coordinates and connection types so parallel lines remain parallel and visible.
