@@ -1713,6 +1713,190 @@
     "n_zoneshadowstage": {
       "name": "ZoneShadowStage",
       "description": ""
+    },
+    "z_llm": {
+      "name": "LLM: провайдеры и ход (41)",
+      "description": ""
+    },
+    "z_llm_providers": {
+      "name": "Провайдеры и шлюз (10)",
+      "description": ""
+    },
+    "z_llm_middleware": {
+      "name": "Цепочка middleware (11)",
+      "description": ""
+    },
+    "z_llm_turn": {
+      "name": "Модель хода (20)",
+      "description": ""
+    },
+    "z_toolpipe": {
+      "name": "Конвейер инструментов (MCP) (78)",
+      "description": ""
+    },
+    "z_tool_contracts": {
+      "name": "Контракты конвейера (15)",
+      "description": ""
+    },
+    "z_tool_stages": {
+      "name": "Стадии конвейера (11)",
+      "description": ""
+    },
+    "z_tool_host": {
+      "name": "Хост и выставление наружу (17)",
+      "description": ""
+    },
+    "z_tool_progress": {
+      "name": "Прогресс и фон (14)",
+      "description": ""
+    },
+    "z_agent_comp": {
+      "name": "Композиция агента (14)",
+      "description": ""
+    },
+    "z_formats": {
+      "name": "Конвертеры форматов (7)",
+      "description": ""
+    },
+    "z_plugins": {
+      "name": "Плагины и наборы инструментов (23)",
+      "description": ""
+    },
+    "z_plugin_contracts": {
+      "name": "Контракты плагина (5)",
+      "description": ""
+    },
+    "z_plugin_loading": {
+      "name": "Загрузка и обнаружение (9)",
+      "description": ""
+    },
+    "z_toolsets": {
+      "name": "ToolSets (9)",
+      "description": ""
+    },
+    "z_chat": {
+      "name": "Чат и сессия (17)",
+      "description": ""
+    },
+    "z_security": {
+      "name": "Безопасность и полномочия (73)",
+      "description": ""
+    },
+    "z_sec_permissions": {
+      "name": "Разрешения (12)",
+      "description": ""
+    },
+    "z_sec_zones": {
+      "name": "Зоны и рёбра (11)",
+      "description": ""
+    },
+    "z_sec_sandbox": {
+      "name": "Песочница и возможности хоста (21)",
+      "description": ""
+    },
+    "z_sec_secrets": {
+      "name": "Секреты (21)",
+      "description": ""
+    },
+    "z_sec_secrets_domain": {
+      "name": "Хранилище и политика (19)",
+      "description": ""
+    },
+    "z_sec_secrets_dpapi": {
+      "name": "DPAPI (2)",
+      "description": ""
+    },
+    "z_sec_identity": {
+      "name": "Идентичность (8)",
+      "description": ""
+    },
+    "z_memory": {
+      "name": "Память агента и контекст (32)",
+      "description": ""
+    },
+    "z_mem_kv": {
+      "name": "KV и блобы (14)",
+      "description": ""
+    },
+    "z_mem_context": {
+      "name": "Сборка контекста и метки (2)",
+      "description": ""
+    },
+    "z_mem_accounting": {
+      "name": "Учёт токенов (4)",
+      "description": ""
+    },
+    "z_mem_tools": {
+      "name": "Инструменты памяти (12)",
+      "description": ""
+    },
+    "z_content": {
+      "name": "Содержимое, редактор и ресурсы (30)",
+      "description": ""
+    },
+    "z_editor": {
+      "name": "Редактор и схемы (11)",
+      "description": ""
+    },
+    "z_resources": {
+      "name": "Ресурсы (19)",
+      "description": ""
+    },
+    "z_res_core": {
+      "name": "Реестр и провайдеры (12)",
+      "description": ""
+    },
+    "z_res_tools": {
+      "name": "Инструменты ресурсов (7)",
+      "description": ""
+    },
+    "z_skills": {
+      "name": "Навыки и библиотека (40)",
+      "description": ""
+    },
+    "z_skills_library": {
+      "name": "Библиотека и каталог (17)",
+      "description": ""
+    },
+    "z_skills_sources": {
+      "name": "Источники и доверие (17)",
+      "description": ""
+    },
+    "z_skills_session": {
+      "name": "Сессия и инструменты (6)",
+      "description": ""
+    },
+    "z_project": {
+      "name": "Проект и конфигурация (68)",
+      "description": ""
+    },
+    "z_proj_core": {
+      "name": "Проект и хранилища (15)",
+      "description": ""
+    },
+    "z_proj_instances": {
+      "name": "Инстансы (21)",
+      "description": ""
+    },
+    "z_proj_settings": {
+      "name": "Настройки (32)",
+      "description": ""
+    },
+    "z_agentlife": {
+      "name": "Жизненный цикл агента (3)",
+      "description": ""
+    },
+    "z_observability": {
+      "name": "Наблюдаемость (12)",
+      "description": ""
+    },
+    "z_platform": {
+      "name": "Платформа / ОС (4)",
+      "description": ""
+    },
+    "z_ssh": {
+      "name": "SSH (7)",
+      "description": ""
     }
   }
 }

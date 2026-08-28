@@ -9,7 +9,7 @@
   position: relative;
   overflow: hidden;
   cursor: default;
-  background-color: var(--spla-canvas-bg, #f8fafc);
+  background-color: var(--spla-canvas-bg, var(--bg, #f8fafc));
 }
 
 .spla-canvas-host.is-panning {
@@ -18,8 +18,8 @@
 
 .spla-canvas-host.with-grid {
   background-image:
-    radial-gradient(#cbd5e1 1.2px, transparent 1.2px),
-    radial-gradient(#e2e8f0 1.2px, var(--spla-canvas-bg, #f8fafc) 1.2px);
+    radial-gradient(var(--line, #cbd5e1) 1.2px, transparent 1.2px),
+    radial-gradient(var(--line, #e2e8f0) 1.2px, var(--spla-canvas-bg, var(--bg, #f8fafc)) 1.2px);
   background-size: 20px 20px;
   background-position: 0 0, 10px 10px;
 }

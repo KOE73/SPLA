@@ -152,6 +152,7 @@ export class DiagramEditor implements InspectorHost, StylePanelHost {
     this.bindFiles();
     this.bindInspectorResize();
     this.bindStyleListResize();
+    this.initTheme();
     this.renderCatalog();
     this.setTab("properties");
 
@@ -240,10 +241,29 @@ export class DiagramEditor implements InspectorHost, StylePanelHost {
         if (toggle !== undefined) this.applyToggle(toggle, target.checked);
         return;
       }
-      if (target instanceof HTMLSelectElement && target.dataset.select === "ports") {
-        this.applyPortAssigner(target.value);
+      if (target instanceof HTMLSelectElement) {
+        if (target.dataset.select === "ports") {
+          this.applyPortAssigner(target.value);
+        } else if (target.dataset.select === "theme") {
+          this.applyTheme(target.value);
+        }
       }
     });
+  }
+
+  private initTheme(): void {
+    const saved = localStorage.getItem("spla.theme") || localStorage.getItem("spla-diagram:theme") || "cream";
+    this.applyTheme(saved);
+  }
+
+  private applyTheme(theme: string): void {
+    document.documentElement.setAttribute("data-theme", theme);
+    localStorage.setItem("spla.theme", theme);
+    localStorage.setItem("spla-diagram:theme", theme);
+    const select = this.root.querySelector<HTMLSelectElement>("[data-select='theme']");
+    if (select && select.value !== theme) {
+      select.value = theme;
+    }
   }
 
   private async runAction(action: string): Promise<void> {

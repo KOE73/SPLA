@@ -49,11 +49,61 @@ export class HttpModelStore implements ModelStore {
       fetch(new URL(dir + "text.ru.json", new URL(this.baseUrl, location.href))).then(r => r.json()).catch(() => ({ entries: {} }))
     ]);
 
+    const translatedNodes = (viewData.placements || []).map((vn: any) => {
+      const e = entitiesRes.entities?.find?.((x: any) => x.id === vn.entity) 
+             || entitiesRes.find?.((x: any) => x.id === vn.entity) 
+             || { kind: "unknown" };
+      const t = textRes.entries?.[vn.entity] || { name: vn.entity };
+      return {
+        id: vn.entity,
+        label: t.name,
+        type: e.kind,
+        zone: vn.zone || null,
+        x: vn.x,
+        y: vn.y,
+        width: vn.width || 170,
+        height: vn.height || 50,
+        metadata: { codeRef: e.codeRef, description: t.description },
+        raw: { _entity: e }
+      };
+    });
+
+    const translatedZones = (viewData.zones || []).map((vz: any) => {
+      const zName = textRes.entries?.[vz.id]?.name || vz.name || vz.id;
+      return {
+        id: vz.id,
+        label: zName,
+        type: "zone",
+        zone: vz.parent || null,
+        x: vz.x,
+        y: vz.y,
+        width: vz.width,
+        height: vz.height,
+        styleId: vz.styleId
+      };
+    });
+
+    const rawEdges = (viewData.edges && viewData.edges.length > 0)
+      ? viewData.edges
+      : (relationsRes.relations || (Array.isArray(relationsRes) ? relationsRes : []));
+
+    const translatedEdges = rawEdges.map((ve: any, i: number) => {
+      return {
+        id: ve.id || `edge_${i}`,
+        from: ve.from || ve.source,
+        to: ve.to || ve.target,
+        type: ve.type || ve.relation || "relates",
+        label: ve.label || "",
+        styleId: ve.styleId,
+        points: ve.points || []
+      };
+    });
+
     const wire: WireDocument = {
       metadata: { title: projectManifest.title, contractVersion: 2 },
-      zones: [],
-      nodes: [],
-      edges: [],
+      zones: translatedZones,
+      nodes: translatedNodes,
+      edges: translatedEdges,
       views: [],
     };
     
