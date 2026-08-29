@@ -104,7 +104,8 @@ export function exportDrawio(doc: DiagramDocument, styles?: StyleLibrary): strin
 }
 
 export function drawioFileName(doc: DiagramDocument): string {
-  const base = doc.metadata.title.toLowerCase().replace(/[^a-z0-9]+/g, "_").replace(/^_|_$/g, "");
+  const title = String(doc.metadata?.title ?? "");
+  const base = title.toLowerCase().replace(/[^a-z0-9]+/g, "_").replace(/^_|_$/g, "");
   return `${base === "" ? "diagram" : base}.drawio`;
 }
 

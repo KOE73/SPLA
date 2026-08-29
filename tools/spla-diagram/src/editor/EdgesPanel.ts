@@ -160,12 +160,15 @@ export class EdgesPanel {
       if (needle === "") return true;
       const otherId = r.from === element.id ? r.to : r.from;
       const otherEl = doc.element(otherId);
-      const otherName = otherEl?.label || otherId;
+      const otherLabel = String(otherEl?.label || otherId);
+      const rType = String(r.type ?? "");
+      const rLabel = String(r.label ?? "");
+      const rStyle = String(r.styleId ?? "");
       return (
-        otherName.toLowerCase().includes(needle) ||
-        r.type.toLowerCase().includes(needle) ||
-        r.label.toLowerCase().includes(needle) ||
-        (r.styleId && r.styleId.toLowerCase().includes(needle))
+        otherLabel.toLowerCase().includes(needle) ||
+        rType.toLowerCase().includes(needle) ||
+        rLabel.toLowerCase().includes(needle) ||
+        rStyle.toLowerCase().includes(needle)
       );
     });
 

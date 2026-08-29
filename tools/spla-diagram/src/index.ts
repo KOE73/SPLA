@@ -6,7 +6,9 @@
  * the parts meant to change.
  */
 
+import "./styles/dockview.css";
 import "./styles/canvas.css";
+import "./styles/ribbon.css";
 
 export { DiagramCanvas, defaultRegistry } from "./canvas/DiagramCanvas.js";
 export type {
@@ -80,3 +82,14 @@ export { HttpModelStore, HttpStyleStore } from "./editor/io/transfer.js";
 export type { ModelStore, SaveTarget, StyleStore } from "./editor/io/transfer.js";
 
 export type { BoundarySlot, Point, Rect, Side } from "./geometry/types.js";
+
+// Workbench Architecture components
+export { Workbench } from "./workbench/Workbench.js";
+export { CommandRegistry } from "./workbench/commands/CommandRegistry.js";
+export { ShortcutManager } from "./workbench/commands/ShortcutManager.js";
+export { DockviewHost } from "./workbench/dockview/DockviewHost.js";
+export { PanelService } from "./workbench/dockview/PanelService.js";
+export { WorkspaceLayoutService } from "./workbench/dockview/WorkspaceLayoutService.js";
+export { Ribbon } from "./workbench/ribbon/Ribbon.js";
+export * from "./workbench/commands/types.js";
+export * from "./workbench/ribbon/types.js";

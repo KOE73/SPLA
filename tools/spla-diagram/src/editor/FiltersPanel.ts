@@ -98,8 +98,9 @@ export class FiltersPanel {
       }
     }
 
+    const q = this.tagQuery.toLowerCase();
     const filteredTags = this.tagQuery
-      ? tags.filter((t) => t.toLowerCase().includes(this.tagQuery.toLowerCase()))
+      ? tags.filter((t) => String(t ?? "").toLowerCase().includes(q))
       : tags;
 
     const tagListContainer = el("div", {

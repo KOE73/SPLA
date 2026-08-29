@@ -210,6 +210,10 @@ export class DiagramCanvas {
 
   // ------------------------------------------------------------ public API
 
+  get hostElement(): HTMLElement {
+    return this.host;
+  }
+
   setModel(doc: DiagramDocument): void {
     this.doc = doc;
     this.selection = null;
@@ -744,15 +748,21 @@ export class DiagramCanvas {
             const toEl = doc.element(canvasTo);
             if (fromEl === undefined || toEl === undefined) continue;
 
-            const alreadyPresent = resolved.some(
-              (r) => (r.edge.from === canvasFrom && r.edge.to === canvasTo) || r.edge.id === rel.id,
-            );
+            const alreadyPresent = resolved.some((r) => {
+              if (rel.id && r.edge.id === rel.id) return true;
+              return (
+                r.edge.from === canvasFrom &&
+                r.edge.to === canvasTo &&
+                r.edge.type === (rel.type || rel.relation || "relates") &&
+                r.edge.label === (rel.label || "")
+              );
+            });
             if (!alreadyPresent) {
               const from = this.anchorFor(fromEl);
               const to = this.anchorFor(toEl);
               if (from.owner !== to.owner) {
                 const potentialEdge: DiagramEdge = {
-                  id: rel.id || `ghost_${canvasFrom}_${canvasTo}`,
+                  id: rel.id || `ghost_${canvasFrom}_${canvasTo}_${rel.type || "rel"}_${resolved.length}`,
                   from: canvasFrom,
                   to: canvasTo,
                   type: rel.type || rel.relation || "relates",

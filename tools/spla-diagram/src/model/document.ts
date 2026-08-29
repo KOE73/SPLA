@@ -57,11 +57,17 @@ export class DiagramDocument {
   }
 
   get entities(): EntityEntry[] {
-    return this.bundle?.entities?.entities ?? [];
+    const raw = this.bundle?.entities;
+    if (Array.isArray(raw)) return raw;
+    if (raw && Array.isArray((raw as any).entities)) return (raw as any).entities;
+    return [];
   }
 
   get relations(): RelationEntry[] {
-    return this.bundle?.relations?.relations ?? [];
+    const raw = this.bundle?.relations;
+    if (Array.isArray(raw)) return raw;
+    if (raw && Array.isArray((raw as any).relations)) return (raw as any).relations;
+    return [];
   }
 
   getText(id: string, lang = "ru"): { name?: string; title?: string; doc?: string; description?: string } | undefined {

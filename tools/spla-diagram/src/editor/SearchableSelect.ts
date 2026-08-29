@@ -153,9 +153,9 @@ export class SearchableSelect {
     }
     const filtered = this.options.filter(
       (o) =>
-        o.label.toLowerCase().includes(q) ||
-        o.value.toLowerCase().includes(q) ||
-        (o.subtitle && o.subtitle.toLowerCase().includes(q)),
+        String(o?.label ?? "").toLowerCase().includes(q) ||
+        String(o?.value ?? "").toLowerCase().includes(q) ||
+        (o?.subtitle ? String(o.subtitle).toLowerCase().includes(q) : false),
     );
     this.renderOptions(filtered);
   }

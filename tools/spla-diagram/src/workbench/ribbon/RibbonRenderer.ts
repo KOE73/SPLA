@@ -1,0 +1,212 @@
+import type { CommandRegistry } from "../commands/CommandRegistry.js";
+import type { CommandContext } from "../commands/types.js";
+import type {
+  RibbonTabSpec,
+  RibbonGroupSpec,
+  RibbonItemSpec,
+  RibbonButtonSpec,
+  RibbonToggleSpec,
+  RibbonSelectSpec,
+} from "./types.js";
+import { el } from "../../util/dom.js";
+
+export class RibbonRenderer {
+  constructor(
+    private readonly registry: CommandRegistry,
+    private readonly getContext: () => CommandContext,
+  ) {}
+
+  renderTabsHeader(
+    tabs: readonly RibbonTabSpec[],
+    activeTabId: string,
+    onSelectTab: (id: string) => void,
+  ): HTMLElement {
+    const ctx = this.getContext();
+    const currentKind = ctx.selection.current?.kind;
+
+    const visibleTabs = tabs.filter((tab) => {
+      if (!tab.contextual) return true;
+      return tab.contextual === currentKind;
+    });
+
+    const header = el("div", { class: "ribbon-tab-bar" });
+
+    for (const tab of visibleTabs) {
+      const isActive = tab.id === activeTabId;
+      const isContextual = Boolean(tab.contextual);
+
+      const dataset: Record<string, string> = { tabId: tab.id };
+      if (tab.keyTip) dataset.keyTip = tab.keyTip;
+
+      const tabBtn = el(
+        "button",
+        {
+          class: `ribbon-tab-btn ${isActive ? "is-active" : ""} ${isContextual ? "is-contextual" : ""}`,
+          text: tab.title,
+          dataset,
+          on: {
+            click: () => onSelectTab(tab.id),
+          },
+        },
+      );
+
+      header.appendChild(tabBtn);
+    }
+
+    return header;
+  }
+
+  renderTabContent(tab: RibbonTabSpec): HTMLElement {
+    const container = el("div", { class: "ribbon-tab-page" });
+
+    for (const group of tab.groups) {
+      const groupEl = this.renderGroup(group);
+      container.appendChild(groupEl);
+    }
+
+    return container;
+  }
+
+  private renderGroup(group: RibbonGroupSpec): HTMLElement {
+    const itemsContainer = el("div", { class: "ribbon-group-items" });
+
+    for (const item of group.items) {
+      const itemEl = this.renderItem(item);
+      if (itemEl) itemsContainer.appendChild(itemEl);
+    }
+
+    const titleEl = el("div", { class: "ribbon-group-title", text: group.title });
+
+    return el("div", { class: "ribbon-group", dataset: { groupId: group.id } }, [
+      itemsContainer,
+      titleEl,
+    ]);
+  }
+
+  private renderItem(item: RibbonItemSpec): HTMLElement | null {
+    const ctx = this.getContext();
+
+    if (item.type === "separator") {
+      return el("div", { class: "ribbon-separator" });
+    }
+
+    if (item.type === "button") {
+      return this.renderButton(item, ctx);
+    }
+
+    if (item.type === "toggle") {
+      return this.renderToggle(item, ctx);
+    }
+
+    if (item.type === "select") {
+      return this.renderSelect(item, ctx);
+    }
+
+    return null;
+  }
+
+  private renderButton(spec: RibbonButtonSpec, ctx: CommandContext): HTMLElement {
+    const state = this.registry.getState(spec.command, ctx);
+    const size = spec.size ?? "medium";
+    const label = spec.label || state.title;
+    const icon = spec.icon || state.icon || "⚙️";
+
+    const dataset: Record<string, string> = {
+      tooltipCommand: spec.command,
+      commandId: spec.command,
+    };
+    if (state.keyTip) dataset.keyTip = state.keyTip;
+
+    const children: HTMLElement[] = [
+      el("span", { class: "ribbon-btn-icon", text: icon }),
+    ];
+
+    if (size !== "small") {
+      children.push(el("span", { class: "ribbon-btn-label", text: label }));
+    }
+
+    const btn = el(
+      "button",
+      {
+        class: `ribbon-btn ribbon-btn-${size}`,
+        dataset,
+        attrs: !state.enabled ? { disabled: "true" } : {},
+        on: {
+          click: () => {
+            void this.registry.execute(spec.command);
+          },
+        },
+      },
+      children,
+    );
+
+    return btn;
+  }
+
+  private renderToggle(spec: RibbonToggleSpec, ctx: CommandContext): HTMLElement {
+    const state = this.registry.getState(spec.command, ctx);
+    const size = spec.size ?? "medium";
+    const label = spec.label || state.title;
+    const icon = spec.icon || state.icon || "🔘";
+    const isChecked = Boolean(state.checked);
+
+    const dataset: Record<string, string> = {
+      tooltipCommand: spec.command,
+      commandId: spec.command,
+    };
+    if (state.keyTip) dataset.keyTip = state.keyTip;
+
+    const children: HTMLElement[] = [
+      el("span", { class: "ribbon-btn-icon", text: icon }),
+    ];
+
+    if (size !== "small") {
+      children.push(el("span", { class: "ribbon-btn-label", text: label }));
+    }
+
+    const btn = el(
+      "button",
+      {
+        class: `ribbon-btn ribbon-btn-${size} ribbon-toggle ${isChecked ? "is-checked" : ""}`,
+        dataset,
+        attrs: !state.enabled ? { disabled: "true" } : {},
+        on: {
+          click: () => {
+            void this.registry.execute(spec.command);
+          },
+        },
+      },
+      children,
+    );
+
+    return btn;
+  }
+
+  private renderSelect(spec: RibbonSelectSpec, ctx: CommandContext): HTMLElement {
+    const currentVal = spec.getValue(ctx);
+
+    const selectEl = el(
+      "select",
+      {
+        class: "ribbon-select",
+        on: {
+          change: (e) => {
+            const val = (e.target as HTMLSelectElement).value;
+            void this.registry.execute(spec.command, val);
+          },
+        },
+      },
+      spec.options.map((opt) =>
+        el("option", {
+          attrs: opt.value === currentVal ? { selected: "true", value: opt.value } : { value: opt.value },
+          text: opt.label,
+        }),
+      ),
+    );
+
+    return el("div", { class: "ribbon-select-wrapper" }, [
+      el("span", { class: "ribbon-select-label", text: spec.label }),
+      selectEl,
+    ]);
+  }
+}

@@ -115,3 +115,10 @@ sentences are what `current-list.md` is built from, which is why they have to st
 
 - **Architecture diagram visualizer gained global data language switching, multi-language catalog sync, and interactive canvas tooltips.**
   The UI toolbar includes a global data language selector (`RU` / `EN`) driving reading and writing of localized descriptions and titles across `text.<lang>.json` files. Localized inspector fields display language badges, the inspector base tab was renamed to **Catalog**, and hovering over any block, container, or relationship on the canvas presents a rich tooltip with its type, code reference, and localized description.
+
+---
+
+## 2026-08-29
+
+- **Architecture diagram visualizer migrated to Workbench architecture with Ribbon command surface, multi-zone Dockview docking, and multi-relation port distribution.**
+  The diagram editor transitioned from static panels to a CAD/IDE-grade Workbench architecture featuring a compact Ribbon command surface with keytips/tooltips, a centralized command system, and a fullscreen Dockview grid. The central diagram canvas is pinned as a headerless workspace, while tool panels (Catalog, Properties, Relations, Filters, Styles, Base Entities) can be docked anywhere (left, right, bottom, top), grouped into tab sets, or detached as floating windows with automatic layout persistence. Potential and shadow relations (ghost edges) are distributed uniformly across boundary ports alongside active connections, preventing overlapping lines when exploring node relationships.

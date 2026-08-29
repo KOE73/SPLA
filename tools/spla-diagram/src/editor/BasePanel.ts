@@ -7,7 +7,9 @@ export class BasePanel {
     private readonly body: HTMLElement,
     private readonly editor: DiagramEditor
   ) {
-    this.searchInput.addEventListener("input", () => this.render());
+    if (this.searchInput && typeof this.searchInput.addEventListener === "function") {
+      this.searchInput.addEventListener("input", () => this.render());
+    }
   }
 
   render(): void {
@@ -18,26 +20,29 @@ export class BasePanel {
     }
 
     const entities = doc.entities;
-    if (entities.length === 0) {
+    if (!entities || entities.length === 0) {
       replaceChildren(this.body, el("div", { class: "inspector-empty", text: "В базе проекта нет сущностей" }));
       return;
     }
 
-    const query = this.searchInput.value.toLowerCase().trim();
+    const query = String(this.searchInput?.value ?? "").toLowerCase().trim();
     const texts = doc.bundle?.text?.entries || {};
     
     const placedIds = new Set(Array.from(doc.elements()).map((e: any) => e.id));
 
     const matches = entities.filter((e: any) => {
-      const name = texts[e.id]?.name || e.name || e.id;
-      return name.toLowerCase().includes(query) || e.id.toLowerCase().includes(query);
+      if (!e) return false;
+      const id = String(e.id ?? "");
+      const name = String(texts[id]?.name || e.name || id);
+      return name.toLowerCase().includes(query) || id.toLowerCase().includes(query);
     });
 
     replaceChildren(
       this.body,
       ...matches.map((e: any) => {
-        const name = texts[e.id]?.name || e.name || e.id;
-        const isPlaced = placedIds.has(e.id);
+        const id = String(e?.id ?? "");
+        const name = String(texts[id]?.name || e?.name || id);
+        const isPlaced = placedIds.has(id);
 
         const row = document.createElement("div");
         row.style.display = "flex";

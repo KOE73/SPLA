@@ -83,12 +83,14 @@ interface Snapshot {
  * from, where they are saved, what undo means, what the toolbar looks like.
  * All of it talks to the canvas through its public API and its events.
  */
-export class DiagramEditor implements InspectorHost, StylePanelHost {
+import type { DiagramEditorFacade } from "../workbench/commands/types.js";
+
+export class DiagramEditor implements InspectorHost, StylePanelHost, DiagramEditorFacade {
   readonly canvas: DiagramCanvas;
 
   private readonly root: HTMLElement;
   private readonly slots = new Map<Slot, HTMLElement>();
-  private readonly history = new History();
+  readonly history = new History();
   private readonly inspector: Inspector;
   private readonly edgesPanel: EdgesPanel;
   private readonly filtersPanel: FiltersPanel;
@@ -192,8 +194,17 @@ export class DiagramEditor implements InspectorHost, StylePanelHost {
   // ---------------------------------------------------------------- wiring
 
   private slot(name: Slot): HTMLElement {
-    const node = this.slots.get(name);
-    if (node === undefined) throw new Error(`Editor markup is missing [data-slot="${name}"]`);
+    let node = this.slots.get(name);
+    if (node === undefined) {
+      if (name === "file-input" || name === "base-search") {
+        node = document.createElement("input");
+      } else if (name === "json-text") {
+        node = document.createElement("textarea");
+      } else {
+        node = document.createElement("div");
+      }
+      this.slots.set(name, node);
+    }
     return node;
   }
 
@@ -298,7 +309,7 @@ export class DiagramEditor implements InspectorHost, StylePanelHost {
     this.applyTheme(saved);
   }
 
-  private applyTheme(theme: string): void {
+  applyTheme(theme: string): void {
     document.documentElement.setAttribute("data-theme", theme);
     localStorage.setItem("spla.theme", theme);
     localStorage.setItem("spla-diagram:theme", theme);
@@ -361,7 +372,7 @@ export class DiagramEditor implements InspectorHost, StylePanelHost {
     else if (tab === "base") this.basePanel.render();
   }
 
-  private applyToggle(name: string, on: boolean): void {
+  applyToggle(name: string, on: boolean): void {
     switch (name) {
       case "grid":
         this.slot("canvas").classList.toggle("with-grid", on);
@@ -397,7 +408,7 @@ export class DiagramEditor implements InspectorHost, StylePanelHost {
     this.applyPortAssigner(saved);
   }
 
-  private applyPortAssigner(id: string): void {
+  applyPortAssigner(id: string): void {
     localStorage.setItem("spla.ports", id);
     const select = this.root.querySelector<HTMLSelectElement>("[data-select='ports']");
     if (select && select.value !== id) {
@@ -612,7 +623,7 @@ export class DiagramEditor implements InspectorHost, StylePanelHost {
 
   // ----------------------------------------------------------- model loading
 
-  private async openCatalogEntry(entry: CatalogEntry): Promise<void> {
+  async openCatalogEntry(entry: CatalogEntry): Promise<void> {
     try {
       const wire = await this.store.load(entry.file);
       this.currentEntry = entry;
@@ -625,7 +636,7 @@ export class DiagramEditor implements InspectorHost, StylePanelHost {
     }
   }
 
-  private async loadFile(file: File): Promise<void> {
+  async loadFile(file: File): Promise<void> {
     try {
       const wire = await readJsonFile(file);
       this.currentEntry = null;
@@ -793,7 +804,7 @@ export class DiagramEditor implements InspectorHost, StylePanelHost {
 
   // ---------------------------------------------------------------- editing
 
-  private createNode(): void {
+  createNode(): void {
     const doc = this.canvas.model;
     if (doc === null) return;
     const at = this.canvas.viewCenter();
@@ -819,7 +830,7 @@ export class DiagramEditor implements InspectorHost, StylePanelHost {
     this.canvas.select(node.id);
   }
 
-  private createZone(): void {
+  createZone(): void {
     const doc = this.canvas.model;
     if (doc === null) return;
     const at = this.canvas.viewCenter();
@@ -1030,13 +1041,37 @@ export class DiagramEditor implements InspectorHost, StylePanelHost {
     this.edgesPanel.render();
   }
 
-  private undo(): void {
+  get isDirty(): boolean {
+    return this.dirty;
+  }
+
+  get isStylesDirty(): boolean {
+    return this.stylesDirty;
+  }
+
+  openFile(): void {
+    const input = this.slots.get("file-input") as HTMLInputElement | undefined;
+    if (input) {
+      input.click();
+    } else {
+      const i = document.createElement("input");
+      i.type = "file";
+      i.accept = ".json";
+      i.onchange = () => {
+        const file = i.files?.[0];
+        if (file) void this.loadFile(file);
+      };
+      i.click();
+    }
+  }
+
+  undo(): void {
     this.flushFieldEdit();
     const snapshot = this.history.undo();
     if (snapshot !== null) this.restore(snapshot);
   }
 
-  private redo(): void {
+  redo(): void {
     this.flushFieldEdit();
     const snapshot = this.history.redo();
     if (snapshot !== null) this.restore(snapshot);
@@ -1052,7 +1087,7 @@ export class DiagramEditor implements InspectorHost, StylePanelHost {
    * hand is bound to none. Rolling both into one "не удалось сохранить" would
    * mean the user could not tell whether the style work they just did survived.
    */
-  private async save(): Promise<void> {
+  async save(): Promise<void> {
     this.flushFieldEdit();
     const problems: string[] = [];
     let stylesSaved = false;
@@ -1110,26 +1145,55 @@ export class DiagramEditor implements InspectorHost, StylePanelHost {
     }, 2000);
   }
 
-  private exportDrawio(): void {
+  exportDrawio(): void {
     const doc = this.canvas.model;
     if (doc === null) return;
     download(drawioFileName(doc), exportDrawio(doc, this.styleLibrary), "application/xml");
   }
 
-  private toggleJsonModal(): void {
-    const modal = this.slot("json-modal");
-    const editor = this.slot("json-text") as unknown as HTMLTextAreaElement;
-    const doc = this.canvas.model;
+  toggleJsonModal(): void {
+    let modal = this.slots.get("json-modal");
+    let editor = this.slots.get("json-text") as HTMLTextAreaElement | undefined;
+    if (!modal || !modal.parentElement) {
+      editor = el("textarea", {
+        attrs: {
+          spellcheck: "false",
+          style: "width: 100%; height: 360px; font-family: monospace; font-size: 12px; background: var(--bg, #1a1a1a); color: var(--text, #fff); border: 1px solid var(--border, #3a3a3c); border-radius: 4px; padding: 8px; resize: vertical; box-sizing: border-box;",
+        },
+      }) as HTMLTextAreaElement;
+      this.slots.set("json-text", editor);
 
+      const closeBtn = el("button", { class: "btn-icon", text: "✕", on: { click: () => { modal!.hidden = true; } } });
+      const copyBtn = el("button", { class: "btn", text: "Копировать", on: { click: () => { void this.copyJson(); } } });
+      const applyBtn = el("button", { class: "btn btn-primary", text: "Применить к холсту", on: { click: () => { this.applyJson(); } } });
+
+      modal = el("div", { class: "modal", attrs: { hidden: "true" } }, [
+        el("div", { class: "modal-card", attrs: { style: "width: 600px; max-width: 90vw;" } }, [
+          el("div", { class: "modal-head", attrs: { style: "display: flex; justify-content: space-between; align-items: center; padding: 10px 14px; border-bottom: 1px solid var(--border, #3a3a3c);" } }, [
+            el("h3", { text: "Модель диаграммы (JSON)", attrs: { style: "margin: 0; font-size: 14px;" } }),
+            closeBtn,
+          ]),
+          el("div", { class: "modal-body", attrs: { style: "padding: 14px;" } }, [editor]),
+          el("div", { class: "modal-foot", attrs: { style: "display: flex; justify-content: flex-end; gap: 8px; padding: 10px 14px; border-top: 1px solid var(--border, #3a3a3c);" } }, [
+            copyBtn,
+            applyBtn,
+          ]),
+        ]),
+      ]);
+      this.slots.set("json-modal", modal);
+      document.body.appendChild(modal);
+    }
+
+    const doc = this.canvas.model;
     if (modal.hidden) {
-      editor.value = doc === null ? "" : JSON.stringify(serializeDocument(doc), null, 2);
+      if (editor) editor.value = doc === null ? "" : JSON.stringify(serializeDocument(doc), null, 2);
       modal.hidden = false;
     } else {
       modal.hidden = true;
     }
   }
 
-  private async copyJson(): Promise<void> {
+  async copyJson(): Promise<void> {
     const editor = this.slot("json-text") as unknown as HTMLTextAreaElement;
     try {
       await navigator.clipboard.writeText(editor.value);
@@ -1139,7 +1203,7 @@ export class DiagramEditor implements InspectorHost, StylePanelHost {
     }
   }
 
-  private applyJson(): void {
+  applyJson(): void {
     const editor = this.slot("json-text") as unknown as HTMLTextAreaElement;
     try {
       const wire = JSON.parse(editor.value) as WireDocument;
@@ -1154,7 +1218,7 @@ export class DiagramEditor implements InspectorHost, StylePanelHost {
 
   // ------------------------------------------------------------------- ui
 
-  private toggleSidebar(): void {
+  toggleSidebar(): void {
     this.slot("sidebar").classList.toggle("is-collapsed");
   }
 

@@ -394,10 +394,10 @@ export class StyleLibrary {
 
 function matches(style: WireStyle, needle: string): boolean {
   const haystack = [
-    style.id,
-    style.name ?? "",
-    style.description ?? "",
-    ...(style.tags ?? []),
+    String(style.id ?? ""),
+    String(style.name ?? ""),
+    String(style.description ?? ""),
+    ...(style.tags ?? []).map((t) => String(t ?? "")),
   ]
     .join(" ")
     .toLowerCase();
