@@ -209,19 +209,32 @@
   cursor: pointer;
 }
 
-.spla-node-badge rect {
+.spla-node-badge rect,
+.spla-node-badge .spla-node-badge-rect {
+  fill: #f1f5f9;
+  stroke: #cbd5e1;
+  stroke-width: 1;
   transition: fill 0.15s ease, stroke 0.15s ease;
 }
 
-.spla-node-badge text {
+.spla-node-badge text,
+.spla-node-badge .spla-node-badge-text {
+  fill: #475569;
   transition: fill 0.15s ease;
 }
 
-.spla-node-badge:hover rect {
-  fill: var(--accent, #2563eb);
-  stroke: var(--accent, #2563eb);
+.spla-node-badge:hover rect,
+.spla-node-badge:hover .spla-node-badge-rect,
+.spla-node-badge.is-active rect,
+.spla-node-badge.is-active .spla-node-badge-rect {
+  fill: #2563eb !important;
+  stroke: #2563eb !important;
 }
 
-.spla-node-badge:hover text {
-  fill: #ffffff;
+.spla-node-badge:hover text,
+.spla-node-badge:hover .spla-node-badge-text,
+.spla-node-badge.is-active text,
+.spla-node-badge.is-active .spla-node-badge-text {
+  fill: #ffffff !important;
 }
+

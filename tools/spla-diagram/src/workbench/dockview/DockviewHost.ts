@@ -11,6 +11,7 @@ import {
   CatalogPanel,
   BasePanel,
 } from "../panels/index.js";
+import { i18n } from "../i18n/I18nService.js";
 
 export class DockviewHost {
   readonly dockview: DockviewApi;
@@ -76,10 +77,29 @@ export class DockviewHost {
     });
   }
 
+  updateTitles(): void {
+    const titles: Record<string, string> = {
+      diagram: i18n.d.panels.diagram.title,
+      catalog: i18n.d.panels.catalog.title,
+      properties: i18n.d.panels.properties.title,
+      relations: i18n.d.panels.relations.title,
+      filters: i18n.d.panels.filters.title,
+      styles: i18n.d.panels.styles.title,
+      base: i18n.d.panels.base.title,
+    };
+
+    for (const [id, title] of Object.entries(titles)) {
+      const panel = this.dockview.getPanel(id);
+      if (panel) {
+        panel.api.setTitle(title);
+      }
+    }
+  }
+
   private registerPanels(): void {
     this.panelService.register({
       id: "diagram",
-      title: "Диаграмма",
+      get title() { return i18n.d.panels.diagram.title; },
       minWidth: 200,
       minHeight: 150,
       createRenderer: () => new CanvasPanel(this.editor),
@@ -87,7 +107,7 @@ export class DockviewHost {
 
     this.panelService.register({
       id: "catalog",
-      title: "Каталог схем",
+      get title() { return i18n.d.panels.catalog.title; },
       minWidth: 100,
       minHeight: 80,
       createRenderer: () => new CatalogPanel(this.editor, () => (this.editor as any).catalog ?? []),
@@ -95,7 +115,7 @@ export class DockviewHost {
 
     this.panelService.register({
       id: "properties",
-      title: "Свойства",
+      get title() { return i18n.d.panels.properties.title; },
       minWidth: 100,
       minHeight: 80,
       createRenderer: () => new PropertiesPanel(this.editor),
@@ -103,7 +123,7 @@ export class DockviewHost {
 
     this.panelService.register({
       id: "relations",
-      title: "Связи",
+      get title() { return i18n.d.panels.relations.title; },
       minWidth: 100,
       minHeight: 80,
       createRenderer: () => new RelationsPanel(this.editor),
@@ -111,7 +131,7 @@ export class DockviewHost {
 
     this.panelService.register({
       id: "filters",
-      title: "Фильтры",
+      get title() { return i18n.d.panels.filters.title; },
       minWidth: 100,
       minHeight: 80,
       createRenderer: () => new FiltersPanel(this.editor),
@@ -119,7 +139,7 @@ export class DockviewHost {
 
     this.panelService.register({
       id: "styles",
-      title: "Стили",
+      get title() { return i18n.d.panels.styles.title; },
       minWidth: 100,
       minHeight: 80,
       createRenderer: () => new StylesPanel(this.editor),
@@ -127,7 +147,7 @@ export class DockviewHost {
 
     this.panelService.register({
       id: "base",
-      title: "База сущностей",
+      get title() { return i18n.d.panels.base.title; },
       minWidth: 100,
       minHeight: 80,
       createRenderer: () => new BasePanel(this.editor),

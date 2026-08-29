@@ -115,6 +115,7 @@ export interface DiagramEditorFacade {
   applyPortAssigner(mode: string): void;
   applyTheme(theme: string): void;
   applyDataLang(lang: string): void;
+  applyUiLang?(lang: string): void;
   openTab(tab: "properties" | "edges" | "filters" | "styles" | "base"): void;
   notify(message: string): void;
   openCatalogEntry(entry: CatalogEntry): Promise<void>;
@@ -131,4 +132,7 @@ export interface CommandContext {
   readonly workspace: IWorkspaceLayoutService;
   readonly io: DiagramIoService;
   readonly dataLang: string;
+  readonly uiLang: string;
+  applyUiLang(lang: string): void;
+  toggleCanvasFilters?(anchor?: HTMLElement): void;
 }

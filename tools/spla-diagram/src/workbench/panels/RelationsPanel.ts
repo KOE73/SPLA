@@ -2,6 +2,7 @@ import type { IContentRenderer, GroupPanelPartInitParameters } from "dockview-co
 import type { DiagramEditor } from "../../editor/DiagramEditor.js";
 import { EdgesPanel } from "../../editor/EdgesPanel.js";
 import { el } from "../../util/dom.js";
+import { i18n } from "../i18n/I18nService.js";
 
 export class RelationsPanel implements IContentRenderer {
   readonly element: HTMLElement;
@@ -30,6 +31,10 @@ export class RelationsPanel implements IContentRenderer {
     });
 
     editor.canvas.events.on("collapse", () => {
+      this.edgesPanel.render();
+    });
+
+    i18n.onLanguageChange(() => {
       this.edgesPanel.render();
     });
   }

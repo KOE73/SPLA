@@ -59,6 +59,9 @@ client/types **and** this table.
 | `chat.new` | `ChatNew` | `ChatNewPayload` | Create + open; also broadcasts `chat.list.result`. |
 | `chat.rename` | `ChatRename` | `ChatRenamePayload` | Broadcasts `chat.list.result`. |
 | `chat.delete` | `ChatDelete` | `ChatDeletePayload` | Broadcasts `chat.list.result`. |
+| `chat.archive` | `ChatArchive` | `ChatArchivePayload` | Archive a chat; broadcasts `chat.list.result`. |
+| `chat.unarchive` | `ChatUnarchive` | `ChatArchivePayload` | Unarchive a chat; broadcasts `chat.list.result`. |
+| `chat.archived.list` | `ChatArchivedList` | — | Request the archived chat list. |
 | `chat.send` | `ChatSend` | `ChatSendPayload` | Runs a turn; streams to watchers. |
 | `chat.settings` | `ChatSettings` | `ChatSettingsPayload` | Change mode/model entry, temperature or reasoning selection; echoes `chat.opened`. An empty `reasoning` string means "drop my override", which is why it is distinct from null. |
 | `chat.reasoning.get` | `ChatReasoningGet` | `ChatReasoningRequest` | Ask what the chat's model takes on its reasoning channel; reply `chat.reasoning.result`. A request, not a field on `chat.opened`, because the answer comes from the provider over the network and opening a chat must not wait on one. |
@@ -131,6 +134,7 @@ client/types **and** this table.
 | `project.context` | `ProjectContext` | `ProjectContextPayload` | unicast | Answer to `project.open`/`project.create`. |
 | `instance.status.result` | `InstanceStatusResult` | `InstanceStatusPayload` | unicast | Answer to `instance.status`/`instance.stop` — a unicast reply to whoever asked, never fanned out to other clients. |
 | `chat.list.result` | `ChatListResult` | `ChatListResultPayload` | broadcast (project) | Every sidebar in that project refreshes. |
+| `chat.archived.list.result` | `ChatArchivedListResult` | `ChatArchivedListResultPayload` | unicast | Answer to `chat.archived.list`. |
 | `chat.opened` | `ChatOpened` | `ChatOpenedPayload` | unicast | Full chat state on open. |
 | `user.message` | `UserMessage` | `UserMessagePayload` | watchers | Accepted user message id/time; optional text renders server-initiated turns. |
 | `llm.turn.start` | `LlmTurnStart` | `DeltaPayload` | watchers | New assistant message index. |

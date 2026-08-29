@@ -71,7 +71,9 @@ export class CommandRegistry {
       console.warn(`Command "${id}" is disabled in the current context`);
       return;
     }
-    return cmd.execute(context, args);
+    const res = cmd.execute(context, args);
+    this.notifyStateChanged();
+    return res;
   }
 
   getState(id: string, context?: CommandContext): CommandState {

@@ -1,5 +1,6 @@
 import { el, replaceChildren } from "../util/dom.js";
 import type { DiagramEditor } from "./DiagramEditor.js";
+import { i18n } from "../workbench/i18n/I18nService.js";
 
 export class FiltersPanel {
   private tagQuery: string = "";
@@ -13,7 +14,7 @@ export class FiltersPanel {
     const canvas = this.editor.canvas;
     const doc = canvas.model;
     if (!doc) {
-      replaceChildren(this.container, el("div", { class: "inspector-empty", text: "Модель не загружена" }));
+      replaceChildren(this.container, el("div", { class: "inspector-empty", text: i18n.d.panels.filters.empty }));
       return;
     }
 
@@ -41,7 +42,7 @@ export class FiltersPanel {
         },
         [
           el("span", { text: "🏛" }),
-          el("span", { text: "Все элементы (по умолчанию)" }),
+          el("span", { text: i18n.d.panels.filters.defaultView }),
         ]
       ),
       ...views.map((v) => {
@@ -73,7 +74,7 @@ export class FiltersPanel {
       el("div", {
         attrs: { style: "padding: 10px 10px 4px; display: flex; justify-content: space-between; align-items: center;" },
       }, [
-        el("span", { class: "section-label", text: "Ракурсы и виды" }),
+        el("span", { class: "section-label", text: i18n.d.panels.filters.perspectivesHeader }),
       ]),
       viewsList,
     ]);
@@ -112,12 +113,12 @@ export class FiltersPanel {
       attrs: { style: "padding: 10px 10px 4px; display: flex; flex-direction: column; gap: 6px;" },
     }, [
       el("div", { attrs: { style: "display: flex; justify-content: space-between; align-items: center;" } }, [
-        el("span", { class: "section-label", text: "Теги и домены" }),
+        el("span", { class: "section-label", text: i18n.d.panels.filters.tagsHeader }),
         activeTags.size > 0
           ? el("button", {
               class: "btn btn-small",
               attrs: { style: "padding: 2px 8px; font-size: 11px;" },
-              text: `Сбросить (${activeTags.size})`,
+              text: `${i18n.d.common.undo} (${activeTags.size})`,
               on: {
                 click: () => {
                   canvas.clearHighlightTags();
@@ -131,7 +132,7 @@ export class FiltersPanel {
         ? el("input", {
             type: "text",
             class: "input-strong",
-            placeholder: "Фильтр тегов...",
+            placeholder: i18n.d.panels.styles.filterPlaceholder,
             value: this.tagQuery,
             on: {
               input: (e: Event) => {
@@ -141,9 +142,6 @@ export class FiltersPanel {
             },
           })
         : null,
-      el("div", { class: "hint", attrs: { style: "font-size: 11px; margin: 0;" } }, [
-        "Выбранные теги изолируются, остальное димируется.",
-      ]),
     ]);
 
     this.renderTagList(tagListContainer, filteredTags, counts, activeTags);
@@ -163,7 +161,7 @@ export class FiltersPanel {
       attrs: { style: "padding: 10px;" },
     }, [
       el("div", { attrs: { style: "margin-bottom: 6px;" } }, [
-        el("span", { class: "section-label", text: "Фильтрация связей" }),
+        el("span", { class: "section-label", text: i18n.d.panels.filters.connectionsHeader }),
       ]),
       el("label", { class: "check", attrs: { style: "display: flex; align-items: center; gap: 8px; cursor: pointer;" } }, [
         el("input", {
@@ -176,10 +174,7 @@ export class FiltersPanel {
             },
           },
         }),
-        el("span", { text: "🔗 Связи-порождение (implements, extends, composes)" }),
-      ]),
-      el("div", { class: "hint", attrs: { style: "font-size: 11px; margin: 4px 0 0;" } }, [
-        "Снимите флаг, чтобы скрыть структурные зависимости и оставить только потоки данных.",
+        el("span", { text: `🔗 ${i18n.d.panels.relations.implementsType}, ${i18n.d.panels.relations.extendsType}, ${i18n.d.panels.relations.composesType}` }),
       ]),
     ]);
     sections.push(relationsSection);

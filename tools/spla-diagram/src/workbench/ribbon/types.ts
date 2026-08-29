@@ -35,11 +35,24 @@ export interface RibbonSeparatorSpec {
   readonly type: "separator";
 }
 
+export interface RibbonThemeGalleryOption {
+  readonly id: string;
+  readonly name: string;
+}
+
+export interface RibbonThemeGallerySpec {
+  readonly type: "theme-gallery";
+  readonly command: string;
+  readonly themes: readonly RibbonThemeGalleryOption[];
+  readonly getValue: (context: CommandContext) => string;
+}
+
 export type RibbonItemSpec =
   | RibbonButtonSpec
   | RibbonToggleSpec
   | RibbonSelectSpec
-  | RibbonSeparatorSpec;
+  | RibbonSeparatorSpec
+  | RibbonThemeGallerySpec;
 
 export interface RibbonGroupSpec {
   readonly id: string;

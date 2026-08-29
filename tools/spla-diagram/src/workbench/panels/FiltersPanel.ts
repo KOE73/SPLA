@@ -2,6 +2,7 @@ import type { IContentRenderer, GroupPanelPartInitParameters } from "dockview-co
 import type { DiagramEditor } from "../../editor/DiagramEditor.js";
 import { FiltersPanel as SplaFiltersPanel } from "../../editor/FiltersPanel.js";
 import { el } from "../../util/dom.js";
+import { i18n } from "../i18n/I18nService.js";
 
 export class FiltersPanel implements IContentRenderer {
   readonly element: HTMLElement;
@@ -26,6 +27,10 @@ export class FiltersPanel implements IContentRenderer {
     this.filters = new SplaFiltersPanel(this.body, editor);
 
     editor.canvas.events.on("modelchange", () => {
+      this.filters.render();
+    });
+
+    i18n.onLanguageChange(() => {
       this.filters.render();
     });
   }

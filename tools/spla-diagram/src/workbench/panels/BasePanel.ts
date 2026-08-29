@@ -2,6 +2,7 @@ import type { IContentRenderer, GroupPanelPartInitParameters } from "dockview-co
 import type { DiagramEditor } from "../../editor/DiagramEditor.js";
 import { BasePanel as SplaBasePanel } from "../../editor/BasePanel.js";
 import { el } from "../../util/dom.js";
+import { i18n } from "../i18n/I18nService.js";
 
 export class BasePanel implements IContentRenderer {
   readonly element: HTMLElement;
@@ -13,7 +14,7 @@ export class BasePanel implements IContentRenderer {
     this.searchInput = el("input", {
       type: "text",
       class: "input-strong",
-      attrs: { style: "width: 100%;", placeholder: "Поиск сущностей..." },
+      attrs: { style: "width: 100%;", placeholder: i18n.d.panels.base.searchPlaceholder },
     }) as HTMLInputElement;
 
     this.listSlot = el("div", {
@@ -38,6 +39,11 @@ export class BasePanel implements IContentRenderer {
     this.basePanel = new SplaBasePanel(this.searchInput, this.listSlot, editor);
 
     editor.canvas.events.on("modelchange", () => {
+      this.basePanel.render();
+    });
+
+    i18n.onLanguageChange(() => {
+      this.searchInput.placeholder = i18n.d.panels.base.searchPlaceholder;
       this.basePanel.render();
     });
   }

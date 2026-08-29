@@ -7,6 +7,8 @@ import { ShortcutManager } from "./commands/ShortcutManager.js";
 import { Ribbon } from "./ribbon/Ribbon.js";
 import { createDefaultRibbonSpec } from "./ribbon/RibbonModel.js";
 import { DockviewHost } from "./dockview/DockviewHost.js";
+import { CanvasFilterManager } from "./filters/CanvasFilterManager.js";
+import { i18n } from "./i18n/I18nService.js";
 
 /**
  * Workbench architecture root.
@@ -25,6 +27,7 @@ export class Workbench {
   readonly shortcuts: ShortcutManager;
   readonly ribbon: Ribbon;
   readonly dockviewHost: DockviewHost;
+  readonly filterManager: CanvasFilterManager;
 
   constructor(
     private readonly hostElement: HTMLElement,
@@ -45,13 +48,23 @@ export class Workbench {
     root.appendChild(editorMount);
     this.editor = new DiagramEditor(editorMount, options);
 
-    // 3. Ribbon Container (top)
+    // 3. Canvas Visual Modifiers & Filters Manager
+    this.filterManager = new CanvasFilterManager(() => this.editor.canvas.hostElement);
+
+    // Hook theme changes to synchronize canvas filter presets per theme
+    const origApplyTheme = this.editor.applyTheme.bind(this.editor);
+    this.editor.applyTheme = (theme: string) => {
+      origApplyTheme(theme);
+      this.filterManager.setTheme(theme);
+    };
+
+    // 4. Ribbon Container (top)
     const ribbonContainer = el("div", {
       class: "workbench-ribbon-container",
       attrs: { style: "flex-shrink: 0; z-index: 50;" },
     });
 
-    // 4. Fullscreen Dockview Host (main area under Ribbon)
+    // 5. Fullscreen Dockview Host (main area under Ribbon)
     const dockviewContainer = el("div", {
       class: "workbench-dockview-host dockview-theme-dark",
       attrs: {
@@ -63,20 +76,20 @@ export class Workbench {
     root.appendChild(ribbonContainer);
     root.appendChild(dockviewContainer);
 
-    // 5. Initialize Command Center
+    // 6. Initialize Command Center
     this.commands = new CommandRegistry();
     this.commands.registerAll(createBuiltinCommands());
 
-    // 6. Initialize Fullscreen Dockview Host
+    // 7. Initialize Fullscreen Dockview Host
     this.dockviewHost = new DockviewHost(dockviewContainer, this.editor);
 
-    // 7. Connect Command Context Provider
+    // 8. Connect Command Context Provider
     this.commands.setContextProvider(() => this.createCommandContext());
 
-    // 8. Initialize Global Shortcut Manager
+    // 9. Initialize Global Shortcut Manager
     this.shortcuts = new ShortcutManager(this.commands, () => this.createCommandContext());
 
-    // 9. Initialize Ribbon
+    // 10. Initialize Ribbon
     const ribbonSpec = createDefaultRibbonSpec();
     this.ribbon = new Ribbon(
       ribbonSpec,
@@ -85,7 +98,7 @@ export class Workbench {
     );
     ribbonContainer.appendChild(this.ribbon.element);
 
-    // 10. Bind events
+    // 11. Bind events
     this.bindEvents();
 
     // Auto layout canvas on window resize
@@ -93,7 +106,12 @@ export class Workbench {
       this.editor.canvas.render();
     });
 
-    // 11. Mount to host
+    // Apply initial filter state to canvas
+    setTimeout(() => {
+      this.filterManager.apply();
+    }, 50);
+
+    // 12. Mount to host
     this.hostElement.appendChild(root);
   }
 
@@ -112,6 +130,13 @@ export class Workbench {
     this.dockviewHost.panelService.onPanelStateChange(() => {
       this.commands.notifyStateChanged();
       this.editor.canvas.render();
+    });
+
+    // Re-render ribbon and update panel titles on UI language change
+    i18n.onLanguageChange(() => {
+      this.commands.notifyStateChanged();
+      this.ribbon.render();
+      this.dockviewHost.updateTitles();
     });
   }
 
@@ -138,6 +163,13 @@ export class Workbench {
       workspace: this.dockviewHost.layoutService,
       io: this.editor,
       dataLang: this.editor.dataLang,
+      uiLang: i18n.currentLanguage,
+      applyUiLang: (lang) => {
+        i18n.setLanguage(lang as any);
+      },
+      toggleCanvasFilters: (anchor) => {
+        this.filterManager.toggleFlyout(anchor);
+      },
     };
   }
 }

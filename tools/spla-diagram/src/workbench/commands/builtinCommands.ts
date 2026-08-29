@@ -1,12 +1,13 @@
 import type { CommandDefinition } from "./types.js";
+import { i18n } from "../i18n/I18nService.js";
 
 export function createBuiltinCommands(): CommandDefinition[] {
   return [
     // ----------------------------------------------------------------- File
     {
       id: "file.save",
-      title: "Сохранить",
-      description: "Сохранить изменения схемы и стилей на сервере",
+      get title() { return i18n.d.commands.save.title; },
+      get description() { return i18n.d.commands.save.desc; },
       icon: "💾",
       category: "File",
       shortcut: "Ctrl+S",
@@ -16,8 +17,8 @@ export function createBuiltinCommands(): CommandDefinition[] {
     },
     {
       id: "file.open",
-      title: "Открыть JSON…",
-      description: "Открыть файл схемы JSON с диска",
+      get title() { return i18n.d.commands.openFile.title; },
+      get description() { return i18n.d.commands.openFile.desc; },
       icon: "📂",
       category: "File",
       shortcut: "Ctrl+O",
@@ -26,8 +27,8 @@ export function createBuiltinCommands(): CommandDefinition[] {
     },
     {
       id: "file.export.drawio",
-      title: ".drawio",
-      description: "Экспортировать схему в формат diagrams.net XML",
+      get title() { return i18n.d.commands.exportDrawio.title; },
+      get description() { return i18n.d.commands.exportDrawio.desc; },
       icon: "📐",
       category: "File",
       keyTip: "D",
@@ -36,8 +37,8 @@ export function createBuiltinCommands(): CommandDefinition[] {
     },
     {
       id: "file.code.toggle",
-      title: "Код схемы",
-      description: "Просмотр и прямое редактирование JSON модели диаграммы",
+      get title() { return i18n.d.commands.openJson.title; },
+      get description() { return i18n.d.commands.openJson.desc; },
       icon: "📄",
       category: "File",
       keyTip: "J",
@@ -48,8 +49,8 @@ export function createBuiltinCommands(): CommandDefinition[] {
     // ----------------------------------------------------------------- Edit
     {
       id: "edit.undo",
-      title: "Отменить",
-      description: "Отменить последнее действие",
+      get title() { return i18n.d.commands.undo.title; },
+      get description() { return i18n.d.commands.undo.desc; },
       icon: "↶",
       category: "Edit",
       shortcut: "Ctrl+Z",
@@ -59,8 +60,8 @@ export function createBuiltinCommands(): CommandDefinition[] {
     },
     {
       id: "edit.redo",
-      title: "Повторить",
-      description: "Повторить отмененное действие",
+      get title() { return i18n.d.commands.redo.title; },
+      get description() { return i18n.d.commands.redo.desc; },
       icon: "↷",
       category: "Edit",
       shortcut: "Ctrl+Y, Ctrl+Shift+Z",
@@ -70,8 +71,8 @@ export function createBuiltinCommands(): CommandDefinition[] {
     },
     {
       id: "edit.delete",
-      title: "Удалить",
-      description: "Удалить выбранный элемент или связь",
+      get title() { return i18n.d.commands.deleteSelection.title; },
+      get description() { return i18n.d.commands.deleteSelection.desc; },
       icon: "🗑",
       category: "Edit",
       shortcut: "Delete, Backspace",
@@ -83,8 +84,8 @@ export function createBuiltinCommands(): CommandDefinition[] {
     // -------------------------------------------------------------- Diagram
     {
       id: "diagram.block.add",
-      title: "Блок",
-      description: "Создать новый компонентный блок на схеме",
+      get title() { return i18n.d.commands.createNode.title; },
+      get description() { return i18n.d.commands.createNode.desc; },
       icon: "➕",
       category: "Diagram",
       shortcut: "Ctrl+Shift+B",
@@ -94,8 +95,8 @@ export function createBuiltinCommands(): CommandDefinition[] {
     },
     {
       id: "diagram.zone.add",
-      title: "Зона",
-      description: "Создать новую область/слой (контейнер)",
+      get title() { return i18n.d.commands.createZone.title; },
+      get description() { return i18n.d.commands.createZone.desc; },
       icon: "📦",
       category: "Diagram",
       shortcut: "Ctrl+Shift+Z",
@@ -105,8 +106,8 @@ export function createBuiltinCommands(): CommandDefinition[] {
     },
     {
       id: "diagram.ports.set",
-      title: "Причаливание связей",
-      description: "Установить режим размещения концов связей по сторонам блоков",
+      get title() { return i18n.d.commands.portsSet.title; },
+      get description() { return i18n.d.commands.portsSet.desc; },
       icon: "⚓",
       category: "Diagram",
       keyTip: "P",
@@ -116,8 +117,8 @@ export function createBuiltinCommands(): CommandDefinition[] {
     // ----------------------------------------------------------------- View
     {
       id: "view.grid.toggle",
-      title: "Точки сетки",
-      description: "Показать или скрыть координатную сетку",
+      get title() { return i18n.d.commands.toggleGrid.title; },
+      get description() { return i18n.d.commands.toggleGrid.desc; },
       icon: "▦",
       category: "View",
       shortcut: "Ctrl+'",
@@ -130,8 +131,8 @@ export function createBuiltinCommands(): CommandDefinition[] {
     },
     {
       id: "view.snap.toggle",
-      title: "Привязка",
-      description: "Привязка координат к шагу 10px при перетаскивании",
+      get title() { return i18n.d.commands.toggleSnap.title; },
+      get description() { return i18n.d.commands.toggleSnap.desc; },
       icon: "🧲",
       category: "View",
       shortcut: "Ctrl+Shift+S",
@@ -143,9 +144,22 @@ export function createBuiltinCommands(): CommandDefinition[] {
       },
     },
     {
+      id: "view.filters.visual.toggle",
+      get title() { return i18n.d.commands.toggleCanvasFilters.title; },
+      get description() { return i18n.d.commands.toggleCanvasFilters.desc; },
+      icon: "✨",
+      category: "View",
+      keyTip: "E",
+      execute: (ctx, args) => {
+        if (ctx.toggleCanvasFilters) {
+          ctx.toggleCanvasFilters(args as HTMLElement | undefined);
+        }
+      },
+    },
+    {
       id: "view.zoom.in",
-      title: "Приблизить",
-      description: "Увеличить масштаб отображения схемы",
+      get title() { return i18n.d.commands.zoomIn.title; },
+      get description() { return i18n.d.commands.zoomIn.desc; },
       icon: "➕",
       category: "View",
       shortcut: "Ctrl+=",
@@ -154,8 +168,8 @@ export function createBuiltinCommands(): CommandDefinition[] {
     },
     {
       id: "view.zoom.out",
-      title: "Отдалить",
-      description: "Уменьшить масштаб отображения схемы",
+      get title() { return i18n.d.commands.zoomOut.title; },
+      get description() { return i18n.d.commands.zoomOut.desc; },
       icon: "➖",
       category: "View",
       shortcut: "Ctrl+-",
@@ -164,8 +178,8 @@ export function createBuiltinCommands(): CommandDefinition[] {
     },
     {
       id: "view.zoom.reset",
-      title: "100%",
-      description: "Сбросить масштаб в 100%",
+      get title() { return i18n.d.commands.zoomReset.title; },
+      get description() { return i18n.d.commands.zoomReset.desc; },
       icon: "🔍",
       category: "View",
       shortcut: "Ctrl+0",
@@ -174,8 +188,8 @@ export function createBuiltinCommands(): CommandDefinition[] {
     },
     {
       id: "view.zoom.fit",
-      title: "Вписать",
-      description: "Вписать содержимое диаграммы в экран",
+      get title() { return i18n.d.commands.fitToScreen.title; },
+      get description() { return i18n.d.commands.fitToScreen.desc; },
       icon: "⛶",
       category: "View",
       shortcut: "Ctrl+Shift+0",
@@ -184,7 +198,7 @@ export function createBuiltinCommands(): CommandDefinition[] {
     },
     {
       id: "view.theme.set",
-      title: "Тема",
+      get title() { return i18n.d.ribbon.labels.theme; },
       description: "Переключить цветовую тему оформления",
       icon: "🎨",
       category: "View",
@@ -192,18 +206,27 @@ export function createBuiltinCommands(): CommandDefinition[] {
       execute: (ctx, args) => ctx.editor.applyTheme(String(args || "cream")),
     },
     {
-      id: "view.lang.set",
-      title: "Язык данных",
-      description: "Переключить язык данных схемы (RU / EN)",
+      id: "view.uiLang.set",
+      get title() { return i18n.d.ribbon.labels.uiLang; },
+      description: "Переключить язык интерфейса редактора (RU / EN)",
       icon: "🌐",
+      category: "View",
+      keyTip: "U",
+      execute: (ctx, args) => ctx.applyUiLang(String(args || "ru")),
+    },
+    {
+      id: "view.lang.set",
+      get title() { return i18n.d.ribbon.labels.dataLang; },
+      description: "Переключить язык данных схемы (RU / EN)",
+      icon: "🗂️",
       category: "View",
       keyTip: "K",
       execute: (ctx, args) => ctx.editor.applyDataLang(String(args || "ru")),
     },
     {
       id: "view.edges.toggleStructure",
-      title: "Структурные связи",
-      description: "Показать/скрыть связи порождения (implements, extends, composes)",
+      get title() { return i18n.d.commands.toggleStructureEdges.title; },
+      get description() { return i18n.d.commands.toggleStructureEdges.desc; },
       icon: "🔗",
       category: "View",
       keyTip: "E",
@@ -217,8 +240,8 @@ export function createBuiltinCommands(): CommandDefinition[] {
     // --------------------------------------------------------------- Panels
     {
       id: "panel.properties.toggle",
-      title: "Свойства",
-      description: "Показать или скрыть панель свойств",
+      get title() { return i18n.d.panels.properties.title; },
+      get description() { return i18n.d.commands.toggleProperties.desc; },
       icon: "⚙️",
       category: "Panels",
       shortcut: "Alt+1",
@@ -228,8 +251,8 @@ export function createBuiltinCommands(): CommandDefinition[] {
     },
     {
       id: "panel.relations.toggle",
-      title: "Связи",
-      description: "Показать или скрыть панель связей",
+      get title() { return i18n.d.panels.relations.title; },
+      get description() { return i18n.d.commands.toggleRelations.desc; },
       icon: "🔗",
       category: "Panels",
       shortcut: "Alt+2",
@@ -239,8 +262,8 @@ export function createBuiltinCommands(): CommandDefinition[] {
     },
     {
       id: "panel.filters.toggle",
-      title: "Фильтры",
-      description: "Показать или скрыть панель ракурсов и фильтрации",
+      get title() { return i18n.d.panels.filters.title; },
+      get description() { return i18n.d.commands.toggleFilters.desc; },
       icon: "🔍",
       category: "Panels",
       shortcut: "Alt+3",
@@ -250,8 +273,8 @@ export function createBuiltinCommands(): CommandDefinition[] {
     },
     {
       id: "panel.styles.toggle",
-      title: "Стили",
-      description: "Показать или скрыть панель библиотеки стилей",
+      get title() { return i18n.d.panels.styles.title; },
+      get description() { return i18n.d.commands.toggleStyles.desc; },
       icon: "🎨",
       category: "Panels",
       shortcut: "Alt+4",
@@ -261,8 +284,8 @@ export function createBuiltinCommands(): CommandDefinition[] {
     },
     {
       id: "panel.catalog.toggle",
-      title: "Каталог схем",
-      description: "Показать или скрыть панель каталога схем",
+      get title() { return i18n.d.panels.catalog.title; },
+      get description() { return i18n.d.commands.toggleCatalog.desc; },
       icon: "📚",
       category: "Panels",
       shortcut: "Alt+5",
@@ -272,8 +295,8 @@ export function createBuiltinCommands(): CommandDefinition[] {
     },
     {
       id: "panel.base.toggle",
-      title: "База сущностей",
-      description: "Показать или скрыть панель базы сущностей проекта",
+      get title() { return i18n.d.panels.base.title; },
+      get description() { return i18n.d.commands.toggleBase.desc; },
       icon: "🗄️",
       category: "Panels",
       shortcut: "Alt+6",
@@ -285,8 +308,8 @@ export function createBuiltinCommands(): CommandDefinition[] {
     // ------------------------------------------------------------ Workspace
     {
       id: "workspace.layout.reset",
-      title: "Сброс раскладки",
-      description: "Восстановить исходное расположение панелей рабочей области",
+      get title() { return i18n.d.commands.resetLayout.title; },
+      get description() { return i18n.d.commands.resetLayout.desc; },
       icon: "🔄",
       category: "Workspace",
       keyTip: "WR",

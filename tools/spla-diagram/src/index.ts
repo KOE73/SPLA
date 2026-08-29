@@ -9,6 +9,7 @@
 import "./styles/dockview.css";
 import "./styles/canvas.css";
 import "./styles/ribbon.css";
+import "./styles/canvas-filters.css";
 
 export { DiagramCanvas, defaultRegistry } from "./canvas/DiagramCanvas.js";
 export type {

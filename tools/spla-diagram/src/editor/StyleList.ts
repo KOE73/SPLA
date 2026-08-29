@@ -3,6 +3,7 @@ import type { StyleLibrary } from "../model/StyleLibrary.js";
 import type { StyleTarget } from "../model/style-types.js";
 import { el, replaceChildren } from "../util/dom.js";
 import { blockPreview, edgePreview } from "./style-preview.js";
+import { i18n } from "../workbench/i18n/I18nService.js";
 
 /**
  * What the two style panels need from the application.
@@ -56,10 +57,10 @@ export class StyleList {
   /** Follow the editor's selection, and re-read the library. */
   setActive(id: string | null): void {
     this.activeId = id;
-    const style = id === null ? undefined : this.host.styles.get(id);
-    // Opening a style of the other kind switches the tab to it, rather than
-    // showing a highlighted row that is not in the list.
-    if (style !== undefined) this.target = style.appliesTo ?? "block";
+    if (id !== null) {
+      const style = this.host.styles.get(id);
+      if (style?.appliesTo !== undefined) this.target = style.appliesTo;
+    }
     this.render();
   }
 
@@ -73,7 +74,7 @@ export class StyleList {
       class: "style-filter",
       type: "text",
       value: this.filter,
-      placeholder: "Фильтр: имя, id, описание, тег…",
+      placeholder: i18n.d.panels.styles.filterPlaceholder,
       on: {
         input: (e) => {
           this.filter = (e.target as HTMLInputElement).value;
@@ -90,13 +91,13 @@ export class StyleList {
       this.mount,
       el("div", { class: "style-list-head" }, [
         el("div", { class: "tab-row segmented" }, [
-          this.targetButton("block", "Блоки"),
-          this.targetButton("edge", "Связи"),
+          this.targetButton("block", i18n.d.panels.styles.blocksTab),
+          this.targetButton("edge", i18n.d.panels.styles.edgesTab),
         ]),
         el("button", {
           class: "btn btn-small btn-primary",
-          text: "＋ Стиль",
-          title: "Создать новый стиль",
+          text: i18n.d.panels.styles.addStyle,
+          title: i18n.d.panels.styles.addStyleTitle,
           on: { click: () => this.create() },
         }),
       ]),
@@ -115,12 +116,15 @@ export class StyleList {
   ): void {
     const lib = this.host.styles;
     const entries = lib.list(this.target, this.filter);
-    foot.textContent = `Показано: ${entries.length} из ${lib.list(this.target).length}`;
+    foot.textContent = i18n.format(i18n.d.panels.styles.shownCount, {
+      shown: entries.length,
+      total: lib.list(this.target).length,
+    });
 
     if (entries.length === 0) {
       replaceChildren(
         host,
-        el("div", { class: "muted italic style-empty", text: "Ничего не найдено" }),
+        el("div", { class: "muted italic style-empty", text: i18n.d.panels.styles.empty }),
       );
       return;
     }
@@ -150,12 +154,12 @@ export class StyleList {
             el("span", {
               class: `style-row-count${count === 0 ? " is-zero" : ""}`,
               text: String(count),
-              title: `Элементов с этим стилем: ${count}`,
+              title: i18n.format(i18n.d.panels.styles.elementsCountTooltip, { count }),
             }),
             el("button", {
               class: "btn-icon",
               text: "⧉",
-              title: "Клонировать",
+              title: i18n.d.panels.styles.cloneTooltip,
               on: {
                 click: (e) => {
                   e.stopPropagation();
@@ -166,7 +170,7 @@ export class StyleList {
             el("button", {
               class: "btn-icon danger",
               text: "✕",
-              title: "Удалить стиль",
+              title: i18n.d.panels.styles.deleteTooltip,
               on: {
                 click: (e) => {
                   e.stopPropagation();
@@ -202,7 +206,7 @@ export class StyleList {
     this.host.commitStyle(() => {
       lib.put({
         id,
-        name: "Новый стиль",
+        name: i18n.d.panels.styles.newStyleDefaultName,
         appliesTo: this.target,
         // Nothing else: a brand-new style inherits everything, so it looks like
         // the default until the user says otherwise, and the fields they leave
@@ -238,10 +242,10 @@ export class StyleList {
     const dependents = lib.dependents(id);
 
     if (count > 0 || dependents.length > 0) {
-      const lines = [`Удалить стиль «${lib.get(id)?.name ?? id}»?`, ""];
-      if (count > 0) lines.push(`Элементов с этим стилем: ${count} — они вернутся к стилю по типу.`);
+      const lines = [i18n.format(i18n.d.panels.styles.deleteConfirm, { name: lib.get(id)?.name ?? id }), ""];
+      if (count > 0) lines.push(i18n.format(i18n.d.panels.styles.deleteElementsWarning, { count }));
       if (dependents.length > 0) {
-        lines.push(`Наследуют его: ${dependents.length} (${dependents.join(", ")}).`);
+        lines.push(i18n.format(i18n.d.panels.styles.deleteDependentsWarning, { count: dependents.length, names: dependents.join(", ") }));
       }
       if (!window.confirm(lines.join("\n"))) return;
     }

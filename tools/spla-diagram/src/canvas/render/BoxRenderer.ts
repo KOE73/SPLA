@@ -113,9 +113,7 @@ export class BoxRenderer implements ElementRenderer {
           width: bw,
           height: 14,
           rx: 7,
-          fill: isGhost ? "var(--accent)" : "var(--panel-alt)",
-          stroke: isGhost ? "var(--accent)" : "var(--line)",
-          "stroke-width": 1,
+          class: "spla-node-badge-rect",
         }),
         text(
           {
@@ -125,7 +123,7 @@ export class BoxRenderer implements ElementRenderer {
             "font-size": "9px",
             "font-family": "monospace",
             "font-weight": "700",
-            fill: isGhost ? "#ffffff" : "var(--muted)",
+            class: "spla-node-badge-text",
             "pointer-events": "none",
           },
           badgeText,

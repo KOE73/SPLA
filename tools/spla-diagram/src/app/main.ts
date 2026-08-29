@@ -2,6 +2,7 @@ import "../styles/dockview.css";
 import "../styles/editor.css";
 import "../styles/canvas.css";
 import "../styles/ribbon.css";
+import "../styles/canvas-filters.css";
 
 import { Workbench } from "../workbench/Workbench.js";
 import { HttpProjectStore, HttpStyleStore, loadCatalog } from "../editor/io/index.js";

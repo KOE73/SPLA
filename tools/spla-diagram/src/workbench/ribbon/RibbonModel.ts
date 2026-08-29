@@ -1,4 +1,6 @@
 import type { RibbonSpec } from "./types.js";
+import type { CommandContext } from "../commands/types.js";
+import { i18n } from "../i18n/I18nService.js";
 
 export function createDefaultRibbonSpec(): RibbonSpec {
   return {
@@ -6,12 +8,12 @@ export function createDefaultRibbonSpec(): RibbonSpec {
       // ----------------------------------------------------------- Главная
       {
         id: "home",
-        title: "Главная",
+        get title() { return i18n.d.ribbon.tabs.home; },
         keyTip: "H",
         groups: [
           {
             id: "history",
-            title: "История",
+            get title() { return i18n.d.ribbon.groups.history; },
             items: [
               { type: "button", command: "edit.undo", size: "small" },
               { type: "button", command: "edit.redo", size: "small" },
@@ -19,7 +21,7 @@ export function createDefaultRibbonSpec(): RibbonSpec {
           },
           {
             id: "create",
-            title: "Создание",
+            get title() { return i18n.d.ribbon.groups.creation; },
             items: [
               { type: "button", command: "diagram.block.add", size: "large" },
               { type: "button", command: "diagram.zone.add", size: "large" },
@@ -27,14 +29,14 @@ export function createDefaultRibbonSpec(): RibbonSpec {
           },
           {
             id: "edit",
-            title: "Правка",
+            get title() { return i18n.d.ribbon.groups.edit; },
             items: [
               { type: "button", command: "edit.delete", size: "medium" },
             ],
           },
           {
             id: "file",
-            title: "Файл",
+            get title() { return i18n.d.ribbon.groups.file; },
             items: [
               { type: "button", command: "file.save", size: "large" },
               { type: "button", command: "file.open", size: "medium" },
@@ -47,12 +49,12 @@ export function createDefaultRibbonSpec(): RibbonSpec {
       // ----------------------------------------------------------- Вставка
       {
         id: "insert",
-        title: "Вставка",
+        get title() { return i18n.d.ribbon.tabs.insert; },
         keyTip: "N",
         groups: [
           {
             id: "elements",
-            title: "Фигуры и слои",
+            get title() { return i18n.d.ribbon.groups.creation; },
             items: [
               { type: "button", command: "diagram.block.add", size: "large" },
               { type: "button", command: "diagram.zone.add", size: "large" },
@@ -60,10 +62,10 @@ export function createDefaultRibbonSpec(): RibbonSpec {
           },
           {
             id: "catalogs",
-            title: "Каталоги",
+            get title() { return i18n.d.ribbon.groups.panels; },
             items: [
-              { type: "button", command: "panel.base.toggle", size: "large", label: "База сущностей" },
-              { type: "button", command: "panel.catalog.toggle", size: "large", label: "Каталог схем" },
+              { type: "button", command: "panel.base.toggle", size: "large" },
+              { type: "button", command: "panel.catalog.toggle", size: "large" },
             ],
           },
         ],
@@ -72,22 +74,24 @@ export function createDefaultRibbonSpec(): RibbonSpec {
       // --------------------------------------------------------- Диаграмма
       {
         id: "diagram",
-        title: "Диаграмма",
+        get title() { return i18n.d.ribbon.tabs.diagram; },
         keyTip: "D",
         groups: [
           {
             id: "ports",
-            title: "Связи",
+            get title() { return i18n.d.ribbon.groups.edgeFamilies; },
             items: [
               {
                 type: "select",
                 command: "diagram.ports.set",
-                label: "Причаливание",
-                options: [
-                  { value: "uniform", label: "равномерно" },
-                  { value: "discrete", label: "по сетке" },
-                  { value: "center", label: "в центр" },
-                ],
+                get label() { return i18n.d.ribbon.labels.ports; },
+                get options() {
+                  return [
+                    { value: "uniform", label: i18n.d.ribbon.labels.portsUniform },
+                    { value: "discrete", label: i18n.d.ribbon.labels.portsDiscrete },
+                    { value: "center", label: i18n.d.ribbon.labels.portsCenter },
+                  ];
+                },
                 getValue: () => localStorage.getItem("spla.ports") || "uniform",
               },
               { type: "toggle", command: "view.edges.toggleStructure", size: "medium" },
@@ -95,7 +99,7 @@ export function createDefaultRibbonSpec(): RibbonSpec {
           },
           {
             id: "model",
-            title: "Модель",
+            get title() { return i18n.d.ribbon.groups.file; },
             items: [
               { type: "button", command: "file.code.toggle", size: "medium" },
             ],
@@ -106,20 +110,21 @@ export function createDefaultRibbonSpec(): RibbonSpec {
       // --------------------------------------------------------------- Вид
       {
         id: "view",
-        title: "Вид",
+        get title() { return i18n.d.ribbon.tabs.view; },
         keyTip: "V",
         groups: [
           {
             id: "canvas_options",
-            title: "Холст",
+            get title() { return i18n.d.ribbon.groups.canvas; },
             items: [
+              { type: "button", command: "view.filters.visual.toggle", size: "medium" },
               { type: "toggle", command: "view.grid.toggle", size: "small" },
               { type: "toggle", command: "view.snap.toggle", size: "small" },
             ],
           },
           {
             id: "zoom",
-            title: "Масштаб",
+            get title() { return i18n.d.ribbon.groups.zoom; },
             items: [
               { type: "button", command: "view.zoom.in", size: "small" },
               { type: "button", command: "view.zoom.out", size: "small" },
@@ -129,35 +134,45 @@ export function createDefaultRibbonSpec(): RibbonSpec {
           },
           {
             id: "appearance",
-            title: "Оформление",
+            get title() { return i18n.d.ribbon.groups.appearance; },
             items: [
               {
-                type: "select",
+                type: "theme-gallery",
                 command: "view.theme.set",
-                label: "Тема",
-                options: [
-                  { value: "cream", label: "Кремовая (Cream)" },
-                  { value: "dark", label: "Тёмная (Dark)" },
-                  { value: "emerald", label: "Изумрудная (Emerald)" },
-                  { value: "light", label: "Светлая (Light)" },
+                themes: [
+                  { id: "cream", name: "Cream" },
+                  { id: "dark", name: "Dark" },
+                  { id: "emerald", name: "Emerald" },
+                  { id: "light", name: "Light" },
                 ],
                 getValue: () => localStorage.getItem("spla.theme") || "cream",
+              },
+              { type: "separator" },
+              {
+                type: "select",
+                command: "view.uiLang.set",
+                get label() { return i18n.d.ribbon.labels.uiLang; },
+                options: [
+                  { value: "ru", label: "Русский (RU)" },
+                  { value: "en", label: "English (EN)" },
+                ],
+                getValue: (ctx: CommandContext) => ctx.uiLang || i18n.currentLanguage,
               },
               {
                 type: "select",
                 command: "view.lang.set",
-                label: "Язык данных",
+                get label() { return i18n.d.ribbon.labels.dataLang; },
                 options: [
                   { value: "ru", label: "RU" },
                   { value: "en", label: "EN" },
                 ],
-                getValue: (ctx) => ctx.dataLang || "ru",
+                getValue: (ctx: CommandContext) => ctx.dataLang || "ru",
               },
             ],
           },
           {
             id: "panels",
-            title: "Панели",
+            get title() { return i18n.d.ribbon.groups.panels; },
             items: [
               { type: "toggle", command: "panel.properties.toggle", size: "small" },
               { type: "toggle", command: "panel.relations.toggle", size: "small" },
@@ -175,16 +190,16 @@ export function createDefaultRibbonSpec(): RibbonSpec {
       // ------------------------------------------------ Контекстные вкладки
       {
         id: "context_node",
-        title: "Формат блока",
+        get title() { return i18n.d.ribbon.tabs.formatBlock; },
         keyTip: "B",
         contextual: "node",
         groups: [
           {
             id: "node_actions",
-            title: "Элемент",
+            get title() { return i18n.d.ribbon.groups.edit; },
             items: [
-              { type: "button", command: "panel.properties.toggle", size: "large", label: "Параметры" },
-              { type: "button", command: "panel.relations.toggle", size: "large", label: "Связи" },
+              { type: "button", command: "panel.properties.toggle", size: "large" },
+              { type: "button", command: "panel.relations.toggle", size: "large" },
               { type: "button", command: "edit.delete", size: "medium" },
             ],
           },
@@ -192,15 +207,15 @@ export function createDefaultRibbonSpec(): RibbonSpec {
       },
       {
         id: "context_zone",
-        title: "Формат зоны",
+        get title() { return i18n.d.ribbon.tabs.formatBlock; },
         keyTip: "Z",
         contextual: "zone",
         groups: [
           {
             id: "zone_actions",
-            title: "Зона",
+            get title() { return i18n.d.ribbon.groups.edit; },
             items: [
-              { type: "button", command: "panel.properties.toggle", size: "large", label: "Параметры зоны" },
+              { type: "button", command: "panel.properties.toggle", size: "large" },
               { type: "button", command: "edit.delete", size: "medium" },
             ],
           },
@@ -208,15 +223,15 @@ export function createDefaultRibbonSpec(): RibbonSpec {
       },
       {
         id: "context_edge",
-        title: "Формат связи",
+        get title() { return i18n.d.ribbon.tabs.formatEdge; },
         keyTip: "E",
         contextual: "edge",
         groups: [
           {
             id: "edge_actions",
-            title: "Связь",
+            get title() { return i18n.d.ribbon.groups.edit; },
             items: [
-              { type: "button", command: "panel.properties.toggle", size: "large", label: "Свойства связи" },
+              { type: "button", command: "panel.properties.toggle", size: "large" },
               { type: "button", command: "edit.delete", size: "medium" },
             ],
           },

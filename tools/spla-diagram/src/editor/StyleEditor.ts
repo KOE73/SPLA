@@ -31,6 +31,7 @@ import {
 } from "./fields.js";
 import { blockPreview, edgePreview, paintPreview } from "./style-preview.js";
 import type { StylePanelHost } from "./StyleList.js";
+import { i18n } from "../workbench/i18n/I18nService.js";
 
 /**
  * One form for both kinds of style.
@@ -84,9 +85,7 @@ export class StyleEditor {
         el("div", { class: "inspector-empty" }, [
           el("p", { class: "inspector-empty-icon", text: "🎨" }),
           el("p", {
-            text:
-              "Выберите стиль в списке выше, чтобы править его. " +
-              "Изменение стиля меняет вид всех элементов, которые его носят.",
+            text: i18n.d.panels.styles.emptyEditor,
           }),
         ]),
       );
@@ -183,7 +182,7 @@ export class StyleEditor {
     const error = el("div", { class: "style-error", hidden: true });
 
     const parents: Option[] = [
-      ["", "— ничего не наследовать —"],
+      ["", i18n.d.panels.styles.noneInherit],
       ...this.host.styles
         .list(target)
         // A style cannot be its own parent: the library survives the cycle, but
@@ -192,10 +191,10 @@ export class StyleEditor {
         .map((entry) => [entry.id, `${entry.name} · ${entry.id}`] as Option),
     ];
 
-    return this.section("Шапка", true, [
+    return this.section(i18n.d.panels.styles.headerSection, true, [
       this.livePreview(target),
       field(
-        "Имя",
+        i18n.d.panels.styles.nameField,
         el("input", {
           class: "input-strong",
           type: "text",
@@ -212,12 +211,12 @@ export class StyleEditor {
         }),
       ),
       el("div", { class: "field" }, [
-        el("span", { class: "field-label", text: "Идентификатор" }),
+        el("span", { class: "field-label", text: i18n.d.panels.styles.idField }),
         el("div", { class: "field-row gap" }, [
           idInput,
           el("button", {
             class: "btn btn-small",
-            text: "Переименовать",
+            text: i18n.d.panels.styles.renameBtn,
             on: {
               click: () => {
                 error.hidden = true;
@@ -229,11 +228,11 @@ export class StyleEditor {
         error,
       ]),
       field(
-        "Описание",
+        i18n.d.panels.styles.descriptionField,
         el("textarea", {
           rows: 2,
           value: style.description ?? "",
-          placeholder: "Зачем этот стиль и когда его применять…",
+          placeholder: i18n.d.panels.styles.descriptionPlaceholder,
           on: {
             input: (e) => {
               const next = (e.target as HTMLTextAreaElement).value;
@@ -245,11 +244,11 @@ export class StyleEditor {
         }),
       ),
       field(
-        "Теги (через запятую)",
+        i18n.d.panels.styles.tagsField,
         el("input", {
           type: "text",
           value: (style.tags ?? []).join(", "),
-          placeholder: "код, зона, палитра…",
+          placeholder: i18n.d.panels.styles.tagsPlaceholder,
           on: {
             input: (e) => {
               const raw = (e.target as HTMLInputElement).value;
@@ -265,7 +264,7 @@ export class StyleEditor {
         }),
       ),
       field(
-        "Основан на",
+        i18n.d.panels.styles.basedOnField,
         select(parents, style.basedOn ?? "", (next) => {
           this.patch(
             (d) => {
@@ -334,9 +333,9 @@ export class StyleEditor {
 
   private blockFillSection(style: WireStyle): HTMLElement {
     const inherited = this.inheritedBlock(style);
-    return this.section("Заливка", true, [
+    return this.section(i18n.d.panels.styles.fillSection, true, [
       this.paintEditor(
-        "Заливка",
+        i18n.d.panels.styles.fillSection,
         (s) => s.fill,
         (s, next) => {
           s.fill = next;
@@ -348,7 +347,7 @@ export class StyleEditor {
 
   private blockBorderSection(style: WireStyle): HTMLElement {
     const inherited = this.inheritedBlock(style);
-    return this.section("Рамка и форма", true, [
+    return this.section(i18n.d.panels.styles.borderSection, true, [
       this.strokeEditor(
         (s) => s.border,
         (s, next) => {
@@ -357,12 +356,12 @@ export class StyleEditor {
         inherited.border,
       ),
       el("div", { class: "grid-2" }, [
-        optionalNumberField("Скругление", style.radius, inherited.radius, (v) => {
+        optionalNumberField(i18n.d.panels.styles.radiusField, style.radius, inherited.radius, (v) => {
           this.patch((d) => {
             d.radius = v;
           });
         }, { min: 0, step: 1 }),
-        optionalBoolField("Тень", style.shadow, inherited.shadow, (v) => {
+        optionalBoolField(i18n.d.panels.styles.shadowField, style.shadow, inherited.shadow, (v) => {
           this.patch((d) => {
             d.shadow = v;
           });
@@ -373,8 +372,8 @@ export class StyleEditor {
 
   private blockTextSection(style: WireStyle): HTMLElement {
     const inherited = this.inheritedBlock(style);
-    return this.section("Текст", false, [
-      el("div", { class: "field-label accent", text: "Заголовок" }),
+    return this.section(i18n.d.panels.styles.textSection, false, [
+      el("div", { class: "field-label accent", text: i18n.d.panels.styles.titleField }),
       this.textEditor(
         (s) => s.title,
         (s, next) => {
@@ -382,7 +381,7 @@ export class StyleEditor {
         },
         inherited.title,
       ),
-      el("div", { class: "field-label accent", text: "Подпись" }),
+      el("div", { class: "field-label accent", text: i18n.d.panels.styles.labelField }),
       this.textEditor(
         (s) => s.subtitle,
         (s, next) => {
@@ -395,14 +394,14 @@ export class StyleEditor {
 
   private iconSection(style: WireStyle): HTMLElement {
     const inherited = this.inheritedBlock(style);
-    return this.section("Иконка", false, [
+    return this.section(i18n.d.panels.styles.iconSection, false, [
       el("div", { class: "grid-2" }, [
-        optionalTextField("Глиф", style.icon?.glyph, inherited.icon.glyph, (v) => {
+        optionalTextField(i18n.d.panels.styles.glyphField, style.icon?.glyph, inherited.icon.glyph, (v) => {
           this.patch((d) => {
             d.icon = { ...d.icon, glyph: v };
           });
         }),
-        optionalBoolField("Показывать", style.icon?.show, inherited.icon.show, (v) => {
+        optionalBoolField(i18n.d.panels.styles.showField, style.icon?.show, inherited.icon.show, (v) => {
           this.patch((d) => {
             d.icon = { ...d.icon, show: v };
           });
@@ -413,25 +412,25 @@ export class StyleEditor {
 
   private headerBandSection(style: WireStyle): HTMLElement {
     const inherited = this.inheritedBlock(style);
-    return this.section("Шапка контейнера", false, [
+    return this.section(i18n.d.panels.styles.headerBandSection, false, [
       el("div", {
         class: "panel panel-info",
-        text: "Применяется только к зонам: у обычного блока шапки нет.",
+        text: i18n.d.panels.styles.headerBandHint,
       }),
       this.paintEditor(
-        "Заливка шапки",
+        i18n.d.panels.styles.headerFillField,
         (s) => s.header?.fill,
         (s, next) => {
           s.header = { ...s.header, fill: next };
         },
         inherited.header.fill,
       ),
-      optionalNumberField("Высота", style.header?.height, inherited.header.height, (v) => {
+      optionalNumberField(i18n.d.panels.styles.headerHeightField, style.header?.height, inherited.header.height, (v) => {
         this.patch((d) => {
           d.header = { ...d.header, height: v };
         });
       }, { min: 0, step: 1 }),
-      el("div", { class: "field-label accent", text: "Текст шапки" }),
+      el("div", { class: "field-label accent", text: i18n.d.panels.styles.headerTextField }),
       this.textEditor(
         (s) => s.header?.text,
         (s, next) => {
@@ -446,7 +445,7 @@ export class StyleEditor {
 
   private edgeLineSection(style: WireStyle): HTMLElement {
     const inherited = this.inheritedEdge(style);
-    return this.section("Линия", true, [
+    return this.section(i18n.d.panels.styles.lineSection, true, [
       this.strokeEditor(
         (s) => s.line,
         (s, next) => {
@@ -459,8 +458,8 @@ export class StyleEditor {
 
   private edgeLabelSection(style: WireStyle): HTMLElement {
     const inherited = this.inheritedEdge(style);
-    return this.section("Текст", false, [
-      el("div", { class: "field-label accent", text: "Подпись связи" }),
+    return this.section(i18n.d.panels.styles.edgeLabelSection, false, [
+      el("div", { class: "field-label accent", text: i18n.d.panels.styles.labelField }),
       this.textEditor(
         (s) => s.label,
         (s, next) => {
@@ -473,9 +472,9 @@ export class StyleEditor {
 
   private endsSection(style: WireStyle): HTMLElement {
     const inherited = this.inheritedEdge(style);
-    return this.section("Концы", true, [
+    return this.section(i18n.d.panels.styles.endsSection, true, [
       this.livePreview("edge"),
-      el("div", { class: "field-label accent", text: "Начало (from)" }),
+      el("div", { class: "field-label accent", text: i18n.d.panels.styles.startEndpoint }),
       this.endpointEditor(
         (s) => s.source,
         (s, next) => {
@@ -483,7 +482,7 @@ export class StyleEditor {
         },
         inherited.source,
       ),
-      el("div", { class: "field-label accent", text: "Конец (to)" }),
+      el("div", { class: "field-label accent", text: i18n.d.panels.styles.endEndpoint }),
       this.endpointEditor(
         (s) => s.target,
         (s, next) => {
@@ -496,19 +495,19 @@ export class StyleEditor {
 
   private familySection(style: WireStyle): HTMLElement {
     const inherited = this.inheritedEdge(style);
-    return this.section("Семейство", false, [
+    return this.section(i18n.d.panels.styles.familySection, false, [
       el("div", {
         class: "panel panel-info",
-        text: "Группировка для фильтров: структура — как собран код, поток — что происходит в рантайме.",
+        text: i18n.d.panels.styles.familyHint,
       }),
       optionalSelectField(
-        "Семейство",
+        i18n.d.panels.styles.familyField,
         style.family,
         [
-          ["structure", "структура"],
-          ["flow", "поток"],
+          ["structure", i18n.d.panels.styles.familyStructure],
+          ["flow", i18n.d.panels.styles.familyFlow],
         ],
-        inherited.family === "structure" ? "структура" : "поток",
+        inherited.family === "structure" ? i18n.d.panels.styles.familyStructure : i18n.d.panels.styles.familyFlow,
         (v) => {
           this.patch((d) => {
             d.family = v;

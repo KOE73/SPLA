@@ -6,6 +6,7 @@ import { isContainer } from "../model/types.js";
 import { el, replaceChildren } from "../util/dom.js";
 import { select, type Option } from "./fields.js";
 import { blockPreview, edgePreview } from "./style-preview.js";
+import { i18n } from "../workbench/i18n/I18nService.js";
 
 export interface InspectorHost {
   readonly canvas: DiagramCanvas;
@@ -109,15 +110,14 @@ export class Inspector {
   }
 
   private renderEmpty(): void {
-    this.badge.textContent = "Ничего не выбрано";
+    this.badge.textContent = i18n.d.common.notSelected;
     this.badge.className = "badge";
     replaceChildren(
       this.body,
       el("div", { class: "inspector-empty" }, [
         el("p", { class: "inspector-empty-icon", text: "👆" }),
         el("p", {
-          text:
-            "Кликните на любой компонент или зону. Названия, типы, описания и связи правятся прямо здесь.",
+          text: i18n.d.panels.properties.empty,
         }),
       ]),
     );
@@ -129,7 +129,7 @@ export class Inspector {
 
     this.badge.textContent =
       count > 1
-        ? `ВЫБРАНО: ${count}`
+        ? `${i18n.d.common.all}: ${count}`
         : `${container ? "CONTAINER" : "NODE"}: ${element.type}`;
     this.badge.className = `badge ${container ? "badge-zone" : "badge-node"}`;
 
@@ -141,9 +141,7 @@ export class Inspector {
       count > 1
         ? el("div", {
             class: "panel panel-info",
-            text:
-              `Выбрано элементов: ${count}. Перемещение и изменение размера ` +
-              `работают на всю группу; поля ниже правят только «${element.label}».`,
+            text: i18n.format(i18n.d.panels.properties.multiSelected, { count, label: element.label }),
           })
         : null,
       el("div", { class: "field-row" }, [
@@ -162,8 +160,9 @@ export class Inspector {
       container ? null : el("div", { class: "panel-section" }, [
         el("button", {
           class: "btn full",
-          text: `Связи блока (${this.host.canvas.model?.outgoingEdges(element.id).length ?? 0}) →`,
-          title: "Перейти на вкладку «Связи» для детальной настройки",
+          text: i18n.format(i18n.d.panels.properties.blockRelationsBtn, {
+            count: this.host.canvas.model?.outgoingEdges(element.id).length ?? 0,
+          }),
           on: { click: () => this.host.openTab("edges") },
         }),
       ]),
@@ -186,14 +185,14 @@ export class Inspector {
           "background: var(--panel-alt); padding: 8px 12px; border-radius: 8px; border: 1px solid var(--line); margin-bottom: 8px; justify-content: space-between; align-items: center;",
       },
     }, [
-      el("span", { text: "Отображение на схеме:", attrs: { style: "font-weight: 600; font-size: 12px;" } }),
+      el("span", { text: i18n.d.panels.properties.edgeDisplayOnCanvas, attrs: { style: "font-weight: 600; font-size: 12px;" } }),
       el("div", {
         class: "pill-group",
         attrs: { style: "display: flex; gap: 4px;" },
       }, [
         el("button", {
           class: `btn btn-small ${isVisibleOnCanvas ? "btn-primary" : ""}`,
-          text: "● Включена",
+          text: i18n.d.panels.properties.edgeEnabled,
           attrs: { style: isVisibleOnCanvas ? "font-weight: 700;" : "opacity: 0.7;" },
           on: {
             click: () => {
@@ -214,7 +213,7 @@ export class Inspector {
         }),
         el("button", {
           class: `btn btn-small ${!isVisibleOnCanvas ? "btn-secondary" : ""}`,
-          text: "○ Скрыта (теневая)",
+          text: i18n.d.panels.properties.edgeGhost,
           attrs: { style: !isVisibleOnCanvas ? "font-weight: 700; border-color: var(--accent); color: var(--accent);" : "opacity: 0.7;" },
           on: {
             click: () => {
@@ -238,13 +237,13 @@ export class Inspector {
       ]),
       el("label", { class: "field" }, [
         el("div", { attrs: { style: "display: flex; align-items: center; justify-content: space-between; margin-bottom: 2px;" } }, [
-          el("span", { class: "field-label", text: "Подпись связи" }),
+          el("span", { class: "field-label", text: i18n.d.panels.properties.edgeLabelTitle }),
           el("span", { class: "chip chip-lang", text: (this.host.dataLang || "ru").toUpperCase() }),
         ]),
         el("input", {
           type: "text",
           value: edge.label,
-          placeholder: "Подпись связи…",
+          placeholder: i18n.d.panels.properties.edgeLabelPlaceholder,
           on: {
             input: (e) => {
               const value = (e.target as HTMLInputElement).value;
@@ -265,7 +264,7 @@ export class Inspector {
         }),
       ]),
       el("label", { class: "field" }, [
-        el("span", { class: "field-label", text: "Тип связи" }),
+        el("span", { class: "field-label", text: i18n.d.panels.properties.edgeTypeTitle }),
         select(this.edgeTypeOptions(edge.type), edge.type, (value) => {
           edge.type = value;
           if (isVisibleOnCanvas) {
@@ -287,7 +286,7 @@ export class Inspector {
       el("div", { class: "field" }, [
         el("button", {
           class: "btn btn-danger full",
-          text: "Удалить связь",
+          text: i18n.d.panels.properties.deleteEdgeBtn,
           on: {
             click: () => {
               if (isVisibleOnCanvas) {
@@ -313,7 +312,7 @@ export class Inspector {
     const lang = (this.host.dataLang || "ru").toUpperCase();
     return el("label", { class: "field" }, [
       el("div", { attrs: { style: "display: flex; align-items: center; justify-content: space-between; margin-bottom: 2px;" } }, [
-        el("span", { class: "field-label", text: "Название / Заголовок" }),
+        el("span", { class: "field-label", text: i18n.d.panels.properties.labelTitle }),
         el("span", { class: "chip chip-lang", text: lang }),
       ]),
       el("input", {
@@ -333,17 +332,9 @@ export class Inspector {
     ]);
   }
 
-  /**
-   * Semantic type, offered from the style library.
-   *
-   * The list used to be a hardcoded table of ten types with hand-written icons.
-   * With a live library that is a second source of truth: a style added to
-   * `styles.json` was invisible here, and a type listed here with no style
-   * behind it silently fell back to the default. The library answers both.
-   */
   private typeField(element: DiagramElement): HTMLElement {
     return el("label", { class: "field" }, [
-      el("span", { class: "field-label", text: "Тип элемента" }),
+      el("span", { class: "field-label", text: i18n.d.panels.properties.typeTitle }),
       select(this.typeOptions(element.type), element.type, (value) => {
         this.host.editField(
           () => {
@@ -362,8 +353,6 @@ export class Inspector {
       const glyph = lib.resolveBlock(entry.id).icon.glyph;
       return [entry.id, `${glyph} ${entry.name}`] as Option;
     });
-    // A model may name a type nobody wrote a style for; it stays selectable so
-    // that opening such an element does not silently retype it.
     if (!options.some(([value]) => value === current)) options.push([current, `❓ ${current}`]);
     return options;
   }
@@ -379,13 +368,13 @@ export class Inspector {
   private parentField(element: DiagramElement): HTMLElement {
     const parent = element.parent;
     const label = isContainer(element)
-      ? "Является зоной"
+      ? i18n.d.panels.properties.isZone
       : parent === null
-        ? "Вне зон"
+        ? i18n.d.panels.properties.outsideZones
         : parent.label;
 
     return el("div", { class: "field" }, [
-      el("span", { class: "field-label", text: "Контейнер (Зона)" }),
+      el("span", { class: "field-label", text: i18n.d.panels.properties.parentTitle }),
       el("div", { class: "readonly-box", text: label }),
     ]);
   }
@@ -395,10 +384,10 @@ export class Inspector {
     const count = element.children.filter((c) => !isContainer(c)).length;
 
     return el("div", { class: "panel panel-info" }, [
-      el("span", { text: `📦 Вложенных компонентов: ${count}` }),
+      el("span", { text: i18n.format(i18n.d.panels.properties.nestedCount, { count }) }),
       el("button", {
         class: "btn btn-small",
-        text: collapsed ? "Развернуть" : "Свернуть",
+        text: collapsed ? i18n.d.panels.properties.expand : i18n.d.panels.properties.collapse,
         on: { click: () => this.host.canvas.toggleCollapse(element.id) },
       }),
     ]);
@@ -411,10 +400,10 @@ export class Inspector {
     const activeId = lib.blockStyleIdFor(element);
     const explicit = element.styleId !== undefined && lib.has(element.styleId);
     const source = explicit
-      ? "задан явно"
+      ? i18n.d.panels.properties.styleExplicit
       : lib.has(element.type)
-        ? `по типу «${element.type}»`
-        : "стиль по умолчанию";
+        ? i18n.format(i18n.d.panels.properties.styleByType, { type: element.type })
+        : i18n.d.panels.properties.styleDefault;
 
     return this.stylePicker("block", activeId, source, explicit, {
       pick: (id) => {
@@ -441,10 +430,10 @@ export class Inspector {
     const activeId = lib.edgeStyleIdFor(edge);
     const explicit = edge.styleId !== undefined && lib.has(edge.styleId);
     const source = explicit
-      ? "задан явно"
+      ? i18n.d.panels.properties.styleExplicit
       : lib.has(edge.type)
-        ? `по типу «${edge.type}»`
-        : "стиль по умолчанию";
+        ? i18n.format(i18n.d.panels.properties.styleByType, { type: edge.type })
+        : i18n.d.panels.properties.styleDefault;
 
     return this.stylePicker("edge", activeId, source, explicit, {
       pick: (id) => {
@@ -466,14 +455,6 @@ export class Inspector {
     });
   }
 
-  /**
-   * Which named style this thing wears, and where that came from.
-   *
-   * The provenance line is the part that matters. "Задан явно" and "по типу"
-   * look identical on the canvas but behave completely differently when the
-   * type or the library changes, and without saying so the reset button below
-   * would be a mystery — reset to *what*?
-   */
   private stylePicker(
     target: StyleTarget,
     activeId: string | null,
@@ -489,7 +470,7 @@ export class Inspector {
       if (entries.length === 0) {
         replaceChildren(
           rows,
-          el("div", { class: "muted italic style-empty", text: "Ничего не найдено" }),
+          el("div", { class: "muted italic style-empty", text: i18n.d.panels.properties.styleNotFound }),
         );
         return;
       }
@@ -522,11 +503,11 @@ export class Inspector {
 
     return el("div", { class: "panel-section" }, [
       el("div", { class: "field-row" }, [
-        el("span", { class: "field-label accent", text: "Стиль" }),
+        el("span", { class: "field-label accent", text: i18n.d.panels.properties.styleTitle }),
         el("span", { class: "muted", text: source }),
       ]),
       activeId === null
-        ? el("div", { class: "muted italic", text: "Библиотека стилей пуста" })
+        ? el("div", { class: "muted italic", text: i18n.d.panels.properties.styleEmptyLib })
         : el("div", { class: "style-current" }, [
             el("div", { class: "style-row-preview" }, [
               target === "block"
@@ -544,7 +525,7 @@ export class Inspector {
       el("input", {
         class: "style-filter",
         type: "text",
-        placeholder: "Фильтр стилей…",
+        placeholder: i18n.d.panels.properties.styleFilterPlaceholder,
         on: {
           input: (e) => renderRows((e.target as HTMLInputElement).value),
         },
@@ -553,14 +534,14 @@ export class Inspector {
       el("div", { class: "field-row gap" }, [
         el("button", {
           class: "btn btn-small full",
-          text: "Сбросить к типу",
-          title: "Убрать явный стиль: элемент снова возьмёт стиль по своему типу",
+          text: i18n.d.panels.properties.styleResetToType,
+          title: i18n.d.panels.properties.styleResetTitle,
           disabled: !explicit,
           on: { click: () => actions.reset() },
         }),
         el("button", {
           class: "btn btn-small full",
-          text: "Править стиль",
+          text: i18n.d.panels.properties.styleEditBtn,
           disabled: activeId === null,
           on: {
             click: () => {
@@ -582,13 +563,13 @@ export class Inspector {
 
     return el("label", { class: "field" }, [
       el("div", { attrs: { style: "display: flex; align-items: center; justify-content: space-between; margin-bottom: 2px;" } }, [
-        el("span", { class: "field-label", text: "Суть / Описание" }),
+        el("span", { class: "field-label", text: i18n.d.panels.properties.descriptionTitle }),
         el("span", { class: "chip chip-lang", text: langBadge }),
       ]),
       el("textarea", {
         rows: 3,
         value,
-        placeholder: currentLang === "ru" ? "Опишите назначение или архитектурную роль…" : "Describe architectural purpose or role…",
+        placeholder: i18n.d.panels.properties.descriptionPlaceholder,
         on: {
           input: (e) => {
             const next = (e.target as HTMLTextAreaElement).value;
@@ -605,12 +586,12 @@ export class Inspector {
   private codeRefField(element: DiagramElement): HTMLElement {
     const value = typeof element.metadata.codeRef === "string" ? element.metadata.codeRef : "";
     return el("label", { class: "field" }, [
-      el("span", { class: "field-label", text: "Файл / Класс (Code Ref)" }),
+      el("span", { class: "field-label", text: i18n.d.panels.properties.codeRefTitle }),
       el("input", {
         class: "mono input-code",
         type: "text",
         value,
-        placeholder: "src/core/… (необязательно)",
+        placeholder: i18n.d.panels.properties.codeRefPlaceholder,
         on: {
           input: (e) => {
             const next = (e.target as HTMLInputElement).value;
@@ -627,7 +608,9 @@ export class Inspector {
     return el("div", { class: "panel-section" }, [
       el("button", {
         class: "btn btn-danger full",
-        text: `Удалить этот ${container ? "контейнер" : "блок"}`,
+        text: i18n.format(i18n.d.panels.properties.deleteItemBtn, {
+          item: container ? "zone" : "block",
+        }),
         on: { click: () => this.host.deleteSelection() },
       }),
     ]);

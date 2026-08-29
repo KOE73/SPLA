@@ -3,6 +3,7 @@ import type { DiagramEditor } from "../../editor/DiagramEditor.js";
 import { StyleList, type StylePanelHost } from "../../editor/StyleList.js";
 import { StyleEditor } from "../../editor/StyleEditor.js";
 import { el } from "../../util/dom.js";
+import { i18n } from "../i18n/I18nService.js";
 
 const STYLE_LIST_WIDTH_KEY = "spla-diagram:style-list-width";
 const MIN_STYLE_LIST_WIDTH = 180;
@@ -58,6 +59,10 @@ export class StylesPanel implements IContentRenderer {
     this.styleEditor = new StyleEditor(this.styleEditorMount, editor);
 
     this.bindResizer();
+
+    i18n.onLanguageChange(() => {
+      this.render();
+    });
   }
 
   init(_params: GroupPanelPartInitParameters): void {

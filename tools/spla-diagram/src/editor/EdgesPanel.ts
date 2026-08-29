@@ -4,6 +4,7 @@ import { select } from "./fields.js";
 import { SearchableSelect, type SearchableOption } from "./SearchableSelect.js";
 import { resolveElementRelations, type ResolvedRelation } from "../model/relations-resolver.js";
 import type { DiagramEditor } from "./DiagramEditor.js";
+import { i18n } from "../workbench/i18n/I18nService.js";
 
 export class EdgesPanel {
   private filter = "";
@@ -24,7 +25,7 @@ export class EdgesPanel {
         this.body,
         el("div", { class: "inspector-empty" }, [
           el("p", { class: "inspector-empty-icon", text: "🔗" }),
-          el("p", { text: "Выберите блок на схеме, чтобы просмотреть и настроить его связи." }),
+          el("p", { text: i18n.d.panels.relations.empty }),
         ]),
       );
       return;
@@ -33,7 +34,7 @@ export class EdgesPanel {
     if (selection.kind === "edge") {
       const edge = doc.edge(selection.id);
       if (edge === undefined) {
-        replaceChildren(this.body, el("div", { class: "muted italic", text: "Связь не найдена" }));
+        replaceChildren(this.body, el("div", { class: "muted italic", text: i18n.d.panels.relations.notFound }));
         return;
       }
       this.renderSingleEdge(edge);
@@ -42,7 +43,7 @@ export class EdgesPanel {
 
     const element = doc.element(selection.id);
     if (element === undefined) {
-      replaceChildren(this.body, el("div", { class: "muted italic", text: "Элемент не найден" }));
+      replaceChildren(this.body, el("div", { class: "muted italic", text: i18n.d.panels.relations.notFound }));
       return;
     }
 
@@ -58,13 +59,13 @@ export class EdgesPanel {
 
     const typeSelect = select(
       [
-        ["call", "Вызов (call)"],
-        ["implements", "Реализует (implements)"],
-        ["composes", "Компонует (composes)"],
-        ["extends", "Расширяет (extends)"],
-        ["event", "Событие (event)"],
-        ["storage", "Хранилище (storage)"],
-        ["relates", "Связан (relates)"],
+        ["call", i18n.d.panels.relations.callType],
+        ["implements", i18n.d.panels.relations.implementsType],
+        ["composes", i18n.d.panels.relations.composesType],
+        ["extends", i18n.d.panels.relations.extendsType],
+        ["event", i18n.d.panels.relations.eventType],
+        ["storage", i18n.d.panels.relations.storageType],
+        ["relates", i18n.d.panels.relations.relatesType],
       ],
       edge.type,
       (newType) => {
@@ -81,9 +82,9 @@ export class EdgesPanel {
     }));
 
     const styleSelect = new SearchableSelect({
-      options: [["", "По умолчанию (по типу)"], ...edgeStyles.map((s) => [s.value, s.label] as [string, string])],
+      options: [["", i18n.d.panels.properties.styleDefault], ...edgeStyles.map((s) => [s.value, s.label] as [string, string])],
       value: edge.styleId ?? "",
-      searchPlaceholder: "Поиск стиля связи…",
+      searchPlaceholder: i18n.d.panels.properties.styleFilterPlaceholder,
       onChange: (val) => {
         edge.styleId = val || undefined;
         (this.host as any).commit("edit-edge-style");
@@ -94,7 +95,7 @@ export class EdgesPanel {
     const labelInput = el("input", {
       type: "text",
       value: edge.label || "",
-      placeholder: "Подпись связи…",
+      placeholder: i18n.d.panels.relations.labelPlaceholder,
       on: {
         change: (e) => {
           edge.label = (e.target as HTMLInputElement).value;
@@ -108,32 +109,32 @@ export class EdgesPanel {
       this.body,
       el("div", { class: "panel-section" }, [
         el("div", { class: "field-row" }, [
-          el("span", { class: "field-label accent", text: "Параметры связи" }),
+          el("span", { class: "field-label accent", text: i18n.d.panels.properties.edgeLabelTitle }),
           el("span", { class: "mono muted", text: edge.id }),
         ]),
         el("div", { class: "field-row" }, [
-          el("span", { class: "muted", text: "Откуда:" }),
+          el("span", { class: "muted", text: "Откуда / From:" }),
           el("span", { class: "input-strong", text: fromEl?.label || edge.from }),
         ]),
         el("div", { class: "field-row" }, [
-          el("span", { class: "muted", text: "Куда:" }),
+          el("span", { class: "muted", text: "Куда / To:" }),
           el("span", { class: "input-strong", text: toEl?.label || edge.to }),
         ]),
         el("label", { class: "field" }, [
-          el("span", { class: "field-label", text: "Тип связи" }),
+          el("span", { class: "field-label", text: i18n.d.panels.properties.edgeTypeTitle }),
           typeSelect,
         ]),
         el("label", { class: "field" }, [
-          el("span", { class: "field-label", text: "Стиль связи" }),
+          el("span", { class: "field-label", text: i18n.d.panels.properties.styleTitle }),
           styleSelect.root,
         ]),
         el("label", { class: "field" }, [
-          el("span", { class: "field-label", text: "Подпись" }),
+          el("span", { class: "field-label", text: i18n.d.panels.properties.edgeLabelTitle }),
           labelInput,
         ]),
         el("button", {
           class: "btn btn-danger full",
-          text: "Удалить связь",
+          text: i18n.d.panels.properties.deleteEdgeBtn,
           on: {
             click: () => {
               doc.removeEdge(edge.id);
@@ -176,7 +177,7 @@ export class EdgesPanel {
 
     const filterInput = el("input", {
       type: "text",
-      placeholder: "Поиск связей (like)…",
+      placeholder: i18n.d.panels.relations.searchPlaceholder,
       value: this.filter,
       on: {
         input: (e) => {
@@ -187,10 +188,10 @@ export class EdgesPanel {
     });
 
     const header = el("div", { class: "edge-table-header" }, [
-      el("span", { text: "Связь / Партнёр" }),
-      el("span", { text: "Тип" }),
-      el("span", { text: "Стиль" }),
-      el("span", { text: "Вкл", attrs: { style: "text-align: center;" } }),
+      el("span", { text: i18n.d.panels.relations.title }),
+      el("span", { text: i18n.d.panels.properties.typeTitle }),
+      el("span", { text: i18n.d.panels.properties.styleTitle }),
+      el("span", { text: "✓", attrs: { style: "text-align: center;" } }),
       el("span", { text: "" }),
       el("span", { text: "" }),
     ]);
@@ -201,8 +202,8 @@ export class EdgesPanel {
       this.body,
       el("div", { class: "panel-section" }, [
         el("div", { class: "field-row" }, [
-          el("span", { class: "field-label accent", text: `Связи: ${element.label}` }),
-          el("span", { class: "mono chip", text: `${totalCount} доступно / ${visibleCount} на схеме` }),
+          el("span", { class: "field-label accent", text: `${i18n.d.panels.relations.title}: ${element.label}` }),
+          el("span", { class: "mono chip", text: i18n.format(i18n.d.panels.relations.countSummary, { total: totalCount, active: visibleCount }) }),
         ]),
         filterInput,
         header,
@@ -210,7 +211,7 @@ export class EdgesPanel {
           "div",
           { class: "edge-list", attrs: { style: "max-height: 320px; gap: 3px;" } },
           rows.length === 0
-            ? [el("div", { class: "muted italic", text: "Связи не найдены" })]
+            ? [el("div", { class: "muted italic", text: i18n.d.panels.relations.notFound })]
             : rows,
         ),
         addSection,
@@ -445,8 +446,8 @@ export class EdgesPanel {
     const targetSelect = new SearchableSelect({
       options: targetOptions,
       value: "",
-      searchPlaceholder: "Поиск целевого блока (like)…",
-      placeholder: "— Куда вести —",
+      searchPlaceholder: i18n.d.panels.relations.searchPlaceholder,
+      placeholder: i18n.d.panels.relations.chooseTarget,
       onChange: (val) => {
         selectedTarget = val;
       },
@@ -454,13 +455,13 @@ export class EdgesPanel {
 
     const typeSelect = select(
       [
-        ["call", "Вызов (call)"],
-        ["implements", "Реализует (implements)"],
-        ["composes", "Компонует (composes)"],
-        ["extends", "Расширяет (extends)"],
-        ["event", "Событие (event)"],
-        ["storage", "Хранилище (storage)"],
-        ["relates", "Связан (relates)"],
+        ["call", i18n.d.panels.relations.callType],
+        ["implements", i18n.d.panels.relations.implementsType],
+        ["composes", i18n.d.panels.relations.composesType],
+        ["extends", i18n.d.panels.relations.extendsType],
+        ["event", i18n.d.panels.relations.eventType],
+        ["storage", i18n.d.panels.relations.storageType],
+        ["relates", i18n.d.panels.relations.relatesType],
       ],
       "call",
       () => undefined,
@@ -474,26 +475,26 @@ export class EdgesPanel {
 
     let selectedStyle = "";
     const styleSelect = new SearchableSelect({
-      options: [["", "Стиль: по типу"], ...edgeStyles.map((s) => [s.value, s.label] as [string, string])],
+      options: [["", i18n.d.panels.properties.styleDefault], ...edgeStyles.map((s) => [s.value, s.label] as [string, string])],
       value: "",
-      searchPlaceholder: "Поиск стиля связи…",
-      placeholder: "Стиль: по типу",
+      searchPlaceholder: i18n.d.panels.properties.styleFilterPlaceholder,
+      placeholder: i18n.d.panels.properties.styleDefault,
       onChange: (val) => {
         selectedStyle = val;
       },
     });
 
-    const labelInput = el("input", { type: "text", placeholder: "Подпись (опция)" });
+    const labelInput = el("input", { type: "text", placeholder: i18n.d.panels.relations.labelPlaceholder });
 
     return el("div", { class: "panel", attrs: { style: "flex-direction: column; align-items: stretch; gap: 6px; margin-top: 8px;" } }, [
-      el("div", { class: "field-label accent", text: "Добавить новую связь:" }),
+      el("div", { class: "field-label accent", text: i18n.d.panels.relations.addNewHeader }),
       targetSelect.root,
       el("div", { class: "grid-2" }, [typeSelect, styleSelect.root]),
       el("div", { class: "field-row gap" }, [
         labelInput,
         el("button", {
           class: "btn btn-primary",
-          text: "Связать",
+          text: i18n.d.panels.relations.connectBtn,
           on: {
             click: () => {
               if (!selectedTarget) return;

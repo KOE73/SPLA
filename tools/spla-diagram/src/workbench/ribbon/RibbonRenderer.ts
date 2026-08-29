@@ -7,6 +7,7 @@ import type {
   RibbonButtonSpec,
   RibbonToggleSpec,
   RibbonSelectSpec,
+  RibbonThemeGallerySpec,
 } from "./types.js";
 import { el } from "../../util/dom.js";
 
@@ -102,7 +103,59 @@ export class RibbonRenderer {
       return this.renderSelect(item, ctx);
     }
 
+    if (item.type === "theme-gallery") {
+      return this.renderThemeGallery(item, ctx);
+    }
+
     return null;
+  }
+
+  private renderThemeGallery(spec: RibbonThemeGallerySpec, ctx: CommandContext): HTMLElement {
+    const currentTheme = spec.getValue(ctx);
+
+    const container = el("div", { class: "ribbon-theme-gallery" });
+
+    for (const theme of spec.themes) {
+      const isActive = theme.id === currentTheme;
+
+      const preview = el("div", { class: "ribbon-theme-preview", dataset: { theme: theme.id } }, [
+        el("div", { class: "preview-header" }, [
+          el("div", { class: "preview-tab is-active" }),
+          el("div", { class: "preview-tab" }),
+        ]),
+        el("div", { class: "preview-body" }, [
+          el("div", { class: "preview-sidebar left" }),
+          el("div", { class: "preview-canvas" }, [
+            el("div", { class: "preview-node n1" }, [
+              el("div", { class: "preview-node-badge" }),
+            ]),
+            el("div", { class: "preview-edge" }),
+            el("div", { class: "preview-node n2" }),
+          ]),
+          el("div", { class: "preview-sidebar right" }),
+        ]),
+      ]);
+
+      const label = el("span", { class: "ribbon-theme-label", text: theme.name });
+
+      const card = el(
+        "div",
+        {
+          class: `ribbon-theme-card ${isActive ? "is-active" : ""}`,
+          title: `Theme: ${theme.name}`,
+          on: {
+            click: () => {
+              void this.registry.execute(spec.command, theme.id);
+            },
+          },
+        },
+        [preview, label],
+      );
+
+      container.appendChild(card);
+    }
+
+    return container;
   }
 
   private renderButton(spec: RibbonButtonSpec, ctx: CommandContext): HTMLElement {
@@ -133,7 +186,7 @@ export class RibbonRenderer {
         attrs: !state.enabled ? { disabled: "true" } : {},
         on: {
           click: () => {
-            void this.registry.execute(spec.command);
+            void this.registry.execute(spec.command, btn);
           },
         },
       },
