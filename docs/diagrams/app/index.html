@@ -4,8 +4,8 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>SPLA Diagram — Visualizer &amp; Editor</title>
-    <script type="module" crossorigin src="./assets/index-DlshzYlC.js"></script>
-    <link rel="stylesheet" crossorigin href="./assets/index-CQp2IoqY.css">
+    <script type="module" crossorigin src="./assets/index-Dg3WNsx4.js"></script>
+    <link rel="stylesheet" crossorigin href="./assets/index-00FvrxpW.css">
   </head>
   <body>
     <div id="app">
@@ -43,6 +43,14 @@
               <option value="dark">Тёмная (Dark)</option>
               <option value="emerald">Изумрудная (Emerald)</option>
               <option value="light">Светлая (Light)</option>
+            </select>
+          </label>
+
+          <label class="check" title="Язык данных схемы (суть, описания, подсказки)">
+            <span>🌐 Язык</span>
+            <select data-select="data-lang">
+              <option value="ru" selected>RU</option>
+              <option value="en">EN</option>
             </select>
           </label>
 
@@ -123,7 +131,7 @@
             <button class="tab" data-action="tab-edges" data-tab="edges">Связи</button>
             <button class="tab" data-action="tab-filters" data-tab="filters">Фильтры</button>
             <button class="tab" data-action="tab-styles" data-tab="styles">Стили</button>
-            <button class="tab" data-action="tab-base" data-tab="base">База</button>
+            <button class="tab" data-action="tab-base" data-tab="base">Каталог</button>
           </div>
 
           <div class="inspector-body" data-slot="inspector-body"></div>

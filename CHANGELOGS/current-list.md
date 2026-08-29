@@ -24,6 +24,7 @@ repository and is linked from it.
   `ssh_session_exec` opt in; a background task's live progress reaches the chat window and survives
   the human's next turn instead of being cleared with it.
 - Architecture diagram visualizer unified to modular project format, filters panel added, and unsaved changes protected.
+- Architecture diagram visualizer gained global data language switching, multi-language catalog sync, and interactive canvas tooltips.
 
 ### Fixed
 

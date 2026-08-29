@@ -190,5 +190,6 @@ export interface ProjectBundle {
   entities: EntityCatalog;
   relations: RelationCatalog;
   text: TextCatalog;
+  textRegistries?: Record<string, TextCatalog>;
   view: ViewDocument;
 }

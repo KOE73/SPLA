@@ -154,6 +154,7 @@ export class DiagramEditor implements InspectorHost, StylePanelHost {
     this.bindStyleListResize();
     this.initTheme();
     this.initPorts();
+    this.initLang();
     this.renderCatalog();
     this.setTab("properties");
 
@@ -267,9 +268,29 @@ export class DiagramEditor implements InspectorHost, StylePanelHost {
           this.applyPortAssigner(target.value);
         } else if (target.dataset.select === "theme") {
           this.applyTheme(target.value);
+        } else if (target.dataset.select === "data-lang") {
+          this.applyDataLang(target.value);
         }
       }
     });
+  }
+
+  dataLang = "ru";
+
+  private initLang(): void {
+    const saved = localStorage.getItem("spla.dataLang") || "ru";
+    this.applyDataLang(saved);
+  }
+
+  applyDataLang(lang: string): void {
+    this.dataLang = lang;
+    this.canvas.dataLang = lang;
+    localStorage.setItem("spla.dataLang", lang);
+    const select = this.root.querySelector<HTMLSelectElement>("[data-select='data-lang']");
+    if (select && select.value !== lang) {
+      select.value = lang;
+    }
+    this.inspector.render(this.canvas.selected);
   }
 
   private initTheme(): void {

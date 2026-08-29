@@ -112,3 +112,6 @@ sentences are what `current-list.md` is built from, which is why they have to st
 - **Parallel diagram connections no longer overlap into indistinguishable single lines.**
   The visualizer defaults connection port attachment to uniform distribution (`UniformPortAssigner`), spacing multiple inputs and outputs
   evenly along node perimeters and ordering endpoints deterministically by target coordinates and connection types so parallel lines remain parallel and visible.
+
+- **Architecture diagram visualizer gained global data language switching, multi-language catalog sync, and interactive canvas tooltips.**
+  The UI toolbar includes a global data language selector (`RU` / `EN`) driving reading and writing of localized descriptions and titles across `text.<lang>.json` files. Localized inspector fields display language badges, the inspector base tab was renamed to **Catalog**, and hovering over any block, container, or relationship on the canvas presents a rich tooltip with its type, code reference, and localized description.

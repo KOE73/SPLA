@@ -9,8 +9,9 @@
       "name": "zone_runtime"
     },
     "zone_tools": {
-      "doc": "Deterministic narrow tool dispatch layer, permission filtering, MCP server bridges.",
-      "name": "zone_tools"
+      "doc": "Детерминированный узкий слой маршрутизации инструментов, фильтрация по разрешениям, мосты к MCP-серверам.",
+      "name": "zone_tools",
+      "description": "Детерминированный узкий слой маршрутизации инструментов, фильтрация по разрешениям, мосты к MCP-серверам."
     },
     "zone_storage": {
       "doc": "Local project databases, binary storage, and secure credential storage.",

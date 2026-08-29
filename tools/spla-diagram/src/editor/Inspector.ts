@@ -12,13 +12,14 @@ export interface InspectorHost {
   /** The style library, so the inspector can offer what actually exists. */
   readonly styles: StyleLibrary;
   /** Apply a field edit and mark the document dirty. */
+  dataLang: string;
   editField(apply: () => void, options?: { rerender?: boolean; reselect?: boolean }): void;
   deleteSelection(): void;
   addEdgeFromSelection(targetId: string, type: string, label: string): void;
   deleteEdge(edgeId: string): void;
   /** Switch the right-hand panel to the Styles tab with this style open. */
   openStyleTab(styleId: string): void;
-  openTab(tab: "properties" | "edges" | "styles" | "base"): void;
+  openTab(tab: "properties" | "edges" | "filters" | "styles" | "base"): void;
 }
 
 /**
@@ -236,7 +237,10 @@ export class Inspector {
         el("span", { class: "mono coords", text: `${fromEl?.label || edge.from} ➔ ${toEl?.label || edge.to}` }),
       ]),
       el("label", { class: "field" }, [
-        el("span", { class: "field-label", text: "Подпись связи" }),
+        el("div", { attrs: { style: "display: flex; align-items: center; justify-content: space-between; margin-bottom: 2px;" } }, [
+          el("span", { class: "field-label", text: "Подпись связи" }),
+          el("span", { class: "chip chip-lang", text: (this.host.dataLang || "ru").toUpperCase() }),
+        ]),
         el("input", {
           type: "text",
           value: edge.label,
@@ -245,6 +249,7 @@ export class Inspector {
             input: (e) => {
               const value = (e.target as HTMLInputElement).value;
               edge.label = value;
+              this.host.canvas.model?.setText(edge.id, { doc: value, description: value, name: value }, this.host.dataLang || "ru");
               if (isVisibleOnCanvas) {
                 this.host.editField(() => {
                   edge.label = value;
@@ -305,8 +310,12 @@ export class Inspector {
   // ----------------------------------------------------------------- fields
 
   private labelField(element: DiagramElement): HTMLElement {
+    const lang = (this.host.dataLang || "ru").toUpperCase();
     return el("label", { class: "field" }, [
-      el("span", { class: "field-label", text: "Название / Заголовок" }),
+      el("div", { attrs: { style: "display: flex; align-items: center; justify-content: space-between; margin-bottom: 2px;" } }, [
+        el("span", { class: "field-label", text: "Название / Заголовок" }),
+        el("span", { class: "chip chip-lang", text: lang }),
+      ]),
       el("input", {
         class: "input-strong",
         type: "text",
@@ -316,6 +325,7 @@ export class Inspector {
             const value = (e.target as HTMLInputElement).value;
             this.host.editField(() => {
               element.label = value;
+              this.host.canvas.model?.setText(element.id, { name: value, title: value }, this.host.dataLang || "ru");
             }, { rerender: true });
           },
         },
@@ -565,18 +575,26 @@ export class Inspector {
   // ------------------------------------------------------------------ rest
 
   private descriptionField(element: DiagramElement): HTMLElement {
-    const value = typeof element.metadata.description === "string" ? element.metadata.description : "";
+    const currentLang = this.host.dataLang || "ru";
+    const langBadge = currentLang.toUpperCase();
+    const textEntry = this.host.canvas.model?.getText(element.id, currentLang);
+    const value = textEntry?.doc || textEntry?.description || (typeof element.metadata.description === "string" ? element.metadata.description : "");
+
     return el("label", { class: "field" }, [
-      el("span", { class: "field-label", text: "Суть / Описание" }),
+      el("div", { attrs: { style: "display: flex; align-items: center; justify-content: space-between; margin-bottom: 2px;" } }, [
+        el("span", { class: "field-label", text: "Суть / Описание" }),
+        el("span", { class: "chip chip-lang", text: langBadge }),
+      ]),
       el("textarea", {
         rows: 3,
         value,
-        placeholder: "Опишите назначение или архитектурную роль…",
+        placeholder: currentLang === "ru" ? "Опишите назначение или архитектурную роль…" : "Describe architectural purpose or role…",
         on: {
           input: (e) => {
             const next = (e.target as HTMLTextAreaElement).value;
             this.host.editField(() => {
               element.metadata.description = next;
+              this.host.canvas.model?.setText(element.id, { doc: next, description: next }, currentLang);
             });
           },
         },

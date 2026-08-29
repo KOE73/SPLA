@@ -44,6 +44,14 @@
             </select>
           </label>
 
+          <label class="check" title="Язык данных схемы (суть, описания, подсказки)">
+            <span>🌐 Язык</span>
+            <select data-select="data-lang">
+              <option value="ru" selected>RU</option>
+              <option value="en">EN</option>
+            </select>
+          </label>
+
           <div class="toolbar-group">
             <button class="btn btn-primary btn-small" data-action="create-node" title="Добавить блок">➕ Блок</button>
             <button class="btn btn-small" data-action="create-zone" title="Добавить зону-контейнер">➕ Зона</button>
@@ -121,7 +129,7 @@
             <button class="tab" data-action="tab-edges" data-tab="edges">Связи</button>
             <button class="tab" data-action="tab-filters" data-tab="filters">Фильтры</button>
             <button class="tab" data-action="tab-styles" data-tab="styles">Стили</button>
-            <button class="tab" data-action="tab-base" data-tab="base">База</button>
+            <button class="tab" data-action="tab-base" data-tab="base">Каталог</button>
           </div>
 
           <div class="inspector-body" data-slot="inspector-body"></div>

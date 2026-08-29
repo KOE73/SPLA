@@ -64,6 +64,38 @@ export class DiagramDocument {
     return this.bundle?.relations?.relations ?? [];
   }
 
+  getText(id: string, lang = "ru"): { name?: string; title?: string; doc?: string; description?: string } | undefined {
+    const bundle = this.bundle;
+    if (!bundle) return undefined;
+    if (bundle.textRegistries && bundle.textRegistries[lang]?.entries?.[id]) {
+      return bundle.textRegistries[lang].entries[id];
+    }
+    if (bundle.text?.entries?.[id]) {
+      return bundle.text.entries[id];
+    }
+    return undefined;
+  }
+
+  setText(id: string, entry: { name?: string; title?: string; doc?: string; description?: string }, lang = "ru"): void {
+    const bundle = this.bundle;
+    if (!bundle) return;
+    if (!bundle.textRegistries) {
+      bundle.textRegistries = {
+        [lang]: bundle.text || { entries: {} },
+      };
+    }
+    if (!bundle.textRegistries[lang]) {
+      bundle.textRegistries[lang] = { entries: {} };
+    }
+    bundle.textRegistries[lang].entries[id] = {
+      ...bundle.textRegistries[lang].entries[id],
+      ...entry,
+    };
+    if (lang === "ru" || !bundle.text) {
+      bundle.text = bundle.textRegistries[lang];
+    }
+  }
+
   // ---------------------------------------------------------------- queries
 
   /** Every element, parents before children, in stable document order. */

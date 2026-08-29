@@ -168,7 +168,44 @@ export class DiagramCanvas {
     this.viewport = new Viewport(this.viewportGroup);
     this.viewport.changed.on("change", (state) => this.events.emit("viewport", state));
 
+    this.tooltipEl = document.createElement("div");
+    this.tooltipEl.className = "spla-tooltip";
+    this.tooltipEl.style.display = "none";
+    this.tooltipEl.style.opacity = "0";
+    document.body.appendChild(this.tooltipEl);
+
     this.interaction = new InteractionController(this, host);
+  }
+
+  readonly tooltipEl: HTMLElement;
+  dataLang: string = "ru";
+
+  showTooltip(content: string, x: number, y: number): void {
+    this.tooltipEl.innerHTML = content;
+    this.tooltipEl.style.display = "flex";
+    this.tooltipEl.style.opacity = "1";
+
+    const pad = 14;
+    let left = x + pad;
+    let top = y + pad;
+
+    const rect = this.tooltipEl.getBoundingClientRect();
+    if (left + rect.width > window.innerWidth - 10) {
+      left = x - rect.width - pad;
+    }
+    if (top + rect.height > window.innerHeight - 10) {
+      top = y - rect.height - pad;
+    }
+    left = Math.max(10, left);
+    top = Math.max(10, top);
+
+    this.tooltipEl.style.left = `${left}px`;
+    this.tooltipEl.style.top = `${top}px`;
+  }
+
+  hideTooltip(): void {
+    this.tooltipEl.style.display = "none";
+    this.tooltipEl.style.opacity = "0";
   }
 
   // ------------------------------------------------------------ public API

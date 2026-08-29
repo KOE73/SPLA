@@ -83,17 +83,20 @@ export class InteractionController {
     host.addEventListener("mouseup", this.onMouseUpTarget, { signal });
     host.addEventListener("dblclick", this.onDoubleClick, { signal });
     host.addEventListener("wheel", this.onWheel, { passive: false, signal });
+    host.addEventListener("mouseleave", () => this.canvas.hideTooltip(), { signal });
     window.addEventListener("mousemove", this.onMouseMove, { signal });
     window.addEventListener("mouseup", this.onMouseUp, { signal });
   }
 
   destroy(): void {
     this.abort.abort();
+    this.canvas.hideTooltip();
   }
 
   // ------------------------------------------------------------- listeners
 
   private readonly onMouseDown = (e: MouseEvent): void => {
+    this.canvas.hideTooltip();
     if (e.button !== 0) return;
     const hit = hitTest(e.target);
 
@@ -220,7 +223,12 @@ export class InteractionController {
 
   private readonly onMouseMove = (e: MouseEvent): void => {
     const gesture = this.gesture;
-    if (gesture === null) return;
+    if (gesture === null) {
+      this.updateHoverTooltip(e);
+      return;
+    }
+
+    this.canvas.hideTooltip();
 
     switch (gesture.kind) {
       case "pan": {
@@ -246,6 +254,72 @@ export class InteractionController {
         return;
     }
   };
+
+  private updateHoverTooltip(e: MouseEvent): void {
+    const hit = hitTest(e.target);
+    if (hit === null || (hit.elementId === null && hit.edgeId === null)) {
+      this.canvas.hideTooltip();
+      return;
+    }
+
+    const doc = this.canvas.model;
+    if (!doc) {
+      this.canvas.hideTooltip();
+      return;
+    }
+
+    const lang = this.canvas.dataLang || "ru";
+
+    if (hit.elementId !== null) {
+      const el = doc.element(hit.elementId);
+      if (el) {
+        const text = doc.getText(el.id, lang);
+        const name = text?.name || text?.title || el.label || el.id;
+        const desc = text?.doc || text?.description || (typeof el.metadata?.description === "string" ? el.metadata.description : "");
+        const codeRef = typeof el.metadata?.codeRef === "string" ? el.metadata.codeRef : "";
+        const kind = el.type || (isContainer(el) ? "Zone" : "Component");
+
+        let content = `<div class="spla-tooltip-header">
+          <span>${escapeHtml(name)}</span>
+          <span class="spla-tooltip-kind">${escapeHtml(kind)}</span>
+        </div>`;
+
+        if (desc) {
+          content += `<div class="spla-tooltip-body">${escapeHtml(desc)}</div>`;
+        }
+        if (codeRef) {
+          content += `<div class="spla-tooltip-coderef">${escapeHtml(codeRef)}</div>`;
+        }
+
+        this.canvas.showTooltip(content, e.clientX, e.clientY);
+        return;
+      }
+    }
+
+    if (hit.edgeId !== null) {
+      const edge = doc.edge(hit.edgeId);
+      if (edge) {
+        const fromEl = doc.element(edge.from);
+        const toEl = doc.element(edge.to);
+        const fromName = doc.getText(edge.from, lang)?.name || fromEl?.label || edge.from;
+        const toName = doc.getText(edge.to, lang)?.name || toEl?.label || edge.to;
+        const text = doc.getText(edge.id, lang);
+        const desc = text?.doc || text?.description || edge.label || "";
+
+        let content = `<div class="spla-tooltip-header">
+          <span>${escapeHtml(fromName)} ➔ ${escapeHtml(toName)}</span>
+          <span class="spla-tooltip-kind">${escapeHtml(edge.type)}</span>
+        </div>`;
+        if (desc) {
+          content += `<div class="spla-tooltip-body">${escapeHtml(desc)}</div>`;
+        }
+        this.canvas.showTooltip(content, e.clientX, e.clientY);
+        return;
+      }
+    }
+
+    this.canvas.hideTooltip();
+  }
 
   private readonly onMouseUp = (): void => {
     const gesture = this.gesture;
@@ -526,6 +600,15 @@ function resizeRect(
   }
 
   return { x, y, width, height };
+}
+
+function escapeHtml(s: string): string {
+  return s
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#039;");
 }
 
 export type { RoleHit };

@@ -45,7 +45,7 @@ export class HttpProjectStore implements ModelStore {
         .catch(() => ({ id: viewData.project || "unknown", title: "Архитектурная схема" }));
     }
 
-    const [entitiesRes, relationsRes, textRes]: [EntityCatalog, RelationCatalog, TextCatalog] = await Promise.all([
+    const [entitiesRes, relationsRes, textRuRes, textEnRes]: [EntityCatalog, RelationCatalog, TextCatalog, TextCatalog] = await Promise.all([
       fetch(new URL(dir + "entities.json", new URL(this.baseUrl, location.href)))
         .then((r) => r.json())
         .catch(() => ({ entities: [] })),
@@ -55,7 +55,16 @@ export class HttpProjectStore implements ModelStore {
       fetch(new URL(dir + "text.ru.json", new URL(this.baseUrl, location.href)))
         .then((r) => r.json())
         .catch(() => ({ entries: {} })),
+      fetch(new URL(dir + "text.en.json", new URL(this.baseUrl, location.href)))
+        .then((r) => r.json())
+        .catch(() => ({ entries: {} })),
     ]);
+
+    const textRegistries: Record<string, TextCatalog> = {
+      ru: textRuRes,
+      en: textEnRes,
+    };
+    const textRes = Object.keys(textRuRes.entries || {}).length > 0 ? textRuRes : textEnRes;
 
     const placements = viewData.placements || viewData.nodes || [];
     const translatedNodes = placements.map((vn: any) => {
@@ -122,6 +131,7 @@ export class HttpProjectStore implements ModelStore {
       entities: entitiesRes,
       relations: relationsRes,
       text: textRes,
+      textRegistries,
       view: isView
         ? (viewData as ViewDocument)
         : { id: "v_main", project: projectManifest.id, zones: viewData.zones, nodes: viewData.nodes, edges: viewData.edges },
@@ -251,7 +261,17 @@ export class HttpProjectStore implements ModelStore {
       }).catch((err) => console.warn("Не удалось синхронизировать entities.json:", err));
     }
 
-    if (textModified) {
+    if (bundle.textRegistries) {
+      for (const [lang, catalog] of Object.entries(bundle.textRegistries)) {
+        if (catalog && catalog.entries && Object.keys(catalog.entries).length > 0) {
+          await fetch(`/api/save?file=${encodeURIComponent(dir + `text.${lang}.json`)}`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(catalog, null, 2),
+          }).catch((err) => console.warn(`Не удалось синхронизировать text.${lang}.json:`, err));
+        }
+      }
+    } else if (textModified) {
       await fetch(`/api/save?file=${encodeURIComponent(dir + "text.ru.json")}`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
