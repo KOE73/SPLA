@@ -1,0 +1,12 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <RootNamespace>SplaAtlas.Model</RootNamespace>
+    <AssemblyName>SplaAtlas.Model</AssemblyName>
+    <GenerateDocumentationFile>false</GenerateDocumentationFile>
+    <!-- TextEncoder's extension points are char*-based; implementing one is the only way to get an
+         escaping policy System.Text.Json does not ship. See MinimalJsonEncoder for why we need one. -->
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+  </PropertyGroup>
+
+</Project>

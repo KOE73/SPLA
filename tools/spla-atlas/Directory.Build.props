@@ -1,0 +1,31 @@
+<Project>
+
+  <!-- Deliberately does NOT import the repository root Directory.Build.props.
+
+       MSBuild's implicit search walks up from each project directory and stops at the first
+       Directory.Build.props it finds. This file is that stop. Without it, spla-atlas would
+       inherit the product's VersionMajor/Minor/Build and move with every SPLA release — the
+       autonomy required by AGENTS.md ("не является частью решения SPLA") would hold on paper
+       and not in the build. The utility versions with its own contract, not with the product. -->
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <LangVersion>latest</LangVersion>
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+    <EnforceCodeStyleInBuild>false</EnforceCodeStyleInBuild>
+  </PropertyGroup>
+
+  <PropertyGroup>
+    <!-- Own version line. Tracks the model contract this utility speaks, nothing else. -->
+    <VersionMajor>0</VersionMajor>
+    <VersionMinor>1</VersionMinor>
+    <VersionBuild Condition="'$(VersionBuild)' == ''">0</VersionBuild>
+    <Version>$(VersionMajor).$(VersionMinor).$(VersionBuild)</Version>
+    <AssemblyVersion>$(Version).0</AssemblyVersion>
+    <FileVersion>$(Version).0</FileVersion>
+    <InformationalVersion>$(Version)</InformationalVersion>
+  </PropertyGroup>
+
+</Project>
