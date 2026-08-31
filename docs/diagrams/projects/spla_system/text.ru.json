@@ -1,81 +1,330 @@
 {
+  "contractVersion": 3,
+  "language": "ru",
   "entries": {
     "zone_client": {
-      "doc": "Web client based on Vue 3 + Tailwind. Communicates via WebSocket protocol.",
-      "name": "zone_client"
+      "name": {
+        "v": "Клиент",
+        "at": "2026-08-31T09:11:55Z",
+        "origin": "authored"
+      },
+      "doc": {
+        "v": "Web client based on Vue 3 + Tailwind. Communicates via WebSocket protocol.",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      },
+      "description": {
+        "v": "Веб-клиент на Vue 3 и Tailwind. Говорит с сервисом по WebSocket.",
+        "at": "2026-08-31T09:11:55Z",
+        "origin": "authored"
+      }
     },
     "zone_runtime": {
-      "doc": "Host-side agent session orchestrator, message turn pump, context composition and LLM gateway.",
-      "name": "zone_runtime"
+      "name": {
+        "v": "Рантайм агента",
+        "at": "2026-08-31T09:11:55Z",
+        "origin": "authored"
+      },
+      "doc": {
+        "v": "Host-side agent session orchestrator, message turn pump, context composition and LLM gateway.",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      },
+      "description": {
+        "v": "Сессия агента на стороне хоста: насос ходов, сборка контекста, шлюз к модели.",
+        "at": "2026-08-31T09:11:55Z",
+        "origin": "authored"
+      }
     },
     "zone_tools": {
-      "doc": "Детерминированный узкий слой маршрутизации инструментов, фильтрация по разрешениям, мосты к MCP-серверам.",
-      "name": "zone_tools",
-      "description": "Детерминированный узкий слой маршрутизации инструментов, фильтрация по разрешениям, мосты к MCP-серверам."
+      "name": {
+        "v": "Инструменты",
+        "at": "2026-08-31T09:11:55Z",
+        "origin": "authored"
+      },
+      "description": {
+        "v": "Реестр инструментов MCP и плагины, исполняющие вызовы.",
+        "at": "2026-08-31T09:11:55Z",
+        "origin": "authored"
+      },
+      "doc": {
+        "v": "Детерминированный узкий слой маршрутизации инструментов, фильтрация по разрешениям, мосты к MCP-серверам.",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
     },
     "zone_storage": {
-      "doc": "Local project databases, binary storage, and secure credential storage.",
-      "name": "zone_storage"
+      "name": {
+        "v": "Хранилище",
+        "at": "2026-08-31T09:11:55Z",
+        "origin": "authored"
+      },
+      "doc": {
+        "v": "Local project databases, binary storage, and secure credential storage.",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      },
+      "description": {
+        "v": "Всё, что переживает процесс: ходы и сессии, секреты, артефакты.",
+        "at": "2026-08-31T09:11:55Z",
+        "origin": "authored"
+      }
     },
     "chat_ui": {
-      "name": "Chat & ViewModels",
-      "doc": ""
+      "name": {
+        "v": "Chat & ViewModels",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
     },
     "inspector_ui": {
-      "name": "Inspector & Tool Log",
-      "doc": ""
+      "name": {
+        "v": "Inspector & Tool Log",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
     },
     "ws_client": {
-      "name": "WebSocket Transport",
-      "doc": ""
+      "name": {
+        "v": "WebSocket Transport",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
     },
     "turn_pump": {
-      "name": "ChatTurnPump",
-      "doc": ""
+      "name": {
+        "v": "ChatTurnPump",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
     },
     "agent_runtime": {
-      "name": "Agent Runtime Session",
-      "doc": ""
+      "name": {
+        "v": "Agent Runtime Session",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
     },
     "context_composer": {
-      "name": "AgentContextComposer",
-      "doc": ""
+      "name": {
+        "v": "AgentContextComposer",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
     },
     "llm_client": {
-      "name": "LLM Gateway / Client",
-      "doc": ""
+      "name": {
+        "v": "LLM Gateway / Client",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
     },
     "permission_guard": {
-      "name": "Permission Guard",
-      "doc": ""
+      "name": {
+        "v": "Permission Guard",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
     },
     "tool_host": {
-      "name": "McpHost & Tool Registry",
-      "doc": ""
+      "name": {
+        "v": "McpHost & Tool Registry",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
     },
     "tool_network": {
-      "name": "Network Tools (Ping/DNS/HTTP)",
-      "doc": ""
+      "name": {
+        "v": "Network Tools (Ping/DNS/HTTP)",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
     },
     "tool_ssh": {
-      "name": "SSH & SFTP Tools",
-      "doc": ""
+      "name": {
+        "v": "SSH & SFTP Tools",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
     },
     "tool_doc": {
-      "name": "Document & Sheet Tools",
-      "doc": ""
+      "name": {
+        "v": "Document & Sheet Tools",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
     },
     "sqlite_db": {
-      "name": "SQLite Store (Turns & Sessions)",
-      "doc": ""
+      "name": {
+        "v": "SQLite Store (Turns & Sessions)",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
     },
     "secrets_store": {
-      "name": "Isolated Secrets Store",
-      "doc": ""
+      "name": {
+        "v": "Isolated Secrets Store",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
     },
     "blob_store": {
-      "name": "Artifact & Blob Storage",
-      "doc": ""
+      "name": {
+        "v": "Artifact & Blob Storage",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "e1": {
+      "name": {
+        "v": "send action",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "e2": {
+      "name": {
+        "v": "WebSocket JSON-RPC",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "e3": {
+      "name": {
+        "v": "drive turn",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "e4": {
+      "name": {
+        "v": "assemble context",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "e5": {
+      "name": {
+        "v": "prompt stream",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "e6": {
+      "name": {
+        "v": "tool call request",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "e7": {
+      "name": {
+        "v": "authorized dispatch",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "e8": {
+      "name": {
+        "v": "execute",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "e9": {
+      "name": {
+        "v": "execute",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "e10": {
+      "name": {
+        "v": "execute",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "e11": {
+      "name": {
+        "v": "persist history",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "e12": {
+      "name": {
+        "v": "resolve secrets",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "e13": {
+      "name": {
+        "v": "store large output (> handle)",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "rt_call": {
+      "name": {
+        "v": "Вызов",
+        "at": "2026-08-31T09:10:34Z",
+        "origin": "authored"
+      },
+      "description": {
+        "v": "Прямое обращение к методу или API другого компонента. Порождается из кода.",
+        "at": "2026-08-31T09:10:34Z",
+        "origin": "authored"
+      }
+    },
+    "rt_data-flow": {
+      "name": {
+        "v": "Поток данных",
+        "at": "2026-08-31T09:10:34Z",
+        "origin": "authored"
+      },
+      "description": {
+        "v": "Данные идут от источника к приёмнику. Не обязательно синхронный вызов: между ними может быть очередь, канал или сеть.",
+        "at": "2026-08-31T09:10:34Z",
+        "origin": "authored"
+      }
+    },
+    "rt_security": {
+      "name": {
+        "v": "Проверка доступа",
+        "at": "2026-08-31T09:10:34Z",
+        "origin": "authored"
+      },
+      "description": {
+        "v": "Обращение проходит через проверку прав. Приёмник вправе отказать, и отказ — штатный исход, а не ошибка.",
+        "at": "2026-08-31T09:10:34Z",
+        "origin": "authored"
+      }
+    },
+    "rt_storage": {
+      "name": {
+        "v": "Хранение",
+        "at": "2026-08-31T09:10:34Z",
+        "origin": "authored"
+      },
+      "description": {
+        "v": "Компонент пишет данные в хранилище или читает их оттуда. Приёмник — место, где данные переживают процесс.",
+        "at": "2026-08-31T09:10:34Z",
+        "origin": "authored"
+      }
+    },
+    "v_main": {
+      "name": {
+        "v": "Основной вид",
+        "at": "2026-08-31T09:10:34Z",
+        "origin": "authored"
+      },
+      "description": {
+        "v": "Обзорная схема проекта.",
+        "at": "2026-08-31T09:10:34Z",
+        "origin": "authored"
+      }
     }
   }
 }

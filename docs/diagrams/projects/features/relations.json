@@ -6,7 +6,6 @@
       "to": "n_component_tall",
       "type": "extends",
       "relation": "extends",
-      "label": "extends",
       "origin": "authored",
       "status": "present",
       "points": []
@@ -17,7 +16,6 @@
       "to": "n_component_tall",
       "type": "implements",
       "relation": "implements",
-      "label": "implements",
       "origin": "authored",
       "status": "present",
       "points": []
@@ -28,7 +26,6 @@
       "to": "n_service",
       "type": "realizes",
       "relation": "realizes",
-      "label": "",
       "origin": "authored",
       "status": "present",
       "points": []
@@ -39,7 +36,6 @@
       "to": "n_unknown",
       "type": "composes",
       "relation": "composes",
-      "label": "composes (Y-доминанта)",
       "origin": "authored",
       "status": "present",
       "points": []
@@ -50,7 +46,6 @@
       "to": "n_tool",
       "type": "call",
       "relation": "call",
-      "label": "call (X-доминанта)",
       "origin": "authored",
       "status": "present",
       "points": []
@@ -61,7 +56,6 @@
       "to": "n_database",
       "type": "data-flow",
       "relation": "data-flow",
-      "label": "data-flow",
       "origin": "authored",
       "status": "present",
       "points": []
@@ -72,7 +66,6 @@
       "to": "n_external",
       "type": "event",
       "relation": "event",
-      "label": "event",
       "origin": "authored",
       "status": "present",
       "points": []
@@ -83,7 +76,6 @@
       "to": "n_geometric",
       "type": "security",
       "relation": "security",
-      "label": "",
       "origin": "authored",
       "status": "present",
       "points": []
@@ -94,7 +86,6 @@
       "to": "n_geometric",
       "type": "storage",
       "relation": "storage",
-      "label": "storage",
       "origin": "authored",
       "status": "present",
       "points": []
@@ -105,7 +96,6 @@
       "to": "n_database",
       "type": "call",
       "relation": "call",
-      "label": "внутри зоны",
       "origin": "authored",
       "status": "present",
       "points": []
@@ -116,7 +106,6 @@
       "to": "n_note",
       "type": "call",
       "relation": "call",
-      "label": "",
       "origin": "authored",
       "status": "present",
       "points": []
@@ -127,7 +116,6 @@
       "to": "n_longlabel",
       "type": "totally-made-up-edge-type",
       "relation": "totally-made-up-edge-type",
-      "label": "неизвестный тип связи",
       "origin": "authored",
       "status": "present",
       "points": []
@@ -138,7 +126,6 @@
       "to": "node_that_does_not_exist",
       "type": "call",
       "relation": "call",
-      "label": "должна молча пропускаться",
       "origin": "authored",
       "status": "present",
       "points": []

@@ -1,9 +1,12 @@
+import type { ParsedTextCatalog } from "../../model/text-provenance.js";
+import { parseTextCatalog, serializeTextCatalog } from "../../model/text-provenance.js";
 import type {
   EntityCatalog,
   EntityEntry,
   ProjectBundle,
   ProjectManifest,
   RelationCatalog,
+  RelationTypeCatalog,
   TextCatalog,
   ViewDocument,
   ViewEdgePlacement,
@@ -45,26 +48,37 @@ export class HttpProjectStore implements ModelStore {
         .catch(() => ({ id: viewData.project || "unknown", title: "Архитектурная схема" }));
     }
 
-    const [entitiesRes, relationsRes, textRuRes, textEnRes]: [EntityCatalog, RelationCatalog, TextCatalog, TextCatalog] = await Promise.all([
+    const languages = (projectManifest.languages?.length ? projectManifest.languages : ["ru"]) as string[];
+
+    const [entitiesRes, relationsRes, relationTypesRes, ...rawTexts] = await Promise.all([
       fetch(new URL(dir + "entities.json", new URL(this.baseUrl, location.href)))
         .then((r) => r.json())
-        .catch(() => ({ entities: [] })),
+        .catch(() => ({ entities: [] })) as Promise<EntityCatalog>,
       fetch(new URL(dir + "relations.json", new URL(this.baseUrl, location.href)))
         .then((r) => r.json())
-        .catch(() => ({ relations: [] })),
-      fetch(new URL(dir + "text.ru.json", new URL(this.baseUrl, location.href)))
+        .catch(() => ({ relations: [] })) as Promise<RelationCatalog>,
+      fetch(new URL(dir + "relation-types.json", new URL(this.baseUrl, location.href)))
         .then((r) => r.json())
-        .catch(() => ({ entries: {} })),
-      fetch(new URL(dir + "text.en.json", new URL(this.baseUrl, location.href)))
-        .then((r) => r.json())
-        .catch(() => ({ entries: {} })),
+        .catch(() => ({ relationTypes: [] })) as Promise<RelationTypeCatalog>,
+      ...languages.map(
+        (lang) =>
+          fetch(new URL(dir + `text.${lang}.json`, new URL(this.baseUrl, location.href)))
+            .then((r) => (r.ok ? r.json() : {}))
+            .catch(() => ({})) as Promise<unknown>,
+      ),
     ]);
 
-    const textRegistries: Record<string, TextCatalog> = {
-      ru: textRuRes,
-      en: textEnRes,
-    };
-    const textRes = Object.keys(textRuRes.entries || {}).length > 0 ? textRuRes : textEnRes;
+    // Provenance stays with the file; the rest of the editor sees plain strings.
+    const textFiles: Record<string, ParsedTextCatalog> = {};
+    const textRegistries: Record<string, TextCatalog> = {};
+    languages.forEach((lang, i) => {
+      const parsed = parseTextCatalog(rawTexts[i], lang);
+      textFiles[lang] = parsed;
+      textRegistries[lang] = { entries: parsed.entries };
+    });
+
+    const primary = languages[0] ?? "ru";
+    const textRes: TextCatalog = textRegistries[primary] ?? { entries: {} };
 
     const placements = viewData.placements || viewData.nodes || [];
     const translatedNodes = placements.map((vn: any) => {
@@ -96,11 +110,24 @@ export class HttpProjectStore implements ModelStore {
       };
     });
 
+    /**
+     * A view's zone id is minted by the layout tool as `z_<x>` from the
+     * container `c_<x>` it renders (tools/spla-arch/layout/nested.go), so text
+     * keyed to the container is not found under the zone's own id. Resolve
+     * through both. The real fix belongs in the generator — a zone should name
+     * the container it stands for, the way a node placement names its entity.
+     */
+    const zoneTextKey = (id: string) =>
+      textRes.entries?.[id] ? id : id.startsWith("z_") ? "c_" + id.slice(2) : id;
+
     const translatedZones = (viewData.zones || []).map((vz: any) => {
-      const zName = textRes.entries?.[vz.id]?.name || textRes.entries?.[vz.id]?.title || vz.name || vz.id;
+      const textKey = zoneTextKey(vz.id);
+      const zName = textRes.entries?.[textKey]?.name || textRes.entries?.[textKey]?.title || vz.name || vz.id;
       return {
         id: vz.id,
-        label: zName,
+        // A zone's caption is `name` on the wire (`label` is a node's); emitting
+        // the wrong one is why zone captions used to render as raw ids.
+        name: zName,
         type: vz.type || "zone",
         zone: vz.parent || vz.container || null,
         x: vz.x,
@@ -108,7 +135,7 @@ export class HttpProjectStore implements ModelStore {
         width: vz.width,
         height: vz.height,
         styleId: vz.styleId,
-        metadata: { description: textRes.entries?.[vz.id]?.doc || textRes.entries?.[vz.id]?.description },
+        metadata: { description: textRes.entries?.[textKey]?.doc || textRes.entries?.[textKey]?.description },
       };
     });
 
@@ -121,17 +148,29 @@ export class HttpProjectStore implements ModelStore {
       from: ve.from || ve.source,
       to: ve.to || ve.target,
       type: ve.type || ve.relation || "relates",
-      label: ve.label || "",
+      // Text of a relation lives in the text catalogue under its own id; a
+      // generated relation has none, and its meaning is carried by its type.
+      label: textRes.entries?.[ve.id]?.name || textRes.entries?.[ve.id]?.title || "",
       styleId: ve.styleId,
       points: ve.points || [],
     }));
+
+    if (isView && !(viewData as ViewDocument).axis) {
+      throw new Error(
+        `Вид ${viewData.id || viewFile} не объявляет ось классификации (axis). ` +
+          `Без неё вложенность узлов в контейнеры не имеет определённого смысла — ` +
+          `см. ADR_20260831_diagrams_text-provenance-and-view-axes.`,
+      );
+    }
 
     const bundle: ProjectBundle = {
       project: projectManifest,
       entities: entitiesRes,
       relations: relationsRes,
+      relationTypes: relationTypesRes,
       text: textRes,
       textRegistries,
+      textFiles,
       view: isView
         ? (viewData as ViewDocument)
         : { id: "v_main", project: projectManifest.id, zones: viewData.zones, nodes: viewData.nodes, edges: viewData.edges },
@@ -195,7 +234,6 @@ export class HttpProjectStore implements ModelStore {
       from: e.from,
       to: e.to,
       type: e.type,
-      label: e.label || "",
       styleId: e.styleId,
       points: e.points || [],
     }));
@@ -203,6 +241,7 @@ export class HttpProjectStore implements ModelStore {
     const cleanView: ViewDocument = {
       id: bundle.view.id || "v_main",
       project: bundle.project.id,
+      axis: bundle.view.axis,
       ...(bundle.view.relations ? { relations: bundle.view.relations } : {}),
       zones,
       nodes,
@@ -261,22 +300,19 @@ export class HttpProjectStore implements ModelStore {
       }).catch((err) => console.warn("Не удалось синхронизировать entities.json:", err));
     }
 
-    if (bundle.textRegistries) {
-      for (const [lang, catalog] of Object.entries(bundle.textRegistries)) {
-        if (catalog && catalog.entries && Object.keys(catalog.entries).length > 0) {
-          await fetch(`/api/save?file=${encodeURIComponent(dir + `text.${lang}.json`)}`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(catalog, null, 2),
-          }).catch((err) => console.warn(`Не удалось синхронизировать text.${lang}.json:`, err));
-        }
+    const registries = bundle.textRegistries ?? (textModified ? { ru: { entries: currentText } } : null);
+    if (registries) {
+      for (const [lang, catalog] of Object.entries(registries)) {
+        if (!catalog?.entries || Object.keys(catalog.entries).length === 0) continue;
+        // Values the user changed are re-stamped as authored; the rest keep the
+        // provenance they were loaded with, so an untouched save is a no-op diff.
+        const file = serializeTextCatalog(lang, catalog.entries, bundle.textFiles?.[lang] ?? null);
+        await fetch(`/api/save?file=${encodeURIComponent(dir + `text.${lang}.json`)}`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(file, null, 2),
+        }).catch((err) => console.warn(`Не удалось синхронизировать text.${lang}.json:`, err));
       }
-    } else if (textModified) {
-      await fetch(`/api/save?file=${encodeURIComponent(dir + "text.ru.json")}`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ entries: currentText }, null, 2),
-      }).catch((err) => console.warn("Не удалось синхронизировать text.ru.json:", err));
     }
   }
 }

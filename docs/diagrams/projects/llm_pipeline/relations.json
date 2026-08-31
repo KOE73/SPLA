@@ -6,7 +6,6 @@
       "to": "composer",
       "type": "call",
       "relation": "call",
-      "label": "initiate turn",
       "origin": "authored",
       "status": "present",
       "points": []
@@ -17,7 +16,6 @@
       "to": "contrib_system",
       "type": "data-flow",
       "relation": "data-flow",
-      "label": "pull slice",
       "origin": "authored",
       "status": "present",
       "points": []
@@ -28,7 +26,6 @@
       "to": "contrib_skills",
       "type": "data-flow",
       "relation": "data-flow",
-      "label": "pull slice",
       "origin": "authored",
       "status": "present",
       "points": []
@@ -39,7 +36,6 @@
       "to": "contrib_tools",
       "type": "data-flow",
       "relation": "data-flow",
-      "label": "pull slice",
       "origin": "authored",
       "status": "present",
       "points": []
@@ -50,7 +46,6 @@
       "to": "contrib_history",
       "type": "data-flow",
       "relation": "data-flow",
-      "label": "pull slice",
       "origin": "authored",
       "status": "present",
       "points": []
@@ -61,7 +56,6 @@
       "to": "model_stream",
       "type": "call",
       "relation": "call",
-      "label": "submit payload",
       "origin": "authored",
       "status": "present",
       "points": []
@@ -72,7 +66,6 @@
       "to": "token_parser",
       "type": "data-flow",
       "relation": "data-flow",
-      "label": "SSE tokens",
       "origin": "authored",
       "status": "present",
       "points": []
@@ -83,7 +76,6 @@
       "to": "thinking_extractor",
       "type": "data-flow",
       "relation": "data-flow",
-      "label": "thought chunks",
       "origin": "authored",
       "status": "present",
       "points": []
@@ -94,7 +86,6 @@
       "to": "tool_call_extractor",
       "type": "data-flow",
       "relation": "data-flow",
-      "label": "tool call chunks",
       "origin": "authored",
       "status": "present",
       "points": []

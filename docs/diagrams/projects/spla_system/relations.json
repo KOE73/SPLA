@@ -6,7 +6,6 @@
       "to": "ws_client",
       "type": "data-flow",
       "relation": "data-flow",
-      "label": "send action",
       "origin": "authored",
       "status": "present",
       "points": []
@@ -17,7 +16,6 @@
       "to": "turn_pump",
       "type": "call",
       "relation": "call",
-      "label": "WebSocket JSON-RPC",
       "origin": "authored",
       "status": "present",
       "points": []
@@ -28,7 +26,6 @@
       "to": "agent_runtime",
       "type": "call",
       "relation": "call",
-      "label": "drive turn",
       "origin": "authored",
       "status": "present",
       "points": []
@@ -39,7 +36,6 @@
       "to": "context_composer",
       "type": "call",
       "relation": "call",
-      "label": "assemble context",
       "origin": "authored",
       "status": "present",
       "points": []
@@ -50,7 +46,6 @@
       "to": "llm_client",
       "type": "data-flow",
       "relation": "data-flow",
-      "label": "prompt stream",
       "origin": "authored",
       "status": "present",
       "points": []
@@ -61,7 +56,6 @@
       "to": "permission_guard",
       "type": "call",
       "relation": "call",
-      "label": "tool call request",
       "origin": "authored",
       "status": "present",
       "points": []
@@ -72,7 +66,6 @@
       "to": "tool_host",
       "type": "call",
       "relation": "call",
-      "label": "authorized dispatch",
       "origin": "authored",
       "status": "present",
       "points": []
@@ -83,7 +76,6 @@
       "to": "tool_network",
       "type": "call",
       "relation": "call",
-      "label": "execute",
       "origin": "authored",
       "status": "present",
       "points": []
@@ -94,7 +86,6 @@
       "to": "tool_ssh",
       "type": "call",
       "relation": "call",
-      "label": "execute",
       "origin": "authored",
       "status": "present",
       "points": []
@@ -105,7 +96,6 @@
       "to": "tool_doc",
       "type": "call",
       "relation": "call",
-      "label": "execute",
       "origin": "authored",
       "status": "present",
       "points": []
@@ -116,7 +106,6 @@
       "to": "sqlite_db",
       "type": "storage",
       "relation": "storage",
-      "label": "persist history",
       "origin": "authored",
       "status": "present",
       "points": []
@@ -127,7 +116,6 @@
       "to": "secrets_store",
       "type": "security",
       "relation": "security",
-      "label": "resolve secrets",
       "origin": "authored",
       "status": "present",
       "points": []
@@ -138,7 +126,6 @@
       "to": "blob_store",
       "type": "storage",
       "relation": "storage",
-      "label": "store large output (> handle)",
       "origin": "authored",
       "status": "present",
       "points": []

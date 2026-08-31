@@ -77,6 +77,18 @@ jobs:
       - name: Web tests
         run: npm --prefix web run test
 
+      # The diagram model carries architecture now, so it has to be checked like code: stale
+      # translations, text nobody wrote, views without a classification axis, containment that
+      # two views on the same axis disagree about, and codeRefs pointing at files that moved.
+      # See ADR_20260831_diagrams_text-provenance-and-view-axes.
+      #
+      # Warning, not failure, for now: the codeRef backlog inherited from before the check
+      # existed (35 refs, mostly hand-drawn projects guessing paths) would block every build.
+      # Make this blocking once that backlog is cleared.
+      - name: Check the diagram model
+        continue-on-error: true
+        run: npm --prefix tools/spla-diagram run check:model
+
       # A release can be cut at any moment, so CHANGELOGS/ has to be publishable at any moment.
       # The rule is that the summary is rewritten before a push; this is what catches a push where
       # that did not happen — from another machine, by another person, or simply forgotten.

@@ -126,3 +126,29 @@ sentences are what `current-list.md` is built from, which is why they have to st
 - **Architecture diagram visualizer gained complete UI chrome localization, live Ribbon Theme Gallery with SVG previews, and a modular canvas visual modifiers flyout.**
   The workbench UI chrome (Ribbon tabs, groups, tooltips, Dockview panel titles, Inspector fields, style editors, and commands) is fully localized with instant runtime switching between Russian and English (`uiLang`), strictly separated from diagram data (`dataLang`). The View tab features a live Ribbon Theme Gallery showing miniature preview windows of each theme (`Cream`, `Dark`, `Emerald`, `Light`), while SVG elements on the canvas (such as connection count badges) are strictly decoupled from UI chrome themes. A dedicated Canvas Visual Effects flyout panel (`src/styles/canvas-filters.css`, `CanvasFilterManager.ts`) provides live real-time GPU-accelerated adjustments for brightness, contrast, white dimming/matte layer, line stroke boosting via SVG `feMorphology` dilation, and color tinting, with independent auto-saving per theme in `localStorage`.
 
+
+---
+
+## 2026-08-31
+
+- **Diagram text now records where each value came from, and a view has to say what its
+  containers classify.** The model contract moves to v3. Every translatable field in every
+  language carries its own provenance — `authored` or `translated`, with the source language and a
+  hash of the source text at the time it was translated — so a translation whose original has since
+  changed is a finding rather than a silent lie. There is no base language any more: direction lives
+  on each value, not on a language, which is what lets a second author write in their own tongue
+  without inverting the whole project. Text catalogues cover everything nameable — containers, views,
+  relations and relation types alongside entities — relation types became an authored dictionary of
+  their own (`relation-types.json`), and relation prose left `relations.json` for the catalogues.
+  Every view now declares a classification axis: two views on different axes may legitimately place
+  one node in different containers, two views on the same axis may not, and that contradiction is
+  checked. `npm --prefix tools/spla-diagram run check:model` reports stale translations, text nobody
+  wrote, views without an axis, containment contradictions and broken `codeRef`s; CI runs it as a
+  warning until the inherited `codeRef` backlog is cleared. The English catalogue was deleted rather
+  than migrated — nobody had written it by hand and no reader needed it.
+
+- **Container captions on the canvas show their names again instead of raw identifiers.** The
+  project loader was handing a zone's caption over in `label` while the model reads it from `name`,
+  so every container in every project rendered as `zone_client`, `z_llm` and the like. Zone text is
+  also resolved through the container it renders (`z_x` → `c_x`), which is how the layout tool mints
+  those ids.

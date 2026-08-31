@@ -131,7 +131,6 @@
       "from": "user_turn",
       "to": "composer",
       "type": "call",
-      "label": "initiate turn",
       "points": []
     },
     {
@@ -139,7 +138,6 @@
       "from": "composer",
       "to": "contrib_system",
       "type": "data-flow",
-      "label": "pull slice",
       "points": []
     },
     {
@@ -147,7 +145,6 @@
       "from": "composer",
       "to": "contrib_skills",
       "type": "data-flow",
-      "label": "pull slice",
       "points": []
     },
     {
@@ -155,7 +152,6 @@
       "from": "composer",
       "to": "contrib_tools",
       "type": "data-flow",
-      "label": "pull slice",
       "points": []
     },
     {
@@ -163,7 +159,6 @@
       "from": "composer",
       "to": "contrib_history",
       "type": "data-flow",
-      "label": "pull slice",
       "points": []
     },
     {
@@ -171,7 +166,6 @@
       "from": "composer",
       "to": "model_stream",
       "type": "call",
-      "label": "submit payload",
       "points": []
     },
     {
@@ -179,7 +173,6 @@
       "from": "model_stream",
       "to": "token_parser",
       "type": "data-flow",
-      "label": "SSE tokens",
       "points": []
     },
     {
@@ -187,7 +180,6 @@
       "from": "token_parser",
       "to": "thinking_extractor",
       "type": "data-flow",
-      "label": "thought chunks",
       "points": []
     },
     {
@@ -195,8 +187,9 @@
       "from": "token_parser",
       "to": "tool_call_extractor",
       "type": "data-flow",
-      "label": "tool call chunks",
       "points": []
     }
-  ]
+  ],
+  "axis": "axis_stage",
+  "contractVersion": 3
 }

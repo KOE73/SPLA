@@ -1,9 +1,7 @@
 {
   "id": "core",
   "title": "Core Layer (src/core)",
-  "baseLanguage": "en",
   "languages": [
-    "en",
     "ru"
   ],
   "sources": {
@@ -13,5 +11,6 @@
       "src/agent/SPLA.Agent/Accounting"
     ]
   },
-  "styles": "../../styles.json"
+  "styles": "../../styles.json",
+  "contractVersion": 3
 }

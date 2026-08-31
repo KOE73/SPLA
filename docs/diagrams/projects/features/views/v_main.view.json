@@ -150,7 +150,6 @@
       "from": "n_service",
       "to": "n_component_tall",
       "type": "extends",
-      "label": "extends",
       "points": []
     },
     {
@@ -158,7 +157,6 @@
       "from": "n_concept",
       "to": "n_component_tall",
       "type": "implements",
-      "label": "implements",
       "points": []
     },
     {
@@ -166,7 +164,6 @@
       "from": "n_note",
       "to": "n_service",
       "type": "realizes",
-      "label": "",
       "points": []
     },
     {
@@ -174,7 +171,6 @@
       "from": "n_component_tall",
       "to": "n_unknown",
       "type": "composes",
-      "label": "composes (Y-доминанта)",
       "points": []
     },
     {
@@ -182,7 +178,6 @@
       "from": "n_component_tall",
       "to": "n_tool",
       "type": "call",
-      "label": "call (X-доминанта)",
       "points": []
     },
     {
@@ -190,7 +185,6 @@
       "from": "n_service",
       "to": "n_database",
       "type": "data-flow",
-      "label": "data-flow",
       "points": []
     },
     {
@@ -198,7 +192,6 @@
       "from": "n_security",
       "to": "n_external",
       "type": "event",
-      "label": "event",
       "points": []
     },
     {
@@ -206,7 +199,6 @@
       "from": "n_security",
       "to": "n_geometric",
       "type": "security",
-      "label": "",
       "points": []
     },
     {
@@ -214,7 +206,6 @@
       "from": "n_unknown",
       "to": "n_geometric",
       "type": "storage",
-      "label": "storage",
       "points": []
     },
     {
@@ -222,7 +213,6 @@
       "from": "n_tool",
       "to": "n_database",
       "type": "call",
-      "label": "внутри зоны",
       "points": []
     },
     {
@@ -230,7 +220,6 @@
       "from": "n_concept",
       "to": "n_note",
       "type": "call",
-      "label": "",
       "points": []
     },
     {
@@ -238,7 +227,6 @@
       "from": "n_free",
       "to": "n_longlabel",
       "type": "totally-made-up-edge-type",
-      "label": "неизвестный тип связи",
       "points": []
     },
     {
@@ -246,8 +234,9 @@
       "from": "n_free",
       "to": "node_that_does_not_exist",
       "type": "call",
-      "label": "должна молча пропускаться",
       "points": []
     }
-  ]
+  ],
+  "axis": "axis_demo",
+  "contractVersion": 3
 }

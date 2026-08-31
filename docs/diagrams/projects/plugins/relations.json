@@ -6,7 +6,6 @@
       "to": "tool_net_ping",
       "type": "call",
       "relation": "call",
-      "label": "dispatch",
       "origin": "authored",
       "status": "present",
       "points": []
@@ -17,7 +16,6 @@
       "to": "tool_ssh_run",
       "type": "call",
       "relation": "call",
-      "label": "dispatch",
       "origin": "authored",
       "status": "present",
       "points": []
@@ -28,7 +26,6 @@
       "to": "tool_doc_extract",
       "type": "call",
       "relation": "call",
-      "label": "dispatch",
       "origin": "authored",
       "status": "present",
       "points": []

@@ -27,6 +27,7 @@ repository and is linked from it.
 - Architecture diagram visualizer gained global data language switching, multi-language catalog sync, and interactive canvas tooltips.
 - Architecture diagram visualizer migrated to Workbench architecture with Ribbon command surface, multi-zone Dockview docking, and multi-relation port distribution.
 - Architecture diagram visualizer gained complete UI chrome localization, live Ribbon Theme Gallery with SVG previews, and a modular canvas visual modifiers flyout.
+- Diagram text now records where each value came from, and a view has to say what its containers classify.
 
 ### Fixed
 
@@ -36,3 +37,4 @@ repository and is linked from it.
 
 - `v0.2.4`'s release notes were wrong, and are now corrected in the repository.
 - Parallel diagram connections no longer overlap into indistinguishable single lines.
+- Container captions on the canvas show their names again instead of raw identifiers.

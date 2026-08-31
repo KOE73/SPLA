@@ -8,5 +8,6 @@
   ],
   "views": [
     "v_main"
-  ]
+  ],
+  "contractVersion": 3
 }

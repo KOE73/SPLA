@@ -4326,57 +4326,51 @@
       "id": "e1",
       "from": "domain_llm",
       "to": "domain_plugins",
-      "type": "call",
-      "label": "discovers"
+      "type": "call"
     },
     {
       "id": "e2",
       "from": "domain_plugins",
       "to": "mcp_host",
-      "type": "data-flow",
-      "label": "registers tools"
+      "type": "data-flow"
     },
     {
       "id": "e3",
       "from": "mcp_host",
       "to": "mcp_tool_exposure",
-      "type": "security",
-      "label": "checks level"
+      "type": "security"
     },
     {
       "id": "e4",
       "from": "mcp_host",
       "to": "mcp_registry",
-      "type": "call",
-      "label": "resolves"
+      "type": "call"
     },
     {
       "id": "e5",
       "from": "domain_eventbus",
       "to": "obs_otel",
-      "type": "data-flow",
-      "label": "emits telemetry"
+      "type": "data-flow"
     },
     {
       "id": "e6",
       "from": "domain_skills",
       "to": "domain_agent",
-      "type": "storage",
-      "label": "state"
+      "type": "storage"
     },
     {
       "id": "e7",
       "from": "sec_dpapi",
       "to": "sec_identity",
-      "type": "security",
-      "label": "secure keys"
+      "type": "security"
     },
     {
       "id": "e8",
       "from": "host_sandbox",
       "to": "host_workspace",
-      "type": "storage",
-      "label": "I/O"
+      "type": "storage"
     }
-  ]
+  ],
+  "axis": "axis_subsystem",
+  "contractVersion": 3
 }

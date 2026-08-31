@@ -171,7 +171,6 @@
       "from": "chat_ui",
       "to": "ws_client",
       "type": "data-flow",
-      "label": "send action",
       "points": []
     },
     {
@@ -179,7 +178,6 @@
       "from": "ws_client",
       "to": "turn_pump",
       "type": "call",
-      "label": "WebSocket JSON-RPC",
       "points": []
     },
     {
@@ -187,7 +185,6 @@
       "from": "turn_pump",
       "to": "agent_runtime",
       "type": "call",
-      "label": "drive turn",
       "points": []
     },
     {
@@ -195,7 +192,6 @@
       "from": "agent_runtime",
       "to": "context_composer",
       "type": "call",
-      "label": "assemble context",
       "points": []
     },
     {
@@ -203,7 +199,6 @@
       "from": "context_composer",
       "to": "llm_client",
       "type": "data-flow",
-      "label": "prompt stream",
       "points": []
     },
     {
@@ -211,7 +206,6 @@
       "from": "llm_client",
       "to": "permission_guard",
       "type": "call",
-      "label": "tool call request",
       "points": []
     },
     {
@@ -219,7 +213,6 @@
       "from": "permission_guard",
       "to": "tool_host",
       "type": "call",
-      "label": "authorized dispatch",
       "points": []
     },
     {
@@ -227,7 +220,6 @@
       "from": "tool_host",
       "to": "tool_network",
       "type": "call",
-      "label": "execute",
       "points": []
     },
     {
@@ -235,7 +227,6 @@
       "from": "tool_host",
       "to": "tool_ssh",
       "type": "call",
-      "label": "execute",
       "points": []
     },
     {
@@ -243,7 +234,6 @@
       "from": "tool_host",
       "to": "tool_doc",
       "type": "call",
-      "label": "execute",
       "points": []
     },
     {
@@ -251,7 +241,6 @@
       "from": "agent_runtime",
       "to": "sqlite_db",
       "type": "storage",
-      "label": "persist history",
       "points": []
     },
     {
@@ -259,7 +248,6 @@
       "from": "permission_guard",
       "to": "secrets_store",
       "type": "security",
-      "label": "resolve secrets",
       "points": []
     },
     {
@@ -267,8 +255,9 @@
       "from": "tool_host",
       "to": "blob_store",
       "type": "storage",
-      "label": "store large output (> handle)",
       "points": []
     }
-  ]
+  ],
+  "axis": "axis_layer",
+  "contractVersion": 3
 }
