@@ -32,10 +32,22 @@ const TEXT_FIELDS = ["name", "title", "description", "doc"];
 const read = (p) => JSON.parse(readFileSync(p, "utf8"));
 
 /**
- * Normalise before hashing so that reflowing a paragraph is not mistaken for
- * editing it. Must stay in step with whatever writes `fromHash`.
+ * Normalise before hashing, so that a change in how the text is stored is not
+ * mistaken for a change in what it says. Must stay in step with whatever writes
+ * `fromHash`.
+ *
+ * Line endings, trailing spaces and runs of blank lines are noise. Indentation
+ * is not: descriptions may hold markdown, where leading spaces carry meaning —
+ * nesting in a list, lines inside a fenced block. Collapsing those would make a
+ * real edit invisible to the staleness check, which is the one thing this
+ * function exists to prevent.
  */
-const normalise = (s) => s.replace(/\r\n/g, "\n").replace(/[ \t]+/g, " ").trim();
+const normalise = (s) =>
+  s
+    .replace(/\r\n/g, "\n")
+    .replace(/[ \t]+$/gm, "")
+    .replace(/\n{3,}/g, "\n\n")
+    .trim();
 
 /** FNV-1a, 32 bit. Change detection, not security. */
 function hash(text) {
