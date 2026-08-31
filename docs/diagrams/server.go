@@ -13,6 +13,16 @@ import (
 	"time"
 )
 
+// noCacheForData makes the browser revalidate every model file it reads.
+func noCacheForData(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if strings.HasSuffix(r.URL.Path, ".json") {
+			w.Header().Set("Cache-Control", "no-cache")
+		}
+		next.ServeHTTP(w, r)
+	})
+}
+
 func main() {
 	port := "8777"
 	url := fmt.Sprintf("http://localhost:%s/app/", port)
@@ -25,7 +35,13 @@ func main() {
 		openBrowser(url)
 	}()
 
-	http.Handle("/", http.FileServer(http.Dir(".")))
+	// The model files are edited by hand, by the editor and by migration scripts,
+	// often several times a minute. http.FileServer sends only Last-Modified, and
+	// on that alone a browser is free to reuse a copy without asking — which is
+	// how an editor session ends up loading a project as it was before a
+	// migration and reporting it as broken. Data revalidates every time; the
+	// hashed app bundle is immutable by name and does not need to.
+	http.Handle("/", noCacheForData(http.FileServer(http.Dir("."))))
 	http.HandleFunc("/api/save", func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodPost {
 			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
