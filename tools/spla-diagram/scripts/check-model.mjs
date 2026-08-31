@@ -154,22 +154,26 @@ for (const entry of readdirSync(ROOT, { withFileTypes: true }).filter((d) => d.i
   if (existsSync(viewsDir)) {
     for (const file of readdirSync(viewsDir).filter((f) => f.endsWith(".json"))) {
       const view = read(join(viewsDir, file));
-      if (!view.axis) {
-        report(project, "вид без оси", file);
+      // A view says what its containers classify, or the project says what to
+      // assume for the views that do not — which is what keeps regenerated
+      // views readable without every generator learning about axes.
+      const axis = view.axis ?? manifest.defaultAxis;
+      if (!axis) {
+        report(project, "вид без оси", `${file}: и у проекта нет defaultAxis`);
         continue;
       }
       for (const placement of view.nodes ?? view.placements ?? []) {
         const id = placement.entity ?? placement.id;
         const container = placement.container ?? placement.zone ?? null;
         if (!id || !container) continue;
-        if (!byAxis.has(view.axis)) byAxis.set(view.axis, new Map());
-        const perNode = byAxis.get(view.axis);
+        if (!byAxis.has(axis)) byAxis.set(axis, new Map());
+        const perNode = byAxis.get(axis);
         const seen = perNode.get(id);
         if (seen && seen.container !== container) {
           report(
             project,
             "противоречие",
-            `${id} лежит в ${seen.container} (${seen.where}) и в ${container} (${project}/${file}) — одна ось ${view.axis}`,
+            `${id} лежит в ${seen.container} (${seen.where}) и в ${container} (${project}/${file}) — одна ось ${axis}`,
           );
         } else if (!seen) {
           perNode.set(id, { container, where: `${project}/${file}` });

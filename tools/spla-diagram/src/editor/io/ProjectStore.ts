@@ -5,6 +5,7 @@ import type {
   EntityEntry,
   ProjectBundle,
   ProjectManifest,
+  ModelIssue,
   RelationCatalog,
   RelationTypeCatalog,
   TextCatalog,
@@ -155,12 +156,23 @@ export class HttpProjectStore implements ModelStore {
       points: ve.points || [],
     }));
 
-    if (isView && !(viewData as ViewDocument).axis) {
-      throw new Error(
-        `Вид ${viewData.id || viewFile} не объявляет ось классификации (axis). ` +
-          `Без неё вложенность узлов в контейнеры не имеет определённого смысла — ` +
-          `см. ADR_20260831_diagrams_text-provenance-and-view-axes.`,
-      );
+    /**
+     * A view says what its containers classify; failing that, the project says
+     * what to assume. Neither is not fatal — the diagram still draws, and the
+     * editor says so — but the containment in it must not be read as an
+     * assertion about anything.
+     */
+    const resolvedAxis = (viewData as ViewDocument).axis ?? projectManifest.defaultAxis;
+    const issues: ModelIssue[] = [];
+    if (isView && !resolvedAxis) {
+      issues.push({
+        kind: "view-without-axis",
+        message:
+          `Вид «${viewData.id || viewFile}» не объявляет ось классификации, и у проекта нет ` +
+          `запасной (defaultAxis). Схема открыта, но вложенность блоков в контейнеры ` +
+          `здесь ничего не утверждает и не проверяется. ` +
+          `См. ADR_20260831_diagrams_text-provenance-and-view-axes.`,
+      });
     }
 
     const bundle: ProjectBundle = {
@@ -174,6 +186,10 @@ export class HttpProjectStore implements ModelStore {
       view: isView
         ? (viewData as ViewDocument)
         : { id: "v_main", project: projectManifest.id, zones: viewData.zones, nodes: viewData.nodes, edges: viewData.edges },
+      // Resolved, not written back: a view that inherits its axis keeps
+      // inheriting it, and saving does not mint a field the author never wrote.
+      ...(resolvedAxis ? { resolvedAxis } : {}),
+      ...(issues.length > 0 ? { issues } : {}),
     };
 
     const wire: WireDocument = {

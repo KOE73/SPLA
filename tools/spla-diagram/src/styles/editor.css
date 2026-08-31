@@ -1626,3 +1626,55 @@ textarea {
 [hidden] {
   display: none !important;
 }
+
+/*
+ * A model-level problem with the file that is open — a view that does not say
+ * what its containers classify, and so cannot have that containment read as an
+ * assertion. It belongs over the canvas rather than in a dialog: it is a
+ * property of the file, not of anything the user just did.
+ */
+.spla-model-banner {
+  position: absolute;
+  top: 12px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 20;
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  max-width: min(720px, calc(100% - 32px));
+  padding: 10px 12px 10px 14px;
+  border: 1px solid var(--warn-line, #e2c391);
+  border-left: 3px solid var(--warn-accent, #d08b2c);
+  border-radius: 8px;
+  background: var(--warn-bg, #fdf6e9);
+  color: var(--warn-text, #6b4a12);
+  box-shadow: 0 6px 18px rgb(15 23 42 / 12%);
+  font-size: 12.5px;
+  line-height: 1.45;
+}
+
+.spla-model-banner-text p {
+  margin: 0;
+}
+
+.spla-model-banner-text p + p {
+  margin-top: 6px;
+}
+
+.spla-model-banner-close {
+  flex: none;
+  width: 22px;
+  height: 22px;
+  border: 0;
+  border-radius: 5px;
+  background: transparent;
+  color: inherit;
+  font-size: 16px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.spla-model-banner-close:hover {
+  background: rgb(0 0 0 / 8%);
+}

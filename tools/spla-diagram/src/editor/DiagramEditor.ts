@@ -9,7 +9,7 @@ import { StyleLibrary } from "../model/StyleLibrary.js";
 import { builtinStyleSheet } from "../model/style-defaults.js";
 import type { WireStyleSheet } from "../model/style-types.js";
 import { parseDocument, serializeDocument } from "../model/wire.js";
-import type { WireDocument } from "../model/wire-types.js";
+import type { ModelIssue, WireDocument } from "../model/wire-types.js";
 import type { DiagramElement } from "../model/types.js";
 import { snap } from "../geometry/rect.js";
 import { History } from "./History.js";
@@ -112,6 +112,9 @@ export class DiagramEditor implements InspectorHost, StylePanelHost, DiagramEdit
   /** Pending coalesced canvas redraw after a burst of style edits. */
   private redrawHandle: number | null = null;
   private styleLibrary: StyleLibrary;
+
+  /** Banner over the canvas reporting what is wrong with the open model. */
+  private banner: HTMLElement | null = null;
 
   /** State before the current burst of typing, held until the burst settles. */
   private fieldEditSnapshot: string | null = null;
@@ -667,6 +670,47 @@ export class DiagramEditor implements InspectorHost, StylePanelHost, DiagramEdit
     // Migration may have minted styles; the list must show them.
     this.styleList.render();
     this.basePanel.render();
+    this.showModelIssues(wire.bundle?.issues ?? []);
+  }
+
+  /**
+   * Show what is wrong with the model that was just opened, without standing in
+   * the way of working with it.
+   *
+   * A modal would be the wrong shape here: these are properties of the file, not
+   * of anything the user just did, and they stay true until the file is fixed.
+   * The banner sits over the canvas, states the consequence, and can be
+   * dismissed for the session.
+   */
+  private showModelIssues(issues: readonly ModelIssue[]): void {
+    this.banner?.remove();
+    this.banner = null;
+    if (issues.length === 0) return;
+
+    const banner = document.createElement("div");
+    banner.className = "spla-model-banner";
+
+    const text = document.createElement("div");
+    text.className = "spla-model-banner-text";
+    for (const issue of issues) {
+      const line = document.createElement("p");
+      line.textContent = issue.message;
+      text.appendChild(line);
+    }
+
+    const close = document.createElement("button");
+    close.type = "button";
+    close.className = "spla-model-banner-close";
+    close.title = "Скрыть";
+    close.textContent = "×";
+    close.addEventListener("click", () => {
+      banner.remove();
+      this.banner = null;
+    });
+
+    banner.append(text, close);
+    this.canvas.hostElement.appendChild(banner);
+    this.banner = banner;
   }
 
   private snapshot(): string {
@@ -1020,9 +1064,12 @@ export class DiagramEditor implements InspectorHost, StylePanelHost, DiagramEdit
     this.syncToolbar(this.canvas.selected);
   }
 
+  onOpenStyle?: (id: string | null) => void;
+
   openStyle(id: string | null): void {
     this.styleList.setActive(id);
     this.styleEditor.open(id);
+    this.onOpenStyle?.(id);
   }
 
   /** From the inspector's "править стиль" button. */

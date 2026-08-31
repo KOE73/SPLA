@@ -12,5 +12,6 @@
     ]
   },
   "styles": "../../styles.json",
-  "contractVersion": 3
+  "contractVersion": 3,
+  "defaultAxis": "axis_subsystem"
 }
