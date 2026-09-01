@@ -1,4 +1,4 @@
-import type { BoundarySlot, Point, Rect } from "../../geometry/types.js";
+import type { BoundarySlot, Point, Rect, Side } from "../../geometry/types.js";
 import type { DiagramDocument } from "../../model/document.js";
 import type { ResolvedBlockStyle } from "../../model/StyleLibrary.js";
 import type { DiagramElement } from "../../model/types.js";
@@ -81,4 +81,11 @@ export interface ElementRenderer {
    * edge, an ellipse walks an arc — same assignment algorithm, both correct.
    */
   pointAt(rect: Rect, slot: BoundarySlot): Point;
+
+  /**
+   * Safe corner inset (px) for this shape on the given side.
+   * Tells port assigners and routers where the straight segment ends and the corner
+   * or curvature begins.
+   */
+  cornerInset?(side: Side, style?: ResolvedBlockStyle): number;
 }

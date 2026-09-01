@@ -1,0 +1,775 @@
+{
+  "id": "v_subsystem",
+  "project": "spla_system",
+  "axis": "axis_subsystem",
+  "relations": {
+    "default": "visible",
+    "except": []
+  },
+  "zones": [
+    {
+      "id": "z_sub_domain",
+      "container": "c_sub_domain",
+      "parent": null,
+      "x": 0,
+      "y": 0,
+      "width": 920,
+      "height": 1160
+    },
+    {
+      "id": "z_sub_mcp",
+      "container": "c_sub_mcp",
+      "parent": null,
+      "x": 1040,
+      "y": 0,
+      "width": 920,
+      "height": 900
+    },
+    {
+      "id": "z_sub_runtime",
+      "container": "c_sub_runtime",
+      "parent": null,
+      "x": 2080,
+      "y": 0,
+      "width": 920,
+      "height": 640
+    },
+    {
+      "id": "z_sub_llm",
+      "container": "c_sub_llm",
+      "parent": null,
+      "x": 3120,
+      "y": 0,
+      "width": 920,
+      "height": 250
+    },
+    {
+      "id": "z_sub_service",
+      "container": "c_sub_service",
+      "parent": null,
+      "x": 4160,
+      "y": 0,
+      "width": 920,
+      "height": 510
+    },
+    {
+      "id": "z_sub_plugins",
+      "container": "c_sub_plugins",
+      "parent": null,
+      "x": 5200,
+      "y": 0,
+      "width": 920,
+      "height": 250
+    },
+    {
+      "id": "z_sub_apps",
+      "container": "c_sub_apps",
+      "parent": null,
+      "x": 6240,
+      "y": 0,
+      "width": 920,
+      "height": 250
+    },
+    {
+      "id": "z_sub_external",
+      "container": "c_sub_external",
+      "parent": null,
+      "x": 7280,
+      "y": 0,
+      "width": 640,
+      "height": 250
+    }
+  ],
+  "nodes": [
+    {
+      "id": "e_chatinbox",
+      "entity": "e_chatinbox",
+      "zone": "z_sub_domain",
+      "container": "z_sub_domain",
+      "x": 60,
+      "y": 100,
+      "width": 240,
+      "height": 90
+    },
+    {
+      "id": "e_contextassembler",
+      "entity": "e_contextassembler",
+      "zone": "z_sub_domain",
+      "container": "z_sub_domain",
+      "x": 340,
+      "y": 100,
+      "width": 240,
+      "height": 90
+    },
+    {
+      "id": "e_skillsession",
+      "entity": "e_skillsession",
+      "zone": "z_sub_domain",
+      "container": "z_sub_domain",
+      "x": 620,
+      "y": 100,
+      "width": 240,
+      "height": 90
+    },
+    {
+      "id": "e_illmgateway",
+      "entity": "e_illmgateway",
+      "zone": "z_sub_domain",
+      "container": "z_sub_domain",
+      "x": 60,
+      "y": 230,
+      "width": 240,
+      "height": 90
+    },
+    {
+      "id": "e_llmpipelineblueprint",
+      "entity": "e_llmpipelineblueprint",
+      "zone": "z_sub_domain",
+      "container": "z_sub_domain",
+      "x": 340,
+      "y": 230,
+      "width": 240,
+      "height": 90
+    },
+    {
+      "id": "e_illmmiddleware",
+      "entity": "e_illmmiddleware",
+      "zone": "z_sub_domain",
+      "container": "z_sub_domain",
+      "x": 620,
+      "y": 230,
+      "width": 240,
+      "height": 90
+    },
+    {
+      "id": "e_llmturncontext",
+      "entity": "e_llmturncontext",
+      "zone": "z_sub_domain",
+      "container": "z_sub_domain",
+      "x": 60,
+      "y": 360,
+      "width": 240,
+      "height": 90
+    },
+    {
+      "id": "e_llmproviderregistry",
+      "entity": "e_llmproviderregistry",
+      "zone": "z_sub_domain",
+      "container": "z_sub_domain",
+      "x": 340,
+      "y": 360,
+      "width": 240,
+      "height": 90
+    },
+    {
+      "id": "e_reasoningchoice",
+      "entity": "e_reasoningchoice",
+      "zone": "z_sub_domain",
+      "container": "z_sub_domain",
+      "x": 620,
+      "y": 360,
+      "width": 240,
+      "height": 90
+    },
+    {
+      "id": "e_icapabilitygate",
+      "entity": "e_icapabilitygate",
+      "zone": "z_sub_domain",
+      "container": "z_sub_domain",
+      "x": 60,
+      "y": 490,
+      "width": 240,
+      "height": 90
+    },
+    {
+      "id": "e_zone",
+      "entity": "e_zone",
+      "zone": "z_sub_domain",
+      "container": "z_sub_domain",
+      "x": 340,
+      "y": 490,
+      "width": 240,
+      "height": 90
+    },
+    {
+      "id": "e_ishell",
+      "entity": "e_ishell",
+      "zone": "z_sub_domain",
+      "container": "z_sub_domain",
+      "x": 620,
+      "y": 490,
+      "width": 240,
+      "height": 90
+    },
+    {
+      "id": "e_iworkspace",
+      "entity": "e_iworkspace",
+      "zone": "z_sub_domain",
+      "container": "z_sub_domain",
+      "x": 60,
+      "y": 620,
+      "width": 240,
+      "height": 90
+    },
+    {
+      "id": "e_isandbox",
+      "entity": "e_isandbox",
+      "zone": "z_sub_domain",
+      "container": "z_sub_domain",
+      "x": 340,
+      "y": 620,
+      "width": 240,
+      "height": 90
+    },
+    {
+      "id": "e_progresstree",
+      "entity": "e_progresstree",
+      "zone": "z_sub_domain",
+      "container": "z_sub_domain",
+      "x": 620,
+      "y": 620,
+      "width": 240,
+      "height": 90
+    },
+    {
+      "id": "e_ichatstore",
+      "entity": "e_ichatstore",
+      "zone": "z_sub_domain",
+      "container": "z_sub_domain",
+      "x": 60,
+      "y": 750,
+      "width": 240,
+      "height": 90
+    },
+    {
+      "id": "e_iprojectprovider",
+      "entity": "e_iprojectprovider",
+      "zone": "z_sub_domain",
+      "container": "z_sub_domain",
+      "x": 340,
+      "y": 750,
+      "width": 240,
+      "height": 90
+    },
+    {
+      "id": "e_keyvaluestore",
+      "entity": "e_keyvaluestore",
+      "zone": "z_sub_domain",
+      "container": "z_sub_domain",
+      "x": 620,
+      "y": 750,
+      "width": 240,
+      "height": 90
+    },
+    {
+      "id": "e_blobstore",
+      "entity": "e_blobstore",
+      "zone": "z_sub_domain",
+      "container": "z_sub_domain",
+      "x": 60,
+      "y": 880,
+      "width": 240,
+      "height": 90
+    },
+    {
+      "id": "e_isecretstore",
+      "entity": "e_isecretstore",
+      "zone": "z_sub_domain",
+      "container": "z_sub_domain",
+      "x": 340,
+      "y": 880,
+      "width": 240,
+      "height": 90
+    },
+    {
+      "id": "e_secretresolver",
+      "entity": "e_secretresolver",
+      "zone": "z_sub_domain",
+      "container": "z_sub_domain",
+      "x": 620,
+      "y": 880,
+      "width": 240,
+      "height": 90
+    },
+    {
+      "id": "e_filetokenusagestore",
+      "entity": "e_filetokenusagestore",
+      "zone": "z_sub_domain",
+      "container": "z_sub_domain",
+      "x": 60,
+      "y": 1010,
+      "width": 240,
+      "height": 90
+    },
+    {
+      "id": "e_agentcontextcomposer",
+      "entity": "e_agentcontextcomposer",
+      "zone": "z_sub_mcp",
+      "container": "z_sub_mcp",
+      "x": 1100,
+      "y": 100,
+      "width": 240,
+      "height": 90
+    },
+    {
+      "id": "e_iagentcontributor",
+      "entity": "e_iagentcontributor",
+      "zone": "z_sub_mcp",
+      "container": "z_sub_mcp",
+      "x": 1380,
+      "y": 100,
+      "width": 240,
+      "height": 90
+    },
+    {
+      "id": "e_contextitem",
+      "entity": "e_contextitem",
+      "zone": "z_sub_mcp",
+      "container": "z_sub_mcp",
+      "x": 1660,
+      "y": 100,
+      "width": 240,
+      "height": 90
+    },
+    {
+      "id": "e_agentfeaturecatalog",
+      "entity": "e_agentfeaturecatalog",
+      "zone": "z_sub_mcp",
+      "container": "z_sub_mcp",
+      "x": 1100,
+      "y": 230,
+      "width": 240,
+      "height": 90
+    },
+    {
+      "id": "e_toolsetregistry",
+      "entity": "e_toolsetregistry",
+      "zone": "z_sub_mcp",
+      "container": "z_sub_mcp",
+      "x": 1380,
+      "y": 230,
+      "width": 240,
+      "height": 90
+    },
+    {
+      "id": "e_mcphost",
+      "entity": "e_mcphost",
+      "zone": "z_sub_mcp",
+      "container": "z_sub_mcp",
+      "x": 1660,
+      "y": 230,
+      "width": 240,
+      "height": 90
+    },
+    {
+      "id": "e_toolpipelineblueprint",
+      "entity": "e_toolpipelineblueprint",
+      "zone": "z_sub_mcp",
+      "container": "z_sub_mcp",
+      "x": 1100,
+      "y": 360,
+      "width": 240,
+      "height": 90
+    },
+    {
+      "id": "e_itoolmiddleware",
+      "entity": "e_itoolmiddleware",
+      "zone": "z_sub_mcp",
+      "container": "z_sub_mcp",
+      "x": 1380,
+      "y": 360,
+      "width": 240,
+      "height": 90
+    },
+    {
+      "id": "e_toolresolutionstage",
+      "entity": "e_toolresolutionstage",
+      "zone": "z_sub_mcp",
+      "container": "z_sub_mcp",
+      "x": 1660,
+      "y": 360,
+      "width": 240,
+      "height": 90
+    },
+    {
+      "id": "e_permissionstage",
+      "entity": "e_permissionstage",
+      "zone": "z_sub_mcp",
+      "container": "z_sub_mcp",
+      "x": 1100,
+      "y": 490,
+      "width": 240,
+      "height": 90
+    },
+    {
+      "id": "e_permissionmanager",
+      "entity": "e_permissionmanager",
+      "zone": "z_sub_mcp",
+      "container": "z_sub_mcp",
+      "x": 1380,
+      "y": 490,
+      "width": 240,
+      "height": 90
+    },
+    {
+      "id": "e_zoneshadowstage",
+      "entity": "e_zoneshadowstage",
+      "zone": "z_sub_mcp",
+      "container": "z_sub_mcp",
+      "x": 1660,
+      "y": 490,
+      "width": 240,
+      "height": 90
+    },
+    {
+      "id": "e_edgeclassifier",
+      "entity": "e_edgeclassifier",
+      "zone": "z_sub_mcp",
+      "container": "z_sub_mcp",
+      "x": 1100,
+      "y": 620,
+      "width": 240,
+      "height": 90
+    },
+    {
+      "id": "e_edgeledger",
+      "entity": "e_edgeledger",
+      "zone": "z_sub_mcp",
+      "container": "z_sub_mcp",
+      "x": 1380,
+      "y": 620,
+      "width": 240,
+      "height": 90
+    },
+    {
+      "id": "e_backgroundstage",
+      "entity": "e_backgroundstage",
+      "zone": "z_sub_mcp",
+      "container": "z_sub_mcp",
+      "x": 1660,
+      "y": 620,
+      "width": 240,
+      "height": 90
+    },
+    {
+      "id": "e_progressnodestage",
+      "entity": "e_progressnodestage",
+      "zone": "z_sub_mcp",
+      "container": "z_sub_mcp",
+      "x": 1100,
+      "y": 750,
+      "width": 240,
+      "height": 90
+    },
+    {
+      "id": "e_datachannel",
+      "entity": "e_datachannel",
+      "zone": "z_sub_mcp",
+      "container": "z_sub_mcp",
+      "x": 1380,
+      "y": 750,
+      "width": 240,
+      "height": 90
+    },
+    {
+      "id": "e_chatruntime",
+      "entity": "e_chatruntime",
+      "zone": "z_sub_runtime",
+      "container": "z_sub_runtime",
+      "x": 2140,
+      "y": 100,
+      "width": 240,
+      "height": 90
+    },
+    {
+      "id": "e_chatregistry",
+      "entity": "e_chatregistry",
+      "zone": "z_sub_runtime",
+      "container": "z_sub_runtime",
+      "x": 2420,
+      "y": 100,
+      "width": 240,
+      "height": 90
+    },
+    {
+      "id": "e_agentruntime",
+      "entity": "e_agentruntime",
+      "zone": "z_sub_runtime",
+      "container": "z_sub_runtime",
+      "x": 2700,
+      "y": 100,
+      "width": 240,
+      "height": 90
+    },
+    {
+      "id": "e_conversationorchestrator",
+      "entity": "e_conversationorchestrator",
+      "zone": "z_sub_runtime",
+      "container": "z_sub_runtime",
+      "x": 2140,
+      "y": 230,
+      "width": 240,
+      "height": 90
+    },
+    {
+      "id": "e_workingmemoryinjector",
+      "entity": "e_workingmemoryinjector",
+      "zone": "z_sub_runtime",
+      "container": "z_sub_runtime",
+      "x": 2420,
+      "y": 230,
+      "width": 240,
+      "height": 90
+    },
+    {
+      "id": "e_repetitionguardmiddleware",
+      "entity": "e_repetitionguardmiddleware",
+      "zone": "z_sub_runtime",
+      "container": "z_sub_runtime",
+      "x": 2700,
+      "y": 230,
+      "width": 240,
+      "height": 90
+    },
+    {
+      "id": "e_toolrepeattracker",
+      "entity": "e_toolrepeattracker",
+      "zone": "z_sub_runtime",
+      "container": "z_sub_runtime",
+      "x": 2140,
+      "y": 360,
+      "width": 240,
+      "height": 90
+    },
+    {
+      "id": "e_tokenaccountingmiddleware",
+      "entity": "e_tokenaccountingmiddleware",
+      "zone": "z_sub_runtime",
+      "container": "z_sub_runtime",
+      "x": 2420,
+      "y": 360,
+      "width": 240,
+      "height": 90
+    },
+    {
+      "id": "e_spawnedagentrunner",
+      "entity": "e_spawnedagentrunner",
+      "zone": "z_sub_runtime",
+      "container": "z_sub_runtime",
+      "x": 2700,
+      "y": 360,
+      "width": 240,
+      "height": 90
+    },
+    {
+      "id": "e_serviceevents",
+      "entity": "e_serviceevents",
+      "zone": "z_sub_runtime",
+      "container": "z_sub_runtime",
+      "x": 2140,
+      "y": 490,
+      "width": 240,
+      "height": 90
+    },
+    {
+      "id": "e_openaicompatibleclient",
+      "entity": "e_openaicompatibleclient",
+      "zone": "z_sub_llm",
+      "container": "z_sub_llm",
+      "x": 3180,
+      "y": 100,
+      "width": 240,
+      "height": 90
+    },
+    {
+      "id": "e_lmstudioprovider",
+      "entity": "e_lmstudioprovider",
+      "zone": "z_sub_llm",
+      "container": "z_sub_llm",
+      "x": 3460,
+      "y": 100,
+      "width": 240,
+      "height": 90
+    },
+    {
+      "id": "e_openrouterprovider",
+      "entity": "e_openrouterprovider",
+      "zone": "z_sub_llm",
+      "container": "z_sub_llm",
+      "x": 3740,
+      "y": 100,
+      "width": 240,
+      "height": 90
+    },
+    {
+      "id": "e_chatpump",
+      "entity": "e_chatpump",
+      "zone": "z_sub_service",
+      "container": "z_sub_service",
+      "x": 4220,
+      "y": 100,
+      "width": 240,
+      "height": 90
+    },
+    {
+      "id": "e_chatturndriver",
+      "entity": "e_chatturndriver",
+      "zone": "z_sub_service",
+      "container": "z_sub_service",
+      "x": 4500,
+      "y": 100,
+      "width": 240,
+      "height": 90
+    },
+    {
+      "id": "e_mcpproxytool",
+      "entity": "e_mcpproxytool",
+      "zone": "z_sub_service",
+      "container": "z_sub_service",
+      "x": 4780,
+      "y": 100,
+      "width": 240,
+      "height": 90
+    },
+    {
+      "id": "e_mcpserversession",
+      "entity": "e_mcpserversession",
+      "zone": "z_sub_service",
+      "container": "z_sub_service",
+      "x": 4220,
+      "y": 230,
+      "width": 240,
+      "height": 90
+    },
+    {
+      "id": "e_splaservicehost",
+      "entity": "e_splaservicehost",
+      "zone": "z_sub_service",
+      "container": "z_sub_service",
+      "x": 4500,
+      "y": 230,
+      "width": 240,
+      "height": 90
+    },
+    {
+      "id": "e_messagerouter",
+      "entity": "e_messagerouter",
+      "zone": "z_sub_service",
+      "container": "z_sub_service",
+      "x": 4780,
+      "y": 230,
+      "width": 240,
+      "height": 90
+    },
+    {
+      "id": "e_mcpstdioserver",
+      "entity": "e_mcpstdioserver",
+      "zone": "z_sub_service",
+      "container": "z_sub_service",
+      "x": 4220,
+      "y": 360,
+      "width": 240,
+      "height": 90
+    },
+    {
+      "id": "e_iinstanceregistry",
+      "entity": "e_iinstanceregistry",
+      "zone": "z_sub_service",
+      "container": "z_sub_service",
+      "x": 4500,
+      "y": 360,
+      "width": 240,
+      "height": 90
+    },
+    {
+      "id": "e_windowsidentityresolver",
+      "entity": "e_windowsidentityresolver",
+      "zone": "z_sub_service",
+      "container": "z_sub_service",
+      "x": 4780,
+      "y": 360,
+      "width": 240,
+      "height": 90
+    },
+    {
+      "id": "e_basictools",
+      "entity": "e_basictools",
+      "zone": "z_sub_plugins",
+      "container": "z_sub_plugins",
+      "x": 5260,
+      "y": 100,
+      "width": 240,
+      "height": 90
+    },
+    {
+      "id": "e_pluginmanager",
+      "entity": "e_pluginmanager",
+      "zone": "z_sub_plugins",
+      "container": "z_sub_plugins",
+      "x": 5540,
+      "y": 100,
+      "width": 240,
+      "height": 90
+    },
+    {
+      "id": "e_pluginloadcontext",
+      "entity": "e_pluginloadcontext",
+      "zone": "z_sub_plugins",
+      "container": "z_sub_plugins",
+      "x": 5820,
+      "y": 100,
+      "width": 240,
+      "height": 90
+    },
+    {
+      "id": "e_webclient",
+      "entity": "e_webclient",
+      "zone": "z_sub_apps",
+      "container": "z_sub_apps",
+      "x": 6300,
+      "y": 100,
+      "width": 240,
+      "height": 90
+    },
+    {
+      "id": "e_cli",
+      "entity": "e_cli",
+      "zone": "z_sub_apps",
+      "container": "z_sub_apps",
+      "x": 6580,
+      "y": 100,
+      "width": 240,
+      "height": 90
+    },
+    {
+      "id": "e_avalonia",
+      "entity": "e_avalonia",
+      "zone": "z_sub_apps",
+      "container": "z_sub_apps",
+      "x": 6860,
+      "y": 100,
+      "width": 240,
+      "height": 90
+    },
+    {
+      "id": "e_model",
+      "entity": "e_model",
+      "zone": "z_sub_external",
+      "container": "z_sub_external",
+      "x": 7340,
+      "y": 100,
+      "width": 240,
+      "height": 90
+    },
+    {
+      "id": "e_host_os",
+      "entity": "e_host_os",
+      "zone": "z_sub_external",
+      "container": "z_sub_external",
+      "x": 7620,
+      "y": 100,
+      "width": 240,
+      "height": 90
+    }
+  ]
+}

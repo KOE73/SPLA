@@ -27,7 +27,7 @@
 ## Конструкция
 
 ```
-system_run_shell ──► IShell.RunAsync ──► процесс + 2 читающих насоса ──► буфер (+ метка времени)
+system_run_shell ──► IShell.RunAsync ──► процесс + 2 читателя ──► буфер (+ метка времени)
                                                     │
                                     ┌───────────────┴───────────────┐
                               процесс вышел                    простой
@@ -57,7 +57,7 @@ system_run_shell ──► IShell.RunAsync ──► процесс + 2 чита
 ### Реализация (`LocalShell`)
 
 - `RedirectStandardInput = true`; поток **остаётся открытым** после старта.
-- Два фоновых насоса (`stdout`, `stderr`) читают чанками в `StringBuilder` под замком и двигают
+- Два фоновых читателя (`stdout`, `stderr`) читают чанками в `StringBuilder` под замком и двигают
   `_lastOutputUtc`. Никакого `ReadToEndAsync`.
 - Цикл ожидания: опрос ~100 мс. Выход из цикла — завершение процесса, либо простой сверх порога,
   либо `ct`.
@@ -91,7 +91,7 @@ system_run_shell ──► IShell.RunAsync ──► процесс + 2 чита
 ## Этапы
 
 - [x] **1. Контракт.** `ShellStatus`, поля `ShellCommand`/`ShellResult`, два метода в `IShell`.
-- [x] **2. `LocalShell`.** Насосы, буфер с меткой времени, два порога, реестр сессий, `Dispose`.
+- [x] **2. `LocalShell`.** Читатели, буфер с меткой времени, два порога, реестр сессий, `Dispose`.
 - [x] **3. Инструменты.** Новый вывод у `RunCommandTool`; `ResumeShellTool`, `KillShellTool`.
 - [x] **4. Регистрация.** `AgentRuntime` (`Feature("core.shell", ...)`), `AgentFeatureCatalog`
       (описание фичи со списком инструментов).

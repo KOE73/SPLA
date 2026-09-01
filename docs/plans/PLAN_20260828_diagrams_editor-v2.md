@@ -1,14 +1,23 @@
 # PLAN_20260828_diagrams — Редактор схем v2
 
-Статус: **к исполнению**. Кода нет.
+Статус: **закрыт. Замысел исполнен другим способом** (2026-08-31).
+
+> План предполагал новый пакет `tools/spla-atlas-editor` при
+> `tools/spla-diagram`, замороженном на v1. Вышло наоборот: до v2, а затем до
+> **v3** был поднят сам `tools/spla-diagram` — он и есть работающий редактор,
+> а `tools/spla-atlas-editor` так и остался пустой папкой.
+>
+> Требования плана (панель базы, вид как выборка, ручная раскладка) в силе и
+> выполнены в `spla-diagram`. Ниже — исторический текст; читать как обоснование
+> требований, **не** как указание, что и где писать.
+>
+> Текущее состояние: [`CONTRACT.md`](../../tools/spla-diagram/docs/CONTRACT.md) (v3),
+> [`docs/diagrams/projects/AGENTS.md`](../diagrams/projects/AGENTS.md),
+> [`ADR_20260831`](../adr/ADR_20260831_diagrams_text-provenance-and-view-axes.md).
 
 Решение и обоснование: [`ADR_20260828_diagrams_model-contract-v2`](../adr/ADR_20260828_diagrams_model-contract-v2.md).
 Формы файлов: [`docs/diagrams/projects/AGENTS.md`](../diagrams/projects/AGENTS.md).
 Парная работа по утилите: [`tools/spla-atlas/AGENTS.md`](../../tools/spla-atlas/AGENTS.md).
-
-**Пишется новый пакет `tools/spla-atlas-editor`, а не правится существующий.**
-`tools/spla-diagram` остаётся работающим на контракте v1 до конца переезда и
-служит референсом — ровно так же, как `tools/spla-arch` для утилиты.
 
 ---
 

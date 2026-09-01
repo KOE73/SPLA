@@ -1,0 +1,1204 @@
+{
+  "id": "v_turn",
+  "project": "spla_system",
+  "axis": "axis_turn",
+  "relations": {
+    "default": "visible",
+    "except": []
+  },
+  "zones": [
+    {
+      "id": "z_turn_intake",
+      "container": "c_turn_intake",
+      "parent": null,
+      "x": 4940,
+      "y": -2050,
+      "width": 2870,
+      "height": 1160
+    },
+    {
+      "id": "z_turn_compose",
+      "container": "c_turn_compose",
+      "parent": null,
+      "x": 2020,
+      "y": -2150,
+      "width": 1400,
+      "height": 870
+    },
+    {
+      "id": "z_turn_model",
+      "container": "c_turn_model",
+      "parent": null,
+      "x": 2080,
+      "y": -360,
+      "width": 920,
+      "height": 1590
+    },
+    {
+      "id": "z_turn_dispatch",
+      "container": "c_turn_dispatch",
+      "parent": null,
+      "x": 3120,
+      "y": -770,
+      "width": 920,
+      "height": 3270
+    },
+    {
+      "id": "z_turn_execute",
+      "container": "c_turn_execute",
+      "parent": null,
+      "x": 4190,
+      "y": -640,
+      "width": 1500,
+      "height": 3190
+    },
+    {
+      "id": "z_turn_return",
+      "container": "c_turn_return",
+      "parent": null,
+      "x": 6170,
+      "y": -580,
+      "width": 920,
+      "height": 2900
+    },
+    {
+      "id": "z_turn_persist",
+      "container": "c_turn_persist",
+      "parent": null,
+      "x": 7730,
+      "y": -270,
+      "width": 920,
+      "height": 2410
+    }
+  ],
+  "nodes": [
+    {
+      "id": "e_chatinbox",
+      "container": "z_turn_intake",
+      "x": 5400,
+      "y": -1100,
+      "width": 360,
+      "height": 140
+    },
+    {
+      "id": "e_chatpump",
+      "container": "z_turn_intake",
+      "x": 5520,
+      "y": -1900,
+      "width": 240,
+      "height": 60
+    },
+    {
+      "id": "e_chatturndriver",
+      "container": "z_turn_intake",
+      "x": 6370,
+      "y": -1940,
+      "width": 240,
+      "height": 120
+    },
+    {
+      "id": "e_chatruntime",
+      "container": "z_turn_intake",
+      "x": 6550,
+      "y": -1600,
+      "width": 240,
+      "height": 90
+    },
+    {
+      "id": "e_chatregistry",
+      "container": "z_turn_intake",
+      "x": 6850,
+      "y": -1680,
+      "width": 240,
+      "height": 180
+    },
+    {
+      "id": "e_agentruntime",
+      "container": "z_turn_intake",
+      "x": 6230,
+      "y": -1680,
+      "width": 240,
+      "height": 90
+    },
+    {
+      "id": "e_splaservicehost",
+      "container": "z_turn_intake",
+      "x": 5350,
+      "y": -1510,
+      "width": 240,
+      "height": 90
+    },
+    {
+      "id": "e_messagerouter",
+      "container": "z_turn_intake",
+      "x": 5690,
+      "y": -1520,
+      "width": 240,
+      "height": 120
+    },
+    {
+      "id": "e_webclient",
+      "container": "z_turn_intake",
+      "x": 6070,
+      "y": -1520,
+      "width": 240,
+      "height": 90
+    },
+    {
+      "id": "e_cli",
+      "container": "z_turn_intake",
+      "x": 5710,
+      "y": -1260,
+      "width": 240,
+      "height": 90
+    },
+    {
+      "id": "e_avalonia",
+      "container": "z_turn_intake",
+      "x": 5990,
+      "y": -1230,
+      "width": 240,
+      "height": 90
+    },
+    {
+      "id": "e_iinstanceregistry",
+      "container": "z_turn_intake",
+      "x": 5320,
+      "y": -1770,
+      "width": 240,
+      "height": 90
+    },
+    {
+      "id": "e_windowsidentityresolver",
+      "container": "z_turn_intake",
+      "x": 5230,
+      "y": -1650,
+      "width": 240,
+      "height": 90
+    },
+    {
+      "id": "e_agentcontextcomposer",
+      "container": "z_turn_compose",
+      "x": 2690,
+      "y": -1920,
+      "width": 240,
+      "height": 90
+    },
+    {
+      "id": "e_iagentcontributor",
+      "container": "z_turn_compose",
+      "x": 2350,
+      "y": -1920,
+      "width": 240,
+      "height": 90
+    },
+    {
+      "id": "e_contextitem",
+      "container": "z_turn_compose",
+      "x": 2070,
+      "y": -1920,
+      "width": 240,
+      "height": 90
+    },
+    {
+      "id": "e_contextassembler",
+      "container": "z_turn_compose",
+      "x": 2700,
+      "y": -1780,
+      "width": 240,
+      "height": 90
+    },
+    {
+      "id": "e_workingmemoryinjector",
+      "container": "z_turn_compose",
+      "x": 2390,
+      "y": -1570,
+      "width": 240,
+      "height": 90
+    },
+    {
+      "id": "e_agentfeaturecatalog",
+      "container": "z_turn_compose",
+      "x": 2350,
+      "y": -2080,
+      "width": 240,
+      "height": 90
+    },
+    {
+      "id": "e_skillsession",
+      "container": "z_turn_compose",
+      "x": 2200,
+      "y": -1780,
+      "width": 240,
+      "height": 90
+    },
+    {
+      "id": "e_toolsetregistry",
+      "container": "z_turn_compose",
+      "x": 2690,
+      "y": -2050,
+      "width": 240,
+      "height": 90
+    },
+    {
+      "id": "e_model",
+      "container": "z_turn_model",
+      "x": 2700,
+      "y": 540,
+      "width": 240,
+      "height": 90
+    },
+    {
+      "id": "e_illmgateway",
+      "container": "z_turn_model",
+      "x": 2190,
+      "y": 570,
+      "width": 430,
+      "height": 90
+    },
+    {
+      "id": "e_llmpipelineblueprint",
+      "container": "z_turn_model",
+      "x": 2330,
+      "y": -70,
+      "width": 240,
+      "height": 90
+    },
+    {
+      "id": "e_illmmiddleware",
+      "container": "z_turn_model",
+      "x": 2430,
+      "y": 90,
+      "width": 240,
+      "height": 90
+    },
+    {
+      "id": "e_repetitionguardmiddleware",
+      "container": "z_turn_model",
+      "x": 2420,
+      "y": 230,
+      "width": 240,
+      "height": 90
+    },
+    {
+      "id": "e_tokenaccountingmiddleware",
+      "container": "z_turn_model",
+      "x": 2700,
+      "y": 230,
+      "width": 240,
+      "height": 90
+    },
+    {
+      "id": "e_llmturncontext",
+      "container": "z_turn_model",
+      "x": 2140,
+      "y": 360,
+      "width": 240,
+      "height": 90
+    },
+    {
+      "id": "e_llmproviderregistry",
+      "container": "z_turn_model",
+      "x": 2420,
+      "y": 360,
+      "width": 240,
+      "height": 90
+    },
+    {
+      "id": "e_openaicompatibleclient",
+      "container": "z_turn_model",
+      "x": 2580,
+      "y": 730,
+      "width": 240,
+      "height": 90
+    },
+    {
+      "id": "e_lmstudioprovider",
+      "container": "z_turn_model",
+      "x": 2720,
+      "y": 1000,
+      "width": 240,
+      "height": 90
+    },
+    {
+      "id": "e_openrouterprovider",
+      "container": "z_turn_model",
+      "x": 2410,
+      "y": 980,
+      "width": 240,
+      "height": 90
+    },
+    {
+      "id": "e_reasoningchoice",
+      "container": "z_turn_model",
+      "x": 2180,
+      "y": 710,
+      "width": 240,
+      "height": 90
+    },
+    {
+      "id": "e_toolrepeattracker",
+      "container": "z_turn_dispatch",
+      "x": 3180,
+      "y": 100,
+      "width": 240,
+      "height": 90
+    },
+    {
+      "id": "e_mcphost",
+      "container": "z_turn_dispatch",
+      "x": 3480,
+      "y": 710,
+      "width": 240,
+      "height": 380
+    },
+    {
+      "id": "e_toolpipelineblueprint",
+      "container": "z_turn_dispatch",
+      "x": 3460,
+      "y": 1260,
+      "width": 240,
+      "height": 90
+    },
+    {
+      "id": "e_itoolmiddleware",
+      "container": "z_turn_dispatch",
+      "x": 3470,
+      "y": 1390,
+      "width": 240,
+      "height": 140
+    },
+    {
+      "id": "e_toolresolutionstage",
+      "container": "z_turn_dispatch",
+      "x": 3460,
+      "y": 230,
+      "width": 240,
+      "height": 90
+    },
+    {
+      "id": "e_permissionstage",
+      "container": "z_turn_dispatch",
+      "x": 3470,
+      "y": 1580,
+      "width": 240,
+      "height": 90
+    },
+    {
+      "id": "e_permissionmanager",
+      "container": "z_turn_dispatch",
+      "x": 3470,
+      "y": 1720,
+      "width": 240,
+      "height": 90
+    },
+    {
+      "id": "e_icapabilitygate",
+      "container": "z_turn_dispatch",
+      "x": 3480,
+      "y": 1860,
+      "width": 240,
+      "height": 580
+    },
+    {
+      "id": "e_zoneshadowstage",
+      "container": "z_turn_dispatch",
+      "x": 3170,
+      "y": 670,
+      "width": 240,
+      "height": 90
+    },
+    {
+      "id": "e_zone",
+      "container": "z_turn_dispatch",
+      "x": 3180,
+      "y": 490,
+      "width": 240,
+      "height": 90
+    },
+    {
+      "id": "e_edgeclassifier",
+      "container": "z_turn_dispatch",
+      "x": 3460,
+      "y": 490,
+      "width": 240,
+      "height": 90
+    },
+    {
+      "id": "e_backgroundstage",
+      "container": "z_turn_execute",
+      "x": 5230,
+      "y": 1390,
+      "width": 240,
+      "height": 90
+    },
+    {
+      "id": "e_progressnodestage",
+      "container": "z_turn_execute",
+      "x": 5230,
+      "y": 1520,
+      "width": 240,
+      "height": 90
+    },
+    {
+      "id": "e_basictools",
+      "container": "z_turn_execute",
+      "x": 4290,
+      "y": 1320,
+      "width": 240,
+      "height": 90
+    },
+    {
+      "id": "e_pluginmanager",
+      "container": "z_turn_execute",
+      "x": 4540,
+      "y": 990,
+      "width": 240,
+      "height": 90
+    },
+    {
+      "id": "e_pluginloadcontext",
+      "container": "z_turn_execute",
+      "x": 4850,
+      "y": 990,
+      "width": 170,
+      "height": 90
+    },
+    {
+      "id": "e_ishell",
+      "container": "z_turn_execute",
+      "x": 4630,
+      "y": 1960,
+      "width": 240,
+      "height": 90
+    },
+    {
+      "id": "e_iworkspace",
+      "container": "z_turn_execute",
+      "x": 4590,
+      "y": 2390,
+      "width": 240,
+      "height": 90
+    },
+    {
+      "id": "e_isandbox",
+      "container": "z_turn_execute",
+      "x": 4470,
+      "y": 2100,
+      "width": 240,
+      "height": 90
+    },
+    {
+      "id": "e_mcpproxytool",
+      "container": "z_turn_execute",
+      "x": 4270,
+      "y": 780,
+      "width": 240,
+      "height": 90
+    },
+    {
+      "id": "e_mcpserversession",
+      "container": "z_turn_execute",
+      "x": 4570,
+      "y": 780,
+      "width": 240,
+      "height": 90
+    },
+    {
+      "id": "e_spawnedagentrunner",
+      "container": "z_turn_execute",
+      "x": 5020,
+      "y": 870,
+      "width": 240,
+      "height": 90
+    },
+    {
+      "id": "e_secretresolver",
+      "container": "z_turn_execute",
+      "x": 4640,
+      "y": 1840,
+      "width": 240,
+      "height": 90
+    },
+    {
+      "id": "e_mcpstdioserver",
+      "container": "z_turn_execute",
+      "x": 4240,
+      "y": 1110,
+      "width": 240,
+      "height": 90
+    },
+    {
+      "id": "e_host_os",
+      "container": "z_turn_execute",
+      "x": 4630,
+      "y": 2240,
+      "width": 240,
+      "height": 90
+    },
+    {
+      "id": "e_conversationorchestrator",
+      "container": "z_turn_return",
+      "x": 6430,
+      "y": -160,
+      "width": 240,
+      "height": 90
+    },
+    {
+      "id": "e_edgeledger",
+      "container": "z_turn_return",
+      "x": 6270,
+      "y": 310,
+      "width": 240,
+      "height": 90
+    },
+    {
+      "id": "e_progresstree",
+      "container": "z_turn_return",
+      "x": 6240,
+      "y": 950,
+      "width": 240,
+      "height": 150
+    },
+    {
+      "id": "e_datachannel",
+      "container": "z_turn_return",
+      "x": 6690,
+      "y": 800,
+      "width": 240,
+      "height": 90
+    },
+    {
+      "id": "e_serviceevents",
+      "container": "z_turn_return",
+      "x": 6260,
+      "y": 590,
+      "width": 240,
+      "height": 90
+    },
+    {
+      "id": "e_ichatstore",
+      "container": "z_turn_persist",
+      "x": 8320,
+      "y": -120,
+      "width": 240,
+      "height": 90
+    },
+    {
+      "id": "e_iprojectprovider",
+      "container": "z_turn_persist",
+      "x": 7840,
+      "y": 410,
+      "width": 760,
+      "height": 90
+    },
+    {
+      "id": "e_keyvaluestore",
+      "container": "z_turn_persist",
+      "x": 8080,
+      "y": 30,
+      "width": 240,
+      "height": 90
+    },
+    {
+      "id": "e_blobstore",
+      "container": "z_turn_persist",
+      "x": 8100,
+      "y": 860,
+      "width": 240,
+      "height": 90
+    },
+    {
+      "id": "e_isecretstore",
+      "container": "z_turn_persist",
+      "x": 7790,
+      "y": 1640,
+      "width": 240,
+      "height": 90
+    },
+    {
+      "id": "e_filetokenusagestore",
+      "container": "z_turn_persist",
+      "x": 7800,
+      "y": 110,
+      "width": 240,
+      "height": 90
+    }
+  ],
+  "edges": [
+    {
+      "id": "r_web_router",
+      "from": "e_webclient",
+      "to": "e_messagerouter",
+      "type": "data-flow",
+      "points": []
+    },
+    {
+      "id": "r_cli_router",
+      "from": "e_cli",
+      "to": "e_messagerouter",
+      "type": "data-flow",
+      "points": []
+    },
+    {
+      "id": "r_avalonia_web",
+      "from": "e_avalonia",
+      "to": "e_webclient",
+      "type": "composes",
+      "points": []
+    },
+    {
+      "id": "r_router_host",
+      "from": "e_messagerouter",
+      "to": "e_splaservicehost",
+      "type": "call",
+      "points": []
+    },
+    {
+      "id": "r_host_inbox",
+      "from": "e_splaservicehost",
+      "to": "e_chatinbox",
+      "type": "data-flow",
+      "points": []
+    },
+    {
+      "id": "r_pump_inbox",
+      "from": "e_chatpump",
+      "to": "e_chatinbox",
+      "type": "data-flow",
+      "points": []
+    },
+    {
+      "id": "r_pump_driver",
+      "from": "e_chatpump",
+      "to": "e_chatturndriver",
+      "type": "call",
+      "points": []
+    },
+    {
+      "id": "r_driver_orch",
+      "from": "e_chatturndriver",
+      "to": "e_conversationorchestrator",
+      "type": "call",
+      "points": []
+    },
+    {
+      "id": "r_orch_chatruntime",
+      "from": "e_conversationorchestrator",
+      "to": "e_chatruntime",
+      "type": "call",
+      "points": []
+    },
+    {
+      "id": "r_registry_chatruntime",
+      "from": "e_chatregistry",
+      "to": "e_chatruntime",
+      "type": "composes",
+      "points": []
+    },
+    {
+      "id": "r_agentruntime_registry",
+      "from": "e_agentruntime",
+      "to": "e_chatregistry",
+      "type": "composes",
+      "points": []
+    },
+    {
+      "id": "r_agentruntime_events",
+      "from": "e_agentruntime",
+      "to": "e_serviceevents",
+      "type": "composes",
+      "points": []
+    },
+    {
+      "id": "r_host_instances",
+      "from": "e_splaservicehost",
+      "to": "e_iinstanceregistry",
+      "type": "call",
+      "points": []
+    },
+    {
+      "id": "r_host_identity",
+      "from": "e_splaservicehost",
+      "to": "e_windowsidentityresolver",
+      "type": "security",
+      "points": []
+    },
+    {
+      "id": "r_orch_composer",
+      "from": "e_conversationorchestrator",
+      "to": "e_agentcontextcomposer",
+      "type": "call",
+      "points": []
+    },
+    {
+      "id": "r_composer_contributor",
+      "from": "e_agentcontextcomposer",
+      "to": "e_iagentcontributor",
+      "type": "call",
+      "points": []
+    },
+    {
+      "id": "r_contributor_item",
+      "from": "e_iagentcontributor",
+      "to": "e_contextitem",
+      "type": "data-flow",
+      "points": []
+    },
+    {
+      "id": "r_wm_contributor",
+      "from": "e_workingmemoryinjector",
+      "to": "e_iagentcontributor",
+      "type": "implements",
+      "points": []
+    },
+    {
+      "id": "r_features_contributor",
+      "from": "e_agentfeaturecatalog",
+      "to": "e_iagentcontributor",
+      "type": "implements",
+      "points": []
+    },
+    {
+      "id": "r_skills_contributor",
+      "from": "e_skillsession",
+      "to": "e_iagentcontributor",
+      "type": "implements",
+      "points": []
+    },
+    {
+      "id": "r_toolsets_composer",
+      "from": "e_toolsetregistry",
+      "to": "e_agentcontextcomposer",
+      "type": "data-flow",
+      "points": []
+    },
+    {
+      "id": "r_composer_assembler",
+      "from": "e_agentcontextcomposer",
+      "to": "e_contextassembler",
+      "type": "call",
+      "points": []
+    },
+    {
+      "id": "r_wm_kv",
+      "from": "e_workingmemoryinjector",
+      "to": "e_keyvaluestore",
+      "type": "storage",
+      "points": []
+    },
+    {
+      "id": "r_assembler_gateway",
+      "from": "e_contextassembler",
+      "to": "e_illmgateway",
+      "type": "data-flow",
+      "points": []
+    },
+    {
+      "id": "r_gateway_blueprint",
+      "from": "e_illmgateway",
+      "to": "e_llmpipelineblueprint",
+      "type": "composes",
+      "points": []
+    },
+    {
+      "id": "r_blueprint_mw",
+      "from": "e_llmpipelineblueprint",
+      "to": "e_illmmiddleware",
+      "type": "composes",
+      "points": []
+    },
+    {
+      "id": "r_repguard_mw",
+      "from": "e_repetitionguardmiddleware",
+      "to": "e_illmmiddleware",
+      "type": "implements",
+      "points": []
+    },
+    {
+      "id": "r_tokenmw_mw",
+      "from": "e_tokenaccountingmiddleware",
+      "to": "e_illmmiddleware",
+      "type": "implements",
+      "points": []
+    },
+    {
+      "id": "r_gateway_ctx",
+      "from": "e_illmgateway",
+      "to": "e_llmturncontext",
+      "type": "composes",
+      "points": []
+    },
+    {
+      "id": "r_gateway_registry",
+      "from": "e_illmgateway",
+      "to": "e_llmproviderregistry",
+      "type": "call",
+      "points": []
+    },
+    {
+      "id": "r_registry_compat",
+      "from": "e_llmproviderregistry",
+      "to": "e_openaicompatibleclient",
+      "type": "call",
+      "points": []
+    },
+    {
+      "id": "r_lmstudio_compat",
+      "from": "e_lmstudioprovider",
+      "to": "e_openaicompatibleclient",
+      "type": "composes",
+      "points": []
+    },
+    {
+      "id": "r_openrouter_compat",
+      "from": "e_openrouterprovider",
+      "to": "e_openaicompatibleclient",
+      "type": "composes",
+      "points": []
+    },
+    {
+      "id": "r_reasoning_gateway",
+      "from": "e_reasoningchoice",
+      "to": "e_illmgateway",
+      "type": "data-flow",
+      "points": []
+    },
+    {
+      "id": "r_compat_model",
+      "from": "e_openaicompatibleclient",
+      "to": "e_model",
+      "type": "call",
+      "points": []
+    },
+    {
+      "id": "r_model_orch",
+      "from": "e_model",
+      "to": "e_conversationorchestrator",
+      "type": "data-flow",
+      "points": []
+    },
+    {
+      "id": "r_tokenmw_usage",
+      "from": "e_tokenaccountingmiddleware",
+      "to": "e_filetokenusagestore",
+      "type": "storage",
+      "points": []
+    },
+    {
+      "id": "r_orch_mcphost",
+      "from": "e_conversationorchestrator",
+      "to": "e_mcphost",
+      "type": "call",
+      "points": []
+    },
+    {
+      "id": "r_mcphost_pipeline",
+      "from": "e_mcphost",
+      "to": "e_toolpipelineblueprint",
+      "type": "composes",
+      "points": []
+    },
+    {
+      "id": "r_pipeline_mw",
+      "from": "e_toolpipelineblueprint",
+      "to": "e_itoolmiddleware",
+      "type": "composes",
+      "points": []
+    },
+    {
+      "id": "r_resolution_mw",
+      "from": "e_toolresolutionstage",
+      "to": "e_itoolmiddleware",
+      "type": "implements",
+      "points": []
+    },
+    {
+      "id": "r_permstage_mw",
+      "from": "e_permissionstage",
+      "to": "e_itoolmiddleware",
+      "type": "implements",
+      "points": []
+    },
+    {
+      "id": "r_zoneshadow_mw",
+      "from": "e_zoneshadowstage",
+      "to": "e_itoolmiddleware",
+      "type": "implements",
+      "points": []
+    },
+    {
+      "id": "r_bg_mw",
+      "from": "e_backgroundstage",
+      "to": "e_itoolmiddleware",
+      "type": "implements",
+      "points": []
+    },
+    {
+      "id": "r_progressstage_mw",
+      "from": "e_progressnodestage",
+      "to": "e_itoolmiddleware",
+      "type": "implements",
+      "points": []
+    },
+    {
+      "id": "r_permstage_manager",
+      "from": "e_permissionstage",
+      "to": "e_permissionmanager",
+      "type": "security",
+      "points": []
+    },
+    {
+      "id": "r_manager_gate",
+      "from": "e_permissionmanager",
+      "to": "e_icapabilitygate",
+      "type": "security",
+      "points": []
+    },
+    {
+      "id": "r_zoneshadow_classifier",
+      "from": "e_zoneshadowstage",
+      "to": "e_edgeclassifier",
+      "type": "call",
+      "points": []
+    },
+    {
+      "id": "r_classifier_zone",
+      "from": "e_edgeclassifier",
+      "to": "e_zone",
+      "type": "call",
+      "points": []
+    },
+    {
+      "id": "r_classifier_ledger",
+      "from": "e_edgeclassifier",
+      "to": "e_edgeledger",
+      "type": "storage",
+      "points": []
+    },
+    {
+      "id": "r_repeat_mcphost",
+      "from": "e_toolrepeattracker",
+      "to": "e_mcphost",
+      "type": "event",
+      "points": []
+    },
+    {
+      "id": "r_gate_shell",
+      "from": "e_icapabilitygate",
+      "to": "e_ishell",
+      "type": "call",
+      "points": []
+    },
+    {
+      "id": "r_gate_workspace",
+      "from": "e_icapabilitygate",
+      "to": "e_iworkspace",
+      "type": "call",
+      "points": []
+    },
+    {
+      "id": "r_gate_sandbox",
+      "from": "e_icapabilitygate",
+      "to": "e_isandbox",
+      "type": "call",
+      "points": []
+    },
+    {
+      "id": "r_shell_sandbox",
+      "from": "e_ishell",
+      "to": "e_isandbox",
+      "type": "call",
+      "points": []
+    },
+    {
+      "id": "r_sandbox_os",
+      "from": "e_isandbox",
+      "to": "e_host_os",
+      "type": "call",
+      "points": []
+    },
+    {
+      "id": "r_shell_os",
+      "from": "e_ishell",
+      "to": "e_host_os",
+      "type": "call",
+      "points": []
+    },
+    {
+      "id": "r_workspace_os",
+      "from": "e_iworkspace",
+      "to": "e_host_os",
+      "type": "storage",
+      "points": []
+    },
+    {
+      "id": "r_mcphost_basictools",
+      "from": "e_mcphost",
+      "to": "e_basictools",
+      "type": "call",
+      "points": []
+    },
+    {
+      "id": "r_basictools_gate",
+      "from": "e_basictools",
+      "to": "e_icapabilitygate",
+      "type": "call",
+      "points": []
+    },
+    {
+      "id": "r_mcphost_plugins",
+      "from": "e_mcphost",
+      "to": "e_pluginmanager",
+      "type": "call",
+      "points": []
+    },
+    {
+      "id": "r_pluginmanager_alc",
+      "from": "e_pluginmanager",
+      "to": "e_pluginloadcontext",
+      "type": "composes",
+      "points": []
+    },
+    {
+      "id": "r_mcphost_proxy",
+      "from": "e_mcphost",
+      "to": "e_mcpproxytool",
+      "type": "call",
+      "points": []
+    },
+    {
+      "id": "r_proxy_session",
+      "from": "e_mcpproxytool",
+      "to": "e_mcpserversession",
+      "type": "call",
+      "points": []
+    },
+    {
+      "id": "r_mcphost_spawn",
+      "from": "e_mcphost",
+      "to": "e_spawnedagentrunner",
+      "type": "call",
+      "points": []
+    },
+    {
+      "id": "r_spawn_orch",
+      "from": "e_spawnedagentrunner",
+      "to": "e_conversationorchestrator",
+      "type": "call",
+      "points": []
+    },
+    {
+      "id": "r_secretresolver_store",
+      "from": "e_secretresolver",
+      "to": "e_isecretstore",
+      "type": "security",
+      "points": []
+    },
+    {
+      "id": "r_gate_secret",
+      "from": "e_icapabilitygate",
+      "to": "e_secretresolver",
+      "type": "security",
+      "points": []
+    },
+    {
+      "id": "r_progressstage_tree",
+      "from": "e_progressnodestage",
+      "to": "e_progresstree",
+      "type": "data-flow",
+      "points": []
+    },
+    {
+      "id": "r_spawn_tree",
+      "from": "e_spawnedagentrunner",
+      "to": "e_progresstree",
+      "type": "data-flow",
+      "points": []
+    },
+    {
+      "id": "r_tree_events",
+      "from": "e_progresstree",
+      "to": "e_serviceevents",
+      "type": "event",
+      "points": []
+    },
+    {
+      "id": "r_events_web",
+      "from": "e_serviceevents",
+      "to": "e_webclient",
+      "type": "event",
+      "points": []
+    },
+    {
+      "id": "r_bg_inbox",
+      "from": "e_backgroundstage",
+      "to": "e_chatinbox",
+      "type": "data-flow",
+      "points": []
+    },
+    {
+      "id": "r_datachannel_blob",
+      "from": "e_datachannel",
+      "to": "e_blobstore",
+      "type": "storage",
+      "points": []
+    },
+    {
+      "id": "r_mcphost_datachannel",
+      "from": "e_mcphost",
+      "to": "e_datachannel",
+      "type": "data-flow",
+      "points": []
+    },
+    {
+      "id": "r_orch_chatstore",
+      "from": "e_conversationorchestrator",
+      "to": "e_ichatstore",
+      "type": "storage",
+      "points": []
+    },
+    {
+      "id": "r_chatstore_provider",
+      "from": "e_ichatstore",
+      "to": "e_iprojectprovider",
+      "type": "composes",
+      "points": []
+    },
+    {
+      "id": "r_kv_provider",
+      "from": "e_keyvaluestore",
+      "to": "e_iprojectprovider",
+      "type": "composes",
+      "points": []
+    },
+    {
+      "id": "r_blob_provider",
+      "from": "e_blobstore",
+      "to": "e_iprojectprovider",
+      "type": "composes",
+      "points": []
+    },
+    {
+      "id": "r_usage_provider",
+      "from": "e_filetokenusagestore",
+      "to": "e_iprojectprovider",
+      "type": "composes",
+      "points": []
+    },
+    {
+      "id": "r_provider_zone",
+      "from": "e_iprojectprovider",
+      "to": "e_zone",
+      "type": "security",
+      "points": []
+    },
+    {
+      "id": "r_stdio_mcphost",
+      "from": "e_mcpstdioserver",
+      "to": "e_mcphost",
+      "type": "call",
+      "points": []
+    }
+  ]
+}

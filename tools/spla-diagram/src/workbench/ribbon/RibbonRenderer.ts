@@ -30,8 +30,45 @@ export class RibbonRenderer {
       return tab.contextual === currentKind;
     });
 
-    const header = el("div", { class: "ribbon-tab-bar" });
+    const header = el("div", { class: "ribbon-header-inner" });
 
+    // 1. Quick Access Toolbar (Save, Undo, Redo)
+    const qat = el("div", { class: "ribbon-qat" });
+    const qatCommands = ["file.save", "edit.undo", "edit.redo"];
+    for (const cmdId of qatCommands) {
+      const state = this.registry.getState(cmdId, ctx);
+      const dataset: Record<string, string> = {
+        tooltipCommand: cmdId,
+        commandId: cmdId,
+      };
+      if (state.keyTip) dataset.keyTip = state.keyTip;
+
+      const btn = el("button", {
+        class: "ribbon-qat-btn",
+        dataset,
+        attrs: !state.enabled ? { disabled: "true" } : {},
+        on: {
+          click: (e: MouseEvent) => {
+            e.stopPropagation();
+            void this.registry.execute(cmdId, btn);
+          },
+        },
+      });
+
+      const icon = state.icon || "⚙️";
+      const iconSpan = el("span", { class: "ribbon-qat-icon" });
+      if (icon.startsWith("<svg")) {
+        iconSpan.innerHTML = icon;
+      } else {
+        iconSpan.textContent = icon;
+      }
+      btn.appendChild(iconSpan);
+      qat.appendChild(btn);
+    }
+    header.appendChild(qat);
+
+    // 2. Tabs Bar
+    const tabBar = el("div", { class: "ribbon-tab-bar" });
     for (const tab of visibleTabs) {
       const isActive = tab.id === activeTabId;
       const isContextual = Boolean(tab.contextual);
@@ -51,8 +88,9 @@ export class RibbonRenderer {
         },
       );
 
-      header.appendChild(tabBtn);
+      tabBar.appendChild(tabBtn);
     }
+    header.appendChild(tabBar);
 
     return header;
   }
@@ -170,9 +208,14 @@ export class RibbonRenderer {
     };
     if (state.keyTip) dataset.keyTip = state.keyTip;
 
-    const children: HTMLElement[] = [
-      el("span", { class: "ribbon-btn-icon", text: icon }),
-    ];
+    const iconSpan = el("span", { class: "ribbon-btn-icon" });
+    if (icon.startsWith("<svg")) {
+      iconSpan.innerHTML = icon;
+    } else {
+      iconSpan.textContent = icon;
+    }
+
+    const children: HTMLElement[] = [iconSpan];
 
     if (size !== "small") {
       children.push(el("span", { class: "ribbon-btn-label", text: label }));
@@ -209,9 +252,14 @@ export class RibbonRenderer {
     };
     if (state.keyTip) dataset.keyTip = state.keyTip;
 
-    const children: HTMLElement[] = [
-      el("span", { class: "ribbon-btn-icon", text: icon }),
-    ];
+    const iconSpan = el("span", { class: "ribbon-btn-icon" });
+    if (icon.startsWith("<svg")) {
+      iconSpan.innerHTML = icon;
+    } else {
+      iconSpan.textContent = icon;
+    }
+
+    const children: HTMLElement[] = [iconSpan];
 
     if (size !== "small") {
       children.push(el("span", { class: "ribbon-btn-label", text: label }));

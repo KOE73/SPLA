@@ -20,6 +20,75 @@
   border-bottom: 1px solid var(--line, #3a3a3c);
 }
 
+.ribbon-header-inner {
+  display: flex;
+  align-items: center;
+  width: 100%;
+}
+
+.ribbon-qat {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  margin-right: 8px;
+  padding-right: 8px;
+  padding-bottom: 4px;
+  border-right: 1px solid var(--line, #3a3a3c);
+  flex-shrink: 0;
+}
+
+.ribbon-qat-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 24px;
+  padding: 0;
+  border: 1px solid transparent;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--text, #e2e8f0);
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.ribbon-qat-btn:hover:not(:disabled) {
+  background: var(--hover, rgba(255, 255, 255, 0.08));
+  border-color: var(--border, rgba(255, 255, 255, 0.15));
+  color: var(--accent, #4ea1ff);
+}
+
+.ribbon-qat-btn:active:not(:disabled) {
+  background: var(--panel-alt, #2d2d30);
+  transform: translateY(1px);
+}
+
+.ribbon-qat-btn:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+  color: var(--muted, #9aa0a6);
+}
+
+.ribbon-qat-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  line-height: 1;
+}
+
+.ribbon-qat-icon svg {
+  width: 15px;
+  height: 15px;
+  fill: currentColor;
+}
+
+.ribbon-btn-icon svg {
+  width: 18px;
+  height: 18px;
+  fill: currentColor;
+}
+
 .ribbon-tab-bar {
   display: flex;
   align-items: center;

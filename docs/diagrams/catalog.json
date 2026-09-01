@@ -18,11 +18,35 @@
     },
     {
       "id": "spla_system",
-      "file": "projects/spla_system/views/v_main.view.json",
-      "title": "SPLA System Architecture",
-      "subtitle": "Core, runtime, tools & storage",
-      "icon": "🏛",
+      "file": "projects/spla_system/views/v_turn.view.json",
+      "title": "SPLA: хребет хода",
+      "subtitle": "Точка отсчёта: ход, четыре оси",
+      "icon": "🧭",
       "theme": "blue"
+    },
+    {
+      "id": "spla_system_subsystem",
+      "file": "projects/spla_system/views/v_subsystem.view.json",
+      "title": "SPLA: подсистемы",
+      "subtitle": "Ось: кто чем владеет",
+      "icon": "🧱",
+      "theme": "emerald"
+    },
+    {
+      "id": "spla_system_zones",
+      "file": "projects/spla_system/views/v_zones.view.json",
+      "title": "SPLA: зоны и границы",
+      "subtitle": "Ось: где кончается доверие",
+      "icon": "🛡",
+      "theme": "amber"
+    },
+    {
+      "id": "spla_system_process",
+      "file": "projects/spla_system/views/v_process.view.json",
+      "title": "SPLA: процессы",
+      "subtitle": "Ось: где исполняется",
+      "icon": "⚙",
+      "theme": "indigo"
     },
     {
       "id": "llm_pipeline",

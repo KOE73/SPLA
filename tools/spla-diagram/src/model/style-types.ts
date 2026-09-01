@@ -153,6 +153,8 @@ export interface WireStyle {
    * are assembly detail — being able to switch them off is what does.
    */
   family?: "structure" | "flow";
+  /** Whether ghost/shadow relations of this style appear in the global bird's-eye overview. */
+  overview?: boolean;
 }
 
 export interface WireStyleSheet {

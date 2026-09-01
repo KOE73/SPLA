@@ -1,14 +1,15 @@
 import { pointOnSide } from "../../geometry/rect.js";
-import type { BoundarySlot, Point, Rect } from "../../geometry/types.js";
-import type { TextStyle } from "../../model/StyleLibrary.js";
+import type { BoundarySlot, Point, Rect, Side } from "../../geometry/types.js";
+import type { ResolvedBlockStyle, TextStyle } from "../../model/StyleLibrary.js";
 import type { DiagramElement } from "../../model/types.js";
 import { ELEMENT_ATTR, ROLE_ATTR, Role } from "../../interaction/roles.js";
 import { setAttrs, svg, text } from "../svg.js";
 import type { ElementRenderer, RenderContext } from "./ElementRenderer.js";
 import { alignX, dashArray, textAttrs } from "./textAttrs.js";
+import { DIAGRAM_CONFIG } from "../../constants/diagram-constants.js";
 
 /** Left inset of the header caption: clear of the collapse toggle at x+8..x+28. */
-const TITLE_PAD = 36;
+const TITLE_PAD = DIAGRAM_CONFIG.container.titlePad;
 
 /**
  * The default container renderer: a titled box with a header that doubles as
@@ -85,6 +86,7 @@ export class ContainerRenderer implements ElementRenderer {
       }),
     );
 
+    g.appendChild(this.docToggle(el, ctx));
     g.appendChild(this.collapseToggle(el, collapsed));
 
     const titleStyle = style.header.text;
@@ -111,7 +113,7 @@ export class ContainerRenderer implements ElementRenderer {
         text(
           {
             ...textAttrs(style.subtitle),
-            ...alignX(style.subtitle, rect, 14),
+            ...alignX(style.subtitle, rect, 34),
             y: baseline(el.y, headerHeight, style.subtitle),
             class: "spla-zone-semantic",
           },
@@ -121,18 +123,43 @@ export class ContainerRenderer implements ElementRenderer {
     }
   }
 
-  private collapseToggle(el: DiagramElement, collapsed: boolean): SVGGElement {
+  private docToggle(el: DiagramElement, ctx: RenderContext): SVGGElement {
+    const textEntry = ctx.doc ? ctx.doc.getText(el.id, "ru") || ctx.doc.getText(el.id, "en") : undefined;
+    const hasDoc = Boolean(textEntry?.doc?.trim());
     return svg(
       "g",
-      { [ROLE_ATTR]: Role.CollapseToggle, class: "spla-zone-collapse" },
+      { [ROLE_ATTR]: Role.DocEdit, class: `spla-zone-doc${hasDoc ? " has-doc" : ""}`, style: "cursor: pointer;" },
       [
-        svg("rect", { x: el.x + 8, y: el.y + 7, width: 20, height: 20, rx: 5 }),
+        svg("rect", { x: el.x + 8, y: el.y + 7, width: 20, height: 20, rx: 5, class: "spla-zone-doc-rect" }),
         text(
           {
             x: el.x + 18,
+            y: el.y + 21,
+            "font-size": 11,
+            "text-anchor": "middle",
+            class: "spla-zone-doc-icon",
+            "pointer-events": "none",
+          },
+          hasDoc ? "📝" : "📄",
+        ),
+      ],
+    );
+  }
+
+  private collapseToggle(el: DiagramElement, collapsed: boolean): SVGGElement {
+    const rx = el.x + el.width - 28;
+    return svg(
+      "g",
+      { [ROLE_ATTR]: Role.CollapseToggle, class: "spla-zone-collapse", style: "cursor: pointer;" },
+      [
+        svg("rect", { x: rx, y: el.y + 7, width: 20, height: 20, rx: 5, class: "spla-zone-collapse-rect" }),
+        text(
+          {
+            x: rx + 10,
             y: el.y + 22,
             "font-size": 14,
             "text-anchor": "middle",
+            "pointer-events": "none",
           },
           collapsed ? "+" : "−",
         ),
@@ -154,6 +181,10 @@ export class ContainerRenderer implements ElementRenderer {
 
   pointAt(rect: Rect, slot: BoundarySlot): Point {
     return pointOnSide(rect, slot.side, slot.t);
+  }
+
+  cornerInset(_side: Side, style?: ResolvedBlockStyle): number {
+    return (style?.radius ?? DIAGRAM_CONFIG.container.defaultRadius) + DIAGRAM_CONFIG.ports.extraCornerGap;
   }
 }
 

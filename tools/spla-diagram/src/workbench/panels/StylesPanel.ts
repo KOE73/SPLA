@@ -34,7 +34,7 @@ export class StylesPanel implements IContentRenderer {
 
     this.styleEditorMount = el("div", {
       class: "style-editor",
-      attrs: { style: "flex: 1; overflow-y: auto; height: 100%;" },
+      attrs: { style: "flex: 1; min-width: 0; overflow-y: auto; overflow-x: hidden; height: 100%;" },
     });
 
     const body = el(
@@ -55,8 +55,23 @@ export class StylesPanel implements IContentRenderer {
       [body],
     );
 
-    this.styleList = new StyleList(this.styleListMount, editor);
-    this.styleEditor = new StyleEditor(this.styleEditorMount, editor);
+    const host: StylePanelHost = {
+      get canvas() { return editor.canvas; },
+      get styles() { return editor.styles; },
+      editStyle: (apply) => editor.editStyle(apply),
+      commitStyle: (apply) => editor.commitStyle(apply),
+      openStyle: (id) => {
+        this.openStyle(id);
+      },
+      notify: (msg) => editor.notify(msg),
+    };
+
+    this.styleList = new StyleList(this.styleListMount, host);
+    this.styleEditor = new StyleEditor(this.styleEditorMount, host);
+
+    editor.onOpenStyle = (id: string | null) => {
+      this.openStyle(id);
+    };
 
     this.bindResizer();
 

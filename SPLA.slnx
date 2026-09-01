@@ -1,4 +1,4 @@
-﻿<Solution>
+<Solution>
   <Folder Name="/README/">
     <File Path="Directory.Build.props" />
     <File Path="README.md" />
@@ -19,6 +19,7 @@
     <File Path="agents/composition.md" />
     <File Path="agents/data-ownership.md" />
     <File Path="agents/documentation.md" />
+    <File Path="agents/glossary.md" />
     <File Path="agents/observability.md" />
     <File Path="agents/plugins.md" />
     <File Path="agents/protocol.md" />
@@ -50,13 +51,10 @@
   <Folder Name="/docs/diagrams/">
     <File Path="docs/diagrams/README.md" />
     <File Path="docs/diagrams/README_RU.md" />
+    <File Path="docs/diagrams/TEXT-GUIDE.md" />
     <File Path="docs/diagrams/catalog.json" />
-    <File Path="docs/diagrams/model.json" />
-    <File Path="docs/diagrams/model-core.json" />
-    <File Path="docs/diagrams/model-core-full.json" />
-    <File Path="docs/diagrams/model-llm-pipeline.json" />
-    <File Path="docs/diagrams/model-plugins.json" />
-    <File Path="docs/diagrams/model-features.json" />
+    <File Path="docs/diagrams/styles.json" />
+    <File Path="docs/diagrams/projects/AGENTS.md" />
   </Folder>
   <Folder Name="/docs/diagrams/mapping/">
     <File Path="docs/diagrams/mapping/semantic-atlas/core.map.json" />
@@ -76,7 +74,9 @@
   <Folder Name="/tools/spla-diagram/">
     <File Path="tools/spla-diagram/docs/REQUIREMENTS.md" />
     <File Path="tools/spla-diagram/docs/REQUIREMENTS.ru.md" />
-    <File Path="tools/spla-diagram/docs/CONTRACT_V2.md" />
+    <File Path="tools/spla-diagram/docs/CONTRACT.md" />
+    <File Path="tools/spla-diagram/docs/API.md" />
+    <File Path="tools/spla-diagram/docs/STYLES.md" />
     <File Path="tools/spla-diagram/index.html" />
     <File Path="tools/spla-diagram/package.json" />
     <File Path="tools/spla-diagram/tsconfig.json" />
@@ -148,6 +148,8 @@
     <File Path="docs/adr/ADR_20260824_plugins_document-context.md" />
     <File Path="docs/adr/ADR_20260827-2_core_roles.md" />
     <File Path="docs/adr/ADR_20260827_core_config-versioning.md" />
+    <File Path="docs/adr/ADR_20260831_mcp_search-and-listing-tools.md" />
+    <File Path="docs/adr/ADR_20260831_diagrams_text-provenance-and-view-axes.md" />
   </Folder>
   <Folder Name="/docs/plans/">
     <File Path="docs/plans/PLAN_20260619_agent_skills-lifecycle.md" />

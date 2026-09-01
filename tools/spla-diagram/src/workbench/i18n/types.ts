@@ -82,6 +82,7 @@ export interface UiDictionary {
     readonly toggleGrid: { readonly title: string; readonly desc: string };
     readonly toggleSnap: { readonly title: string; readonly desc: string };
     readonly toggleCanvasFilters: { readonly title: string; readonly desc: string };
+    readonly toggleOverviewShadows: { readonly title: string; readonly desc: string };
   };
   readonly panels: {
     readonly diagram: { readonly title: string };
@@ -215,6 +216,7 @@ export interface UiDictionary {
       readonly familyField: string;
       readonly familyStructure: string;
       readonly familyFlow: string;
+      readonly overviewField: string;
     };
     readonly base: {
       readonly title: string;
@@ -234,5 +236,30 @@ export interface UiDictionary {
     readonly saveAndOpen: string;
     readonly discardAndOpen: string;
     readonly cancel: string;
+    readonly docEditor: {
+      readonly title: string;
+      readonly descriptionLabel: string;
+      readonly descriptionPlaceholder: string;
+      readonly docLabel: string;
+      readonly docPlaceholder: string;
+      readonly tabEdit: string;
+      readonly tabSplit: string;
+      readonly tabPreview: string;
+      readonly previewEmpty: string;
+      readonly tbBold: string;
+      readonly tbItalic: string;
+      readonly tbHeading: string;
+      readonly tbLink: string;
+      readonly tbCode: string;
+      readonly tbCodeBlock: string;
+      readonly tbList: string;
+      readonly tbNumList: string;
+      readonly tbQuote: string;
+      readonly tbTable: string;
+      readonly hotkeyHint: string;
+      readonly openEditorBtn: string;
+      readonly editDocTooltip: string;
+      readonly viewDocTooltip: string;
+    };
   };
 }

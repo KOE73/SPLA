@@ -6,8 +6,20 @@
       "origin": "authored"
     },
     {
+      "id": "composes",
+      "origin": "code"
+    },
+    {
       "id": "data-flow",
       "origin": "authored"
+    },
+    {
+      "id": "event",
+      "origin": "authored"
+    },
+    {
+      "id": "implements",
+      "origin": "code"
     },
     {
       "id": "security",

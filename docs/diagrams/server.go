@@ -1,6 +1,8 @@
 package main
 
 import (
+	"encoding/json"
+	"flag"
 	"fmt"
 	"io"
 	"log"
@@ -13,21 +15,32 @@ import (
 	"time"
 )
 
-// noCacheForData makes the browser revalidate every model file it reads.
-func noCacheForData(next http.Handler) http.Handler {
+// noCacheHandler makes the browser revalidate every file (HTML, JS, CSS, JSON) it reads.
+func noCacheHandler(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if strings.HasSuffix(r.URL.Path, ".json") {
-			w.Header().Set("Cache-Control", "no-cache")
-		}
+		w.Header().Set("Cache-Control", "no-cache, no-store, must-revalidate")
+		w.Header().Set("Pragma", "no-cache")
+		w.Header().Set("Expires", "0")
 		next.ServeHTTP(w, r)
 	})
 }
 
 func main() {
-	port := "8777"
+	var port string
+	var rootDir string
+	flag.StringVar(&port, "port", "8777", "Port to run the visualizer server on")
+	flag.StringVar(&rootDir, "root", "../../", "Root directory to resolve source code files from")
+	flag.Parse()
+
+	absRoot, err := filepath.Abs(rootDir)
+	if err != nil {
+		log.Fatalf("Failed to resolve root directory: %v", err)
+	}
+
 	url := fmt.Sprintf("http://localhost:%s/app/", port)
 
 	fmt.Printf("🚀 Starting SPLA Visualizer server on %s\n", url)
+	fmt.Printf("📂 Source code root: %s\n", absRoot)
 	fmt.Println("Press Ctrl+C to stop.")
 
 	go func() {
@@ -35,13 +48,114 @@ func main() {
 		openBrowser(url)
 	}()
 
-	// The model files are edited by hand, by the editor and by migration scripts,
-	// often several times a minute. http.FileServer sends only Last-Modified, and
-	// on that alone a browser is free to reuse a copy without asking — which is
-	// how an editor session ends up loading a project as it was before a
-	// migration and reporting it as broken. Data revalidates every time; the
-	// hashed app bundle is immutable by name and does not need to.
-	http.Handle("/", noCacheForData(http.FileServer(http.Dir("."))))
+	http.Handle("/", noCacheHandler(http.FileServer(http.Dir("."))))
+
+	http.HandleFunc("/api/source", func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodGet && r.Method != http.MethodHead {
+			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+			return
+		}
+
+		filePath := strings.TrimSpace(r.URL.Query().Get("file"))
+		if filePath == "" {
+			http.Error(w, "Missing file parameter", http.StatusBadRequest)
+			return
+		}
+
+		cleanPath := filepath.Clean(filepath.FromSlash(filePath))
+		if filepath.IsAbs(cleanPath) {
+			http.Error(w, "Absolute paths not allowed", http.StatusBadRequest)
+			return
+		}
+
+		targetPath := filepath.Join(absRoot, cleanPath)
+		absTarget, err := filepath.Abs(targetPath)
+		if err != nil {
+			http.Error(w, "Failed to resolve path", http.StatusBadRequest)
+			return
+		}
+
+		relToRoot, err := filepath.Rel(absRoot, absTarget)
+		if err != nil || strings.HasPrefix(relToRoot, ".."+string(filepath.Separator)) || relToRoot == ".." {
+			http.Error(w, "Access denied: file outside root", http.StatusForbidden)
+			return
+		}
+
+		info, err := os.Stat(absTarget)
+		if err != nil || info.IsDir() {
+			http.Error(w, fmt.Sprintf("Source file not found: %s", cleanPath), http.StatusNotFound)
+			return
+		}
+
+		if r.Method == http.MethodHead {
+			w.Header().Set("Content-Length", fmt.Sprintf("%d", info.Size()))
+			w.Header().Set("Content-Type", "text/plain; charset=utf-8")
+			w.WriteHeader(http.StatusOK)
+			return
+		}
+
+		data, err := os.ReadFile(absTarget)
+		if err != nil {
+			http.Error(w, "Failed to read file: "+err.Error(), http.StatusInternalServerError)
+			return
+		}
+
+		w.Header().Set("Content-Type", "text/plain; charset=utf-8")
+		w.Header().Set("Cache-Control", "no-cache")
+		w.WriteHeader(http.StatusOK)
+		w.Write(data)
+	})
+
+	http.HandleFunc("/api/source/check", func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodPost && r.Method != http.MethodGet {
+			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+			return
+		}
+
+		var filesToCheck []string
+		if r.Method == http.MethodGet {
+			fileParam := strings.TrimSpace(r.URL.Query().Get("file"))
+			if fileParam != "" {
+				filesToCheck = append(filesToCheck, fileParam)
+			}
+		} else {
+			body, err := io.ReadAll(r.Body)
+			if err == nil && len(body) > 0 {
+				_ = json.Unmarshal(body, &filesToCheck)
+			}
+		}
+
+		result := make(map[string]bool, len(filesToCheck))
+		for _, f := range filesToCheck {
+			cleanPath := filepath.Clean(filepath.FromSlash(strings.TrimSpace(f)))
+			if cleanPath == "" || cleanPath == "." || filepath.IsAbs(cleanPath) {
+				result[f] = false
+				continue
+			}
+
+			targetPath := filepath.Join(absRoot, cleanPath)
+			absTarget, err := filepath.Abs(targetPath)
+			if err != nil {
+				result[f] = false
+				continue
+			}
+
+			relToRoot, err := filepath.Rel(absRoot, absTarget)
+			if err != nil || strings.HasPrefix(relToRoot, ".."+string(filepath.Separator)) || relToRoot == ".." {
+				result[f] = false
+				continue
+			}
+
+			info, err := os.Stat(absTarget)
+			result[f] = (err == nil && !info.IsDir())
+		}
+
+		w.Header().Set("Content-Type", "application/json; charset=utf-8")
+		w.Header().Set("Cache-Control", "no-cache")
+		w.WriteHeader(http.StatusOK)
+		_ = json.NewEncoder(w).Encode(result)
+	})
+
 	http.HandleFunc("/api/save", func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodPost {
 			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)

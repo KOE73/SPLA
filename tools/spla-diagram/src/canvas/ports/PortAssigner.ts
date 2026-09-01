@@ -11,6 +11,10 @@ export interface PortRequest {
   /** The visible rectangle at the other end, used to choose a side. */
   readonly otherRect: Rect;
   readonly edgeType: string;
+  /** Shape-aware corner inset / radius of the owner shape (px) */
+  readonly ownerInset?: number;
+  /** Shape-aware corner inset / radius of the opposite shape (px) */
+  readonly otherInset?: number;
 }
 
 export type PortKey = string;

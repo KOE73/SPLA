@@ -5,10 +5,14 @@ import { elementRect, isContainer } from "../model/types.js";
 import type { DiagramCanvas } from "../canvas/DiagramCanvas.js";
 import type { ResizeDirection } from "../canvas/render/handles.js";
 import { Role, hitTest, type RoleHit } from "./roles.js";
+import { renderMarkdown } from "../editor/doc/MarkdownRenderer.js";
+import { SourceCodeService } from "../editor/code/SourceCodeService.js";
+import { DIAGRAM_CONFIG } from "../constants/diagram-constants.js";
+import { i18n } from "../workbench/i18n/I18nService.js";
 
 const MIN_SIZE = {
-  zone: { width: 160, height: 100 },
-  node: { width: 100, height: 40 },
+  zone: DIAGRAM_CONFIG.container.minSize,
+  node: DIAGRAM_CONFIG.node.minSize,
 } as const;
 
 interface Origin {
@@ -73,6 +77,9 @@ type Gesture = PanGesture | MoveGesture | ResizeGesture | MarqueeGesture;
 export class InteractionController {
   private gesture: Gesture | null = null;
   private readonly abort = new AbortController();
+  private edgeControlsHideTimer: number | null = null;
+  private currentEdgeControlId: string | null = null;
+  private isOverEdgeControls = false;
 
   constructor(
     private readonly canvas: DiagramCanvas,
@@ -83,20 +90,92 @@ export class InteractionController {
     host.addEventListener("mouseup", this.onMouseUpTarget, { signal });
     host.addEventListener("dblclick", this.onDoubleClick, { signal });
     host.addEventListener("wheel", this.onWheel, { passive: false, signal });
-    host.addEventListener("mouseleave", () => this.canvas.hideTooltip(), { signal });
+    host.addEventListener("mouseleave", () => {
+      if (!this.isOverEdgeControls) {
+        this.scheduleEdgeControlsHide();
+        this.canvas.hideAllTooltips();
+      }
+    }, { signal });
     window.addEventListener("mousemove", this.onMouseMove, { signal });
     window.addEventListener("mouseup", this.onMouseUp, { signal });
+
+    // Edge control bar events
+    const edgeControls = this.canvas.edgeControlsEl;
+    edgeControls.addEventListener("mouseenter", () => {
+      this.isOverEdgeControls = true;
+      this.clearEdgeControlsHideTimer();
+    }, { signal });
+    edgeControls.addEventListener("mouseleave", () => {
+      this.isOverEdgeControls = false;
+      this.scheduleEdgeControlsHide();
+      this.canvas.hideRichTooltip();
+    }, { signal });
+    edgeControls.addEventListener("click", (e) => {
+      const btn = (e.target as HTMLElement).closest<HTMLElement>(".spla-edge-doc-btn");
+      if (btn) {
+        e.stopPropagation();
+        const edgeId = btn.dataset.edgeId;
+        if (edgeId) {
+          this.currentEdgeControlId = null;
+          this.isOverEdgeControls = false;
+          this.canvas.hideAllTooltips();
+          this.canvas.hideEdgeControls();
+          this.canvas.events.emit("openDocEditor", { id: edgeId, kind: "edge" });
+        }
+      }
+    }, { signal });
+    edgeControls.addEventListener("mouseover", (e) => {
+      const btn = (e.target as HTMLElement).closest<HTMLElement>(".spla-edge-doc-btn");
+      if (btn && btn.dataset.edgeId) {
+        this.showEdgeDocTooltip(btn.dataset.edgeId, btn);
+      }
+    }, { signal });
+    edgeControls.addEventListener("mouseout", (e) => {
+      const btn = (e.target as HTMLElement).closest<HTMLElement>(".spla-edge-doc-btn");
+      if (btn) {
+        this.canvas.hideRichTooltip();
+      }
+    }, { signal });
+  }
+
+  private clearEdgeControlsHideTimer(): void {
+    if (this.edgeControlsHideTimer !== null) {
+      window.clearTimeout(this.edgeControlsHideTimer);
+      this.edgeControlsHideTimer = null;
+    }
+  }
+
+  private scheduleEdgeControlsHide(): void {
+    this.clearEdgeControlsHideTimer();
+    this.edgeControlsHideTimer = window.setTimeout(() => {
+      if (!this.isOverEdgeControls) {
+        this.canvas.hideEdgeControls();
+        this.currentEdgeControlId = null;
+      }
+      this.edgeControlsHideTimer = null;
+    }, DIAGRAM_CONFIG.interaction.edgeControlsHideDelayMs);
   }
 
   destroy(): void {
     this.abort.abort();
-    this.canvas.hideTooltip();
+    this.clearEdgeControlsHideTimer();
+    this.canvas.hideAllTooltips();
+    this.canvas.hideEdgeControls();
+    this.currentEdgeControlId = null;
+    this.isOverEdgeControls = false;
   }
 
   // ------------------------------------------------------------- listeners
 
   private readonly onMouseDown = (e: MouseEvent): void => {
-    this.canvas.hideTooltip();
+    const target = e.target as HTMLElement | null;
+    if (target && this.canvas.edgeControlsEl.contains(target)) {
+      return;
+    }
+    this.canvas.hideAllTooltips();
+    this.canvas.hideEdgeControls();
+    this.currentEdgeControlId = null;
+    this.isOverEdgeControls = false;
     if (e.button !== 0) return;
     const hit = hitTest(e.target);
 
@@ -175,8 +254,14 @@ export class InteractionController {
    * dragging it moves everything rather than collapsing to one.
    */
   private applyClickSelection(el: DiagramElement, e: MouseEvent): void {
-    if (e.ctrlKey || e.metaKey || e.shiftKey) {
+    if (e.ctrlKey || e.metaKey) {
       this.canvas.toggleSelected(el.id);
+      return;
+    }
+    if (e.shiftKey) {
+      if (!this.canvas.selectedIds.has(el.id)) {
+        this.canvas.toggleSelected(el.id);
+      }
       return;
     }
     if (this.canvas.selectedIds.has(el.id) && this.canvas.selectedIds.size > 1) {
@@ -218,17 +303,42 @@ export class InteractionController {
     } else if (hit?.role === Role.GhostToggle && hit.elementId !== null) {
       e.stopPropagation();
       this.canvas.toggleGhostNode(hit.elementId);
+    } else if (hit?.role === Role.DocEdit && (hit.elementId !== null || hit.edgeId !== null)) {
+      e.stopPropagation();
+      this.canvas.hideAllTooltips();
+      const targetId = hit.elementId || hit.edgeId!;
+      const doc = this.canvas.model;
+      const isEdge = Boolean(hit.edgeId);
+      const isZone = Boolean(hit.elementId && doc && isContainer(doc.element(hit.elementId)!));
+      const kind = isEdge ? "edge" : (isZone ? "zone" : "node");
+      this.canvas.events.emit("openDocEditor", { id: targetId, kind });
+    } else if (hit?.role === Role.CodeView && hit.elementId !== null) {
+      e.stopPropagation();
+      this.canvas.hideAllTooltips();
+      const doc = this.canvas.model;
+      const el = doc?.element(hit.elementId);
+      const codeRef = typeof el?.metadata?.codeRef === "string" ? el.metadata.codeRef.trim() : "";
+      if (codeRef) {
+        this.canvas.events.emit("openCodeViewer", { id: hit.elementId, codeRef, label: el?.label });
+      }
     }
   };
 
   private readonly onMouseMove = (e: MouseEvent): void => {
     const gesture = this.gesture;
     if (gesture === null) {
+      const target = e.target as HTMLElement | null;
+      if (target && (this.canvas.edgeControlsEl.contains(target) || this.canvas.richTooltipEl.contains(target))) {
+        this.isOverEdgeControls = true;
+        this.clearEdgeControlsHideTimer();
+        return;
+      }
       this.updateHoverTooltip(e);
       return;
     }
 
-    this.canvas.hideTooltip();
+    this.canvas.hideAllTooltips();
+    this.canvas.hideEdgeControls();
 
     switch (gesture.kind) {
       case "pan": {
@@ -258,24 +368,91 @@ export class InteractionController {
   private updateHoverTooltip(e: MouseEvent): void {
     const hit = hitTest(e.target);
     if (hit === null || (hit.elementId === null && hit.edgeId === null)) {
-      this.canvas.hideTooltip();
+      this.scheduleEdgeControlsHide();
+      this.canvas.hideAllTooltips();
       return;
     }
 
     const doc = this.canvas.model;
     if (!doc) {
-      this.canvas.hideTooltip();
+      this.scheduleEdgeControlsHide();
+      this.canvas.hideAllTooltips();
       return;
     }
 
     const lang = this.canvas.dataLang || "ru";
 
+    // 1. Hover on DocEdit Button -> Show Rich Doc Tooltip immediately
+    if (hit.role === Role.DocEdit) {
+      const targetId = hit.elementId || hit.edgeId;
+      if (!targetId) {
+        this.canvas.hideAllTooltips();
+        return;
+      }
+
+      let name = targetId;
+      let kind = "NODE";
+      if (hit.edgeId) {
+        const edge = doc.edge(targetId);
+        if (edge) {
+          const fromEl = doc.element(edge.from);
+          const toEl = doc.element(edge.to);
+          const fromName = doc.getText(edge.from, lang)?.name || fromEl?.label || edge.from;
+          const toName = doc.getText(edge.to, lang)?.name || toEl?.label || edge.to;
+          name = `${fromName} ➔ ${toName}`;
+          kind = edge.type || "RELATION";
+        }
+      } else if (hit.elementId) {
+        const el = doc.element(targetId);
+        if (el) {
+          name = doc.getText(el.id, lang)?.name || el.label || el.id;
+          kind = el.type || (isContainer(el) ? "ZONE" : "NODE");
+        }
+      }
+
+      const text = doc.getText(targetId, lang);
+      const desc = text?.description || "";
+      const docText = text?.doc || "";
+      const docMd = docText ? renderMarkdown(docText) : "";
+
+      let content = `<div class="spla-rich-doc-tooltip-head">
+        <span class="spla-rich-doc-tooltip-title">${escapeHtml(name)}</span>
+        <span class="spla-doc-kind-badge">${escapeHtml(kind)}</span>
+      </div>`;
+      if (desc) {
+        content += `<div class="spla-rich-doc-tooltip-desc"><b>${escapeHtml(i18n.d.dialogs.docEditor.descriptionLabel)}:</b> ${escapeHtml(desc)}</div>`;
+      }
+      if (docMd) {
+        content += `<div class="spla-rich-doc-tooltip-doc spla-markdown-body">${docMd}</div>`;
+      } else {
+        content += `<div class="spla-rich-doc-tooltip-doc" style="color: var(--muted); font-style: italic; font-size: 11px; padding: 4px 0;">${escapeHtml(i18n.d.dialogs.docEditor.previewEmpty)}</div>`;
+      }
+      content += `<div class="spla-rich-doc-tooltip-foot">
+        <span>${escapeHtml(i18n.d.dialogs.docEditor.viewDocTooltip)}</span>
+        <span class="chip chip-lang">${lang.toUpperCase()}</span>
+      </div>`;
+
+      this.canvas.showRichTooltip(content, e.clientX, e.clientY);
+      return;
+    }
+
+    // 1b. Hover on CodeView Button -> Show Rich Code Tooltip immediately
+    if (hit.role === Role.CodeView && hit.elementId !== null) {
+      const el = doc.element(hit.elementId);
+      const codeRef = typeof el?.metadata?.codeRef === "string" ? el.metadata.codeRef.trim() : "";
+      if (codeRef) {
+        this.showCodePreviewTooltip(codeRef, el?.label || hit.elementId, e.clientX, e.clientY);
+        return;
+      }
+    }
+
+    // 2. Normal Element Hover
     if (hit.elementId !== null) {
       const el = doc.element(hit.elementId);
       if (el) {
         const text = doc.getText(el.id, lang);
         const name = text?.name || text?.title || el.label || el.id;
-        const desc = text?.doc || text?.description || (typeof el.metadata?.description === "string" ? el.metadata.description : "");
+        const desc = text?.description || (typeof el.metadata?.description === "string" ? el.metadata.description : "");
         const codeRef = typeof el.metadata?.codeRef === "string" ? el.metadata.codeRef : "";
         const kind = el.type || (isContainer(el) ? "Zone" : "Component");
 
@@ -296,15 +473,17 @@ export class InteractionController {
       }
     }
 
+    // 3. Edge Hover -> Show standard tooltip & show dynamic edge control bar
     if (hit.edgeId !== null) {
-      const edge = doc.edge(hit.edgeId);
+      const edgeId = hit.edgeId;
+      const edge = doc.edge(edgeId);
       if (edge) {
         const fromEl = doc.element(edge.from);
         const toEl = doc.element(edge.to);
         const fromName = doc.getText(edge.from, lang)?.name || fromEl?.label || edge.from;
         const toName = doc.getText(edge.to, lang)?.name || toEl?.label || edge.to;
         const text = doc.getText(edge.id, lang);
-        const desc = text?.doc || text?.description || edge.label || "";
+        const desc = text?.description || edge.label || "";
 
         let content = `<div class="spla-tooltip-header">
           <span>${escapeHtml(fromName)} ➔ ${escapeHtml(toName)}</span>
@@ -314,11 +493,114 @@ export class InteractionController {
           content += `<div class="spla-tooltip-body">${escapeHtml(desc)}</div>`;
         }
         this.canvas.showTooltip(content, e.clientX, e.clientY);
+
+        // Show floating edge control bar with Doc button (stable position once per edge)
+        this.clearEdgeControlsHideTimer();
+        if (this.currentEdgeControlId !== edgeId) {
+          this.currentEdgeControlId = edgeId;
+          this.canvas.showEdgeControls(edgeId, e.clientX, e.clientY);
+        }
         return;
       }
     }
 
-    this.canvas.hideTooltip();
+    if (!this.isOverEdgeControls) {
+      this.scheduleEdgeControlsHide();
+    }
+    this.canvas.hideAllTooltips();
+  }
+
+  private showEdgeDocTooltip(edgeId: string, anchorEl: HTMLElement): void {
+    const doc = this.canvas.model;
+    if (!doc) return;
+    const edge = doc.edge(edgeId);
+    if (!edge) return;
+    const lang = this.canvas.dataLang || "ru";
+    const fromEl = doc.element(edge.from);
+    const toEl = doc.element(edge.to);
+    const fromName = doc.getText(edge.from, lang)?.name || fromEl?.label || edge.from;
+    const toName = doc.getText(edge.to, lang)?.name || toEl?.label || edge.to;
+    const text = doc.getText(edge.id, lang);
+    const desc = text?.description || edge.label || "";
+    const docText = text?.doc || "";
+    const docMd = docText ? renderMarkdown(docText) : "";
+
+    let content = `<div class="spla-rich-doc-tooltip-head">
+      <span class="spla-rich-doc-tooltip-title">${escapeHtml(fromName)} ➔ ${escapeHtml(toName)}</span>
+      <span class="spla-doc-kind-badge">${escapeHtml(edge.type || "RELATION")}</span>
+    </div>`;
+    if (desc) {
+      content += `<div class="spla-rich-doc-tooltip-desc"><b>${escapeHtml(i18n.d.dialogs.docEditor.descriptionLabel)}:</b> ${escapeHtml(desc)}</div>`;
+    }
+    if (docMd) {
+      content += `<div class="spla-rich-doc-tooltip-doc spla-markdown-body">${docMd}</div>`;
+    } else {
+      content += `<div class="spla-rich-doc-tooltip-doc" style="color: var(--muted); font-style: italic; font-size: 11px; padding: 4px 0;">${escapeHtml(i18n.d.dialogs.docEditor.previewEmpty)}</div>`;
+    }
+    content += `<div class="spla-rich-doc-tooltip-foot">
+      <span>${escapeHtml(i18n.d.dialogs.docEditor.viewDocTooltip)}</span>
+      <span class="chip chip-lang">${lang.toUpperCase()}</span>
+    </div>`;
+
+    const rect = anchorEl.getBoundingClientRect();
+    this.canvas.showRichTooltip(content, rect.left + rect.width / 2, rect.top);
+  }
+
+  private async showCodePreviewTooltip(
+    codeRef: string,
+    label: string,
+    x: number,
+    y: number,
+  ): Promise<void> {
+    const langLabel = SourceCodeService.getLanguageLabel(codeRef);
+    const initialHtml = `
+      <div class="spla-rich-code-tooltip-head">
+        <span style="font-weight: 700;">💻 ${escapeHtml(label)}</span>
+        <span class="spla-rich-code-tooltip-path" title="${escapeHtml(codeRef)}">${escapeHtml(codeRef)}</span>
+      </div>
+      <div class="spla-rich-code-tooltip-body">
+        <div style="color: #888; padding: 8px;">⏳ Загрузка фрагмента кода...</div>
+      </div>
+      <div class="spla-rich-code-tooltip-foot">
+        <span>Клик — открыть полный просмотрщик</span>
+        <span style="color: #60a5fa; font-weight: 700;">${escapeHtml(langLabel)}</span>
+      </div>
+    `;
+
+    this.canvas.showRichTooltip(initialHtml, x, y);
+
+    try {
+      const preview = await SourceCodeService.getPreview(codeRef, 12);
+      const content = `
+        <div class="spla-rich-code-tooltip-head">
+          <span style="font-weight: 700;">💻 ${escapeHtml(label)}</span>
+          <span class="spla-rich-code-tooltip-path" title="${escapeHtml(codeRef)}">${escapeHtml(codeRef)}</span>
+        </div>
+        <div class="spla-rich-code-tooltip-body">
+          ${preview.snippetHtml}
+        </div>
+        <div class="spla-rich-code-tooltip-foot">
+          <span>Клик — открыть полный просмотрщик (${preview.totalLines} строк)</span>
+          <span style="color: #60a5fa; font-weight: 700;">${escapeHtml(preview.language)}</span>
+        </div>
+      `;
+      this.canvas.showRichTooltip(content, x, y);
+    } catch (err: any) {
+      const content = `
+        <div class="spla-rich-code-tooltip-head">
+          <span style="font-weight: 700;">💻 ${escapeHtml(label)}</span>
+          <span class="spla-rich-code-tooltip-path" title="${escapeHtml(codeRef)}">${escapeHtml(codeRef)}</span>
+        </div>
+        <div class="spla-rich-code-tooltip-body">
+          <div style="color: #f87171; padding: 8px;">⚠️ ${escapeHtml(err?.message || "Файл недоступен")}</div>
+        </div>
+        <div class="spla-rich-code-tooltip-foot">
+          <span>Клик — открыть просмотрщик</span>
+          <span style="color: #ef4444; font-weight: 700;">Ошибка</span>
+        </div>
+      `;
+      this.canvas.showRichTooltip(content, x, y);
+    }
   }
 
   private readonly onMouseUp = (): void => {
@@ -418,8 +700,17 @@ export class InteractionController {
     // is on the grid stays on it across successive drags (R-EDIT-04). The whole
     // group shifts by the lead element's snapped delta, keeping relative
     // positions exact.
-    const dx = snap(origin.x + raw.x, step) - origin.x;
-    const dy = snap(origin.y + raw.y, step) - origin.y;
+    let dx = snap(origin.x + raw.x, step) - origin.x;
+    let dy = snap(origin.y + raw.y, step) - origin.y;
+
+    // Shift key constrains movement to a single axis (dominant X or Y)
+    if (e.shiftKey) {
+      if (Math.abs(raw.x) >= Math.abs(raw.y)) {
+        dy = 0;
+      } else {
+        dx = 0;
+      }
+    }
 
     for (const [el, from] of gesture.origins) {
       el.x = from.x + dx;

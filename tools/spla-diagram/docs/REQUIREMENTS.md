@@ -647,7 +647,7 @@ library, no graph layout engine.
 
 ### R-NFR-02 — Scale
 
-The largest model in use, `model-core-full.json`, holds ~246 nodes across 13
+The largest model in use, the `full_core` project, holds ~246 nodes across 13
 boundaries and 17 nested sub-roles. This is the working scale the renderer must
 remain usable at.
 
@@ -724,7 +724,8 @@ instead of reporting an error. Intended: a fetch failure is surfaced.
 
 ## 16a. Deviations introduced by the TypeScript port (pass 1)
 
-The port was verified against `docs/diagrams/model-features.json`: all six models
+The port was verified against `model-features.json` (now the `features` project —
+file names here are historical, see [`CONTRACT.md`](CONTRACT.md)): all six models
 load, render and round-trip byte-identically, and all twelve edge paths in the
 fixture are character-for-character what the original produced. Three things
 changed, all of them forced by the target structure rather than chosen.
@@ -849,6 +850,12 @@ The distributing modes order both ends of an edge by the same key — position o
 the opposite endpoint, then type, then id — so lines stay parallel rather than
 crossing. Placement is a pure function of the model, which is why no anchor
 field exists in the JSON and why switching modes is free.
+
+### R-REND-17 — Shape-Aware Geometry and Insets (`cornerInset`)
+
+Safe attachment spans and corner insets are determined by each shape renderer via `ElementRenderer.cornerInset(side, style)`, never by global canvas-wide constants.
+- Rounded boxes (`BoxRenderer`) report their resolved corner radius (`style.radius ?? 8`), container zones (`ContainerRenderer`) report `style.radius ?? 10`, sharp UML shapes report `0`.
+- The router (`EdgeRouter.sharedRun`) constructs straight horizontal/vertical runs only across the true overlapping straight spans of both shapes, avoiding curved corner attachments and preventing premature Bezier curve breaks (see [`ADR_20260901_diagrams_shape-aware-geometry-and-insets.md`](../../../docs/adr/ADR_20260901_diagrams_shape-aware-geometry-and-insets.md)).
 
 ### R-CRUD-08 — Delete removes the whole selection
 

@@ -514,6 +514,16 @@ export class StyleEditor {
           });
         },
       ),
+      optionalBoolField(
+        i18n.d.panels.styles.overviewField,
+        style.overview,
+        inherited.overview,
+        (v) => {
+          this.patch((d) => {
+            d.overview = v;
+          });
+        },
+      ),
     ]);
   }
 

@@ -10,6 +10,8 @@ import "./styles/dockview.css";
 import "./styles/canvas.css";
 import "./styles/ribbon.css";
 import "./styles/canvas-filters.css";
+import "./styles/doc-editor.css";
+import "./styles/code-viewer.css";
 
 export { DiagramCanvas, defaultRegistry } from "./canvas/DiagramCanvas.js";
 export type {
@@ -94,3 +96,6 @@ export { WorkspaceLayoutService } from "./workbench/dockview/WorkspaceLayoutServ
 export { Ribbon } from "./workbench/ribbon/Ribbon.js";
 export * from "./workbench/commands/types.js";
 export * from "./workbench/ribbon/types.js";
+
+// Global Layout & Geometry Configuration
+export { DIAGRAM_CONFIG, type DiagramConfig } from "./constants/diagram-constants.js";

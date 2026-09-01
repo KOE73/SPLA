@@ -94,7 +94,22 @@
       "name": "Интерфейс",
       "appliesTo": "block",
       "description": "Контракт. Пунктирная рамка — как в UML.",
-      "fill": "#ffffff",
+      "fill": {
+        "kind": "linear",
+        "angle": 90,
+        "stops": [
+          {
+            "offset": 0,
+            "color": "#e8fecd",
+            "opacity": 1
+          },
+          {
+            "offset": 1,
+            "color": "#b3ffbf",
+            "opacity": 1
+          }
+        ]
+      },
       "border": {
         "color": "#60a5fa",
         "width": 1.6,

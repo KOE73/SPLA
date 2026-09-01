@@ -4,10 +4,10 @@ using System.Text.RegularExpressions;
 namespace SPLA.MCP.BasicTools.FileSystem.Search;
 
 /// <summary>
-/// Shared glob→regex and binary-file heuristics used by the search engines. Kept separate so the
-/// disk-oriented <see cref="DotnetSearchEngine"/> and the workspace-oriented
-/// <see cref="WorkspaceSearchEngine"/> apply identical include/exclude and skip rules — a divergence
-/// here would make virtual-workspace search silently behave differently from disk search.
+/// Shared glob→regex and binary-file heuristics used by <see cref="WorkspaceSearchEngine"/> and by
+/// the tree listing. Kept separate so every non-ripgrep code path applies identical include/exclude
+/// and skip rules — a divergence here would make one tool silently disagree with another about which
+/// files exist.
 /// </summary>
 internal static class SearchPatterns
 {

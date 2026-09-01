@@ -3,6 +3,8 @@ import "../styles/editor.css";
 import "../styles/canvas.css";
 import "../styles/ribbon.css";
 import "../styles/canvas-filters.css";
+import "../styles/doc-editor.css";
+import "../styles/code-viewer.css";
 
 import { Workbench } from "../workbench/Workbench.js";
 import { HttpProjectStore, HttpStyleStore, loadCatalog } from "../editor/io/index.js";

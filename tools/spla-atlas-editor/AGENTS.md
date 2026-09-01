@@ -1,9 +1,21 @@
-# `spla-atlas-editor` — инструкция для агента-исполнителя
+# `spla-atlas-editor` — задание отменено
 
-Здесь **пока нет кода**. Папка подготовлена, писать будет другой агент.
+> **Не начинать эту работу.** Редактор схем уже существует — это
+> [`tools/spla-diagram`](../spla-diagram/), поднятый до контракта **v3**.
+> Замысел «новый пакет рядом, старый заморожен на v1» не состоялся: развивали
+> существующий. Папка пуста и оставлена только чтобы отмена была видна там, где
+> её будут искать.
+>
+> Куда идти: формат — [`CONTRACT.md`](../spla-diagram/docs/CONTRACT.md),
+> работа с моделью — [`docs/diagrams/projects/AGENTS.md`](../../docs/diagrams/projects/AGENTS.md).
+>
+> Ниже — исторический текст задания. Его требования (ручная раскладка, вид как
+> выборка, запрет писать в `entities.json` без спроса) остаются в силе и живут
+> в `spla-diagram`; адреса файлов и запреты «не трогать spla-diagram» —
+> недействительны.
 
-**План работ:** [`PLAN_20260828_diagrams_editor-v2`](../../docs/plans/PLAN_20260828_diagrams_editor-v2.md) — читать целиком, там порядок и границы.
-**Решение и обоснование:** [`ADR_20260828_diagrams_model-contract-v2`](../../docs/adr/ADR_20260828_diagrams_model-contract-v2.md).
+**План работ:** [`PLAN_20260828_diagrams_editor-v2`](../../docs/plans/PLAN_20260828_diagrams_editor-v2.md) — закрыт вместе с этим заданием.
+**Решение и обоснование:** [`ADR_20260828_diagrams_model-contract-v2`](../../docs/adr/ADR_20260828_diagrams_model-contract-v2.md), развит [`ADR_20260831`](../../docs/adr/ADR_20260831_diagrams_text-provenance-and-view-axes.md).
 **Формы файлов:** [`docs/diagrams/projects/AGENTS.md`](../../docs/diagrams/projects/AGENTS.md).
 **Парная утилита:** [`tools/spla-atlas/AGENTS.md`](../spla-atlas/AGENTS.md).
 

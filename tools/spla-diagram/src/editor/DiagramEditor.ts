@@ -31,6 +31,8 @@ import {
   type StyleStore,
 } from "./io/index.js";
 import { el, replaceChildren } from "../util/dom.js";
+import { DocEditorDialog, type DocTargetKind } from "./doc/DocEditorDialog.js";
+import { CodeViewerDialog } from "./code/CodeViewerDialog.js";
 
 export { type CatalogEntry };
 
@@ -40,8 +42,10 @@ export interface DiagramEditorOptions {
   styleStore?: StyleStore;
 }
 
+import { DIAGRAM_CONFIG } from "../constants/diagram-constants.js";
+
 /** How long a text field must be quiet before its edits become a history step. */
-const FIELD_EDIT_QUIET_MS = 600;
+const FIELD_EDIT_QUIET_MS = DIAGRAM_CONFIG.interaction.fieldEditQuietMs;
 
 const INSPECTOR_WIDTH_KEY = "spla-diagram:inspector-width";
 const MIN_INSPECTOR_WIDTH = 320;
@@ -91,6 +95,8 @@ export class DiagramEditor implements InspectorHost, StylePanelHost, DiagramEdit
   private readonly root: HTMLElement;
   private readonly slots = new Map<Slot, HTMLElement>();
   readonly history = new History();
+  readonly docEditor: DocEditorDialog;
+  readonly codeViewer: CodeViewerDialog;
   private readonly inspector: Inspector;
   private readonly edgesPanel: EdgesPanel;
   private readonly filtersPanel: FiltersPanel;
@@ -136,6 +142,8 @@ export class DiagramEditor implements InspectorHost, StylePanelHost, DiagramEdit
     this.styleLibrary = StyleLibrary.parse(builtinStyleSheet());
 
     this.canvas = new DiagramCanvas(this.slot("canvas"), { styles: this.styleLibrary });
+    this.docEditor = new DocEditorDialog(this);
+    this.codeViewer = new CodeViewerDialog();
     this.inspector = new Inspector(
       this.slot("inspector-badge"),
       this.slot("inspector-body"),
@@ -168,6 +176,30 @@ export class DiagramEditor implements InspectorHost, StylePanelHost, DiagramEdit
 
   openTab(tab: Tab): void {
     this.setTab(tab);
+  }
+
+  openDocEditor(targetId?: string | null, kind?: DocTargetKind): void {
+    const id = targetId || this.canvas.selected?.id;
+    if (!id) {
+      this.notify("Выберите элемент или связь для редактирования документации");
+      return;
+    }
+    this.docEditor.open(id, kind);
+  }
+
+  openCodeViewer(codeRef?: string | null, label?: string): void {
+    if (!codeRef) {
+      const selected = this.canvas.selectedElement();
+      if (selected && typeof selected.metadata?.codeRef === "string") {
+        codeRef = selected.metadata.codeRef;
+        label = label || selected.label;
+      }
+    }
+    if (!codeRef) {
+      this.notify("У выбранного элемента не указана ссылка на исходный код (codeRef)");
+      return;
+    }
+    void this.codeViewer.open(codeRef, label);
   }
 
   /**
@@ -239,6 +271,14 @@ export class DiagramEditor implements InspectorHost, StylePanelHost, DiagramEdit
     this.canvas.events.on("collapse", () => {
       this.inspector.render(this.canvas.selected);
       this.edgesPanel.render();
+    });
+
+    this.canvas.events.on("openDocEditor", (payload: { id: string; kind?: DocTargetKind }) => {
+      this.openDocEditor(payload.id, payload.kind);
+    });
+
+    this.canvas.events.on("openCodeViewer", (payload: { id: string; codeRef: string; label?: string }) => {
+      this.openCodeViewer(payload.codeRef, payload.label);
     });
 
     this.canvas.events.on("viewport", (state) => {
@@ -390,9 +430,21 @@ export class DiagramEditor implements InspectorHost, StylePanelHost, DiagramEdit
         // they are coloured. Presentation state only — nothing is written.
         this.canvas.setEdgeFamilyHidden("structure", !on);
         return;
+      case "shadows":
+      case "ghost-edges":
+        this.canvas.toggleOverviewShadows(on);
+        return;
       default:
         return;
     }
+  }
+
+  toggleOverviewShadows(on?: boolean): boolean {
+    return this.canvas.toggleOverviewShadows(on);
+  }
+
+  isOverviewShadowsEnabled(): boolean {
+    return this.canvas.isOverviewShadowsEnabled;
   }
 
   /**
@@ -453,6 +505,11 @@ export class DiagramEditor implements InspectorHost, StylePanelHost, DiagramEdit
         if (this.canvas.selected === null) return;
         e.preventDefault();
         this.deleteSelection();
+      } else if (e.key === "F2" || (mod && key === "d")) {
+        if (this.canvas.selected !== null) {
+          e.preventDefault();
+          this.openDocEditor(this.canvas.selected.id);
+        }
       }
     });
   }

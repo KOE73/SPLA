@@ -19,8 +19,11 @@ import { marquee, resizeHandles, selectionOutline } from "./render/handles.js";
 import { UniformPortAssigner } from "./ports/assigners.js";
 import { portKey, type PortAssigner, type PortRequest } from "./ports/PortAssigner.js";
 import { BezierRouter, type EdgeRouter } from "./routing/EdgeRouter.js";
+import { getMarkerOffset } from "./render/PaintRegistry.js";
 import { EDGE_ATTR } from "../interaction/roles.js";
 import { InteractionController } from "../interaction/InteractionController.js";
+import { SourceCodeService } from "../editor/code/SourceCodeService.js";
+import { DIAGRAM_CONFIG } from "../constants/diagram-constants.js";
 
 export type SelectionKind = "zone" | "node" | "edge";
 
@@ -43,6 +46,8 @@ export interface CanvasEvents {
   gestureend: { reason: string };
   viewport: ViewportState;
   collapse: { id: string; collapsed: boolean };
+  openDocEditor: { id: string; kind?: "node" | "zone" | "edge" };
+  openCodeViewer: { id: string; codeRef: string; label?: string };
 }
 
 export interface DiagramCanvasOptions {
@@ -121,6 +126,7 @@ export class DiagramCanvas {
    */
   private activeTags = new Set<string>();
   private ghostNodeId: string | null = null;
+  private showOverviewShadows = false;
 
   /** Rubber band in model coordinates while a selection sweep is running. */
   marqueeRect: Rect | null = null;
@@ -133,7 +139,7 @@ export class DiagramCanvas {
 
   constructor(host: HTMLElement, options: DiagramCanvasOptions = {}) {
     this.host = host;
-    this.gridStep = options.gridStep ?? 10;
+    this.gridStep = options.gridStep ?? DIAGRAM_CONFIG.handles.defaultGridStep;
     this.portAssigner = options.portAssigner ?? new UniformPortAssigner();
     this.router = options.router ?? new BezierRouter();
     this.registry = options.registry ?? defaultRegistry();
@@ -174,18 +180,33 @@ export class DiagramCanvas {
     this.tooltipEl.style.opacity = "0";
     document.body.appendChild(this.tooltipEl);
 
+    this.richTooltipEl = document.createElement("div");
+    this.richTooltipEl.className = "spla-rich-doc-tooltip";
+    this.richTooltipEl.style.display = "none";
+    this.richTooltipEl.style.opacity = "0";
+    document.body.appendChild(this.richTooltipEl);
+
+    this.edgeControlsEl = document.createElement("div");
+    this.edgeControlsEl.className = "spla-edge-controls";
+    this.edgeControlsEl.style.display = "none";
+    this.edgeControlsEl.style.opacity = "0";
+    document.body.appendChild(this.edgeControlsEl);
+
     this.interaction = new InteractionController(this, host);
   }
 
   readonly tooltipEl: HTMLElement;
+  readonly richTooltipEl: HTMLElement;
+  readonly edgeControlsEl: HTMLElement;
   dataLang: string = "ru";
 
   showTooltip(content: string, x: number, y: number): void {
+    this.hideRichTooltip();
     this.tooltipEl.innerHTML = content;
     this.tooltipEl.style.display = "flex";
     this.tooltipEl.style.opacity = "1";
 
-    const pad = 14;
+    const pad = DIAGRAM_CONFIG.interaction.tooltipOffset;
     let left = x + pad;
     let top = y + pad;
 
@@ -208,6 +229,107 @@ export class DiagramCanvas {
     this.tooltipEl.style.opacity = "0";
   }
 
+  showRichTooltip(content: string, x: number, y: number): void {
+    this.hideTooltip();
+    this.richTooltipEl.innerHTML = content;
+    this.richTooltipEl.style.display = "flex";
+    this.richTooltipEl.style.opacity = "1";
+
+    const pad = DIAGRAM_CONFIG.interaction.tooltipOffset;
+    let left = x + pad;
+    let top = y + pad;
+
+    const rect = this.richTooltipEl.getBoundingClientRect();
+    if (left + rect.width > window.innerWidth - 10) {
+      left = x - rect.width - pad;
+    }
+    if (top + rect.height > window.innerHeight - 10) {
+      top = y - rect.height - pad;
+    }
+    left = Math.max(10, left);
+    top = Math.max(10, top);
+
+    this.richTooltipEl.style.left = `${left}px`;
+    this.richTooltipEl.style.top = `${top}px`;
+  }
+
+  hideRichTooltip(): void {
+    this.richTooltipEl.style.display = "none";
+    this.richTooltipEl.style.opacity = "0";
+  }
+
+  getEdgeCenter(edgeId: string): { x: number; y: number } | null {
+    const edgeGroup = this.svgEl.querySelector<SVGGElement>(`g[data-edge="${edgeId}"]`);
+    if (!edgeGroup) return null;
+    const label = edgeGroup.querySelector<SVGTextElement>(".spla-edge-label");
+    if (label) {
+      const rect = label.getBoundingClientRect();
+      if (rect.width > 0 && rect.height > 0) {
+        return { x: rect.left + rect.width / 2, y: rect.top };
+      }
+    }
+    const path = edgeGroup.querySelector<SVGPathElement>(".spla-edge-line");
+    if (path) {
+      try {
+        const len = path.getTotalLength();
+        const pt = path.getPointAtLength(len / 2);
+        const ctm = path.getScreenCTM();
+        if (ctm) {
+          const domPt = new DOMPoint(pt.x, pt.y).matrixTransform(ctm);
+          return { x: domPt.x, y: domPt.y };
+        }
+      } catch {
+        // Fallback to coordinates
+      }
+    }
+    return null;
+  }
+
+  showEdgeControls(edgeId: string, fallbackX: number, fallbackY: number): void {
+    const doc = this.doc;
+    if (!doc) return;
+    const edge = doc.edge(edgeId);
+    if (!edge) return;
+
+    const lang = this.dataLang || "ru";
+    const textEntry = doc.getText(edgeId, lang);
+    const hasDoc = Boolean(textEntry?.doc?.trim());
+    const type = edge.type || "relates";
+
+    this.edgeControlsEl.innerHTML = `
+      <span class="spla-edge-ctrl-type">${escapeCanvasHtml(type)}</span>
+      <button type="button" class="spla-edge-ctrl-btn spla-edge-doc-btn${hasDoc ? " has-doc" : ""}" data-edge-id="${escapeCanvasHtml(edgeId)}" title="Документация (клик — редактор, наведение — просмотр)">
+        ${hasDoc ? "📝" : "📄"}
+      </button>
+    `;
+
+    this.edgeControlsEl.style.display = "flex";
+    this.edgeControlsEl.style.opacity = "1";
+
+    const center = this.getEdgeCenter(edgeId);
+    const targetX = center ? center.x : fallbackX;
+    const targetY = center ? center.y : fallbackY;
+
+    let left = targetX;
+    let top = targetY - 14;
+    if (left < 60) left = 60;
+    if (left > window.innerWidth - 60) left = window.innerWidth - 60;
+    if (top < 35) top = targetY + 28;
+
+    this.edgeControlsEl.style.left = `${left}px`;
+    this.edgeControlsEl.style.top = `${top}px`;
+  }
+
+  hideEdgeControls(): void {
+    this.edgeControlsEl.style.display = "none";
+    this.edgeControlsEl.style.opacity = "0";
+  }
+
+  hideAllTooltips(): void {
+    this.hideTooltip();
+    this.hideRichTooltip();
+  }
+
   // ------------------------------------------------------------ public API
 
   get hostElement(): HTMLElement {
@@ -223,6 +345,7 @@ export class DiagramCanvas {
     this.render();
     this.fit();
     this.events.emit("select", null);
+    this.validateModelCodeRefs(doc);
   }
 
   /**
@@ -246,6 +369,24 @@ export class DiagramCanvas {
     }
     this.render();
     this.events.emit("select", this.selection);
+    this.validateModelCodeRefs(doc);
+  }
+
+  private validateModelCodeRefs(doc: DiagramDocument): void {
+    const codeRefs: string[] = [];
+    for (const el of doc.elements()) {
+      if (typeof el.metadata?.codeRef === "string") {
+        const ref = el.metadata.codeRef.trim();
+        if (ref) codeRefs.push(ref);
+      }
+    }
+    if (codeRefs.length === 0) return;
+
+    void SourceCodeService.validateCodeRefs(codeRefs).then((hasUpdates) => {
+      if (hasUpdates && this.doc === doc) {
+        this.render();
+      }
+    });
   }
 
   get model(): DiagramDocument | null {
@@ -321,6 +462,16 @@ export class DiagramCanvas {
       this.ghostNodeId = null;
       this.render();
     }
+  }
+
+  get isOverviewShadowsEnabled(): boolean {
+    return this.showOverviewShadows;
+  }
+
+  toggleOverviewShadows(enabled?: boolean): boolean {
+    this.showOverviewShadows = enabled !== undefined ? enabled : !this.showOverviewShadows;
+    this.render();
+    return this.showOverviewShadows;
   }
 
   /**
@@ -730,46 +881,75 @@ export class DiagramCanvas {
       resolved.push({ edge, from, to, isPotential: false });
     }
 
-    // When ghost focus is active on a node, also resolve its hidden/potential relations
-    if (this.ghostNodeId !== null) {
-      const ghostEl = doc.element(this.ghostNodeId);
+    // When ghost focus is active on a node or global overview is enabled, resolve hidden/potential relations
+    if (this.ghostNodeId !== null || this.showOverviewShadows) {
+      const ghostEl = this.ghostNodeId !== null ? doc.element(this.ghostNodeId) : null;
       const rawGhostEntityId = ghostEl ? (ghostEl.raw as any)?._entity?.id : null;
       const relations = doc.relations;
+
+      // Fast lookup for canvas element ID by entity ID / element ID
+      const entityToCanvasId = new Map<string, string>();
+      for (const el of doc.elements()) {
+        entityToCanvasId.set(el.id, el.id);
+        const rawId = (el.raw as any)?._entity?.id;
+        if (rawId) entityToCanvasId.set(rawId, el.id);
+      }
+
       if (Array.isArray(relations)) {
         for (const rel of relations) {
-          const fromMatch = rel.from === this.ghostNodeId || (rawGhostEntityId && rel.from === rawGhostEntityId);
-          const toMatch = rel.to === this.ghostNodeId || (rawGhostEntityId && rel.to === rawGhostEntityId);
-          if (fromMatch || toMatch) {
-            const canvasFrom = fromMatch ? this.ghostNodeId : rel.from;
-            const canvasTo = toMatch ? this.ghostNodeId : rel.to;
-            if (canvasFrom === canvasTo) continue;
+          const canvasFrom = entityToCanvasId.get(rel.from);
+          const canvasTo = entityToCanvasId.get(rel.to);
+          if (!canvasFrom || !canvasTo || canvasFrom === canvasTo) continue;
 
-            const fromEl = doc.element(canvasFrom);
-            const toEl = doc.element(canvasTo);
-            if (fromEl === undefined || toEl === undefined) continue;
+          const fromEl = doc.element(canvasFrom);
+          const toEl = doc.element(canvasTo);
+          if (fromEl === undefined || toEl === undefined) continue;
 
-            const alreadyPresent = resolved.some((r) => {
-              if (rel.id && r.edge.id === rel.id) return true;
-              return (
-                r.edge.from === canvasFrom &&
-                r.edge.to === canvasTo &&
-                r.edge.type === (rel.type || rel.relation || "relates") &&
-                r.edge.label === (rel.label || "")
-              );
-            });
-            if (!alreadyPresent) {
-              const from = this.anchorFor(fromEl);
-              const to = this.anchorFor(toEl);
-              if (from.owner !== to.owner) {
-                const potentialEdge: DiagramEdge = {
-                  id: rel.id || `ghost_${canvasFrom}_${canvasTo}_${rel.type || "rel"}_${resolved.length}`,
-                  from: canvasFrom,
-                  to: canvasTo,
-                  type: rel.type || rel.relation || "relates",
-                  label: rel.label || "",
-                };
-                resolved.push({ edge: potentialEdge, from, to, isPotential: true });
-              }
+          const isNodeGhostMatch =
+            this.ghostNodeId !== null &&
+            (canvasFrom === this.ghostNodeId ||
+              canvasTo === this.ghostNodeId ||
+              (rawGhostEntityId && (rel.from === rawGhostEntityId || rel.to === rawGhostEntityId)));
+
+          let shouldInclude = false;
+          if (isNodeGhostMatch) {
+            // Local focus always shows all relations of the focused node
+            shouldInclude = true;
+          } else if (this.showOverviewShadows) {
+            // Global overview includes relations whose style has overview === true
+            const relType = rel.type || rel.relation || "relates";
+            const edgeStyle = this.styleLibrary.resolveEdge(rel.styleId || relType);
+            if (edgeStyle.overview) {
+              shouldInclude = true;
+            }
+          }
+
+          if (!shouldInclude) continue;
+
+          const relType = rel.type || rel.relation || "relates";
+          const alreadyPresent = resolved.some((r) => {
+            if (rel.id && r.edge.id === rel.id) return true;
+            return (
+              r.edge.from === canvasFrom &&
+              r.edge.to === canvasTo &&
+              r.edge.type === relType &&
+              r.edge.label === (rel.label || "")
+            );
+          });
+
+          if (!alreadyPresent) {
+            const from = this.anchorFor(fromEl);
+            const to = this.anchorFor(toEl);
+            if (from.owner !== to.owner) {
+              const potentialEdge: DiagramEdge = {
+                id: rel.id || `ghost_${canvasFrom}_${canvasTo}_${relType}_${resolved.length}`,
+                from: canvasFrom,
+                to: canvasTo,
+                type: relType,
+                label: rel.label || "",
+                styleId: rel.styleId,
+              };
+              resolved.push({ edge: potentialEdge, from, to, isPotential: true });
             }
           }
         }
@@ -778,13 +958,22 @@ export class DiagramCanvas {
 
     const requests: PortRequest[] = [];
     for (const r of resolved) {
+      const fromStyle = this.styleLibrary.blockStyle(r.from.owner);
+      const toStyle = this.styleLibrary.blockStyle(r.to.owner);
+      const fromInset = this.registry.resolve(r.from.owner).cornerInset?.("east", fromStyle) ?? fromStyle.radius;
+      const toInset = this.registry.resolve(r.to.owner).cornerInset?.("west", toStyle) ?? toStyle.radius;
+
       requests.push({
         edgeId: r.edge.id, end: "from", ownerId: r.from.owner.id,
         ownerRect: r.from.rect, otherRect: r.to.rect, edgeType: r.edge.type,
+        ownerInset: fromInset,
+        otherInset: toInset,
       });
       requests.push({
         edgeId: r.edge.id, end: "to", ownerId: r.to.owner.id,
         ownerRect: r.to.rect, otherRect: r.from.rect, edgeType: r.edge.type,
+        ownerInset: toInset,
+        otherInset: fromInset,
       });
     }
     const ports = this.portAssigner.assign(requests);
@@ -794,6 +983,15 @@ export class DiagramCanvas {
       const toSlot = ports.get(portKey(r.edge.id, "to"));
       if (fromSlot === undefined || toSlot === undefined) continue;
 
+      const fromStyle = this.styleLibrary.blockStyle(r.from.owner);
+      const toStyle = this.styleLibrary.blockStyle(r.to.owner);
+      const fromInset = this.registry.resolve(r.from.owner).cornerInset?.(fromSlot.side, fromStyle) ?? fromStyle.radius;
+      const toInset = this.registry.resolve(r.to.owner).cornerInset?.(toSlot.side, toStyle) ?? toStyle.radius;
+
+      const style = this.styleLibrary.edgeStyle(r.edge);
+      const fromMarkerOffset = getMarkerOffset(style.source.shape, style.source.size ?? DIAGRAM_CONFIG.routing.defaultMarkerSize);
+      const toMarkerOffset = getMarkerOffset(style.target.shape, style.target.size ?? DIAGRAM_CONFIG.routing.defaultMarkerSize);
+
       const fromPoint = this.registry.resolve(r.from.owner).pointAt(r.from.rect, fromSlot);
       const toPoint = this.registry.resolve(r.to.owner).pointAt(r.to.rect, toSlot);
 
@@ -801,9 +999,9 @@ export class DiagramCanvas {
         from: fromPoint, to: toPoint,
         fromSide: fromSlot.side, toSide: toSlot.side,
         fromRect: r.from.rect, toRect: r.to.rect,
+        fromInset, toInset,
+        fromMarkerOffset, toMarkerOffset,
       });
-
-      const style = this.styleLibrary.edgeStyle(r.edge);
       const viewHighlighted =
         view === undefined || view.highlightNodes.length === 0
           ? true
@@ -924,6 +1122,14 @@ function unionRect(a: Rect, b: Rect): Rect {
     width: Math.max(a.x + a.width, b.x + b.width) - x,
     height: Math.max(a.y + a.height, b.y + b.height) - y,
   };
+}
+
+function escapeCanvasHtml(str: string): string {
+  return str
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
 }
 
 export function defaultRegistry(): TypeRegistry {

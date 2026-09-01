@@ -6,6 +6,7 @@ import { isContainer } from "../model/types.js";
 import { el, replaceChildren } from "../util/dom.js";
 import { select, type Option } from "./fields.js";
 import { blockPreview, edgePreview } from "./style-preview.js";
+import { SourceCodeService } from "./code/SourceCodeService.js";
 import { i18n } from "../workbench/i18n/I18nService.js";
 
 export interface InspectorHost {
@@ -21,6 +22,8 @@ export interface InspectorHost {
   /** Switch the right-hand panel to the Styles tab with this style open. */
   openStyleTab(styleId: string): void;
   openTab(tab: "properties" | "edges" | "filters" | "styles" | "base"): void;
+  openDocEditor(targetId?: string | null, kind?: "node" | "zone" | "edge"): void;
+  openCodeViewer?(codeRef?: string | null, label?: string): void;
 }
 
 /**
@@ -248,7 +251,7 @@ export class Inspector {
             input: (e) => {
               const value = (e.target as HTMLInputElement).value;
               edge.label = value;
-              this.host.canvas.model?.setText(edge.id, { doc: value, description: value, name: value }, this.host.dataLang || "ru");
+              this.host.canvas.model?.setText(edge.id, { name: value, description: value }, this.host.dataLang || "ru");
               if (isVisibleOnCanvas) {
                 this.host.editField(() => {
                   edge.label = value;
@@ -260,6 +263,16 @@ export class Inspector {
                 this.host.canvas.render();
               }
             },
+          },
+        }),
+      ]),
+      el("div", { class: "field" }, [
+        el("button", {
+          class: "btn full",
+          attrs: { style: "display: flex; align-items: center; justify-content: center; gap: 6px;" },
+          text: `📄 ${i18n.d.dialogs.docEditor.openEditorBtn}`,
+          on: {
+            click: () => this.host.openDocEditor(edge.id, "edge"),
           },
         }),
       ]),
@@ -559,48 +572,78 @@ export class Inspector {
     const currentLang = this.host.dataLang || "ru";
     const langBadge = currentLang.toUpperCase();
     const textEntry = this.host.canvas.model?.getText(element.id, currentLang);
-    const value = textEntry?.doc || textEntry?.description || (typeof element.metadata.description === "string" ? element.metadata.description : "");
+    const value = textEntry?.description || (typeof element.metadata.description === "string" ? element.metadata.description : "");
+    const hasDoc = Boolean(textEntry?.doc?.trim());
 
-    return el("label", { class: "field" }, [
-      el("div", { attrs: { style: "display: flex; align-items: center; justify-content: space-between; margin-bottom: 2px;" } }, [
-        el("span", { class: "field-label", text: i18n.d.panels.properties.descriptionTitle }),
-        el("span", { class: "chip chip-lang", text: langBadge }),
-      ]),
-      el("textarea", {
-        rows: 3,
-        value,
-        placeholder: i18n.d.panels.properties.descriptionPlaceholder,
-        on: {
-          input: (e) => {
-            const next = (e.target as HTMLTextAreaElement).value;
-            this.host.editField(() => {
-              element.metadata.description = next;
-              this.host.canvas.model?.setText(element.id, { doc: next, description: next }, currentLang);
-            });
+    return el("div", { class: "field-group" }, [
+      el("label", { class: "field" }, [
+        el("div", { attrs: { style: "display: flex; align-items: center; justify-content: space-between; margin-bottom: 2px;" } }, [
+          el("span", { class: "field-label", text: i18n.d.panels.properties.descriptionTitle }),
+          el("span", { class: "chip chip-lang", text: langBadge }),
+        ]),
+        el("textarea", {
+          rows: 2,
+          value,
+          placeholder: i18n.d.panels.properties.descriptionPlaceholder,
+          on: {
+            input: (e) => {
+              const next = (e.target as HTMLTextAreaElement).value;
+              this.host.editField(() => {
+                element.metadata.description = next;
+                this.host.canvas.model?.setText(element.id, { description: next }, currentLang);
+              });
+            },
           },
-        },
-      }),
+        }),
+      ]),
+      el("div", { class: "field", attrs: { style: "margin-top: 4px;" } }, [
+        el("button", {
+          class: `btn full ${hasDoc ? "btn-secondary" : ""}`,
+          attrs: { style: "display: flex; align-items: center; justify-content: center; gap: 6px;" },
+          text: `📄 ${i18n.d.dialogs.docEditor.openEditorBtn}${hasDoc ? " (✓)" : ""}`,
+          on: {
+            click: () => this.host.openDocEditor(element.id, isContainer(element) ? "zone" : "node"),
+          },
+        }),
+      ]),
     ]);
   }
 
   private codeRefField(element: DiagramElement): HTMLElement {
     const value = typeof element.metadata.codeRef === "string" ? element.metadata.codeRef : "";
-    return el("label", { class: "field" }, [
+    const isAvailable = value.trim() ? SourceCodeService.isFileAvailable(value.trim()) : false;
+    const showCodeBtn = Boolean(value.trim()) && isAvailable !== false;
+
+    return el("div", { class: "field" }, [
       el("span", { class: "field-label", text: i18n.d.panels.properties.codeRefTitle }),
-      el("input", {
-        class: "mono input-code",
-        type: "text",
-        value,
-        placeholder: i18n.d.panels.properties.codeRefPlaceholder,
-        on: {
-          input: (e) => {
-            const next = (e.target as HTMLInputElement).value;
-            this.host.editField(() => {
-              element.metadata.codeRef = next;
-            });
+      el("div", { attrs: { style: "display: flex; gap: 6px; align-items: center;" } }, [
+        el("input", {
+          class: "mono input-code",
+          attrs: { style: "flex: 1; min-width: 0;" },
+          type: "text",
+          value,
+          placeholder: i18n.d.panels.properties.codeRefPlaceholder,
+          on: {
+            input: (e) => {
+              const next = (e.target as HTMLInputElement).value;
+              this.host.editField(() => {
+                element.metadata.codeRef = next;
+              });
+            },
           },
-        },
-      }),
+        }),
+        showCodeBtn
+          ? el("button", {
+              class: "btn btn-secondary",
+              title: "Просмотреть исходный код (без сохранения)",
+              text: "💻",
+              attrs: { style: "padding: 4px 8px; flex-shrink: 0;" },
+              on: {
+                click: () => this.host.openCodeViewer?.(value, element.label),
+              },
+            })
+          : null,
+      ].filter(Boolean) as HTMLElement[]),
     ]);
   }
 

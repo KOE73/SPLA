@@ -115,7 +115,7 @@ function radialGradient(
 interface ShapeSpec {
   /** Path inside a 12×12 box, pointing right. */
   readonly path: string;
-  /** Where the line's end lands along that box. */
+  /** Where the line's end lands along that box (0 = base, 12 = tip). */
   readonly refX: number;
   /** Filled with the head colour, or hollow with the page behind it. */
   readonly hollow?: boolean;
@@ -124,21 +124,32 @@ interface ShapeSpec {
 }
 
 /**
- * Every head is drawn in the same 12×12 box pointing right, so `orient` and
- * `refX` behave identically across shapes and a style can swap one for another
- * without the line appearing to change length.
+ * Every head is drawn in the same 12×12 box pointing right, with individual
+ * `refX` to ensure smooth line-to-marker transition and overlap masking for pointy tails.
  */
 const SHAPES: Readonly<Record<Exclude<EndShape, "none">, ShapeSpec>> = {
-  arrow: { path: "M 0 1.5 L 12 6 L 0 10.5 z", refX: 11 },
-  "arrow-open": { path: "M 0.5 1 L 11 6 L 0.5 11", refX: 11, open: true },
-  triangle: { path: "M 0 1 L 12 6 L 0 11 z", refX: 11.5 },
-  "triangle-hollow": { path: "M 0.75 1.5 L 11 6 L 0.75 10.5 z", refX: 11, hollow: true },
-  diamond: { path: "M 0 6 L 6 2 L 12 6 L 6 10 z", refX: 1 },
-  "diamond-hollow": { path: "M 0.75 6 L 6 2.5 L 11.25 6 L 6 9.5 z", refX: 1.5, hollow: true },
-  circle: { path: "M 2 6 a 4 4 0 1 0 8 0 a 4 4 0 1 0 -8 0", refX: 10 },
-  "circle-hollow": { path: "M 2.5 6 a 3.5 3.5 0 1 0 7 0 a 3.5 3.5 0 1 0 -7 0", refX: 10, hollow: true },
-  bar: { path: "M 10 1 L 10 11", refX: 10, open: true },
+  arrow: { path: "M 0 1.5 L 12 6 L 0 10.5 z", refX: 0 },
+  "arrow-open": { path: "M 0.5 1 L 11.5 6 L 0.5 11", refX: 0.5, open: true },
+  triangle: { path: "M 0 1 L 12 6 L 0 11 z", refX: 0 },
+  "triangle-hollow": { path: "M 0.75 1.5 L 11.25 6 L 0.75 10.5 z", refX: 0.75, hollow: true },
+  diamond: { path: "M 0 6 L 6 2 L 12 6 L 6 10 z", refX: 2.2 },
+  "diamond-hollow": { path: "M 0.75 6 L 6 2.5 L 11.25 6 L 6 9.5 z", refX: 2.2, hollow: true },
+  circle: { path: "M 0 6 a 6 6 0 1 0 12 0 a 6 6 0 1 0 -12 0", refX: 2.0 },
+  "circle-hollow": { path: "M 1 6 a 5 5 0 1 0 10 0 a 5 5 0 1 0 -10 0", refX: 2.0, hollow: true },
+  bar: { path: "M 0 1 L 0 11", refX: 0, open: true },
 };
+
+/**
+ * Calculates the exact line offset (distance from box perimeter to line endpoint)
+ * so that the marker's tip touches the box perimeter and the line endpoint lands
+ * cleanly at `refX` inside the marker's tail.
+ */
+export function getMarkerOffset(shape: EndShape, size: number): number {
+  if (shape === "none") return 0;
+  const spec = SHAPES[shape];
+  if (!spec) return 0;
+  return ((12 - spec.refX) / 12) * size;
+}
 
 function markerFor(id: string, shape: Exclude<EndShape, "none">, size: number, color: string): SVGElement {
   const spec = SHAPES[shape];
@@ -152,6 +163,7 @@ function markerFor(id: string, shape: Exclude<EndShape, "none">, size: number, c
       refY: 6,
       markerWidth: size,
       markerHeight: size,
+      markerUnits: "userSpaceOnUse",
       // Reversed automatically at the start of a path, so one definition serves
       // both ends and a head at `from` points back the way it should.
       orient: "auto-start-reverse",
@@ -159,12 +171,10 @@ function markerFor(id: string, shape: Exclude<EndShape, "none">, size: number, c
     [
       svg("path", {
         d: spec.path,
-        // A hollow head is filled with the canvas colour rather than "none":
-        // "none" would let the line show through the middle of the triangle,
-        // which is precisely the artefact hollow heads exist to avoid.
-        fill: spec.open === true ? "none" : spec.hollow === true ? "#ffffff" : color,
+        // A hollow head is filled with the background colour rather than "none"
+        fill: spec.open === true ? "none" : spec.hollow === true ? "var(--bg, #ffffff)" : color,
         stroke: stroked ? color : null,
-        "stroke-width": stroked ? 1.4 : null,
+        "stroke-width": stroked ? 1.5 : null,
         "stroke-linecap": spec.open === true ? "round" : null,
         "stroke-linejoin": "round",
       }),

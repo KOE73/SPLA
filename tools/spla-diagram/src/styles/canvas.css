@@ -238,3 +238,71 @@
   fill: #ffffff !important;
 }
 
+/* ------------------------------------------------------------------ doc buttons */
+
+.spla-node-doc,
+.spla-zone-doc {
+  cursor: pointer;
+  opacity: 0.85;
+  transition: opacity 0.15s ease;
+}
+
+.spla-node-doc:hover,
+.spla-zone-doc:hover {
+  opacity: 1;
+}
+
+.spla-node-doc-rect {
+  fill: #f8fafc;
+  stroke: #cbd5e1;
+  stroke-width: 1px;
+  transition: fill 0.15s ease, stroke 0.15s ease;
+}
+
+.spla-node-doc.has-doc .spla-node-doc-rect {
+  fill: #eff6ff;
+  stroke: #60a5fa;
+  stroke-width: 1.2px;
+}
+
+.spla-node-doc:hover .spla-node-doc-rect {
+  fill: #3b82f6 !important;
+  stroke: #2563eb !important;
+}
+
+.spla-node-doc-icon {
+  pointer-events: none;
+  transition: fill 0.15s ease;
+}
+
+.spla-node-doc:hover .spla-node-doc-icon {
+  fill: #ffffff !important;
+}
+
+.spla-zone-doc-rect {
+  fill: #fff;
+  stroke: #94a3b8;
+  stroke-width: 1.2px;
+  transition: fill 0.15s ease, stroke 0.15s ease;
+}
+
+.spla-zone-doc.has-doc .spla-zone-doc-rect {
+  fill: #eff6ff;
+  stroke: #3b82f6;
+}
+
+.spla-zone-doc:hover .spla-zone-doc-rect {
+  fill: #3b82f6 !important;
+  stroke: #1d4ed8 !important;
+}
+
+.spla-zone-doc-icon {
+  fill: #334155;
+  pointer-events: none;
+  transition: fill 0.15s ease;
+}
+
+.spla-zone-doc:hover .spla-zone-doc-icon {
+  fill: #fff !important;
+}
+

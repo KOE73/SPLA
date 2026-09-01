@@ -12,14 +12,6 @@ export function createDefaultRibbonSpec(): RibbonSpec {
         keyTip: "H",
         groups: [
           {
-            id: "history",
-            get title() { return i18n.d.ribbon.groups.history; },
-            items: [
-              { type: "button", command: "edit.undo", size: "small" },
-              { type: "button", command: "edit.redo", size: "small" },
-            ],
-          },
-          {
             id: "create",
             get title() { return i18n.d.ribbon.groups.creation; },
             items: [
@@ -118,6 +110,7 @@ export function createDefaultRibbonSpec(): RibbonSpec {
             get title() { return i18n.d.ribbon.groups.canvas; },
             items: [
               { type: "button", command: "view.filters.visual.toggle", size: "medium" },
+              { type: "toggle", command: "view.shadows.global.toggle", size: "medium" },
               { type: "toggle", command: "view.grid.toggle", size: "small" },
               { type: "toggle", command: "view.snap.toggle", size: "small" },
             ],

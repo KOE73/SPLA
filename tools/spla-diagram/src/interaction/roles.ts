@@ -28,6 +28,10 @@ export const Role = {
   CollapseToggle: "collapse-toggle",
   /** Releasing here toggles ghost links. */
   GhostToggle: "ghost-toggle",
+  /** Releasing here opens the doc editor or shows doc tooltip. */
+  DocEdit: "doc-edit",
+  /** Releasing here opens the code viewer or shows code preview tooltip. */
+  CodeView: "code-view",
 } as const;
 
 export type RoleName = (typeof Role)[keyof typeof Role];

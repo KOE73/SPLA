@@ -113,12 +113,16 @@ export interface DiagramEditorFacade {
   applyJson(): void;
   applyToggle(name: string, on: boolean): void;
   applyPortAssigner(mode: string): void;
+  openDocEditor(targetId?: string | null): void;
+  openCodeViewer?(codeRef?: string | null, label?: string): void;
   applyTheme(theme: string): void;
   applyDataLang(lang: string): void;
   applyUiLang?(lang: string): void;
   openTab(tab: "properties" | "edges" | "filters" | "styles" | "base"): void;
   notify(message: string): void;
   openCatalogEntry(entry: CatalogEntry): Promise<void>;
+  toggleOverviewShadows?(on?: boolean): boolean;
+  isOverviewShadowsEnabled?(): boolean;
 }
 
 export interface CommandContext {

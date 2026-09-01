@@ -1,135 +1,150 @@
-# SPLA Semantic Architecture Diagram (MVP)
+# SPLA Architecture Diagrams
 
-An interactive architecture diagram visualizer and editor without unpredictable auto-layout, based on the **Semantic Diagram JSON → SVG/HTML Canvas + Draw.io XML Export** workflow.
+The diagram workspace: architecture models and the editor they are built in.
+Layout is hand-made only — there is no auto-layout and there will not be one.
 
-## 📁 Files
-1. **[`app/`](app/index.html)** — The built visualizer/editor application, served by `server.go` (`run.cmd`) at `/app/`. Built from source in [`tools/spla-diagram`](../../tools/spla-diagram); run `npm run build:app` there to rebuild it after a source change.
-2. **[`model.json`](model.json)** (and the other `model-*.json` files) — Semantic JSON models representing system architecture, subsystems, metadata, and spatial coordinates. `catalog.json` lists which ones appear in the app's sidebar.
-3. **[`README_RU.md`](README_RU.md)** — Russian version of this documentation.
+Russian version — [`README_RU.md`](README_RU.md).
 
 ---
 
-## 🚀 Key Features
+## 📁 What lives here
 
-### 1. Strict Coordinate Control (Zero Auto-Layout)
-- Every component and zone has deterministic coordinates (`x`, `y`, `width`, `height`).
-- Modifying labels, metadata, or relationships **never breaks** or reshuffles the spatial layout.
+| Path | What it is |
+|---|---|
+| [`app/`](app/index.html) | built editor application, served under `/app/` |
+| [`catalog.json`](catalog.json) | what appears in the sidebar — **one entry per view** |
+| [`styles.json`](styles.json) | shared style library for every project |
+| [`projects/`](projects/) | the models themselves: entities, relations, texts, views |
+| [`server.go`](server.go), [`run.cmd`](run.cmd) | local server, port `8777` |
+| [`mapping/`](mapping/) | leftovers of the v1 generator, kept as reading material only |
 
-### 2. Semantic Rectangles (Zones & Containers)
-- Zones (e.g. *Client Layer*, *Core & Runtime Subsystem*, *Tool Dispatch & MCP Host*, *Storage & Persistence*) are first-class semantic objects with `type`, `semanticId`, and `tags`, rather than decorative background shapes.
-
-### 3. Dynamic Multi-Schema & Data-Driven Views
-- **Schema Switcher**: Switch seamlessly between different diagrams (e.g. *SPLA System Architecture*, *LLM Pipeline & Composition*, *Plugins & Tools*).
-- **Data-Driven View Buttons**: View preset buttons in the top navigation are generated dynamically from the active JSON's `"views"` definition.
-- **Open Local File**: Easily load any external `.json` diagram model via drag-and-drop or file picker.
-
-### 4. Rich Object Inspector (Right Sidebar)
-- Clicking any node or zone opens an inspector panel displaying:
-  - Entity name and type badge
-  - Semantic ID (`zone.core.runtime`, etc.)
-  - Codebase references (`codeRef`), e.g., `src/SPLA.Core/Runtime/ChatTurnPump.cs`
-  - Responsibilities list
-  - Semantic tags
-
-### 5. Smooth Navigation
-- Intuitive Pan & Zoom (mouse wheel zoom, drag canvas, fit-to-screen, and reset controls).
-
-### 6. Bidirectional Export & Interoperability
-- **Export to `.drawio`**: Generates valid Diagrams.net XML with complete geometry and custom object metadata (`<Object as="data">`). Open in draw.io / Visio for manual refinement.
-- **Live JSON Editor**: View and modify the underlying schema on the fly with live canvas re-rendering.
-
----
-
-## 🧭 Layout Variants
-
-The same codebase can be laid out on the canvas in different ways. A layout is not decoration — it is a **chosen point of view** that decides which question the diagram answers. Each model declares its variant in `metadata.layout`.
-
-### Variant A — Semantic Atlas (`layout: "semantic-atlas"`)
-
-**Answers:** *how is the system organized by meaning — and is everything actually in its place?*
-
-Rules:
-
-1. **Grouping by meaning only.** A container is an architectural role (LLM Pipeline, Tool Pipeline, Security & Capability, Agent Memory…), never a namespace, assembly, or folder. The namespace survives in `metadata.codeRef` as a reference, but never drives placement.
-2. **Completeness is mandatory.** Every entity in the codebase appears — no exceptions, no "misc" bucket. Completeness is what gives the diagram its second meaning: you can see whether everything found a home.
-3. **Exactly one place per entity.** One class, one node, one container. A class appearing twice is forbidden: it breaks the diagram's premise and almost always means the class does two unrelated things and should be split in code.
-4. **Nested containers.** A major role (`type: "boundary"`) holds sub-roles (`type: "component"`), which hold nodes. Depth stops at two levels — beyond that the diagram stops being readable.
-5. **Dense grid inside a container.** Within a sub-role, nodes are laid out alphabetically in a grid: ordering carries no meaning there, membership does.
-6. **Containers never overlap.** Boundary boxes stay disjoint, and every node lies fully inside its own container.
-
-**Diagnostic value.** Read as an audit: a bloated container means an overloaded subsystem; an entity hard to assign to any role is a candidate for rethinking; a class pulled toward two roles is a candidate for splitting.
-
-**Example:** [`model-core-full.json`](model-core-full.json) — 246 entities from `src/core`, 13 semantic boundaries, 17 nested sub-roles.
-
-### Variant B — Message Flow (`layout: "message-flow"`)
-
-**Answers:** *what happens to a single message from user input to reply?*
-
-Completeness is **not** required — it is actively harmful. Only the participants along the route appear, ordered left to right along the path; everything else is hidden. Edges are numbered by step. The same participant may appear on both the outbound and return leg — legitimate here, because a node means *a step in the route*, not *a class*.
-
-**Example:** [`model-llm-pipeline.json`](model-llm-pipeline.json).
-
-### Variant C — Subsystem Overview (`layout: "subsystem-overview"`)
-
-**Answers:** *which large parts make up the system, and who talks to whom?*
-
-A node is an entire subsystem, not a class. Dozens of classes collapse into one box. This is the variant for explaining the system to someone seeing it for the first time.
-
-**Example:** [`model.json`](model.json), [`model-core.json`](model-core.json).
-
----
-
-## ⚙️ How the atlas stays current
-
-The atlas is not drawn by hand — it is **generated** by
-[`tools/spla-arch`](../../tools/spla-arch/AGENTS.md) from three inputs:
-
-```text
-   discovered entities        rules for one point of view        json schema
-   (extracted from code)  +   (mapping/<variant>/*.map.json)  +  (model-*.json)
-                                        │
-                                        ▼
-                             deterministic verification
-                                        │
-                  ┌─────────────────────┼─────────────────────┐
-                  ▼                     ▼                     ▼
-               broken                 extra                missing
-                  └─────────────────────┴─────────────────────┘
-                                        │
-                                        ▼
-                       agent fixes the RULES or the SCHEMA
-```
-
-The key split: **rules are hand-authored and durable, coordinates are derived
-and disposable.** The rules file is essentially a cache of decisions already
-made about meaning, so the classification is not reinvented on every run. Rule
-sets are per point of view: `semantic-atlas` has one set, `message-flow`
-another — there is no shared set, because they group by different criteria.
-
-New code places itself for as long as the rules can manage it:
-
-1. name rule → 2. regex → 3. path prefix (longest wins) → 4. **file-mate
-inheritance** (one file is one unit of meaning) → 5. if nothing claims it, into
-the orange `UNPLACED` zone on the canvas.
-
-That orange zone is the agent's work queue. A lockfile `<id>.known.json` keeps
-a snapshot of the previous run, so the tool can tell "new and unclaimed" from
-"new and auto-placed — check whether that is right".
+The application is built from sources in [`tools/spla-diagram`](../../tools/spla-diagram);
+after editing them run `npm run build:app` there.
 
 ```bash
-go run . build --mapping ../../docs/diagrams/mapping/semantic-atlas/core.map.json --repo ../..
+docs/diagrams/run.cmd
 ```
 
-```bash
-go run . verify --dir ../../docs/diagrams --repo ../..
-```
+Then open <http://localhost:8777/app/>.
 
-`verify` writes nothing — it only answers whether code, rules, and schema still
-agree. It demands completeness **only** from `semantic-atlas`: for a
-`message-flow`, incompleteness is the design, not a defect.
+---
 
-### Anti-variant — Namespace Grid ⛔
+## 📐 Where things are specified
 
-A layout where the container is a namespace and nodes inside are alphabetical. It looks like a complete map but **answers no architectural question** — it restates the directory tree already visible in the IDE. It is especially harmful when mixed with a meaningful layout in one file: some classes sit in the namespace grid, others are pulled out into semantic zones, and the reader cannot tell whether they are looking at a full map or a slice.
+| Document | Answers |
+|---|---|
+| [`tools/spla-diagram/docs/CONTRACT.md`](../../tools/spla-diagram/docs/CONTRACT.md) | what is valid on disk: fields, types, invariants (contract **v3**) |
+| [`projects/AGENTS.md`](projects/AGENTS.md) | how to work with it: who writes what, pitfalls, what does not exist yet |
+| [`tools/spla-diagram/docs/API.md`](../../tools/spla-diagram/docs/API.md) | what a host must serve and accept |
+| [`ADR_20260831`](../adr/ADR_20260831_diagrams_text-provenance-and-view-axes.md) | why the format looks like this |
 
-If both meaning and code structure are needed, that is **two separate files**, not two layers in one.
+In short: a project is a directory holding a registry of entities and relations,
+a vocabulary of relation types, texts (with per-field provenance) and **views**.
+A view stores geometry and declares an **axis** — what nesting a block inside a
+rectangle actually asserts.
+
+---
+
+## 🧭 Axes: one model, different questions
+
+The same codebase can be laid out in different ways, and that is not decoration
+but a **choice of the question the diagram answers**. In v3 the choice is
+explicit: the view's `axis` field. Views on different axes may legitimately put
+one node in different containers — that is exactly what axes are for.
+
+### `axis_subsystem` — the semantic atlas
+
+**Question:** "how is the system arranged by meaning — and does everything have a
+place?"
+
+1. **Grouping by meaning only.** A container is an architectural role, not a
+   namespace, assembly or folder. The namespace stays in `codeRef` as reference.
+2. **Completeness is mandatory.** Every entity is present, with no "misc" bucket.
+   Completeness is the second point of the diagram: what fits nowhere shows up.
+3. **Exactly one place per entity on this axis.** One class — one node — one
+   container. Appearing twice on one axis almost always means the class does two
+   unrelated things.
+4. **Nesting at most two levels deep.** Beyond that the diagram stops reading.
+5. **Containers do not overlap**, and a node lies entirely inside its own.
+
+On this axis the diagram reads as an audit: a bloated container is an overloaded
+subsystem; an entity that is hard to place is a candidate for rethinking.
+
+**Examples:** `projects/core/`, `projects/full_core/`.
+
+### `axis_turn` — the route
+
+**Question:** "what happens during one turn, from message to answer?"
+
+Completeness is **not** wanted here — only the participants of the route, laid
+out along it. A node means a *step*, so one participant may legitimately appear
+both on the way out and on the way back.
+
+**Example:** `projects/spla_system/views/v_turn.view.json`.
+
+### `axis_security_zone` — trust boundaries
+
+**Question:** "where does trust end, and which call crosses the border?"
+
+A rectangle is an island; the edge between rectangles is the unit everything is
+accounted on — grants and refusals attach to edges, not to participants.
+
+**Example:** `projects/spla_system/views/v_zones.view.json`.
+
+### `axis_process` — where code runs
+
+**Question:** "which process does each node physically execute in?"
+
+Client, service, plugin load context, child process, network.
+
+**Example:** `projects/spla_system/views/v_process.view.json`.
+
+### Anti-pattern — the namespace grid ⛔
+
+A layout where a container is a namespace and nodes are sorted alphabetically
+inside it. It looks like a complete map but **answers no architectural
+question**: it retells the directory tree, which the IDE already shows.
+
+Mixing it with a meaningful layout in one view is worse still: some classes sit
+in the namespace grid, others are pulled into semantic zones, and the reader
+cannot tell a complete map from a slice. If both meaning and code structure are
+needed, that is **two views on two axes**, not two layers in one.
+
+---
+
+## ⚙️ How the model is kept current
+
+Today — **by hand**, and that is worth knowing up front.
+
+The v1 generator ([`tools/spla-arch`](../../tools/spla-arch/), Go) is out of
+service: the `model-*.json` files it produced have been deleted, and the orange
+"UNPLACED" zone does not exist in v2/v3 — an entity reaches the canvas only by
+being pulled from the registry. Its successor
+[`tools/spla-atlas`](../../tools/spla-atlas/) (Roslyn) is **not written**: only
+the task description is there.
+
+Which means:
+
+- the registry (`entities.json`, `relations.json`) is edited as text or by a
+  one-off script, and every `codeRef` must be **checked against a real file** —
+  otherwise the diagram lies from day one;
+- texts are edited in the editor or by hand;
+- geometry only in the editor, by the owner.
+
+The full list of what the contract promises but the code does not do yet is in
+[`projects/AGENTS.md` §5](projects/AGENTS.md).
+
+---
+
+## 🖱 What the editor does
+
+- Pan & zoom, dragging blocks and zones; a zone drags by its header and carries
+  its contents, a block re-parents when dropped into a zone.
+- Inspector: name, kind, `codeRef`, description and `doc`, editable in place.
+- Style panel over the shared `styles.json`.
+- Export to `.drawio` — valid XML preserving geometry and metadata.
+- Opening an arbitrary JSON by button or drag & drop.
+
+**What it deliberately does not do:** place coordinates. Not on open, not "to
+recover". Hand-made layout was lost once to a file reverted to `git HEAD`; the
+whole format is built so that this cannot happen again.

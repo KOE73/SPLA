@@ -325,4 +325,4 @@ mcp:
 
 `elicitation`, `sampling`, `roots`, `resources/*`, `prompts/*`, OAuth к удалённым серверам, фоновый
 чужой вызов. Причины — в ADR §2 и §3. `elicitation` и `sampling` ждут двунаправленного канала,
-который приедет один раз и целиком, вместе с насосом ходов ([[chat-turn-pump-decision]]).
+который приедет один раз и целиком, вместе с диспетчером ходов ([[chat-turn-pump-decision]]).

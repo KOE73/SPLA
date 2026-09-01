@@ -1,6 +1,7 @@
 import type { Rect } from "../../geometry/types.js";
 import { HANDLE_ATTR, ROLE_ATTR, Role } from "../../interaction/roles.js";
 import { svg } from "../svg.js";
+import { DIAGRAM_CONFIG } from "../../constants/diagram-constants.js";
 
 /** Which part of a rectangle a resize handle drags. */
 export type ResizeDirection = "n" | "s" | "e" | "w" | "ne" | "nw" | "se" | "sw";
@@ -20,10 +21,10 @@ const CURSORS: Readonly<Record<ResizeDirection, string>> = {
   se: "nwse-resize",
 };
 
-const SIZE = 10;
+const SIZE: number = DIAGRAM_CONFIG.handles.size;
 
 /** Top-left corner of the handle box for one direction. */
-export function handlePosition(rect: Rect, dir: ResizeDirection, size = SIZE): Rect {
+export function handlePosition(rect: Rect, dir: ResizeDirection, size: number = SIZE): Rect {
   const half = size / 2;
   const left = rect.x - half;
   const midX = rect.x + rect.width / 2 - half;

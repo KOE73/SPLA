@@ -1,6 +1,12 @@
 import type { CommandDefinition } from "./types.js";
 import { i18n } from "../i18n/I18nService.js";
 
+const ICONS = {
+  SAVE: `<svg viewBox="0 0 16 16" width="15" height="15" fill="currentColor"><path d="M2 1a1 1 0 0 0-1 1v12a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V4.5L11.5 1H2zm1 1h7.5L13 4.5V14H3V2zm2 1v3h6V3H5zm1 1h4v1H6V4zm-1 5v4h6V9H5zm1 1h4v2H6v-2z"/></svg>`,
+  UNDO: `<svg viewBox="0 0 16 16" width="15" height="15" fill="currentColor"><path d="M4.8 4L1.5 7.3l3.3 3.3V8.2c3.5 0 6.2 1.3 7.7 4.3-.5-4.2-3.1-6.5-7.7-6.5V4z"/></svg>`,
+  REDO: `<svg viewBox="0 0 16 16" width="15" height="15" fill="currentColor"><path d="M11.2 4l3.3 3.3-3.3 3.3V8.2c-3.5 0-6.2 1.3-7.7 4.3.5-4.2 3.1-6.5 7.7-6.5V4z"/></svg>`,
+};
+
 export function createBuiltinCommands(): CommandDefinition[] {
   return [
     // ----------------------------------------------------------------- File
@@ -8,7 +14,7 @@ export function createBuiltinCommands(): CommandDefinition[] {
       id: "file.save",
       get title() { return i18n.d.commands.save.title; },
       get description() { return i18n.d.commands.save.desc; },
-      icon: "💾",
+      icon: ICONS.SAVE,
       category: "File",
       shortcut: "Ctrl+S",
       keyTip: "S",
@@ -51,7 +57,7 @@ export function createBuiltinCommands(): CommandDefinition[] {
       id: "edit.undo",
       get title() { return i18n.d.commands.undo.title; },
       get description() { return i18n.d.commands.undo.desc; },
-      icon: "↶",
+      icon: ICONS.UNDO,
       category: "Edit",
       shortcut: "Ctrl+Z",
       keyTip: "U",
@@ -62,7 +68,7 @@ export function createBuiltinCommands(): CommandDefinition[] {
       id: "edit.redo",
       get title() { return i18n.d.commands.redo.title; },
       get description() { return i18n.d.commands.redo.desc; },
-      icon: "↷",
+      icon: ICONS.REDO,
       category: "Edit",
       shortcut: "Ctrl+Y, Ctrl+Shift+Z",
       keyTip: "R",
@@ -79,6 +85,31 @@ export function createBuiltinCommands(): CommandDefinition[] {
       keyTip: "X",
       isEnabled: (ctx) => ctx.selection.hasSelection,
       execute: (ctx) => ctx.editor.deleteSelection(),
+    },
+    {
+      id: "diagram.doc.edit",
+      get title() { return i18n.d.dialogs.docEditor.openEditorBtn; },
+      get description() { return i18n.d.dialogs.docEditor.editDocTooltip; },
+      icon: "📄",
+      category: "Edit",
+      shortcut: "F2, Ctrl+D",
+      keyTip: "M",
+      isEnabled: (ctx) => ctx.selection.hasSelection,
+      execute: (ctx) => ctx.editor.openDocEditor(),
+    },
+    {
+      id: "diagram.code.view",
+      title: "Просмотр исходного кода",
+      description: "Открыть просмотрщик исходного кода для выбранного элемента",
+      icon: "💻",
+      category: "Edit",
+      shortcut: "F3, Ctrl+Alt+C",
+      keyTip: "C",
+      isEnabled: (ctx) => {
+        const sel = ctx.canvas.selectedElement();
+        return Boolean(sel && typeof sel.metadata?.codeRef === "string" && sel.metadata.codeRef.trim());
+      },
+      execute: (ctx) => ctx.editor.openCodeViewer?.(),
     },
 
     // -------------------------------------------------------------- Diagram
@@ -153,6 +184,23 @@ export function createBuiltinCommands(): CommandDefinition[] {
       execute: (ctx, args) => {
         if (ctx.toggleCanvasFilters) {
           ctx.toggleCanvasFilters(args as HTMLElement | undefined);
+        }
+      },
+    },
+    {
+      id: "view.shadows.global.toggle",
+      get title() { return i18n.d.commands.toggleOverviewShadows.title; },
+      get description() { return i18n.d.commands.toggleOverviewShadows.desc; },
+      icon: "👻",
+      category: "View",
+      shortcut: "Ctrl+Shift+G",
+      keyTip: "G",
+      isChecked: (ctx) => Boolean(ctx.editor.isOverviewShadowsEnabled?.() ?? ctx.canvas.isOverviewShadowsEnabled),
+      execute: (ctx) => {
+        if (ctx.editor.toggleOverviewShadows) {
+          ctx.editor.toggleOverviewShadows();
+        } else {
+          ctx.canvas.toggleOverviewShadows();
         }
       },
     },

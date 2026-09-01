@@ -87,6 +87,7 @@ export interface ResolvedEdgeStyle {
   readonly target: Endpoint;
   readonly label: TextStyle;
   readonly family: "structure" | "flow";
+  readonly overview: boolean;
 }
 
 // ------------------------------------------------------------------- fallbacks
@@ -135,6 +136,7 @@ export const FALLBACK_EDGE: ResolvedEdgeStyle = {
     color: "#475569", align: "middle", opacity: 1, show: true,
   },
   family: "flow",
+  overview: false,
 };
 
 /**
@@ -490,6 +492,7 @@ function buildEdge(id: string, s: WireStyle): ResolvedEdgeStyle {
     target: endpoint(s.target, base.target),
     label: textStyle(s.label, base.label),
     family: s.family ?? base.family,
+    overview: s.overview ?? base.overview,
   };
 }
 
