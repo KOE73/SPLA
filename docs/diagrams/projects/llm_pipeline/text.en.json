@@ -1,0 +1,118 @@
+{
+  "contractVersion": 3,
+  "language": "en",
+  "entries": {
+    "zone_input": {
+      "name": {
+        "v": "Input",
+        "at": "2026-09-01T09:15:11Z",
+        "origin": "translated",
+        "from": "ru",
+        "fromHash": "0d14f67a"
+      },
+      "description": {
+        "v": "The user's reply, before it becomes a request to the model.",
+        "at": "2026-09-01T09:15:11Z",
+        "origin": "translated",
+        "from": "ru",
+        "fromHash": "21d33b31"
+      }
+    },
+    "zone_contributors": {
+      "name": {
+        "v": "Context contributors",
+        "at": "2026-09-01T09:15:11Z",
+        "origin": "translated",
+        "from": "ru",
+        "fromHash": "7c564dd2"
+      },
+      "description": {
+        "v": "Sources, each adding its own part to the prompt.",
+        "at": "2026-09-01T09:15:11Z",
+        "origin": "translated",
+        "from": "ru",
+        "fromHash": "fbed25b8"
+      }
+    },
+    "zone_model": {
+      "name": {
+        "v": "Model",
+        "at": "2026-09-01T09:15:11Z",
+        "origin": "translated",
+        "from": "ru",
+        "fromHash": "399932bb"
+      },
+      "description": {
+        "v": "The call to the provider and the parsing of the response stream.",
+        "at": "2026-09-01T09:15:11Z",
+        "origin": "translated",
+        "from": "ru",
+        "fromHash": "64ca5f7c"
+      }
+    },
+    "zone_output": {
+      "name": {
+        "v": "Output",
+        "at": "2026-09-01T09:15:11Z",
+        "origin": "translated",
+        "from": "ru",
+        "fromHash": "aa134bc7"
+      },
+      "description": {
+        "v": "The decomposed stream: text, reasoning, tool calls.",
+        "at": "2026-09-01T09:15:11Z",
+        "origin": "translated",
+        "from": "ru",
+        "fromHash": "98e33889"
+      }
+    },
+    "rt_call": {
+      "name": {
+        "v": "Call",
+        "at": "2026-09-01T09:15:11Z",
+        "origin": "translated",
+        "from": "ru",
+        "fromHash": "76a5f57b"
+      },
+      "description": {
+        "v": "A direct call to another component's method or API. Generated from code.",
+        "at": "2026-09-01T09:15:11Z",
+        "origin": "translated",
+        "from": "ru",
+        "fromHash": "0d3f5eea"
+      }
+    },
+    "rt_data-flow": {
+      "name": {
+        "v": "Data flow",
+        "at": "2026-09-01T09:15:11Z",
+        "origin": "translated",
+        "from": "ru",
+        "fromHash": "93a01e58"
+      },
+      "description": {
+        "v": "Data moves from a source to a sink. Not necessarily a synchronous call: a queue, a channel, or a network may sit between them.",
+        "at": "2026-09-01T09:15:11Z",
+        "origin": "translated",
+        "from": "ru",
+        "fromHash": "f2abc52c"
+      }
+    },
+    "v_main": {
+      "name": {
+        "v": "Main view",
+        "at": "2026-09-01T09:15:11Z",
+        "origin": "translated",
+        "from": "ru",
+        "fromHash": "b2e89469"
+      },
+      "description": {
+        "v": "Overview diagram of the project.",
+        "at": "2026-09-01T09:15:11Z",
+        "origin": "translated",
+        "from": "ru",
+        "fromHash": "7e8cf3f6"
+      }
+    }
+  }
+}

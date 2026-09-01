@@ -1,0 +1,102 @@
+{
+  "contractVersion": 3,
+  "language": "en",
+  "entries": {
+    "zone_host": {
+      "name": {
+        "v": "Tool host",
+        "at": "2026-09-01T09:15:11Z",
+        "origin": "translated",
+        "from": "ru",
+        "fromHash": "db7ddff6"
+      },
+      "description": {
+        "v": "The core that accepts a call and routes it to the right plugin.",
+        "at": "2026-09-01T09:15:11Z",
+        "origin": "translated",
+        "from": "ru",
+        "fromHash": "7665e45a"
+      }
+    },
+    "zone_network": {
+      "name": {
+        "v": "Network tools",
+        "at": "2026-09-01T09:15:11Z",
+        "origin": "translated",
+        "from": "ru",
+        "fromHash": "a14ada8a"
+      },
+      "description": {
+        "v": "Network diagnostics plugin: ping, DNS, HTTP.",
+        "at": "2026-09-01T09:15:11Z",
+        "origin": "translated",
+        "from": "ru",
+        "fromHash": "ab4ad01f"
+      }
+    },
+    "zone_ssh": {
+      "name": {
+        "v": "SSH and SFTP",
+        "at": "2026-09-01T09:15:11Z",
+        "origin": "translated",
+        "from": "ru",
+        "fromHash": "416591a6"
+      },
+      "description": {
+        "v": "Remote access plugin: commands over SSH and file transfer.",
+        "at": "2026-09-01T09:15:11Z",
+        "origin": "translated",
+        "from": "ru",
+        "fromHash": "cfe1c4fb"
+      }
+    },
+    "zone_doc": {
+      "name": {
+        "v": "Documents and spreadsheets",
+        "at": "2026-09-01T09:15:11Z",
+        "origin": "translated",
+        "from": "ru",
+        "fromHash": "91a93218"
+      },
+      "description": {
+        "v": "Document plugin: reading meaning out of DOCX, writing into spreadsheets.",
+        "at": "2026-09-01T09:15:11Z",
+        "origin": "translated",
+        "from": "ru",
+        "fromHash": "57c51e78"
+      }
+    },
+    "rt_call": {
+      "name": {
+        "v": "Call",
+        "at": "2026-09-01T09:15:11Z",
+        "origin": "translated",
+        "from": "ru",
+        "fromHash": "76a5f57b"
+      },
+      "description": {
+        "v": "A direct call to another component's method or API. Generated from code.",
+        "at": "2026-09-01T09:15:11Z",
+        "origin": "translated",
+        "from": "ru",
+        "fromHash": "0d3f5eea"
+      }
+    },
+    "v_main": {
+      "name": {
+        "v": "Main view",
+        "at": "2026-09-01T09:15:11Z",
+        "origin": "translated",
+        "from": "ru",
+        "fromHash": "b2e89469"
+      },
+      "description": {
+        "v": "Overview diagram of the project.",
+        "at": "2026-09-01T09:15:11Z",
+        "origin": "translated",
+        "from": "ru",
+        "fromHash": "7e8cf3f6"
+      }
+    }
+  }
+}

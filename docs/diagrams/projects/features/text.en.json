@@ -1,0 +1,427 @@
+{
+  "contractVersion": 3,
+  "language": "en",
+  "entries": {
+    "n_concept": {
+      "doc": {
+        "v": "Type concept: yellow fill, lightbulb icon. The subtitle comes from metadata.type.",
+        "at": "2026-09-01T09:15:11Z",
+        "origin": "translated",
+        "from": "ru",
+        "fromHash": "a6886fa6"
+      }
+    },
+    "n_note": {
+      "doc": {
+        "v": "This node has no metadata.type — the subtitle must fall back to the type value, i.e. \"note\".",
+        "at": "2026-09-01T09:15:11Z",
+        "origin": "translated",
+        "from": "ru",
+        "fromHash": "99c1c87a"
+      }
+    },
+    "n_component_tall": {
+      "doc": {
+        "v": "Height 80 > 60, so the title and subtitle baselines shift down (R-REND-08).",
+        "at": "2026-09-01T09:15:11Z",
+        "origin": "translated",
+        "from": "ru",
+        "fromHash": "a8eff15f"
+      }
+    },
+    "n_service": {
+      "doc": {
+        "v": "Type service: cyan outline, gear icon.",
+        "at": "2026-09-01T09:15:11Z",
+        "origin": "translated",
+        "from": "ru",
+        "fromHash": "2829713a"
+      }
+    },
+    "n_security": {
+      "doc": {
+        "v": "The only type with outline thickness 2.",
+        "at": "2026-09-01T09:15:11Z",
+        "origin": "translated",
+        "from": "ru",
+        "fromHash": "4205cf52"
+      }
+    },
+    "n_unknown": {
+      "doc": {
+        "v": "The type is missing from the style table — it must get the default styling and a 📄 icon.",
+        "at": "2026-09-01T09:15:11Z",
+        "origin": "translated",
+        "from": "ru",
+        "fromHash": "253294bd"
+      }
+    },
+    "n_tool": {
+      "doc": {
+        "v": "Connected to n_database inside the same zone — this edge disappears on collapse.",
+        "at": "2026-09-01T09:15:11Z",
+        "origin": "translated",
+        "from": "ru",
+        "fromHash": "0d075174"
+      }
+    },
+    "n_database": {
+      "doc": {
+        "v": "Receiver of an intra-zone edge and of an external data flow.",
+        "at": "2026-09-01T09:15:11Z",
+        "origin": "translated",
+        "from": "ru",
+        "fromHash": "f4d7212b"
+      }
+    },
+    "n_external": {
+      "doc": {
+        "v": "Type external-system: amber fill, globe icon.",
+        "at": "2026-09-01T09:15:11Z",
+        "origin": "translated",
+        "from": "ru",
+        "fromHash": "7bd03499"
+      }
+    },
+    "n_geometric": {
+      "doc": {
+        "v": "There is no zone field at all. Membership in zone_dashed is decided only by the center's position (R-CONT-01). The inspector must show \"Dashed zone\".",
+        "at": "2026-09-01T09:15:11Z",
+        "origin": "translated",
+        "from": "ru",
+        "fromHash": "f7ba03ab"
+      }
+    },
+    "n_free": {
+      "doc": {
+        "v": "Not inside any zone. The inspector must show \"Outside zones\".",
+        "at": "2026-09-01T09:15:11Z",
+        "origin": "translated",
+        "from": "ru",
+        "fromHash": "a9663f17"
+      }
+    },
+    "n_longlabel": {
+      "doc": {
+        "v": "Width 130 is deliberately small. Double-clicking the resize handle in the bottom-right corner must fit it to the caption (R-EDIT-09).",
+        "at": "2026-09-01T09:15:11Z",
+        "origin": "translated",
+        "from": "ru",
+        "fromHash": "83a4dbf4"
+      }
+    },
+    "zone_outer": {
+      "name": {
+        "v": "Outer zone",
+        "at": "2026-09-01T09:15:11Z",
+        "origin": "translated",
+        "from": "ru",
+        "fromHash": "a657f8ce"
+      },
+      "description": {
+        "v": "Top-level container demonstration.",
+        "at": "2026-09-01T09:15:11Z",
+        "origin": "translated",
+        "from": "ru",
+        "fromHash": "8a7d9d24"
+      },
+      "doc": {
+        "v": "Contains a nested zone and four nodes. Tests dragging by the container.",
+        "at": "2026-09-01T09:15:11Z",
+        "origin": "translated",
+        "from": "ru",
+        "fromHash": "73784611"
+      }
+    },
+    "zone_nested": {
+      "name": {
+        "v": "Nested zone",
+        "at": "2026-09-01T09:15:11Z",
+        "origin": "translated",
+        "from": "ru",
+        "fromHash": "3452b942"
+      },
+      "description": {
+        "v": "Container nesting demonstration.",
+        "at": "2026-09-01T09:15:11Z",
+        "origin": "translated",
+        "from": "ru",
+        "fromHash": "96724c15"
+      },
+      "doc": {
+        "v": "Entirely inside zone_outer. Must move together with it (R-EDIT-03).",
+        "at": "2026-09-01T09:15:11Z",
+        "origin": "translated",
+        "from": "ru",
+        "fromHash": "55a9f8ba"
+      }
+    },
+    "zone_collapse": {
+      "name": {
+        "v": "Collapsible zone",
+        "at": "2026-09-01T09:15:11Z",
+        "origin": "translated",
+        "from": "ru",
+        "fromHash": "3fc996ef"
+      },
+      "description": {
+        "v": "Container collapse demonstration.",
+        "at": "2026-09-01T09:15:11Z",
+        "origin": "translated",
+        "from": "ru",
+        "fromHash": "923628f6"
+      },
+      "doc": {
+        "v": "Collapse it: the internal edge disappears, the external ones move to the header.",
+        "at": "2026-09-01T09:15:11Z",
+        "origin": "translated",
+        "from": "ru",
+        "fromHash": "eb34a8ab"
+      }
+    },
+    "zone_dashed": {
+      "name": {
+        "v": "Dashed zone",
+        "at": "2026-09-01T09:15:11Z",
+        "origin": "translated",
+        "from": "ru",
+        "fromHash": "1815b804"
+      },
+      "description": {
+        "v": "Container dashed-border demonstration.",
+        "at": "2026-09-01T09:15:11Z",
+        "origin": "translated",
+        "from": "ru",
+        "fromHash": "378f8921"
+      },
+      "doc": {
+        "v": "Dashed outline and its own header fill. On collapse the dashing must be suppressed.",
+        "at": "2026-09-01T09:15:11Z",
+        "origin": "translated",
+        "from": "ru",
+        "fromHash": "b002fef3"
+      }
+    },
+    "e_composes": {
+      "name": {
+        "v": "composes (Y-dominant)",
+        "at": "2026-09-01T09:15:11Z",
+        "origin": "translated",
+        "from": "ru",
+        "fromHash": "2550f301"
+      }
+    },
+    "e_call": {
+      "name": {
+        "v": "call (X-dominant)",
+        "at": "2026-09-01T09:15:11Z",
+        "origin": "translated",
+        "from": "ru",
+        "fromHash": "b5934c61"
+      }
+    },
+    "e_intrazone": {
+      "name": {
+        "v": "inside the zone",
+        "at": "2026-09-01T09:15:11Z",
+        "origin": "translated",
+        "from": "ru",
+        "fromHash": "c2fc1a46"
+      }
+    },
+    "e_default": {
+      "name": {
+        "v": "unknown relation type",
+        "at": "2026-09-01T09:15:11Z",
+        "origin": "translated",
+        "from": "ru",
+        "fromHash": "0a50096f"
+      }
+    },
+    "e_dangling": {
+      "name": {
+        "v": "must be skipped silently",
+        "at": "2026-09-01T09:15:11Z",
+        "origin": "translated",
+        "from": "ru",
+        "fromHash": "ed01db1d"
+      }
+    },
+    "rt_call": {
+      "name": {
+        "v": "Call",
+        "at": "2026-09-01T09:15:11Z",
+        "origin": "translated",
+        "from": "ru",
+        "fromHash": "76a5f57b"
+      },
+      "description": {
+        "v": "A direct call to another component's method or API. Generated from code.",
+        "at": "2026-09-01T09:15:11Z",
+        "origin": "translated",
+        "from": "ru",
+        "fromHash": "0d3f5eea"
+      }
+    },
+    "rt_composes": {
+      "name": {
+        "v": "Composition",
+        "at": "2026-09-01T09:15:11Z",
+        "origin": "translated",
+        "from": "ru",
+        "fromHash": "81a5fe2c"
+      },
+      "description": {
+        "v": "A type holds another as part of its own state. Generated from code.",
+        "at": "2026-09-01T09:15:11Z",
+        "origin": "translated",
+        "from": "ru",
+        "fromHash": "549fbc3c"
+      }
+    },
+    "rt_data-flow": {
+      "name": {
+        "v": "Data flow",
+        "at": "2026-09-01T09:15:11Z",
+        "origin": "translated",
+        "from": "ru",
+        "fromHash": "93a01e58"
+      },
+      "description": {
+        "v": "Data moves from a source to a sink. Not necessarily a synchronous call: a queue, a channel, or a network may sit between them.",
+        "at": "2026-09-01T09:15:11Z",
+        "origin": "translated",
+        "from": "ru",
+        "fromHash": "f2abc52c"
+      }
+    },
+    "rt_event": {
+      "name": {
+        "v": "Event",
+        "at": "2026-09-01T09:15:11Z",
+        "origin": "translated",
+        "from": "ru",
+        "fromHash": "7e0c9daf"
+      },
+      "description": {
+        "v": "A source publishes an event, a receiver reacts to it. The source does not know its receivers and does not wait for a reply.",
+        "at": "2026-09-01T09:15:11Z",
+        "origin": "translated",
+        "from": "ru",
+        "fromHash": "8159f9b9"
+      }
+    },
+    "rt_extends": {
+      "name": {
+        "v": "Inheritance",
+        "at": "2026-09-01T09:15:11Z",
+        "origin": "translated",
+        "from": "ru",
+        "fromHash": "c5851b25"
+      },
+      "description": {
+        "v": "A type inherits from another type. Generated from code.",
+        "at": "2026-09-01T09:15:11Z",
+        "origin": "translated",
+        "from": "ru",
+        "fromHash": "31668289"
+      }
+    },
+    "rt_implements": {
+      "name": {
+        "v": "Implementation",
+        "at": "2026-09-01T09:15:11Z",
+        "origin": "translated",
+        "from": "ru",
+        "fromHash": "effca315"
+      },
+      "description": {
+        "v": "A type implements a declared interface. Generated from code.",
+        "at": "2026-09-01T09:15:11Z",
+        "origin": "translated",
+        "from": "ru",
+        "fromHash": "4588cbeb"
+      }
+    },
+    "rt_realizes": {
+      "name": {
+        "v": "Realization",
+        "at": "2026-09-01T09:15:11Z",
+        "origin": "translated",
+        "from": "ru",
+        "fromHash": "799ba997"
+      },
+      "description": {
+        "v": "A concrete component realizes a declared contract or intent.",
+        "at": "2026-09-01T09:15:11Z",
+        "origin": "translated",
+        "from": "ru",
+        "fromHash": "7daefa55"
+      }
+    },
+    "rt_security": {
+      "name": {
+        "v": "Access check",
+        "at": "2026-09-01T09:15:11Z",
+        "origin": "translated",
+        "from": "ru",
+        "fromHash": "5d501abc"
+      },
+      "description": {
+        "v": "The call passes through a permission check. The receiver may refuse, and refusal is a normal outcome, not an error.",
+        "at": "2026-09-01T09:15:11Z",
+        "origin": "translated",
+        "from": "ru",
+        "fromHash": "8501dd31"
+      }
+    },
+    "rt_storage": {
+      "name": {
+        "v": "Storage",
+        "at": "2026-09-01T09:15:11Z",
+        "origin": "translated",
+        "from": "ru",
+        "fromHash": "edcea6ca"
+      },
+      "description": {
+        "v": "A component writes data to storage, or reads it from there. The receiver is where data survives the process.",
+        "at": "2026-09-01T09:15:11Z",
+        "origin": "translated",
+        "from": "ru",
+        "fromHash": "9f188427"
+      }
+    },
+    "rt_totally-made-up-edge-type": {
+      "name": {
+        "v": "Test type",
+        "at": "2026-09-01T09:15:11Z",
+        "origin": "translated",
+        "from": "ru",
+        "fromHash": "d35079a0"
+      },
+      "description": {
+        "v": "Editor-check fixture. Carries no meaning of its own; delete it together with the relation that uses it.",
+        "at": "2026-09-01T09:15:11Z",
+        "origin": "translated",
+        "from": "ru",
+        "fromHash": "8513e1d1"
+      }
+    },
+    "v_main": {
+      "name": {
+        "v": "Main view",
+        "at": "2026-09-01T09:15:11Z",
+        "origin": "translated",
+        "from": "ru",
+        "fromHash": "b2e89469"
+      },
+      "description": {
+        "v": "Overview diagram of the project.",
+        "at": "2026-09-01T09:15:11Z",
+        "origin": "translated",
+        "from": "ru",
+        "fromHash": "7e8cf3f6"
+      }
+    }
+  }
+}

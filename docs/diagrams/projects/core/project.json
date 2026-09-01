@@ -2,7 +2,8 @@
   "id": "core",
   "title": "Core Layer (src/core)",
   "languages": [
-    "ru"
+    "ru",
+    "en"
   ],
   "sources": {
     "include": [

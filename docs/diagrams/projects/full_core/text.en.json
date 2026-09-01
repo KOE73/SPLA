@@ -1,0 +1,914 @@
+{
+  "contractVersion": 3,
+  "language": "en",
+  "entries": {
+    "z_llm": {
+      "name": {
+        "v": "LLM: providers and turn (41)",
+        "at": "2026-09-01T09:15:11Z",
+        "origin": "translated",
+        "from": "ru",
+        "fromHash": "dbfb6465"
+      }
+    },
+    "c_llm": {
+      "name": {
+        "v": "LLM: providers and turn",
+        "at": "2026-09-01T09:15:11Z",
+        "origin": "translated",
+        "from": "ru",
+        "fromHash": "4dccbc7d"
+      }
+    },
+    "z_llm_providers": {
+      "name": {
+        "v": "Providers and gateway (10)",
+        "at": "2026-09-01T09:15:11Z",
+        "origin": "translated",
+        "from": "ru",
+        "fromHash": "934c8979"
+      }
+    },
+    "c_llm_providers": {
+      "name": {
+        "v": "Providers and gateway",
+        "at": "2026-09-01T09:15:11Z",
+        "origin": "translated",
+        "from": "ru",
+        "fromHash": "ef47ae4b"
+      }
+    },
+    "z_llm_middleware": {
+      "name": {
+        "v": "Middleware chain (11)",
+        "at": "2026-09-01T09:15:11Z",
+        "origin": "translated",
+        "from": "ru",
+        "fromHash": "a4eb9531"
+      }
+    },
+    "c_llm_middleware": {
+      "name": {
+        "v": "Middleware chain",
+        "at": "2026-09-01T09:15:11Z",
+        "origin": "translated",
+        "from": "ru",
+        "fromHash": "48a4e9c4"
+      }
+    },
+    "z_llm_turn": {
+      "name": {
+        "v": "Turn model (20)",
+        "at": "2026-09-01T09:15:11Z",
+        "origin": "translated",
+        "from": "ru",
+        "fromHash": "a2294933"
+      }
+    },
+    "c_llm_turn": {
+      "name": {
+        "v": "Turn model",
+        "at": "2026-09-01T09:15:11Z",
+        "origin": "translated",
+        "from": "ru",
+        "fromHash": "6b48b922"
+      }
+    },
+    "z_toolpipe": {
+      "name": {
+        "v": "Tool pipeline (MCP) (78)",
+        "at": "2026-09-01T09:15:11Z",
+        "origin": "translated",
+        "from": "ru",
+        "fromHash": "e0e46785"
+      }
+    },
+    "c_toolpipe": {
+      "name": {
+        "v": "Tool pipeline (MCP)",
+        "at": "2026-09-01T09:15:11Z",
+        "origin": "translated",
+        "from": "ru",
+        "fromHash": "a8242e21"
+      }
+    },
+    "z_tool_contracts": {
+      "name": {
+        "v": "Pipeline contracts (15)",
+        "at": "2026-09-01T09:15:11Z",
+        "origin": "translated",
+        "from": "ru",
+        "fromHash": "0bac72b0"
+      }
+    },
+    "c_tool_contracts": {
+      "name": {
+        "v": "Pipeline contracts",
+        "at": "2026-09-01T09:15:11Z",
+        "origin": "translated",
+        "from": "ru",
+        "fromHash": "869eea63"
+      }
+    },
+    "z_tool_stages": {
+      "name": {
+        "v": "Pipeline stages (11)",
+        "at": "2026-09-01T09:15:11Z",
+        "origin": "translated",
+        "from": "ru",
+        "fromHash": "c2913de3"
+      }
+    },
+    "c_tool_stages": {
+      "name": {
+        "v": "Pipeline stages",
+        "at": "2026-09-01T09:15:11Z",
+        "origin": "translated",
+        "from": "ru",
+        "fromHash": "735e3afa"
+      }
+    },
+    "z_tool_host": {
+      "name": {
+        "v": "Host and exposure (17)",
+        "at": "2026-09-01T09:15:11Z",
+        "origin": "translated",
+        "from": "ru",
+        "fromHash": "d9ee51e5"
+      }
+    },
+    "c_tool_host": {
+      "name": {
+        "v": "Host and exposure",
+        "at": "2026-09-01T09:15:11Z",
+        "origin": "translated",
+        "from": "ru",
+        "fromHash": "e3496ba6"
+      }
+    },
+    "z_tool_progress": {
+      "name": {
+        "v": "Progress and background (14)",
+        "at": "2026-09-01T09:15:11Z",
+        "origin": "translated",
+        "from": "ru",
+        "fromHash": "7dc6937b"
+      }
+    },
+    "c_tool_progress": {
+      "name": {
+        "v": "Progress and background",
+        "at": "2026-09-01T09:15:11Z",
+        "origin": "translated",
+        "from": "ru",
+        "fromHash": "3cf1303d"
+      }
+    },
+    "z_agent_comp": {
+      "name": {
+        "v": "Agent composition (14)",
+        "at": "2026-09-01T09:15:11Z",
+        "origin": "translated",
+        "from": "ru",
+        "fromHash": "5c2bcee3"
+      }
+    },
+    "c_agent_comp": {
+      "name": {
+        "v": "Agent composition",
+        "at": "2026-09-01T09:15:11Z",
+        "origin": "translated",
+        "from": "ru",
+        "fromHash": "22201af5"
+      }
+    },
+    "z_formats": {
+      "name": {
+        "v": "Format converters (7)",
+        "at": "2026-09-01T09:15:11Z",
+        "origin": "translated",
+        "from": "ru",
+        "fromHash": "4edc70b9"
+      }
+    },
+    "c_formats": {
+      "name": {
+        "v": "Format converters",
+        "at": "2026-09-01T09:15:11Z",
+        "origin": "translated",
+        "from": "ru",
+        "fromHash": "80578ec9"
+      }
+    },
+    "z_plugins": {
+      "name": {
+        "v": "Plugins and tool sets (23)",
+        "at": "2026-09-01T09:15:11Z",
+        "origin": "translated",
+        "from": "ru",
+        "fromHash": "513580b8"
+      }
+    },
+    "c_plugins": {
+      "name": {
+        "v": "Plugins and tool sets",
+        "at": "2026-09-01T09:15:11Z",
+        "origin": "translated",
+        "from": "ru",
+        "fromHash": "7d7059e2"
+      }
+    },
+    "z_plugin_contracts": {
+      "name": {
+        "v": "Plugin contracts (5)",
+        "at": "2026-09-01T09:15:11Z",
+        "origin": "translated",
+        "from": "ru",
+        "fromHash": "e9c422a1"
+      }
+    },
+    "c_plugin_contracts": {
+      "name": {
+        "v": "Plugin contracts",
+        "at": "2026-09-01T09:15:11Z",
+        "origin": "translated",
+        "from": "ru",
+        "fromHash": "351585f3"
+      }
+    },
+    "z_plugin_loading": {
+      "name": {
+        "v": "Loading and discovery (9)",
+        "at": "2026-09-01T09:15:11Z",
+        "origin": "translated",
+        "from": "ru",
+        "fromHash": "b80eac4b"
+      }
+    },
+    "c_plugin_loading": {
+      "name": {
+        "v": "Loading and discovery",
+        "at": "2026-09-01T09:15:11Z",
+        "origin": "translated",
+        "from": "ru",
+        "fromHash": "d5a86569"
+      }
+    },
+    "z_chat": {
+      "name": {
+        "v": "Chat and session (17)",
+        "at": "2026-09-01T09:15:11Z",
+        "origin": "translated",
+        "from": "ru",
+        "fromHash": "0edde5e8"
+      }
+    },
+    "c_chat": {
+      "name": {
+        "v": "Chat and session",
+        "at": "2026-09-01T09:15:11Z",
+        "origin": "translated",
+        "from": "ru",
+        "fromHash": "d55be635"
+      }
+    },
+    "z_security": {
+      "name": {
+        "v": "Security and permissions (73)",
+        "at": "2026-09-01T09:15:11Z",
+        "origin": "translated",
+        "from": "ru",
+        "fromHash": "f56c495a"
+      }
+    },
+    "c_security": {
+      "name": {
+        "v": "Security and permissions",
+        "at": "2026-09-01T09:15:11Z",
+        "origin": "translated",
+        "from": "ru",
+        "fromHash": "c2a7e4bd"
+      }
+    },
+    "z_sec_permissions": {
+      "name": {
+        "v": "Permissions (12)",
+        "at": "2026-09-01T09:15:11Z",
+        "origin": "translated",
+        "from": "ru",
+        "fromHash": "e9a85c32"
+      }
+    },
+    "c_sec_permissions": {
+      "name": {
+        "v": "Permissions",
+        "at": "2026-09-01T09:15:11Z",
+        "origin": "translated",
+        "from": "ru",
+        "fromHash": "119c7544"
+      }
+    },
+    "z_sec_zones": {
+      "name": {
+        "v": "Zones and edges (11)",
+        "at": "2026-09-01T09:15:11Z",
+        "origin": "translated",
+        "from": "ru",
+        "fromHash": "ba66b223"
+      }
+    },
+    "c_sec_zones": {
+      "name": {
+        "v": "Zones and edges",
+        "at": "2026-09-01T09:15:11Z",
+        "origin": "translated",
+        "from": "ru",
+        "fromHash": "d5e7f1ba"
+      }
+    },
+    "z_sec_sandbox": {
+      "name": {
+        "v": "Sandbox and host capabilities (21)",
+        "at": "2026-09-01T09:15:11Z",
+        "origin": "translated",
+        "from": "ru",
+        "fromHash": "1c475a57"
+      }
+    },
+    "c_sec_sandbox": {
+      "name": {
+        "v": "Sandbox and host capabilities",
+        "at": "2026-09-01T09:15:11Z",
+        "origin": "translated",
+        "from": "ru",
+        "fromHash": "4c7cfb1d"
+      }
+    },
+    "z_sec_secrets": {
+      "name": {
+        "v": "Secrets (21)",
+        "at": "2026-09-01T09:15:11Z",
+        "origin": "translated",
+        "from": "ru",
+        "fromHash": "9a3dfc85"
+      }
+    },
+    "c_sec_secrets": {
+      "name": {
+        "v": "Secrets",
+        "at": "2026-09-01T09:15:11Z",
+        "origin": "translated",
+        "from": "ru",
+        "fromHash": "f3955aab"
+      }
+    },
+    "z_sec_secrets_domain": {
+      "name": {
+        "v": "Store and policy (19)",
+        "at": "2026-09-01T09:15:11Z",
+        "origin": "translated",
+        "from": "ru",
+        "fromHash": "16df7ce3"
+      }
+    },
+    "c_sec_secrets_domain": {
+      "name": {
+        "v": "Store and policy",
+        "at": "2026-09-01T09:15:11Z",
+        "origin": "translated",
+        "from": "ru",
+        "fromHash": "b5213632"
+      }
+    },
+    "z_sec_identity": {
+      "name": {
+        "v": "Identity (8)",
+        "at": "2026-09-01T09:15:11Z",
+        "origin": "translated",
+        "from": "ru",
+        "fromHash": "df63f869"
+      }
+    },
+    "c_sec_identity": {
+      "name": {
+        "v": "Identity",
+        "at": "2026-09-01T09:15:11Z",
+        "origin": "translated",
+        "from": "ru",
+        "fromHash": "da50bbce"
+      }
+    },
+    "z_memory": {
+      "name": {
+        "v": "Agent memory and context (32)",
+        "at": "2026-09-01T09:15:11Z",
+        "origin": "translated",
+        "from": "ru",
+        "fromHash": "3e84c96b"
+      }
+    },
+    "c_memory": {
+      "name": {
+        "v": "Agent memory and context",
+        "at": "2026-09-01T09:15:11Z",
+        "origin": "translated",
+        "from": "ru",
+        "fromHash": "87b536a5"
+      }
+    },
+    "z_mem_kv": {
+      "name": {
+        "v": "KV and blobs (14)",
+        "at": "2026-09-01T09:15:11Z",
+        "origin": "translated",
+        "from": "ru",
+        "fromHash": "ee6172ba"
+      }
+    },
+    "c_mem_kv": {
+      "name": {
+        "v": "KV and blobs",
+        "at": "2026-09-01T09:15:11Z",
+        "origin": "translated",
+        "from": "ru",
+        "fromHash": "bc37257a"
+      }
+    },
+    "z_mem_context": {
+      "name": {
+        "v": "Context assembly and marks (2)",
+        "at": "2026-09-01T09:15:11Z",
+        "origin": "translated",
+        "from": "ru",
+        "fromHash": "6b137266"
+      }
+    },
+    "c_mem_context": {
+      "name": {
+        "v": "Context assembly and marks",
+        "at": "2026-09-01T09:15:11Z",
+        "origin": "translated",
+        "from": "ru",
+        "fromHash": "c9b2c22b"
+      }
+    },
+    "z_mem_accounting": {
+      "name": {
+        "v": "Token accounting (4)",
+        "at": "2026-09-01T09:15:11Z",
+        "origin": "translated",
+        "from": "ru",
+        "fromHash": "c46c0ae3"
+      }
+    },
+    "c_mem_accounting": {
+      "name": {
+        "v": "Token accounting",
+        "at": "2026-09-01T09:15:11Z",
+        "origin": "translated",
+        "from": "ru",
+        "fromHash": "6508e374"
+      }
+    },
+    "z_mem_tools": {
+      "name": {
+        "v": "Memory tools (12)",
+        "at": "2026-09-01T09:15:11Z",
+        "origin": "translated",
+        "from": "ru",
+        "fromHash": "d882fc6f"
+      }
+    },
+    "c_mem_tools": {
+      "name": {
+        "v": "Memory tools",
+        "at": "2026-09-01T09:15:11Z",
+        "origin": "translated",
+        "from": "ru",
+        "fromHash": "4962f433"
+      }
+    },
+    "z_content": {
+      "name": {
+        "v": "Content, editor and resources (30)",
+        "at": "2026-09-01T09:15:11Z",
+        "origin": "translated",
+        "from": "ru",
+        "fromHash": "a29e05c4"
+      }
+    },
+    "c_content": {
+      "name": {
+        "v": "Content, editor and resources",
+        "at": "2026-09-01T09:15:11Z",
+        "origin": "translated",
+        "from": "ru",
+        "fromHash": "2d297ef6"
+      }
+    },
+    "z_editor": {
+      "name": {
+        "v": "Editor and schemas (11)",
+        "at": "2026-09-01T09:15:11Z",
+        "origin": "translated",
+        "from": "ru",
+        "fromHash": "2b84d285"
+      }
+    },
+    "c_editor": {
+      "name": {
+        "v": "Editor and schemas",
+        "at": "2026-09-01T09:15:11Z",
+        "origin": "translated",
+        "from": "ru",
+        "fromHash": "d7fbab20"
+      }
+    },
+    "z_resources": {
+      "name": {
+        "v": "Resources (19)",
+        "at": "2026-09-01T09:15:11Z",
+        "origin": "translated",
+        "from": "ru",
+        "fromHash": "e9983da3"
+      }
+    },
+    "c_resources": {
+      "name": {
+        "v": "Resources",
+        "at": "2026-09-01T09:15:11Z",
+        "origin": "translated",
+        "from": "ru",
+        "fromHash": "4f022672"
+      }
+    },
+    "z_res_core": {
+      "name": {
+        "v": "Registry and providers (12)",
+        "at": "2026-09-01T09:15:11Z",
+        "origin": "translated",
+        "from": "ru",
+        "fromHash": "7cc2a97a"
+      }
+    },
+    "c_res_core": {
+      "name": {
+        "v": "Registry and providers",
+        "at": "2026-09-01T09:15:11Z",
+        "origin": "translated",
+        "from": "ru",
+        "fromHash": "142d1ddc"
+      }
+    },
+    "z_res_tools": {
+      "name": {
+        "v": "Resource tools (7)",
+        "at": "2026-09-01T09:15:11Z",
+        "origin": "translated",
+        "from": "ru",
+        "fromHash": "f7fe611b"
+      }
+    },
+    "c_res_tools": {
+      "name": {
+        "v": "Resource tools",
+        "at": "2026-09-01T09:15:11Z",
+        "origin": "translated",
+        "from": "ru",
+        "fromHash": "417a9577"
+      }
+    },
+    "z_skills": {
+      "name": {
+        "v": "Skills and library (40)",
+        "at": "2026-09-01T09:15:11Z",
+        "origin": "translated",
+        "from": "ru",
+        "fromHash": "035a6072"
+      }
+    },
+    "c_skills": {
+      "name": {
+        "v": "Skills and library",
+        "at": "2026-09-01T09:15:11Z",
+        "origin": "translated",
+        "from": "ru",
+        "fromHash": "9925c853"
+      }
+    },
+    "z_skills_library": {
+      "name": {
+        "v": "Library and catalog (17)",
+        "at": "2026-09-01T09:15:11Z",
+        "origin": "translated",
+        "from": "ru",
+        "fromHash": "88582eb6"
+      }
+    },
+    "c_skills_library": {
+      "name": {
+        "v": "Library and catalog",
+        "at": "2026-09-01T09:15:11Z",
+        "origin": "translated",
+        "from": "ru",
+        "fromHash": "f96f245b"
+      }
+    },
+    "z_skills_sources": {
+      "name": {
+        "v": "Sources and trust (17)",
+        "at": "2026-09-01T09:15:11Z",
+        "origin": "translated",
+        "from": "ru",
+        "fromHash": "4d325b71"
+      }
+    },
+    "c_skills_sources": {
+      "name": {
+        "v": "Sources and trust",
+        "at": "2026-09-01T09:15:11Z",
+        "origin": "translated",
+        "from": "ru",
+        "fromHash": "792a7602"
+      }
+    },
+    "z_skills_session": {
+      "name": {
+        "v": "Session and tools (6)",
+        "at": "2026-09-01T09:15:11Z",
+        "origin": "translated",
+        "from": "ru",
+        "fromHash": "9c92db2b"
+      }
+    },
+    "c_skills_session": {
+      "name": {
+        "v": "Session and tools",
+        "at": "2026-09-01T09:15:11Z",
+        "origin": "translated",
+        "from": "ru",
+        "fromHash": "2787673e"
+      }
+    },
+    "z_project": {
+      "name": {
+        "v": "Project and configuration (68)",
+        "at": "2026-09-01T09:15:11Z",
+        "origin": "translated",
+        "from": "ru",
+        "fromHash": "2065a732"
+      }
+    },
+    "c_project": {
+      "name": {
+        "v": "Project and configuration",
+        "at": "2026-09-01T09:15:11Z",
+        "origin": "translated",
+        "from": "ru",
+        "fromHash": "005aad99"
+      }
+    },
+    "z_proj_core": {
+      "name": {
+        "v": "Project and storage (15)",
+        "at": "2026-09-01T09:15:11Z",
+        "origin": "translated",
+        "from": "ru",
+        "fromHash": "a7fc9dd8"
+      }
+    },
+    "c_proj_core": {
+      "name": {
+        "v": "Project and storage",
+        "at": "2026-09-01T09:15:11Z",
+        "origin": "translated",
+        "from": "ru",
+        "fromHash": "211f937b"
+      }
+    },
+    "z_proj_instances": {
+      "name": {
+        "v": "Instances (21)",
+        "at": "2026-09-01T09:15:11Z",
+        "origin": "translated",
+        "from": "ru",
+        "fromHash": "d148b316"
+      }
+    },
+    "c_proj_instances": {
+      "name": {
+        "v": "Instances",
+        "at": "2026-09-01T09:15:11Z",
+        "origin": "translated",
+        "from": "ru",
+        "fromHash": "3328a4c2"
+      }
+    },
+    "z_proj_settings": {
+      "name": {
+        "v": "Settings (32)",
+        "at": "2026-09-01T09:15:11Z",
+        "origin": "translated",
+        "from": "ru",
+        "fromHash": "c2fd0aca"
+      }
+    },
+    "c_proj_settings": {
+      "name": {
+        "v": "Settings",
+        "at": "2026-09-01T09:15:11Z",
+        "origin": "translated",
+        "from": "ru",
+        "fromHash": "06fc79ae"
+      }
+    },
+    "z_agentlife": {
+      "name": {
+        "v": "Agent lifecycle (3)",
+        "at": "2026-09-01T09:15:11Z",
+        "origin": "translated",
+        "from": "ru",
+        "fromHash": "7b2798ae"
+      }
+    },
+    "c_agentlife": {
+      "name": {
+        "v": "Agent lifecycle",
+        "at": "2026-09-01T09:15:11Z",
+        "origin": "translated",
+        "from": "ru",
+        "fromHash": "b0c9cb1a"
+      }
+    },
+    "z_observability": {
+      "name": {
+        "v": "Observability (12)",
+        "at": "2026-09-01T09:15:11Z",
+        "origin": "translated",
+        "from": "ru",
+        "fromHash": "ddd6940e"
+      }
+    },
+    "c_observability": {
+      "name": {
+        "v": "Observability",
+        "at": "2026-09-01T09:15:11Z",
+        "origin": "translated",
+        "from": "ru",
+        "fromHash": "4cdb9aa8"
+      }
+    },
+    "z_platform": {
+      "name": {
+        "v": "Platform / OS (4)",
+        "at": "2026-09-01T09:15:11Z",
+        "origin": "translated",
+        "from": "ru",
+        "fromHash": "283d9066"
+      }
+    },
+    "c_platform": {
+      "name": {
+        "v": "Platform / OS",
+        "at": "2026-09-01T09:15:11Z",
+        "origin": "translated",
+        "from": "ru",
+        "fromHash": "33ec6b9d"
+      }
+    },
+    "rt_call": {
+      "name": {
+        "v": "Call",
+        "at": "2026-09-01T09:15:11Z",
+        "origin": "translated",
+        "from": "ru",
+        "fromHash": "76a5f57b"
+      },
+      "description": {
+        "v": "A direct call to another component's method or API. Generated from code.",
+        "at": "2026-09-01T09:15:11Z",
+        "origin": "translated",
+        "from": "ru",
+        "fromHash": "0d3f5eea"
+      }
+    },
+    "rt_composes": {
+      "name": {
+        "v": "Composition",
+        "at": "2026-09-01T09:15:11Z",
+        "origin": "translated",
+        "from": "ru",
+        "fromHash": "81a5fe2c"
+      },
+      "description": {
+        "v": "A type holds another as part of its own state. Generated from code.",
+        "at": "2026-09-01T09:15:11Z",
+        "origin": "translated",
+        "from": "ru",
+        "fromHash": "549fbc3c"
+      }
+    },
+    "rt_extends": {
+      "name": {
+        "v": "Inheritance",
+        "at": "2026-09-01T09:15:11Z",
+        "origin": "translated",
+        "from": "ru",
+        "fromHash": "c5851b25"
+      },
+      "description": {
+        "v": "A type inherits from another type. Generated from code.",
+        "at": "2026-09-01T09:15:11Z",
+        "origin": "translated",
+        "from": "ru",
+        "fromHash": "31668289"
+      }
+    },
+    "rt_implements": {
+      "name": {
+        "v": "Implementation",
+        "at": "2026-09-01T09:15:11Z",
+        "origin": "translated",
+        "from": "ru",
+        "fromHash": "effca315"
+      },
+      "description": {
+        "v": "A type implements a declared interface. Generated from code.",
+        "at": "2026-09-01T09:15:11Z",
+        "origin": "translated",
+        "from": "ru",
+        "fromHash": "4588cbeb"
+      }
+    },
+    "v_semantic_atlas": {
+      "name": {
+        "v": "Semantic atlas",
+        "at": "2026-09-01T09:15:11Z",
+        "origin": "translated",
+        "from": "ru",
+        "fromHash": "26d4a868"
+      },
+      "description": {
+        "v": "Full map of the project: every entity laid out by subsystem.",
+        "at": "2026-09-01T09:15:11Z",
+        "origin": "translated",
+        "from": "ru",
+        "fromHash": "94481a16"
+      }
+    },
+    "c_toolsets": {
+      "name": {
+        "v": "ToolSets",
+        "at": "2026-09-01T09:16:13Z",
+        "origin": "translated",
+        "from": "ru",
+        "fromHash": "a7a014ea"
+      }
+    },
+    "c_sec_secrets_dpapi": {
+      "name": {
+        "v": "DPAPI",
+        "at": "2026-09-01T09:16:13Z",
+        "origin": "translated",
+        "from": "ru",
+        "fromHash": "f71fde73"
+      }
+    },
+    "c_ssh": {
+      "name": {
+        "v": "SSH",
+        "at": "2026-09-01T09:16:13Z",
+        "origin": "translated",
+        "from": "ru",
+        "fromHash": "41197b31"
+      }
+    },
+    "z_toolsets": {
+      "name": {
+        "v": "ToolSets (9)",
+        "at": "2026-09-01T09:16:25Z",
+        "origin": "translated",
+        "from": "ru",
+        "fromHash": "8259f838"
+      }
+    },
+    "z_sec_secrets_dpapi": {
+      "name": {
+        "v": "DPAPI (2)",
+        "at": "2026-09-01T09:16:25Z",
+        "origin": "translated",
+        "from": "ru",
+        "fromHash": "8e2eb72e"
+      }
+    },
+    "z_ssh": {
+      "name": {
+        "v": "SSH (7)",
+        "at": "2026-09-01T09:16:25Z",
+        "origin": "translated",
+        "from": "ru",
+        "fromHash": "6987ab01"
+      }
+    }
+  }
+}

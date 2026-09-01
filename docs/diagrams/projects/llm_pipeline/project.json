@@ -4,7 +4,8 @@
   "subtitle": "Prompt assembly & output stage",
   "defaultView": "v_main",
   "languages": [
-    "ru"
+    "ru",
+    "en"
   ],
   "views": [
     "v_main"

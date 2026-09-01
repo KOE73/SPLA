@@ -1,14 +1,19 @@
 {
   "id": "spla_system",
   "title": "SPLA System Architecture",
-  "subtitle": "Core, runtime, tools & storage",
-  "defaultView": "v_main",
+  "subtitle": "Хребет хода: от ящика до возврата к модели",
+  "contractVersion": 3,
+  "defaultView": "v_turn",
+  "defaultAxis": "axis_turn",
   "languages": [
-    "ru"
+    "ru",
+    "en"
   ],
   "views": [
-    "v_main"
+    "v_turn",
+    "v_subsystem",
+    "v_zones",
+    "v_process"
   ],
-  "contractVersion": 3,
-  "defaultAxis": "axis_layer"
+  "styles": "../../styles.json"
 }

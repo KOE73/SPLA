@@ -4,7 +4,8 @@
   "subtitle": "Network, SSH, Documents & MCP",
   "defaultView": "v_main",
   "languages": [
-    "ru"
+    "ru",
+    "en"
   ],
   "views": [
     "v_main"

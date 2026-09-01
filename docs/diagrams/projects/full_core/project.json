@@ -2,7 +2,8 @@
   "id": "full_core",
   "title": "FULL Core (All Classes)",
   "languages": [
-    "ru"
+    "ru",
+    "en"
   ],
   "styles": "../../styles.json",
   "contractVersion": 3,

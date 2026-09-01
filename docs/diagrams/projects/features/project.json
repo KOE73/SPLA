@@ -4,7 +4,8 @@
   "subtitle": "Стенд проверки всех фичей рендера",
   "defaultView": "v_main",
   "languages": [
-    "ru"
+    "ru",
+    "en"
   ],
   "views": [
     "v_main"
