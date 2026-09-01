@@ -16,7 +16,7 @@
          to `dotnet build`/`publish` as -p:VersionBuild=<n> during a release run. -->
     <VersionMajor>0</VersionMajor>
     <VersionMinor>2</VersionMinor>
-    <VersionBuild Condition="'$(VersionBuild)' == ''">0</VersionBuild>
+    <VersionBuild Condition="'$(VersionBuild)' == ''">5</VersionBuild>
     <Version>$(VersionMajor).$(VersionMinor).$(VersionBuild)</Version>
     <!-- Assembly/file versions are four-part by .NET convention; pad rather than invent. -->
     <AssemblyVersion>$(Version).0</AssemblyVersion>

@@ -149,6 +149,7 @@
     <File Path="docs/adr/ADR_20260827-2_core_roles.md" />
     <File Path="docs/adr/ADR_20260827_core_config-versioning.md" />
     <File Path="docs/adr/ADR_20260831_mcp_search-and-listing-tools.md" />
+    <File Path="docs/adr/ADR_20260901_diagrams_shape-aware-geometry-and-insets.md" />
     <File Path="docs/adr/ADR_20260831_diagrams_text-provenance-and-view-axes.md" />
   </Folder>
   <Folder Name="/docs/plans/">
