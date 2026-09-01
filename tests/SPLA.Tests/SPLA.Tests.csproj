@@ -15,6 +15,19 @@
   </ItemGroup>
 
   <ItemGroup>
+    <!-- Several tests verify real wall-clock behaviour (LocalShell's silence-based prompt
+         detection, the progress rate limiter's coalescing window, ChatPump's self-feed debounce,
+         RoslynPlugin.CheckHealth's cold-compile timeout) by racing short, hand-tuned Task.Delay
+         margins against the actual OS scheduler. xUnit's default collection-level parallelism runs
+         every test class concurrently, and under a loaded CI runner that contention alone can push
+         real elapsed time past those margins — see the flaky failures across InteractiveShellTests,
+         McpStdioServerTests, ChatPumpTests and PluginSelfCheckTests.Roslyn that motivated this file.
+         Serializing collections gives every timing-sensitive test the runner to itself, which is
+         what its margin was actually tuned against. -->
+    <None Include="xunit.runner.json" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
+  <ItemGroup>
     <Using Include="Xunit" />
   </ItemGroup>
 
