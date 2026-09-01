@@ -104,6 +104,12 @@ jobs:
 
           if ($fail) { exit 1 }
           Write-Host "Release commit for $env:TAG_NAME is complete."
+          # The git rev-parse probe above deliberately fails (tag not found yet) on every normal
+          # run and leaves that in $LASTEXITCODE; nothing after it is a native command that would
+          # overwrite it. pwsh falls back to $LASTEXITCODE as its own exit code when a script ends
+          # without an explicit exit, so a step that just proved everything is fine still reported
+          # itself failed. Say so explicitly instead of trusting whatever leaked through.
+          exit 0
 
       - name: Setup .NET
         uses: actions/setup-dotnet@v4
