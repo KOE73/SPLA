@@ -1,0 +1,15 @@
+{
+  "id": "plugins",
+  "title": "Plugins & Tools Ecosystem",
+  "subtitle": "Network, SSH, Documents & MCP",
+  "defaultView": "v_main",
+  "languages": [
+    "ru",
+    "en"
+  ],
+  "views": [
+    "v_main"
+  ],
+  "contractVersion": 3,
+  "defaultAxis": "axis_subsystem"
+}

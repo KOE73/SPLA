@@ -19,6 +19,10 @@ export const store = reactive({
   connectionLost: false,
   currentChat: null as string | null,
   chats: [] as ChatSummary[],
+  /** Session-only — resets on reload by design, never persisted (unlike theme/density). Set from the
+   *  "show archived chats" toggle in ProjectBar; ChatList fetches/renders archivedChats while true. */
+  showArchivedChats: false,
+  archivedChats: [] as ChatSummary[],
   workspacePath: null as string | null,
   /** Authenticated user (server mode); null on local/embedded → identity row hidden. */
   userName: null as string | null,

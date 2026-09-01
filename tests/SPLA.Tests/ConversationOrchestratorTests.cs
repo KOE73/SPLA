@@ -378,4 +378,71 @@ public class ConversationOrchestratorTests
         Assert.Equal(0, handedOut);
         Assert.Equal(0, forwarded);
     }
+
+    // ---- DrainInbox (plan step 0.6 — the delivery point background-task results will use) ------
+
+    [Fact]
+    public async Task DrainInbox_message_is_appended_before_the_next_LLM_call_and_seen_by_it()
+    {
+        var llm = new FakeLlm(new[] { new ChatMessage { Role = ChatRole.Assistant, Content = "done" } });
+        var host = new FakeToolHost();
+        var delivered = new ChatMessage { Role = ChatRole.User, Content = "[Background task bg_1 — done]" };
+
+        var orch = new ConversationOrchestrator(llm, host)
+        {
+            ToolFilter = (t, _) => t,
+            DrainInbox = () => new[] { delivered }
+        };
+        var convo = new Conversation();
+        convo.Add(new ChatMessage { Role = ChatRole.User, Content = "hi" });
+
+        await orch.RunAsync(convo, new LLMSettings(), AgentMode.Agent, new AgentCallbacks());
+
+        Assert.Contains(convo.Messages, m => ReferenceEquals(m, delivered));
+        Assert.Contains(llm.SeenContexts.Single(), m => ReferenceEquals(m, delivered));
+    }
+
+    [Fact]
+    public async Task DrainInbox_is_never_called_between_a_tool_calls_batch_and_its_results()
+    {
+        // The one invariant the inbox exists to protect: a delivered message must never land between
+        // an assistant message's tool_calls and their matching tool_results — every provider rejects
+        // that shape. Draining only at the top of the loop, before ContextAssembler.Assemble, is what
+        // guarantees it; this asserts the guarantee by counting drains against tool-call rounds.
+        var toolCallMsg = new ChatMessage
+        {
+            Role = ChatRole.Assistant, ToolCalls = new List<ToolCall> { Call("1", "noop") }
+        };
+        var answerMsg = new ChatMessage { Role = ChatRole.Assistant, Content = "done" };
+        var llm = new FakeLlm(new[] { toolCallMsg, answerMsg });
+        var host = new FakeToolHost();
+
+        var drainCalls = 0;
+        var orch = new ConversationOrchestrator(llm, host)
+        {
+            ToolFilter = (t, _) => t,
+            DrainInbox = () => { drainCalls++; return Array.Empty<ChatMessage>(); }
+        };
+        var convo = new Conversation();
+        convo.Add(new ChatMessage { Role = ChatRole.User, Content = "hi" });
+
+        await orch.RunAsync(convo, new LLMSettings(), AgentMode.Agent, new AgentCallbacks());
+
+        // One drain per LLM round trip (top of loop), never once per tool call inside a round.
+        Assert.Equal(2, drainCalls);
+    }
+
+    [Fact]
+    public async Task No_DrainInbox_configured_behaves_exactly_as_before()
+    {
+        var llm = new FakeLlm(new[] { new ChatMessage { Role = ChatRole.Assistant, Content = "done" } });
+        var host = new FakeToolHost();
+        var orch = new ConversationOrchestrator(llm, host) { ToolFilter = (t, _) => t };
+        var convo = new Conversation();
+        convo.Add(new ChatMessage { Role = ChatRole.User, Content = "hi" });
+
+        await orch.RunAsync(convo, new LLMSettings(), AgentMode.Agent, new AgentCallbacks());
+
+        Assert.Equal(2, convo.Messages.Count); // user + assistant, nothing extra
+    }
 }

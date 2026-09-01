@@ -10,6 +10,9 @@
       <button class="rm" @click="attachments.splice(i, 1)">✕</button>
     </div>
   </div>
+  <div v-if="queuedCount > 0" class="queued-chip" :title="`${queuedCount} message(s) waiting to be picked up`">
+    {{ queuedCount }} queued
+  </div>
   <div class="row">
     <button class="icon-btn" title="Attach image" @click="fileInput?.click()">+</button>
     <input ref="fileInput" type="file" accept="image/*" multiple hidden @change="onFileInput">
@@ -24,8 +27,8 @@
       @input="autosize"
       @paste="onPaste"
     ></textarea>
-    <button v-if="!turnActive" class="btn" :disabled="!ready" @click="send">Send</button>
-    <button v-else class="btn danger" @click="stop">Stop</button>
+    <button class="btn" :disabled="!ready" @click="send">Send</button>
+    <button v-if="turnActive" class="btn danger" @click="stop">Stop</button>
   </div>
 </template>
 
@@ -49,9 +52,18 @@ const text = computed({
 const attachments = computed(() => chat.session.value?.attachments ?? []);
 
 // The server is the source of truth for "a turn is running": chat.opened carries it, so a window
-// attaching mid-turn shows Stop, and turns started elsewhere still disable this input.
+// attaching mid-turn shows Stop. Sending no longer implies a turn starts — a message sent while one
+// is already running just queues (PLAN_20260825 wave D) — so this composer stays open for typing and
+// sending regardless of turnActive; only the connection/session state below gates it.
 const turnActive = computed(() => !!chat.session.value?.turnActive);
-const ready = computed(() => store.connected && !!chat.session.value && !turnActive.value);
+const ready = computed(() => store.connected && !!chat.session.value);
+
+// Messages enqueued but not yet picked up by a turn are those with kind="user" and no msgId yet.
+// Per-item cancel is a known future gap — the server has no retraction capability yet.
+const queuedCount = computed(() => {
+  const items = chat.session.value?.items ?? [];
+  return items.filter(i => i.kind === "user" && !i.msgId).length;
+});
 
 // ── Growing input ────────────────────────────────────────────────────────────
 // Two rows for a one-liner, up to 16, then it scrolls. Chromium does this from CSS alone
@@ -115,7 +127,6 @@ function send() {
   addLocalUserMessage(s, t, images);
   s.draft = "";
   s.attachments = [];
-  s.turnActive = true;
   chat.send("chat.send", { text: t, images });
   nextTick(() => { resetSize(); textareaEl.value?.focus(); });
 }
@@ -136,3 +147,16 @@ watch(ready, on => { if (on) nextTick(() => textareaEl.value?.focus()); });
 
 onUnmounted(offComposerSet);
 </script>
+
+<style scoped>
+.queued-chip {
+  font-size: var(--fs-xs);
+  color: var(--muted);
+  border: 1px solid var(--border);
+  background: var(--bg-2, color-mix(in srgb, var(--text) 4%, transparent));
+  border-radius: 999px;
+  padding: 2px 8px;
+  margin: 4px 10px 0 10px;
+  display: inline-block;
+}
+</style>

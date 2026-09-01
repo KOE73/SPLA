@@ -29,6 +29,17 @@ in addition to the root `AGENTS.md`.
 
 - `SPLA.LLM.LMStudio`: Local LLM provider integration for LM Studio / OpenAI-compatible API endpoints.
 
+### `src/documents/`
+
+- `SPLA.Documents.Model`: the semantic document model (`ContextDocument` + typed blocks) and its
+  renderers (markdown, plain text, JSON), plus the `IDocumentExtractor` contract a document backend
+  implements. **Dependency-free and deliberately outside `SPLA.Domain`**: the core reads a payload's
+  MIME label and never its contents, so knowledge of headings, list nesting and table shape must not
+  live in the foundation. Referenced by document-provider plugins, which each carry their own copy
+  inside their load context — safe precisely because no instance of these types ever crosses the
+  plugin boundary; bytes plus a content type do. See
+  [`ADR_20260824_plugins_document-context`](../docs/adr/ADR_20260824_plugins_document-context.md).
+
 ### `src/editor/`
 
 - `SPLA.Editor.Schema`: Schema/JSON editor domain (content sources, schema registry) for the workspace forms/text editors.
@@ -56,6 +67,19 @@ in addition to the root `AGENTS.md`.
 - `SPLA.Skills.Network`: Network skill definitions (`.md` files). Independent of the plugin — skills are instructions, not code. Built via `Microsoft.Build.NoTargets`; `CopySkills` target copies files to `plugins/network.skills/` in the CLI and UI output directories (paths are relative to `src/plugins/` → `src/apps/`).
 - `SPLA.Plugins.OneC`: 1C analysis plugin with indexing, object lookup/explanation, references, dependency analysis, readers/writers, and a UI-neutral typed graph-data layer. Its plugin-owned Vue browser consumes DTOs through `plugin.action`; it never reads SQLite directly. The former `SPLA.Plugins.OneC.Avalonia` project was removed.
 - `SPLA.Plugins.Sql`: SQL query/schema/execute plugin. Its settings UI (named connections) ships as an in-plugin web panel; the former `SPLA.Plugins.Sql.Avalonia` editor was removed. The shared `SPLA.Plugins.Host.Avalonia` project was removed with the legacy plugin UI layers.
+- `SPLA.Plugins.Documents`: the native document backend (`id: documents`). `document_extract` turns a
+  `.docx` into markdown / plain text / a JSON block tree via the Open XML SDK and
+  `SPLA.Documents.Model`; `spreadsheet_inspect`, `spreadsheet_read_rows` and `spreadsheet_append_rows`
+  read and extend `.xlsx` (ClosedXML) and `.csv`/`.tsv` (native) **by column header**, never by cell
+  address, leaving every other cell, format and formula untouched. It also registers three
+  `docx → markdown | text | json` pairs into the core `FormatConverterRegistry`, which is what makes
+  `resource_read … as: text/markdown` work on a `.docx` address. Only the Context/Data half of
+  document work lives here — layout, styles and formulas (Artifact) are a separate class with a
+  separate API that does not exist yet.
+- `SPLA.Skills.Documents`: Document skills (`.md`). `CopySkills` copies them into
+  `plugins/documents/skills/` in the CLI and UI output, which is also the layout `PublishAll.ps1`
+  ships — so unlike `SPLA.Skills.Network` there is no dev/publish divergence here, and the skills
+  follow the `documents` plugin's single enable switch.
 - `SPLA.Plugins.Browser`: Playwright-driven browser automation plugin.
 - `SPLA.Plugins.Browser.Screencast`: Embedded headless-browser panel provider. It streams in-memory
   frames through the generic plugin-panel transport and exposes a narrow agent tool set over that
@@ -81,6 +105,13 @@ in addition to the root `AGENTS.md`.
   and rejected on measurement — see
   [ADR_20260818_build_package-manager](../docs/adr/ADR_20260818_build_package-manager.md), which also
   names the condition for revisiting it.
+- `tools/`: Standalone helper tools and utilities.
+  - `tools/spla-arch`: Dedicated Go CLI tool for parsing C# codebase architecture, extracting components/interfaces, and managing diagram JSON models.
+  - `tools/spla-diagram`: `@spla/diagram` — a local TypeScript/Vite package holding the diagram
+    canvas and editor. `DiagramCanvas` is reusable on its own; `DiagramEditor` adds catalog,
+    inspector, history and persistence. Requirements and the contract-v2 analysis live in
+    `tools/spla-diagram/docs/`. Builds to `docs/diagrams/app/`, which `docs/diagrams/server.go`
+    serves.
 - `docs/`, `agents/`, `Images/`: Documentation and assets (unchanged by the layered `src/` layout).
 - `.github/workflows/`: GitHub Actions. `ci.yml` (build + tests on `main`/`work` and on pull
   requests into `main`) and `release.yml` (a push to `main` that touches sources, or a manual run →
@@ -147,6 +178,8 @@ Per-layer directional docs also live next to the code: `src/core/AGENTS.md`, `sr
 Skills are named instruction sets stored as `.md` files in `src/plugins/SPLA.Skills.<PluginId>/`.
 They are independent of plugin code — a skill describes a procedure, not a capability declaration.
 
+- `src/plugins/SPLA.Skills.Documents/`: Document skills — `documents.docx-to-registry`
+  (read a document, record it as a spreadsheet row). Copied into `plugins/documents/skills/`.
 - `src/plugins/SPLA.Skills.Network/`: Network skills. Built by `SPLA.Skills.Network.csproj` (Microsoft.Build.NoTargets).
   - **Debug builds:** the `CopySkills` target copies `meta.yaml` + `skills/*.md` into a flat
     `plugins/network.skills/` folder in the CLI and UI output. Because that folder carries its own
@@ -193,6 +226,7 @@ Current plugin manifests:
 - `src/plugins/SPLA.Plugins.Roslyn/meta.yaml`: `id: roslyn`, `type: dll`.
 - `src/plugins/SPLA.Plugins.OneC/meta.yaml`: `id: onec`, `type: dll`.
 - `src/plugins/SPLA.Plugins.Sql/meta.yaml`: `id: sql`, `type: dll`. (The former `sql_avalonia` settings-editor plugin was removed; its connection editor now lives in the plugin's web settings panel.)
+- `src/plugins/SPLA.Plugins.Documents/meta.yaml`: `id: documents`, `type: dll`.
 - `src/plugins/SPLA.Plugins.Browser/meta.yaml`: `id: browser`, `type: dll`.
 - `src/plugins/SPLA.Plugins.Browser.Screencast/meta.yaml`: `id: browser_screencast`, `type: dll`.
 - `src/plugins/SPLA.Plugins.Test/meta.yaml`: Test plugin manifest. The project exists in the repository but is not currently listed in `SPLA.slnx`.

@@ -1,0 +1,24 @@
+<Project Sdk="Microsoft.Build.NoTargets/3.7.56">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+  </PropertyGroup>
+
+  <!--
+    The document skills ship INSIDE the documents plugin, as plugins\documents\skills\*.md, so they
+    follow that plugin's single enable/disable switch. A skill describing calls to document_extract
+    is dead text wherever that tool is absent — see the note in SPLA.Skills.Network.csproj for the
+    bug that taught this.
+  -->
+  <Target Name="CopySkills" AfterTargets="Build">
+    <ItemGroup>
+      <SkillFiles Include="$(MSBuildThisFileDirectory)skills\*.md" />
+    </ItemGroup>
+    <Copy SourceFiles="@(SkillFiles)"
+          DestinationFolder="..\..\apps\SPLA.CLI\bin\$(Configuration)\$(TargetFramework)\plugins\documents\skills\" />
+    <Copy SourceFiles="@(SkillFiles)"
+          DestinationFolder="..\..\apps\SPLA.UI.Avalonia\bin\$(Configuration)\$(TargetFramework)\plugins\documents\skills\"
+          Condition="Exists('..\..\apps\SPLA.UI.Avalonia\bin\$(Configuration)\$(TargetFramework)')" />
+  </Target>
+
+</Project>

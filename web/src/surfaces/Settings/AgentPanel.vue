@@ -19,6 +19,22 @@
       <label v-if="loopGuard" class="field"><span>Repeats to trigger</span>
         <input type="number" v-model.number="loopGuardRepeats" min="2" max="20" style="width: 6em" />
       </label>
+      <label class="field"><span>Shell command timeout</span>
+        <span style="display: flex; align-items: center; gap: 8px">
+          <input
+            type="number" v-model.number="shellTimeoutSeconds" min="5" step="5" style="width: 6em"
+            :disabled="shellTimeoutUnlimited"
+          />
+          <span class="hint">seconds</span>
+          <input type="checkbox" v-model="shellTimeoutUnlimited" id="shell-timeout-unlimited" />
+          <label for="shell-timeout-unlimited" class="hint">no timeout — wait until the command exits</label>
+        </span>
+      </label>
+      <p class="hint" style="margin: -6px 0 0">
+        How long <code>system_run_shell</code> may sit completely silent before it hands control back
+        with "still running" instead of continuing to wait. The command itself keeps going either way —
+        this only controls when the tool call returns.
+      </p>
       <label class="field"><span>Save full tool trace</span>
         <span style="display: flex; align-items: center; gap: 8px">
           <input type="checkbox" v-model="saveToolCalls" />
@@ -85,6 +101,8 @@ const mode = ref("");
 const customPrompt = ref("");
 const loopGuard = ref(false);
 const loopGuardRepeats = ref(3);
+const shellTimeoutSeconds = ref(120);
+const shellTimeoutUnlimited = ref(false);
 const saveToolCalls = ref(false);
 const saveAttempts = ref(false);
 const unifiedResources = ref(false);
@@ -105,6 +123,8 @@ const off = client.on("agent.result", p => {
   customPrompt.value = p.customPrompt || "";
   loopGuard.value = p.loopGuard === true;
   loopGuardRepeats.value = p.loopGuardRepeats ?? 3;
+  shellTimeoutUnlimited.value = (p.shellTimeoutSeconds ?? 120) <= 0;
+  if (!shellTimeoutUnlimited.value) shellTimeoutSeconds.value = p.shellTimeoutSeconds ?? 120;
   saveToolCalls.value = p.saveToolCalls === true;
   saveAttempts.value = p.saveAttempts === true;
   unifiedResources.value = p.unifiedResources === true;
@@ -140,6 +160,7 @@ function save(): Promise<void> {
       customPrompt: customPrompt.value,
       loopGuard: loopGuard.value,
       loopGuardRepeats: loopGuardRepeats.value,
+      shellTimeoutSeconds: shellTimeoutUnlimited.value ? 0 : shellTimeoutSeconds.value,
       saveToolCalls: saveToolCalls.value,
       saveAttempts: saveAttempts.value,
       unifiedResources: unifiedResources.value,

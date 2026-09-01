@@ -11,7 +11,7 @@ namespace SPLA.Agent;
 /// Avalonia UI, a future server) implements only these — the loop itself stays I/O-agnostic.
 /// All hooks are optional; null means "ignore this event".
 /// </summary>
-public sealed class AgentCallbacks
+public sealed record AgentCallbacks
 {
     /// <summary>
     /// Fires before each LLM call, carrying the exact context that will be sent. Entry points use

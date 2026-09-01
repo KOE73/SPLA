@@ -1,13 +1,21 @@
 <template>
-  <div class="chat-item" :class="{ active }" @click="$emit('select', chat.id)">
-    <!-- Where work is happening — including a turn another window or another user started. -->
+  <div class="chat-item" :class="{ active, archived }" @click="$emit('select', chat.id)">
+    <!-- Where work is happening — including a turn another window or another user started. Archived
+         chats never carry a live turn (ChatRegistry.Archive closes it), so this never renders there. -->
     <span v-if="chat.turnActive" class="busy" title="A turn is running in this chat">●</span>
     <!-- State indicator: rendered for non-idle states to show operational status. The badge
          communicates: working (subtle pulse) | waiting (attention-grabbing) | stalled (muted, stuck). -->
     <span v-if="chat.state && chat.state !== 'idle'" class="state-badge" :class="`state-${chat.state}`" :title="stateLabel(chat.state)">●</span>
     <span class="t">{{ chat.title || chat.id }}</span>
-    <span class="x" title="Rename" @click.stop="$emit('rename', chat)">✎</span>
-    <span class="x" title="Delete" @click.stop="$emit('delete', chat.id)">✕</span>
+    <template v-if="archived">
+      <span class="x" title="Restore" @click.stop="$emit('restore', chat.id)">↺</span>
+      <span class="x" title="Delete permanently" @click.stop="$emit('delete-permanently', chat.id)">✕</span>
+    </template>
+    <template v-else>
+      <span class="x" title="Rename" @click.stop="$emit('rename', chat)">✎</span>
+      <span class="x" title="Archive" @click.stop="$emit('archive', chat.id)">🗄</span>
+      <span class="x" title="Delete" @click.stop="$emit('delete', chat.id)">✕</span>
+    </template>
   </div>
 </template>
 
@@ -17,8 +25,15 @@ import type { ChatSummary } from "../protocol/types";
 // One row in the chat/project list. Kept as its own component (not inlined in a v-for) so future
 // per-item content — project badges, unread markers, live status — has one place to grow without
 // bloating the list's own template.
-defineProps<{ chat: ChatSummary; active: boolean }>();
-defineEmits<{ select: [id: string]; rename: [chat: ChatSummary]; delete: [id: string] }>();
+withDefaults(defineProps<{ chat: ChatSummary; active: boolean; archived?: boolean }>(), { archived: false });
+defineEmits<{
+  select: [id: string];
+  rename: [chat: ChatSummary];
+  delete: [id: string];
+  archive: [id: string];
+  restore: [id: string];
+  "delete-permanently": [id: string];
+}>();
 
 // Convert state code to user-facing label for the title attribute.
 function stateLabel(state: string): string {
@@ -43,6 +58,11 @@ function stateLabel(state: string): string {
 .chat-item:hover { background: color-mix(in srgb, var(--text) 6%, transparent); }
 .chat-item.active { background: var(--accent-soft); color: var(--accent); }
 .chat-item .t { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* Archived chats — visually muted so they read as put away, not just another row in the list. */
+.chat-item.archived { color: var(--muted); opacity: 0.7; font-style: italic; }
+.chat-item.archived:hover { opacity: 0.9; background: color-mix(in srgb, var(--muted) 10%, transparent); }
+.chat-item.archived.active { background: color-mix(in srgb, var(--muted) 18%, transparent); color: var(--text); }
 .chat-item .busy { color: var(--accent); font-size: 8px; flex-shrink: 0; animation: chat-busy 1.4s ease-in-out infinite; }
 @keyframes chat-busy { 0%, 100% { opacity: .25; } 50% { opacity: 1; } }
 

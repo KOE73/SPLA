@@ -69,10 +69,15 @@ export interface ChatSession {
   pending: number[];
   /** Live tool calls by id, so tool.progress/result can mutate the card in place. */
   calls: Record<string, ToolCallState>;
-  /** The turn's progress tree, flat and keyed by node id — see the `progress.node` handler. Rebuilt
-   *  each turn: the nodes describe what is happening now, and a finished turn's tree is the tool
-   *  cards' own history. */
+  /** Every live progress tree's nodes, flat and keyed by a WIRE id namespaced "{treeId}:{nodeId}"
+   *  (see `SplaServiceHost.WireChatProgress` server-side — plain tree-local ids collide across trees).
+   *  Holds more than the current turn's own: a background task's tree lives here too, and survives
+   *  the reset below because its treeId prefix never matches `currentTurnTreeId`. */
   nodes: Record<string, ProgressNodeState>;
+  /** The wire treeId prefix of the turn now running (or just finished) — from `llm.turn.start`'s
+   *  `progressTreeId`. On the NEXT turn's start this is what gets swept out of `nodes`; anything
+   *  under a different prefix (a background task) is left alone. */
+  currentTurnTreeId: string | null;
 }
 
 /** One node of the turn's progress tree as the client holds it: the payload plus the children that
@@ -121,7 +126,8 @@ function blank(chatId: string): ChatSession {
     items: [],
     pending: [],
     calls: {},
-    nodes: {}
+    nodes: {},
+    currentTurnTreeId: null
   };
 }
 
@@ -291,10 +297,24 @@ on("user.message", (s, p: { msgId: string; text?: string; createdAt?: string }) 
     s.items.push({ kind: "user", key: nextKey(), text: p.text, msgId: p.msgId, createdAt: p.createdAt });
 });
 
-on("llm.turn.start", (s, p: { msgIndex: number }) => {
+on("llm.turn.start", (s, p: { msgIndex: number; progressTreeId?: string | null }) => {
   // The server opens one progress tree per user turn, and this event fires once per LLM call inside
   // it — so the boundary to clear on is entering a turn, not this event as such.
-  if (!s.turnActive) s.nodes = {};
+  if (!s.turnActive) {
+    // Sweep only the PREVIOUS turn's own nodes (its wire treeId prefix) — never a blanket reset,
+    // so a background task's tree (a different prefix, still getting its own progress.node ticks
+    // across turn boundaries) is not wiped and made to fragment and reappear from nothing.
+    // Falls back to the old blanket clear when there is no prefix to sweep by — an older server
+    // that never sends progressTreeId, or a race where this turn's own start still hasn't. Nodes
+    // otherwise leak forever across turns for any client the field never reaches.
+    if (s.currentTurnTreeId) {
+      const prefix = s.currentTurnTreeId + ":";
+      for (const id of Object.keys(s.nodes)) if (id.startsWith(prefix)) delete s.nodes[id];
+    } else {
+      s.nodes = {};
+    }
+    s.currentTurnTreeId = p.progressTreeId ?? null;
+  }
   s.turnActive = true;
   s.items.push({ kind: "assistant", key: "a" + p.msgIndex, msgIndex: p.msgIndex, text: "", reasoning: "",
     createdAt: Date.now() });

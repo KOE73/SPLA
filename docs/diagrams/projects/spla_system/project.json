@@ -1,0 +1,19 @@
+{
+  "id": "spla_system",
+  "title": "SPLA System Architecture",
+  "subtitle": "Хребет хода: от ящика до возврата к модели",
+  "contractVersion": 3,
+  "defaultView": "v_turn",
+  "defaultAxis": "axis_turn",
+  "languages": [
+    "ru",
+    "en"
+  ],
+  "views": [
+    "v_turn",
+    "v_subsystem",
+    "v_zones",
+    "v_process"
+  ],
+  "styles": "../../styles.json"
+}

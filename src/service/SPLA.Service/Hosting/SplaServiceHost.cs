@@ -1,4 +1,4 @@
-using SPLA.Runtime;
+﻿using SPLA.Runtime;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Authentication.Negotiate;
@@ -216,6 +216,15 @@ public sealed class SplaServiceHost
         builder.Logging.ClearProviders();
         builder.Logging.AddProvider(new ForwardingLoggerProvider(loggerFactory));
 
+        // Built here rather than in its old spot below the route table: /mcp (mapped further down)
+        // needs to hold it for the life of every request, and a route delegate can only close over a
+        // local that already exists. Nothing between here and StartAsync touches the lease, so moving
+        // the construction earlier changes no behaviour — it just makes the variable reachable where
+        // it is needed.
+        var lease = new InstanceLease(
+            hub, registry, options.IdleTimeout, options.StallAfter,
+            loggerFactory.CreateLogger<InstanceLease>());
+
         string scheme;
         if (options.UseHttps)
         {
@@ -267,7 +276,7 @@ public sealed class SplaServiceHost
         // JSON-RPC line in, one line out — McpStdioServer needs nothing more than a reader that hits
         // EOF after that line, which a request body naturally does.
         if (options.McpEnabled)
-            app.MapPost("/mcp", (Func<HttpContext, Task<IResult>>)(ctx => HandleMcpAsync(ctx, registry)));
+            app.MapPost("/mcp", (Func<HttpContext, Task<IResult>>)(ctx => HandleMcpAsync(ctx, registry, lease)));
 
         if (options.EffectiveAuthMode == AuthMode.Negotiate)
         {
@@ -366,10 +375,6 @@ public sealed class SplaServiceHost
         app.Map("/ws", (HttpContext context) =>
             HandleWebSocketAsync(context, registry, options, serverRoot, hub, auth, initialChat, loggerFactory));
 
-        var lease = new InstanceLease(
-            hub, registry, options.IdleTimeout, options.StallAfter,
-            loggerFactory.CreateLogger<InstanceLease>());
-
         // Unused project runtimes go on a slow sweep. Idle only, and only when nobody is bound to
         // them — a runtime holds nothing unique (chats, KV and the tally are on disk), so dropping
         // one costs the next warm-up and never any work. Off unless a deployment asks.
@@ -456,9 +461,84 @@ public sealed class SplaServiceHost
     /// statement about how long a model may go quiet before a person would call it stuck.</summary>
     private static readonly TimeSpan StallAfter = TimeSpan.FromMinutes(10);
 
+    /// <summary>
+    /// Forwards every node change in a chat's whole progress forest — the turn's own tree and any
+    /// background task's, present or future — to every watcher of that chat. One subscription for the
+    /// chat's entire life (wired once, from <see cref="ChatRegistry.RuntimeOpened"/>), which is what
+    /// makes a background task's live ticks visible at all: they have no turn of their own for a
+    /// per-turn subscription to attach to.
+    /// <para>
+    /// Throttling state (last-sent-at per node, 120ms) lives here rather than per-turn for the same
+    /// reason — a node born under one tree and a node born under another must not share a clock, but
+    /// both must survive across however many turns and tasks this chat runs.
+    /// </para>
+    /// </summary>
+    private static void WireChatProgress(
+        SPLA.Runtime.ChatRuntime chat, AgentRuntime runtime, ConnectionHub hub)
+    {
+        var lastSent = new System.Collections.Concurrent.ConcurrentDictionary<string, DateTime>();
+
+        chat.Progress.NodeChanged += (treeId, node) =>
+        {
+            runtime.Turns.Touch(chat.ChatId);
+
+            // Each ProgressTree numbers its own nodes from "n1" — fine while exactly one tree was
+            // ever live per chat (a turn's own). Now a background task's tree can be live alongside
+            // the current turn's, and their local ids collide on the wire with no tree of their own
+            // to disambiguate them in the flat `progress.node` stream. Namespacing by the hub's tree
+            // id ("t2:n1") is the fix, done here rather than in ProgressNodePayload/ProgressTree
+            // themselves — those stay tree-local (correct for every other consumer, MCP included),
+            // and only the point that merges several trees into one stream needs to know they exist.
+            var wireId = $"{treeId}:{node.Id}";
+            var wireParentId = node.ParentId is null ? null : $"{treeId}:{node.ParentId}";
+
+            var now = DateTime.UtcNow;
+            var known = lastSent.TryGetValue(wireId, out var last);
+
+            // Structural frames — a node's first appearance and its finish — are never throttled:
+            // they are what a client builds the tree's shape out of, and one dropped frame is a
+            // branch that never appears or one that spins forever. Only the ticks between are
+            // throttled, and per node, so one host's scan cannot silence what started under it.
+            if (known && node.State == SPLA.Domain.Models.ProgressState.Running
+                      && (now - last).TotalMilliseconds < 120) return;
+
+            lastSent[wireId] = now;
+
+            var latest = node.Latest;
+            _ = hub.BroadcastToWatchersAsync(chat.ChatId, Contracts.MessageTypes.ProgressNode, new Contracts.ProgressNodePayload
+            {
+                NodeId = wireId,
+                ParentId = wireParentId,
+                Label = node.Label,
+                State = node.State.ToString().ToLowerInvariant(),
+                Current = latest?.Current,
+                Total = latest?.Total,
+                Fraction = latest?.Fraction,
+                Message = latest?.Message,
+                Details = latest?.Details?
+                    .Select(d => new Contracts.ToolProgressDetailDto { Label = d.Label, Value = d.Value })
+                    .ToList()
+            });
+        };
+    }
+
     private static void WireRuntimeEvents(AgentRuntimeRegistry registry, ConnectionHub hub)
     {
-        registry.RuntimeCreated += (projectId, entry) =>
+        registry.RuntimeCreated += (projectId, entry) => WireOneRuntime(registry, hub, projectId, entry);
+
+        // Catch up on projects opened before this subscription existed. ServeCommand opens the default
+        // project fifteen lines before it calls Build, so under `spla serve` that entry's
+        // RuntimeCreated fired into nobody — and everything hanging off its ChatRegistry.RuntimeOpened
+        // (the chat pump, and live progress fan-out before it) silently never ran. Found by live
+        // testing after wave B; no unit test noticed, because they all wire the registry themselves in
+        // the right order.
+        foreach (var (projectId, entry) in registry.Existing)
+            WireOneRuntime(registry, hub, projectId, entry);
+    }
+
+    private static void WireOneRuntime(
+        AgentRuntimeRegistry registry, ConnectionHub hub, string projectId, RuntimeEntry entry)
+    {
         {
             entry.Runtime.Events.Subscribe(evt =>
             {
@@ -474,6 +554,13 @@ public sealed class SplaServiceHost
                     case SkillsChanged:
                         _ = hub.BroadcastToProjectAsync(projectId, Contracts.MessageTypes.SkillsResult,
                             SettingsOps.GetSkills(entry.Runtime));
+                        break;
+
+                    // A server connected, disconnected, or its tool list changed — in the background,
+                    // without any client asking. See agents/protocol.md "Domain events".
+                    case McpServersChanged:
+                        _ = hub.BroadcastToProjectAsync(projectId, Contracts.MessageTypes.McpServersResult,
+                            SettingsOps.GetMcpServers(entry.Runtime));
                         break;
                 }
             });
@@ -500,6 +587,66 @@ public sealed class SplaServiceHost
                 _ = BroadcastChatsAsync(hub, projectId, entry);
             };
 
+            // Chat-level progress: one subscription for the chat's whole life, not one per turn and
+            // not one per connection. Replaces the old per-turn subscription in
+            // ClientConnection.BuildCallbacks, which only ever saw the turn's own tree — a background
+            // task's ticks (plan step 0.4, closed properly here rather than deferred again) had no
+            // subscription to ride at all, only its final result via the inbox. ChatRuntime.Progress
+            // already collects every root, turn and background task alike (built in wave 0's
+            // ProgressHub), so wiring it once here reaches both automatically.
+            entry.Chats.RuntimeOpened += chat => WireChatProgress(chat, entry.Runtime, hub);
+
+            // The pump (PLAN_20260825 wave B): wakes this chat's own turn when a background task's
+            // result lands and nobody has sent a message since. Same shape as WireChatProgress right
+            // above — one subscription for the chat's whole life — and disposed on the new
+            // RuntimeClosed rather than left to leak, which is exactly the debt wave A recorded
+            // ("nothing could hang its own life on a chat's death").
+            entry.Chats.RuntimeOpened += chat =>
+            {
+                var pump = new ChatPump(
+                    chat.Inbox,
+                    hasWatchers: () => hub.HasWatchers(chat.ChatId),
+                    isTurnRunning: () => chat.IsTurnRunning,
+                    humanTurnCount: () => chat.HumanTurnCount,
+                    autoWakeSuppressed: () => chat.AutoWakeSuppressed,
+                    // text: null — a woken turn adds no message of its own; its content is whatever
+                    // DrainInbox picks up at the top of the orchestrator's loop.
+                    runTurn: ct => new ChatTurnDriver(
+                        hub, registry, entry.Runtime, projectId, chat,
+                        entry.Runtime.LoggerFactory.CreateLogger("SPLA.Service.ChatPump")
+                    ).RunTurnAsync(null, null, userKey: "pump", ct),
+                    broadcastNotice: text => _ = hub.BroadcastToWatchersAsync(
+                        chat.ChatId, Contracts.MessageTypes.Notice, new Contracts.NoticePayload { Text = text }),
+                    log: entry.Runtime.LoggerFactory.CreateLogger<ChatPump>());
+
+                void OnClosed(SPLA.Runtime.ChatRuntime closed)
+                {
+                    if (closed != chat) return;
+                    pump.Dispose();
+                    entry.Chats.RuntimeClosed -= OnClosed;
+                }
+                entry.Chats.RuntimeClosed += OnClosed;
+            };
+
+            // The task panel's live feed (PLAN_20260825 wave E): one subscription for the chat's whole life,
+            // same shape as WireChatProgress/ChatPump right above — a task can start and finish across many
+            // turns, so a per-turn subscription would miss most of what it needs to report.
+            entry.Chats.RuntimeOpened += chat =>
+            {
+                chat.Tasks.Changed += record => _ = hub.BroadcastToWatchersAsync(chat.ChatId, Contracts.MessageTypes.TaskStateChanged,
+                    new Contracts.TaskStateChangedPayload
+                    {
+                        ChatId = chat.ChatId,
+                        Task = new Contracts.TaskSummaryDto
+                        {
+                            TaskId = record.Id,
+                            ToolName = record.ToolName,
+                            State = record.State.ToString(),
+                            StartedAt = record.StartedAt.ToString("o")
+                        }
+                    });
+            };
+
             // Live SSH sessions: create the project's hub eagerly and fan its open/close events out
             // as ssh.sessions.changed, so pickers refresh and terminals auto-attach the moment the
             // AGENT opens a session — the human sees it happen instead of discovering it later.
@@ -520,7 +667,7 @@ public sealed class SplaServiceHost
                 }
                 catch { }
             });
-        };
+        }
     }
 
     /// <summary>The chat list, to everyone watching this project. Sent whenever a chat's state
@@ -614,11 +761,21 @@ public sealed class SplaServiceHost
     /// in flight before returning. That is invisible for an instant call like <c>tools/list</c> but
     /// silently killed anything doing real I/O — <c>ssh_run</c> connecting to a host, mid-TCP-handshake,
     /// came back as an empty response because the cancellation raced its own completion and won.
-    /// <see cref="PendingLineReader"/> holds EOF back until the call is actually done (signalled by
+    /// <see cref="McpHttpFraming.PendingLineReader"/> holds EOF back until the call is actually done (signalled by
     /// either writer below), so the call's own cancellation token is never touched before it is done
-    /// with it.</para></summary>
-    private static async Task<IResult> HandleMcpAsync(HttpContext ctx, AgentRuntimeRegistry registry)
+    /// with it.</para>
+    /// <para><b>Why this holds the lease.</b> This path never touches <see cref="ConnectionHub"/> (it
+    /// is one request/response, not a socket) and registers no <see cref="TurnRegistry"/> entry of its
+    /// own — so without an explicit hold, <see cref="InstanceLease.WatchAsync"/> sees zero clients,
+    /// zero holders and an <c>Idle</c> state and is free to evict mid-call, including partway through
+    /// an hour-long tool call still streaming over SSE. <c>lease.Hold()</c> for the whole method body
+    /// (a <c>using</c>, so every return path and every exception releases it, including
+    /// <see cref="HttpContext.RequestAborted"/> unwinding through <c>await running</c>) is what makes
+    /// an MCP call as eviction-safe as a turn started from <c>/ws</c>.</para></summary>
+    private static async Task<IResult> HandleMcpAsync(HttpContext ctx, AgentRuntimeRegistry registry, InstanceLease lease)
     {
+        using var hold = lease.Hold();
+
         string line;
         using (var bodyReader = new StreamReader(ctx.Request.Body))
         {
@@ -639,7 +796,13 @@ public sealed class SplaServiceHost
         var runtime = registry.Open(project).Runtime;
         var exposure = SPLA.MCP.Core.ToolExposure.Default;
 
-        var reader = new PendingLineReader(line);
+        // Marks the instance active the moment the call arrives. Cheap insurance alongside the lease
+        // hold above: the hold keeps eviction off entirely, but touching activity too means
+        // registry.State() (used elsewhere — health, the hub's "3 windows" style summaries) doesn't
+        // report a project that is mid-MCP-call as flatly Idle.
+        runtime.Turns.Touch();
+
+        var reader = new McpHttpFraming.PendingLineReader(line);
         var server = new SPLA.Mcp.McpStdioServer(
             runtime.McpHost,
             () => runtime.McpHost.GetToolDefinitionsFor(exposure),
@@ -656,7 +819,7 @@ public sealed class SplaServiceHost
             ctx.Response.ContentType = "text/event-stream";
             ctx.Response.Headers.CacheControl = "no-cache";
 
-            var sse = new SseWriter(ctx.Response.Body, requestId);
+            var sse = new SseWriter(ctx.Response.Body, requestId, onFrame: () => runtime.Turns.Touch());
             var runningSse = server.RunAsync(reader, sse, ctx.RequestAborted);
 
             var finishedSse = await Task.WhenAny(sse.FinalResponseWritten, runningSse);
@@ -667,7 +830,7 @@ public sealed class SplaServiceHost
             return Results.Empty; // the response was already streamed directly to ctx.Response.Body
         }
 
-        var writer = new CapturingWriter(requestId);
+        var writer = new McpHttpFraming.CapturingWriter(requestId);
         var running = server.RunAsync(reader, writer, ctx.RequestAborted);
 
         string? responseLine = null;
@@ -692,69 +855,6 @@ public sealed class SplaServiceHost
         return responseLine is null ? Results.NoContent() : Results.Text(responseLine, "application/json");
     }
 
-    /// <summary>True when <paramref name="jsonLine"/> is the reply to the request that carried
-    /// <paramref name="requestId"/> — as opposed to a <c>notifications/progress</c> frame, which has no
-    /// <c>id</c> at all. Shared by both writers below so "which line is the actual answer" is decided
-    /// once, the same way, regardless of transport.</summary>
-    private static bool IsFinalResponse(string? jsonLine, System.Text.Json.Nodes.JsonNode? requestId)
-    {
-        if (string.IsNullOrEmpty(jsonLine)) return false;
-        try
-        {
-            var id = System.Text.Json.Nodes.JsonNode.Parse(jsonLine)?["id"];
-            return requestId is null
-                ? id is null
-                : System.Text.Json.Nodes.JsonNode.DeepEquals(id, requestId);
-        }
-        catch (System.Text.Json.JsonException) { return false; }
-    }
-
-    /// <summary>Yields one line, then blocks — never hands <c>McpStdioServer.RunAsync</c> an EOF until
-    /// <see cref="SignalEof"/> is called. See <see cref="HandleMcpAsync"/> for why that matters.</summary>
-    private sealed class PendingLineReader : TextReader
-    {
-        private readonly string _line;
-        private bool _sent;
-        private readonly TaskCompletionSource _eof = new(TaskCreationOptions.RunContinuationsAsynchronously);
-
-        public PendingLineReader(string line) => _line = line;
-
-        public void SignalEof() => _eof.TrySetResult();
-
-        public override async ValueTask<string?> ReadLineAsync(CancellationToken cancellationToken)
-        {
-            if (!_sent) { _sent = true; return _line; }
-            await _eof.Task.WaitAsync(cancellationToken).ConfigureAwait(false);
-            return null;
-        }
-    }
-
-    /// <summary>Captures the reply matching the request's own id and nothing else — a progress
-    /// notification arriving on this path (a client that sent <c>_meta.progressToken</c> without
-    /// asking for SSE) is silently dropped rather than mistaken for the answer.
-    /// <see cref="ResponseWritten"/> completes the moment the real reply is written, which is the
-    /// signal <see cref="HandleMcpAsync"/> waits on before it lets the reader see EOF.</summary>
-    private sealed class CapturingWriter : TextWriter
-    {
-        private readonly System.Text.Json.Nodes.JsonNode? _requestId;
-        private readonly TaskCompletionSource<string?> _written =
-            new(TaskCreationOptions.RunContinuationsAsynchronously);
-
-        public CapturingWriter(System.Text.Json.Nodes.JsonNode? requestId) => _requestId = requestId;
-
-        public override System.Text.Encoding Encoding => System.Text.Encoding.UTF8;
-
-        public Task<string?> ResponseWritten => _written.Task;
-
-        public override Task WriteLineAsync(string? value)
-        {
-            if (IsFinalResponse(value, _requestId)) _written.TrySetResult(value);
-            return Task.CompletedTask;
-        }
-
-        public override Task FlushAsync() => Task.CompletedTask;
-    }
-
     /// <summary>Streams every frame straight to the response body as an SSE <c>data:</c> event —
     /// progress notifications and the final reply alike, in the order <c>McpStdioServer</c> produces
     /// them. This is the piece that makes <c>/mcp</c> a real network analogue of stdio: a client that
@@ -764,14 +864,19 @@ public sealed class SplaServiceHost
     {
         private readonly Stream _body;
         private readonly System.Text.Json.Nodes.JsonNode? _requestId;
+        private readonly Action? _onFrame;
         private readonly TaskCompletionSource _finalResponseWritten =
             new(TaskCreationOptions.RunContinuationsAsynchronously);
         private readonly SemaphoreSlim _writeGate = new(1, 1);
 
-        public SseWriter(Stream body, System.Text.Json.Nodes.JsonNode? requestId)
+        /// <param name="onFrame">Called for every frame written, progress ticks included — the
+        /// cheapest place to keep <see cref="TurnRegistry.Touch"/> current for a long SSE call, since
+        /// every progress notification McpStdioServer emits already passes through here.</param>
+        public SseWriter(Stream body, System.Text.Json.Nodes.JsonNode? requestId, Action? onFrame = null)
         {
             _body = body;
             _requestId = requestId;
+            _onFrame = onFrame;
         }
 
         public override System.Text.Encoding Encoding => System.Text.Encoding.UTF8;
@@ -783,6 +888,8 @@ public sealed class SplaServiceHost
         public override async Task WriteLineAsync(string? value)
         {
             if (string.IsNullOrEmpty(value)) return;
+
+            _onFrame?.Invoke();
 
             var bytes = System.Text.Encoding.UTF8.GetBytes($"data: {value}\n\n");
             await _writeGate.WaitAsync().ConfigureAwait(false);
@@ -800,7 +907,7 @@ public sealed class SplaServiceHost
             }
             finally { _writeGate.Release(); }
 
-            if (IsFinalResponse(value, _requestId)) _finalResponseWritten.TrySetResult();
+            if (McpHttpFraming.IsFinalResponse(value, _requestId)) _finalResponseWritten.TrySetResult();
         }
 
         public override Task FlushAsync() => Task.CompletedTask;

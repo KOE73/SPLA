@@ -47,6 +47,12 @@
 
       <span class="pb-spacer"></span>
 
+      <button
+        class="pb-icon-btn pb-archive-toggle"
+        :class="{ subtle: !store.showArchivedChats, active: store.showArchivedChats }"
+        title="Show archived chats"
+        @click="store.showArchivedChats = !store.showArchivedChats"
+      >🗄</button>
       <button class="pb-icon-btn" title="Settings" @click="openSettings">
         <Icon name="settings" :size="19" :weight="2" />
       </button>
@@ -228,6 +234,8 @@ onUnmounted(() => offs.forEach(o => o()));
 .pb-icon-btn:hover { color: var(--accent); }
 .pb-icon-btn.subtle { opacity: 0.6; }
 .pb-icon-btn.subtle:hover { opacity: 1; }
+.pb-archive-toggle { font-size: 13px; }
+.pb-archive-toggle.active { color: var(--accent); opacity: 1; }
 
 .pb-branch {
   flex-shrink: 0;

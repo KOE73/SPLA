@@ -1,0 +1,242 @@
+{
+  "id": "v_main",
+  "project": "features",
+  "zones": [
+    {
+      "id": "zone_outer",
+      "container": null,
+      "parent": null,
+      "x": 40,
+      "y": 40,
+      "width": 620,
+      "height": 460,
+      "styleId": "domain.outer",
+      "collapsed": false
+    },
+    {
+      "id": "zone_nested",
+      "container": null,
+      "parent": null,
+      "x": 70,
+      "y": 120,
+      "width": 260,
+      "height": 200,
+      "collapsed": false
+    },
+    {
+      "id": "zone_collapse",
+      "container": null,
+      "parent": null,
+      "x": 700,
+      "y": 40,
+      "width": 320,
+      "height": 240,
+      "styleId": "domain.collapse",
+      "collapsed": false
+    },
+    {
+      "id": "zone_dashed",
+      "container": null,
+      "parent": null,
+      "x": 700,
+      "y": 320,
+      "width": 320,
+      "height": 200,
+      "styleId": "domain.dashed",
+      "collapsed": false
+    }
+  ],
+  "nodes": [
+    {
+      "id": "n_concept",
+      "container": "zone_nested",
+      "x": 90,
+      "y": 170,
+      "width": 200,
+      "height": 50
+    },
+    {
+      "id": "n_note",
+      "container": "zone_nested",
+      "x": 90,
+      "y": 245,
+      "width": 200,
+      "height": 50
+    },
+    {
+      "id": "n_component_tall",
+      "container": "zone_outer",
+      "x": 370,
+      "y": 120,
+      "width": 250,
+      "height": 80
+    },
+    {
+      "id": "n_service",
+      "container": "zone_outer",
+      "x": 370,
+      "y": 230,
+      "width": 250,
+      "height": 50
+    },
+    {
+      "id": "n_security",
+      "container": "zone_outer",
+      "x": 370,
+      "y": 320,
+      "width": 250,
+      "height": 50
+    },
+    {
+      "id": "n_unknown",
+      "container": "zone_outer",
+      "x": 370,
+      "y": 410,
+      "width": 250,
+      "height": 50
+    },
+    {
+      "id": "n_tool",
+      "container": "zone_collapse",
+      "x": 730,
+      "y": 100,
+      "width": 260,
+      "height": 50
+    },
+    {
+      "id": "n_database",
+      "container": "zone_collapse",
+      "x": 730,
+      "y": 190,
+      "width": 260,
+      "height": 50
+    },
+    {
+      "id": "n_external",
+      "container": "zone_dashed",
+      "x": 730,
+      "y": 380,
+      "width": 260,
+      "height": 50
+    },
+    {
+      "id": "n_geometric",
+      "container": null,
+      "x": 730,
+      "y": 450,
+      "width": 260,
+      "height": 50
+    },
+    {
+      "id": "n_free",
+      "container": null,
+      "x": 300,
+      "y": 570,
+      "width": 260,
+      "height": 50
+    },
+    {
+      "id": "n_longlabel",
+      "container": null,
+      "x": 620,
+      "y": 570,
+      "width": 130,
+      "height": 50
+    }
+  ],
+  "edges": [
+    {
+      "id": "e_extends",
+      "from": "n_service",
+      "to": "n_component_tall",
+      "type": "extends",
+      "points": []
+    },
+    {
+      "id": "e_implements",
+      "from": "n_concept",
+      "to": "n_component_tall",
+      "type": "implements",
+      "points": []
+    },
+    {
+      "id": "e_realizes",
+      "from": "n_note",
+      "to": "n_service",
+      "type": "realizes",
+      "points": []
+    },
+    {
+      "id": "e_composes",
+      "from": "n_component_tall",
+      "to": "n_unknown",
+      "type": "composes",
+      "points": []
+    },
+    {
+      "id": "e_call",
+      "from": "n_component_tall",
+      "to": "n_tool",
+      "type": "call",
+      "points": []
+    },
+    {
+      "id": "e_data",
+      "from": "n_service",
+      "to": "n_database",
+      "type": "data-flow",
+      "points": []
+    },
+    {
+      "id": "e_event",
+      "from": "n_security",
+      "to": "n_external",
+      "type": "event",
+      "points": []
+    },
+    {
+      "id": "e_security",
+      "from": "n_security",
+      "to": "n_geometric",
+      "type": "security",
+      "points": []
+    },
+    {
+      "id": "e_storage",
+      "from": "n_unknown",
+      "to": "n_geometric",
+      "type": "storage",
+      "points": []
+    },
+    {
+      "id": "e_intrazone",
+      "from": "n_tool",
+      "to": "n_database",
+      "type": "call",
+      "points": []
+    },
+    {
+      "id": "e_nested_intra",
+      "from": "n_concept",
+      "to": "n_note",
+      "type": "call",
+      "points": []
+    },
+    {
+      "id": "e_default",
+      "from": "n_free",
+      "to": "n_longlabel",
+      "type": "totally-made-up-edge-type",
+      "points": []
+    },
+    {
+      "id": "e_dangling",
+      "from": "n_free",
+      "to": "node_that_does_not_exist",
+      "type": "call",
+      "points": []
+    }
+  ],
+  "axis": "axis_demo",
+  "contractVersion": 3
+}

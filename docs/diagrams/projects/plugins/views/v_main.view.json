@@ -1,0 +1,133 @@
+{
+  "id": "v_main",
+  "project": "plugins",
+  "zones": [
+    {
+      "id": "zone_host",
+      "container": null,
+      "parent": null,
+      "x": 40,
+      "y": 40,
+      "width": 300,
+      "height": 450,
+      "styleId": "domain.tools.host",
+      "collapsed": false
+    },
+    {
+      "id": "zone_network",
+      "container": null,
+      "parent": null,
+      "x": 380,
+      "y": 40,
+      "width": 320,
+      "height": 450,
+      "styleId": "domain.network",
+      "collapsed": false
+    },
+    {
+      "id": "zone_ssh",
+      "container": null,
+      "parent": null,
+      "x": 740,
+      "y": 40,
+      "width": 320,
+      "height": 450,
+      "styleId": "domain.ssh",
+      "collapsed": false
+    },
+    {
+      "id": "zone_doc",
+      "container": null,
+      "parent": null,
+      "x": 1100,
+      "y": 40,
+      "width": 300,
+      "height": 450,
+      "styleId": "domain.document",
+      "collapsed": false
+    }
+  ],
+  "nodes": [
+    {
+      "id": "tool_router",
+      "container": "zone_host",
+      "x": 60,
+      "y": 100,
+      "width": 260,
+      "height": 65
+    },
+    {
+      "id": "tool_net_ping",
+      "container": "zone_network",
+      "x": 400,
+      "y": 100,
+      "width": 280,
+      "height": 55
+    },
+    {
+      "id": "tool_net_dns",
+      "container": "zone_network",
+      "x": 400,
+      "y": 170,
+      "width": 280,
+      "height": 55
+    },
+    {
+      "id": "tool_net_http",
+      "container": "zone_network",
+      "x": 400,
+      "y": 240,
+      "width": 280,
+      "height": 55
+    },
+    {
+      "id": "tool_ssh_run",
+      "container": "zone_ssh",
+      "x": 760,
+      "y": 100,
+      "width": 280,
+      "height": 55
+    },
+    {
+      "id": "tool_sftp",
+      "container": "zone_ssh",
+      "x": 760,
+      "y": 170,
+      "width": 280,
+      "height": 55
+    },
+    {
+      "id": "tool_doc_extract",
+      "container": "zone_doc",
+      "x": 1120,
+      "y": 100,
+      "width": 260,
+      "height": 55
+    }
+  ],
+  "edges": [
+    {
+      "id": "pe1",
+      "from": "tool_router",
+      "to": "tool_net_ping",
+      "type": "call",
+      "points": []
+    },
+    {
+      "id": "pe2",
+      "from": "tool_router",
+      "to": "tool_ssh_run",
+      "type": "call",
+      "points": []
+    },
+    {
+      "id": "pe3",
+      "from": "tool_router",
+      "to": "tool_doc_extract",
+      "type": "call",
+      "points": []
+    }
+  ],
+  "axis": "axis_subsystem",
+  "contractVersion": 3
+}

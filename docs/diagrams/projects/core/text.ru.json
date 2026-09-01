@@ -1,0 +1,436 @@
+{
+  "contractVersion": 3,
+  "language": "ru",
+  "entries": {
+    "c_llm": {
+      "name": {
+        "v": "LLM: провайдеры и ход",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "c_llm_providers": {
+      "name": {
+        "v": "Провайдеры и шлюз",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "c_llm_middleware": {
+      "name": {
+        "v": "Цепочка middleware",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "c_llm_turn": {
+      "name": {
+        "v": "Модель хода",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "c_toolpipe": {
+      "name": {
+        "v": "Конвейер инструментов (MCP)",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "c_tool_contracts": {
+      "name": {
+        "v": "Контракты конвейера",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "c_tool_stages": {
+      "name": {
+        "v": "Стадии конвейера",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "c_tool_host": {
+      "name": {
+        "v": "Хост и выставление наружу",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "c_tool_progress": {
+      "name": {
+        "v": "Прогресс и фон",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "c_agent_comp": {
+      "name": {
+        "v": "Композиция агента",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "c_formats": {
+      "name": {
+        "v": "Конвертеры форматов",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "c_plugins": {
+      "name": {
+        "v": "Плагины и наборы инструментов",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "c_plugin_contracts": {
+      "name": {
+        "v": "Контракты плагина",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "c_plugin_loading": {
+      "name": {
+        "v": "Загрузка и обнаружение",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "c_toolsets": {
+      "name": {
+        "v": "ToolSets",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "c_chat": {
+      "name": {
+        "v": "Чат и сессия",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "c_security": {
+      "name": {
+        "v": "Безопасность и полномочия",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "c_sec_permissions": {
+      "name": {
+        "v": "Разрешения",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "c_sec_zones": {
+      "name": {
+        "v": "Зоны и рёбра",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "c_sec_sandbox": {
+      "name": {
+        "v": "Песочница и возможности хоста",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "c_sec_secrets": {
+      "name": {
+        "v": "Секреты",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "c_sec_secrets_domain": {
+      "name": {
+        "v": "Хранилище и политика",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "c_sec_secrets_dpapi": {
+      "name": {
+        "v": "DPAPI",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "c_sec_identity": {
+      "name": {
+        "v": "Идентичность",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "c_memory": {
+      "name": {
+        "v": "Память агента и контекст",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "c_mem_kv": {
+      "name": {
+        "v": "KV и блобы",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "c_mem_context": {
+      "name": {
+        "v": "Сборка контекста и метки",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "c_mem_accounting": {
+      "name": {
+        "v": "Учёт токенов",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "c_mem_tools": {
+      "name": {
+        "v": "Инструменты памяти",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "c_content": {
+      "name": {
+        "v": "Содержимое, редактор и ресурсы",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "c_editor": {
+      "name": {
+        "v": "Редактор и схемы",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "c_resources": {
+      "name": {
+        "v": "Ресурсы",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "c_res_core": {
+      "name": {
+        "v": "Реестр и провайдеры",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "c_res_tools": {
+      "name": {
+        "v": "Инструменты ресурсов",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "c_skills": {
+      "name": {
+        "v": "Навыки и библиотека",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "c_skills_library": {
+      "name": {
+        "v": "Библиотека и каталог",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "c_skills_sources": {
+      "name": {
+        "v": "Источники и доверие",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "c_skills_session": {
+      "name": {
+        "v": "Сессия и инструменты",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "c_project": {
+      "name": {
+        "v": "Проект и конфигурация",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "c_proj_core": {
+      "name": {
+        "v": "Проект и хранилища",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "c_proj_instances": {
+      "name": {
+        "v": "Инстансы",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "c_proj_settings": {
+      "name": {
+        "v": "Настройки",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "c_agentlife": {
+      "name": {
+        "v": "Жизненный цикл агента",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "c_observability": {
+      "name": {
+        "v": "Наблюдаемость",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "c_platform": {
+      "name": {
+        "v": "Платформа / ОС",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "c_ssh": {
+      "name": {
+        "v": "SSH",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "rt_call": {
+      "name": {
+        "v": "Вызов",
+        "at": "2026-08-31T09:10:34Z",
+        "origin": "authored"
+      },
+      "description": {
+        "v": "Прямое обращение к методу или API другого компонента. Порождается из кода.",
+        "at": "2026-08-31T09:10:34Z",
+        "origin": "authored"
+      }
+    },
+    "rt_composes": {
+      "name": {
+        "v": "Композиция",
+        "at": "2026-08-31T09:10:34Z",
+        "origin": "authored"
+      },
+      "description": {
+        "v": "Тип содержит другой как часть своего состояния. Порождается из кода.",
+        "at": "2026-08-31T09:10:34Z",
+        "origin": "authored"
+      }
+    },
+    "rt_data-flow": {
+      "name": {
+        "v": "Поток данных",
+        "at": "2026-08-31T09:10:34Z",
+        "origin": "authored"
+      },
+      "description": {
+        "v": "Данные идут от источника к приёмнику. Не обязательно синхронный вызов: между ними может быть очередь, канал или сеть.",
+        "at": "2026-08-31T09:10:34Z",
+        "origin": "authored"
+      }
+    },
+    "rt_event": {
+      "name": {
+        "v": "Событие",
+        "at": "2026-08-31T09:10:34Z",
+        "origin": "authored"
+      },
+      "description": {
+        "v": "Источник публикует событие, приёмник на него реагирует. Источник не знает своих получателей и не ждёт ответа.",
+        "at": "2026-08-31T09:10:34Z",
+        "origin": "authored"
+      }
+    },
+    "rt_extends": {
+      "name": {
+        "v": "Наследование",
+        "at": "2026-08-31T09:10:34Z",
+        "origin": "authored"
+      },
+      "description": {
+        "v": "Тип наследуется от другого типа. Порождается из кода.",
+        "at": "2026-08-31T09:10:34Z",
+        "origin": "authored"
+      }
+    },
+    "rt_implements": {
+      "name": {
+        "v": "Реализация",
+        "at": "2026-08-31T09:10:34Z",
+        "origin": "authored"
+      },
+      "description": {
+        "v": "Тип реализует объявленный интерфейс. Порождается из кода.",
+        "at": "2026-08-31T09:10:34Z",
+        "origin": "authored"
+      }
+    },
+    "rt_security": {
+      "name": {
+        "v": "Проверка доступа",
+        "at": "2026-08-31T09:10:34Z",
+        "origin": "authored"
+      },
+      "description": {
+        "v": "Обращение проходит через проверку прав. Приёмник вправе отказать, и отказ — штатный исход, а не ошибка.",
+        "at": "2026-08-31T09:10:34Z",
+        "origin": "authored"
+      }
+    },
+    "rt_storage": {
+      "name": {
+        "v": "Хранение",
+        "at": "2026-08-31T09:10:34Z",
+        "origin": "authored"
+      },
+      "description": {
+        "v": "Компонент пишет данные в хранилище или читает их оттуда. Приёмник — место, где данные переживают процесс.",
+        "at": "2026-08-31T09:10:34Z",
+        "origin": "authored"
+      }
+    },
+    "v_semantic_atlas": {
+      "name": {
+        "v": "Семантический атлас",
+        "at": "2026-08-31T09:10:34Z",
+        "origin": "authored"
+      },
+      "description": {
+        "v": "Полная карта проекта: все сущности, разложенные по подсистемам.",
+        "at": "2026-08-31T09:10:34Z",
+        "origin": "authored"
+      }
+    }
+  }
+}

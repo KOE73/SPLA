@@ -54,11 +54,6 @@ internal interface IClientSession
     /// <summary>Sends a chat.opened snapshot and registers this connection as its watcher.</summary>
     Task SendOpenedAsync(ChatRuntime chat);
 
-    /// <summary>Starts a turn in the background (the receive loop keeps serving this turn's
-    /// permission/clarify/cancel round-trips).</summary>
-    void StartTurn(AgentRuntime runtime, string projectId, ChatRuntime chat, string text,
-        List<string>? images, CancellationToken hostStopping);
-
     /// <summary>Cancels the active turn of <paramref name="chatId"/>, if any.</summary>
     bool TryCancelTurn(string chatId);
 

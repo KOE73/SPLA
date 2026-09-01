@@ -1,0 +1,21 @@
+{
+  "contractVersion": 3,
+  "relationTypes": [
+    {
+      "id": "call",
+      "origin": "code"
+    },
+    {
+      "id": "composes",
+      "origin": "code"
+    },
+    {
+      "id": "extends",
+      "origin": "code"
+    },
+    {
+      "id": "implements",
+      "origin": "code"
+    }
+  ]
+}

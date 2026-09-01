@@ -17,8 +17,10 @@ public enum ToolScope
     Internet,   // Web search, APIs
     Agent,      // Capabilities scoped to the agent itself (memory, info, datetime, context).
                 // Fundamental: always available in every mode, bypasses mode/permission gating.
-    Skill       // Skill lifecycle tools (skill.activate, agent.spawn).
+    Skill,      // Skill lifecycle tools (skill.activate, agent.spawn).
                 // Deactivation is Agent-scoped (always allowed). Activation is Skill-scoped (mode-gated).
+    Foreign     // Executed by a foreign MCP server, which declared none of our axes. The whole
+                // server is one basket (ToolSetDescriptor) and the grant is taken on the basket.
 }
 
 public enum ToolEffect

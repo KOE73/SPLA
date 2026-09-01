@@ -18,4 +18,22 @@ public interface ISandbox
     IShell? Shell { get; }
 
     ICapabilityGate Gate { get; }
+
+    /// <summary>
+    /// A sandbox for one chat: shares what belongs to the <i>project</i> — the workspace boundary and
+    /// the gate, which must read the same for everybody — and gives the chat its own copy of whatever
+    /// holds live state that has to die with it.
+    /// <para>
+    /// Today that is exactly <see cref="Shell"/>: <c>LocalShell</c> keeps its interactive sessions in
+    /// the instance, so while every chat shared one, "kill this chat's shell sessions" could not be
+    /// said at all, and the cap on live sessions was shared out between chats that knew nothing of
+    /// each other.
+    /// </para>
+    /// <para>
+    /// The default is to share <c>this</c>, which is correct for any sandbox that owns nothing
+    /// per-chat (a shell-less one, an in-memory one in tests). An implementation that <i>does</i>
+    /// hold live state must override, and the caller is expected to dispose what it gets back.
+    /// </para>
+    /// </summary>
+    ISandbox ForChat() => this;
 }

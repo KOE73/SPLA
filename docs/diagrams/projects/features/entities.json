@@ -1,0 +1,124 @@
+{
+  "entities": [
+    {
+      "id": "n_concept",
+      "name": "Концепт",
+      "kind": "Идея / гипотеза",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "docs/diagrams/model-features.json",
+      "members": []
+    },
+    {
+      "id": "n_note",
+      "name": "Заметка без подзаголовка",
+      "kind": "note",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "",
+      "members": []
+    },
+    {
+      "id": "n_component_tall",
+      "name": "Высокий компонент",
+      "kind": "Component",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/core/Domain/Placeholder.cs",
+      "members": []
+    },
+    {
+      "id": "n_service",
+      "name": "Сервис",
+      "kind": "Service",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "",
+      "members": []
+    },
+    {
+      "id": "n_security",
+      "name": "Компонент безопасности",
+      "kind": "Security",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "",
+      "members": []
+    },
+    {
+      "id": "n_unknown",
+      "name": "Неизвестный тип",
+      "kind": "totally-made-up-type",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "",
+      "members": []
+    },
+    {
+      "id": "n_tool",
+      "name": "Инструмент",
+      "kind": "Tool",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "",
+      "members": []
+    },
+    {
+      "id": "n_database",
+      "name": "Хранилище",
+      "kind": "Database",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "",
+      "members": []
+    },
+    {
+      "id": "n_external",
+      "name": "Внешняя система",
+      "kind": "External",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "",
+      "members": []
+    },
+    {
+      "id": "n_geometric",
+      "name": "Родитель по геометрии",
+      "kind": "Component",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "",
+      "members": []
+    },
+    {
+      "id": "n_free",
+      "name": "Вне всех зон",
+      "kind": "Component",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "",
+      "members": []
+    },
+    {
+      "id": "n_longlabel",
+      "name": "Очень длинная подпись которая заведомо не помещается в этот узел",
+      "kind": "Note",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "",
+      "members": []
+    }
+  ]
+}

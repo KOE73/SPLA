@@ -69,6 +69,11 @@ public class ResolvedSettings
     /// the bound exists only to stop an unattended instance blocking forever.</summary>
     public int AskTimeoutMinutes { get; set; } = 60;
 
+    /// <summary>Seconds a <c>system_run_shell</c> command may sit silent before the tool returns
+    /// control instead of continuing to wait; 0 = never (wait for exit or a prompt, however long that
+    /// takes). See <see cref="SplaAgentSection.ShellTimeoutSeconds"/>.</summary>
+    public int ShellTimeoutSeconds { get; set; } = 120;
+
     /// <summary>Persist the full tool-call/tool-result trace with the chat history. Default OFF —
     /// see <see cref="SplaAgentSection.SaveToolCalls"/>.</summary>
     public bool SaveToolCalls { get; set; }
@@ -88,6 +93,12 @@ public class ResolvedSettings
     /// <summary>Fixed port for <c>spla serve</c> to bind, or null for the usual ephemeral one. See
     /// <see cref="SplaMcpSection.Port"/>.</summary>
     public int? McpPort { get; set; }
+
+    /// <summary>Foreign MCP servers this project consumes, merged across layers by
+    /// <see cref="SplaMcpServerSection.Id"/> — a project entry replaces a machine entry of the same id
+    /// wholesale, the same rule <see cref="Connections"/> uses. Nothing here connects to anything;
+    /// this is only the declaration. See <see cref="SplaMcpSection.Servers"/>.</summary>
+    public List<SplaMcpServerSection> McpServers { get; set; } = new();
 
     // UI
     public string Theme { get; set; } = "Dark";
@@ -187,6 +198,9 @@ public class ResolvedSettings
     public string? PermWrite { get; set; }
     public string? PermShell { get; set; }
     public string? PermInternet { get; set; }
+    /// <summary>Override for foreign MCP-server tools (ToolScope.Foreign) — see
+    /// <see cref="SplaPermissionsSection.Foreign"/>.</summary>
+    public string? PermForeign { get; set; }
     public List<SplaToolPermissionRule> ToolPermissionRules { get; set; } = new();
 
     // Plugins
@@ -357,6 +371,9 @@ public static class SettingsResolver
         // Connections merge across layers by id (project overrides/extends defaults).
         var connections = new Dictionary<string, SplaConnectionSection>(StringComparer.OrdinalIgnoreCase);
 
+        // mcp.servers merges across layers by id, same rule as connections above.
+        var mcpServers = new Dictionary<string, SplaMcpServerSection>(StringComparer.OrdinalIgnoreCase);
+
         // llm: section fields — tracked locally and used only to synthesize the fallback default
         // connection when no connections are declared. Endpoint/ApiKey/Model no longer live on
         // ResolvedSettings; Connections is the single source of truth for those.
@@ -393,6 +410,7 @@ public static class SettingsResolver
                 r.LoopGuard = defaults.Agent.LoopGuard ?? r.LoopGuard;
                 r.LoopGuardRepeats = defaults.Agent.LoopGuardRepeats ?? r.LoopGuardRepeats;
                 r.AskTimeoutMinutes = defaults.Agent.AskTimeoutMinutes ?? r.AskTimeoutMinutes;
+                r.ShellTimeoutSeconds = defaults.Agent.ShellTimeoutSeconds ?? r.ShellTimeoutSeconds;
                 r.SaveToolCalls = defaults.Agent.SaveToolCalls ?? r.SaveToolCalls;
                 r.SaveAttempts = defaults.Agent.SaveAttempts ?? r.SaveAttempts;
                 r.Capabilities = defaults.Agent.Capabilities ?? r.Capabilities;
@@ -403,6 +421,7 @@ public static class SettingsResolver
             {
                 r.McpEnabled = defaults.Mcp.Enabled ?? r.McpEnabled;
                 r.McpPort = defaults.Mcp.Port ?? r.McpPort;
+                MergeMcpServers(mcpServers, defaults.Mcp.Servers);
             }
             if (defaults.Ui != null)
             {
@@ -450,6 +469,7 @@ public static class SettingsResolver
                 r.LoopGuard = project.Agent.LoopGuard ?? r.LoopGuard;
                 r.LoopGuardRepeats = project.Agent.LoopGuardRepeats ?? r.LoopGuardRepeats;
                 r.AskTimeoutMinutes = project.Agent.AskTimeoutMinutes ?? r.AskTimeoutMinutes;
+                r.ShellTimeoutSeconds = project.Agent.ShellTimeoutSeconds ?? r.ShellTimeoutSeconds;
                 r.SaveToolCalls = project.Agent.SaveToolCalls ?? r.SaveToolCalls;
                 r.SaveAttempts = project.Agent.SaveAttempts ?? r.SaveAttempts;
                 r.Capabilities = project.Agent.Capabilities ?? r.Capabilities;
@@ -460,6 +480,7 @@ public static class SettingsResolver
             {
                 r.McpEnabled = project.Mcp.Enabled ?? r.McpEnabled;
                 r.McpPort = project.Mcp.Port ?? r.McpPort;
+                MergeMcpServers(mcpServers, project.Mcp.Servers);
             }
             if (project.Ui != null)
             {
@@ -472,6 +493,7 @@ public static class SettingsResolver
                 r.PermWrite = project.Permissions.Write;
                 r.PermShell = project.Permissions.Shell;
                 r.PermInternet = project.Permissions.Internet;
+                r.PermForeign = project.Permissions.Foreign;
                 r.ToolPermissionRules = project.Permissions.Tools ?? new();
             }
             if (project.Plugins != null)
@@ -496,6 +518,7 @@ public static class SettingsResolver
             });
 
         r.Models = FlattenModels(r.Connections);
+        r.McpServers = mcpServers.Values.ToList();
         return r;
     }
 
@@ -613,5 +636,20 @@ public static class SettingsResolver
         foreach (var c in from)
             if (!string.IsNullOrWhiteSpace(c.Id))
                 into[c.Id] = c;
+    }
+
+    /// <summary>Adds/overrides mcp.servers entries by id, skipping entries without an id — same idiom
+    /// as <see cref="MergeConnections"/>. A project entry replaces a machine entry of the same id
+    /// wholesale rather than merging field by field: a server definition assembled from half-machine,
+    /// half-project fields (an env var from one layer, a command from the other) would be very hard to
+    /// reason about, so "the more specific layer wins, entirely" is the same call <c>connections:</c>
+    /// already made and this follows it rather than inventing a second answer.</summary>
+    private static void MergeMcpServers(
+        Dictionary<string, SplaMcpServerSection> into, List<SplaMcpServerSection>? from)
+    {
+        if (from == null) return;
+        foreach (var s in from)
+            if (!string.IsNullOrWhiteSpace(s.Id))
+                into[s.Id!] = s;
     }
 }

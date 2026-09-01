@@ -92,8 +92,11 @@ public class DotnetBuildTool : IMcpTool
             if (!sandbox.Gate.CanExecute() || sandbox.Shell is not { } shell)
                 return ToolResult.Refuse("Error: Shell execution is disabled in this environment.", "shell disabled");
 
+            // A build legitimately goes quiet for minutes but never asks anything, so only the
+            // prompt detector stays armed — silence alone must not cut the run short.
             var run = await shell.RunAsync(
-                new ShellCommand(arguments.ToString(), string.IsNullOrEmpty(cwd) ? null : cwd),
+                new ShellCommand(arguments.ToString(), string.IsNullOrEmpty(cwd) ? null : cwd,
+                    SilentIdle: Timeout.InfiniteTimeSpan),
                 cancellationToken);
 
             var result = $"ExitCode: {run.ExitCode}\nOutput:\n{run.StandardOutput}\nError:\n{run.StandardError}";

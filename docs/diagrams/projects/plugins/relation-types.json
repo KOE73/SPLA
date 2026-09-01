@@ -1,0 +1,9 @@
+{
+  "contractVersion": 3,
+  "relationTypes": [
+    {
+      "id": "call",
+      "origin": "authored"
+    }
+  ]
+}

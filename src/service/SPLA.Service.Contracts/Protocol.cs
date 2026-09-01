@@ -93,6 +93,12 @@ public static class MessageTypes
     public const string ChatNew = "chat.new";
     public const string ChatRename = "chat.rename";
     public const string ChatDelete = "chat.delete";
+    /// <summary>Moves a chat aside without deleting it. Body is <see cref="ChatArchivePayload"/>.</summary>
+    public const string ChatArchive = "chat.archive";
+    /// <summary>Moves an archived chat back. Body is <see cref="ChatArchivePayload"/>.</summary>
+    public const string ChatUnarchive = "chat.unarchive";
+    /// <summary>Lists archived chats. Answered with <see cref="ChatArchivedListResult"/>.</summary>
+    public const string ChatArchivedList = "chat.archived.list";
     public const string ChatSend = "chat.send";
     /// <summary>Discard messages after (optionally including) an anchor message. Body is
     /// <see cref="ChatRewindPayload"/>; the server re-sends <see cref="ChatOpened"/>.</summary>
@@ -190,6 +196,18 @@ public static class MessageTypes
     /// <summary>Save MCP-over-HTTP settings (persisted to .spla mcp: section). Takes effect on the
     /// next <c>spla serve</c> start.</summary>
     public const string McpSave = "mcp.save";
+    /// <summary>Ask for the configured foreign MCP servers merged with their live connect status.
+    /// Reply <see cref="McpServersResult"/>.</summary>
+    public const string McpServersGet = "mcp.servers.get";
+    /// <summary>Save the foreign MCP server list (persisted to .spla mcp: servers section). Body
+    /// <see cref="McpServersPayload"/>; connecting/disconnecting takes effect on the next
+    /// <c>spla serve</c> start, the same as <see cref="McpSave"/>. Broadcasts <see cref="McpServersResult"/>.</summary>
+    public const string McpServersSave = "mcp.servers.save";
+    /// <summary>Retry an already-tracked server's connection now — what a person clicking "Reconnect"
+    /// on a failed row asks for. Body <see cref="McpServerActionPayload"/>; reply <see cref="McpServersResult"/>.
+    /// A server added since the last connect attempt (not yet tracked) answers with its unchanged
+    /// status, not an error — see <c>McpClientManager.ReconnectAsync</c>.</summary>
+    public const string McpServersReconnect = "mcp.servers.reconnect";
     /// <summary>Persist UI appearance (theme/density). Auto-sent on change — appearance has no Save step.
     /// Body is <see cref="AppearanceChangedPayload"/>; the server persists and broadcasts <see cref="AppearanceChanged"/>.</summary>
     public const string AppearanceSave = "appearance.save";
@@ -267,9 +285,24 @@ public static class MessageTypes
     /// perfectly normal outcome for anything old enough or for a batch big enough to overflow it.</summary>
     public const string SubagentGet = "subagent.get";
 
+    // ── Background tasks (client → server) ────────────────────────────────
+    // See docs/adr/ADR_20260824-2_core_background-tool-calls.md and plan step 0.7: the registry these
+    // answer from is empty until wave 1 — the three messages exist first so a client can build and
+    // ship an always-empty panel without a second protocol change once tasks are real.
+    /// <summary>List a chat's live background tasks. Body <see cref="TaskListPayload"/>; reply
+    /// <see cref="TaskListResult"/>.</summary>
+    public const string TaskList = "task.list";
+    /// <summary>Ask one task's current state — its finished result if done, or the tail of its
+    /// progress if still running. Body <see cref="TaskStatePayload"/>; reply <see cref="TaskStateResult"/>.</summary>
+    public const string TaskState = "task.state";
+    /// <summary>Cancel a live background task. Body <see cref="TaskCancelPayload"/>.</summary>
+    public const string TaskCancel = "task.cancel";
+
     // ── Server → Client ──────────────────────────────────────────────────
     public const string Welcome = "welcome";
     public const string ChatListResult = "chat.list.result";
+    /// <summary>Answer to <see cref="ChatArchivedList"/>. Body <see cref="ChatArchivedListResult"/>.</summary>
+    public const string ChatArchivedListResult = "chat.archived.list.result";
     public const string ChatOpened = "chat.opened";
     public const string LlmTurnStart = "llm.turn.start";
     public const string Delta = "delta";
@@ -305,6 +338,15 @@ public static class MessageTypes
 
     /// <summary>A chat's doubt flag changed. Body is <see cref="ChatDoubtStatePayload"/>.</summary>
     public const string ChatDoubtState = "chat.doubt.state";
+
+    /// <summary>Answer to <see cref="TaskList"/>. Body <see cref="TaskListResult"/>.</summary>
+    public const string TaskListResult = "task.list.result";
+    /// <summary>Answer to <see cref="TaskState"/>. Body <see cref="TaskStateResult"/>.</summary>
+    public const string TaskStateResult = "task.state.result";
+    /// <summary>Pushed to a chat's watchers whenever a task's state changes — started, or finished
+    /// (successfully, with a failure, or cancelled). Body <see cref="TaskStateChangedPayload"/>. Lets a
+    /// task panel stay live without polling task.list/task.state.</summary>
+    public const string TaskStateChanged = "task.state.changed";
     public const string PermissionRequest = "permission.request";
     public const string ClarifyRequest = "clarify.request";
 
@@ -332,6 +374,11 @@ public static class MessageTypes
     /// <summary>The current MCP-over-HTTP settings — answer to <see cref="McpGet"/> and broadcast
     /// after <see cref="McpSave"/>.</summary>
     public const string McpResult = "mcp.result";
+    /// <summary>The configured foreign MCP servers with live status — answer to
+    /// <see cref="McpServersGet"/> and <see cref="McpServersReconnect"/>; broadcast after
+    /// <see cref="McpServersSave"/> and whenever a server connects, disconnects, or its tool list
+    /// changes in the background (<c>McpServersChanged</c>).</summary>
+    public const string McpServersResult = "mcp.servers.result";
     /// <summary>The current plugin list/state — answer to <see cref="PluginsGet"/> and broadcast after <see cref="PluginsSave"/>.</summary>
     public const string PluginsResult = "plugins.result";
     /// <summary>Answer to <see cref="PluginAction"/>.</summary>

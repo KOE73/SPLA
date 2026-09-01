@@ -1,0 +1,76 @@
+{
+  "schemas": [
+    {
+      "id": "full_core",
+      "file": "projects/full_core/views/v_semantic_atlas.view.json",
+      "title": "FULL Core (All Classes)",
+      "subtitle": "240+ classes, interfaces, middlewares",
+      "icon": "🌌",
+      "theme": "indigo"
+    },
+    {
+      "id": "core",
+      "file": "projects/core/views/v_semantic_atlas.view.json",
+      "title": "Core Layer (src/core)",
+      "subtitle": "Domain, MCP, Security, Host",
+      "icon": "🧠",
+      "theme": "emerald"
+    },
+    {
+      "id": "spla_system",
+      "file": "projects/spla_system/views/v_turn.view.json",
+      "title": "SPLA: хребет хода",
+      "subtitle": "Точка отсчёта: ход, четыре оси",
+      "icon": "🧭",
+      "theme": "blue"
+    },
+    {
+      "id": "spla_system_subsystem",
+      "file": "projects/spla_system/views/v_subsystem.view.json",
+      "title": "SPLA: подсистемы",
+      "subtitle": "Ось: кто чем владеет",
+      "icon": "🧱",
+      "theme": "emerald"
+    },
+    {
+      "id": "spla_system_zones",
+      "file": "projects/spla_system/views/v_zones.view.json",
+      "title": "SPLA: зоны и границы",
+      "subtitle": "Ось: где кончается доверие",
+      "icon": "🛡",
+      "theme": "amber"
+    },
+    {
+      "id": "spla_system_process",
+      "file": "projects/spla_system/views/v_process.view.json",
+      "title": "SPLA: процессы",
+      "subtitle": "Ось: где исполняется",
+      "icon": "⚙",
+      "theme": "indigo"
+    },
+    {
+      "id": "llm_pipeline",
+      "file": "projects/llm_pipeline/views/v_main.view.json",
+      "title": "LLM Pipeline & Context",
+      "subtitle": "Prompt assembly & output stage",
+      "icon": "🔄",
+      "theme": "indigo"
+    },
+    {
+      "id": "plugins",
+      "file": "projects/plugins/views/v_main.view.json",
+      "title": "Plugins & Tools Ecosystem",
+      "subtitle": "Network, SSH, Documents & MCP",
+      "icon": "🔌",
+      "theme": "amber"
+    },
+    {
+      "id": "features",
+      "file": "projects/features/views/v_main.view.json",
+      "title": "Feature Bench",
+      "subtitle": "Стенд проверки: все фичи рендера",
+      "icon": "🧪",
+      "theme": "emerald"
+    }
+  ]
+}

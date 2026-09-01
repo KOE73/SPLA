@@ -9,8 +9,10 @@ public class ChatManager
 {
     private readonly ResolvedSettings _settings;
     private readonly string _chatsDir;
+    private readonly string _archivedDir;
     private readonly string _summariesDir;
     private readonly string _backupsDir;
+    private readonly string? _chatImagesDir;
 
     private static readonly IDeserializer Deserializer = new DeserializerBuilder()
         .WithNamingConvention(UnderscoredNamingConvention.Instance)
@@ -35,6 +37,14 @@ public class ChatManager
             ?? throw new InvalidOperationException("Chat history needs a disk-backed project backend.");
         _summariesDir = project.GetBucket("summaries").MapToHostDirectory()!;
         _backupsDir = project.GetBucket("backups").MapToHostDirectory()!;
+        // Sidecar image attachments (see SPLA.Runtime.ChatImages) — best-effort here since a virtual
+        // project backend may not have one; delete-cleanup simply skips it in that case.
+        _chatImagesDir = project.GetBucket("chat-images").MapToHostDirectory();
+
+        // Archived chats live in a subfolder of the same bucket. Deliberately a subfolder, not a
+        // sibling bucket: ListChats() globs _chatsDir non-recursively, so archived chats are
+        // automatically excluded from it without any extra filtering.
+        _archivedDir = Path.Combine(_chatsDir, "archived");
 
         ConfigLoader.TryHideDirectory(Path.GetDirectoryName(_chatsDir)!);
     }
@@ -45,7 +55,17 @@ public class ChatManager
     }
 
     private string GetChatFilePath(string id) => Path.Combine(_chatsDir, $"{id}.yaml");
+    private string GetArchivedFilePath(string id) => Path.Combine(_archivedDir, $"{id}.yaml");
     public string GetSummaryFilePath(string id) => Path.Combine(_summariesDir, $"{id}.md");
+
+    /// <summary>Finds a chat's yaml wherever it currently lives — active or archived — or null.</summary>
+    private string? FindChatFilePath(string id)
+    {
+        var active = GetChatFilePath(id);
+        if (File.Exists(active)) return active;
+        var archived = GetArchivedFilePath(id);
+        return File.Exists(archived) ? archived : null;
+    }
 
     public ChatSession CreateNewChat(string? title = null)
     {
@@ -110,17 +130,24 @@ public class ChatManager
 
     public ChatSession? LoadChat(string id)
     {
-        var path = GetChatFilePath(id);
-        if (!File.Exists(path)) return null;
+        var path = FindChatFilePath(id);
+        if (path == null) return null;
 
         var yaml = File.ReadAllText(path);
         return Deserializer.Deserialize<ChatSession>(yaml);
     }
 
-    public List<ChatSession> ListChats()
+    public List<ChatSession> ListChats() => ListChatsIn(_chatsDir);
+
+    /// <summary>Chats moved aside by <see cref="Archive"/> — never mixed into <see cref="ListChats"/>
+    /// since they live in a subfolder that its non-recursive glob does not see.</summary>
+    public List<ChatSession> ListArchivedChats() => ListChatsIn(_archivedDir);
+
+    private static List<ChatSession> ListChatsIn(string dir)
     {
         var chats = new List<ChatSession>();
-        foreach (var file in Directory.GetFiles(_chatsDir, "*.yaml"))
+        if (!Directory.Exists(dir)) return chats;
+        foreach (var file in Directory.GetFiles(dir, "*.yaml"))
         {
             try
             {
@@ -133,13 +160,55 @@ public class ChatManager
         return chats.OrderByDescending(c => c.UpdatedAt).ToList();
     }
 
-    public void DeleteChat(string id)
+    /// <summary>Moves a chat's yaml into the <c>archived</c> subfolder. No-op if already there or
+    /// missing. A plain atomic <see cref="File.Move"/> — the file is never rewritten.</summary>
+    public void Archive(string id)
     {
         var path = GetChatFilePath(id);
-        if (File.Exists(path)) File.Delete(path);
+        if (!File.Exists(path)) return;
+        Directory.CreateDirectory(_archivedDir);
+        File.Move(path, GetArchivedFilePath(id), overwrite: true);
+    }
+
+    /// <summary>Moves a chat's yaml back out of <c>archived</c>. No-op if it isn't archived.</summary>
+    public void Unarchive(string id)
+    {
+        var path = GetArchivedFilePath(id);
+        if (!File.Exists(path)) return;
+        File.Move(path, GetChatFilePath(id), overwrite: true);
+    }
+
+    /// <summary>
+    /// Removes a chat and everything hanging off it, wherever the chat currently lives (active or
+    /// archived): the yaml itself, its summary, every backup snapshot (<c>backups/&lt;id&gt;_*.yaml</c>),
+    /// and its <c>chat-images/&lt;id&gt;/</c> sidecar folder. Previously this only removed the yaml and
+    /// summary, leaving backups and images orphaned forever — a known gap closed here rather than left
+    /// for archived chats to inherit too.
+    /// </summary>
+    public void DeleteChat(string id)
+    {
+        var path = FindChatFilePath(id);
+        if (path != null) File.Delete(path);
 
         var summaryPath = GetSummaryFilePath(id);
         if (File.Exists(summaryPath)) File.Delete(summaryPath);
+
+        if (Directory.Exists(_backupsDir))
+        {
+            foreach (var backup in Directory.GetFiles(_backupsDir, $"{id}_*.yaml"))
+            {
+                try { File.Delete(backup); } catch { /* best-effort cleanup */ }
+            }
+        }
+
+        if (_chatImagesDir != null)
+        {
+            var imagesDir = Path.Combine(_chatImagesDir, id);
+            if (Directory.Exists(imagesDir))
+            {
+                try { Directory.Delete(imagesDir, recursive: true); } catch { /* best-effort cleanup */ }
+            }
+        }
     }
 
     public void RenameChat(string id, string newTitle)

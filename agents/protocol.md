@@ -59,6 +59,9 @@ client/types **and** this table.
 | `chat.new` | `ChatNew` | `ChatNewPayload` | Create + open; also broadcasts `chat.list.result`. |
 | `chat.rename` | `ChatRename` | `ChatRenamePayload` | Broadcasts `chat.list.result`. |
 | `chat.delete` | `ChatDelete` | `ChatDeletePayload` | Broadcasts `chat.list.result`. |
+| `chat.archive` | `ChatArchive` | `ChatArchivePayload` | Archive a chat; broadcasts `chat.list.result`. |
+| `chat.unarchive` | `ChatUnarchive` | `ChatArchivePayload` | Unarchive a chat; broadcasts `chat.list.result`. |
+| `chat.archived.list` | `ChatArchivedList` | — | Request the archived chat list. |
 | `chat.send` | `ChatSend` | `ChatSendPayload` | Runs a turn; streams to watchers. |
 | `chat.settings` | `ChatSettings` | `ChatSettingsPayload` | Change mode/model entry, temperature or reasoning selection; echoes `chat.opened`. An empty `reasoning` string means "drop my override", which is why it is distinct from null. |
 | `chat.reasoning.get` | `ChatReasoningGet` | `ChatReasoningRequest` | Ask what the chat's model takes on its reasoning channel; reply `chat.reasoning.result`. A request, not a field on `chat.opened`, because the answer comes from the provider over the network and opening a chat must not wait on one. |
@@ -93,6 +96,11 @@ client/types **and** this table.
 | `skills.source.trust` | `SkillSourceTrust` | `SkillSourceTrustPayload` | Grants or withdraws approval of one branch's contents, stored against the resolved folder. Separate from save on purpose: adding a folder and vouching for its text are different acts with different costs. Broadcasts `skills.result`. |
 | `features.get` | `FeaturesGet` | — | Reply `features.result`. |
 | `features.save` | `FeaturesSave` | `FeaturesPayload` | Built-in `core.*` set → `agent.capabilities`. Broadcasts `features.result`. |
+| `mcp.get` | `McpGet` | — | Reply `mcp.result`. |
+| `mcp.save` | `McpSave` | `McpSettingsPayload` | MCP-over-HTTP settings → `.spla` `mcp:` section. Broadcasts `mcp.result`. Takes effect on the next `spla serve` start. |
+| `mcp.servers.get` | `McpServersGet` | — | Reply `mcp.servers.result`: configured foreign MCP servers merged with live connect status. |
+| `mcp.servers.save` | `McpServersSave` | `McpServersPayload` | Foreign MCP server list → `.spla` `mcp:` `servers:` section. Broadcasts `mcp.servers.result`. Connecting/disconnecting takes effect on the next `spla serve` start, same as `mcp.save`. |
+| `mcp.servers.reconnect` | `McpServersReconnect` | `McpServerActionPayload` | Retry one already-tracked server's connection now. Reply `mcp.servers.result` (unicast — see the table below for why). A server not yet tracked (added since the last connect attempt) answers with its unchanged status, not an error. |
 | `usage.get` | `UsageGet` | — | Reply `usage.result`. |
 | `appearance.save` | `AppearanceSave` | `AppearanceChangedPayload` | Auto-sent on change (no Save step). Persists `ui:` + broadcasts `appearance.changed`. |
 | `system.register_association` | `SystemRegisterAssociation` | — | Register the `.spla` extension (Windows, per-user). Reply `system.register_association.result`. |
@@ -113,6 +121,9 @@ client/types **and** this table.
 | `plugin.panel.input` | `PluginPanelInput` | `PluginPanelInputPayload` | Send opaque typed input to a plugin-owned panel session. |
 | `plugin.panel.close` | `PluginPanelClose` | `PluginPanelClosePayload` | Close a plugin-owned panel session. |
 | `subagent.get` | `SubagentGet` | `SubagentGetPayload` | Ask for one finished spawned run by id — the same id the run's progress ticks carried while it was live. Reply `subagent.result`. An unknown id (fallen out of the ring, or never existed) answers `found: false`, not an error. |
+| `task.list` | `TaskList` | `TaskListPayload` | List a chat's background tool calls (`background: true`), running and recently finished. Reply `task.list.result`. See `docs/adr/ADR_20260824-2_core_background-tool-calls.md`. |
+| `task.state` | `TaskState` | `TaskStatePayload` | Ask one task's current state — finished result if done, progress tail if still running. Reply `task.state.result`. An unknown task id answers `task: null`, not an error, the same way `subagent.get` treats an unknown run. |
+| `task.cancel` | `TaskCancel` | `TaskCancelPayload` | Cancel a live background task. No reply — observe the effect through the next `task.list`/`task.state`, the same as `chat.unwatch`. |
 
 ## Server → Client
 
@@ -123,6 +134,7 @@ client/types **and** this table.
 | `project.context` | `ProjectContext` | `ProjectContextPayload` | unicast | Answer to `project.open`/`project.create`. |
 | `instance.status.result` | `InstanceStatusResult` | `InstanceStatusPayload` | unicast | Answer to `instance.status`/`instance.stop` — a unicast reply to whoever asked, never fanned out to other clients. |
 | `chat.list.result` | `ChatListResult` | `ChatListResultPayload` | broadcast (project) | Every sidebar in that project refreshes. |
+| `chat.archived.list.result` | `ChatArchivedListResult` | `ChatArchivedListResultPayload` | unicast | Answer to `chat.archived.list`. |
 | `chat.opened` | `ChatOpened` | `ChatOpenedPayload` | unicast | Full chat state on open. |
 | `user.message` | `UserMessage` | `UserMessagePayload` | watchers | Accepted user message id/time; optional text renders server-initiated turns. |
 | `llm.turn.start` | `LlmTurnStart` | `DeltaPayload` | watchers | New assistant message index. |
@@ -135,6 +147,9 @@ client/types **and** this table.
 | `progress.node` | `ProgressNode` | `ProgressNodePayload` | watchers | One node of the turn's progress tree, whole, on each change — the nested counterpart to `tool.progress`, carrying a script's parallel children and a spawned sub-agent's whole run. A flat append-only stream, not a snapshot: keep what you are told and attach each node to `parentId` (null = top level). Hold a node whose parent has not arrived rather than dropping it — parallel work gives no ordering guarantee. Structural frames (a node's first appearance and its finish) are never throttled; the ticks between them are, per node. Both this and `tool.progress` are sent; a client that wants one bar can ignore this. |
 | `tool.result` | `ToolResult` | `ToolResultPayload` | watchers | A tool call finished. |
 | `subagent.result` | `SubagentResult` | `SubagentResultPayload` | unicast | Answer to `subagent.get`: the finished run's transcript (`messages` reuses `ChatMessageDto`) plus its label, mode, outcome and timing. `found: false` when the id is not in the log. |
+| `task.list.result` | `TaskListResult` | `TaskListResult` | unicast | Answer to `task.list`: this chat's background tasks as summary rows (id, tool, state, started-at). |
+| `task.state.result` | `TaskStateResult` | `TaskStateResult` | unicast | Answer to `task.state`: the task's summary plus its result text once finished (`Result` null while running). `Task: null` for an unknown id. |
+| `task.state.changed` | `TaskStateChanged` | `TaskStateChangedPayload` | watchers | Pushed to a chat's watchers whenever a task's state changes — started (Running) or finished (Completed/Failed/Cancelled). Lets a task panel stay live without polling. |
 | `notice` | `Notice` | `NoticePayload` | watchers | Inline notice. |
 | `token.usage` | `TokenUsage` | `TokenUsagePayload` | watchers | Per-turn token counts; `contextLength` (nullable) carries the model's operative window for the client's context-budget display. |
 | `turn.complete` | `TurnComplete` | `TurnCompletePayload` | watchers | Turn ended; re-enable input. `activeSkillId` reports a skill still running — end of turn is when one the model forgot to close becomes actionable. |
@@ -159,6 +174,8 @@ client/types **and** this table.
 | `skills.result` | `SkillsResult` | `SkillsPayload` | unicast/broadcast | Answer to get; broadcast after any save AND unprompted whenever the fond is rebuilt — a file changed, a branch was added, a grant moved. Lists every skill with its address, source and resolved state, unavailable ones included. |
 | `skills.sources.result` | `SkillSourcesResult` | `SkillSourcesPayload` | unicast | Answer to `skills.sources.get`. The editable half of the fond only. |
 | `features.result` | `FeaturesResult` | `FeaturesPayload` | unicast/broadcast | Answer to get; broadcast after save. `restartToApply` is always true — feature tools register once at startup. |
+| `mcp.result` | `McpResult` | `McpSettingsPayload` | unicast/broadcast | Answer to `mcp.get`; broadcast after `mcp.save`. |
+| `mcp.servers.result` | `McpServersResult` | `McpServersPayload` | unicast/broadcast | Answer to `mcp.servers.get`; broadcast after `mcp.servers.save`; broadcast (project) whenever `McpServersChanged` fires — a server connects, disconnects, or its tool list changes in the background, with no client asking. `mcp.servers.reconnect`'s own reply is unicast (see the table above): the retry's actual effect, if any, arrives for free via this same broadcast the moment the session's state changes, so a second broadcast from the handler would just resend the same frame. |
 | `usage.result` | `UsageResult` | usage totals | unicast/broadcast (project) | Answer to `usage.get`; also broadcast after each turn's token accounting. |
 | `appearance.changed` | `AppearanceChanged` | `AppearanceChangedPayload` | broadcast | Theme/density; every window applies it. See [Domain events](#domain-events-server-side). |
 | `system.register_association.result` | `SystemRegisterAssociationResult` | result | unicast | Answer to `system.register_association`. |
@@ -199,7 +216,10 @@ add one:
 4. Add the `MessageTypes` constant + payload + a row in the table above.
 5. Register a client reactor via `client.on("…", …)`.
 
-Reference implementation: `AppearanceChanged` → `appearance.changed`.
+Reference implementation: `AppearanceChanged` → `appearance.changed`. A second reference, for a case
+where the state changes in the background with no client request at all: `McpServersChanged` →
+`mcp.servers.result` — a connect attempt finishing seconds after `spla serve` started is exactly the
+kind of change nobody polled for.
 
 ## Client-local events (never hit the wire)
 

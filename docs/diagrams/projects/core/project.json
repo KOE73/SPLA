@@ -1,0 +1,18 @@
+{
+  "id": "core",
+  "title": "Core Layer (src/core)",
+  "languages": [
+    "ru",
+    "en"
+  ],
+  "sources": {
+    "include": [
+      "src/core",
+      "src/agent/SPLA.Agent/Guards",
+      "src/agent/SPLA.Agent/Accounting"
+    ]
+  },
+  "styles": "../../styles.json",
+  "contractVersion": 3,
+  "defaultAxis": "axis_subsystem"
+}

@@ -1,0 +1,74 @@
+{
+  "entities": [
+    {
+      "id": "tool_router",
+      "name": "McpHost Dispatcher",
+      "kind": "Dispatcher",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/SPLA.Agent/Tools/McpHost.cs",
+      "members": []
+    },
+    {
+      "id": "tool_net_ping",
+      "name": "network_ping_host",
+      "kind": "Network Tool",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/SPLA.Plugins.Network/PingTool.cs",
+      "members": []
+    },
+    {
+      "id": "tool_net_dns",
+      "name": "network_query_dns",
+      "kind": "Network Tool",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/SPLA.Plugins.Network/DnsTool.cs",
+      "members": []
+    },
+    {
+      "id": "tool_net_http",
+      "name": "network_http_get",
+      "kind": "Network Tool",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/SPLA.Plugins.Network/HttpTool.cs",
+      "members": []
+    },
+    {
+      "id": "tool_ssh_run",
+      "name": "ssh_run / ssh_session_exec",
+      "kind": "SSH Tool",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/SPLA.Plugins.Ssh/SshRunTool.cs",
+      "members": []
+    },
+    {
+      "id": "tool_sftp",
+      "name": "sftp_download / sftp_upload",
+      "kind": "SFTP Tool",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/SPLA.Plugins.Ssh/SftpTools.cs",
+      "members": []
+    },
+    {
+      "id": "tool_doc_extract",
+      "name": "document_extract",
+      "kind": "Document Tool",
+      "origin": "code",
+      "status": "present",
+      "namespace": "",
+      "codeRef": "src/SPLA.Plugins.Document/DocExtractTool.cs",
+      "members": []
+    }
+  ]
+}

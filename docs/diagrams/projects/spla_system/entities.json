@@ -1,0 +1,623 @@
+{
+  "entities": [
+    {
+      "id": "e_model",
+      "name": "LLM",
+      "kind": "external",
+      "origin": "authored",
+      "status": "present",
+      "members": []
+    },
+    {
+      "id": "e_chatinbox",
+      "name": "ChatInbox",
+      "kind": "class",
+      "origin": "code",
+      "status": "present",
+      "codeRef": "src/core/SPLA.Domain/Tools/ChatInbox.cs",
+      "members": []
+    },
+    {
+      "id": "e_chatpump",
+      "name": "ChatPump",
+      "kind": "class",
+      "origin": "code",
+      "status": "present",
+      "codeRef": "src/service/SPLA.Service/Hosting/ChatPump.cs",
+      "members": []
+    },
+    {
+      "id": "e_chatturndriver",
+      "name": "ChatTurnDriver",
+      "kind": "class",
+      "origin": "code",
+      "status": "present",
+      "codeRef": "src/service/SPLA.Service/Hosting/ChatTurnDriver.cs",
+      "members": []
+    },
+    {
+      "id": "e_chatruntime",
+      "name": "ChatRuntime",
+      "kind": "class",
+      "origin": "code",
+      "status": "present",
+      "codeRef": "src/agent/SPLA.Runtime/ChatRuntime.cs",
+      "members": []
+    },
+    {
+      "id": "e_chatregistry",
+      "name": "ChatRegistry",
+      "kind": "class",
+      "origin": "code",
+      "status": "present",
+      "codeRef": "src/agent/SPLA.Runtime/ChatRegistry.cs",
+      "members": []
+    },
+    {
+      "id": "e_agentruntime",
+      "name": "AgentRuntime",
+      "kind": "class",
+      "origin": "code",
+      "status": "present",
+      "codeRef": "src/agent/SPLA.Runtime/AgentRuntime.cs",
+      "members": []
+    },
+    {
+      "id": "e_conversationorchestrator",
+      "name": "ConversationOrchestrator",
+      "kind": "class",
+      "origin": "code",
+      "status": "present",
+      "codeRef": "src/agent/SPLA.Agent/ConversationOrchestrator.cs",
+      "members": []
+    },
+    {
+      "id": "e_agentcontextcomposer",
+      "name": "AgentContextComposer",
+      "kind": "class",
+      "origin": "code",
+      "status": "present",
+      "codeRef": "src/core/SPLA.MCP.Core/Composition/AgentContextComposer.cs",
+      "members": []
+    },
+    {
+      "id": "e_iagentcontributor",
+      "name": "IAgentContributor",
+      "kind": "interface",
+      "origin": "code",
+      "status": "present",
+      "codeRef": "src/core/SPLA.MCP.Core/Composition/IAgentContributor.cs",
+      "members": []
+    },
+    {
+      "id": "e_contextitem",
+      "name": "ContextItem",
+      "kind": "record",
+      "origin": "code",
+      "status": "present",
+      "codeRef": "src/core/SPLA.MCP.Core/Composition/ContextItem.cs",
+      "members": []
+    },
+    {
+      "id": "e_contextassembler",
+      "name": "ContextAssembler",
+      "kind": "class",
+      "origin": "code",
+      "status": "present",
+      "codeRef": "src/core/SPLA.Domain/Context/ContextAssembler.cs",
+      "members": []
+    },
+    {
+      "id": "e_workingmemoryinjector",
+      "name": "WorkingMemoryInjector",
+      "kind": "class",
+      "origin": "code",
+      "status": "present",
+      "codeRef": "src/agent/SPLA.Agent/WorkingMemoryInjector.cs",
+      "members": []
+    },
+    {
+      "id": "e_agentfeaturecatalog",
+      "name": "AgentFeatureCatalog",
+      "kind": "class",
+      "origin": "code",
+      "status": "present",
+      "codeRef": "src/core/SPLA.MCP.Core/Agent/AgentFeatureCatalog.cs",
+      "members": []
+    },
+    {
+      "id": "e_skillsession",
+      "name": "SkillSession",
+      "kind": "class",
+      "origin": "code",
+      "status": "present",
+      "codeRef": "src/core/SPLA.Domain/Agent/SkillSession.cs",
+      "members": []
+    },
+    {
+      "id": "e_toolsetregistry",
+      "name": "ToolSetRegistry",
+      "kind": "class",
+      "origin": "code",
+      "status": "present",
+      "codeRef": "src/core/SPLA.MCP.Core/ToolSets/ToolSetRegistry.cs",
+      "members": []
+    },
+    {
+      "id": "e_illmgateway",
+      "name": "ILlmGateway",
+      "kind": "interface",
+      "origin": "code",
+      "status": "present",
+      "codeRef": "src/core/SPLA.Domain/Llm/ILlmGateway.cs",
+      "members": []
+    },
+    {
+      "id": "e_llmpipelineblueprint",
+      "name": "LlmPipelineBlueprint",
+      "kind": "class",
+      "origin": "code",
+      "status": "present",
+      "codeRef": "src/core/SPLA.Domain/Llm/LlmPipelineBlueprint.cs",
+      "members": []
+    },
+    {
+      "id": "e_illmmiddleware",
+      "name": "ILlmMiddleware",
+      "kind": "interface",
+      "origin": "code",
+      "status": "present",
+      "codeRef": "src/core/SPLA.Domain/Llm/ILlmMiddleware.cs",
+      "members": []
+    },
+    {
+      "id": "e_repetitionguardmiddleware",
+      "name": "RepetitionGuardMiddleware",
+      "kind": "class",
+      "origin": "code",
+      "status": "present",
+      "codeRef": "src/agent/SPLA.Agent/Guards/RepetitionGuardMiddleware.cs",
+      "members": []
+    },
+    {
+      "id": "e_toolrepeattracker",
+      "name": "ToolRepeatTracker",
+      "kind": "class",
+      "origin": "code",
+      "status": "present",
+      "codeRef": "src/agent/SPLA.Agent/Guards/ToolRepeatTracker.cs",
+      "members": []
+    },
+    {
+      "id": "e_tokenaccountingmiddleware",
+      "name": "TokenAccountingMiddleware",
+      "kind": "class",
+      "origin": "code",
+      "status": "present",
+      "codeRef": "src/agent/SPLA.Agent/Accounting/TokenAccountingMiddleware.cs",
+      "members": []
+    },
+    {
+      "id": "e_llmturncontext",
+      "name": "LlmTurnContext",
+      "kind": "class",
+      "origin": "code",
+      "status": "present",
+      "codeRef": "src/core/SPLA.Domain/Llm/LlmTurnContext.cs",
+      "members": []
+    },
+    {
+      "id": "e_llmproviderregistry",
+      "name": "LlmProviderRegistry",
+      "kind": "class",
+      "origin": "code",
+      "status": "present",
+      "codeRef": "src/core/SPLA.Domain/Llm/LlmProviderRegistry.cs",
+      "members": []
+    },
+    {
+      "id": "e_openaicompatibleclient",
+      "name": "OpenAiCompatibleClient",
+      "kind": "class",
+      "origin": "code",
+      "status": "present",
+      "codeRef": "src/llm/SPLA.LLM.OpenAiCompat/OpenAiCompatibleClient.cs",
+      "members": []
+    },
+    {
+      "id": "e_lmstudioprovider",
+      "name": "LmStudioProvider",
+      "kind": "class",
+      "origin": "code",
+      "status": "present",
+      "codeRef": "src/llm/SPLA.LLM.LMStudio/LmStudioProvider.cs",
+      "members": []
+    },
+    {
+      "id": "e_openrouterprovider",
+      "name": "OpenRouterProvider",
+      "kind": "class",
+      "origin": "code",
+      "status": "present",
+      "codeRef": "src/llm/SPLA.LLM.OpenRouter/OpenRouterProvider.cs",
+      "members": []
+    },
+    {
+      "id": "e_reasoningchoice",
+      "name": "ReasoningChoice",
+      "kind": "class",
+      "origin": "code",
+      "status": "present",
+      "codeRef": "src/core/SPLA.Domain/Llm/ReasoningChoice.cs",
+      "members": []
+    },
+    {
+      "id": "e_mcphost",
+      "name": "McpHost",
+      "kind": "class",
+      "origin": "code",
+      "status": "present",
+      "codeRef": "src/core/SPLA.MCP.Core/McpHost.cs",
+      "members": []
+    },
+    {
+      "id": "e_toolpipelineblueprint",
+      "name": "ToolPipelineBlueprint",
+      "kind": "class",
+      "origin": "code",
+      "status": "present",
+      "codeRef": "src/core/SPLA.MCP.Core/Pipeline/ToolPipelineBlueprint.cs",
+      "members": []
+    },
+    {
+      "id": "e_itoolmiddleware",
+      "name": "IToolMiddleware",
+      "kind": "interface",
+      "origin": "code",
+      "status": "present",
+      "codeRef": "src/core/SPLA.MCP.Core/Pipeline/IToolMiddleware.cs",
+      "members": []
+    },
+    {
+      "id": "e_toolresolutionstage",
+      "name": "ToolResolutionStage",
+      "kind": "class",
+      "origin": "code",
+      "status": "present",
+      "codeRef": "src/core/SPLA.MCP.Core/Pipeline/Stages/ToolResolutionStage.cs",
+      "members": []
+    },
+    {
+      "id": "e_permissionstage",
+      "name": "PermissionStage",
+      "kind": "class",
+      "origin": "code",
+      "status": "present",
+      "codeRef": "src/core/SPLA.MCP.Core/Pipeline/Stages/PermissionStage.cs",
+      "members": []
+    },
+    {
+      "id": "e_permissionmanager",
+      "name": "PermissionManager",
+      "kind": "class",
+      "origin": "code",
+      "status": "present",
+      "codeRef": "src/core/SPLA.MCP.Core/Permissions/PermissionManager.cs",
+      "members": []
+    },
+    {
+      "id": "e_icapabilitygate",
+      "name": "ICapabilityGate",
+      "kind": "interface",
+      "origin": "code",
+      "status": "present",
+      "codeRef": "src/core/SPLA.Domain/Host/ICapabilityGate.cs",
+      "members": []
+    },
+    {
+      "id": "e_zoneshadowstage",
+      "name": "ZoneShadowStage",
+      "kind": "class",
+      "origin": "code",
+      "status": "present",
+      "codeRef": "src/core/SPLA.MCP.Core/Pipeline/Stages/ZoneShadowStage.cs",
+      "members": []
+    },
+    {
+      "id": "e_zone",
+      "name": "Zone",
+      "kind": "class",
+      "origin": "code",
+      "status": "present",
+      "codeRef": "src/core/SPLA.Domain/Security/Zone.cs",
+      "members": []
+    },
+    {
+      "id": "e_edgeclassifier",
+      "name": "EdgeClassifier",
+      "kind": "class",
+      "origin": "code",
+      "status": "present",
+      "codeRef": "src/core/SPLA.MCP.Core/Security/EdgeClassifier.cs",
+      "members": []
+    },
+    {
+      "id": "e_edgeledger",
+      "name": "EdgeLedger",
+      "kind": "class",
+      "origin": "code",
+      "status": "present",
+      "codeRef": "src/core/SPLA.MCP.Core/Security/EdgeLedger.cs",
+      "members": []
+    },
+    {
+      "id": "e_backgroundstage",
+      "name": "BackgroundStage",
+      "kind": "class",
+      "origin": "code",
+      "status": "present",
+      "codeRef": "src/core/SPLA.MCP.Core/Pipeline/Stages/BackgroundStage.cs",
+      "members": []
+    },
+    {
+      "id": "e_progressnodestage",
+      "name": "ProgressNodeStage",
+      "kind": "class",
+      "origin": "code",
+      "status": "present",
+      "codeRef": "src/core/SPLA.MCP.Core/Pipeline/Stages/ProgressNodeStage.cs",
+      "members": []
+    },
+    {
+      "id": "e_basictools",
+      "name": "SPLA.MCP.BasicTools",
+      "kind": "assembly",
+      "origin": "code",
+      "status": "present",
+      "codeRef": "src/agent/SPLA.MCP.BasicTools/",
+      "members": []
+    },
+    {
+      "id": "e_pluginmanager",
+      "name": "PluginManager",
+      "kind": "class",
+      "origin": "code",
+      "status": "present",
+      "codeRef": "src/core/SPLA.MCP.Core/Plugins/PluginManager.cs",
+      "members": []
+    },
+    {
+      "id": "e_pluginloadcontext",
+      "name": "PluginLoadContext",
+      "kind": "class",
+      "origin": "code",
+      "status": "present",
+      "codeRef": "src/core/SPLA.MCP.Core/Plugins/PluginLoadContext.cs",
+      "members": []
+    },
+    {
+      "id": "e_ishell",
+      "name": "IShell",
+      "kind": "interface",
+      "origin": "code",
+      "status": "present",
+      "codeRef": "src/core/SPLA.Domain/Host/IShell.cs",
+      "members": []
+    },
+    {
+      "id": "e_iworkspace",
+      "name": "IWorkspace",
+      "kind": "interface",
+      "origin": "code",
+      "status": "present",
+      "codeRef": "src/core/SPLA.Domain/Host/IWorkspace.cs",
+      "members": []
+    },
+    {
+      "id": "e_isandbox",
+      "name": "ISandbox",
+      "kind": "interface",
+      "origin": "code",
+      "status": "present",
+      "codeRef": "src/core/SPLA.Domain/Host/ISandbox.cs",
+      "members": []
+    },
+    {
+      "id": "e_mcpproxytool",
+      "name": "McpProxyTool",
+      "kind": "class",
+      "origin": "code",
+      "status": "present",
+      "codeRef": "src/service/SPLA.Mcp.Client/McpProxyTool.cs",
+      "members": []
+    },
+    {
+      "id": "e_mcpserversession",
+      "name": "McpServerSession",
+      "kind": "class",
+      "origin": "code",
+      "status": "present",
+      "codeRef": "src/service/SPLA.Mcp.Client/McpServerSession.cs",
+      "members": []
+    },
+    {
+      "id": "e_spawnedagentrunner",
+      "name": "SpawnedAgentRunner",
+      "kind": "class",
+      "origin": "code",
+      "status": "present",
+      "codeRef": "src/agent/SPLA.Agent/SpawnedAgentRunner.cs",
+      "members": []
+    },
+    {
+      "id": "e_progresstree",
+      "name": "ProgressTree",
+      "kind": "class",
+      "origin": "code",
+      "status": "present",
+      "codeRef": "src/core/SPLA.Domain/Tools/ProgressTree.cs",
+      "members": []
+    },
+    {
+      "id": "e_datachannel",
+      "name": "DataChannel",
+      "kind": "class",
+      "origin": "code",
+      "status": "present",
+      "codeRef": "src/core/SPLA.MCP.Core/Tools/DataChannel.cs",
+      "members": []
+    },
+    {
+      "id": "e_serviceevents",
+      "name": "ServiceEvents",
+      "kind": "class",
+      "origin": "code",
+      "status": "present",
+      "codeRef": "src/agent/SPLA.Runtime/ServiceEvents.cs",
+      "members": []
+    },
+    {
+      "id": "e_ichatstore",
+      "name": "IChatStore",
+      "kind": "interface",
+      "origin": "code",
+      "status": "present",
+      "codeRef": "src/core/SPLA.Domain/Project/IChatStore.cs",
+      "members": []
+    },
+    {
+      "id": "e_iprojectprovider",
+      "name": "IProjectProvider",
+      "kind": "interface",
+      "origin": "code",
+      "status": "present",
+      "codeRef": "src/core/SPLA.Domain/Project/IProjectProvider.cs",
+      "members": []
+    },
+    {
+      "id": "e_keyvaluestore",
+      "name": "KeyValueStore",
+      "kind": "class",
+      "origin": "code",
+      "status": "present",
+      "codeRef": "src/core/SPLA.Domain/Agent/KeyValueStore.cs",
+      "members": []
+    },
+    {
+      "id": "e_blobstore",
+      "name": "BlobStore",
+      "kind": "class",
+      "origin": "code",
+      "status": "present",
+      "codeRef": "src/core/SPLA.Domain/Agent/BlobStore.cs",
+      "members": []
+    },
+    {
+      "id": "e_isecretstore",
+      "name": "ISecretStore",
+      "kind": "interface",
+      "origin": "code",
+      "status": "present",
+      "codeRef": "src/core/SPLA.Domain/Secrets/ISecretStore.cs",
+      "members": []
+    },
+    {
+      "id": "e_secretresolver",
+      "name": "SecretResolver",
+      "kind": "class",
+      "origin": "code",
+      "status": "present",
+      "codeRef": "src/core/SPLA.Domain/Secrets/SecretResolver.cs",
+      "members": []
+    },
+    {
+      "id": "e_filetokenusagestore",
+      "name": "FileTokenUsageStore",
+      "kind": "class",
+      "origin": "code",
+      "status": "present",
+      "codeRef": "src/core/SPLA.Domain/Agent/FileTokenUsageStore.cs",
+      "members": []
+    },
+    {
+      "id": "e_splaservicehost",
+      "name": "SplaServiceHost",
+      "kind": "class",
+      "origin": "code",
+      "status": "present",
+      "codeRef": "src/service/SPLA.Service/Hosting/SplaServiceHost.cs",
+      "members": []
+    },
+    {
+      "id": "e_messagerouter",
+      "name": "MessageRouter",
+      "kind": "class",
+      "origin": "code",
+      "status": "present",
+      "codeRef": "src/service/SPLA.Service/Protocol/MessageRouter.cs",
+      "members": []
+    },
+    {
+      "id": "e_mcpstdioserver",
+      "name": "McpStdioServer",
+      "kind": "class",
+      "origin": "code",
+      "status": "present",
+      "codeRef": "src/service/SPLA.Mcp/McpStdioServer.cs",
+      "members": []
+    },
+    {
+      "id": "e_webclient",
+      "name": "Web client (Vue 3)",
+      "kind": "app",
+      "origin": "code",
+      "status": "present",
+      "codeRef": "web/src/main.ts",
+      "members": []
+    },
+    {
+      "id": "e_cli",
+      "name": "SPLA.CLI",
+      "kind": "app",
+      "origin": "code",
+      "status": "present",
+      "codeRef": "src/apps/SPLA.CLI/Program.cs",
+      "members": []
+    },
+    {
+      "id": "e_avalonia",
+      "name": "SPLA.UI.Avalonia",
+      "kind": "app",
+      "origin": "code",
+      "status": "present",
+      "codeRef": "src/apps/SPLA.UI.Avalonia/",
+      "members": []
+    },
+    {
+      "id": "e_iinstanceregistry",
+      "name": "IInstanceRegistry",
+      "kind": "interface",
+      "origin": "code",
+      "status": "present",
+      "codeRef": "src/core/SPLA.Instances.Contracts/IInstanceRegistry.cs",
+      "members": []
+    },
+    {
+      "id": "e_windowsidentityresolver",
+      "name": "WindowsIdentityResolver",
+      "kind": "class",
+      "origin": "code",
+      "status": "present",
+      "codeRef": "src/identity/SPLA.Identity.Windows/WindowsIdentityResolver.cs",
+      "members": []
+    },
+    {
+      "id": "e_host_os",
+      "name": "Операционная система",
+      "kind": "external",
+      "origin": "authored",
+      "status": "present",
+      "members": []
+    }
+  ]
+}

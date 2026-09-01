@@ -1,0 +1,308 @@
+/*
+ * Canvas styling — everything drawn inside the SVG surface.
+ *
+ * Shipped with the library: a host embedding only DiagramCanvas imports this
+ * and nothing else. Application chrome lives in editor.css.
+ */
+
+.spla-canvas-host {
+  position: relative;
+  overflow: hidden;
+  cursor: default;
+  background-color: var(--spla-canvas-bg, var(--bg, #f8fafc));
+  width: 100%;
+  height: 100%;
+  display: flex;
+}
+
+.spla-canvas-host.is-panning {
+  cursor: grabbing;
+}
+
+.spla-canvas-host.with-grid {
+  background-image:
+    radial-gradient(var(--line, #cbd5e1) 1.2px, transparent 1.2px),
+    radial-gradient(var(--line, #e2e8f0) 1.2px, var(--spla-canvas-bg, var(--bg, #f8fafc)) 1.2px);
+  background-size: 20px 20px;
+  background-position: 0 0, 10px 10px;
+}
+
+.spla-canvas {
+  width: 100%;
+  height: 100%;
+  display: block;
+  user-select: none;
+  flex: 1;
+}
+
+/* ------------------------------------------------------------------ nodes */
+
+.spla-node {
+  cursor: grab;
+  transition: filter 0.15s ease, opacity 0.2s ease;
+}
+
+.spla-node:active {
+  cursor: grabbing;
+}
+
+.spla-node:hover {
+  filter: drop-shadow(0 4px 10px rgb(0 0 0 / 12%));
+}
+
+.spla-node.is-selected rect[data-role="drag-handle"] {
+  stroke: #2563eb;
+  stroke-width: 2.5px;
+}
+
+.spla-node-label,
+.spla-node-subtitle {
+  pointer-events: none;
+}
+
+.spla-node-resize {
+  cursor: se-resize;
+}
+
+/* ------------------------------------------------------------------ zones */
+
+.spla-zone {
+  cursor: default;
+  transition: opacity 0.2s ease;
+}
+
+.spla-zone-header {
+  cursor: grab;
+}
+
+.spla-zone-header:active {
+  cursor: grabbing;
+}
+
+.spla-zone-title,
+.spla-zone-semantic {
+  pointer-events: none;
+}
+
+.spla-zone.is-selected .spla-zone-body {
+  stroke: #2563eb;
+  stroke-width: 2.5px;
+}
+
+.spla-zone.is-drop-target .spla-zone-body {
+  stroke: #2563eb;
+  stroke-width: 3px;
+  filter: drop-shadow(0 0 8px rgb(37 99 235 / 30%));
+}
+
+.spla-zone-collapse {
+  cursor: pointer;
+}
+
+.spla-zone-collapse rect {
+  fill: #fff;
+  stroke: #94a3b8;
+  stroke-width: 1.2px;
+  transition: fill 0.15s ease, stroke 0.15s ease;
+}
+
+.spla-zone-collapse:hover rect {
+  fill: #2563eb;
+  stroke: #1d4ed8;
+}
+
+.spla-zone-collapse text {
+  fill: #334155;
+  font-weight: 700;
+  pointer-events: none;
+  transition: fill 0.15s ease;
+}
+
+.spla-zone-collapse:hover text {
+  fill: #fff;
+}
+
+/* ------------------------------------------------------- selection overlay */
+
+.spla-handle {
+  fill: #3b82f6;
+  stroke: #fff;
+  stroke-width: 1.5px;
+  vector-effect: non-scaling-stroke;
+}
+
+.spla-handle:hover {
+  fill: #1d4ed8;
+}
+
+.spla-selection-outline {
+  fill: none;
+  stroke: #2563eb;
+  pointer-events: none;
+  vector-effect: non-scaling-stroke;
+}
+
+.spla-marquee {
+  fill: rgb(37 99 235 / 10%);
+  stroke: #2563eb;
+  pointer-events: none;
+  vector-effect: non-scaling-stroke;
+}
+
+/* ------------------------------------------------------------------ edges */
+
+.spla-edge {
+  cursor: pointer;
+  transition: opacity 0.2s ease;
+}
+
+.spla-edge-hit {
+  cursor: pointer;
+  pointer-events: stroke;
+}
+
+.spla-edge-line {
+  transition: stroke 0.15s ease, stroke-width 0.15s ease;
+}
+
+.spla-edge:hover .spla-edge-line {
+  stroke: var(--accent, #2563eb);
+  stroke-width: 2.5px;
+}
+
+.spla-edge-label {
+  font-size: 11px;
+  font-weight: 500;
+  fill: #475569;
+  pointer-events: none;
+}
+
+.spla-edge.is-selected .spla-edge-line {
+  stroke: #3b82f6;
+  stroke-width: 3px;
+  filter: drop-shadow(0 0 4px #60a5fa);
+}
+
+.spla-edge.is-selected .spla-edge-label {
+  fill: #3b82f6;
+  font-weight: 700;
+}
+
+.spla-edge.is-ghost-focus {
+  opacity: 1 !important;
+}
+
+.spla-edge.is-ghost-potential .spla-edge-line {
+  stroke: var(--accent, #2563eb) !important;
+  stroke-width: 1.6px !important;
+  stroke-dasharray: 5 4 !important;
+  opacity: 0.65;
+}
+
+.spla-edge.is-ghost-potential:hover .spla-edge-line {
+  opacity: 1;
+  stroke-width: 2px !important;
+  filter: drop-shadow(0 0 4px var(--accent, #2563eb));
+}
+
+.spla-node-badge {
+  cursor: pointer;
+}
+
+.spla-node-badge rect,
+.spla-node-badge .spla-node-badge-rect {
+  fill: #f1f5f9;
+  stroke: #cbd5e1;
+  stroke-width: 1;
+  transition: fill 0.15s ease, stroke 0.15s ease;
+}
+
+.spla-node-badge text,
+.spla-node-badge .spla-node-badge-text {
+  fill: #475569;
+  transition: fill 0.15s ease;
+}
+
+.spla-node-badge:hover rect,
+.spla-node-badge:hover .spla-node-badge-rect,
+.spla-node-badge.is-active rect,
+.spla-node-badge.is-active .spla-node-badge-rect {
+  fill: #2563eb !important;
+  stroke: #2563eb !important;
+}
+
+.spla-node-badge:hover text,
+.spla-node-badge:hover .spla-node-badge-text,
+.spla-node-badge.is-active text,
+.spla-node-badge.is-active .spla-node-badge-text {
+  fill: #ffffff !important;
+}
+
+/* ------------------------------------------------------------------ doc buttons */
+
+.spla-node-doc,
+.spla-zone-doc {
+  cursor: pointer;
+  opacity: 0.85;
+  transition: opacity 0.15s ease;
+}
+
+.spla-node-doc:hover,
+.spla-zone-doc:hover {
+  opacity: 1;
+}
+
+.spla-node-doc-rect {
+  fill: #f8fafc;
+  stroke: #cbd5e1;
+  stroke-width: 1px;
+  transition: fill 0.15s ease, stroke 0.15s ease;
+}
+
+.spla-node-doc.has-doc .spla-node-doc-rect {
+  fill: #eff6ff;
+  stroke: #60a5fa;
+  stroke-width: 1.2px;
+}
+
+.spla-node-doc:hover .spla-node-doc-rect {
+  fill: #3b82f6 !important;
+  stroke: #2563eb !important;
+}
+
+.spla-node-doc-icon {
+  pointer-events: none;
+  transition: fill 0.15s ease;
+}
+
+.spla-node-doc:hover .spla-node-doc-icon {
+  fill: #ffffff !important;
+}
+
+.spla-zone-doc-rect {
+  fill: #fff;
+  stroke: #94a3b8;
+  stroke-width: 1.2px;
+  transition: fill 0.15s ease, stroke 0.15s ease;
+}
+
+.spla-zone-doc.has-doc .spla-zone-doc-rect {
+  fill: #eff6ff;
+  stroke: #3b82f6;
+}
+
+.spla-zone-doc:hover .spla-zone-doc-rect {
+  fill: #3b82f6 !important;
+  stroke: #1d4ed8 !important;
+}
+
+.spla-zone-doc-icon {
+  fill: #334155;
+  pointer-events: none;
+  transition: fill 0.15s ease;
+}
+
+.spla-zone-doc:hover .spla-zone-doc-icon {
+  fill: #fff !important;
+}
+

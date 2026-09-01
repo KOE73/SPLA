@@ -256,6 +256,26 @@ describe("chat sessions", () => {
     expect(peekSession("A")!.calls["t1"].runIds).toEqual(["r-abc123"]);
   });
 
+  it("sweeps only the previous turn's own namespaced nodes, leaving a background task's tree intact", () => {
+    // Two live trees on one chat — the human turn and a detached background task — get wire ids
+    // namespaced "{treeId}:{nodeId}" precisely so they don't collide. The sweep at the next
+    // llm.turn.start must only drop the finished turn's own prefix, never a blanket reset, or a
+    // background task's progress would vanish the moment the user sends their next message.
+    open("A");
+    feed("llm.turn.start", "A", { msgIndex: 1, progressTreeId: "t1" });
+    feed("progress.node", "A", { nodeId: "t1:n1", parentId: null, label: "fs_read", state: "running" });
+    feed("progress.node", "A", { nodeId: "bg1:n1", parentId: null, label: "system_run_shell", state: "running" });
+
+    feed("turn.complete", "A", {});
+    feed("llm.turn.start", "A", { msgIndex: 2, progressTreeId: "t2" });
+
+    expect(peekSession("A")!.nodes["t1:n1"]).toBeUndefined();
+    expect(peekSession("A")!.nodes["bg1:n1"]).toBeDefined();
+
+    feed("progress.node", "A", { nodeId: "bg1:n2", parentId: "bg1:n1", label: "still running", state: "running" });
+    expect(peekSession("A")!.nodes["bg1:n2"]).toBeDefined();
+  });
+
   it("keeps every run of a batch, not just the first", () => {
     // agent_spawn_batch is one tool call with several runs beneath it, each its own conversation with
     // its own outcome. Keeping one would present it as the call's, which is exactly the confusion the

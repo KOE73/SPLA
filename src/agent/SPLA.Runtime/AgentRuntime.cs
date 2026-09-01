@@ -138,6 +138,11 @@ public sealed class AgentRuntime : IDisposable
     public SPLA.Domain.Llm.ProviderStateStore ProviderState { get; } = new();
     public IModelManagementService ModelManagement { get; }
     public McpHost McpHost { get; }
+
+    /// <summary>Connections to this project's configured foreign MCP servers — the consuming half,
+    /// distinct from <see cref="McpHost"/>'s own serving-outward door. See
+    /// <see cref="SPLA.Runtime.McpClientManager"/>.</summary>
+    public McpClientManager McpClients { get; }
     public SkillLibrary SkillLibrary { get; }
 
     /// <summary>The tag librarian over <see cref="SkillLibrary"/>. Reads holdings live, so it needs no
@@ -326,6 +331,21 @@ public sealed class AgentRuntime : IDisposable
         ToolSets = new ToolSetRegistry(settings, PluginManager);
         McpHost.ToolSets = ToolSets;
 
+        // Owns the set of connected foreign MCP servers for this project. Constructed here (right
+        // after the registry it writes into exists) but not told to connect yet — see the
+        // ConnectAllAsync call near the end of this constructor for why the two are split apart.
+        McpClients = new McpClientManager(
+            settings, McpHost, ToolSets, Events, loggerFactory.CreateLogger<McpClientManager>());
+
+        // A server's tools appearing or vanishing moves the skill surface exactly the way a plugin
+        // toggle already does: a skill declaring a requirement on one of those tools resolves
+        // differently once they exist. Subscribed rather than called directly from
+        // McpClientManager, which knows nothing of SkillLibrary and should not be taught to.
+        Events.Subscribe(evt =>
+        {
+            if (evt is McpServersChanged) RefreshSkillCapabilities();
+        });
+
         // ── Fundamental agent working memory (project-scoped shared; session resolves via scope) ──
         // Built before the feature catalog below — several features' tools (memory, spawn) need it.
         ProjectKv = new ProjectKvStore(
@@ -372,7 +392,9 @@ public sealed class AgentRuntime : IDisposable
                 new FsDeleteTool(),
                 new SPLA.MCP.Core.Tools.ImageViewTool(FormatConverterRegistry.For(settings))),
             Feature("core.shell",
-                new RunCommandTool()),
+                new RunCommandTool(),
+                new ResumeShellTool(),
+                new KillShellTool()),
             Feature("core.web",
                 new SPLA.MCP.BasicTools.Network.WebFetchTool(settings.IsTrustedDomain)),
             Feature("core.memory",
@@ -401,6 +423,10 @@ public sealed class AgentRuntime : IDisposable
                 new SPLA.MCP.Core.Tools.AgentClarifyTool()),
             Feature("core.blobs",
                 new SPLA.MCP.Core.Tools.BlobPeekTool()),
+            Feature("core.background_tasks",
+                new SPLA.MCP.Core.Tools.TaskListTool(),
+                new SPLA.MCP.Core.Tools.TaskOutputTool(),
+                new SPLA.MCP.Core.Tools.TaskCancelTool()),
         };
 
         var enabledIds = AgentFeatureCatalog.Resolve(settings.Capabilities, loggerFactory.CreateLogger("SPLA.Agent.Capabilities"));
@@ -487,6 +513,32 @@ public sealed class AgentRuntime : IDisposable
         compositionLogger.LogInformation("Agent surface at startup:\n{Manifest}",
             ComposeContext().Manifest.ToText());
 
+        // ── Background MCP connect — a known debt, not a design decision ─────────────────────────
+        // This constructor is synchronous; a real MCP handshake (spawn a process or open an HTTP
+        // connection, negotiate, list tools) is not instant. The chosen answer for wave one
+        // (ADR_20260826_service_mcp-client §4, open question 1) is to fire the connect here, after
+        // everything else in this runtime is built, and let the tools show up whenever the handshake
+        // finishes.
+        //
+        // Concrete consequence: a chat started in the first second or two after this runtime comes up
+        // will not see a configured server's tools for its first message or two — they simply are not
+        // registered yet. This is accepted, not fixed, for wave one.
+        //
+        // What would replace it is undecided: a cache of the last `tools/list` under `.spla/` for
+        // synchronous registration at construction time (reconciled once the real handshake lands), or
+        // an async `AgentRuntime.InitializeAsync` that every construction site (CLI, `spla serve`,
+        // embedded Avalonia, tests) would have to be taught to await. Both are real work; neither has
+        // been chosen. This is the same open question PLAN_20260819_core_dynamic-tool-registration
+        // left for whoever got a real caller for it — that caller is this feature.
+        //
+        // The task itself must not become an unobserved exception: ConnectAllAsync already catches per
+        // server, so this continuation firing at all would itself be a bug worth seeing in the log.
+        _ = McpClients.ConnectAllAsync().ContinueWith(
+            t => loggerFactory.CreateLogger<AgentRuntime>().LogError(t.Exception,
+                "McpClientManager.ConnectAllAsync faulted; this project's MCP servers may not be connected."),
+            CancellationToken.None,
+            TaskContinuationOptions.OnlyOnFaulted | TaskContinuationOptions.ExecuteSynchronously,
+            TaskScheduler.Default);
     }
 
     /// <summary>
@@ -558,8 +610,14 @@ public sealed class AgentRuntime : IDisposable
 
     private static SPLA.Domain.Host.ISandbox BuildSandbox(ResolvedSettings settings, ILoggerFactory loggers)
     {
+        // 0 = disabled per ShellTimeoutSeconds's own convention (see AskTimeoutMinutes for the same
+        // pattern elsewhere) — InfiniteTimeSpan is LocalShell's actual "never" value.
+        var shellSilentIdle = settings.ShellTimeoutSeconds > 0
+            ? TimeSpan.FromSeconds(settings.ShellTimeoutSeconds)
+            : System.Threading.Timeout.InfiniteTimeSpan;
+
         if (!settings.HasProject)
-            return SPLA.Domain.Host.PassthroughSandbox.Default;
+            return new SPLA.Domain.Host.PassthroughSandbox(shellSilentIdle: shellSilentIdle);
 
         var log = loggers.CreateLogger<SPLA.Domain.Host.PathBoundary>();
         // The project's boundary, not a second one built to the same recipe: SFTP and the web
@@ -573,7 +631,7 @@ public sealed class AgentRuntime : IDisposable
                 "Path boundary (shadow): would refuse. Path={Path} Reason={Reason} Root={Root}",
                 observation.Path, observation.Reason, boundary.Root));
 
-        return new SPLA.Domain.Host.PassthroughSandbox(workspace);
+        return new SPLA.Domain.Host.PassthroughSandbox(workspace, shellSilentIdle: shellSilentIdle);
     }
 
     private IReadOnlyList<ISkillSource> BuildSkillSources() =>
@@ -745,5 +803,20 @@ public sealed class AgentRuntime : IDisposable
         Asks.AbandonAll(AskResolution.Cancelled);
         Instance?.Dispose();
         _httpClient.Dispose();
+
+        // AgentRuntime is plain IDisposable and stays that way: making it IAsyncDisposable would ripple
+        // through every construction site (CLI, service host, embedded Avalonia, tests) for the sake
+        // of one component. McpClientManager's teardown is genuinely async — it kills child processes
+        // — so this is a bounded, best-effort synchronous wait rather than a real await. A slow or
+        // stuck child is logged and left behind rather than allowed to hang process shutdown.
+        try
+        {
+            McpClients.DisposeAsync().AsTask().Wait(TimeSpan.FromSeconds(5));
+        }
+        catch (Exception ex)
+        {
+            LoggerFactory.CreateLogger<AgentRuntime>().LogWarning(
+                ex, "MCP client shutdown did not complete cleanly within the timeout.");
+        }
     }
 }

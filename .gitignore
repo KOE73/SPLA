@@ -10,6 +10,9 @@
 # Node / web build
 **/node_modules/
 web/dist/
+# Library build of @spla/diagram. The app build (docs/diagrams/app/) is
+# committed on purpose: run.cmd must keep working without a Node toolchain.
+tools/spla-diagram/dist/
 
 # Local environment and secrets
 .env

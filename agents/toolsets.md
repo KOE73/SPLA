@@ -33,6 +33,11 @@ have their own activation, so "the agent raised ssh" never leaks into the chat n
 `enabled`, a disabled one is `disabled`. That is what keeps projects written before tool sets
 behaving exactly as they did, with no migration.
 
+A set from a connected MCP server (`ToolSetOrigin.Mcp`, one set per server) has no such flag to
+derive from, and does not need one: a disabled server has no descriptor at all. Disconnecting a
+server removes its set and unregisters its tools outright, so the descriptor's existence already
+means the server is on. Without an entry such a set is `enabled`.
+
 `on` and `off` are not accepted as level words: YAML 1.1 reads them as booleans, and a level whose
 meaning depends on quoting is a trap.
 

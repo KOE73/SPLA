@@ -21,9 +21,54 @@ namespace SPLA.Runtime;
 /// its run, so tool calls from concurrent chats never collide.
 /// </para>
 /// </summary>
-public sealed class ChatRuntime
+public sealed class ChatRuntime : IDisposable, SPLA.Domain.Agent.IBackgroundTaskHost
 {
     private readonly AgentRuntime _runtime;
+
+    /// <summary>This chat's own boundary — the project's workspace and gate, its own shell. Owned,
+    /// and therefore ended in <see cref="Dispose"/>.</summary>
+    private readonly SPLA.Domain.Host.ISandbox _sandbox;
+
+    private int _disposed;
+
+    /// <summary>Cancelled exactly once, in <see cref="Dispose"/>. Every background task's own
+    /// cancellation source (see <see cref="BackgroundTaskRegistry"/>) is linked to this token, which
+    /// is what lets closing the chat end every live task without the registry having to be told to
+    /// walk its own list — the same "one cancel, whole chat" property <see cref="_sandbox"/> gets
+    /// from owning its own shell.</summary>
+    private readonly CancellationTokenSource _chatLifetime = new();
+
+    /// <summary>
+    /// Every progress root live in this chat, turn or background task alike. Populated in
+    /// <see cref="SendAsync"/> by registering the turn's own tree the moment the orchestrator hands
+    /// it out — additive to whatever <c>OnProgressTree</c> the caller supplied, so a caller that
+    /// never looks at this still gets exactly the behaviour it had before.
+    /// </summary>
+    public SPLA.Domain.Tools.ProgressHub Progress { get; } = new();
+
+    /// <summary>What this chat has queued for delivery with no turn of its own to arrive on — see
+    /// <see cref="SPLA.Domain.Tools.ChatInbox"/>. Drained at the top of every loop iteration inside
+    /// <see cref="SendAsync"/>; fed by a background task's completion (<see cref="DeliverBackgroundResult"/>).</summary>
+    public SPLA.Domain.Tools.ChatInbox Inbox { get; } = new();
+
+    /// <summary>This chat's live and recently-finished detached calls. Reachable from inside a
+    /// running tool call only through <see cref="SPLA.Domain.Agent.AgentSessionScope.Current"/>'s
+    /// <see cref="SPLA.Domain.Agent.IAgentSession.Background"/> — <c>ChatRuntime</c> implements
+    /// <see cref="SPLA.Domain.Agent.IBackgroundTaskHost"/> itself and is handed to its own
+    /// <see cref="AgentSession"/> as that capability, so <c>BackgroundStage</c> (which knows nothing
+    /// about chats) reaches it the same ambient way it reaches everything else per-chat.</summary>
+    public SPLA.Domain.Tools.BackgroundTaskRegistry Tasks { get; }
+
+    /// <summary>
+    /// The hub id (<c>ProgressHub.Register</c>'s return) of the tree the CURRENTLY running turn is
+    /// using — set the moment the orchestrator hands the tree out, before the first LLM call of the
+    /// turn. Lets a caller (see <c>ClientConnection</c>'s <c>OnLlmTurnStart</c>) tell the client which
+    /// wire-namespaced node ids (<c>"{treeId}:{nodeId}"</c> — see <c>SplaServiceHost.WireChatProgress</c>)
+    /// belong to the turn that is starting, as opposed to a background task's own tree, which must
+    /// survive the client's per-turn reset.
+    /// </summary>
+    public string? CurrentTurnTreeId { get; private set; }
+
     private readonly ChatSession _chat;
     private readonly Conversation _conversation = new();
     private readonly KeyValueStore _sessionKv = new("session");
@@ -51,6 +96,55 @@ public sealed class ChatRuntime
     /// looks ready. Counted rather than read off the gate so a turn still waiting for the gate also
     /// reads as busy — to the person looking at the chat there is no difference.</summary>
     public bool IsTurnRunning => Volatile.Read(ref _turnsInFlight) > 0;
+
+    private int _humanTurnCount;
+
+    /// <summary>How many turns in this chat's life were started with an actual human message (as
+    /// opposed to a pump-woken turn started with <c>text: null</c>, see <see cref="SendAsync"/>).
+    /// The pump's self-feeding guard (ADR §2.6) watches this rise to tell "a person spoke since my
+    /// last auto-wake" — reading a count rather than subscribing to an event keeps that guard from
+    /// needing any coupling back into the chat beyond this one number.</summary>
+    public int HumanTurnCount => Volatile.Read(ref _humanTurnCount);
+
+    private int _autoWakeSuppressed;
+
+    /// <summary>
+    /// True after Stop has disarmed the pump (PLAN_20260825 wave C, ADR §2.4) — no auto-wake until the
+    /// next real human message. Set by <c>CorrelationHandlers.Cancel</c>, read by <see cref="ChatPump"/>'s
+    /// injected <c>autoWakeSuppressed</c> delegate, cleared in the same place <see cref="_humanTurnCount"/>
+    /// is bumped: "stop" and the pump's own self-feeding pause are the same state reached by different
+    /// roads, and a person speaking is what ends both. <c>Volatile</c> rather than a lock — a single
+    /// flag read/written from different threads (the cancel handler, the pump's timer callback, a
+    /// turn's own start) needs visibility, not mutual exclusion.
+    /// </summary>
+    public bool AutoWakeSuppressed => Volatile.Read(ref _autoWakeSuppressed) != 0;
+
+    /// <summary>Disarms the pump until the next human turn. See <see cref="AutoWakeSuppressed"/>.</summary>
+    public void SuppressAutoWake() => Volatile.Write(ref _autoWakeSuppressed, 1);
+
+    /// <summary>Marks that a human's own words are about to enter this chat — called by whoever enqueues
+    /// a <see cref="SPLA.Domain.Tools.InboxItemKind.Human"/> item, before enqueueing it, so the pump wakes
+    /// unconditionally for it (ADR §2.1: "wakes immediately and always") and any auto-wake pause a Stop or
+    /// the self-feeding guard left behind ends right here — same state, same clearing this chat's own
+    /// SendAsync text-path already does for a direct send (see below); this is the queued-path's copy of
+    /// that exact bookkeeping.</summary>
+    public void NoteHumanMessage()
+    {
+        Interlocked.Increment(ref _humanTurnCount);
+        Volatile.Write(ref _autoWakeSuppressed, 0);
+    }
+
+    /// <summary>The current turn's own onUserMessage callback, stashed here so the DrainInbox closure
+    /// below (built once in the constructor, but invoked from inside whichever turn is live) can echo a
+    /// Human-kind drained message back to watchers exactly like a directly-sent one. Only one turn ever
+    /// runs at a time (guarded by _turnGate), so there is no re-entrancy to worry about.</summary>
+    private Action<ChatMessage>? _activeOnUserMessage;
+
+    /// <summary>Human-kind messages this turn's DrainInbox has pulled off the queue but which have not
+    /// yet been added to the conversation (and so have no MsgId yet) — see the constructor's
+    /// DrainInbox/OnMessageDelivered pair for why the echo has to wait that long. Reference-keyed:
+    /// two messages are never "the same" here unless they are literally the same instance.</summary>
+    private readonly HashSet<ChatMessage> _pendingHumanEchoes = new(ReferenceEqualityComparer.Instance);
 
     private int _bubbleSeq;
 
@@ -268,8 +362,20 @@ public sealed class ChatRuntime
         // The project's boundary, not a fresh passthrough: until now every chat got
         // PassthroughSandbox.Default and the seam ran empty in production, so a sandbox existed in
         // the type system and nowhere else.
+        //
+        // Per chat, not the runtime's own: the workspace boundary and the gate are still the
+        // project's and still shared, but the shell is this chat's. LocalShell keeps its interactive
+        // sessions in the instance, so while every chat pointed at one shell, a process started here
+        // outlived the chat that started it with nothing able to say otherwise — and the cap on live
+        // sessions was quietly shared out between chats that knew nothing of each other.
+        _sandbox = runtime.Sandbox.ForChat();
+        Tasks = new SPLA.Domain.Tools.BackgroundTaskRegistry(_chatLifetime.Token);
         _agentSession = new AgentSession(
-            _sessionKv, _checkpoint, _skillSession, sandbox: runtime.Sandbox, toolSets: _toolSetSession);
+            _sessionKv, _checkpoint, _skillSession, sandbox: _sandbox, toolSets: _toolSetSession,
+            // ChatRuntime implements IBackgroundTaskHost itself (Tasks/Progress/Inbox above) — a
+            // background call reaches all three the same ambient way it already reaches everything
+            // else per-chat, through AgentSessionScope.Current.Background.
+            background: this);
 
         // A reopened chat is as doubtful as it was when it closed. Restored rather than recomputed:
         // what raised the flag was an arrival, and arrivals do not happen again on load.
@@ -287,6 +393,24 @@ public sealed class ChatRuntime
             // mid-turn has its procedure in the prompt for the very next LLM call rather than for the
             // next user message.
             Context = runtime.ComposeContext,
+            // Split in two because MsgId does not exist yet at drain time — Conversation.Add is what
+            // assigns it (see ConversationOrchestrator.OnMessageDelivered's own comment). DrainInbox
+            // only remembers WHICH drained messages are a person's own words (by reference — ChatMessage
+            // has no value equality, so a HashSet keyed on the instance is exactly "this specific one");
+            // OnMessageDelivered fires per message right after conversation.Add has given it a real id,
+            // and that is where the echo a directly-sent human message always got finally happens for a
+            // queued one too.
+            DrainInbox = () =>
+            {
+                var drained = Inbox.DrainAllWithKinds();
+                foreach (var (message, kind) in drained)
+                    if (kind == SPLA.Domain.Tools.InboxItemKind.Human) _pendingHumanEchoes.Add(message);
+                return drained.Select(d => d.Message).ToList();
+            },
+            OnMessageDelivered = message =>
+            {
+                if (_pendingHumanEchoes.Remove(message)) _activeOnUserMessage?.Invoke(message);
+            },
             Checkpoint = _checkpoint,
             // Anti-repeat guard is a per-project setting (agent: loop_guard, default off) — it targets
             // small local models that loop forever, but false-fires on legitimate poll/wait patterns.
@@ -329,7 +453,7 @@ public sealed class ChatRuntime
     /// client's UI; <paramref name="callbacks"/> stream the turn's events back to it.
     /// </summary>
     public async Task SendAsync(
-        string text,
+        string? text,
         AgentCallbacks callbacks,
         Func<ToolFunctionDefinition, string, Task<PermissionDecision>> permissionHandler,
         Func<ClarifyRequest, Task<string?>> clarifyHandler,
@@ -346,18 +470,49 @@ public sealed class ChatRuntime
 
         try
         {
-            var userMsg = new ChatMessage
+            _activeOnUserMessage = onUserMessage;
+
+            // Registers the turn's tree into the chat-wide hub the moment the orchestrator creates
+            // it, without disturbing whatever the caller's own OnProgressTree does with it — both
+            // fire on the same handout. A subscriber that only knows this chat's hub (a background
+            // task's future sibling) sees the turn's root alongside any other live one.
+            var callerOnProgressTree = callbacks.OnProgressTree;
+            callbacks = callbacks with
             {
-                Role = ChatRole.User,
-                Content = text,
-                // Data URLs stay in memory for the LLM this turn; the sidecar files below are what persist.
-                Images = images is { Count: > 0 } ? images.ToList() : null
+                OnProgressTree = tree =>
+                {
+                    CurrentTurnTreeId = Progress.Register(tree);
+                    callerOnProgressTree?.Invoke(tree);
+                }
             };
-            _conversation.Add(userMsg);
-            // MsgId exists only after Add — echo it so the client can anchor rewind/fork on this message.
-            onUserMessage?.Invoke(userMsg);
-            if (images is { Count: > 0 }) PersistImages(userMsg, images);
-            Save();
+
+            // A woken turn (the pump, wave B) adds no user message of its own — its content is
+            // whatever SITS in the inbox already, appended by the orchestrator's own drain at the top
+            // of its loop (ConversationOrchestrator.cs, DrainInbox). Skipping this whole block for
+            // text == null is deliberate: there is nothing here to add, echo, persist as an image, or
+            // save early — the turn's own end-of-loop Save() below still runs and picks up whatever
+            // the drain appended.
+            if (text != null)
+            {
+                Interlocked.Increment(ref _humanTurnCount);
+                // A person spoke — whatever silenced the pump (Stop, or its own self-feeding guard)
+                // is over. Same state, different roads in (ADR §2.4): both exist to stop auto-turns
+                // until someone is back at the wheel, and a real message is exactly that.
+                Volatile.Write(ref _autoWakeSuppressed, 0);
+
+                var userMsg = new ChatMessage
+                {
+                    Role = ChatRole.User,
+                    Content = text,
+                    // Data URLs stay in memory for the LLM this turn; the sidecar files below are what persist.
+                    Images = images is { Count: > 0 } ? images.ToList() : null
+                };
+                _conversation.Add(userMsg);
+                // MsgId exists only after Add — echo it so the client can anchor rewind/fork on this message.
+                onUserMessage?.Invoke(userMsg);
+                if (images is { Count: > 0 }) PersistImages(userMsg, images);
+                Save();
+            }
 
             // The seeded system message is a placeholder from here on: the orchestrator's SystemPrompt
             // provider re-renders it on every iteration, inside the session scope. Refreshing it here
@@ -394,6 +549,7 @@ public sealed class ChatRuntime
         }
         finally
         {
+            _activeOnUserMessage = null;
             _turnGate.Release();
             Interlocked.Decrement(ref _turnsInFlight);
         }
@@ -527,4 +683,33 @@ public sealed class ChatRuntime
     private AgentMode ResolveMode()
         => _chat.Agent?.Mode != null && Enum.TryParse<AgentMode>(_chat.Agent.Mode, true, out var m)
             ? m : _runtime.Settings.Mode;
+
+    /// <summary>
+    /// Ends everything this chat holds open. Called when the chat is deleted or the host stops.
+    /// <para>
+    /// The leak it exists to close was observed rather than imagined: a chat could be gone from the
+    /// registry while a shell session it had started was still running, because dropping the runtime
+    /// out of a dictionary ends nothing. Today the only such thing is the shell; the frame is here
+    /// because the background-task registry is about to be the second, and a chat that could not be
+    /// closed had no place to put it.
+    /// </para>
+    /// <para>Idempotent — a chat may be deleted while a client that had it open is going away too,
+    /// and neither caller should have to know about the other.</para>
+    /// </summary>
+    public void Dispose()
+    {
+        if (Interlocked.Exchange(ref _disposed, 1) != 0) return;
+
+        // Every live background task's own token is linked to this one (BackgroundTaskRegistry) —
+        // one cancel here reaches all of them without the registry having to be asked to walk its
+        // list. Before the sandbox: a running task may still be mid-shell-command, and its own
+        // cancellation is what lets it unwind instead of the shell being pulled out from under it.
+        _chatLifetime.Cancel();
+        _chatLifetime.Dispose();
+
+        // The chat's own sandbox, and with it the shell sessions this chat started. Never the
+        // runtime's: the workspace and gate inside it belong to the project and outlive every chat.
+        (_sandbox as IDisposable)?.Dispose();
+        _turnGate.Dispose();
+    }
 }

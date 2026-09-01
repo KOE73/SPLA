@@ -59,6 +59,10 @@ internal sealed class SshSessionExecTool : IMcpTool
             Scope = ToolScope.Internet,
             Effect = ToolEffect.Write,
             Risk = ToolRisk.Medium,
+            // The human already watches this session live in their own terminal panel regardless of
+            // whether the model's call is synchronous — backgrounding just stops a long remote
+            // command from holding the turn hostage too. See PLAN_20260824-2 step 1.7.
+            SupportsBackground = true,
             Parameters = new
             {
                 type = "object",

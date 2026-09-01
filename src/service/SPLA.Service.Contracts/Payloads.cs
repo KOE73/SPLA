@@ -154,6 +154,20 @@ public sealed class ChatDeletePayload
     public string ChatId { get; set; } = string.Empty;
 }
 
+/// <summary>Body of both <see cref="MessageTypes.ChatArchive"/> and <see cref="MessageTypes.ChatUnarchive"/> —
+/// same shape as <see cref="ChatDeletePayload"/>, kept as its own type since the two are conceptually
+/// distinct actions.</summary>
+public sealed class ChatArchivePayload
+{
+    public string ChatId { get; set; } = string.Empty;
+}
+
+/// <summary>Answer to <see cref="MessageTypes.ChatArchivedList"/>.</summary>
+public sealed class ChatArchivedListResultPayload
+{
+    public List<ChatSummaryDto> Chats { get; set; } = new();
+}
+
 public sealed class ChatSendPayload
 {
     public string ChatId { get; set; } = string.Empty;
@@ -440,6 +454,10 @@ public sealed class AgentSettingsPayload
     /// Stored in .spla agent: loop_guard / loop_guard_repeats. Default off.</summary>
     public bool? LoopGuard { get; set; }
     public int? LoopGuardRepeats { get; set; }
+    /// <summary>Seconds a <c>system_run_shell</c> command may sit silent before the tool returns
+    /// control instead of continuing to wait. Stored in .spla agent: shell_timeout_seconds.
+    /// 0 = disabled (wait indefinitely). Default 120.</summary>
+    public int ShellTimeoutSeconds { get; set; } = 120;
     /// <summary>Persist the full tool-call/tool-result trace with the chat history, not just the
     /// final text. Stored in .spla agent: save_tool_calls. Default off.</summary>
     public bool? SaveToolCalls { get; set; }
@@ -482,6 +500,64 @@ public sealed class McpSettingsPayload
     /// <summary>Server-set; ignored on save. True always — surfaced so the panel can say plainly that
     /// a running <c>spla serve</c> must be restarted for a change here to take effect.</summary>
     public bool RestartToApply { get; set; } = true;
+}
+
+/// <summary>One foreign MCP server as the settings panel edits and observes it: the declaration the
+/// operator wrote (mirrors <see cref="SPLA.Domain.Settings"/>'s <c>SplaMcpServerSection</c> field for
+/// field) plus, once a connect attempt has happened, the live status <c>McpClientManager</c> tracks
+/// for it. <see cref="Env"/>/<see cref="Headers"/> carry <c>secret:</c>/<c>env:</c> references only,
+/// never resolved values — see <c>agents/secrets.md</c>; nothing on this wire path calls
+/// <c>SecretResolver</c>.</summary>
+public sealed class McpServerDto
+{
+    public string Id { get; set; } = string.Empty;
+    /// <summary>Display label; falls back to <see cref="Id"/> in the UI, never persisted as a fallback.</summary>
+    public string? Name { get; set; }
+    public bool Enabled { get; set; } = true;
+    /// <summary><c>stdio</c> or <c>http</c>.</summary>
+    public string Transport { get; set; } = "stdio";
+    public string? Command { get; set; }
+    public List<string>? Args { get; set; }
+    public string? Cwd { get; set; }
+    public Dictionary<string, string>? Env { get; set; }
+    public string? Url { get; set; }
+    public Dictionary<string, string>? Headers { get; set; }
+    public string? Description { get; set; }
+    /// <summary><c>unnamed</c> (default) or <c>named</c> — see <c>SplaMcpServerSection.Origin</c>.</summary>
+    public string Origin { get; set; } = "unnamed";
+    /// <summary>Optional disclosure level, mirroring this server's <c>toolsets:</c> entry.</summary>
+    public string? Level { get; set; }
+
+    /// <summary>Server-set, ignored on save. <c>McpSessionState</c> as a string (<c>Connecting</c>,
+    /// <c>Ready</c>, <c>Failed</c>, …), or null when this server has never been attempted this
+    /// process's lifetime — a configured entry with no matching live status yet, not an error.</summary>
+    public string? State { get; set; }
+    /// <summary>Server-set, ignored on save. What the last connect attempt failed with, or null.</summary>
+    public string? LastError { get; set; }
+    /// <summary>Server-set, ignored on save. Tools actually registered — after naming refusals and
+    /// collisions, not the server's own raw count.</summary>
+    public int ToolCount { get; set; }
+}
+
+/// <summary>The configured foreign MCP servers plus their live status — answer to
+/// <see cref="MessageTypes.McpServersGet"/>, body/answer of <see cref="MessageTypes.McpServersSave"/>,
+/// and broadcast whenever <c>McpServersChanged</c> fires (a background connect/disconnect/tool-list
+/// change, not just a save).</summary>
+public sealed class McpServersPayload
+{
+    public List<McpServerDto> Servers { get; set; } = new();
+    /// <summary>False when there is no .spla project to persist into (server-set; ignored on save).</summary>
+    public bool CanPersist { get; set; }
+    /// <summary>Server-set; ignored on save. True always — connecting/disconnecting a server only
+    /// happens at startup in this wave, same rule <see cref="McpSettingsPayload"/> already documents.</summary>
+    public bool RestartToApply { get; set; } = true;
+}
+
+/// <summary>Ask one server to retry its connection now. <see cref="MessageTypes.McpServersReconnect"/>
+/// body.</summary>
+public sealed class McpServerActionPayload
+{
+    public string ServerId { get; set; } = string.Empty;
 }
 
 /// <summary>One registered resource scheme as the settings panel sees it: what it is, what it
@@ -955,6 +1031,16 @@ public sealed class DeltaPayload
 {
     public int MsgIndex { get; set; }
     public string Text { get; set; } = string.Empty;
+
+    /// <summary>
+    /// Set only on <c>llm.turn.start</c> (null on plain <c>delta</c> frames, where it means
+    /// nothing): the wire-namespaced prefix (see <c>SplaServiceHost.WireChatProgress</c>) of the
+    /// progress-tree nodes that belong to the turn that is starting. The client resets its node map
+    /// on a new turn boundary, and needs this to know which nodes are the old turn's own — and,
+    /// crucially, which are NOT: a background task's tree carries a different prefix and must
+    /// survive the reset the way its still-arriving <c>progress.node</c> updates already assume.
+    /// </summary>
+    public string? ProgressTreeId { get; set; }
 }
 
 public sealed class ReasoningPayload
@@ -1207,6 +1293,63 @@ public sealed class ChatToolSetStatePayload
 {
     public string ChatId { get; set; } = string.Empty;
     public List<ToolSetStateDto> Sets { get; set; } = new();
+}
+
+// ── Background tasks ─────────────────────────────────────────────────────
+// See docs/adr/ADR_20260824-2_core_background-tool-calls.md. The shapes below exist ahead of the
+// registry that fills them (plan step 0.7) so a client can render an always-empty panel today and
+// only wire it up when wave 1 makes tasks real, instead of shipping a second protocol change later.
+
+public sealed class TaskListPayload
+{
+    public string ChatId { get; set; } = string.Empty;
+}
+
+/// <summary>One background task as a client needs it for a panel row: enough to show and to ask
+/// <see cref="TaskState"/>/<see cref="TaskCancel"/> about, never the tool's raw arguments in full —
+/// those may be long, and a summary is what a row has room for.</summary>
+public sealed class TaskSummaryDto
+{
+    public string TaskId { get; set; } = string.Empty;
+    public string ToolName { get; set; } = string.Empty;
+    /// <summary>"Running" / "Completed" / "Failed" / "Cancelled" — mirrors the task's own state enum
+    /// by name, not by a second vocabulary the client would have to keep in sync with the server's.</summary>
+    public string State { get; set; } = string.Empty;
+    public string StartedAt { get; set; } = string.Empty;
+}
+
+public sealed class TaskListResult
+{
+    public string ChatId { get; set; } = string.Empty;
+    public List<TaskSummaryDto> Tasks { get; set; } = new();
+}
+
+public sealed class TaskStatePayload
+{
+    public string ChatId { get; set; } = string.Empty;
+    public string TaskId { get; set; } = string.Empty;
+}
+
+/// <summary>A finished task's result rides the same shape a live <see cref="TaskListResult"/> row
+/// does, plus the text a completed task produced — null while <see cref="TaskSummaryDto.State"/> is
+/// still "Running", where there is nothing finished to show yet.</summary>
+public sealed class TaskStateResult
+{
+    public string ChatId { get; set; } = string.Empty;
+    public TaskSummaryDto? Task { get; set; }
+    public string? Result { get; set; }
+}
+
+public sealed class TaskCancelPayload
+{
+    public string ChatId { get; set; } = string.Empty;
+    public string TaskId { get; set; } = string.Empty;
+}
+
+public sealed class TaskStateChangedPayload
+{
+    public string ChatId { get; set; } = string.Empty;
+    public TaskSummaryDto Task { get; set; } = new();
 }
 
 public sealed class PermissionRequestPayload

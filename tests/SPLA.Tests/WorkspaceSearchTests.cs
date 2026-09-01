@@ -25,7 +25,8 @@ public sealed class WorkspaceSearchTests
         var inc = include is null ? "null" : $"[\"{include}\"]";
         return $$"""
         {"query":"{{query}}","path":{{(path is null ? "null" : $"\"{path}\"")}},"regex":null,
-         "case_sensitive":null,"max_results":null,"include_patterns":{{inc}},
+         "case_sensitive":null,"multiline":null,"context_lines":null,"mode":null,
+         "max_results":null,"include_patterns":{{inc}},
          "exclude_patterns":null,"output":null,"output_name":null}
         """;
     }
@@ -43,8 +44,9 @@ public sealed class WorkspaceSearchTests
         var result = JsonSerializer.Deserialize<SearchTextResult>(json, Web)!;
 
         Assert.Equal(2, result.TotalMatches);   // a.cs line 2, deep/c.cs line 1
-        Assert.Contains(result.Matches, m => m.File.EndsWith("a.cs") && m.Line == 2);
-        Assert.Contains(result.Matches, m => m.File.EndsWith("c.cs") && m.Line == 1);
+        Assert.NotNull(result.Matches);
+        Assert.Contains(result.Matches!, m => m.File.EndsWith("a.cs") && m.Line == 2);
+        Assert.Contains(result.Matches!, m => m.File.EndsWith("c.cs") && m.Line == 1);
     }
 
     [Fact]
@@ -59,7 +61,7 @@ public sealed class WorkspaceSearchTests
         var result = JsonSerializer.Deserialize<SearchTextResult>(json, Web)!;
 
         Assert.Equal(1, result.TotalMatches);
-        Assert.EndsWith("keep.cs", result.Matches.Single().File);
+        Assert.EndsWith("keep.cs", result.Matches!.Single().File);
     }
 
     [Fact]
@@ -74,7 +76,7 @@ public sealed class WorkspaceSearchTests
         var result = JsonSerializer.Deserialize<SearchTextResult>(json, Web)!;
 
         Assert.Equal(1, result.TotalMatches);
-        Assert.EndsWith("real.cs", result.Matches.Single().File);
+        Assert.EndsWith("real.cs", result.Matches!.Single().File);
     }
 
     private static readonly JsonSerializerOptions Web = new(JsonSerializerDefaults.Web);

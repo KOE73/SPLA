@@ -92,7 +92,7 @@ internal sealed class InstanceLease : IDisposable
             if (DateTime.UtcNow - _freeSince < _grace) continue;
 
             _log.LogInformation(
-                "Instance lease expired: no clients and nothing running for {Grace}. Shutting down.", _grace);
+                "Shutting down: idle lease expired — no clients and nothing running for {Grace}.", _grace);
             Expired?.Invoke();
             return;
         }

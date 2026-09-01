@@ -4,7 +4,11 @@ using System.Linq;
 using System.Net.Http;
 using System.Threading;
 using System.Threading.Tasks;
+using Avalonia;
 using Avalonia.Controls;
+using Avalonia.Controls.Shapes;
+using Avalonia.Media;
+using Path = System.IO.Path;
 using Avalonia.Media.Imaging;
 using Avalonia.Platform;
 using Avalonia.Threading;
@@ -43,12 +47,26 @@ public sealed class TrayIconService : IAsyncDisposable
     private bool _blinkOn;
     private bool _isBlinking;
 
-    private TrayIconService(string hubUrl)
+    /// <summary>The one Projects window, if it's open. Every entry point that opens it — the tray's
+    /// primary click, and the menu item — goes through <see cref="OpenProjectsWindow"/> instead of
+    /// constructing a <see cref="SurfaceWindow"/> directly, so repeated clicks raise the same window
+    /// rather than piling up duplicates.</summary>
+    private SurfaceWindow? _projectsWindow;
+
+    /// <summary>Ends this process. Set by <c>App.RunAsHubShell</c>, since only it holds the
+    /// application lifetime — the tray itself has no window to shut down through.</summary>
+    private readonly Action _exit;
+
+    private TrayIconService(string hubUrl, Action exit)
     {
         _hubUrl = hubUrl.TrimEnd('/');
+        _exit = exit;
         _normalIcon = LoadIcon();
 
         _tray = new TrayIcon { Icon = _normalIcon, IsVisible = true };
+        // Left/primary-click: the tray's most common gesture should be the fastest path to the thing
+        // people actually want most often — the project list — not buried one level into the menu.
+        _tray.Clicked += (_, _) => OpenProjectsWindow();
         _blinkTimer = new DispatcherTimer { Interval = BlinkInterval };
         _blinkTimer.Tick += (_, _) => Blink();
 
@@ -59,11 +77,11 @@ public sealed class TrayIconService : IAsyncDisposable
 
     /// <summary>Starts watching the hub and shows the tray icon. Returns null (and shows nothing)
     /// when there is no hub — callers must not throw on a machine running solo.</summary>
-    public static TrayIconService? StartIfHubAvailable(string? hubUrl)
+    public static TrayIconService? StartIfHubAvailable(string? hubUrl, Action exit)
     {
         if (string.IsNullOrWhiteSpace(hubUrl)) return null;
 
-        var service = new TrayIconService(hubUrl);
+        var service = new TrayIconService(hubUrl, exit);
         service._watcher.Start();
         return service;
     }
@@ -74,7 +92,8 @@ public sealed class TrayIconService : IAsyncDisposable
         {
             var uri = new Uri("avares://SPLA.UI.Avalonia/Assets/spla.ico");
             using var stream = AssetLoader.Open(uri);
-            return new WindowIcon(stream);
+            var baseBitmap = new Bitmap(stream);
+            return new WindowIcon(TrayIconArt.RenderBadged(baseBitmap));
         }
         catch { return null; }
     }
@@ -106,18 +125,68 @@ public sealed class TrayIconService : IAsyncDisposable
         menu.Items.Add(new NativeMenuItemSeparator());
 
         var manage = new NativeMenuItem("Manage projects…");
-        manage.Click += (_, _) => new SurfaceWindow("hub", "Projects", baseUrl: _hubUrl).Show();
+        manage.Click += (_, _) => OpenProjectsWindow();
         menu.Items.Add(manage);
 
         var inBrowser = new NativeMenuItem("Manage in browser");
         inBrowser.Click += (_, _) => BrowserLauncher.Open($"{_hubUrl}/?surface=hub");
         menu.Items.Add(inBrowser);
 
+        menu.Items.Add(new NativeMenuItemSeparator());
+
+        var close = new NativeMenuItem("Close");
+        close.Click += (_, _) => _ = CloseAllAsync();
+        menu.Items.Add(close);
+
         _tray.Menu = menu;
         _tray.ToolTipText = Summarize(instances);
 
         var waiting = instances.Any(r => r.State == InstanceState.Waiting);
         SetBlinking(waiting);
+    }
+
+    /// <summary>
+    /// The tray's own "Close": everything, if it safely can be — otherwise the place that can show
+    /// what can't.
+    ///
+    /// <para>Nothing here has anywhere to report a refusal (see <see cref="CloseProjectAsync"/>), so
+    /// it never even asks while a turn might be in flight. Instead, with anything still
+    /// <see cref="InstanceState.Working"/>, this only raises the Projects window — the same one "Kill
+    /// all" lives in — and leaves every decision to the person looking at it. Only once nothing is
+    /// working does it actually ask every project to stop and, once asked, end this process too.</para>
+    /// </summary>
+    private async Task CloseAllAsync()
+    {
+        var current = _watcher.Current;
+        if (current.Any(r => r.State == InstanceState.Working))
+        {
+            OpenProjectsWindow();
+            return;
+        }
+
+        var projectIds = current.Select(r => r.ProjectId).Distinct(StringComparer.OrdinalIgnoreCase).ToList();
+        await Task.WhenAll(projectIds.Select(id => CloseProjectAsync(id, force: false)));
+
+        _exit();
+    }
+
+    /// <summary>Raises the existing Projects window, or creates it the first time. Every click that
+    /// asks for "the project manager" — the tray's own click and its menu item alike — must land on
+    /// the same window rather than a fresh one, since there is only ever one thing to manage the
+    /// projects with.</summary>
+    private void OpenProjectsWindow()
+    {
+        if (_projectsWindow is not null)
+        {
+            if (_projectsWindow.WindowState == WindowState.Minimized) _projectsWindow.WindowState = WindowState.Normal;
+            _projectsWindow.Show();
+            _projectsWindow.Activate();
+            return;
+        }
+
+        _projectsWindow = new SurfaceWindow("hub", "Projects", baseUrl: _hubUrl);
+        _projectsWindow.Closed += (_, _) => _projectsWindow = null;
+        _projectsWindow.Show();
     }
 
     private NativeMenuItem BuildProjectItem(IReadOnlyList<InstanceRecord> participants)
@@ -265,4 +334,74 @@ public sealed class TrayIconService : IAsyncDisposable
         _http.Dispose();
         await _watcher.DisposeAsync();
     }
+}
+
+/// <summary>
+/// Draws the backdrop disc that sits behind the base tray icon.
+///
+/// <para>Kept as its own tiny static class, separate from the tray's lifecycle logic, so the shape and
+/// colors can be changed without touching anything else: swap <see cref="DiscGeometry"/> for a leaf
+/// outline, or edit <see cref="Gradient"/>, and nothing else in <see cref="TrayIconService"/> needs to
+/// change.</para>
+/// </summary>
+internal static class TrayIconArt
+{
+    private const int Size = 64;
+
+    /// <summary>Renders a filled backdrop disc — as large as the tray canvas allows — with the base
+    /// icon layered on top, sized to match the tray's native resolution regardless of the source
+    /// .ico's own size.</summary>
+    public static Bitmap RenderBadged(Bitmap baseBitmap)
+    {
+        var root = new Canvas { Width = Size, Height = Size, Background = Brushes.Transparent };
+        root.Children.Add(DiscGeometry());
+        root.Children.Add(new Image
+        {
+            Source = baseBitmap,
+            Width = Size,
+            Height = Size,
+            Stretch = Stretch.Uniform,
+        });
+
+        root.Measure(new Size(Size, Size));
+        root.Arrange(new Rect(0, 0, Size, Size));
+
+        var target = new RenderTargetBitmap(new PixelSize(Size, Size), new Vector(96, 96));
+        target.Render(root);
+        return target;
+    }
+
+    /// <summary>The badge shape itself. Today: a filled disc taking up nearly the whole canvas, just
+    /// shy of the edge so it doesn't clip when the OS composites the tray at a slightly different
+    /// size. Replace with a <see cref="Avalonia.Controls.Shapes.Path"/> using a leaf-shaped
+    /// <see cref="Geometry"/> to switch to a leaf badge — everything else keeps working.</summary>
+    private static Ellipse DiscGeometry()
+    {
+        const double margin = 1;
+
+        return new Ellipse
+        {
+            Width = Size - margin * 2,
+            Height = Size - margin * 2,
+            Margin = new Thickness(margin),
+            Fill = Gradient(),
+        };
+    }
+
+    /// <summary>Straw-yellow, lighter at the center and darkening toward the rim — reads clearly as a
+    /// light badge against both a light and a dark taskbar tray strip, so it doesn't need to branch on
+    /// the OS theme the way a thin outline would.</summary>
+    private static RadialGradientBrush Gradient() => new()
+    {
+        Center = new RelativePoint(0.5, 0.42, RelativeUnit.Relative),
+        GradientOrigin = new RelativePoint(0.5, 0.42, RelativeUnit.Relative),
+        RadiusX = new RelativeScalar(0.75, RelativeUnit.Relative),
+        RadiusY = new RelativeScalar(0.75, RelativeUnit.Relative),
+        GradientStops =
+        [
+            new GradientStop(Color.Parse("#FFF7D6"), 0),
+            new GradientStop(Color.Parse("#F5D66B"), 0.55),
+            new GradientStop(Color.Parse("#D9A93A"), 1),
+        ],
+    };
 }

@@ -1,0 +1,119 @@
+{
+  "contractVersion": 3,
+  "language": "ru",
+  "entries": {
+    "zone_host": {
+      "doc": {
+        "v": "Core tool dispatcher with level gating and handle routing.",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      },
+      "name": {
+        "v": "Хост инструментов",
+        "at": "2026-08-31T09:12:23Z",
+        "origin": "authored"
+      },
+      "description": {
+        "v": "Ядро, которое принимает вызов и направляет его в нужный плагин.",
+        "at": "2026-08-31T09:12:23Z",
+        "origin": "authored"
+      }
+    },
+    "zone_network": {
+      "doc": {
+        "v": "Pure C# network probing tools.",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      },
+      "name": {
+        "v": "Сетевые инструменты",
+        "at": "2026-08-31T09:12:23Z",
+        "origin": "authored"
+      },
+      "description": {
+        "v": "Плагин сетевой диагностики: ping, DNS, HTTP.",
+        "at": "2026-08-31T09:12:23Z",
+        "origin": "authored"
+      }
+    },
+    "zone_ssh": {
+      "doc": {
+        "v": "Interactive SSH sessions and secure file transfers.",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      },
+      "name": {
+        "v": "SSH и SFTP",
+        "at": "2026-08-31T09:12:23Z",
+        "origin": "authored"
+      },
+      "description": {
+        "v": "Плагин удалённого доступа: команды по SSH и передача файлов.",
+        "at": "2026-08-31T09:12:23Z",
+        "origin": "authored"
+      }
+    },
+    "zone_doc": {
+      "doc": {
+        "v": "PDF text extraction and spreadsheet analysis.",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      },
+      "name": {
+        "v": "Документы и таблицы",
+        "at": "2026-08-31T09:12:23Z",
+        "origin": "authored"
+      },
+      "description": {
+        "v": "Плагин работы с документами: чтение смысла из DOCX, запись в таблицы.",
+        "at": "2026-08-31T09:12:23Z",
+        "origin": "authored"
+      }
+    },
+    "pe1": {
+      "name": {
+        "v": "dispatch",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "pe2": {
+      "name": {
+        "v": "dispatch",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "pe3": {
+      "name": {
+        "v": "dispatch",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "rt_call": {
+      "name": {
+        "v": "Вызов",
+        "at": "2026-08-31T09:10:34Z",
+        "origin": "authored"
+      },
+      "description": {
+        "v": "Прямое обращение к методу или API другого компонента. Порождается из кода.",
+        "at": "2026-08-31T09:10:34Z",
+        "origin": "authored"
+      }
+    },
+    "v_main": {
+      "name": {
+        "v": "Основной вид",
+        "at": "2026-08-31T09:10:34Z",
+        "origin": "authored"
+      },
+      "description": {
+        "v": "Обзорная схема проекта.",
+        "at": "2026-08-31T09:10:34Z",
+        "origin": "authored"
+      }
+    }
+  }
+}

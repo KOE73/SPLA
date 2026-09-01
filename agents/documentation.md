@@ -72,6 +72,9 @@ Full reasoning: [`ADR_20260731-2_docs_reviews-fresh-eyes`](../docs/adr/ADR_20260
 
 ## Translation Rule
 
+Terminology for any Russian text — including which English terms of art must not be translated
+literally — lives in [`glossary.md`](glossary.md).
+
 When the user asks to translate documentation without explicitly naming a source file, target file,
 or folder, assume the request applies only to user-facing README-style files.
 

@@ -1,0 +1,134 @@
+{
+  "relations": [
+    {
+      "id": "e_extends",
+      "from": "n_service",
+      "to": "n_component_tall",
+      "type": "extends",
+      "relation": "extends",
+      "origin": "authored",
+      "status": "present",
+      "points": []
+    },
+    {
+      "id": "e_implements",
+      "from": "n_concept",
+      "to": "n_component_tall",
+      "type": "implements",
+      "relation": "implements",
+      "origin": "authored",
+      "status": "present",
+      "points": []
+    },
+    {
+      "id": "e_realizes",
+      "from": "n_note",
+      "to": "n_service",
+      "type": "realizes",
+      "relation": "realizes",
+      "origin": "authored",
+      "status": "present",
+      "points": []
+    },
+    {
+      "id": "e_composes",
+      "from": "n_component_tall",
+      "to": "n_unknown",
+      "type": "composes",
+      "relation": "composes",
+      "origin": "authored",
+      "status": "present",
+      "points": []
+    },
+    {
+      "id": "e_call",
+      "from": "n_component_tall",
+      "to": "n_tool",
+      "type": "call",
+      "relation": "call",
+      "origin": "authored",
+      "status": "present",
+      "points": []
+    },
+    {
+      "id": "e_data",
+      "from": "n_service",
+      "to": "n_database",
+      "type": "data-flow",
+      "relation": "data-flow",
+      "origin": "authored",
+      "status": "present",
+      "points": []
+    },
+    {
+      "id": "e_event",
+      "from": "n_security",
+      "to": "n_external",
+      "type": "event",
+      "relation": "event",
+      "origin": "authored",
+      "status": "present",
+      "points": []
+    },
+    {
+      "id": "e_security",
+      "from": "n_security",
+      "to": "n_geometric",
+      "type": "security",
+      "relation": "security",
+      "origin": "authored",
+      "status": "present",
+      "points": []
+    },
+    {
+      "id": "e_storage",
+      "from": "n_unknown",
+      "to": "n_geometric",
+      "type": "storage",
+      "relation": "storage",
+      "origin": "authored",
+      "status": "present",
+      "points": []
+    },
+    {
+      "id": "e_intrazone",
+      "from": "n_tool",
+      "to": "n_database",
+      "type": "call",
+      "relation": "call",
+      "origin": "authored",
+      "status": "present",
+      "points": []
+    },
+    {
+      "id": "e_nested_intra",
+      "from": "n_concept",
+      "to": "n_note",
+      "type": "call",
+      "relation": "call",
+      "origin": "authored",
+      "status": "present",
+      "points": []
+    },
+    {
+      "id": "e_default",
+      "from": "n_free",
+      "to": "n_longlabel",
+      "type": "totally-made-up-edge-type",
+      "relation": "totally-made-up-edge-type",
+      "origin": "authored",
+      "status": "present",
+      "points": []
+    },
+    {
+      "id": "e_dangling",
+      "from": "n_free",
+      "to": "node_that_does_not_exist",
+      "type": "call",
+      "relation": "call",
+      "origin": "authored",
+      "status": "present",
+      "points": []
+    }
+  ]
+}

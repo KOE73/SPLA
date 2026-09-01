@@ -10,6 +10,7 @@ using SPLA.MCP.Core.ToolSets;
 using SPLA.Observability;
 using Microsoft.Extensions.Logging;
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
@@ -22,7 +23,10 @@ namespace SPLA.MCP.Core;
 
 public class McpHost : IToolHost
 {
-    private readonly Dictionary<string, IMcpTool> _tools = new(StringComparer.OrdinalIgnoreCase);
+    // A background MCP-connection thread now registers and unregisters entries here while calls are
+    // in flight (PLAN_20260826_service_mcp-client, step 1) — the constructor is no longer the only
+    // writer, so this can no longer be a plain Dictionary.
+    private readonly ConcurrentDictionary<string, IMcpTool> _tools = new(StringComparer.OrdinalIgnoreCase);
     private readonly IPermissionManager _permissionManager;
     private readonly SPLA.MCP.Core.Plugins.PluginManager? _pluginManager;
     private readonly ILogger<McpHost>? _logger;
@@ -32,6 +36,10 @@ public class McpHost : IToolHost
     /// nested calls. See <see cref="ToolPipelineStage"/> for what the order guarantees.
     /// </summary>
     private readonly ToolCallDelegate _pipeline;
+
+    /// <summary>What the chain above was folded from, kept so the composition can be inspected — by a
+    /// test that guards the order, and by a debug view of which links are standing.</summary>
+    public ToolPipelineBlueprint Pipeline { get; }
 
     /// <summary>What has moved between perimeters in this process, counted while nothing is being
     /// refused. Read by the debug view; the source of the defaults enforcement will eventually be
@@ -49,7 +57,7 @@ public class McpHost : IToolHost
         _pluginManager = pluginManager;
         _logger = logger;
 
-        _pipeline = new ToolPipelineBlueprint()
+        Pipeline = new ToolPipelineBlueprint()
             .Use(new ToolResolutionStage(name => _tools.TryGetValue(name, out var t) ? t : null, logger))
             .Use(new PluginAvailabilityStage(pluginManager, logger))
             .Use(new ToolSetDisclosureStage(ToolSetRefusal, logger))
@@ -63,12 +71,14 @@ public class McpHost : IToolHost
                     zoneOfPath ?? (_ => SPLA.Domain.Security.Zone.Unknown)),
                 Edges, logger, originOfZone))
             .Use(new AmbientHostStage(this))
+            .Use(new BackgroundStage(logger))
             .Use(new ProgressNodeStage())
             .Use(new FaultStage(logger))
-            .Use(new AccountingStage(logger))
-            // The terminal step: the tool itself. Everything above is the pipeline's business;
-            // this is the only line that is the tool's.
-            .Build((call, ct) => call.Tool!.ExecuteAsync(call.ArgumentsJson, ct));
+            .Use(new AccountingStage(logger));
+
+        // The terminal step: the tool itself. Everything above is the pipeline's business;
+        // this is the only line that is the tool's.
+        _pipeline = Pipeline.Build((call, ct) => call.Tool!.ExecuteAsync(call.ArgumentsJson, ct));
 
         if (_pluginManager != null)
         {
@@ -109,6 +119,27 @@ public class McpHost : IToolHost
         _logger?.LogInformation("Tool registered. Tool={ToolName}", tool.Name);
     }
 
+    /// <summary>
+    /// Removes a tool from the live set — the other half of dynamic registration
+    /// (PLAN_20260826_service_mcp-client, step 1), needed once an MCP server can disconnect and take
+    /// its tools back with it. Returns whether anything was actually removed.
+    ///
+    /// <para><b>Concurrency contract, deliberately without a lock:</b> <c>_tools</c> is read once, at
+    /// the start of each call, by <see cref="Pipeline.Stages.ToolResolutionStage"/>. A call that has
+    /// already passed that stage holds its own <see cref="IMcpTool"/> reference and runs to
+    /// completion on it — unregistering here does not reach in and does not try to abort it. The only
+    /// race is a call that started a moment before the tool was unregistered; it finishes as if it had
+    /// started a moment earlier still, which is the correct and cheapest answer to "the server hung up
+    /// mid-call".</para>
+    /// </summary>
+    public bool UnregisterTool(string name)
+    {
+        var removed = _tools.TryRemove(name, out _);
+        if (removed)
+            _logger?.LogInformation("Tool unregistered. Tool={ToolName}", name);
+        return removed;
+    }
+
     /// <summary>True when the tool was loaded from a plugin (as opposed to a built-in core/agent
     /// tool). Plugin tools are exactly those the <see cref="Plugins.PluginManager"/> discovered.</summary>
     private bool IsPluginTool(IMcpTool tool)
@@ -125,10 +156,13 @@ public class McpHost : IToolHost
     {
         // Live plugin gating: a disabled plugin's tools drop out of the offered list immediately
         // (no restart) — the assemblies stay loaded, only exposure is gated.
+        // _tools.Values over a ConcurrentDictionary is a moving snapshot: a tool registered or
+        // unregistered mid-enumeration by a background MCP connection may or may not appear in this
+        // particular call. That is fine here — the list is rebuilt on every request anyway.
         return _tools.Values
             .Where(t => _pluginManager == null || _pluginManager.IsToolAvailable(t))
             .Where(t => IsDisclosed(t.Name))
-            .Select(GetDefinitionForModel);
+            .Select(t => GetDefinitionForModel(t, exposeBackgroundFlag: true));
     }
 
     /// <summary>
@@ -160,10 +194,14 @@ public class McpHost : IToolHost
     {
         var permitted = GetPermittedToolNames().ToHashSet(StringComparer.OrdinalIgnoreCase);
 
+        // The background flag is never raised here: a foreign head has no chat to deliver a detached
+        // result to (plan pitfall 11, "фон наружу через MCP"). BackgroundStage would run the call
+        // synchronously regardless — that guard lives in the pipeline, not the schema — but there is
+        // no reason to advertise a capability that degrades on first use.
         return _tools.Values
             .Where(t => permitted.Contains(t.Name))
             .Where(t => exposure.Allows(t.GetDefinition().Function))
-            .Select(GetDefinitionForModel);
+            .Select(t => GetDefinitionForModel(t, exposeBackgroundFlag: false));
     }
 
     /// <summary>True when the model may see this tool right now: its set is fully enabled, or it is
@@ -243,22 +281,70 @@ public class McpHost : IToolHost
     /// never has to decide whether to go and read more, which is the decision the old help tool and
     /// its [H] marker cost on every call.
     /// </summary>
-    private static ToolDefinition GetDefinitionForModel(IMcpTool tool)
+    private static ToolDefinition GetDefinitionForModel(IMcpTool tool, bool exposeBackgroundFlag)
     {
         var definition = tool.GetDefinition();
         var details = definition.Function.Details;
-        if (string.IsNullOrWhiteSpace(details)) return definition;
-
-        if (!definition.Function.Description.Contains(details.Trim(), StringComparison.Ordinal))
+        if (!string.IsNullOrWhiteSpace(details) &&
+            !definition.Function.Description.Contains(details.Trim(), StringComparison.Ordinal))
             definition.Function.Description =
                 definition.Function.Description.TrimEnd() + Environment.NewLine + Environment.NewLine + details.Trim();
+
+        if (exposeBackgroundFlag && definition.Function.SupportsBackground)
+            definition.Function.Parameters =
+                WithBackgroundParameter(definition.Function.Parameters, definition.Function.StrictSchema);
 
         return definition;
     }
 
+    /// <summary>
+    /// Adds the optional <c>background</c> boolean to a tool's parameter schema — only reached for a
+    /// tool that declared <see cref="ToolFunctionDefinition.SupportsBackground"/>, so every other
+    /// tool's schema, and every request to a model, costs nothing for this (ADR §2: "Флаг во всех
+    /// схемах — это токены в каждом запросе").
+    /// <para>
+    /// Nullable rather than plain <c>boolean</c>, and added to <c>required</c> when the tool declares
+    /// <see cref="ToolFunctionDefinition.StrictSchema"/>: OpenAI strict mode requires every property
+    /// to be listed in <c>required</c>, so an optional field is expressed as present-but-nullable —
+    /// the same shape <c>cwd</c>/<c>code_page</c> already use in <c>RunCommandTool</c>. Getting this
+    /// wrong is plan pitfall 13; it is handled once, here, rather than by every tool that opts in.
+    /// </para>
+    /// </summary>
+    private static object WithBackgroundParameter(object? parameters, bool strictSchema)
+    {
+        var node = parameters is null
+            ? new System.Text.Json.Nodes.JsonObject { ["type"] = "object", ["properties"] = new System.Text.Json.Nodes.JsonObject() }
+            : System.Text.Json.Nodes.JsonNode.Parse(System.Text.Json.JsonSerializer.Serialize(parameters))!;
+
+        var properties = node["properties"] as System.Text.Json.Nodes.JsonObject
+            ?? (System.Text.Json.Nodes.JsonObject)(node["properties"] = new System.Text.Json.Nodes.JsonObject());
+
+        properties["background"] = new System.Text.Json.Nodes.JsonObject
+        {
+            ["type"] = new System.Text.Json.Nodes.JsonArray("boolean", "null"),
+            ["description"] = "Run this call detached from the turn: get a task id back immediately, " +
+                "the result arrives as a message once it finishes. Null/omitted = run normally and wait."
+        };
+
+        if (strictSchema)
+        {
+            var required = node["required"] as System.Text.Json.Nodes.JsonArray
+                ?? (System.Text.Json.Nodes.JsonArray)(node["required"] = new System.Text.Json.Nodes.JsonArray());
+            if (!required.Any(r => r?.GetValue<string>() == "background"))
+                required.Add("background");
+        }
+
+        return node;
+    }
+
+    /// <summary>
+    /// Whether to show the model this tool at all. Asks the ceiling, not the call: disclosure happens
+    /// before there are any arguments, and a verdict computed from a stand-in <c>"{}"</c> would let a
+    /// domain policy — which has no statement to judge — delete the tool from the list entirely.
+    /// </summary>
     private bool IsToolAvailableInMode(IMcpTool tool, AgentMode mode)
     {
-        var permission = _permissionManager.CheckPermission(mode, tool.GetDefinition().Function, "{}");
+        var permission = _permissionManager.CheckToolCeiling(mode, tool.GetDefinition().Function);
         return permission != PermissionResult.Deny;
     }
 

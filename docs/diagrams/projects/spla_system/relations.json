@@ -1,0 +1,661 @@
+{
+  "contractVersion": 3,
+  "relations": [
+    {
+      "id": "r_web_router",
+      "from": "e_webclient",
+      "to": "e_messagerouter",
+      "type": "data-flow",
+      "origin": "authored",
+      "status": "present"
+    },
+    {
+      "id": "r_cli_router",
+      "from": "e_cli",
+      "to": "e_messagerouter",
+      "type": "data-flow",
+      "origin": "authored",
+      "status": "present"
+    },
+    {
+      "id": "r_avalonia_web",
+      "from": "e_avalonia",
+      "to": "e_webclient",
+      "type": "composes",
+      "origin": "authored",
+      "status": "present"
+    },
+    {
+      "id": "r_router_host",
+      "from": "e_messagerouter",
+      "to": "e_splaservicehost",
+      "type": "call",
+      "origin": "authored",
+      "status": "present"
+    },
+    {
+      "id": "r_host_inbox",
+      "from": "e_splaservicehost",
+      "to": "e_chatinbox",
+      "type": "data-flow",
+      "origin": "authored",
+      "status": "present"
+    },
+    {
+      "id": "r_pump_inbox",
+      "from": "e_chatpump",
+      "to": "e_chatinbox",
+      "type": "data-flow",
+      "origin": "authored",
+      "status": "present"
+    },
+    {
+      "id": "r_pump_driver",
+      "from": "e_chatpump",
+      "to": "e_chatturndriver",
+      "type": "call",
+      "origin": "authored",
+      "status": "present"
+    },
+    {
+      "id": "r_driver_orch",
+      "from": "e_chatturndriver",
+      "to": "e_conversationorchestrator",
+      "type": "call",
+      "origin": "authored",
+      "status": "present"
+    },
+    {
+      "id": "r_orch_chatruntime",
+      "from": "e_conversationorchestrator",
+      "to": "e_chatruntime",
+      "type": "call",
+      "origin": "authored",
+      "status": "present"
+    },
+    {
+      "id": "r_registry_chatruntime",
+      "from": "e_chatregistry",
+      "to": "e_chatruntime",
+      "type": "composes",
+      "origin": "authored",
+      "status": "present"
+    },
+    {
+      "id": "r_agentruntime_registry",
+      "from": "e_agentruntime",
+      "to": "e_chatregistry",
+      "type": "composes",
+      "origin": "authored",
+      "status": "present"
+    },
+    {
+      "id": "r_agentruntime_events",
+      "from": "e_agentruntime",
+      "to": "e_serviceevents",
+      "type": "composes",
+      "origin": "authored",
+      "status": "present"
+    },
+    {
+      "id": "r_host_instances",
+      "from": "e_splaservicehost",
+      "to": "e_iinstanceregistry",
+      "type": "call",
+      "origin": "authored",
+      "status": "present"
+    },
+    {
+      "id": "r_host_identity",
+      "from": "e_splaservicehost",
+      "to": "e_windowsidentityresolver",
+      "type": "security",
+      "origin": "authored",
+      "status": "present"
+    },
+    {
+      "id": "r_orch_composer",
+      "from": "e_conversationorchestrator",
+      "to": "e_agentcontextcomposer",
+      "type": "call",
+      "origin": "authored",
+      "status": "present"
+    },
+    {
+      "id": "r_composer_contributor",
+      "from": "e_agentcontextcomposer",
+      "to": "e_iagentcontributor",
+      "type": "call",
+      "origin": "authored",
+      "status": "present"
+    },
+    {
+      "id": "r_contributor_item",
+      "from": "e_iagentcontributor",
+      "to": "e_contextitem",
+      "type": "data-flow",
+      "origin": "authored",
+      "status": "present"
+    },
+    {
+      "id": "r_wm_contributor",
+      "from": "e_workingmemoryinjector",
+      "to": "e_iagentcontributor",
+      "type": "implements",
+      "origin": "authored",
+      "status": "present"
+    },
+    {
+      "id": "r_features_contributor",
+      "from": "e_agentfeaturecatalog",
+      "to": "e_iagentcontributor",
+      "type": "implements",
+      "origin": "authored",
+      "status": "present"
+    },
+    {
+      "id": "r_skills_contributor",
+      "from": "e_skillsession",
+      "to": "e_iagentcontributor",
+      "type": "implements",
+      "origin": "authored",
+      "status": "present"
+    },
+    {
+      "id": "r_toolsets_composer",
+      "from": "e_toolsetregistry",
+      "to": "e_agentcontextcomposer",
+      "type": "data-flow",
+      "origin": "authored",
+      "status": "present"
+    },
+    {
+      "id": "r_composer_assembler",
+      "from": "e_agentcontextcomposer",
+      "to": "e_contextassembler",
+      "type": "call",
+      "origin": "authored",
+      "status": "present"
+    },
+    {
+      "id": "r_wm_kv",
+      "from": "e_workingmemoryinjector",
+      "to": "e_keyvaluestore",
+      "type": "storage",
+      "origin": "authored",
+      "status": "present"
+    },
+    {
+      "id": "r_assembler_gateway",
+      "from": "e_contextassembler",
+      "to": "e_illmgateway",
+      "type": "data-flow",
+      "origin": "authored",
+      "status": "present"
+    },
+    {
+      "id": "r_gateway_blueprint",
+      "from": "e_illmgateway",
+      "to": "e_llmpipelineblueprint",
+      "type": "composes",
+      "origin": "authored",
+      "status": "present"
+    },
+    {
+      "id": "r_blueprint_mw",
+      "from": "e_llmpipelineblueprint",
+      "to": "e_illmmiddleware",
+      "type": "composes",
+      "origin": "authored",
+      "status": "present"
+    },
+    {
+      "id": "r_repguard_mw",
+      "from": "e_repetitionguardmiddleware",
+      "to": "e_illmmiddleware",
+      "type": "implements",
+      "origin": "authored",
+      "status": "present"
+    },
+    {
+      "id": "r_tokenmw_mw",
+      "from": "e_tokenaccountingmiddleware",
+      "to": "e_illmmiddleware",
+      "type": "implements",
+      "origin": "authored",
+      "status": "present"
+    },
+    {
+      "id": "r_gateway_ctx",
+      "from": "e_illmgateway",
+      "to": "e_llmturncontext",
+      "type": "composes",
+      "origin": "authored",
+      "status": "present"
+    },
+    {
+      "id": "r_gateway_registry",
+      "from": "e_illmgateway",
+      "to": "e_llmproviderregistry",
+      "type": "call",
+      "origin": "authored",
+      "status": "present"
+    },
+    {
+      "id": "r_registry_compat",
+      "from": "e_llmproviderregistry",
+      "to": "e_openaicompatibleclient",
+      "type": "call",
+      "origin": "authored",
+      "status": "present"
+    },
+    {
+      "id": "r_lmstudio_compat",
+      "from": "e_lmstudioprovider",
+      "to": "e_openaicompatibleclient",
+      "type": "composes",
+      "origin": "authored",
+      "status": "present"
+    },
+    {
+      "id": "r_openrouter_compat",
+      "from": "e_openrouterprovider",
+      "to": "e_openaicompatibleclient",
+      "type": "composes",
+      "origin": "authored",
+      "status": "present"
+    },
+    {
+      "id": "r_reasoning_gateway",
+      "from": "e_reasoningchoice",
+      "to": "e_illmgateway",
+      "type": "data-flow",
+      "origin": "authored",
+      "status": "present"
+    },
+    {
+      "id": "r_compat_model",
+      "from": "e_openaicompatibleclient",
+      "to": "e_model",
+      "type": "call",
+      "origin": "authored",
+      "status": "present"
+    },
+    {
+      "id": "r_model_orch",
+      "from": "e_model",
+      "to": "e_conversationorchestrator",
+      "type": "data-flow",
+      "origin": "authored",
+      "status": "present"
+    },
+    {
+      "id": "r_tokenmw_usage",
+      "from": "e_tokenaccountingmiddleware",
+      "to": "e_filetokenusagestore",
+      "type": "storage",
+      "origin": "authored",
+      "status": "present"
+    },
+    {
+      "id": "r_orch_mcphost",
+      "from": "e_conversationorchestrator",
+      "to": "e_mcphost",
+      "type": "call",
+      "origin": "authored",
+      "status": "present"
+    },
+    {
+      "id": "r_mcphost_pipeline",
+      "from": "e_mcphost",
+      "to": "e_toolpipelineblueprint",
+      "type": "composes",
+      "origin": "authored",
+      "status": "present"
+    },
+    {
+      "id": "r_pipeline_mw",
+      "from": "e_toolpipelineblueprint",
+      "to": "e_itoolmiddleware",
+      "type": "composes",
+      "origin": "authored",
+      "status": "present"
+    },
+    {
+      "id": "r_resolution_mw",
+      "from": "e_toolresolutionstage",
+      "to": "e_itoolmiddleware",
+      "type": "implements",
+      "origin": "authored",
+      "status": "present"
+    },
+    {
+      "id": "r_permstage_mw",
+      "from": "e_permissionstage",
+      "to": "e_itoolmiddleware",
+      "type": "implements",
+      "origin": "authored",
+      "status": "present"
+    },
+    {
+      "id": "r_zoneshadow_mw",
+      "from": "e_zoneshadowstage",
+      "to": "e_itoolmiddleware",
+      "type": "implements",
+      "origin": "authored",
+      "status": "present"
+    },
+    {
+      "id": "r_bg_mw",
+      "from": "e_backgroundstage",
+      "to": "e_itoolmiddleware",
+      "type": "implements",
+      "origin": "authored",
+      "status": "present"
+    },
+    {
+      "id": "r_progressstage_mw",
+      "from": "e_progressnodestage",
+      "to": "e_itoolmiddleware",
+      "type": "implements",
+      "origin": "authored",
+      "status": "present"
+    },
+    {
+      "id": "r_permstage_manager",
+      "from": "e_permissionstage",
+      "to": "e_permissionmanager",
+      "type": "security",
+      "origin": "authored",
+      "status": "present"
+    },
+    {
+      "id": "r_manager_gate",
+      "from": "e_permissionmanager",
+      "to": "e_icapabilitygate",
+      "type": "security",
+      "origin": "authored",
+      "status": "present"
+    },
+    {
+      "id": "r_zoneshadow_classifier",
+      "from": "e_zoneshadowstage",
+      "to": "e_edgeclassifier",
+      "type": "call",
+      "origin": "authored",
+      "status": "present"
+    },
+    {
+      "id": "r_classifier_zone",
+      "from": "e_edgeclassifier",
+      "to": "e_zone",
+      "type": "call",
+      "origin": "authored",
+      "status": "present"
+    },
+    {
+      "id": "r_classifier_ledger",
+      "from": "e_edgeclassifier",
+      "to": "e_edgeledger",
+      "type": "storage",
+      "origin": "authored",
+      "status": "present"
+    },
+    {
+      "id": "r_repeat_mcphost",
+      "from": "e_toolrepeattracker",
+      "to": "e_mcphost",
+      "type": "event",
+      "origin": "authored",
+      "status": "present"
+    },
+    {
+      "id": "r_gate_shell",
+      "from": "e_icapabilitygate",
+      "to": "e_ishell",
+      "type": "call",
+      "origin": "authored",
+      "status": "present"
+    },
+    {
+      "id": "r_gate_workspace",
+      "from": "e_icapabilitygate",
+      "to": "e_iworkspace",
+      "type": "call",
+      "origin": "authored",
+      "status": "present"
+    },
+    {
+      "id": "r_gate_sandbox",
+      "from": "e_icapabilitygate",
+      "to": "e_isandbox",
+      "type": "call",
+      "origin": "authored",
+      "status": "present"
+    },
+    {
+      "id": "r_shell_sandbox",
+      "from": "e_ishell",
+      "to": "e_isandbox",
+      "type": "call",
+      "origin": "authored",
+      "status": "present"
+    },
+    {
+      "id": "r_sandbox_os",
+      "from": "e_isandbox",
+      "to": "e_host_os",
+      "type": "call",
+      "origin": "authored",
+      "status": "present"
+    },
+    {
+      "id": "r_shell_os",
+      "from": "e_ishell",
+      "to": "e_host_os",
+      "type": "call",
+      "origin": "authored",
+      "status": "present"
+    },
+    {
+      "id": "r_workspace_os",
+      "from": "e_iworkspace",
+      "to": "e_host_os",
+      "type": "storage",
+      "origin": "authored",
+      "status": "present"
+    },
+    {
+      "id": "r_mcphost_basictools",
+      "from": "e_mcphost",
+      "to": "e_basictools",
+      "type": "call",
+      "origin": "authored",
+      "status": "present"
+    },
+    {
+      "id": "r_basictools_gate",
+      "from": "e_basictools",
+      "to": "e_icapabilitygate",
+      "type": "call",
+      "origin": "authored",
+      "status": "present"
+    },
+    {
+      "id": "r_mcphost_plugins",
+      "from": "e_mcphost",
+      "to": "e_pluginmanager",
+      "type": "call",
+      "origin": "authored",
+      "status": "present"
+    },
+    {
+      "id": "r_pluginmanager_alc",
+      "from": "e_pluginmanager",
+      "to": "e_pluginloadcontext",
+      "type": "composes",
+      "origin": "authored",
+      "status": "present"
+    },
+    {
+      "id": "r_mcphost_proxy",
+      "from": "e_mcphost",
+      "to": "e_mcpproxytool",
+      "type": "call",
+      "origin": "authored",
+      "status": "present"
+    },
+    {
+      "id": "r_proxy_session",
+      "from": "e_mcpproxytool",
+      "to": "e_mcpserversession",
+      "type": "call",
+      "origin": "authored",
+      "status": "present"
+    },
+    {
+      "id": "r_mcphost_spawn",
+      "from": "e_mcphost",
+      "to": "e_spawnedagentrunner",
+      "type": "call",
+      "origin": "authored",
+      "status": "present"
+    },
+    {
+      "id": "r_spawn_orch",
+      "from": "e_spawnedagentrunner",
+      "to": "e_conversationorchestrator",
+      "type": "call",
+      "origin": "authored",
+      "status": "present"
+    },
+    {
+      "id": "r_secretresolver_store",
+      "from": "e_secretresolver",
+      "to": "e_isecretstore",
+      "type": "security",
+      "origin": "authored",
+      "status": "present"
+    },
+    {
+      "id": "r_gate_secret",
+      "from": "e_icapabilitygate",
+      "to": "e_secretresolver",
+      "type": "security",
+      "origin": "authored",
+      "status": "present"
+    },
+    {
+      "id": "r_progressstage_tree",
+      "from": "e_progressnodestage",
+      "to": "e_progresstree",
+      "type": "data-flow",
+      "origin": "authored",
+      "status": "present"
+    },
+    {
+      "id": "r_spawn_tree",
+      "from": "e_spawnedagentrunner",
+      "to": "e_progresstree",
+      "type": "data-flow",
+      "origin": "authored",
+      "status": "present"
+    },
+    {
+      "id": "r_tree_events",
+      "from": "e_progresstree",
+      "to": "e_serviceevents",
+      "type": "event",
+      "origin": "authored",
+      "status": "present"
+    },
+    {
+      "id": "r_events_web",
+      "from": "e_serviceevents",
+      "to": "e_webclient",
+      "type": "event",
+      "origin": "authored",
+      "status": "present"
+    },
+    {
+      "id": "r_bg_inbox",
+      "from": "e_backgroundstage",
+      "to": "e_chatinbox",
+      "type": "data-flow",
+      "origin": "authored",
+      "status": "present"
+    },
+    {
+      "id": "r_datachannel_blob",
+      "from": "e_datachannel",
+      "to": "e_blobstore",
+      "type": "storage",
+      "origin": "authored",
+      "status": "present"
+    },
+    {
+      "id": "r_mcphost_datachannel",
+      "from": "e_mcphost",
+      "to": "e_datachannel",
+      "type": "data-flow",
+      "origin": "authored",
+      "status": "present"
+    },
+    {
+      "id": "r_orch_chatstore",
+      "from": "e_conversationorchestrator",
+      "to": "e_ichatstore",
+      "type": "storage",
+      "origin": "authored",
+      "status": "present"
+    },
+    {
+      "id": "r_chatstore_provider",
+      "from": "e_ichatstore",
+      "to": "e_iprojectprovider",
+      "type": "composes",
+      "origin": "authored",
+      "status": "present"
+    },
+    {
+      "id": "r_kv_provider",
+      "from": "e_keyvaluestore",
+      "to": "e_iprojectprovider",
+      "type": "composes",
+      "origin": "authored",
+      "status": "present"
+    },
+    {
+      "id": "r_blob_provider",
+      "from": "e_blobstore",
+      "to": "e_iprojectprovider",
+      "type": "composes",
+      "origin": "authored",
+      "status": "present"
+    },
+    {
+      "id": "r_usage_provider",
+      "from": "e_filetokenusagestore",
+      "to": "e_iprojectprovider",
+      "type": "composes",
+      "origin": "authored",
+      "status": "present"
+    },
+    {
+      "id": "r_provider_zone",
+      "from": "e_iprojectprovider",
+      "to": "e_zone",
+      "type": "security",
+      "origin": "authored",
+      "status": "present"
+    },
+    {
+      "id": "r_stdio_mcphost",
+      "from": "e_mcpstdioserver",
+      "to": "e_mcphost",
+      "type": "call",
+      "origin": "authored",
+      "status": "present"
+    }
+  ]
+}

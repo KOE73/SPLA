@@ -49,4 +49,9 @@ public sealed class ConnectionHub
         => Task.WhenAll(_connections.Keys
             .Where(c => c.IsWatching(chatId))
             .Select(c => c.TrySendAsync(type, payload, chatId, requestId)));
+
+    /// <summary>Whether anybody currently has <paramref name="chatId"/> open. The pump's policy gate
+    /// (ADR §4.1, default "only if a window is open"): an auto-woken turn nobody can see still costs
+    /// tokens, so the pump checks this before spending any.</summary>
+    public bool HasWatchers(string chatId) => _connections.Keys.Any(c => c.IsWatching(chatId));
 }

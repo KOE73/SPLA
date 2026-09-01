@@ -1,0 +1,23 @@
+id: documents
+version: 1.0.0
+type: dll
+entry_point: SPLA.Plugins.Documents.dll
+default_prompt: |
+  Document and spreadsheet tools are available.
+
+  document_extract        — reads a Word (.docx) file and returns its MEANING: headings, paragraphs,
+                            lists, tables, image references. Formatting (fonts, colours, sizes) is
+                            dropped. Use it instead of system_read_file for .docx — a .docx read as a
+                            file is a zip archive, not text.
+  spreadsheet_inspect     — sheets, column headers and row counts of an .xlsx/.csv file. Call this
+                            first when you are about to write: it tells you the exact column names.
+  spreadsheet_read_rows   — rows of a sheet as objects keyed by column header.
+  spreadsheet_append_rows — appends rows to a sheet. Rows are objects keyed by COLUMN HEADER
+                            ("Date", "Company", "Amount"), never by cell address (A27, B27).
+
+  Typical flow for "take the data out of this document and put it in the registry":
+  document_extract on the source, then spreadsheet_inspect on the target to learn the columns, then
+  spreadsheet_append_rows with one object per row.
+
+  Appending preserves the existing sheet; it never rewrites cells you were not asked to change and
+  never invents a column. An unknown column header is refused with the list of known ones.

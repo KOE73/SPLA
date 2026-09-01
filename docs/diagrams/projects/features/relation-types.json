@@ -1,0 +1,45 @@
+{
+  "contractVersion": 3,
+  "relationTypes": [
+    {
+      "id": "call",
+      "origin": "authored"
+    },
+    {
+      "id": "composes",
+      "origin": "authored"
+    },
+    {
+      "id": "data-flow",
+      "origin": "authored"
+    },
+    {
+      "id": "event",
+      "origin": "authored"
+    },
+    {
+      "id": "extends",
+      "origin": "authored"
+    },
+    {
+      "id": "implements",
+      "origin": "authored"
+    },
+    {
+      "id": "realizes",
+      "origin": "authored"
+    },
+    {
+      "id": "security",
+      "origin": "authored"
+    },
+    {
+      "id": "storage",
+      "origin": "authored"
+    },
+    {
+      "id": "totally-made-up-edge-type",
+      "origin": "authored"
+    }
+  ]
+}

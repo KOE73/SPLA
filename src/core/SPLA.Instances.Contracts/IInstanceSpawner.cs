@@ -28,5 +28,11 @@ public interface IInstanceSpawner
     /// <summary>Starts an agent on <paramref name="projectId"/>, or reports why not. Must be safe to
     /// call for a project that already has one: the honest answer there is "already running", never a
     /// second writer.</summary>
-    Task<SpawnResult> StartAsync(string projectId, CancellationToken ct = default);
+    /// <param name="enableMcp">Forces the started agent to answer <c>POST /mcp</c> whatever the
+    /// project's own <c>mcp.enabled</c> says. Off by default, and deliberately a per-call argument
+    /// rather than a property of the spawner: starting a project because somebody pressed Start in the
+    /// Projects window should leave that setting alone, while starting one *in order to serve an MCP
+    /// request* has already answered the question — a child that then refuses the very route it was
+    /// started for is not a safer default, just a broken one.</param>
+    Task<SpawnResult> StartAsync(string projectId, bool enableMcp = false, CancellationToken ct = default);
 }

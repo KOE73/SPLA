@@ -45,4 +45,17 @@ public static class RuntimeProjections
                     chats.Runtime.StateOf(c.Id, StallAfter))
             })
             .ToList();
+
+    /// <summary>Archived chats as wire summaries. An archived chat can never have an open runtime
+    /// (<see cref="ChatRegistry.Archive"/> closes it first), so <c>TurnActive</c>/<c>State</c> are
+    /// always the idle defaults — nothing to peek at.</summary>
+    public static List<ChatSummaryDto> ListArchived(this ChatRegistry chats)
+        => chats.Runtime.ChatManager.ListArchivedChats()
+            .Select(c => new ChatSummaryDto
+            {
+                Id = c.Id,
+                Title = c.Title,
+                UpdatedAt = c.UpdatedAt.ToString("o")
+            })
+            .ToList();
 }

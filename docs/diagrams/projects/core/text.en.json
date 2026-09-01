@@ -1,0 +1,564 @@
+{
+  "contractVersion": 3,
+  "language": "en",
+  "entries": {
+    "c_llm": {
+      "name": {
+        "v": "LLM: providers and turn",
+        "at": "2026-09-01T09:15:11Z",
+        "origin": "translated",
+        "from": "ru",
+        "fromHash": "4dccbc7d"
+      }
+    },
+    "c_llm_providers": {
+      "name": {
+        "v": "Providers and gateway",
+        "at": "2026-09-01T09:15:11Z",
+        "origin": "translated",
+        "from": "ru",
+        "fromHash": "ef47ae4b"
+      }
+    },
+    "c_llm_middleware": {
+      "name": {
+        "v": "Middleware chain",
+        "at": "2026-09-01T09:15:11Z",
+        "origin": "translated",
+        "from": "ru",
+        "fromHash": "48a4e9c4"
+      }
+    },
+    "c_llm_turn": {
+      "name": {
+        "v": "Turn model",
+        "at": "2026-09-01T09:15:11Z",
+        "origin": "translated",
+        "from": "ru",
+        "fromHash": "6b48b922"
+      }
+    },
+    "c_toolpipe": {
+      "name": {
+        "v": "Tool pipeline (MCP)",
+        "at": "2026-09-01T09:15:11Z",
+        "origin": "translated",
+        "from": "ru",
+        "fromHash": "a8242e21"
+      }
+    },
+    "c_tool_contracts": {
+      "name": {
+        "v": "Pipeline contracts",
+        "at": "2026-09-01T09:15:11Z",
+        "origin": "translated",
+        "from": "ru",
+        "fromHash": "869eea63"
+      }
+    },
+    "c_tool_stages": {
+      "name": {
+        "v": "Pipeline stages",
+        "at": "2026-09-01T09:15:11Z",
+        "origin": "translated",
+        "from": "ru",
+        "fromHash": "735e3afa"
+      }
+    },
+    "c_tool_host": {
+      "name": {
+        "v": "Host and exposure",
+        "at": "2026-09-01T09:15:11Z",
+        "origin": "translated",
+        "from": "ru",
+        "fromHash": "e3496ba6"
+      }
+    },
+    "c_tool_progress": {
+      "name": {
+        "v": "Progress and background",
+        "at": "2026-09-01T09:15:11Z",
+        "origin": "translated",
+        "from": "ru",
+        "fromHash": "3cf1303d"
+      }
+    },
+    "c_agent_comp": {
+      "name": {
+        "v": "Agent composition",
+        "at": "2026-09-01T09:15:11Z",
+        "origin": "translated",
+        "from": "ru",
+        "fromHash": "22201af5"
+      }
+    },
+    "c_formats": {
+      "name": {
+        "v": "Format converters",
+        "at": "2026-09-01T09:15:11Z",
+        "origin": "translated",
+        "from": "ru",
+        "fromHash": "80578ec9"
+      }
+    },
+    "c_plugins": {
+      "name": {
+        "v": "Plugins and tool sets",
+        "at": "2026-09-01T09:15:11Z",
+        "origin": "translated",
+        "from": "ru",
+        "fromHash": "7d7059e2"
+      }
+    },
+    "c_plugin_contracts": {
+      "name": {
+        "v": "Plugin contracts",
+        "at": "2026-09-01T09:15:11Z",
+        "origin": "translated",
+        "from": "ru",
+        "fromHash": "351585f3"
+      }
+    },
+    "c_plugin_loading": {
+      "name": {
+        "v": "Loading and discovery",
+        "at": "2026-09-01T09:15:11Z",
+        "origin": "translated",
+        "from": "ru",
+        "fromHash": "d5a86569"
+      }
+    },
+    "c_chat": {
+      "name": {
+        "v": "Chat and session",
+        "at": "2026-09-01T09:15:11Z",
+        "origin": "translated",
+        "from": "ru",
+        "fromHash": "d55be635"
+      }
+    },
+    "c_security": {
+      "name": {
+        "v": "Security and permissions",
+        "at": "2026-09-01T09:15:11Z",
+        "origin": "translated",
+        "from": "ru",
+        "fromHash": "c2a7e4bd"
+      }
+    },
+    "c_sec_permissions": {
+      "name": {
+        "v": "Permissions",
+        "at": "2026-09-01T09:15:11Z",
+        "origin": "translated",
+        "from": "ru",
+        "fromHash": "119c7544"
+      }
+    },
+    "c_sec_zones": {
+      "name": {
+        "v": "Zones and edges",
+        "at": "2026-09-01T09:15:11Z",
+        "origin": "translated",
+        "from": "ru",
+        "fromHash": "d5e7f1ba"
+      }
+    },
+    "c_sec_sandbox": {
+      "name": {
+        "v": "Sandbox and host capabilities",
+        "at": "2026-09-01T09:15:11Z",
+        "origin": "translated",
+        "from": "ru",
+        "fromHash": "4c7cfb1d"
+      }
+    },
+    "c_sec_secrets": {
+      "name": {
+        "v": "Secrets",
+        "at": "2026-09-01T09:15:11Z",
+        "origin": "translated",
+        "from": "ru",
+        "fromHash": "f3955aab"
+      }
+    },
+    "c_sec_secrets_domain": {
+      "name": {
+        "v": "Store and policy",
+        "at": "2026-09-01T09:15:11Z",
+        "origin": "translated",
+        "from": "ru",
+        "fromHash": "b5213632"
+      }
+    },
+    "c_sec_identity": {
+      "name": {
+        "v": "Identity",
+        "at": "2026-09-01T09:15:11Z",
+        "origin": "translated",
+        "from": "ru",
+        "fromHash": "da50bbce"
+      }
+    },
+    "c_memory": {
+      "name": {
+        "v": "Agent memory and context",
+        "at": "2026-09-01T09:15:11Z",
+        "origin": "translated",
+        "from": "ru",
+        "fromHash": "87b536a5"
+      }
+    },
+    "c_mem_kv": {
+      "name": {
+        "v": "KV and blobs",
+        "at": "2026-09-01T09:15:11Z",
+        "origin": "translated",
+        "from": "ru",
+        "fromHash": "bc37257a"
+      }
+    },
+    "c_mem_context": {
+      "name": {
+        "v": "Context assembly and marks",
+        "at": "2026-09-01T09:15:11Z",
+        "origin": "translated",
+        "from": "ru",
+        "fromHash": "c9b2c22b"
+      }
+    },
+    "c_mem_accounting": {
+      "name": {
+        "v": "Token accounting",
+        "at": "2026-09-01T09:15:11Z",
+        "origin": "translated",
+        "from": "ru",
+        "fromHash": "6508e374"
+      }
+    },
+    "c_mem_tools": {
+      "name": {
+        "v": "Memory tools",
+        "at": "2026-09-01T09:15:11Z",
+        "origin": "translated",
+        "from": "ru",
+        "fromHash": "4962f433"
+      }
+    },
+    "c_content": {
+      "name": {
+        "v": "Content, editor and resources",
+        "at": "2026-09-01T09:15:11Z",
+        "origin": "translated",
+        "from": "ru",
+        "fromHash": "2d297ef6"
+      }
+    },
+    "c_editor": {
+      "name": {
+        "v": "Editor and schemas",
+        "at": "2026-09-01T09:15:11Z",
+        "origin": "translated",
+        "from": "ru",
+        "fromHash": "d7fbab20"
+      }
+    },
+    "c_resources": {
+      "name": {
+        "v": "Resources",
+        "at": "2026-09-01T09:15:11Z",
+        "origin": "translated",
+        "from": "ru",
+        "fromHash": "4f022672"
+      }
+    },
+    "c_res_core": {
+      "name": {
+        "v": "Registry and providers",
+        "at": "2026-09-01T09:15:11Z",
+        "origin": "translated",
+        "from": "ru",
+        "fromHash": "142d1ddc"
+      }
+    },
+    "c_res_tools": {
+      "name": {
+        "v": "Resource tools",
+        "at": "2026-09-01T09:15:11Z",
+        "origin": "translated",
+        "from": "ru",
+        "fromHash": "417a9577"
+      }
+    },
+    "c_skills": {
+      "name": {
+        "v": "Skills and library",
+        "at": "2026-09-01T09:15:11Z",
+        "origin": "translated",
+        "from": "ru",
+        "fromHash": "9925c853"
+      }
+    },
+    "c_skills_library": {
+      "name": {
+        "v": "Library and catalog",
+        "at": "2026-09-01T09:15:11Z",
+        "origin": "translated",
+        "from": "ru",
+        "fromHash": "f96f245b"
+      }
+    },
+    "c_skills_sources": {
+      "name": {
+        "v": "Sources and trust",
+        "at": "2026-09-01T09:15:11Z",
+        "origin": "translated",
+        "from": "ru",
+        "fromHash": "792a7602"
+      }
+    },
+    "c_skills_session": {
+      "name": {
+        "v": "Session and tools",
+        "at": "2026-09-01T09:15:11Z",
+        "origin": "translated",
+        "from": "ru",
+        "fromHash": "2787673e"
+      }
+    },
+    "c_project": {
+      "name": {
+        "v": "Project and configuration",
+        "at": "2026-09-01T09:15:11Z",
+        "origin": "translated",
+        "from": "ru",
+        "fromHash": "005aad99"
+      }
+    },
+    "c_proj_core": {
+      "name": {
+        "v": "Project and storage",
+        "at": "2026-09-01T09:15:11Z",
+        "origin": "translated",
+        "from": "ru",
+        "fromHash": "211f937b"
+      }
+    },
+    "c_proj_instances": {
+      "name": {
+        "v": "Instances",
+        "at": "2026-09-01T09:15:11Z",
+        "origin": "translated",
+        "from": "ru",
+        "fromHash": "3328a4c2"
+      }
+    },
+    "c_proj_settings": {
+      "name": {
+        "v": "Settings",
+        "at": "2026-09-01T09:15:11Z",
+        "origin": "translated",
+        "from": "ru",
+        "fromHash": "06fc79ae"
+      }
+    },
+    "c_agentlife": {
+      "name": {
+        "v": "Agent lifecycle",
+        "at": "2026-09-01T09:15:11Z",
+        "origin": "translated",
+        "from": "ru",
+        "fromHash": "b0c9cb1a"
+      }
+    },
+    "c_observability": {
+      "name": {
+        "v": "Observability",
+        "at": "2026-09-01T09:15:11Z",
+        "origin": "translated",
+        "from": "ru",
+        "fromHash": "4cdb9aa8"
+      }
+    },
+    "c_platform": {
+      "name": {
+        "v": "Platform / OS",
+        "at": "2026-09-01T09:15:11Z",
+        "origin": "translated",
+        "from": "ru",
+        "fromHash": "33ec6b9d"
+      }
+    },
+    "rt_call": {
+      "name": {
+        "v": "Call",
+        "at": "2026-09-01T09:15:11Z",
+        "origin": "translated",
+        "from": "ru",
+        "fromHash": "76a5f57b"
+      },
+      "description": {
+        "v": "A direct call to another component's method or API. Generated from code.",
+        "at": "2026-09-01T09:15:11Z",
+        "origin": "translated",
+        "from": "ru",
+        "fromHash": "0d3f5eea"
+      }
+    },
+    "rt_composes": {
+      "name": {
+        "v": "Composition",
+        "at": "2026-09-01T09:15:11Z",
+        "origin": "translated",
+        "from": "ru",
+        "fromHash": "81a5fe2c"
+      },
+      "description": {
+        "v": "A type holds another as part of its own state. Generated from code.",
+        "at": "2026-09-01T09:15:11Z",
+        "origin": "translated",
+        "from": "ru",
+        "fromHash": "549fbc3c"
+      }
+    },
+    "rt_data-flow": {
+      "name": {
+        "v": "Data flow",
+        "at": "2026-09-01T09:15:11Z",
+        "origin": "translated",
+        "from": "ru",
+        "fromHash": "93a01e58"
+      },
+      "description": {
+        "v": "Data moves from a source to a sink. Not necessarily a synchronous call: a queue, a channel, or a network may sit between them.",
+        "at": "2026-09-01T09:15:11Z",
+        "origin": "translated",
+        "from": "ru",
+        "fromHash": "f2abc52c"
+      }
+    },
+    "rt_event": {
+      "name": {
+        "v": "Event",
+        "at": "2026-09-01T09:15:11Z",
+        "origin": "translated",
+        "from": "ru",
+        "fromHash": "7e0c9daf"
+      },
+      "description": {
+        "v": "A source publishes an event, a receiver reacts to it. The source does not know its receivers and does not wait for a reply.",
+        "at": "2026-09-01T09:15:11Z",
+        "origin": "translated",
+        "from": "ru",
+        "fromHash": "8159f9b9"
+      }
+    },
+    "rt_extends": {
+      "name": {
+        "v": "Inheritance",
+        "at": "2026-09-01T09:15:11Z",
+        "origin": "translated",
+        "from": "ru",
+        "fromHash": "c5851b25"
+      },
+      "description": {
+        "v": "A type inherits from another type. Generated from code.",
+        "at": "2026-09-01T09:15:11Z",
+        "origin": "translated",
+        "from": "ru",
+        "fromHash": "31668289"
+      }
+    },
+    "rt_implements": {
+      "name": {
+        "v": "Implementation",
+        "at": "2026-09-01T09:15:11Z",
+        "origin": "translated",
+        "from": "ru",
+        "fromHash": "effca315"
+      },
+      "description": {
+        "v": "A type implements a declared interface. Generated from code.",
+        "at": "2026-09-01T09:15:11Z",
+        "origin": "translated",
+        "from": "ru",
+        "fromHash": "4588cbeb"
+      }
+    },
+    "rt_security": {
+      "name": {
+        "v": "Access check",
+        "at": "2026-09-01T09:15:11Z",
+        "origin": "translated",
+        "from": "ru",
+        "fromHash": "5d501abc"
+      },
+      "description": {
+        "v": "The call passes through a permission check. The receiver may refuse, and refusal is a normal outcome, not an error.",
+        "at": "2026-09-01T09:15:11Z",
+        "origin": "translated",
+        "from": "ru",
+        "fromHash": "8501dd31"
+      }
+    },
+    "rt_storage": {
+      "name": {
+        "v": "Storage",
+        "at": "2026-09-01T09:15:11Z",
+        "origin": "translated",
+        "from": "ru",
+        "fromHash": "edcea6ca"
+      },
+      "description": {
+        "v": "A component writes data to storage, or reads it from there. The receiver is where data survives the process.",
+        "at": "2026-09-01T09:15:11Z",
+        "origin": "translated",
+        "from": "ru",
+        "fromHash": "9f188427"
+      }
+    },
+    "v_semantic_atlas": {
+      "name": {
+        "v": "Semantic atlas",
+        "at": "2026-09-01T09:15:11Z",
+        "origin": "translated",
+        "from": "ru",
+        "fromHash": "26d4a868"
+      },
+      "description": {
+        "v": "Full map of the project: every entity laid out by subsystem.",
+        "at": "2026-09-01T09:15:11Z",
+        "origin": "translated",
+        "from": "ru",
+        "fromHash": "94481a16"
+      }
+    },
+    "c_toolsets": {
+      "name": {
+        "v": "ToolSets",
+        "at": "2026-09-01T09:16:13Z",
+        "origin": "translated",
+        "from": "ru",
+        "fromHash": "a7a014ea"
+      }
+    },
+    "c_sec_secrets_dpapi": {
+      "name": {
+        "v": "DPAPI",
+        "at": "2026-09-01T09:16:13Z",
+        "origin": "translated",
+        "from": "ru",
+        "fromHash": "f71fde73"
+      }
+    },
+    "c_ssh": {
+      "name": {
+        "v": "SSH",
+        "at": "2026-09-01T09:16:13Z",
+        "origin": "translated",
+        "from": "ru",
+        "fromHash": "41197b31"
+      }
+    }
+  }
+}

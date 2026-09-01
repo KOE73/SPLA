@@ -1,0 +1,37 @@
+{
+  "contractVersion": 3,
+  "relationTypes": [
+    {
+      "id": "call",
+      "origin": "authored"
+    },
+    {
+      "id": "composes",
+      "origin": "authored"
+    },
+    {
+      "id": "data-flow",
+      "origin": "authored"
+    },
+    {
+      "id": "event",
+      "origin": "authored"
+    },
+    {
+      "id": "extends",
+      "origin": "code"
+    },
+    {
+      "id": "implements",
+      "origin": "code"
+    },
+    {
+      "id": "security",
+      "origin": "authored"
+    },
+    {
+      "id": "storage",
+      "origin": "authored"
+    }
+  ]
+}

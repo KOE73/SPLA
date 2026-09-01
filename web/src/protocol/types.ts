@@ -212,6 +212,9 @@ export interface AgentResultPayload {
   permRead?: string; permWrite?: string; permShell?: string; permInternet?: string;
   customPrompt?: string;
   loopGuard?: boolean; loopGuardRepeats?: number; saveToolCalls?: boolean; saveAttempts?: boolean;
+  /** Seconds system_run_shell may sit silent before the tool returns "still running" instead of
+   *  continuing to wait. 0 = disabled (wait indefinitely). Default 120. */
+  shellTimeoutSeconds?: number;
   /** Master switch for the resource-address abstraction (file://, sftp://, …). Default false —
    *  the foundation ships inert so the model can be measured with and without it. */
   unifiedResources?: boolean;
@@ -239,6 +242,43 @@ export interface McpSettingsPayload {
   port?: number | null;
   canPersist?: boolean;
   /** Always true — a running `spla serve` must be restarted to pick up a change here. */
+  restartToApply?: boolean;
+}
+
+/** One foreign MCP server as the settings panel edits and observes it: the declaration plus, once a
+ *  connect attempt has happened, live status merged in by id. `env`/`headers` values are
+ *  `secret:`/`env:` references only, never resolved credentials — see agents/secrets.md. */
+export interface McpServerDto {
+  id: string;
+  name?: string;
+  enabled: boolean;
+  /** "stdio" | "http". */
+  transport: string;
+  command?: string;
+  args?: string[];
+  cwd?: string;
+  env?: Record<string, string>;
+  url?: string;
+  headers?: Record<string, string>;
+  description?: string;
+  /** "unnamed" (default) | "named" — see ADR_20260826_service_mcp-client §2. */
+  origin: string;
+  level?: string;
+
+  /** Server-set, ignored on save. McpSessionState as a string ("Connecting", "Ready", "Failed", …),
+   *  or absent when this server has never been attempted this process's lifetime — a configured
+   *  entry with no live status yet, not an error. */
+  state?: string | null;
+  lastError?: string | null;
+  /** Tools actually registered — after naming refusals and collisions, not the server's raw count. */
+  toolCount?: number;
+}
+
+/** mcp.servers.get / mcp.servers.save round trip, and the broadcast on background status change. */
+export interface McpServersPayload {
+  servers: McpServerDto[];
+  canPersist?: boolean;
+  /** Always true — connecting/disconnecting a server only happens at startup in this wave. */
   restartToApply?: boolean;
 }
 
@@ -624,6 +664,34 @@ export interface SshSessionsResultPayload {
   terminals: { terminalId: string; host: string; sessionId: string }[];
 }
 
+// ── Background tasks (task.list/task.cancel/task.state.changed) ────────────────
+export interface TaskSummaryDto {
+  taskId: string;
+  toolName: string;
+  /** "Running" | "Completed" | "Failed" | "Cancelled" */
+  state: string;
+  startedAt: string; // ISO 8601
+}
+
+export interface TaskListPayload {
+  chatId: string;
+}
+
+export interface TaskListResult {
+  chatId: string;
+  tasks: TaskSummaryDto[];
+}
+
+export interface TaskCancelPayload {
+  chatId: string;
+  taskId: string;
+}
+
+export interface TaskStateChangedPayload {
+  chatId: string;
+  task: TaskSummaryDto;
+}
+
 // ── Events the server pushes unprompted (subscribe via client.on) ──────────────
 export interface ServerEvents {
   /**
@@ -646,13 +714,17 @@ export interface ServerEvents {
   "chat.opened": ChatOpenedPayload;
   "chat.reasoning.result": ChatReasoningResult;
   "chat.list.result": { chats: ChatSummary[] };
+  "chat.archived.list.result": { chats: ChatSummary[] };
   "chat.cleared": Record<string, never>;
   "chat.current": ChatOpenedPayload;
   "focus.changed": { chatId: string };
   "token.usage": { promptTokens?: number; completionTokens?: number; contextLength?: number };
   "delta": { msgIndex: number; text: string };
   "reasoning": { msgIndex: number; text: string };
-  "llm.turn.start": { msgIndex: number };
+  /** progressTreeId: the wire treeId prefix (see chatSessions.ts) of THIS turn's own progress
+   *  nodes — used to sweep only the previous turn's nodes on the next boundary, never a background
+   *  task's tree, which carries a different prefix and keeps updating across turns. */
+  "llm.turn.start": { msgIndex: number; progressTreeId?: string | null };
   /** A generation the repetition guard abandoned mid-stream — never sent for the successful attempt.
    *  Carries the abandoned content/reasoning so a reader can open it, not just the streamed text that
    *  was already visible before the guard cut it off. */
@@ -679,6 +751,7 @@ export interface ServerEvents {
    *  dropping it — parallel work gives no ordering guarantee. Structural frames (a node's first
    *  appearance and its finish) are never throttled; the ticks between them are, per node. */
   "progress.node": { nodeId: string; parentId?: string | null; label: string; state: "running" | "completed" | "failed"; current?: number | null; total?: number | null; fraction?: number | null; message?: string | null; details?: ToolProgressDetail[] | null };
+  "task.state.changed": TaskStateChangedPayload; // A background task started or finished — published to all watchers of this chat.
   "tool.result": { toolCallId: string; toolName: string; result: string };
   "notice": { text: string };
   "error": { message: string };
@@ -696,6 +769,7 @@ export interface ServerEvents {
   "provider.info.result": ProviderInfoResultPayload;
   "agent.result": AgentResultPayload;
   "mcp.result": McpSettingsPayload;
+  "mcp.servers.result": McpServersPayload;
   "plugins.result": PluginsResultPayload;
   "skills.result": SkillsResultPayload;
   "skills.sources.result": SkillSourcesResultPayload;

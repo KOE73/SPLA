@@ -1,0 +1,14 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <RootNamespace>SPLA.Documents</RootNamespace>
+    <AssemblyName>SPLA.Documents.Model</AssemblyName>
+  </PropertyGroup>
+
+  <!-- Deliberately dependency-free, and deliberately NOT referencing SPLA.Domain.
+       This assembly travels INSIDE a document-provider plugin's own AssemblyLoadContext (every
+       backend gets its own copy), which is safe only because no instance of these types ever
+       crosses the plugin boundary — the boundary carries bytes plus a MIME type and nothing else.
+       See docs/adr/ADR_20260824_plugins_document-context.md, §2. -->
+
+</Project>

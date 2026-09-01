@@ -48,6 +48,15 @@ public class SplaAgentSection
     [YamlMember(Alias = "ask_timeout_minutes")]
     public int? AskTimeoutMinutes { get; set; }
 
+    /// <summary>Seconds a shell command run via <c>system_run_shell</c> may sit completely silent
+    /// before the tool returns control with <c>Status: running</c> instead of continuing to wait
+    /// (default 120 — see <c>LocalShell.DefaultSilentIdle</c>). This is not a hard cutoff: the
+    /// command itself is untouched and can be resumed with <c>system_resume_shell</c>, but a caller
+    /// that never resumes sees it as a stall. 0 disables the check entirely — the tool call waits
+    /// until the command exits or asks a question, however long that takes.</summary>
+    [YamlMember(Alias = "shell_timeout_seconds")]
+    public int? ShellTimeoutSeconds { get; set; }
+
     /// <summary>Enabled built-in agent capabilities (dotted "core.*" feature ids — see
     /// <c>SPLA.MCP.Core.Agent.AgentFeatureCatalog</c>). Null (key absent) = every feature enabled,
     /// the historical behaviour. Empty list = no built-in feature (only the mode preamble,
@@ -286,9 +295,13 @@ public class SplaSecretsSection
 }
 
 /// <summary>
-/// MCP-over-HTTP section: whether <c>spla serve</c> maps <c>POST /mcp</c> at all, and what fixed
-/// port to bind so the address is predictable instead of the usual ephemeral one. See
-/// <c>SplaServiceHost.HandleMcpAsync</c> for what the endpoint does.
+/// The <c>mcp:</c> section — deliberately both halves of the wire in one place. <see cref="Enabled"/>
+/// and <see cref="Port"/> are the outward half: whether <c>spla serve</c> maps <c>POST /mcp</c> at all
+/// and what fixed port to bind, so the address is predictable instead of the usual ephemeral one (see
+/// <c>SplaServiceHost.HandleMcpAsync</c>). <see cref="Servers"/> is the inward half: which foreign MCP
+/// servers this project consumes. They read as unrelated features, but they are the same wire read in
+/// opposite directions — one section that says "who we are as an MCP peer" beats two sections that
+/// each have to be found and kept in sync separately.
 /// </summary>
 public class SplaMcpSection
 {
@@ -304,6 +317,109 @@ public class SplaMcpSection
     /// is a stronger statement than whatever the project remembers.</summary>
     [YamlMember(Alias = "port")]
     public int? Port { get; set; }
+
+    /// <summary>Foreign MCP servers this project consumes — see <see cref="SplaMcpServerSection"/>.
+    /// Null/absent = none declared. Merged across layers by <see cref="SplaMcpServerSection.Id"/> in
+    /// <c>SettingsResolver</c>, the same way <c>connections:</c> merges.</summary>
+    [YamlMember(Alias = "servers")]
+    public List<SplaMcpServerSection>? Servers { get; set; }
+}
+
+/// <summary>
+/// One foreign MCP server this project consumes, by stdio or HTTP. Connecting, projecting its tools
+/// and enforcing anything about them is later work (see
+/// <c>docs/plans/PLAN_20260826_service_mcp-client.md</c> steps 2/3/5) — this type is only the
+/// declaration: what the operator wrote down about the server, unresolved and unvalidated.
+/// </summary>
+public class SplaMcpServerSection
+{
+    /// <summary>
+    /// The prefix every tool of this server gets once connected (<c>ghmcp_create_issue</c>). Must
+    /// match <c>^[a-z][a-z0-9_]{0,15}$</c> — enforced where the prefix is actually applied
+    /// (<c>McpToolNaming</c>, step 3 of the plan above), not here, so there is exactly one place that
+    /// decides what a legal id looks like.
+    /// <para>
+    /// Changing this later breaks stored grants and chat history: a remembered permission and a
+    /// logged tool call both name the prefixed tool, and renaming the server renames every tool it
+    /// ever offered out from under them. Treat it as load-bearing, not cosmetic, once a server has
+    /// been connected even once.
+    /// </para>
+    /// </summary>
+    [YamlMember(Alias = "id")]
+    public string? Id { get; set; }
+
+    /// <summary>Display label. Falls back to <see cref="Id"/> in the UI, never persisted as a
+    /// fallback — same convention as <see cref="SplaConnectionSection.Name"/>.</summary>
+    [YamlMember(Alias = "name")]
+    public string? Name { get; set; }
+
+    /// <summary>A disabled server is not connected at all — its tools and its tool set do not exist,
+    /// the same way a disabled plugin's toolset is absent rather than merely hidden. Null/absent =
+    /// enabled, so an operator who writes a server entry sees it come up without also having to say
+    /// <c>enabled: true</c>.</summary>
+    [YamlMember(Alias = "enabled")]
+    public bool? Enabled { get; set; }
+
+    /// <summary><c>stdio</c> or <c>http</c>. Picks which of the fields below apply.</summary>
+    [YamlMember(Alias = "transport")]
+    public string? Transport { get; set; }
+
+    /// <summary>stdio only: the executable to launch (<c>npx</c>, <c>uvx</c>, a local binary).</summary>
+    [YamlMember(Alias = "command")]
+    public string? Command { get; set; }
+
+    /// <summary>stdio only: arguments passed to <see cref="Command"/>.</summary>
+    [YamlMember(Alias = "args")]
+    public List<string>? Args { get; set; }
+
+    /// <summary>stdio only: working directory for the launched process. Null = inherit.</summary>
+    [YamlMember(Alias = "cwd")]
+    public string? Cwd { get; set; }
+
+    /// <summary>
+    /// stdio only: environment variables for the launched process. Values are <c>secret:</c>/<c>env:</c>
+    /// references, resolved at connect time — never plaintext in this file and never sent to a client.
+    /// See <c>agents/secrets.md</c> (§1 invariants 1–4, §3 reference forms): config holds a pointer,
+    /// the store holds the material, and resolution happens host-side, at the point of use, into a
+    /// value that is never stored back onto this object.
+    /// </summary>
+    [YamlMember(Alias = "env")]
+    public Dictionary<string, string>? Env { get; set; }
+
+    /// <summary>http only: the server's endpoint URL.</summary>
+    [YamlMember(Alias = "url")]
+    public string? Url { get; set; }
+
+    /// <summary>
+    /// http only: request headers. Values are <c>secret:</c>/<c>env:</c> references, resolved at
+    /// connect time — same rule and same citation as <see cref="Env"/>: never plaintext here, never
+    /// sent to a client, materialized host-side and dropped.
+    /// </summary>
+    [YamlMember(Alias = "headers")]
+    public Dictionary<string, string>? Headers { get; set; }
+
+    /// <summary>Free-text description, shown in the UI and folded into the tool descriptions this
+    /// server's tools get so the model sees the source in the card itself.</summary>
+    [YamlMember(Alias = "description")]
+    public string? Description { get; set; }
+
+    /// <summary>
+    /// <c>unnamed</c> (default) or <c>named</c>. The operator named the *pipe*, not what flows through
+    /// it: declaring a server in config is an act of configuration, not an act of vouching for the
+    /// content its tools return. Default <c>unnamed</c> means results from this server raise the
+    /// chat's doubt flag (<c>ChatDoubt</c>/<c>DataOrigin</c>), the same way an untrusted fetch does.
+    /// <c>named</c> is the explicit opt-out — the same deliberate act as adding a host to
+    /// <c>trusted_domains</c>, not a side effect of typing a URL or a command.
+    /// </summary>
+    [YamlMember(Alias = "origin")]
+    public string? Origin { get; set; }
+
+    /// <summary>Optional convenience mirroring this server's entry in the <c>toolsets:</c> section
+    /// (the tool set id is this server's <see cref="Id"/>). Lets an operator set the disclosure level
+    /// for the whole server right next to its declaration instead of in a second section; equivalent
+    /// to writing the same value under <c>toolsets: {&lt;id&gt;: ...}</c>.</summary>
+    [YamlMember(Alias = "level")]
+    public string? Level { get; set; }
 }
 
 /// <summary>
@@ -334,6 +450,10 @@ public class SplaPermissionsSection
 
     [YamlMember(Alias = "internet")]
     public string? Internet { get; set; }
+
+    /// <summary>Override for foreign MCP-server tools (ToolScope.Foreign).</summary>
+    [YamlMember(Alias = "foreign")]
+    public string? Foreign { get; set; }
 
     [YamlMember(Alias = "tools")]
     public List<SplaToolPermissionRule>? Tools { get; set; }

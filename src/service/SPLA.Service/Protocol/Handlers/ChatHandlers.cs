@@ -1,4 +1,6 @@
-﻿using SPLA.MCP.Core.ToolSets;
+﻿using SPLA.Domain.Models;
+using SPLA.Domain.Tools;
+using SPLA.MCP.Core.ToolSets;
 using SPLA.Runtime;
 using SPLA.Service.Contracts;
 
@@ -11,11 +13,13 @@ internal sealed class ChatHandlers : IMessageHandler
     public IEnumerable<string> HandledTypes =>
     [
         MessageTypes.ChatList, MessageTypes.ChatNew, MessageTypes.ChatRename, MessageTypes.ChatDelete,
+        MessageTypes.ChatArchive, MessageTypes.ChatUnarchive, MessageTypes.ChatArchivedList,
         MessageTypes.ChatOpen, MessageTypes.ChatWatch, MessageTypes.ChatUnwatch,
         MessageTypes.ChatSend, MessageTypes.ChatSettings, MessageTypes.ChatReasoningGet,
         MessageTypes.ChatRewind, MessageTypes.ChatFork,
         MessageTypes.ChatSkillActivate, MessageTypes.ChatSkillDeactivate,
         MessageTypes.ChatToolSetDeactivate, MessageTypes.ChatDoubtClear,
+        MessageTypes.TaskList, MessageTypes.TaskState, MessageTypes.TaskCancel,
     ];
 
     public Task HandleAsync(RequestContext ctx) => ctx.Env.Type switch
@@ -24,6 +28,9 @@ internal sealed class ChatHandlers : IMessageHandler
         MessageTypes.ChatNew      => New(ctx),
         MessageTypes.ChatRename   => Rename(ctx),
         MessageTypes.ChatDelete   => Delete(ctx),
+        MessageTypes.ChatArchive  => Archive(ctx),
+        MessageTypes.ChatUnarchive => Unarchive(ctx),
+        MessageTypes.ChatArchivedList => ListArchived(ctx),
         MessageTypes.ChatOpen     => Open(ctx),
         MessageTypes.ChatWatch    => Watch(ctx),
         MessageTypes.ChatUnwatch  => Unwatch(ctx),
@@ -36,6 +43,9 @@ internal sealed class ChatHandlers : IMessageHandler
         MessageTypes.ChatSkillDeactivate => SkillDeactivate(ctx),
         MessageTypes.ChatToolSetDeactivate => ToolSetDeactivate(ctx),
         MessageTypes.ChatDoubtClear => DoubtClear(ctx),
+        MessageTypes.TaskList  => TaskList(ctx),
+        MessageTypes.TaskState => TaskState(ctx),
+        MessageTypes.TaskCancel => TaskCancel(ctx),
         _ => Task.CompletedTask
     };
 
@@ -69,8 +79,43 @@ internal sealed class ChatHandlers : IMessageHandler
         {
             entry.Chats.Delete(p.ChatId);
             ctx.Session.MarkChatClosed(p.ChatId);   // nothing left to watch
+            // The deleted chat may have been active or archived — broadcast both lists rather than
+            // asking the caller which one it came from.
             await BroadcastChatList(ctx, projectId, entry.Chats);
+            await BroadcastArchivedList(ctx, projectId, entry.Chats);
         }
+    }
+
+    private static async Task Archive(RequestContext ctx)
+    {
+        var (entry, projectId) = ctx.Session.Resolve(ctx.Env);
+        var p = ctx.Payload<ChatArchivePayload>();
+        if (p != null)
+        {
+            entry.Chats.Archive(p.ChatId);
+            ctx.Session.MarkChatClosed(p.ChatId);   // archived chats have no runtime to watch
+            await BroadcastChatList(ctx, projectId, entry.Chats);
+            await BroadcastArchivedList(ctx, projectId, entry.Chats);
+        }
+    }
+
+    private static async Task Unarchive(RequestContext ctx)
+    {
+        var (entry, projectId) = ctx.Session.Resolve(ctx.Env);
+        var p = ctx.Payload<ChatArchivePayload>();
+        if (p != null)
+        {
+            entry.Chats.Unarchive(p.ChatId);
+            await BroadcastChatList(ctx, projectId, entry.Chats);
+            await BroadcastArchivedList(ctx, projectId, entry.Chats);
+        }
+    }
+
+    private static Task ListArchived(RequestContext ctx)
+    {
+        var (entry, _) = ctx.Session.Resolve(ctx.Env);
+        return ctx.Reply(MessageTypes.ChatArchivedListResult,
+            new ChatArchivedListResultPayload { Chats = entry.Chats.ListArchived() });
     }
 
     private static async Task Open(RequestContext ctx)
@@ -118,7 +163,20 @@ internal sealed class ChatHandlers : IMessageHandler
         // The sender must watch this chat, otherwise the turn's stream (which fans out to watchers
         // only) would never reach the very client that started it.
         ctx.Session.MarkChatOpen(p.ChatId);
-        ctx.Session.StartTurn(entry.Runtime, projectId, chat, p.Text, p.Images, ctx.HostStopping);
+
+        // PLAN_20260825 wave D: a human message is queued like anything else the chat did not ask for at
+        // the moment it asked — the pump (wave B) wakes for it immediately and unconditionally, whether the
+        // chat was idle (starts a turn right away) or a turn was already running (the running turn's own
+        // drain picks it up on its next loop iteration, or the pump starts the next turn the instant this
+        // one's gate frees up). No more direct StartTurn call — that made "who begins a turn" a fact only a
+        // live connection could produce, which is exactly the coupling this wave removes.
+        chat.NoteHumanMessage();
+        chat.Inbox.Enqueue(new ChatMessage
+        {
+            Role = ChatRole.User,
+            Content = p.Text,
+            Images = p.Images is { Count: > 0 } ? p.Images.ToList() : null
+        }, InboxItemKind.Human);
     }
 
     private static async Task Settings(RequestContext ctx)
@@ -324,7 +382,67 @@ internal sealed class ChatHandlers : IMessageHandler
             .ToList();
     }
 
+    /// <summary>
+    /// Answers from the chat's real <c>BackgroundTaskRegistry</c> (plan step 1.1) — wired ahead of it
+    /// in step 0.7 so a client could build a task panel before there was anything to show; this is the
+    /// day-one read that comment promised, no second protocol round trip.
+    /// </summary>
+    private static Task TaskList(RequestContext ctx)
+    {
+        var (entry, _) = ctx.Session.Resolve(ctx.Env);
+        var p = ctx.Payload<TaskListPayload>();
+        var chat = p != null ? entry.Chats.GetOrOpen(p.ChatId) : null;
+        var tasks = chat?.Tasks.All.Select(ToSummary).ToList() ?? new List<TaskSummaryDto>();
+
+        return ctx.Reply(MessageTypes.TaskListResult,
+            new TaskListResult { ChatId = p?.ChatId ?? string.Empty, Tasks = tasks });
+    }
+
+    private static Task TaskState(RequestContext ctx)
+    {
+        var (entry, _) = ctx.Session.Resolve(ctx.Env);
+        var p = ctx.Payload<TaskStatePayload>();
+        var chat = p != null ? entry.Chats.GetOrOpen(p.ChatId) : null;
+
+        // No task with that id — not an error. A task that raced past its own completion between
+        // list and state, or was never real, gets the same honest answer: nothing to show.
+        if (chat == null || p == null || !chat.Tasks.TryGet(p.TaskId, out var record))
+            return ctx.Reply(MessageTypes.TaskStateResult,
+                new TaskStateResult { ChatId = p?.ChatId ?? string.Empty, Task = null, Result = null });
+
+        return ctx.Reply(MessageTypes.TaskStateResult, new TaskStateResult
+        {
+            ChatId = p.ChatId,
+            Task = ToSummary(record),
+            Result = record.State == SPLA.Domain.Tools.BackgroundTaskState.Running ? null : record.Result?.TextContent
+        });
+    }
+
+    private static Task TaskCancel(RequestContext ctx)
+    {
+        var (entry, _) = ctx.Session.Resolve(ctx.Env);
+        var p = ctx.Payload<TaskCancelPayload>();
+        var chat = p != null ? entry.Chats.GetOrOpen(p.ChatId) : null;
+
+        // No reply, matching task.cancel's documented shape: cancelling is observed through the next
+        // task.list/task.state a client asks for, not echoed back on this round trip.
+        chat?.Tasks.Cancel(p!.TaskId);
+        return Task.CompletedTask;
+    }
+
+    private static TaskSummaryDto ToSummary(SPLA.Domain.Tools.BackgroundTaskRecord record) => new()
+    {
+        TaskId = record.Id,
+        ToolName = record.ToolName,
+        State = record.State.ToString(),
+        StartedAt = record.StartedAt.ToString("o")
+    };
+
     private static Task BroadcastChatList(RequestContext ctx, string projectId, ChatRegistry chats)
         => ctx.Session.Hub.BroadcastToProjectAsync(projectId, MessageTypes.ChatListResult,
             new ChatListResultPayload { Chats = chats.List() });
+
+    private static Task BroadcastArchivedList(RequestContext ctx, string projectId, ChatRegistry chats)
+        => ctx.Session.Hub.BroadcastToProjectAsync(projectId, MessageTypes.ChatArchivedListResult,
+            new ChatArchivedListResultPayload { Chats = chats.ListArchived() });
 }

@@ -1,0 +1,3716 @@
+{
+  "contractVersion": 3,
+  "language": "ru",
+  "entries": {
+    "n_accountingstage": {
+      "name": {
+        "v": "AccountingStage",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "n_aclsecretaccesspolicy": {
+      "name": {
+        "v": "AclSecretAccessPolicy",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "n_agentclarifytool": {
+      "name": {
+        "v": "AgentClarifyTool",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "n_agentcontextcomposer": {
+      "name": {
+        "v": "AgentContextComposer",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "n_agentcontribution": {
+      "name": {
+        "v": "AgentContribution",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "n_agentcontributioncontext": {
+      "name": {
+        "v": "AgentContributionContext",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "n_agentfeature": {
+      "name": {
+        "v": "AgentFeature",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "n_agentfeaturecatalog": {
+      "name": {
+        "v": "AgentFeatureCatalog",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "n_agentlibrarian": {
+      "name": {
+        "v": "AgentLibrarian",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "n_agentmemorycleartool": {
+      "name": {
+        "v": "AgentMemoryClearTool",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "n_agentmemorydeletetool": {
+      "name": {
+        "v": "AgentMemoryDeleteTool",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "n_agentmemorygettool": {
+      "name": {
+        "v": "AgentMemoryGetTool",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "n_agentmemoryhelpers": {
+      "name": {
+        "v": "AgentMemoryHelpers",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "n_agentmemorylisttool": {
+      "name": {
+        "v": "AgentMemoryListTool",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "n_agentmemorysettool": {
+      "name": {
+        "v": "AgentMemorySetTool",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "n_agentmode": {
+      "name": {
+        "v": "AgentMode",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "n_agentrunresult": {
+      "name": {
+        "v": "AgentRunResult",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "n_agentsession": {
+      "name": {
+        "v": "AgentSession",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "n_agentsessionscope": {
+      "name": {
+        "v": "AgentSessionScope",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "n_agentspawnbatchtool": {
+      "name": {
+        "v": "AgentSpawnBatchTool",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "n_agentspawntool": {
+      "name": {
+        "v": "AgentSpawnTool",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "n_allowallgate": {
+      "name": {
+        "v": "AllowAllGate",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "n_ambienthoststage": {
+      "name": {
+        "v": "AmbientHostStage",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "n_attemptoutcome": {
+      "name": {
+        "v": "AttemptOutcome",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "n_backgroundstage": {
+      "name": {
+        "v": "BackgroundStage",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "n_backgroundtaskrecord": {
+      "name": {
+        "v": "BackgroundTaskRecord",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "n_backgroundtaskregistry": {
+      "name": {
+        "v": "BackgroundTaskRegistry",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "n_backgroundtaskstate": {
+      "name": {
+        "v": "BackgroundTaskState",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "n_blobentry": {
+      "name": {
+        "v": "BlobEntry",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "n_blobkind": {
+      "name": {
+        "v": "BlobKind",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "n_blobpayload": {
+      "name": {
+        "v": "BlobPayload",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "n_blobpeektool": {
+      "name": {
+        "v": "BlobPeekTool",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "n_blobstore": {
+      "name": {
+        "v": "BlobStore",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "n_boundarymode": {
+      "name": {
+        "v": "BoundaryMode",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "n_boundaryobservation": {
+      "name": {
+        "v": "BoundaryObservation",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "n_browserlauncher": {
+      "name": {
+        "v": "BrowserLauncher",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "n_browsertarget": {
+      "name": {
+        "v": "BrowserTarget",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "n_bucket": {
+      "name": {
+        "v": "Bucket",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "n_bucketpoint": {
+      "name": {
+        "v": "BucketPoint",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "n_builtinconverters": {
+      "name": {
+        "v": "BuiltInConverters",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "n_catalogview": {
+      "name": {
+        "v": "CatalogView",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "n_chatdoubt": {
+      "name": {
+        "v": "ChatDoubt",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "n_chatinbox": {
+      "name": {
+        "v": "ChatInbox",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "n_chatmanager": {
+      "name": {
+        "v": "ChatManager",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "n_chatmessage": {
+      "name": {
+        "v": "ChatMessage",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "n_chatrole": {
+      "name": {
+        "v": "ChatRole",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "n_chatsession": {
+      "name": {
+        "v": "ChatSession",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "n_chatsessionattempt": {
+      "name": {
+        "v": "ChatSessionAttempt",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "n_chatsessioncontext": {
+      "name": {
+        "v": "ChatSessionContext",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "n_chatsessiondoubt": {
+      "name": {
+        "v": "ChatSessionDoubt",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "n_chatsessionmessage": {
+      "name": {
+        "v": "ChatSessionMessage",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "n_claimidentity": {
+      "name": {
+        "v": "ClaimIdentity",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "n_claimsidentityprovider": {
+      "name": {
+        "v": "ClaimsIdentityProvider",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "n_claimsidentityresolver": {
+      "name": {
+        "v": "ClaimsIdentityResolver",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "n_clarifyoption": {
+      "name": {
+        "v": "ClarifyOption",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "n_clarifyrequest": {
+      "name": {
+        "v": "ClarifyRequest",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "n_clarifyscope": {
+      "name": {
+        "v": "ClarifyScope",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "n_composedcontext": {
+      "name": {
+        "v": "ComposedContext",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "n_compositionmanifest": {
+      "name": {
+        "v": "CompositionManifest",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "n_configloader": {
+      "name": {
+        "v": "ConfigLoader",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "n_contentnode": {
+      "name": {
+        "v": "ContentNode",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "n_contentnodekind": {
+      "name": {
+        "v": "ContentNodeKind",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "n_contenttypes": {
+      "name": {
+        "v": "ContentTypes",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "n_contextassembler": {
+      "name": {
+        "v": "ContextAssembler",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "n_contextcheckpointrestoretool": {
+      "name": {
+        "v": "ContextCheckpointRestoreTool",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "n_contextcheckpointsettool": {
+      "name": {
+        "v": "ContextCheckpointSetTool",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "n_contextitem": {
+      "name": {
+        "v": "ContextItem",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "n_contextplacement": {
+      "name": {
+        "v": "ContextPlacement",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "n_contextretention": {
+      "name": {
+        "v": "ContextRetention",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "n_contributortotal": {
+      "name": {
+        "v": "ContributorTotal",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "n_conversation": {
+      "name": {
+        "v": "Conversation",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "n_conversioncard": {
+      "name": {
+        "v": "ConversionCard",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "n_credentialsmiddleware": {
+      "name": {
+        "v": "CredentialsMiddleware",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "n_datachannel": {
+      "name": {
+        "v": "DataChannel",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "n_dataorigin": {
+      "name": {
+        "v": "DataOrigin",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "n_directoryskillsource": {
+      "name": {
+        "v": "DirectorySkillSource",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "n_directoryskillsourcefactory": {
+      "name": {
+        "v": "DirectorySkillSourceFactory",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "n_doubtcause": {
+      "name": {
+        "v": "DoubtCause",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "n_dpapifilesecretstore": {
+      "name": {
+        "v": "DpapiFileSecretStore",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "n_dpapisecrets": {
+      "name": {
+        "v": "DpapiSecrets",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "n_edgeclassifier": {
+      "name": {
+        "v": "EdgeClassifier",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "n_edgeledger": {
+      "name": {
+        "v": "EdgeLedger",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "n_edgetraffic": {
+      "name": {
+        "v": "EdgeTraffic",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "n_embeddedjsonschemaprovider": {
+      "name": {
+        "v": "EmbeddedJsonSchemaProvider",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "n_faultstage": {
+      "name": {
+        "v": "FaultStage",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "n_filebucket": {
+      "name": {
+        "v": "FileBucket",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "n_filecontentbrowser": {
+      "name": {
+        "v": "FileContentBrowser",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "n_filecontentsource": {
+      "name": {
+        "v": "FileContentSource",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "n_fileresourceprovider": {
+      "name": {
+        "v": "FileResourceProvider",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "n_filesecretaclstore": {
+      "name": {
+        "v": "FileSecretAclStore",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "n_filesecretstore": {
+      "name": {
+        "v": "FileSecretStore",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "n_fileskillsourcestore": {
+      "name": {
+        "v": "FileSkillSourceStore",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "n_fileskilltruststore": {
+      "name": {
+        "v": "FileSkillTrustStore",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "n_filetokenusagestore": {
+      "name": {
+        "v": "FileTokenUsageStore",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "n_formatconverterregistry": {
+      "name": {
+        "v": "FormatConverterRegistry",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "n_functioncall": {
+      "name": {
+        "v": "FunctionCall",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "n_generationattempt": {
+      "name": {
+        "v": "GenerationAttempt",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "n_hostservices": {
+      "name": {
+        "v": "HostServices",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "n_hubappearancestore": {
+      "name": {
+        "v": "HubAppearanceStore",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "n_iagentcontributor": {
+      "name": {
+        "v": "IAgentContributor",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "n_iagentfeature": {
+      "name": {
+        "v": "IAgentFeature",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "n_iagentlibrarian": {
+      "name": {
+        "v": "IAgentLibrarian",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "n_iagentsession": {
+      "name": {
+        "v": "IAgentSession",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "n_iagentspawner": {
+      "name": {
+        "v": "IAgentSpawner",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "n_ibackgroundtaskhost": {
+      "name": {
+        "v": "IBackgroundTaskHost",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "n_iblobstore": {
+      "name": {
+        "v": "IBlobStore",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "n_ibucket": {
+      "name": {
+        "v": "IBucket",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "n_icapabilitygate": {
+      "name": {
+        "v": "ICapabilityGate",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "n_ichatstore": {
+      "name": {
+        "v": "IChatStore",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "n_icontentbrowser": {
+      "name": {
+        "v": "IContentBrowser",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "n_icontentsource": {
+      "name": {
+        "v": "IContentSource",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "n_ieditableskillsource": {
+      "name": {
+        "v": "IEditableSkillSource",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "n_iformatconverter": {
+      "name": {
+        "v": "IFormatConverter",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "n_iidentity": {
+      "name": {
+        "v": "IIdentity",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "n_iidentityprovider": {
+      "name": {
+        "v": "IIdentityProvider",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "n_iinstanceprobe": {
+      "name": {
+        "v": "IInstanceProbe",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "n_iinstanceregistry": {
+      "name": {
+        "v": "IInstanceRegistry",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "n_iinstancespawner": {
+      "name": {
+        "v": "IInstanceSpawner",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "n_ijsonschemaprovider": {
+      "name": {
+        "v": "IJsonSchemaProvider",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "n_ikeyvaluestore": {
+      "name": {
+        "v": "IKeyValueStore",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "n_illmclient": {
+      "name": {
+        "v": "ILlmClient",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "n_illmclientresolver": {
+      "name": {
+        "v": "ILlmClientResolver",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "n_illmgateway": {
+      "name": {
+        "v": "ILlmGateway",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "n_illmmiddleware": {
+      "name": {
+        "v": "ILlmMiddleware",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "n_illmproviderdescriptor": {
+      "name": {
+        "v": "ILlmProviderDescriptor",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "n_imcptool": {
+      "name": {
+        "v": "IMcpTool",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "n_imodelcataloginfo": {
+      "name": {
+        "v": "IModelCatalogInfo",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "n_imodelmanagementservice": {
+      "name": {
+        "v": "IModelManagementService",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "n_inodescope": {
+      "name": {
+        "v": "INodeScope",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "n_ipermissionmanager": {
+      "name": {
+        "v": "IPermissionManager",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "n_iproject": {
+      "name": {
+        "v": "IProject",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "n_iprojectbackend": {
+      "name": {
+        "v": "IProjectBackend",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "n_iprojectprovider": {
+      "name": {
+        "v": "IProjectProvider",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "n_iprovideraccountinfo": {
+      "name": {
+        "v": "IProviderAccountInfo",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "n_ireasoningcatalog": {
+      "name": {
+        "v": "IReasoningCatalog",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "n_iresourcecontainermaker": {
+      "name": {
+        "v": "IResourceContainerMaker",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "n_iresourceprovider": {
+      "name": {
+        "v": "IResourceProvider",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "n_iresourceremover": {
+      "name": {
+        "v": "IResourceRemover",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "n_iresourcewriter": {
+      "name": {
+        "v": "IResourceWriter",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "n_isandbox": {
+      "name": {
+        "v": "ISandbox",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "n_ischemacontributor": {
+      "name": {
+        "v": "ISchemaContributor",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "n_isecretaccesspolicy": {
+      "name": {
+        "v": "ISecretAccessPolicy",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "n_isecretaclstore": {
+      "name": {
+        "v": "ISecretAclStore",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "n_isecretresolver": {
+      "name": {
+        "v": "ISecretResolver",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "n_isecretstore": {
+      "name": {
+        "v": "ISecretStore",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "n_ishell": {
+      "name": {
+        "v": "IShell",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "n_iskillcapabilityprobe": {
+      "name": {
+        "v": "ISkillCapabilityProbe",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "n_iskillsession": {
+      "name": {
+        "v": "ISkillSession",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "n_iskillsource": {
+      "name": {
+        "v": "ISkillSource",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "n_iskillsourcefactory": {
+      "name": {
+        "v": "ISkillSourceFactory",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "n_iskillsourcestore": {
+      "name": {
+        "v": "ISkillSourceStore",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "n_iskilltruststore": {
+      "name": {
+        "v": "ISkillTrustStore",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "n_isplaplugin": {
+      "name": {
+        "v": "ISplaPlugin",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "n_isplapluginaction": {
+      "name": {
+        "v": "ISplaPluginAction",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "n_isplapluginpanelprovider": {
+      "name": {
+        "v": "ISplaPluginPanelProvider",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "n_isplapluginpanelsession": {
+      "name": {
+        "v": "ISplaPluginPanelSession",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "n_isplapluginselfcheck": {
+      "name": {
+        "v": "ISplaPluginSelfCheck",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "n_isplapluginuicommands": {
+      "name": {
+        "v": "ISplaPluginUiCommands",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "n_itaglibrarian": {
+      "name": {
+        "v": "ITagLibrarian",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "n_itokenusagereporter": {
+      "name": {
+        "v": "ITokenUsageReporter",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "n_itokenusagestore": {
+      "name": {
+        "v": "ITokenUsageStore",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "n_itoolargumentpolicy": {
+      "name": {
+        "v": "IToolArgumentPolicy",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "n_itoolhost": {
+      "name": {
+        "v": "IToolHost",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "n_itoolmiddleware": {
+      "name": {
+        "v": "IToolMiddleware",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "n_itoolsetsession": {
+      "name": {
+        "v": "IToolSetSession",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "n_iworkspace": {
+      "name": {
+        "v": "IWorkspace",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "n_identityconverter": {
+      "name": {
+        "v": "IdentityConverter",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "n_identityproviderconfig": {
+      "name": {
+        "v": "IdentityProviderConfig",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "n_identityproviderloader": {
+      "name": {
+        "v": "IdentityProviderLoader",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "n_imageviewtool": {
+      "name": {
+        "v": "ImageViewTool",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "n_inboxitemkind": {
+      "name": {
+        "v": "InboxItemKind",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "n_instanceinfo": {
+      "name": {
+        "v": "InstanceInfo",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "n_instancelock": {
+      "name": {
+        "v": "InstanceLock",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "n_instancerecord": {
+      "name": {
+        "v": "InstanceRecord",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "n_instancestate": {
+      "name": {
+        "v": "InstanceState",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "n_instancestates": {
+      "name": {
+        "v": "InstanceStates",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "n_islandidentity": {
+      "name": {
+        "v": "IslandIdentity",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "n_jsonschema": {
+      "name": {
+        "v": "JsonSchema",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "n_jsontoyamlconverter": {
+      "name": {
+        "v": "JsonToYamlConverter",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "n_keyvaluestore": {
+      "name": {
+        "v": "KeyValueStore",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "n_knownprojectdto": {
+      "name": {
+        "v": "KnownProjectDto",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "n_knownprojectsresponse": {
+      "name": {
+        "v": "KnownProjectsResponse",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "n_kventry": {
+      "name": {
+        "v": "KvEntry",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "n_kvglob": {
+      "name": {
+        "v": "KvGlob",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "n_llmsettings": {
+      "name": {
+        "v": "LLMSettings",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "n_llmerrorkind": {
+      "name": {
+        "v": "LlmErrorKind",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "n_llmpipelineblueprint": {
+      "name": {
+        "v": "LlmPipelineBlueprint",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "n_llmpipelinestage": {
+      "name": {
+        "v": "LlmPipelineStage",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "n_llmproviderdescriptor": {
+      "name": {
+        "v": "LlmProviderDescriptor",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "n_llmproviderregistry": {
+      "name": {
+        "v": "LlmProviderRegistry",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "n_llmrequestexception": {
+      "name": {
+        "v": "LlmRequestException",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "n_llmturncontext": {
+      "name": {
+        "v": "LlmTurnContext",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "n_llmturnresult": {
+      "name": {
+        "v": "LlmTurnResult",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "n_llmturnstatus": {
+      "name": {
+        "v": "LlmTurnStatus",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "n_loadedplugin": {
+      "name": {
+        "v": "LoadedPlugin",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "n_localidentity": {
+      "name": {
+        "v": "LocalIdentity",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "n_localproject": {
+      "name": {
+        "v": "LocalProject",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "n_localprojectbackend": {
+      "name": {
+        "v": "LocalProjectBackend",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "n_localprojectprovider": {
+      "name": {
+        "v": "LocalProjectProvider",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "n_localshell": {
+      "name": {
+        "v": "LocalShell",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "n_localworkspace": {
+      "name": {
+        "v": "LocalWorkspace",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "n_machinelayer": {
+      "name": {
+        "v": "MachineLayer",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "n_machinelayerscope": {
+      "name": {
+        "v": "MachineLayerScope",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "n_manifestentry": {
+      "name": {
+        "v": "ManifestEntry",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "n_markmanager": {
+      "name": {
+        "v": "MarkManager",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "n_markrollbacktool": {
+      "name": {
+        "v": "MarkRollbackTool",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "n_marksettool": {
+      "name": {
+        "v": "MarkSetTool",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "n_mcphost": {
+      "name": {
+        "v": "McpHost",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "n_memorybucket": {
+      "name": {
+        "v": "MemoryBucket",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "n_memoryprojectbackend": {
+      "name": {
+        "v": "MemoryProjectBackend",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "n_metricseries": {
+      "name": {
+        "v": "MetricSeries",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "n_modelinfo": {
+      "name": {
+        "v": "ModelInfo",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "n_mountaccess": {
+      "name": {
+        "v": "MountAccess",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "n_mountresolver": {
+      "name": {
+        "v": "MountResolver",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "n_mounttrust": {
+      "name": {
+        "v": "MountTrust",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "n_nullscope": {
+      "name": {
+        "v": "NullScope",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "n_outputtarget": {
+      "name": {
+        "v": "OutputTarget",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "n_participantroles": {
+      "name": {
+        "v": "ParticipantRoles",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "n_passthroughsandbox": {
+      "name": {
+        "v": "PassthroughSandbox",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "n_pathboundary": {
+      "name": {
+        "v": "PathBoundary",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "n_pathboundaryexception": {
+      "name": {
+        "v": "PathBoundaryException",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "n_pathlanding": {
+      "name": {
+        "v": "PathLanding",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "n_pathrefusal": {
+      "name": {
+        "v": "PathRefusal",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "n_permissiondecision": {
+      "name": {
+        "v": "PermissionDecision",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "n_permissionmanager": {
+      "name": {
+        "v": "PermissionManager",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "n_permissionresult": {
+      "name": {
+        "v": "PermissionResult",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "n_permissionscope": {
+      "name": {
+        "v": "PermissionScope",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "n_permissionstage": {
+      "name": {
+        "v": "PermissionStage",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "n_permissionverdict": {
+      "name": {
+        "v": "PermissionVerdict",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "n_permissivesecretaccesspolicy": {
+      "name": {
+        "v": "PermissiveSecretAccessPolicy",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "n_persistedorigin": {
+      "name": {
+        "v": "PersistedOrigin",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "n_pluginassemblyloader": {
+      "name": {
+        "v": "PluginAssemblyLoader",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "n_pluginavailabilitystage": {
+      "name": {
+        "v": "PluginAvailabilityStage",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "n_plugindescriptor": {
+      "name": {
+        "v": "PluginDescriptor",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "n_plugindiscovery": {
+      "name": {
+        "v": "PluginDiscovery",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "n_plugineffectivestate": {
+      "name": {
+        "v": "PluginEffectiveState",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "n_pluginhealth": {
+      "name": {
+        "v": "PluginHealth",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "n_pluginhealthstatus": {
+      "name": {
+        "v": "PluginHealthStatus",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "n_plugininstance": {
+      "name": {
+        "v": "PluginInstance",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "n_pluginloadcontext": {
+      "name": {
+        "v": "PluginLoadContext",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "n_pluginmanager": {
+      "name": {
+        "v": "PluginManager",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "n_pluginmeta": {
+      "name": {
+        "v": "PluginMeta",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "n_pluginskillsource": {
+      "name": {
+        "v": "PluginSkillSource",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "n_progresshub": {
+      "name": {
+        "v": "ProgressHub",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "n_progressnode": {
+      "name": {
+        "v": "ProgressNode",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "n_progressnodestage": {
+      "name": {
+        "v": "ProgressNodeStage",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "n_progressscope": {
+      "name": {
+        "v": "ProgressScope",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "n_progressstate": {
+      "name": {
+        "v": "ProgressState",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "n_progresstree": {
+      "name": {
+        "v": "ProgressTree",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "n_projectbusyexception": {
+      "name": {
+        "v": "ProjectBusyException",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "n_projectdescriptor": {
+      "name": {
+        "v": "ProjectDescriptor",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "n_projectfactory": {
+      "name": {
+        "v": "ProjectFactory",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "n_projectkvstore": {
+      "name": {
+        "v": "ProjectKvStore",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "n_projectmanifestexception": {
+      "name": {
+        "v": "ProjectManifestException",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "n_projectmount": {
+      "name": {
+        "v": "ProjectMount",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "n_projectprofile": {
+      "name": {
+        "v": "ProjectProfile",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "n_projectprofiles": {
+      "name": {
+        "v": "ProjectProfiles",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "n_providerclientresolver": {
+      "name": {
+        "v": "ProviderClientResolver",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "n_providerfact": {
+      "name": {
+        "v": "ProviderFact",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "n_providerfactkind": {
+      "name": {
+        "v": "ProviderFactKind",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "n_providerfactscope": {
+      "name": {
+        "v": "ProviderFactScope",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "n_providerfactsection": {
+      "name": {
+        "v": "ProviderFactSection",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "n_providerfactseverity": {
+      "name": {
+        "v": "ProviderFactSeverity",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "n_providerstatemiddleware": {
+      "name": {
+        "v": "ProviderStateMiddleware",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "n_providerstatestore": {
+      "name": {
+        "v": "ProviderStateStore",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "n_readonlyguard": {
+      "name": {
+        "v": "ReadOnlyGuard",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "n_reasoningcapability": {
+      "name": {
+        "v": "ReasoningCapability",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "n_reasoningchoice": {
+      "name": {
+        "v": "ReasoningChoice",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "n_reasoningmode": {
+      "name": {
+        "v": "ReasoningMode",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "n_recentevent": {
+      "name": {
+        "v": "RecentEvent",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "n_registerframe": {
+      "name": {
+        "v": "RegisterFrame",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "n_registeredinstancedto": {
+      "name": {
+        "v": "RegisteredInstanceDto",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "n_registryframe": {
+      "name": {
+        "v": "RegistryFrame",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "n_registryframes": {
+      "name": {
+        "v": "RegistryFrames",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "n_registryjson": {
+      "name": {
+        "v": "RegistryJson",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "n_registrylistresponse": {
+      "name": {
+        "v": "RegistryListResponse",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "n_rememberedtoolpermission": {
+      "name": {
+        "v": "RememberedToolPermission",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "n_repetitiondetector": {
+      "name": {
+        "v": "RepetitionDetector",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "n_repetitionguardmiddleware": {
+      "name": {
+        "v": "RepetitionGuardMiddleware",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      },
+      "description": {
+        "v": "Stage Output. Observes the streamed generation, cancels a degenerate one and asks for another attempt; gives up as LlmTurnStatus.Degenerate. Lives in SPLA.Agent, runs here.",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "n_repetitioninfo": {
+      "name": {
+        "v": "RepetitionInfo",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "n_resolvedmodelentry": {
+      "name": {
+        "v": "ResolvedModelEntry",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "n_resolvedsettings": {
+      "name": {
+        "v": "ResolvedSettings",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "n_resourcecontent": {
+      "name": {
+        "v": "ResourceContent",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "n_resourcedeletetool": {
+      "name": {
+        "v": "ResourceDeleteTool",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "n_resourceentry": {
+      "name": {
+        "v": "ResourceEntry",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "n_resourceexiststool": {
+      "name": {
+        "v": "ResourceExistsTool",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "n_resourcelisttool": {
+      "name": {
+        "v": "ResourceListTool",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "n_resourcemakedirtool": {
+      "name": {
+        "v": "ResourceMakeDirTool",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "n_resourcereadtool": {
+      "name": {
+        "v": "ResourceReadTool",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "n_resourceregistry": {
+      "name": {
+        "v": "ResourceRegistry",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "n_resourcetoolbase": {
+      "name": {
+        "v": "ResourceToolBase",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "n_resourceuri": {
+      "name": {
+        "v": "ResourceUri",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "n_resourceverb": {
+      "name": {
+        "v": "ResourceVerb",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "n_resourcewritetool": {
+      "name": {
+        "v": "ResourceWriteTool",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "n_schemaparts": {
+      "name": {
+        "v": "SchemaParts",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "n_schemaregistry": {
+      "name": {
+        "v": "SchemaRegistry",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "n_schemecard": {
+      "name": {
+        "v": "SchemeCard",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "n_secretaccessdeniedexception": {
+      "name": {
+        "v": "SecretAccessDeniedException",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "n_secretacl": {
+      "name": {
+        "v": "SecretAcl",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "n_secretcallerscope": {
+      "name": {
+        "v": "SecretCallerScope",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "n_secretentry": {
+      "name": {
+        "v": "SecretEntry",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "n_secretentryinfo": {
+      "name": {
+        "v": "SecretEntryInfo",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "n_secretfields": {
+      "name": {
+        "v": "SecretFields",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "n_secretref": {
+      "name": {
+        "v": "SecretRef",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "n_secretresolver": {
+      "name": {
+        "v": "SecretResolver",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "n_secretright": {
+      "name": {
+        "v": "SecretRight",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "n_secretscope": {
+      "name": {
+        "v": "SecretScope",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "n_secretyamlfile": {
+      "name": {
+        "v": "SecretYamlFile",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "n_selfinvocationlauncher": {
+      "name": {
+        "v": "SelfInvocationLauncher",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "n_serverprojectroot": {
+      "name": {
+        "v": "ServerProjectRoot",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "n_settingsresolver": {
+      "name": {
+        "v": "SettingsResolver",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "n_shellcommand": {
+      "name": {
+        "v": "ShellCommand",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "n_shellresult": {
+      "name": {
+        "v": "ShellResult",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "n_shellstatus": {
+      "name": {
+        "v": "ShellStatus",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "n_singleclientresolver": {
+      "name": {
+        "v": "SingleClientResolver",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "n_skillactivatetool": {
+      "name": {
+        "v": "SkillActivateTool",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "n_skillcapabilityprobe": {
+      "name": {
+        "v": "SkillCapabilityProbe",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "n_skillcard": {
+      "name": {
+        "v": "SkillCard",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "n_skilldeactivatetool": {
+      "name": {
+        "v": "SkillDeactivateTool",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "n_skillentry": {
+      "name": {
+        "v": "SkillEntry",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "n_skillfindtool": {
+      "name": {
+        "v": "SkillFindTool",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "n_skillfrontmatter": {
+      "name": {
+        "v": "SkillFrontmatter",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "n_skilllibrary": {
+      "name": {
+        "v": "SkillLibrary",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "n_skilllookup": {
+      "name": {
+        "v": "SkillLookup",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "n_skillmatch": {
+      "name": {
+        "v": "SkillMatch",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "n_skillquery": {
+      "name": {
+        "v": "SkillQuery",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "n_skillreadresourcetool": {
+      "name": {
+        "v": "SkillReadResourceTool",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "n_skillrequirements": {
+      "name": {
+        "v": "SkillRequirements",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "n_skillsession": {
+      "name": {
+        "v": "SkillSession",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "n_skillsourcecontext": {
+      "name": {
+        "v": "SkillSourceContext",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "n_skillsourceregistry": {
+      "name": {
+        "v": "SkillSourceRegistry",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "n_skillstate": {
+      "name": {
+        "v": "SkillState",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "n_skilltag": {
+      "name": {
+        "v": "SkillTag",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "n_skilltrust": {
+      "name": {
+        "v": "SkillTrust",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "n_skilltrustgrant": {
+      "name": {
+        "v": "SkillTrustGrant",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "n_sourcelevel": {
+      "name": {
+        "v": "SourceLevel",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "n_sourceorigin": {
+      "name": {
+        "v": "SourceOrigin",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "n_spawnresult": {
+      "name": {
+        "v": "SpawnResult",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "n_splaagentsection": {
+      "name": {
+        "v": "SplaAgentSection",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "n_splaconnectionsection": {
+      "name": {
+        "v": "SplaConnectionSection",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "n_spladefaults": {
+      "name": {
+        "v": "SplaDefaults",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "n_splafilelogger": {
+      "name": {
+        "v": "SplaFileLogger",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "n_splafileloggerprovider": {
+      "name": {
+        "v": "SplaFileLoggerProvider",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "n_splalibrariansection": {
+      "name": {
+        "v": "SplaLibrarianSection",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "n_splallmsection": {
+      "name": {
+        "v": "SplaLlmSection",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "n_splamcpsection": {
+      "name": {
+        "v": "SplaMcpSection",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "n_splamcpserversection": {
+      "name": {
+        "v": "SplaMcpServerSection",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "n_splamodelsection": {
+      "name": {
+        "v": "SplaModelSection",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "n_splamountsection": {
+      "name": {
+        "v": "SplaMountSection",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "n_splapermissionssection": {
+      "name": {
+        "v": "SplaPermissionsSection",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "n_splapluginpanelevent": {
+      "name": {
+        "v": "SplaPluginPanelEvent",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "n_splapluginsection": {
+      "name": {
+        "v": "SplaPluginSection",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "n_splapluginuicommand": {
+      "name": {
+        "v": "SplaPluginUiCommand",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "n_splapluginuicommandkind": {
+      "name": {
+        "v": "SplaPluginUiCommandKind",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "n_splaproject": {
+      "name": {
+        "v": "SplaProject",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "n_splasecretssection": {
+      "name": {
+        "v": "SplaSecretsSection",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "n_splaskillsection": {
+      "name": {
+        "v": "SplaSkillSection",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "n_splaskillsourcesection": {
+      "name": {
+        "v": "SplaSkillSourceSection",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "n_splaskillspolicysection": {
+      "name": {
+        "v": "SplaSkillsPolicySection",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "n_splaskillssection": {
+      "name": {
+        "v": "SplaSkillsSection",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "n_splatelemetry": {
+      "name": {
+        "v": "SplaTelemetry",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "n_splatelemetrycontext": {
+      "name": {
+        "v": "SplaTelemetryContext",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "n_splatelemetrycontextextensions": {
+      "name": {
+        "v": "SplaTelemetryContextExtensions",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "n_splatoolpermissionrule": {
+      "name": {
+        "v": "SplaToolPermissionRule",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "n_splauisection": {
+      "name": {
+        "v": "SplaUiSection",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "n_sshconnectionfactory": {
+      "name": {
+        "v": "SshConnectionFactory",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "n_sshhostconfig": {
+      "name": {
+        "v": "SshHostConfig",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "n_sshlivesession": {
+      "name": {
+        "v": "SshLiveSession",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "n_sshsessionhub": {
+      "name": {
+        "v": "SshSessionHub",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "n_sshsettings": {
+      "name": {
+        "v": "SshSettings",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "n_state": {
+      "name": {
+        "v": "State",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "n_statssnapshot": {
+      "name": {
+        "v": "StatsSnapshot",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "n_statusframe": {
+      "name": {
+        "v": "StatusFrame",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "n_stopframe": {
+      "name": {
+        "v": "StopFrame",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "n_substance": {
+      "name": {
+        "v": "Substance",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "n_tagcount": {
+      "name": {
+        "v": "TagCount",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "n_taglibrarian": {
+      "name": {
+        "v": "TagLibrarian",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "n_tagvocabulary": {
+      "name": {
+        "v": "TagVocabulary",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "n_taskcanceltool": {
+      "name": {
+        "v": "TaskCancelTool",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "n_tasklisttool": {
+      "name": {
+        "v": "TaskListTool",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "n_taskoutputtool": {
+      "name": {
+        "v": "TaskOutputTool",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "n_telemetrycollector": {
+      "name": {
+        "v": "TelemetryCollector",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "n_telemetrystage": {
+      "name": {
+        "v": "TelemetryStage",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "n_tokenaccountingmiddleware": {
+      "name": {
+        "v": "TokenAccountingMiddleware",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      },
+      "description": {
+        "v": "Stage Accounting. Folds the provider token figures into the project and machine tallies and the telemetry meter, once per network attempt. Lives in SPLA.Agent, runs here.",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "n_tokenestimate": {
+      "name": {
+        "v": "TokenEstimate",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "n_tokenusagetotals": {
+      "name": {
+        "v": "TokenUsageTotals",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "n_toolcall": {
+      "name": {
+        "v": "ToolCall",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "n_toolcallcontext": {
+      "name": {
+        "v": "ToolCallContext",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "n_toolcallinvocation": {
+      "name": {
+        "v": "ToolCallInvocation",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "n_toolcontent": {
+      "name": {
+        "v": "ToolContent",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "n_tooldefinition": {
+      "name": {
+        "v": "ToolDefinition",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "n_tooleffect": {
+      "name": {
+        "v": "ToolEffect",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "n_toolexposure": {
+      "name": {
+        "v": "ToolExposure",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "n_toolfunctiondefinition": {
+      "name": {
+        "v": "ToolFunctionDefinition",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "n_toolhostscope": {
+      "name": {
+        "v": "ToolHostScope",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "n_toolimage": {
+      "name": {
+        "v": "ToolImage",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "n_tooljson": {
+      "name": {
+        "v": "ToolJson",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "n_tooloutcome": {
+      "name": {
+        "v": "ToolOutcome",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "n_toolpipelineblueprint": {
+      "name": {
+        "v": "ToolPipelineBlueprint",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "n_toolpipelinestage": {
+      "name": {
+        "v": "ToolPipelineStage",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "n_toolprogress": {
+      "name": {
+        "v": "ToolProgress",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "n_toolprogressdetail": {
+      "name": {
+        "v": "ToolProgressDetail",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "n_toolrepeattracker": {
+      "name": {
+        "v": "ToolRepeatTracker",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "n_toolresolutionstage": {
+      "name": {
+        "v": "ToolResolutionStage",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "n_toolresource": {
+      "name": {
+        "v": "ToolResource",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "n_toolresult": {
+      "name": {
+        "v": "ToolResult",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "n_toolrisk": {
+      "name": {
+        "v": "ToolRisk",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "n_toolscope": {
+      "name": {
+        "v": "ToolScope",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "n_toolsetactivatetool": {
+      "name": {
+        "v": "ToolSetActivateTool",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "n_toolsetactivation": {
+      "name": {
+        "v": "ToolSetActivation",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "n_toolsetactivationby": {
+      "name": {
+        "v": "ToolSetActivationBy",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "n_toolsetdeactivatetool": {
+      "name": {
+        "v": "ToolSetDeactivateTool",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "n_toolsetdescriptor": {
+      "name": {
+        "v": "ToolSetDescriptor",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "n_toolsetdisclosurestage": {
+      "name": {
+        "v": "ToolSetDisclosureStage",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "n_toolsetlevel": {
+      "name": {
+        "v": "ToolSetLevel",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "n_toolsetorigin": {
+      "name": {
+        "v": "ToolSetOrigin",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "n_toolsetregistry": {
+      "name": {
+        "v": "ToolSetRegistry",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "n_toolsetsession": {
+      "name": {
+        "v": "ToolSetSession",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "n_tooltext": {
+      "name": {
+        "v": "ToolText",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "n_turnattempt": {
+      "name": {
+        "v": "TurnAttempt",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "n_turnoutcomemiddleware": {
+      "name": {
+        "v": "TurnOutcomeMiddleware",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "n_utf8textconverter": {
+      "name": {
+        "v": "Utf8TextConverter",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "n_windowsshellintegration": {
+      "name": {
+        "v": "WindowsShellIntegration",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "n_yamlsectionsplicer": {
+      "name": {
+        "v": "YamlSectionSplicer",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "n_zone": {
+      "name": {
+        "v": "Zone",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "n_zoneedge": {
+      "name": {
+        "v": "ZoneEdge",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "n_zoneeffect": {
+      "name": {
+        "v": "ZoneEffect",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "n_zoneshadowstage": {
+      "name": {
+        "v": "ZoneShadowStage",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "z_llm": {
+      "name": {
+        "v": "LLM: провайдеры и ход (41)",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "z_llm_providers": {
+      "name": {
+        "v": "Провайдеры и шлюз (10)",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "z_llm_middleware": {
+      "name": {
+        "v": "Цепочка middleware (11)",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "z_llm_turn": {
+      "name": {
+        "v": "Модель хода (20)",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "z_toolpipe": {
+      "name": {
+        "v": "Конвейер инструментов (MCP) (78)",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "z_tool_contracts": {
+      "name": {
+        "v": "Контракты конвейера (15)",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "z_tool_stages": {
+      "name": {
+        "v": "Стадии конвейера (11)",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "z_tool_host": {
+      "name": {
+        "v": "Хост и выставление наружу (17)",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "z_tool_progress": {
+      "name": {
+        "v": "Прогресс и фон (14)",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "z_agent_comp": {
+      "name": {
+        "v": "Композиция агента (14)",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "z_formats": {
+      "name": {
+        "v": "Конвертеры форматов (7)",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "z_plugins": {
+      "name": {
+        "v": "Плагины и наборы инструментов (23)",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "z_plugin_contracts": {
+      "name": {
+        "v": "Контракты плагина (5)",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "z_plugin_loading": {
+      "name": {
+        "v": "Загрузка и обнаружение (9)",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "z_toolsets": {
+      "name": {
+        "v": "ToolSets (9)",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "z_chat": {
+      "name": {
+        "v": "Чат и сессия (17)",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "z_security": {
+      "name": {
+        "v": "Безопасность и полномочия (73)",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "z_sec_permissions": {
+      "name": {
+        "v": "Разрешения (12)",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "z_sec_zones": {
+      "name": {
+        "v": "Зоны и рёбра (11)",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "z_sec_sandbox": {
+      "name": {
+        "v": "Песочница и возможности хоста (21)",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "z_sec_secrets": {
+      "name": {
+        "v": "Секреты (21)",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "z_sec_secrets_domain": {
+      "name": {
+        "v": "Хранилище и политика (19)",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "z_sec_secrets_dpapi": {
+      "name": {
+        "v": "DPAPI (2)",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "z_sec_identity": {
+      "name": {
+        "v": "Идентичность (8)",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "z_memory": {
+      "name": {
+        "v": "Память агента и контекст (32)",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "z_mem_kv": {
+      "name": {
+        "v": "KV и блобы (14)",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "z_mem_context": {
+      "name": {
+        "v": "Сборка контекста и метки (2)",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "z_mem_accounting": {
+      "name": {
+        "v": "Учёт токенов (4)",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "z_mem_tools": {
+      "name": {
+        "v": "Инструменты памяти (12)",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "z_content": {
+      "name": {
+        "v": "Содержимое, редактор и ресурсы (30)",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "z_editor": {
+      "name": {
+        "v": "Редактор и схемы (11)",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "z_resources": {
+      "name": {
+        "v": "Ресурсы (19)",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "z_res_core": {
+      "name": {
+        "v": "Реестр и провайдеры (12)",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "z_res_tools": {
+      "name": {
+        "v": "Инструменты ресурсов (7)",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "z_skills": {
+      "name": {
+        "v": "Навыки и библиотека (40)",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "z_skills_library": {
+      "name": {
+        "v": "Библиотека и каталог (17)",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "z_skills_sources": {
+      "name": {
+        "v": "Источники и доверие (17)",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "z_skills_session": {
+      "name": {
+        "v": "Сессия и инструменты (6)",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "z_project": {
+      "name": {
+        "v": "Проект и конфигурация (68)",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "z_proj_core": {
+      "name": {
+        "v": "Проект и хранилища (15)",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "z_proj_instances": {
+      "name": {
+        "v": "Инстансы (21)",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "z_proj_settings": {
+      "name": {
+        "v": "Настройки (32)",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "z_agentlife": {
+      "name": {
+        "v": "Жизненный цикл агента (3)",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "z_observability": {
+      "name": {
+        "v": "Наблюдаемость (12)",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "z_platform": {
+      "name": {
+        "v": "Платформа / ОС (4)",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "z_ssh": {
+      "name": {
+        "v": "SSH (7)",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "rt_call": {
+      "name": {
+        "v": "Вызов",
+        "at": "2026-08-31T09:10:34Z",
+        "origin": "authored"
+      },
+      "description": {
+        "v": "Прямое обращение к методу или API другого компонента. Порождается из кода.",
+        "at": "2026-08-31T09:10:34Z",
+        "origin": "authored"
+      }
+    },
+    "rt_composes": {
+      "name": {
+        "v": "Композиция",
+        "at": "2026-08-31T09:10:34Z",
+        "origin": "authored"
+      },
+      "description": {
+        "v": "Тип содержит другой как часть своего состояния. Порождается из кода.",
+        "at": "2026-08-31T09:10:34Z",
+        "origin": "authored"
+      }
+    },
+    "rt_extends": {
+      "name": {
+        "v": "Наследование",
+        "at": "2026-08-31T09:10:34Z",
+        "origin": "authored"
+      },
+      "description": {
+        "v": "Тип наследуется от другого типа. Порождается из кода.",
+        "at": "2026-08-31T09:10:34Z",
+        "origin": "authored"
+      }
+    },
+    "rt_implements": {
+      "name": {
+        "v": "Реализация",
+        "at": "2026-08-31T09:10:34Z",
+        "origin": "authored"
+      },
+      "description": {
+        "v": "Тип реализует объявленный интерфейс. Порождается из кода.",
+        "at": "2026-08-31T09:10:34Z",
+        "origin": "authored"
+      }
+    },
+    "v_semantic_atlas": {
+      "name": {
+        "v": "Семантический атлас",
+        "at": "2026-08-31T09:10:34Z",
+        "origin": "authored"
+      },
+      "description": {
+        "v": "Полная карта проекта: все сущности, разложенные по подсистемам.",
+        "at": "2026-08-31T09:10:34Z",
+        "origin": "authored"
+      }
+    },
+    "c_llm": {
+      "name": {
+        "v": "LLM: провайдеры и ход",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "c_llm_providers": {
+      "name": {
+        "v": "Провайдеры и шлюз",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "c_llm_middleware": {
+      "name": {
+        "v": "Цепочка middleware",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "c_llm_turn": {
+      "name": {
+        "v": "Модель хода",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "c_toolpipe": {
+      "name": {
+        "v": "Конвейер инструментов (MCP)",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "c_tool_contracts": {
+      "name": {
+        "v": "Контракты конвейера",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "c_tool_stages": {
+      "name": {
+        "v": "Стадии конвейера",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "c_tool_host": {
+      "name": {
+        "v": "Хост и выставление наружу",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "c_tool_progress": {
+      "name": {
+        "v": "Прогресс и фон",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "c_agent_comp": {
+      "name": {
+        "v": "Композиция агента",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "c_formats": {
+      "name": {
+        "v": "Конвертеры форматов",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "c_plugins": {
+      "name": {
+        "v": "Плагины и наборы инструментов",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "c_plugin_contracts": {
+      "name": {
+        "v": "Контракты плагина",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "c_plugin_loading": {
+      "name": {
+        "v": "Загрузка и обнаружение",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "c_toolsets": {
+      "name": {
+        "v": "ToolSets",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "c_chat": {
+      "name": {
+        "v": "Чат и сессия",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "c_security": {
+      "name": {
+        "v": "Безопасность и полномочия",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "c_sec_permissions": {
+      "name": {
+        "v": "Разрешения",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "c_sec_zones": {
+      "name": {
+        "v": "Зоны и рёбра",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "c_sec_sandbox": {
+      "name": {
+        "v": "Песочница и возможности хоста",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "c_sec_secrets": {
+      "name": {
+        "v": "Секреты",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "c_sec_secrets_domain": {
+      "name": {
+        "v": "Хранилище и политика",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "c_sec_secrets_dpapi": {
+      "name": {
+        "v": "DPAPI",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "c_sec_identity": {
+      "name": {
+        "v": "Идентичность",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "c_memory": {
+      "name": {
+        "v": "Память агента и контекст",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "c_mem_kv": {
+      "name": {
+        "v": "KV и блобы",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "c_mem_context": {
+      "name": {
+        "v": "Сборка контекста и метки",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "c_mem_accounting": {
+      "name": {
+        "v": "Учёт токенов",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "c_mem_tools": {
+      "name": {
+        "v": "Инструменты памяти",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "c_content": {
+      "name": {
+        "v": "Содержимое, редактор и ресурсы",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "c_editor": {
+      "name": {
+        "v": "Редактор и схемы",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "c_resources": {
+      "name": {
+        "v": "Ресурсы",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "c_res_core": {
+      "name": {
+        "v": "Реестр и провайдеры",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "c_res_tools": {
+      "name": {
+        "v": "Инструменты ресурсов",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "c_skills": {
+      "name": {
+        "v": "Навыки и библиотека",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "c_skills_library": {
+      "name": {
+        "v": "Библиотека и каталог",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "c_skills_sources": {
+      "name": {
+        "v": "Источники и доверие",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "c_skills_session": {
+      "name": {
+        "v": "Сессия и инструменты",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "c_project": {
+      "name": {
+        "v": "Проект и конфигурация",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "c_proj_core": {
+      "name": {
+        "v": "Проект и хранилища",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "c_proj_instances": {
+      "name": {
+        "v": "Инстансы",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "c_proj_settings": {
+      "name": {
+        "v": "Настройки",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "c_agentlife": {
+      "name": {
+        "v": "Жизненный цикл агента",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "c_observability": {
+      "name": {
+        "v": "Наблюдаемость",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "c_platform": {
+      "name": {
+        "v": "Платформа / ОС",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "c_ssh": {
+      "name": {
+        "v": "SSH",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    }
+  }
+}

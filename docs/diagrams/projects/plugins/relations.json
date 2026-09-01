@@ -1,0 +1,34 @@
+{
+  "relations": [
+    {
+      "id": "pe1",
+      "from": "tool_router",
+      "to": "tool_net_ping",
+      "type": "call",
+      "relation": "call",
+      "origin": "authored",
+      "status": "present",
+      "points": []
+    },
+    {
+      "id": "pe2",
+      "from": "tool_router",
+      "to": "tool_ssh_run",
+      "type": "call",
+      "relation": "call",
+      "origin": "authored",
+      "status": "present",
+      "points": []
+    },
+    {
+      "id": "pe3",
+      "from": "tool_router",
+      "to": "tool_doc_extract",
+      "type": "call",
+      "relation": "call",
+      "origin": "authored",
+      "status": "present",
+      "points": []
+    }
+  ]
+}

@@ -1,0 +1,766 @@
+{
+  "id": "v_zones",
+  "project": "spla_system",
+  "axis": "axis_security_zone",
+  "relations": {
+    "default": "visible",
+    "except": []
+  },
+  "zones": [
+    {
+      "id": "z_zone_model",
+      "container": "c_zone_model",
+      "parent": null,
+      "x": 0,
+      "y": 0,
+      "width": 360,
+      "height": 250
+    },
+    {
+      "id": "z_zone_core",
+      "container": "c_zone_core",
+      "parent": null,
+      "x": 480,
+      "y": 0,
+      "width": 920,
+      "height": 1940
+    },
+    {
+      "id": "z_zone_gate",
+      "container": "c_zone_gate",
+      "parent": null,
+      "x": 1520,
+      "y": 0,
+      "width": 920,
+      "height": 770
+    },
+    {
+      "id": "z_zone_plugin",
+      "container": "c_zone_plugin",
+      "parent": null,
+      "x": 2560,
+      "y": 0,
+      "width": 640,
+      "height": 250
+    },
+    {
+      "id": "z_zone_host",
+      "container": "c_zone_host",
+      "parent": null,
+      "x": 3320,
+      "y": 0,
+      "width": 920,
+      "height": 380
+    },
+    {
+      "id": "z_zone_foreign",
+      "container": "c_zone_foreign",
+      "parent": null,
+      "x": 4360,
+      "y": 0,
+      "width": 920,
+      "height": 250
+    },
+    {
+      "id": "z_zone_secret",
+      "container": "c_zone_secret",
+      "parent": null,
+      "x": 5400,
+      "y": 0,
+      "width": 640,
+      "height": 250
+    }
+  ],
+  "nodes": [
+    {
+      "id": "e_model",
+      "entity": "e_model",
+      "zone": "z_zone_model",
+      "container": "z_zone_model",
+      "x": 60,
+      "y": 100,
+      "width": 240,
+      "height": 90
+    },
+    {
+      "id": "e_chatinbox",
+      "entity": "e_chatinbox",
+      "zone": "z_zone_core",
+      "container": "z_zone_core",
+      "x": 540,
+      "y": 100,
+      "width": 240,
+      "height": 90
+    },
+    {
+      "id": "e_chatpump",
+      "entity": "e_chatpump",
+      "zone": "z_zone_core",
+      "container": "z_zone_core",
+      "x": 820,
+      "y": 100,
+      "width": 240,
+      "height": 90
+    },
+    {
+      "id": "e_chatturndriver",
+      "entity": "e_chatturndriver",
+      "zone": "z_zone_core",
+      "container": "z_zone_core",
+      "x": 1100,
+      "y": 100,
+      "width": 240,
+      "height": 90
+    },
+    {
+      "id": "e_chatruntime",
+      "entity": "e_chatruntime",
+      "zone": "z_zone_core",
+      "container": "z_zone_core",
+      "x": 540,
+      "y": 230,
+      "width": 240,
+      "height": 90
+    },
+    {
+      "id": "e_chatregistry",
+      "entity": "e_chatregistry",
+      "zone": "z_zone_core",
+      "container": "z_zone_core",
+      "x": 820,
+      "y": 230,
+      "width": 240,
+      "height": 90
+    },
+    {
+      "id": "e_agentruntime",
+      "entity": "e_agentruntime",
+      "zone": "z_zone_core",
+      "container": "z_zone_core",
+      "x": 1100,
+      "y": 230,
+      "width": 240,
+      "height": 90
+    },
+    {
+      "id": "e_conversationorchestrator",
+      "entity": "e_conversationorchestrator",
+      "zone": "z_zone_core",
+      "container": "z_zone_core",
+      "x": 540,
+      "y": 360,
+      "width": 240,
+      "height": 90
+    },
+    {
+      "id": "e_agentcontextcomposer",
+      "entity": "e_agentcontextcomposer",
+      "zone": "z_zone_core",
+      "container": "z_zone_core",
+      "x": 820,
+      "y": 360,
+      "width": 240,
+      "height": 90
+    },
+    {
+      "id": "e_iagentcontributor",
+      "entity": "e_iagentcontributor",
+      "zone": "z_zone_core",
+      "container": "z_zone_core",
+      "x": 1100,
+      "y": 360,
+      "width": 240,
+      "height": 90
+    },
+    {
+      "id": "e_contextitem",
+      "entity": "e_contextitem",
+      "zone": "z_zone_core",
+      "container": "z_zone_core",
+      "x": 540,
+      "y": 490,
+      "width": 240,
+      "height": 90
+    },
+    {
+      "id": "e_contextassembler",
+      "entity": "e_contextassembler",
+      "zone": "z_zone_core",
+      "container": "z_zone_core",
+      "x": 820,
+      "y": 490,
+      "width": 240,
+      "height": 90
+    },
+    {
+      "id": "e_workingmemoryinjector",
+      "entity": "e_workingmemoryinjector",
+      "zone": "z_zone_core",
+      "container": "z_zone_core",
+      "x": 1100,
+      "y": 490,
+      "width": 240,
+      "height": 90
+    },
+    {
+      "id": "e_agentfeaturecatalog",
+      "entity": "e_agentfeaturecatalog",
+      "zone": "z_zone_core",
+      "container": "z_zone_core",
+      "x": 540,
+      "y": 620,
+      "width": 240,
+      "height": 90
+    },
+    {
+      "id": "e_skillsession",
+      "entity": "e_skillsession",
+      "zone": "z_zone_core",
+      "container": "z_zone_core",
+      "x": 820,
+      "y": 620,
+      "width": 240,
+      "height": 90
+    },
+    {
+      "id": "e_toolsetregistry",
+      "entity": "e_toolsetregistry",
+      "zone": "z_zone_core",
+      "container": "z_zone_core",
+      "x": 1100,
+      "y": 620,
+      "width": 240,
+      "height": 90
+    },
+    {
+      "id": "e_illmgateway",
+      "entity": "e_illmgateway",
+      "zone": "z_zone_core",
+      "container": "z_zone_core",
+      "x": 540,
+      "y": 750,
+      "width": 240,
+      "height": 90
+    },
+    {
+      "id": "e_llmpipelineblueprint",
+      "entity": "e_llmpipelineblueprint",
+      "zone": "z_zone_core",
+      "container": "z_zone_core",
+      "x": 820,
+      "y": 750,
+      "width": 240,
+      "height": 90
+    },
+    {
+      "id": "e_illmmiddleware",
+      "entity": "e_illmmiddleware",
+      "zone": "z_zone_core",
+      "container": "z_zone_core",
+      "x": 1100,
+      "y": 750,
+      "width": 240,
+      "height": 90
+    },
+    {
+      "id": "e_repetitionguardmiddleware",
+      "entity": "e_repetitionguardmiddleware",
+      "zone": "z_zone_core",
+      "container": "z_zone_core",
+      "x": 540,
+      "y": 880,
+      "width": 240,
+      "height": 90
+    },
+    {
+      "id": "e_toolrepeattracker",
+      "entity": "e_toolrepeattracker",
+      "zone": "z_zone_core",
+      "container": "z_zone_core",
+      "x": 820,
+      "y": 880,
+      "width": 240,
+      "height": 90
+    },
+    {
+      "id": "e_tokenaccountingmiddleware",
+      "entity": "e_tokenaccountingmiddleware",
+      "zone": "z_zone_core",
+      "container": "z_zone_core",
+      "x": 1100,
+      "y": 880,
+      "width": 240,
+      "height": 90
+    },
+    {
+      "id": "e_llmturncontext",
+      "entity": "e_llmturncontext",
+      "zone": "z_zone_core",
+      "container": "z_zone_core",
+      "x": 540,
+      "y": 1010,
+      "width": 240,
+      "height": 90
+    },
+    {
+      "id": "e_llmproviderregistry",
+      "entity": "e_llmproviderregistry",
+      "zone": "z_zone_core",
+      "container": "z_zone_core",
+      "x": 820,
+      "y": 1010,
+      "width": 240,
+      "height": 90
+    },
+    {
+      "id": "e_openaicompatibleclient",
+      "entity": "e_openaicompatibleclient",
+      "zone": "z_zone_core",
+      "container": "z_zone_core",
+      "x": 1100,
+      "y": 1010,
+      "width": 240,
+      "height": 90
+    },
+    {
+      "id": "e_lmstudioprovider",
+      "entity": "e_lmstudioprovider",
+      "zone": "z_zone_core",
+      "container": "z_zone_core",
+      "x": 540,
+      "y": 1140,
+      "width": 240,
+      "height": 90
+    },
+    {
+      "id": "e_openrouterprovider",
+      "entity": "e_openrouterprovider",
+      "zone": "z_zone_core",
+      "container": "z_zone_core",
+      "x": 820,
+      "y": 1140,
+      "width": 240,
+      "height": 90
+    },
+    {
+      "id": "e_reasoningchoice",
+      "entity": "e_reasoningchoice",
+      "zone": "z_zone_core",
+      "container": "z_zone_core",
+      "x": 1100,
+      "y": 1140,
+      "width": 240,
+      "height": 90
+    },
+    {
+      "id": "e_spawnedagentrunner",
+      "entity": "e_spawnedagentrunner",
+      "zone": "z_zone_core",
+      "container": "z_zone_core",
+      "x": 540,
+      "y": 1270,
+      "width": 240,
+      "height": 90
+    },
+    {
+      "id": "e_progresstree",
+      "entity": "e_progresstree",
+      "zone": "z_zone_core",
+      "container": "z_zone_core",
+      "x": 820,
+      "y": 1270,
+      "width": 240,
+      "height": 90
+    },
+    {
+      "id": "e_datachannel",
+      "entity": "e_datachannel",
+      "zone": "z_zone_core",
+      "container": "z_zone_core",
+      "x": 1100,
+      "y": 1270,
+      "width": 240,
+      "height": 90
+    },
+    {
+      "id": "e_serviceevents",
+      "entity": "e_serviceevents",
+      "zone": "z_zone_core",
+      "container": "z_zone_core",
+      "x": 540,
+      "y": 1400,
+      "width": 240,
+      "height": 90
+    },
+    {
+      "id": "e_ichatstore",
+      "entity": "e_ichatstore",
+      "zone": "z_zone_core",
+      "container": "z_zone_core",
+      "x": 820,
+      "y": 1400,
+      "width": 240,
+      "height": 90
+    },
+    {
+      "id": "e_iprojectprovider",
+      "entity": "e_iprojectprovider",
+      "zone": "z_zone_core",
+      "container": "z_zone_core",
+      "x": 1100,
+      "y": 1400,
+      "width": 240,
+      "height": 90
+    },
+    {
+      "id": "e_keyvaluestore",
+      "entity": "e_keyvaluestore",
+      "zone": "z_zone_core",
+      "container": "z_zone_core",
+      "x": 540,
+      "y": 1530,
+      "width": 240,
+      "height": 90
+    },
+    {
+      "id": "e_blobstore",
+      "entity": "e_blobstore",
+      "zone": "z_zone_core",
+      "container": "z_zone_core",
+      "x": 820,
+      "y": 1530,
+      "width": 240,
+      "height": 90
+    },
+    {
+      "id": "e_filetokenusagestore",
+      "entity": "e_filetokenusagestore",
+      "zone": "z_zone_core",
+      "container": "z_zone_core",
+      "x": 1100,
+      "y": 1530,
+      "width": 240,
+      "height": 90
+    },
+    {
+      "id": "e_splaservicehost",
+      "entity": "e_splaservicehost",
+      "zone": "z_zone_core",
+      "container": "z_zone_core",
+      "x": 540,
+      "y": 1660,
+      "width": 240,
+      "height": 90
+    },
+    {
+      "id": "e_messagerouter",
+      "entity": "e_messagerouter",
+      "zone": "z_zone_core",
+      "container": "z_zone_core",
+      "x": 820,
+      "y": 1660,
+      "width": 240,
+      "height": 90
+    },
+    {
+      "id": "e_webclient",
+      "entity": "e_webclient",
+      "zone": "z_zone_core",
+      "container": "z_zone_core",
+      "x": 1100,
+      "y": 1660,
+      "width": 240,
+      "height": 90
+    },
+    {
+      "id": "e_cli",
+      "entity": "e_cli",
+      "zone": "z_zone_core",
+      "container": "z_zone_core",
+      "x": 540,
+      "y": 1790,
+      "width": 240,
+      "height": 90
+    },
+    {
+      "id": "e_avalonia",
+      "entity": "e_avalonia",
+      "zone": "z_zone_core",
+      "container": "z_zone_core",
+      "x": 820,
+      "y": 1790,
+      "width": 240,
+      "height": 90
+    },
+    {
+      "id": "e_iinstanceregistry",
+      "entity": "e_iinstanceregistry",
+      "zone": "z_zone_core",
+      "container": "z_zone_core",
+      "x": 1100,
+      "y": 1790,
+      "width": 240,
+      "height": 90
+    },
+    {
+      "id": "e_mcphost",
+      "entity": "e_mcphost",
+      "zone": "z_zone_gate",
+      "container": "z_zone_gate",
+      "x": 1580,
+      "y": 100,
+      "width": 240,
+      "height": 90
+    },
+    {
+      "id": "e_toolpipelineblueprint",
+      "entity": "e_toolpipelineblueprint",
+      "zone": "z_zone_gate",
+      "container": "z_zone_gate",
+      "x": 1860,
+      "y": 100,
+      "width": 240,
+      "height": 90
+    },
+    {
+      "id": "e_itoolmiddleware",
+      "entity": "e_itoolmiddleware",
+      "zone": "z_zone_gate",
+      "container": "z_zone_gate",
+      "x": 2140,
+      "y": 100,
+      "width": 240,
+      "height": 90
+    },
+    {
+      "id": "e_toolresolutionstage",
+      "entity": "e_toolresolutionstage",
+      "zone": "z_zone_gate",
+      "container": "z_zone_gate",
+      "x": 1580,
+      "y": 230,
+      "width": 240,
+      "height": 90
+    },
+    {
+      "id": "e_permissionstage",
+      "entity": "e_permissionstage",
+      "zone": "z_zone_gate",
+      "container": "z_zone_gate",
+      "x": 1860,
+      "y": 230,
+      "width": 240,
+      "height": 90
+    },
+    {
+      "id": "e_permissionmanager",
+      "entity": "e_permissionmanager",
+      "zone": "z_zone_gate",
+      "container": "z_zone_gate",
+      "x": 2140,
+      "y": 230,
+      "width": 240,
+      "height": 90
+    },
+    {
+      "id": "e_icapabilitygate",
+      "entity": "e_icapabilitygate",
+      "zone": "z_zone_gate",
+      "container": "z_zone_gate",
+      "x": 1580,
+      "y": 360,
+      "width": 240,
+      "height": 90
+    },
+    {
+      "id": "e_zoneshadowstage",
+      "entity": "e_zoneshadowstage",
+      "zone": "z_zone_gate",
+      "container": "z_zone_gate",
+      "x": 1860,
+      "y": 360,
+      "width": 240,
+      "height": 90
+    },
+    {
+      "id": "e_zone",
+      "entity": "e_zone",
+      "zone": "z_zone_gate",
+      "container": "z_zone_gate",
+      "x": 2140,
+      "y": 360,
+      "width": 240,
+      "height": 90
+    },
+    {
+      "id": "e_edgeclassifier",
+      "entity": "e_edgeclassifier",
+      "zone": "z_zone_gate",
+      "container": "z_zone_gate",
+      "x": 1580,
+      "y": 490,
+      "width": 240,
+      "height": 90
+    },
+    {
+      "id": "e_edgeledger",
+      "entity": "e_edgeledger",
+      "zone": "z_zone_gate",
+      "container": "z_zone_gate",
+      "x": 1860,
+      "y": 490,
+      "width": 240,
+      "height": 90
+    },
+    {
+      "id": "e_backgroundstage",
+      "entity": "e_backgroundstage",
+      "zone": "z_zone_gate",
+      "container": "z_zone_gate",
+      "x": 2140,
+      "y": 490,
+      "width": 240,
+      "height": 90
+    },
+    {
+      "id": "e_progressnodestage",
+      "entity": "e_progressnodestage",
+      "zone": "z_zone_gate",
+      "container": "z_zone_gate",
+      "x": 1580,
+      "y": 620,
+      "width": 240,
+      "height": 90
+    },
+    {
+      "id": "e_windowsidentityresolver",
+      "entity": "e_windowsidentityresolver",
+      "zone": "z_zone_gate",
+      "container": "z_zone_gate",
+      "x": 1860,
+      "y": 620,
+      "width": 240,
+      "height": 90
+    },
+    {
+      "id": "e_pluginmanager",
+      "entity": "e_pluginmanager",
+      "zone": "z_zone_plugin",
+      "container": "z_zone_plugin",
+      "x": 2620,
+      "y": 100,
+      "width": 240,
+      "height": 90
+    },
+    {
+      "id": "e_pluginloadcontext",
+      "entity": "e_pluginloadcontext",
+      "zone": "z_zone_plugin",
+      "container": "z_zone_plugin",
+      "x": 2900,
+      "y": 100,
+      "width": 240,
+      "height": 90
+    },
+    {
+      "id": "e_basictools",
+      "entity": "e_basictools",
+      "zone": "z_zone_host",
+      "container": "z_zone_host",
+      "x": 3380,
+      "y": 100,
+      "width": 240,
+      "height": 90
+    },
+    {
+      "id": "e_ishell",
+      "entity": "e_ishell",
+      "zone": "z_zone_host",
+      "container": "z_zone_host",
+      "x": 3660,
+      "y": 100,
+      "width": 240,
+      "height": 90
+    },
+    {
+      "id": "e_iworkspace",
+      "entity": "e_iworkspace",
+      "zone": "z_zone_host",
+      "container": "z_zone_host",
+      "x": 3940,
+      "y": 100,
+      "width": 240,
+      "height": 90
+    },
+    {
+      "id": "e_isandbox",
+      "entity": "e_isandbox",
+      "zone": "z_zone_host",
+      "container": "z_zone_host",
+      "x": 3380,
+      "y": 230,
+      "width": 240,
+      "height": 90
+    },
+    {
+      "id": "e_host_os",
+      "entity": "e_host_os",
+      "zone": "z_zone_host",
+      "container": "z_zone_host",
+      "x": 3660,
+      "y": 230,
+      "width": 240,
+      "height": 90
+    },
+    {
+      "id": "e_mcpproxytool",
+      "entity": "e_mcpproxytool",
+      "zone": "z_zone_foreign",
+      "container": "z_zone_foreign",
+      "x": 4420,
+      "y": 100,
+      "width": 240,
+      "height": 90
+    },
+    {
+      "id": "e_mcpserversession",
+      "entity": "e_mcpserversession",
+      "zone": "z_zone_foreign",
+      "container": "z_zone_foreign",
+      "x": 4700,
+      "y": 100,
+      "width": 240,
+      "height": 90
+    },
+    {
+      "id": "e_mcpstdioserver",
+      "entity": "e_mcpstdioserver",
+      "zone": "z_zone_foreign",
+      "container": "z_zone_foreign",
+      "x": 4980,
+      "y": 100,
+      "width": 240,
+      "height": 90
+    },
+    {
+      "id": "e_isecretstore",
+      "entity": "e_isecretstore",
+      "zone": "z_zone_secret",
+      "container": "z_zone_secret",
+      "x": 5460,
+      "y": 100,
+      "width": 240,
+      "height": 90
+    },
+    {
+      "id": "e_secretresolver",
+      "entity": "e_secretresolver",
+      "zone": "z_zone_secret",
+      "container": "z_zone_secret",
+      "x": 5740,
+      "y": 100,
+      "width": 240,
+      "height": 90
+    }
+  ]
+}

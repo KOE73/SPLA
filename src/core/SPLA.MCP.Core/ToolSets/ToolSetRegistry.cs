@@ -24,6 +24,16 @@ public sealed class ToolSetRegistry
     private readonly List<ToolSetDescriptor> _sets = [];
     private readonly Dictionary<string, string> _setOfTool = new(StringComparer.OrdinalIgnoreCase);
 
+    // _sets and _setOfTool used to be write-once (constructor only). An MCP server now adds and
+    // removes its set after construction, from its own connection thread, while call threads read
+    // All/Find/SetOfTool/LevelOf concurrently. A single lock around every mutation and every read is
+    // the simplest correct answer: the two collections must change together (RemoveDynamic drops
+    // entries from both), so a lock-free scheme would need to reason about the moment between them
+    // anyway, and these operations are short and infrequent enough that lock contention is not a
+    // real cost. Copy-on-read (`All`) keeps an enumerator a caller holds onto from ever observing a
+    // torn state.
+    private readonly object _gate = new();
+
     public ToolSetRegistry(
         ResolvedSettings settings,
         PluginManager? plugins = null,
@@ -66,15 +76,61 @@ public sealed class ToolSetRegistry
             _setOfTool[toolName] = set.Id;
     }
 
-    /// <summary>Every known set, core first, then plugins in discovery order.</summary>
-    public IReadOnlyList<ToolSetDescriptor> All => _sets;
+    /// <summary>
+    /// Adds a set after construction — the mechanism a connected MCP server needs
+    /// (PLAN_20260826_service_mcp-client, step 1): a server's tool list is unknown until the
+    /// handshake completes, which is well after this registry was built. <see cref="Add"/> stays
+    /// private and is still what the constructor calls for the sets known up front; this is the same
+    /// operation opened up for later callers.
+    /// </summary>
+    public void AddDynamic(ToolSetDescriptor set)
+    {
+        lock (_gate)
+            Add(set);
+    }
 
-    public ToolSetDescriptor? Find(string setId) =>
-        _sets.FirstOrDefault(s => string.Equals(s.Id, setId, StringComparison.OrdinalIgnoreCase));
+    /// <summary>
+    /// Removes a dynamically-added set and every tool-name mapping it owned. Returns whether a set by
+    /// that id was found. Both collections are dropped under the same lock — leaving <c>_setOfTool</c>
+    /// pointing at a set id <see cref="Find"/> can no longer resolve would turn "the server
+    /// disconnected" into a dangling reference instead of "this tool is no longer gated by anything".
+    /// </summary>
+    public bool RemoveDynamic(string setId)
+    {
+        lock (_gate)
+        {
+            var index = _sets.FindIndex(s => string.Equals(s.Id, setId, StringComparison.OrdinalIgnoreCase));
+            if (index < 0) return false;
+
+            var set = _sets[index];
+            _sets.RemoveAt(index);
+            foreach (var toolName in set.ToolNames)
+                _setOfTool.Remove(toolName);
+            return true;
+        }
+    }
+
+    /// <summary>Every known set, core first, then plugins and connected MCP servers in discovery/connect
+    /// order. Copied under the lock so an enumerator a caller holds onto never observes a set removed
+    /// out from under it mid-iteration.</summary>
+    public IReadOnlyList<ToolSetDescriptor> All
+    {
+        get { lock (_gate) return _sets.ToList(); }
+    }
+
+    public ToolSetDescriptor? Find(string setId)
+    {
+        lock (_gate)
+            return _sets.FirstOrDefault(s => string.Equals(s.Id, setId, StringComparison.OrdinalIgnoreCase));
+    }
 
     /// <summary>Which set a tool belongs to, or null for a tool no set claims (a built-in tool that
     /// belongs to no feature). An unclaimed tool is not gated by this mechanism at all.</summary>
-    public string? SetOfTool(string toolName) => _setOfTool.GetValueOrDefault(toolName);
+    public string? SetOfTool(string toolName)
+    {
+        lock (_gate)
+            return _setOfTool.GetValueOrDefault(toolName);
+    }
 
     /// <summary>
     /// How far this set may reach the model. An explicit <c>toolsets:</c> entry wins; without one the
@@ -93,6 +149,13 @@ public sealed class ToolSetRegistry
 
         // Core sets are already gated by agent.capabilities before they get here: a feature that is
         // off has no descriptor at all, so a descriptor means the capability is on.
+        //
+        // An Origin: Mcp set falls through to the same Enabled default, and deliberately has no
+        // "is this server enabled" delegate the way the plugin branch does. A plugin can be disabled
+        // while its descriptor still exists (its assembly stays loaded, only exposure is gated) — an
+        // MCP server cannot: disabling one removes its ToolSetDescriptor and unregisters its tools
+        // outright (ADR_20260826_service_mcp-client), there is no "descriptor for an off server" state
+        // to ask about. The descriptor existing already means the server is connected and on.
         return ToolSetLevel.Enabled;
     }
 

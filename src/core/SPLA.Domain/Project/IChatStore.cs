@@ -25,7 +25,18 @@ public interface IChatStore
     /// <summary>All chats, newest-updated first. A DB backend does this with ORDER BY.</summary>
     IReadOnlyList<ChatSession> ListChats();
 
-    /// <summary>Remove a chat and its summary. No-op if absent.</summary>
+    /// <summary>Archived chats, newest-updated first — never included in <see cref="ListChats"/>.</summary>
+    IReadOnlyList<ChatSession> ListArchivedChats();
+
+    /// <summary>Moves a chat out of <see cref="ListChats"/> and into <see cref="ListArchivedChats"/>,
+    /// without deleting it. No-op if already archived or absent.</summary>
+    void Archive(string id);
+
+    /// <summary>Moves a chat back into <see cref="ListChats"/>. No-op if not archived.</summary>
+    void Unarchive(string id);
+
+    /// <summary>Remove a chat (active or archived) and everything hanging off it — summary, backups,
+    /// and image sidecar. No-op if absent.</summary>
     void DeleteChat(string id);
 
     /// <summary>Persist the markdown summary for a chat.</summary>

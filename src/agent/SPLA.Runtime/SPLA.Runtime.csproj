@@ -17,6 +17,7 @@
     <ProjectReference Include="..\..\core\SPLA.Domain\SPLA.Domain.csproj" />
     <ProjectReference Include="..\..\core\SPLA.MCP.Core\SPLA.MCP.Core.csproj" />
     <ProjectReference Include="..\..\core\SPLA.Observability\SPLA.Observability.csproj" />
+    <ProjectReference Include="..\..\service\SPLA.Mcp.Client\SPLA.Mcp.Client.csproj" />
     <ProjectReference Include="..\..\llm\SPLA.LLM.LMStudio\SPLA.LLM.LMStudio.csproj" />
     <ProjectReference Include="..\..\llm\SPLA.LLM.LocalAI\SPLA.LLM.LocalAI.csproj" />
     <ProjectReference Include="..\..\llm\SPLA.LLM.OpenAiCompat\SPLA.LLM.OpenAiCompat.csproj" />

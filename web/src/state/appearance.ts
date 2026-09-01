@@ -12,13 +12,33 @@ declare global {
   }
 }
 
+// "system" is not a palette in themes.css — it means "resolve to light/dark from the OS and keep
+// tracking it". Kept as its own constant so every place that special-cases it says why.
+export const SYSTEM_THEME = "system";
+
+function resolveSystemTheme(): string {
+  return window.matchMedia?.("(prefers-color-scheme: light)").matches ? "light" : "dark";
+}
+
+let systemQuery: MediaQueryList | null = null;
+
+function watchSystemTheme(enabled: boolean) {
+  if (!window.matchMedia) return;
+  systemQuery ??= window.matchMedia("(prefers-color-scheme: light)");
+  systemQuery.onchange = enabled
+    ? () => { document.documentElement.setAttribute("data-theme", resolveSystemTheme()); reinitMermaidTheme(); }
+    : null;
+}
+
 export function applyTheme(name: string) {
   // themes.css selectors are lowercase ([data-theme="cream"]); the server's stored value has been
   // observed capitalized ("Cream") for older .spla projects — normalize defensively so a stale
   // casing in project data never silently fails to apply.
   const normalized = name.toLowerCase();
-  document.documentElement.setAttribute("data-theme", normalized);
+  const resolved = normalized === SYSTEM_THEME ? resolveSystemTheme() : normalized;
+  document.documentElement.setAttribute("data-theme", resolved);
   localStorage.setItem("spla.theme", normalized);
+  watchSystemTheme(normalized === SYSTEM_THEME);
   reinitMermaidTheme();
 }
 

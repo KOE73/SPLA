@@ -19,6 +19,7 @@
     <File Path="agents/composition.md" />
     <File Path="agents/data-ownership.md" />
     <File Path="agents/documentation.md" />
+    <File Path="agents/glossary.md" />
     <File Path="agents/observability.md" />
     <File Path="agents/plugins.md" />
     <File Path="agents/protocol.md" />
@@ -44,6 +45,79 @@
     <File Path="docs/schema-editor-doc-a-schemas.md" />
     <File Path="docs/schema-editor-doc-b-tokens.md" />
     <File Path="docs/sys_prompt_rules_ru.md" />
+    <File Path="docs/IDEA_20260825_ui_architecture-diagrams.md" />
+    <File Path="docs/KNOWN_ISSUES.md" />
+  </Folder>
+  <Folder Name="/docs/diagrams/">
+    <File Path="docs/diagrams/README.md" />
+    <File Path="docs/diagrams/README_RU.md" />
+    <File Path="docs/diagrams/TEXT-GUIDE.md" />
+    <File Path="docs/diagrams/catalog.json" />
+    <File Path="docs/diagrams/styles.json" />
+    <File Path="docs/diagrams/projects/AGENTS.md" />
+  </Folder>
+  <Folder Name="/docs/diagrams/mapping/">
+    <File Path="docs/diagrams/mapping/semantic-atlas/core.map.json" />
+  </Folder>
+  <Folder Name="/tools/spla-arch/">
+    <File Path="tools/spla-arch/AGENTS.md" />
+    <File Path="tools/spla-arch/README.md" />
+    <File Path="tools/spla-arch/main.go" />
+    <File Path="tools/spla-arch/build.go" />
+    <File Path="tools/spla-arch/run.go" />
+    <File Path="tools/spla-arch/verify.go" />
+    <File Path="tools/spla-arch/mapping/mapping.go" />
+    <File Path="tools/spla-arch/mapping/known.go" />
+    <File Path="tools/spla-arch/layout/nested.go" />
+    <File Path="tools/spla-arch/parser/scan.go" />
+  </Folder>
+  <Folder Name="/tools/spla-diagram/">
+    <File Path="tools/spla-diagram/docs/REQUIREMENTS.md" />
+    <File Path="tools/spla-diagram/docs/REQUIREMENTS.ru.md" />
+    <File Path="tools/spla-diagram/docs/CONTRACT.md" />
+    <File Path="tools/spla-diagram/docs/API.md" />
+    <File Path="tools/spla-diagram/docs/STYLES.md" />
+    <File Path="tools/spla-diagram/index.html" />
+    <File Path="tools/spla-diagram/package.json" />
+    <File Path="tools/spla-diagram/tsconfig.json" />
+    <File Path="tools/spla-diagram/tsconfig.node.json" />
+    <File Path="tools/spla-diagram/vite.config.ts" />
+  </Folder>
+  <Folder Name="/tools/spla-diagram/src/">
+    <File Path="tools/spla-diagram/src/index.ts" />
+    <File Path="tools/spla-diagram/src/vite-env.d.ts" />
+    <File Path="tools/spla-diagram/src/app/main.ts" />
+    <File Path="tools/spla-diagram/src/geometry/types.ts" />
+    <File Path="tools/spla-diagram/src/geometry/rect.ts" />
+    <File Path="tools/spla-diagram/src/model/wire-types.ts" />
+    <File Path="tools/spla-diagram/src/model/types.ts" />
+    <File Path="tools/spla-diagram/src/model/document.ts" />
+    <File Path="tools/spla-diagram/src/model/wire.ts" />
+    <File Path="tools/spla-diagram/src/canvas/DiagramCanvas.ts" />
+    <File Path="tools/spla-diagram/src/canvas/Viewport.ts" />
+    <File Path="tools/spla-diagram/src/canvas/defs.ts" />
+    <File Path="tools/spla-diagram/src/canvas/svg.ts" />
+    <File Path="tools/spla-diagram/src/canvas/render/ElementRenderer.ts" />
+    <File Path="tools/spla-diagram/src/canvas/render/TypeRegistry.ts" />
+    <File Path="tools/spla-diagram/src/canvas/render/BoxRenderer.ts" />
+    <File Path="tools/spla-diagram/src/canvas/render/ContainerRenderer.ts" />
+    <File Path="tools/spla-diagram/src/canvas/render/styles.ts" />
+    <File Path="tools/spla-diagram/src/canvas/render/edgeStyles.ts" />
+    <File Path="tools/spla-diagram/src/canvas/render/handles.ts" />
+    <File Path="tools/spla-diagram/src/canvas/ports/PortAssigner.ts" />
+    <File Path="tools/spla-diagram/src/canvas/ports/assigners.ts" />
+    <File Path="tools/spla-diagram/src/canvas/routing/EdgeRouter.ts" />
+    <File Path="tools/spla-diagram/src/interaction/roles.ts" />
+    <File Path="tools/spla-diagram/src/interaction/InteractionController.ts" />
+    <File Path="tools/spla-diagram/src/editor/DiagramEditor.ts" />
+    <File Path="tools/spla-diagram/src/editor/History.ts" />
+    <File Path="tools/spla-diagram/src/editor/Inspector.ts" />
+    <File Path="tools/spla-diagram/src/editor/io/drawio.ts" />
+    <File Path="tools/spla-diagram/src/editor/io/transfer.ts" />
+    <File Path="tools/spla-diagram/src/util/dom.ts" />
+    <File Path="tools/spla-diagram/src/util/emitter.ts" />
+    <File Path="tools/spla-diagram/src/styles/canvas.css" />
+    <File Path="tools/spla-diagram/src/styles/editor.css" />
   </Folder>
   <Folder Name="/docs/adr/">
     <File Path="docs/adr/ADR_20260712_secrets_store-and-ssh.md" />
@@ -62,9 +136,21 @@
     <File Path="docs/adr/ADR_20260817_llm_reasoning-lever.md" />
     <File Path="docs/adr/ADR_20260818_build_package-manager.md" />
     <File Path="docs/adr/ADR_20260818-2_build_versioning-and-changelog.md" />
+    <File Path="docs/adr/ADR_20260818-3_deterministic-release-commit.md" />
     <File Path="docs/adr/ADR_20260819_core_project-entry.md" />
     <File Path="docs/adr/ADR_20260819-2_core_agent-instances.md" />
     <File Path="docs/adr/ADR_20260820_apps_project-hub.md" />
+    <File Path="docs/adr/ADR_20260824-2_core_background-tool-calls.md" />
+    <File Path="docs/adr/ADR_20260824-3_core_tool-call-pipeline.md" />
+    <File Path="docs/adr/ADR_20260825_core_chat-turn-pump.md" />
+    <File Path="docs/adr/ADR_20260826_service_mcp-client.md" />
+    <File Path="docs/adr/ADR_20260824_core_interactive-shell.md" />
+    <File Path="docs/adr/ADR_20260824_plugins_document-context.md" />
+    <File Path="docs/adr/ADR_20260827-2_core_roles.md" />
+    <File Path="docs/adr/ADR_20260827_core_config-versioning.md" />
+    <File Path="docs/adr/ADR_20260831_mcp_search-and-listing-tools.md" />
+    <File Path="docs/adr/ADR_20260901_diagrams_shape-aware-geometry-and-insets.md" />
+    <File Path="docs/adr/ADR_20260831_diagrams_text-provenance-and-view-axes.md" />
   </Folder>
   <Folder Name="/docs/plans/">
     <File Path="docs/plans/PLAN_20260619_agent_skills-lifecycle.md" />
@@ -89,6 +175,14 @@
     <File Path="docs/plans/PLAN_20260820_apps_project-hub.md" />
     <File Path="docs/plans/PLAN_20260820-2_agent_subagent-feedback.md" />
     <File Path="docs/plans/PLAN_20260820_core_unified-uri-resources.md" />
+    <File Path="docs/plans/PLAN_20260824-2_core_background-tool-calls.md" />
+    <File Path="docs/plans/PLAN_20260824-3_core_tool-call-pipeline.md" />
+    <File Path="docs/plans/PLAN_20260824_core_interactive-shell.md" />
+    <File Path="docs/plans/PLAN_20260824_plugins_document-context.md" />
+    <File Path="docs/plans/HANDOFF_20260825_background-tasks-wave1.md" />
+    <File Path="docs/plans/PLAN_20260825_core_chat-turn-pump.md" />
+    <File Path="docs/plans/PLAN_20260826_service_mcp-client.md" />
+    <File Path="docs/plans/PLAN_20260827_core_context-retention.md" />
   </Folder>
   <Folder Name="/docs/ideas/">
     <File Path="docs/ideas/IDEA_20260611_core_todo-general.md" />
@@ -112,6 +206,13 @@
     <File Path="docs/ideas/IDEA_20260820_agent_subagent-feedback-mcp-hub.md" />
     <File Path="docs/ideas/IDEA_20260820-2_service_mcp-resources.md" />
     <File Path="docs/ideas/IDEA_20260820-3_core_unified-uri-tools.md" />
+    <File Path="docs/ideas/IDEA_20260824-2_core_tool-policy-middleware.md" />
+    <File Path="docs/ideas/IDEA_20260824-3_core_opentelemetry.md" />
+    <File Path="docs/ideas/IDEA_20260824-4_core_token-budget-gateway.md" />
+    <File Path="docs/ideas/IDEA_20260824-5_core_session-unification.md" />
+    <File Path="docs/ideas/IDEA_20260824-6_agent_subagent-profiles.md" />
+    <File Path="docs/ideas/IDEA_20260824-7_core_leftovers-lower-priority.md" />
+    <File Path="docs/ideas/IDEA_20260824_plugins_document-context.md" />
   </Folder>
   <Folder Name="/src/core/">
     <Project Path="src/core/SPLA.Domain/SPLA.Domain.csproj" />
@@ -144,6 +245,10 @@
     <Project Path="src/service/SPLA.Instances/SPLA.Instances.csproj" />
     <Project Path="src/service/SPLA.Service.Contracts/SPLA.Service.Contracts.csproj" />
     <Project Path="src/service/SPLA.Mcp/SPLA.Mcp.csproj" />
+    <Project Path="src/service/SPLA.Mcp.Client/SPLA.Mcp.Client.csproj" />
+  </Folder>
+  <Folder Name="/src/documents/">
+    <Project Path="src/documents/SPLA.Documents.Model/SPLA.Documents.Model.csproj" />
   </Folder>
   <Folder Name="/src/editor/">
     <Project Path="src/editor/SPLA.Editor.Schema/SPLA.Editor.Schema.csproj" />
@@ -160,6 +265,7 @@
   <Folder Name="/src/plugins/data/">
     <Project Path="src/plugins/SPLA.Plugins.Sql/SPLA.Plugins.Sql.csproj" />
     <Project Path="src/plugins/SPLA.Plugins.OneC/SPLA.Plugins.OneC.csproj" />
+    <Project Path="src/plugins/SPLA.Plugins.Documents/SPLA.Plugins.Documents.csproj" />
   </Folder>
   <Folder Name="/src/plugins/dev/">
     <Project Path="src/plugins/SPLA.Plugins.Roslyn/SPLA.Plugins.Roslyn.csproj" />
@@ -168,6 +274,10 @@
   <Folder Name="/src/plugins/infra/">
     <Project Path="src/plugins/SPLA.Plugins.Network/SPLA.Plugins.Network.csproj" />
     <Project Path="src/plugins/SPLA.Plugins.Ssh/SPLA.Plugins.Ssh.csproj" />
+  </Folder>
+  <Folder Name="/src/plugins/data/skills-documents/">
+    <Project Path="src/plugins/SPLA.Skills.Documents/SPLA.Skills.Documents.csproj" />
+    <File Path="src/plugins/SPLA.Skills.Documents/skills/docx-to-registry.md" />
   </Folder>
   <Folder Name="/src/plugins/infra/skills-network/">
     <Project Path="src/plugins/SPLA.Skills.Network/SPLA.Skills.Network.csproj" />

@@ -93,6 +93,8 @@ public sealed class AgentSpawnTool : IMcpTool
             Effect = ToolEffect.Execute,
             Risk = ToolRisk.Medium,
             StrictSchema = true,
+            // A sub-agent run can take as long as the task does. See PLAN_20260824-2 step 1.7.
+            SupportsBackground = true,
             Parameters = new
             {
                 type = "object",

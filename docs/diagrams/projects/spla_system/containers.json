@@ -1,0 +1,140 @@
+{
+  "contractVersion": 3,
+  "containers": [
+    {
+      "id": "c_turn_intake",
+      "parent": null,
+      "axis": "axis_turn"
+    },
+    {
+      "id": "c_turn_compose",
+      "parent": null,
+      "axis": "axis_turn"
+    },
+    {
+      "id": "c_turn_model",
+      "parent": null,
+      "axis": "axis_turn"
+    },
+    {
+      "id": "c_turn_dispatch",
+      "parent": null,
+      "axis": "axis_turn"
+    },
+    {
+      "id": "c_turn_execute",
+      "parent": null,
+      "axis": "axis_turn"
+    },
+    {
+      "id": "c_turn_return",
+      "parent": null,
+      "axis": "axis_turn"
+    },
+    {
+      "id": "c_turn_persist",
+      "parent": null,
+      "axis": "axis_turn"
+    },
+    {
+      "id": "c_sub_domain",
+      "parent": null,
+      "axis": "axis_subsystem"
+    },
+    {
+      "id": "c_sub_mcp",
+      "parent": null,
+      "axis": "axis_subsystem"
+    },
+    {
+      "id": "c_sub_runtime",
+      "parent": null,
+      "axis": "axis_subsystem"
+    },
+    {
+      "id": "c_sub_llm",
+      "parent": null,
+      "axis": "axis_subsystem"
+    },
+    {
+      "id": "c_sub_service",
+      "parent": null,
+      "axis": "axis_subsystem"
+    },
+    {
+      "id": "c_sub_plugins",
+      "parent": null,
+      "axis": "axis_subsystem"
+    },
+    {
+      "id": "c_sub_apps",
+      "parent": null,
+      "axis": "axis_subsystem"
+    },
+    {
+      "id": "c_sub_external",
+      "parent": null,
+      "axis": "axis_subsystem"
+    },
+    {
+      "id": "c_zone_model",
+      "parent": null,
+      "axis": "axis_security_zone"
+    },
+    {
+      "id": "c_zone_core",
+      "parent": null,
+      "axis": "axis_security_zone"
+    },
+    {
+      "id": "c_zone_gate",
+      "parent": null,
+      "axis": "axis_security_zone"
+    },
+    {
+      "id": "c_zone_plugin",
+      "parent": null,
+      "axis": "axis_security_zone"
+    },
+    {
+      "id": "c_zone_host",
+      "parent": null,
+      "axis": "axis_security_zone"
+    },
+    {
+      "id": "c_zone_foreign",
+      "parent": null,
+      "axis": "axis_security_zone"
+    },
+    {
+      "id": "c_zone_secret",
+      "parent": null,
+      "axis": "axis_security_zone"
+    },
+    {
+      "id": "c_proc_client",
+      "parent": null,
+      "axis": "axis_process"
+    },
+    {
+      "id": "c_proc_service",
+      "parent": null,
+      "axis": "axis_process"
+    },
+    {
+      "id": "c_proc_alc",
+      "parent": null,
+      "axis": "axis_process"
+    },
+    {
+      "id": "c_proc_child",
+      "parent": null,
+      "axis": "axis_process"
+    },
+    {
+      "id": "c_proc_remote",
+      "parent": null,
+      "axis": "axis_process"
+    }
+  ]
+}

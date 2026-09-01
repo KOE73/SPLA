@@ -1,0 +1,11 @@
+{
+  "id": "full_core",
+  "title": "FULL Core (All Classes)",
+  "languages": [
+    "ru",
+    "en"
+  ],
+  "styles": "../../styles.json",
+  "contractVersion": 3,
+  "defaultAxis": "axis_subsystem"
+}

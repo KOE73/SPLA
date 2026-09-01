@@ -1,0 +1,15 @@
+{
+  "id": "features",
+  "title": "Feature Bench",
+  "subtitle": "Стенд проверки всех фичей рендера",
+  "defaultView": "v_main",
+  "languages": [
+    "ru",
+    "en"
+  ],
+  "views": [
+    "v_main"
+  ],
+  "contractVersion": 3,
+  "defaultAxis": "axis_demo"
+}

@@ -6,13 +6,17 @@
     <!-- Major.Minor.Build — three parts, and the last one identifies the release.
          Major/Minor: bumped by hand here, and rarely. Moving Minor is the act of saying
                       "a new chapter starts"; there is no fourth component doing that job.
-         Build:       the run number of release.yml, passed in as -p:VersionBuild=<n>.
-                      Never set by hand — a release is identified by which CI run produced it.
-         A local build gets Build=0, so every local build reports the same version. That is
-         deliberate: the number only means something for a package that came out of CI. -->
+         Build:       bumped by hand here too, in the same release commit that freezes
+                      CHANGELOGS/ (see AGENTS.md, "CI and releases"). release.yml reads this
+                      value and tags exactly it — it no longer invents a number from its own
+                      run count, so what a local build reports and what ships are the same
+                      figure, and the tag identifies a decision made before the push, not a
+                      CI run that happened to produce it.
+         A local build gets Build as committed here (0 unless a release is in flight), passed
+         to `dotnet build`/`publish` as -p:VersionBuild=<n> during a release run. -->
     <VersionMajor>0</VersionMajor>
     <VersionMinor>2</VersionMinor>
-    <VersionBuild Condition="'$(VersionBuild)' == ''">0</VersionBuild>
+    <VersionBuild Condition="'$(VersionBuild)' == ''">5</VersionBuild>
     <Version>$(VersionMajor).$(VersionMinor).$(VersionBuild)</Version>
     <!-- Assembly/file versions are four-part by .NET convention; pad rather than invent. -->
     <AssemblyVersion>$(Version).0</AssemblyVersion>

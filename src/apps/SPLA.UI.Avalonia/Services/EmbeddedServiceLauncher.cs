@@ -101,31 +101,14 @@ public sealed class EmbeddedServiceLauncher : IDisposable
     /// <summary>
     /// The address of a live instance already holding this project, or null when there is none.
     ///
-    /// <para>Health-checked before being returned, and only accepted when <c>/health</c> answers with
-    /// the same instance id the lock claims: a published port outlives nothing, but a port number can
-    /// be reused by something else entirely, and dialling a stranger is worse than starting fresh.</para>
+    /// <para>Delegates to <see cref="SPLA.Instances.LocalServiceConnector.TryJoinAsync"/> — the same
+    /// check, extracted so <c>spla mcp</c> (which cannot depend on this Avalonia assembly) can perform
+    /// it too. See that class's remarks for why it now lives in <c>SPLA.Instances</c> rather than here.
+    /// The health-check-against-instance-id reasoning that used to be inline here is unchanged; it just
+    /// has one implementation now instead of two that could drift apart.</para>
     /// </summary>
-    private static async Task<string?> TryJoinRunningInstanceAsync(string? workingDirectory, CancellationToken ct)
-    {
-        try
-        {
-            var root = workingDirectory ?? Directory.GetCurrentDirectory();
-            var info = SPLA.Domain.Project.InstanceLock.Read(Path.Combine(root, ".spla"));
-            if (info?.Endpoint is not { Length: > 0 } endpoint || !info.IsLocal) return null;
-
-            using var http = new HttpClient { Timeout = TimeSpan.FromSeconds(2) };
-            var response = await http.GetAsync(endpoint.TrimEnd('/') + "/health", ct);
-            if (!response.IsSuccessStatusCode) return null;
-
-            var body = await response.Content.ReadAsStringAsync(ct);
-            return body.Contains(info.InstanceId, StringComparison.OrdinalIgnoreCase) ? endpoint.TrimEnd('/') : null;
-        }
-        catch
-        {
-            // Unreadable lock, unreachable port, malformed anything: fall through and start our own.
-            return null;
-        }
-    }
+    private static Task<string?> TryJoinRunningInstanceAsync(string? workingDirectory, CancellationToken ct) =>
+        SPLA.Instances.LocalServiceConnector.TryJoinAsync(workingDirectory ?? Directory.GetCurrentDirectory(), ct);
 
     private static readonly Regex ListeningUrlPattern =
         new(@"listening on (?<url>\S+)", RegexOptions.Compiled);

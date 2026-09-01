@@ -1,0 +1,243 @@
+{
+  "contractVersion": 3,
+  "language": "ru",
+  "entries": {
+    "zone_input": {
+      "name": {
+        "v": "Вход",
+        "at": "2026-08-31T09:11:55Z",
+        "origin": "authored"
+      },
+      "doc": {
+        "v": "User turn trigger, active conversation context, and attachments.",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      },
+      "description": {
+        "v": "Реплика пользователя до того, как она стала запросом к модели.",
+        "at": "2026-08-31T09:11:55Z",
+        "origin": "authored"
+      }
+    },
+    "zone_contributors": {
+      "name": {
+        "v": "Составители контекста",
+        "at": "2026-08-31T09:11:55Z",
+        "origin": "authored"
+      },
+      "doc": {
+        "v": "Ordered typed contributors combining system instructions, skills, active tools, and memory.",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      },
+      "description": {
+        "v": "Источники, каждый из которых вносит свою часть в промпт.",
+        "at": "2026-08-31T09:11:55Z",
+        "origin": "authored"
+      }
+    },
+    "zone_model": {
+      "name": {
+        "v": "Модель",
+        "at": "2026-08-31T09:11:55Z",
+        "origin": "authored"
+      },
+      "doc": {
+        "v": "Unified streaming connection to local (Ollama/LMStudio) or cloud (Anthropic/Gemini/OpenAI) models.",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      },
+      "description": {
+        "v": "Обращение к провайдеру и разбор потока ответа.",
+        "at": "2026-08-31T09:11:55Z",
+        "origin": "authored"
+      }
+    },
+    "zone_output": {
+      "name": {
+        "v": "Выход",
+        "at": "2026-08-31T09:11:55Z",
+        "origin": "authored"
+      },
+      "doc": {
+        "v": "Token stream demuxing: thinking tags, text chunks, and structured tool calls.",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      },
+      "description": {
+        "v": "Разложенный поток: текст, рассуждение, вызовы инструментов.",
+        "at": "2026-08-31T09:11:55Z",
+        "origin": "authored"
+      }
+    },
+    "user_turn": {
+      "name": {
+        "v": "User Input Envelope",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "composer": {
+      "name": {
+        "v": "AgentContextComposer",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "contrib_system": {
+      "name": {
+        "v": "SystemDoctrineContributor",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "contrib_skills": {
+      "name": {
+        "v": "SkillsContributor",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "contrib_tools": {
+      "name": {
+        "v": "ActiveToolsContributor",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "contrib_history": {
+      "name": {
+        "v": "ConversationHistoryContributor",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "model_stream": {
+      "name": {
+        "v": "LlmClient Gateway",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "token_parser": {
+      "name": {
+        "v": "TokenStreamDemuxer",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "thinking_extractor": {
+      "name": {
+        "v": "Thinking Block Extractor",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "tool_call_extractor": {
+      "name": {
+        "v": "ToolCall Accumulator",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "p1": {
+      "name": {
+        "v": "initiate turn",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "p2": {
+      "name": {
+        "v": "pull slice",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "p3": {
+      "name": {
+        "v": "pull slice",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "p4": {
+      "name": {
+        "v": "pull slice",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "p5": {
+      "name": {
+        "v": "pull slice",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "p6": {
+      "name": {
+        "v": "submit payload",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "p7": {
+      "name": {
+        "v": "SSE tokens",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "p8": {
+      "name": {
+        "v": "thought chunks",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "p9": {
+      "name": {
+        "v": "tool call chunks",
+        "at": "2026-08-31T09:08:36Z",
+        "origin": "authored"
+      }
+    },
+    "rt_call": {
+      "name": {
+        "v": "Вызов",
+        "at": "2026-08-31T09:10:34Z",
+        "origin": "authored"
+      },
+      "description": {
+        "v": "Прямое обращение к методу или API другого компонента. Порождается из кода.",
+        "at": "2026-08-31T09:10:34Z",
+        "origin": "authored"
+      }
+    },
+    "rt_data-flow": {
+      "name": {
+        "v": "Поток данных",
+        "at": "2026-08-31T09:10:34Z",
+        "origin": "authored"
+      },
+      "description": {
+        "v": "Данные идут от источника к приёмнику. Не обязательно синхронный вызов: между ними может быть очередь, канал или сеть.",
+        "at": "2026-08-31T09:10:34Z",
+        "origin": "authored"
+      }
+    },
+    "v_main": {
+      "name": {
+        "v": "Основной вид",
+        "at": "2026-08-31T09:10:34Z",
+        "origin": "authored"
+      },
+      "description": {
+        "v": "Обзорная схема проекта.",
+        "at": "2026-08-31T09:10:34Z",
+        "origin": "authored"
+      }
+    }
+  }
+}

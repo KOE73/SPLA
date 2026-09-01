@@ -1,0 +1,126 @@
+{
+  "$comment": [
+    "Потоки — рукописный слой атласа: намерение рантайма не видно в объявлении типа,",
+    "поэтому из кода его не извлечь. Структура (implements/extends) генерируется, эти — нет.",
+    "Ссылки — по имени типа; id подставит spla-arch (см. tools/spla-arch/run.go, normalizeRef).",
+    "Типы связей и их вид: tools/spla-diagram/src/canvas/render/edgeStyles.ts."
+  ],
+  "edges": [
+    {
+      "$comment": "Цепочка LLM-middleware. Порядок — по LlmPipelineStage, не по регистрации: Output(350) → Accounting(400) → Transport(500). Данные идут вниз в ctx и возвращаются вверх результатом по тому же делегату.",
+      "id": "f_gateway_repetitionguard",
+      "from": "ILlmGateway",
+      "to": "RepetitionGuardMiddleware",
+      "type": "data-flow",
+      "label": "LlmTurnContext ↓"
+    },
+    {
+      "id": "f_hop_guard_outcome",
+      "from": "RepetitionGuardMiddleware",
+      "to": "TurnOutcomeMiddleware",
+      "type": "call",
+      "label": "next(ctx) ↓ · result ↑"
+    },
+    {
+      "id": "f_hop_outcome_state",
+      "from": "TurnOutcomeMiddleware",
+      "to": "ProviderStateMiddleware",
+      "type": "call",
+      "label": "next(ctx) ↓ · result ↑"
+    },
+    {
+      "id": "f_hop_state_tokens",
+      "from": "ProviderStateMiddleware",
+      "to": "TokenAccountingMiddleware",
+      "type": "call",
+      "label": "next(ctx) ↓ · result ↑"
+    },
+    {
+      "id": "f_hop_tokens_credentials",
+      "from": "TokenAccountingMiddleware",
+      "to": "CredentialsMiddleware",
+      "type": "call",
+      "label": "next(ctx) ↓ · result ↑"
+    },
+    {
+      "$comment": "Терминальный шаг: резолвер выбирает клиента, ответ возвращается в самый внутренний слой.",
+      "id": "f_credentials_resolver",
+      "from": "CredentialsMiddleware",
+      "to": "ILlmClientResolver",
+      "type": "call",
+      "label": "Resolve(ctx) ↓"
+    },
+    {
+      "id": "f_client_credentials",
+      "from": "ILlmClient",
+      "to": "CredentialsMiddleware",
+      "type": "data-flow",
+      "label": "LlmTurnResult ↑"
+    },
+    {
+      "$comment": "Что каждый слой делает с данными по дороге.",
+      "id": "f_credentials_secrets",
+      "from": "CredentialsMiddleware",
+      "to": "ISecretResolver",
+      "type": "security",
+      "label": "secret:<scope>:<key> → plaintext"
+    },
+    {
+      "id": "f_credentials_settings",
+      "from": "CredentialsMiddleware",
+      "to": "LLMSettings",
+      "type": "data-flow",
+      "label": "ApiKey (только этот ход)"
+    },
+    {
+      "id": "f_tokens_usagestore",
+      "from": "TokenAccountingMiddleware",
+      "to": "ITokenUsageStore",
+      "type": "storage",
+      "label": "prompt/completion tokens"
+    },
+    {
+      "id": "f_state_statestore",
+      "from": "ProviderStateMiddleware",
+      "to": "ProviderStateStore",
+      "type": "storage",
+      "label": "ProviderFact (Connection)"
+    },
+    {
+      "id": "f_outcome_result",
+      "from": "TurnOutcomeMiddleware",
+      "to": "LlmTurnResult",
+      "type": "data-flow",
+      "label": "Status + Duration"
+    },
+    {
+      "id": "f_guard_attempt",
+      "from": "RepetitionGuardMiddleware",
+      "to": "TurnAttempt",
+      "type": "event",
+      "label": "Abort() → cancel"
+    },
+    {
+      "id": "f_guard_generationattempt",
+      "from": "RepetitionGuardMiddleware",
+      "to": "GenerationAttempt",
+      "type": "event",
+      "label": "OnAttempt (брошенная генерация)"
+    },
+    {
+      "$comment": "Сборка, а не трафик: чертёж печёт цепочку один раз и отдаёт её внешнее звено как вход.",
+      "id": "f_blueprint_entry",
+      "from": "LlmPipelineBlueprint",
+      "to": "RepetitionGuardMiddleware",
+      "type": "composes",
+      "label": "Build() → entry"
+    },
+    {
+      "id": "f_blueprint_stage",
+      "from": "LlmPipelineBlueprint",
+      "to": "LlmPipelineStage",
+      "type": "call",
+      "label": "OrderBy(Stage)"
+    }
+  ]
+}

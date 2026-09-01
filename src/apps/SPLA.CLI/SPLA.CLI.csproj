@@ -16,6 +16,9 @@
          greppable MCP_USAGE.md in the product zip. -->
     <EmbeddedResource Include="Assets\MCP_USAGE.md" LogicalName="SPLA.CLI.MCP_USAGE.md" />
     <Content Include="Assets\MCP_USAGE.md" CopyToOutputDirectory="PreserveNewest" Link="MCP_USAGE.md" />
+    <!-- RU translation for humans only: plain shipped file, deliberately NOT embedded, so
+         the help_mcp flag never returns it and a foreign MCP head always gets the English source. -->
+    <Content Include="Assets\MCP_USAGE_RU.md" CopyToOutputDirectory="PreserveNewest" Link="MCP_USAGE_RU.md" />
   </ItemGroup>
 
   <ItemGroup>

@@ -98,4 +98,24 @@ public static class RegistryRoutes
     /// same JSON as <see cref="Instances"/>, pushed instead of asked for: the state worth watching
     /// is somebody being waited for, and noticing that on a poll interval is not noticing it.</summary>
     public const string Watch = "/registry/watch";
+
+    /// <summary>GET/POST for the Projects window's own color scheme — a hub-scoped preference with
+    /// no project to save it into. GET returns <c>{ theme }</c> (null when unset); POST takes
+    /// <c>?theme=&lt;name&gt;</c>.</summary>
+    public const string Appearance = "/registry/appearance";
+
+    /// <summary>POST relaying one MCP call to whichever instance holds <c>?project=&lt;name-or-path&gt;</c>,
+    /// starting it first if nothing is up. Deliberately the same path an instance itself answers
+    /// (<c>SplaServiceHost</c> maps <c>POST /mcp</c>) rather than a <c>/registry/...</c> one: a client
+    /// pointed at the hub should not have to know it is talking to a hub instead of an instance — the
+    /// whole point of routing through here is a client that never has to learn a project's address
+    /// changed, or that it went through the hub at all.</summary>
+    public const string Mcp = "/mcp";
+
+    /// <summary>POST, JSON-RPC over HTTP exactly like <see cref="Mcp"/>, but answered by the hub
+    /// itself rather than relayed to a project: no <c>?project=</c>, and the tools on offer are ones
+    /// that describe the machine (which projects it knows, what is running) instead of anything one
+    /// project owns. A client that wants to see across every project on the box points here instead
+    /// of guessing a project's own MCP address.</summary>
+    public const string HubMcp = "/hub/mcp";
 }
