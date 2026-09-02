@@ -82,10 +82,13 @@ public sealed class ChatRegistry : IDisposable, ISpawnSessionHost
     /// <see cref="GetOrOpen"/> alone cannot (it would happily load an archived chat's file).</summary>
     public SPLA.Domain.Settings.ChatLocation Locate(string chatId) => _runtime.ChatManager.Locate(chatId);
 
-    /// <summary>Creates a new chat, opens its runtime, and returns it.</summary>
-    public ChatRuntime CreateNew(string? title)
+    /// <summary>Creates a new chat, opens its runtime, and returns it. <paramref name="role"/> — see
+    /// <see cref="SPLA.Domain.Settings.ChatManager.CreateNewChat"/> — stamps <c>as:</c> before the
+    /// session ever reaches a <see cref="ChatRuntime"/> constructor, so a role passed here narrows
+    /// this chat's tool surface and mode from its very first turn (PLAN_20260902 wave 5б).</summary>
+    public ChatRuntime CreateNew(string? title, string? role = null)
     {
-        var session = _runtime.ChatManager.CreateNewChat(title);
+        var session = _runtime.ChatManager.CreateNewChat(title, role);
         var runtime = new ChatRuntime(_runtime, session, this);
         _open[session.Id] = runtime;
         RuntimeOpened?.Invoke(runtime);

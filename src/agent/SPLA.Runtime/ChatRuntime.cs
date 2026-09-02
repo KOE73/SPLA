@@ -6,6 +6,8 @@ using SPLA.Domain.Settings;
 using SPLA.Domain.Tools;
 using SPLA.Library.Catalog;
 using SPLA.MCP.Core.Permissions;
+using SPLA.MCP.Core.ToolSets;
+using System.IO;
 
 namespace SPLA.Runtime;
 
@@ -80,6 +82,23 @@ public sealed class ChatRuntime : IDisposable, SPLA.Domain.Agent.IBackgroundTask
     /// </summary>
     public string? CurrentTurnTreeId { get; private set; }
 
+    /// <summary>
+    /// This chat's settings under its own <c>as:</c> role (PLAN_20260902 wave 5б) — resolved once
+    /// here, when the chat opens, not on every turn: a role's file does not change mid-chat the way a
+    /// live settings edit does, and re-resolving per turn would only cost work for no behaviour a
+    /// person could see. Null for a chat with no <c>as:</c> — the case that must narrow nothing at
+    /// all, not an empty selection (see <see cref="ResolveMode"/> and the <see cref="ChatToolHost"/>
+    /// built in the constructor, both of which treat null as "behave exactly as before this wave").
+    /// <para>
+    /// Also null when a role WAS named but no longer resolves — struck from the manifest, its file
+    /// gone, or this chat has no project to resolve one against — rather than throwing out of the
+    /// constructor and refusing to open the chat at all. Roles and spawning already degrade this way
+    /// elsewhere in this codebase for an optional collaborator that isn't there (see <see cref="_registry"/>'s
+    /// own comment); a stale role tag on a chat someone still wants to open is exactly that case.
+    /// </para>
+    /// </summary>
+    private readonly ResolvedSettings? _roleSettings;
+
     private readonly ChatSession _chat;
     private readonly Conversation _conversation = new();
     private readonly KeyValueStore _sessionKv = new("session");
@@ -87,6 +106,7 @@ public sealed class ChatRuntime : IDisposable, SPLA.Domain.Agent.IBackgroundTask
     private readonly ToolSetSession _toolSetSession = new();
     private readonly CheckpointManager _checkpoint = new();
     private readonly AgentSession _agentSession;
+    private readonly ChatToolHost _toolHost;
     private readonly ConversationOrchestrator _orchestrator;
     private readonly SemaphoreSlim _turnGate = new(1, 1);
 
@@ -263,6 +283,14 @@ public sealed class ChatRuntime : IDisposable, SPLA.Domain.Agent.IBackgroundTask
         using var scope = AgentSessionScope.Begin(_agentSession);
         return _runtime.ComposeContext();
     }
+
+    /// <summary>
+    /// This chat's own tool surface — before mode gating, exactly as <see cref="ChatToolHost"/> hands
+    /// it to the orchestrator (see <see cref="_toolHost"/>). For inspection and tests: proves a role's
+    /// narrowing (or its absence) the same way <c>ComposeContext</c> above proves the prompt surface,
+    /// without needing to drive a whole turn through a fake LLM to observe what reached it.
+    /// </summary>
+    public IEnumerable<string> AvailableToolNames() => _toolHost.GetToolDefinitions().Select(d => d.Function.Name);
 
     /// <summary>This chat's session-scoped working memory entries (for the debug inspector).</summary>
     public IEnumerable<(string Key, string Value)> SessionKvEntries
@@ -531,9 +559,12 @@ public sealed class ChatRuntime : IDisposable, SPLA.Domain.Agent.IBackgroundTask
             // создаётся по требованию") and open the address on both sides. The correspondent
             // addresses this chat back by ITS OWN role — "agent" (role zero) when this chat has none
             // — so its own reply_* tool has something meaningful to be named after.
-            var correspondentChat = _registry.CreateNew($"{role}: {topic}");
-            correspondentChat.Session.As = role;
-            correspondentChat.Save();
+            //
+            // The role travels into CreateNew itself (wave 5б) rather than being patched onto
+            // Session.As afterward: the correspondent's ChatRuntime constructor resolves its role's
+            // settings once, right there, so a role stamped on only AFTER that constructor already ran
+            // would narrow nothing for this chat's whole life.
+            var correspondentChat = _registry.CreateNew($"{role}: {topic}", role);
 
             var ownRole = string.IsNullOrWhiteSpace(_chat.As) ? "agent" : _chat.As!;
 
@@ -565,6 +596,26 @@ public sealed class ChatRuntime : IDisposable, SPLA.Domain.Agent.IBackgroundTask
         _runtime = runtime;
         _chat = chat;
         _registry = registry;
+
+        // Resolve this chat's own role settings once, up front — see _roleSettings' own comment for
+        // why once-at-open and why a resolution failure degrades to "no role" rather than refusing to
+        // open the chat.
+        if (!string.IsNullOrWhiteSpace(chat.As) &&
+            runtime.Settings.Manifest is { } manifest && runtime.Settings.ProjectFilePath is { } projectFilePath)
+        {
+            try
+            {
+                // Beside the manifest, not beside the workspace — same reasoning as SpawnedAgentRunner's
+                // identical lookup: roles travel with the manifest in git (ADR_20260827-2).
+                var manifestDirectory = Path.GetDirectoryName(projectFilePath)!;
+                var roleSection = ConfigLoader.LoadRole(manifestDirectory, chat.As!);
+                _roleSettings = SettingsResolver.ResolveForRole(runtime.Settings, manifest, chat.As!, roleSection);
+            }
+            catch (InvalidOperationException)
+            {
+                _roleSettings = null;
+            }
+        }
 
         // Seed the conversation: system prompt + any persisted messages.
         _conversation.Add(new ChatMessage { Role = ChatRole.System, Content = runtime.SystemPrompt });
@@ -636,7 +687,15 @@ public sealed class ChatRuntime : IDisposable, SPLA.Domain.Agent.IBackgroundTask
                 new SPLA.Domain.Security.DataOrigin(d.Zone, OperatorNamed: false),
                 d.What,
                 new DateTimeOffset(DateTime.SpecifyKind(d.At, DateTimeKind.Utc)))));
-        _orchestrator = new ConversationOrchestrator(runtime.Llm, new ChatToolHost(runtime.McpHost, this))
+        // Wave 5б's narrowing: built fresh from the runtime's shared, read-only ToolSetRegistry plus
+        // this chat's own resolved ToolSets (the role's narrowing of them, or — with no role — null,
+        // which ChatToolHost treats as "skip the filter entirely" rather than "filter against
+        // nothing"). Nothing here mutates runtime.McpHost or runtime.ToolSets; the narrowing lives
+        // entirely in this chat's own ChatToolHost instance. Kept as a field (not built inline for the
+        // orchestrator) so AvailableToolNames can inspect the exact same surface without standing up a
+        // second one.
+        _toolHost = new ChatToolHost(runtime.McpHost, this, runtime.ToolSets, _roleSettings?.ToolSets);
+        _orchestrator = new ConversationOrchestrator(runtime.Llm, _toolHost)
         {
             // Live context surface, recomposed on every iteration inside this turn's
             // AgentSessionScope — which is what lets runtime-wide contributors read this chat's
@@ -937,10 +996,24 @@ public sealed class ChatRuntime : IDisposable, SPLA.Domain.Agent.IBackgroundTask
         return s;
     }
 
-    /// <summary>The chat's mode (from its agent section), falling back to the project default.</summary>
+    /// <summary>
+    /// The chat's effective mode: its role's mode when it has one, else its own agent-section
+    /// override, else the project default.
+    /// <para>
+    /// Once a role is named, its resolved mode governs outright — the chat's own per-chat mode
+    /// override is deliberately NOT consulted at all, the identical rule <c>SpawnedAgentRunner.RunAsync</c>
+    /// applies to the <c>mode</c> argument of a role-carrying spawn (PLAN_20260902 wave 5б: "режим роли
+    /// применяется к чату так же, как к прогону"). Letting a chat's own override widen a role after
+    /// the fact would make the role no boundary at all. <see cref="ResolvedSettings.Mode"/> already
+    /// carries the right fallback for a role that names no <c>mode:</c> of its own — <see cref="SettingsResolver.ResolveForRole"/>
+    /// clones the project's own <c>Mode</c> onto it, so this is never a role-shaped guess.
+    /// </para>
+    /// </summary>
     private AgentMode ResolveMode()
-        => _chat.Agent?.Mode != null && Enum.TryParse<AgentMode>(_chat.Agent.Mode, true, out var m)
-            ? m : _runtime.Settings.Mode;
+        => _roleSettings is { } role
+            ? role.Mode
+            : _chat.Agent?.Mode != null && Enum.TryParse<AgentMode>(_chat.Agent.Mode, true, out var m)
+                ? m : _runtime.Settings.Mode;
 
     /// <summary>
     /// Ends everything this chat holds open. Called when the chat is deleted or the host stops.

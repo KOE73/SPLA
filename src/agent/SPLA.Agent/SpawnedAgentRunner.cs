@@ -441,42 +441,14 @@ public sealed class SpawnedAgentRunner : Domain.Interfaces.IAgentSpawner
     /// Whether the model should see <paramref name="toolName"/> in this run, given this run's own
     /// tool-set levels (<paramref name="runToolSets"/> — the project's, or a role's narrowing of them)
     /// rather than whatever the shared <paramref name="registry"/> was built to answer for the chat
-    /// that spawned this run. This deliberately re-implements the shape of
-    /// <c>McpHost.IsDisclosed</c>/<c>ToolSetRefusal</c> rather than calling into it: those read
-    /// <c>ToolSetRegistry</c>'s own captured <c>ResolvedSettings</c>, which is the project's baseline
-    /// and is exactly what a role must be able to narrow — asking the registry itself would answer for
-    /// the wrong settings.
-    /// <para>
-    /// A tool no set claims (<see cref="ToolSetRegistry.SetOfTool"/> returns null) is nobody's to gate
-    /// and is always kept, same rule the registry itself uses. For a claimed tool, an explicit entry
-    /// in <paramref name="runToolSets"/> wins; absent one, <paramref name="registry"/>'s own
-    /// <see cref="ToolSetRegistry.LevelOf"/> answers — which is how a role that named no selection for
-    /// a set inherits the project's standing decision instead of silently losing it.
-    /// </para>
-    /// <para><see cref="ToolSetLevel.SkillDemand"/> and <see cref="ToolSetLevel.AgentDemand"/> are
-    /// "not disclosed unless raised" — same as a chat, checked against this run's own
-    /// <see cref="AgentSessionScope.Current"/>, which is the spawned run's <c>AgentSession</c> for the
-    /// whole time this is called (the caller opens that scope around the entire orchestrator run).
-    /// </para>
+    /// that spawned this run. Delegates to <see cref="ToolSetRegistry.IsDisclosedForRole"/>, the
+    /// helper shared with <c>ChatToolHost</c>'s identical narrowing for a standing chat under a role
+    /// (PLAN_20260902 wave 5б) — asking the registry's own <c>LevelOf</c> alone would answer for the
+    /// project's baseline, which is exactly what a role must be able to narrow.
     /// </summary>
     private static bool IsDisclosedForRun(
         string toolName, ToolSetRegistry registry, IReadOnlyDictionary<string, string> runToolSets)
-    {
-        var setId = registry.SetOfTool(toolName);
-        if (setId is null) return true;
-
-        var level = runToolSets.TryGetValue(setId, out var configured)
-                    && ToolSetRegistry.TryParseLevel(configured, out var parsed)
-            ? parsed
-            : registry.LevelOf(setId);
-
-        return level switch
-        {
-            ToolSetLevel.Enabled => true,
-            ToolSetLevel.Disabled => false,
-            _ => AgentSessionScope.Current?.ToolSets.IsActive(setId) == true
-        };
-    }
+        => ToolSetRegistry.IsDisclosedForRole(toolName, registry, runToolSets);
 
     /// <summary>
     /// How much of the window the run is using, as a suffix — or nothing at all before the first call

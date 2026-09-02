@@ -79,6 +79,23 @@ is for.
 
 `agent_correspond` itself IS an ordinary registered tool and follows every rule above like any other.
 
+## A chat under a role narrows further, on top of the levels above
+
+`McpHost` gates by level for the whole project — one `ToolSetRegistry`, shared by every chat. A
+standing chat opened `as: <role>` (PLAN_20260902 wave 5б) layers one more filter *underneath* that
+sharing, in `ChatToolHost.GetToolDefinitions`: it reads the same shared, read-only `ToolSetRegistry`
+but checks each tool's set against *this chat's own* `ResolvedSettings.ToolSets` — the role's
+`toolsets:` selection (`SettingsResolver.ResolveForRole`), narrower than the project's own where the
+role names a set and identical to it where the role does not. Exactly the shape
+`SpawnedAgentRunner` already uses for a spawned run under a role (wave 3); both call the same
+`ToolSetRegistry.IsDisclosedForRole` helper rather than duplicating the fallback logic.
+
+This can only ever remove a tool `McpHost`'s own project-wide gating already let through — it has no
+way to grant a set the project itself disabled — and it never touches the shared registry: the
+narrowing is a `Where` built fresh per chat and dies with it. A chat with no `as:` passes `null` for
+the role's selection and `ChatToolHost` skips the filter outright, so an ordinary chat's surface is
+untouched by this mechanism.
+
 ## Refusals
 
 What the model is told when it calls a tool it cannot use is deliberate:

@@ -76,7 +76,16 @@ public class ChatManager
         return File.Exists(archived) ? archived : null;
     }
 
-    public ChatSession CreateNewChat(string? title = null)
+    /// <summary>
+    /// Creates an ordinary chat. <paramref name="role"/> sets <c>as:</c> at the moment of creation
+    /// (rather than being patched on afterward) so that a caller opening a <see cref="ChatRuntime"/>
+    /// immediately on the returned session — <c>agent_correspond</c>'s on-demand correspondent chat,
+    /// PLAN_20260902 wave 5б — sees the role from its very first line: <c>ChatRuntime</c> resolves its
+    /// role's settings once, in its constructor, so a role stamped on <see cref="ChatSession.As"/>
+    /// after that runtime already exists would narrow nothing until the chat was closed and reopened.
+    /// Same reasoning <see cref="CreateSpawnedChat"/> already follows for a spawned session's own role.
+    /// </summary>
+    public ChatSession CreateNewChat(string? title = null, string? role = null)
     {
         var chat = new ChatSession
         {
@@ -94,7 +103,8 @@ public class ChatManager
             Agent = new SplaAgentSection
             {
                 Mode = _settings.Mode.ToString()
-            }
+            },
+            As = role
         };
 
         SaveChat(chat);
