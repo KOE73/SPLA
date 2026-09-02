@@ -182,6 +182,19 @@ public class ChatSessionMessage
     [YamlMember(Alias = "peer_from")]
     public string? PeerFrom { get; set; }
 
+    /// <summary>Mirrors <see cref="SPLA.Domain.Models.ChatMessage.PromptTokens"/>/<see
+    /// cref="SPLA.Domain.Models.ChatMessage.CompletionTokens"/> across a save/load. Set only on an
+    /// assistant message whose provider reported usage; null everywhere else (including every message
+    /// from a provider that does not expose it — see <see cref="ChatMessage.PromptTokens"/>'s own
+    /// remarks on why absence must stay absence rather than becoming a misleading 0). Wave 7's side
+    /// panel (PLAN_20260902 "Волна 7") is what first reads this back out — before it, the two fields
+    /// existed on the live domain message and were thrown away every time a chat was saved.</summary>
+    [YamlMember(Alias = "prompt_tokens")]
+    public int? PromptTokens { get; set; }
+
+    [YamlMember(Alias = "completion_tokens")]
+    public int? CompletionTokens { get; set; }
+
     /// <summary>Generations the repetition guard threw away before this message was produced. Only
     /// written when the full attempt trace is enabled — see
     /// <see cref="Settings.SplaAgentSection.SaveAttempts"/>. Null/empty otherwise, including for every

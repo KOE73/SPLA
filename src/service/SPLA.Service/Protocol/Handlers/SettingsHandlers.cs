@@ -197,7 +197,7 @@ internal sealed class SettingsHandlers : IMessageHandler
         // the host's event subscriber fans appearance.changed out to this project's windows.
         var (entry, _) = ctx.Session.Resolve(ctx.Env);
         var p = ctx.Payload<AppearanceChangedPayload>();
-        if (p != null) SettingsOps.SaveAppearance(entry.Runtime, p.Theme, p.Density);
+        if (p != null) SettingsOps.SaveAppearance(entry.Runtime, p.Theme, p.Density, p.AutoOpenSubagents);
         return Task.CompletedTask;
     }
 

@@ -96,6 +96,21 @@ public sealed class ChatSummaryDto
     /// consumer (the side panel, wave 7) needs it without walking the tree at all.</summary>
     public string? Parent { get; set; }
 
+    /// <summary>The chat's own model override (<c>ChatSession.ModelId</c>), or null when it runs the
+    /// project's default. The side panel (wave 7, <c>ADR_20260827-2</c> §2.5's "роль, родитель,
+    /// статус, модель, токены") is the first reader that needs a model column next to a session it did
+    /// not open.</summary>
+    public string? ModelId { get; set; }
+
+    /// <summary>Sum of every assistant message's reported prompt/completion tokens
+    /// (<c>ChatSessionMessage.PromptTokens</c>/<c>CompletionTokens</c>), or null when nothing in this
+    /// chat ever reported usage — absence stays absence rather than becoming a misleading 0, the same
+    /// rule <see cref="ChatMessageDto"/>'s own token fields would follow if it had any. Cheap to
+    /// compute: the chat's full message list is already in memory for this projection, loaded once off
+    /// disk by <c>ChatManager.ListChats</c>/<c>ListSpawnedChats</c>.</summary>
+    public int? PromptTokens { get; set; }
+    public int? CompletionTokens { get; set; }
+
     /// <summary>Spawned sessions parented on this chat, most-recently-updated first, nested to
     /// whatever depth the spawn chain actually reached (the recursion-depth-3 cap already bounds this
     /// in practice). Populated only for a root the human list shows; a node inside <see cref="Children"/>
@@ -993,8 +1008,12 @@ public sealed class AppearanceChangedPayload
 {
     public string Theme { get; set; } = "dark";
     public string Density { get; set; } = "norm";
-    /// <summary>See <see cref="AgentSettingsPayload.AutoOpenSubagents"/>.</summary>
-    public bool AutoOpenSubagents { get; set; }
+    /// <summary>See <see cref="AgentSettingsPayload.AutoOpenSubagents"/>. Nullable on the way IN
+    /// (<c>appearance.save</c>): a theme/density-only save omits it, and null there means "leave it
+    /// as it was" rather than "turn it off" — see <see cref="SPLA.Service.SettingsOps.SaveAppearance"/>.
+    /// Always present on the way OUT (<c>appearance.changed</c>): every window needs the actual
+    /// current value, not "unspecified".</summary>
+    public bool? AutoOpenSubagents { get; set; }
 }
 
 /// <summary>Full state of a chat the client just opened (or created): its existing messages + settings.</summary>
@@ -1124,6 +1143,12 @@ public sealed class UserMessagePayload
     public string MsgId { get; set; } = string.Empty;
     public string? CreatedAt { get; set; }
     public string? Text { get; set; }
+
+    /// <summary>Mirrors <see cref="ChatMessageDto.PeerFrom"/> — set when this user-turn message is
+    /// actually an incoming reply across a correspondence, so the client renders it live as speech
+    /// ("← from &lt;PeerFrom&gt;") instead of an ordinary human bubble the instant it lands, rather than
+    /// only after the chat is next reopened.</summary>
+    public string? PeerFrom { get; set; }
 }
 
 public sealed class AssistantMessagePayload

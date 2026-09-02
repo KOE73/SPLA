@@ -30,6 +30,11 @@ export interface ChatMessage {
   /** Generations the repetition guard threw away before this message was produced. Only present
    *  when the project had `agent: save_attempts` on when the chat was saved. */
   attempts?: AttemptDto[];
+  /** The correspondent's role, set only for a reply that arrived across a correspondence
+   *  (`ADR_20260827-2` §2.5). The client renders such a message as speech — "← from `peerFrom`" —
+   *  instead of an ordinary human bubble; undefined for every ordinary message. The wire shape of
+   *  the message itself is unchanged: this is the one field that tells the two apart. */
+  peerFrom?: string;
 }
 
 /** One abandoned generation as stored on a message — see server `AttemptDto`. */
@@ -57,6 +62,10 @@ export interface ToolProgressDetail {
 export interface ChatSummary {
   id: string;
   title?: string;
+  /** ISO-8601 UTC, most-recently-touched. Used to order a flat view (the sessions panel) when the
+   *  tree's own order — most-recently-updated child first, within one parent — is not enough because
+   *  the view mixes children from several parents. */
+  updatedAt?: string;
   /** A turn is running in this chat right now — including one started by another window. */
   turnActive?: boolean;
   /** The chat's operational state: "idle" | "working" | "waiting" | "stalled".
@@ -65,6 +74,26 @@ export interface ChatSummary {
    *  - waiting: the agent is blocked on a person (permission or clarification request)
    *  - stalled: a turn is registered but nothing has happened for ~10 minutes (model may have stopped halfway) */
   state?: string;
+  /** The role this chat runs as (`ChatSession.As`), or undefined for a plain chat with no role.
+   *  Human chats can carry one too (a role-narrowed standing chat), not only spawned sessions. */
+  as?: string;
+  /** "spawned" for a session `agent_spawn`/`agent_correspond` created, undefined for one a human
+   *  opened directly. */
+  origin?: string;
+  /** The chat id that spawned this session, or undefined. Present on every node in `children` — a
+   *  tree client does not need it to walk down, but a flat consumer (the sessions panel) needs it
+   *  without walking the tree at all. */
+  parent?: string;
+  /** The chat's own model override, or undefined when it runs the project's default. */
+  modelId?: string;
+  /** Sum of every assistant message's reported prompt/completion tokens, or undefined when nothing
+   *  in this chat ever reported usage — absence stays absence rather than becoming a misleading 0. */
+  promptTokens?: number;
+  completionTokens?: number;
+  /** Spawned sessions parented on this chat, most-recently-updated first, nested to whatever depth
+   *  the spawn chain reached. Undefined/empty for a chat with no spawned descendants — the
+   *  overwhelming majority. See `ADR_20260827-2` §2.5: "список чатов становится деревом роль → чат". */
+  children?: ChatSummary[];
 }
 
 export interface ChatOpenedPayload {
@@ -222,6 +251,9 @@ export interface AgentResultPayload {
   resourceSchemes?: ResourceSchemeDto[];
   theme?: string; density?: string;
   themes?: string[]; densities?: string[];
+  /** Whether a client should open a native window on a spawned session by itself, the moment it
+   *  appears in the tree. Stored in .spla ui: auto_open_subagents. Default false. */
+  autoOpenSubagents?: boolean;
   canPersist?: boolean;
 }
 
@@ -710,7 +742,7 @@ export interface ServerEvents {
     /** Set only when this build was published from a branch other than main — draws the warning banner. */
     branch?: string;
   };
-  "appearance.changed": { theme?: string; density?: string };
+  "appearance.changed": { theme?: string; density?: string; autoOpenSubagents?: boolean };
   "chat.opened": ChatOpenedPayload;
   "chat.reasoning.result": ChatReasoningResult;
   "chat.list.result": { chats: ChatSummary[] };
@@ -733,7 +765,7 @@ export interface ServerEvents {
   "assistant.message": { msgIndex: number; message: ChatMessage };
   /** User message accepted by the server. Text is present so server-initiated turns can render
    * without a local echo; ordinary composer turns use it only as a fallback. */
-  "user.message": { msgId: string; createdAt?: string; text?: string };
+  "user.message": { msgId: string; createdAt?: string; text?: string; peerFrom?: string };
   "turn.complete": { cancelled?: boolean; error?: string; activeSkillId?: string | null };
   /** A chat's active skill changed — after an explicit unload. */
   "chat.skill.state": { chatId: string; activeSkillId?: string | null };

@@ -546,7 +546,10 @@ public sealed class SplaServiceHost
                 {
                     case AppearanceChanged a:
                         _ = hub.BroadcastToProjectAsync(projectId, Contracts.MessageTypes.AppearanceChanged,
-                            new Contracts.AppearanceChangedPayload { Theme = a.Theme, Density = a.Density });
+                            new Contracts.AppearanceChangedPayload
+                            {
+                                Theme = a.Theme, Density = a.Density, AutoOpenSubagents = a.AutoOpenSubagents
+                            });
                         break;
 
                     // The whole list, not a delta: it is small, and a panel that reconciles deltas

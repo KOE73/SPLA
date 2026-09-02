@@ -241,16 +241,22 @@ public static class SettingsOps
         return GetAgent(runtime);
     }
 
-    /// <summary>Persists just the UI appearance (theme/density) to the .spla project and mutates the
-    /// live settings, then publishes <see cref="AppearanceChanged"/> so every window applies it. Kept
-    /// separate from agent settings: appearance is a low-stakes, instantly-reversible preference that
-    /// auto-applies on change with no Save step — unlike the transactional mode/permission edits.</summary>
-    public static void SaveAppearance(AgentRuntime runtime, string? theme, string? density)
+    /// <summary>Persists the UI appearance (theme/density) plus <c>ui.auto_open_subagents</c> to the
+    /// .spla project and mutates the live settings, then publishes <see cref="AppearanceChanged"/> so
+    /// every window applies it. Kept separate from agent settings: these are low-stakes, instantly-
+    /// reversible preferences that auto-apply on change with no Save step — unlike the transactional
+    /// mode/permission edits (see root <c>AGENTS.md</c>, "Auto-apply vs Save"). <paramref
+    /// name="autoOpenSubagents"/> defaults to the current value when the caller omits it, the same
+    /// convention <paramref name="theme"/>/<paramref name="density"/> already use — a plain theme
+    /// change must not silently reset it.</summary>
+    public static void SaveAppearance(AgentRuntime runtime, string? theme, string? density, bool? autoOpenSubagents = null)
     {
         theme   = Blank(theme)   ?? runtime.Settings.Theme;
         density = Blank(density) ?? runtime.Settings.Density;
+        var autoOpen = autoOpenSubagents ?? runtime.Settings.AutoOpenSubagents;
         runtime.Settings.Theme   = theme;
         runtime.Settings.Density = density;
+        runtime.Settings.AutoOpenSubagents = autoOpen;
 
         var path = runtime.Settings.ProjectFilePath;
         if (path != null)
@@ -258,10 +264,13 @@ public static class SettingsOps
             var project = ConfigLoader.LoadProjectRaw(path);
             (project.Ui ??= new()).Theme = theme;
             project.Ui.Density           = density;
+            // Only when true — an untouched project keeps a clean file, same convention agent: uses
+            // for every other off-by-default flag (loop_guard, save_tool_calls, ...).
+            project.Ui.AutoOpenSubagents = autoOpen ? true : null;
             ConfigLoader.SaveProjectSections(project, path, "ui");
         }
 
-        runtime.Events.Publish(new AppearanceChanged(theme, density));
+        runtime.Events.Publish(new AppearanceChanged(theme, density, autoOpen));
     }
 
     // ── MCP over HTTP: whether POST /mcp is offered, and a fixed port for it ─

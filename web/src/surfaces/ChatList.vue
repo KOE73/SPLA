@@ -13,6 +13,11 @@
         title="Project files"
         @click="openPanel('workspace')"
       >◫</button>
+      <button
+        class="nav-tab"
+        title="Active sessions"
+        @click="openPanel('sessions')"
+      >🗂</button>
     </div>
     <button class="btn-new" @click="newChat">+ New</button>
   </div>
@@ -36,6 +41,7 @@
       @rename="rename"
       @delete="remove"
       @archive="archive"
+      @open-window="openInWindow"
     />
 
     <!-- Archived chats — toggled from the status bar (ProjectBar), session-only. Rendered below the
@@ -71,8 +77,9 @@ import type { ChatSummary } from "../protocol/types";
 import ChatListItem from "./ChatListItem.vue";
 import ProjectPicker from "./ProjectPicker.vue";
 import ProjectBar from "./ProjectBar.vue";
-import { openPanel } from "../dock/dockController";
+import { openPanel, openChatWindow } from "../dock/dockController";
 import { forgetSession } from "../state/chatSessions";
+import { collectSpawned } from "../state/chatTree";
 
 const offList = client.on("chat.list.result", p => { store.chats = p.chats || []; });
 const offArchivedList = client.on("chat.archived.list.result", p => { store.archivedChats = p.chats || []; });
@@ -82,6 +89,28 @@ onUnmounted(offArchivedList);
 // The toggle lives in ProjectBar (bottom status bar), but only ChatList knows when to actually fetch
 // the archived list — no point asking while the section is collapsed. Fetch once on every rising edge.
 watch(() => store.showArchivedChats, shown => { if (shown) client.send("chat.archived.list"); });
+
+// ── ui.auto_open_subagents: pop a window for a spawned session the moment it appears ─────────────
+// Off by default (ADR_20260827-2 §2.5: "a backend that opens windows by itself is not what anyone
+// expects"). ChatList is the one place mounted for the whole life of the window, so it is where a
+// NEW spawned chat is first noticed — every id already present the first time store.chats fills in
+// is history, not an arrival, and must never trigger a window of its own.
+const seenSpawnedIds = new Set<string>();
+let seededSpawnedIds = false;
+
+watch(() => store.chats, list => {
+  const spawned = collectSpawned(list);
+  if (!seededSpawnedIds) {
+    seededSpawnedIds = true;
+    for (const c of spawned) seenSpawnedIds.add(c.id);
+    return;
+  }
+  for (const c of spawned) {
+    if (seenSpawnedIds.has(c.id)) continue;
+    seenSpawnedIds.add(c.id);
+    if (store.autoOpenSubagents) openChatWindow(c.id, c.title || c.as || c.id);
+  }
+}, { deep: true });
 
 const chatsContainerRef = ref<HTMLElement>();
 
@@ -108,6 +137,10 @@ function archive(chatId: string) {
   client.send("chat.archive", { chatId });
   forgetSession(chatId);   // the runtime is closed server-side; drop any local session for it too
   if (chatId === store.currentChat) store.currentChat = null;
+}
+
+function openInWindow(chat: ChatSummary) {
+  openChatWindow(chat.id, chat.title || chat.as || chat.id);
 }
 
 function restore(chatId: string) {

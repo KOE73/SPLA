@@ -70,6 +70,13 @@ public static class RuntimeProjections
         // exactly that duration (see ChatSessionSpawnInfo's own remark), so it stands in here.
         var stillRunning = ChatManager.IsSpawned(c) && c.Spawn?.Outcome is null;
 
+        // Summed here rather than carried per message onto the wire: nobody downstream needs the
+        // per-message figure, only the chat's running total, and the messages are already in memory —
+        // ListChats/ListSpawnedChats already deserialized the whole file to build `c` itself.
+        var promptTokens = c.Messages.Sum(m => m.PromptTokens ?? 0);
+        var completionTokens = c.Messages.Sum(m => m.CompletionTokens ?? 0);
+        var hasUsage = c.Messages.Any(m => m.PromptTokens is not null || m.CompletionTokens is not null);
+
         return new ChatSummaryDto
         {
             Id = c.Id,
@@ -82,6 +89,9 @@ public static class RuntimeProjections
             As = c.As,
             Origin = c.Origin,
             Parent = c.Parent,
+            ModelId = c.ModelId,
+            PromptTokens = hasUsage ? promptTokens : null,
+            CompletionTokens = hasUsage ? completionTokens : null,
             Children = children is { Count: > 0 } ? children : null
         };
     }

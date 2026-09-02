@@ -15,6 +15,15 @@
       </label>
     </div>
     <div class="conn-card">
+      <div class="conn-head"><span class="id">Sessions</span></div>
+      <label class="field"><span>Auto-open spawned sessions</span>
+        <span style="display: flex; align-items: center; gap: 8px">
+          <input type="checkbox" v-model="autoOpenSubagents" @change="saveAppearance" />
+          <span class="hint">open a window by itself the moment a subagent's chat appears in the tree — off by default</span>
+        </span>
+      </label>
+    </div>
+    <div class="conn-card">
       <div class="conn-head"><span class="id">Layout</span><span class="state" style="color:var(--muted);font-size:var(--fs-xs)">this device only</span></div>
       <button class="btn ghost" @click="resetDock">Reset panel layout</button>
     </div>
@@ -31,6 +40,7 @@ const theme = ref(localStorage.getItem("spla.theme") || "dark");
 const density = ref(localStorage.getItem("spla.density") || "norm");
 const themes = ref<string[]>([theme.value]);
 const densities = ref<string[]>([density.value]);
+const autoOpenSubagents = ref(false);
 const hint = ref("");
 
 function capitalize(s: string) { return s ? s[0].toUpperCase() + s.slice(1) : s; }
@@ -38,13 +48,18 @@ function densityLabel(d: string) { return ({ nano: "Nano", mini: "Mini", norm: "
 
 // Auto-applies: no Save step. Each pick persists to .spla and broadcasts appearance.changed,
 // so every window updates live through one path — preview is the commit.
-function saveAppearance() { client.send("appearance.save", { theme: theme.value, density: density.value }); }
+function saveAppearance() {
+  client.send("appearance.save", {
+    theme: theme.value, density: density.value, autoOpenSubagents: autoOpenSubagents.value
+  });
+}
 
 const off = client.on("agent.result", p => {
   themes.value = p.themes && p.themes.length ? p.themes : themes.value;
   densities.value = p.densities && p.densities.length ? p.densities : densities.value;
   theme.value = (p.theme || theme.value).toLowerCase();
   density.value = p.density || density.value;
+  autoOpenSubagents.value = p.autoOpenSubagents === true;
   hint.value = p.canPersist === false ? "applies instantly · session-only" : "applies instantly · saved to .spla";
 });
 onUnmounted(off);

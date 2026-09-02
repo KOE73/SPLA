@@ -29,8 +29,10 @@ import UserBubble from "./UserBubble.vue";
 import AssistantBubble from "./AssistantBubble.vue";
 import ToolLine from "./ToolLine.vue";
 import ToolCard from "./ToolCard.vue";
+import ReplyOutLine from "./ReplyOutLine.vue";
 import PermissionAsk from "./PermissionAsk.vue";
 import ClarifyAsk from "./ClarifyAsk.vue";
+import { isReplyCall } from "../state/replyCalls";
 
 const chat = useChat();
 const items = computed<LogItem[]>(() => chat.session.value?.items ?? []);
@@ -45,7 +47,9 @@ function itemComponent(item: LogItem) {
     case "user": return UserBubble;
     case "assistant": return AssistantBubble;
     case "tool": case "notice": return ToolLine;
-    case "toolcall": return ToolCard;
+    // A reply/correspondence call reads as speech, not a tool invocation (PLAN_20260902 wave 7;
+    // ADR_20260827-2 §2.5: "реплика рендерится как речь"). Everything else keeps the ordinary card.
+    case "toolcall": return isReplyCall(item.call.name) ? ReplyOutLine : ToolCard;
     case "permission": return PermissionAsk;
     case "clarify": return ClarifyAsk;
   }

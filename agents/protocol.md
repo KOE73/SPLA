@@ -52,7 +52,7 @@ client/types **and** this table.
 | `project.create` | `ProjectCreate` | `ProjectCreatePayload` | Create + open; reply `project.context`. Server mode: created by name inside the user's area. |
 | `instance.status` | `InstanceStatus` | — | Ask this process what it is doing right now; reply `instance.status.result`. |
 | `instance.stop` | `InstanceStop` | `InstanceStopPayload` | Ask this process to shut down; reply `instance.status.result` (`Stopping: true` once underway, or a refusal naming why). `Force: true` cancels every running turn first. |
-| `chat.list` | `ChatList` | — | Request the chat list. Human chats only — a spawned session (`origin: spawned`) never appears here; it lives under its parent in the role→chat tree (planned) and is reached through `subagent.get`. |
+| `chat.list` | `ChatList` | — | Request the chat list. Reply `chat.list.result`: human chats at the top level, each with its spawned descendants nested under `children` (the role→chat tree, `ADR_20260827-2` §2.5) — a spawned session (`origin: spawned`) never appears as a top-level entry, only inside some ancestor's `children`, however deep the spawn chain went. Its own transcript is still reached through `subagent.get`, not by opening it as an ordinary chat. |
 | `chat.open` | `ChatOpen` | `ChatOpenPayload` | Open a chat; reply `chat.opened`. |
 | `chat.watch` | `ChatWatch` | `ChatOpenPayload` | Watch a chat (turn/tool events) without the `chat.opened` echo — for tear-off/aux windows. |
 | `chat.unwatch` | `ChatUnwatch` | `ChatOpenPayload` | Stop receiving a chat's turn events. Client-driven: opening another chat is NOT enough, because a chat mid-turn keeps streaming into its own background session. |
@@ -136,7 +136,7 @@ client/types **and** this table.
 | `chat.list.result` | `ChatListResult` | `ChatListResultPayload` | broadcast (project) | Every sidebar in that project refreshes. |
 | `chat.archived.list.result` | `ChatArchivedListResult` | `ChatArchivedListResultPayload` | unicast | Answer to `chat.archived.list`. |
 | `chat.opened` | `ChatOpened` | `ChatOpenedPayload` | unicast | Full chat state on open. |
-| `user.message` | `UserMessage` | `UserMessagePayload` | watchers | Accepted user message id/time; optional text renders server-initiated turns. |
+| `user.message` | `UserMessage` | `UserMessagePayload` | watchers | Accepted user message id/time; optional text renders server-initiated turns. `PeerFrom` set means this "user" turn is actually an incoming reply across a correspondence (`ADR_20260827-2` §2.5) — the client renders it as speech ("← from `PeerFrom`") instead of an ordinary human bubble, live, the moment it lands. |
 | `llm.turn.start` | `LlmTurnStart` | `DeltaPayload` | watchers | New assistant message index. |
 | `delta` | `Delta` | `DeltaPayload` | watchers | Streamed assistant text chunk. |
 | `reasoning` | `Reasoning` | `ReasoningPayload` | watchers | Streamed reasoning chunk. |

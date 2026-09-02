@@ -22,7 +22,11 @@ import type { ChatDoubt, ToolProgressDetail, ToolSetState } from "../protocol/ty
 import type { ToolCallState } from "../surfaces/ToolCard.vue";
 
 export type LogItem =
-  | { kind: "user"; key: string; text: string; images?: string[]; msgId?: string; createdAt?: string | number }
+  | { kind: "user"; key: string; text: string; images?: string[]; msgId?: string; createdAt?: string | number;
+      /** Set when this "user" turn is actually an incoming reply across a correspondence
+       *  (ADR_20260827-2 §2.5) — UserBubble renders it as speech ("← from peerFrom") instead of an
+       *  ordinary human bubble. Undefined for every message a person actually typed. */
+      peerFrom?: string }
   | { kind: "assistant"; key: string; msgIndex: number; text: string; reasoning: string;
       msgId?: string; createdAt?: string | number;
       /** Generations the repetition guard threw away before this bubble got its real answer — the
@@ -261,7 +265,7 @@ client.on("chat.opened", (p, env) => {
   for (const m of p.messages) {
     if (m.role === "user") {
       s.items.push({ kind: "user", key: nextKey(), text: m.content || "",
-        images: m.images, msgId: m.msgId, createdAt: m.createdAt });
+        images: m.images, msgId: m.msgId, createdAt: m.createdAt, peerFrom: m.peerFrom });
     } else if (m.role === "assistant") {
       // A degenerate-turn record has blank content/reasoning and exists purely for its attempts —
       // still worth a bubble, since dropping it would erase the only trace of what happened.
@@ -282,19 +286,25 @@ client.on("chat.opened", (p, env) => {
   }
 });
 
-on("user.message", (s, p: { msgId: string; text?: string; createdAt?: string }) => {
-  // Attach the server MsgId to the composer's optimistic echo. A server-initiated startup turn has
-  // no echo, so its optional text becomes a real bubble instead.
-  for (let i = s.items.length - 1; i >= 0; i--) {
-    const it = s.items[i];
-    if (it.kind === "user" && !it.msgId) {
-      it.msgId = p.msgId;
-      if (p.createdAt) it.createdAt = p.createdAt;
-      return;
+on("user.message", (s, p: { msgId: string; text?: string; createdAt?: string; peerFrom?: string }) => {
+  // A peer-kind arrival (p.peerFrom set) never has a local optimistic echo to attach to — nothing in
+  // this window typed it — so it always falls through to the push below, exactly like a
+  // server-initiated turn's text does.
+  if (!p.peerFrom) {
+    // Attach the server MsgId to the composer's optimistic echo. A server-initiated startup turn has
+    // no echo, so its optional text becomes a real bubble instead.
+    for (let i = s.items.length - 1; i >= 0; i--) {
+      const it = s.items[i];
+      if (it.kind === "user" && !it.msgId) {
+        it.msgId = p.msgId;
+        if (p.createdAt) it.createdAt = p.createdAt;
+        return;
+      }
     }
   }
   if (p.text !== undefined)
-    s.items.push({ kind: "user", key: nextKey(), text: p.text, msgId: p.msgId, createdAt: p.createdAt });
+    s.items.push({ kind: "user", key: nextKey(), text: p.text, msgId: p.msgId, createdAt: p.createdAt,
+      peerFrom: p.peerFrom });
 });
 
 on("llm.turn.start", (s, p: { msgIndex: number; progressTreeId?: string | null }) => {

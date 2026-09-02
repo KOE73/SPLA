@@ -1,5 +1,13 @@
 <template>
-  <div class="chat-item" :class="{ active, archived }" @click="$emit('select', chat.id)">
+  <div
+    class="chat-item" :class="{ active, archived }" :style="{ paddingLeft: 10 + depth * 14 + 'px' }"
+    @click="$emit('select', chat.id)"
+  >
+    <!-- A spawned session sits under its parent role (ADR_20260827-2 §2.5: "список чатов становится
+         деревом роль → чат") — the connector says "this is someone's child", the role badge says
+         whose role it ran as. Depth alone (indent) reads as nesting but not as "why". -->
+    <span v-if="depth > 0" class="tree-connector">↳</span>
+    <span v-if="chat.as" class="role-badge" :title="`role: ${chat.as}`">{{ chat.as }}</span>
     <!-- Where work is happening — including a turn another window or another user started. Archived
          chats never carry a live turn (ChatRegistry.Archive closes it), so this never renders there. -->
     <span v-if="chat.turnActive" class="busy" title="A turn is running in this chat">●</span>
@@ -12,20 +20,37 @@
       <span class="x" title="Delete permanently" @click.stop="$emit('delete-permanently', chat.id)">✕</span>
     </template>
     <template v-else>
+      <span class="x" title="Open in a separate window" @click.stop="$emit('open-window', chat)">⧉</span>
       <span class="x" title="Rename" @click.stop="$emit('rename', chat)">✎</span>
       <span class="x" title="Archive" @click.stop="$emit('archive', chat.id)">🗄</span>
       <span class="x" title="Delete" @click.stop="$emit('delete', chat.id)">✕</span>
     </template>
   </div>
+
+  <!-- Spawned descendants, nested to whatever depth the spawn chain reached (ChatSummary.children).
+       Recursive by the component's own SFC self-reference — no separate "tree node" wrapper needed.
+       `active` is recomputed per row from the store rather than threaded down as a prop: a nested
+       row is not "active because its parent is" — it is active only when IT is store.currentChat. -->
+  <ChatListItem
+    v-for="child in chat.children ?? []" :key="child.id" :chat="child" :depth="depth + 1"
+    :active="child.id === store.currentChat" :archived="archived"
+    @select="$emit('select', $event)" @rename="$emit('rename', $event)" @delete="$emit('delete', $event)"
+    @archive="$emit('archive', $event)" @open-window="$emit('open-window', $event)"
+  />
 </template>
 
 <script setup lang="ts">
 import type { ChatSummary } from "../protocol/types";
+import { store } from "../state/store";
 
-// One row in the chat/project list. Kept as its own component (not inlined in a v-for) so future
-// per-item content — project badges, unread markers, live status — has one place to grow without
-// bloating the list's own template.
-withDefaults(defineProps<{ chat: ChatSummary; active: boolean; archived?: boolean }>(), { archived: false });
+// One row in the chat/project list — and, via its own children, the whole subtree spawned under it.
+// Kept as its own component (not inlined in a v-for) so future per-item content — project badges,
+// unread markers, live status — has one place to grow without bloating the list's own template.
+withDefaults(
+  defineProps<{ chat: ChatSummary; active: boolean; archived?: boolean; depth?: number }>(),
+  { archived: false, depth: 0 }
+);
+
 defineEmits<{
   select: [id: string];
   rename: [chat: ChatSummary];
@@ -33,6 +58,7 @@ defineEmits<{
   archive: [id: string];
   restore: [id: string];
   "delete-permanently": [id: string];
+  "open-window": [chat: ChatSummary];
 }>();
 
 // Convert state code to user-facing label for the title attribute.
@@ -58,6 +84,14 @@ function stateLabel(state: string): string {
 .chat-item:hover { background: color-mix(in srgb, var(--text) 6%, transparent); }
 .chat-item.active { background: var(--accent-soft); color: var(--accent); }
 .chat-item .t { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* Tree: a spawned session's connector + the role it ran as (ADR_20260827-2 §2.5's "дерево роль → чат"). */
+.chat-item .tree-connector { color: var(--muted); flex-shrink: 0; }
+.chat-item .role-badge {
+  flex-shrink: 0; font-size: var(--fs-xs); font-weight: 600; line-height: 1.4;
+  padding: 0 5px; border-radius: var(--radius-sm);
+  background: var(--accent-soft); color: var(--accent);
+}
 
 /* Archived chats — visually muted so they read as put away, not just another row in the list. */
 .chat-item.archived { color: var(--muted); opacity: 0.7; font-style: italic; }

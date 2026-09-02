@@ -142,6 +142,24 @@ button { font: inherit; cursor: pointer; }
 .msg.system { align-self: center; background: var(--system-bg); color: var(--muted); font-size: var(--fs-sm); }
 .msg.error { align-self: flex-start; background: var(--error-bg); border-color: var(--danger); }
 
+/* A reply that arrived across a correspondence (ADR_20260827-2 §2.5) — still an ordinary user-role
+   message on the wire (ConversationOrchestrator sees a plain User turn), but it must never READ as
+   the reader's own words. Left-aligned like an assistant bubble, with a small accent label instead
+   of the reader's usual right-aligned "this is what I said" placement. */
+.msg.user.peer { align-self: flex-start; background: var(--assistant-bg); border-color: var(--accent); }
+.peer-label { font-size: var(--fs-xs); font-weight: 700; text-transform: uppercase;
+  letter-spacing: .05em; color: var(--accent); margin-bottom: 5px; }
+
+/* An outgoing reply/correspondence call, rendered as speech rather than a generic tool card — the
+   call is the content here, not its receipt (plan trap 10: a delivery receipt must never look like
+   an answer). Right-aligned like the reader's own words, since it is: this chat SAID it. */
+.msg.reply-out { align-self: flex-end; background: var(--user-bg); border-color: var(--accent); }
+.reply-out-label { font-size: var(--fs-xs); font-weight: 700; text-transform: uppercase;
+  letter-spacing: .05em; color: var(--accent); margin-bottom: 5px; display: flex; align-items: center; gap: 5px; }
+.reply-out-status { font-size: 11px; font-weight: 400; text-transform: none; letter-spacing: 0; }
+.reply-out-status.ok { color: var(--accent); }
+.reply-out-status.failed { color: var(--danger); }
+
 .reasoning { font-style: italic; color: var(--reasoning-fg); font-size: 13px;
   border-left: 2px dashed var(--border); padding-left: 8px; margin-bottom: 6px; white-space: pre-wrap; }
 .reasoning summary { cursor: pointer; font-style: normal; font-weight: 600; color: var(--muted);

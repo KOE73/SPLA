@@ -167,15 +167,19 @@ public sealed class ChatRuntime : IDisposable, SPLA.Domain.Agent.IBackgroundTask
 
     /// <summary>The current turn's own onUserMessage callback, stashed here so the DrainInbox closure
     /// below (built once in the constructor, but invoked from inside whichever turn is live) can echo a
-    /// Human-kind drained message back to watchers exactly like a directly-sent one. Only one turn ever
-    /// runs at a time (guarded by _turnGate), so there is no re-entrancy to worry about.</summary>
+    /// Human- or Peer-kind drained message back to watchers exactly like a directly-sent one. Only one
+    /// turn ever runs at a time (guarded by _turnGate), so there is no re-entrancy to worry about.</summary>
     private Action<ChatMessage>? _activeOnUserMessage;
 
-    /// <summary>Human-kind messages this turn's DrainInbox has pulled off the queue but which have not
-    /// yet been added to the conversation (and so have no MsgId yet) — see the constructor's
-    /// DrainInbox/OnMessageDelivered pair for why the echo has to wait that long. Reference-keyed:
-    /// two messages are never "the same" here unless they are literally the same instance.</summary>
-    private readonly HashSet<ChatMessage> _pendingHumanEchoes = new(ReferenceEqualityComparer.Instance);
+    /// <summary>Human- and Peer-kind messages this turn's DrainInbox has pulled off the queue but which
+    /// have not yet been added to the conversation (and so have no MsgId yet) — see the constructor's
+    /// DrainInbox/OnMessageDelivered pair for why the echo has to wait that long. Peer joined Human here
+    /// for wave 7: an incoming reply must render live, as speech ("← from &lt;role&gt;"), the same
+    /// moment it lands, not only the next time the chat is reopened — <see cref="ChatMessage.PeerFrom"/>
+    /// already rides on the message itself, so nothing else about this plumbing needs to know which kind
+    /// it was. Reference-keyed: two messages are never "the same" here unless they are literally the
+    /// same instance.</summary>
+    private readonly HashSet<ChatMessage> _pendingEchoes = new(ReferenceEqualityComparer.Instance);
 
     private int _bubbleSeq;
 
@@ -639,6 +643,8 @@ public sealed class ChatRuntime : IDisposable, SPLA.Domain.Agent.IBackgroundTask
                 Reasoning = string.IsNullOrEmpty(m.Reasoning) ? null : m.Reasoning,
                 CreatedAt = m.CreatedAt,
                 PeerFrom = m.PeerFrom,
+                PromptTokens = m.PromptTokens,
+                CompletionTokens = m.CompletionTokens,
                 // Restored whenever they were written, independent of today's save_attempts value —
                 // a chat opened after the setting was turned off must still show what it recorded
                 // while it was on.
@@ -721,12 +727,13 @@ public sealed class ChatRuntime : IDisposable, SPLA.Domain.Agent.IBackgroundTask
             {
                 var drained = Inbox.DrainAllWithKinds();
                 foreach (var (message, kind) in drained)
-                    if (kind == SPLA.Domain.Tools.InboxItemKind.Human) _pendingHumanEchoes.Add(message);
+                    if (kind is SPLA.Domain.Tools.InboxItemKind.Human or SPLA.Domain.Tools.InboxItemKind.Peer)
+                        _pendingEchoes.Add(message);
                 return drained.Select(d => d.Message).ToList();
             },
             OnMessageDelivered = message =>
             {
-                if (_pendingHumanEchoes.Remove(message)) _activeOnUserMessage?.Invoke(message);
+                if (_pendingEchoes.Remove(message)) _activeOnUserMessage?.Invoke(message);
             },
             Checkpoint = _checkpoint,
             // Anti-repeat guard is a per-project setting (agent: loop_guard, default off) — it targets
@@ -935,6 +942,8 @@ public sealed class ChatRuntime : IDisposable, SPLA.Domain.Agent.IBackgroundTask
                 Reasoning = string.IsNullOrEmpty(m.Reasoning) ? null : m.Reasoning,
                 CreatedAt = m.CreatedAt,
                 PeerFrom = m.PeerFrom,
+                PromptTokens = m.PromptTokens,
+                CompletionTokens = m.CompletionTokens,
                 Images = _imageFiles.TryGetValue(m, out var files) && files.Count > 0 ? new List<string>(files) : null,
                 ToolCalls = saveToolCalls && m.ToolCalls?.Count > 0 ? m.ToolCalls : null,
                 ToolCallId = saveToolCalls ? m.ToolCallId : null,

@@ -91,7 +91,8 @@ internal sealed class ChatTurnDriver
                     {
                         MsgId = m.MsgId,
                         CreatedAt = m.CreatedAt.ToString("o"),
-                        Text = m.Content
+                        Text = m.Content,
+                        PeerFrom = m.PeerFrom
                     }));
 
             // SendAsync counts the turn before its first await, so the chat already reports itself
