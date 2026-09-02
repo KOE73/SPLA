@@ -26,6 +26,8 @@ agent:
   instructions:
     - AGENTS.md
 
+roles: [reviewer]
+
 llm:
   provider: lmstudio
   endpoint: http://localhost:1234/v1
@@ -65,6 +67,7 @@ ignore:
 | `agent.mode` | No | Default mode: `Chat`, `Research`, `Inspect`, `Edit`, `Agent`. |
 | `agent.instructions` | No | Markdown files injected into the system prompt. Paths relative to the project root. |
 | `agent.capabilities` | No | Enabled built-in `core.*` capabilities. Missing = all; `[]` = pure chat with no built-in tools. |
+| `roles` | No | Names of the roles this project has, e.g. `[reviewer, architect]`. Each name pairs with a body at `roles/<name>.yaml`, next to this manifest. See [Roles](#roles). |
 | `llm.provider` | No | LLM provider. Currently only `lmstudio`. |
 | `llm.endpoint` | No | API base URL. |
 | `llm.model` | No | Model name. `auto` = use whatever is loaded. |
@@ -150,6 +153,68 @@ pull` lands a folder with a colliding name.
   unavailable; reaching into it then says so by name, rather than reporting a missing file.
 
 Design: [`ADR_20260814_core_project-mounts`](../docs/adr/ADR_20260814_core_project-mounts.md).
+
+## Roles
+
+A role is a **named type of actor settings** — the same kind of thing `agent:` above already is, per
+[`ADR_20260827-2_core_roles`](../docs/adr/ADR_20260827-2_core_roles.md) §2.1. `agent:` is a project's
+*default* role — "role zero" — and needs no entry anywhere; any other role is declared twice, in two
+different places, for two different reasons:
+
+1. **The manifest names it**, under `roles:`. This is what makes the role *exist* — a manifest that
+   never mentions `reviewer` has no `reviewer` role, no matter what sits on disk.
+2. **A file holds its body**, at `roles/<name>.yaml`, next to the manifest. This travels in git —
+   unlike `.spla/`, which is closed as a whole and holds nothing that acts.
+
+```yaml
+# project.spla
+roles: [reviewer, architect]
+```
+
+```yaml
+# roles/reviewer.yaml
+mode: Research
+instructions:
+  - AGENTS.md
+  - docs/review-checklist.md
+capabilities:
+  - core.read
+model: fast-local
+toolsets:
+  roslyn: agent_demand
+islands:
+  - sql:staging-db
+```
+
+**A file in `roles/` that the manifest does not name does not act.** This is a security property, not
+tidiness: a role file arriving in someone else's pull request must not become a new actor with access
+the moment it lands on disk. It is exactly the same logic as "no walking up the tree" in
+[Usage](#usage) below — nothing acts that nobody named.
+
+**A role's body has the same shape as `agent:`**, plus three fields of its own:
+
+| Field | Meaning |
+|---|---|
+| `mode`, `instructions`, `capabilities`, `custom_prompt`, `loop_guard*`, `unified_resources`, `ask_timeout_minutes`, `shell_timeout_seconds`, `trusted_domains`, `save_tool_calls`, `save_attempts` | Same meaning as the identically-named `agent.*` field above. |
+| `model` | Which of the project's own `connections:` models this role runs on. A role does not declare its own connection — the project declares what is reachable at all, a role only chooses among it. |
+| `toolsets` | Same shape as the top-level `toolsets:` section, merged over it key by key — a role that mentions one set narrows (or widens, within what the capability gate still allows) only that set. |
+| `islands` | Which of the project's already-reachable islands (a database, a host, a foreign tool server — see `SPLA.Domain.Security.IslandIdentity`) this role's prompt and tool surface mention. A *selection*, not a grant: this list narrows what is shown, it never widens what is actually reachable — the capability gate is still the only place a reach is decided. |
+
+**A role is not a subset of the project's own permissions.** `capabilities` on a role *replaces* the
+project's list for that role — a role may declare a capability `agent:` never mentioned, and gets it.
+The ceiling on what a role may actually reach is the directory root and the owner's grants, never the
+union of what `agent:` happened to declare. Requiring "every role's capabilities ⊆ `agent:`'s" would
+make the project itself the maximally privileged entity — the exact failure
+[`ADR_20260819`](../docs/adr/ADR_20260819_core_project-entry.md) describes for project-less mode.
+
+**A role is not a second axis of permissions.** It has no `permissions:` block of its own: it picks a
+`mode`, the same way `agent:` does, and narrows what runs inside that mode. Two overlapping permission
+systems would immediately raise "who overrides whom" — the ADR rejected that outright.
+
+**A role is not self-assigned.** The manifest's owner writes `roles:` and each `roles/<name>.yaml`;
+nothing an agent can compute or say at runtime substitutes for that. There is no tool and no
+configuration path that lets a running agent invent a role or take one it was not given — this is
+called out in the ADR as "the only real invariant", everything else being a question of grants.
 
 ## Launch Profiles
 
