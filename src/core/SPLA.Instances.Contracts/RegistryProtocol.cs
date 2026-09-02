@@ -35,18 +35,24 @@ public static class RegistryFrames
 ///
 /// <para>The registry used to hold only agents, and every symptom of that showed up as something the
 /// hub could not do: it could not raise an existing window because it did not know one existed, and
-/// closing a project left its windows behind because they were never its to close. A role is the
+/// closing a project left its windows behind because they were never its to close. A kind is the
 /// smallest thing that fixes all of it — the channel, the liveness rule and the transport are
 /// unchanged, and a participant is still just "something that said hello and is still connected".</para>
 ///
 /// <para>Values are strings rather than an enum on the wire: a hub of one vintage meeting a
-/// participant of another must be able to carry a role it does not recognise without failing the
+/// participant of another must be able to carry a kind it does not recognise without failing the
 /// connection, which an enum would turn into a parse error.</para>
+///
+/// <para>Named <c>ParticipantKind</c>, not <c>ParticipantRoles</c>: a registry participant is a
+/// <i>kind</i> (agent, window, hub), and "role" now names a different thing — the deliberately
+/// separate configuration an actor runs as (<c>ADR_20260827-2_core_roles</c> §5). On the wire the
+/// field is <c>kind</c>; a participant registered before this rename still sends <c>role</c>, and
+/// <see cref="RegisterFrame"/> reads either.</para>
 /// </summary>
-public static class ParticipantRoles
+public static class ParticipantKind
 {
     /// <summary>Holds a project and runs work in it. The historical, and still the default: a
-    /// registration that names no role predates roles and is an agent.</summary>
+    /// registration that names no kind predates kinds and is an agent.</summary>
     public const string Agent = "agent";
 
     /// <summary>A view onto a project. Holds nothing, can be raised, and closes on request.</summary>
@@ -67,6 +73,7 @@ public sealed class RegistryFrame
 }
 
 /// <summary>What an instance says about itself when it arrives.</summary>
+[JsonConverter(typeof(RegisterFrameConverter))]
 public sealed class RegisterFrame
 {
     /// <summary>Manifest path, or whatever the instance calls its project. Opaque to the hub: on
@@ -79,10 +86,54 @@ public sealed class RegisterFrame
     /// instance, whether it is read off a disk or off a socket.</summary>
     public InstanceInfo Info { get; set; } = new();
 
-    /// <summary>What this participant is; one of <see cref="ParticipantRoles"/>. Defaults to
-    /// <see cref="ParticipantRoles.Agent"/> so a participant built before roles existed — or one that
+    /// <summary>What this participant is; one of <see cref="ParticipantKind"/>. Defaults to
+    /// <see cref="ParticipantKind.Agent"/> so a participant built before kinds existed — or one that
     /// simply does not care — registers as what it always was.</summary>
-    public string Role { get; set; } = ParticipantRoles.Agent;
+    public string Kind { get; set; } = ParticipantKind.Agent;
+}
+
+/// <summary>
+/// Hand-written (de)serialization for <see cref="RegisterFrame"/>, for exactly one reason: the wire
+/// field was renamed <c>role</c> → <c>kind</c> (see <see cref="ParticipantKind"/>'s own remarks), and
+/// a participant built before the rename still sends <c>role</c>. Writing always emits <c>kind</c>;
+/// reading accepts either, preferring <c>kind</c> when a sender somehow has both. Every other field
+/// on the frame would serialize identically through ordinary reflection — this converter exists only
+/// because System.Text.Json has no built-in notion of "read this property under either of two names".
+/// </summary>
+internal sealed class RegisterFrameConverter : JsonConverter<RegisterFrame>
+{
+    public override RegisterFrame Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
+    {
+        using var document = JsonDocument.ParseValue(ref reader);
+        var root = document.RootElement;
+
+        var kind = ReadString(root, "kind") ?? ReadString(root, "role");
+        return new RegisterFrame
+        {
+            ProjectId = ReadString(root, "projectId") ?? "",
+            ProjectName = ReadString(root, "projectName"),
+            Info = root.TryGetProperty("info", out var info) && info.ValueKind != JsonValueKind.Null
+                ? info.Deserialize<InstanceInfo>(options) ?? new()
+                : new(),
+            Kind = string.IsNullOrWhiteSpace(kind) ? ParticipantKind.Agent : kind
+        };
+    }
+
+    public override void Write(Utf8JsonWriter writer, RegisterFrame value, JsonSerializerOptions options)
+    {
+        writer.WriteStartObject();
+        writer.WriteString("projectId", value.ProjectId);
+        if (value.ProjectName is not null) writer.WriteString("projectName", value.ProjectName);
+        writer.WritePropertyName("info");
+        JsonSerializer.Serialize(writer, value.Info, options);
+        writer.WriteString("kind", value.Kind);
+        writer.WriteEndObject();
+    }
+
+    private static string? ReadString(JsonElement root, string propertyName)
+        => root.TryGetProperty(propertyName, out var value) && value.ValueKind == JsonValueKind.String
+            ? value.GetString()
+            : null;
 }
 
 /// <summary>What an instance is doing now. Pushed, never polled: a badge that updates on a poll is
@@ -110,9 +161,9 @@ public sealed class RegisteredInstanceDto
     public string State { get; set; } = "";
     public int Clients { get; set; }
 
-    /// <summary>One of <see cref="ParticipantRoles"/>. An observer showing only agents filters on it;
+    /// <summary>One of <see cref="ParticipantKind"/>. An observer showing only agents filters on it;
     /// one showing everything gets to say what each row is.</summary>
-    public string Role { get; set; } = ParticipantRoles.Agent;
+    public string Kind { get; set; } = ParticipantKind.Agent;
 
     /// <summary>When the hub last heard anything at all from this instance. An observer that cares
     /// about staleness has the number rather than a boolean somebody else's clock decided.</summary>
@@ -122,7 +173,7 @@ public sealed class RegisteredInstanceDto
     /// The observer-side record for this row.
     ///
     /// <para>Lives here, once, because it was written twice — in the watcher and in the remote
-    /// registry — and the two promptly disagreed: adding <see cref="Role"/> to the wire updated one
+    /// registry — and the two promptly disagreed: adding <see cref="Kind"/> to the wire updated one
     /// copy and left the other quietly reporting every window as an agent. A conversion duplicated
     /// per consumer is a conversion that drifts the next time the shape changes.</para>
     /// </summary>
@@ -131,7 +182,7 @@ public sealed class RegisteredInstanceDto
         InstanceStates.TryParse(State, out var state);
         return new InstanceRecord(
             ProjectId, ProjectName, Info, state, Clients,
-            string.IsNullOrWhiteSpace(Role) ? ParticipantRoles.Agent : Role);
+            string.IsNullOrWhiteSpace(Kind) ? ParticipantKind.Agent : Kind);
     }
 }
 

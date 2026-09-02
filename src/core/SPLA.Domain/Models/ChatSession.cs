@@ -40,6 +40,38 @@ public class ChatSession
     [YamlMember(Alias = "agent")]
     public SplaAgentSection? Agent { get; set; }
 
+    /// <summary>
+    /// The role this session runs as, or null for a plain human chat. Named <c>as:</c> — deliberately
+    /// not <c>role:</c> — because <see cref="ChatSessionMessage.Role"/> a few lines below is a mirror
+    /// of the provider protocol's own field (<c>user</c>/<c>assistant</c>/<c>tool</c>) and must not be
+    /// confused with it; a session file is read by eye exactly when something has already gone wrong,
+    /// and the one moment that reading needs to be unambiguous is the moment two same-named fields
+    /// would collide (<c>docs/adr/ADR_20260827-2_core_roles.md</c> §5, trap 4 in
+    /// <c>docs/plans/PLAN_20260902_agent_roles-and-correspondence.md</c>).
+    /// <para>Declared, read and round-tripped in this wave; nothing writes it yet.</para>
+    /// </summary>
+    [YamlMember(Alias = "as")]
+    public string? As { get; set; }
+
+    /// <summary>
+    /// The chat id that spawned this session, or null for one a human opened directly. Together with
+    /// <see cref="Origin"/> this is the entire difference between a chat and a spawned run once a role
+    /// supplies everything else (<c>docs/adr/ADR_20260902_core_session-unification.md</c> §2.1).
+    /// <para>Declared, read and round-tripped in this wave; nothing writes it yet.</para>
+    /// </summary>
+    [YamlMember(Alias = "parent")]
+    public string? Parent { get; set; }
+
+    /// <summary>
+    /// <c>"human"</c> or <c>"spawned"</c>; null means human — the historical default, so every session
+    /// file written before this field existed still means exactly what it always meant
+    /// (<c>docs/adr/ADR_20260827_core_config-versioning.md</c>: absence of a new key is not an error,
+    /// it is the first version).
+    /// <para>Declared, read and round-tripped in this wave; nothing writes it yet.</para>
+    /// </summary>
+    [YamlMember(Alias = "origin")]
+    public string? Origin { get; set; }
+
     [YamlMember(Alias = "messages")]
     public List<ChatSessionMessage> Messages { get; set; } = new();
 

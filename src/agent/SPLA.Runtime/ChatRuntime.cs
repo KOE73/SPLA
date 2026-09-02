@@ -384,7 +384,7 @@ public sealed class ChatRuntime : IDisposable, SPLA.Domain.Agent.IBackgroundTask
                 new SPLA.Domain.Security.DataOrigin(d.Zone, OperatorNamed: false),
                 d.What,
                 new DateTimeOffset(DateTime.SpecifyKind(d.At, DateTimeKind.Utc)))));
-        _orchestrator = new ConversationOrchestrator(runtime.Llm, runtime.McpHost)
+        _orchestrator = new ConversationOrchestrator(runtime.Llm, new ChatToolHost(runtime.McpHost))
         {
             // Live context surface, recomposed on every iteration inside this turn's
             // AgentSessionScope — which is what lets runtime-wide contributors read this chat's

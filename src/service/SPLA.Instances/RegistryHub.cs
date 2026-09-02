@@ -7,7 +7,7 @@ namespace SPLA.Instances;
 /// The set of participants currently registered, and the live state each one last reported.
 ///
 /// <para><b>Participants, not only agents.</b> Anything attached to a project registers here and
-/// carries a <see cref="ParticipantRoles">role</see> — the agent holding it, a window looking at it,
+/// carries a <see cref="ParticipantKind">kind</see> — the agent holding it, a window looking at it,
 /// the machine's tray shell. That is what makes the hub the one place able to address them: "raise
 /// the window for this project" and "close everything on this project" are questions an index of
 /// agents alone cannot answer, and every orphaned window came from trying.</para>
@@ -34,7 +34,7 @@ public sealed class RegistryHub
         string ProjectId,
         string? ProjectName,
         InstanceInfo Info,
-        string Role,
+        string Kind,
         Func<string, object, Task> Control)
     {
         public InstanceState State { get; set; } = InstanceState.Idle;
@@ -79,8 +79,8 @@ public sealed class RegistryHub
             ? Guid.NewGuid().ToString("N")
             : frame.Info.InstanceId;
 
-        var role = string.IsNullOrWhiteSpace(frame.Role) ? ParticipantRoles.Agent : frame.Role;
-        var entry = new Entry(id, frame.ProjectId, frame.ProjectName, frame.Info, role, control);
+        var kind = string.IsNullOrWhiteSpace(frame.Kind) ? ParticipantKind.Agent : frame.Kind;
+        var entry = new Entry(id, frame.ProjectId, frame.ProjectName, frame.Info, kind, control);
 
         // Last registration wins. A reconnecting instance keeps its id, so the natural outcome of a
         // dropped-and-restored channel is one entry replaced, never two claiming the same project.
@@ -90,7 +90,7 @@ public sealed class RegistryHub
         // why this outlives _entries. Only agents hold a project worth finding this way; a window
         // registering under the same project id would otherwise overwrite a real name with null the
         // moment it opened, which is a worse answer than simply not recording it.
-        if (role == ParticipantRoles.Agent)
+        if (kind == ParticipantKind.Agent)
             _knownNames[frame.ProjectId] = frame.ProjectName;
 
         Changed?.Invoke();
@@ -121,7 +121,7 @@ public sealed class RegistryHub
                 Info = e.Info,
                 State = InstanceStates.Name(e.State),
                 Clients = e.Clients,
-                Role = e.Role,
+                Kind = e.Kind,
                 LastSeen = e.LastSeen
             })
             .ToList();
@@ -166,7 +166,7 @@ public sealed class RegistryHub
 
         // Agents last: a window told to close after its agent has already gone would spend its final
         // moments reconnecting to nothing, which is the very flicker this is meant to remove.
-        foreach (var entry in targets.OrderBy(e => e.Role == ParticipantRoles.Agent))
+        foreach (var entry in targets.OrderBy(e => e.Kind == ParticipantKind.Agent))
             await entry.Control(RegistryFrames.Stop, new StopFrame { Force = force });
 
         return targets.Count;
@@ -190,7 +190,7 @@ public sealed class RegistryHub
     /// before starting anything: raising the window somebody already has beats opening a second one.</summary>
     public RegisteredInstanceDto? FindWindow(string projectId)
         => List().FirstOrDefault(e =>
-            e.Role == ParticipantRoles.Window &&
+            e.Kind == ParticipantKind.Window &&
             string.Equals(e.ProjectId, projectId, StringComparison.OrdinalIgnoreCase));
 
     /// <summary>The live agent for one project id (manifest path), or null when nothing is currently
@@ -200,7 +200,7 @@ public sealed class RegistryHub
     /// makes.</summary>
     public RegisteredInstanceDto? FindAgent(string projectId)
         => List().FirstOrDefault(e =>
-            e.Role == ParticipantRoles.Agent &&
+            e.Kind == ParticipantKind.Agent &&
             string.Equals(e.ProjectId, projectId, StringComparison.OrdinalIgnoreCase));
 
     /// <summary>One candidate a name search turned up: the project id a caller would need in order to
