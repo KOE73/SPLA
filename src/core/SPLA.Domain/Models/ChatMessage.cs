@@ -73,6 +73,21 @@ public class ChatMessage
     public string? ReplacementKey { get; set; }
 
     /// <summary>
+    /// The correspondent's role, for a message that arrived across a correspondence
+    /// (<see cref="SPLA.Runtime.ChatRuntime.SendReply"/>, <c>InboxItemKind.Peer</c>) — display metadata
+    /// only, never sent to the provider (see <c>ConversationOrchestrator</c>, which builds the wire
+    /// call from <see cref="Role"/>/<see cref="Content"/> alone) and never read by anything the model
+    /// sees. Null for every ordinary message, which is the overwhelming majority.
+    /// <para>
+    /// This is what lets the client render a reply as speech ("← from the architect") instead of an
+    /// indistinguishable human message, without changing the wire format of the reply itself
+    /// (<c>docs/adr/ADR_20260827-2_core_roles.md</c> §2.5): the message the provider sees is still a
+    /// plain <see cref="ChatRole.User"/> turn, exactly as before this field existed.
+    /// </para>
+    /// </summary>
+    public string? PeerFrom { get; set; }
+
+    /// <summary>
     /// True for messages that are shown to the user but must never be sent to the model
     /// (status notices, guard warnings, command echoes, error bubbles). This is the domain
     /// replacement for the old UI-level <c>is SystemMessageViewModel</c> check: whether a

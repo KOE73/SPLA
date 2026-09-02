@@ -1,4 +1,5 @@
 using SPLA.Domain.Models;
+using SPLA.Domain.Settings;
 using SPLA.Runtime;
 using SPLA.Service.Contracts;
 
@@ -33,18 +34,57 @@ public static class RuntimeProjections
     /// threading an option through every projection.</summary>
     private static readonly TimeSpan StallAfter = TimeSpan.FromMinutes(10);
 
+    /// <summary>All human-visible chats, most-recent first, each with its spawned descendants nested
+    /// under it — the tree PLAN_20260902 wave 7 asks for ("список чатов становится деревом роль →
+    /// чат"; ADR_20260827-2 §2.5, ADR_20260902 §2.3: "видны в дереве роль → чат, под своим
+    /// родителем"). A spawned session never appears at the top level; it only ever shows up as
+    /// someone's <see cref="ChatSummaryDto.Children"/>, however deep the spawn chain went (the
+    /// recursion-depth-3 cap bounds this in practice, so the recursion below needs no cap of its own).
+    /// A spawned session whose parent has itself been deleted or archived becomes unreachable from any
+    /// root — the same "orphan" outcome the flat list already had, just no longer silently dropped
+    /// from disk; retention (<c>agent.spawned_retention</c>) is still what reclaims it.</summary>
     public static List<ChatSummaryDto> List(this ChatRegistry chats)
-        => chats.Runtime.ChatManager.ListChats()
-            .Select(c => new ChatSummaryDto
-            {
-                Id = c.Id,
-                Title = c.Title,
-                UpdatedAt = c.UpdatedAt.ToString("o"),
-                TurnActive = chats.Peek(c.Id)?.IsTurnRunning ?? false,
-                State = SPLA.Domain.Project.InstanceStates.Name(
-                    chats.Runtime.StateOf(c.Id, StallAfter))
-            })
+    {
+        var manager = chats.Runtime.ChatManager;
+        var spawned = manager.ListSpawnedChats();
+        var byParent = spawned
+            .Where(c => !string.IsNullOrEmpty(c.Parent))
+            .GroupBy(c => c.Parent!)
+            .ToDictionary(g => g.Key, g => g.OrderByDescending(c => c.UpdatedAt).ToList());
+
+        return manager.ListChats()
+            .Select(c => ToSummary(c, chats, byParent))
             .ToList();
+    }
+
+    private static ChatSummaryDto ToSummary(
+        SPLA.Domain.Models.ChatSession c, ChatRegistry chats, Dictionary<string, List<SPLA.Domain.Models.ChatSession>> byParent)
+    {
+        var children = byParent.TryGetValue(c.Id, out var kids)
+            ? kids.Select(k => ToSummary(k, chats, byParent)).ToList()
+            : null;
+
+        // A spawned session's one run does not go through ChatPump/Turns — SpawnedAgentRunner drives
+        // it directly (ADR_20260902 §2.1) — so StateOf's activity lookup never sees it and would
+        // otherwise report "idle" for a run that is very much in progress. Spawn.Outcome is null for
+        // exactly that duration (see ChatSessionSpawnInfo's own remark), so it stands in here.
+        var stillRunning = ChatManager.IsSpawned(c) && c.Spawn?.Outcome is null;
+
+        return new ChatSummaryDto
+        {
+            Id = c.Id,
+            Title = c.Title,
+            UpdatedAt = c.UpdatedAt.ToString("o"),
+            TurnActive = stillRunning || (chats.Peek(c.Id)?.IsTurnRunning ?? false),
+            State = stillRunning
+                ? SPLA.Domain.Project.InstanceStates.Name(SPLA.Domain.Project.InstanceState.Working)
+                : SPLA.Domain.Project.InstanceStates.Name(chats.Runtime.StateOf(c.Id, StallAfter)),
+            As = c.As,
+            Origin = c.Origin,
+            Parent = c.Parent,
+            Children = children is { Count: > 0 } ? children : null
+        };
+    }
 
     /// <summary>Archived chats as wire summaries. An archived chat can never have an open runtime
     /// (<see cref="ChatRegistry.Archive"/> closes it first), so <c>TurnActive</c>/<c>State</c> are

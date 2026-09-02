@@ -495,11 +495,16 @@ public sealed class ChatRuntime : IDisposable, SPLA.Domain.Agent.IBackgroundTask
         // An incoming reply is an ordinary conversation message, not a service result (ADR §2.5:
         // "входящая приезжает обычным user-сообщением") — Persistent is already ChatMessage's default,
         // set explicitly here so the intent survives a future change to that default.
+        // ownRole is this chat's own role (defaulting to "agent", role zero) — the attribution the
+        // RECIPIENT needs to render this as "← from <ownRole>" (ADR §2.5) rather than an ordinary
+        // human message. Display metadata only; ChatMessage.PeerFrom never reaches the provider.
+        var ownRoleForPeer = string.IsNullOrWhiteSpace(_chat.As) ? "agent" : _chat.As!;
         target.Inbox.Enqueue(new ChatMessage
         {
             Role = ChatRole.User,
             Content = text,
-            RetentionPolicy = SPLA.Domain.Models.ContextRetention.Persistent
+            RetentionPolicy = SPLA.Domain.Models.ContextRetention.Persistent,
+            PeerFrom = ownRoleForPeer
         }, InboxItemKind.Peer);
 
         correspondence.LastReplyAt = DateTimeOffset.UtcNow;
@@ -633,6 +638,7 @@ public sealed class ChatRuntime : IDisposable, SPLA.Domain.Agent.IBackgroundTask
                 Content = m.Content,
                 Reasoning = string.IsNullOrEmpty(m.Reasoning) ? null : m.Reasoning,
                 CreatedAt = m.CreatedAt,
+                PeerFrom = m.PeerFrom,
                 // Restored whenever they were written, independent of today's save_attempts value —
                 // a chat opened after the setting was turned off must still show what it recorded
                 // while it was on.
@@ -928,6 +934,7 @@ public sealed class ChatRuntime : IDisposable, SPLA.Domain.Agent.IBackgroundTask
                 Content = m.Content ?? "",
                 Reasoning = string.IsNullOrEmpty(m.Reasoning) ? null : m.Reasoning,
                 CreatedAt = m.CreatedAt,
+                PeerFrom = m.PeerFrom,
                 Images = _imageFiles.TryGetValue(m, out var files) && files.Count > 0 ? new List<string>(files) : null,
                 ToolCalls = saveToolCalls && m.ToolCalls?.Count > 0 ? m.ToolCalls : null,
                 ToolCallId = saveToolCalls ? m.ToolCallId : null,

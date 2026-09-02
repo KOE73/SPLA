@@ -31,6 +31,13 @@ public sealed class ChatMessageDto
     public string? ToolCallId { get; set; }
     public bool IsEphemeral { get; set; }
 
+    /// <summary>The correspondent's role, set only for a reply that arrived across a correspondence
+    /// (<c>docs/adr/ADR_20260827-2_core_roles.md</c> §2.5). The client renders such a message as
+    /// speech — "← from &lt;PeerFrom&gt;" — instead of an ordinary human bubble; null for every
+    /// ordinary message. The wire shape of the message itself does not change: this is the one added
+    /// field that tells the two apart.</summary>
+    public string? PeerFrom { get; set; }
+
     /// <summary>URLs of attached images (e.g. /chat-image/&lt;chatId&gt;/&lt;file&gt; on reopen, or data URLs
     /// for a freshly sent message). Null when the message has no images.</summary>
     public List<string>? Images { get; set; }
@@ -74,6 +81,28 @@ public sealed class ChatSummaryDto
     /// <para><see cref="TurnActive"/> stays because it answers a narrower question the log view
     /// already asks; it is true for both <c>working</c> and <c>stalled</c>.</para></summary>
     public string State { get; set; } = "idle";
+
+    /// <summary>The role this chat runs as (<c>ChatSession.As</c>), or null for a plain chat with no
+    /// role. Human chats can carry one too (wave 5б's role-narrowed standing chat), not only spawned
+    /// sessions.</summary>
+    public string? As { get; set; }
+
+    /// <summary>"spawned" for a session <c>agent_spawn</c>/<c>agent_correspond</c> created, null for
+    /// one a human opened directly (<c>ChatSession.Origin</c>).</summary>
+    public string? Origin { get; set; }
+
+    /// <summary>The chat id that spawned this session (<c>ChatSession.Parent</c>), or null. Present on
+    /// every node in <see cref="Children"/> — a tree client does not need it to walk down, but a flat
+    /// consumer (the side panel, wave 7) needs it without walking the tree at all.</summary>
+    public string? Parent { get; set; }
+
+    /// <summary>Spawned sessions parented on this chat, most-recently-updated first, nested to
+    /// whatever depth the spawn chain actually reached (the recursion-depth-3 cap already bounds this
+    /// in practice). Populated only for a root the human list shows; a node inside <see cref="Children"/>
+    /// carries its own children the same way. Null/empty for a chat with no spawned descendants — the
+    /// overwhelming majority. See <c>docs/adr/ADR_20260827-2_core_roles.md</c> §2.5: "список чатов
+    /// становится деревом роль → чат".</summary>
+    public List<ChatSummaryDto>? Children { get; set; }
 }
 
 /// <summary>One selectable option in a clarify request.</summary>
@@ -481,6 +510,10 @@ public sealed class AgentSettingsPayload
     public string Density { get; set; } = "norm";
     public List<string> Themes { get; set; } = new();
     public List<string> Densities { get; set; } = new();
+    /// <summary>Whether a client should open a native window on a spawned session by itself, the
+    /// moment it appears in the tree. Stored in .spla ui: auto_open_subagents. Default false — see
+    /// <c>ResolvedSettings.AutoOpenSubagents</c>.</summary>
+    public bool AutoOpenSubagents { get; set; }
     /// <summary>False when there is no .spla project to persist into (server-set; ignored on save).</summary>
     public bool CanPersist { get; set; }
 }
@@ -960,6 +993,8 @@ public sealed class AppearanceChangedPayload
 {
     public string Theme { get; set; } = "dark";
     public string Density { get; set; } = "norm";
+    /// <summary>See <see cref="AgentSettingsPayload.AutoOpenSubagents"/>.</summary>
+    public bool AutoOpenSubagents { get; set; }
 }
 
 /// <summary>Full state of a chat the client just opened (or created): its existing messages + settings.</summary>
@@ -1167,6 +1202,22 @@ public sealed class ToolResultPayload
     /// <summary>Why it failed or was refused; null when it succeeded. Short and machine-facing —
     /// the sentence for the model is already in <see cref="Result"/>.</summary>
     public string? Reason { get; set; }
+
+    /// <summary>Pointers the tool attached alongside its text (<c>ToolResource</c> content) — kept
+    /// out of <see cref="Result"/> deliberately, since only <c>TextContent</c> ever reaches the model
+    /// (<c>ConversationOrchestrator</c>). <c>agent_spawn</c>/<c>agent_spawn_batch</c> use this to hand
+    /// the UI a link to the spawned session's chat id without that id ever entering the model's
+    /// context (PLAN_20260902 wave 7, item 5: "ссылка на сессию … в итоге вызова"). Null/empty for
+    /// the overwhelming majority of tool results, which have nothing to point at.</summary>
+    public List<ToolResourceDto>? Resources { get; set; }
+}
+
+/// <summary>One <c>ToolResource</c> content block, projected to the wire.</summary>
+public sealed class ToolResourceDto
+{
+    public string Uri { get; set; } = string.Empty;
+    public string? MimeType { get; set; }
+    public string? Description { get; set; }
 }
 
 public sealed class NoticePayload

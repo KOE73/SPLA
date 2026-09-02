@@ -124,6 +124,11 @@ public class ResolvedSettings
     public string Theme { get; set; } = "Dark";
     public string Density { get; set; } = "norm";
 
+    /// <summary>Whether a client should open a native window on a spawned session by itself, the
+    /// moment one appears in the tree. Default <c>false</c> — see <see cref="SplaUiSection.AutoOpenSubagents"/>.
+    /// A reversible UI preference, auto-applied the same way theme/density are.</summary>
+    public bool AutoOpenSubagents { get; set; } = false;
+
     // Project
     public string? ProjectName { get; set; }
 
@@ -477,6 +482,7 @@ public static class SettingsResolver
             {
                 r.Theme = defaults.Ui.Theme ?? r.Theme;
                 r.Density = defaults.Ui.Density ?? r.Density;
+                r.AutoOpenSubagents = defaults.Ui.AutoOpenSubagents ?? r.AutoOpenSubagents;
             }
             ApplySkills(r, defaults.Skills, SourceOrigin.Machine);
             ApplyToolSets(r, defaults.ToolSets);
@@ -541,6 +547,7 @@ public static class SettingsResolver
             {
                 r.Theme = project.Ui.Theme ?? r.Theme;
                 r.Density = project.Ui.Density ?? r.Density;
+                r.AutoOpenSubagents = project.Ui.AutoOpenSubagents ?? r.AutoOpenSubagents;
             }
             if (project.Permissions != null)
             {
@@ -712,6 +719,7 @@ public static class SettingsResolver
         McpServers = baseline.McpServers,
         Theme = baseline.Theme,
         Density = baseline.Density,
+        AutoOpenSubagents = baseline.AutoOpenSubagents,
         ProjectName = baseline.ProjectName,
         WorkspacePath = baseline.WorkspacePath,
         Mounts = baseline.Mounts,

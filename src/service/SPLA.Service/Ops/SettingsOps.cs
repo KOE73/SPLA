@@ -149,7 +149,8 @@ public static class SettingsOps
         Theme = runtime.Settings.Theme,
         Density = runtime.Settings.Density,
         Themes = KnownThemes,
-        Densities = KnownDensities
+        Densities = KnownDensities,
+        AutoOpenSubagents = runtime.Settings.AutoOpenSubagents
     };
 
     /// <summary>Lower-case wire word for a verb — kept identical to

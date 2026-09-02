@@ -175,6 +175,13 @@ public class ChatSessionMessage
     [YamlMember(Alias = "tool_call_id")]
     public string? ToolCallId { get; set; }
 
+    /// <summary>Mirrors <see cref="SPLA.Domain.Models.ChatMessage.PeerFrom"/> across a save/load —
+    /// the correspondent's role for a reply that arrived across a correspondence, so a reopened chat
+    /// still renders it as speech rather than an ordinary human message
+    /// (<c>docs/adr/ADR_20260827-2_core_roles.md</c> §2.5). Null for every ordinary message.</summary>
+    [YamlMember(Alias = "peer_from")]
+    public string? PeerFrom { get; set; }
+
     /// <summary>Generations the repetition guard threw away before this message was produced. Only
     /// written when the full attempt trace is enabled — see
     /// <see cref="Settings.SplaAgentSection.SaveAttempts"/>. Null/empty otherwise, including for every

@@ -574,6 +574,13 @@ public class SplaUiSection
 
     [YamlMember(Alias = "density")]
     public string? Density { get; set; }
+
+    /// <summary>Whether a client should open a native window on a spawned session by itself, the
+    /// moment it appears in the tree. Default off — see <see cref="SettingsResolver.AutoOpenSubagents"/>
+    /// for why: "a backend that opens windows by itself is not what anyone expects"
+    /// (<c>docs/plans/PLAN_20260902_agent_roles-and-correspondence.md</c>, wave 7).</summary>
+    [YamlMember(Alias = "auto_open_subagents")]
+    public bool? AutoOpenSubagents { get; set; }
 }
 
 /// <summary>
