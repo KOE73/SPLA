@@ -365,8 +365,14 @@ public sealed class AgentRuntime : IDisposable
         // how full its context is, and config usually does not declare the window — a local runtime
         // simply loads whatever it loads. GetContextLengthAsync is the same cached detection a chat
         // uses, so a batch of spawns asks the provider once between them.
+        //
+        // ToolSets is handed over too (built just above): a role's own toolsets: selection has to
+        // narrow what a spawned run actually offers the model, not only what ResolvedSettings.ToolSets
+        // says on paper. The runner reads this registry's SetOfTool/LevelOf mapping only — it never
+        // mutates it — so the narrowing is per-run and this shared, project-wide registry keeps
+        // gating every other chat exactly as before.
         SpawnedRunner = new SpawnedAgentRunner(
-            Llm, McpHost, SkillLibrary, PluginManager, settings, GetContextLengthAsync);
+            Llm, McpHost, SkillLibrary, PluginManager, settings, GetContextLengthAsync, toolSets: ToolSets);
 
         // ── Modular built-in capabilities: one IAgentFeature per "core.*" id, in
         // AgentFeatureCatalog.Order. Each feature carries its tools AND its prompt fragment

@@ -11,3 +11,5 @@ repository and is linked from it.
 
 ---
 
+
+- A sub-agent can be spawned as a named role, and the role is a boundary rather than a request.

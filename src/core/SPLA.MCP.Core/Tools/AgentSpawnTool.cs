@@ -3,6 +3,7 @@ using SPLA.Domain.Models;
 using SPLA.MCP.Core.Interfaces;
 using SPLA.MCP.Core.Json;
 using System;
+using System.Linq;
 using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
@@ -52,6 +53,14 @@ public sealed class AgentSpawnTool : IMcpTool
             values: Chat | Research | Inspect | Edit | Agent
             description: Mode for the spawned run. Use a stricter mode to limit capabilities.
                          The spawned mode may differ from the parent mode.
+          role:
+            required: false
+            default: none (default role)
+            description: Project role to run under (e.g. reviewer, architect). A named role resolves
+                         its settings through the project manifest, selecting a mode and narrowing the
+                         tool set; the role determines what capabilities and tools the spawned agent
+                         sees. Omit for an ad-hoc run using the default project settings. Unknown
+                         roles are refused with a list of available ones — a silent fallback is an error.
 
         returns:
           The last assistant message produced by the run.
@@ -68,6 +77,8 @@ public sealed class AgentSpawnTool : IMcpTool
             say "report X" in the input or the useful part may stay in the sub-agent's session.
           - Clarification (agent_clarify) in the spawned agent returns no_handler —
             seed the input with enough context to avoid disambiguation.
+          - Use 'role' to run under a project role with specific capabilities (e.g. a narrower
+            tool set or different model). Use 'mode' for an ad-hoc run without a role.
 
         examples:
           - request:
@@ -79,6 +90,9 @@ public sealed class AgentSpawnTool : IMcpTool
           - request:
               input: "Read every *.md under Docker/ and list which compose projects define a healthcheck"
               mode: Research
+          - request:
+              role: reviewer
+              input: "Check this code for bugs and report issues"
         """;
 
     public ToolDefinition GetDefinition() => new()
@@ -115,9 +129,14 @@ public sealed class AgentSpawnTool : IMcpTool
                         type = new[] { "string", "null" },
                         @enum = new[] { "Chat", "Research", "Inspect", "Edit", "Agent" },
                         description = "Agent mode for the spawned run. Null = Edit. Use a stricter mode to limit what the spawned agent can do."
+                    },
+                    role = new
+                    {
+                        type = new[] { "string", "null" },
+                        description = "Project role to run under (e.g. reviewer). Null for the default role."
                     }
                 },
-                required = new[] { "input", "skill", "mode" }
+                required = new[] { "input", "skill", "mode", "role" }
             }
         }
     };
@@ -141,7 +160,24 @@ public sealed class AgentSpawnTool : IMcpTool
             var modeStr = ToolJson.GetStringTrimmed(root, "mode");
             if (modeStr != null) Enum.TryParse<AgentMode>(modeStr, ignoreCase: true, out mode);
 
-            var result = await _runner.RunAsync(skillId, input!, mode, cancellationToken);
+            var role = ToolJson.GetStringTrimmed(root, "role");
+
+            // Validate role against available roles if one is named.
+            if (!string.IsNullOrWhiteSpace(role))
+            {
+                var availableRoles = _runner.GetAvailableRoles();
+                if (!availableRoles.Contains(role, StringComparer.OrdinalIgnoreCase))
+                {
+                    var rolesList = availableRoles.Count == 0
+                        ? "none declared"
+                        : string.Join(", ", availableRoles.OrderBy(r => r, StringComparer.OrdinalIgnoreCase));
+                    return ToolResult.Fail(
+                        $"error: Role '{role}' is not available. Available roles: {rolesList}",
+                        "unknown role");
+                }
+            }
+
+            var result = await _runner.RunAsync(skillId, input!, mode, role, cancellationToken);
             return ToolResult.Text(string.IsNullOrWhiteSpace(result)
                 ? (skillId is null
                     ? "spawn: completed (no output)"
@@ -151,6 +187,10 @@ public sealed class AgentSpawnTool : IMcpTool
         catch (ArgumentException ex)
         {
             return ToolResult.Fail($"error: {ex.Message}", "invalid argument");
+        }
+        catch (InvalidOperationException ex)
+        {
+            return ToolResult.Fail($"error: {ex.Message}", "invalid operation");
         }
         catch (JsonException)
         {

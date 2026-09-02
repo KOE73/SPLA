@@ -131,6 +131,15 @@ public class ResolvedSettings
     /// Plugins that need to persist their own settings use this.</summary>
     public string? ProjectFilePath { get; set; }
 
+    /// <summary>The manifest this was resolved from, kept because resolution is lossy on purpose:
+    /// <see cref="ResolveForRole"/> needs the raw <see cref="SplaProject.Roles"/> list, and that
+    /// list has no resolved counterpart — the whole point of naming roles is that the manifest, not
+    /// the resolved settings, decides which ones act.
+    /// <para>Carried here rather than handed to whoever needs it later: an "attach it once it
+    /// exists" hook gets called by one caller and silently not by the rest, which is how roles were
+    /// briefly available only inside tests.</para></summary>
+    public SplaProject? Manifest { get; set; }
+
     /// <summary>Global secrets store (user / project / shared scopes). Set during load. Never null
     /// after <see cref="ConfigLoader.LoadAndResolve"/>; plugins reach it via this property.</summary>
     public ISecretStore Secrets { get; set; } = null!;
@@ -386,7 +395,7 @@ public static class SettingsResolver
 {
     public static ResolvedSettings Resolve(SplaDefaults? defaults, SplaProject? project)
     {
-        var r = new ResolvedSettings();
+        var r = new ResolvedSettings { Manifest = project };
 
         // Connections merge across layers by id (project overrides/extends defaults).
         var connections = new Dictionary<string, SplaConnectionSection>(StringComparer.OrdinalIgnoreCase);
