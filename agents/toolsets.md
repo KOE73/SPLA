@@ -59,6 +59,26 @@ disclosed.
 > decides whether to go and read more, no turn is spent on a lookup, and no documentation lands loose
 > in the middle of the conversation where a rewind or a compaction can drop it.
 
+## Virtual reply tools are outside this system
+
+A chat's `reply_<role>[_<topic>]` tools (`SPLA.Runtime/ChatToolHost.cs`, PLAN_20260902 wave 5) are
+**not levelled, not activated, and not disclosed through any of the mechanism above.** They are mixed
+into the chat's tool list directly by `ChatToolHost`, never registered in `McpHost`, so
+`ToolSetRegistry`/`ToolSetSession` have no entry for them and cannot hide or reveal one — a set the
+project has levelled `disabled` has no bearing on whether a reply tool the chat already holds a
+correspondence for is visible.
+
+The reason is in `docs/adr/ADR_20260827-2_core_roles.md` §2.3: a reply tool is an edge of a
+conversation, not a capability of the project, and it is gated on that edge instead —
+`ICapabilityGate.CanCorrespond()`, checked by `ChatRuntime.SendReply` on every call, source chat's own
+gate. A tool set answers "is this allowed at all" for the *project*; a correspondence's grant answers
+it for *this one conversation's edge to another*, and conflating the two would make disabling, say,
+`core.correspond` (which only ever gates `agent_correspond`, the tool that *opens* an address) also
+silently sever every reply already in flight — a different kind of failure than what levelling a set
+is for.
+
+`agent_correspond` itself IS an ordinary registered tool and follows every rule above like any other.
+
 ## Refusals
 
 What the model is told when it calls a tool it cannot use is deliberate:

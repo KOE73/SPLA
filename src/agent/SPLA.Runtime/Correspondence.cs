@@ -51,4 +51,15 @@ public sealed class Correspondence
     /// only counts it on send; nothing yet resets it on external energy (<c>Human</c>/<c>TaskResult</c>)
     /// or acts on its value.</summary>
     public int Depth { get; set; }
+
+    /// <summary>
+    /// The virtual <c>reply_&lt;role&gt;[_&lt;topic&gt;]</c> tool name this correspondence answers to,
+    /// decided once — by <see cref="ChatRuntime.OpenCorrespondence"/> — at the moment this record is
+    /// created, and never recomputed afterwards (plan trap 11: "имя виртуального инструмента
+    /// стабильно"). This is what keeps a name from shifting under an already-issued call: a second
+    /// correspondent of the same role arriving later gets the topic folded into ITS OWN name, but does
+    /// not retroactively rename this one, even though the "more than one correspondent of this role"
+    /// condition (ADR §2.3) has since become true for both.
+    /// </summary>
+    public required string ToolName { get; init; }
 }

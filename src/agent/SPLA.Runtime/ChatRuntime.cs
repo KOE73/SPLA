@@ -21,7 +21,7 @@ namespace SPLA.Runtime;
 /// its run, so tool calls from concurrent chats never collide.
 /// </para>
 /// </summary>
-public sealed class ChatRuntime : IDisposable, SPLA.Domain.Agent.IBackgroundTaskHost
+public sealed class ChatRuntime : IDisposable, SPLA.Domain.Agent.IBackgroundTaskHost, SPLA.Domain.Agent.ICorrespondenceHost, IReplyToolSource
 {
     private readonly AgentRuntime _runtime;
 
@@ -341,9 +341,16 @@ public sealed class ChatRuntime : IDisposable, SPLA.Domain.Agent.IBackgroundTask
         var key = (role, topic);
         if (_correspondences.TryGetValue(key, out var existing)) return existing;
 
+        // Decided once, here, and frozen into the record: whether another correspondent already
+        // holds this role AT THIS MOMENT is what earns the topic a place in the name (ADR §2.3). A
+        // role that gains a second correspondent later does not reach back and rename this one —
+        // see Correspondence.ToolName's own comment (plan trap 11).
+        var collides = _correspondences.Values.Any(c => string.Equals(c.Role, role, StringComparison.OrdinalIgnoreCase));
+        var toolName = ReplyToolNaming.BuildToolName(role, topic, includeTopic: collides);
+
         var correspondence = new Correspondence
         {
-            Role = role, Topic = topic, ChatId = correspondentChatId, Initiator = initiator
+            Role = role, Topic = topic, ChatId = correspondentChatId, Initiator = initiator, ToolName = toolName
         };
         _correspondences[key] = correspondence;
         return correspondence;
@@ -473,6 +480,86 @@ public sealed class ChatRuntime : IDisposable, SPLA.Domain.Agent.IBackgroundTask
         return new ReplyResult(ReplyOutcome.Delivered, null);
     }
 
+    /// <summary>
+    /// <see cref="SPLA.Domain.Agent.ICorrespondenceHost.Correspond"/> — the machinery
+    /// <c>agent_correspond</c> (PLAN_20260902 wave 5) calls into. Finds this chat's already-open
+    /// address for (<paramref name="role"/>, <paramref name="topic"/>) or, on demand, creates a fresh
+    /// chat under that role and opens the correspondence on both sides, then delivers
+    /// <paramref name="text"/> through the same <see cref="SendReply"/> an ordinary
+    /// <c>reply_&lt;role&gt;[_&lt;topic&gt;]</c> call would use — so the very first message and every
+    /// one after it go through one edge, one gate check, one depth counter.
+    /// </summary>
+    public SPLA.Domain.Agent.CorrespondResult Correspond(string role, string topic, string text)
+    {
+        role = role?.Trim() ?? "";
+        topic = topic?.Trim() ?? "";
+        text = text?.Trim() ?? "";
+
+        if (role.Length == 0)
+            return new SPLA.Domain.Agent.CorrespondResult(
+                SPLA.Domain.Agent.CorrespondOutcome.InvalidArgument, "error: 'role' is required");
+        if (topic.Length == 0)
+            return new SPLA.Domain.Agent.CorrespondResult(
+                SPLA.Domain.Agent.CorrespondOutcome.InvalidArgument,
+                "error: 'topic' is required — it is the only thing that tells two correspondents holding the same role apart");
+        if (text.Length == 0)
+            return new SPLA.Domain.Agent.CorrespondResult(
+                SPLA.Domain.Agent.CorrespondOutcome.InvalidArgument, "error: 'text' is required");
+
+        if (_registry is null)
+            return new SPLA.Domain.Agent.CorrespondResult(
+                SPLA.Domain.Agent.CorrespondOutcome.CorrespondentGone,
+                "error: this chat has no project chat directory to reach a correspondent through");
+
+        // Roles do not self-assign (ADR §2.1) — a correspondence that spun up an undeclared role's
+        // chat would let a model invent an actor the owner never named, exactly the hole role
+        // validation on agent_spawn already closes for the errand side of the same mechanism.
+        var availableRoles = _runtime.Settings.Manifest?.Roles ?? new List<string>();
+        if (!availableRoles.Contains(role, StringComparer.OrdinalIgnoreCase))
+        {
+            var rolesList = availableRoles.Count == 0
+                ? "none declared"
+                : string.Join(", ", availableRoles.OrderBy(r => r, StringComparer.OrdinalIgnoreCase));
+            return new SPLA.Domain.Agent.CorrespondResult(
+                SPLA.Domain.Agent.CorrespondOutcome.UnknownRole,
+                $"error: role '{role}' is not available. Available roles: {rolesList}");
+        }
+
+        if (!_correspondences.ContainsKey((role, topic)))
+        {
+            // Not found — create the correspondent's chat on demand (ADR §2.2: "чат собеседника
+            // создаётся по требованию") and open the address on both sides. The correspondent
+            // addresses this chat back by ITS OWN role — "agent" (role zero) when this chat has none
+            // — so its own reply_* tool has something meaningful to be named after.
+            var correspondentChat = _registry.CreateNew($"{role}: {topic}");
+            correspondentChat.Session.As = role;
+            correspondentChat.Save();
+
+            var ownRole = string.IsNullOrWhiteSpace(_chat.As) ? "agent" : _chat.As!;
+
+            OpenCorrespondence(role, topic, correspondentChat.ChatId, CorrespondenceInitiator.Self);
+            correspondentChat.OpenCorrespondence(ownRole, topic, ChatId, CorrespondenceInitiator.Correspondent);
+        }
+
+        var reply = SendReply(role, topic, text);
+        var toolName = _correspondences.TryGetValue((role, topic), out var c) ? c.ToolName : null;
+
+        return reply.Outcome switch
+        {
+            ReplyOutcome.Delivered => new SPLA.Domain.Agent.CorrespondResult(
+                SPLA.Domain.Agent.CorrespondOutcome.Delivered,
+                $"delivered: correspondence with '{role}' ({topic}) is open — this is a delivery " +
+                $"receipt, not their answer. Their reply will arrive on its own; keep working or wait " +
+                (toolName is null ? "for it." : $"for it. Use '{toolName}' to send your next message.")),
+            ReplyOutcome.Denied => new SPLA.Domain.Agent.CorrespondResult(
+                SPLA.Domain.Agent.CorrespondOutcome.Denied, $"error: {reply.Reason}"),
+            ReplyOutcome.CorrespondentGone => new SPLA.Domain.Agent.CorrespondResult(
+                SPLA.Domain.Agent.CorrespondOutcome.CorrespondentGone, $"error: {reply.Reason}"),
+            _ => new SPLA.Domain.Agent.CorrespondResult(
+                SPLA.Domain.Agent.CorrespondOutcome.CorrespondentGone, $"error: {reply.Reason}")
+        };
+    }
+
     public ChatRuntime(AgentRuntime runtime, ChatSession chat, ChatRegistry? registry = null)
     {
         _runtime = runtime;
@@ -536,7 +623,11 @@ public sealed class ChatRuntime : IDisposable, SPLA.Domain.Agent.IBackgroundTask
             // ChatRuntime implements IBackgroundTaskHost itself (Tasks/Progress/Inbox above) — a
             // background call reaches all three the same ambient way it already reaches everything
             // else per-chat, through AgentSessionScope.Current.Background.
-            background: this, chatId: _chat.Id);
+            background: this, chatId: _chat.Id,
+            // Same shape again: ChatRuntime implements ICorrespondenceHost itself, so
+            // agent_correspond reaches OpenCorrespondence/SendReply through the identical ambient
+            // path rather than needing its own way to find "this chat".
+            correspondence: this);
 
         // A reopened chat is as doubtful as it was when it closed. Restored rather than recomputed:
         // what raised the flag was an arrival, and arrivals do not happen again on load.
@@ -545,7 +636,7 @@ public sealed class ChatRuntime : IDisposable, SPLA.Domain.Agent.IBackgroundTask
                 new SPLA.Domain.Security.DataOrigin(d.Zone, OperatorNamed: false),
                 d.What,
                 new DateTimeOffset(DateTime.SpecifyKind(d.At, DateTimeKind.Utc)))));
-        _orchestrator = new ConversationOrchestrator(runtime.Llm, new ChatToolHost(runtime.McpHost))
+        _orchestrator = new ConversationOrchestrator(runtime.Llm, new ChatToolHost(runtime.McpHost, this))
         {
             // Live context surface, recomposed on every iteration inside this turn's
             // AgentSessionScope — which is what lets runtime-wide contributors read this chat's

@@ -36,6 +36,7 @@ public sealed class AgentCapabilitiesTests
         "skill_activate", "skill_deactivate", "skill_read_resource", "skill_find",
         "toolset_activate", "toolset_deactivate",
         "agent_spawn", "agent_spawn_batch",
+        "agent_correspond",
         "agent_clarify",
         "blob_peek",
         "task_list", "task_output", "task_cancel",

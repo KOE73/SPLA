@@ -21,6 +21,63 @@ public interface IBackgroundTaskHost
     ChatInbox Inbox { get; }
 }
 
+/// <summary>How a call into <see cref="ICorrespondenceHost.Correspond"/> ended — the tool-facing
+/// shape <c>agent_correspond</c> (PLAN_20260902 wave 5) maps onto a <see cref="Models.ToolResult"/>.
+/// Finer than a bool for the same reason <c>ChatRuntime.ReplyOutcome</c> is: a bad argument, an
+/// unknown role, a denied edge and a vanished correspondent are different news to whoever reads the
+/// logs, even though a model sees the same "did not work" either way.</summary>
+public enum CorrespondOutcome
+{
+    /// <summary>The correspondence exists (found or freshly opened) and the reply was queued.</summary>
+    Delivered,
+
+    /// <summary>A required argument was missing or empty — role, topic, or text.</summary>
+    InvalidArgument,
+
+    /// <summary>The named role is not declared in the project manifest. Roles do not self-assign
+    /// (<c>docs/adr/ADR_20260827-2_core_roles.md</c> §2.1) — opening a correspondence with an
+    /// undeclared role would let a model invent one exactly the way spawning one already cannot.</summary>
+    UnknownRole,
+
+    /// <summary>This chat's own capability gate refused the edge (<see cref="Host.ICapabilityGate.CanCorrespond"/>).</summary>
+    Denied,
+
+    /// <summary>The correspondent's chat could not be reached (archived/deleted/unreachable).</summary>
+    CorrespondentGone
+}
+
+/// <summary>A delivery receipt, never the correspondent's answer — see
+/// <c>docs/adr/ADR_20260827-2_core_roles.md</c> §2.3 and plan trap 10. The whole reason this is a
+/// distinct type from a plain string: a receipt that merely happens to read like prose is exactly what
+/// a model would start treating as the correspondent's own reply, and stop waiting for the real one.</summary>
+public readonly record struct CorrespondResult(CorrespondOutcome Outcome, string Message)
+{
+    public bool Delivered => Outcome == CorrespondOutcome.Delivered;
+}
+
+/// <summary>
+/// What a chat offers <c>agent_correspond</c> (PLAN_20260902 wave 5): the capability to open — or
+/// reuse — a correspondence addressed by (role, topic) and queue the first/next reply across it.
+/// <para>
+/// A capability, not a given, the same way <see cref="IBackgroundTaskHost"/> is: only
+/// <c>SPLA.Runtime.ChatRuntime</c> implements it. A spawned sub-agent's session leaves this null —
+/// it has no chat identity of its own to correspond as, and no directory to find a correspondent's
+/// chat through (<c>ChatRuntime</c>'s own <c>_registry</c> is null for the same class of caller).
+/// </para>
+/// </summary>
+public interface ICorrespondenceHost
+{
+    /// <summary>
+    /// Finds (by an address this chat already holds) or creates (on demand, under
+    /// <paramref name="role"/>) the correspondent's chat, and delivers <paramref name="text"/> across
+    /// it. <paramref name="topic"/> is mandatory — it is the only thing that tells two correspondents
+    /// holding the same role apart (ADR §2.3) — and is normalised into the virtual
+    /// <c>reply_&lt;role&gt;[_&lt;topic&gt;]</c> tool's name, never into the model's context as a raw
+    /// identifier.
+    /// </summary>
+    CorrespondResult Correspond(string role, string topic, string text);
+}
+
 /// <summary>
 /// The per-chat agent state that tools resolve at execution time: working memory, the
 /// checkpoint/mark manager, and the active-skill session. Each chat owns its own instance;
@@ -57,6 +114,9 @@ public interface IAgentSession
     /// <summary>Null when this session cannot host a detached call — see <see cref="IBackgroundTaskHost"/>.</summary>
     IBackgroundTaskHost? Background { get; }
 
+    /// <summary>Null when this session cannot correspond — see <see cref="ICorrespondenceHost"/>.</summary>
+    ICorrespondenceHost? Correspondence { get; }
+
     /// <summary>
     /// The chat id this session lives as, or null for a session with no chat behind it (a bare CLI or
     /// worker entry point). A spawned run reads its caller's <see cref="AgentSessionScope.Current"/>
@@ -74,7 +134,8 @@ public sealed class AgentSession : IAgentSession
     public AgentSession(IKeyValueStore sessionKv, MarkManager checkpoint, ISkillSession skills,
         IBlobStore? blobs = null, ISandbox? sandbox = null,
         IToolSetSession? toolSets = null, Security.ChatDoubt? doubt = null,
-        IBackgroundTaskHost? background = null, string? chatId = null)
+        IBackgroundTaskHost? background = null, string? chatId = null,
+        ICorrespondenceHost? correspondence = null)
     {
         Doubt = doubt ?? new Security.ChatDoubt();
         SessionKv = sessionKv;
@@ -85,6 +146,7 @@ public sealed class AgentSession : IAgentSession
         Sandbox = sandbox ?? PassthroughSandbox.Default;
         Background = background;
         ChatId = chatId;
+        Correspondence = correspondence;
     }
 
     public IKeyValueStore SessionKv { get; }
@@ -95,6 +157,7 @@ public sealed class AgentSession : IAgentSession
     public ISandbox Sandbox { get; }
     public Security.ChatDoubt Doubt { get; }
     public IBackgroundTaskHost? Background { get; }
+    public ICorrespondenceHost? Correspondence { get; }
     public string? ChatId { get; }
 }
 

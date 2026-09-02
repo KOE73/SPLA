@@ -427,6 +427,8 @@ public sealed class AgentRuntime : IDisposable
             Feature("core.spawn",
                 new SPLA.MCP.Core.Tools.AgentSpawnTool(SpawnedRunner),
                 new SPLA.MCP.Core.Tools.AgentSpawnBatchTool(SpawnedRunner)),
+            Feature("core.correspond",
+                new SPLA.MCP.Core.Tools.AgentCorrespondTool()),
             Feature("core.clarify",
                 new SPLA.MCP.Core.Tools.AgentClarifyTool()),
             Feature("core.blobs",
