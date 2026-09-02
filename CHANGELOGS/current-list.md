@@ -13,3 +13,7 @@ repository and is linked from it.
 
 
 - A sub-agent can be spawned as a named role, and the role is a boundary rather than a request.
+- A spawned run is now a real, readable session instead of an in-memory record that vanished on restart.
+- Two actors can now hold a correspondence and write to each other by name, instead of one side only ever being a task and a result.
+- An exchange between two correspondents now decays instead of running forever.
+- The chat list is a tree, and a reply now renders as speech instead of as an ordinary message from a stranger.

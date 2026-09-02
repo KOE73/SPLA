@@ -515,12 +515,33 @@ It has its own `model:` because the catalog goes into *its* prompt, not the chat
 | `skill_read_resource` | Skill | Allow | Deny | Allow | Allow | Allow |
 | `skill_deactivate` | Agent | Allow | Allow | Allow | Allow | Allow |
 | `agent_clarify` | Agent | Allow | Allow | Allow | Allow | Allow |
-| `agent_spawn` | Agent | Ask | Deny | Deny | Allow | Allow |
+| `agent_spawn` | Skill | Ask | Deny | Ask | Allow | Allow |
+| `agent_spawn_batch` | Skill | Ask | Deny | Ask | Allow | Allow |
 
 The table is `PermissionManager`, which runs at **execution** time. `ToolModeFilter` decides
 **visibility** first, and in Chat mode it offers nothing but `Scope.Agent` — so the Skill-scoped rows
 never come up there at all, and the Chat column describes a branch that is currently unreachable. See
 the caveat in [`security.md`](security.md).
+
+`agent_spawn` and `agent_spawn_batch` are `ToolScope.Skill`/`ToolEffect.Execute`, so they resolve
+through `PermissionManager.Decide`'s `Skill` branch: `Ask` in `Chat`/`Inspect`, outright `Allow` in
+`Edit`/`Agent`, `Deny` in `Research`.
+
+**The scope itself is an open question, not a settled answer.** This table said `Agent` for a long
+time while the code said `Skill`; the table is corrected here because a document must describe what
+runs, not because the question was decided. The argument for `Agent` got stronger, not weaker, when
+`agent_spawn` stopped requiring a skill and started taking a free-form task — delegation is an agent
+capability, and a spawn no longer has a procedure behind it. What makes the change cost something is
+`ToolModeFilter`: in `Chat` mode it shows only `Scope.Agent`, so moving the scope would make spawning
+visible in `Chat` and would move rows in this very matrix. It needs the owner's decision, not a
+tidy-up. PLAN_20260902 wave 3 added `agent_spawn`'s `role` argument — naming
+a project role (`roles: [...]` in the manifest, body at `roles/<name>.yaml`, see
+[`spla-file.md`](spla-file.md#roles)) resolves that role's own `mode`, `capabilities` and `toolsets:`
+for the spawned run instead of the ad-hoc `mode` parameter; an unknown role is refused with the list of
+declared ones rather than silently falling back. Once a role is named its own resolved mode governs
+outright — the `mode` argument is read only for a role-less, ad-hoc spawn and is not consulted at all
+once `role` is set (`SpawnedAgentRunner.RunAsync`), so a role stays a real boundary rather than
+something a caller can widen by also passing a mode.
 
 ---
 
