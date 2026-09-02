@@ -8,10 +8,8 @@ namespace SPLA.Runtime;
 /// state regardless of how many windows (or machines) are looking at it. Clients are just views.
 /// <para>
 /// Also this project's <see cref="ISpawnSessionHost"/> — see <c>docs/adr/ADR_20260902_core_session-unification.md</c>
-/// §2.1. Injected into <see cref="AgentRuntime.SpawnedRunner"/> by <see cref="AgentRuntimeRegistry.Build"/>
-/// right after both objects exist (the constructor order that already separates them there — see
-/// <c>AgentRuntime.cs:366</c>'s own comment — is why this is a settable property on the runner rather
-/// than a constructor parameter).
+/// §2.1. Attached to <see cref="AgentRuntime.SpawnedRunner"/> in this class's own constructor, so every
+/// way of building a registry gets it rather than whichever caller remembered — see the comment there.
 /// </para>
 /// </summary>
 public sealed class ChatRegistry : IDisposable, ISpawnSessionHost
@@ -61,7 +59,10 @@ public sealed class ChatRegistry : IDisposable, ISpawnSessionHost
     /// </summary>
     public event Action<ChatRuntime>? RuntimeClosed;
 
-    /// <summary>Opens (or returns the already-open) runtime for an existing chat; null if not found.</summary>
+    /// <summary>Opens (or returns the already-open) runtime for an existing chat; null if not found.
+    /// The soft-link liveness call correspondence uses (ADR_20260827-2 §2.4): asking wakes a sleeping
+    /// chat in the same call, and this method never distinguishes archived from missing on its own —
+    /// see <see cref="Locate"/> for the callers that need to.</summary>
     public ChatRuntime? GetOrOpen(string chatId)
     {
         if (_open.TryGetValue(chatId, out var existing)) return existing;
@@ -70,16 +71,22 @@ public sealed class ChatRegistry : IDisposable, ISpawnSessionHost
         if (session == null) return null;
 
         var created = false;
-        var runtime = _open.GetOrAdd(chatId, _ => { created = true; return new ChatRuntime(_runtime, session); });
+        var runtime = _open.GetOrAdd(chatId, _ => { created = true; return new ChatRuntime(_runtime, session, this); });
         if (created) RuntimeOpened?.Invoke(runtime);
         return runtime;
     }
+
+    /// <summary>Where a chat id currently resolves on disk, without opening or resurrecting anything —
+    /// see <see cref="ChatLocation"/>. What lets a correspondence's dead-link check
+    /// (<see cref="ChatRuntime.RefreshCorrespondences"/>) tell "archived" from "deleted" apart, which
+    /// <see cref="GetOrOpen"/> alone cannot (it would happily load an archived chat's file).</summary>
+    public SPLA.Domain.Settings.ChatLocation Locate(string chatId) => _runtime.ChatManager.Locate(chatId);
 
     /// <summary>Creates a new chat, opens its runtime, and returns it.</summary>
     public ChatRuntime CreateNew(string? title)
     {
         var session = _runtime.ChatManager.CreateNewChat(title);
-        var runtime = new ChatRuntime(_runtime, session);
+        var runtime = new ChatRuntime(_runtime, session, this);
         _open[session.Id] = runtime;
         RuntimeOpened?.Invoke(runtime);
         return runtime;
@@ -121,7 +128,7 @@ public sealed class ChatRegistry : IDisposable, ISpawnSessionHost
         }
         catch { /* missing images must not break the fork */ }
 
-        var runtime = new ChatRuntime(_runtime, copy);
+        var runtime = new ChatRuntime(_runtime, copy, this);
         _open[copy.Id] = runtime;
         RuntimeOpened?.Invoke(runtime);
         return runtime;

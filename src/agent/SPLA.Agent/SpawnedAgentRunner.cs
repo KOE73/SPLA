@@ -284,6 +284,10 @@ public sealed class SpawnedAgentRunner : Domain.Interfaces.IAgentSpawner
         // every tool the sub-agent runs a child of it, visible wherever the caller's progress already
         // is. Nothing is forwarded, subscribed or relayed — the tree is ambient, so not detaching from
         // it is the whole mechanism.
+        // No DrainInbox/OnMessageDelivered wired here, unlike ChatRuntime's own orchestrator — a
+        // correspondence reply (PLAN_20260902 wave 4) that arrives while this run is going sits
+        // undrained in the session's own ChatInbox until the run ends; see SpawnedSession.Inbox's own
+        // comment for the decision and why symmetry with a live chat was rejected for this wave.
         var orchestrator = new ConversationOrchestrator(_llm, _tools)
         {
             Checkpoint = agentSession.Checkpoint,

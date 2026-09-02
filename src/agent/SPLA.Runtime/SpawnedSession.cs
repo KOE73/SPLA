@@ -26,7 +26,28 @@ internal sealed class SpawnedSession : ISpawnedSession, IBackgroundTaskHost
     private readonly SPLA.Domain.Host.ISandbox _sandbox;
 
     public ProgressHub Progress { get; } = new();
+
+    /// <summary>
+    /// A real inbox, wired the identical way <see cref="ChatRuntime.Inbox"/> is — but, unlike a human
+    /// chat's, nothing drains it while the run is going. <c>SpawnedAgentRunner.RunAsync</c> drives one
+    /// <c>ConversationOrchestrator.RunAsync</c> call straight through to completion with no
+    /// <c>DrainInbox</c>/<c>OnMessageDelivered</c> wired (there is no <c>ChatPump</c> for a spawned run
+    /// to begin with — a driven-to-one-result run has no turn boundary to wake a NEW turn at).
+    /// <para>
+    /// PLAN_20260902 wave 4 decision (found in wave 2): a correspondence reply that lands here while
+    /// the run is still in progress simply waits, undrained, in this queue — it is not lost, only
+    /// unread. Once <see cref="Finish"/> has written <c>Spawn.Outcome</c>, the session is an ordinary
+    /// chat with its own <see cref="ChatRuntime"/> and pump, which will drain whatever is still queued
+    /// here on the very next turn like any other pending item. The alternative — draining mid-run for
+    /// symmetry with a live chat — was rejected for this wave: it would mean either a second
+    /// concurrent loop over the same <c>Conversation</c> the running orchestrator already owns, or
+    /// growing a mid-run pump for a single-shot run, and wave 4 has no reply tool yet to be the
+    /// consumer of either. Wave 5's <c>reply_&lt;role&gt;</c> tool help text must say plainly that a
+    /// spawned correspondent answers only after its run completes.
+    /// </para>
+    /// </summary>
     public ChatInbox Inbox { get; } = new();
+
     public BackgroundTaskRegistry Tasks { get; }
 
     public string ChatId => _chat.Id;

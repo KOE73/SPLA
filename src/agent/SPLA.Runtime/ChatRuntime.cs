@@ -29,6 +29,17 @@ public sealed class ChatRuntime : IDisposable, SPLA.Domain.Agent.IBackgroundTask
     /// and therefore ended in <see cref="Dispose"/>.</summary>
     private readonly SPLA.Domain.Host.ISandbox _sandbox;
 
+    /// <summary>The project's chat directory — what lets this chat resolve a correspondent's chat id
+    /// to a live runtime (waking a sleeping one) or find out it went away. Null for a
+    /// <see cref="ChatRuntime"/> built outside a registry (a bare CLI chat) — correspondence simply
+    /// does not work there, the same way roles and spawning degrade gracefully without their own
+    /// optional collaborators elsewhere in this codebase.</summary>
+    private readonly ChatRegistry? _registry;
+
+    /// <summary>This chat's live correspondences, keyed by (role, topic) exactly as wave 5's virtual
+    /// <c>reply_&lt;role&gt;[_&lt;topic&gt;]</c> tool name will be. See <see cref="Correspondences"/>.</summary>
+    private readonly Dictionary<(string Role, string Topic), Correspondence> _correspondences = new();
+
     private int _disposed;
 
     /// <summary>Cancelled exactly once, in <see cref="Dispose"/>. Every background task's own
@@ -313,10 +324,160 @@ public sealed class ChatRuntime : IDisposable, SPLA.Domain.Agent.IBackgroundTask
         Save();
     }
 
-    public ChatRuntime(AgentRuntime runtime, ChatSession chat)
+    /// <summary>This chat's live correspondences (PLAN_20260902 wave 4) — a set, never a single link
+    /// back to whoever spawned this chat. Snapshot: safe to enumerate while <see cref="SendReply"/> or
+    /// <see cref="RefreshCorrespondences"/> mutates the live dictionary underneath.</summary>
+    public IReadOnlyCollection<Correspondence> Correspondences => _correspondences.Values.ToList();
+
+    /// <summary>
+    /// Registers (or returns the existing) correspondence for (<paramref name="role"/>,
+    /// <paramref name="topic"/>) — the machinery wave 5's <c>agent_correspond</c> tool opens a
+    /// correspondence through. Idempotent on purpose: opening the same address twice must not reset
+    /// an already-running exchange's depth or initiator.
+    /// </summary>
+    public Correspondence OpenCorrespondence(
+        string role, string topic, string correspondentChatId, CorrespondenceInitiator initiator)
+    {
+        var key = (role, topic);
+        if (_correspondences.TryGetValue(key, out var existing)) return existing;
+
+        var correspondence = new Correspondence
+        {
+            Role = role, Topic = topic, ChatId = correspondentChatId, Initiator = initiator
+        };
+        _correspondences[key] = correspondence;
+        return correspondence;
+    }
+
+    /// <summary>
+    /// The soft-link liveness pass (ADR_20260827-2 §2.4): for every correspondence this chat holds,
+    /// asks <see cref="ChatRegistry.Locate"/> where the correspondent's chat currently is.
+    /// <list type="bullet">
+    /// <item><description><see cref="SPLA.Domain.Settings.ChatLocation.Active"/> — reaches
+    /// <see cref="ChatRegistry.GetOrOpen"/>, which answers AND wakes a sleeping chat in the same
+    /// call. Nothing else happens: waking is the whole point, and there is no result to act on.</description></item>
+    /// <item><description><see cref="SPLA.Domain.Settings.ChatLocation.Archived"/> or
+    /// <see cref="SPLA.Domain.Settings.ChatLocation.Missing"/> — the correspondence is dead. Struck
+    /// lazily, right here, and a <see cref="InboxItemKind.Notice"/> is queued so the model does not
+    /// find a tool it used last turn simply gone (see <see cref="InboxItemKind"/>'s own comment).</description></item>
+    /// </list>
+    /// Deliberately never a subscription to <see cref="ChatRegistry.RuntimeClosed"/> (trap 3): that
+    /// event fires on an ordinary sleep too, and a subscription would tear down a correspondence with
+    /// a chat nobody killed. Called once per turn, near the top of <see cref="SendAsync"/> — the
+    /// practical wave-4 stand-in for "at turn surface assembly": the virtual <c>reply_*</c> tools that
+    /// will actually BE that surface are wave 5's, so there is nothing yet to refresh per LLM
+    /// iteration rather than once per turn.
+    /// </summary>
+    public void RefreshCorrespondences()
+    {
+        if (_registry is null || _correspondences.Count == 0) return;
+
+        foreach (var key in _correspondences.Keys.ToList())
+        {
+            var correspondence = _correspondences[key];
+            switch (_registry.Locate(correspondence.ChatId))
+            {
+                case SPLA.Domain.Settings.ChatLocation.Active:
+                    _registry.GetOrOpen(correspondence.ChatId);
+                    break;
+                case SPLA.Domain.Settings.ChatLocation.Archived:
+                    StrikeCorrespondence(key, correspondence, archived: true);
+                    break;
+                case SPLA.Domain.Settings.ChatLocation.Missing:
+                    StrikeCorrespondence(key, correspondence, archived: false);
+                    break;
+            }
+        }
+    }
+
+    /// <summary>Removes a dead correspondence and tells this chat about it — different wording for
+    /// "archived" vs "deleted" (ADR §2.4: "для текста уведомления это разные новости"). Queued through
+    /// <see cref="Inbox"/> like an ordinary <see cref="InboxItemKind.Notice"/>: it must reach the
+    /// model's context on the next turn, but must never itself wake one (<c>ChatPump.OnEnqueued</c>
+    /// ignores this kind).</summary>
+    private void StrikeCorrespondence((string Role, string Topic) key, Correspondence correspondence, bool archived)
+    {
+        _correspondences.Remove(key);
+        var topicSuffix = string.IsNullOrEmpty(correspondence.Topic) ? "" : $" ({correspondence.Topic})";
+        var text = archived
+            ? $"Correspondence with {correspondence.Role}{topicSuffix} has gone quiet — their chat was archived."
+            : $"Correspondence with {correspondence.Role}{topicSuffix} has ended — their chat was deleted.";
+
+        Inbox.Enqueue(new ChatMessage
+        {
+            Role = ChatRole.System,
+            Content = text,
+            RetentionPolicy = SPLA.Domain.Models.ContextRetention.Persistent
+        }, InboxItemKind.Notice);
+    }
+
+    /// <summary>What became of a <see cref="SendReply"/> call.</summary>
+    public enum ReplyOutcome { Delivered, Denied, CorrespondentGone, UnknownCorrespondence }
+
+    /// <summary>A delivery receipt, never the correspondent's answer (ADR §2.3: "инструмент возвращает
+    /// квитанцию о доставке, а не ответ") — wave 5's virtual tool is what turns this into the actual
+    /// tool result text a model sees.</summary>
+    public readonly record struct ReplyResult(ReplyOutcome Outcome, string? Reason)
+    {
+        public bool Delivered => Outcome == ReplyOutcome.Delivered;
+    }
+
+    /// <summary>
+    /// Sends one reply across an already-open correspondence — the machinery wave 5's virtual
+    /// <c>reply_&lt;role&gt;[_&lt;topic&gt;]</c> tool calls into. A reply is an edge source→sink
+    /// (ADR §2.2), and this chat is the source: its own <see cref="ISandbox.Gate"/> is what gets
+    /// asked, not the recipient's and not some separate correspondence-only permission (ADR §2.4:
+    /// "гранты те же" — the same gate every other call already goes through).
+    /// </summary>
+    public ReplyResult SendReply(string role, string topic, string text)
+    {
+        if (!_correspondences.TryGetValue((role, topic), out var correspondence))
+            return new ReplyResult(ReplyOutcome.UnknownCorrespondence,
+                $"no open correspondence with '{role}'" + (topic.Length > 0 ? $" ({topic})" : ""));
+
+        if (!_sandbox.Gate.CanCorrespond())
+            return new ReplyResult(ReplyOutcome.Denied, "correspondence is not permitted for this chat");
+
+        if (_registry is null)
+            return new ReplyResult(ReplyOutcome.CorrespondentGone, "this chat has no directory to reach a correspondent through");
+
+        var location = _registry.Locate(correspondence.ChatId);
+        if (location != SPLA.Domain.Settings.ChatLocation.Active)
+        {
+            var archived = location == SPLA.Domain.Settings.ChatLocation.Archived;
+            StrikeCorrespondence((role, topic), correspondence, archived);
+            return new ReplyResult(ReplyOutcome.CorrespondentGone,
+                archived ? "their chat was archived" : "their chat was deleted");
+        }
+
+        var target = _registry.GetOrOpen(correspondence.ChatId);
+        if (target is null)
+        {
+            _correspondences.Remove((role, topic));
+            return new ReplyResult(ReplyOutcome.CorrespondentGone, "their chat could not be reached");
+        }
+
+        // An incoming reply is an ordinary conversation message, not a service result (ADR §2.5:
+        // "входящая приезжает обычным user-сообщением") — Persistent is already ChatMessage's default,
+        // set explicitly here so the intent survives a future change to that default.
+        target.Inbox.Enqueue(new ChatMessage
+        {
+            Role = ChatRole.User,
+            Content = text,
+            RetentionPolicy = SPLA.Domain.Models.ContextRetention.Persistent
+        }, InboxItemKind.Peer);
+
+        correspondence.LastReplyAt = DateTimeOffset.UtcNow;
+        correspondence.Depth++;
+
+        return new ReplyResult(ReplyOutcome.Delivered, null);
+    }
+
+    public ChatRuntime(AgentRuntime runtime, ChatSession chat, ChatRegistry? registry = null)
     {
         _runtime = runtime;
         _chat = chat;
+        _registry = registry;
 
         // Seed the conversation: system prompt + any persisted messages.
         _conversation.Add(new ChatMessage { Role = ChatRole.System, Content = runtime.SystemPrompt });
@@ -471,6 +632,12 @@ public sealed class ChatRuntime : IDisposable, SPLA.Domain.Agent.IBackgroundTask
         try
         {
             _activeOnUserMessage = onUserMessage;
+
+            // The turn's surface, wave-4-style (see RefreshCorrespondences' own comment): a dead
+            // correspondent is struck and announced before this turn's context is assembled, so a
+            // stale reply_* tool (once wave 5 adds it) never outlives the chat it pointed at by more
+            // than one turn.
+            RefreshCorrespondences();
 
             // Registers the turn's tree into the chat-wide hub the moment the orchestrator creates
             // it, without disturbing whatever the caller's own OnProgressTree does with it — both

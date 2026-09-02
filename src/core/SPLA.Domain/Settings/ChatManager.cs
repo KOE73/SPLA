@@ -5,6 +5,15 @@ using YamlDotNet.Serialization.NamingConventions;
 
 namespace SPLA.Domain.Settings;
 
+/// <summary>
+/// Where a chat id currently resolves on disk — the distinction correspondence (PLAN_20260902 wave 4)
+/// needs and <see cref="ChatManager.LoadChat"/> alone cannot give: that method walks active-then-archived
+/// and hands back the same non-null <see cref="ChatSession"/> either way, so a caller that only calls it
+/// cannot tell "sleeping" from "gone quiet on purpose" — and the text of a correspondent's notice is
+/// different news for each (ADR_20260827-2 §2.4).
+/// </summary>
+public enum ChatLocation { Active, Archived, Missing }
+
 public class ChatManager
 {
     private readonly ResolvedSettings _settings;
@@ -170,6 +179,16 @@ public class ChatManager
         var temp = path + ".tmp";
         File.WriteAllText(temp, content);
         File.Move(temp, path, overwrite: true);
+    }
+
+    /// <summary>Where <paramref name="id"/> currently lives, without loading or parsing it — a plain
+    /// file-existence check against both directories, deliberately independent of
+    /// <see cref="LoadChat"/>'s active-then-archived fallback. See <see cref="ChatLocation"/>.</summary>
+    public ChatLocation Locate(string id)
+    {
+        if (File.Exists(GetChatFilePath(id))) return ChatLocation.Active;
+        if (File.Exists(GetArchivedFilePath(id))) return ChatLocation.Archived;
+        return ChatLocation.Missing;
     }
 
     public ChatSession? LoadChat(string id)

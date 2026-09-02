@@ -7,16 +7,29 @@ namespace SPLA.Domain.Tools;
 
 /// <summary>
 /// Who put an item in the inbox, and — by extension — how eager the pump (wave B) should be to wake
-/// a turn for it. <see cref="Human"/> wakes immediately and always (it is a person's own words);
-/// <see cref="TaskResult"/> wakes subject to policy (watchers present, debounce, self-feeding guard);
-/// <see cref="Notice"/> is the pump's own voice back into the chat (e.g. "auto-wake paused") and is
-/// never itself a wake trigger — see <c>ChatPump</c>'s comment on why a notice bypasses the inbox
-/// entirely rather than carrying this kind through it.
-/// <para>Nothing produces <see cref="Human"/> yet — <c>chat.send</c> still calls <c>SendAsync</c>
-/// directly (wave D). The branch exists so the type is complete from day one rather than growing a
-/// breaking change later.</para>
+/// a turn for it. <see cref="Human"/> wakes immediately and always (it is a person's own words) —
+/// produced by <c>ChatHandlers.Send</c>, which queues every human message here rather than calling
+/// <c>ChatRuntime.SendAsync</c> directly (PLAN_20260825 wave D — <c>ChatPump</c> is what actually
+/// starts the turn now). <see cref="TaskResult"/> wakes subject to policy (watchers present,
+/// debounce, self-feeding guard).
+/// <para>
+/// <see cref="Peer"/> (PLAN_20260902 wave 4) is a reply arriving from another role's chat. Deliberately
+/// not <see cref="Human"/>: <c>Human</c> is documented as waking "immediately and always", and two
+/// correspondents doing that to each other unconditionally is a loop. <c>Peer</c> wakes by a policy of
+/// its own (wave 6) — this is also that policy's future home.
+/// </para>
+/// <para>
+/// <see cref="Notice"/> is the pump's or the runtime's own voice back into the chat. Some notices (the
+/// pump's self-feeding-cap warning) bypass this queue entirely via a direct watcher broadcast — see
+/// <c>ChatPump</c>'s own comment — because they announce something about a turn that just ended and
+/// must not wait for a future one to be seen. Others, like a correspondent's chat having gone away
+/// (wave 4's <c>ChatRuntime.RefreshCorrespondences</c>), belong in the model's own context: a tool
+/// that vanished between turns would otherwise look like a hallucination, so those ARE queued here
+/// like anything else, for the next turn's drain. Either way, <see cref="Notice"/> is never itself a
+/// wake trigger — <c>ChatPump.OnEnqueued</c> ignores it.
+/// </para>
 /// </summary>
-public enum InboxItemKind { Human, TaskResult, Notice }
+public enum InboxItemKind { Human, TaskResult, Peer, Notice }
 
 /// <summary>
 /// Delivers messages a chat did not ask for at the moment it asked for them, at the one boundary
