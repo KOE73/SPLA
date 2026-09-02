@@ -2,6 +2,7 @@ using SPLA.Domain.Models;
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
+using System.Linq;
 
 namespace SPLA.Domain.Tools;
 
@@ -57,6 +58,13 @@ public sealed class ChatInbox
     /// <summary>True while at least one item sits undrained — the pump's trap-B.6 check: a signal
     /// that arrives after a turn already drained everything must find nothing here and do nothing.</summary>
     public bool HasPending => !_queue.IsEmpty;
+
+    /// <summary>True while at least one undrained item is of the given kind — wave 6's regulator
+    /// needs this precision because <see cref="InboxItemKind.Peer"/> and everything else answer the "is anybody
+    /// watching" question differently (<c>ChatPump.DecideWake</c>). Safe to call concurrently with
+    /// <see cref="Enqueue"/>/<see cref="DrainAll"/>: <see cref="ConcurrentQueue{T}"/> enumeration is a
+    /// point-in-time snapshot, never a lock.</summary>
+    public bool HasPendingOfKind(InboxItemKind kind) => _queue.Any(item => item.Kind == kind);
 
     /// <summary>Raised after an item is queued, carrying its <see cref="InboxItemKind"/>. This is the
     /// pump's wake signal (ADR §2.1) — the pump has nothing else to subscribe to, since "content

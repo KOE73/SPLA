@@ -101,6 +101,31 @@ public class SplaAgentSection
     /// thrown away are kept too.</summary>
     [YamlMember(Alias = "save_attempts")]
     public bool? SaveAttempts { get; set; }
+
+    /// <summary>Floor of the <c>Peer</c>-wake debounce (seconds), before it starts doubling with
+    /// exchange depth — <c>base · 2^depth</c>, see <see cref="PeerDebounceMaxSeconds"/> for the
+    /// ceiling. Default 2. See <c>docs/adr/ADR_20260827-2_core_roles.md</c> §2.4 and
+    /// <c>ChatPump.PeerWakePolicy</c>.</summary>
+    [YamlMember(Alias = "peer_debounce_base")]
+    public int? PeerDebounceBaseSeconds { get; set; }
+
+    /// <summary>Ceiling of the <c>Peer</c>-wake debounce (seconds) — the doubling never waits longer
+    /// than this between an incoming reply and the turn it wakes. Default 300 (5 minutes).</summary>
+    [YamlMember(Alias = "peer_debounce_max")]
+    public int? PeerDebounceMaxSeconds { get; set; }
+
+    /// <summary>How many consecutive <c>Peer</c> replies (since the last <c>Human</c> or
+    /// <c>TaskResult</c>) may still raise a turn of their own. Past this depth a reply no longer wakes
+    /// one — it stays queued and rides whatever turn happens for some other reason. Default 6.</summary>
+    [YamlMember(Alias = "peer_depth_ceiling")]
+    public int? PeerDepthCeiling { get; set; }
+
+    /// <summary>Emergency stop on <c>Peer</c> depth — should never be reached in normal operation
+    /// (the debounce/ceiling above are what is supposed to slow an exchange down first); reaching it
+    /// is a defect in the regulator, not a normal outcome, and refuses the reply with a notice into
+    /// the chat rather than silently continuing. Default 24.</summary>
+    [YamlMember(Alias = "peer_hard_cap")]
+    public int? PeerHardCap { get; set; }
 }
 
 /// <summary>
@@ -171,6 +196,22 @@ public class SplaRoleSection
 
     [YamlMember(Alias = "save_attempts")]
     public bool? SaveAttempts { get; set; }
+
+    /// <summary>Per-role override of <see cref="SplaAgentSection.PeerDebounceBaseSeconds"/>.</summary>
+    [YamlMember(Alias = "peer_debounce_base")]
+    public int? PeerDebounceBaseSeconds { get; set; }
+
+    /// <summary>Per-role override of <see cref="SplaAgentSection.PeerDebounceMaxSeconds"/>.</summary>
+    [YamlMember(Alias = "peer_debounce_max")]
+    public int? PeerDebounceMaxSeconds { get; set; }
+
+    /// <summary>Per-role override of <see cref="SplaAgentSection.PeerDepthCeiling"/>.</summary>
+    [YamlMember(Alias = "peer_depth_ceiling")]
+    public int? PeerDepthCeiling { get; set; }
+
+    /// <summary>Per-role override of <see cref="SplaAgentSection.PeerHardCap"/>.</summary>
+    [YamlMember(Alias = "peer_hard_cap")]
+    public int? PeerHardCap { get; set; }
 
     /// <summary>The model id (a <see cref="SplaModelSection.Id"/> already resolved from the project's
     /// own <c>connections:</c>) this role runs on. Null = inherit whatever the chat would otherwise

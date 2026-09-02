@@ -617,7 +617,13 @@ public sealed class SplaServiceHost
                     ).RunTurnAsync(null, null, userKey: "pump", ct),
                     broadcastNotice: text => _ = hub.BroadcastToWatchersAsync(
                         chat.ChatId, Contracts.MessageTypes.Notice, new Contracts.NoticePayload { Text = text }),
-                    log: entry.Runtime.LoggerFactory.CreateLogger<ChatPump>());
+                    log: entry.Runtime.LoggerFactory.CreateLogger<ChatPump>(),
+                    // Wave 6 (ADR §2.4): the decay regulator's four numbers, resolved per-chat exactly
+                    // like every other role-narrowable setting — see ChatRuntime.PeerDebounceBase.
+                    peerDebounceBase: chat.PeerDebounceBase,
+                    peerDebounceMax: chat.PeerDebounceMax,
+                    peerDepthCeiling: chat.PeerDepthCeiling,
+                    peerHardCap: chat.PeerHardCap);
 
                 void OnClosed(SPLA.Runtime.ChatRuntime closed)
                 {

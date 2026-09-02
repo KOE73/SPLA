@@ -1015,6 +1015,23 @@ public sealed class ChatRuntime : IDisposable, SPLA.Domain.Agent.IBackgroundTask
             : _chat.Agent?.Mode != null && Enum.TryParse<AgentMode>(_chat.Agent.Mode, true, out var m)
                 ? m : _runtime.Settings.Mode;
 
+    /// <summary>Wave 6's decay regulator settings (ADR §2.4), resolved the same way every other
+    /// role-narrowable number on this chat already is: the role's own value when this chat has a role,
+    /// else the project's. <c>ChatPump</c> reads these once, at pump construction — they do not change
+    /// for the life of a chat, the same as <see cref="ResolveMode"/>'s own inputs.</summary>
+    public TimeSpan PeerDebounceBase => TimeSpan.FromSeconds(
+        _roleSettings?.PeerDebounceBaseSeconds ?? _runtime.Settings.PeerDebounceBaseSeconds);
+
+    /// <summary>See <see cref="PeerDebounceBase"/>.</summary>
+    public TimeSpan PeerDebounceMax => TimeSpan.FromSeconds(
+        _roleSettings?.PeerDebounceMaxSeconds ?? _runtime.Settings.PeerDebounceMaxSeconds);
+
+    /// <summary>See <see cref="PeerDebounceBase"/>.</summary>
+    public int PeerDepthCeiling => _roleSettings?.PeerDepthCeiling ?? _runtime.Settings.PeerDepthCeiling;
+
+    /// <summary>See <see cref="PeerDebounceBase"/>.</summary>
+    public int PeerHardCap => _roleSettings?.PeerHardCap ?? _runtime.Settings.PeerHardCap;
+
     /// <summary>
     /// Ends everything this chat holds open. Called when the chat is deleted or the host stops.
     /// <para>

@@ -86,6 +86,22 @@ public class ResolvedSettings
     /// <see cref="SplaAgentSection.SaveAttempts"/>.</summary>
     public bool SaveAttempts { get; set; }
 
+    /// <summary>Floor of the <c>Peer</c>-wake debounce, seconds. Default 2 — see
+    /// <see cref="SplaAgentSection.PeerDebounceBaseSeconds"/> and ADR §2.4.</summary>
+    public int PeerDebounceBaseSeconds { get; set; } = 2;
+
+    /// <summary>Ceiling of the <c>Peer</c>-wake debounce, seconds. Default 300 (5 minutes) — see
+    /// <see cref="SplaAgentSection.PeerDebounceMaxSeconds"/>.</summary>
+    public int PeerDebounceMaxSeconds { get; set; } = 300;
+
+    /// <summary>Consecutive <c>Peer</c> replies past which a reply no longer raises a turn of its
+    /// own. Default 6 — see <see cref="SplaAgentSection.PeerDepthCeiling"/>.</summary>
+    public int PeerDepthCeiling { get; set; } = 6;
+
+    /// <summary>Emergency stop on <c>Peer</c> depth; reaching it is a regulator defect, not normal
+    /// operation. Default 24 — see <see cref="SplaAgentSection.PeerHardCap"/>.</summary>
+    public int PeerHardCap { get; set; } = 24;
+
     /// <summary>Enabled built-in agent capabilities. Null = all enabled (backward compatible);
     /// see <see cref="SplaAgentSection.Capabilities"/> for full semantics.</summary>
     public List<string>? Capabilities { get; set; }
@@ -443,6 +459,10 @@ public static class SettingsResolver
                 r.SpawnedRetention = defaults.Agent.SpawnedRetention ?? r.SpawnedRetention;
                 r.SaveToolCalls = defaults.Agent.SaveToolCalls ?? r.SaveToolCalls;
                 r.SaveAttempts = defaults.Agent.SaveAttempts ?? r.SaveAttempts;
+                r.PeerDebounceBaseSeconds = defaults.Agent.PeerDebounceBaseSeconds ?? r.PeerDebounceBaseSeconds;
+                r.PeerDebounceMaxSeconds = defaults.Agent.PeerDebounceMaxSeconds ?? r.PeerDebounceMaxSeconds;
+                r.PeerDepthCeiling = defaults.Agent.PeerDepthCeiling ?? r.PeerDepthCeiling;
+                r.PeerHardCap = defaults.Agent.PeerHardCap ?? r.PeerHardCap;
                 r.Capabilities = defaults.Agent.Capabilities ?? r.Capabilities;
                 r.UnifiedResources = defaults.Agent.UnifiedResources ?? r.UnifiedResources;
                 AddTrustedDomains(r, defaults.Agent.TrustedDomains);
@@ -503,6 +523,10 @@ public static class SettingsResolver
                 r.SpawnedRetention = project.Agent.SpawnedRetention ?? r.SpawnedRetention;
                 r.SaveToolCalls = project.Agent.SaveToolCalls ?? r.SaveToolCalls;
                 r.SaveAttempts = project.Agent.SaveAttempts ?? r.SaveAttempts;
+                r.PeerDebounceBaseSeconds = project.Agent.PeerDebounceBaseSeconds ?? r.PeerDebounceBaseSeconds;
+                r.PeerDebounceMaxSeconds = project.Agent.PeerDebounceMaxSeconds ?? r.PeerDebounceMaxSeconds;
+                r.PeerDepthCeiling = project.Agent.PeerDepthCeiling ?? r.PeerDepthCeiling;
+                r.PeerHardCap = project.Agent.PeerHardCap ?? r.PeerHardCap;
                 r.Capabilities = project.Agent.Capabilities ?? r.Capabilities;
                 r.UnifiedResources = project.Agent.UnifiedResources ?? r.UnifiedResources;
                 AddTrustedDomains(r, project.Agent.TrustedDomains);
@@ -630,6 +654,10 @@ public static class SettingsResolver
         r.ShellTimeoutSeconds = roleSection.ShellTimeoutSeconds ?? r.ShellTimeoutSeconds;
         r.SaveToolCalls = roleSection.SaveToolCalls ?? r.SaveToolCalls;
         r.SaveAttempts = roleSection.SaveAttempts ?? r.SaveAttempts;
+        r.PeerDebounceBaseSeconds = roleSection.PeerDebounceBaseSeconds ?? r.PeerDebounceBaseSeconds;
+        r.PeerDebounceMaxSeconds = roleSection.PeerDebounceMaxSeconds ?? r.PeerDebounceMaxSeconds;
+        r.PeerDepthCeiling = roleSection.PeerDepthCeiling ?? r.PeerDepthCeiling;
+        r.PeerHardCap = roleSection.PeerHardCap ?? r.PeerHardCap;
         AddTrustedDomains(r, roleSection.TrustedDomains);
 
         // Wholesale replacement, deliberately not an intersection — see the type doc on
@@ -674,6 +702,10 @@ public static class SettingsResolver
         SpawnedRetention = baseline.SpawnedRetention,
         SaveToolCalls = baseline.SaveToolCalls,
         SaveAttempts = baseline.SaveAttempts,
+        PeerDebounceBaseSeconds = baseline.PeerDebounceBaseSeconds,
+        PeerDebounceMaxSeconds = baseline.PeerDebounceMaxSeconds,
+        PeerDepthCeiling = baseline.PeerDepthCeiling,
+        PeerHardCap = baseline.PeerHardCap,
         Capabilities = baseline.Capabilities is null ? null : [.. baseline.Capabilities],
         McpEnabled = baseline.McpEnabled,
         McpPort = baseline.McpPort,
