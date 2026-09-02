@@ -72,6 +72,16 @@ public class ChatSession
     [YamlMember(Alias = "origin")]
     public string? Origin { get; set; }
 
+    /// <summary>
+    /// Metadata about the one run <c>SpawnedAgentRunner</c> drove on this session, or null for a
+    /// session a human opened directly. <see cref="ChatSessionSpawnInfo.Outcome"/> being null is the
+    /// authoritative "a run is in progress" signal this wave uses for two things at once: refusing a
+    /// human <c>chat.send</c> into it (ADR §2.2) and excluding it from retention trimming (ADR §2.3,
+    /// trap 5 — a ring must never evict a session whose run has not finished).
+    /// </summary>
+    [YamlMember(Alias = "spawn")]
+    public ChatSessionSpawnInfo? Spawn { get; set; }
+
     [YamlMember(Alias = "messages")]
     public List<ChatSessionMessage> Messages { get; set; } = new();
 
@@ -89,6 +99,31 @@ public class ChatSession
     /// </summary>
     [YamlMember(Alias = "doubt")]
     public List<ChatSessionDoubt> Doubt { get; set; } = new();
+}
+
+/// <summary>What <c>subagent.get</c>/<c>subagent.result</c> answer with, persisted on the session
+/// itself now that <c>SpawnedRunLog</c> is gone (<c>docs/adr/ADR_20260902_core_session-unification.md</c>
+/// §2.1). <see cref="Outcome"/> is null exactly while the run is in progress.</summary>
+public class ChatSessionSpawnInfo
+{
+    [YamlMember(Alias = "skill")]
+    public string? SkillId { get; set; }
+
+    [YamlMember(Alias = "mode")]
+    public string Mode { get; set; } = string.Empty;
+
+    [YamlMember(Alias = "started_at")]
+    public DateTime StartedAt { get; set; }
+
+    [YamlMember(Alias = "finished_at")]
+    public DateTime? FinishedAt { get; set; }
+
+    /// <summary>"completed" | "failed" | "cancelled"; null while the run is still going.</summary>
+    [YamlMember(Alias = "outcome")]
+    public string? Outcome { get; set; }
+
+    [YamlMember(Alias = "error")]
+    public string? Error { get; set; }
 }
 
 /// <summary>One recorded arrival from a source nobody named.</summary>

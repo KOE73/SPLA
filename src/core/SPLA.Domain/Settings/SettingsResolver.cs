@@ -74,6 +74,10 @@ public class ResolvedSettings
     /// takes). See <see cref="SplaAgentSection.ShellTimeoutSeconds"/>.</summary>
     public int ShellTimeoutSeconds { get; set; } = 120;
 
+    /// <summary>How many finished spawned sessions to keep on disk, newest first. Default 200 — see
+    /// <see cref="SplaAgentSection.SpawnedRetention"/>.</summary>
+    public int SpawnedRetention { get; set; } = 200;
+
     /// <summary>Persist the full tool-call/tool-result trace with the chat history. Default OFF —
     /// see <see cref="SplaAgentSection.SaveToolCalls"/>.</summary>
     public bool SaveToolCalls { get; set; }
@@ -427,6 +431,7 @@ public static class SettingsResolver
                 r.LoopGuardRepeats = defaults.Agent.LoopGuardRepeats ?? r.LoopGuardRepeats;
                 r.AskTimeoutMinutes = defaults.Agent.AskTimeoutMinutes ?? r.AskTimeoutMinutes;
                 r.ShellTimeoutSeconds = defaults.Agent.ShellTimeoutSeconds ?? r.ShellTimeoutSeconds;
+                r.SpawnedRetention = defaults.Agent.SpawnedRetention ?? r.SpawnedRetention;
                 r.SaveToolCalls = defaults.Agent.SaveToolCalls ?? r.SaveToolCalls;
                 r.SaveAttempts = defaults.Agent.SaveAttempts ?? r.SaveAttempts;
                 r.Capabilities = defaults.Agent.Capabilities ?? r.Capabilities;
@@ -486,6 +491,7 @@ public static class SettingsResolver
                 r.LoopGuardRepeats = project.Agent.LoopGuardRepeats ?? r.LoopGuardRepeats;
                 r.AskTimeoutMinutes = project.Agent.AskTimeoutMinutes ?? r.AskTimeoutMinutes;
                 r.ShellTimeoutSeconds = project.Agent.ShellTimeoutSeconds ?? r.ShellTimeoutSeconds;
+                r.SpawnedRetention = project.Agent.SpawnedRetention ?? r.SpawnedRetention;
                 r.SaveToolCalls = project.Agent.SaveToolCalls ?? r.SaveToolCalls;
                 r.SaveAttempts = project.Agent.SaveAttempts ?? r.SaveAttempts;
                 r.Capabilities = project.Agent.Capabilities ?? r.Capabilities;
@@ -656,6 +662,7 @@ public static class SettingsResolver
         UnifiedResources = baseline.UnifiedResources,
         AskTimeoutMinutes = baseline.AskTimeoutMinutes,
         ShellTimeoutSeconds = baseline.ShellTimeoutSeconds,
+        SpawnedRetention = baseline.SpawnedRetention,
         SaveToolCalls = baseline.SaveToolCalls,
         SaveAttempts = baseline.SaveAttempts,
         Capabilities = baseline.Capabilities is null ? null : [.. baseline.Capabilities],

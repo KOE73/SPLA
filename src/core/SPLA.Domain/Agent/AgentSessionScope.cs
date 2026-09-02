@@ -56,6 +56,15 @@ public interface IAgentSession
 
     /// <summary>Null when this session cannot host a detached call — see <see cref="IBackgroundTaskHost"/>.</summary>
     IBackgroundTaskHost? Background { get; }
+
+    /// <summary>
+    /// The chat id this session lives as, or null for a session with no chat behind it (a bare CLI or
+    /// worker entry point). A spawned run reads its caller's <see cref="AgentSessionScope.Current"/>
+    /// for this value to learn its own <c>parent:</c> — the same ambient read the depth counter and
+    /// sandbox inheritance already use — and its own spawned session carries its own chat id here, so
+    /// a nested spawn's parent is always the chat that actually spawned it, human or spawned alike.
+    /// </summary>
+    string? ChatId { get; }
 }
 
 /// <summary>Plain bundle of the per-chat agent dependencies. Used by the UI chat VM and by
@@ -65,7 +74,7 @@ public sealed class AgentSession : IAgentSession
     public AgentSession(IKeyValueStore sessionKv, MarkManager checkpoint, ISkillSession skills,
         IBlobStore? blobs = null, ISandbox? sandbox = null,
         IToolSetSession? toolSets = null, Security.ChatDoubt? doubt = null,
-        IBackgroundTaskHost? background = null)
+        IBackgroundTaskHost? background = null, string? chatId = null)
     {
         Doubt = doubt ?? new Security.ChatDoubt();
         SessionKv = sessionKv;
@@ -75,6 +84,7 @@ public sealed class AgentSession : IAgentSession
         Blobs = blobs ?? new BlobStore();
         Sandbox = sandbox ?? PassthroughSandbox.Default;
         Background = background;
+        ChatId = chatId;
     }
 
     public IKeyValueStore SessionKv { get; }
@@ -85,6 +95,7 @@ public sealed class AgentSession : IAgentSession
     public ISandbox Sandbox { get; }
     public Security.ChatDoubt Doubt { get; }
     public IBackgroundTaskHost? Background { get; }
+    public string? ChatId { get; }
 }
 
 /// <summary>

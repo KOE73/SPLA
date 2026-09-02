@@ -375,7 +375,7 @@ public sealed class ChatRuntime : IDisposable, SPLA.Domain.Agent.IBackgroundTask
             // ChatRuntime implements IBackgroundTaskHost itself (Tasks/Progress/Inbox above) — a
             // background call reaches all three the same ambient way it already reaches everything
             // else per-chat, through AgentSessionScope.Current.Background.
-            background: this);
+            background: this, chatId: _chat.Id);
 
         // A reopened chat is as doubtful as it was when it closed. Restored rather than recomputed:
         // what raised the flag was an arrival, and arrivals do not happen again on load.

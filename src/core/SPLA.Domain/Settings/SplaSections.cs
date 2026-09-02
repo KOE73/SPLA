@@ -57,6 +57,14 @@ public class SplaAgentSection
     [YamlMember(Alias = "shell_timeout_seconds")]
     public int? ShellTimeoutSeconds { get; set; }
 
+    /// <summary>How many finished spawned sessions to keep on disk, newest first (default 200).
+    /// <c>0</c> keeps none; negative disables trimming entirely. Never touches a session with a run
+    /// still in progress — see <c>docs/adr/ADR_20260902_core_session-unification.md</c> §2.3.
+    /// Project-level only; not part of <see cref="SplaRoleSection"/> — retention is a disk policy of
+    /// the project, not a behaviour a role narrows.</summary>
+    [YamlMember(Alias = "spawned_retention")]
+    public int? SpawnedRetention { get; set; }
+
     /// <summary>Enabled built-in agent capabilities (dotted "core.*" feature ids — see
     /// <c>SPLA.MCP.Core.Agent.AgentFeatureCatalog</c>). Null (key absent) = every feature enabled,
     /// the historical behaviour. Empty list = no built-in feature (only the mode preamble,

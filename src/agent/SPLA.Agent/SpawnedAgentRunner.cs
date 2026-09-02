@@ -58,10 +58,21 @@ public sealed class SpawnedAgentRunner : Domain.Interfaces.IAgentSpawner
     /// a failure as one too.</summary>
     private static readonly TimeSpan WindowLookupBudget = TimeSpan.FromSeconds(2);
 
-    /// <summary>Where a finished run's conversation goes. Optional for the same reason
-    /// <see cref="_contextWindow"/> is — the runner is constructible without a runtime, and a run
-    /// nobody can read back is still a run that happened.</summary>
-    private readonly SpawnedRunLog? _runLog;
+    /// <summary>
+    /// What turns a spawn into a real session — see
+    /// <c>docs/adr/ADR_20260902_core_session-unification.md</c> §2.1. Optional for the same reason
+    /// <see cref="_contextWindow"/> is: the runner is constructible without a runtime (tests, a worker
+    /// entry point), and without one a run keeps the pre-wave-2 behaviour — an isolated in-memory
+    /// conversation nobody can read back afterwards, but a run that still happens.
+    /// <para>Settable rather than a constructor parameter: <c>AgentRuntime</c> builds this runner
+    /// before its project's <c>ChatRegistry</c> exists (see <c>AgentRuntime.cs</c>'s own comment on
+    /// the <see cref="_contextWindow"/> callback for the identical reason), so
+    /// <c>AgentRuntimeRegistry.Build</c> attaches the host the moment both objects exist.</para>
+    /// </summary>
+    private Domain.Interfaces.ISpawnSessionHost? _sessionHost;
+
+    /// <summary>Attaches the real session host once it exists. See <see cref="_sessionHost"/>.</summary>
+    public void AttachSessionHost(Domain.Interfaces.ISpawnSessionHost host) => _sessionHost = host;
 
     public SpawnedAgentRunner(
         Domain.Llm.ILlmGateway llm,
@@ -70,7 +81,7 @@ public sealed class SpawnedAgentRunner : Domain.Interfaces.IAgentSpawner
         PluginManager plugins,
         ResolvedSettings settings,
         Func<LLMSettings, CancellationToken, Task<int?>>? contextWindow = null,
-        SpawnedRunLog? runLog = null)
+        Domain.Interfaces.ISpawnSessionHost? sessionHost = null)
     {
         _llm = llm;
         _tools = tools;
@@ -78,7 +89,7 @@ public sealed class SpawnedAgentRunner : Domain.Interfaces.IAgentSpawner
         _plugins = plugins;
         _settings = settings;
         _contextWindow = contextWindow;
-        _runLog = runLog;
+        _sessionHost = sessionHost;
     }
 
     /// <summary>
@@ -98,50 +109,78 @@ public sealed class SpawnedAgentRunner : Domain.Interfaces.IAgentSpawner
             return $"error: spawn depth limit reached ({MaxDepth}). " +
                    "A spawned agent cannot keep spawning; do the remaining work in this run.";
 
-        // Identifies this run wherever it travels — on every progress tick, and as the key a reader
-        // later hands back to find it in the log. Generated up front, before anything can fail, so a
-        // run recorded in the finally block always has the same id its ticks already carried.
-        var runId = "r-" + System.Guid.NewGuid().ToString("N")[..8];
         var startedAt = DateTimeOffset.UtcNow;
+
+        // Which chat this spawn is under — read ambiently, the same way the sandbox already is a few
+        // lines below, so a spawn from a human chat AND a spawn from a spawned session (recursion,
+        // trap 9) both get the right parent: whichever session actually made the call.
+        var parentChatId = AgentSessionScope.Current?.ChatId;
+
+        // A real session when a host is attached (chatId, file, ChatInbox, progress tree — see
+        // ISpawnSessionHost); the pre-wave-2 in-memory-only shape otherwise (tests, a worker entry
+        // point). Wave 3 wires a real role through agent_spawn — null here always, for now.
+        var session = _sessionHost?.OpenSpawnedSession(parentChatId, role: null);
+
+        // Identifies this run wherever it travels — on every progress tick, and (with a session) as
+        // the id subagent.get resolves back to this session's file. Generated up front, before
+        // anything can fail, so a run whose finally block never gets to open a session still ticks
+        // with a stable id for its whole life.
+        var runId = session?.ChatId ?? "r-" + System.Guid.NewGuid().ToString("N")[..8];
 
         // Fresh isolated agent state — own skill session, working memory, and checkpoint manager.
         // Opening an AgentSessionScope keeps the sub-agent's tool calls (memory, marks, skills) off
         // the parent chat's state, even though the spawn happens inside the parent's async flow.
-        var skillSession = new SkillSession();
+        // With a session this comes from it (so its Background/ChatId are the real ones); without one
+        // it is built fresh here, inheriting only the sandbox — the host's boundary, not agent state,
+        // and the one thing a sub-agent must not escape by spawning.
+        var agentSession = session?.AgentSession
+            ?? new AgentSession(new KeyValueStore("session"), new CheckpointManager(), new SkillSession(),
+                sandbox: AgentSessionScope.Current?.Sandbox);
+        var skillSession = agentSession.Skills;
 
         // A free-form spawn leaves the session idle rather than pinned. That is not the same as an
         // agent without skills: the session is the sub-agent's own, so if the work turns out to match
         // one, it can find and activate it for itself without touching the parent's.
-        if (!string.IsNullOrWhiteSpace(skillId))
+        //
+        // Wrapped: a session's file is already written on disk by the time we get here (OpenSpawnedSession
+        // saved it eagerly), so a validation failure that throws past this point must still close that
+        // file out as failed rather than leaving it stuck "in progress" forever — nothing else would
+        // ever call Finish for a run that never reached the try block below.
+        try
         {
-            var lookup = _skills.Resolve(skillId!);
-            if (lookup.IsAmbiguous)
-                throw new System.ArgumentException(
-                    $"Skill '{skillId}' is held by more than one source — name one of: " +
-                    string.Join(", ", lookup.Candidates.Select(c => c.Address)), nameof(skillId));
+            if (!string.IsNullOrWhiteSpace(skillId))
+            {
+                var lookup = _skills.Resolve(skillId!);
+                if (lookup.IsAmbiguous)
+                    throw new System.ArgumentException(
+                        $"Skill '{skillId}' is held by more than one source — name one of: " +
+                        string.Join(", ", lookup.Candidates.Select(c => c.Address)), nameof(skillId));
 
-            var meta = lookup.Card;
-            if (meta is null)
-                throw new System.ArgumentException($"Skill '{skillId}' not found.", nameof(skillId));
+                var meta = lookup.Card;
+                if (meta is null)
+                    throw new System.ArgumentException($"Skill '{skillId}' not found.", nameof(skillId));
 
-            var body = _skills.LoadBody(meta.Address);
-            if (string.IsNullOrWhiteSpace(body))
-                throw new System.ArgumentException(
-                    $"Skill '{skillId}' has no readable procedure.", nameof(skillId));
+                var body = _skills.LoadBody(meta.Address);
+                if (string.IsNullOrWhiteSpace(body))
+                    throw new System.ArgumentException(
+                        $"Skill '{skillId}' has no readable procedure.", nameof(skillId));
 
-            // Same loan slip as an in-chat activation: a sub-agent running a skill needs that skill's
-            // references as much as the parent would, and its own session is the only place to hold them.
-            skillSession.Activate(meta.DisplayId, body, meta.SourceId, meta.Ref, _skills.ListResources(meta.Address));
+                // Same loan slip as an in-chat activation: a sub-agent running a skill needs that skill's
+                // references as much as the parent would, and its own session is the only place to hold them.
+                skillSession.Activate(meta.DisplayId, body, meta.SourceId, meta.Ref, _skills.ListResources(meta.Address));
+            }
         }
-
-        var checkpoint = new CheckpointManager();
-        // Everything else here is deliberately fresh, but the sandbox is inherited: it is the host's
-        // boundary, not the agent's state. Left to its default a sub-agent would come out of its
-        // parent's sandbox — a way out of the box by spawning, which matters the moment a chat runs
-        // with a real one. No parent (a CLI or worker entry point) keeps the constructor's default.
-        var agentSession = new AgentSession(
-            new KeyValueStore("session"), checkpoint, skillSession,
-            sandbox: AgentSessionScope.Current?.Sandbox);
+        catch (System.ArgumentException ex)
+        {
+            if (session != null)
+            {
+                session.Finish(System.Array.Empty<ChatMessage>(), skillId, mode.ToString(), startedAt,
+                    "failed", ex.Message);
+                _sessionHost?.TrimSpawnedRetention(_settings.SpawnedRetention);
+                session.Dispose();
+            }
+            throw;
+        }
 
         // The session is passed explicitly rather than resolved ambiently — the spawn happens inside
         // the parent's async flow, and the sub-agent must describe its own skill, not the parent's.
@@ -173,7 +212,7 @@ public sealed class SpawnedAgentRunner : Domain.Interfaces.IAgentSpawner
         // it is the whole mechanism.
         var orchestrator = new ConversationOrchestrator(_llm, _tools)
         {
-            Checkpoint = checkpoint,
+            Checkpoint = agentSession.Checkpoint,
             EnableLoopGuard = true,
             Context = context,
             NestInAmbientProgress = true
@@ -301,22 +340,19 @@ public sealed class SpawnedAgentRunner : Domain.Interfaces.IAgentSpawner
         {
             _depth.Value = previousDepth;
 
-            // Skipped without a log rather than falling back to some other store: a runner built for
-            // a worker or a test has nowhere honest to put a transcript, and pretending otherwise would
-            // mean inventing a second retention policy nobody asked for.
-            _runLog?.Record(new SpawnedRun
+            // Skipped without a session rather than falling back to some other store: a runner built
+            // for a worker or a test has nowhere honest to put a transcript, and pretending otherwise
+            // would mean inventing a second retention policy nobody asked for.
+            if (session != null)
             {
-                Id = runId,
-                Label = label,
-                SkillId = skillSession.ActiveSkillId,
-                Mode = mode.ToString(),
-                StartedAt = startedAt,
-                FinishedAt = DateTimeOffset.UtcNow,
-                Outcome = outcome,
-                Error = error,
-                Result = lastAssistantMessage,
-                Messages = conversation.Messages.ToList()
-            });
+                session.Finish(conversation.Messages, skillSession.ActiveSkillId, mode.ToString(),
+                    startedAt, outcome, error);
+                // Only after Finish: trimming looks at what is on disk right now, and this run's own
+                // file must already carry a non-null outcome or it would immediately be the newest
+                // "in progress" session on the ring's wrong side (trap 5).
+                _sessionHost?.TrimSpawnedRetention(_settings.SpawnedRetention);
+                session.Dispose();
+            }
         }
 
         return lastAssistantMessage;

@@ -172,12 +172,14 @@ public sealed class AgentRuntime : IDisposable
     /// </summary>
     public AgentContextComposer ContextComposer { get; }
 
+    /// <summary>
+    /// Runs a spawned task to a result. Its session host (<c>ChatRegistry</c>) is attached right after
+    /// construction — see <see cref="SpawnedAgentRunner.AttachSessionHost"/> and
+    /// <c>AgentRuntimeRegistry.Build</c> — because this runtime is built before its project's
+    /// <c>ChatRegistry</c> exists (see this constructor's own <c>_ = McpClients.ConnectAllAsync()</c>
+    /// comment for the same "built before its dependents exist" shape).
+    /// </summary>
     public SpawnedAgentRunner SpawnedRunner { get; }
-
-    /// <summary>Finished spawned runs this process has produced, kept in memory for as long as the ring
-    /// has room. One log per runtime, not per spawn — a run started under one chat and one found again
-    /// later through <c>subagent.get</c> have to be the same store.</summary>
-    public SPLA.Agent.SpawnedRunLog SpawnedRuns { get; } = new();
 
     /// <summary>The <c>agent.capabilities</c> setting resolved against <see cref="AgentFeatureCatalog"/>:
     /// unknown ids dropped, Requires auto-included, null configured = every feature. Drives which
@@ -364,7 +366,7 @@ public sealed class AgentRuntime : IDisposable
         // simply loads whatever it loads. GetContextLengthAsync is the same cached detection a chat
         // uses, so a batch of spawns asks the provider once between them.
         SpawnedRunner = new SpawnedAgentRunner(
-            Llm, McpHost, SkillLibrary, PluginManager, settings, GetContextLengthAsync, SpawnedRuns);
+            Llm, McpHost, SkillLibrary, PluginManager, settings, GetContextLengthAsync);
 
         // ── Modular built-in capabilities: one IAgentFeature per "core.*" id, in
         // AgentFeatureCatalog.Order. Each feature carries its tools AND its prompt fragment

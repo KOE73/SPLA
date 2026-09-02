@@ -160,6 +160,19 @@ internal sealed class ChatHandlers : IMessageHandler
         var chat = entry.Chats.GetOrOpen(p.ChatId);
         if (chat == null) { await ctx.Send(MessageTypes.Error, new ErrorPayload { Message = $"Chat not found: {p.ChatId}" }); return; }
 
+        // A spawned session belongs to whoever gave the errand while its one run is still going — a
+        // second writer here is exactly the race one pump per chat exists to prevent (ADR §2.2). Once
+        // the run has finished (Spawn.Outcome is set) the session is a chat like any other and this
+        // falls through as normal.
+        if (chat.Session.Origin == "spawned" && chat.Session.Spawn?.Outcome is null)
+        {
+            await ctx.Send(MessageTypes.Error, new ErrorPayload
+            {
+                Message = "This session was spawned and its run is still in progress — it cannot take a message yet."
+            });
+            return;
+        }
+
         // The sender must watch this chat, otherwise the turn's stream (which fans out to watchers
         // only) would never reach the very client that started it.
         ctx.Session.MarkChatOpen(p.ChatId);

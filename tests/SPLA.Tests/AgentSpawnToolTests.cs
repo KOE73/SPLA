@@ -1,5 +1,6 @@
 using SPLA.Domain.Tools;
 using SPLA.Agent;
+using SPLA.Domain.Agent;
 using SPLA.Domain.Interfaces;
 using SPLA.Domain.Models;
 using SPLA.Domain.Settings;
@@ -273,53 +274,91 @@ public class AgentSpawnToolTests
         Assert.Equal(5, runs.Distinct().Count());
     }
 
-    /// <summary>The whole point of the log: a run that finishes cleanly is not thrown away. Its
-    /// messages, result and outcome all have to be readable back after the tool call has returned.</summary>
-    [Fact]
-    public async Task A_completed_run_is_recorded_with_its_messages()
+    /// <summary>In-memory stand-in for a real chat host (see <c>SPLA.Runtime.ChatRegistry</c> — the
+    /// production <see cref="ISpawnSessionHost"/>), so these tests can watch what a run hands to a
+    /// session without standing up a whole project on disk.</summary>
+    private sealed class FakeSpawnSessionHost : ISpawnSessionHost
     {
-        var log = new SpawnedRunLog();
+        public readonly List<FakeSpawnedSession> Sessions = new();
+        public int TrimCalls { get; private set; }
+        public int LastKeep { get; private set; }
+
+        public ISpawnedSession OpenSpawnedSession(string? parentChatId, string? role)
+        {
+            var session = new FakeSpawnedSession(
+                "s-" + Guid.NewGuid().ToString("N")[..8], parentChatId, role);
+            Sessions.Add(session);
+            return session;
+        }
+
+        public void TrimSpawnedRetention(int keep)
+        {
+            TrimCalls++;
+            LastKeep = keep;
+        }
+    }
+
+    private sealed class FakeSpawnedSession : ISpawnedSession
+    {
+        public string ChatId { get; }
+        public string? ParentChatId { get; }
+        public string? Role { get; }
+        public IAgentSession AgentSession { get; }
+        public bool Disposed { get; private set; }
+        public IReadOnlyList<ChatMessage>? FinishedMessages { get; private set; }
+        public string? SkillId { get; private set; }
+        public string? Mode { get; private set; }
+        public string? Outcome { get; private set; }
+        public string? Error { get; private set; }
+
+        public FakeSpawnedSession(string chatId, string? parentChatId, string? role)
+        {
+            ChatId = chatId;
+            ParentChatId = parentChatId;
+            Role = role;
+            AgentSession = new SPLA.Domain.Agent.AgentSession(
+                new SPLA.Domain.Agent.KeyValueStore("session"), new SPLA.Domain.Agent.MarkManager(),
+                new SPLA.Domain.Agent.SkillSession(), chatId: chatId);
+        }
+
+        public void Finish(IReadOnlyList<ChatMessage> conversation, string? skillId, string mode,
+            DateTimeOffset startedAt, string outcome, string? error)
+        {
+            FinishedMessages = conversation;
+            SkillId = skillId;
+            Mode = mode;
+            Outcome = outcome;
+            Error = error;
+        }
+
+        public void Dispose() => Disposed = true;
+    }
+
+    /// <summary>The whole point of the wave: a run that finishes cleanly is not thrown away. Its
+    /// messages, outcome, skill and disposal all have to reach the session that was opened for it.</summary>
+    [Fact]
+    public async Task A_completed_run_finishes_and_disposes_its_session()
+    {
         var settings = new ResolvedSettings { Mode = AgentMode.Edit };
         var runner = new SpawnedAgentRunner(
             new StubLlmService("done"), new StubToolHost(),
             new SkillLibrary([new SPLA.Tests.Fakes.FakeSkillSource()]),
-            new PluginManager(settings), settings,
-            runLog: log);
+            new PluginManager(settings), settings);
+        var host = new FakeSpawnSessionHost();
+        runner.AttachSessionHost(host);
 
         await runner.RunAsync(null, "record me", AgentMode.Edit);
 
-        var run = Assert.Single(log.List());
-        Assert.Equal("completed", run.Outcome);
-        Assert.Equal("record me", run.Label);
-        Assert.Contains("done", run.Result);
-        Assert.Null(run.Error);
-        // System + user + assistant, at least — the transcript the tool result used to throw away.
-        Assert.True(run.Messages.Count >= 3);
-        Assert.Contains(run.Messages, m => m.Role == ChatRole.Assistant && m.Content == "done");
-    }
-
-    /// <summary>A ring, not a growing list: past capacity the oldest run falls off so a long session
-    /// does not accumulate transcripts without bound.</summary>
-    [Fact]
-    public async Task The_log_evicts_past_capacity()
-    {
-        var log = new SpawnedRunLog(capacity: 2);
-        var settings = new ResolvedSettings { Mode = AgentMode.Edit };
-        var runner = new SpawnedAgentRunner(
-            new StubLlmService("done"), new StubToolHost(),
-            new SkillLibrary([new SPLA.Tests.Fakes.FakeSkillSource()]),
-            new PluginManager(settings), settings,
-            runLog: log);
-
-        await runner.RunAsync(null, "first", AgentMode.Edit);
-        await runner.RunAsync(null, "second", AgentMode.Edit);
-        await runner.RunAsync(null, "third", AgentMode.Edit);
-
-        var labels = log.List().Select(r => r.Label).ToList();
-        Assert.Equal(2, labels.Count);
-        Assert.DoesNotContain("first", labels);
-        Assert.Contains("second", labels);
-        Assert.Contains("third", labels);
+        var session = Assert.Single(host.Sessions);
+        Assert.Equal("completed", session.Outcome);
+        Assert.Null(session.Error);
+        Assert.True(session.Disposed);
+        // System + user + assistant, at least — the transcript that used to be thrown away.
+        Assert.True(session.FinishedMessages!.Count >= 3);
+        Assert.Contains(session.FinishedMessages, m => m.Role == ChatRole.Assistant && m.Content == "done");
+        // Retention is asked after every finished run, never before.
+        Assert.Equal(1, host.TrimCalls);
+        Assert.Equal(settings.SpawnedRetention, host.LastKeep);
     }
 
     /// <summary>Stub gateway that always throws, so a run can be recorded as failed rather than
@@ -332,22 +371,23 @@ public class AgentSpawnToolTests
     }
 
     [Fact]
-    public async Task A_failed_run_records_the_outcome_and_error()
+    public async Task A_failed_run_finishes_its_session_with_the_outcome_and_error()
     {
-        var log = new SpawnedRunLog();
         var settings = new ResolvedSettings { Mode = AgentMode.Edit };
         var runner = new SpawnedAgentRunner(
             new ThrowingLlmService(), new StubToolHost(),
             new SkillLibrary([new SPLA.Tests.Fakes.FakeSkillSource()]),
-            new PluginManager(settings), settings,
-            runLog: log);
+            new PluginManager(settings), settings);
+        var host = new FakeSpawnSessionHost();
+        runner.AttachSessionHost(host);
 
         await Assert.ThrowsAsync<InvalidOperationException>(
             () => runner.RunAsync(null, "boom", AgentMode.Edit));
 
-        var run = Assert.Single(log.List());
-        Assert.Equal("failed", run.Outcome);
-        Assert.Equal("provider is down", run.Error);
+        var session = Assert.Single(host.Sessions);
+        Assert.Equal("failed", session.Outcome);
+        Assert.Equal("provider is down", session.Error);
+        Assert.True(session.Disposed);
     }
 
     /// <summary>Stub gateway that blocks until the turn is cancelled — the Stop button's path.</summary>
@@ -360,20 +400,20 @@ public class AgentSpawnToolTests
     }
 
     /// <summary>
-    /// A run somebody stopped is not a failure, and the log has to say which it was. This is the path
-    /// the Stop button takes, so it is the one most likely to be looked at afterwards — "why did this
-    /// end" has a different answer when the answer is "you ended it".
+    /// A run somebody stopped is not a failure, and the session has to say which it was. This is the
+    /// path the Stop button takes, so it is the one most likely to be looked at afterwards — "why did
+    /// this end" has a different answer when the answer is "you ended it".
     /// </summary>
     [Fact]
-    public async Task A_cancelled_run_is_recorded_as_cancelled_not_failed()
+    public async Task A_cancelled_run_finishes_its_session_as_cancelled_not_failed()
     {
-        var log = new SpawnedRunLog();
         var settings = new ResolvedSettings { Mode = AgentMode.Edit };
         var runner = new SpawnedAgentRunner(
             new BlockingLlmService(), new StubToolHost(),
             new SkillLibrary([new SPLA.Tests.Fakes.FakeSkillSource()]),
-            new PluginManager(settings), settings,
-            runLog: log);
+            new PluginManager(settings), settings);
+        var host = new FakeSpawnSessionHost();
+        runner.AttachSessionHost(host);
 
         using var stopping = new CancellationTokenSource();
         var run = runner.RunAsync(null, "stop me", AgentMode.Edit, stopping.Token);
@@ -381,9 +421,64 @@ public class AgentSpawnToolTests
 
         await Assert.ThrowsAnyAsync<OperationCanceledException>(() => run);
 
-        var recorded = Assert.Single(log.List());
-        Assert.Equal("cancelled", recorded.Outcome);
-        Assert.Null(recorded.Error);
+        var session = Assert.Single(host.Sessions);
+        Assert.Equal("cancelled", session.Outcome);
+        Assert.Null(session.Error);
+        Assert.True(session.Disposed);
+    }
+
+    /// <summary>The session's own chat id becomes the run id once a host is attached — the same
+    /// string a client already treats opaquely rides both the ticks and (now) <c>subagent.get</c>.</summary>
+    [Fact]
+    public async Task With_a_session_host_the_run_id_is_the_sessions_chat_id()
+    {
+        var tree = new ProgressTree();
+        var settings = new ResolvedSettings { Mode = AgentMode.Edit };
+        var runner = new SpawnedAgentRunner(
+            new StubLlmService("done") { PromptTokens = 10 }, new StubToolHost(),
+            new SkillLibrary([new SPLA.Tests.Fakes.FakeSkillSource()]),
+            new PluginManager(settings), settings);
+        var host = new FakeSpawnSessionHost();
+        runner.AttachSessionHost(host);
+
+        using (ProgressScope.BeginTree(tree))
+        using (ProgressScope.BeginNode("agent_spawn"))
+        {
+            await runner.RunAsync(null, "tick check", AgentMode.Edit);
+        }
+
+        var session = Assert.Single(host.Sessions);
+        var run = Assert.Single(tree.Nodes, n => n.Label == "tick check");
+        var detail = Assert.Single(run.Latest!.Details!, d => d.Label == "run");
+        Assert.Equal(session.ChatId, detail.Value);
+    }
+
+    /// <summary>Recursion: a spawn made from inside a spawned run must carry the running session's own
+    /// chat id as its parent, whether or not a human ever opened a chat — trap 9, now that a spawn
+    /// creates files rather than an in-memory conversation. The parent chat id is read ambiently off
+    /// <see cref="AgentSessionScope.Current"/>, which is exactly what <see cref="AgentSession"/> is
+    /// opened over for the whole duration of the outer run.</summary>
+    [Fact]
+    public async Task A_nested_spawn_is_parented_at_the_spawning_sessions_own_chat_id()
+    {
+        var settings = new ResolvedSettings { Mode = AgentMode.Edit };
+        var host = new FakeSpawnSessionHost();
+
+        var outerSession = host.OpenSpawnedSession(parentChatId: null, role: null);
+        using (AgentSessionScope.Begin(outerSession.AgentSession))
+        {
+            var runner = new SpawnedAgentRunner(
+                new StubLlmService("done"), new StubToolHost(),
+                new SkillLibrary([new SPLA.Tests.Fakes.FakeSkillSource()]),
+                new PluginManager(settings), settings);
+            runner.AttachSessionHost(host);
+
+            await runner.RunAsync(null, "inner task", AgentMode.Edit);
+        }
+
+        Assert.Equal(2, host.Sessions.Count);
+        var inner = host.Sessions[1];
+        Assert.Equal(outerSession.ChatId, inner.ParentChatId);
     }
 
     /// <summary>The run id has to reach a reader while the run is still live, not only after — it

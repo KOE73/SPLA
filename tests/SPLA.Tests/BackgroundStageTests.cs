@@ -48,6 +48,7 @@ public class BackgroundStageTests
         public ISandbox Sandbox => throw new NotSupportedException();
         public SPLA.Domain.Security.ChatDoubt Doubt => throw new NotSupportedException();
         public IBackgroundTaskHost? Background { get; init; }
+        public string? ChatId => null;
     }
 
     private sealed class FakeBackgroundHost : IBackgroundTaskHost
