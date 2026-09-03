@@ -1,4 +1,4 @@
-import { elementRect, isContainer } from "../model/types.js";
+import { elementRect, entityOf, isContainer } from "../model/types.js";
 import type { DiagramEdge, DiagramElement } from "../model/types.js";
 import type { DiagramDocument } from "../model/document.js";
 import { StyleLibrary } from "../model/StyleLibrary.js";
@@ -11,7 +11,11 @@ import { clear, setAttrs, svg, text } from "./svg.js";
 import { Viewport, type ViewportState } from "./Viewport.js";
 import { BoxRenderer } from "./render/BoxRenderer.js";
 import { ContainerRenderer } from "./render/ContainerRenderer.js";
-import type { ElementRenderer, RenderContext } from "./render/ElementRenderer.js";
+import type { ElementRenderer, RenderContext, ResolvedContent } from "./render/ElementRenderer.js";
+import { ActorRenderer, CylinderRenderer, DiamondRenderer, EllipseRenderer, HexagonRenderer } from "./render/shapes.js";
+import { TemplateLibrary } from "../content/TemplateLibrary.js";
+import { AssetRegistry } from "../assets/AssetRegistry.js";
+import type { MemberView } from "../content/ContentRenderer.js";
 import { TypeRegistry } from "./render/TypeRegistry.js";
 import { DIM } from "./render/styles.js";
 import { dashArray, textAttrs } from "./render/textAttrs.js";
@@ -19,6 +23,9 @@ import { marquee, resizeHandles, selectionOutline } from "./render/handles.js";
 import { UniformPortAssigner } from "./ports/assigners.js";
 import { portKey, type PortAssigner, type PortRequest } from "./ports/PortAssigner.js";
 import { BezierRouter, type EdgeRouter } from "./routing/EdgeRouter.js";
+import { OrthogonalRouter, TreeHorizontalRouter, TreeVerticalRouter } from "./routing/routers.js";
+import type { ResolvedEdgeStyle } from "../model/StyleLibrary.js";
+import type { RoutingMode } from "../model/style-types.js";
 import { getMarkerOffset } from "./render/PaintRegistry.js";
 import { EDGE_ATTR } from "../interaction/roles.js";
 import { InteractionController } from "../interaction/InteractionController.js";
@@ -58,6 +65,11 @@ export interface DiagramCanvasOptions {
   gridStep?: number;
   /** The look of everything. Defaults to the built-in library. */
   styles?: StyleLibrary;
+  /**
+   * Base for the files the canvas fetches itself — `templates.json` and the
+   * content directory. Same value the stores get; see `DiagramEditorOptions`.
+   */
+  modelsBase?: string;
 }
 
 /**
@@ -98,6 +110,27 @@ export class DiagramCanvas {
 
   private doc: DiagramDocument | null = null;
   private styleLibrary: StyleLibrary;
+  /**
+   * Named content templates, and the pictures they can pull in.
+   *
+   * Both are read lazily and both survive being empty: a workspace with no
+   * `templates.json` and no `content/` draws exactly what it drew before they
+   * existed, which is what makes them safe to add to live models.
+   */
+  private templates: TemplateLibrary;
+  private assets: AssetRegistry;
+  /**
+   * Every line shape the canvas can draw, by name.
+   *
+   * A map rather than a chain of ifs so that the set can grow — an
+   * obstacle-avoiding router is a new entry here and nothing else, precisely
+   * because no file records the paths any router produced.
+   */
+  private readonly routers = new Map<RoutingMode, EdgeRouter>([
+    ["orthogonal", new OrthogonalRouter()],
+    ["tree-horizontal", new TreeHorizontalRouter()],
+    ["tree-vertical", new TreeVerticalRouter()],
+  ]);
   private paintRegistry!: PaintRegistry;
   private selection: Selection | null = null;
   /**
@@ -143,6 +176,8 @@ export class DiagramCanvas {
     this.portAssigner = options.portAssigner ?? new UniformPortAssigner();
     this.router = options.router ?? new BezierRouter();
     this.registry = options.registry ?? defaultRegistry();
+    this.templates = new TemplateLibrary(options.modelsBase);
+    this.assets = new AssetRegistry(options.modelsBase);
 
     this.zonesLayer = svg("g", { class: "spla-layer-zones" });
     this.edgesLayer = svg("g", { class: "spla-layer-edges" });
@@ -173,6 +208,12 @@ export class DiagramCanvas {
 
     this.viewport = new Viewport(this.viewportGroup);
     this.viewport.changed.on("change", (state) => this.events.emit("viewport", state));
+
+    // Templates are read once; a picture arrives whenever it arrives, and the
+    // frame that needed it has long been drawn. Repainting on arrival is why
+    // `AssetRegistry.peek` may answer "not yet" without anything going wrong.
+    void this.templates.load().then(() => this.render());
+    this.assets.onLoaded(() => this.render());
 
     this.tooltipEl = document.createElement("div");
     this.tooltipEl.className = "spla-tooltip";
@@ -575,7 +616,7 @@ export class DiagramCanvas {
     let out: Rect | null = null;
     for (const el of elements) {
       if (ctx.isHidden(el)) continue;
-      const r = this.registry.resolve(el).visibleRect(el, ctx);
+      const r = this.rendererFor(el).visibleRect(el, ctx);
       out = out === null ? r : unionRect(out, r);
     }
     return out;
@@ -676,7 +717,7 @@ export class DiagramCanvas {
     // Parents before children, so nested containers stack above their parent.
     for (const el of this.doc.elements()) {
       if (ctx.isHidden(el)) continue;
-      const renderer = this.registry.resolve(el);
+      const renderer = this.rendererFor(el);
       const layer = isContainer(el) ? this.zonesLayer : this.nodesLayer;
       layer.appendChild(renderer.create(el, ctx));
 
@@ -736,7 +777,7 @@ export class DiagramCanvas {
         }
       }
       const ghostEl = doc.element(this.ghostNodeId);
-      const rawGhostEntityId = ghostEl ? (ghostEl.raw as any)?._entity?.id : null;
+      const rawGhostEntityId = ghostEl ? (entityOf(ghostEl)?.id ?? null) : null;
       const relations = doc.relations;
       if (Array.isArray(relations)) {
         for (const rel of relations) {
@@ -801,6 +842,70 @@ export class DiagramCanvas {
       },
       styleOf: (el) => this.styleLibrary.blockStyle(el),
       paints: this.paintRegistry,
+      content: (el) => this.resolveContent(el),
+    };
+  }
+
+  /**
+   * Which router draws this edge, chosen from most specific to least:
+   * the edge, then the view, then the relation type's style, then whatever
+   * the canvas was built with (ADR_20260903 §2.7).
+   *
+   * The type's style is the level meant to do the work: pinning a shape to a
+   * *kind* of relation turns the line's form into a reading cue, while a
+   * per-edge override is the exception that has to earn itself.
+   */
+  private routerFor(edge: DiagramEdge, style: ResolvedEdgeStyle): EdgeRouter {
+    const viewChoice = this.doc?.metadata.routing;
+    const mode =
+      edge.routing ??
+      (typeof viewChoice === "string" ? (viewChoice as RoutingMode) : undefined) ??
+      style.routing ??
+      null;
+
+    if (mode === null) return this.router;
+    return this.routers.get(mode) ?? this.router;
+  }
+
+  /**
+   * The renderer that draws this element, outline included.
+   *
+   * Shape comes from the resolved style, so every call site asks the same
+   * question the same way — and a zone, whose renderer is chosen by kind,
+   * is unaffected by a block shape it never had.
+   */
+  private rendererFor(el: DiagramElement): ElementRenderer {
+    return this.registry.resolve(el, this.styleLibrary.blockStyle(el).shape);
+  }
+
+  /**
+   * Which template this element draws with, compiled, plus what it draws.
+   *
+   * The cascade is placement, then style, then nothing (ADR_20260903 §2.2).
+   * "Nothing" is a real answer and the common one: a workspace with no
+   * `templates.json` keeps the caption-and-subtitle look it always had.
+   */
+  private resolveContent(el: DiagramElement): ResolvedContent | null {
+    const placement = typeof el.metadata.template === "string" ? el.metadata.template : undefined;
+    const id = placement ?? this.styleLibrary.blockStyle(el).template ?? null;
+    if (id === null) return null;
+
+    const compiled = this.templates.get(id);
+    if (compiled === undefined) return null;
+
+    const entity = entityOf(el);
+    const members = Array.isArray(entity?.members)
+      ? entity.members.map((m) => (typeof m === "string" ? { name: m } : (m as MemberView)))
+      : [];
+
+    return {
+      tree: compiled.tree,
+      data: {
+        name: el.label,
+        description: typeof el.metadata.description === "string" ? el.metadata.description : undefined,
+        members,
+        asset: (assetId) => this.assets.peek(assetId),
+      },
     };
   }
 
@@ -842,7 +947,7 @@ export class DiagramCanvas {
   private anchorFor(el: DiagramElement): { owner: DiagramElement; rect: Rect } {
     const hidden = this.collapsedAncestor(el);
     const owner = hidden ?? el;
-    const renderer = this.registry.resolve(owner);
+    const renderer = this.rendererFor(owner);
     return { owner, rect: renderer.visibleRect(owner, this.context()) };
   }
 
@@ -884,14 +989,14 @@ export class DiagramCanvas {
     // When ghost focus is active on a node or global overview is enabled, resolve hidden/potential relations
     if (this.ghostNodeId !== null || this.showOverviewShadows) {
       const ghostEl = this.ghostNodeId !== null ? doc.element(this.ghostNodeId) : null;
-      const rawGhostEntityId = ghostEl ? (ghostEl.raw as any)?._entity?.id : null;
+      const rawGhostEntityId = ghostEl ? (entityOf(ghostEl)?.id ?? null) : null;
       const relations = doc.relations;
 
       // Fast lookup for canvas element ID by entity ID / element ID
       const entityToCanvasId = new Map<string, string>();
       for (const el of doc.elements()) {
         entityToCanvasId.set(el.id, el.id);
-        const rawId = (el.raw as any)?._entity?.id;
+        const rawId = entityOf(el)?.id;
         if (rawId) entityToCanvasId.set(rawId, el.id);
       }
 
@@ -960,8 +1065,8 @@ export class DiagramCanvas {
     for (const r of resolved) {
       const fromStyle = this.styleLibrary.blockStyle(r.from.owner);
       const toStyle = this.styleLibrary.blockStyle(r.to.owner);
-      const fromInset = this.registry.resolve(r.from.owner).cornerInset?.("east", fromStyle) ?? fromStyle.radius;
-      const toInset = this.registry.resolve(r.to.owner).cornerInset?.("west", toStyle) ?? toStyle.radius;
+      const fromInset = this.rendererFor(r.from.owner).cornerInset?.("east", fromStyle) ?? fromStyle.radius;
+      const toInset = this.rendererFor(r.to.owner).cornerInset?.("west", toStyle) ?? toStyle.radius;
 
       requests.push({
         edgeId: r.edge.id, end: "from", ownerId: r.from.owner.id,
@@ -985,17 +1090,17 @@ export class DiagramCanvas {
 
       const fromStyle = this.styleLibrary.blockStyle(r.from.owner);
       const toStyle = this.styleLibrary.blockStyle(r.to.owner);
-      const fromInset = this.registry.resolve(r.from.owner).cornerInset?.(fromSlot.side, fromStyle) ?? fromStyle.radius;
-      const toInset = this.registry.resolve(r.to.owner).cornerInset?.(toSlot.side, toStyle) ?? toStyle.radius;
+      const fromInset = this.rendererFor(r.from.owner).cornerInset?.(fromSlot.side, fromStyle) ?? fromStyle.radius;
+      const toInset = this.rendererFor(r.to.owner).cornerInset?.(toSlot.side, toStyle) ?? toStyle.radius;
 
       const style = this.styleLibrary.edgeStyle(r.edge);
       const fromMarkerOffset = getMarkerOffset(style.source.shape, style.source.size ?? DIAGRAM_CONFIG.routing.defaultMarkerSize);
       const toMarkerOffset = getMarkerOffset(style.target.shape, style.target.size ?? DIAGRAM_CONFIG.routing.defaultMarkerSize);
 
-      const fromPoint = this.registry.resolve(r.from.owner).pointAt(r.from.rect, fromSlot);
-      const toPoint = this.registry.resolve(r.to.owner).pointAt(r.to.rect, toSlot);
+      const fromPoint = this.rendererFor(r.from.owner).pointAt(r.from.rect, fromSlot);
+      const toPoint = this.rendererFor(r.to.owner).pointAt(r.to.rect, toSlot);
 
-      const route = this.router.route({
+      const route = this.routerFor(r.edge, style).route({
         from: fromPoint, to: toPoint,
         fromSide: fromSlot.side, toSide: toSlot.side,
         fromRect: r.from.rect, toRect: r.to.rect,
@@ -1120,7 +1225,7 @@ export class DiagramCanvas {
     let out: Rect | null = null;
     for (const el of this.doc.elements()) {
       if (ctx.isHidden(el)) continue;
-      const r = this.registry.resolve(el).visibleRect(el, ctx);
+      const r = this.rendererFor(el).visibleRect(el, ctx);
       out = out === null ? r : unionRect(out, r);
     }
     return out;
@@ -1171,6 +1276,15 @@ export function defaultRegistry(): TypeRegistry {
   const container: ElementRenderer = new ContainerRenderer();
   registry.registerDefault("node", box);
   registry.registerDefault("zone", container);
+
+  // Outlines, keyed by what a style may ask for. "rect" is deliberately absent:
+  // it is the default renderer, and registering it here would only give the
+  // same answer by a longer route.
+  registry.registerShape("ellipse", new EllipseRenderer());
+  registry.registerShape("diamond", new DiamondRenderer());
+  registry.registerShape("cylinder", new CylinderRenderer());
+  registry.registerShape("hexagon", new HexagonRenderer());
+  registry.registerShape("actor", new ActorRenderer());
   return registry;
 }
 

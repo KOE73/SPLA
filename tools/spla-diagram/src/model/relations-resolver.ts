@@ -1,5 +1,6 @@
 import type { DiagramDocument } from "./document.js";
 import type { DiagramEdge, DiagramElement } from "./types.js";
+import { entityOf } from "./types.js";
 
 export interface ResolvedRelation {
   id: string;
@@ -27,7 +28,7 @@ export function resolveElementRelations(
 
   const canvasEdges = doc.edges.filter((e) => e.from === element.id || e.to === element.id);
   const relations = doc.relations;
-  const rawEntityId = (element.raw as any)?._entity?.id;
+  const rawEntityId = entityOf(element)?.id;
 
   const map = new Map<string, ResolvedRelation>();
 

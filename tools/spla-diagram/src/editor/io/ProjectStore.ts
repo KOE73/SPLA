@@ -106,7 +106,14 @@ export class HttpProjectStore implements ModelStore {
         width: vn.width || 170,
         height: vn.height || 50,
         styleId: vn.styleId,
-        metadata: { codeRef: e.codeRef, description: t.doc || t.description },
+        metadata: {
+          codeRef: e.codeRef,
+          description: t.doc || t.description,
+          // Content template chosen for this one placement, overriding the
+          // style's. The exception, not the rule: one node that must show more
+          // (or less) than its kind normally does (ADR_20260903 §2.2).
+          template: vn.template,
+        },
         raw: { _entity: e },
       };
     });
@@ -168,6 +175,9 @@ export class HttpProjectStore implements ModelStore {
         styleId: ve.styleId,
         points: ve.points || [],
         ...(origin === undefined ? {} : { origin }),
+        // Line shape picked for this one edge. Only the choice: the polyline
+        // is recomputed every repaint and never written back.
+        ...(ve.routing === undefined ? {} : { routing: ve.routing }),
       };
     });
 
@@ -208,7 +218,13 @@ export class HttpProjectStore implements ModelStore {
     };
 
     const wire: WireDocument = {
-      metadata: { title: projectManifest.title, subtitle: projectManifest.subtitle },
+      metadata: {
+        title: projectManifest.title,
+        subtitle: projectManifest.subtitle,
+        // The picture's own convention for line shape, sitting between the
+        // relation type's choice and a single edge's override.
+        ...(viewData.routing === undefined ? {} : { routing: viewData.routing }),
+      },
       zones: translatedZones,
       nodes: translatedNodes,
       edges: translatedEdges,

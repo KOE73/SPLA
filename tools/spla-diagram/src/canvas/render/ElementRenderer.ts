@@ -2,6 +2,8 @@ import type { BoundarySlot, Point, Rect, Side } from "../../geometry/types.js";
 import type { DiagramDocument } from "../../model/document.js";
 import type { ResolvedBlockStyle } from "../../model/StyleLibrary.js";
 import type { DiagramElement } from "../../model/types.js";
+import type { ContentData } from "../../content/ContentRenderer.js";
+import type { TemplateTree } from "../../content/template-types.js";
 import type { PaintRegistry } from "./PaintRegistry.js";
 
 /**
@@ -36,6 +38,24 @@ export interface RenderContext {
    * hold, materialising gradients and markers into `<defs>` on the way.
    */
   readonly paints: PaintRegistry;
+
+  /**
+   * The content template chosen for this element, already compiled, together
+   * with the data its directives read.
+   *
+   * Null means "no template" — draw the built-in caption and subtitle, which
+   * is what every node looked like before templates existed. A renderer must
+   * not reach for the template library itself, for the same reason it must not
+   * reach for the style library: resolution (placement, then style, then
+   * nothing) is one decision and lives in one place.
+   */
+  content(el: DiagramElement): ResolvedContent | null;
+}
+
+/** A compiled template plus the element's own data, ready to draw. */
+export interface ResolvedContent {
+  readonly tree: TemplateTree;
+  readonly data: ContentData;
 }
 
 /**

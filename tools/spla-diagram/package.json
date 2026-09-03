@@ -26,7 +26,8 @@
     "preview": "vite preview",
     "styles:emit": "node scripts/emit-styles.mjs",
     "check:model": "node scripts/check-model.mjs ../../docs/diagrams/projects ../..",
-    "check:content-template": "node scripts/check-content-template.mjs"
+    "check:content-template": "node scripts/check-content-template.mjs",
+    "check:routers": "node scripts/check-routers.mjs"
   },
   "devDependencies": {
     "@types/node": "^26.3.0",

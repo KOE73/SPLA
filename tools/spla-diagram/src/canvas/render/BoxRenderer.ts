@@ -8,6 +8,7 @@ import { setAttrs, svg, text } from "../svg.js";
 import type { ElementRenderer, RenderContext } from "./ElementRenderer.js";
 import { alignX, dashArray, textAttrs } from "./textAttrs.js";
 import { resolveElementRelations } from "../../model/relations-resolver.js";
+import { renderContent } from "../../content/ContentRenderer.js";
 import { SourceCodeService } from "../../editor/code/SourceCodeService.js";
 import { DIAGRAM_CONFIG } from "../../constants/diagram-constants.js";
 
@@ -151,7 +152,18 @@ export class BoxRenderer implements ElementRenderer {
       g.appendChild(badgeGroup);
     }
 
-    // 3. Title Zone (strictly below top bar, without icon prefix)
+    // 3. Interior. A template, when the style or the placement names one,
+    // replaces the built-in caption and subtitle wholesale — it is the same
+    // region of the block, drawn from text someone wrote instead of from two
+    // hardcoded lines. Without one, nothing below changes.
+    const content = ctx.content(el);
+    if (content !== null) {
+      const drawn = renderContent(content.tree, rect, style, content.data);
+      drawn.nodes.forEach((n) => g.appendChild(n));
+      return;
+    }
+
+    // 4. Title Zone (strictly below top bar, without icon prefix)
     const tall = el.height > 60;
 
     if (style.title.show) {
@@ -168,7 +180,7 @@ export class BoxRenderer implements ElementRenderer {
       );
     }
 
-    // 4. Subtitle Zone (strictly below title)
+    // 5. Subtitle Zone (strictly below title)
     if (style.subtitle.show) {
       const subtitle = typeof el.metadata.type === "string" ? el.metadata.type : el.type;
       g.appendChild(

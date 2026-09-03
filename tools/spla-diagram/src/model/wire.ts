@@ -87,6 +87,9 @@ function parseEdge(w: WireEdge): DiagramEdge {
     type: w.type ?? "call",
     ...(w.styleId === undefined ? {} : { styleId: w.styleId }),
     ...(w.origin === undefined ? {} : { origin: w.origin }),
+    // The *choice* of line shape travels; the polyline it produces never does
+    // (ADR_20260903 §2.7).
+    ...(w.routing === undefined ? {} : { routing: w.routing }),
   };
 }
 
@@ -264,6 +267,7 @@ function serializeEdge(edge: DiagramEdge): WireEdge {
   out.type = edge.type;
   if (edge.styleId !== undefined) out.styleId = edge.styleId;
   if (edge.origin !== undefined) out.origin = edge.origin;
+  if (edge.routing !== undefined) out.routing = edge.routing;
   return out;
 }
 
