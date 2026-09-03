@@ -71,6 +71,14 @@
       "subtitle": "Стенд проверки: все фичи рендера",
       "icon": "🧪",
       "theme": "emerald"
+    },
+    {
+      "id": "shapes_demo",
+      "file": "projects/shapes_demo/views/v_main.view.json",
+      "title": "Стенд: формы и шаблоны",
+      "subtitle": "Проверка ADR_20260903",
+      "icon": "🧪",
+      "theme": "slate"
     }
   ]
 }
