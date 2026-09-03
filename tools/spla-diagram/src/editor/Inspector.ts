@@ -4,7 +4,7 @@ import type { StyleTarget } from "../model/style-types.js";
 import type { DiagramEdge, DiagramElement } from "../model/types.js";
 import { isContainer } from "../model/types.js";
 import { el, replaceChildren } from "../util/dom.js";
-import { select, type Option } from "./fields.js";
+import { field, select, type Option } from "./fields.js";
 import { blockPreview, edgePreview } from "./style-preview.js";
 import { SourceCodeService } from "./code/SourceCodeService.js";
 import { i18n } from "../workbench/i18n/I18nService.js";
@@ -158,6 +158,7 @@ export class Inspector {
       ]),
       container ? this.containerPanel(element) : null,
       this.blockStylePicker(element),
+      this.templatePicker(element),
       this.descriptionField(element),
       this.codeRefField(element),
       container ? null : el("div", { class: "panel-section" }, [
@@ -487,6 +488,46 @@ export class Inspector {
         );
       },
     });
+  }
+
+  /**
+   * Which content template this element draws with (ADR_20260903 §2.2).
+   *
+   * The cascade is placement → style → nothing, so the override written here
+   * is `metadata.template` — read back by `DiagramCanvas.resolveContent` —
+   * and "по умолчанию" clears the key entirely rather than writing an empty
+   * string: an empty string is a real (if useless) template id, and would
+   * stop the element from falling back to its style's template at all.
+   */
+  private templatePicker(element: DiagramElement): HTMLElement {
+    const templates = this.host.canvas.templates.list();
+    const styleTemplate = this.host.styles.resolveBlock(this.host.styles.blockStyleIdFor(element)).template;
+    const override = typeof element.metadata.template === "string" ? element.metadata.template : undefined;
+
+    const inheritedLabel =
+      styleTemplate !== null
+        ? templates.find((t) => t.id === styleTemplate)?.name ?? styleTemplate
+        : i18n.d.panels.properties.templateNone;
+
+    const options: Option[] = [
+      ["", i18n.format(i18n.d.panels.properties.templateInherit, { source: inheritedLabel })],
+      ...templates.map((t) => [t.id, t.name ?? t.id] as Option),
+    ];
+
+    return el("div", { class: "panel-section" }, [
+      field(
+        i18n.d.panels.properties.templateTitle,
+        select(options, override ?? "", (value) => {
+          this.host.editField(
+            () => {
+              if (value === "") delete element.metadata.template;
+              else element.metadata.template = value;
+            },
+            { rerender: true },
+          );
+        }),
+      ),
+    ]);
   }
 
   private edgeStylePicker(edge: DiagramEdge): HTMLElement {

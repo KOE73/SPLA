@@ -117,8 +117,8 @@ export class DiagramCanvas {
    * `templates.json` and no `content/` draws exactly what it drew before they
    * existed, which is what makes them safe to add to live models.
    */
-  private templates: TemplateLibrary;
-  private assets: AssetRegistry;
+  private _templates: TemplateLibrary;
+  private _assets: AssetRegistry;
   /**
    * Every line shape the canvas can draw, by name.
    *
@@ -176,8 +176,8 @@ export class DiagramCanvas {
     this.portAssigner = options.portAssigner ?? new UniformPortAssigner();
     this.router = options.router ?? new BezierRouter();
     this.registry = options.registry ?? defaultRegistry();
-    this.templates = new TemplateLibrary(options.modelsBase);
-    this.assets = new AssetRegistry(options.modelsBase);
+    this._templates = new TemplateLibrary(options.modelsBase);
+    this._assets = new AssetRegistry(options.modelsBase);
 
     this.zonesLayer = svg("g", { class: "spla-layer-zones" });
     this.edgesLayer = svg("g", { class: "spla-layer-edges" });
@@ -212,8 +212,8 @@ export class DiagramCanvas {
     // Templates are read once; a picture arrives whenever it arrives, and the
     // frame that needed it has long been drawn. Repainting on arrival is why
     // `AssetRegistry.peek` may answer "not yet" without anything going wrong.
-    void this.templates.load().then(() => this.render());
-    this.assets.onLoaded(() => this.render());
+    void this._templates.load().then(() => this.render());
+    this._assets.onLoaded(() => this.render());
 
     this.tooltipEl = document.createElement("div");
     this.tooltipEl.className = "spla-tooltip";
@@ -428,6 +428,21 @@ export class DiagramCanvas {
         this.render();
       }
     });
+  }
+
+  /**
+   * The named content-template registry, exposed so a settings panel can list,
+   * edit and save templates without the canvas mediating every call — the
+   * panel needs `list`/`setText`/`save` directly, and re-renders the canvas
+   * itself after a change (ADR_20260903 §2.3).
+   */
+  get templates(): TemplateLibrary {
+    return this._templates;
+  }
+
+  /** The named picture registry behind `@Asset`, exposed for the same reason. */
+  get assets(): AssetRegistry {
+    return this._assets;
   }
 
   get model(): DiagramDocument | null {
@@ -890,7 +905,7 @@ export class DiagramCanvas {
     const id = placement ?? this.styleLibrary.blockStyle(el).template ?? null;
     if (id === null) return null;
 
-    const compiled = this.templates.get(id);
+    const compiled = this._templates.get(id);
     if (compiled === undefined) return null;
 
     const entity = entityOf(el);
@@ -904,7 +919,7 @@ export class DiagramCanvas {
         name: el.label,
         description: typeof el.metadata.description === "string" ? el.metadata.description : undefined,
         members,
-        asset: (assetId) => this.assets.peek(assetId),
+        asset: (assetId) => this._assets.peek(assetId),
       },
     };
   }

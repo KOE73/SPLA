@@ -136,6 +136,9 @@ export interface UiDictionary {
       readonly edgeDisplayOnCanvas: string;
       readonly edgeEnabled: string;
       readonly edgeGhost: string;
+      readonly templateTitle: string;
+      readonly templateInherit: string;
+      readonly templateNone: string;
     };
     readonly relations: {
       readonly title: string;
@@ -230,6 +233,26 @@ export interface UiDictionary {
       readonly searchPlaceholder: string;
       readonly emptyNoModel: string;
       readonly emptyNoEntities: string;
+    };
+    readonly templates: {
+      readonly title: string;
+      readonly listTitle: string;
+      readonly filterPlaceholder: string;
+      readonly empty: string;
+      readonly emptyEditor: string;
+      readonly notFound: string;
+      readonly shownCount: string;
+      readonly resizerTitle: string;
+      readonly textField: string;
+      readonly textPlaceholder: string;
+      readonly saveBtn: string;
+      readonly saveHint: string;
+      readonly saveOk: string;
+      readonly saveFailed: string;
+      readonly assetChoose: string;
+      readonly assetLoading: string;
+      readonly assetEmpty: string;
+      readonly assetInsertBtn: string;
     };
   };
   readonly canvas: {
