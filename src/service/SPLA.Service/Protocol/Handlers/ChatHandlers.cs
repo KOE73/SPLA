@@ -132,7 +132,15 @@ internal sealed class ChatHandlers : IMessageHandler
         var (entry, _) = ctx.Session.Resolve(ctx.Env);
         var p = ctx.Payload<ChatOpenPayload>();
         var chat = p != null ? entry.Chats.GetOrOpen(p.ChatId) : null;
-        if (chat == null) { await ctx.Send(MessageTypes.Error, new ErrorPayload { Message = $"Chat not found: {p?.ChatId}" }); return; }
+        if (chat == null)
+        {
+            // GetOrOpen refuses archived chats on purpose (KNOWN_ISSUES.md, resolved 2026-09-03) — say
+            // so rather than "not found", which would be true of a missing id but not of this one.
+            var archived = p != null && entry.Chats.Locate(p.ChatId) == SPLA.Domain.Settings.ChatLocation.Archived;
+            var message = archived ? $"Chat is archived: {p!.ChatId}" : $"Chat not found: {p?.ChatId}";
+            await ctx.Send(MessageTypes.Error, new ErrorPayload { Message = message });
+            return;
+        }
         await ctx.Session.SendOpenedAsync(chat);
     }
 

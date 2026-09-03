@@ -59,13 +59,18 @@ public sealed class ChatRegistry : IDisposable, ISpawnSessionHost
     /// </summary>
     public event Action<ChatRuntime>? RuntimeClosed;
 
-    /// <summary>Opens (or returns the already-open) runtime for an existing chat; null if not found.
-    /// The soft-link liveness call correspondence uses (ADR_20260827-2 §2.4): asking wakes a sleeping
-    /// chat in the same call, and this method never distinguishes archived from missing on its own —
-    /// see <see cref="Locate"/> for the callers that need to.</summary>
+    /// <summary>Opens (or returns the already-open) runtime for an existing chat; null if not found
+    /// OR archived. The soft-link liveness call correspondence uses (ADR_20260827-2 §2.4): asking
+    /// wakes a sleeping chat in the same call — but never an archived one, which must stay closed
+    /// exactly as <see cref="Archive"/>'s own comment claims (see KNOWN_ISSUES.md, resolved
+    /// 2026-09-03: this used to load an archived chat's file anyway, silently un-archiving it in
+    /// practice). A caller that needs to tell "archived" from "missing" apart — e.g. to show a
+    /// different notice — still wants <see cref="Locate"/> instead.</summary>
     public ChatRuntime? GetOrOpen(string chatId)
     {
         if (_open.TryGetValue(chatId, out var existing)) return existing;
+
+        if (_runtime.ChatManager.Locate(chatId) != SPLA.Domain.Settings.ChatLocation.Active) return null;
 
         var session = _runtime.ChatManager.LoadChat(chatId);
         if (session == null) return null;
