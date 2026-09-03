@@ -1,13 +1,16 @@
 using SPLA.Domain.Tools;
 using SPLA.Agent;
+using SPLA.Domain.Agent;
 using SPLA.Domain.Interfaces;
 using SPLA.Domain.Models;
 using SPLA.Domain.Settings;
 using SPLA.MCP.Core.Plugins;
+using SPLA.MCP.Core.ToolSets;
 using SPLA.Library;
 using SPLA.MCP.Core.Tools;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Threading;
 using System.Threading.Tasks;
@@ -50,16 +53,53 @@ file sealed class StubToolHost : IToolHost
         => Task.FromResult(ToolResult.Fail($"tool not found: {name}", "tool not found"));
 }
 
+/// <summary>Stub tool host that offers a fixed, caller-supplied list of tool definitions — for the
+/// tool-set narrowing tests below, where <see cref="StubToolHost"/>'s empty list gives nothing to
+/// narrow.</summary>
+file sealed class FixedToolHost : IToolHost
+{
+    private readonly List<ToolDefinition> _tools;
+    public FixedToolHost(params ToolDefinition[] tools) => _tools = tools.ToList();
+
+    public IEnumerable<ToolDefinition> GetToolDefinitions() => _tools;
+
+    public Task<ToolResult> ExecuteToolAsync(AgentMode mode, string name, string argumentsJson,
+        CancellationToken cancellationToken = default, ToolCallContext? context = null)
+        => Task.FromResult(ToolResult.Fail($"tool not found: {name}", "tool not found"));
+}
+
+/// <summary>Stub gateway that records what the run actually handed the model: which tools were
+/// offered, and which mode the call's settings carried. The natural place to prove that role-based
+/// narrowing and role-based mode selection reach the real LLM call rather than merely looking right
+/// at the settings-layering step.</summary>
+file sealed class CapturingLlmService : SPLA.Domain.Llm.ILlmGateway
+{
+    public List<string> LastToolNames { get; private set; } = new();
+    public AgentMode? LastMode { get; private set; }
+
+    public Task<SPLA.Domain.Llm.LlmTurnResult> InvokeAsync(
+        SPLA.Domain.Llm.LlmTurnContext ctx, CancellationToken ct = default)
+    {
+        LastToolNames = ctx.Tools.Select(t => t.Function.Name).ToList();
+        LastMode = ctx.Settings.Mode;
+        ctx.OnDelta?.Invoke("done");
+        return Task.FromResult(new SPLA.Domain.Llm.LlmTurnResult
+        {
+            Message = new ChatMessage { Role = ChatRole.Assistant, Content = "done" }
+        });
+    }
+}
+
 public class AgentSpawnToolTests
 {
-    private static SpawnedAgentRunner BuildRunner(string llmResponse = "done")
+    private static SpawnedAgentRunner BuildRunner(string llmResponse = "done", SplaProject? manifest = null)
     {
         var llm = new StubLlmService(llmResponse);
         var tools = new StubToolHost();
         var skills = new SkillLibrary([new SPLA.Tests.Fakes.FakeSkillSource()
             .With("test.skill", body: "Step 1: Do the thing.\nStep 2: Report done.", description: "A test skill")]);
 
-        var settings = new ResolvedSettings { Mode = AgentMode.Edit };
+        var settings = new ResolvedSettings { Mode = AgentMode.Edit, Manifest = manifest };
         var plugins = new PluginManager(settings);
 
         return new SpawnedAgentRunner(llm, tools, skills, plugins, settings);
@@ -273,53 +313,91 @@ public class AgentSpawnToolTests
         Assert.Equal(5, runs.Distinct().Count());
     }
 
-    /// <summary>The whole point of the log: a run that finishes cleanly is not thrown away. Its
-    /// messages, result and outcome all have to be readable back after the tool call has returned.</summary>
-    [Fact]
-    public async Task A_completed_run_is_recorded_with_its_messages()
+    /// <summary>In-memory stand-in for a real chat host (see <c>SPLA.Runtime.ChatRegistry</c> — the
+    /// production <see cref="ISpawnSessionHost"/>), so these tests can watch what a run hands to a
+    /// session without standing up a whole project on disk.</summary>
+    private sealed class FakeSpawnSessionHost : ISpawnSessionHost
     {
-        var log = new SpawnedRunLog();
+        public readonly List<FakeSpawnedSession> Sessions = new();
+        public int TrimCalls { get; private set; }
+        public int LastKeep { get; private set; }
+
+        public ISpawnedSession OpenSpawnedSession(string? parentChatId, string? role)
+        {
+            var session = new FakeSpawnedSession(
+                "s-" + Guid.NewGuid().ToString("N")[..8], parentChatId, role);
+            Sessions.Add(session);
+            return session;
+        }
+
+        public void TrimSpawnedRetention(int keep)
+        {
+            TrimCalls++;
+            LastKeep = keep;
+        }
+    }
+
+    private sealed class FakeSpawnedSession : ISpawnedSession
+    {
+        public string ChatId { get; }
+        public string? ParentChatId { get; }
+        public string? Role { get; }
+        public IAgentSession AgentSession { get; }
+        public bool Disposed { get; private set; }
+        public IReadOnlyList<ChatMessage>? FinishedMessages { get; private set; }
+        public string? SkillId { get; private set; }
+        public string? Mode { get; private set; }
+        public string? Outcome { get; private set; }
+        public string? Error { get; private set; }
+
+        public FakeSpawnedSession(string chatId, string? parentChatId, string? role)
+        {
+            ChatId = chatId;
+            ParentChatId = parentChatId;
+            Role = role;
+            AgentSession = new SPLA.Domain.Agent.AgentSession(
+                new SPLA.Domain.Agent.KeyValueStore("session"), new SPLA.Domain.Agent.MarkManager(),
+                new SPLA.Domain.Agent.SkillSession(), chatId: chatId);
+        }
+
+        public void Finish(IReadOnlyList<ChatMessage> conversation, string? skillId, string mode,
+            DateTimeOffset startedAt, string outcome, string? error)
+        {
+            FinishedMessages = conversation;
+            SkillId = skillId;
+            Mode = mode;
+            Outcome = outcome;
+            Error = error;
+        }
+
+        public void Dispose() => Disposed = true;
+    }
+
+    /// <summary>The whole point of the wave: a run that finishes cleanly is not thrown away. Its
+    /// messages, outcome, skill and disposal all have to reach the session that was opened for it.</summary>
+    [Fact]
+    public async Task A_completed_run_finishes_and_disposes_its_session()
+    {
         var settings = new ResolvedSettings { Mode = AgentMode.Edit };
         var runner = new SpawnedAgentRunner(
             new StubLlmService("done"), new StubToolHost(),
             new SkillLibrary([new SPLA.Tests.Fakes.FakeSkillSource()]),
-            new PluginManager(settings), settings,
-            runLog: log);
+            new PluginManager(settings), settings);
+        var host = new FakeSpawnSessionHost();
+        runner.AttachSessionHost(host);
 
         await runner.RunAsync(null, "record me", AgentMode.Edit);
 
-        var run = Assert.Single(log.List());
-        Assert.Equal("completed", run.Outcome);
-        Assert.Equal("record me", run.Label);
-        Assert.Contains("done", run.Result);
-        Assert.Null(run.Error);
-        // System + user + assistant, at least — the transcript the tool result used to throw away.
-        Assert.True(run.Messages.Count >= 3);
-        Assert.Contains(run.Messages, m => m.Role == ChatRole.Assistant && m.Content == "done");
-    }
-
-    /// <summary>A ring, not a growing list: past capacity the oldest run falls off so a long session
-    /// does not accumulate transcripts without bound.</summary>
-    [Fact]
-    public async Task The_log_evicts_past_capacity()
-    {
-        var log = new SpawnedRunLog(capacity: 2);
-        var settings = new ResolvedSettings { Mode = AgentMode.Edit };
-        var runner = new SpawnedAgentRunner(
-            new StubLlmService("done"), new StubToolHost(),
-            new SkillLibrary([new SPLA.Tests.Fakes.FakeSkillSource()]),
-            new PluginManager(settings), settings,
-            runLog: log);
-
-        await runner.RunAsync(null, "first", AgentMode.Edit);
-        await runner.RunAsync(null, "second", AgentMode.Edit);
-        await runner.RunAsync(null, "third", AgentMode.Edit);
-
-        var labels = log.List().Select(r => r.Label).ToList();
-        Assert.Equal(2, labels.Count);
-        Assert.DoesNotContain("first", labels);
-        Assert.Contains("second", labels);
-        Assert.Contains("third", labels);
+        var session = Assert.Single(host.Sessions);
+        Assert.Equal("completed", session.Outcome);
+        Assert.Null(session.Error);
+        Assert.True(session.Disposed);
+        // System + user + assistant, at least — the transcript that used to be thrown away.
+        Assert.True(session.FinishedMessages!.Count >= 3);
+        Assert.Contains(session.FinishedMessages, m => m.Role == ChatRole.Assistant && m.Content == "done");
+        // Retention is asked after every finished run, never before.
+        Assert.Equal(1, host.TrimCalls);
+        Assert.Equal(settings.SpawnedRetention, host.LastKeep);
     }
 
     /// <summary>Stub gateway that always throws, so a run can be recorded as failed rather than
@@ -332,22 +410,23 @@ public class AgentSpawnToolTests
     }
 
     [Fact]
-    public async Task A_failed_run_records_the_outcome_and_error()
+    public async Task A_failed_run_finishes_its_session_with_the_outcome_and_error()
     {
-        var log = new SpawnedRunLog();
         var settings = new ResolvedSettings { Mode = AgentMode.Edit };
         var runner = new SpawnedAgentRunner(
             new ThrowingLlmService(), new StubToolHost(),
             new SkillLibrary([new SPLA.Tests.Fakes.FakeSkillSource()]),
-            new PluginManager(settings), settings,
-            runLog: log);
+            new PluginManager(settings), settings);
+        var host = new FakeSpawnSessionHost();
+        runner.AttachSessionHost(host);
 
         await Assert.ThrowsAsync<InvalidOperationException>(
             () => runner.RunAsync(null, "boom", AgentMode.Edit));
 
-        var run = Assert.Single(log.List());
-        Assert.Equal("failed", run.Outcome);
-        Assert.Equal("provider is down", run.Error);
+        var session = Assert.Single(host.Sessions);
+        Assert.Equal("failed", session.Outcome);
+        Assert.Equal("provider is down", session.Error);
+        Assert.True(session.Disposed);
     }
 
     /// <summary>Stub gateway that blocks until the turn is cancelled — the Stop button's path.</summary>
@@ -360,30 +439,85 @@ public class AgentSpawnToolTests
     }
 
     /// <summary>
-    /// A run somebody stopped is not a failure, and the log has to say which it was. This is the path
-    /// the Stop button takes, so it is the one most likely to be looked at afterwards — "why did this
-    /// end" has a different answer when the answer is "you ended it".
+    /// A run somebody stopped is not a failure, and the session has to say which it was. This is the
+    /// path the Stop button takes, so it is the one most likely to be looked at afterwards — "why did
+    /// this end" has a different answer when the answer is "you ended it".
     /// </summary>
     [Fact]
-    public async Task A_cancelled_run_is_recorded_as_cancelled_not_failed()
+    public async Task A_cancelled_run_finishes_its_session_as_cancelled_not_failed()
     {
-        var log = new SpawnedRunLog();
         var settings = new ResolvedSettings { Mode = AgentMode.Edit };
         var runner = new SpawnedAgentRunner(
             new BlockingLlmService(), new StubToolHost(),
             new SkillLibrary([new SPLA.Tests.Fakes.FakeSkillSource()]),
-            new PluginManager(settings), settings,
-            runLog: log);
+            new PluginManager(settings), settings);
+        var host = new FakeSpawnSessionHost();
+        runner.AttachSessionHost(host);
 
         using var stopping = new CancellationTokenSource();
-        var run = runner.RunAsync(null, "stop me", AgentMode.Edit, stopping.Token);
+        var run = runner.RunAsync(null, "stop me", AgentMode.Edit, role: null, stopping.Token);
         stopping.CancelAfter(TimeSpan.FromMilliseconds(50));
 
         await Assert.ThrowsAnyAsync<OperationCanceledException>(() => run);
 
-        var recorded = Assert.Single(log.List());
-        Assert.Equal("cancelled", recorded.Outcome);
-        Assert.Null(recorded.Error);
+        var session = Assert.Single(host.Sessions);
+        Assert.Equal("cancelled", session.Outcome);
+        Assert.Null(session.Error);
+        Assert.True(session.Disposed);
+    }
+
+    /// <summary>The session's own chat id becomes the run id once a host is attached — the same
+    /// string a client already treats opaquely rides both the ticks and (now) <c>subagent.get</c>.</summary>
+    [Fact]
+    public async Task With_a_session_host_the_run_id_is_the_sessions_chat_id()
+    {
+        var tree = new ProgressTree();
+        var settings = new ResolvedSettings { Mode = AgentMode.Edit };
+        var runner = new SpawnedAgentRunner(
+            new StubLlmService("done") { PromptTokens = 10 }, new StubToolHost(),
+            new SkillLibrary([new SPLA.Tests.Fakes.FakeSkillSource()]),
+            new PluginManager(settings), settings);
+        var host = new FakeSpawnSessionHost();
+        runner.AttachSessionHost(host);
+
+        using (ProgressScope.BeginTree(tree))
+        using (ProgressScope.BeginNode("agent_spawn"))
+        {
+            await runner.RunAsync(null, "tick check", AgentMode.Edit);
+        }
+
+        var session = Assert.Single(host.Sessions);
+        var run = Assert.Single(tree.Nodes, n => n.Label == "tick check");
+        var detail = Assert.Single(run.Latest!.Details!, d => d.Label == "run");
+        Assert.Equal(session.ChatId, detail.Value);
+    }
+
+    /// <summary>Recursion: a spawn made from inside a spawned run must carry the running session's own
+    /// chat id as its parent, whether or not a human ever opened a chat — trap 9, now that a spawn
+    /// creates files rather than an in-memory conversation. The parent chat id is read ambiently off
+    /// <see cref="AgentSessionScope.Current"/>, which is exactly what <see cref="AgentSession"/> is
+    /// opened over for the whole duration of the outer run.</summary>
+    [Fact]
+    public async Task A_nested_spawn_is_parented_at_the_spawning_sessions_own_chat_id()
+    {
+        var settings = new ResolvedSettings { Mode = AgentMode.Edit };
+        var host = new FakeSpawnSessionHost();
+
+        var outerSession = host.OpenSpawnedSession(parentChatId: null, role: null);
+        using (AgentSessionScope.Begin(outerSession.AgentSession))
+        {
+            var runner = new SpawnedAgentRunner(
+                new StubLlmService("done"), new StubToolHost(),
+                new SkillLibrary([new SPLA.Tests.Fakes.FakeSkillSource()]),
+                new PluginManager(settings), settings);
+            runner.AttachSessionHost(host);
+
+            await runner.RunAsync(null, "inner task", AgentMode.Edit);
+        }
+
+        Assert.Equal(2, host.Sessions.Count);
+        var inner = host.Sessions[1];
+        Assert.Equal(outerSession.ChatId, inner.ParentChatId);
     }
 
     /// <summary>The run id has to reach a reader while the run is still live, not only after — it
@@ -408,5 +542,229 @@ public class AgentSpawnToolTests
         var detail = Assert.Single(run.Latest!.Details!, d => d.Label == "run");
         Assert.StartsWith("r-", detail.Value);
         Assert.Equal(10, detail.Value.Length);
+    }
+
+    /// <summary>Wave 3: Role parameter is optional and defaults to null.</summary>
+    [Fact]
+    public async Task Spawn_without_role_runs_with_default_settings()
+    {
+        var tool = new AgentSpawnTool(BuildRunner("ok"));
+        var result = (await tool.ExecuteAsync("""{"input":"do it","skill":null,"mode":null,"role":null}""")).TextContent;
+        Assert.Contains("ok", result);
+    }
+
+    /// <summary>Wave 3: The runner lists available roles from the project.</summary>
+    [Fact]
+    public void Runner_lists_available_roles_when_project_is_attached()
+    {
+        var project = new SplaProject { Roles = ["reviewer", "architect"] };
+        var runner = BuildRunner(manifest: project);
+
+        var roles = runner.GetAvailableRoles();
+        Assert.Equal(2, roles.Count);
+        Assert.Contains("reviewer", roles);
+        Assert.Contains("architect", roles);
+    }
+
+    /// <summary>Wave 3: The runner returns empty list when no project is attached.</summary>
+    [Fact]
+    public void Runner_lists_empty_roles_when_no_project()
+    {
+        var runner = BuildRunner();
+        var roles = runner.GetAvailableRoles();
+        Assert.Empty(roles);
+    }
+
+    /// <summary>Wave 3: The tool refuses an unknown role and lists available ones.</summary>
+    [Fact]
+    public async Task Agent_spawn_tool_refuses_unknown_role_and_lists_available()
+    {
+        var project = new SplaProject { Roles = ["reviewer", "architect"] };
+        var runner = BuildRunner("ok", manifest: project);
+
+        var tool = new AgentSpawnTool(runner);
+        var result = (await tool.ExecuteAsync("""{"input":"do it","skill":null,"mode":null,"role":"unknown"}""")).TextContent;
+
+        Assert.StartsWith("error:", result);
+        Assert.Contains("unknown", result);
+        Assert.Contains("reviewer", result);
+        Assert.Contains("architect", result);
+    }
+
+    /// <summary>Wave 3: Batch tool refuses an unknown role in any task, listing available ones.</summary>
+    [Fact]
+    public async Task Agent_spawn_batch_tool_refuses_unknown_role()
+    {
+        var project = new SplaProject { Roles = ["reviewer", "architect"] };
+        var runner = BuildRunner("ok", manifest: project);
+
+        var tool = new AgentSpawnBatchTool(runner);
+        var result = (await tool.ExecuteAsync("""{"tasks":[{"input":"task 1","skill":null,"mode":null,"role":"unknown"}],"max_concurrency":1}""")).TextContent;
+
+        Assert.StartsWith("error:", result);
+        Assert.Contains("unknown", result);
+        Assert.Contains("reviewer", result);
+        Assert.Contains("architect", result);
+    }
+
+    // ── Wave 3, the closed gap: a role's mode and tool selection must actually govern the run,
+    // not just the settings object ResolveForRole hands back. See PLAN_20260902 "Волна 3".
+
+    private static string TempProjectDir() =>
+        Directory.CreateDirectory(
+            Path.Combine(Path.GetTempPath(), $"spla-agentspawn-roles-{Guid.NewGuid():N}")).FullName;
+
+    private static void WriteRoleFile(string projectDir, string roleName, string yaml)
+    {
+        var rolesDir = Directory.CreateDirectory(Path.Combine(projectDir, "roles")).FullName;
+        File.WriteAllText(Path.Combine(rolesDir, roleName + ".yaml"), yaml);
+    }
+
+    private static ToolDefinition Tool(string name) => new()
+    {
+        Function = new ToolFunctionDefinition
+        {
+            Name = name,
+            Scope = ToolScope.Project,
+            Effect = ToolEffect.Read // visible in Inspect/Edit/Agent — Edit mode below shows it
+        }
+    };
+
+    /// <summary>The first half of the gap: a role's <c>toolsets:</c> selection must genuinely narrow
+    /// what the model is offered, not merely narrow <see cref="ResolvedSettings.ToolSets"/> on paper.
+    /// Proven at the one place that matters — what actually reached the LLM call.</summary>
+    [Fact]
+    public async Task A_role_that_disables_a_tool_set_keeps_its_tools_out_of_the_runs_llm_call()
+    {
+        var dir = TempProjectDir();
+        try
+        {
+            WriteRoleFile(dir, "narrow", "toolsets:\n  net: disabled\n");
+
+            var project = new SplaProject { Roles = ["narrow"] };
+            var settings = new ResolvedSettings
+            {
+                Mode = AgentMode.Edit,
+                Manifest = project,
+                ProjectFilePath = Path.Combine(dir, "project.spla")
+            };
+
+            var toolSets = new ToolSetRegistry(settings);
+            toolSets.AddDynamic(new ToolSetDescriptor
+            {
+                Id = "net", Origin = ToolSetOrigin.Core, OriginId = "core",
+                ToolNames = ["network_tool"]
+            });
+
+            var llm = new CapturingLlmService();
+            var runner = new SpawnedAgentRunner(
+                llm, new FixedToolHost(Tool("network_tool"), Tool("file_tool")),
+                new SkillLibrary([new SPLA.Tests.Fakes.FakeSkillSource()]),
+                new PluginManager(settings), settings, toolSets: toolSets);
+
+            await runner.RunAsync(null, "go", AgentMode.Edit, role: "narrow");
+
+            Assert.DoesNotContain("network_tool", llm.LastToolNames);
+            Assert.Contains("file_tool", llm.LastToolNames);
+        }
+        finally { Directory.Delete(dir, recursive: true); }
+    }
+
+    /// <summary>Control for the test above: the very same tool, offered to a role-less run against
+    /// the same registry. Proves the narrowing above is the role's doing, not something that always
+    /// strips <c>network_tool</c> regardless of who is asking.</summary>
+    [Fact]
+    public async Task A_run_with_no_role_still_receives_a_tool_a_role_would_have_excluded()
+    {
+        var settings = new ResolvedSettings { Mode = AgentMode.Edit };
+
+        var toolSets = new ToolSetRegistry(settings);
+        toolSets.AddDynamic(new ToolSetDescriptor
+        {
+            Id = "net", Origin = ToolSetOrigin.Core, OriginId = "core",
+            ToolNames = ["network_tool"]
+        });
+
+        var llm = new CapturingLlmService();
+        var runner = new SpawnedAgentRunner(
+            llm, new FixedToolHost(Tool("network_tool")),
+            new SkillLibrary([new SPLA.Tests.Fakes.FakeSkillSource()]),
+            new PluginManager(settings), settings, toolSets: toolSets);
+
+        await runner.RunAsync(null, "go", AgentMode.Edit);
+
+        Assert.Contains("network_tool", llm.LastToolNames);
+    }
+
+    /// <summary>The negative half of the same claim: a role that says nothing about tool sets
+    /// inherits the project's full surface rather than silently narrowing to nothing. Getting this
+    /// backwards — treating "no selection" as "empty selection" — would make every roled run toolless.</summary>
+    [Fact]
+    public async Task A_role_with_no_tool_selection_still_sees_the_full_set()
+    {
+        var dir = TempProjectDir();
+        try
+        {
+            WriteRoleFile(dir, "generalist", "mode: Edit\n"); // no toolsets: at all
+
+            var project = new SplaProject { Roles = ["generalist"] };
+            var settings = new ResolvedSettings
+            {
+                Mode = AgentMode.Edit,
+                Manifest = project,
+                ProjectFilePath = Path.Combine(dir, "project.spla")
+            };
+
+            var toolSets = new ToolSetRegistry(settings);
+            toolSets.AddDynamic(new ToolSetDescriptor
+            {
+                Id = "net", Origin = ToolSetOrigin.Core, OriginId = "core",
+                ToolNames = ["network_tool"]
+            });
+
+            var llm = new CapturingLlmService();
+            var runner = new SpawnedAgentRunner(
+                llm, new FixedToolHost(Tool("network_tool")),
+                new SkillLibrary([new SPLA.Tests.Fakes.FakeSkillSource()]),
+                new PluginManager(settings), settings, toolSets: toolSets);
+
+            await runner.RunAsync(null, "go", AgentMode.Edit, role: "generalist");
+
+            Assert.Contains("network_tool", llm.LastToolNames);
+        }
+        finally { Directory.Delete(dir, recursive: true); }
+    }
+
+    /// <summary>The second half of the gap: a role's own <c>mode:</c> must govern the run, winning
+    /// over whatever mode the caller passed alongside the role name — a role a caller can widen by
+    /// choosing its own mode is not a boundary at all.</summary>
+    [Fact]
+    public async Task A_role_declaring_a_mode_runs_in_that_mode_even_when_the_caller_passed_a_different_one()
+    {
+        var dir = TempProjectDir();
+        try
+        {
+            WriteRoleFile(dir, "agent-role", "mode: Agent\n");
+
+            var project = new SplaProject { Roles = ["agent-role"] };
+            var settings = new ResolvedSettings
+            {
+                Mode = AgentMode.Edit,
+                Manifest = project,
+                ProjectFilePath = Path.Combine(dir, "project.spla")
+            };
+
+            var llm = new CapturingLlmService();
+            var runner = new SpawnedAgentRunner(
+                llm, new StubToolHost(),
+                new SkillLibrary([new SPLA.Tests.Fakes.FakeSkillSource()]),
+                new PluginManager(settings), settings);
+
+            // The caller asks for Chat; the role says Agent. The role must win.
+            await runner.RunAsync(null, "go", AgentMode.Chat, role: "agent-role");
+
+            Assert.Equal(AgentMode.Agent, llm.LastMode);
+        }
+        finally { Directory.Delete(dir, recursive: true); }
     }
 }

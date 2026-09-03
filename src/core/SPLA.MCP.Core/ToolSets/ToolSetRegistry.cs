@@ -196,6 +196,43 @@ public sealed class ToolSetRegistry
         }
     }
 
+    /// <summary>
+    /// Whether the model should see <paramref name="toolName"/> under a narrowed selection —
+    /// <paramref name="narrowedToolSets"/> — rather than whatever <paramref name="registry"/>'s own
+    /// captured <see cref="ResolvedSettings"/> would answer on its own. Shared by every caller that
+    /// narrows a tool surface for one run or one chat without touching the registry itself
+    /// (<c>SpawnedAgentRunner</c> for a run, <c>ChatToolHost</c> for a standing chat under a role —
+    /// see PLAN_20260902 waves 3 and 5б): both need "this selection, falling back to the registry's
+    /// own standing decision", never "the registry's own baseline alone".
+    /// <para>
+    /// A tool no set claims (<see cref="SetOfTool"/> returns null) is nobody's to gate and is always
+    /// kept, same rule <paramref name="registry"/> itself uses. For a claimed tool, an explicit entry
+    /// in <paramref name="narrowedToolSets"/> wins; absent one, <paramref name="registry"/>'s own
+    /// <see cref="LevelOf"/> answers — inheritance, not an empty set, for a set the narrowing never
+    /// mentions.
+    /// </para>
+    /// <para><see cref="ToolSetLevel.SkillDemand"/> and <see cref="ToolSetLevel.AgentDemand"/> are
+    /// "not disclosed unless raised", checked against <see cref="SPLA.Domain.Agent.AgentSessionScope.Current"/>
+    /// — the caller's own session for the whole time this is asked.</para>
+    /// </summary>
+    public static bool IsDisclosedForRole(
+        string toolName, ToolSetRegistry registry, IReadOnlyDictionary<string, string> narrowedToolSets)
+    {
+        var setId = registry.SetOfTool(toolName);
+        if (setId is null) return true;
+
+        var level = narrowedToolSets.TryGetValue(setId, out var configured) && TryParseLevel(configured, out var parsed)
+            ? parsed
+            : registry.LevelOf(setId);
+
+        return level switch
+        {
+            ToolSetLevel.Enabled => true,
+            ToolSetLevel.Disabled => false,
+            _ => SPLA.Domain.Agent.AgentSessionScope.Current?.ToolSets.IsActive(setId) == true
+        };
+    }
+
     /// <summary>The written form, for settings and for the UI.</summary>
     public static string Format(ToolSetLevel level) => level switch
     {

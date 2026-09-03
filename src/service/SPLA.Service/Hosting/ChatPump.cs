@@ -51,8 +51,23 @@ internal sealed class ChatPump : IDisposable
         /// would serialise a second one anyway, but starting it now would just make it wait; re-arm
         /// and check again once the running turn is done.</summary>
         TurnAlreadyRunning,
+        /// <summary>Wave 6's emergency stop (ADR §2.4) — <see cref="InboxItemKind.Peer"/> depth reached
+        /// <c>agent.peer_hard_cap</c> with nothing else pending to justify waking anyway. Should never
+        /// fire: the debounce and depth ceiling below exist precisely to keep depth from ever getting
+        /// here. Firing is a defect in the regulator, not normal operation — the driver announces it
+        /// and refuses the reply exactly once per trip, mirroring <see cref="SelfFeedingCapReached"/>.</summary>
+        PeerHardCapReached,
+        /// <summary>Wave 6 (ADR §2.4) — a <see cref="InboxItemKind.Peer"/> item is the only reason to
+        /// wake and its correspondence's depth has passed <c>agent.peer_depth_ceiling</c>. The reply is
+        /// NOT discarded (trap 6's mirror for correspondence: <c>ChatInbox</c> is never cleared here) —
+        /// it waits for a turn that starts for some other reason, which is also what resets the depth.</summary>
+        PeerDepthCeilingReached,
         /// <summary>Default policy (ADR §4.1): nobody is watching, so nobody would see an auto-turn's
-        /// tokens spent. Items stay queued for the next human turn.</summary>
+        /// tokens spent. Items stay queued for the next human turn. Does NOT apply when a
+        /// <see cref="InboxItemKind.Peer"/> item is pending (wave 6, ADR §2.4: correspondence is
+        /// internal circulation between chats that may have no watcher at all — <c>spla serve</c> with
+        /// no window, a nightly run — and is meant to proceed anyway; the regulator below is what
+        /// bounds the unattended spend this creates).</summary>
         NoWatchers,
         /// <summary>The self-feeding guard has tripped — see <see cref="SelfFeedingCap"/>.</summary>
         SelfFeedingCapReached,
@@ -63,18 +78,65 @@ internal sealed class ChatPump : IDisposable
     /// <summary>
     /// The wake decision, isolated from the pump's own timer/subscription plumbing so it can be
     /// exercised directly by a test with plain booleans and ints — no <c>ConnectionHub</c>, no
-    /// <c>ChatRuntime</c>, no clock. Order matches plan step B.2's numbered policy exactly.
+    /// <c>ChatRuntime</c>, no clock. Order matches plan step B.2's numbered policy, extended by wave 6
+    /// (ADR §2.4) for <paramref name="hasPeerPending"/>/<paramref name="peerDepth"/>.
+    /// <para>
+    /// The four peer parameters default to values that reproduce the pre-wave-6 decision exactly
+    /// (<paramref name="hasPeerPending"/><c> = false</c> keeps <see cref="WakeDecision.NoWatchers"/>
+    /// exactly as it was, and a depth of 0 against a ceiling/cap of <see cref="int.MaxValue"/> never
+    /// trips) — every pre-existing call site, including every pre-wave-6 test, keeps compiling and
+    /// keeps its original meaning unchanged.
+    /// </para>
     /// </summary>
     internal static WakeDecision DecideWake(
         bool hasPending, bool isTurnRunning, bool hasWatchers, int consecutiveAutoWakes, int cap,
-        bool autoWakeSuppressed = false)
+        bool autoWakeSuppressed = false,
+        bool hasPeerPending = false, int peerDepth = 0,
+        int peerDepthCeiling = int.MaxValue, int peerHardCap = int.MaxValue)
     {
         if (!hasPending) return WakeDecision.NothingPending;
         if (autoWakeSuppressed) return WakeDecision.Suppressed;
         if (isTurnRunning) return WakeDecision.TurnAlreadyRunning;
-        if (!hasWatchers) return WakeDecision.NoWatchers;
+
+        // Depth is only ever a reason to refuse — never a reason to wake on its own — so it is checked
+        // unconditionally here, ahead of the watcher policy right below: two correspondents with a
+        // person watching both chats must decay exactly the same as two with nobody watching at all,
+        // or the regulator would be pointless the moment somebody opens a window.
+        if (hasPeerPending && peerDepth >= peerHardCap) return WakeDecision.PeerHardCapReached;
+        if (hasPeerPending && peerDepth > peerDepthCeiling) return WakeDecision.PeerDepthCeilingReached;
+
+        // Peer bypasses the watcher gate (ADR §2.4); anything else pending still needs one.
+        if (!hasWatchers && !hasPeerPending) return WakeDecision.NoWatchers;
         if (consecutiveAutoWakes >= cap) return WakeDecision.SelfFeedingCapReached;
         return WakeDecision.Wake;
+    }
+
+    /// <summary>
+    /// Wave 6's decay regulator (ADR §2.4) — three pure, stateless computations next to
+    /// <see cref="DecideWake"/> so they can be driven from a test with plain numbers: no clock, no
+    /// timer, no <c>ConnectionHub</c>. <see cref="ChatPump"/> is the only thing that carries the
+    /// mutable "current depth" this reads and writes (<c>_peerDepth</c>) — these methods only ever
+    /// transform whatever depth they are handed.
+    /// </summary>
+    internal static class PeerWakePolicy
+    {
+        /// <summary>
+        /// <c>base · 2^depth</c>, floored at <paramref name="base"/> and capped at
+        /// <paramref name="max"/>. Depth 0 (the first reply after external energy) always waits exactly
+        /// <paramref name="base"/> — the same coalescing window every other item already gets — and the
+        /// wait only grows once a correspondence starts circulating on its own.
+        /// </summary>
+        internal static TimeSpan Debounce(int depth, TimeSpan @base, TimeSpan max)
+        {
+            if (depth < 0) depth = 0;
+            if (@base <= TimeSpan.Zero) return TimeSpan.Zero;
+            // depth is capped before the power so a very deep, mis-tracked count cannot overflow into
+            // Infinity/NaN on the way to a TimeSpan — 32 is already many times past any sane ceiling.
+            var factor = Math.Pow(2, Math.Min(depth, 32));
+            var ms = @base.TotalMilliseconds * factor;
+            if (double.IsInfinity(ms) || ms > max.TotalMilliseconds) return max;
+            return TimeSpan.FromMilliseconds(ms);
+        }
     }
 
     private readonly ChatInbox _inbox;
@@ -100,6 +162,20 @@ internal sealed class ChatPump : IDisposable
     private int _lastSeenHumanTurnCount;
     private bool _capNoticeSent;
 
+    /// <summary>Wave 6's decay counter (ADR §2.4): consecutive <see cref="InboxItemKind.Peer"/> items
+    /// enqueued since the last <see cref="InboxItemKind.Human"/> or <see cref="InboxItemKind.TaskResult"/>
+    /// — external energy resets it to zero right in <see cref="OnEnqueued"/>, the same place that
+    /// observes the kind in the first place, rather than waiting for <see cref="HumanSpokeSinceLastCheck"/>
+    /// to notice a turn actually started. Read by <see cref="PeerWakePolicy.Debounce"/> to grow the
+    /// wait and by <see cref="DecideWake"/>'s peer-depth checks.</summary>
+    private int _peerDepth;
+    private bool _peerHardCapNoticeSent;
+
+    private readonly TimeSpan _peerDebounceBase;
+    private readonly TimeSpan _peerDebounceMax;
+    private readonly int _peerDepthCeiling;
+    private readonly int _peerHardCap;
+
     /// <param name="inbox">This chat's inbox — the pump's only trigger.</param>
     /// <param name="hasWatchers">True when somebody has the chat open. Injected rather than a direct
     /// <c>ConnectionHub</c> reference so the decision path stays testable without one.</param>
@@ -119,6 +195,15 @@ internal sealed class ChatPump : IDisposable
     /// self-feeding guard trips. Deliberately NOT routed through <see cref="ChatInbox.Enqueue"/>: a
     /// notice enqueued there would itself raise <see cref="ChatInbox.Enqueued"/> and re-trigger the
     /// pump, defeating the very guard that just fired.</param>
+    /// <param name="peerDebounceBase">Floor of the <see cref="InboxItemKind.Peer"/> debounce — see
+    /// <see cref="SPLA.Domain.Settings.SplaAgentSection.PeerDebounceBaseSeconds"/>. Defaults to the
+    /// plan's own default (2s) so a test or caller that does not care about wave 6 need not pass it.</param>
+    /// <param name="peerDebounceMax">Ceiling of the same debounce (default 5 minutes) — see
+    /// <see cref="SPLA.Domain.Settings.SplaAgentSection.PeerDebounceMaxSeconds"/>.</param>
+    /// <param name="peerDepthCeiling">See <see cref="SPLA.Domain.Settings.SplaAgentSection.PeerDepthCeiling"/>
+    /// (default 6).</param>
+    /// <param name="peerHardCap">See <see cref="SPLA.Domain.Settings.SplaAgentSection.PeerHardCap"/>
+    /// (default 24).</param>
     public ChatPump(
         ChatInbox inbox,
         Func<bool> hasWatchers,
@@ -127,7 +212,11 @@ internal sealed class ChatPump : IDisposable
         Func<CancellationToken, Task> runTurn,
         Action<string> broadcastNotice,
         Func<bool> autoWakeSuppressed,
-        ILogger? log = null)
+        ILogger? log = null,
+        TimeSpan? peerDebounceBase = null,
+        TimeSpan? peerDebounceMax = null,
+        int peerDepthCeiling = 6,
+        int peerHardCap = 24)
     {
         _inbox = inbox;
         _hasWatchers = hasWatchers;
@@ -138,6 +227,10 @@ internal sealed class ChatPump : IDisposable
         _broadcastNotice = broadcastNotice;
         _log = log;
         _lastSeenHumanTurnCount = humanTurnCount();
+        _peerDebounceBase = peerDebounceBase ?? TimeSpan.FromSeconds(2);
+        _peerDebounceMax = peerDebounceMax ?? TimeSpan.FromMinutes(5);
+        _peerDepthCeiling = peerDepthCeiling;
+        _peerHardCap = peerHardCap;
 
         // Created idle (Timeout.Infinite): nothing arms it until the first TaskResult signal.
         // The firing is fire-and-forget by nature — a timer has nobody to hand a Task back to — so the
@@ -158,13 +251,35 @@ internal sealed class ChatPump : IDisposable
         if (kind == InboxItemKind.Notice) return;
         if (Volatile.Read(ref _disposed) != 0) return;
 
+        // Wave 6 (ADR §2.4): Human and TaskResult are external energy and reset the decay counter to
+        // zero right here — the moment the kind is known — rather than waiting for the next timer
+        // firing to notice. A Peer item deepens the same counter by one, read back below for both the
+        // debounce and (in DecideWake) the ceiling/hard-cap checks.
+        switch (kind)
+        {
+            case InboxItemKind.Peer:
+                Interlocked.Increment(ref _peerDepth);
+                break;
+            case InboxItemKind.Human:
+            case InboxItemKind.TaskResult:
+                Volatile.Write(ref _peerDepth, 0);
+                _peerHardCapNoticeSent = false;
+                break;
+        }
+
         // A person's own words (PLAN_20260825 wave D) skip the debounce entirely — TimeSpan.Zero fires
         // on the next scheduler tick instead of waiting out the 500ms window three background results
         // coalesce over. ChatHandlers.Send already cleared AutoWakeSuppressed and bumped HumanTurnCount
         // before this enqueue (NoteHumanMessage), and the sender is by definition watching (it just
         // came from a live connection), so DecideWake's ordinary checks fall through to Wake on their
-        // own — nothing here needs to bypass them, only the wait.
-        var due = kind == InboxItemKind.Human ? TimeSpan.Zero : DebounceWindow;
+        // own — nothing here needs to bypass them, only the wait. Peer's own debounce grows with depth
+        // (wave 6, ADR §2.4) instead of using the fixed 500ms window TaskResult coalesces over.
+        var due = kind switch
+        {
+            InboxItemKind.Human => TimeSpan.Zero,
+            InboxItemKind.Peer => PeerWakePolicy.Debounce(Volatile.Read(ref _peerDepth), _peerDebounceBase, _peerDebounceMax),
+            _ => DebounceWindow
+        };
         try { _timer.Change(due, Timeout.InfiniteTimeSpan); }
         catch (ObjectDisposedException) { /* raced with Dispose — nothing left to wake */ }
     }
@@ -188,7 +303,11 @@ internal sealed class ChatPump : IDisposable
 
                 var decision = DecideWake(
                     _inbox.HasPending, _isTurnRunning(), _hasWatchers(), _consecutiveAutoWakes, SelfFeedingCap,
-                    _autoWakeSuppressed());
+                    _autoWakeSuppressed(),
+                    hasPeerPending: _inbox.HasPendingOfKind(InboxItemKind.Peer),
+                    peerDepth: Volatile.Read(ref _peerDepth),
+                    peerDepthCeiling: _peerDepthCeiling,
+                    peerHardCap: _peerHardCap);
 
                 switch (decision)
                 {
@@ -207,6 +326,26 @@ internal sealed class ChatPump : IDisposable
                         // check repeats once the gate frees up, instead of busy-looping here.
                         try { _timer.Change(DebounceWindow, Timeout.InfiniteTimeSpan); }
                         catch (ObjectDisposedException) { }
+                        return;
+
+                    case WakeDecision.PeerDepthCeilingReached:
+                        // No re-arm: nothing here will change until either the correspondent sends
+                        // another Peer item (re-arms on its own via OnEnqueued) or a Human/TaskResult
+                        // resets the depth and wakes on its own — this is "waits for a turn that
+                        // happens for some other reason" (ADR §2.4), not a retry loop.
+                        return;
+
+                    case WakeDecision.PeerHardCapReached:
+                        // Wave 6's emergency stop. Should never fire — see the enum member's own doc —
+                        // so once per trip is still plenty; more Peer items can keep landing while
+                        // parked here and must not each repeat the notice.
+                        if (!_peerHardCapNoticeSent)
+                        {
+                            _peerHardCapNoticeSent = true;
+                            _broadcastNotice(
+                                $"Correspondence depth hit the emergency limit ({_peerHardCap}) — this is a " +
+                                "regulator defect, not normal decay. The reply is refused; send a message to resume.");
+                        }
                         return;
 
                     case WakeDecision.SelfFeedingCapReached:

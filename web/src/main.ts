@@ -27,11 +27,26 @@ client.on("welcome", p => {
   store.branch = p.branch || null;
   // Tear-off windows carry their project in the URL (?project=…) — it must win over the server's
   // default, or a solo terminal/debug window from a non-default project would act on the wrong one.
-  const urlProject = new URLSearchParams(location.search).get("project");
+  const urlParams = new URLSearchParams(location.search);
+  const urlProject = urlParams.get("project");
   setCurrentProject(urlProject || p.projectId || null, urlProject ? undefined : p.projectName);
   if (p.theme) store.theme = p.theme;
   client.send("chat.list");
+  // A tear-off chat window (?surface=chatSurface&chat=<id>) carries which chat it is a view onto.
+  // This connection opens it directly — a second window filtering the SAME project, never a second
+  // agent instance (see registry.ts's chatSurface entry, and ADR_20260827-2 §2.5).
+  const urlChat = urlParams.get("chat");
+  if (urlChat) client.send("chat.open", { chatId: urlChat });
+  // Needed at boot, not only when Settings opens — the sessions panel/auto-open watcher must know
+  // whether ui.auto_open_subagents is on before the first spawned session can possibly appear.
+  client.send("agent.get");
 });
-client.on("appearance.changed", p => { if (p.theme) store.theme = p.theme; });
+client.on("appearance.changed", p => {
+  if (p.theme) store.theme = p.theme;
+  if (p.autoOpenSubagents !== undefined) store.autoOpenSubagents = p.autoOpenSubagents;
+});
+client.on("agent.result", p => {
+  if (p.autoOpenSubagents !== undefined) store.autoOpenSubagents = p.autoOpenSubagents === true;
+});
 
 createApp(LayoutHost).mount("#mount");

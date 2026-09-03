@@ -13,4 +13,5 @@ public sealed class AllowAllGate : ICapabilityGate
     public bool CanWrite(string path) => true;
     public bool CanExecute() => true;
     public bool CanNetwork() => true;
+    public bool CanCorrespond() => true;
 }

@@ -80,6 +80,21 @@ The conditional entries are gated on exactly the decision that gated their tools
 that is off leaves **no contributor behind**, so the prompt can never describe a tool that was not
 registered.
 
+### Correspondents are deliberately not a contributor
+
+There is no `correspondences` (or similarly named) entry above, and none is missing by oversight.
+A chat's open correspondences — the other actors it can write to — never appear as prompt text at
+all, in any placement. `ADR_20260827-2_core_roles.md` §2.3 rejected the alternative directly: naming
+each correspondent's chat id in the system prompt is exactly what a virtual `reply_<role>[_<topic>]`
+tool (`ChatToolHost.GetToolDefinitions`, see [`toolsets.md`](toolsets.md#virtual-reply-tools-are-outside-this-system))
+was built to avoid — «Список переписок в промпте становится не нужен — его роль играют имена и
+описания инструментов» ("the list of correspondences in the prompt becomes unnecessary — tool names
+and descriptions play that role"). The tool's own name is the address (stable for the correspondence's
+whole life, per the same section) and its description already says who it reaches and why; a second,
+parallel listing in the prompt would be the identifier the ADR was written to keep **out** of the
+model's context — nothing to lose track of on compaction, nothing to mismatch against the tool that
+actually sends.
+
 ---
 
 ## Placement

@@ -167,7 +167,7 @@ export function hasTools(): boolean {
 }
 
 // Panel kinds that have a standalone solo surface (?surface=<name>) for native tear-off windows.
-const soloSurfaceFor: Record<string, string> = { workspace: "workspace", debug: "debug", wire: "wire" };
+const soloSurfaceFor: Record<string, string> = { workspace: "workspace", debug: "debug", wire: "wire", sessions: "sessions" };
 
 export async function popoutActivePanel() {
   const api = dockState.api;
@@ -203,6 +203,30 @@ export async function popoutActivePanel() {
   }
 
   await api.addPopoutGroup(panel);
+}
+
+/**
+ * "Open in a separate window" for one chat — a filter on the view, never a second agent instance
+ * (PLAN_20260902 wave 7; ADR_20260827-2 §2.5: a window is "a view onto a project, holds nothing").
+ * The new window is its own connection to the SAME project/agent, opening ?chat=<id> on its own
+ * (see main.ts) — independent of whatever chat this window currently has open, exactly like a solo
+ * terminal/debug tear-off already is. Shared by the manual action (a chat's own menu) and the
+ * ui.auto_open_subagents watcher (ChatList.vue) so both go through one path.
+ */
+export function openChatWindow(chatId: string, title?: string) {
+  const q = new URLSearchParams();
+  if (store.currentProjectId) q.set("project", store.currentProjectId);
+  q.set("chat", chatId);
+  const label = title || "Chat";
+
+  // Embedded in Avalonia: same reasoning as popoutActivePanel — WebView2 can't host a real popup
+  // window, so the native shell is asked for an OS window instead.
+  const webview = window.chrome?.webview;
+  if (webview) {
+    webview.postMessage({ kind: "openWindow", surface: "chatSurface", query: q.toString(), title: label });
+    return;
+  }
+  window.open("/?surface=chatSurface&" + q.toString(), "spla-chat-" + chatId, "width=560,height=760,resizable=yes");
 }
 
 export function closeActivePanel() {

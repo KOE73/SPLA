@@ -6,7 +6,11 @@ using SPLA.Domain.Tools;
 using SPLA.Agent.Composition;
 using SPLA.MCP.Core.Composition;
 using SPLA.MCP.Core.Plugins;
+using SPLA.MCP.Core.ToolSets;
 using SPLA.Library;
+using System;
+using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
@@ -58,10 +62,40 @@ public sealed class SpawnedAgentRunner : Domain.Interfaces.IAgentSpawner
     /// a failure as one too.</summary>
     private static readonly TimeSpan WindowLookupBudget = TimeSpan.FromSeconds(2);
 
-    /// <summary>Where a finished run's conversation goes. Optional for the same reason
-    /// <see cref="_contextWindow"/> is — the runner is constructible without a runtime, and a run
-    /// nobody can read back is still a run that happened.</summary>
-    private readonly SpawnedRunLog? _runLog;
+    /// <summary>
+    /// What turns a spawn into a real session — see
+    /// <c>docs/adr/ADR_20260902_core_session-unification.md</c> §2.1. Optional for the same reason
+    /// <see cref="_contextWindow"/> is: the runner is constructible without a runtime (tests, a worker
+    /// entry point), and without one a run keeps the pre-wave-2 behaviour — an isolated in-memory
+    /// conversation nobody can read back afterwards, but a run that still happens.
+    /// <para>Settable rather than a constructor parameter: <c>AgentRuntime</c> builds this runner
+    /// before its project's <c>ChatRegistry</c> exists (see <c>AgentRuntime.cs</c>'s own comment on
+    /// the <see cref="_contextWindow"/> callback for the identical reason), so the registry attaches
+    /// itself in its own constructor — every way of building one, not whichever caller remembered.</para>
+    /// </summary>
+    private Domain.Interfaces.ISpawnSessionHost? _sessionHost;
+
+    /// <summary>Attaches the real session host once it exists. See <see cref="_sessionHost"/>.</summary>
+    public void AttachSessionHost(Domain.Interfaces.ISpawnSessionHost host) => _sessionHost = host;
+
+    /// <summary>
+    /// The project's tool-set catalogue — what exists and which set each tool name belongs to. Used
+    /// only to build a per-run tool filter (see <see cref="RunAsync"/>): this runner never mutates it
+    /// and never asks it to gate anything on its own settings, because those settings are the
+    /// project's, not this run's. Optional for the same reason <see cref="_contextWindow"/> is: a
+    /// runner built for a test or a worker entry point has no registry, and without one a run simply
+    /// applies mode-only gating, exactly as before roles narrowed tool sets at all.
+    /// </summary>
+    private readonly ToolSetRegistry? _toolSets;
+
+    /// <summary>The manifest, for its <c>roles:</c> list. Read off the settings the runner already
+    /// holds rather than attached afterwards: an attach-later hook is called by one caller and
+    /// silently not by the rest, and that had already happened here — roles resolved in tests and
+    /// nowhere else, so every real spawn naming one would have been refused.</summary>
+    private SplaProject? Manifest => _settings.Manifest;
+
+    public IReadOnlyList<string> GetAvailableRoles() =>
+        Manifest?.Roles is { Count: > 0 } roles ? roles.AsReadOnly() : [];
 
     public SpawnedAgentRunner(
         Domain.Llm.ILlmGateway llm,
@@ -70,7 +104,8 @@ public sealed class SpawnedAgentRunner : Domain.Interfaces.IAgentSpawner
         PluginManager plugins,
         ResolvedSettings settings,
         Func<LLMSettings, CancellationToken, Task<int?>>? contextWindow = null,
-        SpawnedRunLog? runLog = null)
+        Domain.Interfaces.ISpawnSessionHost? sessionHost = null,
+        ToolSetRegistry? toolSets = null)
     {
         _llm = llm;
         _tools = tools;
@@ -78,18 +113,22 @@ public sealed class SpawnedAgentRunner : Domain.Interfaces.IAgentSpawner
         _plugins = plugins;
         _settings = settings;
         _contextWindow = contextWindow;
-        _runLog = runLog;
+        _sessionHost = sessionHost;
+        _toolSets = toolSets;
     }
 
     /// <summary>
     /// Runs <paramref name="input"/> in a fresh conversation, optionally pinned to
-    /// <paramref name="skillId"/>. Returns the last assistant message produced by the run.
+    /// <paramref name="skillId"/> and/or run under a <paramref name="role"/>.
+    /// Returns the last assistant message produced by the run.
     /// Throws <see cref="System.ArgumentException"/> if a named skill is not found.
+    /// Throws <see cref="System.InvalidOperationException"/> if a named role is not declared or cannot be loaded.
     /// </summary>
     public async Task<string> RunAsync(
         string? skillId,
         string input,
         AgentMode mode,
+        string? role = null,
         CancellationToken cancellationToken = default)
     {
         // Refused as text, not as an exception: the caller is a model reading a tool result, and a
@@ -98,56 +137,110 @@ public sealed class SpawnedAgentRunner : Domain.Interfaces.IAgentSpawner
             return $"error: spawn depth limit reached ({MaxDepth}). " +
                    "A spawned agent cannot keep spawning; do the remaining work in this run.";
 
-        // Identifies this run wherever it travels — on every progress tick, and as the key a reader
-        // later hands back to find it in the log. Generated up front, before anything can fail, so a
-        // run recorded in the finally block always has the same id its ticks already carried.
-        var runId = "r-" + System.Guid.NewGuid().ToString("N")[..8];
         var startedAt = DateTimeOffset.UtcNow;
+
+        // Which chat this spawn is under — read ambiently, the same way the sandbox already is a few
+        // lines below, so a spawn from a human chat AND a spawn from a spawned session (recursion,
+        // trap 9) both get the right parent: whichever session actually made the call.
+        var parentChatId = AgentSessionScope.Current?.ChatId;
+
+        // Validate and resolve role if one is named. If a role is declared but its body cannot be
+        // loaded, validation throws InvalidOperationException and we never reach the session open.
+        ResolvedSettings runSettings = _settings;
+        if (!string.IsNullOrWhiteSpace(role))
+        {
+            if (Manifest is null || _settings.ProjectFilePath is null)
+                throw new InvalidOperationException(
+                    $"Role '{role}' was named, but this run has no project manifest to declare it in.");
+
+            // Beside the manifest, not beside the workspace: a project may point its workspace
+            // somewhere else entirely, and roles travel with the manifest in git (ADR_20260827-2).
+            var manifestDirectory = Path.GetDirectoryName(_settings.ProjectFilePath)!;
+            var roleSection = ConfigLoader.LoadRole(manifestDirectory, role!);
+            runSettings = SettingsResolver.ResolveForRole(_settings, Manifest, role!, roleSection);
+        }
+
+        // Which mode this run actually executes in. A role picks its own mode the way `agent:` does
+        // (ADR_20260827-2 §2.1: "the role chooses the mode and narrows within it, rather than
+        // becoming a second axis of rights beside modes") — so once a role is named, its resolved
+        // mode governs, whether that came from the role's own `mode:` or (the role saying nothing)
+        // from the project's own. The `mode` ARGUMENT is what a role-less, ad-hoc spawn uses; it is
+        // deliberately NOT consulted at all once a role is named. Letting a caller widen a role by
+        // passing a different mode alongside it would make the role no boundary at all — the exact
+        // failure this closes.
+        var effectiveMode = !string.IsNullOrWhiteSpace(role) ? runSettings.Mode : mode;
+
+        // A real session when a host is attached (chatId, file, ChatInbox, progress tree — see
+        // ISpawnSessionHost); the pre-wave-2 in-memory-only shape otherwise (tests, a worker entry
+        // point). Wave 3 wires a real role through agent_spawn.
+        var session = _sessionHost?.OpenSpawnedSession(parentChatId, role);
+
+        // Identifies this run wherever it travels — on every progress tick, and (with a session) as
+        // the id subagent.get resolves back to this session's file. Generated up front, before
+        // anything can fail, so a run whose finally block never gets to open a session still ticks
+        // with a stable id for its whole life.
+        var runId = session?.ChatId ?? "r-" + System.Guid.NewGuid().ToString("N")[..8];
 
         // Fresh isolated agent state — own skill session, working memory, and checkpoint manager.
         // Opening an AgentSessionScope keeps the sub-agent's tool calls (memory, marks, skills) off
         // the parent chat's state, even though the spawn happens inside the parent's async flow.
-        var skillSession = new SkillSession();
+        // With a session this comes from it (so its Background/ChatId are the real ones); without one
+        // it is built fresh here, inheriting only the sandbox — the host's boundary, not agent state,
+        // and the one thing a sub-agent must not escape by spawning.
+        var agentSession = session?.AgentSession
+            ?? new AgentSession(new KeyValueStore("session"), new CheckpointManager(), new SkillSession(),
+                sandbox: AgentSessionScope.Current?.Sandbox);
+        var skillSession = agentSession.Skills;
 
         // A free-form spawn leaves the session idle rather than pinned. That is not the same as an
         // agent without skills: the session is the sub-agent's own, so if the work turns out to match
         // one, it can find and activate it for itself without touching the parent's.
-        if (!string.IsNullOrWhiteSpace(skillId))
+        //
+        // Wrapped: a session's file is already written on disk by the time we get here (OpenSpawnedSession
+        // saved it eagerly), so a validation failure that throws past this point must still close that
+        // file out as failed rather than leaving it stuck "in progress" forever — nothing else would
+        // ever call Finish for a run that never reached the try block below.
+        try
         {
-            var lookup = _skills.Resolve(skillId!);
-            if (lookup.IsAmbiguous)
-                throw new System.ArgumentException(
-                    $"Skill '{skillId}' is held by more than one source — name one of: " +
-                    string.Join(", ", lookup.Candidates.Select(c => c.Address)), nameof(skillId));
+            if (!string.IsNullOrWhiteSpace(skillId))
+            {
+                var lookup = _skills.Resolve(skillId!);
+                if (lookup.IsAmbiguous)
+                    throw new System.ArgumentException(
+                        $"Skill '{skillId}' is held by more than one source — name one of: " +
+                        string.Join(", ", lookup.Candidates.Select(c => c.Address)), nameof(skillId));
 
-            var meta = lookup.Card;
-            if (meta is null)
-                throw new System.ArgumentException($"Skill '{skillId}' not found.", nameof(skillId));
+                var meta = lookup.Card;
+                if (meta is null)
+                    throw new System.ArgumentException($"Skill '{skillId}' not found.", nameof(skillId));
 
-            var body = _skills.LoadBody(meta.Address);
-            if (string.IsNullOrWhiteSpace(body))
-                throw new System.ArgumentException(
-                    $"Skill '{skillId}' has no readable procedure.", nameof(skillId));
+                var body = _skills.LoadBody(meta.Address);
+                if (string.IsNullOrWhiteSpace(body))
+                    throw new System.ArgumentException(
+                        $"Skill '{skillId}' has no readable procedure.", nameof(skillId));
 
-            // Same loan slip as an in-chat activation: a sub-agent running a skill needs that skill's
-            // references as much as the parent would, and its own session is the only place to hold them.
-            skillSession.Activate(meta.DisplayId, body, meta.SourceId, meta.Ref, _skills.ListResources(meta.Address));
+                // Same loan slip as an in-chat activation: a sub-agent running a skill needs that skill's
+                // references as much as the parent would, and its own session is the only place to hold them.
+                skillSession.Activate(meta.DisplayId, body, meta.SourceId, meta.Ref, _skills.ListResources(meta.Address));
+            }
         }
-
-        var checkpoint = new CheckpointManager();
-        // Everything else here is deliberately fresh, but the sandbox is inherited: it is the host's
-        // boundary, not the agent's state. Left to its default a sub-agent would come out of its
-        // parent's sandbox — a way out of the box by spawning, which matters the moment a chat runs
-        // with a real one. No parent (a CLI or worker entry point) keeps the constructor's default.
-        var agentSession = new AgentSession(
-            new KeyValueStore("session"), checkpoint, skillSession,
-            sandbox: AgentSessionScope.Current?.Sandbox);
+        catch (System.ArgumentException ex)
+        {
+            if (session != null)
+            {
+                session.Finish(System.Array.Empty<ChatMessage>(), skillId, effectiveMode.ToString(), startedAt,
+                    "failed", ex.Message);
+                _sessionHost?.TrimSpawnedRetention(_settings.SpawnedRetention);
+                session.Dispose();
+            }
+            throw;
+        }
 
         // The session is passed explicitly rather than resolved ambiently — the spawn happens inside
         // the parent's async flow, and the sub-agent must describe its own skill, not the parent's.
         var composer = new AgentContextComposer(
             AgentContributors.Default(_skills, _plugins, skillSession));
-        var systemPrompt = composer.Compose(_settings, _settings.WorkspacePath).SystemPrompt;
+        var systemPrompt = composer.Compose(runSettings, runSettings.WorkspacePath).SystemPrompt;
 
         var conversation = new Conversation();
         conversation.Add(new ChatMessage { Role = ChatRole.System, Content = systemPrompt });
@@ -161,8 +254,28 @@ public sealed class SpawnedAgentRunner : Domain.Interfaces.IAgentSpawner
         // pinned, activating one mid-run is a legitimate move, and it is worth nothing if the
         // procedure never reaches the prompt.
         var context = skillSession.ActiveSkillId is null
-            ? () => composer.Compose(_settings, _settings.WorkspacePath)
+            ? () => composer.Compose(runSettings, runSettings.WorkspacePath)
             : (Func<ComposedContext>?)null;
+
+        // Narrows the tool surface to what this run's settings actually select — see
+        // <see cref="_toolSets"/>. Composed with (never instead of) mode gating: the mode filter runs
+        // first, exactly as it would with no role at all, and this only ever removes tools mode
+        // gating would have kept. Built fresh per run from the runner's own registry, so nothing here
+        // mutates the shared <c>McpHost</c>/<c>ToolSetRegistry</c> the project and every other chat
+        // share — the narrowing lives entirely in this closure and dies with this run.
+        //
+        // A role's own <c>toolsets:</c> entries win when it names a set (already layered onto
+        // <c>runSettings.ToolSets</c> by <see cref="SettingsResolver.ResolveForRole"/>); a set the
+        // role never mentions falls back to <c>_toolSets.LevelOf</c>, i.e. whatever the project itself
+        // decided — inheritance, not an empty set. This is why a role with no tool selection at all
+        // must narrow nothing: <c>runSettings.ToolSets</c> is then byte-for-byte the project's own
+        // dictionary (see <c>SettingsResolver.CloneForRole</c>), so every lookup below falls through
+        // to the exact same answer the registry would have given a role-less run.
+        Func<IEnumerable<ToolDefinition>, AgentMode, IEnumerable<ToolDefinition>>? toolFilter =
+            _toolSets is null
+                ? null
+                : (defs, m) => ToolModeFilter.Filter(defs, m)
+                    .Where(t => IsDisclosedForRun(t.Function.Name, _toolSets, runSettings.ToolSets));
 
         // Spawned sub-agents are the most prone to tool-call loops; guard them too (tool-call only).
         //
@@ -171,20 +284,25 @@ public sealed class SpawnedAgentRunner : Domain.Interfaces.IAgentSpawner
         // every tool the sub-agent runs a child of it, visible wherever the caller's progress already
         // is. Nothing is forwarded, subscribed or relayed — the tree is ambient, so not detaching from
         // it is the whole mechanism.
+        // No DrainInbox/OnMessageDelivered wired here, unlike ChatRuntime's own orchestrator — a
+        // correspondence reply (PLAN_20260902 wave 4) that arrives while this run is going sits
+        // undrained in the session's own ChatInbox until the run ends; see SpawnedSession.Inbox's own
+        // comment for the decision and why symmetry with a live chat was rejected for this wave.
         var orchestrator = new ConversationOrchestrator(_llm, _tools)
         {
-            Checkpoint = checkpoint,
+            Checkpoint = agentSession.Checkpoint,
             EnableLoopGuard = true,
             Context = context,
-            NestInAmbientProgress = true
+            NestInAmbientProgress = true,
+            ToolFilter = toolFilter
         };
 
         // Tool activity arrives on its own as child nodes. What only the runner can say is what happens
         // *between* the tools — that the run is on its fourth turn, that the model is thinking, what it
         // last concluded — and without it a sub-agent spending a minute inside the model looks exactly
         // like one that has hung.
-        var llmSettings = _settings.ToLLMSettings();
-        llmSettings.Mode = mode;
+        var llmSettings = runSettings.ToLLMSettings();
+        llmSettings.Mode = effectiveMode;
 
         // How full the run's context is, as the last call reported it. Carried on **every** tick rather
         // than announced in one of its own, for two reasons. It is the only quantity in an agent run
@@ -281,7 +399,7 @@ public sealed class SpawnedAgentRunner : Domain.Interfaces.IAgentSpawner
         try
         {
             using (AgentSessionScope.Begin(agentSession))
-                await orchestrator.RunAsync(conversation, llmSettings, mode, callbacks, cancellationToken);
+                await orchestrator.RunAsync(conversation, llmSettings, effectiveMode, callbacks, cancellationToken);
             outcome = "completed";
         }
         catch (OperationCanceledException)
@@ -301,26 +419,36 @@ public sealed class SpawnedAgentRunner : Domain.Interfaces.IAgentSpawner
         {
             _depth.Value = previousDepth;
 
-            // Skipped without a log rather than falling back to some other store: a runner built for
-            // a worker or a test has nowhere honest to put a transcript, and pretending otherwise would
-            // mean inventing a second retention policy nobody asked for.
-            _runLog?.Record(new SpawnedRun
+            // Skipped without a session rather than falling back to some other store: a runner built
+            // for a worker or a test has nowhere honest to put a transcript, and pretending otherwise
+            // would mean inventing a second retention policy nobody asked for.
+            if (session != null)
             {
-                Id = runId,
-                Label = label,
-                SkillId = skillSession.ActiveSkillId,
-                Mode = mode.ToString(),
-                StartedAt = startedAt,
-                FinishedAt = DateTimeOffset.UtcNow,
-                Outcome = outcome,
-                Error = error,
-                Result = lastAssistantMessage,
-                Messages = conversation.Messages.ToList()
-            });
+                session.Finish(conversation.Messages, skillSession.ActiveSkillId, effectiveMode.ToString(),
+                    startedAt, outcome, error);
+                // Only after Finish: trimming looks at what is on disk right now, and this run's own
+                // file must already carry a non-null outcome or it would immediately be the newest
+                // "in progress" session on the ring's wrong side (trap 5).
+                _sessionHost?.TrimSpawnedRetention(_settings.SpawnedRetention);
+                session.Dispose();
+            }
         }
 
         return lastAssistantMessage;
     }
+
+    /// <summary>
+    /// Whether the model should see <paramref name="toolName"/> in this run, given this run's own
+    /// tool-set levels (<paramref name="runToolSets"/> — the project's, or a role's narrowing of them)
+    /// rather than whatever the shared <paramref name="registry"/> was built to answer for the chat
+    /// that spawned this run. Delegates to <see cref="ToolSetRegistry.IsDisclosedForRole"/>, the
+    /// helper shared with <c>ChatToolHost</c>'s identical narrowing for a standing chat under a role
+    /// (PLAN_20260902 wave 5б) — asking the registry's own <c>LevelOf</c> alone would answer for the
+    /// project's baseline, which is exactly what a role must be able to narrow.
+    /// </summary>
+    private static bool IsDisclosedForRun(
+        string toolName, ToolSetRegistry registry, IReadOnlyDictionary<string, string> runToolSets)
+        => ToolSetRegistry.IsDisclosedForRole(toolName, registry, runToolSets);
 
     /// <summary>
     /// How much of the window the run is using, as a suffix — or nothing at all before the first call

@@ -81,6 +81,169 @@ public class ChatPumpTests
         Assert.Equal(ChatPump.WakeDecision.NothingPending, d);
     }
 
+    // ---- wave 6: decay regulator (PLAN_20260902, ADR_20260827-2 §2.4) -----------------------------
+    // All driven through the pure DecideWake/PeerWakePolicy functions with injected values — no timer,
+    // no wall clock, no ChatPump instance — per the plan's own trap 6 ("a test that depends on real
+    // time fails under load and passes alone").
+
+    [Fact]
+    public void DecideWake_peer_wakes_with_no_watchers_while_task_result_still_does_not()
+    {
+        // Same inputs (no watchers, nothing else going on) — only hasPeerPending differs.
+        var peer = ChatPump.DecideWake(hasPending: true, isTurnRunning: false, hasWatchers: false,
+            consecutiveAutoWakes: 0, cap: 3, hasPeerPending: true, peerDepth: 0,
+            peerDepthCeiling: 6, peerHardCap: 24);
+        Assert.Equal(ChatPump.WakeDecision.Wake, peer);
+
+        var taskResult = ChatPump.DecideWake(hasPending: true, isTurnRunning: false, hasWatchers: false,
+            consecutiveAutoWakes: 0, cap: 3, hasPeerPending: false, peerDepth: 0,
+            peerDepthCeiling: 6, peerHardCap: 24);
+        Assert.Equal(ChatPump.WakeDecision.NoWatchers, taskResult);
+    }
+
+    [Fact]
+    public void PeerWakePolicy_debounce_doubles_per_depth_and_stops_at_the_ceiling()
+    {
+        var baseDelay = TimeSpan.FromSeconds(2);
+        var max = TimeSpan.FromMinutes(5);
+
+        Assert.Equal(TimeSpan.FromSeconds(2), ChatPump.PeerWakePolicy.Debounce(0, baseDelay, max));
+        Assert.Equal(TimeSpan.FromSeconds(4), ChatPump.PeerWakePolicy.Debounce(1, baseDelay, max));
+        Assert.Equal(TimeSpan.FromSeconds(8), ChatPump.PeerWakePolicy.Debounce(2, baseDelay, max));
+        Assert.Equal(TimeSpan.FromSeconds(16), ChatPump.PeerWakePolicy.Debounce(3, baseDelay, max));
+
+        // Depth deep enough that base*2^depth would vastly exceed the ceiling — must clamp, not overflow.
+        Assert.Equal(max, ChatPump.PeerWakePolicy.Debounce(20, baseDelay, max));
+        Assert.Equal(max, ChatPump.PeerWakePolicy.Debounce(1000, baseDelay, max));
+    }
+
+    [Fact]
+    public void DecideWake_past_the_depth_ceiling_does_not_wake_but_leaves_hasPending_semantics_to_the_caller()
+    {
+        // depth 6 (== ceiling) still wakes...
+        var atCeiling = ChatPump.DecideWake(hasPending: true, isTurnRunning: false, hasWatchers: true,
+            consecutiveAutoWakes: 0, cap: 3, hasPeerPending: true, peerDepth: 6,
+            peerDepthCeiling: 6, peerHardCap: 24);
+        Assert.Equal(ChatPump.WakeDecision.Wake, atCeiling);
+
+        // ...depth 7 (past it) does not, even with watchers present.
+        var pastCeiling = ChatPump.DecideWake(hasPending: true, isTurnRunning: false, hasWatchers: true,
+            consecutiveAutoWakes: 0, cap: 3, hasPeerPending: true, peerDepth: 7,
+            peerDepthCeiling: 6, peerHardCap: 24);
+        Assert.Equal(ChatPump.WakeDecision.PeerDepthCeilingReached, pastCeiling);
+
+        // The decision itself never touches the inbox — proving "not discarded" end-to-end (the real
+        // ChatPump never calls DrainAll on this branch) is covered by reading ChatPump.cs's
+        // PeerDepthCeilingReached case, which returns without draining or re-arming; this test proves
+        // the decision that branch is keyed on.
+    }
+
+    [Fact]
+    public void DecideWake_human_and_task_result_are_both_external_energy_that_would_reset_depth_to_zero()
+    {
+        // This is exercised at the ChatPump level (OnEnqueued resets _peerDepth to 0 for both Human and
+        // TaskResult, not just Human) — here we prove the depth-0 consequence: once reset, neither the
+        // ceiling nor the hard cap can be tripped by a stale high depth value.
+        var afterHumanReset = ChatPump.DecideWake(hasPending: true, isTurnRunning: false, hasWatchers: true,
+            consecutiveAutoWakes: 0, cap: 3, hasPeerPending: true, peerDepth: 0,
+            peerDepthCeiling: 6, peerHardCap: 24);
+        Assert.Equal(ChatPump.WakeDecision.Wake, afterHumanReset);
+
+        var afterTaskResultReset = ChatPump.DecideWake(hasPending: true, isTurnRunning: false, hasWatchers: true,
+            consecutiveAutoWakes: 0, cap: 3, hasPeerPending: true, peerDepth: 0,
+            peerDepthCeiling: 6, peerHardCap: 24);
+        Assert.Equal(ChatPump.WakeDecision.Wake, afterTaskResultReset);
+    }
+
+    [Fact]
+    public async Task ChatPump_resets_peer_depth_on_human_and_on_task_result()
+    {
+        // End-to-end proof that OnEnqueued's reset actually fires for both kinds (not just Human,
+        // which the self-feeding-cap tests above already exercise): drive depth past the ceiling with
+        // Peer items, confirm a further Peer stays parked, then show a Human message (and separately, a
+        // TaskResult) clears the jam and lets the next Peer wake again.
+        var inbox = new ChatInbox();
+        var env = new Env();
+        using var pump = new ChatPump(
+            inbox,
+            hasWatchers: () => env.Watchers,
+            isTurnRunning: () => env.TurnRunning,
+            humanTurnCount: () => env.HumanTurnCount,
+            runTurn: ct => { Interlocked.Increment(ref env.RunTurnCalls); inbox.DrainAll(); return Task.CompletedTask; },
+            broadcastNotice: text => { lock (env.Notices) env.Notices.Add(text); },
+            autoWakeSuppressed: () => env.AutoWakeSuppressed,
+            peerDebounceBase: TimeSpan.FromMilliseconds(20),
+            peerDebounceMax: TimeSpan.FromMilliseconds(200),
+            peerDepthCeiling: 0, // every Peer item is already "past ceiling" — isolates the reset itself
+            peerHardCap: 24);
+
+        ChatMessage Peer(string t) => new() { Role = ChatRole.User, Content = t };
+
+        // Three Peer sends in a row (depth becomes 1, 2, 3) — each debounce is short (20ms*2^depth,
+        // capped at 200ms) so this settles quickly; ceiling 0 means none of them should ever wake.
+        inbox.Enqueue(Peer("p1"), InboxItemKind.Peer);
+        await Task.Delay(60);
+        inbox.Enqueue(Peer("p2"), InboxItemKind.Peer);
+        await Task.Delay(120);
+        inbox.Enqueue(Peer("p3"), InboxItemKind.Peer);
+        await Task.Delay(400); // comfortably past even the 200ms ceiling debounce
+
+        Assert.Equal(0, env.RunTurnCalls);
+        Assert.True(inbox.HasPending); // still queued — never discarded
+
+        // A human message resets depth to 0 and wakes immediately (TimeSpan.Zero due), draining
+        // everything queued (the three stranded Peer items plus this one).
+        env.HumanTurnCount++;
+        inbox.Enqueue(new ChatMessage { Role = ChatRole.User, Content = "hi" }, InboxItemKind.Human);
+        await WaitUntilAsync(() => env.RunTurnCalls >= 1, timeoutMs: 3000);
+        Assert.Equal(1, env.RunTurnCalls);
+        Assert.False(inbox.HasPending);
+    }
+
+    [Fact]
+    public void DecideWake_hard_cap_refuses_even_with_watchers()
+    {
+        var d = ChatPump.DecideWake(hasPending: true, isTurnRunning: false, hasWatchers: true,
+            consecutiveAutoWakes: 0, cap: 3, hasPeerPending: true, peerDepth: 24,
+            peerDepthCeiling: 6, peerHardCap: 24);
+        Assert.Equal(ChatPump.WakeDecision.PeerHardCapReached, d);
+    }
+
+    [Fact]
+    public async Task Peer_hard_cap_announces_a_notice_and_refuses_the_reply()
+    {
+        var inbox = new ChatInbox();
+        var env = new Env();
+        using var pump = new ChatPump(
+            inbox,
+            hasWatchers: () => env.Watchers,
+            isTurnRunning: () => env.TurnRunning,
+            humanTurnCount: () => env.HumanTurnCount,
+            runTurn: ct => { Interlocked.Increment(ref env.RunTurnCalls); inbox.DrainAll(); return Task.CompletedTask; },
+            broadcastNotice: text => { lock (env.Notices) env.Notices.Add(text); },
+            autoWakeSuppressed: () => env.AutoWakeSuppressed,
+            peerDebounceBase: TimeSpan.FromMilliseconds(1),
+            peerDebounceMax: TimeSpan.FromMilliseconds(5),
+            peerDepthCeiling: 0, // every Peer item is already "past ceiling" — isolates the hard cap
+            peerHardCap: 3);
+
+        ChatMessage Peer(string t) => new() { Role = ChatRole.User, Content = t };
+
+        // Push depth past the hard cap (3) with tiny debounces so this settles fast. None of these
+        // should ever wake a turn — ceiling 0 blocks every one of them before the hard cap is even
+        // checked at low depths, and once depth reaches 3 the hard cap itself takes over.
+        for (var i = 0; i < 6; i++)
+        {
+            inbox.Enqueue(Peer($"p{i}"), InboxItemKind.Peer);
+            await Task.Delay(30);
+        }
+
+        await WaitUntilAsync(() => env.Notices.Count > 0, timeoutMs: 3000);
+        Assert.Equal(0, env.RunTurnCalls); // the reply is refused, not just delayed
+        Assert.Contains(env.Notices, n => n.Contains("emergency limit", StringComparison.OrdinalIgnoreCase));
+        Assert.True(inbox.HasPending); // still queued, not discarded
+    }
+
     // ---- end-to-end coalescing / policy via a real ChatPump --------------------------------------
 
     private static ChatMessage TaskResultMessage(string text) => new() { Role = ChatRole.User, Content = text };

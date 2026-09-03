@@ -20,6 +20,7 @@ internal sealed class ChatHandlers : IMessageHandler
         MessageTypes.ChatSkillActivate, MessageTypes.ChatSkillDeactivate,
         MessageTypes.ChatToolSetDeactivate, MessageTypes.ChatDoubtClear,
         MessageTypes.TaskList, MessageTypes.TaskState, MessageTypes.TaskCancel,
+        MessageTypes.CorrespondenceGraphGet,
     ];
 
     public Task HandleAsync(RequestContext ctx) => ctx.Env.Type switch
@@ -46,6 +47,7 @@ internal sealed class ChatHandlers : IMessageHandler
         MessageTypes.TaskList  => TaskList(ctx),
         MessageTypes.TaskState => TaskState(ctx),
         MessageTypes.TaskCancel => TaskCancel(ctx),
+        MessageTypes.CorrespondenceGraphGet => CorrespondenceGraphGet(ctx),
         _ => Task.CompletedTask
     };
 
@@ -53,6 +55,13 @@ internal sealed class ChatHandlers : IMessageHandler
     {
         var (entry, _) = ctx.Session.Resolve(ctx.Env);
         return ctx.Reply(MessageTypes.ChatListResult, new ChatListResultPayload { Chats = entry.Chats.List() });
+    }
+
+    private static Task CorrespondenceGraphGet(RequestContext ctx)
+    {
+        var (entry, _) = ctx.Session.Resolve(ctx.Env);
+        return ctx.Reply(MessageTypes.CorrespondenceGraphResult,
+            new CorrespondenceGraphResultPayload { Edges = entry.Chats.CorrespondenceGraph() });
     }
 
     private static async Task New(RequestContext ctx)
@@ -123,7 +132,15 @@ internal sealed class ChatHandlers : IMessageHandler
         var (entry, _) = ctx.Session.Resolve(ctx.Env);
         var p = ctx.Payload<ChatOpenPayload>();
         var chat = p != null ? entry.Chats.GetOrOpen(p.ChatId) : null;
-        if (chat == null) { await ctx.Send(MessageTypes.Error, new ErrorPayload { Message = $"Chat not found: {p?.ChatId}" }); return; }
+        if (chat == null)
+        {
+            // GetOrOpen refuses archived chats on purpose (KNOWN_ISSUES.md, resolved 2026-09-03) — say
+            // so rather than "not found", which would be true of a missing id but not of this one.
+            var archived = p != null && entry.Chats.Locate(p.ChatId) == SPLA.Domain.Settings.ChatLocation.Archived;
+            var message = archived ? $"Chat is archived: {p!.ChatId}" : $"Chat not found: {p?.ChatId}";
+            await ctx.Send(MessageTypes.Error, new ErrorPayload { Message = message });
+            return;
+        }
         await ctx.Session.SendOpenedAsync(chat);
     }
 
@@ -159,6 +176,19 @@ internal sealed class ChatHandlers : IMessageHandler
         if (p == null) return;
         var chat = entry.Chats.GetOrOpen(p.ChatId);
         if (chat == null) { await ctx.Send(MessageTypes.Error, new ErrorPayload { Message = $"Chat not found: {p.ChatId}" }); return; }
+
+        // A spawned session belongs to whoever gave the errand while its one run is still going — a
+        // second writer here is exactly the race one pump per chat exists to prevent (ADR §2.2). Once
+        // the run has finished (Spawn.Outcome is set) the session is a chat like any other and this
+        // falls through as normal.
+        if (chat.Session.Origin == "spawned" && chat.Session.Spawn?.Outcome is null)
+        {
+            await ctx.Send(MessageTypes.Error, new ErrorPayload
+            {
+                Message = "This session was spawned and its run is still in progress — it cannot take a message yet."
+            });
+            return;
+        }
 
         // The sender must watch this chat, otherwise the turn's stream (which fans out to watchers
         // only) would never reach the very client that started it.

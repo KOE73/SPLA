@@ -218,6 +218,32 @@ public static class ConfigLoader
         => Deserializer.Deserialize<SplaProject>(yaml) ?? new SplaProject();
 
     /// <summary>
+    /// Loads one role's body from <c>roles/&lt;roleName&gt;.yaml</c> next to the manifest. Returns
+    /// null when the file does not exist.
+    ///
+    /// <para><b>Loading a file is not the same as activating a role.</b> This method answers "what
+    /// does that file say", nothing more — it does not check <see cref="SplaProject.Roles"/> and must
+    /// never be mistaken for that check. A file can sit in <c>roles/</c> completely unnamed by the
+    /// manifest (the common case for a role someone's pull request adds without also editing the
+    /// manifest) and loading it here is harmless; what makes a role act is
+    /// <see cref="SettingsResolver.ResolveForRole"/> refusing to proceed unless the name is listed.
+    /// </para>
+    /// </summary>
+    /// <param name="projectDirectory">The directory holding the manifest — roles live in
+    /// <c>&lt;projectDirectory&gt;/roles/</c>, never resolved relative to the current directory.</param>
+    /// <param name="roleName">The role's file-stem name, as it would appear under <c>roles:</c>.</param>
+    public static SplaRoleSection? LoadRole(string projectDirectory, string roleName)
+    {
+        if (string.IsNullOrWhiteSpace(roleName)) return null;
+
+        var path = Path.Combine(projectDirectory, "roles", roleName + ".yaml");
+        if (!File.Exists(path)) return null;
+
+        var yaml = File.ReadAllText(path);
+        return Deserializer.Deserialize<SplaRoleSection>(yaml) ?? new SplaRoleSection();
+    }
+
+    /// <summary>
     /// Serializes an opaque plugin settings blob (nested mapping) to a YAML string.
     /// Used to hand a plugin its own settings across the assembly-load-context boundary.
     /// </summary>
@@ -321,6 +347,7 @@ public static class ConfigLoader
         "name" => p.Name,
         "mounts" => p.Mounts,
         "agent" => p.Agent,
+        "roles" => p.Roles,
         "llm" => p.Llm,
         "connections" => p.Connections,
         "ui" => p.Ui,

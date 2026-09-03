@@ -90,6 +90,7 @@ import {
 
 const iconFor: Record<PanelKind, string> = {
   chat: "workspace", workspace: "workspace", ssh: "ssh", browserScreencast: "browser", debug: "debug", wire: "wire",
+  sessions: "sessions",
 };
 
 const tools = computed(() => toolKinds.map(kind => ({

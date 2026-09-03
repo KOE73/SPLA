@@ -1,4 +1,5 @@
 using SPLA.Domain.Models;
+using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -11,10 +12,16 @@ namespace SPLA.Domain.Interfaces;
 /// </summary>
 public interface IAgentSpawner
 {
+    /// <summary>Lists the roles available in the project, or an empty list if no project is loaded.</summary>
+    IReadOnlyList<string> GetAvailableRoles();
+
     /// <param name="skillId">Skill to pin for the run, or <c>null</c> for a free-form task. A pinned
     /// skill puts its procedure in the sub-agent's prompt and is the only thing it does; without one
     /// the sub-agent starts from the base prompt and works from <paramref name="input"/> alone —
     /// including finding and activating a skill itself, if one turns out to fit.</param>
-    Task<string> RunAsync(string? skillId, string input, AgentMode mode,
+    /// <param name="role">Role to run under, or <c>null</c> for the default role. A named role resolves
+    /// its settings through <c>SettingsResolver.ResolveForRole</c>, selecting a mode and narrowing the
+    /// tool set within it; unknown roles throw <c>InvalidOperationException</c>.</param>
+    Task<string> RunAsync(string? skillId, string input, AgentMode mode, string? role = null,
         CancellationToken cancellationToken = default);
 }

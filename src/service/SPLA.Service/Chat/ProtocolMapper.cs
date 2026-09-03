@@ -17,6 +17,7 @@ public static class ProtocolMapper
         CreatedAt = m.CreatedAt.ToString("o"),
         ToolCallId = m.ToolCallId,
         IsEphemeral = m.IsEphemeral,
+        PeerFrom = m.PeerFrom,
         ToolCalls = m.ToolCalls?.Select(ToDto).ToList(),
         Attempts = m.Attempts?.Select(ToDto).ToList()
     };

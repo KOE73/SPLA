@@ -6,6 +6,8 @@ using SPLA.Domain.Settings;
 using SPLA.Domain.Tools;
 using SPLA.Library.Catalog;
 using SPLA.MCP.Core.Permissions;
+using SPLA.MCP.Core.ToolSets;
+using System.IO;
 
 namespace SPLA.Runtime;
 
@@ -21,13 +23,24 @@ namespace SPLA.Runtime;
 /// its run, so tool calls from concurrent chats never collide.
 /// </para>
 /// </summary>
-public sealed class ChatRuntime : IDisposable, SPLA.Domain.Agent.IBackgroundTaskHost
+public sealed class ChatRuntime : IDisposable, SPLA.Domain.Agent.IBackgroundTaskHost, SPLA.Domain.Agent.ICorrespondenceHost, IReplyToolSource
 {
     private readonly AgentRuntime _runtime;
 
     /// <summary>This chat's own boundary — the project's workspace and gate, its own shell. Owned,
     /// and therefore ended in <see cref="Dispose"/>.</summary>
     private readonly SPLA.Domain.Host.ISandbox _sandbox;
+
+    /// <summary>The project's chat directory — what lets this chat resolve a correspondent's chat id
+    /// to a live runtime (waking a sleeping one) or find out it went away. Null for a
+    /// <see cref="ChatRuntime"/> built outside a registry (a bare CLI chat) — correspondence simply
+    /// does not work there, the same way roles and spawning degrade gracefully without their own
+    /// optional collaborators elsewhere in this codebase.</summary>
+    private readonly ChatRegistry? _registry;
+
+    /// <summary>This chat's live correspondences, keyed by (role, topic) exactly as wave 5's virtual
+    /// <c>reply_&lt;role&gt;[_&lt;topic&gt;]</c> tool name will be. See <see cref="Correspondences"/>.</summary>
+    private readonly Dictionary<(string Role, string Topic), Correspondence> _correspondences = new();
 
     private int _disposed;
 
@@ -69,6 +82,23 @@ public sealed class ChatRuntime : IDisposable, SPLA.Domain.Agent.IBackgroundTask
     /// </summary>
     public string? CurrentTurnTreeId { get; private set; }
 
+    /// <summary>
+    /// This chat's settings under its own <c>as:</c> role (PLAN_20260902 wave 5б) — resolved once
+    /// here, when the chat opens, not on every turn: a role's file does not change mid-chat the way a
+    /// live settings edit does, and re-resolving per turn would only cost work for no behaviour a
+    /// person could see. Null for a chat with no <c>as:</c> — the case that must narrow nothing at
+    /// all, not an empty selection (see <see cref="ResolveMode"/> and the <see cref="ChatToolHost"/>
+    /// built in the constructor, both of which treat null as "behave exactly as before this wave").
+    /// <para>
+    /// Also null when a role WAS named but no longer resolves — struck from the manifest, its file
+    /// gone, or this chat has no project to resolve one against — rather than throwing out of the
+    /// constructor and refusing to open the chat at all. Roles and spawning already degrade this way
+    /// elsewhere in this codebase for an optional collaborator that isn't there (see <see cref="_registry"/>'s
+    /// own comment); a stale role tag on a chat someone still wants to open is exactly that case.
+    /// </para>
+    /// </summary>
+    private readonly ResolvedSettings? _roleSettings;
+
     private readonly ChatSession _chat;
     private readonly Conversation _conversation = new();
     private readonly KeyValueStore _sessionKv = new("session");
@@ -76,6 +106,7 @@ public sealed class ChatRuntime : IDisposable, SPLA.Domain.Agent.IBackgroundTask
     private readonly ToolSetSession _toolSetSession = new();
     private readonly CheckpointManager _checkpoint = new();
     private readonly AgentSession _agentSession;
+    private readonly ChatToolHost _toolHost;
     private readonly ConversationOrchestrator _orchestrator;
     private readonly SemaphoreSlim _turnGate = new(1, 1);
 
@@ -136,15 +167,19 @@ public sealed class ChatRuntime : IDisposable, SPLA.Domain.Agent.IBackgroundTask
 
     /// <summary>The current turn's own onUserMessage callback, stashed here so the DrainInbox closure
     /// below (built once in the constructor, but invoked from inside whichever turn is live) can echo a
-    /// Human-kind drained message back to watchers exactly like a directly-sent one. Only one turn ever
-    /// runs at a time (guarded by _turnGate), so there is no re-entrancy to worry about.</summary>
+    /// Human- or Peer-kind drained message back to watchers exactly like a directly-sent one. Only one
+    /// turn ever runs at a time (guarded by _turnGate), so there is no re-entrancy to worry about.</summary>
     private Action<ChatMessage>? _activeOnUserMessage;
 
-    /// <summary>Human-kind messages this turn's DrainInbox has pulled off the queue but which have not
-    /// yet been added to the conversation (and so have no MsgId yet) — see the constructor's
-    /// DrainInbox/OnMessageDelivered pair for why the echo has to wait that long. Reference-keyed:
-    /// two messages are never "the same" here unless they are literally the same instance.</summary>
-    private readonly HashSet<ChatMessage> _pendingHumanEchoes = new(ReferenceEqualityComparer.Instance);
+    /// <summary>Human- and Peer-kind messages this turn's DrainInbox has pulled off the queue but which
+    /// have not yet been added to the conversation (and so have no MsgId yet) — see the constructor's
+    /// DrainInbox/OnMessageDelivered pair for why the echo has to wait that long. Peer joined Human here
+    /// for wave 7: an incoming reply must render live, as speech ("← from &lt;role&gt;"), the same
+    /// moment it lands, not only the next time the chat is reopened — <see cref="ChatMessage.PeerFrom"/>
+    /// already rides on the message itself, so nothing else about this plumbing needs to know which kind
+    /// it was. Reference-keyed: two messages are never "the same" here unless they are literally the
+    /// same instance.</summary>
+    private readonly HashSet<ChatMessage> _pendingEchoes = new(ReferenceEqualityComparer.Instance);
 
     private int _bubbleSeq;
 
@@ -253,6 +288,14 @@ public sealed class ChatRuntime : IDisposable, SPLA.Domain.Agent.IBackgroundTask
         return _runtime.ComposeContext();
     }
 
+    /// <summary>
+    /// This chat's own tool surface — before mode gating, exactly as <see cref="ChatToolHost"/> hands
+    /// it to the orchestrator (see <see cref="_toolHost"/>). For inspection and tests: proves a role's
+    /// narrowing (or its absence) the same way <c>ComposeContext</c> above proves the prompt surface,
+    /// without needing to drive a whole turn through a fake LLM to observe what reached it.
+    /// </summary>
+    public IEnumerable<string> AvailableToolNames() => _toolHost.GetToolDefinitions().Select(d => d.Function.Name);
+
     /// <summary>This chat's session-scoped working memory entries (for the debug inspector).</summary>
     public IEnumerable<(string Key, string Value)> SessionKvEntries
         => _sessionKv.List().Select(e => (e.Key, e.Value));
@@ -313,10 +356,278 @@ public sealed class ChatRuntime : IDisposable, SPLA.Domain.Agent.IBackgroundTask
         Save();
     }
 
-    public ChatRuntime(AgentRuntime runtime, ChatSession chat)
+    /// <summary>This chat's live correspondences (PLAN_20260902 wave 4) — a set, never a single link
+    /// back to whoever spawned this chat. Snapshot: safe to enumerate while <see cref="SendReply"/> or
+    /// <see cref="RefreshCorrespondences"/> mutates the live dictionary underneath.</summary>
+    public IReadOnlyCollection<Correspondence> Correspondences => _correspondences.Values.ToList();
+
+    /// <summary>
+    /// Registers (or returns the existing) correspondence for (<paramref name="role"/>,
+    /// <paramref name="topic"/>) — the machinery wave 5's <c>agent_correspond</c> tool opens a
+    /// correspondence through. Idempotent on purpose: opening the same address twice must not reset
+    /// an already-running exchange's depth or initiator.
+    /// </summary>
+    public Correspondence OpenCorrespondence(
+        string role, string topic, string correspondentChatId, CorrespondenceInitiator initiator)
+    {
+        var key = (role, topic);
+        if (_correspondences.TryGetValue(key, out var existing)) return existing;
+
+        // Decided once, here, and frozen into the record: whether another correspondent already
+        // holds this role AT THIS MOMENT is what earns the topic a place in the name (ADR §2.3). A
+        // role that gains a second correspondent later does not reach back and rename this one —
+        // see Correspondence.ToolName's own comment (plan trap 11).
+        var collides = _correspondences.Values.Any(c => string.Equals(c.Role, role, StringComparison.OrdinalIgnoreCase));
+        var toolName = ReplyToolNaming.BuildToolName(role, topic, includeTopic: collides);
+
+        var correspondence = new Correspondence
+        {
+            Role = role, Topic = topic, ChatId = correspondentChatId, Initiator = initiator, ToolName = toolName
+        };
+        _correspondences[key] = correspondence;
+        return correspondence;
+    }
+
+    /// <summary>
+    /// The soft-link liveness pass (ADR_20260827-2 §2.4): for every correspondence this chat holds,
+    /// asks <see cref="ChatRegistry.Locate"/> where the correspondent's chat currently is.
+    /// <list type="bullet">
+    /// <item><description><see cref="SPLA.Domain.Settings.ChatLocation.Active"/> — reaches
+    /// <see cref="ChatRegistry.GetOrOpen"/>, which answers AND wakes a sleeping chat in the same
+    /// call. Nothing else happens: waking is the whole point, and there is no result to act on.</description></item>
+    /// <item><description><see cref="SPLA.Domain.Settings.ChatLocation.Archived"/> or
+    /// <see cref="SPLA.Domain.Settings.ChatLocation.Missing"/> — the correspondence is dead. Struck
+    /// lazily, right here, and a <see cref="InboxItemKind.Notice"/> is queued so the model does not
+    /// find a tool it used last turn simply gone (see <see cref="InboxItemKind"/>'s own comment).</description></item>
+    /// </list>
+    /// Deliberately never a subscription to <see cref="ChatRegistry.RuntimeClosed"/> (trap 3): that
+    /// event fires on an ordinary sleep too, and a subscription would tear down a correspondence with
+    /// a chat nobody killed. Called once per turn, near the top of <see cref="SendAsync"/> — the
+    /// practical wave-4 stand-in for "at turn surface assembly": the virtual <c>reply_*</c> tools that
+    /// will actually BE that surface are wave 5's, so there is nothing yet to refresh per LLM
+    /// iteration rather than once per turn.
+    /// </summary>
+    public void RefreshCorrespondences()
+    {
+        if (_registry is null || _correspondences.Count == 0) return;
+
+        foreach (var key in _correspondences.Keys.ToList())
+        {
+            var correspondence = _correspondences[key];
+            switch (_registry.Locate(correspondence.ChatId))
+            {
+                case SPLA.Domain.Settings.ChatLocation.Active:
+                    _registry.GetOrOpen(correspondence.ChatId);
+                    break;
+                case SPLA.Domain.Settings.ChatLocation.Archived:
+                    StrikeCorrespondence(key, correspondence, archived: true);
+                    break;
+                case SPLA.Domain.Settings.ChatLocation.Missing:
+                    StrikeCorrespondence(key, correspondence, archived: false);
+                    break;
+            }
+        }
+    }
+
+    /// <summary>Removes a dead correspondence and tells this chat about it — different wording for
+    /// "archived" vs "deleted" (ADR §2.4: "для текста уведомления это разные новости"). Queued through
+    /// <see cref="Inbox"/> like an ordinary <see cref="InboxItemKind.Notice"/>: it must reach the
+    /// model's context on the next turn, but must never itself wake one (<c>ChatPump.OnEnqueued</c>
+    /// ignores this kind).</summary>
+    private void StrikeCorrespondence((string Role, string Topic) key, Correspondence correspondence, bool archived)
+    {
+        _correspondences.Remove(key);
+        var topicSuffix = string.IsNullOrEmpty(correspondence.Topic) ? "" : $" ({correspondence.Topic})";
+        var text = archived
+            ? $"Correspondence with {correspondence.Role}{topicSuffix} has gone quiet — their chat was archived."
+            : $"Correspondence with {correspondence.Role}{topicSuffix} has ended — their chat was deleted.";
+
+        Inbox.Enqueue(new ChatMessage
+        {
+            Role = ChatRole.System,
+            Content = text,
+            RetentionPolicy = SPLA.Domain.Models.ContextRetention.Persistent
+        }, InboxItemKind.Notice);
+    }
+
+    /// <summary>What became of a <see cref="SendReply"/> call.</summary>
+    public enum ReplyOutcome { Delivered, Denied, CorrespondentGone, UnknownCorrespondence }
+
+    /// <summary>A delivery receipt, never the correspondent's answer (ADR §2.3: "инструмент возвращает
+    /// квитанцию о доставке, а не ответ") — wave 5's virtual tool is what turns this into the actual
+    /// tool result text a model sees.</summary>
+    public readonly record struct ReplyResult(ReplyOutcome Outcome, string? Reason)
+    {
+        public bool Delivered => Outcome == ReplyOutcome.Delivered;
+    }
+
+    /// <summary>
+    /// Sends one reply across an already-open correspondence — the machinery wave 5's virtual
+    /// <c>reply_&lt;role&gt;[_&lt;topic&gt;]</c> tool calls into. A reply is an edge source→sink
+    /// (ADR §2.2), and this chat is the source: its own <see cref="ISandbox.Gate"/> is what gets
+    /// asked, not the recipient's and not some separate correspondence-only permission (ADR §2.4:
+    /// "гранты те же" — the same gate every other call already goes through).
+    /// </summary>
+    public ReplyResult SendReply(string role, string topic, string text)
+    {
+        if (!_correspondences.TryGetValue((role, topic), out var correspondence))
+            return new ReplyResult(ReplyOutcome.UnknownCorrespondence,
+                $"no open correspondence with '{role}'" + (topic.Length > 0 ? $" ({topic})" : ""));
+
+        if (!_sandbox.Gate.CanCorrespond())
+            return new ReplyResult(ReplyOutcome.Denied, "correspondence is not permitted for this chat");
+
+        if (_registry is null)
+            return new ReplyResult(ReplyOutcome.CorrespondentGone, "this chat has no directory to reach a correspondent through");
+
+        var location = _registry.Locate(correspondence.ChatId);
+        if (location != SPLA.Domain.Settings.ChatLocation.Active)
+        {
+            var archived = location == SPLA.Domain.Settings.ChatLocation.Archived;
+            StrikeCorrespondence((role, topic), correspondence, archived);
+            return new ReplyResult(ReplyOutcome.CorrespondentGone,
+                archived ? "their chat was archived" : "their chat was deleted");
+        }
+
+        var target = _registry.GetOrOpen(correspondence.ChatId);
+        if (target is null)
+        {
+            _correspondences.Remove((role, topic));
+            return new ReplyResult(ReplyOutcome.CorrespondentGone, "their chat could not be reached");
+        }
+
+        // An incoming reply is an ordinary conversation message, not a service result (ADR §2.5:
+        // "входящая приезжает обычным user-сообщением") — Persistent is already ChatMessage's default,
+        // set explicitly here so the intent survives a future change to that default.
+        // ownRole is this chat's own role (defaulting to "agent", role zero) — the attribution the
+        // RECIPIENT needs to render this as "← from <ownRole>" (ADR §2.5) rather than an ordinary
+        // human message. Display metadata only; ChatMessage.PeerFrom never reaches the provider.
+        var ownRoleForPeer = string.IsNullOrWhiteSpace(_chat.As) ? "agent" : _chat.As!;
+        target.Inbox.Enqueue(new ChatMessage
+        {
+            Role = ChatRole.User,
+            Content = text,
+            RetentionPolicy = SPLA.Domain.Models.ContextRetention.Persistent,
+            PeerFrom = ownRoleForPeer
+        }, InboxItemKind.Peer);
+
+        correspondence.LastReplyAt = DateTimeOffset.UtcNow;
+        correspondence.Depth++;
+        // Wave 7б (ADR §2.5's last row): the edge's volume is the replies themselves, never a slice of
+        // this turn's real provider usage — see Correspondence.VolumeEstimate's own comment for why.
+        correspondence.VolumeEstimate += SPLA.MCP.Core.Composition.TokenEstimate.Of(text);
+
+        return new ReplyResult(ReplyOutcome.Delivered, null);
+    }
+
+    /// <summary>
+    /// <see cref="SPLA.Domain.Agent.ICorrespondenceHost.Correspond"/> — the machinery
+    /// <c>agent_correspond</c> (PLAN_20260902 wave 5) calls into. Finds this chat's already-open
+    /// address for (<paramref name="role"/>, <paramref name="topic"/>) or, on demand, creates a fresh
+    /// chat under that role and opens the correspondence on both sides, then delivers
+    /// <paramref name="text"/> through the same <see cref="SendReply"/> an ordinary
+    /// <c>reply_&lt;role&gt;[_&lt;topic&gt;]</c> call would use — so the very first message and every
+    /// one after it go through one edge, one gate check, one depth counter.
+    /// </summary>
+    public SPLA.Domain.Agent.CorrespondResult Correspond(string role, string topic, string text)
+    {
+        role = role?.Trim() ?? "";
+        topic = topic?.Trim() ?? "";
+        text = text?.Trim() ?? "";
+
+        if (role.Length == 0)
+            return new SPLA.Domain.Agent.CorrespondResult(
+                SPLA.Domain.Agent.CorrespondOutcome.InvalidArgument, "error: 'role' is required");
+        if (topic.Length == 0)
+            return new SPLA.Domain.Agent.CorrespondResult(
+                SPLA.Domain.Agent.CorrespondOutcome.InvalidArgument,
+                "error: 'topic' is required — it is the only thing that tells two correspondents holding the same role apart");
+        if (text.Length == 0)
+            return new SPLA.Domain.Agent.CorrespondResult(
+                SPLA.Domain.Agent.CorrespondOutcome.InvalidArgument, "error: 'text' is required");
+
+        if (_registry is null)
+            return new SPLA.Domain.Agent.CorrespondResult(
+                SPLA.Domain.Agent.CorrespondOutcome.CorrespondentGone,
+                "error: this chat has no project chat directory to reach a correspondent through");
+
+        // Roles do not self-assign (ADR §2.1) — a correspondence that spun up an undeclared role's
+        // chat would let a model invent an actor the owner never named, exactly the hole role
+        // validation on agent_spawn already closes for the errand side of the same mechanism.
+        var availableRoles = _runtime.Settings.Manifest?.Roles ?? new List<string>();
+        if (!availableRoles.Contains(role, StringComparer.OrdinalIgnoreCase))
+        {
+            var rolesList = availableRoles.Count == 0
+                ? "none declared"
+                : string.Join(", ", availableRoles.OrderBy(r => r, StringComparer.OrdinalIgnoreCase));
+            return new SPLA.Domain.Agent.CorrespondResult(
+                SPLA.Domain.Agent.CorrespondOutcome.UnknownRole,
+                $"error: role '{role}' is not available. Available roles: {rolesList}");
+        }
+
+        if (!_correspondences.ContainsKey((role, topic)))
+        {
+            // Not found — create the correspondent's chat on demand (ADR §2.2: "чат собеседника
+            // создаётся по требованию") and open the address on both sides. The correspondent
+            // addresses this chat back by ITS OWN role — "agent" (role zero) when this chat has none
+            // — so its own reply_* tool has something meaningful to be named after.
+            //
+            // The role travels into CreateNew itself (wave 5б) rather than being patched onto
+            // Session.As afterward: the correspondent's ChatRuntime constructor resolves its role's
+            // settings once, right there, so a role stamped on only AFTER that constructor already ran
+            // would narrow nothing for this chat's whole life.
+            var correspondentChat = _registry.CreateNew($"{role}: {topic}", role);
+
+            var ownRole = string.IsNullOrWhiteSpace(_chat.As) ? "agent" : _chat.As!;
+
+            OpenCorrespondence(role, topic, correspondentChat.ChatId, CorrespondenceInitiator.Self);
+            correspondentChat.OpenCorrespondence(ownRole, topic, ChatId, CorrespondenceInitiator.Correspondent);
+        }
+
+        var reply = SendReply(role, topic, text);
+        var toolName = _correspondences.TryGetValue((role, topic), out var c) ? c.ToolName : null;
+
+        return reply.Outcome switch
+        {
+            ReplyOutcome.Delivered => new SPLA.Domain.Agent.CorrespondResult(
+                SPLA.Domain.Agent.CorrespondOutcome.Delivered,
+                $"delivered: correspondence with '{role}' ({topic}) is open — this is a delivery " +
+                $"receipt, not their answer. Their reply will arrive on its own; keep working or wait " +
+                (toolName is null ? "for it." : $"for it. Use '{toolName}' to send your next message.")),
+            ReplyOutcome.Denied => new SPLA.Domain.Agent.CorrespondResult(
+                SPLA.Domain.Agent.CorrespondOutcome.Denied, $"error: {reply.Reason}"),
+            ReplyOutcome.CorrespondentGone => new SPLA.Domain.Agent.CorrespondResult(
+                SPLA.Domain.Agent.CorrespondOutcome.CorrespondentGone, $"error: {reply.Reason}"),
+            _ => new SPLA.Domain.Agent.CorrespondResult(
+                SPLA.Domain.Agent.CorrespondOutcome.CorrespondentGone, $"error: {reply.Reason}")
+        };
+    }
+
+    public ChatRuntime(AgentRuntime runtime, ChatSession chat, ChatRegistry? registry = null)
     {
         _runtime = runtime;
         _chat = chat;
+        _registry = registry;
+
+        // Resolve this chat's own role settings once, up front — see _roleSettings' own comment for
+        // why once-at-open and why a resolution failure degrades to "no role" rather than refusing to
+        // open the chat.
+        if (!string.IsNullOrWhiteSpace(chat.As) &&
+            runtime.Settings.Manifest is { } manifest && runtime.Settings.ProjectFilePath is { } projectFilePath)
+        {
+            try
+            {
+                // Beside the manifest, not beside the workspace — same reasoning as SpawnedAgentRunner's
+                // identical lookup: roles travel with the manifest in git (ADR_20260827-2).
+                var manifestDirectory = Path.GetDirectoryName(projectFilePath)!;
+                var roleSection = ConfigLoader.LoadRole(manifestDirectory, chat.As!);
+                _roleSettings = SettingsResolver.ResolveForRole(runtime.Settings, manifest, chat.As!, roleSection);
+            }
+            catch (InvalidOperationException)
+            {
+                _roleSettings = null;
+            }
+        }
 
         // Seed the conversation: system prompt + any persisted messages.
         _conversation.Add(new ChatMessage { Role = ChatRole.System, Content = runtime.SystemPrompt });
@@ -334,6 +645,9 @@ public sealed class ChatRuntime : IDisposable, SPLA.Domain.Agent.IBackgroundTask
                 Content = m.Content,
                 Reasoning = string.IsNullOrEmpty(m.Reasoning) ? null : m.Reasoning,
                 CreatedAt = m.CreatedAt,
+                PeerFrom = m.PeerFrom,
+                PromptTokens = m.PromptTokens,
+                CompletionTokens = m.CompletionTokens,
                 // Restored whenever they were written, independent of today's save_attempts value —
                 // a chat opened after the setting was turned off must still show what it recorded
                 // while it was on.
@@ -375,7 +689,11 @@ public sealed class ChatRuntime : IDisposable, SPLA.Domain.Agent.IBackgroundTask
             // ChatRuntime implements IBackgroundTaskHost itself (Tasks/Progress/Inbox above) — a
             // background call reaches all three the same ambient way it already reaches everything
             // else per-chat, through AgentSessionScope.Current.Background.
-            background: this);
+            background: this, chatId: _chat.Id,
+            // Same shape again: ChatRuntime implements ICorrespondenceHost itself, so
+            // agent_correspond reaches OpenCorrespondence/SendReply through the identical ambient
+            // path rather than needing its own way to find "this chat".
+            correspondence: this);
 
         // A reopened chat is as doubtful as it was when it closed. Restored rather than recomputed:
         // what raised the flag was an arrival, and arrivals do not happen again on load.
@@ -384,7 +702,40 @@ public sealed class ChatRuntime : IDisposable, SPLA.Domain.Agent.IBackgroundTask
                 new SPLA.Domain.Security.DataOrigin(d.Zone, OperatorNamed: false),
                 d.What,
                 new DateTimeOffset(DateTime.SpecifyKind(d.At, DateTimeKind.Utc)))));
-        _orchestrator = new ConversationOrchestrator(runtime.Llm, runtime.McpHost)
+
+        // Wave 7б: restore correspondences straight into the live dictionary rather than through
+        // OpenCorrespondence — that method decides ToolName fresh from "does a same-role correspondent
+        // already exist", which is exactly wrong here: the persisted ToolName was decided once, in the
+        // past, and must come back unchanged (plan trap 11) even if today's in-memory collision check
+        // would compute something different.
+        if (chat.Correspondences is { Count: > 0 })
+        {
+            foreach (var c in chat.Correspondences)
+            {
+                _correspondences[(c.Role, c.Topic)] = new Correspondence
+                {
+                    Role = c.Role,
+                    Topic = c.Topic,
+                    ChatId = c.ChatId,
+                    Initiator = string.Equals(c.Initiator, "correspondent", StringComparison.OrdinalIgnoreCase)
+                        ? CorrespondenceInitiator.Correspondent : CorrespondenceInitiator.Self,
+                    ToolName = c.ToolName,
+                    LastReplyAt = c.LastReplyAt,
+                    Depth = c.Depth,
+                    VolumeEstimate = c.VolumeEstimate
+                };
+            }
+        }
+
+        // Wave 5б's narrowing: built fresh from the runtime's shared, read-only ToolSetRegistry plus
+        // this chat's own resolved ToolSets (the role's narrowing of them, or — with no role — null,
+        // which ChatToolHost treats as "skip the filter entirely" rather than "filter against
+        // nothing"). Nothing here mutates runtime.McpHost or runtime.ToolSets; the narrowing lives
+        // entirely in this chat's own ChatToolHost instance. Kept as a field (not built inline for the
+        // orchestrator) so AvailableToolNames can inspect the exact same surface without standing up a
+        // second one.
+        _toolHost = new ChatToolHost(runtime.McpHost, this, runtime.ToolSets, _roleSettings?.ToolSets);
+        _orchestrator = new ConversationOrchestrator(runtime.Llm, _toolHost)
         {
             // Live context surface, recomposed on every iteration inside this turn's
             // AgentSessionScope — which is what lets runtime-wide contributors read this chat's
@@ -404,12 +755,13 @@ public sealed class ChatRuntime : IDisposable, SPLA.Domain.Agent.IBackgroundTask
             {
                 var drained = Inbox.DrainAllWithKinds();
                 foreach (var (message, kind) in drained)
-                    if (kind == SPLA.Domain.Tools.InboxItemKind.Human) _pendingHumanEchoes.Add(message);
+                    if (kind is SPLA.Domain.Tools.InboxItemKind.Human or SPLA.Domain.Tools.InboxItemKind.Peer)
+                        _pendingEchoes.Add(message);
                 return drained.Select(d => d.Message).ToList();
             },
             OnMessageDelivered = message =>
             {
-                if (_pendingHumanEchoes.Remove(message)) _activeOnUserMessage?.Invoke(message);
+                if (_pendingEchoes.Remove(message)) _activeOnUserMessage?.Invoke(message);
             },
             Checkpoint = _checkpoint,
             // Anti-repeat guard is a per-project setting (agent: loop_guard, default off) — it targets
@@ -471,6 +823,12 @@ public sealed class ChatRuntime : IDisposable, SPLA.Domain.Agent.IBackgroundTask
         try
         {
             _activeOnUserMessage = onUserMessage;
+
+            // The turn's surface, wave-4-style (see RefreshCorrespondences' own comment): a dead
+            // correspondent is struck and announced before this turn's context is assembled, so a
+            // stale reply_* tool (once wave 5 adds it) never outlives the chat it pointed at by more
+            // than one turn.
+            RefreshCorrespondences();
 
             // Registers the turn's tree into the chat-wide hub the moment the orchestrator creates
             // it, without disturbing whatever the caller's own OnProgressTree does with it — both
@@ -611,6 +969,9 @@ public sealed class ChatRuntime : IDisposable, SPLA.Domain.Agent.IBackgroundTask
                 Content = m.Content ?? "",
                 Reasoning = string.IsNullOrEmpty(m.Reasoning) ? null : m.Reasoning,
                 CreatedAt = m.CreatedAt,
+                PeerFrom = m.PeerFrom,
+                PromptTokens = m.PromptTokens,
+                CompletionTokens = m.CompletionTokens,
                 Images = _imageFiles.TryGetValue(m, out var files) && files.Count > 0 ? new List<string>(files) : null,
                 ToolCalls = saveToolCalls && m.ToolCalls?.Count > 0 ? m.ToolCalls : null,
                 ToolCallId = saveToolCalls ? m.ToolCallId : null,
@@ -634,6 +995,22 @@ public sealed class ChatRuntime : IDisposable, SPLA.Domain.Agent.IBackgroundTask
         _chat.Doubt = _agentSession.Doubt.Causes
             .Select(c => new ChatSessionDoubt { Zone = c.Origin.Zone, What = c.What, At = c.At.UtcDateTime })
             .ToList();
+        // Wave 7б: a correspondence used to die with this ChatRuntime's memory. Persisted the same
+        // shape it lives in, with Depth/VolumeEstimate carrying forward the lifetime totals the graph
+        // reads back on the other side of a restart.
+        _chat.Correspondences = _correspondences.Count == 0
+            ? null
+            : _correspondences.Values.Select(c => new ChatSessionCorrespondence
+            {
+                Role = c.Role,
+                Topic = c.Topic,
+                ChatId = c.ChatId,
+                Initiator = c.Initiator == CorrespondenceInitiator.Correspondent ? "correspondent" : "self",
+                ToolName = c.ToolName,
+                LastReplyAt = c.LastReplyAt,
+                Depth = c.Depth,
+                VolumeEstimate = c.VolumeEstimate
+            }).ToList();
         _runtime.ChatManager.SaveChat(_chat);
     }
 
@@ -679,10 +1056,41 @@ public sealed class ChatRuntime : IDisposable, SPLA.Domain.Agent.IBackgroundTask
         return s;
     }
 
-    /// <summary>The chat's mode (from its agent section), falling back to the project default.</summary>
+    /// <summary>
+    /// The chat's effective mode: its role's mode when it has one, else its own agent-section
+    /// override, else the project default.
+    /// <para>
+    /// Once a role is named, its resolved mode governs outright — the chat's own per-chat mode
+    /// override is deliberately NOT consulted at all, the identical rule <c>SpawnedAgentRunner.RunAsync</c>
+    /// applies to the <c>mode</c> argument of a role-carrying spawn (PLAN_20260902 wave 5б: "режим роли
+    /// применяется к чату так же, как к прогону"). Letting a chat's own override widen a role after
+    /// the fact would make the role no boundary at all. <see cref="ResolvedSettings.Mode"/> already
+    /// carries the right fallback for a role that names no <c>mode:</c> of its own — <see cref="SettingsResolver.ResolveForRole"/>
+    /// clones the project's own <c>Mode</c> onto it, so this is never a role-shaped guess.
+    /// </para>
+    /// </summary>
     private AgentMode ResolveMode()
-        => _chat.Agent?.Mode != null && Enum.TryParse<AgentMode>(_chat.Agent.Mode, true, out var m)
-            ? m : _runtime.Settings.Mode;
+        => _roleSettings is { } role
+            ? role.Mode
+            : _chat.Agent?.Mode != null && Enum.TryParse<AgentMode>(_chat.Agent.Mode, true, out var m)
+                ? m : _runtime.Settings.Mode;
+
+    /// <summary>Wave 6's decay regulator settings (ADR §2.4), resolved the same way every other
+    /// role-narrowable number on this chat already is: the role's own value when this chat has a role,
+    /// else the project's. <c>ChatPump</c> reads these once, at pump construction — they do not change
+    /// for the life of a chat, the same as <see cref="ResolveMode"/>'s own inputs.</summary>
+    public TimeSpan PeerDebounceBase => TimeSpan.FromSeconds(
+        _roleSettings?.PeerDebounceBaseSeconds ?? _runtime.Settings.PeerDebounceBaseSeconds);
+
+    /// <summary>See <see cref="PeerDebounceBase"/>.</summary>
+    public TimeSpan PeerDebounceMax => TimeSpan.FromSeconds(
+        _roleSettings?.PeerDebounceMaxSeconds ?? _runtime.Settings.PeerDebounceMaxSeconds);
+
+    /// <summary>See <see cref="PeerDebounceBase"/>.</summary>
+    public int PeerDepthCeiling => _roleSettings?.PeerDepthCeiling ?? _runtime.Settings.PeerDepthCeiling;
+
+    /// <summary>See <see cref="PeerDebounceBase"/>.</summary>
+    public int PeerHardCap => _roleSettings?.PeerHardCap ?? _runtime.Settings.PeerHardCap;
 
     /// <summary>
     /// Ends everything this chat holds open. Called when the chat is deleted or the host stops.

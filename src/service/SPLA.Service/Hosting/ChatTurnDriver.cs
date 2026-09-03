@@ -91,7 +91,8 @@ internal sealed class ChatTurnDriver
                     {
                         MsgId = m.MsgId,
                         CreatedAt = m.CreatedAt.ToString("o"),
-                        Text = m.Content
+                        Text = m.Content,
+                        PeerFrom = m.PeerFrom
                     }));
 
             // SendAsync counts the turn before its first await, so the chat already reports itself
@@ -210,7 +211,10 @@ internal sealed class ChatTurnDriver
                     ToolName = tc.Function.Name,
                     Result = result.TextContent,
                     Outcome = result.Outcome.ToString(),
-                    Reason = result.Reason
+                    Reason = result.Reason,
+                    Resources = result.Content.OfType<SPLA.Domain.Models.ToolResource>()
+                        .Select(r => new ToolResourceDto { Uri = r.Uri, MimeType = r.MimeType, Description = r.Description })
+                        .ToList() is { Count: > 0 } resources ? resources : null
                 }),
             OnNotice = note => ToWatchers(MessageTypes.Notice, new NoticePayload { Text = note }),
             // Tells the windows what the call cost; recording it happened in the pipeline, so

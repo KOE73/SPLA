@@ -5,6 +5,15 @@ using YamlDotNet.Serialization.NamingConventions;
 
 namespace SPLA.Domain.Settings;
 
+/// <summary>
+/// Where a chat id currently resolves on disk — the distinction correspondence (PLAN_20260902 wave 4)
+/// needs and <see cref="ChatManager.LoadChat"/> alone cannot give: that method walks active-then-archived
+/// and hands back the same non-null <see cref="ChatSession"/> either way, so a caller that only calls it
+/// cannot tell "sleeping" from "gone quiet on purpose" — and the text of a correspondent's notice is
+/// different news for each (ADR_20260827-2 §2.4).
+/// </summary>
+public enum ChatLocation { Active, Archived, Missing }
+
 public class ChatManager
 {
     private readonly ResolvedSettings _settings;
@@ -67,7 +76,16 @@ public class ChatManager
         return File.Exists(archived) ? archived : null;
     }
 
-    public ChatSession CreateNewChat(string? title = null)
+    /// <summary>
+    /// Creates an ordinary chat. <paramref name="role"/> sets <c>as:</c> at the moment of creation
+    /// (rather than being patched on afterward) so that a caller opening a <see cref="ChatRuntime"/>
+    /// immediately on the returned session — <c>agent_correspond</c>'s on-demand correspondent chat,
+    /// PLAN_20260902 wave 5б — sees the role from its very first line: <c>ChatRuntime</c> resolves its
+    /// role's settings once, in its constructor, so a role stamped on <see cref="ChatSession.As"/>
+    /// after that runtime already exists would narrow nothing until the chat was closed and reopened.
+    /// Same reasoning <see cref="CreateSpawnedChat"/> already follows for a spawned session's own role.
+    /// </summary>
+    public ChatSession CreateNewChat(string? title = null, string? role = null)
     {
         var chat = new ChatSession
         {
@@ -85,12 +103,57 @@ public class ChatManager
             Agent = new SplaAgentSection
             {
                 Mode = _settings.Mode.ToString()
+            },
+            As = role
+        };
+
+        SaveChat(chat);
+        return chat;
+    }
+
+    /// <summary>
+    /// Creates a spawned session on disk: same shape as <see cref="CreateNewChat"/>, plus
+    /// <c>origin/parent/as</c> and an in-progress <see cref="ChatSessionSpawnInfo"/> (<c>outcome</c>
+    /// null). Title is left at the "New Chat" default so <see cref="SaveChat"/>'s own
+    /// first-message auto-title applies to it exactly like a human chat's.
+    /// See <c>docs/adr/ADR_20260902_core_session-unification.md</c> §2.1.
+    /// </summary>
+    public ChatSession CreateSpawnedChat(string? parentChatId, string? role, string? skillId, string mode)
+    {
+        var chat = new ChatSession
+        {
+            Id = GenerateChatId(),
+            Title = "New Chat",
+            Workspace = _settings.WorkspacePath,
+            ModelId = _settings.Models.FirstOrDefault()?.Id,
+            Model = new SplaLlmSection
+            {
+                Temperature = _settings.Temperature,
+                ReasoningLevel = _settings.ReasoningLevel
+            },
+            Agent = new SplaAgentSection
+            {
+                Mode = _settings.Mode.ToString()
+            },
+            Origin = "spawned",
+            Parent = parentChatId,
+            As = role,
+            Spawn = new ChatSessionSpawnInfo
+            {
+                SkillId = skillId,
+                Mode = mode,
+                StartedAt = DateTime.UtcNow,
+                Outcome = null
             }
         };
 
         SaveChat(chat);
         return chat;
     }
+
+    /// <summary><c>true</c> for a session <see cref="CreateSpawnedChat"/> made.</summary>
+    public static bool IsSpawned(ChatSession session) =>
+        string.Equals(session.Origin, "spawned", StringComparison.Ordinal);
 
     public void SaveChat(ChatSession session)
     {
@@ -128,6 +191,16 @@ public class ChatManager
         File.Move(temp, path, overwrite: true);
     }
 
+    /// <summary>Where <paramref name="id"/> currently lives, without loading or parsing it — a plain
+    /// file-existence check against both directories, deliberately independent of
+    /// <see cref="LoadChat"/>'s active-then-archived fallback. See <see cref="ChatLocation"/>.</summary>
+    public ChatLocation Locate(string id)
+    {
+        if (File.Exists(GetChatFilePath(id))) return ChatLocation.Active;
+        if (File.Exists(GetArchivedFilePath(id))) return ChatLocation.Archived;
+        return ChatLocation.Missing;
+    }
+
     public ChatSession? LoadChat(string id)
     {
         var path = FindChatFilePath(id);
@@ -137,7 +210,14 @@ public class ChatManager
         return Deserializer.Deserialize<ChatSession>(yaml);
     }
 
-    public List<ChatSession> ListChats() => ListChatsIn(_chatsDir);
+    /// <summary>Human-visible chats only — a spawned session is not a chat a person opened, and a
+    /// batch of spawns must not pollute this list (ADR §2.1: "shown under their parent in the role→chat
+    /// tree", not here — see wave 7). Use <see cref="ListSpawnedChats"/> to reach the ones this hides.</summary>
+    public List<ChatSession> ListChats() => ListChatsIn(_chatsDir).Where(c => !IsSpawned(c)).ToList();
+
+    /// <summary>Every spawned session on disk, most-recently-updated first — retention's own view,
+    /// and the future tree view's (wave 7).</summary>
+    public List<ChatSession> ListSpawnedChats() => ListChatsIn(_chatsDir).Where(IsSpawned).ToList();
 
     /// <summary>Chats moved aside by <see cref="Archive"/> — never mixed into <see cref="ListChats"/>
     /// since they live in a subfolder that its non-recursive glob does not see.</summary>

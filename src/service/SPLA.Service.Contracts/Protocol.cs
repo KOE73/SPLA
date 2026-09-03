@@ -298,6 +298,12 @@ public static class MessageTypes
     /// <summary>Cancel a live background task. Body <see cref="TaskCancelPayload"/>.</summary>
     public const string TaskCancel = "task.cancel";
 
+    /// <summary>Ask for the project-wide "who talks to whom" graph (PLAN_20260902 wave 7б;
+    /// <c>docs/adr/ADR_20260827-2_core_roles.md</c> §2.5's last row). No body — the graph is assembled
+    /// fresh from every session on disk on each request, deliberately independent of which chats happen
+    /// to be open (decision 3 of the wave). Reply <see cref="CorrespondenceGraphResult"/>.</summary>
+    public const string CorrespondenceGraphGet = "correspondence.graph.get";
+
     // ── Server → Client ──────────────────────────────────────────────────
     public const string Welcome = "welcome";
     public const string ChatListResult = "chat.list.result";
@@ -347,6 +353,8 @@ public static class MessageTypes
     /// (successfully, with a failure, or cancelled). Body <see cref="TaskStateChangedPayload"/>. Lets a
     /// task panel stay live without polling task.list/task.state.</summary>
     public const string TaskStateChanged = "task.state.changed";
+    /// <summary>Answer to <see cref="CorrespondenceGraphGet"/>. Body <see cref="CorrespondenceGraphResult"/>.</summary>
+    public const string CorrespondenceGraphResult = "correspondence.graph.result";
     public const string PermissionRequest = "permission.request";
     public const string ClarifyRequest = "clarify.request";
 

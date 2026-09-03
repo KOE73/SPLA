@@ -180,6 +180,8 @@ public sealed class AgentRuntimeRegistry : IDisposable
     private RuntimeEntry Build(string id, ResolvedSettings settings)
     {
         var runtime = new AgentRuntime(settings, _loggerFactory, instanceMode: InstanceMode);
+        // The registry attaches itself as the runner's session host in its own constructor, so every
+        // way of building one — the service, `spla chat`, a batch run — gets it. See ChatRegistry.
         var entry = new RuntimeEntry(runtime, new ChatRegistry(runtime));
         RuntimeCreated?.Invoke(id, entry);
         return entry;

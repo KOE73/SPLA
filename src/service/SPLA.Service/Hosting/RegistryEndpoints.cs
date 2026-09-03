@@ -259,7 +259,7 @@ public static class RegistryEndpoints
             var participants = live
                 .Where(e => string.Equals(e.ProjectId, id, StringComparison.OrdinalIgnoreCase))
                 .ToList();
-            var agent = participants.FirstOrDefault(e => e.Role == ParticipantRoles.Agent);
+            var agent = participants.FirstOrDefault(e => e.Kind == ParticipantKind.Agent);
 
             return new KnownProjectDto
             {
@@ -268,7 +268,7 @@ public static class RegistryEndpoints
                 Exists = File.Exists(id),
                 State = agent?.State,
                 InstanceId = agent?.Info.InstanceId,
-                Windows = participants.Count(e => e.Role == ParticipantRoles.Window),
+                Windows = participants.Count(e => e.Kind == ParticipantKind.Window),
                 McpAvailable = !string.IsNullOrEmpty(agent?.Info.Endpoint)
             };
         }).ToList();
