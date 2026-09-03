@@ -18,3 +18,4 @@ repository and is linked from it.
 - An exchange between two correspondents now decays instead of running forever.
 - The chat list is a tree, and a reply now renders as speech instead of as an ordinary message from a stranger.
 - A graph shows which actors talk to each other, and which one nobody answers.
+- Opening an archived chat no longer quietly brings it back to life.

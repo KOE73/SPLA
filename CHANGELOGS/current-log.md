@@ -81,3 +81,16 @@ sentences are what `current-list.md` is built from, which is why they have to st
   a confident lie. The graph is assembled from sessions on disk, so it does not change depending on
   which chats happen to be open, and each edge points from whoever invited first. The view leads with
   the imbalance rather than the picture: a role that only ever talks, and a role nobody answers.
+
+
+## 2026-09-03
+
+- **Opening an archived chat no longer quietly brings it back to life.** `chat.open` walked a path
+  that created a runtime for whatever id it was handed, so clicking an archived chat un-archived it in
+  everything but name — the list said archived, the session was running. `ChatRegistry.GetOrOpen` now
+  asks where the chat actually lives and refuses anything that is not active, and `chat.open` reports
+  "Chat is archived" rather than the misleading "Chat not found", so the client can tell a deliberate
+  refusal from a lost file. The cost is deliberate and recorded: until a read path exists there is no
+  way to look inside an archived chat at all — clicking one in the list now returns an error instead
+  of a resurrected conversation. Restoring the view without restoring the write is
+  [`PLAN_20260903_core_readonly-surface`](../docs/plans/PLAN_20260903_core_readonly-surface.md).
