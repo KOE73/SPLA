@@ -1,5 +1,7 @@
 import type {
+  BlockShape,
   EndShape,
+  RoutingMode,
   StyleTarget,
   WireEndpoint,
   WireHeader,
@@ -77,6 +79,16 @@ export interface ResolvedBlockStyle {
   readonly title: TextStyle;
   readonly subtitle: TextStyle;
   readonly icon: { readonly glyph: string; readonly show: boolean };
+  /** Outline to draw and to attach lines to. */
+  readonly shape: BlockShape;
+  /**
+   * Content template id, or null for the built-in "title only" look.
+   *
+   * Null rather than a default id on purpose: a workspace with no
+   * `templates.json` at all must still draw, and it should draw what it drew
+   * before templates existed.
+   */
+  readonly template: string | null;
 }
 
 export interface ResolvedEdgeStyle {
@@ -88,6 +100,14 @@ export interface ResolvedEdgeStyle {
   readonly label: TextStyle;
   readonly family: "structure" | "flow";
   readonly overview: boolean;
+  /**
+   * Line shape for this relation type, or null to take the view's choice.
+   *
+   * Null is the common case and the useful one: most edges should follow the
+   * picture's convention, and only types whose meaning has a shape — a tree
+   * for inheritance — pin it here.
+   */
+  readonly routing: RoutingMode | null;
 }
 
 // ------------------------------------------------------------------- fallbacks
@@ -123,6 +143,8 @@ export const FALLBACK_BLOCK: ResolvedBlockStyle = {
     color: "#64748b", align: "start", opacity: 1, show: true,
   },
   icon: { glyph: "📄", show: true },
+  shape: "rect",
+  template: null,
 };
 
 export const FALLBACK_EDGE: ResolvedEdgeStyle = {
@@ -137,6 +159,7 @@ export const FALLBACK_EDGE: ResolvedEdgeStyle = {
   },
   family: "flow",
   overview: false,
+  routing: null,
 };
 
 /**
@@ -479,6 +502,8 @@ function buildBlock(id: string, s: WireStyle): ResolvedBlockStyle {
       glyph: s.icon?.glyph ?? base.icon.glyph,
       show: s.icon?.show ?? base.icon.show,
     },
+    shape: s.shape ?? base.shape,
+    template: s.template ?? base.template,
   };
 }
 
@@ -493,6 +518,7 @@ function buildEdge(id: string, s: WireStyle): ResolvedEdgeStyle {
     label: textStyle(s.label, base.label),
     family: s.family ?? base.family,
     overview: s.overview ?? base.overview,
+    routing: s.routing ?? base.routing,
   };
 }
 

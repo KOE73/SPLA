@@ -40,22 +40,8 @@ export class BoxRenderer implements ElementRenderer {
     });
     g.replaceChildren();
 
-    // 1. Background / Drag handle rect
-    g.appendChild(
-      svg("rect", {
-        [ROLE_ATTR]: Role.DragHandle,
-        x: el.x,
-        y: el.y,
-        width: el.width,
-        height: el.height,
-        rx: style.radius,
-        fill: ctx.paints.fill(style.fill),
-        stroke: style.border.color,
-        "stroke-width": style.border.width,
-        "stroke-dasharray": dashArray(style.border.dash),
-        "stroke-opacity": style.border.opacity === 1 ? null : style.border.opacity,
-      }),
-    );
+    // 1. Background / Drag handle
+    g.appendChild(this.outline(el, style, ctx));
 
     // 2. Top Bar Zone: Controls (Doc button on left, Code button, Relations count on right)
     const textEntry = ctx.doc ? ctx.doc.getText(el.id, "ru") || ctx.doc.getText(el.id, "en") : undefined;
@@ -197,6 +183,38 @@ export class BoxRenderer implements ElementRenderer {
         ),
       );
     }
+  }
+
+  /**
+   * The element's own outline, and the thing the pointer grabs to drag it.
+   *
+   * Split out from `update` so that a differently shaped node — an ellipse, a
+   * cylinder, an actor — is a subclass that swaps this one method, rather than
+   * a second copy of the chrome above it. Doc button, code button, link badge,
+   * caption and subtitle are the same furniture whatever the outline is, and
+   * duplicating them per shape is how they drift apart.
+   */
+  protected outline(el: DiagramElement, style: ResolvedBlockStyle, ctx: RenderContext): SVGElement {
+    return svg("rect", {
+      [ROLE_ATTR]: Role.DragHandle,
+      x: el.x,
+      y: el.y,
+      width: el.width,
+      height: el.height,
+      rx: style.radius,
+      ...this.paintAttrs(style, ctx),
+    });
+  }
+
+  /** Fill and stroke as the style resolved them; shared by every outline. */
+  protected paintAttrs(style: ResolvedBlockStyle, ctx: RenderContext): Record<string, unknown> {
+    return {
+      fill: ctx.paints.fill(style.fill),
+      stroke: style.border.color,
+      "stroke-width": style.border.width,
+      "stroke-dasharray": dashArray(style.border.dash),
+      "stroke-opacity": style.border.opacity === 1 ? null : style.border.opacity,
+    };
   }
 
   visibleRect(el: DiagramElement): Rect {
