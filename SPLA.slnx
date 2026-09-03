@@ -186,6 +186,7 @@
     <File Path="docs/plans/PLAN_20260826_service_mcp-client.md" />
     <File Path="docs/plans/PLAN_20260827_core_context-retention.md" />
     <File Path="docs/plans/PLAN_20260902_agent_roles-and-correspondence.md" />
+    <File Path="docs/plans/HANDOFF_20260903_roles-and-correspondence.md" />
   </Folder>
   <Folder Name="/docs/ideas/">
     <File Path="docs/ideas/IDEA_20260611_core_todo-general.md" />
