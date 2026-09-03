@@ -25,7 +25,8 @@
     "typecheck": "tsc --noEmit -p tsconfig.json && tsc --noEmit -p tsconfig.node.json",
     "preview": "vite preview",
     "styles:emit": "node scripts/emit-styles.mjs",
-    "check:model": "node scripts/check-model.mjs ../../docs/diagrams/projects ../.."
+    "check:model": "node scripts/check-model.mjs ../../docs/diagrams/projects ../..",
+    "check:content-template": "node scripts/check-content-template.mjs"
   },
   "devDependencies": {
     "@types/node": "^26.3.0",

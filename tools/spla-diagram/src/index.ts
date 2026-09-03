@@ -99,3 +99,20 @@ export * from "./workbench/ribbon/types.js";
 
 // Global Layout & Geometry Configuration
 export { DIAGRAM_CONFIG, type DiagramConfig } from "./constants/diagram-constants.js";
+
+// Block content templates (ADR_20260903 §2.3). Compiler only — no renderer
+// yet; the tree it produces is not wired into DiagramCanvas.
+export { compileTemplate } from "./content/parser.js";
+export { DirectiveRegistry, createDefaultDirectiveRegistry } from "./content/directive-registry.js";
+export type { DirectiveSignature, PositionalShape } from "./content/directive-registry.js";
+export type {
+  CompileResult,
+  DirectiveArgs,
+  DirectiveNode,
+  GeometryArgs,
+  SizeValue,
+  TemplateCell,
+  TemplateError,
+  TemplateRow,
+  TemplateTree,
+} from "./content/template-types.js";
