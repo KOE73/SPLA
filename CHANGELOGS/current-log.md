@@ -94,3 +94,21 @@ sentences are what `current-list.md` is built from, which is why they have to st
   way to look inside an archived chat at all — clicking one in the list now returns an error instead
   of a resurrected conversation. Restoring the view without restoring the write is
   [`PLAN_20260903_core_readonly-surface`](../docs/plans/PLAN_20260903_core_readonly-surface.md).
+
+- **An archived chat can be read again, without being brought back to life to do it.** The refusal
+  above left nothing to look at; `chat.read` is the way back in. It hands over the chat's history off
+  disk — no runtime created, no watch registered, because an archived chat has nothing that could ever
+  emit an event — and the window renders it without a composer and without the status bar, which is
+  entirely settings for a next turn this chat will not take. A separate message type rather than
+  `chat.open` with a flag, deliberately: `chat.opened` means "this session is watchable and takes a
+  message", and reusing it would put the burden of remembering the archived case on every handler
+  built on that promise, one at a time, forever. Unarchiving turns it straight back into an ordinary
+  chat, and the window follows without being told twice.
+
+- **A sub-agent's window is for reading, and that is a rule rather than a convention one client
+  keeps.** Opening a spawned session shows the same log and progress tree as before but no composer:
+  by the time a watcher decided to intervene, the sub-agent has already changed its mind several
+  times. The server holds the same line while the run is going — a message sent to a spawned session
+  mid-run is refused there, so a CLI or third-party client that knows nothing about sub-agents is
+  refused on the same terms. Once the run has finished the session is an ordinary chat again, and the
+  hidden composer is taste, not prohibition.

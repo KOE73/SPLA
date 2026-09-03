@@ -78,6 +78,17 @@ Opening an archived chat used to bring it back to life in everything but name â€
 archived while the session ran. Opening one is now refused, and refused *legibly*: "Chat is archived",
 not the misleading "Chat not found", so a client can tell a deliberate answer from a lost file.
 
-This is honestly a trade rather than a clean win, and it is recorded as one: until a read path exists,
-there is no way to look inside an archived chat at all. Restoring the view without restoring the write
-is planned work, not an oversight.
+Refusing to open it left nothing to look at, so the same cycle adds the way back in: `chat.read`
+hands over an archived chat's history off disk, creating no runtime and registering no watch, and the
+window shows it without a composer and without the status bar â€” which is entirely settings for a next
+turn this chat will not take. That is a separate message type rather than a flag on `chat.open`, and
+the reason generalises: `chat.opened` is a promise that the session is watchable and takes a message,
+and reusing it here would put the burden of remembering the archived exception on every handler built
+on that promise, one at a time, forever.
+
+The same shape covers the other surface nobody may write to. A sub-agent's window shows its log and
+its progress tree with no composer, because by the time a watcher decided to intervene the sub-agent
+has changed its mind several times already. The difference worth stating is that this one is a rule
+and not a house style: while its run is going, a message sent to a spawned session is refused by the
+server, so a client that has never heard of sub-agents is refused on the same terms. Once the run
+ends the session is an ordinary chat again, and the hidden composer is taste rather than prohibition.

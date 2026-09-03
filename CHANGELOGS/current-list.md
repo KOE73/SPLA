@@ -19,3 +19,5 @@ repository and is linked from it.
 - The chat list is a tree, and a reply now renders as speech instead of as an ordinary message from a stranger.
 - A graph shows which actors talk to each other, and which one nobody answers.
 - Opening an archived chat no longer quietly brings it back to life.
+- An archived chat can be read again, without being brought back to life to do it.
+- A sub-agent's window is for reading, and that is a rule rather than a convention one client keeps.
