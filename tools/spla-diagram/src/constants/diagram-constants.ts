@@ -86,6 +86,12 @@ export const DIAGRAM_CONFIG = {
 
     /** Default marker / arrowhead size */
     defaultMarkerSize: 12,
+
+    /** How far an end label sits from the port along the line, in px. */
+    endLabelAlong: 14,
+
+    /** How far an end label sits off the line (perpendicular), so it clears the stroke. */
+    endLabelPerp: 9,
   },
 
   // ----------------------------------------------------------------- Handles & Grid

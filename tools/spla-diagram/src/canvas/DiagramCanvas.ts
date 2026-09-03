@@ -1076,6 +1076,39 @@ export class DiagramCanvas {
         );
       }
 
+      // Cardinality/role captions at the ends (ADR_20260903 §2.6). They share
+      // the centre label's style — a separate style axis for two more strings
+      // is not earned — and the router's own anchor, since only the router
+      // knows where its path actually leaves each port.
+      if (r.edge.fromLabel && style.label.show && route.fromLabelAt !== undefined) {
+        g.appendChild(
+          text(
+            {
+              ...textAttrs(style.label),
+              class: "spla-edge-label spla-edge-label-from",
+              x: route.fromLabelAt.x,
+              y: route.fromLabelAt.y,
+              "text-anchor": style.label.align,
+            },
+            r.edge.fromLabel,
+          ),
+        );
+      }
+      if (r.edge.toLabel && style.label.show && route.toLabelAt !== undefined) {
+        g.appendChild(
+          text(
+            {
+              ...textAttrs(style.label),
+              class: "spla-edge-label spla-edge-label-to",
+              x: route.toLabelAt.x,
+              y: route.toLabelAt.y,
+              "text-anchor": style.label.align,
+            },
+            r.edge.toLabel,
+          ),
+        );
+      }
+
       this.edgesLayer.appendChild(g);
     }
   }

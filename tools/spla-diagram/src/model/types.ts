@@ -82,9 +82,22 @@ export interface DiagramEdge {
   from: string;
   to: string;
   label: string;
+  /**
+   * Cardinality/role captions at the two ends — "1", "0..*", "owner"
+   * (ADR_20260903 §2.6). Plain strings in memory like every other text field;
+   * their provenance travels beside them the same way `label`'s does.
+   */
+  fromLabel?: string;
+  toLabel?: string;
   type: string;
   /** Pin to one named style; otherwise the style named after `type` wins. */
   styleId?: string;
+  /**
+   * Where this edge came from. A `code` edge carries no text at all — see
+   * `WireEdge.origin` — so the editor must not offer to edit `label`,
+   * `fromLabel` or `toLabel` on one.
+   */
+  origin?: "code" | "authored";
 }
 
 export interface DiagramView {

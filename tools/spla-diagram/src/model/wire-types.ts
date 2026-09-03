@@ -54,9 +54,21 @@ export interface WireEdge {
   from: string;
   to: string;
   label?: string;
+  /** Cardinality/role caption at the `from` end, e.g. "1" (ADR_20260903 §2.6). */
+  fromLabel?: string;
+  /** Cardinality/role caption at the `to` end, e.g. "0..*". */
+  toLabel?: string;
   type?: string;
   styleId?: string;
   points?: Array<{ x: number; y: number }>;
+  /**
+   * Where this edge came from. A generated (`code`) edge carries no text at
+   * all — not `label`, not `fromLabel`/`toLabel` — because `sync` would
+   * overwrite it and it would forever read as a stale translation
+   * (ADR_20260831 §2.13). Absent means "authored" for edges built by hand
+   * on a view, which never had a reason to declare it.
+   */
+  origin?: "code" | "authored";
 }
 
 export interface WireView {
@@ -116,6 +128,9 @@ export interface RelationEntry {
   type: string;
   relation?: string;
   label?: string;
+  /** Cardinality/role captions at each end (ADR_20260903 §2.6); absent for `origin: "code"`. */
+  fromLabel?: string;
+  toLabel?: string;
   styleId?: string;
   origin?: "code" | "authored";
   status?: "present" | "missing";
@@ -134,7 +149,10 @@ export interface RelationCatalog {
  * (see `text-provenance.ts`).
  */
 export interface TextCatalog {
-  entries: Record<string, { name?: string; title?: string; doc?: string; description?: string }>;
+  entries: Record<
+    string,
+    { name?: string; title?: string; doc?: string; description?: string; fromLabel?: string; toLabel?: string }
+  >;
 }
 
 /**

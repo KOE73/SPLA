@@ -127,6 +127,11 @@ export interface UiDictionary {
       readonly deleteEdgeBtn: string;
       readonly edgeLabelTitle: string;
       readonly edgeLabelPlaceholder: string;
+      readonly edgeFromLabelTitle: string;
+      readonly edgeFromLabelPlaceholder: string;
+      readonly edgeToLabelTitle: string;
+      readonly edgeToLabelPlaceholder: string;
+      readonly edgeCodeOriginNotice: string;
       readonly edgeTypeTitle: string;
       readonly edgeDisplayOnCanvas: string;
       readonly edgeEnabled: string;
@@ -142,6 +147,8 @@ export interface UiDictionary {
       readonly chooseTarget: string;
       readonly connectBtn: string;
       readonly labelPlaceholder: string;
+      readonly fromLabelPlaceholder: string;
+      readonly toLabelPlaceholder: string;
       readonly onScheme: string;
       readonly ghost: string;
       readonly deleteTooltip: string;

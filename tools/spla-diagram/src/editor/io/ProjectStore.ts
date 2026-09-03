@@ -144,17 +144,32 @@ export class HttpProjectStore implements ModelStore {
       ? viewData.edges
       : relationsRes.relations || [];
 
-    const translatedEdges = rawEdges.map((ve: any, i: number) => ({
-      id: ve.id || `edge_${i}`,
-      from: ve.from || ve.source,
-      to: ve.to || ve.target,
-      type: ve.type || ve.relation || "relates",
-      // Text of a relation lives in the text catalogue under its own id; a
-      // generated relation has none, and its meaning is carried by its type.
-      label: textRes.entries?.[ve.id]?.name || textRes.entries?.[ve.id]?.title || "",
-      styleId: ve.styleId,
-      points: ve.points || [],
-    }));
+    // A view's own edge placements don't repeat `origin` — only the relation
+    // registry does — so look it up by id to know whether this edge is
+    // allowed any text at all (ADR_20260831 §2.13).
+    const relationOriginById = new Map<string, "code" | "authored" | undefined>(
+      (relationsRes.relations || []).map((r) => [r.id, r.origin]),
+    );
+
+    const translatedEdges = rawEdges.map((ve: any, i: number) => {
+      const id = ve.id || `edge_${i}`;
+      const origin = relationOriginById.get(id) ?? ve.origin;
+      const text = origin === "code" ? undefined : textRes.entries?.[id];
+      return {
+        id,
+        from: ve.from || ve.source,
+        to: ve.to || ve.target,
+        type: ve.type || ve.relation || "relates",
+        // Text of a relation lives in the text catalogue under its own id; a
+        // generated relation has none, and its meaning is carried by its type.
+        label: text?.name || text?.title || "",
+        fromLabel: text?.fromLabel,
+        toLabel: text?.toLabel,
+        styleId: ve.styleId,
+        points: ve.points || [],
+        ...(origin === undefined ? {} : { origin }),
+      };
+    });
 
     /**
      * A view says what its containers classify; failing that, the project says
