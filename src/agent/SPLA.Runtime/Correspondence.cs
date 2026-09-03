@@ -49,8 +49,29 @@ public sealed class Correspondence
     /// <summary>Consecutive replies exchanged on this correspondence — what wave 6's debounce/ceiling
     /// regulator (ADR §2.4: "с ростом глубины обмена растёт дебаунс") will read once it exists. Wave 4
     /// only counts it on send; nothing yet resets it on external energy (<c>Human</c>/<c>TaskResult</c>)
-    /// or acts on its value.</summary>
+    /// or acts on its value.
+    /// <para>
+    /// Never reset — <c>ChatPump</c>'s own <c>_peerDepth</c> (the debounce counter ADR §2.4 actually
+    /// describes) is a separate, per-chat number that DOES reset on external energy; this field is the
+    /// lifetime count of replies THIS side has sent through this one address, which is exactly what
+    /// wave 7б's graph wants for "how many replies crossed this edge" (ADR §2.5's last row). Two
+    /// different questions, two different counters, same class name-ish concept — do not merge them.
+    /// </para></summary>
     public int Depth { get; set; }
+
+    /// <summary>
+    /// Lifetime estimated size (<see cref="SPLA.MCP.Core.Composition.TokenEstimate.Of"/>) of every
+    /// reply THIS side has sent through this correspondence — wave 7б's answer to "how much" (ADR
+    /// §2.5's last row: "объём считается по репликам и токенам на переписку").
+    /// <para>
+    /// Deliberately NOT a slice of a turn's real provider usage: a turn does many things besides send
+    /// this one reply (other tool calls, other correspondences, the model's own thinking), so
+    /// attributing the whole turn's token count to the edge that woke it would be a confident lie. This
+    /// is instead a plain, honestly-named estimate of exactly what crossed this edge — the text of the
+    /// reply itself, nothing else — computed the same provider-free way the composition layer already
+    /// estimates context size.
+    /// </para></summary>
+    public int VolumeEstimate { get; set; }
 
     /// <summary>
     /// The virtual <c>reply_&lt;role&gt;[_&lt;topic&gt;]</c> tool name this correspondence answers to,

@@ -1428,6 +1428,33 @@ public sealed class TaskStateChangedPayload
     public TaskSummaryDto Task { get; set; } = new();
 }
 
+// ── Correspondence graph (PLAN_20260902 wave 7б) ───────────────────────
+// See docs/adr/ADR_20260827-2_core_roles.md §2.5's last row. One wire DTO per
+// SPLA.Domain.Settings.CorrespondenceEdge — the service-side seam (RuntimeProjections' own pattern)
+// keeps the runtime/domain layer ignorant of DTOs, so the mapping lives beside the handler, not here.
+
+/// <summary>One edge of the project-wide correspondence graph — an arrow from whoever opened the
+/// correspondence to the correspondent they addressed, carrying both directions' reply counts and
+/// estimated token volume so a viewer can see imbalance directly: a role that only sends
+/// (<see cref="RepliesFromCorrespondent"/> stuck at zero) or a role nobody answers.</summary>
+public sealed class CorrespondenceEdgeDto
+{
+    public string FromChatId { get; set; } = string.Empty;
+    public string FromRole { get; set; } = string.Empty;
+    public string ToChatId { get; set; } = string.Empty;
+    public string ToRole { get; set; } = string.Empty;
+    public string Topic { get; set; } = string.Empty;
+    public int RepliesFromInitiator { get; set; }
+    public int VolumeFromInitiator { get; set; }
+    public int RepliesFromCorrespondent { get; set; }
+    public int VolumeFromCorrespondent { get; set; }
+}
+
+public sealed class CorrespondenceGraphResultPayload
+{
+    public List<CorrespondenceEdgeDto> Edges { get; set; } = new();
+}
+
 public sealed class PermissionRequestPayload
 {
     public string ToolName { get; set; } = string.Empty;

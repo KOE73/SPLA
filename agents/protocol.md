@@ -124,6 +124,7 @@ client/types **and** this table.
 | `task.list` | `TaskList` | `TaskListPayload` | List a chat's background tool calls (`background: true`), running and recently finished. Reply `task.list.result`. See `docs/adr/ADR_20260824-2_core_background-tool-calls.md`. |
 | `task.state` | `TaskState` | `TaskStatePayload` | Ask one task's current state — finished result if done, progress tail if still running. Reply `task.state.result`. An unknown task id answers `task: null`, not an error, the same way `subagent.get` treats an unknown run. |
 | `task.cancel` | `TaskCancel` | `TaskCancelPayload` | Cancel a live background task. No reply — observe the effect through the next `task.list`/`task.state`, the same as `chat.unwatch`. |
+| `correspondence.graph.get` | `CorrespondenceGraphGet` | — | Ask for the project-wide "who talks to whom" graph (`ADR_20260827-2` §2.5's last row). Reply `correspondence.graph.result`. Assembled fresh from every session on disk on each request — deliberately independent of which chats happen to be open (PLAN_20260902 wave 7б decision 3), so two requests a second apart can legitimately disagree if a chat saved in between. |
 
 ## Server → Client
 
@@ -134,6 +135,7 @@ client/types **and** this table.
 | `project.context` | `ProjectContext` | `ProjectContextPayload` | unicast | Answer to `project.open`/`project.create`. |
 | `instance.status.result` | `InstanceStatusResult` | `InstanceStatusPayload` | unicast | Answer to `instance.status`/`instance.stop` — a unicast reply to whoever asked, never fanned out to other clients. |
 | `chat.list.result` | `ChatListResult` | `ChatListResultPayload` | broadcast (project) | Every sidebar in that project refreshes. |
+| `correspondence.graph.result` | `CorrespondenceGraphResult` | `CorrespondenceGraphResultPayload` | unicast | Answer to `correspondence.graph.get`: one `CorrespondenceEdgeDto` per correspondence, oriented from whoever opened it (`FromRole`/`FromChatId`) to the correspondent they addressed (`ToRole`/`ToChatId`), carrying BOTH directions' reply counts and estimated token volume — `RepliesFromInitiator`/`VolumeFromInitiator` vs `RepliesFromCorrespondent`/`VolumeFromCorrespondent` — so a client can render the imbalance the graph exists to show (a role that only sends, a role nobody answers) without a second request. Volume is an honest estimate of the replies' own text (`TokenEstimate.Of`), never a slice of a turn's real provider usage. |
 | `chat.archived.list.result` | `ChatArchivedListResult` | `ChatArchivedListResultPayload` | unicast | Answer to `chat.archived.list`. |
 | `chat.opened` | `ChatOpened` | `ChatOpenedPayload` | unicast | Full chat state on open. |
 | `user.message` | `UserMessage` | `UserMessagePayload` | watchers | Accepted user message id/time; optional text renders server-initiated turns. `PeerFrom` set means this "user" turn is actually an incoming reply across a correspondence (`ADR_20260827-2` §2.5) — the client renders it as speech ("← from `PeerFrom`") instead of an ordinary human bubble, live, the moment it lands. |

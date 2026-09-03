@@ -724,6 +724,29 @@ export interface TaskStateChangedPayload {
   task: TaskSummaryDto;
 }
 
+// ── Correspondence graph (PLAN_20260902 wave 7б; ADR_20260827-2 §2.5's last row) ──────
+/** One edge of the project-wide "who talks to whom" graph — an arrow from whoever opened the
+ *  correspondence (`fromRole`/`fromChatId`) to the correspondent they addressed (`toRole`/
+ *  `toChatId`), carrying BOTH directions' reply counts and estimated token volume. The imbalance the
+ *  graph exists to show (a role that only sends, a role nobody answers) reads directly off one edge:
+ *  `repliesFromCorrespondent` stuck at 0 while `repliesFromInitiator` grows. Volume is an honest
+ *  estimate of the replies' own text, never a slice of a turn's real provider usage. */
+export interface CorrespondenceEdgeDto {
+  fromChatId: string;
+  fromRole: string;
+  toChatId: string;
+  toRole: string;
+  topic: string;
+  repliesFromInitiator: number;
+  volumeFromInitiator: number;
+  repliesFromCorrespondent: number;
+  volumeFromCorrespondent: number;
+}
+
+export interface CorrespondenceGraphResultPayload {
+  edges: CorrespondenceEdgeDto[];
+}
+
 // ── Events the server pushes unprompted (subscribe via client.on) ──────────────
 export interface ServerEvents {
   /**
@@ -747,6 +770,7 @@ export interface ServerEvents {
   "chat.reasoning.result": ChatReasoningResult;
   "chat.list.result": { chats: ChatSummary[] };
   "chat.archived.list.result": { chats: ChatSummary[] };
+  "correspondence.graph.result": CorrespondenceGraphResultPayload;
   "chat.cleared": Record<string, never>;
   "chat.current": ChatOpenedPayload;
   "focus.changed": { chatId: string };

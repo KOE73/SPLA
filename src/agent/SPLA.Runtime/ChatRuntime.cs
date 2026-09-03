@@ -513,6 +513,9 @@ public sealed class ChatRuntime : IDisposable, SPLA.Domain.Agent.IBackgroundTask
 
         correspondence.LastReplyAt = DateTimeOffset.UtcNow;
         correspondence.Depth++;
+        // Wave 7б (ADR §2.5's last row): the edge's volume is the replies themselves, never a slice of
+        // this turn's real provider usage — see Correspondence.VolumeEstimate's own comment for why.
+        correspondence.VolumeEstimate += SPLA.MCP.Core.Composition.TokenEstimate.Of(text);
 
         return new ReplyResult(ReplyOutcome.Delivered, null);
     }
@@ -699,6 +702,31 @@ public sealed class ChatRuntime : IDisposable, SPLA.Domain.Agent.IBackgroundTask
                 new SPLA.Domain.Security.DataOrigin(d.Zone, OperatorNamed: false),
                 d.What,
                 new DateTimeOffset(DateTime.SpecifyKind(d.At, DateTimeKind.Utc)))));
+
+        // Wave 7б: restore correspondences straight into the live dictionary rather than through
+        // OpenCorrespondence — that method decides ToolName fresh from "does a same-role correspondent
+        // already exist", which is exactly wrong here: the persisted ToolName was decided once, in the
+        // past, and must come back unchanged (plan trap 11) even if today's in-memory collision check
+        // would compute something different.
+        if (chat.Correspondences is { Count: > 0 })
+        {
+            foreach (var c in chat.Correspondences)
+            {
+                _correspondences[(c.Role, c.Topic)] = new Correspondence
+                {
+                    Role = c.Role,
+                    Topic = c.Topic,
+                    ChatId = c.ChatId,
+                    Initiator = string.Equals(c.Initiator, "correspondent", StringComparison.OrdinalIgnoreCase)
+                        ? CorrespondenceInitiator.Correspondent : CorrespondenceInitiator.Self,
+                    ToolName = c.ToolName,
+                    LastReplyAt = c.LastReplyAt,
+                    Depth = c.Depth,
+                    VolumeEstimate = c.VolumeEstimate
+                };
+            }
+        }
+
         // Wave 5б's narrowing: built fresh from the runtime's shared, read-only ToolSetRegistry plus
         // this chat's own resolved ToolSets (the role's narrowing of them, or — with no role — null,
         // which ChatToolHost treats as "skip the filter entirely" rather than "filter against
@@ -967,6 +995,22 @@ public sealed class ChatRuntime : IDisposable, SPLA.Domain.Agent.IBackgroundTask
         _chat.Doubt = _agentSession.Doubt.Causes
             .Select(c => new ChatSessionDoubt { Zone = c.Origin.Zone, What = c.What, At = c.At.UtcDateTime })
             .ToList();
+        // Wave 7б: a correspondence used to die with this ChatRuntime's memory. Persisted the same
+        // shape it lives in, with Depth/VolumeEstimate carrying forward the lifetime totals the graph
+        // reads back on the other side of a restart.
+        _chat.Correspondences = _correspondences.Count == 0
+            ? null
+            : _correspondences.Values.Select(c => new ChatSessionCorrespondence
+            {
+                Role = c.Role,
+                Topic = c.Topic,
+                ChatId = c.ChatId,
+                Initiator = c.Initiator == CorrespondenceInitiator.Correspondent ? "correspondent" : "self",
+                ToolName = c.ToolName,
+                LastReplyAt = c.LastReplyAt,
+                Depth = c.Depth,
+                VolumeEstimate = c.VolumeEstimate
+            }).ToList();
         _runtime.ChatManager.SaveChat(_chat);
     }
 

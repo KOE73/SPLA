@@ -96,6 +96,26 @@ public static class RuntimeProjections
         };
     }
 
+    /// <summary>The project-wide correspondence graph (PLAN_20260902 wave 7б;
+    /// <c>docs/adr/ADR_20260827-2_core_roles.md</c> §2.5's last row), assembled purely from sessions on
+    /// disk via <see cref="SPLA.Domain.Settings.CorrespondenceGraph.Build"/> — never from which chats
+    /// this or any other window happens to have open (decision 3 of the wave).</summary>
+    public static List<CorrespondenceEdgeDto> CorrespondenceGraph(this ChatRegistry chats)
+        => SPLA.Domain.Settings.CorrespondenceGraph.Build(chats.Runtime.ChatManager)
+            .Select(e => new CorrespondenceEdgeDto
+            {
+                FromChatId = e.FromChatId,
+                FromRole = e.FromRole,
+                ToChatId = e.ToChatId,
+                ToRole = e.ToRole,
+                Topic = e.Topic,
+                RepliesFromInitiator = e.RepliesFromInitiator,
+                VolumeFromInitiator = e.VolumeFromInitiator,
+                RepliesFromCorrespondent = e.RepliesFromCorrespondent,
+                VolumeFromCorrespondent = e.VolumeFromCorrespondent
+            })
+            .ToList();
+
     /// <summary>Archived chats as wire summaries. An archived chat can never have an open runtime
     /// (<see cref="ChatRegistry.Archive"/> closes it first), so <c>TurnActive</c>/<c>State</c> are
     /// always the idle defaults — nothing to peek at.</summary>

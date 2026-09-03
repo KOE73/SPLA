@@ -99,6 +99,59 @@ public class ChatSession
     /// </summary>
     [YamlMember(Alias = "doubt")]
     public List<ChatSessionDoubt> Doubt { get; set; } = new();
+
+    /// <summary>
+    /// This chat's live correspondences (<c>SPLA.Runtime.Correspondence</c>), persisted so an exchange
+    /// survives a restart instead of dying with the <c>ChatRuntime</c> that held it in memory
+    /// (<c>docs/plans/PLAN_20260902_agent_roles-and-correspondence.md</c> "Волна 7б";
+    /// <c>docs/adr/ADR_20260827-2_core_roles.md</c> §2.3's "один стор" — this rides alongside
+    /// <see cref="As"/>/<see cref="Parent"/>/<see cref="Origin"/> in the same session file rather than
+    /// a second store). Null/absent for every session written before this wave, which loads exactly as
+    /// it always did — no correspondences, nothing to restore
+    /// (<c>docs/adr/ADR_20260827_core_config-versioning.md</c>: absence of a new key is not an error).
+    /// <para>The project-wide "who talks to whom" graph (ADR §2.5's last row) is assembled by reading
+    /// this field off every session on disk (<c>ChatManager</c>), never from open runtimes — see
+    /// <c>SPLA.Domain.Settings.CorrespondenceGraph</c>.</para>
+    /// </summary>
+    [YamlMember(Alias = "correspondences")]
+    public List<ChatSessionCorrespondence>? Correspondences { get; set; }
+}
+
+/// <summary>Persisted mirror of one <c>SPLA.Runtime.Correspondence</c> — see that class for what each
+/// field means; this is only the on-disk shape (plain strings/ints, no enum, matching every other
+/// session field's YAML-friendliness).</summary>
+public class ChatSessionCorrespondence
+{
+    [YamlMember(Alias = "role")]
+    public string Role { get; set; } = string.Empty;
+
+    [YamlMember(Alias = "topic")]
+    public string Topic { get; set; } = string.Empty;
+
+    [YamlMember(Alias = "chat_id")]
+    public string ChatId { get; set; } = string.Empty;
+
+    /// <summary><c>"self"</c> or <c>"correspondent"</c> — mirrors <c>CorrespondenceInitiator</c>.</summary>
+    [YamlMember(Alias = "initiator")]
+    public string Initiator { get; set; } = "self";
+
+    [YamlMember(Alias = "tool_name")]
+    public string ToolName { get; set; } = string.Empty;
+
+    [YamlMember(Alias = "last_reply_at")]
+    public DateTimeOffset? LastReplyAt { get; set; }
+
+    /// <summary>Lifetime replies THIS chat has sent through this address — see
+    /// <c>Correspondence.Depth</c>'s own remark on why this is never reset, unlike <c>ChatPump</c>'s
+    /// unrelated debounce counter of a similar name.</summary>
+    [YamlMember(Alias = "depth")]
+    public int Depth { get; set; }
+
+    /// <summary>Lifetime estimated token volume of every reply THIS chat has sent through this
+    /// address — see <c>Correspondence.VolumeEstimate</c>'s own remark on why this is an honest
+    /// estimate of the replies themselves, never a slice of a turn's real usage.</summary>
+    [YamlMember(Alias = "volume_estimate")]
+    public int VolumeEstimate { get; set; }
 }
 
 /// <summary>What <c>subagent.get</c>/<c>subagent.result</c> answer with, persisted on the session

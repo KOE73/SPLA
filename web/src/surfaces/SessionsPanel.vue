@@ -7,6 +7,12 @@
   Reads store.chats like ChatList does; nothing here is chat-scoped state of its own (root AGENTS.md's
   "Web UI: Chat-Scoped State" rule — this panel is project-scoped, not per-chat, so a plain computed
   over the global store is exactly right, not a violation of it).
+
+  The correspondence graph section below (PLAN_20260902 wave 7б) lives here for the same reason: a
+  project-wide "who talks to whom" view belongs beside the other project-scoped panel, not inside any
+  one chat. `edges` is a local ref rather than something in state/store.ts because it is fetched once
+  per panel mount and never keyed by a chat — see correspondenceGraph.ts for the pure imbalance math
+  this view is built on.
 -->
 <template>
   <div class="sessions-panel">
@@ -26,15 +32,41 @@
         </span>
       </div>
     </div>
+
+    <!--
+      Correspondence graph (PLAN_20260902 wave 7б; ADR_20260827-2 §2.5's last row). Project-scoped,
+      not per-chat, fetched once on mount — same reasoning as the rest of this panel (see the
+      top-of-file note on the "Web UI: Chat-Scoped State" rule).
+    -->
+    <div class="graph-section">
+      <div class="graph-title">Who talks to whom</div>
+      <div v-if="!edges.length" class="sessions-empty">No correspondences yet.</div>
+      <template v-else>
+        <div v-if="imbalanced.length" class="graph-imbalance">
+          <div v-for="r in imbalanced" :key="r.kind + r.role" class="imbalance-row" :title="r.detail">
+            ⚠ {{ r.role }} — {{ r.label }}
+          </div>
+        </div>
+        <div v-for="e in edges" :key="e.fromChatId + e.toChatId + e.topic" class="edge-row">
+          <span class="edge-arrow">{{ e.fromRole }} → {{ e.toRole }}</span>
+          <span class="edge-counts" title="replies / estimated tokens, initiator → correspondent then back">
+            {{ e.repliesFromInitiator }}↦ ({{ e.volumeFromInitiator }}t)
+            &nbsp;·&nbsp;
+            {{ e.repliesFromCorrespondent }}↤ ({{ e.volumeFromCorrespondent }}t)
+          </span>
+        </div>
+      </template>
+    </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { computed } from "vue";
+import { computed, onMounted, onUnmounted, ref } from "vue";
 import { store } from "../state/store";
 import { client } from "../protocol/SplaClient";
-import type { ChatSummary } from "../protocol/types";
+import type { ChatSummary, CorrespondenceEdgeDto } from "../protocol/types";
 import { collectSpawned, titleOf } from "../state/chatTree";
+import { neverReplies, onlyTalks } from "../state/correspondenceGraph";
 import { openChatWindow, openPanel } from "../dock/dockController";
 
 const sessions = computed(() => collectSpawned(store.chats)
@@ -53,6 +85,23 @@ function open(chatId: string) {
   client.send("chat.open", { chatId });
   openPanel("chat");
 }
+
+// Project-wide, not per-chat state (see the file-top note) — a plain local ref is correct here,
+// not a violation of the chat-scoped-state rule: nothing below is keyed by store.currentChat.
+const edges = ref<CorrespondenceEdgeDto[]>([]);
+
+const imbalanced = computed(() => {
+  const rows: { kind: string; role: string; label: string; detail: string }[] = [];
+  for (const r of onlyTalks(edges.value))
+    rows.push({ kind: "talks", role: r.role, label: "only ever talks", detail: `sent ${r.sent} replies, received 0` });
+  for (const r of neverReplies(edges.value))
+    rows.push({ kind: "silent", role: r.role, label: "nobody hears back from", detail: `received ${r.received} replies, sent 0` });
+  return rows;
+});
+
+const offGraph = client.on("correspondence.graph.result", p => { edges.value = p.edges || []; });
+onUnmounted(offGraph);
+onMounted(() => client.send("correspondence.graph.get"));
 </script>
 
 <style scoped>
@@ -85,4 +134,12 @@ function open(chatId: string) {
 
 .session-meta { display: flex; gap: 10px; font-size: var(--fs-xs); color: var(--muted); flex-wrap: wrap; }
 .session-parent, .session-model, .session-tokens { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+.graph-section { display: flex; flex-direction: column; gap: 4px; margin-top: 8px; padding-top: 8px; border-top: 1px solid var(--border); }
+.graph-title { font-size: var(--fs-xs); font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: .04em; }
+.graph-imbalance { display: flex; flex-direction: column; gap: 2px; margin-bottom: 4px; }
+.imbalance-row { font-size: var(--fs-xs); color: var(--danger); }
+.edge-row { display: flex; justify-content: space-between; gap: 8px; font-size: var(--fs-xs); color: var(--text); padding: 2px 0; }
+.edge-arrow { font-weight: 500; }
+.edge-counts { color: var(--muted); white-space: nowrap; }
 </style>

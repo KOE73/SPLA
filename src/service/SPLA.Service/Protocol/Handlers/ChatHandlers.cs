@@ -20,6 +20,7 @@ internal sealed class ChatHandlers : IMessageHandler
         MessageTypes.ChatSkillActivate, MessageTypes.ChatSkillDeactivate,
         MessageTypes.ChatToolSetDeactivate, MessageTypes.ChatDoubtClear,
         MessageTypes.TaskList, MessageTypes.TaskState, MessageTypes.TaskCancel,
+        MessageTypes.CorrespondenceGraphGet,
     ];
 
     public Task HandleAsync(RequestContext ctx) => ctx.Env.Type switch
@@ -46,6 +47,7 @@ internal sealed class ChatHandlers : IMessageHandler
         MessageTypes.TaskList  => TaskList(ctx),
         MessageTypes.TaskState => TaskState(ctx),
         MessageTypes.TaskCancel => TaskCancel(ctx),
+        MessageTypes.CorrespondenceGraphGet => CorrespondenceGraphGet(ctx),
         _ => Task.CompletedTask
     };
 
@@ -53,6 +55,13 @@ internal sealed class ChatHandlers : IMessageHandler
     {
         var (entry, _) = ctx.Session.Resolve(ctx.Env);
         return ctx.Reply(MessageTypes.ChatListResult, new ChatListResultPayload { Chats = entry.Chats.List() });
+    }
+
+    private static Task CorrespondenceGraphGet(RequestContext ctx)
+    {
+        var (entry, _) = ctx.Session.Resolve(ctx.Env);
+        return ctx.Reply(MessageTypes.CorrespondenceGraphResult,
+            new CorrespondenceGraphResultPayload { Edges = entry.Chats.CorrespondenceGraph() });
     }
 
     private static async Task New(RequestContext ctx)
