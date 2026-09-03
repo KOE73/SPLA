@@ -72,3 +72,12 @@ sentences are what `current-list.md` is built from, which is why they have to st
   apart. Opening a spawned session in its own window stays a filter over one connection, never a
   second instance, and `ui.auto_open_subagents` (off by default) is the only thing that would ever pop
   one there by itself.
+
+- **A graph shows which actors talk to each other, and which one nobody answers.**
+  Correspondences now survive a restart — they live in the chat's own session file rather than only in
+  a running runtime — and each one accumulates how many replies crossed it and an estimate of their
+  text. The estimate measures what actually crossed the edge rather than the token usage of the turn a
+  reply happened to wake, because a turn does many things and charging all of it to one edge would be
+  a confident lie. The graph is assembled from sessions on disk, so it does not change depending on
+  which chats happen to be open, and each edge points from whoever invited first. The view leads with
+  the imbalance rather than the picture: a role that only ever talks, and a role nobody answers.
