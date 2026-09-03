@@ -18,7 +18,7 @@
 import { reactive } from "vue";
 import { client } from "../protocol/SplaClient";
 import { store } from "./store";
-import type { ChatDoubt, ToolProgressDetail, ToolSetState } from "../protocol/types";
+import type { ChatDoubt, ChatMessage, ToolProgressDetail, ToolSetState } from "../protocol/types";
 import type { ToolCallState } from "../surfaces/ToolCard.vue";
 
 export type LogItem =
@@ -63,6 +63,13 @@ export interface ChatSession {
    *  send an image attached in one chat to another). */
   draft: string;
   attachments: string[];
+
+  /** True when this window holds the chat as a frozen snapshot rather than a live session: it was
+   *  filled by `chat.read` (an archived chat), or it is a spawned run someone is watching. Set from
+   *  what the server said, never from which button was pressed — and it is the SURFACE that is
+   *  read-only, not the chat: the same id read here and later unarchived becomes an ordinary session
+   *  the moment `chat.opened` arrives, which clears this. */
+  readOnly: boolean;
 
   // ── Log: expensive, evictable ─────────────────────────────────────────────
   /** False when the log has never been loaded, or was dropped to save memory. */
@@ -126,6 +133,7 @@ function blank(chatId: string): ChatSession {
     ctxWindow: null,
     draft: "",
     attachments: [],
+    readOnly: false,
     logLoaded: false,
     items: [],
     pending: [],
@@ -259,10 +267,51 @@ client.on("chat.opened", (p, env) => {
   s.toolSets = p.toolSets || [];
   s.doubt = p.doubt ?? null;
   s.turnActive = !!p.turnActive;
+  // An open is the opposite of a read: whatever made this session read-only (an archived snapshot,
+  // a spawned run being watched) no longer holds once the server hands back a live session.
+  s.readOnly = false;
   // Another chat has a different history size — a stale percentage is a lie until its first turn.
   s.lastPrompt = s.lastCompletion = s.ctxUsed = s.ctxWindow = null;
 
-  for (const m of p.messages) {
+  hydrateMessages(s, p.messages);
+});
+
+/**
+ * An archived chat, handed over as history to look at. Deliberately does NOT set `store.currentChat`
+ * here — that is the caller's decision, exactly as it is for `chat.opened` (see main.ts) — and
+ * deliberately sends no `chat.watch`: there is no runtime behind an archived chat, so there is
+ * nothing that could ever emit an event to watch for.
+ */
+client.on("chat.read.result", (p, env) => {
+  const s = sessionFor(p.chatId || env.chatId || "");
+  s.items = [];
+  s.pending = [];
+  s.calls = {};
+  s.logLoaded = true;
+  s.readOnly = p.readOnly !== false;
+  s.turnActive = false;
+  // None of the per-turn knobs mean anything for a chat that will not take another turn, and showing
+  // the ones left over from whatever was open before would be a straight lie about this chat.
+  s.mode = "";
+  s.modelId = "";
+  s.temperature = null;
+  s.reasoning = "";
+  s.activeSkill = null;
+  s.toolSets = [];
+  s.doubt = null;
+  s.lastPrompt = s.lastCompletion = s.ctxUsed = s.ctxWindow = null;
+
+  hydrateMessages(s, p.messages);
+});
+
+/**
+ * Turns a chat's persisted messages into log items. Shared by `chat.opened` and `chat.read.result`
+ * because the two differ in what the chat IS, not in how its history reads — and a second copy of
+ * this would drift, making an archived chat render subtly unlike the same chat before it was
+ * archived.
+ */
+function hydrateMessages(s: ChatSession, messages: ChatMessage[]) {
+  for (const m of messages) {
     if (m.role === "user") {
       s.items.push({ kind: "user", key: nextKey(), text: m.content || "",
         images: m.images, msgId: m.msgId, createdAt: m.createdAt, peerFrom: m.peerFrom });
@@ -284,7 +333,7 @@ client.on("chat.opened", (p, env) => {
         text: "← tool result (" + (m.content || "").length + " chars)" });
     }
   }
-});
+}
 
 on("user.message", (s, p: { msgId: string; text?: string; createdAt?: string; peerFrom?: string }) => {
   // A peer-kind arrival (p.peerFrom set) never has a local optimistic echo to attach to — nothing in

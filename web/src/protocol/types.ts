@@ -96,6 +96,15 @@ export interface ChatSummary {
   children?: ChatSummary[];
 }
 
+/** Answer to `chat.read`: an archived chat's history, with none of the per-turn settings a live
+ *  session carries — see the server-side `ChatReadResultPayload` for why the absences are the point. */
+export interface ChatReadResultPayload {
+  chatId: string;
+  title: string;
+  messages: ChatMessage[];
+  readOnly: boolean;
+}
+
 export interface ChatOpenedPayload {
   chatId: string;
   title?: string;
@@ -770,6 +779,7 @@ export interface ServerEvents {
   "chat.reasoning.result": ChatReasoningResult;
   "chat.list.result": { chats: ChatSummary[] };
   "chat.archived.list.result": { chats: ChatSummary[] };
+  "chat.read.result": ChatReadResultPayload;
   "correspondence.graph.result": CorrespondenceGraphResultPayload;
   "chat.cleared": Record<string, never>;
   "chat.current": ChatOpenedPayload;

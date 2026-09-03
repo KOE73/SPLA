@@ -1,4 +1,4 @@
-using System.Collections.Concurrent;
+﻿using System.Collections.Concurrent;
 using SPLA.Domain.Interfaces;
 namespace SPLA.Runtime;
 
@@ -196,6 +196,21 @@ public sealed class ChatRegistry : IDisposable, ISpawnSessionHost
     /// find out: the chat list projects this for every chat on disk, and loading them all would turn
     /// listing into a full read of the project's history.</summary>
     public ChatRuntime? Peek(string chatId) => _open.TryGetValue(chatId, out var c) ? c : null;
+
+    /// <summary>Reads an archived chat's file as data — history to look at, with no
+    /// <see cref="ChatRuntime"/> created and nothing added to <c>_open</c>. Null unless the id is
+    /// actually <see cref="ChatLocation.Archived"/>: an active chat has a real runtime and must be
+    /// reached through <see cref="GetOrOpen"/>, not read behind its own back.
+    ///
+    /// <para>The symmetric counterpart of <see cref="Peek"/> — that one answers about a live chat
+    /// without touching the disk, this one answers from the disk without waking anything. Together
+    /// they are the two ways of asking about a chat you are not opening (PLAN_20260903 stage 1);
+    /// <see cref="GetOrOpen"/> refusing an archived id is what makes this necessary rather than
+    /// merely tidy.</para></summary>
+    public SPLA.Domain.Models.ChatSession? ReadArchived(string chatId)
+        => _runtime.ChatManager.Locate(chatId) == SPLA.Domain.Settings.ChatLocation.Archived
+            ? _runtime.ChatManager.LoadChat(chatId)
+            : null;
 
     // ── ISpawnSessionHost ────────────────────────────────────────────────────────────────────────
     // See docs/adr/ADR_20260902_core_session-unification.md §2.1/§2.3. A spawned session never enters

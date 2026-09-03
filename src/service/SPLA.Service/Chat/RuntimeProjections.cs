@@ -1,4 +1,4 @@
-using SPLA.Domain.Models;
+﻿using SPLA.Domain.Models;
 using SPLA.Domain.Settings;
 using SPLA.Runtime;
 using SPLA.Service.Contracts;
@@ -23,6 +23,40 @@ public static class RuntimeProjections
                 if (files is { Count: > 0 })
                     dto.Images = files.Select(f => ChatImages.Url(chat.ChatId, f)).ToList();
                 return dto;
+            })
+            .ToList();
+
+    /// <summary>The same projection for a chat read straight off the disk, with no runtime behind it
+    /// (<see cref="ChatRegistry.ReadArchived"/>). Reads the persisted messages rather than a live
+    /// conversation, which is why it cannot simply call the overload above — but it must agree with it
+    /// on every visible detail, or an archived chat would render subtly differently from the same chat
+    /// before it was archived, and the difference would look like data loss.</summary>
+    public static List<ChatMessageDto> SnapshotMessages(this ChatSession chat)
+        => chat.Messages
+            .Where(m => !string.Equals(m.Role, "system", StringComparison.OrdinalIgnoreCase))
+            .Select(m => new ChatMessageDto
+            {
+                MsgId = m.Id,
+                Role = m.Role.ToLowerInvariant(),
+                Content = m.Content,
+                Reasoning = m.Reasoning,
+                CreatedAt = m.CreatedAt.ToString("o"),
+                ToolCallId = m.ToolCallId,
+                PeerFrom = m.PeerFrom,
+                ToolCalls = m.ToolCalls?.Select(ProtocolMapper.ToDto).ToList(),
+                Attempts = m.Attempts?.Select(a => new AttemptDto
+                {
+                    Index = a.Index,
+                    Outcome = a.Outcome,
+                    Note = a.Note,
+                    Chars = a.Chars,
+                    DurationMs = a.DurationMs,
+                    Content = a.Content,
+                    Reasoning = a.Reasoning
+                }).ToList(),
+                Images = m.Images is { Count: > 0 }
+                    ? m.Images.Select(f => ChatImages.Url(chat.Id, f)).ToList()
+                    : null
             })
             .ToList();
 

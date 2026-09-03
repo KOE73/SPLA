@@ -1,4 +1,4 @@
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using System.Text.Json;
 
 namespace SPLA.Service.Contracts;
@@ -210,6 +210,25 @@ public sealed class ChatArchivePayload
 public sealed class ChatArchivedListResultPayload
 {
     public List<ChatSummaryDto> Chats { get; set; } = new();
+}
+
+/// <summary>Answer to <see cref="MessageTypes.ChatRead"/>: an archived chat's history as something to
+/// look at, never as a session to write to.
+///
+/// <para>Carries far less than <see cref="ChatOpenedPayload"/>, and the absences are the point. No
+/// mode, model, temperature, reasoning, skill or tool sets — those describe what a chat would do on
+/// its next turn, and this chat has no next turn. No <c>TurnActive</c> or <c>State</c> for the same
+/// reason: nothing is running, by definition of being archived.</para></summary>
+public sealed class ChatReadResultPayload
+{
+    public string ChatId { get; set; } = string.Empty;
+    public string Title { get; set; } = string.Empty;
+    public List<ChatMessageDto> Messages { get; set; } = new();
+
+    /// <summary>Always <c>true</c> today — archived is the only thing read this way so far. Present
+    /// so the client renders "this is a frozen snapshot" from what the server said, rather than from
+    /// remembering which button it pressed to get here.</summary>
+    public bool ReadOnly { get; set; } = true;
 }
 
 public sealed class ChatSendPayload

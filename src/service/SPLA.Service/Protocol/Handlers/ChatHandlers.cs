@@ -1,4 +1,4 @@
-﻿using SPLA.Domain.Models;
+using SPLA.Domain.Models;
 using SPLA.Domain.Tools;
 using SPLA.MCP.Core.ToolSets;
 using SPLA.Runtime;
@@ -14,7 +14,7 @@ internal sealed class ChatHandlers : IMessageHandler
     [
         MessageTypes.ChatList, MessageTypes.ChatNew, MessageTypes.ChatRename, MessageTypes.ChatDelete,
         MessageTypes.ChatArchive, MessageTypes.ChatUnarchive, MessageTypes.ChatArchivedList,
-        MessageTypes.ChatOpen, MessageTypes.ChatWatch, MessageTypes.ChatUnwatch,
+        MessageTypes.ChatOpen, MessageTypes.ChatRead, MessageTypes.ChatWatch, MessageTypes.ChatUnwatch,
         MessageTypes.ChatSend, MessageTypes.ChatSettings, MessageTypes.ChatReasoningGet,
         MessageTypes.ChatRewind, MessageTypes.ChatFork,
         MessageTypes.ChatSkillActivate, MessageTypes.ChatSkillDeactivate,
@@ -33,6 +33,7 @@ internal sealed class ChatHandlers : IMessageHandler
         MessageTypes.ChatUnarchive => Unarchive(ctx),
         MessageTypes.ChatArchivedList => ListArchived(ctx),
         MessageTypes.ChatOpen     => Open(ctx),
+        MessageTypes.ChatRead     => Read(ctx),
         MessageTypes.ChatWatch    => Watch(ctx),
         MessageTypes.ChatUnwatch  => Unwatch(ctx),
         MessageTypes.ChatSend     => Send(ctx),
@@ -144,6 +145,37 @@ internal sealed class ChatHandlers : IMessageHandler
         await ctx.Session.SendOpenedAsync(chat);
     }
 
+    /// <summary>Hands back an archived chat's history to look at. Never creates a runtime, and
+    /// deliberately never calls <c>MarkChatOpen</c>: a watch subscribes this connection to turn
+    /// events, and an archived chat has no runtime that could ever produce one — registering it would
+    /// leave the id stuck in the connection's watch set until the client thought to unwatch something
+    /// it never watched.</summary>
+    private static async Task Read(RequestContext ctx)
+    {
+        var (entry, _) = ctx.Session.Resolve(ctx.Env);
+        var p = ctx.Payload<ChatOpenPayload>();
+        var session = p != null ? entry.Chats.ReadArchived(p.ChatId) : null;
+        if (session == null)
+        {
+            // Symmetric with Open's own distinction: say which of the two things went wrong, because
+            // "an active chat, open it properly" and "no such chat" call for different behaviour from
+            // the client, and one message for both taught it nothing.
+            var active = p != null && entry.Chats.Locate(p.ChatId) == SPLA.Domain.Settings.ChatLocation.Active;
+            var message = active
+                ? $"Chat is active, not archived — open it instead of reading it: {p!.ChatId}"
+                : $"Chat not found: {p?.ChatId}";
+            await ctx.Send(MessageTypes.Error, new ErrorPayload { Message = message });
+            return;
+        }
+
+        await ctx.Reply(MessageTypes.ChatReadResult, new ChatReadResultPayload
+        {
+            ChatId = session.Id,
+            Title = session.Title,
+            Messages = session.SnapshotMessages()
+        });
+    }
+
     private static Task Watch(RequestContext ctx)
     {
         // Registers this connection as a watcher of both the chat (for turn events) and the project
@@ -181,6 +213,13 @@ internal sealed class ChatHandlers : IMessageHandler
         // second writer here is exactly the race one pump per chat exists to prevent (ADR §2.2). Once
         // the run has finished (Spawn.Outcome is set) the session is a chat like any other and this
         // falls through as normal.
+        //
+        // PLAN_20260903 stage 2 asked whether the client's read-only sub-agent window is a facade over
+        // a real rule or merely a convention this one client keeps. It is a real rule, and this is it:
+        // the refusal lives here, so a CLI or a third-party client that knows nothing about sub-agents
+        // is refused on the same terms. What is deliberately NOT enforced is the window after the run
+        // ends — a finished spawned session is an ordinary chat, and the client hides its composer as
+        // a matter of taste (a sub-agent's window is for reading), not because writing would be wrong.
         if (chat.Session.Origin == "spawned" && chat.Session.Spawn?.Outcome is null)
         {
             await ctx.Send(MessageTypes.Error, new ErrorPayload

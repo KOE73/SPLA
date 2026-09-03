@@ -55,7 +55,7 @@
         :chat="chat"
         :active="chat.id === store.currentChat"
         archived
-        @select="onChatClick"
+        @select="onArchivedClick"
         @restore="restore"
         @delete-permanently="removePermanently"
       />
@@ -118,6 +118,16 @@ function newChat() { client.send("chat.new", { title: null }); }
 
 function onChatClick(chatId: string) {
   client.send("chat.open", { chatId });
+  openPanel("chat");
+}
+
+// An archived chat is read, not opened. `chat.open` refuses it on purpose (the server stopped
+// resurrecting archived chats on 2026-09-03), so the archived section asks for the history instead —
+// which the surface then shows without a composer. Setting currentChat here rather than waiting for
+// the answer is what `chat.opened` does through main.ts; the read answer carries no such convention.
+function onArchivedClick(chatId: string) {
+  store.currentChat = chatId;
+  client.send("chat.read", { chatId });
   openPanel("chat");
 }
 

@@ -28,3 +28,13 @@ export function titleOf(list: ChatSummary[], id: string): string {
   return id;
 }
 
+/** One chat anywhere in the tree by id, or undefined. What a surface needs to ask about a chat it is
+ *  showing — is this a spawned session? — without the caller learning the tree's shape. */
+export function findChat(list: ChatSummary[], id: string): ChatSummary | undefined {
+  for (const c of list) {
+    if (c.id === id) return c;
+    const found = c.children?.length ? findChat(c.children, id) : undefined;
+    if (found) return found;
+  }
+  return undefined;
+}

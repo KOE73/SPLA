@@ -5,7 +5,7 @@
  * degrades to the id itself for an orphaned/deleted parent rather than throwing or guessing.
  */
 import { describe, expect, it } from "vitest";
-import { collectSpawned, titleOf } from "./chatTree";
+import { collectSpawned, findChat, titleOf } from "./chatTree";
 import type { ChatSummary } from "../protocol/types";
 
 function chat(id: string, extra: Partial<ChatSummary> = {}): ChatSummary {
@@ -92,5 +92,17 @@ describe("titleOf", () => {
     const target = chat("target", { title: "some title" });
     const list = [chat("other", { children: [target] }), chat("target-decoy")];
     expect(titleOf(list, "target")).toBe("some title");
+  });
+
+  it("finds a chat at any depth, and undefined for one that is not there", () => {
+    const tree = [
+      { id: "a", title: "A", children: [
+        { id: "b", title: "B", origin: "spawned", children: [
+          { id: "c", title: "C", origin: "spawned" }] }] }
+    ] as ChatSummary[];
+
+    expect(findChat(tree, "a")?.origin).toBeUndefined();
+    expect(findChat(tree, "c")?.origin).toBe("spawned");
+    expect(findChat(tree, "nope")).toBeUndefined();
   });
 });

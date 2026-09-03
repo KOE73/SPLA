@@ -1,4 +1,4 @@
-using System.Text.Json;
+﻿using System.Text.Json;
 
 namespace SPLA.Service.Contracts;
 
@@ -99,6 +99,19 @@ public static class MessageTypes
     public const string ChatUnarchive = "chat.unarchive";
     /// <summary>Lists archived chats. Answered with <see cref="ChatArchivedListResult"/>.</summary>
     public const string ChatArchivedList = "chat.archived.list";
+    /// <summary>Reads an archived chat's history without opening it. Body is
+    /// <see cref="ChatOpenPayload"/> (an id is all it needs); answered with
+    /// <see cref="ChatReadResult"/>.
+    /// <para>Deliberately NOT <see cref="ChatOpen"/> with a read-only flag on the answer.
+    /// <see cref="ChatOpened"/> means "this session is now watchable and will take a
+    /// <see cref="ChatSend"/>", and every handler reacting to it is built on that promise; reusing it
+    /// would put the burden of remembering the archived case on each of those handlers, one at a time,
+    /// forever. A separate type spares them the case by construction. There is no runtime behind this
+    /// answer, so it also registers no watch — see <see cref="ChatWatch"/> — because there is nothing
+    /// that could ever emit an event for it.</para></summary>
+    public const string ChatRead = "chat.read";
+    /// <summary>Answer to <see cref="ChatRead"/>. Body is <see cref="ChatReadResultPayload"/>.</summary>
+    public const string ChatReadResult = "chat.read.result";
     public const string ChatSend = "chat.send";
     /// <summary>Discard messages after (optionally including) an anchor message. Body is
     /// <see cref="ChatRewindPayload"/>; the server re-sends <see cref="ChatOpened"/>.</summary>
