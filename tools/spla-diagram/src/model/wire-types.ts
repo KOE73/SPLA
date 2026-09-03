@@ -260,6 +260,11 @@ export interface ViewNodePlacement {
   width?: number;
   height?: number;
   styleId?: string;
+  /**
+   * Content template for this one placement, overriding the style's choice.
+   * The exception: one node that must show more, or less, than its kind does.
+   */
+  template?: string;
 }
 
 export interface ViewEdgePlacement {
@@ -271,6 +276,8 @@ export interface ViewEdgePlacement {
   label?: string;
   styleId?: string;
   points?: Array<{ x: number; y: number }>;
+  /** Line shape for this edge alone; see `WireEdge.routing`. */
+  routing?: RoutingMode;
 }
 
 export interface ViewDocument {
@@ -287,6 +294,11 @@ export interface ViewDocument {
    * and the model check reports it.
    */
   axis?: string;
+  /**
+   * The line shape this picture uses unless a relation type or a single edge
+   * says otherwise. A convention of the drawing, not of the model.
+   */
+  routing?: RoutingMode;
   zones?: ViewZonePlacement[];
   nodes?: ViewNodePlacement[];
   placements?: ViewNodePlacement[];

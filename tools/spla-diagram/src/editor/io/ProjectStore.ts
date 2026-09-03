@@ -274,6 +274,10 @@ export class HttpProjectStore implements ModelStore {
       width: n.width,
       height: n.height,
       styleId: n.styleId,
+      // Written back because the author put it there. A field the loader reads
+      // but the saver drops is worse than one that never existed: the first
+      // save quietly deletes a hand-made choice.
+      ...(typeof n.metadata?.template === "string" ? { template: n.metadata.template } : {}),
     }));
 
     const edges: ViewEdgePlacement[] = (wire.edges || []).map((e) => ({
@@ -283,12 +287,14 @@ export class HttpProjectStore implements ModelStore {
       type: e.type,
       styleId: e.styleId,
       points: e.points || [],
+      ...(e.routing === undefined ? {} : { routing: e.routing }),
     }));
 
     const cleanView: ViewDocument = {
       id: bundle.view.id || "v_main",
       project: bundle.project.id,
       axis: bundle.view.axis,
+      ...(bundle.view.routing === undefined ? {} : { routing: bundle.view.routing }),
       ...(bundle.view.relations ? { relations: bundle.view.relations } : {}),
       zones,
       nodes,
