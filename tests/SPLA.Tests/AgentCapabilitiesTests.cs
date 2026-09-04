@@ -184,6 +184,71 @@ public sealed class AgentCapabilitiesTests
         Assert.DoesNotContain(without, c => c.Id == "working-memory");
     }
 
+    /// <summary>An implied capability is the underside of another one, so writing it by hand buys
+    /// nothing: core.roles alone would hand out the role directory without the right to address
+    /// anyone, which is the leak hiding it from settings is meant to close.</summary>
+    [Fact]
+    public void An_implied_capability_written_by_hand_does_not_enable_itself()
+    {
+        var root = TempRoot();
+        try
+        {
+            using var runtime = BuildRuntime(root, "  capabilities: [core.roles, core.memory]\n");
+
+            Assert.DoesNotContain("core.roles", runtime.EnabledFeatureIds);
+            Assert.Contains("core.memory", runtime.EnabledFeatureIds);
+            Assert.DoesNotContain("role_list", RegisteredToolNames(runtime));
+        }
+        finally { Directory.Delete(root, recursive: true); }
+    }
+
+    /// <summary>…but it still arrives with whoever requires it: addressing a role brings the directory.</summary>
+    [Fact]
+    public void Spawn_capability_still_pulls_the_implied_roles_directory_in()
+    {
+        var root = TempRoot();
+        try
+        {
+            using var runtime = BuildRuntime(root, "  capabilities: [core.spawn]\n");
+
+            Assert.Contains("core.roles", runtime.EnabledFeatureIds);
+            Assert.Contains("role_list", RegisteredToolNames(runtime));
+            Assert.Contains("agent_spawn", RegisteredToolNames(runtime));
+        }
+        finally { Directory.Delete(root, recursive: true); }
+    }
+
+    /// <summary>"No restriction" is untouched by the implied rule — everything means everything.</summary>
+    [Fact]
+    public void Absent_capabilities_still_include_the_implied_ones()
+    {
+        var resolved = AgentFeatureCatalog.Resolve(null);
+
+        Assert.Equal(AgentFeatureCatalog.Order, resolved);
+        Assert.Contains("core.roles", resolved);
+    }
+
+    /// <summary>The settings panel offers choices, and an implied id is not one — neither as a row of
+    /// its own nor inside another row's "needs …" list, which would point at a row that is not there.</summary>
+    [Fact]
+    public void The_settings_capability_list_hides_implied_ids()
+    {
+        var root = TempRoot();
+        try
+        {
+            using var runtime = BuildRuntime(root, capabilitiesYaml: null);
+
+            var offered = SPLA.Service.SettingsOps.GetFeatures(runtime).Features;
+            var ids = offered.Select(f => f.Id).ToList();
+
+            Assert.DoesNotContain("core.roles", ids);
+            Assert.Contains("core.spawn", ids);
+            // Every "needs …" the panel can print resolves to a row that is actually in the list.
+            Assert.All(offered, f => Assert.All(f.Requires, dep => Assert.Contains(dep, ids)));
+        }
+        finally { Directory.Delete(root, recursive: true); }
+    }
+
     [Fact]
     public void Unknown_capability_id_is_ignored_without_failing_to_load()
     {
