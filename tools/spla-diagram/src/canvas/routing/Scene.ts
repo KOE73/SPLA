@@ -50,7 +50,7 @@ export const EMPTY_SCENE: RouteScene = { zones: [] };
  * How far a line keeps off a shape it is not attached to. Also the width of
  * the discouraged band along a container's outline.
  */
-export const CLEARANCE = 12;
+export const CLEARANCE = 8;
 
 /** Cost of a container's border band, per unit length. */
 const BORDER_WEIGHT = 6;
