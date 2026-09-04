@@ -249,6 +249,22 @@ public sealed class AgentCapabilitiesTests
         finally { Directory.Delete(root, recursive: true); }
     }
 
+    /// <summary>An implied id can only ever be enabled by something requiring it, so one that nothing
+    /// requires would be unreachable — and would quietly break "full set" detection: SettingsOps calls
+    /// the selection complete when its count matches <see cref="AgentFeatureCatalog.Order"/>, which
+    /// holds only because ticking every offered row still drags each underside in. Asserted directly
+    /// rather than left to the panel test, because the day it breaks is the day someone adds the
+    /// second implied id.</summary>
+    [Fact]
+    public void Every_implied_capability_is_required_by_something()
+    {
+        var implied = AgentFeatureCatalog.Order.Where(AgentFeatureCatalog.IsImplied).ToList();
+
+        Assert.All(implied, id => Assert.Contains(
+            AgentFeatureCatalog.Order.Where(other => !AgentFeatureCatalog.IsImplied(other)),
+            other => AgentFeatureCatalog.RequiresOf(other).Contains(id)));
+    }
+
     [Fact]
     public void Unknown_capability_id_is_ignored_without_failing_to_load()
     {
