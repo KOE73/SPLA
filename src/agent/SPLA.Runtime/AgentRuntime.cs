@@ -424,6 +424,8 @@ public sealed class AgentRuntime : IDisposable
             Feature("core.toolsets",
                 new SPLA.MCP.Core.Tools.ToolSetActivateTool(ToolSets),
                 new SPLA.MCP.Core.Tools.ToolSetDeactivateTool()),
+            Feature("core.roles",
+                new SPLA.MCP.Core.Tools.RoleListTool(settings)),
             Feature("core.spawn",
                 new SPLA.MCP.Core.Tools.AgentSpawnTool(SpawnedRunner),
                 new SPLA.MCP.Core.Tools.AgentSpawnBatchTool(SpawnedRunner)),

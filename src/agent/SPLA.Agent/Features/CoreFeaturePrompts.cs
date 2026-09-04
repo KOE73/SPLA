@@ -33,6 +33,9 @@ public static class CoreFeaturePrompts
             ["core.toolsets"] = "SPLA.Agent.Features.CoreToolSets.prompt.md",
             ["core.shell"] = "SPLA.Agent.Features.CoreShell.prompt.md",
             ["core.background_tasks"] = "SPLA.Agent.Features.CoreBackgroundTasks.prompt.md",
+            // core.roles carries the text spawn and correspond do not: how to address a role at all,
+            // and why a manager delegates the introduction instead of relaying messages himself.
+            ["core.roles"] = "SPLA.Agent.Features.CoreRoles.prompt.md",
         };
 
     private static readonly ConcurrentDictionary<string, string?> Cache = new();

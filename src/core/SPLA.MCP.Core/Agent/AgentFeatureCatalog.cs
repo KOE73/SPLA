@@ -25,6 +25,7 @@ public static class AgentFeatureCatalog
         "core.checkpoints",
         "core.skills",
         "core.toolsets",
+        "core.roles",
         "core.spawn",
         "core.correspond",
         "core.clarify",
@@ -35,6 +36,13 @@ public static class AgentFeatureCatalog
     private static readonly Dictionary<string, string[]> RequiresMap = new(System.StringComparer.Ordinal)
     {
         ["core.checkpoints"] = new[] { "core.memory" },
+        // Addressing a role and knowing which roles exist are not the same capability — spawning a
+        // one-off worker and holding a running conversation stay separate, because they are separate
+        // actions — but neither can be used sensibly against a directory the caller cannot see. So
+        // core.roles is not merged into either: it is required by both, and a project that turns on
+        // addressing gets the directory with it rather than having to remember a second id.
+        ["core.spawn"] = new[] { "core.roles" },
+        ["core.correspond"] = new[] { "core.roles" },
     };
 
     /// <summary>Ids another feature depends on, or empty when it has none.</summary>
@@ -55,6 +63,7 @@ public static class AgentFeatureCatalog
         ["core.checkpoints"] = "Save and restore a point in the conversation to go back to.\ncontext_checkpoint_set context_checkpoint_restore mark_set mark_rollback",
         ["core.skills"] = "Turn skills on or off and read their files.\nskill_activate skill_deactivate skill_read_resource skill_find",
         ["core.toolsets"] = "Turn a group of tools on or off.\ntoolset_activate toolset_deactivate",
+        ["core.roles"] = "See which roles this project has, so you can address one.\nrole_list",
         ["core.spawn"] = "Start one or many sub-agents to do a task.\nagent_spawn agent_spawn_batch",
         ["core.correspond"] = "Open a correspondence with another role and reply to it.\nagent_correspond (plus a per-chat reply_<role>[_<topic>] once one is open)",
         ["core.clarify"] = "Ask the user a question and wait for the answer.\nagent_clarify",

@@ -35,6 +35,7 @@ public sealed class AgentCapabilitiesTests
         "checkpoint_save", "context_rollback", "mark_set", "mark_rollback",
         "skill_activate", "skill_deactivate", "skill_read_resource", "skill_find",
         "toolset_activate", "toolset_deactivate",
+        "role_list",
         "agent_spawn", "agent_spawn_batch",
         "agent_correspond",
         "agent_clarify",

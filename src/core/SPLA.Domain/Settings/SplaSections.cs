@@ -166,6 +166,21 @@ public class SplaRoleSection
     [YamlMember(Alias = "custom_prompt")]
     public string? CustomPrompt { get; set; }
 
+    /// <summary>One line saying what this role is for, written for STRANGERS: it is what the role
+    /// catalog shows another chat that is choosing whom to task or whom to write to (see the
+    /// <c>role_list</c> tool). Optional — a role without one is still listed, simply undescribed.
+    ///
+    /// <para>This is the outward half of a role, and <see cref="CustomPrompt"/> is the inward one.
+    /// The split is deliberate and is not a matter of verbosity: the body of a role carries its
+    /// character together with <see cref="Capabilities"/>, <see cref="Islands"/> and
+    /// <see cref="TrustedDomains"/> — the shape of what it is allowed to reach — so handing it to
+    /// whoever asks would publish a security decision sideways, past the zone model
+    /// (<c>ADR_20260811_core_security-zones</c>). One sentence goes out; the prompt stays in, and
+    /// whoever genuinely needs to read it opens <c>roles/&lt;name&gt;.yaml</c> where they have the
+    /// right to read files.</para></summary>
+    [YamlMember(Alias = "description")]
+    public string? Description { get; set; }
+
     [YamlMember(Alias = "loop_guard")]
     public bool? LoopGuard { get; set; }
 

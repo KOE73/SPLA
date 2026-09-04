@@ -22,6 +22,7 @@
     <EmbeddedResource Include="Features\CoreToolSets\prompt.md" LogicalName="SPLA.Agent.Features.CoreToolSets.prompt.md" />
     <EmbeddedResource Include="Features\CoreShell\prompt.md" LogicalName="SPLA.Agent.Features.CoreShell.prompt.md" />
     <EmbeddedResource Include="Features\CoreBackgroundTasks\prompt.md" LogicalName="SPLA.Agent.Features.CoreBackgroundTasks.prompt.md" />
+    <EmbeddedResource Include="Features\CoreRoles\prompt.md" LogicalName="SPLA.Agent.Features.CoreRoles.prompt.md" />
   </ItemGroup>
 
 </Project>
