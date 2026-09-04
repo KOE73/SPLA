@@ -82,6 +82,42 @@ const cases = [
     toRect: { x: 300, y: 200, width: 100, height: 100 },
     fromInset: 8, toInset: 8, fromMarkerOffset: 10, toMarkerOffset: 12,
   },
+  {
+    name: "route straight through an obstacle block",
+    from: { x: 100, y: 50 }, to: { x: 400, y: 50 },
+    fromSide: "east", toSide: "west",
+    fromRect: { x: 0, y: 0, width: 100, height: 100 },
+    toRect: { x: 400, y: 0, width: 100, height: 100 },
+    obstacles: [{ x: 200, y: 0, width: 100, height: 100 }],
+    boundaries: [],
+  },
+  {
+    name: "route hugging a container boundary",
+    from: { x: 100, y: 105 }, to: { x: 300, y: 105 },
+    fromSide: "east", toSide: "west",
+    fromRect: { x: 0, y: 50, width: 100, height: 100 },
+    toRect: { x: 300, y: 50, width: 100, height: 100 },
+    obstacles: [],
+    boundaries: [{ x: 50, y: 0, width: 400, height: 100 }],
+  },
+  {
+    name: "impossible: obstacle flush against both endpoints",
+    from: { x: 100, y: 50 }, to: { x: 100, y: 51 },
+    fromSide: "east", toSide: "west",
+    fromRect: { x: 0, y: 0, width: 100, height: 100 },
+    toRect: { x: 100, y: 0, width: 1, height: 100 },
+    obstacles: [{ x: 90, y: -10, width: 220, height: 120 }],
+    boundaries: [{ x: -1000, y: -1000, width: 3000, height: 3000 }],
+  },
+  {
+    name: "obstacle equal to own endpoint rect (must not be avoided)",
+    from: { x: 100, y: 50 }, to: { x: 300, y: 50 },
+    fromSide: "east", toSide: "west",
+    fromRect: { x: 0, y: 0, width: 100, height: 100 },
+    toRect: { x: 300, y: 0, width: 100, height: 100 },
+    obstacles: [{ x: 0, y: 0, width: 100, height: 100 }, { x: 300, y: 0, width: 100, height: 100 }],
+    boundaries: [],
+  },
 ];
 
 let failures = 0;

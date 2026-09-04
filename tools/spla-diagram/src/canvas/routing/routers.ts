@@ -14,13 +14,32 @@
  * (fromRect/toRect) plus the shape-aware insets/marker offsets already
  * computed by the caller — same contract BezierRouter uses.
  */
-import type { Point, Side } from "../../geometry/types.js";
+import type { Point, Rect, Side } from "../../geometry/types.js";
 import type { EdgeRouter, Route, RouteRequest } from "./EdgeRouter.js";
 
 /** Local to this file: EdgeRouter.ts / diagram-constants.ts are off-limits while
  * a parallel change is in flight there, so the fillet radius for the
  * orthogonal router's rounded corners lives here instead of DIAGRAM_CONFIG. */
 const ORTHOGONAL_FILLET_RADIUS = 10;
+
+/**
+ * Obstacle-avoidance and boundary-hug constants (ADR_20260903 §2.8, first
+ * approximation). Local to this file for the same reason as the fillet
+ * radius above.
+ */
+/** How far a detour clears an obstacle's bounding box (px). */
+const OBSTACLE_DETOUR_MARGIN = 16;
+/** Minimum perpendicular clearance a segment must keep from a container
+ * boundary it runs parallel to (px) — below this it reads as "on" the line. */
+const BOUNDARY_GAP = 10;
+/** Minimum overlap along the shared axis before a near-parallel segment
+ * counts as "running alongside" a boundary edge rather than just grazing it
+ * on the way through. */
+const BOUNDARY_OVERLAP_MIN = 4;
+/** Shrink applied to obstacle rects before testing for interior crossings,
+ * so a segment that merely touches an obstacle's edge (e.g. a port on its
+ * boundary) is not flagged as passing through it. */
+const OBSTACLE_EPS = 0.5;
 
 function offsetPoint(p: Point, side: Side, distance: number): Point {
   if (distance <= 0) return p;
@@ -174,6 +193,253 @@ function endLabels(pFrom: Point, fromSide: Side, pTo: Point, toSide: Side) {
   };
 }
 
+// ------------------------------------------------------- obstacle avoidance
+
+function isFinitePoint(p: Point): boolean {
+  return Number.isFinite(p.x) && Number.isFinite(p.y);
+}
+
+function isFiniteRect(r: Rect): boolean {
+  return Number.isFinite(r.x) && Number.isFinite(r.y) && Number.isFinite(r.width) && Number.isFinite(r.height);
+}
+
+/** Whether `point` lies within `rect` (inclusive, with a small tolerance). */
+function rectContainsPoint(rect: Rect, point: Point, eps = 0.5): boolean {
+  return (
+    point.x >= rect.x - eps && point.x <= rect.x + rect.width + eps &&
+    point.y >= rect.y - eps && point.y <= rect.y + rect.height + eps
+  );
+}
+
+function sameRect(a: Rect, b: Rect, eps = 0.01): boolean {
+  return Math.abs(a.x - b.x) < eps && Math.abs(a.y - b.y) < eps &&
+    Math.abs(a.width - b.width) < eps && Math.abs(a.height - b.height) < eps;
+}
+
+/**
+ * Obstacles that are really "this edge's own ends" in disguise: the two
+ * endpoint rects themselves, or any rect one of the endpoints sits inside
+ * (a collapsed/parent container the port is drawn against). A route has to
+ * be allowed to leave and arrive through those — they are not "someone
+ * else's block" (task brief, §obstacles).
+ */
+function isEndpointRelated(rect: Rect, fromRect: Rect, toRect: Rect, pFrom: Point, pTo: Point): boolean {
+  if (!isFiniteRect(rect)) return true; // degenerate: treat as unusable, drop it from consideration
+  if (sameRect(rect, fromRect) || sameRect(rect, toRect)) return true;
+  if (rectContainsPoint(rect, pFrom) || rectContainsPoint(rect, pTo)) return true;
+  return false;
+}
+
+/** Does the closed axis-aligned segment a→b pass *through the interior* of
+ * `rect` (touching an edge does not count)? Both routers here only ever
+ * build axis-aligned (Manhattan) segments, so this simple case-split is
+ * exact — no general line/rect clipping needed. */
+function segmentCrossesRectInterior(a: Point, b: Point, rect: Rect): boolean {
+  if (!isFinitePoint(a) || !isFinitePoint(b) || !isFiniteRect(rect)) return false;
+  const innerX0 = rect.x + OBSTACLE_EPS;
+  const innerX1 = rect.x + rect.width - OBSTACLE_EPS;
+  const innerY0 = rect.y + OBSTACLE_EPS;
+  const innerY1 = rect.y + rect.height - OBSTACLE_EPS;
+  if (innerX0 >= innerX1 || innerY0 >= innerY1) return false; // too thin to have an interior worth avoiding
+
+  if (a.y === b.y) {
+    // Horizontal segment.
+    if (a.y <= innerY0 || a.y >= innerY1) return false;
+    const lo = Math.min(a.x, b.x);
+    const hi = Math.max(a.x, b.x);
+    return lo < innerX1 && hi > innerX0;
+  }
+  if (a.x === b.x) {
+    // Vertical segment.
+    if (a.x <= innerX0 || a.x >= innerX1) return false;
+    const lo = Math.min(a.y, b.y);
+    const hi = Math.max(a.y, b.y);
+    return lo < innerY1 && hi > innerY0;
+  }
+  // Non-axis-aligned segment (shouldn't occur for these routers): skip
+  // rather than guess — a false negative here just falls back to the base
+  // route, which is never worse than the pre-avoidance behaviour.
+  return false;
+}
+
+function countCrossings(points: readonly Point[], obstacles: readonly Rect[]): number {
+  let count = 0;
+  for (let i = 0; i + 1 < points.length; i++) {
+    const a = points[i];
+    const b = points[i + 1];
+    if (!a || !b) continue;
+    for (const rect of obstacles) {
+      if (segmentCrossesRectInterior(a, b, rect)) count++;
+    }
+  }
+  return count;
+}
+
+function pathLength(points: readonly Point[]): number {
+  let total = 0;
+  for (let i = 0; i + 1 < points.length; i++) {
+    const a = points[i];
+    const b = points[i + 1];
+    if (!a || !b) continue;
+    total += segLength(a, b);
+  }
+  return total;
+}
+
+interface Bbox { minX: number; minY: number; maxX: number; maxY: number }
+
+function unionBbox(rects: readonly Rect[]): Bbox | null {
+  let out: Bbox | null = null;
+  for (const r of rects) {
+    if (!isFiniteRect(r)) continue;
+    const b: Bbox = { minX: r.x, minY: r.y, maxX: r.x + r.width, maxY: r.y + r.height };
+    out = out === null ? b : {
+      minX: Math.min(out.minX, b.minX), minY: Math.min(out.minY, b.minY),
+      maxX: Math.max(out.maxX, b.maxX), maxY: Math.max(out.maxY, b.maxY),
+    };
+  }
+  return out;
+}
+
+/**
+ * Four candidate detours around the bounding box of the obstacles the base
+ * route collides with — go around above, below, left of, or right of the
+ * blocking cluster. Each is a simple 4-point "bus" jog, not a shortest-path
+ * search: cheap, deterministic, and good enough for the common case of one
+ * or two blocks sitting in the way (task brief: "не переусложняй").
+ */
+function detourCandidates(pFrom: Point, pTo: Point, bbox: Bbox): Point[][] {
+  const gateTop = bbox.minY - OBSTACLE_DETOUR_MARGIN;
+  const gateBottom = bbox.maxY + OBSTACLE_DETOUR_MARGIN;
+  const gateLeft = bbox.minX - OBSTACLE_DETOUR_MARGIN;
+  const gateRight = bbox.maxX + OBSTACLE_DETOUR_MARGIN;
+  return [
+    [pFrom, { x: pFrom.x, y: gateTop }, { x: pTo.x, y: gateTop }, pTo],
+    [pFrom, { x: pFrom.x, y: gateBottom }, { x: pTo.x, y: gateBottom }, pTo],
+    [pFrom, { x: gateLeft, y: pFrom.y }, { x: gateLeft, y: pTo.y }, pTo],
+    [pFrom, { x: gateRight, y: pFrom.y }, { x: gateRight, y: pTo.y }, pTo],
+  ];
+}
+
+/**
+ * Picks the best of the base route and a handful of detours around whatever
+ * it collides with, by (fewest obstacle crossings, then shortest, then
+ * fewest bends). Pure and stateless per ADR_20260903 §2.7/§2.8: no search
+ * state survives the call, and worst case (nothing clears the obstacle) it
+ * simply returns the base route rather than nothing.
+ */
+function avoidObstacles(
+  base: Point[],
+  pFrom: Point,
+  pTo: Point,
+  fromRect: Rect,
+  toRect: Rect,
+  obstacles: readonly Rect[] | undefined,
+): Point[] {
+  if (!obstacles || obstacles.length === 0) return base;
+  const relevant = obstacles.filter((r) => !isEndpointRelated(r, fromRect, toRect, pFrom, pTo));
+  if (relevant.length === 0) return base;
+
+  const baseCrossings = countCrossings(base, relevant);
+  if (baseCrossings === 0) return base;
+
+  const colliding = relevant.filter((r) => {
+    for (let i = 0; i + 1 < base.length; i++) {
+      const a = base[i];
+      const b = base[i + 1];
+      if (a && b && segmentCrossesRectInterior(a, b, r)) return true;
+    }
+    return false;
+  });
+  const bbox = unionBbox(colliding.length > 0 ? colliding : relevant);
+  if (bbox === null) return base;
+
+  const candidates = [base, ...detourCandidates(pFrom, pTo, bbox)];
+  let best = base;
+  let bestScore: [number, number, number] = [baseCrossings, pathLength(base), base.length];
+  for (const candidate of candidates) {
+    if (candidate.some((p) => !isFinitePoint(p))) continue;
+    const score: [number, number, number] = [countCrossings(candidate, relevant), pathLength(candidate), candidate.length];
+    if (
+      score[0] < bestScore[0] ||
+      (score[0] === bestScore[0] && score[1] < bestScore[1]) ||
+      (score[0] === bestScore[0] && score[1] === bestScore[1] && score[2] < bestScore[2])
+    ) {
+      best = candidate;
+      bestScore = score;
+    }
+  }
+  return best;
+}
+
+// -------------------------------------------------------- boundary hugging
+
+/**
+ * Nudges interior segments that run parallel to, and within `BOUNDARY_GAP`
+ * of, a container's border away from it — so the line reads as crossing
+ * into the zone rather than merging with its outline (task brief, issue 1).
+ *
+ * Only *interior* segments (both endpoints are corner points the router
+ * invented, not port attachment points) are ever moved: the first and last
+ * segment touch `pFrom`/`pTo` exactly where the caller placed the port, and
+ * moving those would detach the line from the shape it is meant to leave.
+ */
+function avoidBoundaryHug(points: readonly Point[], boundaries: readonly Rect[] | undefined): Point[] {
+  if (!boundaries || boundaries.length === 0 || points.length < 4) return points.slice();
+  const out = points.map((p) => ({ ...p }));
+
+  for (let i = 1; i + 2 < out.length; i++) {
+    const a = out[i];
+    const b = out[i + 1];
+    if (!a || !b || !isFinitePoint(a) || !isFinitePoint(b)) continue;
+
+    if (a.y === b.y) {
+      // Horizontal segment: check against top/bottom edges of each boundary.
+      let y = a.y;
+      for (const rect of boundaries) {
+        if (!isFiniteRect(rect)) continue;
+        const lo = Math.min(a.x, b.x);
+        const hi = Math.max(a.x, b.x);
+        const overlap = Math.min(hi, rect.x + rect.width) - Math.max(lo, rect.x);
+        if (overlap < BOUNDARY_OVERLAP_MIN) continue;
+        for (const edgeY of [rect.y, rect.y + rect.height]) {
+          const dist = Math.abs(y - edgeY);
+          if (dist < BOUNDARY_GAP) {
+            const dir = y >= edgeY ? 1 : -1; // push further to whichever side it already leans
+            y = edgeY + dir * BOUNDARY_GAP;
+          }
+        }
+      }
+      if (Number.isFinite(y)) {
+        a.y = y;
+        b.y = y;
+      }
+    } else if (a.x === b.x) {
+      // Vertical segment: check against left/right edges of each boundary.
+      let x = a.x;
+      for (const rect of boundaries) {
+        if (!isFiniteRect(rect)) continue;
+        const lo = Math.min(a.y, b.y);
+        const hi = Math.max(a.y, b.y);
+        const overlap = Math.min(hi, rect.y + rect.height) - Math.max(lo, rect.y);
+        if (overlap < BOUNDARY_OVERLAP_MIN) continue;
+        for (const edgeX of [rect.x, rect.x + rect.width]) {
+          const dist = Math.abs(x - edgeX);
+          if (dist < BOUNDARY_GAP) {
+            const dir = x >= edgeX ? 1 : -1;
+            x = edgeX + dir * BOUNDARY_GAP;
+          }
+        }
+      }
+      if (Number.isFinite(x)) {
+        a.x = x;
+        b.x = x;
+      }
+    }
+  }
+  return out;
+}
+
 /**
  * Manhattan "ladder": leaves `from` along its side's normal, arrives at `to`
  * along its side's normal, with a single perpendicular jog connecting the
@@ -189,14 +455,16 @@ export class OrthogonalRouter implements EdgeRouter {
   readonly id = "orthogonal";
 
   route(req: RouteRequest): Route {
-    const { from, to, fromSide, toSide } = req;
+    const { from, to, fromSide, toSide, fromRect, toRect } = req;
     const fromOffset = req.fromMarkerOffset ?? 0;
     const toOffset = req.toMarkerOffset ?? 0;
 
     const pFrom = offsetPoint(from, fromSide, fromOffset);
     const pTo = offsetPoint(to, toSide, toOffset);
 
-    const points = buildOrthogonalPath(pFrom, fromSide, pTo, toSide);
+    const base = buildOrthogonalPath(pFrom, fromSide, pTo, toSide);
+    const routed = avoidObstacles(base, pFrom, pTo, fromRect, toRect, req.obstacles);
+    const points = avoidBoundaryHug(routed, req.boundaries);
     const path = filletedPath(points, ORTHOGONAL_FILLET_RADIUS);
 
     return {
@@ -278,14 +546,16 @@ export class TreeHorizontalRouter implements EdgeRouter {
   readonly id = "tree-horizontal";
 
   route(req: RouteRequest): Route {
-    const { from, to, fromSide, toSide } = req;
+    const { from, to, fromSide, toSide, fromRect, toRect } = req;
     const fromOffset = req.fromMarkerOffset ?? 0;
     const toOffset = req.toMarkerOffset ?? 0;
 
     const pFrom = offsetPoint(from, fromSide, fromOffset);
     const pTo = offsetPoint(to, toSide, toOffset);
 
-    const points = buildTreePath(pFrom, pTo, "x");
+    const base = buildTreePath(pFrom, pTo, "x");
+    const routed = avoidObstacles(base, pFrom, pTo, fromRect, toRect, req.obstacles);
+    const points = avoidBoundaryHug(routed, req.boundaries);
     return {
       path: safePolylinePath(points),
       labelAt: labelOnLongestSegment(points),
@@ -303,14 +573,16 @@ export class TreeVerticalRouter implements EdgeRouter {
   readonly id = "tree-vertical";
 
   route(req: RouteRequest): Route {
-    const { from, to, fromSide, toSide } = req;
+    const { from, to, fromSide, toSide, fromRect, toRect } = req;
     const fromOffset = req.fromMarkerOffset ?? 0;
     const toOffset = req.toMarkerOffset ?? 0;
 
     const pFrom = offsetPoint(from, fromSide, fromOffset);
     const pTo = offsetPoint(to, toSide, toOffset);
 
-    const points = buildTreePath(pFrom, pTo, "y");
+    const base = buildTreePath(pFrom, pTo, "y");
+    const routed = avoidObstacles(base, pFrom, pTo, fromRect, toRect, req.obstacles);
+    const points = avoidBoundaryHug(routed, req.boundaries);
     return {
       path: safePolylinePath(points),
       labelAt: labelOnLongestSegment(points),

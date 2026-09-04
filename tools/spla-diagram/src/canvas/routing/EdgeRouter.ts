@@ -16,6 +16,20 @@ export interface RouteRequest {
   readonly fromMarkerOffset?: number;
   /** Marker length at the end of the line (px) */
   readonly toMarkerOffset?: number;
+  /**
+   * Other blocks' rectangles the route should not pass through (ADR_20260903
+   * §2.8, first approximation). Optional so existing callers and
+   * `BezierRouter` — which never reasons about obstacles — are unaffected.
+   * A router that ignores this simply draws through obstacles as before.
+   */
+  readonly obstacles?: readonly Rect[];
+  /**
+   * Container/zone rectangles the route may cross (entering a zone is
+   * legitimate) but must not run *along* within a small gap — hugging a
+   * boundary makes the line visually disappear into the container's own
+   * outline. Optional for the same reason as `obstacles`.
+   */
+  readonly boundaries?: readonly Rect[];
 }
 
 export interface Route {

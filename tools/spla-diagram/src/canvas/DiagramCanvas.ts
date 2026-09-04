@@ -1098,6 +1098,20 @@ export class DiagramCanvas {
     }
     const ports = this.portAssigner.assign(requests);
 
+    // Obstacle/boundary rects for routers that avoid collisions (ADR_20260903
+    // §2.8): every other visible node is a potential obstacle, every visible
+    // container/zone a boundary a route may cross but must not run along.
+    // Computed once per render, not per edge — the router itself filters out
+    // each edge's own two ends (BezierRouter ignores both fields entirely).
+    const obstacleRects: Rect[] = [];
+    const boundaryRects: Rect[] = [];
+    for (const el of doc.elements()) {
+      if (ctx.isHidden(el)) continue;
+      const rect = this.rendererFor(el).visibleRect(el, ctx);
+      if (isContainer(el)) boundaryRects.push(rect);
+      else obstacleRects.push(rect);
+    }
+
     for (const r of resolved) {
       const fromSlot = ports.get(portKey(r.edge.id, "from"));
       const toSlot = ports.get(portKey(r.edge.id, "to"));
@@ -1121,6 +1135,7 @@ export class DiagramCanvas {
         fromRect: r.from.rect, toRect: r.to.rect,
         fromInset, toInset,
         fromMarkerOffset, toMarkerOffset,
+        obstacles: obstacleRects, boundaries: boundaryRects,
       });
       const viewHighlighted =
         view === undefined || view.highlightNodes.length === 0
