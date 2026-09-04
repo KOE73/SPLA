@@ -30,7 +30,7 @@ import {
   filletedPath,
   polylinePath,
 } from "./routing/routers.js";
-import { borderZones, solidZone, walls, zonesFor, LANE_GAP, type RouteScene, type RouteZone } from "./routing/Scene.js";
+import { borderZones, solidZone, nudgeWalls, zonesFor, LANE_GAP, type RouteScene, type RouteZone } from "./routing/Scene.js";
 import { nudgeRoutes } from "./routing/nudge.js";
 import type { ResolvedEdgeStyle } from "../model/StyleLibrary.js";
 import type { RoutingMode } from "../model/style-types.js";
@@ -907,7 +907,7 @@ export class DiagramCanvas {
       .map(([id, route]) => ({ id, points: route.points! }));
     if (nudgeable.length < 2) return;
 
-    const moved = nudgeRoutes({ routes: nudgeable, walls: walls(scene.zones), gap: LANE_GAP });
+    const moved = nudgeRoutes({ routes: nudgeable, walls: nudgeWalls(scene.zones), gap: LANE_GAP });
     for (const [id, points] of moved) {
       const route = routes.get(id);
       if (route === undefined || points.length < 2) continue;

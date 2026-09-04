@@ -156,9 +156,26 @@ function overlapAlongY(a: Point, b: Point, rect: Rect): number {
   return hi - lo;
 }
 
-/** Solid zones only, for the phases that need walls rather than prices. */
+/** Solid zones only, for phases that need a hard "may not enter" test. */
 export function walls(zones: readonly RouteZone[]): Rect[] {
   return zones.filter((z) => z.weight === SOLID).map((z) => z.rect);
+}
+
+/**
+ * Every priced zone as a hard wall — solid blocks and border bands alike.
+ *
+ * Nudging is a cosmetic pass, not the one guaranteeing a route exists: the
+ * search already found a path and already paid to keep it off a container's
+ * border band. If nudging is only told about solid blocks, it is free to slide
+ * a lane straight into that band and undo exactly the clearance the search
+ * bought — which is the routing sin this file exists to price, reappearing one
+ * phase later. Treating the band as a wall here costs nothing when a lane has
+ * room to spare, and nudging already falls back to leaving a lane in place
+ * when no interval fits, so this can only pull a lane away from a border, not
+ * break a route that legitimately crosses one.
+ */
+export function nudgeWalls(zones: readonly RouteZone[]): Rect[] {
+  return zones.map((z) => z.rect);
 }
 
 /** Whether a point sits inside any forbidden zone. */
