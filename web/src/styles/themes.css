@@ -51,7 +51,7 @@
 
 /* ── Light (neutral) ──────────────────────────────────────────────────────── */
 :root[data-theme="light"] {
-  --bg: #f5f5f5;          --panel: #ffffff;       --elevated: #f0f0f0;   --border: #e0e0e0;
+  --bg: #ffffff;          --panel: #f2f2f2;       --elevated: #e9e9e9;   --border: #dcdcdc;
   --text: #1f2328;        --muted: #6a737d;        --faint: #9aa0a6;
   --accent: #2563eb;      --accent-contrast: #ffffff; --accent-soft: rgba(37,99,235,.12);
   --user-bg: #e7efff;     --assistant-bg: #ffffff; --tool-bg: #f3f4f6;   --system-bg: #f6f5ee; --error-bg: #fde2e2;
