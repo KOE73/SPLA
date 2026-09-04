@@ -8,12 +8,15 @@
          whose role it ran as. Depth alone (indent) reads as nesting but not as "why". -->
     <span v-if="depth > 0" class="tree-connector">↳</span>
     <span v-if="chat.as" class="role-badge" :title="`role: ${chat.as}`">{{ chat.as }}</span>
-    <!-- Where work is happening — including a turn another window or another user started. Archived
-         chats never carry a live turn (ChatRegistry.Archive closes it), so this never renders there. -->
-    <span v-if="chat.turnActive" class="busy" title="A turn is running in this chat">●</span>
-    <!-- State indicator: rendered for non-idle states to show operational status. The badge
-         communicates: working (subtle pulse) | waiting (attention-grabbing) | stalled (muted, stuck). -->
-    <span v-if="chat.state && chat.state !== 'idle'" class="state-badge" :class="`state-${chat.state}`" :title="stateLabel(chat.state)">●</span>
+    <!-- Status dot: a fixed-width slot, always rendered (even idle, as an invisible placeholder) so
+         the title never shifts depending on whether something happens to be busy/waiting/stalled right
+         now. Priority when several apply: busy (a turn is literally running) > state (waiting/stalled)
+         > idle (dot present but invisible — reserves the space, does not draw). -->
+    <span
+      class="status-dot"
+      :class="chat.turnActive ? 'busy' : (chat.state && chat.state !== 'idle') ? `state-${chat.state}` : 'idle'"
+      :title="chat.turnActive ? 'A turn is running in this chat' : (chat.state ? stateLabel(chat.state) : '')"
+    >●</span>
     <span class="t">{{ chat.title || chat.id }}</span>
     <template v-if="archived">
       <span class="x" title="Restore" @click.stop="$emit('restore', chat.id)">↺</span>
@@ -97,18 +100,19 @@ function stateLabel(state: string): string {
 .chat-item.archived { color: var(--muted); opacity: 0.7; font-style: italic; }
 .chat-item.archived:hover { opacity: 0.9; background: color-mix(in srgb, var(--muted) 10%, transparent); }
 .chat-item.archived.active { background: color-mix(in srgb, var(--muted) 18%, transparent); color: var(--text); }
-.chat-item .busy { color: var(--accent); font-size: 8px; flex-shrink: 0; animation: chat-busy 1.4s ease-in-out infinite; }
-@keyframes chat-busy { 0%, 100% { opacity: .25; } 50% { opacity: 1; } }
 
-/* State badge: operational status indicator. Each state has distinct visuals:
-   working — subtle pulse to show progress; waiting — attention-grabbing accent to demand notice;
-   stalled — muted to indicate stuck-ness without urgency. */
-.chat-item .state-badge { font-size: 6px; flex-shrink: 0; }
-.chat-item .state-working { color: var(--accent); animation: state-pulse 1.6s ease-in-out infinite; }
+/* Status dot: fixed-width slot (see template comment) so idle rows reserve exactly the same space a
+   busy/waiting/stalled row's dot would take — nothing about the title's start position depends on
+   which state a row happens to be in right now. Sized up from the old 6-8px so it reads at a glance. */
+.chat-item .status-dot { width: 10px; flex-shrink: 0; text-align: center; font-size: 11px; line-height: 1; }
+.chat-item .status-dot.idle { visibility: hidden; }
+.chat-item .status-dot.busy { color: var(--accent); animation: chat-busy 1.4s ease-in-out infinite; }
+@keyframes chat-busy { 0%, 100% { opacity: .25; } 50% { opacity: 1; } }
+.chat-item .status-dot.state-working { color: var(--accent); animation: state-pulse 1.6s ease-in-out infinite; }
 @keyframes state-pulse { 0%, 100% { opacity: .35; } 50% { opacity: 1; } }
-.chat-item .state-waiting { color: var(--danger); animation: state-waiting-pulse 0.8s ease-in-out infinite; }
+.chat-item .status-dot.state-waiting { color: var(--danger); animation: state-waiting-pulse 0.8s ease-in-out infinite; }
 @keyframes state-waiting-pulse { 0%, 100% { opacity: 1; } 50% { opacity: .5; } }
-.chat-item .state-stalled { color: var(--muted); opacity: .6; }
+.chat-item .status-dot.state-stalled { color: var(--muted); opacity: .6; }
 
 .chat-item .x { color: var(--muted); opacity: 0; font-size: var(--fs-xs); padding: 0 2px; flex-shrink: 0; }
 .chat-item:hover .x { opacity: .8; }
