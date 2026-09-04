@@ -87,6 +87,8 @@ client/types **and** this table.
 | `provider.info` | `ProviderInfo` | `ProviderInfoRequest` | Reply `provider.info.result`. Account/model figures for one model entry; never returns credential material. |
 | `agent.get` | `AgentGet` | — | Reply `agent.result`. |
 | `agent.save` | `AgentSave` | `AgentSettingsPayload` | Mode + permission overrides. Broadcasts `agent.result`. |
+| `roles.get` | `RolesGet` | — | Ask for this project's roles. Reply `roles.result`: the bodies found in `roles/` UNIONED with the names the manifest declares — a body nobody named is inert but real, and a name with no body is declared but broken, so both halves travel and the client renders the difference. |
+| `roles.save` | `RolesSave` | `RolesPayload` | Rewrites the whole set: one `roles/<name>.yaml` per role sent, the manifest's `roles:` list rebuilt from the ones marked `active`, and any role file that was there and is not in this list deleted (a renamed role moves rather than doubling). Refused whole — with `error` set and nothing written — for a name that is not a usable file name, or when there is no `.spla` project for a role to live next to. Broadcasts `roles.result` to the project. |
 | `plugins.get` | `PluginsGet` | — | Reply `plugins.result`. |
 | `plugins.save` | `PluginsSave` | `PluginsPayload` | Broadcasts `plugins.result`. |
 | `plugin.action` | `PluginAction` | `PluginActionPayload` | Invoke a plugin web-settings action; reply `plugin.action.result`. |
@@ -173,6 +175,7 @@ client/types **and** this table.
 | `connection.swap_model.result` | `ConnectionSwapModelResult` | `ConnectionSwapModelResult` | unicast | Answer to `connection.swap_model`. |
 | `provider.info.result` | `ProviderInfoResult` | `ProviderInfoResult` | unicast | Answer to `provider.info`. Sections ordered connection-first, then model. |
 | `agent.result` | `AgentResult` | `AgentSettingsPayload` | unicast/broadcast | Answer to get; broadcast after save. |
+| `roles.result` | `RolesResult` | `RolesPayload` | unicast/broadcast | Answer to `roles.get`; broadcast to the project after `roles.save` so every window's role pickers refresh. Carries the catalogs a role picks from (modes, capabilities, models, connections, tool-set ids and levels) alongside the roles; those are server-provided and ignored on save. |
 | `plugins.result` | `PluginsResult` | `PluginsPayload` | unicast/broadcast | Answer to get; broadcast after save. |
 | `plugin.action.result` | `PluginActionResult` | `PluginActionResultPayload` | unicast | Answer to `plugin.action`. |
 | `skills.result` | `SkillsResult` | `SkillsPayload` | unicast/broadcast | Answer to get; broadcast after any save AND unprompted whenever the fond is rebuilt — a file changed, a branch was added, a grant moved. Lists every skill with its address, source and resolved state, unavailable ones included. |

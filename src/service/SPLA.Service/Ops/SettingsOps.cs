@@ -113,6 +113,195 @@ public static class SettingsOps
         return GetConnections(runtime);
     }
 
+    // ── Roles ─────────────────────────────────────────────────────────────────
+
+    /// <summary>
+    /// Every role this project has, for the editor: the bodies found in <c>roles/</c> unioned with
+    /// the names the manifest declares, plus the catalogs a role picks from.
+    ///
+    /// <para>The union is the point. A body nobody named is inert but real (it is sitting in the
+    /// directory, usually because a branch added it without touching the manifest); a name with no
+    /// body is declared but broken. Listing only one of the two halves would make one of those two
+    /// states invisible, and both are exactly what an owner opens this panel to see.</para>
+    /// </summary>
+    public static RolesPayload GetRoles(AgentRuntime runtime)
+    {
+        var s = runtime.Settings;
+        var dir = ProjectDir(s);
+        var declared = s.Manifest?.Roles?.Where(n => !string.IsNullOrWhiteSpace(n)).Select(n => n.Trim())
+            ?? Enumerable.Empty<string>();
+        var active = new HashSet<string>(declared, StringComparer.OrdinalIgnoreCase);
+
+        var names = new List<string>();
+        if (dir != null) names.AddRange(ConfigLoader.ListRoleFiles(dir));
+        names.AddRange(active);
+        names = names.Distinct(StringComparer.OrdinalIgnoreCase)
+            .OrderBy(n => n, StringComparer.OrdinalIgnoreCase)
+            .ToList();
+
+        var payload = new RolesPayload
+        {
+            CanPersist = s.ProjectFilePath != null,
+            Modes = Enum.GetNames<AgentMode>().ToList(),
+            ProjectMode = s.Mode.ToString(),
+            KnownCapabilities = GetFeatures(runtime).Features,
+            Models = s.Models
+                .Select(m => new ConnectionDto { Id = m.Entry.Id, Name = m.Entry.Name ?? m.Entry.Id })
+                .ToList(),
+            Connections = s.Connections
+                .Select(c => new ConnectionDto { Id = c.Id, Name = c.Name ?? c.Id })
+                .ToList(),
+            ToolSetIds = runtime.ToolSets.All.Select(d => d.Id).OrderBy(id => id, StringComparer.OrdinalIgnoreCase).ToList(),
+            ToolSetLevels = Enum.GetNames<SPLA.MCP.Core.ToolSets.ToolSetLevel>().Select(ToolSetWord).ToList()
+        };
+
+        foreach (var name in names)
+        {
+            // A body that will not load is reported as an empty role rather than dropped: the name is
+            // the half the owner needs to see to fix it, and hiding it would look like the role was
+            // never there.
+            SplaRoleSection? body = null;
+            if (dir != null) { try { body = ConfigLoader.LoadRole(dir, name); } catch { } }
+            payload.Roles.Add(ToRoleDto(name, active.Contains(name), body ?? new SplaRoleSection()));
+        }
+
+        return payload;
+    }
+
+    /// <summary>
+    /// Rewrites the whole role set: one file per role, and the manifest's <c>roles:</c> list rebuilt
+    /// from the ones marked active.
+    ///
+    /// <para>The incoming list is authoritative, the same way the connection list is: a role that was
+    /// there on the last read and is not in this save had its card deleted, so its file goes with it.
+    /// Nothing outside <c>roles/</c> is ever touched, and a body that was never read (no project, no
+    /// directory) cannot be deleted by a save that could not have seen it.</para>
+    /// </summary>
+    public static RolesPayload SaveRoles(AgentRuntime runtime, IReadOnlyList<RoleEditDto> incoming)
+    {
+        var s = runtime.Settings;
+        var path = s.ProjectFilePath;
+        var dir = ProjectDir(s);
+        if (path == null || dir == null)
+        {
+            var refused = GetRoles(runtime);
+            refused.Error = "No .spla project is open — a role has nowhere to live. Roles are files next to the manifest.";
+            return refused;
+        }
+
+        var roles = incoming
+            .Select(r => new { Dto = r, Name = (r.Name ?? "").Trim() })
+            .Where(x => x.Name.Length > 0)
+            .GroupBy(x => x.Name, StringComparer.OrdinalIgnoreCase)
+            .Select(g => g.Last())
+            .ToList();
+
+        // The name is a file stem and a word an agent types into agent_spawn — a path separator or a
+        // dot-dot in it is a write outside roles/, so it is refused here rather than sanitized into
+        // some other role's file.
+        var bad = roles.FirstOrDefault(x => x.Name.Any(c => Path.GetInvalidFileNameChars().Contains(c)) || x.Name is "." or "..");
+        if (bad != null)
+        {
+            var refused = GetRoles(runtime);
+            refused.Error = $"'{bad.Name}' is not a usable role name — a role name is also its file name (roles/<name>.yaml).";
+            return refused;
+        }
+
+        var keep = new HashSet<string>(roles.Select(x => x.Name), StringComparer.OrdinalIgnoreCase);
+        foreach (var gone in ConfigLoader.ListRoleFiles(dir).Where(n => !keep.Contains(n)))
+            ConfigLoader.DeleteRole(dir, gone);
+
+        foreach (var r in roles)
+            ConfigLoader.SaveRole(dir, r.Name, ToRoleSection(r.Dto));
+
+        // The manifest names who acts. Written even when the answer is "nobody" is not true here — an
+        // empty list is written as an absent key, which is what "this project declares no roles" has
+        // always looked like in a .spla file.
+        var activeNames = roles.Where(x => x.Dto.Active).Select(x => x.Name).ToList();
+        var project = ConfigLoader.LoadProjectRaw(path);
+        project.Roles = activeNames.Count > 0 ? activeNames : null;
+        ConfigLoader.SaveProjectSections(project, path, "roles");
+
+        // The live manifest is what role_list and ResolveForRole consult (bodies are re-read from disk
+        // each time, the list is not) — leaving it stale would keep a freshly declared role refusing
+        // to resolve until the next start.
+        if (s.Manifest != null) s.Manifest.Roles = activeNames.Count > 0 ? activeNames : null;
+
+        return GetRoles(runtime);
+    }
+
+    /// <summary>The directory a role file would live in, or null when there is no manifest to be next
+    /// to — <c>ConfigLoader.LoadRole</c>'s rule, in one place.</summary>
+    private static string? ProjectDir(ResolvedSettings s)
+        => s.ProjectFilePath is { } p ? Path.GetDirectoryName(p) : null;
+
+    /// <summary>Wire word for a tool-set level — the spelling <c>ToolSetRegistry.TryParseLevel</c>
+    /// reads back, so a level chosen in the panel is the level the file means.</summary>
+    private static string ToolSetWord(string enumName) => enumName switch
+    {
+        "SkillDemand" => "skill_demand",
+        "AgentDemand" => "agent_demand",
+        _ => enumName.ToLowerInvariant()
+    };
+
+    private static RoleEditDto ToRoleDto(string name, bool active, SplaRoleSection r) => new()
+    {
+        Name = name,
+        Active = active,
+        Description = r.Description,
+        Mode = r.Mode,
+        ModelId = r.Model,
+        CustomPrompt = r.CustomPrompt,
+        LoopGuard = r.LoopGuard,
+        LoopGuardRepeats = r.LoopGuardRepeats,
+        ShellTimeoutSeconds = r.ShellTimeoutSeconds,
+        AskTimeoutMinutes = r.AskTimeoutMinutes,
+        SaveToolCalls = r.SaveToolCalls,
+        SaveAttempts = r.SaveAttempts,
+        UnifiedResources = r.UnifiedResources,
+        PeerDebounceBaseSeconds = r.PeerDebounceBaseSeconds,
+        PeerDebounceMaxSeconds = r.PeerDebounceMaxSeconds,
+        PeerDepthCeiling = r.PeerDepthCeiling,
+        PeerHardCap = r.PeerHardCap,
+        Capabilities = r.Capabilities,
+        Connections = r.Connections,
+        Islands = r.Islands,
+        ToolSets = r.ToolSets,
+        TrustedDomains = r.TrustedDomains
+    };
+
+    private static SplaRoleSection ToRoleSection(RoleEditDto d) => new()
+    {
+        Description = Blank(d.Description),
+        Mode = Blank(d.Mode),
+        Model = Blank(d.ModelId),
+        CustomPrompt = Blank(d.CustomPrompt),
+        LoopGuard = d.LoopGuard,
+        LoopGuardRepeats = d.LoopGuardRepeats,
+        ShellTimeoutSeconds = d.ShellTimeoutSeconds,
+        AskTimeoutMinutes = d.AskTimeoutMinutes,
+        SaveToolCalls = d.SaveToolCalls,
+        SaveAttempts = d.SaveAttempts,
+        UnifiedResources = d.UnifiedResources,
+        PeerDebounceBaseSeconds = d.PeerDebounceBaseSeconds,
+        PeerDebounceMaxSeconds = d.PeerDebounceMaxSeconds,
+        PeerDepthCeiling = d.PeerDepthCeiling,
+        PeerHardCap = d.PeerHardCap,
+        // Null and empty are different answers here, and only null means "inherit": an empty
+        // capabilities list is a role that deliberately runs with none. The editor sends null for the
+        // untouched case, so nothing collapses one into the other on the way through.
+        Capabilities = Clean(d.Capabilities),
+        Connections = Clean(d.Connections),
+        Islands = Clean(d.Islands),
+        TrustedDomains = Clean(d.TrustedDomains),
+        ToolSets = d.ToolSets is { Count: > 0 } ? new Dictionary<string, string>(d.ToolSets) : null
+    };
+
+    /// <summary>Trims a list's entries and drops the blanks, preserving the null/empty distinction:
+    /// null stays null (inherit), a list that had only blanks in it becomes empty (declared none).</summary>
+    private static List<string>? Clean(List<string>? list)
+        => list?.Select(x => (x ?? "").Trim()).Where(x => x.Length > 0).ToList();
+
     // ── Token usage: session/project/machine totals ───────────────────────────
 
     public static UsageResultPayload GetUsage(AgentRuntime runtime) => new()

@@ -11,6 +11,7 @@ internal sealed class SettingsHandlers : IMessageHandler
     public IEnumerable<string> HandledTypes =>
     [
         MessageTypes.AgentGet, MessageTypes.AgentSave,
+        MessageTypes.RolesGet, MessageTypes.RolesSave,
         MessageTypes.McpGet, MessageTypes.McpSave,
         MessageTypes.McpServersGet, MessageTypes.McpServersSave, MessageTypes.McpServersReconnect,
         MessageTypes.PluginsGet, MessageTypes.PluginsSave, MessageTypes.PluginAction,
@@ -24,6 +25,8 @@ internal sealed class SettingsHandlers : IMessageHandler
     {
         MessageTypes.AgentGet                  => AgentGet(ctx),
         MessageTypes.AgentSave                 => AgentSave(ctx),
+        MessageTypes.RolesGet                  => RolesGet(ctx),
+        MessageTypes.RolesSave                 => RolesSave(ctx),
         MessageTypes.McpGet                    => McpGet(ctx),
         MessageTypes.McpSave                   => McpSave(ctx),
         MessageTypes.McpServersGet              => McpServersGet(ctx),
@@ -57,6 +60,24 @@ internal sealed class SettingsHandlers : IMessageHandler
         var p = ctx.Payload<AgentSettingsPayload>();
         if (p != null)
             await ctx.Session.Hub.BroadcastToProjectAsync(projectId, MessageTypes.AgentResult, SettingsOps.SaveAgent(entry.Runtime, p));
+    }
+
+    private static Task RolesGet(RequestContext ctx)
+    {
+        var (entry, _) = ctx.Session.Resolve(ctx.Env);
+        return ctx.Reply(MessageTypes.RolesResult, SettingsOps.GetRoles(entry.Runtime));
+    }
+
+    /// <summary>Saves the role set and tells every window on this project. The broadcast is not a
+    /// nicety: a role is who another chat can spawn or write to, so a window still showing the old
+    /// set would offer a name that no longer resolves.</summary>
+    private static async Task RolesSave(RequestContext ctx)
+    {
+        var (entry, projectId) = ctx.Session.Resolve(ctx.Env);
+        var p = ctx.Payload<RolesPayload>();
+        if (p != null)
+            await ctx.Session.Hub.BroadcastToProjectAsync(projectId, MessageTypes.RolesResult,
+                SettingsOps.SaveRoles(entry.Runtime, p.Roles));
     }
 
     private static Task McpGet(RequestContext ctx)

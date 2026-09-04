@@ -378,6 +378,117 @@ public sealed class ModelEditDto
     public int? ContextLength { get; set; }
 }
 
+// ── Roles ────────────────────────────────────────────────────────────────────
+
+/// <summary>
+/// One role, as the editor sees it: the body of <c>roles/&lt;name&gt;.yaml</c> plus the one fact
+/// that does not live in that file — <see cref="Active"/>, whether the manifest names it.
+///
+/// <para>The split is the domain's, not the panel's: a body on disk that nobody named is inert
+/// (<c>SplaRoleSection</c>, "nothing acts that nobody named"), so an editor that showed only the
+/// files would show roles that do not exist and an editor that showed only the manifest would hide
+/// the ones a colleague's branch just added. Both halves travel, and the panel renders the
+/// difference.</para>
+///
+/// <para>Every optional field means <b>inherit from <c>agent:</c></b> when null — that is the same
+/// meaning <c>SettingsResolver.ResolveForRole</c> gives it, so a blank in the editor and an absent
+/// key in the file are one state, never two. <see cref="Capabilities"/> is the exception worth
+/// naming: when set it REPLACES the project's list wholesale rather than intersecting with it.</para>
+/// </summary>
+public sealed class RoleEditDto
+{
+    /// <summary>The role's name — also its file stem (<c>roles/&lt;name&gt;.yaml</c>) and the word a
+    /// chat uses in <c>agent_spawn(role:)</c>. Renaming writes a new file; the old one is removed by
+    /// the same save that no longer lists it.</summary>
+    public string Name { get; set; } = string.Empty;
+
+    /// <summary>True when the manifest's <c>roles:</c> list names this role. False = the body exists
+    /// and is editable but the role does not act.</summary>
+    public bool Active { get; set; }
+
+    /// <summary>One line for STRANGERS — what the role catalog (<c>role_list</c>) shows another chat
+    /// choosing whom to task. The outward half; <see cref="CustomPrompt"/> is the inward one and is
+    /// never published sideways.</summary>
+    public string? Description { get; set; }
+
+    public string? Mode { get; set; }
+    public string? ModelId { get; set; }
+    public string? CustomPrompt { get; set; }
+
+    public bool? LoopGuard { get; set; }
+    public int? LoopGuardRepeats { get; set; }
+    public int? ShellTimeoutSeconds { get; set; }
+    public int? AskTimeoutMinutes { get; set; }
+    public bool? SaveToolCalls { get; set; }
+    public bool? SaveAttempts { get; set; }
+    public bool? UnifiedResources { get; set; }
+
+    /// <summary>Peer-wake regulator overrides — see <c>SplaAgentSection</c> for what each means.
+    /// Null = the project's number.</summary>
+    public int? PeerDebounceBaseSeconds { get; set; }
+    public int? PeerDebounceMaxSeconds { get; set; }
+    public int? PeerDepthCeiling { get; set; }
+    public int? PeerHardCap { get; set; }
+
+    /// <summary>Built-in capabilities for this role. Null = inherit the project's list; a list
+    /// REPLACES it (a role is not a subset of the project — <c>ADR_20260827-2</c>).</summary>
+    public List<string>? Capabilities { get; set; }
+
+    /// <summary>Connections this role may use, by connection id or by whole scope word
+    /// (<c>shared</c>/<c>user</c>/<c>project</c>). Null/empty = all of the project's. A selection,
+    /// never a grant.</summary>
+    public List<string>? Connections { get; set; }
+
+    /// <summary>Islands this role uses, by key. Null/empty = all the project reaches. Also a
+    /// selection: the gate, not this list, decides what a reach is allowed.</summary>
+    public List<string>? Islands { get; set; }
+
+    /// <summary>Tool set id → disclosure level, merged key by key over the project's <c>toolsets:</c>.</summary>
+    public Dictionary<string, string>? ToolSets { get; set; }
+
+    public List<string>? TrustedDomains { get; set; }
+}
+
+/// <summary>The whole role set plus the catalogs a role picks from. <see cref="MessageTypes.RolesGet"/>
+/// answer and <see cref="MessageTypes.RolesSave"/> body; broadcast as
+/// <see cref="MessageTypes.RolesResult"/>. Catalogs are server-provided and ignored on save.</summary>
+public sealed class RolesPayload
+{
+    public List<RoleEditDto> Roles { get; set; } = new();
+
+    /// <summary>Available agent modes, for the mode picker.</summary>
+    public List<string> Modes { get; set; } = new();
+
+    /// <summary>The project's own mode — what a role that picks nothing runs in, so the editor can
+    /// label the empty choice with the answer instead of the word "default".</summary>
+    public string ProjectMode { get; set; } = string.Empty;
+
+    /// <summary>Every built-in capability that has a switch, with its description — the same rows the
+    /// Built-in tools panel shows. <c>Enabled</c> here means "the project has it", which is what a
+    /// role inheriting the list would get.</summary>
+    public List<CapabilityDto> KnownCapabilities { get; set; } = new();
+
+    /// <summary>Models a role may run on (id + display name), flattened across connections.</summary>
+    public List<ConnectionDto> Models { get; set; } = new();
+
+    /// <summary>Connections a role may be narrowed to (id + name).</summary>
+    public List<ConnectionDto> Connections { get; set; } = new();
+
+    /// <summary>Island keys this project reaches.</summary>
+    public List<string> Islands { get; set; } = new();
+
+    /// <summary>Tool set ids that exist, and the levels a set may be set to.</summary>
+    public List<string> ToolSetIds { get; set; } = new();
+    public List<string> ToolSetLevels { get; set; } = new();
+
+    /// <summary>False when there is no .spla project — roles have nowhere to live, and the panel says
+    /// so instead of pretending to save.</summary>
+    public bool CanPersist { get; set; }
+
+    /// <summary>Set when a save was refused; the set then echoes back what is still in effect.</summary>
+    public string? Error { get; set; }
+}
+
 /// <summary>Request to hot-swap the loaded model on a connection via the management API (LM Studio).</summary>
 public sealed class ConnectionSwapModelRequest
 {

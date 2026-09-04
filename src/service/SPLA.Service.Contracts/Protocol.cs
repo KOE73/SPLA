@@ -176,6 +176,13 @@ public static class MessageTypes
     public const string AgentGet = "agent.get";
     /// <summary>Save agent settings (persisted to the .spla project when there is one).</summary>
     public const string AgentSave = "agent.save";
+    /// <summary>Ask for this project's roles — the bodies in <c>roles/</c> plus which of them the
+    /// manifest actually names, and the catalogs a role picks from (modes, capabilities, models,
+    /// connections, tool sets).</summary>
+    public const string RolesGet = "roles.get";
+    /// <summary>Save the whole role set: one <c>roles/&lt;name&gt;.yaml</c> per role, and the
+    /// manifest's <c>roles:</c> list rewritten from the ones marked active.</summary>
+    public const string RolesSave = "roles.save";
     /// <summary>Ask for the discovered plugins and their enable/prompt/settings state.</summary>
     public const string PluginsGet = "plugins.get";
     /// <summary>Save plugin enable flags, custom prompts and opaque settings blobs.</summary>
@@ -392,6 +399,9 @@ public static class MessageTypes
     public const string ConnectionsHealth = "connections.health";
     /// <summary>The current agent settings — answer to <see cref="AgentGet"/> and broadcast after <see cref="AgentSave"/>.</summary>
     public const string AgentResult = "agent.result";
+    /// <summary>The current role set — answer to <see cref="RolesGet"/> and broadcast to the project
+    /// after <see cref="RolesSave"/>, so every window's role pickers refresh.</summary>
+    public const string RolesResult = "roles.result";
     /// <summary>The current MCP-over-HTTP settings — answer to <see cref="McpGet"/> and broadcast
     /// after <see cref="McpSave"/>.</summary>
     public const string McpResult = "mcp.result";

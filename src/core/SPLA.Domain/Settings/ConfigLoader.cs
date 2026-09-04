@@ -243,6 +243,49 @@ public static class ConfigLoader
         return Deserializer.Deserialize<SplaRoleSection>(yaml) ?? new SplaRoleSection();
     }
 
+    /// <summary>The directory roles live in for a given manifest directory —
+    /// <c>&lt;projectDirectory&gt;/roles</c>. One definition, so an editor, a loader and a lister
+    /// can never disagree about where a role file is.</summary>
+    public static string RolesDir(string projectDirectory) => Path.Combine(projectDirectory, "roles");
+
+    /// <summary>Every role BODY on disk, by file stem, sorted. Says nothing about which of them act —
+    /// that is the manifest's <see cref="SplaProject.Roles"/> list and only ever that (see
+    /// <see cref="LoadRole"/>). An editor needs both halves to show the difference, which is why this
+    /// deliberately does not filter by the manifest.</summary>
+    public static List<string> ListRoleFiles(string projectDirectory)
+    {
+        var dir = RolesDir(projectDirectory);
+        if (!Directory.Exists(dir)) return new();
+        return Directory.EnumerateFiles(dir, "*.yaml")
+            .Select(Path.GetFileNameWithoutExtension)
+            .Where(n => !string.IsNullOrWhiteSpace(n))
+            .Select(n => n!)
+            .OrderBy(n => n, StringComparer.OrdinalIgnoreCase)
+            .ToList();
+    }
+
+    /// <summary>Writes one role's body to <c>roles/&lt;roleName&gt;.yaml</c>, creating the directory.
+    /// Writing a body does not make the role act — only a name in the manifest does.</summary>
+    public static void SaveRole(string projectDirectory, string roleName, SplaRoleSection role)
+    {
+        if (string.IsNullOrWhiteSpace(roleName)) throw new ArgumentException("Role name must not be empty.", nameof(roleName));
+        var dir = RolesDir(projectDirectory);
+        Directory.CreateDirectory(dir);
+        File.WriteAllText(Path.Combine(dir, roleName + ".yaml"), Serializer.Serialize(role));
+    }
+
+    /// <summary>Deletes one role's body. Returns false when there was nothing to delete — a role
+    /// declared in the manifest with no file of its own is a normal (broken) state, not an error
+    /// here.</summary>
+    public static bool DeleteRole(string projectDirectory, string roleName)
+    {
+        if (string.IsNullOrWhiteSpace(roleName)) return false;
+        var path = Path.Combine(RolesDir(projectDirectory), roleName + ".yaml");
+        if (!File.Exists(path)) return false;
+        File.Delete(path);
+        return true;
+    }
+
     /// <summary>
     /// Serializes an opaque plugin settings blob (nested mapping) to a YAML string.
     /// Used to hand a plugin its own settings across the assembly-load-context boundary.

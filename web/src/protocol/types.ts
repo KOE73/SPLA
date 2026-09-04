@@ -471,6 +471,58 @@ export interface FeaturesResultPayload {
   restartToApply?: boolean;
 }
 
+/**
+ * One role as the editor sees it — the body of `roles/<name>.yaml` plus `active`, which lives in the
+ * manifest's `roles:` list rather than in the file. A body nobody named is inert, so the two halves
+ * are shown together and the panel renders the difference.
+ *
+ * Every optional field means "inherit from the project's `agent:`" when absent — the same meaning the
+ * resolver gives a missing key, so a blank in the editor and an absent key in the file are one state.
+ */
+export interface RoleEditDto {
+  name: string;
+  active: boolean;
+  /** One line for strangers — what `role_list` shows a chat choosing whom to task. */
+  description?: string;
+  mode?: string;
+  modelId?: string;
+  /** The inward half: this role's prompt. Never published through the role catalog. */
+  customPrompt?: string;
+  loopGuard?: boolean | null;
+  loopGuardRepeats?: number | null;
+  shellTimeoutSeconds?: number | null;
+  askTimeoutMinutes?: number | null;
+  saveToolCalls?: boolean | null;
+  saveAttempts?: boolean | null;
+  unifiedResources?: boolean | null;
+  peerDebounceBaseSeconds?: number | null;
+  peerDebounceMaxSeconds?: number | null;
+  peerDepthCeiling?: number | null;
+  peerHardCap?: number | null;
+  /** Null = inherit the project's list; a list REPLACES it (a role is not a subset of the project). */
+  capabilities?: string[] | null;
+  /** Narrowing, never a grant: null/empty = every connection the project has. Ids or scope words. */
+  connections?: string[] | null;
+  islands?: string[] | null;
+  toolSets?: Record<string, string> | null;
+  trustedDomains?: string[] | null;
+}
+
+export interface RolesResultPayload {
+  roles: RoleEditDto[];
+  modes: string[];
+  /** The project's own mode — what a role that picks nothing runs in. */
+  projectMode: string;
+  knownCapabilities: CapabilityDto[];
+  models: ConnectionDto[];
+  connections: ConnectionDto[];
+  islands: string[];
+  toolSetIds: string[];
+  toolSetLevels: string[];
+  canPersist?: boolean;
+  error?: string;
+}
+
 export interface ConnectionsResultPayload {
   connections: ConnectionDto[];
   canPersist?: boolean;
@@ -839,6 +891,7 @@ export interface ServerEvents {
   "connection.swap_model.result": ConnectionSwapModelResultPayload;
   "provider.info.result": ProviderInfoResultPayload;
   "agent.result": AgentResultPayload;
+  "roles.result": RolesResultPayload;
   "mcp.result": McpSettingsPayload;
   "mcp.servers.result": McpServersPayload;
   "plugins.result": PluginsResultPayload;
