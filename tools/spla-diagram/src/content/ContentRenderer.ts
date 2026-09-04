@@ -40,9 +40,21 @@ export interface ContentData {
   asset?(id: string): { readonly svg: string } | undefined;
 }
 
+/**
+ * Where content sits inside the box it was given.
+ *
+ * Supplied by the shape rather than assumed, because a diamond's usable
+ * interior is not its bounding box and an ellipse's is not either. These are
+ * only the fallback for callers that have no opinion.
+ */
+export interface ContentPadding {
+  readonly x: number;
+  readonly top: number;
+}
+
+const DEFAULT_PADDING: ContentPadding = { x: 10, top: 22 };
+
 /** Vertical rhythm. Kept here so rows and cells cannot disagree about it. */
-const PAD_X = 10;
-const PAD_TOP = 22;
 const ROW_GAP = 3;
 const SPACER = 8;
 /** Rough width of one character relative to font size, for eliding long text. */
@@ -59,10 +71,11 @@ export function renderContent(
   rect: Rect,
   style: ResolvedBlockStyle,
   data: ContentData,
+  padding: ContentPadding = DEFAULT_PADDING,
 ): ContentRenderResult {
   const nodes: SVGElement[] = [];
-  const innerWidth = Math.max(rect.width - PAD_X * 2, 8);
-  let y = rect.y + PAD_TOP;
+  const innerWidth = Math.max(rect.width - padding.x * 2, 8);
+  let y = rect.y + padding.top;
 
   for (const row of tree.rows) {
     if (row.spacer) {
@@ -74,7 +87,7 @@ export function renderContent(
     // the "empty hides itself" rule: without it a marker interface would show
     // a gap where its methods would have been, and templates would need
     // conditionals to avoid it.
-    const drawn = layoutRow(row.cells, rect.x + PAD_X, y, innerWidth, style, data);
+    const drawn = layoutRow(row.cells, rect.x + padding.x, y, innerWidth, style, data);
     if (drawn.nodes.length === 0) continue;
 
     nodes.push(...drawn.nodes);

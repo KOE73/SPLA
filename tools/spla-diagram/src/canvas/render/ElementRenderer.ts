@@ -59,6 +59,39 @@ export interface ResolvedContent {
 }
 
 /**
+ * Where a shape puts the furniture that is not the shape: the doc and code
+ * buttons, the relation badge, and the region text is allowed to occupy.
+ *
+ * A rectangle can take all of it at fixed offsets from its corners, which is
+ * why the original code had those offsets baked in. A diamond cannot: its
+ * corners are points, and a button placed at "x + 6" lands outside the
+ * silhouette entirely. So the offsets move to the shape, which is the only
+ * thing that knows where its own inside is.
+ *
+ * Growth direction matters as much as the anchor. Buttons accumulate — doc,
+ * then code, then whatever comes next — and near a diamond's apex the only
+ * room is *away* from it: left for one group, right for the other.
+ */
+export interface ChromeLayout {
+  /** Corner the first button occupies. */
+  readonly docAnchor: Point;
+  /** Which way further buttons stack from `docAnchor`. */
+  readonly docGrow: "left" | "right";
+  /** Edge the relation badge is pinned to. */
+  readonly badgeAnchor: Point;
+  /** Which way the badge extends from `badgeAnchor`. */
+  readonly badgeGrow: "left" | "right";
+  /** Region captions and template content are laid out in. */
+  readonly textBox: Rect;
+  /** Horizontal breathing room inside `textBox`. */
+  readonly padX: number;
+  /** Baseline offset of the built-in caption from `textBox.y`. */
+  readonly captionTop: number;
+  /** Top offset for template content, which brings its own first line. */
+  readonly contentTop: number;
+}
+
+/**
  * How one kind of thing looks and where lines attach to it.
  *
  * The containment tree is pure geometry; a renderer decides everything visual

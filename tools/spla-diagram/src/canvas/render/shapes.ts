@@ -1,11 +1,11 @@
 import { bottom, center, pointOnSide, right } from "../../geometry/rect.js";
 import type { BoundarySlot, Point, Rect, Side } from "../../geometry/types.js";
 import type { ResolvedBlockStyle } from "../../model/StyleLibrary.js";
-import type { DiagramElement } from "../../model/types.js";
+import { elementRect, type DiagramElement } from "../../model/types.js";
 import { ROLE_ATTR, Role } from "../../interaction/roles.js";
 import { svg } from "../svg.js";
 import { BoxRenderer } from "./BoxRenderer.js";
-import type { RenderContext } from "./ElementRenderer.js";
+import type { ChromeLayout, RenderContext } from "./ElementRenderer.js";
 
 /**
  * Node outlines other than a rectangle.
@@ -55,6 +55,24 @@ function castFromCentre(
  */
 const CURVED_INSET = 22;
 
+/**
+ * The largest axis-aligned rectangle that fits inside an ellipse of this box.
+ *
+ * Text placed on the bounding box of a round shape runs out through the sides
+ * near the top and bottom, where the outline has already curved away. Half the
+ * diagonal is the honest usable width, and it is one multiplication.
+ */
+function inscribedBox(rect: Rect, factor = Math.SQRT1_2): Rect {
+  const w = rect.width * factor;
+  const h = rect.height * factor;
+  return {
+    x: rect.x + (rect.width - w) / 2,
+    y: rect.y + (rect.height - h) / 2,
+    width: w,
+    height: h,
+  };
+}
+
 /** Use cases, states, anything round. */
 export class EllipseRenderer extends BoxRenderer {
   protected override outline(el: DiagramElement, style: ResolvedBlockStyle, ctx: RenderContext): SVGElement {
@@ -77,6 +95,23 @@ export class EllipseRenderer extends BoxRenderer {
 
   override cornerInset(): number {
     return CURVED_INSET;
+  }
+
+  protected override chrome(el: DiagramElement, style: ResolvedBlockStyle): ChromeLayout {
+    const box = inscribedBox(elementRect(el));
+    return {
+      ...super.chrome(el, style),
+      // Buttons ride the inscribed box's top edge: on the bounding box they
+      // would hang over empty canvas beside the curve.
+      docAnchor: { x: box.x, y: box.y - 2 },
+      docGrow: "right",
+      badgeAnchor: { x: box.x + box.width, y: box.y - 2 },
+      badgeGrow: "left",
+      textBox: box,
+      padX: 6,
+      captionTop: box.height / 2 + 4,
+      contentTop: 16,
+    };
   }
 }
 
@@ -101,6 +136,25 @@ export class DiamondRenderer extends BoxRenderer {
 
   override cornerInset(): number {
     return CURVED_INSET;
+  }
+
+  protected override chrome(el: DiagramElement, style: ResolvedBlockStyle): ChromeLayout {
+    const cx = el.x + el.width / 2;
+    // A diamond has no corner to tuck a button into — the top is a single
+    // point. So the two groups straddle that apex and grow away from each
+    // other, which keeps them on the outline's shoulders instead of over the
+    // empty triangles beside it, and leaves room for more buttons later.
+    return {
+      ...super.chrome(el, style),
+      docAnchor: { x: cx - 6, y: el.y + 4 },
+      docGrow: "left",
+      badgeAnchor: { x: cx + 6, y: el.y + 4 },
+      badgeGrow: "right",
+      textBox: inscribedBox(elementRect(el), 0.62),
+      padX: 4,
+      captionTop: el.height * 0.19 + 4,
+      contentTop: 14,
+    };
   }
 }
 
@@ -140,6 +194,21 @@ export class CylinderRenderer extends BoxRenderer {
     // arrow off them is about the cap's own height.
     return 16;
   }
+
+  protected override chrome(el: DiagramElement, style: ResolvedBlockStyle): ChromeLayout {
+    // Everything clears the lid: a button drawn at the top of the bounding box
+    // sits on the cap's arc, where it reads as part of the drum.
+    const cap = this.capHeight(el);
+    const top = el.y + cap * 1.8;
+    return {
+      ...super.chrome(el, style),
+      docAnchor: { x: el.x + 8, y: top },
+      badgeAnchor: { x: el.x + el.width - 8, y: top },
+      textBox: { x: el.x, y: top, width: el.width, height: el.height - cap * 2.8 },
+      captionTop: 20,
+      contentTop: 14,
+    };
+  }
 }
 
 /** Anything that wants to read as a step or a stage rather than a thing. */
@@ -162,19 +231,39 @@ export class HexagonRenderer extends BoxRenderer {
     // North and south lose their ends to the notches; east and west are points.
     return side === "east" || side === "west" ? CURVED_INSET : 26;
   }
+
+  protected override chrome(el: DiagramElement, style: ResolvedBlockStyle): ChromeLayout {
+    // The slanted ends eat the top corners, so both groups step inside by the
+    // notch — otherwise a button straddles the diagonal edge, which is what
+    // made the "Компиляция" node's controls sit on its own outline.
+    const notch = Math.min(el.width * 0.15, 24);
+    return {
+      ...super.chrome(el, style),
+      docAnchor: { x: el.x + notch + 4, y: el.y + 5 },
+      badgeAnchor: { x: el.x + el.width - notch - 4, y: el.y + 5 },
+      textBox: { x: el.x + notch, y: el.y, width: el.width - notch * 2, height: el.height },
+      padX: 6,
+    };
+  }
 }
 
 /** People and external roles: the UML actor, drawn rather than approximated. */
 export class ActorRenderer extends BoxRenderer {
+  /** Room kept at the bottom for the name. */
+  private static readonly CAPTION_STRIP = 22;
+
   protected override outline(el: DiagramElement, style: ResolvedBlockStyle, ctx: RenderContext): SVGElement {
     const cx = el.x + el.width / 2;
-    const headR = Math.min(el.width, el.height) * 0.16;
+    const headR = Math.min(el.width, el.height - ActorRenderer.CAPTION_STRIP) * 0.16;
     const headY = el.y + headR + 4;
     const shoulder = headY + headR + 6;
     const hip = el.y + el.height * 0.62;
     const armSpan = Math.min(el.width * 0.32, 34);
     const legSpan = Math.min(el.width * 0.26, 28);
-    const feet = bottom(el) - 4;
+    // The feet stop above the caption strip: an actor's name belongs under the
+    // figure, the way every UML diagram since 1997 has drawn it, and the name
+    // used to land across the head instead.
+    const feet = bottom(el) - ActorRenderer.CAPTION_STRIP - 4;
     const paint = this.paintAttrs(style, ctx);
     const strokeOnly = { ...paint, fill: "none" };
 
@@ -201,5 +290,16 @@ export class ActorRenderer extends BoxRenderer {
   override cornerInset(): number {
     // The figure floats inside its box, so lines may attach anywhere on it.
     return 0;
+  }
+
+  protected override chrome(el: DiagramElement, style: ResolvedBlockStyle): ChromeLayout {
+    const strip = ActorRenderer.CAPTION_STRIP;
+    return {
+      ...super.chrome(el, style),
+      textBox: { x: el.x, y: bottom(el) - strip, width: el.width, height: strip },
+      padX: 2,
+      captionTop: 12,
+      contentTop: 4,
+    };
   }
 }

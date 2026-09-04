@@ -54,6 +54,15 @@ export const DIAGRAM_CONFIG = {
     /** Y position for semantic subtitle in px */
     subtitleY: (tall: boolean): number => (tall ? 52 : 47),
 
+    /**
+     * Top offset for template-drawn content in px.
+     *
+     * Smaller than `titleY` on purpose: a template's first row *is* its
+     * caption, so it starts right below the button bar instead of leaving a
+     * gap sized for a caption that is already part of the content.
+     */
+    contentTop: 22,
+
     /** Minimum allowed size for a node { width, height } in px */
     minSize: { width: 100, height: 40 },
   },
