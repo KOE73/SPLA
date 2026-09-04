@@ -5,7 +5,7 @@
 -->
 <template>
   <div id="main" class="chat-surface">
-    <div id="log"><ChatLog /></div>
+    <div id="log"><div class="center-col"><ChatLog /></div></div>
     <TaskPanel />
     <!-- A read-only surface loses the composer AND the status bar: the latter is entirely settings
          for the next turn (mode, model, temperature, reasoning, skills, tool sets), and there is no
@@ -13,19 +13,26 @@
          answer rather than as a window that failed to finish loading. -->
     <div v-if="readOnly" id="readonly-note">{{ readOnlyReason }}</div>
     <template v-else>
-      <div id="composer"><Composer /></div>
-      <div id="status"><StatusBar /></div>
+      <div id="composer"><WidthRail /><div class="center-col"><Composer /></div></div>
+      <!-- The settings footer folds away. It is the next turn's knobs, not the conversation, and it
+           was eating the bottom of every window; the handle is what keeps it findable. -->
+      <button class="chrome-handle" :title="chromeOpen ? 'Hide settings' : 'Show settings'"
+              @click="toggleChrome">{{ chromeOpen ? "⌄" : "⌃" }}</button>
+      <div id="chrome" :class="{ collapsed: !chromeOpen }">
+        <div id="status"><StatusBar /></div>
+        <div id="filters"><Filters /></div>
+      </div>
     </template>
-    <div id="filters"><Filters /></div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { computed, watch } from "vue";
+import { computed, ref, watch } from "vue";
 import ChatLog from "./ChatLog.vue";
 import Composer from "./Composer.vue";
 import StatusBar from "./StatusBar.vue";
 import Filters from "./Filters.vue";
+import WidthRail from "./WidthRail.vue";
 // Mounted inline, not only registered in registry.ts — registry.ts alone only reaches a tear-off
 // window opened at ?surface=taskPanel, and PLAN_20260825 wave E's whole point ("видно, что гасишь")
 // needs the panel visible in the ordinary chat window, not behind a URL nobody would guess.
@@ -35,6 +42,13 @@ import { focusSession, peekSession } from "../state/chatSessions";
 import { findChat } from "../state/chatTree";
 import { provideChat } from "../state/chatContext";
 import { client } from "../protocol/SplaClient";
+
+// Folded or not is a preference of this window, not of a chat — it outlives both.
+const chromeOpen = ref(localStorage.getItem("spla.chromeOpen") !== "0");
+function toggleChrome() {
+  chromeOpen.value = !chromeOpen.value;
+  localStorage.setItem("spla.chromeOpen", chromeOpen.value ? "1" : "0");
+}
 
 const chatId = computed(() => store.currentChat);
 const session = computed(() => peekSession(chatId.value));

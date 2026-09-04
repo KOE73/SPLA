@@ -1,6 +1,6 @@
 <template>
   <div
-    class="chat-item" :class="{ active, archived }" :style="{ paddingLeft: 10 + depth * 14 + 'px' }"
+    class="chat-item" :class="{ active, archived }" :style="{ '--depth': depth }"
     @click="$emit('select', chat.id)"
   >
     <!-- A spawned session sits under its parent role (ADR_20260827-2 §2.5: "список чатов становится
@@ -77,11 +77,15 @@ function stateLabel(state: string): string {
 
 <style scoped>
 .chat-item {
-  padding: 6px 10px;
+  /* Indentation is the only thing here that carries MEANING (which chat hangs under which), so
+     unlike the decorative padding it keeps a floor when the density knob goes to nano — a tree
+     flattened to a hairline is no longer a tree. */
+  padding: var(--sp-2) var(--sp-3);
+  padding-left: calc(var(--sp-3) + var(--depth, 0) * max(6px, var(--sp-4)));
   border-bottom: 1px solid color-mix(in srgb, var(--border) 40%, transparent);
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: var(--sp-2);
   cursor: pointer;
 }
 .chat-item:hover { background: color-mix(in srgb, var(--text) 6%, transparent); }

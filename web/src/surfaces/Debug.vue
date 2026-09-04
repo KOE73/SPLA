@@ -1,6 +1,11 @@
 <template>
   <div class="debug-surface">
-    <header><b>Debug</b><button v-if="!solo" class="filter" @click="close">close</button></header>
+    <header>
+      <b>Debug</b>
+      <span v-if="chatLabel" class="chat-label" :title="'chat: ' + (store.currentChat ?? '')">{{ chatLabel }}</span>
+      <button class="refresh" title="Refresh now" @click="reload">⟳</button>
+      <button v-if="!solo" class="filter" @click="close">close</button>
+    </header>
     <div class="tabs">
       <button v-for="t in TABS" :key="t.kind" class="tab" :class="{ on: activeKind === t.kind }" @click="request(t.kind)">{{ t.label }}</button>
     </div>
@@ -66,10 +71,11 @@
 </template>
 
 <script setup lang="ts">
-import { onMounted, onUnmounted, ref } from "vue";
+import { computed, onMounted, onUnmounted, ref, watch } from "vue";
 import { client } from "../protocol/SplaClient";
 import { store } from "../state/store";
 import { uiBus } from "../state/uiBus";
+import { findChat } from "../state/chatTree";
 import type { DebugSnapshotPayload } from "../protocol/types";
 import ContextTable from "./ContextTable.vue";
 
@@ -102,6 +108,16 @@ function toggle(i: number) {
   open.value = next;
 }
 
+// The tab/row label for whichever chat this panel is showing — same lookup ChatListItem draws its
+// role badge and title from, so "which chat is this?" reads the same way here as it does in the list.
+const chatLabel = computed(() => {
+  const id = store.currentChat;
+  if (!id) return "";
+  const c = findChat(store.chats, id) ?? findChat(store.archivedChats, id);
+  if (!c) return id;
+  return c.as ? `${c.as}: ${c.title || c.id}` : c.title || c.id;
+});
+
 function request(kind: string) {
   activeKind.value = kind;
   client.send("debug.request", { kind }, store.currentChat ? { chatId: store.currentChat } : undefined);
@@ -118,11 +134,21 @@ function scheduleRefresh() {
 const offSnapshot = client.on("debug.snapshot", p => { snapshot.value = p; open.value = new Set(); });
 const offToolResult = client.on("tool.result", scheduleRefresh);
 const offTurnComplete = client.on("turn.complete", scheduleRefresh);
+// A mode/model/reasoning change echoes back as chat.opened (see ChatHandlers.Settings) — refresh right
+// then, before any turn runs, rather than waiting for tool.result/turn.complete to happen to fire.
+const offChatSettingsEcho = client.on("chat.opened", (_p, env) => {
+  if (env.chatId && env.chatId === store.currentChat) scheduleRefresh();
+});
 const offOpen = uiBus.on("debug.open", () => {
   isOpen.value = true;
   document.getElementById("debug")?.classList.add("open");
   request("kv.session");
 });
+
+// Follows whichever chat is on screen — an embedded drawer as much as a solo tear-off window. Without
+// this the panel was static: opening it once and then switching chats kept showing the first chat's
+// snapshot forever, because nothing ever asked again.
+watch(() => store.currentChat, () => { if (solo || isOpen.value) reload(); });
 
 // A tear-off panel follows the focused chat, so it watches one chat at a time — and must drop the
 // previous one. Without that, a window left open all day accumulates watches and keeps receiving the
@@ -143,5 +169,8 @@ const offFocus = solo ? client.on("focus.changed", watchAndReload) : () => {};
 const offChatOpened = solo ? client.on("chat.opened", watchAndReload) : () => {};
 
 onMounted(() => { if (solo) request("kv.session"); });
-onUnmounted(() => { offSnapshot(); offToolResult(); offTurnComplete(); offOpen(); offWelcome(); offFocus(); offChatOpened(); });
+onUnmounted(() => {
+  offSnapshot(); offToolResult(); offTurnComplete(); offChatSettingsEcho();
+  offOpen(); offWelcome(); offFocus(); offChatOpened();
+});
 </script>
