@@ -17,6 +17,17 @@ namespace SPLA.Tests;
 /// </summary>
 public sealed class ConnectionCredentialTests
 {
+    /// <summary>
+    /// A machine layer of this test's own, for the whole test — connections resolve from three files
+    /// now, two of which live in the machine's home, so a test reading the real <c>~/.spla</c> would
+    /// answer differently on every machine and could write into the person's own home. Opened around
+    /// each test rather than in the constructor: the flow that resolves settings and the flow that
+    /// saves them must both be inside it.
+    /// </summary>
+    private static IDisposable OwnHome() => MachineLayerScope.Begin(
+        homeDir: Directory.CreateDirectory(
+            Path.Combine(Path.GetTempPath(), $"spla-conn-cred-home-{Guid.NewGuid():N}")).FullName);
+
     private static AgentRuntime BuildRuntime(string apiKey, string? adminKey = null)
     {
         var root = Directory.CreateDirectory(
@@ -47,6 +58,7 @@ public sealed class ConnectionCredentialTests
     [Fact]
     public void A_stored_literal_is_withheld_and_a_reference_is_published()
     {
+        using var home = OwnHome();
         var literal = Only(SettingsOps.GetConnections(BuildRuntime("sk-or-v1-REALKEY")));
         Assert.Null(literal.ApiKey);
         Assert.True(literal.ApiKeyIsLiteral);
@@ -61,6 +73,7 @@ public sealed class ConnectionCredentialTests
     [Fact]
     public void Saving_an_untouched_withheld_literal_keeps_it()
     {
+        using var home = OwnHome();
         var runtime = BuildRuntime("sk-or-v1-REALKEY", "sk-admin-REALKEY");
 
         // Exactly what a client that changed nothing sends back.
@@ -79,6 +92,7 @@ public sealed class ConnectionCredentialTests
     [Fact]
     public void Choosing_a_reference_replaces_the_literal()
     {
+        using var home = OwnHome();
         var runtime = BuildRuntime("sk-or-v1-REALKEY");
 
         var edited = Only(SettingsOps.GetConnections(runtime));
@@ -98,6 +112,7 @@ public sealed class ConnectionCredentialTests
     [Fact]
     public void Clearing_the_flag_and_the_field_removes_the_credential()
     {
+        using var home = OwnHome();
         var runtime = BuildRuntime("sk-or-v1-REALKEY");
 
         var edited = Only(SettingsOps.GetConnections(runtime));
@@ -114,6 +129,7 @@ public sealed class ConnectionCredentialTests
     [Fact]
     public void A_new_connection_with_no_credential_stores_none()
     {
+        using var home = OwnHome();
         var runtime = BuildRuntime("secret:user:openrouter#token");
 
         var existing = Only(SettingsOps.GetConnections(runtime));
