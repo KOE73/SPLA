@@ -200,7 +200,8 @@ public sealed class AgentRuntime : IDisposable
     /// manifest explaining both. Recomposed on every call so live settings edits (plugin
     /// settings/prompts, mode) reach chats without a restart, and so a skill activated mid-turn is
     /// reflected on the very next iteration.</summary>
-    public ComposedContext ComposeContext() => ContextComposer.Compose(Settings, Settings.WorkspacePath);
+    public ComposedContext ComposeContext(AgentMode? modeOverride = null) =>
+        ContextComposer.Compose(Settings, Settings.WorkspacePath, modeOverride);
 
     /// <summary>The system-prompt half of <see cref="ComposeContext"/>, for callers that only need
     /// the text (a freshly seeded chat, the debug view).</summary>

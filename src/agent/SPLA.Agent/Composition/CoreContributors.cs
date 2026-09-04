@@ -15,11 +15,11 @@ public sealed class ModeContributor : IAgentContributor
 
     public AgentContribution Contribute(AgentContributionContext context)
     {
-        var preamble = Preamble(context.Settings.Mode);
+        var preamble = Preamble(context.Mode);
         return AgentContribution.FromContext(new ContextItem
         {
-            Source = context.Settings.Mode.ToString(),
-            Title = $"Mode: {context.Settings.Mode}",
+            Source = context.Mode.ToString(),
+            Title = $"Mode: {context.Mode}",
             Body = preamble
         });
     }

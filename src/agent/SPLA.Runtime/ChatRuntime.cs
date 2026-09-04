@@ -291,7 +291,7 @@ public sealed class ChatRuntime : IDisposable, SPLA.Domain.Agent.IBackgroundTask
     public SPLA.MCP.Core.Composition.ComposedContext ComposeContext()
     {
         using var scope = AgentSessionScope.Begin(_agentSession);
-        return _runtime.ComposeContext();
+        return _runtime.ComposeContext(ResolveMode());
     }
 
     /// <summary>
@@ -781,8 +781,10 @@ public sealed class ChatRuntime : IDisposable, SPLA.Domain.Agent.IBackgroundTask
             // active skill and working memory. Settings and plugin edits made since the chat opened
             // apply immediately, and — the reason it is per-iteration — a skill the model activates
             // mid-turn has its procedure in the prompt for the very next LLM call rather than for the
-            // next user message.
-            Context = runtime.ComposeContext,
+            // next user message. Goes through this chat's own ComposeContext (not runtime.ComposeContext
+            // directly) so the mode preamble names THIS chat's resolved mode — its own override, or a
+            // role's — rather than always the project default.
+            Context = ComposeContext,
             // Split in two because MsgId does not exist yet at drain time — Conversation.Add is what
             // assigns it (see ConversationOrchestrator.OnMessageDelivered's own comment). DrainInbox
             // only remembers WHICH drained messages are a person's own words (by reference — ChatMessage
