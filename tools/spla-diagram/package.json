@@ -27,7 +27,8 @@
     "styles:emit": "node scripts/emit-styles.mjs",
     "check:model": "node scripts/check-model.mjs ../../docs/diagrams/projects ../..",
     "check:content-template": "node scripts/check-content-template.mjs",
-    "check:routers": "node scripts/check-routers.mjs"
+    "check:routers": "node scripts/check-routers.mjs",
+    "check:nudge": "node scripts/check-nudge.mjs"
   },
   "devDependencies": {
     "@types/node": "^26.3.0",

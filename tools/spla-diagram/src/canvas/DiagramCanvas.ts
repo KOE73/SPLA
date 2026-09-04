@@ -22,8 +22,16 @@ import { dashArray, textAttrs } from "./render/textAttrs.js";
 import { marquee, resizeHandles, selectionOutline } from "./render/handles.js";
 import { UniformPortAssigner } from "./ports/assigners.js";
 import { portKey, type PortAssigner, type PortRequest } from "./ports/PortAssigner.js";
-import { BezierRouter, type EdgeRouter } from "./routing/EdgeRouter.js";
-import { OrthogonalRouter, TreeHorizontalRouter, TreeVerticalRouter } from "./routing/routers.js";
+import { BezierRouter, type EdgeRouter, type Route } from "./routing/EdgeRouter.js";
+import {
+  OrthogonalRouter,
+  TreeHorizontalRouter,
+  TreeVerticalRouter,
+  filletedPath,
+  polylinePath,
+} from "./routing/routers.js";
+import { borderZones, solidZone, walls, zonesFor, LANE_GAP, type RouteScene, type RouteZone } from "./routing/Scene.js";
+import { nudgeRoutes } from "./routing/nudge.js";
 import type { ResolvedEdgeStyle } from "../model/StyleLibrary.js";
 import type { RoutingMode } from "../model/style-types.js";
 import { getMarkerOffset } from "./render/PaintRegistry.js";
@@ -883,6 +891,59 @@ export class DiagramCanvas {
   }
 
   /**
+   * Pull apart routes that ended up in the same corridor.
+   *
+   * Each route was found on its own and knows nothing of its neighbours, so two
+   * of them can legitimately choose the same lane and draw as a single line —
+   * at which point the reader loses a relation, not a decoration. Separation is
+   * therefore its own pass over all the routes at once, with the scene's solid
+   * zones acting as the walls a lane may not be pushed into.
+   *
+   * Curved routes carry no polyline and simply sit this pass out.
+   */
+  private separateSharedCorridors(routes: Map<string, Route>, scene: RouteScene): void {
+    const nudgeable = [...routes.entries()]
+      .filter(([, route]) => route.points !== undefined && route.points.length > 2)
+      .map(([id, route]) => ({ id, points: route.points! }));
+    if (nudgeable.length < 2) return;
+
+    const moved = nudgeRoutes({ routes: nudgeable, walls: walls(scene.zones), gap: LANE_GAP });
+    for (const [id, points] of moved) {
+      const route = routes.get(id);
+      if (route === undefined || points.length < 2) continue;
+      // The path is rebuilt rather than patched: it is a rendering of the
+      // points, and letting the two drift apart is how a line ends up drawn
+      // somewhere its own geometry says it is not.
+      routes.set(id, {
+        ...route,
+        points,
+        path: route.corners === "rounded" ? filletedPath(points) : polylinePath(points),
+      });
+    }
+  }
+
+  /**
+   * The elements one edge is allowed to ignore: its own two ends, and every
+   * container holding either of them.
+   *
+   * Without the ancestors a line could not leave its own zone — the band around
+   * that zone's outline would price the only way out. Derived by filtering the
+   * shared scene rather than rebuilding it, so the scene stays one thing built
+   * once (ADR_20260903 §2.8).
+   */
+  private exclusionsFor(from: DiagramElement, to: DiagramElement): Set<string> {
+    const ids = new Set<string>();
+    for (const start of [from, to]) {
+      let cursor: DiagramElement | null = start;
+      while (cursor !== null) {
+        ids.add(cursor.id);
+        cursor = cursor.parent;
+      }
+    }
+    return ids;
+  }
+
+  /**
    * The renderer that draws this element, outline included.
    *
    * Shape comes from the resolved style, so every call site asks the same
@@ -1098,20 +1159,24 @@ export class DiagramCanvas {
     }
     const ports = this.portAssigner.assign(requests);
 
-    // Obstacle/boundary rects for routers that avoid collisions (ADR_20260903
-    // §2.8): every other visible node is a potential obstacle, every visible
-    // container/zone a boundary a route may cross but must not run along.
-    // Computed once per render, not per edge — the router itself filters out
-    // each edge's own two ends (BezierRouter ignores both fields entirely).
-    const obstacleRects: Rect[] = [];
-    const boundaryRects: Rect[] = [];
+    // The scene: everything in the way, priced, built once per repaint
+    // (ADR_20260903 §2.8). A block forbids entry outright; a container gives a
+    // band along its outline that costs per unit travelled, which is what makes
+    // crossing it cheap and hugging it expensive without a rule saying so.
+    const zones: RouteZone[] = [];
     for (const el of doc.elements()) {
       if (ctx.isHidden(el)) continue;
       const rect = this.rendererFor(el).visibleRect(el, ctx);
-      if (isContainer(el)) boundaryRects.push(rect);
-      else obstacleRects.push(rect);
+      if (isContainer(el)) zones.push(...borderZones(rect, el.id));
+      else zones.push(solidZone(rect, el.id));
     }
+    const scene: RouteScene = { zones };
 
+    // Routes are computed for the whole picture before any of them is drawn,
+    // because separating lines that share a corridor is a decision about
+    // several routes at once — no amount of improving one route in isolation
+    // can stop two of them from merging into one stroke.
+    const routes = new Map<string, Route>();
     for (const r of resolved) {
       const fromSlot = ports.get(portKey(r.edge.id, "from"));
       const toSlot = ports.get(portKey(r.edge.id, "to"));
@@ -1122,21 +1187,27 @@ export class DiagramCanvas {
       const fromInset = this.rendererFor(r.from.owner).cornerInset?.(fromSlot.side, fromStyle) ?? fromStyle.radius;
       const toInset = this.rendererFor(r.to.owner).cornerInset?.(toSlot.side, toStyle) ?? toStyle.radius;
 
-      const style = this.styleLibrary.edgeStyle(r.edge);
-      const fromMarkerOffset = getMarkerOffset(style.source.shape, style.source.size ?? DIAGRAM_CONFIG.routing.defaultMarkerSize);
-      const toMarkerOffset = getMarkerOffset(style.target.shape, style.target.size ?? DIAGRAM_CONFIG.routing.defaultMarkerSize);
-
-      const fromPoint = this.rendererFor(r.from.owner).pointAt(r.from.rect, fromSlot);
-      const toPoint = this.rendererFor(r.to.owner).pointAt(r.to.rect, toSlot);
-
-      const route = this.routerFor(r.edge, style).route({
-        from: fromPoint, to: toPoint,
+      const edgeStyle = this.styleLibrary.edgeStyle(r.edge);
+      routes.set(r.edge.id, this.routerFor(r.edge, edgeStyle).route({
+        from: this.rendererFor(r.from.owner).pointAt(r.from.rect, fromSlot),
+        to: this.rendererFor(r.to.owner).pointAt(r.to.rect, toSlot),
         fromSide: fromSlot.side, toSide: toSlot.side,
         fromRect: r.from.rect, toRect: r.to.rect,
         fromInset, toInset,
-        fromMarkerOffset, toMarkerOffset,
-        obstacles: obstacleRects, boundaries: boundaryRects,
-      });
+        fromMarkerOffset: getMarkerOffset(edgeStyle.source.shape, edgeStyle.source.size ?? DIAGRAM_CONFIG.routing.defaultMarkerSize),
+        toMarkerOffset: getMarkerOffset(edgeStyle.target.shape, edgeStyle.target.size ?? DIAGRAM_CONFIG.routing.defaultMarkerSize),
+        zones: zonesFor(scene, this.exclusionsFor(r.from.owner, r.to.owner)),
+      }));
+    }
+    this.separateSharedCorridors(routes, scene);
+
+    for (const r of resolved) {
+      const fromSlot = ports.get(portKey(r.edge.id, "from"));
+      const toSlot = ports.get(portKey(r.edge.id, "to"));
+      const route = routes.get(r.edge.id);
+      if (fromSlot === undefined || toSlot === undefined || route === undefined) continue;
+
+      const style = this.styleLibrary.edgeStyle(r.edge);
       const viewHighlighted =
         view === undefined || view.highlightNodes.length === 0
           ? true

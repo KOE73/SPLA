@@ -1,5 +1,6 @@
 import type { Point, Rect, Side } from "../../geometry/types.js";
 import { DIAGRAM_CONFIG } from "../../constants/diagram-constants.js";
+import type { RouteZone } from "./Scene.js";
 
 export interface RouteRequest {
   readonly from: Point;
@@ -17,19 +18,17 @@ export interface RouteRequest {
   /** Marker length at the end of the line (px) */
   readonly toMarkerOffset?: number;
   /**
-   * Other blocks' rectangles the route should not pass through (ADR_20260903
-   * §2.8, first approximation). Optional so existing callers and
-   * `BezierRouter` — which never reasons about obstacles — are unaffected.
-   * A router that ignores this simply draws through obstacles as before.
+   * Everything in the way, priced (ADR_20260903 §2.8).
+   *
+   * One list rather than the two differently-meaning ones this replaced:
+   * a forbidden block and a discouraged border band differ by a weight, not by
+   * a kind, and the phases that consume them — search and nudging — must not be
+   * free to disagree about what either means.
+   *
+   * Optional: `BezierRouter` never reasons about the scene, and a caller with
+   * nothing to say leaves it out.
    */
-  readonly obstacles?: readonly Rect[];
-  /**
-   * Container/zone rectangles the route may cross (entering a zone is
-   * legitimate) but must not run *along* within a small gap — hugging a
-   * boundary makes the line visually disappear into the container's own
-   * outline. Optional for the same reason as `obstacles`.
-   */
-  readonly boundaries?: readonly Rect[];
+  readonly zones?: readonly RouteZone[];
 }
 
 export interface Route {
@@ -48,6 +47,19 @@ export interface Route {
   readonly fromLabelAt?: Point;
   /** Where the cardinality/role label at the `to` end belongs. Same caveat as `fromLabelAt`. */
   readonly toLabelAt?: Point;
+  /**
+   * The route as a polyline, when it is one.
+   *
+   * Nudging needs this: separating lines that share a corridor is a decision
+   * about *several* routes at once, and it cannot be taken from a `d` string.
+   * A router that draws curves omits it and is simply left out of that phase.
+   */
+  readonly points?: readonly Point[];
+  /**
+   * How corners are drawn, so that a rebuilt path after nudging looks like the
+   * one the router produced. Absent means sharp.
+   */
+  readonly corners?: "sharp" | "rounded";
 }
 
 export interface EdgeRouter {

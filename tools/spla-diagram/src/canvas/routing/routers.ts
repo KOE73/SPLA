@@ -1,53 +1,34 @@
 /**
- * Manhattan-style edge routers: orthogonal ladder, and the two "tree" shapes
- * used by use-case flows (horizontal) and inheritance/org hierarchies
- * (vertical).
+ * Manhattan-style edge routers: the searched orthogonal route, and the two
+ * "tree" shapes used by use-case flows (horizontal) and inheritance or org
+ * hierarchies (vertical).
  *
- * ADR_20260903 §2.7: a router is a pure function of (ports, obstacle rects).
- * Nothing here is cached or stored — the caller recomputes a route whenever
- * geometry changes and throws the old one away. That is what lets routing
- * modes evolve (this file today, obstacle-avoidance later per §2.8) without
- * ever touching a saved file or migrating data.
+ * ADR_20260903 §2.7: a router is a pure function of ports and scene. Nothing
+ * here is cached or stored — the caller recomputes on every repaint and throws
+ * the result away — which is what lets the algorithm improve without ever
+ * migrating a file.
  *
- * Endpoint-only: none of these routers walk around *other* blocks (§2.8,
- * deferred stream H). They only reason about their own two rectangles
- * (fromRect/toRect) plus the shape-aware insets/marker offsets already
- * computed by the caller — same contract BezierRouter uses.
+ * The division of labour is deliberate. **Orthogonal** is the mode that tries
+ * to be right: it searches a sparse grid, prices bends and zones, and comes out
+ * square to both shapes. The **tree** modes are a *style* — one shared spine,
+ * every child hanging off it — and a style that quietly rerouted itself around
+ * obstacles would stop being the shape someone asked for. So they draw their
+ * canonical figure and leave avoidance to the mode whose job it is.
  */
-import type { Point, Rect, Side } from "../../geometry/types.js";
+import type { Point, Side } from "../../geometry/types.js";
 import type { EdgeRouter, Route, RouteRequest } from "./EdgeRouter.js";
+import { findRoute, simplify } from "./VisibilityGraph.js";
 
-/** Local to this file: EdgeRouter.ts / diagram-constants.ts are off-limits while
- * a parallel change is in flight there, so the fillet radius for the
- * orthogonal router's rounded corners lives here instead of DIAGRAM_CONFIG. */
-const ORTHOGONAL_FILLET_RADIUS = 10;
-
-/**
- * Obstacle-avoidance and boundary-hug constants (ADR_20260903 §2.8, first
- * approximation). Local to this file for the same reason as the fillet
- * radius above.
- */
-/** How far a detour clears an obstacle's bounding box (px). */
-const OBSTACLE_DETOUR_MARGIN = 16;
-/** Minimum perpendicular clearance a segment must keep from a container
- * boundary it runs parallel to (px) — below this it reads as "on" the line. */
-const BOUNDARY_GAP = 10;
-/** Minimum overlap along the shared axis before a near-parallel segment
- * counts as "running alongside" a boundary edge rather than just grazing it
- * on the way through. */
-const BOUNDARY_OVERLAP_MIN = 4;
-/** Shrink applied to obstacle rects before testing for interior crossings,
- * so a segment that merely touches an obstacle's edge (e.g. a port on its
- * boundary) is not flagged as passing through it. */
-const OBSTACLE_EPS = 0.5;
+/** Corner rounding for the searched route. Tree shapes stay deliberately sharp. */
+const FILLET_RADIUS = 10;
 
 function offsetPoint(p: Point, side: Side, distance: number): Point {
   if (distance <= 0) return p;
   switch (side) {
     case "north": return { x: p.x, y: p.y - distance };
     case "south": return { x: p.x, y: p.y + distance };
-    case "west":  return { x: p.x - distance, y: p.y };
-    case "east":  return { x: p.x + distance, y: p.y };
+    case "west": return { x: p.x - distance, y: p.y };
+    case "east": return { x: p.x + distance, y: p.y };
   }
 }
 
@@ -55,116 +36,107 @@ function isHorizontal(side: Side): boolean {
   return side === "east" || side === "west";
 }
 
-/** Euclidean length of a straight segment; used to pick the longest one for labelAt. */
 function segLength(a: Point, b: Point): number {
-  return Math.hypot(b.x - a.x, b.y - a.y);
-}
-
-function midpoint(a: Point, b: Point): Point {
-  return { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 };
+  return Math.abs(a.x - b.x) + Math.abs(a.y - b.y);
 }
 
 /**
- * Picks the label anchor as the midpoint of the longest straight segment in
- * a polyline, rather than the geometric midpoint of the whole path.
+ * The label rides the middle of the longest straight run, not the middle of
+ * the path.
  *
- * The geometric midpoint of a Manhattan ladder often lands exactly on a
- * corner or a very short jog segment (e.g. the vertical riser in a tree
- * router can be a handful of pixels tall when the two blocks are almost
- * level). A label centred there crowds the elbow and reads as attached to
- * the wrong segment. Anchoring to the longest run instead keeps the label on
- * open, unambiguous stretch of line, mirroring how a human would place it.
+ * On a Manhattan route the geometric midpoint lands on a corner or a short jog
+ * about as often as not, and a caption crowding an elbow is unreadable. The
+ * longest run is where a person would have written it.
  */
 function labelOnLongestSegment(points: readonly Point[]): Point {
-  const fallback = points[0] ?? { x: 0, y: 0 };
-  if (points.length < 2) return fallback;
-  let bestA: Point = fallback;
-  let bestB: Point = points[1] ?? fallback;
-  let bestLen = -1;
-  for (let i = 0; i + 1 < points.length; i++) {
-    const a = points[i];
-    const b = points[i + 1];
-    if (!a || !b) continue;
-    const len = segLength(a, b);
-    if (len > bestLen) {
-      bestLen = len;
-      bestA = a;
-      bestB = b;
-    }
-  }
-  return midpoint(bestA, bestB);
-}
+  if (points.length === 0) return { x: 0, y: 0 };
+  if (points.length === 1) return points[0]!;
 
-/** Builds an SVG polyline path from a point list, guarding against NaN by
- * collapsing any degenerate (non-finite) coordinate to its neighbour. */
-function safePolylinePath(points: readonly Point[]): string {
-  const cleaned = points.map((p, i) => {
-    if (Number.isFinite(p.x) && Number.isFinite(p.y)) return p;
-    // Degenerate input (e.g. coincident rects producing a 0/0 direction):
-    // fall back to the previous good point so the path stays drawable
-    // instead of emitting "NaN" into the `d` attribute, which silently
-    // erases the whole line.
-    const prev = points[i - 1];
-    return prev ?? { x: 0, y: 0 };
-  });
-  const first = cleaned[0];
-  if (!first) return "";
-  const rest = cleaned.slice(1);
-  return `M ${first.x} ${first.y}` + rest.map((p) => ` L ${p.x} ${p.y}`).join("");
+  let best = { a: points[0]!, b: points[1]!, len: -1 };
+  for (let i = 0; i < points.length - 1; i++) {
+    const a = points[i]!;
+    const b = points[i + 1]!;
+    const len = segLength(a, b);
+    if (len > best.len) best = { a, b, len };
+  }
+  const horizontal = Math.abs(best.a.y - best.b.y) < 0.01;
+  return {
+    x: (best.a.x + best.b.x) / 2 + (horizontal ? 0 : 8),
+    y: (best.a.y + best.b.y) / 2 - (horizontal ? 6 : 0),
+  };
 }
 
 /**
- * Rounds the corners of a Manhattan polyline with a fixed-radius fillet,
- * replacing each interior vertex with a short arc. Falls back to a sharp
- * corner (radius 0 for that vertex) when either adjacent segment is shorter
- * than the fillet would need — avoids overlapping arcs on tightly packed
- * ladders.
+ * Polyline as SVG, with non-finite coordinates collapsed onto their neighbour.
+ *
+ * A `NaN` in the `d` attribute does not fail loudly: the line simply vanishes,
+ * which reads as "the relation is gone" rather than "the router is broken".
  */
-function filletedPath(points: readonly Point[], radius: number): string {
-  const cleaned = points.map((p) => (Number.isFinite(p.x) && Number.isFinite(p.y) ? p : { x: 0, y: 0 }));
-  if (cleaned.length < 2) return safePolylinePath(cleaned);
-  if (cleaned.length === 2 || radius <= 0) return safePolylinePath(cleaned);
-
+export function polylinePath(points: readonly Point[]): string {
+  const cleaned: Point[] = [];
+  for (const p of points) {
+    // Fall back to the last point known good, not to the previous *input*:
+    // a run of bad coordinates would otherwise copy one of its own kind
+    // forward and leak a NaN into the attribute anyway.
+    cleaned.push(
+      Number.isFinite(p.x) && Number.isFinite(p.y) ? p : cleaned[cleaned.length - 1] ?? { x: 0, y: 0 },
+    );
+  }
   const first = cleaned[0];
-  if (!first) return "";
-  let d = `M ${first.x} ${first.y}`;
-  for (let i = 1; i < cleaned.length - 1; i++) {
-    const prev = cleaned[i - 1];
-    const curr = cleaned[i];
-    const next = cleaned[i + 1];
-    if (!prev || !curr || !next) continue;
+  if (first === undefined) return "";
+  return `M ${first.x} ${first.y}` + cleaned.slice(1).map((p) => ` L ${p.x} ${p.y}`).join("");
+}
 
+/**
+ * Same polyline with rounded corners.
+ *
+ * Each fillet is capped at half of the shorter adjoining segment, so a tight
+ * jog degrades to a sharp corner instead of two arcs overrunning each other.
+ */
+export function filletedPath(points: readonly Point[], radius = FILLET_RADIUS): string {
+  const cleaned = points.filter((p) => Number.isFinite(p.x) && Number.isFinite(p.y));
+  if (cleaned.length < 3 || radius <= 0) return polylinePath(cleaned);
+
+  let d = `M ${cleaned[0]!.x} ${cleaned[0]!.y}`;
+  for (let i = 1; i < cleaned.length - 1; i++) {
+    const prev = cleaned[i - 1]!;
+    const curr = cleaned[i]!;
+    const next = cleaned[i + 1]!;
     const inLen = segLength(prev, curr);
     const outLen = segLength(curr, next);
-    // Cap the fillet so it never eats more than half of either adjoining
-    // segment — prevents the arc from overshooting into the next corner
-    // on short jogs.
     const r = Math.min(radius, inLen / 2, outLen / 2);
 
-    if (r <= 0.01 || inLen === 0 || outLen === 0) {
+    if (r <= 0.01) {
       d += ` L ${curr.x} ${curr.y}`;
       continue;
     }
-
-    const inRatio = (inLen - r) / inLen;
-    const outRatio = r / outLen;
     const enter = {
-      x: prev.x + (curr.x - prev.x) * inRatio,
-      y: prev.y + (curr.y - prev.y) * inRatio,
+      x: prev.x + (curr.x - prev.x) * ((inLen - r) / inLen),
+      y: prev.y + (curr.y - prev.y) * ((inLen - r) / inLen),
     };
     const exit = {
-      x: curr.x + (next.x - curr.x) * outRatio,
-      y: curr.y + (next.y - curr.y) * outRatio,
+      x: curr.x + (next.x - curr.x) * (r / outLen),
+      y: curr.y + (next.y - curr.y) * (r / outLen),
     };
     d += ` L ${enter.x} ${enter.y} Q ${curr.x} ${curr.y}, ${exit.x} ${exit.y}`;
   }
-  const last = cleaned[cleaned.length - 1];
-  if (last) d += ` L ${last.x} ${last.y}`;
-  return d;
+  const last = cleaned[cleaned.length - 1]!;
+  return `${d} L ${last.x} ${last.y}`;
 }
 
-/** Same end-label placement logic as BezierRouter's private helper: a step
- * outward along the port's own side, then off to the side of the stroke. */
+function sideVector(side: Side): Point {
+  switch (side) {
+    case "north": return { x: 0, y: -1 };
+    case "south": return { x: 0, y: 1 };
+    case "west": return { x: -1, y: 0 };
+    case "east": return { x: 1, y: 0 };
+  }
+}
+
+const END_LABEL_ALONG = 14;
+const END_LABEL_PERP = 9;
+
+/** A step out along the port's own normal, then aside so the text clears the stroke. */
 function endLabelPoint(anchor: Point, side: Side, along: number, perp: number): Point {
   const dir = sideVector(side);
   const normal = { x: -dir.y, y: dir.x };
@@ -174,18 +146,6 @@ function endLabelPoint(anchor: Point, side: Side, along: number, perp: number): 
   };
 }
 
-function sideVector(side: Side): Point {
-  switch (side) {
-    case "north": return { x: 0, y: -1 };
-    case "south": return { x: 0, y: 1 };
-    case "west":  return { x: -1, y: 0 };
-    case "east":  return { x: 1, y: 0 };
-  }
-}
-
-const END_LABEL_ALONG = 14;
-const END_LABEL_PERP = 9;
-
 function endLabels(pFrom: Point, fromSide: Side, pTo: Point, toSide: Side) {
   return {
     fromLabelAt: endLabelPoint(pFrom, fromSide, END_LABEL_ALONG, END_LABEL_PERP),
@@ -193,400 +153,145 @@ function endLabels(pFrom: Point, fromSide: Side, pTo: Point, toSide: Side) {
   };
 }
 
-// ------------------------------------------------------- obstacle avoidance
-
-function isFinitePoint(p: Point): boolean {
-  return Number.isFinite(p.x) && Number.isFinite(p.y);
-}
-
-function isFiniteRect(r: Rect): boolean {
-  return Number.isFinite(r.x) && Number.isFinite(r.y) && Number.isFinite(r.width) && Number.isFinite(r.height);
-}
-
-/** Whether `point` lies within `rect` (inclusive, with a small tolerance). */
-function rectContainsPoint(rect: Rect, point: Point, eps = 0.5): boolean {
-  return (
-    point.x >= rect.x - eps && point.x <= rect.x + rect.width + eps &&
-    point.y >= rect.y - eps && point.y <= rect.y + rect.height + eps
-  );
-}
-
-function sameRect(a: Rect, b: Rect, eps = 0.01): boolean {
-  return Math.abs(a.x - b.x) < eps && Math.abs(a.y - b.y) < eps &&
-    Math.abs(a.width - b.width) < eps && Math.abs(a.height - b.height) < eps;
-}
-
 /**
- * Obstacles that are really "this edge's own ends" in disguise: the two
- * endpoint rects themselves, or any rect one of the endpoints sits inside
- * (a collapsed/parent container the port is drawn against). A route has to
- * be allowed to leave and arrive through those — they are not "someone
- * else's block" (task brief, §obstacles).
- */
-function isEndpointRelated(rect: Rect, fromRect: Rect, toRect: Rect, pFrom: Point, pTo: Point): boolean {
-  if (!isFiniteRect(rect)) return true; // degenerate: treat as unusable, drop it from consideration
-  if (sameRect(rect, fromRect) || sameRect(rect, toRect)) return true;
-  if (rectContainsPoint(rect, pFrom) || rectContainsPoint(rect, pTo)) return true;
-  return false;
-}
-
-/** Does the closed axis-aligned segment a→b pass *through the interior* of
- * `rect` (touching an edge does not count)? Both routers here only ever
- * build axis-aligned (Manhattan) segments, so this simple case-split is
- * exact — no general line/rect clipping needed. */
-function segmentCrossesRectInterior(a: Point, b: Point, rect: Rect): boolean {
-  if (!isFinitePoint(a) || !isFinitePoint(b) || !isFiniteRect(rect)) return false;
-  const innerX0 = rect.x + OBSTACLE_EPS;
-  const innerX1 = rect.x + rect.width - OBSTACLE_EPS;
-  const innerY0 = rect.y + OBSTACLE_EPS;
-  const innerY1 = rect.y + rect.height - OBSTACLE_EPS;
-  if (innerX0 >= innerX1 || innerY0 >= innerY1) return false; // too thin to have an interior worth avoiding
-
-  if (a.y === b.y) {
-    // Horizontal segment.
-    if (a.y <= innerY0 || a.y >= innerY1) return false;
-    const lo = Math.min(a.x, b.x);
-    const hi = Math.max(a.x, b.x);
-    return lo < innerX1 && hi > innerX0;
-  }
-  if (a.x === b.x) {
-    // Vertical segment.
-    if (a.x <= innerX0 || a.x >= innerX1) return false;
-    const lo = Math.min(a.y, b.y);
-    const hi = Math.max(a.y, b.y);
-    return lo < innerY1 && hi > innerY0;
-  }
-  // Non-axis-aligned segment (shouldn't occur for these routers): skip
-  // rather than guess — a false negative here just falls back to the base
-  // route, which is never worse than the pre-avoidance behaviour.
-  return false;
-}
-
-function countCrossings(points: readonly Point[], obstacles: readonly Rect[]): number {
-  let count = 0;
-  for (let i = 0; i + 1 < points.length; i++) {
-    const a = points[i];
-    const b = points[i + 1];
-    if (!a || !b) continue;
-    for (const rect of obstacles) {
-      if (segmentCrossesRectInterior(a, b, rect)) count++;
-    }
-  }
-  return count;
-}
-
-function pathLength(points: readonly Point[]): number {
-  let total = 0;
-  for (let i = 0; i + 1 < points.length; i++) {
-    const a = points[i];
-    const b = points[i + 1];
-    if (!a || !b) continue;
-    total += segLength(a, b);
-  }
-  return total;
-}
-
-interface Bbox { minX: number; minY: number; maxX: number; maxY: number }
-
-function unionBbox(rects: readonly Rect[]): Bbox | null {
-  let out: Bbox | null = null;
-  for (const r of rects) {
-    if (!isFiniteRect(r)) continue;
-    const b: Bbox = { minX: r.x, minY: r.y, maxX: r.x + r.width, maxY: r.y + r.height };
-    out = out === null ? b : {
-      minX: Math.min(out.minX, b.minX), minY: Math.min(out.minY, b.minY),
-      maxX: Math.max(out.maxX, b.maxX), maxY: Math.max(out.maxY, b.maxY),
-    };
-  }
-  return out;
-}
-
-/**
- * Four candidate detours around the bounding box of the obstacles the base
- * route collides with — go around above, below, left of, or right of the
- * blocking cluster. Each is a simple 4-point "bus" jog, not a shortest-path
- * search: cheap, deterministic, and good enough for the common case of one
- * or two blocks sitting in the way (task brief: "не переусложняй").
- */
-function detourCandidates(pFrom: Point, pTo: Point, bbox: Bbox): Point[][] {
-  const gateTop = bbox.minY - OBSTACLE_DETOUR_MARGIN;
-  const gateBottom = bbox.maxY + OBSTACLE_DETOUR_MARGIN;
-  const gateLeft = bbox.minX - OBSTACLE_DETOUR_MARGIN;
-  const gateRight = bbox.maxX + OBSTACLE_DETOUR_MARGIN;
-  return [
-    [pFrom, { x: pFrom.x, y: gateTop }, { x: pTo.x, y: gateTop }, pTo],
-    [pFrom, { x: pFrom.x, y: gateBottom }, { x: pTo.x, y: gateBottom }, pTo],
-    [pFrom, { x: gateLeft, y: pFrom.y }, { x: gateLeft, y: pTo.y }, pTo],
-    [pFrom, { x: gateRight, y: pFrom.y }, { x: gateRight, y: pTo.y }, pTo],
-  ];
-}
-
-/**
- * Picks the best of the base route and a handful of detours around whatever
- * it collides with, by (fewest obstacle crossings, then shortest, then
- * fewest bends). Pure and stateless per ADR_20260903 §2.7/§2.8: no search
- * state survives the call, and worst case (nothing clears the obstacle) it
- * simply returns the base route rather than nothing.
- */
-function avoidObstacles(
-  base: Point[],
-  pFrom: Point,
-  pTo: Point,
-  fromRect: Rect,
-  toRect: Rect,
-  obstacles: readonly Rect[] | undefined,
-): Point[] {
-  if (!obstacles || obstacles.length === 0) return base;
-  const relevant = obstacles.filter((r) => !isEndpointRelated(r, fromRect, toRect, pFrom, pTo));
-  if (relevant.length === 0) return base;
-
-  const baseCrossings = countCrossings(base, relevant);
-  if (baseCrossings === 0) return base;
-
-  const colliding = relevant.filter((r) => {
-    for (let i = 0; i + 1 < base.length; i++) {
-      const a = base[i];
-      const b = base[i + 1];
-      if (a && b && segmentCrossesRectInterior(a, b, r)) return true;
-    }
-    return false;
-  });
-  const bbox = unionBbox(colliding.length > 0 ? colliding : relevant);
-  if (bbox === null) return base;
-
-  const candidates = [base, ...detourCandidates(pFrom, pTo, bbox)];
-  let best = base;
-  let bestScore: [number, number, number] = [baseCrossings, pathLength(base), base.length];
-  for (const candidate of candidates) {
-    if (candidate.some((p) => !isFinitePoint(p))) continue;
-    const score: [number, number, number] = [countCrossings(candidate, relevant), pathLength(candidate), candidate.length];
-    if (
-      score[0] < bestScore[0] ||
-      (score[0] === bestScore[0] && score[1] < bestScore[1]) ||
-      (score[0] === bestScore[0] && score[1] === bestScore[1] && score[2] < bestScore[2])
-    ) {
-      best = candidate;
-      bestScore = score;
-    }
-  }
-  return best;
-}
-
-// -------------------------------------------------------- boundary hugging
-
-/**
- * Nudges interior segments that run parallel to, and within `BOUNDARY_GAP`
- * of, a container's border away from it — so the line reads as crossing
- * into the zone rather than merging with its outline (task brief, issue 1).
+ * The plain ladder, used when the search finds nothing at all.
  *
- * Only *interior* segments (both endpoints are corner points the router
- * invented, not port attachment points) are ever moved: the first and last
- * segment touch `pFrom`/`pTo` exactly where the caller placed the port, and
- * moving those would detach the line from the shape it is meant to leave.
+ * A crowded diagram should still show its relations: a line that cuts a corner
+ * is a cosmetic failure, a missing line is a factual one.
  */
-function avoidBoundaryHug(points: readonly Point[], boundaries: readonly Rect[] | undefined): Point[] {
-  if (!boundaries || boundaries.length === 0 || points.length < 4) return points.slice();
-  const out = points.map((p) => ({ ...p }));
+function ladder(pFrom: Point, fromSide: Side, pTo: Point, toSide: Side): Point[] {
+  if (pFrom.x === pTo.x && pFrom.y === pTo.y) return [pFrom, { ...pTo }];
 
-  for (let i = 1; i + 2 < out.length; i++) {
-    const a = out[i];
-    const b = out[i + 1];
-    if (!a || !b || !isFinitePoint(a) || !isFinitePoint(b)) continue;
+  const fromHoriz = isHorizontal(fromSide);
+  const toHoriz = isHorizontal(toSide);
 
-    if (a.y === b.y) {
-      // Horizontal segment: check against top/bottom edges of each boundary.
-      let y = a.y;
-      for (const rect of boundaries) {
-        if (!isFiniteRect(rect)) continue;
-        const lo = Math.min(a.x, b.x);
-        const hi = Math.max(a.x, b.x);
-        const overlap = Math.min(hi, rect.x + rect.width) - Math.max(lo, rect.x);
-        if (overlap < BOUNDARY_OVERLAP_MIN) continue;
-        for (const edgeY of [rect.y, rect.y + rect.height]) {
-          const dist = Math.abs(y - edgeY);
-          if (dist < BOUNDARY_GAP) {
-            const dir = y >= edgeY ? 1 : -1; // push further to whichever side it already leans
-            y = edgeY + dir * BOUNDARY_GAP;
-          }
-        }
-      }
-      if (Number.isFinite(y)) {
-        a.y = y;
-        b.y = y;
-      }
-    } else if (a.x === b.x) {
-      // Vertical segment: check against left/right edges of each boundary.
-      let x = a.x;
-      for (const rect of boundaries) {
-        if (!isFiniteRect(rect)) continue;
-        const lo = Math.min(a.y, b.y);
-        const hi = Math.max(a.y, b.y);
-        const overlap = Math.min(hi, rect.y + rect.height) - Math.max(lo, rect.y);
-        if (overlap < BOUNDARY_OVERLAP_MIN) continue;
-        for (const edgeX of [rect.x, rect.x + rect.width]) {
-          const dist = Math.abs(x - edgeX);
-          if (dist < BOUNDARY_GAP) {
-            const dir = x >= edgeX ? 1 : -1;
-            x = edgeX + dir * BOUNDARY_GAP;
-          }
-        }
-      }
-      if (Number.isFinite(x)) {
-        a.x = x;
-        b.x = x;
-      }
-    }
+  if (fromHoriz && !toHoriz) return [pFrom, { x: pTo.x, y: pFrom.y }, pTo];
+  if (!fromHoriz && toHoriz) return [pFrom, { x: pFrom.x, y: pTo.y }, pTo];
+  if (fromHoriz) {
+    const midX = (pFrom.x + pTo.x) / 2;
+    return [pFrom, { x: midX, y: pFrom.y }, { x: midX, y: pTo.y }, pTo];
   }
-  return out;
+  const midY = (pFrom.y + pTo.y) / 2;
+  return [pFrom, { x: pFrom.x, y: midY }, { x: pTo.x, y: midY }, pTo];
 }
 
 /**
- * Manhattan "ladder": leaves `from` along its side's normal, arrives at `to`
- * along its side's normal, with a single perpendicular jog connecting the
- * two straight runs. Corners are filleted for readability (a sequence of
- * sharp right angles reads as jagged at small scale).
+ * The shared spine of both tree modes: leave along the primary axis, run one
+ * collector at the halfway point, arrive along the primary axis.
  *
- * Degenerate cases (coincident points, zero gap, opposite/same sides) all
- * fall out of the same construction: when the "jog" collapses to zero length
- * the fillet step naturally skips it (see `filletedPath`), and worst case the
- * router still emits a valid two-point path.
+ * The spine is drawn between the *stub* points, not the ports, so that the
+ * line still leaves and arrives square to the shape even when the port's side
+ * disagrees with the mode's axis — a vertical bus hanging off an east-facing
+ * port used to strike the outline at an angle, which is the same defect the
+ * searched router fixes by construction.
+ */
+function treePath(from: Point, fromSide: Side, to: Point, toSide: Side, axis: "x" | "y"): Point[] {
+  const enter = stub(from, fromSide);
+  const exit = stub(to, toSide);
+  const spine = axis === "x" ? spineAlongX(enter, exit) : spineAlongY(enter, exit);
+  return simplify([from, ...spine, to]);
+}
+
+function spineAlongX(a: Point, b: Point): Point[] {
+  if (Math.abs(a.y - b.y) < 0.01) return [a, b];
+  const midX = (a.x + b.x) / 2;
+  return [a, { x: midX, y: a.y }, { x: midX, y: b.y }, b];
+}
+
+function spineAlongY(a: Point, b: Point): Point[] {
+  if (Math.abs(a.x - b.x) < 0.01) return [a, b];
+  const midY = (a.y + b.y) / 2;
+  return [a, { x: a.x, y: midY }, { x: b.x, y: midY }, b];
+}
+
+/** One step out along the port's own normal — the promise of a square end. */
+function stub(p: Point, side: Side): Point {
+  return offsetPoint(p, side, STUB);
+}
+
+/** How far a line leaves a port before it may turn. Matches the searched router. */
+const STUB = 14;
+
+/**
+ * Ports, with any non-finite coordinate replaced before it can travel.
+ *
+ * Cleaning at the boundary rather than at the end: a NaN that reaches the path
+ * builder is caught there, but one that reaches `points` is not, and nudging
+ * would then lay other routes out against a corridor at coordinate NaN.
+ * Degenerate input should produce a drawable line, not spread.
+ */
+function ends(req: RouteRequest): { pFrom: Point; pTo: Point } {
+  const from = usable(req.from, req.to);
+  const to = usable(req.to, from);
+  return {
+    pFrom: offsetPoint(from, req.fromSide, req.fromMarkerOffset ?? 0),
+    pTo: offsetPoint(to, req.toSide, req.toMarkerOffset ?? 0),
+  };
+}
+
+function usable(p: Point, fallback: Point): Point {
+  return {
+    x: Number.isFinite(p.x) ? p.x : Number.isFinite(fallback.x) ? fallback.x : 0,
+    y: Number.isFinite(p.y) ? p.y : Number.isFinite(fallback.y) ? fallback.y : 0,
+  };
+}
+
+/**
+ * The mode that routes properly: a search over the scene, priced by length,
+ * bends and the zones it passes through.
  */
 export class OrthogonalRouter implements EdgeRouter {
   readonly id = "orthogonal";
 
   route(req: RouteRequest): Route {
-    const { from, to, fromSide, toSide, fromRect, toRect } = req;
-    const fromOffset = req.fromMarkerOffset ?? 0;
-    const toOffset = req.toMarkerOffset ?? 0;
-
-    const pFrom = offsetPoint(from, fromSide, fromOffset);
-    const pTo = offsetPoint(to, toSide, toOffset);
-
-    const base = buildOrthogonalPath(pFrom, fromSide, pTo, toSide);
-    const routed = avoidObstacles(base, pFrom, pTo, fromRect, toRect, req.obstacles);
-    const points = avoidBoundaryHug(routed, req.boundaries);
-    const path = filletedPath(points, ORTHOGONAL_FILLET_RADIUS);
+    const { pFrom, pTo } = ends(req);
+    const searched = findRoute({
+      from: pFrom,
+      to: pTo,
+      fromSide: req.fromSide,
+      toSide: req.toSide,
+      zones: req.zones ?? [],
+    });
+    const points = searched ?? simplify(ladder(pFrom, req.fromSide, pTo, req.toSide));
 
     return {
-      path,
+      path: filletedPath(points),
+      points,
+      corners: "rounded",
       labelAt: labelOnLongestSegment(points),
-      ...endLabels(pFrom, fromSide, pTo, toSide),
+      ...endLabels(pFrom, req.fromSide, pTo, req.toSide),
     };
   }
 }
 
-/**
- * Builds the waypoint list for a generic (non-tree) orthogonal route: one
- * bend when the ports face compatibly, two bends (an S/Z jog) otherwise.
- * Kept separate from the class so the degenerate branches stay easy to read.
- */
-function buildOrthogonalPath(pFrom: Point, fromSide: Side, pTo: Point, toSide: Side): Point[] {
-  // Coincident endpoints: nothing to draw but a point — return a 2-point
-  // path so downstream path builders always have at least a segment.
-  if (pFrom.x === pTo.x && pFrom.y === pTo.y) {
-    return [pFrom, { x: pTo.x, y: pTo.y }];
-  }
-
-  const fromHoriz = isHorizontal(fromSide);
-  const toHoriz = isHorizontal(toSide);
-
-  if (fromHoriz && !toHoriz) {
-    // Leave horizontally, arrive vertically: single elbow at (pTo.x, pFrom.y).
-    const elbow = { x: pTo.x, y: pFrom.y };
-    return [pFrom, elbow, pTo];
-  }
-  if (!fromHoriz && toHoriz) {
-    // Leave vertically, arrive horizontally: single elbow at (pFrom.x, pTo.y).
-    const elbow = { x: pFrom.x, y: pTo.y };
-    return [pFrom, elbow, pTo];
-  }
-  if (fromHoriz && toHoriz) {
-    // Both horizontal: jog at the horizontal midpoint between the two ports.
-    const midX = (pFrom.x + pTo.x) / 2;
-    return [pFrom, { x: midX, y: pFrom.y }, { x: midX, y: pTo.y }, pTo];
-  }
-  // Both vertical: jog at the vertical midpoint.
-  const midY = (pFrom.y + pTo.y) / 2;
-  return [pFrom, { x: pFrom.x, y: midY }, { x: pTo.x, y: midY }, pTo];
-}
-
-/**
- * "Tree" shape shared by both axis-specific routers below: leave straight
- * along the primary axis, run a perpendicular collector segment at the
- * halfway point between the two ports on that axis, then arrive straight
- * along the primary axis into the target. This is the classic use-case /
- * org-chart "bus" shape: every child hangs off one shared spine.
- */
-function buildTreePath(pFrom: Point, pTo: Point, axis: "x" | "y"): Point[] {
-  if (axis === "x") {
-    // Horizontal travel: collector is a vertical segment at the midpoint x.
-    const midX = (pFrom.x + pTo.x) / 2;
-    if (pFrom.y === pTo.y) {
-      // Already level: the "collector" would have zero length — a plain
-      // straight line reads better than a needless jog.
-      return [pFrom, pTo];
-    }
-    return [pFrom, { x: midX, y: pFrom.y }, { x: midX, y: pTo.y }, pTo];
-  }
-  // Vertical travel: collector is a horizontal segment at the midpoint y.
-  const midY = (pFrom.y + pTo.y) / 2;
-  if (pFrom.x === pTo.x) {
-    return [pFrom, pTo];
-  }
-  return [pFrom, { x: pFrom.x, y: midY }, { x: pTo.x, y: midY }, pTo];
-}
-
-/**
- * "Bus" routing for left-to-right flows (use-case diagrams, pipelines):
- * leaves horizontally, a vertical collector sits halfway between the two
- * ports, arrives horizontally. No fillet — the flat "step" shape is the
- * point (distinguishes it visually from `orthogonal`'s rounded ladder).
- */
+/** Left-to-right bus: use-case flows, pipelines. */
 export class TreeHorizontalRouter implements EdgeRouter {
   readonly id = "tree-horizontal";
 
   route(req: RouteRequest): Route {
-    const { from, to, fromSide, toSide, fromRect, toRect } = req;
-    const fromOffset = req.fromMarkerOffset ?? 0;
-    const toOffset = req.toMarkerOffset ?? 0;
-
-    const pFrom = offsetPoint(from, fromSide, fromOffset);
-    const pTo = offsetPoint(to, toSide, toOffset);
-
-    const base = buildTreePath(pFrom, pTo, "x");
-    const routed = avoidObstacles(base, pFrom, pTo, fromRect, toRect, req.obstacles);
-    const points = avoidBoundaryHug(routed, req.boundaries);
+    const { pFrom, pTo } = ends(req);
+    const points = treePath(pFrom, req.fromSide, pTo, req.toSide, "x");
     return {
-      path: safePolylinePath(points),
+      path: polylinePath(points),
+      points,
       labelAt: labelOnLongestSegment(points),
-      ...endLabels(pFrom, fromSide, pTo, toSide),
+      ...endLabels(pFrom, req.fromSide, pTo, req.toSide),
     };
   }
 }
 
-/**
- * "Bus" routing for top-to-bottom hierarchies (inheritance, org charts):
- * leaves vertically, a horizontal collector sits halfway between the two
- * ports, arrives vertically.
- */
+/** Top-to-bottom bus: inheritance, org charts. */
 export class TreeVerticalRouter implements EdgeRouter {
   readonly id = "tree-vertical";
 
   route(req: RouteRequest): Route {
-    const { from, to, fromSide, toSide, fromRect, toRect } = req;
-    const fromOffset = req.fromMarkerOffset ?? 0;
-    const toOffset = req.toMarkerOffset ?? 0;
-
-    const pFrom = offsetPoint(from, fromSide, fromOffset);
-    const pTo = offsetPoint(to, toSide, toOffset);
-
-    const base = buildTreePath(pFrom, pTo, "y");
-    const routed = avoidObstacles(base, pFrom, pTo, fromRect, toRect, req.obstacles);
-    const points = avoidBoundaryHug(routed, req.boundaries);
+    const { pFrom, pTo } = ends(req);
+    const points = treePath(pFrom, req.fromSide, pTo, req.toSide, "y");
     return {
-      path: safePolylinePath(points),
+      path: polylinePath(points),
+      points,
       labelAt: labelOnLongestSegment(points),
-      ...endLabels(pFrom, fromSide, pTo, toSide),
+      ...endLabels(pFrom, req.fromSide, pTo, req.toSide),
     };
   }
 }
