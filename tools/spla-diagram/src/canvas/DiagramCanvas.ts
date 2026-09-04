@@ -1255,6 +1255,18 @@ export class DiagramCanvas {
 
       g.appendChild(
         svg("path", {
+          class: "spla-edge-glow",
+          d: route.path,
+          fill: "none",
+          stroke: strokeColor,
+          "stroke-width": strokeWidth + 5,
+          "stroke-linecap": "round",
+          "stroke-linejoin": "round",
+        }),
+      );
+
+      g.appendChild(
+        svg("path", {
           class: "spla-edge-line",
           d: route.path,
           fill: "none",
