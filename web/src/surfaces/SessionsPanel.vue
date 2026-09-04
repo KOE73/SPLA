@@ -47,14 +47,7 @@
             ⚠ {{ r.role }} — {{ r.label }}
           </div>
         </div>
-        <div v-for="e in edges" :key="e.fromChatId + e.toChatId + e.topic" class="edge-row">
-          <span class="edge-arrow">{{ e.fromRole }} → {{ e.toRole }}</span>
-          <span class="edge-counts" title="replies / estimated tokens, initiator → correspondent then back">
-            {{ e.repliesFromInitiator }}↦ ({{ e.volumeFromInitiator }}t)
-            &nbsp;·&nbsp;
-            {{ e.repliesFromCorrespondent }}↤ ({{ e.volumeFromCorrespondent }}t)
-          </span>
-        </div>
+        <CorrespondenceGraph :edges="edges" />
       </template>
     </div>
   </div>
@@ -68,6 +61,7 @@ import type { ChatSummary, CorrespondenceEdgeDto } from "../protocol/types";
 import { collectSpawned, titleOf } from "../state/chatTree";
 import { neverReplies, onlyTalks } from "../state/correspondenceGraph";
 import { openChatWindow, openPanel } from "../dock/dockController";
+import CorrespondenceGraph from "./CorrespondenceGraph.vue";
 
 const sessions = computed(() => collectSpawned(store.chats)
   .slice()
@@ -139,7 +133,5 @@ onMounted(() => client.send("correspondence.graph.get"));
 .graph-title { font-size: var(--fs-xs); font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: .04em; }
 .graph-imbalance { display: flex; flex-direction: column; gap: 2px; margin-bottom: 4px; }
 .imbalance-row { font-size: var(--fs-xs); color: var(--danger); }
-.edge-row { display: flex; justify-content: space-between; gap: 8px; font-size: var(--fs-xs); color: var(--text); padding: 2px 0; }
-.edge-arrow { font-weight: 500; }
-.edge-counts { color: var(--muted); white-space: nowrap; }
+/* The edge list is drawn now — see CorrespondenceGraph.vue, which brings its own styles. */
 </style>
