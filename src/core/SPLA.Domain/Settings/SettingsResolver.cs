@@ -415,11 +415,29 @@ public sealed class ResolvedModelEntry
 public static class SettingsResolver
 {
     public static ResolvedSettings Resolve(SplaDefaults? defaults, SplaProject? project)
+        => Resolve(defaults, project, null, null);
+
+    /// <param name="sharedConnections">The administered connection layer
+    /// (<c>connections.shared.yaml</c>), or null when there is none.</param>
+    /// <param name="userConnections">This person's own connection layer
+    /// (<c>connections.yaml</c> in their area), or null when there is none.</param>
+    public static ResolvedSettings Resolve(
+        SplaDefaults? defaults,
+        SplaProject? project,
+        IReadOnlyList<SplaConnectionSection>? sharedConnections,
+        IReadOnlyList<SplaConnectionSection>? userConnections)
     {
         var r = new ResolvedSettings { Manifest = project };
 
-        // Connections merge across layers by id (project overrides/extends defaults).
+        // Connections merge across layers by id, least authoritative first:
+        //   shared → defaults.yaml (legacy machine block) → user file → project manifest.
+        //
+        // defaults.yaml's own connections: sit at User standing because that file belongs to the
+        // person at the keyboard. It is where user-level connections used to live and existing ones
+        // keep working; connections.yaml is where the editor writes now, so an id present in both
+        // resolves to the newer file.
         var connections = new Dictionary<string, SplaConnectionSection>(StringComparer.OrdinalIgnoreCase);
+        MergeConnections(connections, sharedConnections, ConnectionScope.Shared);
 
         // mcp.servers merges across layers by id, same rule as connections above.
         var mcpServers = new Dictionary<string, SplaMcpServerSection>(StringComparer.OrdinalIgnoreCase);
@@ -434,7 +452,7 @@ public static class SettingsResolver
         // Layer 1: defaults
         if (defaults != null)
         {
-            MergeConnections(connections, defaults.Connections);
+            MergeConnections(connections, defaults.Connections, ConnectionScope.User);
             if (defaults.Llm != null)
             {
                 llmEndpoint          = defaults.Llm.Endpoint    ?? llmEndpoint;
@@ -489,7 +507,10 @@ public static class SettingsResolver
             ApplyResourceSchemes(r, defaults.Resources);
         }
 
-        // Layer 2: project overrides
+        // Layer 2: this person's own connections file — over defaults.yaml, under the project.
+        MergeConnections(connections, userConnections, ConnectionScope.User);
+
+        // Layer 3: project overrides
         if (project != null)
         {
             r.ProjectName = project.Name;
@@ -498,7 +519,7 @@ public static class SettingsResolver
             r.Docs = project.Docs ?? new();
             r.Ignore = project.Ignore ?? new();
 
-            MergeConnections(connections, project.Connections);
+            MergeConnections(connections, project.Connections, ConnectionScope.Project);
             if (project.Llm != null)
             {
                 llmEndpoint          = project.Llm.Endpoint    ?? llmEndpoint;
@@ -574,6 +595,10 @@ public static class SettingsResolver
         if (r.Connections.Count == 0)
             r.Connections.Add(new SplaConnectionSection
             {
+                // Project scope: with nothing configured anywhere, an edit to this synthesized entry
+                // belongs to the project being edited, which is where it would have gone before the
+                // user and shared layers existed.
+                Scope = ConnectionScope.Project,
                 Id = "default", Name = "Default", Provider = "lmstudio",
                 Endpoint = llmEndpoint, ApiKey = llmApiKey,
                 Models = { new SplaModelSection { Id = "default", Name = "Default", Model = llmModel } }
@@ -674,10 +699,64 @@ public static class SettingsResolver
 
         ApplyToolSets(r, roleSection.ToolSets);
 
+        // Connections the role may use. Narrowing only — see SplaRoleSection.Connections. The flat
+        // model list is rebuilt from the narrowed tree because that is what a chat resolves against;
+        // leaving it whole would make the narrowing decorative.
+        r.Connections = SelectRoleConnections(baseline.Connections, roleSection.Connections, roleName);
+        r.Models = FlattenModels(r.Connections);
+
         r.RoleModelId = roleSection.Model;
+        // Only when the role actually narrowed: an unresolvable model id was tolerated before this
+        // existed and is somebody else's rule to make. What must not pass silently is a role whose
+        // own connections: selection is what stranded its model.
+        if (roleSection.Connections is { Count: > 0 } &&
+            !string.IsNullOrWhiteSpace(r.RoleModelId) &&
+            !r.Models.Any(m => string.Equals(m.Entry.Id, r.RoleModelId, StringComparison.OrdinalIgnoreCase)))
+            throw new InvalidOperationException(
+                $"Role '{roleName}' runs on model '{r.RoleModelId}', which none of the connections it " +
+                $"may use provides ({(r.Connections.Count == 0 ? "none" : string.Join(", ", r.Connections.Select(c => c.Id)))}). " +
+                "Either widen the role's connections: or point model: at one of them.");
+
         r.RoleIslands = roleSection.Islands ?? [];
 
         return r;
+    }
+
+    /// <summary>
+    /// Applies a role's <c>connections:</c> selection to the project's resolved list. Each name is
+    /// either a connection id or a scope name — <c>user</c> takes that whole layer, which is the form
+    /// worth writing when the point is "this role runs on my own keys, not the repository's".
+    /// </summary>
+    /// <exception cref="InvalidOperationException">A name matches neither an id nor a scope. Silently
+    /// dropping it would leave a role running on a set nobody chose.</exception>
+    private static List<SplaConnectionSection> SelectRoleConnections(
+        List<SplaConnectionSection> available, List<string>? selection, string roleName)
+    {
+        if (selection is not { Count: > 0 }) return available;
+
+        var byId = new Dictionary<string, SplaConnectionSection>(StringComparer.OrdinalIgnoreCase);
+        foreach (var name in selection)
+        {
+            if (string.IsNullOrWhiteSpace(name)) continue;
+
+            var matched = ConnectionScopes.TryParse(name, out var scope)
+                ? available.Where(c => c.Scope == scope).ToList()
+                : available.Where(c => string.Equals(c.Id, name, StringComparison.OrdinalIgnoreCase)).ToList();
+
+            // A scope name that selects nothing is a fact about this machine (nobody configured a
+            // shared layer), not a mistake in the role — only an unmatched id is.
+            if (matched.Count == 0 && !ConnectionScopes.TryParse(name, out _))
+                throw new InvalidOperationException(
+                    $"Role '{roleName}' names connection '{name}', which this project does not have. " +
+                    $"Available: {(available.Count == 0 ? "none" : string.Join(", ", available.Select(c => c.Id)))}; " +
+                    $"or a scope name: {string.Join(", ", ConnectionScopes.AllNames)}.");
+
+            foreach (var c in matched) byId[c.Id] = c;
+        }
+
+        // Resolution order, not mention order: the settings panel and the pickers show connections in
+        // the order the project resolved them, and a role should not reshuffle that.
+        return available.Where(c => byId.ContainsKey(c.Id)).ToList();
     }
 
     /// <summary>Shallow-copies a resolved baseline before layering a role over it, so the project's own
@@ -860,14 +939,21 @@ public static class SettingsResolver
             r.SkillLibrarian = skills.Librarian;
     }
 
-    /// <summary>Adds/overrides connections by id, skipping entries without an id.</summary>
+    /// <summary>Adds/overrides connections by id, skipping entries without an id. Every entry is
+    /// stamped with the layer it came from, so a later consumer (the editor deciding which file a
+    /// save goes back to, a role selecting by scope) never has to guess.</summary>
     private static void MergeConnections(
-        Dictionary<string, SplaConnectionSection> into, List<SplaConnectionSection>? from)
+        Dictionary<string, SplaConnectionSection> into,
+        IReadOnlyList<SplaConnectionSection>? from,
+        ConnectionScope scope)
     {
         if (from == null) return;
         foreach (var c in from)
-            if (!string.IsNullOrWhiteSpace(c.Id))
-                into[c.Id] = c;
+        {
+            if (string.IsNullOrWhiteSpace(c.Id)) continue;
+            c.Scope = scope;
+            into[c.Id] = c;
+        }
     }
 
     /// <summary>Adds/overrides mcp.servers entries by id, skipping entries without an id — same idiom

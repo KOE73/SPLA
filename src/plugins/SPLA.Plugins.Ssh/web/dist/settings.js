@@ -1,4 +1,4 @@
-(function(){"use strict";try{if(typeof document<"u"){var a=document.createElement("style");a.appendChild(document.createTextNode(".cred-slot[data-v-c6a4a9b8]{min-width:0;flex:1}.w-260[data-v-c6a4a9b8]{width:260px}.ssh-set[data-v-f12a45b8]{display:flex;flex-direction:column;gap:8px;font-size:var(--fs-sm, 12px);color:var(--text, inherit)}.muted[data-v-f12a45b8]{color:var(--muted, #888)}.empty[data-v-f12a45b8]{font-style:italic}.row[data-v-f12a45b8]{display:flex;gap:8px;align-items:center;flex-wrap:wrap}.row.spread[data-v-f12a45b8]{justify-content:space-between}.self-start[data-v-f12a45b8]{align-self:flex-start}.grow[data-v-f12a45b8]{flex:1}.w-label[data-v-f12a45b8]{width:80px}.w-70[data-v-f12a45b8]{width:70px}.w-120[data-v-f12a45b8]{width:120px}.w-140[data-v-f12a45b8]{width:140px}.w-180[data-v-f12a45b8]{width:180px}.w-260[data-v-f12a45b8]{width:260px}.host-card[data-v-f12a45b8]{border:1px solid var(--border, #444);border-radius:var(--radius, 6px);padding:8px 10px;display:flex;flex-direction:column;gap:6px;background:var(--panel, transparent)}.chk[data-v-f12a45b8]{cursor:pointer}.chk input[data-v-f12a45b8]{height:auto}label[data-v-f12a45b8]{display:flex;gap:6px;align-items:center}input[data-v-f12a45b8],select[data-v-f12a45b8]{height:24px;padding:2px 6px;color:var(--text, inherit);background:var(--bg, transparent);border:1px solid var(--border, #444);border-radius:5px;font-family:inherit;font-size:inherit}button[data-v-f12a45b8]{padding:2px 10px;color:var(--text, inherit);background:var(--panel, transparent);border:1px solid var(--border, #444);border-radius:5px;cursor:pointer;font-size:inherit}button[data-v-f12a45b8]:hover:not(:disabled){border-color:var(--muted, #888)}button[data-v-f12a45b8]:disabled{opacity:.5;cursor:default}")),document.head.appendChild(a)}}catch(t){console.error("vite-plugin-css-injected-by-js",t)}})();
+(function(){"use strict";try{if(typeof document<"u"){var a=document.createElement("style");a.appendChild(document.createTextNode(".cred-slot[data-v-e0ac3817]{min-width:0;flex:1}.w-260[data-v-e0ac3817]{width:260px}.ssh-set[data-v-c387403f]{display:flex;flex-direction:column;gap:8px;font-size:var(--fs-sm, 12px);color:var(--text, inherit)}.muted[data-v-c387403f]{color:var(--muted, #888)}.empty[data-v-c387403f]{font-style:italic}.row[data-v-c387403f]{display:flex;gap:8px;align-items:center;flex-wrap:wrap}.row.spread[data-v-c387403f]{justify-content:space-between}.self-start[data-v-c387403f]{align-self:flex-start}.grow[data-v-c387403f]{flex:1}.w-label[data-v-c387403f]{width:80px}.w-70[data-v-c387403f]{width:70px}.w-120[data-v-c387403f]{width:120px}.w-140[data-v-c387403f]{width:140px}.w-180[data-v-c387403f]{width:180px}.w-260[data-v-c387403f]{width:260px}.host-card[data-v-c387403f]{border:1px solid var(--border, #444);border-radius:var(--radius, 6px);padding:8px 10px;display:flex;flex-direction:column;gap:6px;background:var(--panel, transparent)}.chk[data-v-c387403f]{cursor:pointer}.chk input[data-v-c387403f]{height:auto}label[data-v-c387403f]{display:flex;gap:6px;align-items:center}input[data-v-c387403f],select[data-v-c387403f]{height:24px;padding:2px 6px;color:var(--text, inherit);background:var(--bg, transparent);border:1px solid var(--border, #444);border-radius:5px;font-family:inherit;font-size:inherit}button[data-v-c387403f]{padding:2px 10px;color:var(--text, inherit);background:var(--panel, transparent);border:1px solid var(--border, #444);border-radius:5px;cursor:pointer;font-size:inherit}button[data-v-c387403f]:hover:not(:disabled){border-color:var(--muted, #888)}button[data-v-c387403f]:disabled{opacity:.5;cursor:default}button.remove[data-v-c387403f]{color:var(--muted, #888);background:transparent;border-color:transparent}button.remove[data-v-c387403f]:hover:not(:disabled){color:var(--danger, #e05555);border-color:var(--danger, #e05555)}")),document.head.appendChild(a)}}catch(t){console.error("vite-plugin-css-injected-by-js",t)}})();
 /**
 * @vue/shared v3.5.39
 * (c) 2018-present Yuxi (Evan) You and Vue contributors
@@ -4102,7 +4102,7 @@ const Il = ["value"], Rl = /* @__PURE__ */ wi({
   for (const [n, i] of t)
     s[n] = i;
   return s;
-}, Fl = /* @__PURE__ */ tr(Rl, [["__scopeId", "data-v-c6a4a9b8"]]), Vl = { class: "ssh-set" }, Dl = { class: "row" }, Hl = ["value"], Nl = {
+}, Fl = /* @__PURE__ */ tr(Rl, [["__scopeId", "data-v-e0ac3817"]]), Vl = { class: "ssh-set" }, Dl = { class: "row" }, Hl = ["value"], Nl = {
   key: 0,
   class: "muted empty"
 }, jl = { class: "row spread" }, Ul = { class: "row" }, $l = ["onUpdate:modelValue"], Ll = ["onUpdate:modelValue"], Kl = ["onUpdate:modelValue"], Wl = ["onClick"], Bl = { class: "row" }, kl = { class: "row" }, Jl = ["onUpdate:modelValue", "placeholder"], ql = ["onUpdate:modelValue"], Gl = { class: "row" }, Yl = ["onUpdate:modelValue"], zl = { class: "row" }, Xl = { class: "chk" }, Zl = ["onUpdate:modelValue"], Ql = { class: "row" }, ec = ["disabled", "onClick"], tc = { class: "muted" }, sc = /* @__PURE__ */ wi({
@@ -4227,12 +4227,7 @@ const Il = ["value"], Rl = /* @__PURE__ */ wi({
           ])
         ])
       ]),
-      V("button", {
-        type: "button",
-        class: "self-start",
-        onClick: a
-      }, "+ Add host"),
-      d.length ? zi("", !0) : (De(), Be("div", Nl, 'No hosts yet. Click "+ Add host".')),
+      d.length ? zi("", !0) : (De(), Be("div", Nl, 'No hosts yet. Click "+ Add host" below.')),
       (De(!0), Be(ae, null, bn(d, (w, q) => (De(), Be("div", {
         key: w.key,
         class: "host-card"
@@ -4274,6 +4269,7 @@ const Il = ["value"], Rl = /* @__PURE__ */ wi({
           ]),
           V("button", {
             type: "button",
+            class: "remove",
             onClick: (R) => d.splice(q, 1)
           }, "✕ Remove", 8, Wl)
         ]),
@@ -4335,10 +4331,15 @@ const Il = ["value"], Rl = /* @__PURE__ */ wi({
           }, "Test connection", 8, ec),
           V("span", tc, Ps(w.testStatus), 1)
         ])
-      ]))), 128))
+      ]))), 128)),
+      V("button", {
+        type: "button",
+        class: "self-start",
+        onClick: a
+      }, "+ Add host")
     ]));
   }
-}), nc = /* @__PURE__ */ tr(sc, [["__scopeId", "data-v-f12a45b8"]]);
+}), nc = /* @__PURE__ */ tr(sc, [["__scopeId", "data-v-c387403f"]]);
 function rc(e, t) {
   let s = Al(nc, { api: t });
   const n = s.mount(e);

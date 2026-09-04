@@ -43,10 +43,10 @@
         live: it retries a server this process already attempted.
       </p>
 
-      <div class="pl-list">
-        <div v-if="!servers.length" class="notice">no servers configured</div>
-        <div v-for="s in servers" :key="s._key" class="pl-card" :class="{ open: isOpen(s._key) }">
-          <div class="pl-row" @click="toggle(s._key)">
+      <ListPanel :empty="!servers.length" empty-text="no servers configured" add-label="＋ Add server" @add="add">
+        <ListCard v-for="s in servers" :key="s._key" class="pl-card"
+                  :open="isOpen(s._key)" @update:open="toggle(s._key)">
+          <template #head>
             <input type="checkbox" v-model="s.enabled" @click.stop>
             <b class="pl-name">{{ s.name || s.id || "(new server)" }}</b>
             <span class="ver">{{ s.transport }}</span>
@@ -58,11 +58,11 @@
                     @click.stop="reconnect(s)">
               {{ reconnecting === s.id ? "reconnecting…" : "Reconnect" }}
             </button>
-            <button class="btn ghost" type="button" @click.stop="remove(s._key)">✕ Remove</button>
-            <span class="chev">{{ isOpen(s._key) ? "▾" : "▸" }}</span>
-          </div>
+            <RemoveButton label="Remove" @click="remove(s._key)" />
+            <ExpandButton :open="isOpen(s._key)" @update:open="toggle(s._key)" />
+          </template>
 
-          <div v-if="isOpen(s._key)" class="pl-body">
+          <template #body>
             <label class="field col"><span>Id</span>
               <input v-model="s.id" placeholder="ghmcp" class="mono">
               <span class="hint">Prefixes every tool this server offers (<code>{{ s.id || "id" }}_tool_name</code>).
@@ -124,11 +124,9 @@
 
             <p v-if="s.lastError" class="hint" style="color: var(--danger, #f85149)">Last error: {{ s.lastError }}</p>
             <p class="hint">Tools registered: {{ s.toolCount ?? 0 }}</p>
-          </div>
-        </div>
-      </div>
-
-      <button class="btn ghost" type="button" @click="add">＋ Add server</button>
+          </template>
+        </ListCard>
+      </ListPanel>
     </div>
   </div>
 </template>
@@ -138,6 +136,10 @@ import { onUnmounted, ref } from "vue";
 import { client } from "../../protocol/SplaClient";
 import type { McpServerDto } from "../../protocol/types";
 import KvRows from "./KvRows.vue";
+import ListPanel from "../../components/list/ListPanel.vue";
+import ListCard from "../../components/list/ListCard.vue";
+import RemoveButton from "../../components/buttons/RemoveButton.vue";
+import ExpandButton from "../../components/buttons/ExpandButton.vue";
 
 const enabled = ref(false);
 const port = ref<number | null>(null);
@@ -291,18 +293,13 @@ defineExpose({ save });
 </script>
 
 <style scoped>
-.pl-list { display: flex; flex-direction: column; gap: var(--gap, 8px); margin: 8px 0; }
-.pl-card { border: 1px solid var(--border); border-radius: var(--radius, 7px); background: var(--elevated); }
-.pl-row { display: flex; align-items: center; gap: 8px; padding: 4px 8px; cursor: pointer; min-height: 26px; }
-.pl-row:hover { background: color-mix(in srgb, var(--text) 4%, transparent); }
+/* .pl-card/.pl-list/.pl-row/.pl-body/.chev are gone — ListPanel/ListCard (app.css) draw the card,
+   the list spacing and the caret now; only the content specific to an MCP server row stays here. */
 .pl-name { font-size: var(--fs-sm); }
 .ver { font-family: var(--mono); font-size: var(--fs-xs); color: var(--muted); }
 .pl-sum { font-size: var(--fs-xs); color: var(--muted); margin-left: 8px;
   overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 35%; }
 .grow { flex: 1; }
-.chev { color: var(--muted); font-size: var(--fs-xs); width: 12px; text-align: center; }
-.pl-body { display: flex; flex-direction: column; gap: 6px; padding: 2px 8px 8px;
-  border-top: 1px solid color-mix(in srgb, var(--border) 60%, transparent); }
 .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--muted); flex: 0 0 auto; }
 .dot.ok { background: var(--ok, #3fb950); }
 .dot.danger { background: var(--danger, #f85149); }

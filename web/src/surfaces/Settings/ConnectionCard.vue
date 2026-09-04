@@ -1,12 +1,22 @@
 <template>
   <div class="conn-card">
-    <div class="conn-id-bar">{{ conn.id || "(new)" }}</div>
+    <div class="conn-id-bar">
+      <span class="conn-id-text">{{ conn.id || "(new)" }}</span>
+      <!-- Where this connection lives. Changing it moves the entry between files on save — it is not
+           a copy, so the old file loses it. The card jumps to the matching section as you pick, which
+           is the whole feedback: you can see where it will end up before you save. -->
+      <select class="conn-scope-pick" v-model="scope" title="Which file this connection lives in">
+        <option value="shared">shared</option>
+        <option value="user">mine</option>
+        <option value="project">this project</option>
+      </select>
+    </div>
 
     <div class="conn-name-row">
       <span>Name</span>
       <input v-model="conn.name" :placeholder="conn.id">
       <span class="conn-status" :class="healthClass" :title="healthTitle"></span>
-      <button class="x" title="Remove" @click="$emit('remove')">✕</button>
+      <RemoveButton @click="$emit('remove')" />
     </div>
 
     <label class="field"><span>Provider</span>
@@ -38,7 +48,11 @@
           @update:model-value="setCredential('apiKey', $event)"
         />
         <p v-if="conn.apiKeyIsLiteral" class="cred-literal">
-          A plaintext key is stored in this project's .spla. Pick or create a secret above to replace it.
+          A plaintext key is stored in {{ scopeFile }}. Pick or create a secret above to replace it.
+        </p>
+        <p v-if="strandedSecret(conn.apiKey)" class="cred-literal">
+          This key points at a <b>project</b> secret, but the connection lives outside the project —
+          it will not resolve in any other project. Move the secret to your own store.
         </p>
       </div>
     </div>
@@ -52,7 +66,11 @@
           @update:model-value="setCredential('adminKey', $event)"
         />
         <p v-if="conn.adminKeyIsLiteral" class="cred-literal">
-          A plaintext key is stored in this project's .spla. Pick or create a secret above to replace it.
+          A plaintext key is stored in {{ scopeFile }}. Pick or create a secret above to replace it.
+        </p>
+        <p v-if="strandedSecret(conn.adminKey)" class="cred-literal">
+          This key points at a <b>project</b> secret, but the connection lives outside the project —
+          it will not resolve in any other project. Move the secret to your own store.
         </p>
       </div>
     </div>
@@ -77,10 +95,10 @@
 
       <div v-for="(m, i) in conn.models" :key="m.clientId || m.id" class="conn-model-row">
         <div class="conn-model-line" @click="toggle(m)">
-          <button class="conn-model-caret">{{ expanded === keyOf(m) ? "▾" : "▸" }}</button>
+          <ExpandButton :open="expanded === keyOf(m)" @update:open="toggle(m)" />
           <input class="conn-model-name" v-model="m.name" :placeholder="m.model || m.id" @click.stop>
           <span class="conn-model-wire">{{ m.model || "—" }}</span>
-          <button class="x" title="Remove" @click.stop="conn.models.splice(i, 1)">✕</button>
+          <RemoveButton @click.stop="conn.models.splice(i, 1)" />
         </div>
 
         <div v-if="expanded === keyOf(m)" class="conn-model-detail">
@@ -127,6 +145,8 @@
 
 <script setup lang="ts">
 import { computed, ref } from "vue";
+import RemoveButton from "../../components/buttons/RemoveButton.vue";
+import ExpandButton from "../../components/buttons/ExpandButton.vue";
 import { client } from "../../protocol/SplaClient";
 import type { ConnectionDto, ConnHealth, ModelEntryDto } from "../../protocol/types";
 import ModelPickerPopup from "./ModelPickerPopup.vue";
@@ -151,6 +171,25 @@ const props = defineProps<{ conn: ConnectionDto; health?: ConnHealth }>();
 defineEmits<{ remove: [] }>();
 
 const requestKey = computed(() => props.conn.id || props.conn.clientId || "");
+
+// ── Scope: which file this connection lives in ───────────────────────────────
+// An entry that never said counts as project — the layer everything was in before scopes existed,
+// and the same fallback the server applies when a client says nothing.
+const scope = computed({
+  get: () => props.conn.scope || "project",
+  set: (v: string) => { props.conn.scope = v; }
+});
+
+const scopeFile = computed(() => scope.value === "project"
+  ? "this project's .spla"
+  : scope.value === "user" ? "your own connections.yaml" : "the shared connections file");
+
+/** A connection outside the project pointing at a project secret resolves in exactly one project —
+ *  which defeats the reason it was put in a shared layer. Worth saying at the moment the scope is
+ *  visible; it is a warning, not a refusal (the reference may well be deliberate for now). */
+function strandedSecret(reference?: string): boolean {
+  return scope.value !== "project" && (reference || "").startsWith("secret:project:");
+}
 
 const healthClass = computed(() => {
   const h = props.health;

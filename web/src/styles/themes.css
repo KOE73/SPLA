@@ -40,12 +40,12 @@
 
 /* ── Cream (light warm) ───────────────────────────────────────────────────── */
 :root[data-theme="cream"] {
-  --bg: #fdfbf7;          --panel: #f5f2eb;       --elevated: #efeadd;   --border: #e8e2d2;
+  --bg: #fdfbf7;          --panel: #f5f2eb;       --elevated: #efeadd;   --border: #ddd2b9;
   --text: #4a3b2c;        --muted: #8a7b6c;        --faint: #b3a695;
   --accent: #e18f2f;      --accent-contrast: #ffffff; --accent-soft: rgba(225,143,47,.14);
   --user-bg: #efe7d6;     --assistant-bg: #f5f2eb; --tool-bg: #f0ece0;   --system-bg: #f2ecdd; --error-bg: #f6e1de;
   --reasoning-fg: #8a7b6c;
-  --code-bg: #f3eee2;     --code-border: #e8e2d2;  --code-fg: #4a3b2c;
+  --code-bg: #f3eee2;     --code-border: #ddd2b9;  --code-fg: #4a3b2c;
   --ok: #2e9e5b;          --warn: #c8841f;         --danger: #c0392b;
 }
 

@@ -5,37 +5,100 @@
       <button class="btn ghost conn-recheck" title="Re-check all endpoints" @click="recheck">↻</button>
       <span class="hint">{{ hint }}</span>
     </div>
-    <div class="conn-list">
-      <ConnectionCard
-        v-for="(conn, i) in conns"
-        :key="conn.clientId || conn.id"
-        :conn="conn"
-        :health="health[conn.id]"
-        @remove="conns.splice(i, 1)"
-      />
-      <button class="btn ghost" @click="addConnection">+ Add connection</button>
-    </div>
+
+    <!--
+      One section per scope, in merge order — a connection is defined by the file it lives in, and a
+      flat list cannot say which of these keys are yours and which arrived with the repository.
+      Each section owning its own "+ Add" is also what answers "into which scope" without an extra
+      question: you add in the section you meant.
+    -->
+    <section v-for="s in SCOPES" :key="s.scope" class="conn-scope" :data-scope="s.scope">
+      <div class="conn-scope-head">
+        <b>{{ s.title }}</b>
+        <span class="conn-scope-where">{{ s.where }}</span>
+      </div>
+
+      <ListPanel
+        :empty="!grouped[s.scope].length"
+        :empty-text="s.empty"
+        :add-label="s.add"
+        @add="addConnection(s.scope)"
+      >
+        <ConnectionCard
+          v-for="conn in grouped[s.scope]"
+          :key="conn.clientId || conn.id"
+          :conn="conn"
+          :health="health[conn.id]"
+          @remove="remove(conn)"
+        />
+      </ListPanel>
+    </section>
   </div>
 </template>
 
 <script setup lang="ts">
-import { onUnmounted, reactive, ref } from "vue";
+import { computed, onUnmounted, reactive, ref } from "vue";
 import { client } from "../../protocol/SplaClient";
 import type { ConnectionDto, ConnHealth } from "../../protocol/types";
 import ConnectionCard from "./ConnectionCard.vue";
+import ListPanel from "../../components/list/ListPanel.vue";
 import { uuid } from "../../util/uuid";
 
 const KNOWN_DEFAULT_EP = "http://127.0.0.1:1234/v1";
+
+/** The three layers, least authoritative first — the same order they merge in, so what shadows what
+ *  reads top-to-bottom. Wording says where the file is, because that IS what a scope means. */
+const SCOPES = [
+  {
+    scope: "shared",
+    title: "Shared",
+    where: "connections.shared.yaml — administered, shared between people",
+    empty: "No shared connections.",
+    add: "+ Add shared connection"
+  },
+  {
+    scope: "user",
+    title: "Mine",
+    where: "~/.spla/connections.yaml — yours, never committed, in every project you open",
+    empty: "None yet. Put a connection here and every project sees it.",
+    add: "+ Add my connection"
+  },
+  {
+    scope: "project",
+    title: "This project",
+    where: "the project's .spla — travels with the repository",
+    empty: "No connections declared by this project.",
+    add: "+ Add project connection"
+  }
+] as const;
+
+type Scope = (typeof SCOPES)[number]["scope"];
 
 const conns = ref<ConnectionDto[]>([]);
 const health = reactive<Record<string, ConnHealth>>({});
 const hint = ref("");
 
-function addConnection() {
+/** An entry that never said where it lives is a project one — the layer everything was in before
+ *  scopes existed, and the same fallback the server applies. */
+const scopeOf = (c: ConnectionDto): Scope =>
+  SCOPES.some(s => s.scope === c.scope) ? (c.scope as Scope) : "project";
+
+const grouped = computed(() => {
+  const out = { shared: [], user: [], project: [] } as Record<Scope, ConnectionDto[]>;
+  for (const c of conns.value) out[scopeOf(c)].push(c);
+  return out;
+});
+
+function addConnection(scope: Scope) {
   conns.value.push({
-    id: "", clientId: uuid(), name: "", provider: "lmstudio",
+    id: "", clientId: uuid(), name: "", provider: "lmstudio", scope,
     endpoint: KNOWN_DEFAULT_EP, apiKey: "", models: []
   });
+}
+
+function remove(conn: ConnectionDto) {
+  const i = conns.value.indexOf(conn);
+  if (i >= 0) conns.value.splice(i, 1);
 }
 
 function applyResult(connections: ConnectionDto[]) {
@@ -50,8 +113,10 @@ const offResult = client.on("connections.result", p => {
   applyResult(p.connections || []);
   // A refused save (duplicate model id) echoes the list still in effect — say so instead of
   // letting the editor silently snap back to the old values.
+  // "No project" no longer means "nothing can be saved": it means the project section cannot be,
+  // while the two layers above it are files of their own and save either way.
   hint.value = p.error ? p.error
-    : p.canPersist === false ? "no .spla project — session-only"
+    : p.canPersist === false ? "no .spla project — anything under “This project” is session-only"
     : "";
 });
 const offHealth = client.on("connections.health", p => {

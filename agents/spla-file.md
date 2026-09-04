@@ -73,7 +73,7 @@ ignore:
 | `llm.provider` | No | LLM provider. Currently only `lmstudio`. |
 | `llm.endpoint` | No | API base URL. |
 | `llm.model` | No | Model name. `auto` = use whatever is loaded. |
-| `connections` | No | Named connection list (merged over defaults by `id`); each entry: `id`, `name`, `provider`, `endpoint`, `api_key`, `model`, `context_length`, `lock_model`, `swap_model`. When absent, a default connection is synthesized from `llm.*`. |
+| `connections` | No | Named connection list (merged by `id` across layers — see [Connection scopes](#connection-scopes)); each entry: `id`, `name`, `provider`, `endpoint`, `api_key`, `model`, `context_length`, `lock_model`, `swap_model`. When no layer declares one, a default connection is synthesized from `llm.*`. |
 | `connections[].context_length` | No | Manual context-window override in tokens. Unset/0 = auto-detect from the provider (LM Studio native API reports the loaded instance's configured window; vLLM reports `max_model_len`). |
 | `connections[].models[].reasoning_options` | No | Manual declaration of the model's reasoning options, in the provider's own words (`[off, low, medium, xhigh, on]`). Same precedence as `context_length`: a declaration wins over whatever the provider advertises, and it is the only way to get the lever for a server that describes nothing — most OpenAI-compatible endpoints, LocalAI and plain vLLM among them. Unset = take the provider's word, or leave the lever unavailable. See [ADR_20260817](../docs/adr/ADR_20260817_llm_reasoning-lever.md). |
 | `connections[].models[].reasoning_default` | No | The option the model uses when asked for nothing. Read only alongside `reasoning_options`. |
@@ -87,6 +87,30 @@ ignore:
 | `plugins."*".enabled` | No | Enables/disables every plugin that has no entry of its own. See [The `*` plugin entry](#the--plugin-entry). |
 | `docs` | No | Documentation directories to index. |
 | `ignore` | No | Directories/files the agent will never touch. |
+
+## Connection scopes
+
+A connection is an endpoint plus a credential — properties of an *account*, not of a repository. So
+it lives in one of the same three layers a secret does, and the layer **is** the file it is written
+in:
+
+| Scope | File | Meaning |
+|---|---|---|
+| `shared` | `<sharedDir>/connections.shared.yaml` | Administered, shared between people. |
+| `user` | `<personalDir>/connections.yaml` — `~/.spla` locally, the caller's own area on a server | Yours, never committed, present in every project you open. |
+| `project` | the `connections:` block in this manifest | Travels with the repository. |
+
+They merge by `id`, least authoritative first:
+`shared` → `defaults.yaml`'s own `connections:` → `connections.yaml` → this manifest. A later layer
+replaces an entry **wholesale**, not field by field. `connections:` in `defaults.yaml` still works
+and counts as `user` — that file belongs to the person at the keyboard — and `connections.yaml` is
+the file the settings panel writes, so an `id` in both resolves to the newer one.
+
+The scope is never a key inside a connection entry: it is the file, and a second answer that can
+disagree with the first is one answer too many. Saving from the settings panel routes each entry
+back to its own file, so moving a connection between scopes moves it out of the old file.
+
+See [`ADR_20260904_core_connection-scopes`](../docs/adr/ADR_20260904_core_connection-scopes.md).
 
 ## Mounts
 
@@ -198,7 +222,8 @@ the moment it lands on disk. It is exactly the same logic as "no walking up the 
 | Field | Meaning |
 |---|---|
 | `mode`, `instructions`, `capabilities`, `custom_prompt`, `loop_guard*`, `unified_resources`, `ask_timeout_minutes`, `shell_timeout_seconds`, `trusted_domains`, `save_tool_calls`, `save_attempts`, `peer_debounce_base`, `peer_debounce_max`, `peer_depth_ceiling`, `peer_hard_cap` | Same meaning as the identically-named `agent.*` field above. Absent on the role = inherit the project's own value, same as every other field here. (`spawned_retention` is the one exception — project-level only, see the fields table above.) |
-| `model` | Which of the project's own `connections:` models this role runs on. A role does not declare its own connection — the project declares what is reachable at all, a role only chooses among it. |
+| `connections` | Which connections this role may use, by `id` or by scope name (`user`, `project`, `shared` — a whole layer in one word). Absent/empty = every connection resolved for the project. A *selection*, not a grant, the same as `islands` below: there is no endpoint or credential in this list to declare one with. A named `id` that does not exist is an error; a scope with no entries is not (that is a fact about the machine). |
+| `model` | Which of the resolved `connections:` models this role runs on. A role does not declare its own connection — the layers declare what is reachable at all, a role only chooses among it. Refused when the role's own `connections:` selection excludes it. |
 | `toolsets` | Same shape as the top-level `toolsets:` section, merged over it key by key — a role that mentions one set narrows (or widens, within what the capability gate still allows) only that set. |
 | `islands` | Which of the project's already-reachable islands (a database, a host, a foreign tool server — see `SPLA.Domain.Security.IslandIdentity`) this role's prompt and tool surface mention. A *selection*, not a grant: this list narrows what is shown, it never widens what is actually reachable — the capability gate is still the only place a reach is decided. |
 

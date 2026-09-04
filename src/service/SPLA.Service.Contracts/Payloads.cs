@@ -358,6 +358,12 @@ public sealed class ConnectionEditDto
 
     public bool SwapModel { get; set; }
 
+    /// <summary>Which layer this connection lives in: <c>shared</c>, <c>user</c> or <c>project</c>
+    /// (see <c>ConnectionScope</c>). It is where the entry is read from and where a save writes it
+    /// back; changing it on an existing entry moves the connection between files. Unset/unknown on
+    /// save = <c>project</c>, which is where every connection lived before the layers existed.</summary>
+    public string? Scope { get; set; }
+
     /// <summary>The models selected under this connection.</summary>
     public List<ModelEditDto> Models { get; set; } = new();
 }

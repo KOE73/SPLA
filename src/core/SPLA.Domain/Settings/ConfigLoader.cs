@@ -420,6 +420,59 @@ public static class ConfigLoader
         return files.Length > 0 ? files[0] : null;
     }
 
+    // ── Connection layers (user / shared) ────────────────────────────────────
+
+    /// <summary>This person's own connection file. <paramref name="personalDir"/> is <c>~/.spla</c>
+    /// locally and the caller's private area on a multi-user server.</summary>
+    public static string UserConnectionsPath(string personalDir)
+        => Path.Combine(personalDir, "connections.yaml");
+
+    /// <summary>The administered connection file. Null <paramref name="sharedDir"/> = the machine
+    /// home, which is what a single-user local install wants — same convention as
+    /// <c>secrets.shared.yaml</c>.</summary>
+    public static string SharedConnectionsPath(string? sharedDir = null)
+        => Path.Combine(sharedDir ?? GetDefaultsDir(), "connections.shared.yaml");
+
+    /// <summary>Reads one connection layer, stamping every entry with the scope it came from. A
+    /// missing file is an empty layer, not an error: not having personal connections is the normal
+    /// state of a fresh install.</summary>
+    public static List<SplaConnectionSection> LoadConnectionLayer(string path, ConnectionScope scope)
+    {
+        if (!File.Exists(path)) return new();
+        List<SplaConnectionSection> connections;
+        try
+        {
+            connections = Deserializer.Deserialize<SplaConnectionLayer>(File.ReadAllText(path))?.Connections
+                ?? new();
+        }
+        catch (YamlDotNet.Core.YamlException ex)
+        {
+            throw new ProjectManifestException(path, $"not valid YAML — {ex.Message}");
+        }
+        foreach (var c in connections) c.Scope = scope;
+        return connections;
+    }
+
+    /// <summary>Replaces a layer's whole list. An empty list writes an empty file rather than
+    /// deleting it — a file that is there and says "none" is a statement; a missing file is
+    /// indistinguishable from never having configured anything.</summary>
+    public static void SaveConnectionLayer(string path, IEnumerable<SplaConnectionSection> connections)
+    {
+        var dir = Path.GetDirectoryName(path);
+        if (!string.IsNullOrEmpty(dir))
+        {
+            Directory.CreateDirectory(dir);
+            TryHideDirectory(dir);
+        }
+        var list = connections.ToList();
+        var yaml = Serializer.Serialize(new SplaConnectionLayer
+        {
+            Version = 1,
+            Connections = list.Count > 0 ? list : null
+        });
+        File.WriteAllText(path, yaml);
+    }
+
     /// <summary>
     /// Full resolve: load defaults + optional project → ResolvedSettings.
     /// </summary>
@@ -433,9 +486,25 @@ public static class ConfigLoader
             project = LoadProject(splaFilePath);
         }
 
-        var resolved = SettingsResolver.Resolve(defaults, project);
-        if (splaFilePath != null && File.Exists(splaFilePath))
-            resolved.ProjectFilePath = Path.GetFullPath(splaFilePath);
+        // The workspace is needed twice — once to find this person's area (their connections live
+        // there, and on a server that answer depends on the workspace), and again below to record it
+        // on the resolved settings. Derived here from the manifest path for the same reason it is
+        // derived below: the directory holding the manifest is the only definition of the root.
+        var manifestFull = splaFilePath != null && File.Exists(splaFilePath)
+            ? Path.GetFullPath(splaFilePath)
+            : null;
+        var workspace = manifestFull != null ? Path.GetDirectoryName(manifestFull) : null;
+        var personalDir = PersonalDirResolver?.Invoke(workspace);
+
+        // Layers below the project: administered first, then this person's own. Both are files the
+        // project never sees and never carries, which is the whole point — keys configured once are
+        // present in every project this person opens.
+        var sharedConnections = LoadConnectionLayer(SharedConnectionsPath(), ConnectionScope.Shared);
+        var userConnections = LoadConnectionLayer(
+            UserConnectionsPath(personalDir ?? GetDefaultsDir()), ConnectionScope.User);
+
+        var resolved = SettingsResolver.Resolve(defaults, project, sharedConnections, userConnections);
+        resolved.ProjectFilePath = manifestFull;
 
         // The root, decided in exactly one place: the directory the manifest was found in. Absolute
         // from here on — it used to stay whatever the manifest said (usually "."), which only ever
@@ -443,9 +512,6 @@ public static class ConfigLoader
         // relative to wherever the process happened to start.
         // No manifest ⇒ no project ⇒ no root: the current directory is where we were launched, not a
         // boundary, and callers must consult HasProject before treating it as one.
-        var workspace = resolved.ProjectFilePath != null
-            ? Path.GetDirectoryName(resolved.ProjectFilePath)
-            : null;
         resolved.WorkspacePath = workspace ?? Directory.GetCurrentDirectory();
 
         // Mounts need the root, so they are resolved here rather than in SettingsResolver — and only
@@ -463,9 +529,8 @@ public static class ConfigLoader
         // A deployment that resolves personal directories is one with more than one person in it, and
         // that single fact drives both consequences: whose folders these are, and whether they get to
         // call their own folders vetted.
-        var personal = PersonalDirResolver?.Invoke(workspace);
-        resolved.IsMultiUserDeployment = personal is not null;
-        resolved.PersonalDir = personal ?? GetDefaultsDir();
+        resolved.IsMultiUserDeployment = personalDir is not null;
+        resolved.PersonalDir = personalDir ?? GetDefaultsDir();
 
         // The branches this person added themselves. Same area as their secrets and for the same
         // reason: it is theirs, it is never committed, and the UI has to be able to write it.

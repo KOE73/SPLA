@@ -37,6 +37,7 @@ public static class SettingsOps
             ApiKeyIsLiteral = IsLiteral(c.ApiKey),
             AdminKeyIsLiteral = IsLiteral(c.AdminKey),
             SwapModel = c.SwapModel,
+            Scope = ConnectionScopes.Name(c.Scope),
             Models = c.Models.Select(m => new ModelEditDto
             {
                 Id = m.Id,
@@ -80,14 +81,25 @@ public static class SettingsOps
             return result;
         }
 
-        // Persist into the project file's connections: section, leaving everything else untouched.
+        // Persist each layer to its own file. Every scope is rewritten, including the ones with no
+        // entries left: an id dragged from project to user has to disappear from the manifest, and
+        // that only happens if the manifest is written even when the answer is "none".
+        //
+        // The project layer needs a manifest to live in; user and shared do not, which is the point —
+        // a person's own connections are configured once and are there before any project is opened.
         var path = runtime.Settings.ProjectFilePath;
         if (path != null)
         {
             var project = ConfigLoader.LoadProjectRaw(path);
-            project.Connections = sections.Count > 0 ? sections : null;
+            var projectSections = ForScope(sections, ConnectionScope.Project);
+            project.Connections = projectSections.Count > 0 ? projectSections : null;
             ConfigLoader.SaveProjectSections(project, path, "connections");
         }
+
+        SaveLayer(ConfigLoader.UserConnectionsPath(runtime.Settings.PersonalDir),
+                  ForScope(sections, ConnectionScope.User));
+        SaveLayer(ConfigLoader.SharedConnectionsPath(),
+                  ForScope(sections, ConnectionScope.Shared));
 
         // Mutate the live settings in place so running chats resolve against the new list. The flat
         // model projection is rebuilt from the same objects — chats resolve through it, so leaving it
@@ -777,6 +789,28 @@ public static class SettingsOps
         return GetFeatures(runtime);
     }
 
+    /// <summary>
+    /// Writes one layer — but only when this save has something to say about it: entries to write, or
+    /// a file already there whose entries may have just been moved out or deleted.
+    /// <para>
+    /// A save that mentions no user connection and finds no user file must leave the filesystem
+    /// alone. Writing "no connections here" unasked plants a file in the caller's own home — for a
+    /// person, a file they never made; for a test using the machine's real home, a fixture every
+    /// later test then reads. Absent and empty are different statements, and only the second one is
+    /// ours to make.
+    /// </para>
+    /// </summary>
+    private static void SaveLayer(string path, List<SplaConnectionSection> connections)
+    {
+        if (connections.Count == 0 && !File.Exists(path)) return;
+        ConfigLoader.SaveConnectionLayer(path, connections);
+    }
+
+    /// <summary>One layer's worth of the saved list, in the order the editor sent it.</summary>
+    private static List<SplaConnectionSection> ForScope(
+        IEnumerable<SplaConnectionSection> sections, ConnectionScope scope)
+        => sections.Where(c => c.Scope == scope).ToList();
+
     private static SplaConnectionSection ToSection(
         ConnectionEditDto d, IReadOnlyDictionary<string, SplaConnectionSection> stored)
     {
@@ -785,6 +819,13 @@ public static class SettingsOps
         return new SplaConnectionSection
         {
             Id = id,
+            // Where this entry lives. A client that says nothing keeps the entry where it already
+            // was — never "project by default", which would let an editor that has not learned about
+            // scopes drag a person's own keys into a repository just by pressing Save. Only an entry
+            // nobody has stored anywhere is new, and a new one belongs to the project being edited.
+            Scope = ConnectionScopes.TryParse(d.Scope, out var scope)
+                ? scope
+                : previous?.Scope ?? ConnectionScope.Project,
             Name = string.IsNullOrWhiteSpace(d.Name) ? null : d.Name.Trim(),
             Provider = Blank(d.Provider),
             Endpoint = Blank(d.Endpoint),

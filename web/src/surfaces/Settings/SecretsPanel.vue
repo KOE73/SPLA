@@ -35,30 +35,31 @@
 
       <div v-if="scopeDisabled(s.id)" class="empty">Open a project to store project-scoped secrets.</div>
       <template v-else>
-        <div v-for="e in entriesOf(s.id)" :key="e.key" class="entry">
-          <div class="e-row">
-            <code class="e-key">{{ e.key }}</code>
-            <span v-for="f in e.fields" :key="f" class="chip" :title="`${e.reference}#${f}`">
-              {{ f }}
-              <button class="chip-btn" :title="`Copy '${e.reference}#${f}'`" @click="copy(`${e.reference}#${f}`)">⧉</button>
-            </span>
-            <span class="grow"></span>
-            <button class="btn ghost tiny" :title="`Copy 'credential: ${e.reference}'`" @click="copy(`credential: ${e.reference}`)">⧉ ref</button>
-            <button class="btn ghost tiny caret" v-if="e.canManage" :class="{ on: isOpen(s.id, e.key) }"
-                    title="Edit fields" @click="toggle(s.id, e.key)">{{ isOpen(s.id, e.key) ? "▾" : "▸" }}</button>
-            <button class="btn ghost del" v-if="e.canManage" title="Delete entry" @click="del(s.id, e.key)">🗑</button>
-            <span v-else class="chip ro" title="You may use this credential but not change it">read-only</span>
-          </div>
-          <SecretEntryEditor v-if="isOpen(s.id, e.key)" mode="edit" :scope="s.id"
-                             :entry-key="e.key" :fields="e.fields" />
-        </div>
-        <div v-if="!entriesOf(s.id).length" class="empty">No secrets in this scope.</div>
+        <ListPanel :empty="!entriesOf(s.id).length" empty-text="No secrets in this scope."
+                   add-label="＋ New entry" @add="adding = s.id">
+          <ListCard v-for="e in entriesOf(s.id)" :key="e.key"
+                    :open="isOpen(s.id, e.key)" :no-toggle-on-click="true"
+                    @update:open="toggle(s.id, e.key)">
+            <template #head>
+              <code class="e-key">{{ e.key }}</code>
+              <span v-for="f in e.fields" :key="f" class="chip" :title="`${e.reference}#${f}`">
+                {{ f }}
+                <CopyButton :text="`${e.reference}#${f}`" :title="`Copy '${e.reference}#${f}'`" />
+              </span>
+              <span class="grow"></span>
+              <CopyButton :text="`credential: ${e.reference}`" label="ref" :title="`Copy 'credential: ${e.reference}'`" />
+              <ExpandButton v-if="e.canManage" :open="isOpen(s.id, e.key)" @update:open="toggle(s.id, e.key)" />
+              <DeleteButton v-if="e.canManage" title="Delete entry" @click="del(s.id, e.key)" />
+              <span v-else class="chip ro" title="You may use this credential but not change it">read-only</span>
+            </template>
+            <template v-if="isOpen(s.id, e.key)" #body>
+              <SecretEntryEditor mode="edit" :scope="s.id" :entry-key="e.key" :fields="e.fields" />
+            </template>
+          </ListCard>
+        </ListPanel>
 
-        <div class="new">
-          <button v-if="adding !== s.id" class="btn ghost" @click="adding = s.id">＋ New entry</button>
-          <SecretEntryEditor v-else mode="create" :scope="s.id"
-                             @created="adding = ''" @cancel="adding = ''" />
-        </div>
+        <SecretEntryEditor v-if="adding === s.id" class="new-editor" mode="create" :scope="s.id"
+                           @created="adding = ''" @cancel="adding = ''" />
       </template>
     </section>
   </div>
@@ -67,6 +68,11 @@
 <script setup lang="ts">
 import { ref } from "vue";
 import SecretEntryEditor from "../../secrets/SecretEntryEditor.vue";
+import ListPanel from "../../components/list/ListPanel.vue";
+import ListCard from "../../components/list/ListCard.vue";
+import DeleteButton from "../../components/buttons/DeleteButton.vue";
+import ExpandButton from "../../components/buttons/ExpandButton.vue";
+import CopyButton from "../../components/buttons/CopyButton.vue";
 import { SCOPES, deleteSecret, entriesOf, loadSecrets, scopeDisabled } from "../../secrets/store";
 import { client } from "../../protocol/SplaClient";
 import type { SecretScopeId } from "../../protocol/types";
@@ -91,8 +97,6 @@ async function run(op: Promise<void>) {
 const reload = () => run(loadSecrets());
 const del = (scope: SecretScopeId, key: string) => run(deleteSecret(scope, key));
 
-function copy(text: string) { navigator.clipboard?.writeText(text).catch(() => {}); }
-
 client.on("welcome", reload);
 reload();
 </script>
@@ -105,25 +109,16 @@ reload();
 .scope-name { font-weight: 600; color: var(--text); }
 .scope-sub { font-size: var(--fs-xs); color: var(--muted); font-family: var(--mono); }
 
-/* One-line entry rows; density vars size the gaps/padding so nano..max scale. */
-.entry { margin: 0 0 var(--gap, 8px); padding: 2px 6px; border: 1px solid var(--border);
-  border-radius: var(--radius, 7px); background: var(--panel); }
-.e-row { display: flex; align-items: center; gap: calc(var(--gap, 8px) * 0.75); min-height: 24px; }
+/* The entry row's head is otherwise just .list-card-head (global) — only the bits specific to a
+   secret entry (mono key, the field chips) live here. */
 .e-key { font-family: var(--mono); font-size: var(--fs-sm); font-weight: 600; color: var(--text); margin-right: 4px; }
 .grow { flex: 1; }
 
-.chip { display: inline-flex; align-items: center; gap: 2px; padding: 0 3px 0 6px;
+.chip { display: inline-flex; align-items: center; gap: 2px; padding: 0 2px 0 6px;
   font-family: var(--mono); font-size: var(--fs-xs); color: var(--muted);
   border: 1px solid var(--border); border-radius: 999px; background: var(--bg); line-height: 16px; }
-.chip-btn { background: none; border: none; padding: 0 2px; cursor: pointer;
-  color: transparent; font-size: var(--fs-xs); line-height: 1; }
-.chip:hover .chip-btn { color: var(--muted); }
-.chip .chip-btn:hover { color: var(--text); }
+.chip .gbtn { min-width: 16px; height: 16px; padding: 0; }
 
-.tiny { font-size: var(--fs-xs); padding: 0 5px; color: var(--muted); }
-.tiny:hover, .tiny.on { color: var(--text); }
-.del { color: var(--muted); }
-.del:hover { color: var(--danger, #f85149); }
 .empty { color: var(--muted); font-size: var(--fs-sm); padding: 3px 0; }
-.new { margin-top: 2px; }
+.new-editor { margin-top: 6px; }
 </style>

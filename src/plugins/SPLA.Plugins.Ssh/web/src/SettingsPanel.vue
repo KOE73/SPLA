@@ -24,8 +24,7 @@
       </label>
     </div>
 
-    <button type="button" class="self-start" @click="addHost">+ Add host</button>
-    <div v-if="!hosts.length" class="muted empty">No hosts yet. Click "+ Add host".</div>
+    <div v-if="!hosts.length" class="muted empty">No hosts yet. Click "+ Add host" below.</div>
 
     <div v-for="(h, i) in hosts" :key="h.key" class="host-card">
       <div class="row spread">
@@ -34,7 +33,7 @@
           <span class="muted">Host</span><input v-model="h.host" placeholder="10.0.0.5 or box.local" class="w-180" spellcheck="false">
           <span class="muted">Port</span><input v-model.number="h.port" type="number" min="1" max="65535" class="w-70">
         </div>
-        <button type="button" @click="hosts.splice(i, 1)">✕ Remove</button>
+        <button type="button" class="remove" @click="hosts.splice(i, 1)">✕ Remove</button>
       </div>
 
       <div class="row">
@@ -65,6 +64,8 @@
         <span class="muted">{{ h.testStatus }}</span>
       </div>
     </div>
+
+    <button type="button" class="self-start" @click="addHost">+ Add host</button>
   </div>
 </template>
 
@@ -199,4 +200,8 @@ button {
 }
 button:hover:not(:disabled) { border-color: var(--muted, #888); }
 button:disabled { opacity: .5; cursor: default; }
+/* Same visual language as the host app's RemoveButton (web/src/components/buttons) — this plugin
+   ships its own Vue build and can't literally import that component, so the look is hand-matched. */
+button.remove { color: var(--muted, #888); background: transparent; border-color: transparent; }
+button.remove:hover:not(:disabled) { color: var(--danger, #e05555); border-color: var(--danger, #e05555); }
 </style>

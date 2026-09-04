@@ -228,6 +228,26 @@ public class SplaRoleSection
     [YamlMember(Alias = "peer_hard_cap")]
     public int? PeerHardCap { get; set; }
 
+    /// <summary>
+    /// Which connections this role may use, by <see cref="SplaConnectionSection.Id"/> or by scope
+    /// name (<c>user</c>, <c>project</c>, <c>shared</c> — a whole layer in one word). Null or empty =
+    /// every connection resolved for the project, which is what a role that says nothing about
+    /// connections has always had.
+    ///
+    /// <para><b>A selection, not a grant</b> — the same rule as <see cref="Islands"/>. It narrows the
+    /// set the role's chats can resolve a model against; it cannot make a connection the project
+    /// never declared appear, because there is nothing here to declare one with (no endpoint, no
+    /// credential). "The project declares what exists, the role chooses what it uses"
+    /// (<c>ADR_20260827-2</c>) still holds — this is the choosing half, now that a connection can
+    /// come from three layers and "all of them" is no longer a useful default for every role.</para>
+    ///
+    /// <para>A name that matches nothing is an error at resolution rather than a silent empty set: a
+    /// role narrowed to a connection id that was renamed must say so, not quietly run on whatever is
+    /// left.</para>
+    /// </summary>
+    [YamlMember(Alias = "connections")]
+    public List<string>? Connections { get; set; }
+
     /// <summary>The model id (a <see cref="SplaModelSection.Id"/> already resolved from the project's
     /// own <c>connections:</c>) this role runs on. Null = inherit whatever the chat would otherwise
     /// pick. A role does not declare its own connection — connections are what the project makes
@@ -344,6 +364,13 @@ public class SplaConnectionSection
     /// <summary>Display label for the connection tree. Computed, never persisted.</summary>
     [YamlIgnore]
     public string DisplayName => !string.IsNullOrWhiteSpace(Name) ? Name! : Id;
+
+    /// <summary>Which layer this entry was read from. Stamped by the loader, never written to a
+    /// file: the scope IS the file it lives in, so persisting it would be a second answer that can
+    /// disagree with the first. An editor needs it to know which file a save goes back to, and a
+    /// role needs it to say "the user's connections, not this repository's".</summary>
+    [YamlIgnore]
+    public ConnectionScope Scope { get; set; } = ConnectionScope.Project;
 }
 
 /// <summary>

@@ -190,6 +190,11 @@ export interface ConnectionDto {
   /** As `apiKeyIsLiteral`, for the admin key. */
   adminKeyIsLiteral?: boolean;
   swapModel?: boolean;
+  /** Which layer this connection lives in: `shared`, `user` or `project`. It is the file the entry
+   *  is read from and the one a save writes it back to, so it must be echoed back untouched —
+   *  dropping it on save would move the entry. Omitted by a client that does not edit it: the server
+   *  then keeps the connection where it already was. No UI for choosing it yet. */
+  scope?: string;
   models: ModelEntryDto[];
 }
 

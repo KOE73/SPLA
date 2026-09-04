@@ -24,9 +24,7 @@
       </label>
     </div>
 
-    <button type="button" class="self-start" @click="addConnection">+ Add Connection</button>
-
-    <div v-if="!connections.length" class="muted empty">No connections yet. Click "+ Add Connection".</div>
+    <div v-if="!connections.length" class="muted empty">No connections yet. Click "+ Add Connection" below.</div>
 
     <div v-for="(c, i) in connections" :key="c.key" class="conn-card">
       <div class="row spread">
@@ -39,7 +37,7 @@
             <option value="sqlite">sqlite</option>
           </select>
         </div>
-        <button type="button" @click="connections.splice(i, 1)">✕ Remove</button>
+        <button type="button" class="remove" @click="connections.splice(i, 1)">✕ Remove</button>
       </div>
 
       <div v-if="c.provider !== 'sqlite'" class="row">
@@ -82,6 +80,8 @@
         <span class="muted">{{ c.testStatus }}</span>
       </div>
     </div>
+
+    <button type="button" class="self-start" @click="addConnection">+ Add Connection</button>
   </div>
 </template>
 
@@ -246,4 +246,8 @@ button {
 }
 button:hover:not(:disabled) { border-color: var(--muted, #888); }
 button:disabled { opacity: .5; cursor: default; }
+/* Same visual language as the host app's RemoveButton (web/src/components/buttons) — this plugin
+   ships its own Vue build and can't literally import that component, so the look is hand-matched. */
+button.remove { color: var(--muted, #888); background: transparent; border-color: transparent; }
+button.remove:hover:not(:disabled) { color: var(--danger, #e05555); border-color: var(--danger, #e05555); }
 </style>

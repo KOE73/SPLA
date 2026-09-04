@@ -1,23 +1,23 @@
 <template>
   <div class="s-panel" data-tab="plugins">
     <div class="s-head"><b>Plugins</b><span class="hint">{{ hint }}</span></div>
-    <div class="pl-list">
-      <div v-if="!plugins.length" class="notice">no plugins discovered</div>
+    <div class="list-panel">
+      <div v-if="!plugins.length" class="list-empty">no plugins discovered</div>
       <!-- One collapsed row per plugin; click the row to expand its editors. Configured bits show
            as small summary text on the collapsed row so a glance tells what's customized. -->
-      <div v-for="pl in plugins" :key="pl.id" class="pl-card" :class="{ open: isOpen(pl.id) }"
-           :data-plugin-id="pl.id">
-        <div class="pl-row" @click="toggle(pl.id)">
+      <ListCard v-for="pl in plugins" :key="pl.id" :open="isOpen(pl.id)" @update:open="toggle(pl.id)"
+                :data-plugin-id="pl.id">
+        <template #head>
           <input type="checkbox" v-model="pl.enabled" @click.stop>
           <b class="pl-name">{{ pl.name || pl.id }}</b>
           <span class="ver">{{ pl.version || "" }} · {{ pl.id }}</span>
           <span v-if="!isOpen(pl.id)" class="pl-sum">{{ summary(pl) }}</span>
           <span class="grow"></span>
           <span class="state">{{ pl.state && pl.state !== "Enabled" ? (pl.stateReason || pl.state) : "" }}</span>
-          <span class="chev">{{ isOpen(pl.id) ? "▾" : "▸" }}</span>
-        </div>
+          <ExpandButton :open="isOpen(pl.id)" @update:open="toggle(pl.id)" />
+        </template>
 
-        <div v-if="isOpen(pl.id)" class="pl-body">
+        <template #body>
           <!-- Two separate decisions, and the wording has to keep them apart: the checkbox above is
                DELIVERY (is the assembly loaded at all), this is DISCLOSURE (how much of the set the
                model is shown before it is needed). -->
@@ -36,8 +36,8 @@
                back to the generic opaque JSON editor. The panel never branches on plugin id. -->
           <PluginWebSettings v-if="pl.webSettingsUrl" :plugin="pl" :ref="(el) => setWebRef(pl.id, el)" />
           <label v-else class="field col"><span>Settings (JSON)</span><textarea v-model="pl.settingsJson" class="mono" rows="4" spellcheck="false"></textarea></label>
-        </div>
-      </div>
+        </template>
+      </ListCard>
     </div>
   </div>
 </template>
@@ -47,6 +47,8 @@ import { onUnmounted, ref } from "vue";
 import { client } from "../../protocol/SplaClient";
 import type { PluginDto } from "../../protocol/types";
 import PluginWebSettings from "./PluginWebSettings.vue";
+import ListCard from "../../components/list/ListCard.vue";
+import ExpandButton from "../../components/buttons/ExpandButton.vue";
 
 /** Collapsed-row wording for a level the user set explicitly. */
 const LEVEL_LABELS: Record<string, string> = {
@@ -113,18 +115,12 @@ defineExpose({ save });
 </script>
 
 <style scoped>
-/* Density-aware: gaps/radius follow the UI density vars. */
-.pl-list { display: flex; flex-direction: column; gap: var(--gap, 8px); }
-.pl-card { border: 1px solid var(--border); border-radius: var(--radius, 7px); background: var(--elevated); }
-.pl-row { display: flex; align-items: center; gap: 8px; padding: 4px 8px; cursor: pointer; min-height: 26px; }
-.pl-row:hover { background: color-mix(in srgb, var(--text) 4%, transparent); }
+/* .pl-list/.pl-card/.pl-row/.pl-body/.chev are gone — ListCard (app.css) draws the card and caret;
+   only content specific to a plugin row stays here. */
 .pl-name { font-size: var(--fs-sm); }
 .ver { font-family: var(--mono); font-size: var(--fs-xs); color: var(--muted); }
 .pl-sum { font-size: var(--fs-xs); color: var(--muted); margin-left: 8px;
   overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 45%; }
 .grow { flex: 1; }
 .state { font-size: var(--fs-xs); color: var(--danger, #f85149); }
-.chev { color: var(--muted); font-size: var(--fs-xs); width: 12px; text-align: center; }
-.pl-body { display: flex; flex-direction: column; gap: 6px; padding: 2px 8px 8px;
-  border-top: 1px solid color-mix(in srgb, var(--border) 60%, transparent); }
 </style>

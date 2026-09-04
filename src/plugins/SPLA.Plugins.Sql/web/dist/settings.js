@@ -1,4 +1,4 @@
-(function(){"use strict";try{if(typeof document<"u"){var a=document.createElement("style");a.appendChild(document.createTextNode(".cred-slot[data-v-c6a4a9b8]{min-width:0;flex:1}.w-260[data-v-c6a4a9b8]{width:260px}.sql-set[data-v-c94a9009]{display:flex;flex-direction:column;gap:8px;font-size:var(--fs-sm, 12px);color:var(--text, inherit)}.muted[data-v-c94a9009]{color:var(--muted, #888)}.empty[data-v-c94a9009]{font-style:italic}.row[data-v-c94a9009]{display:flex;gap:8px;align-items:center;flex-wrap:wrap}.row.spread[data-v-c94a9009]{justify-content:space-between}.self-start[data-v-c94a9009]{align-self:flex-start}.grow[data-v-c94a9009]{flex:1}.w-70[data-v-c94a9009]{width:70px}.w-90[data-v-c94a9009]{width:90px}.w-120[data-v-c94a9009]{width:120px}.w-130[data-v-c94a9009]{width:130px}.w-140[data-v-c94a9009]{width:140px}.w-160[data-v-c94a9009]{width:160px}.w-220[data-v-c94a9009]{width:220px}.w-400[data-v-c94a9009]{width:400px}.conn-card[data-v-c94a9009]{border:1px solid var(--border, #444);border-radius:var(--radius, 6px);padding:8px 10px;display:flex;flex-direction:column;gap:6px;background:var(--panel, transparent)}.chk[data-v-c94a9009]{cursor:pointer}.chk input[data-v-c94a9009]{height:auto}label[data-v-c94a9009]{display:flex;gap:6px;align-items:center}input[data-v-c94a9009],select[data-v-c94a9009]{height:24px;padding:2px 6px;color:var(--text, inherit);background:var(--bg, transparent);border:1px solid var(--border, #444);border-radius:5px;font-family:inherit;font-size:inherit}button[data-v-c94a9009]{padding:2px 10px;color:var(--text, inherit);background:var(--panel, transparent);border:1px solid var(--border, #444);border-radius:5px;cursor:pointer;font-size:inherit}button[data-v-c94a9009]:hover:not(:disabled){border-color:var(--muted, #888)}button[data-v-c94a9009]:disabled{opacity:.5;cursor:default}")),document.head.appendChild(a)}}catch(t){console.error("vite-plugin-css-injected-by-js",t)}})();
+(function(){"use strict";try{if(typeof document<"u"){var a=document.createElement("style");a.appendChild(document.createTextNode(".cred-slot[data-v-e0ac3817]{min-width:0;flex:1}.w-260[data-v-e0ac3817]{width:260px}.sql-set[data-v-484b835b]{display:flex;flex-direction:column;gap:8px;font-size:var(--fs-sm, 12px);color:var(--text, inherit)}.muted[data-v-484b835b]{color:var(--muted, #888)}.empty[data-v-484b835b]{font-style:italic}.row[data-v-484b835b]{display:flex;gap:8px;align-items:center;flex-wrap:wrap}.row.spread[data-v-484b835b]{justify-content:space-between}.self-start[data-v-484b835b]{align-self:flex-start}.grow[data-v-484b835b]{flex:1}.w-70[data-v-484b835b]{width:70px}.w-90[data-v-484b835b]{width:90px}.w-120[data-v-484b835b]{width:120px}.w-130[data-v-484b835b]{width:130px}.w-140[data-v-484b835b]{width:140px}.w-160[data-v-484b835b]{width:160px}.w-220[data-v-484b835b]{width:220px}.w-400[data-v-484b835b]{width:400px}.conn-card[data-v-484b835b]{border:1px solid var(--border, #444);border-radius:var(--radius, 6px);padding:8px 10px;display:flex;flex-direction:column;gap:6px;background:var(--panel, transparent)}.chk[data-v-484b835b]{cursor:pointer}.chk input[data-v-484b835b]{height:auto}label[data-v-484b835b]{display:flex;gap:6px;align-items:center}input[data-v-484b835b],select[data-v-484b835b]{height:24px;padding:2px 6px;color:var(--text, inherit);background:var(--bg, transparent);border:1px solid var(--border, #444);border-radius:5px;font-family:inherit;font-size:inherit}button[data-v-484b835b]{padding:2px 10px;color:var(--text, inherit);background:var(--panel, transparent);border:1px solid var(--border, #444);border-radius:5px;cursor:pointer;font-size:inherit}button[data-v-484b835b]:hover:not(:disabled){border-color:var(--muted, #888)}button[data-v-484b835b]:disabled{opacity:.5;cursor:default}button.remove[data-v-484b835b]{color:var(--muted, #888);background:transparent;border-color:transparent}button.remove[data-v-484b835b]:hover:not(:disabled){color:var(--danger, #e05555);border-color:var(--danger, #e05555)}")),document.head.appendChild(a)}}catch(t){console.error("vite-plugin-css-injected-by-js",t)}})();
 /**
 * @vue/shared v3.5.39
 * (c) 2018-present Yuxi (Evan) You and Vue contributors
@@ -4102,7 +4102,7 @@ const Il = ["value"], Rl = /* @__PURE__ */ Ti({
   for (const [n, i] of t)
     s[n] = i;
   return s;
-}, Fl = /* @__PURE__ */ sr(Rl, [["__scopeId", "data-v-c6a4a9b8"]]), Vl = { class: "sql-set" }, Dl = { class: "row" }, Nl = ["value"], jl = {
+}, Fl = /* @__PURE__ */ sr(Rl, [["__scopeId", "data-v-e0ac3817"]]), Vl = { class: "sql-set" }, Dl = { class: "row" }, Nl = ["value"], jl = {
   key: 0,
   class: "muted empty"
 }, Ul = { class: "row spread" }, Hl = { class: "row" }, $l = ["onUpdate:modelValue"], Ll = ["onUpdate:modelValue"], Kl = ["onClick"], Wl = {
@@ -4238,12 +4238,7 @@ const Il = ["value"], Rl = /* @__PURE__ */ Ti({
           ])
         ])
       ]),
-      V("button", {
-        type: "button",
-        class: "self-start",
-        onClick: a
-      }, "+ Add Connection"),
-      d.length ? xt("", !0) : (le(), fe("div", jl, 'No connections yet. Click "+ Add Connection".')),
+      d.length ? xt("", !0) : (le(), fe("div", jl, 'No connections yet. Click "+ Add Connection" below.')),
       (le(!0), fe(ue, null, vn(d, (T, W) => (le(), fe("div", {
         key: T.key,
         class: "conn-card"
@@ -4271,6 +4266,7 @@ const Il = ["value"], Rl = /* @__PURE__ */ Ti({
           ]),
           V("button", {
             type: "button",
+            class: "remove",
             onClick: (P) => d.splice(W, 1)
           }, "✕ Remove", 8, Kl)
         ]),
@@ -4355,10 +4351,15 @@ const Il = ["value"], Rl = /* @__PURE__ */ Ti({
           }, "Test Connection", 8, nc),
           V("span", ic, Ms(T.testStatus), 1)
         ])
-      ]))), 128))
+      ]))), 128)),
+      V("button", {
+        type: "button",
+        class: "self-start",
+        onClick: a
+      }, "+ Add Connection")
     ]));
   }
-}), oc = /* @__PURE__ */ sr(rc, [["__scopeId", "data-v-c94a9009"]]);
+}), oc = /* @__PURE__ */ sr(rc, [["__scopeId", "data-v-484b835b"]]);
 function cc(e, t) {
   let s = Al(oc, { api: t });
   const n = s.mount(e);

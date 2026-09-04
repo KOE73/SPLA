@@ -8,16 +8,35 @@
   --radius-sm: 6px;
   --gap: 10px;
   --pad: 12px;
+  /* Spacing scale. Four steps, from the hairline inside a chip to the margin around a whole surface.
+     Everything structural spends these instead of literal px, which is what makes the density knob
+     below actually move the layout rather than only the handful of boxes that happened to read
+     --pad/--gap. Normal keeps the numbers the app already had. */
+  --sp-1: 4px;    /* inside a chip, between a glyph and its label */
+  --sp-2: 6px;    /* a control's own padding; the gap between controls on a row */
+  --sp-3: 10px;   /* a box: a message bubble, the composer, an input */
+  --sp-4: 16px;   /* a whole surface's margin: the log, a bar's left and right ends */
   --font: "Segoe UI", system-ui, sans-serif;
   --mono: "Cascadia Mono", "Consolas", ui-monospace, monospace;
   --fs: 14px;
   --fs-sm: 12px;
   --fs-xs: 11px;
+  /* Reading width of the chat column. A person drags it (WidthRail) and it is stored per client;
+     the default is a comfortable measure rather than the full window, which on a wide monitor turns
+     every bubble into a single long line. Tables and code opt out with .wide (see below). */
+  --content-w: 900px;
 }
-/* Density axis — nano / mini / norm / max (matches v0.1 names) */
-:root[data-density="nano"] { --fs: 11px; --fs-sm: 10px; --fs-xs: 9px;  --pad: 6px;  --gap: 4px;  --radius: 6px; }
-:root[data-density="mini"] { --fs: 12px; --fs-sm: 11px; --fs-xs: 10px; --pad: 8px;  --gap: 6px;  --radius: 7px; }
-:root[data-density="max"]  { --fs: 16px; --fs-sm: 14px; --fs-xs: 12px; --pad: 18px; --gap: 16px; --radius: 13px; }
+/* Density axis — nano / mini / norm / max (matches v0.1 names).
+   The knob that actually does the work is SPACE, not text: font size barely moves between steps
+   (a couple of px at most, and never below something still comfortably readable) while padding,
+   gaps and corner radius do almost all of the shrinking — nano packs everything down to a hairline
+   of breathing room around text that is still plainly legible. */
+:root[data-density="nano"] { --fs: 13px; --fs-sm: 11px; --fs-xs: 10px; --pad: 1px; --gap: 1px; --radius: 3px; --radius-sm: 2px;
+  --sp-1: 1px; --sp-2: 1px; --sp-3: 1px; --sp-4: 1px; }
+:root[data-density="mini"] { --fs: 13px; --fs-sm: 12px; --fs-xs: 10px; --pad: 5px; --gap: 3px; --radius: 5px; --radius-sm: 4px;
+  --sp-1: 2px; --sp-2: 3px; --sp-3: 5px; --sp-4: 7px; }
+:root[data-density="max"]  { --fs: 16px; --fs-sm: 14px; --fs-xs: 12px; --pad: 18px; --gap: 16px; --radius: 13px; --radius-sm: 8px;
+  --sp-1: 6px; --sp-2: 9px; --sp-3: 14px; --sp-4: 22px; }
 
 * { box-sizing: border-box; }
 /* overflow:hidden is load-bearing, not cosmetic. Every scroll in this app is internal (#chats, the
@@ -41,7 +60,7 @@ button { font: inherit; cursor: pointer; }
 /* ── Sidebar ──────────────────────────────────────────────────────────────── */
 #sidebar { background: var(--panel); border-right: 1px solid var(--border);
   display: flex; flex-direction: column; min-height: 0; }
-#sidebar header { padding: var(--pad); display: flex; gap: 8px; align-items: center;
+#sidebar header { padding: var(--pad); display: flex; gap: var(--sp-2); align-items: center;
   border-bottom: 1px solid var(--border); }
 #sidebar header b { flex: 1; letter-spacing: .04em; }
 #chats { overflow: auto; flex: 1; }
@@ -56,11 +75,40 @@ button { font: inherit; cursor: pointer; }
 .btn.danger { background: var(--danger); color: #fff; }
 
 /* ── Main column ──────────────────────────────────────────────────────────── */
-#main { display: flex; flex-direction: column; min-height: 0; }
+#main { display: flex; flex-direction: column; min-height: 0; position: relative; }
 
-#status { padding: 6px 14px; font-size: var(--fs-sm); color: var(--muted);
-  border-bottom: 1px solid var(--border); display: flex; gap: 14px; align-items: center; flex-wrap: wrap; }
-#status label { display: flex; gap: 5px; align-items: center; }
+/* ── Reading column ───────────────────────────────────────────────────────
+   Everything the eye reads top-to-bottom is centred at --content-w; the chrome around it still
+   spans the window, so borders and backgrounds stay full-bleed. */
+.center-col { width: 100%; max-width: var(--content-w); margin: 0 auto; min-width: 0; }
+#log > .center-col { display: flex; flex-direction: column; gap: var(--gap); }
+#composer > .center-col { display: flex; flex-direction: column; gap: var(--sp-2); }
+
+/* The width handle: a small triangle standing ON the line above the composer, at the right edge of
+   the reading column — so it both marks where that edge is and is the thing you grab to move it.
+   Explicit control only: press, drag, release (WidthRail.vue captures the pointer). touch-action is
+   load-bearing — without it the gesture is taken for a scroll and the drag never starts. */
+.width-handle { position: absolute; top: 0; left: calc(50% + var(--content-w) / 2);
+  transform: translate(-50%, -100%); width: 16px; height: 8px; cursor: ew-resize; z-index: 6;
+  touch-action: none; background: var(--border);
+  clip-path: polygon(50% 0, 100% 100%, 0 100%); transition: background .15s; }
+.width-handle:hover, .width-handle.dragging { background: var(--accent); }
+/* While dragging, nothing else on the page should be selecting text under the moving pointer. */
+body:has(.width-handle.dragging) { user-select: none; }
+
+/* ── Chrome drawer (per-turn settings + filters) ──────────────────────────
+   These are settings for the NEXT turn, not part of the conversation, so they fold away and the
+   composer sits on the floor of the window. The handle stays, because a hidden setting you cannot
+   find again is worse than a busy footer. */
+#chrome { display: flex; flex-direction: column; }
+#chrome.collapsed { display: none; }
+.chrome-handle { align-self: center; background: transparent; border: 0; color: var(--faint);
+  font-size: var(--fs-xs); line-height: 1; padding: 2px 10px 3px; opacity: .5; }
+.chrome-handle:hover { opacity: 1; color: var(--accent); }
+
+#status { padding: var(--sp-2) var(--sp-4); font-size: var(--fs-sm); color: var(--muted);
+  border-top: 1px solid var(--border); display: flex; gap: 14px; align-items: center; flex-wrap: wrap; }
+#status label { display: flex; gap: var(--sp-1); align-items: center; }
 #status select { background: var(--bg); color: var(--text); border: 1px solid var(--border);
   border-radius: var(--radius-sm); padding: 2px 4px; font: inherit; font-size: var(--fs-sm); }
 
@@ -110,17 +158,21 @@ button { font: inherit; cursor: pointer; }
 #toolSets .toolset.lowerable:hover { color: var(--accent); }
 
 /* ── Filter bar (per-type visibility toggles) ─────────────────────────────── */
-#filters { padding: 5px 14px; border-bottom: 1px solid var(--border); display: flex; gap: 6px;
+#filters { padding: var(--sp-2) var(--sp-4); border-top: 1px solid var(--border); display: flex; gap: var(--sp-2);
   align-items: center; font-size: var(--fs-xs); }
 .filter { background: transparent; border: 1px solid var(--border); color: var(--muted);
   border-radius: 999px; padding: 3px 10px; }
 .filter.on { background: var(--accent-soft); color: var(--accent); border-color: var(--accent); }
 
 /* ── Log ──────────────────────────────────────────────────────────────────── */
-#log { flex: 1; overflow: auto; padding: 16px; display: flex; flex-direction: column; gap: var(--gap); }
+#log { flex: 1; overflow: auto; padding: var(--sp-4); display: flex; flex-direction: column; gap: var(--gap); }
+
+/* Content that a narrow measure actively harms — tables, wide code — is allowed past the column
+   edge up to the window. The measure serves prose; it does not get to squeeze a grid. */
+.center-col .wide, #log .msg table { max-width: none; }
 
 /* Generic message bubble; per-role overrides below */
-.msg { position: relative; border: 1px solid var(--border); border-radius: var(--radius); padding: 10px 12px;
+.msg { position: relative; border: 1px solid var(--border); border-radius: var(--radius); padding: var(--sp-3);
   background: var(--panel); max-width: 80ch; overflow-wrap: anywhere; }
 
 /* Hover toolbar: timestamp + copy/rewind/fork, floating over the bubble's top edge */
@@ -225,24 +277,51 @@ body.hide-reasoning .reasoning { display: none; }
   border-radius: var(--radius-sm); overflow: auto; font-size: var(--fs-sm); color: var(--muted); }
 
 /* ── Composer ─────────────────────────────────────────────────────────────── */
-#composer { border-top: 1px solid var(--border); padding: 10px 12px; display: flex; flex-direction: column; gap: 8px; }
-#attachments { display: flex; gap: 8px; flex-wrap: wrap; }
+#composer { border-top: 1px solid var(--border); padding: var(--sp-3); display: flex; flex-direction: column; gap: var(--sp-2);
+  position: relative; }
+#attachments { display: flex; gap: var(--sp-2); flex-wrap: wrap; }
 #attachments .thumb { position: relative; width: 56px; height: 56px; border-radius: var(--radius-sm);
   border: 1px solid var(--border); overflow: hidden; background: var(--elevated); }
 #attachments .thumb img { width: 100%; height: 100%; object-fit: cover; }
 #attachments .thumb .rm { position: absolute; top: 0; right: 0; background: rgba(0,0,0,.55); color: #fff;
   border: 0; font-size: 11px; line-height: 1; padding: 2px 5px; border-radius: 0 0 0 var(--radius-sm); }
-#composer .row { display: flex; gap: 8px; align-items: flex-end; }
+#composer .row { display: flex; gap: var(--sp-2); align-items: flex-end; }
 /* Grows with the text, 2 rows to 16, then scrolls. `field-sizing` does it with no JS at all in
    Chromium (which is what the native shell embeds); Composer.vue measures by hand elsewhere. */
 #input { flex: 1; resize: none; background: var(--bg); color: var(--text);
-  border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 9px 11px; font: inherit;
-  line-height: 1.45; field-sizing: content; min-height: calc(2 * 1.45em + 20px);
-  max-height: calc(16 * 1.45em + 20px); overflow-y: auto; }
+  border: 1px solid var(--border); border-radius: var(--radius-sm); padding: var(--sp-3); font: inherit;
+  /* The two bounds are "two rows" and "sixteen rows", so they must be measured in rows plus this
+     box's OWN padding — a literal 20px kept a nano composer as tall as a normal one. */
+  line-height: 1.45; field-sizing: content; min-height: calc(2 * 1.45em + 2 * var(--sp-3));
+  max-height: calc(16 * 1.45em + 2 * var(--sp-3)); overflow-y: auto; }
 #input:focus { outline: none; border-color: var(--accent); }
 .icon-btn { background: transparent; border: 1px solid var(--border); color: var(--muted);
   border-radius: var(--radius-sm); width: 38px; height: 38px; font-size: 18px; }
 .icon-btn:hover { color: var(--accent); border-color: var(--accent); }
+
+/* ── Shared glyph buttons (IconGlyphButton, DeleteButton, ExpandButton, CopyButton, RemoveButton) ──
+   Every small icon/glyph button in Settings and the log renders through one of these components,
+   all sharing this one visual family. Restyle here once, everywhere follows — no per-panel .del/.x/
+   .caret/.chip-btn CSS anymore. */
+.gbtn { display: inline-flex; align-items: center; justify-content: center; gap: 3px;
+  background: transparent; border: 1px solid transparent; color: var(--muted);
+  border-radius: var(--radius-sm); padding: 2px 6px; min-width: 22px; height: 22px;
+  font-size: var(--fs-sm); line-height: 1; cursor: pointer; }
+.gbtn:hover:not(:disabled) { color: var(--text); border-color: var(--border); background: var(--elevated); }
+.gbtn:disabled { opacity: .45; cursor: default; }
+.gbtn-danger:hover:not(:disabled) { color: var(--danger); border-color: var(--danger); background: transparent; }
+.gbtn.on { color: var(--accent); }
+.gbtn-text { padding: 2px 8px; font-size: var(--fs-xs); white-space: nowrap; }
+
+/* ── Shared list primitives (ListPanel, ListCard) ─────────────────────────────
+   The "bordered card, then '+ Add …' below the last one" shape used across Settings — Connections,
+   Secrets, MCP servers, and every plugin's own host/connection list. */
+.list-panel { display: flex; flex-direction: column; gap: var(--gap); }
+.list-empty { color: var(--muted); font-size: var(--fs-sm); padding: 4px 0; }
+.list-add { align-self: flex-start; }
+.list-card { border: 1px solid var(--border); border-radius: var(--radius); background: var(--panel); }
+.list-card-head { display: flex; align-items: center; gap: var(--gap); padding: var(--pad); cursor: pointer; }
+.list-card-body { padding: 0 var(--pad) var(--pad); display: flex; flex-direction: column; gap: var(--gap); }
 
 /* ── Debug surface ────────────────────────────────────────────────────────────
    Placement vs content are separated: #debug is ONLY the slide-in drawer frame used by the default
@@ -255,7 +334,11 @@ body.hide-reasoning .reasoning { display: none; }
 .debug-surface { background: var(--panel); border-left: 1px solid var(--border);
   display: flex; flex-direction: column; height: 100%; min-height: 0; }
 .debug-surface header { display: flex; gap: 8px; align-items: center; padding: 10px 12px; border-bottom: 1px solid var(--border); }
-.debug-surface header b { flex: 1; }
+.debug-surface header .chat-label { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis;
+  white-space: nowrap; color: var(--muted); font-size: var(--fs-sm); }
+.debug-surface header .refresh { background: transparent; border: 1px solid var(--border); color: var(--muted);
+  border-radius: var(--radius-sm); padding: 2px 8px; cursor: pointer; flex-shrink: 0; }
+.debug-surface header .refresh:hover { color: var(--accent); border-color: var(--accent); }
 .debug-surface .tabs { display: flex; gap: 6px; padding: 8px 12px; border-bottom: 1px solid var(--border); flex-wrap: wrap; }
 .debug-surface .tab { background: transparent; border: 1px solid var(--border); color: var(--muted);
   border-radius: 999px; padding: 3px 10px; font-size: var(--fs-xs); }
@@ -397,13 +480,25 @@ body.hide-reasoning .reasoning { display: none; }
   border-top: 1px solid var(--border); flex-shrink: 0; }
 .settings-bar .grow { flex: 1; }
 
-.conn-list { display: flex; flex-direction: column; gap: var(--gap, 14px); }
+.conn-list { display: flex; flex-direction: column; gap: var(--gap, 14px); } /* legacy alias, superseded by .list-panel */
 .conn-card { border: 1px solid var(--border); border-radius: var(--radius); background: var(--elevated);
   padding: 6px 10px 8px; display: flex; flex-direction: column; gap: 4px; }
 
-/* Tiny mono id label at the top of each card */
+/* Tiny mono id label at the top of each card, with the scope picker at its right edge */
 .conn-id-bar { font-family: var(--mono); font-size: var(--fs-xs); color: var(--accent);
-  padding-bottom: 4px; border-bottom: 1px solid color-mix(in srgb, var(--border) 60%, transparent); margin-bottom: 1px; }
+  padding-bottom: 4px; border-bottom: 1px solid color-mix(in srgb, var(--border) 60%, transparent); margin-bottom: 1px;
+  display: flex; align-items: center; gap: 6px; }
+.conn-id-text { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.conn-scope-pick { flex-shrink: 0; font: inherit; font-size: var(--fs-xs); color: var(--muted);
+  background: var(--bg); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 1px 4px; }
+.conn-scope-pick:focus { outline: none; border-color: var(--accent); }
+
+/* One section per scope. The heading carries the file, because the file IS what a scope means. */
+.conn-scope { display: flex; flex-direction: column; gap: 4px; margin-bottom: 10px; }
+.conn-scope-head { display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; }
+.conn-scope-head > b { font-size: var(--fs-sm); }
+.conn-scope-where { font-family: var(--mono); font-size: var(--fs-xs); color: var(--muted);
+  min-width: 0; overflow: hidden; text-overflow: ellipsis; }
 
 /* Compact Name row: label + input + dot + ✕ in one line */
 .conn-name-row { display: flex; align-items: center; gap: 6px; }
