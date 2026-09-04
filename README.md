@@ -8,39 +8,103 @@ Portable local AI assistant.
 
 **Connect** a local LLM, **open** a project, and start **working**.
 
-## Typical Tasks
+Русская версия — [`README.ru.md`](README.ru.md).
 
-- Analyze a codebase.
-- Explain project architecture.
-- Search and modify files.
-- Run builds and tests.
-- Diagnose network problems.
-- Work with domain-specific plugins such as 1C.
+## What matters in SPLA
 
-## Why SPLA
+**.NET only.** The agent, its tools, and every plugin are C# and .NET — no Python runtime, no Node
+process, no subprocess-based tool implementations in the agent's execution path. One toolchain to
+build, debug, and ship means one failure surface, not three. This is a hard constraint on the core
+and plugins, not a slogan: a plugin that needs Python or Node to *run* the agent's tools does not
+belong here. The web client is the one deliberate exception — it is a browser UI (Vue/TypeScript),
+not part of the agent runtime, and talks to the service the same way any other client would.
 
-- Local-first.
-- OpenAI-compatible.
-- Project-oriented.
-- Extensible through plugins.
-- Explicit permission model.
+**Project-oriented.** Everything the agent does is anchored to the `.spla` project file — the
+workspace, instructions, LLM endpoint, plugins, roles, permissions. This is not a config file for
+form's sake: it is the single entry point for the UI, for the CLI, and for third-party code that
+embeds the agent (see below).
 
-## Design Principles
+**Componentized.** The agent is not only an application but a library. A chat is an ordinary object:
+reference `SPLA.Runtime` from your own C# code, open the same `.spla` file, and get a full agent
+with no CLI, no service, and no UI:
 
-**Single-language core.** The agent, its tools, and every plugin are C# and .NET — no Python
-runtime, no Node process, no subprocess-based tool implementations in the agent's execution path.
-One toolchain to build, debug, and ship means one failure surface, not three. This is a hard
-constraint on the core and plugins, not a slogan: a plugin that needs Python or Node to *run* the
-agent's tools does not belong here. The web client is the one deliberate exception — it is a
-browser UI (Vue/TypeScript), not part of the agent runtime, and talks to the C# service the same
-way any other client would.
+```csharp
+var settings = ConfigLoader.LoadAndResolve("my.spla");
+using var runtime = new AgentRuntime(settings, loggerFactory);
+var chat = new ChatRegistry(runtime).CreateNew("my task");
+await chat.SendAsync(text, callbacks, permission, clarify, ct, images);
+```
+
+This is not a hypothetical — [`demo/workers/`](demo/workers/) holds working examples of exactly this
+kind of embedding: [VisionAgent](demo/workers/VisionAgent/README.md) (camera frames analyzed by a
+model), [LogSentry](demo/workers/LogSentry/README.md) (log-file triage), and
+[Summarizer](demo/workers/Summarizer/README.md) (a document run across a matrix of prompts and
+models).
+
+**Modular.** Modularity works in both directions:
+
+- the "head" (the model) can be swapped without touching anything else — change the LLM endpoint in
+  `.spla`, or run the same prompt through several local models in turn;
+- or, the other way around, hand *your* tools to an external head: SPLA exposes `/mcp` on its
+  service and acts as an MCP server, so a large external model (in another chat, or another product
+  entirely) gets hands — access to local files, the shell, SPLA's plugins — through standard MCP
+  rather than copy-paste.
+
+**Roles.** A role is a set of instructions and permissions assigned to a chat rather than to the
+project as a whole: within one project, different chats can hold different roles. And chats are not
+isolated islands — a dedicated tool, `agent_correspond`, lets them write to each other, so several
+chats with different roles can be brought together as a team of agents that talks directly, up to
+and including an argument between several points of view on one task, instead of being coordinated
+by hand through a human.
 
 ## Core Capabilities
 
 1. **Local LLMs.** SPLA is designed for local models and OpenAI-compatible APIs. The default setup uses LM Studio at `http://127.0.0.1:1234/v1`, but another compatible runtime can be used.
-2. **Extensible tool system.** Tools are registered through the MCP host and plugins.
-3. **Project organization.** An SPLA project is described by a `.spla` file in the working directory. It defines the workspace, agent mode, instructions, documentation, ignored paths, LLM endpoint, plugins, and permissions. The file can be associated with the application and opened as a dedicated workspace.
-4. **Security modes.** The `Chat`, `Research`, `Inspect`, `Edit`, and `Agent` modes restrict file reads, writes, shell commands, network access, and agent autonomy.
+2. **Extensible tool system.** Tools are registered through the MCP host and plugins; a separate MCP client lets the agent call tools on external MCP servers, and SPLA itself can act as an MCP server for an external model (see above).
+3. **Project organization.** An SPLA project is described by a `.spla` file in the working directory. It defines the workspace, agent mode, instructions, documentation, ignored paths, LLM endpoint, plugins, roles, and permissions. The file can be associated with the application and opened as a dedicated workspace.
+4. **Security through modes, roles, and zones.** The five agent modes (`Chat`, `Research`, `Inspect`, `Edit`, `Agent`) still set the ceiling on a chat's autonomy. Underneath them, permissions are moving to a model of zones and grants on the edges between them, while roles bundle instructions and permissions for a specific chat. See [Security](#security) below.
+
+## Architecture
+
+Internally the system is laid out in layers — from concepts that know nothing about the protocol or
+the OS, up to the windows people talk to the agent through:
+
+| Layer | What it is |
+|---|---|
+| Domain (`SPLA.Domain`) | concepts and contracts that know nothing about the protocol, the provider, or the operating system |
+| Tool pipeline (`SPLA.MCP.Core`) | the path of a call from the name the model uttered to its execution, and the assembly of the context the model learned that name from |
+| Chat runtime (`SPLA.Runtime` / `SPLA.Agent`) | the live state of a conversation and the turn loop itself |
+| LLM providers (`src/llm`) | integrations with whoever actually answers the request |
+| Service and protocol (`src/service`) | the agent behind a wire, clients connect from outside |
+| Plugins and tools | what the agent can do with its hands |
+| Clients (web / CLI / Avalonia) | the windows people talk to the agent through |
+
+In essence the agent is `SPLA.CLI` and the runtime beneath it; the CLI has many modes, and the
+different ways to reach the agent are its facets rather than separate products:
+
+- `spla chat open` — an interactive REPL, a chat in the terminal;
+- `spla chat run` — a headless one-shot/batch run: one or more prompts against one or more models,
+  output to the screen or to files — the mode for scripting and automation;
+- `spla serve` — the same runtime raised as a service behind a WebSocket protocol, which other
+  clients connect to;
+- `spla` in MCP mode — the CLI itself speaks MCP over stdio to an external head (see "Modular" above);
+- `spla start` / `spla stop` / `spla ps` — bring an agent up on a project and leave it running in the
+  background, stop it, see what is already running.
+
+Separately from the CLI, `SPLA.Runtime` can be referenced directly from your own C# code (see
+"Componentized" above) — another way to get an agent with no CLI, service, or UI at all.
+
+As for the graphical clients: the web client (`web/`, Vue 3 + TypeScript + Vite) is the actual
+renderer — file browser, code/Markdown editor, project and role settings, plugin panels are all Vue
+code talking to the service over WebSocket. That same web client can be opened directly in an
+ordinary browser, without Avalonia and without installing anything — it only needs a running
+`spla serve` (or an embedded service) reachable over the network. The Avalonia desktop app
+(`SPLA.UI.Avalonia`) is no longer a separate UI but a thin shell: a native window frame and a tray
+icon around a `WebView` showing that same web client. It has no native chat or settings screens of
+its own any more.
+
+Each project has its own chats and agent state; one service can serve several projects and clients
+at once.
 
 ## Tools
 
@@ -50,11 +114,13 @@ The agent's capabilities have two layers: built-in tools that form SPLA's basic 
 
 - **Project and environment:** retrieve the current project context, working directory, date, and time.
 - **Files and images:** list directories; read, create, write, patch, and delete files; find files and text; view images.
-- **Command line:** run commands in the workspace. Within the granted permissions, the agent can use it to run builds, tests, and other project utilities.
+- **Command line:** run commands in the workspace, including persistent interactive shell sessions the agent can send further input to and return to. Within the granted permissions, the agent can use it to run builds, tests, and other project utilities.
 - **Web access:** retrieve the contents of a web page at a specified URL.
-- **Working memory:** store, read, list, and delete notes scoped either to the current chat or shared across the project.
+- **Working memory:** a two-tier key-value store — notes for the current chat or shared across the project — that the agent reads, writes, lists, and clears.
 - **Long-task control:** context checkpoints and named marks that the agent can return to when needed.
-- **Work organization:** help for available tools, skill activation, clarification requests, and delegating subtasks to other agents.
+- **Sub-agents:** spawn one or several sub-agents for a subtask and correspond with them while they work.
+- **MCP client:** call tools on external MCP servers configured for the project.
+- **Work organization:** help for available tools, skill activation, and clarification requests.
 
 The exact set of available tools depends on project settings, enabled capabilities, and the selected security mode.
 
@@ -130,6 +196,13 @@ Indexes exported 1C configuration source and helps inspect objects, references, 
 
 Tools: `onec_build_index`, `onec_find_object`, `onec_get_object`, `onec_explain_object`, `onec_find_references`, `onec_find_readers`, `onec_find_writers`, `onec_get_dependencies`, `onec_get_reverse_dependencies`.
 
+#### Documents
+
+Reads Word documents by meaning rather than as raw XML, and works with spreadsheet rows by column
+header rather than by cell address.
+
+Tools: `document_extract`, `spreadsheet_inspect`, `spreadsheet_read_rows`, `spreadsheet_append_rows`.
+
 #### Test
 
 An internal plugin for verifying the plugin loading mechanism.
@@ -174,7 +247,8 @@ You can switch projects from the project list in the UI or open multiple windows
 
 ## Security
 
-SPLA uses five agent modes:
+SPLA still uses five agent modes — they set the ceiling on what a chat may do regardless of anything
+else, from discussion-only to autonomous multi-step execution:
 
 | Mode | Purpose |
 |------|---------|
@@ -183,6 +257,52 @@ SPLA uses five agent modes:
 | Inspect | Diagnostics and inspection |
 | Edit | Modify project files |
 | Agent | Autonomous multi-step execution |
+
+Underneath that layer, the permission model is moving to zones: named areas (project, local file
+system, internet, shell, ...) with grants on the edge between zones rather than one flat list of
+per-call permissions. Roles bundle a set of grants and instructions and are assigned to a specific
+chat (see above). This is an actively developing direction, not a finished guarantee — treat it as
+the course SPLA's permission model is taking, not as settled fact.
+
+## Architecture Diagrams (alpha)
+
+A side, auxiliary subproject living next to the main one —
+[`docs/diagrams/`](docs/diagrams/README.md) and the [`tools/spla-diagram`](tools/spla-diagram/)
+editor. Its purpose runs in both directions.
+
+**Outward:** show the project's internal structures so they are easier to understand — not as prose
+retelling, but as a picture you can look at.
+
+**Back:** a drawn architecture also makes the meaning easier for the agent to grasp. The diagram
+stops being an illustration of the text and becomes an input: the model reads it as a source of
+structure and intent, and the owner edits the architecture on a canvas rather than in conversation.
+
+That reverse direction is what the rest of the design grows from — a drawing tool alone would not do.
+If a model reads the diagram, then:
+
+- the diagram must carry **reasons**, not just topology, or it saves no words;
+- the text must be **verifiable as current**, or the model will confidently lie from a stale
+  description — hence every text field records its own provenance, and there is no base language:
+  Russian and English are equal;
+- every element of the picture must have an **unambiguous reading**, or the model fills in the gaps
+  itself — hence nesting a block inside a frame is an assertion rather than decoration, and a view
+  must declare its **axis**: what that nesting actually classifies.
+
+Hence the views: the same codebase lays out differently, and that is a choice of question rather than
+of style — the "turn backbone" (from the inbox to the return to the model), a semantic atlas of
+subsystems, security zones, processes.
+
+Launch it from the repository root; the script builds the editor app and starts a local server
+itself:
+
+```powershell
+.\ViewArchitecture.cmd
+```
+
+Then open <http://localhost:8777/app/>. Layout is manual only — there is no auto-layout and there
+will not be one.
+
+All of the above is alpha.
 
 ## Responsible Use
 
