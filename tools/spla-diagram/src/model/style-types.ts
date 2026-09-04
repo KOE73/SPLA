@@ -112,6 +112,26 @@ export interface WireHeader {
   text?: WireText;
 }
 
+/**
+ * The outline a node is drawn with, and therefore where lines attach to it.
+ *
+ * A shape belongs to the style rather than to each node because it follows
+ * from what the thing *is*: a use case is an ellipse, a store is a cylinder,
+ * an external role is an actor. Said once in the style, a hundred nodes stay
+ * consistent; said per node, they drift within a week.
+ */
+export type BlockShape = "rect" | "ellipse" | "diamond" | "cylinder" | "hexagon" | "actor";
+
+/**
+ * How an edge's line is drawn between two already-placed ports.
+ *
+ * A choice, never a result: the polyline itself is recomputed on every repaint
+ * and is not stored anywhere (ADR_20260903 §2.7). Keeping the mode here — on
+ * the style, keyed by relation type — means inheritance is a tree-shaped line
+ * and flow is a curve without anyone choosing per edge.
+ */
+export type RoutingMode = "bezier" | "orthogonal" | "tree-horizontal" | "tree-vertical";
+
 export interface WireStyle {
   id: string;
   name?: string;
@@ -136,9 +156,21 @@ export interface WireStyle {
   title?: WireText;
   subtitle?: WireText;
   icon?: WireIcon;
+  /** Outline; absent means a plain rectangle. */
+  shape?: BlockShape;
+  /**
+   * Id of the content template drawn inside the outline, from `templates.json`.
+   *
+   * Absent means the built-in "title only" look, which is what every node had
+   * before templates existed. A placement may override it for the one node
+   * that must show more (or less) than its kind normally does.
+   */
+  template?: string;
 
   // ---- edge -----------------------------------------------------------
   line?: WireStroke;
+  /** Line shape for this relation type; absent inherits the view's choice. */
+  routing?: RoutingMode;
   /** Head at the `from` end. */
   source?: WireEndpoint;
   /** Head at the `to` end. Defaults to a filled arrow. */

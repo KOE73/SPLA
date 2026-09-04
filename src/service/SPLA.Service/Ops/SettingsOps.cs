@@ -724,6 +724,12 @@ public static class SettingsOps
 
         foreach (var id in SPLA.MCP.Core.Agent.AgentFeatureCatalog.Order)
         {
+            // An implied capability is the underside of another one, not a choice: it has no switch
+            // here, and it is not named in anyone's "needs …" badge either — a badge pointing at a row
+            // that does not exist reads as a broken list, and there is nothing the user could do about
+            // it anyway. See AgentFeatureCatalog.Implied.
+            if (SPLA.MCP.Core.Agent.AgentFeatureCatalog.IsImplied(id)) continue;
+
             var enabled = enabledIds.Contains(id);
             payload.Features.Add(new CapabilityDto
             {
@@ -733,7 +739,9 @@ public static class SettingsOps
                 Description = SPLA.MCP.Core.Agent.AgentFeatureCatalog.DescriptionOf(id),
                 Enabled = enabled,
                 State = enabled ? "Enabled" : "DisabledByUser",
-                Requires = SPLA.MCP.Core.Agent.AgentFeatureCatalog.RequiresOf(id).ToList()
+                Requires = SPLA.MCP.Core.Agent.AgentFeatureCatalog.RequiresOf(id)
+                    .Where(dep => !SPLA.MCP.Core.Agent.AgentFeatureCatalog.IsImplied(dep))
+                    .ToList()
             });
         }
 
@@ -752,6 +760,9 @@ public static class SettingsOps
 
         // The full catalog means "no restriction" — store null rather than an exhaustive list, so a
         // capability added in a future version is enabled by default instead of silently missing.
+        // Implied ids are absent from the panel but not from this count, and they need not be: every
+        // implied id is required by some offered one, so ticking the whole panel resolves them back in
+        // and the counts still match.
         var isFullSet = resolved.Count == SPLA.MCP.Core.Agent.AgentFeatureCatalog.Order.Count;
         runtime.Settings.Capabilities = isFullSet ? null : resolved;
 

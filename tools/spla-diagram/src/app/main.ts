@@ -29,6 +29,9 @@ async function main(): Promise<void> {
     store: new HttpProjectStore(MODELS_BASE),
     // styles.json sits with the models, not with the app bundle.
     styleStore: new HttpStyleStore(MODELS_BASE),
+    // …and so do templates.json and the content directory, which the canvas
+    // fetches for itself rather than through a store.
+    modelsBase: MODELS_BASE,
   });
 
   // Handy for console debugging and testing

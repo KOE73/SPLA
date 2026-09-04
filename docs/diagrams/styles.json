@@ -168,6 +168,104 @@
       }
     },
     {
+      "id": "usecase",
+      "name": "Сценарий (use case)",
+      "appliesTo": "block",
+      "description": "Эллипс. Форма задана здесь, а не у каждого узла: сценарий — эллипс по тому, что он есть.",
+      "shape": "ellipse",
+      "fill": "#ffffff",
+      "border": {
+        "color": "#94a3b8",
+        "width": 1.5
+      },
+      "icon": {
+        "show": false
+      },
+      "title": {
+        "align": "middle"
+      },
+      "subtitle": {
+        "show": false
+      }
+    },
+    {
+      "id": "actor",
+      "name": "Действующее лицо",
+      "appliesTo": "block",
+      "description": "Человечек UML: пользователь, внешняя роль. Заливка красит фигуру, не рамку.",
+      "shape": "actor",
+      "fill": "none",
+      "border": {
+        "color": "#475569",
+        "width": 2
+      },
+      "shadow": false,
+      "icon": {
+        "show": false
+      },
+      "title": {
+        "align": "middle"
+      },
+      "subtitle": {
+        "show": false
+      }
+    },
+    {
+      "id": "store",
+      "name": "Хранилище (цилиндр)",
+      "appliesTo": "block",
+      "description": "Тот же смысл, что у «database», но нарисованный цилиндром.",
+      "basedOn": "database",
+      "shape": "cylinder"
+    },
+    {
+      "id": "decision",
+      "name": "Развилка",
+      "appliesTo": "block",
+      "shape": "diamond",
+      "fill": "#fefce8",
+      "border": {
+        "color": "#fde047",
+        "width": 1.6
+      },
+      "icon": {
+        "show": false
+      },
+      "subtitle": {
+        "show": false
+      }
+    },
+    {
+      "id": "stage",
+      "name": "Стадия (шестиугольник)",
+      "appliesTo": "block",
+      "shape": "hexagon",
+      "fill": "#eff6ff",
+      "border": {
+        "color": "#93c5fd",
+        "width": 1.6
+      },
+      "icon": {
+        "show": false
+      }
+    },
+    {
+      "id": "class.detail",
+      "name": "Класс с полями",
+      "appliesTo": "block",
+      "description": "Тот же класс, но содержимое рисует шаблон «class»: поля и методы. Отдельный стиль, чтобы включать подробность там, где она нужна, а не везде сразу.",
+      "basedOn": "class",
+      "template": "class"
+    },
+    {
+      "id": "table",
+      "name": "Таблица БД",
+      "appliesTo": "block",
+      "description": "Колонки с типами. От «class.detail» отличается только фильтром в шаблоне.",
+      "basedOn": "database",
+      "template": "table"
+    },
+    {
       "id": "note",
       "name": "Заметка",
       "appliesTo": "block",

@@ -153,6 +153,8 @@
     <File Path="docs/adr/ADR_20260901_diagrams_shape-aware-geometry-and-insets.md" />
     <File Path="docs/adr/ADR_20260902_core_session-unification.md" />
     <File Path="docs/adr/ADR_20260831_diagrams_text-provenance-and-view-axes.md" />
+    <File Path="docs/adr/ADR_20260903_diagrams_content-templates-and-edge-routing.md" />
+    <File Path="docs/adr/ADR_20260904_core_history-vs-current.md" />
   </Folder>
   <Folder Name="/docs/plans/">
     <File Path="docs/plans/PLAN_20260619_agent_skills-lifecycle.md" />
@@ -188,6 +190,8 @@
     <File Path="docs/plans/PLAN_20260902_agent_roles-and-correspondence.md" />
     <File Path="docs/plans/PLAN_20260903_core_readonly-surface.md" />
     <File Path="docs/plans/HANDOFF_20260903_roles-and-correspondence.md" />
+    <File Path="docs/plans/PLAN_20260903_diagrams_content-and-routing.md" />
+    <File Path="docs/plans/PLAN_20260904_core_chat-graph.md" />
   </Folder>
   <Folder Name="/docs/ideas/">
     <File Path="docs/ideas/IDEA_20260611_core_todo-general.md" />

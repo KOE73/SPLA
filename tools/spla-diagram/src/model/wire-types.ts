@@ -9,6 +9,7 @@
  * - views/<view_id>.view.json (view layouts: zones, nodes, edges)
  */
 
+import type { RoutingMode } from "./style-types.js";
 import type { ParsedTextCatalog } from "./text-provenance.js";
 
 export interface WireMetadata {
@@ -54,9 +55,29 @@ export interface WireEdge {
   from: string;
   to: string;
   label?: string;
+  /** Cardinality/role caption at the `from` end, e.g. "1" (ADR_20260903 §2.6). */
+  fromLabel?: string;
+  /** Cardinality/role caption at the `to` end, e.g. "0..*". */
+  toLabel?: string;
   type?: string;
   styleId?: string;
   points?: Array<{ x: number; y: number }>;
+  /**
+   * Where this edge came from. A generated (`code`) edge carries no text at
+   * all — not `label`, not `fromLabel`/`toLabel` — because `sync` would
+   * overwrite it and it would forever read as a stale translation
+   * (ADR_20260831 §2.13). Absent means "authored" for edges built by hand
+   * on a view, which never had a reason to declare it.
+   */
+  origin?: "code" | "authored";
+  /**
+   * Line shape chosen for this one edge.
+   *
+   * Only the choice is stored. The polyline the router computes from it never
+   * reaches a file: it would be stale the first time the algorithm improved,
+   * and it would fill diffs with movement nobody made (ADR_20260903 §2.7).
+   */
+  routing?: RoutingMode;
 }
 
 export interface WireView {
@@ -95,7 +116,28 @@ export interface EntityEntry {
   status?: "present" | "missing" | "planned";
   namespace?: string;
   codeRef?: string;
-  members?: string[];
+  /**
+   * Members of the type, for templates that show more than a caption.
+   *
+   * One list with a `kind` tag rather than separate arrays for fields,
+   * properties and columns: the difference between a C# `int` and a SQL
+   * `numeric(4,2)` is the *value* of `type`, not a different way of drawing a
+   * row, and a template selects with `where=kind:field` (ADR_20260903 §2.4).
+   *
+   * Plain strings are still accepted, because that is what the field held
+   * before and every existing project writes `[]`.
+   */
+  members?: (EntityMember | string)[];
+  [key: string]: unknown;
+}
+
+export interface EntityMember {
+  /** `field`, `method`, `property` — matched by a template's `where=`. */
+  kind?: string;
+  name: string;
+  type?: string;
+  visibility?: string;
+  note?: string;
   [key: string]: unknown;
 }
 
@@ -116,6 +158,9 @@ export interface RelationEntry {
   type: string;
   relation?: string;
   label?: string;
+  /** Cardinality/role captions at each end (ADR_20260903 §2.6); absent for `origin: "code"`. */
+  fromLabel?: string;
+  toLabel?: string;
   styleId?: string;
   origin?: "code" | "authored";
   status?: "present" | "missing";
@@ -134,7 +179,10 @@ export interface RelationCatalog {
  * (see `text-provenance.ts`).
  */
 export interface TextCatalog {
-  entries: Record<string, { name?: string; title?: string; doc?: string; description?: string }>;
+  entries: Record<
+    string,
+    { name?: string; title?: string; doc?: string; description?: string; fromLabel?: string; toLabel?: string }
+  >;
 }
 
 /**
@@ -212,6 +260,11 @@ export interface ViewNodePlacement {
   width?: number;
   height?: number;
   styleId?: string;
+  /**
+   * Content template for this one placement, overriding the style's choice.
+   * The exception: one node that must show more, or less, than its kind does.
+   */
+  template?: string;
 }
 
 export interface ViewEdgePlacement {
@@ -223,6 +276,8 @@ export interface ViewEdgePlacement {
   label?: string;
   styleId?: string;
   points?: Array<{ x: number; y: number }>;
+  /** Line shape for this edge alone; see `WireEdge.routing`. */
+  routing?: RoutingMode;
 }
 
 export interface ViewDocument {
@@ -239,6 +294,11 @@ export interface ViewDocument {
    * and the model check reports it.
    */
   axis?: string;
+  /**
+   * The line shape this picture uses unless a relation type or a single edge
+   * says otherwise. A convention of the drawing, not of the model.
+   */
+  routing?: RoutingMode;
   zones?: ViewZonePlacement[];
   nodes?: ViewNodePlacement[];
   placements?: ViewNodePlacement[];

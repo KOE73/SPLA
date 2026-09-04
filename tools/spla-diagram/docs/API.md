@@ -11,7 +11,12 @@ This document defines the host/backend communication contract for the SPLA Archi
 The editor operates over a project workspace containing:
 1. **Catalog**: `catalog.json` listing available projects/views.
 2. **Global Styles**: `styles.json` defining color schemes, strokes, typography, and badges.
-3. **Projects**: `projects/<project_id>/` directories holding:
+3. **Content templates**: `templates.json`, the named registry of block content
+   templates (`CONTRACT.md` §11.2) — sits next to `styles.json`, not inside it.
+4. **Content assets**: `content/index.json`, the manifest of named images for the
+   `@Asset` directive, plus the `content/*.svg` files it points at
+   (`CONTRACT.md` §11.4).
+5. **Projects**: `projects/<project_id>/` directories holding:
    - `project.json` — Project manifest
    - `entities.json` — Catalog of code entities / types
    - `relations.json` — Catalog of code relations & dependencies
@@ -25,6 +30,10 @@ Workspace Root (e.g. docs/diagrams/)
 ├── app/                      Editor web application bundle
 ├── catalog.json              Diagram / view registry — one entry per view
 ├── styles.json               Shared style library
+├── templates.json            Shared content-template registry
+├── content/
+│   ├── index.json            Asset manifest for the @Asset directive
+│   └── *.svg                 The asset files themselves
 └── projects/
     └── <project_id>/
         ├── project.json
@@ -51,6 +60,9 @@ The backend must serve static JSON documents and application assets over HTTP or
 | `/app/assets/*` | `GET` | `application/javascript`, `text/css` | Bundled JavaScript, CSS, and media |
 | `/catalog.json` | `GET` | `application/json` | Catalog of available diagrams and views |
 | `/styles.json` | `GET` | `application/json` | Shared style stylesheet (returns 404 if not created yet; client falls back to built-in styles) |
+| `/templates.json` | `GET` | `application/json` | Content-template registry (404 tolerated: client falls back to the built-in `title-only` template) |
+| `/content/index.json` | `GET` | `application/json` | Asset manifest for `@Asset` (404 tolerated: the picker is simply empty) |
+| `/content/<file>.svg` | `GET` | `image/svg+xml` | An individual asset file named by the manifest; served as ordinary static content, no per-file endpoint |
 | `/projects/<project_id>/project.json` | `GET` | `application/json` | Project manifest |
 | `/projects/<project_id>/entities.json` | `GET` | `application/json` | Catalog of all entities |
 | `/projects/<project_id>/relations.json` | `GET` | `application/json` | Catalog of all relations |
@@ -82,8 +94,9 @@ The backend must provide a mechanism to persist updated JSON files back to the w
 - **Request Body**: Valid JSON payload formatted with 2-space indentation.
 
 #### Query Parameter `file`
-- Contains a workspace-relative path (e.g. `projects/llm_pipeline/views/v_main.view.json`, `styles.json`, `catalog.json`).
+- Contains a workspace-relative path (e.g. `projects/llm_pipeline/views/v_main.view.json`, `styles.json`, `catalog.json`, `templates.json`).
 - Path separators may be `/` (standardized by client) or `\` (Windows).
+- Model paths are always resolved relative to the **workspace root** (the directory holding `catalog.json`/`styles.json`), never relative to `/app/` — the editor application bundle is a separate, content-hashed tree served alongside the models, not a parent of them (§2.2).
 
 ### 3.2. Response Status Codes
 
@@ -98,7 +111,7 @@ The backend must provide a mechanism to persist updated JSON files back to the w
 1. **Canonicalization**: The server must clean the requested path (e.g. via `filepath.Clean`).
 2. **Directory Traversal Protection**: Paths starting with `..`, containing `../` or `..\`, or resolving outside the workspace root **MUST** be rejected with HTTP 400.
 3. **Absolute Path Protection**: Absolute paths (e.g. `/etc/passwd`, `C:\Windows\...`) **MUST** be rejected with HTTP 400.
-4. **Extension Whitelist**: Only `.json` files are permitted to be written via `/api/save`.
+4. **Extension Whitelist**: Only `.json` files are permitted to be written via `/api/save`. `templates.json` is written through this same endpoint like any other model file — its multi-line template text is stored as a JSON array of strings (`lines`) precisely so it stays inside the `.json`-only whitelist without widening it (`CONTRACT.md` §11.2, `ADR_20260903` §2.9). Assets under `content/` are never written by the editor: they are static files dropped in by hand, read-only from the editor's point of view.
 5. **Auto Directory Creation**: If parent subdirectories do not exist (e.g. `projects/<project_id>/views/`), the server **MUST** create them automatically before writing the file.
 
 ### 3.4. What the editor actually writes
@@ -110,8 +123,11 @@ One user-initiated save issues up to three `POST /api/save` calls, in this order
 | `views/<view_id>.view.json` | always |
 | `projects/<project_id>/entities.json` | only if the canvas gained a block absent from the registry (appended with `origin: "authored"`) |
 | `projects/<project_id>/text.<lang>.json` | only if a name or description changed; values the user edited are re-stamped `authored`, untouched ones keep their loaded provenance, so an idle save produces an empty diff |
+| `templates.json` | only when the style/template panel edits a template's text, independent of any view save |
 
-`relations.json`, `relation-types.json`, `containers.json` and `project.json` are **never written by the editor**. A host that makes those files read-only loses nothing.
+`relations.json`, `relation-types.json`, `containers.json`, `project.json` and
+`content/index.json` are **never written by the editor**. A host that makes
+those files read-only loses nothing.
 
 ---
 

@@ -127,10 +127,18 @@ export interface UiDictionary {
       readonly deleteEdgeBtn: string;
       readonly edgeLabelTitle: string;
       readonly edgeLabelPlaceholder: string;
+      readonly edgeFromLabelTitle: string;
+      readonly edgeFromLabelPlaceholder: string;
+      readonly edgeToLabelTitle: string;
+      readonly edgeToLabelPlaceholder: string;
+      readonly edgeCodeOriginNotice: string;
       readonly edgeTypeTitle: string;
       readonly edgeDisplayOnCanvas: string;
       readonly edgeEnabled: string;
       readonly edgeGhost: string;
+      readonly templateTitle: string;
+      readonly templateInherit: string;
+      readonly templateNone: string;
     };
     readonly relations: {
       readonly title: string;
@@ -142,6 +150,8 @@ export interface UiDictionary {
       readonly chooseTarget: string;
       readonly connectBtn: string;
       readonly labelPlaceholder: string;
+      readonly fromLabelPlaceholder: string;
+      readonly toLabelPlaceholder: string;
       readonly onScheme: string;
       readonly ghost: string;
       readonly deleteTooltip: string;
@@ -223,6 +233,26 @@ export interface UiDictionary {
       readonly searchPlaceholder: string;
       readonly emptyNoModel: string;
       readonly emptyNoEntities: string;
+    };
+    readonly templates: {
+      readonly title: string;
+      readonly listTitle: string;
+      readonly filterPlaceholder: string;
+      readonly empty: string;
+      readonly emptyEditor: string;
+      readonly notFound: string;
+      readonly shownCount: string;
+      readonly resizerTitle: string;
+      readonly textField: string;
+      readonly textPlaceholder: string;
+      readonly saveBtn: string;
+      readonly saveHint: string;
+      readonly saveOk: string;
+      readonly saveFailed: string;
+      readonly assetChoose: string;
+      readonly assetLoading: string;
+      readonly assetEmpty: string;
+      readonly assetInsertBtn: string;
     };
   };
   readonly canvas: {

@@ -1,5 +1,6 @@
 import type { Rect } from "../geometry/types.js";
-import type { WireMetadata } from "./wire-types.js";
+import type { RoutingMode } from "./style-types.js";
+import type { EntityEntry, WireMetadata } from "./wire-types.js";
 
 /**
  * The in-memory model: one element shape, one containment tree.
@@ -82,9 +83,31 @@ export interface DiagramEdge {
   from: string;
   to: string;
   label: string;
+  /**
+   * Cardinality/role captions at the two ends — "1", "0..*", "owner"
+   * (ADR_20260903 §2.6). Plain strings in memory like every other text field;
+   * their provenance travels beside them the same way `label`'s does.
+   */
+  fromLabel?: string;
+  toLabel?: string;
   type: string;
   /** Pin to one named style; otherwise the style named after `type` wins. */
   styleId?: string;
+  /**
+   * Where this edge came from. A `code` edge carries no text at all — see
+   * `WireEdge.origin` — so the editor must not offer to edit `label`,
+   * `fromLabel` or `toLabel` on one.
+   */
+  origin?: "code" | "authored";
+  /**
+   * Line shape for this one edge, overriding the view's and the type's choice.
+   *
+   * The exception, not the rule: when the shape of a line follows from the
+   * relation's *type* it should be said once in the style, where it becomes a
+   * reading cue — a bent line means structure, a curve means flow. Scattering
+   * per-edge overrides is what destroys that cue (ADR_20260903 §2.7).
+   */
+  routing?: RoutingMode;
 }
 
 export interface DiagramView {
@@ -105,6 +128,21 @@ export interface DiagramMetadata {
 
 export function elementRect(el: DiagramElement): Rect {
   return { x: el.x, y: el.y, width: el.width, height: el.height };
+}
+
+/**
+ * The registry entry this element stands for, if it came from a project.
+ *
+ * It sits one level deeper than it looks: the loader stashes the entity on the
+ * *wire node* as `raw._entity`, and the parser keeps that whole wire node as
+ * the element's own `raw` — so the entity ends up at `raw.raw._entity`. Two
+ * call sites had already guessed one level too shallow and silently got
+ * nothing, which is exactly the kind of miss a helper with this comment above
+ * it prevents from happening a third time.
+ */
+export function entityOf(el: DiagramElement): EntityEntry | undefined {
+  const outer = el.raw as { raw?: { _entity?: EntityEntry }; _entity?: EntityEntry } | undefined;
+  return outer?.raw?._entity ?? outer?._entity;
 }
 
 /** A container is an element that may hold children. Today: zones only. */

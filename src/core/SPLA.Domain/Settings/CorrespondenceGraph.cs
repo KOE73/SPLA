@@ -50,7 +50,7 @@ public static class CorrespondenceGraph
         // half-edges would only ever show as a one-sided dead end. Human + spawned sessions are both
         // included — a spawned session's role is exactly what wave 5б's on-demand correspondent chats
         // are, and excluding them would silently drop every correspondence they hold.
-        var sessions = manager.ListChats().Concat(manager.ListSpawnedChats()).ToList();
+        var sessions = manager.ListChatsAndSpawned();
         var roleOf = sessions.ToDictionary(s => s.Id, s => RoleName(s));
 
         // Half-edges grouped by the unordered chat pair + topic — the same triple both sides of one

@@ -1,4 +1,4 @@
-import { elementRect, isContainer } from "../model/types.js";
+import { elementRect, entityOf, isContainer } from "../model/types.js";
 import type { DiagramEdge, DiagramElement } from "../model/types.js";
 import type { DiagramDocument } from "../model/document.js";
 import { StyleLibrary } from "../model/StyleLibrary.js";
@@ -11,14 +11,29 @@ import { clear, setAttrs, svg, text } from "./svg.js";
 import { Viewport, type ViewportState } from "./Viewport.js";
 import { BoxRenderer } from "./render/BoxRenderer.js";
 import { ContainerRenderer } from "./render/ContainerRenderer.js";
-import type { ElementRenderer, RenderContext } from "./render/ElementRenderer.js";
+import type { ElementRenderer, RenderContext, ResolvedContent } from "./render/ElementRenderer.js";
+import { ActorRenderer, CylinderRenderer, DiamondRenderer, EllipseRenderer, HexagonRenderer } from "./render/shapes.js";
+import { TemplateLibrary } from "../content/TemplateLibrary.js";
+import { AssetRegistry } from "../assets/AssetRegistry.js";
+import type { MemberView } from "../content/ContentRenderer.js";
 import { TypeRegistry } from "./render/TypeRegistry.js";
 import { DIM } from "./render/styles.js";
 import { dashArray, textAttrs } from "./render/textAttrs.js";
 import { marquee, resizeHandles, selectionOutline } from "./render/handles.js";
 import { UniformPortAssigner } from "./ports/assigners.js";
 import { portKey, type PortAssigner, type PortRequest } from "./ports/PortAssigner.js";
-import { BezierRouter, type EdgeRouter } from "./routing/EdgeRouter.js";
+import { BezierRouter, type EdgeRouter, type Route } from "./routing/EdgeRouter.js";
+import {
+  OrthogonalRouter,
+  TreeHorizontalRouter,
+  TreeVerticalRouter,
+  filletedPath,
+  polylinePath,
+} from "./routing/routers.js";
+import { borderZones, solidZone, nudgeWalls, zonesFor, LANE_GAP, type RouteScene, type RouteZone } from "./routing/Scene.js";
+import { nudgeRoutes } from "./routing/nudge.js";
+import type { ResolvedEdgeStyle } from "../model/StyleLibrary.js";
+import type { RoutingMode } from "../model/style-types.js";
 import { getMarkerOffset } from "./render/PaintRegistry.js";
 import { EDGE_ATTR } from "../interaction/roles.js";
 import { InteractionController } from "../interaction/InteractionController.js";
@@ -58,6 +73,11 @@ export interface DiagramCanvasOptions {
   gridStep?: number;
   /** The look of everything. Defaults to the built-in library. */
   styles?: StyleLibrary;
+  /**
+   * Base for the files the canvas fetches itself — `templates.json` and the
+   * content directory. Same value the stores get; see `DiagramEditorOptions`.
+   */
+  modelsBase?: string;
 }
 
 /**
@@ -98,6 +118,27 @@ export class DiagramCanvas {
 
   private doc: DiagramDocument | null = null;
   private styleLibrary: StyleLibrary;
+  /**
+   * Named content templates, and the pictures they can pull in.
+   *
+   * Both are read lazily and both survive being empty: a workspace with no
+   * `templates.json` and no `content/` draws exactly what it drew before they
+   * existed, which is what makes them safe to add to live models.
+   */
+  private _templates: TemplateLibrary;
+  private _assets: AssetRegistry;
+  /**
+   * Every line shape the canvas can draw, by name.
+   *
+   * A map rather than a chain of ifs so that the set can grow — an
+   * obstacle-avoiding router is a new entry here and nothing else, precisely
+   * because no file records the paths any router produced.
+   */
+  private readonly routers = new Map<RoutingMode, EdgeRouter>([
+    ["orthogonal", new OrthogonalRouter()],
+    ["tree-horizontal", new TreeHorizontalRouter()],
+    ["tree-vertical", new TreeVerticalRouter()],
+  ]);
   private paintRegistry!: PaintRegistry;
   private selection: Selection | null = null;
   /**
@@ -143,6 +184,8 @@ export class DiagramCanvas {
     this.portAssigner = options.portAssigner ?? new UniformPortAssigner();
     this.router = options.router ?? new BezierRouter();
     this.registry = options.registry ?? defaultRegistry();
+    this._templates = new TemplateLibrary(options.modelsBase);
+    this._assets = new AssetRegistry(options.modelsBase);
 
     this.zonesLayer = svg("g", { class: "spla-layer-zones" });
     this.edgesLayer = svg("g", { class: "spla-layer-edges" });
@@ -173,6 +216,12 @@ export class DiagramCanvas {
 
     this.viewport = new Viewport(this.viewportGroup);
     this.viewport.changed.on("change", (state) => this.events.emit("viewport", state));
+
+    // Templates are read once; a picture arrives whenever it arrives, and the
+    // frame that needed it has long been drawn. Repainting on arrival is why
+    // `AssetRegistry.peek` may answer "not yet" without anything going wrong.
+    void this._templates.load().then(() => this.render());
+    this._assets.onLoaded(() => this.render());
 
     this.tooltipEl = document.createElement("div");
     this.tooltipEl.className = "spla-tooltip";
@@ -389,6 +438,21 @@ export class DiagramCanvas {
     });
   }
 
+  /**
+   * The named content-template registry, exposed so a settings panel can list,
+   * edit and save templates without the canvas mediating every call — the
+   * panel needs `list`/`setText`/`save` directly, and re-renders the canvas
+   * itself after a change (ADR_20260903 §2.3).
+   */
+  get templates(): TemplateLibrary {
+    return this._templates;
+  }
+
+  /** The named picture registry behind `@Asset`, exposed for the same reason. */
+  get assets(): AssetRegistry {
+    return this._assets;
+  }
+
   get model(): DiagramDocument | null {
     return this.doc;
   }
@@ -575,7 +639,7 @@ export class DiagramCanvas {
     let out: Rect | null = null;
     for (const el of elements) {
       if (ctx.isHidden(el)) continue;
-      const r = this.registry.resolve(el).visibleRect(el, ctx);
+      const r = this.rendererFor(el).visibleRect(el, ctx);
       out = out === null ? r : unionRect(out, r);
     }
     return out;
@@ -676,7 +740,7 @@ export class DiagramCanvas {
     // Parents before children, so nested containers stack above their parent.
     for (const el of this.doc.elements()) {
       if (ctx.isHidden(el)) continue;
-      const renderer = this.registry.resolve(el);
+      const renderer = this.rendererFor(el);
       const layer = isContainer(el) ? this.zonesLayer : this.nodesLayer;
       layer.appendChild(renderer.create(el, ctx));
 
@@ -736,7 +800,7 @@ export class DiagramCanvas {
         }
       }
       const ghostEl = doc.element(this.ghostNodeId);
-      const rawGhostEntityId = ghostEl ? (ghostEl.raw as any)?._entity?.id : null;
+      const rawGhostEntityId = ghostEl ? (entityOf(ghostEl)?.id ?? null) : null;
       const relations = doc.relations;
       if (Array.isArray(relations)) {
         for (const rel of relations) {
@@ -801,6 +865,123 @@ export class DiagramCanvas {
       },
       styleOf: (el) => this.styleLibrary.blockStyle(el),
       paints: this.paintRegistry,
+      content: (el) => this.resolveContent(el),
+    };
+  }
+
+  /**
+   * Which router draws this edge, chosen from most specific to least:
+   * the edge, then the view, then the relation type's style, then whatever
+   * the canvas was built with (ADR_20260903 §2.7).
+   *
+   * The type's style is the level meant to do the work: pinning a shape to a
+   * *kind* of relation turns the line's form into a reading cue, while a
+   * per-edge override is the exception that has to earn itself.
+   */
+  private routerFor(edge: DiagramEdge, style: ResolvedEdgeStyle): EdgeRouter {
+    const viewChoice = this.doc?.metadata.routing;
+    const mode =
+      edge.routing ??
+      (typeof viewChoice === "string" ? (viewChoice as RoutingMode) : undefined) ??
+      style.routing ??
+      null;
+
+    if (mode === null) return this.router;
+    return this.routers.get(mode) ?? this.router;
+  }
+
+  /**
+   * Pull apart routes that ended up in the same corridor.
+   *
+   * Each route was found on its own and knows nothing of its neighbours, so two
+   * of them can legitimately choose the same lane and draw as a single line —
+   * at which point the reader loses a relation, not a decoration. Separation is
+   * therefore its own pass over all the routes at once, with the scene's solid
+   * zones acting as the walls a lane may not be pushed into.
+   *
+   * Curved routes carry no polyline and simply sit this pass out.
+   */
+  private separateSharedCorridors(routes: Map<string, Route>, scene: RouteScene): void {
+    const nudgeable = [...routes.entries()]
+      .filter(([, route]) => route.points !== undefined && route.points.length > 2)
+      .map(([id, route]) => ({ id, points: route.points! }));
+    if (nudgeable.length < 2) return;
+
+    const moved = nudgeRoutes({ routes: nudgeable, walls: nudgeWalls(scene.zones), gap: LANE_GAP });
+    for (const [id, points] of moved) {
+      const route = routes.get(id);
+      if (route === undefined || points.length < 2) continue;
+      // The path is rebuilt rather than patched: it is a rendering of the
+      // points, and letting the two drift apart is how a line ends up drawn
+      // somewhere its own geometry says it is not.
+      routes.set(id, {
+        ...route,
+        points,
+        path: route.corners === "rounded" ? filletedPath(points) : polylinePath(points),
+      });
+    }
+  }
+
+  /**
+   * The elements one edge is allowed to ignore: its own two ends, and every
+   * container holding either of them.
+   *
+   * Without the ancestors a line could not leave its own zone — the band around
+   * that zone's outline would price the only way out. Derived by filtering the
+   * shared scene rather than rebuilding it, so the scene stays one thing built
+   * once (ADR_20260903 §2.8).
+   */
+  private exclusionsFor(from: DiagramElement, to: DiagramElement): Set<string> {
+    const ids = new Set<string>();
+    for (const start of [from, to]) {
+      let cursor: DiagramElement | null = start;
+      while (cursor !== null) {
+        ids.add(cursor.id);
+        cursor = cursor.parent;
+      }
+    }
+    return ids;
+  }
+
+  /**
+   * The renderer that draws this element, outline included.
+   *
+   * Shape comes from the resolved style, so every call site asks the same
+   * question the same way — and a zone, whose renderer is chosen by kind,
+   * is unaffected by a block shape it never had.
+   */
+  private rendererFor(el: DiagramElement): ElementRenderer {
+    return this.registry.resolve(el, this.styleLibrary.blockStyle(el).shape);
+  }
+
+  /**
+   * Which template this element draws with, compiled, plus what it draws.
+   *
+   * The cascade is placement, then style, then nothing (ADR_20260903 §2.2).
+   * "Nothing" is a real answer and the common one: a workspace with no
+   * `templates.json` keeps the caption-and-subtitle look it always had.
+   */
+  private resolveContent(el: DiagramElement): ResolvedContent | null {
+    const placement = typeof el.metadata.template === "string" ? el.metadata.template : undefined;
+    const id = placement ?? this.styleLibrary.blockStyle(el).template ?? null;
+    if (id === null) return null;
+
+    const compiled = this._templates.get(id);
+    if (compiled === undefined) return null;
+
+    const entity = entityOf(el);
+    const members = Array.isArray(entity?.members)
+      ? entity.members.map((m) => (typeof m === "string" ? { name: m } : (m as MemberView)))
+      : [];
+
+    return {
+      tree: compiled.tree,
+      data: {
+        name: el.label,
+        description: typeof el.metadata.description === "string" ? el.metadata.description : undefined,
+        members,
+        asset: (assetId) => this._assets.peek(assetId),
+      },
     };
   }
 
@@ -842,7 +1023,7 @@ export class DiagramCanvas {
   private anchorFor(el: DiagramElement): { owner: DiagramElement; rect: Rect } {
     const hidden = this.collapsedAncestor(el);
     const owner = hidden ?? el;
-    const renderer = this.registry.resolve(owner);
+    const renderer = this.rendererFor(owner);
     return { owner, rect: renderer.visibleRect(owner, this.context()) };
   }
 
@@ -884,14 +1065,14 @@ export class DiagramCanvas {
     // When ghost focus is active on a node or global overview is enabled, resolve hidden/potential relations
     if (this.ghostNodeId !== null || this.showOverviewShadows) {
       const ghostEl = this.ghostNodeId !== null ? doc.element(this.ghostNodeId) : null;
-      const rawGhostEntityId = ghostEl ? (ghostEl.raw as any)?._entity?.id : null;
+      const rawGhostEntityId = ghostEl ? (entityOf(ghostEl)?.id ?? null) : null;
       const relations = doc.relations;
 
       // Fast lookup for canvas element ID by entity ID / element ID
       const entityToCanvasId = new Map<string, string>();
       for (const el of doc.elements()) {
         entityToCanvasId.set(el.id, el.id);
-        const rawId = (el.raw as any)?._entity?.id;
+        const rawId = entityOf(el)?.id;
         if (rawId) entityToCanvasId.set(rawId, el.id);
       }
 
@@ -960,8 +1141,8 @@ export class DiagramCanvas {
     for (const r of resolved) {
       const fromStyle = this.styleLibrary.blockStyle(r.from.owner);
       const toStyle = this.styleLibrary.blockStyle(r.to.owner);
-      const fromInset = this.registry.resolve(r.from.owner).cornerInset?.("east", fromStyle) ?? fromStyle.radius;
-      const toInset = this.registry.resolve(r.to.owner).cornerInset?.("west", toStyle) ?? toStyle.radius;
+      const fromInset = this.rendererFor(r.from.owner).cornerInset?.("east", fromStyle) ?? fromStyle.radius;
+      const toInset = this.rendererFor(r.to.owner).cornerInset?.("west", toStyle) ?? toStyle.radius;
 
       requests.push({
         edgeId: r.edge.id, end: "from", ownerId: r.from.owner.id,
@@ -978,6 +1159,24 @@ export class DiagramCanvas {
     }
     const ports = this.portAssigner.assign(requests);
 
+    // The scene: everything in the way, priced, built once per repaint
+    // (ADR_20260903 §2.8). A block forbids entry outright; a container gives a
+    // band along its outline that costs per unit travelled, which is what makes
+    // crossing it cheap and hugging it expensive without a rule saying so.
+    const zones: RouteZone[] = [];
+    for (const el of doc.elements()) {
+      if (ctx.isHidden(el)) continue;
+      const rect = this.rendererFor(el).visibleRect(el, ctx);
+      if (isContainer(el)) zones.push(...borderZones(rect, el.id));
+      else zones.push(solidZone(rect, el.id));
+    }
+    const scene: RouteScene = { zones };
+
+    // Routes are computed for the whole picture before any of them is drawn,
+    // because separating lines that share a corridor is a decision about
+    // several routes at once — no amount of improving one route in isolation
+    // can stop two of them from merging into one stroke.
+    const routes = new Map<string, Route>();
     for (const r of resolved) {
       const fromSlot = ports.get(portKey(r.edge.id, "from"));
       const toSlot = ports.get(portKey(r.edge.id, "to"));
@@ -985,23 +1184,30 @@ export class DiagramCanvas {
 
       const fromStyle = this.styleLibrary.blockStyle(r.from.owner);
       const toStyle = this.styleLibrary.blockStyle(r.to.owner);
-      const fromInset = this.registry.resolve(r.from.owner).cornerInset?.(fromSlot.side, fromStyle) ?? fromStyle.radius;
-      const toInset = this.registry.resolve(r.to.owner).cornerInset?.(toSlot.side, toStyle) ?? toStyle.radius;
+      const fromInset = this.rendererFor(r.from.owner).cornerInset?.(fromSlot.side, fromStyle) ?? fromStyle.radius;
+      const toInset = this.rendererFor(r.to.owner).cornerInset?.(toSlot.side, toStyle) ?? toStyle.radius;
 
-      const style = this.styleLibrary.edgeStyle(r.edge);
-      const fromMarkerOffset = getMarkerOffset(style.source.shape, style.source.size ?? DIAGRAM_CONFIG.routing.defaultMarkerSize);
-      const toMarkerOffset = getMarkerOffset(style.target.shape, style.target.size ?? DIAGRAM_CONFIG.routing.defaultMarkerSize);
-
-      const fromPoint = this.registry.resolve(r.from.owner).pointAt(r.from.rect, fromSlot);
-      const toPoint = this.registry.resolve(r.to.owner).pointAt(r.to.rect, toSlot);
-
-      const route = this.router.route({
-        from: fromPoint, to: toPoint,
+      const edgeStyle = this.styleLibrary.edgeStyle(r.edge);
+      routes.set(r.edge.id, this.routerFor(r.edge, edgeStyle).route({
+        from: this.rendererFor(r.from.owner).pointAt(r.from.rect, fromSlot),
+        to: this.rendererFor(r.to.owner).pointAt(r.to.rect, toSlot),
         fromSide: fromSlot.side, toSide: toSlot.side,
         fromRect: r.from.rect, toRect: r.to.rect,
         fromInset, toInset,
-        fromMarkerOffset, toMarkerOffset,
-      });
+        fromMarkerOffset: getMarkerOffset(edgeStyle.source.shape, edgeStyle.source.size ?? DIAGRAM_CONFIG.routing.defaultMarkerSize),
+        toMarkerOffset: getMarkerOffset(edgeStyle.target.shape, edgeStyle.target.size ?? DIAGRAM_CONFIG.routing.defaultMarkerSize),
+        zones: zonesFor(scene, this.exclusionsFor(r.from.owner, r.to.owner)),
+      }));
+    }
+    this.separateSharedCorridors(routes, scene);
+
+    for (const r of resolved) {
+      const fromSlot = ports.get(portKey(r.edge.id, "from"));
+      const toSlot = ports.get(portKey(r.edge.id, "to"));
+      const route = routes.get(r.edge.id);
+      if (fromSlot === undefined || toSlot === undefined || route === undefined) continue;
+
+      const style = this.styleLibrary.edgeStyle(r.edge);
       const viewHighlighted =
         view === undefined || view.highlightNodes.length === 0
           ? true
@@ -1076,6 +1282,39 @@ export class DiagramCanvas {
         );
       }
 
+      // Cardinality/role captions at the ends (ADR_20260903 §2.6). They share
+      // the centre label's style — a separate style axis for two more strings
+      // is not earned — and the router's own anchor, since only the router
+      // knows where its path actually leaves each port.
+      if (r.edge.fromLabel && style.label.show && route.fromLabelAt !== undefined) {
+        g.appendChild(
+          text(
+            {
+              ...textAttrs(style.label),
+              class: "spla-edge-label spla-edge-label-from",
+              x: route.fromLabelAt.x,
+              y: route.fromLabelAt.y,
+              "text-anchor": style.label.align,
+            },
+            r.edge.fromLabel,
+          ),
+        );
+      }
+      if (r.edge.toLabel && style.label.show && route.toLabelAt !== undefined) {
+        g.appendChild(
+          text(
+            {
+              ...textAttrs(style.label),
+              class: "spla-edge-label spla-edge-label-to",
+              x: route.toLabelAt.x,
+              y: route.toLabelAt.y,
+              "text-anchor": style.label.align,
+            },
+            r.edge.toLabel,
+          ),
+        );
+      }
+
       this.edgesLayer.appendChild(g);
     }
   }
@@ -1087,7 +1326,7 @@ export class DiagramCanvas {
     let out: Rect | null = null;
     for (const el of this.doc.elements()) {
       if (ctx.isHidden(el)) continue;
-      const r = this.registry.resolve(el).visibleRect(el, ctx);
+      const r = this.rendererFor(el).visibleRect(el, ctx);
       out = out === null ? r : unionRect(out, r);
     }
     return out;
@@ -1138,6 +1377,15 @@ export function defaultRegistry(): TypeRegistry {
   const container: ElementRenderer = new ContainerRenderer();
   registry.registerDefault("node", box);
   registry.registerDefault("zone", container);
+
+  // Outlines, keyed by what a style may ask for. "rect" is deliberately absent:
+  // it is the default renderer, and registering it here would only give the
+  // same answer by a longer route.
+  registry.registerShape("ellipse", new EllipseRenderer());
+  registry.registerShape("diamond", new DiamondRenderer());
+  registry.registerShape("cylinder", new CylinderRenderer());
+  registry.registerShape("hexagon", new HexagonRenderer());
+  registry.registerShape("actor", new ActorRenderer());
   return registry;
 }
 
