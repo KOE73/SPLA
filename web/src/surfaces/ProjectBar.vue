@@ -68,6 +68,7 @@ import { computed, onMounted, onUnmounted, ref } from "vue";
 import { client } from "../protocol/SplaClient";
 import { store } from "../state/store";
 import { uiBus } from "../state/uiBus";
+import { openOverlay } from "../state/overlay";
 import { formatCompact } from "../util/format";
 import Icon from "../dock/Icon.vue";
 import type { TokenUsageScope } from "../protocol/types";
@@ -121,7 +122,7 @@ const tokensTitle = computed(() => {
 });
 
 function openSettings() {
-  window.open("/?surface=settings", "spla-settings", "width=640,height=720,resizable=yes");
+  openOverlay("settings");
 }
 
 /** The tally is project-scoped, so it is re-read whenever the focused project changes. */

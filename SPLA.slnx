@@ -50,6 +50,7 @@
     <File Path="docs/KNOWN_ISSUES.md" />
   </Folder>
   <Folder Name="/docs/diagrams/">
+    <File Path="docs/diagrams/AGENTS.md" />
     <File Path="docs/diagrams/README.md" />
     <File Path="docs/diagrams/README_RU.md" />
     <File Path="docs/diagrams/TEXT-GUIDE.md" />
@@ -224,6 +225,7 @@
     <File Path="docs/ideas/IDEA_20260824-6_agent_subagent-profiles.md" />
     <File Path="docs/ideas/IDEA_20260824-7_core_leftovers-lower-priority.md" />
     <File Path="docs/ideas/IDEA_20260824_plugins_document-context.md" />
+    <File Path="docs/ideas/IDEA_20260904_apps_hub-settings.md" />
   </Folder>
   <Folder Name="/src/core/">
     <Project Path="src/core/SPLA.Domain/SPLA.Domain.csproj" />
@@ -314,6 +316,7 @@
     <File Path="web/src/state/chatSessions.ts" />
     <File Path="web/src/state/chatSessions.test.ts" />
     <File Path="web/src/state/chatContext.ts" />
+    <File Path="web/src/state/overlay.ts" />
     <File Path="web/src/util/format.ts" />
     <File Path="web/src/surfaces/ChatSurface.vue" />
     <File Path="web/src/surfaces/ChatLog.vue" />
@@ -322,6 +325,7 @@
     <File Path="web/src/surfaces/ProjectBar.vue" />
     <File Path="web/src/layouts/layouts.ts" />
     <File Path="web/src/layouts/LayoutHost.vue" />
+    <File Path="web/src/layouts/SurfaceOverlay.vue" />
     <File Path="web/src/layouts/LayoutNodeView.vue" />
     <File Path="web/src/surfaces/registry.ts" />
     <File Path="web/src/composables/useMarkdown.ts" />

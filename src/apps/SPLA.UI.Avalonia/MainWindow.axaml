@@ -35,9 +35,9 @@
                      per process, matches the embedded-service model; see MainWindow.axaml.cs). -->
                 <Button Classes="caption" Content="📂" Click="OpenProjectMenu_Click"
                         ToolTip.Tip="New / Open / Recent project"/>
-                <!-- Settings: connections / agent / plugins in one tabbed window -->
+                <!-- Settings: connections / agent / plugins, full screen inside this window -->
                 <Button Classes="caption" Content="⚙" Click="OpenSettingsSurface_Click"
-                        ToolTip.Tip="Settings (connections / agent / plugins) — opens as a separate window"/>
+                        ToolTip.Tip="Settings (connections / agent / plugins)"/>
                 <!-- Debug as a tear-off web surface window -->
                 <Button Classes="caption" Content="🧠" Click="OpenDebugSurface_Click"
                         ToolTip.Tip="Debug (memory / context / prompt) — opens as a separate window"/>

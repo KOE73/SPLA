@@ -162,8 +162,12 @@ public partial class MainWindow : Window
     private void OpenDebugSurface_Click(object? sender, RoutedEventArgs e)
         => new SurfaceWindow("debug", "Debug").Show(this);
 
+    /// <summary>Settings open as a full-screen layer INSIDE this window, not as their own frame:
+    /// they are a surface of the app the person is already in, and a separate frame made them look
+    /// like a separate program (ADR_20260904-3). The native menu therefore asks the web client to
+    /// raise its own overlay instead of spawning a <see cref="SurfaceWindow"/>.</summary>
     private void OpenSettingsSurface_Click(object? sender, RoutedEventArgs e)
-        => new SurfaceWindow("settings", "Settings").Show(this);
+        => _ = Browser.InvokeScript("window.splaOpenOverlay && window.splaOpenOverlay('settings')");
 
     private void OpenWireSurface_Click(object? sender, RoutedEventArgs e)
         => new SurfaceWindow("wire", "Wire").Show(this);

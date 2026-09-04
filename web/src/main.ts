@@ -3,12 +3,18 @@ import LayoutHost from "./layouts/LayoutHost.vue";
 import { client } from "./protocol/SplaClient";
 import { store } from "./state/store";
 import { bootAppearance } from "./state/appearance";
+import { openOverlay } from "./state/overlay";
 import { setCurrentProject } from "./state/project";
 // Imported for its side effect: the chat-event demultiplexer subscribes on load, and it must be
 // listening before the socket opens — a chat.opened that arrives with no session to land in is lost.
 import "./state/chatSessions";
 
 bootAppearance();
+
+// The only native → web entry point we need: the Avalonia shell's "Settings" menu item calls this
+// instead of opening its own frame, so settings mount inside the window the person is already in
+// (ADR_20260904-3). The bridge in the other direction is postMessage — see Helpers/WebViewBridge.cs.
+(window as unknown as Record<string, unknown>).splaOpenOverlay = (name: string) => openOverlay(name);
 
 // The hub surface is served BY the registry hub, which holds no project and has no /ws at all. Opening
 // the chat socket there would fail forever and, worse, raise the "the agent stopped answering" banner
