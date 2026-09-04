@@ -115,6 +115,24 @@ public class ChatSession
     /// </summary>
     [YamlMember(Alias = "correspondences")]
     public List<ChatSessionCorrespondence>? Correspondences { get; set; }
+
+    /// <summary>Cumulative prompt tokens across all messages in this chat, computed at save time.
+    /// Null if no message in the history reported usage; a number (including 0) if at least one message
+    /// did report it. Carries the lifetime total rather than recomputing it from messages on every
+    /// chat list render, which would be wasteful for long histories. Absent/null for every session file
+    /// written before this field was added, falling back to message-by-message summation in the projection
+    /// (<c>docs/adr/ADR_20260827_core_config-versioning.md</c>: absence of a new key is not an error).</summary>
+    [YamlMember(Alias = "prompt_tokens_total")]
+    public int? PromptTokensTotal { get; set; }
+
+    /// <summary>Cumulative completion tokens across all messages in this chat, computed at save time.
+    /// Null if no message in the history reported usage; a number (including 0) if at least one message
+    /// did report it. Carries the lifetime total rather than recomputing it from messages on every
+    /// chat list render, which would be wasteful for long histories. Absent/null for every session file
+    /// written before this field was added, falling back to message-by-message summation in the projection
+    /// (<c>docs/adr/ADR_20260827_core_config-versioning.md</c>: absence of a new key is not an error).</summary>
+    [YamlMember(Alias = "completion_tokens_total")]
+    public int? CompletionTokensTotal { get; set; }
 }
 
 /// <summary>Persisted mirror of one <c>SPLA.Runtime.Correspondence</c> — see that class for what each
@@ -152,6 +170,18 @@ public class ChatSessionCorrespondence
     /// estimate of the replies themselves, never a slice of a turn's real usage.</summary>
     [YamlMember(Alias = "volume_estimate")]
     public int VolumeEstimate { get; set; }
+
+    /// <summary>When this correspondence ended, or absent while it is still open — see
+    /// <c>Correspondence.EndedAt</c>. An ended entry stays in this list on purpose
+    /// (<c>docs/adr/ADR_20260904_core_history-vs-current.md</c> §2.1: archiving is a headstone, not a
+    /// deletion), which is why a session file accumulates them and never drops one.</summary>
+    [YamlMember(Alias = "ended_at")]
+    public DateTimeOffset? EndedAt { get; set; }
+
+    /// <summary><c>"archived"</c> or <c>"deleted"</c>, or absent while open — see
+    /// <c>Correspondence.EndedReason</c>.</summary>
+    [YamlMember(Alias = "ended_reason")]
+    public string? EndedReason { get; set; }
 }
 
 /// <summary>What <c>subagent.get</c>/<c>subagent.result</c> answer with, persisted on the session

@@ -219,6 +219,12 @@ public class ChatManager
     /// and the future tree view's (wave 7).</summary>
     public List<ChatSession> ListSpawnedChats() => ListChatsIn(_chatsDir).Where(IsSpawned).ToList();
 
+    /// <summary>Both human-visible and spawned sessions in a single read of the catalog — for callers
+    /// that need both categories and want to avoid reading the directory twice. The result is the same
+    /// as <see cref="ListChatsIn"/> returns: most-recently-updated first, unsorted by origin. Callers
+    /// must filter by <see cref="IsSpawned"/> as needed.</summary>
+    public List<ChatSession> ListChatsAndSpawned() => ListChatsIn(_chatsDir);
+
     /// <summary>Chats moved aside by <see cref="Archive"/> — never mixed into <see cref="ListChats"/>
     /// since they live in a subfolder that its non-recursive glob does not see.</summary>
     public List<ChatSession> ListArchivedChats() => ListChatsIn(_archivedDir);

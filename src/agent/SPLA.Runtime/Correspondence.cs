@@ -83,4 +83,24 @@ public sealed class Correspondence
     /// condition (ADR §2.3) has since become true for both.
     /// </summary>
     public required string ToolName { get; init; }
+
+    /// <summary>
+    /// When this correspondence ended, or null while it is still open. Set — never a removal — when the
+    /// correspondent's chat is archived or deleted: see
+    /// <c>docs/adr/ADR_20260904_core_history-vs-current.md</c> §2.1, "архивация — надгробие, а не
+    /// удаление". Striking the record instead would erase the only machine-readable evidence that these
+    /// two ever corresponded, on the surviving side, permanently — the replies themselves stay in
+    /// <c>messages:</c>, but "who, on what address" does not survive in prose.
+    /// </summary>
+    public DateTimeOffset? EndedAt { get; set; }
+
+    /// <summary>Why it ended — <c>archived</c> or <c>deleted</c>. Kept apart from
+    /// <see cref="EndedAt"/> because the two are different news to a reader of the history (the same
+    /// distinction the notice text already makes), and null while <see cref="IsOpen"/>.</summary>
+    public string? EndedReason { get; set; }
+
+    /// <summary>Whether this correspondence can still carry a reply. The one gate the live tool surface
+    /// asks: <c>ChatRuntime.Correspondences</c> exposes only open ones, so an ended correspondence stops
+    /// offering its <c>reply_*</c> tool without anything else having to know it exists.</summary>
+    public bool IsOpen => EndedAt is null;
 }

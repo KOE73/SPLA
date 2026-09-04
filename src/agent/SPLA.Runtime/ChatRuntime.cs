@@ -42,6 +42,12 @@ public sealed class ChatRuntime : IDisposable, SPLA.Domain.Agent.IBackgroundTask
     /// <c>reply_&lt;role&gt;[_&lt;topic&gt;]</c> tool name will be. See <see cref="Correspondences"/>.</summary>
     private readonly Dictionary<(string Role, string Topic), Correspondence> _correspondences = new();
 
+    /// <summary>Ended correspondences (ADR_20260904 §2.1) — kept out of <see cref="_correspondences"/>
+    /// so that everything reading the live dictionary (the tool surface, the liveness pass, the
+    /// tool-name collision check) goes on seeing only what is still open, and so that reopening the
+    /// same (role, topic) later is an ordinary insert rather than a resurrection.</summary>
+    private readonly List<Correspondence> _ended = new();
+
     private int _disposed;
 
     /// <summary>Cancelled exactly once, in <see cref="Dispose"/>. Every background task's own
@@ -356,10 +362,23 @@ public sealed class ChatRuntime : IDisposable, SPLA.Domain.Agent.IBackgroundTask
         Save();
     }
 
-    /// <summary>This chat's live correspondences (PLAN_20260902 wave 4) — a set, never a single link
+    /// <summary>This chat's OPEN correspondences (PLAN_20260902 wave 4) — a set, never a single link
     /// back to whoever spawned this chat. Snapshot: safe to enumerate while <see cref="SendReply"/> or
-    /// <see cref="RefreshCorrespondences"/> mutates the live dictionary underneath.</summary>
+    /// <see cref="RefreshCorrespondences"/> mutates the live dictionary underneath.
+    /// <para>
+    /// Ended ones are not here; they live in <see cref="EndedCorrespondences"/>
+    /// (ADR_20260904 §2.1). Keeping the two apart rather than flagging one collection is what lets the
+    /// live tool surface stay unchanged: <c>ChatToolHost</c> reads this and therefore stops offering a
+    /// dead address's <c>reply_*</c> without knowing tombstones exist, and
+    /// <see cref="RefreshCorrespondences"/> cannot re-strike (and re-announce) something already ended.
+    /// </para></summary>
     public IReadOnlyCollection<Correspondence> Correspondences => _correspondences.Values.ToList();
+
+    /// <summary>Correspondences that have ended — the tombstones ADR_20260904 §2.1 keeps instead of
+    /// deleting. Never offered as a tool and never re-checked for liveness; persisted alongside the open
+    /// ones so the fact that this chat once corresponded with that role survives on THIS side, not only
+    /// in the archived correspondent's own file.</summary>
+    public IReadOnlyCollection<Correspondence> EndedCorrespondences => _ended.ToList();
 
     /// <summary>
     /// Registers (or returns the existing) correspondence for (<paramref name="role"/>,
@@ -436,7 +455,13 @@ public sealed class ChatRuntime : IDisposable, SPLA.Domain.Agent.IBackgroundTask
     /// ignores this kind).</summary>
     private void StrikeCorrespondence((string Role, string Topic) key, Correspondence correspondence, bool archived)
     {
+        // Moved to the tombstone list, never dropped (ADR_20260904 §2.1). Removing it from the live
+        // dictionary is still what stops the reply tool being offered and what keeps the liveness pass
+        // from re-announcing this every turn — the record itself survives to be persisted.
         _correspondences.Remove(key);
+        correspondence.EndedAt = DateTimeOffset.UtcNow;
+        correspondence.EndedReason = archived ? "archived" : "deleted";
+        _ended.Add(correspondence);
         var topicSuffix = string.IsNullOrEmpty(correspondence.Topic) ? "" : $" ({correspondence.Topic})";
         var text = archived
             ? $"Correspondence with {correspondence.Role}{topicSuffix} has gone quiet — their chat was archived."
@@ -492,7 +517,13 @@ public sealed class ChatRuntime : IDisposable, SPLA.Domain.Agent.IBackgroundTask
         var target = _registry.GetOrOpen(correspondence.ChatId);
         if (target is null)
         {
+            // Tombstoned rather than dropped, like every other ending (ADR_20260904 §2.1). Deliberately
+            // NOT routed through StrikeCorrespondence: that one also queues a notice, and this path
+            // never did — the caller is already being told, in the return value, on this very turn.
             _correspondences.Remove((role, topic));
+            correspondence.EndedAt = DateTimeOffset.UtcNow;
+            correspondence.EndedReason = "unreachable";
+            _ended.Add(correspondence);
             return new ReplyResult(ReplyOutcome.CorrespondentGone, "their chat could not be reached");
         }
 
@@ -712,7 +743,7 @@ public sealed class ChatRuntime : IDisposable, SPLA.Domain.Agent.IBackgroundTask
         {
             foreach (var c in chat.Correspondences)
             {
-                _correspondences[(c.Role, c.Topic)] = new Correspondence
+                var restored = new Correspondence
                 {
                     Role = c.Role,
                     Topic = c.Topic,
@@ -722,8 +753,16 @@ public sealed class ChatRuntime : IDisposable, SPLA.Domain.Agent.IBackgroundTask
                     ToolName = c.ToolName,
                     LastReplyAt = c.LastReplyAt,
                     Depth = c.Depth,
-                    VolumeEstimate = c.VolumeEstimate
+                    VolumeEstimate = c.VolumeEstimate,
+                    EndedAt = c.EndedAt,
+                    EndedReason = c.EndedReason
                 };
+
+                // Ended ones come back as tombstones, not as live addresses (ADR_20260904 §2.1) —
+                // restoring one into the live dictionary would re-offer a reply tool for a chat that is
+                // gone, and the liveness pass would announce its death a second time after every restart.
+                if (restored.IsOpen) _correspondences[(c.Role, c.Topic)] = restored;
+                else _ended.Add(restored);
             }
         }
 
@@ -998,9 +1037,12 @@ public sealed class ChatRuntime : IDisposable, SPLA.Domain.Agent.IBackgroundTask
         // Wave 7б: a correspondence used to die with this ChatRuntime's memory. Persisted the same
         // shape it lives in, with Depth/VolumeEstimate carrying forward the lifetime totals the graph
         // reads back on the other side of a restart.
-        _chat.Correspondences = _correspondences.Count == 0
+        // Open ones and tombstones alike (ADR_20260904 §2.1): an ended correspondence that were dropped
+        // here would be erased from this side's file on the very next save, which is exactly the loss
+        // that ADR exists to stop.
+        _chat.Correspondences = _correspondences.Count == 0 && _ended.Count == 0
             ? null
-            : _correspondences.Values.Select(c => new ChatSessionCorrespondence
+            : _correspondences.Values.Concat(_ended).Select(c => new ChatSessionCorrespondence
             {
                 Role = c.Role,
                 Topic = c.Topic,
@@ -1009,8 +1051,17 @@ public sealed class ChatRuntime : IDisposable, SPLA.Domain.Agent.IBackgroundTask
                 ToolName = c.ToolName,
                 LastReplyAt = c.LastReplyAt,
                 Depth = c.Depth,
-                VolumeEstimate = c.VolumeEstimate
+                VolumeEstimate = c.VolumeEstimate,
+                EndedAt = c.EndedAt,
+                EndedReason = c.EndedReason
             }).ToList();
+        // Carry forward token usage totals from the lifetime history: absence remains absence (null
+        // means no message ever reported usage), and presence means at least one reported it (sum over
+        // those, treat missing slots as 0). Avoids reparsing the entire message stream on each chat
+        // list render — the total only grows.
+        var hasUsage = _chat.Messages.Any(m => m.PromptTokens is not null || m.CompletionTokens is not null);
+        _chat.PromptTokensTotal = hasUsage ? _chat.Messages.Sum(m => m.PromptTokens ?? 0) : null;
+        _chat.CompletionTokensTotal = hasUsage ? _chat.Messages.Sum(m => m.CompletionTokens ?? 0) : null;
         _runtime.ChatManager.SaveChat(_chat);
     }
 

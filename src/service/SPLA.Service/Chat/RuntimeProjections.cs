@@ -80,13 +80,15 @@ public static class RuntimeProjections
     public static List<ChatSummaryDto> List(this ChatRegistry chats)
     {
         var manager = chats.Runtime.ChatManager;
-        var spawned = manager.ListSpawnedChats();
+        var allChats = manager.ListChatsAndSpawned();
+        var spawned = allChats.Where(ChatManager.IsSpawned).ToList();
         var byParent = spawned
             .Where(c => !string.IsNullOrEmpty(c.Parent))
             .GroupBy(c => c.Parent!)
             .ToDictionary(g => g.Key, g => g.OrderByDescending(c => c.UpdatedAt).ToList());
 
-        return manager.ListChats()
+        return allChats
+            .Where(c => !ChatManager.IsSpawned(c))
             .Select(c => ToSummary(c, chats, byParent))
             .ToList();
     }
@@ -104,12 +106,7 @@ public static class RuntimeProjections
         // exactly that duration (see ChatSessionSpawnInfo's own remark), so it stands in here.
         var stillRunning = ChatManager.IsSpawned(c) && c.Spawn?.Outcome is null;
 
-        // Summed here rather than carried per message onto the wire: nobody downstream needs the
-        // per-message figure, only the chat's running total, and the messages are already in memory —
-        // ListChats/ListSpawnedChats already deserialized the whole file to build `c` itself.
-        var promptTokens = c.Messages.Sum(m => m.PromptTokens ?? 0);
-        var completionTokens = c.Messages.Sum(m => m.CompletionTokens ?? 0);
-        var hasUsage = c.Messages.Any(m => m.PromptTokens is not null || m.CompletionTokens is not null);
+        var (promptTokens, completionTokens) = ResolveTokenTotals(c);
 
         return new ChatSummaryDto
         {
@@ -124,10 +121,33 @@ public static class RuntimeProjections
             Origin = c.Origin,
             Parent = c.Parent,
             ModelId = c.ModelId,
-            PromptTokens = hasUsage ? promptTokens : null,
-            CompletionTokens = hasUsage ? completionTokens : null,
+            PromptTokens = promptTokens,
+            CompletionTokens = completionTokens,
             Children = children is { Count: > 0 } ? children : null
         };
+    }
+
+    /// <summary>
+    /// This chat's lifetime token totals: the header's cached figures when it has them, and a sum over
+    /// the messages when it does not. Both header fields are written together by
+    /// <c>ChatRuntime.Save</c> — either both numbers or both null — so "both null" is exactly the
+    /// signal that this file predates the fields and has to be summed the old way.
+    /// <para>
+    /// Absence stays absence in both paths: null means nobody ever reported usage, and 0 means it was
+    /// reported and was zero. Public, and separate from <see cref="ToSummary"/>, so the fallback can be
+    /// tested against the real thing — a test that re-implements this rule instead would keep passing
+    /// after the rule was deleted.
+    /// </para>
+    /// </summary>
+    public static (int? Prompt, int? Completion) ResolveTokenTotals(SPLA.Domain.Models.ChatSession c)
+    {
+        if (c.PromptTokensTotal is not null || c.CompletionTokensTotal is not null)
+            return (c.PromptTokensTotal, c.CompletionTokensTotal);
+
+        var hasUsage = c.Messages.Any(m => m.PromptTokens is not null || m.CompletionTokens is not null);
+        return hasUsage
+            ? (c.Messages.Sum(m => m.PromptTokens ?? 0), c.Messages.Sum(m => m.CompletionTokens ?? 0))
+            : (null, null);
     }
 
     /// <summary>The project-wide correspondence graph (PLAN_20260902 wave 7б;
