@@ -361,6 +361,13 @@ export interface PluginSettingsMountApi {
    * escaping into a settings blob) out of plugin code entirely.
    */
   mountCredentialField(el: HTMLElement, opts: CredentialFieldOptions): CredentialFieldHandle;
+  /**
+   * The host's translator, handed over so a plugin panel reads in the same language as the window
+   * around it without shipping (or agreeing on) a dictionary of its own. The key is the English
+   * source text — an untranslated string comes back unchanged, so a plugin that ignores this
+   * function still works, in English.
+   */
+  t(text: string, params?: Record<string, unknown>): string;
 }
 
 export interface CredentialFieldOptions {
