@@ -1,4 +1,4 @@
-using SPLA.Domain.Models;
+﻿using SPLA.Domain.Models;
 using SPLA.Domain.Secrets;
 
 namespace SPLA.Domain.Settings;
@@ -123,6 +123,12 @@ public class ResolvedSettings
     // UI
     public string Theme { get; set; } = "Dark";
     public string Density { get; set; } = "norm";
+
+    /// <summary>The interface language ("en", "ru"). Unlike theme and density, this is resolved from
+    /// the machine layer alone — the project layer deliberately does not override it, because the
+    /// manifest is shared and a language is a property of the reader. See
+    /// <see cref="SplaUiSection.Language"/>.</summary>
+    public string Language { get; set; } = "en";
 
     /// <summary>Whether a client should open a native window on a spawned session by itself, the
     /// moment one appears in the tree. Default <c>false</c> — see <see cref="SplaUiSection.AutoOpenSubagents"/>.
@@ -500,6 +506,7 @@ public static class SettingsResolver
             {
                 r.Theme = defaults.Ui.Theme ?? r.Theme;
                 r.Density = defaults.Ui.Density ?? r.Density;
+                r.Language = defaults.Ui.Language ?? r.Language;
                 r.AutoOpenSubagents = defaults.Ui.AutoOpenSubagents ?? r.AutoOpenSubagents;
             }
             ApplySkills(r, defaults.Skills, SourceOrigin.Machine);
@@ -568,6 +575,9 @@ public static class SettingsResolver
             {
                 r.Theme = project.Ui.Theme ?? r.Theme;
                 r.Density = project.Ui.Density ?? r.Density;
+                // Language is deliberately NOT read here. The manifest is committed and shared; a
+                // theme travelling with a project is a nicety, a language travelling with it is one
+                // person's choice imposed on the next reader. Machine layer only.
                 r.AutoOpenSubagents = project.Ui.AutoOpenSubagents ?? r.AutoOpenSubagents;
             }
             if (project.Permissions != null)
@@ -798,6 +808,7 @@ public static class SettingsResolver
         McpServers = baseline.McpServers,
         Theme = baseline.Theme,
         Density = baseline.Density,
+        Language = baseline.Language,
         AutoOpenSubagents = baseline.AutoOpenSubagents,
         ProjectName = baseline.ProjectName,
         WorkspacePath = baseline.WorkspacePath,

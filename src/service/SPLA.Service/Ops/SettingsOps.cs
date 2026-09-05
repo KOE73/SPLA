@@ -1,4 +1,4 @@
-using SPLA.MCP.Core.ToolSets;
+﻿using SPLA.MCP.Core.ToolSets;
 using SPLA.Runtime;
 using SPLA.Domain.Models;
 using SPLA.Domain.Resources;
@@ -472,6 +472,24 @@ public static class SettingsOps
         }
 
         runtime.Events.Publish(new AppearanceChanged(theme, density, autoOpen));
+    }
+
+    /// <summary>Persists the interface language to the machine layer (<c>~/.spla/defaults.yaml</c>,
+    /// <c>ui.language</c>) and mutates the live settings so the next <c>welcome</c> carries it.
+    /// <para>Not written to the project manifest, and not broadcast: see
+    /// <see cref="Contracts.LanguagePayload"/> for both reasons. The machine layer is also the only
+    /// storage that survives here at all — the web client is served from an ephemeral loopback port,
+    /// so its localStorage is wiped by a changed origin on every launch, which is exactly the bug
+    /// this method exists to fix.</para></summary>
+    public static void SaveLanguage(AgentRuntime runtime, string? language)
+    {
+        var lang = Blank(language);
+        if (lang is null) return;
+
+        runtime.Settings.Language = lang;
+        var defaults = ConfigLoader.LoadDefaults();
+        (defaults.Ui ??= new SplaUiSection()).Language = lang;
+        ConfigLoader.SaveDefaults(defaults);
     }
 
     // ── MCP over HTTP: whether POST /mcp is offered, and a fixed port for it ─

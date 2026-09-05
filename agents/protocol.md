@@ -106,6 +106,7 @@ client/types **and** this table.
 | `mcp.servers.reconnect` | `McpServersReconnect` | `McpServerActionPayload` | Retry one already-tracked server's connection now. Reply `mcp.servers.result` (unicast — see the table below for why). A server not yet tracked (added since the last connect attempt) answers with its unchanged status, not an error. |
 | `usage.get` | `UsageGet` | — | Reply `usage.result`. |
 | `appearance.save` | `AppearanceSave` | `AppearanceChangedPayload` | Auto-sent on change (no Save step). Persists `ui:` + broadcasts `appearance.changed`. |
+| `language.save` | `LanguageSave` | `LanguagePayload` | Auto-sent on change (no Save step), like `appearance.save` — but written to the machine layer (`~/.spla/defaults.yaml`, `ui.language`), never to the project, and **not** broadcast: a language belongs to a person, and on a shared server one reader's choice must not reach another's screen. Other windows learn it from their own `welcome`. |
 | `system.register_association` | `SystemRegisterAssociation` | — | Register the `.spla` extension (Windows, per-user). Reply `system.register_association.result`. |
 | `schema.get` | `SchemaGet` | `SchemaGetPayload` | Resolve a named JSON schema (Forms editor); reply `schema.result`. |
 | `fs.browse` | `FsBrowse` | `FsBrowsePayload` | List a workspace directory; reply `fs.browse.result`. |

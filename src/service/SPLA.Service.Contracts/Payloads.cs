@@ -1098,6 +1098,11 @@ public sealed class ProjectContextPayload
     public string DefaultMode { get; set; } = string.Empty;
     public string Theme { get; set; } = "dark";
     public string Density { get; set; } = "norm";
+
+    /// <summary>Same value <see cref="WelcomePayload.Language"/> carries. Machine-level, so switching
+    /// projects never switches the language — it is repeated here only so a client that opens a
+    /// project without a fresh welcome has every field it needs from one message.</summary>
+    public string Language { get; set; } = "en";
 }
 
 public sealed class WelcomePayload
@@ -1131,6 +1136,12 @@ public sealed class WelcomePayload
     /// connect so per-project themes load immediately without a separate get/result round-trip.</summary>
     public string Theme { get; set; } = "dark";
     public string Density { get; set; } = "norm";
+
+    /// <summary>The interface language, resolved from the machine layer (never from the project — see
+    /// <see cref="SPLA.Domain.Settings.SettingsResolver.Language"/>). It has to travel on the wire:
+    /// the page is served from an ephemeral loopback port, so its origin changes on every launch and
+    /// the browser hands it a fresh, empty localStorage each time. This message is what remembers.</summary>
+    public string Language { get; set; } = "en";
 }
 
 public sealed class ChatListResultPayload
@@ -1150,6 +1161,16 @@ public sealed class AppearanceChangedPayload
     /// Always present on the way OUT (<c>appearance.changed</c>): every window needs the actual
     /// current value, not "unspecified".</summary>
     public bool? AutoOpenSubagents { get; set; }
+}
+
+/// <summary>The interface language a person picked (<c>language.save</c>), as a BCP-47 tag.
+/// <para>Deliberately not broadcast back the way appearance is. <c>appearance.changed</c> goes to
+/// every window of a project, which is right for project data; a language is per-person, and on a
+/// multi-user server that same fan-out would retitle somebody else's screen. Each window learns the
+/// language from its own <see cref="WelcomePayload"/> at connect instead.</para></summary>
+public sealed class LanguagePayload
+{
+    public string Language { get; set; } = "en";
 }
 
 /// <summary>Full state of a chat the client just opened (or created): its existing messages + settings.</summary>

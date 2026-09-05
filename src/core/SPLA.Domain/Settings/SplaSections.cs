@@ -1,4 +1,4 @@
-using YamlDotNet.Serialization;
+﻿using YamlDotNet.Serialization;
 
 namespace SPLA.Domain.Settings;
 
@@ -616,6 +616,13 @@ public class SplaUiSection
 
     [YamlMember(Alias = "density")]
     public string? Density { get; set; }
+
+    /// <summary>The interface language, as a BCP-47 tag ("en", "ru"). Read from the machine layer
+    /// only (<c>~/.spla/defaults.yaml</c>): which language a person reads in is a property of the
+    /// person, not of the project, and a project committed to git must not push its author's
+    /// language onto whoever opens it next. See <see cref="SettingsResolver.Language"/>.</summary>
+    [YamlMember(Alias = "language")]
+    public string? Language { get; set; }
 
     /// <summary>Whether a client should open a native window on a spawned session by itself, the
     /// moment it appears in the tree. Default off — see <see cref="SettingsResolver.AutoOpenSubagents"/>

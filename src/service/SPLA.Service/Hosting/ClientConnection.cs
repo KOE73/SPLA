@@ -1,4 +1,4 @@
-using SPLA.Runtime;
+﻿using SPLA.Runtime;
 using System.Collections.Concurrent;
 using System.Net.WebSockets;
 using System.Text;
@@ -307,7 +307,8 @@ public sealed class ClientConnection : IClientSession
             Modes = ctx.Modes,
             DefaultMode = ctx.DefaultMode,
             Theme = ctx.Theme,
-            Density = ctx.Density
+            Density = ctx.Density,
+            Language = ctx.Language
         });
 
         // Cached connection health, straight after the handshake: the project bar shows a health

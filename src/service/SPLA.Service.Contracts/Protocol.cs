@@ -231,6 +231,11 @@ public static class MessageTypes
     /// <summary>Persist UI appearance (theme/density). Auto-sent on change — appearance has no Save step.
     /// Body is <see cref="AppearanceChangedPayload"/>; the server persists and broadcasts <see cref="AppearanceChanged"/>.</summary>
     public const string AppearanceSave = "appearance.save";
+    /// <summary>Persist the interface language. Separate from <see cref="AppearanceSave"/> because it
+    /// is stored in a different place and answers to a different owner: theme and density belong to
+    /// the project manifest, the language belongs to the person and is written to the machine layer.
+    /// Body is <see cref="LanguagePayload"/>; there is no broadcast — see that type.</summary>
+    public const string LanguageSave = "language.save";
     /// <summary>Ask for the current token usage totals (session/project/machine).</summary>
     public const string UsageGet = "usage.get";
     /// <summary>Register the .spla file extension with this app in Windows Explorer (Windows only,

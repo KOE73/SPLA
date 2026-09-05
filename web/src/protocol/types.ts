@@ -722,6 +722,8 @@ export interface ProjectContextPayload {
   defaultMode?: string;
   theme?: string;
   density?: string;
+  /** Machine-level, so switching project never switches language — see welcome.language. */
+  language?: string;
 }
 
 // ── Spawned sub-agent runs (subagent.get → subagent.result) ───────────────────
@@ -830,6 +832,9 @@ export interface ServerEvents {
    */
   "conn": { on: boolean; text?: string; lost?: boolean; attempts?: number };
   "welcome": {
+    /** The interface language, from the machine layer (~/.spla). Authoritative: the page is served
+     *  from an ephemeral port, so localStorage cannot survive a restart and this is what does. */
+    language?: string;
     theme?: string; density?: string; projectId?: string; projectName?: string; workspacePath?: string;
     modes?: string[]; defaultMode?: string;
     connections?: ModelPickDto[];

@@ -7,9 +7,19 @@
 //   * a string that arrives from the server or from a plugin bundle translates for free, because the
 //     string itself is the key. Nothing on the backend has to learn about locales.
 //
-// The locale is a per-device preference (like the dock layout), not project data: it lives in
-// localStorage and never travels to .spla. t() reads the reactive ref, so switching the language
-// re-renders every template that called it — no reload.
+// The locale is a per-person preference, not project data — but "per-person" cannot mean
+// localStorage here. The web client is served from an ephemeral loopback port that changes on every
+// launch, so each start is a new origin with an empty store, and anything kept only in the browser is
+// forgotten by morning. The server remembers it instead, in the machine layer (~/.spla/defaults.yaml,
+// ui.language): one language per person, across projects, never written into the shared manifest.
+// localStorage stays on as a cache — read before the socket opens, so the first paint is already in
+// the right language instead of flashing English.
+//
+// t() reads the reactive ref, so switching the language re-renders every template that called it.
+//
+// This module deliberately knows nothing about the socket — SplaClient imports t() to translate its
+// own status text, so importing the client back would close a cycle. Persisting the choice belongs to
+// state/appearance.ts, which is already the place where a UI preference meets the server.
 import { ref } from "vue";
 import ru from "./ru.json";
 
@@ -22,6 +32,8 @@ const dictionaries: Record<string, Record<string, string>> = { ru };
 
 export const locale = ref(localStorage.getItem("spla.lang") || "en");
 
+/** Applies a language everywhere in this window and caches it for the next first paint. Storing it
+ *  where it actually survives is saveLanguage()'s job — see state/appearance.ts. */
 export function setLocale(id: string) {
   locale.value = id;
   localStorage.setItem("spla.lang", id);

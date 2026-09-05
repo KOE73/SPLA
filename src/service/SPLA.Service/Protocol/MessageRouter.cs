@@ -1,4 +1,4 @@
-using SPLA.Runtime;
+﻿using SPLA.Runtime;
 using System.Text.Json;
 using Microsoft.Extensions.Logging;
 using SPLA.Domain.Identity;
@@ -168,7 +168,8 @@ internal static class ProtocolProjection
         Modes = Enum.GetNames<AgentMode>(),
         DefaultMode = runtime.Settings.Mode.ToString(),
         Theme = runtime.Settings.Theme,
-        Density = runtime.Settings.Density
+        Density = runtime.Settings.Density,
+        Language = runtime.Settings.Language
     };
 
     /// <summary>Turns a user-typed project name into a filesystem-safe folder/file name.</summary>
