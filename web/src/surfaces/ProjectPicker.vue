@@ -2,13 +2,13 @@
   <div class="picker-overlay" @click.self="close">
     <div class="picker-panel">
       <div class="picker-header">
-        <b>Projects</b>
-        <button class="x" title="Close" @click="close">✕</button>
+        <b>{{ t('Projects') }}</b>
+        <button class="x" :title="t('Close')" @click="close">✕</button>
       </div>
 
       <div class="picker-list">
-        <div v-if="loading" class="picker-empty">Loading…</div>
-        <div v-else-if="store.projects.length === 0" class="picker-empty">No known projects yet.</div>
+        <div v-if="loading" class="picker-empty">{{ t('Loading…') }}</div>
+        <div v-else-if="store.projects.length === 0" class="picker-empty">{{ t('No known projects yet.') }}</div>
         <ProjectListItem
           v-for="p in store.projects"
           :key="p.id"
@@ -29,29 +29,30 @@
             v-if="!serverMode"
             v-model="newPath"
             class="create-input"
-            placeholder="C:\Projects\Demo\Demo.spla"
+            :placeholder="t('C:\Projects\Demo\Demo.spla')"
             spellcheck="false"
             autofocus
           >
           <input
             v-model="newName"
             class="create-input"
-            placeholder="Project name"
+            :placeholder="t('Project name')"
             spellcheck="false"
             :autofocus="serverMode"
           >
           <div class="create-actions">
-            <button type="button" class="create-cancel" @click="cancelCreate">Cancel</button>
-            <button type="submit" class="create-ok" :disabled="!canCreate">Create</button>
+            <button type="button" class="create-cancel" @click="cancelCreate">{{ t('Cancel') }}</button>
+            <button type="submit" class="create-ok" :disabled="!canCreate">{{ t('Create') }}</button>
           </div>
         </form>
-        <button v-else class="btn-new-project" @click="openCreate">+ New Project…</button>
+        <button v-else class="btn-new-project" @click="openCreate">{{ t('+ New Project…') }}</button>
       </div>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
+import { t } from "../i18n";
 import { computed, onMounted, ref } from "vue";
 import { client } from "../protocol/SplaClient";
 import { store } from "../state/store";

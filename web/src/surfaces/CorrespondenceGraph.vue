@@ -16,7 +16,7 @@
     :viewBox="`0 0 ${layout.width} ${layout.height}`"
     :style="{ maxHeight: layout.height + 'px' }"
     role="img"
-    aria-label="Correspondence between roles"
+    :aria-label="t('Correspondence between roles')"
   >
     <defs>
       <!-- One marker per direction; `context-stroke` keeps the head the same colour as its line. -->
@@ -53,6 +53,7 @@
 </template>
 
 <script setup lang="ts">
+import { t } from "../i18n";
 import { computed } from "vue";
 import type { CorrespondenceEdgeDto } from "../protocol/types";
 import {

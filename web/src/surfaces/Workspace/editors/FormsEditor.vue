@@ -1,10 +1,10 @@
 <template>
   <div class="forms-root" ref="formEl" @focusout="onContainerBlur">
-    <div v-if="loading" class="forms-state">Loading schema…</div>
+    <div v-if="loading" class="forms-state">{{ t('Loading schema…') }}</div>
     <div v-else-if="schemaError" class="forms-state forms-err">{{ schemaError }}</div>
     <div v-else-if="!dataSchemaObj" class="forms-state forms-warn">
-      No JSON Forms schema for this file.<br>
-      Switch to the <strong>Text</strong> editor.
+      {{ t('No JSON Forms schema for this file.') }}<br>
+      {{ t('Switch to the') }} <strong>{{ t('Text') }}</strong> editor.
     </div>
     <JsonForms
       v-else
@@ -19,6 +19,7 @@
 </template>
 
 <script setup lang="ts">
+import { t } from "../../../i18n";
 import { ref, watch } from "vue";
 import { JsonForms } from "@jsonforms/vue";
 import { vanillaRenderers } from "@jsonforms/vue-vanilla";
@@ -50,10 +51,10 @@ const renderers = [tableArrayEntry, ...vanillaRenderers];
 function jsonlToObject(jsonl: string): Record<string, unknown> {
   const fields: unknown[] = [];
   for (const line of jsonl.split("\n")) {
-    const t = line.trim();
-    if (!t) continue;
+    const text = line.trim();
+    if (!text) continue;
     try {
-      fields.push(JSON.parse(t) as unknown);
+      fields.push(JSON.parse(text) as unknown);
     } catch { /* skip invalid lines */ }
   }
   return { fields };

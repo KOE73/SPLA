@@ -19,14 +19,14 @@
     >●</span>
     <span class="t">{{ chat.title || chat.id }}</span>
     <template v-if="archived">
-      <span class="x" title="Restore" @click.stop="$emit('restore', chat.id)">↺</span>
-      <span class="x" title="Delete permanently" @click.stop="$emit('delete-permanently', chat.id)">✕</span>
+      <span class="x" :title="t('Restore')" @click.stop="$emit('restore', chat.id)">↺</span>
+      <span class="x" :title="t('Delete permanently')" @click.stop="$emit('delete-permanently', chat.id)">✕</span>
     </template>
     <template v-else>
-      <span class="x" title="Open in a separate window" @click.stop="$emit('open-window', chat)">⧉</span>
-      <span class="x" title="Rename" @click.stop="$emit('rename', chat)">✎</span>
-      <span class="x" title="Archive" @click.stop="$emit('archive', chat.id)">🗄</span>
-      <span class="x" title="Delete" @click.stop="$emit('delete', chat.id)">✕</span>
+      <span class="x" :title="t('Open in a separate window')" @click.stop="$emit('open-window', chat)">⧉</span>
+      <span class="x" :title="t('Rename')" @click.stop="$emit('rename', chat)">✎</span>
+      <span class="x" :title="t('Archive')" @click.stop="$emit('archive', chat.id)">🗄</span>
+      <span class="x" :title="t('Delete')" @click.stop="$emit('delete', chat.id)">✕</span>
     </template>
   </div>
 
@@ -43,6 +43,7 @@
 </template>
 
 <script setup lang="ts">
+import { t } from "../i18n";
 import type { ChatSummary } from "../protocol/types";
 import { store } from "../state/store";
 

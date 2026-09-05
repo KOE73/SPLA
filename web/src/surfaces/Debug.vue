@@ -1,13 +1,13 @@
 <template>
   <div class="debug-surface">
     <header>
-      <b>Debug</b>
+      <b>{{ t('Debug') }}</b>
       <span v-if="chatLabel" class="chat-label" :title="'chat: ' + (store.currentChat ?? '')">{{ chatLabel }}</span>
-      <button class="refresh" title="Refresh now" @click="reload">⟳</button>
-      <button v-if="!solo" class="filter" @click="close">close</button>
+      <button class="refresh" :title="t('Refresh now')" @click="reload">⟳</button>
+      <button v-if="!solo" class="filter" @click="close">{{ t('close') }}</button>
     </header>
     <div class="tabs">
-      <button v-for="t in TABS" :key="t.kind" class="tab" :class="{ on: activeKind === t.kind }" @click="request(t.kind)">{{ t.label }}</button>
+      <button v-for="tab in TABS" :key="tab.kind" class="tab" :class="{ on: activeKind === tab.kind }" @click="request(tab.kind)">{{ tab.label }}</button>
     </div>
     <div id="debugBody" :class="{ 'ctx-mode': !!snapshot?.contextLines }">
       <ContextTable v-if="snapshot?.contextLines" :snapshot="snapshot" />
@@ -16,12 +16,12 @@
            rules. -->
       <template v-if="snapshot?.edges">
         <div v-if="!snapshot.edges.length" class="edge-empty">
-          Nothing has crossed a perimeter yet in this process.
+          {{ t('Nothing has crossed a perimeter yet in this process.') }}
         </div>
         <template v-else>
           <div class="kv-head">
-            <span class="e-move">movement</span><span class="e-eff">effect</span>
-            <span class="e-n">calls</span><span class="v">last tool</span>
+            <span class="e-move">{{ t('movement') }}</span><span class="e-eff">{{ t('effect') }}</span>
+            <span class="e-n">{{ t('calls') }}</span><span class="v">{{ t('last tool') }}</span>
           </div>
           <div v-for="(e, i) in snapshot.edges" :key="i" class="kv-row">
             <span class="e-move" :class="{ outward: e.outward }">{{ e.source }} → {{ e.sink }}</span>
@@ -32,12 +32,12 @@
         </template>
       </template>
       <template v-else-if="snapshot?.entries">
-        <div v-if="!snapshot.entries.length">(empty)</div>
+        <div v-if="!snapshot.entries.length">{{ t('(empty)') }}</div>
         <!-- Origin is its own column, never folded into the value: the question this view has to
              answer at a glance is "which of these came from outside", and a label buried in text is
              a label nobody scans for. -->
         <div class="kv-head">
-          <span class="k">key</span><span class="o">origin</span><span class="v">value</span>
+          <span class="k">{{ t('key') }}</span><span class="o">{{ t('origin') }}</span><span class="v">{{ t('value') }}</span>
         </div>
         <div v-for="(e, i) in snapshot.entries" :key="i" class="kv-row">
           <span class="k">{{ e.key }}</span>
@@ -71,6 +71,7 @@
 </template>
 
 <script setup lang="ts">
+import { t } from "../i18n";
 import { computed, onMounted, onUnmounted, ref, watch } from "vue";
 import { client } from "../protocol/SplaClient";
 import { store } from "../state/store";

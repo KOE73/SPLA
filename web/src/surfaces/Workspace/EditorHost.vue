@@ -2,14 +2,14 @@
   <div class="editor-host">
     <!-- ── Toolbar ───────────────────────────────────────────────────────── -->
     <div class="editor-toolbar">
-      <div class="seg-toggle" title="View: read-only | Edit: autosave on focus-out">
-        <button :class="{ on: mode === 'view' }" @click="mode = 'view'">View</button>
-        <button :class="{ on: mode === 'edit' }" @click="mode = 'edit'">Edit</button>
+      <div class="seg-toggle" :title="t('View: read-only | Edit: autosave on focus-out')">
+        <button :class="{ on: mode === 'view' }" @click="mode = 'view'">{{ t('View') }}</button>
+        <button :class="{ on: mode === 'edit' }" @click="mode = 'edit'">{{ t('Edit') }}</button>
       </div>
       <!-- Editor-type toggle is only meaningful for jsonl -->
-      <div v-if="isJsonl" class="seg-toggle" title="Forms: structured (Phase 2) | Text: raw JSONL">
-        <button :class="{ on: editorType === 'text' }" @click="editorType = 'text'">Text</button>
-        <button :class="{ on: editorType === 'forms' }" @click="editorType = 'forms'">Forms</button>
+      <div v-if="isJsonl" class="seg-toggle" :title="t('Forms: structured (Phase 2) | Text: raw JSONL')">
+        <button :class="{ on: editorType === 'text' }" @click="editorType = 'text'">{{ t('Text') }}</button>
+        <button :class="{ on: editorType === 'forms' }" @click="editorType = 'forms'">{{ t('Forms') }}</button>
       </div>
       <span class="editor-status">{{ statusText }}</span>
     </div>
@@ -42,6 +42,7 @@
 </template>
 
 <script setup lang="ts">
+import { t } from "../../i18n";
 import { ref, computed, watch } from "vue";
 import TextEditor from "./editors/TextEditor.vue";
 import FormsEditor from "./editors/FormsEditor.vue";

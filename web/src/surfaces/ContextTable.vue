@@ -13,8 +13,8 @@
     <table class="ctx-table">
       <colgroup><col class="c-idx"><col class="c-id"><col class="c-tok"><col class="c-src"><col class="c-pre"></colgroup>
       <thead><tr>
-        <th class="c-idx">#</th><th class="c-id">msgId</th>
-        <th class="c-tok">~tok</th><th class="c-src">source</th><th class="c-pre">preview</th>
+        <th class="c-idx">#</th><th class="c-id">{{ t('msgId') }}</th>
+        <th class="c-tok">{{ t('~tok') }}</th><th class="c-src">{{ t('source') }}</th><th class="c-pre">{{ t('preview') }}</th>
       </tr></thead>
       <tbody>
         <template v-for="l in lines" :key="l.index">
@@ -35,6 +35,7 @@
 </template>
 
 <script setup lang="ts">
+import { t } from "../i18n";
 import { computed, ref } from "vue";
 import type { DebugSnapshotPayload } from "../protocol/types";
 

@@ -39,6 +39,7 @@
     <File Path="docs/readme_auth.md" />
     <File Path="docs/readme_observability.md" />
     <File Path="docs/readme_security.md" />
+    <File Path="docs/readme_i18n_ru.md" />
     <File Path="docs/readme_security_ru.md" />
     <File Path="docs/readme_skills_ru.md" />
     <File Path="docs/secrets_ru.md" />

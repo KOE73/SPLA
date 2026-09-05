@@ -9,7 +9,7 @@
 <template>
   <div v-if="overlaySurface" class="surface-overlay">
     <header class="overlay-bar">
-      <button class="overlay-back" @click="closeOverlay()" title="Escape">← Back to the app</button>
+      <button class="overlay-back" @click="closeOverlay()" :title="t('Escape')">{{ t('← Back to the app') }}</button>
     </header>
     <div class="overlay-body">
       <component :is="surfaces[overlaySurface]" v-if="surfaces[overlaySurface]" />
@@ -19,6 +19,7 @@
 </template>
 
 <script setup lang="ts">
+import { t } from "../i18n";
 import { onMounted, onUnmounted } from "vue";
 import { surfaces } from "../surfaces/registry";
 import { overlaySurface, closeOverlay } from "../state/overlay";

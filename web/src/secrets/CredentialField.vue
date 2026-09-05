@@ -13,7 +13,7 @@
     <div class="row">
       <select :value="modelValue" @change="pick(($event.target as HTMLSelectElement).value)">
         <option v-if="allowNone" value="">{{ noneLabel }}</option>
-        <optgroup v-for="s in SCOPES" :key="s.id" :label="s.label">
+        <optgroup v-for="s in SCOPES" :key="s.id" :label="t(s.label)">
           <option v-for="e in entriesOf(s.id)" :key="e.reference" :value="e.reference">
             {{ e.key }}{{ e.fields.length ? ` · ${e.fields.join(", ")}` : "" }}
           </option>
@@ -24,12 +24,12 @@
               :title="mode === 'create' ? 'Cancel' : 'Create a new entry in the secret store'"
               @click="toggle('create')">{{ mode === "create" ? "cancel" : "＋ new" }}</button>
       <button v-if="selected?.canManage" class="btn ghost" type="button" :class="{ on: mode === 'edit' }"
-              title="Edit this entry's fields" @click="toggle('edit')">edit</button>
+              :title="t('Edit this entry\'s fields')" @click="toggle('edit')">{{ t('edit') }}</button>
 
       <span v-if="dangling" class="warn" :title="modelValue">
         ⚠ {{ modelValue }} — no such entry (deleted, or in a scope you cannot see)
       </span>
-      <span v-else-if="selected && !selected.canManage" class="hint">read-only — usable, not editable</span>
+      <span v-else-if="selected && !selected.canManage" class="hint">{{ t('read-only — usable, not editable') }}</span>
       <span v-else-if="error" class="warn">{{ error }}</span>
     </div>
 
@@ -41,6 +41,7 @@
 </template>
 
 <script setup lang="ts">
+import { t } from "../i18n";
 import { computed, ref } from "vue";
 import type { SecretScopeId } from "../protocol/types";
 import SecretEntryEditor from "./SecretEntryEditor.vue";

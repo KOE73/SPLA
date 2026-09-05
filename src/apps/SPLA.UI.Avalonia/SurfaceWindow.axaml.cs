@@ -21,6 +21,7 @@ public partial class SurfaceWindow : Window
     public SurfaceWindow()
     {
         InitializeComponent();
+        Helpers.Localization.Track(this);
         Opened += OnOpened;
     }
 

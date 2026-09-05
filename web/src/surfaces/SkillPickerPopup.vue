@@ -6,7 +6,7 @@
           ref="filterEl"
           v-model="filter"
           type="text"
-          placeholder="linux ssh"
+          :placeholder="t('linux ssh')"
           spellcheck="false"
         />
         <span class="sp-count">{{ shown.length }} / {{ available.length }}</span>
@@ -17,10 +17,10 @@
            not know them by heart, and the whole point of a vocabulary is being shown it. -->
       <div v-if="vocabulary.length" class="sp-tags">
         <button
-          v-for="t in vocabulary" :key="t.tag"
-          class="sp-tag" :class="{ on: selected.has(t.tag) }"
-          @click.stop="toggleTag(t.tag)"
-        >{{ t.tag }} <span class="sp-tag-n">{{ t.count }}</span></button>
+          v-for="tag in vocabulary" :key="tag.tag"
+          class="sp-tag" :class="{ on: selected.has(tag.tag) }"
+          @click.stop="toggleTag(tag.tag)"
+        >{{ tag.tag }} <span class="sp-tag-n">{{ tag.count }}</span></button>
       </div>
 
       <div ref="listEl" class="sp-list">
@@ -37,13 +37,14 @@
           <div v-if="s.description" class="sp-desc">{{ s.description }}</div>
           <div v-if="s.tags?.length" class="sp-item-tags">{{ s.tags.join(" · ") }}</div>
         </div>
-        <div v-if="!shown.length" class="sp-empty">nothing matches</div>
+        <div v-if="!shown.length" class="sp-empty">{{ t('nothing matches') }}</div>
       </div>
     </div>
   </Teleport>
 </template>
 
 <script setup lang="ts">
+import { t } from "../i18n";
 /**
  * Hands a skill to the current chat — the loan desk.
  *
@@ -100,10 +101,10 @@ const shown = computed(() =>
   available.value.filter(s => {
     // Tags intersect — selecting two narrows, the same arithmetic the librarian does.
     const tags = new Set(s.tags || []);
-    if (![...selected.value].every(t => tags.has(t))) return false;
+    if (![...selected.value].every(x => tags.has(x))) return false;
 
     const haystack = `${s.id} ${s.description ?? ""}`.toLowerCase();
-    return terms.value.every(t => haystack.includes(t));
+    return terms.value.every(x => haystack.includes(x));
   }));
 
 watch(shown, () => { active.value = 0; });

@@ -4,7 +4,7 @@
        popup then renders far off-screen. Same reason .models-popup is appended to body. -->
   <Teleport to="body">
   <div ref="popEl" class="pi-popup" :style="style" @click.stop>
-    <div v-if="loading" class="pi-empty">reading…</div>
+    <div v-if="loading" class="pi-empty">{{ t('reading…') }}</div>
     <div v-else-if="info?.error" class="pi-empty pi-err">{{ info.error }}</div>
 
     <template v-else-if="info">
@@ -16,7 +16,7 @@
       <div v-for="s in info.sections" :key="s.title" class="pi-section">
         <div class="pi-section-head">
           <span>{{ s.title }}</span>
-          <a v-if="s.deepLink" :href="s.deepLink" target="_blank" rel="noopener" title="Open the provider's dashboard">↗</a>
+          <a v-if="s.deepLink" :href="s.deepLink" target="_blank" rel="noopener" :title="t('Open the provider\'s dashboard')">↗</a>
         </div>
         <div v-for="f in s.facts" :key="f.key" class="pi-fact" :data-sev="f.severity">
           <span class="pi-label">{{ f.label }}</span>
@@ -25,7 +25,7 @@
             ⟳ {{ shortTime(f.resetsAt) }}
           </span>
         </div>
-        <div v-if="!s.facts.length" class="pi-empty">nothing reported</div>
+        <div v-if="!s.facts.length" class="pi-empty">{{ t('nothing reported') }}</div>
       </div>
     </template>
   </div>
@@ -33,6 +33,7 @@
 </template>
 
 <script setup lang="ts">
+import { t } from "../i18n";
 import { computed, nextTick, onMounted, onUnmounted, ref } from "vue";
 import { client } from "../protocol/SplaClient";
 import type { ProviderFactDto, ProviderInfoResultPayload } from "../protocol/types";

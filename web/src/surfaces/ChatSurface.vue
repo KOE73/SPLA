@@ -27,6 +27,7 @@
 </template>
 
 <script setup lang="ts">
+import { t } from "../i18n";
 import { computed, ref, watch } from "vue";
 import ChatLog from "./ChatLog.vue";
 import Composer from "./Composer.vue";
@@ -70,8 +71,8 @@ const spawned = computed(() => {
 const readOnly = computed(() => !!session.value?.readOnly || spawned.value);
 const readOnlyReason = computed(() =>
   spawned.value
-    ? "This session is a sub-agent's — it is driven by whoever gave it the errand, not from here."
-    : "This chat is archived. Restore it from the chat list to write in it again.");
+    ? t("This session is a sub-agent's — it is driven by whoever gave it the errand, not from here.")
+    : t("This chat is archived. Restore it from the chat list to write in it again."));
 
 // Focusing is a state change (it reorders which logs are worth keeping), so it belongs in a watcher
 // rather than inside the computed that reads the session.

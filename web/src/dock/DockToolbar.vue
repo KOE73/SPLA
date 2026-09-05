@@ -12,17 +12,17 @@
 
     <!-- Tool pickers — one block, pushed right toward the view controls -->
     <div class="group">
-      <template v-for="t in tools" :key="t.kind">
-        <span v-if="t.kind === 'ssh'" class="ssh-anchor">
-          <button :title="t.title" :class="{ on: sshMenu || isOpen(t.kind) }" @click.stop="toggleSshMenu">
-            <Icon :name="t.icon" />
+      <template v-for="tool in tools" :key="tool.kind">
+        <span v-if="tool.kind === 'ssh'" class="ssh-anchor">
+          <button :title="tool.title" :class="{ on: sshMenu || isOpen(tool.kind) }" @click.stop="toggleSshMenu">
+            <Icon :name="tool.icon" />
           </button>
           <div v-if="sshMenu" class="ssh-menu" @click.stop>
-            <div v-if="!ssh" class="menu-hint">loading…</div>
+            <div v-if="!ssh" class="menu-hint">{{ t('loading…') }}</div>
             <template v-else>
               <!-- Live sessions first: attach a terminal to any of them (watch the agent / reattach). -->
               <template v-if="ssh.sessions.length">
-                <div class="menu-head">Live sessions — attach to watch</div>
+                <div class="menu-head">{{ t('Live sessions — attach to watch') }}</div>
                 <div v-for="s in ssh.sessions" :key="s.id" class="menu-item session-row">
                   <button class="menu-item-main" @click="attach(s.id)">
                     <span class="dot live"></span>
@@ -31,26 +31,26 @@
                     <span class="badge" :class="s.openedBy === 'agent' ? 'agent' : ''">{{ s.openedBy }}</span>
                     <span v-if="s.viewers" class="badge open">{{ s.viewers }}⌨</span>
                   </button>
-                  <button class="kill-btn" title="End this session for everyone" @click="killSession(s.id)">✕</button>
+                  <button class="kill-btn" :title="t('End this session for everyone')" @click="killSession(s.id)">✕</button>
                 </div>
               </template>
 
-              <div class="menu-head">Open a new session</div>
+              <div class="menu-head">{{ t('Open a new session') }}</div>
               <div v-if="ssh.hosts.length === 0" class="menu-hint">
-                No hosts configured. Settings → Plugins → ssh.
+                {{ t('No hosts configured. Settings → Plugins → ssh.') }}
               </div>
               <button v-for="h in ssh.hosts" :key="h.name" class="menu-item" @click="openNew(h.name)">
                 <span class="dot"></span>
                 <span class="name">{{ h.name }}</span>
                 <span class="detail">{{ h.host }}{{ h.port && h.port !== 22 ? ":" + h.port : "" }}</span>
-                <span v-if="h.isDefault" class="badge">default</span>
+                <span v-if="h.isDefault" class="badge">{{ t('default') }}</span>
                 <span v-if="sessionCount(h.name)" class="badge open">{{ sessionCount(h.name) }} live</span>
               </button>
             </template>
           </div>
         </span>
-        <button v-else :title="t.title" :class="{ on: isOpen(t.kind) }" @click="openPanel(t.kind)">
-          <Icon :name="t.icon" />
+        <button v-else :title="tool.title" :class="{ on: isOpen(tool.kind) }" @click="openPanel(tool.kind)">
+          <Icon :name="tool.icon" />
         </button>
       </template>
     </div>
@@ -67,10 +67,10 @@
               :disabled="!hasTools()" :class="{ on: dockState.maximized }" @click="toggleMaximize">
         <Icon name="fullscreen" />
       </button>
-      <button title="Detach the active panel to a separate window" :disabled="activeProtected" @click="popoutActivePanel">
+      <button :title="t('Detach the active panel to a separate window')" :disabled="activeProtected" @click="popoutActivePanel">
         <Icon name="detach" />
       </button>
-      <button title="Reset layout" @click="resetDock">
+      <button :title="t('Reset layout')" @click="resetDock">
         <Icon name="reset" />
       </button>
     </div>
@@ -78,6 +78,7 @@
 </template>
 
 <script setup lang="ts">
+import { t } from "../i18n";
 import { computed, onUnmounted, ref } from "vue";
 import Icon from "./Icon.vue";
 import { client } from "../protocol/SplaClient";

@@ -1,11 +1,12 @@
 <template>
-  <span>show:</span>
+  <span>{{ t('show:') }}</span>
   <button v-for="f in FILTERS" :key="f.kind" class="filter" :class="{ on: !hidden.has(f.kind) }" @click="toggle(f.kind)">
-    {{ f.label }}
+    {{ t(f.label) }}
   </button>
 </template>
 
 <script setup lang="ts">
+import { t } from "../i18n";
 import { reactive } from "vue";
 
 const FILTERS = [

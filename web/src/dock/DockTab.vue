@@ -1,11 +1,12 @@
 <template>
   <div class="spla-dock-tab">
     <span class="title">{{ title }}</span>
-    <button v-if="!protectedPanel" title="Close panel" @pointerdown.stop @click.stop="api.close()">×</button>
+    <button v-if="!protectedPanel" :title="t('Close panel')" @pointerdown.stop @click.stop="api.close()">×</button>
   </div>
 </template>
 
 <script setup lang="ts">
+import { t } from "../i18n";
 import { computed, onBeforeUnmount, ref } from "vue";
 import type { DockviewPanelApi } from "dockview-vue";
 import { panelCatalog, type PanelKind } from "./panelCatalog";
@@ -26,7 +27,7 @@ const liveTitle = ref(api.value.title ?? "");
 const titleSub = api.value.onDidTitleChange(e => { liveTitle.value = e.title ?? ""; });
 onBeforeUnmount(() => titleSub.dispose());
 
-const title = computed(() => def.value ? `${def.value.icon} ${def.value.title}` : liveTitle.value);
+const title = computed(() => def.value ? `${def.value.icon} ${t(def.value.title)}` : liveTitle.value);
 const protectedPanel = computed(() => !!def.value?.protected);
 </script>
 

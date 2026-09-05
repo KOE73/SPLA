@@ -50,13 +50,13 @@
       <button
         class="pb-icon-btn pb-archive-toggle"
         :class="{ subtle: !store.showArchivedChats, active: store.showArchivedChats }"
-        title="Show archived chats"
+        :title="t('Show archived chats')"
         @click="store.showArchivedChats = !store.showArchivedChats"
       >🗄</button>
-      <button class="pb-icon-btn" title="Settings" @click="openSettings">
+      <button class="pb-icon-btn" :title="t('Settings')" @click="openSettings">
         <Icon name="settings" :size="19" :weight="2" />
       </button>
-      <button class="pb-icon-btn subtle" title="Debug" @click="uiBus.emit('debug.open')">
+      <button class="pb-icon-btn subtle" :title="t('Debug')" @click="uiBus.emit('debug.open')">
         <Icon name="debug" :size="16" />
       </button>
     </div>
@@ -64,6 +64,7 @@
 </template>
 
 <script setup lang="ts">
+import { t } from "../i18n";
 import { computed, onMounted, onUnmounted, ref } from "vue";
 import { client } from "../protocol/SplaClient";
 import { store } from "../state/store";

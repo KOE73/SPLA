@@ -35,6 +35,8 @@ public partial class MainWindow : Window
         var startupLabel = App.ResolvedSettings.ProjectName
             ?? (App.ProjectFilePath is { } p ? Path.GetFileNameWithoutExtension(p) : null);
         ApplyProjectTitle(startupLabel);
+        // The frame follows the language chosen in the web client; until it reports one, English.
+        Helpers.Localization.Track(this);
         Loaded += MainWindow_Loaded;
     }
 

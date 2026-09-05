@@ -5,21 +5,21 @@
     <div class="nav-tabs">
       <button
         class="nav-tab"
-        title="Chats"
+        :title="t('Chats')"
         @click="openPanel('chat')"
       >💬</button>
       <button
         class="nav-tab"
-        title="Project files"
+        :title="t('Project files')"
         @click="openPanel('workspace')"
       >◫</button>
       <button
         class="nav-tab"
-        title="Active sessions"
+        :title="t('Active sessions')"
         @click="openPanel('sessions')"
       >🗂</button>
     </div>
-    <button class="btn-new" @click="newChat">+ New</button>
+    <button class="btn-new" @click="newChat">{{ t('+ New') }}</button>
   </div>
 
   <!-- Chat list — shown in both layouts so the user can switch chats while browsing files -->
@@ -48,7 +48,7 @@
          normal list rather than interleaved, so an active chat's position never shifts as things get
          archived/restored. -->
     <template v-if="store.showArchivedChats">
-      <div class="archived-header">Archived</div>
+      <div class="archived-header">{{ t('Archived') }}</div>
       <ChatListItem
         v-for="chat in store.archivedChats"
         :key="chat.id"
@@ -59,7 +59,7 @@
         @restore="restore"
         @delete-permanently="removePermanently"
       />
-      <div v-if="!store.archivedChats.length" class="archived-empty">No archived chats.</div>
+      <div v-if="!store.archivedChats.length" class="archived-empty">{{ t('No archived chats.') }}</div>
     </template>
   </div>
 
@@ -70,6 +70,7 @@
 </template>
 
 <script setup lang="ts">
+import { t } from "../i18n";
 import { computed, onUnmounted, ref, watch } from "vue";
 import { client } from "../protocol/SplaClient";
 import { store } from "../state/store";
@@ -176,8 +177,8 @@ const aggregateState = computed(() => {
 
 // User-facing label for the aggregate indicator.
 const aggregateLabel = computed(() => {
-  if (aggregateState.value === "waiting") return "Someone is waiting";
-  if (aggregateState.value === "working") return "Work in progress";
+  if (aggregateState.value === "waiting") return t("Someone is waiting");
+  if (aggregateState.value === "working") return t("Work in progress");
   return "";
 });
 

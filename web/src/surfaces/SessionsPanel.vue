@@ -16,18 +16,18 @@
 -->
 <template>
   <div class="sessions-panel">
-    <div v-if="!sessions.length" class="sessions-empty">No spawned sessions.</div>
+    <div v-if="!sessions.length" class="sessions-empty">{{ t('No spawned sessions.') }}</div>
     <div v-for="s in sessions" :key="s.id" class="session-row" :class="{ active: s.id === store.currentChat }" @click="open(s.id)">
       <div class="session-head">
         <span class="session-role">{{ s.as || "agent" }}</span>
         <span v-if="s.state && s.state !== 'idle'" class="session-state" :class="`state-${s.state}`" :title="s.state">●</span>
         <span class="session-title">{{ s.title || s.id }}</span>
-        <span class="x" title="Open in a separate window" @click.stop="openChatWindow(s.id, s.title || s.as || s.id)">⧉</span>
+        <span class="x" :title="t('Open in a separate window')" @click.stop="openChatWindow(s.id, s.title || s.as || s.id)">⧉</span>
       </div>
       <div class="session-meta">
         <span class="session-parent" :title="'parent: ' + parentTitle(s)">↰ {{ parentTitle(s) }}</span>
         <span v-if="s.modelId" class="session-model" :title="'model: ' + s.modelId">{{ s.modelId }}</span>
-        <span v-if="hasTokens(s)" class="session-tokens" title="prompt / completion tokens">
+        <span v-if="hasTokens(s)" class="session-tokens" :title="t('prompt / completion tokens')">
           {{ s.promptTokens ?? 0 }}↑ {{ s.completionTokens ?? 0 }}↓
         </span>
       </div>
@@ -39,8 +39,8 @@
       top-of-file note on the "Web UI: Chat-Scoped State" rule).
     -->
     <div class="graph-section">
-      <div class="graph-title">Who talks to whom</div>
-      <div v-if="!edges.length" class="sessions-empty">No correspondences yet.</div>
+      <div class="graph-title">{{ t('Who talks to whom') }}</div>
+      <div v-if="!edges.length" class="sessions-empty">{{ t('No correspondences yet.') }}</div>
       <template v-else>
         <div v-if="imbalanced.length" class="graph-imbalance">
           <div v-for="r in imbalanced" :key="r.kind + r.role" class="imbalance-row" :title="r.detail">
@@ -54,6 +54,7 @@
 </template>
 
 <script setup lang="ts">
+import { t } from "../i18n";
 import { computed, onMounted, onUnmounted, ref } from "vue";
 import { store } from "../state/store";
 import { client } from "../protocol/SplaClient";

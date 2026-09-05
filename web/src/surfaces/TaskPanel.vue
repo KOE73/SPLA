@@ -12,7 +12,7 @@
       <button
         v-if="task.state === 'Running'"
         class="task-cancel"
-        title="Cancel this task"
+        :title="t('Cancel this task')"
         @click="cancelTask(task.taskId)"
       >✕</button>
     </div>
@@ -20,6 +20,7 @@
 </template>
 
 <script setup lang="ts">
+import { t } from "../i18n";
 import { onMounted, onUnmounted, ref, watch } from "vue";
 import { client } from "../protocol/SplaClient";
 import { useChat } from "../state/chatContext";

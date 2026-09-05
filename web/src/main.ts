@@ -3,6 +3,7 @@ import LayoutHost from "./layouts/LayoutHost.vue";
 import { client } from "./protocol/SplaClient";
 import { store } from "./state/store";
 import { bootAppearance } from "./state/appearance";
+import { bootLocale } from "./i18n";
 import { openOverlay } from "./state/overlay";
 import { setCurrentProject } from "./state/project";
 // Imported for its side effect: the chat-event demultiplexer subscribes on load, and it must be
@@ -10,6 +11,7 @@ import { setCurrentProject } from "./state/project";
 import "./state/chatSessions";
 
 bootAppearance();
+bootLocale();
 
 // The only native → web entry point we need: the Avalonia shell's "Settings" menu item calls this
 // instead of opening its own frame, so settings mount inside the window the person is already in

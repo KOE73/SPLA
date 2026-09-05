@@ -14,6 +14,8 @@ namespace SPLA.UI.Avalonia.Helpers;
 /// <item><c>{ kind: "appearance", theme, density }</c> — applied through
 /// <see cref="App.ChangeTheme"/>/<see cref="App.ChangeDensity"/> so the whole app follows one
 /// appearance event.</item>
+/// <item><c>{ kind: "lang", lang }</c> — the UI language chosen in the web client, applied to the
+/// native chrome through <see cref="Localization"/>.</item>
 /// <item><c>{ kind: "project", projectName }</c> — the web client's in-page project focus changed
 /// (see web/src/state/project.ts). Without this the OS window title/taskbar thumbnail stayed on
 /// whatever project the process started with even after the sidebar's ProjectPicker switched focus
@@ -36,7 +38,7 @@ public static class WebViewBridge
         if (string.IsNullOrWhiteSpace(message)) return;
 
         string? theme = null, density = null, kind = null, projectName = null;
-        string? surface = null, query = null, title = null, projectId = null;
+        string? surface = null, query = null, title = null, projectId = null, lang = null;
         try
         {
             using var doc = JsonDocument.Parse(message);
@@ -50,6 +52,7 @@ public static class WebViewBridge
             if (root.TryGetProperty("query", out var q)) query = q.GetString();
             if (root.TryGetProperty("title", out var w)) title = w.GetString();
             if (root.TryGetProperty("projectId", out var pi)) projectId = pi.GetString();
+            if (root.TryGetProperty("lang", out var l)) lang = l.GetString();
         }
         catch { return; }   // not our message — ignore
 
@@ -62,6 +65,12 @@ public static class WebViewBridge
                     if (!string.IsNullOrWhiteSpace(theme)) App.ChangeTheme(theme!);
                     if (!string.IsNullOrWhiteSpace(density)) App.ChangeDensity(density!);
                 });
+                break;
+
+            // Which language the web client is showing. The frame has no settings UI of its own —
+            // the person picks the language once, inside the window, and the chrome follows.
+            case "lang":
+                Dispatcher.UIThread.Post(() => Localization.SetLanguage(lang));
                 break;
 
             case "project":

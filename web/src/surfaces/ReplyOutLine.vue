@@ -13,7 +13,7 @@
   <div class="msg reply-out">
     <div class="reply-out-label">
       → to {{ target.role }}<span v-if="target.topic">&nbsp;({{ target.topic }})</span>
-      <span v-if="call.status === 'running'" class="reply-out-status">sending…</span>
+      <span v-if="call.status === 'running'" class="reply-out-status">{{ t('sending…') }}</span>
       <span v-else class="reply-out-status" :class="delivered ? 'ok' : 'failed'">
         {{ delivered ? "✓ delivered" : "✗ " + failureReason }}
       </span>
@@ -23,6 +23,7 @@
 </template>
 
 <script setup lang="ts">
+import { t } from "../i18n";
 import { computed } from "vue";
 import type { ToolCallState } from "./ToolCard.vue";
 

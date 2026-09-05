@@ -10,9 +10,9 @@
       :msg-id="msgId" :created-at="createdAt"
       @copy="copy" @rewind="$emit('rewind', msgId!)" @fork="$emit('fork', msgId!)"
     />
-    <div class="role">assistant</div>
+    <div class="role">{{ t('assistant') }}</div>
     <details class="reasoning" :hidden="!hasReasoning">
-      <summary>reasoning</summary>
+      <summary>{{ t('reasoning') }}</summary>
       <div class="rbody">{{ reasoning }}</div>
     </details>
     <div v-if="attempts && attempts.length" class="attempts">
@@ -27,6 +27,7 @@
 </template>
 
 <script setup lang="ts">
+import { t } from "../i18n";
 import { computed, onMounted, onUnmounted, ref, watch } from "vue";
 import { renderMarkdown } from "../composables/useMarkdown";
 import MsgActions from "./MsgActions.vue";

@@ -12,13 +12,14 @@
     ref="el"
     class="width-handle"
     :class="{ dragging }"
-    title="Drag to set the reading width — double-click to reset"
+    :title="t('Drag to set the reading width — double-click to reset')"
     @pointerdown="onDown"
     @dblclick="reset"
   ></div>
 </template>
 
 <script setup lang="ts">
+import { t } from "../i18n";
 import { onMounted, ref } from "vue";
 
 const KEY = "spla.contentWidth";

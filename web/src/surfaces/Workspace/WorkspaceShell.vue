@@ -3,8 +3,8 @@
   <!-- No workspace root ---------------------------------------------------- -->
   <div v-if="!workspacePath" class="ws-empty">
     <div class="ws-empty-icon">◫</div>
-    <div>No project open</div>
-    <div class="ws-empty-hint">Open a <code>.spla</code> project to browse its files.</div>
+    <div>{{ t('No project open') }}</div>
+    <div class="ws-empty-hint" v-html="t('Open a <code>.spla</code> project to browse its files.')"></div>
   </div>
 
   <!-- Workspace shell ------------------------------------------------------- -->
@@ -24,11 +24,11 @@
     </div>
 
     <!-- Drag splitter -->
-    <div class="ws-splitter" @mousedown.prevent="startResize" title="Drag to resize" />
+    <div class="ws-splitter" @mousedown.prevent="startResize" :title="t('Drag to resize')" />
 
     <!-- Right pane -->
     <div v-if="!selectedNode" class="ws-placeholder">
-      <span>Select a file to open it.</span>
+      <span>{{ t('Select a file to open it.') }}</span>
     </div>
     <div v-else-if="selectedNode.contentType === 'binary'" class="ws-placeholder">
       <span>Binary file — not shown ({{ selectedNode.label }})</span>
@@ -46,6 +46,7 @@
 </template>
 
 <script setup lang="ts">
+import { t } from "../../i18n";
 import { ref, computed, onMounted, onUnmounted, watch } from "vue";
 import { store } from "../../state/store";
 import { client } from "../../protocol/SplaClient";
