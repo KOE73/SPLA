@@ -30,14 +30,13 @@
 
     <ListPanel :empty="!hosts.length" :empty-text="t('No hosts yet.')"
                :add-label="t('Host')" @add="addHost">
+      <!-- Head: the card draws the caret, the name and the collapsed "where it points" line itself —
+           this panel only says what the words are and hangs the trash on the right. -->
       <ListCard v-for="(h, i) in hosts" :key="h.key"
-                :open="isOpen(h.key)" @update:open="toggle(h.key)">
-        <template #head>
-          <b class="name">{{ h.name || "(new host)" }}</b>
-          <span v-if="!isOpen(h.key)" class="muted sum">{{ summary(h) }}</span>
-          <span class="grow"></span>
-          <RemoveButton :label="t('Remove')" @click="removeHost(i)" />
-          <ExpandButton :open="isOpen(h.key)" @update:open="toggle(h.key)" />
+                :open="isOpen(h.key)" :title="h.name || t('(new host)')" :summary="summary(h)"
+                @update:open="toggle(h.key)">
+        <template #actions>
+          <DeleteButton @click="removeHost(i)" />
         </template>
 
         <template #body>
@@ -56,7 +55,7 @@
             <span class="muted w-label">{{ t('User') }}</span>
             <input v-model="h.user" :placeholder="h.credential ? '(from credential)' : 'login'" class="w-120" spellcheck="false">
             <span class="muted">{{ t('Key file') }}</span>
-            <input v-model="h.keyFile" :placeholder="t('optional: C:\Users\me\.ssh\id_ed25519')" class="w-260" spellcheck="false">
+            <input v-model="h.keyFile" :placeholder="t('optional: C:\\Users\\me\\.ssh\\id_ed25519')" class="w-260" spellcheck="false">
           </div>
 
           <div class="row">
@@ -86,8 +85,7 @@ import { reactive, ref } from "vue";
 import CredentialSlot from "./CredentialSlot.vue";
 import ListPanel from "./kit/ListPanel.vue";
 import ListCard from "./kit/ListCard.vue";
-import RemoveButton from "./kit/RemoveButton.vue";
-import ExpandButton from "./kit/ExpandButton.vue";
+import DeleteButton from "./kit/DeleteButton.vue";
 import type { MountApi } from "./mount";
 
 const props = defineProps<{ api: MountApi }>();
@@ -220,8 +218,6 @@ defineExpose({ toJson });
 .muted { color: var(--muted, #888); }
 .row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
 .grow { flex: 1; }
-.name { font-size: var(--fs-sm, 12px); }
-.sum { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .w-label { width: 80px; }
 .w-70 { width: 70px; } .w-120 { width: 120px; } .w-180 { width: 180px; } .w-260 { width: 260px; }
 .chk { cursor: pointer; }

@@ -5,16 +5,17 @@
     <ListPanel :empty="!plugins.length" :empty-text="t('no plugins discovered')">
       <!-- One collapsed row per plugin; click the row to expand its editors. Configured bits show
            as small summary text on the collapsed row so a glance tells what's customized. -->
-      <ListCard v-for="pl in plugins" :key="pl.id" :open="isOpen(pl.id)" @update:open="toggle(pl.id)"
-                :data-plugin-id="pl.id">
-        <template #head>
+      <ListCard v-for="pl in plugins" :key="pl.id" :open="isOpen(pl.id)" :summary="summary(pl)"
+                @update:open="toggle(pl.id)" :data-plugin-id="pl.id">
+        <template #title>
           <input type="checkbox" v-model="pl.enabled" @click.stop>
           <b class="pl-name">{{ pl.name || pl.id }}</b>
           <span class="ver">{{ pl.version || "" }} · {{ pl.id }}</span>
-          <span v-if="!isOpen(pl.id)" class="pl-sum">{{ summary(pl) }}</span>
-          <span class="grow"></span>
-          <span class="state">{{ pl.state && pl.state !== "Enabled" ? (pl.stateReason || pl.state) : "" }}</span>
-          <ExpandButton :open="isOpen(pl.id)" @update:open="toggle(pl.id)" />
+        </template>
+        <!-- A refusal to load is not an action, but it belongs where the eye already looks for the
+             row's verdict — the right end — and the card has no other place for it. -->
+        <template #actions>
+          <span v-if="pl.state && pl.state !== 'Enabled'" class="state">{{ pl.stateReason || pl.state }}</span>
         </template>
 
         <template #body>
@@ -50,7 +51,6 @@ import type { PluginDto } from "../../protocol/types";
 import PluginWebSettings from "./PluginWebSettings.vue";
 import ListPanel from "../../components/list/ListPanel.vue";
 import ListCard from "../../components/list/ListCard.vue";
-import ExpandButton from "../../components/buttons/ExpandButton.vue";
 
 /** Collapsed-row wording for a level the user set explicitly. */
 const LEVEL_LABELS: Record<string, string> = {
@@ -75,11 +75,14 @@ function toggle(id: string) {
 /** Collapsed-row hint of what's already configured — never the values, just what exists. */
 function summary(pl: PluginDto): string {
   const bits: string[] = [];
-  if (pl.customPrompt?.trim()) bits.push(`prompt: ${pl.customPrompt.trim().slice(0, 40)}${pl.customPrompt.trim().length > 40 ? "…" : ""}`);
-  if (pl.level) bits.push(`tools: ${LEVEL_LABELS[pl.level] ?? pl.level}`);
+  if (pl.customPrompt?.trim())
+    bits.push(t("prompt: {text}", {
+      text: `${pl.customPrompt.trim().slice(0, 40)}${pl.customPrompt.trim().length > 40 ? "…" : ""}`
+    }));
+  if (pl.level) bits.push(t("tools: {level}", { level: t(LEVEL_LABELS[pl.level] ?? pl.level) }));
   const json = pl.settingsJson?.trim();
-  if (json) bits.push(`settings: ${json.length} chars`);
-  else if (pl.webSettingsUrl) bits.push("has settings UI");
+  if (json) bits.push(t("settings: {n} chars", { n: json.length }));
+  else if (pl.webSettingsUrl) bits.push(t("has settings UI"));
   return bits.join(" · ");
 }
 
@@ -117,12 +120,10 @@ defineExpose({ save });
 </script>
 
 <style scoped>
-/* .pl-list/.pl-card/.pl-row/.pl-body/.chev are gone — ListPanel/ListCard (app.css) draw the list,
-   the card and the caret; only content specific to a plugin row stays here. */
+/* .pl-list/.pl-card/.pl-row/.pl-body/.chev/.pl-sum are gone — ListPanel/ListCard (app.css) draw the
+   list, the card, the caret and the collapsed summary; only content specific to a plugin row stays
+   here. */
 .pl-name { font-size: var(--fs-sm); }
 .ver { font-family: var(--mono); font-size: var(--fs-xs); color: var(--muted); }
-.pl-sum { font-size: var(--fs-xs); color: var(--muted); margin-left: 8px;
-  overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 45%; }
-.grow { flex: 1; }
 .state { font-size: var(--fs-xs); color: var(--danger, #f85149); }
 </style>

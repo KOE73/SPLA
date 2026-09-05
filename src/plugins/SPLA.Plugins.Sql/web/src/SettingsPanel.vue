@@ -30,15 +30,19 @@
 
     <ListPanel :empty="!connections.length" :empty-text="t('No connections yet.')"
                :add-label="t('Connection')" @add="addConnection">
+      <!-- Head: the card draws the caret and places everything — this panel only says what the words
+           are. The name goes through the #title slot rather than the plain prop because the driver
+           belongs next to it in both states: which engine this speaks is half of what names it,
+           while `summary` (where it points) is the collapsed-only half. -->
       <ListCard v-for="(c, i) in connections" :key="c.key"
-                :open="isOpen(c.key)" @update:open="toggle(c.key)">
-        <template #head>
-          <b class="name">{{ c.name || "(new connection)" }}</b>
+                :open="isOpen(c.key)" :summary="summary(c)" @update:open="toggle(c.key)">
+        <template #title>
+          <b>{{ c.name || t('(new connection)') }}</b>
           <span class="muted">{{ c.provider }}</span>
-          <span v-if="!isOpen(c.key)" class="muted sum">{{ summary(c) }}</span>
-          <span class="grow"></span>
-          <RemoveButton :label="t('Remove')" @click="removeConnection(i)" />
-          <ExpandButton :open="isOpen(c.key)" @update:open="toggle(c.key)" />
+        </template>
+
+        <template #actions>
+          <DeleteButton @click="removeConnection(i)" />
         </template>
 
         <template #body>
@@ -60,7 +64,7 @@
           </div>
           <div v-else class="row">
             <span class="muted w-70">{{ t('File') }}</span>
-            <input v-model="c.path" :placeholder="t('C:\data\mydb.sqlite')" class="w-400" spellcheck="false">
+            <input v-model="c.path" :placeholder="t('C:\\data\\mydb.sqlite')" class="w-400" spellcheck="false">
           </div>
 
           <template v-if="c.provider !== 'sqlite'">
@@ -103,8 +107,7 @@ import { reactive, ref } from "vue";
 import CredentialSlot from "./CredentialSlot.vue";
 import ListPanel from "./kit/ListPanel.vue";
 import ListCard from "./kit/ListCard.vue";
-import RemoveButton from "./kit/RemoveButton.vue";
-import ExpandButton from "./kit/ExpandButton.vue";
+import DeleteButton from "./kit/DeleteButton.vue";
 import type { MountApi } from "./mount";
 
 const props = defineProps<{ api: MountApi }>();
@@ -266,8 +269,6 @@ defineExpose({ toJson });
 .muted { color: var(--muted, #888); }
 .row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
 .grow { flex: 1; }
-.name { font-size: var(--fs-sm, 12px); }
-.sum { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .w-70 { width: 70px; } .w-90 { width: 90px; } .w-130 { width: 130px; }
 .w-140 { width: 140px; } .w-160 { width: 160px; } .w-220 { width: 220px; } .w-400 { width: 400px; }
 .chk { cursor: pointer; }

@@ -26,9 +26,11 @@
       >
         <ConnectionCard
           v-for="conn in grouped[s.scope]"
-          :key="conn.clientId || conn.id"
+          :key="keyOf(conn)"
           :conn="conn"
           :health="health[conn.id]"
+          :open="openKeys.has(keyOf(conn))"
+          @update:open="toggle(conn)"
           @remove="remove(conn)"
         />
       </ListPanel>
@@ -80,6 +82,16 @@ const conns = ref<ConnectionDto[]>([]);
 const health = reactive<Record<string, ConnHealth>>({});
 const hint = ref("");
 
+/** Which cards are unfolded. A saved connection arrives shut — the head says who it is, where it
+ *  points and whether it answers, which is what you came to a list of connections for. One you just
+ *  added opens on the spot: its empty fields are the entire reason you pressed the button. */
+const openKeys = reactive(new Set<string>());
+const keyOf = (c: ConnectionDto) => c.clientId || c.id;
+function toggle(conn: ConnectionDto) {
+  const key = keyOf(conn);
+  if (!openKeys.delete(key)) openKeys.add(key);
+}
+
 /** An entry that never said where it lives is a project one — the layer everything was in before
  *  scopes existed, and the same fallback the server applies. */
 const scopeOf = (c: ConnectionDto): Scope =>
@@ -92,15 +104,18 @@ const grouped = computed(() => {
 });
 
 function addConnection(scope: Scope) {
-  conns.value.push({
+  const conn: ConnectionDto = {
     id: "", clientId: uuid(), name: "", provider: "lmstudio", scope,
     endpoint: KNOWN_DEFAULT_EP, apiKey: "", models: []
-  });
+  };
+  conns.value.push(conn);
+  openKeys.add(keyOf(conn));
 }
 
 function remove(conn: ConnectionDto) {
   const i = conns.value.indexOf(conn);
   if (i >= 0) conns.value.splice(i, 1);
+  openKeys.delete(keyOf(conn));
 }
 
 function applyResult(connections: ConnectionDto[]) {
@@ -109,6 +124,10 @@ function applyResult(connections: ConnectionDto[]) {
     clientId: c.id || uuid(),
     models: (c.models || []).map(m => ({ ...m, clientId: m.id || uuid() }))
   }));
+  // What the server sends back is keyed by id, so a card that was open stays open — while the
+  // throwaway key of a connection that has just been saved is gone from the list and drops out
+  // with it, which is how a fresh entry settles into the shut row it now is.
+  for (const key of [...openKeys]) if (!conns.value.some(c => keyOf(c) === key)) openKeys.delete(key);
 }
 
 const offResult = client.on("connections.result", p => {

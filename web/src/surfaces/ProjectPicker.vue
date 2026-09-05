@@ -29,7 +29,7 @@
             v-if="!serverMode"
             v-model="newPath"
             class="create-input"
-            :placeholder="t('C:\Projects\Demo\Demo.spla')"
+            :placeholder="t('C:\\Projects\\Demo\\Demo.spla')"
             spellcheck="false"
             autofocus
           >

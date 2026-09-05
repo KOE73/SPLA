@@ -1,7 +1,7 @@
 <!--
-  The one base every small glyph button in the app is built from — trash, caret, copy, remove.
+  The one base every small glyph button in the app is built from — trash, caret, copy, refresh.
   Consumers never write button CSS; they pick a semantic wrapper (DeleteButton, ExpandButton,
-  CopyButton, RemoveButton) and this is what those render. All styling lives in app.css under
+  CopyButton, RefreshButton, AddButton) and this is what those render. All styling lives in app.css under
   ".gbtn" so a single edit there restyles every glyph button in the app at once — see the
   "Shared glyph buttons" section.
 -->

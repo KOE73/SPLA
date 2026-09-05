@@ -15,12 +15,12 @@
       <input v-model="row.key" :placeholder="t('KEY')" class="mono kv-key" @change="emitRows">
       <CredentialField
         :model-value="row.value"
-        none-:label="t('(none)')"
+        :none-label="t('(none)')"
         create-field="value"
         :create-scope="scope"
         @update:model-value="v => { row.value = v; emitRows(); }"
       />
-      <RemoveButton @click="removeRow(i)" />
+      <DeleteButton @click="removeRow(i)" />
     </div>
   </ListPanel>
 </template>
@@ -31,7 +31,7 @@ import { ref } from "vue";
 import type { SecretScopeId } from "../../protocol/types";
 import CredentialField from "../../secrets/CredentialField.vue";
 import ListPanel from "../../components/list/ListPanel.vue";
-import RemoveButton from "../../components/buttons/RemoveButton.vue";
+import DeleteButton from "../../components/buttons/DeleteButton.vue";
 
 const props = withDefaults(defineProps<{
   rows?: Record<string, string>;

@@ -31,19 +31,24 @@
       <template v-else>
         <ListPanel :empty="!entriesOf(s.id).length" :empty-text="t('No secrets in this scope.')"
                    :add-label="t('Secret')" @add="adding = s.id">
+          <!-- Read-only entries are not collapsible: there is no editor to open behind them, which is
+               the same state the missing caret used to say. -->
           <ListCard v-for="e in entriesOf(s.id)" :key="e.key"
-                    :open="isOpen(s.id, e.key)" :no-toggle-on-click="true"
+                    :open="isOpen(s.id, e.key)" :no-toggle-on-click="true" :collapsible="!!e.canManage"
                     @update:open="toggle(s.id, e.key)">
-            <template #head>
+            <template #title>
               <code class="e-key">{{ e.key }}</code>
+              <!-- The field chips stay in the title rather than becoming a collapsed-only summary:
+                   each one carries its own "copy this reference" button, which is worth as much with
+                   the editor open as with it shut. -->
               <span v-for="f in e.fields" :key="f" class="chip" :title="`${e.reference}#${f}`">
                 {{ f }}
                 <CopyButton :text="`${e.reference}#${f}`" :title="`Copy '${e.reference}#${f}'`" />
               </span>
-              <span class="grow"></span>
+            </template>
+            <template #actions>
               <CopyButton :text="`credential: ${e.reference}`" :label="t('ref')" :title="`Copy 'credential: ${e.reference}'`" />
-              <ExpandButton v-if="e.canManage" :open="isOpen(s.id, e.key)" @update:open="toggle(s.id, e.key)" />
-              <DeleteButton v-if="e.canManage" :title="t('Delete entry')" @click="del(s.id, e.key)" />
+              <DeleteButton v-if="e.canManage" @click="del(s.id, e.key)" />
               <span v-else class="chip ro" :title="t('You may use this credential but not change it')">{{ t('read-only') }}</span>
             </template>
             <template v-if="isOpen(s.id, e.key)" #body>
@@ -67,7 +72,6 @@ import ListPanel from "../../components/list/ListPanel.vue";
 import ListCard from "../../components/list/ListCard.vue";
 import DeleteButton from "../../components/buttons/DeleteButton.vue";
 import RefreshButton from "../../components/buttons/RefreshButton.vue";
-import ExpandButton from "../../components/buttons/ExpandButton.vue";
 import CopyButton from "../../components/buttons/CopyButton.vue";
 import { SCOPES, deleteSecret, entriesOf, loadSecrets, scopeDisabled } from "../../secrets/store";
 import { client } from "../../protocol/SplaClient";
@@ -105,15 +109,13 @@ reload();
 .scope-name { font-weight: 600; color: var(--text); }
 .scope-sub { font-size: var(--fs-xs); color: var(--muted); font-family: var(--mono); }
 
-/* The entry row's head is otherwise just .list-card-head (global) — only the bits specific to a
-   secret entry (mono key, the field chips) live here. */
-.e-key { font-family: var(--mono); font-size: var(--fs-sm); font-weight: 600; color: var(--text); margin-right: 4px; }
-.grow { flex: 1; }
+/* The entry row's head is the shared .list-card-head/-title/-actions (app.css) — only the bits
+   specific to a secret entry (mono key, the field chips) live here. */
+.e-key { font-family: var(--mono); font-size: var(--fs-sm); font-weight: 600; color: var(--text); }
 
 .chip { display: inline-flex; align-items: center; gap: 2px; padding: 0 2px 0 6px;
   font-family: var(--mono); font-size: var(--fs-xs); color: var(--muted);
   border: 1px solid var(--border); border-radius: 999px; background: var(--bg); line-height: 16px; }
-.chip .gbtn { min-width: 16px; height: 16px; padding: 0; }
 
 .empty { color: var(--muted); font-size: var(--fs-sm); padding: 3px 0; }
 .new-editor { margin-top: 6px; }

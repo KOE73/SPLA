@@ -32,49 +32,51 @@
 
       <ListCard v-for="group in groups" :key="group.source.id"
                 :open="isOpen(group.source.id)" @update:open="toggleGroup(group.source.id)">
-        <template #head>
-          <ExpandButton :open="isOpen(group.source.id)" @update:open="toggleGroup(group.source.id)" />
+        <template #title>
           <b class="sk-name">{{ group.source.label }}</b>
           <span class="sk-id">{{ group.source.id }}</span>
           <span class="sk-origin" :title="originHint(group.source)">{{ (group.source.origin || '').toLowerCase() }}</span>
           <span v-if="group.source.enabled === false" class="sk-off">{{ t('off') }}</span>
+          <span v-if="group.source.trust !== 'Trusted'" class="sk-untrusted">{{ t('untrusted') }}</span>
+          <!-- Why a switched-on skill is never chosen: the source is not in the model's catalog. Read
+               only — the level is a .spla decision, not a panel toggle. -->
+          <span v-if="group.source.level && group.source.level !== 'OnShelf'"
+                class="sk-level" :title="levelHint(group.source.level)">{{ levelLabel(group.source.level) }}</span>
+          <!-- The folder is the actionable part of a skill source: it is where you put a new .md file,
+               so it stays readable with the branch open, not only while it is shut. -->
+          <span v-if="group.source.path" class="sk-path" :title="group.source.path">{{ group.source.path }}</span>
+          <span class="sk-count">{{ group.items.length }}</span>
+        </template>
 
+        <template #actions>
           <!-- The one action that matters on an untrusted branch, and after this change the ONLY one:
                switching a single skill on no longer gets past trust. A row of dead toggles with no
                way up is how a person concludes the feature is broken. -->
-          <span v-if="group.source.trust !== 'Trusted'" class="sk-untrusted">{{ t('untrusted') }}</span>
           <button v-if="group.source.trust !== 'Trusted' && group.source.path"
                   class="btn ghost sk-act" @click.stop="confirmTrust(group.source)">{{ t('trust this folder…') }}</button>
           <button v-else-if="group.source.trustGranted"
                   class="btn ghost sk-act" :title="t('Withdraw approval of this folder\'s contents')"
                   @click.stop="setTrust(group.source, false)">{{ t('untrust') }}</button>
-          <!-- Why a switched-on skill is never chosen: the source is not in the model's catalog. Read
-               only — the level is a .spla decision, not a panel toggle. -->
-          <span v-if="group.source.level && group.source.level !== 'OnShelf'"
-                class="sk-level" :title="levelHint(group.source.level)">{{ levelLabel(group.source.level) }}</span>
-          <span class="grow"></span>
           <!-- Acts on what is VISIBLE, not on the whole source: with a filter applied, "all" meaning
                something other than what you are looking at is how people switch off things they never
                saw. -->
           <button v-if="group.items.length > 1" class="btn ghost sk-act"
-                  :title="`Switch on the ${toggleable(group).length} shown skill(s)`"
-                  @click.stop="setGroup(group, true)">all on</button>
+                  :title="t('Switch on the {n} shown skill(s)', { n: toggleable(group).length })"
+                  @click.stop="setGroup(group, true)">{{ t('all on') }}</button>
           <button v-if="group.items.length > 1" class="btn ghost sk-act"
-                  :title="`Switch off the ${toggleable(group).length} shown skill(s)`"
-                  @click.stop="setGroup(group, false)">all off</button>
+                  :title="t('Switch off the {n} shown skill(s)', { n: toggleable(group).length })"
+                  @click.stop="setGroup(group, false)">{{ t('all off') }}</button>
           <!-- Every branch is switchable, including inherited ones — that records an override in your
                own store rather than editing the project. Only your own can be removed outright: an
                inherited one that vanished would leave nobody able to remember it existed. -->
-          <button class="btn ghost sk-act" :title="group.source.enabled === false ? 'Switch this branch back on' : 'Switch this branch off — it stays listed'"
+          <button class="btn ghost sk-act"
+                  :title="group.source.enabled === false
+                    ? t('Switch this branch back on')
+                    : t('Switch this branch off — it stays listed')"
                   @click.stop="setSourceEnabled(group.source, group.source.enabled === false)">
-            {{ group.source.enabled === false ? "on" : "off" }}
+            {{ group.source.enabled === false ? t('on') : t('off') }}
           </button>
-          <RemoveButton v-if="group.source.editable" :label="t('Remove')" :title="t('Remove your own branch')"
-                        @click="removeSource(group.source)" />
-
-          <!-- The folder is the actionable part of a skill source: it is where you put a new .md file. -->
-          <span v-if="group.source.path" class="sk-path" :title="group.source.path">{{ group.source.path }}</span>
-          <span class="sk-count">{{ group.items.length }}</span>
+          <DeleteButton v-if="group.source.editable" @click="removeSource(group.source)" />
         </template>
 
         <template #body>
@@ -131,8 +133,7 @@ import type { CapabilityDto, SkillSourceDto, SkillSourceEditDto } from "../../pr
 import CapabilityRow from "./CapabilityRow.vue";
 import ListPanel from "../../components/list/ListPanel.vue";
 import ListCard from "../../components/list/ListCard.vue";
-import ExpandButton from "../../components/buttons/ExpandButton.vue";
-import RemoveButton from "../../components/buttons/RemoveButton.vue";
+import DeleteButton from "../../components/buttons/DeleteButton.vue";
 
 const emit = defineEmits<{ (e: "open-plugin", pluginId: string): void }>();
 
@@ -332,10 +333,10 @@ defineExpose({ save });
 </script>
 
 <style scoped>
-/* .sk-group/.sk-group-head/.sk-items/.sk-add/.chev/.btn.tiny are gone — ListPanel, ListCard,
-   AddButton and ExpandButton (app.css) draw the list, the cards, the add affordance and the caret.
-   Only what is specific to a skill source stays here: the facet row, the id/path mono text, the
-   level and trust chips, and the draft row for a new branch. */
+/* .sk-group/.sk-group-head/.sk-items/.sk-add/.chev/.btn.tiny/.grow are gone — ListPanel, ListCard
+   and AddButton (app.css) draw the list, the cards, the add affordance and the caret the card puts
+   ahead of every title. Only what is specific to a skill source stays here: the facet row, the
+   id/path mono text, the level and trust chips, and the draft row for a new branch. */
 .s-head .grow { flex: 1; }
 .filter { font-size: var(--fs-xs); color: var(--muted); display: flex; align-items: center; gap: 4px; }
 .sk-name { font-size: var(--fs-sm); }
@@ -369,7 +370,6 @@ defineExpose({ save });
 .sk-path { font-family: var(--mono); font-size: var(--fs-xs); color: var(--muted);
   overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 50%; }
 .sk-empty { font-family: var(--mono); font-size: var(--fs-xs); color: var(--muted); padding: 2px 8px; }
-.grow { flex: 1; }
 /* A compact ghost button, as in ConnectionCard: a source head carries up to five of these and the
    default .btn padding would make the row twice as tall. Size only — the family is the shared one. */
 .sk-act { padding: 1px 8px; font-size: var(--fs-xs); white-space: nowrap; }

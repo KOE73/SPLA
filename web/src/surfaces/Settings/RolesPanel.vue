@@ -33,20 +33,21 @@
 
     <ListPanel v-else :empty="!roles.length" :empty-text="t('This project has no roles yet.')"
                :add-label="t('Role')" @add="addRole">
+      <!-- The description is the card's own collapsed-only afterword: once open, the Description
+           field says it in full and in an editable box. -->
       <ListCard v-for="r in roles" :key="r.key" :open="open === r.key" :no-toggle-on-click="true"
-                @update:open="toggleOpen(r.key)">
-        <template #head>
+                :summary="r.description" @update:open="toggleOpen(r.key)">
+        <template #title>
           <input type="checkbox" :checked="r.active" :title="r.active
-                   ? 'Declared in the manifest — this role acts'
-                   : 'Body only — the manifest does not name it, so it does not act'"
+                   ? t('Declared in the manifest — this role acts')
+                   : t('Body only — the manifest does not name it, so it does not act')"
                  @change="r.active = ($event.target as HTMLInputElement).checked" />
-          <b class="r-name" :class="{ off: !r.active }">{{ r.name || "(unnamed)" }}</b>
+          <b class="r-name" :class="{ off: !r.active }">{{ r.name || t("(unnamed)") }}</b>
           <span class="r-badge">{{ r.mode || projectMode + " (project)" }}</span>
           <span v-if="r.modelId" class="r-badge">{{ modelLabel(r.modelId) }}</span>
           <span v-if="narrowings(r)" class="r-badge narrow" :title="narrowings(r) || ''">{{ t('narrowed') }}</span>
-          <span class="r-desc">{{ r.description }}</span>
-          <span class="grow"></span>
-          <ExpandButton :open="open === r.key" @update:open="toggleOpen(r.key)" />
+        </template>
+        <template #actions>
           <DeleteButton :title="t('Delete this role — its file goes on the next Save')" @click="remove(r.key)" />
         </template>
 
@@ -114,11 +115,11 @@
             </p>
 
             <div class="field col"><span>{{ t('Connections') }}</span>
-              <ChipSelect v-model="r.connections" :options="connectionOptions" all-:label="t('every connection')" />
+              <ChipSelect v-model="r.connections" :options="connectionOptions" :all-label="t('every connection')" />
             </div>
             <div class="field col"><span>{{ t('Islands') }}</span>
               <ChipSelect v-if="islands.length" v-model="r.islands"
-                          :options="islands.map(i => ({ id: i }))" all-:label="t('every island')" />
+                          :options="islands.map(i => ({ id: i }))" :all-label="t('every island')" />
               <input v-else :value="(r.islands || []).join(', ')" :placeholder="t('every island')"
                      spellcheck="false"
                      @input="r.islands = splitList(($event.target as HTMLInputElement).value)" />
@@ -179,7 +180,6 @@ import type { CapabilityDto, ConnectionDto, RoleEditDto } from "../../protocol/t
 import ListPanel from "../../components/list/ListPanel.vue";
 import ListCard from "../../components/list/ListCard.vue";
 import DeleteButton from "../../components/buttons/DeleteButton.vue";
-import ExpandButton from "../../components/buttons/ExpandButton.vue";
 import ChipSelect from "../../components/fields/ChipSelect.vue";
 import TriStateField from "../../components/fields/TriStateField.vue";
 import InheritNumberField from "../../components/fields/InheritNumberField.vue";
@@ -317,15 +317,14 @@ defineExpose({ save });
 .expl { margin: 4px 0 12px; color: var(--muted); font-size: var(--fs-sm); line-height: 1.5; max-width: 680px; }
 .expl code, .sub code { font-family: var(--mono); color: var(--text); }
 .empty { color: var(--muted); font-size: var(--fs-sm); padding: 6px 0; }
-.grow { flex: 1; }
 
+/* .grow and .r-desc are gone — the card head's spacer and its collapsed summary line are the kit's
+   (.list-card-summary in app.css). Only what names a role stays here. */
 .r-name { font-size: var(--fs-sm); white-space: nowrap; }
 .r-name.off { color: var(--muted); font-weight: 400; }
 .r-badge { font-family: var(--mono); font-size: var(--fs-xs); color: var(--muted);
   border: 1px solid var(--border); border-radius: 4px; padding: 0 4px; white-space: nowrap; }
 .r-badge.narrow { border-style: dashed; }
-.r-desc { font-size: var(--fs-xs); color: var(--muted); overflow: hidden;
-  text-overflow: ellipsis; white-space: nowrap; }
 
 .group { margin: 10px 0 4px; padding-top: 8px; border-top: 1px solid var(--border); }
 .group-head { font-weight: 600; font-size: var(--fs-sm); margin-bottom: 2px; }

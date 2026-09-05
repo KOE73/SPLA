@@ -26,21 +26,20 @@
 
       <ListPanel :empty="!servers.length" :empty-text="t('no servers configured')" :add-label="t('MCP server')" @add="add">
         <ListCard v-for="s in servers" :key="s._key"
-                  :open="isOpen(s._key)" @update:open="toggle(s._key)">
-          <template #head>
+                  :open="isOpen(s._key)" :summary="summary(s)" @update:open="toggle(s._key)">
+          <template #title>
             <input type="checkbox" v-model="s.enabled" @click.stop>
-            <b class="pl-name">{{ s.name || s.id || "(new server)" }}</b>
+            <b class="pl-name">{{ s.name || s.id || t("(new server)") }}</b>
             <span class="ver">{{ s.transport }}</span>
             <span class="dot" :class="stateClass(s.state)"></span>
-            <span class="state-word" :class="stateClass(s.state)">{{ s.state || "never connected" }}</span>
-            <span v-if="!isOpen(s._key)" class="pl-sum">{{ summary(s) }}</span>
-            <span class="grow"></span>
+            <span class="state-word" :class="stateClass(s.state)">{{ s.state || t("never connected") }}</span>
+          </template>
+          <template #actions>
             <button v-if="s.state" class="btn ghost" type="button" :disabled="reconnecting === s.id"
                     @click.stop="reconnect(s)">
-              {{ reconnecting === s.id ? "reconnecting…" : "Reconnect" }}
+              {{ reconnecting === s.id ? t("reconnecting…") : t("Reconnect") }}
             </button>
-            <RemoveButton :label="t('Remove')" @click="remove(s._key)" />
-            <ExpandButton :open="isOpen(s._key)" @update:open="toggle(s._key)" />
+            <DeleteButton @click="remove(s._key)" />
           </template>
 
           <template #body>
@@ -116,8 +115,7 @@ import type { McpServerDto } from "../../protocol/types";
 import KvRows from "./KvRows.vue";
 import ListPanel from "../../components/list/ListPanel.vue";
 import ListCard from "../../components/list/ListCard.vue";
-import RemoveButton from "../../components/buttons/RemoveButton.vue";
-import ExpandButton from "../../components/buttons/ExpandButton.vue";
+import DeleteButton from "../../components/buttons/DeleteButton.vue";
 
 const enabled = ref(false);
 const port = ref<number | null>(null);
@@ -178,9 +176,9 @@ function stateClass(state?: string | null): string {
 
 function summary(s: EditableServer): string {
   const bits: string[] = [];
-  if (s.origin === "named") bits.push("named");
-  if (s.level) bits.push(`tools: ${s.level}`);
-  if (s.toolCount) bits.push(`${s.toolCount} tool${s.toolCount === 1 ? "" : "s"}`);
+  if (s.origin === "named") bits.push(t("named"));
+  if (s.level) bits.push(t("tools: {level}", { level: s.level }));
+  if (s.toolCount) bits.push(s.toolCount === 1 ? t("1 tool") : t("{n} tools", { n: s.toolCount }));
   return bits.join(" · ");
 }
 
@@ -271,13 +269,11 @@ defineExpose({ save });
 </script>
 
 <style scoped>
-/* .pl-card/.pl-list/.pl-row/.pl-body/.chev are gone — ListPanel/ListCard (app.css) draw the card,
-   the list spacing and the caret now; only the content specific to an MCP server row stays here. */
+/* .pl-card/.pl-list/.pl-row/.pl-body/.chev/.pl-sum are gone — ListPanel/ListCard (app.css) draw the
+   card, the list spacing, the caret and the collapsed summary now; only the content specific to an
+   MCP server row stays here. */
 .pl-name { font-size: var(--fs-sm); }
 .ver { font-family: var(--mono); font-size: var(--fs-xs); color: var(--muted); }
-.pl-sum { font-size: var(--fs-xs); color: var(--muted); margin-left: 8px;
-  overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 35%; }
-.grow { flex: 1; }
 .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--muted); flex: 0 0 auto; }
 .dot.ok { background: var(--ok, #3fb950); }
 .dot.danger { background: var(--danger, #f85149); }
