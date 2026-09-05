@@ -1,8 +1,8 @@
 <template>
   <div class="s-panel" data-tab="plugins">
-    <div class="s-head"><b>Plugins</b><span class="hint">{{ hint }}</span></div>
-    <div class="list-panel">
-      <div v-if="!plugins.length" class="list-empty">no plugins discovered</div>
+    <div class="s-head"><b>{{ t('Plugins') }}</b><span class="hint">{{ t(hint) }}</span></div>
+    <!-- No add button: plugins are discovered on disk, not created here — hence no `add-label`. -->
+    <ListPanel :empty="!plugins.length" :empty-text="t('no plugins discovered')">
       <!-- One collapsed row per plugin; click the row to expand its editors. Configured bits show
            as small summary text on the collapsed row so a glance tells what's customized. -->
       <ListCard v-for="pl in plugins" :key="pl.id" :open="isOpen(pl.id)" @update:open="toggle(pl.id)"
@@ -22,31 +22,33 @@
                DELIVERY (is the assembly loaded at all), this is DISCLOSURE (how much of the set the
                model is shown before it is needed). -->
           <label class="field col">
-            <span>Tools in context</span>
+            <span>{{ t('Tools in context') }}</span>
             <select v-model="pl.level" :disabled="pl.enabled === false">
-              <option value="">follow the enable flag</option>
-              <option value="enabled">always — full definitions in every request</option>
-              <option value="agent_demand">announced — one line; the agent loads it when needed</option>
-              <option value="skill_demand">on skill demand — nothing until a skill requires it</option>
-              <option value="disabled">never — the set does not exist for the model</option>
+              <option value="">{{ t('follow the enable flag') }}</option>
+              <option value="enabled">{{ t('always — full definitions in every request') }}</option>
+              <option value="agent_demand">{{ t('announced — one line; the agent loads it when needed') }}</option>
+              <option value="skill_demand">{{ t('on skill demand — nothing until a skill requires it') }}</option>
+              <option value="disabled">{{ t('never — the set does not exist for the model') }}</option>
             </select>
           </label>
-          <label class="field col"><span>Custom prompt</span><textarea v-model="pl.customPrompt" rows="2"></textarea></label>
+          <label class="field col"><span>{{ t('Custom prompt') }}</span><textarea v-model="pl.customPrompt" rows="2"></textarea></label>
           <!-- A plugin with its own web settings module renders itself here; everything else falls
                back to the generic opaque JSON editor. The panel never branches on plugin id. -->
           <PluginWebSettings v-if="pl.webSettingsUrl" :plugin="pl" :ref="(el) => setWebRef(pl.id, el)" />
-          <label v-else class="field col"><span>Settings (JSON)</span><textarea v-model="pl.settingsJson" class="mono" rows="4" spellcheck="false"></textarea></label>
+          <label v-else class="field col"><span>{{ t('Settings (JSON)') }}</span><textarea v-model="pl.settingsJson" class="mono" rows="4" spellcheck="false"></textarea></label>
         </template>
       </ListCard>
-    </div>
+    </ListPanel>
   </div>
 </template>
 
 <script setup lang="ts">
+import { t } from "../../i18n";
 import { onUnmounted, ref } from "vue";
 import { client } from "../../protocol/SplaClient";
 import type { PluginDto } from "../../protocol/types";
 import PluginWebSettings from "./PluginWebSettings.vue";
+import ListPanel from "../../components/list/ListPanel.vue";
 import ListCard from "../../components/list/ListCard.vue";
 import ExpandButton from "../../components/buttons/ExpandButton.vue";
 
@@ -90,8 +92,8 @@ const off = client.on("plugins.result", p => {
   plugins.value = p.plugins || [];
   webRefs.clear();
   const bits: string[] = [];
-  if (p.canPersist === false) bits.push("no .spla project — session-only");
-  if (p.restartToApply) bits.push("enable/disable applies on next launch");
+  if (p.canPersist === false) bits.push(t("no .spla project — session-only"));
+  if (p.restartToApply) bits.push(t("enable/disable applies on next launch"));
   hint.value = bits.join(" · ");
 });
 onUnmounted(off);
@@ -115,8 +117,8 @@ defineExpose({ save });
 </script>
 
 <style scoped>
-/* .pl-list/.pl-card/.pl-row/.pl-body/.chev are gone — ListCard (app.css) draws the card and caret;
-   only content specific to a plugin row stays here. */
+/* .pl-list/.pl-card/.pl-row/.pl-body/.chev are gone — ListPanel/ListCard (app.css) draw the list,
+   the card and the caret; only content specific to a plugin row stays here. */
 .pl-name { font-size: var(--fs-sm); }
 .ver { font-family: var(--mono); font-size: var(--fs-xs); color: var(--muted); }
 .pl-sum { font-size: var(--fs-xs); color: var(--muted); margin-left: 8px;

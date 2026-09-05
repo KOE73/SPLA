@@ -4,74 +4,90 @@
   reference into the global secret store, never a literal password. Picking or creating that entry is
   the HOST's credential control, borrowed through CredentialSlot — this plugin never speaks the
   secret protocol and never handles a value; the host config keeps only the reference.
+
+  Shape: the list of cards, then "＋ Host" — the same one every Settings list in the host wears.
+  That shape is not hand-drawn here; it comes from ./kit (ListPanel/ListCard/glyph buttons), this
+  bundle's copy of the host's shared list kit. Nothing below carries a border, a background or a
+  radius of its own.
 -->
 <template>
   <div class="ssh-set">
     <div class="muted">
-      Named SSH hosts available to the agent and the terminal. Passwords/keys live in the secret
-      store (Settings → Secrets); a host only references an entry by name.
+      {{ t('Named SSH hosts available to the agent and the terminal. Passwords/keys live in the secret store (Settings → Secrets); a host only references an entry by name.') }}
     </div>
 
     <div class="row">
-      <label><span class="muted">Default host</span>
+      <label><span class="muted">{{ t('Default host') }}</span>
         <select v-model="defaultHost">
-          <option value="">(none)</option>
+          <option value="">{{ t('(none)') }}</option>
           <option v-for="h in hosts" :key="h.key" :value="h.name">{{ h.name }}</option>
         </select>
       </label>
-      <label><span class="muted">Timeout, s</span>
+      <label><span class="muted">{{ t('Timeout, s') }}</span>
         <input v-model.number="timeoutSeconds" type="number" min="5" max="120" class="w-70">
       </label>
     </div>
 
-    <div v-if="!hosts.length" class="muted empty">No hosts yet. Click "+ Add host" below.</div>
+    <ListPanel :empty="!hosts.length" :empty-text="t('No hosts yet.')"
+               :add-label="t('Host')" @add="addHost">
+      <ListCard v-for="(h, i) in hosts" :key="h.key"
+                :open="isOpen(h.key)" @update:open="toggle(h.key)">
+        <template #head>
+          <b class="name">{{ h.name || "(new host)" }}</b>
+          <span v-if="!isOpen(h.key)" class="muted sum">{{ summary(h) }}</span>
+          <span class="grow"></span>
+          <RemoveButton :label="t('Remove')" @click="removeHost(i)" />
+          <ExpandButton :open="isOpen(h.key)" @update:open="toggle(h.key)" />
+        </template>
 
-    <div v-for="(h, i) in hosts" :key="h.key" class="host-card">
-      <div class="row spread">
-        <div class="row">
-          <span class="muted">Name</span><input v-model="h.name" class="w-120" spellcheck="false">
-          <span class="muted">Host</span><input v-model="h.host" placeholder="10.0.0.5 or box.local" class="w-180" spellcheck="false">
-          <span class="muted">Port</span><input v-model.number="h.port" type="number" min="1" max="65535" class="w-70">
-        </div>
-        <button type="button" class="remove" @click="hosts.splice(i, 1)">✕ Remove</button>
-      </div>
+        <template #body>
+          <div class="row">
+            <span class="muted w-label">{{ t('Name') }}</span><input v-model="h.name" class="w-120" spellcheck="false">
+            <span class="muted">{{ t('Host') }}</span><input v-model="h.host" :placeholder="t('10.0.0.5 or box.local')" class="w-180" spellcheck="false">
+            <span class="muted">{{ t('Port') }}</span><input v-model.number="h.port" type="number" min="1" max="65535" class="w-70">
+          </div>
 
-      <div class="row">
-        <span class="muted w-label">Credential</span>
-        <CredentialSlot :api="api" v-model="h.credential" />
-      </div>
+          <div class="row">
+            <span class="muted w-label">{{ t('Credential') }}</span>
+            <CredentialSlot :api="api" v-model="h.credential" />
+          </div>
 
-      <div class="row">
-        <span class="muted w-label">User</span>
-        <input v-model="h.user" :placeholder="h.credential ? '(from credential)' : 'login'" class="w-120" spellcheck="false">
-        <span class="muted">Key file</span>
-        <input v-model="h.keyFile" placeholder="optional: C:\Users\me\.ssh\id_ed25519" class="w-260" spellcheck="false">
-      </div>
+          <div class="row">
+            <span class="muted w-label">{{ t('User') }}</span>
+            <input v-model="h.user" :placeholder="h.credential ? '(from credential)' : 'login'" class="w-120" spellcheck="false">
+            <span class="muted">{{ t('Key file') }}</span>
+            <input v-model="h.keyFile" :placeholder="t('optional: C:\Users\me\.ssh\id_ed25519')" class="w-260" spellcheck="false">
+          </div>
 
-      <div class="row">
-        <span class="muted w-label">Description</span>
-        <input v-model="h.description" placeholder="Shown to the AI — what this host is" class="grow">
-      </div>
+          <div class="row">
+            <span class="muted w-label">{{ t('Description') }}</span>
+            <input v-model="h.description" :placeholder="t('Shown to the AI — what this host is')" class="grow">
+          </div>
 
-      <div class="row">
-        <label class="chk"><input v-model="h.allowWrite" type="checkbox">
-          <span>Allow the agent to write (apt, systemctl, edit files…)</span></label>
-        <span class="muted">off = read-only guard blocks mutating commands; human terminal is never guarded</span>
-      </div>
+          <div class="row">
+            <label class="chk"><input v-model="h.allowWrite" type="checkbox">
+              <span>{{ t('Allow the agent to write (apt, systemctl, edit files…)') }}</span></label>
+            <span class="muted">{{ t('off = read-only guard blocks mutating commands; human terminal is never guarded') }}</span>
+          </div>
 
-      <div class="row">
-        <button type="button" :disabled="h.testing" @click="testHost(h)">Test connection</button>
-        <span class="muted">{{ h.testStatus }}</span>
-      </div>
-    </div>
-
-    <button type="button" class="self-start" @click="addHost">+ Add host</button>
+          <div class="row">
+            <button type="button" :disabled="h.testing" @click="testHost(h)">{{ t('Test connection') }}</button>
+            <span class="muted">{{ h.testStatus }}</span>
+          </div>
+        </template>
+      </ListCard>
+    </ListPanel>
   </div>
 </template>
 
 <script setup lang="ts">
+import { t } from "./i18n";
 import { reactive, ref } from "vue";
 import CredentialSlot from "./CredentialSlot.vue";
+import ListPanel from "./kit/ListPanel.vue";
+import ListCard from "./kit/ListCard.vue";
+import RemoveButton from "./kit/RemoveButton.vue";
+import ExpandButton from "./kit/ExpandButton.vue";
 import type { MountApi } from "./mount";
 
 const props = defineProps<{ api: MountApi }>();
@@ -129,8 +145,30 @@ const hosts = reactive<HostRow[]>(
   Object.entries(blob.hosts || {}).map(([name, cfg]) => rowFromCfg(name, cfg))
 );
 
+// Which cards are expanded. Saved hosts open collapsed — the head says which one this is;
+// a host you just added opens, because its fields are the reason you clicked.
+const openKeys = reactive(new Set<number>());
+const isOpen = (key: number) => openKeys.has(key);
+function toggle(key: number) {
+  if (!openKeys.delete(key)) openKeys.add(key);
+}
+
+/** What a collapsed card shows instead of its fields: where this host points. */
+function summary(h: HostRow): string {
+  const addr = h.host || "(no address)";
+  const withPort = h.port && h.port !== 22 ? `${addr}:${h.port}` : addr;
+  return h.user ? `${h.user}@${withPort}` : withPort;
+}
+
 function addHost() {
-  hosts.push(rowFromCfg(`host${hosts.length + 1}`, {}));
+  const row = rowFromCfg(`host${hosts.length + 1}`, {});
+  hosts.push(row);
+  openKeys.add(row.key);
+}
+
+function removeHost(i: number) {
+  const [row] = hosts.splice(i, 1);
+  if (row) openKeys.delete(row.key);
 }
 
 async function testHost(h: HostRow) {
@@ -175,33 +213,30 @@ defineExpose({ toJson });
 </script>
 
 <style scoped>
-/* Uses only the host's CSS variables so the panel follows theme + density. */
-.ssh-set { display: flex; flex-direction: column; gap: 8px; font-size: var(--fs-sm, 12px); color: var(--text, inherit); }
+/* Only what is specific to an SSH host lives here. The card (border, background, radius), the
+   list spacing, the add button and the glyph buttons are the kit's — see ./kit/kit.css.
+   Uses only the host's CSS variables so the panel follows theme + density. */
+.ssh-set { display: flex; flex-direction: column; gap: var(--gap, 10px); font-size: var(--fs-sm, 12px); color: var(--text, inherit); }
 .muted { color: var(--muted, #888); }
-.empty { font-style: italic; }
 .row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
-.row.spread { justify-content: space-between; }
-.self-start { align-self: flex-start; }
 .grow { flex: 1; }
+.name { font-size: var(--fs-sm, 12px); }
+.sum { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .w-label { width: 80px; }
-.w-70 { width: 70px; } .w-120 { width: 120px; } .w-140 { width: 140px; } .w-180 { width: 180px; } .w-260 { width: 260px; }
-.host-card { border: 1px solid var(--border, #444); border-radius: var(--radius, 6px); padding: 8px 10px;
-  display: flex; flex-direction: column; gap: 6px; background: var(--panel, transparent); }
+.w-70 { width: 70px; } .w-120 { width: 120px; } .w-180 { width: 180px; } .w-260 { width: 260px; }
 .chk { cursor: pointer; }
 .chk input { height: auto; }
 label { display: flex; gap: 6px; align-items: center; }
 input, select {
   height: 24px; padding: 2px 6px; color: var(--text, inherit); background: var(--bg, transparent);
-  border: 1px solid var(--border, #444); border-radius: 5px; font-family: inherit; font-size: inherit;
+  border: 1px solid var(--border, #444); border-radius: var(--radius-sm, 5px); font-family: inherit; font-size: inherit;
 }
-button {
+/* :not(.gbtn) — the kit's glyph buttons land in this panel's scope through the card slots, and they
+   bring their own look; this rule is for the panel's own plain buttons only. */
+button:not(.gbtn) {
   padding: 2px 10px; color: var(--text, inherit); background: var(--panel, transparent);
-  border: 1px solid var(--border, #444); border-radius: 5px; cursor: pointer; font-size: inherit;
+  border: 1px solid var(--border, #444); border-radius: var(--radius-sm, 5px); cursor: pointer; font-size: inherit;
 }
-button:hover:not(:disabled) { border-color: var(--muted, #888); }
-button:disabled { opacity: .5; cursor: default; }
-/* Same visual language as the host app's RemoveButton (web/src/components/buttons) — this plugin
-   ships its own Vue build and can't literally import that component, so the look is hand-matched. */
-button.remove { color: var(--muted, #888); background: transparent; border-color: transparent; }
-button.remove:hover:not(:disabled) { color: var(--danger, #e05555); border-color: var(--danger, #e05555); }
+button:not(.gbtn):hover:not(:disabled) { border-color: var(--muted, #888); }
+button:not(.gbtn):disabled { opacity: .5; cursor: default; }
 </style>

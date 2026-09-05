@@ -18,25 +18,21 @@
 <template>
   <div class="s-panel" data-tab="roles">
     <div class="s-head">
-      <b>Roles</b>
+      <b>{{ t('Roles') }}</b>
       <span class="hint">{{ error || hint }}</span>
     </div>
 
     <p class="expl">
-      A role is who a chat can be, spawn (<code>agent_spawn(role:)</code>) or write to
-      (<code>agent_correspond</code>). Its body is <code>roles/&lt;name&gt;.yaml</code>; the switch on
-      each card is the manifest's <code>roles:</code> list — <b>a role nobody named does not act</b>,
-      even with a perfectly good file. Every field left blank inherits from the project's own agent
-      settings.
+      <span v-html="t('A role is who a chat can be, spawn (<code>agent_spawn(role:)</code>) or write to (<code>agent_correspond</code>). Its body is <code>roles/&amp;lt;name&amp;gt;.yaml</code>; the switch on each card is the manifest\'s <code>roles:</code> list — <b>a role nobody named does not act</b>, even with a perfectly good file. Every field left blank inherits from the project\'s own agent settings.')"></span>
     </p>
 
     <div v-if="canPersist === false" class="empty">
-      No <code>.spla</code> project is open — a role is a file next to the manifest, so there is
+      {{ t('No') }} <code>.spla</code> project is open — a role is a file next to the manifest, so there is
       nowhere to put one.
     </div>
 
-    <ListPanel v-else :empty="!roles.length" empty-text="This project has no roles yet."
-               add-label="＋ New role" @add="addRole">
+    <ListPanel v-else :empty="!roles.length" :empty-text="t('This project has no roles yet.')"
+               :add-label="t('Role')" @add="addRole">
       <ListCard v-for="r in roles" :key="r.key" :open="open === r.key" :no-toggle-on-click="true"
                 @update:open="toggleOpen(r.key)">
         <template #head>
@@ -47,28 +43,27 @@
           <b class="r-name" :class="{ off: !r.active }">{{ r.name || "(unnamed)" }}</b>
           <span class="r-badge">{{ r.mode || projectMode + " (project)" }}</span>
           <span v-if="r.modelId" class="r-badge">{{ modelLabel(r.modelId) }}</span>
-          <span v-if="narrowings(r)" class="r-badge narrow" :title="narrowings(r) || ''">narrowed</span>
+          <span v-if="narrowings(r)" class="r-badge narrow" :title="narrowings(r) || ''">{{ t('narrowed') }}</span>
           <span class="r-desc">{{ r.description }}</span>
           <span class="grow"></span>
           <ExpandButton :open="open === r.key" @update:open="toggleOpen(r.key)" />
-          <DeleteButton title="Delete this role — its file goes on the next Save" @click="remove(r.key)" />
+          <DeleteButton :title="t('Delete this role — its file goes on the next Save')" @click="remove(r.key)" />
         </template>
 
         <template #body>
-          <label class="field"><span>Name</span>
-            <input v-model="r.name" placeholder="architect" spellcheck="false" />
+          <label class="field"><span>{{ t('Name') }}</span>
+            <input v-model="r.name" :placeholder="t('architect')" spellcheck="false" />
           </label>
           <p class="sub">
-            Also the file name (<code>roles/{{ r.name || "&lt;name&gt;" }}.yaml</code>) and the word an
-            agent types into <code>agent_spawn</code>.
+            <span v-html="t('Also the file name (<code>roles/{name}.yaml</code>) and the word an agent types into <code>agent_spawn</code>.', { name: r.name || '&lt;name&gt;' })"></span>
           </p>
 
-          <label class="field col"><span>Description</span>
-            <input v-model="r.description" placeholder="Reviews changes for correctness and scope." />
+          <label class="field col"><span>{{ t('Description') }}</span>
+            <input v-model="r.description" :placeholder="t('Reviews changes for correctness and scope.')" />
           </label>
-          <p class="sub">The outward half — one line, shown to any chat choosing whom to task. The prompt below stays in.</p>
+          <p class="sub">{{ t('The outward half — one line, shown to any chat choosing whom to task. The prompt below stays in.') }}</p>
 
-          <label class="field"><span>Mode</span>
+          <label class="field"><span>{{ t('Mode') }}</span>
             <select v-model="r.mode">
               <option value="">inherit — {{ projectMode }} (project)</option>
               <option v-for="m in modes" :key="m" :value="m">{{ m }}</option>
@@ -81,30 +76,28 @@
             </select>
           </label>
 
-          <label class="field"><span>Model</span>
+          <label class="field"><span>{{ t('Model') }}</span>
             <select v-model="r.modelId">
-              <option value="">inherit — whatever the chat would pick</option>
+              <option value="">{{ t('inherit — whatever the chat would pick') }}</option>
               <option v-for="m in models" :key="m.id" :value="m.id">{{ m.name || m.id }}</option>
             </select>
           </label>
 
-          <label class="field col"><span>Prompt</span>
+          <label class="field col"><span>{{ t('Prompt') }}</span>
             <textarea v-model="r.customPrompt" rows="5"
-                      placeholder="Who this role is, written to the model. Replaces the project's custom prompt for this role."></textarea>
+                      :placeholder="t('Who this role is, written to the model. Replaces the project\'s custom prompt for this role.')"></textarea>
           </label>
 
           <div class="group">
-            <div class="group-head">Capabilities</div>
+            <div class="group-head">{{ t('Capabilities') }}</div>
             <p class="sub">
-              A role's list <b>replaces</b> the project's rather than narrowing it — a role may have a
-              capability <code>agent:</code> never mentioned. What actually runs is still bounded by the
-              directory root and the owner's grants, never by this list.
+              <span v-html="t('A role\'s list <b>replaces</b> the project\'s rather than narrowing it — a role may have a capability <code>agent:</code> never mentioned. What actually runs is still bounded by the directory root and the owner\'s grants, never by this list.')"></span>
             </p>
-            <label class="field"><span>Built-in capabilities</span>
+            <label class="field"><span>{{ t('Built-in capabilities') }}</span>
               <select :value="r.capabilities ? 'own' : 'inherit'"
                       @change="setCapMode(r, ($event.target as HTMLSelectElement).value)">
-                <option value="inherit">inherit the project's list</option>
-                <option value="own">declare this role's own list</option>
+                <option value="inherit">{{ t("inherit the project's list") }}</option>
+                <option value="own">{{ t("declare this role's own list") }}</option>
               </select>
             </label>
             <div v-if="r.capabilities" class="cap-list">
@@ -115,69 +108,61 @@
           </div>
 
           <div class="group">
-            <div class="group-head">Reach</div>
+            <div class="group-head">{{ t('Reach') }}</div>
             <p class="sub">
-              Selections over what the project already reaches — narrowing only. Nothing here can make
-              something reachable that the project never declared.
+              {{ t('Selections over what the project already reaches — narrowing only. Nothing here can make something reachable that the project never declared.') }}
             </p>
 
-            <div class="field col"><span>Connections</span>
-              <ChipSelect v-model="r.connections" :options="connectionOptions" all-label="every connection" />
+            <div class="field col"><span>{{ t('Connections') }}</span>
+              <ChipSelect v-model="r.connections" :options="connectionOptions" all-:label="t('every connection')" />
             </div>
-            <div class="field col"><span>Islands</span>
+            <div class="field col"><span>{{ t('Islands') }}</span>
               <ChipSelect v-if="islands.length" v-model="r.islands"
-                          :options="islands.map(i => ({ id: i }))" all-label="every island" />
-              <input v-else :value="(r.islands || []).join(', ')" placeholder="every island"
+                          :options="islands.map(i => ({ id: i }))" all-:label="t('every island')" />
+              <input v-else :value="(r.islands || []).join(', ')" :placeholder="t('every island')"
                      spellcheck="false"
                      @input="r.islands = splitList(($event.target as HTMLInputElement).value)" />
             </div>
-            <div class="field col"><span>Trusted domains</span>
-              <input :value="(r.trustedDomains || []).join(', ')" placeholder="inherit the project's"
+            <div class="field col"><span>{{ t('Trusted domains') }}</span>
+              <input :value="(r.trustedDomains || []).join(', ')" :placeholder="t('inherit the project\'s')"
                      spellcheck="false"
                      @input="r.trustedDomains = splitList(($event.target as HTMLInputElement).value)" />
             </div>
           </div>
 
           <div class="group">
-            <div class="group-head">Tool sets</div>
-            <p class="sub">
-              How much of a set reaches the model before it is needed. Merged key by key over the
-              project's <code>toolsets:</code> — a set left at "inherit" is not written to the file at all.
-            </p>
+            <div class="group-head">{{ t('Tool sets') }}</div>
+            <p class="sub" v-html="t('How much of a set reaches the model before it is needed. Merged key by key over the project\'s <code>toolsets:</code> — a set left at &quot;inherit&quot; is not written to the file at all.')"></p>
             <label v-for="id in toolSetIds" :key="id" class="field set"><span class="mono">{{ id }}</span>
               <select :value="r.toolSets?.[id] || ''"
                       @change="setToolSet(r, id, ($event.target as HTMLSelectElement).value)">
-                <option value="">inherit</option>
+                <option value="">{{ t('inherit') }}</option>
                 <option v-for="lv in toolSetLevels" :key="lv" :value="lv">{{ lv }}</option>
               </select>
             </label>
           </div>
 
           <div class="group">
-            <div class="group-head">Behaviour</div>
-            <TriStateField v-model="r.loopGuard" label="Tool call loop guard"
+            <div class="group-head">{{ t('Behaviour') }}</div>
+            <TriStateField v-model="r.loopGuard" :label="t('Tool call loop guard')"
                            hint="ask the model if it is stuck, then stop" />
-            <InheritNumberField v-model="r.loopGuardRepeats" label="Repeats to trigger" :min="2" :max="20" />
-            <InheritNumberField v-model="r.shellTimeoutSeconds" label="Shell command timeout"
+            <InheritNumberField v-model="r.loopGuardRepeats" :label="t('Repeats to trigger')" :min="2" :max="20" />
+            <InheritNumberField v-model="r.shellTimeoutSeconds" :label="t('Shell command timeout')"
                                 unit="seconds" hint="0 = wait until the command exits" />
-            <InheritNumberField v-model="r.askTimeoutMinutes" label="Question timeout"
+            <InheritNumberField v-model="r.askTimeoutMinutes" :label="t('Question timeout')"
                                 unit="minutes" hint="0 = wait forever" />
-            <TriStateField v-model="r.saveToolCalls" label="Save full tool trace" />
-            <TriStateField v-model="r.saveAttempts" label="Save abandoned generations" />
-            <TriStateField v-model="r.unifiedResources" label="Resource addresses" />
+            <TriStateField v-model="r.saveToolCalls" :label="t('Save full tool trace')" />
+            <TriStateField v-model="r.saveAttempts" :label="t('Save abandoned generations')" />
+            <TriStateField v-model="r.unifiedResources" :label="t('Resource addresses')" />
           </div>
 
           <div class="group">
-            <div class="group-head">Correspondence</div>
-            <p class="sub">
-              How fast this role may be woken by replies from other actors. The debounce doubles with
-              the depth of an exchange (<code>base · 2^depth</code>) up to the ceiling; past the depth
-              ceiling a reply no longer raises a turn of its own, it rides the next one.
-            </p>
-            <InheritNumberField v-model="r.peerDebounceBaseSeconds" label="Reply debounce, base" unit="seconds" />
-            <InheritNumberField v-model="r.peerDebounceMaxSeconds" label="Reply debounce, ceiling" unit="seconds" />
-            <InheritNumberField v-model="r.peerDepthCeiling" label="Replies that may wake a turn" />
-            <InheritNumberField v-model="r.peerHardCap" label="Emergency stop on depth"
+            <div class="group-head">{{ t('Correspondence') }}</div>
+            <p class="sub" v-html="t('How fast this role may be woken by replies from other actors. The debounce doubles with the depth of an exchange (<code>base · 2^depth</code>) up to the ceiling; past the depth ceiling a reply no longer raises a turn of its own, it rides the next one.')"></p>
+            <InheritNumberField v-model="r.peerDebounceBaseSeconds" :label="t('Reply debounce, base')" unit="seconds" />
+            <InheritNumberField v-model="r.peerDebounceMaxSeconds" :label="t('Reply debounce, ceiling')" unit="seconds" />
+            <InheritNumberField v-model="r.peerDepthCeiling" :label="t('Replies that may wake a turn')" />
+            <InheritNumberField v-model="r.peerHardCap" :label="t('Emergency stop on depth')"
                                 hint="reaching it is a defect, not a normal outcome" />
           </div>
         </template>
@@ -187,6 +172,7 @@
 </template>
 
 <script setup lang="ts">
+import { t } from "../../i18n";
 import { onUnmounted, ref } from "vue";
 import { client } from "../../protocol/SplaClient";
 import type { CapabilityDto, ConnectionDto, RoleEditDto } from "../../protocol/types";
@@ -243,7 +229,8 @@ const off = client.on("roles.result", p => {
   canPersist.value = p.canPersist;
   error.value = p.error || "";
   hint.value = roles.value.length
-    ? `${roles.value.filter(r => r.active).length} of ${roles.value.length} named by the manifest`
+    ? t("{active} of {total} named by the manifest",
+        { active: roles.value.filter(r => r.active).length, total: roles.value.length })
     : "";
   connectionOptions.value = [
     ...connections.value.map(c => ({ id: c.id, label: c.name || c.id })),

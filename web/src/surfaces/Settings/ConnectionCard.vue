@@ -5,21 +5,21 @@
       <!-- Where this connection lives. Changing it moves the entry between files on save — it is not
            a copy, so the old file loses it. The card jumps to the matching section as you pick, which
            is the whole feedback: you can see where it will end up before you save. -->
-      <select class="conn-scope-pick" v-model="scope" title="Which file this connection lives in">
-        <option value="shared">shared</option>
-        <option value="user">mine</option>
-        <option value="project">this project</option>
+      <select class="conn-scope-pick" v-model="scope" :title="t('Which file this connection lives in')">
+        <option value="shared">{{ t('shared') }}</option>
+        <option value="user">{{ t('mine') }}</option>
+        <option value="project">{{ t('this project') }}</option>
       </select>
     </div>
 
     <div class="conn-name-row">
-      <span>Name</span>
+      <span>{{ t('Name') }}</span>
       <input v-model="conn.name" :placeholder="conn.id">
       <span class="conn-status" :class="healthClass" :title="healthTitle"></span>
       <RemoveButton @click="$emit('remove')" />
     </div>
 
-    <label class="field"><span>Provider</span>
+    <label class="field"><span>{{ t('Provider') }}</span>
       <!-- Fixed once saved: the credential and every provider-specific field below belong to this
            provider, and there is nothing sensible to carry across. Change it by recreating. -->
       <select v-model="conn.provider" :disabled="!!conn.id" @change="onProviderChange">
@@ -27,7 +27,7 @@
       </select>
     </label>
 
-    <label class="field"><span>Endpoint</span>
+    <label class="field"><span>{{ t('Endpoint') }}</span>
       <input v-model="conn.endpoint">
     </label>
 
@@ -39,11 +39,11 @@
          reference resolves without naming a field. An api key and a management key are two
          credentials that happen to belong to one account, not one credential with two halves;
          keeping them apart is what lets every consumer read a reference the same way. -->
-    <div class="field"><span>API key</span>
+    <div class="field"><span>{{ t('API key') }}</span>
       <div class="cred-cell">
         <CredentialField
           :model-value="conn.apiKey || ''"
-          none-label="(none)"
+          none-:label="t('(none)')"
           create-field="token"
           @update:model-value="setCredential('apiKey', $event)"
         />
@@ -51,17 +51,16 @@
           A plaintext key is stored in {{ scopeFile }}. Pick or create a secret above to replace it.
         </p>
         <p v-if="strandedSecret(conn.apiKey)" class="cred-literal">
-          This key points at a <b>project</b> secret, but the connection lives outside the project —
-          it will not resolve in any other project. Move the secret to your own store.
+          <span v-html="t('This key points at a <b>project</b> secret, but the connection lives outside the project — it will not resolve in any other project. Move the secret to your own store.')"></span>
         </p>
       </div>
     </div>
 
-    <div class="field"><span>Admin key</span>
+    <div class="field"><span>{{ t('Admin key') }}</span>
       <div class="cred-cell">
         <CredentialField
           :model-value="conn.adminKey || ''"
-          none-label="(none) — account balance / usage only"
+          none-:label="t('(none) — account balance / usage only')"
           create-field="token"
           @update:model-value="setCredential('adminKey', $event)"
         />
@@ -69,8 +68,7 @@
           A plaintext key is stored in {{ scopeFile }}. Pick or create a secret above to replace it.
         </p>
         <p v-if="strandedSecret(conn.adminKey)" class="cred-literal">
-          This key points at a <b>project</b> secret, but the connection lives outside the project —
-          it will not resolve in any other project. Move the secret to your own store.
+          <span v-html="t('This key points at a <b>project</b> secret, but the connection lives outside the project — it will not resolve in any other project. Move the secret to your own store.')"></span>
         </p>
       </div>
     </div>
@@ -78,46 +76,43 @@
     <div class="field conn-flags" v-show="(conn.provider || 'lmstudio') === 'lmstudio'">
       <span></span>
       <div class="conn-flags-wrap">
-        <label class="flag-check"><input type="checkbox" v-model="conn.swapModel"> Hot-swap</label>
+        <label class="flag-check"><input type="checkbox" v-model="conn.swapModel"> {{ t('Hot-swap') }}</label>
       </div>
     </div>
 
     <!-- ── Models ───────────────────────────────────────────────────────────── -->
-    <div class="conn-models">
-      <div class="conn-models-head">
-        <span>Models</span>
-        <button class="x" title="Add a model" @click="addModel()">+</button>
-      </div>
-
-      <div v-if="!conn.models.length" class="conn-models-empty">
-        No models yet — add one with + and pick the model string from the provider (☰).
-      </div>
-
-      <div v-for="(m, i) in conn.models" :key="m.clientId || m.id" class="conn-model-row">
-        <div class="conn-model-line" @click="toggle(m)">
+    <div class="conn-models-head">{{ t('Models') }}</div>
+    <!-- The flat variant of the shared list: a connection with eight models has to read as a list,
+         not as eight stacked cards, and "flat" is exactly that list drawn with separator lines. -->
+    <ListPanel class="conn-models flat" :empty="!conn.models.length"
+               :empty-text="t('No models yet — add one below, then pick the model string from the provider (☰).')"
+               :add-label="t('Model')" @add="addModel()">
+      <ListCard v-for="(m, i) in conn.models" :key="m.clientId || m.id"
+                :open="expanded === keyOf(m)" @update:open="toggle(m)">
+        <template #head>
           <ExpandButton :open="expanded === keyOf(m)" @update:open="toggle(m)" />
           <input class="conn-model-name" v-model="m.name" :placeholder="m.model || m.id" @click.stop>
           <span class="conn-model-wire">{{ m.model || "—" }}</span>
-          <RemoveButton @click.stop="conn.models.splice(i, 1)" />
-        </div>
+          <RemoveButton @click="conn.models.splice(i, 1)" />
+        </template>
 
-        <div v-if="expanded === keyOf(m)" class="conn-model-detail">
-          <label class="field"><span>Id</span>
+        <template #body>
+          <label class="field"><span>{{ t('Id') }}</span>
             <input v-model="m.id" :placeholder="suggestedId(m)">
           </label>
-          <label class="field"><span>Model</span>
+          <label class="field"><span>{{ t('Model') }}</span>
             <span class="conn-model-wrap">
-              <input v-model="m.model" placeholder="provider's model string">
+              <input v-model="m.model" :placeholder="t('provider\'s model string')">
               <button
                 class="btn ghost conn-list-btn"
-                title="Pick from the provider's catalog"
+                :title="t('Pick from the provider\'s catalog')"
                 :disabled="fetchingModels"
                 @click.prevent="fetchModels($event, m)"
               >{{ fetchingModels ? "…" : "☰" }}</button>
             </span>
           </label>
-          <label class="field"><span>Context</span>
-            <input type="number" v-model.number="m.contextLength" placeholder="auto-detect">
+          <label class="field"><span>{{ t('Context') }}</span>
+            <input type="number" v-model.number="m.contextLength" :placeholder="t('auto-detect')">
           </label>
           <div class="conn-actions">
             <button class="btn ghost" :disabled="testing" @click="testChat(m)">
@@ -125,9 +120,9 @@
             </button>
           </div>
           <div v-if="reply !== null" class="conn-test-reply" :data-err="replyIsError ? '1' : undefined">{{ reply }}</div>
-        </div>
-      </div>
-    </div>
+        </template>
+      </ListCard>
+    </ListPanel>
 
     <ModelPickerPopup
       v-if="modelPopup"
@@ -144,9 +139,12 @@
 </template>
 
 <script setup lang="ts">
+import { t } from "../../i18n";
 import { computed, ref } from "vue";
 import RemoveButton from "../../components/buttons/RemoveButton.vue";
 import ExpandButton from "../../components/buttons/ExpandButton.vue";
+import ListPanel from "../../components/list/ListPanel.vue";
+import ListCard from "../../components/list/ListCard.vue";
 import { client } from "../../protocol/SplaClient";
 import type { ConnectionDto, ConnHealth, ModelEntryDto } from "../../protocol/types";
 import ModelPickerPopup from "./ModelPickerPopup.vue";

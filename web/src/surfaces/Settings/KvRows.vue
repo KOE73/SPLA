@@ -8,31 +8,37 @@
   from scratch (see McpPanel's merge logic), not to push live updates into an open row.
 -->
 <template>
-  <div class="kv-rows">
+  <!-- A ListPanel drawn tight: the rows are single lines, not cards, so the panel keeps the shared
+       add-below-the-last-row placement while .kv-rows pulls the spacing back in. -->
+  <ListPanel class="kv-rows" :empty="!local.length" :empty-text="t('none')" :add-label="addLabel" @add="addRow">
     <div v-for="(row, i) in local" :key="row._key" class="kv-row">
-      <input v-model="row.key" placeholder="KEY" class="mono kv-key" @change="emitRows">
+      <input v-model="row.key" :placeholder="t('KEY')" class="mono kv-key" @change="emitRows">
       <CredentialField
         :model-value="row.value"
-        none-label="(none)"
+        none-:label="t('(none)')"
         create-field="value"
         :create-scope="scope"
         @update:model-value="v => { row.value = v; emitRows(); }"
       />
-      <button class="btn ghost" type="button" title="Remove" @click="removeRow(i)">✕</button>
+      <RemoveButton @click="removeRow(i)" />
     </div>
-    <button class="btn ghost" type="button" @click="addRow">＋ add</button>
-  </div>
+  </ListPanel>
 </template>
 
 <script setup lang="ts">
+import { t } from "../../i18n";
 import { ref } from "vue";
 import type { SecretScopeId } from "../../protocol/types";
 import CredentialField from "../../secrets/CredentialField.vue";
+import ListPanel from "../../components/list/ListPanel.vue";
+import RemoveButton from "../../components/buttons/RemoveButton.vue";
 
 const props = withDefaults(defineProps<{
   rows?: Record<string, string>;
   scope?: SecretScopeId | "";
-}>(), { scope: "" });
+  /** Bare noun for the add button — what one row of THIS list is ("Variable", "Header"). */
+  addLabel?: string;
+}>(), { scope: "", addLabel: "Row" });
 
 const emit = defineEmits<{ (e: "update:rows", rows: Record<string, string>): void }>();
 
@@ -60,7 +66,9 @@ function removeRow(i: number) {
 </script>
 
 <style scoped>
-.kv-rows { display: flex; flex-direction: column; gap: 4px; }
+/* Overrides the list gap only — the panel is still a ListPanel, so the add button and the empty
+   state come from the kit. */
+.kv-rows { gap: 4px; }
 .kv-row { display: flex; align-items: center; gap: 6px; }
 .kv-key { width: 10em; height: 26px; padding: 2px 7px; color: var(--text); background: var(--bg);
   border: 1px solid var(--border); border-radius: 5px; font-size: var(--fs-sm); }

@@ -11,12 +11,13 @@
     class="gbtn"
     :class="[`gbtn-${variant}`, { on }]"
     :disabled="disabled"
-    :title="title"
+    :title="title ? t(title) : undefined"
     @click.stop="$emit('click', $event)"
   ><slot /></button>
 </template>
 
 <script setup lang="ts">
+import { t } from "../../i18n";
 withDefaults(defineProps<{
   title?: string;
   /** Hover/active color family. "danger" is for destructive actions (delete); "plain" for everything else. */

@@ -1,27 +1,27 @@
 <template>
   <div class="s-panel" data-tab="connections">
     <div class="s-head">
-      <b>Connections</b>
-      <button class="btn ghost conn-recheck" title="Re-check all endpoints" @click="recheck">↻</button>
-      <span class="hint">{{ hint }}</span>
+      <b>{{ t('Connections') }}</b>
+      <RefreshButton :title="t('Re-check all endpoints')" @click="recheck" />
+      <span class="hint">{{ t(hint) }}</span>
     </div>
 
     <!--
       One section per scope, in merge order — a connection is defined by the file it lives in, and a
       flat list cannot say which of these keys are yours and which arrived with the repository.
-      Each section owning its own "+ Add" is also what answers "into which scope" without an extra
+      Each section owning its own add button is also what answers "into which scope" without an extra
       question: you add in the section you meant.
     -->
     <section v-for="s in SCOPES" :key="s.scope" class="conn-scope" :data-scope="s.scope">
       <div class="conn-scope-head">
-        <b>{{ s.title }}</b>
-        <span class="conn-scope-where">{{ s.where }}</span>
+        <b>{{ t(s.title) }}</b>
+        <span class="conn-scope-where">{{ t(s.where) }}</span>
       </div>
 
       <ListPanel
         :empty="!grouped[s.scope].length"
-        :empty-text="s.empty"
-        :add-label="s.add"
+        :empty-text="t(s.empty)"
+        :add-label="t(s.add)"
         @add="addConnection(s.scope)"
       >
         <ConnectionCard
@@ -37,11 +37,13 @@
 </template>
 
 <script setup lang="ts">
+import { t } from "../../i18n";
 import { computed, onUnmounted, reactive, ref } from "vue";
 import { client } from "../../protocol/SplaClient";
 import type { ConnectionDto, ConnHealth } from "../../protocol/types";
 import ConnectionCard from "./ConnectionCard.vue";
 import ListPanel from "../../components/list/ListPanel.vue";
+import RefreshButton from "../../components/buttons/RefreshButton.vue";
 import { uuid } from "../../util/uuid";
 
 const KNOWN_DEFAULT_EP = "http://127.0.0.1:1234/v1";
@@ -54,21 +56,21 @@ const SCOPES = [
     title: "Shared",
     where: "connections.shared.yaml — administered, shared between people",
     empty: "No shared connections.",
-    add: "+ Add shared connection"
+    add: "Shared connection"
   },
   {
     scope: "user",
     title: "Mine",
     where: "~/.spla/connections.yaml — yours, never committed, in every project you open",
     empty: "None yet. Put a connection here and every project sees it.",
-    add: "+ Add my connection"
+    add: "My connection"
   },
   {
     scope: "project",
     title: "This project",
     where: "the project's .spla — travels with the repository",
     empty: "No connections declared by this project.",
-    add: "+ Add project connection"
+    add: "Project connection"
   }
 ] as const;
 
@@ -116,7 +118,7 @@ const offResult = client.on("connections.result", p => {
   // "No project" no longer means "nothing can be saved": it means the project section cannot be,
   // while the two layers above it are files of their own and save either way.
   hint.value = p.error ? p.error
-    : p.canPersist === false ? "no .spla project — anything under “This project” is session-only"
+    : p.canPersist === false ? t("no .spla project — anything under “This project” is session-only")
     : "";
 });
 const offHealth = client.on("connections.health", p => {

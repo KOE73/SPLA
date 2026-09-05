@@ -6,14 +6,14 @@
   <div class="settings-surface">
     <div class="settings-shell">
       <nav class="settings-nav">
-        <template v-for="t in TABS" :key="t.id">
-          <div v-if="groupStarts.has(t.id)" class="nav-section">{{ t.group }}</div>
-          <div class="nav-item" :class="{ on: tab === t.id }" @click="tab = t.id">
-            <span class="nav-ic">{{ t.icon }}</span>{{ t.label }}
+        <template v-for="nav in TABS" :key="nav.id">
+          <div v-if="groupStarts.has(nav.id)" class="nav-section">{{ t(nav.group) }}</div>
+          <div class="nav-item" :class="{ on: tab === nav.id }" @click="tab = nav.id">
+            <span class="nav-ic">{{ nav.icon }}</span>{{ t(nav.label) }}
           </div>
           <!-- Second-level tabs: one per ENABLED plugin that ships its own settings UI. Driven live
                by plugins.result, so toggling a plugin in the Plugins list adds/removes its tab. -->
-          <template v-if="t.id === 'plugins'">
+          <template v-if="nav.id === 'plugins'">
             <div v-for="pl in pluginTabs" :key="pl.id" class="nav-item sub"
                  :class="{ on: tab === plTab(pl.id) }" @click="tab = plTab(pl.id)">
               <span class="nav-ic">└</span>{{ pl.name || pl.id }}
@@ -36,7 +36,7 @@
                            :class="{ on: tab === plTab(pl.id) }" :ref="(el) => setPlRef(pl.id, el)" />
         <div class="settings-bar">
           <span class="grow"></span>
-          <button v-if="saveable" class="btn save" :disabled="saving" @click="onSave">{{ saveLabel }}</button>
+          <button v-if="saveable" class="btn save" :disabled="saving" @click="onSave">{{ t(saveLabel) }}</button>
         </div>
       </div>
     </div>
@@ -44,6 +44,7 @@
 </template>
 
 <script setup lang="ts">
+import { t } from "../../i18n";
 import { computed, onUnmounted, ref, watch } from "vue";
 import { client } from "../../protocol/SplaClient";
 import type { PluginDto } from "../../protocol/types";
@@ -80,7 +81,7 @@ const TABS = [
 
 /** First tab of each group, so the nav renders one header per group without a nested data shape. */
 const groupStarts = new Set(
-  TABS.filter((t, i) => i === 0 || TABS[i - 1].group !== t.group).map(t => t.id));
+  TABS.filter((nav, i) => i === 0 || TABS[i - 1].group !== nav.group).map(nav => nav.id));
 
 // Tab id is either a fixed TABS id or "plugin:<id>" for a plugin's second-level tab.
 const tab = ref<string>(new URLSearchParams(location.search).get("tab") || "connections");

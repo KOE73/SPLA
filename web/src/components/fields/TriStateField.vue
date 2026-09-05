@@ -10,8 +10,8 @@
     <span class="tri">
       <select :value="wire" @change="onChange">
         <option value="">{{ inheritLabel }}</option>
-        <option value="on">on</option>
-        <option value="off">off</option>
+        <option value="on">{{ t('on') }}</option>
+        <option value="off">{{ t('off') }}</option>
       </select>
       <span v-if="hint" class="hint">{{ hint }}</span>
     </span>
@@ -19,6 +19,7 @@
 </template>
 
 <script setup lang="ts">
+import { t } from "../../i18n";
 import { computed } from "vue";
 
 const props = withDefaults(defineProps<{

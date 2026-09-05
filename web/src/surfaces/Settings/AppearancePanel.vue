@@ -1,37 +1,47 @@
 <template>
   <div class="s-panel" data-tab="appearance">
-    <div class="s-head"><b>Appearance</b><span class="hint">saved to .spla project</span></div>
+    <div class="s-head"><b>{{ t('Appearance') }}</b><span class="hint">{{ t('saved to .spla project') }}</span></div>
     <div class="conn-card">
-      <div class="conn-head"><span class="id">Theme</span></div>
-      <label class="field"><span>Color theme</span>
+      <div class="conn-head"><span class="id">{{ t('Theme') }}</span></div>
+      <label class="field"><span>{{ t('Color theme') }}</span>
         <select v-model="theme" @change="saveAppearance">
-          <option v-for="t in themes" :key="t" :value="t">{{ capitalize(t) }}</option>
+          <option v-for="name in themes" :key="name" :value="name">{{ capitalize(name) }}</option>
         </select>
       </label>
-      <label class="field"><span>UI density</span>
+      <label class="field"><span>{{ t('UI density') }}</span>
         <select v-model="density" @change="saveAppearance">
           <option v-for="d in densities" :key="d" :value="d">{{ densityLabel(d) }}</option>
         </select>
       </label>
     </div>
     <div class="conn-card">
-      <div class="conn-head"><span class="id">Sessions</span></div>
-      <label class="field"><span>Auto-open spawned sessions</span>
+      <div class="conn-head"><span class="id">{{ t('Language') }}</span><span class="state" style="color:var(--muted);font-size:var(--fs-xs)">{{ t('this device only') }}</span></div>
+      <label class="field"><span>{{ t('Interface language') }}</span>
+        <select :value="locale" @change="pickLocale">
+          <option v-for="l in LOCALES" :key="l.id" :value="l.id">{{ l.label }}</option>
+        </select>
+      </label>
+      <span class="hint">{{ t('Applies at once. English is the source text: anything not yet translated stays in English.') }}</span>
+    </div>
+    <div class="conn-card">
+      <div class="conn-head"><span class="id">{{ t('Sessions') }}</span></div>
+      <label class="field"><span>{{ t('Auto-open spawned sessions') }}</span>
         <span style="display: flex; align-items: center; gap: 8px">
           <input type="checkbox" v-model="autoOpenSubagents" @change="saveAppearance" />
-          <span class="hint">open a window by itself the moment a subagent's chat appears in the tree — off by default</span>
+          <span class="hint">{{ t("open a window by itself the moment a subagent's chat appears in the tree — off by default") }}</span>
         </span>
       </label>
     </div>
     <div class="conn-card">
-      <div class="conn-head"><span class="id">Layout</span><span class="state" style="color:var(--muted);font-size:var(--fs-xs)">this device only</span></div>
-      <button class="btn ghost" @click="resetDock">Reset panel layout</button>
+      <div class="conn-head"><span class="id">{{ t('Layout') }}</span><span class="state" style="color:var(--muted);font-size:var(--fs-xs)">{{ t('this device only') }}</span></div>
+      <button class="btn ghost" @click="resetDock">{{ t('Reset panel layout') }}</button>
     </div>
-    <div class="hint">{{ hint }}</div>
+    <div class="hint">{{ t(hint) }}</div>
   </div>
 </template>
 
 <script setup lang="ts">
+import { LOCALES, locale, setLocale, t } from "../../i18n";
 import { onUnmounted, ref } from "vue";
 import { client } from "../../protocol/SplaClient";
 import { resetDock } from "../../dock/dockController";
@@ -42,6 +52,10 @@ const themes = ref<string[]>([theme.value]);
 const densities = ref<string[]>([density.value]);
 const autoOpenSubagents = ref(false);
 const hint = ref("");
+
+// The language is a per-device preference, not project data: it stays in localStorage and never
+// reaches .spla, so two people sharing a project each read the UI in their own language.
+function pickLocale(e: Event) { setLocale((e.target as HTMLSelectElement).value); }
 
 function capitalize(s: string) { return s ? s[0].toUpperCase() + s.slice(1) : s; }
 function densityLabel(d: string) { return ({ nano: "Nano", mini: "Mini", norm: "Normal", max: "Max" } as Record<string, string>)[d] || d; }
@@ -60,6 +74,7 @@ const off = client.on("agent.result", p => {
   theme.value = (p.theme || theme.value).toLowerCase();
   density.value = p.density || density.value;
   autoOpenSubagents.value = p.autoOpenSubagents === true;
+  // Kept in English here and translated at render, so switching language re-renders it.
   hint.value = p.canPersist === false ? "applies instantly · session-only" : "applies instantly · saved to .spla";
 });
 onUnmounted(off);

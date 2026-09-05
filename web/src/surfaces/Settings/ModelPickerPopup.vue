@@ -6,7 +6,7 @@
           ref="filterEl"
           v-model="filter"
           type="text"
-          placeholder="gemma*free"
+          :placeholder="t('gemma*free')"
           spellcheck="false"
         />
         <span class="model-count">{{ shown.length }} / {{ models.length }}</span>
@@ -23,9 +23,9 @@
           @click="onClick(m)"
           @mousemove="active = i"
         >{{ m }}</div>
-        <div v-if="!shown.length" class="model-empty">nothing matches the filter</div>
+        <div v-if="!shown.length" class="model-empty">{{ t('nothing matches the filter') }}</div>
         <div v-if="locked" class="model-item" style="opacity:0.5;cursor:default;font-style:italic;">
-          🔒 model is locked — view only
+          {{ t('🔒 model is locked — view only') }}
         </div>
       </div>
     </div>
@@ -33,6 +33,7 @@
 </template>
 
 <script setup lang="ts">
+import { t } from "../../i18n";
 import { computed, nextTick, onMounted, onBeforeUnmount, ref, watch } from "vue";
 import type { CSSProperties } from "vue";
 

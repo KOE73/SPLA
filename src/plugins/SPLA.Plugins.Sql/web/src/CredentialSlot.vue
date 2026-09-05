@@ -11,12 +11,13 @@
 <template>
   <div ref="el" class="cred-slot">
     <input v-if="!mounted" :value="modelValue" class="w-260" spellcheck="false"
-           placeholder="secret:<scope>:<entry>"
+           :placeholder="t('secret:<scope>:<entry>')"
            @input="emit('update:modelValue', ($event.target as HTMLInputElement).value)">
   </div>
 </template>
 
 <script setup lang="ts">
+import { t } from "./i18n";
 import { onBeforeUnmount, onMounted, ref, watch } from "vue";
 import type { CredentialFieldHandle, MountApi } from "./mount";
 

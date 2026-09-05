@@ -1,0 +1,51 @@
+/* ── Settings list kit (plugin copy) ───────────────────────────────────────────
+   The "cards, then '＋ …' below the last one" look every Settings list in the main
+   client wears. Copied verbatim from web/src/styles/app.css (sections "Shared glyph
+   buttons" and "Shared list primitives"), because a plugin's web settings module is
+   built and shipped independently of the host's source tree and cannot import the
+   host's stylesheet.
+
+   The class NAMES are deliberately the host's own: a restyle on the host side then
+   also reaches this panel whenever its selector is at least as specific (that is how
+   `.list-panel.flat` — boxes → rows separated by a line — will arrive), and a panel
+   built against an older host still looks right on a newer one.
+
+   A card's chrome is the three variables below and nothing else — no panel markup
+   carries a border, a background or a radius. The coming redesign is an edit of the
+   `.list-panel` block here and nothing else in this bundle.
+
+   Never declare `.btn` (or any other host-wide class) here: this sheet is injected
+   into the host's document, and a generic rule would restyle the whole app. */
+
+.list-panel { display: flex; flex-direction: column; gap: var(--gap, 10px);
+  --card-bd: 1px solid var(--border, #444); --card-bg: var(--panel, transparent); --card-r: var(--radius, 6px); }
+.list-empty { color: var(--muted, #888); font-size: var(--fs-sm, 12px); padding: 4px 0; font-style: italic; }
+.list-card { border: var(--card-bd); border-radius: var(--card-r); background: var(--card-bg); }
+.list-card-head { display: flex; align-items: center; gap: var(--gap, 10px); padding: var(--pad, 12px); cursor: pointer; }
+.list-card-body { padding: 0 var(--pad, 12px) var(--pad, 12px); display: flex; flex-direction: column; gap: var(--gap, 10px); }
+
+/* The same list drawn as rows separated by a line instead of boxes — one class away. */
+.list-panel.flat { gap: 0; --card-bd: 0; --card-bg: transparent; --card-r: 0; }
+.list-panel.flat > .list-card + .list-card { border-top: 1px solid var(--border, #444); }
+.list-panel.flat > .list-add { margin-top: var(--gap, 10px); }
+
+/* The add affordance. In the host document `.btn.ghost` (app.css) wins on colour and border by
+   specificity, which is exactly what we want — these declarations are the standalone fallback,
+   not a second opinion. */
+.list-add { align-self: flex-start; background: transparent; color: var(--muted, #888);
+  border: 1px solid var(--border, #444); border-radius: var(--radius-sm, 5px);
+  padding: 6px 12px; font-weight: 600; font-size: inherit; font-family: inherit; cursor: pointer; }
+.list-add:hover:not(:disabled) { opacity: .9; }
+.list-add:disabled { opacity: .5; cursor: default; }
+.list-add-glyph { margin-right: 5px; opacity: .8; }
+
+/* Small glyph buttons — caret, ✕. Same family as the host's IconGlyphButton. */
+.gbtn { display: inline-flex; align-items: center; justify-content: center; gap: 3px;
+  background: transparent; border: 1px solid transparent; color: var(--muted, #888);
+  border-radius: var(--radius-sm, 5px); padding: 2px 6px; min-width: 22px; height: 22px;
+  font-size: var(--fs-sm, 12px); line-height: 1; cursor: pointer; font-family: inherit; }
+.gbtn:hover:not(:disabled) { color: var(--text, inherit); border-color: var(--border, #444); background: var(--elevated, transparent); }
+.gbtn:disabled { opacity: .45; cursor: default; }
+.gbtn-danger:hover:not(:disabled) { color: var(--danger, #e05555); border-color: var(--danger, #e05555); background: transparent; }
+.gbtn.on { color: var(--accent, inherit); }
+.gbtn-text { padding: 2px 8px; font-size: var(--fs-xs, 11px); white-space: nowrap; }

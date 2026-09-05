@@ -9,6 +9,7 @@
 import { onBeforeUnmount, onMounted, ref } from "vue";
 import { client } from "../../protocol/SplaClient";
 import { mountCredentialField } from "../../secrets/mountCredentialField";
+import { t } from "../../i18n";
 import type { PluginDto, PluginSettingsHandle, PluginSettingsMount } from "../../protocol/types";
 
 const props = defineProps<{ plugin: PluginDto }>();
@@ -23,7 +24,8 @@ onMounted(async () => {
     handle = mount(mountEl.value, {
       getJson: () => props.plugin.settingsJson ?? null,
       invoke: (type, payload) => client.invoke(type, payload),
-      mountCredentialField
+      mountCredentialField,
+      t
     });
   } catch (e) {
     console.error("failed to load plugin web settings:", props.plugin.id, e);

@@ -1,39 +1,11 @@
 <template>
   <div class="s-panel" data-tab="skills">
     <div class="s-head">
-      <b>Skills</b>
-      <span class="hint">{{ hint }}</span>
+      <b>{{ t('Skills') }}</b>
+      <span class="hint">{{ t(hint) }}</span>
       <span class="grow"></span>
-      <input class="sk-search" v-model="search" type="text" placeholder="filter by id or text" spellcheck="false">
-      <label class="filter"><input type="checkbox" v-model="showUnavailable"> show unavailable</label>
-    </div>
-
-    <div v-if="!skills.length" class="notice">
-      no skills found — drop a .md file into one of the folders below, or add a folder of your own
-    </div>
-
-    <!-- Adding a branch. This is the most common thing a person wants to do with sources and, until
-         now, the one thing no door offered: the list lived only in settings files. What is written
-         here goes to your own store, never into the project's committed file — a folder on your D:
-         drive is your decision, not something to deliver to everyone who clones the repository. -->
-    <div class="sk-add">
-      <button v-if="!adding" class="btn tiny" @click="startAdd">+ add folder</button>
-      <template v-else>
-        <input v-model="draft.path" class="sk-in grow" type="text" spellcheck="false"
-               placeholder="folder path, e.g. D:\shared\ops-skills" @keydown.enter="commitAdd">
-        <input v-model="draft.id" class="sk-in narrow" type="text" spellcheck="false"
-               placeholder="name" title="Short name, unique across the library. Reuse a listed name to override that branch."
-               @keydown.enter="commitAdd">
-        <select v-model="draft.level" class="sk-in narrow" title="How much of it the model is told about unasked">
-          <option value="OnShelf">listed</option>
-          <option value="InCatalog">by subject</option>
-          <option value="Findable">findable only</option>
-          <option value="OutOfCatalog">not in catalog</option>
-        </select>
-        <button class="btn tiny" :disabled="!draft.path.trim() || !draft.id.trim()" @click="commitAdd">add</button>
-        <button class="btn tiny" @click="adding = false">cancel</button>
-      </template>
-      <span v-if="addError" class="sk-err">{{ addError }}</span>
+      <input class="sk-search" v-model="search" type="text" :placeholder="t('filter by id or text')" spellcheck="false">
+      <label class="filter"><input type="checkbox" v-model="showUnavailable"> {{ t('show unavailable') }}</label>
     </div>
 
     <!-- The whole vocabulary, always, not a search box: the drift a normaliser cannot catch is two
@@ -47,87 +19,120 @@
         @click="toggleTag(tag.tag)">
         {{ tag.tag }} <span class="sk-tag-n">{{ tag.count }}</span>
       </button>
-      <button v-if="selectedTags.size" class="sk-tag clear" @click="selectedTags = new Set()">clear</button>
+      <button v-if="selectedTags.size" class="sk-tag clear" @click="selectedTags = new Set()">{{ t('clear') }}</button>
     </div>
 
     <!-- Grouped by source, not flattened: the list is the one that grows without bound (a user can
          write any number of skills), and "where did this come from" is the first question about a
          skill you did not write yourself. -->
-    <div v-for="group in groups" :key="group.source.id" class="sk-group">
-      <div class="sk-group-head" @click="toggleGroup(group.source.id)">
-        <span class="chev">{{ isOpen(group.source.id) ? "▾" : "▸" }}</span>
-        <b>{{ group.source.label }}</b>
-        <span class="sk-id">{{ group.source.id }}</span>
-        <span class="sk-origin" :title="originHint(group.source)">{{ (group.source.origin || '').toLowerCase() }}</span>
-        <span v-if="group.source.enabled === false" class="sk-off">off</span>
+    <ListPanel :empty="!skills.length" :add-label="t('Skill source')" :add-disabled="adding" @add="startAdd">
+      <template #empty>
+        {{ t('no skills found — drop a .md file into one of the folders below, or add a folder of your own') }}
+      </template>
 
-        <!-- The one action that matters on an untrusted branch, and after this change the ONLY one:
-             switching a single skill on no longer gets past trust. A row of dead toggles with no
-             way up is how a person concludes the feature is broken. -->
-        <span v-if="group.source.trust !== 'Trusted'" class="sk-untrusted">untrusted</span>
-        <button v-if="group.source.trust !== 'Trusted' && group.source.path"
-                class="btn tiny" @click.stop="confirmTrust(group.source)">trust this folder…</button>
-        <button v-else-if="group.source.trustGranted"
-                class="btn tiny" title="Withdraw approval of this folder's contents"
-                @click.stop="setTrust(group.source, false)">untrust</button>
-        <!-- Why a switched-on skill is never chosen: the source is not in the model's catalog. Read
-             only — the level is a .spla decision, not a panel toggle. -->
-        <span v-if="group.source.level && group.source.level !== 'OnShelf'"
-              class="sk-level" :title="levelHint(group.source.level)">{{ levelLabel(group.source.level) }}</span>
-        <span class="grow"></span>
-        <!-- Acts on what is VISIBLE, not on the whole source: with a filter applied, "all" meaning
-             something other than what you are looking at is how people switch off things they never
-             saw. -->
-        <button v-if="group.items.length > 1" class="btn tiny"
-                :title="`Switch on the ${toggleable(group).length} shown skill(s)`"
-                @click.stop="setGroup(group, true)">all on</button>
-        <button v-if="group.items.length > 1" class="btn tiny"
-                :title="`Switch off the ${toggleable(group).length} shown skill(s)`"
-                @click.stop="setGroup(group, false)">all off</button>
-        <!-- Every branch is switchable, including inherited ones — that records an override in your
-             own store rather than editing the project. Only your own can be removed outright: an
-             inherited one that vanished would leave nobody able to remember it existed. -->
-        <button class="btn tiny" :title="group.source.enabled === false ? 'Switch this branch back on' : 'Switch this branch off — it stays listed'"
-                @click.stop="setSourceEnabled(group.source, group.source.enabled === false)">
-          {{ group.source.enabled === false ? "on" : "off" }}
-        </button>
-        <button v-if="group.source.editable" class="btn tiny" title="Remove your own branch"
-                @click.stop="removeSource(group.source)">remove</button>
+      <ListCard v-for="group in groups" :key="group.source.id"
+                :open="isOpen(group.source.id)" @update:open="toggleGroup(group.source.id)">
+        <template #head>
+          <ExpandButton :open="isOpen(group.source.id)" @update:open="toggleGroup(group.source.id)" />
+          <b class="sk-name">{{ group.source.label }}</b>
+          <span class="sk-id">{{ group.source.id }}</span>
+          <span class="sk-origin" :title="originHint(group.source)">{{ (group.source.origin || '').toLowerCase() }}</span>
+          <span v-if="group.source.enabled === false" class="sk-off">{{ t('off') }}</span>
 
-        <!-- The folder is the actionable part of a skill source: it is where you put a new .md file. -->
-        <span v-if="group.source.path" class="sk-path" :title="group.source.path">{{ group.source.path }}</span>
-        <span class="sk-count">{{ group.items.length }}</span>
-      </div>
+          <!-- The one action that matters on an untrusted branch, and after this change the ONLY one:
+               switching a single skill on no longer gets past trust. A row of dead toggles with no
+               way up is how a person concludes the feature is broken. -->
+          <span v-if="group.source.trust !== 'Trusted'" class="sk-untrusted">{{ t('untrusted') }}</span>
+          <button v-if="group.source.trust !== 'Trusted' && group.source.path"
+                  class="btn ghost sk-act" @click.stop="confirmTrust(group.source)">{{ t('trust this folder…') }}</button>
+          <button v-else-if="group.source.trustGranted"
+                  class="btn ghost sk-act" :title="t('Withdraw approval of this folder\'s contents')"
+                  @click.stop="setTrust(group.source, false)">{{ t('untrust') }}</button>
+          <!-- Why a switched-on skill is never chosen: the source is not in the model's catalog. Read
+               only — the level is a .spla decision, not a panel toggle. -->
+          <span v-if="group.source.level && group.source.level !== 'OnShelf'"
+                class="sk-level" :title="levelHint(group.source.level)">{{ levelLabel(group.source.level) }}</span>
+          <span class="grow"></span>
+          <!-- Acts on what is VISIBLE, not on the whole source: with a filter applied, "all" meaning
+               something other than what you are looking at is how people switch off things they never
+               saw. -->
+          <button v-if="group.items.length > 1" class="btn ghost sk-act"
+                  :title="`Switch on the ${toggleable(group).length} shown skill(s)`"
+                  @click.stop="setGroup(group, true)">all on</button>
+          <button v-if="group.items.length > 1" class="btn ghost sk-act"
+                  :title="`Switch off the ${toggleable(group).length} shown skill(s)`"
+                  @click.stop="setGroup(group, false)">all off</button>
+          <!-- Every branch is switchable, including inherited ones — that records an override in your
+               own store rather than editing the project. Only your own can be removed outright: an
+               inherited one that vanished would leave nobody able to remember it existed. -->
+          <button class="btn ghost sk-act" :title="group.source.enabled === false ? 'Switch this branch back on' : 'Switch this branch off — it stays listed'"
+                  @click.stop="setSourceEnabled(group.source, group.source.enabled === false)">
+            {{ group.source.enabled === false ? "on" : "off" }}
+          </button>
+          <RemoveButton v-if="group.source.editable" :label="t('Remove')" :title="t('Remove your own branch')"
+                        @click="removeSource(group.source)" />
 
-      <div v-if="isOpen(group.source.id)" class="sk-items">
-        <div v-if="!group.items.length" class="sk-empty">nothing here</div>
+          <!-- The folder is the actionable part of a skill source: it is where you put a new .md file. -->
+          <span v-if="group.source.path" class="sk-path" :title="group.source.path">{{ group.source.path }}</span>
+          <span class="sk-count">{{ group.items.length }}</span>
+        </template>
 
-        <!-- Keyed by address, not id: two branches may hold the same name, and an id key would
-             collapse both editions into one row with one switch. -->
-        <CapabilityRow
-          v-for="skill in group.items" :key="skill.address || skill.id"
-          :item="skill"
-          @toggle="enabled => onToggle(skill, enabled)">
-          <template #actions>
-            <!-- The missing piece is almost always a disabled plugin, so offer the jump rather than
-                 leaving the user to work out which tab fixes it. -->
-            <button
-              v-for="plugin in skill.missingPlugins || []" :key="plugin"
-              class="btn tiny" @click="emit('open-plugin', plugin)">
-              enable {{ plugin }}
-            </button>
-          </template>
-        </CapabilityRow>
-      </div>
+        <template #body>
+          <div v-if="!group.items.length" class="sk-empty">{{ t('nothing here') }}</div>
+
+          <!-- Keyed by address, not id: two branches may hold the same name, and an id key would
+               collapse both editions into one row with one switch. -->
+          <CapabilityRow
+            v-for="skill in group.items" :key="skill.address || skill.id"
+            :item="skill"
+            @toggle="enabled => onToggle(skill, enabled)">
+            <template #actions>
+              <!-- The missing piece is almost always a disabled plugin, so offer the jump rather than
+                   leaving the user to work out which tab fixes it. -->
+              <button
+                v-for="plugin in skill.missingPlugins || []" :key="plugin"
+                class="btn ghost sk-act" @click="emit('open-plugin', plugin)">
+                enable {{ plugin }}
+              </button>
+            </template>
+          </CapabilityRow>
+        </template>
+      </ListCard>
+    </ListPanel>
+
+    <!-- Adding a branch. This is the most common thing a person wants to do with sources and, until
+         now, the one thing no door offered: the list lived only in settings files. What is written
+         here goes to your own store, never into the project's committed file — a folder on your D:
+         drive is your decision, not something to deliver to everyone who clones the repository. -->
+    <div v-if="adding" class="sk-draft">
+      <input v-model="draft.path" class="sk-in grow" type="text" spellcheck="false"
+             :placeholder="t('folder path, e.g. D:\shared\ops-skills')" @keydown.enter="commitAdd">
+      <input v-model="draft.id" class="sk-in narrow" type="text" spellcheck="false"
+             :placeholder="t('name')" :title="t('Short name, unique across the library. Reuse a listed name to override that branch.')"
+             @keydown.enter="commitAdd">
+      <select v-model="draft.level" class="sk-in narrow" :title="t('How much of it the model is told about unasked')">
+        <option value="OnShelf">{{ t('listed') }}</option>
+        <option value="InCatalog">{{ t('by subject') }}</option>
+        <option value="Findable">{{ t('findable only') }}</option>
+        <option value="OutOfCatalog">{{ t('not in catalog') }}</option>
+      </select>
+      <button class="btn ghost sk-act" :disabled="!draft.path.trim() || !draft.id.trim()" @click="commitAdd">{{ t('add') }}</button>
+      <button class="btn ghost sk-act" @click="adding = false">{{ t('cancel') }}</button>
     </div>
+    <div v-if="addError" class="sk-err">{{ addError }}</div>
   </div>
 </template>
 
 <script setup lang="ts">
+import { t } from "../../i18n";
 import { computed, onUnmounted, ref } from "vue";
 import { client } from "../../protocol/SplaClient";
 import type { CapabilityDto, SkillSourceDto, SkillSourceEditDto } from "../../protocol/types";
 import CapabilityRow from "./CapabilityRow.vue";
+import ListPanel from "../../components/list/ListPanel.vue";
+import ListCard from "../../components/list/ListCard.vue";
+import ExpandButton from "../../components/buttons/ExpandButton.vue";
+import RemoveButton from "../../components/buttons/RemoveButton.vue";
 
 const emit = defineEmits<{ (e: "open-plugin", pluginId: string): void }>();
 
@@ -301,8 +306,9 @@ const off = client.on("skills.result", p => {
   skills.value = p.skills || [];
   sources.value = p.sources || [];
   hint.value = p.canPersist === false
-    ? "no .spla project — session-only"
-    : `${skills.value.filter(s => s.state === "Available").length} of ${skills.value.length} available`;
+    ? t("no .spla project — session-only")
+    : t("{available} of {total} available",
+        { available: skills.value.filter(s => s.state === "Available").length, total: skills.value.length });
 });
 onUnmounted(off);
 
@@ -326,20 +332,21 @@ defineExpose({ save });
 </script>
 
 <style scoped>
+/* .sk-group/.sk-group-head/.sk-items/.sk-add/.chev/.btn.tiny are gone — ListPanel, ListCard,
+   AddButton and ExpandButton (app.css) draw the list, the cards, the add affordance and the caret.
+   Only what is specific to a skill source stays here: the facet row, the id/path mono text, the
+   level and trust chips, and the draft row for a new branch. */
 .s-head .grow { flex: 1; }
 .filter { font-size: var(--fs-xs); color: var(--muted); display: flex; align-items: center; gap: 4px; }
-.sk-group { display: flex; flex-direction: column; gap: var(--gap, 8px); margin-bottom: var(--gap, 8px); }
-.sk-group-head { display: flex; align-items: center; gap: 6px; cursor: pointer;
-  font-size: var(--fs-sm); padding: 2px 4px; }
-.sk-group-head:hover { background: color-mix(in srgb, var(--text) 4%, transparent); }
+.sk-name { font-size: var(--fs-sm); }
 .sk-id { font-family: var(--mono); font-size: var(--fs-xs); color: var(--muted); }
 .sk-untrusted { font-size: var(--fs-xs); color: var(--danger, #f85149); }
 .sk-origin { font-size: var(--fs-xs); color: var(--muted); opacity: .8; }
 .sk-off { font-size: var(--fs-xs); color: var(--muted);
   border: 1px solid var(--border); border-radius: 3px; padding: 0 4px; }
-.sk-add { display: flex; align-items: center; gap: 6px; margin-bottom: var(--gap, 8px);
+.sk-draft { display: flex; align-items: center; gap: 6px; margin-top: var(--gap, 8px);
   font-size: var(--fs-sm); }
-.sk-add .grow { flex: 1; }
+.sk-draft .grow { flex: 1; }
 .sk-in { font-size: var(--fs-sm); padding: 2px 6px; background: var(--bg);
   color: var(--text); border: 1px solid var(--border); border-radius: 3px; }
 .sk-in.narrow { max-width: 9rem; }
@@ -361,9 +368,9 @@ defineExpose({ save });
 .sk-count { font-size: var(--fs-xs); color: var(--muted); }
 .sk-path { font-family: var(--mono); font-size: var(--fs-xs); color: var(--muted);
   overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 50%; }
-.sk-items { display: flex; flex-direction: column; gap: var(--gap, 8px); padding-left: 14px; }
 .sk-empty { font-family: var(--mono); font-size: var(--fs-xs); color: var(--muted); padding: 2px 8px; }
-.chev { color: var(--muted); font-size: var(--fs-xs); width: 12px; text-align: center; }
 .grow { flex: 1; }
-.btn.tiny { font-size: var(--fs-xs); padding: 1px 6px; }
+/* A compact ghost button, as in ConnectionCard: a source head carries up to five of these and the
+   default .btn padding would make the row twice as tall. Size only — the family is the shared one. */
+.sk-act { padding: 1px 8px; font-size: var(--fs-xs); white-space: nowrap; }
 </style>

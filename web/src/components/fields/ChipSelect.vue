@@ -21,6 +21,7 @@
 </template>
 
 <script setup lang="ts">
+import { t } from "../../i18n";
 const props = withDefaults(defineProps<{
   /** null = "everything", a list = exactly these. */
   modelValue?: string[] | null;

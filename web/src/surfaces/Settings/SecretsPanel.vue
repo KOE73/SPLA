@@ -14,29 +14,23 @@
 <template>
   <div class="s-panel" data-tab="secrets">
     <div class="s-head">
-      <b>Secrets</b>
-      <button class="btn ghost" title="Refresh" @click="reload">↻</button>
+      <b>{{ t('Secrets') }}</b>
+      <RefreshButton :title="t('Refresh')" @click="reload" />
       <span class="hint">{{ error || "Values are write-only — never shown or sent back." }}</span>
     </div>
 
-    <p class="expl">
-      An entry is a named credential record — e.g. <code>user</code> + <code>password</code> for a host,
-      a single <code>token</code> for an API, or a <code>private_key</code> for SSH. Plugin configs never
-      hold values, only references: <code>credential: secret:&lt;scope&gt;:&lt;entry&gt;</code> (whole record)
-      or <code>secret:&lt;scope&gt;:&lt;entry&gt;#&lt;field&gt;</code> (one field). The scope is part of the
-      reference — there is no search and no fallback between scopes.
-    </p>
+    <p class="expl" v-html="t('An entry is a named credential record — e.g. <code>user</code> + <code>password</code> for a host, a single <code>token</code> for an API, or a <code>private_key</code> for SSH. Plugin configs never hold values, only references: <code>credential: secret:&amp;lt;scope&amp;gt;:&amp;lt;entry&amp;gt;</code> (whole record) or <code>secret:&amp;lt;scope&amp;gt;:&amp;lt;entry&amp;gt;#&amp;lt;field&amp;gt;</code> (one field). The scope is part of the reference — there is no search and no fallback between scopes.')"></p>
 
     <section v-for="s in SCOPES" :key="s.id" class="scope" :class="{ disabled: scopeDisabled(s.id) }">
       <div class="scope-head">
-        <span class="scope-name">{{ s.label }}</span>
-        <span class="scope-sub">{{ s.sub }}</span>
+        <span class="scope-name">{{ t(s.label) }}</span>
+        <span class="scope-sub">{{ t(s.sub) }}</span>
       </div>
 
-      <div v-if="scopeDisabled(s.id)" class="empty">Open a project to store project-scoped secrets.</div>
+      <div v-if="scopeDisabled(s.id)" class="empty">{{ t('Open a project to store project-scoped secrets.') }}</div>
       <template v-else>
-        <ListPanel :empty="!entriesOf(s.id).length" empty-text="No secrets in this scope."
-                   add-label="＋ New entry" @add="adding = s.id">
+        <ListPanel :empty="!entriesOf(s.id).length" :empty-text="t('No secrets in this scope.')"
+                   :add-label="t('Secret')" @add="adding = s.id">
           <ListCard v-for="e in entriesOf(s.id)" :key="e.key"
                     :open="isOpen(s.id, e.key)" :no-toggle-on-click="true"
                     @update:open="toggle(s.id, e.key)">
@@ -47,10 +41,10 @@
                 <CopyButton :text="`${e.reference}#${f}`" :title="`Copy '${e.reference}#${f}'`" />
               </span>
               <span class="grow"></span>
-              <CopyButton :text="`credential: ${e.reference}`" label="ref" :title="`Copy 'credential: ${e.reference}'`" />
+              <CopyButton :text="`credential: ${e.reference}`" :label="t('ref')" :title="`Copy 'credential: ${e.reference}'`" />
               <ExpandButton v-if="e.canManage" :open="isOpen(s.id, e.key)" @update:open="toggle(s.id, e.key)" />
-              <DeleteButton v-if="e.canManage" title="Delete entry" @click="del(s.id, e.key)" />
-              <span v-else class="chip ro" title="You may use this credential but not change it">read-only</span>
+              <DeleteButton v-if="e.canManage" :title="t('Delete entry')" @click="del(s.id, e.key)" />
+              <span v-else class="chip ro" :title="t('You may use this credential but not change it')">{{ t('read-only') }}</span>
             </template>
             <template v-if="isOpen(s.id, e.key)" #body>
               <SecretEntryEditor mode="edit" :scope="s.id" :entry-key="e.key" :fields="e.fields" />
@@ -66,11 +60,13 @@
 </template>
 
 <script setup lang="ts">
+import { t } from "../../i18n";
 import { ref } from "vue";
 import SecretEntryEditor from "../../secrets/SecretEntryEditor.vue";
 import ListPanel from "../../components/list/ListPanel.vue";
 import ListCard from "../../components/list/ListCard.vue";
 import DeleteButton from "../../components/buttons/DeleteButton.vue";
+import RefreshButton from "../../components/buttons/RefreshButton.vue";
 import ExpandButton from "../../components/buttons/ExpandButton.vue";
 import CopyButton from "../../components/buttons/CopyButton.vue";
 import { SCOPES, deleteSecret, entriesOf, loadSecrets, scopeDisabled } from "../../secrets/store";
