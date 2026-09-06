@@ -146,6 +146,9 @@
             <label class="field"><span>{{ t('Context') }}</span>
               <input type="number" v-model.number="m.contextLength" :placeholder="t('auto-detect')">
             </label>
+            <label class="field"><span>{{ t('Temperature') }}</span>
+              <input type="number" step="0.1" min="0" max="2" v-model.number="m.temperature" :placeholder="t('project default')">
+            </label>
             <div class="conn-actions">
               <button class="btn ghost" :disabled="testing" @click="testChat(m)">
                 {{ testing ? "…" : t('Test chat') }}

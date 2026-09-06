@@ -43,7 +43,8 @@ public static class SettingsOps
                 Id = m.Id,
                 Name = m.Name,
                 Model = m.Model,
-                ContextLength = m.ContextLength
+                ContextLength = m.ContextLength,
+                Temperature = m.Temperature
             }).ToList()
         }).ToList()
     };
@@ -263,6 +264,8 @@ public static class SettingsOps
         PeerDebounceMaxSeconds = r.PeerDebounceMaxSeconds,
         PeerDepthCeiling = r.PeerDepthCeiling,
         PeerHardCap = r.PeerHardCap,
+        Temperature = r.Temperature,
+        ReasoningLevel = r.ReasoningLevel,
         Capabilities = r.Capabilities,
         Connections = r.Connections,
         Islands = r.Islands,
@@ -287,6 +290,8 @@ public static class SettingsOps
         PeerDebounceMaxSeconds = d.PeerDebounceMaxSeconds,
         PeerDepthCeiling = d.PeerDepthCeiling,
         PeerHardCap = d.PeerHardCap,
+        Temperature = d.Temperature,
+        ReasoningLevel = Blank(d.ReasoningLevel),
         // Null and empty are different answers here, and only null means "inherit": an empty
         // capabilities list is a role that deliberately runs with none. The editor sends null for the
         // untouched case, so nothing collapses one into the other on the way through.
@@ -1059,7 +1064,8 @@ public static class SettingsOps
             Id = raw,
             Name = string.IsNullOrWhiteSpace(d.Name) ? null : d.Name.Trim(),
             Model = Blank(d.Model),
-            ContextLength = d.ContextLength is > 0 ? d.ContextLength : null
+            ContextLength = d.ContextLength is > 0 ? d.ContextLength : null,
+            Temperature = d.Temperature
         };
     }
 

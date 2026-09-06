@@ -376,6 +376,10 @@ public sealed class ModelEditDto
     public string? Name { get; set; }
     public string? Model { get; set; }
     public int? ContextLength { get; set; }
+
+    /// <summary>Default sampling temperature for this model. Null = fall back to the role's default,
+    /// then the project/machine one — see <see cref="SPLA.Domain.Settings.SplaModelSection.Temperature"/>.</summary>
+    public double? Temperature { get; set; }
 }
 
 // ── Roles ────────────────────────────────────────────────────────────────────
@@ -429,6 +433,15 @@ public sealed class RoleEditDto
     public int? PeerDebounceMaxSeconds { get; set; }
     public int? PeerDepthCeiling { get; set; }
     public int? PeerHardCap { get; set; }
+
+    /// <summary>Per-role default sampling temperature. Null = inherit the resolved model's own
+    /// default, then the project/machine one — see <c>SplaRoleSection.Temperature</c>.</summary>
+    public double? Temperature { get; set; }
+
+    /// <summary>Per-role default reasoning level, in the provider's own words. Null = inherit the
+    /// project/machine default (empty at that layer falls through to the model's own default) — see
+    /// <c>SplaRoleSection.ReasoningLevel</c>.</summary>
+    public string? ReasoningLevel { get; set; }
 
     /// <summary>Built-in capabilities for this role. Null = inherit the project's list; a list
     /// REPLACES it (a role is not a subset of the project — <c>ADR_20260827-2</c>).</summary>

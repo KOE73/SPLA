@@ -84,6 +84,11 @@
             </select>
           </label>
 
+          <InheritNumberField v-model="r.temperature" :label="t('Temperature')" :step="0.1" :min="0" :max="2" />
+          <label class="field"><span>{{ t('Reasoning') }}</span>
+            <input v-model="r.reasoningLevel" :placeholder="t('inherit')" spellcheck="false" />
+          </label>
+
           <label class="field col"><span>{{ t('Prompt') }}</span>
             <textarea v-model="r.customPrompt" rows="5"
                       :placeholder="t('Who this role is, written to the model. Replaces the project\'s custom prompt for this role.')"></textarea>

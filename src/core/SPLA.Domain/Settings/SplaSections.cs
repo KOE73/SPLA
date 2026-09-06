@@ -228,6 +228,20 @@ public class SplaRoleSection
     [YamlMember(Alias = "peer_hard_cap")]
     public int? PeerHardCap { get; set; }
 
+    /// <summary>Per-role default sampling temperature. Wins over the model's own
+    /// <see cref="SplaModelSection.Temperature"/> and the project/machine <c>llm:</c> default, but a
+    /// chat that has picked its own value (<c>StatusBar</c>) still wins over this — a role sets what a
+    /// chat starts at, not a ceiling it cannot move away from. Null = inherit.</summary>
+    [YamlMember(Alias = "temperature")]
+    public double? Temperature { get; set; }
+
+    /// <summary>Per-role default reasoning level, in the provider's own words (must be one of the
+    /// resolved model's <see cref="SplaModelSection.ReasoningOptions"/> once one is picked). Same
+    /// precedence as <see cref="Temperature"/>: overrides <see cref="SplaModelSection.ReasoningDefault"/>,
+    /// itself overridden by whatever the chat has already chosen. Null = inherit.</summary>
+    [YamlMember(Alias = "reasoning_level")]
+    public string? ReasoningLevel { get; set; }
+
     /// <summary>
     /// Which connections this role may use, by <see cref="SplaConnectionSection.Id"/> or by scope
     /// name (<c>user</c>, <c>project</c>, <c>shared</c> — a whole layer in one word). Null or empty =
@@ -417,6 +431,14 @@ public class SplaModelSection
     /// <see cref="ReasoningOptions"/>.</summary>
     [YamlMember(Alias = "reasoning_default")]
     public string? ReasoningDefault { get; set; }
+
+    /// <summary>Default sampling temperature for this model, used when nothing more specific (role,
+    /// chat) says otherwise. Same precedence family as <see cref="ReasoningDefault"/>: a property of
+    /// the model, not the account, so it lives on the leaf rather than on
+    /// <see cref="SplaConnectionSection"/>. Null = fall back to the project/machine <c>llm:</c>
+    /// default (<see cref="SplaLlmSection.Temperature"/>).</summary>
+    [YamlMember(Alias = "temperature")]
+    public double? Temperature { get; set; }
 
     /// <summary>Display label for the picker — falls back to the wire model string, then the id.</summary>
     [YamlIgnore]

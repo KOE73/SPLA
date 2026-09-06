@@ -205,6 +205,9 @@ export interface ModelEntryDto {
   name?: string;
   model?: string;
   contextLength?: number;
+  /** Default sampling temperature for this model. Undefined = fall back to the role's default, then
+   *  the project/machine one. */
+  temperature?: number;
 }
 
 /** A model entry flattened for pickers, keeping its owning connection for grouping. */
@@ -506,6 +509,12 @@ export interface RoleEditDto {
   peerDebounceMaxSeconds?: number | null;
   peerDepthCeiling?: number | null;
   peerHardCap?: number | null;
+  /** Per-role default sampling temperature. Null = inherit the resolved model's own default, then
+   *  the project/machine one. */
+  temperature?: number | null;
+  /** Per-role default reasoning level, in the provider's own words. Null = inherit the project/
+   *  machine default (which itself falls through to the model's own default when empty). */
+  reasoningLevel?: string | null;
   /** Null = inherit the project's list; a list REPLACES it (a role is not a subset of the project). */
   capabilities?: string[] | null;
   /** Narrowing, never a grant: null/empty = every connection the project has. Ids or scope words. */

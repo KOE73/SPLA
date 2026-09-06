@@ -1,4 +1,4 @@
-﻿using Microsoft.Extensions.Logging.Abstractions;
+using Microsoft.Extensions.Logging.Abstractions;
 using SPLA.Agent;
 using SPLA.Agent.Composition;
 using SPLA.Domain.Settings;

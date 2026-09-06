@@ -11,6 +11,14 @@ public class ResolvedSettings
     // LLM behaviour (endpoint/key/model live in Connections — not here)
     public double Temperature { get; set; } = 0.7;
     public string? ReasoningLevel { get; set; }
+
+    /// <summary>Role's own temperature override, set only by <see cref="ResolveForRole"/> from
+    /// <see cref="SplaRoleSection.Temperature"/>. Kept apart from <see cref="Temperature"/> (the
+    /// project/machine default) so the resolved model's own <see cref="SplaModelSection.Temperature"/>
+    /// can slot in between the two in <see cref="ToLLMSettings(ResolvedModelEntry?)"/>: chat &gt; role
+    /// &gt; model &gt; project/machine default, and each layer only counts when it actually said
+    /// something. Null = this role said nothing (or there is no role).</summary>
+    public double? RoleTemperature { get; set; }
     public double PresencePenalty { get; set; } = 0.0;
     public double FrequencyPenalty { get; set; } = 0.0;
     public double RepeatPenalty { get; set; } = 1.0;
@@ -364,7 +372,7 @@ public class ResolvedSettings
         ApiKey           = entry?.ApiKey   ?? "lm-studio",
         ModelName        = entry?.Model is { Length: > 0 } m && m != "auto" ? m : "",
         ContextLength    = entry?.ContextLength is > 0 ? entry.ContextLength : null,
-        Temperature      = Temperature,
+        Temperature      = RoleTemperature ?? entry?.Entry.Temperature ?? Temperature,
         Mode             = Mode,
         Theme            = Theme,
         ReasoningLevel   = ReasoningLevel,
@@ -700,6 +708,8 @@ public static class SettingsResolver
         r.PeerDebounceMaxSeconds = roleSection.PeerDebounceMaxSeconds ?? r.PeerDebounceMaxSeconds;
         r.PeerDepthCeiling = roleSection.PeerDepthCeiling ?? r.PeerDepthCeiling;
         r.PeerHardCap = roleSection.PeerHardCap ?? r.PeerHardCap;
+        r.RoleTemperature = roleSection.Temperature ?? r.RoleTemperature;
+        r.ReasoningLevel = roleSection.ReasoningLevel ?? r.ReasoningLevel;
         AddTrustedDomains(r, roleSection.TrustedDomains);
 
         // Wholesale replacement, deliberately not an intersection — see the type doc on
@@ -777,6 +787,7 @@ public static class SettingsResolver
     private static ResolvedSettings CloneForRole(ResolvedSettings baseline, string roleName) => new()
     {
         Temperature = baseline.Temperature,
+        RoleTemperature = baseline.RoleTemperature,
         ReasoningLevel = baseline.ReasoningLevel,
         PresencePenalty = baseline.PresencePenalty,
         FrequencyPenalty = baseline.FrequencyPenalty,
