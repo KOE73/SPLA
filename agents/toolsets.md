@@ -61,7 +61,7 @@ disclosed.
 
 ## Virtual reply tools are outside this system
 
-A chat's `reply_<role>[_<topic>]` tools (`SPLA.Runtime/ChatToolHost.cs`, PLAN_20260902 wave 5) are
+A chat's `reply_<role>[_<n>]` tools (`SPLA.Runtime/ChatToolHost.cs`, PLAN_20260902 wave 5) are
 **not levelled, not activated, and not disclosed through any of the mechanism above.** They are mixed
 into the chat's tool list directly by `ChatToolHost`, never registered in `McpHost`, so
 `ToolSetRegistry`/`ToolSetSession` have no entry for them and cannot hide or reveal one — a set the

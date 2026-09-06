@@ -54,6 +54,26 @@ public class ChatSession
     public string? As { get; set; }
 
     /// <summary>
+    /// This chat's ordinal among all chats the project has ever created for <see cref="As"/> —
+    /// handed out once, at creation, by a monotonic per-role counter the project owns
+    /// (<c>SPLA.Domain.Settings.RoleInstanceCounters</c>), and thereafter the property of this chat
+    /// (<c>docs/adr/ADR_20260906_core_one-address.md</c> §2.1).
+    /// <para>Together with the role it forms the chat's <b>public name</b> — <c>architect_2</c> — the
+    /// one string that stands for this chat in the chat directory, in <c>agent_correspond</c>, in the
+    /// name of the reply tool pointed at it, in the log and on the correspondence graph. That is
+    /// precisely what <see cref="Id"/> is not: the raw identifier stays inside the app forever, so
+    /// that nothing outward-facing is welded to how sessions happen to be filed (ADR §2.2, §3).</para>
+    /// <para>Never re-used and never re-issued: delete or archive the chat and the number goes with
+    /// it, because by then it is already written down in other people's sessions. A chat created
+    /// without a role still gets a number — under the role <c>agent</c>, matching the fallback
+    /// <c>Correspond</c> already applies, so such a chat is publicly <c>agent_&lt;n&gt;</c>.</para>
+    /// <para>Null for every session written before this wave; <see cref="Settings.ChatManager"/> mints
+    /// one on first load rather than leaving the chat nameless.</para>
+    /// </summary>
+    [YamlMember(Alias = "as_instance")]
+    public int? AsInstance { get; set; }
+
+    /// <summary>
     /// The chat id that spawned this session, or null for one a human opened directly. Together with
     /// <see cref="Origin"/> this is the entire difference between a chat and a spawned run once a role
     /// supplies everything else (<c>docs/adr/ADR_20260902_core_session-unification.md</c> §2.1).
@@ -143,8 +163,25 @@ public class ChatSessionCorrespondence
     [YamlMember(Alias = "role")]
     public string Role { get; set; } = string.Empty;
 
+    /// <summary>Legacy field: the (role, topic) address wave 0 replaced with (role, instance_no) —
+    /// see <c>docs/plans/PLAN_20260906_core_chat-directory-and-await.md</c> §3 wave 0. Kept purely so
+    /// a session file written before the change still reads: on load, an entry with no
+    /// <see cref="Purpose"/> falls back to this as its purpose text. Every entry written from here on
+    /// mirrors <see cref="Purpose"/> into this field too, so anything still reading "topic" (the
+    /// project-wide correspondence graph's display field) keeps working unchanged.</summary>
     [YamlMember(Alias = "topic")]
     public string Topic { get; set; } = string.Empty;
+
+    /// <summary>Why this correspondence was opened — see <c>Correspondence.Purpose</c>. Absent on a
+    /// session written before wave 0, in which case <see cref="Topic"/> is what carried this text.</summary>
+    [YamlMember(Alias = "purpose")]
+    public string? Purpose { get; set; }
+
+    /// <summary>Which instance of <see cref="Role"/> this is — see <c>Correspondence.InstanceNo</c>.
+    /// Absent on a session written before wave 0; <c>ChatRuntime</c>'s restore loop assigns one by
+    /// order of appearance in this file when it is missing, per plan §3 wave 0's migration note.</summary>
+    [YamlMember(Alias = "instance_no")]
+    public int? InstanceNo { get; set; }
 
     [YamlMember(Alias = "chat_id")]
     public string ChatId { get; set; } = string.Empty;
@@ -152,6 +189,13 @@ public class ChatSessionCorrespondence
     /// <summary><c>"self"</c> or <c>"correspondent"</c> — mirrors <c>CorrespondenceInitiator</c>.</summary>
     [YamlMember(Alias = "initiator")]
     public string Initiator { get; set; } = "self";
+
+    /// <summary>Public name of the chat that put these two in touch, when a third one did — see
+    /// <c>Correspondence.IntroducedBy</c> for why this is a field of its own rather than a third value
+    /// of <see cref="Initiator"/>. Absent for a correspondence either side opened itself, which is
+    /// every correspondence written before the introduction operation existed.</summary>
+    [YamlMember(Alias = "introduced_by")]
+    public string? IntroducedBy { get; set; }
 
     [YamlMember(Alias = "tool_name")]
     public string ToolName { get; set; } = string.Empty;

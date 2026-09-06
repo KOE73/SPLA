@@ -7,7 +7,7 @@
  * without either importing the other's SFC internals.
  */
 
-/** True for the virtual reply_<role>[_<topic>] tools (ChatRuntime.SendReply) and agent_correspond
+/** True for the virtual reply_<role>[_<n>] tools (ChatRuntime.SendReply) and agent_correspond
  *  (its first message on a fresh address) — both ultimately the same edge, source→sink
  *  (ADR_20260827-2 §2.2), and both meant to render as speech ("→ to <role>"), not a generic tool
  *  card, with the delivery receipt kept out of view as content (plan trap 10). */

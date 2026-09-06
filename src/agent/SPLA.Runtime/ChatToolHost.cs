@@ -102,7 +102,7 @@ public sealed class ChatToolHost(
         if (string.IsNullOrWhiteSpace(text))
             return ToolResult.Fail("error: 'text' is required", "missing text");
 
-        var result = owner!.SendReply(correspondence.Role, correspondence.Topic, text);
+        var result = owner!.SendReply(correspondence.Role, correspondence.InstanceNo, text);
         return result.Outcome switch
         {
             ChatRuntime.ReplyOutcome.Delivered => ToolResult.Text(
@@ -126,16 +126,16 @@ public sealed class ChatToolHost(
         {
             Name = c.ToolName,
             Description = $"Sends your next message to {c.Role} on this correspondence" +
-                           (c.Topic.Length > 0 ? $" ({c.Topic})." : "."),
+                           (c.Purpose.Length > 0 ? $" ({c.Purpose})." : "."),
             Details =
                 $"""
                 tool: {c.ToolName}
 
                 summary: Sends one message across an already-open correspondence with '{c.Role}'
-                         ({(c.Topic.Length > 0 ? c.Topic : "no topic")}). This is a REPLY, addressed by
-                         this tool's own name — there is no chat id parameter, and there never will be
-                         one for this address: the name IS the address, and it stays this name for as
-                         long as the correspondence is open.
+                         ({(c.Purpose.Length > 0 ? c.Purpose : "no stated purpose")}). This is a REPLY,
+                         addressed by this tool's own name — there is no chat id parameter, and there
+                         never will be one for this address: the name IS the address, and it stays this
+                         name for as long as the correspondence is open.
 
                 arguments:
                   text:

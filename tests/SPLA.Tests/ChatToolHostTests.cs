@@ -192,7 +192,7 @@ public sealed class ChatToolHostTests
         {
             Correspondences = { new Correspondence
             {
-                Role = "architect", Topic = "design review", ChatId = "some-id",
+                Role = "architect", Purpose = "design review", InstanceNo = 1, ChatId = "some-id",
                 Initiator = CorrespondenceInitiator.Self, ToolName = "reply_architect"
             }}
         };
@@ -209,7 +209,7 @@ public sealed class ChatToolHostTests
     {
         public List<Correspondence> Correspondences { get; init; } = new();
         IReadOnlyCollection<Correspondence> IReplyToolSource.Correspondences => Correspondences;
-        public ChatRuntime.ReplyResult SendReply(string role, string topic, string text) =>
+        public ChatRuntime.ReplyResult SendReply(string role, int instanceNo, string text) =>
             new(ChatRuntime.ReplyOutcome.Delivered, null);
     }
 }

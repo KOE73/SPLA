@@ -23,6 +23,16 @@ public class ChatManager
     private readonly string _backupsDir;
     private readonly string? _chatImagesDir;
 
+    /// <summary>The project's per-role instance counters — source of <see cref="ChatSession.AsInstance"/>.
+    /// Lazy because a project may be listed, deleted or inspected without ever creating a chat, and the
+    /// counter file should not appear in <c>.spla/</c> until someone is actually named.</summary>
+    private readonly Lazy<RoleInstanceCounters> _instances;
+
+    /// <summary>Role a chat is publicly named under when it has none of its own — the same fallback
+    /// <c>Correspond</c> applies, so such a chat is <c>agent_&lt;n&gt;</c> everywhere
+    /// (<c>docs/adr/ADR_20260906_core_one-address.md</c> §2.1).</summary>
+    public const string DefaultPublicRole = "agent";
+
     private static readonly IDeserializer Deserializer = new DeserializerBuilder()
         .WithNamingConvention(UnderscoredNamingConvention.Instance)
         .IgnoreUnmatchedProperties()
@@ -55,8 +65,41 @@ public class ChatManager
         // automatically excluded from it without any extra filtering.
         _archivedDir = Path.Combine(_chatsDir, "archived");
 
+        // The counter file sits in the project's runtime area next to the token tally, not in the
+        // chats bucket: it outlives every chat in there, including the deleted ones, and putting it
+        // among them would invite exactly the "just count the folder" reasoning it exists to refuse.
+        var runtimeDir = project.GetBucket(SPLA.Domain.Project.IProjectBackend.RootBucket).MapToHostDirectory()
+            ?? Path.Combine(_settings.WorkspacePath, ".spla");
+        _instances = new Lazy<RoleInstanceCounters>(() => new RoleInstanceCounters(
+            Path.Combine(runtimeDir, RoleInstanceCounters.FileName),
+            SalvageInstanceFloor));
+
         ConfigLoader.TryHideDirectory(Path.GetDirectoryName(_chatsDir)!);
     }
+
+    /// <summary>Highest instance number visible on disk per role, for the one case where the counter
+    /// file is unreadable. Only ever a floor: chats that were deleted took their numbers with them and
+    /// no scan can see those — which is the whole reason the counter is a file in the first place.</summary>
+    private IEnumerable<KeyValuePair<string, int>> SalvageInstanceFloor()
+    {
+        foreach (var session in ListChatsIn(_chatsDir).Concat(ListChatsIn(_archivedDir)))
+            if (session.AsInstance is > 0)
+                yield return new KeyValuePair<string, int>(
+                    string.IsNullOrWhiteSpace(session.As) ? DefaultPublicRole : session.As!,
+                    session.AsInstance.Value);
+    }
+
+    /// <summary>
+    /// Takes the next public-name ordinal for <paramref name="role"/> (or for <c>agent</c> when the
+    /// chat has no role of its own) and persists the counter before returning
+    /// (<c>docs/adr/ADR_20260906_core_one-address.md</c> §2.1).
+    /// <para>Public because minting is no longer only a creation-time act: a role-less chat is numbered
+    /// the first time it becomes someone's correspondent, and that moment is known to
+    /// <c>ChatRuntime</c>, not here. The counter itself stays the project's — one sequence per role,
+    /// wherever the request comes from.</para>
+    /// </summary>
+    public int NextInstanceNumber(string? role) =>
+        _instances.Value.Next(string.IsNullOrWhiteSpace(role) ? DefaultPublicRole : role!);
 
     public string GenerateChatId()
     {
@@ -104,7 +147,18 @@ public class ChatManager
             {
                 Mode = _settings.Mode.ToString()
             },
-            As = role
+            As = role,
+            // A chat that is created BY being addressed gets its public name in the same breath
+            // (ADR_20260906 §2.1): a role chat exists because someone asked for that role, so "created"
+            // and "addressed" are one moment here.
+            //
+            // A chat with no role is the opposite case and gets nothing yet — its number is minted
+            // lazily, the first time it actually becomes someone's correspondent (ChatRuntime's
+            // EnsureAsInstance). Numbering every human chat at creation would spend the `agent`
+            // sequence on the dozens of chats that never talk to anyone, and the first real
+            // correspondent of the project would introduce himself as `agent_412`. It also makes old
+            // and new role-less chats behave identically, since neither is numbered until addressed.
+            AsInstance = string.IsNullOrWhiteSpace(role) ? null : _instances.Value.Next(role!)
         };
 
         SaveChat(chat);
@@ -138,6 +192,11 @@ public class ChatManager
             Origin = "spawned",
             Parent = parentChatId,
             As = role,
+            // No instance number, deliberately. A spawned run has no public address to be reached at:
+            // its address is the link to its parent, it never appears in the chat directory, and
+            // nobody outside can open a correspondence with it. Minting a number here would burn one
+            // out of the role's sequence for a chat no one can ever say the name of (ADR_20260906 §2.2).
+            AsInstance = null,
             Spawn = new ChatSessionSpawnInfo
             {
                 SkillId = skillId,
@@ -207,7 +266,42 @@ public class ChatManager
         if (path == null) return null;
 
         var yaml = File.ReadAllText(path);
-        return Deserializer.Deserialize<ChatSession>(yaml);
+        var session = Deserializer.Deserialize<ChatSession>(yaml);
+        if (session != null) MintInstanceOnFirstLoad(session, path);
+        return session;
+    }
+
+    /// <summary>
+    /// Gives a session written before <see cref="ChatSession.AsInstance"/> existed its number, once,
+    /// the first time it is loaded — and writes it back immediately, because a number that is not on
+    /// disk is a number the next load hands out again to someone else. Struck at first load rather
+    /// than at every load, and rather than in a migration pass over the folder: chats are numbered
+    /// when they are actually reached, so a project full of years-old chats does not spend its whole
+    /// role sequence the first time it is opened.
+    ///
+    /// <para>Only chats that ran <i>as</i> something are numbered. A plain human chat gets its number
+    /// when someone first needs to address it, not retroactively; a spawned run gets none at all
+    /// (see <see cref="CreateSpawnedChat"/>).</para>
+    ///
+    /// <para><b>The price, accepted knowingly.</b> The <c>tool_name</c> already saved on existing
+    /// correspondences is <i>not</i> rewritten — trap 11 of <c>PLAN_20260906</c> forbids renaming after
+    /// the fact, since that string is what the other side has been reading and quoting. So for a while
+    /// an old <c>reply_architect_2</c> may point at a chat whose public name is now
+    /// <c>architect_7</c>. The link still works (it is keyed by chat id, not by name); only the label
+    /// disagrees, and only until that correspondence ends.</para>
+    /// </summary>
+    private void MintInstanceOnFirstLoad(ChatSession session, string path)
+    {
+        if (session.AsInstance is > 0) return;
+        if (string.IsNullOrWhiteSpace(session.As)) return;
+        if (IsSpawned(session)) return;
+
+        session.AsInstance = _instances.Value.Next(session.As!);
+        // Written back to the path it came from, not through SaveChat: that one always writes into the
+        // active folder, which would quietly unarchive an archived chat just for being read.
+        try { WriteAtomic(path, Serializer.Serialize(session)); }
+        catch { /* The number is still in the counter, so it is spent, not re-used; the next load
+                   simply mints a fresh one. Losing a read to a read-only file is the worse trade. */ }
     }
 
     /// <summary>Human-visible chats only — a spawned session is not a chat a person opened, and a
@@ -312,6 +406,13 @@ public class ChatManager
         var chat = LoadChat(id) ?? throw new Exception($"Chat {id} not found");
         
         chat.Id = GenerateChatId();
+        // A copy is a new chat, not a second face of the old one: it needs its own public name, or two
+        // chats would answer to `architect_2` and every reply tool pointed at that name would be
+        // ambiguous. Same for Fork, which comes through here (ChatRegistry.Fork).
+        //
+        // A copy of a chat that had no name yet stays nameless: it inherits the original's situation,
+        // not the original's number, and will be minted on first address like any other (§2.1).
+        chat.AsInstance = chat.AsInstance is > 0 ? NextInstanceNumber(chat.As) : null;
         chat.Title += " (Copy)";
         chat.CreatedAt = DateTime.UtcNow;
         chat.UpdatedAt = DateTime.UtcNow;

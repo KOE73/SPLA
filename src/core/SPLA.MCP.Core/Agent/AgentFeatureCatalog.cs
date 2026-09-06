@@ -92,7 +92,7 @@ public static class AgentFeatureCatalog
         ["core.toolsets"] = "Turn a group of tools on or off.\ntoolset_activate toolset_deactivate",
         ["core.roles"] = "See which roles this project has, so you can address one.\nrole_list",
         ["core.spawn"] = "Start one or many sub-agents to do a task.\nagent_spawn agent_spawn_batch",
-        ["core.correspond"] = "Open a correspondence with another role and reply to it.\nagent_correspond (plus a per-chat reply_<role>[_<topic>] once one is open)",
+        ["core.correspond"] = "Open a correspondence with a role, or with a chat that already exists, and reply to it; introduce two other chats to each other.\nagent_correspond agent_introduce (plus a per-chat reply_<role>_<n> once one is open)",
         ["core.clarify"] = "Ask the user a question and wait for the answer.\nagent_clarify",
         ["core.blobs"] = "Look at a piece of data stored outside the chat.\nblob_peek",
         ["core.background_tasks"] = "See, read, and cancel calls running detached from the turn (background: true).\ntask_list task_output task_cancel",

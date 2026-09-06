@@ -1,4 +1,4 @@
-using Microsoft.Extensions.Logging.Abstractions;
+﻿using Microsoft.Extensions.Logging.Abstractions;
 using SPLA.Domain.Interfaces;
 using SPLA.Domain.Models;
 using SPLA.Domain.Settings;
@@ -54,20 +54,20 @@ public sealed class ReplyToolTests
 
         /// <summary>What the next <see cref="SendReply"/> call answers with — the seam that lets a
         /// test stand in for a denied capability gate without a real <see cref="ISandbox"/>.</summary>
-        public Func<string, string, string, ChatRuntime.ReplyResult>? OnSendReply { get; set; }
-        public List<(string role, string topic, string text)> SentReplies { get; } = new();
+        public Func<string, int, string, ChatRuntime.ReplyResult>? OnSendReply { get; set; }
+        public List<(string role, int instanceNo, string text)> SentReplies { get; } = new();
 
-        public ChatRuntime.ReplyResult SendReply(string role, string topic, string text)
+        public ChatRuntime.ReplyResult SendReply(string role, int instanceNo, string text)
         {
-            SentReplies.Add((role, topic, text));
-            return OnSendReply?.Invoke(role, topic, text)
+            SentReplies.Add((role, instanceNo, text));
+            return OnSendReply?.Invoke(role, instanceNo, text)
                    ?? new ChatRuntime.ReplyResult(ChatRuntime.ReplyOutcome.Delivered, null);
         }
     }
 
-    private static Correspondence MakeCorrespondence(string role, string topic, string toolName) => new()
+    private static Correspondence MakeCorrespondence(string role, string purpose, string toolName) => new()
     {
-        Role = role, Topic = topic, ChatId = "some-chat-id",
+        Role = role, Purpose = purpose, InstanceNo = 1, ChatId = "some-chat-id",
         Initiator = CorrespondenceInitiator.Self, ToolName = toolName
     };
 
@@ -117,7 +117,7 @@ public sealed class ReplyToolTests
 
         Assert.False(result.IsError);
         Assert.Single(source.SentReplies);
-        Assert.Equal(("architect", "design review", "what do you think?"), source.SentReplies[0]);
+        Assert.Equal(("architect", 1, "what do you think?"), source.SentReplies[0]);
         Assert.Empty(inner.Executed); // never delegated — this is the whole point of the seam
     }
 
@@ -220,15 +220,18 @@ public sealed class ReplyToolTests
             var reviewerHost = new ChatToolHost(new FakeToolHost(), reviewer);
             var bystanderHost = new ChatToolHost(new FakeToolHost(), bystander);
 
-            Assert.Contains("reply_architect", reviewerHost.GetToolDefinitions().Select(d => d.Function.Name));
-            Assert.DoesNotContain("reply_architect", bystanderHost.GetToolDefinitions().Select(d => d.Function.Name));
+            Assert.Contains("reply_architect_1", reviewerHost.GetToolDefinitions().Select(d => d.Function.Name));
+            Assert.DoesNotContain("reply_architect_1", bystanderHost.GetToolDefinitions().Select(d => d.Function.Name));
         }
         finally { runtime.Dispose(); Directory.Delete(root, recursive: true); }
     }
 
     [Fact]
-    public void The_tool_name_stays_stable_when_a_second_correspondent_of_the_same_role_appears()
+    public void The_tool_name_stays_stable_when_a_second_instance_of_the_same_role_is_opened()
     {
+        // PLAN_20260906 wave 0: the address is a system-issued instance number, never the caller's
+        // purpose text — a second instance only ever appears via the explicit 'another' flag, and its
+        // number never depends on what either side's purpose happened to say.
         var (runtime, chats, root) = BuildProject();
         try
         {
@@ -238,22 +241,24 @@ public sealed class ReplyToolTests
 
             var first = reviewer.OpenCorrespondence(
                 "architect", "api design", architect1.ChatId, CorrespondenceInitiator.Self);
-            Assert.Equal("reply_architect", first.ToolName); // alone: no topic needed
+            // Every public name carries its number, first instance included (ADR_20260906 §2.2 and
+            // ReplyToolNaming.BuildPublicName): a bare "architect" would be the role, not a chat.
+            Assert.Equal("reply_architect_1", first.ToolName);
 
             var second = reviewer.OpenCorrespondence(
-                "architect", "db schema", architect2.ChatId, CorrespondenceInitiator.Self);
-            Assert.Equal("reply_architect_db_schema", second.ToolName); // collides: topic joins
+                "architect", "db schema", architect2.ChatId, CorrespondenceInitiator.Self, another: true);
+            Assert.Equal("reply_architect_2", second.ToolName); // a second instance: ordinal joins
 
             // The first one's name must not have moved just because a second one showed up later
             // (plan trap 11).
             var stillFirst = reviewer.Correspondences.Single(c => c.ChatId == architect1.ChatId);
-            Assert.Equal("reply_architect", stillFirst.ToolName);
+            Assert.Equal("reply_architect_1", stillFirst.ToolName);
         }
         finally { runtime.Dispose(); Directory.Delete(root, recursive: true); }
     }
 
     [Fact]
-    public void A_topic_is_required_to_open_a_correspondence()
+    public void A_purpose_is_optional_to_open_a_correspondence()
     {
         var (runtime, chats, root) = BuildProject();
         try
@@ -261,6 +266,23 @@ public sealed class ReplyToolTests
             var reviewer = chats.CreateNew("Reviewer");
 
             var result = reviewer.Correspond("architect", "   ", "hello");
+
+            Assert.True(result.Delivered);
+            var correspondence = Assert.Single(reviewer.Correspondences);
+            Assert.Equal("", correspondence.Purpose);
+        }
+        finally { runtime.Dispose(); Directory.Delete(root, recursive: true); }
+    }
+
+    [Fact]
+    public void A_role_is_required_to_open_a_correspondence()
+    {
+        var (runtime, chats, root) = BuildProject();
+        try
+        {
+            var reviewer = chats.CreateNew("Reviewer");
+
+            var result = reviewer.Correspond("   ", "purpose", "hello");
 
             Assert.False(result.Delivered);
             Assert.Equal(SPLA.Domain.Agent.CorrespondOutcome.InvalidArgument, result.Outcome);
@@ -281,7 +303,7 @@ public sealed class ReplyToolTests
 
             var host = new ChatToolHost(new FakeToolHost(), reviewer);
             var result = await host.ExecuteToolAsync(
-                AgentMode.Agent, "reply_architect", """{"text":"what do you think of this API?"}""");
+                AgentMode.Agent, "reply_architect_1", """{"text":"what do you think of this API?"}""");
 
             Assert.False(result.IsError);
 

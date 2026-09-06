@@ -1,4 +1,4 @@
-using Microsoft.Extensions.Logging.Abstractions;
+﻿using Microsoft.Extensions.Logging.Abstractions;
 using SPLA.Agent;
 using SPLA.Agent.Composition;
 using SPLA.Domain.Settings;
@@ -37,7 +37,7 @@ public sealed class AgentCapabilitiesTests
         "toolset_activate", "toolset_deactivate",
         "role_list",
         "agent_spawn", "agent_spawn_batch",
-        "agent_correspond",
+        "agent_correspond", "agent_introduce",
         "agent_clarify",
         "blob_peek",
         "task_list", "task_output", "task_cancel",

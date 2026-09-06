@@ -118,7 +118,7 @@ public sealed class PeerReplyLiveAndTokenTests
             var architect = chats.CreateNew("Architect");
 
             reviewer.OpenCorrespondence("architect", "", architect.ChatId, CorrespondenceInitiator.Self);
-            var sent = reviewer.SendReply("architect", "", "what do you think of this API?");
+            var sent = reviewer.SendReply("architect", 1, "what do you think of this API?");
             Assert.True(sent.Delivered);
 
             // Nothing has drained yet — the message sits in architect's inbox exactly like a woken

@@ -31,7 +31,8 @@ public enum CorrespondOutcome
     /// <summary>The correspondence exists (found or freshly opened) and the reply was queued.</summary>
     Delivered,
 
-    /// <summary>A required argument was missing or empty — role, topic, or text.</summary>
+    /// <summary>A required argument was missing or empty — role or text (<c>purpose</c> is optional
+    /// since PLAN_20260906 wave 0).</summary>
     InvalidArgument,
 
     /// <summary>The named role is not declared in the project manifest. Roles do not self-assign
@@ -55,9 +56,62 @@ public readonly record struct CorrespondResult(CorrespondOutcome Outcome, string
     public bool Delivered => Outcome == CorrespondOutcome.Delivered;
 }
 
+/// <summary>How a call into <see cref="ICorrespondenceHost.Introduce"/> ended
+/// (<c>docs/adr/ADR_20260906_core_one-address.md</c> §2.4). Its own enum rather than three more values
+/// on <see cref="CorrespondOutcome"/>: every refusal here is about a party the caller is <i>not</i>,
+/// which is a question <c>agent_correspond</c> cannot even ask, and folding them together would leave
+/// both tools' result mapping carrying outcomes that can never reach it.</summary>
+public enum IntroduceOutcome
+{
+    /// <summary>Both halves of the edge are open and the introduction reached the first party.</summary>
+    Introduced,
+
+    /// <summary>A required argument was missing or empty — one of the two names, or the text.</summary>
+    InvalidArgument,
+
+    /// <summary>One of the names is nobody's public name. An introduction takes two chats that already
+    /// exist: unlike <c>agent_correspond</c>, naming a role here would have to mint a correspondent, and
+    /// a chat conjured to be introduced to somebody is a chat the introducer should have asked for
+    /// himself.</summary>
+    UnknownAddressee,
+
+    /// <summary>Both names resolved to the same chat. Introducing somebody to himself has no edge to
+    /// open at all.</summary>
+    SameChat,
+
+    /// <summary>The introducer named himself as one of the two. That is not an introduction but an
+    /// ordinary correspondence, and it has its own tool — see <c>agent_correspond</c>. Refused rather
+    /// than quietly re-routed, because the two differ in who ends up on the edge, which is the entire
+    /// subject of §2.4.</summary>
+    IntroducerIsParty,
+
+    /// <summary>A named chat exists but cannot be reached — archived, or gone between the lookup and
+    /// the open.</summary>
+    AddresseeGone,
+
+    /// <summary>These two already correspond. Not an error the caller made, and nothing is opened a
+    /// second time (the address they hold is the one they would get) — but the introduction is refused
+    /// rather than delivered onto an edge somebody else built, so that a message written by a third
+    /// party never appears inside a conversation he was never part of.</summary>
+    AlreadyLinked,
+
+    /// <summary>A capability gate refused the edge (<see cref="Host.ICapabilityGate.CanCorrespond"/>) —
+    /// the introducer's own, or the party asked to carry the introduction.</summary>
+    Denied
+}
+
+/// <summary>A receipt for an introduction, never a conversation — the same distinction
+/// <see cref="CorrespondResult"/> exists to make (ADR_20260827-2 §2.3, plan trap 10), one step further
+/// removed: the introducer is not even on the edge whose opening this reports.</summary>
+public readonly record struct IntroduceResult(IntroduceOutcome Outcome, string Message)
+{
+    public bool Introduced => Outcome == IntroduceOutcome.Introduced;
+}
+
 /// <summary>
 /// What a chat offers <c>agent_correspond</c> (PLAN_20260902 wave 5): the capability to open — or
-/// reuse — a correspondence addressed by (role, topic) and queue the first/next reply across it.
+/// reuse — a correspondence addressed by (role, instance number) and queue the first/next reply
+/// across it.
 /// <para>
 /// A capability, not a given, the same way <see cref="IBackgroundTaskHost"/> is: only
 /// <c>SPLA.Runtime.ChatRuntime</c> implements it. A spawned sub-agent's session leaves this null —
@@ -68,14 +122,39 @@ public readonly record struct CorrespondResult(CorrespondOutcome Outcome, string
 public interface ICorrespondenceHost
 {
     /// <summary>
-    /// Finds (by an address this chat already holds) or creates (on demand, under
-    /// <paramref name="role"/>) the correspondent's chat, and delivers <paramref name="text"/> across
-    /// it. <paramref name="topic"/> is mandatory — it is the only thing that tells two correspondents
-    /// holding the same role apart (ADR §2.3) — and is normalised into the virtual
-    /// <c>reply_&lt;role&gt;[_&lt;topic&gt;]</c> tool's name, never into the model's context as a raw
-    /// identifier.
+    /// Finds (by an address this chat already holds) or opens the correspondent's chat, and delivers
+    /// <paramref name="text"/> across it. <paramref name="purpose"/> is free explanatory text, never
+    /// mandatory and never part of the address (PLAN_20260906 wave 0 §2.1/2.3: the system-issued
+    /// instance number is the address now, not the topic).
+    /// <para><paramref name="role"/> names either a declared role — a correspondent of that kind,
+    /// whose chat is created on demand — or an existing chat's public name, <c>architect_2</c>,
+    /// which reaches that chat and creates nothing
+    /// (<c>docs/adr/ADR_20260906_core_one-address.md</c> §2.3). The parameter keeps its old name
+    /// because the old meaning is still the common one, and the tool's own schema is where the second
+    /// is explained to a model.</para>
+    /// <para>Without <paramref name="another"/>, a call for a role this chat already corresponds with
+    /// reuses that correspondence; with it, an additional correspondent of that role is opened. It has
+    /// no effect when a public name is given: that names one chat, and this chat has at most one
+    /// address to it.</para>
     /// </summary>
-    CorrespondResult Correspond(string role, string topic, string text);
+    CorrespondResult Correspond(string role, string purpose, string text, bool another);
+
+    /// <summary>
+    /// Puts two <i>other</i> chats in touch, without joining them
+    /// (<c>docs/adr/ADR_20260906_core_one-address.md</c> §2.4). Mechanically the same two
+    /// <c>OpenCorrespondence</c> calls that <see cref="Correspond"/> already makes for both ends of an
+    /// edge — the difference is only that the caller is neither end.
+    /// <para>Both parties are named by their <b>public names</b> (<c>architect_2</c>), never by a role:
+    /// an introduction connects two chats that exist. The chat identifier travels through the runtime
+    /// and appears in no message — each of the two simply finds a new <c>reply_&lt;role&gt;_&lt;n&gt;</c>
+    /// in its tool list (§2.4: "идентификатор идёт через рантайм, а не через текст").</para>
+    /// <para><paramref name="first"/> becomes the head of the edge, deterministically, and is the one
+    /// <paramref name="text"/> is delivered to — an opened correspondence by itself touches nobody's
+    /// mailbox, so an introduction that delivered nothing would leave both parties standing still
+    /// (§2.5, and ADR_20260825's "ход рождается из ящика"). The second party needs no message of its
+    /// own: the very next thing it receives is the first party's actual reply.</para>
+    /// </summary>
+    IntroduceResult Introduce(string first, string second, string purpose, string text);
 }
 
 /// <summary>

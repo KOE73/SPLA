@@ -246,7 +246,7 @@ called out in the ADR as "the only real invariant", everything else being a ques
 ## Correspondence decay
 
 A [correspondence](composition.md#correspondents-are-deliberately-not-a-contributor) between two
-actors (`agent_correspond`, and the `reply_<role>[_<topic>]` tool it opens — see
+actors (`agent_correspond`, and the `reply_<role>[_<n>]` tool it opens — see
 [`toolsets.md`](toolsets.md#virtual-reply-tools-are-outside-this-system)) is internal circulation: a
 reply to a reply needs no person watching either chat to keep going, which is exactly what makes an
 unbounded exchange possible. Four settings, all under `agent:` (and overridable per role, alongside

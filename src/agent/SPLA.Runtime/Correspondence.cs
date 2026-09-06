@@ -14,10 +14,11 @@ public enum CorrespondenceInitiator { Self, Correspondent }
 /// chat (ADR §2.2: "собеседники — множество, а не ссылка на породившего" — a reviewer needs both the
 /// architect and the writer open at once).
 /// <para>
-/// Addressed by (<see cref="Role"/>, <see cref="Topic"/>) — the same pair wave 5's virtual
-/// <c>reply_&lt;role&gt;[_&lt;topic&gt;]</c> tool name is built from. <see cref="ChatId"/> never
-/// reaches the model (ADR §2.3: "идентификатор чата не попадает в контекст модели вообще") — it lives
-/// here, in the runtime's own bookkeeping, not in anything the prompt shows.
+/// Addressed by (<see cref="Role"/>, <see cref="InstanceNo"/>) — a system-issued ordinal, not the
+/// caller-supplied <see cref="Purpose"/> text (PLAN_20260906 §2.1/2.3: "имя выдаёт система, а не
+/// сочиняет модель"). <see cref="ChatId"/> never reaches the model (ADR §2.3: "идентификатор чата не
+/// попадает в контекст модели вообще") — it lives here, in the runtime's own bookkeeping, not in
+/// anything the prompt shows.
 /// </para>
 /// </summary>
 public sealed class Correspondence
@@ -25,11 +26,23 @@ public sealed class Correspondence
     /// <summary>The correspondent's role name.</summary>
     public required string Role { get; init; }
 
-    /// <summary>Why this correspondence was opened. Required by the ADR precisely so two
-    /// correspondents holding the same role can still be told apart in the tool-name address;
-    /// wave 5's name normalisation is what actually enforces "non-empty" on the way in — this type
-    /// stores whatever it is given.</summary>
-    public required string Topic { get; init; }
+    /// <summary>The correspondent chat's own instance number — a <b>copy</b> of its
+    /// <c>ChatSession.AsInstance</c>, not a number this chat hands out for itself
+    /// (<c>docs/adr/ADR_20260906_core_one-address.md</c> §2.1). That is the whole point of the ADR:
+    /// two chats corresponding with the same architect must both call him <c>reply_architect_4</c>,
+    /// because the four belongs to him. Together with <see cref="Role"/> it IS the address —
+    /// <see cref="ReplyToolNaming.BuildToolName"/> spells it, and the dictionary key in
+    /// <see cref="ChatRuntime"/> is exactly this pair.
+    /// <para>Consequence, stated plainly because it surprises: the numbers a single chat holds are not
+    /// 1, 2, 3. A chat may perfectly well hold only <c>reply_architect_7</c> — and the seven now means
+    /// something ("that architect"), identically for everyone looking at him.</para></summary>
+    public required int InstanceNo { get; init; }
+
+    /// <summary>Why this correspondence was opened — free text, purely explanatory (PLAN_20260906
+    /// §2.3: "адрес — номер, зачем открыли — фраза"). Never part of the tool-name address and never
+    /// required: carried into the virtual reply tool's description so the reason survives even though
+    /// the number does not say it. Empty when the caller did not say why.</summary>
+    public string Purpose { get; init; } = "";
 
     /// <summary>The correspondent's chat id — the soft link. Resolved through
     /// <c>ChatRegistry.Locate</c>/<c>GetOrOpen</c> on every turn (<see cref="ChatRuntime.RefreshCorrespondences"/>),
@@ -41,6 +54,23 @@ public sealed class Correspondence
     /// from by following initiators across correspondences, rather than a dedicated entity (ADR §2.2,
     /// "Собрание — производный вид, а не сущность рантайма").</summary>
     public required CorrespondenceInitiator Initiator { get; init; }
+
+    /// <summary>
+    /// Public name of the chat that <i>introduced</i> these two, when a third party did — null for the
+    /// ordinary case where one of the two opened the correspondence itself
+    /// (<c>docs/adr/ADR_20260906_core_one-address.md</c> §2.5).
+    /// <para><b>Why a separate field and not a third <see cref="CorrespondenceInitiator"/> value.</b>
+    /// <c>CorrespondenceGraph.BuildEdges</c> derives an edge's direction from finding exactly one
+    /// <c>self</c> half and one <c>correspondent</c> half; a third value written on both halves of an
+    /// introduced edge would make the pair match neither test and the edge would vanish from the graph
+    /// silently. <see cref="Initiator"/> answers "which end did this edge start from", which stays a
+    /// two-valued question even when neither end chose to start it — the introducer names one of them
+    /// first, deterministically, and that one is the head.</para>
+    /// <para>Persisted, and the group key the "meeting" view (wave 7 of ADR_20260827-2) gets for free:
+    /// one meeting is every edge carrying the same <see cref="IntroducedBy"/>. Declared and
+    /// round-tripped now; the introduction operation that writes it is the next wave's.</para>
+    /// </summary>
+    public string? IntroducedBy { get; init; }
 
     /// <summary>When a reply last crossed this correspondence, either direction. Null before the
     /// first one.</summary>
@@ -74,13 +104,12 @@ public sealed class Correspondence
     public int VolumeEstimate { get; set; }
 
     /// <summary>
-    /// The virtual <c>reply_&lt;role&gt;[_&lt;topic&gt;]</c> tool name this correspondence answers to,
+    /// The virtual <c>reply_&lt;role&gt;[_&lt;n&gt;]</c> tool name this correspondence answers to,
     /// decided once — by <see cref="ChatRuntime.OpenCorrespondence"/> — at the moment this record is
     /// created, and never recomputed afterwards (plan trap 11: "имя виртуального инструмента
-    /// стабильно"). This is what keeps a name from shifting under an already-issued call: a second
-    /// correspondent of the same role arriving later gets the topic folded into ITS OWN name, but does
-    /// not retroactively rename this one, even though the "more than one correspondent of this role"
-    /// condition (ADR §2.3) has since become true for both.
+    /// стабильно"; a persisted <see cref="InstanceNo"/> is restored as-is on reload for the same
+    /// reason). A second correspondent of the same role arriving later gets its OWN, higher ordinal —
+    /// it never reaches back and renames this one.
     /// </summary>
     public required string ToolName { get; init; }
 

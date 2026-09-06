@@ -85,7 +85,7 @@ registered.
 There is no `correspondences` (or similarly named) entry above, and none is missing by oversight.
 A chat's open correspondences — the other actors it can write to — never appear as prompt text at
 all, in any placement. `ADR_20260827-2_core_roles.md` §2.3 rejected the alternative directly: naming
-each correspondent's chat id in the system prompt is exactly what a virtual `reply_<role>[_<topic>]`
+each correspondent's chat id in the system prompt is exactly what a virtual `reply_<role>[_<n>]`
 tool (`ChatToolHost.GetToolDefinitions`, see [`toolsets.md`](toolsets.md#virtual-reply-tools-are-outside-this-system))
 was built to avoid — «Список переписок в промпте становится не нужен — его роль играют имена и
 описания инструментов» ("the list of correspondences in the prompt becomes unnecessary — tool names

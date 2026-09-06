@@ -27,6 +27,11 @@ public sealed class ChatRuntime : IDisposable, SPLA.Domain.Agent.IBackgroundTask
 {
     private readonly AgentRuntime _runtime;
 
+    /// <summary>Used only for the correspondence-address log line (PLAN_20260906 wave 0 §3) — every
+    /// other diagnostic in this class predates a logger field, so this stays narrowly scoped rather
+    /// than becoming a general-purpose one nothing else uses.</summary>
+    private readonly ILogger<ChatRuntime> _logger;
+
     /// <summary>This chat's own boundary — the project's workspace and gate, its own shell. Owned,
     /// and therefore ended in <see cref="Dispose"/>.</summary>
     private readonly SPLA.Domain.Host.ISandbox _sandbox;
@@ -38,9 +43,10 @@ public sealed class ChatRuntime : IDisposable, SPLA.Domain.Agent.IBackgroundTask
     /// optional collaborators elsewhere in this codebase.</summary>
     private readonly ChatRegistry? _registry;
 
-    /// <summary>This chat's live correspondences, keyed by (role, topic) exactly as wave 5's virtual
-    /// <c>reply_&lt;role&gt;[_&lt;topic&gt;]</c> tool name will be. See <see cref="Correspondences"/>.</summary>
-    private readonly Dictionary<(string Role, string Topic), Correspondence> _correspondences = new();
+    /// <summary>This chat's live correspondences, keyed by (role, instance number) — the same pair
+    /// wave 5's/wave 0's virtual <c>reply_&lt;role&gt;[_&lt;n&gt;]</c> tool name is built from
+    /// (PLAN_20260906 wave 0 §2.1: not (role, topic) any more). See <see cref="Correspondences"/>.</summary>
+    private readonly Dictionary<(string Role, int InstanceNo), Correspondence> _correspondences = new();
 
     /// <summary>Ended correspondences (ADR_20260904 §2.1) — kept out of <see cref="_correspondences"/>
     /// so that everything reading the live dictionary (the tool surface, the liveness pass, the
@@ -381,31 +387,151 @@ public sealed class ChatRuntime : IDisposable, SPLA.Domain.Agent.IBackgroundTask
     public IReadOnlyCollection<Correspondence> EndedCorrespondences => _ended.ToList();
 
     /// <summary>
-    /// Registers (or returns the existing) correspondence for (<paramref name="role"/>,
-    /// <paramref name="topic"/>) — the machinery wave 5's <c>agent_correspond</c> tool opens a
-    /// correspondence through. Idempotent on purpose: opening the same address twice must not reset
-    /// an already-running exchange's depth or initiator.
+    /// Registers (or returns the existing default) correspondence for <paramref name="role"/> — the
+    /// machinery <c>agent_correspond</c> opens a correspondence through
+    /// (PLAN_20260906 wave 0 §2.2/2.3: the address is (role, instance number), never (role, topic)).
+    /// Idempotent by default: without <paramref name="another"/>, opening the same role twice returns
+    /// this chat's existing lowest-numbered instance rather than resetting its depth or initiator;
+    /// opening the same <paramref name="correspondentChatId"/> twice returns that one either way,
+    /// <paramref name="another"/> included — "another" means another correspondent, and this is the
+    /// same one.
+    /// <para><b>The number is not computed here.</b> It is read off the correspondent's own chat
+    /// (<c>ChatSession.AsInstance</c>) by <see cref="ResolveCorrespondentInstance"/>
+    /// (ADR_20260906 §2.1). The signature deliberately did not grow a parameter for it: the
+    /// correspondent's chat id is already sitting in the argument list, the number is a fact about
+    /// that chat, and a caller allowed to pass its own number is a caller able to make two chats
+    /// disagree about who <c>architect_4</c> is. Minting, unlike reading, does stay with the owner —
+    /// see <see cref="EnsureAsInstance"/>.</para>
     /// </summary>
+    /// <param name="introducedBy">Public name of the third chat that introduced these two, or null for
+    /// the ordinary case where one of the two opened this itself (ADR_20260906 §2.4/§2.5). Written on
+    /// both halves of an introduced edge; it is a fact about the edge, not a third
+    /// <see cref="CorrespondenceInitiator"/> value, precisely so that
+    /// <c>CorrespondenceGraph.BuildEdges</c> still finds one <c>self</c> half and one
+    /// <c>correspondent</c> half and keeps the edge.</param>
     public Correspondence OpenCorrespondence(
-        string role, string topic, string correspondentChatId, CorrespondenceInitiator initiator)
+        string role, string purpose, string correspondentChatId, CorrespondenceInitiator initiator,
+        bool another = false, string? introducedBy = null)
     {
-        var key = (role, topic);
-        if (_correspondences.TryGetValue(key, out var existing)) return existing;
+        // Same chat already on the books — return it whatever `another` says. Not politeness: since
+        // the ordinal now belongs to the correspondent, a second open against the same chat would
+        // compute the same (role, instance) key and quietly overwrite the first record, losing its
+        // depth, its volume and its persisted tool name.
+        var sameChat = _correspondences.Values.FirstOrDefault(
+            c => string.Equals(c.ChatId, correspondentChatId, StringComparison.Ordinal));
+        if (sameChat is not null) return sameChat;
 
-        // Decided once, here, and frozen into the record: whether another correspondent already
-        // holds this role AT THIS MOMENT is what earns the topic a place in the name (ADR §2.3). A
-        // role that gains a second correspondent later does not reach back and rename this one —
-        // see Correspondence.ToolName's own comment (plan trap 11).
-        var collides = _correspondences.Values.Any(c => string.Equals(c.Role, role, StringComparison.OrdinalIgnoreCase));
-        var toolName = ReplyToolNaming.BuildToolName(role, topic, includeTopic: collides);
+        var sameRole = _correspondences.Values
+            .Where(c => string.Equals(c.Role, role, StringComparison.OrdinalIgnoreCase))
+            .OrderBy(c => c.InstanceNo)
+            .ToList();
+        if (!another && sameRole.Count > 0) return sameRole[0];
+
+        var instanceNo = ResolveCorrespondentInstance(role, correspondentChatId, sameRole);
+        var toolName = ReplyToolNaming.BuildToolName(role, instanceNo);
+
+        // Two different roles can still normalise to the same spelling (transliteration collisions,
+        // or the "x" fallback for a script Normalize does not cover), which would otherwise hand two
+        // correspondences the same ToolName — and ChatToolHost.ExecuteToolAsync's
+        // FirstOrDefault(c => c.ToolName == name) would then silently deliver every reply to whichever
+        // one it finds first. Never let that happen: de-suffix with a plain ordinal until the name is
+        // free among still-open correspondences (plan PLAN_20260906 wave 0's "минимальная починка").
+        if (_correspondences.Values.Any(c => c.ToolName == toolName))
+        {
+            var n = 2;
+            string candidate;
+            do { candidate = $"{toolName}_{n++}"; }
+            while (_correspondences.Values.Any(c => c.ToolName == candidate));
+            toolName = candidate;
+        }
 
         var correspondence = new Correspondence
         {
-            Role = role, Topic = topic, ChatId = correspondentChatId, Initiator = initiator, ToolName = toolName
+            Role = role, Purpose = purpose, InstanceNo = instanceNo,
+            ChatId = correspondentChatId, Initiator = initiator, IntroducedBy = introducedBy,
+            ToolName = toolName
         };
-        _correspondences[key] = correspondence;
+        _correspondences[(role, instanceNo)] = correspondence;
+
+        // Wave 0 §3's logging bullet: the address alone ("reply_architect_2") says nothing about who
+        // is on the other end once more than a couple of correspondents pile up — the next log-based
+        // post-mortem needs the correspondent's chat title sitting right next to it. Peek, never
+        // GetOrOpen: logging a freshly-created correspondent (this chat's own doing, seconds old) is
+        // the common case, but this must never wake an unrelated sleeping chat as a side effect of a
+        // log line.
+        var correspondentTitle = _registry?.Peek(correspondentChatId)?.Title ?? "(not open)";
+        _logger.LogInformation(
+            "Correspondence opened: {ToolName} -> role={Role} instance={InstanceNo} chat={ChatId} ({Title})",
+            toolName, role, instanceNo, correspondentChatId, correspondentTitle);
+
         return correspondence;
     }
+
+    /// <summary>
+    /// The correspondent's public ordinal — the number that makes <c>reply_architect_4</c> mean the
+    /// same architect in every chat that holds him (ADR_20260906 §2.1).
+    /// <list type="number">
+    /// <item><description>The live runtime, if that chat is already open — the freshest answer, and
+    /// the usual one, since the correspondent was very often just created by the call above.
+    /// <c>Peek</c>, never <c>GetOrOpen</c>: reading a number must not wake a sleeping chat.</description></item>
+    /// <item><description>Otherwise the session on disk — which also mints a number for a chat old
+    /// enough not to have one, since <c>ChatManager.LoadChat</c> does that on first load.</description></item>
+    /// <item><description>Otherwise the old, purely local scheme. Reached when the correspondent has
+    /// no public name at all — a spawned run, or a chat this runtime has no directory to look up —
+    /// and the honest answer is then "the next free slot in my own list", which is exactly what a
+    /// name that nobody else can pronounce is worth.</description></item>
+    /// </list>
+    /// </summary>
+    private int ResolveCorrespondentInstance(
+        string role, string correspondentChatId, List<Correspondence> sameRole)
+    {
+        var live = _registry?.Peek(correspondentChatId)?.Session.AsInstance;
+        if (live is > 0) return live.Value;
+
+        var stored = _runtime.ChatManager.LoadChat(correspondentChatId)?.AsInstance;
+        if (stored is > 0) return stored.Value;
+
+        return sameRole.Count > 0 ? sameRole[^1].InstanceNo + 1 : 1;
+    }
+
+    /// <summary>
+    /// This chat's own public ordinal, minted on the spot if it does not have one yet
+    /// (ADR_20260906 §2.1, "роли нет → лениво, при первой адресации").
+    /// <para>A chat with a role was numbered when it was created — it exists <i>because</i> someone
+    /// asked for that role. A chat without one is normally a human's, and numbering every such chat at
+    /// creation would burn the <c>agent</c> sequence on the dozens that never speak to anybody. So the
+    /// number appears at the one moment it starts to matter: when this chat first becomes somebody's
+    /// correspondent and needs a name for their tool list to say.</para>
+    /// <para>Written through <see cref="Save"/> immediately, not left in memory: the number is about to
+    /// be spelled into another chat's persisted <c>tool_name</c>, and a name that survives on one side
+    /// of a restart but not the other is worse than no name. Idempotent — once set, never re-minted, so
+    /// the second correspondent gets the same number as the first (trap 11).</para>
+    /// </summary>
+    public int EnsureAsInstance()
+    {
+        if (_chat.AsInstance is > 0) return _chat.AsInstance.Value;
+
+        // A spawned run has no public address by design (ChatManager.CreateSpawnedChat): its only
+        // address is the link to its parent, so minting here would spend a number on a name nobody
+        // can ever say. Answer 1 so callers have something to spell, and store nothing.
+        if (SPLA.Domain.Settings.ChatManager.IsSpawned(_chat)) return 1;
+
+        _chat.AsInstance = _runtime.ChatManager.NextInstanceNumber(_chat.As);
+        Save();
+        return _chat.AsInstance.Value;
+    }
+
+    /// <summary>This chat's public name — <c>&lt;role&gt;_&lt;n&gt;</c>, the one string that stands for
+    /// it outside itself (ADR_20260906 §2.2). Minting the number if needed, because being asked for a
+    /// name is exactly the "first addressing" that mints it.</summary>
+    public string PublicName() =>
+        ReplyToolNaming.BuildPublicName(PublicRole, EnsureAsInstance());
+
+    /// <summary>The role this chat is publicly named under: its own, or <c>agent</c> — role zero —
+    /// when it has none. One constant, shared with <c>ChatManager</c>, so that the fallback cannot
+    /// drift between the place that mints the number and the place that spells it.</summary>
+    private string PublicRole =>
+        string.IsNullOrWhiteSpace(_chat.As) ? SPLA.Domain.Settings.ChatManager.DefaultPublicRole : _chat.As!;
 
     /// <summary>
     /// The soft-link liveness pass (ADR_20260827-2 §2.4): for every correspondence this chat holds,
@@ -453,7 +579,7 @@ public sealed class ChatRuntime : IDisposable, SPLA.Domain.Agent.IBackgroundTask
     /// <see cref="Inbox"/> like an ordinary <see cref="InboxItemKind.Notice"/>: it must reach the
     /// model's context on the next turn, but must never itself wake one (<c>ChatPump.OnEnqueued</c>
     /// ignores this kind).</summary>
-    private void StrikeCorrespondence((string Role, string Topic) key, Correspondence correspondence, bool archived)
+    private void StrikeCorrespondence((string Role, int InstanceNo) key, Correspondence correspondence, bool archived)
     {
         // Moved to the tombstone list, never dropped (ADR_20260904 §2.1). Removing it from the live
         // dictionary is still what stops the reply tool being offered and what keeps the liveness pass
@@ -462,7 +588,7 @@ public sealed class ChatRuntime : IDisposable, SPLA.Domain.Agent.IBackgroundTask
         correspondence.EndedAt = DateTimeOffset.UtcNow;
         correspondence.EndedReason = archived ? "archived" : "deleted";
         _ended.Add(correspondence);
-        var topicSuffix = string.IsNullOrEmpty(correspondence.Topic) ? "" : $" ({correspondence.Topic})";
+        var topicSuffix = string.IsNullOrEmpty(correspondence.Purpose) ? "" : $" ({correspondence.Purpose})";
         var text = archived
             ? $"Correspondence with {correspondence.Role}{topicSuffix} has gone quiet — their chat was archived."
             : $"Correspondence with {correspondence.Role}{topicSuffix} has ended — their chat was deleted.";
@@ -488,16 +614,16 @@ public sealed class ChatRuntime : IDisposable, SPLA.Domain.Agent.IBackgroundTask
 
     /// <summary>
     /// Sends one reply across an already-open correspondence — the machinery wave 5's virtual
-    /// <c>reply_&lt;role&gt;[_&lt;topic&gt;]</c> tool calls into. A reply is an edge source→sink
+    /// <c>reply_&lt;role&gt;[_&lt;n&gt;]</c> tool calls into. A reply is an edge source→sink
     /// (ADR §2.2), and this chat is the source: its own <see cref="ISandbox.Gate"/> is what gets
     /// asked, not the recipient's and not some separate correspondence-only permission (ADR §2.4:
     /// "гранты те же" — the same gate every other call already goes through).
     /// </summary>
-    public ReplyResult SendReply(string role, string topic, string text)
+    public ReplyResult SendReply(string role, int instanceNo, string text)
     {
-        if (!_correspondences.TryGetValue((role, topic), out var correspondence))
+        if (!_correspondences.TryGetValue((role, instanceNo), out var correspondence))
             return new ReplyResult(ReplyOutcome.UnknownCorrespondence,
-                $"no open correspondence with '{role}'" + (topic.Length > 0 ? $" ({topic})" : ""));
+                $"no open correspondence with '{role}' (instance {instanceNo})");
 
         if (!_sandbox.Gate.CanCorrespond())
             return new ReplyResult(ReplyOutcome.Denied, "correspondence is not permitted for this chat");
@@ -509,7 +635,7 @@ public sealed class ChatRuntime : IDisposable, SPLA.Domain.Agent.IBackgroundTask
         if (location != SPLA.Domain.Settings.ChatLocation.Active)
         {
             var archived = location == SPLA.Domain.Settings.ChatLocation.Archived;
-            StrikeCorrespondence((role, topic), correspondence, archived);
+            StrikeCorrespondence((role, instanceNo), correspondence, archived);
             return new ReplyResult(ReplyOutcome.CorrespondentGone,
                 archived ? "their chat was archived" : "their chat was deleted");
         }
@@ -520,7 +646,7 @@ public sealed class ChatRuntime : IDisposable, SPLA.Domain.Agent.IBackgroundTask
             // Tombstoned rather than dropped, like every other ending (ADR_20260904 §2.1). Deliberately
             // NOT routed through StrikeCorrespondence: that one also queues a notice, and this path
             // never did — the caller is already being told, in the return value, on this very turn.
-            _correspondences.Remove((role, topic));
+            _correspondences.Remove((role, instanceNo));
             correspondence.EndedAt = DateTimeOffset.UtcNow;
             correspondence.EndedReason = "unreachable";
             _ended.Add(correspondence);
@@ -533,7 +659,7 @@ public sealed class ChatRuntime : IDisposable, SPLA.Domain.Agent.IBackgroundTask
         // ownRole is this chat's own role (defaulting to "agent", role zero) — the attribution the
         // RECIPIENT needs to render this as "← from <ownRole>" (ADR §2.5) rather than an ordinary
         // human message. Display metadata only; ChatMessage.PeerFrom never reaches the provider.
-        var ownRoleForPeer = string.IsNullOrWhiteSpace(_chat.As) ? "agent" : _chat.As!;
+        var ownRoleForPeer = PublicRole;
         target.Inbox.Enqueue(new ChatMessage
         {
             Role = ChatRole.User,
@@ -553,26 +679,29 @@ public sealed class ChatRuntime : IDisposable, SPLA.Domain.Agent.IBackgroundTask
 
     /// <summary>
     /// <see cref="SPLA.Domain.Agent.ICorrespondenceHost.Correspond"/> — the machinery
-    /// <c>agent_correspond</c> (PLAN_20260902 wave 5) calls into. Finds this chat's already-open
-    /// address for (<paramref name="role"/>, <paramref name="topic"/>) or, on demand, creates a fresh
-    /// chat under that role and opens the correspondence on both sides, then delivers
-    /// <paramref name="text"/> through the same <see cref="SendReply"/> an ordinary
-    /// <c>reply_&lt;role&gt;[_&lt;topic&gt;]</c> call would use — so the very first message and every
-    /// one after it go through one edge, one gate check, one depth counter.
+    /// <c>agent_correspond</c> (PLAN_20260902 wave 5; PLAN_20260906 waves 0 and 4) calls into.
+    /// Delivers <paramref name="text"/> through the same <see cref="SendReply"/> an ordinary
+    /// <c>reply_&lt;role&gt;_&lt;n&gt;</c> call would use, so the very first message and every one
+    /// after it go through one edge, one gate check, one depth counter. <paramref name="purpose"/> is
+    /// free text, never part of the address (§2.3).
+    /// <para>
+    /// <paramref name="role"/> names <b>either</b> a declared role — "give me an architect", which
+    /// creates a fresh chat under that role, as it always did — <b>or</b> an existing chat's public
+    /// name, <c>architect_2</c>: "put me in touch with that one" (ADR_20260906 §2.3). Before this,
+    /// addressing and creating were a single act with no way to ask for the first without the second,
+    /// which is why nobody could ever be introduced to an existing correspondent.
+    /// </para>
     /// </summary>
-    public SPLA.Domain.Agent.CorrespondResult Correspond(string role, string topic, string text)
+    public SPLA.Domain.Agent.CorrespondResult Correspond(
+        string role, string purpose, string text, bool another = false)
     {
         role = role?.Trim() ?? "";
-        topic = topic?.Trim() ?? "";
+        purpose = purpose?.Trim() ?? "";
         text = text?.Trim() ?? "";
 
         if (role.Length == 0)
             return new SPLA.Domain.Agent.CorrespondResult(
                 SPLA.Domain.Agent.CorrespondOutcome.InvalidArgument, "error: 'role' is required");
-        if (topic.Length == 0)
-            return new SPLA.Domain.Agent.CorrespondResult(
-                SPLA.Domain.Agent.CorrespondOutcome.InvalidArgument,
-                "error: 'topic' is required — it is the only thing that tells two correspondents holding the same role apart");
         if (text.Length == 0)
             return new SPLA.Domain.Agent.CorrespondResult(
                 SPLA.Domain.Agent.CorrespondOutcome.InvalidArgument, "error: 'text' is required");
@@ -585,46 +714,32 @@ public sealed class ChatRuntime : IDisposable, SPLA.Domain.Agent.IBackgroundTask
         // Roles do not self-assign (ADR §2.1) — a correspondence that spun up an undeclared role's
         // chat would let a model invent an actor the owner never named, exactly the hole role
         // validation on agent_spawn already closes for the errand side of the same mechanism.
+        //
+        // A declared role wins over a public name, always: the role is the older and the broader
+        // meaning, and this order is exactly why a public name always carries its number
+        // (ReplyToolNaming.BuildPublicName) — were the first architect spelled bare `architect`, this
+        // branch would swallow him and he would be the one chat unaddressable by name.
         var availableRoles = _runtime.Settings.Manifest?.Roles ?? new List<string>();
-        if (!availableRoles.Contains(role, StringComparer.OrdinalIgnoreCase))
-        {
-            var rolesList = availableRoles.Count == 0
-                ? "none declared"
-                : string.Join(", ", availableRoles.OrderBy(r => r, StringComparer.OrdinalIgnoreCase));
-            return new SPLA.Domain.Agent.CorrespondResult(
-                SPLA.Domain.Agent.CorrespondOutcome.UnknownRole,
-                $"error: role '{role}' is not available. Available roles: {rolesList}");
-        }
+        var correspondent = availableRoles.Contains(role, StringComparer.OrdinalIgnoreCase)
+            ? OpenByRole(role, purpose, another)
+            : OpenByPublicName(role, purpose);
 
-        if (!_correspondences.ContainsKey((role, topic)))
-        {
-            // Not found — create the correspondent's chat on demand (ADR §2.2: "чат собеседника
-            // создаётся по требованию") and open the address on both sides. The correspondent
-            // addresses this chat back by ITS OWN role — "agent" (role zero) when this chat has none
-            // — so its own reply_* tool has something meaningful to be named after.
-            //
-            // The role travels into CreateNew itself (wave 5б) rather than being patched onto
-            // Session.As afterward: the correspondent's ChatRuntime constructor resolves its role's
-            // settings once, right there, so a role stamped on only AFTER that constructor already ran
-            // would narrow nothing for this chat's whole life.
-            var correspondentChat = _registry.CreateNew($"{role}: {topic}", role);
+        if (correspondent.Error is { } error) return error;
 
-            var ownRole = string.IsNullOrWhiteSpace(_chat.As) ? "agent" : _chat.As!;
-
-            OpenCorrespondence(role, topic, correspondentChat.ChatId, CorrespondenceInitiator.Self);
-            correspondentChat.OpenCorrespondence(ownRole, topic, ChatId, CorrespondenceInitiator.Correspondent);
-        }
-
-        var reply = SendReply(role, topic, text);
-        var toolName = _correspondences.TryGetValue((role, topic), out var c) ? c.ToolName : null;
+        var target = correspondent.Correspondence!;
+        var reply = SendReply(target.Role, target.InstanceNo, text);
 
         return reply.Outcome switch
         {
             ReplyOutcome.Delivered => new SPLA.Domain.Agent.CorrespondResult(
                 SPLA.Domain.Agent.CorrespondOutcome.Delivered,
-                $"delivered: correspondence with '{role}' ({topic}) is open — this is a delivery " +
-                $"receipt, not their answer. Their reply will arrive on its own; keep working or wait " +
-                (toolName is null ? "for it." : $"for it. Use '{toolName}' to send your next message.")),
+                // Named by the correspondent's public name, not by whatever the caller typed: the
+                // receipt is where the model reads the address it will use next, and ADR_20260906 §2.2
+                // has exactly one name for that — the same one the tool list, the directory, the log
+                // and the graph show.
+                $"delivered: correspondence with '{ReplyToolNaming.BuildPublicName(target.Role, target.InstanceNo)}' is open — this is a delivery receipt, not " +
+                $"their answer. Their reply will arrive on its own; keep working or wait for it. " +
+                $"Use '{target.ToolName}' to send your next message."),
             ReplyOutcome.Denied => new SPLA.Domain.Agent.CorrespondResult(
                 SPLA.Domain.Agent.CorrespondOutcome.Denied, $"error: {reply.Reason}"),
             ReplyOutcome.CorrespondentGone => new SPLA.Domain.Agent.CorrespondResult(
@@ -634,11 +749,303 @@ public sealed class ChatRuntime : IDisposable, SPLA.Domain.Agent.IBackgroundTask
         };
     }
 
+    /// <summary>Either the correspondence to deliver through, or the refusal to hand back untouched —
+    /// the two ways <see cref="OpenByRole"/> and <see cref="OpenByPublicName"/> can end. A local pair
+    /// rather than an out-parameter or an exception: both branches must be able to fail with their own
+    /// wording, and the wording IS the useful part of the failure.</summary>
+    private readonly record struct CorrespondentLookup(
+        Correspondence? Correspondence, SPLA.Domain.Agent.CorrespondResult? Error);
+
+    /// <summary>
+    /// "Give me an architect" — the older half of <c>agent_correspond</c>, unchanged in meaning:
+    /// reuse this chat's existing correspondence with the role, or create the correspondent's chat on
+    /// demand (ADR_20260827-2 §2.2, "чат собеседника создаётся по требованию") and open the address on
+    /// both sides.
+    /// <para><paramref name="another"/> still means "give me one more of these", but it no longer picks
+    /// the number: the new chat brings its own from the project counter (ADR_20260906 §2.1), so this
+    /// method only decides <i>whether</i> a new chat is made, never what it will be called — which
+    /// is why it is consumed entirely here and never passed on to <see cref="Link"/>.</para>
+    /// </summary>
+    private CorrespondentLookup OpenByRole(string role, string purpose, bool another)
+    {
+        var existing = _correspondences.Values
+            .Where(c => string.Equals(c.Role, role, StringComparison.OrdinalIgnoreCase))
+            .OrderBy(c => c.InstanceNo)
+            .ToList();
+        if (existing.Count > 0 && !another) return new CorrespondentLookup(existing[0], null);
+
+        // The role travels into CreateNew itself (wave 5б) rather than being patched onto Session.As
+        // afterward: the correspondent's ChatRuntime constructor resolves its role's settings once,
+        // right there, so a role stamped on only AFTER that constructor already ran would narrow
+        // nothing for this chat's whole life.
+        var correspondentChat = _registry!.CreateNew(purpose.Length > 0 ? $"{role}: {purpose}" : role, role);
+        return new CorrespondentLookup(Link(correspondentChat, role, purpose), null);
+    }
+
+    /// <summary>
+    /// "Put me in touch with that one" — <c>agent_correspond</c> given a public name
+    /// (<c>architect_2</c>) instead of a role, the half ADR_20260906 §2.3 adds. Goes past
+    /// <c>CreateNew</c> entirely: the chat already exists, and creating a second one would be the very
+    /// confusion the ADR was written about.
+    /// <para><b>The name is matched, never parsed.</b> Splitting <c>fool_ru_2</c> on the last
+    /// underscore is a guess about which part is the role, and a project with roles like <c>fool_ru</c>
+    /// and <c>comedian_en</c> (the demo project has exactly those) makes the guess wrong. So every
+    /// candidate chat spells its own name the one way <see cref="ReplyToolNaming.BuildPublicName"/>
+    /// spells names, and the strings are compared. No parse, nothing to get wrong.</para>
+    /// </summary>
+    private CorrespondentLookup OpenByPublicName(string name, string purpose)
+    {
+        var session = FindByPublicName(name);
+
+        if (session is null) return new CorrespondentLookup(null, UnknownAddressee(name));
+
+        if (string.Equals(session.Id, ChatId, StringComparison.Ordinal))
+            return new CorrespondentLookup(null, new SPLA.Domain.Agent.CorrespondResult(
+                SPLA.Domain.Agent.CorrespondOutcome.InvalidArgument,
+                $"error: '{name}' is this chat — you cannot correspond with yourself"));
+
+        // GetOrOpen, not Peek: the addressee is very likely asleep, and waking him is the point.
+        var correspondentChat = _registry!.GetOrOpen(session.Id);
+        if (correspondentChat is null)
+            return new CorrespondentLookup(null, new SPLA.Domain.Agent.CorrespondResult(
+                SPLA.Domain.Agent.CorrespondOutcome.CorrespondentGone,
+                $"error: '{name}' could not be reached — that chat is archived or gone"));
+
+        // His ROLE, not the name that was typed: the address is (role, instance), and the instance is
+        // his own number, so a chat with no role of its own is corresponded with as `agent`.
+        var peerRole = string.IsNullOrWhiteSpace(session.As)
+            ? SPLA.Domain.Settings.ChatManager.DefaultPublicRole : session.As!;
+
+        return new CorrespondentLookup(Link(correspondentChat, peerRole, purpose), null);
+    }
+
+    /// <summary>
+    /// The active session whose public name is <paramref name="name"/>, or null. The one place a public
+    /// name is turned back into a chat — shared by <see cref="OpenByPublicName"/> and
+    /// <see cref="Introduce"/>, so "what <c>architect_2</c> means" cannot come to mean two things.
+    /// <para>Matched, never parsed (see <see cref="OpenByPublicName"/>), and matched only against
+    /// active, numbered sessions: a spawned run has no public name by construction
+    /// (<see cref="EnsureAsInstance"/>) and an archived chat is not in <c>ListChats</c> at all, so both
+    /// answer null here and are refused by wording their callers choose.</para>
+    /// </summary>
+    private SPLA.Domain.Models.ChatSession? FindByPublicName(string name) =>
+        _runtime.ChatManager.ListChats().FirstOrDefault(
+            s => s.AsInstance is > 0 &&
+                 string.Equals(
+                     ReplyToolNaming.BuildPublicName(
+                         string.IsNullOrWhiteSpace(s.As) ? SPLA.Domain.Settings.ChatManager.DefaultPublicRole : s.As!,
+                         s.AsInstance!.Value),
+                     name, StringComparison.OrdinalIgnoreCase));
+
+    /// <summary>
+    /// Opens both halves of one correspondence — this chat's address for <paramref name="correspondentChat"/>
+    /// and his for this one — and returns ours. Both sides always, and here rather than in two places:
+    /// an edge with only one half written is invisible to <c>CorrespondenceGraph.BuildEdges</c>, which
+    /// pairs a <c>self</c> half with a <c>correspondent</c> half (ADR_20260906 §2.5).
+    /// <para><see cref="EnsureAsInstance"/> first, and this is the moment ADR §2.1's lazy minting
+    /// actually happens: the correspondent is about to write down what to call us, and until now a
+    /// chat with no role had nothing to be called.</para>
+    /// <para>Both opens ask for a <i>distinct</i> address (<c>another: true</c>), and that is not the
+    /// caller's <c>another</c> flag leaking through — it is the difference between addressing a
+    /// kind and addressing a chat. This method is only ever reached with one particular chat in hand:
+    /// the fresh one just created, or the one a public name resolved to. Reusing "some correspondence
+    /// I already have with that role" here would point the new edge at the wrong chat — and on the
+    /// way back it always would, since the correspondent's second visitor is a different chat wearing
+    /// the same role as his first. Idempotency comes from <see cref="OpenCorrespondence"/>'s
+    /// same-chat check instead, which is the honest test for "already linked".</para>
+    /// </summary>
+    /// <param name="introducedBy">Null for the ordinary case — this chat opened the edge itself. Set to
+    /// a third chat's public name when <see cref="Introduce"/> is driving (ADR_20260906 §2.4), in which
+    /// case <c>this</c> is the head the introducer named first and the same value goes on both halves,
+    /// making one introduction one group key for the "meeting" view (§2.5).</param>
+    private Correspondence Link(
+        ChatRuntime correspondentChat, string peerRole, string purpose, string? introducedBy = null)
+    {
+        var ownRole = PublicRole;
+        EnsureAsInstance();
+
+        var ours = OpenCorrespondence(
+            peerRole, purpose, correspondentChat.ChatId, CorrespondenceInitiator.Self,
+            another: true, introducedBy);
+        correspondentChat.OpenCorrespondence(
+            ownRole, purpose, ChatId, CorrespondenceInitiator.Correspondent,
+            another: true, introducedBy);
+        return ours;
+    }
+
+    /// <summary>The refusal for a name that is neither a declared role nor anybody's public name. Lists
+    /// both alphabets, because the caller cannot tell from the error which of the two he mistyped —
+    /// and a model that is shown only the roles will keep inventing roles.</summary>
+    private SPLA.Domain.Agent.CorrespondResult UnknownAddressee(string name)
+    {
+        var roles = _runtime.Settings.Manifest?.Roles ?? new List<string>();
+        var rolesList = roles.Count == 0
+            ? "none declared"
+            : string.Join(", ", roles.OrderBy(r => r, StringComparer.OrdinalIgnoreCase));
+
+        var names = _runtime.ChatManager.ListChats()
+            .Where(s => s.AsInstance is > 0 && !string.Equals(s.Id, ChatId, StringComparison.Ordinal))
+            .Select(s => ReplyToolNaming.BuildPublicName(
+                string.IsNullOrWhiteSpace(s.As) ? SPLA.Domain.Settings.ChatManager.DefaultPublicRole : s.As!,
+                s.AsInstance!.Value))
+            .OrderBy(n => n, StringComparer.OrdinalIgnoreCase)
+            .ToList();
+        var namesList = names.Count == 0 ? "none yet" : string.Join(", ", names);
+
+        return new SPLA.Domain.Agent.CorrespondResult(
+            SPLA.Domain.Agent.CorrespondOutcome.UnknownRole,
+            $"error: '{name}' is neither a role nor a chat. Roles (a new correspondent is created): " +
+            $"{rolesList}. Existing chats (an address is opened to one that is already there): {namesList}");
+    }
+
+    /// <summary>
+    /// <see cref="SPLA.Domain.Agent.ICorrespondenceHost.Introduce"/> — knowing two chats and putting
+    /// them in touch with each other, while staying off the edge yourself
+    /// (<c>docs/adr/ADR_20260906_core_one-address.md</c> §2.4). Mechanically it is exactly
+    /// <see cref="Link"/>, the same pair of <see cref="OpenCorrespondence"/> calls
+    /// <see cref="Correspond"/> makes; what is new is only that <c>this</c> chat is neither end.
+    /// <para><b>Why an introduction must deliver something.</b> Opening a correspondence touches
+    /// nobody's mailbox, and a turn is born from the mailbox (ADR_20260825). Two chats handed each
+    /// other's address and nothing else would both go on standing exactly as they were, and the
+    /// introducer would read a success receipt for a conversation that never started. So the head of
+    /// the edge — <paramref name="first"/>, deterministically, §2.5 — is written to, and speaks first.
+    /// The other party gets no message of its own on purpose: the next thing it receives is the first
+    /// party's real reply, and a second synthetic one would only wake it to say nothing yet.</para>
+    /// <para><b>Who carries the words.</b> Delivery goes through <see cref="SendReply"/> on the second
+    /// party's own half of the new edge, so the introduction travels the same one edge, one gate and one
+    /// depth counter every later message will (never a direct <c>Inbox.Enqueue</c> past all three). The
+    /// consequence is that the recipient sees it attributed to the party it is now corresponding with,
+    /// which is why the text is wrapped naming the introducer out loud rather than passed through bare:
+    /// the words are the introducer's, and nothing here may quietly put them in somebody else's mouth.</para>
+    /// </summary>
+    public SPLA.Domain.Agent.IntroduceResult Introduce(
+        string first, string second, string purpose, string text)
+    {
+        first = first?.Trim() ?? "";
+        second = second?.Trim() ?? "";
+        purpose = purpose?.Trim() ?? "";
+        text = text?.Trim() ?? "";
+
+        if (first.Length == 0 || second.Length == 0)
+            return Refuse(SPLA.Domain.Agent.IntroduceOutcome.InvalidArgument,
+                "error: both 'first' and 'second' are required");
+        if (text.Length == 0)
+            return Refuse(SPLA.Domain.Agent.IntroduceOutcome.InvalidArgument, "error: 'text' is required");
+        if (_registry is null)
+            return Refuse(SPLA.Domain.Agent.IntroduceOutcome.AddresseeGone,
+                "error: this chat has no project chat directory to reach anybody through");
+
+        // The introducer's own gate, before anything is opened: an introduction is this chat acting on
+        // the correspondence graph, and it is refused here for the same reason a reply it could not
+        // send is refused there (ADR_20260827-2 §2.4, "гранты те же").
+        if (!_sandbox.Gate.CanCorrespond())
+            return Refuse(SPLA.Domain.Agent.IntroduceOutcome.Denied,
+                "error: correspondence is not permitted for this chat");
+
+        var firstSession = FindByPublicName(first);
+        if (firstSession is null) return Unknown(first);
+        var secondSession = FindByPublicName(second);
+        if (secondSession is null) return Unknown(second);
+
+        if (string.Equals(firstSession.Id, secondSession.Id, StringComparison.Ordinal))
+            return Refuse(SPLA.Domain.Agent.IntroduceOutcome.SameChat,
+                $"error: '{first}' and '{second}' are the same chat — there is nobody to introduce it to");
+
+        // Naming yourself is not a smaller introduction, it is a different operation with a different
+        // result (you end up ON the edge), so it is refused by name rather than silently redirected.
+        if (string.Equals(firstSession.Id, ChatId, StringComparison.Ordinal) ||
+            string.Equals(secondSession.Id, ChatId, StringComparison.Ordinal))
+            return Refuse(SPLA.Domain.Agent.IntroduceOutcome.IntroducerIsParty,
+                "error: an introduction connects two OTHER chats — you named yourself as one of them. " +
+                "To correspond with somebody yourself, use agent_correspond.");
+
+        // GetOrOpen, not Peek: both are very likely asleep, and one of them is about to be written to.
+        var firstChat = _registry.GetOrOpen(firstSession.Id);
+        var secondChat = _registry.GetOrOpen(secondSession.Id);
+        if (firstChat is null || secondChat is null)
+            return Refuse(SPLA.Domain.Agent.IntroduceOutcome.AddresseeGone,
+                $"error: '{(firstChat is null ? first : second)}' could not be reached — that chat is archived or gone");
+
+        // Already acquainted: nothing would be created (OpenCorrespondence returns the existing address
+        // for the same chat), but delivering onto their edge would drop a third party's words into a
+        // conversation he was never part of, attributed to one of them. Refused, and the caller is told
+        // the address they already hold so he can stop trying.
+        var existing = firstChat.Correspondences.FirstOrDefault(
+            c => string.Equals(c.ChatId, secondChat.ChatId, StringComparison.Ordinal));
+        if (existing is not null)
+            return Refuse(SPLA.Domain.Agent.IntroduceOutcome.AlreadyLinked,
+                $"error: '{first}' and '{second}' already correspond ('{existing.ToolName}' on {first}'s side) — " +
+                "nothing to introduce. Say what you wanted to say to one of them yourself.");
+
+        var introducer = PublicName();
+        var firstName = firstChat.PublicName();
+        var secondName = secondChat.PublicName();
+
+        // Head = first, deterministically (§2.5): its half is `self`, the other's is `correspondent`,
+        // which is the only pairing CorrespondenceGraph.BuildEdges can orient — and it orients the same
+        // way after every save, since the direction is decided here once and then persisted.
+        var firstHalf = firstChat.Link(secondChat, secondChat.PublicRole, purpose, introducedBy: introducer);
+        var secondHalf = secondChat.Correspondences.First(
+            c => string.Equals(c.ChatId, firstChat.ChatId, StringComparison.Ordinal));
+
+        var carried =
+            $"{introducer} has introduced you to {secondName} and asked me to pass this on:\n\n{text}\n\n" +
+            $"(Use '{firstHalf.ToolName}' to answer {secondName} directly. {introducer} is not part of " +
+            $"this conversation and will not see it.)";
+
+        var delivered = secondChat.SendReply(secondHalf.Role, secondHalf.InstanceNo, carried);
+        if (!delivered.Delivered)
+            return Refuse(
+                delivered.Outcome == ReplyOutcome.Denied
+                    ? SPLA.Domain.Agent.IntroduceOutcome.Denied
+                    : SPLA.Domain.Agent.IntroduceOutcome.AddresseeGone,
+                $"error: the address is open on both sides, but the introduction could not be delivered " +
+                $"to '{firstName}': {delivered.Reason}");
+
+        return new SPLA.Domain.Agent.IntroduceResult(
+            SPLA.Domain.Agent.IntroduceOutcome.Introduced,
+            $"introduced: '{firstName}' and '{secondName}' now correspond, and your message reached " +
+            $"{firstName}. This is a receipt, not a conversation — you are not on that edge, you will " +
+            $"not see what they say, and neither of them is answering you. Carry on with your own work.");
+
+        SPLA.Domain.Agent.IntroduceResult Refuse(SPLA.Domain.Agent.IntroduceOutcome outcome, string message)
+            => new(outcome, message);
+
+        // Same two alphabets agent_correspond lists (see UnknownAddressee) minus the roles: a role is
+        // not an answer here, since an introduction takes two chats that already exist.
+        SPLA.Domain.Agent.IntroduceResult Unknown(string name)
+        {
+            var names = _runtime.ChatManager.ListChats()
+                .Where(s => s.AsInstance is > 0 && !string.Equals(s.Id, ChatId, StringComparison.Ordinal))
+                .Select(s => ReplyToolNaming.BuildPublicName(
+                    string.IsNullOrWhiteSpace(s.As) ? SPLA.Domain.Settings.ChatManager.DefaultPublicRole : s.As!,
+                    s.AsInstance!.Value))
+                .OrderBy(n => n, StringComparer.OrdinalIgnoreCase)
+                .ToList();
+            var archived = _runtime.ChatManager.ListArchivedChats().Any(
+                s => s.AsInstance is > 0 &&
+                     string.Equals(
+                         ReplyToolNaming.BuildPublicName(
+                             string.IsNullOrWhiteSpace(s.As) ? SPLA.Domain.Settings.ChatManager.DefaultPublicRole : s.As!,
+                             s.AsInstance!.Value),
+                         name, StringComparison.OrdinalIgnoreCase));
+
+            return archived
+                ? Refuse(SPLA.Domain.Agent.IntroduceOutcome.AddresseeGone,
+                    $"error: '{name}' is archived — an archived chat cannot take up a new correspondence")
+                : Refuse(SPLA.Domain.Agent.IntroduceOutcome.UnknownAddressee,
+                    $"error: '{name}' is not a chat you can introduce. An introduction takes two existing " +
+                    $"chats named by their public names, not roles. Chats: " +
+                    $"{(names.Count == 0 ? "none yet" : string.Join(", ", names))}");
+        }
+    }
+
     public ChatRuntime(AgentRuntime runtime, ChatSession chat, ChatRegistry? registry = null)
     {
         _runtime = runtime;
         _chat = chat;
         _registry = registry;
+        _logger = runtime.LoggerFactory.CreateLogger<ChatRuntime>();
 
         // Resolve this chat's own role settings once, up front — see _roleSettings' own comment for
         // why once-at-open and why a resolution failure degrades to "no role" rather than refusing to
@@ -734,22 +1141,32 @@ public sealed class ChatRuntime : IDisposable, SPLA.Domain.Agent.IBackgroundTask
                 d.What,
                 new DateTimeOffset(DateTime.SpecifyKind(d.At, DateTimeKind.Utc)))));
 
-        // Wave 7б: restore correspondences straight into the live dictionary rather than through
-        // OpenCorrespondence — that method decides ToolName fresh from "does a same-role correspondent
-        // already exist", which is exactly wrong here: the persisted ToolName was decided once, in the
-        // past, and must come back unchanged (plan trap 11) even if today's in-memory collision check
-        // would compute something different.
+        // Wave 7б/wave 0: restore correspondences straight into the live dictionary rather than
+        // through OpenCorrespondence — that method decides ToolName (and InstanceNo) fresh from "does
+        // a same-role correspondent already exist", which is exactly wrong here: the persisted
+        // ToolName/InstanceNo were decided once, in the past, and must come back unchanged (plan trap
+        // 11) even if today's in-memory logic would compute something different.
         if (chat.Correspondences is { Count: > 0 })
         {
+            // Migration for a session written before wave 0: InstanceNo/Purpose did not exist yet, so
+            // a missing InstanceNo is assigned by order of appearance in the file, counted per role
+            // (PLAN_20260906 §3 wave 0's migration note) — the same order ToolName's own topic-joined
+            // naming was already decided in, so this reproduces the numbering that spelling implied.
+            var nextInstanceByRole = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
             foreach (var c in chat.Correspondences)
             {
+                var instanceNo = c.InstanceNo ?? (nextInstanceByRole.TryGetValue(c.Role, out var n) ? n + 1 : 1);
+                nextInstanceByRole[c.Role] = instanceNo;
+
                 var restored = new Correspondence
                 {
                     Role = c.Role,
-                    Topic = c.Topic,
+                    Purpose = string.IsNullOrEmpty(c.Purpose) ? c.Topic : c.Purpose,
+                    InstanceNo = instanceNo,
                     ChatId = c.ChatId,
                     Initiator = string.Equals(c.Initiator, "correspondent", StringComparison.OrdinalIgnoreCase)
                         ? CorrespondenceInitiator.Correspondent : CorrespondenceInitiator.Self,
+                    IntroducedBy = c.IntroducedBy,
                     ToolName = c.ToolName,
                     LastReplyAt = c.LastReplyAt,
                     Depth = c.Depth,
@@ -761,7 +1178,7 @@ public sealed class ChatRuntime : IDisposable, SPLA.Domain.Agent.IBackgroundTask
                 // Ended ones come back as tombstones, not as live addresses (ADR_20260904 §2.1) —
                 // restoring one into the live dictionary would re-offer a reply tool for a chat that is
                 // gone, and the liveness pass would announce its death a second time after every restart.
-                if (restored.IsOpen) _correspondences[(c.Role, c.Topic)] = restored;
+                if (restored.IsOpen) _correspondences[(restored.Role, restored.InstanceNo)] = restored;
                 else _ended.Add(restored);
             }
         }
@@ -1047,9 +1464,15 @@ public sealed class ChatRuntime : IDisposable, SPLA.Domain.Agent.IBackgroundTask
             : _correspondences.Values.Concat(_ended).Select(c => new ChatSessionCorrespondence
             {
                 Role = c.Role,
-                Topic = c.Topic,
+                // Mirrored into the legacy "topic" field too (not just "purpose"/"instance_no") so
+                // anything still reading it — CorrespondenceGraph's display field — keeps working
+                // unchanged (ChatSessionCorrespondence.Topic's own comment).
+                Topic = c.Purpose,
+                Purpose = c.Purpose,
+                InstanceNo = c.InstanceNo,
                 ChatId = c.ChatId,
                 Initiator = c.Initiator == CorrespondenceInitiator.Correspondent ? "correspondent" : "self",
+                IntroducedBy = c.IntroducedBy,
                 ToolName = c.ToolName,
                 LastReplyAt = c.LastReplyAt,
                 Depth = c.Depth,
@@ -1081,8 +1504,10 @@ public sealed class ChatRuntime : IDisposable, SPLA.Domain.Agent.IBackgroundTask
         return _runtime.GetReasoningAsync(ResolveLlmSettings(), entry?.DeclaredReasoning, ct);
     }
 
-    /// <summary>The chat's effective temperature — its own override, else the project default.</summary>
-    public double Temperature => _chat.Model?.Temperature ?? _runtime.Settings.Temperature;
+    /// <summary>The chat's effective temperature — its own override, else the role's, else the
+    /// resolved model's own default, else the project/machine default. See
+    /// <see cref="ResolvedSettings.ToLLMSettings(ResolvedModelEntry?)"/> for the same precedence.</summary>
+    public double Temperature => ResolveLlmSettings().Temperature;
 
     /// <summary>The chat's effective reasoning selection, in the scalar grammar. Empty = model default.</summary>
     public string ReasoningLevel =>

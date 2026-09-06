@@ -53,16 +53,19 @@ public static class CorrespondenceGraph
         var sessions = manager.ListChatsAndSpawned();
         var roleOf = sessions.ToDictionary(s => s.Id, s => RoleName(s));
 
-        // Half-edges grouped by the unordered chat pair + topic — the same triple both sides of one
-        // correspondence necessarily agree on (ChatRuntime.Correspond passes the identical topic string
-        // into OpenCorrespondence on both ends).
-        var groups = new Dictionary<(string A, string B, string Topic), List<(string OwnerChatId, ChatSessionCorrespondence Entry)>>();
+        // Half-edges grouped by the unordered chat-id pair alone (PLAN_20260906 wave 0: topic/purpose
+        // is free text now, never guaranteed to read identically on both sides, so it cannot be part
+        // of the grouping key). This is still exactly right: OpenCorrespondence always creates a BRAND
+        // NEW correspondent chat for a fresh (role, instance) address, so a given pair of chat ids
+        // never carries more than one correspondence between them — the id pair alone already
+        // identifies "the same correspondence, seen from either side".
+        var groups = new Dictionary<(string A, string B), List<(string OwnerChatId, ChatSessionCorrespondence Entry)>>();
         foreach (var s in sessions)
         {
             if (s.Correspondences is not { Count: > 0 }) continue;
             foreach (var c in s.Correspondences)
             {
-                var key = PairKey(s.Id, c.ChatId, c.Topic);
+                var key = PairKey(s.Id, c.ChatId);
                 if (!groups.TryGetValue(key, out var list)) groups[key] = list = new();
                 list.Add((s.Id, c));
             }
@@ -120,8 +123,8 @@ public static class CorrespondenceGraph
     private static string RoleName(ChatSession s) => string.IsNullOrWhiteSpace(s.As) ? "agent" : s.As!;
 
     /// <summary>Order-independent key for "the same correspondence, seen from either side".</summary>
-    private static (string, string, string) PairKey(string chatIdA, string chatIdB, string topic)
+    private static (string, string) PairKey(string chatIdA, string chatIdB)
         => string.CompareOrdinal(chatIdA, chatIdB) <= 0
-            ? (chatIdA, chatIdB, topic)
-            : (chatIdB, chatIdA, topic);
+            ? (chatIdA, chatIdB)
+            : (chatIdB, chatIdA);
 }

@@ -57,7 +57,7 @@ public sealed class CorrespondenceGraphTests
             var architect = chats.CreateNew("Architect", "architect");
 
             reviewer.OpenCorrespondence("architect", "design review", architect.ChatId, CorrespondenceInitiator.Self);
-            reviewer.SendReply("architect", "design review", "what do you think?");
+            reviewer.SendReply("architect", 1, "what do you think?");
             reviewer.Save();
 
             var reloaded = runtime.ChatManager.LoadChat(reviewer.ChatId);
@@ -83,7 +83,7 @@ public sealed class CorrespondenceGraphTests
             var reviewer = chats.CreateNew("Reviewer", "reviewer");
             var architect = chats.CreateNew("Architect", "architect");
             var opened = reviewer.OpenCorrespondence("architect", "", architect.ChatId, CorrespondenceInitiator.Self);
-            reviewer.SendReply("architect", "", "first message");
+            reviewer.SendReply("architect", 1, "first message");
             reviewer.Save();
 
             // A fresh ChatRuntime over the same persisted session, the way reopening a chat after a
@@ -98,7 +98,7 @@ public sealed class CorrespondenceGraphTests
 
             // And it keeps working: a second reply accumulates onto the restored record rather than
             // starting a fresh count.
-            var result = reopened.SendReply("architect", "", "second message");
+            var result = reopened.SendReply("architect", 1, "second message");
             Assert.True(result.Delivered);
             Assert.Equal(2, reopened.Correspondences.Single().Depth);
         }
@@ -115,8 +115,8 @@ public sealed class CorrespondenceGraphTests
             var architect = chats.CreateNew("Architect", "architect");
             reviewer.OpenCorrespondence("architect", "", architect.ChatId, CorrespondenceInitiator.Self);
 
-            reviewer.SendReply("architect", "", "short");
-            reviewer.SendReply("architect", "", "a somewhat longer second message than the first");
+            reviewer.SendReply("architect", 1, "short");
+            reviewer.SendReply("architect", 1, "a somewhat longer second message than the first");
 
             var c = reviewer.Correspondences.Single();
             Assert.Equal(2, c.Depth);
@@ -138,8 +138,8 @@ public sealed class CorrespondenceGraphTests
 
             reviewer.OpenCorrespondence("architect", "design review", architect.ChatId, CorrespondenceInitiator.Self);
             architect.OpenCorrespondence("reviewer", "design review", reviewer.ChatId, CorrespondenceInitiator.Correspondent);
-            reviewer.SendReply("architect", "design review", "please look at this");
-            architect.SendReply("reviewer", "design review", "looks fine");
+            reviewer.SendReply("architect", 1, "please look at this");
+            architect.SendReply("reviewer", 1, "looks fine");
             reviewer.Save();
             architect.Save();
 
@@ -172,7 +172,7 @@ public sealed class CorrespondenceGraphTests
             // side, exactly mirroring ChatRuntime.Correspond's own wiring.
             architect.OpenCorrespondence("writer", "", writer.ChatId, CorrespondenceInitiator.Self);
             writer.OpenCorrespondence("architect", "", architect.ChatId, CorrespondenceInitiator.Correspondent);
-            architect.SendReply("writer", "", "please draft the section");
+            architect.SendReply("writer", 1, "please draft the section");
             architect.Save();
             writer.Save();
 
