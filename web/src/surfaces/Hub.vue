@@ -49,7 +49,7 @@
 
           <div class="hub-main">
             <div class="hub-name">
-              {{ p.name || p.projectId }}
+              <span class="hub-name-text">{{ p.name || p.projectId }}</span>
               <span v-if="!p.exists" class="hub-tag bad" :title="t('The manifest is no longer at this path')">
                 {{ t('missing') }}
               </span>
@@ -475,7 +475,8 @@ async function forget(p: KnownProject) {
 }
 
 .hub-main { flex: 1; min-width: 0; }
-.hub-name { display: flex; align-items: center; gap: 6px; }
+.hub-name { display: flex; align-items: center; gap: 6px; min-width: 0; }
+.hub-name-text { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
 .hub-path {
   font-size: var(--fs-sm);
   color: var(--muted);
