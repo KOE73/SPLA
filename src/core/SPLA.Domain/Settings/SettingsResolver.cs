@@ -110,6 +110,10 @@ public class ResolvedSettings
     /// operation. Default 24 — see <see cref="SplaAgentSection.PeerHardCap"/>.</summary>
     public int PeerHardCap { get; set; } = 24;
 
+    /// <summary>Consecutive auto-wakes allowed before <c>ChatPump</c> refuses to wake itself again.
+    /// Default null — disabled, no cap — see <see cref="SplaAgentSection.SelfFeedingCap"/>.</summary>
+    public int? SelfFeedingCap { get; set; }
+
     /// <summary>Enabled built-in agent capabilities. Null = all enabled (backward compatible);
     /// see <see cref="SplaAgentSection.Capabilities"/> for full semantics.</summary>
     public List<string>? Capabilities { get; set; }
@@ -500,6 +504,7 @@ public static class SettingsResolver
                 r.PeerDebounceMaxSeconds = defaults.Agent.PeerDebounceMaxSeconds ?? r.PeerDebounceMaxSeconds;
                 r.PeerDepthCeiling = defaults.Agent.PeerDepthCeiling ?? r.PeerDepthCeiling;
                 r.PeerHardCap = defaults.Agent.PeerHardCap ?? r.PeerHardCap;
+                r.SelfFeedingCap = defaults.Agent.SelfFeedingCap ?? r.SelfFeedingCap;
                 r.Capabilities = defaults.Agent.Capabilities ?? r.Capabilities;
                 r.UnifiedResources = defaults.Agent.UnifiedResources ?? r.UnifiedResources;
                 AddTrustedDomains(r, defaults.Agent.TrustedDomains);
@@ -569,6 +574,7 @@ public static class SettingsResolver
                 r.PeerDebounceMaxSeconds = project.Agent.PeerDebounceMaxSeconds ?? r.PeerDebounceMaxSeconds;
                 r.PeerDepthCeiling = project.Agent.PeerDepthCeiling ?? r.PeerDepthCeiling;
                 r.PeerHardCap = project.Agent.PeerHardCap ?? r.PeerHardCap;
+                r.SelfFeedingCap = project.Agent.SelfFeedingCap ?? r.SelfFeedingCap;
                 r.Capabilities = project.Agent.Capabilities ?? r.Capabilities;
                 r.UnifiedResources = project.Agent.UnifiedResources ?? r.UnifiedResources;
                 AddTrustedDomains(r, project.Agent.TrustedDomains);
@@ -708,6 +714,7 @@ public static class SettingsResolver
         r.PeerDebounceMaxSeconds = roleSection.PeerDebounceMaxSeconds ?? r.PeerDebounceMaxSeconds;
         r.PeerDepthCeiling = roleSection.PeerDepthCeiling ?? r.PeerDepthCeiling;
         r.PeerHardCap = roleSection.PeerHardCap ?? r.PeerHardCap;
+        r.SelfFeedingCap = roleSection.SelfFeedingCap ?? r.SelfFeedingCap;
         r.RoleTemperature = roleSection.Temperature ?? r.RoleTemperature;
         r.ReasoningLevel = roleSection.ReasoningLevel ?? r.ReasoningLevel;
         AddTrustedDomains(r, roleSection.TrustedDomains);
@@ -813,6 +820,7 @@ public static class SettingsResolver
         PeerDebounceMaxSeconds = baseline.PeerDebounceMaxSeconds,
         PeerDepthCeiling = baseline.PeerDepthCeiling,
         PeerHardCap = baseline.PeerHardCap,
+        SelfFeedingCap = baseline.SelfFeedingCap,
         Capabilities = baseline.Capabilities is null ? null : [.. baseline.Capabilities],
         McpEnabled = baseline.McpEnabled,
         McpPort = baseline.McpPort,

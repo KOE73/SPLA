@@ -28,10 +28,13 @@ namespace SPLA.Service;
 /// </summary>
 internal sealed class ChatPump : IDisposable
 {
-    /// <summary>Consecutive auto-wakes (turns started with no human message since the last one)
-    /// allowed before the pump refuses to wake itself again — ADR §2.6 / plan step B.5. A woken turn
-    /// can launch a background task whose result wakes the next turn; without a cap that loop never
-    /// stops on its own.</summary>
+    /// <summary>Back-compat default for consecutive auto-wakes (turns started with no human message
+    /// since the last one) allowed before the pump refuses to wake itself again — ADR §2.6 / plan step
+    /// B.5. A woken turn can launch a background task whose result wakes the next turn; without a cap
+    /// that loop never stops on its own. Used only when the constructor's own <c>selfFeedingCap</c>
+    /// parameter is <c>null</c> (every pre-existing caller, including every test); the real app now
+    /// wires <see cref="SPLA.Domain.Settings.SplaAgentSection.SelfFeedingCap"/> instead, which defaults
+    /// to disabled — see that setting's own doc for why the guard stopped being unconditional.</summary>
     internal const int SelfFeedingCap = 3;
 
     private static readonly TimeSpan DebounceWindow = TimeSpan.FromMilliseconds(500);
@@ -175,6 +178,7 @@ internal sealed class ChatPump : IDisposable
     private readonly TimeSpan _peerDebounceMax;
     private readonly int _peerDepthCeiling;
     private readonly int _peerHardCap;
+    private readonly int _selfFeedingCap;
 
     /// <param name="inbox">This chat's inbox — the pump's only trigger.</param>
     /// <param name="hasWatchers">True when somebody has the chat open. Injected rather than a direct
@@ -204,6 +208,13 @@ internal sealed class ChatPump : IDisposable
     /// (default 6).</param>
     /// <param name="peerHardCap">See <see cref="SPLA.Domain.Settings.SplaAgentSection.PeerHardCap"/>
     /// (default 24).</param>
+    /// <param name="selfFeedingCap">See <see cref="SPLA.Domain.Settings.SplaAgentSection.SelfFeedingCap"/>.
+    /// Defaults to this class's own back-compat constant (<see cref="SelfFeedingCap"/>, 3) when a caller
+    /// omits it — every pre-existing caller, including every test, keeps its original behavior
+    /// unchanged. Zero or a negative value means "disabled" (never trips); <c>SplaServiceHost</c> passes
+    /// that explicitly whenever <c>agent.self_feeding_cap</c> is unset, per ADR §2.6's revision — the
+    /// demo this guard used to strangle is meant to run unbounded unless someone opts into a limit.
+    /// </param>
     public ChatPump(
         ChatInbox inbox,
         Func<bool> hasWatchers,
@@ -216,7 +227,8 @@ internal sealed class ChatPump : IDisposable
         TimeSpan? peerDebounceBase = null,
         TimeSpan? peerDebounceMax = null,
         int peerDepthCeiling = 6,
-        int peerHardCap = 24)
+        int peerHardCap = 24,
+        int selfFeedingCap = SelfFeedingCap)
     {
         _inbox = inbox;
         _hasWatchers = hasWatchers;
@@ -231,6 +243,7 @@ internal sealed class ChatPump : IDisposable
         _peerDebounceMax = peerDebounceMax ?? TimeSpan.FromMinutes(5);
         _peerDepthCeiling = peerDepthCeiling;
         _peerHardCap = peerHardCap;
+        _selfFeedingCap = selfFeedingCap > 0 ? selfFeedingCap : int.MaxValue;
 
         // Created idle (Timeout.Infinite): nothing arms it until the first TaskResult signal.
         // The firing is fire-and-forget by nature — a timer has nobody to hand a Task back to — so the
@@ -302,7 +315,7 @@ internal sealed class ChatPump : IDisposable
                 }
 
                 var decision = DecideWake(
-                    _inbox.HasPending, _isTurnRunning(), _hasWatchers(), _consecutiveAutoWakes, SelfFeedingCap,
+                    _inbox.HasPending, _isTurnRunning(), _hasWatchers(), _consecutiveAutoWakes, _selfFeedingCap,
                     _autoWakeSuppressed(),
                     hasPeerPending: _inbox.HasPendingOfKind(InboxItemKind.Peer),
                     peerDepth: Volatile.Read(ref _peerDepth),
@@ -356,7 +369,7 @@ internal sealed class ChatPump : IDisposable
                         {
                             _capNoticeSent = true;
                             _broadcastNotice(
-                                $"Auto-wake paused after {SelfFeedingCap} consecutive background wakes with " +
+                                $"Auto-wake paused after {_selfFeedingCap} consecutive background wakes with " +
                                 "no reply from you — send a message to resume.");
                         }
                         return;

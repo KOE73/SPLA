@@ -652,7 +652,11 @@ public sealed class SplaServiceHost
                     peerDebounceBase: chat.PeerDebounceBase,
                     peerDebounceMax: chat.PeerDebounceMax,
                     peerDepthCeiling: chat.PeerDepthCeiling,
-                    peerHardCap: chat.PeerHardCap);
+                    peerHardCap: chat.PeerHardCap,
+                    // Unset (null) means disabled — see SplaAgentSection.SelfFeedingCap — passed here as
+                    // 0 rather than int.MaxValue so the ChatPump constructor is the one place that owns
+                    // the "non-positive means never trips" translation.
+                    selfFeedingCap: chat.SelfFeedingCap ?? 0);
 
                 void OnClosed(SPLA.Runtime.ChatRuntime closed)
                 {

@@ -264,6 +264,7 @@ public static class SettingsOps
         PeerDebounceMaxSeconds = r.PeerDebounceMaxSeconds,
         PeerDepthCeiling = r.PeerDepthCeiling,
         PeerHardCap = r.PeerHardCap,
+        SelfFeedingCap = r.SelfFeedingCap,
         Temperature = r.Temperature,
         ReasoningLevel = r.ReasoningLevel,
         Capabilities = r.Capabilities,
@@ -290,6 +291,7 @@ public static class SettingsOps
         PeerDebounceMaxSeconds = d.PeerDebounceMaxSeconds,
         PeerDepthCeiling = d.PeerDepthCeiling,
         PeerHardCap = d.PeerHardCap,
+        SelfFeedingCap = d.SelfFeedingCap,
         Temperature = d.Temperature,
         ReasoningLevel = Blank(d.ReasoningLevel),
         // Null and empty are different answers here, and only null means "inherit": an empty

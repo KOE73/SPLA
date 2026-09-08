@@ -434,6 +434,10 @@ public sealed class RoleEditDto
     public int? PeerDepthCeiling { get; set; }
     public int? PeerHardCap { get; set; }
 
+    /// <summary>Consecutive-auto-wake guard override — see <c>SplaAgentSection.SelfFeedingCap</c>.
+    /// Null = the project's number, which itself defaults to disabled.</summary>
+    public int? SelfFeedingCap { get; set; }
+
     /// <summary>Per-role default sampling temperature. Null = inherit the resolved model's own
     /// default, then the project/machine one — see <c>SplaRoleSection.Temperature</c>.</summary>
     public double? Temperature { get; set; }

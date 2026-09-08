@@ -271,7 +271,11 @@ public class ChatPumpTests
                 return Task.CompletedTask;
             },
             broadcastNotice: text => { lock (Notices) Notices.Add(text); },
-            autoWakeSuppressed: () => AutoWakeSuppressed);
+            autoWakeSuppressed: () => AutoWakeSuppressed,
+            // Explicit rather than relying on the constructor's own null-default: SplaServiceHost now
+            // wires an app setting that defaults to disabled, so a test exercising the guard itself must
+            // not depend on that default staying at 3.
+            selfFeedingCap: ChatPump.SelfFeedingCap);
     }
 
     /// <summary>Polls a condition instead of a fixed sleep, since the thing under test is itself a

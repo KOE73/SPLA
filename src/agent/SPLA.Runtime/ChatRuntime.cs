@@ -1575,6 +1575,10 @@ public sealed class ChatRuntime : IDisposable, SPLA.Domain.Agent.IBackgroundTask
     /// <summary>See <see cref="PeerDebounceBase"/>.</summary>
     public int PeerHardCap => _roleSettings?.PeerHardCap ?? _runtime.Settings.PeerHardCap;
 
+    /// <summary>See <see cref="PeerDebounceBase"/>. Null means disabled — see
+    /// <see cref="SPLA.Domain.Settings.SplaAgentSection.SelfFeedingCap"/>.</summary>
+    public int? SelfFeedingCap => _roleSettings?.SelfFeedingCap ?? _runtime.Settings.SelfFeedingCap;
+
     /// <summary>
     /// Ends everything this chat holds open. Called when the chat is deleted or the host stops.
     /// <para>

@@ -126,6 +126,16 @@ public class SplaAgentSection
     /// the chat rather than silently continuing. Default 24.</summary>
     [YamlMember(Alias = "peer_hard_cap")]
     public int? PeerHardCap { get; set; }
+
+    /// <summary>How many consecutive auto-wakes (turns with no human message since the last one) a
+    /// chat may run before <c>ChatPump</c> refuses to wake itself again and posts a notice — see
+    /// <c>ChatPump.SelfFeedingCap</c>. Unset or 0 means disabled (no cap, the exchange can run as long
+    /// as it keeps re-arming itself): a correspondence between two chats is exactly this kind of
+    /// self-feeding loop by design, and the guard used to trip it after three turns regardless of
+    /// intent. Set a positive number to bring the old ceiling back for a project that wants one.
+    /// </summary>
+    [YamlMember(Alias = "self_feeding_cap")]
+    public int? SelfFeedingCap { get; set; }
 }
 
 /// <summary>
@@ -227,6 +237,10 @@ public class SplaRoleSection
     /// <summary>Per-role override of <see cref="SplaAgentSection.PeerHardCap"/>.</summary>
     [YamlMember(Alias = "peer_hard_cap")]
     public int? PeerHardCap { get; set; }
+
+    /// <summary>Per-role override of <see cref="SplaAgentSection.SelfFeedingCap"/>.</summary>
+    [YamlMember(Alias = "self_feeding_cap")]
+    public int? SelfFeedingCap { get; set; }
 
     /// <summary>Per-role default sampling temperature. Wins over the model's own
     /// <see cref="SplaModelSection.Temperature"/> and the project/machine <c>llm:</c> default, but a

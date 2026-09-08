@@ -69,6 +69,7 @@ ignore:
 | `agent.capabilities` | No | Enabled built-in `core.*` capabilities. Missing = all; `[]` = pure chat with no built-in tools. |
 | `agent.spawned_retention` | No | How many finished spawned sessions to keep on disk, newest first (default 200). `0` keeps none; negative disables trimming entirely. Never touches a session with a run still in progress. Project-level only — not a per-role setting; retention is a disk policy of the project, not a behaviour a role narrows. See [Roles](#roles). |
 | `agent.peer_debounce_base` / `agent.peer_debounce_max` / `agent.peer_depth_ceiling` / `agent.peer_hard_cap` | No | The correspondence decay regulator — how fast an exchange between two actors slows down and where it is cut off. See [Correspondence decay](#correspondence-decay). |
+| `agent.self_feeding_cap` | No | How many consecutive turns with no human message the chat pump allows itself before it stops waking a turn and posts a notice instead. Unset or `0` — disabled, no cap. See [Correspondence decay](#correspondence-decay). |
 | `roles` | No | Names of the roles this project has, e.g. `[reviewer, architect]`. Each name pairs with a body at `roles/<name>.yaml`, next to this manifest. See [Roles](#roles). |
 | `llm.provider` | No | LLM provider. Currently only `lmstudio`. |
 | `llm.endpoint` | No | API base URL. |
@@ -259,6 +260,7 @@ agent:
   peer_debounce_max: 300     # seconds
   peer_depth_ceiling: 6
   peer_hard_cap: 24
+  self_feeding_cap: 0        # 0 = disabled, no cap
 ```
 
 | Field | Default | Meaning |
@@ -267,6 +269,7 @@ agent:
 | `peer_debounce_max` | `300` | Ceiling on the wait below — the doubling never waits longer than this between an incoming reply and the turn it wakes. |
 | `peer_depth_ceiling` | `6` | How many consecutive replies (since the last human message or task result) may still raise a turn of their own. Past this depth a reply no longer wakes one — it stays queued and rides whatever turn happens for some other reason, so the exchange slows to the pace of outside events rather than stopping. |
 | `peer_hard_cap` | `24` | Emergency stop — should never be reached in normal operation, since the debounce and depth ceiling above exist to keep depth from ever getting here. Reaching it is a defect in the regulator, not a normal outcome, and refuses the reply with a notice into the chat instead of silently continuing. |
+| `self_feeding_cap` | unset (disabled) | A counter separate from correspondence: how many consecutive turns with no human message `ChatPump` allows itself before it refuses to wake another one and posts a notice. Unset or `0` — no cap, a turn can keep going as long as the `peer_*` regulator above lets it. Set a positive number if a particular project still wants a ceiling on an unattended run. |
 
 The wait between replies is `peer_debounce_base · 2^depth`, floored at `peer_debounce_base` and
 capped at `peer_debounce_max` — depth 0 (the reply right after external energy) always waits exactly
@@ -274,6 +277,12 @@ the base amount, and the wait only grows once a correspondence starts circulatin
 past `peer_depth_ceiling` is never discarded, only left queued; only `peer_hard_cap` actually refuses
 one. See `docs/adr/ADR_20260827-2_core_roles.md` §2.4 and `ChatPump.PeerWakePolicy`/`DecideWake` for
 the regulator itself.
+
+Until now `self_feeding_cap` was a constant baked into the code (`ChatPump.SelfFeedingCap = 3`), and it
+counted a turn as "self-fed" even when a correspondent's reply was what woke it — an honest ping-pong
+between two roles hit that ceiling on the third turn, before `peer_depth_ceiling`/`peer_hard_cap` above
+ever got a chance to fire. It is now disabled by default: a correspondence is bounded by the `peer_*`
+regulator alone, and `self_feeding_cap` is a separate, optional rein on top of it.
 
 ## Launch Profiles
 
