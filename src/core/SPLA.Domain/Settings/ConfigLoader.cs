@@ -1,5 +1,8 @@
+using System.Globalization;
 using System.Text.Json;
 using System.Text.Json.Nodes;
+using YamlDotNet.Core;
+using YamlDotNet.Core.Events;
 using YamlDotNet.Serialization;
 using YamlDotNet.Serialization.NamingConventions;
 
@@ -13,7 +16,35 @@ public static class ConfigLoader
     private static readonly IDeserializer Deserializer = new DeserializerBuilder()
         .WithNamingConvention(UnderscoredNamingConvention.Instance)
         .IgnoreUnmatchedProperties()
+        // Opaque plugin blobs land in Dictionary<string, object>, where YAML has no target type to
+        // guide it: without this, `trusted_connection: true` comes back as the *string* "true" and
+        // reaches a plugin's bool property as JSON `"true"`, which System.Text.Json refuses.
+        .WithAttemptingUnquotedStringTypeDeserialization()
+        .WithNodeTypeResolver(new PlainNumberResolver())
         .Build();
+
+    /// <summary>Gives an untyped (<c>object</c>) plain scalar that looks like a number its numeric
+    /// type, so `default_limit: 10` survives the round trip as 10 and not "10". Quoted scalars keep
+    /// the string the author asked for.</summary>
+    private sealed class PlainNumberResolver : INodeTypeResolver
+    {
+        public bool Resolve(NodeEvent? nodeEvent, ref Type currentType)
+        {
+            if (currentType != typeof(object) || nodeEvent is not Scalar { Style: ScalarStyle.Plain } s)
+                return false;
+            if (long.TryParse(s.Value, NumberStyles.Integer, CultureInfo.InvariantCulture, out _))
+            {
+                currentType = typeof(long);
+                return true;
+            }
+            if (double.TryParse(s.Value, NumberStyles.Float, CultureInfo.InvariantCulture, out _))
+            {
+                currentType = typeof(double);
+                return true;
+            }
+            return false;
+        }
+    }
 
     private static readonly ISerializer Serializer = new SerializerBuilder()
         .WithNamingConvention(UnderscoredNamingConvention.Instance)
