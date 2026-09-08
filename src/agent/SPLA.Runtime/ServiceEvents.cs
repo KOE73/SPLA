@@ -14,7 +14,7 @@ public abstract record ServiceEvent;
 
 /// <summary>The project's UI appearance changed. Every view applies it — web chrome and, via the
 /// webview bridge, the native shell — regardless of which surface triggered the change.</summary>
-public sealed record AppearanceChanged(string Theme, string Density) : ServiceEvent;
+public sealed record AppearanceChanged(string Theme, string Density, bool AutoOpenSubagents) : ServiceEvent;
 
 /// <summary>
 /// The skill fond was rebuilt — a file changed under a branch, the source list was edited, or a

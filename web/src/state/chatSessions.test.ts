@@ -295,4 +295,48 @@ describe("chat sessions", () => {
 
     expect(peekSession("A")!.calls["t1"].runIds).toEqual(["r-aaa", "r-bbb"]);
   });
+
+  // ── PLAN_20260903 stage 1: reading an archived chat ────────────────────────
+
+  it("fills a session from chat.read.result and marks it read-only", () => {
+    feed("chat.read.result", "R", { chatId: "R", title: "Old business", readOnly: true, messages: [
+      { msgId: "m1", role: "user", content: "the thing we said" },
+      { msgId: "m2", role: "assistant", content: "and the answer" }
+    ] });
+
+    const s = peekSession("R")!;
+    expect(s.readOnly).toBe(true);
+    expect(s.logLoaded).toBe(true);
+    expect(s.items.map(i => i.kind)).toEqual(["user", "assistant"]);
+    // Nothing here describes a next turn, because there is none — a leftover model or mode would be a
+    // straight lie about the chat on screen.
+    expect(s.modelId).toBe("");
+    expect(s.toolSets).toEqual([]);
+    expect(s.turnActive).toBe(false);
+  });
+
+  it("clears read-only when the same chat is later opened for real", () => {
+    // Unarchiving turns the snapshot back into a session; the window must not stay in reading mode
+    // just because that is how it first saw the chat.
+    feed("chat.read.result", "R", { chatId: "R", title: "t", readOnly: true, messages: [] });
+    expect(peekSession("R")!.readOnly).toBe(true);
+
+    open("R");
+
+    expect(peekSession("R")!.readOnly).toBe(false);
+  });
+
+  it("renders a read chat's history exactly as an opened one does", () => {
+    const messages = [
+      { msgId: "m1", role: "user", content: "hello" },
+      { msgId: "m2", role: "assistant", content: "hi", toolCalls: [{ id: "t1", name: "read_file", arguments: "{}" }] },
+      { msgId: "m3", role: "tool", toolCallId: "t1", content: "file body" }
+    ];
+    open("A", messages);
+    feed("chat.read.result", "B", { chatId: "B", title: "t", readOnly: true, messages });
+
+    const a = peekSession("A")!, b = peekSession("B")!;
+    expect(b.items.map(i => i.kind)).toEqual(a.items.map(i => i.kind));
+    expect(b.calls["t1"].result).toEqual(a.calls["t1"].result);
+  });
 });

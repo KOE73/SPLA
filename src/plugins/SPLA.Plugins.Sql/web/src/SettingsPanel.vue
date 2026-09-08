@@ -4,90 +4,110 @@
   a reference into the global secret store, never a literal password. Picking or creating that entry
   is the HOST's credential control, borrowed through CredentialSlot (values never enter this
   blob or the chat); the connection config keeps only the entry name. Mirrors the SSH plugin.
+
+  Shape: the list of cards, then "＋ Connection" — the same one every Settings list in the host
+  wears. That shape is not hand-drawn here; it comes from ./kit (ListPanel/ListCard/glyph buttons),
+  this bundle's copy of the host's shared list kit. Nothing below carries a border, a background or
+  a radius of its own.
 -->
 <template>
   <div class="sql-set">
     <div class="muted">
-      Named database connections available to the SQL agent. Passwords live in the secret store
-      (Settings → Secrets); a connection only references an entry by name. Stored in the .spla project file.
+      {{ t('Named database connections available to the SQL agent. Passwords live in the secret store (Settings → Secrets); a connection only references an entry by name. Stored in the .spla project file.') }}
     </div>
 
     <div class="row">
-      <label><span class="muted">Default connection</span>
+      <label><span class="muted">{{ t('Default connection') }}</span>
         <select v-model="defaultConnection">
-          <option value="">(none)</option>
+          <option value="">{{ t('(none)') }}</option>
           <option v-for="c in connections" :key="c.key" :value="c.name">{{ c.name }}</option>
         </select>
       </label>
-      <label><span class="muted">Default row limit</span>
+      <label><span class="muted">{{ t('Default row limit') }}</span>
         <input v-model.number="defaultLimit" type="number" min="1" class="w-90">
       </label>
     </div>
 
-    <button type="button" class="self-start" @click="addConnection">+ Add Connection</button>
+    <ListPanel :empty="!connections.length" :empty-text="t('No connections yet.')"
+               :add-label="t('Connection')" @add="addConnection">
+      <!-- Head: the card draws the caret and places everything — this panel only says what the words
+           are. The name goes through the #title slot rather than the plain prop because the driver
+           belongs next to it in both states: which engine this speaks is half of what names it,
+           while `summary` (where it points) is the collapsed-only half. -->
+      <ListCard v-for="(c, i) in connections" :key="c.key"
+                :open="isOpen(c.key)" :summary="summary(c)" @update:open="toggle(c.key)">
+        <template #title>
+          <b>{{ c.name || t('(new connection)') }}</b>
+          <span class="muted">{{ c.provider }}</span>
+        </template>
 
-    <div v-if="!connections.length" class="muted empty">No connections yet. Click "+ Add Connection".</div>
+        <template #actions>
+          <DeleteButton @click="removeConnection(i)" />
+        </template>
 
-    <div v-for="(c, i) in connections" :key="c.key" class="conn-card">
-      <div class="row spread">
-        <div class="row">
-          <span class="muted">Name</span><input v-model="c.name" class="w-140" spellcheck="false">
-          <span class="muted">Provider</span>
-          <select v-model="c.provider">
-            <option value="mssql">mssql</option>
-            <option value="postgres">postgres</option>
-            <option value="sqlite">sqlite</option>
-          </select>
-        </div>
-        <button type="button" @click="connections.splice(i, 1)">✕ Remove</button>
-      </div>
-
-      <div v-if="c.provider !== 'sqlite'" class="row">
-        <span class="muted w-70">Server</span>
-        <input v-model="c.path" placeholder="sql01 or 192.168.1.10" class="w-220" spellcheck="false">
-        <span class="muted w-70">Database</span>
-        <input v-model="c.database" class="w-160" spellcheck="false">
-      </div>
-      <div v-else class="row">
-        <span class="muted w-70">File</span>
-        <input v-model="c.path" placeholder="C:\data\mydb.sqlite" class="w-400" spellcheck="false">
-      </div>
-
-      <template v-if="c.provider !== 'sqlite'">
-        <div class="row">
-          <label v-if="c.provider === 'mssql'" class="chk"><input type="checkbox" v-model="c.trustedConnection">
-            <span>Windows Auth (domain)</span></label>
-        </div>
-
-        <template v-if="!c.trustedConnection || c.provider !== 'mssql'">
+        <template #body>
           <div class="row">
-            <span class="muted w-70">Credential</span>
-            <CredentialSlot :api="api" v-model="c.credential" />
+            <span class="muted w-70">{{ t('Name') }}</span><input v-model="c.name" class="w-140" spellcheck="false">
+            <span class="muted">{{ t('Provider') }}</span>
+            <select v-model="c.provider">
+              <option value="mssql">{{ t('mssql') }}</option>
+              <option value="postgres">{{ t('postgres') }}</option>
+              <option value="sqlite">{{ t('sqlite') }}</option>
+            </select>
+          </div>
+
+          <div v-if="c.provider !== 'sqlite'" class="row">
+            <span class="muted w-70">{{ t('Server') }}</span>
+            <input v-model="c.path" :placeholder="t('sql01 or 192.168.1.10')" class="w-220" spellcheck="false">
+            <span class="muted w-70">{{ t('Database') }}</span>
+            <input v-model="c.database" class="w-160" spellcheck="false">
+          </div>
+          <div v-else class="row">
+            <span class="muted w-70">{{ t('File') }}</span>
+            <input v-model="c.path" :placeholder="t('C:\\data\\mydb.sqlite')" class="w-400" spellcheck="false">
+          </div>
+
+          <template v-if="c.provider !== 'sqlite'">
+            <div class="row">
+              <label v-if="c.provider === 'mssql'" class="chk"><input type="checkbox" v-model="c.trustedConnection">
+                <span>{{ t('Windows Auth (domain)') }}</span></label>
+            </div>
+
+            <template v-if="!c.trustedConnection || c.provider !== 'mssql'">
+              <div class="row">
+                <span class="muted w-70">{{ t('Credential') }}</span>
+                <CredentialSlot :api="api" v-model="c.credential" />
+              </div>
+
+              <div class="row">
+                <span class="muted w-70">{{ t('User') }}</span>
+                <input v-model="c.user" :placeholder="c.credential ? '(from credential)' : 'login'" class="w-130" spellcheck="false">
+              </div>
+            </template>
+          </template>
+
+          <div class="row">
+            <span class="muted w-70">{{ t('Description') }}</span>
+            <input v-model="c.description" :placeholder="t('Shown to the AI — what this database contains')" class="grow">
           </div>
 
           <div class="row">
-            <span class="muted w-70">User</span>
-            <input v-model="c.user" :placeholder="c.credential ? '(from credential)' : 'login'" class="w-130" spellcheck="false">
+            <button type="button" :disabled="c.testing" @click="testConnection(c)">{{ t('Test Connection') }}</button>
+            <span class="muted">{{ c.testStatus }}</span>
           </div>
         </template>
-      </template>
-
-      <div class="row">
-        <span class="muted w-70">Description</span>
-        <input v-model="c.description" placeholder="Shown to the AI — what this database contains" class="grow">
-      </div>
-
-      <div class="row">
-        <button type="button" :disabled="c.testing" @click="testConnection(c)">Test Connection</button>
-        <span class="muted">{{ c.testStatus }}</span>
-      </div>
-    </div>
+      </ListCard>
+    </ListPanel>
   </div>
 </template>
 
 <script setup lang="ts">
+import { t } from "./i18n";
 import { reactive, ref } from "vue";
 import CredentialSlot from "./CredentialSlot.vue";
+import ListPanel from "./kit/ListPanel.vue";
+import ListCard from "./kit/ListCard.vue";
+import DeleteButton from "./kit/DeleteButton.vue";
 import type { MountApi } from "./mount";
 
 const props = defineProps<{ api: MountApi }>();
@@ -164,8 +184,30 @@ const connections = reactive<ConnRow[]>(
   Object.entries(blob.connections || {}).map(([name, cfg]) => rowFromCfg(name, cfg))
 );
 
+// Which cards are expanded. Saved connections open collapsed — the head says which one this is;
+// a connection you just added opens, because its fields are the reason you clicked.
+const openKeys = reactive(new Set<number>());
+const isOpen = (key: number) => openKeys.has(key);
+function toggle(key: number) {
+  if (!openKeys.delete(key)) openKeys.add(key);
+}
+
+/** What a collapsed card shows instead of its fields: where this connection points. */
+function summary(c: ConnRow): string {
+  if (c.provider === "sqlite") return c.path || "(no file)";
+  const server = c.path || "(no server)";
+  return c.database ? `${server} / ${c.database}` : server;
+}
+
 function addConnection() {
-  connections.push(rowFromCfg(`db${connections.length + 1}`, { provider: "mssql" }));
+  const row = rowFromCfg(`db${connections.length + 1}`, { provider: "mssql" });
+  connections.push(row);
+  openKeys.add(row.key);
+}
+
+function removeConnection(i: number) {
+  const [row] = connections.splice(i, 1);
+  if (row) openKeys.delete(row.key);
 }
 
 async function testConnection(c: ConnRow) {
@@ -221,29 +263,27 @@ defineExpose({ toJson });
 </script>
 
 <style scoped>
-/* Uses only the host's CSS variables so the panel follows theme + density. */
-.sql-set { display: flex; flex-direction: column; gap: 8px; font-size: var(--fs-sm, 12px); color: var(--text, inherit); }
+/* Only what is specific to a SQL connection lives here. The card (border, background, radius), the
+   list spacing, the add button and the glyph buttons are the kit's — see ./kit/kit.css. */
+.sql-set { display: flex; flex-direction: column; gap: var(--gap, 10px); font-size: var(--fs-sm, 12px); color: var(--text, inherit); }
 .muted { color: var(--muted, #888); }
-.empty { font-style: italic; }
 .row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
-.row.spread { justify-content: space-between; }
-.self-start { align-self: flex-start; }
 .grow { flex: 1; }
-.w-70 { width: 70px; } .w-90 { width: 90px; } .w-120 { width: 120px; } .w-130 { width: 130px; }
+.w-70 { width: 70px; } .w-90 { width: 90px; } .w-130 { width: 130px; }
 .w-140 { width: 140px; } .w-160 { width: 160px; } .w-220 { width: 220px; } .w-400 { width: 400px; }
-.conn-card { border: 1px solid var(--border, #444); border-radius: var(--radius, 6px); padding: 8px 10px;
-  display: flex; flex-direction: column; gap: 6px; background: var(--panel, transparent); }
 .chk { cursor: pointer; }
 .chk input { height: auto; }
 label { display: flex; gap: 6px; align-items: center; }
 input, select {
   height: 24px; padding: 2px 6px; color: var(--text, inherit); background: var(--bg, transparent);
-  border: 1px solid var(--border, #444); border-radius: 5px; font-family: inherit; font-size: inherit;
+  border: 1px solid var(--border, #444); border-radius: var(--radius-sm, 5px); font-family: inherit; font-size: inherit;
 }
-button {
+/* :not(.gbtn) — the kit's glyph buttons land in this panel's scope through the card slots, and they
+   bring their own look; this rule is for the panel's own plain buttons only. */
+button:not(.gbtn) {
   padding: 2px 10px; color: var(--text, inherit); background: var(--panel, transparent);
-  border: 1px solid var(--border, #444); border-radius: 5px; cursor: pointer; font-size: inherit;
+  border: 1px solid var(--border, #444); border-radius: var(--radius-sm, 5px); cursor: pointer; font-size: inherit;
 }
-button:hover:not(:disabled) { border-color: var(--muted, #888); }
-button:disabled { opacity: .5; cursor: default; }
+button:not(.gbtn):hover:not(:disabled) { border-color: var(--muted, #888); }
+button:not(.gbtn):disabled { opacity: .5; cursor: default; }
 </style>

@@ -191,8 +191,8 @@ public sealed class TrayIconService : IAsyncDisposable
 
     private NativeMenuItem BuildProjectItem(IReadOnlyList<InstanceRecord> participants)
     {
-        var agent = participants.FirstOrDefault(r => r.Role == ParticipantRoles.Agent);
-        var windows = participants.Count(r => r.Role == ParticipantRoles.Window);
+        var agent = participants.FirstOrDefault(r => r.Kind == ParticipantKind.Agent);
+        var windows = participants.Count(r => r.Kind == ParticipantKind.Window);
         var first = participants[0];
 
         var name = first.ProjectName ?? Path.GetFileNameWithoutExtension(first.ProjectId);
@@ -255,7 +255,7 @@ public sealed class TrayIconService : IAsyncDisposable
     private async Task OpenAsync(string manifestPath)
     {
         if (_watcher.Current.FirstOrDefault(r =>
-                r.Role == ParticipantRoles.Window &&
+                r.Kind == ParticipantKind.Window &&
                 string.Equals(r.ProjectId, manifestPath, StringComparison.OrdinalIgnoreCase))
             is { } window && await FocusAsync(window.Info.InstanceId))
         {

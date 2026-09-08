@@ -21,7 +21,12 @@ public partial class SurfaceWindow : Window
     public SurfaceWindow()
     {
         InitializeComponent();
+        Helpers.Localization.Track(this);
         Opened += OnOpened;
+        KeyDown += (_, e) =>
+        {
+            if (e.Key == Key.F12) Helpers.WebViewDevTools.TryOpen(Browser);
+        };
     }
 
     /// <param name="query">Extra pre-encoded query params for the surface (e.g. "host=x&amp;project=y"),
@@ -46,6 +51,7 @@ public partial class SurfaceWindow : Window
         try
         {
             Helpers.WebViewBridge.Attach(Browser);
+            Helpers.WebViewDpiSync.Track(this, Browser);
             var baseUrl = _baseUrl ?? await App.ServiceUrlAsync();
             _url = baseUrl.TrimEnd('/') + "/?surface=" + Uri.EscapeDataString(_surface)
                  + (string.IsNullOrEmpty(_query) ? "" : "&" + _query);
@@ -61,6 +67,8 @@ public partial class SurfaceWindow : Window
     {
         if (_url != null) Browser.Navigate(new Uri(_url));
     }
+
+    private void DevTools_Click(object? sender, RoutedEventArgs e) => Helpers.WebViewDevTools.TryOpen(Browser);
 
     private void TitleBar_PointerPressed(object? sender, PointerPressedEventArgs e)
     {

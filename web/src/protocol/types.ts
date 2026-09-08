@@ -30,6 +30,11 @@ export interface ChatMessage {
   /** Generations the repetition guard threw away before this message was produced. Only present
    *  when the project had `agent: save_attempts` on when the chat was saved. */
   attempts?: AttemptDto[];
+  /** The correspondent's role, set only for a reply that arrived across a correspondence
+   *  (`ADR_20260827-2` §2.5). The client renders such a message as speech — "← from `peerFrom`" —
+   *  instead of an ordinary human bubble; undefined for every ordinary message. The wire shape of
+   *  the message itself is unchanged: this is the one field that tells the two apart. */
+  peerFrom?: string;
 }
 
 /** One abandoned generation as stored on a message — see server `AttemptDto`. */
@@ -57,6 +62,10 @@ export interface ToolProgressDetail {
 export interface ChatSummary {
   id: string;
   title?: string;
+  /** ISO-8601 UTC, most-recently-touched. Used to order a flat view (the sessions panel) when the
+   *  tree's own order — most-recently-updated child first, within one parent — is not enough because
+   *  the view mixes children from several parents. */
+  updatedAt?: string;
   /** A turn is running in this chat right now — including one started by another window. */
   turnActive?: boolean;
   /** The chat's operational state: "idle" | "working" | "waiting" | "stalled".
@@ -65,6 +74,35 @@ export interface ChatSummary {
    *  - waiting: the agent is blocked on a person (permission or clarification request)
    *  - stalled: a turn is registered but nothing has happened for ~10 minutes (model may have stopped halfway) */
   state?: string;
+  /** The role this chat runs as (`ChatSession.As`), or undefined for a plain chat with no role.
+   *  Human chats can carry one too (a role-narrowed standing chat), not only spawned sessions. */
+  as?: string;
+  /** "spawned" for a session `agent_spawn`/`agent_correspond` created, undefined for one a human
+   *  opened directly. */
+  origin?: string;
+  /** The chat id that spawned this session, or undefined. Present on every node in `children` — a
+   *  tree client does not need it to walk down, but a flat consumer (the sessions panel) needs it
+   *  without walking the tree at all. */
+  parent?: string;
+  /** The chat's own model override, or undefined when it runs the project's default. */
+  modelId?: string;
+  /** Sum of every assistant message's reported prompt/completion tokens, or undefined when nothing
+   *  in this chat ever reported usage — absence stays absence rather than becoming a misleading 0. */
+  promptTokens?: number;
+  completionTokens?: number;
+  /** Spawned sessions parented on this chat, most-recently-updated first, nested to whatever depth
+   *  the spawn chain reached. Undefined/empty for a chat with no spawned descendants — the
+   *  overwhelming majority. See `ADR_20260827-2` §2.5: "список чатов становится деревом роль → чат". */
+  children?: ChatSummary[];
+}
+
+/** Answer to `chat.read`: an archived chat's history, with none of the per-turn settings a live
+ *  session carries — see the server-side `ChatReadResultPayload` for why the absences are the point. */
+export interface ChatReadResultPayload {
+  chatId: string;
+  title: string;
+  messages: ChatMessage[];
+  readOnly: boolean;
 }
 
 export interface ChatOpenedPayload {
@@ -152,6 +190,11 @@ export interface ConnectionDto {
   /** As `apiKeyIsLiteral`, for the admin key. */
   adminKeyIsLiteral?: boolean;
   swapModel?: boolean;
+  /** Which layer this connection lives in: `shared`, `user` or `project`. It is the file the entry
+   *  is read from and the one a save writes it back to, so it must be echoed back untouched —
+   *  dropping it on save would move the entry. Omitted by a client that does not edit it: the server
+   *  then keeps the connection where it already was. No UI for choosing it yet. */
+  scope?: string;
   models: ModelEntryDto[];
 }
 
@@ -162,6 +205,9 @@ export interface ModelEntryDto {
   name?: string;
   model?: string;
   contextLength?: number;
+  /** Default sampling temperature for this model. Undefined = fall back to the role's default, then
+   *  the project/machine one. */
+  temperature?: number;
 }
 
 /** A model entry flattened for pickers, keeping its owning connection for grouping. */
@@ -222,6 +268,9 @@ export interface AgentResultPayload {
   resourceSchemes?: ResourceSchemeDto[];
   theme?: string; density?: string;
   themes?: string[]; densities?: string[];
+  /** Whether a client should open a native window on a spawned session by itself, the moment it
+   *  appears in the tree. Stored in .spla ui: auto_open_subagents. Default false. */
+  autoOpenSubagents?: boolean;
   canPersist?: boolean;
 }
 
@@ -315,6 +364,13 @@ export interface PluginSettingsMountApi {
    * escaping into a settings blob) out of plugin code entirely.
    */
   mountCredentialField(el: HTMLElement, opts: CredentialFieldOptions): CredentialFieldHandle;
+  /**
+   * The host's translator, handed over so a plugin panel reads in the same language as the window
+   * around it without shipping (or agreeing on) a dictionary of its own. The key is the English
+   * source text — an untranslated string comes back unchanged, so a plugin that ignores this
+   * function still works, in English.
+   */
+  t(text: string, params?: Record<string, unknown>): string;
 }
 
 export interface CredentialFieldOptions {
@@ -423,6 +479,64 @@ export interface FeaturesResultPayload {
   canPersist?: boolean;
   /** Feature tools register once at startup, so a change applies on the next service start. */
   restartToApply?: boolean;
+}
+
+/**
+ * One role as the editor sees it — the body of `roles/<name>.yaml` plus `active`, which lives in the
+ * manifest's `roles:` list rather than in the file. A body nobody named is inert, so the two halves
+ * are shown together and the panel renders the difference.
+ *
+ * Every optional field means "inherit from the project's `agent:`" when absent — the same meaning the
+ * resolver gives a missing key, so a blank in the editor and an absent key in the file are one state.
+ */
+export interface RoleEditDto {
+  name: string;
+  active: boolean;
+  /** One line for strangers — what `role_list` shows a chat choosing whom to task. */
+  description?: string;
+  mode?: string;
+  modelId?: string;
+  /** The inward half: this role's prompt. Never published through the role catalog. */
+  customPrompt?: string;
+  loopGuard?: boolean | null;
+  loopGuardRepeats?: number | null;
+  shellTimeoutSeconds?: number | null;
+  askTimeoutMinutes?: number | null;
+  saveToolCalls?: boolean | null;
+  saveAttempts?: boolean | null;
+  unifiedResources?: boolean | null;
+  peerDebounceBaseSeconds?: number | null;
+  peerDebounceMaxSeconds?: number | null;
+  peerDepthCeiling?: number | null;
+  peerHardCap?: number | null;
+  /** Per-role default sampling temperature. Null = inherit the resolved model's own default, then
+   *  the project/machine one. */
+  temperature?: number | null;
+  /** Per-role default reasoning level, in the provider's own words. Null = inherit the project/
+   *  machine default (which itself falls through to the model's own default when empty). */
+  reasoningLevel?: string | null;
+  /** Null = inherit the project's list; a list REPLACES it (a role is not a subset of the project). */
+  capabilities?: string[] | null;
+  /** Narrowing, never a grant: null/empty = every connection the project has. Ids or scope words. */
+  connections?: string[] | null;
+  islands?: string[] | null;
+  toolSets?: Record<string, string> | null;
+  trustedDomains?: string[] | null;
+}
+
+export interface RolesResultPayload {
+  roles: RoleEditDto[];
+  modes: string[];
+  /** The project's own mode — what a role that picks nothing runs in. */
+  projectMode: string;
+  knownCapabilities: CapabilityDto[];
+  models: ConnectionDto[];
+  connections: ConnectionDto[];
+  islands: string[];
+  toolSetIds: string[];
+  toolSetLevels: string[];
+  canPersist?: boolean;
+  error?: string;
 }
 
 export interface ConnectionsResultPayload {
@@ -617,6 +731,8 @@ export interface ProjectContextPayload {
   defaultMode?: string;
   theme?: string;
   density?: string;
+  /** Machine-level, so switching project never switches language — see welcome.language. */
+  language?: string;
 }
 
 // ── Spawned sub-agent runs (subagent.get → subagent.result) ───────────────────
@@ -692,6 +808,29 @@ export interface TaskStateChangedPayload {
   task: TaskSummaryDto;
 }
 
+// ── Correspondence graph (PLAN_20260902 wave 7б; ADR_20260827-2 §2.5's last row) ──────
+/** One edge of the project-wide "who talks to whom" graph — an arrow from whoever opened the
+ *  correspondence (`fromRole`/`fromChatId`) to the correspondent they addressed (`toRole`/
+ *  `toChatId`), carrying BOTH directions' reply counts and estimated token volume. The imbalance the
+ *  graph exists to show (a role that only sends, a role nobody answers) reads directly off one edge:
+ *  `repliesFromCorrespondent` stuck at 0 while `repliesFromInitiator` grows. Volume is an honest
+ *  estimate of the replies' own text, never a slice of a turn's real provider usage. */
+export interface CorrespondenceEdgeDto {
+  fromChatId: string;
+  fromRole: string;
+  toChatId: string;
+  toRole: string;
+  topic: string;
+  repliesFromInitiator: number;
+  volumeFromInitiator: number;
+  repliesFromCorrespondent: number;
+  volumeFromCorrespondent: number;
+}
+
+export interface CorrespondenceGraphResultPayload {
+  edges: CorrespondenceEdgeDto[];
+}
+
 // ── Events the server pushes unprompted (subscribe via client.on) ──────────────
 export interface ServerEvents {
   /**
@@ -702,6 +841,9 @@ export interface ServerEvents {
    */
   "conn": { on: boolean; text?: string; lost?: boolean; attempts?: number };
   "welcome": {
+    /** The interface language, from the machine layer (~/.spla). Authoritative: the page is served
+     *  from an ephemeral port, so localStorage cannot survive a restart and this is what does. */
+    language?: string;
     theme?: string; density?: string; projectId?: string; projectName?: string; workspacePath?: string;
     modes?: string[]; defaultMode?: string;
     connections?: ModelPickDto[];
@@ -710,11 +852,13 @@ export interface ServerEvents {
     /** Set only when this build was published from a branch other than main — draws the warning banner. */
     branch?: string;
   };
-  "appearance.changed": { theme?: string; density?: string };
+  "appearance.changed": { theme?: string; density?: string; autoOpenSubagents?: boolean };
   "chat.opened": ChatOpenedPayload;
   "chat.reasoning.result": ChatReasoningResult;
   "chat.list.result": { chats: ChatSummary[] };
   "chat.archived.list.result": { chats: ChatSummary[] };
+  "chat.read.result": ChatReadResultPayload;
+  "correspondence.graph.result": CorrespondenceGraphResultPayload;
   "chat.cleared": Record<string, never>;
   "chat.current": ChatOpenedPayload;
   "focus.changed": { chatId: string };
@@ -733,7 +877,7 @@ export interface ServerEvents {
   "assistant.message": { msgIndex: number; message: ChatMessage };
   /** User message accepted by the server. Text is present so server-initiated turns can render
    * without a local echo; ordinary composer turns use it only as a fallback. */
-  "user.message": { msgId: string; createdAt?: string; text?: string };
+  "user.message": { msgId: string; createdAt?: string; text?: string; peerFrom?: string };
   "turn.complete": { cancelled?: boolean; error?: string; activeSkillId?: string | null };
   /** A chat's active skill changed — after an explicit unload. */
   "chat.skill.state": { chatId: string; activeSkillId?: string | null };
@@ -768,6 +912,7 @@ export interface ServerEvents {
   "connection.swap_model.result": ConnectionSwapModelResultPayload;
   "provider.info.result": ProviderInfoResultPayload;
   "agent.result": AgentResultPayload;
+  "roles.result": RolesResultPayload;
   "mcp.result": McpSettingsPayload;
   "mcp.servers.result": McpServersPayload;
   "plugins.result": PluginsResultPayload;

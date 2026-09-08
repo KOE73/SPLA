@@ -29,8 +29,10 @@ import UserBubble from "./UserBubble.vue";
 import AssistantBubble from "./AssistantBubble.vue";
 import ToolLine from "./ToolLine.vue";
 import ToolCard from "./ToolCard.vue";
+import ReplyOutLine from "./ReplyOutLine.vue";
 import PermissionAsk from "./PermissionAsk.vue";
 import ClarifyAsk from "./ClarifyAsk.vue";
+import { isReplyCall } from "../state/replyCalls";
 
 const chat = useChat();
 const items = computed<LogItem[]>(() => chat.session.value?.items ?? []);
@@ -45,7 +47,9 @@ function itemComponent(item: LogItem) {
     case "user": return UserBubble;
     case "assistant": return AssistantBubble;
     case "tool": case "notice": return ToolLine;
-    case "toolcall": return ToolCard;
+    // A reply/correspondence call reads as speech, not a tool invocation (PLAN_20260902 wave 7;
+    // ADR_20260827-2 §2.5: "реплика рендерится как речь"). Everything else keeps the ordinary card.
+    case "toolcall": return isReplyCall(item.call.name) ? ReplyOutLine : ToolCard;
     case "permission": return PermissionAsk;
     case "clarify": return ClarifyAsk;
   }
@@ -84,14 +88,30 @@ function onScroll() {
   if (el) following = atBottom(el);
 }
 
-// New entries are one signal; text growing inside the bubble that is streaming is the other, and it
-// has no event of its own — so while a turn runs we look, cheaply, on a timer. A deep watch over the
-// whole log would walk every message on every token.
+// Staying at the bottom is answered by MEASUREMENT, not by guessing when the growing stops.
+//
+// The old version polled every 120 ms while a turn ran, and stopped the moment the turn ended. Every
+// height change that landed after the last tick — the final tokens, a bubble reflowing once its
+// markdown/mermaid finished, an image arriving with its real height, the composer growing a row and
+// taking that space off the viewport — left the view short by exactly that much. Hence "always a
+// little bit left to scroll" while sitting at the bottom.
+//
+// A ResizeObserver fires after layout, for every one of those causes, and only when something
+// actually changed. Two boxes are watched: the content (it grows) and the scroll viewport itself
+// (it shrinks when the composer or the settings drawer takes room). Re-pinning is a scroll, not a
+// layout write, so it cannot feed itself.
+let ro: ResizeObserver | null = null;
+/** Fallback for environments without ResizeObserver — the old timer, and only there. */
 let ticker = 0;
+
+function pin() {
+  if (following) toBottom();
+}
+
 watch(() => items.value.length, follow);
 watch(() => chat.session.value?.turnActive, active => {
   clearInterval(ticker);
-  if (active) ticker = window.setInterval(follow, 120);
+  if (active && !ro) ticker = window.setInterval(follow, 120);
 }, { immediate: true });
 
 // A chat that has just been opened starts at the bottom — that is where the conversation is — and
@@ -101,9 +121,23 @@ watch(() => chat.chatId.value, () => {
   nextTick(toBottom);
 }, { immediate: true });
 
-onMounted(() => logEl()?.addEventListener("scroll", onScroll, { passive: true }));
+onMounted(() => {
+  const el = logEl();
+  el?.addEventListener("scroll", onScroll, { passive: true });
+  if (el && typeof ResizeObserver !== "undefined") {
+    ro = new ResizeObserver(pin);
+    clearInterval(ticker);                             // the turnActive watch ran before mount, when
+    ticker = 0;                                        // it could not yet know an observer was coming
+    ro.observe(el);                                    // the viewport: composer/drawer take its room
+    // The content lives in the centring wrapper ChatSurface puts inside #log; this component renders
+    // into it with display:contents, so that wrapper is the box whose height tracks the conversation.
+    if (el.firstElementChild) ro.observe(el.firstElementChild);
+  }
+});
 onUnmounted(() => {
   clearInterval(ticker);
+  ro?.disconnect();
+  ro = null;
   logEl()?.removeEventListener("scroll", onScroll);
 });
 

@@ -52,9 +52,9 @@ public sealed class AgentContextComposer
 
     public IReadOnlyList<IAgentContributor> Contributors => _contributors;
 
-    public ComposedContext Compose(ResolvedSettings settings, string workingDirectory)
+    public ComposedContext Compose(ResolvedSettings settings, string workingDirectory, SPLA.Domain.Models.AgentMode? modeOverride = null)
     {
-        var context = new AgentContributionContext(settings, workingDirectory);
+        var context = new AgentContributionContext(settings, workingDirectory, modeOverride);
         var items = new List<ContextItem>();
         var entries = new List<ManifestEntry>();
 

@@ -29,6 +29,10 @@ export const store = reactive({
   /** Non-null only when this build was published from a branch other than main. */
   branch: null as string | null,
   theme: (localStorage.getItem("spla.theme") || "dark") as string,
+  /** `ui.auto_open_subagents` — whether a spawned session appearing in the tree should pop its own
+   *  window open by itself. Off by default; a backend that opens windows on its own is not what
+   *  anyone expects (`ADR_20260827-2` §2.5). Set from `agent.result`/`appearance.changed`. */
+  autoOpenSubagents: false,
 
   // ── Project focus (the server binds the connection's project; project.open rebinds it) ──
   /** null = this connection's default project (single-project usage never sets this). */

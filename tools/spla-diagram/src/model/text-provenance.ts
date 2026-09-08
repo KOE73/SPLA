@@ -20,8 +20,15 @@
  * See ADR_20260831_diagrams_text-provenance-and-view-axes.
  */
 
-/** The fields a catalogue entry may carry. Names of entities are not among them. */
-export const TEXT_FIELDS = ["name", "title", "description", "doc"] as const;
+/**
+ * The fields a catalogue entry may carry.
+ *
+ * `fromLabel`/`toLabel` are the cardinality/role captions at a relation's two
+ * ends (ADR_20260903 §2.6) — they read and write exactly like every other
+ * field here. This module is deliberately blind to what a key means: it does
+ * not know `r_*` is a relation or that only relations use these two fields.
+ */
+export const TEXT_FIELDS = ["name", "title", "description", "doc", "fromLabel", "toLabel"] as const;
 export type TextField = (typeof TEXT_FIELDS)[number];
 
 /** Where one value in one language came from. */

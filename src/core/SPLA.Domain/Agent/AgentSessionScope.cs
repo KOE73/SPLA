@@ -21,6 +21,142 @@ public interface IBackgroundTaskHost
     ChatInbox Inbox { get; }
 }
 
+/// <summary>How a call into <see cref="ICorrespondenceHost.Correspond"/> ended — the tool-facing
+/// shape <c>agent_correspond</c> (PLAN_20260902 wave 5) maps onto a <see cref="Models.ToolResult"/>.
+/// Finer than a bool for the same reason <c>ChatRuntime.ReplyOutcome</c> is: a bad argument, an
+/// unknown role, a denied edge and a vanished correspondent are different news to whoever reads the
+/// logs, even though a model sees the same "did not work" either way.</summary>
+public enum CorrespondOutcome
+{
+    /// <summary>The correspondence exists (found or freshly opened) and the reply was queued.</summary>
+    Delivered,
+
+    /// <summary>A required argument was missing or empty — role or text (<c>purpose</c> is optional
+    /// since PLAN_20260906 wave 0).</summary>
+    InvalidArgument,
+
+    /// <summary>The named role is not declared in the project manifest. Roles do not self-assign
+    /// (<c>docs/adr/ADR_20260827-2_core_roles.md</c> §2.1) — opening a correspondence with an
+    /// undeclared role would let a model invent one exactly the way spawning one already cannot.</summary>
+    UnknownRole,
+
+    /// <summary>This chat's own capability gate refused the edge (<see cref="Host.ICapabilityGate.CanCorrespond"/>).</summary>
+    Denied,
+
+    /// <summary>The correspondent's chat could not be reached (archived/deleted/unreachable).</summary>
+    CorrespondentGone
+}
+
+/// <summary>A delivery receipt, never the correspondent's answer — see
+/// <c>docs/adr/ADR_20260827-2_core_roles.md</c> §2.3 and plan trap 10. The whole reason this is a
+/// distinct type from a plain string: a receipt that merely happens to read like prose is exactly what
+/// a model would start treating as the correspondent's own reply, and stop waiting for the real one.</summary>
+public readonly record struct CorrespondResult(CorrespondOutcome Outcome, string Message)
+{
+    public bool Delivered => Outcome == CorrespondOutcome.Delivered;
+}
+
+/// <summary>How a call into <see cref="ICorrespondenceHost.Introduce"/> ended
+/// (<c>docs/adr/ADR_20260906_core_one-address.md</c> §2.4). Its own enum rather than three more values
+/// on <see cref="CorrespondOutcome"/>: every refusal here is about a party the caller is <i>not</i>,
+/// which is a question <c>agent_correspond</c> cannot even ask, and folding them together would leave
+/// both tools' result mapping carrying outcomes that can never reach it.</summary>
+public enum IntroduceOutcome
+{
+    /// <summary>Both halves of the edge are open and the introduction reached the first party.</summary>
+    Introduced,
+
+    /// <summary>A required argument was missing or empty — one of the two names, or the text.</summary>
+    InvalidArgument,
+
+    /// <summary>One of the names is nobody's public name. An introduction takes two chats that already
+    /// exist: unlike <c>agent_correspond</c>, naming a role here would have to mint a correspondent, and
+    /// a chat conjured to be introduced to somebody is a chat the introducer should have asked for
+    /// himself.</summary>
+    UnknownAddressee,
+
+    /// <summary>Both names resolved to the same chat. Introducing somebody to himself has no edge to
+    /// open at all.</summary>
+    SameChat,
+
+    /// <summary>The introducer named himself as one of the two. That is not an introduction but an
+    /// ordinary correspondence, and it has its own tool — see <c>agent_correspond</c>. Refused rather
+    /// than quietly re-routed, because the two differ in who ends up on the edge, which is the entire
+    /// subject of §2.4.</summary>
+    IntroducerIsParty,
+
+    /// <summary>A named chat exists but cannot be reached — archived, or gone between the lookup and
+    /// the open.</summary>
+    AddresseeGone,
+
+    /// <summary>These two already correspond. Not an error the caller made, and nothing is opened a
+    /// second time (the address they hold is the one they would get) — but the introduction is refused
+    /// rather than delivered onto an edge somebody else built, so that a message written by a third
+    /// party never appears inside a conversation he was never part of.</summary>
+    AlreadyLinked,
+
+    /// <summary>A capability gate refused the edge (<see cref="Host.ICapabilityGate.CanCorrespond"/>) —
+    /// the introducer's own, or the party asked to carry the introduction.</summary>
+    Denied
+}
+
+/// <summary>A receipt for an introduction, never a conversation — the same distinction
+/// <see cref="CorrespondResult"/> exists to make (ADR_20260827-2 §2.3, plan trap 10), one step further
+/// removed: the introducer is not even on the edge whose opening this reports.</summary>
+public readonly record struct IntroduceResult(IntroduceOutcome Outcome, string Message)
+{
+    public bool Introduced => Outcome == IntroduceOutcome.Introduced;
+}
+
+/// <summary>
+/// What a chat offers <c>agent_correspond</c> (PLAN_20260902 wave 5): the capability to open — or
+/// reuse — a correspondence addressed by (role, instance number) and queue the first/next reply
+/// across it.
+/// <para>
+/// A capability, not a given, the same way <see cref="IBackgroundTaskHost"/> is: only
+/// <c>SPLA.Runtime.ChatRuntime</c> implements it. A spawned sub-agent's session leaves this null —
+/// it has no chat identity of its own to correspond as, and no directory to find a correspondent's
+/// chat through (<c>ChatRuntime</c>'s own <c>_registry</c> is null for the same class of caller).
+/// </para>
+/// </summary>
+public interface ICorrespondenceHost
+{
+    /// <summary>
+    /// Finds (by an address this chat already holds) or opens the correspondent's chat, and delivers
+    /// <paramref name="text"/> across it. <paramref name="purpose"/> is free explanatory text, never
+    /// mandatory and never part of the address (PLAN_20260906 wave 0 §2.1/2.3: the system-issued
+    /// instance number is the address now, not the topic).
+    /// <para><paramref name="role"/> names either a declared role — a correspondent of that kind,
+    /// whose chat is created on demand — or an existing chat's public name, <c>architect_2</c>,
+    /// which reaches that chat and creates nothing
+    /// (<c>docs/adr/ADR_20260906_core_one-address.md</c> §2.3). The parameter keeps its old name
+    /// because the old meaning is still the common one, and the tool's own schema is where the second
+    /// is explained to a model.</para>
+    /// <para>Without <paramref name="another"/>, a call for a role this chat already corresponds with
+    /// reuses that correspondence; with it, an additional correspondent of that role is opened. It has
+    /// no effect when a public name is given: that names one chat, and this chat has at most one
+    /// address to it.</para>
+    /// </summary>
+    CorrespondResult Correspond(string role, string purpose, string text, bool another);
+
+    /// <summary>
+    /// Puts two <i>other</i> chats in touch, without joining them
+    /// (<c>docs/adr/ADR_20260906_core_one-address.md</c> §2.4). Mechanically the same two
+    /// <c>OpenCorrespondence</c> calls that <see cref="Correspond"/> already makes for both ends of an
+    /// edge — the difference is only that the caller is neither end.
+    /// <para>Both parties are named by their <b>public names</b> (<c>architect_2</c>), never by a role:
+    /// an introduction connects two chats that exist. The chat identifier travels through the runtime
+    /// and appears in no message — each of the two simply finds a new <c>reply_&lt;role&gt;_&lt;n&gt;</c>
+    /// in its tool list (§2.4: "идентификатор идёт через рантайм, а не через текст").</para>
+    /// <para><paramref name="first"/> becomes the head of the edge, deterministically, and is the one
+    /// <paramref name="text"/> is delivered to — an opened correspondence by itself touches nobody's
+    /// mailbox, so an introduction that delivered nothing would leave both parties standing still
+    /// (§2.5, and ADR_20260825's "ход рождается из ящика"). The second party needs no message of its
+    /// own: the very next thing it receives is the first party's actual reply.</para>
+    /// </summary>
+    IntroduceResult Introduce(string first, string second, string purpose, string text);
+}
+
 /// <summary>
 /// The per-chat agent state that tools resolve at execution time: working memory, the
 /// checkpoint/mark manager, and the active-skill session. Each chat owns its own instance;
@@ -56,6 +192,18 @@ public interface IAgentSession
 
     /// <summary>Null when this session cannot host a detached call — see <see cref="IBackgroundTaskHost"/>.</summary>
     IBackgroundTaskHost? Background { get; }
+
+    /// <summary>Null when this session cannot correspond — see <see cref="ICorrespondenceHost"/>.</summary>
+    ICorrespondenceHost? Correspondence { get; }
+
+    /// <summary>
+    /// The chat id this session lives as, or null for a session with no chat behind it (a bare CLI or
+    /// worker entry point). A spawned run reads its caller's <see cref="AgentSessionScope.Current"/>
+    /// for this value to learn its own <c>parent:</c> — the same ambient read the depth counter and
+    /// sandbox inheritance already use — and its own spawned session carries its own chat id here, so
+    /// a nested spawn's parent is always the chat that actually spawned it, human or spawned alike.
+    /// </summary>
+    string? ChatId { get; }
 }
 
 /// <summary>Plain bundle of the per-chat agent dependencies. Used by the UI chat VM and by
@@ -65,7 +213,8 @@ public sealed class AgentSession : IAgentSession
     public AgentSession(IKeyValueStore sessionKv, MarkManager checkpoint, ISkillSession skills,
         IBlobStore? blobs = null, ISandbox? sandbox = null,
         IToolSetSession? toolSets = null, Security.ChatDoubt? doubt = null,
-        IBackgroundTaskHost? background = null)
+        IBackgroundTaskHost? background = null, string? chatId = null,
+        ICorrespondenceHost? correspondence = null)
     {
         Doubt = doubt ?? new Security.ChatDoubt();
         SessionKv = sessionKv;
@@ -75,6 +224,8 @@ public sealed class AgentSession : IAgentSession
         Blobs = blobs ?? new BlobStore();
         Sandbox = sandbox ?? PassthroughSandbox.Default;
         Background = background;
+        ChatId = chatId;
+        Correspondence = correspondence;
     }
 
     public IKeyValueStore SessionKv { get; }
@@ -85,6 +236,8 @@ public sealed class AgentSession : IAgentSession
     public ISandbox Sandbox { get; }
     public Security.ChatDoubt Doubt { get; }
     public IBackgroundTaskHost? Background { get; }
+    public ICorrespondenceHost? Correspondence { get; }
+    public string? ChatId { get; }
 }
 
 /// <summary>

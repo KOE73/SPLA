@@ -1,132 +1,187 @@
+<!--
+  One connection, as a collapsible ListCard — the same row shape as every other list in Settings.
+
+  Shut, the head has to answer "which one is this and is it alive?" on its own: the health dot, the
+  name, the provider, and a summary of where it points. Open, the head keeps only the dot and the
+  name — provider, endpoint and everything else are fields right below, and repeating them in the
+  head would just be the same text twice.
+
+  Nothing about the item's identity sits in a strip of its own any more: the name, the id and the
+  scope are ordinary labelled fields in the body, and deleting is the list's one delete affordance
+  in #actions. The open/shut state belongs to the panel (it knows which connection was just added),
+  so this card takes `open` and asks for the change instead of holding it.
+-->
 <template>
-  <div class="conn-card">
-    <div class="conn-id-bar">{{ conn.id || "(new)" }}</div>
-
-    <div class="conn-name-row">
-      <span>Name</span>
-      <input v-model="conn.name" :placeholder="conn.id">
+  <ListCard :open="open" @update:open="$emit('update:open', $event)"
+            :summary="summary">
+    <template #title>
+      <!-- Live reachability, checked by the panel. It stays in the head open or shut: no field below
+           carries it, and it is the one thing about a connection that changes without being edited. -->
       <span class="conn-status" :class="healthClass" :title="healthTitle"></span>
-      <button class="x" title="Remove" @click="$emit('remove')">✕</button>
-    </div>
+      <span class="conn-name">{{ headName }}</span>
+      <span v-if="!open" class="conn-provider">{{ providerLabel }}</span>
+    </template>
 
-    <label class="field"><span>Provider</span>
-      <!-- Fixed once saved: the credential and every provider-specific field below belong to this
-           provider, and there is nothing sensible to carry across. Change it by recreating. -->
-      <select v-model="conn.provider" :disabled="!!conn.id" @change="onProviderChange">
-        <option v-for="p in KNOWN_PROVIDERS" :key="p.value" :value="p.value">{{ p.label }}</option>
-      </select>
-    </label>
+    <template #actions>
+      <DeleteButton :title="t('Delete this connection')" @click="$emit('remove')" />
+    </template>
 
-    <label class="field"><span>Endpoint</span>
-      <input v-model="conn.endpoint">
-    </label>
+    <template #body>
+      <label class="field"><span>{{ t('Name') }}</span>
+        <input v-model="conn.name" :placeholder="conn.id">
+      </label>
 
-    <!-- Both keys are picked from the secret store, never typed here: what this card holds is a
-         reference, and the credential itself goes browser→store→server without passing through the
-         connection editor at all.
-
-         Each is its OWN entry of the plainest shape there is — one `token` field — so a bare
-         reference resolves without naming a field. An api key and a management key are two
-         credentials that happen to belong to one account, not one credential with two halves;
-         keeping them apart is what lets every consumer read a reference the same way. -->
-    <div class="field"><span>API key</span>
-      <div class="cred-cell">
-        <CredentialField
-          :model-value="conn.apiKey || ''"
-          none-label="(none)"
-          create-field="token"
-          @update:model-value="setCredential('apiKey', $event)"
-        />
-        <p v-if="conn.apiKeyIsLiteral" class="cred-literal">
-          A plaintext key is stored in this project's .spla. Pick or create a secret above to replace it.
-        </p>
-      </div>
-    </div>
-
-    <div class="field"><span>Admin key</span>
-      <div class="cred-cell">
-        <CredentialField
-          :model-value="conn.adminKey || ''"
-          none-label="(none) — account balance / usage only"
-          create-field="token"
-          @update:model-value="setCredential('adminKey', $event)"
-        />
-        <p v-if="conn.adminKeyIsLiteral" class="cred-literal">
-          A plaintext key is stored in this project's .spla. Pick or create a secret above to replace it.
-        </p>
-      </div>
-    </div>
-
-    <div class="field conn-flags" v-show="(conn.provider || 'lmstudio') === 'lmstudio'">
-      <span></span>
-      <div class="conn-flags-wrap">
-        <label class="flag-check"><input type="checkbox" v-model="conn.swapModel"> Hot-swap</label>
-      </div>
-    </div>
-
-    <!-- ── Models ───────────────────────────────────────────────────────────── -->
-    <div class="conn-models">
-      <div class="conn-models-head">
-        <span>Models</span>
-        <button class="x" title="Add a model" @click="addModel()">+</button>
+      <!-- The id is what chats and model ids are written against, so it is worth seeing; it is not
+           typed here, though — a new connection gets it from the name when it is saved. -->
+      <div class="field"><span>{{ t('Id') }}</span>
+        <span class="conn-id-value">{{ conn.id || t('taken from the name when saved') }}</span>
       </div>
 
-      <div v-if="!conn.models.length" class="conn-models-empty">
-        No models yet — add one with + and pick the model string from the provider (☰).
-      </div>
+      <!-- Where this connection lives. Changing it moves the entry between files on save — it is not
+           a copy, so the old file loses it. The card jumps to the matching section as you pick, which
+           is the whole feedback: you can see where it will end up before you save. -->
+      <label class="field"><span>{{ t('Lives in') }}</span>
+        <select v-model="scope" :title="t('Which file this connection lives in')">
+          <option value="shared">{{ t('shared') }}</option>
+          <option value="user">{{ t('mine') }}</option>
+          <option value="project">{{ t('this project') }}</option>
+        </select>
+      </label>
 
-      <div v-for="(m, i) in conn.models" :key="m.clientId || m.id" class="conn-model-row">
-        <div class="conn-model-line" @click="toggle(m)">
-          <button class="conn-model-caret">{{ expanded === keyOf(m) ? "▾" : "▸" }}</button>
-          <input class="conn-model-name" v-model="m.name" :placeholder="m.model || m.id" @click.stop>
-          <span class="conn-model-wire">{{ m.model || "—" }}</span>
-          <button class="x" title="Remove" @click.stop="conn.models.splice(i, 1)">✕</button>
-        </div>
+      <label class="field"><span>{{ t('Provider') }}</span>
+        <!-- Fixed once saved: the credential and every provider-specific field below belong to this
+             provider, and there is nothing sensible to carry across. Change it by recreating. -->
+        <select v-model="conn.provider" :disabled="!!conn.id" @change="onProviderChange">
+          <option v-for="p in KNOWN_PROVIDERS" :key="p.value" :value="p.value">{{ p.label }}</option>
+        </select>
+      </label>
 
-        <div v-if="expanded === keyOf(m)" class="conn-model-detail">
-          <label class="field"><span>Id</span>
-            <input v-model="m.id" :placeholder="suggestedId(m)">
-          </label>
-          <label class="field"><span>Model</span>
-            <span class="conn-model-wrap">
-              <input v-model="m.model" placeholder="provider's model string">
-              <button
-                class="btn ghost conn-list-btn"
-                title="Pick from the provider's catalog"
-                :disabled="fetchingModels"
-                @click.prevent="fetchModels($event, m)"
-              >{{ fetchingModels ? "…" : "☰" }}</button>
-            </span>
-          </label>
-          <label class="field"><span>Context</span>
-            <input type="number" v-model.number="m.contextLength" placeholder="auto-detect">
-          </label>
-          <div class="conn-actions">
-            <button class="btn ghost" :disabled="testing" @click="testChat(m)">
-              {{ testing ? "…" : "Test chat" }}
-            </button>
-          </div>
-          <div v-if="reply !== null" class="conn-test-reply" :data-err="replyIsError ? '1' : undefined">{{ reply }}</div>
+      <label class="field"><span>{{ t('Endpoint') }}</span>
+        <input v-model="conn.endpoint">
+      </label>
+
+      <!-- Both keys are picked from the secret store, never typed here: what this card holds is a
+           reference, and the credential itself goes browser→store→server without passing through the
+           connection editor at all.
+
+           Each is its OWN entry of the plainest shape there is — one `token` field — so a bare
+           reference resolves without naming a field. An api key and a management key are two
+           credentials that happen to belong to one account, not one credential with two halves;
+           keeping them apart is what lets every consumer read a reference the same way. -->
+      <div class="field"><span>{{ t('API key') }}</span>
+        <div class="cred-cell">
+          <CredentialField
+            :model-value="conn.apiKey || ''"
+            :none-label="t('(none)')"
+            create-field="token"
+            @update:model-value="setCredential('apiKey', $event)"
+          />
+          <p v-if="conn.apiKeyIsLiteral" class="cred-literal">
+            {{ t('A plaintext key is stored in {file}. Pick or create a secret above to replace it.', { file: scopeFile }) }}
+          </p>
+          <p v-if="strandedSecret(conn.apiKey)" class="cred-literal">
+            <span v-html="t('This key points at a <b>project</b> secret, but the connection lives outside the project — it will not resolve in any other project. Move the secret to your own store.')"></span>
+          </p>
         </div>
       </div>
-    </div>
 
-    <ModelPickerPopup
-      v-if="modelPopup"
-      :models="modelPopup.models"
-      :anchor="modelPopup.anchor"
-      :locked="false"
-      :swap="!!conn.swapModel"
-      :current="modelPopup.target.model || ''"
-      @pick="onPickModel"
-      @swap="onSwapModel"
-      @close="modelPopup = null"
-    />
-  </div>
+      <div class="field"><span>{{ t('Admin key') }}</span>
+        <div class="cred-cell">
+          <CredentialField
+            :model-value="conn.adminKey || ''"
+            :none-label="t('(none) — account balance / usage only')"
+            create-field="token"
+            @update:model-value="setCredential('adminKey', $event)"
+          />
+          <p v-if="conn.adminKeyIsLiteral" class="cred-literal">
+            {{ t('A plaintext key is stored in {file}. Pick or create a secret above to replace it.', { file: scopeFile }) }}
+          </p>
+          <p v-if="strandedSecret(conn.adminKey)" class="cred-literal">
+            <span v-html="t('This key points at a <b>project</b> secret, but the connection lives outside the project — it will not resolve in any other project. Move the secret to your own store.')"></span>
+          </p>
+        </div>
+      </div>
+
+      <div class="field conn-flags" v-show="(conn.provider || 'lmstudio') === 'lmstudio'">
+        <span></span>
+        <div class="conn-flags-wrap">
+          <label class="flag-check"><input type="checkbox" v-model="conn.swapModel"> {{ t('Hot-swap') }}</label>
+        </div>
+      </div>
+
+      <!-- ── Models ───────────────────────────────────────────────────────────── -->
+      <div class="conn-models-head">{{ t('Models') }}</div>
+      <!-- The flat variant of the shared list: a connection with eight models has to read as a list,
+           not as eight stacked cards, and "flat" is exactly that list drawn with separator lines.
+           Each row is the same card as its parent, one scale down: shut it is the model's name and
+           the wire string it resolves to; open, every field including the name. -->
+      <ListPanel class="conn-models flat" :empty="!conn.models.length"
+                 :empty-text="t('No models yet — add one below, then pick the model string from the provider (☰).')"
+                 :add-label="t('Model')" @add="addModel()">
+        <ListCard v-for="(m, i) in conn.models" :key="m.clientId || m.id"
+                  :open="expanded === keyOf(m)" @update:open="toggle(m)"
+                  :title="modelTitle(m)" :summary="m.model || '—'">
+          <template #actions>
+            <DeleteButton :title="t('Delete this model')" @click="conn.models.splice(i, 1)" />
+          </template>
+
+          <template #body>
+            <label class="field"><span>{{ t('Name') }}</span>
+              <input v-model="m.name" :placeholder="m.model || m.id">
+            </label>
+            <label class="field"><span>{{ t('Id') }}</span>
+              <input v-model="m.id" :placeholder="suggestedId(m)">
+            </label>
+            <label class="field"><span>{{ t('Model') }}</span>
+              <span class="conn-model-wrap">
+                <input v-model="m.model" :placeholder="t('provider\'s model string')">
+                <button
+                  class="btn ghost conn-list-btn"
+                  :title="t('Pick from the provider\'s catalog')"
+                  :disabled="fetchingModels"
+                  @click.prevent="fetchModels($event, m)"
+                >{{ fetchingModels ? "…" : "☰" }}</button>
+              </span>
+            </label>
+            <label class="field"><span>{{ t('Context') }}</span>
+              <input type="number" v-model.number="m.contextLength" :placeholder="t('auto-detect')">
+            </label>
+            <label class="field"><span>{{ t('Temperature') }}</span>
+              <input type="number" step="0.1" min="0" max="2" v-model.number="m.temperature" :placeholder="t('project default')">
+            </label>
+            <div class="conn-actions">
+              <button class="btn ghost" :disabled="testing" @click="testChat(m)">
+                {{ testing ? "…" : t('Test chat') }}
+              </button>
+            </div>
+            <div v-if="reply !== null" class="conn-test-reply" :data-err="replyIsError ? '1' : undefined">{{ reply }}</div>
+          </template>
+        </ListCard>
+      </ListPanel>
+
+      <!-- Inside the body on purpose: it is opened from a model row (position:fixed, so where it
+           sits in the tree costs nothing), and folding the card away takes the popup with it. -->
+      <ModelPickerPopup
+        v-if="modelPopup"
+        :models="modelPopup.models"
+        :anchor="modelPopup.anchor"
+        :locked="false"
+        :swap="!!conn.swapModel"
+        :current="modelPopup.target.model || ''"
+        @pick="onPickModel"
+        @swap="onSwapModel"
+        @close="modelPopup = null"
+      />
+    </template>
+  </ListCard>
 </template>
 
 <script setup lang="ts">
+import { t } from "../../i18n";
 import { computed, ref } from "vue";
+import DeleteButton from "../../components/buttons/DeleteButton.vue";
+import ListPanel from "../../components/list/ListPanel.vue";
+import ListCard from "../../components/list/ListCard.vue";
 import { client } from "../../protocol/SplaClient";
 import type { ConnectionDto, ConnHealth, ModelEntryDto } from "../../protocol/types";
 import ModelPickerPopup from "./ModelPickerPopup.vue";
@@ -147,10 +202,49 @@ const PROVIDER_DEFAULT_EP: Record<string, string> = {
   openrouter: "https://openrouter.ai/api/v1"
 };
 
-const props = defineProps<{ conn: ConnectionDto; health?: ConnHealth }>();
-defineEmits<{ remove: [] }>();
+const props = withDefaults(defineProps<{ conn: ConnectionDto; health?: ConnHealth; open?: boolean }>(),
+  { open: false });
+defineEmits<{ remove: []; "update:open": [boolean] }>();
 
 const requestKey = computed(() => props.conn.id || props.conn.clientId || "");
+
+// ── The head ─────────────────────────────────────────────────────────────────
+// A connection is named by its name, falls back to its id, and a brand-new one has neither yet.
+const headName = computed(() => props.conn.name || props.conn.id || t("(new connection)"));
+
+const providerLabel = computed(() => {
+  const value = props.conn.provider || "lmstudio";
+  return KNOWN_PROVIDERS.find(p => p.value === value)?.label || value;
+});
+
+/** Shut, the card still has to say where this connection points and how much is configured on it. */
+const summary = computed(() => {
+  const where = props.conn.endpoint || t("no endpoint");
+  const n = props.conn.models.length;
+  if (!n) return where;
+  return `${where} · ${n === 1 ? t("1 model") : t("{n} models", { n })}`;
+});
+
+const modelTitle = (m: ModelEntryDto) => m.name || m.model || m.id || t("(new model)");
+
+// ── Scope: which file this connection lives in ───────────────────────────────
+// An entry that never said counts as project — the layer everything was in before scopes existed,
+// and the same fallback the server applies when a client says nothing.
+const scope = computed({
+  get: () => props.conn.scope || "project",
+  set: (v: string) => { props.conn.scope = v; }
+});
+
+const scopeFile = computed(() => scope.value === "project"
+  ? t("this project's .spla")
+  : scope.value === "user" ? t("your own connections.yaml") : t("the shared connections file"));
+
+/** A connection outside the project pointing at a project secret resolves in exactly one project —
+ *  which defeats the reason it was put in a shared layer. Worth saying at the moment the scope is
+ *  visible; it is a warning, not a refusal (the reference may well be deliberate for now). */
+function strandedSecret(reference?: string): boolean {
+  return scope.value !== "project" && (reference || "").startsWith("secret:project:");
+}
 
 const healthClass = computed(() => {
   const h = props.health;
@@ -159,8 +253,8 @@ const healthClass = computed(() => {
 });
 const healthTitle = computed(() => {
   const h = props.health;
-  if (!h || h.ok == null) return "Not checked yet";
-  return h.ok ? "Reachable" : (h.error || "Unreachable");
+  if (!h || h.ok == null) return t("Not checked yet");
+  return h.ok ? t("Reachable") : (h.error || t("Unreachable"));
 });
 
 /** Sets one credential reference and drops the "untouched literal" marker with it: the server reads
@@ -288,3 +382,14 @@ async function testChat(m: ModelEntryDto) {
   }
 }
 </script>
+
+<style scoped>
+/* Only what is specific to a connection's head lives here — the caret, the title row, the actions
+   and the body are .list-card* in app.css, and the card's chrome is the list's three variables. */
+.conn-name { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+/* The provider rides along with the name while shut, so it is a qualifier, not a second title. */
+.conn-provider { font-weight: 400; color: var(--muted); font-size: var(--fs-sm); white-space: nowrap; }
+/* The id is shown, not edited: it reads as the key it is, in the same mono the old id bar used. */
+.conn-id-value { font-family: var(--mono); font-size: var(--fs-xs); color: var(--accent);
+  min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+</style>

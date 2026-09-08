@@ -64,11 +64,24 @@ public sealed class RegistryHubHost
             return asset is { } a ? Results.Bytes(a.Bytes, a.ContentType) : Results.NotFound();
         }
 
+        // Same cache split as SplaServiceHost: hashed /assets/ forever, the index.html that names
+        // those hashes never — see the comment there for what serving neither one costs.
+        static void SetAssetCaching(HttpContext ctx, string path) =>
+            ctx.Response.Headers.CacheControl = path.StartsWith("/assets/", StringComparison.Ordinal)
+                ? "public, max-age=31536000, immutable"
+                : "no-store";
+
         app.MapGet("/", (HttpContext ctx) =>
-            ctx.Request.Query.ContainsKey("surface")
-                ? ServeAsset("/index.html")
-                : Results.Redirect("/?surface=hub"));
-        app.MapGet("/{**path}", (string path) => ServeAsset("/" + path));
+        {
+            if (!ctx.Request.Query.ContainsKey("surface")) return Results.Redirect("/?surface=hub");
+            SetAssetCaching(ctx, "/index.html");
+            return ServeAsset("/index.html");
+        });
+        app.MapGet("/{**path}", (HttpContext ctx, string path) =>
+        {
+            SetAssetCaching(ctx, "/" + path);
+            return ServeAsset("/" + path);
+        });
 
         return new RegistryHubHost(app, hub);
     }

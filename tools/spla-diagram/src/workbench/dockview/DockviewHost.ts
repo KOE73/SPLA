@@ -8,6 +8,7 @@ import {
   RelationsPanel,
   FiltersPanel,
   StylesPanel,
+  TemplatesPanel,
   CatalogPanel,
   BasePanel,
 } from "../panels/index.js";
@@ -85,6 +86,7 @@ export class DockviewHost {
       relations: i18n.d.panels.relations.title,
       filters: i18n.d.panels.filters.title,
       styles: i18n.d.panels.styles.title,
+      templates: i18n.d.panels.templates.title,
       base: i18n.d.panels.base.title,
     };
 
@@ -143,6 +145,14 @@ export class DockviewHost {
       minWidth: 100,
       minHeight: 80,
       createRenderer: () => new StylesPanel(this.editor),
+    });
+
+    this.panelService.register({
+      id: "templates",
+      get title() { return i18n.d.panels.templates.title; },
+      minWidth: 100,
+      minHeight: 80,
+      createRenderer: () => new TemplatesPanel(this.editor),
     });
 
     this.panelService.register({
@@ -223,6 +233,18 @@ export class DockviewHost {
       id: "styles",
       component: "styles",
       title: "Стили",
+      position: {
+        direction: "within",
+        referencePanel: rightGroup,
+      },
+      minimumWidth: 100,
+      minimumHeight: 80,
+    });
+
+    this.dockview.addPanel({
+      id: "templates",
+      component: "templates",
+      title: "Шаблоны",
       position: {
         direction: "within",
         referencePanel: rightGroup,

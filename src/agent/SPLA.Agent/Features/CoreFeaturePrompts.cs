@@ -16,8 +16,11 @@ namespace SPLA.Agent;
 public static class CoreFeaturePrompts
 {
     /// <summary>Embedded-resource logical name per feature id. Ids absent from this map
-    /// (core.files, core.web, core.spawn, core.clarify) are tools-only features —
-    /// <see cref="Load"/> returns null for them.</summary>
+    /// (core.files, core.web, core.spawn, core.correspond, core.clarify) are tools-only features —
+    /// <see cref="Load"/> returns null for them. core.correspond has no prompt fragment on purpose:
+    /// the ADR explicitly rejects a list of open correspondences in the system prompt
+    /// (<c>docs/adr/ADR_20260827-2_core_roles.md</c> §3, "Отвергнуто") — the virtual reply tools'
+    /// own names and descriptions play that role instead.</summary>
     private static readonly IReadOnlyDictionary<string, string> ResourceNames =
         new Dictionary<string, string>(StringComparer.Ordinal)
         {
@@ -30,6 +33,9 @@ public static class CoreFeaturePrompts
             ["core.toolsets"] = "SPLA.Agent.Features.CoreToolSets.prompt.md",
             ["core.shell"] = "SPLA.Agent.Features.CoreShell.prompt.md",
             ["core.background_tasks"] = "SPLA.Agent.Features.CoreBackgroundTasks.prompt.md",
+            // core.roles carries the text spawn and correspond do not: how to address a role at all,
+            // and why a manager delegates the introduction instead of relaying messages himself.
+            ["core.roles"] = "SPLA.Agent.Features.CoreRoles.prompt.md",
         };
 
     private static readonly ConcurrentDictionary<string, string?> Cache = new();

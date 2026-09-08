@@ -72,34 +72,59 @@ internal sealed class WorkspaceHandlers : IMessageHandler
         return ctx.Reply(MessageTypes.FsWriteResult, WorkspaceOps.Write(boundary, p.Ref, p.Text ?? ""));
     }
 
-    /// <summary>Reads one finished spawned run back out of the runtime's <see cref="SPLA.Runtime.AgentRuntime.SpawnedRuns"/>
-    /// log by id. A miss is a normal answer (<c>found: false</c>), not an error — the ring is bounded
-    /// on purpose and an old or overflowed id is exactly what "bounded" means.</summary>
+    /// <summary>
+    /// Reads one spawned session's transcript back off disk by chat id (<c>SpawnedRunLog</c> is gone —
+    /// see <c>docs/adr/ADR_20260902_core_session-unification.md</c> §2.1). A miss is a normal answer
+    /// (<c>found: false</c>), not an error: the id may never have existed, may name a human chat (this
+    /// must not become a generic chat-by-id reader), or may have been trimmed by
+    /// <c>agent.spawned_retention</c> — the on-disk ring's own way of being bounded.
+    /// </summary>
     private static Task SubagentGet(RequestContext ctx)
     {
         var (entry, _) = ctx.Session.Resolve(ctx.Env);
         var p = ctx.Payload<SubagentGetPayload>();
-        var run = string.IsNullOrWhiteSpace(p?.RunId) ? null : entry.Runtime.SpawnedRuns.Get(p.RunId);
+        var chat = string.IsNullOrWhiteSpace(p?.RunId) ? null : entry.Runtime.ChatManager.LoadChat(p.RunId);
+        if (chat != null && chat.Origin != "spawned") chat = null;
 
-        var result = run is null
+        var result = chat is null
             ? new SubagentResultPayload { Found = false }
             : new SubagentResultPayload
             {
                 Found = true,
-                RunId = run.Id,
-                Label = run.Label,
-                SkillId = run.SkillId,
-                Mode = run.Mode,
-                StartedAt = run.StartedAt.ToString("o"),
-                FinishedAt = run.FinishedAt.ToString("o"),
-                Outcome = run.Outcome,
-                Error = run.Error,
-                Result = run.Result,
-                Messages = run.Messages.Select(ProtocolMapper.ToDto).ToList()
+                RunId = chat.Id,
+                Label = chat.Title,
+                SkillId = chat.Spawn?.SkillId,
+                Mode = chat.Spawn?.Mode ?? "",
+                StartedAt = (chat.Spawn?.StartedAt ?? chat.CreatedAt).ToString("o"),
+                // Still running: there is no finish time yet, so the last update stands in for it —
+                // an honest "as of now", not a fabricated end.
+                FinishedAt = (chat.Spawn?.FinishedAt ?? chat.UpdatedAt).ToString("o"),
+                Outcome = chat.Spawn?.Outcome ?? "running",
+                Error = chat.Spawn?.Error,
+                Result = chat.Messages.LastOrDefault(m => m.Role == "assistant")?.Content ?? "",
+                Messages = chat.Messages.Select(ToTranscriptDto).ToList()
             };
 
         return ctx.Reply(MessageTypes.SubagentResult, result);
     }
+
+    /// <summary>
+    /// Persisted spawned-session messages, straight off disk, into the same DTO a live chat's
+    /// transcript uses — a reader that already renders one chat renders this without new code. Small,
+    /// deliberate subset of <see cref="SPLA.Runtime.ChatRuntime"/>'s own hydration (system prompt is
+    /// never persisted, so there is nothing to strip here; image sidecars are omitted — a spawned
+    /// session's transcript is read for its text, not replayed as a chat).
+    /// </summary>
+    private static ChatMessageDto ToTranscriptDto(SPLA.Domain.Models.ChatSessionMessage m) => new()
+    {
+        MsgId = m.Id,
+        Role = m.Role,
+        Content = m.Content,
+        Reasoning = m.Reasoning,
+        CreatedAt = m.CreatedAt.ToString("o"),
+        ToolCallId = m.ToolCallId,
+        ToolCalls = m.ToolCalls?.Select(ProtocolMapper.ToDto).ToList()
+    };
 
     /// <summary>The project's own boundary. Without a manifest there is no project and no boundary to
     /// ask for — but this surface has always been bounded by the launch directory, and taking that

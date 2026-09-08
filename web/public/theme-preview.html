@@ -1,0 +1,238 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8" />
+<title>SPLA — themes x2 x2</title>
+<style>
+/* ── theme tokens, copied 1:1 from web/src/styles/themes.css ── */
+[data-theme="dark"] {
+  --bg:#1e1e1e; --panel:#252526; --elevated:#2d2d30; --border:#3a3a3c;
+  --text:#e6e6e6; --muted:#9aa0a6; --faint:#6b7178;
+  --accent:#4ea1ff; --accent-contrast:#04121f; --accent-soft:rgba(78,161,255,.14);
+  --user-bg:#243447; --assistant-bg:#252526; --tool-bg:#20201f; --system-bg:#2a2620; --error-bg:#3a1f1f;
+}
+[data-theme="emerald"] {
+  --bg:#0f1714; --panel:#16221d; --elevated:#1c2e27; --border:#1f332a;
+  --text:#e0f2e9; --muted:#8fafa1; --faint:#5f786c;
+  --accent:#10b981; --accent-contrast:#042018; --accent-soft:rgba(16,185,129,.14);
+  --user-bg:#1c2e27; --assistant-bg:#16221d; --tool-bg:#14201b; --system-bg:#18241e; --error-bg:#3a1f1f;
+}
+[data-theme="cream"] {
+  --bg:#fdfbf7; --panel:#f5f2eb; --elevated:#efeadd; --border:#ddd2b9;
+  --text:#4a3b2c; --muted:#8a7b6c; --faint:#b3a695;
+  --accent:#e18f2f; --accent-contrast:#ffffff; --accent-soft:rgba(225,143,47,.14);
+  --user-bg:#efe7d6; --assistant-bg:#f5f2eb; --tool-bg:#f0ece0; --system-bg:#f2ecdd; --error-bg:#f6e1de;
+}
+/* light — updated: --bg lightest, matching cream's brightness order (bg > panel > elevated > border) */
+[data-theme="light"] {
+  --bg:#ffffff; --panel:#f2f2f2; --elevated:#e9e9e9; --border:#dcdcdc;
+  --text:#1f2328; --muted:#6a737d; --faint:#9aa0a6;
+  --accent:#2563eb; --accent-contrast:#ffffff; --accent-soft:rgba(37,99,235,.12);
+  --user-bg:#e7efff; --assistant-bg:#ffffff; --tool-bg:#f3f4f6; --system-bg:#f6f5ee; --error-bg:#fde2e2;
+}
+
+/* ── density tokens, copied 1:1 from web/src/styles/app.css ── */
+:root { --radius:10px; --radius-sm:6px; --gap:10px; --pad:12px;
+  --sp-1:4px; --sp-2:6px; --sp-3:10px; --sp-4:16px; --fs:14px; --fs-sm:12px; --fs-xs:11px; }
+[data-density="nano"] { --fs:13px; --fs-sm:11px; --fs-xs:10px; --pad:1px; --gap:1px; --radius:3px; --radius-sm:2px;
+  --sp-1:1px; --sp-2:1px; --sp-3:1px; --sp-4:1px; }
+[data-density="mini"] { --fs:13px; --fs-sm:12px; --fs-xs:10px; --pad:5px; --gap:3px; --radius:5px; --radius-sm:4px;
+  --sp-1:2px; --sp-2:3px; --sp-3:5px; --sp-4:7px; }
+[data-density="max"]  { --fs:16px; --fs-sm:14px; --fs-xs:12px; --pad:18px; --gap:16px; --radius:13px; --radius-sm:8px;
+  --sp-1:6px; --sp-2:9px; --sp-3:14px; --sp-4:22px; }
+
+* { box-sizing:border-box; }
+html,body { margin:0; height:100%; background:#111; font-family:"Segoe UI",system-ui,sans-serif; }
+
+.toolbar { display:flex; align-items:center; gap:10px; padding:10px 14px; background:#161616; color:#ccc;
+  position:sticky; top:0; z-index:10; border-bottom:1px solid #2a2a2a; }
+.toolbar b { font-size:13px; opacity:.7; font-weight:600; }
+.dbtn { border:1px solid #3a3a3a; background:#1f1f1f; color:#ccc; border-radius:6px; padding:5px 12px;
+  font-size:13px; cursor:pointer; }
+.dbtn:hover { background:#2a2a2a; }
+.dbtn.active { background:#4ea1ff; border-color:#4ea1ff; color:#04121f; font-weight:600; }
+
+.grid { display:grid; grid-template-columns:1fr 1fr; grid-template-rows:1fr 1fr; gap:2px; background:#000;
+  height:calc(100vh - 46px); }
+
+.pane { display:flex; flex-direction:column; min-height:0; background:var(--bg); color:var(--text);
+  font-size:var(--fs); overflow:hidden; }
+/* theme label now painted with that pane's own tokens instead of a neutral black strip */
+.pane-label { font-size:11px; letter-spacing:.04em; text-transform:uppercase; font-weight:700;
+  padding:4px 10px; background:var(--panel); color:var(--muted); border-bottom:1px solid var(--border);
+  flex:0 0 auto; }
+
+.pane-body { display:flex; flex:1 1 auto; min-height:0; }
+
+.chat-shell { display:flex; flex:1.3 1 0; min-height:0; min-width:0; border-right:1px solid var(--border); }
+
+.sidebar { width:32%; background:var(--panel); border-right:1px solid var(--border); display:flex;
+  flex-direction:column; min-width:0; }
+.sidebar-head { padding:var(--sp-2) var(--sp-3); font-size:var(--fs-sm); font-weight:600; opacity:.75;
+  border-bottom:1px solid var(--border); }
+.chat-item { padding:var(--sp-2) var(--sp-3); font-size:var(--fs-sm); border-bottom:1px solid var(--border);
+  color:var(--muted); }
+.chat-item.sel { background:var(--elevated); color:var(--text); font-weight:600; }
+
+.main { flex:1 1 auto; display:flex; flex-direction:column; min-width:0; }
+.log { flex:1 1 auto; overflow:auto; padding:var(--sp-4); display:flex; flex-direction:column; gap:var(--gap); }
+
+.msg { border:1px solid var(--border); border-radius:var(--radius); padding:var(--sp-3); font-size:var(--fs-sm);
+  max-width:88%; }
+.msg.user { align-self:flex-end; background:var(--user-bg); }
+.msg.assistant { align-self:flex-start; background:var(--assistant-bg); }
+.msg.tool { align-self:flex-start; background:var(--tool-bg); font-family:"Cascadia Mono",Consolas,monospace;
+  font-size:var(--fs-xs); color:var(--muted); }
+.msg .role { font-size:var(--fs-xs); font-weight:700; text-transform:uppercase; opacity:.6; margin-bottom:3px; }
+
+/* order matches the real app: composer, then mode/model/temp/think, then show: chips underneath */
+.composer { display:flex; gap:var(--gap); padding:var(--sp-3) var(--sp-4) var(--sp-2); align-items:center; }
+.composer input { flex:1; background:var(--bg); color:var(--text); border:1px solid var(--border);
+  border-radius:var(--radius-sm); padding:var(--sp-2) var(--sp-3); font-size:var(--fs-sm); }
+.send-btn { background:var(--accent); color:var(--accent-contrast); border:none; border-radius:var(--radius-sm);
+  padding:var(--sp-2) var(--sp-4); font-weight:600; font-size:var(--fs-sm); cursor:pointer; }
+
+.status-row { display:flex; gap:var(--sp-3); align-items:center; padding:0 var(--sp-4); font-size:var(--fs-xs);
+  color:var(--muted); flex-wrap:wrap; }
+.status-row label { display:flex; align-items:center; gap:4px; }
+.status-row select, .status-row input.temp { background:var(--bg); color:var(--text); border:1px solid var(--border);
+  border-radius:var(--radius-sm); padding:1px 4px; font-size:var(--fs-xs); }
+.status-row input.temp { width:3.5em; }
+
+.chips { display:flex; gap:4px; padding:var(--sp-2) var(--sp-4) var(--sp-3); flex-wrap:wrap; align-items:center; }
+.chips .chips-label { font-size:var(--fs-xs); color:var(--faint); margin-right:2px; }
+.chip { border:1px solid var(--border); border-radius:999px; padding:2px 9px; font-size:var(--fs-xs);
+  color:var(--muted); background:var(--bg); }
+.chip.on { color:var(--accent); border-color:var(--accent); background:var(--accent-soft); }
+
+/* ── settings sample, right of the chat mock — modeled on the Connections page ── */
+.settings { flex:1 1 0; min-width:0; display:flex; flex-direction:column; background:var(--bg); }
+.settings-head { display:flex; align-items:center; justify-content:space-between; padding:var(--sp-3) var(--sp-4);
+  border-bottom:1px solid var(--border); }
+.settings-head h4 { margin:0; font-size:calc(var(--fs) + 1px); }
+.settings-refresh { width:22px; height:22px; border:1px solid var(--border); border-radius:var(--radius-sm);
+  background:var(--panel); color:var(--muted); display:flex; align-items:center; justify-content:center;
+  font-size:12px; }
+.settings-body { flex:1 1 auto; overflow:auto; padding:var(--sp-4); display:flex; flex-direction:column;
+  gap:var(--sp-3); }
+.settings-section-label { font-size:var(--fs-sm); font-weight:700; }
+.settings-hint { font-size:var(--fs-xs); color:var(--faint); font-family:"Cascadia Mono",Consolas,monospace; }
+.settings-card { border:1px solid var(--border); border-radius:var(--radius); background:var(--elevated);
+  padding:var(--sp-3); display:flex; flex-direction:column; gap:var(--sp-2); }
+.settings-field { display:flex; align-items:center; gap:var(--sp-2); }
+.settings-field .f-label { width:32%; flex:0 0 auto; font-size:var(--fs-sm); color:var(--muted); }
+.settings-field .f-input { flex:1; min-width:0; background:var(--bg); color:var(--text); border:1px solid var(--border);
+  border-radius:var(--radius-sm); padding:var(--sp-2) var(--sp-3); font-size:var(--fs-sm); }
+.settings-field select.f-input { appearance:none; }
+.settings-check { display:flex; align-items:center; gap:6px; font-size:var(--fs-sm); color:var(--muted); }
+.settings-actions { display:flex; justify-content:flex-end; gap:var(--sp-2); padding-top:var(--sp-2); }
+.btn-ghost { background:var(--panel); color:var(--text); border:1px solid var(--border); border-radius:var(--radius-sm);
+  padding:var(--sp-2) var(--sp-4); font-size:var(--fs-sm); cursor:pointer; }
+.btn-primary { background:var(--accent); color:var(--accent-contrast); border:none; border-radius:var(--radius-sm);
+  padding:var(--sp-2) var(--sp-4); font-weight:600; font-size:var(--fs-sm); cursor:pointer; }
+.dot-ok { width:8px; height:8px; border-radius:50%; background:var(--ok, #2e9e5b); display:inline-block; }
+</style>
+</head>
+<body>
+
+<div class="toolbar">
+  <b>density</b>
+  <button class="dbtn" data-d="nano">nano</button>
+  <button class="dbtn" data-d="mini">mini</button>
+  <button class="dbtn active" data-d="norm">norm</button>
+  <button class="dbtn" data-d="max">max</button>
+</div>
+
+<div class="grid" id="grid">
+  <!-- panes injected by JS, one per theme -->
+</div>
+
+<script>
+const themes = ["dark", "emerald", "cream", "light"];
+const grid = document.getElementById("grid");
+
+function paneHtml(theme) {
+  return `
+    <div class="pane" data-theme="${theme}">
+      <div class="pane-label">${theme}</div>
+      <div class="pane-body">
+        <div class="chat-shell">
+          <div class="sidebar">
+            <div class="sidebar-head">Chats</div>
+            <div class="chat-item sel">Задача развернуть FishSpeech</div>
+            <div class="chat-item">Настройка тем и density</div>
+            <div class="chat-item">SQL plugin: ревью схем</div>
+            <div class="chat-item">Roslyn: compile_check баг</div>
+          </div>
+          <div class="main">
+            <div class="log">
+              <div class="msg user"><div class="role">user</div>сравни . скажи что не так</div>
+              <div class="msg assistant"><div class="role">assistant</div>Разница — акцентный цвет и порядок яркости bg/panel между темами.</div>
+              <div class="msg tool"><div class="role">tool</div>Edit themes.css — light: bg #fff &gt; panel #f2f2f2</div>
+            </div>
+            <div class="composer">
+              <input placeholder="Message… (Enter to send)" />
+              <button class="send-btn">Send</button>
+            </div>
+            <div class="status-row">
+              <label>mode <select><option>chat</option></select></label>
+              <label>model <select><option>llama-3</option></select></label>
+              <label>temp <input class="temp" value="0.7" /></label>
+              <label>think <select><option>—</option></select></label>
+            </div>
+            <div class="chips">
+              <span class="chips-label">show:</span>
+              <span class="chip on">me</span><span class="chip on">assistant</span>
+              <span class="chip">tools</span><span class="chip">reasoning</span>
+            </div>
+          </div>
+        </div>
+        <div class="settings">
+          <div class="settings-head">
+            <h4>Connections</h4>
+            <div class="settings-refresh">&#8635;</div>
+          </div>
+          <div class="settings-body">
+            <div class="settings-section-label">This project <span class="settings-hint">the project's .spla</span></div>
+            <div class="settings-card">
+              <div class="settings-field">
+                <span class="f-label">Name</span>
+                <input class="f-input" value="Default" />
+                <span class="dot-ok"></span>
+              </div>
+              <div class="settings-field">
+                <span class="f-label">Provider</span>
+                <select class="f-input"><option>LM Studio</option></select>
+              </div>
+              <div class="settings-field">
+                <span class="f-label">Endpoint</span>
+                <input class="f-input" value="http://127.0.0.1:1234/v1/" />
+              </div>
+              <label class="settings-check"><input type="checkbox" /> Hot-swap</label>
+              <div class="settings-actions">
+                <button class="btn-ghost">+ new</button>
+                <button class="btn-primary">Save</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>`;
+}
+
+grid.innerHTML = themes.map(paneHtml).join("");
+
+document.querySelectorAll(".dbtn").forEach(btn => {
+  btn.addEventListener("click", () => {
+    document.querySelectorAll(".dbtn").forEach(b => b.classList.remove("active"));
+    btn.classList.add("active");
+    const d = btn.dataset.d;
+    document.querySelectorAll(".pane").forEach(p => {
+      if (d === "norm") p.removeAttribute("data-density");
+      else p.setAttribute("data-density", d);
+    });
+  });
+});
+</script>
+</body>
+</html>

@@ -1,4 +1,4 @@
-using SPLA.Domain.Models;
+﻿using SPLA.Domain.Models;
 using SPLA.Domain.Secrets;
 
 namespace SPLA.Domain.Settings;
@@ -11,6 +11,14 @@ public class ResolvedSettings
     // LLM behaviour (endpoint/key/model live in Connections — not here)
     public double Temperature { get; set; } = 0.7;
     public string? ReasoningLevel { get; set; }
+
+    /// <summary>Role's own temperature override, set only by <see cref="ResolveForRole"/> from
+    /// <see cref="SplaRoleSection.Temperature"/>. Kept apart from <see cref="Temperature"/> (the
+    /// project/machine default) so the resolved model's own <see cref="SplaModelSection.Temperature"/>
+    /// can slot in between the two in <see cref="ToLLMSettings(ResolvedModelEntry?)"/>: chat &gt; role
+    /// &gt; model &gt; project/machine default, and each layer only counts when it actually said
+    /// something. Null = this role said nothing (or there is no role).</summary>
+    public double? RoleTemperature { get; set; }
     public double PresencePenalty { get; set; } = 0.0;
     public double FrequencyPenalty { get; set; } = 0.0;
     public double RepeatPenalty { get; set; } = 1.0;
@@ -74,6 +82,10 @@ public class ResolvedSettings
     /// takes). See <see cref="SplaAgentSection.ShellTimeoutSeconds"/>.</summary>
     public int ShellTimeoutSeconds { get; set; } = 120;
 
+    /// <summary>How many finished spawned sessions to keep on disk, newest first. Default 200 — see
+    /// <see cref="SplaAgentSection.SpawnedRetention"/>.</summary>
+    public int SpawnedRetention { get; set; } = 200;
+
     /// <summary>Persist the full tool-call/tool-result trace with the chat history. Default OFF —
     /// see <see cref="SplaAgentSection.SaveToolCalls"/>.</summary>
     public bool SaveToolCalls { get; set; }
@@ -81,6 +93,26 @@ public class ResolvedSettings
     /// <summary>Persist abandoned-generation records with the chat history. Default OFF — see
     /// <see cref="SplaAgentSection.SaveAttempts"/>.</summary>
     public bool SaveAttempts { get; set; }
+
+    /// <summary>Floor of the <c>Peer</c>-wake debounce, seconds. Default 2 — see
+    /// <see cref="SplaAgentSection.PeerDebounceBaseSeconds"/> and ADR §2.4.</summary>
+    public int PeerDebounceBaseSeconds { get; set; } = 2;
+
+    /// <summary>Ceiling of the <c>Peer</c>-wake debounce, seconds. Default 300 (5 minutes) — see
+    /// <see cref="SplaAgentSection.PeerDebounceMaxSeconds"/>.</summary>
+    public int PeerDebounceMaxSeconds { get; set; } = 300;
+
+    /// <summary>Consecutive <c>Peer</c> replies past which a reply no longer raises a turn of its
+    /// own. Default 6 — see <see cref="SplaAgentSection.PeerDepthCeiling"/>.</summary>
+    public int PeerDepthCeiling { get; set; } = 6;
+
+    /// <summary>Emergency stop on <c>Peer</c> depth; reaching it is a regulator defect, not normal
+    /// operation. Default 24 — see <see cref="SplaAgentSection.PeerHardCap"/>.</summary>
+    public int PeerHardCap { get; set; } = 24;
+
+    /// <summary>Consecutive auto-wakes allowed before <c>ChatPump</c> refuses to wake itself again.
+    /// Default null — disabled, no cap — see <see cref="SplaAgentSection.SelfFeedingCap"/>.</summary>
+    public int? SelfFeedingCap { get; set; }
 
     /// <summary>Enabled built-in agent capabilities. Null = all enabled (backward compatible);
     /// see <see cref="SplaAgentSection.Capabilities"/> for full semantics.</summary>
@@ -104,6 +136,17 @@ public class ResolvedSettings
     public string Theme { get; set; } = "Dark";
     public string Density { get; set; } = "norm";
 
+    /// <summary>The interface language ("en", "ru"). Unlike theme and density, this is resolved from
+    /// the machine layer alone — the project layer deliberately does not override it, because the
+    /// manifest is shared and a language is a property of the reader. See
+    /// <see cref="SplaUiSection.Language"/>.</summary>
+    public string Language { get; set; } = "en";
+
+    /// <summary>Whether a client should open a native window on a spawned session by itself, the
+    /// moment one appears in the tree. Default <c>false</c> — see <see cref="SplaUiSection.AutoOpenSubagents"/>.
+    /// A reversible UI preference, auto-applied the same way theme/density are.</summary>
+    public bool AutoOpenSubagents { get; set; } = false;
+
     // Project
     public string? ProjectName { get; set; }
 
@@ -126,6 +169,15 @@ public class ResolvedSettings
     /// <summary>Absolute path to the .spla file that was loaded, or null when running without a project.
     /// Plugins that need to persist their own settings use this.</summary>
     public string? ProjectFilePath { get; set; }
+
+    /// <summary>The manifest this was resolved from, kept because resolution is lossy on purpose:
+    /// <see cref="ResolveForRole"/> needs the raw <see cref="SplaProject.Roles"/> list, and that
+    /// list has no resolved counterpart — the whole point of naming roles is that the manifest, not
+    /// the resolved settings, decides which ones act.
+    /// <para>Carried here rather than handed to whoever needs it later: an "attach it once it
+    /// exists" hook gets called by one caller and silently not by the rest, which is how roles were
+    /// briefly available only inside tests.</para></summary>
+    public SplaProject? Manifest { get; set; }
 
     /// <summary>Global secrets store (user / project / shared scopes). Set during load. Never null
     /// after <see cref="ConfigLoader.LoadAndResolve"/>; plugins reach it via this property.</summary>
@@ -290,6 +342,22 @@ public class ResolvedSettings
     // The model-backed librarian (skills.librarian). Null = off; skill_find stays deterministic.
     public SplaLibrarianSection? SkillLibrarian { get; set; }
 
+    /// <summary>The role these settings were resolved for, or null for the project's own settings
+    /// (what <c>ADR_20260827-2_core_roles</c> calls "role zero" — <c>agent:</c> itself). Set only by
+    /// <see cref="SettingsResolver.ResolveForRole"/>.</summary>
+    public string? RoleName { get; set; }
+
+    /// <summary>The model id this role selected (<see cref="SplaRoleSection.Model"/>), or null to keep
+    /// whatever the chat would otherwise resolve against. Only ever set alongside
+    /// <see cref="RoleName"/>.</summary>
+    public string? RoleModelId { get; set; }
+
+    /// <summary>Islands (see <see cref="Security.IslandIdentity"/>) this role selected, by island key,
+    /// as written in its file. A narrowing of what the prompt/tool surface mentions, never a grant —
+    /// <c>ICapabilityGate</c> is still the only place a reach is actually decided. Empty = every island
+    /// the project declares is in scope, same as a project with no role at all.</summary>
+    public List<string> RoleIslands { get; set; } = new();
+
     /// <summary>Looks up a model entry by its global id. Null id or unknown id = null.</summary>
     public ResolvedModelEntry? FindModel(string? modelId) =>
         string.IsNullOrWhiteSpace(modelId)
@@ -308,7 +376,7 @@ public class ResolvedSettings
         ApiKey           = entry?.ApiKey   ?? "lm-studio",
         ModelName        = entry?.Model is { Length: > 0 } m && m != "auto" ? m : "",
         ContextLength    = entry?.ContextLength is > 0 ? entry.ContextLength : null,
-        Temperature      = Temperature,
+        Temperature      = RoleTemperature ?? entry?.Entry.Temperature ?? Temperature,
         Mode             = Mode,
         Theme            = Theme,
         ReasoningLevel   = ReasoningLevel,
@@ -365,11 +433,29 @@ public sealed class ResolvedModelEntry
 public static class SettingsResolver
 {
     public static ResolvedSettings Resolve(SplaDefaults? defaults, SplaProject? project)
-    {
-        var r = new ResolvedSettings();
+        => Resolve(defaults, project, null, null);
 
-        // Connections merge across layers by id (project overrides/extends defaults).
+    /// <param name="sharedConnections">The administered connection layer
+    /// (<c>connections.shared.yaml</c>), or null when there is none.</param>
+    /// <param name="userConnections">This person's own connection layer
+    /// (<c>connections.yaml</c> in their area), or null when there is none.</param>
+    public static ResolvedSettings Resolve(
+        SplaDefaults? defaults,
+        SplaProject? project,
+        IReadOnlyList<SplaConnectionSection>? sharedConnections,
+        IReadOnlyList<SplaConnectionSection>? userConnections)
+    {
+        var r = new ResolvedSettings { Manifest = project };
+
+        // Connections merge across layers by id, least authoritative first:
+        //   shared → defaults.yaml (legacy machine block) → user file → project manifest.
+        //
+        // defaults.yaml's own connections: sit at User standing because that file belongs to the
+        // person at the keyboard. It is where user-level connections used to live and existing ones
+        // keep working; connections.yaml is where the editor writes now, so an id present in both
+        // resolves to the newer file.
         var connections = new Dictionary<string, SplaConnectionSection>(StringComparer.OrdinalIgnoreCase);
+        MergeConnections(connections, sharedConnections, ConnectionScope.Shared);
 
         // mcp.servers merges across layers by id, same rule as connections above.
         var mcpServers = new Dictionary<string, SplaMcpServerSection>(StringComparer.OrdinalIgnoreCase);
@@ -384,7 +470,7 @@ public static class SettingsResolver
         // Layer 1: defaults
         if (defaults != null)
         {
-            MergeConnections(connections, defaults.Connections);
+            MergeConnections(connections, defaults.Connections, ConnectionScope.User);
             if (defaults.Llm != null)
             {
                 llmEndpoint          = defaults.Llm.Endpoint    ?? llmEndpoint;
@@ -411,8 +497,14 @@ public static class SettingsResolver
                 r.LoopGuardRepeats = defaults.Agent.LoopGuardRepeats ?? r.LoopGuardRepeats;
                 r.AskTimeoutMinutes = defaults.Agent.AskTimeoutMinutes ?? r.AskTimeoutMinutes;
                 r.ShellTimeoutSeconds = defaults.Agent.ShellTimeoutSeconds ?? r.ShellTimeoutSeconds;
+                r.SpawnedRetention = defaults.Agent.SpawnedRetention ?? r.SpawnedRetention;
                 r.SaveToolCalls = defaults.Agent.SaveToolCalls ?? r.SaveToolCalls;
                 r.SaveAttempts = defaults.Agent.SaveAttempts ?? r.SaveAttempts;
+                r.PeerDebounceBaseSeconds = defaults.Agent.PeerDebounceBaseSeconds ?? r.PeerDebounceBaseSeconds;
+                r.PeerDebounceMaxSeconds = defaults.Agent.PeerDebounceMaxSeconds ?? r.PeerDebounceMaxSeconds;
+                r.PeerDepthCeiling = defaults.Agent.PeerDepthCeiling ?? r.PeerDepthCeiling;
+                r.PeerHardCap = defaults.Agent.PeerHardCap ?? r.PeerHardCap;
+                r.SelfFeedingCap = defaults.Agent.SelfFeedingCap ?? r.SelfFeedingCap;
                 r.Capabilities = defaults.Agent.Capabilities ?? r.Capabilities;
                 r.UnifiedResources = defaults.Agent.UnifiedResources ?? r.UnifiedResources;
                 AddTrustedDomains(r, defaults.Agent.TrustedDomains);
@@ -427,13 +519,18 @@ public static class SettingsResolver
             {
                 r.Theme = defaults.Ui.Theme ?? r.Theme;
                 r.Density = defaults.Ui.Density ?? r.Density;
+                r.Language = defaults.Ui.Language ?? r.Language;
+                r.AutoOpenSubagents = defaults.Ui.AutoOpenSubagents ?? r.AutoOpenSubagents;
             }
             ApplySkills(r, defaults.Skills, SourceOrigin.Machine);
             ApplyToolSets(r, defaults.ToolSets);
             ApplyResourceSchemes(r, defaults.Resources);
         }
 
-        // Layer 2: project overrides
+        // Layer 2: this person's own connections file — over defaults.yaml, under the project.
+        MergeConnections(connections, userConnections, ConnectionScope.User);
+
+        // Layer 3: project overrides
         if (project != null)
         {
             r.ProjectName = project.Name;
@@ -442,7 +539,7 @@ public static class SettingsResolver
             r.Docs = project.Docs ?? new();
             r.Ignore = project.Ignore ?? new();
 
-            MergeConnections(connections, project.Connections);
+            MergeConnections(connections, project.Connections, ConnectionScope.Project);
             if (project.Llm != null)
             {
                 llmEndpoint          = project.Llm.Endpoint    ?? llmEndpoint;
@@ -470,8 +567,14 @@ public static class SettingsResolver
                 r.LoopGuardRepeats = project.Agent.LoopGuardRepeats ?? r.LoopGuardRepeats;
                 r.AskTimeoutMinutes = project.Agent.AskTimeoutMinutes ?? r.AskTimeoutMinutes;
                 r.ShellTimeoutSeconds = project.Agent.ShellTimeoutSeconds ?? r.ShellTimeoutSeconds;
+                r.SpawnedRetention = project.Agent.SpawnedRetention ?? r.SpawnedRetention;
                 r.SaveToolCalls = project.Agent.SaveToolCalls ?? r.SaveToolCalls;
                 r.SaveAttempts = project.Agent.SaveAttempts ?? r.SaveAttempts;
+                r.PeerDebounceBaseSeconds = project.Agent.PeerDebounceBaseSeconds ?? r.PeerDebounceBaseSeconds;
+                r.PeerDebounceMaxSeconds = project.Agent.PeerDebounceMaxSeconds ?? r.PeerDebounceMaxSeconds;
+                r.PeerDepthCeiling = project.Agent.PeerDepthCeiling ?? r.PeerDepthCeiling;
+                r.PeerHardCap = project.Agent.PeerHardCap ?? r.PeerHardCap;
+                r.SelfFeedingCap = project.Agent.SelfFeedingCap ?? r.SelfFeedingCap;
                 r.Capabilities = project.Agent.Capabilities ?? r.Capabilities;
                 r.UnifiedResources = project.Agent.UnifiedResources ?? r.UnifiedResources;
                 AddTrustedDomains(r, project.Agent.TrustedDomains);
@@ -486,6 +589,10 @@ public static class SettingsResolver
             {
                 r.Theme = project.Ui.Theme ?? r.Theme;
                 r.Density = project.Ui.Density ?? r.Density;
+                // Language is deliberately NOT read here. The manifest is committed and shared; a
+                // theme travelling with a project is a nicety, a language travelling with it is one
+                // person's choice imposed on the next reader. Machine layer only.
+                r.AutoOpenSubagents = project.Ui.AutoOpenSubagents ?? r.AutoOpenSubagents;
             }
             if (project.Permissions != null)
             {
@@ -512,6 +619,10 @@ public static class SettingsResolver
         if (r.Connections.Count == 0)
             r.Connections.Add(new SplaConnectionSection
             {
+                // Project scope: with nothing configured anywhere, an edit to this synthesized entry
+                // belongs to the project being edited, which is where it would have gone before the
+                // user and shared layers existed.
+                Scope = ConnectionScope.Project,
                 Id = "default", Name = "Default", Provider = "lmstudio",
                 Endpoint = llmEndpoint, ApiKey = llmApiKey,
                 Models = { new SplaModelSection { Id = "default", Name = "Default", Model = llmModel } }
@@ -521,6 +632,236 @@ public static class SettingsResolver
         r.McpServers = mcpServers.Values.ToList();
         return r;
     }
+
+    /// <summary>
+    /// Layers one role's body over an already-resolved project baseline —
+    /// <c>ADR_20260827-2_core_roles</c> §2.1. This is the only path that turns a role name into
+    /// effective settings; nothing else may.
+    ///
+    /// <para><b>The one real invariant: a role is not self-assigned.</b> <paramref name="roleName"/>
+    /// must appear, case-insensitively, in <paramref name="project"/>'s own <c>roles:</c> list, or this
+    /// throws — regardless of whether <paramref name="roleSection"/> is a perfectly good, non-null
+    /// role body. Nothing an agent can compute or fabricate at runtime substitutes for the owner
+    /// having written the name into the manifest: possessing a <see cref="SplaRoleSection"/> instance
+    /// is not possessing a grant. A file sitting in <c>roles/</c> that the manifest never named is,
+    /// by design, exactly as inert as a role nobody wrote at all.</para>
+    ///
+    /// <para><b>Not a subset of the project's own capabilities.</b> The role's
+    /// <see cref="SplaRoleSection.Capabilities"/>, when set, replaces <paramref name="baseline"/>'s
+    /// list wholesale rather than being intersected with it — a role may declare a capability
+    /// <c>agent:</c> never mentioned and gets it. The ceiling on what actually runs is the directory
+    /// root and the owner's grants (<c>ICapabilityGate</c>, the zone model), never the union of what
+    /// <c>agent:</c> happened to declare — requiring that union would make the project itself the
+    /// maximally privileged entity, the exact failure <c>ADR_20260819</c> describes for project-less
+    /// mode.</para>
+    ///
+    /// <para><b>Not a second axis of permissions.</b> A role has no <c>permissions:</c> block of its
+    /// own (<see cref="SplaRoleSection"/> carries none): it picks a <see cref="SplaRoleSection.Mode"/>
+    /// the same way <c>agent:</c> does, and narrows what runs inside that mode via capabilities and
+    /// tool-set levels. <see cref="ResolvedSettings.PermRead"/> and friends are untouched here.</para>
+    ///
+    /// <para>Structurally unable to raise the ceiling: <see cref="SplaRoleSection"/> has no field that
+    /// could move <see cref="ResolvedSettings.WorkspacePath"/>, <see cref="ResolvedSettings.Mounts"/>
+    /// or the root — a role file simply has nowhere to write such a thing, so this method never touches
+    /// them.</para>
+    /// </summary>
+    /// <param name="baseline">The project's own resolved settings — the result of <see cref="Resolve"/>,
+    /// i.e. role zero. Not mutated; a new instance is returned.</param>
+    /// <param name="project">The manifest, consulted only for its <see cref="SplaProject.Roles"/> list.</param>
+    /// <param name="roleName">The role being resolved for. Never null/empty — callers wanting role zero
+    /// simply use <paramref name="baseline"/> directly and do not call this method at all.</param>
+    /// <param name="roleSection">The role's body, already loaded (see <see cref="ConfigLoader.LoadRole"/>).
+    /// Loading is a separate, file-system concern; this method is the pure layering step.</param>
+    /// <exception cref="InvalidOperationException">
+    /// <paramref name="roleName"/> is not listed under the manifest's <c>roles:</c>, or
+    /// <paramref name="roleSection"/> is null (the name was declared but its file could not be loaded).
+    /// </exception>
+    public static ResolvedSettings ResolveForRole(
+        ResolvedSettings baseline, SplaProject project, string roleName, SplaRoleSection? roleSection)
+    {
+        ArgumentNullException.ThrowIfNull(baseline);
+        ArgumentNullException.ThrowIfNull(project);
+        if (string.IsNullOrWhiteSpace(roleName))
+            throw new ArgumentException("Role name must not be empty.", nameof(roleName));
+
+        var declared = project.Roles ?? [];
+        if (!declared.Any(name => string.Equals(name, roleName, StringComparison.OrdinalIgnoreCase)))
+            throw new InvalidOperationException(
+                $"Role '{roleName}' is not declared under this project's 'roles:' list " +
+                $"({(declared.Count == 0 ? "none declared" : string.Join(", ", declared))}). " +
+                "A role file nobody named does not act.");
+
+        if (roleSection is null)
+            throw new InvalidOperationException(
+                $"Role '{roleName}' is declared but its body (roles/{roleName}.yaml) could not be loaded.");
+
+        var r = CloneForRole(baseline, roleName);
+
+        if (roleSection.Mode != null && Enum.TryParse<AgentMode>(roleSection.Mode, true, out var mode))
+            r.Mode = mode;
+        r.Instructions = roleSection.Instructions ?? r.Instructions;
+        if (roleSection.CompactTailMessages.HasValue)
+            r.CompactTailMessages = roleSection.CompactTailMessages.Value;
+        if (!string.IsNullOrEmpty(roleSection.CustomPrompt))
+            r.CustomPrompt = roleSection.CustomPrompt;
+        r.LoopGuard = roleSection.LoopGuard ?? r.LoopGuard;
+        r.LoopGuardRepeats = roleSection.LoopGuardRepeats ?? r.LoopGuardRepeats;
+        r.AskTimeoutMinutes = roleSection.AskTimeoutMinutes ?? r.AskTimeoutMinutes;
+        r.ShellTimeoutSeconds = roleSection.ShellTimeoutSeconds ?? r.ShellTimeoutSeconds;
+        r.SaveToolCalls = roleSection.SaveToolCalls ?? r.SaveToolCalls;
+        r.SaveAttempts = roleSection.SaveAttempts ?? r.SaveAttempts;
+        r.PeerDebounceBaseSeconds = roleSection.PeerDebounceBaseSeconds ?? r.PeerDebounceBaseSeconds;
+        r.PeerDebounceMaxSeconds = roleSection.PeerDebounceMaxSeconds ?? r.PeerDebounceMaxSeconds;
+        r.PeerDepthCeiling = roleSection.PeerDepthCeiling ?? r.PeerDepthCeiling;
+        r.PeerHardCap = roleSection.PeerHardCap ?? r.PeerHardCap;
+        r.SelfFeedingCap = roleSection.SelfFeedingCap ?? r.SelfFeedingCap;
+        r.RoleTemperature = roleSection.Temperature ?? r.RoleTemperature;
+        r.ReasoningLevel = roleSection.ReasoningLevel ?? r.ReasoningLevel;
+        AddTrustedDomains(r, roleSection.TrustedDomains);
+
+        // Wholesale replacement, deliberately not an intersection — see the type doc on
+        // SplaRoleSection.Capabilities and the method doc above.
+        if (roleSection.Capabilities != null)
+            r.Capabilities = roleSection.Capabilities;
+
+        ApplyToolSets(r, roleSection.ToolSets);
+
+        // Connections the role may use. Narrowing only — see SplaRoleSection.Connections. The flat
+        // model list is rebuilt from the narrowed tree because that is what a chat resolves against;
+        // leaving it whole would make the narrowing decorative.
+        r.Connections = SelectRoleConnections(baseline.Connections, roleSection.Connections, roleName);
+        r.Models = FlattenModels(r.Connections);
+
+        r.RoleModelId = roleSection.Model;
+        // Only when the role actually narrowed: an unresolvable model id was tolerated before this
+        // existed and is somebody else's rule to make. What must not pass silently is a role whose
+        // own connections: selection is what stranded its model.
+        if (roleSection.Connections is { Count: > 0 } &&
+            !string.IsNullOrWhiteSpace(r.RoleModelId) &&
+            !r.Models.Any(m => string.Equals(m.Entry.Id, r.RoleModelId, StringComparison.OrdinalIgnoreCase)))
+            throw new InvalidOperationException(
+                $"Role '{roleName}' runs on model '{r.RoleModelId}', which none of the connections it " +
+                $"may use provides ({(r.Connections.Count == 0 ? "none" : string.Join(", ", r.Connections.Select(c => c.Id)))}). " +
+                "Either widen the role's connections: or point model: at one of them.");
+
+        r.RoleIslands = roleSection.Islands ?? [];
+
+        return r;
+    }
+
+    /// <summary>
+    /// Applies a role's <c>connections:</c> selection to the project's resolved list. Each name is
+    /// either a connection id or a scope name — <c>user</c> takes that whole layer, which is the form
+    /// worth writing when the point is "this role runs on my own keys, not the repository's".
+    /// </summary>
+    /// <exception cref="InvalidOperationException">A name matches neither an id nor a scope. Silently
+    /// dropping it would leave a role running on a set nobody chose.</exception>
+    private static List<SplaConnectionSection> SelectRoleConnections(
+        List<SplaConnectionSection> available, List<string>? selection, string roleName)
+    {
+        if (selection is not { Count: > 0 }) return available;
+
+        var byId = new Dictionary<string, SplaConnectionSection>(StringComparer.OrdinalIgnoreCase);
+        foreach (var name in selection)
+        {
+            if (string.IsNullOrWhiteSpace(name)) continue;
+
+            var matched = ConnectionScopes.TryParse(name, out var scope)
+                ? available.Where(c => c.Scope == scope).ToList()
+                : available.Where(c => string.Equals(c.Id, name, StringComparison.OrdinalIgnoreCase)).ToList();
+
+            // A scope name that selects nothing is a fact about this machine (nobody configured a
+            // shared layer), not a mistake in the role — only an unmatched id is.
+            if (matched.Count == 0 && !ConnectionScopes.TryParse(name, out _))
+                throw new InvalidOperationException(
+                    $"Role '{roleName}' names connection '{name}', which this project does not have. " +
+                    $"Available: {(available.Count == 0 ? "none" : string.Join(", ", available.Select(c => c.Id)))}; " +
+                    $"or a scope name: {string.Join(", ", ConnectionScopes.AllNames)}.");
+
+            foreach (var c in matched) byId[c.Id] = c;
+        }
+
+        // Resolution order, not mention order: the settings panel and the pickers show connections in
+        // the order the project resolved them, and a role should not reshuffle that.
+        return available.Where(c => byId.ContainsKey(c.Id)).ToList();
+    }
+
+    /// <summary>Shallow-copies a resolved baseline before layering a role over it, so the project's own
+    /// <see cref="ResolvedSettings"/> is never mutated by resolving one of its roles. Collections that a
+    /// role may narrow are copied into fresh lists/dictionaries; everything else (connections, secrets,
+    /// the project root, mounts) is intentionally shared by reference — a role has no way to change any
+    /// of it, so there is nothing to protect against.</summary>
+    private static ResolvedSettings CloneForRole(ResolvedSettings baseline, string roleName) => new()
+    {
+        Temperature = baseline.Temperature,
+        RoleTemperature = baseline.RoleTemperature,
+        ReasoningLevel = baseline.ReasoningLevel,
+        PresencePenalty = baseline.PresencePenalty,
+        FrequencyPenalty = baseline.FrequencyPenalty,
+        RepeatPenalty = baseline.RepeatPenalty,
+        MaxTokens = baseline.MaxTokens,
+        TopP = baseline.TopP,
+        MinP = baseline.MinP,
+        Connections = baseline.Connections,
+        Models = baseline.Models,
+        Mode = baseline.Mode,
+        Instructions = [.. baseline.Instructions],
+        CompactTailMessages = baseline.CompactTailMessages,
+        CustomPrompt = baseline.CustomPrompt,
+        LoopGuard = baseline.LoopGuard,
+        LoopGuardRepeats = baseline.LoopGuardRepeats,
+        UnifiedResources = baseline.UnifiedResources,
+        AskTimeoutMinutes = baseline.AskTimeoutMinutes,
+        ShellTimeoutSeconds = baseline.ShellTimeoutSeconds,
+        SpawnedRetention = baseline.SpawnedRetention,
+        SaveToolCalls = baseline.SaveToolCalls,
+        SaveAttempts = baseline.SaveAttempts,
+        PeerDebounceBaseSeconds = baseline.PeerDebounceBaseSeconds,
+        PeerDebounceMaxSeconds = baseline.PeerDebounceMaxSeconds,
+        PeerDepthCeiling = baseline.PeerDepthCeiling,
+        PeerHardCap = baseline.PeerHardCap,
+        SelfFeedingCap = baseline.SelfFeedingCap,
+        Capabilities = baseline.Capabilities is null ? null : [.. baseline.Capabilities],
+        McpEnabled = baseline.McpEnabled,
+        McpPort = baseline.McpPort,
+        McpServers = baseline.McpServers,
+        Theme = baseline.Theme,
+        Density = baseline.Density,
+        Language = baseline.Language,
+        AutoOpenSubagents = baseline.AutoOpenSubagents,
+        ProjectName = baseline.ProjectName,
+        WorkspacePath = baseline.WorkspacePath,
+        Mounts = baseline.Mounts,
+        ProjectFilePath = baseline.ProjectFilePath,
+        Secrets = baseline.Secrets,
+        // Not copied directly: the SecretAccessPolicy setter below rebuilds it from Secrets + the
+        // policy, the same way the original ResolvedSettings did — assigning it here would only be
+        // overwritten and reads as if it mattered.
+        SecretAccessPolicy = baseline.SecretAccessPolicy,
+        TrustedDomains = [.. baseline.TrustedDomains],
+        Docs = baseline.Docs,
+        Ignore = baseline.Ignore,
+        PermRead = baseline.PermRead,
+        PermWrite = baseline.PermWrite,
+        PermShell = baseline.PermShell,
+        PermInternet = baseline.PermInternet,
+        PermForeign = baseline.PermForeign,
+        ToolPermissionRules = baseline.ToolPermissionRules,
+        Plugins = baseline.Plugins,
+        ToolSets = new Dictionary<string, string>(baseline.ToolSets, StringComparer.OrdinalIgnoreCase),
+        ResourceSchemes = baseline.ResourceSchemes,
+        Skills = baseline.Skills,
+        SkillSources = baseline.SkillSources,
+        SkillsInheritDefaults = baseline.SkillsInheritDefaults,
+        SkillsMaxTrust = baseline.SkillsMaxTrust,
+        SkillsUserMayVouch = baseline.SkillsUserMayVouch,
+        IsMultiUserDeployment = baseline.IsMultiUserDeployment,
+        PersonalDir = baseline.PersonalDir,
+        SkillSourceStore = baseline.SkillSourceStore,
+        SkillTrustStore = baseline.SkillTrustStore,
+        SkillLibrarian = baseline.SkillLibrarian,
+        RoleName = roleName
+    };
 
     /// <summary>
     /// Projects the connection tree onto the flat, globally-keyed model list chats resolve against.
@@ -628,14 +969,21 @@ public static class SettingsResolver
             r.SkillLibrarian = skills.Librarian;
     }
 
-    /// <summary>Adds/overrides connections by id, skipping entries without an id.</summary>
+    /// <summary>Adds/overrides connections by id, skipping entries without an id. Every entry is
+    /// stamped with the layer it came from, so a later consumer (the editor deciding which file a
+    /// save goes back to, a role selecting by scope) never has to guess.</summary>
     private static void MergeConnections(
-        Dictionary<string, SplaConnectionSection> into, List<SplaConnectionSection>? from)
+        Dictionary<string, SplaConnectionSection> into,
+        IReadOnlyList<SplaConnectionSection>? from,
+        ConnectionScope scope)
     {
         if (from == null) return;
         foreach (var c in from)
-            if (!string.IsNullOrWhiteSpace(c.Id))
-                into[c.Id] = c;
+        {
+            if (string.IsNullOrWhiteSpace(c.Id)) continue;
+            c.Scope = scope;
+            into[c.Id] = c;
+        }
     }
 
     /// <summary>Adds/overrides mcp.servers entries by id, skipping entries without an id — same idiom

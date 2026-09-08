@@ -1,4 +1,4 @@
-using SPLA.Runtime;
+﻿using SPLA.Runtime;
 using System.Text.Json;
 using SPLA.Service.Contracts;
 
@@ -11,19 +11,23 @@ internal sealed class SettingsHandlers : IMessageHandler
     public IEnumerable<string> HandledTypes =>
     [
         MessageTypes.AgentGet, MessageTypes.AgentSave,
+        MessageTypes.RolesGet, MessageTypes.RolesSave,
         MessageTypes.McpGet, MessageTypes.McpSave,
         MessageTypes.McpServersGet, MessageTypes.McpServersSave, MessageTypes.McpServersReconnect,
         MessageTypes.PluginsGet, MessageTypes.PluginsSave, MessageTypes.PluginAction,
         MessageTypes.SkillsGet, MessageTypes.SkillsSave,
         MessageTypes.SkillSourcesGet, MessageTypes.SkillSourcesSave, MessageTypes.SkillSourceTrust,
         MessageTypes.FeaturesGet, MessageTypes.FeaturesSave,
-        MessageTypes.UsageGet, MessageTypes.AppearanceSave, MessageTypes.SystemRegisterAssociation,
+        MessageTypes.UsageGet, MessageTypes.AppearanceSave, MessageTypes.LanguageSave,
+        MessageTypes.SystemRegisterAssociation,
     ];
 
     public Task HandleAsync(RequestContext ctx) => ctx.Env.Type switch
     {
         MessageTypes.AgentGet                  => AgentGet(ctx),
         MessageTypes.AgentSave                 => AgentSave(ctx),
+        MessageTypes.RolesGet                  => RolesGet(ctx),
+        MessageTypes.RolesSave                 => RolesSave(ctx),
         MessageTypes.McpGet                    => McpGet(ctx),
         MessageTypes.McpSave                   => McpSave(ctx),
         MessageTypes.McpServersGet              => McpServersGet(ctx),
@@ -41,6 +45,7 @@ internal sealed class SettingsHandlers : IMessageHandler
         MessageTypes.FeaturesSave              => FeaturesSave(ctx),
         MessageTypes.UsageGet                  => UsageGet(ctx),
         MessageTypes.AppearanceSave            => AppearanceSave(ctx),
+        MessageTypes.LanguageSave              => LanguageSave(ctx),
         MessageTypes.SystemRegisterAssociation => RegisterAssociation(ctx),
         _ => Task.CompletedTask
     };
@@ -57,6 +62,24 @@ internal sealed class SettingsHandlers : IMessageHandler
         var p = ctx.Payload<AgentSettingsPayload>();
         if (p != null)
             await ctx.Session.Hub.BroadcastToProjectAsync(projectId, MessageTypes.AgentResult, SettingsOps.SaveAgent(entry.Runtime, p));
+    }
+
+    private static Task RolesGet(RequestContext ctx)
+    {
+        var (entry, _) = ctx.Session.Resolve(ctx.Env);
+        return ctx.Reply(MessageTypes.RolesResult, SettingsOps.GetRoles(entry.Runtime));
+    }
+
+    /// <summary>Saves the role set and tells every window on this project. The broadcast is not a
+    /// nicety: a role is who another chat can spawn or write to, so a window still showing the old
+    /// set would offer a name that no longer resolves.</summary>
+    private static async Task RolesSave(RequestContext ctx)
+    {
+        var (entry, projectId) = ctx.Session.Resolve(ctx.Env);
+        var p = ctx.Payload<RolesPayload>();
+        if (p != null)
+            await ctx.Session.Hub.BroadcastToProjectAsync(projectId, MessageTypes.RolesResult,
+                SettingsOps.SaveRoles(entry.Runtime, p.Roles));
     }
 
     private static Task McpGet(RequestContext ctx)
@@ -197,7 +220,18 @@ internal sealed class SettingsHandlers : IMessageHandler
         // the host's event subscriber fans appearance.changed out to this project's windows.
         var (entry, _) = ctx.Session.Resolve(ctx.Env);
         var p = ctx.Payload<AppearanceChangedPayload>();
-        if (p != null) SettingsOps.SaveAppearance(entry.Runtime, p.Theme, p.Density);
+        if (p != null) SettingsOps.SaveAppearance(entry.Runtime, p.Theme, p.Density, p.AutoOpenSubagents);
+        return Task.CompletedTask;
+    }
+
+    private static Task LanguageSave(RequestContext ctx)
+    {
+        // Like appearance, auto-sent on change — but stored in the machine layer and answered to
+        // nobody else: no broadcast, so a second person on a server keeps reading in their own
+        // language. Each window picks it up from its own welcome.
+        var (entry, _) = ctx.Session.Resolve(ctx.Env);
+        var p = ctx.Payload<LanguagePayload>();
+        if (p != null) SettingsOps.SaveLanguage(entry.Runtime, p.Language);
         return Task.CompletedTask;
     }
 

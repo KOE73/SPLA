@@ -52,8 +52,9 @@ client/types **and** this table.
 | `project.create` | `ProjectCreate` | `ProjectCreatePayload` | Create + open; reply `project.context`. Server mode: created by name inside the user's area. |
 | `instance.status` | `InstanceStatus` | — | Ask this process what it is doing right now; reply `instance.status.result`. |
 | `instance.stop` | `InstanceStop` | `InstanceStopPayload` | Ask this process to shut down; reply `instance.status.result` (`Stopping: true` once underway, or a refusal naming why). `Force: true` cancels every running turn first. |
-| `chat.list` | `ChatList` | — | Request the chat list. |
+| `chat.list` | `ChatList` | — | Request the chat list. Reply `chat.list.result`: human chats at the top level, each with its spawned descendants nested under `children` (the role→chat tree, `ADR_20260827-2` §2.5) — a spawned session (`origin: spawned`) never appears as a top-level entry, only inside some ancestor's `children`, however deep the spawn chain went. Its own transcript is still reached through `subagent.get`, not by opening it as an ordinary chat. |
 | `chat.open` | `ChatOpen` | `ChatOpenPayload` | Open a chat; reply `chat.opened`. |
+| `chat.read` | `ChatRead` | `ChatOpenPayload` | Read an ARCHIVED chat's history without opening it; reply `chat.read.result`. Deliberately not `chat.open` with a flag: `chat.opened` promises a session that is watchable and takes `chat.send`, and every handler built on that promise would otherwise have to remember the archived case one at a time. Registers no watch — there is no runtime behind it to emit an event. |
 | `chat.watch` | `ChatWatch` | `ChatOpenPayload` | Watch a chat (turn/tool events) without the `chat.opened` echo — for tear-off/aux windows. |
 | `chat.unwatch` | `ChatUnwatch` | `ChatOpenPayload` | Stop receiving a chat's turn events. Client-driven: opening another chat is NOT enough, because a chat mid-turn keeps streaming into its own background session. |
 | `chat.new` | `ChatNew` | `ChatNewPayload` | Create + open; also broadcasts `chat.list.result`. |
@@ -86,6 +87,8 @@ client/types **and** this table.
 | `provider.info` | `ProviderInfo` | `ProviderInfoRequest` | Reply `provider.info.result`. Account/model figures for one model entry; never returns credential material. |
 | `agent.get` | `AgentGet` | — | Reply `agent.result`. |
 | `agent.save` | `AgentSave` | `AgentSettingsPayload` | Mode + permission overrides. Broadcasts `agent.result`. |
+| `roles.get` | `RolesGet` | — | Ask for this project's roles. Reply `roles.result`: the bodies found in `roles/` UNIONED with the names the manifest declares — a body nobody named is inert but real, and a name with no body is declared but broken, so both halves travel and the client renders the difference. |
+| `roles.save` | `RolesSave` | `RolesPayload` | Rewrites the whole set: one `roles/<name>.yaml` per role sent, the manifest's `roles:` list rebuilt from the ones marked `active`, and any role file that was there and is not in this list deleted (a renamed role moves rather than doubling). Refused whole — with `error` set and nothing written — for a name that is not a usable file name, or when there is no `.spla` project for a role to live next to. Broadcasts `roles.result` to the project. |
 | `plugins.get` | `PluginsGet` | — | Reply `plugins.result`. |
 | `plugins.save` | `PluginsSave` | `PluginsPayload` | Broadcasts `plugins.result`. |
 | `plugin.action` | `PluginAction` | `PluginActionPayload` | Invoke a plugin web-settings action; reply `plugin.action.result`. |
@@ -103,6 +106,7 @@ client/types **and** this table.
 | `mcp.servers.reconnect` | `McpServersReconnect` | `McpServerActionPayload` | Retry one already-tracked server's connection now. Reply `mcp.servers.result` (unicast — see the table below for why). A server not yet tracked (added since the last connect attempt) answers with its unchanged status, not an error. |
 | `usage.get` | `UsageGet` | — | Reply `usage.result`. |
 | `appearance.save` | `AppearanceSave` | `AppearanceChangedPayload` | Auto-sent on change (no Save step). Persists `ui:` + broadcasts `appearance.changed`. |
+| `language.save` | `LanguageSave` | `LanguagePayload` | Auto-sent on change (no Save step), like `appearance.save` — but written to the machine layer (`~/.spla/defaults.yaml`, `ui.language`), never to the project, and **not** broadcast: a language belongs to a person, and on a shared server one reader's choice must not reach another's screen. Other windows learn it from their own `welcome`. |
 | `system.register_association` | `SystemRegisterAssociation` | — | Register the `.spla` extension (Windows, per-user). Reply `system.register_association.result`. |
 | `schema.get` | `SchemaGet` | `SchemaGetPayload` | Resolve a named JSON schema (Forms editor); reply `schema.result`. |
 | `fs.browse` | `FsBrowse` | `FsBrowsePayload` | List a workspace directory; reply `fs.browse.result`. |
@@ -120,10 +124,11 @@ client/types **and** this table.
 | `plugin.panel.open` | `PluginPanelOpen` | `PluginPanelOpenPayload` | Open an interactive session supplied by an enabled plugin panel provider. |
 | `plugin.panel.input` | `PluginPanelInput` | `PluginPanelInputPayload` | Send opaque typed input to a plugin-owned panel session. |
 | `plugin.panel.close` | `PluginPanelClose` | `PluginPanelClosePayload` | Close a plugin-owned panel session. |
-| `subagent.get` | `SubagentGet` | `SubagentGetPayload` | Ask for one finished spawned run by id — the same id the run's progress ticks carried while it was live. Reply `subagent.result`. An unknown id (fallen out of the ring, or never existed) answers `found: false`, not an error. |
+| `subagent.get` | `SubagentGet` | `SubagentGetPayload` | Ask for one spawned session's transcript by id — the same id (its chat id) the run's progress ticks carried while it was live. Reply `subagent.result`. Backed by an ordinary session read, not an in-memory log — a spawned session persists like any chat, subject to `agent.spawned_retention`. An unknown id (never existed, not a spawned session, or trimmed by retention) answers `found: false`, not an error. |
 | `task.list` | `TaskList` | `TaskListPayload` | List a chat's background tool calls (`background: true`), running and recently finished. Reply `task.list.result`. See `docs/adr/ADR_20260824-2_core_background-tool-calls.md`. |
 | `task.state` | `TaskState` | `TaskStatePayload` | Ask one task's current state — finished result if done, progress tail if still running. Reply `task.state.result`. An unknown task id answers `task: null`, not an error, the same way `subagent.get` treats an unknown run. |
 | `task.cancel` | `TaskCancel` | `TaskCancelPayload` | Cancel a live background task. No reply — observe the effect through the next `task.list`/`task.state`, the same as `chat.unwatch`. |
+| `correspondence.graph.get` | `CorrespondenceGraphGet` | — | Ask for the project-wide "who talks to whom" graph (`ADR_20260827-2` §2.5's last row). Reply `correspondence.graph.result`. Assembled fresh from every session on disk on each request — deliberately independent of which chats happen to be open (PLAN_20260902 wave 7б decision 3), so two requests a second apart can legitimately disagree if a chat saved in between. |
 
 ## Server → Client
 
@@ -134,9 +139,11 @@ client/types **and** this table.
 | `project.context` | `ProjectContext` | `ProjectContextPayload` | unicast | Answer to `project.open`/`project.create`. |
 | `instance.status.result` | `InstanceStatusResult` | `InstanceStatusPayload` | unicast | Answer to `instance.status`/`instance.stop` — a unicast reply to whoever asked, never fanned out to other clients. |
 | `chat.list.result` | `ChatListResult` | `ChatListResultPayload` | broadcast (project) | Every sidebar in that project refreshes. |
+| `correspondence.graph.result` | `CorrespondenceGraphResult` | `CorrespondenceGraphResultPayload` | unicast | Answer to `correspondence.graph.get`: one `CorrespondenceEdgeDto` per correspondence, oriented from whoever opened it (`FromRole`/`FromChatId`) to the correspondent they addressed (`ToRole`/`ToChatId`), carrying BOTH directions' reply counts and estimated token volume — `RepliesFromInitiator`/`VolumeFromInitiator` vs `RepliesFromCorrespondent`/`VolumeFromCorrespondent` — so a client can render the imbalance the graph exists to show (a role that only sends, a role nobody answers) without a second request. Volume is an honest estimate of the replies' own text (`TokenEstimate.Of`), never a slice of a turn's real provider usage. |
 | `chat.archived.list.result` | `ChatArchivedListResult` | `ChatArchivedListResultPayload` | unicast | Answer to `chat.archived.list`. |
 | `chat.opened` | `ChatOpened` | `ChatOpenedPayload` | unicast | Full chat state on open. |
-| `user.message` | `UserMessage` | `UserMessagePayload` | watchers | Accepted user message id/time; optional text renders server-initiated turns. |
+| `chat.read.result` | `ChatReadResult` | `ChatReadResultPayload` | unicast | Answer to `chat.read`: an archived chat's title and messages, plus `readOnly`. Carries none of the per-turn settings `chat.opened` does (mode, model, temperature, reasoning, skill, tool sets, turn state) — those describe a next turn, and an archived chat has none. |
+| `user.message` | `UserMessage` | `UserMessagePayload` | watchers | Accepted user message id/time; optional text renders server-initiated turns. `PeerFrom` set means this "user" turn is actually an incoming reply across a correspondence (`ADR_20260827-2` §2.5) — the client renders it as speech ("← from `PeerFrom`") instead of an ordinary human bubble, live, the moment it lands. |
 | `llm.turn.start` | `LlmTurnStart` | `DeltaPayload` | watchers | New assistant message index. |
 | `delta` | `Delta` | `DeltaPayload` | watchers | Streamed assistant text chunk. |
 | `reasoning` | `Reasoning` | `ReasoningPayload` | watchers | Streamed reasoning chunk. |
@@ -146,7 +153,7 @@ client/types **and** this table.
 | `tool.progress` | `ToolProgress` | `ToolProgressPayload` | watchers | Throttled progress ticks for the top-level call only. One bar, no nesting. |
 | `progress.node` | `ProgressNode` | `ProgressNodePayload` | watchers | One node of the turn's progress tree, whole, on each change — the nested counterpart to `tool.progress`, carrying a script's parallel children and a spawned sub-agent's whole run. A flat append-only stream, not a snapshot: keep what you are told and attach each node to `parentId` (null = top level). Hold a node whose parent has not arrived rather than dropping it — parallel work gives no ordering guarantee. Structural frames (a node's first appearance and its finish) are never throttled; the ticks between them are, per node. Both this and `tool.progress` are sent; a client that wants one bar can ignore this. |
 | `tool.result` | `ToolResult` | `ToolResultPayload` | watchers | A tool call finished. |
-| `subagent.result` | `SubagentResult` | `SubagentResultPayload` | unicast | Answer to `subagent.get`: the finished run's transcript (`messages` reuses `ChatMessageDto`) plus its label, mode, outcome and timing. `found: false` when the id is not in the log. |
+| `subagent.result` | `SubagentResult` | `SubagentResultPayload` | unicast | Answer to `subagent.get`: the session's transcript (`messages` reuses `ChatMessageDto`) plus its label, mode, outcome and timing, read off the spawned session's own file. `outcome: "running"` while the run has not finished; `found: false` when the id is not a (still-retained) spawned session. |
 | `task.list.result` | `TaskListResult` | `TaskListResult` | unicast | Answer to `task.list`: this chat's background tasks as summary rows (id, tool, state, started-at). |
 | `task.state.result` | `TaskStateResult` | `TaskStateResult` | unicast | Answer to `task.state`: the task's summary plus its result text once finished (`Result` null while running). `Task: null` for an unknown id. |
 | `task.state.changed` | `TaskStateChanged` | `TaskStateChangedPayload` | watchers | Pushed to a chat's watchers whenever a task's state changes — started (Running) or finished (Completed/Failed/Cancelled). Lets a task panel stay live without polling. |
@@ -169,6 +176,7 @@ client/types **and** this table.
 | `connection.swap_model.result` | `ConnectionSwapModelResult` | `ConnectionSwapModelResult` | unicast | Answer to `connection.swap_model`. |
 | `provider.info.result` | `ProviderInfoResult` | `ProviderInfoResult` | unicast | Answer to `provider.info`. Sections ordered connection-first, then model. |
 | `agent.result` | `AgentResult` | `AgentSettingsPayload` | unicast/broadcast | Answer to get; broadcast after save. |
+| `roles.result` | `RolesResult` | `RolesPayload` | unicast/broadcast | Answer to `roles.get`; broadcast to the project after `roles.save` so every window's role pickers refresh. Carries the catalogs a role picks from (modes, capabilities, models, connections, tool-set ids and levels) alongside the roles; those are server-provided and ignored on save. |
 | `plugins.result` | `PluginsResult` | `PluginsPayload` | unicast/broadcast | Answer to get; broadcast after save. |
 | `plugin.action.result` | `PluginActionResult` | `PluginActionResultPayload` | unicast | Answer to `plugin.action`. |
 | `skills.result` | `SkillsResult` | `SkillsPayload` | unicast/broadcast | Answer to get; broadcast after any save AND unprompted whenever the fond is rebuilt — a file changed, a branch was added, a grant moved. Lists every skill with its address, source and resolved state, unavailable ones included. |

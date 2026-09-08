@@ -1,9 +1,9 @@
 <template>
   <div class="screencast-surface">
     <form class="browser-bar" @submit.prevent="navigate">
-      <button type="button" title="Reload" @click="navigate">↻</button>
-      <input v-model="address" aria-label="Browser address" placeholder="Enter URL" />
-      <button type="submit">Go</button>
+      <button type="button" :title="t('Reload')" @click="navigate">↻</button>
+      <input v-model="address" :aria-label="t('Browser address')" :placeholder="t('Enter URL')" />
+      <button type="submit">{{ t('Go') }}</button>
       <span class="state">{{ state }}</span>
     </form>
     <div ref="viewport" class="browser-viewport" tabindex="0" @keydown.prevent="keyFrame" @wheel.prevent="wheelFrame">
@@ -17,6 +17,7 @@
 </template>
 
 <script setup lang="ts">
+import { t } from "../i18n";
 import { onBeforeUnmount, onMounted, ref } from "vue";
 import { client } from "../protocol/SplaClient";
 import { store } from "../state/store";

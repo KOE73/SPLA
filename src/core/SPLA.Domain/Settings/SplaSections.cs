@@ -1,4 +1,4 @@
-using YamlDotNet.Serialization;
+﻿using YamlDotNet.Serialization;
 
 namespace SPLA.Domain.Settings;
 
@@ -57,6 +57,14 @@ public class SplaAgentSection
     [YamlMember(Alias = "shell_timeout_seconds")]
     public int? ShellTimeoutSeconds { get; set; }
 
+    /// <summary>How many finished spawned sessions to keep on disk, newest first (default 200).
+    /// <c>0</c> keeps none; negative disables trimming entirely. Never touches a session with a run
+    /// still in progress — see <c>docs/adr/ADR_20260902_core_session-unification.md</c> §2.3.
+    /// Project-level only; not part of <see cref="SplaRoleSection"/> — retention is a disk policy of
+    /// the project, not a behaviour a role narrows.</summary>
+    [YamlMember(Alias = "spawned_retention")]
+    public int? SpawnedRetention { get; set; }
+
     /// <summary>Enabled built-in agent capabilities (dotted "core.*" feature ids — see
     /// <c>SPLA.MCP.Core.Agent.AgentFeatureCatalog</c>). Null (key absent) = every feature enabled,
     /// the historical behaviour. Empty list = no built-in feature (only the mode preamble,
@@ -93,6 +101,203 @@ public class SplaAgentSection
     /// thrown away are kept too.</summary>
     [YamlMember(Alias = "save_attempts")]
     public bool? SaveAttempts { get; set; }
+
+    /// <summary>Floor of the <c>Peer</c>-wake debounce (seconds), before it starts doubling with
+    /// exchange depth — <c>base · 2^depth</c>, see <see cref="PeerDebounceMaxSeconds"/> for the
+    /// ceiling. Default 2. See <c>docs/adr/ADR_20260827-2_core_roles.md</c> §2.4 and
+    /// <c>ChatPump.PeerWakePolicy</c>.</summary>
+    [YamlMember(Alias = "peer_debounce_base")]
+    public int? PeerDebounceBaseSeconds { get; set; }
+
+    /// <summary>Ceiling of the <c>Peer</c>-wake debounce (seconds) — the doubling never waits longer
+    /// than this between an incoming reply and the turn it wakes. Default 300 (5 minutes).</summary>
+    [YamlMember(Alias = "peer_debounce_max")]
+    public int? PeerDebounceMaxSeconds { get; set; }
+
+    /// <summary>How many consecutive <c>Peer</c> replies (since the last <c>Human</c> or
+    /// <c>TaskResult</c>) may still raise a turn of their own. Past this depth a reply no longer wakes
+    /// one — it stays queued and rides whatever turn happens for some other reason. Default 6.</summary>
+    [YamlMember(Alias = "peer_depth_ceiling")]
+    public int? PeerDepthCeiling { get; set; }
+
+    /// <summary>Emergency stop on <c>Peer</c> depth — should never be reached in normal operation
+    /// (the debounce/ceiling above are what is supposed to slow an exchange down first); reaching it
+    /// is a defect in the regulator, not a normal outcome, and refuses the reply with a notice into
+    /// the chat rather than silently continuing. Default 24.</summary>
+    [YamlMember(Alias = "peer_hard_cap")]
+    public int? PeerHardCap { get; set; }
+
+    /// <summary>How many consecutive auto-wakes (turns with no human message since the last one) a
+    /// chat may run before <c>ChatPump</c> refuses to wake itself again and posts a notice — see
+    /// <c>ChatPump.SelfFeedingCap</c>. Unset or 0 means disabled (no cap, the exchange can run as long
+    /// as it keeps re-arming itself): a correspondence between two chats is exactly this kind of
+    /// self-feeding loop by design, and the guard used to trip it after three turns regardless of
+    /// intent. Set a positive number to bring the old ceiling back for a project that wants one.
+    /// </summary>
+    [YamlMember(Alias = "self_feeding_cap")]
+    public int? SelfFeedingCap { get; set; }
+}
+
+/// <summary>
+/// The body of one role — a named type of actor, declared in <c>roles/&lt;name&gt;.yaml</c> next to
+/// the manifest (it travels in git; it is not under <c>.spla/</c>, which is closed as a whole per
+/// <c>ADR_20260811_core_security-zones</c>). Same shape as <see cref="SplaAgentSection"/> — a role is
+/// the same type of thing a project's own <c>agent:</c> is, per <c>ADR_20260827-2_core_roles</c> §2.1
+/// — plus its own model, tool-set levels and island selection.
+///
+/// <para>
+/// A role is not a second permissions axis standing beside modes: it carries <see cref="Mode"/>
+/// (it picks one, the same way <c>agent:</c> does) and narrows what runs inside that mode
+/// (<see cref="Capabilities"/>, <see cref="ToolSets"/>) — it deliberately has no <c>permissions:</c>
+/// block of its own. It is also not a subset of the project's own capabilities: the ceiling on what a
+/// role may reach is the directory root and the owner's grants, not the union of what <c>agent:</c>
+/// declared, so <see cref="Capabilities"/> here replaces the project's list for this role rather than
+/// being intersected with it — see the ADR's "role is not a subset of project permissions" row.
+/// </para>
+///
+/// <para>
+/// A file under <c>roles/</c> is inert on its own. Only a name the manifest lists under
+/// <c>roles:</c> is an active role — see <see cref="SplaProject.Roles"/> — the same "nothing acts
+/// that nobody named" logic as "no walking up the tree". <see cref="SettingsResolver.ResolveForRole"/>
+/// is where that check actually happens.
+/// </para>
+/// </summary>
+public class SplaRoleSection
+{
+    [YamlMember(Alias = "mode")]
+    public string? Mode { get; set; }
+
+    [YamlMember(Alias = "instructions")]
+    public List<string>? Instructions { get; set; }
+
+    [YamlMember(Alias = "compact_tail_messages")]
+    public int? CompactTailMessages { get; set; }
+
+    [YamlMember(Alias = "custom_prompt")]
+    public string? CustomPrompt { get; set; }
+
+    /// <summary>One line saying what this role is for, written for STRANGERS: it is what the role
+    /// catalog shows another chat that is choosing whom to task or whom to write to (see the
+    /// <c>role_list</c> tool). Optional — a role without one is still listed, simply undescribed.
+    ///
+    /// <para>This is the outward half of a role, and <see cref="CustomPrompt"/> is the inward one.
+    /// The split is deliberate and is not a matter of verbosity: the body of a role carries its
+    /// character together with <see cref="Capabilities"/>, <see cref="Islands"/> and
+    /// <see cref="TrustedDomains"/> — the shape of what it is allowed to reach — so handing it to
+    /// whoever asks would publish a security decision sideways, past the zone model
+    /// (<c>ADR_20260811_core_security-zones</c>). One sentence goes out; the prompt stays in, and
+    /// whoever genuinely needs to read it opens <c>roles/&lt;name&gt;.yaml</c> where they have the
+    /// right to read files.</para></summary>
+    [YamlMember(Alias = "description")]
+    public string? Description { get; set; }
+
+    [YamlMember(Alias = "loop_guard")]
+    public bool? LoopGuard { get; set; }
+
+    [YamlMember(Alias = "loop_guard_repeats")]
+    public int? LoopGuardRepeats { get; set; }
+
+    [YamlMember(Alias = "unified_resources")]
+    public bool? UnifiedResources { get; set; }
+
+    [YamlMember(Alias = "ask_timeout_minutes")]
+    public int? AskTimeoutMinutes { get; set; }
+
+    [YamlMember(Alias = "shell_timeout_seconds")]
+    public int? ShellTimeoutSeconds { get; set; }
+
+    /// <summary>Enabled built-in agent capabilities for this role specifically. Replaces the
+    /// project's own list wholesale rather than intersecting with it — see the type doc above for
+    /// why "role ⊆ project capabilities" was rejected. Null = inherit the project's list unchanged
+    /// (a role that says nothing about capabilities is not thereby narrowed to none of them).</summary>
+    [YamlMember(Alias = "capabilities")]
+    public List<string>? Capabilities { get; set; }
+
+    [YamlMember(Alias = "trusted_domains")]
+    public List<string>? TrustedDomains { get; set; }
+
+    [YamlMember(Alias = "save_tool_calls")]
+    public bool? SaveToolCalls { get; set; }
+
+    [YamlMember(Alias = "save_attempts")]
+    public bool? SaveAttempts { get; set; }
+
+    /// <summary>Per-role override of <see cref="SplaAgentSection.PeerDebounceBaseSeconds"/>.</summary>
+    [YamlMember(Alias = "peer_debounce_base")]
+    public int? PeerDebounceBaseSeconds { get; set; }
+
+    /// <summary>Per-role override of <see cref="SplaAgentSection.PeerDebounceMaxSeconds"/>.</summary>
+    [YamlMember(Alias = "peer_debounce_max")]
+    public int? PeerDebounceMaxSeconds { get; set; }
+
+    /// <summary>Per-role override of <see cref="SplaAgentSection.PeerDepthCeiling"/>.</summary>
+    [YamlMember(Alias = "peer_depth_ceiling")]
+    public int? PeerDepthCeiling { get; set; }
+
+    /// <summary>Per-role override of <see cref="SplaAgentSection.PeerHardCap"/>.</summary>
+    [YamlMember(Alias = "peer_hard_cap")]
+    public int? PeerHardCap { get; set; }
+
+    /// <summary>Per-role override of <see cref="SplaAgentSection.SelfFeedingCap"/>.</summary>
+    [YamlMember(Alias = "self_feeding_cap")]
+    public int? SelfFeedingCap { get; set; }
+
+    /// <summary>Per-role default sampling temperature. Wins over the model's own
+    /// <see cref="SplaModelSection.Temperature"/> and the project/machine <c>llm:</c> default, but a
+    /// chat that has picked its own value (<c>StatusBar</c>) still wins over this — a role sets what a
+    /// chat starts at, not a ceiling it cannot move away from. Null = inherit.</summary>
+    [YamlMember(Alias = "temperature")]
+    public double? Temperature { get; set; }
+
+    /// <summary>Per-role default reasoning level, in the provider's own words (must be one of the
+    /// resolved model's <see cref="SplaModelSection.ReasoningOptions"/> once one is picked). Same
+    /// precedence as <see cref="Temperature"/>: overrides <see cref="SplaModelSection.ReasoningDefault"/>,
+    /// itself overridden by whatever the chat has already chosen. Null = inherit.</summary>
+    [YamlMember(Alias = "reasoning_level")]
+    public string? ReasoningLevel { get; set; }
+
+    /// <summary>
+    /// Which connections this role may use, by <see cref="SplaConnectionSection.Id"/> or by scope
+    /// name (<c>user</c>, <c>project</c>, <c>shared</c> — a whole layer in one word). Null or empty =
+    /// every connection resolved for the project, which is what a role that says nothing about
+    /// connections has always had.
+    ///
+    /// <para><b>A selection, not a grant</b> — the same rule as <see cref="Islands"/>. It narrows the
+    /// set the role's chats can resolve a model against; it cannot make a connection the project
+    /// never declared appear, because there is nothing here to declare one with (no endpoint, no
+    /// credential). "The project declares what exists, the role chooses what it uses"
+    /// (<c>ADR_20260827-2</c>) still holds — this is the choosing half, now that a connection can
+    /// come from three layers and "all of them" is no longer a useful default for every role.</para>
+    ///
+    /// <para>A name that matches nothing is an error at resolution rather than a silent empty set: a
+    /// role narrowed to a connection id that was renamed must say so, not quietly run on whatever is
+    /// left.</para>
+    /// </summary>
+    [YamlMember(Alias = "connections")]
+    public List<string>? Connections { get; set; }
+
+    /// <summary>The model id (a <see cref="SplaModelSection.Id"/> already resolved from the project's
+    /// own <c>connections:</c>) this role runs on. Null = inherit whatever the chat would otherwise
+    /// pick. A role does not declare its own connection — connections are what the project makes
+    /// reachable at all (<c>ADR_20260827-2</c>: "project declares what exists; role chooses what it
+    /// uses") — it only chooses among what the project already declared.</summary>
+    [YamlMember(Alias = "model")]
+    public string? Model { get; set; }
+
+    /// <summary>Tool set id → disclosure level, for this role. Merged key by key over the project's
+    /// own <c>toolsets:</c> the same way a project layer merges over machine defaults — a role that
+    /// mentions one set narrows (or widens, within what the gate still allows) only that set.</summary>
+    [YamlMember(Alias = "toolsets")]
+    public Dictionary<string, string>? ToolSets { get; set; }
+
+    /// <summary>Which islands (see <see cref="Security.IslandIdentity"/> — a database, host or foreign
+    /// tool server the project's connections already reach) this role uses, by island key. This is a
+    /// selection, not a grant: it narrows which of the project's already-reachable islands this role's
+    /// prompt and tool surface mention, it does not widen what <c>ICapabilityGate</c> allows — the gate
+    /// is still the only place a reach is actually decided. Null/empty = every island the project
+    /// declares is in scope for this role, same as today.</summary>
+    [YamlMember(Alias = "islands")]
+    public List<string>? Islands { get; set; }
 }
 
 /// <summary>
@@ -187,6 +392,13 @@ public class SplaConnectionSection
     /// <summary>Display label for the connection tree. Computed, never persisted.</summary>
     [YamlIgnore]
     public string DisplayName => !string.IsNullOrWhiteSpace(Name) ? Name! : Id;
+
+    /// <summary>Which layer this entry was read from. Stamped by the loader, never written to a
+    /// file: the scope IS the file it lives in, so persisting it would be a second answer that can
+    /// disagree with the first. An editor needs it to know which file a save goes back to, and a
+    /// role needs it to say "the user's connections, not this repository's".</summary>
+    [YamlIgnore]
+    public ConnectionScope Scope { get; set; } = ConnectionScope.Project;
 }
 
 /// <summary>
@@ -233,6 +445,14 @@ public class SplaModelSection
     /// <see cref="ReasoningOptions"/>.</summary>
     [YamlMember(Alias = "reasoning_default")]
     public string? ReasoningDefault { get; set; }
+
+    /// <summary>Default sampling temperature for this model, used when nothing more specific (role,
+    /// chat) says otherwise. Same precedence family as <see cref="ReasoningDefault"/>: a property of
+    /// the model, not the account, so it lives on the leaf rather than on
+    /// <see cref="SplaConnectionSection"/>. Null = fall back to the project/machine <c>llm:</c>
+    /// default (<see cref="SplaLlmSection.Temperature"/>).</summary>
+    [YamlMember(Alias = "temperature")]
+    public double? Temperature { get; set; }
 
     /// <summary>Display label for the picker — falls back to the wire model string, then the id.</summary>
     [YamlIgnore]
@@ -432,6 +652,20 @@ public class SplaUiSection
 
     [YamlMember(Alias = "density")]
     public string? Density { get; set; }
+
+    /// <summary>The interface language, as a BCP-47 tag ("en", "ru"). Read from the machine layer
+    /// only (<c>~/.spla/defaults.yaml</c>): which language a person reads in is a property of the
+    /// person, not of the project, and a project committed to git must not push its author's
+    /// language onto whoever opens it next. See <see cref="SettingsResolver.Language"/>.</summary>
+    [YamlMember(Alias = "language")]
+    public string? Language { get; set; }
+
+    /// <summary>Whether a client should open a native window on a spawned session by itself, the
+    /// moment it appears in the tree. Default off — see <see cref="SettingsResolver.AutoOpenSubagents"/>
+    /// for why: "a backend that opens windows by itself is not what anyone expects"
+    /// (<c>docs/plans/PLAN_20260902_agent_roles-and-correspondence.md</c>, wave 7).</summary>
+    [YamlMember(Alias = "auto_open_subagents")]
+    public bool? AutoOpenSubagents { get; set; }
 }
 
 /// <summary>

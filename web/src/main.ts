@@ -3,12 +3,20 @@ import LayoutHost from "./layouts/LayoutHost.vue";
 import { client } from "./protocol/SplaClient";
 import { store } from "./state/store";
 import { bootAppearance } from "./state/appearance";
+import { bootLocale } from "./i18n";
+import { openOverlay } from "./state/overlay";
 import { setCurrentProject } from "./state/project";
 // Imported for its side effect: the chat-event demultiplexer subscribes on load, and it must be
 // listening before the socket opens — a chat.opened that arrives with no session to land in is lost.
 import "./state/chatSessions";
 
 bootAppearance();
+bootLocale();
+
+// The only native → web entry point we need: the Avalonia shell's "Settings" menu item calls this
+// instead of opening its own frame, so settings mount inside the window the person is already in
+// (ADR_20260904-3). The bridge in the other direction is postMessage — see Helpers/WebViewBridge.cs.
+(window as unknown as Record<string, unknown>).splaOpenOverlay = (name: string) => openOverlay(name);
 
 // The hub surface is served BY the registry hub, which holds no project and has no /ws at all. Opening
 // the chat socket there would fail forever and, worse, raise the "the agent stopped answering" banner
@@ -27,11 +35,26 @@ client.on("welcome", p => {
   store.branch = p.branch || null;
   // Tear-off windows carry their project in the URL (?project=…) — it must win over the server's
   // default, or a solo terminal/debug window from a non-default project would act on the wrong one.
-  const urlProject = new URLSearchParams(location.search).get("project");
+  const urlParams = new URLSearchParams(location.search);
+  const urlProject = urlParams.get("project");
   setCurrentProject(urlProject || p.projectId || null, urlProject ? undefined : p.projectName);
   if (p.theme) store.theme = p.theme;
   client.send("chat.list");
+  // A tear-off chat window (?surface=chatSurface&chat=<id>) carries which chat it is a view onto.
+  // This connection opens it directly — a second window filtering the SAME project, never a second
+  // agent instance (see registry.ts's chatSurface entry, and ADR_20260827-2 §2.5).
+  const urlChat = urlParams.get("chat");
+  if (urlChat) client.send("chat.open", { chatId: urlChat });
+  // Needed at boot, not only when Settings opens — the sessions panel/auto-open watcher must know
+  // whether ui.auto_open_subagents is on before the first spawned session can possibly appear.
+  client.send("agent.get");
 });
-client.on("appearance.changed", p => { if (p.theme) store.theme = p.theme; });
+client.on("appearance.changed", p => {
+  if (p.theme) store.theme = p.theme;
+  if (p.autoOpenSubagents !== undefined) store.autoOpenSubagents = p.autoOpenSubagents;
+});
+client.on("agent.result", p => {
+  if (p.autoOpenSubagents !== undefined) store.autoOpenSubagents = p.autoOpenSubagents === true;
+});
 
 createApp(LayoutHost).mount("#mount");

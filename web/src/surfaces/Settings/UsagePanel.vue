@@ -1,6 +1,6 @@
 <template>
   <div class="s-panel" data-tab="usage">
-    <div class="s-head"><b>Token Usage</b><span class="hint">real, provider-reported counts</span></div>
+    <div class="s-head"><b>{{ t('Token Usage') }}</b><span class="hint">{{ t('real, provider-reported counts') }}</span></div>
     <div class="conn-card" v-for="s in scopes" :key="s.label">
       <div class="conn-head"><span class="id">{{ s.label }}</span><span class="state">{{ s.value.totalTokens.toLocaleString() }} tokens</span></div>
       <div class="usage-bar">
@@ -16,6 +16,7 @@
 </template>
 
 <script setup lang="ts">
+import { t } from "../../i18n";
 import { computed, ref } from "vue";
 import { client } from "../../protocol/SplaClient";
 import type { TokenUsageScope } from "../../protocol/types";

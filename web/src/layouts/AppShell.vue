@@ -14,7 +14,7 @@
       <aside class="left-nav" :style="{ width: navWidth + 'px' }">
         <NavigationSurface />
       </aside>
-      <div class="nav-resizer" :class="{ dragging }" @pointerdown="startDrag" title="Drag to resize"></div>
+      <div class="nav-resizer" :class="{ dragging }" @pointerdown="startDrag" :title="t('Drag to resize')"></div>
       <div class="right-area">
         <DockWorkspace />
       </div>
@@ -23,6 +23,7 @@
 </template>
 
 <script setup lang="ts">
+import { t } from "../i18n";
 import { ref } from "vue";
 import NavigationSurface from "../surfaces/NavigationSurface.vue";
 import DockWorkspace from "../dock/DockWorkspace.vue";

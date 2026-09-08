@@ -35,7 +35,13 @@ public partial class MainWindow : Window
         var startupLabel = App.ResolvedSettings.ProjectName
             ?? (App.ProjectFilePath is { } p ? Path.GetFileNameWithoutExtension(p) : null);
         ApplyProjectTitle(startupLabel);
+        // The frame follows the language chosen in the web client; until it reports one, English.
+        Helpers.Localization.Track(this);
         Loaded += MainWindow_Loaded;
+        KeyDown += (_, e) =>
+        {
+            if (e.Key == Key.F12) Helpers.WebViewDevTools.TryOpen(Browser);
+        };
     }
 
     private async void MainWindow_Loaded(object? sender, RoutedEventArgs e)
@@ -47,6 +53,7 @@ public partial class MainWindow : Window
         try
         {
             Helpers.WebViewBridge.Attach(Browser, ApplyProjectTitle);
+            Helpers.WebViewDpiSync.Track(this, Browser);
             // A restarted service binds a fresh ephemeral port, so the old URL is dead. Following the
             // event is what turns "the agent came back" into a window that works again rather than one
             // still pointed at a port nobody is listening on.
@@ -162,11 +169,17 @@ public partial class MainWindow : Window
     private void OpenDebugSurface_Click(object? sender, RoutedEventArgs e)
         => new SurfaceWindow("debug", "Debug").Show(this);
 
+    /// <summary>Settings open as a full-screen layer INSIDE this window, not as their own frame:
+    /// they are a surface of the app the person is already in, and a separate frame made them look
+    /// like a separate program (ADR_20260904-3). The native menu therefore asks the web client to
+    /// raise its own overlay instead of spawning a <see cref="SurfaceWindow"/>.</summary>
     private void OpenSettingsSurface_Click(object? sender, RoutedEventArgs e)
-        => new SurfaceWindow("settings", "Settings").Show(this);
+        => _ = Browser.InvokeScript("window.splaOpenOverlay && window.splaOpenOverlay('settings')");
 
     private void OpenWireSurface_Click(object? sender, RoutedEventArgs e)
         => new SurfaceWindow("wire", "Wire").Show(this);
+
+    private void DevTools_Click(object? sender, RoutedEventArgs e) => Helpers.WebViewDevTools.TryOpen(Browser);
 
     private void OpenInBrowser_Click(object? sender, RoutedEventArgs e)
     {

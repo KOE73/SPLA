@@ -11,7 +11,7 @@
 <template>
   <div class="hub">
     <header class="hub-head">
-      <h1>Projects</h1>
+      <h1>{{ t('Projects') }}</h1>
       <span class="hub-conn" :class="{ off: !connected }">
         {{ connected ? "watching" : "hub unreachable" }}
       </span>
@@ -23,16 +23,16 @@
         v-if="anyRunning"
         class="hub-killall"
         :disabled="killingAll"
-        title="Force-closes every running project at once, discarding any work in progress"
+        :title="t('Force-closes every running project at once, discarding any work in progress')"
         @click="killAll"
       >
-        Kill all
+        {{ t('Kill all') }}
       </button>
     </header>
 
     <div class="hub-scroll">
       <div v-if="projects.length === 0" class="hub-empty">
-        Nothing here yet. A project appears once it has been opened or started at least once.
+        {{ t('Nothing here yet. A project appears once it has been opened or started at least once.') }}
       </div>
 
       <!-- One list per group. In "name" order there is only ever one, so the markup is the same
@@ -49,9 +49,9 @@
 
           <div class="hub-main">
             <div class="hub-name">
-              {{ p.name || p.projectId }}
-              <span v-if="!p.exists" class="hub-tag bad" title="The manifest is no longer at this path">
-                missing
+              <span class="hub-name-text">{{ p.name || p.projectId }}</span>
+              <span v-if="!p.exists" class="hub-tag bad" :title="t('The manifest is no longer at this path')">
+                {{ t('missing') }}
               </span>
             </div>
             <div class="hub-path" :title="p.projectId">{{ p.projectId }}</div>
@@ -73,14 +73,14 @@
               @click="copyMcpAddress(p)"
               @keydown.enter.prevent="copyMcpAddress(p)"
               @keydown.space.prevent="copyMcpAddress(p)"
-            >MCP</span>
+            >{{ t('MCP') }}</span>
           </div>
 
           <!-- Four fixed-width slots, always in the same order, so the buttons line up like a table
                column no matter which two or three of them apply to this row's state. -->
           <div class="hub-actions">
             <button v-if="!p.state" class="act" :disabled="!p.exists || busy === p.projectId" @click="start(p)">
-              Start
+              {{ t('Start') }}
             </button>
             <span v-else class="act-ph"></span>
 
@@ -89,16 +89,16 @@
             </button>
 
             <button v-if="p.state" class="act" :disabled="busy === p.projectId" @click="close(p, false)">
-              Close
+              {{ t('Close') }}
             </button>
             <button
               v-else
               class="act quiet"
               :disabled="busy === p.projectId"
-              title="Removes it from this list only. The project itself is untouched."
+              :title="t('Removes it from this list only. The project itself is untouched.')"
               @click="forget(p)"
             >
-              Forget
+              {{ t('Forget') }}
             </button>
 
             <button
@@ -108,7 +108,7 @@
               :title="'Closes it even mid-turn, discarding work in progress'"
               @click="close(p, true)"
             >
-              Kill
+              {{ t('Kill') }}
             </button>
             <span v-else class="act-ph"></span>
           </div>
@@ -118,16 +118,16 @@
     </div>
 
     <footer class="hub-bar">
-      <span class="hub-bar-label">Scheme</span>
+      <span class="hub-bar-label">{{ t('Scheme') }}</span>
       <select class="hub-bar-select" v-model="theme" @change="onThemeChange">
-        <option v-for="t in themeOptions" :key="t.value" :value="t.value">{{ t.label }}</option>
+        <option v-for="opt in themeOptions" :key="opt.value" :value="opt.value">{{ opt.label }}</option>
       </select>
-      <span class="hub-bar-label">Order</span>
+      <span class="hub-bar-label">{{ t('Order') }}</span>
       <select class="hub-bar-select" v-model="sortMode" @change="onSortChange">
         <option v-for="o in sortOptions" :key="o.value" :value="o.value" :title="o.hint">{{ o.label }}</option>
       </select>
       <span class="hub-bar-spacer"></span>
-      <button class="hub-bar-icon" title="Settings" @click="openSettings">
+      <button class="hub-bar-icon" :title="t('Settings')" @click="openSettings">
         <Icon name="settings" :size="18" :weight="2" />
       </button>
     </footer>
@@ -135,6 +135,7 @@
 </template>
 
 <script setup lang="ts">
+import { t } from "../i18n";
 import { computed, onMounted, onUnmounted, ref } from "vue";
 import { registryClient, type KnownProject } from "../protocol/RegistryClient";
 import { applyTheme, SYSTEM_THEME } from "../state/appearance";
@@ -474,7 +475,8 @@ async function forget(p: KnownProject) {
 }
 
 .hub-main { flex: 1; min-width: 0; }
-.hub-name { display: flex; align-items: center; gap: 6px; }
+.hub-name { display: flex; align-items: center; gap: 6px; min-width: 0; }
+.hub-name-text { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
 .hub-path {
   font-size: var(--fs-sm);
   color: var(--muted);

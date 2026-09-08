@@ -1,52 +1,56 @@
 <template>
   <div class="s-panel" data-tab="plugins">
-    <div class="s-head"><b>Plugins</b><span class="hint">{{ hint }}</span></div>
-    <div class="pl-list">
-      <div v-if="!plugins.length" class="notice">no plugins discovered</div>
+    <div class="s-head"><b>{{ t('Plugins') }}</b><span class="hint">{{ t(hint) }}</span></div>
+    <!-- No add button: plugins are discovered on disk, not created here — hence no `add-label`. -->
+    <ListPanel :empty="!plugins.length" :empty-text="t('no plugins discovered')">
       <!-- One collapsed row per plugin; click the row to expand its editors. Configured bits show
            as small summary text on the collapsed row so a glance tells what's customized. -->
-      <div v-for="pl in plugins" :key="pl.id" class="pl-card" :class="{ open: isOpen(pl.id) }"
-           :data-plugin-id="pl.id">
-        <div class="pl-row" @click="toggle(pl.id)">
+      <ListCard v-for="pl in plugins" :key="pl.id" :open="isOpen(pl.id)" :summary="summary(pl)"
+                @update:open="toggle(pl.id)" :data-plugin-id="pl.id">
+        <template #title>
           <input type="checkbox" v-model="pl.enabled" @click.stop>
           <b class="pl-name">{{ pl.name || pl.id }}</b>
           <span class="ver">{{ pl.version || "" }} · {{ pl.id }}</span>
-          <span v-if="!isOpen(pl.id)" class="pl-sum">{{ summary(pl) }}</span>
-          <span class="grow"></span>
-          <span class="state">{{ pl.state && pl.state !== "Enabled" ? (pl.stateReason || pl.state) : "" }}</span>
-          <span class="chev">{{ isOpen(pl.id) ? "▾" : "▸" }}</span>
-        </div>
+        </template>
+        <!-- A refusal to load is not an action, but it belongs where the eye already looks for the
+             row's verdict — the right end — and the card has no other place for it. -->
+        <template #actions>
+          <span v-if="pl.state && pl.state !== 'Enabled'" class="state">{{ pl.stateReason || pl.state }}</span>
+        </template>
 
-        <div v-if="isOpen(pl.id)" class="pl-body">
+        <template #body>
           <!-- Two separate decisions, and the wording has to keep them apart: the checkbox above is
                DELIVERY (is the assembly loaded at all), this is DISCLOSURE (how much of the set the
                model is shown before it is needed). -->
           <label class="field col">
-            <span>Tools in context</span>
+            <span>{{ t('Tools in context') }}</span>
             <select v-model="pl.level" :disabled="pl.enabled === false">
-              <option value="">follow the enable flag</option>
-              <option value="enabled">always — full definitions in every request</option>
-              <option value="agent_demand">announced — one line; the agent loads it when needed</option>
-              <option value="skill_demand">on skill demand — nothing until a skill requires it</option>
-              <option value="disabled">never — the set does not exist for the model</option>
+              <option value="">{{ t('follow the enable flag') }}</option>
+              <option value="enabled">{{ t('always — full definitions in every request') }}</option>
+              <option value="agent_demand">{{ t('announced — one line; the agent loads it when needed') }}</option>
+              <option value="skill_demand">{{ t('on skill demand — nothing until a skill requires it') }}</option>
+              <option value="disabled">{{ t('never — the set does not exist for the model') }}</option>
             </select>
           </label>
-          <label class="field col"><span>Custom prompt</span><textarea v-model="pl.customPrompt" rows="2"></textarea></label>
+          <label class="field col"><span>{{ t('Custom prompt') }}</span><textarea v-model="pl.customPrompt" rows="2"></textarea></label>
           <!-- A plugin with its own web settings module renders itself here; everything else falls
                back to the generic opaque JSON editor. The panel never branches on plugin id. -->
           <PluginWebSettings v-if="pl.webSettingsUrl" :plugin="pl" :ref="(el) => setWebRef(pl.id, el)" />
-          <label v-else class="field col"><span>Settings (JSON)</span><textarea v-model="pl.settingsJson" class="mono" rows="4" spellcheck="false"></textarea></label>
-        </div>
-      </div>
-    </div>
+          <label v-else class="field col"><span>{{ t('Settings (JSON)') }}</span><textarea v-model="pl.settingsJson" class="mono" rows="4" spellcheck="false"></textarea></label>
+        </template>
+      </ListCard>
+    </ListPanel>
   </div>
 </template>
 
 <script setup lang="ts">
+import { t } from "../../i18n";
 import { onUnmounted, ref } from "vue";
 import { client } from "../../protocol/SplaClient";
 import type { PluginDto } from "../../protocol/types";
 import PluginWebSettings from "./PluginWebSettings.vue";
+import ListPanel from "../../components/list/ListPanel.vue";
+import ListCard from "../../components/list/ListCard.vue";
 
 /** Collapsed-row wording for a level the user set explicitly. */
 const LEVEL_LABELS: Record<string, string> = {
@@ -71,11 +75,14 @@ function toggle(id: string) {
 /** Collapsed-row hint of what's already configured — never the values, just what exists. */
 function summary(pl: PluginDto): string {
   const bits: string[] = [];
-  if (pl.customPrompt?.trim()) bits.push(`prompt: ${pl.customPrompt.trim().slice(0, 40)}${pl.customPrompt.trim().length > 40 ? "…" : ""}`);
-  if (pl.level) bits.push(`tools: ${LEVEL_LABELS[pl.level] ?? pl.level}`);
+  if (pl.customPrompt?.trim())
+    bits.push(t("prompt: {text}", {
+      text: `${pl.customPrompt.trim().slice(0, 40)}${pl.customPrompt.trim().length > 40 ? "…" : ""}`
+    }));
+  if (pl.level) bits.push(t("tools: {level}", { level: t(LEVEL_LABELS[pl.level] ?? pl.level) }));
   const json = pl.settingsJson?.trim();
-  if (json) bits.push(`settings: ${json.length} chars`);
-  else if (pl.webSettingsUrl) bits.push("has settings UI");
+  if (json) bits.push(t("settings: {n} chars", { n: json.length }));
+  else if (pl.webSettingsUrl) bits.push(t("has settings UI"));
   return bits.join(" · ");
 }
 
@@ -88,8 +95,8 @@ const off = client.on("plugins.result", p => {
   plugins.value = p.plugins || [];
   webRefs.clear();
   const bits: string[] = [];
-  if (p.canPersist === false) bits.push("no .spla project — session-only");
-  if (p.restartToApply) bits.push("enable/disable applies on next launch");
+  if (p.canPersist === false) bits.push(t("no .spla project — session-only"));
+  if (p.restartToApply) bits.push(t("enable/disable applies on next launch"));
   hint.value = bits.join(" · ");
 });
 onUnmounted(off);
@@ -113,18 +120,10 @@ defineExpose({ save });
 </script>
 
 <style scoped>
-/* Density-aware: gaps/radius follow the UI density vars. */
-.pl-list { display: flex; flex-direction: column; gap: var(--gap, 8px); }
-.pl-card { border: 1px solid var(--border); border-radius: var(--radius, 7px); background: var(--elevated); }
-.pl-row { display: flex; align-items: center; gap: 8px; padding: 4px 8px; cursor: pointer; min-height: 26px; }
-.pl-row:hover { background: color-mix(in srgb, var(--text) 4%, transparent); }
+/* .pl-list/.pl-card/.pl-row/.pl-body/.chev/.pl-sum are gone — ListPanel/ListCard (app.css) draw the
+   list, the card, the caret and the collapsed summary; only content specific to a plugin row stays
+   here. */
 .pl-name { font-size: var(--fs-sm); }
 .ver { font-family: var(--mono); font-size: var(--fs-xs); color: var(--muted); }
-.pl-sum { font-size: var(--fs-xs); color: var(--muted); margin-left: 8px;
-  overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 45%; }
-.grow { flex: 1; }
 .state { font-size: var(--fs-xs); color: var(--danger, #f85149); }
-.chev { color: var(--muted); font-size: var(--fs-xs); width: 12px; text-align: center; }
-.pl-body { display: flex; flex-direction: column; gap: 6px; padding: 2px 8px 8px;
-  border-top: 1px solid color-mix(in srgb, var(--border) 60%, transparent); }
 </style>

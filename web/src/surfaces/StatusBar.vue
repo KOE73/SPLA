@@ -9,14 +9,14 @@
   <!-- Invisible when there is nothing to say. Raised, it is a mark you cannot miss rather than a
        tidy dot: the whole value of the thing is being noticed the one time it matters. -->
   <button v-if="doubt?.raised" class="doubt" :title="doubtTitle" @click="clearDoubt">
-    <span class="doubt-mark">●</span> untrusted content
+    <span class="doubt-mark">●</span> {{ t('untrusted content') }}
   </button>
-  <label>mode
+  <label>{{ t('mode') }}
     <select v-model="mode" :disabled="!session" @change="onModeChange">
-      <option v-for="m in modes" :key="m" :value="m">{{ m }}</option>
+      <option v-for="m in modes" :key="m" :value="m">{{ t(m) }}</option>
     </select>
   </label>
-  <label>model
+  <label>{{ t('model') }}
     <select v-model="modelId" :disabled="!session" @change="onModelChange">
       <optgroup v-for="g in groups" :key="g.connectionId" :label="connEmoji(g.connectionId) + g.connectionName">
         <option v-for="m in g.models" :key="m.id" :value="m.id">{{ modelLabel(m) }}</option>
@@ -28,11 +28,11 @@
       class="pi-btn"
       :class="alertClass"
       :disabled="!modelId"
-      title="Provider and model details"
+      :title="t('Provider and model details')"
       @click.stop="toggleInfo"
     >i</button>
   </label>
-  <label>temp
+  <label>{{ t('temp') }}
     <input
       class="temp"
       type="number"
@@ -41,7 +41,7 @@
       step="0.05"
       :value="temperature"
       :disabled="!session"
-      title="Sampling temperature for this chat. Applies to the next turn."
+      :title="t('Sampling temperature for this chat. Applies to the next turn.')"
       @change="onTempChange"
     />
   </label>
@@ -50,7 +50,7 @@
        middle one is the point — offered when the model was described as having a channel, DISABLED
        (not hidden) when nobody described the model at all, and gone only when a provider positively
        said this model does not reason. "We were not told" is information the person needs. -->
-  <label v-if="!reasoningCaps || !reasoningCaps.known || reasoningCaps.supported">think
+  <label v-if="!reasoningCaps || !reasoningCaps.known || reasoningCaps.supported">{{ t('think') }}
     <select
       v-model="reasoning"
       class="reasoning"
@@ -67,13 +67,13 @@
       min="1"
       step="256"
       :value="budgetTokens"
-      title="Thinking budget in tokens"
+      :title="t('Thinking budget in tokens')"
       @change="onBudgetChange"
     />
   </label>
-  <span v-if="activeSkill" id="activeSkill" :title="`Skill '${activeSkill}' is running in this chat`">
-    <span class="skill-label">skill: {{ activeSkill }}</span>
-    <button class="skill-unload" title="End this skill" @click="unloadSkill">✕</button>
+  <span v-if="activeSkill" id="activeSkill" :title="t('Skill {skill} is running in this chat', { skill: activeSkill })">
+    <span class="skill-label">{{ t('skill:') }} {{ activeSkill }}</span>
+    <button class="skill-unload" :title="t('End this skill')" @click="unloadSkill">✕</button>
   </span>
   <!-- Hand a skill to this chat yourself. Offered only when none is running, because a second
        activation is refused anyway — and hidden without a chat, since there is nothing to hand it to. -->
@@ -81,9 +81,9 @@
     v-else-if="session"
     ref="skillBtn"
     class="filter"
-    title="Give this chat a skill — costs no catalog in the prompt"
+    :title="t('Give this chat a skill — costs no catalog in the prompt')"
     @click.stop="skillPickerOpen = !skillPickerOpen"
-  >+ skill</button>
+  >{{ t('+ skill') }}</button>
   <span
     v-if="ctxUsed != null"
     id="ctxBudget"
@@ -96,13 +96,13 @@
 
   <span v-if="toolSets.length" id="toolSets">
     <button
-      v-for="t in toolSets"
-      :key="t.setId"
+      v-for="set in toolSets"
+      :key="set.setId"
       class="toolset"
-      :class="{ disclosed: t.disclosed, lowerable: t.by === 'agent' || t.by === 'user' }"
-      :title="toolSetTitle(t)"
-      @click="lowerToolSet(t)"
-    >{{ t.setId }}</button>
+      :class="{ disclosed: set.disclosed, lowerable: set.by === 'agent' || set.by === 'user' }"
+      :title="toolSetTitle(set)"
+      @click="lowerToolSet(set)"
+    >{{ set.setId }}</button>
   </span>
 
   <ProviderInfoPopup
@@ -119,6 +119,7 @@
 </template>
 
 <script setup lang="ts">
+import { t } from "../i18n";
 import { computed, onUnmounted, ref, watch } from "vue";
 import { client } from "../protocol/SplaClient";
 import { formatCompact } from "../util/format";
@@ -168,17 +169,17 @@ const reasoningKnown = computed(() => !!reasoningCaps.value?.known && !!reasonin
  *  "leave it alone" and, where it is on offer, "off". */
 const reasoningOptions = computed(() => {
   const caps = reasoningCaps.value;
-  const out = [{ value: "", label: caps && caps.known ? "default" : "—" }];
+  const out = [{ value: "", label: caps && caps.known ? t("default") : "—" }];
   if (!caps || !caps.known || !caps.supported) return out;
 
-  if (!caps.mandatory) out.push({ value: "off", label: "off" });
-  out.push({ value: "on", label: "on" });
+  if (!caps.mandatory) out.push({ value: "off", label: t("off") });
+  out.push({ value: "on", label: t("on") });
   for (const e of caps.efforts) out.push({ value: e, label: e });
   // The budget option carries the CURRENT budget as its value once one is set — otherwise the select
   // would find no option matching "budget:4096" and silently fall back to showing "default" while
   // the chat is in fact on a budget.
   if (caps.supportsTokenBudget)
-    out.push({ value: isBudgetValue(reasoning.value) ? reasoning.value : BUDGET, label: "budget…" });
+    out.push({ value: isBudgetValue(reasoning.value) ? reasoning.value : BUDGET, label: t("budget…") });
 
   // A saved choice this model has never heard of (the chat moved to another model) still has to be
   // visible — silently showing "default" would misreport what the next turn will send.
@@ -197,16 +198,17 @@ const budgetTokens = computed(() => {
 
 const reasoningTitle = computed(() => {
   const caps = reasoningCaps.value;
-  if (!caps) return "Asking the provider what this model takes…";
+  if (!caps) return t("Asking the provider what this model takes…");
   if (!caps.known)
-    return "This provider describes no reasoning options for the model, and a lever nobody advertised "
+    return t("This provider describes no reasoning options for the model, and a lever nobody advertised "
       + "is not safe to pull — an endpoint that accepts a field it does not implement can answer with "
-      + "garbage.\nDeclare reasoning_options on the model entry in .spla if you know what your server takes.";
-  if (!caps.supported) return "This model has no reasoning channel.";
+      + "garbage.\nDeclare reasoning_options on the model entry in .spla if you know what your server takes.");
+  if (!caps.supported) return t("This model has no reasoning channel.");
 
-  const parts = [`Options come from the provider: ${caps.efforts.length ? caps.efforts.join(", ") : "on/off only"}.`];
-  if (caps.mandatory) parts.push("This model always reasons — it cannot be switched off.");
-  if (caps.defaultEffort) parts.push(`Its own default is "${caps.defaultEffort}".`);
+  const parts = [t("Options come from the provider: {list}.",
+    { list: caps.efforts.length ? caps.efforts.join(", ") : t("on/off only") })];
+  if (caps.mandatory) parts.push(t("This model always reasons — it cannot be switched off."));
+  if (caps.defaultEffort) parts.push(t('Its own default is "{effort}".', { effort: caps.defaultEffort }));
   return parts.join("\n");
 });
 
@@ -263,24 +265,24 @@ function unloadSkill() {
  * never told it must — remembering to hand tools back is exactly the bookkeeping decision tool sets
  * exist to remove. So the reliable control lives here.
  */
-function lowerToolSet(t: ToolSetState) {
+function lowerToolSet(set: ToolSetState) {
   // An always-on set is a project setting, and a set a skill is running on belongs to that run —
   // neither is this control's to touch.
-  if (t.by !== "agent" && t.by !== "user") return;
-  chat.send("chat.toolset.deactivate", { setId: t.setId });
+  if (set.by !== "agent" && set.by !== "user") return;
+  chat.send("chat.toolset.deactivate", { setId: set.setId });
 }
 
 /** Why this set is in the line, and what it costs — the whole point of showing it. */
-function toolSetTitle(t: ToolSetState): string {
-  if (!t.disclosed) return `${t.setId} — announced only; the agent can load it when needed`;
+function toolSetTitle(set: ToolSetState): string {
+  if (!set.disclosed) return t("{set} — announced only; the agent can load it when needed", { set: set.setId });
 
-  const who = t.by === "skill" ? "loaded by the active skill"
-    : t.by === "agent" ? "loaded by the agent"
-    : t.by === "user" ? "loaded by you"
-    : "always on for this project";
-  const canLower = t.by === "agent" || t.by === "user";
-  return `${t.setId} — ${who}${t.reason ? ` (${t.reason})` : ""}`
-    + (canLower ? ". Click to unload." : "");
+  const who = set.by === "skill" ? t("loaded by the active skill")
+    : set.by === "agent" ? t("loaded by the agent")
+    : set.by === "user" ? t("loaded by you")
+    : t("always on for this project");
+  const canLower = set.by === "agent" || set.by === "user";
+  return t("{set} — {who}", { set: set.setId, who }) + (set.reason ? ` (${set.reason})` : "")
+    + (canLower ? t(". Click to unload.") : "");
 }
 
 const ctxPercent = computed(() => {
@@ -305,13 +307,14 @@ const ctxLabel = computed(() => {
 const ctxTitle = computed(() => {
   if (ctxUsed.value == null) return "";
   const parts: string[] = [];
-  if (lastPrompt.value != null) parts.push(`in: ${lastPrompt.value.toLocaleString()}`);
-  if (lastCompletion.value != null) parts.push(`out: ${lastCompletion.value.toLocaleString()}`);
-  let title = parts.length ? `last request — ${parts.join(", ")}` : "";
+  if (lastPrompt.value != null) parts.push(t("in: {n}", { n: lastPrompt.value.toLocaleString() }));
+  if (lastCompletion.value != null) parts.push(t("out: {n}", { n: lastCompletion.value.toLocaleString() }));
+  let title = parts.length ? t("last request — {parts}", { parts: parts.join(", ") }) : "";
   if (ctxWindow.value) {
-    title += (title ? "\n" : "") + `context: ${ctxUsed.value.toLocaleString()} of ${ctxWindow.value.toLocaleString()} tokens`;
-    if ((ctxPercent.value ?? 0) >= 95) title += " — almost full: start a new chat or the next request may fail";
-    else if ((ctxPercent.value ?? 0) >= 80) title += " — getting full: consider a new chat soon";
+    title += (title ? "\n" : "") + t("context: {used} of {window} tokens",
+      { used: ctxUsed.value.toLocaleString(), window: ctxWindow.value.toLocaleString() });
+    if ((ctxPercent.value ?? 0) >= 95) title += t(" — almost full: start a new chat or the next request may fail");
+    else if ((ctxPercent.value ?? 0) >= 80) title += t(" — getting full: consider a new chat soon");
   }
   return title;
 });
@@ -351,7 +354,7 @@ const healthClass = computed(() => {
 const healthTitle = computed(() => {
   const h = connHealth.value[currentConnectionId.value];
   if (!h || h.ok == null) return "";
-  return h.ok ? "Reachable" : (h.error || "Unreachable");
+  return h.ok ? t("Reachable") : (h.error || t("Unreachable"));
 });
 
 // ── Provider info ("i") ──────────────────────────────────────────────────────
@@ -383,10 +386,10 @@ const doubtTitle = computed(() => {
   if (!causes.length) return "";
   const lines = causes.map(c => `· ${c.what}  (${c.zone})`);
   return [
-    "Took in content from a source nobody named:",
+    t("Took in content from a source nobody named:"),
     ...lines,
     "",
-    "Clear it once you have looked."
+    t("Clear it once you have looked.")
   ].join("\n");
 });
 

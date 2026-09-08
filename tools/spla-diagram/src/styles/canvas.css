@@ -165,9 +165,15 @@
   transition: stroke 0.15s ease, stroke-width 0.15s ease;
 }
 
-.spla-edge:hover .spla-edge-line {
-  stroke: var(--accent, #2563eb);
-  stroke-width: 2.5px;
+.spla-edge-glow {
+  opacity: 0;
+  filter: blur(2.5px);
+  pointer-events: none;
+  transition: opacity 0.15s ease;
+}
+
+.spla-edge:hover .spla-edge-glow {
+  opacity: 0.4;
 }
 
 .spla-edge-label {
@@ -177,10 +183,8 @@
   pointer-events: none;
 }
 
-.spla-edge.is-selected .spla-edge-line {
-  stroke: #3b82f6;
-  stroke-width: 3px;
-  filter: drop-shadow(0 0 4px #60a5fa);
+.spla-edge.is-selected .spla-edge-glow {
+  opacity: 0.6;
 }
 
 .spla-edge.is-selected .spla-edge-label {

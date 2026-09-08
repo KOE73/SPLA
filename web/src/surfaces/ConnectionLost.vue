@@ -13,19 +13,20 @@
 <template>
   <div v-if="store.connectionLost" class="lost-banner" role="status">
     <div class="lost-text">
-      <b>The agent stopped answering.</b>
+      <b>{{ t('The agent stopped answering.') }}</b>
       <span>{{ detail }}</span>
     </div>
     <div class="lost-actions">
-      <button class="lost-btn" :disabled="busy" @click="retry">Try again</button>
+      <button class="lost-btn" :disabled="busy" @click="retry">{{ t('Try again') }}</button>
       <button v-if="embedded" class="lost-btn primary" :disabled="busy" @click="restart">
-        Restart the agent
+        {{ t('Restart the agent') }}
       </button>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
+import { t } from "../i18n";
 import { computed, ref } from "vue";
 import { client } from "../protocol/SplaClient";
 import { store } from "../state/store";
@@ -39,8 +40,8 @@ const busy = ref(false);
 
 const detail = computed(() =>
   embedded
-    ? "It may have been closed from the tray, or it may have crashed. This window is still here."
-    : "It may have been closed or restarted. This window will keep trying on its own.");
+    ? t("It may have been closed from the tray, or it may have crashed. This window is still here.")
+    : t("It may have been closed or restarted. This window will keep trying on its own."));
 
 function retry() {
   busy.value = true;

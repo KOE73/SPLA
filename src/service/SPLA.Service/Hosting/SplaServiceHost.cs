@@ -313,10 +313,22 @@ public sealed class SplaServiceHost
         }
 
         // The browser client — served from embedded static assets. Any client drives the same agent /ws.
+        //
+        // Caching is stated explicitly, and the two halves get OPPOSITE answers, because sending
+        // nothing at all is what made a rebuilt client invisible until the whole solution was rebuilt:
+        // with no validator and no freshness the browser is free to apply heuristic caching, and
+        // WebView2 did — a reload kept replaying the index.html it already had, which names the OLD
+        // hashed bundle, so no amount of reloading could reach the new one.
+        //
+        //   /assets/<name>-<hash>.js|css  — the name changes whenever the content does, so it can be
+        //                                   cached forever; that is the whole point of the hash.
+        //   everything else (index.html)  — the entry point that NAMES those hashes. It must never be
+        //                                   served from cache, or the hashes it hands out are stale.
         static IResult ServeAsset(string path)
         {
             var asset = WebAssets.Get(path);
-            return asset is { } a ? Results.Bytes(a.Bytes, a.ContentType) : Results.NotFound();
+            if (asset is not { } a) return Results.NotFound();
+            return Results.Bytes(a.Bytes, a.ContentType);
         }
 
         // Persisted chat image attachments (sidecar files). Served read-only with a path-traversal
@@ -336,12 +348,16 @@ public sealed class SplaServiceHost
         // files; it only resolves pluginId → directory and streams whatever is there. Plugins are
         // process-wide (loaded once, not per-project), so this always resolves against the default
         // project's PluginManager regardless of ?project=.
-        app.MapGet("/plugin-assets/{pluginId}/{**path}", (string pluginId, string path) =>
+        app.MapGet("/plugin-assets/{pluginId}/{**path}", (HttpContext ctx, string pluginId, string path) =>
         {
             var dir = defaultEntry.Runtime.PluginManager.GetPluginDirectory(pluginId);
             if (dir == null) return Results.NotFound();
             var asset = WebAssets.GetFromDirectory(dir, path);
-            return asset is { } a ? Results.Bytes(a.Bytes, a.ContentType) : Results.NotFound();
+            if (asset is not { } a) return Results.NotFound();
+            // A plugin's settings module has no content hash in its name (settings.js, always), so
+            // caching it means a rebuilt plugin panel stays invisible — the same trap as index.html.
+            ctx.Response.Headers.CacheControl = "no-store";
+            return Results.Bytes(a.Bytes, a.ContentType);
         });
 
         // Observability plane: the batteries-included local stats collector taps the existing meter and
@@ -369,8 +385,18 @@ public sealed class SplaServiceHost
             StatsEndpoints.Map(app, statsHub, authEnabled: options.AuthEnabled);
         }
 
-        app.MapGet("/", () => ServeAsset("/index.html"));
-        app.MapGet("/{**path}", (string path) => ServeAsset("/" + path));
+        // The cache policy above is applied here, where the response object exists.
+        static void SetAssetCaching(HttpContext ctx, string path) =>
+            ctx.Response.Headers.CacheControl = path.StartsWith("/assets/", StringComparison.Ordinal)
+                ? "public, max-age=31536000, immutable"
+                : "no-store";
+
+        app.MapGet("/", (HttpContext ctx) => { SetAssetCaching(ctx, "/index.html"); return ServeAsset("/index.html"); });
+        app.MapGet("/{**path}", (HttpContext ctx, string path) =>
+        {
+            SetAssetCaching(ctx, "/" + path);
+            return ServeAsset("/" + path);
+        });
 
         app.Map("/ws", (HttpContext context) =>
             HandleWebSocketAsync(context, registry, options, serverRoot, hub, auth, initialChat, loggerFactory));
@@ -546,7 +572,10 @@ public sealed class SplaServiceHost
                 {
                     case AppearanceChanged a:
                         _ = hub.BroadcastToProjectAsync(projectId, Contracts.MessageTypes.AppearanceChanged,
-                            new Contracts.AppearanceChangedPayload { Theme = a.Theme, Density = a.Density });
+                            new Contracts.AppearanceChangedPayload
+                            {
+                                Theme = a.Theme, Density = a.Density, AutoOpenSubagents = a.AutoOpenSubagents
+                            });
                         break;
 
                     // The whole list, not a delta: it is small, and a panel that reconciles deltas
@@ -617,7 +646,17 @@ public sealed class SplaServiceHost
                     ).RunTurnAsync(null, null, userKey: "pump", ct),
                     broadcastNotice: text => _ = hub.BroadcastToWatchersAsync(
                         chat.ChatId, Contracts.MessageTypes.Notice, new Contracts.NoticePayload { Text = text }),
-                    log: entry.Runtime.LoggerFactory.CreateLogger<ChatPump>());
+                    log: entry.Runtime.LoggerFactory.CreateLogger<ChatPump>(),
+                    // Wave 6 (ADR §2.4): the decay regulator's four numbers, resolved per-chat exactly
+                    // like every other role-narrowable setting — see ChatRuntime.PeerDebounceBase.
+                    peerDebounceBase: chat.PeerDebounceBase,
+                    peerDebounceMax: chat.PeerDebounceMax,
+                    peerDepthCeiling: chat.PeerDepthCeiling,
+                    peerHardCap: chat.PeerHardCap,
+                    // Unset (null) means disabled — see SplaAgentSection.SelfFeedingCap — passed here as
+                    // 0 rather than int.MaxValue so the ChatPump constructor is the one place that owns
+                    // the "non-positive means never trips" translation.
+                    selfFeedingCap: chat.SelfFeedingCap ?? 0);
 
                 void OnClosed(SPLA.Runtime.ChatRuntime closed)
                 {

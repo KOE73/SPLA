@@ -19,44 +19,53 @@
     <Grid RowDefinitions="30,*">
 
         <!-- ── Custom title bar (the only native chrome) ── -->
-        <DockPanel Grid.Row="0" Background="{DynamicResource TitleBarBackgroundBrush}">
-            <StackPanel DockPanel.Dock="Left" Orientation="Horizontal"
-                        VerticalAlignment="Center" Margin="12,0,0,0" IsHitTestVisible="False">
-                <TextBlock Text="SPLA" FontSize="12" FontWeight="SemiBold"
-                           Foreground="{DynamicResource SubTextForegroundBrush}" VerticalAlignment="Center"/>
-                <TextBlock Text="—" FontSize="12" Margin="8,0"
-                           Foreground="{DynamicResource SubTextForegroundBrush}" VerticalAlignment="Center"/>
-                <TextBlock x:Name="TitleText" FontSize="12"
-                           Foreground="{DynamicResource SubTextForegroundBrush}" VerticalAlignment="Center"/>
-            </StackPanel>
-
-            <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
-                <!-- New/Open/Recent project — each launches a separate window/process (one project
-                     per process, matches the embedded-service model; see MainWindow.axaml.cs). -->
-                <Button Classes="caption" Content="📂" Click="OpenProjectMenu_Click"
-                        ToolTip.Tip="New / Open / Recent project"/>
-                <!-- Settings: connections / agent / plugins in one tabbed window -->
-                <Button Classes="caption" Content="⚙" Click="OpenSettingsSurface_Click"
-                        ToolTip.Tip="Settings (connections / agent / plugins) — opens as a separate window"/>
-                <!-- Debug as a tear-off web surface window -->
-                <Button Classes="caption" Content="🧠" Click="OpenDebugSurface_Click"
-                        ToolTip.Tip="Debug (memory / context / prompt) — opens as a separate window"/>
-                <!-- Wire: live protocol monitor -->
-                <Button Classes="caption" Content="🔌" Click="OpenWireSurface_Click"
-                        ToolTip.Tip="Wire (live protocol monitor) — opens as a separate window"/>
-                <!-- Open the same web client location in the user's default browser -->
-                <Button Classes="caption" Content="🌐" Click="OpenInBrowser_Click"
-                        ToolTip.Tip="Open current location in browser"/>
-                <!-- Reload the web client -->
-                <Button Classes="caption" Content="⟳" Click="Reload_Click" ToolTip.Tip="Reload web client"/>
-                <Button Classes="caption" Content="─" Click="MinimizeButton_Click" ToolTip.Tip="Minimize"/>
-                <Button Classes="caption" Content="□" Click="MaximizeButton_Click"
-                        x:Name="MaximizeButton" ToolTip.Tip="Maximize"/>
-                <Button Classes="caption close" Content="✕" Click="CloseButton_Click" ToolTip.Tip="Close"/>
-            </StackPanel>
-
+        <Grid Grid.Row="0" Background="{DynamicResource TitleBarBackgroundBrush}">
+            <!-- Drag surface spans the whole bar; buttons/title sit above it in z-order and
+                 win hit-testing where they overlap, so dragging works everywhere else,
+                 including under the title text (which has IsHitTestVisible=False). -->
             <Border Background="Transparent" PointerPressed="TitleBar_PointerPressed"/>
-        </DockPanel>
+
+            <DockPanel LastChildFill="False">
+                <!-- Buttons are docked first so they always keep their space when the window
+                     narrows; the title (docked after) is what shrinks/clips instead. -->
+                <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
+                    <!-- New/Open/Recent project — each launches a separate window/process (one project
+                         per process, matches the embedded-service model; see MainWindow.axaml.cs). -->
+                    <Button Classes="caption" Content="📂" Click="OpenProjectMenu_Click"
+                            ToolTip.Tip="New / Open / Recent project"/>
+                    <!-- Settings: connections / agent / plugins, full screen inside this window -->
+                    <Button Classes="caption" Content="⚙" Click="OpenSettingsSurface_Click"
+                            ToolTip.Tip="Settings (connections / agent / plugins)"/>
+                    <!-- Debug as a tear-off web surface window -->
+                    <Button Classes="caption" Content="🧠" Click="OpenDebugSurface_Click"
+                            ToolTip.Tip="Debug (memory / context / prompt) — opens as a separate window"/>
+                    <!-- Wire: live protocol monitor -->
+                    <Button Classes="caption" Content="🔌" Click="OpenWireSurface_Click"
+                            ToolTip.Tip="Wire (live protocol monitor) — opens as a separate window"/>
+                    <!-- Open the same web client location in the user's default browser -->
+                    <Button Classes="caption" Content="🌐" Click="OpenInBrowser_Click"
+                            ToolTip.Tip="Open current location in browser"/>
+                    <!-- Reload the web client -->
+                    <Button Classes="caption" Content="⟳" Click="Reload_Click" ToolTip.Tip="Reload web client"/>
+                    <Button Classes="caption" Content="🛠" Click="DevTools_Click" ToolTip.Tip="Open devtools for this window (F12)"/>
+                    <Button Classes="caption" Content="─" Click="MinimizeButton_Click" ToolTip.Tip="Minimize"/>
+                    <Button Classes="caption" Content="□" Click="MaximizeButton_Click"
+                            x:Name="MaximizeButton" ToolTip.Tip="Maximize"/>
+                    <Button Classes="caption close" Content="✕" Click="CloseButton_Click" ToolTip.Tip="Close"/>
+                </StackPanel>
+
+                <StackPanel DockPanel.Dock="Left" Orientation="Horizontal"
+                            VerticalAlignment="Center" Margin="12,0,0,0" ClipToBounds="True"
+                            IsHitTestVisible="False">
+                    <TextBlock Text="SPLA" FontSize="12" FontWeight="SemiBold"
+                               Foreground="{DynamicResource SubTextForegroundBrush}" VerticalAlignment="Center"/>
+                    <TextBlock Text="—" FontSize="12" Margin="8,0"
+                               Foreground="{DynamicResource SubTextForegroundBrush}" VerticalAlignment="Center"/>
+                    <TextBlock x:Name="TitleText" FontSize="12" TextTrimming="CharacterEllipsis"
+                               Foreground="{DynamicResource SubTextForegroundBrush}" VerticalAlignment="Center"/>
+                </StackPanel>
+            </DockPanel>
+        </Grid>
 
         <!-- ── The whole UI: web client ── -->
         <web:NativeWebView x:Name="Browser" Grid.Row="1"/>

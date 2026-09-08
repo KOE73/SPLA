@@ -4,6 +4,7 @@
 // "appearance.changed" (broadcast to every window whenever ANY window changes it — including a
 // native Avalonia shell bridged in via window.chrome.webview).
 import { reinitMermaidTheme } from "../composables/useMarkdown";
+import { setLocale } from "../i18n";
 import { client } from "../protocol/SplaClient";
 
 declare global {
@@ -53,10 +54,27 @@ function applyAndForward(theme?: string, density?: string) {
   try { window.chrome?.webview?.postMessage({ kind: "appearance", theme, density }); } catch { /* not embedded */ }
 }
 
+/**
+ * Persists the interface language and applies it here at once.
+ *
+ * It goes to the machine layer (~/.spla/defaults.yaml) rather than to the project, and rather than to
+ * the browser: the client is served from an ephemeral loopback port, so every launch is a new origin
+ * with an empty localStorage — which is why the language used to be English again each morning. There
+ * is no broadcast back, unlike appearance: on a shared server one person's language must not land on
+ * anybody else's screen. Other windows of this person pick it up from their own welcome.
+ */
+export function saveLanguage(id: string) {
+  setLocale(id);
+  client.send("language.save", { language: id });
+}
+
 export function bootAppearance() {
   applyTheme(localStorage.getItem("spla.theme") || "dark");
   applyDensity(localStorage.getItem("spla.density") || "norm");
 
+  // The server's copy is the authoritative one — see saveLanguage. setLocale (not saveLanguage) so
+  // learning the value does not immediately write it back.
+  client.on("welcome", p => { if (p.language) setLocale(p.language); });
   client.on("welcome", p => applyAndForward(p.theme, p.density));
   client.on("appearance.changed", p => applyAndForward(p.theme, p.density));
 }

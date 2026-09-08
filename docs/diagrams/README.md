@@ -112,6 +112,29 @@ needed, that is **two views on two axes**, not two layers in one.
 
 ---
 
+## 🧩 Shapes, content templates and routing modes
+
+A block's look is split into three independent axes
+([`ADR_20260903`](../adr/ADR_20260903_diagrams_content-templates-and-edge-routing.md)):
+the outline (`shape` — rectangle, ellipse, diamond, cylinder, hexagon, actor),
+the style (colour, border — `styles.json`, as before), and **what is drawn
+inside the outline** (`template`). A template is text in a small language
+(`@Name`, `@Description`, `@Members(...)`, `@Asset(...)`), stored line-by-line
+in [`templates.json`](templates.json) next to `styles.json` — never a
+compiled tree, never a fixed "compact / detail" profile. Classes and database
+tables are its first real clients: the same template engine draws both, just
+filtered differently. Pictures for `@Asset` live in a small named registry,
+[`content/index.json`](content/index.json), sanitized before insertion.
+
+An edge's line shape (`routing`: `bezier` | `orthogonal` | `tree-horizontal` |
+`tree-vertical`) is chosen, never computed and stored — only the *choice*
+lives in a file, cascading edge → view → relation-type style → default. The
+router is a pure function of ports and obstacles.
+
+Full contract: [`CONTRACT.md` §11](../../tools/spla-diagram/docs/CONTRACT.md).
+
+---
+
 ## ⚙️ How the model is kept current
 
 Today — **by hand**, and that is worth knowing up front.

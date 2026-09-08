@@ -3,12 +3,12 @@
     <!-- Header with column labels -->
     <div class="browser-header">
       <span class="col-label">{{ rootLabel }}</span>
-      <span class="col-size">Size</span>
-      <span class="col-date">Modified</span>
+      <span class="col-size">{{ t('Size') }}</span>
+      <span class="col-date">{{ t('Modified') }}</span>
     </div>
 
     <div class="browser-tree">
-      <div v-if="busy && rootNodes.length === 0" class="browser-loading">Loading…</div>
+      <div v-if="busy && rootNodes.length === 0" class="browser-loading">{{ t('Loading…') }}</div>
       <BrowserNode
         v-for="node in rootNodes"
         :key="node.ref"
@@ -25,6 +25,7 @@
 </template>
 
 <script setup lang="ts">
+import { t } from "../../i18n";
 import BrowserNode from "./BrowserNode.vue";
 import type { FsNode } from "../../protocol/types";
 

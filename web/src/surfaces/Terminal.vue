@@ -12,8 +12,8 @@
       <span class="dot" :class="statusClass"></span>
       <span class="term-title">{{ title }}</span>
       <span class="term-hint">{{ hint }}</span>
-      <button v-if="liveSessionId" class="kill-btn" title="End this session for everyone (not just this view)" @click="killSession">
-        End session
+      <button v-if="liveSessionId" class="kill-btn" :title="t('End this session for everyone (not just this view)')" @click="killSession">
+        {{ t('End session') }}
       </button>
     </div>
     <div ref="host" class="term-host"></div>
@@ -21,6 +21,7 @@
 </template>
 
 <script setup lang="ts">
+import { t } from "../i18n";
 import { onBeforeUnmount, onMounted, ref } from "vue";
 import { Terminal } from "@xterm/xterm";
 import { FitAddon } from "@xterm/addon-fit";

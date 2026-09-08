@@ -19,4 +19,12 @@ public interface ICapabilityGate
     bool CanExecute();
 
     bool CanNetwork();
+
+    /// <summary>
+    /// Whether this chat may reply into another role's chat at all. Consulted by the source side of a
+    /// correspondence edge (<c>ChatRuntime.SendReply</c>, PLAN_20260902 wave 4) — a role-to-role reply
+    /// is a call like any other and goes through the same gate rather than a separate permission
+    /// subsystem (<c>docs/adr/ADR_20260827-2_core_roles.md</c> §2.4: "гранты те же").
+    /// </summary>
+    bool CanCorrespond();
 }

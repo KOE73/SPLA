@@ -1,10 +1,10 @@
 <template>
   <div class="s-panel" data-tab="features">
-    <div class="s-head"><b>Built-in tools</b><span class="hint">{{ hint }}</span></div>
-    <div class="s-sub">Core tool groups the agent can call directly (not plugins, not skills). Toggling one adds or removes its tools from the agent — and the matching piece of its system prompt.</div>
+    <div class="s-head"><b>{{ t('Built-in tools') }}</b><span class="hint">{{ t(hint) }}</span></div>
+    <div class="s-sub">{{ t('Core tool groups the agent can call directly (not plugins, not skills). Toggling one adds or removes its tools from the agent — and the matching piece of its system prompt.') }}</div>
 
     <div class="ft-list">
-      <div v-if="!features.length" class="notice">no capabilities reported</div>
+      <div v-if="!features.length" class="notice">{{ t('no capabilities reported') }}</div>
 
       <CapabilityRow
         v-for="feature in features" :key="feature.id"
@@ -16,6 +16,7 @@
 </template>
 
 <script setup lang="ts">
+import { t } from "../../i18n";
 import { onUnmounted, ref } from "vue";
 import { client } from "../../protocol/SplaClient";
 import type { CapabilityDto } from "../../protocol/types";
@@ -53,8 +54,8 @@ function onToggle(feature: CapabilityDto, enabled: boolean) {
 const off = client.on("features.result", p => {
   features.value = p.features || [];
   const bits: string[] = [];
-  if (p.canPersist === false) bits.push("no .spla project — session-only");
-  if (p.restartToApply) bits.push("tools are registered once at startup — restart to apply");
+  if (p.canPersist === false) bits.push(t("no .spla project — session-only"));
+  if (p.restartToApply) bits.push(t("tools are registered once at startup — restart to apply"));
   hint.value = bits.join(" · ");
 });
 onUnmounted(off);

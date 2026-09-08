@@ -1,3 +1,4 @@
+using SPLA.Domain.Models;
 using SPLA.Domain.Settings;
 
 namespace SPLA.MCP.Core.Composition;
@@ -8,8 +9,21 @@ namespace SPLA.MCP.Core.Composition;
 /// itself through the ambient <c>AgentSessionScope</c>, exactly as the skill tools do — a contributor
 /// is a process-wide object, a chat is not, and passing chat state through here would only make that
 /// asymmetry look solved.
+/// <para>
+/// <paramref name="ModeOverride"/> is the one deliberate exception: a chat (or role) may run a mode
+/// narrower than the project default, and the mode preamble must say so. It is threaded explicitly
+/// rather than through the ambient session because it has to be correct for a caller with no chat at
+/// all (<c>AgentRuntime.ComposeContext()</c>, the CLI's own composition) just as much as for one —
+/// null there simply means "the project's own default", which is what <see cref="Mode"/> falls back
+/// to.
+/// </para>
 /// </summary>
-public sealed record AgentContributionContext(ResolvedSettings Settings, string WorkingDirectory);
+public sealed record AgentContributionContext(ResolvedSettings Settings, string WorkingDirectory, AgentMode? ModeOverride = null)
+{
+    /// <summary>The mode this composition actually runs under — the caller's override when it gave
+    /// one, otherwise the project's own default.</summary>
+    public AgentMode Mode => ModeOverride ?? Settings.Mode;
+}
 
 /// <summary>
 /// One source of the agent's assembled surface. The mode preamble, the built-in capabilities, the

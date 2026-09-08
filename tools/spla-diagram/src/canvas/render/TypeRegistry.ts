@@ -11,6 +11,7 @@ import type { ElementRenderer } from "./ElementRenderer.js";
 export class TypeRegistry {
   private readonly byType = new Map<string, ElementRenderer>();
   private readonly byKind = new Map<string, ElementRenderer>();
+  private readonly byShape = new Map<string, ElementRenderer>();
 
   /** Register a renderer for one specific `type` value. */
   register(type: string, renderer: ElementRenderer): this {
@@ -27,9 +28,32 @@ export class TypeRegistry {
     return this;
   }
 
-  resolve(el: DiagramElement): ElementRenderer {
+  /**
+   * Register the renderer that draws one outline (`ellipse`, `actor`, …).
+   *
+   * Shape is a property of the *style*, not of the element's type: a use case
+   * is an ellipse because of what it is, and one line in `styles.json` then
+   * keeps every use case consistent. So resolution consults the shape the
+   * style resolved to before it falls back to the type.
+   */
+  registerShape(shape: string, renderer: ElementRenderer): this {
+    this.byShape.set(shape, renderer);
+    return this;
+  }
+
+  /**
+   * @param shape Outline named by the element's resolved style, if any.
+   *   A renderer registered for the element's exact `type` still wins: that is
+   *   the escape hatch for a type whose drawing is special beyond its outline.
+   */
+  resolve(el: DiagramElement, shape?: string): ElementRenderer {
     const exact = this.byType.get(el.type);
     if (exact !== undefined) return exact;
+
+    if (shape !== undefined) {
+      const shaped = this.byShape.get(shape);
+      if (shaped !== undefined) return shaped;
+    }
 
     const fallback = this.byKind.get(el.kind);
     if (fallback !== undefined) return fallback;

@@ -6,14 +6,15 @@ import Terminal from "../surfaces/Terminal.vue";
 import Debug from "../surfaces/Debug.vue";
 import Wire from "../surfaces/Wire.vue";
 import BrowserScreencast from "../surfaces/BrowserScreencast.vue";
+import SessionsPanel from "../surfaces/SessionsPanel.vue";
 import DockTab from "./DockTab.vue";
 
 // Navigation is NOT a dock panel — it's the fixed left column (see AppShell). Only chat and the tool
 // surfaces live inside dockview, on the right.
-export type PanelKind = "chat" | "workspace" | "ssh" | "browserScreencast" | "debug" | "wire";
+export type PanelKind = "chat" | "workspace" | "ssh" | "browserScreencast" | "debug" | "wire" | "sessions";
 
 // Which panels are tools (everything the top strip can open/hide). Chat is the always-present base.
-export const toolKinds: PanelKind[] = ["workspace", "ssh", "browserScreencast", "debug", "wire"];
+export const toolKinds: PanelKind[] = ["workspace", "ssh", "browserScreencast", "debug", "wire", "sessions"];
 
 export interface PanelDefinition {
   id: string;
@@ -41,6 +42,7 @@ export const panelCatalog: Record<PanelKind, PanelDefinition> = {
   browserScreencast: { id: "browserScreencast", kind: "browserScreencast", title: "Browser Lab", icon: "🌐", component: dockComponent(BrowserScreencast), singleton: true, protected: false, defaultWidth: 640 },
   debug: { id: "debug", kind: "debug", title: "Debug", icon: "🧠", component: dockComponent(Debug), singleton: true, protected: false, defaultWidth: 420 },
   wire: { id: "wire", kind: "wire", title: "Wire", icon: "🔌", component: dockComponent(Wire), singleton: true, protected: false, defaultWidth: 420 },
+  sessions: { id: "sessions", kind: "sessions", title: "Sessions", icon: "🗂", component: dockComponent(SessionsPanel), singleton: true, protected: false, defaultWidth: 320 },
 };
 
 export const dockComponents = Object.fromEntries(

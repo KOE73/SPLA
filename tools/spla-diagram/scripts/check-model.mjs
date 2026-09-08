@@ -27,7 +27,12 @@ import { join } from "node:path";
 
 const ROOT = process.argv[2] ?? "docs/diagrams/projects";
 const REPO = process.argv[3] ?? ".";
-const TEXT_FIELDS = ["name", "title", "description", "doc"];
+// Kept in step with `TEXT_FIELDS` in src/model/text-provenance.ts by hand:
+// this script runs standalone, before any build step, so it cannot import
+// the TS module directly. `fromLabel`/`toLabel` are the end-label captions on
+// a relation (ADR_20260903 §2.6) — same shape, same provenance mechanism as
+// every other field here, so the checks below apply to them without change.
+const TEXT_FIELDS = ["name", "title", "description", "doc", "fromLabel", "toLabel"];
 
 const read = (p) => JSON.parse(readFileSync(p, "utf8"));
 

@@ -28,6 +28,14 @@ public class SplaProject
     [YamlMember(Alias = "agent")]
     public SplaAgentSection? Agent { get; set; }
 
+    /// <summary>Roles this project has, named. Each name pairs with a body in
+    /// <c>roles/&lt;name&gt;.yaml</c> next to this manifest — see <see cref="SplaRoleSection"/>. A
+    /// file present in <c>roles/</c> that is not listed here does not act: naming is what makes a role
+    /// active, the same "nothing acts that nobody named" rule as "no walking up the tree". <c>agent:</c>
+    /// above is the default role ("role zero") and needs no entry here.</summary>
+    [YamlMember(Alias = "roles")]
+    public List<string>? Roles { get; set; }
+
     [YamlMember(Alias = "llm")]
     public SplaLlmSection? Llm { get; set; }
 

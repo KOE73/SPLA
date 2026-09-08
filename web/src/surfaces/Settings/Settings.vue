@@ -6,14 +6,14 @@
   <div class="settings-surface">
     <div class="settings-shell">
       <nav class="settings-nav">
-        <template v-for="t in TABS" :key="t.id">
-          <div v-if="groupStarts.has(t.id)" class="nav-section">{{ t.group }}</div>
-          <div class="nav-item" :class="{ on: tab === t.id }" @click="tab = t.id">
-            <span class="nav-ic">{{ t.icon }}</span>{{ t.label }}
+        <template v-for="nav in TABS" :key="nav.id">
+          <div v-if="groupStarts.has(nav.id)" class="nav-section">{{ t(nav.group) }}</div>
+          <div class="nav-item" :class="{ on: tab === nav.id }" @click="tab = nav.id">
+            <span class="nav-ic">{{ nav.icon }}</span>{{ t(nav.label) }}
           </div>
           <!-- Second-level tabs: one per ENABLED plugin that ships its own settings UI. Driven live
                by plugins.result, so toggling a plugin in the Plugins list adds/removes its tab. -->
-          <template v-if="t.id === 'plugins'">
+          <template v-if="nav.id === 'plugins'">
             <div v-for="pl in pluginTabs" :key="pl.id" class="nav-item sub"
                  :class="{ on: tab === plTab(pl.id) }" @click="tab = plTab(pl.id)">
               <span class="nav-ic">└</span>{{ pl.name || pl.id }}
@@ -24,6 +24,7 @@
       <div class="settings-main">
         <ConnectionsPanel :class="{ on: tab === 'connections' }" ref="connectionsRef" />
         <AgentPanel :class="{ on: tab === 'agent' }" ref="agentRef" />
+        <RolesPanel :class="{ on: tab === 'roles' }" ref="rolesRef" />
         <McpPanel :class="{ on: tab === 'mcp' }" ref="mcpRef" />
         <FeaturesPanel :class="{ on: tab === 'features' }" ref="featuresRef" />
         <PluginsPanel :class="{ on: tab === 'plugins' }" ref="pluginsRef" />
@@ -35,7 +36,7 @@
                            :class="{ on: tab === plTab(pl.id) }" :ref="(el) => setPlRef(pl.id, el)" />
         <div class="settings-bar">
           <span class="grow"></span>
-          <button v-if="saveable" class="btn save" :disabled="saving" @click="onSave">{{ saveLabel }}</button>
+          <button v-if="saveable" class="btn save" :disabled="saving" @click="onSave">{{ t(saveLabel) }}</button>
         </div>
       </div>
     </div>
@@ -43,11 +44,13 @@
 </template>
 
 <script setup lang="ts">
+import { t } from "../../i18n";
 import { computed, onUnmounted, ref, watch } from "vue";
 import { client } from "../../protocol/SplaClient";
 import type { PluginDto } from "../../protocol/types";
 import ConnectionsPanel from "./ConnectionsPanel.vue";
 import AgentPanel from "./AgentPanel.vue";
+import RolesPanel from "./RolesPanel.vue";
 import McpPanel from "./McpPanel.vue";
 import PluginsPanel from "./PluginsPanel.vue";
 import FeaturesPanel from "./FeaturesPanel.vue";
@@ -66,6 +69,7 @@ import UsagePanel from "./UsagePanel.vue";
 const TABS = [
   { id: "connections", label: "Connections", icon: "⇄", group: "General" },
   { id: "agent", label: "Agent", icon: "◎", group: "General" },
+  { id: "roles", label: "Roles", icon: "☰", group: "General" },
   { id: "mcp", label: "MCP", icon: "⇌", group: "General" },
   { id: "appearance", label: "Appearance", icon: "◈", group: "General" },
   { id: "features", label: "Built-in tools", icon: "⚙", group: "Capabilities" },
@@ -77,7 +81,7 @@ const TABS = [
 
 /** First tab of each group, so the nav renders one header per group without a nested data shape. */
 const groupStarts = new Set(
-  TABS.filter((t, i) => i === 0 || TABS[i - 1].group !== t.group).map(t => t.id));
+  TABS.filter((nav, i) => i === 0 || TABS[i - 1].group !== nav.group).map(nav => nav.id));
 
 // Tab id is either a fixed TABS id or "plugin:<id>" for a plugin's second-level tab.
 const tab = ref<string>(new URLSearchParams(location.search).get("tab") || "connections");
@@ -99,6 +103,7 @@ watch(pluginTabs, tabs => {
 
 const connectionsRef = ref<InstanceType<typeof ConnectionsPanel>>();
 const agentRef = ref<InstanceType<typeof AgentPanel>>();
+const rolesRef = ref<InstanceType<typeof RolesPanel>>();
 const mcpRef = ref<InstanceType<typeof McpPanel>>();
 const pluginsRef = ref<InstanceType<typeof PluginsPanel>>();
 const featuresRef = ref<InstanceType<typeof FeaturesPanel>>();
@@ -125,7 +130,8 @@ const saveable = computed(() =>
 
 async function onSave() {
   const panels: Record<string, { save: () => Promise<void> } | undefined> = {
-    connections: connectionsRef.value, agent: agentRef.value, mcp: mcpRef.value, plugins: pluginsRef.value,
+    connections: connectionsRef.value, agent: agentRef.value, roles: rolesRef.value,
+    mcp: mcpRef.value, plugins: pluginsRef.value,
     features: featuresRef.value, skills: skillsRef.value
   };
   const panel = tab.value.startsWith("plugin:")
@@ -148,6 +154,7 @@ async function onSave() {
 function fetchAll() {
   client.send("connections.get", undefined);
   client.send("agent.get", undefined);
+  client.send("roles.get", undefined);
   client.send("mcp.get", undefined);
   client.send("mcp.servers.get", undefined);
   client.send("plugins.get", undefined);

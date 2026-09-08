@@ -1,4 +1,4 @@
-using SPLA.MCP.Core.ToolSets;
+﻿using SPLA.MCP.Core.ToolSets;
 using SPLA.Runtime;
 using SPLA.Domain.Models;
 using SPLA.Domain.Resources;
@@ -37,12 +37,14 @@ public static class SettingsOps
             ApiKeyIsLiteral = IsLiteral(c.ApiKey),
             AdminKeyIsLiteral = IsLiteral(c.AdminKey),
             SwapModel = c.SwapModel,
+            Scope = ConnectionScopes.Name(c.Scope),
             Models = c.Models.Select(m => new ModelEditDto
             {
                 Id = m.Id,
                 Name = m.Name,
                 Model = m.Model,
-                ContextLength = m.ContextLength
+                ContextLength = m.ContextLength,
+                Temperature = m.Temperature
             }).ToList()
         }).ToList()
     };
@@ -80,14 +82,25 @@ public static class SettingsOps
             return result;
         }
 
-        // Persist into the project file's connections: section, leaving everything else untouched.
+        // Persist each layer to its own file. Every scope is rewritten, including the ones with no
+        // entries left: an id dragged from project to user has to disappear from the manifest, and
+        // that only happens if the manifest is written even when the answer is "none".
+        //
+        // The project layer needs a manifest to live in; user and shared do not, which is the point —
+        // a person's own connections are configured once and are there before any project is opened.
         var path = runtime.Settings.ProjectFilePath;
         if (path != null)
         {
             var project = ConfigLoader.LoadProjectRaw(path);
-            project.Connections = sections.Count > 0 ? sections : null;
+            var projectSections = ForScope(sections, ConnectionScope.Project);
+            project.Connections = projectSections.Count > 0 ? projectSections : null;
             ConfigLoader.SaveProjectSections(project, path, "connections");
         }
+
+        SaveLayer(ConfigLoader.UserConnectionsPath(runtime.Settings.PersonalDir),
+                  ForScope(sections, ConnectionScope.User));
+        SaveLayer(ConfigLoader.SharedConnectionsPath(),
+                  ForScope(sections, ConnectionScope.Shared));
 
         // Mutate the live settings in place so running chats resolve against the new list. The flat
         // model projection is rebuilt from the same objects — chats resolve through it, so leaving it
@@ -100,6 +113,201 @@ public static class SettingsOps
 
         return GetConnections(runtime);
     }
+
+    // ── Roles ─────────────────────────────────────────────────────────────────
+
+    /// <summary>
+    /// Every role this project has, for the editor: the bodies found in <c>roles/</c> unioned with
+    /// the names the manifest declares, plus the catalogs a role picks from.
+    ///
+    /// <para>The union is the point. A body nobody named is inert but real (it is sitting in the
+    /// directory, usually because a branch added it without touching the manifest); a name with no
+    /// body is declared but broken. Listing only one of the two halves would make one of those two
+    /// states invisible, and both are exactly what an owner opens this panel to see.</para>
+    /// </summary>
+    public static RolesPayload GetRoles(AgentRuntime runtime)
+    {
+        var s = runtime.Settings;
+        var dir = ProjectDir(s);
+        var declared = s.Manifest?.Roles?.Where(n => !string.IsNullOrWhiteSpace(n)).Select(n => n.Trim())
+            ?? Enumerable.Empty<string>();
+        var active = new HashSet<string>(declared, StringComparer.OrdinalIgnoreCase);
+
+        var names = new List<string>();
+        if (dir != null) names.AddRange(ConfigLoader.ListRoleFiles(dir));
+        names.AddRange(active);
+        names = names.Distinct(StringComparer.OrdinalIgnoreCase)
+            .OrderBy(n => n, StringComparer.OrdinalIgnoreCase)
+            .ToList();
+
+        var payload = new RolesPayload
+        {
+            CanPersist = s.ProjectFilePath != null,
+            Modes = Enum.GetNames<AgentMode>().ToList(),
+            ProjectMode = s.Mode.ToString(),
+            KnownCapabilities = GetFeatures(runtime).Features,
+            Models = s.Models
+                .Select(m => new ConnectionDto { Id = m.Entry.Id, Name = m.Entry.Name ?? m.Entry.Id })
+                .ToList(),
+            Connections = s.Connections
+                .Select(c => new ConnectionDto { Id = c.Id, Name = c.Name ?? c.Id })
+                .ToList(),
+            ToolSetIds = runtime.ToolSets.All.Select(d => d.Id).OrderBy(id => id, StringComparer.OrdinalIgnoreCase).ToList(),
+            ToolSetLevels = Enum.GetNames<SPLA.MCP.Core.ToolSets.ToolSetLevel>().Select(ToolSetWord).ToList()
+        };
+
+        foreach (var name in names)
+        {
+            // A body that will not load is reported as an empty role rather than dropped: the name is
+            // the half the owner needs to see to fix it, and hiding it would look like the role was
+            // never there.
+            SplaRoleSection? body = null;
+            if (dir != null) { try { body = ConfigLoader.LoadRole(dir, name); } catch { } }
+            payload.Roles.Add(ToRoleDto(name, active.Contains(name), body ?? new SplaRoleSection()));
+        }
+
+        return payload;
+    }
+
+    /// <summary>
+    /// Rewrites the whole role set: one file per role, and the manifest's <c>roles:</c> list rebuilt
+    /// from the ones marked active.
+    ///
+    /// <para>The incoming list is authoritative, the same way the connection list is: a role that was
+    /// there on the last read and is not in this save had its card deleted, so its file goes with it.
+    /// Nothing outside <c>roles/</c> is ever touched, and a body that was never read (no project, no
+    /// directory) cannot be deleted by a save that could not have seen it.</para>
+    /// </summary>
+    public static RolesPayload SaveRoles(AgentRuntime runtime, IReadOnlyList<RoleEditDto> incoming)
+    {
+        var s = runtime.Settings;
+        var path = s.ProjectFilePath;
+        var dir = ProjectDir(s);
+        if (path == null || dir == null)
+        {
+            var refused = GetRoles(runtime);
+            refused.Error = "No .spla project is open — a role has nowhere to live. Roles are files next to the manifest.";
+            return refused;
+        }
+
+        var roles = incoming
+            .Select(r => new { Dto = r, Name = (r.Name ?? "").Trim() })
+            .Where(x => x.Name.Length > 0)
+            .GroupBy(x => x.Name, StringComparer.OrdinalIgnoreCase)
+            .Select(g => g.Last())
+            .ToList();
+
+        // The name is a file stem and a word an agent types into agent_spawn — a path separator or a
+        // dot-dot in it is a write outside roles/, so it is refused here rather than sanitized into
+        // some other role's file.
+        var bad = roles.FirstOrDefault(x => x.Name.Any(c => Path.GetInvalidFileNameChars().Contains(c)) || x.Name is "." or "..");
+        if (bad != null)
+        {
+            var refused = GetRoles(runtime);
+            refused.Error = $"'{bad.Name}' is not a usable role name — a role name is also its file name (roles/<name>.yaml).";
+            return refused;
+        }
+
+        var keep = new HashSet<string>(roles.Select(x => x.Name), StringComparer.OrdinalIgnoreCase);
+        foreach (var gone in ConfigLoader.ListRoleFiles(dir).Where(n => !keep.Contains(n)))
+            ConfigLoader.DeleteRole(dir, gone);
+
+        foreach (var r in roles)
+            ConfigLoader.SaveRole(dir, r.Name, ToRoleSection(r.Dto));
+
+        // The manifest names who acts. Written even when the answer is "nobody" is not true here — an
+        // empty list is written as an absent key, which is what "this project declares no roles" has
+        // always looked like in a .spla file.
+        var activeNames = roles.Where(x => x.Dto.Active).Select(x => x.Name).ToList();
+        var project = ConfigLoader.LoadProjectRaw(path);
+        project.Roles = activeNames.Count > 0 ? activeNames : null;
+        ConfigLoader.SaveProjectSections(project, path, "roles");
+
+        // The live manifest is what role_list and ResolveForRole consult (bodies are re-read from disk
+        // each time, the list is not) — leaving it stale would keep a freshly declared role refusing
+        // to resolve until the next start.
+        if (s.Manifest != null) s.Manifest.Roles = activeNames.Count > 0 ? activeNames : null;
+
+        return GetRoles(runtime);
+    }
+
+    /// <summary>The directory a role file would live in, or null when there is no manifest to be next
+    /// to — <c>ConfigLoader.LoadRole</c>'s rule, in one place.</summary>
+    private static string? ProjectDir(ResolvedSettings s)
+        => s.ProjectFilePath is { } p ? Path.GetDirectoryName(p) : null;
+
+    /// <summary>Wire word for a tool-set level — the spelling <c>ToolSetRegistry.TryParseLevel</c>
+    /// reads back, so a level chosen in the panel is the level the file means.</summary>
+    private static string ToolSetWord(string enumName) => enumName switch
+    {
+        "SkillDemand" => "skill_demand",
+        "AgentDemand" => "agent_demand",
+        _ => enumName.ToLowerInvariant()
+    };
+
+    private static RoleEditDto ToRoleDto(string name, bool active, SplaRoleSection r) => new()
+    {
+        Name = name,
+        Active = active,
+        Description = r.Description,
+        Mode = r.Mode,
+        ModelId = r.Model,
+        CustomPrompt = r.CustomPrompt,
+        LoopGuard = r.LoopGuard,
+        LoopGuardRepeats = r.LoopGuardRepeats,
+        ShellTimeoutSeconds = r.ShellTimeoutSeconds,
+        AskTimeoutMinutes = r.AskTimeoutMinutes,
+        SaveToolCalls = r.SaveToolCalls,
+        SaveAttempts = r.SaveAttempts,
+        UnifiedResources = r.UnifiedResources,
+        PeerDebounceBaseSeconds = r.PeerDebounceBaseSeconds,
+        PeerDebounceMaxSeconds = r.PeerDebounceMaxSeconds,
+        PeerDepthCeiling = r.PeerDepthCeiling,
+        PeerHardCap = r.PeerHardCap,
+        SelfFeedingCap = r.SelfFeedingCap,
+        Temperature = r.Temperature,
+        ReasoningLevel = r.ReasoningLevel,
+        Capabilities = r.Capabilities,
+        Connections = r.Connections,
+        Islands = r.Islands,
+        ToolSets = r.ToolSets,
+        TrustedDomains = r.TrustedDomains
+    };
+
+    private static SplaRoleSection ToRoleSection(RoleEditDto d) => new()
+    {
+        Description = Blank(d.Description),
+        Mode = Blank(d.Mode),
+        Model = Blank(d.ModelId),
+        CustomPrompt = Blank(d.CustomPrompt),
+        LoopGuard = d.LoopGuard,
+        LoopGuardRepeats = d.LoopGuardRepeats,
+        ShellTimeoutSeconds = d.ShellTimeoutSeconds,
+        AskTimeoutMinutes = d.AskTimeoutMinutes,
+        SaveToolCalls = d.SaveToolCalls,
+        SaveAttempts = d.SaveAttempts,
+        UnifiedResources = d.UnifiedResources,
+        PeerDebounceBaseSeconds = d.PeerDebounceBaseSeconds,
+        PeerDebounceMaxSeconds = d.PeerDebounceMaxSeconds,
+        PeerDepthCeiling = d.PeerDepthCeiling,
+        PeerHardCap = d.PeerHardCap,
+        SelfFeedingCap = d.SelfFeedingCap,
+        Temperature = d.Temperature,
+        ReasoningLevel = Blank(d.ReasoningLevel),
+        // Null and empty are different answers here, and only null means "inherit": an empty
+        // capabilities list is a role that deliberately runs with none. The editor sends null for the
+        // untouched case, so nothing collapses one into the other on the way through.
+        Capabilities = Clean(d.Capabilities),
+        Connections = Clean(d.Connections),
+        Islands = Clean(d.Islands),
+        TrustedDomains = Clean(d.TrustedDomains),
+        ToolSets = d.ToolSets is { Count: > 0 } ? new Dictionary<string, string>(d.ToolSets) : null
+    };
+
+    /// <summary>Trims a list's entries and drops the blanks, preserving the null/empty distinction:
+    /// null stays null (inherit), a list that had only blanks in it becomes empty (declared none).</summary>
+    private static List<string>? Clean(List<string>? list)
+        => list?.Select(x => (x ?? "").Trim()).Where(x => x.Length > 0).ToList();
 
     // ── Token usage: session/project/machine totals ───────────────────────────
 
@@ -149,7 +357,8 @@ public static class SettingsOps
         Theme = runtime.Settings.Theme,
         Density = runtime.Settings.Density,
         Themes = KnownThemes,
-        Densities = KnownDensities
+        Densities = KnownDensities,
+        AutoOpenSubagents = runtime.Settings.AutoOpenSubagents
     };
 
     /// <summary>Lower-case wire word for a verb — kept identical to
@@ -240,16 +449,22 @@ public static class SettingsOps
         return GetAgent(runtime);
     }
 
-    /// <summary>Persists just the UI appearance (theme/density) to the .spla project and mutates the
-    /// live settings, then publishes <see cref="AppearanceChanged"/> so every window applies it. Kept
-    /// separate from agent settings: appearance is a low-stakes, instantly-reversible preference that
-    /// auto-applies on change with no Save step — unlike the transactional mode/permission edits.</summary>
-    public static void SaveAppearance(AgentRuntime runtime, string? theme, string? density)
+    /// <summary>Persists the UI appearance (theme/density) plus <c>ui.auto_open_subagents</c> to the
+    /// .spla project and mutates the live settings, then publishes <see cref="AppearanceChanged"/> so
+    /// every window applies it. Kept separate from agent settings: these are low-stakes, instantly-
+    /// reversible preferences that auto-apply on change with no Save step — unlike the transactional
+    /// mode/permission edits (see root <c>AGENTS.md</c>, "Auto-apply vs Save"). <paramref
+    /// name="autoOpenSubagents"/> defaults to the current value when the caller omits it, the same
+    /// convention <paramref name="theme"/>/<paramref name="density"/> already use — a plain theme
+    /// change must not silently reset it.</summary>
+    public static void SaveAppearance(AgentRuntime runtime, string? theme, string? density, bool? autoOpenSubagents = null)
     {
         theme   = Blank(theme)   ?? runtime.Settings.Theme;
         density = Blank(density) ?? runtime.Settings.Density;
+        var autoOpen = autoOpenSubagents ?? runtime.Settings.AutoOpenSubagents;
         runtime.Settings.Theme   = theme;
         runtime.Settings.Density = density;
+        runtime.Settings.AutoOpenSubagents = autoOpen;
 
         var path = runtime.Settings.ProjectFilePath;
         if (path != null)
@@ -257,10 +472,31 @@ public static class SettingsOps
             var project = ConfigLoader.LoadProjectRaw(path);
             (project.Ui ??= new()).Theme = theme;
             project.Ui.Density           = density;
+            // Only when true — an untouched project keeps a clean file, same convention agent: uses
+            // for every other off-by-default flag (loop_guard, save_tool_calls, ...).
+            project.Ui.AutoOpenSubagents = autoOpen ? true : null;
             ConfigLoader.SaveProjectSections(project, path, "ui");
         }
 
-        runtime.Events.Publish(new AppearanceChanged(theme, density));
+        runtime.Events.Publish(new AppearanceChanged(theme, density, autoOpen));
+    }
+
+    /// <summary>Persists the interface language to the machine layer (<c>~/.spla/defaults.yaml</c>,
+    /// <c>ui.language</c>) and mutates the live settings so the next <c>welcome</c> carries it.
+    /// <para>Not written to the project manifest, and not broadcast: see
+    /// <see cref="Contracts.LanguagePayload"/> for both reasons. The machine layer is also the only
+    /// storage that survives here at all — the web client is served from an ephemeral loopback port,
+    /// so its localStorage is wiped by a changed origin on every launch, which is exactly the bug
+    /// this method exists to fix.</para></summary>
+    public static void SaveLanguage(AgentRuntime runtime, string? language)
+    {
+        var lang = Blank(language);
+        if (lang is null) return;
+
+        runtime.Settings.Language = lang;
+        var defaults = ConfigLoader.LoadDefaults();
+        (defaults.Ui ??= new SplaUiSection()).Language = lang;
+        ConfigLoader.SaveDefaults(defaults);
     }
 
     // ── MCP over HTTP: whether POST /mcp is offered, and a fixed port for it ─
@@ -714,6 +950,12 @@ public static class SettingsOps
 
         foreach (var id in SPLA.MCP.Core.Agent.AgentFeatureCatalog.Order)
         {
+            // An implied capability is the underside of another one, not a choice: it has no switch
+            // here, and it is not named in anyone's "needs …" badge either — a badge pointing at a row
+            // that does not exist reads as a broken list, and there is nothing the user could do about
+            // it anyway. See AgentFeatureCatalog.Implied.
+            if (SPLA.MCP.Core.Agent.AgentFeatureCatalog.IsImplied(id)) continue;
+
             var enabled = enabledIds.Contains(id);
             payload.Features.Add(new CapabilityDto
             {
@@ -723,7 +965,9 @@ public static class SettingsOps
                 Description = SPLA.MCP.Core.Agent.AgentFeatureCatalog.DescriptionOf(id),
                 Enabled = enabled,
                 State = enabled ? "Enabled" : "DisabledByUser",
-                Requires = SPLA.MCP.Core.Agent.AgentFeatureCatalog.RequiresOf(id).ToList()
+                Requires = SPLA.MCP.Core.Agent.AgentFeatureCatalog.RequiresOf(id)
+                    .Where(dep => !SPLA.MCP.Core.Agent.AgentFeatureCatalog.IsImplied(dep))
+                    .ToList()
             });
         }
 
@@ -742,6 +986,9 @@ public static class SettingsOps
 
         // The full catalog means "no restriction" — store null rather than an exhaustive list, so a
         // capability added in a future version is enabled by default instead of silently missing.
+        // Implied ids are absent from the panel but not from this count, and they need not be: every
+        // implied id is required by some offered one, so ticking the whole panel resolves them back in
+        // and the counts still match.
         var isFullSet = resolved.Count == SPLA.MCP.Core.Agent.AgentFeatureCatalog.Order.Count;
         runtime.Settings.Capabilities = isFullSet ? null : resolved;
 
@@ -756,6 +1003,28 @@ public static class SettingsOps
         return GetFeatures(runtime);
     }
 
+    /// <summary>
+    /// Writes one layer — but only when this save has something to say about it: entries to write, or
+    /// a file already there whose entries may have just been moved out or deleted.
+    /// <para>
+    /// A save that mentions no user connection and finds no user file must leave the filesystem
+    /// alone. Writing "no connections here" unasked plants a file in the caller's own home — for a
+    /// person, a file they never made; for a test using the machine's real home, a fixture every
+    /// later test then reads. Absent and empty are different statements, and only the second one is
+    /// ours to make.
+    /// </para>
+    /// </summary>
+    private static void SaveLayer(string path, List<SplaConnectionSection> connections)
+    {
+        if (connections.Count == 0 && !File.Exists(path)) return;
+        ConfigLoader.SaveConnectionLayer(path, connections);
+    }
+
+    /// <summary>One layer's worth of the saved list, in the order the editor sent it.</summary>
+    private static List<SplaConnectionSection> ForScope(
+        IEnumerable<SplaConnectionSection> sections, ConnectionScope scope)
+        => sections.Where(c => c.Scope == scope).ToList();
+
     private static SplaConnectionSection ToSection(
         ConnectionEditDto d, IReadOnlyDictionary<string, SplaConnectionSection> stored)
     {
@@ -764,6 +1033,13 @@ public static class SettingsOps
         return new SplaConnectionSection
         {
             Id = id,
+            // Where this entry lives. A client that says nothing keeps the entry where it already
+            // was — never "project by default", which would let an editor that has not learned about
+            // scopes drag a person's own keys into a repository just by pressing Save. Only an entry
+            // nobody has stored anywhere is new, and a new one belongs to the project being edited.
+            Scope = ConnectionScopes.TryParse(d.Scope, out var scope)
+                ? scope
+                : previous?.Scope ?? ConnectionScope.Project,
             Name = string.IsNullOrWhiteSpace(d.Name) ? null : d.Name.Trim(),
             Provider = Blank(d.Provider),
             Endpoint = Blank(d.Endpoint),
@@ -790,7 +1066,8 @@ public static class SettingsOps
             Id = raw,
             Name = string.IsNullOrWhiteSpace(d.Name) ? null : d.Name.Trim(),
             Model = Blank(d.Model),
-            ContextLength = d.ContextLength is > 0 ? d.ContextLength : null
+            ContextLength = d.ContextLength is > 0 ? d.ContextLength : null,
+            Temperature = d.Temperature
         };
     }
 

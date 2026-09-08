@@ -106,7 +106,14 @@ export class HttpProjectStore implements ModelStore {
         width: vn.width || 170,
         height: vn.height || 50,
         styleId: vn.styleId,
-        metadata: { codeRef: e.codeRef, description: t.doc || t.description },
+        metadata: {
+          codeRef: e.codeRef,
+          description: t.doc || t.description,
+          // Content template chosen for this one placement, overriding the
+          // style's. The exception, not the rule: one node that must show more
+          // (or less) than its kind normally does (ADR_20260903 §2.2).
+          template: vn.template,
+        },
         raw: { _entity: e },
       };
     });
@@ -144,17 +151,35 @@ export class HttpProjectStore implements ModelStore {
       ? viewData.edges
       : relationsRes.relations || [];
 
-    const translatedEdges = rawEdges.map((ve: any, i: number) => ({
-      id: ve.id || `edge_${i}`,
-      from: ve.from || ve.source,
-      to: ve.to || ve.target,
-      type: ve.type || ve.relation || "relates",
-      // Text of a relation lives in the text catalogue under its own id; a
-      // generated relation has none, and its meaning is carried by its type.
-      label: textRes.entries?.[ve.id]?.name || textRes.entries?.[ve.id]?.title || "",
-      styleId: ve.styleId,
-      points: ve.points || [],
-    }));
+    // A view's own edge placements don't repeat `origin` — only the relation
+    // registry does — so look it up by id to know whether this edge is
+    // allowed any text at all (ADR_20260831 §2.13).
+    const relationOriginById = new Map<string, "code" | "authored" | undefined>(
+      (relationsRes.relations || []).map((r) => [r.id, r.origin]),
+    );
+
+    const translatedEdges = rawEdges.map((ve: any, i: number) => {
+      const id = ve.id || `edge_${i}`;
+      const origin = relationOriginById.get(id) ?? ve.origin;
+      const text = origin === "code" ? undefined : textRes.entries?.[id];
+      return {
+        id,
+        from: ve.from || ve.source,
+        to: ve.to || ve.target,
+        type: ve.type || ve.relation || "relates",
+        // Text of a relation lives in the text catalogue under its own id; a
+        // generated relation has none, and its meaning is carried by its type.
+        label: text?.name || text?.title || "",
+        fromLabel: text?.fromLabel,
+        toLabel: text?.toLabel,
+        styleId: ve.styleId,
+        points: ve.points || [],
+        ...(origin === undefined ? {} : { origin }),
+        // Line shape picked for this one edge. Only the choice: the polyline
+        // is recomputed every repaint and never written back.
+        ...(ve.routing === undefined ? {} : { routing: ve.routing }),
+      };
+    });
 
     /**
      * A view says what its containers classify; failing that, the project says
@@ -193,7 +218,13 @@ export class HttpProjectStore implements ModelStore {
     };
 
     const wire: WireDocument = {
-      metadata: { title: projectManifest.title, subtitle: projectManifest.subtitle },
+      metadata: {
+        title: projectManifest.title,
+        subtitle: projectManifest.subtitle,
+        // The picture's own convention for line shape, sitting between the
+        // relation type's choice and a single edge's override.
+        ...(viewData.routing === undefined ? {} : { routing: viewData.routing }),
+      },
       zones: translatedZones,
       nodes: translatedNodes,
       edges: translatedEdges,
@@ -243,6 +274,10 @@ export class HttpProjectStore implements ModelStore {
       width: n.width,
       height: n.height,
       styleId: n.styleId,
+      // Written back because the author put it there. A field the loader reads
+      // but the saver drops is worse than one that never existed: the first
+      // save quietly deletes a hand-made choice.
+      ...(typeof n.metadata?.template === "string" ? { template: n.metadata.template } : {}),
     }));
 
     const edges: ViewEdgePlacement[] = (wire.edges || []).map((e) => ({
@@ -252,12 +287,14 @@ export class HttpProjectStore implements ModelStore {
       type: e.type,
       styleId: e.styleId,
       points: e.points || [],
+      ...(e.routing === undefined ? {} : { routing: e.routing }),
     }));
 
     const cleanView: ViewDocument = {
       id: bundle.view.id || "v_main",
       project: bundle.project.id,
       axis: bundle.view.axis,
+      ...(bundle.view.routing === undefined ? {} : { routing: bundle.view.routing }),
       ...(bundle.view.relations ? { relations: bundle.view.relations } : {}),
       zones,
       nodes,

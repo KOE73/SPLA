@@ -1,62 +1,58 @@
 <template>
   <div class="s-panel" data-tab="agent">
-    <div class="s-head"><b>Agent</b><span class="hint">{{ hint }}</span></div>
+    <div class="s-head"><b>{{ t('Agent') }}</b><span class="hint">{{ t(hint) }}</span></div>
     <div class="conn-card">
-      <label class="field"><span>Default mode</span>
+      <label class="field"><span>{{ t('Default mode') }}</span>
         <select v-model="mode">
-          <option v-for="m in modes" :key="m" :value="m">{{ m }}</option>
+          <option v-for="m in modes" :key="m" :value="m">{{ t(m) }}</option>
         </select>
       </label>
-      <label class="field col"><span>Custom prompt</span>
-        <textarea v-model="customPrompt" rows="4" placeholder="Appended to the system prompt for every chat"></textarea>
+      <label class="field col"><span>{{ t('Custom prompt') }}</span>
+        <textarea v-model="customPrompt" rows="4" :placeholder="t('Appended to the system prompt for every chat')"></textarea>
       </label>
-      <label class="field"><span>Tool call loop guard</span>
+      <label class="field"><span>{{ t('Tool call loop guard') }}</span>
         <span style="display: flex; align-items: center; gap: 8px">
           <input type="checkbox" v-model="loopGuard" />
-          <span class="hint">on identical rapid-fire tool calls: first ask the model if it's stuck, then stop</span>
+          <span class="hint">{{ t("on identical rapid-fire tool calls: first ask the model if it's stuck, then stop") }}</span>
         </span>
       </label>
-      <label v-if="loopGuard" class="field"><span>Repeats to trigger</span>
+      <label v-if="loopGuard" class="field"><span>{{ t('Repeats to trigger') }}</span>
         <input type="number" v-model.number="loopGuardRepeats" min="2" max="20" style="width: 6em" />
       </label>
-      <label class="field"><span>Shell command timeout</span>
+      <label class="field"><span>{{ t('Shell command timeout') }}</span>
         <span style="display: flex; align-items: center; gap: 8px">
           <input
             type="number" v-model.number="shellTimeoutSeconds" min="5" step="5" style="width: 6em"
             :disabled="shellTimeoutUnlimited"
           />
-          <span class="hint">seconds</span>
+          <span class="hint">{{ t('seconds') }}</span>
           <input type="checkbox" v-model="shellTimeoutUnlimited" id="shell-timeout-unlimited" />
-          <label for="shell-timeout-unlimited" class="hint">no timeout — wait until the command exits</label>
+          <label for="shell-timeout-unlimited" class="hint">{{ t('no timeout — wait until the command exits') }}</label>
         </span>
       </label>
-      <p class="hint" style="margin: -6px 0 0">
-        How long <code>system_run_shell</code> may sit completely silent before it hands control back
-        with "still running" instead of continuing to wait. The command itself keeps going either way —
-        this only controls when the tool call returns.
-      </p>
-      <label class="field"><span>Save full tool trace</span>
+      <p class="hint" style="margin: -6px 0 0" v-html="t('How long <code>system_run_shell</code> may sit completely silent before it hands control back with &quot;still running&quot; instead of continuing to wait. The command itself keeps going either way — this only controls when the tool call returns.')"></p>
+      <label class="field"><span>{{ t('Save full tool trace') }}</span>
         <span style="display: flex; align-items: center; gap: 8px">
           <input type="checkbox" v-model="saveToolCalls" />
-          <span class="hint">also save every tool call and its result to the chat file, not just the visible text — bigger files, full replay of what the agent did</span>
+          <span class="hint">{{ t('also save every tool call and its result to the chat file, not just the visible text — bigger files, full replay of what the agent did') }}</span>
         </span>
       </label>
-      <label class="field"><span>Save abandoned generations</span>
+      <label class="field"><span>{{ t('Save abandoned generations') }}</span>
         <span style="display: flex; align-items: center; gap: 8px">
           <input type="checkbox" v-model="saveAttempts" />
-          <span class="hint">also save the repetition guard's discarded attempts (full text) to the chat file — off by default, each one can run to several kB</span>
+          <span class="hint">{{ t("also save the repetition guard's discarded attempts (full text) to the chat file — off by default, each one can run to several kB") }}</span>
         </span>
       </label>
-      <label class="field"><span>Resource addresses</span>
+      <label class="field"><span>{{ t('Resource addresses') }}</span>
         <span style="display: flex; align-items: center; gap: 8px">
           <input type="checkbox" v-model="unifiedResources" />
-          <span class="hint">announce scheme:// addresses (file://, sftp://, …) to the model, on top of ordinary project files — off by default so it can be measured with and without</span>
+          <span class="hint">{{ t('announce scheme:// addresses (file://, sftp://, …) to the model, on top of ordinary project files — off by default so it can be measured with and without') }}</span>
         </span>
       </label>
     </div>
     <div v-if="resourceSchemes.length" class="conn-card">
-      <div class="conn-head"><span class="id">Resource schemes</span></div>
-      <div class="s-sub">Per-scheme switches under the master toggle above. A scheme still registers when switched off here; it is only left out of the model's addresses and refuses any call.</div>
+      <div class="conn-head"><span class="id">{{ t('Resource schemes') }}</span></div>
+      <div class="s-sub">{{ t("Per-scheme switches under the master toggle above. A scheme still registers when switched off here; it is only left out of the model's addresses and refuses any call.") }}</div>
       <div class="ft-list">
         <CapabilityRow
           v-for="s in resourceSchemes" :key="s.scheme"
@@ -66,25 +62,26 @@
       </div>
     </div>
     <div class="conn-card">
-      <div class="conn-head"><span class="id">Permissions</span></div>
-      <label v-for="p in PERMS" :key="p.key" class="field"><span>{{ p.label }}</span>
+      <div class="conn-head"><span class="id">{{ t('Permissions') }}</span></div>
+      <label v-for="p in PERMS" :key="p.key" class="field"><span>{{ t(p.label) }}</span>
         <select v-model="perms[p.key]">
-          <option value="">(mode default)</option>
-          <option value="allow">allow</option>
-          <option value="ask">ask</option>
-          <option value="deny">deny</option>
+          <option value="">{{ t('(mode default)') }}</option>
+          <option value="allow">{{ t('allow') }}</option>
+          <option value="ask">{{ t('ask') }}</option>
+          <option value="deny">{{ t('deny') }}</option>
         </select>
       </label>
     </div>
     <div class="conn-card">
-      <div class="conn-head"><span class="id">File association</span></div>
-      <p class="hint">Associate .spla project files with this app in Windows Explorer, so double-clicking opens them.</p>
+      <div class="conn-head"><span class="id">{{ t('File association') }}</span></div>
+      <p class="hint">{{ t('Associate .spla project files with this app in Windows Explorer, so double-clicking opens them.') }}</p>
       <button class="btn" type="button" @click="registerAssociation" :disabled="registering">{{ assocLabel }}</button>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
+import { t } from "../../i18n";
 import { onUnmounted, reactive, ref } from "vue";
 import { client } from "../../protocol/SplaClient";
 import type { CapabilityDto, ResourceSchemeDto } from "../../protocol/types";
@@ -133,7 +130,7 @@ const off = client.on("agent.result", p => {
   perms.permWrite = p.permWrite || "";
   perms.permShell = p.permShell || "";
   perms.permInternet = p.permInternet || "";
-  hint.value = p.canPersist === false ? "no .spla project — session-only" : "";
+  hint.value = p.canPersist === false ? t("no .spla project — session-only") : "";
   lastTheme = p.theme || "";
   lastDensity = p.density || "";
 });

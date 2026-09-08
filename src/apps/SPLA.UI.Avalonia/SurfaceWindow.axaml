@@ -12,22 +12,33 @@
     <!-- A bare frame around one web surface (?surface=<name>). Avalonia is only the window manager;
          the content is the same web renderer the main window uses, mounted single. -->
     <Grid RowDefinitions="30,*">
-        <DockPanel Grid.Row="0" Background="{DynamicResource TitleBarBackgroundBrush}">
-            <StackPanel DockPanel.Dock="Left" Orientation="Horizontal"
-                        VerticalAlignment="Center" Margin="12,0,0,0" IsHitTestVisible="False">
-                <TextBlock Text="SPLA" FontSize="12" FontWeight="SemiBold"
-                           Foreground="{DynamicResource SubTextForegroundBrush}" VerticalAlignment="Center"/>
-                <TextBlock x:Name="TitleText" Text="—" FontSize="12" Margin="6,0,0,0"
-                           Foreground="{DynamicResource SubTextForegroundBrush}" Opacity="0.6" VerticalAlignment="Center"/>
-            </StackPanel>
-            <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
-                <Button Classes="caption" Content="⟳" Click="Reload_Click" ToolTip.Tip="Reload"/>
-                <Button Classes="caption" Content="─" Click="Min_Click"/>
-                <Button Classes="caption" Content="□" Click="Max_Click"/>
-                <Button Classes="caption close" Content="✕" Click="Close_Click"/>
-            </StackPanel>
+        <Grid Grid.Row="0" Background="{DynamicResource TitleBarBackgroundBrush}">
+            <!-- Drag surface spans the whole bar; buttons/title sit above it in z-order and
+                 win hit-testing where they overlap, so dragging works everywhere else,
+                 including under the title text (which has IsHitTestVisible=False). -->
             <Border Background="Transparent" PointerPressed="TitleBar_PointerPressed"/>
-        </DockPanel>
+
+            <DockPanel LastChildFill="False">
+                <!-- Buttons are docked first so they always keep their space when the window
+                     narrows; the title (docked after) is what shrinks/clips instead. -->
+                <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
+                    <Button Classes="caption" Content="🛠" Click="DevTools_Click" ToolTip.Tip="Open devtools for this window (F12)"/>
+                    <Button Classes="caption" Content="⟳" Click="Reload_Click" ToolTip.Tip="Reload"/>
+                    <Button Classes="caption" Content="─" Click="Min_Click"/>
+                    <Button Classes="caption" Content="□" Click="Max_Click"/>
+                    <Button Classes="caption close" Content="✕" Click="Close_Click"/>
+                </StackPanel>
+
+                <StackPanel DockPanel.Dock="Left" Orientation="Horizontal"
+                            VerticalAlignment="Center" Margin="12,0,0,0" ClipToBounds="True"
+                            IsHitTestVisible="False">
+                    <TextBlock Text="SPLA" FontSize="12" FontWeight="SemiBold"
+                               Foreground="{DynamicResource SubTextForegroundBrush}" VerticalAlignment="Center"/>
+                    <TextBlock x:Name="TitleText" Text="—" FontSize="12" Margin="6,0,0,0" TextTrimming="CharacterEllipsis"
+                               Foreground="{DynamicResource SubTextForegroundBrush}" Opacity="0.6" VerticalAlignment="Center"/>
+                </StackPanel>
+            </DockPanel>
+        </Grid>
 
         <web:NativeWebView x:Name="Browser" Grid.Row="1"/>
     </Grid>

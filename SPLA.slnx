@@ -39,9 +39,11 @@
     <File Path="docs/readme_auth.md" />
     <File Path="docs/readme_observability.md" />
     <File Path="docs/readme_security.md" />
+    <File Path="docs/readme_i18n_ru.md" />
     <File Path="docs/readme_security_ru.md" />
     <File Path="docs/readme_skills_ru.md" />
     <File Path="docs/secrets_ru.md" />
+    <File Path="docs/spla-file_ru.md" />
     <File Path="docs/schema-editor-doc-a-schemas.md" />
     <File Path="docs/schema-editor-doc-b-tokens.md" />
     <File Path="docs/sys_prompt_rules_ru.md" />
@@ -49,6 +51,7 @@
     <File Path="docs/KNOWN_ISSUES.md" />
   </Folder>
   <Folder Name="/docs/diagrams/">
+    <File Path="docs/diagrams/AGENTS.md" />
     <File Path="docs/diagrams/README.md" />
     <File Path="docs/diagrams/README_RU.md" />
     <File Path="docs/diagrams/TEXT-GUIDE.md" />
@@ -150,7 +153,13 @@
     <File Path="docs/adr/ADR_20260827_core_config-versioning.md" />
     <File Path="docs/adr/ADR_20260831_mcp_search-and-listing-tools.md" />
     <File Path="docs/adr/ADR_20260901_diagrams_shape-aware-geometry-and-insets.md" />
+    <File Path="docs/adr/ADR_20260902_core_session-unification.md" />
     <File Path="docs/adr/ADR_20260831_diagrams_text-provenance-and-view-axes.md" />
+    <File Path="docs/adr/ADR_20260903_diagrams_content-templates-and-edge-routing.md" />
+    <File Path="docs/adr/ADR_20260904-3_web_settings-placement.md" />
+    <File Path="docs/adr/ADR_20260904_core_history-vs-current.md" />
+    <File Path="docs/adr/ADR_20260906_core_one-address.md" />
+    <File Path="docs/adr/ADR_20260904_core_connection-scopes.md" />
   </Folder>
   <Folder Name="/docs/plans/">
     <File Path="docs/plans/PLAN_20260619_agent_skills-lifecycle.md" />
@@ -183,6 +192,12 @@
     <File Path="docs/plans/PLAN_20260825_core_chat-turn-pump.md" />
     <File Path="docs/plans/PLAN_20260826_service_mcp-client.md" />
     <File Path="docs/plans/PLAN_20260827_core_context-retention.md" />
+    <File Path="docs/plans/PLAN_20260902_agent_roles-and-correspondence.md" />
+    <File Path="docs/plans/PLAN_20260903_core_readonly-surface.md" />
+    <File Path="docs/plans/HANDOFF_20260903_roles-and-correspondence.md" />
+    <File Path="docs/plans/PLAN_20260903_diagrams_content-and-routing.md" />
+    <File Path="docs/plans/PLAN_20260904_core_chat-graph.md" />
+    <File Path="docs/plans/PLAN_20260906_core_chat-directory-and-await.md" />
   </Folder>
   <Folder Name="/docs/ideas/">
     <File Path="docs/ideas/IDEA_20260611_core_todo-general.md" />
@@ -213,6 +228,7 @@
     <File Path="docs/ideas/IDEA_20260824-6_agent_subagent-profiles.md" />
     <File Path="docs/ideas/IDEA_20260824-7_core_leftovers-lower-priority.md" />
     <File Path="docs/ideas/IDEA_20260824_plugins_document-context.md" />
+    <File Path="docs/ideas/IDEA_20260904_apps_hub-settings.md" />
   </Folder>
   <Folder Name="/src/core/">
     <Project Path="src/core/SPLA.Domain/SPLA.Domain.csproj" />
@@ -303,6 +319,7 @@
     <File Path="web/src/state/chatSessions.ts" />
     <File Path="web/src/state/chatSessions.test.ts" />
     <File Path="web/src/state/chatContext.ts" />
+    <File Path="web/src/state/overlay.ts" />
     <File Path="web/src/util/format.ts" />
     <File Path="web/src/surfaces/ChatSurface.vue" />
     <File Path="web/src/surfaces/ChatLog.vue" />
@@ -311,6 +328,7 @@
     <File Path="web/src/surfaces/ProjectBar.vue" />
     <File Path="web/src/layouts/layouts.ts" />
     <File Path="web/src/layouts/LayoutHost.vue" />
+    <File Path="web/src/layouts/SurfaceOverlay.vue" />
     <File Path="web/src/layouts/LayoutNodeView.vue" />
     <File Path="web/src/surfaces/registry.ts" />
     <File Path="web/src/composables/useMarkdown.ts" />

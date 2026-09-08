@@ -1117,6 +1117,48 @@ body {
   font-size: 11px;
 }
 
+/* --------------------------------------------------- content templates */
+
+.template-editor-body {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px;
+}
+
+.template-textarea {
+  min-height: 220px;
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.template-errors {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.template-error {
+  white-space: pre-wrap;
+}
+
+.template-row-description {
+  display: block;
+  font-size: 11px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.template-asset-row {
+  align-items: center;
+}
+
+.template-asset-select {
+  flex: 1;
+  min-width: 0;
+}
+
 /* ------------------------------------------------------- gradient stops */
 
 .stop-list {

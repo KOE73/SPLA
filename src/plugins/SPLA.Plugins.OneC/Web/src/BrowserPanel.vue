@@ -3,12 +3,12 @@
     <aside class="onec-sidebar">
       <section class="onec-card onec-explorer">
         <div class="onec-heading">
-          <strong>1C Configuration</strong>
-          <button title="Refresh index summary" @click="loadOverview">↻</button>
+          <strong>{{ t('1C Configuration') }}</strong>
+          <button :title="t('Refresh index summary')" @click="loadOverview">↻</button>
         </div>
 
-        <input v-model="query" class="onec-search" placeholder="Search objects…" spellcheck="false" />
-        <div v-if="searching" class="onec-muted onec-inline-state">Searching…</div>
+        <input v-model="query" class="onec-search" :placeholder="t('Search objects…')" spellcheck="false" />
+        <div v-if="searching" class="onec-muted onec-inline-state">{{ t('Searching…') }}</div>
         <ul v-else-if="searchResults.length" class="onec-search-results">
           <li v-for="item in searchResults" :key="item.fullName">
             <button :class="{ selected: selected?.fullName === item.fullName }" @click="selectObject(item.fullName)">
@@ -35,22 +35,22 @@
             </div>
           </section>
           <div v-if="!loading && !sections.length" class="onec-empty">
-            The OneC index is empty. Build it below or run <code>onec_build_index</code>.
+            {{ t('The OneC index is empty. Build it below or run') }} <code>onec_build_index</code>.
           </div>
         </div>
       </section>
 
       <section class="onec-card onec-summary">
-        <div><span>Objects</span><strong>{{ overview.objectCount }}</strong></div>
-        <div><span>Relations</span><strong>{{ overview.relationCount }}</strong></div>
-        <div><span>Sections</span><strong>{{ overview.sectionCount }}</strong></div>
+        <div><span>{{ t('Objects') }}</span><strong>{{ overview.objectCount }}</strong></div>
+        <div><span>{{ t('Relations') }}</span><strong>{{ overview.relationCount }}</strong></div>
+        <div><span>{{ t('Sections') }}</span><strong>{{ overview.sectionCount }}</strong></div>
       </section>
 
       <section class="onec-card onec-rebuild">
-        <strong>Build index</strong>
-        <p>Path inside the current project workspace.</p>
+        <strong>{{ t('Build index') }}</strong>
+        <p>{{ t('Path inside the current project workspace.') }}</p>
         <div class="onec-row">
-          <input v-model="rebuildPath" class="onec-grow" placeholder="e.g. configuration/" spellcheck="false" />
+          <input v-model="rebuildPath" class="onec-grow" :placeholder="t('e.g. configuration/')" spellcheck="false" />
           <button :disabled="rebuilding || !rebuildPath.trim()" @click="rebuildIndex">
             {{ rebuilding ? "Building…" : "Build" }}
           </button>
@@ -66,12 +66,12 @@
         </div>
         <div class="onec-graph-controls">
           <select v-model="graphMode" :disabled="!selected">
-            <option value="dependencies">Dependencies</option>
-            <option value="references">References</option>
-            <option value="dataflow">Data flow</option>
+            <option value="dependencies">{{ t('Dependencies') }}</option>
+            <option value="references">{{ t('References') }}</option>
+            <option value="dataflow">{{ t('Data flow') }}</option>
           </select>
-          <label>Depth <input v-model.number="depth" type="number" min="1" max="8" /></label>
-          <label>Edges <input v-model.number="limit" type="number" min="1" max="1000" step="25" /></label>
+          <label>{{ t('Depth') }} <input v-model.number="depth" type="number" min="1" max="8" /></label>
+          <label>{{ t('Edges') }} <input v-model.number="limit" type="number" min="1" max="1000" step="25" /></label>
           <button :disabled="!selected || graphLoading" @click="loadGraph">
             {{ graphLoading ? "Loading…" : "Show graph" }}
           </button>
@@ -79,16 +79,16 @@
       </header>
 
       <div v-if="selected" class="onec-object-details">
-        <div><span>Name</span>{{ selected.name }}</div>
-        <div><span>Path</span>{{ selected.path || "—" }}</div>
-        <div><span>Summary</span>{{ selected.summary || "—" }}</div>
+        <div><span>{{ t('Name') }}</span>{{ selected.name }}</div>
+        <div><span>{{ t('Path') }}</span>{{ selected.path || "—" }}</div>
+        <div><span>{{ t('Summary') }}</span>{{ selected.summary || "—" }}</div>
       </div>
 
       <div class="onec-graph-status">
         <span>{{ graphStatus }}</span>
         <span v-if="graphSummary">
           {{ graphSummary.nodeCount }} nodes · {{ graphSummary.edgeCount }} edges · depth {{ graphSummary.depth }}
-          <b v-if="graphSummary.truncated"> · truncated</b>
+          <b v-if="graphSummary.truncated"> {{ t('· truncated') }}</b>
         </span>
       </div>
       <div ref="graphElement" class="onec-graph"></div>
@@ -99,6 +99,7 @@
 </template>
 
 <script setup lang="ts">
+import { t } from "./i18n";
 import cytoscape, {
   type Core,
   type EdgeSingular,

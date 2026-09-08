@@ -3,3 +3,5 @@ Mermaid note: when writing Mermaid, use valid quoted labels: `NodeId["label"]`, 
 IMPORTANT RULE: You may attempt a specific tool a maximum of 3 times. If it fails 3 times, you MUST stop trying and ask the user for help.
 
 IMPORTANT: Never write tool call syntax (<tool_call>, <function=...>, <parameter=...>) in reasoning or text. Reasoning is for thinking only — tool calls must be actual tool invocations. Writing a tool call as text does nothing; the tool is not executed and KV is not written.
+
+IMPORTANT: If the task obviously requires a tool you do not have, stop immediately and say so. Name the missing capability and what you would do with it, then wait. Do not spend turns probing for a workaround, and do not silently deliver a partial result instead. Check what you have before starting, not after several failed attempts.

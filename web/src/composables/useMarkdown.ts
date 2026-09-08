@@ -2,6 +2,8 @@
 // Do NOT "improve" the parsing logic here; it's deliberately unchanged. The only difference
 // from the original is that callers now get a plain async function instead of a global object,
 // and the assistant bubble drives WHEN to call it (debounced) instead of this module deciding.
+import { t } from "../i18n";
+
 declare global {
   interface Window {
     marked?: { parse(md: string, opts: { gfm: boolean; breaks: boolean }): string };
@@ -54,7 +56,7 @@ function enhanceCode(container: HTMLElement) {
     const frame = document.createElement("div"); frame.className = "code-frame";
     const head = document.createElement("div"); head.className = "code-head";
     head.innerHTML = `<span>${escapeHtml(lang || "code")}</span>`;
-    const copy = document.createElement("button"); copy.className = "copy-btn"; copy.textContent = "copy";
+    const copy = document.createElement("button"); copy.className = "copy-btn"; copy.textContent = t("copy");
     copy.onclick = () => navigator.clipboard?.writeText(pre.innerText);
     head.appendChild(copy);
     pre.parentNode?.insertBefore(frame, pre);

@@ -5,16 +5,21 @@
     <div class="nav-tabs">
       <button
         class="nav-tab"
-        title="Chats"
+        :title="t('Chats')"
         @click="openPanel('chat')"
       >💬</button>
       <button
         class="nav-tab"
-        title="Project files"
+        :title="t('Project files')"
         @click="openPanel('workspace')"
       >◫</button>
+      <button
+        class="nav-tab"
+        :title="t('Active sessions')"
+        @click="openPanel('sessions')"
+      >🗂</button>
     </div>
-    <button class="btn-new" @click="newChat">+ New</button>
+    <button class="btn-new" @click="newChat">{{ t('+ New') }}</button>
   </div>
 
   <!-- Chat list — shown in both layouts so the user can switch chats while browsing files -->
@@ -36,24 +41,25 @@
       @rename="rename"
       @delete="remove"
       @archive="archive"
+      @open-window="openInWindow"
     />
 
     <!-- Archived chats — toggled from the status bar (ProjectBar), session-only. Rendered below the
          normal list rather than interleaved, so an active chat's position never shifts as things get
          archived/restored. -->
     <template v-if="store.showArchivedChats">
-      <div class="archived-header">Archived</div>
+      <div class="archived-header">{{ t('Archived') }}</div>
       <ChatListItem
         v-for="chat in store.archivedChats"
         :key="chat.id"
         :chat="chat"
         :active="chat.id === store.currentChat"
         archived
-        @select="onChatClick"
+        @select="onArchivedClick"
         @restore="restore"
         @delete-permanently="removePermanently"
       />
-      <div v-if="!store.archivedChats.length" class="archived-empty">No archived chats.</div>
+      <div v-if="!store.archivedChats.length" class="archived-empty">{{ t('No archived chats.') }}</div>
     </template>
   </div>
 
@@ -64,6 +70,7 @@
 </template>
 
 <script setup lang="ts">
+import { t } from "../i18n";
 import { computed, onUnmounted, ref, watch } from "vue";
 import { client } from "../protocol/SplaClient";
 import { store } from "../state/store";
@@ -71,8 +78,9 @@ import type { ChatSummary } from "../protocol/types";
 import ChatListItem from "./ChatListItem.vue";
 import ProjectPicker from "./ProjectPicker.vue";
 import ProjectBar from "./ProjectBar.vue";
-import { openPanel } from "../dock/dockController";
+import { openPanel, openChatWindow } from "../dock/dockController";
 import { forgetSession } from "../state/chatSessions";
+import { collectSpawned } from "../state/chatTree";
 
 const offList = client.on("chat.list.result", p => { store.chats = p.chats || []; });
 const offArchivedList = client.on("chat.archived.list.result", p => { store.archivedChats = p.chats || []; });
@@ -83,12 +91,44 @@ onUnmounted(offArchivedList);
 // the archived list — no point asking while the section is collapsed. Fetch once on every rising edge.
 watch(() => store.showArchivedChats, shown => { if (shown) client.send("chat.archived.list"); });
 
+// ── ui.auto_open_subagents: pop a window for a spawned session the moment it appears ─────────────
+// Off by default (ADR_20260827-2 §2.5: "a backend that opens windows by itself is not what anyone
+// expects"). ChatList is the one place mounted for the whole life of the window, so it is where a
+// NEW spawned chat is first noticed — every id already present the first time store.chats fills in
+// is history, not an arrival, and must never trigger a window of its own.
+const seenSpawnedIds = new Set<string>();
+let seededSpawnedIds = false;
+
+watch(() => store.chats, list => {
+  const spawned = collectSpawned(list);
+  if (!seededSpawnedIds) {
+    seededSpawnedIds = true;
+    for (const c of spawned) seenSpawnedIds.add(c.id);
+    return;
+  }
+  for (const c of spawned) {
+    if (seenSpawnedIds.has(c.id)) continue;
+    seenSpawnedIds.add(c.id);
+    if (store.autoOpenSubagents) openChatWindow(c.id, c.title || c.as || c.id);
+  }
+}, { deep: true });
+
 const chatsContainerRef = ref<HTMLElement>();
 
 function newChat() { client.send("chat.new", { title: null }); }
 
 function onChatClick(chatId: string) {
   client.send("chat.open", { chatId });
+  openPanel("chat");
+}
+
+// An archived chat is read, not opened. `chat.open` refuses it on purpose (the server stopped
+// resurrecting archived chats on 2026-09-03), so the archived section asks for the history instead —
+// which the surface then shows without a composer. Setting currentChat here rather than waiting for
+// the answer is what `chat.opened` does through main.ts; the read answer carries no such convention.
+function onArchivedClick(chatId: string) {
+  store.currentChat = chatId;
+  client.send("chat.read", { chatId });
   openPanel("chat");
 }
 
@@ -108,6 +148,10 @@ function archive(chatId: string) {
   client.send("chat.archive", { chatId });
   forgetSession(chatId);   // the runtime is closed server-side; drop any local session for it too
   if (chatId === store.currentChat) store.currentChat = null;
+}
+
+function openInWindow(chat: ChatSummary) {
+  openChatWindow(chat.id, chat.title || chat.as || chat.id);
 }
 
 function restore(chatId: string) {
@@ -133,8 +177,8 @@ const aggregateState = computed(() => {
 
 // User-facing label for the aggregate indicator.
 const aggregateLabel = computed(() => {
-  if (aggregateState.value === "waiting") return "Someone is waiting";
-  if (aggregateState.value === "working") return "Work in progress";
+  if (aggregateState.value === "waiting") return t("Someone is waiting");
+  if (aggregateState.value === "working") return t("Work in progress");
   return "";
 });
 

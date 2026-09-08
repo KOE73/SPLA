@@ -1,4 +1,4 @@
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using System.Text.Json;
 
 namespace SPLA.Service.Contracts;
@@ -30,6 +30,13 @@ public sealed class ChatMessageDto
     public List<ToolCallDto>? ToolCalls { get; set; }
     public string? ToolCallId { get; set; }
     public bool IsEphemeral { get; set; }
+
+    /// <summary>The correspondent's role, set only for a reply that arrived across a correspondence
+    /// (<c>docs/adr/ADR_20260827-2_core_roles.md</c> §2.5). The client renders such a message as
+    /// speech — "← from &lt;PeerFrom&gt;" — instead of an ordinary human bubble; null for every
+    /// ordinary message. The wire shape of the message itself does not change: this is the one added
+    /// field that tells the two apart.</summary>
+    public string? PeerFrom { get; set; }
 
     /// <summary>URLs of attached images (e.g. /chat-image/&lt;chatId&gt;/&lt;file&gt; on reopen, or data URLs
     /// for a freshly sent message). Null when the message has no images.</summary>
@@ -74,6 +81,43 @@ public sealed class ChatSummaryDto
     /// <para><see cref="TurnActive"/> stays because it answers a narrower question the log view
     /// already asks; it is true for both <c>working</c> and <c>stalled</c>.</para></summary>
     public string State { get; set; } = "idle";
+
+    /// <summary>The role this chat runs as (<c>ChatSession.As</c>), or null for a plain chat with no
+    /// role. Human chats can carry one too (wave 5б's role-narrowed standing chat), not only spawned
+    /// sessions.</summary>
+    public string? As { get; set; }
+
+    /// <summary>"spawned" for a session <c>agent_spawn</c>/<c>agent_correspond</c> created, null for
+    /// one a human opened directly (<c>ChatSession.Origin</c>).</summary>
+    public string? Origin { get; set; }
+
+    /// <summary>The chat id that spawned this session (<c>ChatSession.Parent</c>), or null. Present on
+    /// every node in <see cref="Children"/> — a tree client does not need it to walk down, but a flat
+    /// consumer (the side panel, wave 7) needs it without walking the tree at all.</summary>
+    public string? Parent { get; set; }
+
+    /// <summary>The chat's own model override (<c>ChatSession.ModelId</c>), or null when it runs the
+    /// project's default. The side panel (wave 7, <c>ADR_20260827-2</c> §2.5's "роль, родитель,
+    /// статус, модель, токены") is the first reader that needs a model column next to a session it did
+    /// not open.</summary>
+    public string? ModelId { get; set; }
+
+    /// <summary>Sum of every assistant message's reported prompt/completion tokens
+    /// (<c>ChatSessionMessage.PromptTokens</c>/<c>CompletionTokens</c>), or null when nothing in this
+    /// chat ever reported usage — absence stays absence rather than becoming a misleading 0, the same
+    /// rule <see cref="ChatMessageDto"/>'s own token fields would follow if it had any. Cheap to
+    /// compute: the chat's full message list is already in memory for this projection, loaded once off
+    /// disk by <c>ChatManager.ListChats</c>/<c>ListSpawnedChats</c>.</summary>
+    public int? PromptTokens { get; set; }
+    public int? CompletionTokens { get; set; }
+
+    /// <summary>Spawned sessions parented on this chat, most-recently-updated first, nested to
+    /// whatever depth the spawn chain actually reached (the recursion-depth-3 cap already bounds this
+    /// in practice). Populated only for a root the human list shows; a node inside <see cref="Children"/>
+    /// carries its own children the same way. Null/empty for a chat with no spawned descendants — the
+    /// overwhelming majority. See <c>docs/adr/ADR_20260827-2_core_roles.md</c> §2.5: "список чатов
+    /// становится деревом роль → чат".</summary>
+    public List<ChatSummaryDto>? Children { get; set; }
 }
 
 /// <summary>One selectable option in a clarify request.</summary>
@@ -166,6 +210,25 @@ public sealed class ChatArchivePayload
 public sealed class ChatArchivedListResultPayload
 {
     public List<ChatSummaryDto> Chats { get; set; } = new();
+}
+
+/// <summary>Answer to <see cref="MessageTypes.ChatRead"/>: an archived chat's history as something to
+/// look at, never as a session to write to.
+///
+/// <para>Carries far less than <see cref="ChatOpenedPayload"/>, and the absences are the point. No
+/// mode, model, temperature, reasoning, skill or tool sets — those describe what a chat would do on
+/// its next turn, and this chat has no next turn. No <c>TurnActive</c> or <c>State</c> for the same
+/// reason: nothing is running, by definition of being archived.</para></summary>
+public sealed class ChatReadResultPayload
+{
+    public string ChatId { get; set; } = string.Empty;
+    public string Title { get; set; } = string.Empty;
+    public List<ChatMessageDto> Messages { get; set; } = new();
+
+    /// <summary>Always <c>true</c> today — archived is the only thing read this way so far. Present
+    /// so the client renders "this is a frozen snapshot" from what the server said, rather than from
+    /// remembering which button it pressed to get here.</summary>
+    public bool ReadOnly { get; set; } = true;
 }
 
 public sealed class ChatSendPayload
@@ -295,6 +358,12 @@ public sealed class ConnectionEditDto
 
     public bool SwapModel { get; set; }
 
+    /// <summary>Which layer this connection lives in: <c>shared</c>, <c>user</c> or <c>project</c>
+    /// (see <c>ConnectionScope</c>). It is where the entry is read from and where a save writes it
+    /// back; changing it on an existing entry moves the connection between files. Unset/unknown on
+    /// save = <c>project</c>, which is where every connection lived before the layers existed.</summary>
+    public string? Scope { get; set; }
+
     /// <summary>The models selected under this connection.</summary>
     public List<ModelEditDto> Models { get; set; } = new();
 }
@@ -307,6 +376,134 @@ public sealed class ModelEditDto
     public string? Name { get; set; }
     public string? Model { get; set; }
     public int? ContextLength { get; set; }
+
+    /// <summary>Default sampling temperature for this model. Null = fall back to the role's default,
+    /// then the project/machine one — see <see cref="SPLA.Domain.Settings.SplaModelSection.Temperature"/>.</summary>
+    public double? Temperature { get; set; }
+}
+
+// ── Roles ────────────────────────────────────────────────────────────────────
+
+/// <summary>
+/// One role, as the editor sees it: the body of <c>roles/&lt;name&gt;.yaml</c> plus the one fact
+/// that does not live in that file — <see cref="Active"/>, whether the manifest names it.
+///
+/// <para>The split is the domain's, not the panel's: a body on disk that nobody named is inert
+/// (<c>SplaRoleSection</c>, "nothing acts that nobody named"), so an editor that showed only the
+/// files would show roles that do not exist and an editor that showed only the manifest would hide
+/// the ones a colleague's branch just added. Both halves travel, and the panel renders the
+/// difference.</para>
+///
+/// <para>Every optional field means <b>inherit from <c>agent:</c></b> when null — that is the same
+/// meaning <c>SettingsResolver.ResolveForRole</c> gives it, so a blank in the editor and an absent
+/// key in the file are one state, never two. <see cref="Capabilities"/> is the exception worth
+/// naming: when set it REPLACES the project's list wholesale rather than intersecting with it.</para>
+/// </summary>
+public sealed class RoleEditDto
+{
+    /// <summary>The role's name — also its file stem (<c>roles/&lt;name&gt;.yaml</c>) and the word a
+    /// chat uses in <c>agent_spawn(role:)</c>. Renaming writes a new file; the old one is removed by
+    /// the same save that no longer lists it.</summary>
+    public string Name { get; set; } = string.Empty;
+
+    /// <summary>True when the manifest's <c>roles:</c> list names this role. False = the body exists
+    /// and is editable but the role does not act.</summary>
+    public bool Active { get; set; }
+
+    /// <summary>One line for STRANGERS — what the role catalog (<c>role_list</c>) shows another chat
+    /// choosing whom to task. The outward half; <see cref="CustomPrompt"/> is the inward one and is
+    /// never published sideways.</summary>
+    public string? Description { get; set; }
+
+    public string? Mode { get; set; }
+    public string? ModelId { get; set; }
+    public string? CustomPrompt { get; set; }
+
+    public bool? LoopGuard { get; set; }
+    public int? LoopGuardRepeats { get; set; }
+    public int? ShellTimeoutSeconds { get; set; }
+    public int? AskTimeoutMinutes { get; set; }
+    public bool? SaveToolCalls { get; set; }
+    public bool? SaveAttempts { get; set; }
+    public bool? UnifiedResources { get; set; }
+
+    /// <summary>Peer-wake regulator overrides — see <c>SplaAgentSection</c> for what each means.
+    /// Null = the project's number.</summary>
+    public int? PeerDebounceBaseSeconds { get; set; }
+    public int? PeerDebounceMaxSeconds { get; set; }
+    public int? PeerDepthCeiling { get; set; }
+    public int? PeerHardCap { get; set; }
+
+    /// <summary>Consecutive-auto-wake guard override — see <c>SplaAgentSection.SelfFeedingCap</c>.
+    /// Null = the project's number, which itself defaults to disabled.</summary>
+    public int? SelfFeedingCap { get; set; }
+
+    /// <summary>Per-role default sampling temperature. Null = inherit the resolved model's own
+    /// default, then the project/machine one — see <c>SplaRoleSection.Temperature</c>.</summary>
+    public double? Temperature { get; set; }
+
+    /// <summary>Per-role default reasoning level, in the provider's own words. Null = inherit the
+    /// project/machine default (empty at that layer falls through to the model's own default) — see
+    /// <c>SplaRoleSection.ReasoningLevel</c>.</summary>
+    public string? ReasoningLevel { get; set; }
+
+    /// <summary>Built-in capabilities for this role. Null = inherit the project's list; a list
+    /// REPLACES it (a role is not a subset of the project — <c>ADR_20260827-2</c>).</summary>
+    public List<string>? Capabilities { get; set; }
+
+    /// <summary>Connections this role may use, by connection id or by whole scope word
+    /// (<c>shared</c>/<c>user</c>/<c>project</c>). Null/empty = all of the project's. A selection,
+    /// never a grant.</summary>
+    public List<string>? Connections { get; set; }
+
+    /// <summary>Islands this role uses, by key. Null/empty = all the project reaches. Also a
+    /// selection: the gate, not this list, decides what a reach is allowed.</summary>
+    public List<string>? Islands { get; set; }
+
+    /// <summary>Tool set id → disclosure level, merged key by key over the project's <c>toolsets:</c>.</summary>
+    public Dictionary<string, string>? ToolSets { get; set; }
+
+    public List<string>? TrustedDomains { get; set; }
+}
+
+/// <summary>The whole role set plus the catalogs a role picks from. <see cref="MessageTypes.RolesGet"/>
+/// answer and <see cref="MessageTypes.RolesSave"/> body; broadcast as
+/// <see cref="MessageTypes.RolesResult"/>. Catalogs are server-provided and ignored on save.</summary>
+public sealed class RolesPayload
+{
+    public List<RoleEditDto> Roles { get; set; } = new();
+
+    /// <summary>Available agent modes, for the mode picker.</summary>
+    public List<string> Modes { get; set; } = new();
+
+    /// <summary>The project's own mode — what a role that picks nothing runs in, so the editor can
+    /// label the empty choice with the answer instead of the word "default".</summary>
+    public string ProjectMode { get; set; } = string.Empty;
+
+    /// <summary>Every built-in capability that has a switch, with its description — the same rows the
+    /// Built-in tools panel shows. <c>Enabled</c> here means "the project has it", which is what a
+    /// role inheriting the list would get.</summary>
+    public List<CapabilityDto> KnownCapabilities { get; set; } = new();
+
+    /// <summary>Models a role may run on (id + display name), flattened across connections.</summary>
+    public List<ConnectionDto> Models { get; set; } = new();
+
+    /// <summary>Connections a role may be narrowed to (id + name).</summary>
+    public List<ConnectionDto> Connections { get; set; } = new();
+
+    /// <summary>Island keys this project reaches.</summary>
+    public List<string> Islands { get; set; } = new();
+
+    /// <summary>Tool set ids that exist, and the levels a set may be set to.</summary>
+    public List<string> ToolSetIds { get; set; } = new();
+    public List<string> ToolSetLevels { get; set; } = new();
+
+    /// <summary>False when there is no .spla project — roles have nowhere to live, and the panel says
+    /// so instead of pretending to save.</summary>
+    public bool CanPersist { get; set; }
+
+    /// <summary>Set when a save was refused; the set then echoes back what is still in effect.</summary>
+    public string? Error { get; set; }
 }
 
 /// <summary>Request to hot-swap the loaded model on a connection via the management API (LM Studio).</summary>
@@ -481,6 +678,10 @@ public sealed class AgentSettingsPayload
     public string Density { get; set; } = "norm";
     public List<string> Themes { get; set; } = new();
     public List<string> Densities { get; set; } = new();
+    /// <summary>Whether a client should open a native window on a spawned session by itself, the
+    /// moment it appears in the tree. Stored in .spla ui: auto_open_subagents. Default false — see
+    /// <c>ResolvedSettings.AutoOpenSubagents</c>.</summary>
+    public bool AutoOpenSubagents { get; set; }
     /// <summary>False when there is no .spla project to persist into (server-set; ignored on save).</summary>
     public bool CanPersist { get; set; }
 }
@@ -914,6 +1115,11 @@ public sealed class ProjectContextPayload
     public string DefaultMode { get; set; } = string.Empty;
     public string Theme { get; set; } = "dark";
     public string Density { get; set; } = "norm";
+
+    /// <summary>Same value <see cref="WelcomePayload.Language"/> carries. Machine-level, so switching
+    /// projects never switches the language — it is repeated here only so a client that opens a
+    /// project without a fresh welcome has every field it needs from one message.</summary>
+    public string Language { get; set; } = "en";
 }
 
 public sealed class WelcomePayload
@@ -947,6 +1153,12 @@ public sealed class WelcomePayload
     /// connect so per-project themes load immediately without a separate get/result round-trip.</summary>
     public string Theme { get; set; } = "dark";
     public string Density { get; set; } = "norm";
+
+    /// <summary>The interface language, resolved from the machine layer (never from the project — see
+    /// <see cref="SPLA.Domain.Settings.SettingsResolver.Language"/>). It has to travel on the wire:
+    /// the page is served from an ephemeral loopback port, so its origin changes on every launch and
+    /// the browser hands it a fresh, empty localStorage each time. This message is what remembers.</summary>
+    public string Language { get; set; } = "en";
 }
 
 public sealed class ChatListResultPayload
@@ -960,6 +1172,22 @@ public sealed class AppearanceChangedPayload
 {
     public string Theme { get; set; } = "dark";
     public string Density { get; set; } = "norm";
+    /// <summary>See <see cref="AgentSettingsPayload.AutoOpenSubagents"/>. Nullable on the way IN
+    /// (<c>appearance.save</c>): a theme/density-only save omits it, and null there means "leave it
+    /// as it was" rather than "turn it off" — see <see cref="SPLA.Service.SettingsOps.SaveAppearance"/>.
+    /// Always present on the way OUT (<c>appearance.changed</c>): every window needs the actual
+    /// current value, not "unspecified".</summary>
+    public bool? AutoOpenSubagents { get; set; }
+}
+
+/// <summary>The interface language a person picked (<c>language.save</c>), as a BCP-47 tag.
+/// <para>Deliberately not broadcast back the way appearance is. <c>appearance.changed</c> goes to
+/// every window of a project, which is right for project data; a language is per-person, and on a
+/// multi-user server that same fan-out would retitle somebody else's screen. Each window learns the
+/// language from its own <see cref="WelcomePayload"/> at connect instead.</para></summary>
+public sealed class LanguagePayload
+{
+    public string Language { get; set; } = "en";
 }
 
 /// <summary>Full state of a chat the client just opened (or created): its existing messages + settings.</summary>
@@ -1089,6 +1317,12 @@ public sealed class UserMessagePayload
     public string MsgId { get; set; } = string.Empty;
     public string? CreatedAt { get; set; }
     public string? Text { get; set; }
+
+    /// <summary>Mirrors <see cref="ChatMessageDto.PeerFrom"/> — set when this user-turn message is
+    /// actually an incoming reply across a correspondence, so the client renders it live as speech
+    /// ("← from &lt;PeerFrom&gt;") instead of an ordinary human bubble the instant it lands, rather than
+    /// only after the chat is next reopened.</summary>
+    public string? PeerFrom { get; set; }
 }
 
 public sealed class AssistantMessagePayload
@@ -1167,6 +1401,22 @@ public sealed class ToolResultPayload
     /// <summary>Why it failed or was refused; null when it succeeded. Short and machine-facing —
     /// the sentence for the model is already in <see cref="Result"/>.</summary>
     public string? Reason { get; set; }
+
+    /// <summary>Pointers the tool attached alongside its text (<c>ToolResource</c> content) — kept
+    /// out of <see cref="Result"/> deliberately, since only <c>TextContent</c> ever reaches the model
+    /// (<c>ConversationOrchestrator</c>). <c>agent_spawn</c>/<c>agent_spawn_batch</c> use this to hand
+    /// the UI a link to the spawned session's chat id without that id ever entering the model's
+    /// context (PLAN_20260902 wave 7, item 5: "ссылка на сессию … в итоге вызова"). Null/empty for
+    /// the overwhelming majority of tool results, which have nothing to point at.</summary>
+    public List<ToolResourceDto>? Resources { get; set; }
+}
+
+/// <summary>One <c>ToolResource</c> content block, projected to the wire.</summary>
+public sealed class ToolResourceDto
+{
+    public string Uri { get; set; } = string.Empty;
+    public string? MimeType { get; set; }
+    public string? Description { get; set; }
 }
 
 public sealed class NoticePayload
@@ -1350,6 +1600,33 @@ public sealed class TaskStateChangedPayload
 {
     public string ChatId { get; set; } = string.Empty;
     public TaskSummaryDto Task { get; set; } = new();
+}
+
+// ── Correspondence graph (PLAN_20260902 wave 7б) ───────────────────────
+// See docs/adr/ADR_20260827-2_core_roles.md §2.5's last row. One wire DTO per
+// SPLA.Domain.Settings.CorrespondenceEdge — the service-side seam (RuntimeProjections' own pattern)
+// keeps the runtime/domain layer ignorant of DTOs, so the mapping lives beside the handler, not here.
+
+/// <summary>One edge of the project-wide correspondence graph — an arrow from whoever opened the
+/// correspondence to the correspondent they addressed, carrying both directions' reply counts and
+/// estimated token volume so a viewer can see imbalance directly: a role that only sends
+/// (<see cref="RepliesFromCorrespondent"/> stuck at zero) or a role nobody answers.</summary>
+public sealed class CorrespondenceEdgeDto
+{
+    public string FromChatId { get; set; } = string.Empty;
+    public string FromRole { get; set; } = string.Empty;
+    public string ToChatId { get; set; } = string.Empty;
+    public string ToRole { get; set; } = string.Empty;
+    public string Topic { get; set; } = string.Empty;
+    public int RepliesFromInitiator { get; set; }
+    public int VolumeFromInitiator { get; set; }
+    public int RepliesFromCorrespondent { get; set; }
+    public int VolumeFromCorrespondent { get; set; }
+}
+
+public sealed class CorrespondenceGraphResultPayload
+{
+    public List<CorrespondenceEdgeDto> Edges { get; set; } = new();
 }
 
 public sealed class PermissionRequestPayload

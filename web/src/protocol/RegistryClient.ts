@@ -10,6 +10,7 @@
  * Served BY the hub, so every address here is relative: the page and the routes are the same origin
  * by construction.
  */
+import { t } from "../i18n";
 
 export interface KnownProject {
   projectId: string;
@@ -86,20 +87,20 @@ export class RegistryClient {
    *  running counts as worked — the caller asked for the project to be up). */
   async start(projectId: string): Promise<string | null> {
     const res = await fetch(`/registry/start?project=${encodeURIComponent(projectId)}`, { method: "POST" });
-    if (res.status === 501) return "This hub is not allowed to start projects.";
+    if (res.status === 501) return t("This hub is not allowed to start projects.");
     if (res.ok) return null;
     try {
       const body = await res.json();
-      return body.error || `Could not start it (${res.status}).`;
-    } catch { return `Could not start it (${res.status}).`; }
+      return body.error || t("Could not start it ({status}).", { status: res.status });
+    } catch { return t("Could not start it ({status}).", { status: res.status }); }
   }
 
   /** Closes everything on a project — agent and windows together. `force` discards a running turn. */
   async close(projectId: string, force: boolean): Promise<string | null> {
     const res = await fetch(
       `/registry/stop-project?project=${encodeURIComponent(projectId)}&force=${force}`, { method: "POST" });
-    if (res.status === 404) return "Nothing is running on it.";
-    return res.ok ? null : `The hub refused (${res.status}).`;
+    if (res.status === 404) return t("Nothing is running on it.");
+    return res.ok ? null : t("The hub refused ({status}).", { status: res.status });
   }
 
   /** Raises a window that already has the project. */

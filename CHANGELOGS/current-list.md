@@ -7,7 +7,7 @@ The scannable list: one line per change, no dates, no detail. Derived from the e
 This list and the summary are what CI puts into the release body; the full log stays in the
 repository and is linked from it.
 
-**Covers work since `v0.2.5`**, frozen in [`CHANGELOGS/v0.2.5.md`](v0.2.5.md).
+**Covers work since `v0.2.6`**, frozen in [`CHANGELOGS/v0.2.6.md`](v0.2.6.md).
 
 ---
 

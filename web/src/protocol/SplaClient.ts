@@ -1,3 +1,4 @@
+import { t } from "../i18n";
 import type { Envelope, ServerEvents, WireFrame } from "./types";
 import { uuid } from "../util/uuid";
 
@@ -61,7 +62,7 @@ export class SplaClient {
           on: false,
           lost,
           attempts: attempt,
-          text: lost ? "agent unreachable" : "disconnected — retrying",
+          text: lost ? t("agent unreachable") : t("disconnected — retrying"),
         },
         { type: "conn", payload: {} });
 

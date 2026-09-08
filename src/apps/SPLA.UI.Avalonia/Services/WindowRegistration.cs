@@ -54,7 +54,7 @@ public sealed class WindowRegistration : IAsyncDisposable
         {
             ProjectId = projectId ?? "(no-project)",
             ProjectName = projectName,
-            Role = ParticipantRoles.Window,
+            Kind = ParticipantKind.Window,
             Info = new InstanceInfo
             {
                 InstanceId = Guid.NewGuid().ToString("N"),

@@ -5,9 +5,10 @@ import type { ResolvedBlockStyle } from "../../model/StyleLibrary.js";
 import { elementRect } from "../../model/types.js";
 import { ELEMENT_ATTR, ROLE_ATTR, Role } from "../../interaction/roles.js";
 import { setAttrs, svg, text } from "../svg.js";
-import type { ElementRenderer, RenderContext } from "./ElementRenderer.js";
+import type { ChromeLayout, ElementRenderer, RenderContext } from "./ElementRenderer.js";
 import { alignX, dashArray, textAttrs } from "./textAttrs.js";
 import { resolveElementRelations } from "../../model/relations-resolver.js";
+import { renderContent } from "../../content/ContentRenderer.js";
 import { SourceCodeService } from "../../editor/code/SourceCodeService.js";
 import { DIAGRAM_CONFIG } from "../../constants/diagram-constants.js";
 
@@ -31,7 +32,6 @@ export class BoxRenderer implements ElementRenderer {
   update(g: SVGGElement, el: DiagramElement, ctx: RenderContext): void {
     const style = ctx.styleOf(el);
     const selected = ctx.isSelected(el);
-    const rect = elementRect(el);
 
     setAttrs(g, {
       class: `spla-node${selected ? " is-selected" : ""}`,
@@ -40,28 +40,18 @@ export class BoxRenderer implements ElementRenderer {
     });
     g.replaceChildren();
 
-    // 1. Background / Drag handle rect
-    g.appendChild(
-      svg("rect", {
-        [ROLE_ATTR]: Role.DragHandle,
-        x: el.x,
-        y: el.y,
-        width: el.width,
-        height: el.height,
-        rx: style.radius,
-        fill: ctx.paints.fill(style.fill),
-        stroke: style.border.color,
-        "stroke-width": style.border.width,
-        "stroke-dasharray": dashArray(style.border.dash),
-        "stroke-opacity": style.border.opacity === 1 ? null : style.border.opacity,
-      }),
-    );
+    // 1. Background / Drag handle
+    g.appendChild(this.outline(el, style, ctx));
 
     // 2. Top Bar Zone: Controls (Doc button on left, Code button, Relations count on right)
+    const chrome = this.chrome(el, style);
     const textEntry = ctx.doc ? ctx.doc.getText(el.id, "ru") || ctx.doc.getText(el.id, "en") : undefined;
     const hasDoc = Boolean(textEntry?.doc?.trim());
-    const docX = el.x + 6;
-    const docY = el.y + NODE_LAYOUT.topBarY;
+    // Buttons are laid out from an anchor plus a direction, so that a shape
+    // with no room to the right of its anchor can stack them the other way.
+    const docWidth = NODE_LAYOUT.docButtonWidth;
+    const docX = chrome.docGrow === "right" ? chrome.docAnchor.x : chrome.docAnchor.x - docWidth;
+    const docY = chrome.docAnchor.y;
 
     const docGroup = svg("g", {
       class: `spla-node-doc${hasDoc ? " has-doc" : ""}`,
@@ -94,7 +84,8 @@ export class BoxRenderer implements ElementRenderer {
     const codeRef = typeof el.metadata?.codeRef === "string" ? el.metadata.codeRef.trim() : "";
     const isAvailable = codeRef ? SourceCodeService.isFileAvailable(codeRef) : false;
     if (codeRef && isAvailable !== false) {
-      const codeX = docX + NODE_LAYOUT.docButtonWidth + 4;
+      const step = NODE_LAYOUT.docButtonWidth + 4;
+      const codeX = chrome.docGrow === "right" ? docX + step : docX - step;
       const codeGroup = svg("g", {
         class: "spla-node-code",
         [ROLE_ATTR]: Role.CodeView,
@@ -132,8 +123,8 @@ export class BoxRenderer implements ElementRenderer {
       const isGhost = ctx.ghostNodeId === el.id;
       const badgeText = `${total}/${visibleCount}`;
       const bw = Math.max(22, badgeText.length * 6 + 8);
-      const bx = el.x + el.width - bw - 6;
-      const by = el.y + NODE_LAYOUT.topBarY;
+      const bx = chrome.badgeGrow === "left" ? chrome.badgeAnchor.x - bw : chrome.badgeAnchor.x;
+      const by = chrome.badgeAnchor.y;
 
       const badgeGroup = svg("g", {
         class: `spla-node-badge${isGhost ? " is-active" : ""}`,
@@ -165,16 +156,28 @@ export class BoxRenderer implements ElementRenderer {
       g.appendChild(badgeGroup);
     }
 
-    // 3. Title Zone (strictly below top bar, without icon prefix)
-    const tall = el.height > 60;
+    // 3. Interior. A template, when the style or the placement names one,
+    // replaces the built-in caption and subtitle wholesale — it is the same
+    // region of the block, drawn from text someone wrote instead of from two
+    // hardcoded lines. Without one, nothing below changes.
+    const content = ctx.content(el);
+    if (content !== null) {
+      const drawn = renderContent(content.tree, chrome.textBox, style, content.data, {
+        x: chrome.padX,
+        top: chrome.contentTop,
+      });
+      drawn.nodes.forEach((n) => g.appendChild(n));
+      return;
+    }
 
+    // 4. Title Zone (strictly below top bar, without icon prefix)
     if (style.title.show) {
       g.appendChild(
         text(
           {
             ...textAttrs(style.title),
-            ...alignX(style.title, rect, NODE_LAYOUT.padX),
-            y: el.y + NODE_LAYOUT.titleY(tall),
+            ...alignX(style.title, chrome.textBox, chrome.padX),
+            y: chrome.textBox.y + chrome.captionTop,
             class: "spla-node-label",
           },
           el.label,
@@ -182,21 +185,77 @@ export class BoxRenderer implements ElementRenderer {
       );
     }
 
-    // 4. Subtitle Zone (strictly below title)
+    // 5. Subtitle Zone (strictly below title)
     if (style.subtitle.show) {
       const subtitle = typeof el.metadata.type === "string" ? el.metadata.type : el.type;
       g.appendChild(
         text(
           {
             ...textAttrs(style.subtitle),
-            ...alignX(style.subtitle, rect, NODE_LAYOUT.padX),
-            y: el.y + NODE_LAYOUT.subtitleY(tall),
+            ...alignX(style.subtitle, chrome.textBox, chrome.padX),
+            y: chrome.textBox.y + chrome.captionTop + NODE_LAYOUT.subtitleY(el.height > 60)
+              - NODE_LAYOUT.titleY(el.height > 60),
             class: "spla-node-subtitle",
           },
           subtitle,
         ),
       );
     }
+  }
+
+  /**
+   * Where this shape's buttons, badge and text go.
+   *
+   * The rectangle's answer is the one the canvas grew up with: buttons in the
+   * top-left corner, badge in the top-right, text across the whole box. Every
+   * other shape overrides it, because "6px in from the corner" means nothing
+   * on an outline whose corner is a point or a curve — that is exactly how a
+   * diamond ended up with its controls floating in empty space outside itself.
+   */
+  protected chrome(el: DiagramElement, _style: ResolvedBlockStyle): ChromeLayout {
+    const tall = el.height > 60;
+    return {
+      docAnchor: { x: el.x + 6, y: el.y + NODE_LAYOUT.topBarY },
+      docGrow: "right",
+      badgeAnchor: { x: el.x + el.width - 6, y: el.y + NODE_LAYOUT.topBarY },
+      badgeGrow: "left",
+      textBox: elementRect(el),
+      padX: NODE_LAYOUT.padX,
+      captionTop: NODE_LAYOUT.titleY(tall),
+      contentTop: NODE_LAYOUT.contentTop,
+    };
+  }
+
+  /**
+   * The element's own outline, and the thing the pointer grabs to drag it.
+   *
+   * Split out from `update` so that a differently shaped node — an ellipse, a
+   * cylinder, an actor — is a subclass that swaps this one method, rather than
+   * a second copy of the chrome above it. Doc button, code button, link badge,
+   * caption and subtitle are the same furniture whatever the outline is, and
+   * duplicating them per shape is how they drift apart.
+   */
+  protected outline(el: DiagramElement, style: ResolvedBlockStyle, ctx: RenderContext): SVGElement {
+    return svg("rect", {
+      [ROLE_ATTR]: Role.DragHandle,
+      x: el.x,
+      y: el.y,
+      width: el.width,
+      height: el.height,
+      rx: style.radius,
+      ...this.paintAttrs(style, ctx),
+    });
+  }
+
+  /** Fill and stroke as the style resolved them; shared by every outline. */
+  protected paintAttrs(style: ResolvedBlockStyle, ctx: RenderContext): Record<string, unknown> {
+    return {
+      fill: ctx.paints.fill(style.fill),
+      stroke: style.border.color,
+      "stroke-width": style.border.width,
+      "stroke-dasharray": dashArray(style.border.dash),
+      "stroke-opacity": style.border.opacity === 1 ? null : style.border.opacity,
+    };
   }
 
   visibleRect(el: DiagramElement): Rect {

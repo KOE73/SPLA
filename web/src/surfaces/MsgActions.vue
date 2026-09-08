@@ -2,12 +2,13 @@
   <div class="msg-actions">
     <span v-if="when" class="when" :title="when.abs">{{ when.abs }} · {{ when.rel }}</span>
     <button class="act" :title="copied ? 'Copied' : 'Copy'" @click="onCopy">{{ copied ? "✓" : "⧉" }}</button>
-    <button v-if="msgId" class="act" title="Rewind to here — discard everything after" @click="$emit('rewind')">↩</button>
-    <button v-if="msgId" class="act" title="Fork chat from here" @click="$emit('fork')">⑂</button>
+    <button v-if="msgId" class="act" :title="t('Rewind to here — discard everything after')" @click="$emit('rewind')">↩</button>
+    <button v-if="msgId" class="act" :title="t('Fork chat from here')" @click="$emit('fork')">⑂</button>
   </div>
 </template>
 
 <script setup lang="ts">
+import { t } from "../i18n";
 import { computed, ref } from "vue";
 
 const props = defineProps<{

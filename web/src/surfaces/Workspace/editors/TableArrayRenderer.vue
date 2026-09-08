@@ -16,7 +16,7 @@
       <span class="tarr-title">{{ control.label }}</span>
       <span class="tarr-count">{{ rows.length }}</span>
       <button class="tarr-add" type="button" :disabled="!control.enabled" @click="addRow">
-        + Add
+        {{ t('+ Add') }}
       </button>
     </div>
 
@@ -47,7 +47,7 @@
                 v-if="control.enabled"
                 class="tarr-del"
                 type="button"
-                title="Remove row"
+                :title="t('Remove row')"
                 @click="removeRow(index)"
               >
                 ✕
@@ -57,7 +57,7 @@
         </tbody>
       </table>
 
-      <div v-if="rows.length === 0" class="tarr-empty">No rows — click “+ Add”.</div>
+      <div v-if="rows.length === 0" class="tarr-empty">{{ t('No rows — click “+ Add”.') }}</div>
     </div>
   </div>
 </template>
@@ -73,6 +73,7 @@ import {
   UISchemaElement,
 } from "@jsonforms/core";
 import { defineComponent } from "vue";
+import { t } from "../../../i18n";
 import {
   DispatchRenderer,
   rendererProps,
@@ -106,6 +107,8 @@ const renderer = defineComponent({
     },
   },
   methods: {
+    // Options API: t has to be a method to be callable from this component's template.
+    t,
     composePaths,
     cellUiSchema(prop: string): UISchemaElement {
       // A label-less Control targeting a single property → renders just the input cell.

@@ -14,25 +14,26 @@
     {{ queuedCount }} queued
   </div>
   <div class="row">
-    <button class="icon-btn" title="Attach image" @click="fileInput?.click()">+</button>
+    <button class="icon-btn" :title="t('Attach image')" @click="fileInput?.click()">+</button>
     <input ref="fileInput" type="file" accept="image/*" multiple hidden @change="onFileInput">
     <textarea
       id="input"
       ref="textareaEl"
       v-model="text"
       rows="2"
-      placeholder="Message…  (Enter to send, Shift+Enter for newline, paste images)"
+      :placeholder="t('Message…  (Enter to send, Shift+Enter for newline, paste images)')"
       :disabled="!ready"
       @keydown.enter.exact.prevent="send"
       @input="autosize"
       @paste="onPaste"
     ></textarea>
-    <button class="btn" :disabled="!ready" @click="send">Send</button>
-    <button v-if="turnActive" class="btn danger" @click="stop">Stop</button>
+    <button class="btn" :disabled="!ready" @click="send">{{ t('Send') }}</button>
+    <button v-if="turnActive" class="btn danger" @click="stop">{{ t('Stop') }}</button>
   </div>
 </template>
 
 <script setup lang="ts">
+import { t } from "../i18n";
 import { computed, nextTick, onUnmounted, ref, watch } from "vue";
 import { client } from "../protocol/SplaClient";
 import { store } from "../state/store";
@@ -120,14 +121,14 @@ function onPaste(e: ClipboardEvent) {
 function send() {
   const s = chat.session.value;
   if (!s) return;
-  const t = s.draft.trim();
-  if (!t && !s.attachments.length) return;
+  const text = s.draft.trim();
+  if (!text && !s.attachments.length) return;
 
   const images = s.attachments.slice();
-  addLocalUserMessage(s, t, images);
+  addLocalUserMessage(s, text, images);
   s.draft = "";
   s.attachments = [];
-  chat.send("chat.send", { text: t, images });
+  chat.send("chat.send", { text: text, images });
   nextTick(() => { resetSize(); textareaEl.value?.focus(); });
 }
 

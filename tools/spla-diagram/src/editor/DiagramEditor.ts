@@ -40,6 +40,16 @@ export interface DiagramEditorOptions {
   catalog?: readonly CatalogEntry[];
   store?: ModelStore;
   styleStore?: StyleStore;
+  /**
+   * Where the workspace files live, relative to the page.
+   *
+   * The bundle is served from `app/` while the models sit one level up, so
+   * anything the canvas fetches for itself — `templates.json`, `content/` —
+   * needs the same base the stores were given. Defaulting to "./" would make
+   * the canvas ask `app/templates.json`, which is a 404 that shows up as
+   * "templates silently do nothing".
+   */
+  modelsBase?: string;
 }
 
 import { DIAGRAM_CONFIG } from "../constants/diagram-constants.js";
@@ -141,7 +151,10 @@ export class DiagramEditor implements InspectorHost, StylePanelHost, DiagramEdit
     // library that fails to load is not a reason to show a grey diagram.
     this.styleLibrary = StyleLibrary.parse(builtinStyleSheet());
 
-    this.canvas = new DiagramCanvas(this.slot("canvas"), { styles: this.styleLibrary });
+    this.canvas = new DiagramCanvas(this.slot("canvas"), {
+      styles: this.styleLibrary,
+      modelsBase: options.modelsBase,
+    });
     this.docEditor = new DocEditorDialog(this);
     this.codeViewer = new CodeViewerDialog();
     this.inspector = new Inspector(

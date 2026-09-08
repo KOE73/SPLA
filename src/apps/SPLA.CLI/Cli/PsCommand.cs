@@ -72,7 +72,7 @@ internal sealed class PsCommand : AsyncCommand<PsSettings>
             var state = r.IsServing ? InstanceStates.Name(r.State) : "-";
             var clients = r.Clients?.ToString() ?? "-";
             Console.WriteLine(
-                $"{Truncate(r.ProjectName ?? "?", 24),-24} {Truncate(r.Role, 7),-7} " +
+                $"{Truncate(r.ProjectName ?? "?", 24),-24} {Truncate(r.Kind, 7),-7} " +
                 $"{Truncate(r.Info.Mode, 9),-9} {state,-12} " +
                 $"{clients,-8} {r.Info.Pid,-8} {Truncate(r.Info.Endpoint ?? "-", 28),-28} " +
                 $"{r.Info.StartedAt.LocalDateTime:g}");

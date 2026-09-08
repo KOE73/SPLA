@@ -1,10 +1,10 @@
 <template>
   <div class="wire-surface">
   <header>
-    <b>Wire</b>
-    <input v-model="filter" class="wire-filter" placeholder="filter type/payload…" spellcheck="false">
+    <b>{{ t('Wire') }}</b>
+    <input v-model="filter" class="wire-filter" :placeholder="t('filter type/payload…')" spellcheck="false">
     <button class="filter" :class="{ on: paused }" @click="paused = !paused">{{ paused ? "resume" : "pause" }}</button>
-    <button class="filter" @click="clear">clear</button>
+    <button class="filter" @click="clear">{{ t('clear') }}</button>
     <span class="hint">{{ total ? total + " frames" : "" }}</span>
   </header>
   <div ref="logEl" class="wire-log">
@@ -25,6 +25,7 @@
 </template>
 
 <script setup lang="ts">
+import { t } from "../i18n";
 import { nextTick, onUnmounted, ref } from "vue";
 import { client } from "../protocol/SplaClient";
 import type { WireFrame } from "../protocol/types";

@@ -79,8 +79,17 @@ function parseEdge(w: WireEdge): DiagramEdge {
     from: w.from,
     to: w.to,
     label: w.label ?? "",
+    // A code-origin edge carries no text at all (ADR_20260831 §2.13); even if
+    // a stray value were present on the wire it is not read into the model,
+    // so nothing downstream can offer to edit or render it.
+    ...(w.origin === "code" || w.fromLabel === undefined ? {} : { fromLabel: w.fromLabel }),
+    ...(w.origin === "code" || w.toLabel === undefined ? {} : { toLabel: w.toLabel }),
     type: w.type ?? "call",
     ...(w.styleId === undefined ? {} : { styleId: w.styleId }),
+    ...(w.origin === undefined ? {} : { origin: w.origin }),
+    // The *choice* of line shape travels; the polyline it produces never does
+    // (ADR_20260903 §2.7).
+    ...(w.routing === undefined ? {} : { routing: w.routing }),
   };
 }
 
@@ -249,8 +258,16 @@ function serializeView(view: DiagramView): WireView {
 function serializeEdge(edge: DiagramEdge): WireEdge {
   const out: WireEdge = { id: edge.id, from: edge.from, to: edge.to };
   if (edge.label !== "") out.label = edge.label;
+  // Mirrors parseEdge's rule: a code-origin edge never re-acquires text on
+  // save even if something upstream slipped a value onto the in-memory edge.
+  if (edge.origin !== "code") {
+    if (edge.fromLabel !== undefined && edge.fromLabel !== "") out.fromLabel = edge.fromLabel;
+    if (edge.toLabel !== undefined && edge.toLabel !== "") out.toLabel = edge.toLabel;
+  }
   out.type = edge.type;
   if (edge.styleId !== undefined) out.styleId = edge.styleId;
+  if (edge.origin !== undefined) out.origin = edge.origin;
+  if (edge.routing !== undefined) out.routing = edge.routing;
   return out;
 }
 

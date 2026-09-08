@@ -70,7 +70,10 @@ export class DiagramDocument {
     return [];
   }
 
-  getText(id: string, lang = "ru"): { name?: string; title?: string; doc?: string; description?: string } | undefined {
+  getText(
+    id: string,
+    lang = "ru",
+  ): { name?: string; title?: string; doc?: string; description?: string; fromLabel?: string; toLabel?: string } | undefined {
     const bundle = this.bundle;
     if (!bundle) return undefined;
     if (bundle.textRegistries && bundle.textRegistries[lang]?.entries?.[id]) {
@@ -82,7 +85,11 @@ export class DiagramDocument {
     return undefined;
   }
 
-  setText(id: string, entry: { name?: string; title?: string; doc?: string; description?: string }, lang = "ru"): void {
+  setText(
+    id: string,
+    entry: { name?: string; title?: string; doc?: string; description?: string; fromLabel?: string; toLabel?: string },
+    lang = "ru",
+  ): void {
     const bundle = this.bundle;
     if (!bundle) return;
     if (!bundle.textRegistries) {

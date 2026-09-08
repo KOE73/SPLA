@@ -1,5 +1,8 @@
+using System.Globalization;
 using System.Text.Json;
 using System.Text.Json.Nodes;
+using YamlDotNet.Core;
+using YamlDotNet.Core.Events;
 using YamlDotNet.Serialization;
 using YamlDotNet.Serialization.NamingConventions;
 
@@ -13,7 +16,35 @@ public static class ConfigLoader
     private static readonly IDeserializer Deserializer = new DeserializerBuilder()
         .WithNamingConvention(UnderscoredNamingConvention.Instance)
         .IgnoreUnmatchedProperties()
+        // Opaque plugin blobs land in Dictionary<string, object>, where YAML has no target type to
+        // guide it: without this, `trusted_connection: true` comes back as the *string* "true" and
+        // reaches a plugin's bool property as JSON `"true"`, which System.Text.Json refuses.
+        .WithAttemptingUnquotedStringTypeDeserialization()
+        .WithNodeTypeResolver(new PlainNumberResolver())
         .Build();
+
+    /// <summary>Gives an untyped (<c>object</c>) plain scalar that looks like a number its numeric
+    /// type, so `default_limit: 10` survives the round trip as 10 and not "10". Quoted scalars keep
+    /// the string the author asked for.</summary>
+    private sealed class PlainNumberResolver : INodeTypeResolver
+    {
+        public bool Resolve(NodeEvent? nodeEvent, ref Type currentType)
+        {
+            if (currentType != typeof(object) || nodeEvent is not Scalar { Style: ScalarStyle.Plain } s)
+                return false;
+            if (long.TryParse(s.Value, NumberStyles.Integer, CultureInfo.InvariantCulture, out _))
+            {
+                currentType = typeof(long);
+                return true;
+            }
+            if (double.TryParse(s.Value, NumberStyles.Float, CultureInfo.InvariantCulture, out _))
+            {
+                currentType = typeof(double);
+                return true;
+            }
+            return false;
+        }
+    }
 
     private static readonly ISerializer Serializer = new SerializerBuilder()
         .WithNamingConvention(UnderscoredNamingConvention.Instance)
@@ -218,6 +249,75 @@ public static class ConfigLoader
         => Deserializer.Deserialize<SplaProject>(yaml) ?? new SplaProject();
 
     /// <summary>
+    /// Loads one role's body from <c>roles/&lt;roleName&gt;.yaml</c> next to the manifest. Returns
+    /// null when the file does not exist.
+    ///
+    /// <para><b>Loading a file is not the same as activating a role.</b> This method answers "what
+    /// does that file say", nothing more — it does not check <see cref="SplaProject.Roles"/> and must
+    /// never be mistaken for that check. A file can sit in <c>roles/</c> completely unnamed by the
+    /// manifest (the common case for a role someone's pull request adds without also editing the
+    /// manifest) and loading it here is harmless; what makes a role act is
+    /// <see cref="SettingsResolver.ResolveForRole"/> refusing to proceed unless the name is listed.
+    /// </para>
+    /// </summary>
+    /// <param name="projectDirectory">The directory holding the manifest — roles live in
+    /// <c>&lt;projectDirectory&gt;/roles/</c>, never resolved relative to the current directory.</param>
+    /// <param name="roleName">The role's file-stem name, as it would appear under <c>roles:</c>.</param>
+    public static SplaRoleSection? LoadRole(string projectDirectory, string roleName)
+    {
+        if (string.IsNullOrWhiteSpace(roleName)) return null;
+
+        var path = Path.Combine(projectDirectory, "roles", roleName + ".yaml");
+        if (!File.Exists(path)) return null;
+
+        var yaml = File.ReadAllText(path);
+        return Deserializer.Deserialize<SplaRoleSection>(yaml) ?? new SplaRoleSection();
+    }
+
+    /// <summary>The directory roles live in for a given manifest directory —
+    /// <c>&lt;projectDirectory&gt;/roles</c>. One definition, so an editor, a loader and a lister
+    /// can never disagree about where a role file is.</summary>
+    public static string RolesDir(string projectDirectory) => Path.Combine(projectDirectory, "roles");
+
+    /// <summary>Every role BODY on disk, by file stem, sorted. Says nothing about which of them act —
+    /// that is the manifest's <see cref="SplaProject.Roles"/> list and only ever that (see
+    /// <see cref="LoadRole"/>). An editor needs both halves to show the difference, which is why this
+    /// deliberately does not filter by the manifest.</summary>
+    public static List<string> ListRoleFiles(string projectDirectory)
+    {
+        var dir = RolesDir(projectDirectory);
+        if (!Directory.Exists(dir)) return new();
+        return Directory.EnumerateFiles(dir, "*.yaml")
+            .Select(Path.GetFileNameWithoutExtension)
+            .Where(n => !string.IsNullOrWhiteSpace(n))
+            .Select(n => n!)
+            .OrderBy(n => n, StringComparer.OrdinalIgnoreCase)
+            .ToList();
+    }
+
+    /// <summary>Writes one role's body to <c>roles/&lt;roleName&gt;.yaml</c>, creating the directory.
+    /// Writing a body does not make the role act — only a name in the manifest does.</summary>
+    public static void SaveRole(string projectDirectory, string roleName, SplaRoleSection role)
+    {
+        if (string.IsNullOrWhiteSpace(roleName)) throw new ArgumentException("Role name must not be empty.", nameof(roleName));
+        var dir = RolesDir(projectDirectory);
+        Directory.CreateDirectory(dir);
+        File.WriteAllText(Path.Combine(dir, roleName + ".yaml"), Serializer.Serialize(role));
+    }
+
+    /// <summary>Deletes one role's body. Returns false when there was nothing to delete — a role
+    /// declared in the manifest with no file of its own is a normal (broken) state, not an error
+    /// here.</summary>
+    public static bool DeleteRole(string projectDirectory, string roleName)
+    {
+        if (string.IsNullOrWhiteSpace(roleName)) return false;
+        var path = Path.Combine(RolesDir(projectDirectory), roleName + ".yaml");
+        if (!File.Exists(path)) return false;
+        File.Delete(path);
+        return true;
+    }
+
+    /// <summary>
     /// Serializes an opaque plugin settings blob (nested mapping) to a YAML string.
     /// Used to hand a plugin its own settings across the assembly-load-context boundary.
     /// </summary>
@@ -321,6 +421,7 @@ public static class ConfigLoader
         "name" => p.Name,
         "mounts" => p.Mounts,
         "agent" => p.Agent,
+        "roles" => p.Roles,
         "llm" => p.Llm,
         "connections" => p.Connections,
         "ui" => p.Ui,
@@ -393,6 +494,59 @@ public static class ConfigLoader
         return files.Length > 0 ? files[0] : null;
     }
 
+    // ── Connection layers (user / shared) ────────────────────────────────────
+
+    /// <summary>This person's own connection file. <paramref name="personalDir"/> is <c>~/.spla</c>
+    /// locally and the caller's private area on a multi-user server.</summary>
+    public static string UserConnectionsPath(string personalDir)
+        => Path.Combine(personalDir, "connections.yaml");
+
+    /// <summary>The administered connection file. Null <paramref name="sharedDir"/> = the machine
+    /// home, which is what a single-user local install wants — same convention as
+    /// <c>secrets.shared.yaml</c>.</summary>
+    public static string SharedConnectionsPath(string? sharedDir = null)
+        => Path.Combine(sharedDir ?? GetDefaultsDir(), "connections.shared.yaml");
+
+    /// <summary>Reads one connection layer, stamping every entry with the scope it came from. A
+    /// missing file is an empty layer, not an error: not having personal connections is the normal
+    /// state of a fresh install.</summary>
+    public static List<SplaConnectionSection> LoadConnectionLayer(string path, ConnectionScope scope)
+    {
+        if (!File.Exists(path)) return new();
+        List<SplaConnectionSection> connections;
+        try
+        {
+            connections = Deserializer.Deserialize<SplaConnectionLayer>(File.ReadAllText(path))?.Connections
+                ?? new();
+        }
+        catch (YamlDotNet.Core.YamlException ex)
+        {
+            throw new ProjectManifestException(path, $"not valid YAML — {ex.Message}");
+        }
+        foreach (var c in connections) c.Scope = scope;
+        return connections;
+    }
+
+    /// <summary>Replaces a layer's whole list. An empty list writes an empty file rather than
+    /// deleting it — a file that is there and says "none" is a statement; a missing file is
+    /// indistinguishable from never having configured anything.</summary>
+    public static void SaveConnectionLayer(string path, IEnumerable<SplaConnectionSection> connections)
+    {
+        var dir = Path.GetDirectoryName(path);
+        if (!string.IsNullOrEmpty(dir))
+        {
+            Directory.CreateDirectory(dir);
+            TryHideDirectory(dir);
+        }
+        var list = connections.ToList();
+        var yaml = Serializer.Serialize(new SplaConnectionLayer
+        {
+            Version = 1,
+            Connections = list.Count > 0 ? list : null
+        });
+        File.WriteAllText(path, yaml);
+    }
+
     /// <summary>
     /// Full resolve: load defaults + optional project → ResolvedSettings.
     /// </summary>
@@ -406,9 +560,25 @@ public static class ConfigLoader
             project = LoadProject(splaFilePath);
         }
 
-        var resolved = SettingsResolver.Resolve(defaults, project);
-        if (splaFilePath != null && File.Exists(splaFilePath))
-            resolved.ProjectFilePath = Path.GetFullPath(splaFilePath);
+        // The workspace is needed twice — once to find this person's area (their connections live
+        // there, and on a server that answer depends on the workspace), and again below to record it
+        // on the resolved settings. Derived here from the manifest path for the same reason it is
+        // derived below: the directory holding the manifest is the only definition of the root.
+        var manifestFull = splaFilePath != null && File.Exists(splaFilePath)
+            ? Path.GetFullPath(splaFilePath)
+            : null;
+        var workspace = manifestFull != null ? Path.GetDirectoryName(manifestFull) : null;
+        var personalDir = PersonalDirResolver?.Invoke(workspace);
+
+        // Layers below the project: administered first, then this person's own. Both are files the
+        // project never sees and never carries, which is the whole point — keys configured once are
+        // present in every project this person opens.
+        var sharedConnections = LoadConnectionLayer(SharedConnectionsPath(), ConnectionScope.Shared);
+        var userConnections = LoadConnectionLayer(
+            UserConnectionsPath(personalDir ?? GetDefaultsDir()), ConnectionScope.User);
+
+        var resolved = SettingsResolver.Resolve(defaults, project, sharedConnections, userConnections);
+        resolved.ProjectFilePath = manifestFull;
 
         // The root, decided in exactly one place: the directory the manifest was found in. Absolute
         // from here on — it used to stay whatever the manifest said (usually "."), which only ever
@@ -416,9 +586,6 @@ public static class ConfigLoader
         // relative to wherever the process happened to start.
         // No manifest ⇒ no project ⇒ no root: the current directory is where we were launched, not a
         // boundary, and callers must consult HasProject before treating it as one.
-        var workspace = resolved.ProjectFilePath != null
-            ? Path.GetDirectoryName(resolved.ProjectFilePath)
-            : null;
         resolved.WorkspacePath = workspace ?? Directory.GetCurrentDirectory();
 
         // Mounts need the root, so they are resolved here rather than in SettingsResolver — and only
@@ -436,9 +603,8 @@ public static class ConfigLoader
         // A deployment that resolves personal directories is one with more than one person in it, and
         // that single fact drives both consequences: whose folders these are, and whether they get to
         // call their own folders vetted.
-        var personal = PersonalDirResolver?.Invoke(workspace);
-        resolved.IsMultiUserDeployment = personal is not null;
-        resolved.PersonalDir = personal ?? GetDefaultsDir();
+        resolved.IsMultiUserDeployment = personalDir is not null;
+        resolved.PersonalDir = personalDir ?? GetDefaultsDir();
 
         // The branches this person added themselves. Same area as their secrets and for the same
         // reason: it is theirs, it is never committed, and the UI has to be able to write it.

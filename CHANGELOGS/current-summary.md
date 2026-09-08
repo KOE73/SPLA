@@ -1,6 +1,6 @@
 # Summary — unreleased
 
-<!-- covers: 2026-09-01 -->
+<!-- covers: 2026-09-07 -->
 
 The prose account of the current cycle: what changed and why it matters, organised by theme rather
 than by date. Rewritten from scratch before each push — never appended to. On release it is frozen

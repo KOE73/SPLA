@@ -1,4 +1,4 @@
-using System.Text.Json;
+﻿using System.Text.Json;
 
 namespace SPLA.Service.Contracts;
 
@@ -99,6 +99,19 @@ public static class MessageTypes
     public const string ChatUnarchive = "chat.unarchive";
     /// <summary>Lists archived chats. Answered with <see cref="ChatArchivedListResult"/>.</summary>
     public const string ChatArchivedList = "chat.archived.list";
+    /// <summary>Reads an archived chat's history without opening it. Body is
+    /// <see cref="ChatOpenPayload"/> (an id is all it needs); answered with
+    /// <see cref="ChatReadResult"/>.
+    /// <para>Deliberately NOT <see cref="ChatOpen"/> with a read-only flag on the answer.
+    /// <see cref="ChatOpened"/> means "this session is now watchable and will take a
+    /// <see cref="ChatSend"/>", and every handler reacting to it is built on that promise; reusing it
+    /// would put the burden of remembering the archived case on each of those handlers, one at a time,
+    /// forever. A separate type spares them the case by construction. There is no runtime behind this
+    /// answer, so it also registers no watch — see <see cref="ChatWatch"/> — because there is nothing
+    /// that could ever emit an event for it.</para></summary>
+    public const string ChatRead = "chat.read";
+    /// <summary>Answer to <see cref="ChatRead"/>. Body is <see cref="ChatReadResultPayload"/>.</summary>
+    public const string ChatReadResult = "chat.read.result";
     public const string ChatSend = "chat.send";
     /// <summary>Discard messages after (optionally including) an anchor message. Body is
     /// <see cref="ChatRewindPayload"/>; the server re-sends <see cref="ChatOpened"/>.</summary>
@@ -163,6 +176,13 @@ public static class MessageTypes
     public const string AgentGet = "agent.get";
     /// <summary>Save agent settings (persisted to the .spla project when there is one).</summary>
     public const string AgentSave = "agent.save";
+    /// <summary>Ask for this project's roles — the bodies in <c>roles/</c> plus which of them the
+    /// manifest actually names, and the catalogs a role picks from (modes, capabilities, models,
+    /// connections, tool sets).</summary>
+    public const string RolesGet = "roles.get";
+    /// <summary>Save the whole role set: one <c>roles/&lt;name&gt;.yaml</c> per role, and the
+    /// manifest's <c>roles:</c> list rewritten from the ones marked active.</summary>
+    public const string RolesSave = "roles.save";
     /// <summary>Ask for the discovered plugins and their enable/prompt/settings state.</summary>
     public const string PluginsGet = "plugins.get";
     /// <summary>Save plugin enable flags, custom prompts and opaque settings blobs.</summary>
@@ -211,6 +231,11 @@ public static class MessageTypes
     /// <summary>Persist UI appearance (theme/density). Auto-sent on change — appearance has no Save step.
     /// Body is <see cref="AppearanceChangedPayload"/>; the server persists and broadcasts <see cref="AppearanceChanged"/>.</summary>
     public const string AppearanceSave = "appearance.save";
+    /// <summary>Persist the interface language. Separate from <see cref="AppearanceSave"/> because it
+    /// is stored in a different place and answers to a different owner: theme and density belong to
+    /// the project manifest, the language belongs to the person and is written to the machine layer.
+    /// Body is <see cref="LanguagePayload"/>; there is no broadcast — see that type.</summary>
+    public const string LanguageSave = "language.save";
     /// <summary>Ask for the current token usage totals (session/project/machine).</summary>
     public const string UsageGet = "usage.get";
     /// <summary>Register the .spla file extension with this app in Windows Explorer (Windows only,
@@ -298,6 +323,12 @@ public static class MessageTypes
     /// <summary>Cancel a live background task. Body <see cref="TaskCancelPayload"/>.</summary>
     public const string TaskCancel = "task.cancel";
 
+    /// <summary>Ask for the project-wide "who talks to whom" graph (PLAN_20260902 wave 7б;
+    /// <c>docs/adr/ADR_20260827-2_core_roles.md</c> §2.5's last row). No body — the graph is assembled
+    /// fresh from every session on disk on each request, deliberately independent of which chats happen
+    /// to be open (decision 3 of the wave). Reply <see cref="CorrespondenceGraphResult"/>.</summary>
+    public const string CorrespondenceGraphGet = "correspondence.graph.get";
+
     // ── Server → Client ──────────────────────────────────────────────────
     public const string Welcome = "welcome";
     public const string ChatListResult = "chat.list.result";
@@ -347,6 +378,8 @@ public static class MessageTypes
     /// (successfully, with a failure, or cancelled). Body <see cref="TaskStateChangedPayload"/>. Lets a
     /// task panel stay live without polling task.list/task.state.</summary>
     public const string TaskStateChanged = "task.state.changed";
+    /// <summary>Answer to <see cref="CorrespondenceGraphGet"/>. Body <see cref="CorrespondenceGraphResult"/>.</summary>
+    public const string CorrespondenceGraphResult = "correspondence.graph.result";
     public const string PermissionRequest = "permission.request";
     public const string ClarifyRequest = "clarify.request";
 
@@ -371,6 +404,9 @@ public static class MessageTypes
     public const string ConnectionsHealth = "connections.health";
     /// <summary>The current agent settings — answer to <see cref="AgentGet"/> and broadcast after <see cref="AgentSave"/>.</summary>
     public const string AgentResult = "agent.result";
+    /// <summary>The current role set — answer to <see cref="RolesGet"/> and broadcast to the project
+    /// after <see cref="RolesSave"/>, so every window's role pickers refresh.</summary>
+    public const string RolesResult = "roles.result";
     /// <summary>The current MCP-over-HTTP settings — answer to <see cref="McpGet"/> and broadcast
     /// after <see cref="McpSave"/>.</summary>
     public const string McpResult = "mcp.result";

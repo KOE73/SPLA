@@ -59,6 +59,43 @@ disclosed.
 > decides whether to go and read more, no turn is spent on a lookup, and no documentation lands loose
 > in the middle of the conversation where a rewind or a compaction can drop it.
 
+## Virtual reply tools are outside this system
+
+A chat's `reply_<role>[_<n>]` tools (`SPLA.Runtime/ChatToolHost.cs`, PLAN_20260902 wave 5) are
+**not levelled, not activated, and not disclosed through any of the mechanism above.** They are mixed
+into the chat's tool list directly by `ChatToolHost`, never registered in `McpHost`, so
+`ToolSetRegistry`/`ToolSetSession` have no entry for them and cannot hide or reveal one — a set the
+project has levelled `disabled` has no bearing on whether a reply tool the chat already holds a
+correspondence for is visible.
+
+The reason is in `docs/adr/ADR_20260827-2_core_roles.md` §2.3: a reply tool is an edge of a
+conversation, not a capability of the project, and it is gated on that edge instead —
+`ICapabilityGate.CanCorrespond()`, checked by `ChatRuntime.SendReply` on every call, source chat's own
+gate. A tool set answers "is this allowed at all" for the *project*; a correspondence's grant answers
+it for *this one conversation's edge to another*, and conflating the two would make disabling, say,
+`core.correspond` (which only ever gates `agent_correspond`, the tool that *opens* an address) also
+silently sever every reply already in flight — a different kind of failure than what levelling a set
+is for.
+
+`agent_correspond` itself IS an ordinary registered tool and follows every rule above like any other.
+
+## A chat under a role narrows further, on top of the levels above
+
+`McpHost` gates by level for the whole project — one `ToolSetRegistry`, shared by every chat. A
+standing chat opened `as: <role>` (PLAN_20260902 wave 5б) layers one more filter *underneath* that
+sharing, in `ChatToolHost.GetToolDefinitions`: it reads the same shared, read-only `ToolSetRegistry`
+but checks each tool's set against *this chat's own* `ResolvedSettings.ToolSets` — the role's
+`toolsets:` selection (`SettingsResolver.ResolveForRole`), narrower than the project's own where the
+role names a set and identical to it where the role does not. Exactly the shape
+`SpawnedAgentRunner` already uses for a spawned run under a role (wave 3); both call the same
+`ToolSetRegistry.IsDisclosedForRole` helper rather than duplicating the fallback logic.
+
+This can only ever remove a tool `McpHost`'s own project-wide gating already let through — it has no
+way to grant a set the project itself disabled — and it never touches the shared registry: the
+narrowing is a `Where` built fresh per chat and dies with it. A chat with no `as:` passes `null` for
+the role's selection and `ChatToolHost` skips the filter outright, so an ordinary chat's surface is
+untouched by this mechanism.
+
 ## Refusals
 
 What the model is told when it calls a tool it cannot use is deliberate:
