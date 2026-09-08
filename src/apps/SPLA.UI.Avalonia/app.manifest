@@ -15,4 +15,13 @@
       <supportedOS Id="{8e0f7a12-bfb3-4fe8-b9a5-48fd50a15a9a}" />
     </application>
   </compatibility>
+
+  <!-- Without this, Windows falls back to system DPI awareness: the window renders at the DPI
+       of the monitor it *launched* on and never rescales when dragged to a monitor with a
+       different scale factor (the 4K@150% / FHD@125% mixed-DPI setup this app runs on). -->
+  <application xmlns="urn:schemas-microsoft-com:asm.v3">
+    <windowsSettings>
+      <dpiAwareness xmlns="http://schemas.microsoft.com/SMI/2016/WindowsSettings">PerMonitorV2</dpiAwareness>
+    </windowsSettings>
+  </application>
 </assembly>

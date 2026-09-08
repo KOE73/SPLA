@@ -38,6 +38,10 @@ public partial class MainWindow : Window
         // The frame follows the language chosen in the web client; until it reports one, English.
         Helpers.Localization.Track(this);
         Loaded += MainWindow_Loaded;
+        KeyDown += (_, e) =>
+        {
+            if (e.Key == Key.F12) Helpers.WebViewDevTools.TryOpen(Browser);
+        };
     }
 
     private async void MainWindow_Loaded(object? sender, RoutedEventArgs e)
@@ -49,6 +53,7 @@ public partial class MainWindow : Window
         try
         {
             Helpers.WebViewBridge.Attach(Browser, ApplyProjectTitle);
+            Helpers.WebViewDpiSync.Track(this, Browser);
             // A restarted service binds a fresh ephemeral port, so the old URL is dead. Following the
             // event is what turns "the agent came back" into a window that works again rather than one
             // still pointed at a port nobody is listening on.
@@ -173,6 +178,8 @@ public partial class MainWindow : Window
 
     private void OpenWireSurface_Click(object? sender, RoutedEventArgs e)
         => new SurfaceWindow("wire", "Wire").Show(this);
+
+    private void DevTools_Click(object? sender, RoutedEventArgs e) => Helpers.WebViewDevTools.TryOpen(Browser);
 
     private void OpenInBrowser_Click(object? sender, RoutedEventArgs e)
     {
