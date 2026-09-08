@@ -1500,7 +1500,8 @@ public sealed class ChatRuntime : IDisposable, SPLA.Domain.Agent.IBackgroundTask
     /// status bar draws its lever from, and what gates the wire mapping on a turn.</summary>
     public Task<ReasoningCapability> GetReasoningAsync(CancellationToken ct = default)
     {
-        var entry = _runtime.Settings.FindModel(_chat.ModelId) ?? _runtime.Settings.Models.FirstOrDefault();
+        var settings = _roleSettings ?? _runtime.Settings;
+        var entry = settings.FindModel(_chat.ModelId) ?? settings.Models.FirstOrDefault();
         return _runtime.GetReasoningAsync(ResolveLlmSettings(), entry?.DeclaredReasoning, ct);
     }
 
@@ -1511,15 +1512,19 @@ public sealed class ChatRuntime : IDisposable, SPLA.Domain.Agent.IBackgroundTask
 
     /// <summary>The chat's effective reasoning selection, in the scalar grammar. Empty = model default.</summary>
     public string ReasoningLevel =>
-        string.IsNullOrEmpty(_chat.Model?.ReasoningLevel) ? _runtime.Settings.ReasoningLevel ?? "" : _chat.Model!.ReasoningLevel!;
+        string.IsNullOrEmpty(_chat.Model?.ReasoningLevel)
+            ? (_roleSettings ?? _runtime.Settings).ReasoningLevel ?? ""
+            : _chat.Model!.ReasoningLevel!;
 
     /// <summary>The chat's effective LLM settings: its model entry (endpoint/model) layered with its
-    /// own behaviour knobs (temperature/reasoning/penalties), falling back to project defaults.</summary>
+    /// own behaviour knobs (temperature/reasoning/penalties), falling back to the role's settings when
+    /// this chat has one (<see cref="_roleSettings"/>), then the project defaults.</summary>
     private LLMSettings ResolveLlmSettings()
     {
-        var entry = _runtime.Settings.FindModel(_chat.ModelId)
-                    ?? _runtime.Settings.Models.FirstOrDefault();
-        var s = _runtime.Settings.ToLLMSettings(entry);
+        var settings = _roleSettings ?? _runtime.Settings;
+        var entry = settings.FindModel(_chat.ModelId)
+                    ?? settings.Models.FirstOrDefault();
+        var s = settings.ToLLMSettings(entry);
         var chatModel = _chat.Model;
 
         s.Mode             = ResolveMode();
