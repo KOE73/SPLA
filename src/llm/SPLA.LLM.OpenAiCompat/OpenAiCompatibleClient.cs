@@ -494,12 +494,12 @@ public sealed partial class OpenAiCompatibleClient : ILlmClient, ITokenUsageRepo
         }
     }
 
-    private static async Task EnsureSuccessWithBodyAsync(HttpResponseMessage response, CancellationToken cancellationToken)
+    private async Task EnsureSuccessWithBodyAsync(HttpResponseMessage response, CancellationToken cancellationToken)
     {
         if (response.IsSuccessStatusCode) return;
 
         var body = await response.Content.ReadAsStringAsync(cancellationToken);
-        var failure = ClassifyHttpFailure(response.StatusCode, response.ReasonPhrase, body);
+        var failure = ClassifyHttpFailure(response.StatusCode, response.ReasonPhrase, body, _profile);
 
         // Rate-limit headers are richest on exactly this path — a 429 is the response most likely to
         // carry them, and it never produces a result object. Attaching them to the failure is what
@@ -516,8 +516,10 @@ public sealed partial class OpenAiCompatibleClient : ILlmClient, ITokenUsageRepo
     /// and vLLM return a clean 400 whose JSON <c>error.message</c> names the token limits, while LM
     /// Studio commonly returns a 500 with an HTML page — so we key off both the status and the body
     /// text and collapse them into one <see cref="LlmErrorKind.ContextExhausted"/> signal the UI can act on.
+    /// Similarly, some providers return 429 when the account balance is exhausted rather than when
+    /// rate-limited, and this is distinguished by calling the profile's classifier.
     /// </summary>
-    internal static LlmRequestException ClassifyHttpFailure(HttpStatusCode status, string? reason, string? body)
+    internal static LlmRequestException ClassifyHttpFailure(HttpStatusCode status, string? reason, string? body, IOpenAiCompatProfile profile)
     {
         var providerMessage = ExtractProviderMessage(body);
         var haystack = (providerMessage ?? body ?? string.Empty);
@@ -548,6 +550,14 @@ public sealed partial class OpenAiCompatibleClient : ILlmClient, ITokenUsageRepo
                     $"The LLM endpoint rejected the request (HTTP {(int)status}). Check the connection's API key.",
                     status, body);
             case 429:
+                // Some providers (e.g., OpenRouter) return 429 when the account balance is exhausted, not just when rate-limited.
+                // Ask the profile to distinguish: if the provider explicitly signals insufficient balance, classify it as such.
+                // This is a provider-specific interpretation; the safe default is RateLimited (waiting may help).
+                if (profile.Is429BalanceExhausted(body))
+                    return new LlmRequestException(LlmErrorKind.InsufficientCredits,
+                        "The account balance is exhausted or the spend limit is reached. Top up the account at the provider's website and try again.",
+                        status, body);
+
                 return new LlmRequestException(LlmErrorKind.RateLimited,
                     "The LLM endpoint is rate-limited or overloaded (HTTP 429). Wait a moment and retry.",
                     status, body);

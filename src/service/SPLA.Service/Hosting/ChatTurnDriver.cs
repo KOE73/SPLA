@@ -175,6 +175,8 @@ internal sealed class ChatTurnDriver
                 Note = attempt.Note,
                 Chars = attempt.Chars,
                 DurationMs = (long)attempt.Duration.TotalMilliseconds,
+                WaitMs = attempt.Wait is { } w ? (long)w.TotalMilliseconds : null,
+                WaitStated = attempt.WaitStated,
                 Content = attempt.Content,
                 Reasoning = attempt.Reasoning
             }),

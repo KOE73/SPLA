@@ -136,6 +136,11 @@ public sealed class AgentRuntime : IDisposable
     /// <summary>Last-seen provider figures per connection (rate-limit budget, reset times). Distinct
     /// from the token ledger: this is current state, overwritten; the ledger is history, appended.</summary>
     public SPLA.Domain.Llm.ProviderStateStore ProviderState { get; } = new();
+
+    /// <summary>The next moment each connection may be called again. One instance for the runtime,
+    /// because the budget it protects belongs to the credential: every chat holding the same key has
+    /// to queue in the same line, or pacing paces nothing.</summary>
+    public SPLA.Domain.Llm.Middleware.RequestPacer RequestPacing { get; } = new();
     public IModelManagementService ModelManagement { get; }
     public McpHost McpHost { get; }
 
@@ -277,6 +282,10 @@ public sealed class AgentRuntime : IDisposable
         Providers = BuildProviderRegistry(loggerFactory);
         Llm = new SPLA.Domain.Llm.LlmPipelineBlueprint()
             .Use(new SPLA.Domain.Llm.Middleware.TurnOutcomeMiddleware())
+            // A rate limit is the one refusal that answers itself given time, so waiting is the
+            // pipeline's job rather than the reader's. Outside accounting on purpose: each attempt is
+            // separately billable and owes its own ledger row.
+            .Use(new SPLA.Domain.Llm.Middleware.RateLimitRetryMiddleware())
             // Degenerate generation is a failure mode of every model we run, local and cloud alike, so
             // the guard is part of the pipeline rather than of the agent loop: a spawned sub-agent and
             // the librarian's direct queries are covered by the same layer, not by remembering to look.
@@ -289,6 +298,10 @@ public sealed class AgentRuntime : IDisposable
             // whoever made the call — the hosts used to each do this themselves, and the one that
             // did not (spawned sub-agents) simply went uncounted.
             .Use(new SPLA.Agent.Accounting.TokenAccountingMiddleware(TokenUsageProject, TokenUsageGlobal))
+            // Holds requests apart so the limit is not tripped at all. Nearly innermost on purpose:
+            // the provider counts requests, so a retry and a regeneration have to queue like any
+            // other — beside the retry layer it would have paced only a turn's first attempt.
+            .Use(new SPLA.Domain.Llm.Middleware.RequestPacingMiddleware(RequestPacing))
             // Credential materialization is the innermost layer: the key exists only for the provider
             // call itself, and never for accounting, which sits outside it.
             .Use(new SPLA.Domain.Llm.Middleware.CredentialsMiddleware(settings.SecretResolver))
@@ -436,7 +449,8 @@ public sealed class AgentRuntime : IDisposable
             Feature("core.clarify",
                 new SPLA.MCP.Core.Tools.AgentClarifyTool()),
             Feature("core.blobs",
-                new SPLA.MCP.Core.Tools.BlobPeekTool()),
+                new SPLA.MCP.Core.Tools.BlobPeekTool(),
+                new SPLA.MCP.Core.Tools.BlobGrepTool()),
             Feature("core.background_tasks",
                 new SPLA.MCP.Core.Tools.TaskListTool(),
                 new SPLA.MCP.Core.Tools.TaskOutputTool(),

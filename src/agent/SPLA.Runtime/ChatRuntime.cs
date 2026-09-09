@@ -23,7 +23,7 @@ namespace SPLA.Runtime;
 /// its run, so tool calls from concurrent chats never collide.
 /// </para>
 /// </summary>
-public sealed class ChatRuntime : IDisposable, SPLA.Domain.Agent.IBackgroundTaskHost, SPLA.Domain.Agent.ICorrespondenceHost, IReplyToolSource
+public sealed class ChatRuntime : IDisposable, SPLA.Domain.Agent.IBackgroundTaskHost, SPLA.Domain.Agent.ICorrespondenceHost, SPLA.Domain.Agent.IContextBudgetHost, IReplyToolSource
 {
     private readonly AgentRuntime _runtime;
 
@@ -1131,7 +1131,10 @@ public sealed class ChatRuntime : IDisposable, SPLA.Domain.Agent.IBackgroundTask
             // Same shape again: ChatRuntime implements ICorrespondenceHost itself, so
             // agent_correspond reaches OpenCorrespondence/SendReply through the identical ambient
             // path rather than needing its own way to find "this chat".
-            correspondence: this);
+            correspondence: this,
+            // And once more: the Post link of the tool pipeline asks "how much room is left" through
+            // the same ambient session, and this chat is the only thing that can answer.
+            contextBudget: this);
 
         // A reopened chat is as doubtful as it was when it closed. Restored rather than recomputed:
         // what raised the flag was an arrival, and arrivals do not happen again on load.
@@ -1351,6 +1354,24 @@ public sealed class ChatRuntime : IDisposable, SPLA.Domain.Agent.IBackgroundTask
             var llm = ResolveLlmSettings();
             llm.ModelReasoning = await GetReasoningAsync(cancellationToken);
 
+            // The window, once per turn (cached with a TTL by the runtime), and the occupancy on
+            // every model answer inside it. Together they are what the tool pipeline's Post link
+            // needs to know whether a result will fit — see IContextBudgetHost. Failing to resolve
+            // the window is not an error: the budget then stays null and results pass through
+            // untrimmed, which is the honest behaviour when nothing is known.
+            try { _budgetWindow = await GetContextLengthAsync(cancellationToken); }
+            catch { _budgetWindow = null; }
+
+            var host = callbacks.OnLlmTurn;
+            callbacks = callbacks with
+            {
+                OnLlmTurn = turn =>
+                {
+                    RecordUsage(turn);
+                    host?.Invoke(turn);
+                }
+            };
+
             await _orchestrator.RunAsync(
                 _conversation, llm, ResolveMode(), callbacks, cancellationToken);
 
@@ -1442,7 +1463,9 @@ public sealed class ChatRuntime : IDisposable, SPLA.Domain.Agent.IBackgroundTask
                         Reasoning = a.Reasoning,
                         Note = a.Note,
                         Chars = a.Chars,
-                        DurationMs = (long)a.Duration.TotalMilliseconds
+                        DurationMs = (long)a.Duration.TotalMilliseconds,
+                        WaitMs = a.Wait is { } w ? (long)w.TotalMilliseconds : null,
+                        WaitStated = a.WaitStated
                     }).ToList()
                     : null
             });
@@ -1495,6 +1518,33 @@ public sealed class ChatRuntime : IDisposable, SPLA.Domain.Agent.IBackgroundTask
     /// path report "prompt tokens vs window" so the UI can warn before the provider rejects.</summary>
     public Task<int?> GetContextLengthAsync(CancellationToken ct = default)
         => _runtime.GetContextLengthAsync(ResolveLlmSettings(), ct);
+
+    // ── Context budget (IContextBudgetHost) ────────────────────────────────────
+    //
+    // Two numbers, both measured, both refreshed once per model call: the window this chat's
+    // connection actually has, and what the last request actually occupied in it. Nothing here is
+    // estimated — see ContextBudget's own note on why that matters.
+
+    private int? _budgetWindow;
+    private int? _budgetUsed;
+
+    /// <summary><see cref="SPLA.Domain.Agent.IContextBudgetHost.Budget"/> — what the Post link of the
+    /// tool pipeline reads to decide whether a result will fit. Null until BOTH numbers exist: before
+    /// the first answer of a turn there is no measured occupancy, and inventing one would make every
+    /// early result look either free or doomed.</summary>
+    public SPLA.Domain.Agent.ContextBudget? Budget =>
+        _budgetWindow is int window and > 0 && _budgetUsed is int used
+            ? new SPLA.Domain.Agent.ContextBudget(window, used)
+            : null;
+
+    /// <summary>Records what the provider counted for the call that just returned. The occupancy of
+    /// the NEXT request is at least this — the conversation only grows within a turn — which is
+    /// exactly the question a tool result about to be appended raises.</summary>
+    private void RecordUsage(SPLA.Domain.Llm.LlmTurnResult turn)
+    {
+        if (turn.Message.PromptTokens is int prompt and > 0)
+            _budgetUsed = prompt + (turn.Message.CompletionTokens ?? 0);
+    }
 
     /// <summary>What this chat's model will let a caller do with its reasoning channel — what the
     /// status bar draws its lever from, and what gates the wire mapping on a turn.</summary>

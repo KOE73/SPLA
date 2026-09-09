@@ -385,7 +385,9 @@ public class ResolvedSettings
         RepeatPenalty    = RepeatPenalty,
         MaxTokens        = MaxTokens,
         TopP             = TopP,
-        MinP             = MinP
+        MinP             = MinP,
+        Retry              = entry?.Connection.Retry ?? new SplaRetrySection(),
+        MinRequestInterval = entry?.Connection.MinRequestInterval ?? 0.0
     };
 }
 

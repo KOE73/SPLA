@@ -109,6 +109,41 @@
         </div>
       </div>
 
+      <!-- ── Rate limits ──────────────────────────────────────────────────────
+           On the connection and not on a model because the provider counts against the key: two
+           models under one credential share one budget. Folded away by default — the defaults are
+           right until a provider says otherwise. -->
+      <details class="conn-limits">
+        <summary>{{ t('Rate limits') }}</summary>
+        <label class="field"><span>{{ t('Min interval') }}</span>
+          <input type="number" step="0.5" min="0" v-model.number="conn.minRequestInterval"
+                 :placeholder="t('0 — no pacing')">
+        </label>
+        <p class="conn-limits-hint">
+          {{ t('Seconds held between requests on this key, across every chat. A provider allowing 20 requests a minute needs 3.') }}
+        </p>
+        <template v-if="conn.retry">
+          <label class="field"><span>{{ t('Attempts') }}</span>
+            <input type="number" min="1" v-model.number="conn.retry.attempts">
+          </label>
+          <label class="field"><span>{{ t('First pause') }}</span>
+            <input type="number" step="0.5" min="0" v-model.number="conn.retry.minDelay">
+          </label>
+          <label class="field"><span>{{ t('Growth') }}</span>
+            <input type="number" step="0.5" min="1" v-model.number="conn.retry.step">
+          </label>
+          <label class="field"><span>{{ t('Longest pause') }}</span>
+            <input type="number" step="1" min="0" v-model.number="conn.retry.maxDelay">
+          </label>
+          <label class="field"><span>{{ t('Total wait') }}</span>
+            <input type="number" step="10" min="0" v-model.number="conn.retry.total">
+          </label>
+          <p class="conn-limits-hint">
+            {{ t('Seconds. These bound our guess at when the provider will answer again — a delay it states itself is obeyed as given and ignores them.') }}
+          </p>
+        </template>
+      </details>
+
       <!-- ── Models ───────────────────────────────────────────────────────────── -->
       <div class="conn-models-head">{{ t('Models') }}</div>
       <!-- The flat variant of the shared list: a connection with eight models has to read as a list,
@@ -282,16 +317,20 @@ function toggle(m: ModelEntryDto) {
 }
 
 /** Readable default id, prefixed by the connection: two connections often carry the same model, and
- *  ids are global — a bare "opus" under both would be refused on save. */
+ *  ids are global — a bare "opus" under both would be refused on save. Based on the model string
+ *  first — that is what actually distinguishes one row from another — falling back to the name only
+ *  when no model has been picked yet. */
 function suggestedId(m: ModelEntryDto): string {
-  const base = (m.name || m.model || "").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+  const base = (m.model || m.name || "").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
   const prefix = (props.conn.id || props.conn.name || "").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
   return prefix && base ? `${prefix}-${base}` : base || prefix;
 }
 
 function addModel() {
+  // Left blank on purpose: with nothing picked yet the only suggestion is the bare connection id,
+  // which names nothing about the model. The placeholder shows it; the real id fills in once a model
+  // is chosen (onPickModel/onSwapModel) or, failing that, the server derives one from it on save.
   const m: ModelEntryDto = { id: "", clientId: uuid(), name: "", model: "" };
-  m.id = suggestedId(m);
   props.conn.models.push(m);
   expanded.value = keyOf(m);
 }

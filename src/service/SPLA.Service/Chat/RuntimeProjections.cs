@@ -51,6 +51,8 @@ public static class RuntimeProjections
                     Note = a.Note,
                     Chars = a.Chars,
                     DurationMs = a.DurationMs,
+                    WaitMs = a.WaitMs,
+                    WaitStated = a.WaitStated,
                     Content = a.Content,
                     Reasoning = a.Reasoning
                 }).ToList(),

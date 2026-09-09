@@ -42,6 +42,12 @@ export interface AttemptDto {
   index: number;
   outcome: string;
   note?: string;
+  /** The pause before the next attempt, ms; absent when none followed. Sent structured so the client
+   *  can word the wait in the reader's language rather than parse it out of `note`. */
+  waitMs?: number | null;
+  /** True when `waitMs` is the provider's own figure rather than our schedule — a fact to sit out
+   *  versus a guess we chose. */
+  waitStated?: boolean;
   chars: number;
   durationMs: number;
   content?: string;
@@ -190,12 +196,33 @@ export interface ConnectionDto {
   /** As `apiKeyIsLiteral`, for the admin key. */
   adminKeyIsLiteral?: boolean;
   swapModel?: boolean;
+  /** How hard to keep trying when this account is rate-limited. Omitting it on save keeps whatever
+   *  was configured, so a panel that does not edit it cannot wipe it. */
+  retry?: RetryDto;
+  /** Seconds held between requests on this key, across every chat; 0 = no pacing. Beside `retry`
+   *  rather than inside it: retry reacts to a refusal, pacing prevents one. */
+  minRequestInterval?: number;
   /** Which layer this connection lives in: `shared`, `user` or `project`. It is the file the entry
    *  is read from and the one a save writes it back to, so it must be echoed back untouched —
    *  dropping it on save would move the entry. Omitted by a client that does not edit it: the server
    *  then keeps the connection where it already was. No UI for choosing it yet. */
   scope?: string;
   models: ModelEntryDto[];
+}
+
+/** A connection's retry schedule. Every figure bounds a GUESS about when the provider will answer
+ *  again; a `Retry-After` it states itself is obeyed as given and answers to none of them. */
+export interface RetryDto {
+  /** Attempts per turn, the first request included. */
+  attempts: number;
+  /** Seconds; the first pause. */
+  minDelay: number;
+  /** Multiplier applied per attempt. */
+  step: number;
+  /** Seconds; ceiling on one pause. */
+  maxDelay: number;
+  /** Seconds; ceiling on all pauses in one turn. */
+  total: number;
 }
 
 /** One model under a connection. `id` is ours and globally unique; `model` is the provider's string. */
@@ -873,7 +900,8 @@ export interface ServerEvents {
    *  Carries the abandoned content/reasoning so a reader can open it, not just the streamed text that
    *  was already visible before the guard cut it off. */
   "llm.attempt": { msgIndex: number; index: number; outcome: string; note?: string; chars: number;
-    durationMs: number; content?: string; reasoning?: string };
+    durationMs: number; waitMs?: number | null; waitStated?: boolean;
+    content?: string; reasoning?: string };
   "assistant.message": { msgIndex: number; message: ChatMessage };
   /** User message accepted by the server. Text is present so server-initiated turns can render
    * without a local echo; ordinary composer turns use it only as a fallback. */

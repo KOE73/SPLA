@@ -95,7 +95,9 @@ internal sealed class SpawnedSession : ISpawnedSession, IBackgroundTaskHost
                         Reasoning = a.Reasoning,
                         Note = a.Note,
                         Chars = a.Chars,
-                        DurationMs = (long)a.Duration.TotalMilliseconds
+                        DurationMs = (long)a.Duration.TotalMilliseconds,
+                        WaitMs = a.Wait is { } w ? (long)w.TotalMilliseconds : null,
+                        WaitStated = a.WaitStated
                     }).ToList()
                     : null
             })

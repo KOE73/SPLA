@@ -37,6 +37,15 @@ public static class SettingsOps
             ApiKeyIsLiteral = IsLiteral(c.ApiKey),
             AdminKeyIsLiteral = IsLiteral(c.AdminKey),
             SwapModel = c.SwapModel,
+            Retry = new RetryEditDto
+            {
+                Attempts = c.Retry.Attempts,
+                MinDelay = c.Retry.MinDelay,
+                Step = c.Retry.Step,
+                MaxDelay = c.Retry.MaxDelay,
+                Total = c.Retry.Total
+            },
+            MinRequestInterval = c.MinRequestInterval,
             Scope = ConnectionScopes.Name(c.Scope),
             Models = c.Models.Select(m => new ModelEditDto
             {
@@ -1046,21 +1055,39 @@ public static class SettingsOps
             ApiKey = Credential(d.ApiKey, d.ApiKeyIsLiteral, previous?.ApiKey),
             AdminKey = Credential(d.AdminKey, d.AdminKeyIsLiteral, previous?.AdminKey),
             SwapModel = d.SwapModel,
-            Models = d.Models
+            // A client that says nothing about the schedule keeps the one already configured: the
+            // editor is not the only way these get set, and a panel unaware of them must not wipe them.
+            Retry = d.Retry is { } r
+                ? new SplaRetrySection
+                {
+                    Attempts = Math.Max(1, r.Attempts),
+                    MinDelay = Math.Max(0, r.MinDelay),
+                    Step = Math.Max(1, r.Step),
+                    MaxDelay = Math.Max(0, r.MaxDelay),
+                    Total = Math.Max(0, r.Total)
+                }
+                : previous?.Retry ?? new SplaRetrySection(),
+            MinRequestInterval = Math.Max(0, d.MinRequestInterval),
+            Models = DedupeModelIds(d.Models
                 .Select(m => ToModelSection(m, id))
                 .Where(m => !string.IsNullOrWhiteSpace(m.Id))
-                .GroupBy(m => m.Id, StringComparer.OrdinalIgnoreCase)   // last write wins per id
-                .Select(g => g.Last())
-                .ToList()
+                .ToList())
         };
     }
 
-    /// <summary>Maps one model row. A blank id is derived from the entry's own name or wire model,
-    /// prefixed with the owning connection — the readable default for the common case where two
-    /// connections carry the same model and a bare "opus" would collide across them.</summary>
+    /// <summary>Maps one model row. The id is derived from the wire model string first, then the
+    /// entry's name, prefixed with the owning connection — the readable default for the common case
+    /// where two connections carry the same model and a bare "opus" would collide across them.
+    /// <para>An id typed (or auto-filled by an older editor) as exactly the bare connection id names
+    /// nothing about which model it is — that degenerate default is treated the same as blank so it
+    /// gets regenerated from what the row actually points at, instead of being kept forever.</para>
+    /// </summary>
     private static SplaModelSection ToModelSection(ModelEditDto d, string connectionId)
     {
-        var raw = string.IsNullOrWhiteSpace(d.Id) ? Slug($"{connectionId}-{d.Name ?? d.Model ?? ""}") : d.Id.Trim();
+        var explicitId = d.Id?.Trim();
+        var useExplicit = !string.IsNullOrWhiteSpace(explicitId)
+            && !string.Equals(explicitId, connectionId, StringComparison.OrdinalIgnoreCase);
+        var raw = useExplicit ? explicitId! : Slug($"{connectionId}-{d.Model ?? d.Name ?? ""}");
         return new SplaModelSection
         {
             Id = raw,
@@ -1069,6 +1096,32 @@ public static class SettingsOps
             ContextLength = d.ContextLength is > 0 ? d.ContextLength : null,
             Temperature = d.Temperature
         };
+    }
+
+    /// <summary>Makes derived ids unique instead of silently dropping the collision. Two freshly added
+    /// rows with nothing typed yet both derive the same blank-based id from <see cref="ToModelSection"/>;
+    /// renumbering the later ones keeps every row the user added instead of discarding all but one.</summary>
+    private static List<SplaModelSection> DedupeModelIds(List<SplaModelSection> models)
+    {
+        var seen = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
+        foreach (var m in models)
+        {
+            if (!seen.TryGetValue(m.Id, out var count))
+            {
+                seen[m.Id] = 1;
+                continue;
+            }
+            string candidate;
+            do
+            {
+                count++;
+                candidate = $"{m.Id}-{count}";
+            } while (seen.ContainsKey(candidate));
+            seen[m.Id] = count;
+            seen[candidate] = 1;
+            m.Id = candidate;
+        }
+        return models;
     }
 
     private static string? Blank(string? s) => string.IsNullOrWhiteSpace(s) ? null : s.Trim();

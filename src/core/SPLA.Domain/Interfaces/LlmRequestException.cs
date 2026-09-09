@@ -10,8 +10,10 @@ public enum LlmErrorKind
     ContextExhausted,
     /// <summary>Authentication/authorization rejected the request (bad or missing API key).</summary>
     AuthFailed,
-    /// <summary>The provider rate-limited or is overloaded.</summary>
+    /// <summary>The provider rate-limited or is overloaded. Waiting will help — the next attempt may succeed.</summary>
     RateLimited,
+    /// <summary>The account balance is exhausted or spend limit is reached. Waiting will not help — top up the account.</summary>
+    InsufficientCredits,
     /// <summary>The endpoint could not be reached (server down, wrong URL, refused connection).</summary>
     Unreachable,
     /// <summary>Any other provider-side failure.</summary>

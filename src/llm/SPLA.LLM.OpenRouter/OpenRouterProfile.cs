@@ -67,4 +67,10 @@ public sealed class OpenRouterProfile : IOpenAiCompatProfile
         if (!string.IsNullOrWhiteSpace(_referer)) headers.TryAddWithoutValidation("HTTP-Referer", _referer);
         if (!string.IsNullOrWhiteSpace(_title)) headers.TryAddWithoutValidation("X-Title", _title);
     }
+
+    // Is429BalanceExhausted is deliberately NOT overridden here, so OpenRouter keeps the safe default.
+    // A substring rule was written and removed: nothing in this repository has observed how OpenRouter
+    // actually words a balance refusal, and the guessed rule inverted the safe default in the case that
+    // matters most — a free-tier 429 whose message invites you to add credits would have been read as
+    // terminal and never retried. Implement this only against a captured live response body.
 }

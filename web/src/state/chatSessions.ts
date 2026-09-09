@@ -33,7 +33,8 @@ export type LogItem =
        *  streamed text visible up to that point belonged to one of these, not to the final message.
        *  content/reasoning are the abandoned generation's own text, present live (from `llm.attempt`)
        *  and after reopening a chat saved with `agent: save_attempts` on. */
-      attempts?: { index: number; note?: string; content?: string; reasoning?: string }[] }
+      attempts?: { index: number; outcome?: string; note?: string; chars?: number; durationMs?: number;
+        waitMs?: number | null; waitStated?: boolean; content?: string; reasoning?: string }[] }
   | { kind: "tool" | "notice"; key: string; text: string }
   | { kind: "toolcall"; key: string; call: ToolCallState }
   | { kind: "permission"; key: string; requestId: string; toolName: string; argumentsText?: string }
@@ -323,7 +324,9 @@ function hydrateMessages(s: ChatSession, messages: ChatMessage[]) {
         // can never collide inside one session.
         s.items.push({ kind: "assistant", key: nextKey(), msgIndex: -1 - s.items.length,
           text: m.content || "", reasoning: m.reasoning || "", msgId: m.msgId, createdAt: m.createdAt,
-          attempts: m.attempts?.map(a => ({ index: a.index, note: a.note, content: a.content, reasoning: a.reasoning })) });
+          attempts: m.attempts?.map(a => ({ index: a.index, outcome: a.outcome, note: a.note,
+            chars: a.chars, durationMs: a.durationMs, waitMs: a.waitMs, waitStated: a.waitStated,
+            content: a.content, reasoning: a.reasoning })) });
       for (const tc of m.toolCalls || [])
         addCall(s, { callId: tc.id, name: tc.name, argumentsText: tc.arguments, status: "done" });
     } else if (m.role === "tool") {
@@ -390,7 +393,9 @@ on("reasoning", (s, p: { msgIndex: number; text: string }) => {
   if (b) b.reasoning += p.text;
 });
 
-on("llm.attempt", (s, p: { msgIndex: number; index: number; note?: string; content?: string; reasoning?: string }) => {
+on("llm.attempt", (s, p: { msgIndex: number; index: number; outcome?: string; note?: string;
+  chars?: number; durationMs?: number; waitMs?: number | null; waitStated?: boolean;
+  content?: string; reasoning?: string }) => {
   const b = bubble(s, p.msgIndex);
   if (!b) return;
   // Everything streamed into this bubble so far belonged to the generation that just got thrown
@@ -399,7 +404,9 @@ on("llm.attempt", (s, p: { msgIndex: number; index: number; note?: string; conte
   // on the marker itself (p.content/p.reasoning), which is what lets the reader open it back up.
   b.text = "";
   b.reasoning = "";
-  (b.attempts ??= []).push({ index: p.index, note: p.note, content: p.content, reasoning: p.reasoning });
+  (b.attempts ??= []).push({ index: p.index, outcome: p.outcome, note: p.note,
+    chars: p.chars, durationMs: p.durationMs, waitMs: p.waitMs, waitStated: p.waitStated,
+    content: p.content, reasoning: p.reasoning });
 });
 
 on("assistant.message", (s, p: { msgIndex: number;

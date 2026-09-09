@@ -60,6 +60,16 @@ public sealed class AttemptDto
     public string? Note { get; set; }
     public int Chars { get; set; }
     public long DurationMs { get; set; }
+
+    /// <summary>The pause before the next attempt, in milliseconds; null when none followed. Sent so a
+    /// client can word the wait in the reader's own language instead of parsing it out of
+    /// <see cref="Note"/>.</summary>
+    public long? WaitMs { get; set; }
+
+    /// <summary>Whether <see cref="WaitMs"/> is the provider's own figure rather than our schedule —
+    /// a difference the reader is entitled to see, since one is a fact and the other a guess.</summary>
+    public bool WaitStated { get; set; }
+
     public string? Content { get; set; }
     public string? Reasoning { get; set; }
 }
@@ -358,6 +368,15 @@ public sealed class ConnectionEditDto
 
     public bool SwapModel { get; set; }
 
+    /// <summary>How hard to keep trying when this account is rate-limited. Never null outbound; a
+    /// client that omits it on save keeps whatever was configured.</summary>
+    public RetryEditDto? Retry { get; set; }
+
+    /// <summary>Minimum seconds between requests on this connection; 0 = no pacing. Beside
+    /// <see cref="Retry"/> rather than inside it, because it is the other mechanism: retry reacts to a
+    /// refusal, pacing prevents one.</summary>
+    public double MinRequestInterval { get; set; }
+
     /// <summary>Which layer this connection lives in: <c>shared</c>, <c>user</c> or <c>project</c>
     /// (see <c>ConnectionScope</c>). It is where the entry is read from and where a save writes it
     /// back; changing it on an existing entry moves the connection between files. Unset/unknown on
@@ -504,6 +523,23 @@ public sealed class RolesPayload
 
     /// <summary>Set when a save was refused; the set then echoes back what is still in effect.</summary>
     public string? Error { get; set; }
+}
+
+/// <summary>The retry schedule of one connection, as the settings panel edits it. Every figure here
+/// bounds a guess about when the provider will answer again; a delay the provider itself states is
+/// obeyed as given and answers to none of them.</summary>
+public sealed class RetryEditDto
+{
+    /// <summary>Attempts allowed for one turn, the first request included.</summary>
+    public int Attempts { get; set; } = 4;
+    /// <summary>Seconds; the first pause.</summary>
+    public double MinDelay { get; set; } = 1.0;
+    /// <summary>Multiplier applied per attempt.</summary>
+    public double Step { get; set; } = 2.0;
+    /// <summary>Seconds; ceiling on one pause.</summary>
+    public double MaxDelay { get; set; } = 30.0;
+    /// <summary>Seconds; ceiling on all pauses in one turn.</summary>
+    public double Total { get; set; } = 120.0;
 }
 
 /// <summary>Request to hot-swap the loaded model on a connection via the management API (LM Studio).</summary>
@@ -1299,6 +1335,14 @@ public sealed class AttemptPayload
     public int Chars { get; set; }
 
     public long DurationMs { get; set; }
+
+    /// <summary>The pause before the next attempt, in milliseconds; null when none followed. This is
+    /// the event that tells a waiting chat how long it is waiting — see <see cref="AttemptDto.WaitMs"/>.</summary>
+    public long? WaitMs { get; set; }
+
+    /// <summary>Whether <see cref="WaitMs"/> is the provider's own figure — see
+    /// <see cref="AttemptDto.WaitStated"/>.</summary>
+    public bool WaitStated { get; set; }
 
     /// <summary>The abandoned answer text. Carried on the live event (not just on the stored message's
     /// <see cref="AttemptDto"/>) so a reader can open it the moment the guard reports it, without

@@ -40,6 +40,14 @@ public interface IOpenAiCompatProfile
     /// </summary>
     void ShapeReasoning(IDictionary<string, object> payload, ReasoningChoice choice, ReasoningCapability capability)
         => OpenAiReasoningDialect.Apply(payload, choice, capability);
+
+    /// <summary>
+    /// Checks if a 429 HTTP response is due to insufficient account balance/credits rather than
+    /// rate-limiting. The default returns <c>false</c>: a plain 429 is conservatively treated as
+    /// rate-limited (waiting may help), not as exhausted balance (waiting will not help). Override only
+    /// when the provider's error body contains unambiguous evidence of balance exhaustion.
+    /// </summary>
+    bool Is429BalanceExhausted(string? body) => false;
 }
 
 /// <summary>
