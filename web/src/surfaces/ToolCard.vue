@@ -184,7 +184,7 @@ function durationText(run: SubagentResultPayload) {
 </script>
 
 <style scoped>
-.tool-card { padding: 0; min-width: 28ch; max-width: 80ch; }
+.tool-card { padding: 0; min-width: 28ch; max-width: 100%; }
 .tc-head { display: flex; align-items: center; gap: 7px; padding: 5px 10px; cursor: pointer; user-select: none; }
 .tc-head:hover { color: var(--text); }
 .tc-status { width: 1em; text-align: center; color: var(--accent); }

@@ -171,9 +171,12 @@ body:has(.width-handle.dragging) { user-select: none; }
    edge up to the window. The measure serves prose; it does not get to squeeze a grid. */
 .center-col .wide, #log .msg table { max-width: none; }
 
-/* Generic message bubble; per-role overrides below */
+/* Generic message bubble; per-role overrides below.
+   The bubble does NOT carry a measure of its own — it fills the column, and the column's width is
+   whatever the width handle says. Two independent caps meant dragging the rail wider did nothing
+   past 80ch, which reads as a broken control. */
 .msg { position: relative; border: 1px solid var(--border); border-radius: var(--radius); padding: var(--sp-3);
-  background: var(--panel); max-width: 80ch; overflow-wrap: anywhere; }
+  background: var(--panel); max-width: calc(100% - 2ch); overflow-wrap: anywhere; }
 
 /* Hover toolbar: timestamp + copy/rewind/fork, floating over the bubble's top edge */
 .msg-actions { position: absolute; top: -12px; right: 8px; display: none; align-items: center; gap: 2px;
@@ -189,23 +192,28 @@ body:has(.width-handle.dragging) { user-select: none; }
 .msg .body { white-space: normal; }
 .msg .body.plain { white-space: pre-wrap; }
 
-.msg.user { align-self: flex-end; background: var(--user-bg); }
-.msg.assistant { align-self: flex-start; background: var(--assistant-bg); }
+/* A bubble sits FLUSH against its own side of the column — that edge is what says whose words these
+   are, and a gap there reads as a mistake. The 2ch of air goes on the FAR side instead, so a wide
+   bubble never runs the full measure and the two sides stay told apart. The cap above reserves
+   exactly that gap. */
+.msg.user { align-self: flex-end; background: var(--user-bg); margin-inline-start: 2ch; }
+.msg.assistant { align-self: flex-start; background: var(--assistant-bg); margin-inline-end: 2ch; }
 .msg.system { align-self: center; background: var(--system-bg); color: var(--muted); font-size: var(--fs-sm); }
-.msg.error { align-self: flex-start; background: var(--error-bg); border-color: var(--danger); }
+.msg.error { align-self: flex-start; background: var(--error-bg); border-color: var(--danger); margin-inline-end: 2ch; }
 
 /* A reply that arrived across a correspondence (ADR_20260827-2 §2.5) — still an ordinary user-role
    message on the wire (ConversationOrchestrator sees a plain User turn), but it must never READ as
    the reader's own words. Left-aligned like an assistant bubble, with a small accent label instead
    of the reader's usual right-aligned "this is what I said" placement. */
-.msg.user.peer { align-self: flex-start; background: var(--assistant-bg); border-color: var(--accent); }
+.msg.user.peer { align-self: flex-start; background: var(--assistant-bg); border-color: var(--accent);
+  margin-inline-start: 0; margin-inline-end: 2ch; }
 .peer-label { font-size: var(--fs-xs); font-weight: 700; text-transform: uppercase;
   letter-spacing: .05em; color: var(--accent); margin-bottom: 5px; }
 
 /* An outgoing reply/correspondence call, rendered as speech rather than a generic tool card — the
    call is the content here, not its receipt (plan trap 10: a delivery receipt must never look like
    an answer). Right-aligned like the reader's own words, since it is: this chat SAID it. */
-.msg.reply-out { align-self: flex-end; background: var(--user-bg); border-color: var(--accent); }
+.msg.reply-out { align-self: flex-end; background: var(--user-bg); border-color: var(--accent); margin-inline-start: 2ch; }
 .reply-out-label { font-size: var(--fs-xs); font-weight: 700; text-transform: uppercase;
   letter-spacing: .05em; color: var(--accent); margin-bottom: 5px; display: flex; align-items: center; gap: 5px; }
 .reply-out-status { font-size: 11px; font-weight: 400; text-transform: none; letter-spacing: 0; }
@@ -225,6 +233,10 @@ body:has(.width-handle.dragging) { user-select: none; }
   border-left: 2px dashed var(--border); padding-left: 8px; margin-bottom: 4px; white-space: pre-wrap; }
 .attempt-note summary { cursor: pointer; font-style: normal; font-weight: 600; color: var(--muted);
   font-size: var(--fs-xs); }
+/* A marker with nothing behind it — a rate limit generates no text. It keeps the dashed rule so the
+   markers still read as one family, but loses the twisty and the pointer: an expander that opens onto
+   nothing invites a click and answers it with an empty box. */
+.attempt-note.flat { font-style: normal; font-weight: 600; }
 
 .tool { align-self: flex-start; font-family: var(--mono); font-size: var(--fs-sm);
   color: var(--muted); background: var(--tool-bg); border: 1px solid var(--border);
@@ -600,6 +612,16 @@ input.locked { opacity: 0.6; cursor: default; background: var(--bg); }
    eight stacked cards. Everything structural comes from .list-*; only the density is local. */
 .conn-models-head { border-top: 1px solid var(--border); padding-top: 6px; margin-top: 2px;
   font-size: var(--fs-xs); text-transform: uppercase; letter-spacing: .04em; opacity: .7; }
+
+/* Rate limits: folded away, because the defaults hold until a provider says otherwise, and an
+   always-open block of five numbers would push the models — the reason anyone opens this card — off
+   the screen. Same heading treatment as .conn-models-head so the two read as siblings. */
+.conn-limits > summary { border-top: 1px solid var(--border); padding-top: 6px; margin-top: 2px;
+  font-size: var(--fs-xs); text-transform: uppercase; letter-spacing: .04em; opacity: .7;
+  cursor: pointer; }
+.conn-limits[open] > summary { margin-bottom: 6px; }
+.conn-limits .field { margin-bottom: 6px; }
+.conn-limits-hint { font-size: var(--fs-xs); color: var(--muted); margin: 2px 0 8px; }
 .conn-models .list-card-head { padding: 2px 4px; gap: 6px; }
 .conn-models .list-card-head:hover { background: var(--bg); }
 .conn-models .list-card-body { padding: 6px 4px 8px 20px; gap: 6px;
