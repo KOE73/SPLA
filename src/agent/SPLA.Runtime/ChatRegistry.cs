@@ -107,10 +107,15 @@ public sealed class ChatRegistry : IDisposable, ISpawnSessionHost
     {
         var source = GetOrOpen(chatId);
         if (source == null) return null;
-        // Sync the file the duplicate is made from; refuse to fork mid-turn (half-written history).
+        // Flush the live conversation into the session object the copy is made from, and refuse to
+        // fork mid-turn (a half-written history is not something to hand anyone). The save that comes
+        // with it is a side effect now, not the mechanism: the copy is taken from memory below.
         if (!source.TrySaveIdle()) return null;
 
-        var copy = _runtime.ChatManager.DuplicateChat(chatId);
+        // From the open session, never from its file. Reading the chat back off disk to copy it made
+        // forking a live chat depend on its history surviving a YAML round-trip - see
+        // ChatManager.DuplicateChat(ChatSession).
+        var copy = _runtime.ChatManager.DuplicateChat(source.Session);
         if (msgId != null)
         {
             var keep = source.PersistedCountUpTo(msgId);

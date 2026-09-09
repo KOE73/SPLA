@@ -136,6 +136,18 @@ public class SplaAgentSection
     /// </summary>
     [YamlMember(Alias = "self_feeding_cap")]
     public int? SelfFeedingCap { get; set; }
+
+    /// <summary>A copy no future edit of either side can reach into: every scalar carried over, every
+    /// list re-made. Used when a chat is duplicated in memory (<c>ChatSession.Clone</c>) — a shared
+    /// list there would make two chats edit one setting.</summary>
+    public SplaAgentSection Clone()
+    {
+        var copy = (SplaAgentSection)MemberwiseClone();
+        copy.Instructions = Instructions == null ? null : new List<string>(Instructions);
+        copy.Capabilities = Capabilities == null ? null : new List<string>(Capabilities);
+        copy.TrustedDomains = TrustedDomains == null ? null : new List<string>(TrustedDomains);
+        return copy;
+    }
 }
 
 /// <summary>
@@ -340,6 +352,48 @@ public class SplaLlmSection
 
     [YamlMember(Alias = "min_p")]
     public double? MinP { get; set; }
+
+    /// <summary>Independent copy — all members are scalars, so a flat clone is the whole of it.</summary>
+    public SplaLlmSection Clone() => (SplaLlmSection)MemberwiseClone();
+}
+
+/// <summary>
+/// How hard to keep trying after a provider refuses with a rate limit. Shared across every model
+/// under the connection, because a rate limit is a property of the credential: were this per model,
+/// two individually well-behaved models under one key would together exceed what the key allows.
+/// <para>
+/// Every value here bounds a GUESS — we do not know when the provider will start answering and pick a
+/// schedule on spec. A <c>Retry-After</c> the provider actually stated is not a guess and is obeyed
+/// as given, past all of these ceilings.
+/// </para>
+/// </summary>
+public class SplaRetrySection
+{
+    /// <summary>Attempts allowed for one turn, the first request included (default 4, minimum 1).
+    /// 4 means one try and three retries.</summary>
+    [YamlMember(Alias = "attempts")]
+    public int Attempts { get; set; } = 4;
+
+    /// <summary>The first pause, in seconds (default 1). Later pauses grow from it by
+    /// <see cref="Step"/>.</summary>
+    [YamlMember(Alias = "min_delay")]
+    public double MinDelay { get; set; } = 1.0;
+
+    /// <summary>Multiplier applied per attempt (default 2), so pauses run 1s, 2s, 4s … until
+    /// <see cref="MaxDelay"/> flattens them.</summary>
+    [YamlMember(Alias = "step")]
+    public double Step { get; set; } = 2.0;
+
+    /// <summary>Ceiling on a single computed pause, in seconds (default 30). Without it the geometry
+    /// has no end — an aggressive <see cref="Step"/> puts minutes into the tail.</summary>
+    [YamlMember(Alias = "max_delay")]
+    public double MaxDelay { get; set; } = 30.0;
+
+    /// <summary>Ceiling on the sum of all pauses in one turn, in seconds (default 120). Needed
+    /// alongside <see cref="MaxDelay"/> rather than implied by it: four pauses of 30s are each legally
+    /// under the per-pause ceiling and still leave the turn silent for two minutes.</summary>
+    [YamlMember(Alias = "total")]
+    public double Total { get; set; } = 120.0;
 }
 
 /// <summary>
@@ -384,6 +438,20 @@ public class SplaConnectionSection
     /// <summary>When true picking a different model triggers LM Studio unload+load via the management API.</summary>
     [YamlMember(Alias = "swap_model")]
     public bool SwapModel { get; set; }
+
+    /// <summary>How hard to keep trying when this account is rate-limited. Absent block = the
+    /// defaults; a rate limit is a property of the key, so it lives here and not on a model.</summary>
+    [YamlMember(Alias = "retry")]
+    public SplaRetrySection Retry { get; set; } = new();
+
+    /// <summary>Minimum seconds between consecutive requests on this connection, enforced across every
+    /// chat and model that shares the key; 0 (default) = no pacing. Kept out of <see cref="Retry"/>
+    /// deliberately: retry reacts to a refusal, pacing exists to prevent one, and a mechanism that only
+    /// starts working after the failure is not the same mechanism. Raise it on a provider's demand or a
+    /// measurement, never on a hunch — a second per turn costs an agent with fifty tool calls a
+    /// minute.</summary>
+    [YamlMember(Alias = "min_request_interval")]
+    public double MinRequestInterval { get; set; } = 0.0;
 
     /// <summary>The models selected under this connection. Each is what a chat can point at.</summary>
     [YamlMember(Alias = "models")]

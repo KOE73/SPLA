@@ -153,6 +153,33 @@ public class ChatSession
     /// (<c>docs/adr/ADR_20260827_core_config-versioning.md</c>: absence of a new key is not an error).</summary>
     [YamlMember(Alias = "completion_tokens_total")]
     public int? CompletionTokensTotal { get; set; }
+
+    /// <summary>
+    /// An independent copy of this session, identity included — the caller gives the copy its own
+    /// <see cref="Id"/>, <see cref="Title"/> and <see cref="AsInstance"/>.
+    ///
+    /// <para>This is what lets a chat be duplicated from the live object instead of from its file
+    /// (<c>ChatManager.DuplicateChat</c>). The old route wrote the chat out and read it straight back,
+    /// which made forking depend on the history surviving a YAML round-trip — one binary byte in a
+    /// tool result and the fork of a perfectly healthy on-screen chat failed.</para>
+    ///
+    /// <para>Deep on purpose: every list and every nested object is re-made, so nothing an edit does
+    /// to one chat afterwards can be seen by the other. That is the whole reason this is not
+    /// <c>MemberwiseClone</c> alone.</para>
+    /// </summary>
+    public ChatSession Clone()
+    {
+        var copy = (ChatSession)MemberwiseClone();
+        copy.Model = Model?.Clone();
+        copy.Agent = Agent?.Clone();
+        copy.Context = Context?.Clone();
+        copy.Messages = Messages.Select(m => m.Clone()).ToList();
+        copy.Kv = new Dictionary<string, string>(Kv);
+        copy.Doubt = Doubt.Select(d => d.Clone()).ToList();
+        copy.Correspondences = Correspondences?.Select(c => c.Clone()).ToList();
+        copy.Spawn = Spawn?.Clone();
+        return copy;
+    }
 }
 
 /// <summary>Persisted mirror of one <c>SPLA.Runtime.Correspondence</c> — see that class for what each
@@ -226,6 +253,9 @@ public class ChatSessionCorrespondence
     /// <c>Correspondence.EndedReason</c>.</summary>
     [YamlMember(Alias = "ended_reason")]
     public string? EndedReason { get; set; }
+
+    /// <summary>Independent copy — see <see cref="ChatSession.Clone"/>.</summary>
+    public ChatSessionCorrespondence Clone() => (ChatSessionCorrespondence)MemberwiseClone();
 }
 
 /// <summary>What <c>subagent.get</c>/<c>subagent.result</c> answer with, persisted on the session
@@ -251,6 +281,9 @@ public class ChatSessionSpawnInfo
 
     [YamlMember(Alias = "error")]
     public string? Error { get; set; }
+
+    /// <summary>Independent copy — see <see cref="ChatSession.Clone"/>.</summary>
+    public ChatSessionSpawnInfo Clone() => (ChatSessionSpawnInfo)MemberwiseClone();
 }
 
 /// <summary>One recorded arrival from a source nobody named.</summary>
@@ -267,6 +300,9 @@ public class ChatSessionDoubt
 
     [YamlMember(Alias = "at")]
     public DateTime At { get; set; } = DateTime.UtcNow;
+
+    /// <summary>Independent copy — see <see cref="ChatSession.Clone"/>.</summary>
+    public ChatSessionDoubt Clone() => (ChatSessionDoubt)MemberwiseClone();
 }
 
 public class ChatSessionMessage
@@ -328,6 +364,19 @@ public class ChatSessionMessage
     /// message that never had any (the overwhelmingly common case).</summary>
     [YamlMember(Alias = "attempts")]
     public List<ChatSessionAttempt>? Attempts { get; set; }
+
+    /// <summary>Independent copy — see <see cref="ChatSession.Clone"/>. Tool calls and attempts are
+    /// re-made rather than shared: a message is rebuilt wholesale on every save, so sharing them would
+    /// not corrupt anything today — but a copy that is deep everywhere needs no such argument to stay
+    /// true tomorrow.</summary>
+    public ChatSessionMessage Clone()
+    {
+        var copy = (ChatSessionMessage)MemberwiseClone();
+        copy.Images = Images == null ? null : new List<string>(Images);
+        copy.ToolCalls = ToolCalls == null ? null : new List<ToolCall>(ToolCalls);
+        copy.Attempts = Attempts?.Select(a => a.Clone()).ToList();
+        return copy;
+    }
 }
 
 /// <summary>
@@ -359,6 +408,19 @@ public class ChatSessionAttempt
 
     [YamlMember(Alias = "duration_ms")]
     public long DurationMs { get; set; }
+
+    /// <summary>The pause taken before the next attempt, in milliseconds; null when none followed.
+    /// See <see cref="SPLA.Domain.Llm.GenerationAttempt.Wait"/>.</summary>
+    [YamlMember(Alias = "wait_ms")]
+    public long? WaitMs { get; set; }
+
+    /// <summary>Whether <see cref="WaitMs"/> is the provider's own figure — see
+    /// <see cref="SPLA.Domain.Llm.GenerationAttempt.WaitStated"/>.</summary>
+    [YamlMember(Alias = "wait_stated")]
+    public bool WaitStated { get; set; }
+
+    /// <summary>Independent copy — see <see cref="ChatSession.Clone"/>.</summary>
+    public ChatSessionAttempt Clone() => (ChatSessionAttempt)MemberwiseClone();
 }
 
 public class ChatSessionContext
@@ -374,4 +436,13 @@ public class ChatSessionContext
 
     [YamlMember(Alias = "commands")]
     public List<string> Commands { get; set; } = new();
+
+    /// <summary>Independent copy — see <see cref="ChatSession.Clone"/>.</summary>
+    public ChatSessionContext Clone() => new()
+    {
+        InstructionFiles = new List<string>(InstructionFiles),
+        FilesMentioned = new List<string>(FilesMentioned),
+        ChangedFiles = new List<string>(ChangedFiles),
+        Commands = new List<string>(Commands)
+    };
 }

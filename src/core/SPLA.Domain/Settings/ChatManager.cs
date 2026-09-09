@@ -226,7 +226,7 @@ public class ChatManager
             if (string.IsNullOrWhiteSpace(session.Title)) session.Title = "Chat";
         }
 
-        var yaml = Serializer.Serialize(session);
+        var yaml = ToYaml(session);
         WriteAtomic(GetChatFilePath(session.Id), yaml);
     }
 
@@ -260,12 +260,38 @@ public class ChatManager
         return ChatLocation.Missing;
     }
 
+    /// <summary>
+    /// Serializes a chat and strips the characters YAML has no way to carry raw: the C0 controls
+    /// other than tab/newline. They reach a chat when a tool result carries binary — a gzip blob in
+    /// an ssh/docker screen, say — and YamlDotNet writes them into the literal block verbatim, which
+    /// makes the file unreadable on the next load ("did not find expected key"). The chat kept
+    /// working from memory while every path that re-reads it from disk (fork, duplicate, list) died,
+    /// so the damage stayed invisible until someone forked.
+    ///
+    /// <para>Dropping them loses nothing a conversation needs: a control byte is not text, and the
+    /// alternative — an unparsable history file — loses the whole chat.</para>
+    /// </summary>
+    private static string ToYaml(ChatSession session) => StripControlChars(Serializer.Serialize(session));
+
+    /// <summary>Same cleanup on the way in, so a file already corrupted by an earlier write still
+    /// loads (and is written back clean by the next save) instead of being lost.</summary>
+    private static string StripControlChars(string text)
+    {
+        if (!text.Any(IsIllegal)) return text;
+        var sb = new System.Text.StringBuilder(text.Length);
+        foreach (var c in text)
+            if (!IsIllegal(c)) sb.Append(c);
+        return sb.ToString();
+
+        static bool IsIllegal(char c) => c < ' ' && c != '\n' && c != '\t' && c != '\r';
+    }
+
     public ChatSession? LoadChat(string id)
     {
         var path = FindChatFilePath(id);
         if (path == null) return null;
 
-        var yaml = File.ReadAllText(path);
+        var yaml = StripControlChars(File.ReadAllText(path));
         var session = Deserializer.Deserialize<ChatSession>(yaml);
         if (session != null) MintInstanceOnFirstLoad(session, path);
         return session;
@@ -299,7 +325,7 @@ public class ChatManager
         session.AsInstance = _instances.Value.Next(session.As!);
         // Written back to the path it came from, not through SaveChat: that one always writes into the
         // active folder, which would quietly unarchive an archived chat just for being read.
-        try { WriteAtomic(path, Serializer.Serialize(session)); }
+        try { WriteAtomic(path, ToYaml(session)); }
         catch { /* The number is still in the counter, so it is spent, not re-used; the next load
                    simply mints a fresh one. Losing a read to a read-only file is the worse trade. */ }
     }
@@ -331,7 +357,7 @@ public class ChatManager
         {
             try
             {
-                var yaml = File.ReadAllText(file);
+                var yaml = StripControlChars(File.ReadAllText(file));
                 var session = Deserializer.Deserialize<ChatSession>(yaml);
                 if (session != null) chats.Add(session);
             }
@@ -401,10 +427,24 @@ public class ChatManager
         }
     }
 
+    /// <summary>Duplicates a chat read from disk. Prefer the overload taking a live
+    /// <see cref="ChatSession"/> when the chat is already open — see it for why.</summary>
     public ChatSession DuplicateChat(string id, string? overrideModel = null)
+        => DuplicateChat(LoadChat(id) ?? throw new Exception($"Chat {id} not found"), overrideModel);
+
+    /// <summary>
+    /// Duplicates a chat from the session object itself: the copy is a deep clone
+    /// (<see cref="ChatSession.Clone"/>) given a new id, a new public number and its own title.
+    ///
+    /// <para>Taking the source in rather than an id is the point. An open chat lives in memory, and
+    /// making its copy by writing it out and reading it straight back made duplication depend on the
+    /// history surviving a YAML round-trip — so a single binary byte in a tool result (a gzip blob
+    /// from an ssh screen) killed the fork of a chat that was on screen and working.</para>
+    /// </summary>
+    public ChatSession DuplicateChat(ChatSession source, string? overrideModel = null)
     {
-        var chat = LoadChat(id) ?? throw new Exception($"Chat {id} not found");
-        
+        var chat = source.Clone();
+
         chat.Id = GenerateChatId();
         // A copy is a new chat, not a second face of the old one: it needs its own public name, or two
         // chats would answer to `architect_2` and every reply tool pointed at that name would be
@@ -438,7 +478,7 @@ public class ChatManager
 
         var fileName = $"{session.Id}_{DateTime.Now:yyyy-MM-dd_HHmmss}_{safeReason}.yaml";
         var path = Path.Combine(_backupsDir, fileName);
-        var yaml = Serializer.Serialize(session);
+        var yaml = ToYaml(session);
         File.WriteAllText(path, yaml);
     }
 }
