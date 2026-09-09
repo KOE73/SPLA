@@ -4,31 +4,41 @@
   an image attached in one chat can never be sent to another.
 -->
 <template>
-  <div id="attachments">
-    <div v-for="(src, i) in attachments" :key="i" class="thumb">
-      <img :src="src">
-      <button class="rm" @click="attachments.splice(i, 1)">✕</button>
+  <div
+    class="composer-drop"
+    @dragenter.prevent="onDragEnter"
+    @dragover.prevent="onDragOver"
+    @dragleave="onDragLeave"
+    @drop.prevent="onDrop"
+  >
+    <div v-if="dragging" class="drop-hint">{{ t('Drop images here') }}</div>
+    <div id="attachments">
+      <div v-for="(img, i) in attachments" :key="i" class="thumb" :title="img.label">
+        <img :src="img.url">
+        <div v-if="img.label" class="thumb-label">{{ img.label }}</div>
+        <button class="rm" @click="attachments.splice(i, 1)">✕</button>
+      </div>
     </div>
-  </div>
-  <div v-if="queuedCount > 0" class="queued-chip" :title="`${queuedCount} message(s) waiting to be picked up`">
-    {{ queuedCount }} queued
-  </div>
-  <div class="row">
-    <button class="icon-btn" :title="t('Attach image')" @click="fileInput?.click()">+</button>
-    <input ref="fileInput" type="file" accept="image/*" multiple hidden @change="onFileInput">
-    <textarea
-      id="input"
-      ref="textareaEl"
-      v-model="text"
-      rows="2"
-      :placeholder="t('Message…  (Enter to send, Shift+Enter for newline, paste images)')"
-      :disabled="!ready"
-      @keydown.enter.exact.prevent="send"
-      @input="autosize"
-      @paste="onPaste"
-    ></textarea>
-    <button class="btn" :disabled="!ready" @click="send">{{ t('Send') }}</button>
-    <button v-if="turnActive" class="btn danger" @click="stop">{{ t('Stop') }}</button>
+    <div v-if="queuedCount > 0" class="queued-chip" :title="`${queuedCount} message(s) waiting to be picked up`">
+      {{ queuedCount }} queued
+    </div>
+    <div class="row">
+      <button class="icon-btn" :title="t('Attach image')" @click="fileInput?.click()">+</button>
+      <input ref="fileInput" type="file" accept="image/*" multiple hidden @change="onFileInput">
+      <textarea
+        id="input"
+        ref="textareaEl"
+        v-model="text"
+        rows="2"
+        :placeholder="t('Message…  (Enter to send, Shift+Enter for newline, paste images)')"
+        :disabled="!ready"
+        @keydown.enter.exact.prevent="send"
+        @input="autosize"
+        @paste="onPaste"
+      ></textarea>
+      <button class="btn" :disabled="!ready" @click="send">{{ t('Send') }}</button>
+      <button v-if="turnActive" class="btn danger" @click="stop">{{ t('Stop') }}</button>
+    </div>
   </div>
 </template>
 
@@ -101,7 +111,11 @@ function addImageFiles(files: FileList | File[]) {
     // Resolve the target chat now, not in the callback: the read is async and the user may well have
     // switched chats before it finishes.
     const target = chat.session.value;
-    reader.onload = () => { target?.attachments.push(reader.result as string); };
+    // The file's own name goes with it: it is the name the model is shown, so "on frame_012.jpg" is
+    // sayable in the next message instead of counting pictures. A pasted screenshot has no name worth
+    // repeating, and stays unnamed.
+    const label = f.name && !/^image\.\w+$/i.test(f.name) ? f.name : undefined;
+    reader.onload = () => { target?.attachments.push({ url: reader.result as string, label }); };
     reader.readAsDataURL(f);
   }
 }
@@ -110,6 +124,38 @@ function onFileInput(e: Event) {
   if (input.files) addImageFiles(input.files);
   input.value = "";
 }
+// ── Drag & drop ──────────────────────────────────────────────────────────────
+// A file dragged over a child element fires dragleave on the parent, so a plain boolean would
+// flicker; counting enter/leave pairs is what actually tracks "still inside".
+const dragDepth = ref(0);
+const dragging = computed(() => dragDepth.value > 0);
+
+/** Only a drag that actually carries files is ours — dragging selected text over it is not. */
+function hasFiles(e: DragEvent) {
+  return [...(e.dataTransfer?.items || [])].some(i => i.kind === "file")
+    || !!e.dataTransfer?.types.includes("Files");
+}
+function onDragEnter(e: DragEvent) { if (hasFiles(e)) dragDepth.value++; }
+function onDragOver(e: DragEvent) {
+  if (hasFiles(e) && e.dataTransfer) e.dataTransfer.dropEffect = "copy";
+}
+function onDragLeave() { if (dragDepth.value > 0) dragDepth.value--; }
+function onDrop(e: DragEvent) {
+  dragDepth.value = 0;
+  const files = e.dataTransfer?.files;
+  if (files?.length) addImageFiles(files);
+}
+
+// A miss — a file dropped anywhere else in the window — would otherwise navigate the whole client
+// away to that file. Swallow it instead; the drop still only lands where a handler above takes it.
+function swallow(e: DragEvent) { if (hasFiles(e)) e.preventDefault(); }
+document.addEventListener("dragover", swallow);
+document.addEventListener("drop", swallow);
+onUnmounted(() => {
+  document.removeEventListener("dragover", swallow);
+  document.removeEventListener("drop", swallow);
+});
+
 function onPaste(e: ClipboardEvent) {
   const imgs = [...(e.clipboardData?.items || [])]
     .filter(i => i.type.startsWith("image/"))
@@ -150,6 +196,22 @@ onUnmounted(offComposerSet);
 </script>
 
 <style scoped>
+/* The wrapper only exists to catch the drag; it must keep the layout #composer > .center-col gave. */
+.composer-drop { display: flex; flex-direction: column; gap: var(--sp-2); position: relative; }
+.drop-hint {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;               /* or it would eat the drop it is announcing */
+  border: 2px dashed var(--accent);
+  border-radius: var(--radius);
+  background: var(--accent-soft);
+  color: var(--text);
+  font-size: var(--fs-sm);
+}
 .queued-chip {
   font-size: var(--fs-xs);
   color: var(--muted);

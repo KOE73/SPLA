@@ -322,11 +322,11 @@ public class ChatSessionMessage
     [YamlMember(Alias = "reasoning")]
     public string? Reasoning { get; set; }
 
-    /// <summary>Filenames of images attached to this message, stored as sidecar files under
-    /// <c>.spla/chat-images/&lt;chatId&gt;/</c>. Only the filenames live in the chat YAML — the binary
-    /// payload never bloats it. Null/empty for text-only messages.</summary>
+    /// <summary>Images attached to this message: the sidecar file each one was written to under
+    /// <c>.spla/chat-images/&lt;chatId&gt;/</c>, plus the name it was sent under. Only that lives in the
+    /// chat YAML — the binary payload never bloats it. Null/empty for text-only messages.</summary>
     [YamlMember(Alias = "images")]
-    public List<string>? Images { get; set; }
+    public List<ChatSessionImage>? Images { get; set; }
 
     /// <summary>Tool calls the assistant requested on this message. Only written when the
     /// full tool trace is enabled — see <see cref="Settings.SplaAgentSection.SaveToolCalls"/>.</summary>
@@ -372,11 +372,31 @@ public class ChatSessionMessage
     public ChatSessionMessage Clone()
     {
         var copy = (ChatSessionMessage)MemberwiseClone();
-        copy.Images = Images == null ? null : new List<string>(Images);
+        copy.Images = Images?.Select(i => i.Clone()).ToList();
         copy.ToolCalls = ToolCalls == null ? null : new List<ToolCall>(ToolCalls);
         copy.Attempts = Attempts?.Select(a => a.Clone()).ToList();
         return copy;
     }
+}
+
+/// <summary>
+/// One image on a persisted message: which sidecar file holds it, and what it was called.
+/// <para>
+/// Written as a bare file name when it has no name of its own and as <c>{file, label}</c> when it
+/// does — see <see cref="ChatSessionImageConverter"/>. A chat written before names existed is
+/// therefore still exactly the file it was, and stays that way as long as nobody names anything in
+/// it: the format grew a shape rather than replacing the one on disk.
+/// </para>
+/// </summary>
+public sealed class ChatSessionImage
+{
+    public string File { get; set; } = string.Empty;
+    public string? Label { get; set; }
+
+    public ChatSessionImage() { }
+    public ChatSessionImage(string file, string? label = null) { File = file; Label = label; }
+
+    public ChatSessionImage Clone() => (ChatSessionImage)MemberwiseClone();
 }
 
 /// <summary>

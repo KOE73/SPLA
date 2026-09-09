@@ -320,8 +320,14 @@ public sealed class ConversationOrchestrator
                 // model belongs here, not in the tool: tool-result messages cannot reliably carry
                 // images to every vision API, so they go out as a synthetic user-role message and
                 // the model sees them on its next turn.
-                var pendingImages = toolResult.Content.OfType<ToolImage>()
-                    .Select(i => $"data:{i.MimeType};base64,{i.Data}")
+                // Named after the tool that produced them, numbered when a call returned several: the
+                // model can only refer to a picture by the name written in front of it, and "the second
+                // screenshot" is unsayable otherwise (see ImageAttachment).
+                var produced = toolResult.Content.OfType<ToolImage>().ToList();
+                var pendingImages = produced
+                    .Select((i, n) => new ImageAttachment(
+                        $"data:{i.MimeType};base64,{i.Data}",
+                        produced.Count > 1 ? $"{tc.Function.Name} {n + 1}" : tc.Function.Name))
                     .ToList();
                 if (pendingImages is { Count: > 0 })
                 {

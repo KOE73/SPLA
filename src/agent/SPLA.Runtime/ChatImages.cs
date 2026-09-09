@@ -48,6 +48,20 @@ public static class ChatImages
         return fileName;
     }
 
+    /// <summary>
+    /// Reads a stored image back as the data URL a model is sent, or null when it is missing or
+    /// unreadable. This is what makes a reopened chat continue like one that was never closed: the
+    /// live message holds the picture itself, not the <see cref="Url"/> a browser fetches — that
+    /// address means nothing to a provider on the other side of the internet.
+    /// </summary>
+    public static string? ReadDataUrl(IProject project, string chatId, string fileName)
+    {
+        var full = Resolve(project, chatId, fileName);
+        if (full == null) return null;
+        try { return $"data:{ContentType(fileName)};base64,{Convert.ToBase64String(File.ReadAllBytes(full))}"; }
+        catch { return null; }
+    }
+
     /// <summary>Resolves a stored image to its full path, or null if the name is unsafe / missing.</summary>
     public static string? Resolve(IProject project, string chatId, string fileName)
     {

@@ -48,6 +48,7 @@
   "Asking the provider what this model takes…": "Спрашиваем у провайдера, что принимает эта модель…",
   "Associate .spla project files with this app in Windows Explorer, so double-clicking opens them.": "Связать файлы проектов .spla с этим приложением в проводнике Windows, чтобы они открывались двойным щелчком.",
   "Attach image": "Прикрепить изображение",
+  "Drop images here": "Отпустите изображения здесь",
   "Auto-open spawned sessions": "Сами открывать порождённые сеансы",
   "Behaviour": "Поведение",
   "Body only — the manifest does not name it, so it does not act": "Только тело — манифест её не называет, поэтому она не действует",

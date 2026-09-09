@@ -21,7 +21,9 @@ public static class RuntimeProjections
                 var dto = ProtocolMapper.ToDto(m);
                 var files = chat.ImageFilesFor(m);
                 if (files is { Count: > 0 })
-                    dto.Images = files.Select(f => ChatImages.Url(chat.ChatId, f)).ToList();
+                    dto.Images = files
+                        .Select(f => new ImageDto { Url = ChatImages.Url(chat.ChatId, f.File), Label = f.Label })
+                        .ToList();
                 return dto;
             })
             .ToList();
@@ -57,7 +59,7 @@ public static class RuntimeProjections
                     Reasoning = a.Reasoning
                 }).ToList(),
                 Images = m.Images is { Count: > 0 }
-                    ? m.Images.Select(f => ChatImages.Url(chat.Id, f)).ToList()
+                    ? m.Images.Select(f => new ImageDto { Url = ChatImages.Url(chat.Id, f.File), Label = f.Label }).ToList()
                     : null
             })
             .ToList();

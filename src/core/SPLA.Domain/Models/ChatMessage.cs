@@ -42,11 +42,12 @@ public class ChatMessage
     public string? Content { get; set; } = string.Empty;
 
     /// <summary>
-    /// Optional attached images for a user message, as data URLs (data:image/...;base64,...). When
-    /// present, an OpenAI-compatible vision client emits the message content as a parts array
-    /// (text + image_url) instead of a plain string. Null/empty for normal text messages.
+    /// Optional attached images for a user message, each a data URL (data:image/...;base64,...) with
+    /// the name it is known by. When present, an OpenAI-compatible vision client emits the message
+    /// content as a parts array (each image's name, then the image, then the text) instead of a plain
+    /// string. Null/empty for normal text messages.
     /// </summary>
-    public List<string>? Images { get; set; }
+    public List<ImageAttachment>? Images { get; set; }
 
     /// <summary>
     /// Separate chain-of-thought / reasoning text emitted by reasoning models

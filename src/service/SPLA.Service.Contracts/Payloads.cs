@@ -38,9 +38,9 @@ public sealed class ChatMessageDto
     /// field that tells the two apart.</summary>
     public string? PeerFrom { get; set; }
 
-    /// <summary>URLs of attached images (e.g. /chat-image/&lt;chatId&gt;/&lt;file&gt; on reopen, or data URLs
-    /// for a freshly sent message). Null when the message has no images.</summary>
-    public List<string>? Images { get; set; }
+    /// <summary>Attached images (e.g. /chat-image/&lt;chatId&gt;/&lt;file&gt; on reopen, or data URLs for a
+    /// freshly sent message), each with the name it was sent under. Null when the message has none.</summary>
+    public List<ImageDto>? Images { get; set; }
 
     /// <summary>Generations the repetition guard threw away before this message was produced. Only
     /// present when the project had <c>agent: save_attempts</c> on at save time — see
@@ -246,8 +246,18 @@ public sealed class ChatSendPayload
     public string ChatId { get; set; } = string.Empty;
     public string Text { get; set; } = string.Empty;
 
-    /// <summary>Optional attached images as data URLs (data:image/png;base64,…) for vision models.</summary>
-    public List<string>? Images { get; set; }
+    /// <summary>Optional attached images as data URLs (data:image/png;base64,…) for vision models,
+    /// each with the name the model should know it by.</summary>
+    public List<ImageDto>? Images { get; set; }
+}
+
+/// <summary>One image on the wire: where the picture is, and what it is called. The name is what a
+/// prompt refers to — see <see cref="SPLA.Domain.Models.ImageAttachment"/> for why a picture needs
+/// one at all — and is null for an image nobody named.</summary>
+public sealed class ImageDto
+{
+    public string Url { get; set; } = string.Empty;
+    public string? Label { get; set; }
 }
 
 /// <summary>Which chat a window has focused. Sent as <see cref="MessageTypes.FocusSet"/> and echoed

@@ -130,7 +130,8 @@ public sealed class ChatRegistry : IDisposable, ISpawnSessionHost
         {
             var srcDir = ChatImages.Dir(_runtime.Settings.Project, chatId);
             var dstDir = ChatImages.Dir(_runtime.Settings.Project, copy.Id);
-            var wanted = copy.Messages.Where(m => m.Images != null).SelectMany(m => m.Images!).ToHashSet();
+            var wanted = copy.Messages.Where(m => m.Images != null)
+                .SelectMany(m => m.Images!).Select(i => i.File).ToHashSet();
             foreach (var name in wanted)
             {
                 var src = Path.Combine(srcDir, name);

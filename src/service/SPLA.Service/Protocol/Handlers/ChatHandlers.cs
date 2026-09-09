@@ -244,7 +244,9 @@ internal sealed class ChatHandlers : IMessageHandler
         {
             Role = ChatRole.User,
             Content = p.Text,
-            Images = p.Images is { Count: > 0 } ? p.Images.ToList() : null
+            Images = p.Images is { Count: > 0 }
+                ? p.Images.Select(i => new ImageAttachment(i.Url, i.Label)).ToList()
+                : null
         }, InboxItemKind.Human);
     }
 

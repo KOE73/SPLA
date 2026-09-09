@@ -52,6 +52,10 @@ public sealed class BatchRunner(AgentRuntime runtime, ResolvedSettings settings)
     /// of the same prompt against the same model differ.</summary>
     public bool MdClean { get; init; }
 
+    /// <summary>Images attached to every cell's user turn, in the order they were given on the command
+    /// line — order is meaning when they are frames or pages, so it is preserved rather than sorted.</summary>
+    public IReadOnlyList<ImageInput> Images { get; init; } = [];
+
     /// <summary>Human-readable note of the extra system prompt this run carried ("--sys-prompt-file
     /// x.md"), or null when it carried none.</summary>
     public string? SystemPromptExtra { get; init; }
@@ -101,7 +105,8 @@ public sealed class BatchRunner(AgentRuntime runtime, ResolvedSettings settings)
 
         try
         {
-            await chat.SendAsync(cell.Prompt.Text, callbacks, denyAll, noClarify, runCts.Token);
+            await chat.SendAsync(cell.Prompt.Text, callbacks, denyAll, noClarify, runCts.Token,
+                images: Images.Count > 0 ? Images.Select(i => i.Attachment).ToList() : null);
         }
         catch (OperationCanceledException) when (!ct.IsCancellationRequested)
         {

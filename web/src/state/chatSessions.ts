@@ -18,11 +18,11 @@
 import { reactive } from "vue";
 import { client } from "../protocol/SplaClient";
 import { store } from "./store";
-import type { ChatDoubt, ChatMessage, ToolProgressDetail, ToolSetState } from "../protocol/types";
+import type { ChatDoubt, ChatMessage, ImageRef, ToolProgressDetail, ToolSetState } from "../protocol/types";
 import type { ToolCallState } from "../surfaces/ToolCard.vue";
 
 export type LogItem =
-  | { kind: "user"; key: string; text: string; images?: string[]; msgId?: string; createdAt?: string | number;
+  | { kind: "user"; key: string; text: string; images?: ImageRef[]; msgId?: string; createdAt?: string | number;
       /** Set when this "user" turn is actually an incoming reply across a correspondence
        *  (ADR_20260827-2 §2.5) — UserBubble renders it as speech ("← from peerFrom") instead of an
        *  ordinary human bubble. Undefined for every message a person actually typed. */
@@ -63,7 +63,7 @@ export interface ChatSession {
   /** Unsent composer text and images — per chat, or switching away loses them (and, worse, could
    *  send an image attached in one chat to another). */
   draft: string;
-  attachments: string[];
+  attachments: ImageRef[];
 
   /** True when this window holds the chat as a frozen snapshot rather than a live session: it was
    *  filled by `chat.read` (an archived chat), or it is a spawned run someone is watching. Set from
@@ -151,6 +151,29 @@ export function sessionFor(chatId: string): ChatSession {
   return s;
 }
 
+/**
+ * Puts a chat on screen.
+ *
+ * A chat this window already holds a log for is switched to locally: it is watched, so its log has
+ * been kept current by the stream all along, and asking the server to open it again would answer with
+ * a history snapshot that rebuilds the log from scratch. That rebuild is destructive in the middle of
+ * a turn — the snapshot is what has been PERSISTED, and the sentence the model is streaming right now
+ * is not in it. Whoever clicked between three working chats used to wipe the live answer out of each
+ * one on the way in, and see it reappear only when the turn ended.
+ *
+ * Anything else — a chat this window has never loaded, or whose log was evicted — still goes to the
+ * server, which is the source of truth for history.
+ */
+export function openChat(chatId: string) {
+  const s = peekSession(chatId);
+  if (s?.logLoaded && !s.readOnly) {
+    store.currentChat = chatId;
+    focusSession(chatId);
+    return;
+  }
+  client.send("chat.open", { chatId });
+}
+
 /** The session for a chat, or undefined — for readers that must not create one as a side effect. */
 export function peekSession(chatId: string | null): ChatSession | undefined {
   return chatId ? sessions.get(chatId) : undefined;
@@ -229,7 +252,7 @@ export function addNotice(s: ChatSession, text: string) {
   s.items.push({ kind: "notice", key: nextKey(), text });
 }
 
-export function addLocalUserMessage(s: ChatSession, text: string, images?: string[]) {
+export function addLocalUserMessage(s: ChatSession, text: string, images?: ImageRef[]) {
   s.items.push({ kind: "user", key: nextKey(), text, images, createdAt: Date.now() });
 }
 
@@ -383,14 +406,32 @@ on("llm.turn.start", (s, p: { msgIndex: number; progressTreeId?: string | null }
   s.pending.push(p.msgIndex);
 });
 
+/**
+ * The bubble a live chunk belongs to, created if it is gone.
+ *
+ * It can be gone in the middle of a turn: anything that rebuilds the log (a `chat.opened` for a chat
+ * already on screen, an eviction that dropped it) removes the bubble `llm.turn.start` made, while the
+ * model keeps streaming into an index nothing is holding any more. Dropping those chunks was silent
+ * and looked like the stream itself had stopped — the text reappeared only at the end of the turn,
+ * when `assistant.message` built the bubble back. Rebuilding it here costs one object and keeps the
+ * stream visible; the same reasoning is why `assistant.message` has always done it.
+ */
+function liveBubble(s: ChatSession, msgIndex: number) {
+  let b = bubble(s, msgIndex);
+  if (!b) {
+    s.items.push({ kind: "assistant", key: "a" + msgIndex, msgIndex, text: "", reasoning: "",
+      createdAt: Date.now() });
+    b = bubble(s, msgIndex)!;
+  }
+  return b;
+}
+
 on("delta", (s, p: { msgIndex: number; text: string }) => {
-  const b = bubble(s, p.msgIndex);
-  if (b) b.text += p.text;
+  liveBubble(s, p.msgIndex).text += p.text;
 });
 
 on("reasoning", (s, p: { msgIndex: number; text: string }) => {
-  const b = bubble(s, p.msgIndex);
-  if (b) b.reasoning += p.text;
+  liveBubble(s, p.msgIndex).reasoning += p.text;
 });
 
 on("llm.attempt", (s, p: { msgIndex: number; index: number; outcome?: string; note?: string;

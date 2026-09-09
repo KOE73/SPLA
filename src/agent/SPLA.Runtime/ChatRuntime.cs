@@ -122,9 +122,10 @@ public sealed class ChatRuntime : IDisposable, SPLA.Domain.Agent.IBackgroundTask
     private readonly ConversationOrchestrator _orchestrator;
     private readonly SemaphoreSlim _turnGate = new(1, 1);
 
-    /// <summary>Maps a user message to the sidecar image filenames persisted for it. The binary lives
-    /// on disk under <c>.spla/chat-images/&lt;chatId&gt;/</c>; only filenames ride in the chat YAML.</summary>
-    private readonly Dictionary<ChatMessage, List<string>> _imageFiles = new();
+    /// <summary>Maps a user message to the sidecar images persisted for it — the file each picture was
+    /// written to, and the name it was sent under. The binary lives on disk under
+    /// <c>.spla/chat-images/&lt;chatId&gt;/</c>; only the file name and the label ride in the chat YAML.</summary>
+    private readonly Dictionary<ChatMessage, List<ChatSessionImage>> _imageFiles = new();
 
     public string ChatId => _chat.Id;
     public string Title => _chat.Title;
@@ -1104,8 +1105,23 @@ public sealed class ChatRuntime : IDisposable, SPLA.Domain.Agent.IBackgroundTask
                     : null
             };
             _conversation.Add(msg);
-            // Re-link persisted sidecar image filenames so they survive re-saves and show on reopen.
-            if (m.Images is { Count: > 0 }) _imageFiles[msg] = new List<string>(m.Images);
+            // Re-link the persisted sidecar images so they survive re-saves and show on reopen. The
+            // labels come back onto the live message too: a reopened chat that keeps talking must send
+            // its earlier pictures under the same names the model already answered about, or every
+            // "Image 2" in the history quietly loses its referent.
+            if (m.Images is { Count: > 0 })
+            {
+                _imageFiles[msg] = m.Images.Select(i => i.Clone()).ToList();
+                // Read back from the sidecar as data URLs — the picture itself, not the /chat-image
+                // address a browser fetches, which would mean nothing to the provider. An image whose
+                // file has gone stays out of the turn rather than travelling as a broken reference.
+                var restored = m.Images
+                    .Select(i => (Data: ChatImages.ReadDataUrl(_runtime.Settings.Project, chat.Id, i.File), i.Label))
+                    .Where(i => i.Data != null)
+                    .Select(i => new ImageAttachment(i.Data!, i.Label))
+                    .ToList();
+                if (restored.Count > 0) msg.Images = restored;
+            }
         }
 
         // Restore this chat's session memory (survives restart) and feed live context:* each turn.
@@ -1239,25 +1255,25 @@ public sealed class ChatRuntime : IDisposable, SPLA.Domain.Agent.IBackgroundTask
     public IEnumerable<ChatMessage> DisplayMessages
         => _conversation.Messages.Where(m => m.Role != ChatRole.System);
 
-    /// <summary>Sidecar image filenames persisted for a message, or null when it has none.</summary>
-    public IReadOnlyList<string>? ImageFilesFor(ChatMessage message)
+    /// <summary>Sidecar images persisted for a message — file name and label — or null when it has none.</summary>
+    public IReadOnlyList<ChatSessionImage>? ImageFilesFor(ChatMessage message)
         => _imageFiles.TryGetValue(message, out var files) && files.Count > 0 ? files : null;
 
-    /// <summary>Writes the message's data-URL images to sidecar files and records their filenames.</summary>
-    private void PersistImages(ChatMessage message, IReadOnlyList<string> dataUrls)
+    /// <summary>Writes the message's data-URL images to sidecar files, keeping each one's name.</summary>
+    private void PersistImages(ChatMessage message, IReadOnlyList<ImageAttachment> images)
     {
         var project = _runtime.Settings.Project;
-        var names = new List<string>();
-        foreach (var url in dataUrls)
+        var stored = new List<ChatSessionImage>();
+        foreach (var image in images)
         {
             try
             {
-                var name = ChatImages.WriteDataUrl(project, _chat.Id, url);
-                if (name != null) names.Add(name);
+                var name = ChatImages.WriteDataUrl(project, _chat.Id, image.Url);
+                if (name != null) stored.Add(new ChatSessionImage(name, image.Label));
             }
             catch { /* a bad image must not break the turn */ }
         }
-        if (names.Count > 0) _imageFiles[message] = names;
+        if (stored.Count > 0) _imageFiles[message] = stored;
     }
 
     /// <summary>
@@ -1271,7 +1287,7 @@ public sealed class ChatRuntime : IDisposable, SPLA.Domain.Agent.IBackgroundTask
         Func<ToolFunctionDefinition, string, Task<PermissionDecision>> permissionHandler,
         Func<ClarifyRequest, Task<string?>> clarifyHandler,
         CancellationToken cancellationToken,
-        IReadOnlyList<string>? images = null,
+        IReadOnlyList<ImageAttachment>? images = null,
         Action<ChatMessage>? onUserMessage = null)
     {
         // Counted here — synchronously, before the first await — so a caller that hands this task to a
@@ -1451,7 +1467,9 @@ public sealed class ChatRuntime : IDisposable, SPLA.Domain.Agent.IBackgroundTask
                 PeerFrom = m.PeerFrom,
                 PromptTokens = m.PromptTokens,
                 CompletionTokens = m.CompletionTokens,
-                Images = _imageFiles.TryGetValue(m, out var files) && files.Count > 0 ? new List<string>(files) : null,
+                Images = _imageFiles.TryGetValue(m, out var files) && files.Count > 0
+                    ? files.Select(f => f.Clone()).ToList()
+                    : null,
                 ToolCalls = saveToolCalls && m.ToolCalls?.Count > 0 ? m.ToolCalls : null,
                 ToolCallId = saveToolCalls ? m.ToolCallId : null,
                 Attempts = saveAttempts && m.Attempts?.Count > 0

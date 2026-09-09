@@ -35,11 +35,13 @@ public class ChatManager
 
     private static readonly IDeserializer Deserializer = new DeserializerBuilder()
         .WithNamingConvention(UnderscoredNamingConvention.Instance)
+        .WithTypeConverter(new ChatSessionImageConverter())
         .IgnoreUnmatchedProperties()
         .Build();
 
     private static readonly ISerializer Serializer = new SerializerBuilder()
         .WithNamingConvention(UnderscoredNamingConvention.Instance)
+        .WithTypeConverter(new ChatSessionImageConverter())
         .ConfigureDefaultValuesHandling(DefaultValuesHandling.OmitNull)
         .Build();
 

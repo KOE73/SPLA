@@ -23,6 +23,12 @@ public sealed class RunStats
     public string? PromptSource { get; init; }
     public int PromptChars { get; init; }
 
+    /// <summary>The images the turn carried, in send order, each as "name (path)". A count alone
+    /// cannot answer the only question asked of a vision run afterwards — which pictures the model
+    /// looked at, and under which names it was told to call them.</summary>
+    public List<string> ImagePaths { get; init; } = [];
+    public long ImageBytes { get; init; }
+
     /// <summary>The model entry as configured — its id and the name that goes on the wire.</summary>
     public required string ModelId { get; init; }
     public string? ModelRequested { get; init; }
@@ -111,6 +117,10 @@ public sealed class RunStats
         PromptName        = cell.Prompt.Name,
         PromptSource      = cell.Prompt.Source,
         PromptChars       = cell.Prompt.Text.Length,
+        ImagePaths        = runner.Images
+                                .Select(i => i.Label == Path.GetFileName(i.Path) ? i.Path : $"{i.Label} ({i.Path})")
+                                .ToList(),
+        ImageBytes        = runner.Images.Sum(i => i.Bytes),
         ModelId           = cell.Model.Id,
         ModelRequested    = cell.Model.Model,
         Connection        = cell.Model.Connection.DisplayName,
@@ -149,7 +159,9 @@ public sealed class RunStats
             new("prompt", [
                 Pair("name", PromptName),
                 Pair("source", PromptSource),
-                Pair("chars", PromptChars)
+                Pair("chars", PromptChars),
+                Pair("images", ImagePaths.Count > 0 ? string.Join(", ", ImagePaths) : null),
+                Pair("image_bytes", ImagePaths.Count > 0 ? ImageBytes : null)
             ]),
             new("model", [
                 Pair("entry_id", ModelId),

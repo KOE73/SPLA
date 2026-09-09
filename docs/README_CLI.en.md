@@ -109,8 +109,9 @@ Exit codes: `0` success, `1` not found (on `delete`), `2` bad arguments.
 spla chat list
 spla chat open [id]
 spla chat fork <id> [--model <name>]
-spla chat run  [--prompt "<text>"]... [--prompt-file <path>]... [--model <id>|all]...
-               [--out <dir-or-file>] [--out-name <template>] [--overwrite]
+spla chat run  [--prompt "<text>"]... [--prompt-file <path>]... [--image <path>]...
+               [--image-name <name>]...
+               [--model <id>|all]... [--out <dir-or-file>] [--out-name <template>] [--overwrite]
                [--sys-prompt "<text>"] [--sys-prompt-file <path>] [--md-clean] [--skill <id>]
                [--show-prompt] [--show-prompt-file <path>]
                [--show-statistic] [--show-statistic-file [<template>]] [--show-statistic-format json,yaml,md]
@@ -133,6 +134,29 @@ One cell = one prompt × one model. `--model` is repeatable; `all` runs every en
 label. **Each `--prompt`/`--prompt-file` is its own cell, not a piece of one message**: two
 `--prompt-file`s never merge into one user message carrying two documents — they are two independent
 chats, one document each.
+
+`--image <path>` attaches a picture to the user turn, for vision models. Repeatable, order kept, and
+the images are **shared by the whole matrix** — every one of them goes to every `prompt × model`
+cell. Formats: `.png`, `.jpg`, `.jpeg`, `.gif`, `.webp`, `.bmp`; anything else (or a missing file) is
+refused by name rather than sent as an unreadable attachment.
+
+**Every image travels under a name.** Its own file name by default; `--image-name` replaces that, one
+per image in the same order (all or none — naming half of them is refused). The name is not
+decoration: a picture has no name of its own in any of these APIs — not in the `image_url` parts this
+project speaks, not in Anthropic's `image` blocks — and image metadata is not read. So the name is
+written out as a text part right in front of the picture, and it is the only thing a prompt (or the
+answer) can hold on to in order to say "on seg013.jpg". Without names, ten frames of one camera are
+told apart by position alone, and position is exactly what slips in a long answer.
+
+```bash
+spla chat run --prompt "What is on each frame? Answer as '<name>: description' lines." \
+  --image frames/seg012.jpg --image frames/seg013.jpg --image frames/seg014.jpg
+```
+
+The model receives `seg012.jpg:` → image → `seg013.jpg:` → image → … → and the prompt text last (a
+picture placed before the question it is about reads better to a vision model than one placed after).
+`--show-statistic` prints the names, the paths and the total attached size, so "what did the model
+actually see" has an answer afterwards.
 
 Cells run **sequentially, one after another, not in parallel** (a plain `foreach` over the cell list
 in `ChatRunCommand.ExecuteAsync`) — the second cell has no access to the first cell's result, they

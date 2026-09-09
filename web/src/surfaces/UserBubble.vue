@@ -10,8 +10,13 @@
       :msg-id="msgId" :created-at="createdAt"
       @copy="copy" @rewind="$emit('rewind', msgId!, text)" @fork="$emit('fork', msgId!)"
     />
-    <div v-if="images?.length" style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:6px">
-      <img v-for="(src, i) in images" :key="i" :src="src" style="max-width:160px;max-height:160px;border-radius:6px">
+    <!-- The name under each picture is not decoration: it is what the model was shown in front of
+         the image, so a reader scrolling back sees the same handle the prompt and the answer use. -->
+    <div v-if="images?.length" class="attached">
+      <figure v-for="(img, i) in images" :key="i" :title="img.label">
+        <img :src="img.url">
+        <figcaption v-if="img.label">{{ img.label }}</figcaption>
+      </figure>
     </div>
     <div class="body plain">{{ text }}</div>
   </div>
@@ -19,9 +24,10 @@
 
 <script setup lang="ts">
 import MsgActions from "./MsgActions.vue";
+import type { ImageRef } from "../protocol/types";
 
 const props = defineProps<{
-  text: string; images?: string[]; msgId?: string; createdAt?: string | number; peerFrom?: string;
+  text: string; images?: ImageRef[]; msgId?: string; createdAt?: string | number; peerFrom?: string;
 }>();
 defineEmits<{ (e: "rewind", msgId: string, text: string): void; (e: "fork", msgId: string): void }>();
 

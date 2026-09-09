@@ -446,17 +446,35 @@ public sealed partial class OpenAiCompatibleClient : ILlmClient, ITokenUsageRepo
 
     /// <summary>Builds the OpenAI vision "content parts" array: a text part (if any) followed by one
     /// image_url part per attached data URL. LM Studio routes these to vision-capable models.</summary>
-    private static object[] BuildMultimodalContent(string? text, List<string> images)
+    /// <summary>
+    /// Lays a vision message out as parts: each named image is introduced by a text part carrying its
+    /// name, and the message's own text comes last.
+    /// <para>
+    /// Both halves of that are deliberate. The name has nowhere else to go — an <c>image_url</c> part
+    /// carries the bytes and nothing else, so an image the sender called <c>seg012.jpg</c> arrives
+    /// anonymous unless its name is written out as text right in front of it. And the text goes last
+    /// because a picture placed before the question it is about reads better to a vision model than
+    /// one placed after (Anthropic's vision guide says so outright, and the same layout is what every
+    /// multi-image example in the OpenAI-compatible world uses). Order is preserved throughout: with
+    /// no names given, the parts come out exactly as before — the images in sequence, which is then
+    /// the only thing identifying them.
+    /// </para>
+    /// </summary>
+    internal static object[] BuildMultimodalContent(string? text, List<ImageAttachment> images)
     {
         var parts = new List<object>();
-        if (!string.IsNullOrEmpty(text))
-            parts.Add(new Dictionary<string, object?> { ["type"] = "text", ["text"] = text });
-        foreach (var url in images)
+        foreach (var image in images)
+        {
+            if (image.Label is { Length: > 0 } label)
+                parts.Add(new Dictionary<string, object?> { ["type"] = "text", ["text"] = label + ":" });
             parts.Add(new Dictionary<string, object?>
             {
                 ["type"] = "image_url",
-                ["image_url"] = new Dictionary<string, object?> { ["url"] = url }
+                ["image_url"] = new Dictionary<string, object?> { ["url"] = image.Url }
             });
+        }
+        if (!string.IsNullOrEmpty(text))
+            parts.Add(new Dictionary<string, object?> { ["type"] = "text", ["text"] = text });
         return parts.ToArray();
     }
 

@@ -16,6 +16,14 @@ internal sealed class ChatRunSettings : CommandSettings
     [Description("Prompt read from a file. Repeatable; can be combined with --prompt.")]
     public string[] PromptFiles { get; init; } = [];
 
+    [CommandOption("--image")]
+    [Description("Image file attached to the user turn, for vision models. Repeatable; every image goes to every prompt × model cell, in the order given. Each is announced to the model by its file name, so a prompt can say \"on frame_012.jpg\" instead of counting pictures.")]
+    public string[] Images { get; init; } = [];
+
+    [CommandOption("--image-name")]
+    [Description("Name the model knows an image by, instead of its file name. Repeatable and paired with --image in order: give one per image, or none at all.")]
+    public string[] ImageNames { get; init; } = [];
+
     [CommandOption("--model")]
     [Description("Model entry id from the project's connections. Repeatable. 'all' = every entry.")]
     public string[] Models { get; init; } = [];
@@ -105,6 +113,15 @@ internal sealed class ChatRunCommand(ResolvedSettings settings, ILoggerFactory l
 {
     protected override async Task<int> ExecuteAsync(CommandContext context, ChatRunSettings s, CancellationToken cancellationToken)
     {
+        List<ImageInput> images = [];
+        if (s.Images.Length > 0 || s.ImageNames.Length > 0)
+        {
+            var loaded = await ImageInputs.LoadAsync(s.Images, s.ImageNames, cancellationToken,
+                message => AnsiConsole.MarkupLine($"[red]{message.EscapeMarkup()}[/]"));
+            if (loaded == null) return 2;
+            images = loaded;
+        }
+
         var prompts = new List<PromptItem>();
         for (var i = 0; i < s.Prompts.Length; i++)
             prompts.Add(new PromptItem($"text{i + 1}", s.Prompts[i]));
@@ -123,7 +140,7 @@ internal sealed class ChatRunCommand(ResolvedSettings settings, ILoggerFactory l
                 AnsiConsole.MarkupLine($"[red]{RemoteChatRun.Refusal(holder, blocker).EscapeMarkup()}[/]");
                 return 2;
             }
-            return await RemoteChatRun.RunAsync(holder, s, prompts, settings, cancellationToken);
+            return await RemoteChatRun.RunAsync(holder, s, prompts, images, settings, cancellationToken);
         }
 
         // Purely additive, and built BEFORE the runtime: the composer takes its contributors at
@@ -180,6 +197,9 @@ internal sealed class ChatRunCommand(ResolvedSettings settings, ILoggerFactory l
                 table.AddRow(cell.Prompt.Name, cell.Model.DisplayName,
                     PlannedOutput(s, cell) ?? "(screen)");
             AnsiConsole.Write(table);
+            foreach (var image in images)
+                AnsiConsole.MarkupLine(
+                    $"  [grey]image →[/] {image.Label.EscapeMarkup()} [grey]({image.Path.EscapeMarkup()}, {image.Bytes / 1024} KB)[/]");
             return 0;
         }
 
@@ -191,6 +211,7 @@ internal sealed class ChatRunCommand(ResolvedSettings settings, ILoggerFactory l
             SkillId = s.Skill,
             Stream = s.Stream,
             MdClean = s.MdClean,
+            Images = images,
             SystemPromptExtra = sysPromptNote.Count > 0 ? string.Join("; ", sysPromptNote) : null
         };
 

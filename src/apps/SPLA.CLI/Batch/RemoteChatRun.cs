@@ -63,7 +63,7 @@ internal static class RemoteChatRun
     /// <returns>Process exit code: 0 when every prompt finished, 1 when any failed.</returns>
     public static async Task<int> RunAsync(
         InstanceInfo holder, ChatRunSettings s, IReadOnlyList<PromptItem> prompts,
-        ResolvedSettings settings, CancellationToken ct)
+        IReadOnlyList<ImageInput> images, ResolvedSettings settings, CancellationToken ct)
     {
         AnsiConsole.MarkupLine($"[grey]Attached to[/] {holder.Describe().EscapeMarkup()}");
 
@@ -74,6 +74,9 @@ internal static class RemoteChatRun
             foreach (var prompt in prompts)
                 AnsiConsole.MarkupLine(
                     $"  {prompt.Name.EscapeMarkup()} → {(OutputPath(s, prompt, holder) ?? "(screen)").EscapeMarkup()}");
+            foreach (var image in images)
+                AnsiConsole.MarkupLine(
+                    $"  [grey]image →[/] {image.Label.EscapeMarkup()} [grey]({image.Path.EscapeMarkup()}, {image.Bytes / 1024} KB)[/]");
             return 0;
         }
 
@@ -102,7 +105,10 @@ internal static class RemoteChatRun
                 // that silently allowed tool calls would be a very different thing from what the
                 // person typed. The window watching this chat sees the question resolve as denied.
                 _ => new PermissionDecisionPayload { Decision = "deny" },
-                ct);
+                ct,
+                // Images travel as data URLs, exactly as a window's own attachment does, so the
+                // instance persists them into its sidecar and the chat shows what was looked at.
+                images.Count > 0 ? images.Select(i => i.Attachment).ToList() : null);
 
             if (s.Stream) Console.WriteLine();
 

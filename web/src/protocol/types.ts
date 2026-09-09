@@ -17,6 +17,15 @@ export interface Envelope<P = unknown> {
   requestId?: string;
 }
 
+/** One attached picture: where it is, and the name it is known by.
+ *  The name is what a prompt and the model's answer refer to — a picture carries no name of its own
+ *  to any vision model, so several unnamed images can only be told apart by their order. Absent for
+ *  an image nobody named (a pasted screenshot, or anything sent before names existed). */
+export interface ImageRef {
+  url: string;
+  label?: string;
+}
+
 export interface ChatMessage {
   msgId?: string;
   role: "user" | "assistant" | "tool";
@@ -24,7 +33,7 @@ export interface ChatMessage {
   reasoning?: string;
   /** ISO-8601 UTC creation time; absent on chats saved before timestamps existed. */
   createdAt?: string;
-  images?: string[];
+  images?: ImageRef[];
   toolCalls?: ToolCallDto[];
   toolCallId?: string;
   /** Generations the repetition guard threw away before this message was produced. Only present
@@ -952,7 +961,7 @@ export interface ServerEvents {
   "secret.result": SecretListResultPayload;
   "schema.result": SchemaResultPayload;
   "debug.snapshot": DebugSnapshotPayload;
-  "local.userMsg": { text: string; images?: string[] };
+  "local.userMsg": { text: string; images?: ImageRef[] };
   "project.list.result": ProjectListResultPayload;
   "project.context": ProjectContextPayload;
   // Live SSH terminal (phase B)

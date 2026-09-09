@@ -2,6 +2,7 @@ using System.Net.WebSockets;
 using System.Text;
 using System.Text.Json;
 using System.Threading.Channels;
+using SPLA.Domain.Models;
 using SPLA.Service.Contracts;
 
 namespace SPLA.CLI.Wire;
@@ -86,9 +87,20 @@ internal sealed class CliWireClient : IAsyncDisposable
         Action<string> onText,
         Action<string> onNote,
         Func<PermissionRequestPayload, PermissionDecisionPayload>? onPermission,
-        CancellationToken ct)
+        CancellationToken ct,
+        IReadOnlyList<ImageAttachment>? images = null)
     {
-        await SendAsync(MessageTypes.ChatSend, new ChatSendPayload { ChatId = chatId, Text = text }, chatId, ct: ct);
+        await SendAsync(
+            MessageTypes.ChatSend,
+            new ChatSendPayload
+            {
+                ChatId = chatId,
+                Text = text,
+                Images = images is { Count: > 0 }
+                    ? images.Select(i => new ImageDto { Url = i.Url, Label = i.Label }).ToList()
+                    : null
+            },
+            chatId, ct: ct);
 
         while (true)
         {

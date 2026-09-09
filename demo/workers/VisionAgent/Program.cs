@@ -197,7 +197,9 @@ while (!cts.IsCancellationRequested)
         await chat.SendAsync(
             "Analyze this frame per the instructions.",
             callbacks, deny, noClarify, cts.Token,
-            images: new[] { dataUrl },
+            // Named after the frame it is: the model's answer, and anything written back beside the
+            // saved frames, then refer to the same thing the operator sees.
+            images: new[] { new SPLA.Domain.Models.ImageAttachment(dataUrl, $"frame-{frameNo:D5}.jpg") },
             onUserMessage: m => userMsgId = m.MsgId);
     }
     catch (OperationCanceledException) { break; }
