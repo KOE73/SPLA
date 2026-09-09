@@ -1,4 +1,4 @@
-using SPLA.Runtime;
+﻿using SPLA.Runtime;
 using SPLA.CLI;
 using SPLA.CLI.Batch;
 using SPLA.Observability;
@@ -33,6 +33,14 @@ if (args.Length > 0)
 // below would be the first thing a client reads, and an unparsable first line kills the session.
 // It stays a raw args check ahead of Spectre for exactly that reason — nothing may run first.
 var isMcp = SPLA.CLI.McpCommand.IsMcpCommand(args);
+
+// `spla mcp --help` means the same thing as `spla --help-mcp` above, and has to be answered in the
+// same place: this command never reaches Spectre, so nobody downstream would recognise the flag.
+if (isMcp && SPLA.CLI.McpCommand.IsHelpRequest(args))
+{
+    SPLA.CLI.McpCommand.PrintHelpMcp();
+    return;
+}
 
 if (!isMcp) Console.WriteLine("=== SPLA CLI ===");
 SplaTelemetry.ConfigureGlobalLogs();

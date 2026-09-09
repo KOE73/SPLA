@@ -846,7 +846,8 @@ public sealed class SplaServiceHost
             runtime.McpHost,
             () => runtime.McpHost.GetToolDefinitionsFor(exposure),
             log: TextWriter.Null,
-            source: $"mcp-http {ctx.Connection.RemoteIpAddress}");
+            source: $"mcp-http {ctx.Connection.RemoteIpAddress}",
+            project: (runtime.Settings.ProjectName, runtime.Settings.WorkspacePath));
 
         var wantsSse = expectsReply &&
             ctx.Request.Headers.Accept.Any(a => a?.Contains("text/event-stream", StringComparison.OrdinalIgnoreCase) == true);
