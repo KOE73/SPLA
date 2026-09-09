@@ -90,9 +90,8 @@ public sealed class AgentLibrarian : IAgentLibrarian
 
     private ResolvedModelEntry? EntryFor(ResolvedSettings settings) =>
         Config?.Model is { } id
-            ? settings.Models.FirstOrDefault(m => m.Id.Equals(id, StringComparison.OrdinalIgnoreCase))
-              ?? settings.Models.FirstOrDefault()
-            : settings.Models.FirstOrDefault();
+            ? settings.FindModel(id) ?? settings.DefaultModel
+            : settings.DefaultModel;
 
     /// <summary>
     /// The catalog, plus the narrowest possible instruction. Ids only in the answer: a librarian that

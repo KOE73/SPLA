@@ -212,6 +212,7 @@
   "Prompt": "Промпт",
   "Provider": "Провайдер",
   "Provider and model details": "Подробности о провайдере и модели",
+  "Copy this value for spla chat run --model": "Скопировать это значение для spla chat run --model",
   "Question timeout": "Таймаут вопроса",
   "Re-check all endpoints": "Перепроверить все адреса",
   "Reach": "Досягаемость",

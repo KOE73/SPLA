@@ -243,6 +243,8 @@ export interface ModelEntryDto {
   id: string;
   clientId?: string;
   name?: string;
+  /** Preserved on save; the YAML default-model control is not exposed in this editor yet. */
+  default?: boolean;
   model?: string;
   contextLength?: number;
   /** Default sampling temperature for this model. Undefined = fall back to the role's default, then

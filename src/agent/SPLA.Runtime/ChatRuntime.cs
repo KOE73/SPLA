@@ -1659,7 +1659,7 @@ public sealed class ChatRuntime : IDisposable, SPLA.Domain.Agent.IBackgroundTask
     public Task<ReasoningCapability> GetReasoningAsync(CancellationToken ct = default)
     {
         var settings = _roleSettings ?? _runtime.Settings;
-        var entry = settings.FindModel(_chat.ModelId) ?? settings.Models.FirstOrDefault();
+        var entry = settings.FindModel(_chat.ModelId) ?? settings.DefaultModel;
         return _runtime.GetReasoningAsync(ResolveLlmSettings(), entry?.DeclaredReasoning, ct);
     }
 
@@ -1680,8 +1680,7 @@ public sealed class ChatRuntime : IDisposable, SPLA.Domain.Agent.IBackgroundTask
     private LLMSettings ResolveLlmSettings()
     {
         var settings = _roleSettings ?? _runtime.Settings;
-        var entry = settings.FindModel(_chat.ModelId)
-                    ?? settings.Models.FirstOrDefault();
+        var entry = settings.FindModel(_chat.ModelId) ?? settings.DefaultModel;
         var s = settings.ToLLMSettings(entry);
         var chatModel = _chat.Model;
 

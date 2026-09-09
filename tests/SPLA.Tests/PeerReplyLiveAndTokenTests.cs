@@ -86,6 +86,7 @@ public sealed class PeerReplyLiveAndTokenTests
                 models:
                   - id: fake-model
                     model: fake-model
+                    default: true
             """);
         var settings = ConfigLoader.LoadAndResolve(manifest);
         var runtime = new AgentRuntime(settings, NullLoggerFactory.Instance);

@@ -111,6 +111,7 @@ body:has(.width-handle.dragging) { user-select: none; }
 #status label { display: flex; gap: var(--sp-1); align-items: center; }
 #status select { background: var(--bg); color: var(--text); border: 1px solid var(--border);
   border-radius: var(--radius-sm); padding: 2px 4px; font: inherit; font-size: var(--fs-sm); }
+#status select.model-select { max-width: min(40em, 52vw); text-overflow: ellipsis; }
 
 /* The two per-turn knobs. Narrow on purpose: they sit between the model picker and the skill chip,
    and a full-width number field would push the context pill off a small window. The reasoning select

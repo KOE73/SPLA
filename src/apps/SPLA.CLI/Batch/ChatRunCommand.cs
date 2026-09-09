@@ -25,7 +25,7 @@ internal sealed class ChatRunSettings : CommandSettings
     public string[] ImageNames { get; init; } = [];
 
     [CommandOption("--model")]
-    [Description("Model entry id from the project's connections. Repeatable. 'all' = every entry.")]
+    [Description("Model entry id or exact name shown in the model picker. Repeatable. 'all' = every entry.")]
     public string[] Models { get; init; } = [];
 
     [CommandOption("--out")]
@@ -184,7 +184,7 @@ internal sealed class ChatRunCommand(ResolvedSettings settings, ILoggerFactory l
             ? settings.Models
             : s.Models.Length > 0
                 ? s.Models.Select(id => settings.FindModel(id)).Where(m => m != null).Cast<ResolvedModelEntry>().ToList()
-                : settings.Models.Take(1).ToList();
+                : settings.DefaultModel is { } defaultModel ? [defaultModel] : [];
 
         if (models.Count == 0) { AnsiConsole.MarkupLine("[red]no matching model entries — check --model / the project's connections[/]"); return 2; }
 

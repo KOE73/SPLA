@@ -51,6 +51,7 @@ public static class SettingsOps
             {
                 Id = m.Id,
                 Name = m.Name,
+                Default = m.Default,
                 Model = m.Model,
                 ContextLength = m.ContextLength,
                 Temperature = m.Temperature
@@ -337,7 +338,7 @@ public static class SettingsOps
 
     // ── Agent settings: default mode + permission overrides ──────────────────
 
-    private static readonly List<string> KnownThemes   = ["dark", "emerald", "cream", "light"];
+    private static readonly List<string> KnownThemes = ["dark", "emerald", "cream", "light"];
     private static readonly List<string> KnownDensities = ["nano", "mini", "norm", "max"];
 
     public static AgentSettingsPayload GetAgent(AgentRuntime runtime) => new()
@@ -468,10 +469,10 @@ public static class SettingsOps
     /// change must not silently reset it.</summary>
     public static void SaveAppearance(AgentRuntime runtime, string? theme, string? density, bool? autoOpenSubagents = null)
     {
-        theme   = Blank(theme)   ?? runtime.Settings.Theme;
+        theme = Blank(theme) ?? runtime.Settings.Theme;
         density = Blank(density) ?? runtime.Settings.Density;
         var autoOpen = autoOpenSubagents ?? runtime.Settings.AutoOpenSubagents;
-        runtime.Settings.Theme   = theme;
+        runtime.Settings.Theme = theme;
         runtime.Settings.Density = density;
         runtime.Settings.AutoOpenSubagents = autoOpen;
 
@@ -480,7 +481,7 @@ public static class SettingsOps
         {
             var project = ConfigLoader.LoadProjectRaw(path);
             (project.Ui ??= new()).Theme = theme;
-            project.Ui.Density           = density;
+            project.Ui.Density = density;
             // Only when true — an untouched project keeps a clean file, same convention agent: uses
             // for every other off-by-default flag (loop_guard, save_tool_calls, ...).
             project.Ui.AutoOpenSubagents = autoOpen ? true : null;
@@ -1092,6 +1093,7 @@ public static class SettingsOps
         {
             Id = raw,
             Name = string.IsNullOrWhiteSpace(d.Name) ? null : d.Name.Trim(),
+            Default = d.Default,
             Model = Blank(d.Model),
             ContextLength = d.ContextLength is > 0 ? d.ContextLength : null,
             Temperature = d.Temperature

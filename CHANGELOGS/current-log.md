@@ -16,3 +16,12 @@ sentences are what `current-list.md` is built from, which is why they have to st
 
 ---
 
+## 2026-09-09
+
+- **A connection model can be the project default, and its picker label is a valid CLI model name.**
+  Set `default: true` on one model in a configuration layer; the most specific layer that names a
+  default wins, while a layer with two defaults is rejected with their ids. New and spawned chats,
+  role fallbacks and batch runs all use the resolved default. The status bar shows the qualified
+  connection/model label and can copy that exact value for `spla chat run --model`; the settings
+  editor preserves the flag without exposing another control.
+

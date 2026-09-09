@@ -138,7 +138,7 @@ public class ChatManager
             Title = title ?? "New Chat",
             Workspace = _settings.WorkspacePath,
             // Live reference into the project's model list (seeded with the default entry).
-            ModelId = _settings.Models.FirstOrDefault()?.Id,
+            ModelId = _settings.DefaultModel?.Id,
             // Per-chat behaviour knobs only — endpoint/model come from the connection.
             Model = new SplaLlmSection
             {
@@ -181,7 +181,7 @@ public class ChatManager
             Id = GenerateChatId(),
             Title = "New Chat",
             Workspace = _settings.WorkspacePath,
-            ModelId = _settings.Models.FirstOrDefault()?.Id,
+            ModelId = _settings.DefaultModel?.Id,
             Model = new SplaLlmSection
             {
                 Temperature = _settings.Temperature,
