@@ -39,6 +39,7 @@ public sealed class AgentCapabilitiesTests
         "agent_spawn", "agent_spawn_batch",
         "agent_correspond", "agent_introduce",
         "agent_clarify",
+        "blob_grep",
         "blob_peek",
         "task_list", "task_output", "task_cancel",
     };

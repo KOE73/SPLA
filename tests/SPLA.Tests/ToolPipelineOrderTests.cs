@@ -152,6 +152,7 @@ public class ToolPipelineOrderTests
                 typeof(AmbientHostStage),
                 typeof(BackgroundStage),
                 typeof(ProgressNodeStage),
+                typeof(ResultBudgetStage),
                 typeof(FaultStage),
                 typeof(AccountingStage)
             },

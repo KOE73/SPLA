@@ -158,6 +158,44 @@ public interface ICorrespondenceHost
 }
 
 /// <summary>
+/// How much room the model has left, in tokens — the window it was given and what the last request
+/// actually occupied.
+/// <para>
+/// Both figures are <b>measured, not estimated</b>: the window comes from the provider (or the
+/// connection's explicit setting) and the occupancy is the <c>prompt_tokens</c> the provider counted
+/// for the previous call. That is the whole reason this type is worth having — the question "will
+/// this fit" has an honest answer only where those two numbers are known, and everywhere else the
+/// answer must be "I don't know" rather than a guess dressed up as one.
+/// </para>
+/// </summary>
+public readonly record struct ContextBudget(int WindowTokens, int UsedTokens)
+{
+    /// <summary>Room left before the endpoint refuses the request. Never negative — a request that
+    /// already exceeded the window reports zero, which is the same news.</summary>
+    public int RemainingTokens => Math.Max(0, WindowTokens - UsedTokens);
+}
+
+/// <summary>
+/// What a chat knows about its own context occupancy. A capability, not a given — the same shape as
+/// <see cref="IBackgroundTaskHost"/>: only a chat with a model behind it and at least one measured
+/// turn can answer, and a spawned run, a CLI entry point or a unit test simply cannot.
+/// <para>
+/// It exists so that the decision "does this result fit" is taken where the numbers are, rather than
+/// by each tool guessing. A tool knows how many characters it produced and nothing about the model
+/// reading them; this knows the model and nothing about what any tool is doing. Neither can decide
+/// alone, which is why the decision belongs to the pipeline stage that can see both.
+/// </para>
+/// </summary>
+public interface IContextBudgetHost
+{
+    /// <summary>The current budget, or null when it is genuinely unknown — no turn has reported
+    /// usage yet, or the provider never said how large the window is. Null is an answer and must
+    /// stay one: a caller that invents a default here turns "I don't know" into a number somebody
+    /// downstream will trust.</summary>
+    ContextBudget? Budget { get; }
+}
+
+/// <summary>
 /// The per-chat agent state that tools resolve at execution time: working memory, the
 /// checkpoint/mark manager, and the active-skill session. Each chat owns its own instance;
 /// nothing here is shared between chats.
@@ -196,6 +234,10 @@ public interface IAgentSession
     /// <summary>Null when this session cannot correspond — see <see cref="ICorrespondenceHost"/>.</summary>
     ICorrespondenceHost? Correspondence { get; }
 
+    /// <summary>Null when this session cannot say how full its context is — see
+    /// <see cref="IContextBudgetHost"/>.</summary>
+    IContextBudgetHost? ContextBudget { get; }
+
     /// <summary>
     /// The chat id this session lives as, or null for a session with no chat behind it (a bare CLI or
     /// worker entry point). A spawned run reads its caller's <see cref="AgentSessionScope.Current"/>
@@ -214,8 +256,9 @@ public sealed class AgentSession : IAgentSession
         IBlobStore? blobs = null, ISandbox? sandbox = null,
         IToolSetSession? toolSets = null, Security.ChatDoubt? doubt = null,
         IBackgroundTaskHost? background = null, string? chatId = null,
-        ICorrespondenceHost? correspondence = null)
+        ICorrespondenceHost? correspondence = null, IContextBudgetHost? contextBudget = null)
     {
+        ContextBudget = contextBudget;
         Doubt = doubt ?? new Security.ChatDoubt();
         SessionKv = sessionKv;
         Checkpoint = checkpoint;
@@ -237,6 +280,7 @@ public sealed class AgentSession : IAgentSession
     public Security.ChatDoubt Doubt { get; }
     public IBackgroundTaskHost? Background { get; }
     public ICorrespondenceHost? Correspondence { get; }
+    public IContextBudgetHost? ContextBudget { get; }
     public string? ChatId { get; }
 }
 

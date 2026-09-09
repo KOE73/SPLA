@@ -160,6 +160,7 @@
     <File Path="docs/adr/ADR_20260904_core_history-vs-current.md" />
     <File Path="docs/adr/ADR_20260906_core_one-address.md" />
     <File Path="docs/adr/ADR_20260904_core_connection-scopes.md" />
+    <File Path="docs/adr/ADR_20260908-2_core_result-size.md" />
   </Folder>
   <Folder Name="/docs/plans/">
     <File Path="docs/plans/PLAN_20260619_agent_skills-lifecycle.md" />

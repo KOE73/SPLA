@@ -73,6 +73,10 @@ public class McpHost : IToolHost
             .Use(new AmbientHostStage(this))
             .Use(new BackgroundStage(logger))
             .Use(new ProgressNodeStage())
+            // Post (650): the last chance to cut a result down before it becomes a request the
+            // endpoint refuses. Outside Fault so a giant stderr is trimmed too, inside Progress so
+            // the node closes on what the model will actually see.
+            .Use(new ResultBudgetStage(logger))
             .Use(new FaultStage(logger))
             .Use(new AccountingStage(logger));
 

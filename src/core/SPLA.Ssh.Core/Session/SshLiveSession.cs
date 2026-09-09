@@ -30,6 +30,10 @@ public sealed class SshLiveSession : IDisposable
 {
     private const int ReplayCapacity = 32 * 1024;
 
+    /// <summary>How much of the raw stream one run keeps for marker detection. Generous next to a
+    /// 40-character marker and tiny next to what the buffer it replaced used to reach.</summary>
+    private const int RecentCapacity = 8 * 1024;
+
     private readonly SshClient _client;
     private readonly ShellStream _shell;
     private readonly CancellationTokenSource _cts = new();
@@ -252,7 +256,11 @@ public sealed class SshLiveSession : IDisposable
             WindowChangeMethod!.Invoke(channel, [c, r, 0u, 0u]);
         }
         catch { return false; } // channel closed mid-flight — the pump will end the session
-        lock (_sinkLock) { Cols = c; Rows = r; }
+        AgentRun? run;
+        lock (_sinkLock) { Cols = c; Rows = r; run = _run; }
+        // The agent's screen has to follow the pty it is emulating, or every line the remote wraps
+        // at the new width gets folded at the old one.
+        if (run != null) lock (run.Screen) run.Screen.Resize((int)c, (int)r);
         return true;
     }
 
@@ -276,9 +284,26 @@ public sealed class SshLiveSession : IDisposable
         public string? Marker { get; init; }
         public Regex? MarkerRx { get; init; }
         public string EchoTail { get; init; } = "";
-        public readonly StringBuilder Raw = new();
-        /// <summary>Raw chars already returned to the agent; guarded by lock(Raw).</summary>
+
+        /// <summary>What the agent actually reads: the pty stream PAINTED, not accumulated. See
+        /// <see cref="TerminalScreen"/> for why the difference is the whole point. Guarded by
+        /// lock(Screen), which is also the lock every other field here is read under.</summary>
+        public required TerminalScreen Screen { get; init; }
+
+        /// <summary>A small rolling window of the RAW stream, kept for one job only: spotting the end
+        /// marker. Deliberately not the screen — a marker echoed at the moment a program repaints
+        /// could be overwritten before anyone looked, and a run whose completion is missed hangs the
+        /// session forever. Bounded, because the unbounded version of this field is what made a
+        /// ten-minute docker pull cost half a megabyte of memory per session.</summary>
+        public readonly StringBuilder Recent = new();
+
+        /// <summary>Absolute index of the first settled line the agent has NOT been shown
+        /// (see <see cref="TerminalScreen.SettledCount"/>).</summary>
         public int Cursor;
+
+        /// <summary>Set when output arrived since the last look, so a waiting loop re-runs an
+        /// <c>until</c> pattern only when there is something new to run it against.</summary>
+        public volatile bool Dirty;
         public readonly TaskCompletionSource<int?> Done =
             new(TaskCreationOptions.RunContinuationsAsynchronously);
         public bool SudoAnswered; // once per run — a re-prompt means wrong password, don't loop
@@ -319,6 +344,7 @@ public sealed class SshLiveSession : IDisposable
                 Marker = marker,
                 MarkerRx = new Regex(Regex.Escape(marker) + @"(-?\d+)", RegexOptions.Compiled),
                 EchoTail = "; echo " + marker + "$?",
+                Screen = new TerminalScreen((int)Cols, (int)Rows),
                 OnChunk = onChunk
             };
             _run = run;
@@ -443,7 +469,11 @@ public sealed class SshLiveSession : IDisposable
         lock (_sinkLock)
         {
             passive = _run == null;
-            run = _run ?? new AgentRun { Command = "(watch)" };
+            run = _run ?? new AgentRun
+            {
+                Command = "(watch)",
+                Screen = new TerminalScreen((int)Cols, (int)Rows)
+            };
             if (!passive) run.OnChunk = onChunk;
         }
         if (passive)
@@ -464,25 +494,40 @@ public sealed class SshLiveSession : IDisposable
 
     private void OnRunChunk(AgentRun run, string chunk)
     {
-        string snapshot;
-        lock (run.Raw) { run.Raw.Append(chunk); snapshot = run.Raw.ToString(); }
+        string recent, cursorLine;
+        lock (run.Screen)
+        {
+            run.Screen.Feed(chunk);
+            run.Recent.Append(chunk);
+            if (run.Recent.Length > RecentCapacity)
+                run.Recent.Remove(0, run.Recent.Length - RecentCapacity);
+            recent = run.Recent.ToString();
+            cursorLine = run.Screen.CursorLine;
+            run.Dirty = true;
+        }
         if (run.MarkerRx != null)
         {
-            var m = run.MarkerRx.Match(snapshot);
+            var m = run.MarkerRx.Match(recent);
             if (m.Success)
             {
                 run.Done.TrySetResult(int.TryParse(m.Groups[1].Value, out var c) ? c : null);
                 return;
             }
         }
-        if (!run.SudoAnswered && _sudoPassword != null && SudoPromptRx.IsMatch(CleanFor(run, snapshot)))
+        // A password prompt is the LINE THE CURSOR SITS ON with no newline after it — which is what
+        // the screen gives directly. The old test ran over the whole accumulated stream, where the
+        // "waiting right now" part of the question had to be reconstructed from an end-anchored
+        // regex over text that had long since scrolled past.
+        if (!run.SudoAnswered && _sudoPassword != null && SudoPromptRx.IsMatch(CleanFor(run, cursorLine)))
         {
             // sudo (or su) is waiting for the login password — answer with the stored
             // credential so agent commands don't stall. The pty doesn't echo it back.
             run.SudoAnswered = true;
             Write(_sudoPassword + "\n");
         }
-        run.OnChunk?.Invoke(CleanFor(run, chunk));
+        // The progress tick is the state, not the delta: a chunk carrying three repaints of one
+        // line has nothing sensible to show, and the line under the cursor always does.
+        if (cursorLine.Length > 0) run.OnChunk?.Invoke(CleanFor(run, cursorLine));
     }
 
     private async Task<AgentRunResult> WaitCoreAsync(AgentRun run, TimeSpan timeout, Regex? until,
@@ -504,10 +549,15 @@ public sealed class SshLiveSession : IDisposable
                 FinishRun(run);
                 return new AgentRunResult(output, null, "disconnected");
             }
-            if (until != null)
+            if (until != null && run.Dirty)
             {
                 string snapshot;
-                lock (run.Raw) snapshot = run.Raw.ToString();
+                lock (run.Screen) { snapshot = run.Screen.Text(); run.Dirty = false; }
+                // Matching on the SCREEN, not the stream: a pattern a human sees on the terminal is
+                // the one that should fire, and a pattern split by a repaint in the raw bytes never
+                // would. Re-run only on new output — this used to rebuild and re-scan the entire
+                // accumulated stream ten times a second, which on a long job is a growing string
+                // copied 600 times a minute.
                 if (until.IsMatch(CleanFor(run, snapshot)))
                     return new AgentRunResult(TakeOutput(run, holdback: false), null, "matched");
             }
@@ -520,38 +570,41 @@ public sealed class SshLiveSession : IDisposable
         }
     }
 
-    /// <summary>Returns the raw output accumulated since the agent's cursor, cleaned, and advances
-    /// the cursor. With <paramref name="holdback"/> a trailing partial marker/echo-tail is withheld
-    /// (returned by the next call) so a marker split across reads never leaks half-printed.</summary>
+    /// <summary>
+    /// What the agent has not seen yet: the lines that have SETTLED since its cursor, plus the live
+    /// rectangle — the part of the screen still being painted.
+    ///
+    /// <para>Only the settled lines advance the cursor. The live frame is deliberately re-sent on
+    /// every look, and that is not duplication: a line is live precisely because it is still
+    /// changing, so what comes back next time is its new content, not a repeat. It costs at most one
+    /// screenful and it is the only way "what is the terminal showing right now" survives a call
+    /// boundary.</para>
+    ///
+    /// <para><paramref name="holdback"/> suppresses the live frame's LAST line while the run is
+    /// unfinished, which is where a half-printed end marker would otherwise sit. The old character
+    /// arithmetic that hunted for a partial marker across a byte slice is gone with the byte slice
+    /// itself: on a screen the unfinished line is simply the one under the cursor.</para>
+    /// </summary>
     private string TakeOutput(AgentRun run, bool holdback)
     {
-        string slice;
-        lock (run.Raw)
+        var lines = new List<string>();
+        lock (run.Screen)
         {
-            var snapshot = run.Raw.ToString();
-            var end = snapshot.Length;
-            if (holdback && run.Marker != null)
+            var dropped = run.Screen.DroppedLines;
+            if (run.Cursor < dropped)
             {
-                var tail = run.EchoTail + "\n"; // the echoed command line contains this text
-                while (end > run.Cursor && (EndsWithPrefixOf(snapshot, end, tail)
-                                            || EndsWithPrefixOf(snapshot, end, run.Marker)))
-                    end--;
+                lines.Add($"…[{dropped - run.Cursor} earlier lines scrolled out of this session's buffer]");
+                run.Cursor = dropped;
             }
-            slice = snapshot[run.Cursor..end];
-            run.Cursor = end;
-        }
-        return CleanFor(run, slice).TrimEnd('\r', '\n');
-    }
+            lines.AddRange(run.Screen.SettledFrom(run.Cursor));
+            run.Cursor = run.Screen.SettledCount;
 
-    /// <summary>True when s[..end] ends with a non-empty prefix of <paramref name="token"/> that
-    /// could still be completing (i.e. the last char belongs to a partial token occurrence).</summary>
-    private static bool EndsWithPrefixOf(string s, int end, string token)
-    {
-        var max = Math.Min(token.Length, end);
-        for (var len = max; len >= 1; len--)
-            if (string.CompareOrdinal(s, end - len, token, 0, len) == 0)
-                return true;
-        return false;
+            var live = run.Screen.Live;
+            var take = holdback && live.Count > 0 ? live.Count - 1 : live.Count;
+            for (var i = 0; i < take; i++) lines.Add(live[i]);
+            run.Dirty = false;
+        }
+        return CleanFor(run, string.Join("\n", lines)).TrimEnd('\r', '\n');
     }
 
     private void FinishRun(AgentRun run)
@@ -563,6 +616,8 @@ public sealed class SshLiveSession : IDisposable
 
     private string CleanFor(AgentRun run, string s)
     {
+        // The screen has already executed and consumed every sequence it understands; this catches
+        // the residue of the ones it does not, and still does the whole job for the raw window.
         s = AnsiRx.Replace(s, "");
         if (run.Marker != null) s = s.Replace(run.EchoTail, "");
         // Global, not just this run's marker: probes and markers orphaned by an interrupt can print

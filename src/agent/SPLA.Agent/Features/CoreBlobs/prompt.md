@@ -2,8 +2,10 @@ Data channel — bulk output without flooding context: most tools that produce l
 
 A blob is opaque to you: the handle is an address, not the data. What a blob holds is stated in the summary line that created it — `text` or `binary <content-type>` — and that distinction decides what you can do with it:
 
-- **Text blob** — pass it to a consuming tool, or `blob_peek` it to see a slice.
+- **Text blob** — pass it to a consuming tool, `blob_grep` it to find something in it, or `blob_peek` it to see a slice at an offset.
 - **Binary blob** — pass it on (write it to a file, upload it), or `blob_peek` it for a hex dump. You cannot read binary data as text; do not try to interpret it by feeding it somewhere that expects text.
 - **Image blob** (`binary image/png`, `image/jpeg`, …) — and only an image blob — can be looked at with `image_view`, which puts the actual picture in front of you on the next turn. `image_view` on anything else fails; a binary file is not a picture just because it is bytes.
 
 When you only need to identify what a blob is rather than use it, `blob_peek` is the cheap answer — it is bounded and will not flood context.
+
+**A blob you did not ask for.** A tool result that was too long to put in front of you is cut down automatically: you get the END of it (where the answer usually is) plus a note saying how many lines were cut and the `blob:` handle holding the whole thing. Nothing is lost, and re-running the command to see the rest is the wrong move — it costs the same time again and produces the same oversized output. Search the blob instead: `blob_grep(handle="blob:…", pattern="error|failed", context=3)`. Look for what you actually need — an error, a package name, an exit code — rather than paging through it, and remember it is a regex unless you pass `fixedString=true`.
