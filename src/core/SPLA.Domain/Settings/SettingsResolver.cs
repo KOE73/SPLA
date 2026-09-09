@@ -47,6 +47,13 @@ public class ResolvedSettings
     /// </summary>
     public List<ResolvedModelEntry> Models { get; set; } = new();
 
+    /// <summary>The model entry selected as the default by the most specific layer that names one.
+    /// Null keeps the historical first-entry fallback.</summary>
+    public string? DefaultModelId { get; set; }
+
+    /// <summary>The configured default when it still resolves, otherwise the historical first entry.</summary>
+    public ResolvedModelEntry? DefaultModel => FindModel(DefaultModelId) ?? Models.FirstOrDefault();
+
     // Agent
     public AgentMode Mode { get; set; } = AgentMode.Edit;
     public List<string> Instructions { get; set; } = new();
@@ -358,35 +365,47 @@ public class ResolvedSettings
     /// the project declares is in scope, same as a project with no role at all.</summary>
     public List<string> RoleIslands { get; set; } = new();
 
-    /// <summary>Looks up a model entry by its global id. Null id or unknown id = null.</summary>
-    public ResolvedModelEntry? FindModel(string? modelId) =>
-        string.IsNullOrWhiteSpace(modelId)
-            ? null
-            : Models.FirstOrDefault(m => string.Equals(m.Id, modelId, StringComparison.OrdinalIgnoreCase));
+    /// <summary>Looks up a model entry first by its global id, then by the fully qualified display
+    /// name shown in pickers. A duplicated display name is ambiguous and therefore does not match.</summary>
+    public ResolvedModelEntry? FindModel(string? modelId)
+    {
+        if (string.IsNullOrWhiteSpace(modelId)) return null;
 
-    /// <summary>Builds LLMSettings from the first model entry + behaviour fields.
+        var byId = Models.FirstOrDefault(m =>
+            string.Equals(m.Id, modelId, StringComparison.OrdinalIgnoreCase));
+        if (byId is not null) return byId;
+
+        var byDisplayName = Models
+            .Where(m => string.Equals(m.DisplayName, modelId, StringComparison.OrdinalIgnoreCase) ||
+                        string.Equals(m.PickerDisplayName, modelId, StringComparison.OrdinalIgnoreCase))
+            .Take(2)
+            .ToList();
+        return byDisplayName.Count == 1 ? byDisplayName[0] : null;
+    }
+
+    /// <summary>Builds LLMSettings from the configured default model (or the first entry) + behaviour fields.
     /// Callers that need a specific entry should use <see cref="ToLLMSettings(ResolvedModelEntry?)"/>.</summary>
-    public LLMSettings ToLLMSettings() => ToLLMSettings(Models.FirstOrDefault());
+    public LLMSettings ToLLMSettings() => ToLLMSettings(DefaultModel);
 
     public LLMSettings ToLLMSettings(ResolvedModelEntry? entry) => new()
     {
-        Provider         = entry?.Provider,
-        ConnectionId     = entry?.Connection.Id,
-        BaseUrl          = entry?.Endpoint ?? "http://127.0.0.1:1234/v1/",
-        ApiKey           = entry?.ApiKey   ?? "lm-studio",
-        ModelName        = entry?.Model is { Length: > 0 } m && m != "auto" ? m : "",
-        ContextLength    = entry?.ContextLength is > 0 ? entry.ContextLength : null,
-        Temperature      = RoleTemperature ?? entry?.Entry.Temperature ?? Temperature,
-        Mode             = Mode,
-        Theme            = Theme,
-        ReasoningLevel   = ReasoningLevel,
-        PresencePenalty  = PresencePenalty,
+        Provider = entry?.Provider,
+        ConnectionId = entry?.Connection.Id,
+        BaseUrl = entry?.Endpoint ?? "http://127.0.0.1:1234/v1/",
+        ApiKey = entry?.ApiKey ?? "lm-studio",
+        ModelName = entry?.Model is { Length: > 0 } m && m != "auto" ? m : "",
+        ContextLength = entry?.ContextLength is > 0 ? entry.ContextLength : null,
+        Temperature = RoleTemperature ?? entry?.Entry.Temperature ?? Temperature,
+        Mode = Mode,
+        Theme = Theme,
+        ReasoningLevel = ReasoningLevel,
+        PresencePenalty = PresencePenalty,
         FrequencyPenalty = FrequencyPenalty,
-        RepeatPenalty    = RepeatPenalty,
-        MaxTokens        = MaxTokens,
-        TopP             = TopP,
-        MinP             = MinP,
-        Retry              = entry?.Connection.Retry ?? new SplaRetrySection(),
+        RepeatPenalty = RepeatPenalty,
+        MaxTokens = MaxTokens,
+        TopP = TopP,
+        MinP = MinP,
+        Retry = entry?.Connection.Retry ?? new SplaRetrySection(),
         MinRequestInterval = entry?.Connection.MinRequestInterval ?? 0.0
     };
 }
@@ -412,6 +431,20 @@ public sealed class ResolvedModelEntry
     /// the same model under different keys are told apart by the connection half, so it is never
     /// dropped.</summary>
     public string DisplayName => $"{Connection.DisplayName} · {Entry.DisplayName}";
+
+    /// <summary>The exact text shown by the web model picker. It is also accepted by
+    /// <see cref="ResolvedSettings.FindModel(string?)"/> so copying the closed picker value produces
+    /// a valid CLI argument.</summary>
+    public string PickerDisplayName
+    {
+        get
+        {
+            var entryLabel = Entry.Model is { Length: > 0 } model && model != Entry.DisplayName
+                ? $"{Entry.DisplayName} · {model}"
+                : Entry.DisplayName;
+            return $"{Connection.DisplayName} | {entryLabel}";
+        }
+    }
 
     public string? Provider => Connection.Provider;
     public string? Endpoint => Connection.Endpoint;
@@ -457,6 +490,8 @@ public static class SettingsResolver
         // keep working; connections.yaml is where the editor writes now, so an id present in both
         // resolves to the newer file.
         var connections = new Dictionary<string, SplaConnectionSection>(StringComparer.OrdinalIgnoreCase);
+        string? defaultModelId = null;
+        ApplyDefaultModelFromLayer(ref defaultModelId, sharedConnections, "connections.shared.yaml");
         MergeConnections(connections, sharedConnections, ConnectionScope.Shared);
 
         // mcp.servers merges across layers by id, same rule as connections above.
@@ -466,26 +501,27 @@ public static class SettingsResolver
         // connection when no connections are declared. Endpoint/ApiKey/Model no longer live on
         // ResolvedSettings; Connections is the single source of truth for those.
         string llmEndpoint = "http://127.0.0.1:1234/v1/";
-        string llmApiKey   = "lm-studio";
-        string llmModel    = "auto";
+        string llmApiKey = "lm-studio";
+        string llmModel = "auto";
 
         // Layer 1: defaults
         if (defaults != null)
         {
+            ApplyDefaultModelFromLayer(ref defaultModelId, defaults.Connections, "defaults.yaml");
             MergeConnections(connections, defaults.Connections, ConnectionScope.User);
             if (defaults.Llm != null)
             {
-                llmEndpoint          = defaults.Llm.Endpoint    ?? llmEndpoint;
-                llmApiKey            = defaults.Llm.ApiKey      ?? llmApiKey;
-                llmModel             = defaults.Llm.Model       ?? llmModel;
-                r.Temperature        = defaults.Llm.Temperature ?? r.Temperature;
-                r.ReasoningLevel     = defaults.Llm.ReasoningLevel  ?? r.ReasoningLevel;
-                r.PresencePenalty    = defaults.Llm.PresencePenalty  ?? r.PresencePenalty;
-                r.FrequencyPenalty   = defaults.Llm.FrequencyPenalty ?? r.FrequencyPenalty;
-                r.RepeatPenalty      = defaults.Llm.RepeatPenalty    ?? r.RepeatPenalty;
-                r.MaxTokens          = defaults.Llm.MaxTokens        ?? r.MaxTokens;
-                r.TopP               = defaults.Llm.TopP             ?? r.TopP;
-                r.MinP               = defaults.Llm.MinP             ?? r.MinP;
+                llmEndpoint = defaults.Llm.Endpoint ?? llmEndpoint;
+                llmApiKey = defaults.Llm.ApiKey ?? llmApiKey;
+                llmModel = defaults.Llm.Model ?? llmModel;
+                r.Temperature = defaults.Llm.Temperature ?? r.Temperature;
+                r.ReasoningLevel = defaults.Llm.ReasoningLevel ?? r.ReasoningLevel;
+                r.PresencePenalty = defaults.Llm.PresencePenalty ?? r.PresencePenalty;
+                r.FrequencyPenalty = defaults.Llm.FrequencyPenalty ?? r.FrequencyPenalty;
+                r.RepeatPenalty = defaults.Llm.RepeatPenalty ?? r.RepeatPenalty;
+                r.MaxTokens = defaults.Llm.MaxTokens ?? r.MaxTokens;
+                r.TopP = defaults.Llm.TopP ?? r.TopP;
+                r.MinP = defaults.Llm.MinP ?? r.MinP;
             }
             if (defaults.Agent != null)
             {
@@ -530,6 +566,7 @@ public static class SettingsResolver
         }
 
         // Layer 2: this person's own connections file — over defaults.yaml, under the project.
+        ApplyDefaultModelFromLayer(ref defaultModelId, userConnections, "connections.yaml");
         MergeConnections(connections, userConnections, ConnectionScope.User);
 
         // Layer 3: project overrides
@@ -541,20 +578,21 @@ public static class SettingsResolver
             r.Docs = project.Docs ?? new();
             r.Ignore = project.Ignore ?? new();
 
+            ApplyDefaultModelFromLayer(ref defaultModelId, project.Connections, "project manifest");
             MergeConnections(connections, project.Connections, ConnectionScope.Project);
             if (project.Llm != null)
             {
-                llmEndpoint          = project.Llm.Endpoint    ?? llmEndpoint;
-                llmApiKey            = project.Llm.ApiKey      ?? llmApiKey;
-                llmModel             = project.Llm.Model       ?? llmModel;
-                r.Temperature        = project.Llm.Temperature ?? r.Temperature;
-                r.ReasoningLevel     = project.Llm.ReasoningLevel  ?? r.ReasoningLevel;
-                r.PresencePenalty    = project.Llm.PresencePenalty  ?? r.PresencePenalty;
-                r.FrequencyPenalty   = project.Llm.FrequencyPenalty ?? r.FrequencyPenalty;
-                r.RepeatPenalty      = project.Llm.RepeatPenalty    ?? r.RepeatPenalty;
-                r.MaxTokens          = project.Llm.MaxTokens        ?? r.MaxTokens;
-                r.TopP               = project.Llm.TopP             ?? r.TopP;
-                r.MinP               = project.Llm.MinP             ?? r.MinP;
+                llmEndpoint = project.Llm.Endpoint ?? llmEndpoint;
+                llmApiKey = project.Llm.ApiKey ?? llmApiKey;
+                llmModel = project.Llm.Model ?? llmModel;
+                r.Temperature = project.Llm.Temperature ?? r.Temperature;
+                r.ReasoningLevel = project.Llm.ReasoningLevel ?? r.ReasoningLevel;
+                r.PresencePenalty = project.Llm.PresencePenalty ?? r.PresencePenalty;
+                r.FrequencyPenalty = project.Llm.FrequencyPenalty ?? r.FrequencyPenalty;
+                r.RepeatPenalty = project.Llm.RepeatPenalty ?? r.RepeatPenalty;
+                r.MaxTokens = project.Llm.MaxTokens ?? r.MaxTokens;
+                r.TopP = project.Llm.TopP ?? r.TopP;
+                r.MinP = project.Llm.MinP ?? r.MinP;
             }
             if (project.Agent != null)
             {
@@ -625,12 +663,16 @@ public static class SettingsResolver
                 // belongs to the project being edited, which is where it would have gone before the
                 // user and shared layers existed.
                 Scope = ConnectionScope.Project,
-                Id = "default", Name = "Default", Provider = "lmstudio",
-                Endpoint = llmEndpoint, ApiKey = llmApiKey,
+                Id = "default",
+                Name = "Default",
+                Provider = "lmstudio",
+                Endpoint = llmEndpoint,
+                ApiKey = llmApiKey,
                 Models = { new SplaModelSection { Id = "default", Name = "Default", Model = llmModel } }
             });
 
         r.Models = FlattenModels(r.Connections);
+        r.DefaultModelId = defaultModelId;
         r.McpServers = mcpServers.Values.ToList();
         return r;
     }
@@ -806,6 +848,7 @@ public static class SettingsResolver
         MinP = baseline.MinP,
         Connections = baseline.Connections,
         Models = baseline.Models,
+        DefaultModelId = baseline.DefaultModelId,
         Mode = baseline.Mode,
         Instructions = [.. baseline.Instructions],
         CompactTailMessages = baseline.CompactTailMessages,
@@ -986,6 +1029,28 @@ public static class SettingsResolver
             c.Scope = scope;
             into[c.Id] = c;
         }
+    }
+
+    /// <summary>A layer that marks one model replaces the inherited default wholesale. Multiple
+    /// marks in one file are rejected before connection ids from later layers can shadow them.</summary>
+    private static void ApplyDefaultModelFromLayer(
+        ref string? defaultModelId,
+        IReadOnlyList<SplaConnectionSection>? connections,
+        string layerName)
+    {
+        if (connections is null) return;
+
+        var defaults = connections
+            .SelectMany(connection => connection.Models)
+            .Where(model => model.Default)
+            .ToList();
+        if (defaults.Count > 1)
+            throw new InvalidOperationException(
+                $"Configuration layer '{layerName}' marks more than one default model: " +
+                $"{string.Join(", ", defaults.Select(model => $"'{model.Id}'"))}. " +
+                "Each layer may declare at most one default model.");
+        if (defaults.Count == 1)
+            defaultModelId = defaults[0].Id;
     }
 
     /// <summary>Adds/overrides mcp.servers entries by id, skipping entries without an id — same idiom

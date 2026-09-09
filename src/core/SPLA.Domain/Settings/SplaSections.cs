@@ -486,6 +486,11 @@ public class SplaModelSection
     [YamlMember(Alias = "name")]
     public string? Name { get; set; }
 
+    /// <summary>Marks this entry as the layer's default model. A more specific layer that marks a
+    /// model replaces the inherited choice; absent/false leaves it unchanged.</summary>
+    [YamlMember(Alias = "default", DefaultValuesHandling = DefaultValuesHandling.OmitDefaults)]
+    public bool Default { get; set; } = false;
+
     /// <summary>The model identifier sent to the provider (<c>anthropic/claude-opus-4</c>, an LM
     /// Studio key, …). "auto" or empty = let the provider decide.</summary>
     [YamlMember(Alias = "model")]

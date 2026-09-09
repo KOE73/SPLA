@@ -17,7 +17,7 @@
     </select>
   </label>
   <label>{{ t('model') }}
-    <select v-model="modelId" :disabled="!session" @change="onModelChange">
+    <select v-model="modelId" class="model-select" :disabled="!session" @change="onModelChange">
       <optgroup v-for="g in groups" :key="g.connectionId" :label="connEmoji(g.connectionId) + g.connectionName">
         <option v-for="m in g.models" :key="m.id" :value="m.id">{{ modelLabel(m) }}</option>
       </optgroup>
@@ -31,6 +31,11 @@
       :title="t('Provider and model details')"
       @click.stop="toggleInfo"
     >i</button>
+    <CopyButton
+      v-if="modelId && selectedModelLabel"
+      :text="selectedModelLabel"
+      title="Copy this value for spla chat run --model"
+    />
   </label>
   <label>{{ t('temp') }}
     <input
@@ -125,6 +130,7 @@ import { client } from "../protocol/SplaClient";
 import { formatCompact } from "../util/format";
 import { useChat } from "../state/chatContext";
 import type { ConnHealth, ModelPickDto, ReasoningCapabilityDto, ToolSetState } from "../protocol/types";
+import CopyButton from "../components/buttons/CopyButton.vue";
 import ProviderInfoPopup from "./ProviderInfoPopup.vue";
 import SkillPickerPopup from "./SkillPickerPopup.vue";
 
@@ -337,10 +343,17 @@ function connEmoji(connectionId: string): string {
   return !h || h.ok == null ? "" : h.ok ? "🟢 " : "🔴 ";
 }
 
-/** Name plus the provider's model string, when they differ — the name alone hides which model it is. */
+/** Connection plus the entry/model label. The connection stays in the option text because a closed
+ *  native select does not show its optgroup. */
 function modelLabel(m: ModelPickDto): string {
-  return m.model && m.model !== m.name ? `${m.name} · ${m.model}` : m.name;
+  const entryLabel = m.model && m.model !== m.name ? `${m.name} · ${m.model}` : m.name;
+  return `${m.connectionName || m.connectionId} | ${entryLabel}`;
 }
+
+const selectedModelLabel = computed(() => {
+  const selected = picks.value.find(p => p.id === modelId.value);
+  return selected ? modelLabel(selected) : "";
+});
 
 /** The health of the selected model's connection, not of the model itself. */
 const currentConnectionId = computed(() =>

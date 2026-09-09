@@ -11,3 +11,5 @@ repository and is linked from it.
 
 ---
 
+- **A connection model can be the project default, and its picker label is a valid CLI model name.**
+

@@ -403,6 +403,9 @@ public sealed class ModelEditDto
 {
     public string Id { get; set; } = string.Empty;
     public string? Name { get; set; }
+    /// <summary>Round-tripped even though the current editor does not expose a control for it, so
+    /// saving another field cannot erase a <c>default: true</c> written in YAML.</summary>
+    public bool Default { get; set; }
     public string? Model { get; set; }
     public int? ContextLength { get; set; }
 
