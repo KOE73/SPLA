@@ -60,6 +60,7 @@ import { store } from "../state/store";
 import { client } from "../protocol/SplaClient";
 import type { ChatSummary, CorrespondenceEdgeDto } from "../protocol/types";
 import { collectSpawned, titleOf } from "../state/chatTree";
+import { openChat } from "../state/chatSessions";
 import { neverReplies, onlyTalks } from "../state/correspondenceGraph";
 import { openChatWindow, openPanel } from "../dock/dockController";
 import CorrespondenceGraph from "./CorrespondenceGraph.vue";
@@ -77,7 +78,7 @@ function hasTokens(s: ChatSummary): boolean {
 }
 
 function open(chatId: string) {
-  client.send("chat.open", { chatId });
+  openChat(chatId);
   openPanel("chat");
 }
 

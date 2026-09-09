@@ -8,6 +8,7 @@ using SPLA.Library.Catalog;
 using SPLA.MCP.Core.Permissions;
 using SPLA.MCP.Core.ToolSets;
 using System.IO;
+using System.Text;
 
 namespace SPLA.Runtime;
 
@@ -203,7 +204,66 @@ public sealed class ChatRuntime : IDisposable, SPLA.Domain.Agent.IBackgroundTask
     /// two live bubbles in one chat shared an identity and the client's stream bookkeeping collided.
     /// On the chat means it is also correct when two connections drive the same chat.</para>
     /// </summary>
-    public int NextBubbleIndex() => Interlocked.Increment(ref _bubbleSeq);
+    public int NextBubbleIndex()
+    {
+        var index = Interlocked.Increment(ref _bubbleSeq);
+        // A new bubble is a new live partial: whatever the previous one had streamed is either
+        // already in the conversation (OnAssistantMessage put it there) or was abandoned.
+        lock (_liveGate)
+        {
+            _liveIndex = index;
+            _liveContent.Clear();
+            _liveReasoning.Clear();
+        }
+        return index;
+    }
+
+    private readonly Lock _liveGate = new();
+    private readonly StringBuilder _liveContent = new();
+    private readonly StringBuilder _liveReasoning = new();
+    private int? _liveIndex;
+
+    /// <summary>
+    /// What the model has streamed into the current bubble and has not yet finished saying, or null
+    /// when nothing is in flight.
+    ///
+    /// <para>Exists because a chat's history is the only thing an opening client is handed, and the
+    /// sentence being generated right now is not in it: a window opened mid-turn saw an empty log
+    /// until the turn ended. The stream itself reaches only connections that were already watching,
+    /// so this is the one way a latecomer can be told where the answer had got to.</para>
+    ///
+    /// <para>Held here rather than in a host because every host streams the same turn and none of
+    /// them outlives the chat — see <see cref="SendAsync"/>, which wraps the caller's own delta sinks
+    /// to feed it. Cleared as soon as the assembled message reaches the conversation, so it is never
+    /// a second copy of something the history already carries.</para>
+    /// </summary>
+    public LivePartial? Live
+    {
+        get
+        {
+            lock (_liveGate)
+            {
+                if (_liveIndex is not { } index) return null;
+                if (_liveContent.Length == 0 && _liveReasoning.Length == 0) return null;
+                return new LivePartial(index, _liveContent.ToString(), _liveReasoning.ToString());
+            }
+        }
+    }
+
+    /// <summary>An unfinished bubble: which one, and how far it has got.</summary>
+    /// <param name="MsgIndex">The streaming-bubble index the chunks belong to — the same one the live
+    /// stream's own events carry, so a client that later receives both cannot double-render.</param>
+    public sealed record LivePartial(int MsgIndex, string Content, string Reasoning);
+
+    private void ClearLive()
+    {
+        lock (_liveGate)
+        {
+            _liveIndex = null;
+            _liveContent.Clear();
+            _liveReasoning.Clear();
+        }
+    }
 
     /// <summary>The skill running in this chat, or null when idle.</summary>
     public string? ActiveSkillId => _skillSession.ActiveSkillId;
@@ -1388,6 +1448,32 @@ public sealed class ChatRuntime : IDisposable, SPLA.Domain.Agent.IBackgroundTask
                 }
             };
 
+            // The live partial, kept for whoever opens this chat mid-turn (see Live). Wrapped around
+            // the caller's own sinks rather than asked of them, so it holds for every host and cannot
+            // be forgotten by a new one. The assembled message clears it: from that moment the
+            // conversation carries the text, and keeping a copy here would show it twice.
+            var callerDelta = callbacks.OnDelta;
+            var callerReasoning = callbacks.OnReasoning;
+            var callerAssistant = callbacks.OnAssistantMessage;
+            callbacks = callbacks with
+            {
+                OnDelta = chunk =>
+                {
+                    lock (_liveGate) _liveContent.Append(chunk);
+                    return callerDelta?.Invoke(chunk) ?? Task.CompletedTask;
+                },
+                OnReasoning = chunk =>
+                {
+                    lock (_liveGate) _liveReasoning.Append(chunk);
+                    return callerReasoning?.Invoke(chunk) ?? Task.CompletedTask;
+                },
+                OnAssistantMessage = msg =>
+                {
+                    ClearLive();
+                    return callerAssistant?.Invoke(msg) ?? Task.CompletedTask;
+                }
+            };
+
             await _orchestrator.RunAsync(
                 _conversation, llm, ResolveMode(), callbacks, cancellationToken);
 
@@ -1403,6 +1489,10 @@ public sealed class ChatRuntime : IDisposable, SPLA.Domain.Agent.IBackgroundTask
         finally
         {
             _activeOnUserMessage = null;
+            // A turn that was cancelled or failed mid-stream never reached OnAssistantMessage, so its
+            // half-said sentence would otherwise be offered to every client opening this chat from
+            // now on, as if the model were still speaking it.
+            ClearLive();
             _turnGate.Release();
             Interlocked.Decrement(ref _turnsInFlight);
         }

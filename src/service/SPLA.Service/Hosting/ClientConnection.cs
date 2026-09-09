@@ -366,7 +366,10 @@ public sealed class ClientConnection : IClientSession
             Doubt = ChatHandlers.DoubtDto(chat),
             TurnActive = chat.IsTurnRunning,
             State = SPLA.Domain.Project.InstanceStates.Name(
-                BoundRuntime.StateOf(chat.ChatId, TimeSpan.FromMinutes(10)))
+                BoundRuntime.StateOf(chat.ChatId, TimeSpan.FromMinutes(10))),
+            Live = chat.Live is { } live
+                ? new LivePartialDto { MsgIndex = live.MsgIndex, Content = live.Content, Reasoning = live.Reasoning }
+                : null
         }, chat.ChatId);
 
         await ReplayPendingAsksAsync(chat.ChatId);

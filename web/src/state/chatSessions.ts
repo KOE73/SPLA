@@ -298,6 +298,15 @@ client.on("chat.opened", (p, env) => {
   s.lastPrompt = s.lastCompletion = s.ctxUsed = s.ctxWindow = null;
 
   hydrateMessages(s, p.messages);
+
+  // The unfinished sentence, which the history above cannot contain. Given the live bubble's own
+  // index, so the chunks that keep arriving append to it rather than opening a second bubble beside it.
+  if (p.live) {
+    const b = liveBubble(s, p.live.msgIndex);
+    b.text = p.live.content;
+    b.reasoning = p.live.reasoning;
+    if (!s.pending.includes(p.live.msgIndex)) s.pending.push(p.live.msgIndex);
+  }
 });
 
 /**

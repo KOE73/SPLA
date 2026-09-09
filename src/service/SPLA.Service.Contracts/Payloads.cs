@@ -1277,6 +1277,21 @@ public sealed class ChatOpenedPayload
     /// a chat mid-question shows the badge immediately rather than waiting for the next list.</summary>
     public string State { get; set; } = "idle";
 
+    /// <summary>The sentence the model is streaming right now, or null when nothing is in flight.
+    /// <para>The message list is what has been PERSISTED, which by definition cannot contain an
+    /// unfinished answer — so a window opening a working chat used to show an empty log until the turn
+    /// ended, and a window re-opening one it was already watching threw away the live text it had.
+    /// The bubble index is the live stream's own, so a client that gets this and then more chunks for
+    /// the same bubble continues it instead of starting a second one.</para></summary>
+    public LivePartialDto? Live { get; set; }
+}
+
+/// <summary>An answer that has been started and not finished. See <see cref="ChatOpenedPayload.Live"/>.</summary>
+public sealed class LivePartialDto
+{
+    public int MsgIndex { get; set; }
+    public string Content { get; set; } = string.Empty;
+    public string Reasoning { get; set; } = string.Empty;
 }
 
 /// <summary>

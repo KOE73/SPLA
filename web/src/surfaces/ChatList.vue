@@ -79,7 +79,7 @@ import ChatListItem from "./ChatListItem.vue";
 import ProjectPicker from "./ProjectPicker.vue";
 import ProjectBar from "./ProjectBar.vue";
 import { openPanel, openChatWindow } from "../dock/dockController";
-import { forgetSession } from "../state/chatSessions";
+import { forgetSession, openChat } from "../state/chatSessions";
 import { collectSpawned } from "../state/chatTree";
 
 const offList = client.on("chat.list.result", p => { store.chats = p.chats || []; });
@@ -118,7 +118,7 @@ const chatsContainerRef = ref<HTMLElement>();
 function newChat() { client.send("chat.new", { title: null }); }
 
 function onChatClick(chatId: string) {
-  client.send("chat.open", { chatId });
+  openChat(chatId);
   openPanel("chat");
 }
 

@@ -5,9 +5,9 @@
  * into whatever was on screen. These tests feed interleaved frames for two chats and check that each
  * session only ever contains its own.
  */
-import { beforeEach, describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { client } from "../protocol/SplaClient";
-import { forgetAllSessions, peekSession, sessionFor } from "./chatSessions";
+import { forgetAllSessions, openChat, peekSession, sessionFor } from "./chatSessions";
 import type { Envelope } from "../protocol/types";
 
 function feed(type: string, chatId: string | undefined, payload: unknown, requestId?: string) {
@@ -338,5 +338,62 @@ describe("chat sessions", () => {
     const a = peekSession("A")!, b = peekSession("B")!;
     expect(b.items.map(i => i.kind)).toEqual(a.items.map(i => i.kind));
     expect(b.calls["t1"].result).toEqual(a.calls["t1"].result);
+  });
+
+  it("keeps streaming into a chat whose log was rebuilt mid-turn", () => {
+    // Three chats working at once, and the person clicking between them to watch: every click used to
+    // land as a fresh chat.opened, whose history snapshot cannot contain the sentence being streamed
+    // right now. The bubble went with the rebuild and every later chunk was dropped on the floor, so
+    // the answer and the reasoning appeared only when the turn ended.
+    open("B");
+    feed("llm.turn.start", "B", { msgIndex: 1 });
+    feed("reasoning", "B", { msgIndex: 1, text: "thinking" });
+
+    open("B");   // the log is rebuilt from persisted history — the live bubble is gone
+
+    feed("reasoning", "B", { msgIndex: 1, text: "-more" });
+    feed("delta", "B", { msgIndex: 1, text: "answer" });
+
+    const b = peekSession("B")!.items.find(i => i.kind === "assistant" && i.msgIndex === 1);
+    expect(b && b.kind === "assistant" ? b.text : undefined).toBe("answer");
+    expect(b && b.kind === "assistant" ? b.reasoning : undefined).toBe("-more");
+  });
+
+  it("shows the sentence in flight to a window that opens the chat mid-turn", () => {
+    // The history a chat is opened with is what has been persisted, and the answer being generated
+    // right now is not in it. Without the live partial the window shows an empty log and only learns
+    // there was an answer when the turn ends.
+    feed("chat.opened", "B", { chatId: "B", messages: [], mode: "auto", modelId: "m1", toolSets: [],
+      turnActive: true, live: { msgIndex: 7, content: "half a sen", reasoning: "because" } });
+
+    feed("delta", "B", { msgIndex: 7, text: "tence" });
+
+    const b = peekSession("B")!.items.find(i => i.kind === "assistant" && i.msgIndex === 7);
+    expect(b && b.kind === "assistant" ? b.text : undefined).toBe("half a sentence");
+    expect(b && b.kind === "assistant" ? b.reasoning : undefined).toBe("because");
+    // One bubble, not the live one beside a second one built from the same index.
+    expect(peekSession("B")!.items.filter(i => i.kind === "assistant").length).toBe(1);
+  });
+
+  it("switches to an already-loaded chat without asking the server to open it", () => {
+    // The cure for the rebuild above: a watched chat's log is already current, so the switch is local.
+    open("B");
+    const send = vi.spyOn(client, "send").mockReturnValue(true);
+
+    openChat("B");
+
+    const types = send.mock.calls.map(c => c[0]);
+    send.mockRestore();
+    expect(types).not.toContain("chat.open");
+  });
+
+  it("still asks the server for a chat this window has no log for", () => {
+    const send = vi.spyOn(client, "send").mockReturnValue(true);
+
+    openChat("NEVER-SEEN");
+
+    const types = send.mock.calls.map(c => c[0]);
+    send.mockRestore();
+    expect(types).toContain("chat.open");
   });
 });

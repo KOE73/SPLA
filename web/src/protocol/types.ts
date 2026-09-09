@@ -140,6 +140,10 @@ export interface ChatOpenedPayload {
   turnActive?: boolean;
   /** The chat's operational state: "idle" | "working" | "waiting" | "stalled". */
   state?: string;
+  /** The answer being streamed at this very moment, absent when nothing is in flight. The message
+   *  list holds only what has been persisted, so without this a chat opened mid-turn reads as empty
+   *  until the turn ends. Its msgIndex is the live stream's own — later chunks continue this bubble. */
+  live?: { msgIndex: number; content: string; reasoning: string } | null;
 }
 
 /**
