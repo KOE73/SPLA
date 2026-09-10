@@ -53,28 +53,38 @@ internal sealed class SpawnedSession : ISpawnedSession, IBackgroundTaskHost
     public string ChatId => _chat.Id;
     public IAgentSession AgentSession { get; }
 
-    public SpawnedSession(ChatRegistry registry, ChatSession chat)
+    /// <summary>The role's settings this run acts under, or null for the project's. See
+    /// <see cref="ISpawnSessionHost.OpenSpawnedSession"/>.</summary>
+    private readonly SPLA.Domain.Settings.ResolvedSettings? _settings;
+
+    public SpawnedSession(ChatRegistry registry, ChatSession chat, SPLA.Domain.Settings.ResolvedSettings? settings = null)
     {
         _registry = registry;
         _runtime = registry.Runtime;
         _chat = chat;
+        _settings = settings;
         Tasks = new BackgroundTaskRegistry(_lifetime.Token);
 
         // Its own shell, like any chat's — see ChatRuntime's own comment on why this must not be the
         // runtime's shared sandbox: a process a nested spawn starts must not outlive it with nothing
         // able to say otherwise.
         _sandbox = _runtime.Sandbox.ForChat();
+        // The role's own shell_timeout_seconds on that shell, the same rule ChatRuntime follows.
+        if (settings is { } role && role.ShellTimeoutSeconds != _runtime.Settings.ShellTimeoutSeconds &&
+            _sandbox is SPLA.Domain.Host.PassthroughSandbox runSandbox)
+            runSandbox.SetShellSilentIdle(role.ShellTimeoutSeconds > 0
+                ? TimeSpan.FromSeconds(role.ShellTimeoutSeconds) : Timeout.InfiniteTimeSpan);
 
         AgentSession = new Domain.Agent.AgentSession(
             new KeyValueStore("session"), new CheckpointManager(), new SkillSession(),
-            sandbox: _sandbox, background: this, chatId: chat.Id);
+            sandbox: _sandbox, background: this, chatId: chat.Id, settings: settings);
     }
 
     public void Finish(IReadOnlyList<ChatMessage> conversation, string? skillId, string mode,
         DateTimeOffset startedAt, string outcome, string? error)
     {
-        var saveToolCalls = _runtime.Settings.SaveToolCalls;
-        var saveAttempts = _runtime.Settings.SaveAttempts;
+        var saveToolCalls = (_settings ?? _runtime.Settings).SaveToolCalls;
+        var saveAttempts = (_settings ?? _runtime.Settings).SaveAttempts;
 
         _chat.Messages = conversation
             .Where(m => m.Role != ChatRole.System)

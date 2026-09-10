@@ -156,4 +156,13 @@ public static class AgentFeatureCatalog
 
         return Order.Where(enabled.Contains).ToList();
     }
+
+    /// <summary>
+    /// <see cref="Resolve"/> as a lookup set, without logging — for the per-call question "is this
+    /// feature on for the settings in force right now". Asked on every tool listing and every tool
+    /// call, so it must stay silent: the warnings about unknown or implied ids belong to startup,
+    /// where <see cref="Resolve"/> is called with a logger once.
+    /// </summary>
+    public static IReadOnlySet<string> EnabledSet(IReadOnlyList<string>? configured)
+        => new HashSet<string>(Resolve(configured), System.StringComparer.Ordinal);
 }

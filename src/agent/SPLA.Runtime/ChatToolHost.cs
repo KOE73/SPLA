@@ -3,7 +3,6 @@ using System.Text.Json;
 using SPLA.Domain.Interfaces;
 using SPLA.Domain.Models;
 using SPLA.Domain.Tools;
-using SPLA.MCP.Core.ToolSets;
 
 namespace SPLA.Runtime;
 
@@ -29,32 +28,18 @@ namespace SPLA.Runtime;
 /// preserves for that case.
 /// </para>
 /// <para>
-/// Wave 5б adds the other half of the same seam: a chat opened under an <c>as:</c> role narrows its
-/// own tool surface here, the same way <c>SpawnedAgentRunner</c> narrows a spawned run's — a filter
-/// built fresh from the shared, read-only <paramref name="toolSets"/> registry and this chat's own
-/// resolved <paramref name="roleToolSets"/>, never a mutation of the registry itself (that would leak
-/// the narrowing into every other chat sharing it). <paramref name="roleToolSets"/> is null for a
-/// chat with no role — the deliberate no-op case: <see cref="GetToolDefinitions"/> then skips the
-/// filter entirely rather than running it against an empty selection, which is what "a chat without
-/// <c>as:</c> narrows nothing" actually requires (an omitted filter, not one fed an empty set).
+/// What a role narrows or widens is not decided here. A chat under an <c>as:</c> role carries the
+/// role's settings on its <see cref="SPLA.Domain.Agent.IAgentSession"/>, and the shared host answers
+/// from those — capabilities and tool-set levels alike, for listing and for execution. A second,
+/// role-only filter used to live here; it covered listing only, so a tool it hid still ran when
+/// called, and it could not give a role anything the project lacked.
 /// </para>
 /// </summary>
-public sealed class ChatToolHost(
-    IToolHost inner,
-    IReplyToolSource? owner = null,
-    ToolSetRegistry? toolSets = null,
-    IReadOnlyDictionary<string, string>? roleToolSets = null) : IToolHost
+public sealed class ChatToolHost(IToolHost inner, IReplyToolSource? owner = null) : IToolHost
 {
     public IEnumerable<ToolDefinition> GetToolDefinitions()
     {
         var definitions = inner.GetToolDefinitions();
-
-        // Narrows only the inner (real) tools — never the virtual reply_* ones added below, which no
-        // ToolSetRegistry set claims and so IsDisclosedForRole would keep anyway; skipped outright
-        // with a null roleToolSets rather than filtering against one, so a role-less chat's surface is
-        // byte-for-byte what it always was.
-        if (toolSets != null && roleToolSets != null)
-            definitions = definitions.Where(t => ToolSetRegistry.IsDisclosedForRole(t.Function.Name, toolSets, roleToolSets));
 
         if (owner is null) return definitions;
 

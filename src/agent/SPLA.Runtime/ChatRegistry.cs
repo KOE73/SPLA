@@ -225,10 +225,11 @@ public sealed class ChatRegistry : IDisposable, ISpawnSessionHost
     // no use for) — see SpawnedSession's own comment for why that is a deliberate line, not a shortcut.
 
     /// <summary>Creates the session on disk and returns a driver scoped to the one run it will make.</summary>
-    public ISpawnedSession OpenSpawnedSession(string? parentChatId, string? role)
+    public ISpawnedSession OpenSpawnedSession(string? parentChatId, string? role,
+        SPLA.Domain.Settings.ResolvedSettings? settings = null)
     {
         var chat = _runtime.ChatManager.CreateSpawnedChat(parentChatId, role, skillId: null, mode: "");
-        return new SpawnedSession(this, chat);
+        return new SpawnedSession(this, chat, settings);
     }
 
     /// <summary>

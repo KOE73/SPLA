@@ -36,9 +36,11 @@ public sealed class ModeContributor : IAgentContributor
 }
 
 /// <summary>
-/// One item per enabled built-in capability that carries prompt text. The features are the same
-/// objects whose tools were registered, so a capability's text and its tools are switched on and off
-/// together — a feature with no fragment (tools-only, e.g. <c>core.files</c>) contributes nothing.
+/// One item per built-in capability that carries prompt text and is on for the settings being
+/// composed for. The features are the same objects whose tools are registered, and the question "is
+/// it on" is asked of the same settings <c>McpHost</c> asks when listing and running those tools — a
+/// role's own for a role's session — so a capability's text and its tools are switched on and off
+/// together. A feature with no fragment (tools-only, e.g. <c>core.files</c>) contributes nothing.
 /// </summary>
 public sealed class CoreFeatureContributor : IAgentContributor
 {
@@ -51,9 +53,11 @@ public sealed class CoreFeatureContributor : IAgentContributor
 
     public AgentContribution Contribute(AgentContributionContext context)
     {
+        var enabled = AgentFeatureCatalog.EnabledSet(context.Settings.Capabilities);
         var items = new List<ContextItem>();
         foreach (var feature in _features)
         {
+            if (!enabled.Contains(feature.Id)) continue;
             if (string.IsNullOrEmpty(feature.PromptFragment)) continue;
 
             items.Add(new ContextItem

@@ -76,9 +76,14 @@ authority order, top-down, and belongs to the composition root — never to a co
 | `plugin-commands` | the `plugin_run_command` list | — |
 | `working-memory` | the live `context:*` snapshot, as a **turn message** | `core.memory` |
 
-The conditional entries are gated on exactly the decision that gated their tools: a capability
-that is off leaves **no contributor behind**, so the prompt can never describe a tool that was not
-registered.
+The conditional entries are gated on exactly the decision that gates their tools, asked of the
+same settings: the `capabilities` of the settings being composed for — a role's, for a chat or run
+under one (`AgentRuntime.ComposeContext(mode, settings)`, the spawned runner's `runSettings`) — the
+very list `McpHost` checks when it lists and runs that capability's tools for the session. A
+capability that is off for those settings says nothing (`CapabilityGatedContributor`, and the
+filter inside `core`), so the prompt can never describe a tool the session cannot call. The same
+settings supply `instructions` and `custom-prompt`, which is how a role's own prompt reaches its
+model rather than the project's.
 
 ### Correspondents are deliberately not a contributor
 

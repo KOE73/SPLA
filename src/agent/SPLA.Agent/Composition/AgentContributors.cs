@@ -72,13 +72,17 @@ public static class AgentContributors
 
         if (hostExtras != null) contributors.AddRange(hostExtras);
 
+        // Two gates, both needed. At assembly: a capability outside the offered feature list gets no
+        // contributor at all. At compose time: one that is offered speaks only when the settings being
+        // composed for have it on — a role's, for a role's session — the same answer McpHost gives for
+        // its tools.
         if (enabledIds.Contains("core.skills"))
-            contributors.Add(new SkillsContributor(skills, session));
+            contributors.Add(new CapabilityGatedContributor("core.skills", new SkillsContributor(skills, session)));
 
         // Announcements of sets the agent may raise itself. Same gate as the tools that do the
         // raising: no toolset_activate, no index telling the model to call it.
         if (toolSets != null && enabledIds.Contains("core.toolsets"))
-            contributors.Add(new ToolSetsContributor(toolSets));
+            contributors.Add(new CapabilityGatedContributor("core.toolsets", new ToolSetsContributor(toolSets)));
 
         contributors.Add(new PluginPromptContributor(plugins));
         contributors.Add(new PluginCommandContributor(plugins));
@@ -92,8 +96,23 @@ public static class AgentContributors
         // core.memory owns both the agent_memory_* tools AND the auto-injected "context:*" snapshot,
         // so a disabled core.memory cannot leave a live-memory block with no tools behind it.
         if (enabledIds.Contains("core.memory"))
-            contributors.Add(new WorkingMemoryContributor(projectKv));
+            contributors.Add(new CapabilityGatedContributor("core.memory", new WorkingMemoryContributor(projectKv)));
 
         return contributors;
     }
+}
+
+/// <summary>
+/// Lets <paramref name="inner"/> speak only when capability <paramref name="featureId"/> is on for the
+/// settings being composed for. Keeps the inner contributor's id, so the composition manifest still
+/// names who said what.
+/// </summary>
+public sealed class CapabilityGatedContributor(string featureId, IAgentContributor inner) : IAgentContributor
+{
+    public string Id => inner.Id;
+
+    public AgentContribution Contribute(AgentContributionContext context)
+        => AgentFeatureCatalog.EnabledSet(context.Settings.Capabilities).Contains(featureId)
+            ? inner.Contribute(context)
+            : AgentContribution.None;
 }

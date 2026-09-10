@@ -22,9 +22,13 @@ public interface ISpawnSessionHost
     /// Creates a spawned session on disk — <c>origin: spawned</c>, <c>parent: parentChatId</c>,
     /// <c>as: role</c> — and returns a handle scoped to the one run that session will ever drive.
     /// <paramref name="parentChatId"/> is null for a spawn with no chat behind it; <paramref name="role"/>
-    /// is null in this wave (wave 3 wires it through <c>agent_spawn</c>).
+    /// is null for a run with no role.
+    /// <paramref name="settings"/> is what the run acts under when it is not the project's own — the
+    /// role's resolved settings. Carried on the session's <see cref="IAgentSession.Settings"/>, where
+    /// the tool host, tool-set levels and question timeouts read them, and used for what the session
+    /// saves. Null = the project's.
     /// </summary>
-    ISpawnedSession OpenSpawnedSession(string? parentChatId, string? role);
+    ISpawnedSession OpenSpawnedSession(string? parentChatId, string? role, Settings.ResolvedSettings? settings = null);
 
     /// <summary>
     /// Trims finished spawned sessions down to <paramref name="keep"/> most-recently-finished on disk.

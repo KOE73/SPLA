@@ -49,6 +49,8 @@ roles:
 - scout
 - planner
 - coder
+toolsets:
+  roslyn: disabled
 llm:
   provider: lmstudio
   endpoint: http://127.0.0.1:1234/v1

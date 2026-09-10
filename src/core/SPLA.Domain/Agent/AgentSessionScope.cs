@@ -1,4 +1,5 @@
 ﻿using SPLA.Domain.Host;
+using SPLA.Domain.Settings;
 using SPLA.Domain.Tools;
 
 namespace SPLA.Domain.Agent;
@@ -246,6 +247,20 @@ public interface IAgentSession
     /// a nested spawn's parent is always the chat that actually spawned it, human or spawned alike.
     /// </summary>
     string? ChatId { get; }
+
+    /// <summary>
+    /// The settings this session acts under when they are not the project's own: a role's resolved
+    /// settings, for a chat opened <c>as:</c> a role or a run spawned under one. Null means the
+    /// project's settings — read live, so an edit made in the settings panel reaches a plain chat
+    /// without reopening it.
+    /// <para>This is the one place a role's declaration becomes the session's reality. Everything that
+    /// decides per call — which tools exist (<c>capabilities</c>), how far a set reaches
+    /// (<c>toolsets</c>), which domains are trusted, how long a question waits — reads it here, so a
+    /// role gets exactly what it declares: more than <c>agent:</c> where it says so, less where it
+    /// narrows. Reading the project's settings instead is how a role ended up with only what the
+    /// default agent happened to have.</para>
+    /// </summary>
+    ResolvedSettings? Settings => null;
 }
 
 /// <summary>Plain bundle of the per-chat agent dependencies. Used by the UI chat VM and by
@@ -256,8 +271,10 @@ public sealed class AgentSession : IAgentSession
         IBlobStore? blobs = null, ISandbox? sandbox = null,
         IToolSetSession? toolSets = null, Security.ChatDoubt? doubt = null,
         IBackgroundTaskHost? background = null, string? chatId = null,
-        ICorrespondenceHost? correspondence = null, IContextBudgetHost? contextBudget = null)
+        ICorrespondenceHost? correspondence = null, IContextBudgetHost? contextBudget = null,
+        ResolvedSettings? settings = null)
     {
+        Settings = settings;
         ContextBudget = contextBudget;
         Doubt = doubt ?? new Security.ChatDoubt();
         SessionKv = sessionKv;
@@ -282,6 +299,7 @@ public sealed class AgentSession : IAgentSession
     public ICorrespondenceHost? Correspondence { get; }
     public IContextBudgetHost? ContextBudget { get; }
     public string? ChatId { get; }
+    public ResolvedSettings? Settings { get; }
 }
 
 /// <summary>

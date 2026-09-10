@@ -186,13 +186,14 @@ public sealed class AgentRuntime : IDisposable
     /// </summary>
     public SpawnedAgentRunner SpawnedRunner { get; }
 
-    /// <summary>The <c>agent.capabilities</c> setting resolved against <see cref="AgentFeatureCatalog"/>:
-    /// unknown ids dropped, Requires auto-included, null configured = every feature. Drives which
-    /// features' tools were registered into <see cref="McpHost"/> and which Core prompt segments
-    /// <see cref="PromptBuilder"/> renders — the single gating decision, made once here.</summary>
-    public IReadOnlyCollection<string> EnabledFeatureIds { get; }
+    /// <summary>The project's own <c>agent.capabilities</c> resolved against <see cref="AgentFeatureCatalog"/>:
+    /// unknown ids dropped, Requires auto-included, null configured = every feature. Read live, so a
+    /// settings edit counts at once. This is the answer for a session with no role — a chat or run under
+    /// one answers from its own settings (<see cref="SPLA.Domain.Agent.IAgentSession.Settings"/>), and
+    /// every built-in tool is registered regardless so that answer can be larger than this one.</summary>
+    public IReadOnlyCollection<string> EnabledFeatureIds => AgentFeatureCatalog.EnabledSet(Settings.Capabilities);
 
-    /// <summary>True when the given "core.*" feature id was enabled for this project.</summary>
+    /// <summary>True when the given "core.*" feature id is enabled for this project's own sessions.</summary>
     public bool HasFeature(string featureId) => EnabledFeatureIds.Contains(featureId);
 
     /// <summary>Project-lifetime token tally (workspace/.spla/token-usage.json).</summary>
@@ -205,8 +206,15 @@ public sealed class AgentRuntime : IDisposable
     /// manifest explaining both. Recomposed on every call so live settings edits (plugin
     /// settings/prompts, mode) reach chats without a restart, and so a skill activated mid-turn is
     /// reflected on the very next iteration.</summary>
-    public ComposedContext ComposeContext(AgentMode? modeOverride = null) =>
-        ContextComposer.Compose(Settings, Settings.WorkspacePath, modeOverride);
+    /// <param name="settings">The settings the session asking acts under — a role's, for a chat
+    /// opened as one. Null = the project's own. The prompt is built from the same settings that decide
+    /// the session's tools, so a role's instructions, custom prompt and capability texts are what its
+    /// model reads.</param>
+    public ComposedContext ComposeContext(AgentMode? modeOverride = null, ResolvedSettings? settings = null)
+    {
+        var effective = settings ?? Settings;
+        return ContextComposer.Compose(effective, effective.WorkspacePath, modeOverride);
+    }
 
     /// <summary>The system-prompt half of <see cref="ComposeContext"/>, for callers that only need
     /// the text (a freshly seeded chat, the debug view).</summary>
@@ -338,12 +346,17 @@ public sealed class AgentRuntime : IDisposable
 
         McpHost = new McpHost(
             new PermissionManager(settings: settings), PluginManager, loggerFactory.CreateLogger<McpHost>(),
-            zoneOfPath: ZoneOfPath, originOfZone: OriginOfZone);
+            zoneOfPath: ZoneOfPath, originOfZone: OriginOfZone)
+        {
+            // What a call outside any session is judged by. Inside one, its own settings win.
+            ProjectSettings = () => Settings
+        };
 
         // Tool sets: what exists and how far each may reach the model. Process-wide on purpose — a
         // level is the user's standing decision, while "raised right now" belongs to a chat and lives
-        // in its AgentSession. Core features are not levelled yet: agent.capabilities already decides
-        // whether they exist at all, so passing them here would give the same answer twice.
+        // in its AgentSession. Core features are not levelled: capabilities — the session's own, read by
+        // McpHost per call — already decide whether they exist for it, so passing them here would give
+        // the same answer twice.
         ToolSets = new ToolSetRegistry(settings, PluginManager);
         McpHost.ToolSets = ToolSets;
 
@@ -418,7 +431,10 @@ public sealed class AgentRuntime : IDisposable
                 new ResumeShellTool(),
                 new KillShellTool()),
             Feature("core.web",
-                new SPLA.MCP.BasicTools.Network.WebFetchTool(settings.IsTrustedDomain)),
+                // The session's own trusted domains — a role's trusted_domains widen its list, not
+                // the project's — falling back to the project outside any session.
+                new SPLA.MCP.BasicTools.Network.WebFetchTool(host =>
+                    (SPLA.Domain.Agent.AgentSessionScope.Current?.Settings ?? Settings).IsTrustedDomain(host))),
             Feature("core.memory",
                 new SPLA.MCP.Core.Tools.AgentMemorySetTool(ProjectKv.Store),
                 new SPLA.MCP.Core.Tools.AgentMemoryGetTool(ProjectKv.Store),
@@ -457,15 +473,18 @@ public sealed class AgentRuntime : IDisposable
                 new SPLA.MCP.Core.Tools.TaskCancelTool()),
         };
 
-        var enabledIds = AgentFeatureCatalog.Resolve(settings.Capabilities, loggerFactory.CreateLogger("SPLA.Agent.Capabilities"));
-        EnabledFeatureIds = new HashSet<string>(enabledIds, StringComparer.Ordinal);
+        // Resolved once here only to log what the project's own list says (unknown or implied ids);
+        // the answer itself is asked per call, from whichever settings the session acts under.
+        AgentFeatureCatalog.Resolve(settings.Capabilities, loggerFactory.CreateLogger("SPLA.Agent.Capabilities"));
 
-        // Enabled features in catalog order: the SAME objects drive tool registration here and
-        // Core prompt segments in the builder below — the one gating decision applied to both.
-        var enabledFeatures = featureCatalog.Where(f => EnabledFeatureIds.Contains(f.Id)).ToList();
-        foreach (var feature in enabledFeatures)
+        // Every capability's tools, in catalog order — not only the project's. Which of them a session
+        // may see and call is decided per call from that session's settings (McpHost.EnabledFeatures),
+        // and the same catalog objects drive the Core prompt segments below, gated by the same settings.
+        // Registering only agent:'s features made a role a subset of the default agent: a coordinator
+        // without file tools left every worker it spawned without them too.
+        foreach (var feature in featureCatalog)
             foreach (var tool in feature.Tools)
-                McpHost.RegisterTool(tool);
+                McpHost.RegisterFeatureTool(tool, feature.Id);
 
         // The project's address space. Registered here rather than beside the file tools because the
         // registry is a property of the running project, not of any one tool set — and because
@@ -527,11 +546,12 @@ public sealed class AgentRuntime : IDisposable
         // resolves to MissingPrerequisites and stays out of the prompt instead of describing dead calls.
         RefreshSkillCapabilities();
 
-        // The context surface: one contributor per source, gated by the same enabled-feature set that
-        // decided which tools were registered above.
+        // The context surface: one contributor per source. Handed the whole feature catalog; each
+        // capability's text is gated at compose time by the settings being composed for — the same
+        // settings McpHost gates that capability's tools by — so text and tools never disagree.
         var compositionLogger = loggerFactory.CreateLogger("SPLA.Agent.Composition");
         ContextComposer = new AgentContextComposer(
-            AgentContributors.Default(SkillLibrary, PluginManager, null, enabledFeatures, ProjectKv.Store, ToolSets,
+            AgentContributors.Default(SkillLibrary, PluginManager, null, featureCatalog, ProjectKv.Store, ToolSets,
                 hostContributors),
             compositionLogger);
 

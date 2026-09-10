@@ -25,28 +25,36 @@ public sealed class SplaRoleSectionTests
     [Fact]
     public void An_existing_real_manifest_resolves_exactly_as_before_roles_existed()
     {
-        // spla.spla is the repository's own real manifest — a pre-existing file that has never heard
-        // of `roles:`. Adding the field to SplaProject must be purely additive.
-        var manifestPath = Path.Combine(FindRepoRoot(), "spla.spla");
-        var project = ConfigLoader.LoadProject(manifestPath);
-        var defaults = new SplaDefaults();
+        // A manifest in the shape the repository's own spla.spla had before roles existed — kept as a
+        // fixture rather than read from the live file, which is this workspace's working config and
+        // has since declared roles of its own. Adding the field to SplaProject must be purely additive.
+        var dir = TempProjectDir();
+        try
+        {
+            var manifestPath = Path.Combine(dir, "spla.spla");
+            File.WriteAllText(manifestPath, """
+                version: 1
+                name: SPLA
+                agent:
+                  mode: Agent
+                  instructions:
+                  - AGENTS.md
+                  custom_prompt: Test project for SPLA Roslyn plugin validation.
+                ui:
+                  theme: cream
+                """);
+            var project = ConfigLoader.LoadProject(manifestPath);
+            var defaults = new SplaDefaults();
 
-        var resolved = SettingsResolver.Resolve(defaults, project);
+            var resolved = SettingsResolver.Resolve(defaults, project);
 
-        Assert.Null(project.Roles);
-        Assert.Equal(AgentMode.Agent, resolved.Mode);
-        Assert.Contains("Roslyn", resolved.CustomPrompt);
-        Assert.Equal("cream", resolved.Theme);
-        Assert.Null(resolved.RoleName);
-    }
-
-    private static string FindRepoRoot()
-    {
-        var dir = new DirectoryInfo(AppContext.BaseDirectory);
-        while (dir != null && !File.Exists(Path.Combine(dir.FullName, "spla.spla")))
-            dir = dir.Parent;
-        Assert.NotNull(dir);
-        return dir!.FullName;
+            Assert.Null(project.Roles);
+            Assert.Equal(AgentMode.Agent, resolved.Mode);
+            Assert.Contains("Roslyn", resolved.CustomPrompt);
+            Assert.Equal("cream", resolved.Theme);
+            Assert.Null(resolved.RoleName);
+        }
+        finally { Directory.Delete(dir, recursive: true); }
     }
 
     // ── "A file present in roles/ that the manifest does not name does not act" ────────────────

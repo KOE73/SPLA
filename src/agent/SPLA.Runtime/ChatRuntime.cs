@@ -112,6 +112,11 @@ public sealed class ChatRuntime : IDisposable, SPLA.Domain.Agent.IBackgroundTask
     /// </summary>
     private readonly ResolvedSettings? _roleSettings;
 
+    /// <summary>The settings this chat acts under: its role's, else the project's (live). Everything
+    /// per-chat reads this — never <c>_runtime.Settings</c> directly, which is how a role's
+    /// declarations used to stop at the resolver.</summary>
+    private ResolvedSettings EffectiveSettings => _roleSettings ?? _runtime.Settings;
+
     private readonly ChatSession _chat;
     private readonly Conversation _conversation = new();
     private readonly KeyValueStore _sessionKv = new("session");
@@ -358,16 +363,22 @@ public sealed class ChatRuntime : IDisposable, SPLA.Domain.Agent.IBackgroundTask
     public SPLA.MCP.Core.Composition.ComposedContext ComposeContext()
     {
         using var scope = AgentSessionScope.Begin(_agentSession);
-        return _runtime.ComposeContext(ResolveMode());
+        return _runtime.ComposeContext(ResolveMode(), _roleSettings);
     }
 
     /// <summary>
     /// This chat's own tool surface — before mode gating, exactly as <see cref="ChatToolHost"/> hands
     /// it to the orchestrator (see <see cref="_toolHost"/>). For inspection and tests: proves a role's
     /// narrowing (or its absence) the same way <c>ComposeContext</c> above proves the prompt surface,
-    /// without needing to drive a whole turn through a fake LLM to observe what reached it.
+    /// without needing to drive a whole turn through a fake LLM to observe what reached it. Asked
+    /// inside this chat's own session scope, as a turn asks: the surface depends on whose settings the
+    /// session carries, and outside the scope the project's would answer.
     /// </summary>
-    public IEnumerable<string> AvailableToolNames() => _toolHost.GetToolDefinitions().Select(d => d.Function.Name);
+    public IEnumerable<string> AvailableToolNames()
+    {
+        using var scope = AgentSessionScope.Begin(_agentSession);
+        return _toolHost.GetToolDefinitions().Select(d => d.Function.Name).ToList();
+    }
 
     /// <summary>This chat's session-scoped working memory entries (for the debug inspector).</summary>
     public IEnumerable<(string Key, string Value)> SessionKvEntries
@@ -1197,6 +1208,13 @@ public sealed class ChatRuntime : IDisposable, SPLA.Domain.Agent.IBackgroundTask
         // outlived the chat that started it with nothing able to say otherwise — and the cap on live
         // sessions was quietly shared out between chats that knew nothing of each other.
         _sandbox = runtime.Sandbox.ForChat();
+        // A role's own shell_timeout_seconds, on this chat's own shell. Only when it differs: a live
+        // edit of the project's value reaches plain chats through the runtime, and a role that says
+        // nothing inherited the same number anyway.
+        if (_roleSettings is { } role && role.ShellTimeoutSeconds != runtime.Settings.ShellTimeoutSeconds &&
+            _sandbox is SPLA.Domain.Host.PassthroughSandbox chatSandbox)
+            chatSandbox.SetShellSilentIdle(role.ShellTimeoutSeconds > 0
+                ? TimeSpan.FromSeconds(role.ShellTimeoutSeconds) : Timeout.InfiniteTimeSpan);
         Tasks = new SPLA.Domain.Tools.BackgroundTaskRegistry(_chatLifetime.Token);
         _agentSession = new AgentSession(
             _sessionKv, _checkpoint, _skillSession, sandbox: _sandbox, toolSets: _toolSetSession,
@@ -1210,7 +1228,10 @@ public sealed class ChatRuntime : IDisposable, SPLA.Domain.Agent.IBackgroundTask
             correspondence: this,
             // And once more: the Post link of the tool pipeline asks "how much room is left" through
             // the same ambient session, and this chat is the only thing that can answer.
-            contextBudget: this);
+            contextBudget: this,
+            // A role's settings, carried where every per-call decision reads them — tools, tool-set
+            // levels, trusted domains, question timeouts. Null for a plain chat = the project's, live.
+            settings: _roleSettings);
 
         // A reopened chat is as doubtful as it was when it closed. Restored rather than recomputed:
         // what raised the flag was an arrival, and arrivals do not happen again on load.
@@ -1262,14 +1283,11 @@ public sealed class ChatRuntime : IDisposable, SPLA.Domain.Agent.IBackgroundTask
             }
         }
 
-        // Wave 5б's narrowing: built fresh from the runtime's shared, read-only ToolSetRegistry plus
-        // this chat's own resolved ToolSets (the role's narrowing of them, or — with no role — null,
-        // which ChatToolHost treats as "skip the filter entirely" rather than "filter against
-        // nothing"). Nothing here mutates runtime.McpHost or runtime.ToolSets; the narrowing lives
-        // entirely in this chat's own ChatToolHost instance. Kept as a field (not built inline for the
+        // A role's narrowing and widening both come from _agentSession.Settings, read by the shared host
+        // itself (see ChatToolHost's own comment). Kept as a field (not built inline for the
         // orchestrator) so AvailableToolNames can inspect the exact same surface without standing up a
         // second one.
-        _toolHost = new ChatToolHost(runtime.McpHost, this, runtime.ToolSets, _roleSettings?.ToolSets);
+        _toolHost = new ChatToolHost(runtime.McpHost, this);
         _orchestrator = new ConversationOrchestrator(runtime.Llm, _toolHost)
         {
             // Live context surface, recomposed on every iteration inside this turn's
@@ -1304,8 +1322,8 @@ public sealed class ChatRuntime : IDisposable, SPLA.Domain.Agent.IBackgroundTask
             // Anti-repeat guard is a per-project setting (agent: loop_guard, default off) — it targets
             // small local models that loop forever, but false-fires on legitimate poll/wait patterns.
             // Only the tool-call guard exists; the error guard waits on a typed ToolResult (debt #4).
-            EnableLoopGuard = runtime.Settings.LoopGuard,
-            ToolLoopWindow = runtime.Settings.LoopGuardRepeats,
+            EnableLoopGuard = EffectiveSettings.LoopGuard,
+            ToolLoopWindow = EffectiveSettings.LoopGuardRepeats,
             Logger = runtime.LoggerFactory.CreateLogger<ConversationOrchestrator>()
         };
     }
@@ -1415,8 +1433,8 @@ public sealed class ChatRuntime : IDisposable, SPLA.Domain.Agent.IBackgroundTask
             // opens a few lines below.
 
             // Live loop-guard setting: a toggle in Settings applies to the very next turn.
-            _orchestrator.EnableLoopGuard = _runtime.Settings.LoopGuard;
-            _orchestrator.ToolLoopWindow = Math.Max(2, _runtime.Settings.LoopGuardRepeats);
+            _orchestrator.EnableLoopGuard = EffectiveSettings.LoopGuard;
+            _orchestrator.ToolLoopWindow = Math.Max(2, EffectiveSettings.LoopGuardRepeats);
 
             using var clarifyScope = ClarifyScope.Begin(clarifyHandler);
             using var agentScope = AgentSessionScope.Begin(_agentSession);
@@ -1532,7 +1550,7 @@ public sealed class ChatRuntime : IDisposable, SPLA.Domain.Agent.IBackgroundTask
     public int PersistedCountUpTo(string msgId)
     {
         var count = 0;
-        foreach (var m in _conversation.PersistableWith(_runtime.Settings.SaveToolCalls, _runtime.Settings.SaveAttempts))
+        foreach (var m in _conversation.PersistableWith(EffectiveSettings.SaveToolCalls, EffectiveSettings.SaveAttempts))
         {
             count++;
             if (m.MsgId == msgId) return count;
@@ -1543,8 +1561,8 @@ public sealed class ChatRuntime : IDisposable, SPLA.Domain.Agent.IBackgroundTask
     /// <summary>Persists the conversation and session KV back to the chat store.</summary>
     public void Save()
     {
-        var saveToolCalls = _runtime.Settings.SaveToolCalls;
-        var saveAttempts = _runtime.Settings.SaveAttempts;
+        var saveToolCalls = EffectiveSettings.SaveToolCalls;
+        var saveAttempts = EffectiveSettings.SaveAttempts;
         _chat.Messages.Clear();
         foreach (var m in _conversation.PersistableWith(saveToolCalls, saveAttempts))
         {

@@ -7,6 +7,8 @@ capabilities:
   - core.files
   - core.shell
   - core.memory
+toolsets:
+  roslyn: enabled
 custom_prompt: |
   You are CODER. You carry out exactly ONE step of a plan, then stop.
 
