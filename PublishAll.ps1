@@ -78,6 +78,7 @@ $plugins = @(
     @{ Name = 'roslyn';             Proj = 'src/plugins/SPLA.Plugins.Roslyn/SPLA.Plugins.Roslyn.csproj' }
     @{ Name = 'browser';            Proj = 'src/plugins/SPLA.Plugins.Browser/SPLA.Plugins.Browser.csproj' }
     @{ Name = 'ssh';                Proj = 'src/plugins/SPLA.Plugins.Ssh/SPLA.Plugins.Ssh.csproj' }
+    @{ Name = 'android';            Proj = 'src/plugins/SPLA.Plugins.Android/SPLA.Plugins.Android.csproj' }
     @{ Name = 'browser_screencast'; Proj = 'src/plugins/SPLA.Plugins.Browser.Screencast/SPLA.Plugins.Browser.Screencast.csproj' }
 )
 
@@ -93,6 +94,10 @@ $jobs = foreach ($p in $plugins) {
         if ($LASTEXITCODE -ne 0) { throw "publish failed for $($p.Name)" }
         $metaDir = Split-Path $p.Proj -Parent
         Copy-Item (Join-Path $metaDir 'meta.yaml') $out -Force
+        # Plugins may pin a runtime manifest next to their dll (android: runtime-manifest.json with
+        # the pinned component URLs and SHA-256). Copy it when the project ships one.
+        $runtimeManifest = Join-Path $metaDir 'runtime-manifest.json'
+        if (Test-Path $runtimeManifest) { Copy-Item $runtimeManifest $out -Force }
 
         # Skill trees go through the shared helper — one definition of what a skills folder is.
         # Jobs run in their own runspace, so it has to be dot-sourced again here.

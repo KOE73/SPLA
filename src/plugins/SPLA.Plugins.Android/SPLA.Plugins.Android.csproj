@@ -1,0 +1,43 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <RootNamespace>SPLA.Plugins.Android</RootNamespace>
+    <AssemblyName>SPLA.Plugins.Android</AssemblyName>
+    <!-- Self-contained plugin: copy third-party NuGet deps into the plugin folder so the
+         PluginLoadContext resolver finds them under any host (CLI/service, not just Avalonia). -->
+    <CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies>
+    <!-- The scrcpy video pipeline reads FFmpeg struct fields by offset through unmanaged
+         delegates (Video/FfmpegNative.cs, see AGENTS.md "FFmpeg interop"). -->
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\core\SPLA.Domain\SPLA.Domain.csproj" />
+    <ProjectReference Include="..\..\core\SPLA.MCP.Core\SPLA.MCP.Core.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- SPLA.Tests exercises the plugin internals directly (settings, runtime, backends). -->
+    <InternalsVisibleTo Include="SPLA.Tests" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Lands at TargetDir/meta.yaml so the CopyPlugin glob deploys it to plugins/android/meta.yaml. -->
+    <None Include="meta.yaml" CopyToOutputDirectory="PreserveNewest" />
+    <!-- Pinned runtime components (adb, scrcpy): URL + SHA-256 + version. Loaded at runtime by
+         Runtime/RuntimeManifest.cs from the plugin's own folder. -->
+    <None Include="runtime-manifest.json" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
+  <!-- Deploy the built plugin (dll + meta.yaml + runtime-manifest.json) into each host app's
+       plugins/android folder, which is where the runtime discovers plugins
+       (AppContext.BaseDirectory/plugins). Path is ..\..\apps\<app> — the host apps live under
+       src/apps, not src/plugins. -->
+  <Target Name="CopyPlugin" AfterTargets="Build">
+    <ItemGroup>
+      <PluginFiles Include="$(TargetDir)**\*.*" />
+    </ItemGroup>
+    <Copy SourceFiles="@(PluginFiles)" DestinationFolder="$(MSBuildThisFileDirectory)..\..\apps\SPLA.UI.Avalonia\bin\$(Configuration)\$(TargetFramework)\plugins\android\%(RecursiveDir)" SkipUnchangedFiles="true" />
+    <Copy SourceFiles="@(PluginFiles)" DestinationFolder="$(MSBuildThisFileDirectory)..\..\apps\SPLA.CLI\bin\$(Configuration)\$(TargetFramework)\plugins\android\%(RecursiveDir)" SkipUnchangedFiles="true" />
+  </Target>
+</Project>
