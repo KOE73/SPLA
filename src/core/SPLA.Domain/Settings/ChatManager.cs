@@ -130,7 +130,10 @@ public class ChatManager
     /// after that runtime already exists would narrow nothing until the chat was closed and reopened.
     /// Same reasoning <see cref="CreateSpawnedChat"/> already follows for a spawned session's own role.
     /// </summary>
-    public ChatSession CreateNewChat(string? title = null, string? role = null)
+    /// <param name="origin">"cli" for a chat <c>spla chat run</c> created (locally or handed over to a
+    /// live instance — see <c>RemoteChatRun</c>), null for one a human opened directly. Distinct from
+    /// <see cref="ChatSession.Origin"/>'s "spawned" value; a scripted run is not a spawned sub-agent.</param>
+    public ChatSession CreateNewChat(string? title = null, string? role = null, string? origin = null)
     {
         var chat = new ChatSession
         {
@@ -149,6 +152,7 @@ public class ChatManager
             {
                 Mode = _settings.Mode.ToString()
             },
+            Origin = origin,
             As = role,
             // A chat that is created BY being addressed gets its public name in the same breath
             // (ADR_20260906 §2.1): a role chat exists because someone asked for that role, so "created"

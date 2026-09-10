@@ -92,8 +92,8 @@ export interface ChatSummary {
   /** The role this chat runs as (`ChatSession.As`), or undefined for a plain chat with no role.
    *  Human chats can carry one too (a role-narrowed standing chat), not only spawned sessions. */
   as?: string;
-  /** "spawned" for a session `agent_spawn`/`agent_correspond` created, undefined for one a human
-   *  opened directly. */
+  /** "spawned" for a session `agent_spawn`/`agent_correspond` created; "cli" for one `spla chat run`
+   *  opened (locally or handed over to a live instance); undefined for one a human opened directly. */
   origin?: string;
   /** The chat id that spawned this session, or undefined. Present on every node in `children` — a
    *  tree client does not need it to walk down, but a flat consumer (the sessions panel) needs it

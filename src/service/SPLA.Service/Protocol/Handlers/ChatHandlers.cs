@@ -69,7 +69,7 @@ internal sealed class ChatHandlers : IMessageHandler
     {
         var (entry, projectId) = ctx.Session.Resolve(ctx.Env);
         var p = ctx.Payload<ChatNewPayload>() ?? new ChatNewPayload();
-        var chat = entry.Chats.CreateNew(p.Title);
+        var chat = entry.Chats.CreateNew(p.Title, origin: p.Origin);
         await ctx.Session.SendOpenedAsync(chat);
         await BroadcastChatList(ctx, projectId, entry.Chats);
     }

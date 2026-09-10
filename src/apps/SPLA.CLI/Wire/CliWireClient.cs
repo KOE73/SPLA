@@ -64,9 +64,9 @@ internal sealed class CliWireClient : IAsyncDisposable
     }
 
     /// <summary>Starts a chat and returns its id.</summary>
-    public async Task<string> NewChatAsync(string? title, CancellationToken ct)
+    public async Task<string> NewChatAsync(string? title, CancellationToken ct, string? origin = null)
     {
-        await SendAsync(MessageTypes.ChatNew, new ChatNewPayload { Title = title }, ct: ct);
+        await SendAsync(MessageTypes.ChatNew, new ChatNewPayload { Title = title, Origin = origin }, ct: ct);
         var opened = await WaitForAsync(MessageTypes.ChatOpened, ct);
         return Payload<ChatOpenedPayload>(opened)?.ChatId
             ?? throw new InvalidOperationException("The service opened a chat without giving it an id.");

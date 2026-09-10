@@ -91,9 +91,9 @@ public sealed class ChatRegistry : IDisposable, ISpawnSessionHost
     /// <see cref="SPLA.Domain.Settings.ChatManager.CreateNewChat"/> — stamps <c>as:</c> before the
     /// session ever reaches a <see cref="ChatRuntime"/> constructor, so a role passed here narrows
     /// this chat's tool surface and mode from its very first turn (PLAN_20260902 wave 5б).</summary>
-    public ChatRuntime CreateNew(string? title, string? role = null)
+    public ChatRuntime CreateNew(string? title, string? role = null, string? origin = null)
     {
-        var session = _runtime.ChatManager.CreateNewChat(title, role);
+        var session = _runtime.ChatManager.CreateNewChat(title, role, origin);
         var runtime = new ChatRuntime(_runtime, session, this);
         _open[session.Id] = runtime;
         RuntimeOpened?.Invoke(runtime);

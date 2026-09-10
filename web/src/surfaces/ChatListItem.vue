@@ -3,11 +3,6 @@
     class="chat-item" :class="{ active, archived }" :style="{ '--depth': depth }"
     @click="$emit('select', chat.id)"
   >
-    <!-- A spawned session sits under its parent role (ADR_20260827-2 §2.5: "список чатов становится
-         деревом роль → чат") — the connector says "this is someone's child", the role badge says
-         whose role it ran as. Depth alone (indent) reads as nesting but not as "why". -->
-    <span v-if="depth > 0" class="tree-connector">↳</span>
-    <span v-if="chat.as" class="role-badge" :title="`role: ${chat.as}`">{{ chat.as }}</span>
     <!-- Status dot: a fixed-width slot, always rendered (even idle, as an invisible placeholder) so
          the title never shifts depending on whether something happens to be busy/waiting/stalled right
          now. Priority when several apply: busy (a turn is literally running) > state (waiting/stalled)
@@ -17,17 +12,30 @@
       :class="chat.turnActive ? 'busy' : (chat.state && chat.state !== 'idle') ? `state-${chat.state}` : 'idle'"
       :title="chat.turnActive ? 'A turn is running in this chat' : (chat.state ? stateLabel(chat.state) : '')"
     >●</span>
-    <span class="t">{{ chat.title || chat.id }}</span>
-    <template v-if="archived">
-      <span class="x" :title="t('Restore')" @click.stop="$emit('restore', chat.id)">↺</span>
-      <span class="x" :title="t('Delete permanently')" @click.stop="$emit('delete-permanently', chat.id)">✕</span>
-    </template>
-    <template v-else>
-      <span class="x" :title="t('Open in a separate window')" @click.stop="$emit('open-window', chat)">⧉</span>
-      <span class="x" :title="t('Rename')" @click.stop="$emit('rename', chat)">✎</span>
-      <span class="x" :title="t('Archive')" @click.stop="$emit('archive', chat.id)">🗄</span>
-      <span class="x" :title="t('Delete')" @click.stop="$emit('delete', chat.id)">✕</span>
-    </template>
+    <span class="title-col">
+      <!-- A spawned session sits under its parent role (ADR_20260827-2 §2.5: "список чатов становится
+           деревом роль → чат") — the connector says "this is someone's child", the role badge says
+           whose role it ran as. Both belong to the title, after the status dot: placed before it they
+           pushed the dot out of the column every other row keeps it in. -->
+      <span class="title-row">
+        <span v-if="depth > 0" class="tree-connector">↳</span>
+        <span v-if="chat.as" class="role-badge" :title="`role: ${chat.as}`">{{ chat.as }}</span>
+        <span class="t">{{ chat.title || chat.id }}</span>
+      </span>
+      <span v-if="chat.origin === 'cli'" class="run-badge" :title="t('Started by spla chat run')">{{ t('chat run') }}</span>
+    </span>
+    <span class="actions">
+      <template v-if="archived">
+        <span class="x" :title="t('Restore')" @click.stop="$emit('restore', chat.id)">↺</span>
+        <span class="x" :title="t('Delete permanently')" @click.stop="$emit('delete-permanently', chat.id)">✕</span>
+      </template>
+      <template v-else>
+        <span class="x" :title="t('Open in a separate window')" @click.stop="$emit('open-window', chat)">⧉</span>
+        <span class="x" :title="t('Rename')" @click.stop="$emit('rename', chat)">✎</span>
+        <span class="x" :title="t('Archive')" @click.stop="$emit('archive', chat.id)">🗄</span>
+        <span class="x" :title="t('Delete')" @click.stop="$emit('delete', chat.id)">✕</span>
+      </template>
+    </span>
   </div>
 
   <!-- Spawned descendants, nested to whatever depth the spawn chain reached (ChatSummary.children).
@@ -91,7 +99,21 @@ function stateLabel(state: string): string {
 }
 .chat-item:hover { background: color-mix(in srgb, var(--text) 6%, transparent); }
 .chat-item.active { background: var(--accent-soft); color: var(--accent); }
-.chat-item .t { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.chat-item .title-col {
+  flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 1px; justify-content: center;
+}
+.chat-item .title-row { display: flex; align-items: center; gap: var(--sp-2); min-width: 0; }
+.chat-item .t { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* "chat run" badge: a scripted spla chat run created this chat. Sits directly under the title (not
+   before it, so it never competes with the tree connector/role badge for the indent zone) and uses a
+   different tint from .role-badge on purpose — the two must never read as the same kind of tag. */
+.chat-item .run-badge {
+  align-self: flex-start; font-size: 10px; font-weight: 600; line-height: 1.3;
+  padding: 0 4px; border-radius: var(--radius-sm);
+  background: color-mix(in srgb, var(--warning, #d4a520) 18%, transparent);
+  color: var(--warning, #d4a520);
+}
 
 /* Tree: a spawned session's connector + the role it ran as (ADR_20260827-2 §2.5's "дерево роль → чат"). */
 .chat-item .tree-connector { color: var(--muted); flex-shrink: 0; }
@@ -119,7 +141,18 @@ function stateLabel(state: string): string {
 @keyframes state-waiting-pulse { 0%, 100% { opacity: 1; } 50% { opacity: .5; } }
 .chat-item .status-dot.state-stalled { color: var(--muted); opacity: .6; }
 
-.chat-item .x { color: var(--muted); opacity: 0; font-size: var(--fs-xs); padding: 0 2px; flex-shrink: 0; }
-.chat-item:hover .x { opacity: .8; }
+/* Action buttons stay collapsed (zero width) so the title gets the full row by default — only a hover
+   over the chat's own row claims space for them and pushes the title back over, instead of a permanently
+   reserved empty column down the whole list. */
+.chat-item .actions {
+  display: flex; align-items: center; flex-shrink: 0; overflow: hidden;
+  width: 0; opacity: 0; transition: width .12s ease, opacity .12s ease;
+}
+.chat-item:hover .actions { width: 88px; opacity: 1; }
+.chat-item.archived:hover .actions { width: 44px; }
+.chat-item .x {
+  color: color-mix(in srgb, var(--text) 65%, var(--muted));
+  font-weight: 700; font-size: 13px; padding: 0 3px; flex-shrink: 0;
+}
 .chat-item .x:hover { color: var(--danger); }
 </style>

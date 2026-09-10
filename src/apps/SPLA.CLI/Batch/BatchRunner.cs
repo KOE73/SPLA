@@ -71,7 +71,7 @@ public sealed class BatchRunner(AgentRuntime runtime, ResolvedSettings settings)
         // failure belongs to — the case where a report is worth most.
         var stats = RunStats.For(cell, settings, this);
 
-        var chat = new ChatRegistry(runtime).CreateNew($"{cell.Prompt.Name} · {cell.Model.DisplayName}");
+        var chat = new ChatRegistry(runtime).CreateNew($"{cell.Prompt.Name} · {cell.Model.DisplayName}", origin: "cli");
         chat.ApplySettings(mode: null, modelId: cell.Model.Id);
 
         if (SkillId is { Length: > 0 } skillId && chat.ActivateSkill(skillId) is { } skillError)

@@ -181,6 +181,10 @@ public sealed class ChatOpenPayload
 public sealed class ChatNewPayload
 {
     public string? Title { get; set; }
+
+    /// <summary>"cli" for a chat <c>spla chat run</c> is opening over the wire on a live instance
+    /// (<c>RemoteChatRun</c>), null for one a window opened directly.</summary>
+    public string? Origin { get; set; }
 }
 
 /// <summary>Rewind a chat to a message: everything after it is discarded. With

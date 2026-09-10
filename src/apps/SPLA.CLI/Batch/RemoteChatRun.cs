@@ -89,7 +89,7 @@ internal static class RemoteChatRun
         var failures = 0;
         foreach (var prompt in prompts)
         {
-            var chatId = await client.NewChatAsync(prompt.Name, ct);
+            var chatId = await client.NewChatAsync(prompt.Name, ct, origin: "cli");
             var answer = new System.Text.StringBuilder();
 
             var error = await client.SendAndStreamAsync(
