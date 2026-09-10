@@ -70,10 +70,36 @@ Full reasoning: [`ADR_20260731-2_docs_reviews-fresh-eyes`](../docs/adr/ADR_20260
   only genre obliged to track the code.
 - When moving documents, use `git mv` so history survives.
 
+## Docs across parallel branches (`docs/ideas`, `docs/plans`, `docs/adr`)
+
+Branch-per-piece ([git.md](git.md)) solves code conflicts; these files fail differently — usually
+not a git conflict at all, which is the dangerous case, since nothing forces anyone to notice.
+
+- **Naming collisions.** `GENRE_YYYYMMDD_zone_short-name.md` (see above) already carries a `-N`
+  suffix for same-day files (`IDEA_20260813-2_...`, `IDEA_20260813-4_...`) — use it. Before picking
+  a slot, check the next free `-N` across **`git log --all`**, not just the current branch: two
+  branches started the same day and merged later can otherwise both land on `-2` — git merges that
+  cleanly as two distinct files with near-identical names, so the collision is invisible until a
+  human reads them.
+- **ADRs never get edited — including to resolve a conflict.** If a later ADR reaches a different
+  conclusion than an earlier one, it says so explicitly ("supersedes ADR_YYYYMMDD_..."); it does not
+  rewrite the old file's answer. This already follows from "ADR = record of how the thinking
+  evolved", but the parallel-branch case is where forgetting it actually bites: two branches can
+  each honestly believe their ADR is the current answer.
+- **STOP-marked files under `agents/`** (protocol.md, secrets.md, toolsets.md, composition.md,
+  skills.md, …) declare themselves authoritative over specific code. If your branch changed code a
+  STOP-file governs, updating that file is part of the same merge, not a follow-up — a docs/code
+  split that survives the merge is exactly the drift these files exist to prevent. Check this when
+  merging *any* branch into `work`, including one you did not author.
+
 ## Translation Rule
 
 Terminology for any Russian text — including which English terms of art must not be translated
 literally — lives in [`glossary.md`](glossary.md).
+
+Any file under `agents/` that is updated must have its Russian translation in `docs/` updated in the
+same commit. Translation target: `docs/<same-name>_ru.md`. Exception: files with no existing `_ru`
+counterpart do not require one unless explicitly requested.
 
 When the user asks to translate documentation without explicitly naming a source file, target file,
 or folder, assume the request applies only to user-facing README-style files.

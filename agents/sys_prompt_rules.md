@@ -149,7 +149,15 @@ When a known conflict cannot be immediately resolved, mark it explicitly in the 
 
 All text in every block — tool descriptions, skill metadata, plugin prompts, the global prompt — is written in English only. Russian translations live in `docs/` only and are never injected into any prompt.
 
-**Why:** The model's semantic matching operates on English. Non-English text in prompts pollutes trigger matching, wastes tokens, and produces inconsistent behavior for users of other languages. See `AGENTS.md` for full rationale.
+**Why:** The model's semantic matching operates on English. Non-English text in prompts pollutes trigger matching, wastes tokens, and breaks semantic search for users of other languages. The model handles multilingual input natively; the system prompt is the contract layer — keep it language-neutral (English).
+
+This covers, concretely:
+- `description:` frontmatter in all `.md` skill files.
+- `default_prompt` / `custom_prompt` in `meta.yaml` plugin manifests.
+- `GetHelpText()` tool help bodies.
+- Trigger examples in skill bodies (`Run when the user asks...`).
+
+Do NOT add locale-specific keywords, phrases, or examples to any of the above.
 
 ---
 

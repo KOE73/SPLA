@@ -115,7 +115,7 @@ in addition to the root `AGENTS.md`.
 - `docs/`, `agents/`, `Images/`: Documentation and assets (unchanged by the layered `src/` layout).
 - `.github/workflows/`: GitHub Actions. `ci.yml` (build + tests on `main`/`work` and on pull
   requests into `main`) and `release.yml` (a push to `main` that touches sources, or a manual run →
-  `PublishAll.ps1` → GitHub release). See the CI and releases section of [AGENTS.md](../AGENTS.md).
+  `PublishAll.ps1` → GitHub release). See [release.md](release.md).
 
   **Adding a source root means adding it to `release.yml`.** That workflow triggers on an
   *allow-list* of source paths — the roots listed in this file — because documentation is an open
@@ -125,11 +125,13 @@ in addition to the root `AGENTS.md`.
   dated), `current-list.md` (one line per change, derived from the log) and `current-summary.md`
   (prose, rewritten before each push) — plus one frozen `<version>.md` per released version.
   `release.yml` builds the release body from the summary and the list. Rules in
-  [AGENTS.md](../AGENTS.md).
+  [release.md](release.md).
 
 ## Root Files
 
-- `AGENTS.md`: Entry-point instructions for agents working in this repository.
+- `AGENTS.md`: Entry-point instructions for agents working in this repository — the core rules and
+  an index of everything under `agents/`.
+- `CLAUDE.md`: One-line import of `AGENTS.md`, so Claude Code loads the core into every session.
 - `README.md`: Main English user README.
 - `README_RU.md`: Main Russian user README.
 - `spla.spla`: Example/current SPLA project file for this workspace.
@@ -156,7 +158,10 @@ Current user docs:
 Current agent docs:
 
 - `agents/avalonia.md`: Avalonia UI development rules.
-- `agents/documentation.md`: Documentation layout and translation rules.
+- `agents/csharp.md`: Modern C# language usage and naming rules.
+- `agents/documentation.md`: Documentation layout, parallel-branch doc rules, and translation rules.
+- `agents/git.md`: Branches, worktrees, commit permission, commit message types.
+- `agents/release.md`: CI, releases, and the changelog.
 - `agents/observability.md`: Observability conventions.
 - `agents/plugins.md`: Plugin system and tool naming conventions.
 - `agents/protocol.md`: Wire protocol & event registry (every `MessageTypes` constant; guarded by `ProtocolDocTests`).
@@ -171,7 +176,7 @@ Current agent docs:
 - `agents/data-ownership.md`: Data ownership rules — UI must not own domain data. Read before adding any registry, flag, or discovery logic.
 
 Per-layer directional docs also live next to the code: `src/core/AGENTS.md`, `src/agent/AGENTS.md`,
-`src/service/AGENTS.md`, `src/apps/AGENTS.md`, `src/plugins/AGENTS.md`.
+`src/service/AGENTS.md`, `src/apps/AGENTS.md`, `src/plugins/AGENTS.md`, `web/AGENTS.md`.
 
 ## Skills
 

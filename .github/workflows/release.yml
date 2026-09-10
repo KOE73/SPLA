@@ -6,7 +6,7 @@ name: Release
 #
 # This workflow decides nothing about the release. Every decision — the version, the frozen
 # changelog, the release body — is made locally, by hand, in one commit before the push that
-# triggers this run (see AGENTS.md, "CI and releases"). This workflow's only job is to check that
+# triggers this run (see agents/release.md, "CI and releases"). This workflow's only job is to check that
 # decision is actually there, run the same tests as ci.yml against it, and publish exactly what
 # was prepared. It fails rather than improvising if anything is missing.
 #
@@ -17,7 +17,7 @@ name: Release
 
 on:
   # Any push to `main` is the release decision — main receives nothing else under this branching
-  # model (see AGENTS.md). No `paths` filter: whether this run has anything to publish is decided
+  # model (see agents/git.md). No `paths` filter: whether this run has anything to publish is decided
   # by the "Verify release commit" step below, not by which files changed.
   push:
     branches: [main]
@@ -67,7 +67,7 @@ jobs:
           Write-Host "Committed version: v$major.$minor.$build"
 
       # The gate: is the release commit actually complete? Every check here mirrors a row in
-      # AGENTS.md's "CI and releases" table. Nothing downstream may compensate for a failure here —
+      # agents/release.md's "CI and releases" table. Nothing downstream may compensate for a failure here —
       # a missing file means the release was not prepared, not that this workflow should prepare it.
       - name: Verify release commit
         shell: pwsh
