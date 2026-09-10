@@ -163,6 +163,7 @@
     <File Path="docs/adr/ADR_20260908_llm_retry-and-pacing.md" />
     <File Path="docs/adr/ADR_20260908-2_core_result-size.md" />
     <File Path="docs/adr/ADR_20260909_core_named-images.md" />
+    <File Path="docs/adr/ADR_20260910_plugins_android-device.md" />
   </Folder>
   <Folder Name="/docs/plans/">
     <File Path="docs/plans/PLAN_20260619_agent_skills-lifecycle.md" />
@@ -201,6 +202,7 @@
     <File Path="docs/plans/PLAN_20260903_diagrams_content-and-routing.md" />
     <File Path="docs/plans/PLAN_20260904_core_chat-graph.md" />
     <File Path="docs/plans/PLAN_20260906_core_chat-directory-and-await.md" />
+    <File Path="docs/plans/PLAN_20260910_plugins_android-device.md" />
   </Folder>
   <Folder Name="/docs/ideas/">
     <File Path="docs/ideas/IDEA_20260611_core_todo-general.md" />
@@ -280,6 +282,9 @@
   <Folder Name="/src/plugins/browser/">
     <Project Path="src/plugins/SPLA.Plugins.Browser/SPLA.Plugins.Browser.csproj" />
     <Project Path="src/plugins/SPLA.Plugins.Browser.Screencast/SPLA.Plugins.Browser.Screencast.csproj" />
+  </Folder>
+  <Folder Name="/src/plugins/device/">
+    <File Path="src/plugins/SPLA.Plugins.Android/AGENTS.md" />
   </Folder>
   <Folder Name="/src/plugins/data/">
     <Project Path="src/plugins/SPLA.Plugins.Sql/SPLA.Plugins.Sql.csproj" />
