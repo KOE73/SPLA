@@ -76,6 +76,17 @@ public sealed class AndroidSettings
         MaxFps = Clamp(MaxFps, 1, 120);
         SettleMs = Clamp(SettleMs, 0, 5000);
         SettleTimeoutMs = Clamp(SettleTimeoutMs, 0, 30000);
+        IdleDisconnectMinutes = Clamp(IdleDisconnectMinutes, 1, 1440);
+        VideoBitRate = Clamp(VideoBitRate, 500_000, 100_000_000);
+        // 0 is the standard adb server port 5037; 1..1023 are reserved, so anything below 1024
+        // that is not 0 snaps up to 1024.
+        AdbServerPort = AdbServerPort switch
+        {
+            0 => 0,
+            < 1024 => 1024,
+            > 65535 => 65535,
+            _ => AdbServerPort,
+        };
     }
 
     private static int Clamp(int value, int min, int max) =>

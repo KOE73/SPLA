@@ -80,6 +80,45 @@ public sealed class AndroidSettingsTests
     }
 
     [Fact]
+    public void FromBlob_idle_disconnect_minutes_clamps_to_1_1440()
+    {
+        var below = AndroidSettings.FromBlob(new Dictionary<string, object> { ["idle_disconnect_minutes"] = 0 });
+        var above = AndroidSettings.FromBlob(new Dictionary<string, object> { ["idle_disconnect_minutes"] = 2880 });
+        var inRange = AndroidSettings.FromBlob(new Dictionary<string, object> { ["idle_disconnect_minutes"] = 45 });
+
+        Assert.Equal(1, below.IdleDisconnectMinutes);
+        Assert.Equal(1440, above.IdleDisconnectMinutes);
+        Assert.Equal(45, inRange.IdleDisconnectMinutes);
+    }
+
+    [Fact]
+    public void FromBlob_video_bit_rate_clamps_to_500000_100000000()
+    {
+        var below = AndroidSettings.FromBlob(new Dictionary<string, object> { ["video_bit_rate"] = 100_000 });
+        var above = AndroidSettings.FromBlob(new Dictionary<string, object> { ["video_bit_rate"] = 500_000_000 });
+        var inRange = AndroidSettings.FromBlob(new Dictionary<string, object> { ["video_bit_rate"] = 4_000_000 });
+
+        Assert.Equal(500_000, below.VideoBitRate);
+        Assert.Equal(100_000_000, above.VideoBitRate);
+        Assert.Equal(4_000_000, inRange.VideoBitRate);
+    }
+
+    [Theory]
+    [InlineData(0, 0)]        // 0 = the standard adb server port 5037, a valid value.
+    [InlineData(1, 1024)]     // reserved range 1..1023 snaps up to 1024.
+    [InlineData(1023, 1024)]
+    [InlineData(1024, 1024)]
+    [InlineData(5038, 5038)]
+    [InlineData(65535, 65535)]
+    [InlineData(70000, 65535)]
+    public void FromBlob_adb_server_port_clamps_reserved_and_out_of_range_values(int input, int expected)
+    {
+        var settings = AndroidSettings.FromBlob(new Dictionary<string, object> { ["adb_server_port"] = input });
+
+        Assert.Equal(expected, settings.AdbServerPort);
+    }
+
+    [Fact]
     public void FromBlob_reads_snake_case_keys()
     {
         var settings = AndroidSettings.FromBlob(new Dictionary<string, object>
