@@ -19,6 +19,15 @@
            carries it, and it is the one thing about a connection that changes without being edited. -->
       <span class="conn-status" :class="healthClass" :title="healthTitle"></span>
       <span class="conn-name">{{ headName }}</span>
+      <!-- Two layers declaring one id is legal, and the loser still lives in its own file. Saying so
+           here is what keeps the panel honest: without it the same name appears twice with no way to
+           tell which one a chat actually opens on. -->
+      <span v-if="conn.shadowed" class="conn-shadowed" :title="shadowedTitle">{{ t('shadowed') }}</span>
+      <!-- The one thing worth seeing without opening eight model rows: not just THAT this connection
+           has the default, but WHICH model on it — a connection can carry several. -->
+      <span v-if="defaultModel" class="conn-default" :title="defaultModelTitle">
+        ★ {{ defaultModel.name || defaultModel.model || defaultModel.id }}
+      </span>
       <span v-if="!open" class="conn-provider">{{ providerLabel }}</span>
     </template>
 
@@ -184,6 +193,18 @@
             <label class="field"><span>{{ t('Temperature') }}</span>
               <input type="number" step="0.1" min="0" max="2" v-model.number="m.temperature" :placeholder="t('project default')">
             </label>
+            <!-- One per scope, not one per connection: the resolver refuses a layer with two marks,
+                 so clearing the others is the panel's job, not this card's — it only reports the ask. -->
+            <div class="field conn-flags">
+              <span></span>
+              <div class="conn-flags-wrap">
+                <label class="flag-check">
+                  <input type="checkbox" :checked="!!m.default"
+                         @change="$emit('set-default', m, ($event.target as HTMLInputElement).checked)">
+                  {{ t('Default for new chats') }}
+                </label>
+              </div>
+            </div>
             <div class="conn-actions">
               <button class="btn ghost" :disabled="testing" @click="testChat(m)">
                 {{ testing ? "…" : t('Test chat') }}
@@ -239,13 +260,29 @@ const PROVIDER_DEFAULT_EP: Record<string, string> = {
 
 const props = withDefaults(defineProps<{ conn: ConnectionDto; health?: ConnHealth; open?: boolean }>(),
   { open: false });
-defineEmits<{ remove: []; "update:open": [boolean] }>();
+defineEmits<{
+  remove: [];
+  "update:open": [boolean];
+  /** The model this card wants marked (or unmarked) as the layer's default. The card never writes the
+   *  flag itself: uniqueness spans every connection in the scope, and only the panel sees all of them. */
+  "set-default": [ModelEntryDto, boolean];
+}>();
 
 const requestKey = computed(() => props.conn.id || props.conn.clientId || "");
 
 // ── The head ─────────────────────────────────────────────────────────────────
 // A connection is named by its name, falls back to its id, and a brand-new one has neither yet.
 const headName = computed(() => props.conn.name || props.conn.id || t("(new connection)"));
+
+const shadowedTitle = computed(() =>
+  t('A later layer declares "{id}" too, so chats use that one. This entry still lives in this file — edit or delete it here.',
+    { id: props.conn.id }));
+
+// At most one per connection (the panel enforces at most one per SCOPE, which spans several
+// connections, so a shut connection still names one model here at most).
+const defaultModel = computed(() => props.conn.models.find(m => m.default));
+
+const defaultModelTitle = computed(() => t('Default for new chats'));
 
 const providerLabel = computed(() => {
   const value = props.conn.provider || "lmstudio";
@@ -260,7 +297,10 @@ const summary = computed(() => {
   return `${where} · ${n === 1 ? t("1 model") : t("{n} models", { n })}`;
 });
 
-const modelTitle = (m: ModelEntryDto) => m.name || m.model || m.id || t("(new model)");
+// The mark rides in the shut row's title: which model a new chat opens on is the one thing here worth
+// seeing without opening eight rows to find it.
+const modelTitle = (m: ModelEntryDto) =>
+  (m.default ? "★ " : "") + (m.name || m.model || m.id || t("(new model)"));
 
 // ── Scope: which file this connection lives in ───────────────────────────────
 // An entry that never said counts as project — the layer everything was in before scopes existed,
@@ -428,6 +468,13 @@ async function testChat(m: ModelEntryDto) {
 .conn-name { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 /* The provider rides along with the name while shut, so it is a qualifier, not a second title. */
 .conn-provider { font-weight: 400; color: var(--muted); font-size: var(--fs-sm); white-space: nowrap; }
+/* A note, not a warning: the entry is fine, it just is not the one in force. */
+.conn-shadowed { font-weight: 400; color: var(--muted); font-size: var(--fs-xs); white-space: nowrap;
+  border: 1px solid var(--line); border-radius: 3px; padding: 0 4px; opacity: .85; }
+/* Positive, not a warning — same star as the model row and the chat picker, so the mark reads as one
+   thing wherever it turns up. */
+.conn-default { font-weight: 400; color: var(--accent); font-size: var(--fs-sm); white-space: nowrap;
+  overflow: hidden; text-overflow: ellipsis; }
 /* The id is shown, not edited: it reads as the key it is, in the same mono the old id bar used. */
 .conn-id-value { font-family: var(--mono); font-size: var(--fs-xs); color: var(--accent);
   min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }

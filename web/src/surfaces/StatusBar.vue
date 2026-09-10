@@ -347,7 +347,9 @@ function connEmoji(connectionId: string): string {
  *  native select does not show its optgroup. */
 function modelLabel(m: ModelPickDto): string {
   const entryLabel = m.model && m.model !== m.name ? `${m.name} · ${m.model}` : m.name;
-  return `${m.connectionName || m.connectionId} | ${entryLabel}`;
+  // For reference only — picking a different model is unaffected; this just says which one a NEW
+  // chat would have opened on, using the same star the connections editor marks it with.
+  return `${m.default ? "★ " : ""}${m.connectionName || m.connectionId} | ${entryLabel}`;
 }
 
 const selectedModelLabel = computed(() => {
@@ -429,14 +431,18 @@ const offContext = client.on("project.context", p => {
 // The editor broadcasts the connection TREE; the picker needs it flattened. Done here rather than
 // asking the server for a second shape — the tree already carries everything the two levels need.
 const offResult = client.on("connections.result", p => {
-  picks.value = (p.connections || []).flatMap(c =>
+  // This event now carries every layer's DECLARATIONS (the settings editor's own need — see
+  // ADR_20260909-2), including an entry a project shadows. A shadowed connection never resolves for
+  // a turn, so its models have no business in a per-chat picker; skip it, same as resolution does.
+  picks.value = (p.connections || []).filter(c => !c.shadowed).flatMap(c =>
     (c.models || []).map(m => ({
       id: m.id,
       name: m.name || m.model || m.id,
       model: m.model,
       connectionId: c.id,
       connectionName: c.name || c.id,
-      provider: c.provider
+      provider: c.provider,
+      default: !!m.default
     })));
 });
 // The badge follows whatever the last read reported — including a read triggered by another window.

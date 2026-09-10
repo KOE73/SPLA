@@ -20,11 +20,22 @@ namespace SPLA.Service;
 /// </summary>
 public static class SettingsOps
 {
-    public static ConnectionsPayload GetConnections(AgentRuntime runtime) => new()
+    /// <summary>The connection tree for the editor, taken from what the layers <i>declare</i> rather
+    /// than from what resolution produced. An id in two layers must appear twice here: the panel
+    /// rewrites each layer file wholesale on save, so anything it cannot see is something it would
+    /// silently delete. See <see cref="ResolvedSettings.DeclaredConnections"/>.</summary>
+    public static ConnectionsPayload GetConnections(AgentRuntime runtime)
+    {
+        // Which declared entry actually won its id. Resolution keeps the live objects rather than
+        // copies, so identity is the exact answer — no need to re-derive the precedence rule here.
+        var winners = new HashSet<object>(runtime.Settings.Connections, ReferenceEqualityComparer.Instance);
+
+        return new ConnectionsPayload
     {
         CanPersist = runtime.Settings.ProjectFilePath != null,
-        Connections = runtime.Settings.Connections.Select(c => new ConnectionEditDto
+        Connections = runtime.Settings.DeclaredConnections.Select(c => new ConnectionEditDto
         {
+            Shadowed = !winners.Contains(c),
             Id = c.Id,
             Name = c.Name,
             Provider = c.Provider,
@@ -57,7 +68,8 @@ public static class SettingsOps
                 Temperature = m.Temperature
             }).ToList()
         }).ToList()
-    };
+        };
+    }
 
     /// <summary>Replaces the connection list: persists to the .spla project (when present) and mutates
     /// the live settings so chats see the new set immediately. Returns the canonical list to broadcast.</summary>
@@ -66,23 +78,39 @@ public static class SettingsOps
         // What is on disk now, to fall back on per credential: the editor is never handed a literal,
         // so a blank field means "unchanged", not "cleared". Without this, opening the panel and
         // pressing Save on a project with pasted keys would wipe every one of them.
-        var stored = runtime.Settings.Connections
+        // Keyed by layer AND id: the same id legitimately exists in two layers (a personal `default`
+        // shadowed by a project one), and folding them together would hand one layer's credentials to
+        // the other's entry.
+        var stored = runtime.Settings.DeclaredConnections
+            .GroupBy(c => (c.Scope, c.Id), ScopedId)
+            .ToDictionary(g => g.Key, g => g.First(), ScopedId);
+
+        // Fallback for a client that sent no scope: it cannot be placed in a layer yet, so the only
+        // question its id can answer is "where did an entry by this name already live".
+        var storedAnyLayer = runtime.Settings.DeclaredConnections
             .GroupBy(c => c.Id, StringComparer.OrdinalIgnoreCase)
             .ToDictionary(g => g.Key, g => g.First(), StringComparer.OrdinalIgnoreCase);
 
         var sections = incoming
-            .Select(d => ToSection(d, stored))
+            .Select(d => ToSection(d, stored, storedAnyLayer))
             .Where(c => !string.IsNullOrWhiteSpace(c.Id))
-            .GroupBy(c => c.Id, StringComparer.OrdinalIgnoreCase)   // last write wins per id
+            .GroupBy(c => (c.Scope, c.Id), ScopedId)   // last write wins per id WITHIN a layer
             .Select(g => g.Last())
             .ToList();
 
         // Model ids are referenced by chats without naming a connection, so a duplicate across two
         // connections has no defined meaning. Resolution throws on one — refusing the save here is
         // what keeps a bad edit from writing a project file that no longer loads.
+        //
+        // Within a layer, though. Two layers declaring the same connection id also carry the same
+        // model ids, and only one of those connections survives the merge — so they never meet in the
+        // flat list. Checking across layers would refuse the very configuration this save exists to
+        // preserve.
         var clash = sections
-            .SelectMany(c => c.Models.Select(m => (Conn: c.Id, m.Id)))
-            .GroupBy(x => x.Id, StringComparer.OrdinalIgnoreCase)
+            .GroupBy(c => c.Scope)
+            .SelectMany(layer => layer
+                .SelectMany(c => c.Models.Select(m => (Conn: c.Id, m.Id)))
+                .GroupBy(x => x.Id, StringComparer.OrdinalIgnoreCase))
             .FirstOrDefault(g => g.Count() > 1);
         if (clash != null)
         {
@@ -115,9 +143,21 @@ public static class SettingsOps
         // Mutate the live settings in place so running chats resolve against the new list. The flat
         // model projection is rebuilt from the same objects — chats resolve through it, so leaving it
         // stale would keep them pointed at the pre-save tree.
+        //
+        // The saved list is every layer's declarations; what a chat resolves against is the merge of
+        // them. Re-apply it here rather than assigning the flat list, or a shadowed entry would enter
+        // the live tree as a second connection of the same id and the flat model list would carry two
+        // entries per model — the ambiguity the id-uniqueness rule exists to prevent.
+        runtime.Settings.DeclaredConnections = sections;
+
+        var merged = new Dictionary<string, SplaConnectionSection>(StringComparer.OrdinalIgnoreCase);
+        foreach (var scope in ConnectionScopes.MergeOrder)
+            foreach (var c in ForScope(sections, scope))
+                merged[c.Id] = c;
+
         runtime.Settings.Connections.Clear();
-        runtime.Settings.Connections.AddRange(sections);
-        runtime.Settings.Models = sections
+        runtime.Settings.Connections.AddRange(merged.Values);
+        runtime.Settings.Models = runtime.Settings.Connections
             .SelectMany(c => c.Models.Select(m => new ResolvedModelEntry { Connection = c, Entry = m }))
             .ToList();
 
@@ -1035,11 +1075,34 @@ public static class SettingsOps
         IEnumerable<SplaConnectionSection> sections, ConnectionScope scope)
         => sections.Where(c => c.Scope == scope).ToList();
 
+    /// <summary>Identity of a connection entry as the editor and the layer files see it: the pair, not
+    /// the id alone. Two layers may declare the same id, and each is its own entry.</summary>
+    private static readonly IEqualityComparer<(ConnectionScope Scope, string Id)> ScopedId =
+        new ScopedIdComparer();
+
+    private sealed class ScopedIdComparer : IEqualityComparer<(ConnectionScope Scope, string Id)>
+    {
+        public bool Equals((ConnectionScope Scope, string Id) a, (ConnectionScope Scope, string Id) b)
+            => a.Scope == b.Scope && string.Equals(a.Id, b.Id, StringComparison.OrdinalIgnoreCase);
+
+        public int GetHashCode((ConnectionScope Scope, string Id) x)
+            => HashCode.Combine(x.Scope, StringComparer.OrdinalIgnoreCase.GetHashCode(x.Id));
+    }
+
     private static SplaConnectionSection ToSection(
-        ConnectionEditDto d, IReadOnlyDictionary<string, SplaConnectionSection> stored)
+        ConnectionEditDto d,
+        IReadOnlyDictionary<(ConnectionScope, string), SplaConnectionSection> stored,
+        IReadOnlyDictionary<string, SplaConnectionSection> storedAnyLayer)
     {
         var id = string.IsNullOrWhiteSpace(d.Id) ? Slug(d.Name ?? "") : d.Id.Trim();
-        var previous = stored.GetValueOrDefault(id);
+
+        // The entry this row IS, not merely one that shares its name: credentials and unspoken fields
+        // fall back to the same layer's stored entry. Only a client that named no scope falls back to
+        // whatever layer happens to hold the id.
+        var previous = ConnectionScopes.TryParse(d.Scope, out var declaredScope)
+            ? stored.GetValueOrDefault((declaredScope, id))
+            : storedAnyLayer.GetValueOrDefault(id);
+
         return new SplaConnectionSection
         {
             Id = id,
@@ -1047,8 +1110,8 @@ public static class SettingsOps
             // was — never "project by default", which would let an editor that has not learned about
             // scopes drag a person's own keys into a repository just by pressing Save. Only an entry
             // nobody has stored anywhere is new, and a new one belongs to the project being edited.
-            Scope = ConnectionScopes.TryParse(d.Scope, out var scope)
-                ? scope
+            Scope = ConnectionScopes.TryParse(d.Scope, out _)
+                ? declaredScope
                 : previous?.Scope ?? ConnectionScope.Project,
             Name = string.IsNullOrWhiteSpace(d.Name) ? null : d.Name.Trim(),
             Provider = Blank(d.Provider),

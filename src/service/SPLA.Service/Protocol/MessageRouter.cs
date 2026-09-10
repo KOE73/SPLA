@@ -163,7 +163,8 @@ internal static class ProtocolProjection
                 Model = m.Model,
                 ConnectionId = m.Connection.Id,
                 ConnectionName = m.Connection.DisplayName,
-                Provider = m.Provider
+                Provider = m.Provider,
+                Default = m.Entry.Default
             }).ToList(),
         Modes = Enum.GetNames<AgentMode>(),
         DefaultMode = runtime.Settings.Mode.ToString(),

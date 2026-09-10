@@ -155,6 +155,10 @@ public sealed class ConnectionDto
     public string ConnectionName { get; set; } = string.Empty;
 
     public string? Provider { get; set; }
+
+    /// <summary>The model a new chat opens on, for reference in the picker — the same fact the
+    /// connections editor marks with a star. Never narrows the list; it is a label, not a filter.</summary>
+    public bool Default { get; set; }
 }
 
 // ──────────────────────────────────────────────────────────────────────────
@@ -358,6 +362,13 @@ public sealed class ClarifyChoicePayload
 public sealed class ConnectionEditDto
 {
     public string Id { get; set; } = string.Empty;
+
+    /// <summary>A later layer declares this same id, so this entry is not the one a turn will use.
+    /// Read-only for the editor — a fact about the merge, not something a client sets. It still has
+    /// to be shown and saved: it is what its own file says, and dropping it from the panel would
+    /// delete it from that file on the next save.</summary>
+    public bool Shadowed { get; set; }
+
     public string? Name { get; set; }
     public string? Provider { get; set; }
     public string? Endpoint { get; set; }
@@ -403,8 +414,8 @@ public sealed class ModelEditDto
 {
     public string Id { get; set; } = string.Empty;
     public string? Name { get; set; }
-    /// <summary>Round-tripped even though the current editor does not expose a control for it, so
-    /// saving another field cannot erase a <c>default: true</c> written in YAML.</summary>
+    /// <summary>The model a new chat opens on. At most one per scope: the resolver refuses a layer
+    /// that marks two, so a client offering this control owes the clearing of the others.</summary>
     public bool Default { get; set; }
     public string? Model { get; set; }
     public int? ContextLength { get; set; }

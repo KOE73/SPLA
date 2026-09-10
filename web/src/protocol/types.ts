@@ -193,6 +193,9 @@ export interface ToolSetState {
 /** One editable connection: transport + credentials, owning its model entries. */
 export interface ConnectionDto {
   id: string;
+  /** A later layer declares this same id, so a turn uses that one instead. Server-computed; the
+   *  editor shows it and saves it back untouched — it is what this entry's own file says. */
+  shadowed?: boolean;
   clientId?: string;
   name?: string;
   provider?: string;
@@ -243,7 +246,7 @@ export interface ModelEntryDto {
   id: string;
   clientId?: string;
   name?: string;
-  /** Preserved on save; the YAML default-model control is not exposed in this editor yet. */
+  /** The model a new chat opens on. At most one per scope — the connections panel clears the others. */
   default?: boolean;
   model?: string;
   contextLength?: number;
@@ -260,6 +263,8 @@ export interface ModelPickDto {
   connectionId: string;
   connectionName: string;
   provider?: string;
+  /** The model a new chat opens on — shown in the picker for reference, same star as the editor. */
+  default?: boolean;
 }
 
 /** One provider-reported figure. `kind` drives formatting, `severity` drives the dot. */

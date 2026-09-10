@@ -12,4 +12,5 @@ repository and is linked from it.
 ---
 
 - **A connection model can be the project default, and its picker label is a valid CLI model name.**
+- **The settings editor picks a model's default without deleting a connection two layers happen to share an id with.**
 

@@ -32,9 +32,22 @@ public class ResolvedSettings
 
     /// <summary>Connections available to this project, each owning its models. Never empty after
     /// resolution — a default is synthesized from the <c>llm:</c> section when none are configured.
-    /// This is the <i>tree</i>, for the settings UI; consumers that need to run a turn want
-    /// <see cref="Models"/>.</summary>
+    /// This is the <i>tree</i> a turn resolves against: one entry per id, later layers having
+    /// shadowed earlier ones. Consumers that need to run a turn want <see cref="Models"/>; an editor
+    /// of the files wants <see cref="DeclaredConnections"/>.</summary>
     public List<SplaConnectionSection> Connections { get; set; } = new();
+
+    /// <summary>Every connection each layer <i>declares</i>, in merge order, with nothing collapsed —
+    /// so an id present in two layers appears twice, once per layer.
+    ///
+    /// <para>This is what an editor must show. <see cref="Connections"/> answers "what will a turn
+    /// use", which is a different question: a user-layer entry shadowed by a project entry of the
+    /// same id is absent from it entirely. Handing that list to the settings panel made the shadowed
+    /// entry invisible — and then saving the panel back, which rewrites each layer file wholesale,
+    /// deleted it from the person's own <c>connections.yaml</c> because the editor never knew it was
+    /// there. Same principle the roles editor states for bodies-versus-names: showing only one of the
+    /// two halves makes the other half's state impossible to see.</para></summary>
+    public List<SplaConnectionSection> DeclaredConnections { get; set; } = new();
 
     /// <summary>
     /// Every model entry across every connection, flattened, each still knowing its owner. This is
@@ -490,9 +503,11 @@ public static class SettingsResolver
         // keep working; connections.yaml is where the editor writes now, so an id present in both
         // resolves to the newer file.
         var connections = new Dictionary<string, SplaConnectionSection>(StringComparer.OrdinalIgnoreCase);
+        // What the files say, before any of them shadows another — see ResolvedSettings.DeclaredConnections.
+        var declaredConnections = new List<SplaConnectionSection>();
         string? defaultModelId = null;
         ApplyDefaultModelFromLayer(ref defaultModelId, sharedConnections, "connections.shared.yaml");
-        MergeConnections(connections, sharedConnections, ConnectionScope.Shared);
+        MergeConnections(connections, declaredConnections, sharedConnections, ConnectionScope.Shared);
 
         // mcp.servers merges across layers by id, same rule as connections above.
         var mcpServers = new Dictionary<string, SplaMcpServerSection>(StringComparer.OrdinalIgnoreCase);
@@ -508,7 +523,7 @@ public static class SettingsResolver
         if (defaults != null)
         {
             ApplyDefaultModelFromLayer(ref defaultModelId, defaults.Connections, "defaults.yaml");
-            MergeConnections(connections, defaults.Connections, ConnectionScope.User);
+            MergeConnections(connections, declaredConnections, defaults.Connections, ConnectionScope.User);
             if (defaults.Llm != null)
             {
                 llmEndpoint = defaults.Llm.Endpoint ?? llmEndpoint;
@@ -567,7 +582,7 @@ public static class SettingsResolver
 
         // Layer 2: this person's own connections file — over defaults.yaml, under the project.
         ApplyDefaultModelFromLayer(ref defaultModelId, userConnections, "connections.yaml");
-        MergeConnections(connections, userConnections, ConnectionScope.User);
+        MergeConnections(connections, declaredConnections, userConnections, ConnectionScope.User);
 
         // Layer 3: project overrides
         if (project != null)
@@ -579,7 +594,7 @@ public static class SettingsResolver
             r.Ignore = project.Ignore ?? new();
 
             ApplyDefaultModelFromLayer(ref defaultModelId, project.Connections, "project manifest");
-            MergeConnections(connections, project.Connections, ConnectionScope.Project);
+            MergeConnections(connections, declaredConnections, project.Connections, ConnectionScope.Project);
             if (project.Llm != null)
             {
                 llmEndpoint = project.Llm.Endpoint ?? llmEndpoint;
@@ -670,6 +685,10 @@ public static class SettingsResolver
                 ApiKey = llmApiKey,
                 Models = { new SplaModelSection { Id = "default", Name = "Default", Model = llmModel } }
             });
+
+        // The synthesized entry is declared too, as far as the editor is concerned: it is the one
+        // connection a fresh project has, and a panel that could not see it could not edit it.
+        r.DeclaredConnections = declaredConnections.Count > 0 ? declaredConnections : [.. r.Connections];
 
         r.Models = FlattenModels(r.Connections);
         r.DefaultModelId = defaultModelId;
@@ -847,6 +866,9 @@ public static class SettingsResolver
         TopP = baseline.TopP,
         MinP = baseline.MinP,
         Connections = baseline.Connections,
+        // Not narrowed by the role: this is what the project's files declare, and the settings editor
+        // asks that question of the project, never of a role.
+        DeclaredConnections = baseline.DeclaredConnections,
         Models = baseline.Models,
         DefaultModelId = baseline.DefaultModelId,
         Mode = baseline.Mode,
@@ -1017,8 +1039,12 @@ public static class SettingsResolver
     /// <summary>Adds/overrides connections by id, skipping entries without an id. Every entry is
     /// stamped with the layer it came from, so a later consumer (the editor deciding which file a
     /// save goes back to, a role selecting by scope) never has to guess.</summary>
+    /// <param name="declared">Accumulates every entry this layer declares, uncollapsed — see
+    /// <see cref="ResolvedSettings.DeclaredConnections"/>. An id shadowed here is still recorded
+    /// there, because the file it came from still says it.</param>
     private static void MergeConnections(
         Dictionary<string, SplaConnectionSection> into,
+        List<SplaConnectionSection> declared,
         IReadOnlyList<SplaConnectionSection>? from,
         ConnectionScope scope)
     {
@@ -1027,6 +1053,7 @@ public static class SettingsResolver
         {
             if (string.IsNullOrWhiteSpace(c.Id)) continue;
             c.Scope = scope;
+            declared.Add(c);
             into[c.Id] = c;
         }
     }

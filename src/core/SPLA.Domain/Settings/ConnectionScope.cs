@@ -49,6 +49,11 @@ public static class ConnectionScopes
     /// <summary>Every scope name, in merge order (least authoritative first).</summary>
     public static IReadOnlyList<string> AllNames { get; } = new[] { "shared", "user", "project" };
 
+    /// <summary>The scopes themselves, in the same merge order — for code that re-applies the merge
+    /// (later layer replaces an id wholesale) outside the resolver.</summary>
+    public static IReadOnlyList<ConnectionScope> MergeOrder { get; } =
+        new[] { ConnectionScope.Shared, ConnectionScope.User, ConnectionScope.Project };
+
     /// <summary>Parses a scope name. No default and no guessing — an unknown name fails, so a
     /// typo in a manifest is a message with the name in it rather than a silent relocation.</summary>
     public static bool TryParse(string? name, out ConnectionScope scope)
