@@ -42,6 +42,28 @@ if (isMcp && SPLA.CLI.McpCommand.IsHelpRequest(args))
     return;
 }
 
+// Usage is an answer this program can always give: it describes the commands, not the folder. Asking
+// for it in a directory with no manifest used to trip the project search and refuse ("say what this
+// folder should be") — a demand for a decision the person had not asked to make. So help is answered
+// here, ahead of bootstrap, from the same command tree the real run uses.
+if (IsHelpRequest(args))
+{
+    // "--help all" / "help all": the person is digging rather than asking about one command, so dump
+    // every leaf's usage in one pass instead of making them walk the tree by hand.
+    if (args.Any(a => a.Equals("all", StringComparison.OrdinalIgnoreCase)))
+    {
+        await PrintAllHelpAsync();
+        return;
+    }
+
+    var helpServices = new ServiceCollection();
+    helpServices.AddSingleton(loggerFactoryForHelp());
+    var helpApp = new CommandApp<ReplCommand>(new TypeRegistrar(helpServices));
+    helpApp.Configure(ConfigureFullApp);
+    Environment.ExitCode = await helpApp.RunAsync(NormalizeHelpArgs(args));
+    return;
+}
+
 if (!isMcp) Console.WriteLine("=== SPLA CLI ===");
 SplaTelemetry.ConfigureGlobalLogs();
 using var loggerFactory = LoggerFactory.Create(builder =>
@@ -87,23 +109,7 @@ services.AddSingleton(loggerFactory);
 services.AddSingleton(ctx.Settings);
 
 var app = new CommandApp<ReplCommand>(new TypeRegistrar(services));
-app.Configure(config =>
-{
-    ApplyCommonCliConventions(config);
-
-    config.AddBranch("chat", chat =>
-    {
-        chat.SetDescription("Manage or run chat sessions.");
-        chat.AddCommand<ChatListCommand>("list").WithDescription("List saved chats.");
-        chat.AddCommand<ChatOpenCommand>("open").WithDescription("Resume a saved chat (or start a new one) in the REPL.");
-        chat.AddCommand<ChatForkCommand>("fork").WithDescription("Duplicate a saved chat, optionally onto a different model.");
-        chat.AddCommand<ChatRunCommand>("run").WithDescription("Run one or more prompts against one or more models, headlessly, to the screen or to files.");
-    });
-
-    config.AddCommand<ServeCliCommand>("serve").WithDescription("Run the WebSocket service.");
-    config.AddCommand<SecretCliCommand>("secret").WithDescription("Manage the secret store.");
-    config.AddCommand<SystemCliCommand>("system").WithDescription("OS-level integration (file association).");
-});
+app.Configure(ConfigureFullApp);
 
 // ctx.Args, not args: the launch-profile flag was answered during bootstrap and the command parser
 // has never heard of it.
@@ -153,6 +159,92 @@ async Task<int> RunPreBootstrapCommandAsync(string cmd, string[] args)
 
     return await app.RunAsync(args);
 }
+
+/// <summary>Every leaf's usage, one after another, plus the MCP usage doc at the end — the whole
+/// tree in one scroll instead of `--help` on each command in turn. The leaf list is hand-kept (Spectre
+/// has no public API to walk its own tree), so a new command belongs here too; nothing enforces that,
+/// but the list is short and lives next to <see cref="ConfigureFullApp"/> on purpose.</summary>
+async Task PrintAllHelpAsync()
+{
+    string[][] leaves =
+    [
+        [], // top-level usage: the command list itself
+        ["chat", "list"], ["chat", "open"], ["chat", "fork"], ["chat", "run"],
+        ["serve"], ["secret"], ["system"],
+        ["init"], ["ps"], ["start"], ["stop"], ["hub"],
+    ];
+
+    var helpServices = new ServiceCollection();
+    helpServices.AddSingleton(loggerFactoryForHelp());
+    var helpApp = new CommandApp<ReplCommand>(new TypeRegistrar(helpServices));
+    helpApp.Configure(ConfigureFullApp);
+
+    foreach (var leaf in leaves)
+    {
+        Console.WriteLine(leaf.Length == 0 ? "=== spla ===" : $"=== spla {string.Join(' ', leaf)} ===");
+        await helpApp.RunAsync([.. leaf, "--help"]);
+        Console.WriteLine();
+    }
+
+    Console.WriteLine("=== spla mcp ===");
+    SPLA.CLI.McpCommand.PrintHelpMcp();
+}
+
+/// <summary>The command tree of a normal run. Shared with the pre-bootstrap help path above, so usage
+/// describes the commands that actually exist rather than a second, drifting copy of the list.</summary>
+void ConfigureFullApp(IConfigurator config)
+{
+    ApplyCommonCliConventions(config);
+
+    config.AddBranch("chat", chat =>
+    {
+        chat.SetDescription("Manage or run chat sessions.");
+        chat.AddCommand<ChatListCommand>("list").WithDescription("List saved chats.");
+        chat.AddCommand<ChatOpenCommand>("open").WithDescription("Resume a saved chat (or start a new one) in the REPL.");
+        chat.AddCommand<ChatForkCommand>("fork").WithDescription("Duplicate a saved chat, optionally onto a different model.");
+        chat.AddCommand<ChatRunCommand>("run").WithDescription("Run one or more prompts against one or more models, headlessly, to the screen or to files.");
+    });
+
+    config.AddCommand<ServeCliCommand>("serve").WithDescription("Run the WebSocket service.");
+    config.AddCommand<SecretCliCommand>("secret").WithDescription("Manage the secret store.");
+    config.AddCommand<SystemCliCommand>("system").WithDescription("OS-level integration (file association).");
+
+    // The pre-bootstrap commands, listed for help only: they are dispatched above, through their own
+    // parser, but somebody reading `spla --help` is asking what they can type, not which side of the
+    // bootstrap it runs on.
+    config.AddCommand<SPLA.CLI.InitCommand>("init").WithDescription("Make a folder a project.");
+    config.AddCommand<SPLA.CLI.PsCommand>("ps").WithDescription("List currently running SPLA instances.");
+    config.AddCommand<SPLA.CLI.StartCommand>("start").WithDescription("Bring an agent up on a project and leave it running.");
+    config.AddCommand<SPLA.CLI.StopCommand>("stop").WithDescription("Ask a running instance to shut down.");
+    config.AddCommand<SPLA.CLI.HubCommand>("hub").WithDescription("Run a registry hub.");
+}
+
+/// <summary>True when the argument vector asks what this program can do rather than asking it to do
+/// something: a bare `help`, or a help flag anywhere in the vector (so `spla chat run --help` counts).</summary>
+bool IsHelpRequest(string[] argv)
+{
+    if (argv.Length == 0) return false;
+    if (argv[0].Equals("help", StringComparison.OrdinalIgnoreCase)) return true;
+    return argv.Any(IsHelpFlag);
+}
+
+bool IsHelpFlag(string a) =>
+    a.Equals("--help", StringComparison.OrdinalIgnoreCase) ||
+    a.Equals("-h", StringComparison.OrdinalIgnoreCase) ||
+    a.Equals("-?", StringComparison.Ordinal) ||
+    a.Equals("/?", StringComparison.Ordinal);
+
+/// <summary>Hands Spectre a vector it recognises: `help` becomes `--help`, `help <cmd>` becomes
+/// `<cmd> --help`, and anything already carrying a flag is passed through untouched.</summary>
+string[] NormalizeHelpArgs(string[] argv)
+{
+    if (!argv[0].Equals("help", StringComparison.OrdinalIgnoreCase)) return argv;
+    return argv.Skip(1).Where(a => !IsHelpFlag(a)).Append("--help").ToArray();
+}
+
+/// <summary>Logging for the help path. Help prints and exits, so this only exists because Spectre's
+/// type registrar wants a container it can build.</summary>
+ILoggerFactory loggerFactoryForHelp() => LoggerFactory.Create(b => b.ClearProviders());
 
 /// <summary>
 /// The conventions every SPLA command parser shares. Both <c>CommandApp</c>s here — the full one and
