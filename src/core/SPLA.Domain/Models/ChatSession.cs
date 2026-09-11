@@ -352,6 +352,24 @@ public class ChatSessionMessage
     [YamlMember(Alias = "scope_marker")]
     public string? ScopeMarker { get; set; }
 
+    /// <summary>Mirrors <see cref="SPLA.Domain.Models.ChatMessage.RetentionPolicy"/> across a
+    /// save/load — see <c>docs/adr/ADR_20260911-3_agent_compaction.md</c> §2.1. Absent (defaulting to
+    /// <c>persistent</c> on read) for every session written before compaction existed, and for every
+    /// message nothing has ever hidden from the model.</summary>
+    [YamlMember(Alias = "retention")]
+    public string? Retention { get; set; }
+
+    /// <summary>Mirrors <see cref="SPLA.Domain.Models.ChatMessage.CompactedBy"/> — see ADR §2.1/§2.5.
+    /// Null for every message no compaction has hidden.</summary>
+    [YamlMember(Alias = "compacted_by")]
+    public string? CompactedBy { get; set; }
+
+    /// <summary>Mirrors <see cref="SPLA.Domain.Models.ChatMessage.CompactSummary"/> — see ADR §2.2.
+    /// Written only for the working-summary record a compaction inserts; absent (false on read) for
+    /// every ordinary message.</summary>
+    [YamlMember(Alias = "compact_summary")]
+    public bool CompactSummary { get; set; }
+
     /// <summary>Mirrors <see cref="SPLA.Domain.Models.ChatMessage.PromptTokens"/>/<see
     /// cref="SPLA.Domain.Models.ChatMessage.CompletionTokens"/> across a save/load. Set only on an
     /// assistant message whose provider reported usage; null everywhere else (including every message
