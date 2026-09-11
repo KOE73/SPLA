@@ -135,6 +135,16 @@ change (`agents/protocol.md` still governs message names/shapes). It uses `Subsc
 `Turns.Touch` on every event, and re-subscribes + resyncs via `ResubscribeQueuedWithSnapshot` on
 `onDetached`.
 
+## Compaction does not add an event
+
+`chat.compact` (`ChatRuntime.CompactAsync`, `ADR_20260911-3_agent_compaction.md`) rewrites the
+conversation's history in place — hides everything before the tail behind a fresh summary — and then
+publishes its result the same way a rewind or fork does: it **echoes `chat.opened`**, reusing the
+snapshot-on-open mechanics above, rather than adding a new `ChatEvent`/wire message for "history
+changed". Deliberate: compaction is a discrete, infrequent edit to the whole transcript, not a
+streamed happening mid-turn, so it fits the resync path this file already has instead of growing the
+closed event set in `ChatEvents.cs` for one more case with the same shape as a rewind.
+
 ## Other subscribers
 
 - **CLI console** (`ConsoleHandlers.SubscribeRich`/`SubscribeBasic`) — synchronous `Subscribe`, text
