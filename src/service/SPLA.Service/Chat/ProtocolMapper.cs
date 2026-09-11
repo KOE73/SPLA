@@ -90,4 +90,33 @@ public static class ProtocolMapper
         SPLA.Runtime.AskResolution.TimedOut => "timedOut",
         _ => "cancelled"
     };
+
+    /// <summary>
+    /// A snapshot progress node (wave 1, ADR_20260910-2 §4.4) to the same <see cref="ProgressNodePayload"/>
+    /// shape the live <c>progress.node</c> event uses — id namespaced by tree id exactly like
+    /// <c>ChatFeedWireSubscriber.OnProgressNode</c>, so a client merges a node from <c>chat.opened</c>
+    /// into its progress tree store the same way it merges one from the live stream, no special case.
+    /// </summary>
+    public static ProgressNodePayload ToDto(ChatFeedProgressNode n) => new()
+    {
+        NodeId = $"{n.TreeId}:{n.Node.Id}",
+        ParentId = n.Node.ParentId is null ? null : $"{n.TreeId}:{n.Node.ParentId}",
+        Label = n.Node.Label,
+        State = n.Node.State.ToString().ToLowerInvariant(),
+        Current = n.Node.Latest?.Current,
+        Total = n.Node.Latest?.Total,
+        Fraction = n.Node.Latest?.Fraction,
+        Message = n.Node.Latest?.Message,
+        Details = n.Node.Latest?.Details?.Select(d => new ToolProgressDetailDto { Label = d.Label, Value = d.Value }).ToList()
+    };
+
+    /// <summary>A snapshot background task to the same <see cref="TaskSummaryDto"/> shape
+    /// <c>task.list.result</c> and <c>task.state.changed</c> already use.</summary>
+    public static TaskSummaryDto ToDto(SPLA.Domain.Tools.BackgroundTaskRecord t) => new()
+    {
+        TaskId = t.Id,
+        ToolName = t.ToolName,
+        State = t.State.ToString(),
+        StartedAt = t.StartedAt.ToString("o")
+    };
 }

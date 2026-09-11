@@ -183,14 +183,14 @@ internal static class ServeCommand
             if (input.Equals("exit", StringComparison.OrdinalIgnoreCase) ||
                 input.Equals("quit", StringComparison.OrdinalIgnoreCase)) return true;
 
-            var callbacks = ConsoleHandlers.BasicCallbacks();
             var perm = ConsoleHandlers.Permission(colored: false);
             var clarify = ConsoleHandlers.Clarify();
 
             Console.Write("SPLA: ");
+            using var render = ConsoleHandlers.SubscribeBasic(chat.Feed);
             try
             {
-                await chat.SendAsync(input, callbacks, perm, clarify, CancellationToken.None);
+                await chat.SendAsync(input, perm, clarify, CancellationToken.None);
             }
             catch (Exception ex)
             {

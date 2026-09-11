@@ -1,4 +1,5 @@
 using SPLA.Domain.Agent;
+using SPLA.Domain.Llm;
 using SPLA.Domain.Models;
 
 namespace SPLA.Domain.Interfaces;
@@ -60,4 +61,53 @@ public interface ISpawnedSession : IDisposable
     /// </summary>
     void Finish(IReadOnlyList<ChatMessage> conversation, string? skillId, string mode,
         DateTimeOffset startedAt, string outcome, string? error);
+
+    // ── ADR_20260910-2 wave 2 — this session's own event stream ─────────────────────────────────
+    // "SpawnedSession получает поток... Снимок во время прогона — из памяти прогона (переписка
+    // оркестратора), не из файла." (PLAN_20260910-2, "Волна 2").
+    //
+    // The closed ChatEvent set itself lives in SPLA.Runtime (see ChatEvents.cs's own comment on why),
+    // and SPLA.Agent — where SpawnedAgentRunner builds these payloads as it drives the orchestrator —
+    // must never reference SPLA.Runtime. So the seam here is not "hand back an AgentCallbacks" (that
+    // type lives in SPLA.Agent itself and Domain cannot name it either) but a small set of Publish*
+    // calls, each typed only in payloads Domain already knows. SPLA.Runtime's SpawnedSession implements
+    // these by folding them onto the same ChatFeed/ChatEvent adapter ChatRuntime.SendAsync builds.
+
+    /// <summary>Gives this session the live <see cref="Conversation"/> the orchestrator is filling in,
+    /// so a snapshot taken mid-run (a watcher attaching, a reconnect) reads the run's own in-memory
+    /// messages rather than the file <see cref="Finish"/> has not written yet. The list reference must
+    /// stay backed by the same growing collection the orchestrator appends to — call once, right after
+    /// the conversation is created, before the orchestrator runs.</summary>
+    void AttachConversation(IReadOnlyList<ChatMessage> conversation);
+
+    /// <summary>An LLM call is about to be made — starts a new streaming bubble, the same way
+    /// <c>ChatRuntime.NextBubbleIndex</c> does for a human chat's turn.</summary>
+    void PublishLlmTurnStart(IReadOnlyList<ChatMessage> context);
+
+    /// <summary>A chunk of assistant answer text for the bubble the last <see cref="PublishLlmTurnStart"/> opened.</summary>
+    void PublishDelta(string chunk);
+
+    /// <summary>A chunk of reasoning/chain-of-thought text for the same bubble.</summary>
+    void PublishReasoning(string chunk);
+
+    /// <summary>The fully assembled assistant message for the current bubble.</summary>
+    void PublishAssistantMessage(ChatMessage message);
+
+    /// <summary>A generation attempt the repetition guard abandoned mid-stream.</summary>
+    void PublishAttempt(GenerationAttempt attempt);
+
+    /// <summary>A tool call is about to run.</summary>
+    void PublishToolStarted(ToolCall call);
+
+    /// <summary>A running top-level tool call reported progress.</summary>
+    void PublishToolProgress(ToolCall call, ToolProgress progress);
+
+    /// <summary>A tool call finished, outcome included.</summary>
+    void PublishToolResult(ToolCall call, ToolResult result);
+
+    /// <summary>The whole provider-reported outcome of one LLM call — token counters included.</summary>
+    void PublishLlmTurn(LlmTurnResult turn);
+
+    /// <summary>An ephemeral notice for whoever is watching. Never sent to the model.</summary>
+    void PublishNotice(string text);
 }

@@ -54,6 +54,11 @@ internal interface IClientSession
     /// <summary>Sends a chat.opened snapshot and registers this connection as its watcher.</summary>
     Task SendOpenedAsync(ChatRuntime chat);
 
+    /// <summary>Same as <see cref="SendOpenedAsync(ChatRuntime)"/>, for a spawned session whose run is
+    /// still going — ADR_20260910-2 wave 2. The snapshot comes from the run's own in-memory feed, not
+    /// the file, which is empty until the session finishes.</summary>
+    Task SendOpenedSpawnedAsync(SpawnedSession session);
+
     /// <summary>Cancels the active turn of <paramref name="chatId"/>, if any.</summary>
     bool TryCancelTurn(string chatId);
 

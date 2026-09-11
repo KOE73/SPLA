@@ -1,5 +1,4 @@
 using System.Text;
-using SPLA.Agent;
 using SPLA.Domain.Llm;
 using SPLA.Domain.Models;
 using SPLA.Domain.Settings;
@@ -80,21 +79,25 @@ public sealed class BatchRunner(AgentRuntime runtime, ResolvedSettings settings)
         var answer = new StringBuilder();
         var stream = new StringBuilder();
 
-        var callbacks = new AgentCallbacks
+        // ADR_20260910-2 wave 3: the answer/stream text and token stats are collected from the chat's
+        // own Feed, not caller-supplied AgentCallbacks — subscribed before the turn starts, disposed
+        // only once it (and this await) finishes, so the turn's last events are never missed.
+        using var subscription = chat.Feed.Subscribe(e =>
         {
-            OnDelta = chunk =>
+            switch (e)
             {
-                stream.Append(chunk);
-                if (Stream) Console.Write(chunk);
-                return Task.CompletedTask;
-            },
-            OnAssistantMessage = m =>
-            {
-                if (!string.IsNullOrWhiteSpace(m.Content)) answer.Append(m.Content);
-                return Task.CompletedTask;
-            },
-            OnLlmTurn = stats.Record
-        };
+                case ChatDelta d:
+                    stream.Append(d.Text);
+                    if (Stream) Console.Write(d.Text);
+                    break;
+                case ChatAssistantMessage a:
+                    if (!string.IsNullOrWhiteSpace(a.Message.Content)) answer.Append(a.Message.Content);
+                    break;
+                case ChatLlmTurn lt:
+                    stats.Record(lt.Turn);
+                    break;
+            }
+        });
 
         Func<ToolFunctionDefinition, string, Task<PermissionDecision>> denyAll =
             (_, _) => Task.FromResult(PermissionDecision.Deny);
@@ -105,7 +108,7 @@ public sealed class BatchRunner(AgentRuntime runtime, ResolvedSettings settings)
 
         try
         {
-            await chat.SendAsync(cell.Prompt.Text, callbacks, denyAll, noClarify, runCts.Token,
+            await chat.SendAsync(cell.Prompt.Text, denyAll, noClarify, runCts.Token,
                 images: Images.Count > 0 ? Images.Select(i => i.Attachment).ToList() : null);
         }
         catch (OperationCanceledException) when (!ct.IsCancellationRequested)

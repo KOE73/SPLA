@@ -144,6 +144,28 @@ export interface ChatOpenedPayload {
    *  list holds only what has been persisted, so without this a chat opened mid-turn reads as empty
    *  until the turn ends. Its msgIndex is the live stream's own — later chunks continue this bubble. */
   live?: { msgIndex: number; content: string; reasoning: string } | null;
+  /** Wave 1 (ADR_20260910-2 §4.4): progress nodes still running at the moment this chat was opened,
+   *  same shape and namespaced ids as the live `progress.node` event — merge these into the node map
+   *  the same way, then keep listening. Additive: an older server simply omits it, and the chat looks
+   *  exactly as it did before this field existed (empty until the next tick). */
+  openProgressNodes?: ProgressNodePayload[];
+  /** Background tasks still running at the moment this chat was opened, same shape `task.list.result`
+   *  uses. Additive, same reasoning as `openProgressNodes`. */
+  runningTasks?: TaskSummaryDto[];
+}
+
+/** One node of a progress tree, whole, as both the live `progress.node` event and `chat.opened`'s
+ *  `openProgressNodes` carry it — see `progress.node`'s own doc comment below for the merge rule. */
+export interface ProgressNodePayload {
+  nodeId: string;
+  parentId?: string | null;
+  label: string;
+  state: "running" | "completed" | "failed";
+  current?: number | null;
+  total?: number | null;
+  fraction?: number | null;
+  message?: string | null;
+  details?: ToolProgressDetail[] | null;
 }
 
 /**
@@ -942,7 +964,7 @@ export interface ServerEvents {
    *  each node to `parentId` (null = top level). Hold a node whose parent has not arrived rather than
    *  dropping it — parallel work gives no ordering guarantee. Structural frames (a node's first
    *  appearance and its finish) are never throttled; the ticks between them are, per node. */
-  "progress.node": { nodeId: string; parentId?: string | null; label: string; state: "running" | "completed" | "failed"; current?: number | null; total?: number | null; fraction?: number | null; message?: string | null; details?: ToolProgressDetail[] | null };
+  "progress.node": ProgressNodePayload;
   "task.state.changed": TaskStateChangedPayload; // A background task started or finished — published to all watchers of this chat.
   "tool.result": { toolCallId: string; toolName: string; result: string };
   "notice": { text: string };

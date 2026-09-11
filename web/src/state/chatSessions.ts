@@ -18,7 +18,8 @@
 import { reactive } from "vue";
 import { client } from "../protocol/SplaClient";
 import { store } from "./store";
-import type { ChatDoubt, ChatMessage, ImageRef, ToolProgressDetail, ToolSetState } from "../protocol/types";
+import type { ChatDoubt, ChatMessage, ImageRef, ProgressNodePayload, TaskSummaryDto, ToolProgressDetail,
+  ToolSetState } from "../protocol/types";
 import type { ToolCallState } from "../surfaces/ToolCard.vue";
 
 export type LogItem =
@@ -90,6 +91,11 @@ export interface ChatSession {
    *  `progressTreeId`. On the NEXT turn's start this is what gets swept out of `nodes`; anything
    *  under a different prefix (a background task) is left alone. */
   currentTurnTreeId: string | null;
+  /** This chat's background tasks, restored from `chat.opened`'s `runningTasks` (wave 1) and kept
+   *  current by `task.state.changed`. Not the source of truth for the task panel, which still asks
+   *  `task.list` itself on open — this is what lets OTHER surfaces (a badge, a status line) know a
+   *  task is running without opening that panel first. */
+  tasks: TaskSummaryDto[];
 }
 
 /** One node of the turn's progress tree as the client holds it: the payload plus the children that
@@ -140,7 +146,8 @@ function blank(chatId: string): ChatSession {
     pending: [],
     calls: {},
     nodes: {},
-    currentTurnTreeId: null
+    currentTurnTreeId: null,
+    tasks: []
   };
 }
 
@@ -307,6 +314,15 @@ client.on("chat.opened", (p, env) => {
     b.reasoning = p.live.reasoning;
     if (!s.pending.includes(p.live.msgIndex)) s.pending.push(p.live.msgIndex);
   }
+
+  // Wave 1 (ADR_20260910-2 §4.4): the rest of what a client attaching mid-turn needs, from the same
+  // atomic snapshot. s.nodes was already reset to {} above (the s.items=[]/s.calls={} reset a few
+  // lines up does not touch it, so clear it explicitly) — an open is exactly the "rebuild from
+  // scratch" moment llm.turn.start's own sweep only handles turn-to-turn, not window-to-window.
+  s.nodes = {};
+  s.currentTurnTreeId = null;
+  for (const node of p.openProgressNodes || []) applyProgressNode(s, node);
+  s.tasks = p.runningTasks || [];
 });
 
 /**
@@ -504,9 +520,16 @@ function nodeFor(s: ChatSession, id: string): ProgressNodeState {
  * child whose parent has not arrived yet gets it as a stub rather than being dropped — parallel work
  * gives no ordering guarantee, and a dropped node is a branch that never appears.
  */
-on("progress.node", (s, p: { nodeId: string; parentId?: string | null; label: string;
-  state: "running" | "completed" | "failed"; fraction?: number | null; message?: string | null;
-  details?: ToolProgressDetail[] | null }) => {
+on("progress.node", (s, p: ProgressNodePayload) => applyProgressNode(s, p));
+
+/**
+ * Merges one progress node — from the live `progress.node` event, or one of `chat.opened`'s
+ * `openProgressNodes` (wave 1, ADR_20260910-2 §4.4) — the same way either time: a client attaching to
+ * a chat mid-turn must build the exact same tree a client that had been watching all along already
+ * has, and the merge rule (append-only, attach-by-parentId, tolerate an unseen parent) is what makes
+ * that true regardless of which of the two carried the node first.
+ */
+function applyProgressNode(s: ChatSession, p: ProgressNodePayload) {
   const node = nodeFor(s, p.nodeId);
   const isNew = node.label === "";
 
@@ -552,7 +575,7 @@ on("progress.node", (s, p: { nodeId: string; parentId?: string | null; label: st
   // is opened inside ExecuteToolAsync, so tool.started has always been sent by the time it arrives.
   const call = lastRunningByName(s, p.label);
   if (call) call.rootNodeId = p.nodeId;
-});
+}
 
 /** Walks a node's parentId chain up to the root (parentId === null). */
 function rootOf(s: ChatSession, nodeId: string): ProgressNodeState | undefined {
@@ -612,6 +635,11 @@ client.on("ask.resolved", (p, env) => {
   }
 });
 
+on("task.state.changed", (s, p: { task: TaskSummaryDto }) => {
+  const i = s.tasks.findIndex(t => t.taskId === p.task.taskId);
+  if (i >= 0) s.tasks[i] = p.task; else s.tasks.push(p.task);
+});
+
 on("chat.skill.state", (s, p: { activeSkillId?: string | null }) => { s.activeSkill = p.activeSkillId || null; });
 on("chat.toolset.state", (s, p: { sets?: ToolSetState[] }) => { s.toolSets = p.sets || []; });
 on("chat.doubt.state", (s, p: { doubt: ChatDoubt }) => { s.doubt = p.doubt; });
@@ -648,6 +676,18 @@ on("turn.complete", (s, p: { error?: string; cancelled?: boolean; activeSkillId?
 client.on("error", (p, env) => {
   const s = peekSession(env.chatId ?? store.currentChat);
   if (s) addNotice(s, "⚠ " + p.message);
+});
+
+/**
+ * A reconnect (`welcome` fires on every one, including the first) hands this window a brand-new
+ * server-side connection that watches nothing yet — every session this window thought was live and
+ * watched is not, from the server's point of view, watched any more. Without this, `openChat`'s
+ * `logLoaded` fast path kept switching to it locally forever, and the chat's stream stayed dead: the
+ * watch that died with the old connection was never re-established because nothing ever asked the
+ * server to.
+ */
+client.on("welcome", () => {
+  for (const s of sessions.values()) s.logLoaded = false;
 });
 
 /** A deleted chat leaves nothing behind. */

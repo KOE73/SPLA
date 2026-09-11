@@ -1,6 +1,8 @@
+using System.Text;
 using SPLA.Agent;
 using SPLA.Domain.Agent;
 using SPLA.Domain.Interfaces;
+using SPLA.Domain.Llm;
 using SPLA.Domain.Models;
 using SPLA.Domain.Tools;
 
@@ -16,8 +18,13 @@ namespace SPLA.Runtime;
 /// <see cref="ProgressHub"/> and <see cref="BackgroundTaskRegistry"/> wired the identical way
 /// <see cref="ChatRuntime"/> wires its own — so any tool this run calls sees the exact same
 /// <see cref="IBackgroundTaskHost"/> shape a human chat's tools do.
+/// <para>
+/// ADR_20260910-2 wave 2 gives it the same <see cref="ChatFeed"/> a <see cref="ChatRuntime"/> has —
+/// see <see cref="Feed"/> and the Publish* members below — so a window opened on this session mid-run
+/// sees the run live instead of the empty file <see cref="Finish"/> has not written yet.
+/// </para>
 /// </summary>
-internal sealed class SpawnedSession : ISpawnedSession, IBackgroundTaskHost
+public sealed class SpawnedSession : ISpawnedSession, IBackgroundTaskHost, IChatFeedSession
 {
     private readonly ChatRegistry _registry;
     private readonly AgentRuntime _runtime;
@@ -51,7 +58,26 @@ internal sealed class SpawnedSession : ISpawnedSession, IBackgroundTaskHost
     public BackgroundTaskRegistry Tasks { get; }
 
     public string ChatId => _chat.Id;
+    public string Title => _chat.Title;
     public IAgentSession AgentSession { get; }
+
+    /// <summary>This session's own event stream — the same class <see cref="ChatRuntime.Feed"/> uses
+    /// (ADR_20260910-2 §4.1, wave 2: "у каждого сеанса — ChatRuntime и SpawnedSession одинаково —
+    /// есть поток событий"). Public so the service's <c>ChatFeedWireSubscriber</c> can subscribe to it
+    /// exactly as it subscribes a human chat's.</summary>
+    public ChatFeed Feed { get; } = new();
+
+    /// <summary>The orchestrator's own live conversation, attached once by <c>SpawnedAgentRunner</c>
+    /// right after it is created — see <see cref="AttachConversation"/>. Backs
+    /// <see cref="BuildSnapshot"/> until <see cref="Finish"/> writes the file; null before it is
+    /// attached (a run without a session never calls in here).</summary>
+    private IReadOnlyList<ChatMessage>? _conversation;
+
+    private readonly Lock _liveGate = new();
+    private readonly StringBuilder _liveContent = new();
+    private readonly StringBuilder _liveReasoning = new();
+    private int? _liveIndex;
+    private int _bubbleSeq;
 
     /// <summary>The role's settings this run acts under, or null for the project's. See
     /// <see cref="ISpawnSessionHost.OpenSpawnedSession"/>.</summary>
@@ -80,9 +106,120 @@ internal sealed class SpawnedSession : ISpawnedSession, IBackgroundTaskHost
             sandbox: _sandbox, background: this, chatId: chat.Id, settings: settings);
     }
 
+    // ── ADR_20260910-2 wave 2: ISpawnedSession's Publish* seam ──────────────────────────────────
+
+    public void AttachConversation(IReadOnlyList<ChatMessage> conversation) => _conversation = conversation;
+
+    private void Emit(ChatEvent e) => Feed.Publish(e);
+    private void Emit(ChatEvent e, Action mutate) => Feed.Publish(e, mutate);
+
+    /// <summary>Starts a new streaming bubble — <see cref="ChatRuntime.NextBubbleIndex"/>'s own logic,
+    /// copied rather than shared: a spawned session has no chat-wide bubble counter to share with
+    /// anything else, only this one run.</summary>
+    private int NextBubbleIndex()
+    {
+        var index = Interlocked.Increment(ref _bubbleSeq);
+        lock (_liveGate)
+        {
+            _liveIndex = index;
+            _liveContent.Clear();
+            _liveReasoning.Clear();
+        }
+        return index;
+    }
+
+    private void ClearLive()
+    {
+        lock (_liveGate)
+        {
+            _liveIndex = null;
+            _liveContent.Clear();
+            _liveReasoning.Clear();
+        }
+    }
+
+    private int _currentMsgIndex;
+
+    public void PublishLlmTurnStart(IReadOnlyList<ChatMessage> context)
+    {
+        _currentMsgIndex = NextBubbleIndex();
+        Emit(new ChatLlmCallStarted(_currentMsgIndex, context, null) { ChatId = ChatId });
+    }
+
+    public void PublishDelta(string chunk) =>
+        Emit(new ChatDelta(_currentMsgIndex, chunk) { ChatId = ChatId },
+            () => { lock (_liveGate) _liveContent.Append(chunk); });
+
+    public void PublishReasoning(string chunk) =>
+        Emit(new ChatReasoning(_currentMsgIndex, chunk) { ChatId = ChatId },
+            () => { lock (_liveGate) _liveReasoning.Append(chunk); });
+
+    public void PublishAssistantMessage(ChatMessage message) =>
+        Emit(new ChatAssistantMessage(_currentMsgIndex, message) { ChatId = ChatId }, ClearLive);
+
+    public void PublishAttempt(GenerationAttempt attempt) =>
+        Emit(new ChatAttempt(_currentMsgIndex, attempt) { ChatId = ChatId });
+
+    public void PublishToolStarted(ToolCall call) =>
+        Emit(new ChatToolStarted(call) { ChatId = ChatId });
+
+    public void PublishToolProgress(ToolCall call, ToolProgress progress) =>
+        Emit(new ChatToolProgress(call, progress) { ChatId = ChatId });
+
+    public void PublishToolResult(ToolCall call, ToolResult result) =>
+        Emit(new ChatToolResult(call, result) { ChatId = ChatId });
+
+    public void PublishLlmTurn(LlmTurnResult turn) =>
+        Emit(new ChatLlmTurn(turn, null) { ChatId = ChatId });
+
+    public void PublishNotice(string text) =>
+        Emit(new ChatNotice(text) { ChatId = ChatId });
+
+    /// <summary>Atomically captures this session's snapshot alongside <paramref name="attach"/> — the
+    /// same tmux-style "снимок плюс поток" <see cref="ChatRuntime.SnapshotForOpen"/> gives a human
+    /// chat (ADR_20260910-2 §4.4). Read from <see cref="_conversation"/> — the run's own in-memory
+    /// messages — never from disk, which is empty until <see cref="Finish"/> runs.</summary>
+    public ChatFeedSnapshot SnapshotForOpen(Action attach) => Feed.SnapshotUnderGate(BuildSnapshot, attach);
+
+    /// <inheritdoc cref="IChatFeedSession.ResubscribeQueuedWithSnapshot"/>
+    public (ChatFeedSnapshot Snapshot, IDisposable Subscription) ResubscribeQueuedWithSnapshot(
+        Func<ChatEvent, Task> handler, Action onDetached)
+        => Feed.SubscribeQueuedWithSnapshot(handler, onDetached, BuildSnapshot);
+
+    private ChatRuntime.LivePartial? Live
+    {
+        get
+        {
+            lock (_liveGate)
+            {
+                if (_liveIndex is not { } index) return null;
+                if (_liveContent.Length == 0 && _liveReasoning.Length == 0) return null;
+                return new ChatRuntime.LivePartial(index, _liveContent.ToString(), _liveReasoning.ToString());
+            }
+        }
+    }
+
+    private ChatFeedSnapshot BuildSnapshot() => new(
+        _conversation?.Where(m => m.Role != ChatRole.System).ToList() ?? new List<ChatMessage>(),
+        Live,
+        Progress.Trees.SelectMany(kv => kv.Value.Nodes
+                .Where(n => n.State == SPLA.Domain.Models.ProgressState.Running)
+                .Select(n => new ChatFeedProgressNode(kv.Key, n)))
+            .ToList(),
+        // A spawned session has no per-chat pending-ask surface yet — a run has no way to raise one
+        // today (permission/clarify handlers come from the runner's caller, not from this session).
+        // Deviation noted in the plan; revisit if a spawned run ever needs to ask.
+        Array.Empty<PendingAsk>(),
+        Tasks.All.Where(t => t.State == SPLA.Domain.Tools.BackgroundTaskState.Running).ToList());
+
     public void Finish(IReadOnlyList<ChatMessage> conversation, string? skillId, string mode,
         DateTimeOffset startedAt, string outcome, string? error)
     {
+        // The run's own end of turn, on the SAME feed a watcher's snapshot subscription just read from
+        // — a window attached mid-run sees the transcript complete instead of going quiet with no
+        // signal at all (ADR_20260910-2 §4.8's "клиент... получает конец хода").
+        Emit(new ChatTurnCompleted(outcome == "cancelled", error, skillId) { ChatId = ChatId });
+
         var saveToolCalls = (_settings ?? _runtime.Settings).SaveToolCalls;
         var saveAttempts = (_settings ?? _runtime.Settings).SaveAttempts;
 
@@ -126,14 +263,11 @@ internal sealed class SpawnedSession : ISpawnedSession, IBackgroundTaskHost
 
         _runtime.ChatManager.SaveChat(_chat);
 
-        // If nobody ever peeked at this chat while it ran, nothing is cached and this is a no-op. If a
-        // client DID call chat.open/chat.watch on it mid-run (its file existed from the moment
-        // OpenSpawnedSession created it), ChatRegistry would otherwise keep serving that now-stale
-        // ChatRuntime forever — Finish wrote straight to disk, bypassing it entirely. Evicting here is
-        // safe: no turn ever ran on that cached instance (SpawnedAgentRunner drives its own orchestrator,
-        // never ChatRuntime.SendAsync), so there is nothing live to interrupt, only a stale snapshot to
-        // drop. The next chat.send/chat.open reloads the finished file fresh.
-        _registry.EvictCachedRuntime(_chat.Id);
+        // Tells the registry this session's run is over: drops it from the "live spawned session"
+        // table (so the NEXT chat.open loads the just-written file into an ordinary ChatRuntime) and
+        // fires SpawnedClosed, which is what unhooks this session's ChatFeedWireSubscriber — the
+        // symmetric close ChatRegistry.RuntimeClosed already gives a human chat (ADR_20260910-2 §4.8).
+        _registry.NotifySpawnedFinished(this);
     }
 
     public void Dispose()

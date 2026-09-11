@@ -132,6 +132,17 @@ internal sealed class ChatHandlers : IMessageHandler
     {
         var (entry, _) = ctx.Session.Resolve(ctx.Env);
         var p = ctx.Payload<ChatOpenPayload>();
+
+        // A spawned session whose run is still going never reaches GetOrOpen (see its own comment) —
+        // check first and attach to the live feed instead of falling into "chat not found"
+        // (ADR_20260910-2 §4.8, wave 2).
+        var spawned = p != null ? entry.Chats.PeekSpawned(p.ChatId) : null;
+        if (spawned != null)
+        {
+            await ctx.Session.SendOpenedSpawnedAsync(spawned);
+            return;
+        }
+
         var chat = p != null ? entry.Chats.GetOrOpen(p.ChatId) : null;
         if (chat == null)
         {
@@ -179,10 +190,26 @@ internal sealed class ChatHandlers : IMessageHandler
     private static Task Watch(RequestContext ctx)
     {
         // Registers this connection as a watcher of both the chat (for turn events) and the project
-        // (for settings/usage broadcasts) without the side effects of ChatOpen.
-        ctx.Session.Resolve(ctx.Env);
+        // (for settings/usage broadcasts) without the side effects of ChatOpen (no chat.opened echo).
+        var (entry, _) = ctx.Session.Resolve(ctx.Env);
         var p = ctx.Payload<ChatOpenPayload>();
-        if (!string.IsNullOrEmpty(p?.ChatId)) ctx.Session.MarkChatOpen(p.ChatId);
+        if (string.IsNullOrEmpty(p?.ChatId)) return Task.CompletedTask;
+
+        // Wave 1 (ADR_20260910-2 §4.4): mark the watch through the chat's own feed gate when a live
+        // runtime exists, same atomicity ChatOpen's snapshot relies on — a tear-off window must not
+        // miss (or double-see) an event straddling the moment it starts watching either. An archived
+        // or not-yet-open chat has no runtime to be atomic with; marking it directly is what this
+        // already did.
+        var spawned = entry.Chats.PeekSpawned(p.ChatId);
+        if (spawned != null)
+        {
+            spawned.SnapshotForOpen(() => ctx.Session.MarkChatOpen(p.ChatId));
+            return Task.CompletedTask;
+        }
+
+        var chat = entry.Chats.GetOrOpen(p.ChatId);
+        if (chat != null) chat.SnapshotForOpen(() => ctx.Session.MarkChatOpen(p.ChatId));
+        else ctx.Session.MarkChatOpen(p.ChatId);
         return Task.CompletedTask;
     }
 
@@ -206,13 +233,13 @@ internal sealed class ChatHandlers : IMessageHandler
         var (entry, projectId) = ctx.Session.Resolve(ctx.Env);
         var p = ctx.Payload<ChatSendPayload>();
         if (p == null) return;
-        var chat = entry.Chats.GetOrOpen(p.ChatId);
-        if (chat == null) { await ctx.Send(MessageTypes.Error, new ErrorPayload { Message = $"Chat not found: {p.ChatId}" }); return; }
 
         // A spawned session belongs to whoever gave the errand while its one run is still going — a
         // second writer here is exactly the race one pump per chat exists to prevent (ADR §2.2). Once
-        // the run has finished (Spawn.Outcome is set) the session is a chat like any other and this
-        // falls through as normal.
+        // the run has finished (Spawn.Outcome is set — and by then GetOrOpen serves it normally, see
+        // below) the session is a chat like any other. Checked via PeekSpawned rather than reading
+        // GetOrOpen's ChatRuntime, because a live spawned id never reaches GetOrOpen at all any more
+        // (wave 2 — it would otherwise load the still-empty file).
         //
         // PLAN_20260903 stage 2 asked whether the client's read-only sub-agent window is a facade over
         // a real rule or merely a convention this one client keeps. It is a real rule, and this is it:
@@ -220,7 +247,7 @@ internal sealed class ChatHandlers : IMessageHandler
         // is refused on the same terms. What is deliberately NOT enforced is the window after the run
         // ends — a finished spawned session is an ordinary chat, and the client hides its composer as
         // a matter of taste (a sub-agent's window is for reading), not because writing would be wrong.
-        if (chat.Session.Origin == "spawned" && chat.Session.Spawn?.Outcome is null)
+        if (entry.Chats.PeekSpawned(p.ChatId) != null)
         {
             await ctx.Send(MessageTypes.Error, new ErrorPayload
             {
@@ -228,6 +255,9 @@ internal sealed class ChatHandlers : IMessageHandler
             });
             return;
         }
+
+        var chat = entry.Chats.GetOrOpen(p.ChatId);
+        if (chat == null) { await ctx.Send(MessageTypes.Error, new ErrorPayload { Message = $"Chat not found: {p.ChatId}" }); return; }
 
         // The sender must watch this chat, otherwise the turn's stream (which fans out to watchers
         // only) would never reach the very client that started it.

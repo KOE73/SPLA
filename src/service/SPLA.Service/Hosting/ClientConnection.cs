@@ -349,14 +349,35 @@ public sealed class ClientConnection : IClientSession
         catch { /* a single dead client must not break a broadcast */ }
     }
 
-    public async Task SendOpenedAsync(ChatRuntime chat)
+    public Task SendOpenedAsync(ChatRuntime chat)
     {
-        _openChats[chat.ChatId] = 0;   // this connection now watches this chat
+        // Wave 1 (ADR_20260910-2 §4.4): mark this connection a watcher and read the chat's in-memory
+        // state as one atomic step — see ChatFeed.SnapshotUnderGate's own comment for why this is what
+        // keeps a question raised (or a progress tick, or a message) right around this call from being
+        // either missed or delivered twice, instead of the connection just happening to be marked
+        // before a separate later query of the same state.
+        var snapshot = chat.SnapshotForOpen(() => _openChats[chat.ChatId] = 0);
+        return SendOpenedFromSnapshotAsync(chat, snapshot);
+    }
+
+    /// <summary>
+    /// Sends <c>chat.opened</c> from a snapshot the caller already captured, instead of taking a fresh
+    /// one here — the overflow-resync path (<c>ChatFeedWireSubscriber.OnDetached</c>) needs this: its
+    /// snapshot must be captured together with the replacement queued subscription, under one
+    /// <see cref="ChatFeed"/> gate acquisition (<see cref="ChatFeed.SubscribeQueuedWithSnapshot{T}"/>),
+    /// not a moment later and per watching connection like <see cref="SendOpenedAsync(ChatRuntime)"/>
+    /// does — otherwise events published in that gap land both in the new queue and in a
+    /// later-captured snapshot, reaching the client twice (ADR_20260910-2 plan, wave 4 "Открыто").
+    /// This does not mark the connection a watcher — callers that resend to an already-watching
+    /// connection do not need to.
+    /// </summary>
+    public async Task SendOpenedFromSnapshotAsync(ChatRuntime chat, ChatFeedSnapshot snapshot)
+    {
         await SendAsync(MessageTypes.ChatOpened, new ChatOpenedPayload
         {
             ChatId = chat.ChatId,
             Title = chat.Title,
-            Messages = chat.SnapshotMessages(),
+            Messages = chat.SnapshotMessages(snapshot.Messages),
             Mode = chat.ModeName,
             ModelId = chat.ModelId,
             Temperature = chat.Temperature,
@@ -367,25 +388,67 @@ public sealed class ClientConnection : IClientSession
             TurnActive = chat.IsTurnRunning,
             State = SPLA.Domain.Project.InstanceStates.Name(
                 BoundRuntime.StateOf(chat.ChatId, TimeSpan.FromMinutes(10))),
-            Live = chat.Live is { } live
+            Live = snapshot.Live is { } live
                 ? new LivePartialDto { MsgIndex = live.MsgIndex, Content = live.Content, Reasoning = live.Reasoning }
-                : null
+                : null,
+            OpenProgressNodes = snapshot.OpenProgressNodes.Select(ProtocolMapper.ToDto).ToList(),
+            RunningTasks = snapshot.RunningTasks.Select(ProtocolMapper.ToDto).ToList()
         }, chat.ChatId);
 
-        await ReplayPendingAsksAsync(chat.ChatId);
+        await ReplayPendingAsksAsync(chat.ChatId, snapshot.PendingAsks);
     }
 
     /// <summary>
-    /// Re-sends the questions this chat is already blocked on to a client that just opened it.
+    /// The spawned counterpart of <see cref="SendOpenedAsync(ChatRuntime)"/> — ADR_20260910-2 wave 2.
+    /// A much smaller payload than a human chat's: no mode/model/temperature/reasoning knobs (a spawned
+    /// run does not expose them), no tool-set chips, no doubt flag. <c>TurnActive</c> is always true —
+    /// this overload only ever runs for a session <see cref="ChatRegistry.PeekSpawned"/> still holds,
+    /// which by definition means the run has not finished.
+    /// </summary>
+    public Task SendOpenedSpawnedAsync(SPLA.Runtime.SpawnedSession session)
+    {
+        var snapshot = session.SnapshotForOpen(() => _openChats[session.ChatId] = 0);
+        return SendOpenedSpawnedFromSnapshotAsync(session, snapshot);
+    }
+
+    /// <summary>Spawned counterpart of <see cref="SendOpenedFromSnapshotAsync"/> — same reason: the
+    /// overflow-resync path needs the snapshot captured together with the replacement queued
+    /// subscription, not a fresh one taken here.</summary>
+    public async Task SendOpenedSpawnedFromSnapshotAsync(SPLA.Runtime.SpawnedSession session, ChatFeedSnapshot snapshot)
+    {
+        await SendAsync(MessageTypes.ChatOpened, new ChatOpenedPayload
+        {
+            ChatId = session.ChatId,
+            Title = session.Title,
+            Messages = snapshot.Messages.Select(ProtocolMapper.ToDto).ToList(),
+            ActiveSkillId = session.AgentSession.Skills.ActiveSkillId,
+            TurnActive = true,
+            State = SPLA.Domain.Project.InstanceStates.Name(SPLA.Domain.Project.InstanceState.Working),
+            Live = snapshot.Live is { } live
+                ? new LivePartialDto { MsgIndex = live.MsgIndex, Content = live.Content, Reasoning = live.Reasoning }
+                : null,
+            OpenProgressNodes = snapshot.OpenProgressNodes.Select(ProtocolMapper.ToDto).ToList(),
+            RunningTasks = snapshot.RunningTasks.Select(ProtocolMapper.ToDto).ToList()
+        }, session.ChatId);
+
+        await ReplayPendingAsksAsync(session.ChatId, snapshot.PendingAsks);
+    }
+
+    /// <summary>
+    /// Re-sends the questions this chat is already blocked on to a client that just opened it, from
+    /// the SAME atomic snapshot <see cref="SendOpenedAsync"/> just took — not a fresh query of
+    /// <c>BoundRuntime.Asks</c> made a moment later, which could either miss a question raised in
+    /// between (this connection was not yet marked a watcher when it was raised, and by the time of the
+    /// fresh query it had already been resolved) or double-send one (raised after the mark, so the live
+    /// feed already delivered it, and still present in the fresh query).
     ///
     /// <para>Without this, a question asked while nobody was watching would be invisible forever: the
     /// turn sits waiting, the window shows a chat that merely looks stuck, and the only way out is the
     /// timeout. The questions live on the project's runtime precisely so a later arrival can still
     /// answer them.</para>
     /// </summary>
-    private async Task ReplayPendingAsksAsync(string chatId)
+    private async Task ReplayPendingAsksAsync(string chatId, IReadOnlyList<PendingAsk> asks)
     {
-        var asks = BoundRuntime.Asks.List(chatId);
         foreach (var ask in asks)
             await SendAsync(ProtocolMapper.MessageTypeFor(ask), ProtocolMapper.PayloadFor(ask), chatId, ask.RequestId);
     }

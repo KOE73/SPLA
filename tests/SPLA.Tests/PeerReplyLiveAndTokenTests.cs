@@ -124,15 +124,19 @@ public sealed class PeerReplyLiveAndTokenTests
 
             // Nothing has drained yet — the message sits in architect's inbox exactly like a woken
             // pump turn would find it (ChatPump's runTurn calls SendAsync(text: null, ...)).
+            // The onUserMessage parameter is gone (ADR_20260910-2 wave 0) — the chat now publishes its
+            // own ChatUserMessage onto Feed, which is what this test observes instead.
             var echoed = new List<ChatMessage>();
+            using var echoSub = architect.Feed.Subscribe(e =>
+            {
+                if (e is SPLA.Runtime.ChatUserMessage um) echoed.Add(um.Message);
+            });
             await architect.SendAsync(
                 text: null,
-                callbacks: new SPLA.Agent.AgentCallbacks(),
                 permissionHandler: AllowAll,
                 clarifyHandler: NoClarify,
                 cancellationToken: CancellationToken.None,
-                images: null,
-                onUserMessage: m => echoed.Add(m));
+                images: null);
 
             // The live hook fired for the Peer-kind message, not only the reload path — this is
             // exactly what was broken before wave 7's fix (only Human-kind messages fired it).
@@ -166,10 +170,8 @@ public sealed class PeerReplyLiveAndTokenTests
         {
             var chat = chats.CreateNew("Chat");
 
-            await chat.SendAsync("first question", new SPLA.Agent.AgentCallbacks(),
-                AllowAll, NoClarify, CancellationToken.None);
-            await chat.SendAsync("second question", new SPLA.Agent.AgentCallbacks(),
-                AllowAll, NoClarify, CancellationToken.None);
+            await chat.SendAsync("first question", AllowAll, NoClarify, CancellationToken.None);
+            await chat.SendAsync("second question", AllowAll, NoClarify, CancellationToken.None);
 
             // Persistence: both assistant messages kept their own token counts through save/load,
             // not just in the live in-memory conversation.
@@ -201,7 +203,7 @@ public sealed class PeerReplyLiveAndTokenTests
         try
         {
             var chat = chats.CreateNew("Chat");
-            await chat.SendAsync("hi", new SPLA.Agent.AgentCallbacks(), AllowAll, NoClarify, CancellationToken.None);
+            await chat.SendAsync("hi", AllowAll, NoClarify, CancellationToken.None);
 
             var summary = chats.List().Single(c => c.Id == chat.ChatId);
             Assert.Null(summary.PromptTokens);

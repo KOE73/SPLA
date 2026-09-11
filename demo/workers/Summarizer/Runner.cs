@@ -123,34 +123,36 @@ public sealed class Runner
         var abandoned = 0;
         var quiet = _opts.Quiet || !_cfg.Echo;
 
-        var callbacks = new AgentCallbacks
+        // ADR_20260910-2 wave 3: no more caller-supplied AgentCallbacks — subscribed to the chat's own
+        // Feed before the turn starts, disposed only once it (and the awaited SendAsync) finishes.
+        using var turnSub = chat.Feed.Subscribe(e =>
         {
-            OnDelta = chunk =>
+            switch (e)
             {
-                stream.Append(chunk);
-                if (!quiet) Console.Write(chunk);
-                return Task.CompletedTask;
-            },
-            OnReasoning = chunk =>
-            {
-                if (!quiet && _cfg.ShowReasoning) Console.Write(chunk);
-                return Task.CompletedTask;
-            },
-            OnAssistantMessage = m =>
-            {
-                if (!string.IsNullOrWhiteSpace(m.Content)) answer.Append(m.Content);
-                if (!quiet) Console.WriteLine();
-                return Task.CompletedTask;
-            },
-            OnAttempt = _ => abandoned++,
-            OnNotice = n => { Console.WriteLine($"\n   [notice] {n}"); return Task.CompletedTask; },
-            // Only this run's own subtotal: the project and machine tallies are kept by the pipeline.
-            OnLlmTurn = turn =>
-            {
-                promptTokens += turn.Message.PromptTokens ?? 0;
-                completionTokens += turn.Message.CompletionTokens ?? 0;
+                case ChatDelta d:
+                    stream.Append(d.Text);
+                    if (!quiet) Console.Write(d.Text);
+                    break;
+                case ChatReasoning r:
+                    if (!quiet && _cfg.ShowReasoning) Console.Write(r.Text);
+                    break;
+                case ChatAssistantMessage a:
+                    if (!string.IsNullOrWhiteSpace(a.Message.Content)) answer.Append(a.Message.Content);
+                    if (!quiet) Console.WriteLine();
+                    break;
+                case ChatAttempt:
+                    abandoned++;
+                    break;
+                case ChatNotice n:
+                    Console.WriteLine($"\n   [notice] {n.Text}");
+                    break;
+                // Only this run's own subtotal: the project and machine tallies are kept by the pipeline.
+                case ChatLlmTurn lt:
+                    promptTokens += lt.Turn.Message.PromptTokens ?? 0;
+                    completionTokens += lt.Turn.Message.CompletionTokens ?? 0;
+                    break;
             }
-        };
+        });
 
         Func<ToolFunctionDefinition, string, Task<PermissionDecision>> deny =
             (_, _) => Task.FromResult(PermissionDecision.Deny);
@@ -162,7 +164,7 @@ public sealed class Runner
 
         try
         {
-            await chat.SendAsync(userTurn, callbacks, deny, noClarify, runCts.Token);
+            await chat.SendAsync(userTurn, deny, noClarify, runCts.Token);
         }
         catch (OperationCanceledException) when (!ct.IsCancellationRequested)
         {

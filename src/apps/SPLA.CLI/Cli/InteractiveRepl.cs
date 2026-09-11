@@ -21,14 +21,17 @@ internal static class InteractiveRepl
 
             if (TryHandleSkillsCommand(runtime, chat, input)) continue;
 
-            var callbacks = ConsoleHandlers.RichCallbacks(runtime);
             var permHandler = ConsoleHandlers.Permission(colored: true);
             var clarifyHandler = ConsoleHandlers.Clarify();
 
             Console.Write("SPLA: ");
+            // Subscribed before the turn starts, disposed only after it (and this await) finishes —
+            // so the turn's own last events (the assistant message, the token line) render before
+            // control returns to the prompt (ADR_20260910-2 wave 3).
+            using var render = ConsoleHandlers.SubscribeRich(chat.Feed, runtime);
             try
             {
-                await chat.SendAsync(input, callbacks, permHandler, clarifyHandler, CancellationToken.None);
+                await chat.SendAsync(input, permHandler, clarifyHandler, CancellationToken.None);
             }
             catch (Exception ex)
             {
