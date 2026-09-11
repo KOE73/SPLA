@@ -371,6 +371,27 @@ public class AgentSpawnToolTests
         }
 
         public void Dispose() => Disposed = true;
+
+        // Wave 2 (ADR_20260910-2 §4.6): a fake stand-in for the Publish* seam ISpawnedSession grew so
+        // SpawnedAgentRunner can feed a session's own event stream without SPLA.Agent referencing
+        // SPLA.Runtime's ChatFeed/ChatEvent types. These tests do not assert on the stream itself (that
+        // is ChatFeedTests'/ChatFeedSnapshotTests' job against the real SpawnedSession) — only that the
+        // runner calls them without throwing when a session is present.
+        public IReadOnlyList<ChatMessage>? AttachedConversation { get; private set; }
+        public int LlmTurnStartCalls { get; private set; }
+        public int AssistantMessageCalls { get; private set; }
+
+        public void AttachConversation(IReadOnlyList<ChatMessage> conversation) => AttachedConversation = conversation;
+        public void PublishLlmTurnStart(IReadOnlyList<ChatMessage> context) => LlmTurnStartCalls++;
+        public void PublishDelta(string chunk) { }
+        public void PublishReasoning(string chunk) { }
+        public void PublishAssistantMessage(ChatMessage message) => AssistantMessageCalls++;
+        public void PublishAttempt(SPLA.Domain.Llm.GenerationAttempt attempt) { }
+        public void PublishToolStarted(ToolCall call) { }
+        public void PublishToolProgress(ToolCall call, ToolProgress progress) { }
+        public void PublishToolResult(ToolCall call, ToolResult result) { }
+        public void PublishLlmTurn(SPLA.Domain.Llm.LlmTurnResult turn) { }
+        public void PublishNotice(string text) { }
     }
 
     /// <summary>The whole point of the wave: a run that finishes cleanly is not thrown away. Its

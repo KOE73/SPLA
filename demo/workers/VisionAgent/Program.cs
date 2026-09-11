@@ -64,34 +64,38 @@ var inReasoning = false;
 var reasoningStreamed = false;
 int? turnPrompt = null, turnCompletion = null;
 void EndReasoning() { if (inReasoning) { AnsiConsole.WriteLine(); inReasoning = false; } }
-var callbacks = new AgentCallbacks
+// ADR_20260910-2 wave 3: rendering is a chat.Feed subscription per frame (see the loop below), not
+// caller-supplied AgentCallbacks — this local function is what each frame's subscription runs.
+void RenderFeedEvent(SPLA.Runtime.ChatEvent e)
 {
-    OnReasoning = vision.ShowReasoning
-        ? chunk =>
-        {
+    switch (e)
+    {
+        case SPLA.Runtime.ChatReasoning r when vision.ShowReasoning:
             if (!inReasoning) { AnsiConsole.Markup("[grey]💭 [/]"); inReasoning = true; reasoningStreamed = true; }
-            AnsiConsole.Markup($"[grey]{Markup.Escape(chunk)}[/]");
-            return Task.CompletedTask;
-        }
-        : null,
-    OnDelta = chunk => { EndReasoning(); Console.Write(chunk); return Task.CompletedTask; },
-    OnAssistantMessage = msg =>
-    {
-        EndReasoning();
-        Console.WriteLine();
-        // Инлайновые <think>-рассуждения не стримятся — они есть только в собранном сообщении.
-        if (vision.ShowReasoning && !reasoningStreamed && !string.IsNullOrWhiteSpace(msg.Reasoning))
-            AnsiConsole.MarkupLine($"[grey]💭 {Markup.Escape(msg.Reasoning.Trim())}[/]");
-        return Task.CompletedTask;
-    },
-    OnNotice = n => { EndReasoning(); Console.WriteLine($"\n[notice] {n}"); return Task.CompletedTask; },
-    // Only this turn's own subtotal: the project and machine tallies are kept by the pipeline.
-    OnLlmTurn = turn =>
-    {
-        if (turn.Message.PromptTokens is int pi) turnPrompt = (turnPrompt ?? 0) + pi;
-        if (turn.Message.CompletionTokens is int ci) turnCompletion = (turnCompletion ?? 0) + ci;
+            AnsiConsole.Markup($"[grey]{Markup.Escape(r.Text)}[/]");
+            break;
+        case SPLA.Runtime.ChatDelta d:
+            EndReasoning();
+            Console.Write(d.Text);
+            break;
+        case SPLA.Runtime.ChatAssistantMessage a:
+            EndReasoning();
+            Console.WriteLine();
+            // Инлайновые <think>-рассуждения не стримятся — они есть только в собранном сообщении.
+            if (vision.ShowReasoning && !reasoningStreamed && !string.IsNullOrWhiteSpace(a.Message.Reasoning))
+                AnsiConsole.MarkupLine($"[grey]💭 {Markup.Escape(a.Message.Reasoning.Trim())}[/]");
+            break;
+        case SPLA.Runtime.ChatNotice n:
+            EndReasoning();
+            Console.WriteLine($"\n[notice] {n.Text}");
+            break;
+        // Only this turn's own subtotal: the project and machine tallies are kept by the pipeline.
+        case SPLA.Runtime.ChatLlmTurn lt:
+            if (lt.Turn.Message.PromptTokens is int pi) turnPrompt = (turnPrompt ?? 0) + pi;
+            if (lt.Turn.Message.CompletionTokens is int ci) turnCompletion = (turnCompletion ?? 0) + ci;
+            break;
     }
-};
+}
 // Headless-режим: инструментам разрешений не даём, уточняющих вопросов не ждём.
 Func<ToolFunctionDefinition, string, Task<PermissionDecision>> deny =
     (def, _) =>
@@ -192,15 +196,22 @@ while (!cts.IsCancellationRequested)
     string? userMsgId = null;
     reasoningStreamed = false;
     turnPrompt = turnCompletion = null;
+    // ADR_20260910-2 wave 3: one subscription per frame does both jobs wave 0's separate callback and
+    // this rendering used to split between them — catching the echoed user message and rendering the
+    // turn are now the same Feed subscription.
+    using var turnSub = chat.Feed.Subscribe(e =>
+    {
+        if (e is SPLA.Runtime.ChatUserMessage um) userMsgId = um.Message.MsgId;
+        RenderFeedEvent(e);
+    });
     try
     {
         await chat.SendAsync(
             "Analyze this frame per the instructions.",
-            callbacks, deny, noClarify, cts.Token,
+            deny, noClarify, cts.Token,
             // Named after the frame it is: the model's answer, and anything written back beside the
             // saved frames, then refer to the same thing the operator sees.
-            images: new[] { new SPLA.Domain.Models.ImageAttachment(dataUrl, $"frame-{frameNo:D5}.jpg") },
-            onUserMessage: m => userMsgId = m.MsgId);
+            images: new[] { new SPLA.Domain.Models.ImageAttachment(dataUrl, $"frame-{frameNo:D5}.jpg") });
     }
     catch (OperationCanceledException) { break; }
     catch (Exception ex)

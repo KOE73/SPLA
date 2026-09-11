@@ -49,12 +49,6 @@ Console.WriteLine($"Маркеры:   {(cfg.Triggers.Count == 0 ? "(все ст�
 using var runtime = new AgentRuntime(settings, loggerFactory);
 var chat = new ChatRegistry(runtime).CreateNew($"sentry {DateTime.Now:yyyy-MM-dd HH:mm}");
 
-var callbacks = new AgentCallbacks
-{
-    OnDelta = chunk => { Console.Write(chunk); return Task.CompletedTask; },
-    OnAssistantMessage = _ => { Console.WriteLine(); return Task.CompletedTask; },
-    OnNotice = n => { Console.WriteLine($"\n[notice] {n}"); return Task.CompletedTask; }
-};
 Func<ToolFunctionDefinition, string, Task<PermissionDecision>> deny =
     (def, _) => Task.FromResult(PermissionDecision.Deny);
 Func<ClarifyRequest, Task<string?>> noClarify = _ => Task.FromResult<string?>(null);
@@ -98,12 +92,24 @@ while (!cts.IsCancellationRequested)
     batchNo++;
     Console.WriteLine($"── Пачка #{batchNo} · {DateTime.Now:HH:mm:ss} · строк: {batch.Count} ──");
     string? userMsgId = null;
+    // ADR_20260910-2 wave 3: no more caller-supplied AgentCallbacks — streamed text and notices come
+    // from the chat's own Feed, the same subscription that already caught the echoed user message
+    // (wave 0's onUserMessage removal).
+    using var turnSub = chat.Feed.Subscribe(e =>
+    {
+        switch (e)
+        {
+            case SPLA.Runtime.ChatUserMessage um: userMsgId = um.Message.MsgId; break;
+            case SPLA.Runtime.ChatDelta d: Console.Write(d.Text); break;
+            case SPLA.Runtime.ChatAssistantMessage: Console.WriteLine(); break;
+            case SPLA.Runtime.ChatNotice n: Console.WriteLine($"\n[notice] {n.Text}"); break;
+        }
+    });
     try
     {
         await chat.SendAsync(
             $"Время: {DateTime.Now:yyyy-MM-dd HH:mm:ss}. Свежие строки лога:\n```\n{string.Join('\n', batch)}\n```",
-            callbacks, deny, noClarify, cts.Token,
-            onUserMessage: m => userMsgId = m.MsgId);
+            deny, noClarify, cts.Token);
     }
     catch (OperationCanceledException) { break; }
     catch (Exception ex) { Console.WriteLine($"\n[error] ход не выполнен: {ex.Message}"); }

@@ -259,6 +259,11 @@ public sealed class SpawnedAgentRunner : Domain.Interfaces.IAgentSpawner
         conversation.Add(new ChatMessage { Role = ChatRole.System, Content = systemPrompt });
         conversation.Add(new ChatMessage { Role = ChatRole.User, Content = input });
 
+        // Wave 2 (ADR_20260910-2 §4.1): hands the session the SAME live list the orchestrator appends
+        // to, so a watcher attaching mid-run (chat.open/chat.watch on this session's chat id) reads the
+        // run's own in-memory conversation instead of the file Finish has not written yet.
+        session?.AttachConversation(conversation.Messages);
+
         string lastAssistantMessage = string.Empty;
 
         // A pinned run keeps the prompt frozen: it has one procedure, cannot activate another, and a
@@ -356,21 +361,59 @@ public sealed class SpawnedAgentRunner : Domain.Interfaces.IAgentSpawner
             Details = new[] { new ToolProgressDetail("run", runId) }
         };
 
+        // Wave 2 (ADR_20260910-2 §4.6): every hook also feeds the session's own event stream, when
+        // there is a session — the same publish calls a human chat's ChatRuntime.SendAsync adapter
+        // makes, so a watcher attached to this run's chat id sees the same conversation a parent's
+        // progress-tree tick already summarises in one line. The tick logic itself stays here rather
+        // than becoming a true feed subscriber: it needs this run's own turn counter, runId and
+        // token-window state, none of which SPLA.Domain (the only thing ISpawnedSession can expose to
+        // SPLA.Agent) carries — see ISpawnedSession's own comment on why the seam is Publish* calls,
+        // not a handed-back AgentCallbacks.
         var callbacks = new AgentCallbacks
         {
-            OnLlmTurnStart = _ =>
+            OnLlmTurnStart = context2 =>
             {
+                session?.PublishLlmTurnStart(context2);
                 ProgressScope.Report(Tick($"turn {++turn}, thinking"));
+                return Task.CompletedTask;
+            },
+            OnDelta = chunk =>
+            {
+                session?.PublishDelta(chunk);
+                return Task.CompletedTask;
+            },
+            OnReasoning = chunk =>
+            {
+                session?.PublishReasoning(chunk);
+                return Task.CompletedTask;
+            },
+            OnAttempt = attempt => session?.PublishAttempt(attempt),
+            OnToolCallStarted = tc =>
+            {
+                session?.PublishToolStarted(tc);
+                return Task.CompletedTask;
+            },
+            OnToolProgress = (tc, progress) => session?.PublishToolProgress(tc, progress),
+            OnToolResult = (tc, result) =>
+            {
+                session?.PublishToolResult(tc, result);
+                return Task.CompletedTask;
+            },
+            OnNotice = note =>
+            {
+                session?.PublishNotice(note);
                 return Task.CompletedTask;
             },
             // Fires once per model call, after it returns. PromptTokens is what the provider counted
             // for the context it was sent — the honest figure, not our estimate of it.
             OnLlmTurn = result =>
             {
+                session?.PublishLlmTurn(result);
                 if (result.Message.PromptTokens is int used and > 0) promptTokens = used;
             },
             OnAssistantMessage = msg =>
             {
+                session?.PublishAssistantMessage(msg);
                 lastAssistantMessage = msg.Content ?? string.Empty;
                 var said = Excerpt(msg.Content, 56);
                 if (said is not null)

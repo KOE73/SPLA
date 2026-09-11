@@ -17,6 +17,7 @@
   </Folder>
   <Folder Name="/agents/">
     <File Path="agents/avalonia.md" />
+    <File Path="agents/chat-feed.md" />
     <File Path="agents/composition.md" />
     <File Path="agents/csharp.md" />
     <File Path="agents/data-ownership.md" />
@@ -169,6 +170,7 @@
     <File Path="docs/adr/ADR_20260908-2_core_result-size.md" />
     <File Path="docs/adr/ADR_20260909_core_named-images.md" />
     <File Path="docs/adr/ADR_20260910_plugins_android-device.md" />
+    <File Path="docs/adr/ADR_20260910-2_agent_chat-feed.md" />
   </Folder>
   <Folder Name="/docs/plans/">
     <File Path="docs/plans/PLAN_20260619_agent_skills-lifecycle.md" />
@@ -208,6 +210,7 @@
     <File Path="docs/plans/PLAN_20260904_core_chat-graph.md" />
     <File Path="docs/plans/PLAN_20260906_core_chat-directory-and-await.md" />
     <File Path="docs/plans/PLAN_20260910_plugins_android-device.md" />
+    <File Path="docs/plans/PLAN_20260910-2_agent_chat-feed.md" />
   </Folder>
   <Folder Name="/docs/ideas/">
     <File Path="docs/ideas/IDEA_20260611_core_todo-general.md" />

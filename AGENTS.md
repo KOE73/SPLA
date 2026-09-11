@@ -75,6 +75,7 @@ authoritative over that code.
 | add any registry, flag, or discovery logic | [agents/data-ownership.md](agents/data-ownership.md) |
 | touch a password, API key, token, private key, or connection string | [agents/secrets.md](agents/secrets.md) |
 | add, rename, or remove a WebSocket message type, payload, or client bus event | [agents/protocol.md](agents/protocol.md) |
+| touch `ChatFeed`, `ChatEvents`, a feed subscriber, `ChatFeedWireSubscriber`, how a turn's events leave the chat | [agents/chat-feed.md](agents/chat-feed.md) |
 | change permission modes (`Chat`, `Research`, `Inspect`, `Edit`, `Agent`) | [agents/security.md](agents/security.md) |
 | create or extend a plugin, name a tool | [agents/plugins.md](agents/plugins.md) |
 | design tool arguments | [agents/tool-args.md](agents/tool-args.md) |

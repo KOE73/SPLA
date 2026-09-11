@@ -1302,6 +1302,21 @@ public sealed class ChatOpenedPayload
     /// The bubble index is the live stream's own, so a client that gets this and then more chunks for
     /// the same bubble continues it instead of starting a second one.</para></summary>
     public LivePartialDto? Live { get; set; }
+
+    /// <summary>
+    /// This chat's progress nodes still running at the moment it was opened — turn tree and
+    /// background-task trees alike, same shape and same namespaced ids as the live <c>progress.node</c>
+    /// event (ADR_20260910-2 §4.4, wave 1). A window attaching mid-turn merges these into its progress
+    /// tree store exactly like a live node, then keeps listening for more; an old client that does not
+    /// know this field simply never sees the mid-turn tree until the next tick arrives on the wire the
+    /// way it always did.
+    /// </summary>
+    public List<ProgressNodePayload> OpenProgressNodes { get; set; } = new();
+
+    /// <summary>This chat's background tasks still running at the moment it was opened — same shape
+    /// <c>task.list.result</c> uses. Additive, wave 1: an old client ignores it and still learns about
+    /// tasks from <c>task.list</c>/<c>task.state.changed</c> as before.</summary>
+    public List<TaskSummaryDto> RunningTasks { get; set; } = new();
 }
 
 /// <summary>An answer that has been started and not finished. See <see cref="ChatOpenedPayload.Live"/>.</summary>

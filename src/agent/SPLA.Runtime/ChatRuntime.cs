@@ -24,7 +24,7 @@ namespace SPLA.Runtime;
 /// its run, so tool calls from concurrent chats never collide.
 /// </para>
 /// </summary>
-public sealed class ChatRuntime : IDisposable, SPLA.Domain.Agent.IBackgroundTaskHost, SPLA.Domain.Agent.ICorrespondenceHost, SPLA.Domain.Agent.IContextBudgetHost, IReplyToolSource
+public sealed class ChatRuntime : IDisposable, SPLA.Domain.Agent.IBackgroundTaskHost, SPLA.Domain.Agent.ICorrespondenceHost, SPLA.Domain.Agent.IContextBudgetHost, IReplyToolSource, IChatFeedSession
 {
     private readonly AgentRuntime _runtime;
 
@@ -188,7 +188,10 @@ public sealed class ChatRuntime : IDisposable, SPLA.Domain.Agent.IBackgroundTask
     /// below (built once in the constructor, but invoked from inside whichever turn is live) can echo a
     /// Human- or Peer-kind drained message back to watchers exactly like a directly-sent one. Only one
     /// turn ever runs at a time (guarded by _turnGate), so there is no re-entrancy to worry about.</summary>
-    private Action<ChatMessage>? _activeOnUserMessage;
+    // Formerly a stashed per-turn onUserMessage callback (see the caller-supplied parameter this class
+    // used to accept before wave 0 of ADR_20260910-2). Now OnMessageDelivered below just publishes to
+    // this chat's own Feed unconditionally — every human/peer message is chat-owned news, not a
+    // caller's — so nothing needs to be stashed at turn start any more.
 
     /// <summary>Human- and Peer-kind messages this turn's DrainInbox has pulled off the queue but which
     /// have not yet been added to the conversation (and so have no MsgId yet) — see the constructor's
@@ -272,6 +275,68 @@ public sealed class ChatRuntime : IDisposable, SPLA.Domain.Agent.IBackgroundTask
 
     /// <summary>The skill running in this chat, or null when idle.</summary>
     public string? ActiveSkillId => _skillSession.ActiveSkillId;
+
+    /// <summary>This chat's own event stream (ADR_20260910-2, wave 0) — every turn this chat runs
+    /// publishes here, whoever started it (see <see cref="SendAsync"/>'s adapter). The concrete type is
+    /// exposed (not just <see cref="IChatFeed"/>) because <see cref="ChatFeed.Publish"/> is this class's
+    /// own way of writing to it, and only the writer needs that; every other reader only ever needs
+    /// <see cref="IChatFeed.Subscribe"/>, which this already satisfies.</summary>
+    public ChatFeed Feed { get; } = new();
+
+    private readonly Action<string, SPLA.Domain.Models.ProgressNode> _onProgressNodeChanged;
+    private readonly Action<SPLA.Domain.Tools.BackgroundTaskRecord> _onTaskChanged;
+    private readonly Action<PendingAsk> _onAskRaised;
+    private readonly Action<PendingAsk, AskResolution> _onAskResolved;
+
+    /// <summary>Publishes one event onto this chat's own <see cref="Feed"/> — every emitter below funnels
+    /// through this one call so the "who is this chat's stream for" question has one answer.</summary>
+    private void Emit(ChatEvent e) => Feed.Publish(e);
+
+    /// <summary>Same as <see cref="Emit(ChatEvent)"/>, but folds the state change the event announces
+    /// into the same critical section as its sequence number and delivery — see
+    /// <see cref="ChatFeed.Publish"/>'s own comment on <c>mutateUnderGate</c> for why that matters for
+    /// a subscriber taking a snapshot concurrently (ADR_20260910-2 §4.4, wave 1).</summary>
+    private void Emit(ChatEvent e, Action mutate) => Feed.Publish(e, mutate);
+
+    /// <summary>
+    /// Atomically subscribes to this chat's feed and captures its current in-memory state — wave 1's
+    /// "снимок плюс поток" (ADR_20260910-2 §4.4). See <see cref="ChatFeed.SubscribeWithSnapshot{T}"/>
+    /// for the atomicity guarantee; <see cref="BuildSnapshot"/> is the capture function it runs under
+    /// the same lock <see cref="Emit(ChatEvent, Action)"/> uses for a mutating event.
+    /// </summary>
+    public (ChatFeedSnapshot Snapshot, long Sequence, IDisposable Subscription) SubscribeWithSnapshot(
+        Action<ChatEvent> handler)
+        => Feed.SubscribeWithSnapshot(BuildSnapshot, handler);
+
+    /// <summary>
+    /// Atomically captures this chat's snapshot alongside <paramref name="attach"/> — the wire
+    /// path's own use of §4.4: a chat has one permanently registered <c>ChatFeedWireSubscriber</c>
+    /// (constructed from <c>ChatRegistry.RuntimeOpened</c>) that fans events to whichever connections
+    /// are marked watching, so opening a chat needs no new per-connection <see cref="IChatFeed"/>
+    /// subscription — only the mark ("this connection watches now") and the snapshot to agree on
+    /// exactly which events fall on which side. See <see cref="ChatFeed.SnapshotUnderGate{T}"/>.
+    /// </summary>
+    public ChatFeedSnapshot SnapshotForOpen(Action attach) => Feed.SnapshotUnderGate(BuildSnapshot, attach);
+
+    /// <inheritdoc cref="IChatFeedSession.ResubscribeQueuedWithSnapshot"/>
+    public (ChatFeedSnapshot Snapshot, IDisposable Subscription) ResubscribeQueuedWithSnapshot(
+        Func<ChatEvent, Task> handler, Action onDetached)
+        => Feed.SubscribeQueuedWithSnapshot(handler, onDetached, BuildSnapshot);
+
+    /// <summary>Reads every piece of state a reconnecting subscriber needs: the conversation, the
+    /// in-flight bubble, every progress node still running (turn tree and background-task trees alike
+    /// — <see cref="Progress"/> holds both), every pending ask, every running background task. Called
+    /// only from inside <see cref="ChatFeed.SubscribeWithSnapshot{T}"/>'s lock — see that method's own
+    /// comment for why running it anywhere else would not be atomic.</summary>
+    private ChatFeedSnapshot BuildSnapshot() => new(
+        _conversation.Messages.ToList(),
+        Live,
+        Progress.Trees.SelectMany(kv => kv.Value.Nodes
+                .Where(n => n.State == SPLA.Domain.Models.ProgressState.Running)
+                .Select(n => new ChatFeedProgressNode(kv.Key, n)))
+            .ToList(),
+        _runtime.Asks.List(ChatId),
+        Tasks.All.Where(t => t.State == SPLA.Domain.Tools.BackgroundTaskState.Running).ToList());
 
     /// <summary>
     /// Ends the running skill from outside the model — the user's way out.
@@ -711,6 +776,14 @@ public sealed class ChatRuntime : IDisposable, SPLA.Domain.Agent.IBackgroundTask
             return new ReplyResult(ReplyOutcome.CorrespondentGone,
                 archived ? "their chat was archived" : "their chat was deleted");
         }
+
+        // A spawned correspondent mid-run is alive but not reachable yet: GetOrOpen refuses it (its
+        // file is still empty — ADR_20260910-2), and treating that as "unreachable" below would
+        // tombstone a correspondence that becomes deliverable the moment the run ends. Refused
+        // for now, correspondence kept.
+        if (_registry.PeekSpawned(correspondence.ChatId) is not null)
+            return new ReplyResult(ReplyOutcome.Denied,
+                "their run is still in progress; reply again after it finishes");
 
         var target = _registry.GetOrOpen(correspondence.ChatId);
         if (target is null)
@@ -1316,7 +1389,7 @@ public sealed class ChatRuntime : IDisposable, SPLA.Domain.Agent.IBackgroundTask
             },
             OnMessageDelivered = message =>
             {
-                if (_pendingEchoes.Remove(message)) _activeOnUserMessage?.Invoke(message);
+                if (_pendingEchoes.Remove(message)) Emit(new ChatUserMessage(message) { ChatId = ChatId });
             },
             Checkpoint = _checkpoint,
             // Anti-repeat guard is a per-project setting (agent: loop_guard, default off) — it targets
@@ -1326,6 +1399,25 @@ public sealed class ChatRuntime : IDisposable, SPLA.Domain.Agent.IBackgroundTask
             ToolLoopWindow = EffectiveSettings.LoopGuardRepeats,
             Logger = runtime.LoggerFactory.CreateLogger<ConversationOrchestrator>()
         };
+
+        // Chat-lifetime feed subscriptions — wave 0's "чат сам публикует... узлы прогресса..., изменения
+        // задач" (ADR §4.1). One subscription each, for the chat's whole life, exactly the shape
+        // SplaServiceHost.WireChatProgress and its Tasks.Changed/Asks sibling used to set up per chat
+        // from the outside; now the chat does it for itself, so a wire subscriber (or any other
+        // observer) only has to subscribe to ONE stream to see all of it.
+        _onProgressNodeChanged = (treeId, node) => Emit(new ChatProgressNode(treeId, node) { ChatId = ChatId });
+        Progress.NodeChanged += _onProgressNodeChanged;
+
+        _onTaskChanged = record => Emit(new ChatTaskChanged(record) { ChatId = ChatId });
+        Tasks.Changed += _onTaskChanged;
+
+        // Asks live on the PROJECT's runtime (PendingAskStore's own comment: a question belongs to the
+        // chat, not the connection, but the store itself is shared by every chat of the project) — so
+        // this chat filters the project-wide stream down to its own chat id before republishing.
+        _onAskRaised = ask => { if (ask.ChatId == ChatId) Emit(new ChatAskRaised(ask) { ChatId = ChatId }); };
+        _onAskResolved = (ask, reason) => { if (ask.ChatId == ChatId) Emit(new ChatAskResolved(ask, reason) { ChatId = ChatId }); };
+        runtime.Asks.Asked += _onAskRaised;
+        runtime.Asks.Resolved += _onAskResolved;
     }
 
     /// <summary>The conversation's display messages (system prompt hidden). Hosts project these to
@@ -1357,16 +1449,16 @@ public sealed class ChatRuntime : IDisposable, SPLA.Domain.Agent.IBackgroundTask
     /// <summary>
     /// Runs one turn: appends the user message, drives the agent loop, and persists the chat. The
     /// permission and clarify handlers come from the client connection so prompts surface in that
-    /// client's UI; <paramref name="callbacks"/> stream the turn's events back to it.
+    /// client's UI; the turn's events reach observers only through <see cref="Feed"/> — ADR_20260910-2
+    /// wave 3: no caller-supplied <see cref="AgentCallbacks"/> anymore, every subscriber (console,
+    /// <c>chat run</c>, the wire) attaches to the feed instead.
     /// </summary>
     public async Task SendAsync(
         string? text,
-        AgentCallbacks callbacks,
         Func<ToolFunctionDefinition, string, Task<PermissionDecision>> permissionHandler,
         Func<ClarifyRequest, Task<string?>> clarifyHandler,
         CancellationToken cancellationToken,
-        IReadOnlyList<ImageAttachment>? images = null,
-        Action<ChatMessage>? onUserMessage = null)
+        IReadOnlyList<ImageAttachment>? images = null)
     {
         // Counted here — synchronously, before the first await — so a caller that hands this task to a
         // host can broadcast "this chat is busy" the instant it starts it, with no window in which the
@@ -1375,9 +1467,11 @@ public sealed class ChatRuntime : IDisposable, SPLA.Domain.Agent.IBackgroundTask
         try { await _turnGate.WaitAsync(cancellationToken); }
         catch { Interlocked.Decrement(ref _turnsInFlight); throw; }
 
+        var cancelled = false;
+        string? turnError = null;
         try
         {
-            _activeOnUserMessage = onUserMessage;
+            Emit(new ChatTurnStarted(text) { ChatId = ChatId });
 
             // The turn's surface, wave-4-style (see RefreshCorrespondences' own comment): a dead
             // correspondent is struck and announced before this turn's context is assembled, so a
@@ -1385,17 +1479,69 @@ public sealed class ChatRuntime : IDisposable, SPLA.Domain.Agent.IBackgroundTask
             // than one turn.
             RefreshCorrespondences();
 
-            // Registers the turn's tree into the chat-wide hub the moment the orchestrator creates
-            // it, without disturbing whatever the caller's own OnProgressTree does with it — both
-            // fire on the same handout. A subscriber that only knows this chat's hub (a background
-            // task's future sibling) sees the turn's root alongside any other live one.
-            var callerOnProgressTree = callbacks.OnProgressTree;
-            callbacks = callbacks with
+            // The one adapter "AgentCallbacks -> feed" ADR_20260910-2 wave 0 asks for: this chat's own
+            // bookkeeping (tree registration, usage recording, the live partial) happens here as the
+            // chat's own work, unconditionally, and every hook publishes onto Feed. Wave 3: no more
+            // caller-supplied AgentCallbacks folded in on top — every observer (console, `chat run`,
+            // the wire) is a Feed subscriber now, so this adapter is the only place that still builds
+            // one, purely to satisfy ConversationOrchestrator.RunAsync's signature.
+            var currentMsgIndex = 0;
+
+            var adapter = new AgentCallbacks
             {
-                OnProgressTree = tree =>
+                OnLlmTurnStart = context =>
                 {
-                    CurrentTurnTreeId = Progress.Register(tree);
-                    callerOnProgressTree?.Invoke(tree);
+                    CaptureLastContext(context);
+                    // Indices come from the CHAT (see NextBubbleIndex's own comment) — not from this
+                    // one turn — so two live bubbles in the same chat never collide.
+                    currentMsgIndex = NextBubbleIndex();
+                    Emit(new ChatLlmCallStarted(currentMsgIndex, context, CurrentTurnTreeId) { ChatId = ChatId });
+                    return Task.CompletedTask;
+                },
+                OnDelta = chunk =>
+                {
+                    Emit(new ChatDelta(currentMsgIndex, chunk) { ChatId = ChatId },
+                        () => { lock (_liveGate) _liveContent.Append(chunk); });
+                    return Task.CompletedTask;
+                },
+                OnReasoning = chunk =>
+                {
+                    Emit(new ChatReasoning(currentMsgIndex, chunk) { ChatId = ChatId },
+                        () => { lock (_liveGate) _liveReasoning.Append(chunk); });
+                    return Task.CompletedTask;
+                },
+                OnAssistantMessage = msg =>
+                {
+                    Emit(new ChatAssistantMessage(currentMsgIndex, msg) { ChatId = ChatId }, ClearLive);
+                    return Task.CompletedTask;
+                },
+                OnAttempt = attempt => Emit(new ChatAttempt(currentMsgIndex, attempt) { ChatId = ChatId }),
+                OnToolCallStarted = tc =>
+                {
+                    Emit(new ChatToolStarted(tc) { ChatId = ChatId });
+                    return Task.CompletedTask;
+                },
+                OnToolProgress = (tc, progress) => Emit(new ChatToolProgress(tc, progress) { ChatId = ChatId }),
+                // Registers the turn's tree into the chat-wide hub the moment the orchestrator creates
+                // it. Node changes themselves are NOT emitted from here — this chat already republishes
+                // every Progress.NodeChanged tick onto Feed for the chat's whole life (see the
+                // constructor), turn tree and background task tree alike, so doing it again per-turn
+                // would double-deliver every node this same tree already reports through that path.
+                OnProgressTree = tree => CurrentTurnTreeId = Progress.Register(tree),
+                OnToolResult = (tc, result) =>
+                {
+                    Emit(new ChatToolResult(tc, result) { ChatId = ChatId });
+                    return Task.CompletedTask;
+                },
+                OnNotice = note =>
+                {
+                    Emit(new ChatNotice(note) { ChatId = ChatId });
+                    return Task.CompletedTask;
+                },
+                OnLlmTurn = turn =>
+                {
+                    RecordUsage(turn);
+                    Emit(new ChatLlmTurn(turn, _budgetWindow) { ChatId = ChatId });
                 }
             };
 
@@ -1420,9 +1566,11 @@ public sealed class ChatRuntime : IDisposable, SPLA.Domain.Agent.IBackgroundTask
                     // Data URLs stay in memory for the LLM this turn; the sidecar files below are what persist.
                     Images = images is { Count: > 0 } ? images.ToList() : null
                 };
-                _conversation.Add(userMsg);
-                // MsgId exists only after Add — echo it so the client can anchor rewind/fork on this message.
-                onUserMessage?.Invoke(userMsg);
+                // MsgId exists only after Add — the Add itself runs inside Emit's gate (wave 1) so a
+                // subscriber snapshotting concurrently sees this message and this event as one atomic
+                // change, never one without the other. Publishing lets a subscriber anchor rewind/fork
+                // on this message; replaces the onUserMessage parameter this method used to take (wave 0).
+                Emit(new ChatUserMessage(userMsg) { ChatId = ChatId }, () => _conversation.Add(userMsg));
                 if (images is { Count: > 0 }) PersistImages(userMsg, images);
                 Save();
             }
@@ -1456,44 +1604,21 @@ public sealed class ChatRuntime : IDisposable, SPLA.Domain.Agent.IBackgroundTask
             try { _budgetWindow = await GetContextLengthAsync(cancellationToken); }
             catch { _budgetWindow = null; }
 
-            var host = callbacks.OnLlmTurn;
-            callbacks = callbacks with
+            try
             {
-                OnLlmTurn = turn =>
-                {
-                    RecordUsage(turn);
-                    host?.Invoke(turn);
-                }
-            };
-
-            // The live partial, kept for whoever opens this chat mid-turn (see Live). Wrapped around
-            // the caller's own sinks rather than asked of them, so it holds for every host and cannot
-            // be forgotten by a new one. The assembled message clears it: from that moment the
-            // conversation carries the text, and keeping a copy here would show it twice.
-            var callerDelta = callbacks.OnDelta;
-            var callerReasoning = callbacks.OnReasoning;
-            var callerAssistant = callbacks.OnAssistantMessage;
-            callbacks = callbacks with
+                await _orchestrator.RunAsync(
+                    _conversation, llm, ResolveMode(), adapter, cancellationToken);
+            }
+            catch (OperationCanceledException)
             {
-                OnDelta = chunk =>
-                {
-                    lock (_liveGate) _liveContent.Append(chunk);
-                    return callerDelta?.Invoke(chunk) ?? Task.CompletedTask;
-                },
-                OnReasoning = chunk =>
-                {
-                    lock (_liveGate) _liveReasoning.Append(chunk);
-                    return callerReasoning?.Invoke(chunk) ?? Task.CompletedTask;
-                },
-                OnAssistantMessage = msg =>
-                {
-                    ClearLive();
-                    return callerAssistant?.Invoke(msg) ?? Task.CompletedTask;
-                }
-            };
-
-            await _orchestrator.RunAsync(
-                _conversation, llm, ResolveMode(), callbacks, cancellationToken);
+                cancelled = true;
+                throw;
+            }
+            catch (Exception ex)
+            {
+                turnError = ex.Message;
+                throw;
+            }
 
             // A tool may have injected a synthetic image message mid-turn (see ConversationOrchestrator's
             // pending-image-sink drain). Persist its data URLs to sidecar files exactly like a
@@ -1506,11 +1631,17 @@ public sealed class ChatRuntime : IDisposable, SPLA.Domain.Agent.IBackgroundTask
         }
         finally
         {
-            _activeOnUserMessage = null;
             // A turn that was cancelled or failed mid-stream never reached OnAssistantMessage, so its
             // half-said sentence would otherwise be offered to every client opening this chat from
-            // now on, as if the model were still speaking it.
-            ClearLive();
+            // now on, as if the model were still speaking it. Cleared inside Emit's gate (wave 1) —
+            // same reasoning as the user-message Add above — so a concurrent snapshot never sees a
+            // live partial that "turn complete" already says is gone.
+            // Wave 0: the chat announces its own end of turn — this used to be ChatTurnDriver's job
+            // (MessageTypes.TurnComplete), built from the outside after SendAsync returned or threw.
+            // Emitted from the SAME finally that clears Live/releases the gate, so "turn complete" on
+            // the feed and "chat no longer busy" (IsTurnRunning, one line below) become true together —
+            // no window in which a late subscriber sees one but not the other.
+            Emit(new ChatTurnCompleted(cancelled, turnError, ActiveSkillId) { ChatId = ChatId }, ClearLive);
             _turnGate.Release();
             Interlocked.Decrement(ref _turnsInFlight);
         }
@@ -1769,6 +1900,14 @@ public sealed class ChatRuntime : IDisposable, SPLA.Domain.Agent.IBackgroundTask
     public void Dispose()
     {
         if (Interlocked.Exchange(ref _disposed, 1) != 0) return;
+
+        // The project-wide Asks store outlives this chat, so its subscriptions must be dropped
+        // explicitly — the same leak Progress/Tasks don't have (both are owned by this instance and
+        // die with it either way, but unsubscribing them too costs nothing and reads the same).
+        _runtime.Asks.Asked -= _onAskRaised;
+        _runtime.Asks.Resolved -= _onAskResolved;
+        Progress.NodeChanged -= _onProgressNodeChanged;
+        Tasks.Changed -= _onTaskChanged;
 
         // Every live background task's own token is linked to this one (BackgroundTaskRegistry) —
         // one cancel here reaches all of them without the registry having to be asked to walk its

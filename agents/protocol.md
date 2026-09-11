@@ -9,6 +9,15 @@ that keeps both sides honest.
 > constant string appears somewhere in this file. If you add a constant without documenting it here,
 > that test goes red. Keep the tables below complete.
 
+## Where the chat-scoped events come from
+
+Every `watchers`-fanned message in the "Server → Client" table below (`delta`, `tool.started`,
+`progress.node`, `turn.complete`, …) is `ChatFeedWireSubscriber`'s wire mapping of one `ChatEvent` off
+a session's `ChatFeed` — the closed event vocabulary, who publishes, subscription modes, and the
+snapshot-on-open mechanics all live in [`agents/chat-feed.md`](chat-feed.md), not here. This file
+still owns the wire shapes (`MessageTypes`/payloads) themselves; that file owns where the events
+before the wire come from.
+
 ## Source of truth
 
 - **Wire message names**: `src/service/SPLA.Service.Contracts/Protocol.cs` → `MessageTypes`
@@ -55,7 +64,7 @@ client/types **and** this table.
 | `chat.list` | `ChatList` | — | Request the chat list. Reply `chat.list.result`: human chats at the top level, each with its spawned descendants nested under `children` (the role→chat tree, `ADR_20260827-2` §2.5) — a spawned session (`origin: spawned`) never appears as a top-level entry, only inside some ancestor's `children`, however deep the spawn chain went. Its own transcript is still reached through `subagent.get`, not by opening it as an ordinary chat. |
 | `chat.open` | `ChatOpen` | `ChatOpenPayload` | Open a chat; reply `chat.opened`. |
 | `chat.read` | `ChatRead` | `ChatOpenPayload` | Read an ARCHIVED chat's history without opening it; reply `chat.read.result`. Deliberately not `chat.open` with a flag: `chat.opened` promises a session that is watchable and takes `chat.send`, and every handler built on that promise would otherwise have to remember the archived case one at a time. Registers no watch — there is no runtime behind it to emit an event. |
-| `chat.watch` | `ChatWatch` | `ChatOpenPayload` | Watch a chat (turn/tool events) without the `chat.opened` echo — for tear-off/aux windows. |
+| `chat.watch` | `ChatWatch` | `ChatOpenPayload` | Watch a chat (turn/tool events) without the `chat.opened` echo — for tear-off/aux windows. Marked through the same atomic gate as `chat.open` (wave 1) when a live runtime exists, so a window that starts watching mid-turn does not miss or double-see the event straddling that moment; the payload itself is unaffected. |
 | `chat.unwatch` | `ChatUnwatch` | `ChatOpenPayload` | Stop receiving a chat's turn events. Client-driven: opening another chat is NOT enough, because a chat mid-turn keeps streaming into its own background session. |
 | `chat.new` | `ChatNew` | `ChatNewPayload` | Create + open; also broadcasts `chat.list.result`. |
 | `chat.rename` | `ChatRename` | `ChatRenamePayload` | Broadcasts `chat.list.result`. |
@@ -141,7 +150,7 @@ client/types **and** this table.
 | `chat.list.result` | `ChatListResult` | `ChatListResultPayload` | broadcast (project) | Every sidebar in that project refreshes. |
 | `correspondence.graph.result` | `CorrespondenceGraphResult` | `CorrespondenceGraphResultPayload` | unicast | Answer to `correspondence.graph.get`: one `CorrespondenceEdgeDto` per correspondence, oriented from whoever opened it (`FromRole`/`FromChatId`) to the correspondent they addressed (`ToRole`/`ToChatId`), carrying BOTH directions' reply counts and estimated token volume — `RepliesFromInitiator`/`VolumeFromInitiator` vs `RepliesFromCorrespondent`/`VolumeFromCorrespondent` — so a client can render the imbalance the graph exists to show (a role that only sends, a role nobody answers) without a second request. Volume is an honest estimate of the replies' own text (`TokenEstimate.Of`), never a slice of a turn's real provider usage. |
 | `chat.archived.list.result` | `ChatArchivedListResult` | `ChatArchivedListResultPayload` | unicast | Answer to `chat.archived.list`. |
-| `chat.opened` | `ChatOpened` | `ChatOpenedPayload` | unicast | Full chat state on open. |
+| `chat.opened` | `ChatOpened` | `ChatOpenedPayload` | unicast | Full chat state on open, taken as one atomic snapshot of the chat's in-memory state (`ChatFeed.SnapshotUnderGate`, `ADR_20260910-2` §4.4/wave 1) at the moment this connection is marked a watcher — no event around the open can be missed or double-delivered. `OpenProgressNodes` (same shape as `progress.node`) and `RunningTasks` (same shape as `task.list.result`'s rows) are wave 1's additions, both additive: an older client that does not know these fields ignores them and still learns the same information from the live `progress.node`/`task.state.changed` stream and `task.list`, just later. Pending permission/clarify questions are NOT on this payload — they still replay as ordinary `permission.request`/`clarify.request` frames right after, but now drawn from the same atomic snapshot instead of a second, separately-timed query. |
 | `chat.read.result` | `ChatReadResult` | `ChatReadResultPayload` | unicast | Answer to `chat.read`: an archived chat's title and messages, plus `readOnly`. Carries none of the per-turn settings `chat.opened` does (mode, model, temperature, reasoning, skill, tool sets, turn state) — those describe a next turn, and an archived chat has none. |
 | `user.message` | `UserMessage` | `UserMessagePayload` | watchers | Accepted user message id/time; optional text renders server-initiated turns. `PeerFrom` set means this "user" turn is actually an incoming reply across a correspondence (`ADR_20260827-2` §2.5) — the client renders it as speech ("← from `PeerFrom`") instead of an ordinary human bubble, live, the moment it lands. |
 | `llm.turn.start` | `LlmTurnStart` | `DeltaPayload` | watchers | New assistant message index. |

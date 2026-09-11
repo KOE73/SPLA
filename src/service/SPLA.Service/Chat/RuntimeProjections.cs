@@ -15,7 +15,17 @@ public static class RuntimeProjections
     /// <summary>The chat's display messages projected to wire DTOs (system prompt hidden).
     /// Persisted image filenames are surfaced as /chat-image URLs so reopened chats show their pictures.</summary>
     public static List<ChatMessageDto> SnapshotMessages(this ChatRuntime chat)
-        => chat.DisplayMessages
+        => chat.SnapshotMessages(chat.DisplayMessages);
+
+    /// <summary>Same projection as the parameterless overload, but over a caller-supplied message list
+    /// instead of re-reading <see cref="ChatRuntime.DisplayMessages"/> live. Used when the messages must
+    /// come from an already-captured <c>ChatFeedSnapshot</c> rather than the conversation as it stands
+    /// at call time — e.g. the overflow-resync path in <c>ChatFeedWireSubscriber</c>, where re-reading
+    /// live here would reintroduce the exact race <see cref="ChatFeed.SubscribeQueuedWithSnapshot{T}"/>
+    /// closes for every other field of the snapshot.</summary>
+    public static List<ChatMessageDto> SnapshotMessages(this ChatRuntime chat, IEnumerable<ChatMessage> messages)
+        => messages
+            .Where(m => m.Role != ChatRole.System)
             .Select(m =>
             {
                 var dto = ProtocolMapper.ToDto(m);

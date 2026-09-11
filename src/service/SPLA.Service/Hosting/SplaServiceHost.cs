@@ -499,55 +499,6 @@ public sealed class SplaServiceHost
     /// both must survive across however many turns and tasks this chat runs.
     /// </para>
     /// </summary>
-    private static void WireChatProgress(
-        SPLA.Runtime.ChatRuntime chat, AgentRuntime runtime, ConnectionHub hub)
-    {
-        var lastSent = new System.Collections.Concurrent.ConcurrentDictionary<string, DateTime>();
-
-        chat.Progress.NodeChanged += (treeId, node) =>
-        {
-            runtime.Turns.Touch(chat.ChatId);
-
-            // Each ProgressTree numbers its own nodes from "n1" — fine while exactly one tree was
-            // ever live per chat (a turn's own). Now a background task's tree can be live alongside
-            // the current turn's, and their local ids collide on the wire with no tree of their own
-            // to disambiguate them in the flat `progress.node` stream. Namespacing by the hub's tree
-            // id ("t2:n1") is the fix, done here rather than in ProgressNodePayload/ProgressTree
-            // themselves — those stay tree-local (correct for every other consumer, MCP included),
-            // and only the point that merges several trees into one stream needs to know they exist.
-            var wireId = $"{treeId}:{node.Id}";
-            var wireParentId = node.ParentId is null ? null : $"{treeId}:{node.ParentId}";
-
-            var now = DateTime.UtcNow;
-            var known = lastSent.TryGetValue(wireId, out var last);
-
-            // Structural frames — a node's first appearance and its finish — are never throttled:
-            // they are what a client builds the tree's shape out of, and one dropped frame is a
-            // branch that never appears or one that spins forever. Only the ticks between are
-            // throttled, and per node, so one host's scan cannot silence what started under it.
-            if (known && node.State == SPLA.Domain.Models.ProgressState.Running
-                      && (now - last).TotalMilliseconds < 120) return;
-
-            lastSent[wireId] = now;
-
-            var latest = node.Latest;
-            _ = hub.BroadcastToWatchersAsync(chat.ChatId, Contracts.MessageTypes.ProgressNode, new Contracts.ProgressNodePayload
-            {
-                NodeId = wireId,
-                ParentId = wireParentId,
-                Label = node.Label,
-                State = node.State.ToString().ToLowerInvariant(),
-                Current = latest?.Current,
-                Total = latest?.Total,
-                Fraction = latest?.Fraction,
-                Message = latest?.Message,
-                Details = latest?.Details?
-                    .Select(d => new Contracts.ToolProgressDetailDto { Label = d.Label, Value = d.Value })
-                    .ToList()
-            });
-        };
-    }
-
     private static void WireRuntimeEvents(AgentRuntimeRegistry registry, ConnectionHub hub)
     {
         registry.RuntimeCreated += (projectId, entry) => WireOneRuntime(registry, hub, projectId, entry);
@@ -597,33 +548,52 @@ public sealed class SplaServiceHost
             // A question a running turn is waiting on. Raised by the project's runtime rather than by
             // the connection that started the turn, so it reaches every window watching the chat and
             // any of them may answer — including one that opened after the question was asked.
-            entry.Runtime.Asks.Asked += ask =>
-            {
-                _ = hub.BroadcastToWatchersAsync(
-                    ask.ChatId, ProtocolMapper.MessageTypeFor(ask), ProtocolMapper.PayloadFor(ask), ask.RequestId);
-                // The sidebar too, not just the open chat: "somebody is being waited for" is the one
-                // state a person needs to see from a chat they are not currently looking at.
-                _ = BroadcastChatsAsync(hub, projectId, entry);
-            };
+            // The actual per-chat wire message for an ask (ProtocolMapper.MessageTypeFor/PayloadFor) is
+            // no longer sent from here — ChatRuntime itself republishes the project-wide Asks stream
+            // onto its own chat-scoped Feed (see ChatRuntime's constructor), and ChatFeedWireSubscriber
+            // sends the wire message from there instead. This subscription now exists only for the
+            // sidebar: "somebody is being waited for" is the one state a person needs to see from a
+            // chat they are not currently looking at, and ChatFeedWireSubscriber has no reason to know
+            // about every OTHER chat's list entry.
+            entry.Runtime.Asks.Asked += ask => { _ = BroadcastChatsAsync(hub, projectId, entry); };
 
             // ...and its counterpart: whoever closed it, every other window drops the dialog instead
-            // of leaving a button that answers nothing.
-            entry.Runtime.Asks.Resolved += (ask, reason) =>
+            // of leaving a button that answers nothing (the wire message itself, again, comes from
+            // ChatFeedWireSubscriber now).
+            entry.Runtime.Asks.Resolved += (ask, reason) => { _ = BroadcastChatsAsync(hub, projectId, entry); };
+
+            // One wire subscriber per chat, for the chat's whole life — ChatFeedWireSubscriber replaces
+            // WireChatProgress, ChatTurnDriver.BuildCallbacks, and the Tasks.Changed forwarding that used
+            // to be three separate subscriptions set up here. ChatRuntime.Feed already carries all of
+            // it (turn events, progress nodes — turn's own tree and any background task's alike, asks
+            // filtered to this chat, task changes), so one subscription now reaches everything.
+            entry.Chats.RuntimeOpened += chat =>
             {
-                _ = hub.BroadcastToWatchersAsync(
-                    ask.ChatId, Contracts.MessageTypes.AskResolved,
-                    new Contracts.AskResolvedPayload { Reason = ProtocolMapper.ReasonName(reason) }, ask.RequestId);
-                _ = BroadcastChatsAsync(hub, projectId, entry);
+                var wire = new ChatFeedWireSubscriber(hub, registry, entry.Runtime, projectId, chat);
+                void OnWireClosed(SPLA.Runtime.ChatRuntime closed)
+                {
+                    if (closed != chat) return;
+                    wire.Dispose();
+                    entry.Chats.RuntimeClosed -= OnWireClosed;
+                }
+                entry.Chats.RuntimeClosed += OnWireClosed;
             };
 
-            // Chat-level progress: one subscription for the chat's whole life, not one per turn and
-            // not one per connection. Replaces the old per-turn subscription in
-            // ClientConnection.BuildCallbacks, which only ever saw the turn's own tree — a background
-            // task's ticks (plan step 0.4, closed properly here rather than deferred again) had no
-            // subscription to ride at all, only its final result via the inbox. ChatRuntime.Progress
-            // already collects every root, turn and background task alike (built in wave 0's
-            // ProgressHub), so wiring it once here reaches both automatically.
-            entry.Chats.RuntimeOpened += chat => WireChatProgress(chat, entry.Runtime, hub);
+            // Wave 2's whole point: a spawned session's run wired with the SAME subscriber class a
+            // human chat's RuntimeOpened uses above — see IChatFeedSession — so a window opened on a
+            // sub-agent's chat mid-run sees the transcript live instead of the empty file its Finish
+            // has not written yet (ADR_20260910-2 §4.8: "провод... одним и тем же кодом").
+            entry.Chats.SpawnedOpened += session =>
+            {
+                var wire = new ChatFeedWireSubscriber(hub, registry, entry.Runtime, projectId, session);
+                void OnWireClosed(SPLA.Runtime.SpawnedSession closed)
+                {
+                    if (closed != session) return;
+                    wire.Dispose();
+                    entry.Chats.SpawnedClosed -= OnWireClosed;
+                }
+                entry.Chats.SpawnedClosed += OnWireClosed;
+            };
 
             // The pump (PLAN_20260825 wave B): wakes this chat's own turn when a background task's
             // result lands and nobody has sent a message since. Same shape as WireChatProgress right
@@ -667,24 +637,8 @@ public sealed class SplaServiceHost
                 entry.Chats.RuntimeClosed += OnClosed;
             };
 
-            // The task panel's live feed (PLAN_20260825 wave E): one subscription for the chat's whole life,
-            // same shape as WireChatProgress/ChatPump right above — a task can start and finish across many
-            // turns, so a per-turn subscription would miss most of what it needs to report.
-            entry.Chats.RuntimeOpened += chat =>
-            {
-                chat.Tasks.Changed += record => _ = hub.BroadcastToWatchersAsync(chat.ChatId, Contracts.MessageTypes.TaskStateChanged,
-                    new Contracts.TaskStateChangedPayload
-                    {
-                        ChatId = chat.ChatId,
-                        Task = new Contracts.TaskSummaryDto
-                        {
-                            TaskId = record.Id,
-                            ToolName = record.ToolName,
-                            State = record.State.ToString(),
-                            StartedAt = record.StartedAt.ToString("o")
-                        }
-                    });
-            };
+            // The task panel's live feed (PLAN_20260825 wave E) — folded into ChatFeedWireSubscriber
+            // above, which already reaches chat.Tasks.Changed via chat.Feed's ChatTaskChanged events.
 
             // Live SSH sessions: create the project's hub eagerly and fan its open/close events out
             // as ssh.sessions.changed, so pickers refresh and terminals auto-attach the moment the

@@ -17,6 +17,15 @@ public sealed class ChatRegistry : IDisposable, ISpawnSessionHost
     private readonly AgentRuntime _runtime;
     private readonly ConcurrentDictionary<string, ChatRuntime> _open = new();
 
+    /// <summary>Spawned sessions whose one run is still going — ADR_20260910-2 wave 2. A session lives
+    /// here from <see cref="OpenSpawnedSession"/> until <see cref="SpawnedSession.Finish"/> calls
+    /// <see cref="NotifySpawnedFinished"/>; never touched by <see cref="_open"/> or its eviction, since
+    /// a spawned session is never a <see cref="ChatRuntime"/> (see <see cref="SpawnedSession"/>'s own
+    /// comment on why that boundary is deliberate). What lets <see cref="GetOrOpen"/> refuse to load
+    /// the still-empty file for an id that is live here, and what <see cref="PeekSpawned"/> gives
+    /// chat.open/chat.watch/chat.send to attach to the live feed instead.</summary>
+    private readonly ConcurrentDictionary<string, SpawnedSession> _spawnedOpen = new();
+
     public ChatRegistry(AgentRuntime runtime)
     {
         _runtime = runtime;
@@ -59,16 +68,39 @@ public sealed class ChatRegistry : IDisposable, ISpawnSessionHost
     /// </summary>
     public event Action<ChatRuntime>? RuntimeClosed;
 
-    /// <summary>Opens (or returns the already-open) runtime for an existing chat; null if not found
-    /// OR archived. The soft-link liveness call correspondence uses (ADR_20260827-2 §2.4): asking
-    /// wakes a sleeping chat in the same call — but never an archived one, which must stay closed
-    /// exactly as <see cref="Archive"/>'s own comment claims (see KNOWN_ISSUES.md, resolved
-    /// 2026-09-03: this used to load an archived chat's file anyway, silently un-archiving it in
-    /// practice). A caller that needs to tell "archived" from "missing" apart — e.g. to show a
-    /// different notice — still wants <see cref="Locate"/> instead.</summary>
+    /// <summary>
+    /// Fires exactly once per <see cref="SpawnedSession"/>, from <see cref="OpenSpawnedSession"/> —
+    /// the spawned counterpart of <see cref="RuntimeOpened"/> (ADR_20260910-2 §4.8: "ChatRegistry
+    /// объявляет «сеанс открыт/закрыт» для обоих видов, включая порождённый"). What lets the service
+    /// wire a <c>ChatFeedWireSubscriber</c> onto a spawned session's <see cref="SpawnedSession.Feed"/>
+    /// with the same code a human chat's <see cref="RuntimeOpened"/> already uses.</summary>
+    public event Action<SpawnedSession>? SpawnedOpened;
+
+    /// <summary>Fires exactly once per <see cref="SpawnedSession"/>, from
+    /// <see cref="NotifySpawnedFinished"/> — the symmetric close. See <see cref="SpawnedOpened"/>.</summary>
+    public event Action<SpawnedSession>? SpawnedClosed;
+
+    /// <summary>The live session for a spawned chat whose run has not finished yet, or null — never
+    /// loads from disk (same contract as <see cref="Peek"/>). What <c>chat.open</c>/<c>chat.watch</c>/
+    /// <c>chat.send</c> check before falling through to <see cref="GetOrOpen"/>, so they attach to the
+    /// run's own live feed instead of a <see cref="ChatRuntime"/> wrapping the still-empty file.</summary>
+    public SpawnedSession? PeekSpawned(string chatId) => _spawnedOpen.TryGetValue(chatId, out var s) ? s : null;
+
+    /// <summary>Opens (or returns the already-open) runtime for an existing chat; null if not found,
+    /// archived, OR a spawned session whose run is still going (see <see cref="PeekSpawned"/> — that id
+    /// belongs to a live <see cref="SpawnedSession"/>, and loading its file here would hand back a
+    /// <see cref="ChatRuntime"/> wrapping an empty conversation, the bug ADR_20260910-2 describes). The
+    /// soft-link liveness call correspondence uses (ADR_20260827-2 §2.4): asking wakes a sleeping chat
+    /// in the same call — but never an archived one, which must stay closed exactly as
+    /// <see cref="Archive"/>'s own comment claims (see KNOWN_ISSUES.md, resolved 2026-09-03: this used
+    /// to load an archived chat's file anyway, silently un-archiving it in practice). A caller that
+    /// needs to tell "archived" from "missing" apart — e.g. to show a different notice — still wants
+    /// <see cref="Locate"/> instead.</summary>
     public ChatRuntime? GetOrOpen(string chatId)
     {
         if (_open.TryGetValue(chatId, out var existing)) return existing;
+
+        if (_spawnedOpen.ContainsKey(chatId)) return null;
 
         if (_runtime.ChatManager.Locate(chatId) != SPLA.Domain.Settings.ChatLocation.Active) return null;
 
@@ -224,28 +256,33 @@ public sealed class ChatRegistry : IDisposable, ISpawnSessionHost
     // is built for the turn-pump/rewind/fork/reconnect machinery a single driven-to-completion run has
     // no use for) — see SpawnedSession's own comment for why that is a deliberate line, not a shortcut.
 
-    /// <summary>Creates the session on disk and returns a driver scoped to the one run it will make.</summary>
+    /// <summary>Creates the session on disk and returns a driver scoped to the one run it will make —
+    /// tracked in <see cref="_spawnedOpen"/> for the run's whole life so <see cref="GetOrOpen"/>,
+    /// <see cref="PeekSpawned"/> and the service's wire subscriber all agree this id is live (wave 2).</summary>
     public ISpawnedSession OpenSpawnedSession(string? parentChatId, string? role,
         SPLA.Domain.Settings.ResolvedSettings? settings = null)
     {
         var chat = _runtime.ChatManager.CreateSpawnedChat(parentChatId, role, skillId: null, mode: "");
-        return new SpawnedSession(this, chat, settings);
+        var session = new SpawnedSession(this, chat, settings);
+        _spawnedOpen[chat.Id] = session;
+        SpawnedOpened?.Invoke(session);
+        return session;
     }
 
     /// <summary>
-    /// Drops a cached <see cref="ChatRuntime"/> without touching its file — the counterpart a
-    /// finished spawned session needs (see <see cref="SpawnedSession.Finish"/>) because
-    /// <see cref="ISpawnedSession"/> writes straight through <c>ChatManager</c>, bypassing whatever a
-    /// client's earlier <c>chat.open</c>/<c>chat.watch</c> may have cached here while the run was
-    /// still going. A no-op when nothing is cached for the id.
+    /// Called exactly once by <see cref="SpawnedSession.Finish"/>, right after it has written the
+    /// finished session to disk: drops the session out of <see cref="_spawnedOpen"/> (so the NEXT
+    /// <c>chat.open</c> loads the just-written file into an ordinary <see cref="ChatRuntime"/> through
+    /// <see cref="GetOrOpen"/>, the normal path) and fires <see cref="SpawnedClosed"/> — the signal the
+    /// service's <c>ChatFeedWireSubscriber</c> unhooks on. Replaces the old <c>EvictCachedRuntime</c>:
+    /// with <see cref="GetOrOpen"/> now refusing a still-live spawned id outright (see its own comment),
+    /// nothing can ever cache a stale <see cref="ChatRuntime"/> for one in the first place, so there is
+    /// no cache left to evict (PLAN_20260910-2 wave 2's "проверить и убрать").
     /// </summary>
-    internal void EvictCachedRuntime(string chatId)
+    internal void NotifySpawnedFinished(SpawnedSession session)
     {
-        if (_open.TryRemove(chatId, out var stale))
-        {
-            RuntimeClosed?.Invoke(stale);
-            stale.Dispose();
-        }
+        if (_spawnedOpen.TryRemove(session.ChatId, out _))
+            SpawnedClosed?.Invoke(session);
     }
 
     /// <summary>
