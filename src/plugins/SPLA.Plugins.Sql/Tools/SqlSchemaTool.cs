@@ -62,6 +62,21 @@ public class SqlSchemaTool : SqlToolBase, IMcpTool
             var table  = ToolJson.GetStringTrimmed(root, "table");
             var schema = ToolJson.GetStringTrimmed(root, "schema");
 
+            // The model naturally writes "schema.table" (that's what sql_schema's own table list
+            // prints) even though `schema` is a separate parameter. Without this, a dotted table name
+            // silently resolves to nothing under the default "dbo" schema instead of erroring or
+            // matching — split it here so "ОМ.ОперативнаяИнформация" behaves the same as passing
+            // schema="ОМ", table="ОперативнаяИнформация".
+            if (schema is null && table is not null)
+            {
+                var dot = table.IndexOf('.');
+                if (dot > 0 && dot < table.Length - 1)
+                {
+                    schema = table[..dot];
+                    table = table[(dot + 1)..];
+                }
+            }
+
             using var conn = await SqlConnectionFactory.CreateAsync(cfg!, cancellationToken);
 
             var result = cfg!.Provider.ToLowerInvariant() switch
