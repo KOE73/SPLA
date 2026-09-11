@@ -1232,6 +1232,16 @@ public sealed class ChatRuntime : IDisposable, SPLA.Domain.Agent.IBackgroundTask
                 ScopeMarker = m.ScopeMarker,
                 PromptTokens = m.PromptTokens,
                 CompletionTokens = m.CompletionTokens,
+                CompactSummary = m.CompactSummary,
+                CompactedBy = m.CompactedBy,
+                RetentionPolicy = m.Retention switch
+                {
+                    "untilSuperseded" => SPLA.Domain.Models.ContextRetention.UntilSuperseded,
+                    "untilResolved" => SPLA.Domain.Models.ContextRetention.UntilResolved,
+                    "nextStepOnly" => SPLA.Domain.Models.ContextRetention.NextStepOnly,
+                    "never" => SPLA.Domain.Models.ContextRetention.Never,
+                    _ => SPLA.Domain.Models.ContextRetention.Persistent
+                },
                 // Restored whenever they were written, independent of today's save_attempts value —
                 // a chat opened after the setting was turned off must still show what it recorded
                 // while it was on.
@@ -1671,6 +1681,120 @@ public sealed class ChatRuntime : IDisposable, SPLA.Domain.Agent.IBackgroundTask
         finally { _turnGate.Release(); }
     }
 
+    /// <summary>Why <see cref="CompactAsync"/> did not compact, when it did not.</summary>
+    public enum CompactRefusal
+    {
+        /// <summary>A turn is running — never hand out a half-assembled history.</summary>
+        Busy,
+        /// <summary>History shorter than the configured tail: nothing to hide.</summary>
+        NothingToCompact,
+        /// <summary>The summarizing model call failed or was cancelled — history untouched.</summary>
+        ModelError
+    }
+
+    /// <summary>Outcome of <see cref="CompactAsync"/>: either it compacted, or it refused with a reason
+    /// (and, for <see cref="CompactRefusal.ModelError"/>, the underlying message).</summary>
+    public readonly record struct CompactResult(bool Compacted, CompactRefusal? Refusal = null, string? Error = null)
+    {
+        public static readonly CompactResult Ok = new(true);
+        public static CompactResult Refuse(CompactRefusal reason, string? error = null) => new(false, reason, error);
+    }
+
+    /// <summary>
+    /// Compacts the conversation: everything before the kept tail is hidden from the model (never
+    /// erased) behind a fresh working summary — see
+    /// <c>docs/adr/ADR_20260911-3_agent_compaction.md</c> §2.1/§2.4/§2.6. Refused while a turn is
+    /// running, same reasoning as <see cref="Rewind"/>/<see cref="TrySaveIdle"/> — a half-assembled
+    /// history is never handed to anyone, compaction included.
+    /// </summary>
+    public async Task<CompactResult> CompactAsync(CancellationToken cancellationToken = default)
+    {
+        if (!_turnGate.Wait(0)) return CompactResult.Refuse(CompactRefusal.Busy);
+        try
+        {
+            // The tail: the last CompactTailMessages real human turns. A previous compaction's own
+            // summary record is Role=User too, but must never itself count as a "human turn" for tail
+            // purposes — re-compacting collapses it into the new prefix like any other message (ADR §2.5).
+            var messages = _conversation.Messages;
+            var humanIdx = new List<int>();
+            for (var i = 0; i < messages.Count; i++)
+            {
+                var m = messages[i];
+                if (m.Role == ChatRole.User && !m.IsLabel && m.ScopeMarker == null &&
+                    !m.IsEphemeral && !m.CompactSummary)
+                    humanIdx.Add(i);
+            }
+
+            var tailCount = EffectiveSettings.CompactTailMessages;
+            if (humanIdx.Count <= tailCount)
+                return CompactResult.Refuse(CompactRefusal.NothingToCompact);
+
+            var boundaryIdx = humanIdx[humanIdx.Count - tailCount];
+            var boundaryMsg = messages[boundaryIdx];
+
+            // Everything strictly before the boundary, skipping the synthetic system message at index 0
+            // (never persisted, never a compaction candidate). Captured as object references, not
+            // indices — InsertSummaryBefore below shifts indices but these still point at the right
+            // messages afterwards.
+            var prefix = messages.Take(boundaryIdx).Where(m => m.Role != ChatRole.System).ToList();
+
+            // Exactly what the model currently sees for this slice — ContextAssembler.ShouldSend
+            // already excludes scope markers and labels (Wave 3), so no separate filtering is needed
+            // here to honour ADR §2.3.
+            var assembled = SPLA.Domain.Context.ContextAssembler.Assemble(prefix);
+            if (assembled.Count == 0)
+                return CompactResult.Refuse(CompactRefusal.NothingToCompact);
+
+            var llm = ResolveLlmSettings();
+            var ctx = new SPLA.Domain.Llm.LlmTurnContext
+            {
+                Messages = assembled
+                    .Append(new ChatMessage { Role = ChatRole.User, Content = SPLA.Agent.CompactPrompt.Text })
+                    .ToList(),
+                Tools = [],
+                Settings = llm,
+                ModelId = ModelId
+            };
+
+            SPLA.Domain.Llm.LlmTurnResult result;
+            try
+            {
+                result = await _runtime.Llm.InvokeAsync(ctx, cancellationToken);
+            }
+            catch (Exception ex) when (ex is not OperationCanceledException)
+            {
+                return CompactResult.Refuse(CompactRefusal.ModelError, ex.Message);
+            }
+
+            if (result.Status is SPLA.Domain.Llm.LlmTurnStatus.Error or SPLA.Domain.Llm.LlmTurnStatus.Degenerate ||
+                string.IsNullOrWhiteSpace(result.Message.Content))
+                return CompactResult.Refuse(CompactRefusal.ModelError,
+                    result.Message.Content is { Length: > 0 } c ? c : "the model returned no summary");
+
+            // Insert the summary first — it needs a stable MsgId before the prefix messages below can
+            // point CompactedBy at it — then hide the prefix behind it. Scope markers and labels are
+            // skipped: they never reached the model in the first place (ADR §2.3), so there is nothing
+            // to hide them from.
+            var summary = _conversation.InsertSummaryBefore(boundaryMsg,
+                "--- Compacted context (summary) ---\n" + result.Message.Content);
+
+            foreach (var m in prefix)
+            {
+                if (m.ScopeMarker != null || m.IsLabel) continue;
+                m.RetentionPolicy = ContextRetention.Never;
+                m.CompactedBy = summary.MsgId;
+            }
+
+            // No ChatEvent on the feed here, deliberately — chat.rewind sets the same precedent: the
+            // protocol handler re-sends this connection a fresh chat.opened (agents/chat-feed.md; ADR
+            // §2.6 item 6's "publish... so open windows get a fresh snapshot" is satisfied there, one
+            // layer up, exactly the way Rewind's caller already does it for that operation).
+            Save();
+            return CompactResult.Ok;
+        }
+        finally { _turnGate.Release(); }
+    }
+
     /// <summary>Saves only when no turn is running (fork must not snapshot a half-written
     /// conversation). Returns false when a turn holds the gate.</summary>
     public bool TrySaveIdle()
@@ -1712,6 +1836,16 @@ public sealed class ChatRuntime : IDisposable, SPLA.Domain.Agent.IBackgroundTask
                 ScopeMarker = m.ScopeMarker,
                 PromptTokens = m.PromptTokens,
                 CompletionTokens = m.CompletionTokens,
+                CompactSummary = m.CompactSummary,
+                CompactedBy = m.CompactedBy,
+                Retention = m.RetentionPolicy switch
+                {
+                    SPLA.Domain.Models.ContextRetention.UntilSuperseded => "untilSuperseded",
+                    SPLA.Domain.Models.ContextRetention.UntilResolved => "untilResolved",
+                    SPLA.Domain.Models.ContextRetention.NextStepOnly => "nextStepOnly",
+                    SPLA.Domain.Models.ContextRetention.Never => "never",
+                    _ => null   // Persistent — the historical default; absence means exactly this
+                },
                 Images = _imageFiles.TryGetValue(m, out var files) && files.Count > 0
                     ? files.Select(f => f.Clone()).ToList()
                     : null,
