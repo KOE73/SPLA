@@ -39,8 +39,8 @@ public class SqlSchemaTool : SqlToolBase, IMcpTool
                 properties = new
                 {
                     connection  = new { type = "string", description = "Named connection. Omit to use the default." },
-                    table       = new { type = "string", description = "Table name to inspect. Omit to list all tables." },
-                    schema      = new { type = "string", description = "Schema filter (e.g. 'dbo'). Optional." },
+                    table       = new { type = "string", description = "Table name to inspect. Accepts 'schema.table' or bracket-quoted '[schema].[table]'. Omit to list all tables." },
+                    schema      = new { type = "string", description = "Schema filter (e.g. 'dbo'). Optional; also accepts '[dbo]'." },
                     output      = SchemaParts.Output,
                     output_name = SchemaParts.OutputName
                 },
@@ -63,19 +63,19 @@ public class SqlSchemaTool : SqlToolBase, IMcpTool
             var schema = ToolJson.GetStringTrimmed(root, "schema");
 
             // The model naturally writes "schema.table" (that's what sql_schema's own table list
-            // prints) even though `schema` is a separate parameter. Without this, a dotted table name
-            // silently resolves to nothing under the default "dbo" schema instead of erroring or
-            // matching — split it here so "ОМ.ОперативнаяИнформация" behaves the same as passing
-            // schema="ОМ", table="ОперативнаяИнформация".
-            if (schema is null && table is not null)
+            // prints) even though `schema` is a separate parameter, sometimes bracket-quoted
+            // (`[dbo].[Order]`) — e.g. to escape a reserved word or a name sys.tables would otherwise
+            // fail to match literally. Without this, a dotted/bracketed table name silently resolves
+            // to nothing under the default "dbo" schema instead of matching — split and unquote it
+            // here so "[ОМ].[ОперативнаяИнформация]" behaves the same as schema="ОМ",
+            // table="ОперативнаяИнформация".
+            if (table is not null)
             {
-                var dot = table.IndexOf('.');
-                if (dot > 0 && dot < table.Length - 1)
-                {
-                    schema = table[..dot];
-                    table = table[(dot + 1)..];
-                }
+                var (parsedSchema, parsedTable) = SplitQualifiedName(table);
+                table = parsedTable;
+                if (schema is null) schema = parsedSchema;
             }
+            if (schema is not null) schema = StripBrackets(schema);
 
             using var conn = await SqlConnectionFactory.CreateAsync(cfg!, cancellationToken);
 
@@ -96,6 +96,45 @@ public class SqlSchemaTool : SqlToolBase, IMcpTool
         catch (JsonException) { return ToolResult.Fail("Error: Invalid JSON arguments.", "invalid json"); }
         catch (Exception ex)  { return ToolResult.Fail($"Error: {ex.Message}", ex.GetType().Name); }
     }
+
+    // ── Identifier parsing ───────────────────────────────────────────────────────
+
+    /// <summary>Splits a possibly two-part, possibly bracket-quoted identifier ("table",
+    /// "[table]", "schema.table", "[schema].[table]") into (schema, table), unquoting each part.
+    /// A single unqualified part comes back as (null, part).</summary>
+    private static (string? Schema, string Table) SplitQualifiedName(string raw)
+    {
+        var s = raw.Trim();
+        var i = 0;
+
+        string ReadPart()
+        {
+            if (i < s.Length && s[i] == '[')
+            {
+                var end = s.IndexOf(']', i + 1);
+                var part = end < 0 ? s[(i + 1)..] : s[(i + 1)..end];
+                i = end < 0 ? s.Length : end + 1;
+                return part;
+            }
+            var dot = s.IndexOf('.', i);
+            var stop = dot < 0 ? s.Length : dot;
+            var p = s[i..stop];
+            i = stop;
+            return p;
+        }
+
+        var first = ReadPart();
+        if (i < s.Length && s[i] == '.')
+        {
+            i++;
+            var second = ReadPart();
+            return (first, second);
+        }
+        return (null, first);
+    }
+
+    private static string StripBrackets(string s) =>
+        s.Length >= 2 && s[0] == '[' && s[^1] == ']' ? s[1..^1] : s;
 
     // ── MSSQL ──────────────────────────────────────────────────────────────────
 
