@@ -46,6 +46,10 @@ public sealed class BatchRunner(AgentRuntime runtime, ResolvedSettings settings)
     /// REPL's <c>/skills load</c> message-injection shortcut.</summary>
     public string? SkillId { get; init; }
 
+    /// <summary>Chat name template for each cell, with placeholders expanded per cell. When null or empty,
+    /// defaults to "{prompt} · {model}".</summary>
+    public string? Title { get; init; }
+
     /// <summary>Reported in the statistics, not acted upon — the flags themselves are already applied
     /// by the caller through the prompt composer. A report that omits them cannot explain why two runs
     /// of the same prompt against the same model differ.</summary>
@@ -70,7 +74,8 @@ public sealed class BatchRunner(AgentRuntime runtime, ResolvedSettings settings)
         // failure belongs to — the case where a report is worth most.
         var stats = RunStats.For(cell, settings, this);
 
-        var chat = new ChatRegistry(runtime).CreateNew($"{cell.Prompt.Name} · {cell.Model.DisplayName}", origin: "cli");
+        var title = Title is { Length: > 0 } titleTemplate ? OutputNaming.ExpandTitle(titleTemplate, DateTimeOffset.Now, cell.Prompt, cell.Model.DisplayName) : $"{cell.Prompt.Name} · {cell.Model.DisplayName}";
+        var chat = new ChatRegistry(runtime).CreateNew(title, origin: "cli");
         chat.ApplySettings(mode: null, modelId: cell.Model.Id);
 
         if (SkillId is { Length: > 0 } skillId && chat.ActivateSkill(skillId) is { } skillError)

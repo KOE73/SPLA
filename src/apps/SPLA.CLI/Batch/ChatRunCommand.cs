@@ -36,6 +36,10 @@ internal sealed class ChatRunSettings : CommandSettings
     [Description("File name template inside --out. Placeholders: {timestamp} {prompt} {model} {label}.")]
     public string OutName { get; init; } = "{timestamp} {label}";
 
+    [CommandOption("--title")]
+    [Description("Name of each cell's chat, as the chat list shows it. Placeholders: {timestamp} {prompt} {model} {label}. Default \"{prompt} · {model}\".")]
+    public string? Title { get; init; }
+
     [CommandOption("--overwrite")]
     [Description("Treat --out as one literal file: every cell overwrites it, instead of one file per cell.")]
     public bool Overwrite { get; init; }
@@ -209,6 +213,7 @@ internal sealed class ChatRunCommand(ResolvedSettings settings, ILoggerFactory l
             ReasoningLevel = s.ReasoningLevel,
             TimeoutSeconds = s.TimeoutSeconds,
             SkillId = s.Skill,
+            Title = s.Title,
             Stream = s.Stream,
             MdClean = s.MdClean,
             Images = images,
