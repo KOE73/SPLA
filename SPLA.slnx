@@ -171,6 +171,9 @@
     <File Path="docs/adr/ADR_20260909_core_named-images.md" />
     <File Path="docs/adr/ADR_20260910_plugins_android-device.md" />
     <File Path="docs/adr/ADR_20260910-2_agent_chat-feed.md" />
+    <File Path="docs/adr/ADR_20260911_core_resources-capability.md" />
+    <File Path="docs/adr/ADR_20260911-2_agent_agents-md-scopes.md" />
+    <File Path="docs/adr/ADR_20260911-3_agent_compaction.md" />
   </Folder>
   <Folder Name="/docs/plans/">
     <File Path="docs/plans/PLAN_20260619_agent_skills-lifecycle.md" />
@@ -211,6 +214,7 @@
     <File Path="docs/plans/PLAN_20260906_core_chat-directory-and-await.md" />
     <File Path="docs/plans/PLAN_20260910_plugins_android-device.md" />
     <File Path="docs/plans/PLAN_20260910-2_agent_chat-feed.md" />
+    <File Path="docs/plans/PLAN_20260911_agent_roles-agents-md-compact.md" />
   </Folder>
   <Folder Name="/docs/ideas/">
     <File Path="docs/ideas/IDEA_20260611_core_todo-general.md" />
