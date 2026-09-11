@@ -149,6 +149,7 @@ public class ToolPipelineOrderTests
                 typeof(TelemetryStage),
                 typeof(PermissionStage),
                 typeof(ZoneShadowStage),
+                typeof(AgentsScopeStage),
                 typeof(AmbientHostStage),
                 typeof(BackgroundStage),
                 typeof(ProgressNodeStage),
