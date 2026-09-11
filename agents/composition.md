@@ -77,6 +77,7 @@ authority order, top-down, and belongs to the composition root — never to a co
 | `plugin-commands` | the `plugin_run_command` list | — |
 | `resources` | enabled `scheme://` addresses with their verbs, and registered `resource_read as=` projections | `core.resources` |
 | `working-memory` | the live `context:*` snapshot, as a **turn message** | `core.memory` |
+| `scoped-agents` | one `<agents scope="…" source="…">` block per folder in this session's scope-marker chains — **last, always** | `agent.agents_md == inject` |
 
 The conditional entries are gated on exactly the decision that gates their tools, asked of the
 same settings: the `capabilities` of the settings being composed for — a role's, for a chat or run
@@ -91,10 +92,14 @@ model rather than the project's.
 mechanism: `agent.agents_md` is a mode word (`inject`/`ignore`), not a `core.*` capability, so the
 contributor checks `context.Settings.AgentsMd` itself rather than going through
 `CapabilityGatedContributor`. It sits right after `instructions`, at the same authority tier as the
-rest of the project's own word, and before `custom-prompt`. Today it emits only the `<agents>`
-semantics declaration plus `<project root>/AGENTS.md`; nested, per-folder `AGENTS.md` files
-(`ResolvedScopedAgents` in the ADR) are a later wave and land at the very end of the contributor
-list instead, after `working-memory` — see
+rest of the project's own word, and before `custom-prompt`. It emits only the `<agents>` semantics declaration plus `<project root>/AGENTS.md`. Nested,
+per-folder `AGENTS.md` files are `ScopedAgentsContributor` (`ResolvedScopedAgents` in the ADR) —
+its own, separate contributor, registered **last** in `AgentContributors.Default`, after
+`working-memory` and after anything added to the list later (that rule is repeated as a comment at
+both ends: on `WorkingMemoryContributor`'s entry above it in `Default`, and on
+`ScopedAgentsContributor`'s own class doc comment). It reads the running session's scope markers
+(`ChatMessage.ScopeMarker`, planted by `AgentsScopeStage`) through `AgentSessionScope.Current`, the
+same ambient path `WorkingMemoryContributor` uses for its own per-chat state — see
 [`ADR_20260911-2_agent_agents-md-scopes`](../docs/adr/ADR_20260911-2_agent_agents-md-scopes.md) §2.4.
 
 ### Correspondents are deliberately not a contributor

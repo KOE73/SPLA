@@ -100,6 +100,11 @@ public static class AgentContributors
         if (enabledIds.Contains("core.memory"))
             contributors.Add(new CapabilityGatedContributor("core.memory", new WorkingMemoryContributor(projectKv)));
 
+        // MUST stay last (ADR_20260911-2 §2.4 note 2): working memory above already changes the
+        // prompt mid-session, and a folder entering view must not shift what sits behind it. Any
+        // contributor added below this comment is a bug — add it above instead.
+        contributors.Add(new ScopedAgentsContributor());
+
         return contributors;
     }
 }
