@@ -261,6 +261,26 @@ public interface IAgentSession
     /// default agent happened to have.</para>
     /// </summary>
     ResolvedSettings? Settings => null;
+
+    /// <summary>
+    /// This session's message history, for the code that reads or writes it ambiently rather than
+    /// being handed it directly — <c>AgentsScopeStage</c> (Wave 3.3 of
+    /// <c>docs/plans/PLAN_20260911_agent_roles-agents-md-compact.md</c>) inserts scope markers here,
+    /// and <c>ScopedAgentsContributor</c> (Wave 3.4) reads them back out. Null for a session with no
+    /// conversation behind it (a bare CLI or worker entry point that never opens a chat).
+    /// <para>
+    /// Deliberately not routed through <c>MarkManager.Target</c> — that binds a checkpoint manager to
+    /// a conversation for an unrelated reason (rollback anchors) and would make this a side door onto
+    /// a dependency that happens to hold what is needed, rather than the session owning it directly.
+    /// </para>
+    /// <para>
+    /// Get-only by design of the interface (a default interface member cannot hold state): a session
+    /// that needs to attach its conversation after construction — <c>SpawnedAgentRunner</c>, which
+    /// must compose the initial prompt with a session before any conversation exists — does so through
+    /// the concrete <see cref="AgentSession.Conversation"/> setter, not through this interface.
+    /// </para>
+    /// </summary>
+    Models.Conversation? Conversation => null;
 }
 
 /// <summary>Plain bundle of the per-chat agent dependencies. Used by the UI chat VM and by
@@ -272,9 +292,10 @@ public sealed class AgentSession : IAgentSession
         IToolSetSession? toolSets = null, Security.ChatDoubt? doubt = null,
         IBackgroundTaskHost? background = null, string? chatId = null,
         ICorrespondenceHost? correspondence = null, IContextBudgetHost? contextBudget = null,
-        ResolvedSettings? settings = null)
+        ResolvedSettings? settings = null, Models.Conversation? conversation = null)
     {
         Settings = settings;
+        Conversation = conversation;
         ContextBudget = contextBudget;
         Doubt = doubt ?? new Security.ChatDoubt();
         SessionKv = sessionKv;
@@ -300,6 +321,14 @@ public sealed class AgentSession : IAgentSession
     public IContextBudgetHost? ContextBudget { get; }
     public string? ChatId { get; }
     public ResolvedSettings? Settings { get; }
+
+    /// <summary>
+    /// Settable, not just constructor-injected: a spawned run builds its <see cref="AgentSession"/>
+    /// before its <see cref="Models.Conversation"/> exists (the session is needed to compose the
+    /// initial system prompt, which happens before the first message is added) — see
+    /// <c>SpawnedAgentRunner.RunAsync</c>, which sets this right after creating the conversation.
+    /// </summary>
+    public Models.Conversation? Conversation { get; set; }
 }
 
 /// <summary>

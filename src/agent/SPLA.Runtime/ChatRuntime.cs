@@ -1305,7 +1305,11 @@ public sealed class ChatRuntime : IDisposable, SPLA.Domain.Agent.IBackgroundTask
             contextBudget: this,
             // A role's settings, carried where every per-call decision reads them — tools, tool-set
             // levels, trusted domains, question timeouts. Null for a plain chat = the project's, live.
-            settings: _roleSettings);
+            settings: _roleSettings,
+            // AgentsScopeStage inserts scope markers here and ScopedAgentsContributor reads them back
+            // out, both through AgentSessionScope.Current.Conversation rather than being handed the
+            // conversation directly.
+            conversation: _conversation);
 
         // A reopened chat is as doubtful as it was when it closed. Restored rather than recomputed:
         // what raised the flag was an arrival, and arrivals do not happen again on load.
