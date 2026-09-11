@@ -330,10 +330,7 @@ export interface AgentResultPayload {
   /** Seconds system_run_shell may sit silent before the tool returns "still running" instead of
    *  continuing to wait. 0 = disabled (wait indefinitely). Default 120. */
   shellTimeoutSeconds?: number;
-  /** Master switch for the resource-address abstraction (file://, sftp://, …). Default false —
-   *  the foundation ships inert so the model can be measured with and without it. */
-  unifiedResources?: boolean;
-  /** Every registered scheme, on and off alike — the per-scheme rows under the master switch. */
+  /** Every registered scheme, on and off alike — the per-scheme rows under core.resources. */
   resourceSchemes?: ResourceSchemeDto[];
   theme?: string; density?: string;
   themes?: string[]; densities?: string[];
@@ -573,7 +570,6 @@ export interface RoleEditDto {
   askTimeoutMinutes?: number | null;
   saveToolCalls?: boolean | null;
   saveAttempts?: boolean | null;
-  unifiedResources?: boolean | null;
   peerDebounceBaseSeconds?: number | null;
   peerDebounceMaxSeconds?: number | null;
   peerDepthCeiling?: number | null;

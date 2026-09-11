@@ -472,7 +472,6 @@ public sealed class RoleEditDto
     public int? AskTimeoutMinutes { get; set; }
     public bool? SaveToolCalls { get; set; }
     public bool? SaveAttempts { get; set; }
-    public bool? UnifiedResources { get; set; }
 
     /// <summary>Peer-wake regulator overrides — see <c>SplaAgentSection</c> for what each means.
     /// Null = the project's number.</summary>
@@ -725,10 +724,6 @@ public sealed class AgentSettingsPayload
     /// <summary>Persist abandoned-generation records (the repetition guard's discarded attempts) with
     /// the chat history. Stored in .spla agent: save_attempts. Default off.</summary>
     public bool? SaveAttempts { get; set; }
-    /// <summary>Master switch for the resource-address abstraction (<c>file://</c>, <c>sftp://</c>,
-    /// …). Stored in .spla agent: unified_resources. <b>Default false</b> — see
-    /// <c>ResolvedSettings.UnifiedResources</c> for why the default itself is load-bearing.</summary>
-    public bool? UnifiedResources { get; set; }
     /// <summary>Every registered scheme, on and off alike, so the panel can render the full list with
     /// its switches — not just the ones currently enabled. Ignored on save; per-scheme switches travel
     /// back through <see cref="ResourceSchemeSaveDto.Enabled"/> keyed by <see cref="ResourceSchemeDto.Scheme"/>.</summary>

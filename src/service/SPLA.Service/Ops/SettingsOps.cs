@@ -309,7 +309,6 @@ public static class SettingsOps
         AskTimeoutMinutes = r.AskTimeoutMinutes,
         SaveToolCalls = r.SaveToolCalls,
         SaveAttempts = r.SaveAttempts,
-        UnifiedResources = r.UnifiedResources,
         PeerDebounceBaseSeconds = r.PeerDebounceBaseSeconds,
         PeerDebounceMaxSeconds = r.PeerDebounceMaxSeconds,
         PeerDepthCeiling = r.PeerDepthCeiling,
@@ -336,7 +335,6 @@ public static class SettingsOps
         AskTimeoutMinutes = d.AskTimeoutMinutes,
         SaveToolCalls = d.SaveToolCalls,
         SaveAttempts = d.SaveAttempts,
-        UnifiedResources = d.UnifiedResources,
         PeerDebounceBaseSeconds = d.PeerDebounceBaseSeconds,
         PeerDebounceMaxSeconds = d.PeerDebounceMaxSeconds,
         PeerDepthCeiling = d.PeerDepthCeiling,
@@ -396,7 +394,6 @@ public static class SettingsOps
         ShellTimeoutSeconds = runtime.Settings.ShellTimeoutSeconds,
         SaveToolCalls = runtime.Settings.SaveToolCalls,
         SaveAttempts = runtime.Settings.SaveAttempts,
-        UnifiedResources = runtime.Settings.UnifiedResources,
         ResourceSchemes = ResourceRegistry.For(runtime.Settings).Cards().Select(c => new ResourceSchemeDto
         {
             Scheme = c.Scheme,
@@ -455,8 +452,6 @@ public static class SettingsOps
         runtime.Settings.SaveToolCalls = saveToolCalls;
         var saveAttempts = dto.SaveAttempts ?? false;
         runtime.Settings.SaveAttempts = saveAttempts;
-        var unifiedResources = dto.UnifiedResources ?? false;
-        runtime.Settings.UnifiedResources = unifiedResources;
 
         // Per-scheme switches. Only what the panel actually sent is touched — a scheme this project
         // never mentioned stays absent (enabled), rather than every known scheme getting written the
@@ -485,7 +480,6 @@ public static class SettingsOps
             project.Agent.ShellTimeoutSeconds = shellTimeout != 120 ? shellTimeout : null;
             project.Agent.SaveToolCalls = saveToolCalls ? true : null;
             project.Agent.SaveAttempts = saveAttempts ? true : null;
-            project.Agent.UnifiedResources = unifiedResources ? true : null;
             var anyPerm = read != null || write != null || shell != null || net != null;
             project.Permissions = anyPerm
                 ? new SplaPermissionsSection { Read = read, Write = write, Shell = shell, Internet = net }

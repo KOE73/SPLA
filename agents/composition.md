@@ -74,6 +74,7 @@ authority order, top-down, and belongs to the composition root — never to a co
 | `toolsets` | one declaration line per set the agent may raise and has not | `core.toolsets` |
 | `plugins` | each enabled plugin's own prompt | — |
 | `plugin-commands` | the `plugin_run_command` list | — |
+| `resources` | enabled `scheme://` addresses with their verbs, and registered `resource_read as=` projections | `core.resources` |
 | `working-memory` | the live `context:*` snapshot, as a **turn message** | `core.memory` |
 
 The conditional entries are gated on exactly the decision that gates their tools, asked of the

@@ -43,21 +43,14 @@
           <span class="hint">{{ t("also save the repetition guard's discarded attempts (full text) to the chat file — off by default, each one can run to several kB") }}</span>
         </span>
       </label>
-      <label class="field"><span>{{ t('Resource addresses') }}</span>
-        <span style="display: flex; align-items: center; gap: 8px">
-          <input type="checkbox" v-model="unifiedResources" />
-          <span class="hint">{{ t('announce scheme:// addresses (file://, sftp://, …) to the model, on top of ordinary project files — off by default so it can be measured with and without') }}</span>
-        </span>
-      </label>
     </div>
     <div v-if="resourceSchemes.length" class="conn-card">
       <div class="conn-head"><span class="id">{{ t('Resource schemes') }}</span></div>
-      <div class="s-sub">{{ t("Per-scheme switches under the master toggle above. A scheme still registers when switched off here; it is only left out of the model's addresses and refuses any call.") }}</div>
+      <div class="s-sub">{{ t("Per-scheme switches for the core.resources tools (Built-in tools tab). A scheme still registers when switched off here; it is only left out of the model's addresses and refuses any call.") }}</div>
       <div class="ft-list">
         <CapabilityRow
           v-for="s in resourceSchemes" :key="s.scheme"
           :item="schemeAsCapability(s)"
-          :disabled="!unifiedResources"
           @toggle="enabled => (s.enabled = enabled)" />
       </div>
     </div>
@@ -102,7 +95,6 @@ const shellTimeoutSeconds = ref(120);
 const shellTimeoutUnlimited = ref(false);
 const saveToolCalls = ref(false);
 const saveAttempts = ref(false);
-const unifiedResources = ref(false);
 const resourceSchemes = ref<ResourceSchemeDto[]>([]);
 const modes = ref<string[]>([]);
 const perms = reactive<Record<string, string>>({ permRead: "", permWrite: "", permShell: "", permInternet: "" });
@@ -124,7 +116,6 @@ const off = client.on("agent.result", p => {
   if (!shellTimeoutUnlimited.value) shellTimeoutSeconds.value = p.shellTimeoutSeconds ?? 120;
   saveToolCalls.value = p.saveToolCalls === true;
   saveAttempts.value = p.saveAttempts === true;
-  unifiedResources.value = p.unifiedResources === true;
   resourceSchemes.value = p.resourceSchemes || [];
   perms.permRead = p.permRead || "";
   perms.permWrite = p.permWrite || "";
@@ -160,7 +151,6 @@ function save(): Promise<void> {
       shellTimeoutSeconds: shellTimeoutUnlimited.value ? 0 : shellTimeoutSeconds.value,
       saveToolCalls: saveToolCalls.value,
       saveAttempts: saveAttempts.value,
-      unifiedResources: unifiedResources.value,
       resourceSchemeSwitches: resourceSchemes.value.map(s => ({ scheme: s.scheme, enabled: s.enabled })),
       permRead: perms.permRead, permWrite: perms.permWrite, permShell: perms.permShell, permInternet: perms.permInternet,
       theme: lastTheme, density: lastDensity

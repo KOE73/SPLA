@@ -159,7 +159,6 @@
                                 unit="minutes" hint="0 = wait forever" />
             <TriStateField v-model="r.saveToolCalls" :label="t('Save full tool trace')" />
             <TriStateField v-model="r.saveAttempts" :label="t('Save abandoned generations')" />
-            <TriStateField v-model="r.unifiedResources" :label="t('Resource addresses')" />
           </div>
 
           <div class="group">

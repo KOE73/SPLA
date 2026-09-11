@@ -86,12 +86,6 @@ public class ResolvedSettings
     public bool LoopGuard { get; set; } = true;
     public int LoopGuardRepeats { get; set; } = 3;
 
-    /// <summary>Master switch for the resource-address abstraction (<c>file://</c>, <c>sftp://</c>,
-    /// …). <b>Default false</b>, and that default is load-bearing: the foundation is meant to ship
-    /// inert so the model can be measured with and without it, and a switch that defaults on erases
-    /// the "without" arm of that comparison. See <see cref="SplaAgentSection.UnifiedResources"/>.</summary>
-    public bool UnifiedResources { get; set; }
-
     /// <summary>Minutes a permission/clarify question waits for a person before it is denied; 0 = no
     /// limit. The wait is deliberately long: the question outlives the window that triggered it, so
     /// the bound exists only to stop an unattended instance blocking forever.</summary>
@@ -559,7 +553,6 @@ public static class SettingsResolver
                 r.PeerHardCap = defaults.Agent.PeerHardCap ?? r.PeerHardCap;
                 r.SelfFeedingCap = defaults.Agent.SelfFeedingCap ?? r.SelfFeedingCap;
                 r.Capabilities = defaults.Agent.Capabilities ?? r.Capabilities;
-                r.UnifiedResources = defaults.Agent.UnifiedResources ?? r.UnifiedResources;
                 AddTrustedDomains(r, defaults.Agent.TrustedDomains);
             }
             if (defaults.Mcp != null)
@@ -631,7 +624,6 @@ public static class SettingsResolver
                 r.PeerHardCap = project.Agent.PeerHardCap ?? r.PeerHardCap;
                 r.SelfFeedingCap = project.Agent.SelfFeedingCap ?? r.SelfFeedingCap;
                 r.Capabilities = project.Agent.Capabilities ?? r.Capabilities;
-                r.UnifiedResources = project.Agent.UnifiedResources ?? r.UnifiedResources;
                 AddTrustedDomains(r, project.Agent.TrustedDomains);
             }
             if (project.Mcp != null)
@@ -877,7 +869,6 @@ public static class SettingsResolver
         CustomPrompt = baseline.CustomPrompt,
         LoopGuard = baseline.LoopGuard,
         LoopGuardRepeats = baseline.LoopGuardRepeats,
-        UnifiedResources = baseline.UnifiedResources,
         AskTimeoutMinutes = baseline.AskTimeoutMinutes,
         ShellTimeoutSeconds = baseline.ShellTimeoutSeconds,
         SpawnedRetention = baseline.SpawnedRetention,

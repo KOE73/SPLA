@@ -426,6 +426,16 @@ public sealed class AgentRuntime : IDisposable
                 new FsWriteTool(),
                 new FsDeleteTool(),
                 new SPLA.MCP.Core.Tools.ImageViewTool(FormatConverterRegistry.For(settings))),
+            // One tool per verb: the permission verdict is a pure function of a tool's declared
+            // Scope/Effect/Risk, and those differ per verb (see ResourceToolBase). The registries are
+            // the project's own instances, filled below and by plugins; the tools only hold them.
+            Feature("core.resources",
+                new SPLA.MCP.Core.Tools.Resources.ResourceReadTool(ResourceRegistry.For(settings), FormatConverterRegistry.For(settings)),
+                new SPLA.MCP.Core.Tools.Resources.ResourceExistsTool(ResourceRegistry.For(settings)),
+                new SPLA.MCP.Core.Tools.Resources.ResourceListTool(ResourceRegistry.For(settings)),
+                new SPLA.MCP.Core.Tools.Resources.ResourceWriteTool(ResourceRegistry.For(settings)),
+                new SPLA.MCP.Core.Tools.Resources.ResourceDeleteTool(ResourceRegistry.For(settings)),
+                new SPLA.MCP.Core.Tools.Resources.ResourceMakeDirTool(ResourceRegistry.For(settings))),
             Feature("core.shell",
                 new RunCommandTool(),
                 new ResumeShellTool(),
@@ -511,33 +521,6 @@ public sealed class AgentRuntime : IDisposable
         // very instance. Order is irrelevant — the tools above already hold the same object, because
         // FormatConverterRegistry.For creates it once per ResolvedSettings and hands it out.
         BuiltInConverters.RegisterInto(FormatConverterRegistry.For(settings));
-
-        // The verbs, exposed to the model — one tool per verb, because the permission verdict is a
-        // pure function of a tool's declared Scope/Effect/Risk and those differ per verb (see
-        // ResourceToolBase).
-        //
-        // Gated on a settings bool rather than on an AgentFeatureCatalog id, for the same reason
-        // ResourceSchemesContributor's gate lives inside the contributor: whether resources speak is
-        // agent.unified_resources, not a catalog capability, and inventing a catalog id for it would
-        // give the operator two switches for one thing that could disagree. Off means NOT REGISTERED
-        // — not registered-and-refusing — so the arm of the experiment with the switch off is the
-        // agent exactly as it was before any of this existed.
-        if (settings.UnifiedResources)
-        {
-            var resources = ResourceRegistry.For(settings);
-            var converters = FormatConverterRegistry.For(settings);
-
-            foreach (var tool in new SPLA.MCP.Core.Interfaces.IMcpTool[]
-                     {
-                         new SPLA.MCP.Core.Tools.Resources.ResourceReadTool(resources, converters),
-                         new SPLA.MCP.Core.Tools.Resources.ResourceExistsTool(resources),
-                         new SPLA.MCP.Core.Tools.Resources.ResourceListTool(resources),
-                         new SPLA.MCP.Core.Tools.Resources.ResourceWriteTool(resources),
-                         new SPLA.MCP.Core.Tools.Resources.ResourceDeleteTool(resources),
-                         new SPLA.MCP.Core.Tools.Resources.ResourceMakeDirTool(resources),
-                     })
-                McpHost.RegisterTool(tool);
-        }
 
         ChatManager = new ChatManager(settings);
 

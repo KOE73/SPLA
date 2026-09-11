@@ -110,6 +110,10 @@
 
 ## Выключатели
 
+> Главный выключатель заменён возможностью `core.resources`, флаг `agent.unified_resources` удалён:
+> [`ADR_20260911_core_resources-capability`](../adr/ADR_20260911_core_resources-capability.md).
+> Ниже — решение, как оно было принято.
+
 Два уровня, оба живые (без перезапуска):
 
 - `agent.unified_resources` — фича целиком. **По умолчанию `false`.**

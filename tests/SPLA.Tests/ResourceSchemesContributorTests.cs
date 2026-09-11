@@ -11,41 +11,36 @@ using Xunit;
 namespace SPLA.Tests;
 
 /// <summary>
-/// What the operator's switches actually buy, pinned as behaviour rather than as intent.
-///
-/// <para>The claim this file exists to defend is that the address space ships <b>inert</b>: with the
-/// master switch off, an agent is byte-for-byte the agent it was before any of this was written. That
-/// is the whole basis for shipping it at all — the usefulness of URI addressing depends on the model,
-/// so the answer has to be obtainable by flipping a switch and measuring. A switch that leaks a
-/// paragraph of system prompt while off would make the two arms of that comparison differ by more
-/// than the thing being compared, and the measurement would be worthless.</para>
+/// What the operator's switches actually buy, pinned as behaviour rather than as intent: the
+/// <c>core.resources</c> capability gates the whole announcement, and the per-scheme map narrows it.
 /// </summary>
 public sealed class ResourceSchemesContributorTests
 {
-    private static ResolvedSettings SettingsWithFileScheme(bool unifiedResources)
+    private static ResolvedSettings SettingsWithFileScheme(List<string>? capabilities = null)
     {
-        var settings = new ResolvedSettings { UnifiedResources = unifiedResources };
+        var settings = new ResolvedSettings { Capabilities = capabilities };
         ResourceRegistry.For(settings).Register(new FileResourceProvider(() => new LocalWorkspace()));
         return settings;
     }
 
     private static AgentContribution Contribute(ResolvedSettings settings)
-        => new ResourceSchemesContributor().Contribute(new AgentContributionContext(settings, "."));
+        => new CapabilityGatedContributor("core.resources", new ResourceSchemesContributor())
+            .Contribute(new AgentContributionContext(settings, "."));
 
     [Fact]
-    public void Says_nothing_at_all_while_the_master_switch_is_off()
+    public void Says_nothing_at_all_while_core_resources_is_off()
     {
         // Registered and perfectly usable — the point is that registration alone must not reach the
         // model. Providers exist for the host's sake before they exist for the model's.
-        var contribution = Contribute(SettingsWithFileScheme(unifiedResources: false));
+        var contribution = Contribute(SettingsWithFileScheme(capabilities: ["core.files"]));
 
         Assert.Empty(contribution.Context);
     }
 
     [Fact]
-    public void Announces_the_scheme_and_its_verbs_once_switched_on()
+    public void Announces_the_scheme_and_its_verbs_once_core_resources_is_on()
     {
-        var contribution = Contribute(SettingsWithFileScheme(unifiedResources: true));
+        var contribution = Contribute(SettingsWithFileScheme(capabilities: ["core.resources"]));
 
         var body = Assert.Single(contribution.Context).Body;
         Assert.Contains("file://", body);
@@ -64,7 +59,7 @@ public sealed class ResourceSchemesContributorTests
     [Fact]
     public void A_scheme_switched_off_is_not_mentioned_and_leaves_nothing_behind()
     {
-        var settings = SettingsWithFileScheme(unifiedResources: true);
+        var settings = SettingsWithFileScheme();
         ResourceRegistry.For(settings).SetEnabled("file", false);
 
         var contribution = Contribute(settings);
@@ -79,7 +74,7 @@ public sealed class ResourceSchemesContributorTests
     [Fact]
     public void Absence_from_the_switch_map_means_enabled()
     {
-        var settings = SettingsWithFileScheme(unifiedResources: true);
+        var settings = SettingsWithFileScheme();
 
         ResourceRegistry.For(settings).ApplySwitches(new Dictionary<string, bool> { ["sftp"] = false });
 
