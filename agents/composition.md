@@ -69,6 +69,7 @@ authority order, top-down, and belongs to the composition root — never to a co
 | `mode` | the mode preamble | — |
 | `core` | one item per enabled `IAgentFeature` that carries prompt text | the feature set |
 | `instructions` | each existing instruction file from settings | — |
+| `project-agents` | the `<agents>` semantics declaration, plus `<project root>/AGENTS.md` wrapped as an `<agents scope="" source="AGENTS.md">` block when it exists | `agent.agents_md == inject` |
 | `custom-prompt` | `agent.custom_prompt` | — |
 | `skills` | active skill body, on-demand catalog (shelf + tag cloud) | `core.skills` |
 | `toolsets` | one declaration line per set the agent may raise and has not | `core.toolsets` |
@@ -85,6 +86,16 @@ capability that is off for those settings says nothing (`CapabilityGatedContribu
 filter inside `core`), so the prompt can never describe a tool the session cannot call. The same
 settings supply `instructions` and `custom-prompt`, which is how a role's own prompt reaches its
 model rather than the project's.
+
+`project-agents` (`ProjectAgentsContributor`) is gated the same way in spirit but not the same
+mechanism: `agent.agents_md` is a mode word (`inject`/`ignore`), not a `core.*` capability, so the
+contributor checks `context.Settings.AgentsMd` itself rather than going through
+`CapabilityGatedContributor`. It sits right after `instructions`, at the same authority tier as the
+rest of the project's own word, and before `custom-prompt`. Today it emits only the `<agents>`
+semantics declaration plus `<project root>/AGENTS.md`; nested, per-folder `AGENTS.md` files
+(`ResolvedScopedAgents` in the ADR) are a later wave and land at the very end of the contributor
+list instead, after `working-memory` — see
+[`ADR_20260911-2_agent_agents-md-scopes`](../docs/adr/ADR_20260911-2_agent_agents-md-scopes.md) §2.4.
 
 ### Correspondents are deliberately not a contributor
 
