@@ -169,7 +169,7 @@ async Task PrintAllHelpAsync()
     string[][] leaves =
     [
         [], // top-level usage: the command list itself
-        ["chat", "list"], ["chat", "open"], ["chat", "fork"], ["chat", "run"],
+        ["chat", "list"], ["chat", "open"], ["chat", "fork"], ["chat", "compact"], ["chat", "run"],
         ["serve"], ["secret"], ["system"],
         ["init"], ["ps"], ["start"], ["stop"], ["hub"],
     ];
@@ -202,6 +202,7 @@ void ConfigureFullApp(IConfigurator config)
         chat.AddCommand<ChatListCommand>("list").WithDescription("List saved chats.");
         chat.AddCommand<ChatOpenCommand>("open").WithDescription("Resume a saved chat (or start a new one) in the REPL.");
         chat.AddCommand<ChatForkCommand>("fork").WithDescription("Duplicate a saved chat, optionally onto a different model.");
+        chat.AddCommand<ChatCompactCommand>("compact").WithDescription("Compact a saved chat: hide everything before the tail behind a fresh summary.");
         chat.AddCommand<ChatRunCommand>("run").WithDescription("Run one or more prompts against one or more models, headlessly, to the screen or to files.");
     });
 

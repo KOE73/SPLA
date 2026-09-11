@@ -47,6 +47,17 @@ public sealed class ChatMessageDto
     /// <see cref="AgentSettingsPayload.SaveAttempts"/>. Null/empty for the overwhelming majority of
     /// messages, which never had any.</summary>
     public List<AttemptDto>? Attempts { get; set; }
+
+    /// <summary>True when compaction hid this message from the model (its <c>RetentionPolicy</c> is
+    /// <c>Never</c> — <c>docs/adr/ADR_20260911-3_agent_compaction.md</c> §2.1). The message still shows
+    /// in the log, dimmed, rather than disappearing — the whole point of retaining rather than erasing.
+    /// False for every message no compaction has touched.</summary>
+    public bool Compacted { get; set; }
+
+    /// <summary>True for the working-summary record a compaction inserted (ADR §2.2). The client
+    /// renders it as a "compacted context" plate with expand-to-view rather than an ordinary human
+    /// bubble, even though <see cref="Role"/> is <c>user</c> on the wire like any other message.</summary>
+    public bool CompactSummary { get; set; }
 }
 
 /// <summary>One abandoned generation as stored on a message (<see cref="ChatMessageDto.Attempts"/>).
@@ -201,6 +212,12 @@ public sealed class ChatRewindPayload
     public string ChatId { get; set; } = string.Empty;
     public string MsgId { get; set; } = string.Empty;
     public bool Before { get; set; }
+}
+
+/// <summary>Body of <see cref="MessageTypes.ChatCompact"/>.</summary>
+public sealed class ChatCompactPayload
+{
+    public string ChatId { get; set; } = string.Empty;
 }
 
 /// <summary>Fork a chat into a new one, keeping messages up to and including

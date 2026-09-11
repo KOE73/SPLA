@@ -217,6 +217,19 @@ body:has(.width-handle.dragging) { user-select: none; }
 .msg.reply-out { align-self: flex-end; background: var(--user-bg); border-color: var(--accent); margin-inline-start: 2ch; }
 .reply-out-label { font-size: var(--fs-xs); font-weight: 700; text-transform: uppercase;
   letter-spacing: .05em; color: var(--accent); margin-bottom: 5px; display: flex; align-items: center; gap: 5px; }
+
+/* A message /compact hid from the model (ADR_20260911-3_agent_compaction §2.1) — still readable,
+   just visibly not what the model sees any more. Dim rather than hide: the whole point of Never
+   over erasure is that a person can still scroll back and read it. */
+.msg.user.compacted { opacity: .45; }
+
+/* The summary record itself (ADR §2.2) — a plate, not a bubble: centered, collapsed by default, no
+   rewind/fork actions (it stands for a whole hidden prefix, not one turn). */
+.msg.compact-plate { align-self: center; max-width: 90%; background: var(--system-bg); }
+.plate-toggle { all: unset; cursor: pointer; font-size: var(--fs-sm); font-weight: 700;
+  color: var(--muted); text-transform: uppercase; letter-spacing: .05em; }
+.plate-toggle:hover { color: var(--text); }
+.plate-body { margin-top: var(--sp-2); white-space: pre-wrap; }
 .reply-out-status { font-size: 11px; font-weight: 400; text-transform: none; letter-spacing: 0; }
 .reply-out-status.ok { color: var(--accent); }
 .reply-out-status.failed { color: var(--danger); }

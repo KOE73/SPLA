@@ -19,7 +19,9 @@ public static class ProtocolMapper
         IsEphemeral = m.IsEphemeral,
         PeerFrom = m.PeerFrom,
         ToolCalls = m.ToolCalls?.Select(ToDto).ToList(),
-        Attempts = m.Attempts?.Select(ToDto).ToList()
+        Attempts = m.Attempts?.Select(ToDto).ToList(),
+        Compacted = m.RetentionPolicy == ContextRetention.Never && m.CompactedBy != null,
+        CompactSummary = m.CompactSummary
     };
 
     public static ToolCallDto ToDto(ToolCall tc) => new()

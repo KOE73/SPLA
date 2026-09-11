@@ -76,6 +76,20 @@ internal sealed class CliWireClient : IAsyncDisposable
     }
 
     /// <summary>
+    /// Compacts a chat on the live instance — see
+    /// <c>docs/adr/ADR_20260911-3_agent_compaction.md</c> §2.6, the <c>spla chat compact &lt;id&gt;</c>
+    /// batch-mode entry point. A refusal (turn running, nothing to compact, model error) surfaces as
+    /// the ordinary <see cref="MessageTypes.Error"/> frame, which <see cref="WaitForAsync"/> already
+    /// turns into an <see cref="InvalidOperationException"/> — same shape as <see cref="NewChatAsync"/>'s
+    /// role validation, so callers need no separate handling for this path.
+    /// </summary>
+    public async Task CompactAsync(string chatId, CancellationToken ct)
+    {
+        await SendAsync(MessageTypes.ChatCompact, new ChatCompactPayload { ChatId = chatId }, chatId, ct: ct);
+        await WaitForAsync(MessageTypes.ChatOpened, ct);
+    }
+
+    /// <summary>
     /// Sends one message and reads the turn to its end, reporting as it goes.
     /// </summary>
     /// <param name="onText">Assistant text as it streams.</param>

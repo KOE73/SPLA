@@ -44,6 +44,12 @@ export interface ChatMessage {
    *  instead of an ordinary human bubble; undefined for every ordinary message. The wire shape of
    *  the message itself is unchanged: this is the one field that tells the two apart. */
   peerFrom?: string;
+  /** True when `/compact` hid this message from the model — still shown, dimmed, never erased
+   *  (`ADR_20260911-3_agent_compaction` §2.1). False for every message no compaction has touched. */
+  compacted?: boolean;
+  /** True for the working-summary record a compaction inserted (ADR §2.2) — rendered as a "compacted
+   *  context" plate rather than an ordinary human bubble, even though `role` is still `user`. */
+  compactSummary?: boolean;
 }
 
 /** One abandoned generation as stored on a message — see server `AttemptDto`. */
