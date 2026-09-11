@@ -69,6 +69,7 @@ authority order, top-down, and belongs to the composition root — never to a co
 | `mode` | the mode preamble | — |
 | `core` | one item per enabled `IAgentFeature` that carries prompt text | the feature set |
 | `instructions` | each existing instruction file from settings | — |
+| `project-agents` | the `<agents>` semantics declaration, plus `<project root>/AGENTS.md` wrapped as an `<agents scope="" source="AGENTS.md">` block when it exists | `agent.agents_md == inject` |
 | `custom-prompt` | `agent.custom_prompt` | — |
 | `skills` | active skill body, on-demand catalog (shelf + tag cloud) | `core.skills` |
 | `toolsets` | one declaration line per set the agent may raise and has not | `core.toolsets` |
@@ -76,6 +77,7 @@ authority order, top-down, and belongs to the composition root — never to a co
 | `plugin-commands` | the `plugin_run_command` list | — |
 | `resources` | enabled `scheme://` addresses with their verbs, and registered `resource_read as=` projections | `core.resources` |
 | `working-memory` | the live `context:*` snapshot, as a **turn message** | `core.memory` |
+| `scoped-agents` | one `<agents scope="…" source="…">` block per folder in this session's scope-marker chains — **last, always** | `agent.agents_md == inject` |
 
 The conditional entries are gated on exactly the decision that gates their tools, asked of the
 same settings: the `capabilities` of the settings being composed for — a role's, for a chat or run
@@ -85,6 +87,20 @@ capability that is off for those settings says nothing (`CapabilityGatedContribu
 filter inside `core`), so the prompt can never describe a tool the session cannot call. The same
 settings supply `instructions` and `custom-prompt`, which is how a role's own prompt reaches its
 model rather than the project's.
+
+`project-agents` (`ProjectAgentsContributor`) is gated the same way in spirit but not the same
+mechanism: `agent.agents_md` is a mode word (`inject`/`ignore`), not a `core.*` capability, so the
+contributor checks `context.Settings.AgentsMd` itself rather than going through
+`CapabilityGatedContributor`. It sits right after `instructions`, at the same authority tier as the
+rest of the project's own word, and before `custom-prompt`. It emits only the `<agents>` semantics declaration plus `<project root>/AGENTS.md`. Nested,
+per-folder `AGENTS.md` files are `ScopedAgentsContributor` (`ResolvedScopedAgents` in the ADR) —
+its own, separate contributor, registered **last** in `AgentContributors.Default`, after
+`working-memory` and after anything added to the list later (that rule is repeated as a comment at
+both ends: on `WorkingMemoryContributor`'s entry above it in `Default`, and on
+`ScopedAgentsContributor`'s own class doc comment). It reads the running session's scope markers
+(`ChatMessage.ScopeMarker`, planted by `AgentsScopeStage`) through `AgentSessionScope.Current`, the
+same ambient path `WorkingMemoryContributor` uses for its own per-chat state — see
+[`ADR_20260911-2_agent_agents-md-scopes`](../docs/adr/ADR_20260911-2_agent_agents-md-scopes.md) §2.4.
 
 ### Correspondents are deliberately not a contributor
 

@@ -27,7 +27,9 @@ export type LogItem =
       /** Set when this "user" turn is actually an incoming reply across a correspondence
        *  (ADR_20260827-2 §2.5) — UserBubble renders it as speech ("← from peerFrom") instead of an
        *  ordinary human bubble. Undefined for every message a person actually typed. */
-      peerFrom?: string }
+      peerFrom?: string;
+      /** Compaction flags — see `ChatMessage.compacted`/`compactSummary` in protocol/types.ts. */
+      compacted?: boolean; compactSummary?: boolean }
   | { kind: "assistant"; key: string; msgIndex: number; text: string; reasoning: string;
       msgId?: string; createdAt?: string | number;
       /** Generations the repetition guard threw away before this bubble got its real answer — the
@@ -363,7 +365,8 @@ function hydrateMessages(s: ChatSession, messages: ChatMessage[]) {
   for (const m of messages) {
     if (m.role === "user") {
       s.items.push({ kind: "user", key: nextKey(), text: m.content || "",
-        images: m.images, msgId: m.msgId, createdAt: m.createdAt, peerFrom: m.peerFrom });
+        images: m.images, msgId: m.msgId, createdAt: m.createdAt, peerFrom: m.peerFrom,
+        compacted: m.compacted, compactSummary: m.compactSummary });
     } else if (m.role === "assistant") {
       // A degenerate-turn record has blank content/reasoning and exists purely for its attempts —
       // still worth a bubble, since dropping it would erase the only trace of what happened.

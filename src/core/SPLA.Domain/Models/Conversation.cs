@@ -19,6 +19,8 @@ public sealed class Conversation
     private int _toolSeq;
     private int _systemSeq;
     private int _labelSeq;
+    private int _scopeMarkerSeq;
+    private int _summarySeq;
 
     public IReadOnlyList<ChatMessage> Messages => _messages;
     public int Count => _messages.Count;
@@ -26,13 +28,16 @@ public sealed class Conversation
     public void Add(ChatMessage message)
     {
         if (string.IsNullOrEmpty(message.MsgId))
-            message.MsgId = GenerateMsgId(message.Role);
+            message.MsgId = GenerateMsgId(message.Role,
+                isScopeMarker: message.ScopeMarker != null, isSummary: message.CompactSummary);
         _messages.Add(message);
     }
 
-    private string GenerateMsgId(ChatRole role, bool isLabel = false)
+    private string GenerateMsgId(ChatRole role, bool isLabel = false, bool isScopeMarker = false, bool isSummary = false)
     {
         if (isLabel) return $"L-{Interlocked.Increment(ref _labelSeq)}";
+        if (isScopeMarker) return $"R-{Interlocked.Increment(ref _scopeMarkerSeq)}";
+        if (isSummary) return $"C-{Interlocked.Increment(ref _summarySeq)}";
         return role switch
         {
             ChatRole.User      => $"U-{Interlocked.Increment(ref _userSeq)}",
@@ -70,6 +75,58 @@ public sealed class Conversation
         return label;
     }
 
+    /// <summary>
+    /// Appends a scope-marker message recording that <paramref name="scope"/>'s project rules have
+    /// been (or are about to be) loaded into the prompt — see
+    /// <c>docs/adr/ADR_20260911-2_agent_agents-md-scopes.md</c> §2.5. Always appended at the end of
+    /// the history (unlike a label, a marker is not a position anchor for something else — it is its
+    /// own event). <c>Role</c> is <see cref="ChatRole.User"/>: any neutral role would do, since
+    /// <see cref="Context.ContextAssembler.ShouldSend"/> excludes markers from the model regardless —
+    /// <c>User</c> was picked simply because it is not treated specially anywhere else in
+    /// <see cref="ShouldPersist"/> or assembly (unlike <see cref="ChatRole.System"/> or
+    /// <see cref="ChatRole.Tool"/>).
+    /// </summary>
+    public ChatMessage AddScopeMarker(string scope)
+    {
+        var marker = new ChatMessage
+        {
+            Role = ChatRole.User,
+            Content = string.Empty,
+            ScopeMarker = scope
+        };
+        marker.MsgId = GenerateMsgId(marker.Role, isScopeMarker: true);
+        _messages.Add(marker);
+        return marker;
+    }
+
+    /// <summary>
+    /// Inserts a compaction summary record immediately before <paramref name="beforeMsg"/> (the first
+    /// message of the kept tail — see <c>ChatRuntime.CompactAsync</c> and
+    /// <c>docs/adr/ADR_20260911-3_agent_compaction.md</c> §2.2/§2.6). Mirrors
+    /// <see cref="InsertLabelBefore"/>'s insert-before-a-given-message shape, but the record itself is
+    /// the opposite of a label in every way that matters: it is not ephemeral, it IS sent to the model
+    /// (as an ordinary <see cref="ChatRole.User"/> turn) and it DOES get persisted. Gets a stable
+    /// <c>C-*</c> MsgId. Returns the created summary message.
+    /// </summary>
+    public ChatMessage InsertSummaryBefore(ChatMessage beforeMsg, string content)
+    {
+        var summary = new ChatMessage
+        {
+            Role = ChatRole.User,
+            Content = content,
+            CompactSummary = true
+        };
+        summary.MsgId = GenerateMsgId(summary.Role, isSummary: true);
+
+        var idx = _messages.IndexOf(beforeMsg);
+        if (idx < 0)
+            _messages.Add(summary);   // fallback: append
+        else
+            _messages.Insert(idx, summary);
+
+        return summary;
+    }
+
     public bool Remove(ChatMessage message) => _messages.Remove(message);
 
     public void Clear() => _messages.Clear();
@@ -88,23 +145,54 @@ public sealed class Conversation
     /// written down. With it on, the message is the only record of what happened and must stay.
     /// </para>
     /// </summary>
+    /// <remarks>
+    /// A scope marker (<see cref="ChatMessage.ScopeMarker"/> non-null) always persists, regardless of
+    /// every other flag here — it is the only record of which folders' rules a session has already
+    /// been shown, and without it a reopened chat would re-trigger every write refusal it already
+    /// paid for. See <c>docs/adr/ADR_20260911-2_agent_agents-md-scopes.md</c> §2.5.
+    /// </remarks>
     public static bool ShouldPersist(ChatMessage msg, bool saveToolCalls = false, bool saveAttempts = false) =>
-        !msg.IsEphemeral &&
+        msg.ScopeMarker != null ||
+        (!msg.IsEphemeral &&
         !msg.IsLabel &&
         msg.Role != ChatRole.System &&
         (msg.Role != ChatRole.Tool || saveToolCalls) &&
         (msg.Role == ChatRole.Tool
             ? (msg.ToolCalls?.Count > 0 || !string.IsNullOrWhiteSpace(msg.Content))
-            : (!string.IsNullOrWhiteSpace(msg.Content) || (saveAttempts && msg.Attempts?.Count > 0)));
+            : (!string.IsNullOrWhiteSpace(msg.Content) || (saveAttempts && msg.Attempts?.Count > 0))));
 
     /// <summary>
     /// Truncates the message history to <paramref name="messageCount"/> entries, removing everything after.
     /// No-op if <paramref name="messageCount"/> is already &gt;= current count.
+    /// <para>
+    /// The one centralized place a rollback that crosses a compaction boundary is repaired
+    /// (<c>docs/adr/ADR_20260911-3_agent_compaction.md</c> §2.5): if truncation removes a message with
+    /// <see cref="ChatMessage.CompactSummary"/> set, every remaining message whose
+    /// <see cref="ChatMessage.CompactedBy"/> names that summary's <see cref="ChatMessage.MsgId"/> gets
+    /// its <see cref="ChatMessage.RetentionPolicy"/> handed back to
+    /// <see cref="ContextRetention.Persistent"/> and <see cref="ChatMessage.CompactedBy"/> cleared —
+    /// exactly undoing what that one compaction did. Bookmark rollback, checkpoint rollback,
+    /// <c>chat.rewind</c> and branching all funnel through this method (or its <c>string</c> overload,
+    /// which calls it), so none of them need their own copy of this repair.
+    /// </para>
     /// </summary>
     public void TruncateTo(int messageCount)
     {
-        if (messageCount < _messages.Count)
-            _messages.RemoveRange(messageCount, _messages.Count - messageCount);
+        if (messageCount >= _messages.Count) return;
+
+        var removed = _messages.GetRange(messageCount, _messages.Count - messageCount);
+        _messages.RemoveRange(messageCount, _messages.Count - messageCount);
+
+        foreach (var summary in removed)
+        {
+            if (!summary.CompactSummary) continue;
+            foreach (var m in _messages)
+            {
+                if (m.CompactedBy != summary.MsgId) continue;
+                m.RetentionPolicy = ContextRetention.Persistent;
+                m.CompactedBy = null;
+            }
+        }
     }
 
     /// <summary>

@@ -50,6 +50,11 @@ public sealed class BatchRunner(AgentRuntime runtime, ResolvedSettings settings)
     /// defaults to "{prompt} · {model}".</summary>
     public string? Title { get; init; }
 
+    /// <summary>Role every cell's chat runs as, or null for a plain chat with no role. Already resolved
+    /// and validated by the caller (<see cref="ChatRunCommand"/>) — stamped as-is via
+    /// <see cref="ChatRegistry.CreateNew"/>, which is where the mode/prompt/tool narrowing takes effect.</summary>
+    public string? Role { get; init; }
+
     /// <summary>Reported in the statistics, not acted upon — the flags themselves are already applied
     /// by the caller through the prompt composer. A report that omits them cannot explain why two runs
     /// of the same prompt against the same model differ.</summary>
@@ -75,7 +80,7 @@ public sealed class BatchRunner(AgentRuntime runtime, ResolvedSettings settings)
         var stats = RunStats.For(cell, settings, this);
 
         var title = Title is { Length: > 0 } titleTemplate ? OutputNaming.ExpandTitle(titleTemplate, DateTimeOffset.Now, cell.Prompt, cell.Model.DisplayName) : $"{cell.Prompt.Name} · {cell.Model.DisplayName}";
-        var chat = new ChatRegistry(runtime).CreateNew(title, origin: "cli");
+        var chat = new ChatRegistry(runtime).CreateNew(title, role: Role, origin: "cli");
         chat.ApplySettings(mode: null, modelId: cell.Model.Id);
 
         if (SkillId is { Length: > 0 } skillId && chat.ActivateSkill(skillId) is { } skillError)

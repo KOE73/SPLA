@@ -70,6 +70,9 @@ public class McpHost : IToolHost
                 new SPLA.MCP.Core.Security.EdgeClassifier(
                     zoneOfPath ?? (_ => SPLA.Domain.Security.Zone.Unknown)),
                 Edges, logger, originOfZone))
+            // Same neighbourhood, same reasoning: per-folder AGENTS.md rules are a policy question
+            // answered from the settings and the call's own path, not from the tool result.
+            .Use(new AgentsScopeStage(() => ProjectSettings?.Invoke()))
             .Use(new AmbientHostStage(this))
             .Use(new BackgroundStage(logger))
             .Use(new ProgressNodeStage())

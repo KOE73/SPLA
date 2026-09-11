@@ -123,7 +123,9 @@ internal sealed class WorkspaceHandlers : IMessageHandler
         Reasoning = m.Reasoning,
         CreatedAt = m.CreatedAt.ToString("o"),
         ToolCallId = m.ToolCallId,
-        ToolCalls = m.ToolCalls?.Select(ProtocolMapper.ToDto).ToList()
+        ToolCalls = m.ToolCalls?.Select(ProtocolMapper.ToDto).ToList(),
+        Compacted = m.Retention == "never" && m.CompactedBy != null,
+        CompactSummary = m.CompactSummary
     };
 
     /// <summary>The project's own boundary. Without a manifest there is no project and no boundary to

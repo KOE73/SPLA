@@ -19,7 +19,22 @@
         @click="openPanel('sessions')"
       >🗂</button>
     </div>
-    <button class="btn-new" @click="newChat">{{ t('+ New') }}</button>
+    <div class="new-split">
+      <button class="btn-new" @click="newChat">{{ t('+ New') }}</button>
+      <button
+        v-if="activeRoles.length"
+        class="btn-new-role"
+        :title="t('New chat with a role')"
+        @click="toggleRoleMenu"
+      >▾</button>
+      <div v-if="roleMenuOpen" class="role-menu" @click.stop>
+        <div
+          v-for="r in activeRoles" :key="r.name"
+          class="role-menu-item"
+          @click="newChatWithRole(r.name)"
+        >{{ r.name }}</div>
+      </div>
+    </div>
   </div>
 
   <!-- Chat list — shown in both layouts so the user can switch chats while browsing files -->
@@ -74,7 +89,7 @@ import { t } from "../i18n";
 import { computed, onUnmounted, ref, watch } from "vue";
 import { client } from "../protocol/SplaClient";
 import { store } from "../state/store";
-import type { ChatSummary } from "../protocol/types";
+import type { ChatSummary, RoleEditDto } from "../protocol/types";
 import ChatListItem from "./ChatListItem.vue";
 import ProjectPicker from "./ProjectPicker.vue";
 import ProjectBar from "./ProjectBar.vue";
@@ -116,6 +131,33 @@ watch(() => store.chats, list => {
 const chatsContainerRef = ref<HTMLElement>();
 
 function newChat() { client.send("chat.new", { title: null }); }
+
+// ── Role picker on the split "+ New" button ────────────────────────────────────────────
+// Fetched local to this component rather than a shared store: today ChatList is the only
+// surface that needs the ACTIVE role list outside Settings, and Settings already owns the
+// full roles.get/roles.result round trip for its own editor. If a third surface needs the
+// list, that is the point to promote it into a shared store instead of duplicating this.
+const roleMenuOpen = ref(false);
+const activeRoles = ref<RoleEditDto[]>([]);
+
+const offRoles = client.on("roles.result", p => {
+  activeRoles.value = (p.roles || []).filter(r => r.active);
+});
+onUnmounted(offRoles);
+
+function toggleRoleMenu() {
+  roleMenuOpen.value = !roleMenuOpen.value;
+  if (roleMenuOpen.value) client.send("roles.get");
+}
+
+function closeRoleMenu() { roleMenuOpen.value = false; }
+document.addEventListener("click", closeRoleMenu);
+onUnmounted(() => document.removeEventListener("click", closeRoleMenu));
+
+function newChatWithRole(role: string) {
+  client.send("chat.new", { title: null, role });
+  roleMenuOpen.value = false;
+}
 
 function onChatClick(chatId: string) {
   openChat(chatId);
@@ -245,6 +287,39 @@ function scrollToState() {
   flex-shrink: 0;
 }
 .btn-new:hover { background: var(--accent-soft); color: var(--accent); border-color: var(--accent); }
+
+/* ── Split "+ New" button: main part unchanged, narrow ▾ part opens the role menu ───────── */
+.new-split { margin-left: auto; position: relative; display: flex; flex-shrink: 0; }
+.new-split .btn-new { margin-left: 0; border-radius: var(--radius-sm) 0 0 var(--radius-sm); border-right: none; }
+.btn-new-role {
+  background: transparent;
+  border: 1px solid var(--border);
+  border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+  color: var(--text);
+  font-size: var(--fs-sm);
+  padding: 3px 5px;
+  cursor: pointer;
+}
+.btn-new-role:hover { background: var(--accent-soft); color: var(--accent); border-color: var(--accent); }
+.role-menu {
+  position: absolute;
+  top: 100%;
+  right: 0;
+  margin-top: 2px;
+  min-width: 120px;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+  z-index: 20;
+}
+.role-menu-item {
+  padding: var(--sp-2) var(--sp-3);
+  font-size: var(--fs-sm);
+  cursor: pointer;
+  white-space: nowrap;
+}
+.role-menu-item:hover { background: var(--accent-soft); color: var(--accent); }
 
 /* ── Aggregate status indicator ────────────────────────────────────────────────── */
 /* Pinned at the top of the chat list when any chat has activity. Gives users at-a-glance

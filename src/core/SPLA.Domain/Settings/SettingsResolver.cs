@@ -71,6 +71,9 @@ public class ResolvedSettings
     public AgentMode Mode { get; set; } = AgentMode.Edit;
     public List<string> Instructions { get; set; } = new();
     public int CompactTailMessages { get; set; } = 2;
+    /// <summary>How AGENTS.md (root and, as folders are visited, nested) reaches the prompt.
+    /// Default <see cref="AgentsMdMode.Inject"/> — see <c>ADR_20260911-2_agent_agents-md-scopes.md</c>.</summary>
+    public AgentsMdMode AgentsMd { get; set; } = AgentsMdMode.Inject;
     public string? CustomPrompt { get; set; }
     /// <summary>
     /// Challenge, then stop, a turn that keeps making the same tool call. **On** — a chat without it
@@ -536,6 +539,8 @@ public static class SettingsResolver
             {
                 if (defaults.Agent.Mode != null && Enum.TryParse<AgentMode>(defaults.Agent.Mode, true, out var m))
                     r.Mode = m;
+                if (defaults.Agent.AgentsMd != null)
+                    r.AgentsMd = ParseAgentsMdMode(defaults.Agent.AgentsMd, "defaults.yaml (agent.agents_md)");
                 if (defaults.Agent.CompactTailMessages.HasValue)
                     r.CompactTailMessages = defaults.Agent.CompactTailMessages.Value;
                 if (!string.IsNullOrEmpty(defaults.Agent.CustomPrompt))
@@ -606,6 +611,8 @@ public static class SettingsResolver
             {
                 if (project.Agent.Mode != null && Enum.TryParse<AgentMode>(project.Agent.Mode, true, out var m))
                     r.Mode = m;
+                if (project.Agent.AgentsMd != null)
+                    r.AgentsMd = ParseAgentsMdMode(project.Agent.AgentsMd, "project manifest (agent.agents_md)");
                 r.Instructions = project.Agent.Instructions ?? r.Instructions;
                 if (project.Agent.CompactTailMessages.HasValue)
                     r.CompactTailMessages = project.Agent.CompactTailMessages.Value;
@@ -754,6 +761,8 @@ public static class SettingsResolver
 
         if (roleSection.Mode != null && Enum.TryParse<AgentMode>(roleSection.Mode, true, out var mode))
             r.Mode = mode;
+        if (roleSection.AgentsMd != null)
+            r.AgentsMd = ParseAgentsMdMode(roleSection.AgentsMd, $"role '{roleName}' (agents_md)");
         r.Instructions = roleSection.Instructions ?? r.Instructions;
         if (roleSection.CompactTailMessages.HasValue)
             r.CompactTailMessages = roleSection.CompactTailMessages.Value;
@@ -864,6 +873,7 @@ public static class SettingsResolver
         Models = baseline.Models,
         DefaultModelId = baseline.DefaultModelId,
         Mode = baseline.Mode,
+        AgentsMd = baseline.AgentsMd,
         Instructions = [.. baseline.Instructions],
         CompactTailMessages = baseline.CompactTailMessages,
         CustomPrompt = baseline.CustomPrompt,
@@ -984,6 +994,16 @@ public static class SettingsResolver
     /// </summary>
     /// <summary>Layers accumulate rather than override: a project vouching for its own wiki must not
     /// silently drop what the machine layer vouched for.</summary>
+    /// <summary>Parses <c>agents_md: inject|ignore</c>. Unlike <c>mode:</c> (which silently keeps
+    /// the previous value on a bad string), a typo here is a real footgun — it can silently turn a
+    /// role's <c>ignore</c> into the default <c>inject</c>, which is exactly the leak this setting
+    /// exists to close. So this throws with the offending value and the layer it came from.</summary>
+    private static AgentsMdMode ParseAgentsMdMode(string value, string layer)
+        => Enum.TryParse<AgentsMdMode>(value, true, out var parsed)
+            ? parsed
+            : throw new InvalidOperationException(
+                $"Unknown agents_md value '{value}' in {layer}. Expected 'inject' or 'ignore'.");
+
     private static void AddTrustedDomains(ResolvedSettings r, List<string>? declared)
     {
         if (declared is null) return;

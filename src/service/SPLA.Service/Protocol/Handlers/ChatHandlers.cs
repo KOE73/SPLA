@@ -16,7 +16,7 @@ internal sealed class ChatHandlers : IMessageHandler
         MessageTypes.ChatArchive, MessageTypes.ChatUnarchive, MessageTypes.ChatArchivedList,
         MessageTypes.ChatOpen, MessageTypes.ChatRead, MessageTypes.ChatWatch, MessageTypes.ChatUnwatch,
         MessageTypes.ChatSend, MessageTypes.ChatSettings, MessageTypes.ChatReasoningGet,
-        MessageTypes.ChatRewind, MessageTypes.ChatFork,
+        MessageTypes.ChatRewind, MessageTypes.ChatFork, MessageTypes.ChatCompact,
         MessageTypes.ChatSkillActivate, MessageTypes.ChatSkillDeactivate,
         MessageTypes.ChatToolSetDeactivate, MessageTypes.ChatDoubtClear,
         MessageTypes.TaskList, MessageTypes.TaskState, MessageTypes.TaskCancel,
@@ -41,6 +41,7 @@ internal sealed class ChatHandlers : IMessageHandler
         MessageTypes.ChatReasoningGet => ReasoningGet(ctx),
         MessageTypes.ChatRewind   => Rewind(ctx),
         MessageTypes.ChatFork     => Fork(ctx),
+        MessageTypes.ChatCompact  => Compact(ctx),
         MessageTypes.ChatSkillActivate => SkillActivate(ctx),
         MessageTypes.ChatSkillDeactivate => SkillDeactivate(ctx),
         MessageTypes.ChatToolSetDeactivate => ToolSetDeactivate(ctx),
@@ -69,7 +70,26 @@ internal sealed class ChatHandlers : IMessageHandler
     {
         var (entry, projectId) = ctx.Session.Resolve(ctx.Env);
         var p = ctx.Payload<ChatNewPayload>() ?? new ChatNewPayload();
-        var chat = entry.Chats.CreateNew(p.Title, origin: p.Origin);
+
+        string? role = null;
+        if (!string.IsNullOrWhiteSpace(p.Role))
+        {
+            var available = entry.Runtime.Settings.Manifest?.Roles
+                ?.Where(n => !string.IsNullOrWhiteSpace(n)).Select(n => n.Trim()).ToList()
+                ?? [];
+            role = available.FirstOrDefault(n => string.Equals(n, p.Role, StringComparison.OrdinalIgnoreCase));
+            if (role == null)
+            {
+                var list = available.Count > 0 ? string.Join(", ", available) : "(none)";
+                await ctx.Send(MessageTypes.Error, new ErrorPayload
+                {
+                    Message = $"Unknown role: {p.Role}. Available roles: {list}"
+                });
+                return;
+            }
+        }
+
+        var chat = entry.Chats.CreateNew(p.Title, role: role, origin: p.Origin);
         await ctx.Session.SendOpenedAsync(chat);
         await BroadcastChatList(ctx, projectId, entry.Chats);
     }
@@ -325,6 +345,28 @@ internal sealed class ChatHandlers : IMessageHandler
             return;
         }
         await ctx.Session.SendOpenedAsync(chat);   // re-render the truncated log
+    }
+
+    private static async Task Compact(RequestContext ctx)
+    {
+        var (entry, _) = ctx.Session.Resolve(ctx.Env);
+        var p = ctx.Payload<ChatCompactPayload>();
+        var chat = p != null ? entry.Chats.GetOrOpen(p.ChatId) : null;
+        if (chat == null || p == null) return;
+
+        var result = await chat.CompactAsync(ctx.HostStopping);
+        if (!result.Compacted)
+        {
+            var message = result.Refusal switch
+            {
+                ChatRuntime.CompactRefusal.Busy => "Compact failed — a turn is running.",
+                ChatRuntime.CompactRefusal.NothingToCompact => "Nothing to compact yet.",
+                _ => $"Compact failed — {result.Error ?? "the model call did not produce a summary"}."
+            };
+            await ctx.Send(MessageTypes.Error, new ErrorPayload { Message = message });
+            return;
+        }
+        await ctx.Session.SendOpenedAsync(chat);   // re-render with the fresh summary and dimmed prefix
     }
 
     private static async Task Fork(RequestContext ctx)

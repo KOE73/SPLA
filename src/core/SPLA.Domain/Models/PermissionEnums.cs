@@ -9,6 +9,20 @@ public enum AgentMode
     Agent = 4
 }
 
+/// <summary>How the project's and role's own AGENTS.md tree reaches the prompt. See
+/// <c>ADR_20260911-2_agent_agents-md-scopes.md</c> §2.1. No <c>Inherit</c> member — inheritance is
+/// the absence of the key in a layer, not a value.</summary>
+public enum AgentsMdMode
+{
+    /// <summary>Root AGENTS.md (and, as folders are visited, nested ones) is injected into the
+    /// prompt. Default — compatible with Codex/Cursor/Copilot's own behavior.</summary>
+    Inject = 0,
+
+    /// <summary>SPLA never reads AGENTS.md: no root, no nested, no write-gate. For narrow roles that
+    /// do not need project instructions.</summary>
+    Ignore = 1
+}
+
 public enum ToolScope
 {
     Local,      // Files and local resources

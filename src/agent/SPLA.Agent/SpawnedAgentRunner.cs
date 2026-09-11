@@ -259,6 +259,15 @@ public sealed class SpawnedAgentRunner : Domain.Interfaces.IAgentSpawner
         conversation.Add(new ChatMessage { Role = ChatRole.System, Content = systemPrompt });
         conversation.Add(new ChatMessage { Role = ChatRole.User, Content = input });
 
+        // AgentsScopeStage/ScopedAgentsContributor (Wave 3.3/3.4) read this run's history through
+        // AgentSessionScope.Current.Conversation, the same ambient path everything else in this
+        // session goes through. It could not be handed in at construction: the session had to exist
+        // first to compose the initial system prompt above, before this conversation did. Set through
+        // the concrete type — IAgentSession.Conversation is get-only, a default interface member
+        // cannot hold state.
+        if (agentSession is AgentSession concreteSession)
+            concreteSession.Conversation = conversation;
+
         // Wave 2 (ADR_20260910-2 §4.1): hands the session the SAME live list the orchestrator appends
         // to, so a watcher attaching mid-run (chat.open/chat.watch on this session's chat id) reads the
         // run's own in-memory conversation instead of the file Finish has not written yet.

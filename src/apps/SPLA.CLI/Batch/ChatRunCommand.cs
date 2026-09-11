@@ -40,6 +40,10 @@ internal sealed class ChatRunSettings : CommandSettings
     [Description("Name of each cell's chat, as the chat list shows it. Placeholders: {timestamp} {prompt} {model} {label}. Default \"{prompt} · {model}\".")]
     public string? Title { get; init; }
 
+    [CommandOption("--role")]
+    [Description("Role name to run every cell's chat as, matched against the project's declared roles: list (case-insensitive). Narrows the chat's mode/prompt/tool surface from its first turn.")]
+    public string? Role { get; init; }
+
     [CommandOption("--overwrite")]
     [Description("Treat --out as one literal file: every cell overwrites it, instead of one file per cell.")]
     public bool Overwrite { get; init; }
@@ -139,12 +143,25 @@ internal sealed class ChatRunCommand(ResolvedSettings settings, ILoggerFactory l
         // writer over the same .spla/ — see RemoteChatRun for what can and cannot cross the wire.
         if (RemoteChatRun.LiveInstance(settings) is { } holder)
         {
+            // A remote instance validates the role itself (ChatHandlers.New, same source list) and its
+            // refusal surfaces through RemoteChatRun.RunAsync/NewChatAsync as an ordinary error — no
+            // local check needed on this path.
+
             if (RemoteChatRun.Unsupported(s) is { } blocker)
             {
                 AnsiConsole.MarkupLine($"[red]{RemoteChatRun.Refusal(holder, blocker).EscapeMarkup()}[/]");
                 return 2;
             }
             return await RemoteChatRun.RunAsync(holder, s, prompts, images, settings, cancellationToken);
+        }
+
+        // Local path: nobody to hand the check to, so this invocation does it itself, before any cell
+        // runs — the same source (settings.Manifest.Roles) ChatHandlers.New checks on the wire path.
+        string? role = null;
+        if (s.Role is { Length: > 0 } requestedRole)
+        {
+            role = RoleValidation.Resolve(settings, requestedRole);
+            if (role == null) return 2;
         }
 
         // Purely additive, and built BEFORE the runtime: the composer takes its contributors at
@@ -171,7 +188,17 @@ internal sealed class ChatRunCommand(ResolvedSettings settings, ILoggerFactory l
 
         if (s.ShowPrompt || s.ShowPromptFile != null)
         {
-            var composed = runtime.ComposeContext();
+            // A role narrows mode/prompt/tools from the chat's first turn (ChatRuntime does the same
+            // resolution on open) — showing the project's own prompt here would defeat the whole point
+            // of --show-prompt/--show-prompt-file for a role run: there would be nothing to see that
+            // proves `ignore` (or any other role-level setting) actually took effect.
+            ResolvedSettings? roleSettings = null;
+            if (role != null && settings.Manifest is { } roleManifest && settings.ProjectFilePath is { } projectFilePath)
+            {
+                var roleSection = ConfigLoader.LoadRole(Path.GetDirectoryName(projectFilePath)!, role);
+                roleSettings = SettingsResolver.ResolveForRole(settings, roleManifest, role, roleSection);
+            }
+            var composed = runtime.ComposeContext(settings: roleSettings);
             if (s.ShowPrompt)
             {
                 var manifest = new Table().AddColumn("Contributor").AddColumn("Source").AddColumn("Title").AddColumn("~Tokens");
@@ -196,6 +223,7 @@ internal sealed class ChatRunCommand(ResolvedSettings settings, ILoggerFactory l
 
         if (s.DryRun)
         {
+            if (role != null) AnsiConsole.MarkupLine($"[grey]role →[/] {role.EscapeMarkup()}");
             var table = new Table().AddColumn("Prompt").AddColumn("Model").AddColumn("Output");
             foreach (var cell in cells)
                 table.AddRow(cell.Prompt.Name, cell.Model.DisplayName,
@@ -214,6 +242,7 @@ internal sealed class ChatRunCommand(ResolvedSettings settings, ILoggerFactory l
             TimeoutSeconds = s.TimeoutSeconds,
             SkillId = s.Skill,
             Title = s.Title,
+            Role = role,
             Stream = s.Stream,
             MdClean = s.MdClean,
             Images = images,

@@ -23,8 +23,7 @@ mounts:
 
 agent:
   mode: Edit
-  instructions:
-    - AGENTS.md
+  agents_md: inject
 
 roles: [reviewer]
 
@@ -65,7 +64,8 @@ ignore:
 | `name` | No | Human-readable project name. |
 | `mounts` | No | Folders outside the project root, named here and addressed as `mnt/<name>/...`. See [Mounts](#mounts). |
 | `agent.mode` | No | Default mode: `Chat`, `Research`, `Inspect`, `Edit`, `Agent`. |
-| `agent.instructions` | No | Markdown files injected into the system prompt. Paths relative to the project root. |
+| `agent.instructions` | No | Markdown files injected into the system prompt. Paths relative to the project root. An entry named `AGENTS.md` (any casing, any subdirectory) is skipped with a logged warning — that file has its own mechanism, `agent.agents_md`, and would otherwise reach the prompt twice. |
+| `agent.agents_md` | No | How the project's `AGENTS.md` tree reaches the prompt: `inject` (default — root `AGENTS.md` always, plus a per-folder `<agents scope=… source=…>` block for every folder a tool call actually touched this session, resolved via scope markers) or `ignore` (SPLA never reads it, root or nested). Per-role override with the same key under `roles/<name>.yaml`; absent there inherits the project's value. See [`ADR_20260911-2_agent_agents-md-scopes`](../docs/adr/ADR_20260911-2_agent_agents-md-scopes.md), [`composition.md`](composition.md#the-contributors). |
 | `agent.capabilities` | No | Enabled built-in `core.*` capabilities. Missing = all; `[]` = pure chat with no built-in tools. |
 | `agent.spawned_retention` | No | How many finished spawned sessions to keep on disk, newest first (default 200). `0` keeps none; negative disables trimming entirely. Never touches a session with a run still in progress. Project-level only — not a per-role setting; retention is a disk policy of the project, not a behaviour a role narrows. See [Roles](#roles). |
 | `agent.peer_debounce_base` / `agent.peer_debounce_max` / `agent.peer_depth_ceiling` / `agent.peer_hard_cap` | No | The correspondence decay regulator — how fast an exchange between two actors slows down and where it is cut off. See [Correspondence decay](#correspondence-decay). |
@@ -202,7 +202,6 @@ roles: [reviewer, architect]
 # roles/reviewer.yaml
 mode: Research
 instructions:
-  - AGENTS.md
   - docs/review-checklist.md
 capabilities:
   - core.read
@@ -222,7 +221,7 @@ the moment it lands on disk. It is exactly the same logic as "no walking up the 
 
 | Field | Meaning |
 |---|---|
-| `mode`, `instructions`, `capabilities`, `custom_prompt`, `loop_guard*`, `ask_timeout_minutes`, `shell_timeout_seconds`, `trusted_domains`, `save_tool_calls`, `save_attempts`, `peer_debounce_base`, `peer_debounce_max`, `peer_depth_ceiling`, `peer_hard_cap` | Same meaning as the identically-named `agent.*` field above. Absent on the role = inherit the project's own value, same as every other field here. (`spawned_retention` is the one exception — project-level only, see the fields table above.) |
+| `mode`, `instructions`, `capabilities`, `custom_prompt`, `agents_md`, `loop_guard*`, `ask_timeout_minutes`, `shell_timeout_seconds`, `trusted_domains`, `save_tool_calls`, `save_attempts`, `peer_debounce_base`, `peer_debounce_max`, `peer_depth_ceiling`, `peer_hard_cap` | Same meaning as the identically-named `agent.*` field above. Absent on the role = inherit the project's own value, same as every other field here. (`spawned_retention` is the one exception — project-level only, see the fields table above.) |
 | `connections` | Which connections this role may use, by `id` or by scope name (`user`, `project`, `shared` — a whole layer in one word). Absent/empty = every connection resolved for the project. A *selection*, not a grant, the same as `islands` below: there is no endpoint or credential in this list to declare one with. A named `id` that does not exist is an error; a scope with no entries is not (that is a fact about the machine). |
 | `model` | Which of the resolved `connections:` models this role runs on. A role does not declare its own connection — the layers declare what is reachable at all, a role only chooses among it. Refused when the role's own `connections:` selection excludes it. |
 | `toolsets` | Same shape as the top-level `toolsets:` section, merged over it key by key — a role that mentions one set narrows (or widens, within what the capability gate still allows) only that set. |

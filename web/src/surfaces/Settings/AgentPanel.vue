@@ -43,6 +43,13 @@
           <span class="hint">{{ t("also save the repetition guard's discarded attempts (full text) to the chat file — off by default, each one can run to several kB") }}</span>
         </span>
       </label>
+      <label class="field"><span>{{ t('AGENTS.md') }}</span>
+        <select v-model="agentsMd">
+          <option value="inject">{{ t('inject') }}</option>
+          <option value="ignore">{{ t('ignore') }}</option>
+        </select>
+      </label>
+      <p class="hint" style="margin: -6px 0 0">{{ t("ignore means SPLA never reads this project's AGENTS.md — no root file, no nested ones as folders are visited. A narrow role that does not need project instructions can override this to ignore even when the project injects.") }}</p>
     </div>
     <div v-if="resourceSchemes.length" class="conn-card">
       <div class="conn-head"><span class="id">{{ t('Resource schemes') }}</span></div>
@@ -95,6 +102,7 @@ const shellTimeoutSeconds = ref(120);
 const shellTimeoutUnlimited = ref(false);
 const saveToolCalls = ref(false);
 const saveAttempts = ref(false);
+const agentsMd = ref("inject");
 const resourceSchemes = ref<ResourceSchemeDto[]>([]);
 const modes = ref<string[]>([]);
 const perms = reactive<Record<string, string>>({ permRead: "", permWrite: "", permShell: "", permInternet: "" });
@@ -116,6 +124,7 @@ const off = client.on("agent.result", p => {
   if (!shellTimeoutUnlimited.value) shellTimeoutSeconds.value = p.shellTimeoutSeconds ?? 120;
   saveToolCalls.value = p.saveToolCalls === true;
   saveAttempts.value = p.saveAttempts === true;
+  agentsMd.value = p.agentsMd || "inject";
   resourceSchemes.value = p.resourceSchemes || [];
   perms.permRead = p.permRead || "";
   perms.permWrite = p.permWrite || "";
@@ -151,6 +160,7 @@ function save(): Promise<void> {
       shellTimeoutSeconds: shellTimeoutUnlimited.value ? 0 : shellTimeoutSeconds.value,
       saveToolCalls: saveToolCalls.value,
       saveAttempts: saveAttempts.value,
+      agentsMd: agentsMd.value,
       resourceSchemeSwitches: resourceSchemes.value.map(s => ({ scheme: s.scheme, enabled: s.enabled })),
       permRead: perms.permRead, permWrite: perms.permWrite, permShell: perms.permShell, permInternet: perms.permInternet,
       theme: lastTheme, density: lastDensity

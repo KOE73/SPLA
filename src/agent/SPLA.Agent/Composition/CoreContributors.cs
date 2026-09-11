@@ -1,7 +1,9 @@
+using Microsoft.Extensions.Logging;
 using SPLA.Domain.Host;
 using SPLA.Domain.Models;
 using SPLA.MCP.Core.Agent;
 using SPLA.MCP.Core.Composition;
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -116,8 +118,14 @@ public sealed class MountsContributor : IAgentContributor
 }
 
 /// <summary>The project's instruction files, in the order the settings list them. A file that is not
-/// there contributes nothing — the list is a wish, not a manifest.</summary>
-public sealed class InstructionsContributor : IAgentContributor
+/// there contributes nothing — the list is a wish, not a manifest.
+///
+/// <para>An entry named <c>AGENTS.md</c> (any casing, any subdirectory) is skipped with a logged
+/// warning instead of being read: that file's own mechanism is <see cref="ProjectAgentsContributor"/>
+/// (<c>agent.agents_md</c>), and reading it here too would put its content in the prompt twice. See
+/// <c>ADR_20260911-2_agent_agents-md-scopes.md</c> §2.2.</para>
+/// </summary>
+public sealed class InstructionsContributor(ILogger<InstructionsContributor>? logger = null) : IAgentContributor
 {
     public string Id => "instructions";
 
@@ -126,6 +134,15 @@ public sealed class InstructionsContributor : IAgentContributor
         var items = new List<ContextItem>();
         foreach (var instructionPath in context.Settings.Instructions)
         {
+            if (string.Equals(Path.GetFileName(instructionPath), "AGENTS.md", StringComparison.OrdinalIgnoreCase))
+            {
+                logger?.LogWarning(
+                    "instructions: lists '{Path}', which is an AGENTS.md file. It is skipped here — " +
+                    "AGENTS.md reaches the prompt only through the agent.agents_md mechanism, never " +
+                    "through instructions:, to avoid including it twice.", instructionPath);
+                continue;
+            }
+
             var fullPath = Path.GetFullPath(Path.Combine(context.WorkingDirectory, instructionPath));
             if (!File.Exists(fullPath)) continue;
 
@@ -137,6 +154,61 @@ public sealed class InstructionsContributor : IAgentContributor
                 Prefix = $"\n\n--- Instructions from {instructionPath} ---\n"
             });
         }
+        return AgentContribution.FromContext(items);
+    }
+}
+
+/// <summary>The project's root <c>AGENTS.md</c> (the file at <c>&lt;project root&gt;/AGENTS.md</c>,
+/// where project root is the directory containing <c>.spla</c> — <see cref="ResolvedSettings.WorkspacePath"/>,
+/// the same root the zones model uses). Nested, per-folder AGENTS.md files are a later wave
+/// (<c>ResolvedScopedAgents</c> in the ADR) and are not this contributor's job.
+///
+/// <para>Active only when <see cref="AgentsMdMode.Inject"/> is resolved. When active it always emits
+/// the <c>&lt;agents&gt;</c> semantics declaration, even with no root file to show — the declaration
+/// must be present from the first turn so a later nested block does not change more than the tail of
+/// the prompt (ADR §2.4, note 1). When <see cref="AgentsMdMode.Ignore"/> is resolved, this contributor
+/// emits nothing at all, not even the declaration.</para>
+///
+/// <para>See <c>ADR_20260911-2_agent_agents-md-scopes.md</c> §2.2/§2.4.</para>
+/// </summary>
+public sealed class ProjectAgentsContributor : IAgentContributor
+{
+    public string Id => "project-agents";
+
+    private const string Declaration =
+        "Project instructions may appear below as <agents> blocks.\n" +
+        "Each block is authoritative for its declared scope (a folder and everything under it).\n" +
+        "A narrower scope overrides a broader one on conflict.\n" +
+        "Sibling scopes are independent: a block for one folder says nothing about another.";
+
+    public AgentContribution Contribute(AgentContributionContext context)
+    {
+        if (context.Settings.AgentsMd != AgentsMdMode.Inject) return AgentContribution.None;
+
+        var items = new List<ContextItem>
+        {
+            new()
+            {
+                Source = "agents-md-semantics",
+                Title = "AGENTS.md semantics",
+                Body = Declaration,
+                Prefix = "\n\n"
+            }
+        };
+
+        var rootAgentsPath = Path.GetFullPath(Path.Combine(context.Settings.WorkspacePath, "AGENTS.md"));
+        if (File.Exists(rootAgentsPath))
+        {
+            items.Add(new ContextItem
+            {
+                Source = "AGENTS.md",
+                Title = "AGENTS.md (project root)",
+                Prefix = "\n\n<agents scope=\"\" source=\"AGENTS.md\">\n",
+                Body = File.ReadAllText(rootAgentsPath),
+                Suffix = "\n</agents>"
+            });
+        }
+
         return AgentContribution.FromContext(items);
     }
 }

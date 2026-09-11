@@ -164,11 +164,26 @@ function onPaste(e: ClipboardEvent) {
   if (imgs.length) { e.preventDefault(); addImageFiles(imgs); }
 }
 
+/** `/compact` is a client-side command, never a message to the model — see
+ *  `docs/adr/ADR_20260911-3_agent_compaction.md` §2.6. Matched exactly (optionally trailing
+ *  whitespace) so a message that merely starts with the word still sends as ordinary text. */
+function tryCompactCommand(text: string): boolean {
+  if (text.trim() !== "/compact") return false;
+  chat.send("chat.compact");
+  return true;
+}
+
 function send() {
   const s = chat.session.value;
   if (!s) return;
   const text = s.draft.trim();
   if (!text && !s.attachments.length) return;
+
+  if (tryCompactCommand(text)) {
+    s.draft = "";
+    nextTick(() => { resetSize(); textareaEl.value?.focus(); });
+    return;
+  }
 
   const images = s.attachments.slice();
   addLocalUserMessage(s, text, images);

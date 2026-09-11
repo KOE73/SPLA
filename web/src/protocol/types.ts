@@ -44,6 +44,12 @@ export interface ChatMessage {
    *  instead of an ordinary human bubble; undefined for every ordinary message. The wire shape of
    *  the message itself is unchanged: this is the one field that tells the two apart. */
   peerFrom?: string;
+  /** True when `/compact` hid this message from the model — still shown, dimmed, never erased
+   *  (`ADR_20260911-3_agent_compaction` §2.1). False for every message no compaction has touched. */
+  compacted?: boolean;
+  /** True for the working-summary record a compaction inserted (ADR §2.2) — rendered as a "compacted
+   *  context" plate rather than an ordinary human bubble, even though `role` is still `user`. */
+  compactSummary?: boolean;
 }
 
 /** One abandoned generation as stored on a message — see server `AttemptDto`. */
@@ -330,6 +336,9 @@ export interface AgentResultPayload {
   /** Seconds system_run_shell may sit silent before the tool returns "still running" instead of
    *  continuing to wait. 0 = disabled (wait indefinitely). Default 120. */
   shellTimeoutSeconds?: number;
+  /** How the project's AGENTS.md tree reaches the prompt: "inject" | "ignore". Default "inject".
+   *  See ADR_20260911-2_agent_agents-md-scopes.md. */
+  agentsMd?: string;
   /** Every registered scheme, on and off alike — the per-scheme rows under core.resources. */
   resourceSchemes?: ResourceSchemeDto[];
   theme?: string; density?: string;
@@ -587,6 +596,9 @@ export interface RoleEditDto {
   islands?: string[] | null;
   toolSets?: Record<string, string> | null;
   trustedDomains?: string[] | null;
+  /** How this role's AGENTS.md tree reaches the prompt: "inject" | "ignore" | null (inherit the
+   *  project's own agent: agents_md). */
+  agentsMd?: string | null;
 }
 
 export interface RolesResultPayload {

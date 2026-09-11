@@ -159,6 +159,11 @@
                                 unit="minutes" hint="0 = wait forever" />
             <TriStateField v-model="r.saveToolCalls" :label="t('Save full tool trace')" />
             <TriStateField v-model="r.saveAttempts" :label="t('Save abandoned generations')" />
+            <TriStateField
+              :model-value="r.agentsMd === 'inject' ? true : r.agentsMd === 'ignore' ? false : null"
+              @update:model-value="v => (r.agentsMd = v === true ? 'inject' : v === false ? 'ignore' : null)"
+              :label="t('AGENTS.md')" on-label="inject" off-label="ignore"
+              hint="ignore: this role never reads the project's AGENTS.md, root or nested" />
           </div>
 
           <div class="group">

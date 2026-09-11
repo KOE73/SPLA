@@ -20,6 +20,11 @@ internal static class InteractiveRepl
                 input.Equals("quit", StringComparison.OrdinalIgnoreCase)) break;
 
             if (TryHandleSkillsCommand(runtime, chat, input)) continue;
+            if (input.Equals("/compact", StringComparison.OrdinalIgnoreCase))
+            {
+                await RunCompactAsync(chat);
+                continue;
+            }
 
             var permHandler = ConsoleHandlers.Permission(colored: true);
             var clarifyHandler = ConsoleHandlers.Clarify();
@@ -38,6 +43,23 @@ internal static class InteractiveRepl
                 Console.WriteLine($"\n[Error]: {ex.Message}");
             }
         }
+    }
+
+    /// <summary>Runs <c>/compact</c> against the local chat — see
+    /// <c>docs/adr/ADR_20260911-3_agent_compaction.md</c> §2.6. Never sent to the model as text; the
+    /// running instance path (<c>spla chat compact &lt;id&gt;</c> against a live server) is
+    /// <see cref="ChatCompactCommand"/> instead.</summary>
+    internal static async Task RunCompactAsync(ChatRuntime chat)
+    {
+        var result = await chat.CompactAsync(CancellationToken.None);
+        Console.WriteLine(result.Compacted
+            ? "Compacted."
+            : result.Refusal switch
+            {
+                ChatRuntime.CompactRefusal.Busy => "Compact failed — a turn is running.",
+                ChatRuntime.CompactRefusal.NothingToCompact => "Nothing to compact yet.",
+                _ => $"Compact failed — {result.Error ?? "the model call did not produce a summary"}."
+            });
     }
 
     /// <summary>Handles the local <c>/skills</c> and <c>/skills load &lt;id&gt;</c> commands; returns

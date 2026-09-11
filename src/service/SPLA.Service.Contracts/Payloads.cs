@@ -47,6 +47,17 @@ public sealed class ChatMessageDto
     /// <see cref="AgentSettingsPayload.SaveAttempts"/>. Null/empty for the overwhelming majority of
     /// messages, which never had any.</summary>
     public List<AttemptDto>? Attempts { get; set; }
+
+    /// <summary>True when compaction hid this message from the model (its <c>RetentionPolicy</c> is
+    /// <c>Never</c> — <c>docs/adr/ADR_20260911-3_agent_compaction.md</c> §2.1). The message still shows
+    /// in the log, dimmed, rather than disappearing — the whole point of retaining rather than erasing.
+    /// False for every message no compaction has touched.</summary>
+    public bool Compacted { get; set; }
+
+    /// <summary>True for the working-summary record a compaction inserted (ADR §2.2). The client
+    /// renders it as a "compacted context" plate with expand-to-view rather than an ordinary human
+    /// bubble, even though <see cref="Role"/> is <c>user</c> on the wire like any other message.</summary>
+    public bool CompactSummary { get; set; }
 }
 
 /// <summary>One abandoned generation as stored on a message (<see cref="ChatMessageDto.Attempts"/>).
@@ -185,6 +196,12 @@ public sealed class ChatNewPayload
     /// <summary>"cli" for a chat <c>spla chat run</c> is opening over the wire on a live instance
     /// (<c>RemoteChatRun</c>), null for one a window opened directly.</summary>
     public string? Origin { get; set; }
+
+    /// <summary>Role name to stamp as <c>as:</c> on the new chat, matched case-insensitively against
+    /// the project manifest's declared <c>roles:</c> — the same list <c>agent_spawn</c> validates
+    /// against. Null creates a chat with no role, as before. An unknown name is refused: the chat is
+    /// not created and the client gets an <c>error</c> naming the roles that are available.</summary>
+    public string? Role { get; set; }
 }
 
 /// <summary>Rewind a chat to a message: everything after it is discarded. With
@@ -195,6 +212,12 @@ public sealed class ChatRewindPayload
     public string ChatId { get; set; } = string.Empty;
     public string MsgId { get; set; } = string.Empty;
     public bool Before { get; set; }
+}
+
+/// <summary>Body of <see cref="MessageTypes.ChatCompact"/>.</summary>
+public sealed class ChatCompactPayload
+{
+    public string ChatId { get; set; } = string.Empty;
 }
 
 /// <summary>Fork a chat into a new one, keeping messages up to and including
@@ -510,6 +533,10 @@ public sealed class RoleEditDto
     public Dictionary<string, string>? ToolSets { get; set; }
 
     public List<string>? TrustedDomains { get; set; }
+
+    /// <summary>How this role's AGENTS.md tree reaches the prompt — "inject" or "ignore". Null =
+    /// inherit the project's own <c>agent: agents_md</c>. See <c>SplaRoleSection.AgentsMd</c>.</summary>
+    public string? AgentsMd { get; set; }
 }
 
 /// <summary>The whole role set plus the catalogs a role picks from. <see cref="MessageTypes.RolesGet"/>
@@ -724,6 +751,10 @@ public sealed class AgentSettingsPayload
     /// <summary>Persist abandoned-generation records (the repetition guard's discarded attempts) with
     /// the chat history. Stored in .spla agent: save_attempts. Default off.</summary>
     public bool? SaveAttempts { get; set; }
+    /// <summary>How the project's AGENTS.md tree reaches the prompt — "inject" or "ignore". Stored in
+    /// .spla agent: agents_md. Default "inject". See <c>ADR_20260911-2_agent_agents-md-scopes.md</c>
+    /// and <c>SPLA.Domain.Models.AgentsMdMode</c>.</summary>
+    public string AgentsMd { get; set; } = "inject";
     /// <summary>Every registered scheme, on and off alike, so the panel can render the full list with
     /// its switches — not just the ones currently enabled. Ignored on save; per-scheme switches travel
     /// back through <see cref="ResourceSchemeSaveDto.Enabled"/> keyed by <see cref="ResourceSchemeDto.Scheme"/>.</summary>
