@@ -23,6 +23,9 @@ public sealed class RunStats
     public string? PromptSource { get; init; }
     public int PromptChars { get; init; }
 
+    /// <summary>The role the cell's chat ran as (validated/canonical name), or null for a plain chat.</summary>
+    public string? Role { get; init; }
+
     /// <summary>The images the turn carried, in send order, each as "name (path)". A count alone
     /// cannot answer the only question asked of a vision run afterwards — which pictures the model
     /// looked at, and under which names it was told to call them.</summary>
@@ -117,6 +120,7 @@ public sealed class RunStats
         PromptName        = cell.Prompt.Name,
         PromptSource      = cell.Prompt.Source,
         PromptChars       = cell.Prompt.Text.Length,
+        Role              = runner.Role,
         ImagePaths        = runner.Images
                                 .Select(i => i.Label == Path.GetFileName(i.Path) ? i.Path : $"{i.Label} ({i.Path})")
                                 .ToList(),
@@ -147,6 +151,7 @@ public sealed class RunStats
         var sections = new List<StatSection>
         {
             new("run", [
+                Pair("role", Role),
                 Pair("status", Status),
                 Pair("note", Note),
                 Pair("started_at", StartedAt.ToString("O")),

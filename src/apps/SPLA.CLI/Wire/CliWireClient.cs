@@ -63,10 +63,13 @@ internal sealed class CliWireClient : IAsyncDisposable
         return Payload<InstanceStatusPayload>(reply);
     }
 
-    /// <summary>Starts a chat and returns its id.</summary>
-    public async Task<string> NewChatAsync(string? title, CancellationToken ct, string? origin = null)
+    /// <summary>Starts a chat and returns its id. <paramref name="role"/> is validated server-side
+    /// against the project's declared roles (see <c>ChatNewPayload.Role</c>) — an unknown name surfaces
+    /// as the <see cref="MessageTypes.Error"/> <see cref="WaitForAsync"/> already turns into an
+    /// exception, so a caller does not need its own check for this path.</summary>
+    public async Task<string> NewChatAsync(string? title, CancellationToken ct, string? origin = null, string? role = null)
     {
-        await SendAsync(MessageTypes.ChatNew, new ChatNewPayload { Title = title, Origin = origin }, ct: ct);
+        await SendAsync(MessageTypes.ChatNew, new ChatNewPayload { Title = title, Origin = origin, Role = role }, ct: ct);
         var opened = await WaitForAsync(MessageTypes.ChatOpened, ct);
         return Payload<ChatOpenedPayload>(opened)?.ChatId
             ?? throw new InvalidOperationException("The service opened a chat without giving it an id.");

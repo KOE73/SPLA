@@ -1,3 +1,4 @@
+using System.ComponentModel;
 using Microsoft.Extensions.Logging;
 using Spectre.Console;
 using Spectre.Console.Cli;
@@ -29,6 +30,10 @@ internal sealed class ChatOpenSettings : CommandSettings
 {
     [CommandArgument(0, "[id]")]
     public string? Id { get; init; }
+
+    [CommandOption("--role")]
+    [Description("Role to stamp on a NEW chat (id omitted, or an unknown id) — matched against the project's declared roles: list, case-insensitive. Has no effect when [id] resolves to an existing chat: that chat already carries whatever role it was created with.")]
+    public string? Role { get; init; }
 }
 
 /// <summary><c>spla chat open [id]</c> — resumes a saved chat (or starts a new one if omitted/unknown)
@@ -38,12 +43,18 @@ internal sealed class ChatOpenCommand(ResolvedSettings settings, ILoggerFactory 
 {
     protected override async Task<int> ExecuteAsync(CommandContext context, ChatOpenSettings s, CancellationToken cancellationToken)
     {
+        string? role = null;
+        if (s.Role is { Length: > 0 } requestedRole)
+        {
+            role = RoleValidation.Resolve(settings, requestedRole);
+            if (role == null) return 2;
+        }
+
         using var runtime = RuntimeBootstrap.Build(settings, loggerFactory);
 
-        var session = s.Id is { Length: > 0 } id
-            ? runtime.ChatManager.LoadChat(id) ?? runtime.ChatManager.CreateNewChat()
-            : runtime.ChatManager.CreateNewChat();
-        if (s.Id is { Length: > 0 }) Console.WriteLine($"Loaded chat: {session.Title}");
+        var existing = s.Id is { Length: > 0 } id ? runtime.ChatManager.LoadChat(id) : null;
+        var session = existing ?? runtime.ChatManager.CreateNewChat(role: role);
+        if (existing != null) Console.WriteLine($"Loaded chat: {session.Title}");
 
         var chat = new ChatRuntime(runtime, session);
         await InteractiveRepl.RunAsync(runtime, chat);

@@ -71,6 +71,7 @@ internal static class RemoteChatRun
         // asking "what would this do" against a busy project would do it.
         if (s.DryRun)
         {
+            if (s.Role is { Length: > 0 } dryRunRole) AnsiConsole.MarkupLine($"[grey]role →[/] {dryRunRole.EscapeMarkup()}");
             foreach (var prompt in prompts)
                 AnsiConsole.MarkupLine(
                     $"  {prompt.Name.EscapeMarkup()} → {(OutputPath(s, prompt, holder) ?? "(screen)").EscapeMarkup()}");
@@ -90,7 +91,23 @@ internal static class RemoteChatRun
         foreach (var prompt in prompts)
         {
             var chatTitle = s.Title is { Length: > 0 } titleTemplate ? OutputNaming.ExpandTitle(titleTemplate, DateTimeOffset.Now, prompt, "") : prompt.Name;
-            var chatId = await client.NewChatAsync(chatTitle, ct, origin: "cli");
+
+            string chatId;
+            try
+            {
+                // The instance validates --role itself (ChatHandlers.New, same source list as the local
+                // path's RoleValidation) — an unknown name comes back as an ordinary `error` frame, which
+                // CliWireClient.WaitForAsync already turns into an InvalidOperationException. The role is
+                // the same for every cell in this run, so a failure here would just repeat identically
+                // for every remaining prompt — surfaced once, the same way the local path's exit-2
+                // red-line refuses before running anything, rather than one red line per cell.
+                chatId = await client.NewChatAsync(chatTitle, ct, origin: "cli", role: s.Role);
+            }
+            catch (InvalidOperationException ex)
+            {
+                AnsiConsole.MarkupLine($"[red]{ex.Message.EscapeMarkup()}[/]");
+                return 2;
+            }
             var answer = new System.Text.StringBuilder();
 
             var error = await client.SendAndStreamAsync(
