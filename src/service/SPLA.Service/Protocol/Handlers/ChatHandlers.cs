@@ -69,7 +69,26 @@ internal sealed class ChatHandlers : IMessageHandler
     {
         var (entry, projectId) = ctx.Session.Resolve(ctx.Env);
         var p = ctx.Payload<ChatNewPayload>() ?? new ChatNewPayload();
-        var chat = entry.Chats.CreateNew(p.Title, origin: p.Origin);
+
+        string? role = null;
+        if (!string.IsNullOrWhiteSpace(p.Role))
+        {
+            var available = entry.Runtime.Settings.Manifest?.Roles
+                ?.Where(n => !string.IsNullOrWhiteSpace(n)).Select(n => n.Trim()).ToList()
+                ?? [];
+            role = available.FirstOrDefault(n => string.Equals(n, p.Role, StringComparison.OrdinalIgnoreCase));
+            if (role == null)
+            {
+                var list = available.Count > 0 ? string.Join(", ", available) : "(none)";
+                await ctx.Send(MessageTypes.Error, new ErrorPayload
+                {
+                    Message = $"Unknown role: {p.Role}. Available roles: {list}"
+                });
+                return;
+            }
+        }
+
+        var chat = entry.Chats.CreateNew(p.Title, role: role, origin: p.Origin);
         await ctx.Session.SendOpenedAsync(chat);
         await BroadcastChatList(ctx, projectId, entry.Chats);
     }

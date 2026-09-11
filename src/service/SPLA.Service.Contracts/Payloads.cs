@@ -185,6 +185,12 @@ public sealed class ChatNewPayload
     /// <summary>"cli" for a chat <c>spla chat run</c> is opening over the wire on a live instance
     /// (<c>RemoteChatRun</c>), null for one a window opened directly.</summary>
     public string? Origin { get; set; }
+
+    /// <summary>Role name to stamp as <c>as:</c> on the new chat, matched case-insensitively against
+    /// the project manifest's declared <c>roles:</c> — the same list <c>agent_spawn</c> validates
+    /// against. Null creates a chat with no role, as before. An unknown name is refused: the chat is
+    /// not created and the client gets an <c>error</c> naming the roles that are available.</summary>
+    public string? Role { get; set; }
 }
 
 /// <summary>Rewind a chat to a message: everything after it is discarded. With
