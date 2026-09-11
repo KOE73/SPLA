@@ -47,7 +47,7 @@ public sealed class RuntimePathsTests
         var (folder, error) = RuntimePaths.Resolve("scrcpy", "scrcpy", null);
 
         Assert.Null(folder);
-        Assert.Equal("relative adb_path needs an open project", error);
+        Assert.Equal("relative scrcpy_path needs an open project", error);
     }
 
     [Fact]

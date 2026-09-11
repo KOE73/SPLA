@@ -2,6 +2,9 @@ id: android
 version: 0.1.0
 type: dll
 entry_point: SPLA.Plugins.Android.dll
+web_settings_entry: web/dist/settings.js
+description: Android device screen, touch gestures, apps and files.
+summon: Use when asked to inspect or operate a connected Android phone.
 default_prompt: |
   Android tools control the user's personal phone over adb: you see its screen and touch it like a finger.
 

@@ -25,6 +25,7 @@
          Serializing collections gives every timing-sensitive test the runner to itself, which is
          what its margin was actually tuned against. -->
     <None Include="xunit.runner.json" CopyToOutputDirectory="PreserveNewest" />
+    <None Update="Android\Data\**" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 
   <ItemGroup>

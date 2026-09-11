@@ -16,10 +16,16 @@ internal static class RuntimePaths
     public static (string? Folder, string? Error) Resolve(string component, string? configured, string? projectFilePath)
     {
         if (string.IsNullOrWhiteSpace(configured)) return (DefaultFolder(component), null);
-        if (Path.IsPathRooted(configured)) return (configured, null);
-        if (projectFilePath is not null)
-            return (Path.GetFullPath(Path.Combine(Path.GetDirectoryName(projectFilePath)!, configured)), null);
-        return (null, "relative adb_path needs an open project");
+        try
+        {
+            if (Path.IsPathFullyQualified(configured)) return (Path.GetFullPath(configured), null);
+            if (Path.IsPathRooted(configured)) return (null, $"{component}_path must be absolute or project-relative, not drive-relative");
+            if (projectFilePath is not null)
+                return (Path.GetFullPath(Path.Combine(Path.GetDirectoryName(projectFilePath)!, configured)), null);
+            return (null, $"relative {component}_path needs an open project");
+        }
+        catch (Exception ex) when (ex is ArgumentException or NotSupportedException or IOException)
+        { return (null, $"Invalid {component}_path: {ex.Message}"); }
     }
 
     /// <summary>The shared per-user default: %LOCALAPPDATA%\SPLA\runtime\android\&lt;component&gt;.</summary>
