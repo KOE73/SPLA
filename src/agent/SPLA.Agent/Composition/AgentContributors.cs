@@ -18,9 +18,10 @@ namespace SPLA.Agent.Composition;
 /// prompt-building method.
 ///
 /// <para>Order is authority order, top-down: mode, built-in capabilities, instruction files, the
-/// user's prompt, whatever the host added for this invocation, skills, plugins. Two contributors are
-/// conditional, and on exactly the same decision that gates their tools — a capability that is off
-/// must not leave text behind describing tools that are not registered.</para>
+/// project's own AGENTS.md tree, the user's prompt, whatever the host added for this invocation,
+/// skills, plugins. Two contributors are conditional, and on exactly the same decision that gates
+/// their tools — a capability that is off must not leave text behind describing tools that are not
+/// registered.</para>
 /// </summary>
 public static class AgentContributors
 {
@@ -67,6 +68,10 @@ public static class AgentContributors
             // what such an address is before meeting one.
             new MountsContributor(),
             new InstructionsContributor(),
+            // Project's own AGENTS.md tree (root today; nested scopes are a later wave). Right after
+            // instructions, at the same authority tier as the rest of the project's own word — before
+            // the project's custom_prompt, which is free-form and meant to read as coming after it.
+            new ProjectAgentsContributor(),
             new CustomPromptContributor()
         };
 

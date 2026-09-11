@@ -19,6 +19,12 @@ public class SplaAgentSection
     [YamlMember(Alias = "custom_prompt")]
     public string? CustomPrompt { get; set; }
 
+    /// <summary>How the project's AGENTS.md tree reaches the prompt — <c>inject</c> or <c>ignore</c>.
+    /// Null inherits from the machine layer; see <see cref="SPLA.Domain.Models.AgentsMdMode"/> and
+    /// <c>ADR_20260911-2_agent_agents-md-scopes.md</c>.</summary>
+    [YamlMember(Alias = "agents_md")]
+    public string? AgentsMd { get; set; }
+
     /// <summary>Guard against machine-gun tool loops (a small-local-model failure mode). Only
     /// rapid identical calls with identical results and no commentary count; the first trip asks
     /// the model in-band whether it is stuck, a rebuilt streak stops the turn. **On by default** —
@@ -176,6 +182,11 @@ public class SplaRoleSection
 
     [YamlMember(Alias = "custom_prompt")]
     public string? CustomPrompt { get; set; }
+
+    /// <summary>How this role's AGENTS.md tree reaches the prompt — <c>inject</c> or <c>ignore</c>.
+    /// Null inherits the project's own value. See <see cref="SPLA.Domain.Models.AgentsMdMode"/>.</summary>
+    [YamlMember(Alias = "agents_md")]
+    public string? AgentsMd { get; set; }
 
     /// <summary>One line saying what this role is for, written for STRANGERS: it is what the role
     /// catalog shows another chat that is choosing whom to task or whom to write to (see the
