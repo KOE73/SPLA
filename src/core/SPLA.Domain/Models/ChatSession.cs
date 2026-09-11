@@ -345,6 +345,13 @@ public class ChatSessionMessage
     [YamlMember(Alias = "peer_from")]
     public string? PeerFrom { get; set; }
 
+    /// <summary>Mirrors <see cref="SPLA.Domain.Models.ChatMessage.ScopeMarker"/> across a save/load —
+    /// see <c>docs/adr/ADR_20260911-2_agent_agents-md-scopes.md</c> §2.5. Written for every marker
+    /// regardless of <see cref="Settings.SplaAgentSection.SaveToolCalls"/>. Null for every ordinary
+    /// message.</summary>
+    [YamlMember(Alias = "scope_marker")]
+    public string? ScopeMarker { get; set; }
+
     /// <summary>Mirrors <see cref="SPLA.Domain.Models.ChatMessage.PromptTokens"/>/<see
     /// cref="SPLA.Domain.Models.ChatMessage.CompletionTokens"/> across a save/load. Set only on an
     /// assistant message whose provider reported usage; null everywhere else (including every message

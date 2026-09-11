@@ -1229,6 +1229,7 @@ public sealed class ChatRuntime : IDisposable, SPLA.Domain.Agent.IBackgroundTask
                 Reasoning = string.IsNullOrEmpty(m.Reasoning) ? null : m.Reasoning,
                 CreatedAt = m.CreatedAt,
                 PeerFrom = m.PeerFrom,
+                ScopeMarker = m.ScopeMarker,
                 PromptTokens = m.PromptTokens,
                 CompletionTokens = m.CompletionTokens,
                 // Restored whenever they were written, independent of today's save_attempts value —
@@ -1423,7 +1424,7 @@ public sealed class ChatRuntime : IDisposable, SPLA.Domain.Agent.IBackgroundTask
     /// <summary>The conversation's display messages (system prompt hidden). Hosts project these to
     /// their own wire shapes; persisted sidecar image filenames come from <see cref="ImageFilesFor"/>.</summary>
     public IEnumerable<ChatMessage> DisplayMessages
-        => _conversation.Messages.Where(m => m.Role != ChatRole.System);
+        => _conversation.Messages.Where(m => m.Role != ChatRole.System && m.ScopeMarker == null);
 
     /// <summary>Sidecar images persisted for a message — file name and label — or null when it has none.</summary>
     public IReadOnlyList<ChatSessionImage>? ImageFilesFor(ChatMessage message)
@@ -1704,6 +1705,7 @@ public sealed class ChatRuntime : IDisposable, SPLA.Domain.Agent.IBackgroundTask
                 Reasoning = string.IsNullOrEmpty(m.Reasoning) ? null : m.Reasoning,
                 CreatedAt = m.CreatedAt,
                 PeerFrom = m.PeerFrom,
+                ScopeMarker = m.ScopeMarker,
                 PromptTokens = m.PromptTokens,
                 CompletionTokens = m.CompletionTokens,
                 Images = _imageFiles.TryGetValue(m, out var files) && files.Count > 0

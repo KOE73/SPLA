@@ -113,4 +113,20 @@ public class ChatMessage
     /// </para>
     /// </summary>
     public List<GenerationAttempt>? Attempts { get; set; }
+
+    /// <summary>
+    /// Set on a marker message recording that project rules for this folder (and its ancestors up
+    /// to the project root) have been loaded into the prompt — see
+    /// <c>docs/adr/ADR_20260911-2_agent_agents-md-scopes.md</c> §2.5 and
+    /// <c>AgentsScopeStage</c>/<c>ScopedAgentsContributor</c>. Path from the project root, forward
+    /// slashes, no leading or trailing slash, never empty (the root is not a scope — it is covered
+    /// by <c>RootAgents</c>/<c>ProjectAgentsContributor</c> unconditionally).
+    /// <para>
+    /// Never sent to the model (<see cref="SPLA.Domain.Context.ContextAssembler.ShouldSend"/> treats
+    /// a marker like a label) but, unlike a label, always persisted regardless of
+    /// <c>saveToolCalls</c> — see <see cref="Conversation.ShouldPersist"/> — since it is the only
+    /// record of which scopes a session has already seen rules for.
+    /// </para>
+    /// </summary>
+    public string? ScopeMarker { get; set; }
 }

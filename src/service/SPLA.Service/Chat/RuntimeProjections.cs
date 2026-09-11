@@ -45,7 +45,8 @@ public static class RuntimeProjections
     /// before it was archived, and the difference would look like data loss.</summary>
     public static List<ChatMessageDto> SnapshotMessages(this ChatSession chat)
         => chat.Messages
-            .Where(m => !string.Equals(m.Role, "system", StringComparison.OrdinalIgnoreCase))
+            .Where(m => !string.Equals(m.Role, "system", StringComparison.OrdinalIgnoreCase)
+                && m.ScopeMarker == null)
             .Select(m => new ChatMessageDto
             {
                 MsgId = m.Id,
