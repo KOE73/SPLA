@@ -320,7 +320,8 @@ public static class SettingsOps
         Connections = r.Connections,
         Islands = r.Islands,
         ToolSets = r.ToolSets,
-        TrustedDomains = r.TrustedDomains
+        TrustedDomains = r.TrustedDomains,
+        AgentsMd = r.AgentsMd
     };
 
     private static SplaRoleSection ToRoleSection(RoleEditDto d) => new()
@@ -349,7 +350,8 @@ public static class SettingsOps
         Connections = Clean(d.Connections),
         Islands = Clean(d.Islands),
         TrustedDomains = Clean(d.TrustedDomains),
-        ToolSets = d.ToolSets is { Count: > 0 } ? new Dictionary<string, string>(d.ToolSets) : null
+        ToolSets = d.ToolSets is { Count: > 0 } ? new Dictionary<string, string>(d.ToolSets) : null,
+        AgentsMd = Blank(d.AgentsMd)
     };
 
     /// <summary>Trims a list's entries and drops the blanks, preserving the null/empty distinction:
@@ -394,6 +396,7 @@ public static class SettingsOps
         ShellTimeoutSeconds = runtime.Settings.ShellTimeoutSeconds,
         SaveToolCalls = runtime.Settings.SaveToolCalls,
         SaveAttempts = runtime.Settings.SaveAttempts,
+        AgentsMd = runtime.Settings.AgentsMd.ToString().ToLowerInvariant(),
         ResourceSchemes = ResourceRegistry.For(runtime.Settings).Cards().Select(c => new ResourceSchemeDto
         {
             Scheme = c.Scheme,
@@ -452,6 +455,10 @@ public static class SettingsOps
         runtime.Settings.SaveToolCalls = saveToolCalls;
         var saveAttempts = dto.SaveAttempts ?? false;
         runtime.Settings.SaveAttempts = saveAttempts;
+        var agentsMd = Enum.TryParse<AgentsMdMode>(dto.AgentsMd, true, out var parsedAgentsMd)
+            ? parsedAgentsMd
+            : AgentsMdMode.Inject;
+        runtime.Settings.AgentsMd = agentsMd;
 
         // Per-scheme switches. Only what the panel actually sent is touched — a scheme this project
         // never mentioned stays absent (enabled), rather than every known scheme getting written the
@@ -480,6 +487,7 @@ public static class SettingsOps
             project.Agent.ShellTimeoutSeconds = shellTimeout != 120 ? shellTimeout : null;
             project.Agent.SaveToolCalls = saveToolCalls ? true : null;
             project.Agent.SaveAttempts = saveAttempts ? true : null;
+            project.Agent.AgentsMd = agentsMd != AgentsMdMode.Inject ? "ignore" : null;
             var anyPerm = read != null || write != null || shell != null || net != null;
             project.Permissions = anyPerm
                 ? new SplaPermissionsSection { Read = read, Write = write, Shell = shell, Internet = net }

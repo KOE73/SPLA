@@ -330,6 +330,9 @@ export interface AgentResultPayload {
   /** Seconds system_run_shell may sit silent before the tool returns "still running" instead of
    *  continuing to wait. 0 = disabled (wait indefinitely). Default 120. */
   shellTimeoutSeconds?: number;
+  /** How the project's AGENTS.md tree reaches the prompt: "inject" | "ignore". Default "inject".
+   *  See ADR_20260911-2_agent_agents-md-scopes.md. */
+  agentsMd?: string;
   /** Every registered scheme, on and off alike — the per-scheme rows under core.resources. */
   resourceSchemes?: ResourceSchemeDto[];
   theme?: string; density?: string;
@@ -587,6 +590,9 @@ export interface RoleEditDto {
   islands?: string[] | null;
   toolSets?: Record<string, string> | null;
   trustedDomains?: string[] | null;
+  /** How this role's AGENTS.md tree reaches the prompt: "inject" | "ignore" | null (inherit the
+   *  project's own agent: agents_md). */
+  agentsMd?: string | null;
 }
 
 export interface RolesResultPayload {

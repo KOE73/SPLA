@@ -516,6 +516,10 @@ public sealed class RoleEditDto
     public Dictionary<string, string>? ToolSets { get; set; }
 
     public List<string>? TrustedDomains { get; set; }
+
+    /// <summary>How this role's AGENTS.md tree reaches the prompt — "inject" or "ignore". Null =
+    /// inherit the project's own <c>agent: agents_md</c>. See <c>SplaRoleSection.AgentsMd</c>.</summary>
+    public string? AgentsMd { get; set; }
 }
 
 /// <summary>The whole role set plus the catalogs a role picks from. <see cref="MessageTypes.RolesGet"/>
@@ -730,6 +734,10 @@ public sealed class AgentSettingsPayload
     /// <summary>Persist abandoned-generation records (the repetition guard's discarded attempts) with
     /// the chat history. Stored in .spla agent: save_attempts. Default off.</summary>
     public bool? SaveAttempts { get; set; }
+    /// <summary>How the project's AGENTS.md tree reaches the prompt — "inject" or "ignore". Stored in
+    /// .spla agent: agents_md. Default "inject". See <c>ADR_20260911-2_agent_agents-md-scopes.md</c>
+    /// and <c>SPLA.Domain.Models.AgentsMdMode</c>.</summary>
+    public string AgentsMd { get; set; } = "inject";
     /// <summary>Every registered scheme, on and off alike, so the panel can render the full list with
     /// its switches — not just the ones currently enabled. Ignored on save; per-scheme switches travel
     /// back through <see cref="ResourceSchemeSaveDto.Enabled"/> keyed by <see cref="ResourceSchemeDto.Scheme"/>.</summary>
