@@ -909,6 +909,16 @@ public sealed class PluginEditDto
     /// <summary>URL of the plugin's prebuilt web settings module (see <c>web_settings_entry</c> in
     /// meta.yaml), or null when the plugin has none — the client falls back to the generic JSON editor.</summary>
     public string? WebSettingsUrl { get; set; }
+
+    /// <summary>URL of the plugin's prebuilt web PANEL module (see <c>web_panel_entry</c> in
+    /// meta.yaml), or null when the plugin contributes no dock panel.</summary>
+    public string? WebPanelUrl { get; set; }
+
+    /// <summary>Tab title for that panel, and an emoji for its tool-strip button. They travel beside
+    /// the URL, not inside the bundle: the strip draws the button before the bundle is loaded, and
+    /// has to keep drawing it if the bundle never loads.</summary>
+    public string? PanelTitle { get; set; }
+    public string? PanelIcon { get; set; }
 }
 
 /// <summary>Invokes an ad-hoc action on a plugin's web settings UI (e.g. "Test Connection").

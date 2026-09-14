@@ -330,6 +330,7 @@
   "Thinking budget in tokens": "Бюджет размышления в токенах",
   "This chat is archived. Restore it from the chat list to write in it again.": "Этот чат в архиве. Верните его из списка чатов, чтобы снова писать в него.",
   "This hub is not allowed to start projects.": "Этому хабу не позволено запускать проекты.",
+  "This panel failed to load.": "Эту панель не удалось загрузить.",
   "This key points at a <b>project</b> secret, but the connection lives outside the project — it will not resolve in any other project. Move the secret to your own store.": "Этот ключ указывает на секрет <b>проекта</b>, а соединение живёт вне проекта — в любом другом проекте он не разрешится. Перенесите секрет в своё хранилище.",
   "This model always reasons — it cannot be switched off.": "Эта модель рассуждает всегда — выключить нельзя.",
   "This model has no reasoning channel.": "У этой модели нет канала рассуждения.",

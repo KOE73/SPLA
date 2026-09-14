@@ -11,7 +11,7 @@ import { DockviewVue } from "dockview-vue";
 import "dockview-vue/dist/styles/dockview.css";
 import DockToolbar from "./DockToolbar.vue";
 import { initializeDock, openPanel, openSshTerminal } from "./dockController";
-import { dockComponents, dockTabComponents } from "./panelCatalog";
+import { dockComponents, dockTabComponents, registerPluginPanels } from "./panelCatalog";
 import { client } from "../protocol/SplaClient";
 
 function ready(event: { api: Parameters<typeof initializeDock>[0] }) {
@@ -19,6 +19,15 @@ function ready(event: { api: Parameters<typeof initializeDock>[0] }) {
   const requestedPanel = new URLSearchParams(location.search).get("panel");
   if (requestedPanel === "browserScreencast") openPanel("browserScreencast");
 }
+
+// Panels contributed by plugins (web_panel_entry): the list rides on the existing plugins.result —
+// the same message the settings window uses — so nothing new was added to the wire. Asked for on
+// mount and again after a reconnect or a save, so enabling a plugin makes its button appear without
+// a reload.
+const offPlugins = client.on("plugins.result", p => registerPluginPanels(p.plugins || []));
+client.send("plugins.get", undefined);
+const offPluginsConn = client.on("conn", c => { if (c.on) client.send("plugins.get", undefined); });
+onUnmounted(() => { offPlugins(); offPluginsConn(); });
 
 // "Watch the agent live": when the agent opens an SSH session, auto-attach a terminal panel so the
 // operator SEES the commands and output appear — not silently somewhere. We only auto-open each

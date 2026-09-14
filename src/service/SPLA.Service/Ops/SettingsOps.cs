@@ -723,13 +723,22 @@ public static class SettingsOps
                 StateReason = string.IsNullOrWhiteSpace(d.EffectiveStateReason) ? null : d.EffectiveStateReason,
                 CustomPrompt = section?.CustomPrompt,
                 SettingsJson = ConfigLoader.BlobToJson(section?.Settings),
-                WebSettingsUrl = string.IsNullOrWhiteSpace(d.Meta.WebSettingsEntry)
-                    ? null
-                    : $"/plugin-assets/{Uri.EscapeDataString(d.Meta.Id)}/{d.Meta.WebSettingsEntry.Replace('\\', '/')}"
+                WebSettingsUrl = PluginAssetUrl(d.Meta.Id, d.Meta.WebSettingsEntry),
+                WebPanelUrl = PluginAssetUrl(d.Meta.Id, d.Meta.WebPanelEntry),
+                PanelTitle = Blank(d.Meta.PanelTitle),
+                PanelIcon = Blank(d.Meta.PanelIcon)
             });
         }
         return payload;
     }
+
+    /// <summary>The client-visible URL of one of a plugin's prebuilt web assets (settings module,
+    /// panel module), or null when the manifest declares none. Served by the generic
+    /// <c>/plugin-assets/</c> route — the host never opens or interprets the file.</summary>
+    private static string? PluginAssetUrl(string pluginId, string? entry)
+        => string.IsNullOrWhiteSpace(entry)
+            ? null
+            : $"/plugin-assets/{Uri.EscapeDataString(pluginId)}/{entry.Replace('\\', '/')}";
 
     /// <summary>Persists plugin enable flags, custom prompts and opaque settings blobs to the .spla
     /// project and mutates the live settings. Per-tool toggles (<c>tools:</c>) are preserved untouched.

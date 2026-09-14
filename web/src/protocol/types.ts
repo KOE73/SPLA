@@ -424,6 +424,13 @@ export interface PluginDto {
   /** URL of the plugin's prebuilt web settings module (dynamically imported), or absent when the
    * plugin has none — the panel falls back to the generic JSON editor. */
   webSettingsUrl?: string;
+  /** URL of the plugin's prebuilt web PANEL module (see web_panel_entry in meta.yaml), or absent
+   * when the plugin contributes no dock panel. Same mount(el, api) contract as the settings one. */
+  webPanelUrl?: string;
+  /** Tab title and tool-strip emoji for that panel. They come from the manifest, not the bundle:
+   * the strip draws the button before the bundle loads, and must keep drawing it if it never does. */
+  panelTitle?: string;
+  panelIcon?: string;
 }
 
 /** Contract a plugin's web settings module must export — see web_settings_entry in meta.yaml. */
@@ -467,6 +474,31 @@ export interface PluginSettingsHandle {
   destroy?(): void;
 }
 export type PluginSettingsMount = (el: HTMLElement, api: PluginSettingsMountApi) => PluginSettingsHandle;
+
+/**
+ * Contract a plugin's web PANEL module must export — see web_panel_entry in meta.yaml. Deliberately
+ * thinner than the settings one: a panel is a view on the plugin's own transport (plugin.panel.*),
+ * so it gets the wire and the translator and nothing else. The host never learns the plugin's types.
+ */
+export interface PluginPanelMountApi {
+  /** Fire-and-forget wire send, e.g. send("plugin.panel.open", { panelId, panelType }). */
+  send(type: string, payload?: unknown): boolean;
+  /** Subscribe to a server message; returns the unsubscribe. */
+  on(type: string, handler: (payload: never) => void): () => void;
+  /** Command with a correlated response. */
+  invoke<R = unknown>(type: string, payload?: unknown): Promise<R>;
+  /** The host's translator — a panel reads in the same language as the window around it. */
+  t(text: string, params?: Record<string, unknown>): string;
+  /** The chat the window currently shows, and a subscription to it changing. A panel that shows
+   * per-chat state MUST follow this: mounted means open, so there is no "is it visible" flag to
+   * guard on (a guard like that is exactly what silently froze the debug panel on the first chat). */
+  currentChatId(): string | null;
+  onChatChange(handler: (chatId: string | null) => void): () => void;
+}
+export interface PluginPanelHandle {
+  destroy?(): void;
+}
+export type PluginPanelMount = (el: HTMLElement, api: PluginPanelMountApi) => PluginPanelHandle;
 
 export interface PluginsResultPayload {
   plugins: PluginDto[];
