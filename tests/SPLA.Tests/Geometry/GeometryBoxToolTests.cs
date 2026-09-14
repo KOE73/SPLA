@@ -67,6 +67,98 @@ public sealed class GeometryBoxToolTests
         Assert.DoesNotContain("edges: cyan=top", accepted.TextContent);
     }
 
+    /// <summary>
+    /// One side moves and the opposite one stays put. This is the whole point of the pair: in a live
+    /// run the model wrote "5-65 is cut on the left and 50KG is cut on the right" six times over,
+    /// while the only size control it had was dw, symmetric about the centre.
+    /// </summary>
+    [Theory]
+    [InlineData("cyan", 40, 400, 280, 400, 340)]      // top, outward: up by 20, 40 taller
+    [InlineData("yellow", 40, 400, 320, 400, 340)]    // bottom, outward: down by 20
+    [InlineData("green", 40, 380, 300, 440, 300)]     // left, outward: left by 20, 40 wider
+    [InlineData("magenta", 40, 420, 300, 440, 300)]   // right, outward: right by 20
+    [InlineData("green", -40, 420, 300, 360, 300)]    // left, inward: the box shrinks from the left
+    [InlineData("cyan", -40, 400, 320, 400, 260)]     // top, inward
+    public async Task One_named_edge_moves_and_the_others_stay(
+        string edge, int by, int cx, int cy, int width, int height)
+    {
+        var (chat, tools, scope) = Begin();
+        using var _scope = scope;
+        await OpenFrame(chat, tools);
+
+        await tools["geom_box"].ExecuteAsync("""{"name":"bag","cx":400,"cy":300,"width":400,"height":300}""");
+        var result = await tools["geom_box"].ExecuteAsync(
+            $$"""{"name":"bag","edge":"{{edge}}","by":{{by}}}""");
+
+        Assert.False(result.IsError, result.TextContent);
+        Assert.Contains($"cx={cx} cy={cy} w={width} h={height}", result.TextContent);
+        Assert.Contains(by > 0 ? "outward" : "inward", result.TextContent);
+    }
+
+    /// <summary>The side belongs to the box, not to the screen. Turned a quarter of a circle, the
+    /// cyan edge is the one now facing right, and pushing it outward must move the centre to the
+    /// right — not up, which is where "top" would have sent it.</summary>
+    [Fact]
+    public async Task An_edge_moves_along_the_box_axis_not_the_screen()
+    {
+        var (chat, tools, scope) = Begin();
+        using var _scope = scope;
+        await OpenFrame(chat, tools);
+
+        await tools["geom_box"].ExecuteAsync(
+            """{"name":"bag","cx":400,"cy":300,"width":400,"height":300,"angle":90}""");
+        var result = await tools["geom_box"].ExecuteAsync("""{"name":"bag","edge":"cyan","by":40}""");
+
+        Assert.False(result.IsError, result.TextContent);
+        Assert.Contains("cx=420 cy=300 w=400 h=340", result.TextContent);
+    }
+
+    [Fact]
+    public async Task Edge_and_by_cannot_be_mixed_with_the_other_fields()
+    {
+        var (chat, tools, scope) = Begin();
+        using var _scope = scope;
+        await OpenFrame(chat, tools);
+
+        await tools["geom_box"].ExecuteAsync("""{"name":"bag","cx":400,"cy":300,"width":400,"height":300}""");
+
+        var withDelta = await tools["geom_box"].ExecuteAsync(
+            """{"name":"bag","edge":"cyan","by":20,"dh":-10}""");
+        Assert.True(withDelta.IsError);
+        Assert.Contains("dh", withDelta.TextContent);
+
+        var withAbsolute = await tools["geom_box"].ExecuteAsync(
+            """{"name":"bag","edge":"cyan","by":20,"width":500}""");
+        Assert.True(withAbsolute.IsError);
+        Assert.Contains("width", withAbsolute.TextContent);
+    }
+
+    [Fact]
+    public async Task Half_a_pair_and_a_colour_that_is_not_an_edge_are_refused_by_name()
+    {
+        var (chat, tools, scope) = Begin();
+        using var _scope = scope;
+        await OpenFrame(chat, tools);
+
+        await tools["geom_box"].ExecuteAsync("""{"name":"bag","cx":400,"cy":300,"width":400,"height":300}""");
+
+        var noBy = await tools["geom_box"].ExecuteAsync("""{"name":"bag","edge":"cyan"}""");
+        Assert.True(noBy.IsError);
+        Assert.Contains("outward", noBy.TextContent);
+
+        var noEdge = await tools["geom_box"].ExecuteAsync("""{"name":"bag","by":20}""");
+        Assert.True(noEdge.IsError);
+        Assert.Contains("'cyan' (top)", noEdge.TextContent);
+
+        var wrongColour = await tools["geom_box"].ExecuteAsync("""{"name":"bag","edge":"red","by":20}""");
+        Assert.True(wrongColour.IsError);
+        Assert.Contains("'red' is not an edge", wrongColour.TextContent);
+
+        var noBox = await tools["geom_box"].ExecuteAsync("""{"name":"ghost","edge":"cyan","by":20}""");
+        Assert.True(noBox.IsError);
+        Assert.Contains("no box called 'ghost'", noBox.TextContent);
+    }
+
     [Fact]
     public async Task Deltas_move_the_box_from_where_it_is()
     {
