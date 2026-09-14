@@ -248,6 +248,7 @@
     <File Path="docs/ideas/IDEA_20260824-7_core_leftovers-lower-priority.md" />
     <File Path="docs/ideas/IDEA_20260824_plugins_document-context.md" />
     <File Path="docs/ideas/IDEA_20260904_apps_hub-settings.md" />
+    <File Path="docs/ideas/IDEA_20260914_core_dead-retention-values.md" />
   </Folder>
   <Folder Name="/src/core/">
     <Project Path="src/core/SPLA.Domain/SPLA.Domain.csproj" />
