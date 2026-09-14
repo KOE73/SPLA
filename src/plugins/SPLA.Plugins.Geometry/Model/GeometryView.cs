@@ -40,12 +40,6 @@ internal sealed class GeometryView
     /// correction.</summary>
     public bool? Grid { get; set; }
 
-    /// <summary>Whether renders of this view carry the box grid — the cells drawn inside the box being
-    /// edited, along the box's own axes — or null to follow the project's <c>box_grid</c> setting. It
-    /// lives on the view for the same reason <see cref="Grid"/> does: an instrument picked up once
-    /// stays in hand while the model works here.</summary>
-    public bool? BoxGrid { get; set; }
-
     /// <summary>This view's pixels → source image pixels. Where a coordinate the model passed becomes
     /// canonical.</summary>
     public Affine ViewToSource => SourceToView.Invert();

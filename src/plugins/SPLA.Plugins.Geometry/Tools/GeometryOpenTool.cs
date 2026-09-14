@@ -46,13 +46,6 @@ internal sealed class GeometryOpenTool(ResolvedSettings projectSettings) : Geome
                           "project setting, which normally has it on: reading coordinates off the " +
                           "grid is far more reliable than judging a distance by eye."
         },
-        ["box_grid"] = new
-        {
-            type = new[] { "boolean", "null" },
-            description = "Draw a dashed grid inside the box being edited, along that box's own " +
-                          "axes, so a distance is readable in cells from a named edge. Null uses the " +
-                          "project setting."
-        },
     };
 
     protected override async Task<ToolResult> RunAsync(
@@ -77,7 +70,6 @@ internal sealed class GeometryOpenTool(ResolvedSettings projectSettings) : Geome
 
         var view = session.CurrentView;
         view.Grid = Bool(args, "grid");
-        view.BoxGrid = Bool(args, "box_grid");
 
         return RenderResult(chat, session, view,
             $"opened '{address}' — source image {session.Source.Width}x{session.Source.Height} px", cfg);

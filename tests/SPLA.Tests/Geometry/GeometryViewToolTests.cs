@@ -199,30 +199,4 @@ public sealed class GeometryViewToolTests
         Assert.Contains("'rect'", nothing.TextContent);
     }
 
-    /// <summary>The box grid is an instrument the model picks up mid-task: asked for once, it stays on
-    /// while the model works, and a fresh crop inherits it from the view the model came from — the
-    /// same rule the view grid follows.</summary>
-    [Fact]
-    public async Task A_new_crop_inherits_the_box_grid()
-    {
-        var (chat, tools, scope) = Begin();
-        using var _scope = scope;
-        await OpenFrame(chat, tools);
-
-        var on = await tools["geom_view"].ExecuteAsync("""{"to":"current","box_grid":true}""");
-        Assert.False(on.IsError, on.TextContent);
-
-        var session = SPLA.Plugins.Geometry.Session.GeometrySessionRegistry.TryGet(chat);
-        Assert.NotNull(session);
-        Assert.True(session!.CurrentView.BoxGrid);
-
-        var cropped = await tools["geom_view"].ExecuteAsync("""{"rect":[100,100,200,150]}""");
-        Assert.False(cropped.IsError, cropped.TextContent);
-        Assert.True(session.CurrentView.BoxGrid);
-        Assert.NotEqual("source", session.CurrentView.Id);
-
-        var off = await tools["geom_view"].ExecuteAsync("""{"to":"current","box_grid":false}""");
-        Assert.False(off.IsError, off.TextContent);
-        Assert.False(session.CurrentView.BoxGrid);
-    }
 }

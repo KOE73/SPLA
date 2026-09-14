@@ -69,10 +69,6 @@ internal static class GeometryRenderer
     /// have to stay genuinely faint for that split to mean anything.</summary>
     private const float MinorAlpha = 0.35f;
 
-    /// <summary>Alpha of a box-cell line, as a fraction of the configured colour's. Stronger than a
-    /// fine view line because it is asked for deliberately and there are only a handful of them.</summary>
-    private const float BoxCellAlpha = 0.6f;
-
     /// <summary>Half-length of a point's cross arms, in view pixels. A point is never drawn as a
     /// pixel: a one-pixel dot is invisible to the model, which defeats the purpose of rendering at
     /// all.
@@ -95,7 +91,7 @@ internal static class GeometryRenderer
     private const float CornerDot = 5f;
 
     public static byte[] Render(
-        GeometrySession session, GeometryView view, bool? grid, bool? boxGrid, GeometrySettings cfg)
+        GeometrySession session, GeometryView view, bool? grid, GeometrySettings cfg)
     {
         using var bitmap = new SKBitmap(view.Width, view.Height, SKColorType.Rgba8888, SKAlphaType.Premul);
         using (var canvas = new SKCanvas(bitmap))
@@ -107,7 +103,7 @@ internal static class GeometryRenderer
             if (grid ?? cfg.Grid) DrawGrid(canvas, view, cfg);
 
             foreach (var obj in session.Objects.Where(o => IsVisible(o, view)))
-                DrawObject(canvas, obj, view, boxGrid, cfg);
+                DrawObject(canvas, obj, view, cfg);
         }
 
         return Encode(bitmap, cfg);
@@ -149,7 +145,7 @@ internal static class GeometryRenderer
     }
 
     private static void DrawObject(
-        SKCanvas canvas, GeometryObject obj, GeometryView view, bool? boxGrid, GeometrySettings cfg)
+        SKCanvas canvas, GeometryObject obj, GeometryView view, GeometrySettings cfg)
     {
         var accepted = obj.Status == ObjectStatus.Accepted;
         // An accepted outline steps back rather than disappearing: it is context for placing the
@@ -185,7 +181,7 @@ internal static class GeometryRenderer
             }
             else
             {
-                DrawEditingBox(canvas, corners, inView, stroke, boxGrid, cfg);
+                DrawEditingBox(canvas, corners, inView, stroke, cfg);
             }
 
             // Clear of the top-left corner dot in both directions: the plate is opaque, and a plate
@@ -225,13 +221,9 @@ internal static class GeometryRenderer
     /// </para>
     /// </summary>
     private static void DrawEditingBox(
-        SKCanvas canvas, (double X, double Y)[] corners, Obb inView, SKPaint stroke, bool? boxGrid,
+        SKCanvas canvas, (double X, double Y)[] corners, Obb inView, SKPaint stroke,
         GeometrySettings cfg)
     {
-        // Under the edges, never over them: the four colours are the vocabulary, the cells are a ruler.
-        // The call wins for this call; the project setting decides when the call says nothing.
-        if (boxGrid ?? cfg.BoxGrid) DrawBoxGrid(canvas, corners, cfg);
-
         for (var i = 0; i < 4; i++)
         {
             var a = corners[i];
@@ -347,56 +339,6 @@ internal static class GeometryRenderer
             if (strong) Tick(canvas, label, plate, y.ToString(), 2, y - 2);
         }
     }
-
-    /// <summary>
-    /// A grid inside the box being edited, along the box's <b>own</b> axes.
-    /// <para>
-    /// The view grid answers <i>where is it</i>, in the view's axes. But "is the box tight on the
-    /// thing" is a property relative to the box, and it is measured naturally along the box's sides:
-    /// with cells running parallel to the coloured edges the model can say "the text starts two cells
-    /// in from the green edge" without converting anything.
-    /// </para>
-    /// <para>
-    /// Only the editing box gets it, for the same reason only the editing box gets the four colours:
-    /// on a frame with five accepted objects it would be mush. No labels either — a cell is counted
-    /// from a named edge, and the box is where the content is.
-    /// </para>
-    /// </summary>
-    private static void DrawBoxGrid(SKCanvas canvas, (double X, double Y)[] corners, GeometrySettings cfg)
-    {
-        var n = cfg.BoxGridDivisions;
-        if (n < 2) return;
-
-        var color = ParseColor(cfg.GridColor);
-        // Dashed, and a touch stronger than a fine view line. On a tilted box the cell lines run at
-        // the box's angle while the view grid runs square to the frame, and at the same weight and
-        // pattern the two are one mess; the dash says which ruler a line belongs to. It also leaves
-        // half the pixels of the print it crosses alone, which is the whole cost of drawing here.
-        using var line = new SKPaint
-        {
-            Color = color.WithAlpha((byte)(color.Alpha * BoxCellAlpha)),
-            StrokeWidth = 1,
-            IsAntialias = true,
-            PathEffect = SKPathEffect.CreateDash([6f, 5f], 0),
-        };
-
-        // Corner 0→1 is the box's top edge and 3→2 its bottom, so interpolating between those two
-        // pairs walks the box's own axes whatever angle it sits at.
-        for (var i = 1; i < n; i++)
-        {
-            var f = (float)i / n;
-            var top = Lerp(corners[0], corners[1], f);
-            var bottom = Lerp(corners[3], corners[2], f);
-            canvas.DrawLine(top.X, top.Y, bottom.X, bottom.Y, line);
-
-            var left = Lerp(corners[0], corners[3], f);
-            var right = Lerp(corners[1], corners[2], f);
-            canvas.DrawLine(left.X, left.Y, right.X, right.Y, line);
-        }
-    }
-
-    private static (float X, float Y) Lerp((double X, double Y) a, (double X, double Y) b, float f) =>
-        ((float)(a.X + (b.X - a.X) * f), (float)(a.Y + (b.Y - a.Y) * f));
 
     /// <summary>The configured grid colour, <c>#RRGGBB</c> or <c>#AARRGGBB</c>. An unparseable value
     /// falls back to the default rather than failing the render: a hand-edited settings file degrades

@@ -50,7 +50,7 @@ first digit starts at about x≈340 — a gap of roughly 150–170 px", and prop
 **The model cannot judge a distance by eye, but it reads coordinates off a grid accurately.** Every
 earlier "the edges are close to the text" was confabulation.
 
-Two grids, both in `GeometrySettings`, all values clamped:
+The view grid, in `GeometrySettings`, all values clamped:
 
 | setting | default | clamp | what it is |
 |---|---|---|---|
@@ -58,14 +58,6 @@ Two grids, both in `GeometrySettings`, all values clamped:
 | `grid_step` | `50` | 10…500 | spacing of the fine lines, in view pixels |
 | `grid_major_every` | `4` | 1…20 | every Nth line drawn stronger and **labelled**; fine lines carry no labels |
 | `grid_color` | `#141414` | `#RRGGBB`/`#AARRGGBB`, bad value falls back | near-black: on a grey-white sack a white grid is invisible, and this is clear of the edge palette |
-| `box_grid` | `false` | — | a grid **inside the editing box, along its own axes** — dashed, unlabelled. The `box_grid` argument of `geom_open`/`geom_view` overrides it for that view; null follows this |
-| `box_grid_divisions` | `4` | 1…20 | cells per side. Settings-only: a calibration, not something to flip mid-task |
-
-The view grid answers *where is it*. "Is the box tight on the thing" is a property relative to the
-**box** and is measured along the box's own sides, which is what the box grid is for: "the text starts
-two cells in from the green edge". Only the editing box gets it, for the reason the four colours are
-also only there — five accepted objects would be mush. The cell lines are dashed so that on a tilted
-box they cannot be confused with the square view grid underneath.
 
 **Every line both measures and obscures.** On blurred small print a dense grid costs more legibility
 than it returns — at `grid_step=20` the small blue print on a sack is visibly degraded. That is what
