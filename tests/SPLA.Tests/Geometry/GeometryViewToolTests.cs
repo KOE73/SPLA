@@ -199,4 +199,31 @@ public sealed class GeometryViewToolTests
         Assert.Contains("'rect'", nothing.TextContent);
     }
 
+    /// <summary>The edge rulers are an instrument the model picks up mid-task: asked for once, they
+    /// stay on while the model works, and a fresh crop inherits them from the view the model came
+    /// from — the same rule the view grid follows.</summary>
+    [Fact]
+    public async Task A_new_crop_inherits_the_edge_rulers()
+    {
+        var (chat, tools, scope) = Begin();
+        using var _scope = scope;
+        await OpenFrame(chat, tools);
+
+        var on = await tools["geom_view"].ExecuteAsync("""{"to":"current","edge_rulers":true}""");
+        Assert.False(on.IsError, on.TextContent);
+
+        var session = SPLA.Plugins.Geometry.Session.GeometrySessionRegistry.TryGet(chat);
+        Assert.NotNull(session);
+        Assert.True(session!.CurrentView.EdgeRulers);
+
+        var cropped = await tools["geom_view"].ExecuteAsync("""{"rect":[100,100,200,150]}""");
+        Assert.False(cropped.IsError, cropped.TextContent);
+        Assert.True(session.CurrentView.EdgeRulers);
+        Assert.NotEqual("source", session.CurrentView.Id);
+
+        var off = await tools["geom_view"].ExecuteAsync("""{"to":"current","edge_rulers":false}""");
+        Assert.False(off.IsError, off.TextContent);
+        Assert.False(session.CurrentView.EdgeRulers);
+    }
+
 }

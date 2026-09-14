@@ -91,7 +91,7 @@ internal static class GeometryRenderer
     private const float CornerDot = 5f;
 
     public static byte[] Render(
-        GeometrySession session, GeometryView view, bool? grid, GeometrySettings cfg)
+        GeometrySession session, GeometryView view, bool? grid, bool? rulers, GeometrySettings cfg)
     {
         using var bitmap = new SKBitmap(view.Width, view.Height, SKColorType.Rgba8888, SKAlphaType.Premul);
         using (var canvas = new SKCanvas(bitmap))
@@ -103,7 +103,7 @@ internal static class GeometryRenderer
             if (grid ?? cfg.Grid) DrawGrid(canvas, view, cfg);
 
             foreach (var obj in session.Objects.Where(o => IsVisible(o, view)))
-                DrawObject(canvas, obj, view, cfg);
+                DrawObject(canvas, obj, view, rulers, cfg);
         }
 
         return Encode(bitmap, cfg);
@@ -145,7 +145,7 @@ internal static class GeometryRenderer
     }
 
     private static void DrawObject(
-        SKCanvas canvas, GeometryObject obj, GeometryView view, GeometrySettings cfg)
+        SKCanvas canvas, GeometryObject obj, GeometryView view, bool? rulers, GeometrySettings cfg)
     {
         var accepted = obj.Status == ObjectStatus.Accepted;
         // An accepted outline steps back rather than disappearing: it is context for placing the
@@ -181,7 +181,7 @@ internal static class GeometryRenderer
             }
             else
             {
-                DrawEditingBox(canvas, corners, inView, stroke, cfg);
+                DrawEditingBox(canvas, corners, inView, stroke, view, rulers, cfg);
             }
 
             // Clear of the top-left corner dot in both directions: the plate is opaque, and a plate
@@ -222,8 +222,13 @@ internal static class GeometryRenderer
     /// </summary>
     private static void DrawEditingBox(
         SKCanvas canvas, (double X, double Y)[] corners, Obb inView, SKPaint stroke,
-        GeometrySettings cfg)
+        GeometryView view, bool? rulers, GeometrySettings cfg)
     {
+        // Under the edges, never over them: the four colours are the vocabulary, the scales are a
+        // ruler. The call wins for this call; the project setting decides when the call says nothing.
+        if (rulers ?? cfg.EdgeRulers)
+            EdgeRuler.Draw(canvas, corners, inView, view, EdgeColors, cfg);
+
         for (var i = 0; i < 4; i++)
         {
             var a = corners[i];

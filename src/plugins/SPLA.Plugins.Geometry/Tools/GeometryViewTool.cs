@@ -70,6 +70,14 @@ internal sealed class GeometryViewTool(ResolvedSettings projectSettings) : Geome
             type = new[] { "boolean", "null" },
             description = "Draw the coordinate grid over this view. Null keeps the current setting."
         },
+        ["edge_rulers"] = new
+        {
+            type = new[] { "boolean", "null" },
+            description = "Draw a labelled scale along every edge of the box being edited, in that " +
+                          "edge's own colour, measuring distance from it in picture pixels — inward " +
+                          "and outward. Read a distance straight off it and pass that number as " +
+                          "geom_box's 'by'. Null keeps the current setting."
+        },
     };
 
     protected override Task<ToolResult> RunAsync(
@@ -102,6 +110,7 @@ internal sealed class GeometryViewTool(ResolvedSettings projectSettings) : Geome
         // A grid asked for once stays on while the model works here: an unmentioned grid keeps what
         // the view had, and a fresh crop inherits the setting from where the model came from.
         view.Grid = Bool(args, "grid") ?? (isNew ? current.Grid : view.Grid);
+        view.EdgeRulers = Bool(args, "edge_rulers") ?? (isNew ? current.EdgeRulers : view.EdgeRulers);
 
         return Task.FromResult(RenderResult(chat, session, view, action!, cfg));
     }

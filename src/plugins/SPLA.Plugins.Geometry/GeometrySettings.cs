@@ -63,6 +63,13 @@ public sealed class GeometrySettings
     [YamlMember(Alias = "grid_color")]
     public string GridColor { get; set; } = "#141414";
 
+    /// <summary>Whether the box being edited carries a ruler along each of its edges unless a call
+    /// says otherwise. On by default, and for the same reason the view grid is: the correction the
+    /// model writes is <c>edge</c>+<c>by</c> in pixels from an edge, and this is the only instrument
+    /// that reads in that unit — it can transcribe a number instead of estimating one.</summary>
+    [YamlMember(Alias = "edge_rulers")]
+    public bool EdgeRulers { get; set; } = true;
+
     /// <summary>How many renders the chat's blob store keeps. Renders are written under the rotating
     /// names <c>geom_render_1..N</c>, so the store holds this many at most instead of one blob per
     /// step of the loop (a single frame's markup used to leave dozens of megabytes behind).</summary>

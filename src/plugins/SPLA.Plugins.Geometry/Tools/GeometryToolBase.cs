@@ -122,7 +122,7 @@ internal abstract class GeometryToolBase(ResolvedSettings projectSettings) : IMc
     protected static ToolResult RenderResult(
         IAgentSession chat, GeometrySession session, GeometryView view, string action, GeometrySettings cfg)
     {
-        var bytes = GeometryRenderer.Render(session, view, view.Grid, cfg);
+        var bytes = GeometryRenderer.Render(session, view, view.Grid, view.EdgeRulers, cfg);
         var mime = GeometryRenderer.MimeType(cfg);
 
         // The frame is other people's content whatever it depicts, and the render is the frame.
