@@ -48,6 +48,25 @@ public sealed class GeometryBoxToolTests
         Assert.Contains("editing", result.TextContent);
     }
 
+    /// <summary>The colour the model sees and the word it is asked to send are one word, and the
+    /// mapping between them is written down rather than inferred from the picture.</summary>
+    [Fact]
+    public async Task The_editing_box_is_told_which_colour_is_which_edge_and_an_accepted_one_is_not()
+    {
+        var (chat, tools, scope) = Begin();
+        using var _scope = scope;
+        await OpenFrame(chat, tools);
+
+        var placed = await tools["geom_box"].ExecuteAsync(
+            """{"name":"bag","cx":400,"cy":300,"width":400,"height":300}""");
+        Assert.Contains("edges: cyan=top, magenta=right, yellow=bottom, green=left", placed.TextContent);
+        Assert.Contains("white dot in a ring = its centre", placed.TextContent);
+
+        var accepted = await tools["geom_accept"].ExecuteAsync("""{"name":"bag"}""");
+        Assert.False(accepted.IsError, accepted.TextContent);
+        Assert.DoesNotContain("edges: cyan=top", accepted.TextContent);
+    }
+
     [Fact]
     public async Task Deltas_move_the_box_from_where_it_is()
     {

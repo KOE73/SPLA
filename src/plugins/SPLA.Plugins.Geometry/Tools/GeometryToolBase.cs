@@ -171,10 +171,13 @@ internal abstract class GeometryToolBase(ResolvedSettings projectSettings) : IMc
             var lines = here.ToDictionary(o => o, o => DescribeInView(o, view));
             var lineWidth = Math.Max(46, lines.Values.Max(line => line.Length));
             foreach (var obj in here)
+            {
                 text.Append("  ").Append(obj.Name.PadRight(nameWidth)).Append("  ")
                     .Append(obj.Kind == ObjectKind.Box ? "box   " : "point ").Append(' ')
                     .Append(lines[obj].PadRight(lineWidth)).Append("  ")
                     .Append(obj.Status == ObjectStatus.Accepted ? "accepted" : "editing").Append('\n');
+                Legend(text, obj, nameWidth);
+            }
         }
 
         if (elsewhere.Count > 0)
@@ -188,6 +191,31 @@ internal abstract class GeometryToolBase(ResolvedSettings projectSettings) : IMc
 
         text.Append("stored as ").Append(handle).Append('.');
         return text.ToString();
+    }
+
+    /// <summary>
+    /// Which colour is which edge, written out rather than left to be inferred from the picture.
+    /// <para>
+    /// The link "saw a colour → named it in the call" has to be stated somewhere: drawing the colours
+    /// and hoping is the same gamble as documenting a convention and hoping, just visual instead of
+    /// verbal (ADR_20260914-3 §3.3). It also means the human reading the reply and the human looking
+    /// at the panel see the same thing, and that nothing important rests on colour alone.
+    /// </para>
+    /// <para>
+    /// Only for the box being edited: an accepted one has no edge colours to name, and a point has no
+    /// edges at all.
+    /// </para>
+    /// </summary>
+    private static void Legend(StringBuilder text, GeometryObject obj, int nameWidth)
+    {
+        if (obj.Kind != ObjectKind.Box || obj.Status == ObjectStatus.Accepted) return;
+
+        text.Append("  ").Append(new string(' ', nameWidth)).Append("  edges: ")
+            .Append(string.Join(", ", GeometryRenderer.EdgeNames.Select(
+                (name, i) => $"{name}={GeometryRenderer.EdgeSides[i]}")))
+            .Append(" — the box's own sides, so they turn with it; ")
+            .Append("white dot in a ring = its centre, the point dx/dy move. ")
+            .Append("Name a colour in geom_box's edge to move just that side.\n");
     }
 
     /// <summary>
