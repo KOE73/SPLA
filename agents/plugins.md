@@ -15,10 +15,35 @@ id: my_plugin
 version: 1.0.0
 type: dll             # Or 'exe' for out-of-process
 entry_point: MyPlugin.dll
+web_settings_entry: web/dist/settings.js   # optional: own settings editor
+web_panel_entry: web/dist/panel.js         # optional: own dock panel
+panel_title: My Panel
+panel_icon: "📐"
 default_prompt: |
   You are equipped with my_plugin tools. 
   Use them when the user asks about my specific domain.
 ```
+
+### Web assets a plugin may contribute
+
+Both entries are paths, relative to the plugin's directory, to a **prebuilt, self-contained ES
+module** the web client imports dynamically. The host serves the file from `/plugin-assets/<id>/…`
+and never opens or interprets it, so no plugin is named anywhere in `web/`.
+
+| key | what it is |
+|---|---|
+| `web_settings_entry` | the plugin's settings editor, replacing the generic YAML-blob editor |
+| `web_panel_entry` | the plugin's own **dock panel** — a tab in the workspace, not a settings page |
+| `panel_title` | the tab's title (English; falls back to the plugin's name) |
+| `panel_icon` | one emoji for the tool-strip button and the tab |
+
+Title and icon live in the manifest rather than in the bundle on purpose: the tool strip has to draw
+the button **before** the bundle is fetched, and must keep drawing it if the fetch fails — a title
+inside the bundle would mean no button until the plugin's code has run.
+
+A panel bundle is built and mounted exactly like a settings bundle; the contract and the transport
+are in [`web/AGENTS.md`](../web/AGENTS.md). See `ADR_20260914-2_web_plugin-panels` for why the client
+is not edited per panel, and `src/plugins/SPLA.Plugins.Geometry/web/` for a worked example.
 
 ## Tool Naming Convention
 Model-facing tool names are part of the LLM contract. They must be stable, easy to copy into tool calls, and compatible with OpenAI-style function/tool calling.
