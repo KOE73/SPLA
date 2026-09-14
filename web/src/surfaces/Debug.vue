@@ -32,11 +32,12 @@
       </template>
       <template v-else-if="snapshot?.entries">
         <div v-if="!snapshot.entries.length">{{ t('(empty)') }}</div>
-        <!-- Origin is its own column, never folded into the value: the question this view has to
-             answer at a glance is "which of these came from outside", and a label buried in text is
-             a label nobody scans for. -->
+        <!-- The trust zone is its own column, never folded into the value: the question this view
+             has to answer at a glance is "which of these came from outside", and a label buried in
+             text is a label nobody scans for. It says who vouched for the source, not where the
+             entry is stored. -->
         <div class="kv-head">
-          <span class="k">{{ t('key') }}</span><span class="o">{{ t('origin') }}</span><span class="v">{{ t('value') }}</span>
+          <span class="k">{{ t('key') }}</span><span class="o">{{ t('zone') }}</span><span class="v">{{ t('value') }}</span>
         </div>
         <div v-for="(e, i) in snapshot.entries" :key="i" class="kv-row">
           <span class="k">{{ e.key }}</span>
