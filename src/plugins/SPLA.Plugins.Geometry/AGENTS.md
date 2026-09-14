@@ -58,6 +58,42 @@ The view grid, in `GeometrySettings`, all values clamped:
 | `grid_step` | `50` | 10…500 | spacing of the fine lines, in view pixels |
 | `grid_major_every` | `4` | 1…20 | every Nth line drawn stronger and **labelled**; fine lines carry no labels |
 | `grid_color` | `#141414` | `#RRGGBB`/`#AARRGGBB`, bad value falls back | near-black: on a grey-white sack a white grid is invisible, and this is clear of the edge palette |
+| `edge_rulers` | `true` | — | the labelled scales along the editing box's four edges. The `edge_rulers` argument of `geom_open`/`geom_view` overrides it for that view; null follows this |
+
+## The edge rulers measure in the unit the correction is written in
+
+`geom_box` moves a side with `edge` + `by`, and `by` is **pixels from that edge**. So each edge of the
+box being edited carries a scale of distance from itself, in view pixels, labelled on every line and
+drawn in that edge's own colour: the model reads *"the text sits between the 10 and the 20 from
+green"* and calls `{edge:"green", by:-15}` with the number it just read. No conversion, no
+subtraction, no coordinates — which is exactly what the proportional box grid it replaced could not
+offer, since a cell's size is a function of the box's size and `by` does not take cells.
+
+- **Both directions.** Inward into the box, outward past the edge. Outward is not decoration: when the
+  print sticks out past a side, "how far out" is the same question and nothing else answers it.
+- **Every line is labelled.** A tick without a number is worth nothing here — the labels are the point.
+- **Its own edge's colour**, so "10 from green" needs no word for "left" and can never be misread
+  against the square view grid.
+- **Only the editing box**, for the reason the four colours are only there.
+
+**Spacing is computed, not configured.** Only on/off is a setting; step and count come from the box's
+current size in view pixels (`EdgeRuler.InwardScale` / `OutwardScale`, unit-tested):
+
+- *Inward:* the finest step on the ladder `10, 20, 25, 50, 100, 200, 500` that leaves **six lines or
+  fewer** on that side, measured against half the box's perpendicular extent so opposite scales meet
+  in the middle rather than crossing. For any ordinary box that lands on four to six lines. A box too
+  narrow for a scale gets **one** line at 10, or none if it cannot hold even that.
+- *Outward:* fixed and coarsening fast — `10, 20, 50, 100` — capped at a quarter of the view's shorter
+  side so it never runs to the frame. The two directions get different progressions because they do
+  different jobs: inward you check a tight fit of a few pixels, outward you measure an overshoot that
+  may be large.
+
+**Density is the risk here, not correctness.** Four edges × two directions × several labelled lines
+lands on a picture that already carries the view grid, the coloured edges, the corner dots and the
+centre. That is why the inward segments are short and sit at the **two ends** of each edge and the
+outward lines span the middle 80% of it: the centre of the box is where the marked thing is, and it is
+the one place that must stay readable. If you change any of these numbers, render a real frame at
+several box sizes — including one deliberately narrow — and **look**.
 
 **Every line both measures and obscures.** On blurred small print a dense grid costs more legibility
 than it returns — at `grid_step=20` the small blue print on a sack is visibly degraded. That is what
