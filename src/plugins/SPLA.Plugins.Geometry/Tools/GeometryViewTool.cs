@@ -68,7 +68,7 @@ internal sealed class GeometryViewTool(ResolvedSettings projectSettings) : Geome
         ["grid"] = new
         {
             type = new[] { "boolean", "null" },
-            description = "Draw a coordinate grid over this view. Null keeps the current setting."
+            description = "Draw the coordinate grid over this view. Null keeps the current setting."
         },
     };
 
@@ -101,9 +101,7 @@ internal sealed class GeometryViewTool(ResolvedSettings projectSettings) : Geome
 
         // A grid asked for once stays on while the model works here: an unmentioned grid keeps what
         // the view had, and a fresh crop inherits the setting from where the model came from.
-        view.Grid = args.TryGetProperty("grid", out var grid) && grid.ValueKind is JsonValueKind.True or JsonValueKind.False
-            ? grid.GetBoolean()
-            : isNew ? current.Grid : view.Grid;
+        view.Grid = Bool(args, "grid") ?? (isNew ? current.Grid : view.Grid);
 
         return Task.FromResult(RenderResult(chat, session, view, action!, cfg));
     }

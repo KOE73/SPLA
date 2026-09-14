@@ -42,8 +42,9 @@ internal sealed class GeometryOpenTool(ResolvedSettings projectSettings) : Geome
         ["grid"] = new
         {
             type = new[] { "boolean", "null" },
-            description = "Draw a coordinate grid over every render of this view. Null = false. " +
-                          "Useful only to check that the picture reached you at the size stated."
+            description = "Draw the coordinate grid over every render of this view. Null uses the " +
+                          "project setting, which normally has it on: reading coordinates off the " +
+                          "grid is far more reliable than judging a distance by eye."
         },
     };
 
@@ -68,7 +69,7 @@ internal sealed class GeometryOpenTool(ResolvedSettings projectSettings) : Geome
         GeometrySessionRegistry.Set(chat, session);
 
         var view = session.CurrentView;
-        view.Grid = ToolJson.GetBoolean(args, "grid", false);
+        view.Grid = Bool(args, "grid");
 
         return RenderResult(chat, session, view,
             $"opened '{address}' — source image {session.Source.Width}x{session.Source.Height} px", cfg);

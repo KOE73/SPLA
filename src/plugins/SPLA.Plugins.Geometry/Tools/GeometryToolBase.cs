@@ -364,6 +364,14 @@ internal abstract class GeometryToolBase(ResolvedSettings projectSettings) : IMc
         return value is null || value.Equals("null", StringComparison.OrdinalIgnoreCase) ? null : value;
     }
 
+    /// <summary>An optional boolean argument: absent, JSON-null and anything that is not a JSON
+    /// boolean all read as "not supplied", which is what lets a flag fall through to the project
+    /// setting instead of being forced to a value by StrictSchema.</summary>
+    protected static bool? Bool(JsonElement args, string name)
+        => args.TryGetProperty(name, out var value) && value.ValueKind is JsonValueKind.True or JsonValueKind.False
+            ? value.GetBoolean()
+            : null;
+
     /// <summary>A JSON number as a double. <c>ToolJson</c> has no double reader and lives in the core,
     /// which this plugin does not get to extend; the null-safety contract is the same — absent,
     /// JSON-null and a non-number all read as absent.</summary>

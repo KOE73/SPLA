@@ -61,12 +61,13 @@ internal static class GeometryRenderer
     /// neither competes with the four colours the model has to name.</summary>
     private static readonly SKColor EditingNeutral = new(0xFF, 0xFF, 0xFF);
 
-    private static readonly SKColor GridColor = new(0xFF, 0xFF, 0xFF, 0x66);
-
     private static readonly SKColor LabelPlate = new(0x00, 0x00, 0x00, 0xC0);
 
-    /// <summary>Spacing of the optional debug grid, in view pixels.</summary>
-    private const int GridStep = 100;
+    /// <summary>Alpha a fine grid line keeps, as a fraction of the configured colour's. Every line
+    /// both measures and obscures, and on blurred small print a dense grid can cost more legibility
+    /// than it returns in measurement — which is what the major/minor split is for. The fine lines
+    /// have to stay genuinely faint for that split to mean anything.</summary>
+    private const float MinorAlpha = 0.35f;
 
     /// <summary>Half-length of a point's cross arms, in view pixels. A point is never drawn as a
     /// pixel: a one-pixel dot is invisible to the model, which defeats the purpose of rendering at
@@ -89,7 +90,7 @@ internal static class GeometryRenderer
     /// <summary>Radius of a corner dot, in view pixels.</summary>
     private const float CornerDot = 5f;
 
-    public static byte[] Render(GeometrySession session, GeometryView view, bool grid, GeometrySettings cfg)
+    public static byte[] Render(GeometrySession session, GeometryView view, bool? grid, GeometrySettings cfg)
     {
         using var bitmap = new SKBitmap(view.Width, view.Height, SKColorType.Rgba8888, SKAlphaType.Premul);
         using (var canvas = new SKCanvas(bitmap))
@@ -97,7 +98,8 @@ internal static class GeometryRenderer
             canvas.Clear(SKColors.Black);
             DrawFrame(canvas, session.Source, view);
 
-            if (grid) DrawGrid(canvas, view, cfg);
+            // The call wins for this call; the project setting decides when the call says nothing.
+            if (grid ?? cfg.Grid) DrawGrid(canvas, view, cfg);
 
             foreach (var obj in session.Objects.Where(o => IsVisible(o, view)))
                 DrawObject(canvas, obj, view, cfg);
@@ -288,12 +290,25 @@ internal static class GeometryRenderer
         canvas.DrawText(name, left, baseline, text);
     }
 
-    /// <summary>Optional debug grid in view coordinates. Off by default: it was a crutch for guessing
-    /// coordinates in one shot, and the place → look → correct loop is what replaced that (ADR §3.6).
-    /// It stays useful for one thing — checking that the provider did not resize the picture under us.</summary>
+    /// <summary>
+    /// The grid in the view's own coordinates — the ruler the model reads numbers off.
+    /// <para>
+    /// Fine lines every <c>grid_step</c> px, unlabelled; every <c>grid_major_every</c>-th line
+    /// stronger and carrying its coordinate. Uniform labelling at a fine step turns the picture into
+    /// noise, and the picture is what the model is here to read.
+    /// </para>
+    /// <para>
+    /// Labels sit on the top and left borders of the frame, not where the lines cross, so they stay
+    /// off the thing being marked wherever that is possible at all.
+    /// </para>
+    /// </summary>
     private static void DrawGrid(SKCanvas canvas, GeometryView view, GeometrySettings cfg)
     {
-        using var line = new SKPaint { Color = GridColor, StrokeWidth = 1, IsAntialias = false };
+        var color = ParseColor(cfg.GridColor);
+        var minorColor = color.WithAlpha((byte)(color.Alpha * MinorAlpha));
+
+        using var minor = new SKPaint { Color = minorColor, StrokeWidth = 1, IsAntialias = false };
+        using var major = new SKPaint { Color = color, StrokeWidth = 2, IsAntialias = false };
         using var label = new SKPaint
         {
             Color = SKColors.White,
@@ -303,18 +318,29 @@ internal static class GeometryRenderer
         };
         using var plate = new SKPaint { Color = LabelPlate, Style = SKPaintStyle.Fill };
 
-        for (var x = GridStep; x < view.Width; x += GridStep)
+        var step = cfg.GridStep;
+        var every = cfg.GridMajorEvery;
+
+        for (int x = step, i = 1; x < view.Width; x += step, i++)
         {
-            canvas.DrawLine(x, 0, x, view.Height, line);
-            Tick(canvas, label, plate, x.ToString(), x + 2, label.TextSize + 2);
+            var strong = i % every == 0;
+            canvas.DrawLine(x, 0, x, view.Height, strong ? major : minor);
+            if (strong) Tick(canvas, label, plate, x.ToString(), x + 2, label.TextSize + 2);
         }
 
-        for (var y = GridStep; y < view.Height; y += GridStep)
+        for (int y = step, i = 1; y < view.Height; y += step, i++)
         {
-            canvas.DrawLine(0, y, view.Width, y, line);
-            Tick(canvas, label, plate, y.ToString(), 2, y - 2);
+            var strong = i % every == 0;
+            canvas.DrawLine(0, y, view.Width, y, strong ? major : minor);
+            if (strong) Tick(canvas, label, plate, y.ToString(), 2, y - 2);
         }
     }
+
+    /// <summary>The configured grid colour, <c>#RRGGBB</c> or <c>#AARRGGBB</c>. An unparseable value
+    /// falls back to the default rather than failing the render: a hand-edited settings file degrades
+    /// here the same way every other value in <see cref="GeometrySettings"/> does.</summary>
+    private static SKColor ParseColor(string value) =>
+        SKColor.TryParse(value, out var color) ? color : SKColor.Parse(new GeometrySettings().GridColor);
 
     private static void Tick(SKCanvas canvas, SKPaint text, SKPaint plate, string value, float x, float y)
     {

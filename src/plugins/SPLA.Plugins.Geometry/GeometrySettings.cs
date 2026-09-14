@@ -40,6 +40,29 @@ public sealed class GeometrySettings
     [YamlMember(Alias = "jpeg_quality")]
     public int JpegQuality { get; set; } = 0;
 
+    /// <summary>Whether renders carry the view grid unless a call says otherwise. On by default: the
+    /// model cannot judge a distance by eye but reads coordinates off a grid accurately, so the grid
+    /// is the ruler that makes the look → correct loop converge, not debug decoration.</summary>
+    [YamlMember(Alias = "grid")]
+    public bool Grid { get; set; } = true;
+
+    /// <summary>Spacing of the fine grid lines, in view pixels.</summary>
+    [YamlMember(Alias = "grid_step")]
+    public int GridStep { get; set; } = 50;
+
+    /// <summary>Every Nth line is drawn stronger and carries the coordinate label; the fine lines
+    /// between it carry none. Labelling every fine line turns the picture into noise, and the picture
+    /// is the thing being read.</summary>
+    [YamlMember(Alias = "grid_major_every")]
+    public int GridMajorEvery { get; set; } = 4;
+
+    /// <summary>Grid colour as <c>#RRGGBB</c> or <c>#AARRGGBB</c>. The default is near-black: the
+    /// leading subject is a grey-white sack, where a white grid is invisible, and it stays clear of
+    /// the frozen edge palette (cyan/magenta/yellow/green) so a grid line can never be read as an
+    /// edge. Fine lines are drawn at a fraction of this alpha, major lines at full.</summary>
+    [YamlMember(Alias = "grid_color")]
+    public string GridColor { get; set; } = "#141414";
+
     /// <summary>How many renders the chat's blob store keeps. Renders are written under the rotating
     /// names <c>geom_render_1..N</c>, so the store holds this many at most instead of one blob per
     /// step of the loop (a single frame's markup used to leave dozens of megabytes behind).</summary>
@@ -61,6 +84,12 @@ public sealed class GeometrySettings
         FontSize = Clamp(FontSize, 8, 48);
         CropPadding = CropPadding < 0 ? 0 : CropPadding > 1 ? 1 : CropPadding;
         RenderHistory = Clamp(RenderHistory, 1, 20);
+        // A step below 10 px is a wash of lines at any working size, and one above a quarter of the
+        // smallest sensible view stops being a ruler.
+        GridStep = Clamp(GridStep, 10, 500);
+        // 1 means every line is major — legal, and what a coarse step wants.
+        GridMajorEvery = Clamp(GridMajorEvery, 1, 20);
+        if (string.IsNullOrWhiteSpace(GridColor)) GridColor = new GeometrySettings().GridColor;
         // 0 means PNG; any other value is a JPEG quality, and quality below 30 is not worth the
         // artefacts on a frame the model has to read geometry off, so it snaps up.
         JpegQuality = JpegQuality switch

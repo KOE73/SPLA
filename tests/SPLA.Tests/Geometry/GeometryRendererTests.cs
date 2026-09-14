@@ -1,5 +1,6 @@
 using SkiaSharp;
 using System;
+using System.Linq;
 using SPLA.Plugins.Geometry;
 using SPLA.Plugins.Geometry.Model;
 using SPLA.Plugins.Geometry.Render;
@@ -198,18 +199,55 @@ public sealed class GeometryRendererTests
         Assert.True(GeometryRenderer.IsVisible(inside, session.CurrentView));
     }
 
+    /// <summary>The grid is a measuring instrument, not debug decoration: a model cannot judge a
+    /// distance by eye but reads coordinates off a grid accurately, so a render with nothing said
+    /// about the grid carries one.</summary>
     [Fact]
-    public void The_grid_is_drawn_only_when_asked_for()
+    public void The_grid_is_drawn_when_the_call_says_nothing()
     {
         using var session = Open();
         var cfg = new GeometrySettings();
 
-        using var plain = Decode(GeometryRenderer.Render(session, session.CurrentView, false, cfg));
-        using var ruled = Decode(GeometryRenderer.Render(session, session.CurrentView, true, cfg));
+        using var silent = Decode(GeometryRenderer.Render(session, session.CurrentView, null, cfg));
+        using var off = Decode(GeometryRenderer.Render(session, session.CurrentView, false, cfg));
 
         var background = new SKColor(0x80, 0x80, 0x80);
-        Assert.Equal(background.Red, plain.GetPixel(100, 250).Red);
-        Assert.NotEqual(background.Red, ruled.GetPixel(100, 250).Red);
+        Assert.NotEqual(background.Red, silent.GetPixel(100, 250).Red);
+        Assert.Equal(background.Red, off.GetPixel(100, 250).Red);
+    }
+
+    /// <summary>And the call still wins over the setting, in both directions.</summary>
+    [Fact]
+    public void A_call_overrides_the_grid_setting()
+    {
+        using var session = Open();
+        var background = new SKColor(0x80, 0x80, 0x80);
+
+        using var forcedOn = Decode(GeometryRenderer.Render(
+            session, session.CurrentView, true, GeometrySettings.FromBlob(new() { ["grid"] = false })));
+        using var forcedOff = Decode(GeometryRenderer.Render(
+            session, session.CurrentView, false, GeometrySettings.FromBlob(new() { ["grid"] = true })));
+
+        Assert.NotEqual(background.Red, forcedOn.GetPixel(100, 250).Red);
+        Assert.Equal(background.Red, forcedOff.GetPixel(100, 250).Red);
+    }
+
+    /// <summary>Every line both measures and obscures, so a fine line has to stay faint while the
+    /// labelled major line stays strong. Without that split a readable grid is a wash of ink over the
+    /// blurred print the box is being placed on.</summary>
+    [Fact]
+    public void A_major_line_is_stronger_than_a_fine_one()
+    {
+        using var session = Open();
+        var cfg = GeometrySettings.FromBlob(new() { ["grid_step"] = 50, ["grid_major_every"] = 4 });
+
+        using var ruled = Decode(GeometryRenderer.Render(session, session.CurrentView, null, cfg));
+
+        var fine = ruled.GetPixel(50, 250).Red;
+        var major = ruled.GetPixel(200, 250).Red;
+        var background = new SKColor(0x80, 0x80, 0x80).Red;
+        Assert.True(major < fine, $"major {major} should be darker than fine {fine}");
+        Assert.True(fine < background, $"fine {fine} should still be visible against {background}");
     }
 
     [Fact]
