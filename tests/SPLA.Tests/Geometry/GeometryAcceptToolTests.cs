@@ -76,7 +76,7 @@ public sealed class GeometryAcceptToolTests
         await tools["geom_box"].ExecuteAsync("""{"name":"bag","cx":401,"cy":299,"width":400,"height":300,"angle":7}""");
         var result = await tools["geom_accept"].ExecuteAsync("""{"name":"bag"}""");
 
-        Assert.Contains("cx=401 cy=299 w=400 h=300 angle=7", result.TextContent);
+        Assert.Contains("cx=401 cy=299 w=400 h=300 angle=+7 (tilted down to the right)", result.TextContent);
     }
 
     [Fact]

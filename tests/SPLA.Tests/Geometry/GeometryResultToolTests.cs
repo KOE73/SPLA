@@ -109,7 +109,7 @@ public sealed class GeometryResultToolTests
 
         // Corrected by eye: +12 right, -4 up, a little wider and turned.
         var corrected = await tools["geom_box"].ExecuteAsync("""{"name":"bag","dx":12,"dy":-4,"dw":24,"dangle":10}""");
-        Assert.Contains("cx=512 cy=376 w=624 h=400 angle=10", corrected.TextContent);
+        Assert.Contains("cx=512 cy=376 w=624 h=400 angle=+10 (tilted down to the right)", corrected.TextContent);
 
         await tools["geom_accept"].ExecuteAsync("""{"name":"bag"}""");
 

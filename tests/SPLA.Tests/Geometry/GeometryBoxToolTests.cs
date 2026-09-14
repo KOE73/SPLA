@@ -44,7 +44,7 @@ public sealed class GeometryBoxToolTests
         Assert.False(result.IsError);
         Assert.Single(result.Content.OfType<ToolImage>());
         Assert.Contains("created 'bag'", result.TextContent);
-        Assert.Contains("cx=400 cy=300 w=400 h=300 angle=-6", result.TextContent);
+        Assert.Contains("cx=400 cy=300 w=400 h=300 angle=-6 (tilted up to the right)", result.TextContent);
         Assert.Contains("editing", result.TextContent);
     }
 
@@ -61,7 +61,7 @@ public sealed class GeometryBoxToolTests
 
         Assert.False(result.IsError);
         Assert.Contains("updated 'bag'", result.TextContent);
-        Assert.Contains("cx=380 cy=310 w=440 h=300 angle=-6", result.TextContent);
+        Assert.Contains("cx=380 cy=310 w=440 h=300 angle=-6 (tilted up to the right)", result.TextContent);
     }
 
     [Fact]
@@ -121,7 +121,7 @@ public sealed class GeometryBoxToolTests
         await tools["geom_box"].ExecuteAsync("""{"name":"bag","cx":400,"cy":300,"width":400,"height":300,"angle":10}""");
         var result = await tools["geom_box"].ExecuteAsync("""{"name":"bag","cx":420}""");
 
-        Assert.Contains("cx=420 cy=300 w=400 h=300 angle=10", result.TextContent);
+        Assert.Contains("cx=420 cy=300 w=400 h=300 angle=+10 (tilted down to the right)", result.TextContent);
     }
 
     [Fact]
@@ -166,5 +166,30 @@ public sealed class GeometryBoxToolTests
 
         Assert.True(result.IsError);
         Assert.Contains("geom_open", result.TextContent);
+    }
+
+    /// <summary>The sign of the angle is the one thing a model reliably gets backwards: mathematics
+    /// puts y upward, an image puts it downward, and "positive clockwise" in a description loses to
+    /// that prior. Every printed angle therefore says what it looks like, so the model can check it
+    /// against the picture rather than recall the rule.
+    /// </summary>
+    [Fact]
+    public async Task Every_printed_angle_says_which_way_the_box_leans()
+    {
+        var (chat, tools, scope) = Begin();
+        using var _scope = scope;
+        await OpenFrame(chat, tools);
+
+        var clockwise = await tools["geom_box"].ExecuteAsync(
+            """{"name":"mark","cx":400,"cy":300,"width":200,"height":80,"angle":8}""");
+        Assert.Contains("angle=+8 (tilted down to the right)", clockwise.TextContent);
+
+        var flipped = await tools["geom_box"].ExecuteAsync("""{"name":"mark","angle":-8}""");
+        Assert.Contains("angle=-8 (tilted up to the right)", flipped.TextContent);
+
+        // Zero leans neither way, and saying so would be noise on every upright box.
+        var straight = await tools["geom_box"].ExecuteAsync("""{"name":"mark","angle":0}""");
+        Assert.Contains("angle=0", straight.TextContent);
+        Assert.DoesNotContain("tilted", straight.TextContent);
     }
 }

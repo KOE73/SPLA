@@ -166,10 +166,12 @@ internal abstract class GeometryToolBase(ResolvedSettings projectSettings) : IMc
         {
             text.Append("objects here:\n");
             var nameWidth = Math.Max(4, here.Max(o => o.Name.Length));
+            var lines = here.ToDictionary(o => o, o => DescribeInView(o, view));
+            var lineWidth = Math.Max(46, lines.Values.Max(line => line.Length));
             foreach (var obj in here)
                 text.Append("  ").Append(obj.Name.PadRight(nameWidth)).Append("  ")
                     .Append(obj.Kind == ObjectKind.Box ? "box   " : "point ").Append(' ')
-                    .Append(DescribeInView(obj, view).PadRight(46))
+                    .Append(lines[obj].PadRight(lineWidth)).Append("  ")
                     .Append(obj.Status == ObjectStatus.Accepted ? "accepted" : "editing").Append('\n');
         }
 
@@ -203,12 +205,25 @@ internal abstract class GeometryToolBase(ResolvedSettings projectSettings) : IMc
     private static string Round(double value) =>
         Math.Round(value).ToString("0", CultureInfo.InvariantCulture);
 
+    /// <summary>The angle, and — the part that carries the weight — what it looks like. "Positive is
+    /// clockwise" is a convention the model has to hold against a trained prior that says the
+    /// opposite (mathematics puts y upward; an image puts it downward), and in a live run the model
+    /// lost that bet and never revisited the sign. Naming the tilt on every line printed makes the
+    /// sign a consequence the model can check against the picture in front of it.</summary>
     private static string Angle(double degrees)
     {
         var normalised = degrees % 360;
         if (normalised > 180) normalised -= 360;
         if (normalised < -180) normalised += 360;
-        return Math.Round(normalised, 1).ToString("0.#", CultureInfo.InvariantCulture);
+
+        var rounded = Math.Round(normalised, 1);
+        var number = rounded.ToString("+0.#;-0.#;0", CultureInfo.InvariantCulture);
+        return rounded switch
+        {
+            > 0 => $"{number} (tilted down to the right)",
+            < 0 => $"{number} (tilted up to the right)",
+            _ => number
+        };
     }
 
     // ── argument helpers ──────────────────────────────────────────────────────

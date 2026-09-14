@@ -34,7 +34,10 @@ internal sealed class GeometryBoxTool(ResolvedSettings projectSettings) : Geomet
         "Coordinates are in the pixels of the picture you were last shown, never the original " +
         "image's. Give either the absolute fields (cx, cy, width, height, angle) or the deltas " +
         "(dx, dy, dw, dh, dangle) in one call, never both. A new box needs cx, cy, width and " +
-        "height. angle is degrees, positive clockwise. delete:true removes the box.";
+        "height. delete:true removes the box. " +
+        "angle is degrees and turns the box clockwise on the picture: angle=10 leaves it tilted " +
+        "DOWN to the right, angle=-10 tilted UP to the right. Every reply names the tilt in words " +
+        "next to the number — read it back and check it against what you see before nudging the size.";
 
     protected override Dictionary<string, object> Properties => new()
     {
@@ -47,12 +50,17 @@ internal sealed class GeometryBoxTool(ResolvedSettings projectSettings) : Geomet
         ["cy"] = Field("Centre y, in the pixels of the picture you were last shown."),
         ["width"] = Field("Width across the box's own long axis, in the pixels of that picture."),
         ["height"] = Field("Height across the box's own short axis, in the pixels of that picture."),
-        ["angle"] = Field("Rotation in degrees, positive clockwise. Null = 0 on a new box, unchanged on an existing one."),
+        ["angle"] = Field(
+            "Rotation in degrees, clockwise on the picture: 10 tilts the box down to the right, " +
+            "-10 tilts it up to the right. Null = 0 on a new box, unchanged on an existing one."),
         ["dx"] = Field("Move right by this many pixels (negative moves left)."),
         ["dy"] = Field("Move down by this many pixels (negative moves up)."),
         ["dw"] = Field("Widen by this many pixels (negative narrows)."),
         ["dh"] = Field("Heighten by this many pixels (negative shortens)."),
-        ["dangle"] = Field("Turn by this many degrees, positive clockwise."),
+        ["dangle"] = Field(
+            "Turn by this many degrees, clockwise on the picture: dangle=5 drops the right-hand end " +
+            "further down, dangle=-5 lifts it. If the box leans the wrong way, the sign is wrong — " +
+            "flip it rather than turning further the same way."),
         ["delete"] = new
         {
             type = new[] { "boolean", "null" },

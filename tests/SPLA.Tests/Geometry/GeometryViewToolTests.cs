@@ -146,7 +146,7 @@ public sealed class GeometryViewToolTests
 
         // And the bag's own tilt is untouched back in the source.
         var back = await tools["geom_view"].ExecuteAsync("""{"to":"source"}""");
-        Assert.Contains("angle=30", back.TextContent);
+        Assert.Contains("angle=+30 (tilted down to the right)", back.TextContent);
     }
 
     [Fact]
