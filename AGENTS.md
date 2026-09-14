@@ -44,6 +44,10 @@ point to; that file is still the rule.
   type decides what reaches the changelog. → [agents/git.md](agents/git.md#commit-messages-the-type-is-load-bearing)
 - **Text that reaches a model (prompts, skill metadata, tool help) is English only.** →
   [agents/sys_prompt_rules.md](agents/sys_prompt_rules.md#rule-8--language-is-english)
+- **A tool and its prompt are one thing in two files.** Changed what a tool does, what an argument
+  means, or what its reply says — fix the paired prompt (`Features/<Feature>/prompt.md`, or the
+  plugin's `default_prompt`) in the **same commit**. Nothing fails when they drift apart. →
+  [agents/sys_prompt_rules.md](agents/sys_prompt_rules.md#rule-9--prompt-and-code-ship-together)
 - **An `ADR_` is never edited**; a changed decision gets a new ADR. →
   [agents/documentation.md](agents/documentation.md)
 

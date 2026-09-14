@@ -56,6 +56,7 @@ Each block has exactly one job. A block that takes on another block's job create
 6. **Prompts are testable** — for any input matching two rules, the outcome must be identical.
 7. **Unresolved conflicts are marked** — a silent conflict is a bug; a marked conflict is a TODO.
 8. **Language is English** — all prompt text in every block is written in English only.
+9. **Prompt and code ship together** — a tool's behaviour and the text teaching a model to use it are one artefact in two files.
 
 ---
 
@@ -158,6 +159,48 @@ This covers, concretely:
 - Trigger examples in skill bodies (`Run when the user asks...`).
 
 Do NOT add locale-specific keywords, phrases, or examples to any of the above.
+
+---
+
+## Rule 9 — Prompt and Code Ship Together
+
+A tool's behaviour and the text that teaches a model to use it are **one artefact stored in two
+files**. Change one without the other and the model is instructed to do something the code no longer
+does. No build, test or type check catches this: both halves stay individually valid, and the only
+symptom is a model that behaves worse than the code deserves.
+
+The halves sit next to each other on purpose — the pairing is visible in the layout:
+
+| half | where it lives |
+|---|---|
+| core feature code | `src/agent/SPLA.Agent/Features/<Feature>/` |
+| its prompt | `prompt.md` in that same folder |
+| plugin code | `src/plugins/SPLA.Plugins.<Name>/` |
+| its prompt | `default_prompt` in that plugin's `meta.yaml` |
+
+**How to apply:** when you change what a tool does, what an argument means, or what its reply says,
+update the paired prompt text **in the same commit**. Not as a follow-up — a follow-up is precisely
+how the two halves come apart, because the code change is the part that feels finished.
+
+**Which text belongs where** (this is Rules 3 and 4 applied to one concrete question, gathered here
+because that question keeps being answered wrongly):
+
+| what you are writing | its home |
+|---|---|
+| what a tool does, what its arguments are, their formats and limits | the tool schema and its `Details` — facts only (Rule 3) |
+| what this domain is and what the plugin makes available | `default_prompt` — context, no sequencing (Rule 4) |
+| how to work well: order, rhythm, how to know you are done, what to do when stuck | a **skill** body in `SPLA.Skills.<PluginId>/` |
+
+The third row is the one most often skipped, and skipping it is what pushes procedure into the other
+two — where Rules 3 and 4 forbid it and where it then rots unnoticed.
+
+**Why (a real case, 2026-09-14):** the geometry plugin's tool descriptions were rewritten to remove a
+promise the tool could not keep — "two or three corrections are normal" — after a live run in which
+the model made six. The identical sentence survived untouched in the plugin's `default_prompt`, which
+the model reads *before* any tool description and which therefore carries more authority. The same
+manifest still described a workflow the tools no longer had: no coloured edges, no edge addressing, no
+centre mark. Nothing failed and nothing was flagged; the model was simply told the wrong thing, first
+and most authoritatively.
 
 ---
 
