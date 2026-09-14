@@ -309,6 +309,7 @@ public sealed class SpawnedAgentRunner : Domain.Interfaces.IAgentSpawner
         {
             Checkpoint = agentSession.Checkpoint,
             EnableLoopGuard = true,
+            ToolImages = runSettings.ToolImages,
             Context = context,
             NestInAmbientProgress = true,
             ToolFilter = toolFilter

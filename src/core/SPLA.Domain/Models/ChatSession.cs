@@ -359,6 +359,14 @@ public class ChatSessionMessage
     [YamlMember(Alias = "retention")]
     public string? Retention { get; set; }
 
+    /// <summary>Mirrors <see cref="SPLA.Domain.Models.ChatMessage.ReplacementKey"/> across a
+    /// save/load. Written alongside <see cref="Retention"/> and for the same reason: without it a
+    /// reopened chat carries <c>untilSuperseded</c> with no key, which
+    /// <c>ContextAssembler.Assemble</c> reads as "keep" — the eviction would quietly stop working at
+    /// the first restart. Null for every message no policy has keyed.</summary>
+    [YamlMember(Alias = "replacement_key")]
+    public string? ReplacementKey { get; set; }
+
     /// <summary>Mirrors <see cref="SPLA.Domain.Models.ChatMessage.CompactedBy"/> — see ADR §2.1/§2.5.
     /// Null for every message no compaction has hidden.</summary>
     [YamlMember(Alias = "compacted_by")]
