@@ -40,7 +40,7 @@ public sealed class GeometryRendererTests
     public void A_render_is_exactly_the_size_the_view_announces()
     {
         using var session = Open(2048, 1024);
-        var bytes = GeometryRenderer.Render(session, session.CurrentView, grid: false, new GeometrySettings());
+        var bytes = GeometryRenderer.Render(session, session.CurrentView, grid: false, null, new GeometrySettings());
 
         using var decoded = Decode(bytes);
         Assert.Equal(session.CurrentView.Width, decoded.Width);
@@ -60,7 +60,7 @@ public sealed class GeometryRendererTests
         });
 
         var cfg = new GeometrySettings();
-        var bytes = GeometryRenderer.Render(session, session.CurrentView, grid: false, cfg);
+        var bytes = GeometryRenderer.Render(session, session.CurrentView, grid: false, null, cfg);
         using var decoded = Decode(bytes);
 
         var background = new SKColor(0x80, 0x80, 0x80);
@@ -92,7 +92,7 @@ public sealed class GeometryRendererTests
         });
 
         var cfg = new GeometrySettings();
-        using var editing = Decode(GeometryRenderer.Render(session, session.CurrentView, false, cfg));
+        using var editing = Decode(GeometryRenderer.Render(session, session.CurrentView, false, null, cfg));
 
         AssertNear(editing.GetPixel(200, 110), 0x00, 0xCF, 0xFF);   // top    - cyan
         AssertNear(editing.GetPixel(260, 150), 0xFF, 0x2B, 0xD6);   // right  - magenta
@@ -100,7 +100,7 @@ public sealed class GeometryRendererTests
         AssertNear(editing.GetPixel(140, 150), 0x0E, 0x8A, 0x26);   // left   - green
 
         session.Objects[0].Status = ObjectStatus.Accepted;
-        using var accepted = Decode(GeometryRenderer.Render(session, session.CurrentView, false, cfg));
+        using var accepted = Decode(GeometryRenderer.Render(session, session.CurrentView, false, null, cfg));
 
         // One muted colour all the way round: no edge of an accepted box can be read as an edge
         // of the box being placed.
@@ -119,7 +119,7 @@ public sealed class GeometryRendererTests
             Name = "a", Kind = ObjectKind.Box, Box = new Obb(200, 150, 120, 80, 90),
         });
 
-        using var decoded = Decode(GeometryRenderer.Render(session, session.CurrentView, false, new GeometrySettings()));
+        using var decoded = Decode(GeometryRenderer.Render(session, session.CurrentView, false, null, new GeometrySettings()));
 
         AssertNear(decoded.GetPixel(240, 150), 0x00, 0xCF, 0xFF);   // the top edge, now on the right
         AssertNear(decoded.GetPixel(160, 150), 0xFF, 0xE1, 0x00);   // the bottom edge, now on the left
@@ -136,11 +136,11 @@ public sealed class GeometryRendererTests
         });
 
         var cfg = new GeometrySettings();
-        using var editing = Decode(GeometryRenderer.Render(session, session.CurrentView, false, cfg));
+        using var editing = Decode(GeometryRenderer.Render(session, session.CurrentView, false, null, cfg));
         AssertNear(editing.GetPixel(200, 150), 0xFF, 0xFF, 0xFF);
 
         session.Objects[0].Status = ObjectStatus.Accepted;
-        using var accepted = Decode(GeometryRenderer.Render(session, session.CurrentView, false, cfg));
+        using var accepted = Decode(GeometryRenderer.Render(session, session.CurrentView, false, null, cfg));
         Assert.Equal(0x80, accepted.GetPixel(200, 150).Red);   // untouched frame
     }
 
@@ -153,7 +153,7 @@ public sealed class GeometryRendererTests
             Name = "a", Kind = ObjectKind.Box, Box = new Obb(200, 150, 120, 80, 0),
         });
 
-        using var decoded = Decode(GeometryRenderer.Render(session, session.CurrentView, false, new GeometrySettings()));
+        using var decoded = Decode(GeometryRenderer.Render(session, session.CurrentView, false, null, new GeometrySettings()));
 
         AssertNear(decoded.GetPixel(140, 110), 0x00, 0xCF, 0xFF);   // top-left,     cyan starts here
         AssertNear(decoded.GetPixel(260, 110), 0xFF, 0x2B, 0xD6);   // top-right,    magenta
@@ -178,7 +178,7 @@ public sealed class GeometryRendererTests
         using var session = Open();
         session.Objects.Add(new GeometryObject { Name = "mark", Kind = ObjectKind.Point, Point = (200, 150) });
 
-        using var decoded = Decode(GeometryRenderer.Render(session, session.CurrentView, false, new GeometrySettings()));
+        using var decoded = Decode(GeometryRenderer.Render(session, session.CurrentView, false, null, new GeometrySettings()));
         var background = new SKColor(0x80, 0x80, 0x80);
 
         // The arms run diagonally: a point is an X in a circle, a box's centre is a dot in a ring.
@@ -208,8 +208,8 @@ public sealed class GeometryRendererTests
         using var session = Open();
         var cfg = new GeometrySettings();
 
-        using var silent = Decode(GeometryRenderer.Render(session, session.CurrentView, null, cfg));
-        using var off = Decode(GeometryRenderer.Render(session, session.CurrentView, false, cfg));
+        using var silent = Decode(GeometryRenderer.Render(session, session.CurrentView, null, null, cfg));
+        using var off = Decode(GeometryRenderer.Render(session, session.CurrentView, false, null, cfg));
 
         var background = new SKColor(0x80, 0x80, 0x80);
         Assert.NotEqual(background.Red, silent.GetPixel(100, 250).Red);
@@ -224,9 +224,9 @@ public sealed class GeometryRendererTests
         var background = new SKColor(0x80, 0x80, 0x80);
 
         using var forcedOn = Decode(GeometryRenderer.Render(
-            session, session.CurrentView, true, GeometrySettings.FromBlob(new() { ["grid"] = false })));
+            session, session.CurrentView, true, null, GeometrySettings.FromBlob(new() { ["grid"] = false })));
         using var forcedOff = Decode(GeometryRenderer.Render(
-            session, session.CurrentView, false, GeometrySettings.FromBlob(new() { ["grid"] = true })));
+            session, session.CurrentView, false, null, GeometrySettings.FromBlob(new() { ["grid"] = true })));
 
         Assert.NotEqual(background.Red, forcedOn.GetPixel(100, 250).Red);
         Assert.Equal(background.Red, forcedOff.GetPixel(100, 250).Red);
@@ -241,7 +241,7 @@ public sealed class GeometryRendererTests
         using var session = Open();
         var cfg = GeometrySettings.FromBlob(new() { ["grid_step"] = 50, ["grid_major_every"] = 4 });
 
-        using var ruled = Decode(GeometryRenderer.Render(session, session.CurrentView, null, cfg));
+        using var ruled = Decode(GeometryRenderer.Render(session, session.CurrentView, null, null, cfg));
 
         var fine = ruled.GetPixel(50, 250).Red;
         var major = ruled.GetPixel(200, 250).Red;
@@ -265,7 +265,7 @@ public sealed class GeometryRendererTests
             ["grid"] = false, ["box_grid"] = true, ["box_grid_divisions"] = 4
         });
 
-        using var ruled = Decode(GeometryRenderer.Render(session, session.CurrentView, null, cfg));
+        using var ruled = Decode(GeometryRenderer.Render(session, session.CurrentView, null, null, cfg));
 
         var background = new SKColor(0x80, 0x80, 0x80).Red;
         // Well outside the box, nothing is drawn at all.
@@ -276,13 +276,40 @@ public sealed class GeometryRendererTests
         Assert.Contains(column, red => red < background);
     }
 
+    /// <summary>The box grid is an instrument the model picks up on the job, so a call overrides the
+    /// setting in both directions, exactly as the view grid does.</summary>
+    [Fact]
+    public void A_call_overrides_the_box_grid_setting()
+    {
+        using var session = Open();
+        session.Objects.Add(new GeometryObject
+        {
+            Name = "mark", Kind = ObjectKind.Box, Box = new Obb(200, 150, 160, 100, 0)
+        });
+        var background = new SKColor(0x80, 0x80, 0x80).Red;
+
+        using var forcedOn = Decode(GeometryRenderer.Render(
+            session, session.CurrentView, false, true,
+            GeometrySettings.FromBlob(new() { ["grid"] = false, ["box_grid"] = false })));
+        using var forcedOff = Decode(GeometryRenderer.Render(
+            session, session.CurrentView, false, false,
+            GeometrySettings.FromBlob(new() { ["grid"] = false, ["box_grid"] = true })));
+
+        // The quarter line down the middle of the box: sampled along its run, because the dashes mean
+        // a single pixel can fall in a gap.
+        var on = Enumerable.Range(110, 80).Select(y => forcedOn.GetPixel(160, y).Red);
+        var off = Enumerable.Range(110, 80).Select(y => forcedOff.GetPixel(160, y).Red);
+        Assert.Contains(on, red => red < background);
+        Assert.DoesNotContain(off, red => red < background);
+    }
+
     [Fact]
     public void Jpeg_quality_switches_the_encoding()
     {
         using var session = Open();
 
-        var png = GeometryRenderer.Render(session, session.CurrentView, false, new GeometrySettings());
-        var jpeg = GeometryRenderer.Render(session, session.CurrentView, false,
+        var png = GeometryRenderer.Render(session, session.CurrentView, false, null, new GeometrySettings());
+        var jpeg = GeometryRenderer.Render(session, session.CurrentView, false, null,
             GeometrySettings.FromBlob(new() { ["jpeg_quality"] = 80 }));
 
         Assert.Equal(new byte[] { 0x89, 0x50, 0x4E, 0x47 }, png[..4]);

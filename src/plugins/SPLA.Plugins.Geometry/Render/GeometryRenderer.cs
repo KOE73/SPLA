@@ -94,7 +94,8 @@ internal static class GeometryRenderer
     /// <summary>Radius of a corner dot, in view pixels.</summary>
     private const float CornerDot = 5f;
 
-    public static byte[] Render(GeometrySession session, GeometryView view, bool? grid, GeometrySettings cfg)
+    public static byte[] Render(
+        GeometrySession session, GeometryView view, bool? grid, bool? boxGrid, GeometrySettings cfg)
     {
         using var bitmap = new SKBitmap(view.Width, view.Height, SKColorType.Rgba8888, SKAlphaType.Premul);
         using (var canvas = new SKCanvas(bitmap))
@@ -106,7 +107,7 @@ internal static class GeometryRenderer
             if (grid ?? cfg.Grid) DrawGrid(canvas, view, cfg);
 
             foreach (var obj in session.Objects.Where(o => IsVisible(o, view)))
-                DrawObject(canvas, obj, view, cfg);
+                DrawObject(canvas, obj, view, boxGrid, cfg);
         }
 
         return Encode(bitmap, cfg);
@@ -147,7 +148,8 @@ internal static class GeometryRenderer
         canvas.Restore();
     }
 
-    private static void DrawObject(SKCanvas canvas, GeometryObject obj, GeometryView view, GeometrySettings cfg)
+    private static void DrawObject(
+        SKCanvas canvas, GeometryObject obj, GeometryView view, bool? boxGrid, GeometrySettings cfg)
     {
         var accepted = obj.Status == ObjectStatus.Accepted;
         // An accepted outline steps back rather than disappearing: it is context for placing the
@@ -183,7 +185,7 @@ internal static class GeometryRenderer
             }
             else
             {
-                DrawEditingBox(canvas, corners, inView, stroke, cfg);
+                DrawEditingBox(canvas, corners, inView, stroke, boxGrid, cfg);
             }
 
             // Clear of the top-left corner dot in both directions: the plate is opaque, and a plate
@@ -223,10 +225,12 @@ internal static class GeometryRenderer
     /// </para>
     /// </summary>
     private static void DrawEditingBox(
-        SKCanvas canvas, (double X, double Y)[] corners, Obb inView, SKPaint stroke, GeometrySettings cfg)
+        SKCanvas canvas, (double X, double Y)[] corners, Obb inView, SKPaint stroke, bool? boxGrid,
+        GeometrySettings cfg)
     {
         // Under the edges, never over them: the four colours are the vocabulary, the cells are a ruler.
-        if (cfg.BoxGrid) DrawBoxGrid(canvas, corners, cfg);
+        // The call wins for this call; the project setting decides when the call says nothing.
+        if (boxGrid ?? cfg.BoxGrid) DrawBoxGrid(canvas, corners, cfg);
 
         for (var i = 0; i < 4; i++)
         {

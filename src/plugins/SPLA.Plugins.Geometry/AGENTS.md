@@ -58,8 +58,8 @@ Two grids, both in `GeometrySettings`, all values clamped:
 | `grid_step` | `50` | 10…500 | spacing of the fine lines, in view pixels |
 | `grid_major_every` | `4` | 1…20 | every Nth line drawn stronger and **labelled**; fine lines carry no labels |
 | `grid_color` | `#141414` | `#RRGGBB`/`#AARRGGBB`, bad value falls back | near-black: on a grey-white sack a white grid is invisible, and this is clear of the edge palette |
-| `box_grid` | `false` | — | a grid **inside the editing box, along its own axes** — dashed, unlabelled |
-| `box_grid_divisions` | `4` | 1…20 | cells per side |
+| `box_grid` | `false` | — | a grid **inside the editing box, along its own axes** — dashed, unlabelled. The `box_grid` argument of `geom_open`/`geom_view` overrides it for that view; null follows this |
+| `box_grid_divisions` | `4` | 1…20 | cells per side. Settings-only: a calibration, not something to flip mid-task |
 
 The view grid answers *where is it*. "Is the box tight on the thing" is a property relative to the
 **box** and is measured along the box's own sides, which is what the box grid is for: "the text starts
