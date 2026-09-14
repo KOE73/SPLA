@@ -5,7 +5,6 @@ import WorkspaceShell from "../surfaces/Workspace/WorkspaceShell.vue";
 import Terminal from "../surfaces/Terminal.vue";
 import Debug from "../surfaces/Debug.vue";
 import Wire from "../surfaces/Wire.vue";
-import BrowserScreencast from "../surfaces/BrowserScreencast.vue";
 import SessionsPanel from "../surfaces/SessionsPanel.vue";
 import PluginPanel from "./PluginPanel.vue";
 import DockTab from "./DockTab.vue";
@@ -27,7 +26,6 @@ const builtInComponents: Record<(typeof builtInKinds)[number], VueComponent> = {
   chat: dockComponent(ChatSurface),
   workspace: dockComponent(WorkspaceShell),
   ssh: dockComponent(Terminal),
-  browserScreencast: dockComponent(BrowserScreencast),
   debug: dockComponent(Debug),
   wire: dockComponent(Wire),
   sessions: dockComponent(SessionsPanel),
