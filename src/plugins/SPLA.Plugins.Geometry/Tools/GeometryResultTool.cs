@@ -25,8 +25,8 @@ internal sealed class GeometryResultTool(ResolvedSettings projectSettings) : Geo
     public override string Name => "geom_result";
 
     protected override string Description =>
-        "Returns everything marked, in the ORIGINAL image's coordinates, as JSON. Call it when the " +
-        "markup is done. This one returns no picture — it is the answer, not something to look at.";
+        "Returns everything marked, in the ORIGINAL image's coordinates, as JSON. This one returns " +
+        "no picture — it is the answer, not something to look at.";
 
     protected override string? Details =>
         "Each box also carries its four corners in source coordinates, so the result is unambiguous " +

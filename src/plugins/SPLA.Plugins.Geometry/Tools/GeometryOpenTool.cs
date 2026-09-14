@@ -22,9 +22,9 @@ internal sealed class GeometryOpenTool(ResolvedSettings projectSettings) : Geome
     public override string Name => "geom_open";
 
     protected override string Description =>
-        "Opens an image for markup and returns it as a picture. Start here: every other geom_* tool " +
-        "works on the image this opened. Accepts a blob:<handle> from another tool, a URI " +
-        "(file:///…), or a path inside the project workspace.";
+        "Opens an image for markup and returns it as a picture. Every other geom_* tool works on the " +
+        "image this opened. Accepts a blob:<handle> from another tool, a URI (file:///…), or a path " +
+        "inside the project workspace.";
 
     protected override string? Details =>
         "Opening a second image in the same chat replaces the first one and everything marked on it. " +

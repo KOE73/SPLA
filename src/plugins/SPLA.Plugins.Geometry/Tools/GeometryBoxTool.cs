@@ -31,12 +31,8 @@ internal sealed class GeometryBoxTool(ResolvedSettings projectSettings) : Geomet
 
     protected override string Description =>
         "Places a named box on the open image, or corrects one already placed, and returns the " +
-        "picture with it drawn. Guess roughly first, then look at the returned picture and correct " +
-        "what you see. Stop when the outline sits on the thing and you cannot name a side that is " +
-        "still wrong — then call geom_accept. If a correction did not make the picture better, do " +
-        "not repeat it smaller: change approach instead — move one side with edge/by rather than the " +
-        "whole size, check the tilt words against the picture in case the angle's sign is wrong, or " +
-        "geom_view onto the box and work larger.";
+        "picture with it drawn. A correction is expressed either as a delta on the whole box or as " +
+        "one side moved, named by the colour it is drawn in.";
 
     protected override string? Details =>
         "Coordinates are in the pixels of the picture you were last shown, never the original " +
@@ -45,7 +41,7 @@ internal sealed class GeometryBoxTool(ResolvedSettings projectSettings) : Geomet
         "(edge + by). A new box needs cx, cy, width and height. delete:true removes the box. " +
         "angle is degrees and turns the box clockwise on the picture: angle=10 leaves it tilted " +
         "DOWN to the right, angle=-10 tilted UP to the right. Every reply names the tilt in words " +
-        "next to the number — read it back and check it against what you see before nudging the size. " +
+        "next to the number. " +
         "The box being placed is drawn with a colour on each of its four sides and the reply says " +
         "which is which; edge takes one of those colour names. Worked example: the picture shows the " +
         "text running past the green (left) side and stopping short of the magenta (right) one, so " +
@@ -74,8 +70,7 @@ internal sealed class GeometryBoxTool(ResolvedSettings projectSettings) : Geomet
         ["dh"] = Field("Heighten by this many pixels (negative shortens)."),
         ["dangle"] = Field(
             "Turn by this many degrees, clockwise on the picture: dangle=5 drops the right-hand end " +
-            "further down, dangle=-5 lifts it. If the box leans the wrong way, the sign is wrong — " +
-            "flip it rather than turning further the same way."),
+            "further down, dangle=-5 lifts it."),
         ["edge"] = new
         {
             type = new[] { "string", "null" },

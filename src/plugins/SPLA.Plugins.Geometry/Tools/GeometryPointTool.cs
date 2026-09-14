@@ -25,8 +25,7 @@ internal sealed class GeometryPointTool(ResolvedSettings projectSettings) : Geom
 
     protected override string Description =>
         "Marks a named point on the open image, or corrects one already marked, and returns the " +
-        "picture with it drawn as a crosshair. Guess roughly first, look at the result, then call " +
-        "again with dx/dy to nudge it.";
+        "picture with it drawn as a crosshair. A correction is expressed as dx/dy.";
 
     protected override string? Details =>
         "Coordinates are in the pixels of the picture you were last shown, never the original " +
