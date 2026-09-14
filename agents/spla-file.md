@@ -70,6 +70,7 @@ ignore:
 | `agent.spawned_retention` | No | How many finished spawned sessions to keep on disk, newest first (default 200). `0` keeps none; negative disables trimming entirely. Never touches a session with a run still in progress. Project-level only — not a per-role setting; retention is a disk policy of the project, not a behaviour a role narrows. See [Roles](#roles). |
 | `agent.peer_debounce_base` / `agent.peer_debounce_max` / `agent.peer_depth_ceiling` / `agent.peer_hard_cap` | No | The correspondence decay regulator — how fast an exchange between two actors slows down and where it is cut off. See [Correspondence decay](#correspondence-decay). |
 | `agent.self_feeding_cap` | No | How many consecutive turns with no human message the chat pump allows itself before it stops waking a turn and posts a notice instead. Unset or `0` — disabled, no cap. See [Correspondence decay](#correspondence-decay). |
+| `agent.tool_images` | No | How long a picture a tool returned stays in the context sent to the model: `all` (default — every picture, to the end of the chat) or `last` (only the newest one, whichever tool made it). Project-level only, like `spawned_retention`. See [Tool images in the context](#tool-images-in-the-context). |
 | `roles` | No | Names of the roles this project has, e.g. `[reviewer, architect]`. Each name pairs with a body at `roles/<name>.yaml`, next to this manifest. See [Roles](#roles). |
 | `llm.provider` | No | LLM provider. Currently only `lmstudio`. |
 | `llm.endpoint` | No | API base URL. |
@@ -282,6 +283,35 @@ counted a turn as "self-fed" even when a correspondent's reply was what woke it 
 between two roles hit that ceiling on the third turn, before `peer_depth_ceiling`/`peer_hard_cap` above
 ever got a chance to fire. It is now disabled by default: a correspondence is bounded by the `peer_*`
 regulator alone, and `self_feeding_cap` is a separate, optional rein on top of it.
+
+## Tool images in the context
+
+A tool that returns a picture (a browser or Android screenshot, a geometry frame) does not carry it
+in its own result: the orchestrator inserts it as a separate synthetic user message, and by default
+that message lives in the context to the end of the chat. For a place-look-correct loop that is six
+to ten pictures per task of which exactly one is current — and local stacks (llama.cpp, which LM
+Studio is built on) usually do not even process the older ones, so the tokens are paid for nothing.
+
+```yaml
+agent:
+  tool_images: last
+```
+
+| Value | Meaning |
+|---|---|
+| `all` | Default. Every picture stays in the context for the rest of the chat — today's behaviour, unchanged for anyone who does not opt in. |
+| `last` | Only the newest tool picture is assembled into the context. The rest are superseded. |
+
+**This is not deletion.** A superseded message stays in the chat, stays visible in the UI and stays
+in its sidecar file on disk; only the assembly of context for the model skips it. Switching back to
+`all` brings every picture back with nothing lost.
+
+One replacement key for every tool, not one per tool: the setting promises "the context holds the
+latest picture, whoever made it", and a per-tool key would keep one stale frame per tool — exactly
+the cost this exists to avoid.
+
+A value outside the list fails the project load rather than quietly meaning `all` — a setting that is
+declared, survives a restart and does nothing is worse than one that is absent.
 
 ## Launch Profiles
 
