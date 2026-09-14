@@ -9,6 +9,11 @@
     <ProjectReference Include="..\..\core\SPLA.MCP.Core\SPLA.MCP.Core.csproj" />
     <PackageReference Include="Microsoft.Playwright" Version="1.49.0" />
   </ItemGroup>
+  <ItemGroup>
+    <!-- Prebuilt web panel module (web_panel_entry in meta.yaml). Lands in TargetDir so the
+         CopyPlugin glob below deploys it next to the dll. -->
+    <None Include="web\dist\**" CopyToOutputDirectory="PreserveNewest" Link="web\dist\%(RecursiveDir)%(Filename)%(Extension)" />
+  </ItemGroup>
   <Target Name="CopyPlugin" AfterTargets="Build">
     <ItemGroup>
       <PluginFiles Include="$(TargetDir)**\*.*" />

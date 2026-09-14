@@ -46,6 +46,6 @@ describe("registerPluginPanels", () => {
   it("leaves the built-in panels alone", () => {
     registerPluginPanels([probe]);
     expect(toolKinds.filter(k => !k.startsWith("plugin:")))
-      .toEqual(["workspace", "ssh", "browserScreencast", "debug", "wire", "sessions"]);
+      .toEqual(["workspace", "ssh", "debug", "wire", "sessions"]);
   });
 });

@@ -1,3 +1,12 @@
+<!--
+  Browser Lab, the panel. It used to be a surface compiled into the shell (web/src/surfaces/
+  BrowserScreencast.vue) while the same job already had a mechanism — a plugin ships its panel as a
+  bundle and the shell mounts it blind (ADR_20260914-2 §3.3). Nothing about the view changed in the
+  move; what changed is that no file in web/ names this plugin any more.
+
+  Two-way: frames arrive as plugin.panel.event, and pointer/key/wheel/resize go back out as
+  plugin.panel.input over the same transport.
+-->
 <template>
   <div class="screencast-surface">
     <form class="browser-bar" @submit.prevent="navigate">
@@ -17,10 +26,11 @@
 </template>
 
 <script setup lang="ts">
-import { t } from "../i18n";
 import { onBeforeUnmount, onMounted, ref } from "vue";
-import { client } from "../protocol/SplaClient";
-import { store } from "../state/store";
+import { t } from "./i18n";
+import type { MountApi } from "./mount";
+
+const props = defineProps<{ api: MountApi }>();
 
 const panelId = "browser-screencast-main";
 const viewport = ref<HTMLDivElement | null>(null);
@@ -31,7 +41,7 @@ const error = ref("");
 const disposers: Array<() => void> = [];
 
 function sendInput(inputType: string, data: object) {
-  client.send("plugin.panel.input", { panelId, inputType, data });
+  props.api.send("plugin.panel.input", { panelId, inputType, data });
 }
 function navigate() { sendInput("navigate", { url: address.value }); }
 
@@ -64,17 +74,19 @@ function wheelFrame(event: WheelEvent) {
 
 onMounted(() => {
   let opened = false;
+  // send() returns false while there is no connection, so the first attempt doubles as the
+  // "are we connected yet" test the surface used to ask the host's store for.
   const open = () => {
-    if (opened || !client.send("plugin.panel.open", { panelId, panelType: "browser.screencast", parameters: {} })) return;
+    if (opened || !props.api.send("plugin.panel.open", { panelId, panelType: "browser.screencast", parameters: {} })) return;
     opened = true;
   };
-  if (store.connected) open();
-  disposers.push(client.on("conn", event => { if (event.on) open(); }));
-  disposers.push(client.on("plugin.panel.opened", event => {
-    if (event.panelId === panelId) state.value = "live";
+  open();
+  disposers.push(props.api.on("conn", event => { if (event?.on) open(); }));
+  disposers.push(props.api.on("plugin.panel.opened", event => {
+    if (event?.panelId === panelId) state.value = "live";
   }));
-  disposers.push(client.on("plugin.panel.event", event => {
-    if (event.panelId !== panelId) return;
+  disposers.push(props.api.on("plugin.panel.event", event => {
+    if (event?.panelId !== panelId) return;
     if (event.eventType === "frame" && event.data?.base64) {
       frame.value = `data:${event.data.mimeType || "image/jpeg"};base64,${event.data.base64}`;
       if (event.data.url) address.value = event.data.url;
@@ -93,7 +105,7 @@ onMounted(() => {
 });
 
 onBeforeUnmount(() => {
-  client.send("plugin.panel.close", { panelId });
+  props.api.send("plugin.panel.close", { panelId });
   disposers.forEach(dispose => dispose());
 });
 </script>

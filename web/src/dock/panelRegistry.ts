@@ -15,12 +15,12 @@ import type { PluginDto } from "../protocol/types";
 export type PanelKind = string;
 
 /** Kinds built into the shell. Plugin kinds are "plugin:<id>" and are added at runtime. */
-export const builtInKinds = ["chat", "workspace", "ssh", "browserScreencast", "debug", "wire", "sessions"] as const;
+export const builtInKinds = ["chat", "workspace", "ssh", "debug", "wire", "sessions"] as const;
 
 // Which panels are tools (everything the top strip can open/hide). Chat is the always-present base.
 // Reactive: registerPluginPanels appends to it when plugins.result arrives.
 export const toolKinds = reactive<PanelKind[]>(
-  ["workspace", "ssh", "browserScreencast", "debug", "wire", "sessions"]);
+  ["workspace", "ssh", "debug", "wire", "sessions"]);
 
 export interface PanelDefinition {
   id: string;
@@ -52,7 +52,6 @@ export const panelCatalog = reactive<Record<PanelKind, PanelDefinition>>({
   // NOT a singleton: each SSH terminal is its own panel (id "ssh:<host>:<n>", host in params) —
   // the operator routinely holds several sessions to the same or different hosts.
   ssh: { id: "ssh", kind: "ssh", title: "SSH", icon: "⌨", iconName: "ssh", singleton: false, protected: false, defaultWidth: 480 },
-  browserScreencast: { id: "browserScreencast", kind: "browserScreencast", title: "Browser Lab", icon: "🌐", iconName: "browser", singleton: true, protected: false, defaultWidth: 640 },
   debug: { id: "debug", kind: "debug", title: "Debug", icon: "🧠", iconName: "debug", singleton: true, protected: false, defaultWidth: 420 },
   wire: { id: "wire", kind: "wire", title: "Wire", icon: "🔌", iconName: "wire", singleton: true, protected: false, defaultWidth: 420 },
   sessions: { id: "sessions", kind: "sessions", title: "Sessions", icon: "🗂", iconName: "sessions", singleton: true, protected: false, defaultWidth: 320 },
