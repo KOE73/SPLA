@@ -29,6 +29,16 @@ internal sealed class GeometryView
 
     public int Height { get; init; }
 
+    /// <summary>True when the crop was turned so the box it was cut from reads horizontally. Announced
+    /// in the reply, because it is the one case where the picture is not an axis-aligned piece of the
+    /// frame and the model would otherwise have no way to know.</summary>
+    public bool Deskewed { get; init; }
+
+    /// <summary>Whether renders of this view carry the debug grid. It lives on the view rather than on
+    /// the call so that a model which asked to see the grid keeps seeing it while it works here,
+    /// instead of repeating the flag on every correction.</summary>
+    public bool Grid { get; set; }
+
     /// <summary>This view's pixels → source image pixels. Where a coordinate the model passed becomes
     /// canonical.</summary>
     public Affine ViewToSource => SourceToView.Invert();
