@@ -4,7 +4,6 @@
       <b>{{ t('Debug') }}</b>
       <span v-if="chatLabel" class="chat-label" :title="'chat: ' + (store.currentChat ?? '')">{{ chatLabel }}</span>
       <button class="refresh" :title="t('Refresh now')" @click="reload">⟳</button>
-      <button v-if="!solo" class="filter" @click="close">{{ t('close') }}</button>
     </header>
     <div class="tabs">
       <button v-for="tab in TABS" :key="tab.kind" class="tab" :class="{ on: activeKind === tab.kind }" @click="request(tab.kind)">{{ tab.label }}</button>
@@ -75,12 +74,12 @@ import { t } from "../i18n";
 import { computed, onMounted, onUnmounted, ref, watch } from "vue";
 import { client } from "../protocol/SplaClient";
 import { store } from "../state/store";
-import { uiBus } from "../state/uiBus";
 import { findChat } from "../state/chatTree";
 import type { DebugSnapshotPayload } from "../protocol/types";
 import ContextTable from "./ContextTable.vue";
 
-// Standalone window (e.g. a tear-off ?surface=debug): no drawer chrome, auto-load immediately.
+// Standalone window (e.g. a tear-off ?surface=debug): it follows the focused chat itself, instead of
+// reading whichever chat the dock's store says is current.
 const solo = !!new URLSearchParams(location.search).get("surface");
 
 const TABS = [
@@ -98,7 +97,6 @@ const TABS = [
 
 const activeKind = ref<string>("kv.session");
 const snapshot = ref<DebugSnapshotPayload | null>(null);
-const isOpen = ref(false);
 /** Which manifest rows are expanded. Reset on every fetch — row indexes are only meaningful
  *  for the snapshot they came from. */
 const open = ref(new Set<number>());
@@ -124,12 +122,11 @@ function request(kind: string) {
   client.send("debug.request", { kind }, store.currentChat ? { chatId: store.currentChat } : undefined);
 }
 function reload() { request(activeKind.value); }
-function close() { isOpen.value = false; document.getElementById("debug")?.classList.remove("open"); }
 
 let refreshTimer = 0;
 function scheduleRefresh() {
   clearTimeout(refreshTimer);
-  refreshTimer = window.setTimeout(() => { if (solo || isOpen.value) reload(); }, 400);
+  refreshTimer = window.setTimeout(reload, 400);
 }
 
 const offSnapshot = client.on("debug.snapshot", p => { snapshot.value = p; open.value = new Set(); });
@@ -140,16 +137,10 @@ const offTurnComplete = client.on("turn.complete", scheduleRefresh);
 const offChatSettingsEcho = client.on("chat.opened", (_p, env) => {
   if (env.chatId && env.chatId === store.currentChat) scheduleRefresh();
 });
-const offOpen = uiBus.on("debug.open", () => {
-  isOpen.value = true;
-  document.getElementById("debug")?.classList.add("open");
-  request("kv.session");
-});
-
-// Follows whichever chat is on screen — an embedded drawer as much as a solo tear-off window. Without
+// Follows whichever chat is on screen — a docked panel as much as a solo tear-off window. Without
 // this the panel was static: opening it once and then switching chats kept showing the first chat's
 // snapshot forever, because nothing ever asked again.
-watch(() => store.currentChat, () => { if (solo || isOpen.value) reload(); });
+watch(() => store.currentChat, reload);
 
 // A tear-off panel follows the focused chat, so it watches one chat at a time — and must drop the
 // previous one. Without that, a window left open all day accumulates watches and keeps receiving the
@@ -169,9 +160,11 @@ const offWelcome = solo ? client.on("welcome", watchAndReload) : () => {};
 const offFocus = solo ? client.on("focus.changed", watchAndReload) : () => {};
 const offChatOpened = solo ? client.on("chat.opened", watchAndReload) : () => {};
 
-onMounted(() => { if (solo) request("kv.session"); });
+// A mounted panel is an open panel: there is no separate "opened" signal to wait for, and waiting for
+// one is what used to leave every refresh path inert in the dock.
+onMounted(() => request("kv.session"));
 onUnmounted(() => {
   offSnapshot(); offToolResult(); offTurnComplete(); offChatSettingsEcho();
-  offOpen(); offWelcome(); offFocus(); offChatOpened();
+  offWelcome(); offFocus(); offChatOpened();
 });
 </script>

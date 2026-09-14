@@ -56,7 +56,7 @@
       <button class="pb-icon-btn" :title="t('Settings')" @click="openSettings">
         <Icon name="settings" :size="19" :weight="2" />
       </button>
-      <button class="pb-icon-btn subtle" :title="t('Debug')" @click="uiBus.emit('debug.open')">
+      <button class="pb-icon-btn subtle" :title="t('Debug')" @click="openPanel('debug')">
         <Icon name="debug" :size="16" />
       </button>
     </div>
@@ -68,8 +68,8 @@ import { t } from "../i18n";
 import { computed, onMounted, onUnmounted, ref } from "vue";
 import { client } from "../protocol/SplaClient";
 import { store } from "../state/store";
-import { uiBus } from "../state/uiBus";
 import { openOverlay } from "../state/overlay";
+import { openPanel } from "../dock/dockController";
 import { formatCompact } from "../util/format";
 import Icon from "../dock/Icon.vue";
 import type { TokenUsageScope } from "../protocol/types";
