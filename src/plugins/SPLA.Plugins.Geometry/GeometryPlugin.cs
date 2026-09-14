@@ -1,5 +1,6 @@
 using SPLA.Domain.Settings;
 using SPLA.MCP.Core.Interfaces;
+using SPLA.Plugins.Geometry.Tools;
 using System.Collections.Generic;
 
 namespace SPLA.Plugins.Geometry;
@@ -23,7 +24,6 @@ public sealed class GeometryPlugin : ISplaPlugin
     public IEnumerable<IMcpTool> Initialize(ResolvedSettings settings)
     {
         Settings = settings;
-        // Tools arrive in wave 3 of PLAN_20260914_plugins_geometry-workspace.md.
-        return [];
+        return [new GeometryOpenTool(settings)];
     }
 }
