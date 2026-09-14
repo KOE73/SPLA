@@ -130,6 +130,9 @@ internal abstract class GeometryToolBase(ResolvedSettings projectSettings) : IMc
         var handle = chat.Blobs.Put(
             BlobPayload.OfBytes(bytes, mime), session.NextRenderName(cfg.RenderHistory), session.Origin);
 
+        // One step of the loop is done and stored: the panel, if anyone has it open, redraws now.
+        GeometrySessionRegistry.NotifyUpdated(chat);
+
         return ToolResult.From(
             new ToolText(Report(session, view, action, handle)),
             new ToolImage(Convert.ToBase64String(bytes), mime));
@@ -166,7 +169,7 @@ internal abstract class GeometryToolBase(ResolvedSettings projectSettings) : IMc
             foreach (var obj in here)
                 text.Append("  ").Append(obj.Name.PadRight(nameWidth)).Append("  ")
                     .Append(obj.Kind == ObjectKind.Box ? "box   " : "point ").Append(' ')
-                    .Append(Describe(obj, view).PadRight(46))
+                    .Append(DescribeInView(obj, view).PadRight(46))
                     .Append(obj.Status == ObjectStatus.Accepted ? "accepted" : "editing").Append('\n');
         }
 
@@ -177,8 +180,9 @@ internal abstract class GeometryToolBase(ResolvedSettings projectSettings) : IMc
         return text.ToString();
     }
 
-    /// <summary>One object's numbers, in the pixels of the view the model is looking at.</summary>
-    private static string Describe(GeometryObject obj, GeometryView view)
+    /// <summary>One object's numbers, in the pixels of the view the model is looking at. Internal
+    /// rather than private because the panel prints the same line the model is told.</summary>
+    internal static string DescribeInView(GeometryObject obj, GeometryView view)
     {
         var t = view.SourceToView;
         if (obj.Kind == ObjectKind.Point)

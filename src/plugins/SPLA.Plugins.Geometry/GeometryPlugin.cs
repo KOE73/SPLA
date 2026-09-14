@@ -14,8 +14,11 @@ namespace SPLA.Plugins.Geometry;
 /// (<c>GeometrySessionRegistry</c>): <see cref="Initialize"/> runs once per process,
 /// not once per chat, so tool instances are shared and per-chat isolation happens at call time.
 /// </para>
+/// <para>
+/// The plugin also contributes a dock panel; that half is <c>Panel/GeometryPanelProvider.cs</c>.
+/// </para>
 /// </summary>
-public sealed class GeometryPlugin : ISplaPlugin
+public sealed partial class GeometryPlugin : ISplaPlugin
 {
     /// <summary>Captured for the tools: image addresses are resolved through
     /// <c>ResourceRegistry.For(settings)</c>, which needs the project's resolved settings.</summary>

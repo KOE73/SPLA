@@ -1,4 +1,5 @@
 using SPLA.Domain.Agent;
+using System;
 using System.Collections.Concurrent;
 
 namespace SPLA.Plugins.Geometry.Session;
@@ -28,6 +29,31 @@ internal static class GeometrySessionRegistry
         if (Sessions.TryGetValue(session, out var previous) && !ReferenceEquals(previous, geometry))
             previous.Dispose();
         Sessions[session] = geometry;
+    }
+
+    /// <summary>Raised with a chat id after a step of the markup loop has been rendered and stored.
+    /// The panel is pushed to rather than polling: one event per step of a loop a human drives is
+    /// nothing like a stream, and a timer would burn for nothing between steps (plan §2.1).</summary>
+    public static event Action<string>? Updated;
+
+    /// <summary>Says that <paramref name="session"/>'s markup moved on. A chat with no id (a bare CLI
+    /// entry point) has no panel to tell.</summary>
+    public static void NotifyUpdated(IAgentSession session)
+    {
+        if (session.ChatId is not { Length: > 0 } chatId) return;
+        // A viewer that throws is a viewer's problem; the markup loop carries on.
+        try { Updated?.Invoke(chatId); } catch { /* ignored */ }
+    }
+
+    /// <summary>The markup session of the chat with this id, together with the agent session that
+    /// owns it — the panel needs both: the geometry for the text, the agent session for the blob ring
+    /// the renders live in. Null when that chat has never opened a frame.</summary>
+    public static (IAgentSession Owner, GeometrySession Geometry)? TryGetForChat(string chatId)
+    {
+        foreach (var (owner, geometry) in Sessions)
+            if (string.Equals(owner.ChatId, chatId, StringComparison.Ordinal))
+                return (owner, geometry);
+        return null;
     }
 
     public static GeometrySession? TryGet(IAgentSession session)
