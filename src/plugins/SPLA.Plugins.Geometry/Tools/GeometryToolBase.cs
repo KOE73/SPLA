@@ -134,14 +134,15 @@ internal abstract class GeometryToolBase(ResolvedSettings projectSettings) : IMc
         GeometrySessionRegistry.NotifyUpdated(chat);
 
         return ToolResult.From(
-            new ToolText(Report(session, view, action, handle)),
+            new ToolText(Report(session, view, action, handle, cfg)),
             new ToolImage(Convert.ToBase64String(bytes), mime));
     }
 
     /// <summary>The reply text. Absolute values are printed every time — the model is not required to
     /// remember what it last sent, and re-deriving them is exactly the arithmetic this tool exists to
     /// take off it.</summary>
-    private static string Report(GeometrySession session, GeometryView view, string action, string handle)
+    private static string Report(
+        GeometrySession session, GeometryView view, string action, string handle, GeometrySettings cfg)
     {
         var text = new StringBuilder();
         text.Append(action).Append('\n');
@@ -178,7 +179,11 @@ internal abstract class GeometryToolBase(ResolvedSettings projectSettings) : IMc
         if (elsewhere.Count > 0)
             text.Append("outside this view: ").Append(string.Join(", ", elsewhere.Select(o => o.Name))).Append('\n');
 
-        foreach (var obj in here) Oversize(text, obj, view);
+        foreach (var obj in here)
+        {
+            Oversize(text, obj, view);
+            Small(text, obj, view, cfg);
+        }
 
         text.Append("stored as ").Append(handle).Append('.');
         return text.ToString();
@@ -220,6 +225,46 @@ internal abstract class GeometryToolBase(ResolvedSettings projectSettings) : IMc
             .Append(" edges are off-screen, so you cannot judge them here. That is fine if it really ")
             .Append("runs off the picture; if not, geom_view {to:'").Append(obj.Name)
             .Append("'} shows the whole box.\n");
+    }
+
+    /// <summary>A box small enough in this view that it is not worth aiming at is below this share of
+    /// the view's shorter side. At the default 1024 px working size that is roughly 150 px — a box
+    /// smaller than that is a few percent of the picture's area, where a one-pixel judgement by eye
+    /// costs many pixels on the source image, and cropping to it is what the crop stack is for.</summary>
+    private const double SmallInView = 0.15;
+
+    /// <summary>A nudge is only worth printing when the crop would genuinely change what the model can
+    /// see; below this it is noise on every reply.</summary>
+    private const double WorthZooming = 2;
+
+    /// <summary>
+    /// The mirror of <see cref="Oversize"/>: the box fits, but it is small enough here that the model
+    /// is placing it by eye at a scale it cannot judge. Accuracy in this plugin comes from working
+    /// zoomed — in the first live run the model placed five objects in the flat view, never zoomed
+    /// once, and only the large ones came out usable — so the reply says so and names the call.
+    /// </summary>
+    private static void Small(StringBuilder text, GeometryObject obj, GeometryView view, GeometrySettings cfg)
+    {
+        if (obj.Box is not { } box) return;
+
+        var corners = box.Transformed(view.SourceToView).Corners();
+        var width = corners.Max(c => c.X) - corners.Min(c => c.X);
+        var height = corners.Max(c => c.Y) - corners.Min(c => c.Y);
+
+        var longest = Math.Max(width, height);
+        if (longest <= 0 || longest >= SmallInView * Math.Min(view.Width, view.Height)) return;
+
+        // What geom_view would actually deliver: a crop's longest side becomes render_max_side, and
+        // the box occupies all of it but the padding (ViewBuilder.Zoom).
+        var zoomed = cfg.RenderMaxSide / (1 + cfg.CropPadding * 2) / longest;
+        if (zoomed < WorthZooming) return;
+
+        text.Append("note: '").Append(obj.Name).Append("' is small in this view (")
+            .Append(Round(width)).Append('x').Append(Round(height)).Append(" px of ")
+            .Append(view.Width).Append('x').Append(view.Height)
+            .Append(") — placing it accurately by eye at this size is guesswork. geom_view {to:'")
+            .Append(obj.Name).Append("'} shows it about ")
+            .Append(Round(zoomed)).Append("x larger, and coordinates there are that much finer.\n");
     }
 
     /// <summary>One object's numbers, in the pixels of the view the model is looking at. Internal

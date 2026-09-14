@@ -243,4 +243,37 @@ public sealed class GeometryBoxToolTests
 
         Assert.DoesNotContain("off-screen", result.TextContent);
     }
+
+    /// <summary>The mirror case. Accuracy in this plugin comes from working zoomed; a box that covers a
+    /// few percent of the picture is being placed by eye at a scale the model cannot judge, so the
+    /// reply says so and names the call that fixes it — with the magnification it would actually get.
+    /// </summary>
+    [Fact]
+    public async Task A_box_small_in_the_view_is_told_that_zooming_would_show_it_larger()
+    {
+        var (chat, tools, scope) = Begin();
+        using var _scope = scope;
+        await OpenFrame(chat, tools);   // 800x600, so 15% of the shorter side is 90 px
+
+        var result = await tools["geom_box"].ExecuteAsync(
+            """{"name":"mark","cx":400,"cy":300,"width":60,"height":30}""");
+
+        Assert.False(result.IsError, result.TextContent);
+        Assert.Contains("'mark' is small in this view (60x30 px of 800x600)", result.TextContent);
+        Assert.Contains("geom_view {to:'mark'}", result.TextContent);
+        Assert.Contains("larger", result.TextContent);
+    }
+
+    [Fact]
+    public async Task A_box_filling_a_reasonable_share_of_the_view_is_not_nudged()
+    {
+        var (chat, tools, scope) = Begin();
+        using var _scope = scope;
+        await OpenFrame(chat, tools);
+
+        var result = await tools["geom_box"].ExecuteAsync(
+            """{"name":"bag","cx":400,"cy":300,"width":400,"height":300}""");
+
+        Assert.DoesNotContain("is small in this view", result.TextContent);
+    }
 }
