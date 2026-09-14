@@ -79,18 +79,20 @@ public class ChatFeedSnapshotTests
                 feed.Publish(Ev("c1"), () => state++);
         });
 
-        var first = Task.Run(() => SubscribeAndCount(feed, () => state));
-        var second = Task.Run(() => SubscribeAndCount(feed, () => state));
-        await Task.WhenAll(first, second);
+        var firstTask = Task.Run(() => SubscribeAndCount(feed, () => state));
+        var secondTask = Task.Run(() => SubscribeAndCount(feed, () => state));
+        var results = await Task.WhenAll(firstTask, secondTask);
         await producer;
 
-        first.Result.Subscription.Dispose();
-        second.Result.Subscription.Dispose();
+        var first = results[0];
+        var second = results[1];
+        first.Subscription.Dispose();
+        second.Subscription.Dispose();
 
-        Assert.Equal(first.Result.Sequence, first.Result.Snapshot);
-        Assert.Equal(second.Result.Sequence, second.Result.Snapshot);
-        Assert.Equal(totalPublishes - first.Result.Sequence, first.Result.Received());
-        Assert.Equal(totalPublishes - second.Result.Sequence, second.Result.Received());
+        Assert.Equal(first.Sequence, first.Snapshot);
+        Assert.Equal(second.Sequence, second.Snapshot);
+        Assert.Equal(totalPublishes - first.Sequence, first.Received());
+        Assert.Equal(totalPublishes - second.Sequence, second.Received());
     }
 
     private static (int Snapshot, long Sequence, IDisposable Subscription, Func<int> Received)

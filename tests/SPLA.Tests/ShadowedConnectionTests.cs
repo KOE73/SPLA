@@ -42,7 +42,7 @@ public sealed class ShadowedConnectionTests
     {
         var resolved = Resolve();
 
-        var live = Assert.Single(resolved.Connections.Where(c => c.Id == "default"));
+        var live = Assert.Single(resolved.Connections, c => c.Id == "default");
         Assert.Equal("http://project", live.Endpoint);
         Assert.Equal(ConnectionScope.Project, live.Scope);
 
@@ -69,8 +69,8 @@ public sealed class ShadowedConnectionTests
 
         var shown = SettingsOps.GetConnections(runtime).Connections;
 
-        var user = Assert.Single(shown.Where(c => c.Id == "default" && c.Scope == "user"));
-        var project = Assert.Single(shown.Where(c => c.Id == "default" && c.Scope == "project"));
+        var user = Assert.Single(shown, c => c.Id == "default" && c.Scope == "user");
+        var project = Assert.Single(shown, c => c.Id == "default" && c.Scope == "project");
         Assert.True(user.Shadowed);
         Assert.False(project.Shadowed);
     }
@@ -101,7 +101,7 @@ public sealed class ShadowedConnectionTests
 
         SettingsOps.SaveConnections(runtime, SettingsOps.GetConnections(runtime).Connections);
 
-        var live = Assert.Single(runtime.Settings.Connections.Where(c => c.Id == "default"));
+        var live = Assert.Single(runtime.Settings.Connections, c => c.Id == "default");
         Assert.Equal("http://project", live.Endpoint);
         Assert.Single(runtime.Settings.Models, m => m.Id == "project-model");
         Assert.DoesNotContain(runtime.Settings.Models, m => m.Id == "user-model");

@@ -93,7 +93,7 @@ public sealed class AgentsScopeStageTests : IDisposable
         Assert.NotEqual(ToolOutcome.Refused, retry.Outcome);
         Assert.True(File.Exists(Path.Combine(_root, "src", "backend", "new.cs")));
         // Still exactly one marker for the scope — the retry does not add a second.
-        Assert.Single(conversation.Messages.Where(m => m.ScopeMarker == "src/backend"));
+        Assert.Single(conversation.Messages, m => m.ScopeMarker == "src/backend");
     }
 
     [Fact]
@@ -122,7 +122,7 @@ public sealed class AgentsScopeStageTests : IDisposable
             WriteArgs(Path.Combine(_root, "src", "backend", "new.cs"), "// new"), CancellationToken.None);
 
         Assert.NotEqual(ToolOutcome.Refused, result.Outcome);
-        Assert.Empty(conversation.Messages.Where(m => m.ScopeMarker != null));
+        Assert.DoesNotContain(conversation.Messages, m => m.ScopeMarker != null);
     }
 
     /// <summary>
@@ -166,7 +166,7 @@ public sealed class AgentsScopeStageTests : IDisposable
 
             // Thread safety, unconditionally: exactly one marker was ever recorded for the scope,
             // across 20 repetitions launched from real OS threads racing to enter the stage.
-            Assert.Single(conversation.Messages.Where(m => m.ScopeMarker == "src/backend"));
+            Assert.Single(conversation.Messages, m => m.ScopeMarker == "src/backend");
 
             // No corruption either way: a call that was not refused actually wrote its file.
             foreach (var (result, file) in new[] { (results[0], fileA), (results[1], fileB) })

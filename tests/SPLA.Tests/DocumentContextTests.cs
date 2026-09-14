@@ -76,8 +76,8 @@ public sealed class DocumentContextTests
         // the same H1 twice — a rendering artefact a reader has to look past on every document.
         var markdown = new MarkdownContextRenderer().Render(Sample());
 
-        Assert.Equal(1, System.Text.RegularExpressions.Regex.Matches(
-            markdown, "^# Заявка\r?$", System.Text.RegularExpressions.RegexOptions.Multiline).Count);
+        Assert.Single(System.Text.RegularExpressions.Regex.Matches(
+            markdown, "^# Заявка\r?$", System.Text.RegularExpressions.RegexOptions.Multiline));
         Assert.Contains("*source: request.docx", markdown);
     }
 

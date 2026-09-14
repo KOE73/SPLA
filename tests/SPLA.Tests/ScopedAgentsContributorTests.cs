@@ -130,7 +130,7 @@ public sealed class ScopedAgentsContributorTests : IDisposable
 
         var after = contributor.Contribute(Context()).Context.Last().Body;
         Assert.Equal("backend rules v2", after);
-        Assert.Single(conversation.Messages.Where(m => m.ScopeMarker != null));
+        Assert.Single(conversation.Messages, m => m.ScopeMarker != null);
     }
 
     [Fact]

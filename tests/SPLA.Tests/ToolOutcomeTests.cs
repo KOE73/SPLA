@@ -204,6 +204,6 @@ public class ToolOutcomeTests
     public void ToString_gives_the_text()
     {
         Assert.Equal("hello", ToolResult.Text("hello").ToString());
-        Assert.Equal($"{ToolResult.Text("hello")}", "hello");
+        Assert.Equal("hello", $"{ToolResult.Text("hello")}");
     }
 }
