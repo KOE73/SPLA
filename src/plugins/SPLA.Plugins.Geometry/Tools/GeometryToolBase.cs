@@ -125,7 +125,10 @@ internal abstract class GeometryToolBase(ResolvedSettings projectSettings) : IMc
         var mime = GeometryRenderer.MimeType(cfg);
 
         // The frame is other people's content whatever it depicts, and the render is the frame.
-        var handle = chat.Blobs.Put(BlobPayload.OfBytes(bytes, mime), name: null, origin: session.Origin);
+        // Named, and the name rotates: every step of the loop used to leave a fresh auto-named blob
+        // of about a megabyte that nothing ever released (see GeometrySession.NextRenderName).
+        var handle = chat.Blobs.Put(
+            BlobPayload.OfBytes(bytes, mime), session.NextRenderName(cfg.RenderHistory), session.Origin);
 
         return ToolResult.From(
             new ToolText(Report(session, view, action, handle)),

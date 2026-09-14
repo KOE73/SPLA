@@ -18,6 +18,7 @@ public sealed class GeometrySettingsTests
         Assert.Equal(16, settings.FontSize);
         Assert.Equal(0.05, settings.CropPadding, 9);
         Assert.Equal(0, settings.JpegQuality);
+        Assert.Equal(5, settings.RenderHistory);
     }
 
     [Fact]
@@ -30,6 +31,7 @@ public sealed class GeometrySettingsTests
             ["font_size"] = 200,
             ["crop_padding"] = 5.0,
             ["jpeg_quality"] = 7,
+            ["render_history"] = 99,
         });
 
         Assert.Equal(4096, settings.RenderMaxSide);
@@ -37,6 +39,7 @@ public sealed class GeometrySettingsTests
         Assert.Equal(48, settings.FontSize);
         Assert.Equal(1.0, settings.CropPadding, 9);
         Assert.Equal(30, settings.JpegQuality);
+        Assert.Equal(20, settings.RenderHistory);
     }
 
     [Fact]

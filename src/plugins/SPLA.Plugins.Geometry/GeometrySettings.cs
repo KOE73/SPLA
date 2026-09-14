@@ -40,6 +40,12 @@ public sealed class GeometrySettings
     [YamlMember(Alias = "jpeg_quality")]
     public int JpegQuality { get; set; } = 0;
 
+    /// <summary>How many renders the chat's blob store keeps. Renders are written under the rotating
+    /// names <c>geom_render_1..N</c>, so the store holds this many at most instead of one blob per
+    /// step of the loop (a single frame's markup used to leave dozens of megabytes behind).</summary>
+    [YamlMember(Alias = "render_history")]
+    public int RenderHistory { get; set; } = 5;
+
     public static GeometrySettings FromBlob(Dictionary<string, object>? blob)
     {
         if (blob is null || blob.Count == 0) return new();
@@ -54,6 +60,7 @@ public sealed class GeometrySettings
         LineWidth = Clamp(LineWidth, 1, 16);
         FontSize = Clamp(FontSize, 8, 48);
         CropPadding = CropPadding < 0 ? 0 : CropPadding > 1 ? 1 : CropPadding;
+        RenderHistory = Clamp(RenderHistory, 1, 20);
         // 0 means PNG; any other value is a JPEG quality, and quality below 30 is not worth the
         // artefacts on a frame the model has to read geometry off, so it snaps up.
         JpegQuality = JpegQuality switch

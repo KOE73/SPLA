@@ -110,6 +110,30 @@ internal sealed class GeometrySession : IDisposable
         };
     }
 
+    // ── the render ring ───────────────────────────────────────────────────────
+
+    /// <summary>The name of the most recent render (<c>geom_render_&lt;n&gt;</c>), or null before the
+    /// first one. The head of the ring: anything reading the history — the panel, a human in the
+    /// debug window — needs to know which of the N names is newest, because the numbers wrap.</summary>
+    public string? LastRenderName { get; private set; }
+
+    private int _renders;
+
+    /// <summary>
+    /// The name the next render is stored under. Names rotate through <c>geom_render_1..history</c>,
+    /// and the blob store overwrites an entry with the same name, so a chat holds at most
+    /// <c>history</c> renders however long the markup loop runs.
+    /// <para>The chat id is deliberately NOT part of the name: every chat has its own blob store
+    /// (ChatRuntime builds an AgentSession per chat), so a chat id here would suggest a shared store
+    /// that does not exist.</para>
+    /// </summary>
+    public string NextRenderName(int history)
+    {
+        if (history < 1) history = 1;
+        var slot = _renders++ % history + 1;
+        return LastRenderName = $"geom_render_{slot}";
+    }
+
     /// <summary>The next free crop id — <c>crop_1</c>, <c>crop_2</c>, … Ids are never reused, since a
     /// view the model has already been shown must keep meaning what it meant.</summary>
     public string NextViewId() => $"crop_{Views.Count}";
