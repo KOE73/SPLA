@@ -327,6 +327,10 @@
     <Project Path="src/plugins/SPLA.Skills.Documents/SPLA.Skills.Documents.csproj" />
     <File Path="src/plugins/SPLA.Skills.Documents/skills/docx-to-registry.md" />
   </Folder>
+  <Folder Name="/src/plugins/vision/skills-geometry/">
+    <Project Path="src/plugins/SPLA.Skills.Geometry/SPLA.Skills.Geometry.csproj" />
+    <File Path="src/plugins/SPLA.Skills.Geometry/skills/image-markup.md" />
+  </Folder>
   <Folder Name="/src/plugins/infra/skills-network/">
     <Project Path="src/plugins/SPLA.Skills.Network/SPLA.Skills.Network.csproj" />
     <File Path="src/plugins/SPLA.Skills.Network/dns-diagnostics.md" />
