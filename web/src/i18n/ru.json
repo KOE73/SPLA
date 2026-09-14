@@ -530,5 +530,20 @@
   "← Back to the app": "← Назад в приложение",
   "✕ Remove": "✕ Убрать",
   "🔒 model is locked — view only": "🔒 модель закреплена — только просмотр",
-  "＋ field": "＋ поле"
+  "＋ field": "＋ поле",
+  "Geometry": "Геометрия",
+  "from box": "по рамке",
+  "deskewed": "выровнен",
+  "No image is open in this chat. The panel fills in as soon as the agent opens one.": "В этом чате не открыта картинка. Панель заполнится, как только агент её откроет.",
+  "Marked-up frame": "Размеченный кадр",
+  "Waiting for the first render…": "Ждём первую отрисовку…",
+  "Latest": "Последняя",
+  "latest": "последняя",
+  "Source": "Источник",
+  "box": "рамка",
+  "point": "точка",
+  "accepted": "принят",
+  "editing": "правится",
+  "outside this view": "вне этого вида",
+  "Nothing marked yet.": "Пока ничего не размечено."
 }

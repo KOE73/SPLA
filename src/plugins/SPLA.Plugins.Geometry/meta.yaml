@@ -2,6 +2,9 @@ id: geometry
 version: 0.1.0
 type: dll
 entry_point: SPLA.Plugins.Geometry.dll
+web_panel_entry: web/dist/panel.js
+panel_title: Geometry
+panel_icon: 📐
 description: Mark up an image with boxes and points by looking at the result and correcting it.
 summon: Use when asked to locate, outline or measure something on a picture in pixel coordinates.
 default_prompt: |
