@@ -170,6 +170,7 @@
     <File Path="docs/adr/ADR_20260908-2_core_result-size.md" />
     <File Path="docs/adr/ADR_20260909_core_named-images.md" />
     <File Path="docs/adr/ADR_20260910_plugins_android-device.md" />
+    <File Path="docs/adr/ADR_20260914-2_web_plugin-panels.md" />
     <File Path="docs/adr/ADR_20260914_plugins_geometry-workspace.md" />
     <File Path="docs/adr/ADR_20260910-2_agent_chat-feed.md" />
     <File Path="docs/adr/ADR_20260911_core_resources-capability.md" />
@@ -214,6 +215,7 @@
     <File Path="docs/plans/PLAN_20260904_core_chat-graph.md" />
     <File Path="docs/plans/PLAN_20260906_core_chat-directory-and-await.md" />
     <File Path="docs/plans/PLAN_20260910_plugins_android-device.md" />
+    <File Path="docs/plans/PLAN_20260914-2_web_plugin-panels.md" />
     <File Path="docs/plans/PLAN_20260914_plugins_geometry-workspace.md" />
     <File Path="docs/plans/PLAN_20260910-2_agent_chat-feed.md" />
     <File Path="docs/plans/PLAN_20260911_agent_roles-agents-md-compact.md" />
