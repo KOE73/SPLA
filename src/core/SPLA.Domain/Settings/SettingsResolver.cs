@@ -74,6 +74,11 @@ public class ResolvedSettings
     /// <summary>How AGENTS.md (root and, as folders are visited, nested) reaches the prompt.
     /// Default <see cref="AgentsMdMode.Inject"/> — see <c>ADR_20260911-2_agent_agents-md-scopes.md</c>.</summary>
     public AgentsMdMode AgentsMd { get; set; } = AgentsMdMode.Inject;
+
+    /// <summary>How long a tool's picture stays in the context sent to the model. Default
+    /// <see cref="ToolImagesMode.All"/> — today's behaviour; see
+    /// <see cref="SplaAgentSection.ToolImages"/>.</summary>
+    public ToolImagesMode ToolImages { get; set; } = ToolImagesMode.All;
     public string? CustomPrompt { get; set; }
     /// <summary>
     /// Challenge, then stop, a turn that keeps making the same tool call. **On** — a chat without it
@@ -541,6 +546,8 @@ public static class SettingsResolver
                     r.Mode = m;
                 if (defaults.Agent.AgentsMd != null)
                     r.AgentsMd = ParseAgentsMdMode(defaults.Agent.AgentsMd, "defaults.yaml (agent.agents_md)");
+                if (defaults.Agent.ToolImages != null)
+                    r.ToolImages = ParseToolImagesMode(defaults.Agent.ToolImages, "defaults.yaml (agent.tool_images)");
                 if (defaults.Agent.CompactTailMessages.HasValue)
                     r.CompactTailMessages = defaults.Agent.CompactTailMessages.Value;
                 if (!string.IsNullOrEmpty(defaults.Agent.CustomPrompt))
@@ -613,6 +620,8 @@ public static class SettingsResolver
                     r.Mode = m;
                 if (project.Agent.AgentsMd != null)
                     r.AgentsMd = ParseAgentsMdMode(project.Agent.AgentsMd, "project manifest (agent.agents_md)");
+                if (project.Agent.ToolImages != null)
+                    r.ToolImages = ParseToolImagesMode(project.Agent.ToolImages, "project manifest (agent.tool_images)");
                 r.Instructions = project.Agent.Instructions ?? r.Instructions;
                 if (project.Agent.CompactTailMessages.HasValue)
                     r.CompactTailMessages = project.Agent.CompactTailMessages.Value;
@@ -874,6 +883,7 @@ public static class SettingsResolver
         DefaultModelId = baseline.DefaultModelId,
         Mode = baseline.Mode,
         AgentsMd = baseline.AgentsMd,
+        ToolImages = baseline.ToolImages,
         Instructions = [.. baseline.Instructions],
         CompactTailMessages = baseline.CompactTailMessages,
         CustomPrompt = baseline.CustomPrompt,
@@ -1003,6 +1013,15 @@ public static class SettingsResolver
             ? parsed
             : throw new InvalidOperationException(
                 $"Unknown agents_md value '{value}' in {layer}. Expected 'inject' or 'ignore'.");
+
+    /// <summary>Parses <c>tool_images: all|last</c>. Throws on anything else for the same reason
+    /// <see cref="ParseAgentsMdMode"/> does: a setting that is declared, survives a restart and
+    /// silently does nothing is worse than one that is absent.</summary>
+    private static ToolImagesMode ParseToolImagesMode(string value, string layer)
+        => Enum.TryParse<ToolImagesMode>(value, true, out var parsed)
+            ? parsed
+            : throw new InvalidOperationException(
+                $"Unknown tool_images value '{value}' in {layer}. Expected 'all' or 'last'.");
 
     private static void AddTrustedDomains(ResolvedSettings r, List<string>? declared)
     {

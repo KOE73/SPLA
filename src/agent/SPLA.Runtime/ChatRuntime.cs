@@ -1242,6 +1242,7 @@ public sealed class ChatRuntime : IDisposable, SPLA.Domain.Agent.IBackgroundTask
                     "never" => SPLA.Domain.Models.ContextRetention.Never,
                     _ => SPLA.Domain.Models.ContextRetention.Persistent
                 },
+                ReplacementKey = m.ReplacementKey,
                 // Restored whenever they were written, independent of today's save_attempts value —
                 // a chat opened after the setting was turned off must still show what it recorded
                 // while it was on.
@@ -1412,6 +1413,7 @@ public sealed class ChatRuntime : IDisposable, SPLA.Domain.Agent.IBackgroundTask
             // Only the tool-call guard exists; the error guard waits on a typed ToolResult (debt #4).
             EnableLoopGuard = EffectiveSettings.LoopGuard,
             ToolLoopWindow = EffectiveSettings.LoopGuardRepeats,
+            ToolImages = EffectiveSettings.ToolImages,
             Logger = runtime.LoggerFactory.CreateLogger<ConversationOrchestrator>()
         };
 
@@ -1598,6 +1600,7 @@ public sealed class ChatRuntime : IDisposable, SPLA.Domain.Agent.IBackgroundTask
             // Live loop-guard setting: a toggle in Settings applies to the very next turn.
             _orchestrator.EnableLoopGuard = EffectiveSettings.LoopGuard;
             _orchestrator.ToolLoopWindow = Math.Max(2, EffectiveSettings.LoopGuardRepeats);
+            _orchestrator.ToolImages = EffectiveSettings.ToolImages;
 
             using var clarifyScope = ClarifyScope.Begin(clarifyHandler);
             using var agentScope = AgentSessionScope.Begin(_agentSession);
@@ -1846,6 +1849,7 @@ public sealed class ChatRuntime : IDisposable, SPLA.Domain.Agent.IBackgroundTask
                     SPLA.Domain.Models.ContextRetention.Never => "never",
                     _ => null   // Persistent — the historical default; absence means exactly this
                 },
+                ReplacementKey = m.ReplacementKey,
                 Images = _imageFiles.TryGetValue(m, out var files) && files.Count > 0
                     ? files.Select(f => f.Clone()).ToList()
                     : null,

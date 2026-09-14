@@ -36,6 +36,19 @@ public sealed class ConversationOrchestrator
     public bool EnableLoopGuard { get; set; } = false;
 
     /// <summary>
+    /// The single <see cref="ChatMessage.ReplacementKey"/> every tool picture is filed under when
+    /// <see cref="ToolImages"/> is <see cref="ToolImagesMode.Last"/>. One key for all tools on
+    /// purpose: what the setting says is "the context holds the latest picture, whoever made it" —
+    /// a per-tool key would keep one stale frame per tool, which is the cost this exists to avoid.
+    /// </summary>
+    public const string ToolImageReplacementKey = "tool-image";
+
+    /// <summary>How long a picture a tool returned stays in the context sent to the model — see
+    /// <c>agent.tool_images</c>. Defaults to <see cref="ToolImagesMode.All"/>, today's behaviour.
+    /// Settable so a live settings edit applies to the next turn.</summary>
+    public ToolImagesMode ToolImages { get; set; } = ToolImagesMode.All;
+
+    /// <summary>
     /// Optional override for tool gating (e.g. the UI sidebar toggle layered on top of mode rules).
     /// When null, <see cref="ToolModeFilter.Filter"/> is used.
     /// </summary>
@@ -335,7 +348,16 @@ public sealed class ConversationOrchestrator
                     {
                         Role = ChatRole.User,
                         Content = $"[Image from {tc.Function.Name}]",
-                        Images = pendingImages.ToList()
+                        Images = pendingImages.ToList(),
+                        // Not a deletion: the message stays in the chat, in the UI and in its sidecar
+                        // file — only context assembly skips the superseded ones, so switching
+                        // tool_images back to `all` brings every picture back with nothing lost.
+                        RetentionPolicy = ToolImages == ToolImagesMode.Last
+                            ? ContextRetention.UntilSuperseded
+                            : ContextRetention.Persistent,
+                        ReplacementKey = ToolImages == ToolImagesMode.Last
+                            ? ToolImageReplacementKey
+                            : null
                     });
                 }
 

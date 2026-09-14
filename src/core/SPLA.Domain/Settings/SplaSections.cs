@@ -132,6 +132,15 @@ public class SplaAgentSection
     [YamlMember(Alias = "self_feeding_cap")]
     public int? SelfFeedingCap { get; set; }
 
+    /// <summary>How long a picture returned by a tool stays in the context sent to the model —
+    /// <c>all</c> (default, every picture forever) or <c>last</c> (only the newest one, whichever tool
+    /// produced it). Null inherits from the machine layer; see
+    /// <see cref="SPLA.Domain.Models.ToolImagesMode"/>. Project-level only, not part of
+    /// <see cref="SplaRoleSection"/>: a picture budget is a property of the chat's context, and a role
+    /// field the roles editor cannot round-trip would be silently dropped on the next save.</summary>
+    [YamlMember(Alias = "tool_images")]
+    public string? ToolImages { get; set; }
+
     /// <summary>A copy no future edit of either side can reach into: every scalar carried over, every
     /// list re-made. Used when a chat is duplicated in memory (<c>ChatSession.Clone</c>) — a shared
     /// list there would make two chats edit one setting.</summary>

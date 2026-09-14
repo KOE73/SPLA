@@ -101,3 +101,19 @@ public enum PermissionDecision
     AllowRemember,
     Deny
 }
+
+/// <summary>How long a picture produced by a tool stays in the context sent to the model. See
+/// <c>agent.tool_images</c> in <c>agents/spla-file.md</c> and wave 4 of
+/// <c>PLAN_20260914_plugins_geometry-workspace.md</c>. No <c>Inherit</c> member — inheritance is the
+/// absence of the key in a layer, not a value.</summary>
+public enum ToolImagesMode
+{
+    /// <summary>Every tool picture stays in the context for the rest of the chat. Default — the
+    /// historical behaviour, unchanged for anyone who does not opt in.</summary>
+    All = 0,
+
+    /// <summary>Only the newest tool picture is assembled into the context, whichever tool produced
+    /// it. For iterative look-and-correct loops (geometry, screenshots) where every picture but the
+    /// last one is a stale frame that is paid for on every request.</summary>
+    Last = 1
+}
