@@ -1,4 +1,4 @@
-<Solution>
+﻿<Solution>
   <Folder Name="/README/">
     <File Path="Directory.Build.props" />
     <File Path="README.md" />
@@ -170,6 +170,7 @@
     <File Path="docs/adr/ADR_20260908-2_core_result-size.md" />
     <File Path="docs/adr/ADR_20260909_core_named-images.md" />
     <File Path="docs/adr/ADR_20260910_plugins_android-device.md" />
+    <File Path="docs/adr/ADR_20260914_plugins_geometry-workspace.md" />
     <File Path="docs/adr/ADR_20260910-2_agent_chat-feed.md" />
     <File Path="docs/adr/ADR_20260911_core_resources-capability.md" />
     <File Path="docs/adr/ADR_20260911-2_agent_agents-md-scopes.md" />
@@ -213,6 +214,7 @@
     <File Path="docs/plans/PLAN_20260904_core_chat-graph.md" />
     <File Path="docs/plans/PLAN_20260906_core_chat-directory-and-await.md" />
     <File Path="docs/plans/PLAN_20260910_plugins_android-device.md" />
+    <File Path="docs/plans/PLAN_20260914_plugins_geometry-workspace.md" />
     <File Path="docs/plans/PLAN_20260910-2_agent_chat-feed.md" />
     <File Path="docs/plans/PLAN_20260911_agent_roles-agents-md-compact.md" />
   </Folder>
@@ -303,6 +305,9 @@
     <Project Path="src/plugins/SPLA.Plugins.Sql/SPLA.Plugins.Sql.csproj" />
     <Project Path="src/plugins/SPLA.Plugins.OneC/SPLA.Plugins.OneC.csproj" />
     <Project Path="src/plugins/SPLA.Plugins.Documents/SPLA.Plugins.Documents.csproj" />
+  </Folder>
+  <Folder Name="/src/plugins/vision/">
+    <Project Path="src/plugins/SPLA.Plugins.Geometry/SPLA.Plugins.Geometry.csproj" />
   </Folder>
   <Folder Name="/src/plugins/dev/">
     <Project Path="src/plugins/SPLA.Plugins.Roslyn/SPLA.Plugins.Roslyn.csproj" />

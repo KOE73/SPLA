@@ -1,4 +1,4 @@
-# === SPLA Publish All ===
+﻿# === SPLA Publish All ===
 # PowerShell 5.1 compatible. Strategy:
 #   1. one solution build (MSBuild parallelizes internally, no obj/ races),
 #   2. plugin publishes run in parallel jobs (each to its own folder); projects
@@ -79,6 +79,7 @@ $plugins = @(
     @{ Name = 'browser';            Proj = 'src/plugins/SPLA.Plugins.Browser/SPLA.Plugins.Browser.csproj' }
     @{ Name = 'ssh';                Proj = 'src/plugins/SPLA.Plugins.Ssh/SPLA.Plugins.Ssh.csproj' }
     @{ Name = 'android';            Proj = 'src/plugins/SPLA.Plugins.Android/SPLA.Plugins.Android.csproj' }
+    @{ Name = 'geometry';           Proj = 'src/plugins/SPLA.Plugins.Geometry/SPLA.Plugins.Geometry.csproj' }
     @{ Name = 'browser_screencast'; Proj = 'src/plugins/SPLA.Plugins.Browser.Screencast/SPLA.Plugins.Browser.Screencast.csproj' }
 )
 
