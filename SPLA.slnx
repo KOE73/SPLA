@@ -172,6 +172,7 @@
     <File Path="docs/adr/ADR_20260910_plugins_android-device.md" />
     <File Path="docs/adr/ADR_20260914-2_web_plugin-panels.md" />
     <File Path="docs/adr/ADR_20260914-3_plugins_grounded-vocabulary.md" />
+    <File Path="docs/adr/ADR_20260914-4_plugins_grid-is-a-ruler.md" />
     <File Path="docs/adr/ADR_20260914_plugins_geometry-workspace.md" />
     <File Path="docs/adr/ADR_20260910-2_agent_chat-feed.md" />
     <File Path="docs/adr/ADR_20260911_core_resources-capability.md" />
