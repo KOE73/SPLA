@@ -218,6 +218,32 @@ public sealed class GeometryBoxToolTests
         Assert.Contains("cx=375", result.TextContent);
     }
 
+    /// <summary>The second shape of the same deadlock, from a live run: the model fills the ABSOLUTE
+    /// group with zeros because StrictSchema demands them, and sends one real delta. Reading that
+    /// all-zero group as a placement refused the call thirteen times in a row. A box at the corner
+    /// with no width and no height is not something anyone asks for.</summary>
+    [Fact]
+    public async Task An_all_zero_absolute_group_does_not_block_a_real_delta()
+    {
+        var (chat, tools, scope) = Begin();
+        using var _scope = scope;
+        await OpenFrame(chat, tools);
+
+        await tools["geom_box"].ExecuteAsync(
+            """{"name":"mark","cx":340,"cy":330,"width":390,"height":110,"angle":-5}""");
+
+        var result = await tools["geom_box"].ExecuteAsync(
+            """
+            {"name":"mark","cx":0,"cy":0,"width":0,"height":0,"angle":0,
+             "dx":0,"dy":0,"dw":0,"dh":0,"dangle":-2,"edge":"null","by":0,"delete":false}
+            """);
+
+        Assert.False(result.IsError);
+        Assert.Contains("updated 'mark'", result.TextContent);
+        Assert.Contains("angle=-7", result.TextContent);
+        Assert.Contains("w=390", result.TextContent);
+    }
+
     [Fact]
     public async Task A_delta_on_a_box_that_does_not_exist_is_refused()
     {
@@ -321,8 +347,10 @@ public sealed class GeometryBoxToolTests
         var flipped = await tools["geom_box"].ExecuteAsync("""{"name":"mark","angle":-8}""");
         Assert.Contains("angle=-8 (tilted up to the right)", flipped.TextContent);
 
-        // Zero leans neither way, and saying so would be noise on every upright box.
-        var straight = await tools["geom_box"].ExecuteAsync("""{"name":"mark","angle":0}""");
+        // Zero leans neither way, and saying so would be noise on every upright box. Straightening
+        // goes through dangle: "angle":0 is indistinguishable from the zero StrictSchema makes the
+        // model send for a field it is not using, so it cannot mean "set the angle to nothing".
+        var straight = await tools["geom_box"].ExecuteAsync("""{"name":"mark","dangle":8}""");
         Assert.Contains("angle=0", straight.TextContent);
         Assert.DoesNotContain("tilted", straight.TextContent);
     }

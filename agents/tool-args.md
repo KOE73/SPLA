@@ -174,7 +174,9 @@ This happened: `geom_box` deadlocked a live model on `{"cx":375,…,"dx":0,…,"
 
 Rules that follow:
 
-- **Define a sentinel per field and treat it as absent.** For a *displacement* (`dx`, `dw`, `by`) zero is absent — zero displacement is no displacement. For a *value* (`cx`, `angle`, `x`) only null is absent, because `0` and `angle=0` are legitimate answers. The two kinds need two different readers; one shared "was it supplied" helper is how the bug gets in.
+- **Treat zero as absent for every optional number, and accept what that costs.** The tempting refinement — "zero is absent for a displacement like `dx`, but a value like `cx` or `angle` may legitimately be zero" — sounds right and fails in practice: the model fills the *value* group with zeros too, and the deadlock simply moves. It cost a second live run of thirteen identical refused calls to learn this.
+
+  What you give up is the ability to say "set this to exactly zero". Price it honestly: for `geom_box`, `cx=0` puts a box half off-screen and `width=0` cannot be drawn, so only `angle=0` — "straighten it" — was a real loss, and it survives as a `dangle` of the opposite sign. If a field genuinely needs zero as a command, that is a signal the argument groups are wrong, not that the rule needs an exception. **One rule the model can learn beats a rule with a carve-out it cannot.**
 - **Read `"null"` as null.** Models emit the string when forced to fill a field they are not using.
 - **Never write an error that asks the model to omit a field.** It cannot. Say which value means untouched instead: *"leave those at null or 0"*.
 - **A zero must not double as a command.** If a no-op call currently means "re-render" or "show me the state", give that its own tool — once zero means absent, the trick stops working.

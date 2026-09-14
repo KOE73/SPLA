@@ -63,7 +63,8 @@ internal sealed class GeometryBoxTool(ResolvedSettings projectSettings) : Geomet
         ["height"] = Field("Height across the box's own short axis, in the pixels of that picture."),
         ["angle"] = Field(
             "Rotation in degrees, clockwise on the picture: 10 tilts the box down to the right, " +
-            "-10 tilts it up to the right. Null = 0 on a new box, unchanged on an existing one."),
+            "-10 tilts it up to the right. Null or 0 leaves an existing box's angle alone — to " +
+            "straighten one, turn it back with dangle (the current angle is printed in every reply)."),
         ["dx"] = Field("Move right by this many pixels (negative moves left)."),
         ["dy"] = Field("Move down by this many pixels (negative moves up)."),
         ["dw"] = Field("Widen by this many pixels (negative narrows)."),
@@ -122,7 +123,12 @@ internal sealed class GeometryBoxTool(ResolvedSettings projectSettings) : Geomet
             return Task.FromResult(RenderResult(chat, session, view, $"deleted '{name}'", cfg));
         }
 
-        var absolute = AnyOf(args, AbsoluteFields);
+        // An all-zero absolute group is not a placement anybody means: a box centred at the view's
+        // corner with no width and no height cannot be drawn, let alone intended. It is what
+        // StrictSchema produces when the model fills in the group it is NOT using — and reading it as
+        // intent deadlocks the call against the group it IS using, with no rewriting able to help.
+        // A real absolute call always carries at least one non-zero number.
+        var absolute = AnyMove(args, AbsoluteFields);
         var relative = AnyMove(args, DeltaFields);
         var edgeName = Str(args, "edge");
         var edgeBy = Move(args, "by");
@@ -164,8 +170,8 @@ internal sealed class GeometryBoxTool(ResolvedSettings projectSettings) : Geomet
                     $"{Present(args, DeltaFields)} to move. Create it first with cx, cy, width and height.",
                     "delta without box"));
 
-            if (Number(args, "cx") is not { } cx || Number(args, "cy") is not { } cy ||
-                Number(args, "width") is not { } width || Number(args, "height") is not { } height)
+            if (Move(args, "cx") is not { } cx || Move(args, "cy") is not { } cy ||
+                Move(args, "width") is not { } width || Move(args, "height") is not { } height)
                 return Task.FromResult(ToolResult.Fail(
                     $"A new box needs cx, cy, width and height. Guess roughly — you will see it drawn " +
                     "and can correct it with dx/dy/dw/dh.",
@@ -186,11 +192,11 @@ internal sealed class GeometryBoxTool(ResolvedSettings projectSettings) : Geomet
             var seen = existing.Box!.Transformed(toView);
             box = absolute
                 ? new Obb(
-                    Number(args, "cx") ?? seen.Cx,
-                    Number(args, "cy") ?? seen.Cy,
-                    Size(Number(args, "width") ?? seen.Width),
-                    Size(Number(args, "height") ?? seen.Height),
-                    Number(args, "angle") ?? seen.AngleDeg)
+                    Move(args, "cx") ?? seen.Cx,
+                    Move(args, "cy") ?? seen.Cy,
+                    Size(Move(args, "width") ?? seen.Width),
+                    Size(Move(args, "height") ?? seen.Height),
+                    Move(args, "angle") ?? seen.AngleDeg)
                 : new Obb(
                     seen.Cx + (Number(args, "dx") ?? 0),
                     seen.Cy + (Number(args, "dy") ?? 0),
@@ -314,9 +320,9 @@ internal sealed class GeometryBoxTool(ResolvedSettings projectSettings) : Geomet
     private static double Size(double value) => Math.Max(1, Math.Abs(value));
 
     /// <summary>Which of <paramref name="fields"/> the call actually carried — an error that names
-    /// them is one the model can act on without guessing. Displacement fields count only when they
-    /// are non-zero, matching how the call was read in the first place.</summary>
+    /// them is one the model can act on without guessing. A zero never counts, matching how the call
+    /// was read in the first place: an error naming a field the tool ignored sends the model looking
+    /// for something that is not there.</summary>
     private static string Present(JsonElement args, string[] fields) =>
-        string.Join(", ", Array.FindAll(fields,
-            f => fields == AbsoluteFields ? Number(args, f) is not null : Move(args, f) is not null));
+        string.Join(", ", Array.FindAll(fields, f => Move(args, f) is not null));
 }

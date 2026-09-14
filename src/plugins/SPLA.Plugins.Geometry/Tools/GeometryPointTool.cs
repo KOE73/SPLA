@@ -77,7 +77,7 @@ internal sealed class GeometryPointTool(ResolvedSettings projectSettings) : Geom
             return Task.FromResult(RenderResult(chat, session, view, $"deleted '{name}'", cfg));
         }
 
-        var absolute = AnyOf(args, "x", "y");
+        var absolute = AnyMove(args, "x", "y");
         var relative = AnyMove(args, "dx", "dy");
 
         if (absolute && relative)
@@ -97,7 +97,7 @@ internal sealed class GeometryPointTool(ResolvedSettings projectSettings) : Geom
                     "Create it first with x and y.",
                     "delta without point"));
 
-            if (Number(args, "x") is not { } x || Number(args, "y") is not { } y)
+            if (Move(args, "x") is not { } x || Move(args, "y") is not { } y)
                 return Task.FromResult(ToolResult.Fail(
                     "A new point needs x and y. Guess roughly — you will see it drawn and can " +
                     "correct it with dx/dy.",
@@ -116,8 +116,8 @@ internal sealed class GeometryPointTool(ResolvedSettings projectSettings) : Geom
         else
         {
             var seen = view.SourceToView.Apply(existing.Point.X, existing.Point.Y);
-            px = absolute ? Number(args, "x") ?? seen.X : seen.X + (Number(args, "dx") ?? 0);
-            py = absolute ? Number(args, "y") ?? seen.Y : seen.Y + (Number(args, "dy") ?? 0);
+            px = absolute ? Move(args, "x") ?? seen.X : seen.X + (Number(args, "dx") ?? 0);
+            py = absolute ? Move(args, "y") ?? seen.Y : seen.Y + (Number(args, "dy") ?? 0);
             action = $"updated '{name}'";
         }
 
