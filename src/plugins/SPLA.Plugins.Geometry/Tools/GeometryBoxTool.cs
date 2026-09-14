@@ -31,8 +31,12 @@ internal sealed class GeometryBoxTool(ResolvedSettings projectSettings) : Geomet
 
     protected override string Description =>
         "Places a named box on the open image, or corrects one already placed, and returns the " +
-        "picture with it drawn. Guess roughly first, look at the result, then call again with " +
-        "dx/dy/dw/dh/dangle to nudge it. Two or three corrections are normal.";
+        "picture with it drawn. Guess roughly first, then look at the returned picture and correct " +
+        "what you see. Stop when the outline sits on the thing and you cannot name a side that is " +
+        "still wrong — then call geom_accept. If a correction did not make the picture better, do " +
+        "not repeat it smaller: change approach instead — move one side with edge/by rather than the " +
+        "whole size, check the tilt words against the picture in case the angle's sign is wrong, or " +
+        "geom_view onto the box and work larger.";
 
     protected override string? Details =>
         "Coordinates are in the pixels of the picture you were last shown, never the original " +
