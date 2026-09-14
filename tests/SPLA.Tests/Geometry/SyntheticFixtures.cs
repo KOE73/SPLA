@@ -29,8 +29,10 @@ internal static class SyntheticFixtures
     public static readonly SKColor MarkColor = new(0xE8, 0xA0, 0x20);
 
     /// <summary>The crosshair. Deliberately a colour nothing else on the frame comes near, so it can
-    /// be found in the rendered pixels by colour alone.</summary>
-    public static readonly SKColor CrossColor = new(0xFF, 0x00, 0xFF);
+    /// be found in the rendered pixels by colour alone — including nothing the renderer itself draws:
+    /// it used to be magenta, which is now the colour of the editing box's right-hand edge, and the
+    /// outline would have been counted as part of the crosshair.</summary>
+    public static readonly SKColor CrossColor = new(0xFF, 0x00, 0x00);
 
     /// <summary>Half-length of the crosshair arms, in source pixels.</summary>
     private const float CrossArm = 26f;

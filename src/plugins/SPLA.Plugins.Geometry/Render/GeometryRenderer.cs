@@ -11,19 +11,55 @@ namespace SPLA.Plugins.Geometry.Render;
 /// actually reads: it never gets the coordinates back as numbers to verify, it gets the picture and
 /// decides whether the outline sits on the thing.
 /// <para>
-/// <b>Colour carries status, not identity.</b> An editing object is saturated, an accepted one muted;
-/// two different objects of the same status look the same on purpose and are told apart by the name
-/// printed beside them. A palette per object would make the model reason about a legend instead of
-/// about the picture.
+/// <b>The editing box gets four edge colours; everything else gets one muted colour.</b> A term the
+/// model has to remember is a place where its habit can differ from ours; a term it can see in the
+/// picture cannot differ. So every number the model must supply has a visible counterpart here, named
+/// by the same word in the reply text (ADR_20260914-3 §2). Identity of the four edges lives inside the
+/// one box being placed; status stays at the level of the object. Accepted boxes are drawn in a single
+/// muted colour with no corner dots — five accepted objects would otherwise mean twenty coloured edges
+/// and no picture at all (ADR §3.4, overriding PLAN_20260914 §2.1).
 /// </para>
 /// </summary>
 internal static class GeometryRenderer
 {
-    /// <summary>Vivid: this one is still being placed.</summary>
-    private static readonly SKColor EditingColor = new(0xFF, 0x3B, 0x30);
+    /// <summary>
+    /// The four edge colours, in the winding order of <see cref="Obb.Corners"/>: index 0 is the edge
+    /// from corner 0 to corner 1 — the box's own top — then right, bottom, left.
+    /// <para>
+    /// <b>This order and these colours are frozen.</b> The model is told to name an edge by its colour,
+    /// so changing either silently changes the meaning of every call. Recorded in the plugin's
+    /// AGENTS.md for the same reason.
+    /// </para>
+    /// <para>
+    /// Why these four: the leading subject is a grey-white sack carrying red and blue print, so red is
+    /// unusable — it vanishes into the content. They are also spread in <i>lightness</i>, not only in
+    /// hue (yellow brightest, then cyan, then magenta, then a dark green), so nothing here rests on
+    /// colour vision alone (ADR §3.5).
+    /// </para>
+    /// </summary>
+    private static readonly SKColor[] EdgeColors =
+    [
+        new(0x00, 0xCF, 0xFF), // cyan    — top
+        new(0xFF, 0x2B, 0xD6), // magenta — right
+        new(0xFF, 0xE1, 0x00), // yellow  — bottom
+        new(0x0E, 0x8A, 0x26), // green   — left
+    ];
 
-    /// <summary>Muted: this one is settled and only there for context.</summary>
-    private static readonly SKColor AcceptedColor = new(0x34, 0xC7, 0x59);
+    /// <summary>The names of <see cref="EdgeColors"/>, in the same order. The <c>edge</c> argument of
+    /// <c>geom_box</c> and the mapping line printed in every reply both come from here, so the word on
+    /// the screen, the word in the text and the word in the call are one word by construction.</summary>
+    internal static readonly string[] EdgeNames = ["cyan", "magenta", "yellow", "green"];
+
+    /// <summary>Which side of the unrotated box each entry of <see cref="EdgeNames"/> is.</summary>
+    internal static readonly string[] EdgeSides = ["top", "right", "bottom", "left"];
+
+    /// <summary>Muted slate: this one is settled and only there for context. Deliberately nothing near
+    /// the four edge colours, so an accepted outline can never be read as an edge of the live box.</summary>
+    private static readonly SKColor AcceptedColor = new(0x7A, 0x8C, 0xA0);
+
+    /// <summary>The live box's name plate and its centre mark: neutral, outside the edge palette, so
+    /// neither competes with the four colours the model has to name.</summary>
+    private static readonly SKColor EditingNeutral = new(0xFF, 0xFF, 0xFF);
 
     private static readonly SKColor GridColor = new(0xFF, 0xFF, 0xFF, 0x66);
 
@@ -32,10 +68,26 @@ internal static class GeometryRenderer
     /// <summary>Spacing of the optional debug grid, in view pixels.</summary>
     private const int GridStep = 100;
 
-    /// <summary>Half-length of a point's crosshair arms, in view pixels. A point is never drawn as a
+    /// <summary>Half-length of a point's cross arms, in view pixels. A point is never drawn as a
     /// pixel: a one-pixel dot is invisible to the model, which defeats the purpose of rendering at
-    /// all.</summary>
+    /// all.
+    /// <para>
+    /// The arms run <b>diagonally</b>, an X rather than a +. That is not decoration: the centre of the
+    /// editing box is now drawn too, and two different meanings sharing one glyph is the same disease
+    /// as two meanings sharing one word (ADR §3.2). A point is an X in a circle; a centre is a filled
+    /// dot in a ring, and no arms at all.
+    /// </para></summary>
     private const float CrossArm = 12f;
+
+    /// <summary>Radius of the filled dot that marks the editing box's centre, in view pixels.</summary>
+    private const float CentreDot = 4.5f;
+
+    /// <summary>Radius of the thin ring around that dot. Far enough out that the gap between dot and
+    /// ring survives at render scale — a solid blob and a ringed dot are one glyph from two metres.</summary>
+    private const float CentreRing = 10f;
+
+    /// <summary>Radius of a corner dot, in view pixels.</summary>
+    private const float CornerDot = 5f;
 
     public static byte[] Render(GeometrySession session, GeometryView view, bool grid, GeometrySettings cfg)
     {
@@ -92,18 +144,19 @@ internal static class GeometryRenderer
     private static void DrawObject(SKCanvas canvas, GeometryObject obj, GeometryView view, GeometrySettings cfg)
     {
         var accepted = obj.Status == ObjectStatus.Accepted;
-        var color = accepted ? AcceptedColor : EditingColor;
         // An accepted outline steps back rather than disappearing: it is context for placing the
         // next object, not the subject of the current look.
         var width = Math.Max(1f, accepted ? cfg.LineWidth * 0.6f : cfg.LineWidth);
+        var labelColor = accepted ? AcceptedColor : EditingNeutral;
 
         using var stroke = new SKPaint
         {
             Style = SKPaintStyle.Stroke,
             StrokeWidth = width,
-            Color = color,
+            Color = AcceptedColor,
             IsAntialias = true,
             StrokeJoin = SKStrokeJoin.Round,
+            StrokeCap = SKStrokeCap.Round,
         };
 
         var t = view.SourceToView;
@@ -111,29 +164,100 @@ internal static class GeometryRenderer
 
         if (obj.Kind == ObjectKind.Box && obj.Box is { } box)
         {
-            var corners = box.Transformed(t).Corners();
-            using var path = new SKPath();
-            path.MoveTo((float)corners[0].X, (float)corners[0].Y);
-            for (var i = 1; i < 4; i++) path.LineTo((float)corners[i].X, (float)corners[i].Y);
-            path.Close();
-            canvas.DrawPath(path, stroke);
+            var inView = box.Transformed(t);
+            var corners = inView.Corners();
 
-            labelX = (float)corners.Min(c => c.X);
-            labelY = (float)corners.Min(c => c.Y) - 4;
+            if (accepted)
+            {
+                using var path = new SKPath();
+                path.MoveTo((float)corners[0].X, (float)corners[0].Y);
+                for (var i = 1; i < 4; i++) path.LineTo((float)corners[i].X, (float)corners[i].Y);
+                path.Close();
+                canvas.DrawPath(path, stroke);
+            }
+            else
+            {
+                DrawEditingBox(canvas, corners, inView, stroke);
+            }
+
+            // Clear of the top-left corner dot in both directions: the plate is opaque, and a plate
+            // sitting on a corner dot hides the one colour that says which way the box is wound.
+            labelX = (float)corners.Min(c => c.X) + CornerDot + 4;
+            labelY = (float)corners.Min(c => c.Y) - CornerDot - 8;
         }
         else
         {
+            stroke.Color = accepted ? AcceptedColor : EditingNeutral;
             var (px, py) = t.Apply(obj.Point.X, obj.Point.Y);
             float x = (float)px, y = (float)py;
-            canvas.DrawLine(x - CrossArm, y, x + CrossArm, y, stroke);
-            canvas.DrawLine(x, y - CrossArm, x, y + CrossArm, stroke);
+            var arm = CrossArm * 0.707f;
+            canvas.DrawLine(x - arm, y - arm, x + arm, y + arm, stroke);
+            canvas.DrawLine(x - arm, y + arm, x + arm, y - arm, stroke);
             canvas.DrawCircle(x, y, CrossArm * 0.55f, stroke);
 
             labelX = x + CrossArm + 2;
             labelY = y - CrossArm * 0.6f;
         }
 
-        DrawLabel(canvas, obj.Name, labelX, labelY, color, cfg);
+        DrawLabel(canvas, obj.Name, labelX, labelY, labelColor, cfg);
+    }
+
+    /// <summary>
+    /// The box being placed: four coloured edges, a dot at each corner in the colour of the edge that
+    /// <b>starts</b> there, and the centre marked.
+    /// <para>
+    /// The colours are bound to the box's own axes, not the screen's, so the cyan edge stays the same
+    /// edge at any angle — which is the whole reason side names like "left" were rejected (ADR §3.1).
+    /// The corner dots come for free out of that and pay for themselves: the run of colours around the
+    /// outline shows the winding, so the box's orientation is legible without reading the angle.
+    /// </para>
+    /// <para>
+    /// The centre is here because <c>dx</c>/<c>dy</c> move exactly it and the model, until now, could
+    /// not see what it was moving (ADR §3.2).
+    /// </para>
+    /// </summary>
+    private static void DrawEditingBox(SKCanvas canvas, (double X, double Y)[] corners, Obb inView, SKPaint stroke)
+    {
+        for (var i = 0; i < 4; i++)
+        {
+            var a = corners[i];
+            var b = corners[(i + 1) % 4];
+            stroke.Color = EdgeColors[i];
+            canvas.DrawLine((float)a.X, (float)a.Y, (float)b.X, (float)b.Y, stroke);
+        }
+
+        using var fill = new SKPaint { Style = SKPaintStyle.Fill, IsAntialias = true };
+        for (var i = 0; i < 4; i++)
+        {
+            fill.Color = EdgeColors[i];
+            canvas.DrawCircle((float)corners[i].X, (float)corners[i].Y, CornerDot, fill);
+        }
+
+        float cx = (float)inView.Cx, cy = (float)inView.Cy;
+
+        // A dark halo first: the centre mark is white, and white on a white sack is nothing.
+        using var halo = new SKPaint
+        {
+            Style = SKPaintStyle.Stroke,
+            StrokeWidth = stroke.StrokeWidth + 2,
+            Color = new SKColor(0x00, 0x00, 0x00, 0xB0),
+            IsAntialias = true,
+        };
+        canvas.DrawCircle(cx, cy, CentreRing, halo);
+
+        using var ring = new SKPaint
+        {
+            Style = SKPaintStyle.Stroke,
+            StrokeWidth = Math.Max(1.5f, stroke.StrokeWidth * 0.6f),
+            Color = EditingNeutral,
+            IsAntialias = true,
+        };
+        canvas.DrawCircle(cx, cy, CentreRing, ring);
+
+        fill.Color = new SKColor(0x00, 0x00, 0x00, 0xB0);
+        canvas.DrawCircle(cx, cy, CentreDot + 1.5f, fill);
+        fill.Color = EditingNeutral;
+        canvas.DrawCircle(cx, cy, CentreDot, fill);
     }
 
     /// <summary>A label on a dark plate. Coloured text straight onto a photograph is unreadable

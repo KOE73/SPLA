@@ -171,6 +171,7 @@
     <File Path="docs/adr/ADR_20260909_core_named-images.md" />
     <File Path="docs/adr/ADR_20260910_plugins_android-device.md" />
     <File Path="docs/adr/ADR_20260914-2_web_plugin-panels.md" />
+    <File Path="docs/adr/ADR_20260914-3_plugins_grounded-vocabulary.md" />
     <File Path="docs/adr/ADR_20260914_plugins_geometry-workspace.md" />
     <File Path="docs/adr/ADR_20260910-2_agent_chat-feed.md" />
     <File Path="docs/adr/ADR_20260911_core_resources-capability.md" />
@@ -216,6 +217,7 @@
     <File Path="docs/plans/PLAN_20260906_core_chat-directory-and-await.md" />
     <File Path="docs/plans/PLAN_20260910_plugins_android-device.md" />
     <File Path="docs/plans/PLAN_20260914-2_web_plugin-panels.md" />
+    <File Path="docs/plans/PLAN_20260914-3_plugins_grounded-vocabulary.md" />
     <File Path="docs/plans/PLAN_20260914_plugins_geometry-workspace.md" />
     <File Path="docs/plans/PLAN_20260910-2_agent_chat-feed.md" />
     <File Path="docs/plans/PLAN_20260911_agent_roles-agents-md-compact.md" />
@@ -303,6 +305,7 @@
   <Folder Name="/src/plugins/device/">
     <Project Path="src/plugins/SPLA.Plugins.Android/SPLA.Plugins.Android.csproj" />
     <File Path="src/plugins/SPLA.Plugins.Android/AGENTS.md" />
+    <File Path="src/plugins/SPLA.Plugins.Geometry/AGENTS.md" />
   </Folder>
   <Folder Name="/src/plugins/data/">
     <Project Path="src/plugins/SPLA.Plugins.Sql/SPLA.Plugins.Sql.csproj" />

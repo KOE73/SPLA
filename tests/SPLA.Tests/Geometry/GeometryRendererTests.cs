@@ -1,4 +1,5 @@
 using SkiaSharp;
+using System;
 using SPLA.Plugins.Geometry;
 using SPLA.Plugins.Geometry.Model;
 using SPLA.Plugins.Geometry.Render;
@@ -72,46 +73,100 @@ public sealed class GeometryRendererTests
         Assert.Equal(background.Green, away.Green);
         Assert.Equal(background.Blue, away.Blue);
 
-        // Inside the box, away from every edge: the outline is a stroke, not a fill.
-        var inside = decoded.GetPixel(200, 150);
+        // Inside the box, away from every edge and from the centre mark: the outline is a stroke,
+        // not a fill.
+        var inside = decoded.GetPixel(225, 135);
         Assert.Equal(background.Red, inside.Red);
     }
 
     [Fact]
-    public void Status_changes_the_colour_and_nothing_else_does()
+    public void The_editing_box_carries_the_four_edge_colours_and_an_accepted_one_does_not()
     {
+        // The mapping pinned here is the one the reply text names and the model is told to call by:
+        // cyan=top, magenta=right, yellow=bottom, green=left, bound to the box's own axes.
         using var session = Open();
-        var box = new Obb(200, 150, 100, 60, 0);
-        session.Objects.Add(new GeometryObject { Name = "a", Kind = ObjectKind.Box, Box = box });
+        session.Objects.Add(new GeometryObject
+        {
+            Name = "a", Kind = ObjectKind.Box, Box = new Obb(200, 150, 120, 80, 0),
+        });
 
         var cfg = new GeometrySettings();
         using var editing = Decode(GeometryRenderer.Render(session, session.CurrentView, false, cfg));
 
+        AssertNear(editing.GetPixel(200, 110), 0x00, 0xCF, 0xFF);   // top    - cyan
+        AssertNear(editing.GetPixel(260, 150), 0xFF, 0x2B, 0xD6);   // right  - magenta
+        AssertNear(editing.GetPixel(200, 190), 0xFF, 0xE1, 0x00);   // bottom - yellow
+        AssertNear(editing.GetPixel(140, 150), 0x0E, 0x8A, 0x26);   // left   - green
+
         session.Objects[0].Status = ObjectStatus.Accepted;
         using var accepted = Decode(GeometryRenderer.Render(session, session.CurrentView, false, cfg));
 
-        // Editing is red-dominant, accepted green-dominant, on the same outline pixel.
-        var before = editing.GetPixel(200, 120);
-        var after = accepted.GetPixel(200, 120);
-        Assert.True(before.Red > before.Green);
-        Assert.True(after.Green > after.Red);
+        // One muted colour all the way round: no edge of an accepted box can be read as an edge
+        // of the box being placed.
+        AssertNear(accepted.GetPixel(200, 110), 0x7A, 0x8C, 0xA0);
+        AssertNear(accepted.GetPixel(200, 190), 0x7A, 0x8C, 0xA0);
     }
 
     [Fact]
-    public void Two_objects_of_the_same_status_are_drawn_in_the_same_colour()
+    public void The_edge_colours_turn_with_the_box()
     {
-        // Colour carries status, not identity — the name label is what distinguishes objects.
+        // Ninety degrees clockwise: the box's own top edge now faces screen-right, and the cyan
+        // must have gone with it. This is what side names like "left" could not have given us.
         using var session = Open();
-        session.Objects.Add(new GeometryObject { Name = "a", Kind = ObjectKind.Box, Box = new Obb(100, 80, 60, 40, 0) });
-        session.Objects.Add(new GeometryObject { Name = "b", Kind = ObjectKind.Box, Box = new Obb(300, 220, 60, 40, 0) });
+        session.Objects.Add(new GeometryObject
+        {
+            Name = "a", Kind = ObjectKind.Box, Box = new Obb(200, 150, 120, 80, 90),
+        });
 
         using var decoded = Decode(GeometryRenderer.Render(session, session.CurrentView, false, new GeometrySettings()));
 
-        var first = decoded.GetPixel(100, 60);
-        var second = decoded.GetPixel(300, 200);
-        Assert.Equal(first.Red, second.Red);
-        Assert.Equal(first.Green, second.Green);
-        Assert.Equal(first.Blue, second.Blue);
+        AssertNear(decoded.GetPixel(240, 150), 0x00, 0xCF, 0xFF);   // the top edge, now on the right
+        AssertNear(decoded.GetPixel(160, 150), 0xFF, 0xE1, 0x00);   // the bottom edge, now on the left
+    }
+
+    [Fact]
+    public void The_editing_box_marks_its_centre()
+    {
+        // dx/dy move exactly this point, and until it was drawn the model was correcting blind.
+        using var session = Open();
+        session.Objects.Add(new GeometryObject
+        {
+            Name = "a", Kind = ObjectKind.Box, Box = new Obb(200, 150, 120, 80, 0),
+        });
+
+        var cfg = new GeometrySettings();
+        using var editing = Decode(GeometryRenderer.Render(session, session.CurrentView, false, cfg));
+        AssertNear(editing.GetPixel(200, 150), 0xFF, 0xFF, 0xFF);
+
+        session.Objects[0].Status = ObjectStatus.Accepted;
+        using var accepted = Decode(GeometryRenderer.Render(session, session.CurrentView, false, cfg));
+        Assert.Equal(0x80, accepted.GetPixel(200, 150).Red);   // untouched frame
+    }
+
+    [Fact]
+    public void Every_corner_carries_the_colour_of_the_edge_that_starts_there()
+    {
+        using var session = Open();
+        session.Objects.Add(new GeometryObject
+        {
+            Name = "a", Kind = ObjectKind.Box, Box = new Obb(200, 150, 120, 80, 0),
+        });
+
+        using var decoded = Decode(GeometryRenderer.Render(session, session.CurrentView, false, new GeometrySettings()));
+
+        AssertNear(decoded.GetPixel(140, 110), 0x00, 0xCF, 0xFF);   // top-left,     cyan starts here
+        AssertNear(decoded.GetPixel(260, 110), 0xFF, 0x2B, 0xD6);   // top-right,    magenta
+        AssertNear(decoded.GetPixel(260, 190), 0xFF, 0xE1, 0x00);   // bottom-right, yellow
+        AssertNear(decoded.GetPixel(140, 190), 0x0E, 0x8A, 0x26);   // bottom-left,  green
+    }
+
+    private static void AssertNear(SKColor actual, byte r, byte g, byte b, int tolerance = 40)
+    {
+        Assert.True(
+            Math.Abs(actual.Red - r) <= tolerance
+            && Math.Abs(actual.Green - g) <= tolerance
+            && Math.Abs(actual.Blue - b) <= tolerance,
+            $"expected about #{r:X2}{g:X2}{b:X2}, got #{actual.Red:X2}{actual.Green:X2}{actual.Blue:X2}");
     }
 
     [Fact]
@@ -125,8 +180,10 @@ public sealed class GeometryRendererTests
         using var decoded = Decode(GeometryRenderer.Render(session, session.CurrentView, false, new GeometrySettings()));
         var background = new SKColor(0x80, 0x80, 0x80);
 
-        Assert.NotEqual(background.Red, decoded.GetPixel(208, 150).Red);   // right arm
-        Assert.NotEqual(background.Red, decoded.GetPixel(200, 142).Red);   // upper arm
+        // The arms run diagonally: a point is an X in a circle, a box's centre is a dot in a ring.
+        // Two meanings must not share one glyph (ADR_20260914-3 §3.2).
+        Assert.NotEqual(background.Red, decoded.GetPixel(206, 156).Red);   // lower-right arm
+        Assert.NotEqual(background.Red, decoded.GetPixel(194, 144).Red);   // upper-left arm
         Assert.Equal(background.Red, decoded.GetPixel(200, 250).Red);      // well clear of it
     }
 
