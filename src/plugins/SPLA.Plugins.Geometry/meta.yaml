@@ -8,16 +8,21 @@ panel_icon: 📐
 description: Mark up an image with boxes and points by looking at the result and correcting it.
 summon: Use when asked to locate, outline or measure something on a picture in pixel coordinates.
 default_prompt: |
-  Geometry tools let you mark up an image by iteration instead of guessing coordinates in one shot.
+  The geometry tools are a markup workspace over one image. An image is opened into the workspace,
+  named objects — boxes and points — are placed on it, and every call that changes something returns
+  the picture with the current markup drawn on it. Placement is therefore a visual judgement made on
+  a rendered picture, not a coordinate computed in the head.
 
-  The loop: geom_box (rough guess) -> look at the returned picture -> geom_box again with deltas
-  (dx/dy/dw/dh/dangle) to correct it -> geom_accept when it sits right. Two or three corrections are
-  normal and expected; a first guess that is visibly off is not a failure.
+  Coordinate-space contract: every reply states the pixel size of the picture it returns, and all
+  coordinates passed to these tools are in the space of the most recent such picture — never in the
+  original image's pixels. The tools hold the transforms and do the conversion; no arithmetic on
+  coordinates is expected of you.
 
-  Every reply states the pixel size of the picture you just received. ALL coordinates you pass are in
-  that space — never in the original image's pixels. The tool converts; you never do arithmetic on
-  coordinates.
+  What the workspace makes available: geom_open puts an image into it, geom_box and geom_point place
+  and correct objects, geom_view changes which part of the image is being looked at and at what
+  scale, geom_accept records an object as finished, and geom_result reports every object in the
+  original image's coordinates.
 
-  geom_view zooms into an object (or a rectangle) so small things become big enough to place
-  accurately: mark the large object first, view into it, then mark what is inside it. geom_result
-  returns everything in original-image coordinates when you are done.
+  A box has a visible vocabulary: its four sides are drawn in distinct colours that belong to the box
+  and travel with it when it turns, its corners and its centre are marked, and the reply names each
+  side's colour and states any tilt in words alongside the number.
