@@ -1530,6 +1530,7 @@ public sealed class ChatRuntime : IDisposable, SPLA.Domain.Agent.IBackgroundTask
                 OnAssistantMessage = msg =>
                 {
                     Emit(new ChatAssistantMessage(currentMsgIndex, msg) { ChatId = ChatId }, ClearLive);
+                    Save();
                     return Task.CompletedTask;
                 },
                 OnAttempt = attempt => Emit(new ChatAttempt(currentMsgIndex, attempt) { ChatId = ChatId }),
@@ -1548,6 +1549,10 @@ public sealed class ChatRuntime : IDisposable, SPLA.Domain.Agent.IBackgroundTask
                 OnToolResult = (tc, result) =>
                 {
                     Emit(new ChatToolResult(tc, result) { ChatId = ChatId });
+                    // Persist after every tool call, not just at turn end — a cancelled or crashed
+                    // turn must not erase tool traffic that already happened. Also what makes the
+                    // chat file usable for live/dynamic analysis while a long turn is still running.
+                    Save();
                     return Task.CompletedTask;
                 },
                 OnNotice = note =>
@@ -1630,11 +1635,16 @@ public sealed class ChatRuntime : IDisposable, SPLA.Domain.Agent.IBackgroundTask
             catch (OperationCanceledException)
             {
                 cancelled = true;
+                // Per-tool-call Save() above already covers most of the turn; this is the safety
+                // net for whatever the orchestrator appended after the last tool result (e.g. a
+                // partial assistant message) before the cancellation was observed.
+                Save();
                 throw;
             }
             catch (Exception ex)
             {
                 turnError = ex.Message;
+                Save();
                 throw;
             }
 
