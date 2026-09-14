@@ -2,6 +2,7 @@ using SPLA.Domain.Agent;
 using SPLA.Domain.Models;
 using SPLA.Domain.Settings;
 using SPLA.MCP.Core.Interfaces;
+using SPLA.MCP.Core.Json;
 using SPLA.Plugins.Geometry.Model;
 using SPLA.Plugins.Geometry.Render;
 using SPLA.Plugins.Geometry.Session;
@@ -312,6 +313,28 @@ internal abstract class GeometryToolBase(ResolvedSettings projectSettings) : IMc
     }
 
     // ── argument helpers ──────────────────────────────────────────────────────
+
+    /// <summary>
+    /// An optional string argument, where the string <c>"null"</c> also counts as not supplied.
+    /// <para>
+    /// Every geometry tool declares <c>StrictSchema</c>, so the model must send every property on
+    /// every call — and a small model fills the ones it does not want with the four characters
+    /// <c>"null"</c> rather than a JSON null. A live log carries
+    /// <c>geom_view {"to":"null","rect":[…]}</c>. It happened to work there because nothing read
+    /// <c>to</c>; it would not have if an object were actually named that, and it would not in a
+    /// field that is read.
+    /// </para>
+    /// <para>
+    /// An object genuinely called "null" is unreachable through this, and that is the cheaper of the
+    /// two mistakes: naming one costs a rename, while reading the placeholder as a name puts a tool
+    /// to work on something the model never asked about.
+    /// </para>
+    /// </summary>
+    protected static string? Str(JsonElement args, string name)
+    {
+        var value = ToolJson.GetStringTrimmed(args, name);
+        return value is null || value.Equals("null", StringComparison.OrdinalIgnoreCase) ? null : value;
+    }
 
     /// <summary>A JSON number as a double. <c>ToolJson</c> has no double reader and lives in the core,
     /// which this plugin does not get to extend; the null-safety contract is the same — absent,

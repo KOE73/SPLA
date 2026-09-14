@@ -108,4 +108,23 @@ public sealed class GeometryAcceptToolTests
         Assert.True(unknown.IsError);
         Assert.Contains("ghost", unknown.TextContent);
     }
+
+    /// <summary>The placeholder the model sends for an argument it does not want means "not supplied"
+    /// here too — geom_accept reads no name and settles everything, rather than hunting for an object
+    /// called "null".</summary>
+    [Fact]
+    public async Task The_string_null_as_a_name_accepts_everything()
+    {
+        var (chat, tools, scope) = Begin();
+        using var _scope = scope;
+        await OpenFrame(chat, tools);
+
+        await tools["geom_box"].ExecuteAsync("""{"name":"bag","cx":400,"cy":300,"width":400,"height":300}""");
+        await tools["geom_point"].ExecuteAsync("""{"name":"mark","x":418,"y":203}""");
+
+        var result = await tools["geom_accept"].ExecuteAsync("""{"name":"null"}""");
+
+        Assert.False(result.IsError, result.TextContent);
+        Assert.Contains("accepted 'bag', 'mark'", result.TextContent);
+    }
 }

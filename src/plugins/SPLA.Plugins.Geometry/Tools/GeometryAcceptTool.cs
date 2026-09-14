@@ -1,7 +1,6 @@
 using SPLA.Domain.Agent;
 using SPLA.Domain.Models;
 using SPLA.Domain.Settings;
-using SPLA.MCP.Core.Json;
 using SPLA.Plugins.Geometry.Model;
 using SPLA.Plugins.Geometry.Session;
 using System.Collections.Generic;
@@ -45,7 +44,7 @@ internal sealed class GeometryAcceptTool(ResolvedSettings projectSettings) : Geo
         var session = GeometrySessionRegistry.TryGet(chat);
         if (session is null) return Task.FromResult(NoSession);
 
-        var name = ToolJson.GetStringTrimmed(args, "name");
+        var name = Str(args, "name");
         string action;
 
         if (name is null)

@@ -80,7 +80,7 @@ internal sealed class GeometryBoxTool(ResolvedSettings projectSettings) : Geomet
         var session = GeometrySessionRegistry.TryGet(chat);
         if (session is null) return Task.FromResult(NoSession);
 
-        var name = ToolJson.GetStringTrimmed(args, "name");
+        var name = Str(args, "name");
         if (name is null) return Task.FromResult(ToolResult.Fail("Error: name is required.", "missing name"));
 
         var view = session.CurrentView;

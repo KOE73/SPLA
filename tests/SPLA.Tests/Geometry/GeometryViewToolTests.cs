@@ -175,4 +175,27 @@ public sealed class GeometryViewToolTests
 
         Assert.Contains("outside this view: corner", zoomed.TextContent);
     }
+
+    /// <summary>Straight from a live log: every geometry tool declares StrictSchema, so the model must
+    /// send every property, and a small one fills the unused ones with the four characters "null"
+    /// instead of a JSON null. It worked there only because nothing read 'to'. Every optional string
+    /// argument now reads the placeholder as absent.</summary>
+    [Fact]
+    public async Task The_string_null_counts_as_not_supplied()
+    {
+        var (chat, tools, scope) = Begin();
+        using var _scope = scope;
+        await OpenFrame(chat, tools);
+
+        var cropped = await tools["geom_view"].ExecuteAsync("""{"to":"null","rect":[100,100,200,150]}""");
+
+        Assert.False(cropped.IsError, cropped.TextContent);
+        Assert.Contains("viewing rectangle [100, 100, 200, 150]", cropped.TextContent);
+
+        // With nothing else to go on it is the missing argument it stands for, not an object name.
+        var nothing = await tools["geom_view"].ExecuteAsync("""{"to":"null","rect":null}""");
+        Assert.True(nothing.IsError);
+        Assert.DoesNotContain("nothing called 'null'", nothing.TextContent);
+        Assert.Contains("'rect'", nothing.TextContent);
+    }
 }

@@ -50,7 +50,7 @@ internal sealed class GeometryOpenTool(ResolvedSettings projectSettings) : Geome
     protected override async Task<ToolResult> RunAsync(
         IAgentSession chat, GeometrySettings cfg, JsonElement args, CancellationToken ct)
     {
-        var address = ToolJson.GetStringTrimmed(args, "image");
+        var address = Str(args, "image");
         if (address is null) return ToolResult.Fail("Error: image is required.", "missing image");
 
         var loaded = await ImageSource.LoadAsync(address, Resolved(chat), ct).ConfigureAwait(false);

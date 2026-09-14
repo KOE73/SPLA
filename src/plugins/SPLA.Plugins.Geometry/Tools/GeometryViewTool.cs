@@ -79,7 +79,7 @@ internal sealed class GeometryViewTool(ResolvedSettings projectSettings) : Geome
         if (session is null) return Task.FromResult(NoSession);
 
         var current = session.CurrentView;
-        var to = ToolJson.GetStringTrimmed(args, "to");
+        var to = Str(args, "to");
         var (rect, rectError) = Rect(args);
         if (rectError is not null) return Task.FromResult(ToolResult.Fail($"geom_view: {rectError}", "bad rect"));
 

@@ -1,7 +1,6 @@
 using SPLA.Domain.Agent;
 using SPLA.Domain.Models;
 using SPLA.Domain.Settings;
-using SPLA.MCP.Core.Json;
 using SPLA.MCP.Core.Tools;
 using SPLA.Plugins.Geometry.Model;
 using SPLA.Plugins.Geometry.Render;
@@ -48,13 +47,13 @@ internal sealed class GeometryResultTool(ResolvedSettings projectSettings) : Geo
 
         var json = JsonSerializer.Serialize(Build(session), new JsonSerializerOptions { WriteIndented = true });
 
-        var target = DataChannel.ParseTarget(ToolJson.GetStringTrimmed(args, "output"));
+        var target = DataChannel.ParseTarget(Str(args, "output"));
         var summary = $"{session.Objects.Count} object(s) in source coordinates " +
                       $"({session.Source.Width}x{session.Source.Height} px), from '{session.SourceAddress}'.";
 
         return Task.FromResult(ToolResult.Text(DataChannel.Route(
             target, BlobPayload.OfText(json, "application/json"), summary,
-            ToolJson.GetStringTrimmed(args, "output_name"), session.Origin)));
+            Str(args, "output_name"), session.Origin)));
     }
 
     private static object Build(GeometrySession session) => new
