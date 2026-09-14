@@ -190,9 +190,32 @@ public sealed class GeometryBoxToolTests
         Assert.Contains("dx", result.TextContent);
         Assert.Empty(result.Content.OfType<ToolImage>());
 
-        // And the box did not move.
-        var look = await tools["geom_box"].ExecuteAsync("""{"name":"bag","dx":0}""");
+        // And the box did not move. Looking is geom_view's job: a zero delta asks for nothing,
+        // so it cannot double as a way to re-render.
+        var look = await tools["geom_view"].ExecuteAsync("""{"to":"current"}""");
         Assert.Contains("cx=400", look.TextContent);
+    }
+
+    /// <summary>The exact call a live model deadlocked on. StrictSchema forces every property to be
+    /// sent, so the fields it is not using arrive as 0 and "null" — read those as intent and the
+    /// mutually exclusive groups become impossible to satisfy, which is what happened: the same call
+    /// was refused five times until the loop guard stopped the turn.</summary>
+    [Fact]
+    public async Task Unused_fields_sent_as_zero_because_the_schema_demands_them_are_not_intent()
+    {
+        var (chat, tools, scope) = Begin();
+        using var _scope = scope;
+        await OpenFrame(chat, tools);
+
+        var result = await tools["geom_box"].ExecuteAsync(
+            """
+            {"name":"bag","cx":375,"cy":500,"width":640,"height":1900,"angle":-2,
+             "dx":0,"dy":0,"dw":0,"dh":0,"dangle":0,"edge":"null","by":0,"delete":false}
+            """);
+
+        Assert.False(result.IsError);
+        Assert.Contains("created 'bag'", result.TextContent);
+        Assert.Contains("cx=375", result.TextContent);
     }
 
     [Fact]

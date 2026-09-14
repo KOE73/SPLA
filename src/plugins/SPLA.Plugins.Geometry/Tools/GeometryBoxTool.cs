@@ -123,9 +123,9 @@ internal sealed class GeometryBoxTool(ResolvedSettings projectSettings) : Geomet
         }
 
         var absolute = AnyOf(args, AbsoluteFields);
-        var relative = AnyOf(args, DeltaFields);
+        var relative = AnyMove(args, DeltaFields);
         var edgeName = Str(args, "edge");
-        var edgeBy = Number(args, "by");
+        var edgeBy = Move(args, "by");
 
         if (edgeName is not null || edgeBy is not null)
         {
@@ -135,7 +135,8 @@ internal sealed class GeometryBoxTool(ResolvedSettings projectSettings) : Geomet
                 return Task.FromResult(ToolResult.Fail(
                     "geom_box got edge/by together with " +
                     $"{Present(args, absolute ? AbsoluteFields : DeltaFields)}. Moving one side is its " +
-                    "own call: send edge and by alone, or the absolute fields, or the deltas.",
+                    "own call: to move an edge, leave those at null or 0 — a zero is read as " +
+                    "untouched, so you never have to leave a field out.",
                     "mixed edge and other fields"));
 
             var moved = MoveEdge(view, existing, name, edgeName, edgeBy);
@@ -313,7 +314,9 @@ internal sealed class GeometryBoxTool(ResolvedSettings projectSettings) : Geomet
     private static double Size(double value) => Math.Max(1, Math.Abs(value));
 
     /// <summary>Which of <paramref name="fields"/> the call actually carried — an error that names
-    /// them is one the model can act on without guessing.</summary>
+    /// them is one the model can act on without guessing. Displacement fields count only when they
+    /// are non-zero, matching how the call was read in the first place.</summary>
     private static string Present(JsonElement args, string[] fields) =>
-        string.Join(", ", Array.FindAll(fields, f => Number(args, f) is not null));
+        string.Join(", ", Array.FindAll(fields,
+            f => fields == AbsoluteFields ? Number(args, f) is not null : Move(args, f) is not null));
 }

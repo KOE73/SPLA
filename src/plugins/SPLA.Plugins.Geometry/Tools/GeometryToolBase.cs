@@ -375,7 +375,24 @@ internal abstract class GeometryToolBase(ResolvedSettings projectSettings) : IMc
             ? number
             : null;
 
-    /// <summary>True when at least one of <paramref name="names"/> was actually supplied as a number.</summary>
+    /// <summary>True when at least one of <paramref name="names"/> was actually supplied as a number.
+    /// Use for fields where zero is a real value — a coordinate of 0 or an angle of 0 means something.</summary>
     protected static bool AnyOf(JsonElement args, params string[] names)
         => names.Any(name => Number(args, name) is not null);
+
+    /// <summary>A displacement this call actually asks for, or null. Zero is read as "not supplied".
+    /// <para>
+    /// StrictSchema puts every property in <c>required</c>, so a model cannot omit the fields it is
+    /// not using — it has to put something there, and what it puts is 0. Reading that 0 as intent
+    /// makes the mutually-exclusive argument groups impossible to satisfy: the call is refused for
+    /// carrying a group it never meant to use, and no rewriting of it can help, because the schema
+    /// forbids leaving the group out. A live model deadlocked here until the loop guard killed the
+    /// turn. Zero displacement is no displacement, so absence is the honest reading.
+    /// </para></summary>
+    protected static double? Move(JsonElement args, string name)
+        => Number(args, name) is { } value && value != 0 ? value : null;
+
+    /// <summary>True when at least one of <paramref name="names"/> asks for a non-zero displacement.</summary>
+    protected static bool AnyMove(JsonElement args, params string[] names)
+        => names.Any(name => Move(args, name) is not null);
 }

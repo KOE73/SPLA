@@ -159,6 +159,26 @@ required = new[] { "host", "server", "timeout", "regex" }
 
 Tools that use `JsonSerializer.Deserialize<T>` with non-nullable value types (`int`, `bool`) **cannot** use `StrictSchema = true` safely — the model may send null and the deserializer throws. Migrate to `ToolJson` first.
 
+### Under StrictSchema, "not supplied" is a value — never an absence
+
+Because every property sits in `required`, **a model cannot leave a field out.** It must put something there, and what it puts is `0`, `""`, `null`, or the literal string `"null"`. A tool that reads mere presence as intent is reading noise.
+
+This is harmless until a tool has **mutually exclusive argument groups** — "set it absolutely, or nudge it, or move one side". Then it becomes a trap with no exit:
+
+1. the model sends the group it wants, and fills the others with zeros because it has to;
+2. the tool sees two groups and refuses the call;
+3. the error tells the model to send one group alone;
+4. the schema forbids exactly that, so the model resends the same call — and keeps resending until a loop guard kills the turn.
+
+This happened: `geom_box` deadlocked a live model on `{"cx":375,…,"dx":0,…,"edge":"null","by":0}` five times in a row.
+
+Rules that follow:
+
+- **Define a sentinel per field and treat it as absent.** For a *displacement* (`dx`, `dw`, `by`) zero is absent — zero displacement is no displacement. For a *value* (`cx`, `angle`, `x`) only null is absent, because `0` and `angle=0` are legitimate answers. The two kinds need two different readers; one shared "was it supplied" helper is how the bug gets in.
+- **Read `"null"` as null.** Models emit the string when forced to fill a field they are not using.
+- **Never write an error that asks the model to omit a field.** It cannot. Say which value means untouched instead: *"leave those at null or 0"*.
+- **A zero must not double as a command.** If a no-op call currently means "re-render" or "show me the state", give that its own tool — once zero means absent, the trick stops working.
+
 ---
 
 ## Full Example

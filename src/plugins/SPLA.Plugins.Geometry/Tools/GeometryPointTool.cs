@@ -78,7 +78,7 @@ internal sealed class GeometryPointTool(ResolvedSettings projectSettings) : Geom
         }
 
         var absolute = AnyOf(args, "x", "y");
-        var relative = AnyOf(args, "dx", "dy");
+        var relative = AnyMove(args, "dx", "dy");
 
         if (absolute && relative)
             return Task.FromResult(ToolResult.Fail(
