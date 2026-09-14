@@ -178,8 +178,48 @@ internal abstract class GeometryToolBase(ResolvedSettings projectSettings) : IMc
         if (elsewhere.Count > 0)
             text.Append("outside this view: ").Append(string.Join(", ", elsewhere.Select(o => o.Name))).Append('\n');
 
+        foreach (var obj in here) Oversize(text, obj, view);
+
         text.Append("stored as ").Append(handle).Append('.');
         return text.ToString();
+    }
+
+    /// <summary>
+    /// Says when a box runs past the edge of the picture it is being judged in.
+    /// <para>
+    /// This is the trap a live run fell into: a box grew to 1100 px inside a 1024 px view, so its
+    /// left and right edges were off-screen and the model could not see that the text was already
+    /// enclosed. It widened six more times, repeating its own previous message each turn rather than
+    /// reading the new picture.
+    /// </para>
+    /// <para>
+    /// A <b>notice, never an error</b>: a box legitimately larger than the frame is real — a sack
+    /// running off the top and bottom of a photograph is correctly marked that way. The tool says
+    /// what cannot be seen from here and leaves the judgement where it belongs.
+    /// </para>
+    /// </summary>
+    private static void Oversize(StringBuilder text, GeometryObject obj, GeometryView view)
+    {
+        if (obj.Box is not { } box) return;
+
+        var corners = box.Transformed(view.SourceToView).Corners();
+        var width = corners.Max(c => c.X) - corners.Min(c => c.X);
+        var height = corners.Max(c => c.Y) - corners.Min(c => c.Y);
+
+        bool wider = width > view.Width, taller = height > view.Height;
+        if (!wider && !taller) return;
+
+        var what = wider && taller ? "wider and taller" : wider ? "wider" : "taller";
+        var numbers = wider && taller
+            ? $"{Round(width)} > {view.Width} across, {Round(height)} > {view.Height} down"
+            : wider ? $"{Round(width)} > {view.Width} across" : $"{Round(height)} > {view.Height} down";
+        var edges = wider && taller ? "left, right, top and bottom" : wider ? "left and right" : "top and bottom";
+
+        text.Append("note: '").Append(obj.Name).Append("' is ").Append(what)
+            .Append(" than this view (").Append(numbers).Append(") — its ").Append(edges)
+            .Append(" edges are off-screen, so you cannot judge them here. That is fine if it really ")
+            .Append("runs off the picture; if not, geom_view {to:'").Append(obj.Name)
+            .Append("'} shows the whole box.\n");
     }
 
     /// <summary>One object's numbers, in the pixels of the view the model is looking at. Internal

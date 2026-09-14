@@ -192,4 +192,55 @@ public sealed class GeometryBoxToolTests
         Assert.Contains("angle=0", straight.TextContent);
         Assert.DoesNotContain("tilted", straight.TextContent);
     }
+
+    /// <summary>The loop's worst failure mode, pinned: a box larger than the view has edges the model
+    /// cannot see, and in a live run that produced six identical "still cut off" corrections while the
+    /// box grew past the picture. The reply now says which edges are off-screen — as a note, because a
+    /// box that really runs off the frame (a sack filling the photograph) is correctly marked so and
+    /// must never be refused.</summary>
+    [Fact]
+    public async Task A_box_wider_than_the_view_is_kept_and_the_hidden_edges_are_named()
+    {
+        var (chat, tools, scope) = Begin();
+        using var _scope = scope;
+        await OpenFrame(chat, tools);   // 800x600
+
+        var result = await tools["geom_box"].ExecuteAsync(
+            """{"name":"mark","cx":400,"cy":300,"width":1000,"height":200}""");
+
+        Assert.False(result.IsError, result.TextContent);
+        Assert.Single(result.Content.OfType<ToolImage>());
+        Assert.Contains("created 'mark'", result.TextContent);
+        Assert.Contains("'mark' is wider than this view (1000 > 800 across)", result.TextContent);
+        Assert.Contains("left and right edges are off-screen", result.TextContent);
+        Assert.Contains("geom_view {to:'mark'}", result.TextContent);
+    }
+
+    [Fact]
+    public async Task A_box_taller_and_wider_than_the_view_names_all_four_edges()
+    {
+        var (chat, tools, scope) = Begin();
+        using var _scope = scope;
+        await OpenFrame(chat, tools);
+
+        var result = await tools["geom_box"].ExecuteAsync(
+            """{"name":"sack","cx":400,"cy":300,"width":900,"height":700}""");
+
+        Assert.False(result.IsError, result.TextContent);
+        Assert.Contains("wider and taller than this view (900 > 800 across, 700 > 600 down)", result.TextContent);
+        Assert.Contains("left, right, top and bottom edges are off-screen", result.TextContent);
+    }
+
+    [Fact]
+    public async Task A_box_that_fits_says_nothing_about_edges()
+    {
+        var (chat, tools, scope) = Begin();
+        using var _scope = scope;
+        await OpenFrame(chat, tools);
+
+        var result = await tools["geom_box"].ExecuteAsync(
+            """{"name":"bag","cx":400,"cy":300,"width":400,"height":300}""");
+
+        Assert.DoesNotContain("off-screen", result.TextContent);
+    }
 }
