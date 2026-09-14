@@ -2,6 +2,11 @@ id: browser_screencast
 version: 0.1.0
 type: dll
 entry_point: SPLA.Plugins.Browser.Screencast.dll
+# The Browser Lab panel is supplied by this plugin, not compiled into the client. Title and icon
+# live here, not in the bundle: the tool strip draws the button before the bundle is fetched.
+web_panel_entry: web/dist/panel.js
+panel_title: Browser Lab
+panel_icon: "🌐"
 default_prompt: |
   An embedded Browser Lab page is available to both the agent and the human viewer. Its tools
   navigate, inspect, click, type into, and read the same page whose frames are streamed to the Web UI.
