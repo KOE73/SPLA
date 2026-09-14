@@ -41,6 +41,38 @@ colour vision alone.
 Colours are bound to the **box's own axes**, not the screen's: they turn with the box, so the cyan
 edge is the same edge at any angle. That is exactly what side names like `left` could not give.
 
+## The grid is an instrument, and it is adjustable
+
+The grid is **not** debug decoration and not off by default. The evidence: asked "is the green edge
+far from the text?" without a grid, the model answered "no, a narrow strip of a few pixels, the box
+sits tight". With the grid on it answered "the green side runs from (200, 90) to (170, 260) and the
+first digit starts at about x≈340 — a gap of roughly 150–170 px", and proposed the correction itself.
+**The model cannot judge a distance by eye, but it reads coordinates off a grid accurately.** Every
+earlier "the edges are close to the text" was confabulation.
+
+Two grids, both in `GeometrySettings`, all values clamped:
+
+| setting | default | clamp | what it is |
+|---|---|---|---|
+| `grid` | `true` | — | the view grid, in the view's axes. The `grid` argument of `geom_open`/`geom_view` overrides it for that view; null follows this |
+| `grid_step` | `50` | 10…500 | spacing of the fine lines, in view pixels |
+| `grid_major_every` | `4` | 1…20 | every Nth line drawn stronger and **labelled**; fine lines carry no labels |
+| `grid_color` | `#141414` | `#RRGGBB`/`#AARRGGBB`, bad value falls back | near-black: on a grey-white sack a white grid is invisible, and this is clear of the edge palette |
+| `box_grid` | `false` | — | a grid **inside the editing box, along its own axes** — dashed, unlabelled |
+| `box_grid_divisions` | `4` | 1…20 | cells per side |
+
+The view grid answers *where is it*. "Is the box tight on the thing" is a property relative to the
+**box** and is measured along the box's own sides, which is what the box grid is for: "the text starts
+two cells in from the green edge". Only the editing box gets it, for the reason the four colours are
+also only there — five accepted objects would be mush. The cell lines are dashed so that on a tilted
+box they cannot be confused with the square view grid underneath.
+
+**Every line both measures and obscures.** On blurred small print a dense grid costs more legibility
+than it returns — at `grid_step=20` the small blue print on a sack is visibly degraded. That is what
+the major/minor split is for: keep the fine lines genuinely faint, keep labels on the frame's borders
+rather than over the marked object. This trade-off is not settleable by reasoning; the numbers above
+are starting values, and they are knobs because the owner turns them against a live model.
+
 ## Frozen: what gets colours, and the two glyphs
 
 - Only the **editing** box gets the four colours and the corner dots. `accepted` objects are drawn in
