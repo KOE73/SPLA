@@ -250,6 +250,32 @@ public sealed class GeometryRendererTests
         Assert.True(fine < background, $"fine {fine} should still be visible against {background}");
     }
 
+    /// <summary>The box grid is the box's own ruler: it exists only inside the box being edited, so an
+    /// accepted outline on a busy frame never turns into mush.</summary>
+    [Fact]
+    public void The_box_grid_stays_inside_the_editing_box()
+    {
+        using var session = Open();
+        session.Objects.Add(new GeometryObject
+        {
+            Name = "mark", Kind = ObjectKind.Box, Box = new Obb(200, 150, 160, 100, 0)
+        });
+        var cfg = GeometrySettings.FromBlob(new()
+        {
+            ["grid"] = false, ["box_grid"] = true, ["box_grid_divisions"] = 4
+        });
+
+        using var ruled = Decode(GeometryRenderer.Render(session, session.CurrentView, null, cfg));
+
+        var background = new SKColor(0x80, 0x80, 0x80).Red;
+        // Well outside the box, nothing is drawn at all.
+        Assert.Equal(background, ruled.GetPixel(40, 40).Red);
+        // Inside it, the quarter lines land somewhere along the cell's run — the dashes mean a single
+        // pixel can fall in a gap, so the column is sampled rather than one point.
+        var column = Enumerable.Range(110, 80).Select(y => ruled.GetPixel(160, y).Red);
+        Assert.Contains(column, red => red < background);
+    }
+
     [Fact]
     public void Jpeg_quality_switches_the_encoding()
     {

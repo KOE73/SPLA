@@ -63,6 +63,17 @@ public sealed class GeometrySettings
     [YamlMember(Alias = "grid_color")]
     public string GridColor { get; set; } = "#141414";
 
+    /// <summary>Whether the box being edited carries a grid along its <b>own</b> axes. Off by default:
+    /// this is the experimental instrument. "Is the box tight on the thing" is a property relative to
+    /// the box, and it is measured naturally in the box's own cells — "the text starts two cells in
+    /// from the green edge" — which the view grid, in the view's axes, cannot say.</summary>
+    [YamlMember(Alias = "box_grid")]
+    public bool BoxGrid { get; set; }
+
+    /// <summary>How many cells the box grid cuts each side into.</summary>
+    [YamlMember(Alias = "box_grid_divisions")]
+    public int BoxGridDivisions { get; set; } = 4;
+
     /// <summary>How many renders the chat's blob store keeps. Renders are written under the rotating
     /// names <c>geom_render_1..N</c>, so the store holds this many at most instead of one blob per
     /// step of the loop (a single frame's markup used to leave dozens of megabytes behind).</summary>
@@ -89,6 +100,7 @@ public sealed class GeometrySettings
         GridStep = Clamp(GridStep, 10, 500);
         // 1 means every line is major — legal, and what a coarse step wants.
         GridMajorEvery = Clamp(GridMajorEvery, 1, 20);
+        BoxGridDivisions = Clamp(BoxGridDivisions, 1, 20);
         if (string.IsNullOrWhiteSpace(GridColor)) GridColor = new GeometrySettings().GridColor;
         // 0 means PNG; any other value is a JPEG quality, and quality below 30 is not worth the
         // artefacts on a frame the model has to read geometry off, so it snaps up.
