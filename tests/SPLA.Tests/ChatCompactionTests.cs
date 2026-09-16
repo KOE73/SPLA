@@ -1,4 +1,4 @@
-using Microsoft.Extensions.Logging.Abstractions;
+﻿using Microsoft.Extensions.Logging.Abstractions;
 using SPLA.Domain.Context;
 using SPLA.Domain.Llm;
 using SPLA.Domain.Models;
@@ -132,6 +132,42 @@ public class ChatCompactionTests
             // kept human message, so nothing between an assistant's tool_calls and its results can ever
             // land on either side of it — that pairing only ever sits strictly inside one segment.
             Assert.Equal(ChatRole.User, list[thirdIdx].Role);
+        }
+        finally { runtime.Dispose(); Directory.Delete(root, recursive: true); }
+    }
+
+    /// <summary>
+    /// Compaction hides its prefix by position, not by policy, so <see cref="ContextRetention.Persistent"/>
+    /// alone could never express "keep this". A pinned reference picture is skipped the way a scope
+    /// marker is — otherwise the first <c>/compact</c> would silently delete the one thing the rest of
+    /// the work is measured against, and a summary cannot restate a picture.
+    /// </summary>
+    [Fact]
+    public async Task Compact_leaves_a_pinned_reference_in_front_of_the_model()
+    {
+        var client = new FixedFakeLlmClient("ok");
+        var (runtime, chats, root) = BuildProject(client, compactTailMessages: 1);
+        try
+        {
+            var chat = chats.CreateNew("t");
+            await chat.SendAsync("first", AllowAll, NoClarify, CancellationToken.None);
+            chat.InjectMessage(ChatRole.User, "[Reference image: file:///etalon.png]");
+            var reference = chat.Messages.Last(m => m.Role == ChatRole.User);
+            reference.Pinned = true;
+            reference.RetentionPolicy = ContextRetention.UntilSuperseded;
+            reference.ReplacementKey = "tool-image:file:///etalon.png";
+            await chat.SendAsync("second", AllowAll, NoClarify, CancellationToken.None);
+            await chat.SendAsync("third", AllowAll, NoClarify, CancellationToken.None);
+
+            Assert.True((await chat.CompactAsync(CancellationToken.None)).Compacted);
+
+            // Untouched by the pass that hid everything around it.
+            Assert.Null(reference.CompactedBy);
+            Assert.Equal(ContextRetention.UntilSuperseded, reference.RetentionPolicy);
+
+            var assembled = ContextAssembler.Assemble(chat.Messages.Where(m => m.Role != ChatRole.System));
+            Assert.Contains(assembled, m => m.Pinned);
+            Assert.DoesNotContain(assembled, m => m.Content == "first");   // the ordinary prefix still went
         }
         finally { runtime.Dispose(); Directory.Delete(root, recursive: true); }
     }

@@ -1,4 +1,4 @@
-using Microsoft.Extensions.Logging.Abstractions;
+﻿using Microsoft.Extensions.Logging.Abstractions;
 using SPLA.Agent;
 using SPLA.Domain.Context;
 using SPLA.Domain.Interfaces;
@@ -6,6 +6,7 @@ using SPLA.Domain.Llm;
 using SPLA.Domain.Models;
 using SPLA.Domain.Settings;
 using SPLA.Domain.Tools;
+using SPLA.MCP.Core.Tools;
 using SPLA.Runtime;
 using System;
 using System.Collections.Generic;
@@ -151,6 +152,97 @@ public class ToolImageRetentionTests
         Assert.Equal(ChatRole.User, evicted[0].Role);
     }
 
+    // ── A pinned reference ────────────────────────────────────────────────────
+
+    /// <summary>Answers the call named <c>ref_*</c> with a pinned picture and everything else with an
+    /// ordinary frame — the mixture a real chat has once a reference has been loaded.</summary>
+    private sealed class KeepAwareToolHost : IToolHost
+    {
+        public IEnumerable<ToolDefinition> GetToolDefinitions() => Array.Empty<ToolDefinition>();
+
+        public Task<ToolResult> ExecuteToolAsync(
+            AgentMode mode, string name, string argumentsJson,
+            CancellationToken cancellationToken = default, ToolCallContext? context = null)
+            => Task.FromResult(name.StartsWith("ref_", StringComparison.Ordinal)
+                ? ToolResult.From(
+                    new ToolText("reference"),
+                    new ToolImage("QUJD", "image/png", ImageKeep.Pinned, "file:///etalon.png"))
+                : ToolResult.From(
+                    new ToolText($"result of {name}"),
+                    new ToolImage("QUJD", "image/png")));
+    }
+
+    private static async Task<Conversation> RunCalls(ToolImagesMode mode, params string[] toolNames)
+    {
+        var responses = toolNames
+            .Select((n, i) => new ChatMessage
+            {
+                Role = ChatRole.Assistant,
+                Content = "",
+                ToolCalls = new() { Call((i + 1).ToString(), n) }
+            })
+            .Append(new ChatMessage { Role = ChatRole.Assistant, Content = "done" });
+
+        var orch = new ConversationOrchestrator(new FakeLlm(responses), new KeepAwareToolHost())
+        {
+            ToolFilter = (t, _) => t,
+            ToolImages = mode
+        };
+        var convo = new Conversation();
+        convo.Add(new ChatMessage { Role = ChatRole.User, Content = "load the reference, then work" });
+        await orch.RunAsync(convo, new LLMSettings(), AgentMode.Agent, new AgentCallbacks());
+        return convo;
+    }
+
+    /// <summary>
+    /// The reason this exists: under <c>last</c> the reference and the working frames shared one
+    /// replacement key, so the next screenshot evicted the thing the work was being measured against.
+    /// A pinned picture is filed under its own name and survives every frame after it.
+    /// </summary>
+    [Fact]
+    public async Task A_pinned_reference_is_not_evicted_by_the_frames_that_follow_it()
+    {
+        var convo = await RunCalls(ToolImagesMode.Last, "ref_load", "geom_box", "geom_box");
+
+        var assembled = ImageMessages(ContextAssembler.Assemble(convo.Messages));
+
+        // Two pictures reach the model: the reference, and the newest frame — not the middle one.
+        Assert.Equal(2, assembled.Count);
+        var reference = Assert.Single(assembled, m => m.Pinned);
+        Assert.Equal("file:///etalon.png", reference.Images![0].Label);
+        Assert.Equal($"{ConversationOrchestrator.ToolImageReplacementKey}:file:///etalon.png", reference.ReplacementKey);
+
+        // The frames still evict each other, exactly as before — pinning changed nothing for them.
+        var frames = assembled.Where(m => !m.Pinned).ToList();
+        Assert.Single(frames);
+        Assert.Equal(ConversationOrchestrator.ToolImageReplacementKey, frames[0].ReplacementKey);
+    }
+
+    /// <summary>Re-reading the same reference replaces it. The alternative — two copies of one
+    /// picture under different numbers — is worse than the stale frame pinning exists to avoid.</summary>
+    [Fact]
+    public async Task Re_reading_the_same_reference_replaces_it_instead_of_adding_a_copy()
+    {
+        var convo = await RunCalls(ToolImagesMode.All, "ref_load", "ref_load");
+
+        Assert.Equal(2, ImageMessages(convo.Messages).Count);            // history keeps both
+        var sent = ImageMessages(ContextAssembler.Assemble(convo.Messages));
+        Assert.Single(sent);                                             // the context holds one
+        Assert.Same(ImageMessages(convo.Messages).Last(), sent[0]);
+    }
+
+    /// <summary>A caller can ask for eviction without the chat-wide switch: <c>once</c> is the
+    /// setting stated by one call.</summary>
+    [Fact]
+    public void Keep_is_read_leniently_and_an_unknown_value_falls_back_to_the_setting()
+    {
+        Assert.Equal(ImageKeep.Once, SchemaParts.ParseImageKeep("once"));
+        Assert.Equal(ImageKeep.Pinned, SchemaParts.ParseImageKeep(" Pinned "));
+        // Never pin on a typo: an accidental permanent picture is the expensive mistake here.
+        Assert.Equal(ImageKeep.Unspecified, SchemaParts.ParseImageKeep("pin"));
+        Assert.Equal(ImageKeep.Unspecified, SchemaParts.ParseImageKeep(null));
+    }
+
     // ── The setting's own round trip ─────────────────────────────────────────
 
     private static string TempRoot() =>
@@ -238,6 +330,13 @@ public class ToolImageRetentionTests
             var restored = reopened.Messages.Single(m => m.Content == "[Image from geom_box]");
             Assert.Equal(ContextRetention.UntilSuperseded, restored.RetentionPolicy);
             Assert.Equal(ConversationOrchestrator.ToolImageReplacementKey, restored.ReplacementKey);
+
+            // And the pin itself: a reference that loses it on reopen is worse than one never pinned —
+            // the chat goes on talking about a picture the next compaction removes.
+            picture.Pinned = true;
+            chat.Save();
+            var repinned = new ChatRuntime(runtime, runtime.ChatManager.LoadChat(chat.ChatId)!);
+            Assert.True(repinned.Messages.Single(m => m.Content == "[Image from geom_box]").Pinned);
         }
         finally
         {

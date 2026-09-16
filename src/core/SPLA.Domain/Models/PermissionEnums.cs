@@ -117,3 +117,28 @@ public enum ToolImagesMode
     /// last one is a stale frame that is paid for on every request.</summary>
     Last = 1
 }
+
+/// <summary>How long one particular picture stays in the context, as stated by the call that asked
+/// for it. This is the per-call counterpart of <see cref="ToolImagesMode"/>: the setting says what
+/// happens to pictures nobody spoke for, a value here overrides it for this picture alone.
+/// <para>
+/// The distinction exists because two kinds of picture travel the same path and want opposite
+/// treatment. A frame in a look-and-correct loop is stale the moment the next one arrives; a
+/// reference image — the thing the work is measured against — is closer to a system prompt than to a
+/// tool result, and must survive every later picture and every compaction.
+/// </para></summary>
+public enum ImageKeep
+{
+    /// <summary>The call said nothing; <c>agent.tool_images</c> decides. Default, so every existing
+    /// caller keeps the behaviour it had.</summary>
+    Unspecified = 0,
+
+    /// <summary>A working frame: the newest tool picture is the only one assembled, whoever made it.
+    /// What <see cref="ToolImagesMode.Last"/> does, asked for by one call instead of a setting.</summary>
+    Once = 1,
+
+    /// <summary>A reference: stays in the context for the rest of the chat. Not evicted by later
+    /// pictures (it is filed under its own name, not the shared one) and not hidden by compaction —
+    /// only re-reading the same name replaces it.</summary>
+    Pinned = 2
+}

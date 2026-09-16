@@ -4,7 +4,7 @@ A blob is opaque to you: the handle is an address, not the data. What a blob hol
 
 - **Text blob** — pass it to a consuming tool, `blob_grep` it to find something in it, or `blob_peek` it to see a slice at an offset.
 - **Binary blob** — pass it on (write it to a file, upload it), or `blob_peek` it for a hex dump. You cannot read binary data as text; do not try to interpret it by feeding it somewhere that expects text.
-- **Image blob** (`binary image/png`, `image/jpeg`, …) — and only an image blob — can be looked at with `image_view`, which puts the actual picture in front of you on the next turn. `image_view` on anything else fails; a binary file is not a picture just because it is bytes.
+- **Image blob** (`binary image/png`, `image/jpeg`, …) — and only an image blob — can be looked at with `image_view`, which puts the actual picture in front of you on the next turn. `image_view` on anything else fails; a binary file is not a picture just because it is bytes. Say `keep="pinned"` when the picture is a **reference** the work is measured against — it then stays in front of you for the whole chat instead of being pushed out by the next screenshot; `keep="once"` for a working frame you will replace shortly.
 
 When you only need to identify what a blob is rather than use it, `blob_peek` is the cheap answer — it is bounded and will not flood context.
 

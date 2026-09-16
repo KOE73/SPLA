@@ -1243,6 +1243,7 @@ public sealed class ChatRuntime : IDisposable, SPLA.Domain.Agent.IBackgroundTask
                     _ => SPLA.Domain.Models.ContextRetention.Persistent
                 },
                 ReplacementKey = m.ReplacementKey,
+                Pinned = m.Pinned ?? false,
                 // Restored whenever they were written, independent of today's save_attempts value —
                 // a chat opened after the setting was turned off must still show what it recorded
                 // while it was on.
@@ -1793,7 +1794,11 @@ public sealed class ChatRuntime : IDisposable, SPLA.Domain.Agent.IBackgroundTask
 
             foreach (var m in prefix)
             {
-                if (m.ScopeMarker != null || m.IsLabel) continue;
+                // A pinned reference is skipped for the same reason as a scope marker, arrived at from
+                // the other side: the marker is skipped because the model never saw it, the reference
+                // because the model must go on seeing it. Hiding it behind a summary would delete the
+                // one thing the work is measured against, and a summary cannot restate a picture.
+                if (m.ScopeMarker != null || m.IsLabel || m.Pinned) continue;
                 m.RetentionPolicy = ContextRetention.Never;
                 m.CompactedBy = summary.MsgId;
             }
@@ -1860,6 +1865,7 @@ public sealed class ChatRuntime : IDisposable, SPLA.Domain.Agent.IBackgroundTask
                     _ => null   // Persistent — the historical default; absence means exactly this
                 },
                 ReplacementKey = m.ReplacementKey,
+                Pinned = m.Pinned ? true : null,   // absence means "ordinary", as for retention
                 Images = _imageFiles.TryGetValue(m, out var files) && files.Count > 0
                     ? files.Select(f => f.Clone()).ToList()
                     : null,

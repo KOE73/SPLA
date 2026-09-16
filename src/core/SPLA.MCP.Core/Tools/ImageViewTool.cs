@@ -39,7 +39,9 @@ public sealed class ImageViewTool : IMcpTool
             Name = Name,
             Description = "Loads a stored image (by blob: handle) into context so you can actually see it on your " +
                           "next turn. Use this to view a screenshot or other image a tool saved to the blob store " +
-                          "instead of inlining it into the conversation.",
+                          "instead of inlining it into the conversation. Set keep='pinned' for a reference "
+                          + "image the rest of the work is measured against: it stays in front of you for the "
+                          + "whole chat instead of being pushed out by later pictures.",
             Scope = ToolScope.Agent,
             Effect = ToolEffect.Read,
             Risk = ToolRisk.Low,
@@ -50,9 +52,10 @@ public sealed class ImageViewTool : IMcpTool
                 type = "object",
                 properties = new
                 {
-                    handle = new { type = "string", description = "The blob: handle of a stored image (e.g. from browser_screenshot)." }
+                    handle = new { type = "string", description = "The blob: handle of a stored image (e.g. from browser_screenshot)." },
+                    keep = SchemaParts.ImageKeepParameter
                 },
-                required = new[] { "handle" }
+                required = new[] { "handle", "keep" }
             }
         }
     };
@@ -60,10 +63,12 @@ public sealed class ImageViewTool : IMcpTool
     public async Task<ToolResult> ExecuteAsync(string argumentsJson, CancellationToken cancellationToken = default)
     {
         string? handle;
+        ImageKeep keep;
         try
         {
             using var doc = JsonDocument.Parse(string.IsNullOrWhiteSpace(argumentsJson) ? "{}" : argumentsJson);
             handle = ToolJson.GetStringTrimmed(doc.RootElement, "handle");
+            keep = SchemaParts.ParseImageKeep(ToolJson.GetStringTrimmed(doc.RootElement, "keep"));
         }
         catch (JsonException) { return ToolResult.Fail("error: invalid_json", "invalid json"); }
 
@@ -117,7 +122,11 @@ public sealed class ImageViewTool : IMcpTool
         // tool states that it has an image, and the conversation layer decides how a given model gets
         // to see it. The wording still holds — that layer delivers it on the next turn.
         return ToolResult.From(
-            new ToolText($"ok: queued image from '{handle}' ({payload.Size} bytes) — visible on your next turn."),
-            new ToolImage(Convert.ToBase64String(picture.Bytes), picture.ContentType));
+            new ToolText(keep == ImageKeep.Pinned
+                ? $"ok: pinned image from '{handle}' ({payload.Size} bytes) — visible from your next turn and kept for the rest of the chat."
+                : $"ok: queued image from '{handle}' ({payload.Size} bytes) — visible on your next turn."),
+            // The handle is the name: reading the same reference twice replaces it instead of leaving
+            // two copies of the same picture in the context under different numbers.
+            new ToolImage(Convert.ToBase64String(picture.Bytes), picture.ContentType, keep, handle));
     }
 }

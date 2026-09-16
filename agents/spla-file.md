@@ -313,6 +313,22 @@ the cost this exists to avoid.
 A value outside the list fails the project load rather than quietly meaning `all` — a setting that is
 declared, survives a restart and does nothing is worse than one that is absent.
 
+**A call can override the setting: `keep`.** Both tools that put a picture in front of the model —
+`image_view` and `resource_read` — take a `keep` argument, because only the call knows which kind of
+picture this is:
+
+| `keep` | Meaning |
+|---|---|
+| omitted | This setting decides. Every caller written before `keep` existed behaves exactly as it did. |
+| `once` | A working frame: evicted by the next picture, whatever the setting says. |
+| `pinned` | A **reference** the task is measured against. Filed under its own name (the blob handle or the resource address), so later pictures never evict it and re-reading the same reference replaces it instead of adding a copy. Kept through compaction, which skips it the way it skips a scope marker. |
+
+A pinned picture is closer to part of the prompt than to a tool result, and that is the whole point:
+without it, `last` evicted the reference with the next screenshot and `all` lost it at the first
+`/compact` — compaction hides its prefix by position, not by retention policy. An unrecognised `keep`
+falls back to the setting rather than pinning: an accidentally permanent picture is the expensive
+mistake here.
+
 ## Launch Profiles
 
 A profile is a **CLI parameter and a template applied once, at creation.** It is not a field of the

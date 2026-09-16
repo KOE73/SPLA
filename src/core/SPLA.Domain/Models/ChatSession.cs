@@ -367,6 +367,13 @@ public class ChatSessionMessage
     [YamlMember(Alias = "replacement_key")]
     public string? ReplacementKey { get; set; }
 
+    /// <summary>Mirrors <see cref="SPLA.Domain.Models.ChatMessage.Pinned"/> across a save/load. A
+    /// reference picture that loses its pin on reopen is worse than one that was never pinned: the
+    /// chat goes on talking about a reference the next compaction quietly removed. Absent for every
+    /// ordinary message and for every session written before pinning existed.</summary>
+    [YamlMember(Alias = "pinned")]
+    public bool? Pinned { get; set; }
+
     /// <summary>Mirrors <see cref="SPLA.Domain.Models.ChatMessage.CompactedBy"/> — see ADR §2.1/§2.5.
     /// Null for every message no compaction has hidden.</summary>
     [YamlMember(Alias = "compacted_by")]

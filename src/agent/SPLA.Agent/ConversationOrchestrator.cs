@@ -337,13 +337,43 @@ public sealed class ConversationOrchestrator
                 // model can only refer to a picture by the name written in front of it, and "the second
                 // screenshot" is unsayable otherwise (see ImageAttachment).
                 var produced = toolResult.Content.OfType<ToolImage>().ToList();
-                var pendingImages = produced
+
+                // A pinned reference and a working frame want opposite treatment, so they cannot
+                // share one message: retention lives on the message, not on the attachment. Each
+                // pinned picture therefore gets a message of its own, filed under its own name; the
+                // rest travel together exactly as they always did.
+                foreach (var pinned in produced.Where(i => i.Keep == ImageKeep.Pinned))
+                {
+                    var name = string.IsNullOrWhiteSpace(pinned.Label) ? tc.Function.Name : pinned.Label!;
+                    conversation.Add(new ChatMessage
+                    {
+                        Role = ChatRole.User,
+                        Content = $"[Reference image: {name}]",
+                        Images = new List<ImageAttachment>
+                        {
+                            new($"data:{pinned.MimeType};base64,{pinned.Data}", name)
+                        },
+                        // Its own key, not the shared one: later pictures must not evict a reference,
+                        // and re-reading THIS reference must replace it rather than add a second copy.
+                        RetentionPolicy = ContextRetention.UntilSuperseded,
+                        ReplacementKey = $"{ToolImageReplacementKey}:{name}",
+                        Pinned = true
+                    });
+                }
+
+                var frames = produced.Where(i => i.Keep != ImageKeep.Pinned).ToList();
+                var pendingImages = frames
                     .Select((i, n) => new ImageAttachment(
                         $"data:{i.MimeType};base64,{i.Data}",
-                        produced.Count > 1 ? $"{tc.Function.Name} {n + 1}" : tc.Function.Name))
+                        !string.IsNullOrWhiteSpace(i.Label) ? i.Label
+                            : frames.Count > 1 ? $"{tc.Function.Name} {n + 1}" : tc.Function.Name))
                     .ToList();
                 if (pendingImages is { Count: > 0 })
                 {
+                    // `once` is the setting asked for by one call: a caller that knows this frame is
+                    // stale the moment the next one arrives should not have to have the chat-wide
+                    // switch flipped for it.
+                    var evict = ToolImages == ToolImagesMode.Last || frames.Any(i => i.Keep == ImageKeep.Once);
                     conversation.Add(new ChatMessage
                     {
                         Role = ChatRole.User,
@@ -352,12 +382,8 @@ public sealed class ConversationOrchestrator
                         // Not a deletion: the message stays in the chat, in the UI and in its sidecar
                         // file — only context assembly skips the superseded ones, so switching
                         // tool_images back to `all` brings every picture back with nothing lost.
-                        RetentionPolicy = ToolImages == ToolImagesMode.Last
-                            ? ContextRetention.UntilSuperseded
-                            : ContextRetention.Persistent,
-                        ReplacementKey = ToolImages == ToolImagesMode.Last
-                            ? ToolImageReplacementKey
-                            : null
+                        RetentionPolicy = evict ? ContextRetention.UntilSuperseded : ContextRetention.Persistent,
+                        ReplacementKey = evict ? ToolImageReplacementKey : null
                     });
                 }
 

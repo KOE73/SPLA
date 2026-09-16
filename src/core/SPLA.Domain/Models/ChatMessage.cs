@@ -74,6 +74,17 @@ public class ChatMessage
     public string? ReplacementKey { get; set; }
 
     /// <summary>
+    /// True for a message a call asked to keep for the rest of the chat — today, a reference picture
+    /// read with <see cref="ImageKeep.Pinned"/>. <see cref="RetentionPolicy"/> alone cannot express
+    /// this: compaction hides whatever falls in its prefix by fact of position, not by policy, so a
+    /// <see cref="ContextRetention.Persistent"/> reference would die on the first <c>/compact</c>.
+    /// Compaction skips a pinned message the way it skips a scope marker — the point of pinning being
+    /// that the picture behaves like part of the prompt rather than like a result that scrolled past.
+    /// False for every ordinary message.
+    /// </summary>
+    public bool Pinned { get; set; }
+
+    /// <summary>
     /// The correspondent's role, for a message that arrived across a correspondence
     /// (<see cref="SPLA.Runtime.ChatRuntime.SendReply"/>, <c>InboxItemKind.Peer</c>) — display metadata
     /// only, never sent to the provider (see <c>ConversationOrchestrator</c>, which builds the wire
