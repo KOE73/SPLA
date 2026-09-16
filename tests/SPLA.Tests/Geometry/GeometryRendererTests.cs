@@ -95,9 +95,9 @@ public sealed class GeometryRendererTests
         using var editing = Decode(GeometryRenderer.Render(session, session.CurrentView, false, false, cfg));
 
         AssertNear(editing.GetPixel(200, 110), 0x00, 0xCF, 0xFF);   // top    - cyan
-        AssertNear(editing.GetPixel(260, 150), 0xFF, 0x2B, 0xD6);   // right  - magenta
+        AssertNear(editing.GetPixel(260, 150), 0xFF, 0x74, 0xE4);   // right  - magenta
         AssertNear(editing.GetPixel(200, 190), 0xFF, 0xE1, 0x00);   // bottom - yellow
-        AssertNear(editing.GetPixel(140, 150), 0x0E, 0x8A, 0x26);   // left   - green
+        AssertNear(editing.GetPixel(140, 150), 0x3F, 0xD6, 0x5C);   // left   - green
 
         session.Objects[0].Status = ObjectStatus.Accepted;
         using var accepted = Decode(GeometryRenderer.Render(session, session.CurrentView, false, false, cfg));
@@ -156,9 +156,9 @@ public sealed class GeometryRendererTests
         using var decoded = Decode(GeometryRenderer.Render(session, session.CurrentView, false, false, new GeometrySettings()));
 
         AssertNear(decoded.GetPixel(140, 110), 0x00, 0xCF, 0xFF);   // top-left,     cyan starts here
-        AssertNear(decoded.GetPixel(260, 110), 0xFF, 0x2B, 0xD6);   // top-right,    magenta
+        AssertNear(decoded.GetPixel(260, 110), 0xFF, 0x74, 0xE4);   // top-right,    magenta
         AssertNear(decoded.GetPixel(260, 190), 0xFF, 0xE1, 0x00);   // bottom-right, yellow
-        AssertNear(decoded.GetPixel(140, 190), 0x0E, 0x8A, 0x26);   // bottom-left,  green
+        AssertNear(decoded.GetPixel(140, 190), 0x3F, 0xD6, 0x5C);   // bottom-left,  green
     }
 
     private static void AssertNear(SKColor actual, byte r, byte g, byte b, int tolerance = 40)
@@ -206,7 +206,7 @@ public sealed class GeometryRendererTests
     public void The_grid_is_drawn_when_the_call_says_nothing()
     {
         using var session = Open();
-        var cfg = new GeometrySettings();
+        var cfg = GeometrySettings.FromBlob(new() { ["grid_step"] = 50 });
 
         using var silent = Decode(GeometryRenderer.Render(session, session.CurrentView, null, false, cfg));
         using var off = Decode(GeometryRenderer.Render(session, session.CurrentView, false, false, cfg));
@@ -223,8 +223,10 @@ public sealed class GeometryRendererTests
         using var session = Open();
         var background = new SKColor(0x80, 0x80, 0x80);
 
-        using var forcedOn = Decode(GeometryRenderer.Render(session, session.CurrentView, true, false, GeometrySettings.FromBlob(new() { ["grid"] = false })));
-        using var forcedOff = Decode(GeometryRenderer.Render(session, session.CurrentView, false, false, GeometrySettings.FromBlob(new() { ["grid"] = true })));
+        using var forcedOn = Decode(GeometryRenderer.Render(session, session.CurrentView, true, false,
+            GeometrySettings.FromBlob(new() { ["grid"] = false, ["grid_step"] = 50 })));
+        using var forcedOff = Decode(GeometryRenderer.Render(session, session.CurrentView, false, false,
+            GeometrySettings.FromBlob(new() { ["grid"] = true, ["grid_step"] = 50 })));
 
         Assert.NotEqual(background.Red, forcedOn.GetPixel(100, 250).Red);
         Assert.Equal(background.Red, forcedOff.GetPixel(100, 250).Red);
@@ -278,10 +280,71 @@ public sealed class GeometryRendererTests
         using var ruled = Decode(GeometryRenderer.Render(session, session.CurrentView, false, true, cfg));
         using var bare = Decode(GeometryRenderer.Render(session, session.CurrentView, false, false, cfg));
 
-        // Ten pixels out from the green (left) edge at x=120, along the stretch it spans.
-        var column = Enumerable.Range(112, 76).Select(y => ruled.GetPixel(110, y)).ToArray();
+        // One finest step (32 px) out from the green (left) edge at x=120, along the stretch it spans.
+        var column = Enumerable.Range(112, 76).Select(y => ruled.GetPixel(88, y)).ToArray();
         Assert.Contains(column, p => p.Green - p.Red > 40);
-        Assert.All(Enumerable.Range(112, 76), y => Assert.Equal(0x80, bare.GetPixel(110, y).Red));
+        Assert.All(Enumerable.Range(112, 76), y => Assert.Equal(0x80, bare.GetPixel(88, y).Red));
+    }
+
+    /// <summary>The inward ruler is a shrunken copy of the box — a closed rectangle inset by the same
+    /// amount on all four sides — and not four lines that each run the length of their own edge. Four
+    /// such lines overshoot the box at one end and fall short at the other, so each one's two ends say
+    /// different things about where the box is: the very ambiguity the rulers exist to remove.</summary>
+    [Fact]
+    public void The_inward_ruler_is_a_closed_inset_rectangle()
+    {
+        using var session = Open();
+        session.Objects.Add(new GeometryObject
+        {
+            Name = "mark", Kind = ObjectKind.Box, Box = new Obb(200, 150, 160, 100, 0)
+        });
+
+        using var ruled = Decode(GeometryRenderer.Render(
+            session, session.CurrentView, false, true,
+            GeometrySettings.FromBlob(new() { ["grid"] = false, ["ruler_labels"] = false })));
+
+        // The box spans x 120..280, y 100..200, so the first ring is the rectangle 152..248 × 132..168.
+        var background = new SKColor(0x80, 0x80, 0x80).Red;
+        bool Painted(int x, int y) => ruled.GetPixel(x, y).Red != background;
+
+        // Dashed, so only that some of it is painted — the closed-rectangle claim is the corners below.
+        Assert.Contains(Enumerable.Range(160, 80).ToArray(), x => Painted(x, 132));
+        // Past the ring's corner the side stops: it is a rectangle, not a line the length of the edge.
+        Assert.False(Painted(140, 132), "the ring's top side runs past its own corner");
+        Assert.False(Painted(264, 132), "the ring's top side runs past its own corner");
+    }
+
+    /// <summary>A line 32 px inside an edge and one 32 px outside it share their colour, their
+    /// distance and their number: the only thing left to tell them apart is which side of the edge
+    /// they fall on, which is the judgement by eye the rulers exist to remove. So the stroke carries
+    /// it — dashed inside, solid outside — and the tool help says so in those words. Dashed is the one
+    /// that goes inside because inside is where the print is, and the gaps let the letters through.
+    /// </summary>
+    [Fact]
+    public void Inward_is_dashed_and_outward_is_solid()
+    {
+        using var session = Open();
+        session.Objects.Add(new GeometryObject
+        {
+            Name = "mark", Kind = ObjectKind.Box, Box = new Obb(200, 150, 160, 100, 0)
+        });
+
+        using var ruled = Decode(GeometryRenderer.Render(
+            session, session.CurrentView, false, true,
+            GeometrySettings.FromBlob(new() { ["grid"] = false, ["ruler_labels"] = false })));
+
+        // The green (left) edge is at x=120: one finest step out is x=88, one step in is x=152.
+        // Away from the corners, where the scales of the other two edges cross these columns.
+        var background = new SKColor(0x80, 0x80, 0x80).Red;
+        bool Painted(int x, int y) => ruled.GetPixel(x, y).Red != background;
+
+        // Outside, at x=88: solid, and running the full length of the edge (y=100..200).
+        Assert.All(Enumerable.Range(105, 90),
+            y => Assert.True(Painted(88, y), $"the outward line breaks at y={y}"));
+        // Inside, at x=152: the ring's left side, dashed — so it has gaps between y=132 and y=168.
+        var ring = Enumerable.Range(135, 30).ToArray();
+        Assert.Contains(ring, y => !Painted(152, y));
+        Assert.Contains(ring, y => Painted(152, y));
     }
 
     /// <summary>Only the box being edited carries rulers, for the reason only it carries the four
@@ -299,7 +362,7 @@ public sealed class GeometryRendererTests
         using var ruled = Decode(GeometryRenderer.Render(
             session, session.CurrentView, false, true, GeometrySettings.FromBlob(new() { ["grid"] = false })));
 
-        Assert.All(Enumerable.Range(112, 76), y => Assert.Equal(0x80, ruled.GetPixel(110, y).Red));
+        Assert.All(Enumerable.Range(112, 76), y => Assert.Equal(0x80, ruled.GetPixel(88, y).Red));
     }
 
     /// <summary>The rulers are an instrument the model picks up on the job, so a call overrides the
@@ -320,9 +383,9 @@ public sealed class GeometryRendererTests
             session, session.CurrentView, false, false,
             GeometrySettings.FromBlob(new() { ["grid"] = false, ["edge_rulers"] = true })));
 
-        var on = Enumerable.Range(112, 76).Select(y => forcedOn.GetPixel(110, y)).ToArray();
+        var on = Enumerable.Range(112, 76).Select(y => forcedOn.GetPixel(88, y)).ToArray();
         Assert.Contains(on, p => p.Green - p.Red > 40);
-        Assert.All(Enumerable.Range(112, 76), y => Assert.Equal(0x80, forcedOff.GetPixel(110, y).Red));
+        Assert.All(Enumerable.Range(112, 76), y => Assert.Equal(0x80, forcedOff.GetPixel(88, y).Red));
     }
 
 }

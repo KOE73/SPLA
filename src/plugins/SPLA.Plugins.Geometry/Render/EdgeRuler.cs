@@ -18,8 +18,19 @@ namespace SPLA.Plugins.Geometry.Render;
 /// count was never a number <c>by</c> would accept.
 /// </para>
 /// <para>
-/// <b>Outward matters as much as inward.</b> When the print sticks out past an edge, "how far out" is
-/// the same question, and nothing else in the picture answers it.
+/// <b>Outward matters as much as inward, and is drawn solid.</b> When the print sticks out past an
+/// edge, "how far out" is the same question, and nothing else in the picture answers it. But a line
+/// 32 px inside an edge and a line 32 px outside it are the same colour, the same distance away and
+/// carry the same number, so the only thing separating them is which side of the edge they fall on —
+/// and "which side" is precisely the judgement by eye this instrument exists to remove. So the two
+/// directions differ in <i>stroke</i>: <b>dashed is inside the box, solid is outside it</b>. A property
+/// the reader can name without measuring anything, and the tool help says it in those words.
+/// <para>
+/// Dashed is the one that goes inside because inside is where the print is: the gaps let the letters
+/// through, and the thing the ruler lies across stays readable. Outside there is nothing to protect,
+/// so the line can be solid — and solid is also the easier of the two to trace to its end when the
+/// overshoot being measured is a long way from the box.
+/// </para>
 /// </para>
 /// <para>
 /// <b>Only the box being edited gets rulers</b>, for the reason only it gets the four colours: four
@@ -29,161 +40,183 @@ namespace SPLA.Plugins.Geometry.Render;
 /// </summary>
 internal static class EdgeRuler
 {
-    /// <summary>Steps an inward scale is allowed to use, in view pixels. Round numbers a reader adds
-    /// in their head: a scale stepping by 37 is arithmetic, not a ruler.</summary>
-    internal static readonly int[] Ladder = [10, 20, 25, 50, 100, 200, 500];
+    /// <summary>How many inset rectangles the box may carry. Two, and one when two will not fit.
+    /// <para>
+    /// A ruler is read by counting rings, and past two there is nothing left to count that the model
+    /// could not have got from the numbers themselves — while every extra ring covers more of the very
+    /// print the box is being fitted to. Two gives the reader the one thing a single ring cannot: a
+    /// <i>direction</i>, so "the text is between the first and the second" is a sentence.
+    /// </para></summary>
+    internal const int MaxRings = 2;
 
-    /// <summary>The finest step. Below this the lines are closer together than their own labels.</summary>
-    internal const int MinStep = 10;
+    /// <summary>Outward distances, as multiples of the finest step. Fine near the edge, then a jump:
+    /// an overshoot of a few pixels needs resolution, an overshoot of eighty needs to be <i>read</i>
+    /// rather than counted, and the two are answered by different progressions. Inward you check a
+    /// tight fit; outward you measure a miss that may be large.</summary>
+    internal static readonly int[] OutwardRungs = [1, 2, 4, 8];
 
-    /// <summary>Most inward lines one side may carry. Four to six is a scale; ten is hatching.</summary>
-    internal const int MaxInward = 6;
+    /// <summary>Length of a dash and of the gap after it, in view pixels. Long enough that the
+    /// stroke reads as dashed at a glance rather than as a line that happens to be thin.</summary>
+    private const float DashOn = 9f;
 
-    /// <summary>Outward distances, in view pixels. Fine near the edge, then a jump: an overshoot of a
-    /// few pixels needs resolution, an overshoot of eighty needs to be <i>read</i> rather than counted,
-    /// and the two are answered by different progressions. Inward you check a tight fit; outward you
-    /// measure a miss that may be large.</summary>
-    internal static readonly int[] OutwardLadder = [10, 20, 50, 100];
+    /// <inheritdoc cref="DashOn"/>
+    private const float DashOff = 7f;
 
     /// <summary>Fraction of the view's shorter side the outward scale may reach. It must stop well
     /// short of the frame: a scale that runs to the border stops reading as belonging to an edge.</summary>
     private const double OutwardReach = 0.25;
 
-    /// <summary>How much of an edge's length one inward segment covers, at each end.</summary>
-    private const float EndFraction = 0.22f;
-
-    /// <summary>Share of an edge an outward line spans, centred. Corners are already the busiest part
-    /// of the picture — four colours, two dots and the ends of two inward scales meet there — and an
-    /// overshoot happens where the print is, which is the middle.</summary>
-    private const float OutwardSpan = 0.8f;
-
-    /// <summary>Longest an inward segment gets however long the edge is.</summary>
-    private const float MaxSegment = 48f;
-
     /// <summary>
-    /// The inward scale for a side with <paramref name="depth"/> view pixels of room — half the box's
-    /// extent perpendicular to that edge, so the scales of two opposite edges meet at the middle
-    /// instead of crossing.
+    /// How many inset rectangles a box with <paramref name="room"/> view pixels to spare can hold —
+    /// half its <b>shorter</b> extent, since a ring is inset by the same amount on all four sides and
+    /// the narrow direction is what runs out first.
     /// <para>
-    /// The coarsest-first rule is "take the finest step on the ladder that does not put more than
-    /// <see cref="MaxInward"/> lines on the side", which lands on 4–6 lines for any ordinary box and
-    /// degrades on its own for a small one. A box too narrow for even one step of 10 gets a single
-    /// line at 10 if its full extent can hold it, and nothing at all otherwise — one honest line beats
-    /// a crowd of unreadable ones.
+    /// The inset is always <paramref name="minStep"/>, the same number on every side and for every
+    /// box. That is the point of it: "32 in from each side" is one fact the reader holds, while a
+    /// scale that adapts its step per side is four facts, each of which has to be looked up before any
+    /// distance can be read — and looking it up means reading a small digit off a blurred photograph,
+    /// which is the one thing that cannot be relied on here.
     /// </para>
     /// </summary>
-    internal static (int Step, int Count) InwardScale(double depth)
+    internal static int InwardRings(double room, int minStep)
     {
-        foreach (var step in Ladder)
-        {
-            var count = (int)Math.Floor(depth / step);
-            if (count > MaxInward) continue;
-            if (count >= 1) return (step, count);
-            // Finer than the finest step: fall back to one line, if the box can hold it at all.
-            return (MinStep, depth * 2 >= MinStep ? 1 : 0);
-        }
-
-        var last = Ladder[^1];
-        return (last, Math.Max(1, (int)Math.Floor(depth / last)));
+        var fits = (int)Math.Floor(room / minStep);
+        return fits < 0 ? 0 : fits > MaxRings ? MaxRings : fits;
     }
 
     /// <summary>The outward distances that fit in this view. Capped so the scale never reaches the
     /// frame's border.</summary>
-    internal static int[] OutwardScale(int viewWidth, int viewHeight)
+    internal static int[] OutwardScale(int viewWidth, int viewHeight, int minStep)
     {
         var reach = Math.Min(viewWidth, viewHeight) * OutwardReach;
         var kept = new System.Collections.Generic.List<int>();
-        foreach (var d in OutwardLadder)
-            if (d <= reach) kept.Add(d);
+        foreach (var rung in OutwardRungs)
+            if (rung * minStep <= reach) kept.Add(rung * minStep);
         // A view too small for even the first mark still gets it: without one, "sticks out" has no
         // number at all.
-        if (kept.Count == 0) kept.Add(OutwardLadder[0]);
+        if (kept.Count == 0) kept.Add(minStep);
         return [.. kept];
     }
 
     /// <summary>
-    /// Draws all four rulers. Inward lines are kept short and grouped at the two ends of each edge:
-    /// the middle of the box is where the marked thing is, and it is the one place that must stay
-    /// readable. Outward lines run the edge's full span, because an overshoot happens wherever the
-    /// print happens to stick out and a line only measures what it runs beside.
+    /// Draws all four rulers. Every line runs the full span of the side it belongs to — a ring corner
+    /// to corner, an outward line the whole length of its edge. A tick at the end of an edge measures only the end of the edge: the thing being
+    /// fitted sits in the middle, and a reader cannot carry a mark across a gap by eye, which is the
+    /// whole reason the number is on the picture instead of in the reply. A line the print lies under
+    /// is one the print can be read against; the cost of crossing what it measures is paid by
+    /// <c>ruler_transparency</c>, not by shortening the line.
     /// </summary>
     public static void Draw(
         SKCanvas canvas, (double X, double Y)[] corners, Obb inView, GeometryView view,
         SKColor[] edgeColors, GeometrySettings cfg)
     {
-        var fontSize = Math.Max(9f, cfg.FontSize - 7f);
+        // Full size, not the shrunken label of a chart axis. These digits are read off a blurred
+        // photograph by something that resolves the frame in patches of ~32 px, and a number too small
+        // to read is worse than no number: it is read as a number anyway, wrongly.
         using var text = new SKPaint
         {
-            TextSize = fontSize,
+            TextSize = cfg.FontSize,
             IsAntialias = true,
-            Typeface = SKTypeface.Default,
+            Typeface = SKTypeface.FromFamilyName(null, SKFontStyle.Bold),
         };
         using var plate = new SKPaint { Style = SKPaintStyle.Fill, IsAntialias = true };
-        using var line = new SKPaint { StrokeWidth = 1f, IsAntialias = true };
+        using var line = new SKPaint { StrokeWidth = 1.5f, IsAntialias = true };
+        using var dashed = new SKPaint
+        {
+            StrokeWidth = 1.5f,
+            IsAntialias = true,
+            PathEffect = SKPathEffect.CreateDash([DashOn, DashOff], 0),
+        };
 
-        var outward = OutwardScale(view.Width, view.Height);
+        // The rulers step on the same lattice as the grid, so a distance read off one lands on the
+        // other instead of between its lines.
+        var minStep = cfg.GridMinStep;
+        var labels = cfg.RulerLabels;
+        var opacity = GeometrySettings.Opacity(cfg.RulerTransparency);
+        var outward = OutwardScale(view.Width, view.Height, minStep);
 
         canvas.Save();
         canvas.ClipRect(new SKRect(0, 0, view.Width, view.Height));
 
+        // The outward normal of each edge. Corners wind clockwise on screen, so turning an edge's
+        // direction a quarter turn anticlockwise points away from the box.
+        var normals = new (double X, double Y)[4];
+        var lengths = new double[4];
         for (var i = 0; i < 4; i++)
         {
             var a = corners[i];
             var b = corners[(i + 1) % 4];
             double dx = b.X - a.X, dy = b.Y - a.Y;
-            var length = Math.Sqrt(dx * dx + dy * dy);
-            if (length < 2) continue;
+            lengths[i] = Math.Sqrt(dx * dx + dy * dy);
+            if (lengths[i] < 2) continue;
+            normals[i] = (dy / lengths[i], -dx / lengths[i]);
+        }
 
-            // Along the edge, and the outward normal of it. Corners wind clockwise on screen, so
-            // turning the direction a quarter turn anticlockwise points away from the box.
-            double ux = dx / length, uy = dy / length;
-            double nx = uy, ny = -ux;
-
-            var colour = edgeColors[i];
-            line.Color = colour.WithAlpha(0xB0);
-
-            // Edges 0 and 2 are the box's top and bottom, so the room behind them is its height.
-            var depth = (i % 2 == 0 ? inView.Height : inView.Width) / 2;
-            var (step, count) = InwardScale(depth);
-            var segment = (float)Math.Min(Math.Min(length * EndFraction, MaxSegment), length * 0.45);
-
-            for (var k = 1; k <= count; k++)
+        // Inward is a shrunken copy of the box, corners and all — not four lines that each stop where
+        // their own edge stops. A line that runs past the box or falls short of it is a line whose two
+        // ends say different things about where the box is, and that is exactly the ambiguity the
+        // rulers are here to remove. A ring inset by the same amount everywhere is one shape the reader
+        // already knows, moved in by one known number.
+        var rings = InwardRings(Math.Min(inView.Width, inView.Height) / 2, minStep);
+        for (var k = 1; k <= rings; k++)
+        {
+            var at = k * minStep;
+            // A rectangle's corner moves inward along both of the edges that meet at it.
+            var inset = new (double X, double Y)[4];
+            for (var i = 0; i < 4; i++)
             {
-                var at = k * step;
-                double px = a.X - nx * at, py = a.Y - ny * at;
-                double qx = b.X - nx * at, qy = b.Y - ny * at;
-
-                canvas.DrawLine(
-                    (float)px, (float)py, (float)(px + ux * segment), (float)(py + uy * segment), line);
-                canvas.DrawLine(
-                    (float)(qx - ux * segment), (float)(qy - uy * segment), (float)qx, (float)qy, line);
-
-                // When the step is fine the labels would sit on top of one another at one end, so
-                // they alternate ends and each end sees half of them.
-                var atFar = step < 2 * MinStep && k % 2 == 1;
-                var lx = atFar ? qx - ux * (segment + 4) : px + ux * (segment + 4);
-                var ly = atFar ? qy - uy * (segment + 4) : py + uy * (segment + 4);
-                Tick(canvas, text, plate, at.ToString(), (float)lx, (float)ly, colour, atFar);
+                var before = normals[(i + 3) % 4];
+                var here = normals[i];
+                inset[i] = (corners[i].X - (before.X + here.X) * at,
+                            corners[i].Y - (before.Y + here.Y) * at);
             }
 
-            // Outward labels live in the middle of the edge, spread along it: that space is outside
-            // the box, so nothing is hidden, and it keeps them clear of the inward labels at the ends.
-            var midX = (a.X + b.X) / 2;
-            var midY = (a.Y + b.Y) / 2;
-            var spread = Math.Min(26.0, length / (outward.Length + 1));
+            // Each side of the ring keeps its own edge's colour: the ring is a copy of the box, so it
+            // has to be readable as one.
+            for (var i = 0; i < 4; i++)
+            {
+                if (lengths[i] < 2) continue;
+                var p = inset[i];
+                var q = inset[(i + 1) % 4];
+                dashed.Color = edgeColors[i].WithAlpha((byte)(0xFF * opacity));
+                canvas.DrawLine((float)p.X, (float)p.Y, (float)q.X, (float)q.Y, dashed);
+
+                // The number sits at the middle of its side, not at an end. An end is where four
+                // colours, two corner dots and the ends of a second scale already meet, and it is the
+                // first thing to leave the frame when the box runs past it. The middle is where the
+                // reader is already looking.
+                if (labels)
+                    Tick(canvas, text, plate, at.ToString(),
+                        (float)((p.X + q.X) / 2), (float)((p.Y + q.Y) / 2), edgeColors[i]);
+            }
+        }
+
+        for (var i = 0; i < 4; i++)
+        {
+            var a = corners[i];
+            var b = corners[(i + 1) % 4];
+            var length = lengths[i];
+            if (length < 2) continue;
+
+            double ux = (b.X - a.X) / length, uy = (b.Y - a.Y) / length;
+            double nx = normals[i].X, ny = normals[i].Y;
+
+            var colour = edgeColors[i];
+            line.Color = colour.WithAlpha((byte)(0xFF * opacity));
 
             for (var k = 0; k < outward.Length; k++)
             {
+                // The full length of the edge it belongs to, corner to corner. A line shorter than
+                // its edge measures only the stretch it runs beside, and the print sticks out wherever
+                // it happens to stick out — usually at an end, since that is where a word runs on.
                 var at = outward[k];
-                var inset = length * (1 - OutwardSpan) / 2;
-                double px = a.X + nx * at + ux * inset, py = a.Y + ny * at + uy * inset;
-                double qx = b.X + nx * at - ux * inset, qy = b.Y + ny * at - uy * inset;
+                double px = a.X + nx * at, py = a.Y + ny * at;
+                double qx = b.X + nx * at, qy = b.Y + ny * at;
                 canvas.DrawLine((float)px, (float)py, (float)qx, (float)qy, line);
 
-                var along = (k - (outward.Length - 1) / 2.0) * spread;
-                var lx = midX + nx * at + ux * along;
-                var ly = midY + ny * at + uy * along;
-                Tick(canvas, text, plate, at.ToString(), (float)lx, (float)ly, colour, false);
+                if (labels)
+                    Tick(canvas, text, plate, at.ToString(),
+                        (float)((px + qx) / 2), (float)((py + qy) / 2), colour);
             }
         }
 
@@ -194,20 +227,21 @@ internal static class EdgeRuler
     /// One number, on a plate in its own edge's colour. The colour is the whole point: a line belonging
     /// to the green edge is green, so "10 from green" needs no word for "left" and cannot be read
     /// against the view grid by mistake. The digits go black or white by the plate's lightness, since
-    /// the palette deliberately spans lightness and one text colour cannot serve all four.
+    /// the palette deliberately spans lightness and one text colour cannot serve all four. The plate is
+    /// centred on the point it is given: a number that has to be associated with a line by proximity is
+    /// one more thing to get wrong, and sitting on the line is the shortest way to say "this line".
     /// </summary>
     private static void Tick(
-        SKCanvas canvas, SKPaint text, SKPaint plate, string value, float x, float y, SKColor colour,
-        bool rightAligned)
+        SKCanvas canvas, SKPaint text, SKPaint plate, string value, float x, float y, SKColor colour)
     {
         var width = text.MeasureText(value);
         var metrics = text.FontMetrics;
-        var left = rightAligned ? x - width : x;
-        var top = y + metrics.Ascent - 1;
-        var bottom = y + metrics.Descent + 1;
+        var left = x - width / 2;
+        var top = y + metrics.Ascent - 2;
+        var bottom = y + metrics.Descent + 2;
 
-        plate.Color = colour.WithAlpha(0xE6);
-        canvas.DrawRect(new SKRect(left - 2, top, left + width + 2, bottom), plate);
+        plate.Color = colour.WithAlpha(0xF2);
+        canvas.DrawRect(new SKRect(left - 3, top, left + width + 3, bottom), plate);
 
         var luminance = 0.299 * colour.Red + 0.587 * colour.Green + 0.114 * colour.Blue;
         text.Color = luminance > 140 ? SKColors.Black : SKColors.White;

@@ -1,9 +1,9 @@
 {
-  "name": "@spla-plugins/geometry-web-panel",
+  "name": "@spla-plugins/geometry-web",
   "private": true,
   "type": "module",
   "scripts": {
-    "build": "vite build",
+    "build": "vite build && vite build -c vite.settings.config.ts",
     "dev": "vite build --watch"
   },
   "dependencies": {

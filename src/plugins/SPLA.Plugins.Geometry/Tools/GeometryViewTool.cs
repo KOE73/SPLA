@@ -74,9 +74,10 @@ internal sealed class GeometryViewTool(ResolvedSettings projectSettings) : Geome
         {
             type = new[] { "boolean", "null" },
             description = "Draw a labelled scale along every edge of the box being edited, in that " +
-                          "edge's own colour, measuring distance from it in picture pixels — inward " +
-                          "and outward. Read a distance straight off it and pass that number as " +
-                          "geom_box's 'by'. Null keeps the current setting."
+                          "edge's own colour, measuring distance from it in picture pixels. DASHED " +
+                          "lines are INSIDE the box, SOLID lines are OUTSIDE it, and each line " +
+                          "carries its distance from the edge. Read a distance straight off it and " +
+                          "pass that number as geom_box's 'by'. Null keeps the current setting."
         },
     };
 

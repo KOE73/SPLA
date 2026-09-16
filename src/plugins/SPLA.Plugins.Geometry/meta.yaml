@@ -3,6 +3,7 @@ version: 0.1.0
 type: dll
 entry_point: SPLA.Plugins.Geometry.dll
 web_panel_entry: web/dist/panel.js
+web_settings_entry: web/dist/settings.js
 panel_title: Geometry
 panel_icon: 📐
 description: Mark up an image with boxes and points by looking at the result and correcting it.

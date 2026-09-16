@@ -33,16 +33,18 @@ internal static class GeometryRenderer
     /// <para>
     /// Why these four: the leading subject is a grey-white sack carrying red and blue print, so red is
     /// unusable — it vanishes into the content. They are also spread in <i>lightness</i>, not only in
-    /// hue (yellow brightest, then cyan, then magenta, then a dark green), so nothing here rests on
-    /// colour vision alone (ADR §3.5).
+    /// hue (yellow brightest, then cyan, then magenta, then the darkest, green), so nothing here rests
+    /// on colour vision alone (ADR §3.5). All four are light enough to read against a dark photograph:
+    /// a colour the owner has to hunt for on the screen is not a vocabulary, and the deep green and
+    /// deep magenta this started with were exactly that.
     /// </para>
     /// </summary>
     private static readonly SKColor[] EdgeColors =
     [
         new(0x00, 0xCF, 0xFF), // cyan    — top
-        new(0xFF, 0x2B, 0xD6), // magenta — right
+        new(0xFF, 0x74, 0xE4), // magenta — right
         new(0xFF, 0xE1, 0x00), // yellow  — bottom
-        new(0x0E, 0x8A, 0x26), // green   — left
+        new(0x3F, 0xD6, 0x5C), // green   — left
     ];
 
     /// <summary>The names of <see cref="EdgeColors"/>, in the same order. The <c>edge</c> argument of
@@ -314,6 +316,10 @@ internal static class GeometryRenderer
     private static void DrawGrid(SKCanvas canvas, GeometryView view, GeometrySettings cfg)
     {
         var color = ParseColor(cfg.GridColor);
+        // The configured transparency applies to the whole grid; the major/minor split then divides
+        // what is left, so moving the one setting keeps the two ranks in proportion to each other.
+        var opacity = GeometrySettings.Opacity(cfg.GridTransparency);
+        color = color.WithAlpha((byte)(color.Alpha * opacity));
         var minorColor = color.WithAlpha((byte)(color.Alpha * MinorAlpha));
 
         using var minor = new SKPaint { Color = minorColor, StrokeWidth = 1, IsAntialias = false };
@@ -327,7 +333,7 @@ internal static class GeometryRenderer
         };
         using var plate = new SKPaint { Color = LabelPlate, Style = SKPaintStyle.Fill };
 
-        var step = cfg.GridStep;
+        var step = cfg.EffectiveGridStep(view.Width, view.Height);
         var every = cfg.GridMajorEvery;
 
         for (int x = step, i = 1; x < view.Width; x += step, i++)

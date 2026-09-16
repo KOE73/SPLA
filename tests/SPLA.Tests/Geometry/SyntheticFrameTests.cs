@@ -55,7 +55,11 @@ public sealed class SyntheticFrameTests
         using var _scope = scope;
 
         var opened = await Open(chat, tools, frame.Png);
-        using var picture = Picture(opened);
+        // The probes below read a pixel's colour, and a grid line over a probe would answer for it, so
+        // this one frame is taken bare. Nothing here is about the grid.
+        var bare = await tools["geom_view"].ExecuteAsync("""{"to":"current","grid":false}""");
+        Assert.False(bare.IsError, bare.TextContent);
+        using var picture = Picture(bare);
 
         // The root view is the source scaled to render_max_side; the reply says so in as many words.
         var scale = 1024.0 / frame.Width;

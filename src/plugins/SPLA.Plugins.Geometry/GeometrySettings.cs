@@ -46,9 +46,34 @@ public sealed class GeometrySettings
     [YamlMember(Alias = "grid")]
     public bool Grid { get; set; } = true;
 
-    /// <summary>Spacing of the fine grid lines, in view pixels.</summary>
+    /// <summary>Spacing of the fine grid lines, in view pixels. <c>0</c> — the default — means the
+    /// spacing is derived from the size of the frame instead of being fixed: see
+    /// <see cref="EffectiveGridStep"/>. A non-zero value pins the step and the frame's size stops
+    /// mattering, which is what you want when comparing two renders line for line.</summary>
     [YamlMember(Alias = "grid_step")]
-    public int GridStep { get; set; } = 50;
+    public int GridStep { get; set; }
+
+    /// <summary>The finest spacing the derived step is allowed to use, and the unit every derived
+    /// step is a multiple of, in view pixels. Below this the grid stops measuring anything the model
+    /// can act on: it reads the frame in patches of roughly this size, so lines closer together than
+    /// a patch land inside one token and only cost legibility. Exposed so the threshold can be moved
+    /// without a rebuild — 16 and 32 are both defensible and the difference is worth trying.</summary>
+    [YamlMember(Alias = "grid_min_step")]
+    public int GridMinStep { get; set; } = 32;
+
+    /// <summary>How many fine lines the derived step aims to put across the frame's longer side. The
+    /// count, not the spacing, is what stays constant as the frame grows or shrinks: a crop half the
+    /// size gets half the spacing and the same grid to read.</summary>
+    [YamlMember(Alias = "grid_lines")]
+    public int GridLines { get; set; } = 24;
+
+    /// <summary>How transparent the grid lines are, in percent: <c>0</c> is solid, <c>100</c>
+    /// invisible. The default is a token 10 — the lines must read as lines. A faint instrument is no
+    /// instrument: a line the model has to hunt for it will instead guess past, and a guessed
+    /// distance is exactly what this whole picture exists to replace. Whatever the grid hides it
+    /// hides; the answer to that is a coarser step, not a paler line.</summary>
+    [YamlMember(Alias = "grid_transparency")]
+    public int GridTransparency { get; set; } = 10;
 
     /// <summary>Every Nth line is drawn stronger and carries the coordinate label; the fine lines
     /// between it carry none. Labelling every fine line turns the picture into noise, and the picture
@@ -70,11 +95,47 @@ public sealed class GeometrySettings
     [YamlMember(Alias = "edge_rulers")]
     public bool EdgeRulers { get; set; } = true;
 
+    /// <summary>How transparent the ruler lines are, in percent, on the same scale as
+    /// <see cref="GridTransparency"/>, and a token 10 for the same reason. The number plates are
+    /// never faded at all — a line may be a hint, a digit is readable or useless.</summary>
+    [YamlMember(Alias = "ruler_transparency")]
+    public int RulerTransparency { get; set; } = 10;
+
+    /// <summary>Whether the ruler lines carry their numbers. On by default, but switchable: the step
+    /// is also stated in the reply's text, so a model that trusts the text can have the picture back
+    /// clean — and a model that cannot read small digits off a blurred photograph loses nothing it
+    /// was actually using. Which of those is true is a question for a live model, not for us.</summary>
+    [YamlMember(Alias = "ruler_labels")]
+    public bool RulerLabels { get; set; } = true;
+
     /// <summary>How many renders the chat's blob store keeps. Renders are written under the rotating
     /// names <c>geom_render_1..N</c>, so the store holds this many at most instead of one blob per
     /// step of the loop (a single frame's markup used to leave dozens of megabytes behind).</summary>
     [YamlMember(Alias = "render_history")]
     public int RenderHistory { get; set; } = 5;
+
+
+    /// <summary>
+    /// The spacing the grid actually uses for a frame of this size: <see cref="GridStep"/> when it is
+    /// pinned, otherwise the smallest multiple of <see cref="GridMinStep"/> that keeps the frame's
+    /// longer side under <see cref="GridLines"/> lines.
+    /// <para>
+    /// Deriving it is the point. A crop of a fingernail and a full photograph are the same number of
+    /// view pixels across only by accident, and a spacing that suits one covers the other in hatching
+    /// or leaves it with three lines. What the model needs held constant is the <i>density</i> of the
+    /// ruler in the picture it is looking at, and that is what a count fixes and a spacing cannot.
+    /// </para>
+    /// </summary>
+    public int EffectiveGridStep(int viewWidth, int viewHeight)
+    {
+        if (GridStep > 0) return GridStep;
+        var side = viewWidth > viewHeight ? viewWidth : viewHeight;
+        var units = (int)System.Math.Ceiling((double)side / GridLines / GridMinStep);
+        return GridMinStep * (units < 1 ? 1 : units);
+    }
+
+    /// <summary>A percentage of transparency as the alpha multiplier the painters want.</summary>
+    public static float Opacity(int transparency) => (100 - transparency) / 100f;
 
     public static GeometrySettings FromBlob(Dictionary<string, object>? blob)
     {
@@ -91,9 +152,13 @@ public sealed class GeometrySettings
         FontSize = Clamp(FontSize, 8, 48);
         CropPadding = CropPadding < 0 ? 0 : CropPadding > 1 ? 1 : CropPadding;
         RenderHistory = Clamp(RenderHistory, 1, 20);
-        // A step below 10 px is a wash of lines at any working size, and one above a quarter of the
+        // 0 keeps the derived step; anything else is a fixed spacing, and one above a quarter of the
         // smallest sensible view stops being a ruler.
-        GridStep = Clamp(GridStep, 10, 500);
+        GridStep = GridStep <= 0 ? 0 : Clamp(GridStep, 4, 500);
+        GridMinStep = Clamp(GridMinStep, 4, 256);
+        GridLines = Clamp(GridLines, 4, 100);
+        GridTransparency = Clamp(GridTransparency, 0, 95);
+        RulerTransparency = Clamp(RulerTransparency, 0, 95);
         // 1 means every line is major — legal, and what a coarse step wants.
         GridMajorEvery = Clamp(GridMajorEvery, 1, 20);
         if (string.IsNullOrWhiteSpace(GridColor)) GridColor = new GeometrySettings().GridColor;
