@@ -23,7 +23,7 @@
     <!-- The name under each picture is not decoration: it is what the model was shown in front of
          the image, so a reader scrolling back sees the same handle the prompt and the answer use. -->
     <div v-if="images?.length" class="attached">
-      <figure v-for="(img, i) in images" :key="i" :title="img.label">
+      <figure v-for="(img, i) in images" :key="i" :title="img.label" class="zoomable" @click="openChatImage(chat.session.value, img)">
         <img :src="img.url">
         <figcaption v-if="img.label">{{ img.label }}</figcaption>
       </figure>
@@ -36,6 +36,8 @@
 import { computed, ref } from "vue";
 import { t } from "../i18n";
 import MsgActions from "./MsgActions.vue";
+import { useChat } from "../state/chatContext";
+import { openChatImage } from "../state/lightbox";
 import type { ImageRef } from "../protocol/types";
 
 const props = defineProps<{
@@ -45,6 +47,7 @@ const props = defineProps<{
 defineEmits<{ (e: "rewind", msgId: string, text: string): void; (e: "fork", msgId: string): void }>();
 
 const expanded = ref(false);
+const chat = useChat();
 // The stored text carries the "--- Compacted context (summary) ---" marker line the server prefixes
 // (ADR §2.2) — the plate's own label already says what this is, so strip it rather than show it twice.
 const summaryText = computed(() => props.text.replace(/^--- Compacted context \(summary\) ---\n?/, ""));

@@ -45,6 +45,10 @@
             {{ e.origin ?? "—" }}
           </span>
           <span class="v">{{ e.value }}</span>
+          <!-- A picture is checked by looking at it: the row's own thumbnail, fetched when it scrolls
+               into view, opening the viewer over every image blob already fetched. -->
+          <BlobThumb v-if="isImageBlob(e) && snapshotChat" :key="e.key + '|' + e.value"
+                     :chat-id="snapshotChat" :handle="e.key" :version="e.value" @open="openBlob" />
         </div>
       </template>
       <!-- Composition manifest: what the agent's context is made of, and who contributed each piece.
@@ -76,8 +80,10 @@ import { computed, onMounted, onUnmounted, ref, watch } from "vue";
 import { client } from "../protocol/SplaClient";
 import { store } from "../state/store";
 import { findChat } from "../state/chatTree";
-import type { DebugSnapshotPayload } from "../protocol/types";
+import type { DebugKvEntry, DebugSnapshotPayload, ImageRef } from "../protocol/types";
 import ContextTable from "./ContextTable.vue";
+import BlobThumb, { blobCacheKey, blobThumbCache } from "./BlobThumb.vue";
+import { openLightbox } from "../state/lightbox";
 
 // Standalone window (e.g. a tear-off ?surface=debug): it follows the focused chat itself, instead of
 // reading whichever chat the dock's store says is current.
@@ -118,8 +124,31 @@ const chatLabel = computed(() => {
   return c.as ? `${c.as}: ${c.title || c.id}` : c.title || c.id;
 });
 
+/** The chat the snapshot on screen was taken for — blob handles mean nothing outside it. */
+const snapshotChat = ref<string | null>(null);
+
+function isImageBlob(e: DebugKvEntry) {
+  return snapshot.value?.kind === "blobs" && !!e.contentType?.toLowerCase().startsWith("image/");
+}
+
+function openBlob(handle: string) {
+  const chatId = snapshotChat.value;
+  if (!chatId) return;
+  const images: ImageRef[] = [];
+  let index = 0;
+  for (const e of snapshot.value?.entries ?? []) {
+    if (!isImageBlob(e)) continue;
+    const url = blobThumbCache.get(blobCacheKey(chatId, e.key, e.value))?.url;
+    if (!url) continue;
+    if (e.key === handle) index = images.length;
+    images.push({ url, label: e.key });
+  }
+  openLightbox(images, index);
+}
+
 function request(kind: string) {
   activeKind.value = kind;
+  requestedChat = store.currentChat;
   client.send("debug.request", { kind }, store.currentChat ? { chatId: store.currentChat } : undefined);
 }
 function reload() { request(activeKind.value); }
@@ -130,7 +159,12 @@ function scheduleRefresh() {
   refreshTimer = window.setTimeout(reload, 400);
 }
 
-const offSnapshot = client.on("debug.snapshot", p => { snapshot.value = p; open.value = new Set(); });
+let requestedChat: string | null = null;
+const offSnapshot = client.on("debug.snapshot", (p, env) => {
+  snapshot.value = p;
+  snapshotChat.value = env.chatId ?? requestedChat;
+  open.value = new Set();
+});
 const offToolResult = client.on("tool.result", scheduleRefresh);
 const offTurnComplete = client.on("turn.complete", scheduleRefresh);
 // A mode/model/reasoning change echoes back as chat.opened (see ChatHandlers.Settings) — refresh right

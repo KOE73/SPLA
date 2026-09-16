@@ -458,6 +458,10 @@ public sealed class ChatRuntime : IDisposable, SPLA.Domain.Agent.IBackgroundTask
     /// <summary>This chat's data-channel blobs (for the debug inspector).</summary>
     public IReadOnlyList<BlobEntry> BlobEntries => _agentSession.Blobs.List();
 
+    /// <summary>One blob's payload from this chat's own store, or null if unknown — for the debug
+    /// inspector's per-row preview. Read-only: nothing outside the chat's tools puts or deletes.</summary>
+    public BlobPayload? BlobPayloadFor(string handle) => _agentSession.Blobs.Get(handle);
+
     /// <summary>The exact message list sent in the most recent LLM request (for the debug inspector).
     /// Captured via the turn's OnLlmTurnStart callback; empty until the first turn runs.</summary>
     public IReadOnlyList<ChatMessage> LastContext { get; private set; } = System.Array.Empty<ChatMessage>();

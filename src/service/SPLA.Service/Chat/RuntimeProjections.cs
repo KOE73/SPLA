@@ -34,6 +34,14 @@ public static class RuntimeProjections
                     dto.Images = files
                         .Select(f => new ImageDto { Url = ChatImages.Url(chat.ChatId, f.File), Label = f.Label })
                         .ToList();
+                // Not written to sidecar files yet — a tool's picture from the turn still running (or
+                // from one that failed or was cancelled, which never reach that step). The message
+                // still holds the picture itself, so a window opening the chat now sees what a
+                // watcher saw live instead of a bare "[Image from …]".
+                else if (m.Images is { Count: > 0 })
+                    dto.Images = m.Images
+                        .Select(i => new ImageDto { Url = i.Url, Label = i.Label })
+                        .ToList();
                 return dto;
             })
             .ToList();

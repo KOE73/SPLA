@@ -60,6 +60,37 @@ describe("chat sessions", () => {
     expect(b.ctxUsed).toBe(120);
   });
 
+  it("hangs a tool's pictures under its call live, from tool.result", () => {
+    open("A");
+    feed("tool.started", "A", { toolCall: { id: "t1", name: "android_screenshot", arguments: "{}" } });
+    feed("tool.result", "A", { toolCallId: "t1", toolName: "android_screenshot", result: "ok",
+      images: [{ url: "data:image/png;base64,AA", label: "blob:x" }] });
+
+    const items = peekSession("A")!.items;
+    expect(items.filter(i => i.kind === "user")).toHaveLength(0);
+    const card = items.find(i => i.kind === "toolcall");
+    expect(card?.kind === "toolcall" && card.call.images).toEqual([{ url: "data:image/png;base64,AA", label: "blob:x" }]);
+  });
+
+  it("folds a reopened chat's synthetic image message back under the call it follows", () => {
+    open("A", [
+      { role: "user", content: "look" },
+      { role: "assistant", content: "", toolCalls: [
+        { id: "t1", name: "shot", arguments: "{}" }, { id: "t2", name: "shot", arguments: "{}" }] },
+      { role: "tool", toolCallId: "t1", content: "one" },
+      { role: "user", content: "[Image from shot]", images: [{ url: "/chat-image/A/1.png", label: "shot" }] },
+      { role: "tool", toolCallId: "t2", content: "two" },
+      { role: "user", content: "[Reference image: ref]", images: [{ url: "/chat-image/A/2.png", label: "ref" }] },
+      { role: "user", content: "[Image from shot]", images: [{ url: "/chat-image/A/3.png" }] }
+    ]);
+
+    const items = peekSession("A")!.items;
+    const calls = items.flatMap(i => i.kind === "toolcall" ? [i.call] : []);
+    expect(calls[0].images?.map(i => i.url)).toEqual(["/chat-image/A/1.png"]);
+    expect(calls[1].images?.map(i => i.url)).toEqual(["/chat-image/A/2.png", "/chat-image/A/3.png"]);
+    expect(items.filter(i => i.kind === "user").map(i => i.kind === "user" && i.text)).toEqual(["look"]);
+  });
+
   it("tracks the in-flight turn per chat, and takes the server's word on open", () => {
     open("A");
     feed("llm.turn.start", "A", { msgIndex: 1 });

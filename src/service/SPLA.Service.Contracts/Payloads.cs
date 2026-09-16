@@ -1113,6 +1113,27 @@ public sealed class DebugRequestPayload
     public string Kind { get; set; } = string.Empty;
 }
 
+/// <summary>Asks for one blob of the envelope's chat by handle (<see cref="MessageTypes.DebugBlobGet"/>).</summary>
+public sealed class DebugBlobGetPayload
+{
+    /// <summary>The blob handle, with or without the <c>blob:</c> prefix.</summary>
+    public string Handle { get; set; } = string.Empty;
+}
+
+/// <summary>
+/// One blob's picture (<see cref="MessageTypes.DebugBlobResult"/>). Only image content is served:
+/// this exists so a person can look at what a tool stored, not as a general download channel for
+/// bulk data — anything else answers with <see cref="Error"/> and no <see cref="Url"/>.
+/// </summary>
+public sealed class DebugBlobResultPayload
+{
+    public string Handle { get; set; } = string.Empty;
+    public string? ContentType { get; set; }
+    /// <summary>The picture as a <c>data:</c> URL; null when refused or not found.</summary>
+    public string? Url { get; set; }
+    public string? Error { get; set; }
+}
+
 public static class DebugKinds
 {
     public const string KvSession = "kv.session";
@@ -1547,6 +1568,11 @@ public sealed class ToolResultPayload
     /// context (PLAN_20260902 wave 7, item 5: "ссылка на сессию … в итоге вызова"). Null/empty for
     /// the overwhelming majority of tool results, which have nothing to point at.</summary>
     public List<ToolResourceDto>? Resources { get; set; }
+
+    /// <summary>Pictures the tool returned (<c>ToolImage</c> content), as <c>data:</c> URLs named the
+    /// way the model is shown them — so a watcher sees the picture under the call that produced it the
+    /// moment it arrives, not only after the chat is reopened. Null when the call returned none.</summary>
+    public List<ImageDto>? Images { get; set; }
 }
 
 /// <summary>One <c>ToolResource</c> content block, projected to the wire.</summary>
@@ -1857,6 +1883,11 @@ public sealed class DebugKvEntryDto
     /// <summary>True when this entry's origin is one nobody named — the same bit that raises the
     /// chat's flag. Carried separately so the view can mark it without re-deriving the rule.</summary>
     public bool Doubtful { get; set; }
+
+    /// <summary>The blob's declared media type (<c>image/png</c>, …), filled only in the
+    /// <see cref="DebugKinds.Blobs"/> view and only when the producer declared one. Lets the view
+    /// offer a preview for pictures without shipping any bytes in the snapshot.</summary>
+    public string? ContentType { get; set; }
 }
 
 /// <summary>

@@ -1,4 +1,4 @@
-using System.Collections.Concurrent;
+﻿using System.Collections.Concurrent;
 using System.Linq;
 using SPLA.Runtime;
 using SPLA.Service.Contracts;
@@ -194,7 +194,8 @@ internal sealed class ChatFeedWireSubscriber : IDisposable
                     Reason = r.Result.Reason,
                     Resources = r.Result.Content.OfType<SPLA.Domain.Models.ToolResource>()
                         .Select(res => new ToolResourceDto { Uri = res.Uri, MimeType = res.MimeType, Description = res.Description })
-                        .ToList() is { Count: > 0 } resources ? resources : null
+                        .ToList() is { Count: > 0 } resources ? resources : null,
+                    Images = ToolImagesOf(r)
                 });
                 break;
 
@@ -295,4 +296,23 @@ internal sealed class ChatFeedWireSubscriber : IDisposable
 
     private Task BroadcastChatListAsync() => _hub.BroadcastToProjectAsync(
         _projectId, MessageTypes.ChatListResult, new ChatListResultPayload { Chats = _registry.Open(_projectId).Chats.List() });
+
+    /// <summary>The call's pictures for the wire, named the way <c>ConversationOrchestrator</c> names
+    /// them for the model (the tool's own label, else the tool name, numbered among several frames) so
+    /// the caption under a thumbnail is the name the prompt and the answer use.</summary>
+    private static List<ImageDto>? ToolImagesOf(ChatToolResult r)
+    {
+        var images = r.Result.Content.OfType<SPLA.Domain.Models.ToolImage>().ToList();
+        if (images.Count == 0) return null;
+        var tool = r.Call.Function.Name;
+        var frames = images.Where(i => i.Keep != SPLA.Domain.Models.ImageKeep.Pinned).ToList();
+        return images.Select(i => new ImageDto
+        {
+            Url = $"data:{i.MimeType};base64,{i.Data}",
+            Label = !string.IsNullOrWhiteSpace(i.Label) ? i.Label
+                : i.Keep != SPLA.Domain.Models.ImageKeep.Pinned && frames.Count > 1
+                    ? $"{tool} {frames.IndexOf(i) + 1}"
+                    : tool
+        }).ToList();
+    }
 }

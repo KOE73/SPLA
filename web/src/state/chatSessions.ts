@@ -362,7 +362,11 @@ client.on("chat.read.result", (p, env) => {
  * archived.
  */
 function hydrateMessages(s: ChatSession, messages: ChatMessage[]) {
+  /** The call whose result was the last message, while only its image messages have followed it. */
+  let afterCallId: string | undefined;
   for (const m of messages) {
+    if (m.role === "user" && foldToolImages(s, m, afterCallId)) continue;
+    if (m.role !== "tool") afterCallId = undefined;
     if (m.role === "user") {
       s.items.push({ kind: "user", key: nextKey(), text: m.content || "",
         images: m.images, msgId: m.msgId, createdAt: m.createdAt, peerFrom: m.peerFrom,
@@ -381,12 +385,34 @@ function hydrateMessages(s: ChatSession, messages: ChatMessage[]) {
       for (const tc of m.toolCalls || [])
         addCall(s, { callId: tc.id, name: tc.name, argumentsText: tc.arguments, status: "done" });
     } else if (m.role === "tool") {
+      afterCallId = m.toolCallId;
       const call = m.toolCallId ? s.calls[m.toolCallId] : undefined;
       if (call) call.result = m.content || "";
       else s.items.push({ kind: "tool", key: nextKey(),
         text: "← tool result (" + (m.content || "").length + " chars)" });
     }
   }
+}
+
+/**
+ * A tool's pictures enter the conversation as a synthetic user-role message right after the call
+ * (ConversationOrchestrator: vision APIs will not reliably take them inside a tool message), written as
+ * `[Image from <tool>]` or `[Reference image: <name>]`. Nobody typed it, and live the pictures arrive on
+ * `tool.result` under the call instead — so a reopened chat puts them back under that call too, rather
+ * than as a "user" bubble that did not exist a moment ago. True when the message was folded; a message
+ * with no call to fold into (it does not directly follow that call's result) stays an ordinary bubble.
+ */
+function foldToolImages(s: ChatSession, m: ChatMessage, afterCallId: string | undefined): boolean {
+  if (!m.images?.length || !afterCallId) return false;
+  const text = (m.content || "").trim();
+  const from = /^\[Image from ([^\]]+)\]$/.exec(text);
+  if (!from && !/^\[Reference image: [^\]]*\]$/.test(text)) return false;
+  // By the id of the tool message it follows, not by name: one assistant turn may call the same
+  // screenshot tool twice, and the second call's card must not collect the first call's picture.
+  const call = s.calls[afterCallId];
+  if (!call || (from && call.name !== from[1])) return false;
+  call.images = [...(call.images ?? []), ...m.images];
+  return true;
 }
 
 on("user.message", (s, p: { msgId: string; text?: string; createdAt?: string; peerFrom?: string }) => {
@@ -594,9 +620,12 @@ function findCallByRootNodeId(s: ChatSession, rootNodeId: string): ToolCallState
   return undefined;
 }
 
-on("tool.result", (s, p: { toolCallId: string; toolName: string; result?: string }) => {
+on("tool.result", (s, p: { toolCallId: string; toolName: string; result?: string; images?: ImageRef[] | null }) => {
   const call = s.calls[p.toolCallId] || lastRunningByName(s, p.toolName);
-  if (call) { call.result = p.result || ""; call.status = "done"; call.finishedAt = Date.now(); }
+  if (call) {
+    call.result = p.result || ""; call.status = "done"; call.finishedAt = Date.now();
+    if (p.images?.length) call.images = p.images;
+  }
   else addNotice(s, "← " + p.toolName + " (" + (p.result || "").length + " chars)");
 });
 

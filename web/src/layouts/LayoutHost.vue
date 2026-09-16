@@ -9,11 +9,14 @@
   <!-- Above both branches: a surface opened over the app (settings) must cover the solo hub window
        too, which is where the other entry point lives. -->
   <SurfaceOverlay />
+  <!-- Over everything, settings included: a picture opened from anywhere is looked at, then closed. -->
+  <ImageLightbox />
 </template>
 
 <script setup lang="ts">
 import AppShell from "./AppShell.vue";
 import SurfaceOverlay from "./SurfaceOverlay.vue";
+import ImageLightbox from "../components/ImageLightbox.vue";
 import { surfaces } from "../surfaces/registry";
 
 const soloName = new URLSearchParams(location.search).get("surface");

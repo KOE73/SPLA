@@ -545,5 +545,14 @@
   "accepted": "принят",
   "editing": "правится",
   "outside this view": "вне этого вида",
-  "Nothing marked yet.": "Пока ничего не размечено."
+  "Nothing marked yet.": "Пока ничего не размечено.",
+  "Previous image": "Предыдущее изображение",
+  "Next image": "Следующее изображение",
+  "Image": "Изображение",
+  "Fit to window": "Вписать в окно",
+  "Fit": "Вписать",
+  "Actual size": "Реальный размер",
+  "Close (Esc)": "Закрыть (Esc)",
+  "Open image": "Открыть изображение",
+  "no preview": "нет превью"
 }

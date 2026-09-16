@@ -88,6 +88,7 @@ client/types **and** this table.
 | `permission.decision` | `PermissionDecision` | `PermissionDecisionPayload` | Answer to `permission.request` (by `requestId`). |
 | `clarify.choice` | `ClarifyChoice` | `ClarifyChoicePayload` | Answer to `clarify.request` (by `requestId`). |
 | `debug.request` | `DebugRequest` | `DebugRequestPayload` | Ask for a debug snapshot (`DebugKinds`). |
+| `debug.blob.get` | `DebugBlobGet` | `DebugBlobGetPayload` | Ask for one blob of the envelope's `chatId` by handle, as a picture; reply `debug.blob.result`. Per row, on demand — the `blobs` snapshot carries each row's `contentType` but never bytes. Scoped to that chat's own `BlobStore`; only `image/*` byte blobs are served (up to 16 MB), anything else answers with `error` set. |
 | `connections.get` | `ConnectionsGet` | — | Reply `connections.result` (+ cached `connections.health`, then a re-ping broadcast). |
 | `connections.save` | `ConnectionsSave` | `ConnectionsPayload` | Broadcasts `connections.result`; re-pings. |
 | `connection.ping` | `ConnectionPing` | `ConnectionDiagRequest` | Reply `connection.ping.result`. |
@@ -162,7 +163,7 @@ client/types **and** this table.
 | `tool.started` | `ToolStarted` | `ToolStartedPayload` | watchers | A tool call began. |
 | `tool.progress` | `ToolProgress` | `ToolProgressPayload` | watchers | Throttled progress ticks for the top-level call only. One bar, no nesting. |
 | `progress.node` | `ProgressNode` | `ProgressNodePayload` | watchers | One node of the turn's progress tree, whole, on each change — the nested counterpart to `tool.progress`, carrying a script's parallel children and a spawned sub-agent's whole run. A flat append-only stream, not a snapshot: keep what you are told and attach each node to `parentId` (null = top level). Hold a node whose parent has not arrived rather than dropping it — parallel work gives no ordering guarantee. Structural frames (a node's first appearance and its finish) are never throttled; the ticks between them are, per node. Both this and `tool.progress` are sent; a client that wants one bar can ignore this. |
-| `tool.result` | `ToolResult` | `ToolResultPayload` | watchers | A tool call finished. |
+| `tool.result` | `ToolResult` | `ToolResultPayload` | watchers | A tool call finished. `images` (optional) carries the pictures the tool returned as `data:` URLs with the label the model is shown them under, so the client draws them under the call live. The same pictures also enter the conversation as a synthetic user message `[Image from <tool>]` / `[Reference image: <name>]`; a reopened chat carries them there (as `/chat-image` URLs) and the web client folds that message back under the preceding call. |
 | `subagent.result` | `SubagentResult` | `SubagentResultPayload` | unicast | Answer to `subagent.get`: the session's transcript (`messages` reuses `ChatMessageDto`) plus its label, mode, outcome and timing, read off the spawned session's own file. `outcome: "running"` while the run has not finished; `found: false` when the id is not a (still-retained) spawned session. |
 | `task.list.result` | `TaskListResult` | `TaskListResult` | unicast | Answer to `task.list`: this chat's background tasks as summary rows (id, tool, state, started-at). |
 | `task.state.result` | `TaskStateResult` | `TaskStateResult` | unicast | Answer to `task.state`: the task's summary plus its result text once finished (`Result` null while running). `Task: null` for an unknown id. |
@@ -177,6 +178,7 @@ client/types **and** this table.
 | `clarify.request` | `ClarifyRequest` | `ClarifyRequestPayload` | watchers | Outstanding clarification question. Replayed to a client opening the chat while a question is still pending. |
 | `ask.resolved` | `AskResolved` | `AskResolvedPayload` | watchers | An outstanding permission or clarify question was resolved (answered, cancelled, or timed out). Payload carries `Reason`. |
 | `debug.snapshot` | `DebugSnapshot` | `DebugSnapshotPayload` | unicast | Answer to `debug.request`. |
+| `debug.blob.result` | `DebugBlobResult` | `DebugBlobResultPayload` | unicast | Answer to `debug.blob.get`: `url` is a `data:` URL, or null with `error` saying why (unknown handle, not an image, too large). |
 | `focus.changed` | `FocusChanged` | `FocusPayload` | broadcast | Tear-off windows follow the active chat. |
 | `connections.result` | `ConnectionsResult` | `ConnectionsPayload` | unicast/broadcast | Answer to get; broadcast after save. |
 | `connections.health` | `ConnectionsHealth` | health snapshot | unicast/broadcast (project) | Cached on get; re-pinged on startup/get/save. |

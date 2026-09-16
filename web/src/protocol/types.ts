@@ -735,6 +735,18 @@ export interface DebugKvEntry {
   value: string;
   origin?: string | null;
   doubtful?: boolean;
+  /** Blobs view only: the producer's declared media type. An `image/*` row can be previewed via
+   *  `debug.blob.get` — the snapshot itself never carries bytes. */
+  contentType?: string | null;
+}
+
+/** Answer to `debug.blob.get`: one blob of the chat as a `data:` URL, or `error` saying why not
+ *  (unknown handle, not an image, too large). */
+export interface DebugBlobResultPayload {
+  handle: string;
+  contentType?: string | null;
+  url?: string | null;
+  error?: string | null;
 }
 
 export interface DebugSegment {
@@ -748,6 +760,8 @@ export interface DebugSegment {
 }
 
 export interface DebugSnapshotPayload {
+  /** Which `debug.request` kind this answers. */
+  kind?: string;
   contextLines?: ContextLine[];
   totalCount?: number;
   contextCount?: number;
@@ -1006,7 +1020,8 @@ export interface ServerEvents {
    *  appearance and its finish) are never throttled; the ticks between them are, per node. */
   "progress.node": ProgressNodePayload;
   "task.state.changed": TaskStateChangedPayload; // A background task started or finished — published to all watchers of this chat.
-  "tool.result": { toolCallId: string; toolName: string; result: string };
+  /** `images`: pictures the tool returned, as data URLs named the way the model is shown them. */
+  "tool.result": { toolCallId: string; toolName: string; result: string; images?: ImageRef[] | null };
   "notice": { text: string };
   "error": { message: string };
   "permission.request": { toolName: string; arguments?: string };
@@ -1034,6 +1049,7 @@ export interface ServerEvents {
   "secret.result": SecretListResultPayload;
   "schema.result": SchemaResultPayload;
   "debug.snapshot": DebugSnapshotPayload;
+  "debug.blob.result": DebugBlobResultPayload;
   "local.userMsg": { text: string; images?: ImageRef[] };
   "project.list.result": ProjectListResultPayload;
   "project.context": ProjectContextPayload;
