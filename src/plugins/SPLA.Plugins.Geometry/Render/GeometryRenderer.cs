@@ -97,7 +97,8 @@ internal static class GeometryRenderer
     private const float CornerDot = 5f;
 
     /// <param name="probes">A probe round to draw on top, or null. A probe round draws no view grid and
-    /// no edge rulers — three layers of marks on one picture is a picture nobody reads — and veils the
+    /// no edge rulers — three layers of marks on one picture is a picture nobody reads — draws no unfinished
+    /// object unless the overlay asks for its box (ADR_20260916-3), and veils the
     /// accepted objects when <c>probe_veil</c> says so (ADR_20260916 §2.5, §2.6).</param>
     public static byte[] Render(
         GeometrySession session, GeometryView view, bool? grid, bool? rulers, GeometrySettings cfg,
@@ -115,10 +116,15 @@ internal static class GeometryRenderer
             if (grid ?? cfg.Grid) DrawGrid(canvas, view, cfg);
 
             var veil = probes is not null && cfg.ProbeVeil;
+            // Unless asked for, a probe round draws only what is finished: a live box's coloured lines
+            // run right through its rows of probes and hide the pixels the question is about.
             foreach (var obj in session.Objects.Where(o => IsVisible(o, view)))
+            {
+                if (probes is { ShowBox: false } && obj.Status != ObjectStatus.Accepted) continue;
                 DrawObject(canvas, obj, view, rulers, cfg, veil);
+            }
 
-            if (probes is not null) ProbeRenderer.Draw(canvas, probes, cfg);
+            if (probes is not null) ProbeRenderer.Draw(canvas, probes);
         }
 
         return Encode(bitmap, cfg);

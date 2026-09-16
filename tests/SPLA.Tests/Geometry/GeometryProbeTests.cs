@@ -5,6 +5,7 @@ using SPLA.Domain.Settings;
 using SPLA.MCP.Core.Interfaces;
 using SPLA.Plugins.Geometry;
 using SPLA.Plugins.Geometry.Model;
+using SPLA.Plugins.Geometry.Render;
 using SPLA.Plugins.Geometry.Session;
 
 namespace SPLA.Tests.Geometry;
@@ -130,6 +131,40 @@ public sealed class GeometryProbeTests
         // Reading order: B is the right-hand one.
         var box = GeometrySessionRegistry.TryGet(chat)!.Object("bag")!.Box!;
         Assert.InRange(box.Cx, right.Left, right.Right);
+    }
+
+    [Fact]
+    public async Task The_legibility_chart_makes_probes_the_smallest_look_read_at_every_larger_size()
+    {
+        var (chat, tools, scope) = Begin();
+        using var _scope = scope;
+        await Open(chat, tools, Frame(new SKRect(300, 200, 620, 430)));
+
+        var drawn = await tools["geom_probe_legibility"].ExecuteAsync("""{"round":null,"read":null}""");
+        Assert.False(drawn.IsError, drawn.TextContent);
+        Assert.Equal(ImageKeep.Once, Assert.Single(drawn.Content.OfType<ToolImage>()).Keep);
+
+        var chart = GeometrySessionRegistry.TryGet(chat)!.Chart!;
+        int Cell(string marker, string label, int size) => chart.Probes.Single(p =>
+            LegibilityChart.Looks[p.Row] == (marker, label) && LegibilityChart.Sizes[p.Column] == size).Number;
+
+        // A dot with an outlined number is read from 10 px up; a ring with one from 12 px up, and its
+        // 8 px cell too — luck, since 10 px was missed. A misread number is on no cell.
+        int[] read =
+        [
+            .. new[] { 10, 12, 14, 16, 20 }.Select(size => Cell("dot", "outline", size)),
+            .. new[] { 8, 12, 14, 16, 20 }.Select(size => Cell("ring", "outline", size)),
+            .. Enumerable.Range(10, 90).Where(n => chart.Probes.All(p => p.Number != n)).Take(1),
+        ];
+        var answered = await tools["geom_probe_legibility"].ExecuteAsync(
+            $$"""{"round":{{chart.Round}},"read":[{{string.Join(",", read)}}]}""");
+
+        Assert.False(answered.IsError, answered.TextContent);
+        Assert.Contains("misread", answered.TextContent);
+        Assert.Equal(new ProbeStyle("dot", "outline", 10, "mono"), GeometrySessionRegistry.TryGet(chat)!.ProbeStyle);
+
+        var probe = await tools["geom_probe"].ExecuteAsync("""{"name":"bag"}""");
+        Assert.Contains("small dot", probe.TextContent);
     }
 
     [Fact]

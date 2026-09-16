@@ -80,6 +80,14 @@
           <option value="ring">{{ t('Hollow ring, number beside it') }}</option>
           <option value="dot">{{ t('Translucent dot, number beside it') }}</option>
           <option value="badge">{{ t('Disc with the number inside') }}</option>
+          <option value="bare">{{ t('The number alone') }}</option>
+        </select>
+      </label>
+      <label>{{ t('Number beside a ring or dot') }}
+        <select v-model="form.probe_label">
+          <option value="plate">{{ t('On a dark plate') }}</option>
+          <option value="outline">{{ t('White with a dark outline') }}</option>
+          <option value="dark">{{ t('Dark with a white outline') }}</option>
         </select>
       </label>
       <label>{{ t('Colour') }}
@@ -108,8 +116,10 @@
         <input type="number" v-model.number="form.probe_tolerance" min="1" max="64">
       </label>
       <label>{{ t('Number size') }}
-        <input type="number" v-model.number="form.probe_font_size" min="10" max="48">
+        <input type="number" v-model.number="form.probe_font_size" min="8" max="48">
       </label>
+      <p class="hint">{{ t('geom_probe_legibility finds the smallest size a model reads and uses it for the image being marked.') }}</p>
+      <label class="check"><input type="checkbox" v-model="form.probe_show_box"> {{ t('Draw the box under the probes') }}</label>
       <label class="check"><input type="checkbox" v-model="form.probe_veil"> {{ t('Veil accepted objects') }}</label>
     </section>
 
@@ -145,13 +155,15 @@ const form = reactive({
   ruler_labels: true,
   ruler_transparency: 10,
   probe_marker: 'ring',
+  probe_label: 'plate',
   probe_color: 'mono',
   probe_layout: 'grid',
   probe_spacing: 48,
   probe_scan_spacing: 96,
   probe_rows: 3,
   probe_tolerance: 4,
-  probe_font_size: 16,
+  probe_font_size: 12,
+  probe_show_box: false,
   probe_veil: true
 });
 

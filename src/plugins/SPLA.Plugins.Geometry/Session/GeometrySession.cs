@@ -1,6 +1,7 @@
 using SkiaSharp;
 using SPLA.Domain.Security;
 using SPLA.Plugins.Geometry.Model;
+using SPLA.Plugins.Geometry.Render;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -46,6 +47,12 @@ internal sealed class GeometrySession : IDisposable
     /// <summary>The probing in progress (<c>geom_probe</c>), or null. One at a time: a round is a question
     /// about one picture, and the model answers the last picture it was shown.</summary>
     public ProbeState? Probe { get; set; }
+
+    /// <summary>The probe look <c>geom_probe_legibility</c> found this model reads, or null for the settings'.</summary>
+    public ProbeStyle? ProbeStyle { get; set; }
+
+    /// <summary>The legibility chart on the last picture, waiting for its answer, or null.</summary>
+    public LegibilityChart? Chart { get; set; }
 
     private int _probeRounds;
 

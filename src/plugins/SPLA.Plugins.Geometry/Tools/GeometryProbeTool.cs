@@ -43,9 +43,9 @@ internal sealed class GeometryProbeTool(ResolvedSettings projectSettings) : Geom
         "picture to find the object; with a box they sit around its edges. Every picture carries a " +
         "round number, and the answer is the next call: name, that round, inside = numbers whose " +
         "point lies on the object, outside = numbers whose point does not. A number left out of both " +
-        "lists counts as not answered. The coloured box on the picture is the tool's current estimate, " +
-        "not a hint about the answer. When the probes fall on several separate objects, the picture " +
-        "outlines each group with a letter and the next call names one letter in pick. The reply says " +
+        "lists counts as not answered. The box itself is not drawn during probing: the tool moves and " +
+        "turns it from the answers, so nothing about its position is judged or passed. When the probes " +
+        "fall on several separate objects, the picture outlines each group with a letter and the next call names one letter in pick. The reply says " +
         "when all four edges are settled; the box is then an ordinary box for geom_accept.";
 
     protected override Dictionary<string, object> Properties => new()
@@ -166,14 +166,14 @@ internal sealed class GeometryProbeTool(ResolvedSettings projectSettings) : Geom
         state.Groups = [];
 
         var text = new StringBuilder(action).Append('\n');
-        RoundHeader(text, state, cfg);
+        RoundHeader(text, state, Style(session, cfg));
         text.Append("question: does the point of each probe lie on an object of the kind you are marking as '")
             .Append(state.Name).Append("'? If several such objects are visible, answer for all of them — they ")
             .Append("are told apart afterwards. Gaps inside one object (between the letters of one inscription) ")
             .Append("count as on it.\n");
         AnswerLine(text, state);
 
-        return RenderResult(chat, session, view, text.ToString(), cfg, new ProbeOverlay(state.Probes, []));
+        return RenderResult(chat, session, view, text.ToString(), cfg, Overlay(session, cfg, state.Probes, []));
     }
 
     private static ToolResult EdgesRound(
@@ -200,7 +200,7 @@ internal sealed class GeometryProbeTool(ResolvedSettings projectSettings) : Geom
         state.Round = session.NextProbeRound();
         var random = new Random(ProbePlanner.Seed(state.Name, state.Round));
         var layout = new ProbeLayout(cfg.ProbeSpacing, cfg.ProbeScanSpacing, cfg.ProbeRows, cfg.ProbeTolerance,
-            cfg.ProbeLayout == "jitter", cfg.ProbeFontSize * 1.6);
+            cfg.ProbeLayout == "jitter", Style(session, cfg).FontSize * 1.6);
         state.Probes = ProbePlanner.Number(
             ProbePlanner.Edges(state, view.Width, view.Height, layout, random, Covered(session, view, state.Name)),
             random);
@@ -211,13 +211,14 @@ internal sealed class GeometryProbeTool(ResolvedSettings projectSettings) : Geom
             return Finish(chat, session, state, cfg, text,
                 $"the open edges of '{state.Name}' run off this view, so they are left where the answers put them");
 
-        RoundHeader(text, state, cfg);
+        RoundHeader(text, state, Style(session, cfg));
         text.Append("question: does the point of each probe lie on the area the box '").Append(state.Name)
-            .Append("' has to enclose? The coloured box is the current estimate, not the answer — judge the ")
-            .Append("picture under it. Gaps inside the object (between the letters of one inscription) count as on it.\n");
+            .Append("' has to enclose? ")
+            .Append(cfg.ProbeShowBox ? "The coloured box is the current estimate, not the answer — judge the picture under it. " : "")
+            .Append("Gaps inside the object (between the letters of one inscription) count as on it.\n");
         AnswerLine(text, state);
 
-        return RenderResult(chat, session, view, text.ToString(), cfg, new ProbeOverlay(state.Probes, []));
+        return RenderResult(chat, session, view, text.ToString(), cfg, Overlay(session, cfg, state.Probes, []));
     }
 
     private static ToolResult Finish(
@@ -266,7 +267,7 @@ internal sealed class GeometryProbeTool(ResolvedSettings projectSettings) : Geom
             .Append(", pick:'A'}. The others can be marked afterwards under their own names; once accepted ")
             .Append("they are veiled and get no probes.");
 
-        return RenderResult(chat, session, session.CurrentView, text.ToString(), cfg, new ProbeOverlay([], groups));
+        return RenderResult(chat, session, session.CurrentView, text.ToString(), cfg, Overlay(session, cfg, [], groups));
     }
 
     private static ToolResult AnswerPick(
@@ -353,15 +354,10 @@ internal sealed class GeometryProbeTool(ResolvedSettings projectSettings) : Geom
 
     // ── text ──────────────────────────────────────────────────────────────────
 
-    private static void RoundHeader(StringBuilder text, ProbeState state, GeometrySettings cfg)
+    private static void RoundHeader(StringBuilder text, ProbeState state, ProbeStyle style)
     {
         text.Append("round ").Append(state.Round).Append(": ").Append(state.Probes.Count).Append(" numbered probes; ")
-            .Append(cfg.ProbeMarker switch
-            {
-                "badge" => "a probe's point is the centre of a numbered disc.",
-                "dot" => "a probe's point is a small dot, and its number is on the plate next to it.",
-                _ => "a probe's point is the centre of a hollow ring, and its number is on the plate next to it.",
-            })
+            .Append(style.Describe())
             .Append(" Numbers are shuffled and say nothing about position.\n");
     }
 
@@ -387,6 +383,14 @@ internal sealed class GeometryProbeTool(ResolvedSettings projectSettings) : Geom
 
     // ── helpers ───────────────────────────────────────────────────────────────
 
+    /// <summary>The style proven legible in this session by <c>geom_probe_legibility</c>, else the settings'.</summary>
+    private static ProbeStyle Style(GeometrySession session, GeometrySettings cfg) =>
+        session.ProbeStyle ?? ProbeStyle.From(cfg);
+
+    private static ProbeOverlay Overlay(
+        GeometrySession session, GeometrySettings cfg, IReadOnlyList<Probe> probes, IReadOnlyList<ProbeGroup> groups) =>
+        new(probes, groups, Style(session, cfg), cfg.ProbeShowBox);
+
     /// <summary>Accepted boxes in this view, other than the one being probed: veiled, and never probed.</summary>
     private static List<Obb> Covered(GeometrySession session, GeometryView view, string name) =>
         [.. session.Objects
@@ -395,7 +399,7 @@ internal sealed class GeometryProbeTool(ResolvedSettings projectSettings) : Geom
 
     /// <summary>A list of probe numbers. Absent, null, the string "null" and an empty array are all an
     /// empty set; a whole-number double or a numeric string is accepted, since a model writes both.</summary>
-    private static (HashSet<int> Numbers, string? Error) Ints(JsonElement args, string name)
+    internal static (HashSet<int> Numbers, string? Error) Ints(JsonElement args, string name)
     {
         var numbers = new HashSet<int>();
         if (!args.TryGetProperty(name, out var value) || value.ValueKind is JsonValueKind.Null or JsonValueKind.Undefined)

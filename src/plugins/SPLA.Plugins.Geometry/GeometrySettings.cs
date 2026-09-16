@@ -116,11 +116,18 @@ public sealed class GeometrySettings
 
     // ── probes (geom_probe, ADR_20260916) ─────────────────────────────────────
 
-    /// <summary>What a probe looks like: <c>ring</c> — a hollow ring, number on a plate beside it;
+    /// <summary>What a probe looks like: <c>ring</c> — a small hollow ring, number beside it;
     /// <c>dot</c> — a small translucent dot, number beside it; <c>badge</c> — a disc with the number
-    /// inside. Which one a given model reads best is a question for a live run, so all three stay.</summary>
+    /// inside; <c>bare</c> — the number alone, its middle being the point. Which one a given model reads
+    /// best is a question for a live run — <c>geom_probe_legibility</c> asks it.</summary>
     [YamlMember(Alias = "probe_marker")]
     public string ProbeMarker { get; set; } = "ring";
+
+    /// <summary><c>plate</c> — the number of a ring or a dot on a dark plate; <c>outline</c> — white
+    /// digits with a dark outline and nothing behind them; <c>dark</c> — dark digits with a white outline.
+    /// A bare number uses <c>dark</c> when set and <c>outline</c> otherwise.</summary>
+    [YamlMember(Alias = "probe_label")]
+    public string ProbeLabel { get; set; } = "plate";
 
     /// <summary><c>mono</c> — one colour for every probe; <c>edge</c> — the colour of the edge a probe
     /// answers for.</summary>
@@ -152,9 +159,17 @@ public sealed class GeometrySettings
     [YamlMember(Alias = "probe_tolerance")]
     public int ProbeTolerance { get; set; } = 4;
 
-    /// <summary>Point size of the probe numbers. A number too small to read is read anyway, wrongly.</summary>
+    /// <summary>Pixel size of the probe numbers. A number too small to read is read anyway, wrongly —
+    /// and one too large hides the picture it asks about; <c>geom_probe_legibility</c> finds the
+    /// smallest a model reads.</summary>
     [YamlMember(Alias = "probe_font_size")]
-    public int ProbeFontSize { get; set; } = 16;
+    public int ProbeFontSize { get; set; } = 12;
+
+    /// <summary>Whether the box being probed is drawn under the probes. Off by default: the question is
+    /// about the picture at each point, and a coloured line through a row of probes hides exactly the
+    /// pixels being asked about while inviting an answer about the line instead.</summary>
+    [YamlMember(Alias = "probe_show_box")]
+    public bool ProbeShowBox { get; set; }
 
     /// <summary>Whether accepted objects are covered by a dark veil in probe rounds, so what is already
     /// marked neither distracts nor gets answered about a second time.</summary>
@@ -209,14 +224,15 @@ public sealed class GeometrySettings
         // 1 means every line is major — legal, and what a coarse step wants.
         GridMajorEvery = Clamp(GridMajorEvery, 1, 20);
         if (string.IsNullOrWhiteSpace(GridColor)) GridColor = new GeometrySettings().GridColor;
-        ProbeMarker = OneOf(ProbeMarker, "ring", "ring", "dot", "badge");
+        ProbeMarker = OneOf(ProbeMarker, "ring", "ring", "dot", "badge", "bare");
+        ProbeLabel = OneOf(ProbeLabel, "plate", "plate", "outline", "dark");
         ProbeColor = OneOf(ProbeColor, "mono", "mono", "edge");
         ProbeLayout = OneOf(ProbeLayout, "grid", "grid", "jitter");
         ProbeSpacing = Clamp(ProbeSpacing, 16, 256);
         ProbeScanSpacing = Clamp(ProbeScanSpacing, 24, 512);
         ProbeRows = Clamp(ProbeRows, 1, 8);
         ProbeTolerance = Clamp(ProbeTolerance, 1, 64);
-        ProbeFontSize = Clamp(ProbeFontSize, 10, 48);
+        ProbeFontSize = Clamp(ProbeFontSize, 8, 48);
         // 0 means PNG; any other value is a JPEG quality, and quality below 30 is not worth the
         // artefacts on a frame the model has to read geometry off, so it snaps up.
         JpegQuality = JpegQuality switch

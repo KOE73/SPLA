@@ -25,6 +25,8 @@ default_prompt: |
   original image's coordinates. geom_probe is a second way to place a box: it draws numbered probes and
   moves and turns the box itself from which probes lie on the object and which do not, so placement
   becomes a yes/no judgement per probe rather than a distance read off the picture.
+  geom_probe_legibility draws probe numbers in several looks and sizes, takes back the ones read, and
+  has geom_probe draw the smallest look read.
 
   A box has a visible vocabulary: its four sides are drawn in distinct colours that belong to the box
   and travel with it when it turns, its corners and its centre are marked, and the reply names each

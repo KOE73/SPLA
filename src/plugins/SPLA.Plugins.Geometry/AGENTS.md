@@ -155,7 +155,8 @@ are starting values, and they are knobs because the owner turns them against a l
 `geom_probe` (`Tools/GeometryProbeTool.cs`, arithmetic in `Model/Probes.cs`, drawing in
 `Render/ProbeRenderer.cs`) places a box without asking the model for a single distance. Read
 [`ADR_20260916_plugins_geometry-probes`](../../../docs/adr/ADR_20260916_plugins_geometry-probes.md)
-and [`ADR_20260916-2_plugins_probes-find-the-angle`](../../../docs/adr/ADR_20260916-2_plugins_probes-find-the-angle.md)
+[`ADR_20260916-2_plugins_probes-find-the-angle`](../../../docs/adr/ADR_20260916-2_plugins_probes-find-the-angle.md)
+and [`ADR_20260916-3_plugins_probe-legibility`](../../../docs/adr/ADR_20260916-3_plugins_probe-legibility.md)
 before changing it. What must hold:
 
 - **Scan, pick, edges.** No box: a lattice over the whole view at `probe_scan_spacing`, inside probes
@@ -173,6 +174,10 @@ before changing it. What must hold:
   frame** (`Owner`), not the edge it was placed for, and a point off a corner counts for neither.
   Filing outside answers under their placement edge was tried: after a turn one of them sat past the
   neighbouring edge and held a correct cut open for good.
+- **An edge nothing outside is filed under is open to the border** (`Samples`). Its band used to close
+  on its own farthest inside answer, so it read as settled: a tilted inscription stopped 47 px short
+  once a turn put every outside answer near that end off a corner. The assumed border answer placed at
+  the start is a point and does not cover this — a turn moves it off a corner too.
 - **The cut is the one the fewest answers contradict** (`ProbePlanner.Cut`); a contradiction widens
   the band to be probed again, it is never simply believed or dropped.
 - **The angle is the middle of the least-contradicted run of angles** (`FitAngle`), and half the run
@@ -189,27 +194,37 @@ before changing it. What must hold:
   context; the text of old answers stays, and a looping model can resend one.
 - **A round lives in one view, over a box it wrote itself.** Another view, or the box moved by any
   other call (`ProbeState.WrittenBox`, compared by reference), and the answer is refused as interrupted.
-- **Probe renders carry no grid and no rulers**, and accepted objects are veiled (`probe_veil`) and get
-  no probes.
+- **Probe renders carry no grid, no rulers and no unfinished box** (`probe_show_box` brings the box
+  back), and accepted objects are veiled (`probe_veil`) and get no probes. The box's lines ran through
+  the rows of probes and hid exactly the pixels asked about.
+- **Probe marks are as thin as legibility allows.** Strokes, plate padding and the outline of outlined
+  digits scale with the digits — a fixed 1 px outline vanished on a pale sack.
+  How small a model still reads is measured, not guessed: `geom_probe_legibility` draws every look at
+  every size with its own random number, and the smallest size from which a look was read at **every**
+  larger size wins (a small cell read while a larger one was missed is luck). Ties go to the look that
+  covers the point least. The choice lives on the session (`GeometrySession.ProbeStyle`), not in the
+  settings: the model does not write the project's settings; the reply names the values to keep.
 - **Markers first, plates second, and a plate avoids everything drawn before it.** Inside probes all
   lean their plates towards the centre; without the collision pass they stacked on each other over the
   print.
 
 | setting | default | clamp | what it is |
 |---|---|---|---|
-| `probe_marker` | `ring` | `ring`/`dot`/`badge` | hollow ring + plate; translucent dot + plate; disc with the number inside |
+| `probe_marker` | `ring` | `ring`/`dot`/`badge`/`bare` | hollow ring + number; translucent dot + number; disc with the number inside; the number alone, centred on the point |
+| `probe_label` | `plate` | `plate`/`outline`/`dark` | a ring's or dot's number on a dark plate, white with a dark outline, or dark with a white outline; a bare number takes `dark`, else `outline` |
 | `probe_color` | `mono` | `mono`/`edge` | one colour, or the colour of the edge the probe answers for |
 | `probe_layout` | `grid` | `grid`/`jitter` | on the lattice, or shifted within the slot (seeded by name and round) |
 | `probe_spacing` | `48` | 16…256 | one probe per this many view px along an edge |
 | `probe_scan_spacing` | `96` | 24…512 | the whole-view lattice, and the row step of a band too wide to halve |
 | `probe_rows` | `3` | 1…8 | rows across a narrow band; the band shrinks about `rows+1` times a round |
 | `probe_tolerance` | `4` | 1…64 | view px; a band this narrow with no contradiction is settled |
-| `probe_font_size` | `16` | 10…48 | probe numbers |
+| `probe_font_size` | `12` | 8…48 | probe numbers, px; `geom_probe_legibility` overrides it per image |
+| `probe_show_box` | `false` | — | draw the box being probed under the probes |
 | `probe_veil` | `true` | — | darken accepted objects in probe rounds |
 
 Numbers are starting values, same as the grid's. If you change the layout or the angle fit, run the
 round trips in `GeometryProbeTests` — including the tilted ones — render real rounds for all three
-markers and a tilted object, and **look**.
+looks and a tilted object, and **look**.
 
 ## Frozen: what gets colours, and the two glyphs
 

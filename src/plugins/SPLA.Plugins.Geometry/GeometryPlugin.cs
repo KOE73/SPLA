@@ -27,6 +27,6 @@ public sealed partial class GeometryPlugin : ISplaPlugin
     public IEnumerable<IMcpTool> Initialize(ResolvedSettings settings)
     {
         Settings = settings;
-        return [new GeometryOpenTool(settings), new GeometryBoxTool(settings), new GeometryPointTool(settings), new GeometryViewTool(settings), new GeometryAcceptTool(settings), new GeometryResultTool(settings), new GeometryProbeTool(settings)];
+        return [new GeometryOpenTool(settings), new GeometryBoxTool(settings), new GeometryPointTool(settings), new GeometryViewTool(settings), new GeometryAcceptTool(settings), new GeometryResultTool(settings), new GeometryProbeTool(settings), new GeometryProbeLegibilityTool(settings)];
     }
 }
