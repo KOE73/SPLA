@@ -104,9 +104,12 @@ function resetSize() {
 // A different chat means a different draft, and therefore a different height.
 watch(() => chat.chatId.value, () => nextTick(() => { resetSize(); autosize(); }));
 
+const IMAGE_EXT = /\.(png|jpe?g|gif|webp|bmp)$/i;
 function addImageFiles(files: FileList | File[]) {
   for (const f of files) {
-    if (!f.type.startsWith("image/")) continue;
+    // A file from disk can arrive with an empty type (the host did not map the extension) — then the
+    // extension decides, and names the MIME in the data URL too.
+    if (!f.type.startsWith("image/") && !(f.type === "" && IMAGE_EXT.test(f.name))) continue;
     const reader = new FileReader();
     // Resolve the target chat now, not in the callback: the read is async and the user may well have
     // switched chats before it finishes.
@@ -115,7 +118,14 @@ function addImageFiles(files: FileList | File[]) {
     // sayable in the next message instead of counting pictures. A pasted screenshot has no name worth
     // repeating, and stays unnamed.
     const label = f.name && !/^image\.\w+$/i.test(f.name) ? f.name : undefined;
-    reader.onload = () => { target?.attachments.push({ url: reader.result as string, label }); };
+    reader.onload = () => {
+      let url = reader.result as string;
+      if (!f.type) {
+        const ext = IMAGE_EXT.exec(f.name)![1].toLowerCase();
+        url = url.replace(/^data:[^;,]*/, `data:image/${ext === "jpg" ? "jpeg" : ext}`);
+      }
+      target?.attachments.push({ url, label });
+    };
     reader.readAsDataURL(f);
   }
 }
@@ -142,8 +152,17 @@ function onDragOver(e: DragEvent) {
 function onDragLeave() { if (dragDepth.value > 0) dragDepth.value--; }
 function onDrop(e: DragEvent) {
   dragDepth.value = 0;
-  const files = e.dataTransfer?.files;
-  if (files?.length) addImageFiles(files);
+  const dt = e.dataTransfer;
+  // WebView2 does not always fill `files` for a drop from Explorer; `items` is the second source.
+  let files: File[] = [...(dt?.files || [])];
+  if (!files.length) {
+    files = [...(dt?.items || [])]
+      .filter(i => i.kind === "file")
+      .map(i => i.getAsFile())
+      .filter((f): f is File => !!f);
+  }
+  console.debug("[composer] drop", { types: dt?.types, files: files.map(f => `${f.name} ${f.type || "(no type)"}`) });
+  if (files.length) addImageFiles(files);
 }
 
 // A miss — a file dropped anywhere else in the window — would otherwise navigate the whole client

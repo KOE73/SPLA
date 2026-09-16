@@ -22,10 +22,10 @@
     <div class="new-split">
       <button class="btn-new" @click="newChat">{{ t('+ New') }}</button>
       <button
-        v-if="activeRoles.length"
         class="btn-new-role"
-        :title="t('New chat with a role')"
-        @click="toggleRoleMenu"
+        :disabled="!activeRoles.length"
+        :title="activeRoles.length ? t('New chat with a role') : t('No active roles')"
+        @click.stop="toggleRoleMenu"
       >▾</button>
       <div v-if="roleMenuOpen" class="role-menu" @click.stop>
         <div
@@ -144,6 +144,13 @@ const offRoles = client.on("roles.result", p => {
   activeRoles.value = (p.roles || []).filter(r => r.active);
 });
 onUnmounted(offRoles);
+
+// Ask on connect, not on the first click: the ▾ half of the button is hidden while the list is
+// empty, so waiting for a click left it invisible until some other surface (Settings) happened to
+// fetch the roles. Re-asking on every "conn" also keeps the list right across a reconnect.
+const offRolesConn = client.on("conn", c => { if (c.on) client.send("roles.get"); });
+onUnmounted(offRolesConn);
+if (store.connected) client.send("roles.get");
 
 function toggleRoleMenu() {
   roleMenuOpen.value = !roleMenuOpen.value;
@@ -300,7 +307,8 @@ function scrollToState() {
   padding: 3px 5px;
   cursor: pointer;
 }
-.btn-new-role:hover { background: var(--accent-soft); color: var(--accent); border-color: var(--accent); }
+.btn-new-role:disabled { opacity: 0.4; cursor: default; }
+.btn-new-role:not(:disabled):hover { background: var(--accent-soft); color: var(--accent); border-color: var(--accent); }
 .role-menu {
   position: absolute;
   top: 100%;
