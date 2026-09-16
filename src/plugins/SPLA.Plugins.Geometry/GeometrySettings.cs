@@ -114,6 +114,53 @@ public sealed class GeometrySettings
     [YamlMember(Alias = "render_history")]
     public int RenderHistory { get; set; } = 5;
 
+    // ── probes (geom_probe, ADR_20260916) ─────────────────────────────────────
+
+    /// <summary>What a probe looks like: <c>ring</c> — a hollow ring, number on a plate beside it;
+    /// <c>dot</c> — a small translucent dot, number beside it; <c>badge</c> — a disc with the number
+    /// inside. Which one a given model reads best is a question for a live run, so all three stay.</summary>
+    [YamlMember(Alias = "probe_marker")]
+    public string ProbeMarker { get; set; } = "ring";
+
+    /// <summary><c>mono</c> — one colour for every probe; <c>edge</c> — the colour of the edge a probe
+    /// answers for.</summary>
+    [YamlMember(Alias = "probe_color")]
+    public string ProbeColor { get; set; } = "mono";
+
+    /// <summary><c>grid</c> — probes on their lattice slots; <c>jitter</c> — shifted randomly within
+    /// the slot, seeded by the round so a render can be reproduced.</summary>
+    [YamlMember(Alias = "probe_layout")]
+    public string ProbeLayout { get; set; } = "grid";
+
+    /// <summary>One probe per this many view pixels along an edge. A density, not a count: how many
+    /// probes a round gets follows from the box and the frame.</summary>
+    [YamlMember(Alias = "probe_spacing")]
+    public int ProbeSpacing { get; set; } = 48;
+
+    /// <summary>Spacing of the lattice that covers the whole view when there is no box yet, and of the
+    /// rows across a band still too wide to halve. Coarser than <see cref="ProbeSpacing"/>: at the
+    /// fine spacing a whole frame is hundreds of numbers to list.</summary>
+    [YamlMember(Alias = "probe_scan_spacing")]
+    public int ProbeScanSpacing { get; set; } = 96;
+
+    /// <summary>How many rows of probes go across an edge's band once it is narrow enough to halve.</summary>
+    [YamlMember(Alias = "probe_rows")]
+    public int ProbeRows { get; set; } = 3;
+
+    /// <summary>An edge whose band is no wider than this many view pixels, with no contradicting
+    /// answers, is settled and gets no more probes.</summary>
+    [YamlMember(Alias = "probe_tolerance")]
+    public int ProbeTolerance { get; set; } = 4;
+
+    /// <summary>Point size of the probe numbers. A number too small to read is read anyway, wrongly.</summary>
+    [YamlMember(Alias = "probe_font_size")]
+    public int ProbeFontSize { get; set; } = 16;
+
+    /// <summary>Whether accepted objects are covered by a dark veil in probe rounds, so what is already
+    /// marked neither distracts nor gets answered about a second time.</summary>
+    [YamlMember(Alias = "probe_veil")]
+    public bool ProbeVeil { get; set; } = true;
+
 
     /// <summary>
     /// The spacing the grid actually uses for a frame of this size: <see cref="GridStep"/> when it is
@@ -162,6 +209,14 @@ public sealed class GeometrySettings
         // 1 means every line is major — legal, and what a coarse step wants.
         GridMajorEvery = Clamp(GridMajorEvery, 1, 20);
         if (string.IsNullOrWhiteSpace(GridColor)) GridColor = new GeometrySettings().GridColor;
+        ProbeMarker = OneOf(ProbeMarker, "ring", "ring", "dot", "badge");
+        ProbeColor = OneOf(ProbeColor, "mono", "mono", "edge");
+        ProbeLayout = OneOf(ProbeLayout, "grid", "grid", "jitter");
+        ProbeSpacing = Clamp(ProbeSpacing, 16, 256);
+        ProbeScanSpacing = Clamp(ProbeScanSpacing, 24, 512);
+        ProbeRows = Clamp(ProbeRows, 1, 8);
+        ProbeTolerance = Clamp(ProbeTolerance, 1, 64);
+        ProbeFontSize = Clamp(ProbeFontSize, 10, 48);
         // 0 means PNG; any other value is a JPEG quality, and quality below 30 is not worth the
         // artefacts on a frame the model has to read geometry off, so it snaps up.
         JpegQuality = JpegQuality switch
@@ -171,6 +226,13 @@ public sealed class GeometrySettings
             > 100 => 100,
             _ => JpegQuality,
         };
+    }
+
+    /// <summary>A word from a closed list, case-insensitive; anything else falls back to the default.</summary>
+    private static string OneOf(string? value, string fallback, params string[] allowed)
+    {
+        var word = value?.Trim().ToLowerInvariant();
+        return word is not null && System.Array.IndexOf(allowed, word) >= 0 ? word : fallback;
     }
 
     private static int Clamp(int value, int min, int max) =>

@@ -43,6 +43,16 @@ internal sealed class GeometrySession : IDisposable
     /// <summary>Where the frame came from, when the source said.</summary>
     public DataOrigin? Origin { get; }
 
+    /// <summary>The probing in progress (<c>geom_probe</c>), or null. One at a time: a round is a question
+    /// about one picture, and the model answers the last picture it was shown.</summary>
+    public ProbeState? Probe { get; set; }
+
+    private int _probeRounds;
+
+    /// <summary>The next probe round's number. Never reused in a session, so an answer written for an
+    /// older picture cannot match a newer one by accident (ADR_20260916 §2.4).</summary>
+    public int NextProbeRound() => ++_probeRounds;
+
     public GeometryView CurrentView =>
         Views.FirstOrDefault(v => v.Id == CurrentViewId) ?? Views[0];
 

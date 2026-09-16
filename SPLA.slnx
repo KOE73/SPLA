@@ -174,6 +174,8 @@
     <File Path="docs/adr/ADR_20260914-3_plugins_grounded-vocabulary.md" />
     <File Path="docs/adr/ADR_20260914-4_plugins_grid-is-a-ruler.md" />
     <File Path="docs/adr/ADR_20260914_plugins_geometry-workspace.md" />
+    <File Path="docs/adr/ADR_20260916-2_plugins_probes-find-the-angle.md" />
+    <File Path="docs/adr/ADR_20260916_plugins_geometry-probes.md" />
     <File Path="docs/adr/ADR_20260910-2_agent_chat-feed.md" />
     <File Path="docs/adr/ADR_20260911_core_resources-capability.md" />
     <File Path="docs/adr/ADR_20260911-2_agent_agents-md-scopes.md" />

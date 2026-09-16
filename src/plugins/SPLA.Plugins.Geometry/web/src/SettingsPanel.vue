@@ -70,7 +70,47 @@
       <label>{{ t('Transparency (%)') }}
         <input type="number" v-model.number="form.ruler_transparency" min="0" max="95">
       </label>
-      <p class="hint">{{ t('Solid lines are inside the box, dashed ones outside it; both step on the finest step above. Their spacing is not a setting — it is computed from the box.') }}</p>
+      <p class="hint">{{ t('Dashed lines are inside the box, solid ones outside it; both step on the finest step above. Their spacing is not a setting — it is computed from the box.') }}</p>
+    </section>
+
+    <section>
+      <h3>{{ t('Probes') }}</h3>
+      <label>{{ t('Marker') }}
+        <select v-model="form.probe_marker">
+          <option value="ring">{{ t('Hollow ring, number beside it') }}</option>
+          <option value="dot">{{ t('Translucent dot, number beside it') }}</option>
+          <option value="badge">{{ t('Disc with the number inside') }}</option>
+        </select>
+      </label>
+      <label>{{ t('Colour') }}
+        <select v-model="form.probe_color">
+          <option value="mono">{{ t('One colour for all') }}</option>
+          <option value="edge">{{ t('The colour of the edge it answers for') }}</option>
+        </select>
+      </label>
+      <label>{{ t('Layout') }}
+        <select v-model="form.probe_layout">
+          <option value="grid">{{ t('On the lattice') }}</option>
+          <option value="jitter">{{ t('Shifted randomly within the slot') }}</option>
+        </select>
+      </label>
+      <label>{{ t('One probe per (px) along an edge') }}
+        <input type="number" v-model.number="form.probe_spacing" min="16" max="256">
+      </label>
+      <label>{{ t('Scan spacing (px)') }}
+        <input type="number" v-model.number="form.probe_scan_spacing" min="24" max="512">
+      </label>
+      <p class="hint">{{ t('Covers the whole picture when there is no box yet. Coarser than the edge spacing: every probe is a number the model has to list.') }}</p>
+      <label>{{ t('Rows across a narrow band') }}
+        <input type="number" v-model.number="form.probe_rows" min="1" max="8">
+      </label>
+      <label>{{ t('Settled when the band is within (px)') }}
+        <input type="number" v-model.number="form.probe_tolerance" min="1" max="64">
+      </label>
+      <label>{{ t('Number size') }}
+        <input type="number" v-model.number="form.probe_font_size" min="10" max="48">
+      </label>
+      <label class="check"><input type="checkbox" v-model="form.probe_veil"> {{ t('Veil accepted objects') }}</label>
     </section>
 
     <p v-if="error" role="alert">{{ error }}</p>
@@ -103,7 +143,16 @@ const form = reactive({
   grid_color: '#141414',
   edge_rulers: true,
   ruler_labels: true,
-  ruler_transparency: 10
+  ruler_transparency: 10,
+  probe_marker: 'ring',
+  probe_color: 'mono',
+  probe_layout: 'grid',
+  probe_spacing: 48,
+  probe_scan_spacing: 96,
+  probe_rows: 3,
+  probe_tolerance: 4,
+  probe_font_size: 16,
+  probe_veil: true
 });
 
 const error = ref('');
@@ -125,7 +174,7 @@ section { display: grid; gap: 6px; }
 h3, p { margin: 0; }
 label { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
 label.check { gap: 6px; }
-input:not([type=checkbox]):not([type=color]) { flex: 1; min-width: 110px; }
+input:not([type=checkbox]):not([type=color]), select { flex: 1; min-width: 110px; }
 .colour { display: flex; gap: 6px; flex: 1; }
 .colour input[type=color] { width: 34px; padding: 0; }
 .hint { opacity: .65; font-size: .85em; }

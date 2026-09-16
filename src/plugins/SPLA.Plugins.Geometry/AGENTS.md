@@ -150,6 +150,67 @@ patch out of the picture, keep the fine ones genuinely faint, keep labels on the
 rather than over the marked object. This trade-off is not settleable by reasoning; the numbers above
 are starting values, and they are knobs because the owner turns them against a live model.
 
+## Probes: the model classifies, the tool measures
+
+`geom_probe` (`Tools/GeometryProbeTool.cs`, arithmetic in `Model/Probes.cs`, drawing in
+`Render/ProbeRenderer.cs`) places a box without asking the model for a single distance. Read
+[`ADR_20260916_plugins_geometry-probes`](../../../docs/adr/ADR_20260916_plugins_geometry-probes.md)
+and [`ADR_20260916-2_plugins_probes-find-the-angle`](../../../docs/adr/ADR_20260916-2_plugins_probes-find-the-angle.md)
+before changing it. What must hold:
+
+- **Scan, pick, edges.** No box: a lattice over the whole view at `probe_scan_spacing`, inside probes
+  grouped eight-neighbour; several groups are outlined and lettered and the model picks one. A box:
+  per edge a band from the farthest inside answer to the nearest outside one, probed only while it is
+  wider than `probe_tolerance` or contradicted. A band too wide to halve is sampled at the scan spacing
+  (density, not count); a narrow one gets `probe_rows` rows, staggered along the edge.
+- **A probe answers for one edge only, so it is placed only where the perpendicular edges are
+  confirmed inside** (`EdgeCut.Inner`), never as far as they are estimated. Placing along the estimate
+  was tried: a probe past a too-wide perpendicular edge is outside because of *that* edge, and filed
+  under this one it dragged this edge 20 px inward.
+- **An answer is stored as a point, never as a distance from an edge** (`ProbeAnswer`), so the frame can
+  turn without losing any. Offsets are recomputed in the current frame (`ProbePlanner.Samples`).
+- **Inside counts for all four edges; outside counts for the edge the point is past in the current
+  frame** (`Owner`), not the edge it was placed for, and a point off a corner counts for neither.
+  Filing outside answers under their placement edge was tried: after a turn one of them sat past the
+  neighbouring edge and held a correct cut open for good.
+- **The cut is the one the fewest answers contradict** (`ProbePlanner.Cut`); a contradiction widens
+  the band to be probed again, it is never simply believed or dropped.
+- **The angle is the middle of the least-contradicted run of angles** (`FitAngle`), and half the run
+  is kept as `AngleSpreadDeg`. Taking the end nearest the current angle stopped a 25° inscription at
+  19°. An edge is settled only when its band is within tolerance **and** the spread cannot swing its
+  ends further (`ProbePlanner.Settled`); until then probes go across that swing.
+- **Edge rounds stop at `MaxEdgeRounds`** (15) with the unsettled edges named. Without it a model whose
+  answers never agree gets rounds for ever — a tilted box once ran 14 rounds with 25 "contradictions"
+  and no end in sight.
+- **Numbers carry no position.** Shuffled every round, no parity scheme: a number that hints at the
+  answer lets a weak model answer from the number instead of the picture.
+- **The round is part of the answer.** Session-wide, never reused; a wrong round is refused. A probe
+  picture is always `ImageKeep.Once`, whatever `agent.tool_images` says. Only the picture leaves the
+  context; the text of old answers stays, and a looping model can resend one.
+- **A round lives in one view, over a box it wrote itself.** Another view, or the box moved by any
+  other call (`ProbeState.WrittenBox`, compared by reference), and the answer is refused as interrupted.
+- **Probe renders carry no grid and no rulers**, and accepted objects are veiled (`probe_veil`) and get
+  no probes.
+- **Markers first, plates second, and a plate avoids everything drawn before it.** Inside probes all
+  lean their plates towards the centre; without the collision pass they stacked on each other over the
+  print.
+
+| setting | default | clamp | what it is |
+|---|---|---|---|
+| `probe_marker` | `ring` | `ring`/`dot`/`badge` | hollow ring + plate; translucent dot + plate; disc with the number inside |
+| `probe_color` | `mono` | `mono`/`edge` | one colour, or the colour of the edge the probe answers for |
+| `probe_layout` | `grid` | `grid`/`jitter` | on the lattice, or shifted within the slot (seeded by name and round) |
+| `probe_spacing` | `48` | 16…256 | one probe per this many view px along an edge |
+| `probe_scan_spacing` | `96` | 24…512 | the whole-view lattice, and the row step of a band too wide to halve |
+| `probe_rows` | `3` | 1…8 | rows across a narrow band; the band shrinks about `rows+1` times a round |
+| `probe_tolerance` | `4` | 1…64 | view px; a band this narrow with no contradiction is settled |
+| `probe_font_size` | `16` | 10…48 | probe numbers |
+| `probe_veil` | `true` | — | darken accepted objects in probe rounds |
+
+Numbers are starting values, same as the grid's. If you change the layout or the angle fit, run the
+round trips in `GeometryProbeTests` — including the tilted ones — render real rounds for all three
+markers and a tilted object, and **look**.
+
 ## Frozen: what gets colours, and the two glyphs
 
 - Only the **editing** box gets the four colours and the corner dots. `accepted` objects are drawn in

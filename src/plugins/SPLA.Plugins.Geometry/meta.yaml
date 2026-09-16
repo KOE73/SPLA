@@ -22,7 +22,9 @@ default_prompt: |
   What the workspace makes available: geom_open puts an image into it, geom_box and geom_point place
   and correct objects, geom_view changes which part of the image is being looked at and at what
   scale, geom_accept records an object as finished, and geom_result reports every object in the
-  original image's coordinates.
+  original image's coordinates. geom_probe is a second way to place a box: it draws numbered probes and
+  moves and turns the box itself from which probes lie on the object and which do not, so placement
+  becomes a yes/no judgement per probe rather than a distance read off the picture.
 
   A box has a visible vocabulary: its four sides are drawn in distinct colours that belong to the box
   and travel with it when it turns, its corners and its centre are marked, and the reply names each

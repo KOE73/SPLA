@@ -119,10 +119,15 @@ internal abstract class GeometryToolBase(ResolvedSettings projectSettings) : IMc
     /// in the chat's blob store so anything else can take them without going through the context, and
     /// the text that says which pixel space the model is now speaking in.
     /// </summary>
+    /// <param name="probes">A probe round to draw, or null. A probe picture is filed as
+    /// <see cref="ImageKeep.Once"/> whatever the chat's <c>agent.tool_images</c> says: its numbers mean
+    /// nothing once the next round is drawn, and an old picture left in the context is an invitation to
+    /// answer about it (ADR_20260916 §2.4).</param>
     protected static ToolResult RenderResult(
-        IAgentSession chat, GeometrySession session, GeometryView view, string action, GeometrySettings cfg)
+        IAgentSession chat, GeometrySession session, GeometryView view, string action, GeometrySettings cfg,
+        ProbeOverlay? probes = null)
     {
-        var bytes = GeometryRenderer.Render(session, view, view.Grid, view.EdgeRulers, cfg);
+        var bytes = GeometryRenderer.Render(session, view, view.Grid, view.EdgeRulers, cfg, probes);
         var mime = GeometryRenderer.MimeType(cfg);
 
         // The frame is other people's content whatever it depicts, and the render is the frame.
@@ -136,7 +141,7 @@ internal abstract class GeometryToolBase(ResolvedSettings projectSettings) : IMc
 
         return ToolResult.From(
             new ToolText(Report(session, view, action, handle, cfg)),
-            new ToolImage(Convert.ToBase64String(bytes), mime));
+            new ToolImage(Convert.ToBase64String(bytes), mime, probes is null ? ImageKeep.Unspecified : ImageKeep.Once));
     }
 
     /// <summary>The reply text. Absolute values are printed every time — the model is not required to

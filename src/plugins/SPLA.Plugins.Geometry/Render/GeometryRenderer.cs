@@ -39,7 +39,7 @@ internal static class GeometryRenderer
     /// deep magenta this started with were exactly that.
     /// </para>
     /// </summary>
-    private static readonly SKColor[] EdgeColors =
+    internal static readonly SKColor[] EdgeColors =
     [
         new(0x00, 0xCF, 0xFF), // cyan    — top
         new(0xFF, 0x74, 0xE4), // magenta — right
@@ -63,7 +63,11 @@ internal static class GeometryRenderer
     /// neither competes with the four colours the model has to name.</summary>
     private static readonly SKColor EditingNeutral = new(0xFF, 0xFF, 0xFF);
 
-    private static readonly SKColor LabelPlate = new(0x00, 0x00, 0x00, 0xC0);
+    internal static readonly SKColor LabelPlate = new(0x00, 0x00, 0x00, 0xC0);
+
+    /// <summary>What covers an accepted object during a probe round: dark enough that its content stops
+    /// competing for an answer, not so dark that the model loses where it is.</summary>
+    private static readonly SKColor VeilColor = new(0x00, 0x00, 0x00, 0x8C);
 
     /// <summary>Alpha a fine grid line keeps, as a fraction of the configured colour's. Every line
     /// both measures and obscures, and on blurred small print a dense grid can cost more legibility
@@ -92,9 +96,15 @@ internal static class GeometryRenderer
     /// <summary>Radius of a corner dot, in view pixels.</summary>
     private const float CornerDot = 5f;
 
+    /// <param name="probes">A probe round to draw on top, or null. A probe round draws no view grid and
+    /// no edge rulers — three layers of marks on one picture is a picture nobody reads — and veils the
+    /// accepted objects when <c>probe_veil</c> says so (ADR_20260916 §2.5, §2.6).</param>
     public static byte[] Render(
-        GeometrySession session, GeometryView view, bool? grid, bool? rulers, GeometrySettings cfg)
+        GeometrySession session, GeometryView view, bool? grid, bool? rulers, GeometrySettings cfg,
+        ProbeOverlay? probes = null)
     {
+        if (probes is not null) (grid, rulers) = (false, false);
+
         using var bitmap = new SKBitmap(view.Width, view.Height, SKColorType.Rgba8888, SKAlphaType.Premul);
         using (var canvas = new SKCanvas(bitmap))
         {
@@ -104,8 +114,11 @@ internal static class GeometryRenderer
             // The call wins for this call; the project setting decides when the call says nothing.
             if (grid ?? cfg.Grid) DrawGrid(canvas, view, cfg);
 
+            var veil = probes is not null && cfg.ProbeVeil;
             foreach (var obj in session.Objects.Where(o => IsVisible(o, view)))
-                DrawObject(canvas, obj, view, rulers, cfg);
+                DrawObject(canvas, obj, view, rulers, cfg, veil);
+
+            if (probes is not null) ProbeRenderer.Draw(canvas, probes, cfg);
         }
 
         return Encode(bitmap, cfg);
@@ -147,7 +160,7 @@ internal static class GeometryRenderer
     }
 
     private static void DrawObject(
-        SKCanvas canvas, GeometryObject obj, GeometryView view, bool? rulers, GeometrySettings cfg)
+        SKCanvas canvas, GeometryObject obj, GeometryView view, bool? rulers, GeometrySettings cfg, bool veil)
     {
         var accepted = obj.Status == ObjectStatus.Accepted;
         // An accepted outline steps back rather than disappearing: it is context for placing the
@@ -179,6 +192,11 @@ internal static class GeometryRenderer
                 path.MoveTo((float)corners[0].X, (float)corners[0].Y);
                 for (var i = 1; i < 4; i++) path.LineTo((float)corners[i].X, (float)corners[i].Y);
                 path.Close();
+                if (veil)
+                {
+                    using var shade = new SKPaint { Style = SKPaintStyle.Fill, Color = VeilColor, IsAntialias = true };
+                    canvas.DrawPath(path, shade);
+                }
                 canvas.DrawPath(path, stroke);
             }
             else
