@@ -20,6 +20,9 @@ the reference for per-chat sessions, `ToolImage` screenshots and blob storage â€
 - **One coordinate space.** Every x/y a tool accepts is in the pixel space of the latest screenshot the
   backend produced (`IDeviceBackend.ScreenSize`). The scrcpy backend: video frame size (â‰¤ `max_size`).
   The adb backend: native display size. Every screenshot result states that size.
+- **A screenshot is a working frame.** Every returned `ToolImage` is `ImageKeep.Once` and labelled with its
+  blob handle: only the newest screen stays in the model's context, whatever `agent.tool_images` says.
+  An older one is reached on purpose through `image_view` on its handle.
 - **No PNG per frame.** Frames are stored decoded (YUV). PNG is produced only when a tool returns an image.
 - **Don't under-declare risk** (see table in the plan). Plugin tools never use `Scope=Agent/Skill`.
 - **Never bypass FLAG_SECURE / black frames.**

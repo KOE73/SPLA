@@ -170,6 +170,10 @@ internal abstract class AndroidToolBase(ResolvedSettings projectSettings) : IMcp
         var handle = session.Owner.Blobs.Put(BlobPayload.OfBytes(shot.Png, "image/png"), name: null, origin: origin);
         return ToolResult.From(new ToolText($"{text} Screen {shot.Width}x{shot.Height} px via {shot.Source}, " +
             (shot.Settled ? $"settled in {shot.ElapsedMs} ms" : $"NOT confirmed settled after {shot.ElapsedMs} ms") +
-            $". All coordinates are in this pixel space. Stored as {handle}."), new ToolImage(Convert.ToBase64String(shot.Png), "image/png"));
+            $". All coordinates are in this pixel space. Stored as {handle}."),
+            // A phone screen is a working frame: stale the moment the next action runs, so only the
+            // newest one stays in the context. Named by its handle, so image_view can bring back an
+            // older one on purpose.
+            new ToolImage(Convert.ToBase64String(shot.Png), "image/png", ImageKeep.Once, handle));
     }
 }

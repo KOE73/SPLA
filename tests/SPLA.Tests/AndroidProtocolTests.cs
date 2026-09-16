@@ -147,7 +147,9 @@ public sealed class AndroidProtocolTests
         var session=new DeviceSession("phone",owner,new FakeBackend(),null,new());
         var result=await AndroidToolBase.ScreenshotResult(session,"Test",false,default);
         Assert.True(owner.Doubt.IsRaised);
-        Assert.Single(result.Content.OfType<ToolImage>());
+        var image=Assert.Single(result.Content.OfType<ToolImage>());
+        Assert.Equal(ImageKeep.Once,image.Keep);
+        Assert.StartsWith("blob:",image.Label);
     }
 
     internal sealed class FakeBackend : IDeviceBackend
