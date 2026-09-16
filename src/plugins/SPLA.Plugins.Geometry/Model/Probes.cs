@@ -110,6 +110,12 @@ internal sealed class ProbeState
     /// <summary>How many edge rounds this probing has drawn — the brake when answers never settle.</summary>
     public int EdgeRounds { get; set; }
 
+    /// <summary>The size of the view the probing runs in, for the border that stands in for a missing
+    /// outside answer (<see cref="ProbePlanner.Samples"/>).</summary>
+    public int ViewWidth { get; set; }
+
+    public int ViewHeight { get; set; }
+
     /// <summary>The box this state last wrote, by reference. Anything else found on the object means
     /// another call moved it and the answers no longer describe it.</summary>
     public Obb? WrittenBox { get; set; }
@@ -136,9 +142,11 @@ internal static class ProbePlanner
         return (state.OriginX + u * cos - v * sin, state.OriginY + u * sin + v * cos);
     }
 
-    private static (double X, double Y) NormalInView(ProbeState state, int edge)
+    private static (double X, double Y) NormalInView(ProbeState state, int edge) => NormalInView(state.AngleDeg, edge);
+
+    private static (double X, double Y) NormalInView(double angle, int edge)
     {
-        var rad = state.AngleDeg * Math.PI / 180.0;
+        var rad = angle * Math.PI / 180.0;
         double cos = Math.Cos(rad), sin = Math.Sin(rad);
         var (u, v) = Normals[edge];
         return (u * cos - v * sin, u * sin + v * cos);
@@ -146,9 +154,12 @@ internal static class ProbePlanner
 
     /// <summary>How far the frame's origin is from the view's border along an edge's normal — the
     /// farthest an edge can be and still be seen.</summary>
-    public static double BorderOffset(ProbeState state, int edge, int viewWidth, int viewHeight)
+    public static double BorderOffset(ProbeState state, int edge, int viewWidth, int viewHeight) =>
+        BorderOffset(state, state.AngleDeg, edge, viewWidth, viewHeight);
+
+    private static double BorderOffset(ProbeState state, double angle, int edge, int viewWidth, int viewHeight)
     {
-        var (nx, ny) = NormalInView(state, edge);
+        var (nx, ny) = NormalInView(angle, edge);
         var reach = double.PositiveInfinity;
         if (nx > 1e-9) reach = Math.Min(reach, (viewWidth - state.OriginX) / nx);
         if (nx < -1e-9) reach = Math.Min(reach, -state.OriginX / nx);
@@ -170,6 +181,7 @@ internal static class ProbePlanner
         state.OriginX = inView.Cx;
         state.OriginY = inView.Cy;
         state.AngleDeg = inView.AngleDeg;
+        (state.ViewWidth, state.ViewHeight) = (viewWidth, viewHeight);
         state.Answers.Clear();
 
         double[] extents = [inView.Height / 2, inView.Width / 2, inView.Height / 2, inView.Width / 2];
@@ -194,6 +206,7 @@ internal static class ProbePlanner
         state.OriginX = (group.MinX + group.MaxX) / 2;
         state.OriginY = (group.MinY + group.MaxY) / 2;
         state.AngleDeg = 0;
+        (state.ViewWidth, state.ViewHeight) = (viewWidth, viewHeight);
         state.Answers.Clear();
 
         double halfX = state.ScanStepX / 2, halfY = state.ScanStepY / 2;
@@ -511,9 +524,21 @@ internal static class ProbePlanner
         var confirmed = owned.Any(l => !l.Answer.Assumed && l.Answer.Inside)
                         && owned.Any(l => !l.Answer.Assumed && !l.Answer.Inside);
 
-        return [.. owned
+        List<Sample> samples = [.. owned
             .Where(l => !(confirmed && l.Answer.Assumed))
             .Select(l => new Sample(l.Offsets[edge], l.Answer.Inside))];
+
+        // An edge nothing outside is filed under is open as far as the border. Without this its band
+        // closed on its own farthest inside answer and it read as settled: a tilted inscription stopped
+        // 47 px short, because after the turn every outside answer near that end sat off a corner.
+        // The assumed border answer placed at the start does not do this job — it is a point, and a
+        // turn moves it off a corner too.
+        if (!samples.Any(sample => !sample.Inside) && state.ViewWidth > 0 && state.ViewHeight > 0)
+            samples.Add(new Sample(
+                Math.Max(BorderOffset(state, angle, edge, state.ViewWidth, state.ViewHeight),
+                    samples.Count == 0 ? 0 : samples.Max(sample => sample.Offset)), Inside: false));
+
+        return samples;
     }
 
     /// <summary>A point's distance past each edge's line through the origin: top, right, bottom, left.</summary>
