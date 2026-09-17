@@ -42,11 +42,12 @@ public class ChatMessage
     public string? Content { get; set; } = string.Empty;
 
     /// <summary>
-    /// Optional attached images for a user message, as data URLs (data:image/...;base64,...). When
-    /// present, an OpenAI-compatible vision client emits the message content as a parts array
-    /// (text + image_url) instead of a plain string. Null/empty for normal text messages.
+    /// Optional attached images for a user message, each a data URL (data:image/...;base64,...) with
+    /// the name it is known by. When present, an OpenAI-compatible vision client emits the message
+    /// content as a parts array (each image's name, then the image, then the text) instead of a plain
+    /// string. Null/empty for normal text messages.
     /// </summary>
-    public List<string>? Images { get; set; }
+    public List<ImageAttachment>? Images { get; set; }
 
     /// <summary>
     /// Separate chain-of-thought / reasoning text emitted by reasoning models
@@ -71,6 +72,17 @@ public class ChatMessage
 
     public ContextRetention RetentionPolicy { get; set; } = ContextRetention.Persistent;
     public string? ReplacementKey { get; set; }
+
+    /// <summary>
+    /// True for a message a call asked to keep for the rest of the chat — today, a reference picture
+    /// read with <see cref="ImageKeep.Pinned"/>. <see cref="RetentionPolicy"/> alone cannot express
+    /// this: compaction hides whatever falls in its prefix by fact of position, not by policy, so a
+    /// <see cref="ContextRetention.Persistent"/> reference would die on the first <c>/compact</c>.
+    /// Compaction skips a pinned message the way it skips a scope marker — the point of pinning being
+    /// that the picture behaves like part of the prompt rather than like a result that scrolled past.
+    /// False for every ordinary message.
+    /// </summary>
+    public bool Pinned { get; set; }
 
     /// <summary>
     /// The correspondent's role, for a message that arrived across a correspondence
@@ -112,4 +124,45 @@ public class ChatMessage
     /// </para>
     /// </summary>
     public List<GenerationAttempt>? Attempts { get; set; }
+
+    /// <summary>
+    /// Set on a marker message recording that project rules for this folder (and its ancestors up
+    /// to the project root) have been loaded into the prompt — see
+    /// <c>docs/adr/ADR_20260911-2_agent_agents-md-scopes.md</c> §2.5 and
+    /// <c>AgentsScopeStage</c>/<c>ScopedAgentsContributor</c>. Path from the project root, forward
+    /// slashes, no leading or trailing slash, never empty (the root is not a scope — it is covered
+    /// by <c>RootAgents</c>/<c>ProjectAgentsContributor</c> unconditionally).
+    /// <para>
+    /// Never sent to the model (<see cref="SPLA.Domain.Context.ContextAssembler.ShouldSend"/> treats
+    /// a marker like a label) but, unlike a label, always persisted regardless of
+    /// <c>saveToolCalls</c> — see <see cref="Conversation.ShouldPersist"/> — since it is the only
+    /// record of which scopes a session has already seen rules for.
+    /// </para>
+    /// </summary>
+    public string? ScopeMarker { get; set; }
+
+    /// <summary>
+    /// True for the working-summary record <c>ChatRuntime.CompactAsync</c> inserts before the kept
+    /// tail — see <c>docs/adr/ADR_20260911-3_agent_compaction.md</c> §2.2. <see cref="Role"/> stays
+    /// <see cref="ChatRole.User"/> (template compatibility, <see cref="Conversation.ShouldPersist"/>);
+    /// this flag is what lets a client render it as a "compacted context" plate instead of an ordinary
+    /// human bubble, and what lets <see cref="Conversation.TruncateTo(int)"/> recognise a rollback that
+    /// crosses a compaction boundary. <see cref="MsgId"/> carries the <c>C-</c> prefix reserved for
+    /// this kind of record. False for every ordinary message.
+    /// </summary>
+    public bool CompactSummary { get; set; }
+
+    /// <summary>
+    /// Set on a message that compaction hid from the model: the <see cref="MsgId"/> of the summary
+    /// record that replaced it (ADR_20260911-3 §2.1/§2.5). Rides alongside
+    /// <see cref="RetentionPolicy"/> = <see cref="ContextRetention.Never"/> rather than replacing it,
+    /// because <see cref="Conversation.TruncateTo(int)"/> needs to find every message a given summary
+    /// covers when a rollback removes that summary, to hand <see cref="RetentionPolicy"/> back to
+    /// <see cref="ContextRetention.Persistent"/> and clear this field on all of them — the point being
+    /// that undoing a compaction restores exactly the state before it, not merely "un-hides everything
+    /// forever". Null for every message never touched by a compaction, and for a scope marker or label
+    /// (ADR §2.3: compaction skips both on purpose — they are never sent to the model in the first
+    /// place and have nothing to be hidden from).
+    /// </summary>
+    public string? CompactedBy { get; set; }
 }

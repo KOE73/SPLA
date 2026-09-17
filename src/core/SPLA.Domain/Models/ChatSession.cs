@@ -153,6 +153,33 @@ public class ChatSession
     /// (<c>docs/adr/ADR_20260827_core_config-versioning.md</c>: absence of a new key is not an error).</summary>
     [YamlMember(Alias = "completion_tokens_total")]
     public int? CompletionTokensTotal { get; set; }
+
+    /// <summary>
+    /// An independent copy of this session, identity included — the caller gives the copy its own
+    /// <see cref="Id"/>, <see cref="Title"/> and <see cref="AsInstance"/>.
+    ///
+    /// <para>This is what lets a chat be duplicated from the live object instead of from its file
+    /// (<c>ChatManager.DuplicateChat</c>). The old route wrote the chat out and read it straight back,
+    /// which made forking depend on the history surviving a YAML round-trip — one binary byte in a
+    /// tool result and the fork of a perfectly healthy on-screen chat failed.</para>
+    ///
+    /// <para>Deep on purpose: every list and every nested object is re-made, so nothing an edit does
+    /// to one chat afterwards can be seen by the other. That is the whole reason this is not
+    /// <c>MemberwiseClone</c> alone.</para>
+    /// </summary>
+    public ChatSession Clone()
+    {
+        var copy = (ChatSession)MemberwiseClone();
+        copy.Model = Model?.Clone();
+        copy.Agent = Agent?.Clone();
+        copy.Context = Context?.Clone();
+        copy.Messages = Messages.Select(m => m.Clone()).ToList();
+        copy.Kv = new Dictionary<string, string>(Kv);
+        copy.Doubt = Doubt.Select(d => d.Clone()).ToList();
+        copy.Correspondences = Correspondences?.Select(c => c.Clone()).ToList();
+        copy.Spawn = Spawn?.Clone();
+        return copy;
+    }
 }
 
 /// <summary>Persisted mirror of one <c>SPLA.Runtime.Correspondence</c> — see that class for what each
@@ -226,6 +253,9 @@ public class ChatSessionCorrespondence
     /// <c>Correspondence.EndedReason</c>.</summary>
     [YamlMember(Alias = "ended_reason")]
     public string? EndedReason { get; set; }
+
+    /// <summary>Independent copy — see <see cref="ChatSession.Clone"/>.</summary>
+    public ChatSessionCorrespondence Clone() => (ChatSessionCorrespondence)MemberwiseClone();
 }
 
 /// <summary>What <c>subagent.get</c>/<c>subagent.result</c> answer with, persisted on the session
@@ -251,6 +281,9 @@ public class ChatSessionSpawnInfo
 
     [YamlMember(Alias = "error")]
     public string? Error { get; set; }
+
+    /// <summary>Independent copy — see <see cref="ChatSession.Clone"/>.</summary>
+    public ChatSessionSpawnInfo Clone() => (ChatSessionSpawnInfo)MemberwiseClone();
 }
 
 /// <summary>One recorded arrival from a source nobody named.</summary>
@@ -267,6 +300,9 @@ public class ChatSessionDoubt
 
     [YamlMember(Alias = "at")]
     public DateTime At { get; set; } = DateTime.UtcNow;
+
+    /// <summary>Independent copy — see <see cref="ChatSession.Clone"/>.</summary>
+    public ChatSessionDoubt Clone() => (ChatSessionDoubt)MemberwiseClone();
 }
 
 public class ChatSessionMessage
@@ -286,11 +322,11 @@ public class ChatSessionMessage
     [YamlMember(Alias = "reasoning")]
     public string? Reasoning { get; set; }
 
-    /// <summary>Filenames of images attached to this message, stored as sidecar files under
-    /// <c>.spla/chat-images/&lt;chatId&gt;/</c>. Only the filenames live in the chat YAML — the binary
-    /// payload never bloats it. Null/empty for text-only messages.</summary>
+    /// <summary>Images attached to this message: the sidecar file each one was written to under
+    /// <c>.spla/chat-images/&lt;chatId&gt;/</c>, plus the name it was sent under. Only that lives in the
+    /// chat YAML — the binary payload never bloats it. Null/empty for text-only messages.</summary>
     [YamlMember(Alias = "images")]
-    public List<string>? Images { get; set; }
+    public List<ChatSessionImage>? Images { get; set; }
 
     /// <summary>Tool calls the assistant requested on this message. Only written when the
     /// full tool trace is enabled — see <see cref="Settings.SplaAgentSection.SaveToolCalls"/>.</summary>
@@ -308,6 +344,46 @@ public class ChatSessionMessage
     /// (<c>docs/adr/ADR_20260827-2_core_roles.md</c> §2.5). Null for every ordinary message.</summary>
     [YamlMember(Alias = "peer_from")]
     public string? PeerFrom { get; set; }
+
+    /// <summary>Mirrors <see cref="SPLA.Domain.Models.ChatMessage.ScopeMarker"/> across a save/load —
+    /// see <c>docs/adr/ADR_20260911-2_agent_agents-md-scopes.md</c> §2.5. Written for every marker
+    /// regardless of <see cref="Settings.SplaAgentSection.SaveToolCalls"/>. Null for every ordinary
+    /// message.</summary>
+    [YamlMember(Alias = "scope_marker")]
+    public string? ScopeMarker { get; set; }
+
+    /// <summary>Mirrors <see cref="SPLA.Domain.Models.ChatMessage.RetentionPolicy"/> across a
+    /// save/load — see <c>docs/adr/ADR_20260911-3_agent_compaction.md</c> §2.1. Absent (defaulting to
+    /// <c>persistent</c> on read) for every session written before compaction existed, and for every
+    /// message nothing has ever hidden from the model.</summary>
+    [YamlMember(Alias = "retention")]
+    public string? Retention { get; set; }
+
+    /// <summary>Mirrors <see cref="SPLA.Domain.Models.ChatMessage.ReplacementKey"/> across a
+    /// save/load. Written alongside <see cref="Retention"/> and for the same reason: without it a
+    /// reopened chat carries <c>untilSuperseded</c> with no key, which
+    /// <c>ContextAssembler.Assemble</c> reads as "keep" — the eviction would quietly stop working at
+    /// the first restart. Null for every message no policy has keyed.</summary>
+    [YamlMember(Alias = "replacement_key")]
+    public string? ReplacementKey { get; set; }
+
+    /// <summary>Mirrors <see cref="SPLA.Domain.Models.ChatMessage.Pinned"/> across a save/load. A
+    /// reference picture that loses its pin on reopen is worse than one that was never pinned: the
+    /// chat goes on talking about a reference the next compaction quietly removed. Absent for every
+    /// ordinary message and for every session written before pinning existed.</summary>
+    [YamlMember(Alias = "pinned")]
+    public bool? Pinned { get; set; }
+
+    /// <summary>Mirrors <see cref="SPLA.Domain.Models.ChatMessage.CompactedBy"/> — see ADR §2.1/§2.5.
+    /// Null for every message no compaction has hidden.</summary>
+    [YamlMember(Alias = "compacted_by")]
+    public string? CompactedBy { get; set; }
+
+    /// <summary>Mirrors <see cref="SPLA.Domain.Models.ChatMessage.CompactSummary"/> — see ADR §2.2.
+    /// Written only for the working-summary record a compaction inserts; absent (false on read) for
+    /// every ordinary message.</summary>
+    [YamlMember(Alias = "compact_summary")]
+    public bool CompactSummary { get; set; }
 
     /// <summary>Mirrors <see cref="SPLA.Domain.Models.ChatMessage.PromptTokens"/>/<see
     /// cref="SPLA.Domain.Models.ChatMessage.CompletionTokens"/> across a save/load. Set only on an
@@ -328,6 +404,39 @@ public class ChatSessionMessage
     /// message that never had any (the overwhelmingly common case).</summary>
     [YamlMember(Alias = "attempts")]
     public List<ChatSessionAttempt>? Attempts { get; set; }
+
+    /// <summary>Independent copy — see <see cref="ChatSession.Clone"/>. Tool calls and attempts are
+    /// re-made rather than shared: a message is rebuilt wholesale on every save, so sharing them would
+    /// not corrupt anything today — but a copy that is deep everywhere needs no such argument to stay
+    /// true tomorrow.</summary>
+    public ChatSessionMessage Clone()
+    {
+        var copy = (ChatSessionMessage)MemberwiseClone();
+        copy.Images = Images?.Select(i => i.Clone()).ToList();
+        copy.ToolCalls = ToolCalls == null ? null : new List<ToolCall>(ToolCalls);
+        copy.Attempts = Attempts?.Select(a => a.Clone()).ToList();
+        return copy;
+    }
+}
+
+/// <summary>
+/// One image on a persisted message: which sidecar file holds it, and what it was called.
+/// <para>
+/// Written as a bare file name when it has no name of its own and as <c>{file, label}</c> when it
+/// does — see <see cref="ChatSessionImageConverter"/>. A chat written before names existed is
+/// therefore still exactly the file it was, and stays that way as long as nobody names anything in
+/// it: the format grew a shape rather than replacing the one on disk.
+/// </para>
+/// </summary>
+public sealed class ChatSessionImage
+{
+    public string File { get; set; } = string.Empty;
+    public string? Label { get; set; }
+
+    public ChatSessionImage() { }
+    public ChatSessionImage(string file, string? label = null) { File = file; Label = label; }
+
+    public ChatSessionImage Clone() => (ChatSessionImage)MemberwiseClone();
 }
 
 /// <summary>
@@ -359,6 +468,19 @@ public class ChatSessionAttempt
 
     [YamlMember(Alias = "duration_ms")]
     public long DurationMs { get; set; }
+
+    /// <summary>The pause taken before the next attempt, in milliseconds; null when none followed.
+    /// See <see cref="SPLA.Domain.Llm.GenerationAttempt.Wait"/>.</summary>
+    [YamlMember(Alias = "wait_ms")]
+    public long? WaitMs { get; set; }
+
+    /// <summary>Whether <see cref="WaitMs"/> is the provider's own figure — see
+    /// <see cref="SPLA.Domain.Llm.GenerationAttempt.WaitStated"/>.</summary>
+    [YamlMember(Alias = "wait_stated")]
+    public bool WaitStated { get; set; }
+
+    /// <summary>Independent copy — see <see cref="ChatSession.Clone"/>.</summary>
+    public ChatSessionAttempt Clone() => (ChatSessionAttempt)MemberwiseClone();
 }
 
 public class ChatSessionContext
@@ -374,4 +496,13 @@ public class ChatSessionContext
 
     [YamlMember(Alias = "commands")]
     public List<string> Commands { get; set; } = new();
+
+    /// <summary>Independent copy — see <see cref="ChatSession.Clone"/>.</summary>
+    public ChatSessionContext Clone() => new()
+    {
+        InstructionFiles = new List<string>(InstructionFiles),
+        FilesMentioned = new List<string>(FilesMentioned),
+        ChangedFiles = new List<string>(ChangedFiles),
+        Commands = new List<string>(Commands)
+    };
 }

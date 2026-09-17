@@ -19,6 +19,12 @@ public class SplaAgentSection
     [YamlMember(Alias = "custom_prompt")]
     public string? CustomPrompt { get; set; }
 
+    /// <summary>How the project's AGENTS.md tree reaches the prompt — <c>inject</c> or <c>ignore</c>.
+    /// Null inherits from the machine layer; see <see cref="SPLA.Domain.Models.AgentsMdMode"/> and
+    /// <c>ADR_20260911-2_agent_agents-md-scopes.md</c>.</summary>
+    [YamlMember(Alias = "agents_md")]
+    public string? AgentsMd { get; set; }
+
     /// <summary>Guard against machine-gun tool loops (a small-local-model failure mode). Only
     /// rapid identical calls with identical results and no commentary count; the first trip asks
     /// the model in-band whether it is stuck, a rebuilt streak stops the turn. **On by default** —
@@ -30,17 +36,6 @@ public class SplaAgentSection
     /// <summary>How many suspicious consecutive repeats trigger each stage (default 3).</summary>
     [YamlMember(Alias = "loop_guard_repeats")]
     public int? LoopGuardRepeats { get; set; }
-
-    /// <summary>
-    /// Whether the resource-address abstraction (<c>file://</c>, <c>sftp://</c>, …) is announced to
-    /// the model at all. **Off by default, deliberately** — the whole point of a switch here is to be
-    /// able to run the project with and without the feature and compare, and a default of true would
-    /// make that comparison impossible to reproduce months later when "off" quietly became the
-    /// unusual case. See <c>ResourceSchemesContributor</c> and <c>SplaSections.SplaProject.Resources</c>
-    /// for the per-scheme switches this master flag gates.
-    /// </summary>
-    [YamlMember(Alias = "unified_resources")]
-    public bool? UnifiedResources { get; set; }
 
     /// <summary>Minutes an unanswered permission/clarify question is kept before it is denied.
     /// Generous on purpose — a person who walked away should be able to come back and answer —
@@ -136,6 +131,27 @@ public class SplaAgentSection
     /// </summary>
     [YamlMember(Alias = "self_feeding_cap")]
     public int? SelfFeedingCap { get; set; }
+
+    /// <summary>How long a picture returned by a tool stays in the context sent to the model —
+    /// <c>all</c> (default, every picture forever) or <c>last</c> (only the newest one, whichever tool
+    /// produced it). Null inherits from the machine layer; see
+    /// <see cref="SPLA.Domain.Models.ToolImagesMode"/>. Project-level only, not part of
+    /// <see cref="SplaRoleSection"/>: a picture budget is a property of the chat's context, and a role
+    /// field the roles editor cannot round-trip would be silently dropped on the next save.</summary>
+    [YamlMember(Alias = "tool_images")]
+    public string? ToolImages { get; set; }
+
+    /// <summary>A copy no future edit of either side can reach into: every scalar carried over, every
+    /// list re-made. Used when a chat is duplicated in memory (<c>ChatSession.Clone</c>) — a shared
+    /// list there would make two chats edit one setting.</summary>
+    public SplaAgentSection Clone()
+    {
+        var copy = (SplaAgentSection)MemberwiseClone();
+        copy.Instructions = Instructions == null ? null : new List<string>(Instructions);
+        copy.Capabilities = Capabilities == null ? null : new List<string>(Capabilities);
+        copy.TrustedDomains = TrustedDomains == null ? null : new List<string>(TrustedDomains);
+        return copy;
+    }
 }
 
 /// <summary>
@@ -176,6 +192,11 @@ public class SplaRoleSection
     [YamlMember(Alias = "custom_prompt")]
     public string? CustomPrompt { get; set; }
 
+    /// <summary>How this role's AGENTS.md tree reaches the prompt — <c>inject</c> or <c>ignore</c>.
+    /// Null inherits the project's own value. See <see cref="SPLA.Domain.Models.AgentsMdMode"/>.</summary>
+    [YamlMember(Alias = "agents_md")]
+    public string? AgentsMd { get; set; }
+
     /// <summary>One line saying what this role is for, written for STRANGERS: it is what the role
     /// catalog shows another chat that is choosing whom to task or whom to write to (see the
     /// <c>role_list</c> tool). Optional — a role without one is still listed, simply undescribed.
@@ -196,9 +217,6 @@ public class SplaRoleSection
 
     [YamlMember(Alias = "loop_guard_repeats")]
     public int? LoopGuardRepeats { get; set; }
-
-    [YamlMember(Alias = "unified_resources")]
-    public bool? UnifiedResources { get; set; }
 
     [YamlMember(Alias = "ask_timeout_minutes")]
     public int? AskTimeoutMinutes { get; set; }
@@ -340,6 +358,48 @@ public class SplaLlmSection
 
     [YamlMember(Alias = "min_p")]
     public double? MinP { get; set; }
+
+    /// <summary>Independent copy — all members are scalars, so a flat clone is the whole of it.</summary>
+    public SplaLlmSection Clone() => (SplaLlmSection)MemberwiseClone();
+}
+
+/// <summary>
+/// How hard to keep trying after a provider refuses with a rate limit. Shared across every model
+/// under the connection, because a rate limit is a property of the credential: were this per model,
+/// two individually well-behaved models under one key would together exceed what the key allows.
+/// <para>
+/// Every value here bounds a GUESS — we do not know when the provider will start answering and pick a
+/// schedule on spec. A <c>Retry-After</c> the provider actually stated is not a guess and is obeyed
+/// as given, past all of these ceilings.
+/// </para>
+/// </summary>
+public class SplaRetrySection
+{
+    /// <summary>Attempts allowed for one turn, the first request included (default 4, minimum 1).
+    /// 4 means one try and three retries.</summary>
+    [YamlMember(Alias = "attempts")]
+    public int Attempts { get; set; } = 4;
+
+    /// <summary>The first pause, in seconds (default 1). Later pauses grow from it by
+    /// <see cref="Step"/>.</summary>
+    [YamlMember(Alias = "min_delay")]
+    public double MinDelay { get; set; } = 1.0;
+
+    /// <summary>Multiplier applied per attempt (default 2), so pauses run 1s, 2s, 4s … until
+    /// <see cref="MaxDelay"/> flattens them.</summary>
+    [YamlMember(Alias = "step")]
+    public double Step { get; set; } = 2.0;
+
+    /// <summary>Ceiling on a single computed pause, in seconds (default 30). Without it the geometry
+    /// has no end — an aggressive <see cref="Step"/> puts minutes into the tail.</summary>
+    [YamlMember(Alias = "max_delay")]
+    public double MaxDelay { get; set; } = 30.0;
+
+    /// <summary>Ceiling on the sum of all pauses in one turn, in seconds (default 120). Needed
+    /// alongside <see cref="MaxDelay"/> rather than implied by it: four pauses of 30s are each legally
+    /// under the per-pause ceiling and still leave the turn silent for two minutes.</summary>
+    [YamlMember(Alias = "total")]
+    public double Total { get; set; } = 120.0;
 }
 
 /// <summary>
@@ -385,6 +445,20 @@ public class SplaConnectionSection
     [YamlMember(Alias = "swap_model")]
     public bool SwapModel { get; set; }
 
+    /// <summary>How hard to keep trying when this account is rate-limited. Absent block = the
+    /// defaults; a rate limit is a property of the key, so it lives here and not on a model.</summary>
+    [YamlMember(Alias = "retry")]
+    public SplaRetrySection Retry { get; set; } = new();
+
+    /// <summary>Minimum seconds between consecutive requests on this connection, enforced across every
+    /// chat and model that shares the key; 0 (default) = no pacing. Kept out of <see cref="Retry"/>
+    /// deliberately: retry reacts to a refusal, pacing exists to prevent one, and a mechanism that only
+    /// starts working after the failure is not the same mechanism. Raise it on a provider's demand or a
+    /// measurement, never on a hunch — a second per turn costs an agent with fifty tool calls a
+    /// minute.</summary>
+    [YamlMember(Alias = "min_request_interval")]
+    public double MinRequestInterval { get; set; } = 0.0;
+
     /// <summary>The models selected under this connection. Each is what a chat can point at.</summary>
     [YamlMember(Alias = "models")]
     public List<SplaModelSection> Models { get; set; } = new();
@@ -417,6 +491,11 @@ public class SplaModelSection
 
     [YamlMember(Alias = "name")]
     public string? Name { get; set; }
+
+    /// <summary>Marks this entry as the layer's default model. A more specific layer that marks a
+    /// model replaces the inherited choice; absent/false leaves it unchanged.</summary>
+    [YamlMember(Alias = "default", DefaultValuesHandling = DefaultValuesHandling.OmitDefaults)]
+    public bool Default { get; set; } = false;
 
     /// <summary>The model identifier sent to the provider (<c>anthropic/claude-opus-4</c>, an LM
     /// Studio key, …). "auto" or empty = let the provider decide.</summary>

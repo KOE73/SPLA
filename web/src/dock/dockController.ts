@@ -1,6 +1,6 @@
 import { shallowReactive } from "vue";
 import type { DockviewApi, IDockviewPanel, SerializedDockview } from "dockview-vue";
-import { panelCatalog, type PanelKind } from "./panelCatalog";
+import { definitionFor, panelCatalog, type PanelKind } from "./panelCatalog";
 import { store } from "../state/store";
 
 // v2: navigation left the dock (it's the fixed left column now), so old v1 layouts are incompatible.
@@ -16,7 +16,9 @@ export const dockState = shallowReactive({
 function addPanel(kind: PanelKind, referencePanel?: string, direction: "left" | "right" | "above" | "below" | "within" = "right") {
   const api = dockState.api;
   if (!api) return;
-  const definition = panelCatalog[kind];
+  // Throws, loudly and by name, when the kind is unknown — the price of an open PanelKind is that
+  // nothing else would notice (see definitionFor).
+  const definition = definitionFor(kind);
   const existing = api.getPanel(definition.id);
   if (existing) {
     existing.api.group.api.setVisible(true);
@@ -26,9 +28,10 @@ function addPanel(kind: PanelKind, referencePanel?: string, direction: "left" | 
 
   api.addPanel({
     id: definition.id,
-    component: definition.kind,
+    component: definition.componentName ?? definition.kind,
     title: `${definition.icon} ${definition.title}`,
     tabComponent: "splaTab",
+    ...(definition.params ? { params: definition.params } : {}),
     // Width only when this panel creates a COLUMN. dockview sizes groups, not tabs, so passing it
     // for a "within" add re-sizes the group the tab lands in — throwing away whatever width the user
     // dragged it to, every time they open another tab in it.
@@ -126,7 +129,7 @@ export function openSshTerminal(opts: { host?: string; session?: string } = {}) 
     params: { host: opts.host, session: opts.session },
     // Only when opening the tool COLUMN — see addPanel: a width passed on a "within" add resizes the
     // whole group, so every extra terminal would snap the operator's widened column back to 480px.
-    ...(tool ? {} : { initialWidth: panelCatalog.ssh.defaultWidth }),
+    ...(tool ? {} : { initialWidth: panelCatalog["ssh"].defaultWidth }),
     minimumWidth: 220,
     renderer: "always",
     position: ref ? { referencePanel: ref.id, direction: tool ? "within" : "right" } : undefined,

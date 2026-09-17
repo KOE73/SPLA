@@ -1,6 +1,6 @@
 # Summary — unreleased
 
-<!-- covers: 2026-09-07 -->
+<!-- covers: 2026-09-16 -->
 
 The prose account of the current cycle: what changed and why it matters, organised by theme rather
 than by date. Rewritten from scratch before each push — never appended to. On release it is frozen
@@ -11,4 +11,3 @@ for. CI compares the two: if the log has moved on, this summary is stale and is 
 release rather than published as if it were current.
 
 ---
-

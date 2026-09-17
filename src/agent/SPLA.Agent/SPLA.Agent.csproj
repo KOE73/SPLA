@@ -25,4 +25,9 @@
     <EmbeddedResource Include="Features\CoreRoles\prompt.md" LogicalName="SPLA.Agent.Features.CoreRoles.prompt.md" />
   </ItemGroup>
 
+  <!-- The compaction prompt — see CompactPrompt.cs and ADR_20260911-3_agent_compaction.md §2.4. -->
+  <ItemGroup>
+    <EmbeddedResource Include="Prompts\compact.md" LogicalName="SPLA.Agent.Prompts.compact.md" />
+  </ItemGroup>
+
 </Project>

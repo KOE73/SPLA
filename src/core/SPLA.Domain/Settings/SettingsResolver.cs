@@ -32,9 +32,22 @@ public class ResolvedSettings
 
     /// <summary>Connections available to this project, each owning its models. Never empty after
     /// resolution — a default is synthesized from the <c>llm:</c> section when none are configured.
-    /// This is the <i>tree</i>, for the settings UI; consumers that need to run a turn want
-    /// <see cref="Models"/>.</summary>
+    /// This is the <i>tree</i> a turn resolves against: one entry per id, later layers having
+    /// shadowed earlier ones. Consumers that need to run a turn want <see cref="Models"/>; an editor
+    /// of the files wants <see cref="DeclaredConnections"/>.</summary>
     public List<SplaConnectionSection> Connections { get; set; } = new();
+
+    /// <summary>Every connection each layer <i>declares</i>, in merge order, with nothing collapsed —
+    /// so an id present in two layers appears twice, once per layer.
+    ///
+    /// <para>This is what an editor must show. <see cref="Connections"/> answers "what will a turn
+    /// use", which is a different question: a user-layer entry shadowed by a project entry of the
+    /// same id is absent from it entirely. Handing that list to the settings panel made the shadowed
+    /// entry invisible — and then saving the panel back, which rewrites each layer file wholesale,
+    /// deleted it from the person's own <c>connections.yaml</c> because the editor never knew it was
+    /// there. Same principle the roles editor states for bodies-versus-names: showing only one of the
+    /// two halves makes the other half's state impossible to see.</para></summary>
+    public List<SplaConnectionSection> DeclaredConnections { get; set; } = new();
 
     /// <summary>
     /// Every model entry across every connection, flattened, each still knowing its owner. This is
@@ -47,10 +60,25 @@ public class ResolvedSettings
     /// </summary>
     public List<ResolvedModelEntry> Models { get; set; } = new();
 
+    /// <summary>The model entry selected as the default by the most specific layer that names one.
+    /// Null keeps the historical first-entry fallback.</summary>
+    public string? DefaultModelId { get; set; }
+
+    /// <summary>The configured default when it still resolves, otherwise the historical first entry.</summary>
+    public ResolvedModelEntry? DefaultModel => FindModel(DefaultModelId) ?? Models.FirstOrDefault();
+
     // Agent
     public AgentMode Mode { get; set; } = AgentMode.Edit;
     public List<string> Instructions { get; set; } = new();
     public int CompactTailMessages { get; set; } = 2;
+    /// <summary>How AGENTS.md (root and, as folders are visited, nested) reaches the prompt.
+    /// Default <see cref="AgentsMdMode.Inject"/> — see <c>ADR_20260911-2_agent_agents-md-scopes.md</c>.</summary>
+    public AgentsMdMode AgentsMd { get; set; } = AgentsMdMode.Inject;
+
+    /// <summary>How long a tool's picture stays in the context sent to the model. Default
+    /// <see cref="ToolImagesMode.All"/> — today's behaviour; see
+    /// <see cref="SplaAgentSection.ToolImages"/>.</summary>
+    public ToolImagesMode ToolImages { get; set; } = ToolImagesMode.All;
     public string? CustomPrompt { get; set; }
     /// <summary>
     /// Challenge, then stop, a turn that keeps making the same tool call. **On** — a chat without it
@@ -65,12 +93,6 @@ public class ResolvedSettings
     /// </summary>
     public bool LoopGuard { get; set; } = true;
     public int LoopGuardRepeats { get; set; } = 3;
-
-    /// <summary>Master switch for the resource-address abstraction (<c>file://</c>, <c>sftp://</c>,
-    /// …). <b>Default false</b>, and that default is load-bearing: the foundation is meant to ship
-    /// inert so the model can be measured with and without it, and a switch that defaults on erases
-    /// the "without" arm of that comparison. See <see cref="SplaAgentSection.UnifiedResources"/>.</summary>
-    public bool UnifiedResources { get; set; }
 
     /// <summary>Minutes a permission/clarify question waits for a person before it is denied; 0 = no
     /// limit. The wait is deliberately long: the question outlives the window that triggered it, so
@@ -358,34 +380,48 @@ public class ResolvedSettings
     /// the project declares is in scope, same as a project with no role at all.</summary>
     public List<string> RoleIslands { get; set; } = new();
 
-    /// <summary>Looks up a model entry by its global id. Null id or unknown id = null.</summary>
-    public ResolvedModelEntry? FindModel(string? modelId) =>
-        string.IsNullOrWhiteSpace(modelId)
-            ? null
-            : Models.FirstOrDefault(m => string.Equals(m.Id, modelId, StringComparison.OrdinalIgnoreCase));
+    /// <summary>Looks up a model entry first by its global id, then by the fully qualified display
+    /// name shown in pickers. A duplicated display name is ambiguous and therefore does not match.</summary>
+    public ResolvedModelEntry? FindModel(string? modelId)
+    {
+        if (string.IsNullOrWhiteSpace(modelId)) return null;
 
-    /// <summary>Builds LLMSettings from the first model entry + behaviour fields.
+        var byId = Models.FirstOrDefault(m =>
+            string.Equals(m.Id, modelId, StringComparison.OrdinalIgnoreCase));
+        if (byId is not null) return byId;
+
+        var byDisplayName = Models
+            .Where(m => string.Equals(m.DisplayName, modelId, StringComparison.OrdinalIgnoreCase) ||
+                        string.Equals(m.PickerDisplayName, modelId, StringComparison.OrdinalIgnoreCase))
+            .Take(2)
+            .ToList();
+        return byDisplayName.Count == 1 ? byDisplayName[0] : null;
+    }
+
+    /// <summary>Builds LLMSettings from the configured default model (or the first entry) + behaviour fields.
     /// Callers that need a specific entry should use <see cref="ToLLMSettings(ResolvedModelEntry?)"/>.</summary>
-    public LLMSettings ToLLMSettings() => ToLLMSettings(Models.FirstOrDefault());
+    public LLMSettings ToLLMSettings() => ToLLMSettings(DefaultModel);
 
     public LLMSettings ToLLMSettings(ResolvedModelEntry? entry) => new()
     {
-        Provider         = entry?.Provider,
-        ConnectionId     = entry?.Connection.Id,
-        BaseUrl          = entry?.Endpoint ?? "http://127.0.0.1:1234/v1/",
-        ApiKey           = entry?.ApiKey   ?? "lm-studio",
-        ModelName        = entry?.Model is { Length: > 0 } m && m != "auto" ? m : "",
-        ContextLength    = entry?.ContextLength is > 0 ? entry.ContextLength : null,
-        Temperature      = RoleTemperature ?? entry?.Entry.Temperature ?? Temperature,
-        Mode             = Mode,
-        Theme            = Theme,
-        ReasoningLevel   = ReasoningLevel,
-        PresencePenalty  = PresencePenalty,
+        Provider = entry?.Provider,
+        ConnectionId = entry?.Connection.Id,
+        BaseUrl = entry?.Endpoint ?? "http://127.0.0.1:1234/v1/",
+        ApiKey = entry?.ApiKey ?? "lm-studio",
+        ModelName = entry?.Model is { Length: > 0 } m && m != "auto" ? m : "",
+        ContextLength = entry?.ContextLength is > 0 ? entry.ContextLength : null,
+        Temperature = RoleTemperature ?? entry?.Entry.Temperature ?? Temperature,
+        Mode = Mode,
+        Theme = Theme,
+        ReasoningLevel = ReasoningLevel,
+        PresencePenalty = PresencePenalty,
         FrequencyPenalty = FrequencyPenalty,
-        RepeatPenalty    = RepeatPenalty,
-        MaxTokens        = MaxTokens,
-        TopP             = TopP,
-        MinP             = MinP
+        RepeatPenalty = RepeatPenalty,
+        MaxTokens = MaxTokens,
+        TopP = TopP,
+        MinP = MinP,
+        Retry = entry?.Connection.Retry ?? new SplaRetrySection(),
+        MinRequestInterval = entry?.Connection.MinRequestInterval ?? 0.0
     };
 }
 
@@ -410,6 +446,20 @@ public sealed class ResolvedModelEntry
     /// the same model under different keys are told apart by the connection half, so it is never
     /// dropped.</summary>
     public string DisplayName => $"{Connection.DisplayName} · {Entry.DisplayName}";
+
+    /// <summary>The exact text shown by the web model picker. It is also accepted by
+    /// <see cref="ResolvedSettings.FindModel(string?)"/> so copying the closed picker value produces
+    /// a valid CLI argument.</summary>
+    public string PickerDisplayName
+    {
+        get
+        {
+            var entryLabel = Entry.Model is { Length: > 0 } model && model != Entry.DisplayName
+                ? $"{Entry.DisplayName} · {model}"
+                : Entry.DisplayName;
+            return $"{Connection.DisplayName} | {entryLabel}";
+        }
+    }
 
     public string? Provider => Connection.Provider;
     public string? Endpoint => Connection.Endpoint;
@@ -455,7 +505,11 @@ public static class SettingsResolver
         // keep working; connections.yaml is where the editor writes now, so an id present in both
         // resolves to the newer file.
         var connections = new Dictionary<string, SplaConnectionSection>(StringComparer.OrdinalIgnoreCase);
-        MergeConnections(connections, sharedConnections, ConnectionScope.Shared);
+        // What the files say, before any of them shadows another — see ResolvedSettings.DeclaredConnections.
+        var declaredConnections = new List<SplaConnectionSection>();
+        string? defaultModelId = null;
+        ApplyDefaultModelFromLayer(ref defaultModelId, sharedConnections, "connections.shared.yaml");
+        MergeConnections(connections, declaredConnections, sharedConnections, ConnectionScope.Shared);
 
         // mcp.servers merges across layers by id, same rule as connections above.
         var mcpServers = new Dictionary<string, SplaMcpServerSection>(StringComparer.OrdinalIgnoreCase);
@@ -464,31 +518,36 @@ public static class SettingsResolver
         // connection when no connections are declared. Endpoint/ApiKey/Model no longer live on
         // ResolvedSettings; Connections is the single source of truth for those.
         string llmEndpoint = "http://127.0.0.1:1234/v1/";
-        string llmApiKey   = "lm-studio";
-        string llmModel    = "auto";
+        string llmApiKey = "lm-studio";
+        string llmModel = "auto";
 
         // Layer 1: defaults
         if (defaults != null)
         {
-            MergeConnections(connections, defaults.Connections, ConnectionScope.User);
+            ApplyDefaultModelFromLayer(ref defaultModelId, defaults.Connections, "defaults.yaml");
+            MergeConnections(connections, declaredConnections, defaults.Connections, ConnectionScope.User);
             if (defaults.Llm != null)
             {
-                llmEndpoint          = defaults.Llm.Endpoint    ?? llmEndpoint;
-                llmApiKey            = defaults.Llm.ApiKey      ?? llmApiKey;
-                llmModel             = defaults.Llm.Model       ?? llmModel;
-                r.Temperature        = defaults.Llm.Temperature ?? r.Temperature;
-                r.ReasoningLevel     = defaults.Llm.ReasoningLevel  ?? r.ReasoningLevel;
-                r.PresencePenalty    = defaults.Llm.PresencePenalty  ?? r.PresencePenalty;
-                r.FrequencyPenalty   = defaults.Llm.FrequencyPenalty ?? r.FrequencyPenalty;
-                r.RepeatPenalty      = defaults.Llm.RepeatPenalty    ?? r.RepeatPenalty;
-                r.MaxTokens          = defaults.Llm.MaxTokens        ?? r.MaxTokens;
-                r.TopP               = defaults.Llm.TopP             ?? r.TopP;
-                r.MinP               = defaults.Llm.MinP             ?? r.MinP;
+                llmEndpoint = defaults.Llm.Endpoint ?? llmEndpoint;
+                llmApiKey = defaults.Llm.ApiKey ?? llmApiKey;
+                llmModel = defaults.Llm.Model ?? llmModel;
+                r.Temperature = defaults.Llm.Temperature ?? r.Temperature;
+                r.ReasoningLevel = defaults.Llm.ReasoningLevel ?? r.ReasoningLevel;
+                r.PresencePenalty = defaults.Llm.PresencePenalty ?? r.PresencePenalty;
+                r.FrequencyPenalty = defaults.Llm.FrequencyPenalty ?? r.FrequencyPenalty;
+                r.RepeatPenalty = defaults.Llm.RepeatPenalty ?? r.RepeatPenalty;
+                r.MaxTokens = defaults.Llm.MaxTokens ?? r.MaxTokens;
+                r.TopP = defaults.Llm.TopP ?? r.TopP;
+                r.MinP = defaults.Llm.MinP ?? r.MinP;
             }
             if (defaults.Agent != null)
             {
                 if (defaults.Agent.Mode != null && Enum.TryParse<AgentMode>(defaults.Agent.Mode, true, out var m))
                     r.Mode = m;
+                if (defaults.Agent.AgentsMd != null)
+                    r.AgentsMd = ParseAgentsMdMode(defaults.Agent.AgentsMd, "defaults.yaml (agent.agents_md)");
+                if (defaults.Agent.ToolImages != null)
+                    r.ToolImages = ParseToolImagesMode(defaults.Agent.ToolImages, "defaults.yaml (agent.tool_images)");
                 if (defaults.Agent.CompactTailMessages.HasValue)
                     r.CompactTailMessages = defaults.Agent.CompactTailMessages.Value;
                 if (!string.IsNullOrEmpty(defaults.Agent.CustomPrompt))
@@ -506,7 +565,6 @@ public static class SettingsResolver
                 r.PeerHardCap = defaults.Agent.PeerHardCap ?? r.PeerHardCap;
                 r.SelfFeedingCap = defaults.Agent.SelfFeedingCap ?? r.SelfFeedingCap;
                 r.Capabilities = defaults.Agent.Capabilities ?? r.Capabilities;
-                r.UnifiedResources = defaults.Agent.UnifiedResources ?? r.UnifiedResources;
                 AddTrustedDomains(r, defaults.Agent.TrustedDomains);
             }
             if (defaults.Mcp != null)
@@ -528,7 +586,8 @@ public static class SettingsResolver
         }
 
         // Layer 2: this person's own connections file — over defaults.yaml, under the project.
-        MergeConnections(connections, userConnections, ConnectionScope.User);
+        ApplyDefaultModelFromLayer(ref defaultModelId, userConnections, "connections.yaml");
+        MergeConnections(connections, declaredConnections, userConnections, ConnectionScope.User);
 
         // Layer 3: project overrides
         if (project != null)
@@ -539,25 +598,30 @@ public static class SettingsResolver
             r.Docs = project.Docs ?? new();
             r.Ignore = project.Ignore ?? new();
 
-            MergeConnections(connections, project.Connections, ConnectionScope.Project);
+            ApplyDefaultModelFromLayer(ref defaultModelId, project.Connections, "project manifest");
+            MergeConnections(connections, declaredConnections, project.Connections, ConnectionScope.Project);
             if (project.Llm != null)
             {
-                llmEndpoint          = project.Llm.Endpoint    ?? llmEndpoint;
-                llmApiKey            = project.Llm.ApiKey      ?? llmApiKey;
-                llmModel             = project.Llm.Model       ?? llmModel;
-                r.Temperature        = project.Llm.Temperature ?? r.Temperature;
-                r.ReasoningLevel     = project.Llm.ReasoningLevel  ?? r.ReasoningLevel;
-                r.PresencePenalty    = project.Llm.PresencePenalty  ?? r.PresencePenalty;
-                r.FrequencyPenalty   = project.Llm.FrequencyPenalty ?? r.FrequencyPenalty;
-                r.RepeatPenalty      = project.Llm.RepeatPenalty    ?? r.RepeatPenalty;
-                r.MaxTokens          = project.Llm.MaxTokens        ?? r.MaxTokens;
-                r.TopP               = project.Llm.TopP             ?? r.TopP;
-                r.MinP               = project.Llm.MinP             ?? r.MinP;
+                llmEndpoint = project.Llm.Endpoint ?? llmEndpoint;
+                llmApiKey = project.Llm.ApiKey ?? llmApiKey;
+                llmModel = project.Llm.Model ?? llmModel;
+                r.Temperature = project.Llm.Temperature ?? r.Temperature;
+                r.ReasoningLevel = project.Llm.ReasoningLevel ?? r.ReasoningLevel;
+                r.PresencePenalty = project.Llm.PresencePenalty ?? r.PresencePenalty;
+                r.FrequencyPenalty = project.Llm.FrequencyPenalty ?? r.FrequencyPenalty;
+                r.RepeatPenalty = project.Llm.RepeatPenalty ?? r.RepeatPenalty;
+                r.MaxTokens = project.Llm.MaxTokens ?? r.MaxTokens;
+                r.TopP = project.Llm.TopP ?? r.TopP;
+                r.MinP = project.Llm.MinP ?? r.MinP;
             }
             if (project.Agent != null)
             {
                 if (project.Agent.Mode != null && Enum.TryParse<AgentMode>(project.Agent.Mode, true, out var m))
                     r.Mode = m;
+                if (project.Agent.AgentsMd != null)
+                    r.AgentsMd = ParseAgentsMdMode(project.Agent.AgentsMd, "project manifest (agent.agents_md)");
+                if (project.Agent.ToolImages != null)
+                    r.ToolImages = ParseToolImagesMode(project.Agent.ToolImages, "project manifest (agent.tool_images)");
                 r.Instructions = project.Agent.Instructions ?? r.Instructions;
                 if (project.Agent.CompactTailMessages.HasValue)
                     r.CompactTailMessages = project.Agent.CompactTailMessages.Value;
@@ -576,7 +640,6 @@ public static class SettingsResolver
                 r.PeerHardCap = project.Agent.PeerHardCap ?? r.PeerHardCap;
                 r.SelfFeedingCap = project.Agent.SelfFeedingCap ?? r.SelfFeedingCap;
                 r.Capabilities = project.Agent.Capabilities ?? r.Capabilities;
-                r.UnifiedResources = project.Agent.UnifiedResources ?? r.UnifiedResources;
                 AddTrustedDomains(r, project.Agent.TrustedDomains);
             }
             if (project.Mcp != null)
@@ -623,12 +686,20 @@ public static class SettingsResolver
                 // belongs to the project being edited, which is where it would have gone before the
                 // user and shared layers existed.
                 Scope = ConnectionScope.Project,
-                Id = "default", Name = "Default", Provider = "lmstudio",
-                Endpoint = llmEndpoint, ApiKey = llmApiKey,
+                Id = "default",
+                Name = "Default",
+                Provider = "lmstudio",
+                Endpoint = llmEndpoint,
+                ApiKey = llmApiKey,
                 Models = { new SplaModelSection { Id = "default", Name = "Default", Model = llmModel } }
             });
 
+        // The synthesized entry is declared too, as far as the editor is concerned: it is the one
+        // connection a fresh project has, and a panel that could not see it could not edit it.
+        r.DeclaredConnections = declaredConnections.Count > 0 ? declaredConnections : [.. r.Connections];
+
         r.Models = FlattenModels(r.Connections);
+        r.DefaultModelId = defaultModelId;
         r.McpServers = mcpServers.Values.ToList();
         return r;
     }
@@ -699,6 +770,8 @@ public static class SettingsResolver
 
         if (roleSection.Mode != null && Enum.TryParse<AgentMode>(roleSection.Mode, true, out var mode))
             r.Mode = mode;
+        if (roleSection.AgentsMd != null)
+            r.AgentsMd = ParseAgentsMdMode(roleSection.AgentsMd, $"role '{roleName}' (agents_md)");
         r.Instructions = roleSection.Instructions ?? r.Instructions;
         if (roleSection.CompactTailMessages.HasValue)
             r.CompactTailMessages = roleSection.CompactTailMessages.Value;
@@ -803,14 +876,19 @@ public static class SettingsResolver
         TopP = baseline.TopP,
         MinP = baseline.MinP,
         Connections = baseline.Connections,
+        // Not narrowed by the role: this is what the project's files declare, and the settings editor
+        // asks that question of the project, never of a role.
+        DeclaredConnections = baseline.DeclaredConnections,
         Models = baseline.Models,
+        DefaultModelId = baseline.DefaultModelId,
         Mode = baseline.Mode,
+        AgentsMd = baseline.AgentsMd,
+        ToolImages = baseline.ToolImages,
         Instructions = [.. baseline.Instructions],
         CompactTailMessages = baseline.CompactTailMessages,
         CustomPrompt = baseline.CustomPrompt,
         LoopGuard = baseline.LoopGuard,
         LoopGuardRepeats = baseline.LoopGuardRepeats,
-        UnifiedResources = baseline.UnifiedResources,
         AskTimeoutMinutes = baseline.AskTimeoutMinutes,
         ShellTimeoutSeconds = baseline.ShellTimeoutSeconds,
         SpawnedRetention = baseline.SpawnedRetention,
@@ -926,6 +1004,25 @@ public static class SettingsResolver
     /// </summary>
     /// <summary>Layers accumulate rather than override: a project vouching for its own wiki must not
     /// silently drop what the machine layer vouched for.</summary>
+    /// <summary>Parses <c>agents_md: inject|ignore</c>. Unlike <c>mode:</c> (which silently keeps
+    /// the previous value on a bad string), a typo here is a real footgun — it can silently turn a
+    /// role's <c>ignore</c> into the default <c>inject</c>, which is exactly the leak this setting
+    /// exists to close. So this throws with the offending value and the layer it came from.</summary>
+    private static AgentsMdMode ParseAgentsMdMode(string value, string layer)
+        => Enum.TryParse<AgentsMdMode>(value, true, out var parsed)
+            ? parsed
+            : throw new InvalidOperationException(
+                $"Unknown agents_md value '{value}' in {layer}. Expected 'inject' or 'ignore'.");
+
+    /// <summary>Parses <c>tool_images: all|last</c>. Throws on anything else for the same reason
+    /// <see cref="ParseAgentsMdMode"/> does: a setting that is declared, survives a restart and
+    /// silently does nothing is worse than one that is absent.</summary>
+    private static ToolImagesMode ParseToolImagesMode(string value, string layer)
+        => Enum.TryParse<ToolImagesMode>(value, true, out var parsed)
+            ? parsed
+            : throw new InvalidOperationException(
+                $"Unknown tool_images value '{value}' in {layer}. Expected 'all' or 'last'.");
+
     private static void AddTrustedDomains(ResolvedSettings r, List<string>? declared)
     {
         if (declared is null) return;
@@ -972,8 +1069,12 @@ public static class SettingsResolver
     /// <summary>Adds/overrides connections by id, skipping entries without an id. Every entry is
     /// stamped with the layer it came from, so a later consumer (the editor deciding which file a
     /// save goes back to, a role selecting by scope) never has to guess.</summary>
+    /// <param name="declared">Accumulates every entry this layer declares, uncollapsed — see
+    /// <see cref="ResolvedSettings.DeclaredConnections"/>. An id shadowed here is still recorded
+    /// there, because the file it came from still says it.</param>
     private static void MergeConnections(
         Dictionary<string, SplaConnectionSection> into,
+        List<SplaConnectionSection> declared,
         IReadOnlyList<SplaConnectionSection>? from,
         ConnectionScope scope)
     {
@@ -982,8 +1083,31 @@ public static class SettingsResolver
         {
             if (string.IsNullOrWhiteSpace(c.Id)) continue;
             c.Scope = scope;
+            declared.Add(c);
             into[c.Id] = c;
         }
+    }
+
+    /// <summary>A layer that marks one model replaces the inherited default wholesale. Multiple
+    /// marks in one file are rejected before connection ids from later layers can shadow them.</summary>
+    private static void ApplyDefaultModelFromLayer(
+        ref string? defaultModelId,
+        IReadOnlyList<SplaConnectionSection>? connections,
+        string layerName)
+    {
+        if (connections is null) return;
+
+        var defaults = connections
+            .SelectMany(connection => connection.Models)
+            .Where(model => model.Default)
+            .ToList();
+        if (defaults.Count > 1)
+            throw new InvalidOperationException(
+                $"Configuration layer '{layerName}' marks more than one default model: " +
+                $"{string.Join(", ", defaults.Select(model => $"'{model.Id}'"))}. " +
+                "Each layer may declare at most one default model.");
+        if (defaults.Count == 1)
+            defaultModelId = defaults[0].Id;
     }
 
     /// <summary>Adds/overrides mcp.servers entries by id, skipping entries without an id — same idiom

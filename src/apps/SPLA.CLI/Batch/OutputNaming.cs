@@ -32,6 +32,15 @@ internal static class OutputNaming
         return path;
     }
 
+    /// <summary>Expands the same placeholders as <see cref="BuildPath"/> for a chat title. No
+    /// sanitizing: a title is not a file name.</summary>
+    public static string ExpandTitle(string template, DateTimeOffset stamp, PromptItem prompt, string model) =>
+        template
+            .Replace("{timestamp}", stamp.ToString("yyyyMMdd-HHmmss"))
+            .Replace("{prompt}", prompt.Name)
+            .Replace("{model}", model)
+            .Replace("{label}", $"{prompt.Name} {model}");
+
     /// <summary>The statistics file that belongs to a result file: same folder, same name, a
     /// <c>.stats</c> marker and the format's own extension. Deliberately derived from the result path
     /// rather than rebuilt from the template — the de-duplication suffix a template can add

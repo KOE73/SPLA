@@ -17,6 +17,15 @@ export interface Envelope<P = unknown> {
   requestId?: string;
 }
 
+/** One attached picture: where it is, and the name it is known by.
+ *  The name is what a prompt and the model's answer refer to — a picture carries no name of its own
+ *  to any vision model, so several unnamed images can only be told apart by their order. Absent for
+ *  an image nobody named (a pasted screenshot, or anything sent before names existed). */
+export interface ImageRef {
+  url: string;
+  label?: string;
+}
+
 export interface ChatMessage {
   msgId?: string;
   role: "user" | "assistant" | "tool";
@@ -24,7 +33,7 @@ export interface ChatMessage {
   reasoning?: string;
   /** ISO-8601 UTC creation time; absent on chats saved before timestamps existed. */
   createdAt?: string;
-  images?: string[];
+  images?: ImageRef[];
   toolCalls?: ToolCallDto[];
   toolCallId?: string;
   /** Generations the repetition guard threw away before this message was produced. Only present
@@ -35,6 +44,12 @@ export interface ChatMessage {
    *  instead of an ordinary human bubble; undefined for every ordinary message. The wire shape of
    *  the message itself is unchanged: this is the one field that tells the two apart. */
   peerFrom?: string;
+  /** True when `/compact` hid this message from the model — still shown, dimmed, never erased
+   *  (`ADR_20260911-3_agent_compaction` §2.1). False for every message no compaction has touched. */
+  compacted?: boolean;
+  /** True for the working-summary record a compaction inserted (ADR §2.2) — rendered as a "compacted
+   *  context" plate rather than an ordinary human bubble, even though `role` is still `user`. */
+  compactSummary?: boolean;
 }
 
 /** One abandoned generation as stored on a message — see server `AttemptDto`. */
@@ -42,6 +57,12 @@ export interface AttemptDto {
   index: number;
   outcome: string;
   note?: string;
+  /** The pause before the next attempt, ms; absent when none followed. Sent structured so the client
+   *  can word the wait in the reader's language rather than parse it out of `note`. */
+  waitMs?: number | null;
+  /** True when `waitMs` is the provider's own figure rather than our schedule — a fact to sit out
+   *  versus a guess we chose. */
+  waitStated?: boolean;
   chars: number;
   durationMs: number;
   content?: string;
@@ -77,8 +98,8 @@ export interface ChatSummary {
   /** The role this chat runs as (`ChatSession.As`), or undefined for a plain chat with no role.
    *  Human chats can carry one too (a role-narrowed standing chat), not only spawned sessions. */
   as?: string;
-  /** "spawned" for a session `agent_spawn`/`agent_correspond` created, undefined for one a human
-   *  opened directly. */
+  /** "spawned" for a session `agent_spawn`/`agent_correspond` created; "cli" for one `spla chat run`
+   *  opened (locally or handed over to a live instance); undefined for one a human opened directly. */
   origin?: string;
   /** The chat id that spawned this session, or undefined. Present on every node in `children` — a
    *  tree client does not need it to walk down, but a flat consumer (the sessions panel) needs it
@@ -125,6 +146,32 @@ export interface ChatOpenedPayload {
   turnActive?: boolean;
   /** The chat's operational state: "idle" | "working" | "waiting" | "stalled". */
   state?: string;
+  /** The answer being streamed at this very moment, absent when nothing is in flight. The message
+   *  list holds only what has been persisted, so without this a chat opened mid-turn reads as empty
+   *  until the turn ends. Its msgIndex is the live stream's own — later chunks continue this bubble. */
+  live?: { msgIndex: number; content: string; reasoning: string } | null;
+  /** Wave 1 (ADR_20260910-2 §4.4): progress nodes still running at the moment this chat was opened,
+   *  same shape and namespaced ids as the live `progress.node` event — merge these into the node map
+   *  the same way, then keep listening. Additive: an older server simply omits it, and the chat looks
+   *  exactly as it did before this field existed (empty until the next tick). */
+  openProgressNodes?: ProgressNodePayload[];
+  /** Background tasks still running at the moment this chat was opened, same shape `task.list.result`
+   *  uses. Additive, same reasoning as `openProgressNodes`. */
+  runningTasks?: TaskSummaryDto[];
+}
+
+/** One node of a progress tree, whole, as both the live `progress.node` event and `chat.opened`'s
+ *  `openProgressNodes` carry it — see `progress.node`'s own doc comment below for the merge rule. */
+export interface ProgressNodePayload {
+  nodeId: string;
+  parentId?: string | null;
+  label: string;
+  state: "running" | "completed" | "failed";
+  current?: number | null;
+  total?: number | null;
+  fraction?: number | null;
+  message?: string | null;
+  details?: ToolProgressDetail[] | null;
 }
 
 /**
@@ -174,6 +221,9 @@ export interface ToolSetState {
 /** One editable connection: transport + credentials, owning its model entries. */
 export interface ConnectionDto {
   id: string;
+  /** A later layer declares this same id, so a turn uses that one instead. Server-computed; the
+   *  editor shows it and saves it back untouched — it is what this entry's own file says. */
+  shadowed?: boolean;
   clientId?: string;
   name?: string;
   provider?: string;
@@ -190,6 +240,12 @@ export interface ConnectionDto {
   /** As `apiKeyIsLiteral`, for the admin key. */
   adminKeyIsLiteral?: boolean;
   swapModel?: boolean;
+  /** How hard to keep trying when this account is rate-limited. Omitting it on save keeps whatever
+   *  was configured, so a panel that does not edit it cannot wipe it. */
+  retry?: RetryDto;
+  /** Seconds held between requests on this key, across every chat; 0 = no pacing. Beside `retry`
+   *  rather than inside it: retry reacts to a refusal, pacing prevents one. */
+  minRequestInterval?: number;
   /** Which layer this connection lives in: `shared`, `user` or `project`. It is the file the entry
    *  is read from and the one a save writes it back to, so it must be echoed back untouched —
    *  dropping it on save would move the entry. Omitted by a client that does not edit it: the server
@@ -198,11 +254,28 @@ export interface ConnectionDto {
   models: ModelEntryDto[];
 }
 
+/** A connection's retry schedule. Every figure bounds a GUESS about when the provider will answer
+ *  again; a `Retry-After` it states itself is obeyed as given and answers to none of them. */
+export interface RetryDto {
+  /** Attempts per turn, the first request included. */
+  attempts: number;
+  /** Seconds; the first pause. */
+  minDelay: number;
+  /** Multiplier applied per attempt. */
+  step: number;
+  /** Seconds; ceiling on one pause. */
+  maxDelay: number;
+  /** Seconds; ceiling on all pauses in one turn. */
+  total: number;
+}
+
 /** One model under a connection. `id` is ours and globally unique; `model` is the provider's string. */
 export interface ModelEntryDto {
   id: string;
   clientId?: string;
   name?: string;
+  /** The model a new chat opens on. At most one per scope — the connections panel clears the others. */
+  default?: boolean;
   model?: string;
   contextLength?: number;
   /** Default sampling temperature for this model. Undefined = fall back to the role's default, then
@@ -218,6 +291,8 @@ export interface ModelPickDto {
   connectionId: string;
   connectionName: string;
   provider?: string;
+  /** The model a new chat opens on — shown in the picker for reference, same star as the editor. */
+  default?: boolean;
 }
 
 /** One provider-reported figure. `kind` drives formatting, `severity` drives the dot. */
@@ -261,10 +336,10 @@ export interface AgentResultPayload {
   /** Seconds system_run_shell may sit silent before the tool returns "still running" instead of
    *  continuing to wait. 0 = disabled (wait indefinitely). Default 120. */
   shellTimeoutSeconds?: number;
-  /** Master switch for the resource-address abstraction (file://, sftp://, …). Default false —
-   *  the foundation ships inert so the model can be measured with and without it. */
-  unifiedResources?: boolean;
-  /** Every registered scheme, on and off alike — the per-scheme rows under the master switch. */
+  /** How the project's AGENTS.md tree reaches the prompt: "inject" | "ignore". Default "inject".
+   *  See ADR_20260911-2_agent_agents-md-scopes.md. */
+  agentsMd?: string;
+  /** Every registered scheme, on and off alike — the per-scheme rows under core.resources. */
   resourceSchemes?: ResourceSchemeDto[];
   theme?: string; density?: string;
   themes?: string[]; densities?: string[];
@@ -349,6 +424,13 @@ export interface PluginDto {
   /** URL of the plugin's prebuilt web settings module (dynamically imported), or absent when the
    * plugin has none — the panel falls back to the generic JSON editor. */
   webSettingsUrl?: string;
+  /** URL of the plugin's prebuilt web PANEL module (see web_panel_entry in meta.yaml), or absent
+   * when the plugin contributes no dock panel. Same mount(el, api) contract as the settings one. */
+  webPanelUrl?: string;
+  /** Tab title and tool-strip emoji for that panel. They come from the manifest, not the bundle:
+   * the strip draws the button before the bundle loads, and must keep drawing it if it never does. */
+  panelTitle?: string;
+  panelIcon?: string;
 }
 
 /** Contract a plugin's web settings module must export — see web_settings_entry in meta.yaml. */
@@ -392,6 +474,31 @@ export interface PluginSettingsHandle {
   destroy?(): void;
 }
 export type PluginSettingsMount = (el: HTMLElement, api: PluginSettingsMountApi) => PluginSettingsHandle;
+
+/**
+ * Contract a plugin's web PANEL module must export — see web_panel_entry in meta.yaml. Deliberately
+ * thinner than the settings one: a panel is a view on the plugin's own transport (plugin.panel.*),
+ * so it gets the wire and the translator and nothing else. The host never learns the plugin's types.
+ */
+export interface PluginPanelMountApi {
+  /** Fire-and-forget wire send, e.g. send("plugin.panel.open", { panelId, panelType }). */
+  send(type: string, payload?: unknown): boolean;
+  /** Subscribe to a server message; returns the unsubscribe. */
+  on(type: string, handler: (payload: never) => void): () => void;
+  /** Command with a correlated response. */
+  invoke<R = unknown>(type: string, payload?: unknown): Promise<R>;
+  /** The host's translator — a panel reads in the same language as the window around it. */
+  t(text: string, params?: Record<string, unknown>): string;
+  /** The chat the window currently shows, and a subscription to it changing. A panel that shows
+   * per-chat state MUST follow this: mounted means open, so there is no "is it visible" flag to
+   * guard on (a guard like that is exactly what silently froze the debug panel on the first chat). */
+  currentChatId(): string | null;
+  onChatChange(handler: (chatId: string | null) => void): () => void;
+}
+export interface PluginPanelHandle {
+  destroy?(): void;
+}
+export type PluginPanelMount = (el: HTMLElement, api: PluginPanelMountApi) => PluginPanelHandle;
 
 export interface PluginsResultPayload {
   plugins: PluginDto[];
@@ -504,7 +611,6 @@ export interface RoleEditDto {
   askTimeoutMinutes?: number | null;
   saveToolCalls?: boolean | null;
   saveAttempts?: boolean | null;
-  unifiedResources?: boolean | null;
   peerDebounceBaseSeconds?: number | null;
   peerDebounceMaxSeconds?: number | null;
   peerDepthCeiling?: number | null;
@@ -522,6 +628,9 @@ export interface RoleEditDto {
   islands?: string[] | null;
   toolSets?: Record<string, string> | null;
   trustedDomains?: string[] | null;
+  /** How this role's AGENTS.md tree reaches the prompt: "inject" | "ignore" | null (inherit the
+   *  project's own agent: agents_md). */
+  agentsMd?: string | null;
 }
 
 export interface RolesResultPayload {
@@ -626,6 +735,18 @@ export interface DebugKvEntry {
   value: string;
   origin?: string | null;
   doubtful?: boolean;
+  /** Blobs view only: the producer's declared media type. An `image/*` row can be previewed via
+   *  `debug.blob.get` — the snapshot itself never carries bytes. */
+  contentType?: string | null;
+}
+
+/** Answer to `debug.blob.get`: one blob of the chat as a `data:` URL, or `error` saying why not
+ *  (unknown handle, not an image, too large). */
+export interface DebugBlobResultPayload {
+  handle: string;
+  contentType?: string | null;
+  url?: string | null;
+  error?: string | null;
 }
 
 export interface DebugSegment {
@@ -639,6 +760,8 @@ export interface DebugSegment {
 }
 
 export interface DebugSnapshotPayload {
+  /** Which `debug.request` kind this answers. */
+  kind?: string;
   contextLines?: ContextLine[];
   totalCount?: number;
   contextCount?: number;
@@ -873,7 +996,8 @@ export interface ServerEvents {
    *  Carries the abandoned content/reasoning so a reader can open it, not just the streamed text that
    *  was already visible before the guard cut it off. */
   "llm.attempt": { msgIndex: number; index: number; outcome: string; note?: string; chars: number;
-    durationMs: number; content?: string; reasoning?: string };
+    durationMs: number; waitMs?: number | null; waitStated?: boolean;
+    content?: string; reasoning?: string };
   "assistant.message": { msgIndex: number; message: ChatMessage };
   /** User message accepted by the server. Text is present so server-initiated turns can render
    * without a local echo; ordinary composer turns use it only as a fallback. */
@@ -894,9 +1018,10 @@ export interface ServerEvents {
    *  each node to `parentId` (null = top level). Hold a node whose parent has not arrived rather than
    *  dropping it — parallel work gives no ordering guarantee. Structural frames (a node's first
    *  appearance and its finish) are never throttled; the ticks between them are, per node. */
-  "progress.node": { nodeId: string; parentId?: string | null; label: string; state: "running" | "completed" | "failed"; current?: number | null; total?: number | null; fraction?: number | null; message?: string | null; details?: ToolProgressDetail[] | null };
+  "progress.node": ProgressNodePayload;
   "task.state.changed": TaskStateChangedPayload; // A background task started or finished — published to all watchers of this chat.
-  "tool.result": { toolCallId: string; toolName: string; result: string };
+  /** `images`: pictures the tool returned, as data URLs named the way the model is shown them. */
+  "tool.result": { toolCallId: string; toolName: string; result: string; images?: ImageRef[] | null };
   "notice": { text: string };
   "error": { message: string };
   "permission.request": { toolName: string; arguments?: string };
@@ -924,7 +1049,8 @@ export interface ServerEvents {
   "secret.result": SecretListResultPayload;
   "schema.result": SchemaResultPayload;
   "debug.snapshot": DebugSnapshotPayload;
-  "local.userMsg": { text: string; images?: string[] };
+  "debug.blob.result": DebugBlobResultPayload;
+  "local.userMsg": { text: string; images?: ImageRef[] };
   "project.list.result": ProjectListResultPayload;
   "project.context": ProjectContextPayload;
   // Live SSH terminal (phase B)

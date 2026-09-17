@@ -36,8 +36,11 @@ internal sealed class SshSessionWaitTool : IMcpTool
             Name = Name,
             Description =
                 "Keeps waiting on a live SSH session after ssh_session_exec reported 'still running' (or just " +
-                "watches for new output). Returns only the NEW output since your last exec/wait — nothing is " +
-                "lost between calls. Ends when the running command completes (status done + exit code), when " +
+                "watches for new output). Returns what the TERMINAL SHOWS: lines that have scrolled past since " +
+                "your last look, plus the part of the screen still being painted. Progress bars and other " +
+                "redrawn lines appear once, at their current value, not once per repaint — so the last screenful " +
+                "may look familiar between calls, because it is the same lines with new numbers in them. " +
+                "Ends when the running command completes (status done + exit code), when " +
                 "'until' (a regex) matches the output, when the connection drops (status disconnected — e.g. " +
                 "the reboot you asked for), or when timeout_seconds passes (status running — call again; for " +
                 "long jobs like apt upgrade just keep calling with generous timeouts). If output stalls and the " +

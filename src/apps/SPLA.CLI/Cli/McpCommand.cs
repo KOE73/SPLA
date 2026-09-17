@@ -1,4 +1,4 @@
-using System.Reflection;
+﻿using System.Reflection;
 using Microsoft.Extensions.Logging;
 using SPLA.Domain.Settings;
 using SPLA.Instances;
@@ -68,6 +68,18 @@ public static class McpCommand
 
     public static bool IsMcpCommand(string[] args) =>
         args.Length > 0 && args[0].Equals("mcp", StringComparison.OrdinalIgnoreCase);
+
+    /// <summary>True when the argument vector asks for usage rather than for a session. `mcp` is
+    /// dispatched raw, ahead of Spectre (see the remarks on <see cref="RunAsync"/>), so nothing else
+    /// in the process ever gets to notice a help flag here: without this check `spla mcp --help`
+    /// silently starts a real MCP server and blocks on stdin, which reads as a hang to anyone who
+    /// typed it by hand.</summary>
+    public static bool IsHelpRequest(string[] args) =>
+        args.Skip(1).Any(a =>
+            a.Equals("--help", StringComparison.OrdinalIgnoreCase) ||
+            a.Equals("-h", StringComparison.OrdinalIgnoreCase) ||
+            a.Equals("-?", StringComparison.Ordinal) ||
+            a.Equals("/?", StringComparison.Ordinal));
 
     /// <summary>Prints the embedded MCP usage doc (Assets/MCP_USAGE.md) to stdout. Reads it from the
     /// assembly, not from disk, so it works run from any directory and survives the single-file publish.</summary>
@@ -220,7 +232,8 @@ public static class McpCommand
         var server = new McpStdioServer(
             runtime.McpHost,
             () => runtime.McpHost.GetToolDefinitionsFor(exposure),
-            log: Console.Error);
+            log: Console.Error,
+            project: (settings.ProjectName, settings.WorkspacePath));
 
         await server.RunAsync(Console.In, Console.Out, ct);
     }

@@ -1,0 +1,41 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <RootNamespace>SPLA.Plugins.Geometry</RootNamespace>
+    <AssemblyName>SPLA.Plugins.Geometry</AssemblyName>
+    <!-- Self-contained plugin: copy third-party NuGet deps (SkiaSharp, managed + native) into the
+         plugin folder so the PluginLoadContext resolver finds them under any host (CLI/service, not
+         just Avalonia). See the plugin-alc-native-dlls memory. -->
+    <CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\core\SPLA.Domain\SPLA.Domain.csproj" />
+    <ProjectReference Include="..\..\core\SPLA.MCP.Core\SPLA.MCP.Core.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="SkiaSharp" Version="2.88.9" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="SPLA.Tests" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Include="meta.yaml" CopyToOutputDirectory="PreserveNewest" Link="plugins\geometry\meta.yaml" />
+    <!-- Prebuilt web panel module (web_panel_entry in meta.yaml) - deployed via the same glob. -->
+    <None Include="web\dist\**" CopyToOutputDirectory="PreserveNewest" Link="web\dist\%(RecursiveDir)%(Filename)%(Extension)" />
+  </ItemGroup>
+
+  <Target Name="CopyPlugin" AfterTargets="Build">
+    <ItemGroup>
+      <PluginFiles Include="$(TargetDir)**\*.*" />
+      <MetaFile Include="meta.yaml" />
+    </ItemGroup>
+    <Copy SourceFiles="@(PluginFiles)" DestinationFolder="$(MSBuildThisFileDirectory)..\..\apps\SPLA.UI.Avalonia\bin\$(Configuration)\$(TargetFramework)\plugins\geometry\%(RecursiveDir)" />
+    <Copy SourceFiles="@(MetaFile)" DestinationFolder="$(MSBuildThisFileDirectory)..\..\apps\SPLA.UI.Avalonia\bin\$(Configuration)\$(TargetFramework)\plugins\geometry\" />
+    <Copy SourceFiles="@(PluginFiles)" DestinationFolder="$(MSBuildThisFileDirectory)..\..\apps\SPLA.CLI\bin\$(Configuration)\$(TargetFramework)\plugins\geometry\%(RecursiveDir)" />
+    <Copy SourceFiles="@(MetaFile)" DestinationFolder="$(MSBuildThisFileDirectory)..\..\apps\SPLA.CLI\bin\$(Configuration)\$(TargetFramework)\plugins\geometry\" />
+  </Target>
+</Project>

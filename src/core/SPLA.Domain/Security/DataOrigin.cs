@@ -54,6 +54,9 @@ public sealed record DataOrigin(string Zone, bool OperatorNamed)
     /// <summary>A domain the operator put on the trusted list stops being part of the open web.</summary>
     public static DataOrigin Site(string domain, bool listed) => new($"web:{domain}", listed);
 
+    /// <summary>A personal device screen can contain other people's messages and web content.</summary>
+    public static DataOrigin Device(string serial) => new($"android:{serial}", false);
+
     public override string ToString() => Zone;
 }
 

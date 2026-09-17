@@ -1,6 +1,9 @@
+using System.ComponentModel;
 using Microsoft.Extensions.Logging;
 using Spectre.Console;
 using Spectre.Console.Cli;
+using SPLA.CLI.Batch;
+using SPLA.CLI.Wire;
 using SPLA.Domain.Settings;
 using SPLA.Runtime;
 
@@ -29,6 +32,10 @@ internal sealed class ChatOpenSettings : CommandSettings
 {
     [CommandArgument(0, "[id]")]
     public string? Id { get; init; }
+
+    [CommandOption("--role")]
+    [Description("Role to stamp on a NEW chat (id omitted, or an unknown id) — matched against the project's declared roles: list, case-insensitive. Has no effect when [id] resolves to an existing chat: that chat already carries whatever role it was created with.")]
+    public string? Role { get; init; }
 }
 
 /// <summary><c>spla chat open [id]</c> — resumes a saved chat (or starts a new one if omitted/unknown)
@@ -38,12 +45,18 @@ internal sealed class ChatOpenCommand(ResolvedSettings settings, ILoggerFactory 
 {
     protected override async Task<int> ExecuteAsync(CommandContext context, ChatOpenSettings s, CancellationToken cancellationToken)
     {
+        string? role = null;
+        if (s.Role is { Length: > 0 } requestedRole)
+        {
+            role = RoleValidation.Resolve(settings, requestedRole);
+            if (role == null) return 2;
+        }
+
         using var runtime = RuntimeBootstrap.Build(settings, loggerFactory);
 
-        var session = s.Id is { Length: > 0 } id
-            ? runtime.ChatManager.LoadChat(id) ?? runtime.ChatManager.CreateNewChat()
-            : runtime.ChatManager.CreateNewChat();
-        if (s.Id is { Length: > 0 }) Console.WriteLine($"Loaded chat: {session.Title}");
+        var existing = s.Id is { Length: > 0 } id ? runtime.ChatManager.LoadChat(id) : null;
+        var session = existing ?? runtime.ChatManager.CreateNewChat(role: role);
+        if (existing != null) Console.WriteLine($"Loaded chat: {session.Title}");
 
         var chat = new ChatRuntime(runtime, session);
         await InteractiveRepl.RunAsync(runtime, chat);
@@ -71,6 +84,61 @@ internal sealed class ChatForkCommand(ResolvedSettings settings, ILoggerFactory 
         using var runtime = RuntimeBootstrap.Build(settings, loggerFactory);
         var forked = runtime.ChatManager.DuplicateChat(s.Id, s.Model);
         Console.WriteLine($"Forked to new chat: {forked.Id}");
+        return 0;
+    }
+}
+
+internal sealed class ChatCompactSettings : CommandSettings
+{
+    [CommandArgument(0, "<id>")]
+    public required string Id { get; init; }
+}
+
+/// <summary><c>spla chat compact &lt;id&gt;</c> — batch-mode entry point for
+/// <c>docs/adr/ADR_20260911-3_agent_compaction.md</c> §2.6. A project a live instance already holds
+/// is compacted over the wire (mirrors <see cref="RemoteChatRun"/>'s attach-instead-of-refuse
+/// pattern, one-writer rule intact); otherwise this process opens the chat itself.</summary>
+internal sealed class ChatCompactCommand(ResolvedSettings settings, ILoggerFactory loggerFactory)
+    : AsyncCommand<ChatCompactSettings>
+{
+    protected override async Task<int> ExecuteAsync(CommandContext context, ChatCompactSettings s, CancellationToken cancellationToken)
+    {
+        if (RemoteChatRun.LiveInstance(settings) is { } holder)
+        {
+            AnsiConsole.MarkupLine($"[grey]Attached to[/] {holder.Describe().EscapeMarkup()}");
+            var token = settings.SecretResolver.Resolve(Environment.GetEnvironmentVariable("SPLA_SERVICE_TOKEN"));
+            await using var client = await CliWireClient.ConnectAsync(holder.Endpoint!, token, cancellationToken);
+            try
+            {
+                await client.CompactAsync(s.Id, cancellationToken);
+            }
+            catch (InvalidOperationException ex)
+            {
+                AnsiConsole.MarkupLine($"[red]{ex.Message.EscapeMarkup()}[/]");
+                return 1;
+            }
+            Console.WriteLine("Compacted.");
+            return 0;
+        }
+
+        using var runtime = RuntimeBootstrap.Build(settings, loggerFactory);
+        var session = runtime.ChatManager.LoadChat(s.Id);
+        if (session == null) { AnsiConsole.MarkupLine($"[red]No such chat: {s.Id.EscapeMarkup()}[/]"); return 2; }
+
+        var chat = new ChatRuntime(runtime, session);
+        var result = await chat.CompactAsync(cancellationToken);
+        if (!result.Compacted)
+        {
+            var message = result.Refusal switch
+            {
+                ChatRuntime.CompactRefusal.Busy => "a turn is running",
+                ChatRuntime.CompactRefusal.NothingToCompact => "nothing to compact yet",
+                _ => result.Error ?? "the model call did not produce a summary"
+            };
+            AnsiConsole.MarkupLine($"[red]Compact failed —[/] {message.EscapeMarkup()}");
+            return 1;
+        }
+        Console.WriteLine("Compacted.");
         return 0;
     }
 }

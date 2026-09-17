@@ -2,6 +2,7 @@ using System.Net.WebSockets;
 using System.Text;
 using System.Text.Json;
 using System.Threading.Channels;
+using SPLA.Domain.Models;
 using SPLA.Service.Contracts;
 
 namespace SPLA.CLI.Wire;
@@ -62,13 +63,30 @@ internal sealed class CliWireClient : IAsyncDisposable
         return Payload<InstanceStatusPayload>(reply);
     }
 
-    /// <summary>Starts a chat and returns its id.</summary>
-    public async Task<string> NewChatAsync(string? title, CancellationToken ct)
+    /// <summary>Starts a chat and returns its id. <paramref name="role"/> is validated server-side
+    /// against the project's declared roles (see <c>ChatNewPayload.Role</c>) — an unknown name surfaces
+    /// as the <see cref="MessageTypes.Error"/> <see cref="WaitForAsync"/> already turns into an
+    /// exception, so a caller does not need its own check for this path.</summary>
+    public async Task<string> NewChatAsync(string? title, CancellationToken ct, string? origin = null, string? role = null)
     {
-        await SendAsync(MessageTypes.ChatNew, new ChatNewPayload { Title = title }, ct: ct);
+        await SendAsync(MessageTypes.ChatNew, new ChatNewPayload { Title = title, Origin = origin, Role = role }, ct: ct);
         var opened = await WaitForAsync(MessageTypes.ChatOpened, ct);
         return Payload<ChatOpenedPayload>(opened)?.ChatId
             ?? throw new InvalidOperationException("The service opened a chat without giving it an id.");
+    }
+
+    /// <summary>
+    /// Compacts a chat on the live instance — see
+    /// <c>docs/adr/ADR_20260911-3_agent_compaction.md</c> §2.6, the <c>spla chat compact &lt;id&gt;</c>
+    /// batch-mode entry point. A refusal (turn running, nothing to compact, model error) surfaces as
+    /// the ordinary <see cref="MessageTypes.Error"/> frame, which <see cref="WaitForAsync"/> already
+    /// turns into an <see cref="InvalidOperationException"/> — same shape as <see cref="NewChatAsync"/>'s
+    /// role validation, so callers need no separate handling for this path.
+    /// </summary>
+    public async Task CompactAsync(string chatId, CancellationToken ct)
+    {
+        await SendAsync(MessageTypes.ChatCompact, new ChatCompactPayload { ChatId = chatId }, chatId, ct: ct);
+        await WaitForAsync(MessageTypes.ChatOpened, ct);
     }
 
     /// <summary>
@@ -86,9 +104,20 @@ internal sealed class CliWireClient : IAsyncDisposable
         Action<string> onText,
         Action<string> onNote,
         Func<PermissionRequestPayload, PermissionDecisionPayload>? onPermission,
-        CancellationToken ct)
+        CancellationToken ct,
+        IReadOnlyList<ImageAttachment>? images = null)
     {
-        await SendAsync(MessageTypes.ChatSend, new ChatSendPayload { ChatId = chatId, Text = text }, chatId, ct: ct);
+        await SendAsync(
+            MessageTypes.ChatSend,
+            new ChatSendPayload
+            {
+                ChatId = chatId,
+                Text = text,
+                Images = images is { Count: > 0 }
+                    ? images.Select(i => new ImageDto { Url = i.Url, Label = i.Label }).ToList()
+                    : null
+            },
+            chatId, ct: ct);
 
         while (true)
         {

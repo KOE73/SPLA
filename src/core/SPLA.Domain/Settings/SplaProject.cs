@@ -64,9 +64,9 @@ public class SplaProject
     [YamlMember(Alias = "toolsets")]
     public Dictionary<string, string>? ToolSets { get; set; }
 
-    /// <summary>Scheme id → enabled, for the resource-address abstraction (<see cref="SplaAgentSection.UnifiedResources"/>
-    /// is the master switch; this is the per-scheme override underneath it). A scheme absent from the
-    /// map is enabled — the map exists to record exceptions, not to enumerate everything registered.</summary>
+    /// <summary>Scheme id → enabled, for the resource-address abstraction (the <c>core.resources</c>
+    /// capability is the master switch; this is the per-scheme override underneath it). A scheme absent
+    /// from the map is enabled — the map exists to record exceptions, not to enumerate everything registered.</summary>
     [YamlMember(Alias = "resources")]
     public Dictionary<string, bool>? Resources { get; set; }
 

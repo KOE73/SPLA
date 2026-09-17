@@ -16,8 +16,16 @@ internal sealed class ChatRunSettings : CommandSettings
     [Description("Prompt read from a file. Repeatable; can be combined with --prompt.")]
     public string[] PromptFiles { get; init; } = [];
 
+    [CommandOption("--image")]
+    [Description("Image file attached to the user turn, for vision models. Repeatable; every image goes to every prompt × model cell, in the order given. Each is announced to the model by its file name, so a prompt can say \"on frame_012.jpg\" instead of counting pictures.")]
+    public string[] Images { get; init; } = [];
+
+    [CommandOption("--image-name")]
+    [Description("Name the model knows an image by, instead of its file name. Repeatable and paired with --image in order: give one per image, or none at all.")]
+    public string[] ImageNames { get; init; } = [];
+
     [CommandOption("--model")]
-    [Description("Model entry id from the project's connections. Repeatable. 'all' = every entry.")]
+    [Description("Model entry id or exact name shown in the model picker. Repeatable. 'all' = every entry.")]
     public string[] Models { get; init; } = [];
 
     [CommandOption("--out")]
@@ -27,6 +35,14 @@ internal sealed class ChatRunSettings : CommandSettings
     [CommandOption("--out-name")]
     [Description("File name template inside --out. Placeholders: {timestamp} {prompt} {model} {label}.")]
     public string OutName { get; init; } = "{timestamp} {label}";
+
+    [CommandOption("--title")]
+    [Description("Name of each cell's chat, as the chat list shows it. Placeholders: {timestamp} {prompt} {model} {label}. Default \"{prompt} · {model}\".")]
+    public string? Title { get; init; }
+
+    [CommandOption("--role")]
+    [Description("Role name to run every cell's chat as, matched against the project's declared roles: list (case-insensitive). Narrows the chat's mode/prompt/tool surface from its first turn.")]
+    public string? Role { get; init; }
 
     [CommandOption("--overwrite")]
     [Description("Treat --out as one literal file: every cell overwrites it, instead of one file per cell.")]
@@ -105,6 +121,15 @@ internal sealed class ChatRunCommand(ResolvedSettings settings, ILoggerFactory l
 {
     protected override async Task<int> ExecuteAsync(CommandContext context, ChatRunSettings s, CancellationToken cancellationToken)
     {
+        List<ImageInput> images = [];
+        if (s.Images.Length > 0 || s.ImageNames.Length > 0)
+        {
+            var loaded = await ImageInputs.LoadAsync(s.Images, s.ImageNames, cancellationToken,
+                message => AnsiConsole.MarkupLine($"[red]{message.EscapeMarkup()}[/]"));
+            if (loaded == null) return 2;
+            images = loaded;
+        }
+
         var prompts = new List<PromptItem>();
         for (var i = 0; i < s.Prompts.Length; i++)
             prompts.Add(new PromptItem($"text{i + 1}", s.Prompts[i]));
@@ -118,12 +143,25 @@ internal sealed class ChatRunCommand(ResolvedSettings settings, ILoggerFactory l
         // writer over the same .spla/ — see RemoteChatRun for what can and cannot cross the wire.
         if (RemoteChatRun.LiveInstance(settings) is { } holder)
         {
+            // A remote instance validates the role itself (ChatHandlers.New, same source list) and its
+            // refusal surfaces through RemoteChatRun.RunAsync/NewChatAsync as an ordinary error — no
+            // local check needed on this path.
+
             if (RemoteChatRun.Unsupported(s) is { } blocker)
             {
                 AnsiConsole.MarkupLine($"[red]{RemoteChatRun.Refusal(holder, blocker).EscapeMarkup()}[/]");
                 return 2;
             }
-            return await RemoteChatRun.RunAsync(holder, s, prompts, settings, cancellationToken);
+            return await RemoteChatRun.RunAsync(holder, s, prompts, images, settings, cancellationToken);
+        }
+
+        // Local path: nobody to hand the check to, so this invocation does it itself, before any cell
+        // runs — the same source (settings.Manifest.Roles) ChatHandlers.New checks on the wire path.
+        string? role = null;
+        if (s.Role is { Length: > 0 } requestedRole)
+        {
+            role = RoleValidation.Resolve(settings, requestedRole);
+            if (role == null) return 2;
         }
 
         // Purely additive, and built BEFORE the runtime: the composer takes its contributors at
@@ -150,7 +188,17 @@ internal sealed class ChatRunCommand(ResolvedSettings settings, ILoggerFactory l
 
         if (s.ShowPrompt || s.ShowPromptFile != null)
         {
-            var composed = runtime.ComposeContext();
+            // A role narrows mode/prompt/tools from the chat's first turn (ChatRuntime does the same
+            // resolution on open) — showing the project's own prompt here would defeat the whole point
+            // of --show-prompt/--show-prompt-file for a role run: there would be nothing to see that
+            // proves `ignore` (or any other role-level setting) actually took effect.
+            ResolvedSettings? roleSettings = null;
+            if (role != null && settings.Manifest is { } roleManifest && settings.ProjectFilePath is { } projectFilePath)
+            {
+                var roleSection = ConfigLoader.LoadRole(Path.GetDirectoryName(projectFilePath)!, role);
+                roleSettings = SettingsResolver.ResolveForRole(settings, roleManifest, role, roleSection);
+            }
+            var composed = runtime.ComposeContext(settings: roleSettings);
             if (s.ShowPrompt)
             {
                 var manifest = new Table().AddColumn("Contributor").AddColumn("Source").AddColumn("Title").AddColumn("~Tokens");
@@ -167,7 +215,7 @@ internal sealed class ChatRunCommand(ResolvedSettings settings, ILoggerFactory l
             ? settings.Models
             : s.Models.Length > 0
                 ? s.Models.Select(id => settings.FindModel(id)).Where(m => m != null).Cast<ResolvedModelEntry>().ToList()
-                : settings.Models.Take(1).ToList();
+                : settings.DefaultModel is { } defaultModel ? [defaultModel] : [];
 
         if (models.Count == 0) { AnsiConsole.MarkupLine("[red]no matching model entries — check --model / the project's connections[/]"); return 2; }
 
@@ -175,11 +223,15 @@ internal sealed class ChatRunCommand(ResolvedSettings settings, ILoggerFactory l
 
         if (s.DryRun)
         {
+            if (role != null) AnsiConsole.MarkupLine($"[grey]role →[/] {role.EscapeMarkup()}");
             var table = new Table().AddColumn("Prompt").AddColumn("Model").AddColumn("Output");
             foreach (var cell in cells)
                 table.AddRow(cell.Prompt.Name, cell.Model.DisplayName,
                     PlannedOutput(s, cell) ?? "(screen)");
             AnsiConsole.Write(table);
+            foreach (var image in images)
+                AnsiConsole.MarkupLine(
+                    $"  [grey]image →[/] {image.Label.EscapeMarkup()} [grey]({image.Path.EscapeMarkup()}, {image.Bytes / 1024} KB)[/]");
             return 0;
         }
 
@@ -189,8 +241,11 @@ internal sealed class ChatRunCommand(ResolvedSettings settings, ILoggerFactory l
             ReasoningLevel = s.ReasoningLevel,
             TimeoutSeconds = s.TimeoutSeconds,
             SkillId = s.Skill,
+            Title = s.Title,
+            Role = role,
             Stream = s.Stream,
             MdClean = s.MdClean,
+            Images = images,
             SystemPromptExtra = sysPromptNote.Count > 0 ? string.Join("; ", sysPromptNote) : null
         };
 

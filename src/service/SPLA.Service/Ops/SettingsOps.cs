@@ -20,11 +20,22 @@ namespace SPLA.Service;
 /// </summary>
 public static class SettingsOps
 {
-    public static ConnectionsPayload GetConnections(AgentRuntime runtime) => new()
+    /// <summary>The connection tree for the editor, taken from what the layers <i>declare</i> rather
+    /// than from what resolution produced. An id in two layers must appear twice here: the panel
+    /// rewrites each layer file wholesale on save, so anything it cannot see is something it would
+    /// silently delete. See <see cref="ResolvedSettings.DeclaredConnections"/>.</summary>
+    public static ConnectionsPayload GetConnections(AgentRuntime runtime)
+    {
+        // Which declared entry actually won its id. Resolution keeps the live objects rather than
+        // copies, so identity is the exact answer — no need to re-derive the precedence rule here.
+        var winners = new HashSet<object>(runtime.Settings.Connections, ReferenceEqualityComparer.Instance);
+
+        return new ConnectionsPayload
     {
         CanPersist = runtime.Settings.ProjectFilePath != null,
-        Connections = runtime.Settings.Connections.Select(c => new ConnectionEditDto
+        Connections = runtime.Settings.DeclaredConnections.Select(c => new ConnectionEditDto
         {
+            Shadowed = !winners.Contains(c),
             Id = c.Id,
             Name = c.Name,
             Provider = c.Provider,
@@ -37,17 +48,28 @@ public static class SettingsOps
             ApiKeyIsLiteral = IsLiteral(c.ApiKey),
             AdminKeyIsLiteral = IsLiteral(c.AdminKey),
             SwapModel = c.SwapModel,
+            Retry = new RetryEditDto
+            {
+                Attempts = c.Retry.Attempts,
+                MinDelay = c.Retry.MinDelay,
+                Step = c.Retry.Step,
+                MaxDelay = c.Retry.MaxDelay,
+                Total = c.Retry.Total
+            },
+            MinRequestInterval = c.MinRequestInterval,
             Scope = ConnectionScopes.Name(c.Scope),
             Models = c.Models.Select(m => new ModelEditDto
             {
                 Id = m.Id,
                 Name = m.Name,
+                Default = m.Default,
                 Model = m.Model,
                 ContextLength = m.ContextLength,
                 Temperature = m.Temperature
             }).ToList()
         }).ToList()
-    };
+        };
+    }
 
     /// <summary>Replaces the connection list: persists to the .spla project (when present) and mutates
     /// the live settings so chats see the new set immediately. Returns the canonical list to broadcast.</summary>
@@ -56,23 +78,39 @@ public static class SettingsOps
         // What is on disk now, to fall back on per credential: the editor is never handed a literal,
         // so a blank field means "unchanged", not "cleared". Without this, opening the panel and
         // pressing Save on a project with pasted keys would wipe every one of them.
-        var stored = runtime.Settings.Connections
+        // Keyed by layer AND id: the same id legitimately exists in two layers (a personal `default`
+        // shadowed by a project one), and folding them together would hand one layer's credentials to
+        // the other's entry.
+        var stored = runtime.Settings.DeclaredConnections
+            .GroupBy(c => (c.Scope, c.Id), ScopedId)
+            .ToDictionary(g => g.Key, g => g.First(), ScopedId);
+
+        // Fallback for a client that sent no scope: it cannot be placed in a layer yet, so the only
+        // question its id can answer is "where did an entry by this name already live".
+        var storedAnyLayer = runtime.Settings.DeclaredConnections
             .GroupBy(c => c.Id, StringComparer.OrdinalIgnoreCase)
             .ToDictionary(g => g.Key, g => g.First(), StringComparer.OrdinalIgnoreCase);
 
         var sections = incoming
-            .Select(d => ToSection(d, stored))
+            .Select(d => ToSection(d, stored, storedAnyLayer))
             .Where(c => !string.IsNullOrWhiteSpace(c.Id))
-            .GroupBy(c => c.Id, StringComparer.OrdinalIgnoreCase)   // last write wins per id
+            .GroupBy(c => (c.Scope, c.Id), ScopedId)   // last write wins per id WITHIN a layer
             .Select(g => g.Last())
             .ToList();
 
         // Model ids are referenced by chats without naming a connection, so a duplicate across two
         // connections has no defined meaning. Resolution throws on one — refusing the save here is
         // what keeps a bad edit from writing a project file that no longer loads.
+        //
+        // Within a layer, though. Two layers declaring the same connection id also carry the same
+        // model ids, and only one of those connections survives the merge — so they never meet in the
+        // flat list. Checking across layers would refuse the very configuration this save exists to
+        // preserve.
         var clash = sections
-            .SelectMany(c => c.Models.Select(m => (Conn: c.Id, m.Id)))
-            .GroupBy(x => x.Id, StringComparer.OrdinalIgnoreCase)
+            .GroupBy(c => c.Scope)
+            .SelectMany(layer => layer
+                .SelectMany(c => c.Models.Select(m => (Conn: c.Id, m.Id)))
+                .GroupBy(x => x.Id, StringComparer.OrdinalIgnoreCase))
             .FirstOrDefault(g => g.Count() > 1);
         if (clash != null)
         {
@@ -105,9 +143,21 @@ public static class SettingsOps
         // Mutate the live settings in place so running chats resolve against the new list. The flat
         // model projection is rebuilt from the same objects — chats resolve through it, so leaving it
         // stale would keep them pointed at the pre-save tree.
+        //
+        // The saved list is every layer's declarations; what a chat resolves against is the merge of
+        // them. Re-apply it here rather than assigning the flat list, or a shadowed entry would enter
+        // the live tree as a second connection of the same id and the flat model list would carry two
+        // entries per model — the ambiguity the id-uniqueness rule exists to prevent.
+        runtime.Settings.DeclaredConnections = sections;
+
+        var merged = new Dictionary<string, SplaConnectionSection>(StringComparer.OrdinalIgnoreCase);
+        foreach (var scope in ConnectionScopes.MergeOrder)
+            foreach (var c in ForScope(sections, scope))
+                merged[c.Id] = c;
+
         runtime.Settings.Connections.Clear();
-        runtime.Settings.Connections.AddRange(sections);
-        runtime.Settings.Models = sections
+        runtime.Settings.Connections.AddRange(merged.Values);
+        runtime.Settings.Models = runtime.Settings.Connections
             .SelectMany(c => c.Models.Select(m => new ResolvedModelEntry { Connection = c, Entry = m }))
             .ToList();
 
@@ -259,7 +309,6 @@ public static class SettingsOps
         AskTimeoutMinutes = r.AskTimeoutMinutes,
         SaveToolCalls = r.SaveToolCalls,
         SaveAttempts = r.SaveAttempts,
-        UnifiedResources = r.UnifiedResources,
         PeerDebounceBaseSeconds = r.PeerDebounceBaseSeconds,
         PeerDebounceMaxSeconds = r.PeerDebounceMaxSeconds,
         PeerDepthCeiling = r.PeerDepthCeiling,
@@ -271,7 +320,8 @@ public static class SettingsOps
         Connections = r.Connections,
         Islands = r.Islands,
         ToolSets = r.ToolSets,
-        TrustedDomains = r.TrustedDomains
+        TrustedDomains = r.TrustedDomains,
+        AgentsMd = r.AgentsMd
     };
 
     private static SplaRoleSection ToRoleSection(RoleEditDto d) => new()
@@ -286,7 +336,6 @@ public static class SettingsOps
         AskTimeoutMinutes = d.AskTimeoutMinutes,
         SaveToolCalls = d.SaveToolCalls,
         SaveAttempts = d.SaveAttempts,
-        UnifiedResources = d.UnifiedResources,
         PeerDebounceBaseSeconds = d.PeerDebounceBaseSeconds,
         PeerDebounceMaxSeconds = d.PeerDebounceMaxSeconds,
         PeerDepthCeiling = d.PeerDepthCeiling,
@@ -301,7 +350,8 @@ public static class SettingsOps
         Connections = Clean(d.Connections),
         Islands = Clean(d.Islands),
         TrustedDomains = Clean(d.TrustedDomains),
-        ToolSets = d.ToolSets is { Count: > 0 } ? new Dictionary<string, string>(d.ToolSets) : null
+        ToolSets = d.ToolSets is { Count: > 0 } ? new Dictionary<string, string>(d.ToolSets) : null,
+        AgentsMd = Blank(d.AgentsMd)
     };
 
     /// <summary>Trims a list's entries and drops the blanks, preserving the null/empty distinction:
@@ -328,7 +378,7 @@ public static class SettingsOps
 
     // ── Agent settings: default mode + permission overrides ──────────────────
 
-    private static readonly List<string> KnownThemes   = ["dark", "emerald", "cream", "light"];
+    private static readonly List<string> KnownThemes = ["dark", "emerald", "cream", "light"];
     private static readonly List<string> KnownDensities = ["nano", "mini", "norm", "max"];
 
     public static AgentSettingsPayload GetAgent(AgentRuntime runtime) => new()
@@ -346,7 +396,7 @@ public static class SettingsOps
         ShellTimeoutSeconds = runtime.Settings.ShellTimeoutSeconds,
         SaveToolCalls = runtime.Settings.SaveToolCalls,
         SaveAttempts = runtime.Settings.SaveAttempts,
-        UnifiedResources = runtime.Settings.UnifiedResources,
+        AgentsMd = runtime.Settings.AgentsMd.ToString().ToLowerInvariant(),
         ResourceSchemes = ResourceRegistry.For(runtime.Settings).Cards().Select(c => new ResourceSchemeDto
         {
             Scheme = c.Scheme,
@@ -405,8 +455,10 @@ public static class SettingsOps
         runtime.Settings.SaveToolCalls = saveToolCalls;
         var saveAttempts = dto.SaveAttempts ?? false;
         runtime.Settings.SaveAttempts = saveAttempts;
-        var unifiedResources = dto.UnifiedResources ?? false;
-        runtime.Settings.UnifiedResources = unifiedResources;
+        var agentsMd = Enum.TryParse<AgentsMdMode>(dto.AgentsMd, true, out var parsedAgentsMd)
+            ? parsedAgentsMd
+            : AgentsMdMode.Inject;
+        runtime.Settings.AgentsMd = agentsMd;
 
         // Per-scheme switches. Only what the panel actually sent is touched — a scheme this project
         // never mentioned stays absent (enabled), rather than every known scheme getting written the
@@ -435,7 +487,7 @@ public static class SettingsOps
             project.Agent.ShellTimeoutSeconds = shellTimeout != 120 ? shellTimeout : null;
             project.Agent.SaveToolCalls = saveToolCalls ? true : null;
             project.Agent.SaveAttempts = saveAttempts ? true : null;
-            project.Agent.UnifiedResources = unifiedResources ? true : null;
+            project.Agent.AgentsMd = agentsMd != AgentsMdMode.Inject ? "ignore" : null;
             var anyPerm = read != null || write != null || shell != null || net != null;
             project.Permissions = anyPerm
                 ? new SplaPermissionsSection { Read = read, Write = write, Shell = shell, Internet = net }
@@ -459,10 +511,10 @@ public static class SettingsOps
     /// change must not silently reset it.</summary>
     public static void SaveAppearance(AgentRuntime runtime, string? theme, string? density, bool? autoOpenSubagents = null)
     {
-        theme   = Blank(theme)   ?? runtime.Settings.Theme;
+        theme = Blank(theme) ?? runtime.Settings.Theme;
         density = Blank(density) ?? runtime.Settings.Density;
         var autoOpen = autoOpenSubagents ?? runtime.Settings.AutoOpenSubagents;
-        runtime.Settings.Theme   = theme;
+        runtime.Settings.Theme = theme;
         runtime.Settings.Density = density;
         runtime.Settings.AutoOpenSubagents = autoOpen;
 
@@ -471,7 +523,7 @@ public static class SettingsOps
         {
             var project = ConfigLoader.LoadProjectRaw(path);
             (project.Ui ??= new()).Theme = theme;
-            project.Ui.Density           = density;
+            project.Ui.Density = density;
             // Only when true — an untouched project keeps a clean file, same convention agent: uses
             // for every other off-by-default flag (loop_guard, save_tool_calls, ...).
             project.Ui.AutoOpenSubagents = autoOpen ? true : null;
@@ -671,13 +723,22 @@ public static class SettingsOps
                 StateReason = string.IsNullOrWhiteSpace(d.EffectiveStateReason) ? null : d.EffectiveStateReason,
                 CustomPrompt = section?.CustomPrompt,
                 SettingsJson = ConfigLoader.BlobToJson(section?.Settings),
-                WebSettingsUrl = string.IsNullOrWhiteSpace(d.Meta.WebSettingsEntry)
-                    ? null
-                    : $"/plugin-assets/{Uri.EscapeDataString(d.Meta.Id)}/{d.Meta.WebSettingsEntry.Replace('\\', '/')}"
+                WebSettingsUrl = PluginAssetUrl(d.Meta.Id, d.Meta.WebSettingsEntry),
+                WebPanelUrl = PluginAssetUrl(d.Meta.Id, d.Meta.WebPanelEntry),
+                PanelTitle = Blank(d.Meta.PanelTitle),
+                PanelIcon = Blank(d.Meta.PanelIcon)
             });
         }
         return payload;
     }
+
+    /// <summary>The client-visible URL of one of a plugin's prebuilt web assets (settings module,
+    /// panel module), or null when the manifest declares none. Served by the generic
+    /// <c>/plugin-assets/</c> route — the host never opens or interprets the file.</summary>
+    private static string? PluginAssetUrl(string pluginId, string? entry)
+        => string.IsNullOrWhiteSpace(entry)
+            ? null
+            : $"/plugin-assets/{Uri.EscapeDataString(pluginId)}/{entry.Replace('\\', '/')}";
 
     /// <summary>Persists plugin enable flags, custom prompts and opaque settings blobs to the .spla
     /// project and mutates the live settings. Per-tool toggles (<c>tools:</c>) are preserved untouched.
@@ -1025,11 +1086,34 @@ public static class SettingsOps
         IEnumerable<SplaConnectionSection> sections, ConnectionScope scope)
         => sections.Where(c => c.Scope == scope).ToList();
 
+    /// <summary>Identity of a connection entry as the editor and the layer files see it: the pair, not
+    /// the id alone. Two layers may declare the same id, and each is its own entry.</summary>
+    private static readonly IEqualityComparer<(ConnectionScope Scope, string Id)> ScopedId =
+        new ScopedIdComparer();
+
+    private sealed class ScopedIdComparer : IEqualityComparer<(ConnectionScope Scope, string Id)>
+    {
+        public bool Equals((ConnectionScope Scope, string Id) a, (ConnectionScope Scope, string Id) b)
+            => a.Scope == b.Scope && string.Equals(a.Id, b.Id, StringComparison.OrdinalIgnoreCase);
+
+        public int GetHashCode((ConnectionScope Scope, string Id) x)
+            => HashCode.Combine(x.Scope, StringComparer.OrdinalIgnoreCase.GetHashCode(x.Id));
+    }
+
     private static SplaConnectionSection ToSection(
-        ConnectionEditDto d, IReadOnlyDictionary<string, SplaConnectionSection> stored)
+        ConnectionEditDto d,
+        IReadOnlyDictionary<(ConnectionScope, string), SplaConnectionSection> stored,
+        IReadOnlyDictionary<string, SplaConnectionSection> storedAnyLayer)
     {
         var id = string.IsNullOrWhiteSpace(d.Id) ? Slug(d.Name ?? "") : d.Id.Trim();
-        var previous = stored.GetValueOrDefault(id);
+
+        // The entry this row IS, not merely one that shares its name: credentials and unspoken fields
+        // fall back to the same layer's stored entry. Only a client that named no scope falls back to
+        // whatever layer happens to hold the id.
+        var previous = ConnectionScopes.TryParse(d.Scope, out var declaredScope)
+            ? stored.GetValueOrDefault((declaredScope, id))
+            : storedAnyLayer.GetValueOrDefault(id);
+
         return new SplaConnectionSection
         {
             Id = id,
@@ -1037,8 +1121,8 @@ public static class SettingsOps
             // was — never "project by default", which would let an editor that has not learned about
             // scopes drag a person's own keys into a repository just by pressing Save. Only an entry
             // nobody has stored anywhere is new, and a new one belongs to the project being edited.
-            Scope = ConnectionScopes.TryParse(d.Scope, out var scope)
-                ? scope
+            Scope = ConnectionScopes.TryParse(d.Scope, out _)
+                ? declaredScope
                 : previous?.Scope ?? ConnectionScope.Project,
             Name = string.IsNullOrWhiteSpace(d.Name) ? null : d.Name.Trim(),
             Provider = Blank(d.Provider),
@@ -1046,29 +1130,74 @@ public static class SettingsOps
             ApiKey = Credential(d.ApiKey, d.ApiKeyIsLiteral, previous?.ApiKey),
             AdminKey = Credential(d.AdminKey, d.AdminKeyIsLiteral, previous?.AdminKey),
             SwapModel = d.SwapModel,
-            Models = d.Models
+            // A client that says nothing about the schedule keeps the one already configured: the
+            // editor is not the only way these get set, and a panel unaware of them must not wipe them.
+            Retry = d.Retry is { } r
+                ? new SplaRetrySection
+                {
+                    Attempts = Math.Max(1, r.Attempts),
+                    MinDelay = Math.Max(0, r.MinDelay),
+                    Step = Math.Max(1, r.Step),
+                    MaxDelay = Math.Max(0, r.MaxDelay),
+                    Total = Math.Max(0, r.Total)
+                }
+                : previous?.Retry ?? new SplaRetrySection(),
+            MinRequestInterval = Math.Max(0, d.MinRequestInterval),
+            Models = DedupeModelIds(d.Models
                 .Select(m => ToModelSection(m, id))
                 .Where(m => !string.IsNullOrWhiteSpace(m.Id))
-                .GroupBy(m => m.Id, StringComparer.OrdinalIgnoreCase)   // last write wins per id
-                .Select(g => g.Last())
-                .ToList()
+                .ToList())
         };
     }
 
-    /// <summary>Maps one model row. A blank id is derived from the entry's own name or wire model,
-    /// prefixed with the owning connection — the readable default for the common case where two
-    /// connections carry the same model and a bare "opus" would collide across them.</summary>
+    /// <summary>Maps one model row. The id is derived from the wire model string first, then the
+    /// entry's name, prefixed with the owning connection — the readable default for the common case
+    /// where two connections carry the same model and a bare "opus" would collide across them.
+    /// <para>An id typed (or auto-filled by an older editor) as exactly the bare connection id names
+    /// nothing about which model it is — that degenerate default is treated the same as blank so it
+    /// gets regenerated from what the row actually points at, instead of being kept forever.</para>
+    /// </summary>
     private static SplaModelSection ToModelSection(ModelEditDto d, string connectionId)
     {
-        var raw = string.IsNullOrWhiteSpace(d.Id) ? Slug($"{connectionId}-{d.Name ?? d.Model ?? ""}") : d.Id.Trim();
+        var explicitId = d.Id?.Trim();
+        var useExplicit = !string.IsNullOrWhiteSpace(explicitId)
+            && !string.Equals(explicitId, connectionId, StringComparison.OrdinalIgnoreCase);
+        var raw = useExplicit ? explicitId! : Slug($"{connectionId}-{d.Model ?? d.Name ?? ""}");
         return new SplaModelSection
         {
             Id = raw,
             Name = string.IsNullOrWhiteSpace(d.Name) ? null : d.Name.Trim(),
+            Default = d.Default,
             Model = Blank(d.Model),
             ContextLength = d.ContextLength is > 0 ? d.ContextLength : null,
             Temperature = d.Temperature
         };
+    }
+
+    /// <summary>Makes derived ids unique instead of silently dropping the collision. Two freshly added
+    /// rows with nothing typed yet both derive the same blank-based id from <see cref="ToModelSection"/>;
+    /// renumbering the later ones keeps every row the user added instead of discarding all but one.</summary>
+    private static List<SplaModelSection> DedupeModelIds(List<SplaModelSection> models)
+    {
+        var seen = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
+        foreach (var m in models)
+        {
+            if (!seen.TryGetValue(m.Id, out var count))
+            {
+                seen[m.Id] = 1;
+                continue;
+            }
+            string candidate;
+            do
+            {
+                count++;
+                candidate = $"{m.Id}-{count}";
+            } while (seen.ContainsKey(candidate));
+            seen[m.Id] = count;
+            seen[candidate] = 1;
+            m.Id = candidate;
+        }
+        return models;
     }
 
     private static string? Blank(string? s) => string.IsNullOrWhiteSpace(s) ? null : s.Trim();

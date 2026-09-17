@@ -1,0 +1,13 @@
+{
+  "platform": "win-x64",
+  "adb": {
+    "version": "37.0.0",
+    "url": "https://dl.google.com/android/repository/platform-tools_r37.0.0-win.zip",
+    "sha256": "4fe305812db074cea32903a489d061eb4454cbc90a49e8fea677f4b7af764918"
+  },
+  "scrcpy": {
+    "version": "4.1",
+    "url": "https://github.com/Genymobile/scrcpy/releases/download/v4.1/scrcpy-win64-v4.1.zip",
+    "sha256": "5b12172b3264b2889f4583ee64752ce832e29bc8b1089dca81093459697165db"
+  }
+}

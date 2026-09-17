@@ -9,6 +9,15 @@ that keeps both sides honest.
 > constant string appears somewhere in this file. If you add a constant without documenting it here,
 > that test goes red. Keep the tables below complete.
 
+## Where the chat-scoped events come from
+
+Every `watchers`-fanned message in the "Server → Client" table below (`delta`, `tool.started`,
+`progress.node`, `turn.complete`, …) is `ChatFeedWireSubscriber`'s wire mapping of one `ChatEvent` off
+a session's `ChatFeed` — the closed event vocabulary, who publishes, subscription modes, and the
+snapshot-on-open mechanics all live in [`agents/chat-feed.md`](chat-feed.md), not here. This file
+still owns the wire shapes (`MessageTypes`/payloads) themselves; that file owns where the events
+before the wire come from.
+
 ## Source of truth
 
 - **Wire message names**: `src/service/SPLA.Service.Contracts/Protocol.cs` → `MessageTypes`
@@ -55,9 +64,9 @@ client/types **and** this table.
 | `chat.list` | `ChatList` | — | Request the chat list. Reply `chat.list.result`: human chats at the top level, each with its spawned descendants nested under `children` (the role→chat tree, `ADR_20260827-2` §2.5) — a spawned session (`origin: spawned`) never appears as a top-level entry, only inside some ancestor's `children`, however deep the spawn chain went. Its own transcript is still reached through `subagent.get`, not by opening it as an ordinary chat. |
 | `chat.open` | `ChatOpen` | `ChatOpenPayload` | Open a chat; reply `chat.opened`. |
 | `chat.read` | `ChatRead` | `ChatOpenPayload` | Read an ARCHIVED chat's history without opening it; reply `chat.read.result`. Deliberately not `chat.open` with a flag: `chat.opened` promises a session that is watchable and takes `chat.send`, and every handler built on that promise would otherwise have to remember the archived case one at a time. Registers no watch — there is no runtime behind it to emit an event. |
-| `chat.watch` | `ChatWatch` | `ChatOpenPayload` | Watch a chat (turn/tool events) without the `chat.opened` echo — for tear-off/aux windows. |
+| `chat.watch` | `ChatWatch` | `ChatOpenPayload` | Watch a chat (turn/tool events) without the `chat.opened` echo — for tear-off/aux windows. Marked through the same atomic gate as `chat.open` (wave 1) when a live runtime exists, so a window that starts watching mid-turn does not miss or double-see the event straddling that moment; the payload itself is unaffected. |
 | `chat.unwatch` | `ChatUnwatch` | `ChatOpenPayload` | Stop receiving a chat's turn events. Client-driven: opening another chat is NOT enough, because a chat mid-turn keeps streaming into its own background session. |
-| `chat.new` | `ChatNew` | `ChatNewPayload` | Create + open; also broadcasts `chat.list.result`. |
+| `chat.new` | `ChatNew` | `ChatNewPayload` | Create + open; also broadcasts `chat.list.result`. `Role` (optional) stamps `as:` on the new chat, matched case-insensitively against the manifest's declared `roles:` — the same list `agent_spawn` validates against. An unknown role is refused: the chat is not created, and the caller gets an `error` naming the roles that are available. |
 | `chat.rename` | `ChatRename` | `ChatRenamePayload` | Broadcasts `chat.list.result`. |
 | `chat.delete` | `ChatDelete` | `ChatDeletePayload` | Broadcasts `chat.list.result`. |
 | `chat.archive` | `ChatArchive` | `ChatArchivePayload` | Archive a chat; broadcasts `chat.list.result`. |
@@ -69,6 +78,7 @@ client/types **and** this table.
 | `chat.reasoning.result` | `ChatReasoningResult` | `ChatReasoningResult` | The advertised capability: the provider's own effort words, whether "off" is on offer, whether a token budget is. `known: false` = nobody described this model, and the lever stays unavailable rather than guessed. |
 | `chat.rewind` | `ChatRewind` | `ChatRewindPayload` | Truncate a chat at/before a message; echoes `chat.opened`. |
 | `chat.fork` | `ChatFork` | `ChatForkPayload` | Copy a chat at a message boundary; opens the fork and broadcasts `chat.list.result`. |
+| `chat.compact` | `ChatCompact` | `ChatCompactPayload` | Hide everything before the tail behind a fresh summary; echoes `chat.opened`, or `error` when a turn is running / there is nothing to compact / the summarizing call failed. See `ADR_20260911-3_agent_compaction.md`. |
 | `chat.skill.activate` | `ChatSkillActivate` | `ChatSkillActivatePayload` | Hand a skill to the chat because a person picked it; broadcasts `chat.skill.state` to watchers, or answers `error` with the reason. May name a skill the model was never told about — level hides from the model, not from its owner. |
 | `chat.skill.deactivate` | `ChatSkillDeactivate` | `ChatSkillDeactivatePayload` | End the chat's running skill; broadcasts `chat.skill.state` to watchers. The user's exit when the model never calls `skill_deactivate`. |
 | `chat.toolset.deactivate` | `ChatToolSetDeactivate` | `ChatToolSetDeactivatePayload` | Lower a tool set raised in a chat; broadcasts `chat.toolset.state` to watchers. The person's control — the model may release a set but is never told it must. |
@@ -78,6 +88,7 @@ client/types **and** this table.
 | `permission.decision` | `PermissionDecision` | `PermissionDecisionPayload` | Answer to `permission.request` (by `requestId`). |
 | `clarify.choice` | `ClarifyChoice` | `ClarifyChoicePayload` | Answer to `clarify.request` (by `requestId`). |
 | `debug.request` | `DebugRequest` | `DebugRequestPayload` | Ask for a debug snapshot (`DebugKinds`). |
+| `debug.blob.get` | `DebugBlobGet` | `DebugBlobGetPayload` | Ask for one blob of the envelope's `chatId` by handle, as a picture; reply `debug.blob.result`. Per row, on demand — the `blobs` snapshot carries each row's `contentType` but never bytes. Scoped to that chat's own `BlobStore`; only `image/*` byte blobs are served (up to 16 MB), anything else answers with `error` set. |
 | `connections.get` | `ConnectionsGet` | — | Reply `connections.result` (+ cached `connections.health`, then a re-ping broadcast). |
 | `connections.save` | `ConnectionsSave` | `ConnectionsPayload` | Broadcasts `connections.result`; re-pings. |
 | `connection.ping` | `ConnectionPing` | `ConnectionDiagRequest` | Reply `connection.ping.result`. |
@@ -141,7 +152,7 @@ client/types **and** this table.
 | `chat.list.result` | `ChatListResult` | `ChatListResultPayload` | broadcast (project) | Every sidebar in that project refreshes. |
 | `correspondence.graph.result` | `CorrespondenceGraphResult` | `CorrespondenceGraphResultPayload` | unicast | Answer to `correspondence.graph.get`: one `CorrespondenceEdgeDto` per correspondence, oriented from whoever opened it (`FromRole`/`FromChatId`) to the correspondent they addressed (`ToRole`/`ToChatId`), carrying BOTH directions' reply counts and estimated token volume — `RepliesFromInitiator`/`VolumeFromInitiator` vs `RepliesFromCorrespondent`/`VolumeFromCorrespondent` — so a client can render the imbalance the graph exists to show (a role that only sends, a role nobody answers) without a second request. Volume is an honest estimate of the replies' own text (`TokenEstimate.Of`), never a slice of a turn's real provider usage. |
 | `chat.archived.list.result` | `ChatArchivedListResult` | `ChatArchivedListResultPayload` | unicast | Answer to `chat.archived.list`. |
-| `chat.opened` | `ChatOpened` | `ChatOpenedPayload` | unicast | Full chat state on open. |
+| `chat.opened` | `ChatOpened` | `ChatOpenedPayload` | unicast | Full chat state on open, taken as one atomic snapshot of the chat's in-memory state (`ChatFeed.SnapshotUnderGate`, `ADR_20260910-2` §4.4/wave 1) at the moment this connection is marked a watcher — no event around the open can be missed or double-delivered. `OpenProgressNodes` (same shape as `progress.node`) and `RunningTasks` (same shape as `task.list.result`'s rows) are wave 1's additions, both additive: an older client that does not know these fields ignores them and still learns the same information from the live `progress.node`/`task.state.changed` stream and `task.list`, just later. Pending permission/clarify questions are NOT on this payload — they still replay as ordinary `permission.request`/`clarify.request` frames right after, but now drawn from the same atomic snapshot instead of a second, separately-timed query. |
 | `chat.read.result` | `ChatReadResult` | `ChatReadResultPayload` | unicast | Answer to `chat.read`: an archived chat's title and messages, plus `readOnly`. Carries none of the per-turn settings `chat.opened` does (mode, model, temperature, reasoning, skill, tool sets, turn state) — those describe a next turn, and an archived chat has none. |
 | `user.message` | `UserMessage` | `UserMessagePayload` | watchers | Accepted user message id/time; optional text renders server-initiated turns. `PeerFrom` set means this "user" turn is actually an incoming reply across a correspondence (`ADR_20260827-2` §2.5) — the client renders it as speech ("← from `PeerFrom`") instead of an ordinary human bubble, live, the moment it lands. |
 | `llm.turn.start` | `LlmTurnStart` | `DeltaPayload` | watchers | New assistant message index. |
@@ -152,7 +163,7 @@ client/types **and** this table.
 | `tool.started` | `ToolStarted` | `ToolStartedPayload` | watchers | A tool call began. |
 | `tool.progress` | `ToolProgress` | `ToolProgressPayload` | watchers | Throttled progress ticks for the top-level call only. One bar, no nesting. |
 | `progress.node` | `ProgressNode` | `ProgressNodePayload` | watchers | One node of the turn's progress tree, whole, on each change — the nested counterpart to `tool.progress`, carrying a script's parallel children and a spawned sub-agent's whole run. A flat append-only stream, not a snapshot: keep what you are told and attach each node to `parentId` (null = top level). Hold a node whose parent has not arrived rather than dropping it — parallel work gives no ordering guarantee. Structural frames (a node's first appearance and its finish) are never throttled; the ticks between them are, per node. Both this and `tool.progress` are sent; a client that wants one bar can ignore this. |
-| `tool.result` | `ToolResult` | `ToolResultPayload` | watchers | A tool call finished. |
+| `tool.result` | `ToolResult` | `ToolResultPayload` | watchers | A tool call finished. `images` (optional) carries the pictures the tool returned as `data:` URLs with the label the model is shown them under, so the client draws them under the call live. The same pictures also enter the conversation as a synthetic user message `[Image from <tool>]` / `[Reference image: <name>]`; a reopened chat carries them there (as `/chat-image` URLs) and the web client folds that message back under the preceding call. |
 | `subagent.result` | `SubagentResult` | `SubagentResultPayload` | unicast | Answer to `subagent.get`: the session's transcript (`messages` reuses `ChatMessageDto`) plus its label, mode, outcome and timing, read off the spawned session's own file. `outcome: "running"` while the run has not finished; `found: false` when the id is not a (still-retained) spawned session. |
 | `task.list.result` | `TaskListResult` | `TaskListResult` | unicast | Answer to `task.list`: this chat's background tasks as summary rows (id, tool, state, started-at). |
 | `task.state.result` | `TaskStateResult` | `TaskStateResult` | unicast | Answer to `task.state`: the task's summary plus its result text once finished (`Result` null while running). `Task: null` for an unknown id. |
@@ -167,6 +178,7 @@ client/types **and** this table.
 | `clarify.request` | `ClarifyRequest` | `ClarifyRequestPayload` | watchers | Outstanding clarification question. Replayed to a client opening the chat while a question is still pending. |
 | `ask.resolved` | `AskResolved` | `AskResolvedPayload` | watchers | An outstanding permission or clarify question was resolved (answered, cancelled, or timed out). Payload carries `Reason`. |
 | `debug.snapshot` | `DebugSnapshot` | `DebugSnapshotPayload` | unicast | Answer to `debug.request`. |
+| `debug.blob.result` | `DebugBlobResult` | `DebugBlobResultPayload` | unicast | Answer to `debug.blob.get`: `url` is a `data:` URL, or null with `error` saying why (unknown handle, not an image, too large). |
 | `focus.changed` | `FocusChanged` | `FocusPayload` | broadcast | Tear-off windows follow the active chat. |
 | `connections.result` | `ConnectionsResult` | `ConnectionsPayload` | unicast/broadcast | Answer to get; broadcast after save. |
 | `connections.health` | `ConnectionsHealth` | health snapshot | unicast/broadcast (project) | Cached on get; re-pinged on startup/get/save. |

@@ -1,12 +1,16 @@
 namespace SPLA.Domain.Llm;
 
-/// <summary>Why a generation was abandoned. One member today — repetition is the only guard that
-/// abandons a generation mid-stream — but the type exists so a network-retry reporter can add its own
-/// member later without every consumer's switch needing to be rewritten from scratch.</summary>
+/// <summary>Why a generation was abandoned. The two members differ in where the attempt died: one
+/// produced text and was cut off for what that text became, the other never began.</summary>
 public enum AttemptOutcome
 {
     /// <summary>The output fell into a repetition loop and the guard cancelled the read.</summary>
-    Repetition
+    Repetition,
+
+    /// <summary>The provider refused with a rate limit and the turn is waiting to ask again. Unlike
+    /// <see cref="Repetition"/> this attempt generated nothing, so it carries no partial text — only
+    /// how long it took to be refused, and what the wait will be.</summary>
+    RateLimited
 }
 
 /// <summary>
@@ -43,4 +47,19 @@ public sealed record GenerationAttempt
     public required int Chars { get; init; }
 
     public required TimeSpan Duration { get; init; }
+
+    /// <summary>How long the pipeline will pause before trying again, or null when nothing follows —
+    /// the attempts were spent, or this outcome does not wait at all.
+    /// <para>
+    /// Structured rather than left inside <see cref="Note"/> because a surface that speaks the user's
+    /// language has to compose its own sentence, and digging a number back out of an English one is
+    /// how a display starts depending on the wording of a log line.
+    /// </para></summary>
+    public TimeSpan? Wait { get; init; }
+
+    /// <summary>Whether <see cref="Wait"/> is the provider's own figure rather than our schedule.
+    /// Carried separately because the two mean different things to a reader: one is a fact to sit out,
+    /// the other a guess we are free to abandon — and the pipeline treats them differently too, since
+    /// only the guess answers to the configured ceilings.</summary>
+    public bool WaitStated { get; init; }
 }

@@ -5,9 +5,9 @@
  * into whatever was on screen. These tests feed interleaved frames for two chats and check that each
  * session only ever contains its own.
  */
-import { beforeEach, describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { client } from "../protocol/SplaClient";
-import { forgetAllSessions, peekSession, sessionFor } from "./chatSessions";
+import { forgetAllSessions, openChat, peekSession, sessionFor } from "./chatSessions";
 import type { Envelope } from "../protocol/types";
 
 function feed(type: string, chatId: string | undefined, payload: unknown, requestId?: string) {
@@ -58,6 +58,37 @@ describe("chat sessions", () => {
     expect(b.items.some(i => i.kind === "toolcall" && i.call.status === "done")).toBe(true);
     expect(b.items.some(i => i.kind === "notice" && i.text === "background note")).toBe(true);
     expect(b.ctxUsed).toBe(120);
+  });
+
+  it("hangs a tool's pictures under its call live, from tool.result", () => {
+    open("A");
+    feed("tool.started", "A", { toolCall: { id: "t1", name: "android_screenshot", arguments: "{}" } });
+    feed("tool.result", "A", { toolCallId: "t1", toolName: "android_screenshot", result: "ok",
+      images: [{ url: "data:image/png;base64,AA", label: "blob:x" }] });
+
+    const items = peekSession("A")!.items;
+    expect(items.filter(i => i.kind === "user")).toHaveLength(0);
+    const card = items.find(i => i.kind === "toolcall");
+    expect(card?.kind === "toolcall" && card.call.images).toEqual([{ url: "data:image/png;base64,AA", label: "blob:x" }]);
+  });
+
+  it("folds a reopened chat's synthetic image message back under the call it follows", () => {
+    open("A", [
+      { role: "user", content: "look" },
+      { role: "assistant", content: "", toolCalls: [
+        { id: "t1", name: "shot", arguments: "{}" }, { id: "t2", name: "shot", arguments: "{}" }] },
+      { role: "tool", toolCallId: "t1", content: "one" },
+      { role: "user", content: "[Image from shot]", images: [{ url: "/chat-image/A/1.png", label: "shot" }] },
+      { role: "tool", toolCallId: "t2", content: "two" },
+      { role: "user", content: "[Reference image: ref]", images: [{ url: "/chat-image/A/2.png", label: "ref" }] },
+      { role: "user", content: "[Image from shot]", images: [{ url: "/chat-image/A/3.png" }] }
+    ]);
+
+    const items = peekSession("A")!.items;
+    const calls = items.flatMap(i => i.kind === "toolcall" ? [i.call] : []);
+    expect(calls[0].images?.map(i => i.url)).toEqual(["/chat-image/A/1.png"]);
+    expect(calls[1].images?.map(i => i.url)).toEqual(["/chat-image/A/2.png", "/chat-image/A/3.png"]);
+    expect(items.filter(i => i.kind === "user").map(i => i.kind === "user" && i.text)).toEqual(["look"]);
   });
 
   it("tracks the in-flight turn per chat, and takes the server's word on open", () => {
@@ -338,5 +369,174 @@ describe("chat sessions", () => {
     const a = peekSession("A")!, b = peekSession("B")!;
     expect(b.items.map(i => i.kind)).toEqual(a.items.map(i => i.kind));
     expect(b.calls["t1"].result).toEqual(a.calls["t1"].result);
+  });
+
+  it("keeps streaming into a chat whose log was rebuilt mid-turn", () => {
+    // Three chats working at once, and the person clicking between them to watch: every click used to
+    // land as a fresh chat.opened, whose history snapshot cannot contain the sentence being streamed
+    // right now. The bubble went with the rebuild and every later chunk was dropped on the floor, so
+    // the answer and the reasoning appeared only when the turn ended.
+    open("B");
+    feed("llm.turn.start", "B", { msgIndex: 1 });
+    feed("reasoning", "B", { msgIndex: 1, text: "thinking" });
+
+    open("B");   // the log is rebuilt from persisted history — the live bubble is gone
+
+    feed("reasoning", "B", { msgIndex: 1, text: "-more" });
+    feed("delta", "B", { msgIndex: 1, text: "answer" });
+
+    const b = peekSession("B")!.items.find(i => i.kind === "assistant" && i.msgIndex === 1);
+    expect(b && b.kind === "assistant" ? b.text : undefined).toBe("answer");
+    expect(b && b.kind === "assistant" ? b.reasoning : undefined).toBe("-more");
+  });
+
+  it("shows the sentence in flight to a window that opens the chat mid-turn", () => {
+    // The history a chat is opened with is what has been persisted, and the answer being generated
+    // right now is not in it. Without the live partial the window shows an empty log and only learns
+    // there was an answer when the turn ends.
+    feed("chat.opened", "B", { chatId: "B", messages: [], mode: "auto", modelId: "m1", toolSets: [],
+      turnActive: true, live: { msgIndex: 7, content: "half a sen", reasoning: "because" } });
+
+    feed("delta", "B", { msgIndex: 7, text: "tence" });
+
+    const b = peekSession("B")!.items.find(i => i.kind === "assistant" && i.msgIndex === 7);
+    expect(b && b.kind === "assistant" ? b.text : undefined).toBe("half a sentence");
+    expect(b && b.kind === "assistant" ? b.reasoning : undefined).toBe("because");
+    // One bubble, not the live one beside a second one built from the same index.
+    expect(peekSession("B")!.items.filter(i => i.kind === "assistant").length).toBe(1);
+  });
+
+  it("switches to an already-loaded chat without asking the server to open it", () => {
+    // The cure for the rebuild above: a watched chat's log is already current, so the switch is local.
+    open("B");
+    const send = vi.spyOn(client, "send").mockReturnValue(true);
+
+    openChat("B");
+
+    const types = send.mock.calls.map(c => c[0]);
+    send.mockRestore();
+    expect(types).not.toContain("chat.open");
+  });
+
+  it("still asks the server for a chat this window has no log for", () => {
+    const send = vi.spyOn(client, "send").mockReturnValue(true);
+
+    openChat("NEVER-SEEN");
+
+    const types = send.mock.calls.map(c => c[0]);
+    send.mockRestore();
+    expect(types).toContain("chat.open");
+  });
+
+  // ── wave 1 (ADR_20260910-2 §4.4): chat.opened carries the snapshot ─────────
+
+  it("rebuilds the progress tree and tasks from chat.opened's snapshot fields", () => {
+    // A window attaching mid-turn must not have to wait for the next progress.node tick — or the next
+    // task.list round-trip — to see what is already running.
+    feed("chat.opened", "A", {
+      chatId: "A", messages: [], toolSets: [], turnActive: true,
+      openProgressNodes: [
+        { nodeId: "n1", parentId: null, label: "agent_spawn", state: "running" },
+        { nodeId: "n2", parentId: "n1", label: "count the files", state: "running", message: "turn 2" }
+      ],
+      runningTasks: [{ taskId: "bg_1", toolName: "system_run_shell", state: "Running", startedAt: "2026-09-10T00:00:00Z" }]
+    });
+
+    const s = peekSession("A")!;
+    expect(s.nodes["n1"].childIds).toEqual(["n2"]);
+    expect(s.nodes["n2"].message).toBe("turn 2");
+    expect(s.tasks.map(t => t.taskId)).toEqual(["bg_1"]);
+
+    // The live stream keeps working on top of the restored tree, exactly as it would for a node it
+    // learned about itself.
+    feed("progress.node", "A", { nodeId: "n2", parentId: "n1", label: "count the files", state: "completed" });
+    expect(s.nodes["n2"].state).toBe("completed");
+  });
+
+  it("updates a restored task from task.state.changed, and adds one that was not running yet", () => {
+    feed("chat.opened", "A", {
+      chatId: "A", messages: [], toolSets: [],
+      runningTasks: [{ taskId: "bg_1", toolName: "fs_read", state: "Running", startedAt: "t" }]
+    });
+
+    feed("task.state.changed", "A", { task: { taskId: "bg_1", toolName: "fs_read", state: "Completed", startedAt: "t" } });
+    feed("task.state.changed", "A", { task: { taskId: "bg_2", toolName: "ssh_run", state: "Running", startedAt: "t" } });
+
+    const tasks = peekSession("A")!.tasks;
+    expect(tasks.find(t => t.taskId === "bg_1")!.state).toBe("Completed");
+    expect(tasks.find(t => t.taskId === "bg_2")!.state).toBe("Running");
+  });
+
+  it("clears a stale progress tree when the chat is reopened with none running", () => {
+    open("A");
+    feed("llm.turn.start", "A", { msgIndex: 1 });
+    feed("progress.node", "A", { nodeId: "n1", parentId: null, label: "fs_read", state: "running" });
+    expect(peekSession("A")!.nodes["n1"]).toBeDefined();
+
+    // Reopened later with nothing left running — the old tree must not linger and look live.
+    feed("chat.opened", "A", { chatId: "A", messages: [], toolSets: [] });
+    expect(peekSession("A")!.nodes).toEqual({});
+  });
+
+  // ── wave 2 (ADR_20260910-2 §4.6/§4.8): a spawned session's window ──────────
+
+  it("shows a spawned session's transcript live and refreshes it once the run finishes", () => {
+    // Before wave 2, chat.opened for a spawned run mid-turn always carried an empty `messages` list
+    // (SpawnedSession wrote to disk only in Finish, and chat.open loaded that empty file) — and once
+    // logLoaded flipped true, later clicks on the same chat switched locally to that frozen empty log
+    // forever. Wave 2's server fix sends a real snapshot on open and keeps the log live via the same
+    // wire events any chat gets; this test is the client-side half of that fix: it must not special-case
+    // a spawned chat's events, and a later chat.opened (sent fresh once the run ends) must still replace
+    // whatever is on screen rather than being ignored because the log "was already loaded".
+    feed("chat.opened", "SPAWN-1", {
+      chatId: "SPAWN-1", messages: [{ msgId: "u1", role: "user", content: "do the thing" }],
+      toolSets: [], turnActive: true
+    });
+
+    let s = peekSession("SPAWN-1")!;
+    expect(s.logLoaded).toBe(true);
+    expect(s.readOnly).toBe(false);
+    expect(s.turnActive).toBe(true);
+    expect(s.items.map(i => i.kind)).toEqual(["user"]);
+
+    // The run streams normally — same events, same chat id, no special path.
+    feed("llm.turn.start", "SPAWN-1", { msgIndex: 1 });
+    feed("delta", "SPAWN-1", { msgIndex: 1, text: "working on it" });
+    feed("assistant.message", "SPAWN-1", { msgIndex: 1, message: { content: "done", msgId: "a1" } });
+    feed("turn.complete", "SPAWN-1", {});
+
+    s = peekSession("SPAWN-1")!;
+    expect(s.turnActive).toBe(false);
+    expect(s.items.some(i => i.kind === "assistant" && i.text === "done")).toBe(true);
+
+    // The server pushes a fresh chat.opened once the finished file is the source of truth again — must
+    // overwrite the log, not be shadowed by openChat's "already loaded" fast path (that path is never
+    // consulted here; chat.opened always applies directly to the session).
+    feed("chat.opened", "SPAWN-1", {
+      chatId: "SPAWN-1",
+      messages: [
+        { msgId: "u1", role: "user", content: "do the thing" },
+        { msgId: "a1", role: "assistant", content: "done" }
+      ],
+      toolSets: [], turnActive: false
+    });
+
+    s = peekSession("SPAWN-1")!;
+    expect(s.items.map(i => i.kind)).toEqual(["user", "assistant"]);
+    expect(s.turnActive).toBe(false);
+  });
+
+  it("resets logLoaded on welcome, so a reconnect re-fetches instead of switching locally", () => {
+    open("B");
+    expect(peekSession("B")!.logLoaded).toBe(true);
+
+    feed("welcome", undefined, {});
+    expect(peekSession("B")!.logLoaded).toBe(false);
+
+    const send = vi.spyOn(client, "send").mockReturnValue(true);
+    openChat("B");
+    const types = send.mock.calls.map(c => c[0]);
+    send.mockRestore();
+    expect(types).toContain("chat.open");
   });
 });

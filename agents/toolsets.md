@@ -79,22 +79,32 @@ is for.
 
 `agent_correspond` itself IS an ordinary registered tool and follows every rule above like any other.
 
-## A chat under a role narrows further, on top of the levels above
+## Whose levels: the running session's
 
-`McpHost` gates by level for the whole project — one `ToolSetRegistry`, shared by every chat. A
-standing chat opened `as: <role>` (PLAN_20260902 wave 5б) layers one more filter *underneath* that
-sharing, in `ChatToolHost.GetToolDefinitions`: it reads the same shared, read-only `ToolSetRegistry`
-but checks each tool's set against *this chat's own* `ResolvedSettings.ToolSets` — the role's
-`toolsets:` selection (`SettingsResolver.ResolveForRole`), narrower than the project's own where the
-role names a set and identical to it where the role does not. Exactly the shape
-`SpawnedAgentRunner` already uses for a spawned run under a role (wave 3); both call the same
-`ToolSetRegistry.IsDisclosedForRole` helper rather than duplicating the fallback logic.
+There is one `ToolSetRegistry` for the process, but no single set of levels. `LevelOf` reads the
+`toolsets:` section of the settings **the calling flow's session acts under**
+(`IAgentSession.Settings`): a chat opened `as: <role>`, or a run spawned under one, carries that
+role's resolved settings (`SettingsResolver.ResolveForRole`); a plain chat carries none and gets the
+project's, live. Anything asking outside a session — the settings panel, a foreign MCP head, skill
+requirement checks — gets the project's.
 
-This can only ever remove a tool `McpHost`'s own project-wide gating already let through — it has no
-way to grant a set the project itself disabled — and it never touches the shared registry: the
-narrowing is a `Where` built fresh per chat and dies with it. A chat with no `as:` passes `null` for
-the role's selection and `ChatToolHost` skips the filter outright, so an ordinary chat's surface is
-untouched by this mechanism.
+Both halves of gating ask the same question the same way: `McpHost` lists through
+`ToolSetRegistry.IsDisclosed`, and refuses at execution through `LevelOf`. So a role's level holds
+for what the model is shown **and** for what it can call, and it works in both directions — a role
+can switch off a set the project leaves on, and switch on a set the project keeps off (the
+coordinator/coder split: `roslyn: disabled` at the project, `roslyn: enabled` on the coder role).
+
+What a role cannot do is load a plugin the project disabled under `plugins:` — that is installation,
+not exposure: a disabled plugin's tools are never registered, and `PluginAvailabilityStage` refuses
+them regardless of level.
+
+Built-in `core.*` capabilities are gated the same way but by `capabilities`, not by levels: every
+built-in tool is registered, and `McpHost` shows and runs one only when its capability is on for the
+session's settings. A role that lists `core.files` has file tools even when `agent:` does not.
+
+This replaced a role-only filter in `ChatToolHost` and a copy of it in `SpawnedAgentRunner`, which
+narrowed the list alone: a tool they hid still ran when called, and neither could give a role
+anything the project lacked.
 
 ## Refusals
 

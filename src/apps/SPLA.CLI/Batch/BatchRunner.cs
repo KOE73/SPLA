@@ -1,5 +1,4 @@
 using System.Text;
-using SPLA.Agent;
 using SPLA.Domain.Llm;
 using SPLA.Domain.Models;
 using SPLA.Domain.Settings;
@@ -47,10 +46,23 @@ public sealed class BatchRunner(AgentRuntime runtime, ResolvedSettings settings)
     /// REPL's <c>/skills load</c> message-injection shortcut.</summary>
     public string? SkillId { get; init; }
 
+    /// <summary>Chat name template for each cell, with placeholders expanded per cell. When null or empty,
+    /// defaults to "{prompt} · {model}".</summary>
+    public string? Title { get; init; }
+
+    /// <summary>Role every cell's chat runs as, or null for a plain chat with no role. Already resolved
+    /// and validated by the caller (<see cref="ChatRunCommand"/>) — stamped as-is via
+    /// <see cref="ChatRegistry.CreateNew"/>, which is where the mode/prompt/tool narrowing takes effect.</summary>
+    public string? Role { get; init; }
+
     /// <summary>Reported in the statistics, not acted upon — the flags themselves are already applied
     /// by the caller through the prompt composer. A report that omits them cannot explain why two runs
     /// of the same prompt against the same model differ.</summary>
     public bool MdClean { get; init; }
+
+    /// <summary>Images attached to every cell's user turn, in the order they were given on the command
+    /// line — order is meaning when they are frames or pages, so it is preserved rather than sorted.</summary>
+    public IReadOnlyList<ImageInput> Images { get; init; } = [];
 
     /// <summary>Human-readable note of the extra system prompt this run carried ("--sys-prompt-file
     /// x.md"), or null when it carried none.</summary>
@@ -67,7 +79,8 @@ public sealed class BatchRunner(AgentRuntime runtime, ResolvedSettings settings)
         // failure belongs to — the case where a report is worth most.
         var stats = RunStats.For(cell, settings, this);
 
-        var chat = new ChatRegistry(runtime).CreateNew($"{cell.Prompt.Name} · {cell.Model.DisplayName}");
+        var title = Title is { Length: > 0 } titleTemplate ? OutputNaming.ExpandTitle(titleTemplate, DateTimeOffset.Now, cell.Prompt, cell.Model.DisplayName) : $"{cell.Prompt.Name} · {cell.Model.DisplayName}";
+        var chat = new ChatRegistry(runtime).CreateNew(title, role: Role, origin: "cli");
         chat.ApplySettings(mode: null, modelId: cell.Model.Id);
 
         if (SkillId is { Length: > 0 } skillId && chat.ActivateSkill(skillId) is { } skillError)
@@ -76,21 +89,25 @@ public sealed class BatchRunner(AgentRuntime runtime, ResolvedSettings settings)
         var answer = new StringBuilder();
         var stream = new StringBuilder();
 
-        var callbacks = new AgentCallbacks
+        // ADR_20260910-2 wave 3: the answer/stream text and token stats are collected from the chat's
+        // own Feed, not caller-supplied AgentCallbacks — subscribed before the turn starts, disposed
+        // only once it (and this await) finishes, so the turn's last events are never missed.
+        using var subscription = chat.Feed.Subscribe(e =>
         {
-            OnDelta = chunk =>
+            switch (e)
             {
-                stream.Append(chunk);
-                if (Stream) Console.Write(chunk);
-                return Task.CompletedTask;
-            },
-            OnAssistantMessage = m =>
-            {
-                if (!string.IsNullOrWhiteSpace(m.Content)) answer.Append(m.Content);
-                return Task.CompletedTask;
-            },
-            OnLlmTurn = stats.Record
-        };
+                case ChatDelta d:
+                    stream.Append(d.Text);
+                    if (Stream) Console.Write(d.Text);
+                    break;
+                case ChatAssistantMessage a:
+                    if (!string.IsNullOrWhiteSpace(a.Message.Content)) answer.Append(a.Message.Content);
+                    break;
+                case ChatLlmTurn lt:
+                    stats.Record(lt.Turn);
+                    break;
+            }
+        });
 
         Func<ToolFunctionDefinition, string, Task<PermissionDecision>> denyAll =
             (_, _) => Task.FromResult(PermissionDecision.Deny);
@@ -101,7 +118,8 @@ public sealed class BatchRunner(AgentRuntime runtime, ResolvedSettings settings)
 
         try
         {
-            await chat.SendAsync(cell.Prompt.Text, callbacks, denyAll, noClarify, runCts.Token);
+            await chat.SendAsync(cell.Prompt.Text, denyAll, noClarify, runCts.Token,
+                images: Images.Count > 0 ? Images.Select(i => i.Attachment).ToList() : null);
         }
         catch (OperationCanceledException) when (!ct.IsCancellationRequested)
         {

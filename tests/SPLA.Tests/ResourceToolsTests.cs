@@ -169,7 +169,7 @@ public sealed class ResourceToolsTests : IDisposable
     private static string TempManifestRoot() =>
         Directory.CreateDirectory(Path.Combine(Path.GetTempPath(), "spla-restools-rt-" + Guid.NewGuid().ToString("N"))).FullName;
 
-    private static SPLA.Runtime.AgentRuntime BuildRuntime(string root, bool unifiedResources)
+    private static SPLA.Runtime.AgentRuntime BuildRuntime(string root, bool resources)
     {
         var manifest = Path.Combine(root, "test.spla");
         File.WriteAllText(manifest, $"""
@@ -178,7 +178,7 @@ public sealed class ResourceToolsTests : IDisposable
             workspace: .
             agent:
               mode: Edit
-              unified_resources: {(unifiedResources ? "true" : "false")}
+              capabilities: [core.files{(resources ? ", core.resources" : "")}]
             """);
 
         return new SPLA.Runtime.AgentRuntime(
@@ -193,27 +193,27 @@ public sealed class ResourceToolsTests : IDisposable
             .OrderBy(n => n, StringComparer.Ordinal)
             .ToArray();
 
-    /// <summary>Off means NOT REGISTERED — not registered-and-refusing. Anything else would leave the
-    /// switched-off arm of the experiment differing from the old agent by a tool list.</summary>
+    /// <summary><c>capabilities: []</c> promises a chat with no built-in tools; a capability list that
+    /// leaves out core.resources must not leave its verbs behind.</summary>
     [Fact]
-    public void The_verbs_are_absent_from_the_tool_list_while_the_switch_is_off()
+    public void The_verbs_are_absent_from_the_tool_list_while_core_resources_is_off()
     {
         var root = TempManifestRoot();
         try
         {
-            using var runtime = BuildRuntime(root, unifiedResources: false);
+            using var runtime = BuildRuntime(root, resources: false);
             Assert.Empty(ResourceToolNames(runtime));
         }
         finally { Directory.Delete(root, recursive: true); }
     }
 
     [Fact]
-    public void The_verbs_appear_once_the_switch_is_on()
+    public void The_verbs_appear_once_core_resources_is_on()
     {
         var root = TempManifestRoot();
         try
         {
-            using var runtime = BuildRuntime(root, unifiedResources: true);
+            using var runtime = BuildRuntime(root, resources: true);
 
             Assert.Equal(
                 new[] { "resource_delete", "resource_exists", "resource_list", "resource_mkdir", "resource_read", "resource_write" },
@@ -224,43 +224,40 @@ public sealed class ResourceToolsTests : IDisposable
 }
 
 /// <summary>
-/// The inertness guarantee, as a measurement rather than a claim.
-///
-/// <para>The whole basis for shipping the address space switched off is that the two arms of the
-/// experiment differ only by the thing being measured. A prompt that leaked so much as a newline
-/// while the switch was off would make the comparison worthless — so the assertion is equality of the
-/// composed prompt, byte for byte, between a project that registered every scheme and every
-/// conversion and one that registered nothing at all.</para>
+/// The inertness guarantee, as a measurement rather than a claim: with <c>core.resources</c> off, a
+/// project that registered every scheme and every conversion composes, byte for byte, the prompt of
+/// one that registered nothing at all. A prompt that leaked so much as a newline would describe tools
+/// the session cannot call.
 /// </summary>
 public sealed class ResourcePromptInertnessTests
 {
     [Fact]
-    public void With_the_switch_off_the_prompt_is_byte_for_byte_the_prompt_of_a_project_that_has_no_resources()
+    public void With_core_resources_off_the_prompt_is_byte_for_byte_the_prompt_of_a_project_that_has_no_resources()
     {
         var root = Directory.CreateTempSubdirectory("spla-res-inert-").FullName;
         try
         {
-            var bare = Compose(root, Populated(root, unifiedResources: false, populate: false));
-            var loaded = Compose(root, Populated(root, unifiedResources: false, populate: true));
+            var bare = Compose(root, Populated(root, resources: false, populate: false), resources: false);
+            var loaded = Compose(root, Populated(root, resources: false, populate: true), resources: false);
 
             Assert.Equal(bare, loaded);
 
-            // And the switch is what makes the difference — otherwise the equality above would be
+            // And the capability is what makes the difference — otherwise the equality above would be
             // proving that the contributor is dead rather than that it is quiet.
-            var on = Compose(root, Populated(root, unifiedResources: true, populate: true));
+            var on = Compose(root, Populated(root, resources: true, populate: true), resources: true);
             Assert.NotEqual(bare, on);
             Assert.Contains("application/json -> application/yaml", on);
         }
         finally { Directory.Delete(root, recursive: true); }
     }
 
-    private static ResolvedSettings Populated(string root, bool unifiedResources, bool populate)
+    private static ResolvedSettings Populated(string root, bool resources, bool populate)
     {
         var settings = new ResolvedSettings
         {
             Mode = AgentMode.Edit,
             WorkspacePath = root,
-            UnifiedResources = unifiedResources,
+            Capabilities = resources ? ["core.files", "core.resources"] : ["core.files"],
             Instructions = [],
             Skills = new Dictionary<string, SplaSkillSection>()
         };
@@ -274,11 +271,13 @@ public sealed class ResourcePromptInertnessTests
         return settings;
     }
 
-    private static string Compose(string root, ResolvedSettings settings)
+    private static string Compose(string root, ResolvedSettings settings, bool resources)
         => new AgentContextComposer(AgentContributors.Default(
                 new SPLA.Library.SkillLibrary([]),
                 new SPLA.MCP.Core.Plugins.PluginManager(settings),
                 new SkillSession(),
-                [new AgentFeature("core.files")]))
+                resources
+                    ? [new AgentFeature("core.files"), new AgentFeature("core.resources")]
+                    : [new AgentFeature("core.files")]))
             .Compose(settings, root).SystemPrompt;
 }

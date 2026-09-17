@@ -23,8 +23,11 @@ public static class ConfigLoader
         .WithNodeTypeResolver(new PlainNumberResolver())
         .Build();
 
-    /// <summary>Gives an untyped (<c>object</c>) plain scalar that looks like a number its numeric
-    /// type, so `default_limit: 10` survives the round trip as 10 and not "10". Quoted scalars keep
+    /// <summary>Gives an untyped (<c>object</c>) plain scalar that looks like a number or a bool its
+    /// real type, so `default_limit: 10` survives the round trip as 10 and not "10", and
+    /// `trusted_connection: true` survives as a JSON boolean and not the string "true" (which
+    /// System.Text.Json refuses when the plugin later deserializes it into a <c>bool</c> property —
+    /// this is what broke <c>sql</c>'s Windows-auth checkbox after save+reload). Quoted scalars keep
     /// the string the author asked for.</summary>
     private sealed class PlainNumberResolver : INodeTypeResolver
     {
@@ -32,6 +35,11 @@ public static class ConfigLoader
         {
             if (currentType != typeof(object) || nodeEvent is not Scalar { Style: ScalarStyle.Plain } s)
                 return false;
+            if (bool.TryParse(s.Value, out _))
+            {
+                currentType = typeof(bool);
+                return true;
+            }
             if (long.TryParse(s.Value, NumberStyles.Integer, CultureInfo.InvariantCulture, out _))
             {
                 currentType = typeof(long);

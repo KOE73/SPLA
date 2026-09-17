@@ -14,6 +14,15 @@
       <span class="tc-chevron">{{ expanded ? "▾" : "▸" }}</span>
     </div>
 
+    <!-- What the call showed the model, visible without opening the card. Thumbnails only: a session
+         of dozens of screenshots must stay a readable log; the viewer is one click away. -->
+    <div v-if="call.images?.length" class="tc-images">
+      <figure v-for="(img, i) in call.images" :key="i" :title="img.label" @click="openChatImage(chat.session.value, img)">
+        <img :src="img.url" :alt="img.label || ''" loading="lazy">
+        <figcaption v-if="img.label">{{ img.label }}</figcaption>
+      </figure>
+    </div>
+
     <!-- live progress: shown while running, collapsed away when done -->
     <div v-if="call.status === 'running' && call.progress" class="tc-progress">
       <div v-if="call.progress.fraction != null" class="tc-bar">
@@ -73,7 +82,7 @@
 </template>
 
 <script lang="ts">
-import type { ToolProgressDetail } from "../protocol/types";
+import type { ImageRef, ToolProgressDetail } from "../protocol/types";
 
 export interface ToolCallState {
   callId: string;
@@ -97,6 +106,9 @@ export interface ToolCallState {
    *  conversation with its own outcome, and presenting one of them as the call's would be the same
    *  confusion the per-run branches in the progress tree exist to prevent. */
   runIds?: string[];
+  /** Pictures the call returned — live from `tool.result`, or folded back from the synthetic image
+   *  message on reopen (chatSessions.ts, foldToolImages). */
+  images?: ImageRef[];
 }
 </script>
 
@@ -106,6 +118,7 @@ import { useChat } from "../state/chatContext";
 import { client } from "../protocol/SplaClient";
 import type { SubagentResultPayload } from "../protocol/types";
 import ProgressBranch from "./ProgressBranch.vue";
+import { openChatImage } from "../state/lightbox";
 
 const props = defineProps<{ call: ToolCallState }>();
 const expanded = ref(false);
@@ -184,7 +197,7 @@ function durationText(run: SubagentResultPayload) {
 </script>
 
 <style scoped>
-.tool-card { padding: 0; min-width: 28ch; max-width: 80ch; }
+.tool-card { padding: 0; min-width: 28ch; max-width: 100%; }
 .tc-head { display: flex; align-items: center; gap: 7px; padding: 5px 10px; cursor: pointer; user-select: none; }
 .tc-head:hover { color: var(--text); }
 .tc-status { width: 1em; text-align: center; color: var(--accent); }
@@ -202,6 +215,14 @@ function durationText(run: SubagentResultPayload) {
 .tc-progress-msg { font-size: var(--fs-xs); color: var(--muted); white-space: pre-wrap; }
 .tc-details { display: flex; flex-wrap: wrap; gap: 4px 12px; font-size: var(--fs-xs); color: var(--muted); margin-top: 2px; }
 .tc-detail b { font-weight: 600; color: var(--text); }
+
+.tc-images { display: flex; flex-wrap: wrap; gap: 6px; padding: 0 10px 6px; }
+.tc-images figure { margin: 0; max-width: 140px; cursor: zoom-in; }
+.tc-images img { display: block; max-width: 140px; max-height: 110px; border-radius: var(--radius-sm);
+  border: 1px solid var(--border); object-fit: contain; }
+.tc-images img:hover { border-color: var(--accent); }
+.tc-images figcaption { font-size: var(--fs-xs); color: var(--muted); margin-top: 2px;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
 .tc-branch { padding: 0 10px 6px 14px; }
 

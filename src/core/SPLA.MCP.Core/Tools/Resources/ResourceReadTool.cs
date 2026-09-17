@@ -1,4 +1,4 @@
-using SPLA.Domain.Agent;
+﻿using SPLA.Domain.Agent;
 using SPLA.Domain.Formats;
 using SPLA.Domain.Host;
 using SPLA.Domain.Models;
@@ -61,13 +61,15 @@ public sealed class ResourceReadTool : ResourceToolBase
                         type = new[] { "string", "null" },
                         description = "Optional target MIME type to project the content onto before it is " +
                                       "returned (e.g. 'text/plain', 'application/yaml', 'image/png'). Omit to " +
-                                      "take the content as it is. An image result is shown to you as a picture; " +
+                                      "take the content as it is. An image result is shown to you as a picture " +
+                                      "and 'keep' says for how long; " +
                                       "text is inlined; anything else is stored as a blob handle."
                     },
                     output = SchemaParts.Output,
-                    output_name = SchemaParts.OutputName
+                    output_name = SchemaParts.OutputName,
+                    keep = SchemaParts.ImageKeepParameter
                 },
-                required = new[] { "uri", "as", "output", "output_name" }
+                required = new[] { "uri", "as", "output", "output_name", "keep" }
             }
         }
     };
@@ -82,6 +84,7 @@ public sealed class ResourceReadTool : ResourceToolBase
             var requested = ToolJson.GetStringTrimmed(doc.RootElement, "as");
             var forced = DataChannel.ParseTarget(ToolJson.GetStringTrimmed(doc.RootElement, "output"));
             var blobName = ToolJson.GetStringTrimmed(doc.RootElement, "output_name");
+            var keep = SchemaParts.ParseImageKeep(ToolJson.GetStringTrimmed(doc.RootElement, "keep"));
 
             ResourceContent content;
             try
@@ -127,8 +130,12 @@ public sealed class ResourceReadTool : ResourceToolBase
             // a vision payload on whatever happened to be there".
             if (requested is not null && forced == OutputTarget.Context && ContentTypes.IsViewableImage(produced))
                 return ToolResult.From(
-                    new ToolText($"ok: {uri} as {produced} ({bytes.Length} bytes) — shown below."),
-                    new ToolImage(Convert.ToBase64String(bytes), produced));
+                    new ToolText(keep == ImageKeep.Pinned
+                        ? $"ok: {uri} as {produced} ({bytes.Length} bytes) — pinned, kept in front of you for the rest of the chat."
+                        : $"ok: {uri} as {produced} ({bytes.Length} bytes) — shown below."),
+                    // The address is the name: re-reading the same reference replaces the picture
+                    // already in the context instead of adding a second copy of it.
+                    new ToolImage(Convert.ToBase64String(bytes), produced, keep, uri.ToString()));
 
             if (forced == OutputTarget.Context && IsTextual(produced, bytes))
                 return ToolResult.Text(Encoding.UTF8.GetString(Strip(bytes)));

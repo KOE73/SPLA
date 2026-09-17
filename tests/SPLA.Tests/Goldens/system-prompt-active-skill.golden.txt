@@ -5,6 +5,11 @@ second line.
 
 Your working directory is {{WORKSPACE}}.
 
+Project instructions may appear below as <agents> blocks.
+Each block is authoritative for its declared scope (a folder and everything under it).
+A narrower scope overrides a broader one on conflict.
+Sibling scopes are independent: a block for one folder says nothing about another.
+
 === ACTIVE SKILL: on.demand ===
 On-demand body.
 === END ACTIVE SKILL: on.demand ===

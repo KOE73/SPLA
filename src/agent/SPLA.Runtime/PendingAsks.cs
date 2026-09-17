@@ -153,9 +153,16 @@ public sealed class PendingAskStore
 
         using var registration = ct.Register(() => Abandon(entry.Ask.RequestId, AskResolution.Cancelled));
 
-        if (Timeout > TimeSpan.Zero)
+        // A question is asked on the flow of the call that raised it, so the session running that call
+        // is the one whose ask_timeout applies — a role's, when it declares one. The store's own value
+        // is the project's, for a question raised outside any session.
+        var timeout = SPLA.Domain.Agent.AgentSessionScope.Current?.Settings is { } session
+            ? (session.AskTimeoutMinutes > 0 ? TimeSpan.FromMinutes(session.AskTimeoutMinutes) : TimeSpan.Zero)
+            : Timeout;
+
+        if (timeout > TimeSpan.Zero)
         {
-            using var timer = new CancellationTokenSource(Timeout);
+            using var timer = new CancellationTokenSource(timeout);
             using var onTimeout = timer.Token.Register(() => Abandon(entry.Ask.RequestId, AskResolution.TimedOut));
             return await answer;
         }

@@ -60,8 +60,24 @@ public sealed record ToolText(string Text) : ToolContent;
 /// model — inline in the tool message, or as a separate turn because that provider's vision API
 /// will not take it inline — is the conversation layer's problem, not the browser plugin's.
 /// </para>
+/// <para>
+/// How LONG it stays there is the one thing the tool does get a say in, through
+/// <paramref name="Keep"/>: only the call knows whether this picture is a frame in a loop or the
+/// reference the whole task is measured against, and no chat-wide setting can tell them apart.
+/// </para>
 /// </summary>
-public sealed record ToolImage(string Data, string MimeType) : ToolContent;
+/// <param name="Keep">What this picture is worth keeping for. <see cref="ImageKeep.Unspecified"/> —
+/// the default — leaves the decision to <c>agent.tool_images</c>, exactly as before this parameter
+/// existed.</param>
+/// <param name="Label">What to call it, when the tool knows a better name than "the tool that made
+/// it": a blob handle, a resource address, a frame id. For a pinned picture it is load-bearing rather
+/// than cosmetic — it is the identity under which the picture is filed, so re-reading the same
+/// reference replaces it instead of accumulating copies. Null to be named after the producing tool.</param>
+public sealed record ToolImage(
+    string Data,
+    string MimeType,
+    ImageKeep Keep = ImageKeep.Unspecified,
+    string? Label = null) : ToolContent;
 
 /// <summary>
 /// A pointer to bulk data the tool deliberately kept out of the conversation — a blob handle, a

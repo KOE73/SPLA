@@ -80,7 +80,7 @@ public sealed class ChatToolHostTests
         Assert.Null(call.context);
     }
 
-    // ── Wave 5б: a chat's own role narrowing, layered under the reply-tool mixing above ──────────
+    // ── A role's tool-set levels: one rule, read from the running session's own settings ─────────
 
     private static ToolSetRegistry BuildRegistry(ResolvedSettings settings, params (string setId, string toolName)[] members)
     {
@@ -96,94 +96,70 @@ public sealed class ChatToolHostTests
         return registry;
     }
 
-    /// <summary>The invariant the whole wave depends on: passing a <see cref="ToolSetRegistry"/> but
-    /// no role selection (<c>roleToolSets: null</c>) must leave the surface exactly as it always was —
-    /// a chat with no <c>as:</c> narrows nothing, not "narrows against an empty set".</summary>
+    private static IDisposable SessionUnder(ResolvedSettings? settings) =>
+        SPLA.Domain.Agent.AgentSessionScope.Begin(new SPLA.Domain.Agent.AgentSession(
+            new SPLA.Domain.Agent.KeyValueStore("session"), new SPLA.Domain.Agent.MarkManager(),
+            new SPLA.Domain.Agent.SkillSession(), settings: settings));
+
+    /// <summary>A session with no settings of its own (a plain chat) answers from the project's.</summary>
     [Fact]
-    public void GetToolDefinitions_with_no_role_selection_does_not_narrow_even_with_a_registry_present()
+    public void A_session_without_its_own_settings_gets_the_projects_levels()
     {
-        var settings = new ResolvedSettings();
-        var registry = BuildRegistry(settings, ("net", "net_tool"));
-        var inner = new FakeToolHost
-        {
-            Definitions = { new() { Function = new ToolFunctionDefinition { Name = "net_tool" } } }
-        };
+        var project = new ResolvedSettings();
+        var registry = BuildRegistry(project, ("net", "net_tool"));
 
-        var host = new ChatToolHost(inner, owner: null, toolSets: registry, roleToolSets: null);
-
-        Assert.Contains("net_tool", host.GetToolDefinitions().Select(d => d.Function.Name));
+        using (SessionUnder(null))
+            Assert.True(registry.IsDisclosed("net_tool"));
     }
 
-    /// <summary>A role's own <c>toolsets:</c> selection, once resolved into a dictionary, genuinely
-    /// hides a tool its set disables — even though the shared registry's own baseline leaves that set
-    /// enabled. This is the actual narrowing the leak test elsewhere in the suite depends on.</summary>
+    /// <summary>A role's <c>toolsets:</c> hides a set the project leaves on — inside the role's
+    /// session only; the same registry asked outside it still answers for the project.</summary>
     [Fact]
-    public void GetToolDefinitions_hides_a_tool_whose_set_the_role_disables()
+    public void A_roles_session_hides_a_set_the_role_disables_and_nobody_elses()
     {
-        var settings = new ResolvedSettings(); // "net" has no toolsets: entry -> Enabled by default
-        var registry = BuildRegistry(settings, ("net", "net_tool"));
-        var inner = new FakeToolHost
-        {
-            Definitions =
-            {
-                new() { Function = new ToolFunctionDefinition { Name = "net_tool" } },
-                new() { Function = new ToolFunctionDefinition { Name = "file_tool" } }
-            }
-        };
-        var roleToolSets = new Dictionary<string, string> { ["net"] = "disabled" };
+        var project = new ResolvedSettings();
+        var registry = BuildRegistry(project, ("net", "net_tool"));
+        var role = new ResolvedSettings();
+        role.ToolSets["net"] = "disabled";
 
-        var host = new ChatToolHost(inner, owner: null, toolSets: registry, roleToolSets: roleToolSets);
-        var names = host.GetToolDefinitions().Select(d => d.Function.Name).ToList();
-
-        Assert.DoesNotContain("net_tool", names);
-        Assert.Contains("file_tool", names);
+        using (SessionUnder(role))
+            Assert.False(registry.IsDisclosed("net_tool"));
+        Assert.True(registry.IsDisclosed("net_tool"));
     }
 
-    /// <summary>A role that names no selection for a set inherits the registry's own standing
-    /// decision — inheritance, not an empty set, for a set the role's dictionary never mentions.</summary>
+    /// <summary>The widening half — what the old role filter could never do: a role enables a set the
+    /// project keeps off, and inside its session the set is there.</summary>
     [Fact]
-    public void GetToolDefinitions_inherits_the_registrys_level_for_a_set_the_role_never_mentions()
+    public void A_roles_session_can_enable_a_set_the_project_keeps_off()
     {
-        var settings = new ResolvedSettings();
-        settings.ToolSets["net"] = "disabled"; // the project's own standing decision
-        var registry = BuildRegistry(settings, ("net", "net_tool"));
-        var inner = new FakeToolHost
-        {
-            Definitions = { new() { Function = new ToolFunctionDefinition { Name = "net_tool" } } }
-        };
-        var roleToolSets = new Dictionary<string, string>(); // role says nothing about "net"
+        var project = new ResolvedSettings();
+        project.ToolSets["net"] = "disabled";
+        var registry = BuildRegistry(project, ("net", "net_tool"));
+        var role = new ResolvedSettings();
+        role.ToolSets["net"] = "enabled";
 
-        var host = new ChatToolHost(inner, owner: null, toolSets: registry, roleToolSets: roleToolSets);
-
-        Assert.DoesNotContain("net_tool", host.GetToolDefinitions().Select(d => d.Function.Name));
+        using (SessionUnder(role))
+            Assert.True(registry.IsDisclosed("net_tool"));
+        Assert.False(registry.IsDisclosed("net_tool"));
     }
 
-    /// <summary>A tool no set claims is nobody's to gate and always survives the narrowing, same rule
-    /// the registry itself uses.</summary>
+    /// <summary>A tool no set claims is nobody's to gate.</summary>
     [Fact]
-    public void GetToolDefinitions_never_hides_a_tool_no_set_claims()
+    public void A_tool_no_set_claims_is_always_disclosed()
     {
-        var settings = new ResolvedSettings();
-        var registry = BuildRegistry(settings); // no sets at all
-        var inner = new FakeToolHost
-        {
-            Definitions = { new() { Function = new ToolFunctionDefinition { Name = "unclaimed_tool" } } }
-        };
-        var roleToolSets = new Dictionary<string, string> { ["net"] = "disabled" };
+        var registry = BuildRegistry(new ResolvedSettings());
+        var role = new ResolvedSettings();
+        role.ToolSets["net"] = "disabled";
 
-        var host = new ChatToolHost(inner, owner: null, toolSets: registry, roleToolSets: roleToolSets);
-
-        Assert.Contains("unclaimed_tool", host.GetToolDefinitions().Select(d => d.Function.Name));
+        using (SessionUnder(role))
+            Assert.True(registry.IsDisclosed("unclaimed_tool"));
     }
 
-    /// <summary>Role narrowing and reply-tool mixing are independent layers: a virtual reply tool is
-    /// never a member of any <see cref="ToolSetRegistry"/> set, so even the harshest narrowing must
-    /// not be able to remove it.</summary>
+    /// <summary>A virtual reply tool is mixed in by the chat's own host and is never a member of any
+    /// set, so no level can remove it.</summary>
     [Fact]
-    public void Role_narrowing_never_removes_a_virtual_reply_tool()
+    public void A_virtual_reply_tool_is_always_offered()
     {
-        var settings = new ResolvedSettings();
-        var registry = BuildRegistry(settings, ("net", "net_tool"));
         var inner = new FakeToolHost
         {
             Definitions = { new() { Function = new ToolFunctionDefinition { Name = "net_tool" } } }
@@ -196,13 +172,10 @@ public sealed class ChatToolHostTests
                 Initiator = CorrespondenceInitiator.Self, ToolName = "reply_architect"
             }}
         };
-        var roleToolSets = new Dictionary<string, string> { ["net"] = "disabled" };
 
-        var host = new ChatToolHost(inner, source, registry, roleToolSets);
-        var names = host.GetToolDefinitions().Select(d => d.Function.Name).ToList();
+        var host = new ChatToolHost(inner, source);
 
-        Assert.DoesNotContain("net_tool", names);
-        Assert.Contains("reply_architect", names);
+        Assert.Contains("reply_architect", host.GetToolDefinitions().Select(d => d.Function.Name));
     }
 
     private sealed class ReplyToolTests_FakeReplySource : IReplyToolSource

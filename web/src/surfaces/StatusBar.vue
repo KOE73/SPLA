@@ -17,7 +17,7 @@
     </select>
   </label>
   <label>{{ t('model') }}
-    <select v-model="modelId" :disabled="!session" @change="onModelChange">
+    <select v-model="modelId" class="model-select" :disabled="!session" @change="onModelChange">
       <optgroup v-for="g in groups" :key="g.connectionId" :label="connEmoji(g.connectionId) + g.connectionName">
         <option v-for="m in g.models" :key="m.id" :value="m.id">{{ modelLabel(m) }}</option>
       </optgroup>
@@ -31,6 +31,11 @@
       :title="t('Provider and model details')"
       @click.stop="toggleInfo"
     >i</button>
+    <CopyButton
+      v-if="modelId && selectedModelLabel"
+      :text="selectedModelLabel"
+      title="Copy this value for spla chat run --model"
+    />
   </label>
   <label>{{ t('temp') }}
     <input
@@ -125,6 +130,7 @@ import { client } from "../protocol/SplaClient";
 import { formatCompact } from "../util/format";
 import { useChat } from "../state/chatContext";
 import type { ConnHealth, ModelPickDto, ReasoningCapabilityDto, ToolSetState } from "../protocol/types";
+import CopyButton from "../components/buttons/CopyButton.vue";
 import ProviderInfoPopup from "./ProviderInfoPopup.vue";
 import SkillPickerPopup from "./SkillPickerPopup.vue";
 
@@ -337,10 +343,19 @@ function connEmoji(connectionId: string): string {
   return !h || h.ok == null ? "" : h.ok ? "🟢 " : "🔴 ";
 }
 
-/** Name plus the provider's model string, when they differ — the name alone hides which model it is. */
+/** Connection plus the entry/model label. The connection stays in the option text because a closed
+ *  native select does not show its optgroup. */
 function modelLabel(m: ModelPickDto): string {
-  return m.model && m.model !== m.name ? `${m.name} · ${m.model}` : m.name;
+  const entryLabel = m.model && m.model !== m.name ? `${m.name} · ${m.model}` : m.name;
+  // For reference only — picking a different model is unaffected; this just says which one a NEW
+  // chat would have opened on, using the same star the connections editor marks it with.
+  return `${m.default ? "★ " : ""}${m.connectionName || m.connectionId} | ${entryLabel}`;
 }
+
+const selectedModelLabel = computed(() => {
+  const selected = picks.value.find(p => p.id === modelId.value);
+  return selected ? modelLabel(selected) : "";
+});
 
 /** The health of the selected model's connection, not of the model itself. */
 const currentConnectionId = computed(() =>
@@ -416,14 +431,18 @@ const offContext = client.on("project.context", p => {
 // The editor broadcasts the connection TREE; the picker needs it flattened. Done here rather than
 // asking the server for a second shape — the tree already carries everything the two levels need.
 const offResult = client.on("connections.result", p => {
-  picks.value = (p.connections || []).flatMap(c =>
+  // This event now carries every layer's DECLARATIONS (the settings editor's own need — see
+  // ADR_20260909-2), including an entry a project shadows. A shadowed connection never resolves for
+  // a turn, so its models have no business in a per-chat picker; skip it, same as resolution does.
+  picks.value = (p.connections || []).filter(c => !c.shadowed).flatMap(c =>
     (c.models || []).map(m => ({
       id: m.id,
       name: m.name || m.model || m.id,
       model: m.model,
       connectionId: c.id,
       connectionName: c.name || c.id,
-      provider: c.provider
+      provider: c.provider,
+      default: !!m.default
     })));
 });
 // The badge follows whatever the last read reported — including a read triggered by another window.

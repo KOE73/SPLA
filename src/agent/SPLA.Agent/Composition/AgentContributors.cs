@@ -18,9 +18,10 @@ namespace SPLA.Agent.Composition;
 /// prompt-building method.
 ///
 /// <para>Order is authority order, top-down: mode, built-in capabilities, instruction files, the
-/// user's prompt, whatever the host added for this invocation, skills, plugins. Two contributors are
-/// conditional, and on exactly the same decision that gates their tools — a capability that is off
-/// must not leave text behind describing tools that are not registered.</para>
+/// project's own AGENTS.md tree, the user's prompt, whatever the host added for this invocation,
+/// skills, plugins. Two contributors are conditional, and on exactly the same decision that gates
+/// their tools — a capability that is off must not leave text behind describing tools that are not
+/// registered.</para>
 /// </summary>
 public static class AgentContributors
 {
@@ -67,33 +68,58 @@ public static class AgentContributors
             // what such an address is before meeting one.
             new MountsContributor(),
             new InstructionsContributor(),
+            // Project's own AGENTS.md tree (root today; nested scopes are a later wave). Right after
+            // instructions, at the same authority tier as the rest of the project's own word — before
+            // the project's custom_prompt, which is free-form and meant to read as coming after it.
+            new ProjectAgentsContributor(),
             new CustomPromptContributor()
         };
 
         if (hostExtras != null) contributors.AddRange(hostExtras);
 
+        // Two gates, both needed. At assembly: a capability outside the offered feature list gets no
+        // contributor at all. At compose time: one that is offered speaks only when the settings being
+        // composed for have it on — a role's, for a role's session — the same answer McpHost gives for
+        // its tools.
         if (enabledIds.Contains("core.skills"))
-            contributors.Add(new SkillsContributor(skills, session));
+            contributors.Add(new CapabilityGatedContributor("core.skills", new SkillsContributor(skills, session)));
 
         // Announcements of sets the agent may raise itself. Same gate as the tools that do the
         // raising: no toolset_activate, no index telling the model to call it.
         if (toolSets != null && enabledIds.Contains("core.toolsets"))
-            contributors.Add(new ToolSetsContributor(toolSets));
+            contributors.Add(new CapabilityGatedContributor("core.toolsets", new ToolSetsContributor(toolSets)));
 
         contributors.Add(new PluginPromptContributor(plugins));
         contributors.Add(new PluginCommandContributor(plugins));
 
-        // Unlike core.toolsets/core.memory, whether resources speak is a settings bool
-        // (agent.unified_resources), not a catalog feature id known at list-assembly time — so the
-        // gate lives inside the contributor itself, checked fresh on every Contribute() the same way
-        // it checks EnabledCards(). Always in the list, silent whenever the switch is off.
-        contributors.Add(new ResourceSchemesContributor());
+        if (enabledIds.Contains("core.resources"))
+            contributors.Add(new CapabilityGatedContributor("core.resources", new ResourceSchemesContributor()));
 
         // core.memory owns both the agent_memory_* tools AND the auto-injected "context:*" snapshot,
         // so a disabled core.memory cannot leave a live-memory block with no tools behind it.
         if (enabledIds.Contains("core.memory"))
-            contributors.Add(new WorkingMemoryContributor(projectKv));
+            contributors.Add(new CapabilityGatedContributor("core.memory", new WorkingMemoryContributor(projectKv)));
+
+        // MUST stay last (ADR_20260911-2 §2.4 note 2): working memory above already changes the
+        // prompt mid-session, and a folder entering view must not shift what sits behind it. Any
+        // contributor added below this comment is a bug — add it above instead.
+        contributors.Add(new ScopedAgentsContributor());
 
         return contributors;
     }
+}
+
+/// <summary>
+/// Lets <paramref name="inner"/> speak only when capability <paramref name="featureId"/> is on for the
+/// settings being composed for. Keeps the inner contributor's id, so the composition manifest still
+/// names who said what.
+/// </summary>
+public sealed class CapabilityGatedContributor(string featureId, IAgentContributor inner) : IAgentContributor
+{
+    public string Id => inner.Id;
+
+    public AgentContribution Contribute(AgentContributionContext context)
+        => AgentFeatureCatalog.EnabledSet(context.Settings.Capabilities).Contains(featureId)
+            ? inner.Contribute(context)
+            : AgentContribution.None;
 }

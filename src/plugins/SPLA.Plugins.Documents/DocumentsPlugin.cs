@@ -16,8 +16,8 @@ namespace SPLA.Plugins.Documents;
 /// <para><b>It contributes twice, and deliberately so.</b> The conversion pairs go into the core
 /// <see cref="FormatConverterRegistry"/>, which is what lets <c>resource_read … as: text/markdown</c>
 /// work on a docx address and what puts the projection in the system prompt. The tools are returned
-/// the ordinary way, because the registry side only speaks when <c>agent.unified_resources</c> is
-/// on — and reading a Word file is not an experimental capability.</para>
+/// the ordinary way, because the registry side only speaks when the <c>core.resources</c> capability
+/// is on — and reading a Word file must not depend on that switch.</para>
 ///
 /// <para><b>Registration happens from inside the plugin's own load context</b>, into the host's
 /// registry instance, through <c>ResolvedSettings.SharedServices</c>. That rendezvous is why a

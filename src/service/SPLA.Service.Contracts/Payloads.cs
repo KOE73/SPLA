@@ -38,15 +38,26 @@ public sealed class ChatMessageDto
     /// field that tells the two apart.</summary>
     public string? PeerFrom { get; set; }
 
-    /// <summary>URLs of attached images (e.g. /chat-image/&lt;chatId&gt;/&lt;file&gt; on reopen, or data URLs
-    /// for a freshly sent message). Null when the message has no images.</summary>
-    public List<string>? Images { get; set; }
+    /// <summary>Attached images (e.g. /chat-image/&lt;chatId&gt;/&lt;file&gt; on reopen, or data URLs for a
+    /// freshly sent message), each with the name it was sent under. Null when the message has none.</summary>
+    public List<ImageDto>? Images { get; set; }
 
     /// <summary>Generations the repetition guard threw away before this message was produced. Only
     /// present when the project had <c>agent: save_attempts</c> on at save time — see
     /// <see cref="AgentSettingsPayload.SaveAttempts"/>. Null/empty for the overwhelming majority of
     /// messages, which never had any.</summary>
     public List<AttemptDto>? Attempts { get; set; }
+
+    /// <summary>True when compaction hid this message from the model (its <c>RetentionPolicy</c> is
+    /// <c>Never</c> — <c>docs/adr/ADR_20260911-3_agent_compaction.md</c> §2.1). The message still shows
+    /// in the log, dimmed, rather than disappearing — the whole point of retaining rather than erasing.
+    /// False for every message no compaction has touched.</summary>
+    public bool Compacted { get; set; }
+
+    /// <summary>True for the working-summary record a compaction inserted (ADR §2.2). The client
+    /// renders it as a "compacted context" plate with expand-to-view rather than an ordinary human
+    /// bubble, even though <see cref="Role"/> is <c>user</c> on the wire like any other message.</summary>
+    public bool CompactSummary { get; set; }
 }
 
 /// <summary>One abandoned generation as stored on a message (<see cref="ChatMessageDto.Attempts"/>).
@@ -60,6 +71,16 @@ public sealed class AttemptDto
     public string? Note { get; set; }
     public int Chars { get; set; }
     public long DurationMs { get; set; }
+
+    /// <summary>The pause before the next attempt, in milliseconds; null when none followed. Sent so a
+    /// client can word the wait in the reader's own language instead of parsing it out of
+    /// <see cref="Note"/>.</summary>
+    public long? WaitMs { get; set; }
+
+    /// <summary>Whether <see cref="WaitMs"/> is the provider's own figure rather than our schedule —
+    /// a difference the reader is entitled to see, since one is a fact and the other a guess.</summary>
+    public bool WaitStated { get; set; }
+
     public string? Content { get; set; }
     public string? Reasoning { get; set; }
 }
@@ -145,6 +166,10 @@ public sealed class ConnectionDto
     public string ConnectionName { get; set; } = string.Empty;
 
     public string? Provider { get; set; }
+
+    /// <summary>The model a new chat opens on, for reference in the picker — the same fact the
+    /// connections editor marks with a star. Never narrows the list; it is a label, not a filter.</summary>
+    public bool Default { get; set; }
 }
 
 // ──────────────────────────────────────────────────────────────────────────
@@ -167,6 +192,16 @@ public sealed class ChatOpenPayload
 public sealed class ChatNewPayload
 {
     public string? Title { get; set; }
+
+    /// <summary>"cli" for a chat <c>spla chat run</c> is opening over the wire on a live instance
+    /// (<c>RemoteChatRun</c>), null for one a window opened directly.</summary>
+    public string? Origin { get; set; }
+
+    /// <summary>Role name to stamp as <c>as:</c> on the new chat, matched case-insensitively against
+    /// the project manifest's declared <c>roles:</c> — the same list <c>agent_spawn</c> validates
+    /// against. Null creates a chat with no role, as before. An unknown name is refused: the chat is
+    /// not created and the client gets an <c>error</c> naming the roles that are available.</summary>
+    public string? Role { get; set; }
 }
 
 /// <summary>Rewind a chat to a message: everything after it is discarded. With
@@ -177,6 +212,12 @@ public sealed class ChatRewindPayload
     public string ChatId { get; set; } = string.Empty;
     public string MsgId { get; set; } = string.Empty;
     public bool Before { get; set; }
+}
+
+/// <summary>Body of <see cref="MessageTypes.ChatCompact"/>.</summary>
+public sealed class ChatCompactPayload
+{
+    public string ChatId { get; set; } = string.Empty;
 }
 
 /// <summary>Fork a chat into a new one, keeping messages up to and including
@@ -236,8 +277,18 @@ public sealed class ChatSendPayload
     public string ChatId { get; set; } = string.Empty;
     public string Text { get; set; } = string.Empty;
 
-    /// <summary>Optional attached images as data URLs (data:image/png;base64,…) for vision models.</summary>
-    public List<string>? Images { get; set; }
+    /// <summary>Optional attached images as data URLs (data:image/png;base64,…) for vision models,
+    /// each with the name the model should know it by.</summary>
+    public List<ImageDto>? Images { get; set; }
+}
+
+/// <summary>One image on the wire: where the picture is, and what it is called. The name is what a
+/// prompt refers to — see <see cref="SPLA.Domain.Models.ImageAttachment"/> for why a picture needs
+/// one at all — and is null for an image nobody named.</summary>
+public sealed class ImageDto
+{
+    public string Url { get; set; } = string.Empty;
+    public string? Label { get; set; }
 }
 
 /// <summary>Which chat a window has focused. Sent as <see cref="MessageTypes.FocusSet"/> and echoed
@@ -338,6 +389,13 @@ public sealed class ClarifyChoicePayload
 public sealed class ConnectionEditDto
 {
     public string Id { get; set; } = string.Empty;
+
+    /// <summary>A later layer declares this same id, so this entry is not the one a turn will use.
+    /// Read-only for the editor — a fact about the merge, not something a client sets. It still has
+    /// to be shown and saved: it is what its own file says, and dropping it from the panel would
+    /// delete it from that file on the next save.</summary>
+    public bool Shadowed { get; set; }
+
     public string? Name { get; set; }
     public string? Provider { get; set; }
     public string? Endpoint { get; set; }
@@ -358,6 +416,15 @@ public sealed class ConnectionEditDto
 
     public bool SwapModel { get; set; }
 
+    /// <summary>How hard to keep trying when this account is rate-limited. Never null outbound; a
+    /// client that omits it on save keeps whatever was configured.</summary>
+    public RetryEditDto? Retry { get; set; }
+
+    /// <summary>Minimum seconds between requests on this connection; 0 = no pacing. Beside
+    /// <see cref="Retry"/> rather than inside it, because it is the other mechanism: retry reacts to a
+    /// refusal, pacing prevents one.</summary>
+    public double MinRequestInterval { get; set; }
+
     /// <summary>Which layer this connection lives in: <c>shared</c>, <c>user</c> or <c>project</c>
     /// (see <c>ConnectionScope</c>). It is where the entry is read from and where a save writes it
     /// back; changing it on an existing entry moves the connection between files. Unset/unknown on
@@ -374,6 +441,9 @@ public sealed class ModelEditDto
 {
     public string Id { get; set; } = string.Empty;
     public string? Name { get; set; }
+    /// <summary>The model a new chat opens on. At most one per scope: the resolver refuses a layer
+    /// that marks two, so a client offering this control owes the clearing of the others.</summary>
+    public bool Default { get; set; }
     public string? Model { get; set; }
     public int? ContextLength { get; set; }
 
@@ -425,7 +495,6 @@ public sealed class RoleEditDto
     public int? AskTimeoutMinutes { get; set; }
     public bool? SaveToolCalls { get; set; }
     public bool? SaveAttempts { get; set; }
-    public bool? UnifiedResources { get; set; }
 
     /// <summary>Peer-wake regulator overrides — see <c>SplaAgentSection</c> for what each means.
     /// Null = the project's number.</summary>
@@ -464,6 +533,10 @@ public sealed class RoleEditDto
     public Dictionary<string, string>? ToolSets { get; set; }
 
     public List<string>? TrustedDomains { get; set; }
+
+    /// <summary>How this role's AGENTS.md tree reaches the prompt — "inject" or "ignore". Null =
+    /// inherit the project's own <c>agent: agents_md</c>. See <c>SplaRoleSection.AgentsMd</c>.</summary>
+    public string? AgentsMd { get; set; }
 }
 
 /// <summary>The whole role set plus the catalogs a role picks from. <see cref="MessageTypes.RolesGet"/>
@@ -504,6 +577,23 @@ public sealed class RolesPayload
 
     /// <summary>Set when a save was refused; the set then echoes back what is still in effect.</summary>
     public string? Error { get; set; }
+}
+
+/// <summary>The retry schedule of one connection, as the settings panel edits it. Every figure here
+/// bounds a guess about when the provider will answer again; a delay the provider itself states is
+/// obeyed as given and answers to none of them.</summary>
+public sealed class RetryEditDto
+{
+    /// <summary>Attempts allowed for one turn, the first request included.</summary>
+    public int Attempts { get; set; } = 4;
+    /// <summary>Seconds; the first pause.</summary>
+    public double MinDelay { get; set; } = 1.0;
+    /// <summary>Multiplier applied per attempt.</summary>
+    public double Step { get; set; } = 2.0;
+    /// <summary>Seconds; ceiling on one pause.</summary>
+    public double MaxDelay { get; set; } = 30.0;
+    /// <summary>Seconds; ceiling on all pauses in one turn.</summary>
+    public double Total { get; set; } = 120.0;
 }
 
 /// <summary>Request to hot-swap the loaded model on a connection via the management API (LM Studio).</summary>
@@ -661,10 +751,10 @@ public sealed class AgentSettingsPayload
     /// <summary>Persist abandoned-generation records (the repetition guard's discarded attempts) with
     /// the chat history. Stored in .spla agent: save_attempts. Default off.</summary>
     public bool? SaveAttempts { get; set; }
-    /// <summary>Master switch for the resource-address abstraction (<c>file://</c>, <c>sftp://</c>,
-    /// …). Stored in .spla agent: unified_resources. <b>Default false</b> — see
-    /// <c>ResolvedSettings.UnifiedResources</c> for why the default itself is load-bearing.</summary>
-    public bool? UnifiedResources { get; set; }
+    /// <summary>How the project's AGENTS.md tree reaches the prompt — "inject" or "ignore". Stored in
+    /// .spla agent: agents_md. Default "inject". See <c>ADR_20260911-2_agent_agents-md-scopes.md</c>
+    /// and <c>SPLA.Domain.Models.AgentsMdMode</c>.</summary>
+    public string AgentsMd { get; set; } = "inject";
     /// <summary>Every registered scheme, on and off alike, so the panel can render the full list with
     /// its switches — not just the ones currently enabled. Ignored on save; per-scheme switches travel
     /// back through <see cref="ResourceSchemeSaveDto.Enabled"/> keyed by <see cref="ResourceSchemeDto.Scheme"/>.</summary>
@@ -819,6 +909,16 @@ public sealed class PluginEditDto
     /// <summary>URL of the plugin's prebuilt web settings module (see <c>web_settings_entry</c> in
     /// meta.yaml), or null when the plugin has none — the client falls back to the generic JSON editor.</summary>
     public string? WebSettingsUrl { get; set; }
+
+    /// <summary>URL of the plugin's prebuilt web PANEL module (see <c>web_panel_entry</c> in
+    /// meta.yaml), or null when the plugin contributes no dock panel.</summary>
+    public string? WebPanelUrl { get; set; }
+
+    /// <summary>Tab title for that panel, and an emoji for its tool-strip button. They travel beside
+    /// the URL, not inside the bundle: the strip draws the button before the bundle is loaded, and
+    /// has to keep drawing it if the bundle never loads.</summary>
+    public string? PanelTitle { get; set; }
+    public string? PanelIcon { get; set; }
 }
 
 /// <summary>Invokes an ad-hoc action on a plugin's web settings UI (e.g. "Test Connection").
@@ -1011,6 +1111,27 @@ public sealed class DebugRequestPayload
 {
     /// <summary>One of <see cref="DebugKinds"/>.</summary>
     public string Kind { get; set; } = string.Empty;
+}
+
+/// <summary>Asks for one blob of the envelope's chat by handle (<see cref="MessageTypes.DebugBlobGet"/>).</summary>
+public sealed class DebugBlobGetPayload
+{
+    /// <summary>The blob handle, with or without the <c>blob:</c> prefix.</summary>
+    public string Handle { get; set; } = string.Empty;
+}
+
+/// <summary>
+/// One blob's picture (<see cref="MessageTypes.DebugBlobResult"/>). Only image content is served:
+/// this exists so a person can look at what a tool stored, not as a general download channel for
+/// bulk data — anything else answers with <see cref="Error"/> and no <see cref="Url"/>.
+/// </summary>
+public sealed class DebugBlobResultPayload
+{
+    public string Handle { get; set; } = string.Empty;
+    public string? ContentType { get; set; }
+    /// <summary>The picture as a <c>data:</c> URL; null when refused or not found.</summary>
+    public string? Url { get; set; }
+    public string? Error { get; set; }
 }
 
 public static class DebugKinds
@@ -1231,6 +1352,36 @@ public sealed class ChatOpenedPayload
     /// a chat mid-question shows the badge immediately rather than waiting for the next list.</summary>
     public string State { get; set; } = "idle";
 
+    /// <summary>The sentence the model is streaming right now, or null when nothing is in flight.
+    /// <para>The message list is what has been PERSISTED, which by definition cannot contain an
+    /// unfinished answer — so a window opening a working chat used to show an empty log until the turn
+    /// ended, and a window re-opening one it was already watching threw away the live text it had.
+    /// The bubble index is the live stream's own, so a client that gets this and then more chunks for
+    /// the same bubble continues it instead of starting a second one.</para></summary>
+    public LivePartialDto? Live { get; set; }
+
+    /// <summary>
+    /// This chat's progress nodes still running at the moment it was opened — turn tree and
+    /// background-task trees alike, same shape and same namespaced ids as the live <c>progress.node</c>
+    /// event (ADR_20260910-2 §4.4, wave 1). A window attaching mid-turn merges these into its progress
+    /// tree store exactly like a live node, then keeps listening for more; an old client that does not
+    /// know this field simply never sees the mid-turn tree until the next tick arrives on the wire the
+    /// way it always did.
+    /// </summary>
+    public List<ProgressNodePayload> OpenProgressNodes { get; set; } = new();
+
+    /// <summary>This chat's background tasks still running at the moment it was opened — same shape
+    /// <c>task.list.result</c> uses. Additive, wave 1: an old client ignores it and still learns about
+    /// tasks from <c>task.list</c>/<c>task.state.changed</c> as before.</summary>
+    public List<TaskSummaryDto> RunningTasks { get; set; } = new();
+}
+
+/// <summary>An answer that has been started and not finished. See <see cref="ChatOpenedPayload.Live"/>.</summary>
+public sealed class LivePartialDto
+{
+    public int MsgIndex { get; set; }
+    public string Content { get; set; } = string.Empty;
+    public string Reasoning { get; set; } = string.Empty;
 }
 
 /// <summary>
@@ -1299,6 +1450,14 @@ public sealed class AttemptPayload
     public int Chars { get; set; }
 
     public long DurationMs { get; set; }
+
+    /// <summary>The pause before the next attempt, in milliseconds; null when none followed. This is
+    /// the event that tells a waiting chat how long it is waiting — see <see cref="AttemptDto.WaitMs"/>.</summary>
+    public long? WaitMs { get; set; }
+
+    /// <summary>Whether <see cref="WaitMs"/> is the provider's own figure — see
+    /// <see cref="AttemptDto.WaitStated"/>.</summary>
+    public bool WaitStated { get; set; }
 
     /// <summary>The abandoned answer text. Carried on the live event (not just on the stored message's
     /// <see cref="AttemptDto"/>) so a reader can open it the moment the guard reports it, without
@@ -1409,6 +1568,11 @@ public sealed class ToolResultPayload
     /// context (PLAN_20260902 wave 7, item 5: "ссылка на сессию … в итоге вызова"). Null/empty for
     /// the overwhelming majority of tool results, which have nothing to point at.</summary>
     public List<ToolResourceDto>? Resources { get; set; }
+
+    /// <summary>Pictures the tool returned (<c>ToolImage</c> content), as <c>data:</c> URLs named the
+    /// way the model is shown them — so a watcher sees the picture under the call that produced it the
+    /// moment it arrives, not only after the chat is reopened. Null when the call returned none.</summary>
+    public List<ImageDto>? Images { get; set; }
 }
 
 /// <summary>One <c>ToolResource</c> content block, projected to the wire.</summary>
@@ -1719,6 +1883,11 @@ public sealed class DebugKvEntryDto
     /// <summary>True when this entry's origin is one nobody named — the same bit that raises the
     /// chat's flag. Carried separately so the view can mark it without re-deriving the rule.</summary>
     public bool Doubtful { get; set; }
+
+    /// <summary>The blob's declared media type (<c>image/png</c>, …), filled only in the
+    /// <see cref="DebugKinds.Blobs"/> view and only when the producer declared one. Lets the view
+    /// offer a preview for pictures without shipping any bytes in the snapshot.</summary>
+    public string? ContentType { get; set; }
 }
 
 /// <summary>

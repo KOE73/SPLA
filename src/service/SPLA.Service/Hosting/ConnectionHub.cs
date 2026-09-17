@@ -54,4 +54,11 @@ public sealed class ConnectionHub
     /// (ADR §4.1, default "only if a window is open"): an auto-woken turn nobody can see still costs
     /// tokens, so the pump checks this before spending any.</summary>
     public bool HasWatchers(string chatId) => _connections.Keys.Any(c => c.IsWatching(chatId));
+
+    /// <summary>Runs <paramref name="action"/> against every connection currently watching
+    /// <paramref name="chatId"/> — wave 4's resync path (ADR_20260910-2 §4.3): a
+    /// <c>ChatFeedWireSubscriber</c> whose queue overflowed re-sends each watcher a fresh
+    /// <c>chat.opened</c> snapshot rather than ever replaying a dropped backlog.</summary>
+    public Task ForEachWatcherAsync(string chatId, Func<ClientConnection, Task> action)
+        => Task.WhenAll(_connections.Keys.Where(c => c.IsWatching(chatId)).Select(action));
 }

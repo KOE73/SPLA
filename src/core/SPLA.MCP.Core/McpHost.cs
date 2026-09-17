@@ -60,8 +60,9 @@ public class McpHost : IToolHost
         Pipeline = new ToolPipelineBlueprint()
             .Use(new ToolResolutionStage(name => _tools.TryGetValue(name, out var t) ? t : null, logger))
             .Use(new PluginAvailabilityStage(pluginManager, logger))
-            .Use(new ToolSetDisclosureStage(ToolSetRefusal, logger))
+            .Use(new ToolSetDisclosureStage(name => CapabilityRefusal(name) ?? ToolSetRefusal(name), logger))
             .Use(new TelemetryStage(logger))
+            .Use(new ArgumentCoercionStage(logger))
             .Use(new PermissionStage(permissionManager, logger))
             // Beside the permission check, not inside it: both answer "may this happen" from
             // different ends, and when the verdict eventually moves onto the edge it moves into a
@@ -70,9 +71,16 @@ public class McpHost : IToolHost
                 new SPLA.MCP.Core.Security.EdgeClassifier(
                     zoneOfPath ?? (_ => SPLA.Domain.Security.Zone.Unknown)),
                 Edges, logger, originOfZone))
+            // Same neighbourhood, same reasoning: per-folder AGENTS.md rules are a policy question
+            // answered from the settings and the call's own path, not from the tool result.
+            .Use(new AgentsScopeStage(() => ProjectSettings?.Invoke()))
             .Use(new AmbientHostStage(this))
             .Use(new BackgroundStage(logger))
             .Use(new ProgressNodeStage())
+            // Post (650): the last chance to cut a result down before it becomes a request the
+            // endpoint refuses. Outside Fault so a giant stderr is trimmed too, inside Progress so
+            // the node closes on what the model will actually see.
+            .Use(new ResultBudgetStage(logger))
             .Use(new FaultStage(logger))
             .Use(new AccountingStage(logger));
 
@@ -90,6 +98,48 @@ public class McpHost : IToolHost
 
         // agent_info is registered externally (requires SkillLibrary which McpHost doesn't own)
     }
+
+    /// <summary>Built-in tool name → the <c>core.*</c> capability it belongs to. A tool absent here
+    /// (plugin, foreign MCP server) is not a capability's and is gated by tool sets alone.</summary>
+    private readonly ConcurrentDictionary<string, string> _featureOfTool = new(StringComparer.OrdinalIgnoreCase);
+
+    /// <summary>
+    /// The project's settings, asked when no session is running (a settings panel, a foreign head,
+    /// startup). Inside a session its own settings win — see <see cref="IAgentSession.Settings"/>.
+    /// A delegate rather than a captured object because the host's settings are edited in place and
+    /// occasionally replaced. Null (tests, bare hosts) means no capability gating at all.
+    /// </summary>
+    public Func<SPLA.Domain.Settings.ResolvedSettings?>? ProjectSettings { get; set; }
+
+    /// <summary>
+    /// Registers a built-in tool as part of capability <paramref name="featureId"/>. Every built-in
+    /// capability is registered, whatever <c>agent.capabilities</c> says: which of them a session may
+    /// use is decided per call from that session's own settings (<see cref="EnabledFeatures"/>), not
+    /// once per process from the project's. Registering only the project's features is what left a
+    /// role unable to reach any capability the default agent did not itself have.
+    /// </summary>
+    public void RegisterFeatureTool(IMcpTool tool, string featureId)
+    {
+        RegisterTool(tool);
+        _featureOfTool[tool.Name] = featureId;
+    }
+
+    /// <summary>The <c>core.*</c> capabilities on for the flow asking: the running session's own
+    /// settings, else the project's. Null when there are no settings to ask — nothing is gated.</summary>
+    private IReadOnlySet<string>? EnabledFeatures()
+    {
+        var settings = SPLA.Domain.Agent.AgentSessionScope.Current?.Settings ?? ProjectSettings?.Invoke();
+        return settings is null ? null : SPLA.MCP.Core.Agent.AgentFeatureCatalog.EnabledSet(settings.Capabilities);
+    }
+
+    private bool IsCapable(string toolName, IReadOnlySet<string>? enabled)
+        => enabled is null || !_featureOfTool.TryGetValue(toolName, out var featureId) || enabled.Contains(featureId);
+
+    /// <summary>Why this call cannot run in this session, or null. Worded exactly like a set levelled
+    /// off: a capability the session does not have does not exist for it, and saying more would leak
+    /// what the project holds.</summary>
+    private string? CapabilityRefusal(string toolName)
+        => IsCapable(toolName, EnabledFeatures()) ? null : $"Error: Tool '{toolName}' not found.";
 
     public void RegisterTool(IMcpTool tool)
     {
@@ -159,8 +209,10 @@ public class McpHost : IToolHost
         // _tools.Values over a ConcurrentDictionary is a moving snapshot: a tool registered or
         // unregistered mid-enumeration by a background MCP connection may or may not appear in this
         // particular call. That is fine here — the list is rebuilt on every request anyway.
+        var enabled = EnabledFeatures();
         return _tools.Values
             .Where(t => _pluginManager == null || _pluginManager.IsToolAvailable(t))
+            .Where(t => IsCapable(t.Name, enabled))
             .Where(t => IsDisclosed(t.Name))
             .Select(t => GetDefinitionForModel(t, exposeBackgroundFlag: true));
     }
@@ -175,8 +227,10 @@ public class McpHost : IToolHost
     /// </summary>
     public IEnumerable<string> GetPermittedToolNames()
     {
+        var enabled = EnabledFeatures();
         return _tools.Values
             .Where(t => _pluginManager == null || _pluginManager.IsToolAvailable(t))
+            .Where(t => IsCapable(t.Name, enabled))
             .Where(t => ToolSets == null || ToolSets.LevelOfTool(t.Name) != ToolSetLevel.Disabled)
             .Select(t => t.Name);
     }
@@ -206,20 +260,7 @@ public class McpHost : IToolHost
 
     /// <summary>True when the model may see this tool right now: its set is fully enabled, or it is
     /// raised in the chat currently running. A tool no set claims is always disclosed.</summary>
-    private bool IsDisclosed(string toolName)
-    {
-        if (ToolSets == null) return true;
-
-        var setId = ToolSets.SetOfTool(toolName);
-        if (setId == null) return true;
-
-        return ToolSets.LevelOf(setId) switch
-        {
-            ToolSetLevel.Enabled => true,
-            ToolSetLevel.Disabled => false,
-            _ => SPLA.Domain.Agent.AgentSessionScope.Current?.ToolSets.IsActive(setId) == true
-        };
-    }
+    private bool IsDisclosed(string toolName) => ToolSets?.IsDisclosed(toolName) ?? true;
 
     /// <summary>
     /// Why this call cannot run right now, or null when the tool's set permits it.

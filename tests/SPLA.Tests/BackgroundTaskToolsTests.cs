@@ -22,6 +22,7 @@ public class BackgroundTaskToolsTests
         public SPLA.Domain.Security.ChatDoubt Doubt => throw new NotSupportedException();
         public IBackgroundTaskHost? Background { get; init; }
         public ICorrespondenceHost? Correspondence => null;
+        public IContextBudgetHost? ContextBudget => null;
         public string? ChatId => null;
     }
 

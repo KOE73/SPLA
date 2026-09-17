@@ -95,7 +95,9 @@ public sealed class LiveAgentInspector : IAgentInspector
                         Key = b.Handle,
                         Value = $"{b.Kind} · {b.Size} b{(string.IsNullOrEmpty(b.Name) ? "" : " · " + b.Name)}",
                         Origin = b.Origin?.Zone,
-                        Doubtful = b.Origin?.RaisesDoubt ?? false
+                        Doubtful = b.Origin?.RaisesDoubt ?? false,
+                        // A lookup, not a copy: the store hands back the payload it holds.
+                        ContentType = chat.BlobPayloadFor(b.Handle)?.ContentType
                     })
                     .ToList() ?? new();
                 break;

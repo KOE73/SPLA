@@ -1,90 +1,122 @@
 using SPLA.Runtime;
-using SPLA.Agent;
 using SPLA.Domain.Models;
 using SPLA.Service;
 
 namespace SPLA.CLI;
 
 /// <summary>Console-side wiring shared by the interactive REPL and the parallel serve REPL: the
-/// streaming callbacks that render a turn to stdout, and the permission/clarify prompts that read
-/// a decision from stdin.</summary>
+/// streaming subscribers that render a turn to stdout, and the permission/clarify prompts that read
+/// a decision from stdin.
+/// <para>
+/// ADR_20260910-2 wave 3: rendering is a <see cref="ChatFeed"/> subscription, not caller-supplied
+/// <c>AgentCallbacks</c> — <see cref="ChatRuntime.SendAsync"/> no longer takes any. Subscribe before
+/// the turn starts, dispose once it (and the caller's own <c>await</c>) is done, so the console never
+/// misses the turn's own last events (the assistant message, the token line) before the command
+/// returns.
+/// </para>
+/// </summary>
 internal static class ConsoleHandlers
 {
-    /// <summary>Rich turn callbacks for the primary REPL: streamed text, tool call/progress/result
-    /// lines, notices, and per-turn + cumulative token accounting.</summary>
-    public static AgentCallbacks RichCallbacks(AgentRuntime runtime)
+    /// <summary>Rich rendering for the primary REPL: streamed text, tool call/progress/result lines,
+    /// notices, and per-turn + cumulative token accounting. Subscribes <paramref name="feed"/>
+    /// immediately; dispose the result once the turn has finished.</summary>
+    public static IDisposable SubscribeRich(ChatFeed feed, AgentRuntime runtime)
     {
         var lastProgress = DateTime.MinValue;
-        return new AgentCallbacks
+        return feed.Subscribe(e =>
         {
-            OnDelta = chunk => { Console.Write(chunk); return Task.CompletedTask; },
-            OnAssistantMessage = _ => { Console.WriteLine(); return Task.CompletedTask; },
-            OnToolCallStarted = tc =>
+            switch (e)
             {
-                Console.WriteLine($" -> Call: {tc.Function.Name}");
-                return Task.CompletedTask;
-            },
-            OnToolProgress = (tc, progress) =>
-            {
-                var now = DateTime.UtcNow;
-                if ((now - lastProgress).TotalMilliseconds < 150 && progress.Fraction < 1.0) return;
-                lastProgress = now;
-                var pct = progress.Fraction is double f ? $" {f * 100:0}%" : "";
-                var detail = progress.Details is { Count: > 0 }
-                    ? "  " + string.Join("  ", progress.Details.Select(d => $"{d.Label}: {d.Value}"))
-                    : "";
-                Console.Write($"\r    {tc.Function.Name}{pct} ({progress.Current}/{progress.Total}){detail}        ");
-            },
-            OnToolResult = (_, result) =>
-            {
-                var mark = result.Outcome switch
+                case ChatDelta d:
+                    Console.Write(d.Text);
+                    break;
+                case ChatAssistantMessage:
+                    Console.WriteLine();
+                    break;
+                case ChatToolStarted t:
+                    Console.WriteLine($" -> Call: {t.Call.Function.Name}");
+                    break;
+                case ChatToolProgress p:
                 {
-                    ToolOutcome.Failed  => "Failed",
-                    ToolOutcome.Refused => "Refused",
-                    _                   => "Result received"
-                };
-                Console.WriteLine($"\r -> {mark} ({result.TextContent.Length} chars).            ");
-                return Task.CompletedTask;
-            },
-            OnNotice = note => { Console.WriteLine($"\n{note}"); return Task.CompletedTask; },
-            // A generation thrown away mid-stream. Said out loud rather than left to the log: the text
-            // already on screen came from it, and without this line the retry's answer would appear to
-            // continue the loop the reader was just watching.
-            OnAttempt = a => Console.WriteLine(
-                $"\n   [attempt {a.Index} discarded] {a.Note} · {a.Chars:N0} chars in {a.Duration.TotalSeconds:F1}s"),
-            // Reads the tallies, never writes them: the pipeline has already recorded this call by the
-            // time the hook fires, so the totals printed here are the ones on disk.
-            OnLlmTurn = turn =>
-            {
-                var (prompt, completion) = (turn.Message.PromptTokens, turn.Message.CompletionTokens);
-                if (prompt is null && completion is null) return;
+                    var now = DateTime.UtcNow;
+                    if ((now - lastProgress).TotalMilliseconds < 150 && p.Progress.Fraction < 1.0) break;
+                    lastProgress = now;
+                    var pct = p.Progress.Fraction is double f ? $" {f * 100:0}%" : "";
+                    var detail = p.Progress.Details is { Count: > 0 }
+                        ? "  " + string.Join("  ", p.Progress.Details.Select(dt => $"{dt.Label}: {dt.Value}"))
+                        : "";
+                    Console.Write($"\r    {p.Call.Function.Name}{pct} ({p.Progress.Current}/{p.Progress.Total}){detail}        ");
+                    break;
+                }
+                case ChatToolResult r:
+                {
+                    var mark = r.Result.Outcome switch
+                    {
+                        ToolOutcome.Failed => "Failed",
+                        ToolOutcome.Refused => "Refused",
+                        _ => "Result received"
+                    };
+                    Console.WriteLine($"\r -> {mark} ({r.Result.TextContent.Length} chars).            ");
+                    break;
+                }
+                case ChatNotice n:
+                    Console.WriteLine($"\n{n.Text}");
+                    break;
+                // A generation thrown away mid-stream. Said out loud rather than left to the log: the
+                // text already on screen came from it, and without this line the retry's answer would
+                // appear to continue the loop the reader was just watching.
+                case ChatAttempt a:
+                    Console.WriteLine(
+                        $"\n   [attempt {a.Attempt.Index} discarded] {a.Attempt.Note} · {a.Attempt.Chars:N0} chars in {a.Attempt.Duration.TotalSeconds:F1}s");
+                    break;
+                // Reads the tallies, never writes them: the pipeline has already recorded this call by
+                // the time the event fires, so the totals printed here are the ones on disk.
+                case ChatLlmTurn lt:
+                {
+                    var (prompt, completion) = (lt.Turn.Message.PromptTokens, lt.Turn.Message.CompletionTokens);
+                    if (prompt is null && completion is null) break;
 
-                var t = runtime.TokenUsageProject.Total;
-                var g = runtime.TokenUsageGlobal.Total;
-                Console.WriteLine(
-                    $"   [tokens] turn in:{prompt?.ToString() ?? "?"} out:{completion?.ToString() ?? "?"}" +
-                    $"  ·  {turn.ModelReported}" +
-                    $"  ·  project Σ {t.TotalTokens:N0} (in {t.PromptTokens:N0}/out {t.CompletionTokens:N0})" +
-                    $"  ·  machine Σ {g.TotalTokens:N0}");
+                    var t = runtime.TokenUsageProject.Total;
+                    var g = runtime.TokenUsageGlobal.Total;
+                    Console.WriteLine(
+                        $"   [tokens] turn in:{prompt?.ToString() ?? "?"} out:{completion?.ToString() ?? "?"}" +
+                        $"  ·  {lt.Turn.ModelReported}" +
+                        $"  ·  project Σ {t.TotalTokens:N0} (in {t.PromptTokens:N0}/out {t.CompletionTokens:N0})" +
+                        $"  ·  machine Σ {g.TotalTokens:N0}");
+                    break;
+                }
             }
-        };
+        });
     }
 
-    /// <summary>Minimal turn callbacks for the parallel serve REPL (no progress bar / token line).</summary>
-    public static AgentCallbacks BasicCallbacks() => new()
+    /// <summary>Minimal rendering for the parallel serve REPL (no progress bar / token line).</summary>
+    public static IDisposable SubscribeBasic(ChatFeed feed) => feed.Subscribe(e =>
     {
-        OnDelta = chunk => { Console.Write(chunk); return Task.CompletedTask; },
-        OnAssistantMessage = _ => { Console.WriteLine(); return Task.CompletedTask; },
-        OnToolCallStarted = tc => { Console.WriteLine($" -> Call: {tc.Function.Name}"); return Task.CompletedTask; },
-        OnToolResult = (_, result) =>
+        switch (e)
         {
-            var mark = result.IsError ? $"{result.Outcome}" : "Result";
-            Console.WriteLine($" -> {mark} ({result.TextContent.Length} chars)");
-            return Task.CompletedTask;
-        },
-        OnNotice = note => { Console.WriteLine($"\n{note}"); return Task.CompletedTask; },
-        OnAttempt = a => Console.WriteLine($"\n [attempt {a.Index} discarded] {a.Note}")
-    };
+            case ChatDelta d:
+                Console.Write(d.Text);
+                break;
+            case ChatAssistantMessage:
+                Console.WriteLine();
+                break;
+            case ChatToolStarted t:
+                Console.WriteLine($" -> Call: {t.Call.Function.Name}");
+                break;
+            case ChatToolResult r:
+            {
+                var mark = r.Result.IsError ? $"{r.Result.Outcome}" : "Result";
+                Console.WriteLine($" -> {mark} ({r.Result.TextContent.Length} chars)");
+                break;
+            }
+            case ChatNotice n:
+                Console.WriteLine($"\n{n.Text}");
+                break;
+            case ChatAttempt a:
+                Console.WriteLine($"\n [attempt {a.Attempt.Index} discarded] {a.Attempt.Note}");
+                break;
+        }
+    });
 
     /// <summary>Interactive permission prompt. <paramref name="colored"/> selects the richer
     /// yellow multi-line rendering used by the primary REPL vs. the compact serve-REPL line.</summary>

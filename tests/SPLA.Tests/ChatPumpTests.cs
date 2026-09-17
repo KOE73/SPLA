@@ -169,7 +169,12 @@ public class ChatPumpTests
             hasWatchers: () => env.Watchers,
             isTurnRunning: () => env.TurnRunning,
             humanTurnCount: () => env.HumanTurnCount,
-            runTurn: ct => { Interlocked.Increment(ref env.RunTurnCalls); inbox.DrainAll(); return Task.CompletedTask; },
+            // Drain BEFORE bumping the counter: the test polls on RunTurnCalls and then asserts
+            // HasPending immediately, so if the order were reversed the poll could observe the
+            // incremented count in the brief window before the drain actually ran (a real race,
+            // just not the one in ChatPump.cs — see the flake writeup in the commit that added
+            // this comment) and flag the inbox as still pending.
+            runTurn: ct => { inbox.DrainAll(); Interlocked.Increment(ref env.RunTurnCalls); return Task.CompletedTask; },
             broadcastNotice: text => { lock (env.Notices) env.Notices.Add(text); },
             autoWakeSuppressed: () => env.AutoWakeSuppressed,
             peerDebounceBase: TimeSpan.FromMilliseconds(20),
@@ -195,7 +200,11 @@ public class ChatPumpTests
         // everything queued (the three stranded Peer items plus this one).
         env.HumanTurnCount++;
         inbox.Enqueue(new ChatMessage { Role = ChatRole.User, Content = "hi" }, InboxItemKind.Human);
-        await WaitUntilAsync(() => env.RunTurnCalls >= 1, timeoutMs: 3000);
+        // Poll for the fully settled state (turn ran AND its drain is visible) rather than
+        // RunTurnCalls alone — the runTurn stand-in above now drains before bumping the counter,
+        // but waiting on both here as well keeps this assertion honest even if that ordering
+        // ever changes again.
+        await WaitUntilAsync(() => env.RunTurnCalls >= 1 && !inbox.HasPending, timeoutMs: 3000);
         Assert.Equal(1, env.RunTurnCalls);
         Assert.False(inbox.HasPending);
     }

@@ -10,8 +10,8 @@
     <span class="tri">
       <select :value="wire" @change="onChange">
         <option value="">{{ inheritLabel }}</option>
-        <option value="on">{{ t('on') }}</option>
-        <option value="off">{{ t('off') }}</option>
+        <option value="on">{{ onLabel ? t(onLabel) : t('on') }}</option>
+        <option value="off">{{ offLabel ? t(offLabel) : t('off') }}</option>
       </select>
       <span v-if="hint" class="hint">{{ hint }}</span>
     </span>
@@ -28,6 +28,11 @@ const props = withDefaults(defineProps<{
   /** What "say nothing" resolves to, spelled out — e.g. "inherit (on)". */
   inheritLabel?: string;
   hint?: string;
+  /** Labels for the two non-inherit options. Default "on"/"off" for the plain boolean case; a caller
+   *  representing a two-word enum (e.g. "inject"/"ignore") as this same tri-state shape passes its
+   *  own words here rather than reaching for a new component. */
+  onLabel?: string;
+  offLabel?: string;
 }>(), { inheritLabel: "inherit", modelValue: null });
 
 const emit = defineEmits<{ "update:modelValue": [boolean | null] }>();

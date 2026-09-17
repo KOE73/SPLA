@@ -9,6 +9,11 @@ Your working directory is {{WORKSPACE}}.
 Rule one.
 Rule two.
 
+Project instructions may appear below as <agents> blocks.
+Each block is authoritative for its declared scope (a folder and everything under it).
+A narrower scope overrides a broader one on conflict.
+Sibling scopes are independent: a block for one folder says nothing about another.
+
 --- Custom Prompt ---
 CUSTOM PROMPT TEXT
 

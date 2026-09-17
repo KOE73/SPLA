@@ -118,6 +118,11 @@ public static class MessageTypes
     public const string ChatRewind = "chat.rewind";
     /// <summary>Fork a chat at a message into a new chat. Body is <see cref="ChatForkPayload"/>.</summary>
     public const string ChatFork = "chat.fork";
+    /// <summary>Compact a chat: everything before the tail is hidden behind a fresh summary, never
+    /// erased (<c>docs/adr/ADR_20260911-3_agent_compaction.md</c>). Body is
+    /// <see cref="ChatCompactPayload"/>; the server re-sends <see cref="ChatOpened"/> on success, or
+    /// <see cref="Error"/> when a turn is running or there is nothing to compact.</summary>
+    public const string ChatCompact = "chat.compact";
     public const string ChatSettings = "chat.settings";
     /// <summary>Ask what the chat's current model can do with its reasoning channel. Body is
     /// <see cref="ChatReasoningRequest"/>; answered with <see cref="ChatReasoningResult"/>.
@@ -154,6 +159,10 @@ public static class MessageTypes
     public const string PermissionDecision = "permission.decision";
     public const string ClarifyChoice = "clarify.choice";
     public const string DebugRequest = "debug.request";
+    /// <summary>Ask for one blob's picture by handle, in the envelope's chat — the debug view's
+    /// thumbnail, fetched per row on demand so the snapshot never carries bulk bytes. Body
+    /// <see cref="DebugBlobGetPayload"/>; reply <see cref="DebugBlobResult"/>.</summary>
+    public const string DebugBlobGet = "debug.blob.get";
 
     // ── Settings: connections editor (client → server) ───────────────────
     /// <summary>Ask for the editable connection list.</summary>
@@ -388,6 +397,8 @@ public static class MessageTypes
     /// so a dialog another window already dealt with disappears here too.</summary>
     public const string AskResolved = "ask.resolved";
     public const string DebugSnapshot = "debug.snapshot";
+    /// <summary>Answer to <see cref="DebugBlobGet"/>. Body <see cref="DebugBlobResultPayload"/>.</summary>
+    public const string DebugBlobResult = "debug.blob.result";
     /// <summary>Broadcast to all connections when a window changes the focused chat (see <see cref="FocusSet"/>).</summary>
     public const string FocusChanged = "focus.changed";
     /// <summary>The current connection list — answer to <see cref="ConnectionsGet"/> and broadcast to all

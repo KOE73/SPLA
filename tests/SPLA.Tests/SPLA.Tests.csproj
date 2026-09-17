@@ -1,4 +1,4 @@
-<Project Sdk="Microsoft.NET.Sdk">
+﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
     <IsPackable>false</IsPackable>
@@ -25,6 +25,7 @@
          Serializing collections gives every timing-sensitive test the runner to itself, which is
          what its margin was actually tuned against. -->
     <None Include="xunit.runner.json" CopyToOutputDirectory="PreserveNewest" />
+    <None Update="Android\Data\**" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 
   <ItemGroup>
@@ -40,6 +41,7 @@
     <ProjectReference Include="..\..\src\llm\SPLA.LLM.OpenAiCompat\SPLA.LLM.OpenAiCompat.csproj" />
     <ProjectReference Include="..\..\src\core\SPLA.Secrets.Dpapi\SPLA.Secrets.Dpapi.csproj" />
     <ProjectReference Include="..\..\src\plugins\SPLA.Plugins.Ssh\SPLA.Plugins.Ssh.csproj" />
+    <ProjectReference Include="..\..\src\plugins\SPLA.Plugins.Android\SPLA.Plugins.Android.csproj" />
     <ProjectReference Include="..\..\src\plugins\SPLA.Plugins.Browser\SPLA.Plugins.Browser.csproj" />
     <ProjectReference Include="..\..\src\plugins\SPLA.Plugins.Browser.Screencast\SPLA.Plugins.Browser.Screencast.csproj" />
     <ProjectReference Include="..\..\src\plugins\SPLA.Plugins.Network\SPLA.Plugins.Network.csproj" />
@@ -47,6 +49,7 @@
     <ProjectReference Include="..\..\src\plugins\SPLA.Plugins.Roslyn\SPLA.Plugins.Roslyn.csproj" />
     <ProjectReference Include="..\..\src\plugins\SPLA.Plugins.Sql\SPLA.Plugins.Sql.csproj" />
     <ProjectReference Include="..\..\src\plugins\SPLA.Plugins.Documents\SPLA.Plugins.Documents.csproj" />
+    <ProjectReference Include="..\..\src\plugins\SPLA.Plugins.Geometry\SPLA.Plugins.Geometry.csproj" />
     <ProjectReference Include="..\..\src\service\SPLA.Service\SPLA.Service.csproj" />
     <ProjectReference Include="..\..\src\service\SPLA.Instances\SPLA.Instances.csproj" />
     <ProjectReference Include="..\..\src\identity\SPLA.Identity.Windows\SPLA.Identity.Windows.csproj" />

@@ -32,6 +32,7 @@
           :open="openKeys.has(keyOf(conn))"
           @update:open="toggle(conn)"
           @remove="remove(conn)"
+          @set-default="(m, on) => setDefaultModel(s.scope, m, on)"
         />
       </ListPanel>
     </section>
@@ -42,7 +43,7 @@
 import { t } from "../../i18n";
 import { computed, onUnmounted, reactive, ref } from "vue";
 import { client } from "../../protocol/SplaClient";
-import type { ConnectionDto, ConnHealth } from "../../protocol/types";
+import type { ConnectionDto, ConnHealth, ModelEntryDto } from "../../protocol/types";
 import ConnectionCard from "./ConnectionCard.vue";
 import ListPanel from "../../components/list/ListPanel.vue";
 import RefreshButton from "../../components/buttons/RefreshButton.vue";
@@ -102,6 +103,17 @@ const grouped = computed(() => {
   for (const c of conns.value) out[scopeOf(c)].push(c);
   return out;
 });
+
+/** Marks one model as the layer's default, clearing every other mark in that same layer.
+ *
+ *  The clearing is the whole point of doing this here. A scope is a file, the resolver refuses a file
+ *  that names two defaults, and the models live scattered across every connection in the scope — so
+ *  the only place that can hold the invariant is the one component that sees them all. Other scopes
+ *  are left alone: each layer names its own default, and the merge order decides which one wins. */
+function setDefaultModel(scope: Scope, target: ModelEntryDto, on: boolean) {
+  for (const c of grouped.value[scope])
+    for (const m of c.models) m.default = on && m === target;
+}
 
 function addConnection(scope: Scope) {
   const conn: ConnectionDto = {

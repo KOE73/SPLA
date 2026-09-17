@@ -1,9 +1,10 @@
-<Solution>
+﻿<Solution>
   <Folder Name="/README/">
     <File Path="Directory.Build.props" />
     <File Path="README.md" />
     <File Path="README_RU.md" />
     <File Path="AGENTS.md" />
+    <File Path="CLAUDE.md" />
   </Folder>
   <Folder Name="/.github/">
     <File Path=".github/workflows/ci.yml" />
@@ -16,13 +17,17 @@
   </Folder>
   <Folder Name="/agents/">
     <File Path="agents/avalonia.md" />
+    <File Path="agents/chat-feed.md" />
     <File Path="agents/composition.md" />
+    <File Path="agents/csharp.md" />
     <File Path="agents/data-ownership.md" />
     <File Path="agents/documentation.md" />
+    <File Path="agents/git.md" />
     <File Path="agents/glossary.md" />
     <File Path="agents/observability.md" />
     <File Path="agents/plugins.md" />
     <File Path="agents/protocol.md" />
+    <File Path="agents/release.md" />
     <File Path="agents/secrets.md" />
     <File Path="agents/security.md" />
     <File Path="agents/skills.md" />
@@ -31,6 +36,7 @@
     <File Path="agents/sys_prompt_rules.md" />
     <File Path="agents/tool-args.md" />
     <File Path="agents/tool-help.md" />
+    <File Path="agents/toolsets.md" />
     <File Path="agents/ui-theming.md" />
   </Folder>
   <Folder Name="/docs/">
@@ -160,6 +166,22 @@
     <File Path="docs/adr/ADR_20260904_core_history-vs-current.md" />
     <File Path="docs/adr/ADR_20260906_core_one-address.md" />
     <File Path="docs/adr/ADR_20260904_core_connection-scopes.md" />
+    <File Path="docs/adr/ADR_20260908_llm_retry-and-pacing.md" />
+    <File Path="docs/adr/ADR_20260908-2_core_result-size.md" />
+    <File Path="docs/adr/ADR_20260909_core_named-images.md" />
+    <File Path="docs/adr/ADR_20260910_plugins_android-device.md" />
+    <File Path="docs/adr/ADR_20260914-2_web_plugin-panels.md" />
+    <File Path="docs/adr/ADR_20260914-3_plugins_grounded-vocabulary.md" />
+    <File Path="docs/adr/ADR_20260914-4_plugins_grid-is-a-ruler.md" />
+    <File Path="docs/adr/ADR_20260914_plugins_geometry-workspace.md" />
+    <File Path="docs/adr/ADR_20260916-2_plugins_probes-find-the-angle.md" />
+    <File Path="docs/adr/ADR_20260916-3_plugins_probe-legibility.md" />
+    <File Path="docs/adr/ADR_20260916-4_plugins_probe-refusal-redraws.md" />
+    <File Path="docs/adr/ADR_20260916_plugins_geometry-probes.md" />
+    <File Path="docs/adr/ADR_20260910-2_agent_chat-feed.md" />
+    <File Path="docs/adr/ADR_20260911_core_resources-capability.md" />
+    <File Path="docs/adr/ADR_20260911-2_agent_agents-md-scopes.md" />
+    <File Path="docs/adr/ADR_20260911-3_agent_compaction.md" />
   </Folder>
   <Folder Name="/docs/plans/">
     <File Path="docs/plans/PLAN_20260619_agent_skills-lifecycle.md" />
@@ -198,6 +220,12 @@
     <File Path="docs/plans/PLAN_20260903_diagrams_content-and-routing.md" />
     <File Path="docs/plans/PLAN_20260904_core_chat-graph.md" />
     <File Path="docs/plans/PLAN_20260906_core_chat-directory-and-await.md" />
+    <File Path="docs/plans/PLAN_20260910_plugins_android-device.md" />
+    <File Path="docs/plans/PLAN_20260914-2_web_plugin-panels.md" />
+    <File Path="docs/plans/PLAN_20260914-3_plugins_grounded-vocabulary.md" />
+    <File Path="docs/plans/PLAN_20260914_plugins_geometry-workspace.md" />
+    <File Path="docs/plans/PLAN_20260910-2_agent_chat-feed.md" />
+    <File Path="docs/plans/PLAN_20260911_agent_roles-agents-md-compact.md" />
   </Folder>
   <Folder Name="/docs/ideas/">
     <File Path="docs/ideas/IDEA_20260611_core_todo-general.md" />
@@ -229,6 +257,7 @@
     <File Path="docs/ideas/IDEA_20260824-7_core_leftovers-lower-priority.md" />
     <File Path="docs/ideas/IDEA_20260824_plugins_document-context.md" />
     <File Path="docs/ideas/IDEA_20260904_apps_hub-settings.md" />
+    <File Path="docs/ideas/IDEA_20260914_core_dead-retention-values.md" />
   </Folder>
   <Folder Name="/src/core/">
     <Project Path="src/core/SPLA.Domain/SPLA.Domain.csproj" />
@@ -278,10 +307,18 @@
     <Project Path="src/plugins/SPLA.Plugins.Browser/SPLA.Plugins.Browser.csproj" />
     <Project Path="src/plugins/SPLA.Plugins.Browser.Screencast/SPLA.Plugins.Browser.Screencast.csproj" />
   </Folder>
+  <Folder Name="/src/plugins/device/">
+    <Project Path="src/plugins/SPLA.Plugins.Android/SPLA.Plugins.Android.csproj" />
+    <File Path="src/plugins/SPLA.Plugins.Android/AGENTS.md" />
+    <File Path="src/plugins/SPLA.Plugins.Geometry/AGENTS.md" />
+  </Folder>
   <Folder Name="/src/plugins/data/">
     <Project Path="src/plugins/SPLA.Plugins.Sql/SPLA.Plugins.Sql.csproj" />
     <Project Path="src/plugins/SPLA.Plugins.OneC/SPLA.Plugins.OneC.csproj" />
     <Project Path="src/plugins/SPLA.Plugins.Documents/SPLA.Plugins.Documents.csproj" />
+  </Folder>
+  <Folder Name="/src/plugins/vision/">
+    <Project Path="src/plugins/SPLA.Plugins.Geometry/SPLA.Plugins.Geometry.csproj" />
   </Folder>
   <Folder Name="/src/plugins/dev/">
     <Project Path="src/plugins/SPLA.Plugins.Roslyn/SPLA.Plugins.Roslyn.csproj" />
@@ -295,6 +332,10 @@
     <Project Path="src/plugins/SPLA.Skills.Documents/SPLA.Skills.Documents.csproj" />
     <File Path="src/plugins/SPLA.Skills.Documents/skills/docx-to-registry.md" />
   </Folder>
+  <Folder Name="/src/plugins/vision/skills-geometry/">
+    <Project Path="src/plugins/SPLA.Skills.Geometry/SPLA.Skills.Geometry.csproj" />
+    <File Path="src/plugins/SPLA.Skills.Geometry/skills/image-markup.md" />
+  </Folder>
   <Folder Name="/src/plugins/infra/skills-network/">
     <Project Path="src/plugins/SPLA.Skills.Network/SPLA.Skills.Network.csproj" />
     <File Path="src/plugins/SPLA.Skills.Network/dns-diagnostics.md" />
@@ -305,6 +346,7 @@
     <File Path="src/plugins/SPLA.Skills.Network/ssl-audit.md" />
   </Folder>
   <Folder Name="/web/">
+    <File Path="web/AGENTS.md" />
     <File Path="web/package.json" />
     <File Path="web/vite.config.ts" />
     <File Path="web/tsconfig.json" />

@@ -1,4 +1,5 @@
 ﻿using SPLA.Domain.Agent;
+using SPLA.Domain.Models;
 using SPLA.Domain.Resources;
 using System.Text;
 
@@ -172,5 +173,29 @@ public static class SchemaParts
     {
         type = new[] { "string", "null" },
         description = "Optional name for the stored blob (handle becomes blob:<name>). Omit for an auto id. Only used when output is 'blob' or 'both'."
+    };
+
+    /// <summary>The <c>keep</c> parameter for a tool that can put a picture in front of the model:
+    /// how long that picture stays there. Declared once here for the same reason as
+    /// <see cref="Output"/> — two callers writing their own wording is how the same argument ends up
+    /// meaning two things.</summary>
+    public static object ImageKeepParameter => new
+    {
+        type = new[] { "string", "null" },
+        @enum = new[] { "once", "pinned" },
+        description = "How long the picture stays in front of you: 'once' for a working frame (the newest " +
+                      "picture is the only one kept), 'pinned' for a reference image the task is measured " +
+                      "against (kept for the whole chat, not pushed out by later pictures, not hidden by " +
+                      "compaction — re-reading the same source replaces it). Omit to follow the chat's setting."
+    };
+
+    /// <summary>Reads the <c>keep</c> argument. Anything unrecognised — including absent and null —
+    /// is <see cref="ImageKeep.Unspecified"/>: a typo must fall back to the chat's setting, never
+    /// silently pin a frame into the context for good.</summary>
+    public static ImageKeep ParseImageKeep(string? value) => value?.Trim().ToLowerInvariant() switch
+    {
+        "once" => ImageKeep.Once,
+        "pinned" => ImageKeep.Pinned,
+        _ => ImageKeep.Unspecified
     };
 }

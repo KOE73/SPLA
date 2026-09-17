@@ -100,4 +100,14 @@ public class LLMSettings
     /// without touching the head of the distribution the way top_p does.
     /// </summary>
     public double? MinP { get; set; }
+
+    /// <summary>How hard to keep trying when the provider rate-limits this turn. Carried here from the
+    /// connection because a middleware reads its settings from the turn context and never reaches back
+    /// into config. Never null — an absent <c>retry:</c> block means the defaults, not "no policy".</summary>
+    public SplaRetrySection Retry { get; set; } = new();
+
+    /// <summary>Minimum seconds between consecutive requests on this connection; 0 = no pacing. The
+    /// gate that enforces it is keyed by <see cref="ConnectionId"/> and outlives the turn, so this
+    /// field only carries the figure — holding the schedule per turn would pace nothing.</summary>
+    public double MinRequestInterval { get; set; } = 0.0;
 }

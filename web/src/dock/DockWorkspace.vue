@@ -11,14 +11,39 @@ import { DockviewVue } from "dockview-vue";
 import "dockview-vue/dist/styles/dockview.css";
 import DockToolbar from "./DockToolbar.vue";
 import { initializeDock, openPanel, openSshTerminal } from "./dockController";
-import { dockComponents, dockTabComponents } from "./panelCatalog";
+import { dockComponents, dockTabComponents, panelCatalog, registerPluginPanels } from "./panelCatalog";
 import { client } from "../protocol/SplaClient";
+
+// ?panel=<kind> opens one panel at startup. It names a kind and nothing else, so a plugin panel
+// (?panel=plugin:browser_screencast) is as much a deep link as a built-in one — the shell has no
+// list of which panels may be linked to. A plugin's kind is not in the catalog yet when the dock is
+// ready, so the attempt is made again once plugins.result has registered them.
+const requestedPanel = new URLSearchParams(location.search).get("panel");
+let dockReady = false;
+let deepLinkOpened = false;
+function openRequestedPanel() {
+  if (deepLinkOpened || !dockReady || !requestedPanel || !panelCatalog[requestedPanel]) return;
+  deepLinkOpened = true;
+  openPanel(requestedPanel);
+}
 
 function ready(event: { api: Parameters<typeof initializeDock>[0] }) {
   initializeDock(event.api);
-  const requestedPanel = new URLSearchParams(location.search).get("panel");
-  if (requestedPanel === "browserScreencast") openPanel("browserScreencast");
+  dockReady = true;
+  openRequestedPanel();
 }
+
+// Panels contributed by plugins (web_panel_entry): the list rides on the existing plugins.result —
+// the same message the settings window uses — so nothing new was added to the wire. Asked for on
+// mount and again after a reconnect or a save, so enabling a plugin makes its button appear without
+// a reload.
+const offPlugins = client.on("plugins.result", p => {
+  registerPluginPanels(p.plugins || []);
+  openRequestedPanel();
+});
+client.send("plugins.get", undefined);
+const offPluginsConn = client.on("conn", c => { if (c.on) client.send("plugins.get", undefined); });
+onUnmounted(() => { offPlugins(); offPluginsConn(); });
 
 // "Watch the agent live": when the agent opens an SSH session, auto-attach a terminal panel so the
 // operator SEES the commands and output appear — not silently somewhere. We only auto-open each

@@ -1,0 +1,391 @@
+using SkiaSharp;
+using System;
+using System.Linq;
+using SPLA.Plugins.Geometry;
+using SPLA.Plugins.Geometry.Model;
+using SPLA.Plugins.Geometry.Render;
+using SPLA.Plugins.Geometry.Session;
+
+namespace SPLA.Tests.Geometry;
+
+/// <summary>
+/// The render is the only thing the model ever sees, so the properties pinned here are the ones it
+/// depends on: the picture is exactly the size the reply claims, something is actually drawn where
+/// the box is, and the frame is left alone everywhere else.
+/// </summary>
+public sealed class GeometryRendererTests
+{
+    private static byte[] Frame(int width, int height, SKColor fill)
+    {
+        using var bitmap = new SKBitmap(width, height);
+        using var canvas = new SKCanvas(bitmap);
+        canvas.Clear(fill);
+        using var image = SKImage.FromBitmap(bitmap);
+        using var data = image.Encode(SKEncodedImageFormat.Png, 100);
+        return data.ToArray();
+    }
+
+    private static GeometrySession Open(int width = 400, int height = 300, GeometrySettings? cfg = null)
+    {
+        var session = GeometrySession.Open(
+            Frame(width, height, new SKColor(0x80, 0x80, 0x80)), "test://frame.png", null,
+            cfg ?? new GeometrySettings(), out var error);
+        Assert.Null(error);
+        return session!;
+    }
+
+    private static SKBitmap Decode(byte[] bytes) => SKBitmap.Decode(bytes);
+
+    [Fact]
+    public void A_render_is_exactly_the_size_the_view_announces()
+    {
+        using var session = Open(2048, 1024);
+        var bytes = GeometryRenderer.Render(session, session.CurrentView, grid: false, false, new GeometrySettings());
+
+        using var decoded = Decode(bytes);
+        Assert.Equal(session.CurrentView.Width, decoded.Width);
+        Assert.Equal(session.CurrentView.Height, decoded.Height);
+        Assert.Equal(1024, decoded.Width);
+    }
+
+    [Fact]
+    public void A_box_is_drawn_on_its_outline_and_nowhere_else()
+    {
+        using var session = Open();
+        session.Objects.Add(new GeometryObject
+        {
+            Name = "bag",
+            Kind = ObjectKind.Box,
+            Box = new Obb(200, 150, 100, 60, 0),
+        });
+
+        var cfg = new GeometrySettings();
+        var bytes = GeometryRenderer.Render(session, session.CurrentView, grid: false, false, cfg);
+        using var decoded = Decode(bytes);
+
+        var background = new SKColor(0x80, 0x80, 0x80);
+
+        // Middle of the top edge: y = 150 - 30 = 120, x = 200.
+        Assert.NotEqual(background.Red, decoded.GetPixel(200, 120).Red);
+
+        // Far from the outline and from the label: untouched frame.
+        var away = decoded.GetPixel(30, 280);
+        Assert.Equal(background.Red, away.Red);
+        Assert.Equal(background.Green, away.Green);
+        Assert.Equal(background.Blue, away.Blue);
+
+        // Inside the box, away from every edge and from the centre mark: the outline is a stroke,
+        // not a fill.
+        var inside = decoded.GetPixel(225, 135);
+        Assert.Equal(background.Red, inside.Red);
+    }
+
+    [Fact]
+    public void The_editing_box_carries_the_four_edge_colours_and_an_accepted_one_does_not()
+    {
+        // The mapping pinned here is the one the reply text names and the model is told to call by:
+        // cyan=top, magenta=right, yellow=bottom, green=left, bound to the box's own axes.
+        using var session = Open();
+        session.Objects.Add(new GeometryObject
+        {
+            Name = "a", Kind = ObjectKind.Box, Box = new Obb(200, 150, 120, 80, 0),
+        });
+
+        var cfg = new GeometrySettings();
+        using var editing = Decode(GeometryRenderer.Render(session, session.CurrentView, false, false, cfg));
+
+        AssertNear(editing.GetPixel(200, 110), 0x00, 0xCF, 0xFF);   // top    - cyan
+        AssertNear(editing.GetPixel(260, 150), 0xFF, 0x74, 0xE4);   // right  - magenta
+        AssertNear(editing.GetPixel(200, 190), 0xFF, 0xE1, 0x00);   // bottom - yellow
+        AssertNear(editing.GetPixel(140, 150), 0x3F, 0xD6, 0x5C);   // left   - green
+
+        session.Objects[0].Status = ObjectStatus.Accepted;
+        using var accepted = Decode(GeometryRenderer.Render(session, session.CurrentView, false, false, cfg));
+
+        // One muted colour all the way round: no edge of an accepted box can be read as an edge
+        // of the box being placed.
+        AssertNear(accepted.GetPixel(200, 110), 0x7A, 0x8C, 0xA0);
+        AssertNear(accepted.GetPixel(200, 190), 0x7A, 0x8C, 0xA0);
+    }
+
+    [Fact]
+    public void The_edge_colours_turn_with_the_box()
+    {
+        // Ninety degrees clockwise: the box's own top edge now faces screen-right, and the cyan
+        // must have gone with it. This is what side names like "left" could not have given us.
+        using var session = Open();
+        session.Objects.Add(new GeometryObject
+        {
+            Name = "a", Kind = ObjectKind.Box, Box = new Obb(200, 150, 120, 80, 90),
+        });
+
+        using var decoded = Decode(GeometryRenderer.Render(session, session.CurrentView, false, false, new GeometrySettings()));
+
+        AssertNear(decoded.GetPixel(240, 150), 0x00, 0xCF, 0xFF);   // the top edge, now on the right
+        AssertNear(decoded.GetPixel(160, 150), 0xFF, 0xE1, 0x00);   // the bottom edge, now on the left
+    }
+
+    [Fact]
+    public void The_editing_box_marks_its_centre()
+    {
+        // dx/dy move exactly this point, and until it was drawn the model was correcting blind.
+        using var session = Open();
+        session.Objects.Add(new GeometryObject
+        {
+            Name = "a", Kind = ObjectKind.Box, Box = new Obb(200, 150, 120, 80, 0),
+        });
+
+        var cfg = new GeometrySettings();
+        using var editing = Decode(GeometryRenderer.Render(session, session.CurrentView, false, false, cfg));
+        AssertNear(editing.GetPixel(200, 150), 0xFF, 0xFF, 0xFF);
+
+        session.Objects[0].Status = ObjectStatus.Accepted;
+        using var accepted = Decode(GeometryRenderer.Render(session, session.CurrentView, false, false, cfg));
+        Assert.Equal(0x80, accepted.GetPixel(200, 150).Red);   // untouched frame
+    }
+
+    [Fact]
+    public void Every_corner_carries_the_colour_of_the_edge_that_starts_there()
+    {
+        using var session = Open();
+        session.Objects.Add(new GeometryObject
+        {
+            Name = "a", Kind = ObjectKind.Box, Box = new Obb(200, 150, 120, 80, 0),
+        });
+
+        using var decoded = Decode(GeometryRenderer.Render(session, session.CurrentView, false, false, new GeometrySettings()));
+
+        AssertNear(decoded.GetPixel(140, 110), 0x00, 0xCF, 0xFF);   // top-left,     cyan starts here
+        AssertNear(decoded.GetPixel(260, 110), 0xFF, 0x74, 0xE4);   // top-right,    magenta
+        AssertNear(decoded.GetPixel(260, 190), 0xFF, 0xE1, 0x00);   // bottom-right, yellow
+        AssertNear(decoded.GetPixel(140, 190), 0x3F, 0xD6, 0x5C);   // bottom-left,  green
+    }
+
+    private static void AssertNear(SKColor actual, byte r, byte g, byte b, int tolerance = 40)
+    {
+        Assert.True(
+            Math.Abs(actual.Red - r) <= tolerance
+            && Math.Abs(actual.Green - g) <= tolerance
+            && Math.Abs(actual.Blue - b) <= tolerance,
+            $"expected about #{r:X2}{g:X2}{b:X2}, got #{actual.Red:X2}{actual.Green:X2}{actual.Blue:X2}");
+    }
+
+    [Fact]
+    public void A_point_is_drawn_wide_enough_to_be_seen()
+    {
+        // The whole reason the renderer exists is that the model has to see the mark. A single
+        // pixel would be invisible; the crosshair arms must reach several pixels out.
+        using var session = Open();
+        session.Objects.Add(new GeometryObject { Name = "mark", Kind = ObjectKind.Point, Point = (200, 150) });
+
+        using var decoded = Decode(GeometryRenderer.Render(session, session.CurrentView, false, false, new GeometrySettings()));
+        var background = new SKColor(0x80, 0x80, 0x80);
+
+        // The arms run diagonally: a point is an X in a circle, a box's centre is a dot in a ring.
+        // Two meanings must not share one glyph (ADR_20260914-3 §3.2).
+        Assert.NotEqual(background.Red, decoded.GetPixel(206, 156).Red);   // lower-right arm
+        Assert.NotEqual(background.Red, decoded.GetPixel(194, 144).Red);   // upper-left arm
+        Assert.Equal(background.Red, decoded.GetPixel(200, 250).Red);      // well clear of it
+    }
+
+    [Fact]
+    public void An_object_outside_the_view_is_reported_as_such_and_not_drawn()
+    {
+        using var session = Open();
+        var outside = new GeometryObject { Name = "far", Kind = ObjectKind.Point, Point = (5000, 5000) };
+        var inside = new GeometryObject { Name = "near", Kind = ObjectKind.Point, Point = (200, 150) };
+
+        Assert.False(GeometryRenderer.IsVisible(outside, session.CurrentView));
+        Assert.True(GeometryRenderer.IsVisible(inside, session.CurrentView));
+    }
+
+    /// <summary>The grid is a measuring instrument, not debug decoration: a model cannot judge a
+    /// distance by eye but reads coordinates off a grid accurately, so a render with nothing said
+    /// about the grid carries one.</summary>
+    [Fact]
+    public void The_grid_is_drawn_when_the_call_says_nothing()
+    {
+        using var session = Open();
+        var cfg = GeometrySettings.FromBlob(new() { ["grid_step"] = 50 });
+
+        using var silent = Decode(GeometryRenderer.Render(session, session.CurrentView, null, false, cfg));
+        using var off = Decode(GeometryRenderer.Render(session, session.CurrentView, false, false, cfg));
+
+        var background = new SKColor(0x80, 0x80, 0x80);
+        Assert.NotEqual(background.Red, silent.GetPixel(100, 250).Red);
+        Assert.Equal(background.Red, off.GetPixel(100, 250).Red);
+    }
+
+    /// <summary>And the call still wins over the setting, in both directions.</summary>
+    [Fact]
+    public void A_call_overrides_the_grid_setting()
+    {
+        using var session = Open();
+        var background = new SKColor(0x80, 0x80, 0x80);
+
+        using var forcedOn = Decode(GeometryRenderer.Render(session, session.CurrentView, true, false,
+            GeometrySettings.FromBlob(new() { ["grid"] = false, ["grid_step"] = 50 })));
+        using var forcedOff = Decode(GeometryRenderer.Render(session, session.CurrentView, false, false,
+            GeometrySettings.FromBlob(new() { ["grid"] = true, ["grid_step"] = 50 })));
+
+        Assert.NotEqual(background.Red, forcedOn.GetPixel(100, 250).Red);
+        Assert.Equal(background.Red, forcedOff.GetPixel(100, 250).Red);
+    }
+
+    /// <summary>Every line both measures and obscures, so a fine line has to stay faint while the
+    /// labelled major line stays strong. Without that split a readable grid is a wash of ink over the
+    /// blurred print the box is being placed on.</summary>
+    [Fact]
+    public void A_major_line_is_stronger_than_a_fine_one()
+    {
+        using var session = Open();
+        var cfg = GeometrySettings.FromBlob(new() { ["grid_step"] = 50, ["grid_major_every"] = 4 });
+
+        using var ruled = Decode(GeometryRenderer.Render(session, session.CurrentView, null, false, cfg));
+
+        var fine = ruled.GetPixel(50, 250).Red;
+        var major = ruled.GetPixel(200, 250).Red;
+        var background = new SKColor(0x80, 0x80, 0x80).Red;
+        Assert.True(major < fine, $"major {major} should be darker than fine {fine}");
+        Assert.True(fine < background, $"fine {fine} should still be visible against {background}");
+    }
+
+
+    [Fact]
+    public void Jpeg_quality_switches_the_encoding()
+    {
+        using var session = Open();
+
+        var png = GeometryRenderer.Render(session, session.CurrentView, false, false, new GeometrySettings());
+        var jpeg = GeometryRenderer.Render(session, session.CurrentView, false, false,
+            GeometrySettings.FromBlob(new() { ["jpeg_quality"] = 80 }));
+
+        Assert.Equal(new byte[] { 0x89, 0x50, 0x4E, 0x47 }, png[..4]);
+        Assert.Equal(new byte[] { 0xFF, 0xD8 }, jpeg[..2]);
+        Assert.Equal("image/png", GeometryRenderer.MimeType(new GeometrySettings()));
+    }
+    /// <summary>The edge rulers read in the unit the correction is written in: pixels from a named
+    /// edge, and they reach <b>outside</b> the box too, because "the print sticks out this far" is the
+    /// same question and nothing else in the picture answers it.</summary>
+    [Fact]
+    public void A_ruler_reaches_outside_the_box_in_its_own_edge_colour()
+    {
+        using var session = Open();
+        session.Objects.Add(new GeometryObject
+        {
+            Name = "mark", Kind = ObjectKind.Box, Box = new Obb(200, 150, 160, 100, 0)
+        });
+        var cfg = GeometrySettings.FromBlob(new() { ["grid"] = false });
+
+        using var ruled = Decode(GeometryRenderer.Render(session, session.CurrentView, false, true, cfg));
+        using var bare = Decode(GeometryRenderer.Render(session, session.CurrentView, false, false, cfg));
+
+        // One finest step (32 px) out from the green (left) edge at x=120, along the stretch it spans.
+        var column = Enumerable.Range(112, 76).Select(y => ruled.GetPixel(88, y)).ToArray();
+        Assert.Contains(column, p => p.Green - p.Red > 40);
+        Assert.All(Enumerable.Range(112, 76), y => Assert.Equal(0x80, bare.GetPixel(88, y).Red));
+    }
+
+    /// <summary>The inward ruler is a shrunken copy of the box — a closed rectangle inset by the same
+    /// amount on all four sides — and not four lines that each run the length of their own edge. Four
+    /// such lines overshoot the box at one end and fall short at the other, so each one's two ends say
+    /// different things about where the box is: the very ambiguity the rulers exist to remove.</summary>
+    [Fact]
+    public void The_inward_ruler_is_a_closed_inset_rectangle()
+    {
+        using var session = Open();
+        session.Objects.Add(new GeometryObject
+        {
+            Name = "mark", Kind = ObjectKind.Box, Box = new Obb(200, 150, 160, 100, 0)
+        });
+
+        using var ruled = Decode(GeometryRenderer.Render(
+            session, session.CurrentView, false, true,
+            GeometrySettings.FromBlob(new() { ["grid"] = false, ["ruler_labels"] = false })));
+
+        // The box spans x 120..280, y 100..200, so the first ring is the rectangle 152..248 × 132..168.
+        var background = new SKColor(0x80, 0x80, 0x80).Red;
+        bool Painted(int x, int y) => ruled.GetPixel(x, y).Red != background;
+
+        // Dashed, so only that some of it is painted — the closed-rectangle claim is the corners below.
+        Assert.Contains(Enumerable.Range(160, 80).ToArray(), x => Painted(x, 132));
+        // Past the ring's corner the side stops: it is a rectangle, not a line the length of the edge.
+        Assert.False(Painted(140, 132), "the ring's top side runs past its own corner");
+        Assert.False(Painted(264, 132), "the ring's top side runs past its own corner");
+    }
+
+    /// <summary>A line 32 px inside an edge and one 32 px outside it share their colour, their
+    /// distance and their number: the only thing left to tell them apart is which side of the edge
+    /// they fall on, which is the judgement by eye the rulers exist to remove. So the stroke carries
+    /// it — dashed inside, solid outside — and the tool help says so in those words. Dashed is the one
+    /// that goes inside because inside is where the print is, and the gaps let the letters through.
+    /// </summary>
+    [Fact]
+    public void Inward_is_dashed_and_outward_is_solid()
+    {
+        using var session = Open();
+        session.Objects.Add(new GeometryObject
+        {
+            Name = "mark", Kind = ObjectKind.Box, Box = new Obb(200, 150, 160, 100, 0)
+        });
+
+        using var ruled = Decode(GeometryRenderer.Render(
+            session, session.CurrentView, false, true,
+            GeometrySettings.FromBlob(new() { ["grid"] = false, ["ruler_labels"] = false })));
+
+        // The green (left) edge is at x=120: one finest step out is x=88, one step in is x=152.
+        // Away from the corners, where the scales of the other two edges cross these columns.
+        var background = new SKColor(0x80, 0x80, 0x80).Red;
+        bool Painted(int x, int y) => ruled.GetPixel(x, y).Red != background;
+
+        // Outside, at x=88: solid, and running the full length of the edge (y=100..200).
+        Assert.All(Enumerable.Range(105, 90),
+            y => Assert.True(Painted(88, y), $"the outward line breaks at y={y}"));
+        // Inside, at x=152: the ring's left side, dashed — so it has gaps between y=132 and y=168.
+        var ring = Enumerable.Range(135, 30).ToArray();
+        Assert.Contains(ring, y => !Painted(152, y));
+        Assert.Contains(ring, y => Painted(152, y));
+    }
+
+    /// <summary>Only the box being edited carries rulers, for the reason only it carries the four
+    /// colours: several accepted outlines would be mush.</summary>
+    [Fact]
+    public void An_accepted_box_carries_no_rulers()
+    {
+        using var session = Open();
+        session.Objects.Add(new GeometryObject
+        {
+            Name = "mark", Kind = ObjectKind.Box, Box = new Obb(200, 150, 160, 100, 0),
+            Status = ObjectStatus.Accepted
+        });
+
+        using var ruled = Decode(GeometryRenderer.Render(
+            session, session.CurrentView, false, true, GeometrySettings.FromBlob(new() { ["grid"] = false })));
+
+        Assert.All(Enumerable.Range(112, 76), y => Assert.Equal(0x80, ruled.GetPixel(88, y).Red));
+    }
+
+    /// <summary>The rulers are an instrument the model picks up on the job, so a call overrides the
+    /// setting in both directions, exactly as the view grid does.</summary>
+    [Fact]
+    public void A_call_overrides_the_ruler_setting()
+    {
+        using var session = Open();
+        session.Objects.Add(new GeometryObject
+        {
+            Name = "mark", Kind = ObjectKind.Box, Box = new Obb(200, 150, 160, 100, 0)
+        });
+
+        using var forcedOn = Decode(GeometryRenderer.Render(
+            session, session.CurrentView, false, true,
+            GeometrySettings.FromBlob(new() { ["grid"] = false, ["edge_rulers"] = false })));
+        using var forcedOff = Decode(GeometryRenderer.Render(
+            session, session.CurrentView, false, false,
+            GeometrySettings.FromBlob(new() { ["grid"] = false, ["edge_rulers"] = true })));
+
+        var on = Enumerable.Range(112, 76).Select(y => forcedOn.GetPixel(88, y)).ToArray();
+        Assert.Contains(on, p => p.Green - p.Red > 40);
+        Assert.All(Enumerable.Range(112, 76), y => Assert.Equal(0x80, forcedOff.GetPixel(88, y).Red));
+    }
+
+}

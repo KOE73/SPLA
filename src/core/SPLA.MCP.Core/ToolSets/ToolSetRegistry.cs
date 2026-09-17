@@ -137,10 +137,15 @@ public sealed class ToolSetRegistry
     /// level is <b>derived</b> from the supplier's existing on/off flag, which is what keeps every
     /// project that predates this mechanism behaving exactly as before — an enabled plugin is a fully
     /// disclosed set, a disabled one does not exist.
+    /// <para>Whose <c>toolsets:</c> section is read is decided by the caller's flow: the running
+    /// session's own settings (a role's) when it has them, the project's otherwise. A settings panel or
+    /// a foreign head asks outside any session and gets the project's answer; a chat under a role asks
+    /// inside its own and gets the role's — for listing and for execution alike, since both ask here.</para>
     /// </summary>
     public ToolSetLevel LevelOf(string setId)
     {
-        if (_settings.ToolSets.TryGetValue(setId, out var configured) && TryParseLevel(configured, out var level))
+        var settings = SPLA.Domain.Agent.AgentSessionScope.Current?.Settings ?? _settings;
+        if (settings.ToolSets.TryGetValue(setId, out var configured) && TryParseLevel(configured, out var level))
             return level;
 
         var set = Find(setId);
@@ -197,35 +202,19 @@ public sealed class ToolSetRegistry
     }
 
     /// <summary>
-    /// Whether the model should see <paramref name="toolName"/> under a narrowed selection —
-    /// <paramref name="narrowedToolSets"/> — rather than whatever <paramref name="registry"/>'s own
-    /// captured <see cref="ResolvedSettings"/> would answer on its own. Shared by every caller that
-    /// narrows a tool surface for one run or one chat without touching the registry itself
-    /// (<c>SpawnedAgentRunner</c> for a run, <c>ChatToolHost</c> for a standing chat under a role —
-    /// see PLAN_20260902 waves 3 and 5б): both need "this selection, falling back to the registry's
-    /// own standing decision", never "the registry's own baseline alone".
-    /// <para>
-    /// A tool no set claims (<see cref="SetOfTool"/> returns null) is nobody's to gate and is always
-    /// kept, same rule <paramref name="registry"/> itself uses. For a claimed tool, an explicit entry
-    /// in <paramref name="narrowedToolSets"/> wins; absent one, <paramref name="registry"/>'s own
-    /// <see cref="LevelOf"/> answers — inheritance, not an empty set, for a set the narrowing never
-    /// mentions.
-    /// </para>
-    /// <para><see cref="ToolSetLevel.SkillDemand"/> and <see cref="ToolSetLevel.AgentDemand"/> are
-    /// "not disclosed unless raised", checked against <see cref="SPLA.Domain.Agent.AgentSessionScope.Current"/>
-    /// — the caller's own session for the whole time this is asked.</para>
+    /// Whether the model may see <paramref name="toolName"/> in the session running right now: its
+    /// set is fully enabled, or it is raised in that session. A tool no set claims is nobody's to gate
+    /// and is always disclosed.
+    /// <para>The one rule every tool surface uses — <c>McpHost</c> for a chat, the spawned runner's
+    /// filter for a sub-agent. There used to be a second one for roles, fed a role's own dictionary
+    /// beside the project's; now <see cref="LevelOf"/> already answers for the session's own settings,
+    /// so a role and the project go through the same line.</para>
     /// </summary>
-    public static bool IsDisclosedForRole(
-        string toolName, ToolSetRegistry registry, IReadOnlyDictionary<string, string> narrowedToolSets)
+    public bool IsDisclosed(string toolName)
     {
-        var setId = registry.SetOfTool(toolName);
-        if (setId is null) return true;
+        if (SetOfTool(toolName) is not { } setId) return true;
 
-        var level = narrowedToolSets.TryGetValue(setId, out var configured) && TryParseLevel(configured, out var parsed)
-            ? parsed
-            : registry.LevelOf(setId);
-
-        return level switch
+        return LevelOf(setId) switch
         {
             ToolSetLevel.Enabled => true,
             ToolSetLevel.Disabled => false,

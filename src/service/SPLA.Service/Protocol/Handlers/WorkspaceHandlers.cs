@@ -10,7 +10,7 @@ internal sealed class WorkspaceHandlers : IMessageHandler
 {
     public IEnumerable<string> HandledTypes =>
     [
-        MessageTypes.DebugRequest, MessageTypes.SchemaGet,
+        MessageTypes.DebugRequest, MessageTypes.DebugBlobGet, MessageTypes.SchemaGet,
         MessageTypes.FsBrowse, MessageTypes.FsRead, MessageTypes.FsWrite,
         MessageTypes.SubagentGet,
     ];
@@ -18,6 +18,7 @@ internal sealed class WorkspaceHandlers : IMessageHandler
     public Task HandleAsync(RequestContext ctx) => ctx.Env.Type switch
     {
         MessageTypes.DebugRequest => Debug(ctx),
+        MessageTypes.DebugBlobGet => DebugBlob(ctx),
         MessageTypes.SchemaGet    => Schema(ctx),
         MessageTypes.FsBrowse     => FsBrowse(ctx),
         MessageTypes.FsRead       => FsRead(ctx),
@@ -33,6 +34,38 @@ internal sealed class WorkspaceHandlers : IMessageHandler
         var chat = ctx.Env.ChatId != null ? entry.Chats.GetOrOpen(ctx.Env.ChatId) : null;
         var snap = new LiveAgentInspector(entry.Runtime).Snapshot(p?.Kind ?? "", chat);
         return ctx.Session.SendAsync(MessageTypes.DebugSnapshot, snap, ctx.Env.ChatId, ctx.Env.RequestId);
+    }
+
+    /// <summary>Largest picture served to a preview. A blob is in memory already, but a base64 copy
+    /// of something this big in one frame is a download, not a thumbnail.</summary>
+    private const long MaxPreviewBytes = 16 * 1024 * 1024;
+
+    /// <summary>One blob of the envelope's chat, as a picture. Scoped to that chat's own store — a
+    /// handle means nothing outside the chat that made it — and to image content only.</summary>
+    private static Task DebugBlob(RequestContext ctx)
+    {
+        var p = ctx.Payload<DebugBlobGetPayload>();
+        var handle = p?.Handle ?? "";
+        var result = new DebugBlobResultPayload { Handle = handle };
+        if (string.IsNullOrWhiteSpace(ctx.Env.ChatId) || string.IsNullOrWhiteSpace(handle))
+        {
+            result.Error = "chatId and handle are required.";
+            return ctx.Reply(MessageTypes.DebugBlobResult, result);
+        }
+
+        var (entry, _) = ctx.Session.Resolve(ctx.Env);
+        var blob = entry.Chats.GetOrOpen(ctx.Env.ChatId)?.BlobPayloadFor(handle);
+        result.ContentType = blob?.ContentType;
+        if (blob is null)
+            result.Error = "No such blob in this chat.";
+        else if (blob.Kind != SPLA.Domain.Agent.BlobKind.Bytes || blob.Bytes is null
+                 || blob.ContentType?.StartsWith("image/", StringComparison.OrdinalIgnoreCase) != true)
+            result.Error = "Only image blobs can be previewed.";
+        else if (blob.Bytes.LongLength > MaxPreviewBytes)
+            result.Error = "Blob is too large to preview.";
+        else
+            result.Url = $"data:{blob.ContentType};base64,{Convert.ToBase64String(blob.Bytes)}";
+        return ctx.Reply(MessageTypes.DebugBlobResult, result);
     }
 
     private static Task Schema(RequestContext ctx)
@@ -123,7 +156,9 @@ internal sealed class WorkspaceHandlers : IMessageHandler
         Reasoning = m.Reasoning,
         CreatedAt = m.CreatedAt.ToString("o"),
         ToolCallId = m.ToolCallId,
-        ToolCalls = m.ToolCalls?.Select(ProtocolMapper.ToDto).ToList()
+        ToolCalls = m.ToolCalls?.Select(ProtocolMapper.ToDto).ToList(),
+        Compacted = m.Retention == "never" && m.CompactedBy != null,
+        CompactSummary = m.CompactSummary
     };
 
     /// <summary>The project's own boundary. Without a manifest there is no project and no boundary to

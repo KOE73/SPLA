@@ -50,7 +50,11 @@
           </div>
         </span>
         <button v-else :title="tool.title" :class="{ on: isOpen(tool.kind) }" @click="openPanel(tool.kind)">
-          <Icon :name="tool.icon" />
+          <!-- A plugin cannot add files to the shell's icon set, so its button shows the emoji its
+               manifest declares. Both come from the manifest, so the button draws before (and even
+               without) the plugin's bundle. -->
+          <Icon v-if="tool.icon" :name="tool.icon" />
+          <span v-else class="emoji">{{ tool.emoji }}</span>
         </button>
       </template>
     </div>
@@ -89,14 +93,15 @@ import {
   popoutActivePanel, resetDock, toggleChatOnly, toggleMaximize,
 } from "./dockController";
 
-const iconFor: Record<PanelKind, string> = {
-  chat: "workspace", workspace: "workspace", ssh: "ssh", browserScreencast: "browser", debug: "debug", wire: "wire",
-  sessions: "sessions",
-};
-
-const tools = computed(() => toolKinds.map(kind => ({
-  kind, icon: iconFor[kind], title: panelCatalog[kind].title,
-})));
+// Icons live in the catalog now: a plugin panel has no shell icon, only the emoji from its manifest.
+const tools = computed(() => toolKinds
+  .filter(kind => !!panelCatalog[kind])
+  .map(kind => ({
+    kind,
+    icon: panelCatalog[kind].iconName ?? "",
+    emoji: panelCatalog[kind].icon,
+    title: t(panelCatalog[kind].title),
+  })));
 
 function isOpen(kind: PanelKind) {
   dockState.activePanelId; // re-evaluate as the layout changes
@@ -159,6 +164,7 @@ onUnmounted(() => document.removeEventListener("click", onDocClick));
 button { display: inline-flex; align-items: center; justify-content: center; width: 26px; height: 24px; padding: 0; border: 1px solid transparent; border-radius: 5px; background: transparent; color: var(--muted); }
 button:hover:not(:disabled) { color: var(--text); background: var(--accent-soft); border-color: var(--border); }
 button.on { color: var(--accent); background: var(--accent-soft); }
+.emoji { font-size: 13px; line-height: 1; }
 button:disabled { opacity: .3; cursor: default; }
 .spacer { flex: 1; }
 .gap { width: 14px; }

@@ -181,10 +181,13 @@ public sealed class SpawnedSessionIntegrationTests
     }
 
     /// <summary>
-    /// Requirement 6 (ADR §2.2): the exact signal <c>ChatHandlers.Send</c> checks before accepting a
-    /// message into a spawned chat flips from refused to accepted once the run finishes — including
-    /// through a runtime that was already cached by an earlier <c>chat.open</c>/<c>chat.watch</c>
-    /// (the stale-cache hazard <see cref="ChatRegistry.EvictCachedRuntime"/> exists to close).
+    /// Requirement 6 (ADR §2.2), updated for wave 2: <c>ChatHandlers.Send</c> refuses a spawned chat
+    /// whose run is in progress via <see cref="ChatRegistry.PeekSpawned"/>, not by reading a
+    /// <see cref="ChatRuntime"/>'s <c>Session.Spawn.Outcome</c> — <see cref="ChatRegistry.GetOrOpen"/>
+    /// now refuses to load a live spawned id at all (it would otherwise hand back a runtime wrapping
+    /// the still-empty file, see <see cref="ChatRegistry"/>'s own comment), so there is no longer a
+    /// stale <see cref="ChatRuntime"/> to evict once the run finishes — <c>EvictCachedRuntime</c> is
+    /// gone, superseded by <see cref="ChatRegistry.NotifySpawnedFinished"/>.
     /// </summary>
     [Fact]
     public void Write_gate_signal_is_refused_mid_run_and_accepted_once_finished()
@@ -194,22 +197,24 @@ public sealed class SpawnedSessionIntegrationTests
         {
             var session = chats.OpenSpawnedSession(null, null);
 
-            // A client peeked at (opened/watched) the chat while the run was still going — exactly the
-            // scenario that would go stale without the cache eviction on Finish.
-            var openedMidRun = chats.GetOrOpen(session.ChatId)!;
-            Assert.True(IsRefused(openedMidRun));
+            // A client peeked at (opened/watched) the chat while the run was still going — GetOrOpen
+            // must not hand back a runtime for it, and PeekSpawned must.
+            Assert.Null(chats.GetOrOpen(session.ChatId));
+            Assert.NotNull(chats.PeekSpawned(session.ChatId));
 
             session.Finish(Array.Empty<ChatMessage>(), null, "Edit", DateTimeOffset.UtcNow, "completed", null);
             session.Dispose();
 
-            // The same call chat.send makes for every message — must now see the finished session,
-            // not the stale one a mid-run peek cached.
-            var afterFinish = chats.GetOrOpen(session.ChatId)!;
-            Assert.False(IsRefused(afterFinish));
+            // Once finished, the session is dropped from the live-spawned table and GetOrOpen serves
+            // it normally, like any other chat.
+            Assert.Null(chats.PeekSpawned(session.ChatId));
+            var afterFinish = chats.GetOrOpen(session.ChatId);
+            Assert.NotNull(afterFinish);
+            Assert.False(IsRefused(afterFinish!));
         }
         finally { runtime.Dispose(); Directory.Delete(root, recursive: true); }
 
-        // The exact predicate ChatHandlers.Send uses.
+        // The exact predicate ChatHandlers.Send uses for a chat GetOrOpen did hand back.
         static bool IsRefused(ChatRuntime chat) =>
             chat.Session.Origin == "spawned" && chat.Session.Spawn?.Outcome is null;
     }
@@ -224,6 +229,100 @@ public sealed class SpawnedSessionIntegrationTests
         {
             var human = chats.CreateNew("Human chat");
             Assert.False(human.Session.Origin == "spawned" && human.Session.Spawn?.Outcome is null);
+        }
+        finally { runtime.Dispose(); Directory.Delete(root, recursive: true); }
+    }
+
+    // ── ADR_20260910-2 wave 2: the spawned session's own event stream ──────────────────────────────
+
+    /// <summary>Requirement (wave 2): a watcher attached mid-run gets a snapshot built from the run's
+    /// own in-memory conversation (<see cref="ISpawnedSession.AttachConversation"/>), not the file —
+    /// which at this point still has no messages at all.</summary>
+    [Fact]
+    public void A_watcher_opening_mid_run_gets_a_snapshot_with_the_messages_so_far()
+    {
+        var (runtime, chats, root) = BuildProject();
+        try
+        {
+            var session = (SpawnedSession)chats.OpenSpawnedSession(null, null);
+
+            var live = new System.Collections.Generic.List<ChatMessage>
+            {
+                new() { Role = ChatRole.System, Content = "system prompt" },
+                new() { Role = ChatRole.User, Content = "do the thing" }
+            };
+            session.AttachConversation(live);
+            live.Add(new ChatMessage { Role = ChatRole.Assistant, Content = "working on it" });
+
+            var snapshot = session.SnapshotForOpen(() => { });
+
+            // System messages are hidden the same way a human chat's display messages hide them.
+            Assert.Equal(2, snapshot.Messages.Count);
+            Assert.Equal("do the thing", snapshot.Messages[0].Content);
+            Assert.Equal("working on it", snapshot.Messages[1].Content);
+
+            session.Finish(live, null, "Edit", DateTimeOffset.UtcNow, "completed", null);
+            session.Dispose();
+        }
+        finally { runtime.Dispose(); Directory.Delete(root, recursive: true); }
+    }
+
+    /// <summary>Requirement (wave 2): publishing lands on this session's own feed under its own chat
+    /// id, and a subscriber attached before the run sees the whole thing — including the delta this
+    /// run streams and the assistant message it finishes with.</summary>
+    [Fact]
+    public void Publishing_reaches_a_subscriber_under_the_spawned_chat_id()
+    {
+        var (runtime, chats, root) = BuildProject();
+        try
+        {
+            var session = (SpawnedSession)chats.OpenSpawnedSession(null, null);
+            var seen = new System.Collections.Generic.List<ChatEvent>();
+            using var sub = session.Feed.Subscribe(seen.Add);
+
+            session.AttachConversation(new System.Collections.Generic.List<ChatMessage>());
+            session.PublishLlmTurnStart(Array.Empty<ChatMessage>());
+            session.PublishDelta("hel");
+            session.PublishDelta("lo");
+            var final = new ChatMessage { Role = ChatRole.Assistant, Content = "hello" };
+            session.PublishAssistantMessage(final);
+
+            Assert.All(seen, e => Assert.Equal(session.ChatId, e.ChatId));
+            Assert.Contains(seen, e => e is ChatLlmCallStarted);
+            Assert.Contains(seen, e => e is ChatDelta d && d.Text == "lo");
+            Assert.Contains(seen, e => e is ChatAssistantMessage m && m.Message == final);
+
+            session.Finish(Array.Empty<ChatMessage>(), null, "Edit", DateTimeOffset.UtcNow, "completed", null);
+            session.Dispose();
+
+            Assert.Contains(seen, e => e is ChatTurnCompleted);
+        }
+        finally { runtime.Dispose(); Directory.Delete(root, recursive: true); }
+    }
+
+    /// <summary>Requirement (wave 2): <c>Finish</c> is the session's close — it fires
+    /// <see cref="ChatRegistry.SpawnedClosed"/> and drops the id out of <see cref="ChatRegistry.PeekSpawned"/>,
+    /// the same way <see cref="ChatRegistry.RuntimeClosed"/> ends a human chat.</summary>
+    [Fact]
+    public void Finish_closes_the_session_and_fires_SpawnedClosed()
+    {
+        var (runtime, chats, root) = BuildProject();
+        try
+        {
+            SpawnedSession? opened = null, closed = null;
+            chats.SpawnedOpened += s => opened = s;
+            chats.SpawnedClosed += s => closed = s;
+
+            var session = (SpawnedSession)chats.OpenSpawnedSession(null, null);
+            Assert.Same(session, opened);
+            Assert.NotNull(chats.PeekSpawned(session.ChatId));
+
+            session.Finish(Array.Empty<ChatMessage>(), null, "Edit", DateTimeOffset.UtcNow, "completed", null);
+
+            Assert.Same(session, closed);
+            Assert.Null(chats.PeekSpawned(session.ChatId));
+
+            session.Dispose();
         }
         finally { runtime.Dispose(); Directory.Delete(root, recursive: true); }
     }

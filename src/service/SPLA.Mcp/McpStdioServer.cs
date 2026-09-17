@@ -1,4 +1,4 @@
-using SPLA.Domain.Interfaces;
+﻿using SPLA.Domain.Interfaces;
 using SPLA.Domain.Models;
 using SPLA.Domain.Tools;
 using System.Collections.Concurrent;
@@ -69,14 +69,20 @@ public sealed class McpStdioServer
         AgentMode mode = AgentMode.Agent,
         ToolCallContext? context = null,
         TextWriter? log = null,
-        string source = "mcp-stdio")
+        string source = "mcp-stdio",
+        (string? Name, string? Workspace)? project = null)
     {
         _host = host;
         _listTools = listTools;
         _mode = mode;
         _context = (context ?? ToolCallContext.FromAmbient()) with { Source = source };
         _log = log ?? Console.Error;
+        _project = project;
     }
+
+    /// <summary>Which project these tools belong to, for the handshake. Optional because the identity
+    /// is a courtesy to the caller, not something the protocol needs to function.</summary>
+    private readonly (string? Name, string? Workspace)? _project;
 
     public async Task RunAsync(TextReader input, TextWriter output, CancellationToken ct = default)
     {
@@ -262,16 +268,41 @@ public sealed class McpStdioServer
         var client = request["params"]?["clientInfo"]?["name"]?.GetValue<string>() ?? "unknown";
         _log.WriteLine($"[spla-mcp] initialize from {client} (protocol {asked ?? "unstated"})");
 
-        return new JsonObject
+        var serverInfo = new JsonObject
+        {
+            // The NAME stays "spla" whatever project this is: clients key their own config off it, and
+            // a name that moved with the project would look like a different server every time.
+            ["name"] = "spla",
+            ["version"] = typeof(McpStdioServer).Assembly.GetName().Version?.ToString() ?? "0.0.0"
+        };
+
+        var result = new JsonObject
         {
             ["protocolVersion"] = asked ?? DefaultProtocolVersion,
             ["capabilities"] = new JsonObject { ["tools"] = new JsonObject() },
-            ["serverInfo"] = new JsonObject
-            {
-                ["name"] = "spla",
-                ["version"] = typeof(McpStdioServer).Assembly.GetName().Version?.ToString() ?? "0.0.0"
-            }
+            ["serverInfo"] = serverInfo
         };
+
+        // WHICH PROJECT, said inside the protocol rather than only on stderr. A client's `cwd` is read
+        // once, when the process starts: edit it in the client's config and the already-running `spla
+        // mcp` keeps serving whatever directory it was born in — so "these tools belong to the project
+        // I meant" is an assumption that can quietly stop being true, and the observed symptom is
+        // simply the wrong data, with nothing anywhere saying why. stderr does carry the answer, but
+        // no client shows it to anybody. `instructions` is the one field in the handshake that reaches
+        // the model itself, so the identity goes there as well as in serverInfo.title.
+        if (_project is { } p && (p.Name is { Length: > 0 } || p.Workspace is { Length: > 0 }))
+        {
+            var label = p.Name is { Length: > 0 } n ? n : Path.GetFileName(p.Workspace!.TrimEnd(Path.DirectorySeparatorChar));
+            serverInfo["title"] = $"SPLA — {label}";
+            result["instructions"] =
+                $"These tools act on the SPLA project \"{label}\"" +
+                (p.Workspace is { Length: > 0 } w ? $" at {w}" : "") +
+                ". If that is not the project the user means, say so instead of answering from it: " +
+                "the project is fixed by the working directory this server was started in and cannot " +
+                "be changed from here — the user has to restart this MCP server after fixing its `cwd`.";
+        }
+
+        return result;
     }
 
     private JsonObject ListTools()

@@ -1,0 +1,33 @@
+id: geometry
+version: 0.1.0
+type: dll
+entry_point: SPLA.Plugins.Geometry.dll
+web_panel_entry: web/dist/panel.js
+web_settings_entry: web/dist/settings.js
+panel_title: Geometry
+panel_icon: 📐
+description: Mark up an image with boxes and points by looking at the result and correcting it.
+summon: Use when asked to locate, outline or measure something on a picture in pixel coordinates.
+default_prompt: |
+  The geometry tools are a markup workspace over one image. An image is opened into the workspace,
+  named objects — boxes and points — are placed on it, and every call that changes something returns
+  the picture with the current markup drawn on it. Placement is therefore a visual judgement made on
+  a rendered picture, not a coordinate computed in the head.
+
+  Coordinate-space contract: every reply states the pixel size of the picture it returns, and all
+  coordinates passed to these tools are in the space of the most recent such picture — never in the
+  original image's pixels. The tools hold the transforms and do the conversion; no arithmetic on
+  coordinates is expected of you.
+
+  What the workspace makes available: geom_open puts an image into it, geom_box and geom_point place
+  and correct objects, geom_view changes which part of the image is being looked at and at what
+  scale, geom_accept records an object as finished, and geom_result reports every object in the
+  original image's coordinates. geom_probe is a second way to place a box: it draws numbered probes and
+  moves and turns the box itself from which probes lie on the object and which do not, so placement
+  becomes a yes/no judgement per probe rather than a distance read off the picture.
+  geom_probe_legibility draws probe numbers in several looks and sizes, takes back the ones read, and
+  has geom_probe draw the smallest look read.
+
+  A box has a visible vocabulary: its four sides are drawn in distinct colours that belong to the box
+  and travel with it when it turns, its corners and its centre are marked, and the reply names each
+  side's colour and states any tilt in words alongside the number.

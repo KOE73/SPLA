@@ -23,6 +23,24 @@ public class PluginMeta
     [YamlMember(Alias = "web_settings_entry")]
     public string? WebSettingsEntry { get; set; }
 
+    /// <summary>Relative path (from the plugin's directory) to a prebuilt, self-contained ES module
+    /// the web client dynamically imports to render this plugin's own DOCK PANEL — a tab in the
+    /// workspace, not a settings page. Same <c>mount(el, api)</c> contract as
+    /// <see cref="WebSettingsEntry"/>; absent means the plugin contributes no panel.</summary>
+    [YamlMember(Alias = "web_panel_entry")]
+    public string? WebPanelEntry { get; set; }
+
+    /// <summary>The panel's tab title. Lives here rather than in the bundle because the tool strip
+    /// has to draw the button BEFORE the bundle is loaded — and still draw it if the bundle fails to
+    /// load. English only. Falls back to the plugin's name.</summary>
+    [YamlMember(Alias = "panel_title")]
+    public string? PanelTitle { get; set; }
+
+    /// <summary>An emoji for the panel's tool-strip button and tab. Here for the same reason as
+    /// <see cref="PanelTitle"/>.</summary>
+    [YamlMember(Alias = "panel_icon")]
+    public string? PanelIcon { get; set; }
+
     /// <summary>One line: what this plugin's tool set is. Shown in the UI and used as the first half
     /// of the set's declaration when its level is "on agent demand". English only.</summary>
     [YamlMember(Alias = "description")]

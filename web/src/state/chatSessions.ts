@@ -18,22 +18,26 @@
 import { reactive } from "vue";
 import { client } from "../protocol/SplaClient";
 import { store } from "./store";
-import type { ChatDoubt, ChatMessage, ToolProgressDetail, ToolSetState } from "../protocol/types";
+import type { ChatDoubt, ChatMessage, ImageRef, ProgressNodePayload, TaskSummaryDto, ToolProgressDetail,
+  ToolSetState } from "../protocol/types";
 import type { ToolCallState } from "../surfaces/ToolCard.vue";
 
 export type LogItem =
-  | { kind: "user"; key: string; text: string; images?: string[]; msgId?: string; createdAt?: string | number;
+  | { kind: "user"; key: string; text: string; images?: ImageRef[]; msgId?: string; createdAt?: string | number;
       /** Set when this "user" turn is actually an incoming reply across a correspondence
        *  (ADR_20260827-2 §2.5) — UserBubble renders it as speech ("← from peerFrom") instead of an
        *  ordinary human bubble. Undefined for every message a person actually typed. */
-      peerFrom?: string }
+      peerFrom?: string;
+      /** Compaction flags — see `ChatMessage.compacted`/`compactSummary` in protocol/types.ts. */
+      compacted?: boolean; compactSummary?: boolean }
   | { kind: "assistant"; key: string; msgIndex: number; text: string; reasoning: string;
       msgId?: string; createdAt?: string | number;
       /** Generations the repetition guard threw away before this bubble got its real answer — the
        *  streamed text visible up to that point belonged to one of these, not to the final message.
        *  content/reasoning are the abandoned generation's own text, present live (from `llm.attempt`)
        *  and after reopening a chat saved with `agent: save_attempts` on. */
-      attempts?: { index: number; note?: string; content?: string; reasoning?: string }[] }
+      attempts?: { index: number; outcome?: string; note?: string; chars?: number; durationMs?: number;
+        waitMs?: number | null; waitStated?: boolean; content?: string; reasoning?: string }[] }
   | { kind: "tool" | "notice"; key: string; text: string }
   | { kind: "toolcall"; key: string; call: ToolCallState }
   | { kind: "permission"; key: string; requestId: string; toolName: string; argumentsText?: string }
@@ -62,7 +66,7 @@ export interface ChatSession {
   /** Unsent composer text and images — per chat, or switching away loses them (and, worse, could
    *  send an image attached in one chat to another). */
   draft: string;
-  attachments: string[];
+  attachments: ImageRef[];
 
   /** True when this window holds the chat as a frozen snapshot rather than a live session: it was
    *  filled by `chat.read` (an archived chat), or it is a spawned run someone is watching. Set from
@@ -89,6 +93,11 @@ export interface ChatSession {
    *  `progressTreeId`. On the NEXT turn's start this is what gets swept out of `nodes`; anything
    *  under a different prefix (a background task) is left alone. */
   currentTurnTreeId: string | null;
+  /** This chat's background tasks, restored from `chat.opened`'s `runningTasks` (wave 1) and kept
+   *  current by `task.state.changed`. Not the source of truth for the task panel, which still asks
+   *  `task.list` itself on open — this is what lets OTHER surfaces (a badge, a status line) know a
+   *  task is running without opening that panel first. */
+  tasks: TaskSummaryDto[];
 }
 
 /** One node of the turn's progress tree as the client holds it: the payload plus the children that
@@ -139,7 +148,8 @@ function blank(chatId: string): ChatSession {
     pending: [],
     calls: {},
     nodes: {},
-    currentTurnTreeId: null
+    currentTurnTreeId: null,
+    tasks: []
   };
 }
 
@@ -148,6 +158,29 @@ export function sessionFor(chatId: string): ChatSession {
   let s = sessions.get(chatId);
   if (!s) { s = blank(chatId); sessions.set(chatId, s); }
   return s;
+}
+
+/**
+ * Puts a chat on screen.
+ *
+ * A chat this window already holds a log for is switched to locally: it is watched, so its log has
+ * been kept current by the stream all along, and asking the server to open it again would answer with
+ * a history snapshot that rebuilds the log from scratch. That rebuild is destructive in the middle of
+ * a turn — the snapshot is what has been PERSISTED, and the sentence the model is streaming right now
+ * is not in it. Whoever clicked between three working chats used to wipe the live answer out of each
+ * one on the way in, and see it reappear only when the turn ended.
+ *
+ * Anything else — a chat this window has never loaded, or whose log was evicted — still goes to the
+ * server, which is the source of truth for history.
+ */
+export function openChat(chatId: string) {
+  const s = peekSession(chatId);
+  if (s?.logLoaded && !s.readOnly) {
+    store.currentChat = chatId;
+    focusSession(chatId);
+    return;
+  }
+  client.send("chat.open", { chatId });
 }
 
 /** The session for a chat, or undefined — for readers that must not create one as a side effect. */
@@ -228,7 +261,7 @@ export function addNotice(s: ChatSession, text: string) {
   s.items.push({ kind: "notice", key: nextKey(), text });
 }
 
-export function addLocalUserMessage(s: ChatSession, text: string, images?: string[]) {
+export function addLocalUserMessage(s: ChatSession, text: string, images?: ImageRef[]) {
   s.items.push({ kind: "user", key: nextKey(), text, images, createdAt: Date.now() });
 }
 
@@ -274,6 +307,24 @@ client.on("chat.opened", (p, env) => {
   s.lastPrompt = s.lastCompletion = s.ctxUsed = s.ctxWindow = null;
 
   hydrateMessages(s, p.messages);
+
+  // The unfinished sentence, which the history above cannot contain. Given the live bubble's own
+  // index, so the chunks that keep arriving append to it rather than opening a second bubble beside it.
+  if (p.live) {
+    const b = liveBubble(s, p.live.msgIndex);
+    b.text = p.live.content;
+    b.reasoning = p.live.reasoning;
+    if (!s.pending.includes(p.live.msgIndex)) s.pending.push(p.live.msgIndex);
+  }
+
+  // Wave 1 (ADR_20260910-2 §4.4): the rest of what a client attaching mid-turn needs, from the same
+  // atomic snapshot. s.nodes was already reset to {} above (the s.items=[]/s.calls={} reset a few
+  // lines up does not touch it, so clear it explicitly) — an open is exactly the "rebuild from
+  // scratch" moment llm.turn.start's own sweep only handles turn-to-turn, not window-to-window.
+  s.nodes = {};
+  s.currentTurnTreeId = null;
+  for (const node of p.openProgressNodes || []) applyProgressNode(s, node);
+  s.tasks = p.runningTasks || [];
 });
 
 /**
@@ -311,10 +362,15 @@ client.on("chat.read.result", (p, env) => {
  * archived.
  */
 function hydrateMessages(s: ChatSession, messages: ChatMessage[]) {
+  /** The call whose result was the last message, while only its image messages have followed it. */
+  let afterCallId: string | undefined;
   for (const m of messages) {
+    if (m.role === "user" && foldToolImages(s, m, afterCallId)) continue;
+    if (m.role !== "tool") afterCallId = undefined;
     if (m.role === "user") {
       s.items.push({ kind: "user", key: nextKey(), text: m.content || "",
-        images: m.images, msgId: m.msgId, createdAt: m.createdAt, peerFrom: m.peerFrom });
+        images: m.images, msgId: m.msgId, createdAt: m.createdAt, peerFrom: m.peerFrom,
+        compacted: m.compacted, compactSummary: m.compactSummary });
     } else if (m.role === "assistant") {
       // A degenerate-turn record has blank content/reasoning and exists purely for its attempts —
       // still worth a bubble, since dropping it would erase the only trace of what happened.
@@ -323,16 +379,40 @@ function hydrateMessages(s: ChatSession, messages: ChatMessage[]) {
         // can never collide inside one session.
         s.items.push({ kind: "assistant", key: nextKey(), msgIndex: -1 - s.items.length,
           text: m.content || "", reasoning: m.reasoning || "", msgId: m.msgId, createdAt: m.createdAt,
-          attempts: m.attempts?.map(a => ({ index: a.index, note: a.note, content: a.content, reasoning: a.reasoning })) });
+          attempts: m.attempts?.map(a => ({ index: a.index, outcome: a.outcome, note: a.note,
+            chars: a.chars, durationMs: a.durationMs, waitMs: a.waitMs, waitStated: a.waitStated,
+            content: a.content, reasoning: a.reasoning })) });
       for (const tc of m.toolCalls || [])
         addCall(s, { callId: tc.id, name: tc.name, argumentsText: tc.arguments, status: "done" });
     } else if (m.role === "tool") {
+      afterCallId = m.toolCallId;
       const call = m.toolCallId ? s.calls[m.toolCallId] : undefined;
       if (call) call.result = m.content || "";
       else s.items.push({ kind: "tool", key: nextKey(),
         text: "← tool result (" + (m.content || "").length + " chars)" });
     }
   }
+}
+
+/**
+ * A tool's pictures enter the conversation as a synthetic user-role message right after the call
+ * (ConversationOrchestrator: vision APIs will not reliably take them inside a tool message), written as
+ * `[Image from <tool>]` or `[Reference image: <name>]`. Nobody typed it, and live the pictures arrive on
+ * `tool.result` under the call instead — so a reopened chat puts them back under that call too, rather
+ * than as a "user" bubble that did not exist a moment ago. True when the message was folded; a message
+ * with no call to fold into (it does not directly follow that call's result) stays an ordinary bubble.
+ */
+function foldToolImages(s: ChatSession, m: ChatMessage, afterCallId: string | undefined): boolean {
+  if (!m.images?.length || !afterCallId) return false;
+  const text = (m.content || "").trim();
+  const from = /^\[Image from ([^\]]+)\]$/.exec(text);
+  if (!from && !/^\[Reference image: [^\]]*\]$/.test(text)) return false;
+  // By the id of the tool message it follows, not by name: one assistant turn may call the same
+  // screenshot tool twice, and the second call's card must not collect the first call's picture.
+  const call = s.calls[afterCallId];
+  if (!call || (from && call.name !== from[1])) return false;
+  call.images = [...(call.images ?? []), ...m.images];
+  return true;
 }
 
 on("user.message", (s, p: { msgId: string; text?: string; createdAt?: string; peerFrom?: string }) => {
@@ -380,17 +460,37 @@ on("llm.turn.start", (s, p: { msgIndex: number; progressTreeId?: string | null }
   s.pending.push(p.msgIndex);
 });
 
+/**
+ * The bubble a live chunk belongs to, created if it is gone.
+ *
+ * It can be gone in the middle of a turn: anything that rebuilds the log (a `chat.opened` for a chat
+ * already on screen, an eviction that dropped it) removes the bubble `llm.turn.start` made, while the
+ * model keeps streaming into an index nothing is holding any more. Dropping those chunks was silent
+ * and looked like the stream itself had stopped — the text reappeared only at the end of the turn,
+ * when `assistant.message` built the bubble back. Rebuilding it here costs one object and keeps the
+ * stream visible; the same reasoning is why `assistant.message` has always done it.
+ */
+function liveBubble(s: ChatSession, msgIndex: number) {
+  let b = bubble(s, msgIndex);
+  if (!b) {
+    s.items.push({ kind: "assistant", key: "a" + msgIndex, msgIndex, text: "", reasoning: "",
+      createdAt: Date.now() });
+    b = bubble(s, msgIndex)!;
+  }
+  return b;
+}
+
 on("delta", (s, p: { msgIndex: number; text: string }) => {
-  const b = bubble(s, p.msgIndex);
-  if (b) b.text += p.text;
+  liveBubble(s, p.msgIndex).text += p.text;
 });
 
 on("reasoning", (s, p: { msgIndex: number; text: string }) => {
-  const b = bubble(s, p.msgIndex);
-  if (b) b.reasoning += p.text;
+  liveBubble(s, p.msgIndex).reasoning += p.text;
 });
 
-on("llm.attempt", (s, p: { msgIndex: number; index: number; note?: string; content?: string; reasoning?: string }) => {
+on("llm.attempt", (s, p: { msgIndex: number; index: number; outcome?: string; note?: string;
+  chars?: number; durationMs?: number; waitMs?: number | null; waitStated?: boolean;
+  content?: string; reasoning?: string }) => {
   const b = bubble(s, p.msgIndex);
   if (!b) return;
   // Everything streamed into this bubble so far belonged to the generation that just got thrown
@@ -399,7 +499,9 @@ on("llm.attempt", (s, p: { msgIndex: number; index: number; note?: string; conte
   // on the marker itself (p.content/p.reasoning), which is what lets the reader open it back up.
   b.text = "";
   b.reasoning = "";
-  (b.attempts ??= []).push({ index: p.index, note: p.note, content: p.content, reasoning: p.reasoning });
+  (b.attempts ??= []).push({ index: p.index, outcome: p.outcome, note: p.note,
+    chars: p.chars, durationMs: p.durationMs, waitMs: p.waitMs, waitStated: p.waitStated,
+    content: p.content, reasoning: p.reasoning });
 });
 
 on("assistant.message", (s, p: { msgIndex: number;
@@ -447,9 +549,16 @@ function nodeFor(s: ChatSession, id: string): ProgressNodeState {
  * child whose parent has not arrived yet gets it as a stub rather than being dropped — parallel work
  * gives no ordering guarantee, and a dropped node is a branch that never appears.
  */
-on("progress.node", (s, p: { nodeId: string; parentId?: string | null; label: string;
-  state: "running" | "completed" | "failed"; fraction?: number | null; message?: string | null;
-  details?: ToolProgressDetail[] | null }) => {
+on("progress.node", (s, p: ProgressNodePayload) => applyProgressNode(s, p));
+
+/**
+ * Merges one progress node — from the live `progress.node` event, or one of `chat.opened`'s
+ * `openProgressNodes` (wave 1, ADR_20260910-2 §4.4) — the same way either time: a client attaching to
+ * a chat mid-turn must build the exact same tree a client that had been watching all along already
+ * has, and the merge rule (append-only, attach-by-parentId, tolerate an unseen parent) is what makes
+ * that true regardless of which of the two carried the node first.
+ */
+function applyProgressNode(s: ChatSession, p: ProgressNodePayload) {
   const node = nodeFor(s, p.nodeId);
   const isNew = node.label === "";
 
@@ -495,7 +604,7 @@ on("progress.node", (s, p: { nodeId: string; parentId?: string | null; label: st
   // is opened inside ExecuteToolAsync, so tool.started has always been sent by the time it arrives.
   const call = lastRunningByName(s, p.label);
   if (call) call.rootNodeId = p.nodeId;
-});
+}
 
 /** Walks a node's parentId chain up to the root (parentId === null). */
 function rootOf(s: ChatSession, nodeId: string): ProgressNodeState | undefined {
@@ -511,9 +620,12 @@ function findCallByRootNodeId(s: ChatSession, rootNodeId: string): ToolCallState
   return undefined;
 }
 
-on("tool.result", (s, p: { toolCallId: string; toolName: string; result?: string }) => {
+on("tool.result", (s, p: { toolCallId: string; toolName: string; result?: string; images?: ImageRef[] | null }) => {
   const call = s.calls[p.toolCallId] || lastRunningByName(s, p.toolName);
-  if (call) { call.result = p.result || ""; call.status = "done"; call.finishedAt = Date.now(); }
+  if (call) {
+    call.result = p.result || ""; call.status = "done"; call.finishedAt = Date.now();
+    if (p.images?.length) call.images = p.images;
+  }
   else addNotice(s, "← " + p.toolName + " (" + (p.result || "").length + " chars)");
 });
 
@@ -555,6 +667,11 @@ client.on("ask.resolved", (p, env) => {
   }
 });
 
+on("task.state.changed", (s, p: { task: TaskSummaryDto }) => {
+  const i = s.tasks.findIndex(t => t.taskId === p.task.taskId);
+  if (i >= 0) s.tasks[i] = p.task; else s.tasks.push(p.task);
+});
+
 on("chat.skill.state", (s, p: { activeSkillId?: string | null }) => { s.activeSkill = p.activeSkillId || null; });
 on("chat.toolset.state", (s, p: { sets?: ToolSetState[] }) => { s.toolSets = p.sets || []; });
 on("chat.doubt.state", (s, p: { doubt: ChatDoubt }) => { s.doubt = p.doubt; });
@@ -591,6 +708,18 @@ on("turn.complete", (s, p: { error?: string; cancelled?: boolean; activeSkillId?
 client.on("error", (p, env) => {
   const s = peekSession(env.chatId ?? store.currentChat);
   if (s) addNotice(s, "⚠ " + p.message);
+});
+
+/**
+ * A reconnect (`welcome` fires on every one, including the first) hands this window a brand-new
+ * server-side connection that watches nothing yet — every session this window thought was live and
+ * watched is not, from the server's point of view, watched any more. Without this, `openChat`'s
+ * `logLoaded` fast path kept switching to it locally forever, and the chat's stream stayed dead: the
+ * watch that died with the old connection was never re-established because nothing ever asked the
+ * server to.
+ */
+client.on("welcome", () => {
+  for (const s of sessions.values()) s.logLoaded = false;
 });
 
 /** A deleted chat leaves nothing behind. */

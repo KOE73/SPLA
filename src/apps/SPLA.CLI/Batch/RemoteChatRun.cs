@@ -63,7 +63,7 @@ internal static class RemoteChatRun
     /// <returns>Process exit code: 0 when every prompt finished, 1 when any failed.</returns>
     public static async Task<int> RunAsync(
         InstanceInfo holder, ChatRunSettings s, IReadOnlyList<PromptItem> prompts,
-        ResolvedSettings settings, CancellationToken ct)
+        IReadOnlyList<ImageInput> images, ResolvedSettings settings, CancellationToken ct)
     {
         AnsiConsole.MarkupLine($"[grey]Attached to[/] {holder.Describe().EscapeMarkup()}");
 
@@ -71,9 +71,13 @@ internal static class RemoteChatRun
         // asking "what would this do" against a busy project would do it.
         if (s.DryRun)
         {
+            if (s.Role is { Length: > 0 } dryRunRole) AnsiConsole.MarkupLine($"[grey]role →[/] {dryRunRole.EscapeMarkup()}");
             foreach (var prompt in prompts)
                 AnsiConsole.MarkupLine(
                     $"  {prompt.Name.EscapeMarkup()} → {(OutputPath(s, prompt, holder) ?? "(screen)").EscapeMarkup()}");
+            foreach (var image in images)
+                AnsiConsole.MarkupLine(
+                    $"  [grey]image →[/] {image.Label.EscapeMarkup()} [grey]({image.Path.EscapeMarkup()}, {image.Bytes / 1024} KB)[/]");
             return 0;
         }
 
@@ -86,7 +90,24 @@ internal static class RemoteChatRun
         var failures = 0;
         foreach (var prompt in prompts)
         {
-            var chatId = await client.NewChatAsync(prompt.Name, ct);
+            var chatTitle = s.Title is { Length: > 0 } titleTemplate ? OutputNaming.ExpandTitle(titleTemplate, DateTimeOffset.Now, prompt, "") : prompt.Name;
+
+            string chatId;
+            try
+            {
+                // The instance validates --role itself (ChatHandlers.New, same source list as the local
+                // path's RoleValidation) — an unknown name comes back as an ordinary `error` frame, which
+                // CliWireClient.WaitForAsync already turns into an InvalidOperationException. The role is
+                // the same for every cell in this run, so a failure here would just repeat identically
+                // for every remaining prompt — surfaced once, the same way the local path's exit-2
+                // red-line refuses before running anything, rather than one red line per cell.
+                chatId = await client.NewChatAsync(chatTitle, ct, origin: "cli", role: s.Role);
+            }
+            catch (InvalidOperationException ex)
+            {
+                AnsiConsole.MarkupLine($"[red]{ex.Message.EscapeMarkup()}[/]");
+                return 2;
+            }
             var answer = new System.Text.StringBuilder();
 
             var error = await client.SendAndStreamAsync(
@@ -102,7 +123,10 @@ internal static class RemoteChatRun
                 // that silently allowed tool calls would be a very different thing from what the
                 // person typed. The window watching this chat sees the question resolve as denied.
                 _ => new PermissionDecisionPayload { Decision = "deny" },
-                ct);
+                ct,
+                // Images travel as data URLs, exactly as a window's own attachment does, so the
+                // instance persists them into its sidecar and the chat shows what was looked at.
+                images.Count > 0 ? images.Select(i => i.Attachment).ToList() : null);
 
             if (s.Stream) Console.WriteLine();
 

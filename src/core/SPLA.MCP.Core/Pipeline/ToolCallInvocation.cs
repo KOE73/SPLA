@@ -29,7 +29,9 @@ public sealed class ToolCallInvocation
 
     public string Name { get; }
 
-    public string ArgumentsJson { get; }
+    /// <summary>Settable only so the arguments link can replace string-typed values with the types the
+    /// schema declares; every link inside it sees the coerced form.</summary>
+    public string ArgumentsJson { get; set; }
 
     /// <summary>Where this call came from — see <see cref="SPLA.Domain.Tools.ToolCallContext.Source"/>.
     /// Null for a call from the agent's own loop.</summary>

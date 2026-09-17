@@ -23,8 +23,7 @@ mounts:
 
 agent:
   mode: Edit
-  instructions:
-    - AGENTS.md
+  agents_md: inject
 
 roles: [reviewer]
 
@@ -65,11 +64,13 @@ ignore:
 | `name` | No | Human-readable project name. |
 | `mounts` | No | Folders outside the project root, named here and addressed as `mnt/<name>/...`. See [Mounts](#mounts). |
 | `agent.mode` | No | Default mode: `Chat`, `Research`, `Inspect`, `Edit`, `Agent`. |
-| `agent.instructions` | No | Markdown files injected into the system prompt. Paths relative to the project root. |
+| `agent.instructions` | No | Markdown files injected into the system prompt. Paths relative to the project root. An entry named `AGENTS.md` (any casing, any subdirectory) is skipped with a logged warning — that file has its own mechanism, `agent.agents_md`, and would otherwise reach the prompt twice. |
+| `agent.agents_md` | No | How the project's `AGENTS.md` tree reaches the prompt: `inject` (default — root `AGENTS.md` always, plus a per-folder `<agents scope=… source=…>` block for every folder a tool call actually touched this session, resolved via scope markers) or `ignore` (SPLA never reads it, root or nested). Per-role override with the same key under `roles/<name>.yaml`; absent there inherits the project's value. See [`ADR_20260911-2_agent_agents-md-scopes`](../docs/adr/ADR_20260911-2_agent_agents-md-scopes.md), [`composition.md`](composition.md#the-contributors). |
 | `agent.capabilities` | No | Enabled built-in `core.*` capabilities. Missing = all; `[]` = pure chat with no built-in tools. |
 | `agent.spawned_retention` | No | How many finished spawned sessions to keep on disk, newest first (default 200). `0` keeps none; negative disables trimming entirely. Never touches a session with a run still in progress. Project-level only — not a per-role setting; retention is a disk policy of the project, not a behaviour a role narrows. See [Roles](#roles). |
 | `agent.peer_debounce_base` / `agent.peer_debounce_max` / `agent.peer_depth_ceiling` / `agent.peer_hard_cap` | No | The correspondence decay regulator — how fast an exchange between two actors slows down and where it is cut off. See [Correspondence decay](#correspondence-decay). |
 | `agent.self_feeding_cap` | No | How many consecutive turns with no human message the chat pump allows itself before it stops waking a turn and posts a notice instead. Unset or `0` — disabled, no cap. See [Correspondence decay](#correspondence-decay). |
+| `agent.tool_images` | No | How long a picture a tool returned stays in the context sent to the model: `all` (default — every picture, to the end of the chat) or `last` (only the newest one, whichever tool made it). Project-level only, like `spawned_retention`. See [Tool images in the context](#tool-images-in-the-context). |
 | `roles` | No | Names of the roles this project has, e.g. `[reviewer, architect]`. Each name pairs with a body at `roles/<name>.yaml`, next to this manifest. See [Roles](#roles). |
 | `llm.provider` | No | LLM provider. Currently only `lmstudio`. |
 | `llm.endpoint` | No | API base URL. |
@@ -202,7 +203,6 @@ roles: [reviewer, architect]
 # roles/reviewer.yaml
 mode: Research
 instructions:
-  - AGENTS.md
   - docs/review-checklist.md
 capabilities:
   - core.read
@@ -222,7 +222,7 @@ the moment it lands on disk. It is exactly the same logic as "no walking up the 
 
 | Field | Meaning |
 |---|---|
-| `mode`, `instructions`, `capabilities`, `custom_prompt`, `loop_guard*`, `unified_resources`, `ask_timeout_minutes`, `shell_timeout_seconds`, `trusted_domains`, `save_tool_calls`, `save_attempts`, `peer_debounce_base`, `peer_debounce_max`, `peer_depth_ceiling`, `peer_hard_cap` | Same meaning as the identically-named `agent.*` field above. Absent on the role = inherit the project's own value, same as every other field here. (`spawned_retention` is the one exception — project-level only, see the fields table above.) |
+| `mode`, `instructions`, `capabilities`, `custom_prompt`, `agents_md`, `loop_guard*`, `ask_timeout_minutes`, `shell_timeout_seconds`, `trusted_domains`, `save_tool_calls`, `save_attempts`, `peer_debounce_base`, `peer_debounce_max`, `peer_depth_ceiling`, `peer_hard_cap` | Same meaning as the identically-named `agent.*` field above. Absent on the role = inherit the project's own value, same as every other field here. (`spawned_retention` is the one exception — project-level only, see the fields table above.) |
 | `connections` | Which connections this role may use, by `id` or by scope name (`user`, `project`, `shared` — a whole layer in one word). Absent/empty = every connection resolved for the project. A *selection*, not a grant, the same as `islands` below: there is no endpoint or credential in this list to declare one with. A named `id` that does not exist is an error; a scope with no entries is not (that is a fact about the machine). |
 | `model` | Which of the resolved `connections:` models this role runs on. A role does not declare its own connection — the layers declare what is reachable at all, a role only chooses among it. Refused when the role's own `connections:` selection excludes it. |
 | `toolsets` | Same shape as the top-level `toolsets:` section, merged over it key by key — a role that mentions one set narrows (or widens, within what the capability gate still allows) only that set. |
@@ -283,6 +283,51 @@ counted a turn as "self-fed" even when a correspondent's reply was what woke it 
 between two roles hit that ceiling on the third turn, before `peer_depth_ceiling`/`peer_hard_cap` above
 ever got a chance to fire. It is now disabled by default: a correspondence is bounded by the `peer_*`
 regulator alone, and `self_feeding_cap` is a separate, optional rein on top of it.
+
+## Tool images in the context
+
+A tool that returns a picture (a browser or Android screenshot, a geometry frame) does not carry it
+in its own result: the orchestrator inserts it as a separate synthetic user message, and by default
+that message lives in the context to the end of the chat. For a place-look-correct loop that is six
+to ten pictures per task of which exactly one is current — and local stacks (llama.cpp, which LM
+Studio is built on) usually do not even process the older ones, so the tokens are paid for nothing.
+
+```yaml
+agent:
+  tool_images: last
+```
+
+| Value | Meaning |
+|---|---|
+| `all` | Default. Every picture stays in the context for the rest of the chat — today's behaviour, unchanged for anyone who does not opt in. |
+| `last` | Only the newest tool picture is assembled into the context. The rest are superseded. |
+
+**This is not deletion.** A superseded message stays in the chat, stays visible in the UI and stays
+in its sidecar file on disk; only the assembly of context for the model skips it. Switching back to
+`all` brings every picture back with nothing lost.
+
+One replacement key for every tool, not one per tool: the setting promises "the context holds the
+latest picture, whoever made it", and a per-tool key would keep one stale frame per tool — exactly
+the cost this exists to avoid.
+
+A value outside the list fails the project load rather than quietly meaning `all` — a setting that is
+declared, survives a restart and does nothing is worse than one that is absent.
+
+**A call can override the setting: `keep`.** Both tools that put a picture in front of the model —
+`image_view` and `resource_read` — take a `keep` argument, because only the call knows which kind of
+picture this is:
+
+| `keep` | Meaning |
+|---|---|
+| omitted | This setting decides. Every caller written before `keep` existed behaves exactly as it did. |
+| `once` | A working frame: evicted by the next picture, whatever the setting says. |
+| `pinned` | A **reference** the task is measured against. Filed under its own name (the blob handle or the resource address), so later pictures never evict it and re-reading the same reference replaces it instead of adding a copy. Kept through compaction, which skips it the way it skips a scope marker. |
+
+A pinned picture is closer to part of the prompt than to a tool result, and that is the whole point:
+without it, `last` evicted the reference with the next screenshot and `all` lost it at the first
+`/compact` — compaction hides its prefix by position, not by retention policy. An unrecognised `keep`
+falls back to the setting rather than pinning: an accidentally permanent picture is the expensive
+mistake here.
 
 ## Launch Profiles
 

@@ -322,10 +322,10 @@ public class AgentSpawnToolTests
         public int TrimCalls { get; private set; }
         public int LastKeep { get; private set; }
 
-        public ISpawnedSession OpenSpawnedSession(string? parentChatId, string? role)
+        public ISpawnedSession OpenSpawnedSession(string? parentChatId, string? role, ResolvedSettings? settings = null)
         {
             var session = new FakeSpawnedSession(
-                "s-" + Guid.NewGuid().ToString("N")[..8], parentChatId, role);
+                "s-" + Guid.NewGuid().ToString("N")[..8], parentChatId, role, settings);
             Sessions.Add(session);
             return session;
         }
@@ -350,14 +350,14 @@ public class AgentSpawnToolTests
         public string? Outcome { get; private set; }
         public string? Error { get; private set; }
 
-        public FakeSpawnedSession(string chatId, string? parentChatId, string? role)
+        public FakeSpawnedSession(string chatId, string? parentChatId, string? role, ResolvedSettings? settings = null)
         {
             ChatId = chatId;
             ParentChatId = parentChatId;
             Role = role;
             AgentSession = new SPLA.Domain.Agent.AgentSession(
                 new SPLA.Domain.Agent.KeyValueStore("session"), new SPLA.Domain.Agent.MarkManager(),
-                new SPLA.Domain.Agent.SkillSession(), chatId: chatId);
+                new SPLA.Domain.Agent.SkillSession(), chatId: chatId, settings: settings);
         }
 
         public void Finish(IReadOnlyList<ChatMessage> conversation, string? skillId, string mode,
@@ -371,6 +371,27 @@ public class AgentSpawnToolTests
         }
 
         public void Dispose() => Disposed = true;
+
+        // Wave 2 (ADR_20260910-2 §4.6): a fake stand-in for the Publish* seam ISpawnedSession grew so
+        // SpawnedAgentRunner can feed a session's own event stream without SPLA.Agent referencing
+        // SPLA.Runtime's ChatFeed/ChatEvent types. These tests do not assert on the stream itself (that
+        // is ChatFeedTests'/ChatFeedSnapshotTests' job against the real SpawnedSession) — only that the
+        // runner calls them without throwing when a session is present.
+        public IReadOnlyList<ChatMessage>? AttachedConversation { get; private set; }
+        public int LlmTurnStartCalls { get; private set; }
+        public int AssistantMessageCalls { get; private set; }
+
+        public void AttachConversation(IReadOnlyList<ChatMessage> conversation) => AttachedConversation = conversation;
+        public void PublishLlmTurnStart(IReadOnlyList<ChatMessage> context) => LlmTurnStartCalls++;
+        public void PublishDelta(string chunk) { }
+        public void PublishReasoning(string chunk) { }
+        public void PublishAssistantMessage(ChatMessage message) => AssistantMessageCalls++;
+        public void PublishAttempt(SPLA.Domain.Llm.GenerationAttempt attempt) { }
+        public void PublishToolStarted(ToolCall call) { }
+        public void PublishToolProgress(ToolCall call, ToolProgress progress) { }
+        public void PublishToolResult(ToolCall call, ToolResult result) { }
+        public void PublishLlmTurn(SPLA.Domain.Llm.LlmTurnResult turn) { }
+        public void PublishNotice(string text) { }
     }
 
     /// <summary>The whole point of the wave: a run that finishes cleanly is not thrown away. Its
@@ -490,6 +511,39 @@ public class AgentSpawnToolTests
         var run = Assert.Single(tree.Nodes, n => n.Label == "tick check");
         var detail = Assert.Single(run.Latest!.Details!, d => d.Label == "run");
         Assert.Equal(session.ChatId, detail.Value);
+    }
+
+    /// <summary>A run under a role opens its session carrying the role's settings — where the tool host
+    /// reads capabilities and tool-set levels on every call. Without this a role's <c>capabilities:</c>
+    /// stopped at the resolver and the run had whatever the project's default agent had.</summary>
+    [Fact]
+    public async Task A_role_run_opens_its_session_under_the_roles_settings()
+    {
+        var dir = TempProjectDir();
+        try
+        {
+            WriteRoleFile(dir, "scout", "capabilities: [core.files, core.memory]\n");
+            var settings = new ResolvedSettings
+            {
+                Mode = AgentMode.Edit,
+                Capabilities = ["core.memory"],
+                Manifest = new SplaProject { Roles = ["scout"] },
+                ProjectFilePath = Path.Combine(dir, "project.spla")
+            };
+            var runner = new SpawnedAgentRunner(
+                new StubLlmService("done"), new StubToolHost(),
+                new SkillLibrary([new SPLA.Tests.Fakes.FakeSkillSource()]),
+                new PluginManager(settings), settings);
+            var host = new FakeSpawnSessionHost();
+            runner.AttachSessionHost(host);
+
+            await runner.RunAsync(null, "look around", AgentMode.Edit, role: "scout");
+            await runner.RunAsync(null, "no role", AgentMode.Edit);
+
+            Assert.Equal(["core.files", "core.memory"], host.Sessions[0].AgentSession.Settings?.Capabilities);
+            Assert.Null(host.Sessions[1].AgentSession.Settings);
+        }
+        finally { Directory.Delete(dir, recursive: true); }
     }
 
     /// <summary>Recursion: a spawn made from inside a spawned run must carry the running session's own

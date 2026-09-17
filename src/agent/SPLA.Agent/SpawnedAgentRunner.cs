@@ -80,11 +80,11 @@ public sealed class SpawnedAgentRunner : Domain.Interfaces.IAgentSpawner
 
     /// <summary>
     /// The project's tool-set catalogue — what exists and which set each tool name belongs to. Used
-    /// only to build a per-run tool filter (see <see cref="RunAsync"/>): this runner never mutates it
-    /// and never asks it to gate anything on its own settings, because those settings are the
-    /// project's, not this run's. Optional for the same reason <see cref="_contextWindow"/> is: a
-    /// runner built for a test or a worker entry point has no registry, and without one a run simply
-    /// applies mode-only gating, exactly as before roles narrowed tool sets at all.
+    /// for the per-run tool filter and the prompt's set announcements (see <see cref="RunAsync"/>),
+    /// both asked inside the run's own session scope, so the levels read are the run's role's. This
+    /// runner never mutates it. Optional for the same reason <see cref="_contextWindow"/> is: a runner
+    /// built for a test or a worker entry point has no registry, and without one a run simply applies
+    /// mode-only gating.
     /// </summary>
     private readonly ToolSetRegistry? _toolSets;
 
@@ -170,10 +170,16 @@ public sealed class SpawnedAgentRunner : Domain.Interfaces.IAgentSpawner
         // failure this closes.
         var effectiveMode = !string.IsNullOrWhiteSpace(role) ? runSettings.Mode : mode;
 
+        // What the session carries as its own settings: the role's, or null for the project's. This is
+        // what makes the role real past this method — the tool host reads capabilities and tool-set
+        // levels from it on every listing and every call, so a role gets what it declares rather than
+        // what the chat that spawned it happened to have.
+        var roleSettings = !string.IsNullOrWhiteSpace(role) ? runSettings : null;
+
         // A real session when a host is attached (chatId, file, ChatInbox, progress tree — see
         // ISpawnSessionHost); the pre-wave-2 in-memory-only shape otherwise (tests, a worker entry
-        // point). Wave 3 wires a real role through agent_spawn.
-        var session = _sessionHost?.OpenSpawnedSession(parentChatId, role);
+        // point).
+        var session = _sessionHost?.OpenSpawnedSession(parentChatId, role, roleSettings);
 
         // Identifies this run wherever it travels — on every progress tick, and (with a session) as
         // the id subagent.get resolves back to this session's file. Generated up front, before
@@ -189,7 +195,7 @@ public sealed class SpawnedAgentRunner : Domain.Interfaces.IAgentSpawner
         // and the one thing a sub-agent must not escape by spawning.
         var agentSession = session?.AgentSession
             ?? new AgentSession(new KeyValueStore("session"), new CheckpointManager(), new SkillSession(),
-                sandbox: AgentSessionScope.Current?.Sandbox);
+                sandbox: AgentSessionScope.Current?.Sandbox, settings: roleSettings);
         var skillSession = agentSession.Skills;
 
         // A free-form spawn leaves the session idle rather than pinned. That is not the same as an
@@ -238,13 +244,34 @@ public sealed class SpawnedAgentRunner : Domain.Interfaces.IAgentSpawner
 
         // The session is passed explicitly rather than resolved ambiently — the spawn happens inside
         // the parent's async flow, and the sub-agent must describe its own skill, not the parent's.
+        //
+        // Composed from runSettings — the role's, when one is named — so the run reads its role's
+        // instructions, custom prompt and only the capability texts its role has on. Composed inside
+        // the run's own session scope, like every later recomposition: tool-set announcements depend on
+        // whose levels are in force, and outside the scope the parent's would answer.
         var composer = new AgentContextComposer(
-            AgentContributors.Default(_skills, _plugins, skillSession));
-        var systemPrompt = composer.Compose(runSettings, runSettings.WorkspacePath).SystemPrompt;
+            AgentContributors.Default(_skills, _plugins, skillSession, toolSets: _toolSets));
+        string systemPrompt;
+        using (AgentSessionScope.Begin(agentSession))
+            systemPrompt = composer.Compose(runSettings, runSettings.WorkspacePath).SystemPrompt;
 
         var conversation = new Conversation();
         conversation.Add(new ChatMessage { Role = ChatRole.System, Content = systemPrompt });
         conversation.Add(new ChatMessage { Role = ChatRole.User, Content = input });
+
+        // AgentsScopeStage/ScopedAgentsContributor (Wave 3.3/3.4) read this run's history through
+        // AgentSessionScope.Current.Conversation, the same ambient path everything else in this
+        // session goes through. It could not be handed in at construction: the session had to exist
+        // first to compose the initial system prompt above, before this conversation did. Set through
+        // the concrete type — IAgentSession.Conversation is get-only, a default interface member
+        // cannot hold state.
+        if (agentSession is AgentSession concreteSession)
+            concreteSession.Conversation = conversation;
+
+        // Wave 2 (ADR_20260910-2 §4.1): hands the session the SAME live list the orchestrator appends
+        // to, so a watcher attaching mid-run (chat.open/chat.watch on this session's chat id) reads the
+        // run's own in-memory conversation instead of the file Finish has not written yet.
+        session?.AttachConversation(conversation.Messages);
 
         string lastAssistantMessage = string.Empty;
 
@@ -257,25 +284,15 @@ public sealed class SpawnedAgentRunner : Domain.Interfaces.IAgentSpawner
             ? () => composer.Compose(runSettings, runSettings.WorkspacePath)
             : (Func<ComposedContext>?)null;
 
-        // Narrows the tool surface to what this run's settings actually select — see
-        // <see cref="_toolSets"/>. Composed with (never instead of) mode gating: the mode filter runs
-        // first, exactly as it would with no role at all, and this only ever removes tools mode
-        // gating would have kept. Built fresh per run from the runner's own registry, so nothing here
-        // mutates the shared <c>McpHost</c>/<c>ToolSetRegistry</c> the project and every other chat
-        // share — the narrowing lives entirely in this closure and dies with this run.
-        //
-        // A role's own <c>toolsets:</c> entries win when it names a set (already layered onto
-        // <c>runSettings.ToolSets</c> by <see cref="SettingsResolver.ResolveForRole"/>); a set the
-        // role never mentions falls back to <c>_toolSets.LevelOf</c>, i.e. whatever the project itself
-        // decided — inheritance, not an empty set. This is why a role with no tool selection at all
-        // must narrow nothing: <c>runSettings.ToolSets</c> is then byte-for-byte the project's own
-        // dictionary (see <c>SettingsResolver.CloneForRole</c>), so every lookup below falls through
-        // to the exact same answer the registry would have given a role-less run.
+        // Mode gating, then the one tool-set rule every surface uses (ToolSetRegistry.IsDisclosed). It
+        // runs inside this run's session scope, so the levels it reads are the role's own — the same
+        // answer McpHost gives when it lists and when it executes. Asked here as well because the host
+        // a runner is given need not be McpHost (a worker, a test); where it is, the second asking
+        // agrees with the first.
         Func<IEnumerable<ToolDefinition>, AgentMode, IEnumerable<ToolDefinition>>? toolFilter =
             _toolSets is null
                 ? null
-                : (defs, m) => ToolModeFilter.Filter(defs, m)
-                    .Where(t => IsDisclosedForRun(t.Function.Name, _toolSets, runSettings.ToolSets));
+                : (defs, m) => ToolModeFilter.Filter(defs, m).Where(t => _toolSets.IsDisclosed(t.Function.Name));
 
         // Spawned sub-agents are the most prone to tool-call loops; guard them too (tool-call only).
         //
@@ -292,6 +309,7 @@ public sealed class SpawnedAgentRunner : Domain.Interfaces.IAgentSpawner
         {
             Checkpoint = agentSession.Checkpoint,
             EnableLoopGuard = true,
+            ToolImages = runSettings.ToolImages,
             Context = context,
             NestInAmbientProgress = true,
             ToolFilter = toolFilter
@@ -353,21 +371,59 @@ public sealed class SpawnedAgentRunner : Domain.Interfaces.IAgentSpawner
             Details = new[] { new ToolProgressDetail("run", runId) }
         };
 
+        // Wave 2 (ADR_20260910-2 §4.6): every hook also feeds the session's own event stream, when
+        // there is a session — the same publish calls a human chat's ChatRuntime.SendAsync adapter
+        // makes, so a watcher attached to this run's chat id sees the same conversation a parent's
+        // progress-tree tick already summarises in one line. The tick logic itself stays here rather
+        // than becoming a true feed subscriber: it needs this run's own turn counter, runId and
+        // token-window state, none of which SPLA.Domain (the only thing ISpawnedSession can expose to
+        // SPLA.Agent) carries — see ISpawnedSession's own comment on why the seam is Publish* calls,
+        // not a handed-back AgentCallbacks.
         var callbacks = new AgentCallbacks
         {
-            OnLlmTurnStart = _ =>
+            OnLlmTurnStart = context2 =>
             {
+                session?.PublishLlmTurnStart(context2);
                 ProgressScope.Report(Tick($"turn {++turn}, thinking"));
+                return Task.CompletedTask;
+            },
+            OnDelta = chunk =>
+            {
+                session?.PublishDelta(chunk);
+                return Task.CompletedTask;
+            },
+            OnReasoning = chunk =>
+            {
+                session?.PublishReasoning(chunk);
+                return Task.CompletedTask;
+            },
+            OnAttempt = attempt => session?.PublishAttempt(attempt),
+            OnToolCallStarted = tc =>
+            {
+                session?.PublishToolStarted(tc);
+                return Task.CompletedTask;
+            },
+            OnToolProgress = (tc, progress) => session?.PublishToolProgress(tc, progress),
+            OnToolResult = (tc, result) =>
+            {
+                session?.PublishToolResult(tc, result);
+                return Task.CompletedTask;
+            },
+            OnNotice = note =>
+            {
+                session?.PublishNotice(note);
                 return Task.CompletedTask;
             },
             // Fires once per model call, after it returns. PromptTokens is what the provider counted
             // for the context it was sent — the honest figure, not our estimate of it.
             OnLlmTurn = result =>
             {
+                session?.PublishLlmTurn(result);
                 if (result.Message.PromptTokens is int used and > 0) promptTokens = used;
             },
             OnAssistantMessage = msg =>
             {
+                session?.PublishAssistantMessage(msg);
                 lastAssistantMessage = msg.Content ?? string.Empty;
                 var said = Excerpt(msg.Content, 56);
                 if (said is not null)
@@ -436,19 +492,6 @@ public sealed class SpawnedAgentRunner : Domain.Interfaces.IAgentSpawner
 
         return lastAssistantMessage;
     }
-
-    /// <summary>
-    /// Whether the model should see <paramref name="toolName"/> in this run, given this run's own
-    /// tool-set levels (<paramref name="runToolSets"/> — the project's, or a role's narrowing of them)
-    /// rather than whatever the shared <paramref name="registry"/> was built to answer for the chat
-    /// that spawned this run. Delegates to <see cref="ToolSetRegistry.IsDisclosedForRole"/>, the
-    /// helper shared with <c>ChatToolHost</c>'s identical narrowing for a standing chat under a role
-    /// (PLAN_20260902 wave 5б) — asking the registry's own <c>LevelOf</c> alone would answer for the
-    /// project's baseline, which is exactly what a role must be able to narrow.
-    /// </summary>
-    private static bool IsDisclosedForRun(
-        string toolName, ToolSetRegistry registry, IReadOnlyDictionary<string, string> runToolSets)
-        => ToolSetRegistry.IsDisclosedForRole(toolName, registry, runToolSets);
 
     /// <summary>
     /// How much of the window the run is using, as a suffix — or nothing at all before the first call

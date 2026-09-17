@@ -18,10 +18,9 @@ namespace SPLA.Agent.Composition;
 /// probed — see the admission test on <see cref="ResourceVerb"/> for the same idea applied to which
 /// verbs exist at all.</para>
 ///
-/// <para>Off entirely, and cheaply so, in the overwhelmingly common case: the master switch
-/// (<see cref="ResolvedSettings.UnifiedResources"/>) defaults to false, and even with it on a project
-/// that registered no providers, or switched every one of them off, has nothing worth a paragraph of
-/// system prompt.</para>
+/// <para>Gated on <c>core.resources</c> from outside (<see cref="CapabilityGatedContributor"/>), the
+/// same capability that gates the <c>resource_*</c> tools. Inside, a project that registered no
+/// providers, or switched every one of them off, has nothing worth a paragraph of system prompt.</para>
 /// </summary>
 public sealed class ResourceSchemesContributor : IAgentContributor
 {
@@ -29,8 +28,6 @@ public sealed class ResourceSchemesContributor : IAgentContributor
 
     public AgentContribution Contribute(AgentContributionContext context)
     {
-        if (!context.Settings.UnifiedResources) return AgentContribution.None;
-
         var registry = ResourceRegistry.For(context.Settings);
         var cards = registry.EnabledCards();
         if (cards.Count == 0) return AgentContribution.None;

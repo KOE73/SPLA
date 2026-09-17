@@ -44,6 +44,23 @@ public enum LlmPipelineStage
     /// <summary>Recording what happened, once per network attempt. Host-owned, sealed to plugins.</summary>
     Accounting = 400,
 
+    /// <summary>
+    /// Holding requests apart so a provider's rate limit is not tripped in the first place — the
+    /// mirror of <see cref="Retry"/>, which only wakes up once it has been.
+    /// <para>
+    /// Nearly innermost, and that placement is the whole design. A rate limit counts <i>requests</i>,
+    /// so every request has to pass the gate — including the ones born inside a loop further out: a
+    /// retry after a refusal, a regeneration after <see cref="Output"/> rejected an answer. Placed
+    /// beside <see cref="Retry"/>, as first sketched, it would have paced only the first attempt of a
+    /// turn and let precisely the bursts it exists to prevent straight through.
+    /// </para>
+    /// <para>
+    /// Its state is the one thing here that outlives a turn, because the budget it protects belongs to
+    /// the credential and is shared by every chat holding it. Host-owned, sealed to plugins.
+    /// </para>
+    /// </summary>
+    Pacing = 450,
+
     /// <summary>Credential materialization — innermost, next to the wire. Host-owned, sealed to plugins.</summary>
     Transport = 500
 }
