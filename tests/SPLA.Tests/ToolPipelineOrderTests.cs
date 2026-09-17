@@ -42,6 +42,16 @@ public class ToolPipelineOrderTests
     }
 
     [Fact]
+    public void Arguments_are_coerced_inside_telemetry_and_before_policy()
+    {
+        // Inside Telemetry: the log must keep what the provider actually sent, or a transport quirk
+        // becomes invisible. Before Policy: the permission, zone and AGENTS.md links read paths out of
+        // the arguments and must judge the same values the tool will run with.
+        Assert.True(ToolPipelineStage.Telemetry < ToolPipelineStage.Arguments);
+        Assert.True(ToolPipelineStage.Arguments < ToolPipelineStage.Policy);
+    }
+
+    [Fact]
     public void Progress_comes_after_policy()
     {
         // A node opened before the verdict would leave refused calls — and calls a human said no to
@@ -147,6 +157,7 @@ public class ToolPipelineOrderTests
                 typeof(PluginAvailabilityStage),
                 typeof(ToolSetDisclosureStage),
                 typeof(TelemetryStage),
+                typeof(ArgumentCoercionStage),
                 typeof(PermissionStage),
                 typeof(ZoneShadowStage),
                 typeof(AgentsScopeStage),

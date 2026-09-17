@@ -62,6 +62,19 @@ public enum ToolPipelineStage
     /// span at all.</summary>
     Telemetry = 300,
 
+    /// <summary>
+    /// Reading string-typed arguments as the type the tool's schema declares. Some serving stacks
+    /// (Qwen's XML tool-call format behind a parser that ignores the schema) deliver every value as
+    /// text, so <c>290</c> arrives as <c>"290"</c> — nothing the model did or can change.
+    /// <para>
+    /// <b>Inside <see cref="Telemetry"/></b> so the log keeps the arguments as the provider sent them.
+    /// <b>Before <see cref="Policy"/></b> because the permission, zone and AGENTS.md links read the
+    /// arguments and must see what the tool will get. <b>Outside <see cref="Background"/> and
+    /// <see cref="Accounting"/></b>: it shapes the call, it is not part of the work.
+    /// </para>
+    /// </summary>
+    Arguments = 350,
+
     /// <summary>May this caller run this tool: the permission verdict, and the human it may have to
     /// ask.</summary>
     Policy = 400,

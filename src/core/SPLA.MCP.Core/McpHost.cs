@@ -62,6 +62,7 @@ public class McpHost : IToolHost
             .Use(new PluginAvailabilityStage(pluginManager, logger))
             .Use(new ToolSetDisclosureStage(name => CapabilityRefusal(name) ?? ToolSetRefusal(name), logger))
             .Use(new TelemetryStage(logger))
+            .Use(new ArgumentCoercionStage(logger))
             .Use(new PermissionStage(permissionManager, logger))
             // Beside the permission check, not inside it: both answer "may this happen" from
             // different ends, and when the verdict eventually moves onto the edge it moves into a
