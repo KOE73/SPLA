@@ -140,7 +140,7 @@ internal abstract class GeometryToolBase(ResolvedSettings projectSettings) : IMc
         GeometrySessionRegistry.NotifyUpdated(chat);
 
         return ToolResult.From(
-            new ToolText(Report(session, view, action, handle, cfg)),
+            new ToolText(Report(session, view, action, handle, cfg, drawsLive: probes is null or { ShowBox: true })),
             new ToolImage(Convert.ToBase64String(bytes), mime, probes is null ? ImageKeep.Unspecified : ImageKeep.Once));
     }
 
@@ -148,7 +148,7 @@ internal abstract class GeometryToolBase(ResolvedSettings projectSettings) : IMc
     /// remember what it last sent, and re-deriving them is exactly the arithmetic this tool exists to
     /// take off it.</summary>
     private static string Report(
-        GeometrySession session, GeometryView view, string action, string handle, GeometrySettings cfg)
+        GeometrySession session, GeometryView view, string action, string handle, GeometrySettings cfg, bool drawsLive = true)
     {
         var text = new StringBuilder();
         text.Append(action).Append('\n');
@@ -180,7 +180,15 @@ internal abstract class GeometryToolBase(ResolvedSettings projectSettings) : IMc
                 text.Append("  ").Append(obj.Name.PadRight(nameWidth)).Append("  ")
                     .Append(obj.Kind == ObjectKind.Box ? "box   " : "point ").Append(' ')
                     .Append(lines[obj].PadRight(lineWidth)).Append("  ")
-                    .Append(obj.Status == ObjectStatus.Accepted ? "accepted" : "editing").Append('\n');
+                    .Append(obj.Status == ObjectStatus.Accepted ? "accepted" : "editing");
+                // A probe picture does not draw the box being placed. With its colours and centre mark
+                // described anyway, a live model reported seeing them.
+                if (!drawsLive && obj.Status != ObjectStatus.Accepted)
+                {
+                    text.Append(" — not drawn on this picture\n");
+                    continue;
+                }
+                text.Append('\n');
                 Legend(text, obj, nameWidth);
             }
         }

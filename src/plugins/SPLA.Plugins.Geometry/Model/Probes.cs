@@ -110,6 +110,10 @@ internal sealed class ProbeState
     /// <summary>How many edge rounds this probing has drawn — the brake when answers never settle.</summary>
     public int EdgeRounds { get; set; }
 
+    /// <summary>Answers refused in a row. Reset by any accepted answer; the brake on a model that keeps
+    /// sending answers the tool cannot use.</summary>
+    public int Refusals { get; set; }
+
     /// <summary>The size of the view the probing runs in, for the border that stands in for a missing
     /// outside answer (<see cref="ProbePlanner.Samples"/>).</summary>
     public int ViewWidth { get; set; }

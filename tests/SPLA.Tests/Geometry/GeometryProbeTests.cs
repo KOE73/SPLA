@@ -188,20 +188,47 @@ public sealed class GeometryProbeTests
         await Open(chat, tools, Frame(truth));
         await tools["geom_box"].ExecuteAsync("""{"name":"bag","cx":460,"cy":315,"width":300,"height":200}""");
         await tools["geom_probe"].ExecuteAsync("""{"name":"bag"}""");
-        var round = GeometrySessionRegistry.TryGet(chat)!.Probe!.Round;
+        int Round() => GeometrySessionRegistry.TryGet(chat)!.Probe!.Round;
+        var round = Round();
 
+        // A refusal still draws a new picture under a new round: the old answer cannot simply be resent.
         var stale = await tools["geom_probe"].ExecuteAsync($$"""{"name":"bag","round":{{round + 7}},"inside":[1],"outside":null}""");
         Assert.True(stale.IsError);
         Assert.Contains("not the current round", stale.TextContent);
+        Assert.Single(stale.Content.OfType<ToolImage>());
+        Assert.NotEqual(round, Round());
 
-        var both = await tools["geom_probe"].ExecuteAsync($$"""{"name":"bag","round":{{round}},"inside":[1],"outside":[1]}""");
+        var both = await tools["geom_probe"].ExecuteAsync($$"""{"name":"bag","round":{{Round()}},"inside":[1],"outside":[1]}""");
         Assert.True(both.IsError);
         Assert.Contains("both inside and outside", both.TextContent);
+        Assert.Single(both.Content.OfType<ToolImage>());
 
+        round = Round();
         await tools["geom_box"].ExecuteAsync("""{"name":"bag","dx":20}""");
         var moved = await tools["geom_probe"].ExecuteAsync($$"""{"name":"bag","round":{{round}},"inside":[1],"outside":null}""");
         Assert.True(moved.IsError);
         Assert.Contains("interrupted", moved.TextContent);
+    }
+
+    [Fact]
+    public async Task Probing_stops_after_repeated_unusable_answers()
+    {
+        var (chat, tools, scope) = Begin();
+        using var _scope = scope;
+        await Open(chat, tools, Frame(new SKRect(300, 200, 620, 430)));
+        await tools["geom_box"].ExecuteAsync("""{"name":"bag","cx":460,"cy":315,"width":300,"height":200}""");
+        await tools["geom_probe"].ExecuteAsync("""{"name":"bag"}""");
+
+        ToolResult result = null!;
+        for (var i = 0; i < 4; i++)
+        {
+            var round = GeometrySessionRegistry.TryGet(chat)!.Probe!.Round;
+            result = await tools["geom_probe"].ExecuteAsync($$"""{"name":"bag","round":{{round}},"inside":[1,2],"outside":[2]}""");
+            Assert.True(result.IsError);
+        }
+
+        Assert.Contains("stopped", result.TextContent);
+        Assert.Null(GeometrySessionRegistry.TryGet(chat)!.Probe);
     }
 
     [Fact]

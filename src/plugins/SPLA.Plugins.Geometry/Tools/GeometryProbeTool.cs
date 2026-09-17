@@ -30,6 +30,10 @@ internal sealed class GeometryProbeTool(ResolvedSettings projectSettings) : Geom
     /// rounds are buying nothing.</summary>
     private const int MaxEdgeRounds = 15;
 
+    /// <summary>Refused answers in a row before probing stops. Each refusal already brings a new picture
+    /// with new numbers; a model that cannot answer three of those is not going to answer the fourth.</summary>
+    private const int MaxRefusals = 3;
+
     public override string Name => "geom_probe";
 
     protected override ToolEffect Effect => ToolEffect.Write;
@@ -108,13 +112,6 @@ internal sealed class GeometryProbeTool(ResolvedSettings projectSettings) : Geom
                 $"No probe round is open for '{name}'. Start one with just the name (round null).",
                 "no probe round");
 
-        if (round != state.Round)
-            return ToolResult.Fail(
-                round is null
-                    ? $"An answer must carry the round it answers: the current round of '{name}' is {state.Round}."
-                    : $"Round {round} is not the current round of '{name}' ({state.Round}). Answer only the latest picture.",
-                "wrong round");
-
         if (Interrupted(session, state, existing))
         {
             session.Probe = null;
@@ -123,6 +120,13 @@ internal sealed class GeometryProbeTool(ResolvedSettings projectSettings) : Geom
                 "these answers describe a picture that no longer exists. Start again with just the name.",
                 "probe round stale");
         }
+
+        if (round != state.Round)
+            return Retry(chat, session, state, cfg,
+                round is null
+                    ? $"the answer did not say which round it answers (the current one was {state.Round})"
+                    : $"round {round} is not the current round ({state.Round})",
+                "wrong round");
 
         return state.Mode switch
         {
@@ -167,11 +171,7 @@ internal sealed class GeometryProbeTool(ResolvedSettings projectSettings) : Geom
 
         var text = new StringBuilder(action).Append('\n');
         RoundHeader(text, state, Style(session, cfg));
-        text.Append("question: does the point of each probe lie on an object of the kind you are marking as '")
-            .Append(state.Name).Append("'? If several such objects are visible, answer for all of them — they ")
-            .Append("are told apart afterwards. Gaps inside one object (between the letters of one inscription) ")
-            .Append("count as on it.\n");
-        AnswerLine(text, state);
+        Question(text, state, cfg);
 
         return RenderResult(chat, session, view, text.ToString(), cfg, Overlay(session, cfg, state.Probes, []));
     }
@@ -212,11 +212,7 @@ internal sealed class GeometryProbeTool(ResolvedSettings projectSettings) : Geom
                 $"the open edges of '{state.Name}' run off this view, so they are left where the answers put them");
 
         RoundHeader(text, state, Style(session, cfg));
-        text.Append("question: does the point of each probe lie on the area the box '").Append(state.Name)
-            .Append("' has to enclose? ")
-            .Append(cfg.ProbeShowBox ? "The coloured box is the current estimate, not the answer — judge the picture under it. " : "")
-            .Append("Gaps inside the object (between the letters of one inscription) count as on it.\n");
-        AnswerLine(text, state);
+        Question(text, state, cfg);
 
         return RenderResult(chat, session, view, text.ToString(), cfg, Overlay(session, cfg, state.Probes, []));
     }
@@ -237,7 +233,8 @@ internal sealed class GeometryProbeTool(ResolvedSettings projectSettings) : Geom
         IAgentSession chat, GeometrySession session, ProbeState state,
         HashSet<int> inside, HashSet<int> outside, GeometrySettings cfg)
     {
-        if (Validate(state, inside, outside) is { } invalid) return invalid;
+        if (Validate(state, inside, outside) is { } invalid) return Retry(chat, session, state, cfg, invalid.Message, invalid.Reason);
+        state.Refusals = 0;
 
         var found = state.Probes.Where(p => inside.Contains(p.Number)).ToList();
         state.ScanAnswers =
@@ -261,11 +258,8 @@ internal sealed class GeometryProbeTool(ResolvedSettings projectSettings) : Geom
         var text = new StringBuilder()
             .Append("the probes on '").Append(state.Name).Append("' form ").Append(groups.Count)
             .Append(" separate groups, outlined and lettered ")
-            .Append(string.Join(", ", groups.Select(g => g.Letter))).Append(".\n")
-            .Append("round ").Append(state.Round).Append(": pick the one to mark as '").Append(state.Name)
-            .Append("' — geom_probe {name:'").Append(state.Name).Append("', round:").Append(state.Round)
-            .Append(", pick:'A'}. The others can be marked afterwards under their own names; once accepted ")
-            .Append("they are veiled and get no probes.");
+            .Append(string.Join(", ", groups.Select(g => g.Letter))).Append(".\n");
+        Question(text, state, cfg);
 
         return RenderResult(chat, session, session.CurrentView, text.ToString(), cfg, Overlay(session, cfg, [], groups));
     }
@@ -275,12 +269,13 @@ internal sealed class GeometryProbeTool(ResolvedSettings projectSettings) : Geom
     {
         var letters = string.Join(", ", state.Groups.Select(g => $"'{g.Letter}'"));
         if (pick is null)
-            return ToolResult.Fail($"Round {state.Round} asks to pick one group: {letters}.", "pick missing");
+            return Retry(chat, session, state, cfg, $"round {state.Round} asks to pick one group: {letters}", "pick missing");
 
         var group = state.Groups.FirstOrDefault(g => char.ToUpperInvariant(pick[0]) == g.Letter && pick.Length == 1);
         if (group is null)
-            return ToolResult.Fail($"'{pick}' is not one of the groups on the picture: {letters}.", "unknown group");
+            return Retry(chat, session, state, cfg, $"'{pick}' is not one of the groups on the picture: {letters}", "unknown group");
 
+        state.Refusals = 0;
         return Found(chat, session, state, group, cfg, $"picked group {group.Letter} as '{state.Name}'");
     }
 
@@ -304,10 +299,11 @@ internal sealed class GeometryProbeTool(ResolvedSettings projectSettings) : Geom
         IAgentSession chat, GeometrySession session, ProbeState state, GeometryObject target,
         HashSet<int> inside, HashSet<int> outside, GeometrySettings cfg)
     {
-        if (Validate(state, inside, outside) is { } invalid) return invalid;
+        if (Validate(state, inside, outside) is { } invalid) return Retry(chat, session, state, cfg, invalid.Message, invalid.Reason);
         if (inside.Count == 0 && outside.Count == 0)
-            return ToolResult.Fail(
-                $"Round {state.Round} got no numbers. List at least one probe in inside or outside.", "empty answer");
+            return Retry(chat, session, state, cfg,
+                $"round {state.Round} got no numbers; list at least one probe in inside or outside", "empty answer");
+        state.Refusals = 0;
 
         ProbePlanner.Record(state, inside, outside);
 
@@ -323,23 +319,85 @@ internal sealed class GeometryProbeTool(ResolvedSettings projectSettings) : Geom
     }
 
     /// <summary>Every number must be one on the picture, and none may be both inside and outside.</summary>
-    private static ToolResult? Validate(ProbeState state, HashSet<int> inside, HashSet<int> outside)
+    private static (string Message, string Reason)? Validate(ProbeState state, HashSet<int> inside, HashSet<int> outside)
     {
         var known = state.Probes.Select(p => p.Number).ToHashSet();
         var unknown = inside.Concat(outside).Where(n => !known.Contains(n)).Distinct().Order().ToList();
         if (unknown.Count > 0)
-            return ToolResult.Fail(
-                $"Round {state.Round} has no probe numbered {string.Join(", ", unknown)}; its probes are 1..{state.Probes.Count}.",
+            return ($"round {state.Round} has no probe numbered {string.Join(", ", unknown)}; its probes were 1..{state.Probes.Count}",
                 "unknown probe");
 
         var both = inside.Intersect(outside).Order().ToList();
         if (both.Count > 0)
-            return ToolResult.Fail(
-                $"{string.Join(", ", both)} listed as both inside and outside. Put each number in one list, " +
-                "or leave it out if unsure.",
-                "contradictory answer");
+            return ($"{string.Join(", ", both)} listed as both inside and outside; put each number in one list, " +
+                    "or leave it out if unsure", "contradictory answer");
 
         return null;
+    }
+
+    /// <summary>
+    /// A refused answer still gets a new picture: the same probes — or groups — under a new round and
+    /// freshly shuffled numbers. Nothing of the refused answer is used.
+    /// <para>
+    /// Refusing with text alone left the old picture in front of the model, and a live model resent the
+    /// same refused answer six times: nothing it could see had changed, so neither did what it wrote. New
+    /// numbers make the old answer meaningless and the old tokens useless to copy (ADR_20260916-4).
+    /// </para>
+    /// </summary>
+    private static ToolResult Retry(
+        IAgentSession chat, GeometrySession session, ProbeState state, GeometrySettings cfg, string why, string reason)
+    {
+        if (++state.Refusals > MaxRefusals)
+        {
+            session.Probe = null;
+            return ToolResult.Fail(
+                $"Probing of '{state.Name}' stopped: {why}, and that is {MaxRefusals + 1} unusable answers in a row. " +
+                $"The box stays where the accepted answers put it. Start again with just the name.",
+                "too many refused answers");
+        }
+
+        var refused = state.Round;
+        state.Round = session.NextProbeRound();
+        state.Probes = ProbePlanner.Number(state.Probes, new Random(ProbePlanner.Seed(state.Name, state.Round)));
+
+        var text = new StringBuilder("answer to round ").Append(refused).Append(" refused, nothing of it was used: ")
+            .Append(why).Append(".\n")
+            .Append(state.Mode == ProbeMode.Pick
+                ? "The picture below is drawn again under a new round.\n"
+                : "The same probes are drawn again below with NEW numbers — answer from this picture only.\n");
+        if (state.Mode != ProbeMode.Pick) RoundHeader(text, state, Style(session, cfg));
+        Question(text, state, cfg);
+
+        var drawn = RenderResult(chat, session, session.CurrentView, text.ToString(), cfg,
+            Overlay(session, cfg, state.Probes, state.Groups));
+        return new ToolResult { Outcome = ToolOutcome.Failed, Content = drawn.Content, Reason = reason };
+    }
+
+    /// <summary>What is asked of the current round, and the call that answers it.</summary>
+    private static void Question(StringBuilder text, ProbeState state, GeometrySettings cfg)
+    {
+        switch (state.Mode)
+        {
+            case ProbeMode.Pick:
+                text.Append("round ").Append(state.Round).Append(": pick the one to mark as '").Append(state.Name)
+                    .Append("' — geom_probe {name:'").Append(state.Name).Append("', round:").Append(state.Round)
+                    .Append(", pick:'A'}. The others can be marked afterwards under their own names; once accepted ")
+                    .Append("they are veiled and get no probes.");
+                return;
+            case ProbeMode.Scan:
+                text.Append("question: does the point of each probe lie on an object of the kind you are marking as '")
+                    .Append(state.Name).Append("'? If several such objects are visible, answer for all of them — they ")
+                    .Append("are told apart afterwards. Gaps inside one object (between the letters of one inscription) ")
+                    .Append("count as on it.\n");
+                break;
+            default:
+                text.Append("question: does the point of each probe lie on the area the box '").Append(state.Name)
+                    .Append("' has to enclose? ")
+                    .Append(cfg.ProbeShowBox ? "The coloured box is the current estimate, not the answer — judge the picture under it. " : "")
+                    .Append("Gaps inside the object (between the letters of one inscription) count as on it.\n");
+                break;
+        }
+        AnswerLine(text, state);
     }
 
     /// <summary>Answers are offsets in the view the round began in, from a box this state wrote. A

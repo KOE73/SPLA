@@ -192,6 +192,11 @@ before changing it. What must hold:
 - **The round is part of the answer.** Session-wide, never reused; a wrong round is refused. A probe
   picture is always `ImageKeep.Once`, whatever `agent.tool_images` says. Only the picture leaves the
   context; the text of old answers stays, and a looping model can resend one.
+- **A refused answer still gets a new picture** (`Retry`, ADR_20260916-4): the same probes under a new
+  round and reshuffled numbers, so the refused answer cannot be resent. With a text-only refusal a live
+  model resent one answer six times. Four unusable answers in a row stop probing (`MaxRefusals`).
+- **A probe reply does not describe the box it did not draw.** Given the colours and centre mark in
+  text, a live model reported seeing them.
 - **A round lives in one view, over a box it wrote itself.** Another view, or the box moved by any
   other call (`ProbeState.WrittenBox`, compared by reference), and the answer is refused as interrupted.
 - **Probe renders carry no grid, no rulers and no unfinished box** (`probe_show_box` brings the box
