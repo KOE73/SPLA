@@ -15,3 +15,4 @@ sentences are what `current-list.md` is built from, which is why they have to st
 > [`CHANGELOGS/v0.2.7.md`](v0.2.7.md). Everything here is unreleased.
 
 ---
+

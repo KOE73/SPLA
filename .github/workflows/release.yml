@@ -95,7 +95,9 @@ jobs:
             $path = "CHANGELOGS/$f"
             $lines = Get-Content $path
             $sep = ($lines | Select-String -Pattern '^---\s*$' | Select-Object -First 1).LineNumber
-            $body = if ($sep) { ($lines[$sep..($lines.Count - 1)] -join "`n").Trim() } else { '' }
+            # Select-Object -Skip, not $lines[$sep..($lines.Count - 1)]: when `---` is the last line
+            # that range runs backwards and reads the separator itself as leftover content.
+            $body = if ($sep) { (($lines | Select-Object -Skip $sep) -join "`n").Trim() } else { '' }
             if ($body) {
               Write-Host "ERROR: $path still has content after the release — it was not emptied." -ForegroundColor Red
               $fail = $true

@@ -50,6 +50,13 @@ once it has been chosen for an actual release.
 
 1. **Ask first — see "Before pushing to `work`" below.** Everything after this point only happens
    once the owner has said yes.
+   **Then check that the previous release is merged back:** `git fetch` and
+   `git merge-base --is-ancestor origin/main work`. A squash-merge leaves the release commit on `main`
+   outside `work`'s history, so the next `work → main` pull request shows conflicts in every file both
+   touched. If the check fails, confirm nothing is lost (`git diff --name-only origin/main <a work
+   commit>` is empty for the commit that release was built from), **remind the owner — this step is
+   rare and gets forgotten** — and, once they agree, run `git merge -s ours origin/main` on `work`
+   before the release push.
 2. In one commit on `work`: bump `<build>` in `Directory.Build.props`; freeze `current-log.md` /
    `current-list.md` / `current-summary.md` into `CHANGELOGS/v<version>.md` and empty the three
    working files; write `CHANGELOGS/v<version>-notes.md` — the literal release body, not assembled by

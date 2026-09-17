@@ -10,3 +10,4 @@ repository and is linked from it.
 **Covers work since `v0.2.7`**, frozen in [`CHANGELOGS/v0.2.7.md`](v0.2.7.md).
 
 ---
+
