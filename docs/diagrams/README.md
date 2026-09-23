@@ -1,6 +1,8 @@
 # SPLA Architecture Diagrams
 
-The diagram workspace: architecture models and the editor they are built in.
+The diagram workspace: architecture models of SPLA. The editor, server and
+format contract live in the separate **SeMaps** project; this directory is only
+its workspace.
 Layout is hand-made only — there is no auto-layout and there will not be one.
 
 Russian version — [`README_RU.md`](README_RU.md).
@@ -11,21 +13,19 @@ Russian version — [`README_RU.md`](README_RU.md).
 
 | Path | What it is |
 |---|---|
-| [`app/`](app/index.html) | built editor application, served under `/app/` |
 | [`catalog.json`](catalog.json) | what appears in the sidebar — **one entry per view** |
-| [`styles.json`](styles.json) | shared style library for every project |
 | [`projects/`](projects/) | the models themselves: entities, relations, texts, views |
-| [`server.go`](server.go), [`run.cmd`](run.cmd) | local server, port `8777` |
 | [`mapping/`](mapping/) | leftovers of the v1 generator, kept as reading material only |
 
-The application is built from sources in [`tools/spla-diagram`](../../tools/spla-diagram);
-after editing them run `npm run build:app` there.
+Styles, templates and content pictures come from SeMaps defaults; a file with
+the same name placed here overrides them. Open it from the repository root with
+the installed `semaps` binary:
 
 ```bash
-docs/diagrams/run.cmd
+ViewArchitecture.cmd
 ```
 
-Then open <http://localhost:8777/app/>.
+which runs `semaps --workspace docs/diagrams --source-root .`. Then open <http://localhost:8777/app/>.
 
 ---
 
@@ -33,9 +33,9 @@ Then open <http://localhost:8777/app/>.
 
 | Document | Answers |
 |---|---|
-| [`tools/spla-diagram/docs/CONTRACT.md`](../../tools/spla-diagram/docs/CONTRACT.md) | what is valid on disk: fields, types, invariants (contract **v3**) |
+| SeMaps `docs/CONTRACT.md` | what is valid on disk: fields, types, invariants (contract **v3**) |
 | [`projects/AGENTS.md`](projects/AGENTS.md) | how to work with it: who writes what, pitfalls, what does not exist yet |
-| [`tools/spla-diagram/docs/API.md`](../../tools/spla-diagram/docs/API.md) | what a host must serve and accept |
+| SeMaps `docs/API.md` | what a host must serve and accept |
 | [`ADR_20260831`](../adr/ADR_20260831_diagrams_text-provenance-and-view-axes.md) | why the format looks like this |
 
 In short: a project is a directory holding a registry of entities and relations,
@@ -120,18 +120,18 @@ the outline (`shape` — rectangle, ellipse, diamond, cylinder, hexagon, actor),
 the style (colour, border — `styles.json`, as before), and **what is drawn
 inside the outline** (`template`). A template is text in a small language
 (`@Name`, `@Description`, `@Members(...)`, `@Asset(...)`), stored line-by-line
-in [`templates.json`](templates.json) next to `styles.json` — never a
+in `templates.json` next to `styles.json` — never a
 compiled tree, never a fixed "compact / detail" profile. Classes and database
 tables are its first real clients: the same template engine draws both, just
 filtered differently. Pictures for `@Asset` live in a small named registry,
-[`content/index.json`](content/index.json), sanitized before insertion.
+`content/index.json` (SeMaps defaults, overridable here), sanitized before insertion.
 
 An edge's line shape (`routing`: `bezier` | `orthogonal` | `tree-horizontal` |
 `tree-vertical`) is chosen, never computed and stored — only the *choice*
 lives in a file, cascading edge → view → relation-type style → default. The
 router is a pure function of ports and obstacles.
 
-Full contract: [`CONTRACT.md` §11](../../tools/spla-diagram/docs/CONTRACT.md).
+Full contract: SeMaps `docs/CONTRACT.md` §11.
 
 ---
 
@@ -139,12 +139,10 @@ Full contract: [`CONTRACT.md` §11](../../tools/spla-diagram/docs/CONTRACT.md).
 
 Today — **by hand**, and that is worth knowing up front.
 
-The v1 generator ([`tools/spla-arch`](../../tools/spla-arch/), Go) is out of
-service: the `model-*.json` files it produced have been deleted, and the orange
-"UNPLACED" zone does not exist in v2/v3 — an entity reaches the canvas only by
-being pulled from the registry. Its successor
-[`tools/spla-atlas`](../../tools/spla-atlas/) (Roslyn) is **not written**: only
-the task description is there.
+The v1 generator is out of service: the `model-*.json` files it produced have
+been deleted, and the orange "UNPLACED" zone does not exist in v2/v3 — an
+entity reaches the canvas only by being pulled from the registry. Mechanical
+sync with code (does the entity exist, does `codeRef` resolve) is SeMaps's job.
 
 Which means:
 

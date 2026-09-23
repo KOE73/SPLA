@@ -267,8 +267,9 @@ the course SPLA's permission model is taking, not as settled fact.
 ## Architecture Diagrams (alpha)
 
 A side, auxiliary subproject living next to the main one —
-[`docs/diagrams/`](docs/diagrams/README.md) and the [`tools/spla-diagram`](tools/spla-diagram/)
-editor. Its purpose runs in both directions.
+[`docs/diagrams/`](docs/diagrams/README.md). The editor, the server and the format contract live in
+a separate project, **SeMaps**; this repository keeps only the workspace (`catalog.json` and
+`projects/`). Its purpose runs in both directions.
 
 **Outward:** show the project's internal structures so they are easier to understand — not as prose
 retelling, but as a picture you can look at.
@@ -292,14 +293,13 @@ Hence the views: the same codebase lays out differently, and that is a choice of
 of style — the "turn backbone" (from the inbox to the return to the model), a semantic atlas of
 subsystems, security zones, processes.
 
-Launch it from the repository root; the script builds the editor app and starts a local server
-itself:
+Install SeMaps so that the `semaps` binary is on `PATH`, then launch from the repository root:
 
 ```powershell
 .\ViewArchitecture.cmd
 ```
 
-Then open <http://localhost:8777/app/>. Layout is manual only — there is no auto-layout and there
+It runs `semaps --workspace docs/diagrams --source-root .`; then open <http://localhost:8777/app/>. Layout is manual only — there is no auto-layout and there
 will not be one.
 
 All of the above is alpha.
