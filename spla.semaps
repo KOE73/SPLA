@@ -1,0 +1,7 @@
+# SeMaps project file: Enter / double click opens the architecture maps.
+# Paths are relative to this folder. See https://github.com/KOE73/SeMaps
+version: 1
+name: SPLA
+workspace: docs/diagrams
+source_root: .
+port: 8780

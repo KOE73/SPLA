@@ -24,7 +24,8 @@
 ViewArchitecture.cmd
 ```
 
-— он вызывает `semaps --workspace docs/diagrams --source-root .`. Дальше — <http://localhost:8777/app/>.
+— он вызывает `semaps spla.semaps` (или двойной щелчок по [`spla.semaps`](../../spla.semaps)).
+SeMaps: <https://github.com/KOE73/SeMaps>.
 
 ---
 

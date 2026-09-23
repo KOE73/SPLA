@@ -106,7 +106,8 @@ in addition to the root `AGENTS.md`.
   [ADR_20260818_build_package-manager](../docs/adr/ADR_20260818_build_package-manager.md), which also
   names the condition for revisiting it.
 - `docs/diagrams/`: workspace of the separate SeMaps project (diagram editor and server), opened by
-  `ViewArchitecture.cmd` via the installed `semaps` binary.
+  `spla.semaps` / `ViewArchitecture.cmd` via the installed `semaps` binary
+  (https://github.com/KOE73/SeMaps).
 - `docs/`, `agents/`, `Images/`: Documentation and assets (unchanged by the layered `src/` layout).
 - `.github/workflows/`: GitHub Actions. `ci.yml` (build + tests on `main`/`work` and on pull
   requests into `main`) and `release.yml` (a push to `main` that touches sources, or a manual run →

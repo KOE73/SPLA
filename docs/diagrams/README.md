@@ -25,7 +25,8 @@ the installed `semaps` binary:
 ViewArchitecture.cmd
 ```
 
-which runs `semaps --workspace docs/diagrams --source-root .`. Then open <http://localhost:8777/app/>.
+which runs `semaps spla.semaps` (or double-click [`spla.semaps`](../../spla.semaps)).
+SeMaps: <https://github.com/KOE73/SeMaps>.
 
 ---
 
