@@ -193,6 +193,17 @@
             <label class="field"><span>{{ t('Temperature') }}</span>
               <input type="number" step="0.1" min="0" max="2" v-model.number="m.temperature" :placeholder="t('project default')">
             </label>
+            <div v-if="conn.provider === 'openrouter' && m.model?.replace(/^~/, '').startsWith('anthropic/claude-')" class="field conn-flags">
+              <span>{{ t('Prompt cache') }}</span>
+              <div class="conn-flags-wrap">
+                <label class="flag-check">
+                  <input type="checkbox" :checked="m.promptCache !== false"
+                         :title="t('Automatic cache uses the Anthropic provider endpoint')"
+                         @change="m.promptCache = ($event.target as HTMLInputElement).checked">
+                  {{ t('Enable prompt cache for this model') }}
+                </label>
+              </div>
+            </div>
             <!-- One per scope, not one per connection: the resolver refuses a layer with two marks,
                  so clearing the others is the panel's job, not this card's — it only reports the ask. -->
             <div class="field conn-flags">

@@ -15,6 +15,15 @@
     <ProjectReference Include="..\..\service\SPLA.Service\SPLA.Service.csproj" />
     <ProjectReference Include="..\..\service\SPLA.Instances\SPLA.Instances.csproj" />
     <ProjectReference Include="..\..\core\SPLA.Observability\SPLA.Observability.csproj" />
+    <!-- Build the Windows secret backend as a runtime artifact, without compiling the host against it. -->
+    <ProjectReference Include="..\..\core\SPLA.Secrets.Dpapi\SPLA.Secrets.Dpapi.csproj" ReferenceOutputAssembly="false" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Runtime dependency of the dynamically loaded DPAPI backend; not a host compile reference. -->
+    <PackageReference Include="System.Security.Cryptography.ProtectedData" Version="9.0.0" ExcludeAssets="compile" />
+    <None Include="..\..\core\SPLA.Secrets.Dpapi\bin\$(Configuration)\net10.0\SPLA.Secrets.Dpapi.dll"
+          Link="SPLA.Secrets.Dpapi.dll" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
   </ItemGroup>
 
   <!-- server.json (identity provider wiring) ships next to the exe. -->

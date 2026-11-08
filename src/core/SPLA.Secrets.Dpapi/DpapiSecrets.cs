@@ -11,8 +11,8 @@ namespace SPLA.Secrets.Dpapi;
 public static class DpapiSecrets
 {
     /// <summary>Wires the DPAPI backend into <see cref="ConfigLoader.SecretStoreFactory"/>. On non-Windows,
-    /// or for any backend other than <c>dpapi</c>, returns null so the config loader falls back to the
-    /// plaintext file store.</summary>
+    /// or for any backend other than <c>dpapi</c>, returns null. The config loader refuses an
+    /// unavailable selected backend rather than falling back to plaintext.</summary>
     public static void Register(Action<string>? warn = null)
     {
         ConfigLoader.SecretStoreFactory = (backend, workspace, machineDir) =>

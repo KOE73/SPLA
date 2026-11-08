@@ -1,3 +1,4 @@
+using System.Text.Json;
 using System.Text.Json.Serialization;
 
 namespace SPLA.LLM.OpenAiCompat;
@@ -30,6 +31,9 @@ public sealed partial class OpenAiCompatibleClient
 
         [JsonPropertyName("total_tokens")]
         public int TotalTokens { get; set; }
+
+        [JsonPropertyName("prompt_tokens_details")]
+        public Dictionary<string, JsonElement>? PromptTokensDetails { get; set; }
     }
 
     private class OpenAIChoice

@@ -4,7 +4,7 @@ namespace SPLA.Domain.Secrets;
 /// Global secrets store — NOT tied to any plugin. SQL, SSH, LLM connections and the host all use it
 /// to keep credentials out of committable config files. The unit of storage is a
 /// <see cref="SecretEntry"/>: a named record of fields (user+password, a lone token, a PEM key…).
-/// The interface is the stable contract; only the backend changes (plaintext dev default ↔ DPAPI via
+/// The interface is the stable contract; only the backend changes (Windows DPAPI default or explicit plaintext via
 /// <c>secrets.backend</c>). Async because real backends (keychains, cloud KMS) are async.
 ///
 /// <para>

@@ -41,8 +41,8 @@ public static class MachineLayerScope
     /// <param name="secretStoreFactory">Stands in for <see cref="ConfigLoader.SecretStoreFactory"/>.
     /// Null leaves the registered factory alone — use <paramref name="suppressSecretStoreFactory"/> to
     /// mean "no factory at all".</param>
-    /// <param name="suppressSecretStoreFactory">Answer "there is no factory" on this flow, so the
-    /// plaintext fallback is what gets built. Distinct from a null factory, which means "no opinion".</param>
+    /// <param name="suppressSecretStoreFactory">Answer "there is no factory" on this flow. Selecting
+    /// DPAPI then fails. Distinct from a null factory, which means "no opinion".</param>
     public static IDisposable Begin(
         string? homeDir = null,
         Func<string, string?, string, Secrets.ISecretStore?>? secretStoreFactory = null,

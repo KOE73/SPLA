@@ -87,12 +87,19 @@ Never compute `~/.spla` anywhere except `ConfigLoader.GetDefaultsDir()`.
 
 **Backends.** One active backend, no composites, no chains. Selected by `secrets.backend: file|dpapi`
 in the machine-level `defaults.yaml` only — never in a committable project file, because the backend
-is a property of the machine. `file` (plaintext YAML, gitignored) is a legitimate shipped default and
-must not be removed: transparent dev/test storage is a feature. `dpapi` lives in a separate assembly
+is a property of the machine. **Absent selection means `dpapi` on Windows and `file` elsewhere.**
+On Windows, `file` (plaintext YAML, gitignored) requires an explicit machine-level opt-in for
+development/test fixtures. It must never be selected as an error fallback. `dpapi` lives in a separate assembly
 wired through a factory (no platform dependency in `SPLA.Domain`) and encrypts **values only** —
-entry keys and field names stay verbatim so listing never decrypts. An unavailable backend degrades
-to `file` with one warning and never crashes; a field that fails to decrypt is treated as absent and
-its blob is never logged. There is no plaintext→DPAPI migration; the two files coexist.
+entry keys and field names stay verbatim so listing never decrypts. **An unavailable selected backend,
+an unknown name or an explicitly blank name stops settings resolution with an error.** Hosts must
+register the DPAPI factory before resolving settings; the Windows server ships and loads it as a
+runtime artifact without a platform compile reference. A field that fails to decrypt is treated as
+absent and its blob is never logged; it never falls through to a plaintext file. There is no automatic
+plaintext→DPAPI migration; the two files coexist and only the selected backend is read.
+
+This replaces the earlier default/fallback policy; see
+[`ADR_20261015_secrets_windows-dpapi-default`](../docs/adr/ADR_20261015_secrets_windows-dpapi-default.md).
 
 **Listing never returns values.** `ListEntriesAsync` returns keys and field *names*. This is a
 contract, not an implementation detail — a management UI is built on it.

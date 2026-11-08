@@ -446,6 +446,8 @@ public sealed class ModelEditDto
     public bool Default { get; set; }
     public string? Model { get; set; }
     public int? ContextLength { get; set; }
+    /// <summary>Null means enabled by default.</summary>
+    public bool? PromptCache { get; set; }
 
     /// <summary>Default sampling temperature for this model. Null = fall back to the role's default,
     /// then the project/machine one — see <see cref="SPLA.Domain.Settings.SplaModelSection.Temperature"/>.</summary>
@@ -558,7 +560,8 @@ public sealed class RolesPayload
     /// role inheriting the list would get.</summary>
     public List<CapabilityDto> KnownCapabilities { get; set; } = new();
 
-    /// <summary>Models a role may run on (id + display name), flattened across connections.</summary>
+    /// <summary>Models a role may run on, with owning connection and display metadata for the
+    /// shared model picker.</summary>
     public List<ConnectionDto> Models { get; set; } = new();
 
     /// <summary>Connections a role may be narrowed to (id + name).</summary>
@@ -1592,6 +1595,9 @@ public sealed class TokenUsagePayload
 {
     public int? PromptTokens { get; set; }
     public int? CompletionTokens { get; set; }
+    /// <summary>Provider-reported prompt cache reads and writes for this model call.</summary>
+    public long? CachedTokens { get; set; }
+    public long? CacheWriteTokens { get; set; }
 
     /// <summary>The model's operative context window in tokens, when known (connection override or
     /// provider-detected). Lets the client render prompt usage as a fraction of the window and warn

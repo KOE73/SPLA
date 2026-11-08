@@ -636,11 +636,11 @@ public static class ConfigLoader
     public static Func<string?, string?>? PersonalDirResolver { get; set; }
 
     /// <summary>
-    /// Pluggable factory for non-default secret backends. SPLA.Domain must not reference Windows
+    /// Pluggable factory for platform-specific secret backends. SPLA.Domain must not reference Windows
     /// (DPAPI) or other platform packages, so the app entry point registers a factory here before
     /// the first <see cref="LoadAndResolve"/>. Signature: (backend, workspacePath, machineDir) → store,
-    /// or null if this backend cannot be provided (wrong OS, package missing) — the caller then falls
-    /// back to the plaintext <see cref="Secrets.FileSecretStore"/>.
+    /// or null if this backend cannot be provided (wrong OS, package missing). An unavailable selected
+    /// backend is an error; it must never downgrade storage to plaintext.
     /// </summary>
     public static Func<string, string?, string, Secrets.ISecretStore?>? SecretStoreFactory { get; set; }
 
@@ -654,26 +654,21 @@ public static class ConfigLoader
         return scope.SecretStoreFactory ?? SecretStoreFactory;
     }
 
-    private static bool _secretBackendWarned;
-
     private static Secrets.ISecretStore ResolveSecretStore(SplaDefaults defaults, string? workspace)
     {
         var machineDir = GetDefaultsDir();
-        var backend = (defaults.Secrets?.Backend ?? "file").Trim().ToLowerInvariant();
-        var factory = EffectiveSecretStoreFactory();
+        var backend = (defaults.Secrets?.Backend ?? (OperatingSystem.IsWindows() ? "dpapi" : "file"))
+            .Trim().ToLowerInvariant();
 
-        if (backend != "file" && factory != null)
+        return backend switch
         {
-            var store = factory(backend, workspace, machineDir);
-            if (store != null) return store;
-        }
-
-        if (backend != "file" && !_secretBackendWarned)
-        {
-            _secretBackendWarned = true;
-            Console.WriteLine($"[secrets] backend '{backend}' unavailable (no factory / unsupported platform); using plaintext file store.");
-        }
-
-        return new Secrets.FileSecretStore(workspace, machineDir);
+            "file" => new Secrets.FileSecretStore(workspace, machineDir),
+            "dpapi" => EffectiveSecretStoreFactory()?.Invoke(backend, workspace, machineDir)
+                ?? throw new InvalidOperationException(
+                    "Secret-store backend 'dpapi' is unavailable. DPAPI requires Windows and a host " +
+                    "that registers the DPAPI backend. No plaintext fallback is allowed."),
+            _ => throw new InvalidOperationException(
+                "Invalid secrets.backend. Supported values are 'dpapi' and 'file'.")
+        };
     }
 }

@@ -409,6 +409,7 @@ public class ResolvedSettings
         BaseUrl = entry?.Endpoint ?? "http://127.0.0.1:1234/v1/",
         ApiKey = entry?.ApiKey ?? "lm-studio",
         ModelName = entry?.Model is { Length: > 0 } m && m != "auto" ? m : "",
+        PromptCache = entry?.Entry.PromptCache ?? true,
         ContextLength = entry?.ContextLength is > 0 ? entry.ContextLength : null,
         Temperature = RoleTemperature ?? entry?.Entry.Temperature ?? Temperature,
         Mode = Mode,

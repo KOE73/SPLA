@@ -1,6 +1,7 @@
 using System.Net.Http.Headers;
 using SPLA.Domain.Llm;
 using SPLA.Domain.Models;
+using SPLA.Domain.Settings;
 
 namespace SPLA.LLM.OpenAiCompat;
 
@@ -21,7 +22,7 @@ namespace SPLA.LLM.OpenAiCompat;
 public interface IOpenAiCompatProfile
 {
     /// <summary>Adds provider-specific fields to the request body, in place.</summary>
-    void ShapeBody(IDictionary<string, object> payload);
+    void ShapeBody(IDictionary<string, object> payload, LLMSettings settings);
 
     /// <summary>Adds provider-specific headers. Authorization is already set by the caller.</summary>
     void ShapeHeaders(HttpRequestHeaders headers);
@@ -106,6 +107,6 @@ public sealed class PlainOpenAiCompatProfile : IOpenAiCompatProfile
 {
     public static readonly PlainOpenAiCompatProfile Instance = new();
 
-    public void ShapeBody(IDictionary<string, object> payload) { }
+    public void ShapeBody(IDictionary<string, object> payload, LLMSettings settings) { }
     public void ShapeHeaders(HttpRequestHeaders headers) { }
 }

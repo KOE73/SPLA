@@ -11,3 +11,7 @@ repository and is linked from it.
 
 ---
 
+- Windows now defaults to DPAPI secret storage and refuses unavailable or invalid backends instead of falling back to plaintext.
+- Claude models through OpenRouter can use prompt caching, with cache read/write token counts shown for each chat.
+- Roles use the same connection-grouped model picker as chats, and spawned agents honor the role's selected model.
+- The project includes builder and tester roles for concise command reports, plus shared SeMaps MCP configuration.

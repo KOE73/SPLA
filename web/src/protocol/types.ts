@@ -278,6 +278,8 @@ export interface ModelEntryDto {
   default?: boolean;
   model?: string;
   contextLength?: number;
+  /** Prompt caching is enabled unless explicitly false. */
+  promptCache?: boolean;
   /** Default sampling temperature for this model. Undefined = fall back to the role's default, then
    *  the project/machine one. */
   temperature?: number;
@@ -639,7 +641,7 @@ export interface RolesResultPayload {
   /** The project's own mode — what a role that picks nothing runs in. */
   projectMode: string;
   knownCapabilities: CapabilityDto[];
-  models: ConnectionDto[];
+  models: ModelPickDto[];
   connections: ConnectionDto[];
   islands: string[];
   toolSetIds: string[];
@@ -985,7 +987,7 @@ export interface ServerEvents {
   "chat.cleared": Record<string, never>;
   "chat.current": ChatOpenedPayload;
   "focus.changed": { chatId: string };
-  "token.usage": { promptTokens?: number; completionTokens?: number; contextLength?: number };
+  "token.usage": { promptTokens?: number; completionTokens?: number; cachedTokens?: number; cacheWriteTokens?: number; contextLength?: number };
   "delta": { msgIndex: number; text: string };
   "reasoning": { msgIndex: number; text: string };
   /** progressTreeId: the wire treeId prefix (see chatSessions.ts) of THIS turn's own progress

@@ -22,6 +22,12 @@ public class LLMSettings
     public string ModelName { get; set; } = "local-model";
     public string ApiKey { get; set; } = "lm-studio";
 
+    /// <summary>Whether the selected model permits provider prompt caching.</summary>
+    public bool PromptCache { get; set; } = true;
+
+    /// <summary>Stable chat identity for provider routing; absent for calls outside a chat.</summary>
+    public string? SessionId { get; set; }
+
     /// <summary>
     /// Manual context-window override in tokens from the connection (<c>context_length</c> in .spla).
     /// Null = not configured; the runtime then auto-detects the operative window from the provider

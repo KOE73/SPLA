@@ -72,7 +72,7 @@ public sealed partial class OpenAiCompatibleClient : ILlmClient, ITokenUsageRepo
     /// </summary>
     public async Task<LlmTurnResult> InvokeAsync(LlmTurnContext ctx, CancellationToken ct = default)
     {
-        var (message, modelReported, signals) = await SendMessageStreamFullAsync(
+        var (message, modelReported, signals, reportedUsage) = await SendMessageStreamFullAsync(
             ctx.Messages, ctx.Settings, ctx.Tools, ctx.OnDelta, ct, ctx.OnReasoning);
 
         // Raw counters keyed by their wire names: the accounting layer classifies them against the
@@ -80,6 +80,7 @@ public sealed partial class OpenAiCompatibleClient : ILlmClient, ITokenUsageRepo
         var usage = new Dictionary<string, long>(StringComparer.OrdinalIgnoreCase);
         if (message.PromptTokens is int prompt) usage["prompt_tokens"] = prompt;
         if (message.CompletionTokens is int completion) usage["completion_tokens"] = completion;
+        foreach (var (key, value) in reportedUsage) usage[key] = value;
 
         return new LlmTurnResult
         {
@@ -98,7 +99,7 @@ public sealed partial class OpenAiCompatibleClient : ILlmClient, ITokenUsageRepo
     /// <paramref name="onReasoning"/> for each reasoning chunk as they arrive, and returns the fully
     /// assembled message (including tool_calls and reasoning) when the stream finishes.
     /// </summary>
-    private async Task<(ChatMessage Message, string? ModelReported, IReadOnlyList<ProviderFact> Signals)> SendMessageStreamFullAsync(
+    private async Task<(ChatMessage Message, string? ModelReported, IReadOnlyList<ProviderFact> Signals, IReadOnlyDictionary<string, long> ReportedUsage)> SendMessageStreamFullAsync(
         IEnumerable<ChatMessage> messages,
         LLMSettings settings,
         IEnumerable<ToolDefinition>? tools,
@@ -122,6 +123,7 @@ public sealed partial class OpenAiCompatibleClient : ILlmClient, ITokenUsageRepo
         var toolCallsById = new Dictionary<int, ToolCallAccumulator>();
         int? promptTokens = null;
         int? completionTokens = null;
+        var reportedUsage = new Dictionary<string, long>(StringComparer.OrdinalIgnoreCase);
         string? finishReason = null;
         string? modelReported = null;
 
@@ -156,6 +158,10 @@ public sealed partial class OpenAiCompatibleClient : ILlmClient, ITokenUsageRepo
             {
                 promptTokens    = chunk.Usage.PromptTokens;
                 completionTokens = chunk.Usage.CompletionTokens;
+                if (chunk.Usage.PromptTokensDetails is { } details)
+                    foreach (var (key, value) in details)
+                        if (value.ValueKind == JsonValueKind.Number && value.TryGetInt64(out var tokens))
+                            reportedUsage[key] = tokens;
             }
 
             var choice = chunk?.Choices?.FirstOrDefault();
@@ -262,7 +268,7 @@ public sealed partial class OpenAiCompatibleClient : ILlmClient, ITokenUsageRepo
             ToolCalls        = toolCalls,
             PromptTokens     = promptTokens,
             CompletionTokens = completionTokens
-        }, modelReported, signals);
+        }, modelReported, signals, reportedUsage);
     }
 
     /// <summary>
@@ -403,7 +409,7 @@ public sealed partial class OpenAiCompatibleClient : ILlmClient, ITokenUsageRepo
         // The one place a provider dialect gets to differ. Everything above is plain OpenAI-compatible
         // and is identical for LM Studio, vLLM, OpenAI and OpenRouter; the profile adds only what a
         // particular provider needs on top (extra body fields, extra headers).
-        _profile.ShapeBody(payload);
+        _profile.ShapeBody(payload, settings);
 
         var request = new HttpRequestMessage(HttpMethod.Post, BuildEndpointUri(settings.BaseUrl, "chat/completions"));
         request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", settings.ApiKey);

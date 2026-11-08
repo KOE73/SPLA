@@ -4,8 +4,8 @@ namespace SPLA.Domain.Secrets;
 /// Naive plaintext backend: YAML files, one per scope. The folders are gitignored, so this keeps
 /// secrets out of source control — but NOT encrypted at rest. The DPAPI backend
 /// (<c>SPLA.Secrets.Dpapi</c>) swaps in behind <see cref="ISecretStore"/> without touching callers;
-/// this store stays the default and the intended choice for local development and tests, where
-/// transparency (inspect / seed a fixture) is a feature, not a risk.
+/// this store is an explicit opt-in on Windows and the default elsewhere. Local development and
+/// tests can choose it when transparent fixtures are needed; it is never an error fallback.
 ///
 /// <para>Scope → file:</para>
 /// <list type="bullet">

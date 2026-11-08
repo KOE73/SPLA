@@ -1995,6 +1995,7 @@ public sealed class ChatRuntime : IDisposable, SPLA.Domain.Agent.IBackgroundTask
         var settings = _roleSettings ?? _runtime.Settings;
         var entry = settings.FindModel(_chat.ModelId) ?? settings.DefaultModel;
         var s = settings.ToLLMSettings(entry);
+        s.SessionId = ChatId;
         var chatModel = _chat.Model;
 
         s.Mode             = ResolveMode();

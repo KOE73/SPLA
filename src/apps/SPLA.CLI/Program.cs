@@ -24,6 +24,8 @@ if (args.Length > 0)
     var cmdName = args[0].ToLowerInvariant();
     if (cmdName is "init" or "ps" or "start" or "stop" or "hub")
     {
+        // These paths may resolve credentials before the normal logged bootstrap below.
+        SPLA.Secrets.Dpapi.DpapiSecrets.Register();
         Environment.ExitCode = await RunPreBootstrapCommandAsync(cmdName, args);
         return;
     }
@@ -74,8 +76,8 @@ using var loggerFactory = LoggerFactory.Create(builder =>
 });
 var logger = loggerFactory.CreateLogger("SPLA.CLI");
 
-// Make the DPAPI secret backend selectable (secrets.backend: dpapi in ~/.spla/defaults.yaml).
-// No-op on non-Windows — the config loader then falls back to the plaintext file store.
+// Register the Windows default before resolving any settings (including MCP startup).
+// Other platforms default to file; explicitly selecting unavailable DPAPI is always an error.
 SPLA.Secrets.Dpapi.DpapiSecrets.Register(msg => logger.LogWarning("{Message}", msg));
 
 // For `mcp` the startup summary goes to stderr: stdout is the protocol from the first byte. This also

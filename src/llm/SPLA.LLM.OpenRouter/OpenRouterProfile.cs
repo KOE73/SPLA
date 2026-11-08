@@ -1,18 +1,21 @@
 using System.Net.Http.Headers;
 using SPLA.Domain.Llm;
 using SPLA.Domain.Models;
+using SPLA.Domain.Settings;
 using SPLA.LLM.OpenAiCompat;
 
 namespace SPLA.LLM.OpenRouter;
 
 /// <summary>
-/// OpenRouter's dialect on top of plain OpenAI-compatible. Two differences, both documented by
+/// OpenRouter's dialect on top of plain OpenAI-compatible. Its additions are documented by
 /// OpenRouter:
 /// <list type="bullet">
 /// <item><c>usage.include</c> — asks for the usage block to carry the call's actual cost, so spend is
 /// a reported fact rather than something we recompute from a price list that may have moved.</item>
 /// <item><c>HTTP-Referer</c> / <c>X-Title</c> — how OpenRouter attributes traffic to an app. Optional
 /// on their side, and sent only when configured.</item>
+/// <item><c>cache_control</c> and <c>session_id</c> — request automatic Claude prompt caching and
+/// keep a chat on the same provider endpoint while that cache is warm.</item>
 /// </list>
 /// </summary>
 public sealed class OpenRouterProfile : IOpenAiCompatProfile
@@ -26,8 +29,16 @@ public sealed class OpenRouterProfile : IOpenAiCompatProfile
         _title = title;
     }
 
-    public void ShapeBody(IDictionary<string, object> payload)
-        => payload["usage"] = new Dictionary<string, object> { ["include"] = true };
+    public void ShapeBody(IDictionary<string, object> payload, LLMSettings settings)
+    {
+        payload["usage"] = new Dictionary<string, object> { ["include"] = true };
+        if (settings.PromptCache &&
+            settings.ModelName.TrimStart('~').StartsWith("anthropic/claude-", StringComparison.OrdinalIgnoreCase))
+        {
+            payload["cache_control"] = new Dictionary<string, object> { ["type"] = "ephemeral" };
+            if (!string.IsNullOrWhiteSpace(settings.SessionId)) payload["session_id"] = settings.SessionId;
+        }
+    }
 
     /// <summary>
     /// OpenRouter's <c>reasoning</c> block rather than the bare <c>reasoning_effort</c>. It is the one
