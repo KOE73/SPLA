@@ -265,33 +265,45 @@ public class ChatFeedQueuedSubscriptionTests
 
         var delivered = new List<string>();
         var gate = new object();
-        var stop = 0;
+        var publisherReady = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var startPublishing = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var allDelivered = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var detached = 0;
+        const string finalId = "after-snapshot";
 
-        // Keeps publishing (and mutating "state") while the resync below runs — the exact race the
-        // wave-4 note describes.
-        var publisher = Task.Run(() =>
+        // Race the snapshot with a bounded burst. An unlimited publisher can legitimately overflow
+        // and detach the queue, which tests lag recovery rather than the snapshot boundary.
+        var publisher = Task.Run(async () =>
         {
-            var i = 0;
-            while (Volatile.Read(ref stop) == 0)
+            publisherReady.SetResult();
+            await startPublishing.Task;
+            for (var i = 0; i < ChatFeed.StructuralOverflowThreshold / 2; i++)
             {
-                var id = $"concurrent-{i++}";
+                var id = $"concurrent-{i}";
                 feed.Publish(Started("c1", id), mutateUnderGate: () => state.Add(id));
             }
         });
 
-        await Task.Delay(20); // let the publisher get going before the resync races it
+        await publisherReady.Task.WaitAsync(TimeSpan.FromSeconds(5));
+        startPublishing.SetResult();
 
         var (snapshot, subscription) = feed.SubscribeQueuedWithSnapshot(
-            e => { lock (gate) delivered.Add(((ChatToolStarted)e).Call.Id); return Task.CompletedTask; },
-            onDetached: () => { },
+            e =>
+            {
+                var id = ((ChatToolStarted)e).Call.Id;
+                lock (gate) delivered.Add(id);
+                if (id == finalId) allDelivered.SetResult();
+                return Task.CompletedTask;
+            },
+            onDetached: () => Interlocked.Exchange(ref detached, 1),
             captureSnapshot: () => state.ToList());
+        using var ownedSubscription = subscription;
 
-        await Task.Delay(50);
-        Volatile.Write(ref stop, 1);
-        await publisher;
-        await WaitUntil(() => { lock (gate) return delivered.Count > 0; });
-        await Task.Delay(20); // let the consumer drain whatever is left in its queue
-        subscription.Dispose();
+        await publisher.WaitAsync(TimeSpan.FromSeconds(5));
+        feed.Publish(Started("c1", finalId), mutateUnderGate: () => state.Add(finalId));
+        Assert.Equal(0, Volatile.Read(ref detached));
+        // FIFO delivery of this final structural event proves the entire burst has drained.
+        await allDelivered.Task.WaitAsync(TimeSpan.FromSeconds(5));
 
         List<string> got;
         lock (gate) got = delivered.ToList();
@@ -300,6 +312,7 @@ public class ChatFeedQueuedSubscriptionTests
         Assert.Empty(snapshot.Intersect(got));
         // ...and nothing published by the time the publisher stopped fell in the gap between the two.
         Assert.Empty(state.Except(snapshot).Except(got));
+        Assert.Equal(state.Count, snapshot.Count + got.Count);
     }
 
     private static async Task WaitUntil(Func<bool> condition, int timeoutMs = 5000)
