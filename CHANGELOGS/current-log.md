@@ -15,3 +15,8 @@ sentences are what `current-list.md` is built from, which is why they have to st
 > [`CHANGELOGS/v0.2.8.md`](v0.2.8.md). Everything here is unreleased.
 
 ---
+
+## 2026-11-11
+
+**VisionAgent and LogSentry now start with the default Windows secret store.**
+Both register DPAPI before resolving project settings. The runtime embedding examples show the same setup.

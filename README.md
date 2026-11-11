@@ -26,13 +26,15 @@ embeds the agent (see below).
 
 **Componentized.** The agent is not only an application but a library. A chat is an ordinary object:
 reference `SPLA.Runtime` from your own C# code, open the same `.spla` file, and get a full agent
-with no CLI, no service, and no UI:
+with no CLI, no service, and no UI. To support the Windows default secret store, reference
+`SPLA.Secrets.Dpapi` in the host and register it before loading settings.
 
 ```csharp
+SPLA.Secrets.Dpapi.DpapiSecrets.Register();
 var settings = ConfigLoader.LoadAndResolve("my.spla");
 using var runtime = new AgentRuntime(settings, loggerFactory);
 var chat = new ChatRegistry(runtime).CreateNew("my task");
-await chat.SendAsync(text, callbacks, permission, clarify, ct, images);
+await chat.SendAsync(text, permission, clarify, ct, images);
 ```
 
 This is not a hypothetical — [`demo/workers/`](demo/workers/) holds working examples of exactly this

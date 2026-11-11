@@ -104,7 +104,10 @@ in addition to the root `AGENTS.md`.
 
 ### `demo/` — examples
 
-- `workers/VisionAgent`: A headless console app that proves the `SPLA.Runtime` boundary: it references only the runtime (no CLI/service/UI), opens a normal `.spla` project file (`vision.spla`), and loops "grab a video frame (USB camera / RTSP / file via OpenCvSharp) → send it as a chat turn with an image → print the model's analysis". The analysis prompt is ordinary `agent.instructions`; the demo's own knobs live in a `vision:` section of the same `.spla` (unknown sections are ignored by the standard loader).
+- `workers/VisionAgent`: A headless runtime host that opens a normal `.spla` project file
+  (`vision.spla`), sends video frames from a USB camera, RTSP stream, or file to the model,
+  and prints the analysis. The prompt comes from `agent.instructions`; capture settings live
+  in the same file under `vision:`.
 - `workers/LogSentry`: A headless console app that tails a log file, batches suspicious lines, sends them to an agent for triage, and prints the verdict.
 - `workers/Summarizer`: A standalone runtime host that summarizes input text.
 - `projects/RemoteWeb`: An embedded browser-automation demo for remote Web access. Its `.spla` enables only the narrow Screencast tool set needed to open Wikipedia, visibly type a search, click through, and read the result; the ASCII-only `Run.cmd` delegates to `Run.ps1`, which builds that plugin, opens Browser Lab beside the chat, starts `SPLA.CLI serve` on the LAN, and seeds the first Web chat through `--new-chat` with UTF-8-safe argument handling.

@@ -26,13 +26,15 @@ English version — [`README.md`](README.md).
 
 **Компонентность.** Агент — не только приложение, но и библиотека. Чат — обычный объект: можно
 подключить `SPLA.Runtime` в свой C#-код, открыть тот же файл `.spla` и получить полноценного агента
-без CLI, сервиса и UI:
+без CLI, сервиса и UI. Для штатного хранилища секретов Windows подключите к хосту
+`SPLA.Secrets.Dpapi` и зарегистрируйте его перед загрузкой настроек.
 
 ```csharp
+SPLA.Secrets.Dpapi.DpapiSecrets.Register();
 var settings = ConfigLoader.LoadAndResolve("my.spla");
 using var runtime = new AgentRuntime(settings, loggerFactory);
 var chat = new ChatRegistry(runtime).CreateNew("my task");
-await chat.SendAsync(text, callbacks, permission, clarify, ct, images);
+await chat.SendAsync(text, permission, clarify, ct, images);
 ```
 
 Это не гипотетический сценарий — в [`demo/workers/`](demo/workers/) лежат реально работающие

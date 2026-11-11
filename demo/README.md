@@ -21,13 +21,15 @@
 | [LogSentry](workers/LogSentry/README.md) | Хвост лог-файла → пачки подозрительных строк → триаж-вердикт (ИНЦИДЕНТ/ШУМ/НАБЛЮДАТЬ) → консоль. |
 | [Summarizer](workers/Summarizer/README.md) | Документ из папки → матрица «каждый вариант промпта × каждая модель» (включая поочерёдную загрузку локальных моделей LM Studio) → файлы результатов рядом с исходником. |
 
-Общий паттерн любого такого хоста:
+Для штатного хранилища секретов Windows хост подключает `SPLA.Secrets.Dpapi` и регистрирует
+его перед загрузкой настроек.
 
 ```csharp
+SPLA.Secrets.Dpapi.DpapiSecrets.Register();
 var settings = ConfigLoader.LoadAndResolve("my.spla");   // проект
 using var runtime = new AgentRuntime(settings, loggerFactory); // весь стек агента
 var chat = new ChatRegistry(runtime).CreateNew("my task");     // чат
-await chat.SendAsync(text, callbacks, permission, clarify, ct, images);
+await chat.SendAsync(text, permission, clarify, ct, images);
 ```
 
 Свои настройки демо держат в собственной секции того же `.spla`

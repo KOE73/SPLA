@@ -10,3 +10,5 @@ The release workflow publishes the separately authored versioned release notes.
 **Covers work since `v0.2.8`**, frozen in [`CHANGELOGS/v0.2.8.md`](v0.2.8.md).
 
 ---
+
+- VisionAgent and LogSentry now start with the default Windows secret store.

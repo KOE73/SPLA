@@ -38,6 +38,9 @@ using var loggerFactory = Microsoft.Extensions.Logging.LoggerFactory.Create(b =>
     b.SetMinimumLevel(Microsoft.Extensions.Logging.LogLevel.Information);
 });
 
+var logger = loggerFactory.CreateLogger("LogSentry");
+SPLA.Secrets.Dpapi.DpapiSecrets.Register(message => logger.LogWarning("{Message}", message));
+
 var settings = ConfigLoader.LoadAndResolve(splaFile);
 Directory.SetCurrentDirectory(settings.WorkspacePath);
 var cfg = SentryConfig.Load(splaFile);
