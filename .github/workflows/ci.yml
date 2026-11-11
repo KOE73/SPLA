@@ -81,9 +81,8 @@ jobs:
       # The rule is that the summary is rewritten before a push; this is what catches a push where
       # that did not happen — from another machine, by another person, or simply forgotten.
       #
-      # Warning, not failure: a stale summary costs a thinner release body (release.yml drops it
-      # rather than publishing something confidently wrong), and that is not worth blocking a build
-      # over. It shows up as an annotation on the run instead.
+      # A stale working summary produces an annotation. The release workflow publishes the
+      # versioned notes written in the release commit.
       - name: Check the changelog summary is current
         if: github.ref_name == 'work'
         shell: pwsh
@@ -101,10 +100,10 @@ jobs:
           $lastLog = if ($dates) { ($dates | Sort-Object | Select-Object -Last 1) } else { $null }
 
           if (-not $covers) {
-            Write-Host "::warning file=$summaryPath::No 'covers:' marker — a release cannot tell whether this summary is current."
+            Write-Host "::warning file=$summaryPath::No 'covers:' marker — CI cannot check whether the working summary is current."
           }
           elseif ($lastLog -and $covers -lt $lastLog) {
-            Write-Host "::warning file=$summaryPath::Summary covers $covers but the log reaches $lastLog. Rewrite it, or a release now would ship without a summary."
+            Write-Host "::warning file=$summaryPath::Summary covers $covers but the log reaches $lastLog. Update the working summary before preparing the release."
           }
           else {
             Write-Host "Summary is current (covers $covers, log reaches $lastLog)."

@@ -7,7 +7,7 @@ than by date. Rewritten from scratch before each push — never appended to. On 
 into `CHANGELOGS/<version>.md` and this file starts empty again.
 
 The `covers:` marker on the first line records the latest `current-log.md` date this text accounts
-for. CI compares the two: if the log has moved on, this summary is stale and is left out of the
-release rather than published as if it were current.
+for. CI warns on pushes to `work` when the log reaches a later date. The release workflow
+publishes the versioned release notes written in the release commit.
 
 ---
