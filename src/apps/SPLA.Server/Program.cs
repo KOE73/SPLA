@@ -103,9 +103,12 @@ if (OperatingSystem.IsWindows())
 {
     var dpapiPath = Path.Combine(AppContext.BaseDirectory, "SPLA.Secrets.Dpapi.dll");
     if (File.Exists(dpapiPath))
+    {
+        Action<string> warn = message => log.LogWarning("{Message}", message);
         System.Reflection.Assembly.LoadFrom(dpapiPath)
             .GetType("SPLA.Secrets.Dpapi.DpapiSecrets", throwOnError: true)!
-            .GetMethod("Register")!.Invoke(null, [null]);
+            .GetMethod("Register")!.Invoke(null, [warn]);
+    }
 }
 
 // The server process itself has no ambient project: users route into their own areas. Its own

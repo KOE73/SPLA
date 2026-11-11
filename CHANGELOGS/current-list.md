@@ -12,3 +12,4 @@ The release workflow publishes the separately authored versioned release notes.
 ---
 
 - VisionAgent and LogSentry now start with the default Windows secret store.
+- Server builds and publishes use the DPAPI backend produced by the selected build configuration.

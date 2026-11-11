@@ -20,3 +20,6 @@ sentences are what `current-list.md` is built from, which is why they have to st
 
 **VisionAgent and LogSentry now start with the default Windows secret store.**
 Both register DPAPI before resolving project settings. The runtime embedding examples show the same setup.
+
+**Server builds and publishes use the DPAPI backend produced by the selected build configuration.**
+Custom MSBuild output paths are supported, and DPAPI read warnings are sent to the server logger.
