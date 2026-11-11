@@ -1,8 +1,8 @@
 ﻿# === SPLA Publish All ===
 # PowerShell 5.1 compatible. Strategy:
 #   1. one solution build (MSBuild parallelizes internally, no obj/ races),
-#   2. plugin publishes run in parallel jobs (each to its own folder); projects
-#      outside the solution build themselves, the rest reuse the solution build,
+#   2. plugin publishes reuse the solution build and run in parallel jobs,
+#      each writing to its own folder,
 #   3. UI/CLI publish sequentially into the shared .publish/work. Their single-file
 #      publishes require RID-specific outputs that the solution build does not produce.
 param(
@@ -70,7 +70,7 @@ if ($LASTEXITCODE -ne 0) { Fail 'solution build failed.' }
 $plugins = @(
     @{ Name = 'network';            Proj = 'src/plugins/SPLA.Plugins.Network/SPLA.Plugins.Network.csproj';
        Extras = @(@{ From = 'src\plugins\SPLA.Skills.Network\skills'; To = 'skills' }) }
-    @{ Name = 'test';               Proj = 'src/plugins/SPLA.Plugins.Test/SPLA.Plugins.Test.csproj'; Build = $true }
+    @{ Name = 'test';               Proj = 'src/plugins/SPLA.Plugins.Test/SPLA.Plugins.Test.csproj' }
     @{ Name = 'onec';               Proj = 'src/plugins/SPLA.Plugins.OneC/SPLA.Plugins.OneC.csproj' }
     @{ Name = 'sql';                Proj = 'src/plugins/SPLA.Plugins.Sql/SPLA.Plugins.Sql.csproj' }
     @{ Name = 'documents';          Proj = 'src/plugins/SPLA.Plugins.Documents/SPLA.Plugins.Documents.csproj';
@@ -90,8 +90,7 @@ $jobs = foreach ($p in $plugins) {
         param($root, $p, $versionArgs)
         Set-Location $root
         $out = ".publish/work/plugins/$($p.Name)"
-        $publishArguments = @('publish', $p.Proj, '-c', 'Release', '-o', $out, '--nologo', '-v', 'q') + $versionArgs
-        if (-not $p.Build) { $publishArguments += '--no-build' }
+        $publishArguments = @('publish', $p.Proj, '-c', 'Release', '-o', $out, '--nologo', '-v', 'q', '--no-build') + $versionArgs
         dotnet @publishArguments 2>&1 | Out-String | Write-Output
         if ($LASTEXITCODE -ne 0) { throw "publish failed for $($p.Name)" }
         $metaDir = Split-Path $p.Proj -Parent
