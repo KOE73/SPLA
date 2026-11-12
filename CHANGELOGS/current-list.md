@@ -4,10 +4,9 @@ The scannable list: one line per change, no dates, no detail. Derived from the e
 `current-log.md` rather than written independently, so the two cannot drift apart. Frozen into
 `CHANGELOGS/<version>.md` on release, then started empty again.
 
-This list and the summary are what CI puts into the release body; the full log stays in the
-repository and is linked from it.
+The release commit freezes this list, the summary and the log in the versioned changelog.
+The release workflow publishes the separately authored versioned release notes.
 
-**Covers work since `v0.2.7`**, frozen in [`CHANGELOGS/v0.2.7.md`](v0.2.7.md).
+**Covers work since `v0.2.8`**, frozen in [`CHANGELOGS/v0.2.8.md`](v0.2.8.md).
 
 ---
-

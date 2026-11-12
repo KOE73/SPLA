@@ -7,7 +7,7 @@
 > собирая смысл одной записи из пяти чужих.
 
 Тексты живут в каталогах `text.<lang>.json` рядом с моделью; формы полей — в
-[`CONTRACT.md`](../../tools/spla-diagram/docs/CONTRACT.md) §7, порядок работы — в
+SeMaps `docs/CONTRACT.md` §7, порядок работы — в
 [`projects/AGENTS.md`](projects/AGENTS.md). Этот файл — про то, **что писать
 внутри значения**.
 

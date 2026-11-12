@@ -17,11 +17,8 @@
     </select>
   </label>
   <label>{{ t('model') }}
-    <select v-model="modelId" class="model-select" :disabled="!session" @change="onModelChange">
-      <optgroup v-for="g in groups" :key="g.connectionId" :label="connEmoji(g.connectionId) + g.connectionName">
-        <option v-for="m in g.models" :key="m.id" :value="m.id">{{ modelLabel(m) }}</option>
-      </optgroup>
-    </select>
+    <ModelSelect v-model="modelId" :models="picks" :health="connHealth"
+                 :disabled="!session" @change="onModelChange" />
     <span id="connHealthDot" class="conn-status" :class="healthClass" :title="healthTitle"></span>
     <button
       ref="infoBtn"
@@ -98,6 +95,9 @@
     <span v-if="ctxPercent != null" class="ctx-bar"><span class="ctx-bar-fill" :style="{ width: ctxPercent + '%' }"></span></span>
     <span class="ctx-label">{{ ctxLabel }}</span>
   </span>
+  <span v-if="lastCached != null || lastCacheWrite != null" class="ctx-label" :title="cacheTitle">
+    {{ t('cache read/write') }}: {{ formatCompact(lastCached ?? 0) }}/{{ formatCompact(lastCacheWrite ?? 0) }}
+  </span>
 
   <span v-if="toolSets.length" id="toolSets">
     <button
@@ -133,6 +133,7 @@ import type { ConnHealth, ModelPickDto, ReasoningCapabilityDto, ToolSetState } f
 import CopyButton from "../components/buttons/CopyButton.vue";
 import ProviderInfoPopup from "./ProviderInfoPopup.vue";
 import SkillPickerPopup from "./SkillPickerPopup.vue";
+import ModelSelect from "../components/fields/ModelSelect.vue";
 
 const chat = useChat();
 
@@ -144,6 +145,11 @@ const activeSkill = computed(() => session.value?.activeSkill ?? null);
 const toolSets = computed<ToolSetState[]>(() => session.value?.toolSets ?? []);
 const lastPrompt = computed(() => session.value?.lastPrompt ?? null);
 const lastCompletion = computed(() => session.value?.lastCompletion ?? null);
+const lastCached = computed(() => session.value?.lastCached ?? null);
+const lastCacheWrite = computed(() => session.value?.lastCacheWrite ?? null);
+const cacheTitle = computed(() => t('Last request cache: {read} read, {write} written', {
+  read: (lastCached.value ?? 0).toLocaleString(), write: (lastCacheWrite.value ?? 0).toLocaleString()
+}));
 const ctxUsed = computed(() => session.value?.ctxUsed ?? null);
 const ctxWindow = computed(() => session.value?.ctxWindow ?? null);
 
@@ -324,24 +330,6 @@ const ctxTitle = computed(() => {
   }
   return title;
 });
-
-/** Model entries grouped by their owning connection — the picker's two levels. Grouped by connection
- *  NAME, never by provider: two connections to the same provider must stay distinguishable. */
-const groups = computed(() => {
-  const out: { connectionId: string; connectionName: string; models: ModelPickDto[] }[] = [];
-  for (const p of picks.value) {
-    let g = out.find(x => x.connectionId === p.connectionId);
-    if (!g) out.push(g = { connectionId: p.connectionId, connectionName: p.connectionName || p.connectionId, models: [] });
-    g.models.push(p);
-  }
-  return out;
-});
-
-/** Health is a property of the connection (endpoint + key), so the dot rides on the group. */
-function connEmoji(connectionId: string): string {
-  const h = connHealth.value[connectionId];
-  return !h || h.ok == null ? "" : h.ok ? "🟢 " : "🔴 ";
-}
 
 /** Connection plus the entry/model label. The connection stays in the option text because a closed
  *  native select does not show its optgroup. */

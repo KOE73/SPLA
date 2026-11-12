@@ -65,6 +65,7 @@ public static class SettingsOps
                 Default = m.Default,
                 Model = m.Model,
                 ContextLength = m.ContextLength,
+                PromptCache = m.PromptCache,
                 Temperature = m.Temperature
             }).ToList()
         }).ToList()
@@ -197,7 +198,16 @@ public static class SettingsOps
             ProjectMode = s.Mode.ToString(),
             KnownCapabilities = GetFeatures(runtime).Features,
             Models = s.Models
-                .Select(m => new ConnectionDto { Id = m.Entry.Id, Name = m.Entry.Name ?? m.Entry.Id })
+                .Select(m => new ConnectionDto
+                {
+                    Id = m.Id,
+                    Name = m.Entry.DisplayName,
+                    Model = m.Model,
+                    ConnectionId = m.Connection.Id,
+                    ConnectionName = m.Connection.DisplayName,
+                    Provider = m.Provider,
+                    Default = m.Entry.Default
+                })
                 .ToList(),
             Connections = s.Connections
                 .Select(c => new ConnectionDto { Id = c.Id, Name = c.Name ?? c.Id })
@@ -1170,6 +1180,7 @@ public static class SettingsOps
             Default = d.Default,
             Model = Blank(d.Model),
             ContextLength = d.ContextLength is > 0 ? d.ContextLength : null,
+            PromptCache = d.PromptCache is false ? false : null,
             Temperature = d.Temperature
         };
     }

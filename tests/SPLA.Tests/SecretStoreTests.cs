@@ -145,7 +145,7 @@ public class SecretStoreTests : IDisposable
     /// intermittent failure, not a theoretical one.
     /// </summary>
     [Fact]
-    public void ConfigLoader_UsesFactory_ForDpapi_AndFallsBackToFile()
+    public void ConfigLoader_UsesFactory_ForDpapi_AndRefusesMissingFactory()
     {
         File.WriteAllText(Path.Combine(_dir, "defaults.yaml"), "version: 1\nsecrets:\n  backend: dpapi\n");
 
@@ -156,11 +156,93 @@ public class SecretStoreTests : IDisposable
             Assert.IsType<DpapiFileSecretStore>(ConfigLoader.LoadAndResolve().Secrets);
         }
 
-        // With no factory, the same config must fall back to the plaintext file store, not crash.
+        // A selected encrypted backend must never silently become a plaintext store.
         using (MachineLayerScope.Begin(_dir, suppressSecretStoreFactory: true))
         {
-            Assert.IsType<FileSecretStore>(ConfigLoader.LoadAndResolve().Secrets);
+            var error = Assert.Throws<InvalidOperationException>(() => ConfigLoader.LoadAndResolve());
+            Assert.Contains("dpapi", error.Message);
+            Assert.Contains("No plaintext fallback", error.Message);
+            Assert.False(File.Exists(Path.Combine(_dir, "secrets.yaml")));
         }
+    }
+
+    [Theory]
+    [InlineData("")]
+    [InlineData("secrets: {}\n")]
+    [InlineData("secrets:\n  backend:\n")]
+    public async Task ConfigLoader_DefaultsToPlatformBackend_WithoutReadingPlaintextOnWindows(string section)
+    {
+        File.WriteAllText(Path.Combine(_dir, "defaults.yaml"), "version: 1\n" + section);
+        var plaintextPath = Path.Combine(_dir, "secrets.yaml");
+        const string plaintext = "legacy:\n  password: legacy-test-value\n";
+        File.WriteAllText(plaintextPath, plaintext);
+        using var scope = MachineLayerScope.Begin(_dir, (backend, ws, home) =>
+            backend == "dpapi" && OperatingSystem.IsWindows() ? new DpapiFileSecretStore(ws, home) : null);
+
+        var store = ConfigLoader.LoadAndResolve().Secrets;
+        if (OperatingSystem.IsWindows())
+        {
+            Assert.IsType<DpapiFileSecretStore>(store);
+            Assert.Null(await store.GetAsync("legacy", SecretScope.User));
+            await store.SetAsync("new", "new-test-value", SecretScope.User);
+            Assert.Equal("new-test-value", await store.GetAsync("new", SecretScope.User));
+            Assert.Equal(plaintext, File.ReadAllText(plaintextPath));
+            Assert.DoesNotContain("new-test-value", File.ReadAllText(Path.Combine(_dir, "secrets.dpapi.yaml")));
+        }
+        else
+        {
+            Assert.IsType<FileSecretStore>(store);
+        }
+    }
+
+    [Fact]
+    public void ConfigLoader_RefusesUnavailableDpapiFactory()
+    {
+        File.WriteAllText(Path.Combine(_dir, "defaults.yaml"), "version: 1\nsecrets:\n  backend: dpapi\n");
+        using var scope = MachineLayerScope.Begin(_dir, (_, _, _) => null);
+        Assert.Throws<InvalidOperationException>(() => ConfigLoader.LoadAndResolve());
+        Assert.False(File.Exists(Path.Combine(_dir, "secrets.yaml")));
+    }
+
+    [Fact]
+    public void ConfigLoader_DefaultOnWindows_RequiresFactory()
+    {
+        if (!OperatingSystem.IsWindows()) return;
+        File.WriteAllText(Path.Combine(_dir, "defaults.yaml"), "version: 1\n");
+        using var scope = MachineLayerScope.Begin(_dir, suppressSecretStoreFactory: true);
+        Assert.Throws<InvalidOperationException>(() => ConfigLoader.LoadAndResolve());
+        Assert.False(File.Exists(Path.Combine(_dir, "secrets.yaml")));
+    }
+
+    [Fact]
+    public void ConfigLoader_PropagatesBackendFailure()
+    {
+        File.WriteAllText(Path.Combine(_dir, "defaults.yaml"), "version: 1\nsecrets:\n  backend: dpapi\n");
+        using var scope = MachineLayerScope.Begin(_dir, (_, _, _) => throw new System.Security.Cryptography.CryptographicException());
+        Assert.Throws<System.Security.Cryptography.CryptographicException>(() => ConfigLoader.LoadAndResolve());
+        Assert.False(File.Exists(Path.Combine(_dir, "secrets.yaml")));
+    }
+
+    [Fact]
+    public async Task ConfigLoader_AllowsExplicitFileBackend_WithoutFactory()
+    {
+        File.WriteAllText(Path.Combine(_dir, "defaults.yaml"), "version: 1\nsecrets:\n  backend: file\n");
+        using var scope = MachineLayerScope.Begin(_dir, suppressSecretStoreFactory: true);
+        var store = Assert.IsType<FileSecretStore>(ConfigLoader.LoadAndResolve().Secrets);
+        await ((ISecretStore)store).SetAsync("fixture", "test-value", SecretScope.User);
+        Assert.Contains("test-value", File.ReadAllText(Path.Combine(_dir, "secrets.yaml")));
+    }
+
+    [Theory]
+    [InlineData("unknown")]
+    [InlineData("''")]
+    [InlineData("'   '")]
+    public void ConfigLoader_RefusesInvalidBackend(string backend)
+    {
+        File.WriteAllText(Path.Combine(_dir, "defaults.yaml"), $"version: 1\nsecrets:\n  backend: {backend}\n");
+        using var scope = MachineLayerScope.Begin(_dir, (_, _, _) => throw new Exception("Must not call a factory for invalid configuration."));
+        Assert.Throws<InvalidOperationException>(() => ConfigLoader.LoadAndResolve());
+        Assert.False(File.Exists(Path.Combine(_dir, "secrets.yaml")));
     }
 
     /// <summary>

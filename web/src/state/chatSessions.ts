@@ -61,6 +61,8 @@ export interface ChatSession {
   doubt: ChatDoubt | null;
   lastPrompt: number | null;
   lastCompletion: number | null;
+  lastCached: number | null;
+  lastCacheWrite: number | null;
   ctxUsed: number | null;
   ctxWindow: number | null;
   /** Unsent composer text and images — per chat, or switching away loses them (and, worse, could
@@ -138,6 +140,8 @@ function blank(chatId: string): ChatSession {
     doubt: null,
     lastPrompt: null,
     lastCompletion: null,
+    lastCached: null,
+    lastCacheWrite: null,
     ctxUsed: null,
     ctxWindow: null,
     draft: "",
@@ -631,9 +635,11 @@ on("tool.result", (s, p: { toolCallId: string; toolName: string; result?: string
 
 on("notice", (s, p: { text: string }) => addNotice(s, p.text));
 
-on("token.usage", (s, p: { promptTokens?: number; completionTokens?: number; contextLength?: number }) => {
+on("token.usage", (s, p: { promptTokens?: number; completionTokens?: number; cachedTokens?: number; cacheWriteTokens?: number; contextLength?: number }) => {
   s.lastPrompt = p.promptTokens ?? null;
   s.lastCompletion = p.completionTokens ?? null;
+  s.lastCached = p.cachedTokens ?? null;
+  s.lastCacheWrite = p.cacheWriteTokens ?? null;
   if (p.promptTokens != null) {
     s.ctxUsed = p.promptTokens + (p.completionTokens ?? 0);
     s.ctxWindow = p.contextLength ?? null;

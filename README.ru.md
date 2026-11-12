@@ -26,13 +26,15 @@ English version — [`README.md`](README.md).
 
 **Компонентность.** Агент — не только приложение, но и библиотека. Чат — обычный объект: можно
 подключить `SPLA.Runtime` в свой C#-код, открыть тот же файл `.spla` и получить полноценного агента
-без CLI, сервиса и UI:
+без CLI, сервиса и UI. Для штатного хранилища секретов Windows подключите к хосту
+`SPLA.Secrets.Dpapi` и зарегистрируйте его перед загрузкой настроек.
 
 ```csharp
+SPLA.Secrets.Dpapi.DpapiSecrets.Register();
 var settings = ConfigLoader.LoadAndResolve("my.spla");
 using var runtime = new AgentRuntime(settings, loggerFactory);
 var chat = new ChatRegistry(runtime).CreateNew("my task");
-await chat.SendAsync(text, callbacks, permission, clarify, ct, images);
+await chat.SendAsync(text, permission, clarify, ct, images);
 ```
 
 Это не гипотетический сценарий — в [`demo/workers/`](demo/workers/) лежат реально работающие
@@ -268,7 +270,8 @@ SPLA по-прежнему использует 5 режимов агента �
 ## Схемы архитектуры (альфа)
 
 Побочный вспомогательный подпроект рядом с основным — [`docs/diagrams/`](docs/diagrams/README_RU.md)
-и редактор [`tools/spla-diagram`](tools/spla-diagram/). Цель у него двусторонняя.
+Редактор, сервер и контракт формата живут в отдельном проекте **[SeMaps](https://github.com/KOE73/SeMaps)**; здесь остаётся только
+рабочая область (`catalog.json` и `projects/`). Цель у подпроекта двусторонняя.
 
 **Туда:** показать внутренние структуры проекта так, чтобы их было легче понять — не пересказом в
 тексте, а схемой, на которую можно смотреть.
@@ -292,13 +295,15 @@ SPLA по-прежнему использует 5 режимов агента �
 — «хребет хода» (от ящика до возврата к модели), смысловой атлас подсистем, зоны безопасности,
 процессы.
 
-Запуск из корня репозитория — скрипт сам соберёт приложение редактора и поднимет локальный сервер:
+**Для просмотра нужен [SeMaps](https://github.com/KOE73/SeMaps).** Установите его (бинарник `semaps` в `PATH`, `*.semaps` связан с ним) и
+откройте двойным щелчком [`spla.semaps`](spla.semaps) — файл проекта с рабочей областью, корнем
+исходников и портом — или запускайте из корня репозитория:
 
 ```powershell
 .\ViewArchitecture.cmd
 ```
 
-Дальше — <http://localhost:8777/app/>. Раскладка только ручная — авто-layout нет и не будет.
+Скрипт вызывает `semaps spla.semaps` и поднимает сервер на порту, указанном там. Раскладка только ручная — авто-layout нет и не будет.
 
 Всё перечисленное — альфа.
 

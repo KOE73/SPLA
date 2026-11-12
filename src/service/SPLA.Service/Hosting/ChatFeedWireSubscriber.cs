@@ -208,6 +208,8 @@ internal sealed class ChatFeedWireSubscriber : IDisposable
                 {
                     PromptTokens = turn.Turn.Message.PromptTokens,
                     CompletionTokens = turn.Turn.Message.CompletionTokens,
+                    CachedTokens = turn.Turn.RawUsage.TryGetValue("cached_tokens", out var cached) ? cached : null,
+                    CacheWriteTokens = turn.Turn.RawUsage.TryGetValue("cache_write_tokens", out var written) ? written : null,
                     ContextLength = turn.ContextLength
                 });
                 await _hub.BroadcastToProjectAsync(_projectId, MessageTypes.UsageResult, SettingsOps.GetUsage(_runtime));

@@ -11,8 +11,7 @@ that changes nothing observable does not. See the changelog rules in `agents/rel
 Each entry is **a bold sentence saying what changed**, optionally followed by the detail. The bold
 sentences are what `current-list.md` is built from, which is why they have to stand on their own.
 
-> **Entries through 2026-09-16 were released as `v0.2.7`** and are frozen in
-> [`CHANGELOGS/v0.2.7.md`](v0.2.7.md). Everything here is unreleased.
+> **Entries for `v0.2.8`** are frozen in
+> [`CHANGELOGS/v0.2.8.md`](v0.2.8.md). Everything here is unreleased.
 
 ---
-

@@ -96,6 +96,21 @@ else
     Console.WriteLine("Server root: NOT SET — all clients share one project. Set server.json \"serverRoot\" or pass --root for per-user areas.");
 }
 
+// Like the identity provider, DPAPI is a runtime artifact, not a platform reference of this host.
+// Register before any settings are resolved. A missing backend is rejected by ConfigLoader when
+// selected (including the Windows default); it must never turn into a plaintext store.
+if (OperatingSystem.IsWindows())
+{
+    var dpapiPath = Path.Combine(AppContext.BaseDirectory, "SPLA.Secrets.Dpapi.dll");
+    if (File.Exists(dpapiPath))
+    {
+        Action<string> warn = message => log.LogWarning("{Message}", message);
+        System.Reflection.Assembly.LoadFrom(dpapiPath)
+            .GetType("SPLA.Secrets.Dpapi.DpapiSecrets", throwOnError: true)!
+            .GetMethod("Register")!.Invoke(null, [warn]);
+    }
+}
+
 // The server process itself has no ambient project: users route into their own areas. Its own
 // settings are the minimal default, used only for the host's logger/plugin manager, never shown to a user.
 var settings = ConfigLoader.LoadAndResolve();

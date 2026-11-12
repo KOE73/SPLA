@@ -319,7 +319,9 @@ public sealed class SpawnedAgentRunner : Domain.Interfaces.IAgentSpawner
         // *between* the tools — that the run is on its fourth turn, that the model is thinking, what it
         // last concluded — and without it a sub-agent spending a minute inside the model looks exactly
         // like one that has hung.
-        var llmSettings = runSettings.ToLLMSettings();
+        var roleModel = runSettings.FindModel(runSettings.RoleModelId) ?? runSettings.DefaultModel;
+        var llmSettings = runSettings.ToLLMSettings(roleModel);
+        llmSettings.SessionId = runId;
         llmSettings.Mode = effectiveMode;
 
         // How full the run's context is, as the last call reported it. Carried on **every** tick rather

@@ -17,17 +17,23 @@ in addition to the root `AGENTS.md`.
 - `SPLA.Library`: The skill library — holdings, catalog, sources, frontmatter. Depends on `SPLA.Domain` only: it knows nothing of the tool host, and `SPLA.MCP.Core` references it rather than the other way round.
 - `SPLA.MCP.Core`: MCP host core, tool abstractions, plugin metadata, plugin loading, permissions (`PermissionManager`, `PermissionScope`), and tool help routing.
 - `SPLA.Observability`: Shared logging, tracing, metrics, correlation, and log destination infrastructure.
+- `SPLA.Instances.Contracts`: Hosting-independent registry contracts and frame types shared by the hosts and the desktop shell.
+- `SPLA.Platform`: Browser and process launching, plus Windows shell integration.
+- `SPLA.Secrets.Dpapi`: Windows DPAPI secret backend registered by host entry points.
+- `SPLA.Ssh.Core`: SSH connection settings, connection factory, and live terminal sessions.
 
 ### `src/agent/` — the agent loop
 
 - `SPLA.Agent`: The single agent loop (`ConversationOrchestrator`), this product's context contributors (`Composition/`, folded by `SPLA.MCP.Core`'s `AgentContextComposer` — see [`composition.md`](composition.md)), mode-based tool gating (`ToolModeFilter`), and headless skill sub-agents (`SpawnedAgentRunner`).
-- `SPLA.Instances.Contracts`: What a registry answers with — `InstanceRecord`, `IInstanceRegistry`, `IInstanceProbe`, and the hub's own small frame vocabulary (`RegistryFrames`). Deliberately free of any hosting dependency: the desktop shell references it to draw a tray, and must never acquire ASP.NET to do so. Its one project reference is `SPLA.Domain`, for `InstanceInfo`/`InstanceState` — those describe a project's own lock file, and a second definition would be a second truth.
 - `SPLA.Runtime`: The autonomous, transport-neutral agent runtime — the embeddable "SPLA Runtime". Owns the full agent stack for one project (`AgentRuntime`: LLM client, tool host, plugins, skills, project KV, prompt, token tallies), per-chat state (`ChatRuntime`), the open-chat set (`ChatRegistry`), the multi-project home (`AgentRuntimeRegistry`), the in-process domain-event hub (`ServiceEvents`), and sidecar image persistence (`ChatImages`). Zero dependencies on any client or protocol: CLI, the WebSocket service, and standalone hosts (see `demo/workers/`) all reference this project and get an identical agent. Wire/DTO projections of these objects live in `SPLA.Service` (`Chat/RuntimeProjections.cs`), never here.
 - `SPLA.MCP.BasicTools`: Built-in tools for filesystem, shell, .NET build/test, context, date/time, web fetch, and web search. Reach the system only through `HostServices.Sandbox`.
 
 ### `src/llm/`
 
 - `SPLA.LLM.LMStudio`: Local LLM provider integration for LM Studio / OpenAI-compatible API endpoints.
+- `SPLA.LLM.LocalAI`: LocalAI provider integration.
+- `SPLA.LLM.OpenAiCompat`: Shared OpenAI-compatible client implementation.
+- `SPLA.LLM.OpenRouter`: OpenRouter provider integration.
 
 ### `src/documents/`
 
@@ -52,6 +58,8 @@ in addition to the root `AGENTS.md`.
 
 - `SPLA.Service`: WebSocket host (`SplaServiceHost`), per-project/per-chat runtimes (`AgentRuntime`/`ChatRuntime`/`AgentRuntimeRegistry`), and the message-handler registry (`Protocol/MessageRouter.cs` + `Protocol/Handlers/*`). `ClientConnection` owns only transport, auth/handshake, correlation, and turn plumbing.
 - `SPLA.Service.Contracts`: The wire protocol — `MessageTypes` constants and payload DTOs shared with the web client.
+- `SPLA.Mcp`: MCP stdio server and progress reporting.
+- `SPLA.Mcp.Client`: External MCP sessions, transport implementations, and proxy tools.
 - `SPLA.Instances`: Who is running, and where. `FileInstanceRegistry` answers it from the filesystem alone — known projects from `IProjectProvider`, liveness from each project's own `.spla/instance.json`, which the OS releases on any death, so there is no instance directory to prune. `RegistryHub` is the other backend's core — instances register themselves over a channel whose liveness IS the registration, so nothing here checks a pid or prunes a timer; `RemoteInstanceRegistry` reads it back over HTTP and `InstanceRegistrar` is the instance side. Referenced by the CLI (`spla ps`, `spla stop`, `spla hub`) and by the server, because a deployment without `SPLA.Server` is a different scenario rather than a smaller one, and the code has to be the same for both. Carries no hosting dependency of its own: the HTTP/WebSocket routes live in `SPLA.Service` (`Hosting/RegistryEndpoints.cs`, `Hosting/RegistryHubHost.cs`).
 
 ### `src/apps/` — entry points
@@ -84,7 +92,11 @@ in addition to the root `AGENTS.md`.
 - `SPLA.Plugins.Browser.Screencast`: Embedded headless-browser panel provider. It streams in-memory
   frames through the generic plugin-panel transport and exposes a narrow agent tool set over that
   same shared page; the separate `SPLA.Plugins.Browser` automation engine remains independent.
-- `SPLA.Plugins.Test`: Test plugin manifest. Present in the repository but not currently listed in `SPLA.slnx`.
+- `SPLA.Plugins.Ssh`: SSH tools and terminal integration.
+- `SPLA.Plugins.Android`: Android device integration.
+- `SPLA.Plugins.Geometry`: Image markup and geometry tools.
+- `SPLA.Skills.Geometry`: Geometry skills shipped with the Geometry plugin.
+- `SPLA.Plugins.Test`: Test plugin included in `SPLA.slnx`.
 
 ### `tests/`
 
@@ -92,8 +104,12 @@ in addition to the root `AGENTS.md`.
 
 ### `demo/` — examples
 
-- `workers/VisionAgent`: A headless console app that proves the `SPLA.Runtime` boundary: it references only the runtime (no CLI/service/UI), opens a normal `.spla` project file (`vision.spla`), and loops "grab a video frame (USB camera / RTSP / file via OpenCvSharp) → send it as a chat turn with an image → print the model's analysis". The analysis prompt is ordinary `agent.instructions`; the demo's own knobs live in a `vision:` section of the same `.spla` (unknown sections are ignored by the standard loader).
+- `workers/VisionAgent`: A headless runtime host that opens a normal `.spla` project file
+  (`vision.spla`), sends video frames from a USB camera, RTSP stream, or file to the model,
+  and prints the analysis. The prompt comes from `agent.instructions`; capture settings live
+  in the same file under `vision:`.
 - `workers/LogSentry`: A headless console app that tails a log file, batches suspicious lines, sends them to an agent for triage, and prints the verdict.
+- `workers/Summarizer`: A standalone runtime host that summarizes input text.
 - `projects/RemoteWeb`: An embedded browser-automation demo for remote Web access. Its `.spla` enables only the narrow Screencast tool set needed to open Wikipedia, visibly type a search, click through, and read the result; the ASCII-only `Run.cmd` delegates to `Run.ps1`, which builds that plugin, opens Browser Lab beside the chat, starts `SPLA.CLI serve` on the LAN, and seeds the first Web chat through `--new-chat` with UTF-8-safe argument handling.
 
 ## Non-code top-level folders
@@ -105,26 +121,17 @@ in addition to the root `AGENTS.md`.
   and rejected on measurement — see
   [ADR_20260818_build_package-manager](../docs/adr/ADR_20260818_build_package-manager.md), which also
   names the condition for revisiting it.
-- `tools/`: Standalone helper tools and utilities.
-  - `tools/spla-arch`: Dedicated Go CLI tool for parsing C# codebase architecture, extracting components/interfaces, and managing diagram JSON models.
-  - `tools/spla-diagram`: `@spla/diagram` — a local TypeScript/Vite package holding the diagram
-    canvas and editor. `DiagramCanvas` is reusable on its own; `DiagramEditor` adds catalog,
-    inspector, history and persistence. Requirements and the contract-v2 analysis live in
-    `tools/spla-diagram/docs/`. Builds to `docs/diagrams/app/`, which `docs/diagrams/server.go`
-    serves.
+- `docs/diagrams/`: workspace of the separate SeMaps project (diagram editor and server), opened by
+  `spla.semaps` / `ViewArchitecture.cmd` via the installed `semaps` binary
+  (https://github.com/KOE73/SeMaps).
 - `docs/`, `agents/`, `Images/`: Documentation and assets (unchanged by the layered `src/` layout).
 - `.github/workflows/`: GitHub Actions. `ci.yml` (build + tests on `main`/`work` and on pull
-  requests into `main`) and `release.yml` (a push to `main` that touches sources, or a manual run →
-  `PublishAll.ps1` → GitHub release). See [release.md](release.md).
-
-  **Adding a source root means adding it to `release.yml`.** That workflow triggers on an
-  *allow-list* of source paths — the roots listed in this file — because documentation is an open
-  set and sources are a closed one. A new top-level source folder that is not in the list produces
-  no release, silently. The list lives under `on.push.paths`.
+  requests into `main`) and `release.yml` (every push to `main` and manual runs). See
+  [release.md](release.md).
 - `CHANGELOGS/`: Release notes, written by hand. Three working files — `current-log.md` (detailed,
   dated), `current-list.md` (one line per change, derived from the log) and `current-summary.md`
-  (prose, rewritten before each push) — plus one frozen `<version>.md` per released version.
-  `release.yml` builds the release body from the summary and the list. Rules in
+  (prose, rewritten before each push to `work`). The release commit freezes these into
+  `v<version>.md` and writes `v<version>-notes.md` for the GitHub release body. Rules in
   [release.md](release.md).
 
 ## Root Files
@@ -133,7 +140,7 @@ in addition to the root `AGENTS.md`.
   an index of everything under `agents/`.
 - `CLAUDE.md`: One-line import of `AGENTS.md`, so Claude Code loads the core into every session.
 - `README.md`: Main English user README.
-- `README_RU.md`: Main Russian user README.
+- `README.ru.md`: Main Russian user README.
 - `spla.spla`: Example/current SPLA project file for this workspace.
 - `PublishAll.cmd`: Release packaging script for UI, CLI, plugins, and ZIP output. The underlying
   `PublishAll.ps1` accepts `-VersionBuild`, which `release.yml` passes in so a published ZIP carries
@@ -158,13 +165,17 @@ Current user docs:
 Current agent docs:
 
 - `agents/avalonia.md`: Avalonia UI development rules.
+- `agents/chat-feed.md`: Chat feed events and subscriber lifecycle.
+- `agents/composition.md`: Agent context contributors and system prompt composition.
 - `agents/csharp.md`: Modern C# language usage and naming rules.
 - `agents/documentation.md`: Documentation layout, parallel-branch doc rules, and translation rules.
 - `agents/git.md`: Branches, worktrees, commit permission, commit message types.
+- `agents/glossary.md`: Russian terminology for SPLA documents.
 - `agents/release.md`: CI, releases, and the changelog.
 - `agents/observability.md`: Observability conventions.
 - `agents/plugins.md`: Plugin system and tool naming conventions.
 - `agents/protocol.md`: Wire protocol & event registry (every `MessageTypes` constant; guarded by `ProtocolDocTests`).
+- `agents/secrets.md`: Secret storage, scopes and credential references.
 - `agents/security.md`: Agent permission modes and capabilities.
 - `agents/skills.md`: Skill system architecture (lifecycle, assembly order, permission matrix).
 - `agents/spla-file.md`: `.spla` project file format.
@@ -180,11 +191,13 @@ Per-layer directional docs also live next to the code: `src/core/AGENTS.md`, `sr
 
 ## Skills
 
-Skills are named instruction sets stored as `.md` files in `src/plugins/SPLA.Skills.<PluginId>/`.
-They are independent of plugin code — a skill describes a procedure, not a capability declaration.
+Skills are named instruction sets. Project skills come from the sources configured in `spla.spla`,
+and packaged plugin skills ship alongside their corresponding plugins.
 
+- `skills/`: Project skill source for examples and procedures shared with the repository.
 - `src/plugins/SPLA.Skills.Documents/`: Document skills — `documents.docx-to-registry`
   (read a document, record it as a spreadsheet row). Copied into `plugins/documents/skills/`.
+- `src/plugins/SPLA.Skills.Geometry/`: Image markup skills shipped in `plugins/geometry/skills/`.
 - `src/plugins/SPLA.Skills.Network/`: Network skills. Built by `SPLA.Skills.Network.csproj` (Microsoft.Build.NoTargets).
   - **Debug builds:** the `CopySkills` target copies `meta.yaml` + `skills/*.md` into a flat
     `plugins/network.skills/` folder in the CLI and UI output. Because that folder carries its own
@@ -234,7 +247,10 @@ Current plugin manifests:
 - `src/plugins/SPLA.Plugins.Documents/meta.yaml`: `id: documents`, `type: dll`.
 - `src/plugins/SPLA.Plugins.Browser/meta.yaml`: `id: browser`, `type: dll`.
 - `src/plugins/SPLA.Plugins.Browser.Screencast/meta.yaml`: `id: browser_screencast`, `type: dll`.
-- `src/plugins/SPLA.Plugins.Test/meta.yaml`: Test plugin manifest. The project exists in the repository but is not currently listed in `SPLA.slnx`.
+- `src/plugins/SPLA.Plugins.Ssh/meta.yaml`: `id: ssh`, `type: dll`.
+- `src/plugins/SPLA.Plugins.Android/meta.yaml`: `id: android`, `type: dll`.
+- `src/plugins/SPLA.Plugins.Geometry/meta.yaml`: `id: geometry`, `type: dll`.
+- `src/plugins/SPLA.Plugins.Test/meta.yaml`: Test plugin manifest.
 
 ## Publish Output
 
@@ -255,7 +271,3 @@ Do not treat `.publish/` contents as authoritative source.
 wrapping `SystemOps.RegisterFileAssociation` in `SPLA.Service`) — the `.spla` extension in Explorer
 is re-pointed at whichever build was published most recently, deliberately, even across worktrees.
 Publishing from a different worktree silently changes what double-clicking a `.spla` file opens.
-
-## Out-of-Solution Notes
-
-- `src/plugins/SPLA.Plugins.Test` exists with a `.csproj` and `meta.yaml`, but it is not currently included in `SPLA.slnx`.

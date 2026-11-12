@@ -510,6 +510,11 @@ public class SplaModelSection
     [YamlMember(Alias = "context_length")]
     public int? ContextLength { get; set; }
 
+    /// <summary>Enable provider prompt caching for this model. Null uses the default (enabled).
+    /// Only providers that support an explicit cache request act on this setting.</summary>
+    [YamlMember(Alias = "prompt_cache", DefaultValuesHandling = DefaultValuesHandling.OmitNull)]
+    public bool? PromptCache { get; set; }
+
     /// <summary>
     /// Manual declaration of the model's reasoning options, in the provider's own words
     /// (<c>["off","low","medium","high"]</c>). Same role as <see cref="ContextLength"/> and the same
@@ -588,7 +593,8 @@ public class SplaMountSection
 /// </summary>
 public class SplaSecretsSection
 {
-    /// <summary><c>file</c> (default, plaintext) or <c>dpapi</c> (Windows-encrypted). Unknown/empty = file.</summary>
+    /// <summary><c>dpapi</c> (Windows-encrypted) or <c>file</c> (plaintext). Absent defaults to DPAPI on
+    /// Windows and file elsewhere. Unknown/empty or unavailable backends are errors.</summary>
     [YamlMember(Alias = "backend")]
     public string? Backend { get; set; }
 }

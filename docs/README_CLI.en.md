@@ -101,6 +101,11 @@ addressed as `secret:user:my-host-ssh`.
 
 Fields the SSH plugin understands: `user`, `password`, or `private_key` (+`passphrase`).
 
+On Windows, secret storage defaults to DPAPI (`CurrentUser`); other platforms default to `file`.
+The machine's `defaults.yaml` can explicitly select `secrets.backend: file` for plaintext development
+fixtures. An unavailable backend or an invalid name is an error, never a fallback to plaintext.
+Existing plaintext files are not migrated automatically or read in place of the selected DPAPI store.
+
 Exit codes: `0` success, `1` not found (on `delete`), `2` bad arguments.
 
 ### `chat` — saved chats and batch runs

@@ -78,10 +78,8 @@
           </label>
 
           <label class="field"><span>{{ t('Model') }}</span>
-            <select v-model="r.modelId">
-              <option value="">{{ t('inherit — whatever the chat would pick') }}</option>
-              <option v-for="m in models" :key="m.id" :value="m.id">{{ m.name || m.id }}</option>
-            </select>
+            <ModelSelect v-model="r.modelId" :models="models"
+                         :inherit-label="t('inherit — whatever the chat would pick')" />
           </label>
 
           <InheritNumberField v-model="r.temperature" :label="t('Temperature')" :step="0.1" :min="0" :max="2" />
@@ -185,7 +183,7 @@
 import { t } from "../../i18n";
 import { onUnmounted, ref } from "vue";
 import { client } from "../../protocol/SplaClient";
-import type { CapabilityDto, ConnectionDto, RoleEditDto } from "../../protocol/types";
+import type { CapabilityDto, ConnectionDto, ModelPickDto, RoleEditDto } from "../../protocol/types";
 import ListPanel from "../../components/list/ListPanel.vue";
 import ListCard from "../../components/list/ListCard.vue";
 import DeleteButton from "../../components/buttons/DeleteButton.vue";
@@ -193,6 +191,7 @@ import ChipSelect from "../../components/fields/ChipSelect.vue";
 import TriStateField from "../../components/fields/TriStateField.vue";
 import InheritNumberField from "../../components/fields/InheritNumberField.vue";
 import CapabilityRow from "./CapabilityRow.vue";
+import ModelSelect from "../../components/fields/ModelSelect.vue";
 
 /** A card's identity for the v-for and the open/delete keys. Not the name: the name is editable, and
  *  keying on it would tear the card down mid-rename, losing focus on every keystroke. */
@@ -201,7 +200,7 @@ type RoleCard = RoleEditDto & { key: string };
 const roles = ref<RoleCard[]>([]);
 const modes = ref<string[]>([]);
 const projectMode = ref("");
-const models = ref<ConnectionDto[]>([]);
+const models = ref<ModelPickDto[]>([]);
 const connections = ref<ConnectionDto[]>([]);
 const islands = ref<string[]>([]);
 const toolSetIds = ref<string[]>([]);
@@ -264,7 +263,8 @@ function remove(key: string) {
 }
 
 function modelLabel(id: string) {
-  return models.value.find(m => m.id === id)?.name || id;
+  const model = models.value.find(m => m.id === id);
+  return model ? `${model.connectionName || model.connectionId} | ${model.name || model.id}` : id;
 }
 
 /** The collapsed card's one-word summary of what this role was narrowed to. Narrowing is the half of

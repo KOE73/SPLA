@@ -138,10 +138,15 @@ jobs:
         shell: pwsh
         run: |
           npm --prefix web ci
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           dotnet restore SPLA.slnx
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           dotnet build SPLA.slnx -c Release --no-restore --nologo
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           dotnet test tests/SPLA.Tests/SPLA.Tests.csproj -c Release --no-build --nologo
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           npm --prefix web run test
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
       # Only now, with the checks green, does the tag become real — on the commit this run is
       # actually building from.

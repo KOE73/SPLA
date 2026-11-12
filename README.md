@@ -26,13 +26,15 @@ embeds the agent (see below).
 
 **Componentized.** The agent is not only an application but a library. A chat is an ordinary object:
 reference `SPLA.Runtime` from your own C# code, open the same `.spla` file, and get a full agent
-with no CLI, no service, and no UI:
+with no CLI, no service, and no UI. To support the Windows default secret store, reference
+`SPLA.Secrets.Dpapi` in the host and register it before loading settings.
 
 ```csharp
+SPLA.Secrets.Dpapi.DpapiSecrets.Register();
 var settings = ConfigLoader.LoadAndResolve("my.spla");
 using var runtime = new AgentRuntime(settings, loggerFactory);
 var chat = new ChatRegistry(runtime).CreateNew("my task");
-await chat.SendAsync(text, callbacks, permission, clarify, ct, images);
+await chat.SendAsync(text, permission, clarify, ct, images);
 ```
 
 This is not a hypothetical — [`demo/workers/`](demo/workers/) holds working examples of exactly this
@@ -267,8 +269,9 @@ the course SPLA's permission model is taking, not as settled fact.
 ## Architecture Diagrams (alpha)
 
 A side, auxiliary subproject living next to the main one —
-[`docs/diagrams/`](docs/diagrams/README.md) and the [`tools/spla-diagram`](tools/spla-diagram/)
-editor. Its purpose runs in both directions.
+[`docs/diagrams/`](docs/diagrams/README.md). The editor, the server and the format contract live in
+a separate project, **[SeMaps](https://github.com/KOE73/SeMaps)**; this repository keeps only the workspace (`catalog.json` and
+`projects/`). Its purpose runs in both directions.
 
 **Outward:** show the project's internal structures so they are easier to understand — not as prose
 retelling, but as a picture you can look at.
@@ -292,14 +295,15 @@ Hence the views: the same codebase lays out differently, and that is a choice of
 of style — the "turn backbone" (from the inbox to the return to the model), a semantic atlas of
 subsystems, security zones, processes.
 
-Launch it from the repository root; the script builds the editor app and starts a local server
-itself:
+**Viewing requires [SeMaps](https://github.com/KOE73/SeMaps).** Install it (the `semaps` binary on `PATH`, `*.semaps` associated with it), then
+double-click [`spla.semaps`](spla.semaps) — the project file with the workspace, source root and
+port — or launch from the repository root:
 
 ```powershell
 .\ViewArchitecture.cmd
 ```
 
-Then open <http://localhost:8777/app/>. Layout is manual only — there is no auto-layout and there
+It runs `semaps spla.semaps` and serves on the port set there. Layout is manual only — there is no auto-layout and there
 will not be one.
 
 All of the above is alpha.
