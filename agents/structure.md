@@ -140,7 +140,7 @@ in addition to the root `AGENTS.md`.
   an index of everything under `agents/`.
 - `CLAUDE.md`: One-line import of `AGENTS.md`, so Claude Code loads the core into every session.
 - `README.md`: Main English user README.
-- `README_RU.md`: Main Russian user README.
+- `README.ru.md`: Main Russian user README.
 - `spla.spla`: Example/current SPLA project file for this workspace.
 - `PublishAll.cmd`: Release packaging script for UI, CLI, plugins, and ZIP output. The underlying
   `PublishAll.ps1` accepts `-VersionBuild`, which `release.yml` passes in so a published ZIP carries
@@ -165,13 +165,17 @@ Current user docs:
 Current agent docs:
 
 - `agents/avalonia.md`: Avalonia UI development rules.
+- `agents/chat-feed.md`: Chat feed events and subscriber lifecycle.
+- `agents/composition.md`: Agent context contributors and system prompt composition.
 - `agents/csharp.md`: Modern C# language usage and naming rules.
 - `agents/documentation.md`: Documentation layout, parallel-branch doc rules, and translation rules.
 - `agents/git.md`: Branches, worktrees, commit permission, commit message types.
+- `agents/glossary.md`: Russian terminology for SPLA documents.
 - `agents/release.md`: CI, releases, and the changelog.
 - `agents/observability.md`: Observability conventions.
 - `agents/plugins.md`: Plugin system and tool naming conventions.
 - `agents/protocol.md`: Wire protocol & event registry (every `MessageTypes` constant; guarded by `ProtocolDocTests`).
+- `agents/secrets.md`: Secret storage, scopes and credential references.
 - `agents/security.md`: Agent permission modes and capabilities.
 - `agents/skills.md`: Skill system architecture (lifecycle, assembly order, permission matrix).
 - `agents/spla-file.md`: `.spla` project file format.
@@ -187,11 +191,13 @@ Per-layer directional docs also live next to the code: `src/core/AGENTS.md`, `sr
 
 ## Skills
 
-Skills are named instruction sets stored as `.md` files in `src/plugins/SPLA.Skills.<PluginId>/`.
-They are independent of plugin code — a skill describes a procedure, not a capability declaration.
+Skills are named instruction sets. Project skills come from the sources configured in `spla.spla`,
+and packaged plugin skills ship alongside their corresponding plugins.
 
+- `skills/`: Project skill source for examples and procedures shared with the repository.
 - `src/plugins/SPLA.Skills.Documents/`: Document skills — `documents.docx-to-registry`
   (read a document, record it as a spreadsheet row). Copied into `plugins/documents/skills/`.
+- `src/plugins/SPLA.Skills.Geometry/`: Image markup skills shipped in `plugins/geometry/skills/`.
 - `src/plugins/SPLA.Skills.Network/`: Network skills. Built by `SPLA.Skills.Network.csproj` (Microsoft.Build.NoTargets).
   - **Debug builds:** the `CopySkills` target copies `meta.yaml` + `skills/*.md` into a flat
     `plugins/network.skills/` folder in the CLI and UI output. Because that folder carries its own
@@ -241,6 +247,9 @@ Current plugin manifests:
 - `src/plugins/SPLA.Plugins.Documents/meta.yaml`: `id: documents`, `type: dll`.
 - `src/plugins/SPLA.Plugins.Browser/meta.yaml`: `id: browser`, `type: dll`.
 - `src/plugins/SPLA.Plugins.Browser.Screencast/meta.yaml`: `id: browser_screencast`, `type: dll`.
+- `src/plugins/SPLA.Plugins.Ssh/meta.yaml`: `id: ssh`, `type: dll`.
+- `src/plugins/SPLA.Plugins.Android/meta.yaml`: `id: android`, `type: dll`.
+- `src/plugins/SPLA.Plugins.Geometry/meta.yaml`: `id: geometry`, `type: dll`.
 - `src/plugins/SPLA.Plugins.Test/meta.yaml`: Test plugin manifest.
 
 ## Publish Output
