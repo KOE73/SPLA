@@ -26,14 +26,38 @@ Write-Host '=== SPLA Publish All ===' -ForegroundColor Cyan
 . "$PSScriptRoot\EnsureNodeJs.ps1"
 . "$PSScriptRoot\CopySkills.ps1"
 
-Write-Host 'Stopping running SPLA processes...'
+$publishDir = Join-Path $PSScriptRoot '.publish\work'
+Write-Host 'Stopping running processes from this publish folder...'
+# Stop the UI first, so it cannot start another CLI while the folder is being cleaned.
 foreach ($name in 'SPLA.UI.Avalonia', 'SPLA.CLI') {
-    Get-Process -Name $name -ErrorAction SilentlyContinue | Stop-Process -Force -ErrorAction SilentlyContinue
+    $exePath = Join-Path $publishDir "$name.exe"
+    $processes = Get-Process -Name $name -ErrorAction SilentlyContinue | Where-Object { $_.Path -eq $exePath }
+    foreach ($process in $processes) {
+        try {
+            Stop-Process -InputObject $process -Force -ErrorAction Stop
+        } catch {
+            if (-not $process.HasExited) { throw }
+        }
+        if (-not $process.WaitForExit(10000)) {
+            Fail "Timed out waiting for $exePath (PID $($process.Id)) to exit."
+        }
+    }
 }
 
 Write-Host 'Cleaning publish folder...'
-if (Test-Path .publish\work) { Remove-Item .publish\work -Recurse -Force }
-New-Item -ItemType Directory -Force .publish\work | Out-Null
+for ($attempt = 1; (Test-Path -LiteralPath $publishDir); $attempt++) {
+    try {
+        Remove-Item -LiteralPath $publishDir -Recurse -Force
+        break
+    } catch [System.IO.IOException], [System.UnauthorizedAccessException] {
+        # Windows may still be releasing file handles after the processes exit.
+        if ($attempt -eq 5) {
+            Fail "Could not clean '$publishDir'. Check for open handles or insufficient permissions. $($_.Exception.Message)"
+        }
+        Start-Sleep -Milliseconds 500
+    }
+}
+New-Item -ItemType Directory -Force $publishDir | Out-Null
 
 Write-Host 'Rebuilding web client (Vue) so UI and CLI embed the fresh bundle...'
 $webDir = Join-Path $PSScriptRoot 'web'
